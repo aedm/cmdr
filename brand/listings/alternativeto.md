@@ -3,9 +3,9 @@
 Live: https://alternativeto.net/software/cmdr/about/. Edit it while signed in; changes go through an admin approval
 queue, and the "Note about your changes" field at the bottom speeds that up.
 
-Status: refresh submitted 2026-08-13, awaiting admin approval. The fields below are what was submitted; edit them here
-first when refreshing, then paste. Refresh cadence and what to update per release: `docs/guides/releasing.md` §
-"Refreshing the app-directory listings".
+Status: last refresh submitted 2026-08-13. The fields below are refreshed for v0.45.0 (2026-09-12) and not submitted
+yet; edit them here first when refreshing, then paste. Refresh cadence and what to update per release:
+`docs/guides/releasing.md` § "Refreshing the app-directory listings".
 
 ## Main info
 
@@ -14,43 +14,46 @@ first when refreshing, then paste. Refresh cadence and what to update per releas
 - **Short description** (their hint: one concise sentence on the main purpose):
 
 ```
-A very fast two-pane file manager for macOS with Total Commander-compatible keyboard shortcuts, SMB and MTP/Android support. Optional+privacy-first AI features like natural language search and bulk rename.
+A very fast two-pane file manager for macOS with Total Commander-compatible keyboard shortcuts, SMB, SFTP, WebDAV, and MTP/Android support. Optional+privacy-first AI features like natural language search and bulk rename.
 ```
 
 ### Full description
 
 Plain text, their own line breaks, **max 3,000 characters** (the form rejects longer). Same substance as the MacUpdate
-description (`macupdate.md`), minus the HTML, plus the licensing and pricing lines that MacUpdate's form bans. The
-version below is 2,843 characters, so a new bullet or two needs a trim elsewhere.
+description (`macupdate.md`), minus the HTML, plus the licensing and pricing lines that MacUpdate's form bans. Measure
+it after every edit; there's little room left under the cap.
 
 ```
 Cmdr is on macOS what Total Commander is on Windows: familiar shortcuts, two panes, fast and transparent. Built with Rust, it's extremely fast and respectful of your CPU, RAM, and disk.
 
 Plus it has two more cool things:
 
-- It indexes your drive for near-instant search and to show you live folder sizes (optional, enabled/disabled at onboarding!)
+- It indexes your drive for near-instant search and shows you live folder sizes (optional, can be disabled at onboarding)
 - AI features like bulk renames and search (optional, off by default, can run 100% locally, and all destructive operations need human approval)
 
-Cmdr is in open beta: the core is well-tested software used daily by the author and a group of testers, while the newer features (search, archives, operation log, AI) are marked as "alpha". Your feedback is very much appreciated and goes straight to the developer!
+Cmdr is in open beta: the core is well-tested and used daily by the author and a group of testers, while the newer features (archives, operation log, AI, SFTP, WebDAV, ADB) are marked as "alpha". Feedback goes straight to the developer!
 
 Cmdr is source-available under the Business Source License 1.1, and the source is on GitHub. Free for personal use, commercial license for work use.
 
 Core features:
 
-- Two panes, tabs, command palette, keyboard-first. F5 to copy, F6 to move, F8 to delete, all remappable.
-- Copy, move, rename, delete, compress and decompress, with accurate progress bars, ETAs, and cancellation. Built for data safety, speed, and transparency.
-- Queue operations, background them, pause and resume transfers, and browse a searchable log of past operations, with rollback where nothing was permanently deleted.
-- Lists 50,000 files near-instantly; the built-in viewer opens a 10 GB file in 1 sec, with search. (!)
-- Browse zip, tar, and 7z archives like normal folders, and compress/extract archives.
-- Real dark and light modes, native macOS behavior, WCAG 2.2 AA and APCA verified contrasts, so you can read what's on the screen.
-- Translated into 10 languages.
+- Basics: Two panes, tabs, command palette, keyboard-first. F5 to copy, F6 to move, F8 to delete, all remappable.
+- Operations: Copy, move, rename, delete, with accurate progress bars, ETAs, and cancellation. Built for data safety, speed, and transparency.
+- Advanced ops: Queue operations, background them, pause/resume, browse op log, roll back ops, even days later.
+- Browse zip, tar, and 7z files like folders, and create or extract them.
+- Speed: Lists 50,000 files near-instantly; the built-in viewer opens a 10 GB file in 1 sec, with search. (!)
+- Accessibility: Real dark and light modes, native macOS behavior, WCAG 2.2 AA and APCA verified contrasts.
+- Localization: Translated into 13 languages.
 
 Extra features:
 
-- Reads/writes Android phones, Kindles, and cameras over MTP and PTP, up to 4x faster than Android File Transfer, with any USB cable. Just plug it in and it works.
-- Uses SMB network drives 4x faster than the macOS client, but for small files it's sometimes 100x.
-- Keeps a fully local index of your disk, for live folder sizes and fast search.
-- Browse Git history, branches, worktrees, and stashes like normal folders.
+- USB: Reads/writes Android phones, Kindles, and cameras over MTP and PTP, up to 4x faster than Android File Transfer, with any USB cable. Also ADB support for Android!
+- SMB: Accesses network drives 4-200x faster than the macOS client. For small files and listing dirs, it's waay faster than Finder!
+- SFTP: Use your server like a local drive
+- WebDAV: Same
+- Git: Browse Git history, branches, worktrees, and stashes like normal folders.
+- Supports Dropbox's and Google Drive's own actions, like "Copy Dropbox link" and "Share with Google Drive".
+- Drive index: Keeps a fully local index of your disk, for live folder sizes and fast search.
 
 AI features (optional, off by default, and can stay fully local with a built-in LLM):
 
@@ -59,7 +62,7 @@ AI features (optional, off by default, and can stay fully local with a built-in 
 - Chat: "Why is my Downloads folder so big?"
 - Local image indexing: "Find photos where a dog looks into the camera"
 - Natural-language renaming: "Rename these screenshots based on their content." The agent only suggests; you review, apply, and can roll back.
-- Auto-organization is coming soon.
+- File organization: "Clean up my Downloads folder". You approve each move.
 - The model runs on your Mac by default; bring your own OpenAI, Claude, or Gemini key (or ollama, etc.) for better models.
 - With AI off, Cmdr is a complete Total Commander-style file manager!
 ```
@@ -67,7 +70,8 @@ AI features (optional, off by default, and can stay fully local with a built-in 
 ## More info
 
 - **Supported languages**: English, German, Spanish, French, Hungarian, Dutch, Portuguese, Swedish, Vietnamese, Chinese.
-  (The 10 the app ships: `apps/desktop/src/lib/intl/messages`.)
+  (The 13 locales the app ships, with British and Australian English folded into English:
+  `apps/desktop/src/lib/intl/messages`. Traditional/Simplified Chinese split is not supported in their list.)
 - **Pricing**: `Free for personal use`. Model `Purchase`, min `$59`, max `$199`
 - **Is Opensource?**: checked. License `Other`. Source URL `https://github.com/vdavid/cmdr`
 
@@ -77,14 +81,16 @@ Current tags: `total-commander`, `ai`, `finder-alternative`, `built-in-file-mana
 `svelte`, `finder`, `dual-pane`, `ad-free`, `no-registration`, `lightweight`, `rust`, `privacy-focused`,
 `built-in-viewer`, `tauri`, `two-pane`, `portable`, `file-management`, `file-manager`, `live-preview`, `rust-based`,
 `rust-lang`, `night-mode`, `smb`, `mtp`, `git`, `file-search`, `batch-rename`, `batch-renamer`, `archive-manager`,
-`keyboard-driven`, `keyboard-shortcuts-support`, `semantic-search`
+`keyboard-driven`, `keyboard-shortcuts-support`, `semantic-search`, `sftp`, `sftp-clients`, `webdav`, `nextcloud`,
+`adb`, `android`
 
 ## Application type
 
 Check **File Manager**, **File Search Utility** (the full-disk index and instant search), and **File Archiver** (zip,
 tar, and 7z browsing and extraction, zip writing). They ask for two to three per app, so those three fill it.
 
-Leave unchecked: File Compressor, File Sync Tool, FTP Client.
+Leave unchecked: File Compressor, File Sync Tool, FTP Client (Cmdr speaks SFTP but no plain FTP, and SFTP is still
+alpha; the three above describe it better).
 
 ## Features
 
@@ -135,13 +141,12 @@ Leave unchecked, deliberately:
 Their optional box for the reviewing admin. Use it to head off the licensing mislabel:
 
 ```
-I added my app like 2 months ago. I've made a bunch of updates since then, so now I've:
-- refreshed the desc,
-- added supported languages,
-- ticked three new features that shipped since the last edit (batch rename, file tagging, zip support),
-- and updated the screenshots. They were very obsolete.
+Hi! Cmdr got a bunch of new stuff since my last edit (2026-08-13), so I've:
+- refreshed the desc (SFTP, WebDAV, and ADB support, cloud provider right-click menus, AI file organization),
+- added Traditional Chinese to the supported languages,
+- and added four tags: sftp, webdav, adb, android.
 
-I have one ask: Cmdr is source-available under BSL 1.1, not OSI open source. I've kept the "Is Opensource?" box ticked because unticking it hides the Source URL field and the code really _is_ public and I want the GitHub link there, but the (auto-generated-looking) page summary at https://alternativeto.net/software/cmdr/ calls Cmdr "open-source", which is not strictly true in the OSI sense. If you can manually adjust/overwrite that wording to "source available", I'd appreciate it, otherwise never mind, most people don't know the diff anyway.
+Also, my ask from last time (if it's not done already): Cmdr is source-available under BSL 1.1, not OSI open source. I keep the "Is Opensource?" box ticked because unticking it hides the Source URL field, and the code really _is_ public, but the page summary at https://alternativeto.net/software/cmdr/ calls Cmdr "open-source", which isn't strictly true in the OSI sense. If you can change that wording to "source available", I'd appreciate it. Otherwise never mind, most people don't know the diff anyway. :)
 ```
 
 ## Still pending after this pass
