@@ -1,29 +1,42 @@
 //! Volume mount/unmount watcher for Linux.
 //!
 //! Two watchers run concurrently:
-//! - `/proc/mounts` (inotify): detects standard mount/unmount operations
+//! - The mount table: a dedicated thread `poll()`s `/proc/self/mounts` for the kernel's
+//!   change signal and re-reads `/proc/mounts` only when it wakes.
 //! - `/run/user/<uid>/gvfs/` (inotify): detects GVFS SMB share mount/unmount (these are
 //!   subdirectories of a single gvfsd-fuse mount, so they don't appear in `/proc/mounts`)
 //!
 //! Both diff against known state and emit `volume-mounted` / `volume-unmounted`
 //! Tauri events. Also registers/unregisters volumes with the global `VolumeManager`.
 
-use crate::file_system::linux_mounts;
+use crate::file_system::linux_mounts::{self, MountEntry};
 use crate::ignore_poison::IgnorePoison;
 use crate::volume_broadcast::{VolumeMounted, VolumeUnmounted};
 use log::{debug, error, info, warn};
 use notify::{Event, EventKind, RecommendedWatcher, Watcher};
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
+use std::io;
+use std::os::fd::AsRawFd;
+use std::os::unix::net::UnixStream;
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
+use std::thread::JoinHandle;
 use tauri::AppHandle;
 use tauri_specta::Event as _;
+
+/// The mount table the watcher diffs.
+const PROC_MOUNTS: &str = "/proc/mounts";
+
+/// The file whose `poll()` reports a mount-table change: `POLLPRI | POLLERR` once per
+/// change in this process's mount namespace, and nothing in between.
+const MOUNT_CHANGE_SIGNAL: &str = "/proc/self/mounts";
 
 /// Global app handle for emitting events from the watcher.
 static APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 
-/// The watcher instance for /proc/mounts (kept alive for the app's lifetime).
-static WATCHER: OnceLock<Mutex<Option<RecommendedWatcher>>> = OnceLock::new();
+/// The watch on the mount table, kept until [`stop_volume_watcher`].
+static WATCHER: Mutex<Option<MountTableWatch>> = Mutex::new(None);
 
 /// The watcher instance for GVFS directory.
 static GVFS_WATCHER: OnceLock<Mutex<Option<RecommendedWatcher>>> = OnceLock::new();
@@ -42,84 +55,173 @@ pub fn start_volume_watcher(app: &AppHandle) {
         return;
     }
 
-    let initial = get_real_mounts();
+    // Discovery read the same table at startup, so if it couldn't, the app knows no
+    // attached volume either, and starting from nothing keeps the two in step: the
+    // first readable check reports them as mounted.
+    let initial = get_real_mounts().unwrap_or_default();
     let known = KNOWN_MOUNTS.get_or_init(|| Mutex::new(HashMap::new()));
     let mut guard = known.lock_ignore_poison();
     *guard = initial;
     debug!("Initial Linux mounts: {} entries", guard.len());
     drop(guard);
 
-    info!("Starting Linux volume watcher on /proc/mounts");
+    info!("Starting Linux volume watcher on {MOUNT_CHANGE_SIGNAL}");
 
-    let watcher_result = notify::recommended_watcher(move |result: Result<Event, notify::Error>| match result {
-        Ok(event) => handle_fs_event(event),
-        Err(e) => error!("Linux volume watcher error: {}", e),
-    });
-
-    match watcher_result {
-        Ok(mut watcher) => {
-            // Watch /proc/mounts. Inotify fires when mounts change.
-            let proc_mounts = Path::new("/proc/mounts");
-            if let Err(e) = watcher.watch(proc_mounts, notify::RecursiveMode::NonRecursive) {
-                error!("Failed to watch /proc/mounts: {}", e);
-                return;
-            }
-
-            let storage = WATCHER.get_or_init(|| Mutex::new(None));
-            *storage.lock_ignore_poison() = Some(watcher);
-
+    match start_mount_table_watch(check_for_mount_changes) {
+        Ok(watch) => {
+            *WATCHER.lock_ignore_poison() = Some(watch);
             info!("Linux volume watcher started successfully");
         }
-        Err(e) => {
-            error!("Failed to create Linux volume watcher: {}", e);
-        }
+        Err(e) => error!("{e}"),
     }
 
     start_gvfs_watcher();
 }
 
-/// Handle filesystem events on /proc/mounts.
-fn handle_fs_event(event: Event) {
-    match event.kind {
-        EventKind::Modify(_) | EventKind::Access(_) => {
-            check_for_mount_changes();
+/// Stops both mount watchers, waiting for the mount-table thread to finish. Idempotent.
+pub fn stop_volume_watcher() {
+    // Taken out of their locks before dropping: the mount-table watch joins its thread.
+    let watch = WATCHER.lock_ignore_poison().take();
+    let gvfs = GVFS_WATCHER
+        .get()
+        .and_then(|storage| storage.lock_ignore_poison().take());
+    drop(watch);
+    drop(gvfs);
+}
+
+/// A running watch on the mount table. Dropping it stops the thread and waits for it.
+struct MountTableWatch {
+    /// Closing this end hangs up the thread's end, which is the thread's stop signal.
+    stop: Option<UnixStream>,
+    thread: Option<JoinHandle<()>>,
+}
+
+impl Drop for MountTableWatch {
+    fn drop(&mut self) {
+        drop(self.stop.take());
+        if let Some(thread) = self.thread.take()
+            && thread.join().is_err()
+        {
+            error!("The mount table watch thread panicked");
         }
-        _ => {}
     }
+}
+
+/// Starts watching the mount table on its own thread, calling `on_change` after each change.
+///
+/// ❌ Never inotify `/proc/mounts` instead: a mount raises no inotify event there, but every
+/// open does, and the handler's own read is an open, so the watch feeds itself.
+/// `DETAILS.md` § "Watching the mount table".
+fn start_mount_table_watch(on_change: impl Fn() + Send + 'static) -> Result<MountTableWatch, String> {
+    let table = File::open(MOUNT_CHANGE_SIGNAL).map_err(|e| format!("Failed to open {MOUNT_CHANGE_SIGNAL}: {e}"))?;
+    let (stop, stop_signal) =
+        UnixStream::pair().map_err(|e| format!("Failed to create the mount table watch's stop signal: {e}"))?;
+    let thread = std::thread::Builder::new()
+        .name("mount-table-watch".to_string())
+        .spawn(move || watch_mount_table(&table, &stop_signal, &on_change))
+        .map_err(|e| format!("Failed to start the mount table watch thread: {e}"))?;
+    Ok(MountTableWatch {
+        stop: Some(stop),
+        thread: Some(thread),
+    })
+}
+
+/// Blocks in `poll()` until the mount table changes or `stop_signal` hangs up, and calls
+/// `on_change` after each change.
+///
+/// Returns, logged, on any `poll` failure but `EINTR` and on a hung-up or invalid table
+/// descriptor. Both descriptors are owned for the thread's whole life, so neither is a
+/// transient state, and retrying either in a loop would spin.
+fn watch_mount_table(table: &File, stop_signal: &UnixStream, on_change: &dyn Fn()) {
+    loop {
+        let mut fds = [
+            libc::pollfd {
+                fd: table.as_raw_fd(),
+                events: libc::POLLPRI,
+                revents: 0,
+            },
+            libc::pollfd {
+                fd: stop_signal.as_raw_fd(),
+                events: libc::POLLIN,
+                revents: 0,
+            },
+        ];
+        // SAFETY: `fds` is a live, correctly-typed `pollfd` array whose length is passed as
+        // `nfds`, and both descriptors are borrowed from `table` and `stop_signal`, which
+        // outlive the call.
+        let ready = unsafe { libc::poll(fds.as_mut_ptr(), fds.len() as libc::nfds_t, -1) };
+        if ready < 0 {
+            let err = io::Error::last_os_error();
+            if err.kind() == io::ErrorKind::Interrupted {
+                continue;
+            }
+            error!("The mount table watch stopped: poll failed: {err}");
+            return;
+        }
+        if fds[1].revents != 0 {
+            return;
+        }
+        let table_events = fds[0].revents;
+        if table_events & (libc::POLLHUP | libc::POLLNVAL) != 0 {
+            error!("The mount table watch stopped: {MOUNT_CHANGE_SIGNAL} reported poll events {table_events:#x}");
+            return;
+        }
+        if table_events & (libc::POLLPRI | libc::POLLERR) != 0 {
+            on_change();
+        }
+    }
+}
+
+/// What one read of the mount table changed against `known`, and the state to keep.
+#[derive(Debug, PartialEq)]
+struct MountChanges {
+    mounted: Vec<String>,
+    unmounted: Vec<String>,
+    current: HashMap<String, String>,
+}
+
+/// Reads the mount table at `mounts_file` and diffs its real mounts against `known`.
+///
+/// `None` when the table can't be read: unknown, ❌ never "every volume unmounted".
+fn check_mount_table(known: &HashMap<String, String>, mounts_file: &Path) -> Option<MountChanges> {
+    let current = real_mounts(linux_mounts::read_mount_table(mounts_file)?);
+    let mounted = current
+        .keys()
+        .filter(|path| !known.contains_key(*path))
+        .cloned()
+        .collect();
+    let unmounted = known
+        .keys()
+        .filter(|path| !current.contains_key(*path))
+        .cloned()
+        .collect();
+    Some(MountChanges {
+        mounted,
+        unmounted,
+        current,
+    })
 }
 
 /// Diff current mounts against known state and emit events.
 fn check_for_mount_changes() {
-    let current = get_real_mounts();
-
-    let known = match KNOWN_MOUNTS.get() {
-        Some(k) => k,
-        None => return,
+    let Some(known) = KNOWN_MOUNTS.get() else {
+        return;
+    };
+    let mut known_guard = known.lock_ignore_poison();
+    let Some(changes) = check_mount_table(&known_guard, Path::new(PROC_MOUNTS)) else {
+        return;
     };
 
-    let mut known_guard = known.lock_ignore_poison();
-
-    let mut changed = false;
-
-    // Newly mounted
-    for path in current.keys() {
-        if !known_guard.contains_key(path) {
-            debug!("Volume mounted: {}", path);
-            emit_volume_mounted(path);
-            changed = true;
-        }
+    for path in &changes.mounted {
+        debug!("Volume mounted: {}", path);
+        emit_volume_mounted(path);
     }
-
-    // Unmounted
-    for path in known_guard.keys() {
-        if !current.contains_key(path) {
-            debug!("Volume unmounted: {}", path);
-            emit_volume_unmounted(path);
-            changed = true;
-        }
+    for path in &changes.unmounted {
+        debug!("Volume unmounted: {}", path);
+        emit_volume_unmounted(path);
     }
-
-    *known_guard = current;
+    let changed = !changes.mounted.is_empty() || !changes.unmounted.is_empty();
+    *known_guard = changes.current;
 
     // Broadcast updated volume list to frontend
     if changed {
@@ -127,9 +229,14 @@ fn check_for_mount_changes() {
     }
 }
 
-/// Build a map of real (non-virtual) mount points from /proc/mounts.
-fn get_real_mounts() -> HashMap<String, String> {
-    let entries = linux_mounts::parse_proc_mounts();
+/// Build a map of real (non-virtual) mount points from /proc/mounts, or `None` when it
+/// can't be read.
+fn get_real_mounts() -> Option<HashMap<String, String>> {
+    linux_mounts::parse_proc_mounts().map(real_mounts)
+}
+
+/// The real (non-virtual) mount points in `entries`, mapped to their filesystem type.
+fn real_mounts(entries: Vec<MountEntry>) -> HashMap<String, String> {
     let virtual_types: &[&str] = &[
         "proc",
         "sysfs",
@@ -373,6 +480,10 @@ fn unregister_volume_from_manager(volume_path: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::{TestDir, wait_until};
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    use std::time::Duration;
 
     #[test]
     fn test_volume_event_payload_serialization() {
@@ -386,12 +497,102 @@ mod tests {
 
     #[test]
     fn test_get_real_mounts_filters_virtual() {
-        let mounts = get_real_mounts();
+        let mounts = get_real_mounts().expect("the test process can read its own mount table");
         // Should not contain virtual fs mount points
         for (path, fstype) in &mounts {
             assert_ne!(fstype, "proc", "Should filter proc at {}", path);
             assert_ne!(fstype, "sysfs", "Should filter sysfs at {}", path);
             assert_ne!(fstype, "tmpfs", "Should filter tmpfs at {}", path);
         }
+    }
+
+    /// Regression anchor for the self-feeding watch: an inotify watch on
+    /// `/proc/mounts` wakes on every OPEN of the file, and the handler's own read
+    /// is an open, so it re-checked about a thousand times a second forever.
+    #[test]
+    fn watching_the_mount_table_doesnt_wake_itself() {
+        let wakes = Arc::new(AtomicUsize::new(0));
+        let watch = start_mount_table_watch({
+            let wakes = Arc::clone(&wakes);
+            move || {
+                wakes.fetch_add(1, Ordering::SeqCst);
+                // What the real handler does on every wake: read the table.
+                let _ = linux_mounts::parse_proc_mounts();
+            }
+        })
+        .expect("the mount table is watchable on Linux");
+
+        // Somebody else reading the table isn't a mount change either.
+        let _ = linux_mounts::parse_proc_mounts();
+        // allowed-test-sleep: a negative assertion over a window; nothing should wake the watch in it
+        std::thread::sleep(Duration::from_millis(500));
+        let seen = wakes.load(Ordering::SeqCst);
+        drop(watch);
+
+        assert!(seen <= 1, "the watch woke {seen} times in 500 ms with no mount change");
+    }
+
+    #[test]
+    fn an_unreadable_mount_table_reports_no_changes() {
+        let known = HashMap::from([("/".to_string(), "ext4".to_string())]);
+        let changes = check_mount_table(&known, Path::new("/proc/self/no-such-mount-table"));
+        assert_eq!(
+            changes, None,
+            "an unreadable table must never read as every volume unmounted"
+        );
+    }
+
+    #[test]
+    fn dropping_the_watch_stops_its_thread() {
+        let watch = start_mount_table_watch(|| {}).expect("the mount table is watchable on Linux");
+        let stopped = Arc::new(AtomicBool::new(false));
+        std::thread::spawn({
+            let stopped = Arc::clone(&stopped);
+            move || {
+                drop(watch);
+                stopped.store(true, Ordering::SeqCst);
+            }
+        });
+        wait_until(Duration::from_secs(2), "the mount table watch thread to stop", || {
+            stopped.load(Ordering::SeqCst)
+        });
+    }
+
+    #[test]
+    #[ignore = "mounts a tmpfs, so it needs CAP_SYS_ADMIN: run it in a privileged Linux container with --run-ignored=ignored-only"]
+    fn a_real_mount_wakes_the_watch() {
+        use std::ffi::CString;
+        use std::os::unix::ffi::OsStrExt;
+
+        let dir = TestDir::new("mount-table-watch");
+        let target = CString::new(dir.as_os_str().as_bytes()).expect("a temp dir path has no NUL byte");
+        let wakes = Arc::new(AtomicUsize::new(0));
+        let watch = start_mount_table_watch({
+            let wakes = Arc::clone(&wakes);
+            move || {
+                wakes.fetch_add(1, Ordering::SeqCst);
+            }
+        })
+        .expect("the mount table is watchable on Linux");
+
+        // SAFETY: every pointer is a NUL-terminated C string that lives for the call, and
+        // tmpfs takes no mount data, so `data` is null.
+        let mounted = unsafe {
+            libc::mount(
+                c"none".as_ptr(),
+                target.as_ptr(),
+                c"tmpfs".as_ptr(),
+                0,
+                std::ptr::null(),
+            )
+        };
+        assert_eq!(mounted, 0, "mounting a tmpfs: {}", io::Error::last_os_error());
+        wait_until(Duration::from_secs(2), "the watch to see the new mount", || {
+            wakes.load(Ordering::SeqCst) >= 1
+        });
+
+        // SAFETY: `target` is the NUL-terminated path mounted above.
+        unsafe { libc::umount(target.as_ptr()) };
+        drop(watch);
     }
 }

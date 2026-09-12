@@ -1,6 +1,6 @@
 # Volumes (Linux)
 
-Linux volume and location discovery, plus live mount/unmount watching via inotify. Mirrors macOS `volumes/mod.rs`'s JSON
+Linux volume and location discovery, plus live mount/unmount watching. Mirrors macOS `volumes/mod.rs`'s JSON
 shape (`LocationInfo`, `LocationCategory`, `VolumeSpaceInfo`). Distinct from `file_system/volume/`.
 
 ## Key files
@@ -12,7 +12,7 @@ holds the model types, `DEFAULT_VOLUME_ID`, and the orchestrators (`list_locatio
 `VIRTUAL_FS_TYPES`, `get_mount_point`, `get_volume_space`), `ids.rs` (`volume_id_for_mount` and its
 `/dev/disk/by-uuid` lookup), `cloud.rs` (cloud-sync dirs), `smb.rs` (CIFS mount-source and GVFS dirname parsing,
 `get_network_mounts`, plus `enrich_from_volume_registry`; keep it in step with the macOS twin, the frontend doesn't
-branch on platform), `watcher.rs` (two inotify watchers; diffs known state, registers with `VolumeManager`, emits
+branch on platform), `watcher.rs` (mount-table and GVFS watchers; diffs known state, registers with `VolumeManager`, emits
 `volume-mounted` / `volume-unmounted`).
 
 ## Must-knows
@@ -29,17 +29,17 @@ branch on platform), `watcher.rs` (two inotify watchers; diffs known state, regi
   and `list_locations` dedupes on ID, ❌ never on path alone. `is_submount` doesn't cover this: it only catches a bind
   mount nested UNDER another volume. Collapsing is display-only, so it moves no pane and drops no root the registry
   knows. DETAILS § "One volume ID publishes one mount root".
-- **Two separate inotify watchers: `/proc/mounts` AND `/run/user/<uid>/gvfs/`.** GVFS SMB shares never appear in
-  `/proc/mounts` (the whole `gvfs/` dir is one FUSE mount; each share is a subdirectory), so a share mount/unmount is a
-  directory create/remove invisible to `/proc/mounts`. Watching both is the only way to catch all volume changes.
-- **Virtual filesystems are filtered by an explicit fstype allowlist, NOT by mount path.** The list is duplicated:
-  `VIRTUAL_FS_TYPES` in `fs_type.rs` and `get_real_mounts` in `watcher.rs` (the watcher doesn't import the constant). Keep
-  both in sync, or the watcher emits spurious mount/unmount events for the type added to only one.
+- **The mount table is watched by `poll()` on `/proc/self/mounts` (`POLLPRI`); ❌ never inotify on `/proc/mounts`**:
+  every open raises an event there, the handler's own read included, so it feeds itself. GVFS shares never reach the
+  table, hence the inotify watch on `/run/user/<uid>/gvfs/`. DETAILS § "Watching the mount table".
+- **An unreadable mount table is `None`, ❌ never empty**: read as empty, it unmounts every volume.
+- **Virtual filesystems are filtered by an explicit fstype allowlist, NOT by mount path.** The list is duplicated in
+  `VIRTUAL_FS_TYPES` (`fs_type.rs`) and `real_mounts` (`watcher.rs`); keep both in sync, or the watcher emits spurious
+  mount/unmount events for the type added to only one.
 - **Hidden mounts (`/snap/`, `/boot/`, `/run/user/`) are filtered by path prefix, not fstype**, because snap loopback
   mounts are `squashfs` and EFI is `vfat`, real types you can't exclude without hiding a mounted ISO.
-- **GVFS network mounts: `supports_trash: false`, `is_ejectable: true`.** GVFS FUSE mounts don't implement the
-  FreeDesktop trash spec (`gio trash` silently fails), so the UI offers "delete" rather than "move to trash". Ejectable
-  because users expect to disconnect an SMB share.
+- **GVFS network mounts: `supports_trash: false`, `is_ejectable: true`**: GVFS FUSE has no FreeDesktop trash
+  (`gio trash` silently fails), and users expect to disconnect a share. DETAILS § "Decisions".
 - **Removable detection is path-based** (`/run/media/$USER/` or `/media/$USER/` → `is_ejectable`). `get_username()`
   falls back `$USER` → `$LOGNAME` → empty; empty makes everything non-ejectable, the safe default.
 - **`is_submount()` filters bind mounts nested under a real mount**, so dev `node_modules` / build-dir bind mounts don't

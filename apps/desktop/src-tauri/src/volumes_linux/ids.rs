@@ -56,7 +56,7 @@ pub(crate) fn volume_id_for_mount(mount_path: &str) -> String {
 /// Only touches `/proc` and `/dev`, never the mounted filesystem itself, so a
 /// hung network mount can't block it.
 fn volume_uuid_for_mount(mount_path: &str) -> Option<String> {
-    let mounts = linux_mounts::parse_proc_mounts();
+    let mounts = linux_mounts::parse_proc_mounts()?;
     let device = mounts.iter().find(|entry| entry.mountpoint == mount_path)?;
     // `/proc/mounts` may name the device through a symlink (`/dev/disk/by-label/…`)
     // while `by-uuid` links to the real node, so compare canonicalized paths.

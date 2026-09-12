@@ -134,7 +134,9 @@ pub const DEFAULT_VOLUME_ID: &str = "root";
 /// already collapses double mounts within its own category; this catches the
 /// cross-category case.
 pub fn list_locations() -> Vec<LocationInfo> {
-    let mounts = linux_mounts::parse_proc_mounts();
+    // An unreadable table lists no attached volumes; favorites, root, cloud
+    // drives, and GVFS shares don't come from it, so they still show.
+    let mounts = linux_mounts::parse_proc_mounts().unwrap_or_default();
     let mut locations = Vec::new();
     let mut seen_paths: HashSet<String> = HashSet::new();
     let mut seen_ids: HashSet<String> = HashSet::new();

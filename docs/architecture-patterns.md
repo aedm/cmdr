@@ -111,7 +111,7 @@ between entries, not during the syscall. Mitigation: I/O runs on a separate OS t
 ```
 Detection:
   macOS: FSEvents on /Volumes (non-recursive)
-  Linux: inotify on /proc/mounts + /run/user/<uid>/gvfs/
+  Linux: poll() on /proc/self/mounts (POLLPRI) + inotify on /run/user/<uid>/gvfs/
   MTP:   nusb USB hotplug stream (separate system, own events)
 
 -> State diff against KNOWN_VOLUMES (implicit debounce: multiple FSEvents, one diff)

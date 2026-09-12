@@ -21,16 +21,23 @@ pub struct MountEntry {
     pub options: String,
 }
 
-/// Parses `/proc/mounts` and returns all mount entries.
-pub fn parse_proc_mounts() -> Vec<MountEntry> {
-    let contents = match std::fs::read_to_string("/proc/mounts") {
-        Ok(c) => c,
+/// Parses `/proc/mounts` and returns all mount entries, or `None` when it can't be read.
+///
+/// `None` is unknown, ❌ never an empty table: a caller that reads an unreadable
+/// table as empty sees every volume, `/` included, as unmounted.
+pub fn parse_proc_mounts() -> Option<Vec<MountEntry>> {
+    read_mount_table(Path::new("/proc/mounts"))
+}
+
+/// Reads and parses the mount table at `path`, or `None` when it can't be read.
+pub fn read_mount_table(path: &Path) -> Option<Vec<MountEntry>> {
+    match std::fs::read_to_string(path) {
+        Ok(contents) => Some(parse_proc_mounts_from_content(&contents)),
         Err(e) => {
-            log::warn!("Failed to read /proc/mounts: {}", e);
-            return Vec::new();
+            log::warn!("Failed to read {}: {}", path.display(), e);
+            None
         }
-    };
-    parse_proc_mounts_from_content(&contents)
+    }
 }
 
 /// Parses mount file content from a string (testable without /proc/mounts).
@@ -64,7 +71,7 @@ pub fn parse_proc_mounts_from_content(contents: &str) -> Vec<MountEntry> {
 /// the table couldn't be read. Eject asks this to tell a refusal from a volume
 /// that's already gone.
 pub fn is_mount_point(path: &str) -> Option<bool> {
-    mount_table_lists(&parse_proc_mounts(), path)
+    mount_table_lists(&parse_proc_mounts()?, path)
 }
 
 /// [`is_mount_point`] over a pre-parsed table. An empty table is unknown, never
@@ -80,8 +87,7 @@ fn mount_table_lists(mounts: &[MountEntry], path: &str) -> Option<bool> {
 /// Looks up the filesystem type for the given path by finding the mount
 /// with the longest matching mountpoint prefix.
 pub fn fs_type_for_path(path: &Path) -> Option<String> {
-    let mounts = parse_proc_mounts();
-    fs_type_for_path_from_entries(path, &mounts)
+    fs_type_for_path_from_entries(path, &parse_proc_mounts()?)
 }
 
 /// Looks up filesystem type from a pre-parsed mount list (avoids repeated I/O).
@@ -274,10 +280,17 @@ user@host:/path /mnt/sshfs fuse.sshfs rw,relatime 0 0
 
     #[test]
     fn an_unreadable_mount_table_is_unknown_never_unmounted() {
-        // `parse_proc_mounts` answers an empty list when `/proc/mounts` can't be
-        // read, and a real table always holds `/`. Reading that as "gone" would
-        // turn a real eject refusal into a silent success.
+        // A real table always holds `/`, so an empty one can't be real either.
+        // Reading it as "gone" would turn a real eject refusal into a silent success.
         assert_eq!(mount_table_lists(&[], "/mnt/data"), None);
+    }
+
+    #[test]
+    fn an_unreadable_table_reads_as_none_and_a_readable_one_holds_root() {
+        assert!(read_mount_table(Path::new("/proc/self/no-such-mount-table")).is_none());
+        let table =
+            read_mount_table(Path::new("/proc/self/mounts")).expect("the test process can read its own mount table");
+        assert!(table.iter().any(|entry| entry.mountpoint == "/"));
     }
 
     #[test]

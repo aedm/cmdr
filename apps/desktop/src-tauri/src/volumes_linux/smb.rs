@@ -55,7 +55,7 @@ pub struct SmbMountInfo {
 ///
 /// Returns `None` if the path is not a CIFS mount or parsing fails.
 pub fn get_smb_mount_info(mount_path: &str) -> Option<SmbMountInfo> {
-    let mounts = linux_mounts::parse_proc_mounts();
+    let mounts = linux_mounts::parse_proc_mounts()?;
     let entry = mounts
         .iter()
         .filter(|e| e.fstype == "cifs")

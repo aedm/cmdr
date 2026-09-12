@@ -61,10 +61,11 @@ pub(super) fn is_virtual_fs(fstype: &str) -> bool {
 }
 
 /// Resolve a path to its mount point and filesystem type by finding the
-/// longest mount-point prefix match in `/proc/mounts`. Always succeeds
-/// because `/` is always mounted, so even nonexistent paths match root.
+/// longest mount-point prefix match in `/proc/mounts`. Succeeds whenever the
+/// table is readable, because `/` is always mounted, so even nonexistent paths
+/// match root.
 pub(crate) fn get_mount_point(path: &str) -> Option<(String, String)> {
-    let mounts = linux_mounts::parse_proc_mounts();
+    let mounts = linux_mounts::parse_proc_mounts()?;
     let fs_type = linux_mounts::fs_type_for_path_from_entries(Path::new(path), &mounts)?;
     let mount_point = mounts
         .iter()

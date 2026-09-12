@@ -10,8 +10,8 @@ Decision rationale. `CLAUDE.md` holds the must-knows.
 
 ## Dependencies
 
-`linux_mounts` (`/proc/mounts` parsing + fstype lookup), `dirs`, `libc` (`statvfs`), `notify` (inotify), and
-`crate::file_system::volume::{manager::get_volume_manager, LocalPosixVolume}`.
+`linux_mounts` (`/proc/mounts` parsing + fstype lookup), `dirs`, `libc` (`statvfs`, `poll`), `notify` (inotify on the
+GVFS directory), and `crate::file_system::volume::{manager::get_volume_manager, LocalPosixVolume}`.
 
 ## One command module
 
@@ -37,10 +37,40 @@ answering `None` for archive-inner paths.
 
 ## Decisions
 
-**Decision**: two separate inotify watchers, one for `/proc/mounts`, one for `/run/user/<uid>/gvfs/`.
+**Decision**: two watchers, one on the mount table (§ "Watching the mount table"), one inotify watch on
+`/run/user/<uid>/gvfs/`.
 **Why**: GVFS SMB shares don't appear in `/proc/mounts`. GVFS uses a single FUSE mount for the whole `gvfs/` directory;
 individual SMB shares are subdirectories of that FUSE mount, so a share mount/unmount is a directory create/remove,
 invisible to `/proc/mounts`. Watching both sources is the only way to detect all volume changes.
+
+## Watching the mount table
+
+A dedicated `mount-table-watch` thread blocks in `poll()` on an open `/proc/self/mounts`, asking for `POLLPRI`. The
+kernel reports `POLLPRI | POLLERR` once per change to the process's mount namespace and nothing in between, so the
+thread re-reads `/proc/mounts` and diffs it (`check_for_mount_changes`) only when something mounted or unmounted. The
+change signal is per namespace, so the watch sees the same table every `/proc/mounts` read does.
+
+The second descriptor in that `poll()` is one end of a `UnixStream` pair, and it's the stop signal: dropping
+`MountTableWatch` closes the other end, the thread wakes on the hang-up and returns, and the drop joins it.
+`stop_volume_watcher` does that from `app_lifecycle::stop_background_services`. The thread also returns, logged, when
+`poll` fails with anything but `EINTR` or the table descriptor reports `POLLHUP` / `POLLNVAL`: both descriptors are owned
+for the thread's whole life, so neither is transient, and retrying would spin.
+
+**❌ Don't go back to inotify on `/proc/mounts`.** A mount raises no inotify event there, so that watch only woke on
+`IN_OPEN` (which `notify` subscribes to), and the handler's own read is an open: each check queued the next. It woke
+19,246 times in 500 ms with no mount change (verified in the `rust:latest` container the Linux Rust lane uses, running
+`watching_the_mount_table_doesnt_wake_itself` against the inotify version, 2026-09-12). In the app that meant reading the
+table about a thousand times a second, all the time. When a stray descriptor close in the Linux E2E run made those reads
+fail, each failure unregistered every volume and re-registered it on the next good read, and that churn kept the
+bad descriptor number in circulation until glibc aborted on a netlink socket.
+
+**An unreadable table is `None`, never empty.** `linux_mounts::parse_proc_mounts` returns `Option`, and
+`check_mount_table` skips the diff on `None`, so a failed read can't report `/` as unmounted. `list_locations` lists no
+attached volumes for that call, and the lookups (`get_mount_point`, `volume_uuid_for_mount`, `get_smb_mount_info`,
+`is_mount_point`) answer `None`.
+
+`a_real_mount_wakes_the_watch` covers the wake side by mounting a tmpfs, which needs `CAP_SYS_ADMIN`, so it's
+`#[ignore]`d: run it with `--run-ignored=ignored-only` from a `docker exec --privileged` into the Linux test container.
 
 **Decision**: filter virtual filesystems by an explicit fstype allowlist (proc, sysfs, devpts, tmpfs, cgroup/cgroup2,
 devtmpfs, and similar), not by mount-path patterns.

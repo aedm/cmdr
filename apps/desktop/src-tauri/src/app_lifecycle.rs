@@ -19,7 +19,8 @@ use crate::{ai, crash_reporter, file_viewer, mcp, quit, search, window_state};
 #[cfg(target_os = "macos")]
 use crate::{dock, drag_image_detection, mtp, reveal};
 
-/// Stop the three services that outlive a window: the local LLM, the MCP server, and mDNS.
+/// Stop the services that outlive a window: the local LLM, the MCP server, mDNS, and
+/// Linux's mount watchers.
 ///
 /// Reached from three places (main window closed, main window destroyed, process
 /// exiting), because none of them implies the others fire: a `CloseRequested` the
@@ -31,6 +32,8 @@ fn stop_background_services() {
     mcp::stop_mcp_server();
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     network::mdns_discovery::stop_discovery();
+    #[cfg(target_os = "linux")]
+    crate::volumes_linux::watcher::stop_volume_watcher();
 }
 
 /// Per-window signals: focus re-checks the FDA gate, closing the main window quits
