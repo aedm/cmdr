@@ -22,7 +22,7 @@ use cmdr_fs::volume::host::indexing::WatchGap;
 static REQUEST_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// Tracks concurrent list_directory calls for debugging lock contention.
-static CONCURRENT_LIST_CALLS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+pub(super) static CONCURRENT_LIST_CALLS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 /// How often to call the progress callback (every N handles processed).
 const PROGRESS_INTERVAL: usize = 20;
@@ -347,42 +347,12 @@ impl MtpConnectionManager {
         // Normalize the path for building child paths
         let parent_path = normalize_mtp_path(path);
 
-        // Check listing cache first
-        let cache_check_start = Instant::now();
+        if let Some(entries) = self
+            .fresh_cached_listing(request_id, device_id, storage_id, &parent_path)
+            .await
         {
-            let devices = self.devices.lock().await;
-            if let Some(entry) = devices.get(device_id)
-                && let Ok(cache_map) = entry.listing_cache.read()
-                && let Some(storage_cache) = cache_map.get(&storage_id)
-                && let Some(cached) = storage_cache.listings.get(&parent_path)
-            {
-                // Check if cache is still valid (within TTL)
-                if cached.cached_at.elapsed().as_secs() < LISTING_CACHE_TTL_SECS {
-                    debug!(
-                        "MTP list_directory [req#{}]: cache HIT, returning {} entries, cache_check_time={:?}, elapsed_since_start={:?}",
-                        request_id,
-                        cached.entries.len(),
-                        cache_check_start.elapsed(),
-                        call_start.elapsed()
-                    );
-                    return Ok(cached.entries.clone());
-                } else {
-                    debug!(
-                        "MTP list_directory [req#{}]: cache STALE (age={}s > TTL={}s)",
-                        request_id,
-                        cached.cached_at.elapsed().as_secs(),
-                        LISTING_CACHE_TTL_SECS
-                    );
-                }
-            } else {
-                debug!("MTP list_directory [req#{}]: cache MISS for path={}", request_id, path);
-            }
+            return Ok(entries);
         }
-        debug!(
-            "MTP list_directory [req#{}]: cache check complete, time={:?}",
-            request_id,
-            cache_check_start.elapsed()
-        );
 
         // Get the device and resolve path to handle
         let path_resolve_start = Instant::now();
@@ -424,6 +394,13 @@ impl MtpConnectionManager {
         );
         let device =
             acquire_device_lock(&device_arc, device_id, &format!("list_directory[req#{}]", request_id)).await?;
+        // A listing that finished while this call queued answers it too.
+        if let Some(entries) = self
+            .fresh_cached_listing(request_id, device_id, storage_id, &parent_path)
+            .await
+        {
+            return Ok(entries);
+        }
         let device_lock_acquired_at = Instant::now();
         debug!(
             "MTP list_directory [req#{}]: acquired device USB lock after {:?} wait, getting storage...",
@@ -527,22 +504,11 @@ impl MtpConnectionManager {
     ) -> Result<Vec<FileEntry>, MtpConnectionError> {
         let parent_path = normalize_mtp_path(path);
 
-        // Check listing cache first
+        if let Some(entries) = self
+            .fresh_cached_listing(request_id, device_id, storage_id, &parent_path)
+            .await
         {
-            let devices = self.devices.lock().await;
-            if let Some(entry) = devices.get(device_id)
-                && let Ok(cache_map) = entry.listing_cache.read()
-                && let Some(storage_cache) = cache_map.get(&storage_id)
-                && let Some(cached) = storage_cache.listings.get(&parent_path)
-                && cached.cached_at.elapsed().as_secs() < LISTING_CACHE_TTL_SECS
-            {
-                debug!(
-                    "MTP list_directory_with_progress [req#{}]: cache HIT, returning {} entries",
-                    request_id,
-                    cached.entries.len()
-                );
-                return Ok(cached.entries.clone());
-            }
+            return Ok(entries);
         }
 
         let parent_handle = self.resolve_path_to_handle(device_id, storage_id, path).await?;
@@ -561,6 +527,13 @@ impl MtpConnectionManager {
             &format!("list_directory_progress[req#{}]", request_id),
         )
         .await?;
+        // A listing that finished while this call queued answers it too.
+        if let Some(entries) = self
+            .fresh_cached_listing(request_id, device_id, storage_id, &parent_path)
+            .await
+        {
+            return Ok(entries);
+        }
 
         // Get storage
         let usb_io_start = Instant::now();
@@ -687,6 +660,50 @@ impl MtpConnectionManager {
         Ok(entries)
     }
 
+    /// The cached listing of `dir`, if it's younger than the listing TTL.
+    ///
+    /// A foreground listing asks twice: on the way in, and again once it holds
+    /// the device lock. Callers of one folder queue on that lock, and each one
+    /// that checked the cache before an identical listing finished would
+    /// otherwise re-list the folder in turn. On MTP a stat lists the parent, so a
+    /// conflict check over 101 selected photos queued sixteen 818-entry listings
+    /// of `/DCIM/Camera` at 4–9 s apiece, and the copy's first read waited behind
+    /// all of them (ERR-44S2Q).
+    async fn fresh_cached_listing(
+        &self,
+        request_id: u64,
+        device_id: &str,
+        storage_id: u32,
+        dir: &Path,
+    ) -> Option<Vec<FileEntry>> {
+        use cmdr_fs::ignore_poison::RwLockIgnorePoison;
+
+        let devices = self.devices.lock().await;
+        let cache_map = devices.get(device_id)?.listing_cache.read_ignore_poison();
+        let Some(cached) = cache_map
+            .get(&storage_id)
+            .and_then(|storage_cache| storage_cache.listings.get(dir))
+        else {
+            debug!(
+                "MTP list_directory [req#{request_id}]: cache MISS for path={}",
+                dir.display()
+            );
+            return None;
+        };
+        let age_secs = cached.cached_at.elapsed().as_secs();
+        if age_secs >= LISTING_CACHE_TTL_SECS {
+            debug!(
+                "MTP list_directory [req#{request_id}]: cache STALE (age={age_secs}s, TTL={LISTING_CACHE_TTL_SECS}s)"
+            );
+            return None;
+        }
+        debug!(
+            "MTP list_directory [req#{request_id}]: cache HIT, returning {} entries",
+            cached.entries.len()
+        );
+        Some(cached.entries.clone())
+    }
+
     /// Update caches and sort entries after listing completes.
     #[allow(
         clippy::too_many_arguments,
@@ -704,6 +721,10 @@ impl MtpConnectionManager {
     ) -> Vec<FileEntry> {
         // Update path cache
         let cache_update_start = Instant::now();
+        #[cfg(any(test, feature = "testing"))]
+        if let Some(entry) = self.devices.lock().await.get(device_id) {
+            entry.wire_listings.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
         {
             let devices = self.devices.lock().await;
             if let Some(entry) = devices.get(device_id)

@@ -214,6 +214,16 @@ the parent the same way, recursively up to the constant root) and looks again.
 
 Pinned by `connection/resolve_test.rs`.
 
+## Queued listings share the one that finished (`fresh_cached_listing`)
+
+A foreground listing checks the 5 s listing cache on the way in AND again once it holds the device lock. Callers of one
+folder queue on that lock, so without the second look each caller that checked before an identical listing finished
+re-lists the folder in turn. Field report ERR-44S2Q (Pixel 8a, v0.44.0): a conflict check over 101 selected photos stats
+each source, and an MTP stat lists the parent, so 16 concurrent 818-entry listings of `/DCIM/Camera` ran one after
+another at 4–9 s apiece while the copy's first read waited behind them for 38 s. The second look is a registry-lock read
+under the device lock, safe because nothing holds the registry lock while waiting for a device lock. Pinned by
+`connection/listing_test.rs`.
+
 ## Stale parent handle on upload (self-heal + one-shot retry)
 
 The parent-folder handle an upload uses comes from the path cache, so from whenever the user last listed that folder. Android routes MTP through MediaProvider, whose object handles are NOT stable across a media rescan, so a

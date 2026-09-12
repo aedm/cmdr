@@ -23,6 +23,9 @@ mod handle_resolver;
 /// What this layer tells the analytics and registrar seams, against a real device.
 #[cfg(all(test, feature = "virtual-device"))]
 mod host_seam_test;
+/// Many callers listing one folder at once, and the device answering once.
+#[cfg(all(test, feature = "virtual-device"))]
+mod listing_test;
 /// The session-free cells: the manager's own bookkeeping and the free functions
 /// beside it.
 #[cfg(test)]
@@ -205,6 +208,11 @@ struct DeviceEntry {
     /// target, so counting would silently stop in a consumer's test build.
     #[cfg(any(test, feature = "testing"))]
     storage_lookups: Arc<std::sync::atomic::AtomicUsize>,
+    /// Test-only tally of directory listings that went to the wire for this
+    /// device (a cache hit doesn't count). Pins "callers queued behind one
+    /// listing share it".
+    #[cfg(any(test, feature = "testing"))]
+    wire_listings: std::sync::atomic::AtomicUsize,
 }
 
 /// One process's MTP device sessions, and everything they need from the app.
@@ -504,6 +512,8 @@ impl MtpConnectionManager {
                     storage_cache: Arc::new(RwLock::new(HashMap::new())),
                     #[cfg(any(test, feature = "testing"))]
                     storage_lookups: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+                    #[cfg(any(test, feature = "testing"))]
+                    wire_listings: std::sync::atomic::AtomicUsize::new(0),
                 },
             );
         }
@@ -854,6 +864,17 @@ impl MtpConnectionManager {
         devices
             .get(device_id)
             .map(|entry| entry.storage_lookups.load(std::sync::atomic::Ordering::Relaxed))
+            .unwrap_or(0)
+    }
+
+    /// Test-only: how many directory listings went to the wire for this device.
+    /// See `DeviceEntry::wire_listings`.
+    #[cfg(all(test, feature = "virtual-device"))]
+    pub(crate) async fn wire_listing_count(&self, device_id: &str) -> usize {
+        let devices = self.devices.lock().await;
+        devices
+            .get(device_id)
+            .map(|entry| entry.wire_listings.load(std::sync::atomic::Ordering::Relaxed))
             .unwrap_or(0)
     }
 
