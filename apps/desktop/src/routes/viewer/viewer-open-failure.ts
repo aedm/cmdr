@@ -4,7 +4,7 @@
  * so they render one consistent, per-variant message.
  */
 
-import { asViewerError } from '$lib/tauri-commands'
+import { asViewerError, type ViewerError } from '$lib/tauri-commands'
 import { tString } from '$lib/intl/messages.svelte'
 import type { Logger } from '$lib/logging/logger'
 
@@ -32,15 +32,45 @@ function openFailureCopy(e: unknown): OpenFailure {
 }
 
 /**
- * Logs a failed open (`action` names which site) and returns what the window shows for it.
+ * Whether a typed failure is the world's doing, which the window renders with a way forward
+ * (`warn`), or can't reach an open unless our own code is wrong (`error`). An error log counts
+ * toward an auto-sent error report, so only the second kind files one. Exhaustive on purpose:
+ * a new `ViewerError` variant doesn't compile here until someone decides which it is.
  *
- * A typed `ViewerError` is the backend's answer (a timeout, a file that's gone, a read the
- * OS refused), and the window renders it with its own copy plus Retry where that helps, so
- * it logs at warn. An error log counts toward an auto-sent error report, so it's kept for a
- * failure that never reached the typed path at all: that one is a defect on our side.
+ * `cancelled` means the window closed mid-pull or the read was stopped on purpose; `io` is
+ * what the OS or the source refused (permission denied, a disk read error, a phone or a
+ * repository that dropped mid-read). The error side can't reach an open at all: no live
+ * session, a line past the end, a save-only refusal.
+ */
+function logLevelFor(ve: ViewerError): 'warn' | 'error' {
+  switch (ve.kind) {
+    case 'timedOut':
+    case 'stoppedResponding':
+    case 'notFound':
+    case 'isDirectory':
+    case 'tooLargeToPreview':
+    case 'archive':
+    case 'cancelled':
+    case 'io':
+      return 'warn'
+    case 'sessionNotFound':
+    case 'outOfRange':
+    case 'destinationIsReadOnly':
+      return 'error'
+    default: {
+      const unhandled: never = ve
+      return unhandled
+    }
+  }
+}
+
+/**
+ * Logs a failed open (`action` names which site) and returns what the window shows for it.
+ * A failure that never reached the typed path at all logs at error too: that one is a defect.
  */
 export function handleOpenFailure(log: Logger, action: string, e: unknown): OpenFailure {
-  if (asViewerError(e)) {
+  const ve = asViewerError(e)
+  if (ve && logLevelFor(ve) === 'warn') {
     log.warn('{action} failed: {error}', { action, error: String(e) })
   } else {
     log.error('{action} failed: {error}', { action, error: String(e) })
