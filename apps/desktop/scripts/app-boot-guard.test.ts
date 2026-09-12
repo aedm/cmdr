@@ -146,11 +146,29 @@ describe('syntax', () => {
   })
 })
 
+/** An IPC stand-in that records every command the guard sends. */
+function recordingInvoke(): { calls: { cmd: string; args: unknown }[]; invoke: RunOptions['invoke'] } {
+  const calls: { cmd: string; args: unknown }[] = []
+  return {
+    calls,
+    invoke: (cmd, args) => {
+      calls.push({ cmd, args })
+      return Promise.resolve()
+    },
+  }
+}
+
 describe('on a WebKit that meets the floor', () => {
   it('stays out of the way entirely', () => {
     const result = runGuard()
     expect(result.blocked).toBe(false)
     expect(document.querySelector('#app-root')).not.toBeNull()
+  })
+
+  it("leaves showing the window to the app's own mount", () => {
+    const ipc = recordingInvoke()
+    runGuard({ invoke: ipc.invoke })
+    expect(ipc.calls).toEqual([])
   })
 
   it('blocks anyway under the dev override', () => {
@@ -198,21 +216,33 @@ describe('below the floor', () => {
     expect(result.lang).toBe('en')
   })
 
-  it('quits through Tauri, so the quit gate still sees it', () => {
-    const calls: string[] = []
-    runGuard({
-      capabilities: { hasOwn: false },
-      invoke: (cmd) => {
-        calls.push(cmd)
-        return Promise.resolve()
-      },
-    })
-    document.querySelector<HTMLButtonElement>('.cmdr-boot-block button')?.click()
-    expect(calls).toEqual(['plugin:process|exit'])
+  it('shows the window it painted, since the app it replaces is the only other thing that would', () => {
+    // The main window is created hidden and the bundle's `onMount` shows it. On this
+    // path the bundle never mounts, so without this the screen sits in an invisible
+    // window and the user gets a menu bar and nothing else.
+    const ipc = recordingInvoke()
+    runGuard({ capabilities: { hasOwn: false }, invoke: ipc.invoke })
+    expect(ipc.calls).toEqual([{ cmd: 'show_main_window', args: { reason: 'launch' } }])
+    expect(document.querySelector('.cmdr-boot-block')).not.toBeNull()
   })
 
-  it('survives a webview with no Tauri IPC, rather than throwing on click', () => {
-    runGuard({ capabilities: { hasOwn: false } })
+  it('quits through Tauri, so the quit gate still sees it', () => {
+    const ipc = recordingInvoke()
+    runGuard({ capabilities: { hasOwn: false }, invoke: ipc.invoke })
+    document.querySelector<HTMLButtonElement>('.cmdr-boot-block button')?.click()
+    expect(ipc.calls.map((call) => call.cmd)).toEqual(['show_main_window', 'plugin:process|exit'])
+  })
+
+  it('survives a webview with no Tauri IPC, rather than throwing on render or click', () => {
+    expect(() => runGuard({ capabilities: { hasOwn: false } })).not.toThrow()
     expect(() => document.querySelector<HTMLButtonElement>('.cmdr-boot-block button')?.click()).not.toThrow()
+  })
+
+  it('still paints when the show is refused, since the window may already be up', () => {
+    const result = runGuard({
+      capabilities: { hasOwn: false },
+      invoke: (cmd) => (cmd === 'show_main_window' ? Promise.reject(new Error('refused')) : Promise.resolve()),
+    })
+    expect(result.blocked).toBe(true)
   })
 })

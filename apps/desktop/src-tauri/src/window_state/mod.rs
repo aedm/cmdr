@@ -168,11 +168,12 @@ fn store_of<R: Runtime>(app: &AppHandle<R>) -> Option<Arc<WindowStateStore>> {
 ///
 /// **Deliberately does not show the window**, though the plugin's
 /// `restore_state` did. The main window is created `"visible": false` and the
-/// frontend owns showing it, from `onMount`
-/// (`routes/(main)/show-main-on-mount.ts`, via the `show_main_window`
-/// command). That has to stay the only path: `show_main_window` orders the
-/// window to the *back* in E2E mode so test runs don't steal the developer's
-/// focus, and a bare `show()` here would defeat that.
+/// frontend shows it through the `show_main_window` command (from `onMount` in
+/// `routes/(main)/show-main-on-mount.ts`, or from the `app.html` boot guard).
+/// That command orders the window to the *back* in E2E mode so test runs don't
+/// steal the developer's focus, and a bare `show()` here would defeat that. The
+/// one backend show is the fallback for a frontend that never gets there, in
+/// `crate::main_window_show`, and it stays off in E2E.
 ///
 /// So the saved `visible` flag is recorded but never acted on. It stays in the
 /// schema so plugin-written files round-trip unchanged.

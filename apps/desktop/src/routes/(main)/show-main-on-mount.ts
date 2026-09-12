@@ -15,9 +15,10 @@ const PAINT_AFTER_SHOW_TIMEOUT_MS = 1000
  * Shows the main window as soon as the app has mounted.
  *
  * The window is created `visible: false` (`tauri.conf.json`) and the backend
- * places it during setup without showing it, so this is the only thing that
- * makes Cmdr appear. It runs after `onMount`, by which point the frontend has
- * hydrated and built the DOM.
+ * places it during setup without showing it, so this is what makes Cmdr
+ * appear. (If it never runs, the backend shows the window after a delay:
+ * `src-tauri/src/main_window_show.rs`.) It runs after `onMount`, by which
+ * point the frontend has hydrated and built the DOM.
  *
  * **Why there's no paint gate before the show.** There used to be one, waiting
  * on `waitForNextPaint` first. It could never succeed: WebKit throttles

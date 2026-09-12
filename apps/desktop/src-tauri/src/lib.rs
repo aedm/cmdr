@@ -89,6 +89,7 @@ mod listing_overlays;
 mod location;
 #[cfg(target_os = "macos")]
 mod macos_icons;
+mod main_window_show;
 mod mcp;
 mod menu;
 #[cfg(target_os = "macos")]
@@ -764,11 +765,11 @@ pub fn run() {
             agent::start(app.handle());
 
             // Restore the main window's saved position and size. Placement
-            // only: the window is still hidden here, and `+page.svelte` shows
-            // it once the webview confirms a first paint. Only the main window
-            // persists across launches; Settings, Debug, and viewer windows
-            // deliberately start fresh (in-session position lives in
-            // `child_window_state`). See `window_state/`.
+            // only: the window is still hidden here. The frontend shows it once
+            // it mounts, and `main_window_show` shows it anyway if that never
+            // happens. Only the main window persists across launches; Settings,
+            // Debug, and viewer windows deliberately start fresh (in-session
+            // position lives in `child_window_state`). See `window_state/`.
             window_state::init(app.handle());
             if let Some(window) = app.get_webview_window("main") {
                 // Track BEFORE restoring: `restore` moves and resizes the
@@ -779,6 +780,7 @@ pub fn run() {
                 // guarding nothing.
                 window_state::track(&window);
                 window_state::restore(&window);
+                main_window_show::arm_fallback(window);
             }
 
             Ok(())

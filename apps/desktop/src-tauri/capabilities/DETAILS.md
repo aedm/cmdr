@@ -93,8 +93,8 @@ is unaffected, since every production capability is in `capabilities/`. The fix 
 `default.json` grants `process:allow-exit` for exactly one caller: the Quit button on the old-WebKit block screen in
 `apps/desktop/src/app.html`. That screen is an inline ES5 script that runs before the module bundle loads (a WebKit
 below Safari 15.4 may not be able to parse the bundle at all), so it can't reach `$lib/ipc` or any typed wrapper. It
-calls `window.__TAURI_INTERNALS__.invoke('plugin:process|exit', { code: 0 })` directly, the only raw invoke in the
-tree, and swallows a rejection: if the permission were ever removed the button would simply do nothing, and the native
+calls `window.__TAURI_INTERNALS__.invoke('plugin:process|exit', { code: 0 })` directly (one of the guard's two raw
+invokes; the other is `show_main_window`, an app command no capability gates), and swallows a rejection: if the permission were ever removed the button would simply do nothing, and the native
 menu bar would still quit.
 
 The permission does NOT open a path around the quit gate. `tauri-plugin-process`'s `exit` command is `AppHandle::exit`,

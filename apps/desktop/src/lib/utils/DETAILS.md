@@ -209,8 +209,13 @@ and runs it against a stubbed environment with each capability removed in turn (
 so a test can take `Object.hasOwn` away from the guard without taking it away from vitest). That test is also what holds
 the guard's probes and `WEBKIT_FLOOR_CAPABILITIES` together, since the guard can't import the list.
 
-The Quit button calls `window.__TAURI_INTERNALS__.invoke('plugin:process|exit')`, the only raw invoke in the tree, and
-it still routes through the quit gate: `src-tauri/capabilities/DETAILS.md` § The boot guard's exit.
+**It shows the window it paints.** The main window starts hidden and the bundle's `onMount` is what shows it, so on the
+guard's path nothing else would: the block screen sat in an invisible window, and a Catalina user got a menu bar and
+nothing more. The guard calls `show_main_window` itself, the same command the app uses, so an E2E run still orders the
+window to the back. A refused call is covered by the backend's fallback in `src-tauri/src/main_window_show.rs`.
+
+The guard's two raw invokes (`show_main_window`, and the Quit button's `plugin:process|exit`) are the only ones in the
+tree. Quit still routes through the quit gate: `src-tauri/capabilities/DETAILS.md` § The boot guard's exit.
 
 ## Decisions
 

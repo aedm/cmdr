@@ -253,7 +253,9 @@ All under `apps/desktop/src-tauri/src/`.
   consumer supplies the entry type and its dedupe key. See `apps/desktop/src-tauri/src/recents/CLAUDE.md`
 - `font_metrics/`: Binary font metrics cache, per-directory width calculation
 - `window_state/`: Main-window size/position persistence across launches (`.window-state.json`). Replaces
-  `tauri-plugin-window-state`. Placement only; the frontend owns showing the window
+  `tauri-plugin-window-state`. Placement only; the frontend shows the window
+- `main_window_show.rs`: The backend's fallback that shows the main window when the frontend hasn't within 10 s (a
+  WebKit that can't run the bundle, a startup that never finishes). Off in E2E
 - `text_size.rs`: macOS Accessibility text-size watcher (undocumented Apple APIs, risk notes in source). Emits
   `system-text-size-changed`
 - `system_strings.rs`: Localized macOS pane labels from `.loctable` system bundles (loctable catalog + risks in source).

@@ -67,17 +67,31 @@
           return 'en'
         }
 
-        // Routes through Tauri's own exit path, so the quit gate still sees it.
-        // If the invoke isn't there, the native menu bar still quits.
-        function quit() {
+        // Fire-and-forget IPC. A missing bridge or a refused command is swallowed:
+        // this screen has nowhere to report either, and both callers have a fallback.
+        function send(command, args) {
           var internals = window.__TAURI_INTERNALS__
           if (!internals || typeof internals.invoke !== 'function') return
           try {
-            var pending = internals.invoke('plugin:process|exit', { code: 0 })
+            var pending = internals.invoke(command, args)
             if (pending && typeof pending.catch === 'function') {
               pending.catch(function () {})
             }
           } catch (e) {}
+        }
+
+        // The window is created hidden, and the bundle's `onMount` is what shows it.
+        // The bundle never mounts on this path, so without this the screen paints into
+        // an invisible window. Same command the app uses, so E2E ordering still holds.
+        // If it's refused, the backend's own fallback shows the window a bit later.
+        function showWindow() {
+          send('show_main_window', { reason: 'launch' })
+        }
+
+        // Routes through Tauri's own exit path, so the quit gate still sees it.
+        // If the invoke isn't there, the native menu bar still quits.
+        function quit() {
+          send('plugin:process|exit', { code: 0 })
         }
 
         function blockScreenCss() {
@@ -128,6 +142,7 @@
           }
           document.body.appendChild(block)
           button.focus()
+          showWindow()
         }
 
         if (document.readyState === 'loading') {

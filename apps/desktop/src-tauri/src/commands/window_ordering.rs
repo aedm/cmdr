@@ -59,6 +59,9 @@ fn activates_app(reason: ShowReason) -> bool {
 #[tauri::command]
 #[specta::specta]
 pub fn show_main_window<R: Runtime>(window: Window<R>, reason: ShowReason) -> Result<(), String> {
+    // Disarms the backend's show-it-anyway fallback, on every path including E2E's.
+    crate::main_window_show::mark_shown();
+
     // E2E: on macOS, order the window to the back without focusing it instead of
     // `window.show()` (which calls `makeKeyAndOrderFront:`, always grabbing OS
     // focus AND raising the window to the front). This keeps a test run's windows
