@@ -596,15 +596,16 @@ what keeps the native catalog free of the count-plus-noun shape `menu_t` can't r
 
 Every difference is marked on its row in `menu_bar.rs`, and `menu_bar_test.rs` spells out each bar in full.
 
-| Aspect | macOS | Linux |
-|--------|-------|-------|
-| App menu | Dedicated "cmdr" menu with About, License, Settings | No app menu; About under Help, Settings/License under Edit |
-| Predefined items | Hide, Hide Others, Show All, Quit, Window items, Undo/Redo | None (GTK has no equivalent) |
-| Accelerators | Full set | Omitted for F2 (Rename) and others with GTK interception issues |
-| Mnemonics | Not used | `&` prefixes for GTK keyboard navigation, unique per submenu |
-| Help search | Native NSMenu search field via `setHelpMenu:` | Not available |
-| System cleanup | objc2 strips injected Edit items | Not needed |
-| Menu icons | SF Symbols via objc2 (menu bar and context menus), provider logos (SVG) via objc2 on context menus, IconMenuItem for pixel icons | Not supported |
+- **App menu**: macOS has a dedicated "cmdr" menu with About, License, and Settings. Linux has none: About sits under
+  Help, Settings and License under Edit.
+- **Predefined items**: macOS has Hide, Hide Others, Show All, Quit, the Window items, and Undo/Redo. Linux has none (GTK
+  has no equivalent).
+- **Accelerators**: macOS has the full set. Linux omits F2 (Rename) and the others GTK intercepts.
+- **Mnemonics**: macOS doesn't use them. Linux gives `&` prefixes for GTK keyboard navigation, unique per submenu.
+- **Help search**: macOS has the native NSMenu search field via `setHelpMenu:`. Linux has none.
+- **System cleanup**: on macOS, objc2 strips the injected Edit items. Linux needs none.
+- **Menu icons**: macOS sets SF Symbols via objc2 (menu bar and context menus), provider logos (SVG) via objc2 on
+  context menus, and `IconMenuItem` for pixel icons. Linux doesn't support menu icons.
 
 ## Menu structure
 
