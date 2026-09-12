@@ -103,9 +103,6 @@
     "file-explorer/views/FullList.svelte": {
       "reason": "Logic tested in full-list-utils.ts, component mounting heavy"
     },
-    "file-operations/delete/DeleteDialog.svelte": {
-      "reason": "UI modal, logic tested in delete-dialog-utils.test.ts"
-    },
     "file-operations/mkdir/new-folder-operations.ts": {
       "reason": "Depends on FilePane refs and Tauri listen API"
     },

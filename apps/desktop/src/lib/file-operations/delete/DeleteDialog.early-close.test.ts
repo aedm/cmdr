@@ -12,8 +12,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, tick, unmount, type ComponentProps } from 'svelte'
+import { mount, tick, unmount } from 'svelte'
 import * as commands from '$lib/tauri-commands'
+import type { DeleteDialogPropsData } from '$lib/file-explorer/pane/dialog-props'
 import DeleteDialog from './DeleteDialog.svelte'
 
 vi.mock('$lib/tauri-commands', () => ({
@@ -37,8 +38,23 @@ vi.mock('$lib/settings/reactive-settings.svelte', () => ({
   getFileSizeUnit: vi.fn(() => 'bytes'),
 }))
 
-type DialogProps = ComponentProps<typeof DeleteDialog>
-type DialogData = Omit<DialogProps, 'onConfirm' | 'onCancel'>
+/** What `DialogManager` hands the dialog out of its `deleteDialogProps` slot. */
+type DialogData = Pick<
+  DeleteDialogPropsData,
+  | 'sourceItems'
+  | 'sourcePaths'
+  | 'sourceFolderPath'
+  | 'isPermanent'
+  | 'supportsTrash'
+  | 'isFromCursor'
+  | 'sortColumn'
+  | 'sortOrder'
+  | 'sourceVolumeId'
+>
+type DialogProps = DialogData & {
+  onConfirm: (previewId: string | null, isPermanent: boolean) => void
+  onCancel: () => void
+}
 
 const dialogData: DialogData = {
   sourceItems: [{ name: 'a.txt', isDirectory: false, isSymlink: false, size: 12 }],

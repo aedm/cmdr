@@ -215,6 +215,7 @@
             progressIntervalMs,
             request.sourceVolumeId,
         )
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- may have changed during await
         if (destroyed) {
             void cancelScanPreview(result.previewId)
             return
