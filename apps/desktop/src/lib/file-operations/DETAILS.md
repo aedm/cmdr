@@ -413,3 +413,26 @@ not the scan-preview pipeline, so the frontend computes its own scan-phase rate.
 number for the user to read, not a forecast. It returns nulls until two samples have arrived, drops samples older than
 the window (always keeping the most recent so a long pause still has a baseline), clamps negative rates to zero, and
 resets cleanly between scans.
+
+## A dialog's async start can outlive it
+
+`DeleteDialog` and `TransferDialog` (through `transfer/transfer-scan-state.svelte.ts`) start a scan preview on mount:
+four listener registrations, then the `startScanPreview` IPC. A quick Escape, an MCP close, or an MCP `dialog confirm`
+unmounts the dialog partway through, and the async function keeps running.
+
+- **Why a prop read then throws.** A Svelte 5 prop without a fallback compiles to a direct `$$props.x` read, which calls
+  the parent's getter every time. `pane/DialogManager.svelte` passes `sourcePaths={deleteDialogProps.sourcePaths}`,
+  `dialog-gallery/DialogGallery.svelte` spreads `{...plan.props}`, and both null that object on close, so the read
+  throws `null is not an object (evaluating 't.deleteDialogProps.sourcePaths')` as an unhandled rejection. Svelte's own
+  "last value once destroyed" fallback only covers props compiled through `$.prop()`, meaning ones with a fallback value
+  or `$bindable` (verified on svelte 5.56.8, `internal/client/reactivity/props.js` plus the compiled output,
+  2026-09-12).
+- **The rule both starts follow.** Read the props the start needs BEFORE the first await. After each await, check the
+  plain-`let` `destroyed` flag: a listener that registered after teardown goes straight back, no scan starts, and a
+  preview whose id lands after teardown is cancelled right there, since teardown had no id to free. The backend leaves a
+  preview an operation already claimed alone, so that cancel can't hurt a confirmed operation. Pinned by
+  `delete/DeleteDialog.early-close.test.ts` and `transfer/transfer-scan-state.svelte.test.ts`.
+- **Why the fix lives in the dialogs, not the parents.** Deferring the null doesn't close the gap: the read comes an IPC
+  round trip later, well past the microtask `handleTransferConfirm` already waits, and E2E logs still showed the
+  transfer twin after `dialog confirm`. Keeping the props object alive instead would pin a possibly 50k-path selection
+  until the next open, in two parents.

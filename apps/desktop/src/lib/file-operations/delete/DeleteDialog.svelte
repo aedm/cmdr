@@ -135,6 +135,8 @@
      *  also what hides the line. */
     const scanRate = $derived(filesPerSec === null ? null : formatFilesPerSecond(filesPerSec))
     let unlisteners: UnlistenFn[] = []
+    /** Set first thing in `onDestroy`. A plain `let`, read by `startScan`, which can outlive the dialog. */
+    let destroyed = false
 
     /** Accepts the event if it belongs to our scan, filtering stale events from previous scans. */
     function isOurScanEvent(eventPreviewId: string): boolean {
@@ -142,10 +144,26 @@
         return eventPreviewId === previewId
     }
 
-    /** Starts the scan preview to count files/dirs/bytes. */
+    /** Keeps a scan listener for `cleanup`, or hands it straight back when the dialog closed while it registered. */
+    function keepListener(unlisten: UnlistenFn): void {
+        if (destroyed) unlisten()
+        else unlisteners.push(unlisten)
+    }
+
+    /**
+     * Starts the scan preview to count files/dirs/bytes.
+     *
+     * It can outlive the dialog: a quick Escape or an MCP close unmounts it while the listeners
+     * are still registering. So it reads its props BEFORE the first await, because both parents
+     * (`DialogManager`, `DialogGallery`) null their props object on close and a prop read after
+     * that throws. Past each await, a closed dialog keeps nothing: late listeners go straight
+     * back, no scan starts, and a preview whose id lands after teardown is freed here, since
+     * teardown had no id to free.
+     */
     async function startScan() {
+        const request = { sourcePaths, sortColumn, sortOrder, sourceVolumeId }
         // Subscribe to events BEFORE starting scan (avoid missing fast completions)
-        unlisteners.push(
+        keepListener(
             await onScanPreviewProgress((event) => {
                 if (!isOurScanEvent(event.previewId)) return
                 filesFound = event.filesFound
@@ -161,7 +179,7 @@
                 bytesPerSec = r.bytesPerSecond
             }),
         )
-        unlisteners.push(
+        keepListener(
             await onScanPreviewComplete((event) => {
                 if (!isOurScanEvent(event.previewId)) return
                 filesFound = event.filesTotal
@@ -171,24 +189,36 @@
                 scanComplete = true
             }),
         )
-        unlisteners.push(
+        keepListener(
             await onScanPreviewError((event) => {
                 if (!isOurScanEvent(event.previewId)) return
                 isScanning = false
                 // Keep showing whatever stats we have
             }),
         )
-        unlisteners.push(
+        keepListener(
             await onScanPreviewCancelled((event) => {
                 if (!isOurScanEvent(event.previewId)) return
                 isScanning = false
             }),
         )
 
+        if (destroyed) return
+
         // Start the scan
         isScanning = true
         const progressIntervalMs = getSetting('fileOperations.progressUpdateInterval')
-        const result = await startScanPreview(sourcePaths, sortColumn, sortOrder, progressIntervalMs, sourceVolumeId)
+        const result = await startScanPreview(
+            request.sourcePaths,
+            request.sortColumn,
+            request.sortOrder,
+            progressIntervalMs,
+            request.sourceVolumeId,
+        )
+        if (destroyed) {
+            void cancelScanPreview(result.previewId)
+            return
+        }
         previewId = result.previewId
     }
 
@@ -242,6 +272,7 @@
     })
 
     onDestroy(() => {
+        destroyed = true
         // Free the scan preview unless the user confirmed (the op then consumes
         // the cached result). Regardless of `isScanning`: `cancelScanPreview`
         // also evicts the cached `CachedScanResult`, so a dismiss AFTER the scan

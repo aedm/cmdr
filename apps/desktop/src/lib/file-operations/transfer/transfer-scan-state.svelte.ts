@@ -119,10 +119,30 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
     return eventPreviewId === previewId
   }
 
-  /** Starts the scan preview to count files/dirs/bytes. */
+  /** Keeps a scan listener for `cleanup`, or hands it straight back when the dialog closed while it registered. */
+  function keepListener(unlisten: UnlistenFn): void {
+    if (deps.getDestroyed()) unlisten()
+    else unlisteners.push(unlisten)
+  }
+
+  /**
+   * Starts the scan preview to count files/dirs/bytes.
+   *
+   * It can outlive the dialog: an MCP `dialog confirm` or a quick Escape unmounts it while the
+   * listeners are still registering. So it reads its inputs BEFORE the first await, because the
+   * getters read the dialog's props, both parents (`DialogManager`, `DialogGallery`) null their
+   * props object on close, and a prop read after that throws. Past each await, a closed dialog
+   * keeps nothing: late listeners go straight back, no scan starts, and a preview whose id lands
+   * after teardown is freed here, since teardown had no id to free.
+   */
   async function startScan() {
+    const sourcePaths = deps.getSourcePaths()
+    const sortColumn = deps.getSortColumn()
+    const sortOrder = deps.getSortOrder()
+    const sourceVolumeId = deps.getSourceVolumeId()
+    const sampleForEstimate = deps.getSampleForEstimate()
     // Subscribe to events BEFORE starting scan (avoid missing fast completions)
-    unlisteners.push(
+    keepListener(
       await onScanPreviewProgress((event) => {
         if (!isOurScanEvent(event.previewId)) return
         filesFound = event.filesFound
@@ -130,7 +150,7 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
         bytesFound = event.bytesFound
       }),
     )
-    unlisteners.push(
+    keepListener(
       await onScanPreviewComplete((event) => {
         if (!isOurScanEvent(event.previewId)) return
         filesFound = event.filesTotal
@@ -142,7 +162,7 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
         scanComplete = true
       }),
     )
-    unlisteners.push(
+    keepListener(
       await onScanPreviewError((event) => {
         if (!isOurScanEvent(event.previewId)) return
         isScanning = false
@@ -152,25 +172,32 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
         scanFailure = { timedOut: event.timedOut ?? false }
       }),
     )
-    unlisteners.push(
+    keepListener(
       await onScanPreviewCancelled((event) => {
         if (!isOurScanEvent(event.previewId)) return
         isScanning = false
       }),
     )
 
+    if (deps.getDestroyed()) return
+
     // Start the scan
     isScanning = true
     scanFailure = null
     const progressIntervalMs = getSetting('fileOperations.progressUpdateInterval')
     const result = await startScanPreview(
-      deps.getSourcePaths(),
-      deps.getSortColumn(),
-      deps.getSortOrder(),
+      sourcePaths,
+      sortColumn,
+      sortOrder,
       progressIntervalMs,
-      deps.getSourceVolumeId(),
-      deps.getSampleForEstimate(),
+      sourceVolumeId,
+      sampleForEstimate,
     )
+    if (deps.getDestroyed()) {
+      // The backend leaves a preview an operation already claimed alone, so this frees only an orphan.
+      void cancelScanPreview(result.previewId)
+      return
+    }
     previewId = result.previewId
 
     // Check if the scan already completed while we were awaiting the IPC return.

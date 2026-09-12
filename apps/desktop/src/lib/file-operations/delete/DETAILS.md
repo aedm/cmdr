@@ -57,6 +57,11 @@ preview's `startScan` already began; that orphan has no owner and nothing to can
 gated on `!confirmed`. The IPC itself only mints an id and spawns the walk, so it answers promptly even on a wedged
 share, which is what makes awaiting it safe.
 
+**A dismiss can land before the scan is under way.** The start is async (four listener registrations, then the IPC), so
+`startScan` reads its props before the first await, and a dialog that closed keeps no listener and no preview it
+started. Why a prop read after unmount throws, and the rule both scanning dialogs follow: `../DETAILS.md` § "A dialog's
+async start can outlive it".
+
 **Who consumes the walk.** A permanent delete waits for it in the BACKEND (`scan_bridge::await_claimed_preview`) and
 consumes the cached result rather than re-walking. Trash consumes nothing: `trashItemAtURL` is atomic per top-level
 item, so `trash_files_start` frees the preview outright rather than leaving an ownerless walk running. Scan events still
