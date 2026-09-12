@@ -24,6 +24,38 @@ fn test_map_volume_error_not_found() {
     assert!(matches!(err, WriteOperationError::SourceNotFound { path } if path == "/test/path"));
 }
 
+/// ERR-P7XKX through the mapping: a local destination's `EROFS`, classified where
+/// it happened, reaches the dialog as a read-only DESTINATION, not a generic
+/// failure. `ENOSPC` is the same shape with a different fix.
+#[cfg(unix)]
+#[test]
+fn a_local_destination_refusing_the_write_names_why() {
+    let refused = |errno| {
+        VolumeError::from_io_at(
+            &std::io::Error::from_raw_os_error(errno),
+            "/Volumes/Installer/.cmdr-tmp-1",
+        )
+    };
+
+    let read_only = map_volume_error("/naspi/shortcut.lnk", PathRole::Destination, refused(libc::EROFS));
+    assert!(
+        matches!(
+            read_only,
+            WriteOperationError::ReadOnlyDevice {
+                side: ReadOnlySide::Destination,
+                ..
+            }
+        ),
+        "got {read_only:?}"
+    );
+
+    let full = map_volume_error("/naspi/shortcut.lnk", PathRole::Destination, refused(libc::ENOSPC));
+    assert!(
+        matches!(full, WriteOperationError::InsufficientSpace { .. }),
+        "got {full:?}"
+    );
+}
+
 #[test]
 fn a_not_found_from_the_destination_is_not_a_missing_source() {
     // One errno, two stories. The volume can't say which side it was, so the

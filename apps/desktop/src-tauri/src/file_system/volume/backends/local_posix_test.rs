@@ -817,3 +817,34 @@ async fn write_access_on_the_sealed_system_volume_is_read_only() {
         }
     );
 }
+
+/// ❗ A cross-volume copy onto a read-only mount (in ERR-P7XKX, an app's
+/// installer image) is refused at `File::create` with `EROFS`. The volume must
+/// say `ReadOnly`, so the transfer names a read-only destination instead of a
+/// generic failure whose Retry can only fail again.
+#[cfg(target_os = "macos")]
+#[tokio::test]
+async fn a_stream_onto_a_read_only_filesystem_is_read_only() {
+    use crate::file_system::volume::InMemoryVolume;
+
+    let source = InMemoryVolume::new("Source");
+    source
+        .create_file(Path::new("/shortcut.lnk"), b"lnk")
+        .await
+        .expect("seeding the source");
+    let stream = source
+        .open_read_stream(Path::new("/shortcut.lnk"))
+        .await
+        .expect("opening the source");
+    let size = stream.total_size();
+    let volume = LocalPosixVolume::new("Macintosh HD", "/");
+
+    let err = volume
+        .write_from_stream(Path::new("/cmdr-read-only-probe.lnk"), size, stream, &|_, _| {
+            std::ops::ControlFlow::Continue(())
+        })
+        .await
+        .expect_err("the sealed system volume takes no writes");
+
+    assert!(matches!(err, VolumeError::ReadOnly(_)), "got {err:?}");
+}

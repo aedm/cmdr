@@ -643,12 +643,33 @@ impl VolumeError {
     /// [`from_io_without_path`](Self::from_io_without_path) only where none exists.
     ///
     /// `assert_not_found_carries_the_path` holds every backend to it.
+    ///
+    /// A kind with a typed home lands in it, the way a remote backend says the
+    /// same thing (`cmdr-adb`'s `volume_error_from_errno` is the twin): a
+    /// read-only filesystem is [`ReadOnly`](Self::ReadOnly), a full disk or spent
+    /// quota [`StorageFull`](Self::StorageFull), a name the filesystem can't hold
+    /// [`InvalidName`](Self::InvalidName). As an `IoError` each reached the user
+    /// as a generic failure with a Retry that could only fail again.
+    ///
+    /// ❗ Everything else stays an `IoError` carrying its errno, which classifiers
+    /// dispatch on: `note_root_failure` promotes a mount on `ETIMEDOUT` /
+    /// `ENOTCONN` / `ESTALE`, transfer retry treats those as a blip, and every
+    /// backend spells a non-empty folder `ENOTEMPTY`. ❌ Never lift one of those
+    /// into a typed variant here.
     pub fn from_io_at(err: &std::io::Error, path: impl AsRef<std::path::Path>) -> Self {
+        use std::io::ErrorKind;
+
         let located = || path.as_ref().to_string_lossy().into_owned();
         match err.kind() {
-            std::io::ErrorKind::NotFound => Self::NotFound(located()),
-            std::io::ErrorKind::PermissionDenied => Self::PermissionDenied(located()),
-            std::io::ErrorKind::AlreadyExists => Self::AlreadyExists(located()),
+            ErrorKind::NotFound => Self::NotFound(located()),
+            ErrorKind::PermissionDenied => Self::PermissionDenied(located()),
+            ErrorKind::AlreadyExists => Self::AlreadyExists(located()),
+            ErrorKind::ReadOnlyFilesystem => Self::ReadOnly(located()),
+            ErrorKind::IsADirectory => Self::IsADirectory(located()),
+            ErrorKind::StorageFull | ErrorKind::QuotaExceeded => Self::StorageFull {
+                message: format!("{err}: {}", located()),
+            },
+            ErrorKind::InvalidFilename => Self::InvalidName(format!("{err}: {}", located())),
             _ => Self::from_io_without_path(err),
         }
     }
@@ -666,6 +687,10 @@ impl VolumeError {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "from_io_at_test.rs"]
+mod from_io_at_test;
 
 #[cfg(test)]
 mod scan_conflict_serde_tests {
