@@ -99,8 +99,9 @@ op drains it under the operation lock, one ~300 ms self-heal. ❌ Don't re-add a
 **A conflict scan settles a missing destination through `get_metadata`, not a `NotFound` arm.** Every other backend
 reads `VolumeError::NotFound` from the destination listing as "nothing clashes" and answers an empty list. MTP confirms
 it instead: `get_metadata` lists the PARENT, so only a confirmed-absent destination reads as empty and every other
-failure stays the caller's to see. It costs one extra parent listing, on the error path only. Known hole: `map_mtp_error`
-answers `NotFound` for `NotConnected` too, so a device that went away between the two listings still reads as empty.
+failure stays the caller's to see. It costs one extra parent listing, on the error path only. Known hole:
+`map_mtp_error` answers `NotFound` for `NotConnected` too, so a device that went away between the two listings still
+reads as empty.
 
 ### The no-clobber rename is check-then-act
 
