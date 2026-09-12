@@ -119,23 +119,29 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
     return eventPreviewId === previewId
   }
 
-  /** Keeps a scan listener for `cleanup`, or hands it straight back when the dialog closed while it registered. */
-  function keepListener(unlisten: UnlistenFn): void {
-    if (deps.getDestroyed()) unlisten()
-    else unlisteners.push(unlisten)
-  }
+  /** Bumped by every start and by `cancelPreview()`, so a start can tell it was overtaken. */
+  let startGeneration = 0
 
   /**
    * Starts the scan preview to count files/dirs/bytes.
    *
-   * It can outlive the dialog: an MCP `dialog confirm` or a quick Escape unmounts it while the
-   * listeners are still registering. So it reads its inputs BEFORE the first await, because the
-   * getters read the dialog's props, both parents (`DialogManager`, `DialogGallery`) null their
-   * props object on close, and a prop read after that throws. Past each await, a closed dialog
-   * keeps nothing: late listeners go straight back, no scan starts, and a preview whose id lands
-   * after teardown is freed here, since teardown had no id to free.
+   * Something can overtake it while the listeners are still registering: the dialog closing (an
+   * MCP `dialog confirm` or a quick Escape), or the toggle to a same-volume move, whose
+   * `cancelPreview()` resets the scan state and may be followed by a fresh start on the toggle
+   * back. So it reads its inputs BEFORE the first await, because the getters read the dialog's
+   * props, both parents (`DialogManager`, `DialogGallery`) null their props object on close, and
+   * a prop read after that throws. Past each await, an overtaken start keeps nothing: late
+   * listeners go straight back, no scan starts, and a preview whose id lands late is freed here,
+   * since whatever overtook the start had no id to free.
    */
   async function startScan() {
+    const generation = ++startGeneration
+    const isOvertaken = (): boolean => deps.getDestroyed() || generation !== startGeneration
+    /** Keeps a scan listener for `cleanup`, or hands it straight back once this start is overtaken. */
+    const keepListener = (unlisten: UnlistenFn): void => {
+      if (isOvertaken()) unlisten()
+      else unlisteners.push(unlisten)
+    }
     const sourcePaths = deps.getSourcePaths()
     const sortColumn = deps.getSortColumn()
     const sortOrder = deps.getSortOrder()
@@ -179,7 +185,7 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
       }),
     )
 
-    if (deps.getDestroyed()) return
+    if (isOvertaken()) return
 
     // Start the scan
     isScanning = true
@@ -193,7 +199,7 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
       sourceVolumeId,
       sampleForEstimate,
     )
-    if (deps.getDestroyed()) {
+    if (isOvertaken()) {
       // The backend leaves a preview an operation already claimed alone, so this frees only an orphan.
       void cancelScanPreview(result.previewId)
       return
@@ -208,7 +214,8 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- may have changed during await
     if (isScanning) {
       const totals = await checkScanPreviewStatus(previewId)
-      if (totals) {
+      // Overtaken meanwhile: whatever overtook it already freed this preview and reset the tallies.
+      if (totals && !isOvertaken()) {
         filesFound = totals.filesTotal
         dirsFound = totals.dirsTotal
         bytesFound = totals.bytesTotal
@@ -225,6 +232,7 @@ export function createTransferScanState(deps: TransferScanStateDeps) {
    *  same-volume Move, where the deep byte scan is waste — the move is a
    *  rename. Idempotent: a no-op when no preview is running. */
   function cancelPreview() {
+    startGeneration++ // a start still in flight drops its result and frees its own late preview
     if (previewId) {
       void cancelScanPreview(previewId)
     }

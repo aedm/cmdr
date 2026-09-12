@@ -429,7 +429,9 @@ unmounts the dialog partway through, and the async function keeps running.
   2026-09-12).
 - **The rule both starts follow.** Read the props the start needs BEFORE the first await. After each await, check the
   plain-`let` `destroyed` flag: a listener that registered after teardown goes straight back, no scan starts, and a
-  preview whose id lands after teardown is cancelled right there, since teardown had no id to free. The backend leaves a
+  preview whose id lands after teardown is cancelled right there, since teardown had no id to free.
+  `transfer-scan-state` also cancels and restarts its scan while the dialog stays open (the Copy/Move toggle around a
+  same-volume move), so its check is wider: destroyed, OR overtaken by a newer start generation. The backend leaves a
   preview an operation already claimed alone, so that cancel can't hurt a confirmed operation. Pinned by
   `delete/DeleteDialog.early-close.test.ts` and `transfer/transfer-scan-state.svelte.test.ts`.
 - **Why the fix lives in the dialogs, not the parents.** Deferring the null doesn't close the gap: the read comes an IPC

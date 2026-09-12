@@ -1,18 +1,23 @@
 /**
- * Headless tests for `createTransferScanState`: a dialog that closes before its scan preview
- * is under way.
+ * Headless tests for `createTransferScanState`: a scan start that something else overtakes
+ * before it's under way.
  *
- * The scan start is async: four listener registrations, then the `startScanPreview` IPC. The
- * transfer dialog can unmount partway through (an MCP `dialog confirm` takes it down at once),
- * and both its parents null their props object on close. The factory's getters read the
- * dialog's props, which are live getters into that object, so a read after unmount throws:
- * the `null is not an object (evaluating 't.transferDialogProps.sourcePaths')` rejection E2E
- * runs logged. `getSourcePaths` here throws the same way once the dialog is gone. Past the
- * throw, nothing the start leaves behind may outlive the dialog: a listener, or a preview
- * whose id only lands after teardown ran.
+ * The scan start is async: four listener registrations, then the `startScanPreview` IPC. Two
+ * things can overtake it partway through, and neither may leave a listener or an orphan
+ * preview behind:
+ *
+ * - **The dialog closes.** An MCP `dialog confirm` takes it down at once, and both its parents
+ *   null their props object on close. The factory's getters read the dialog's props, which are
+ *   live getters into that object, so a read after unmount throws: the `null is not an object
+ *   (evaluating 't.transferDialogProps.sourcePaths')` rejection E2E runs logged.
+ *   `getSourcePaths` here throws the same way once the dialog is gone.
+ * - **The Copy/Move toggle lands on a same-volume move.** The toggle effect cancels the preview
+ *   and resets the scan state, so the start it overtook must not write its result back over
+ *   that reset, or over the scan a toggle back to Copy starts in its place.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushSync } from 'svelte'
 import * as commands from '$lib/tauri-commands'
 import { createTransferScanState } from './transfer-scan-state.svelte'
 
@@ -43,10 +48,18 @@ function deferred<T>(): Deferred<T> {
   return { promise, resolve }
 }
 
-describe('createTransferScanState closed before its scan preview is under way', () => {
+/** Lets every pending continuation run, including ones nothing awaits anymore. */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 5; i++) {
+    await new Promise((done) => setTimeout(done, 0))
+  }
+}
+
+describe('createTransferScanState', () => {
   let registrations: Deferred<undefined>
   let unlistens: Array<() => void>
   let destroyed: boolean
+  const move = $state({ sameVolume: false })
   let scan: ReturnType<typeof createTransferScanState>
   let destroyRoot: () => void
 
@@ -55,6 +68,8 @@ describe('createTransferScanState closed before its scan preview is under way', 
     registrations = deferred()
     unlistens = []
     destroyed = false
+    move.sameVolume = false
+    vi.mocked(commands.startScanPreview).mockResolvedValue({ previewId: 'preview-1' })
     for (const register of [
       commands.onScanPreviewProgress,
       commands.onScanPreviewComplete,
@@ -78,12 +93,14 @@ describe('createTransferScanState closed before its scan preview is under way', 
         getSortColumn: () => 'name',
         getSortOrder: () => 'ascending',
         getSourceVolumeId: () => 'root',
-        getIsSameVolumeMove: () => false,
+        getIsSameVolumeMove: () => move.sameVolume,
         getConfirmed: () => false,
         getDestroyed: () => destroyed,
         getSampleForEstimate: () => false,
       })
     })
+    // The toggle effect's first run is the one it skips; get it out of the way.
+    flushSync()
   })
 
   afterEach(() => {
@@ -96,32 +113,84 @@ describe('createTransferScanState closed before its scan preview is under way', 
     scan.freeAndCleanup()
   }
 
-  it('reads no props and keeps no listener when it closes while its listeners are still registering', async () => {
-    scan.start()
+  /** Flips the Copy/Move toggle to or away from a same-volume move, and lets the effect react. */
+  function setSameVolumeMove(sameVolume: boolean): void {
+    move.sameVolume = sameVolume
+    flushSync()
+  }
 
-    close()
-    registrations.resolve(undefined)
+  describe('closed before its scan preview is under way', () => {
+    it('reads no props and keeps no listener when it closes while its listeners are still registering', async () => {
+      scan.start()
 
-    await expect(scan.scanStarted).resolves.toBeUndefined()
-    expect(commands.startScanPreview).not.toHaveBeenCalled()
-    expect(unlistens.length).toBeGreaterThan(0)
-    for (const unlisten of unlistens) expect(unlisten).toHaveBeenCalledOnce()
-  })
+      close()
+      registrations.resolve(undefined)
 
-  it('frees a preview whose id only lands after the dialog closed', async () => {
-    const preview = deferred<{ previewId: string }>()
-    vi.mocked(commands.startScanPreview).mockReturnValue(preview.promise)
-    registrations.resolve(undefined)
-    scan.start()
-    await vi.waitFor(() => {
-      expect(commands.startScanPreview).toHaveBeenCalledWith(['/src/a.txt'], 'name', 'ascending', 500, 'root', false)
+      await expect(scan.scanStarted).resolves.toBeUndefined()
+      expect(commands.startScanPreview).not.toHaveBeenCalled()
+      expect(unlistens.length).toBeGreaterThan(0)
+      for (const unlisten of unlistens) expect(unlisten).toHaveBeenCalledOnce()
     })
 
-    close()
-    preview.resolve({ previewId: 'preview-late' })
+    it('frees a preview whose id only lands after the dialog closed', async () => {
+      const preview = deferred<{ previewId: string }>()
+      vi.mocked(commands.startScanPreview).mockReturnValue(preview.promise)
+      registrations.resolve(undefined)
+      scan.start()
+      await vi.waitFor(() => {
+        expect(commands.startScanPreview).toHaveBeenCalledWith(['/src/a.txt'], 'name', 'ascending', 500, 'root', false)
+      })
 
-    await expect(scan.scanStarted).resolves.toBeUndefined()
-    expect(commands.cancelScanPreview).toHaveBeenCalledWith('preview-late')
-    expect(commands.checkScanPreviewStatus).not.toHaveBeenCalled()
+      close()
+      preview.resolve({ previewId: 'preview-late' })
+
+      await expect(scan.scanStarted).resolves.toBeUndefined()
+      expect(commands.cancelScanPreview).toHaveBeenCalledWith('preview-late')
+      expect(commands.checkScanPreviewStatus).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('overtaken by the toggle to a same-volume move', () => {
+    it('starts nothing and keeps no listener when the toggle lands while its listeners are still registering', async () => {
+      scan.start()
+
+      setSameVolumeMove(true)
+      registrations.resolve(undefined)
+      await settle()
+
+      expect(commands.startScanPreview).not.toHaveBeenCalled()
+      expect(unlistens.length).toBeGreaterThan(0)
+      for (const unlisten of unlistens) expect(unlisten).toHaveBeenCalledOnce()
+      expect(scan.isScanning).toBe(false)
+      expect(scan.previewId).toBeNull()
+    })
+
+    it('frees its late preview and leaves the scan a toggle back to Copy started alone', async () => {
+      const overtaken = deferred<{ previewId: string }>()
+      vi.mocked(commands.startScanPreview)
+        .mockReturnValueOnce(overtaken.promise)
+        .mockResolvedValueOnce({ previewId: 'preview-current' })
+      registrations.resolve(undefined)
+      scan.start()
+      await vi.waitFor(() => {
+        expect(commands.startScanPreview).toHaveBeenCalledOnce()
+      })
+
+      setSameVolumeMove(true)
+      setSameVolumeMove(false)
+      await vi.waitFor(() => {
+        expect(commands.startScanPreview).toHaveBeenCalledTimes(2)
+      })
+      await scan.scanStarted
+      expect(scan.previewId).toBe('preview-current')
+
+      overtaken.resolve({ previewId: 'preview-overtaken' })
+      await settle()
+
+      expect(commands.cancelScanPreview).toHaveBeenCalledWith('preview-overtaken')
+      expect(commands.cancelScanPreview).not.toHaveBeenCalledWith('preview-current')
+      expect(commands.checkScanPreviewStatus).not.toHaveBeenCalledWith('preview-overtaken')
+      expect(scan.previewId).toBe('preview-current')
+    })
   })
 })

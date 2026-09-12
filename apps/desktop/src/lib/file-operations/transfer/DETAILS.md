@@ -700,9 +700,12 @@ non-prompting policy: that would turn "nobody looked" into a silent overwrite.
   re-scan. ❌ The dialog must never cancel the preview on teardown: the operation owns it, and a viewer detaching is not
   a cancel. The scan-error and scan-cancelled listeners also flip `started = true` as a terminal signal, so a late
   `scan-preview-complete` event can't dispatch an operation after we've errored or cancelled.
-- **`transfer-scan-state`'s start can outlive `TransferDialog`.** An MCP `dialog confirm` unmounts the dialog while the
-  scan listeners are still registering, so `startScan` reads its getters before the first await, and a closed dialog
-  keeps no listener and no preview. `../DETAILS.md` § "A dialog's async start can outlive it".
+- **A `transfer-scan-state` start can be overtaken before it's under way.** An MCP `dialog confirm` unmounts the dialog,
+  or the Copy/Move toggle lands on a same-volume move and `cancelPreview()` resets the scan, while the listeners are
+  still registering. `startScan` reads its getters before the first await, and each start carries a generation that the
+  next start and `cancelPreview()` bump. An overtaken start keeps no listener, starts nothing, and frees a preview whose
+  id lands late, so it can't write that id over the reset or over the scan a toggle back to Copy started.
+  `../DETAILS.md` § "A dialog's async start can outlive it".
 
 ## What a cancelled transfer's reversal says afterwards
 
