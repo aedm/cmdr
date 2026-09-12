@@ -1204,14 +1204,15 @@ landed second, overwriting the cache with its staler snapshot and emitting remov
 per-directory turnstile now makes read-then-write atomic: `apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` §
 "Serializing full refreshes".
 
-**A third face is the probe itself, and no backend fix reaches it.** The poll asks the DOM for a `[data-filename="…"]`
-row, but `views/FullList.svelte` renders only the virtual window's rows (`visibleFiles`, from `cache.windowRows` plus
-`getVirtualizationBufferRows()`), so it measures what the pane DRAWS, not what it holds. A wide expectation is therefore
-satisfiable only while the window is tall enough to show it: `expectedLeftPaneEntries` returns every non-dotfile in
-`left/` (17 today), and a `rename-chaining` run reported 14 of them, cut at the alphabetical viewport edge, with a
-leaked "show hidden files" supplying the extra row that pushed the tail out. ❌ Don't answer this one with a longer
-deadline either — the rows are never coming. Reading the pane's model instead of its DOM is the fix, and it's a design
-call, since `ensureAppReady` deliberately avoids MCP. Evidence:
+**A third face was the probe itself, which no backend fix reaches, so readiness asks the LISTING, never the DOM.**
+`views/FullList.svelte` renders only the virtual window's rows (`visibleFiles`, from `cache.windowRows` plus
+`getVirtualizationBufferRows()`), so a `[data-filename="…"]` probe measures what the pane DRAWS, not what it holds. A
+wide expectation then passed only while the window was tall enough: `expectedLeftPaneEntries` returns every non-dotfile
+in `left/` (17 with `rename-chaining`'s hops), and CI runs reported 14 rows cut at the alphabetical viewport edge, with
+a leaked "show hidden files" (the hidden-files toggle spec ended with it on) adding the row that pushed the tail out.
+`ensureAppReady` now reads the pane's `data-listing-id` and asks the backend cache through `find_file_indices`, which
+answers for every name however few rows are drawn, and its failure names the missing entries. ❌ Don't bring back a DOM
+probe for readiness, and ❌ don't answer a recurrence with a longer deadline: undrawn rows never arrive. Evidence:
 `docs/notes/e2e-readiness-and-state-leaks-2026-09-09.md`.
 
 A recurrence shows up two ways, not one. Rows that readiness confirmed go missing and never come back; and an open

@@ -1752,6 +1752,7 @@
     aria-label={tString('fileExplorer.pane.filePaneAriaLabel', { side: paneId })}
     style={paneTintBg ? `--color-pane-bg: ${paneTintBg}` : undefined}
     data-pane-tint={paneTintName ?? undefined}
+    data-listing-id={listingId || undefined}
 >
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="header" oncontextmenu={breadcrumb.handleContextMenu}>

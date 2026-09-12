@@ -44,6 +44,45 @@ export function expectedLeftPaneEntries(fixtureRoot: string): string[] {
     .sort()
 }
 
+/**
+ * The names from `expected` the LEFT pane's listing doesn't hold (`[]` once it holds
+ * them all), or `null` while the pane has no listing to ask.
+ *
+ * Asks the backend listing cache by the pane's `data-listing-id`, ❌ never the DOM:
+ * `FullList` / `BriefList` render only the virtual window's rows, so a
+ * `[data-filename]` probe answers "is it drawn", and a wide expectation failed
+ * whenever the window was too short to draw every name. A listing id the cache has
+ * already dropped (the pane moved on mid-poll) reads as `null`, so the caller's poll
+ * asks again with the fresh one.
+ */
+async function missingFromLeftListing(tauriPage: PageLike, expected: string[]): Promise<string[] | null> {
+  return tauriPage.evaluate<string[] | null>(`(async function() {
+    var pane = document.querySelectorAll('.file-pane')[0];
+    var listingId = pane && pane.dataset.listingId;
+    if (!listingId) return null;
+    var expected = ${JSON.stringify(expected)};
+    try {
+      var found = await window.__TAURI_INTERNALS__.invoke('find_file_indices', {
+        listingId: listingId, names: expected, includeHidden: true
+      });
+      return expected.filter(function(name) { return !(name in found); });
+    } catch (e) {
+      return null;
+    }
+  })()`)
+}
+
+/** Every row the left pane currently DRAWS, for a readiness failure's message only. */
+async function drawnLeftRows(tauriPage: PageLike): Promise<string[]> {
+  return tauriPage.evaluate<string[]>(`(function() {
+    var pane = document.querySelectorAll('.file-pane')[0];
+    if (!pane) return [];
+    return Array.from(pane.querySelectorAll('.file-entry')).map(function(e) {
+      return e.getAttribute('data-filename') || '';
+    });
+  })()`)
+}
+
 // ── App readiness ────────────────────────────────────────────────────────────
 
 /**
@@ -154,29 +193,16 @@ export async function ensureAppReady(
   const leftExpected = expectedFiles?.leftPane ?? ['file-a.txt', 'file-b.txt', 'sub-dir']
   const filesFound = await pollUntil(
     tauriPage,
-    async () => {
-      return tauriPage.evaluate<boolean>(`(function() {
-                var pane = document.querySelectorAll('.file-pane')[0];
-                if (!pane) return false;
-                var expected = ${JSON.stringify(leftExpected)};
-                return expected.every(function(name) {
-                  return !!pane.querySelector('[data-filename="' + name + '"]');
-                });
-            })()`)
-    },
+    async () => (await missingFromLeftListing(tauriPage, leftExpected))?.length === 0,
     10000,
   )
   if (!filesFound) {
-    const actual = await tauriPage.evaluate<string[]>(`(function() {
-            var pane = document.querySelectorAll('.file-pane')[0];
-            if (!pane) return [];
-            return Array.from(pane.querySelectorAll('.file-entry')).map(function(e) {
-                return e.getAttribute('data-filename') || '';
-            });
-        })()`)
+    const missing = await missingFromLeftListing(tauriPage, leftExpected)
     throw new Error(
-      `ensureAppReady: expected files ${JSON.stringify(leftExpected)} not found in left pane after 10s. ` +
-        `Actual entries: ${JSON.stringify(actual)}. Fixture directory may need recreateFixtures() in beforeEach.`,
+      `ensureAppReady: expected files ${JSON.stringify(leftExpected)} not in the left pane's listing after 10s. ` +
+        `Missing: ${missing === null ? '(the pane has no listing)' : JSON.stringify(missing)}. ` +
+        `Drawn rows: ${JSON.stringify(await drawnLeftRows(tauriPage))}. ` +
+        `Fixture directory may need recreateFixtures() in beforeEach.`,
     )
   }
 
@@ -192,22 +218,15 @@ export async function ensureAppReady(
   await flushFileWatcher(tauriPage)
   const filesStable = await pollUntil(
     tauriPage,
-    async () => {
-      return tauriPage.evaluate<boolean>(`(function() {
-                var pane = document.querySelectorAll('.file-pane')[0];
-                if (!pane) return false;
-                var expected = ${JSON.stringify(leftExpected)};
-                return expected.every(function(name) {
-                  return !!pane.querySelector('[data-filename="' + name + '"]');
-                });
-            })()`)
-    },
+    async () => (await missingFromLeftListing(tauriPage, leftExpected))?.length === 0,
     5000,
   )
   if (!filesStable) {
+    const missing = await missingFromLeftListing(tauriPage, leftExpected)
     throw new Error(
-      `ensureAppReady: left pane emptied after flushing the file-watcher backlog ` +
-        `(expected ${JSON.stringify(leftExpected)} to remain). A background re-listing is still churning.`,
+      `ensureAppReady: the left pane's listing lost entries after flushing the file-watcher backlog ` +
+        `(missing ${missing === null ? 'the whole listing' : JSON.stringify(missing)} of ${JSON.stringify(leftExpected)}). ` +
+        `A background re-listing is still churning.`,
     )
   }
 

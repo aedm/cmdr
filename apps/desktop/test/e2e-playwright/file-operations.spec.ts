@@ -596,22 +596,38 @@ test.describe('Hidden files toggle', () => {
     // may not have propagated to the DOM yet (async IPC + virtual scroll),
     // so poll and toggle if needed rather than trusting the initial render.
     const hiddenVisibleAtStart = await fileExistsInFocusedPane(tauriPage, '.hidden-file')
-    if (!hiddenVisibleAtStart) {
+    try {
+      if (!hiddenVisibleAtStart) {
+        await toggleHidden()
+        await expect
+          .poll(async () => fileExistsInFocusedPane(tauriPage, '.hidden-file'), { timeout: 3000 })
+          .toBeTruthy()
+      }
+
+      // Now hidden files are visible, so toggle them OFF
+      await toggleHidden()
+      await expect
+        .poll(async () => !(await fileExistsInFocusedPane(tauriPage, '.hidden-file')), { timeout: 3000 })
+        .toBeTruthy()
+      expect(await fileExistsInFocusedPane(tauriPage, '.hidden-file')).toBe(false)
+
+      // Toggle back ON so the hidden file should reappear
       await toggleHidden()
       await expect.poll(async () => fileExistsInFocusedPane(tauriPage, '.hidden-file'), { timeout: 3000 }).toBeTruthy()
+      expect(await fileExistsInFocusedPane(tauriPage, '.hidden-file')).toBe(true)
+    } finally {
+      // The setting outlives the test (one app serves the shard), so hand it back as
+      // found. Left on, every later pane grew a `.hidden-file` row, which pushed the
+      // tail of a wide `ensureAppReady` expectation out of the drawn window.
+      if ((await fileExistsInFocusedPane(tauriPage, '.hidden-file')) !== hiddenVisibleAtStart) {
+        await toggleHidden()
+        await expect
+          .poll(async () => (await fileExistsInFocusedPane(tauriPage, '.hidden-file')) === hiddenVisibleAtStart, {
+            timeout: 3000,
+          })
+          .toBeTruthy()
+      }
     }
-
-    // Now hidden files are visible, so toggle them OFF
-    await toggleHidden()
-    await expect
-      .poll(async () => !(await fileExistsInFocusedPane(tauriPage, '.hidden-file')), { timeout: 3000 })
-      .toBeTruthy()
-    expect(await fileExistsInFocusedPane(tauriPage, '.hidden-file')).toBe(false)
-
-    // Toggle back ON so the hidden file should reappear
-    await toggleHidden()
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, '.hidden-file'), { timeout: 3000 }).toBeTruthy()
-    expect(await fileExistsInFocusedPane(tauriPage, '.hidden-file')).toBe(true)
   })
 })
 
