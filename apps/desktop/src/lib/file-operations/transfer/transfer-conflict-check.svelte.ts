@@ -28,7 +28,7 @@
  * in its markup.
  */
 
-import { scanVolumeForConflicts, type SourceItemInput } from '$lib/tauri-commands'
+import { scanVolumeForConflicts, type SourceItemInput, type VolumeConflictInfo } from '$lib/tauri-commands'
 import { pluralize } from '$lib/utils/pluralize'
 import { withTimeout } from '$lib/utils/timing'
 import type { Logger } from '$lib/logging/logger'
@@ -88,28 +88,29 @@ export function createTransferConflictCheck(deps: TransferConflictCheckDeps) {
     if (deps.getDestroyed() || status !== 'idle') return
 
     status = 'checking'
-    try {
-      // Build source item info from the source paths. We extract the
-      // filename from each path for name matching. The real per-item
-      // `is_directory` and size come from the backend, which resolves
-      // them authoritatively from the source volume (one batched stat)
-      // when we pass `sourceVolumeId` + `sourcePaths`. We still send
-      // placeholders here so name matching works even if that resolution
-      // is unavailable (e.g. the source volume vanished).
-      const sourcePaths = deps.getSourcePaths()
-      const sourceItems: SourceItemInput[] = sourcePaths.map((path) => {
-        const name = path.split('/').pop() || path
-        return {
-          name,
-          size: 0,
-          modified: null,
-          isDirectory: false,
-        }
-      })
+    // Build source item info from the source paths. We extract the
+    // filename from each path for name matching. The real per-item
+    // `is_directory` and size come from the backend, which resolves
+    // them authoritatively from the source volume (one batched stat)
+    // when we pass `sourceVolumeId` + `sourcePaths`. We still send
+    // placeholders here so name matching works even if that resolution
+    // is unavailable (e.g. the source volume vanished).
+    const sourcePaths = deps.getSourcePaths()
+    const sourceItems: SourceItemInput[] = sourcePaths.map((path) => {
+      const name = path.split('/').pop() || path
+      return {
+        name,
+        size: 0,
+        modified: null,
+        isDirectory: false,
+      }
+    })
 
+    let foundConflicts: VolumeConflictInfo[] | null
+    try {
       // `null` is the fallback, and no real answer can be null, so it reads
       // unambiguously as "the call never came back".
-      const foundConflicts = await withTimeout(
+      foundConflicts = await withTimeout(
         scanVolumeForConflicts(
           deps.getSelectedVolumeId(),
           sourceItems,
@@ -120,12 +121,24 @@ export function createTransferConflictCheck(deps: TransferConflictCheckDeps) {
         CONFLICT_CHECK_TIMEOUT_MS,
         null,
       )
-      if (foundConflicts === null) {
-        deps.log.warn('The conflict check did not come back within {ms}ms', { ms: CONFLICT_CHECK_TIMEOUT_MS })
-        status = 'unknown'
-        return
-      }
+    } catch (err) {
+      // The volume couldn't answer: slow, disconnected, or refusing. It doesn't
+      // block the transfer (the backend arbitrates every clash it meets at write
+      // time), but it must NOT be recorded as an answer: "no conflicts found" and
+      // "nobody looked" are different things to show someone about to overwrite
+      // their files. The dialog says so on screen, so this is a warn: at error
+      // level, every unreachable volume filed an error report.
+      deps.log.warn('Could not check for conflicts: {error}', { error: err })
+      status = 'unknown'
+      return
+    }
+    if (foundConflicts === null) {
+      deps.log.warn('The conflict check did not come back within {ms}ms', { ms: CONFLICT_CHECK_TIMEOUT_MS })
+      status = 'unknown'
+      return
+    }
 
+    try {
       // Classify each collision:
       //  - dir + dir  → a silent merge, not a conflict (informational).
       //  - everything else (file+file, file+dir, dir+file) → a real
@@ -150,11 +163,10 @@ export function createTransferConflictCheck(deps: TransferConflictCheckDeps) {
       // after we already have one.
       status = 'answered'
     } catch (err) {
-      // The check couldn't run. It doesn't block the transfer — the backend
-      // arbitrates every clash it meets at write time — but it must NOT be
-      // recorded as an answer: "no conflicts found" and "nobody looked" are
-      // different things to show someone about to overwrite their files.
-      deps.log.error('Could not check for conflicts: {error}', { error: err })
+      // The volume answered and reading its answer threw, which is our own code:
+      // a defect, so it stays at error. The destination still reads as unknown,
+      // never as clean.
+      deps.log.error('Could not read the conflict check answer: {error}', { error: err })
       status = 'unknown'
     }
   }

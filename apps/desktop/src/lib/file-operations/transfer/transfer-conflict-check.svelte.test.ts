@@ -79,10 +79,25 @@ function makeCheck(sourcePaths: string[], destPath: string) {
 
 beforeEach(() => {
   scanVolumeForConflictsMock.mockClear()
+  log.warn.mockClear()
+  log.error.mockClear()
   namesAtDestination = ['photo.jpg', 'notes.txt']
 })
 
 describe('createTransferConflictCheck', () => {
+  it("logs a check the volume couldn't answer at warn, since the dialog already says so", async () => {
+    // The dialog renders "couldn't check" for `unknown`; at error level every slow or
+    // disconnected volume filed an error report (ERR-J9BKB, ERR-F7N2B, ERR-YKADZ).
+    scanVolumeForConflictsMock.mockRejectedValueOnce(new Error('timedOut'))
+    const check = makeCheck(['/photos/photo.jpg'], '/elsewhere')
+
+    await check.check()
+
+    expect(check.conflictCheckUnknown).toBe(true)
+    expect(log.error).not.toHaveBeenCalled()
+    expect(log.warn).toHaveBeenCalledTimes(1)
+  })
+
   it('reports no conflicts for a copy into the folder the sources already live in', async () => {
     const check = makeCheck(['/photos/photo.jpg', '/photos/notes.txt'], '/photos')
 

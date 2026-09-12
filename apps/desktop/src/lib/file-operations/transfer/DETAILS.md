@@ -631,7 +631,10 @@ help is ask again after plugging the network back in.
 **The conflict check.** `transfer-conflict-check.svelte.ts` carries a `status` of `idle` / `checking` / `answered` /
 `unknown` (a bounded `withTimeout` at 35 s over the IPC, just above the backend's own 30 s budget, catches a call that
 never returns at all). `unknown` renders its own line, because rendering nothing is what a genuinely clean destination
-renders, and the user is about to decide what happens to their files on the strength of it.
+renders, and the user is about to decide what happens to their files on the strength of it. Because that line is on
+screen, a volume that couldn't answer (a rejection or the timeout) logs at warn; only a throw while reading an answer
+the volume DID give logs at error, since that one is our defect. At error level, every slow or disconnected volume filed
+an error report (ERR-J9BKB, ERR-F7N2B, ERR-YKADZ).
 
 **A wedged SOURCE no longer costs the whole answer.** The 30 s backend budget covers both legs, but the optional
 source-stat leg is capped at a third of it, so a source that never answers still leaves the mandatory destination scan
