@@ -217,10 +217,11 @@ focus for the dialog's whole life unless a control takes it.
 Every click inside the panel bubbles to the overlay's `onclick`, so `handleOverlayClick` checks that the click landed on
 the scrim itself BEFORE it reads `closeOnOverlayClick` or `onclose`. The order matters: the click on × or on a button
 that closes the dialog arrives after the host has already torn down what the dialog's props derive from, in the same
-event dispatch and before Svelte unmounts anything. Reading `onclose` then re-evaluates its getter against that torn-down
-data. The Selection dialog's `onclose` comes off a `config` derived from the pane snapshot the page nulls on close, so
-every commit click threw (ERR-3ZQDK, ERR-D9XF2). Pinned by `lib/selection-dialog/SelectionDialog.svelte.test.ts` §
-"closing from inside the dialog", through `test/fixtures/selection-dialog-host-fixture.svelte`.
+event dispatch and before Svelte unmounts anything. Reading `onclose` then re-evaluates its getter against that
+torn-down data. The Selection dialog's `onclose` comes off a `config` derived from the pane snapshot the page nulls on
+close, so every commit click threw (ERR-3ZQDK, ERR-D9XF2). Pinned by
+`lib/selection-dialog/SelectionDialog.svelte.test.ts` § "closing from inside the dialog", through
+`test/fixtures/selection-dialog-host-fixture.svelte`.
 
 **That mount focus is conditional: the scrim skips it when focus already sits inside the overlay.** Child components
 mount BEFORE their parent, so a field that autofocuses in its own `onMount` (`NewEntryNameField`, in the New folder and

@@ -38,7 +38,9 @@ describe('viewer error + load states (en)', () => {
   })
 
   it('says why a file that is gone or a folder has nothing to show, instead of the generic read message', () => {
-    expect(tString('viewer.error.notFound')).toBe("Couldn't find this file. It may have been moved, renamed, or deleted.")
+    expect(tString('viewer.error.notFound')).toBe(
+      "Couldn't find this file. It may have been moved, renamed, or deleted.",
+    )
     expect(tString('viewer.error.isDirectory')).toBe(
       "This is a folder, so there's nothing to view here. Open it in the main window to see what's inside.",
     )
