@@ -181,9 +181,12 @@ All `pathExists` calls are guarded by two timeout layers:
 
 `navigate()`'s volume-switch arm (in `pane/navigate.ts`) uses **optimistic navigation**: `commitVolumeSwitch` commits
 the new volumeId + path + history synchronously (showing the loading spinner), then `scheduleVolumePathCorrection`
-resolves the "best" path in the background via `determineNavigationPath`. A single GLOBAL `correctionGen` counter (the
-caller-owned holder in `NavigateDeps`, shared by both panes) guards against stale corrections: a later volume change on
-either pane bumps it, so a pending correction whose generation was superseded is dropped.
+resolves the "best" path in the background via `determineNavigationPath`. Two gates drop a stale correction. A single
+GLOBAL `correctionGen` counter (the caller-owned holder in `NavigateDeps`, shared by both panes) drops it on a later
+volume change on either pane. The pane's own transaction token and position drop it once that pane starts a newer
+navigation or has moved off the switch's target, so a correction never pulls a pane away from where it was sent next:
+MCP `select_volume` followed by `nav_to_path` used to fail with "Superseded by new navigation" when the correction
+landed between them.
 
 Escape during a load returns the pane to what it last showed, never to a guess from history (`../pane/DETAILS.md` §
 "Escape during a load"). Back/forward go through `navigate({ to: { history } })`; parent (`{ history: 'parent' }`)

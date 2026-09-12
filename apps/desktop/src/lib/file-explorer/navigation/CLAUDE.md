@@ -20,8 +20,8 @@ Browser-style back/forward history, path resolution, paged keyboard shortcuts, a
 - **❗ Pass `volumeId` wherever the walk should stay on the pane's volume**: without it every probe asks the boot disk,
   which says "gone" for a phone's or server's folders. Who passes it and who doesn't: `DETAILS.md` §
   `path-resolution.ts`.
-- **ONE global `correctionGen` gates stale volume-switch corrections**, ❌ not one per pane: a change on either pane
-  drops a superseded one.
+- **A volume-switch correction has two gates**: ONE global `correctionGen` (❌ not one per pane: a volume change on
+  either pane drops it), plus its pane's token and position, so it never moves a pane off a navigation that followed.
 - **`containingVolumeId` comes from `resolvePathVolume(currentPath)`, ❌ not the `volumeId` prop** (a favorite's is
   virtual), so the checkmark tracks the real containing volume.
 - **Read `connectionState` through `connection-state.ts`'s predicates, ❌ never `!= null`**: four backends carry one,

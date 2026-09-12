@@ -55,18 +55,20 @@
  *
  * ## Transaction token (Q3 — FE-side request map keyed by side)
  *
- * `navigate()` mints a monotonic `txToken` per call and stores it as the pane's
- * current transaction (`deps.tokens`, a `Map<'left'|'right', number>` the caller
- * owns so it survives across `navigate()` calls). The in-place `onPathChange`
- * re-entry (`commitPathFromListing`) drops a stale listing by the foreign-path
- * policy (L6, the FE twin of the banned `error-string-match`) — NOT by the token;
- * the token's live role is the same-token self-re-entry rule below. The background
- * `determineNavigationPath` correction (folding `applyVolumePathCorrection`) is
- * gated by `deps.correctionGen`, a SINGLE GLOBAL counter shared by both panes
- * (exactly the old `volumeChangeGeneration`): a later volume change on EITHER pane
- * supersedes a pending correction. Per-pane gating there would let both panes'
- * corrections run after a simultaneous two-pane reset and re-enter the
- * listing/onPathChange cycle on both panes — a webview freeze. Together these
+ * Every `navigate()` arm that starts a navigation mints a monotonic `txToken` and
+ * stores it as the pane's current transaction (`deps.tokens`, a
+ * `Map<'left'|'right', number>` the caller owns so it survives across `navigate()`
+ * calls). The in-place `onPathChange` re-entry (`commitPathFromListing`) drops a
+ * stale listing by the foreign-path policy (L6, the FE twin of the banned
+ * `error-string-match`), NOT by the token. The background `determineNavigationPath`
+ * correction (folding `applyVolumePathCorrection`) has two gates. `deps.correctionGen`
+ * is a SINGLE GLOBAL counter shared by both panes (exactly the old
+ * `volumeChangeGeneration`): a later volume change on EITHER pane supersedes a
+ * pending correction, since per-pane gating there would let both panes' corrections
+ * run after a simultaneous two-pane reset and re-enter the listing/onPathChange cycle
+ * on both panes, a webview freeze. The token is the per-pane gate: a correction also
+ * drops once its pane minted a newer token or left the switch's target, so it can
+ * never move a pane away from a navigation that followed the switch. Together these
  * replace the three coordinator staleness mechanisms; the drop-foreign-listings
  * _policy_ is identical (L6), only the _mechanism_ changes.
  *
@@ -244,8 +246,9 @@ function tryPinnedVolumeFork(
 
 /**
  * The background "best path" correction (folds `applyVolumePathCorrection`,
- * DPE:669), gated by the transaction token instead of `volumeChangeGeneration`.
- * A correction whose token was superseded by a newer `navigate()` is dropped.
+ * DPE:669). Two gates drop it: the GLOBAL `correctionGen` (any later volume change
+ * on either pane) and the pane's own transaction token plus position (any later
+ * navigation on this pane, or the pane having moved off the switch's target).
  */
 function scheduleVolumePathCorrection(
   deps: NavigateDeps,
@@ -278,7 +281,15 @@ function scheduleVolumePathCorrection(
       // webview. The per-pane `token` governs only the same-token self-re-entry
       // rule (commitPathFromListing); this correction supersede is global.
       if (correctionGen !== deps.correctionGen.value) return
-      if (betterPath !== targetPath && betterPath !== deps.getPanePath(pane)) {
+      // PER-PANE supersede: the correction refines where THIS switch landed, so it's
+      // void once the pane has a newer navigation (a token minted since, even to the
+      // same folder) or has already moved off the switch's target (a folder opened
+      // from the listing lands only through `commitPathFromListing`, which mints
+      // nothing). Applying it then moved the pane away from where it was sent and
+      // superseded that navigation's load: MCP `select_volume` then `nav_to_path`
+      // failed with "Superseded by new navigation".
+      if (deps.tokens.get(pane) !== token || deps.getPanePath(pane) !== targetPath) return
+      if (betterPath !== targetPath) {
         commitAhead(deps, pane, () => {
           deps.setPanePath(pane, betterPath)
           deps.setPaneHistory(pane, pushHistoryEntry(deps.getPaneHistory(pane), { volumeId, path: betterPath }))
@@ -468,6 +479,9 @@ function navigateInPlace(deps: NavigateDeps, intent: NavigateIntent, path: strin
 
   const paneRef = deps.getPaneRef(pane)
   if (!paneRef) return { status: 'refused', reason: PANE_UNAVAILABLE_REFUSAL }
+  // Only a navigation that actually starts claims the pane: a refusal above leaves a
+  // pending switch correction alone.
+  mintToken(deps, pane)
   return { status: 'started', settled: paneRef.navigateToPath(path, intent.selectName) }
 }
 
@@ -496,6 +510,7 @@ function navigateHistory(
     // Delegates to the FilePane primitive; its onPathChange re-enters as a
     // same-token self-re-entry (commitPathFromListing). `settled` is the primitive's.
     if (!paneRef) return { status: 'started', settled: SETTLED_NOOP }
+    mintToken(deps, pane)
     return { status: 'started', settled: paneRef.navigateToParent().then(() => undefined) }
   }
 
@@ -508,6 +523,7 @@ function navigateHistory(
   } else {
     return { status: 'started', settled: SETTLED_NOOP }
   }
+  mintToken(deps, pane)
 
   const target = getCurrentEntry(newHistory)
   commitHistoryWalk(deps, pane, newHistory, target.path)

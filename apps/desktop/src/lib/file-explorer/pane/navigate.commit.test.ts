@@ -182,6 +182,61 @@ describe('background correction (global correctionGen, the old volumeChangeGener
     await flush()
     expect(h.tab('left').path).toBe(leftPathAfterSwitch) // unchanged — left correction dropped
   })
+
+  it('DROPS a switch correction once a newer navigation starts on that pane, even to the same folder', async () => {
+    // The MTP E2E race: `select_volume` acks once the pane shows the volume, and the
+    // agent's `nav_to_path` to the storage root starts an in-place load there. A
+    // correction resolving after that committed the remembered folder, re-listed the
+    // pane, and rejected the agent's navigation as superseded.
+    let resolveCorrection: (p: string) => void = () => {}
+    h.determineNavigationPath.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        resolveCorrection = r
+      }),
+    )
+    navigate({ pane: 'left', to: { selectVolume: { volumeId: 'ext', path: '/Volumes/Ext' } }, source: 'mcp' }, h.deps)
+    navigate({ pane: 'left', to: { goTo: { volumeId: 'ext', path: '/Volumes/Ext' } }, source: 'mcp' }, h.deps)
+
+    resolveCorrection('/Volumes/Ext/remembered')
+    await flush()
+
+    expect(h.tab('left').path).toBe('/Volumes/Ext')
+    expect(h.tab('left').history.stack.map((entry) => entry.path)).not.toContain('/Volumes/Ext/remembered')
+  })
+
+  it('DROPS a switch correction once the pane has already moved on by itself (a folder opened from the listing)', async () => {
+    // Enter on a folder bypasses `navigate()` and lands only through `commitPathFromListing`,
+    // so no token marks it. The pane no longer sitting where the switch put it is the tell.
+    let resolveCorrection: (p: string) => void = () => {}
+    h.determineNavigationPath.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        resolveCorrection = r
+      }),
+    )
+    navigate({ pane: 'left', to: { selectVolume: { volumeId: 'ext', path: '/Volumes/Ext' } }, source: 'user' }, h.deps)
+    commitPathFromListing(h.deps, 'left', '/Volumes/Ext/opened')
+
+    resolveCorrection('/Volumes/Ext/remembered')
+    await flush()
+
+    expect(h.tab('left').path).toBe('/Volumes/Ext/opened')
+  })
+
+  it("KEEPS a pane's switch correction when only the OTHER pane navigates in place", async () => {
+    let resolveLeft: (p: string) => void = () => {}
+    h.determineNavigationPath.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        resolveLeft = r
+      }),
+    )
+    navigate({ pane: 'left', to: { selectVolume: { volumeId: 'ext', path: '/Volumes/Ext' } }, source: 'user' }, h.deps)
+    navigate({ pane: 'right', to: { goTo: { volumeId: 'root', path: '/Users/me/sub' } }, source: 'user' }, h.deps)
+
+    resolveLeft('/Volumes/Ext/remembered')
+    await flush()
+
+    expect(h.tab('left').path).toBe('/Volumes/Ext/remembered')
+  })
 })
 
 describe('commitPathFromListing — stale-listing drop policy (L6, token + foreign-path)', () => {

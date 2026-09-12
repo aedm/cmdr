@@ -959,11 +959,13 @@ return-point bookkeeping. `navigate.ts` re-exports the names callers use, so the
   The pane's own effect only clears the host when it LEAVES the network volume, so without this a re-select from inside
   a host (picker, breadcrumb, MCP `select_volume`) left the share list — or a mount-error pane — on screen, and the MCP
   tool timed out waiting for the volume name to fall back to plain `Network`.
-- **Token model (the staleness mechanism).** A per-pane `txToken` (caller-owned `Map`) governs the same-token
-  self-re-entry rule: a parent-nav / walk-up completion re-entering via `onPathChange` carries the SAME token and so
-  commits (not dropped); only a fresh `navigate()` advances the token. A single GLOBAL `correctionGen` (the old
-  `volumeChangeGeneration`, shared by both panes) gates the background `determineNavigationPath` correction. The
-  drop-foreign-listings policy (next note) is what drops a genuinely stale listing.
+- **Token model (the staleness mechanism).** A per-pane `txToken` (caller-owned `Map`), minted by every `navigate()` arm
+  that starts a navigation, does two jobs. It carries the same-token self-re-entry rule: a parent-nav / walk-up
+  completion re-entering via `onPathChange` carries the SAME token and so commits (not dropped). And it's the per-pane
+  half of the background `determineNavigationPath` correction's gate: the correction drops once its pane minted a newer
+  token or left the switch's target, so it can't supersede a navigation that followed the switch. A single GLOBAL
+  `correctionGen` (the old `volumeChangeGeneration`, shared by both panes) is the other half. The drop-foreign-listings
+  policy (next note) is what drops a genuinely stale listing.
 
 **Don't add `cd`-style heuristics in `commitPathFromListing`.** Stale `onPathChange` from a slow listing is dropped by
 the drop-foreign-listings policy in `navigate.ts::commitPathFromListing` (`smb://` prefix for `network`,
