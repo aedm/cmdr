@@ -979,8 +979,9 @@ test left that volume. **Why**: `determineNavigationPath` restores the remembere
 exists, asking the volume itself, and one app instance serves every test on the shard. Phones and servers answer that
 question truthfully, so an MTP spec that selected Internal Storage and waited for a root row sat in `Documents` instead
 (all 28 MTP tests timed out that way). A spec that needs a storage's root opens it with `mcpOpenMtpStorageRoot`
-(`e2e-shared/mcp-client.ts`), which selects and then navigates to the root; `mtp.spec.ts`'s "switching back to a storage
-reopens the folder last used there" pins the remembering itself.
+(`e2e-shared/mcp-client.ts`). It selects, reads off `cmdr://state` where the pane landed (`select_volume` replies once
+the pane has come to rest), and navigates to the root only when the pane isn't already there. `mtp.spec.ts`'s
+"switching back to a storage reopens the folder last used there" pins the remembering itself.
 
 **Gotcha**: a selector naming a class or `data-*` attribute that nothing in `apps/desktop/src` renders fails
 `pnpm check e2e-stale-selector`, in the fast lane and CI. **Why**: code nothing runs routinely (the marketing capture,

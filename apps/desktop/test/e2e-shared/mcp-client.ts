@@ -124,7 +124,10 @@ export async function mcpReadResource(uri: string): Promise<string> {
 
 // ── Convenience wrappers ────────────────────────────────────────────────────
 
-/** Selects an MTP volume and waits for it to load. */
+/**
+ * Selects a volume and waits for the pane to come to rest on it: `select_volume` replies
+ * once the folder the switch reopened (the one last used there) has listed.
+ */
 export async function mcpSelectVolume(pane: 'left' | 'right', name: string): Promise<string> {
   return mcpCall('select_volume', { pane, name })
 }
@@ -134,12 +137,8 @@ export async function mcpNavToPath(pane: 'left' | 'right', path: string): Promis
   return mcpCall('nav_to_path', { pane, path })
 }
 
-/**
- * The `mtp://<device>/<storage>` root of a named MTP storage, read off `cmdr://state`.
- * The device id is assigned at runtime, so a spec discovers it rather than hardcoding it.
- */
-export async function getMtpVolumePath(storageName: string): Promise<string> {
-  const state = await mcpReadResource('cmdr://state')
+/** The `mtp://<device>/<storage>` root of a named MTP storage, in a `cmdr://state` read. */
+function mtpVolumePathIn(state: string, storageName: string): string {
   const lines = state.split('\n')
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes(`name: ${storageName}`) && lines[i + 1]?.includes('id:')) {
@@ -151,18 +150,44 @@ export async function getMtpVolumePath(storageName: string): Promise<string> {
   throw new Error(`MTP volume "${storageName}" not found in cmdr://state`)
 }
 
+/** The `path:` a pane's block reports in a `cmdr://state` read, without a trailing slash. */
+function panePathIn(state: string, pane: 'left' | 'right'): string | undefined {
+  const lines = state.split('\n')
+  const start = lines.indexOf(`${pane}:`)
+  if (start === -1) return undefined
+  for (const line of lines.slice(start + 1)) {
+    // An unindented line is the next top-level block: the pane reported no path.
+    if (!line.startsWith(' ')) return undefined
+    if (line.startsWith('  path: ')) return line.slice('  path: '.length).replace(/\/+$/, '')
+  }
+  return undefined
+}
+
+/**
+ * The `mtp://<device>/<storage>` root of a named MTP storage, read off `cmdr://state`.
+ * The device id is assigned at runtime, so a spec discovers it rather than hardcoding it.
+ */
+export async function getMtpVolumePath(storageName: string): Promise<string> {
+  return mtpVolumePathIn(await mcpReadResource('cmdr://state'), storageName)
+}
+
 /**
  * Opens a named MTP storage in `pane` at its ROOT, and returns the root's path.
  *
  * ❗ Selecting a volume reopens the folder last used on it (`determineNavigationPath`),
  * and one app instance serves every test on the shard, so a bare `mcpSelectVolume`
  * lands wherever an earlier test left that storage (its `Documents`, say). A spec
- * that starts from the root says so through this helper.
+ * that starts from the root says so through this helper. `select_volume` replies once
+ * the pane has come to rest and its state is pushed, so one state read says where it
+ * landed, and the helper navigates only when that isn't the root.
  */
 export async function mcpOpenMtpStorageRoot(pane: 'left' | 'right', storageName: string): Promise<string> {
   await mcpSelectVolume(pane, storageName)
-  const root = await getMtpVolumePath(storageName)
-  await mcpNavToPath(pane, root)
+  const state = await mcpReadResource('cmdr://state')
+  const root = mtpVolumePathIn(state, storageName)
+  if (panePathIn(state, pane) !== root) {
+    await mcpNavToPath(pane, root)
+  }
   return root
 }
 
