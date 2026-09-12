@@ -42,6 +42,60 @@ pub(super) fn nav_result(pane: &str, requested: &str, ack: NavAck) -> ToolResult
     }
 }
 
+/// Round-trip budget for `select_volume`. The FE holds its reply for the switch's
+/// correction (bounded by its 500 ms existence checks) plus the same quiet wait
+/// `nav_to_path` makes, so it gets the same budget.
+const SELECT_VOLUME_TIMEOUT_SECS: u64 = NAV_TO_PATH_TIMEOUT_SECS;
+
+/// Word what a volume select did to the pane. Branches on the typed [`NavAck`], never on
+/// message text.
+///
+/// A select doesn't pick the folder: the switch reopens the one last used on that volume,
+/// so the `OK` names the folder the pane opened, and only the volume decides success.
+pub(super) fn select_volume_result(pane: &str, volume_name: &str, ack: NavAck) -> ToolResult {
+    match ack {
+        NavAck::Navigated { path } if path.is_empty() => {
+            Ok(json!(format!("OK: Switched {pane} pane to volume {volume_name}")))
+        }
+        NavAck::Navigated { path } => Ok(json!(format!(
+            "OK: Switched {pane} pane to volume {volume_name}, at {path}"
+        ))),
+        NavAck::FellBack { path } => Err(ToolError::internal(format!(
+            "Switching the {pane} pane to volume {volume_name} didn't land: it came to rest at {path} instead. Read cmdr://state to see what it's showing."
+        ))),
+        NavAck::DidNotSettle { path } => Err(ToolError::internal(format!(
+            "Switching the {pane} pane to volume {volume_name} didn't settle: it's still listing and reports {path}. Read cmdr://state to triage, then retry."
+        ))),
+    }
+}
+
+/// Wait for the pane's pushed `volume_name` to equal the one selected, so a `cmdr://state`
+/// read right after the tool returns names it.
+///
+/// The pane is at rest by the time this runs, so it usually matches on the first look.
+/// The servers hub is why it stays: it pushes its own name (`NetworkMountView`), which
+/// can trail the FE's reply.
+async fn wait_for_pane_volume_name(store: &PaneStateStore, pane: &str, volume_name: &str) -> Result<(), ToolError> {
+    let deadline = tokio::time::Instant::now() + NAV_ACK_TIMEOUT;
+    let poll_interval = std::time::Duration::from_millis(250);
+    loop {
+        let current_name = if pane == "left" {
+            store.get_left().volume_name
+        } else {
+            store.get_right().volume_name
+        };
+        if current_name.as_deref() == Some(volume_name) {
+            return Ok(());
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return Err(ToolError::internal(format!(
+                "The {pane} pane came to rest on volume '{volume_name}', but its state still reports volume {current_name:?}. Read cmdr://state to triage."
+            )));
+        }
+        tokio::time::sleep(poll_interval).await;
+    }
+}
+
 /// Take the focused pane to `dir` and point it at `entries`: cursor on the first, all of
 /// them selected when there's more than one. An empty `entries` just opens `dir`.
 ///
@@ -67,7 +121,13 @@ pub(crate) async fn go_to_in_focused_pane<R: Runtime>(
     // already handles applies here too — including the typed landing outcome, so a pane
     // that fell back somewhere else stops the flow instead of moving a cursor in the
     // wrong directory.
-    let ack = mcp_nav_round_trip(app, json!({"pane": pane, "path": dir}), NAV_TO_PATH_TIMEOUT_SECS).await?;
+    let ack = mcp_nav_round_trip(
+        app,
+        "mcp-nav-to-path",
+        json!({"pane": pane, "path": dir}),
+        NAV_TO_PATH_TIMEOUT_SECS,
+    )
+    .await?;
     nav_result(&pane, dir, ack)?;
 
     let Some(first) = entries.first() else {
@@ -206,45 +266,21 @@ pub async fn execute_nav_command_with_params<R: Runtime>(app: &AppHandle<R>, nam
                 .try_state::<PaneStateStore>()
                 .ok_or_else(|| ToolError::internal("Pane state not available"))?;
             store.set_focused_pane(pane.to_string());
-            app.emit("mcp-volume-select", json!({"pane": pane, "name": volume_name}))?;
 
-            // Wait for the target pane's `volume_name` to match the requested
-            // name. This is the actual condition we care about and works
-            // uniformly for local, MTP, SMB, and virtual (Network) volumes.
-            //
-            // The previous "wait for `path` to change" formulation had two
-            // false-timeout failure modes:
-            //   1. Re-selecting the same volume: path doesn't change → 30s timeout (a no-op should succeed
-            //      instantly).
-            //   2. Switching to the virtual `Network` volume: the FE swaps in NetworkBrowser without changing
-            //      the pane path, so polling for path change deadlocked. This was the actual root cause of the
-            //      SMB tests' `retries: 1` paying ~30s per first-run failure.
-            //
-            // `volume_name` flows through `PaneState` via `update_left_pane_state`
-            // / `update_right_pane_state` on every FE-side state push (see
-            // `FilePane.svelte`). For an already-on-target volume the first poll
-            // matches immediately; for a real switch we wait for the FE to push
-            // the new name.
-            let target_name = volume_name.to_string();
-            let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(30);
-            let poll_interval = std::time::Duration::from_millis(250);
-            loop {
-                let current_name = match pane {
-                    "left" => store.get_left().volume_name,
-                    "right" => store.get_right().volume_name,
-                    _ => unreachable!(),
-                };
-                if current_name.as_deref() == Some(target_name.as_str()) {
-                    break;
-                }
-                if tokio::time::Instant::now() >= deadline {
-                    return Err(ToolError::internal(format!(
-                        "Timed out waiting for volume '{volume_name}' to load on {pane} pane (last seen volume_name: {current_name:?})"
-                    )));
-                }
-                tokio::time::sleep(poll_interval).await;
+            // The FE replies once the pane has come to rest (`mcp-volume-select.ts`): after
+            // the switch's remembered-folder correction has landed and the listing it picked
+            // has settled, with the typed outcome and the folder it opened.
+            let ack = mcp_nav_round_trip(
+                app,
+                "mcp-volume-select",
+                json!({"pane": pane, "name": volume_name}),
+                SELECT_VOLUME_TIMEOUT_SECS,
+            )
+            .await?;
+            if matches!(ack, NavAck::Navigated { .. }) {
+                wait_for_pane_volume_name(&store, pane, volume_name).await?;
             }
-            Ok(json!(format!("OK: Switched {pane} pane to volume {volume_name}")))
+            select_volume_result(pane, volume_name, ack)
         }
         "nav_to_path" => {
             let pane = params
@@ -265,7 +301,13 @@ pub async fn execute_nav_command_with_params<R: Runtime>(app: &AppHandle<R>, nam
                 store.set_focused_pane(pane.to_string());
             }
 
-            let ack = mcp_nav_round_trip(app, json!({"pane": pane, "path": path}), NAV_TO_PATH_TIMEOUT_SECS).await?;
+            let ack = mcp_nav_round_trip(
+                app,
+                "mcp-nav-to-path",
+                json!({"pane": pane, "path": path}),
+                NAV_TO_PATH_TIMEOUT_SECS,
+            )
+            .await?;
             nav_result(pane, &path, ack)
         }
         "move_cursor" => {

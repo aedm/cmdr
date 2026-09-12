@@ -222,6 +222,53 @@ describe('background correction (global correctionGen, the old volumeChangeGener
     expect(h.tab('left').path).toBe('/Volumes/Ext/opened')
   })
 
+  it("a switch's `corrected` resolves only once its correction has landed, so a caller can wait for where the pane rests", async () => {
+    // MCP `select_volume` replies on this: acking at the optimistic commit left the
+    // remembered-folder correction still to land, and it superseded the agent's next
+    // `nav_to_path`.
+    let resolveCorrection: (p: string) => void = () => {}
+    h.determineNavigationPath.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        resolveCorrection = r
+      }),
+    )
+    const result = navigate(
+      { pane: 'left', to: { selectVolume: { volumeId: 'ext', path: '/Volumes/Ext' } }, source: 'user' },
+      h.deps,
+    )
+    const corrected = result.status === 'started' ? result.corrected : undefined
+    expect(corrected).toBeInstanceOf(Promise)
+
+    let landed = false
+    void corrected?.then(() => {
+      landed = true
+    })
+    await flush()
+    expect(landed).toBe(false)
+
+    resolveCorrection('/Volumes/Ext/remembered')
+    await corrected
+    expect(h.tab('left').path).toBe('/Volumes/Ext/remembered')
+  })
+
+  it("a switch's `corrected` resolves when a later navigation drops the correction, too", async () => {
+    let resolveCorrection: (p: string) => void = () => {}
+    h.determineNavigationPath.mockReturnValueOnce(
+      new Promise<string>((r) => {
+        resolveCorrection = r
+      }),
+    )
+    const result = navigate(
+      { pane: 'left', to: { selectVolume: { volumeId: 'ext', path: '/Volumes/Ext' } }, source: 'user' },
+      h.deps,
+    )
+    navigate({ pane: 'right', to: { selectVolume: { volumeId: 'ext', path: '/Volumes/Ext' } }, source: 'user' }, h.deps)
+
+    resolveCorrection('/Volumes/Ext/dropped')
+    await expect(result.status === 'started' ? result.corrected : undefined).resolves.toBeUndefined()
+    expect(h.tab('left').path).toBe('/Volumes/Ext')
+  })
+
   it("KEEPS a pane's switch correction when only the OTHER pane navigates in place", async () => {
     let resolveLeft: (p: string) => void = () => {}
     h.determineNavigationPath.mockReturnValueOnce(

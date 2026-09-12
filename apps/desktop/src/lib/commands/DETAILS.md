@@ -40,7 +40,7 @@ interface CommandArgsOverrides {
   'selection.mcpSelectByNames': { pane: PaneId; names: string[]; mode: McpSelectMode }
   'cursor.moveTo': { pane: PaneId; to: number | string }
   'cursor.scrollTo': { pane: PaneId; index: number }
-  'volume.selectByName': { pane: PaneId; name: string }
+  'volume.selectByName': { pane: PaneId; name: string; mcpRequestId?: string } // the MCP reply's round-trip id
   'tab.mcpAction': { pane: PaneId; action: McpTabAction; tabId?: string; pinned?: boolean }
   'dialog.confirm': { type: ConfirmDialogType; onConflict?: string }
 }

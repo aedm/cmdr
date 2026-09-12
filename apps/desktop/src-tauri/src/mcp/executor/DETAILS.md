@@ -172,6 +172,12 @@ and unit-tested in `mod.rs`). Per-tool:
   until the pane comes to rest, which for a cross-volume switch is well past `settled` (that arm resolves it on the
   optimistic commit, before the new volume lists anything — the last false-positive `OK`). `go_to_latest_download`
   rides the same helper for its navigation leg, so it can't move a cursor in a directory the pane never reached.
+- `select_volume` (30 s, the same helper on `mcp-volume-select`): the FE holds its reply until the switch's
+  remembered-folder correction has landed and the pane has come to rest, and `select_volume_result` words the same
+  three outcomes, its `OK` naming the folder the pane opened. A `navigated` reply is followed by a short `volume_name`
+  poll so `cmdr://state` agrees. The request id reaches the FE through the command bus (`volume.selectByName`'s
+  `mcpRequestId`), so a dialog in front refuses the select before anything can reply, and the tool waits out its
+  budget.
 - `open_under_cursor`: 5 s via `mcp_round_trip_with_timeout`; opening a file delegates to the OS default app, so neither
   `GenerationAdvanced` nor `WindowAppeared` would fire.
 - Resources that need FE data use `resource_round_trip` (same pattern, returns the `data` field). Used by

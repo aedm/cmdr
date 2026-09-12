@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use super::nav::nav_result;
+use super::nav::{nav_result, select_volume_result};
 use super::search::parse_human_size;
 use super::*;
 
@@ -454,6 +454,61 @@ fn nav_result_reports_the_landing_place_not_the_request() {
     )
     .expect_err("an unsettled pane is not an OK");
     assert!(unsettled.message.contains("didn't settle"));
+}
+
+// === select_volume_result: the ack says where the switch left the pane ===
+//
+// A volume select reopens the folder last used on that volume, after a background check
+// that can take a moment. Acking once the pane merely showed the volume let that check
+// land after the reply and supersede the agent's next `nav_to_path`. The FE now replies
+// once the pane has come to rest, and the result names the folder it opened.
+
+#[test]
+fn select_volume_result_names_the_folder_the_pane_opened() {
+    let ok = select_volume_result(
+        "left",
+        "Internal Storage",
+        NavAck::Navigated {
+            path: "mtp://1/65537/Documents".to_string(),
+        },
+    )
+    .expect("navigated is a success");
+    assert_eq!(
+        ok,
+        json!("OK: Switched left pane to volume Internal Storage, at mtp://1/65537/Documents")
+    );
+}
+
+#[test]
+fn select_volume_result_is_not_an_ok_when_the_pane_rests_elsewhere_or_never_settles() {
+    let fell_back = select_volume_result(
+        "left",
+        "Internal Storage",
+        NavAck::FellBack {
+            path: "/Users/david".to_string(),
+        },
+    )
+    .expect_err("a fallback is not an OK");
+    assert!(fell_back.message.contains("Internal Storage"), "names the request");
+    assert!(fell_back.message.contains("/Users/david"), "names where it landed");
+
+    let unsettled = select_volume_result(
+        "right",
+        "Naspolya",
+        NavAck::DidNotSettle {
+            path: "sftp://ada@nas.local:22/srv/data".to_string(),
+        },
+    )
+    .expect_err("an unsettled pane is not an OK");
+    assert!(unsettled.message.contains("Naspolya"), "names the request");
+    assert!(unsettled.message.contains("didn't settle"));
+}
+
+#[test]
+fn select_volume_result_leaves_out_the_folder_when_the_reply_names_none() {
+    let ok = select_volume_result("left", "Macintosh HD", NavAck::Navigated { path: String::new() })
+        .expect("still a success");
+    assert_eq!(ok, json!("OK: Switched left pane to volume Macintosh HD"));
 }
 
 #[test]

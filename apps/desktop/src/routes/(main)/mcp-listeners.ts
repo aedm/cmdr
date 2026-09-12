@@ -37,18 +37,9 @@ import { resolveLocation } from '$lib/file-explorer/navigation/resolve-location'
 import { tString } from '$lib/intl/messages.svelte'
 import { getAppLogger } from '$lib/logging/logger'
 import type { ExplorerAPI } from './explorer-api'
-import { classifyLanding, waitForPaneToGoQuiet, NAV_QUIET_WAIT, type NavLandingOutcome } from './mcp-nav-landing'
+import { classifyLanding, waitForPaneToGoQuiet, NAV_QUIET_WAIT, type NavReplyBody } from './mcp-nav-landing'
 
 const log = getAppLogger('mcpListeners')
-
-/**
- * What `mcp-nav-to-path` puts on the wire. The plain `{ ok, error }` shape covers the
- * declines that happen before the pane moves (no explorer, an unresolvable path, a
- * synchronous refusal); the landing shapes carry a typed `outcome` plus the location the
- * pane came to rest on, which the Rust handler turns into the tool result. ❌ The backend
- * branches on `outcome`, never on the message text.
- */
-type NavReplyBody = { ok: false; error: string } | ({ ok: boolean } & NavLandingOutcome)
 
 /**
  * Typed dispatch entry point the adapter calls. Bound by the caller to
@@ -263,11 +254,15 @@ export async function setupMcpListeners(ctx: McpListenerContext): Promise<void> 
   })
 
   await listenTauri('mcp-volume-select', (event) => {
+    // Round-trip through the bus, like the auto-confirmed file ops: the request id rides
+    // the command args, and the handler replies once the pane has come to rest
+    // (`mcp-volume-select.ts`). A dialog in front refuses the command before it runs.
     const raw = asRecord(event.payload)
     const pane = parsePane(raw.pane)
     const name = typeof raw.name === 'string' ? raw.name : undefined
+    const mcpRequestId = typeof raw.requestId === 'string' ? raw.requestId : undefined
     if (!pane || name === undefined) return
-    void dispatch(volumeSelectByNameCommand, { pane, name })
+    void dispatch(volumeSelectByNameCommand, { pane, name, mcpRequestId })
   })
 
   await listenTauri('mcp-select', (event) => {
@@ -428,7 +423,7 @@ export async function setupMcpListeners(ctx: McpListenerContext): Promise<void> 
               now: () => Date.now(),
               sleep: (ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
             },
-            { listingIdBefore, ...NAV_QUIET_WAIT },
+            { listingIdBefore, requireNewListing: true, ...NAV_QUIET_WAIT },
           )
         : true
 

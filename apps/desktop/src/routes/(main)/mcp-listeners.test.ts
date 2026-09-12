@@ -238,6 +238,37 @@ describe('mcp-refresh listener (round-trip)', () => {
   })
 })
 
+describe('mcp-volume-select listener', () => {
+  it('carries the request id through the bus, so the select can reply once the pane has come to rest', async () => {
+    const dispatch = vi.fn(() => Promise.resolve()) as unknown as CommandDispatch
+    const handlers = await setupWithHandlers(dispatch)
+
+    getHandler(
+      handlers,
+      'mcp-volume-select',
+    )({ payload: { pane: 'left', name: 'Internal Storage', requestId: 'req-v' } })
+
+    expect(dispatch).toHaveBeenCalledExactlyOnceWith('volume.selectByName', {
+      pane: 'left',
+      name: 'Internal Storage',
+      mcpRequestId: 'req-v',
+    })
+  })
+
+  it('still dispatches for a fire-and-forget caller that sends no request id', async () => {
+    const dispatch = vi.fn(() => Promise.resolve()) as unknown as CommandDispatch
+    const handlers = await setupWithHandlers(dispatch)
+
+    getHandler(handlers, 'mcp-volume-select')({ payload: { pane: 'right', name: 'Macintosh HD' } })
+
+    expect(dispatch).toHaveBeenCalledExactlyOnceWith('volume.selectByName', {
+      pane: 'right',
+      name: 'Macintosh HD',
+      mcpRequestId: undefined,
+    })
+  })
+})
+
 // === MCP-originated write provenance ===
 // Every write an MCP tool triggers must carry `initiator: 'aiClient'` through the
 // bus so the backend's operation log records the AI as the initiator, not the

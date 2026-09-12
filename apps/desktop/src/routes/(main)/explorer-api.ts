@@ -9,6 +9,7 @@ import type { QuickLookKeyEventPayload } from '$lib/file-explorer/quick-look/qui
 import type { FileEntry, FriendlyError, TransferOperationType } from '$lib/file-explorer/types'
 import type { AdoptedOperationData, ForegroundOperationVerdict } from '$lib/file-explorer/pane/dialog-props'
 import type { NavigateIntent, NavigateResult } from '$lib/file-explorer/pane/navigate'
+import type { VolumeSelectOutcome } from '$lib/file-explorer/pane/volume-selection'
 import type {
   CopyPathBetweenPanesArgs,
   OpenDeleteDialogArgs,
@@ -145,7 +146,12 @@ export interface ExplorerAPI {
    * optimistically, so the pane reports the target long before it has been there.
    */
   isPaneLoading: (pane: 'left' | 'right') => boolean
-  selectVolumeByName: (pane: 'left' | 'right', name: string) => Promise<boolean>
+  /**
+   * Switch a pane to a volume by name. Resolves once the switch has committed, with the
+   * volume it chose and `navigate()`'s result; the pane's final folder is decided when
+   * that result's `corrected` resolves.
+   */
+  selectVolumeByName: (pane: 'left' | 'right', name: string) => Promise<VolumeSelectOutcome>
   handleSelectionAction: (args: SelectionActionArgs) => void
   handleMcpSelect: (pane: 'left' | 'right', start: number, count: number | 'all', mode: McpSelectMode) => Promise<void>
   /**

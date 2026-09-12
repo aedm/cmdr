@@ -16,6 +16,7 @@ import { getFocusedPanePath } from '$lib/file-explorer/pane/focused-pane-reads'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
 import type { CommandArgs } from '$lib/commands'
+import { selectVolumeForMcp } from '../mcp-volume-select'
 import type { CommandHandlerRecord } from './types'
 
 /** The last path segment, for a friendly toast label (`/Users/me/Docs` → `Docs`). */
@@ -53,9 +54,10 @@ export const miscHandlers = {
   },
 
   'volume.selectByName': ({ explorerRef, dispatchArgs }) => {
-    // MCP `select_volume` tool: select a SPECIFIC pane's volume by name.
-    // `selectVolumeByName` drives the `navigate()` transaction for the switch.
-    const { pane, name } = dispatchArgs as CommandArgs['volume.selectByName']
-    void explorerRef?.selectVolumeByName(pane, name)
+    // MCP `select_volume` tool: select a SPECIFIC pane's volume by name, and with a
+    // request id reply once the pane has come to rest. Voided on purpose: the landing
+    // wait can run for seconds, and nothing downstream of the dispatch reads it.
+    const { pane, name, mcpRequestId } = dispatchArgs as CommandArgs['volume.selectByName']
+    void selectVolumeForMcp({ explorer: explorerRef, pane, name, requestId: mcpRequestId })
   },
 } satisfies Partial<CommandHandlerRecord>

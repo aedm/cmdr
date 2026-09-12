@@ -10,8 +10,8 @@ via a typed API. Up: `apps/desktop/CLAUDE.md`, sibling: `../viewer/CLAUDE.md`.
 - `command-dispatch.ts` + `command-handlers/` are the dispatch core and its family-grouped handlers; `listener-setup.ts`
   holds the menu / MCP-dialog / window-focus listeners; `window-services.ts` starts and stops every subscription the
   window holds for its lifetime.
-- Supporting pure modules: `startup-gates.ts`, `mcp-listeners.ts`, `mcp-nav-landing.ts`, `explorer-api.ts`,
-  `dispatch-dedup.ts`, `dialog-command-gate.ts`, `global-keydown.ts`, `global-contextmenu.ts`.
+- Supporting modules: `startup-gates.ts`, `mcp-listeners.ts`, `mcp-nav-landing.ts`, `mcp-volume-select.ts`,
+  `explorer-api.ts`, `dispatch-dedup.ts`, `dialog-command-gate.ts`, `global-keydown.ts`, `global-contextmenu.ts`.
 
 ## Must-knows
 
@@ -36,8 +36,8 @@ via a typed API. Up: `apps/desktop/CLAUDE.md`, sibling: `../viewer/CLAUDE.md`.
 - **Gate on capabilities, ❌ never a `volumeId` compare**: `blockedByCapabilities` bails pre-dispatch for
   destination-side ops the focused pane can't satisfy.
 - **`mcp-listeners.ts` validate-parses each `mcp-*` payload** and dispatches typed `CommandId` consts, so a registry
-  rename breaks compilation here. Its `nav_to_path` ack reports the pane's LANDING, ❌ never `settled` alone
-  (`mcp-nav-landing.ts`).
+  rename breaks compilation here. The `nav_to_path` and `select_volume` acks report the pane's LANDING, ❌ never
+  `settled` alone (`mcp-nav-landing.ts`).
 - **E2E and debug listeners stay off the bus by design** (`e2e-trigger-file-drop`, the DEV `debug-*-error` ones call
   `explorerRef.*` directly). Don't "finish the migration". DETAILS § Off-bus hooks.
 - **`foreground-operation` is the one inbound channel from another WINDOW** (the queue's Show button). ❌ Never route it

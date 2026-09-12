@@ -22,11 +22,10 @@ function vol(over: Partial<VolumeInfo>): VolumeInfo {
 }
 
 function setup(volumes: VolumeInfo[]) {
-  const navigate = vi.fn<(intent: NavigateIntent) => NavigateResult>(
-    () => ({ status: 'started' }) as unknown as NavigateResult,
-  )
+  const started: NavigateResult = { status: 'started', settled: Promise.resolve(), corrected: Promise.resolve() }
+  const navigate = vi.fn<(intent: NavigateIntent) => NavigateResult>(() => started)
   const deps: VolumeSelectionDeps = { getVolumes: () => volumes, navigate }
-  return { ops: createVolumeSelection(deps), navigate }
+  return { ops: createVolumeSelection(deps), navigate, started }
 }
 
 describe('createVolumeSelection', () => {
@@ -36,9 +35,9 @@ describe('createVolumeSelection', () => {
     // ❗ The name is read from the catalog, ❌ never a literal: the hub row is
     // synthesized by `volume-grouping.ts`, so no `findIndex` over the volume list
     // can reach it, and a second spelling makes `select_volume` time out.
-    const { ops, navigate } = setup([])
-    const ok = await ops.selectVolumeByName('left', 'Servers')
-    expect(ok).toBe(true)
+    const { ops, navigate, started } = setup([])
+    const outcome = await ops.selectVolumeByName('left', 'Servers')
+    expect(outcome).toEqual({ kind: 'selected', volumeId: 'network', navigation: started })
     expect(navigate).toHaveBeenCalledWith({
       pane: 'left',
       to: { selectVolume: { volumeId: 'network', path: 'smb://' } },
@@ -47,9 +46,9 @@ describe('createVolumeSelection', () => {
   })
 
   it('selectVolumeByName for a real volume opens it at its root', async () => {
-    const { ops, navigate } = setup([vol({ id: 'usb', name: 'USB', path: '/Volumes/USB' })])
-    const ok = await ops.selectVolumeByName('right', 'USB')
-    expect(ok).toBe(true)
+    const { ops, navigate, started } = setup([vol({ id: 'usb', name: 'USB', path: '/Volumes/USB' })])
+    const outcome = await ops.selectVolumeByName('right', 'USB')
+    expect(outcome).toEqual({ kind: 'selected', volumeId: 'usb', navigation: started })
     expect(navigate).toHaveBeenCalledWith({
       pane: 'right',
       to: { selectVolume: { volumeId: 'usb', path: '/Volumes/USB' } },
@@ -67,7 +66,7 @@ describe('createVolumeSelection', () => {
       landingPath: 'sftp://ada@nas.local:22/srv/data/photos',
     })
     const { ops, navigate } = setup([place])
-    expect(await ops.selectVolumeByName('left', 'Naspolya')).toBe(true)
+    expect(await ops.selectVolumeByName('left', 'Naspolya')).toMatchObject({ kind: 'selected', volumeId: 'sftp-nas' })
     expect(navigate).toHaveBeenCalledWith({
       pane: 'left',
       to: { selectVolume: { volumeId: 'sftp-nas', path: 'sftp://ada@nas.local:22/srv/data/photos' } },
@@ -85,7 +84,7 @@ describe('createVolumeSelection', () => {
       landingPath: 'sftp://ada@nas.local:22/srv/data/photos',
     })
     const { ops, navigate } = setup([place])
-    expect(await ops.selectVolumeByName('left', 'Naspolya')).toBe(true)
+    expect(await ops.selectVolumeByName('left', 'Naspolya')).toMatchObject({ kind: 'selected', volumeId: 'sftp-nas' })
     expect(navigate).toHaveBeenCalledWith({
       pane: 'left',
       to: { selectVolume: { volumeId: 'sftp-nas', path: 'sftp://ada@nas.local:22/srv/data' } },
@@ -95,9 +94,12 @@ describe('createVolumeSelection', () => {
 
   it('selectVolumeByName for a favorite navigates to its path on the containing volume', async () => {
     resolvePathVolumeSpy.mockResolvedValue({ volume: { id: 'root' } })
-    const { ops, navigate } = setup([vol({ id: 'fav', name: 'Docs', path: '/Users/me/Docs', category: 'favorite' })])
-    const ok = await ops.selectVolumeByName('left', 'Docs')
-    expect(ok).toBe(true)
+    const { ops, navigate, started } = setup([
+      vol({ id: 'fav', name: 'Docs', path: '/Users/me/Docs', category: 'favorite' }),
+    ])
+    const outcome = await ops.selectVolumeByName('left', 'Docs')
+    // The volume a favorite selects is its CONTAINING one: that's where the pane lands.
+    expect(outcome).toEqual({ kind: 'selected', volumeId: 'root', navigation: started })
     expect(resolvePathVolumeSpy).toHaveBeenCalledWith('/Users/me/Docs')
     expect(navigate).toHaveBeenCalledWith({
       pane: 'left',
@@ -106,16 +108,15 @@ describe('createVolumeSelection', () => {
     })
   })
 
-  it('selectVolumeByName returns false and does not navigate when the name is unknown', async () => {
+  it('selectVolumeByName says not-found and does not navigate when the name is unknown', async () => {
     const { ops, navigate } = setup([vol({ name: 'USB' })])
-    const ok = await ops.selectVolumeByName('left', 'Nope')
-    expect(ok).toBe(false)
+    expect(await ops.selectVolumeByName('left', 'Nope')).toEqual({ kind: 'not-found' })
     expect(navigate).not.toHaveBeenCalled()
   })
 
-  it('selectVolumeByIndex out of range returns false', async () => {
+  it('selectVolumeByIndex out of range says not-found', async () => {
     const { ops, navigate } = setup([vol({})])
-    expect(await ops.selectVolumeByIndex('left', 5)).toBe(false)
+    expect(await ops.selectVolumeByIndex('left', 5)).toEqual({ kind: 'not-found' })
     expect(navigate).not.toHaveBeenCalled()
   })
 })

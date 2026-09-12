@@ -114,7 +114,9 @@
  *   optimistic commit is synchronous and the listing loads afterward.
  *   `navigate-and-select` / `revealSearchResultInPane` bridge the gap to the
  *   cursor move themselves via `moveCursor`'s internal `whenLoadSettles`
- *   (L2-adjacent); don't "fix" this to await the listing.
+ *   (L2-adjacent); don't "fix" this to await the listing. Its `corrected` resolves
+ *   once the background best-path correction has committed or been dropped: MCP
+ *   `select_volume` waits on it before it looks for where the pane came to rest.
  * - **History / edge flows**: match whichever primitive they drive. The
  *   `{ returnTo }` arm: the FilePane promise for a same-volume return, a resolved
  *   no-op for a cross-volume one (the pane's props re-list it).
@@ -249,6 +251,7 @@ function tryPinnedVolumeFork(
  * DPE:669). Two gates drop it: the GLOBAL `correctionGen` (any later volume change
  * on either pane) and the pane's own transaction token plus position (any later
  * navigation on this pane, or the pane having moved off the switch's target).
+ * Returns the chain, which resolves once the correction has committed or been dropped.
  */
 function scheduleVolumePathCorrection(
   deps: NavigateDeps,
@@ -257,10 +260,10 @@ function scheduleVolumePathCorrection(
   volumeId: string,
   volumePath: string,
   targetPath: string,
-): void {
+): Promise<void> {
   const correctionGen = (deps.correctionGen.value += 1)
   const other = deps.otherPane(pane)
-  void deps
+  return deps
     .determineNavigationPath({
       volumeId,
       volumePath,
@@ -315,7 +318,7 @@ function scheduleVolumePathCorrection(
  * additionally commits with `history: 'none'` (the unmount redirect's
  * no-Back-target asymmetry); the other three fallbacks push an entry. Every
  * commit but a cancel's own (`options.fromCancel`) keeps the pane's return point
- * (`commitAhead`).
+ * (`commitAhead`). Returns the correction's chain (a resolved no-op when terminal).
  */
 function commitVolumeSwitch(
   deps: NavigateDeps,
@@ -331,7 +334,7 @@ function commitVolumeSwitch(
     pushHistory?: boolean
     fromCancel?: boolean
   },
-): void {
+): Promise<void> {
   if (!options.terminal) {
     const activeTab = getActiveTab(deps.getTabMgr(pane))
     // Record the OLD path as the last-used for the OLD volume before the swap.
@@ -351,8 +354,7 @@ function commitVolumeSwitch(
   if (!options.terminal && tryPinnedVolumeFork(deps, pane, { volumeId, path: targetPath })) {
     if (options.shiftFocus) deps.setFocusedPane(pane)
     deps.persist({ kind: 'pane-state', pane })
-    scheduleVolumePathCorrection(deps, pane, token, volumeId, volumePath, targetPath)
-    return
+    return scheduleVolumePathCorrection(deps, pane, token, volumeId, volumePath, targetPath)
   }
 
   const commitSwitch = () => {
@@ -372,7 +374,8 @@ function commitVolumeSwitch(
     commitAhead(deps, pane, commitSwitch)
   }
   if (options.shiftFocus) deps.setFocusedPane(pane)
-  if (!options.terminal) scheduleVolumePathCorrection(deps, pane, token, volumeId, volumePath, targetPath)
+  if (options.terminal) return SETTLED_NOOP
+  return scheduleVolumePathCorrection(deps, pane, token, volumeId, volumePath, targetPath)
 }
 
 /**
@@ -439,13 +442,13 @@ function switchVolumeArm(deps: NavigateDeps, intent: NavigateIntent, volumeId: s
   const { pane, source } = intent
   const token = mintToken(deps, pane)
   const volumePath = deps.getVolumePathById(volumeId) ?? path
-  commitVolumeSwitch(deps, pane, token, volumeId, volumePath, path, {
+  const corrected = commitVolumeSwitch(deps, pane, token, volumeId, volumePath, path, {
     shiftFocus: shiftsFocus(source),
     terminal: source === 'fallback' || source === 'cancel',
     pushHistory: intent.pushHistory,
     fromCancel: source === 'cancel',
   })
-  return { status: 'started', settled: SETTLED_NOOP }
+  return { status: 'started', settled: SETTLED_NOOP, corrected }
 }
 
 /**
@@ -494,8 +497,8 @@ function navigateInPlace(deps: NavigateDeps, intent: NavigateIntent, path: strin
 function navigateSnapshot(deps: NavigateDeps, pane: 'left' | 'right', snapshotId: string): NavigateResult {
   const url = `search-results://${snapshotId}`
   const token = mintToken(deps, pane)
-  commitVolumeSwitch(deps, pane, token, 'search-results', url, url, { shiftFocus: true })
-  return { status: 'started', settled: SETTLED_NOOP }
+  const corrected = commitVolumeSwitch(deps, pane, token, 'search-results', url, url, { shiftFocus: true })
+  return { status: 'started', settled: SETTLED_NOOP, corrected }
 }
 
 /** The `{ history }` arm: back / forward walk the stack; parent delegates to the FilePane primitive. */

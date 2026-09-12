@@ -20,7 +20,7 @@ use crate::mcp::tools::Tool;
 mcp_tools! {
     // ── Navigation ──────────────────────────────────────────────────────────
     "select_volume" => {
-        desc: "Switch a pane to a volume by name (as listed in cmdr://state volumes): a disk, SMB share, MTP device, or Network. To move within the current volume, use nav_to_path instead.",
+        desc: "Switch a pane to a volume by name (as listed in cmdr://state volumes): a disk, SMB share, MTP device, or Network. The pane reopens the folder last used on that volume; the tool replies once the pane has come to rest and names that folder. To move within the current volume, use nav_to_path instead.",
         schema: schemas::select_volume_schema(),
         gate: TokenGate::Open,
         consumers: &[Consumer::AiClient],

@@ -73,7 +73,7 @@
     import { createPaneCommands } from './pane-commands'
     import { createSortOperations } from './sort-operations'
     import { createSwapPanes } from './swap-panes'
-    import { createVolumeSelection } from './volume-selection'
+    import { createVolumeSelection, type VolumeSelectOutcome } from './volume-selection'
     import { createEdgeFlowHandlers } from './edge-flow-handlers'
     import { createPaneMirror } from './pane-mirror'
     import { createKeyDispatch } from './key-dispatch'
@@ -989,7 +989,7 @@
      * Select a volume by name for a specific pane.
      * Used by MCP select_volume tool.
      */
-    export async function selectVolumeByName(pane: 'left' | 'right', name: string): Promise<boolean> {
+    export async function selectVolumeByName(pane: 'left' | 'right', name: string): Promise<VolumeSelectOutcome> {
         return volumeSelection.selectVolumeByName(pane, name)
     }
 

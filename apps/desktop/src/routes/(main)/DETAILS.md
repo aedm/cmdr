@@ -250,6 +250,24 @@ path; its `fromMenu` flag picks `setViewModeFromMenu` (skip `pushViewMenuState`)
   so the tool reports the real failure instead of a false-positive OK. HMR can land these with no explorer; they reply
   `ok: false` rather than crashing.
 
+### `mcp-volume-select` replies from its handler
+
+The listener dispatches `volume.selectByName` with the `mcpRequestId` in its args, the way the auto-confirmed file ops
+carry theirs, so the dialog gate still applies. The handler voids `selectVolumeForMcp` (`mcp-volume-select.ts`), which
+switches the pane and replies with where it came to rest, on the same wire shape as `mcp-nav-to-path`:
+
+1. Await the switch's `corrected`, so the folder the switch reopens (the one last used on the volume) is decided.
+2. Wait for the pane to go quiet (`mcp-nav-landing.ts`). It requires a NEW listing only when the landing differs from
+   where the pane was and the volume lists at all (`expectsNewListing`): re-selecting in place and the servers hub
+   list nothing new, and waiting for a listing there would burn the whole budget.
+3. Flush the pane state, then reply with `classifyVolumeLanding`'s outcome. Any folder on the selected volume counts as
+   `navigated`.
+
+❌ Don't wait on the pane's path instead of `corrected`: it reads as the volume's root the moment the switch commits.
+Waiting on it made nine MTP E2E tests fail deterministically with "Superseded by new navigation", because the
+correction then landed on top of the next `nav_to_path`. A dialog in front refuses the command before the handler
+runs, so nothing replies and the tool waits out its budget.
+
 ### Focus follows the navigated pane
 
 The nav-family handlers that take a `pane` (`mcp-nav-to-path`, `mcp-scroll-to`, `mcp-select`, `mcp-select-names`) call

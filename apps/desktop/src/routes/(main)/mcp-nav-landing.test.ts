@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { classifyLanding, waitForPaneToGoQuiet, type PaneQuietProbe } from './mcp-nav-landing'
+import {
+  classifyLanding,
+  classifyVolumeLanding,
+  expectsNewListing,
+  waitForPaneToGoQuiet,
+  type PaneQuietProbe,
+} from './mcp-nav-landing'
 
 /**
  * A scripted pane: each `sleep` advances one step through the script and moves the
@@ -25,7 +31,7 @@ function scriptedProbe(steps: Array<{ listingId: string | null; loading: boolean
   }
 }
 
-const WAIT = { listingIdBefore: 'before', budgetMs: 2_000, pollMs: 100, quietMs: 250 }
+const WAIT = { listingIdBefore: 'before', requireNewListing: true, budgetMs: 2_000, pollMs: 100, quietMs: 250 }
 
 describe('waitForPaneToGoQuiet', () => {
   it('reports quiet once a new listing has started and the pane has been idle for quietMs', async () => {
@@ -91,6 +97,80 @@ describe('waitForPaneToGoQuiet', () => {
     ])
 
     await expect(waitForPaneToGoQuiet(probe, { ...WAIT, listingIdBefore: null })).resolves.toBe(true)
+  })
+
+  it('without a new listing to wait for, calls a pane idle on the listing it already had quiet', async () => {
+    // Re-selecting the volume a pane already shows, at the place it already shows, lists
+    // nothing new: waiting for a new listing there would burn the whole budget.
+    const probe = scriptedProbe([{ listingId: 'before', loading: false }])
+
+    await expect(waitForPaneToGoQuiet(probe, { ...WAIT, requireNewListing: false })).resolves.toBe(true)
+    expect(probe.elapsed()).toBeLessThan(WAIT.budgetMs)
+  })
+
+  it('without a new listing to wait for, still waits out a load in flight', async () => {
+    const probe = scriptedProbe([
+      { listingId: 'before', loading: true },
+      { listingId: 'before', loading: true },
+      { listingId: 'before', loading: false },
+      { listingId: 'before', loading: false },
+      { listingId: 'before', loading: false },
+    ])
+
+    await expect(waitForPaneToGoQuiet(probe, { ...WAIT, requireNewListing: false })).resolves.toBe(true)
+    expect(probe.elapsed()).toBeGreaterThanOrEqual(400)
+  })
+})
+
+describe('expectsNewListing', () => {
+  const before = { volumeId: 'root', path: '/Users/david' }
+
+  it('expects one when the switch moved the pane somewhere that lists', () => {
+    expect(
+      expectsNewListing({ before, landed: { volumeId: 'mtp-1', path: 'mtp://1/65537' }, hasBackendListing: true }),
+    ).toBe(true)
+  })
+
+  it('expects none when the switch put the pane back where it already was', () => {
+    expect(
+      expectsNewListing({ before, landed: { volumeId: 'root', path: '/Users/david/' }, hasBackendListing: true }),
+    ).toBe(false)
+  })
+
+  it('expects none on a volume that shows no listing, like the servers hub', () => {
+    expect(
+      expectsNewListing({ before, landed: { volumeId: 'network', path: 'smb://' }, hasBackendListing: false }),
+    ).toBe(false)
+  })
+})
+
+describe('classifyVolumeLanding', () => {
+  // A volume select doesn't pick the folder: the switch reopens the one last used there,
+  // so any path on the selected volume is an arrival.
+  it('calls it navigated when the pane came to rest anywhere on the selected volume', () => {
+    expect(
+      classifyVolumeLanding({
+        targetVolumeId: 'mtp-1',
+        landed: { volumeId: 'mtp-1', path: 'mtp://1/Documents' },
+        quiet: true,
+      }),
+    ).toEqual({ outcome: 'navigated', volumeId: 'mtp-1', path: 'mtp://1/Documents' })
+  })
+
+  it('calls it a fallback when the pane came to rest on another volume', () => {
+    expect(
+      classifyVolumeLanding({
+        targetVolumeId: 'mtp-1',
+        landed: { volumeId: 'root', path: '/Users/david' },
+        quiet: true,
+      }),
+    ).toEqual({ outcome: 'fell-back', volumeId: 'root', path: '/Users/david' })
+  })
+
+  it('says so when the pane never settled', () => {
+    expect(
+      classifyVolumeLanding({ targetVolumeId: 'mtp-1', landed: { volumeId: 'mtp-1', path: 'mtp://1' }, quiet: false }),
+    ).toEqual({ outcome: 'did-not-settle', volumeId: 'mtp-1', path: 'mtp://1' })
   })
 })
 

@@ -209,7 +209,7 @@ type ExplorerHandle = {
       | { history: 'back' | 'forward' }
     source: 'user' | 'mcp'
   }) => NavigateResult
-  selectVolumeByName: (pane: 'left' | 'right', name: string) => Promise<boolean>
+  selectVolumeByName: (pane: 'left' | 'right', name: string) => Promise<unknown>
 }
 
 const mounted: ExplorerHandle[] = []

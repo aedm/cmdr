@@ -607,13 +607,15 @@ async fn mcp_await_operation_start<R: Runtime>(
     mcp_round_trip_parsed(app, event, payload, timeout_secs, parse_operation_start_response).await
 }
 
-/// Emit a navigation event and report what the pane actually did with it.
+/// Emit a navigation event (`mcp-nav-to-path`, `mcp-volume-select`) and report what the
+/// pane actually did with it.
 async fn mcp_nav_round_trip<R: Runtime>(
     app: &AppHandle<R>,
+    event: &str,
     payload: Value,
     timeout_secs: u64,
 ) -> Result<NavAck, ToolError> {
-    mcp_round_trip_parsed(app, "mcp-nav-to-path", payload, timeout_secs, parse_nav_response).await
+    mcp_round_trip_parsed(app, event, payload, timeout_secs, parse_nav_response).await
 }
 
 /// Like `mcp_round_trip` but with a configurable timeout.

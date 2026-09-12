@@ -186,7 +186,8 @@ GLOBAL `correctionGen` counter (the caller-owned holder in `NavigateDeps`, share
 volume change on either pane. The pane's own transaction token and position drop it once that pane starts a newer
 navigation or has moved off the switch's target, so a correction never pulls a pane away from where it was sent next:
 MCP `select_volume` followed by `nav_to_path` used to fail with "Superseded by new navigation" when the correction
-landed between them.
+landed between them. `select_volume` also waits for the switch's `corrected` before it replies
+(`routes/(main)/mcp-volume-select.ts`), so the correction is decided by the time the agent's next call arrives.
 
 Escape during a load returns the pane to what it last showed, never to a guess from history (`../pane/DETAILS.md` §
 "Escape during a load"). Back/forward go through `navigate({ to: { history } })`; parent (`{ history: 'parent' }`)

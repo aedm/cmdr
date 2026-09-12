@@ -29,19 +29,34 @@ export interface VolumeSelectionDeps {
   navigate: (intent: NavigateIntent) => NavigateResult
 }
 
+/**
+ * What a volume select did. `selected` names the volume the pane was sent to (a
+ * favorite's CONTAINING volume) and carries `navigate()`'s result, whose `corrected`
+ * says when the switch's destination is final: MCP `select_volume` waits on both to
+ * report where the pane came to rest.
+ */
+export type VolumeSelectOutcome =
+  | { kind: 'not-found' }
+  | { kind: 'selected'; volumeId: string; navigation: NavigateResult }
+
 export interface VolumeSelection {
   /** Select a volume by zero-based index into the volumes array. */
-  selectVolumeByIndex: (pane: 'left' | 'right', index: number) => Promise<boolean>
+  selectVolumeByIndex: (pane: 'left' | 'right', index: number) => Promise<VolumeSelectOutcome>
   /** Select a volume by name (MCP `select_volume`). The servers hub is virtual. */
-  selectVolumeByName: (pane: 'left' | 'right', name: string) => Promise<boolean>
+  selectVolumeByName: (pane: 'left' | 'right', name: string) => Promise<VolumeSelectOutcome>
 }
 
 export function createVolumeSelection(deps: VolumeSelectionDeps): VolumeSelection {
-  async function selectVolumeByIndex(pane: 'left' | 'right', index: number): Promise<boolean> {
+  function select(pane: 'left' | 'right', volumeId: string, path: string): VolumeSelectOutcome {
+    const navigation = deps.navigate({ pane, to: { selectVolume: { volumeId, path } }, source: 'user' })
+    return { kind: 'selected', volumeId, navigation }
+  }
+
+  async function selectVolumeByIndex(pane: 'left' | 'right', index: number): Promise<VolumeSelectOutcome> {
     const volumes = deps.getVolumes()
     if (index < 0 || index >= volumes.length) {
       log.warn('Invalid volume index: {index} (valid range: 0-{max})', { index, max: volumes.length - 1 })
-      return false
+      return { kind: 'not-found' }
     }
 
     const volume = volumes[index]
@@ -51,25 +66,19 @@ export function createVolumeSelection(deps: VolumeSelectionDeps): VolumeSelectio
       reportFavoriteOpened('command')
       // For favorites, navigate to the favorite's path on its containing volume.
       const { volume: containingVolume } = await resolvePathVolume(volume.path)
-      const volumeId = containingVolume?.id ?? 'root'
-      deps.navigate({ pane, to: { selectVolume: { volumeId, path: volume.path } }, source: 'user' })
-    } else {
-      // A saved server place opens on its start folder; anything else at its root.
-      const path = pathForPickedVolume(volume)
-      deps.navigate({ pane, to: { selectVolume: { volumeId: volume.id, path } }, source: 'user' })
+      return select(pane, containingVolume?.id ?? 'root', volume.path)
     }
-
-    return true
+    // A saved server place opens on its start folder; anything else at its root.
+    return select(pane, volume.id, pathForPickedVolume(volume))
   }
 
-  async function selectVolumeByName(pane: 'left' | 'right', name: string): Promise<boolean> {
+  async function selectVolumeByName(pane: 'left' | 'right', name: string): Promise<VolumeSelectOutcome> {
     // ❗ The servers hub row is SYNTHETIC: `volume-grouping.ts` builds it, so it
     // is not in the volume list and no `findIndex` can reach it. Its name comes
     // from the catalog rather than a literal, so the label, the MCP pane push,
     // and Rust's `volume_listing::SERVERS_VOLUME_NAME` stay one word.
     if (name === tString('fileExplorer.navigation.networkVolume')) {
-      deps.navigate({ pane, to: { selectVolume: { volumeId: 'network', path: 'smb://' } }, source: 'user' })
-      return true
+      return select(pane, 'network', 'smb://')
     }
 
     const index = deps.getVolumes().findIndex((v) => v.name === name)
@@ -78,7 +87,7 @@ export function createVolumeSelection(deps: VolumeSelectionDeps): VolumeSelectio
     }
 
     log.warn('Volume not found: {name}', { name })
-    return false
+    return { kind: 'not-found' }
   }
 
   return { selectVolumeByIndex, selectVolumeByName }

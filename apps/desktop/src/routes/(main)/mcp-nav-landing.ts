@@ -35,6 +35,12 @@ export interface PaneQuietProbe {
 export interface QuietWaitOptions {
   /** The pane's listing id before the navigation started. */
   listingIdBefore: string | null
+  /**
+   * Whether the navigation must show a listing other than `listingIdBefore` before the
+   * pane counts as at rest. Off only when nothing new will list (`expectsNewListing`):
+   * then an idle pane on the listing it already had is where the navigation ended.
+   */
+  requireNewListing: boolean
   /** How long to wait for the pane to come to rest before giving up. */
   budgetMs: number
   /** How often to look. */
@@ -68,6 +74,15 @@ export interface PanePlace {
 export type NavLandingOutcome = { outcome: 'navigated' | 'fell-back' | 'did-not-settle' } & PanePlace
 
 /**
+ * What `mcp-nav-to-path` and `mcp-volume-select` put on the wire. The plain `{ ok, error }`
+ * shape covers the declines that happen before the pane moves (no explorer, an
+ * unresolvable path or unknown volume, a synchronous refusal); the landing shapes carry
+ * a typed `outcome` plus the location the pane came to rest on, which the Rust handler
+ * turns into the tool result. ❌ The backend branches on `outcome`, never on the message.
+ */
+export type NavReplyBody = { ok: false; error: string } | ({ ok: boolean } & NavLandingOutcome)
+
+/**
  * Wait for the listing a volume switch kicks off to start AND come to rest.
  *
  * Returns `true` once the pane has held a listing other than `listingIdBefore` with no
@@ -80,8 +95,8 @@ export async function waitForPaneToGoQuiet(probe: PaneQuietProbe, options: Quiet
   let quietSince: number | null = null
 
   for (;;) {
-    const startedANewListing = probe.getListingId() !== options.listingIdBefore
-    if (startedANewListing && !probe.isLoading()) {
+    const hasTheListingItNeeds = !options.requireNewListing || probe.getListingId() !== options.listingIdBefore
+    if (hasTheListingItNeeds && !probe.isLoading()) {
       if (quietSince === null) quietSince = probe.now()
       else if (probe.now() - quietSince >= options.quietMs) return true
     } else {
@@ -111,4 +126,32 @@ export function classifyLanding(args: { target: PanePlace; landed: PanePlace; qu
   const { target, landed, quiet } = args
   if (!quiet) return { outcome: 'did-not-settle', ...landed }
   return { outcome: isSamePlace(landed, target) ? 'navigated' : 'fell-back', ...landed }
+}
+
+/**
+ * Whether a volume switch has to show a new listing before the pane counts as at rest.
+ *
+ * Not when its destination, once the background correction has decided it, is where the
+ * pane already was: the pane's props don't change, so nothing re-lists (re-selecting
+ * the volume a pane shows). Not on a volume with no backend listing either (the servers
+ * hub). Everywhere else a new listing is the only evidence of arrival, and waiting for it
+ * is what spans an undialed phone's connect.
+ */
+export function expectsNewListing(args: { before: PanePlace; landed: PanePlace; hasBackendListing: boolean }): boolean {
+  return args.hasBackendListing && !isSamePlace(args.before, args.landed)
+}
+
+/**
+ * Decide what to tell an agent that selected a volume. Only the volume is compared: the
+ * select doesn't pick the folder (the switch reopens the one last used there), so any
+ * path on the selected volume is an arrival.
+ */
+export function classifyVolumeLanding(args: {
+  targetVolumeId: string
+  landed: PanePlace
+  quiet: boolean
+}): NavLandingOutcome {
+  const { targetVolumeId, landed, quiet } = args
+  if (!quiet) return { outcome: 'did-not-settle', ...landed }
+  return { outcome: landed.volumeId === targetVolumeId ? 'navigated' : 'fell-back', ...landed }
 }

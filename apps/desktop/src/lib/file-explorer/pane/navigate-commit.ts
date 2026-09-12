@@ -55,9 +55,13 @@ export interface NavigateIntent {
  * `started.settled` resolves when the listing completes (or per the per-arm
  * contract in `navigate.ts`); `refused` replaces the sync `string` sentinel three external
  * callers branch on via `typeof result === 'string'`.
+ *
+ * `started.corrected` is set only by a volume switch that schedules the background
+ * best-path correction: it resolves once that correction has committed or been dropped,
+ * so the switch's destination is final from then on (edge-flow fallbacks aside).
  */
 export type NavigateResult =
-  | { status: 'started'; settled: Promise<void> }
+  | { status: 'started'; settled: Promise<void>; corrected?: Promise<void> }
   | { status: 'refused'; reason: NavigateRefusal }
 
 /** A single state commit: volumeId (optional ⇒ unchanged) + path + an optional history entry to push. */
