@@ -8,9 +8,9 @@ The MTP session layer: opens devices, owns the per-device tokio task, exposes ty
 - Session: `mod.rs` (the manager, connect/disconnect, `map_device_error`), `errors.rs`, `scheduler.rs`
   (`DevicePriorityGate`), `cache.rs` (path ↔ handle + 5 s-TTL listing caches, `EventDebouncer`), `events.rs`
   (`MtpDeviceEvents`), `volume_registrar.rs`, `session_reset.rs`.
-- Ops: `directory_ops.rs` (listings), `resolve.rs` (path → handle), `bulk_ops.rs` (copy pre-scan), `handle_resolver.rs` (handle →
-  path), `event_loop.rs` (per-device poll, feeding the pane AND the index), `file_ops.rs` (windowed and ranged reads,
-  uploads), `mutation_ops.rs` (delete, create, rename, move).
+- Ops: `directory_ops.rs` (listings), `resolve.rs` (path → handle), `bulk_ops.rs` (copy pre-scan), `handle_resolver.rs`
+  (handle → path), `event_loop.rs` (per-device poll, feeding the pane AND the index), `file_ops.rs` (windowed and ranged
+  reads, uploads), `mutation_ops.rs` (delete, create, rename, move).
 
 ## Must-knows
 
