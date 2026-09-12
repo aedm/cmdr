@@ -33,9 +33,12 @@ pub struct ProviderLogo {
 /// Every provider with a logo. A provider missing here shows its actions without one.
 ///
 /// App IDs verified 2026-09-12: Dropbox, Google Drive, and MacDroid by their installed
-/// extensions (`pluginkit -m -p com.apple.fileprovider-nonui`), Box by Box's uninstall
-/// guide (app `com.box.desktop`, extension `com.box.desktop.boxfileprovider`). OneDrive has
-/// two apps: the standalone download and the Mac App Store build.
+/// extensions (`pluginkit -m -p com.apple.fileprovider-nonui`); OneDrive (standalone,
+/// 26.153.0809, extension `com.microsoft.OneDrive.FileProvider`) and Box Drive (2.53.223,
+/// extension `com.box.desktop.boxfileprovider`) by reading the extension plists in the
+/// vendors' signed installers, unpacked with `pkgutil --expand-full`, never installed.
+/// `com.microsoft.OneDrive-mac` is the Mac App Store build, which that route can't reach,
+/// so it's unverified.
 pub const PROVIDER_LOGOS: &[ProviderLogo] = &[
     ProviderLogo {
         provider: "Dropbox",
