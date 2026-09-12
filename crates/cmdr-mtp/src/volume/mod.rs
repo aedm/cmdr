@@ -23,6 +23,9 @@ mod conformance_test;
 /// `Volume::delete` stopping at one node, which MTP implements rather than inherits.
 #[cfg(all(test, feature = "virtual-device"))]
 mod delete_test;
+/// What a volume answers once its phone's session is gone.
+#[cfg(all(test, feature = "virtual-device"))]
+mod disconnected_test;
 /// What this backend tells the host's seams, and how often.
 #[cfg(all(test, feature = "virtual-device"))]
 mod host_seam_test;

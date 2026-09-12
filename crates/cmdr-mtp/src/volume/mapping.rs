@@ -14,8 +14,13 @@ const ENOTEMPTY: i32 = 66;
 /// Maps MTP connection errors to Volume errors.
 pub(super) fn map_mtp_error(e: MtpConnectionError) -> VolumeError {
     match e {
+        // A volume outlives its session in whoever still holds it (a conflict
+        // check, a copy, a pane re-read), so no session here means the phone
+        // went away mid-operation. ❌ Never `NotFound`: callers read that as "the
+        // path doesn't exist", and the conflict scan answered a gone phone with
+        // "nothing clashes".
         MtpConnectionError::DeviceNotFound { .. } | MtpConnectionError::NotConnected { .. } => {
-            VolumeError::NotFound(e.to_string())
+            VolumeError::DeviceDisconnected(e.to_string())
         }
         MtpConnectionError::ObjectNotFound { path, .. } => VolumeError::NotFound(path),
         MtpConnectionError::StaleParentHandle { dest_folder, .. } => VolumeError::StaleDestinationHandle(dest_folder),
