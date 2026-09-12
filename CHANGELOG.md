@@ -5,6 +5,100 @@ All notable changes to Cmdr will be documented in this file.
 The format is based on [keep a changelog](https://keepachangelog.com/en/1.1.0/), and we use
 [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+The highlights:
+
+- Finally we have Dropbox's, Google Drive's, and other cloud providers' context menu actions in Cmdr! "Copy Dropbox
+  link", "Share with Google Drive", etc.
+- Reach your Android phone over ADB!
+- Pick the editor `F4` opens
+
+And a ton of fixes for the bugs y'all reported. 🙏
+
+### Added
+
+- Show your cloud providers' own right-click actions, like "Copy Dropbox link", "Make online-only", "Version history",
+  and Google Drive's Share (5285a95e3, 4d53dd889, 8cff98afe)
+- Pick the app F4 opens files in, like Sublime Text or VS Code, in `Settings > Navigation & file ops` (0e8d60598,
+  2ad04a018, 5c8307b21, 642fd09d3, 7d36072da)
+- Index an Android phone over ADB for folder sizes and search: a full walk of a Pixel's storage takes about 4 s
+  (d3c84369b, 83475880a, 79695f35c, 9fb0d2ef5, 910bad38b, 45624b1f8, 7c27a8cfb, 1d9f5fc8c, 7590a148c)
+- Set a root folder and a start folder for SFTP and WebDAV servers, and edit a connected server without reconnecting
+  (f35782315, 420be12c3, 98c269553, 7cdd029fc, a744242b0, c74e32dd8, d7be01f08, c54f238df, f9a465b9a)
+
+### Changed
+
+- Redesign toasts with level icons, tinted backgrounds, an age label like "2m ago", and text that flows around the close
+  button (44fd3dab6, f0795a001, 002fb23bc)
+- Show a spinner on a drive while it ejects, and let a second click join the eject already running (d059ea8ca)
+- Call an unnamed SFTP or WebDAV server `username@host` everywhere (13ac7dcb6)
+- Show apps in "Open with" under the names Finder uses, so VS Code reads "Visual Studio Code" (37690e152)
+
+### Fixed
+
+- Fix Android phones over ADB on real devices: folders list, copies aren't refused for "0 bytes free", and a failed
+  listing stops looping (dd257b8eb, 518ed8244, 186c7124f, f1a928de9, d52a221f2, df62e32f7, a194d8957, 52b694943,
+  76a75b485)
+- Fix F3 not opening files on phones and servers, with progress for big files and a stop when you close the viewer
+  (0e2397908, f770e35c2, 16c0f2711, 3e3c7b9b1)
+- Fix F4 silently doing nothing on a file from a phone, a server, or an archive: it now points you at F3 (39e773190)
+- Fix searching from a phone or server pane searching your Mac instead, and F3, F5, F6, F8, copy, and drag misfiring on
+  a phone's results (d723999b8, cdddfad74, 8fcde8a9b)
+- Fix a failed listing on a phone or server jumping to its root instead of the nearest folder that still exists
+  (0243aeca5, 9f6ae40b6)
+- Fix a phone or saved server you haven't connected yet claiming it disconnected or that its folder is gone (a209d8f7e,
+  5537ab607)
+- Fix copying into a read-only folder claiming the disk is full: the copy dialog now says so before you confirm
+  (8e6ab45b8, 298307ce9, e93ec73ea)
+- Fix Eject saying "Something is still using this drive" when macOS held the drive for a moment or it was already gone
+  (68fdc9283, 114e27383, 6e8549298, eb673fe2c, 596b0777a)
+- Fix Eject hanging forever on a drive that stopped answering, or unmounting a drive its index hadn't let go of yet
+  (88696e599, 4002325d3)
+- Fix shares that turn away guests or your account claiming they don't exist or that your password is wrong: Cmdr now
+  asks you to sign in (b8d27943d, 42f2cf0fb, c0265218a, 00521356a, 2a170e503)
+- Fix a mount macOS reported but never made sending the pane to a folder that isn't there (627b5855e)
+- Fix "Connect directly" spinning on a share that stopped answering, or failing with no reason on one that's gone
+  (6826a7f68, f095a4a3b, 723d2b622, 089753b3f)
+- Fix share mount and share list errors showing in English instead of your language (1b91b819d, 1cb257f4e, 0e164cc18,
+  21e38949c, 08e70abdf)
+- Fix SMB shares mounted by an IPv6 address (1c6e23f8c)
+- Fix folder sizes on network shares double-counting renamed files (4204c579a)
+- Fix the Show in Finder and Dock pin offers staying up and repeating their action on every click (bd6c43214)
+- Fix the low-disk warning keeping old free-space numbers, and a drag-out's completion toast never going away
+  (c455ce1d0, c17047006, e426c705c)
+- Fix menu shortcuts, mouse buttons, and command palette rows running commands behind an open dialog (190527599,
+  662606d54, c4a830d4a)
+- Fix the viewer's Image/Text menu opening behind the image (8793dff82)
+- Fix Escape during a slow folder load sometimes landing on the folder you just left (56d13a414, 2cf427df4)
+- Fix a search sometimes getting stuck on "Checking what's indexed" (6d843659a, 11de21d56)
+- Fix a few Brazilian Portuguese strings using European Portuguese forms, and German rescan wording (6a4c8284f,
+  ea2d3bf05, 1cdb18feb)
+
+### Non-app
+
+- Build the macOS and Linux menu bars from one shared table, so a new menu item is one row (5796c9e57, b17d17727,
+  3d285399c, 3b4c2062a, 82b6a81fa, 78557e127)
+- Reuse the Playwright lane's E2E binary for translator and marketing screenshots, and stage every capture surface in
+  the lane so a UI change that breaks the capture fails right away (56e14ee66, ed66c5224, 49f7de35c, 1f61f74ac,
+  998b47d48, 7c7629744, 3d557c44f, 741af8080, f7149482b, 4b26386b6, 30f8d5796)
+- Stop the Playwright lane rebuilding its E2E binary on every run, which cost 2–4 minutes each time (bc6835041)
+- Fail the check when a rename breaks a translator screenshot, and give 76 strings their screenshot back (ba6e11831,
+  592f8c058, ecf1c399d, 7303a9435, 04afce32b, f4de8e02d, 6c6eb700d, b1f403221, f64a6460a)
+- Fail the check on an E2E selector naming markup the app no longer renders, and make the archive cancel-paste test
+  really press Cancel (81865d016, 30da5879d, 82ab342dd, 9729d0ca8)
+- Keep E2E and screenshot runs from sending crash reports, beta signups, and license checks to production (c7c5134ef)
+- Fix flaky tests: unit tests listing a 117,078-entry build folder to find a locale, Linux tests paying for disk syncs,
+  and MTP specs assuming a fresh storage root (d724b5069, 608b0d068, ef93dd6df, 5e521a3e3, 614d6c2ab, f89a7bb19,
+  d9080a097)
+- Let the contrast checker verify 12 dimmed texts it couldn't see through before (4340da8ef, 01483f38c, 54da50d8f,
+  25090c28e)
+- Give test files a 1,200-line length limit (54cddd83a, 8981a796c)
+- Quiet the check runner's Docker fixture logs unless Docker does real work (e1dad5ae1, d6437734c, 40ca3bf63, b62013d9a)
+- Split oversized modules along their seams, and drop the dead per-protocol server connect commands (b06ac6656,
+  57059a9a3, 0ca57e6af, e95df2eb2, 2836000e3, c52bfb288, 5f6757215, 171fbf308, fe4096f57, de6dc67e6, 4f3a03b50,
+  ea1367893, 033fb9b2e, bba3c08b5, da0c87f67)
+
 ## [0.44.0] - 2026-09-10
 
 Thanks again for all the feedback! This release is full of stuff delivered based on real human requests! Keep them
