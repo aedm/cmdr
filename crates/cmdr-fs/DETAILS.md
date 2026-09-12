@@ -262,6 +262,9 @@ about an "unexpected `cfg` condition value" and takes the false branch forever.
   where the per-backend answers are listed. `Volume::note_root_mount_gone` splits the same way: the trait names the fact
   ("the mount you're anchored to is gone"), and only the app's registry can establish it, since a mount is something you
   may never probe. Same shape as `listing_watch_coverage` above.
+- **The listing cache that decides which spellings of a directory are one pane.** The trait names the answer
+  (`Volume::listing_path`, identity by default; MTP folds its `mtp://` URL and inner paths together), and the app's
+  listing cache keys every store and lookup on it. Why: `apps/desktop/src-tauri/src/file_system/listing/DETAILS.md`.
 - **`icons/per_path.rs`'s custom-folder-icon half**, the NSWorkspace fetch, and the icon disk cache.
 - **The scratch-visibility settings** (`advanced.showStagingTempFiles`, `advanced.showSafeSaveFiles`) and the listing
   read-path filter over them. "Is this ours, and does a live operation own it?" is vocabulary; "does the user see it?"
