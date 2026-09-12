@@ -22,8 +22,8 @@ launch boundary, the llama-server fetch, and the type-drift check.
 - **`gen-analytics-defaults.ts`** (+ `-lib.ts`): the per-version settings-defaults manifest the dashboard resolves
   absent config keys against (`pnpm analytics:defaults`, guarded by `settings-defaults`); DETAILS § "The defaults
   manifest"
-- **`marketing-shots.ts`** (+ `-thread.ts`): reshoots the brand masters (`pnpm marketing:shots`);
-  `docs/guides/screenshots.md`. Needs ImageMagick, and a missing `magick` fails up front
+- **`marketing-shots.ts`**: reshoots the brand masters (`pnpm marketing:shots`); `docs/guides/screenshots.md`. Needs
+  ImageMagick, and a missing `magick` fails up front
 - **`capture-runtime.ts`**: launch primitives for both capture orchestrators (`ensureE2eBinary`), plus
   `createTrackedArtifactGuard` (only a green run keeps its rewrite of tracked artifacts; DETAILS § "The capture guard")
 - **`e2e-linux.sh`**: Linux Docker E2E launcher (`playwright-e2e,virtual-mtp`, single shard, legacy fixture)

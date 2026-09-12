@@ -131,6 +131,11 @@ The traps already encoded there, so you don't rediscover them:
 - The settings window's size is read from the MAIN window. Its own restricted capability rejects
   `plugin:window|inner_size`, which is production behaving correctly.
 
-The chat master runs off a seeded conversation (`apps/desktop/scripts/marketing-shots-thread.ts`), so it needs no
-provider, no API key, and no spend, and says the same thing every run. Its copy is a draft for David's review like any
-other user-facing string, and it must only describe things Cmdr actually does.
+The chat master runs off a seeded conversation (`apps/desktop/test/e2e-playwright/marketing-shots-thread.ts`), so it
+needs no provider, no API key, and no spend, and says the same thing every run. Its copy is a draft for David's review
+like any other user-facing string, and it must only describe things Cmdr actually does.
+
+The spec accepts Ask Cmdr's consent through the app's own command, then seeds the thread, right before it opens the
+rail. So the seed never hardcodes a consent version, and it never writes to a schema this launch hasn't migrated yet.
+The orchestrator keeps `askCmdr.proactive` off on every run, because an accepted consent plus the E2E fake provider
+would otherwise let a wake start threads of its own mid-run.

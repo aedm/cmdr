@@ -1,6 +1,6 @@
 /**
- * The Ask Cmdr conversation the `chat` masters photograph, and the SQL that puts it in
- * an instance's `main.db`.
+ * The Ask Cmdr conversation the `chat` masters photograph, the SQL that puts it in an
+ * instance's `main.db`, and the call that runs it.
  *
  * Why seeded rather than asked live: a marketing shot has to be reproducible, and a
  * live provider call is neither (different words every run, variable latency, real
@@ -14,8 +14,8 @@
  * here that no assertion catches.
  */
 
-/** The consent version the rail requires; below it, the rail renders the consent screen instead. */
-export const CONSENT_COPY_VERSION = 2
+import { spawnSync } from 'node:child_process'
+import { join } from 'node:path'
 
 /** The model the thread is attributed to. A `claude-sonnet` id so the cost footer prices it. */
 const THREAD_MODEL = 'claude-sonnet-5'
@@ -99,11 +99,13 @@ function quote(value: string): string {
 }
 
 /**
- * The SQL that installs `thread` as the instance's newest conversation, plus the
- * consent rows the rail checks before rendering anything.
+ * The SQL that installs `thread` as the instance's newest conversation.
+ *
+ * ❗ No consent rows. Only the app knows which consent copy version its rail requires
+ * today, so the spec accepts through the app's own command (`acceptAskCmdrConsent`).
  *
  * Idempotent by construction: it deletes its own previous thread by title first, so
- * running it on every launch leaves one conversation rather than a week of duplicates.
+ * running it on every run leaves one conversation rather than a week of duplicates.
  *
  * `at` is a unix timestamp passed in rather than read here, so the same inputs always
  * produce the same SQL and the tests can assert on it.
@@ -111,8 +113,6 @@ function quote(value: string): string {
 export function buildThreadSql(at: number, thread: SeedThread = SHOTS_THREAD): string {
   const title = quote(thread.title)
   const statements: string[] = [
-    `INSERT OR REPLACE INTO meta (key, value) VALUES ('ask_cmdr_consent_version','${String(CONSENT_COPY_VERSION)}');`,
-    `INSERT OR REPLACE INTO meta (key, value) VALUES ('ask_cmdr_consent_at','${String(at)}');`,
     // ❗ Delete the messages EXPLICITLY, not via `ON DELETE CASCADE`. The cascade needs
     // `foreign_keys=ON`, which the `sqlite3` CLI leaves OFF by default (the app turns it
     // on for its own connections), so a plain conversation delete orphans its messages —
@@ -140,4 +140,26 @@ export function buildThreadSql(at: number, thread: SeedThread = SHOTS_THREAD): s
   )
 
   return `PRAGMA foreign_keys=ON;\nBEGIN;\n${statements.join('\n')}\nCOMMIT;\n`
+}
+
+/**
+ * Installs {@link SHOTS_THREAD} in the running instance's `main.db`.
+ *
+ * ❗ Call it only once the app has answered for its agent store (`acceptAskCmdrConsent` in
+ * the spec). The store registers after its migrations, so that answer proves this
+ * launch's schema is in place. ❌ Don't gate on a table existing instead: the data dir
+ * persists, so the table is there from the previous run, and a seed gated that way once
+ * landed in a v3 database a second before the app migrated it to v9.
+ *
+ * The app holds `main.db` open in WAL mode, which is the case SQLite's multi-process story
+ * is for, and the rail reads the thread when it opens, after this write.
+ */
+export function seedChatThread(dataDir: string): void {
+  const res = spawnSync('sqlite3', [join(dataDir, 'main.db')], {
+    input: buildThreadSql(Math.floor(Date.now() / 1000)),
+    encoding: 'utf8',
+  })
+  if (res.error !== undefined || res.status !== 0) {
+    throw new Error(`Could not seed the Ask Cmdr thread: ${res.stderr || res.stdout || String(res.error)}`)
+  }
 }

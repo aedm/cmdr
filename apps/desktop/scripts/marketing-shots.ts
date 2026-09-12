@@ -35,12 +35,11 @@
 
 import { spawn, spawnSync } from 'node:child_process'
 import type { ChildProcess, SpawnSyncOptions } from 'node:child_process'
-import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ensureE2eBinary, frontmostApp, reserveFreePort, waitForSocket, warnIfForeignCmdr } from './capture-runtime.ts'
-import { buildThreadSql } from './marketing-shots-thread.ts'
 import { EN_US_LOCALE_ARGS, pinUiLanguage } from '../test/e2e-shared/pin-locale.ts'
 
 const LOG = '[marketing-shots]'
@@ -136,6 +135,26 @@ function seedSettingsIfNew(): void {
   )
 }
 
+/**
+ * Settings the app must launch with on every run, merged over whatever the instance holds.
+ *
+ * - `askCmdr.proactive` off. The chat test accepts Ask Cmdr's consent, and with consent,
+ *   disk access, and the `CMDR_E2E_ASK_CMDR_FAKE` provider in place, every wake gate is
+ *   open: a wake could start a thread of its own mid-run, or put its spinner in the status
+ *   corner of a master.
+ *
+ * Applied on every run because the instance persists: a suppression added to
+ * `seedSettingsIfNew` would never reach an instance that already exists.
+ */
+function pinRunSettings(): void {
+  const settingsPath = join(dataDir, 'settings.json')
+  const settings = existsSync(settingsPath)
+    ? (JSON.parse(readFileSync(settingsPath, 'utf8')) as Record<string, unknown>)
+    : {}
+  settings['askCmdr.proactive'] = false
+  writeFileSync(settingsPath, `${JSON.stringify(settings, null, 2)}\n`)
+}
+
 /** The installed production app's data dir, which is where a warm index already exists. */
 const PROD_DATA_DIR = join(homedir(), 'Library', 'Application Support', 'com.veszelovszki.cmdr')
 
@@ -226,41 +245,6 @@ function cloneProdIndex(): void {
 }
 
 /**
- * Installs the Ask Cmdr thread the `chat` masters photograph, plus the consent rows the
- * rail checks before it renders anything.
- *
- * Runs AFTER the app is up, on purpose: `main.db` only exists once the app has created
- * and migrated it, and seeding a hand-built schema would drift from the migrations. The
- * app holds the database open in WAL mode, which is exactly the case SQLite's
- * multi-process story is for, and the rail reads its thread when it opens — later than
- * this write.
- */
-async function seedChatThread(): Promise<void> {
-  const mainDb = join(dataDir, 'main.db')
-  // ❗ Wait for the SCHEMA, not just the file. The socket comes up before the agent
-  // store has run its migrations, so a seed fired the instant the app answers hits a
-  // `main.db` with no `meta` table. Probing the table is exact; a sleep would be a
-  // guess that gets slower and flakier at the same time.
-  const deadline = Date.now() + 30_000
-  for (;;) {
-    const probe = spawnSync('sqlite3', [mainDb, "SELECT 1 FROM sqlite_master WHERE type='table' AND name='meta';"], {
-      encoding: 'utf8',
-    })
-    if (probe.status === 0 && probe.stdout.trim() === '1') break
-    if (Date.now() >= deadline) {
-      throw new Error(`The agent store never appeared in ${mainDb}, so the chat master would photograph an empty rail.`)
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-
-  const sql = buildThreadSql(Math.floor(Date.now() / 1000))
-  const res = spawnSync('sqlite3', [mainDb], { input: sql, encoding: 'utf8' })
-  if (res.status !== 0) {
-    throw new Error(`Could not seed the Ask Cmdr thread: ${res.stderr || res.stdout || 'sqlite3 is missing'}`)
-  }
-}
-
-/**
  * Fails before the app launches if ImageMagick is missing.
  *
  * The masters are written as lossless WebP (a fifth of the PNG's bytes, pixel-identical),
@@ -307,6 +291,7 @@ async function main(): Promise<void> {
   // list says. The masters are English. Merges, so a hand-adjusted instance keeps
   // its pane paths, tabs, and favorites.
   pinUiLanguage(dataDir)
+  pinRunSettings()
   // Before the launch: the app opens its index at startup, so a copy afterwards is a copy
   // the running instance never reads.
   cloneProdIndex()
@@ -353,7 +338,6 @@ async function main(): Promise<void> {
   })
 
   await waitForSocket(socket, 60000)
-  await seedChatThread()
   console.log(`${LOG} socket ready; staging and shooting…`)
 
   try {
@@ -365,6 +349,8 @@ async function main(): Promise<void> {
         ...sharedEnv,
         CMDR_E2E_SHARD_KIND: 'marketing-shots',
         CMDR_SHOTS_PID: String(appProc.pid ?? ''),
+        // The chat test seeds its thread into this instance's `main.db`.
+        CMDR_SHOTS_DATA_DIR: dataDir,
       },
     })
   } finally {

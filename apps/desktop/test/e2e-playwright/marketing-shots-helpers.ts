@@ -49,6 +49,15 @@ export function appPid(): number {
   return pid
 }
 
+/** The shots instance's data dir, handed over by the orchestrator so the chat seed finds `main.db`. */
+export function shotsDataDir(): string {
+  const dir = process.env.CMDR_SHOTS_DATA_DIR
+  if (dir === undefined || dir === '') {
+    throw new Error('CMDR_SHOTS_DATA_DIR is unset. Run this shard through `pnpm marketing:shots`, not bare Playwright.')
+  }
+  return dir
+}
+
 /** A window's logical size and the display scale it is rendered at. */
 export interface WindowMetrics {
   /** Points, which is what `CGWindowBounds` reports and what window matching uses. */

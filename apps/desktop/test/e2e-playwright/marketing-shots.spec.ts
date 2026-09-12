@@ -4,9 +4,9 @@
  *
  * Driven by `pnpm marketing:shots`, never by a bare Playwright run: the orchestrator is
  * what launches a prod-looking app on the persistent shots data dir, clones a warm
- * index into it, seeds the chat thread, and hands this spec the app's pid. It is a
- * screenshot driver, not a pass/fail suite, so it has its own shard and never joins
- * `all` / `mtp` / `non-mtp`.
+ * index into it, and hands this spec the app's pid and data dir. It is a screenshot
+ * driver, not a pass/fail suite, so it has its own shard and never joins `all` / `mtp` /
+ * `non-mtp`.
  *
  * ❗ It runs with NO fixture tree, photographing real folders, and therefore on
  * `captureTest` (no leak guard). Read
@@ -23,7 +23,8 @@ import { SEARCH_OVERLAY } from './search-helpers.js'
 import { insetRect } from './marketing-shots-frame.js'
 import { indexIsSettled, parsePaneTabs, parsePaneView } from './marketing-shots-state.js'
 import type { Rect } from './marketing-shots-frame.js'
-import { outputDir, setWindowSize, shootWithShadow, windowMetrics } from './marketing-shots-helpers.js'
+import { outputDir, setWindowSize, shootWithShadow, shotsDataDir, windowMetrics } from './marketing-shots-helpers.js'
+import { seedChatThread } from './marketing-shots-thread.js'
 
 /**
  * The main window's logical size, and the one number the website hero depends on: it
@@ -124,6 +125,9 @@ test.describe('marketing masters', () => {
     const page = tauriPage as TauriPage
     await stageMainWindow(page)
 
+    // Consent, then the thread, then the rail: `acceptAskCmdrConsent` explains the order.
+    await acceptAskCmdrConsent(page)
+    seedChatThread(shotsDataDir())
     await openRail(page)
     // The seeded thread, not a live answer: `marketing-shots-thread.ts` explains why.
     await page.waitForSelector('.ask-cmdr-rail .msg', 15000)
@@ -402,6 +406,28 @@ async function pinVolatileChrome(page: TauriPage): Promise<void> {
     })
     apply()
   })()`)
+}
+
+/**
+ * Accepts Ask Cmdr's consent through the app's own command, and proves it took.
+ *
+ * ❗ Through the app, so the rail gets whatever `CONSENT_COPY_VERSION` it requires today. A
+ * version written from here goes stale on the next consent-copy bump, and the master then
+ * photographs the consent screen. Read back, because the accept command answers `Ok`
+ * without writing when the agent store never started. An `accepted` answer also means
+ * the store is open on this launch's migrated schema, which `seedChatThread` needs next.
+ *
+ * Proactive wakes stay off for this instance (`pinRunSettings` in `marketing-shots.ts`),
+ * so the accepted consent can't start threads of its own mid-run.
+ */
+async function acceptAskCmdrConsent(page: TauriPage): Promise<void> {
+  await page.evaluate(`window.__TAURI_INTERNALS__.invoke('ask_cmdr_accept_consent')`)
+  const status = await page.evaluate<{ accepted: boolean }>(
+    `window.__TAURI_INTERNALS__.invoke('ask_cmdr_consent_status')`,
+  )
+  expect(status.accepted, 'the app never recorded Ask Cmdr consent, so the rail would show the consent screen').toBe(
+    true,
+  )
 }
 
 async function railOpen(page: TauriPage): Promise<boolean> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CONSENT_COPY_VERSION, SHOTS_THREAD, buildThreadSql } from './marketing-shots-thread.ts'
+import { SHOTS_THREAD, buildThreadSql } from './marketing-shots-thread.js'
 
 const AT = 1_754_000_000
 
@@ -50,9 +50,10 @@ describe('SHOTS_THREAD', () => {
 describe('buildThreadSql', () => {
   const sql = buildThreadSql(AT)
 
-  it('accepts the consent the rail checks before it renders anything', () => {
-    expect(sql).toContain(`'ask_cmdr_consent_version','${String(CONSENT_COPY_VERSION)}'`)
-    expect(sql).toContain("'ask_cmdr_consent_at'")
+  it('leaves consent to the app, the only place that knows which version the rail requires', () => {
+    // A seeded version goes stale on the next consent-copy bump, and the rail then shows
+    // the consent screen over the thread. The spec accepts through the app's own command.
+    expect(sql).not.toContain('ask_cmdr_consent')
   })
 
   it('numbers messages from zero with no gaps, which the unique index demands', () => {
@@ -64,8 +65,8 @@ describe('buildThreadSql', () => {
   })
 
   it('replaces its own previous thread rather than stacking a new one every run', () => {
-    // Idempotence is what lets the seed run on every launch: without the delete, a
-    // week of runs leaves a sidebar full of identical conversations.
+    // Idempotence is what lets the seed run on every run: without the delete, a week
+    // of runs leaves a sidebar full of identical conversations.
     expect(sql).toContain('DELETE FROM conversations')
     expect(sql).toContain(SHOTS_THREAD.title)
   })
