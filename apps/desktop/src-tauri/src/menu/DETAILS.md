@@ -63,8 +63,10 @@ window focus context.
   `ProviderOffer`, plus the `fp-action:<index>` id pair (`file_provider_action_id` / `file_provider_action_index`).
   The offer itself and the click side live in `file_system/file_provider_actions/`.
 - `context_menu_icons.rs` (macOS): `lend_context_menu_icons` and the `FILE_CONTEXT_ICONS` table, the SF Symbols the
-  file context menu carries. See "SF Symbols on a CONTEXT menu" for why the images land on the tracking notification
-  rather than through `IconMenuItem`.
+  file context menu carries, plus the provider logo on each provider action. See "SF Symbols on a CONTEXT menu" for why
+  the images land on the tracking notification rather than through `IconMenuItem`.
+- `provider_logos.rs` (macOS): `PROVIDER_LOGOS`, which provider's logo is which, matched by app bundle ID, embedding the
+  SVGs in `provider_logos/`. See "Provider logos on a CONTEXT menu".
 - `context_menu_header.rs`: the file context menu's first line, naming what the menu will act on.
   `append_context_menu_header` (the disabled item plus its separator, both platforms), the `ContextMenuTargetFacts` the
   builder takes, the `ContextMenuTarget` the IPC command deserializes (the field's rationale is this feature's, so it
@@ -195,8 +197,8 @@ Exceptions that do NOT use `"execute-command"`:
   `on_menu_event` runs while muda's own menu-tracking loop is still unwinding, and a service usually
   puts a window or sheet up, which that unwind can dismiss.
 - **Provider actions** (macOS): one flat line per File Provider action the rows' provider offers,
-  below Cmdr's own cloud items, in the provider's own words and without icons
-  (`file_provider_items.rs`). Ids are `fp-action:<index>` into the offer
+  below Cmdr's own cloud items, in the provider's own words and, for a known provider, with its logo
+  (`file_provider_items.rs`; the logos: "Provider logos on a CONTEXT menu"). Ids are `fp-action:<index>` into the offer
   `MenuContext.file_provider_offer` keeps, prefix-routed in `handle_menu_event` like `share-service:`,
   since the items exist only once File Provider vouched for the rows, which a palette entry or shortcut
   couldn't check first. The click runs `file_provider_actions::perform` off the main thread; the
@@ -493,12 +495,44 @@ Today the table is the three Google Drive items: `arrow.up.forward.app` for "Ope
 link" — deliberately the same symbol the menu bar's `Copy path` carries, since `Copy` already shares
 `document.on.document` across two menus — and `sparkles` for "Ask Gemini", the glyph Apple and Google
 both spell AI with, shared with `Ask Cmdr` in the menu bar. All verified present with
-`NSImage(systemSymbolName:)` on macOS 26.6.2, 2026-09-09. Provider actions carry none: their labels
-are the provider's, and a glyph Cmdr picked would claim to know what each one does.
+`NSImage(systemSymbolName:)` on macOS 26.6.2, 2026-09-09. Provider actions get no symbol: their labels
+are the provider's, and a glyph Cmdr picked would claim to know what each one does. They carry their
+provider's logo instead, which only says whose action a line is (next section).
 
 **Full-color non-template images do render correctly** through `IconMenuItem`, and that is what stays
 there: app-bundle icons in "Open with" (via `file_system::open_with::load_app_icon`), each
 `NSSharingService`'s own icon in `Share`, and the tag colour circles.
+
+#### Provider logos on a CONTEXT menu
+
+Each line of a File Provider's own actions (`file_provider_items.rs`) carries that provider's logo, the way Finder shows
+them: Dropbox, Google Drive, MacDroid, OneDrive, and Box (`PROVIDER_LOGOS` in `provider_logos.rs`). A provider missing
+from the table shows its lines without one. Cmdr's own three Drive items keep their SF Symbols: they're Cmdr's actions,
+built from Drive's links.
+
+- **Same pass as the symbols.** `lend_context_menu_icons` takes the menu's `ProviderOffer` and arms an `ItemIcon::Logo`
+  on each `fp-action:<index>` beside the `ItemIcon::Symbol`s, so one tracking observer and one loan cover both.
+- **Matched by the APP's bundle ID, on a dot boundary.** The offer's `provider_id` is File Provider's `providerID`, the
+  extension's bundle ID, and macOS makes an extension's ID start with its app's plus a dot. So `com.box.desktop` claims
+  `com.box.desktop.boxfileprovider`, and `com.microsoft.OneDrive` leaves `com.microsoft.OneDrive-mac.FileProvider` to
+  the App Store build's own entry.
+- **Colored on purpose, ❌ no `setTemplate:`.** The brand's colors are the point, so a highlighted row keeps them, at
+  lower contrast on the accent fill, which is accepted.
+- **An `NSImage` from the SVG bytes (`initWithData:`), sized 16 × 16 pt**, the box the neighbouring symbols take (`link`
+  17 × 17, `sparkles` 15 × 17, `arrow.up.forward.app` 15 × 14 at the 13 pt menu font; verified on macOS 26.6,
+  `NSImage.size`, 2026-09-12). It stays a vector, where `IconMenuItem` would need RGBA rasterized at a guessed scale. All
+  five load as `_NSSVGImageRep` on macOS 26.6 (Swift probe, 2026-09-12); older releases are unverified. No version gate:
+  the selector is as old as `NSImage`, so an OS that can't read SVG answers nil, logged at debug, and the line shows no
+  logo.
+- **The SVGs are normalized for CoreSVG** (`provider_logos/`): explicit hex fills (no `currentColor`, no CSS `<style>`),
+  no fixed `width` / `height`, and a square `viewBox`, so sizing to a square can't skew one (Box's wordmark is padded
+  equally above and below). Gradients render as they are. `every_logo_is_a_square_svg_with_explicit_colors` and
+  `every_svg_on_disk_is_a_logo_in_the_table` guard it.
+- **Sources and licenses:** Google Drive and OneDrive are selfh.st icons (CC BY 4.0, so the attribution comment stays in
+  each file), Dropbox is `mdi:dropbox` (Material Design Icons by Pictogrammers, Apache 2.0), MacDroid is
+  `material-symbols:android` (Material Symbols by Google, Apache 2.0), and Box is Box's own mark. The Acknowledgements
+  dialog lists none of them: its list is generated from the lockfiles alone
+  (`../../../src/lib/licensing/DETAILS.md` § "Acknowledgements dialog").
 
 ### The context menu's header line
 
@@ -569,7 +603,7 @@ Every difference is marked on its row in `menu_bar.rs`, and `menu_bar_test.rs` s
 | Mnemonics | Not used | `&` prefixes for GTK keyboard navigation, unique per submenu |
 | Help search | Native NSMenu search field via `setHelpMenu:` | Not available |
 | System cleanup | objc2 strips injected Edit items | Not needed |
-| Menu icons | SF Symbols via objc2 (menu bar and context menus), IconMenuItem for pixel icons | Not supported |
+| Menu icons | SF Symbols via objc2 (menu bar and context menus), provider logos (SVG) via objc2 on context menus, IconMenuItem for pixel icons | Not supported |
 
 ## Menu structure
 

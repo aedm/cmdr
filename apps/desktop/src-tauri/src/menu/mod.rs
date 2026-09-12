@@ -25,8 +25,9 @@
 //! - `macos_appkit.rs`: the objc2 passes that fix the built menu bar up (`cleanup_macos_menus`,
 //!   `set_macos_menu_icons`), plus the `MENU_BAR_ICONS` table.
 //! - `open_with.rs` (macOS): "Open with" submenu builder.
-//! - `context_menu_icons.rs` (macOS): SF Symbols on right-click items, which needs the tracking
-//!   notification because Tauri exposes no `NSMenu` for a context menu.
+//! - `context_menu_icons.rs` (macOS): SF Symbols and provider logos on right-click items, which
+//!   needs the tracking notification because Tauri exposes no `NSMenu` for a context menu.
+//! - `provider_logos.rs` (macOS): which File Provider's logo is which, by app bundle ID.
 //! - `context_menu_header.rs`: the right-click menu's first line, naming what it will act on, plus
 //!   the macOS pass that makes it read as a header rather than a greyed-out command.
 
@@ -54,6 +55,8 @@ mod menu_structure;
 mod mnemonics;
 #[cfg(target_os = "macos")]
 pub mod open_with;
+#[cfg(target_os = "macos")]
+mod provider_logos;
 mod rebuild;
 #[cfg(target_os = "macos")]
 mod services_context;

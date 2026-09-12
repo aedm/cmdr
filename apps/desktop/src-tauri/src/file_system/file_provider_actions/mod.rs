@@ -54,6 +54,9 @@ const THREAD_STACK_BYTES: usize = 8 * 1024 * 1024;
 pub struct ProviderOffer {
     /// The domain the rows belong to, which every action is addressed to.
     pub provider_domain_id: String,
+    /// The provider that domain belongs to, as File Provider names it: its extension's bundle
+    /// ID (`com.getdropbox.dropbox.fileprovider`). The menu picks the provider's logo by it.
+    pub provider_id: String,
     /// File Provider's identifiers for the rows, in selection order.
     pub item_identifiers: Vec<String>,
     /// The matching actions, in the provider's declared order, minus Cmdr's hidden ones.
@@ -122,6 +125,7 @@ pub fn offer_for(paths: &[PathBuf], budget: Duration) -> Option<ProviderOffer> {
     let tables: Vec<_> = tables.iter().collect();
     Some(ProviderOffer {
         provider_domain_id: domain.id.clone(),
+        provider_id: domain.provider_id.clone(),
         item_identifiers: items.iter().map(|item| item.identifier.clone()).collect(),
         actions: matched
             .iter()
@@ -269,6 +273,7 @@ mod tests {
     fn performing_an_index_past_the_offer_refuses() {
         let offer = ProviderOffer {
             provider_domain_id: "domain".to_string(),
+            provider_id: "provider".to_string(),
             item_identifiers: vec!["item".to_string()],
             actions: Vec::new(),
         };

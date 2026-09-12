@@ -2,7 +2,8 @@
 //! right-clicked rows' provider offers, below Cmdr's own cloud items.
 //!
 //! The offer itself (which actions apply, their labels, and the click) lives in
-//! `file_system/file_provider_actions/`. This file only draws it and names the IDs.
+//! `file_system/file_provider_actions/`. This file only draws it and names the IDs. The
+//! provider's logo lands on each line later, in `context_menu_icons.rs`.
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::{AppHandle, Runtime};
@@ -61,6 +62,7 @@ mod tests {
     fn offer(labels: &[&str]) -> ProviderOffer {
         ProviderOffer {
             provider_domain_id: "com.getdropbox.dropbox.fileprovider/abc".to_string(),
+            provider_id: "com.getdropbox.dropbox.fileprovider".to_string(),
             item_identifiers: vec!["item-1".to_string()],
             actions: labels
                 .iter()

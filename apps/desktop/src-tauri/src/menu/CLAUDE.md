@@ -7,7 +7,7 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
 - `mod.rs` (shared types and menu state), `command_map.rs` (item IDs + the two id↔command maps).
 - `menu_bar.rs`: both platforms' menu bar, one row per item (words: `menu_spec.rs`; built by `menu_bar_builder.rs`).
   `menu_structure.rs`: context and viewer menus. `macos_appkit.rs`: the objc2 boundary the right-click extras cross
-  (`services_context.rs`, `share_submenu.rs`, `context_menu_icons.rs`, `context_menu_header.rs`). One line per file:
+  (`services_context.rs`, `share_submenu.rs`, `context_menu_icons.rs` with `provider_logos.rs`, `context_menu_header.rs`). One line per file:
   DETAILS § File layout.
 
 ## Must-knows
