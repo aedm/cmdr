@@ -455,13 +455,13 @@ impl MtpConnectionManager {
     }
 }
 
-/// The path a pane showing `dir` on `(device_id, storage_id)` is cached under:
-/// the canonical absolute MTP URL, `mtp://{device}/{storage}[/inner]`.
+/// The path the event loop reports `dir` on `(device_id, storage_id)` at: the
+/// storage URL, `mtp://{device}/{storage}[/inner]`, the same spelling
+/// `MtpVolume::notify_mutation` reports under.
 ///
-/// Pane navigation feeds that URL into the listing pipeline, and
-/// `MtpVolume::to_url_path` normalizes every mutation's parent to the same form,
-/// so it is the ONE representation `ListingHost` lookups match on. `dir` is the
-/// resolver's output (`/DCIM/Camera`, or `/` for the storage root).
+/// A pane may hold the folder at that URL or at its inner path; the app's
+/// listing cache folds both onto `MtpVolume::listing_path`, so either matches.
+/// `dir` is the resolver's output (`/DCIM/Camera`, or `/` for the storage root).
 fn listing_path_for(device_id: &str, storage_id: u32, dir: &Path) -> PathBuf {
     let root = PathBuf::from(format!("mtp://{device_id}/{storage_id}"));
     let inner = dir.to_string_lossy().trim_start_matches('/').to_string();
@@ -497,9 +497,9 @@ mod tests {
         );
     }
 
-    /// The two halves of a targeted refresh have to line up, or the seam lookup
-    /// misses and the pane stays stale: the resolver answers with an inner path,
-    /// and the host matches on the URL a pane navigated to.
+    /// The two halves of a targeted refresh have to line up: the resolver answers
+    /// with an inner path, and the report goes out at the storage URL the host
+    /// folds onto `MtpVolume::listing_path`.
     #[test]
     fn a_resolved_object_targets_the_url_its_pane_is_cached_under() {
         let resolved = PathBuf::from("/DCIM/IMG.jpg");

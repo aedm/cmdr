@@ -26,11 +26,10 @@ The MTP session layer: opens devices, owns the per-device tokio task, exposes ty
   index Stale, KEEPS the sidebar volume, and reopens with backoff. ❌ Never route it to `handle_device_disconnected`,
   tighten the backoff, or add a USB transport reset (`pnpm check mtp-no-transport-reset`). A REAL `Error::Disconnected`
   DOES take that path, else the next `connect()` fails as "already connected".
-- **The caches lie in specific ways.** `resolve_path_to_handle()` heals a miss by listing the parent chain and answers
-  a typed `ObjectNotFound { path }` for a gone object; ❌ never call it holding the device lock. `PathHandleCache` is
-  bidirectional: write via `insert` / `remove_path`, ❌ never `path_to_handle`, since devices REUSE
-  handles and a desynced reverse map resolves a new object to a dead path. `ListingCache`'s 5 s TTL survives mutations;
-  invalidate for read-after-write.
+- **The caches lie in specific ways.** `resolve_path_to_handle()` heals a miss by re-listing parents, else answers a
+  typed `ObjectNotFound`; ❌ never call it holding the device lock. `PathHandleCache` is bidirectional: write via
+  `insert` / `remove_path`, ❌ never `path_to_handle` (devices REUSE handles). `ListingCache`'s 5 s TTL survives
+  mutations; invalidate for read-after-write.
 - **A copy scan takes `scan_for_copy_with_stop`** (`bulk_ops.rs`), consulting the `ScanStop` per entry and BEFORE each
   child listing: one listing is the round trip (~17 s for 1k entries). Plain `scan_for_copy` passes `ScanStop::none()`.
 - **A suppressed event must win `EventDebouncer::claim_trailing` before re-emitting**: one per burst, never one per
@@ -40,9 +39,9 @@ The MTP session layer: opens devices, owns the per-device tokio task, exposes ty
   `Mutex`.
 - **A ranged read takes `read_range_direct`, ❌ NOT `open_read_session`**, and ❌ not for COPY, which needs `total_size`
   for progress and the yield checkpoint.
-- **The event loop reports through the host seams.** ❌ Never diff here (the host sorts each pane first), ❌ never one
-  call per entry, ❌ never `tokio::spawn` (use `host().runtime()`), and clear the `ListingCache` before a `FullRefresh`
-  or the host's re-read gets stale entries. Which change goes where: `DETAILS.md`.
+- **The event loop reports through the host seams** at the `mtp://` URL; the host keys panes by
+  `MtpVolume::listing_path`. ❌ Never diff here, ❌ never one call per entry, ❌ never `tokio::spawn` (use
+  `host().runtime()`), and clear the `ListingCache` before a `FullRefresh`. Which change goes where: `DETAILS.md`.
 - **❌ Nothing here names a `tauri` type.** Lifecycle leaves as a typed `MtpDeviceEvent` through the manager's
   `MtpDeviceEvents` sink; the app's `mtp/events.rs` maps it. A manager with no window gets `no_device_events()`, so ❌
   no `Option` to unwrap. Whether the device is POLLED is the separate `DeviceWatch` argument.

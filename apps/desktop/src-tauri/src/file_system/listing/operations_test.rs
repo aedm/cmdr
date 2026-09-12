@@ -381,7 +381,7 @@ async fn test_list_directory_start_with_volume_caches_entries() {
     assert!(names.iter().any(|n| n == "r.txt"));
     listing.with_listing(|cached| {
         assert_eq!(cached.volume_id, volume_id);
-        assert_eq!(cached.path, dir_path);
+        assert_eq!(cached.path.as_path(), std::path::Path::new(&dir_path));
     });
 
     get_volume_manager().unregister(&volume_id);

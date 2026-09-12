@@ -39,6 +39,9 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
 - **Names rank by Unicode collation (`collation.rs`), ❌ never code points or `to_lowercase`** (macOS holds NFC and NFD
   side by side). Both readings, live `compare` and prebuilt `key`, end with a raw-bytes tiebreak, else two spellings of
   one name tie and the watcher sees a phantom `Move`. ❌ Never persist a `NameKey`.
+- **A listing's path is a `ListingPath`, built only by `ListingPath::on_volume`** (the volume's one spelling,
+  `Volume::listing_path`). ❌ Never compare a raw path to it: MTP reports at `mtp://…` while a pane entered with Enter
+  holds `/DCIM`, and a verbatim match drops every Cmdr-made delete on that pane.
 - **New listing state hangs off a struct, not a `static`**; fixtures use `caching_test_support::TestListing`.
 - **Finder tags are deferred**: `list_directory_core` never reads them, and every modify path calls
   `carry_forward_tags` BEFORE storing, else an mtime touch blanks a file's dots. ❌ Never route enrich through it.

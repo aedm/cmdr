@@ -10,7 +10,7 @@ use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 use cmdr_fs::volume::WatchCoverage;
 
 use crate::file_system::listing::cached_listing::OverlayRows;
-use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE};
+use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE, ListingPath};
 use crate::file_system::listing::metadata::{FileEntry, TagRef};
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, entry_comparator};
 use crate::file_system::volume::manager::RoutedKind;
@@ -50,7 +50,7 @@ pub fn snapshot_listings() -> Vec<ListingSummary> {
         .map(|(id, listing)| ListingSummary {
             listing_id: id.clone(),
             volume_id: listing.volume_id.clone(),
-            path: listing.path.clone(),
+            path: listing.path.as_path().to_path_buf(),
             entry_count: listing.entries().len(),
             age_ms: now.saturating_duration_since(listing.created_at).as_millis(),
         })
@@ -70,11 +70,16 @@ pub fn find_listings_for_path(parent_path: &Path) -> Vec<(String, SortColumn, So
     find_listings_for_path_on_volume(None, parent_path)
 }
 
-/// Like `find_listings_for_path`, but also filters by `volume_id`.
+/// Like `find_listings_for_path`, but also filters by `volume_id`, matching
+/// `parent_path` in that volume's one spelling ([`ListingPath`]).
+///
+/// With `volume_id` `None` the path compares verbatim, which only a local caller
+/// may rely on: a local path has one spelling.
 pub fn find_listings_for_path_on_volume(
     volume_id: Option<&str>,
     parent_path: &Path,
 ) -> Vec<(String, SortColumn, SortOrder, DirectorySortMode)> {
+    let key = volume_id.map(|vid| (vid, ListingPath::on_volume(vid, parent_path)));
     let cache = match LISTING_CACHE.read() {
         Ok(c) => c,
         Err(_) => return Vec::new(),
@@ -82,7 +87,10 @@ pub fn find_listings_for_path_on_volume(
 
     cache
         .iter()
-        .filter(|(_, listing)| listing.path == parent_path && volume_id.is_none_or(|vid| listing.volume_id == vid))
+        .filter(|(_, listing)| match &key {
+            Some((vid, key)) => listing.volume_id == *vid && listing.path == *key,
+            None => listing.path.as_path() == parent_path,
+        })
         .map(|(id, listing)| {
             (
                 id.clone(),
@@ -99,10 +107,11 @@ pub fn find_listings_for_path_on_volume(
 /// Unlike [`try_get_authoritative_listing`], this doesn't require a watcher: SMB, MTP, and
 /// other virtual panes still have a UI listing cache. No filesystem call happens here.
 pub(crate) fn get_cached_listing(volume_id: &str, path: &Path) -> Option<Vec<FileEntry>> {
+    let key = ListingPath::on_volume(volume_id, path);
     let cache = LISTING_CACHE.read().ok()?;
     let listing = cache
         .values()
-        .filter(|listing| listing.volume_id == volume_id && listing.path == path)
+        .filter(|listing| listing.volume_id == volume_id && listing.path == key)
         .max_by_key(|listing| (listing.sequence.load(Ordering::Relaxed), listing.created_at))?;
     listing.touch();
     Some(listing.entries().to_vec())
@@ -127,7 +136,7 @@ pub(crate) fn find_listings_on_volume(
         .map(|(id, listing)| {
             (
                 id.clone(),
-                listing.path.clone(),
+                listing.path.as_path().to_path_buf(),
                 listing.sort_by,
                 listing.sort_order,
                 listing.directory_sort_mode,
@@ -162,7 +171,9 @@ pub fn insert_entry_sorted(listing_id: &str, entry: FileEntry) -> Option<usize> 
 /// Returns the directory path for a cached listing, without cloning entries.
 pub fn get_listing_path(listing_id: &str) -> Option<PathBuf> {
     let cache = LISTING_CACHE.read().ok()?;
-    cache.get(listing_id).map(|listing| listing.path.clone())
+    cache
+        .get(listing_id)
+        .map(|listing| listing.path.as_path().to_path_buf())
 }
 
 /// Returns `(volume_id, path)` for a cached listing in one read-lock acquisition.
@@ -173,7 +184,7 @@ pub fn get_listing_volume_id_and_path(listing_id: &str) -> Option<(String, PathB
     let cache = LISTING_CACHE.read().ok()?;
     cache
         .get(listing_id)
-        .map(|listing| (listing.volume_id.clone(), listing.path.clone()))
+        .map(|listing| (listing.volume_id.clone(), listing.path.as_path().to_path_buf()))
 }
 
 /// Removes every entry `paths` names, returning `(pre-removal index, entry)` for
@@ -220,15 +231,12 @@ pub fn remove_entries_by_paths(listing_id: &str, paths: &[PathBuf]) -> Vec<(usiz
 /// Removes the entry whose file name equals `name` from a listing, returning its
 /// index and value.
 ///
-/// A cached listing is exactly one directory, so entry names are unique — matching
-/// by name (not full path) makes the `Removed` patch robust to the path-space the
-/// notifier resolves the parent into. This matters for MTP: `MtpVolume` stores each
-/// entry's `path` as the storage-relative inner form (`/Documents/notes.txt`), while
-/// `notify_mutation` resolves the parent to the absolute `mtp://…` URL to match the
-/// listing itself. Comparing full paths never matched, so `notify_mutation(Deleted)`
-/// silently no-oped and a moved/deleted MTP file lingered in the source pane until a
-/// manual refresh. Local/SMB entries store the same path space the notifier builds,
-/// so name matching is equivalent there (a directory has no duplicate names).
+/// A cached listing is exactly one directory, so entry names are unique, and
+/// matching by name (not full path) keeps the `Removed` patch independent of how
+/// the notifier spelled the parent. That matters for MTP: its entries carry the
+/// inner path (`/Documents/notes.txt`) while `notify_mutation` reports the parent
+/// at the `mtp://…` URL, so a full-path match would drop the removal. Local and
+/// SMB entries share the notifier's spelling, where name matching is equivalent.
 pub fn remove_entry_by_name(listing_id: &str, name: &std::ffi::OsStr) -> Option<(usize, FileEntry)> {
     let mut cache = LISTING_CACHE.write().ok()?;
     let listing = cache.get_mut(listing_id)?;
@@ -738,17 +746,18 @@ fn find_listings_under_path_on_volume(
     volume_id: &str,
     root: &Path,
 ) -> Vec<(String, PathBuf, SortColumn, SortOrder, DirectorySortMode)> {
+    let root = ListingPath::on_volume(volume_id, root);
     let cache = match LISTING_CACHE.read() {
         Ok(c) => c,
         Err(_) => return Vec::new(),
     };
     cache
         .iter()
-        .filter(|(_, listing)| listing.volume_id == volume_id && listing.path.starts_with(root))
+        .filter(|(_, listing)| listing.volume_id == volume_id && listing.path.as_path().starts_with(root.as_path()))
         .map(|(id, listing)| {
             (
                 id.clone(),
-                listing.path.clone(),
+                listing.path.as_path().to_path_buf(),
                 listing.sort_by,
                 listing.sort_order,
                 listing.directory_sort_mode,
@@ -837,11 +846,12 @@ pub fn try_get_authoritative_listing(volume_id: &str, path: &Path) -> Option<Vec
     // Step 1: find all listings on this (volume_id, path) and pick the most-recently-updated
     // one (highest sequence, ties broken by latest created_at). Read the entries out
     // under the cache lock and drop the lock before crossing any async / volume boundary.
+    let key = ListingPath::on_volume(volume_id, path);
     let entries: Vec<FileEntry> = {
         let cache = LISTING_CACHE.read().ok()?;
         let mut best: Option<(&String, &CachedListing, u64, Instant)> = None;
         for (id, listing) in cache.iter() {
-            if listing.volume_id != volume_id || listing.path != path {
+            if listing.volume_id != volume_id || listing.path != key {
                 continue;
             }
             let seq = listing.sequence.load(Ordering::Relaxed);

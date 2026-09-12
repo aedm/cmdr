@@ -263,7 +263,7 @@ pub fn get_file_at(listing_id: &str, index: usize, include_hidden: bool) -> Resu
                 index,
                 listing_id,
                 rows.len(),
-                listing.path.display()
+                listing.path.as_path().display()
             );
         }
         result
@@ -420,7 +420,7 @@ pub fn resort_listing(
 pub(crate) fn get_listing_entries(listing_id: &str) -> Option<(PathBuf, Vec<FileEntry>)> {
     let cache = LISTING_CACHE.read().ok()?;
     let listing = cache.get(listing_id)?;
-    Some((listing.path.clone(), listing.entries().to_vec()))
+    Some((listing.path.as_path().to_path_buf(), listing.entries().to_vec()))
 }
 
 /// Updates the entries in the listing cache (after watcher detects changes).

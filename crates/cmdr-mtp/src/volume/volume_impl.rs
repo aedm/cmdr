@@ -208,6 +208,14 @@ impl Volume for MtpVolume {
         }
     }
 
+    /// The inner spelling (`/DCIM`, `/` for the storage root): what this storage's
+    /// rows carry, so what a pane entered with Enter lists, and what the index and
+    /// the pre-flight oracle ask with. `notify_mutation` and the event loop report
+    /// at the `mtp://` URL, and the volume switcher opens it; both fold onto this.
+    fn listing_path(&self, path: &Path) -> PathBuf {
+        Path::new("/").join(self.to_mtp_path(path))
+    }
+
     fn notify_mutation<'a>(
         &'a self,
         _volume_id: &'a str,

@@ -439,6 +439,26 @@ Used by the watcher's incremental path and synthetic mkdir to patch listings wit
 - `has_entry(listing_id, path)`: whether a path exists in the cached listing (classifies watcher events add vs modify).
 - `get_listing_path(listing_id)`: the directory path for a listing (filters watcher events to direct children).
 
+## One spelling per directory (`ListingPath`)
+
+`CachedListing::path` is a `ListingPath`, and `ListingPath::on_volume(volume_id, path)` is the only way to make one: it
+asks the registered volume for its spelling (`Volume::listing_path`, identity by default). Every store
+(`CachedListing::new`) and every path-keyed lookup (`find_listings_for_path_on_volume`, `get_cached_listing`,
+`try_get_authoritative_listing`, the archive refresh) builds its key through it BEFORE taking `LISTING_CACHE`, since it
+reads the volume registry.
+
+**Decision:** canonicalize in the cache, not at each caller. **Why:** a pane path enters from the frontend (navigation,
+Enter on a row, go-to-path, history, tab restore), from a backend's change report, and from pre-flight oracle queries
+built off entry paths. Only MTP spells one folder two ways today (the `mtp://` storage URL its reports and the volume
+switcher use, and the inner `/DCIM` its rows carry), but a per-caller fix would have to find every route, and a verbatim
+match there dropped every Cmdr-made delete on a pane the user had entered with Enter (field reports ERR-QW42X,
+ERR-46A6B, v0.44.0). MTP canonicalizes to the inner spelling because its rows, the drive index, and the walkers already
+use it. ADB, SFTP, and WebDAV rows carry their full app URL, and SMB, archive, and git-portal rows share their root's
+spelling, so they keep the default. Pinned by `mtp_listing_path_test.rs`.
+
+`find_listings_for_path(parent_path)` has no volume id and compares verbatim; only local callers use it, and a local
+path has one spelling.
+
 ## Change notification API (caching.rs)
 
 `notify_directory_changed(volume_id, parent_path, change)`: unified entry point for notifying the listing system that a

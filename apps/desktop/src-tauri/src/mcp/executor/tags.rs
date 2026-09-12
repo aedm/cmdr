@@ -214,9 +214,13 @@ fn refresh_listing_tags(
         return;
     }
     let volume_id = state.volume_id.as_deref().unwrap_or("root");
+    let key = crate::file_system::listing::cached_listing::ListingPath::on_volume(
+        volume_id,
+        std::path::Path::new(&state.path),
+    );
     let listing = crate::file_system::listing::caching::snapshot_listings()
         .into_iter()
-        .find(|l| l.volume_id == volume_id && l.path.to_string_lossy() == state.path);
+        .find(|l| l.volume_id == volume_id && l.path.as_path() == key.as_path());
     if let Some(listing) = listing {
         crate::file_system::listing::caching::apply_tags_to_listing(&listing.listing_id, updates);
     }

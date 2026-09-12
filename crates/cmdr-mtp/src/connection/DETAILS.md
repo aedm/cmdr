@@ -226,11 +226,12 @@ under the device lock, safe because nothing holds the registry lock while waitin
 
 ## Stale parent handle on upload (self-heal + one-shot retry)
 
-The parent-folder handle an upload uses comes from the path cache, so from whenever the user last listed that folder. Android routes MTP through MediaProvider, whose object handles are NOT stable across a media rescan, so a
-handle can go stale between the listing and a later upload into the folder. The device then rejects `SendObjectInfo`
-(phase 1, before any source byte is read) with `InvalidParentObject` (or `InvalidObjectHandle`). Field report: a 307 MB
-upload into a Pixel's `/Documents` failed this way, surfaced to the user as a "Path not found" on the intact _source_
-file (`map_volume_error` funneled `VolumeError::NotFound` into `SourceNotFound`), with no log and no retry.
+The parent-folder handle an upload uses comes from the path cache, so from whenever the user last listed that folder.
+Android routes MTP through MediaProvider, whose object handles are NOT stable across a media rescan, so a handle can go
+stale between the listing and a later upload into the folder. The device then rejects `SendObjectInfo` (phase 1, before
+any source byte is read) with `InvalidParentObject` (or `InvalidObjectHandle`). Field report: a 307 MB upload into a
+Pixel's `/Documents` failed this way, surfaced to the user as a "Path not found" on the intact _source_ file
+(`map_volume_error` funneled `VolumeError::NotFound` into `SourceNotFound`), with no log and no retry.
 
 The recovery, split across two layers because the data stream is single-use:
 
@@ -413,9 +414,8 @@ Every write to `PathHandleCache` goes through `insert` or `remove_path`, which t
 the handle's current, correct reverse mapping.
 
 Pinned by `path_cache_sync_test.rs` (create folder, rename, move, upload, delete, and a tree delete's per-child cache
-write), which asserts the reverse map through
-a test-only accessor rather than through `resolve_handle_to_path` — the USB fallback would otherwise make a desynced
-cache look healthy.
+write), which asserts the reverse map through a test-only accessor rather than through `resolve_handle_to_path` — the
+USB fallback would otherwise make a desynced cache look healthy.
 
 ### Reverse cache (`PathHandleCache::handle_to_path`)
 
@@ -443,9 +443,11 @@ device-wide but storages are separate namespaces and resolving one costs a devic
 a live watch is keeping fresh, which is what a connected MTP device with a running event loop is, so a `Some` means a
 pane is on that exact directory and a miss means there is nothing on screen to patch. The miss also covers the
 device-lock-contended case (`MtpVolume::listing_watch_coverage` reads `try_lock` and answers `None` when contended), and
-the caller's fallback below keeps the update either way. The path compared is the canonical pane URL
-(`mtp://{device}/{storage}[/inner]`, built by `listing_path_for` and matching `MtpVolume::to_url_path`), because that is
-what navigation feeds into the listing pipeline and therefore the ONE representation a seam lookup matches on.
+the caller's fallback below keeps the update either way. The path reported is the storage URL
+(`mtp://{device}/{storage}[/inner]`, built by `listing_path_for`). A pane can hold either spelling of a folder: the URL
+when it came from the volume switcher or go-to-path, the inner `/DCIM` when the user pressed Enter on a row. The app's
+listing cache keys both through `MtpVolume::listing_path` (the inner spelling), so any spelling reported here matches
+every pane on that folder (`apps/desktop/src-tauri/src/file_system/listing/cached_listing.rs`, `ListingPath`).
 
 **Whole-device fallback — never lose an update.** On any resolution failure (handle invalid, parent uncached and the
 walk fails, timeout) or when no pane shows the affected dir on any storage, `refresh_whole_device` reports one

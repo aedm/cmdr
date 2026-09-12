@@ -7,7 +7,7 @@
 //! orphan reaper are `caching.rs`.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, RwLock};
 use std::time::Instant;
@@ -35,12 +35,41 @@ pub(crate) fn epoch_millis_now() -> u64 {
     LISTING_EPOCH.elapsed().as_millis() as u64
 }
 
+/// The directory a cached listing shows, spelled the ONE way its volume keys it.
+///
+/// A backend can spell one directory two ways: an MTP storage reports changes at
+/// its URL (`mtp://{device}/{storage}/DCIM`) while its rows, and so a pane entered
+/// with Enter, carry the inner `/DCIM`. Compared verbatim, a Cmdr-made delete
+/// never reached that pane and the user acted on files already gone (ERR-QW42X,
+/// ERR-46A6B). So every stored listing and every lookup builds its path through
+/// [`ListingPath::on_volume`], which asks the volume (`Volume::listing_path`).
+/// ❌ No `From<PathBuf>` and no `PartialEq<Path>`: a raw path can't be stored or
+/// compared without passing through it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct ListingPath(PathBuf);
+
+impl ListingPath {
+    /// `path` in the spelling `volume_id`'s volume keys listings under; verbatim
+    /// when no volume is registered under that id.
+    ///
+    /// ❗ Call it before taking `LISTING_CACHE`: it reads the volume registry.
+    pub(crate) fn on_volume(volume_id: &str, path: &Path) -> Self {
+        let volume = crate::file_system::volume::manager::get_volume_manager().get(volume_id);
+        Self(volume.map_or_else(|| path.to_path_buf(), |volume| volume.listing_path(path)))
+    }
+
+    /// The canonical spelling, for a re-read or a log line.
+    pub(crate) fn as_path(&self) -> &Path {
+        &self.0
+    }
+}
+
 /// Cached directory listing for on-demand virtual scrolling.
 pub(crate) struct CachedListing {
     /// Volume ID this listing belongs to (like "root", "dropbox")
     pub volume_id: String,
-    /// Path within the volume (absolute path for now)
-    pub path: PathBuf,
+    /// The directory, in its volume's one spelling. See [`ListingPath`].
+    pub path: ListingPath,
     /// Cached file entries, exactly what's on disk. What the PANE shows is a
     /// subset of this (`visible_rows`), so ❗ reach for [`Self::rows`] to answer
     /// anything index-shaped. Private so `entries_mut` is the only way to change
@@ -118,8 +147,8 @@ impl CachedListing {
         directory_sort_mode: DirectorySortMode,
     ) -> Self {
         Self {
+            path: ListingPath::on_volume(&volume_id, &path),
             volume_id,
-            path,
             entries,
             visible_rows: VisibleRowsCache::new(),
             path_index: PathIndexCache::new(),

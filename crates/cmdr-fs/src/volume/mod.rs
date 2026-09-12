@@ -756,6 +756,20 @@ pub trait Volume: Send + Sync {
         WatchCoverage::None
     }
 
+    /// The one spelling a cached pane listing of `path` is keyed under.
+    ///
+    /// The app's listing cache stores every listing and answers every lookup (a
+    /// backend's change report, the fresh-listing oracle) through this, so two
+    /// spellings of one directory reach the same pane. Override it when this
+    /// backend's paths arrive spelled more than one way: an MTP storage reports
+    /// changes at its `mtp://` URL while its rows carry the inner `/DCIM`.
+    ///
+    /// Default: `path` verbatim, for a backend with one spelling. Must be pure and
+    /// cheap: it runs on every listing lookup.
+    fn listing_path(&self, path: &Path) -> PathBuf {
+        path.to_path_buf()
+    }
+
     // ========================================
     // Copy/Export: Optional, default no-op
     // ========================================
