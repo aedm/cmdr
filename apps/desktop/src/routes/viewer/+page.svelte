@@ -12,7 +12,6 @@
         viewerClose,
         viewerSetupMenu,
         viewerSetWordWrap,
-        asViewerError,
         onViewerPullProgress,
         onViewerWordWrapToggled,
         activateWindowMenu,
@@ -34,6 +33,7 @@
     import { createViewerScroll } from './viewer-scroll.svelte'
     import { createTextWidthTracker } from './viewer-text-width.svelte'
     import { createIndexingPoll } from './viewer-indexing-poll'
+    import { handleOpenFailure } from './viewer-open-failure'
     import { createViewerKeyboard } from './viewer-keyboard'
     import { createViewerTail } from './viewer-tail.svelte'
     import {
@@ -583,26 +583,6 @@
     }
 
     /**
-     * Maps a caught viewer-open failure to the display copy + whether it was a
-     * timeout, so the three open sites (mount, retry, view-as-text reopen) render
-     * one consistent, per-variant message. Every branch reads the typed
-     * `ViewerError`; anything that never reached the typed path at all reads as the
-     * generic copy rather than as the backend's own English.
-     */
-    function openFailureCopy(e: unknown): { message: string; canRetry: boolean } {
-        const ve = asViewerError(e)
-        if (ve) {
-            if (ve.kind === 'timedOut') return { message: tString('viewer.error.timeout'), canRetry: true }
-            if (ve.kind === 'stoppedResponding') {
-                return { message: tString('viewer.error.stoppedResponding'), canRetry: true }
-            }
-            if (ve.kind === 'tooLargeToPreview') return { message: tString('viewer.error.tooLargeToPreview'), canRetry: false }
-            if (ve.kind === 'archive') return { message: tString('viewer.error.archiveUnreadable'), canRetry: false }
-        }
-        return { message: tString('viewer.error.readFailed'), canRetry: false }
-    }
-
-    /**
      * Opens (or re-opens) the viewer session for `path`. `asText: true` forces a full
      * text session even for a media file (the "View as text" override); the default
      * lets the backend classify and return a media or text session.
@@ -755,10 +735,9 @@
         try {
             await openViewerSession(filePath)
         } catch (e) {
-            const copy = openFailureCopy(e)
-            error = copy.message
-            errorCanRetry = copy.canRetry
-            log.error('Retry failed: {error}', { error: String(e) })
+            const failure = handleOpenFailure(log, 'Retry', e)
+            error = failure.message
+            errorCanRetry = failure.canRetry
         } finally {
             loading = false
             await tick()
@@ -801,10 +780,9 @@
                 viewerClose(oldSessionId).catch(() => {})
             }
         } catch (e) {
-            const copy = openFailureCopy(e)
-            error = copy.message
-            errorCanRetry = copy.canRetry
-            log.error('{label} failed: {error}', { label: logLabel, error: String(e) })
+            const failure = handleOpenFailure(log, logLabel, e)
+            error = failure.message
+            errorCanRetry = failure.canRetry
         } finally {
             loading = false
             await tick()
@@ -874,10 +852,9 @@
         try {
             await openViewerSession(pathParam)
         } catch (e) {
-            const copy = openFailureCopy(e)
-            error = copy.message
-            errorCanRetry = copy.canRetry
-            log.error('Failed to open file: {error}', { error: String(e) })
+            const failure = handleOpenFailure(log, 'Open', e)
+            error = failure.message
+            errorCanRetry = failure.canRetry
         } finally {
             loading = false
             await tick()

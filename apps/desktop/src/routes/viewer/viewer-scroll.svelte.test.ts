@@ -14,8 +14,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createViewerScroll, getLineHeight } from './viewer-scroll.svelte'
 import { EOF_LINE } from './selection.svelte'
-import type { LineChunk } from '$lib/ipc/bindings'
+import type { LineChunk, ViewerError } from '$lib/ipc/bindings'
 import { clearIpcMocks, installIpcMock } from '$lib/ipc/test-helpers'
+import { getAppLogger } from '$lib/logging/logger'
 
 afterEach(() => {
   clearIpcMocks()
@@ -183,5 +184,59 @@ describe('createViewerScroll.renderedLineText', () => {
     const scroll = wire(40_001)
 
     expect(scroll.renderedLineText(40_000)).toBeUndefined()
+  })
+})
+
+describe("createViewerScroll a read that didn't come back", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  /** A 100-line file, unscrolled, whose every `viewer_get_lines` fails with `viewerError`. */
+  function wireFailingRead(viewerError: ViewerError) {
+    installIpcMock().mock('viewer_get_lines', () => {
+      throw viewerError
+    })
+    const onTimeoutError = vi.fn()
+    const scroll = createViewerScroll({
+      getSessionId: () => 'sess-1',
+      getTotalLines: () => 100,
+      setTotalLines: () => {},
+      getEstimatedLines: () => 100,
+      getBackendType: () => 'lineIndex',
+      onTimeoutError,
+      getAllLines: () => null,
+      getTextWidth: () => 0,
+    })
+    return { scroll, onTimeoutError }
+  }
+
+  it('logs a timed-out read at warn, since the window shows the timeout with Retry', async () => {
+    // At error level each one filed an error report of its own.
+    const warn = vi.spyOn(getAppLogger('viewer'), 'warn')
+    const error = vi.spyOn(getAppLogger('viewer'), 'error')
+    const { scroll, onTimeoutError } = wireFailingRead({ kind: 'timedOut' })
+
+    scroll.fetchVisibleNow()
+    await vi.waitFor(() => {
+      expect(onTimeoutError).toHaveBeenCalledTimes(1)
+    })
+
+    expect(error).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps a read that failed any other way at error, since nothing on screen says so', async () => {
+    const warn = vi.spyOn(getAppLogger('viewer'), 'warn')
+    const error = vi.spyOn(getAppLogger('viewer'), 'error')
+    const { scroll, onTimeoutError } = wireFailingRead({ kind: 'io', message: 'boom' })
+
+    scroll.fetchVisibleNow()
+    await vi.waitFor(() => {
+      expect(error).toHaveBeenCalledTimes(1)
+    })
+
+    expect(onTimeoutError).not.toHaveBeenCalled()
+    expect(warn).not.toHaveBeenCalled()
   })
 })

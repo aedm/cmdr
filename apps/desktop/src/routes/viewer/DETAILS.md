@@ -17,6 +17,8 @@ Per-file inventory for the route. Locate symbols via `codegraph_search`; this is
   **`viewer-line-heights`** (word-wrap height map via DOM measurement, FullLoad only), **`viewer-text-width`**
   (`ResizeObserver` width tracker), **`viewer-tail`** (`viewer:file-changed:<sid>` → reload toasts).
 - **`viewer-indexing-poll.ts`**: `viewer_get_status` poll during line-index build.
+- **`viewer-open-failure.ts`**: `handleOpenFailure`, the copy, Retry flag, and log level for an open that didn't
+  succeed, shared by the three open sites. See § "A read that didn't come back".
 - **`viewer-keyboard.ts`**: pure key helpers + `createViewerKeyboard`, the keydown router (modifiers, Escape ladder, ⌘A,
   bare-key dispatch, and the twelve selection-extension chords).
 - Selection: **`selection.svelte.ts`** (model), **`line-segments.ts`** (pure segmenter), **`viewer-caret-geometry.ts`**
@@ -549,10 +551,18 @@ glyphs (the a11y labels and tooltips carry the real copy). The runtime works in 
 `viewerGetLines` throws the backend's typed `ViewerError` with its fields copied onto the `Error`, so the deadline is a
 VARIANT (`kind: 'timedOut'`) rather than a flag beside a sentence. Both surfaces read it the same way, through
 `asViewerError(e)?.kind`: `viewer-scroll.svelte.ts` routes `timedOut` to `deps.onTimeoutError()` and logs everything
-else by kind, and `+page.svelte`'s `openFailureCopy` maps `timedOut` / `stoppedResponding` / `tooLargeToPreview` /
-`archive` to their own catalog keys and falls back to `viewer.error.readFailed` for anything that never reached the
-typed path. `timedOut` and `stoppedResponding` also set `canRetry`, which puts Retry and Cancel under the message.
-Nothing renders the backend's own words. The wider split: `docs/guides/error-handling.md`.
+else by kind, and `viewer-open-failure.ts`'s `handleOpenFailure` (all three open sites) maps `timedOut` /
+`stoppedResponding` / `tooLargeToPreview` / `archive` to their own catalog keys and falls back to
+`viewer.error.readFailed` for anything else. `timedOut` and `stoppedResponding` also set `canRetry`, which puts Retry
+and Cancel under the message. Nothing renders the backend's own words. The wider split:
+`docs/guides/error-handling.md`.
+
+**Log level follows what the window shows.** An error log counts toward an auto-sent error report, so an outcome the
+window already renders with a way forward logs at warn: a line read that timed out, and any open that failed with a
+typed `ViewerError` (a timeout, a file that's gone, a read the OS refused). An open failure that never reached the typed
+path, and a line read that failed for any reason other than `timedOut` (nothing on screen says so), stay at error. At
+error level the handled ones filed reports of their own (ERR-GW3BE, ERR-XV6SN). Pinned by `viewer-open-failure.test.ts`
+and `viewer-scroll.svelte.test.ts` § "a read that didn't come back".
 
 `tooLargeToPreview`'s key is `viewer.error.tooLargeToPreview`, deliberately not named after archives: the preview cap is
 reached by a `.zip` entry, a blob in a repository's virtual `.git` snapshot, and a file on a phone or server, so the

@@ -262,7 +262,9 @@ export function createViewerScroll(deps: ScrollDeps) {
         const kind = asViewerError(e)?.kind
         if (kind === 'timedOut') {
           deps.onTimeoutError()
-          log.error('fetchLines[{fetchId}]: timed out', { fetchId })
+          // The window shows the timeout with Retry, so it's a handled outcome: a warn. An
+          // error log counts toward an auto-sent error report.
+          log.warn('fetchLines[{fetchId}]: timed out', { fetchId })
         } else {
           log.error("fetchLines[{fetchId}]: didn't come back ({reason})", { fetchId, reason: kind ?? String(e) })
         }
