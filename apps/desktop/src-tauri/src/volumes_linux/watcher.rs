@@ -529,6 +529,7 @@ mod tests {
         let seen = wakes.load(Ordering::SeqCst);
         drop(watch);
 
+        // allowed-pluralize-noun: the message only prints when seen > 1, so "times" is always plural
         assert!(seen <= 1, "the watch woke {seen} times in 500 ms with no mount change");
     }
 
