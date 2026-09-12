@@ -1401,6 +1401,18 @@
   "@errors.write.insufficientSpace.suggestion": {
     "sourceHash": "257f1d9"
   },
+  "errors.write.destinationFull.title": "Bestemming is vol",
+  "@errors.write.destinationFull.title": {
+    "sourceHash": "1a2382d"
+  },
+  "errors.write.destinationFull.message": "De bestemming had geen ruimte meer voordat alles was geschreven.",
+  "@errors.write.destinationFull.message": {
+    "sourceHash": "1271eab"
+  },
+  "errors.write.destinationFull.suggestion": "Maak wat ruimte vrij op de bestemming of kies een andere locatie. Als de bestemming een opslagquotum heeft, heb je dat misschien bereikt.",
+  "@errors.write.destinationFull.suggestion": {
+    "sourceHash": "6aead38"
+  },
   "errors.write.filesTooLargeForFilesystem.title.one": "Bestand te groot voor deze schijf",
   "@errors.write.filesTooLargeForFilesystem.title.one": {
     "sourceHash": "d8e95aa"

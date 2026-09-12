@@ -1401,6 +1401,18 @@
   "@errors.write.insufficientSpace.suggestion": {
     "sourceHash": "257f1d9"
   },
+  "errors.write.destinationFull.title": "Đích đã đầy",
+  "@errors.write.destinationFull.title": {
+    "sourceHash": "1a2382d"
+  },
+  "errors.write.destinationFull.message": "Đích đã hết dung lượng trước khi ghi xong mọi thứ.",
+  "@errors.write.destinationFull.message": {
+    "sourceHash": "1271eab"
+  },
+  "errors.write.destinationFull.suggestion": "Hãy giải phóng dung lượng tại đích hoặc chọn một vị trí khác. Nếu đích có hạn ngạch lưu trữ, có thể bạn đã dùng hết.",
+  "@errors.write.destinationFull.suggestion": {
+    "sourceHash": "6aead38"
+  },
   "errors.write.filesTooLargeForFilesystem.title.one": "Tệp quá lớn đối với ổ đĩa này",
   "@errors.write.filesTooLargeForFilesystem.title.one": {
     "sourceHash": "d8e95aa"

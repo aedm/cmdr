@@ -2019,6 +2019,24 @@
     "description": "Recovery suggestion when the destination is out of space. Plain text.",
     "screenshot": "transfer-error-insufficient_space.png"
   },
+  "errors.write.destinationFull.title": "Destination is full",
+  "errors.write.destinationFull.message": "The destination ran out of space before everything was written.",
+  "errors.write.destinationFull.suggestion": "Free up some space on the destination or choose a different location. If the destination has a storage quota, you may have reached it.",
+  "@errors.write.destinationFull.title": {
+    "description": "Title of the copy/move error dialog when the destination (a local disk, a phone, or a server) ran out of space partway through, so the transfer stopped. Unlike \"Not enough space\", no sizes are known here. Plain text.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.destinationFull.message": {
+    "description": "Body of the copy/move error dialog when the destination ran out of space partway through. Plain text. \"before everything was written\" means the transfer stopped midway, so some items may already be at the destination.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.destinationFull.suggestion": {
+    "description": "Recovery suggestion when the destination ran out of space partway through. Plain text. A storage quota is a per-person space limit some servers and shared drives set, separate from how full the disk itself is.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
   "errors.write.filesTooLargeForFilesystem.title.one": "File too large for this drive",
   "errors.write.filesTooLargeForFilesystem.title.many": "Some files are too large for this drive",
   "errors.write.filesTooLargeForFilesystem.message.one": "{name} is {size}, but this drive is formatted as FAT32, which can't store files larger than {maxSize}.",

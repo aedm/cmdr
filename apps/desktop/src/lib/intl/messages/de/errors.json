@@ -1401,6 +1401,18 @@
   "@errors.write.insufficientSpace.suggestion": {
     "sourceHash": "257f1d9"
   },
+  "errors.write.destinationFull.title": "Ziel ist voll",
+  "@errors.write.destinationFull.title": {
+    "sourceHash": "1a2382d"
+  },
+  "errors.write.destinationFull.message": "Am Ziel war kein Speicher mehr frei, bevor alles geschrieben war.",
+  "@errors.write.destinationFull.message": {
+    "sourceHash": "1271eab"
+  },
+  "errors.write.destinationFull.suggestion": "Gib am Ziel etwas Speicher frei oder wähle einen anderen Ort. Falls das Ziel ein Speicherkontingent hat, hast du es vielleicht ausgeschöpft.",
+  "@errors.write.destinationFull.suggestion": {
+    "sourceHash": "6aead38"
+  },
   "errors.write.filesTooLargeForFilesystem.title.one": "Datei zu groß für dieses Laufwerk",
   "@errors.write.filesTooLargeForFilesystem.title.one": {
     "sourceHash": "d8e95aa"

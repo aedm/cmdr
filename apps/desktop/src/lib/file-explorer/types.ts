@@ -641,7 +641,11 @@ export type WriteOperationError =
   | { type: 'destination_not_connected'; path: string }
   | { type: 'destination_exists'; path: string }
   | { type: 'permission_denied'; path: string; message: string }
+  // Measured before anything was written, so both sizes are real.
   | { type: 'insufficient_space'; required: number; available: number; volumeName: string | null }
+  // The destination refused a write for lack of room or quota. Nothing was
+  // measured, so there are no sizes to show.
+  | { type: 'destination_full'; path: string }
   | { type: 'destination_inside_source'; source: string; destination: string }
   | { type: 'duplicate_source_names'; name: string; first: string; second: string }
   | { type: 'symlink_loop'; path: string }

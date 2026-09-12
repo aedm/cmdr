@@ -315,6 +315,19 @@ const cases: Case[] = [
     },
   },
   {
+    // The write itself was refused for lack of room, so nothing was measured:
+    // the copy names no sizes, where "needs 0 bytes but only has 0 bytes" used
+    // to render.
+    name: 'destination_full',
+    error: { type: 'destination_full', path: '/p' },
+    expected: {
+      title: 'Destination is full',
+      message: 'The destination ran out of space before everything was written.',
+      suggestion:
+        'Free up some space on the destination or choose a different location. If the destination has a storage quota, you may have reached it.',
+    },
+  },
+  {
     name: 'read_only_device (named)',
     error: { type: 'read_only_device', path: '/p', deviceName: 'My Phone', side: 'destination' },
     expected: {

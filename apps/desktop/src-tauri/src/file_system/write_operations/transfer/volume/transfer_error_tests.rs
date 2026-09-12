@@ -51,7 +51,7 @@ fn a_local_destination_refusing_the_write_names_why() {
 
     let full = map_volume_error("/naspi/shortcut.lnk", PathRole::Destination, refused(libc::ENOSPC));
     assert!(
-        matches!(full, WriteOperationError::InsufficientSpace { .. }),
+        matches!(&full, WriteOperationError::DestinationFull { path } if path == "/naspi/shortcut.lnk"),
         "got {full:?}"
     );
 }

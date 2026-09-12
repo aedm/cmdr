@@ -296,10 +296,11 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
             device_name: None,
             side: ReadOnlySide::Destination,
         },
-        VolumeError::StorageFull { .. } => WriteOperationError::InsufficientSpace {
-            required: 0,
-            available: 0,
-            volume_name: None,
+        // The destination refused a write for lack of room. Nothing measured it,
+        // so it's the sizeless variant; `InsufficientSpace` is for a pre-flight
+        // that has both numbers.
+        VolumeError::StorageFull { .. } => WriteOperationError::DestinationFull {
+            path: context_path.to_string(),
         },
         VolumeError::ConnectionTimeout(_) => WriteOperationError::ConnectionInterrupted {
             path: context_path.to_string(),

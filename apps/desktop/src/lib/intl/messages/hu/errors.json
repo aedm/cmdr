@@ -1401,6 +1401,18 @@
   "@errors.write.insufficientSpace.suggestion": {
     "sourceHash": "257f1d9"
   },
+  "errors.write.destinationFull.title": "A célhely megtelt",
+  "@errors.write.destinationFull.title": {
+    "sourceHash": "1a2382d"
+  },
+  "errors.write.destinationFull.message": "A célhelyen elfogyott a hely, mielőtt minden kiíródott volna.",
+  "@errors.write.destinationFull.message": {
+    "sourceHash": "1271eab"
+  },
+  "errors.write.destinationFull.suggestion": "Szabadíts fel helyet a célhelyen, vagy válassz másik helyet. Ha a célhelyen tárhelykvóta van, lehet, hogy elérted.",
+  "@errors.write.destinationFull.suggestion": {
+    "sourceHash": "6aead38"
+  },
   "errors.write.filesTooLargeForFilesystem.title.one": "A fájl túl nagy ehhez a meghajtóhoz",
   "@errors.write.filesTooLargeForFilesystem.title.one": {
     "sourceHash": "d8e95aa"

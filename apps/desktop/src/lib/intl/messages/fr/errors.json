@@ -1401,6 +1401,18 @@
   "@errors.write.insufficientSpace.suggestion": {
     "sourceHash": "257f1d9"
   },
+  "errors.write.destinationFull.title": "La destination est pleine",
+  "@errors.write.destinationFull.title": {
+    "sourceHash": "1a2382d"
+  },
+  "errors.write.destinationFull.message": "La destination a manqué d'espace avant que tout soit écrit.",
+  "@errors.write.destinationFull.message": {
+    "sourceHash": "1271eab"
+  },
+  "errors.write.destinationFull.suggestion": "Libérez de l'espace sur la destination ou choisissez un autre emplacement. Si la destination a un quota de stockage, vous l'avez peut-être atteint.",
+  "@errors.write.destinationFull.suggestion": {
+    "sourceHash": "6aead38"
+  },
   "errors.write.filesTooLargeForFilesystem.title.one": "Fichier trop volumineux pour ce disque",
   "@errors.write.filesTooLargeForFilesystem.title.one": {
     "sourceHash": "d8e95aa"

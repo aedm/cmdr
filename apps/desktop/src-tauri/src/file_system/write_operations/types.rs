@@ -361,10 +361,23 @@ pub enum WriteOperationError {
         path: String,
         message: String,
     },
+    /// The destination has no room for the transfer, MEASURED before anything was
+    /// written, so both numbers are real.
+    ///
+    /// ❌ Never build one without measuring: a write the destination refused for
+    /// lack of room is [`DestinationFull`](Self::DestinationFull), which carries no
+    /// sizes, so the dialog can't say "needs 0 bytes but only has 0 bytes".
     InsufficientSpace {
         required: u64,
         available: u64,
         volume_name: Option<String>,
+    },
+    /// The destination ran out of room (or of quota) partway through, found out
+    /// from the write it refused (`ENOSPC`, `EDQUOT`, a backend's `StorageFull`).
+    /// Nothing was measured, so there are no sizes to show. `path` is the item
+    /// being written when it happened, for the technical details.
+    DestinationFull {
+        path: String,
     },
     /// Would cause infinite recursion.
     DestinationInsideSource {

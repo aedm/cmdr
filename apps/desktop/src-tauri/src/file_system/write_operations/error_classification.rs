@@ -36,14 +36,8 @@ pub(super) fn classify_io_error(e: &std::io::Error, path: String) -> WriteOperat
                 };
             }
             libc::ENAMETOOLONG => return WriteOperationError::NameTooLong { path },
-            // The failing call has no space figures; `0` is the variant's "not measured".
-            libc::ENOSPC | libc::EDQUOT => {
-                return WriteOperationError::InsufficientSpace {
-                    required: 0,
-                    available: 0,
-                    volume_name: None,
-                };
-            }
+            // The refused write measured nothing, so it's the sizeless variant.
+            libc::ENOSPC | libc::EDQUOT => return WriteOperationError::DestinationFull { path },
             libc::ENOTCONN | libc::ENETDOWN | libc::ENETUNREACH | libc::EHOSTUNREACH | libc::ETIMEDOUT => {
                 return WriteOperationError::ConnectionInterrupted { path };
             }
@@ -126,18 +120,18 @@ impl WriteOperationError {
 mod tests {
     use super::*;
 
-    /// A full disk and a spent quota have one fix, room, so neither may read as a
-    /// generic failure with a Retry.
+    /// A full disk and a spent quota have one fix, room, and nothing was measured:
+    /// neither may read as a generic failure, nor as "needs 0 bytes".
     #[cfg(unix)]
     #[test]
-    fn a_full_disk_and_a_spent_quota_are_insufficient_space() {
+    fn a_full_disk_and_a_spent_quota_are_a_full_destination() {
         for errno in [libc::ENOSPC, libc::EDQUOT] {
             let err = classify_io_error(
                 &std::io::Error::from_raw_os_error(errno),
                 "/Volumes/Stick/a".to_string(),
             );
             assert!(
-                matches!(err, WriteOperationError::InsufficientSpace { .. }),
+                matches!(&err, WriteOperationError::DestinationFull { path } if path == "/Volumes/Stick/a"),
                 "errno {errno}: got {err:?}"
             );
         }

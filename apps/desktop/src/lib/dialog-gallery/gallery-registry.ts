@@ -188,6 +188,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
       { id: 'destination_exists', label: 'Destination exists' },
       { id: 'permission_denied', label: 'Permission denied' },
       { id: 'insufficient_space', label: 'Not enough space' },
+      { id: 'destination_full', label: 'Destination full' },
       { id: 'destination_inside_source', label: 'Destination inside source' },
       { id: 'duplicate_source_names', label: 'Two sources share a name' },
       { id: 'symlink_loop', label: 'Symlink loop' },

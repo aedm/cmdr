@@ -128,6 +128,13 @@ const simpleMessageFactories: Partial<
     message: w('connectionInterrupted.message'),
     suggestion: w('connectionInterrupted.suggestion'),
   }),
+  // The destination refused a write for lack of room or quota. Nothing measured
+  // it, so the copy names no sizes (a measured refusal is `insufficient_space`).
+  destination_full: () => ({
+    title: w('destinationFull.title'),
+    message: w('destinationFull.message'),
+    suggestion: w('destinationFull.suggestion'),
+  }),
   // STATUS_DELETE_PENDING: the file is marked for deletion on the server but an
   // open handle is keeping it alive. Transient: retry-after-a-moment.
   delete_pending: () => ({
@@ -212,6 +219,7 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   destination_exists: { category: 'needs_action', retryHint: false },
   permission_denied: { category: 'needs_action', retryHint: false },
   insufficient_space: { category: 'needs_action', retryHint: false },
+  destination_full: { category: 'needs_action', retryHint: false },
   destination_inside_source: { category: 'needs_action', retryHint: false },
   // No Retry: the same selection can only be refused again. The way out is
   // picking one of the two, or transferring them one at a time.
@@ -435,6 +443,7 @@ const pathOnlyTypes = new Set<WriteOperationError['type']>([
   'name_too_long',
   'delete_pending',
   'destination_not_writable',
+  'destination_full',
 ])
 
 /** Error types where technical details include path + error message. */

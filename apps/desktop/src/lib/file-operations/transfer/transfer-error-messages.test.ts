@@ -638,6 +638,7 @@ describe('getErrorDisplayMeta', () => {
       category: 'needs_action',
       retryHint: false,
     },
+    { error: { type: 'destination_full', path: '/p' }, category: 'needs_action', retryHint: false },
     {
       error: { type: 'destination_inside_source', source: '/a', destination: '/a/b' },
       category: 'needs_action',

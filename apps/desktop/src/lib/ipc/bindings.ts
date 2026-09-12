@@ -14614,7 +14614,22 @@ export type WriteOperationError =
   // Overwrite not enabled.
   | { type: 'destination_exists'; path: string }
   | { type: 'permission_denied'; path: string; message: string }
+  /**
+   *  The destination has no room for the transfer, MEASURED before anything was
+   *  written, so both numbers are real.
+   *
+   *  ❌ Never build one without measuring: a write the destination refused for
+   *  lack of room is [`DestinationFull`](Self::DestinationFull), which carries no
+   *  sizes, so the dialog can't say "needs 0 bytes but only has 0 bytes".
+   */
   | { type: 'insufficient_space'; required: number; available: number; volumeName: string | null }
+  /**
+   *  The destination ran out of room (or of quota) partway through, found out
+   *  from the write it refused (`ENOSPC`, `EDQUOT`, a backend's `StorageFull`).
+   *  Nothing was measured, so there are no sizes to show. `path` is the item
+   *  being written when it happened, for the technical details.
+   */
+  | { type: 'destination_full'; path: string }
   // Would cause infinite recursion.
   | { type: 'destination_inside_source'; source: string; destination: string }
   /**

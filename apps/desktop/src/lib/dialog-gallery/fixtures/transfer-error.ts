@@ -79,6 +79,11 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
       volumeName: 'Naspolya media (SMB)',
     },
   },
+  destination_full: {
+    operationType: 'copy',
+    // A USB stick that filled up partway: the write refused, nothing measured.
+    error: { type: 'destination_full', path: '/Volumes/USB-STICK/photos/2026/DSC09241.arw' },
+  },
   destination_inside_source: {
     operationType: 'move',
     error: {
