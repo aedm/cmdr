@@ -34,6 +34,7 @@ mod mutation_ops;
 /// Every test here drives a virtual MTP device, so it carries that feature gate.
 #[cfg(all(test, feature = "virtual-device"))]
 mod path_cache_sync_test;
+mod resolve;
 /// Path → handle resolution on a cache miss: the heal, and the typed not-found.
 #[cfg(all(test, feature = "virtual-device"))]
 mod resolve_test;
