@@ -144,18 +144,14 @@ impl MtpVolume {
     /// Normalizes any caller-supplied path on this volume to the canonical
     /// absolute MTP URL (`mtp://{device_id}/{storage_id}[/inner/path]`).
     ///
-    /// `notify_mutation` passes this as the PARENT path to
-    /// `notify_directory_changed`, which finds the target `LISTING_CACHE` entry by
-    /// exact path equality against `CachedListing.path` — and that IS the absolute
-    /// URL (pane navigation feeds the URL into the listing pipeline). Write/delete
-    /// callers, however, may hand us a volume-relative path (e.g. `/file-a.txt`
-    /// after the cross-volume copy orchestrator does `dest_path.join(name)` with
-    /// `dest_path = "/"`); without this conversion the listing lookup misses and
-    /// the cache patch is silently dropped, leaving the pane stale.
+    /// `notify_mutation` reports its PARENT path in this spelling, and so does
+    /// the event loop. The app's listing cache folds it onto
+    /// [`Volume::listing_path`](cmdr_fs::volume::Volume::listing_path) (the inner
+    /// spelling) before matching, so a pane holding either spelling is found.
     ///
-    /// Note the per-ENTRY paths INSIDE a listing are the storage-relative inner
-    /// form (`/Documents/notes.txt`), NOT the URL — so the `Removed` patch matches
-    /// entries by NAME, not full path (see `caching::remove_entry_by_name`).
+    /// The per-ENTRY paths inside a listing are the inner form
+    /// (`/Documents/notes.txt`), so the `Removed` patch matches entries by NAME
+    /// (see `caching::remove_entry_by_name`).
     fn to_url_path(&self, path: &Path) -> PathBuf {
         let path_str = path.to_string_lossy();
         if path_str.starts_with("mtp://") {
