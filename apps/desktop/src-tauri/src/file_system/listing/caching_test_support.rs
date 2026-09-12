@@ -201,6 +201,9 @@ pub(crate) struct WatchCoverageVolume {
     /// The pinned answer, as the `WatchCoverage` discriminant so the field stays
     /// lock-free (`set_coverage` races with the oracle reading it).
     coverage: AtomicU8,
+    /// How many `get_metadata` calls reached the volume, for a test pinning that
+    /// a cached answer spared the round trip.
+    metadata_calls: std::sync::atomic::AtomicUsize,
 }
 
 impl WatchCoverageVolume {
@@ -208,7 +211,13 @@ impl WatchCoverageVolume {
         Self {
             inner: InMemoryVolume::new(name),
             coverage: AtomicU8::new(encode_coverage(coverage)),
+            metadata_calls: std::sync::atomic::AtomicUsize::new(0),
         }
+    }
+
+    /// How many `get_metadata` calls reached this volume so far.
+    pub(crate) fn metadata_calls(&self) -> usize {
+        self.metadata_calls.load(Ordering::Relaxed)
     }
 
     pub(crate) fn set_coverage(&self, coverage: WatchCoverage) {
@@ -257,6 +266,7 @@ impl Volume for WatchCoverageVolume {
         &'a self,
         path: &'a Path,
     ) -> Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
+        self.metadata_calls.fetch_add(1, Ordering::Relaxed);
         self.inner.get_metadata(path)
     }
 

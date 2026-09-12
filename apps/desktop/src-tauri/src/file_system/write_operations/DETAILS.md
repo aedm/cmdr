@@ -806,9 +806,12 @@ LEFT of `deadline` rather than a fresh timeout, because four legs with their own
 wrote down.
 
 **The optional source-stat leg gets a sub-budget, never the whole deadline.** When `source_volume_id` +
-`source_paths` are supplied, `stat_source_paths` resolves each item's real `is_directory` + size on the source volume:
-one `Volume::get_metadata` per top-level path, `SOURCE_STAT_CONCURRENCY` (16) in flight, strictly O(top-level items)
-and never a subtree walk. ❌ Don't swap this back to `scan_for_copy_batch`: a batch of exactly one path takes a fast
+`source_paths` are supplied, `stat_source_paths` resolves each item's real `is_directory` + size. A watched pane listing
+answers first (`try_get_authoritative_listing`, one lookup per parent folder), because a paste's sources almost always
+sit in a folder a pane shows and a stat isn't always cheap: MTP lists the whole parent per stat, so 16 concurrent stats
+of a 101-photo paste queued sixteen 818-entry listings of `/DCIM/Camera` (`ERR-44S2Q`). The rest take one
+`Volume::get_metadata` per top-level path, `SOURCE_STAT_CONCURRENCY` (16) in flight, strictly O(top-level items) and
+never a subtree walk. ❌ Don't swap this back to `scan_for_copy_batch`: a batch of exactly one path takes a fast
 path straight into `scan_recursive` on SMB and SFTP, so a single directory source would walk its whole subtree (a
 119k-file folder ate the entire 30 s check budget, `ERR-AYVM4`). This leg runs on `deadline.fraction(SOURCE_STAT_BUDGET_DIVISOR)`
 (3, so it gets 10 s of a 30 s budget) because its failure is non-fatal — a fallback to the FE's name-only items — while

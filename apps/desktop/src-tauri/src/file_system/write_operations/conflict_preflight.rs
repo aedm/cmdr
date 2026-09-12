@@ -19,6 +19,7 @@ use tokio::time::Duration;
 
 use crate::deadline::{Deadline, timeout_detached_within};
 use crate::file_system::listing::FileEntry;
+use crate::file_system::listing::caching::try_get_authoritative_listing;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::volume::{ScanConflict, Volume, VolumeError};
 use crate::unregistered_volumes::{Unregistered, why_unregistered};
@@ -182,6 +183,9 @@ pub(crate) async fn scan_volume_for_conflicts_within(
     if let (Some(src_volume_id), Some(src_paths)) = (source_volume_id, source_paths) {
         let paths: Vec<PathBuf> = src_paths.iter().map(PathBuf::from).collect();
         let first = paths.first().cloned();
+        // The listing cache keys a pane by the caller's volume id, which the
+        // resolve below moves; the stat leg asks the cache with it.
+        let stat_volume_id = src_volume_id.clone();
         let resolved = timeout_detached_within(
             &deadline,
             || VolumeScanError::TimedOut,
@@ -200,7 +204,7 @@ pub(crate) async fn scan_volume_for_conflicts_within(
                 &stat_deadline,
                 || VolumeScanError::TimedOut,
                 |detail| VolumeScanError::Unexpected { detail },
-                async move { Ok::<_, VolumeScanError>(stat_source_paths(&src_volume, &paths).await) },
+                async move { Ok::<_, VolumeScanError>(stat_source_paths(&src_volume, &stat_volume_id, &paths).await) },
             )
             .await;
             match stats {
@@ -304,7 +308,8 @@ fn log_conflict_outcome(deadline: &Deadline, what: &str, e: &VolumeScanError) {
     );
 }
 
-/// Stats each top-level source path, concurrently, one `get_metadata` apiece.
+/// Stats each top-level source path: from a watched pane listing where one
+/// holds it, otherwise one `get_metadata` apiece, concurrently.
 ///
 /// ❗ Deliberately NOT `scan_for_copy_batch`: that walks a directory source's
 /// whole subtree to produce a recursive `total_bytes`, and the only two fields
@@ -314,12 +319,23 @@ fn log_conflict_outcome(deadline: &Deadline, what: &str, e: &VolumeScanError) {
 /// folder spent the entire conflict budget on a number the merge below throws
 /// away (a real user's copy, 2026-08-27, `ERR-AYVM4`).
 ///
+/// ❗ The pane comes first because a paste's sources almost always sit in the
+/// folder a pane shows, and a stat isn't always cheap: MTP has no single-file
+/// stat, so each one lists the whole parent. Fanned out 16 at a time, a
+/// 101-photo paste out of `/DCIM/Camera` queued sixteen 818-entry listings back
+/// to back while the copy waited (`ERR-44S2Q`).
+///
 /// A path the source can't stat is simply absent from the result; the merge
 /// leaves the caller's values in place for it.
-async fn stat_source_paths(source_volume: &Arc<dyn Volume>, paths: &[PathBuf]) -> Vec<(PathBuf, FileEntry)> {
+async fn stat_source_paths(
+    source_volume: &Arc<dyn Volume>,
+    source_volume_id: &str,
+    paths: &[PathBuf],
+) -> Vec<(PathBuf, FileEntry)> {
     use futures_util::stream::{self, StreamExt};
 
-    stream::iter(paths.iter().cloned())
+    let (mut stats, unanswered) = stats_from_watched_panes(source_volume_id, paths);
+    let stated: Vec<(PathBuf, FileEntry)> = stream::iter(unanswered)
         .map(|path| async move {
             let entry = source_volume.get_metadata(&path).await.ok()?;
             Some((path, entry))
@@ -327,7 +343,49 @@ async fn stat_source_paths(source_volume: &Arc<dyn Volume>, paths: &[PathBuf]) -
         .buffer_unordered(SOURCE_STAT_CONCURRENCY)
         .filter_map(|hit| async move { hit })
         .collect()
-        .await
+        .await;
+    stats.extend(stated);
+    stats
+}
+
+/// Splits `paths` into the stats a watched pane listing already answers and the
+/// paths that still need one, asking the fresh-listing oracle once per parent
+/// folder, never once per path.
+///
+/// Only a listing a live watch keeps fresh answers (`try_get_authoritative_listing`),
+/// the same bar the delete walker and the copy scan hold a cached entry to.
+fn stats_from_watched_panes(source_volume_id: &str, paths: &[PathBuf]) -> (Vec<(PathBuf, FileEntry)>, Vec<PathBuf>) {
+    use std::collections::HashMap;
+
+    let mut by_parent: HashMap<&Path, Vec<&PathBuf>> = HashMap::new();
+    for path in paths {
+        by_parent
+            .entry(path.parent().unwrap_or(Path::new("/")))
+            .or_default()
+            .push(path);
+    }
+
+    let mut answered = Vec::new();
+    let mut unanswered = Vec::new();
+    for (parent, children) in by_parent {
+        let listing = try_get_authoritative_listing(source_volume_id, parent);
+        let by_name: HashMap<&str, &FileEntry> = listing
+            .iter()
+            .flatten()
+            .map(|entry| (entry.name.as_str(), entry))
+            .collect();
+        for path in children {
+            match path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .and_then(|name| by_name.get(name))
+            {
+                Some(entry) => answered.push((path.clone(), (*entry).clone())),
+                None => unanswered.push(path.clone()),
+            }
+        }
+    }
+    (answered, unanswered)
 }
 
 /// Overlays authoritative `is_directory` + `size` from the source-volume stats

@@ -4,11 +4,13 @@
 use super::{
     Deadline, SourceItemInput, VolumeScanError, merge_source_types_from_stats, scan_volume_for_conflicts_within,
 };
+use crate::file_system::listing::caching_test_support::{TestListing, WatchCoverageVolume};
 use crate::file_system::volume::manager::test_support::TestVolumeRegistration;
 use crate::file_system::{InMemoryVolume, LocalPosixVolume, SourceItemInfo};
 use crate::test_support::WedgedVolume;
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::Volume;
+use cmdr_fs::volume::WatchCoverage;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -304,6 +306,60 @@ async fn the_same_path_on_two_volumes_is_still_a_conflict() {
     .expect("the scan answers");
 
     assert_eq!(conflicts.len(), 1, "two volumes, two items, one real clash");
+}
+
+/// Sources the user picked in a pane a live watch keeps fresh are stat'ed from
+/// that pane, with no request to the source volume.
+///
+/// Each stat on MTP lists the whole parent folder, and the check fans out 16 at a
+/// time, so a 101-photo paste out of `/DCIM/Camera` queued sixteen 818-entry
+/// listings back to back while the copy waited (ERR-44S2Q). The pane the
+/// selection came from already holds every answer the merge needs.
+#[tokio::test]
+async fn source_stats_come_from_the_watched_pane_they_were_picked_in() {
+    let source = Arc::new(WatchCoverageVolume::new("PaneSource", WatchCoverage::EveryWriter));
+    let _source = TestVolumeRegistration::install("pane-stat-source", Arc::clone(&source) as Arc<dyn Volume>);
+    let dest = Arc::new(InMemoryVolume::new("Dest")) as Arc<dyn Volume>;
+    dest.create_directory(Path::new("/Burst"))
+        .await
+        .expect("seeding the destination folder");
+    let _dest = TestVolumeRegistration::install("pane-stat-dest", Arc::clone(&dest));
+
+    let dir = "/phone/Camera";
+    let _pane = TestListing::new()
+        .volume("pane-stat-source")
+        .path(dir)
+        .entries(vec![
+            FileEntry::new("a.jpg".to_string(), format!("{dir}/a.jpg"), false, false),
+            FileEntry::new("Burst".to_string(), format!("{dir}/Burst"), true, false),
+        ])
+        .insert("pane-stat-source");
+
+    // The caller's placeholder says `Burst` is a file; only a stat can correct it.
+    let conflicts = scan_volume_for_conflicts_within(
+        Deadline::new(Duration::from_secs(5)),
+        String::from("pane-stat-dest"),
+        vec![input("a.jpg"), input("Burst")],
+        String::from("/"),
+        Some(String::from("pane-stat-source")),
+        Some(vec![format!("{dir}/a.jpg"), format!("{dir}/Burst")]),
+    )
+    .await
+    .expect("the scan answers");
+
+    let burst = conflicts
+        .iter()
+        .find(|conflict| conflict.dest_path.ends_with("Burst"))
+        .expect("the destination folder clashes");
+    assert!(
+        burst.source_is_directory,
+        "the pane's answer must reach the merge: `Burst` is a folder, got {conflicts:?}"
+    );
+    assert_eq!(
+        source.metadata_calls(),
+        0,
+        "every source sits in a watched pane listing, so none may cost a round trip"
+    );
 }
 
 fn input(name: &str) -> SourceItemInput {
