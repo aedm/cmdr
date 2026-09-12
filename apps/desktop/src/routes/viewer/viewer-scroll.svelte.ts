@@ -68,12 +68,16 @@ export function createViewerScroll(deps: ScrollDeps) {
   })
   const scrollLineHeight = $derived(effectiveLineHeight * scrollScale)
 
+  // Both ends clamp to the file, so `visibleFrom <= visibleTo` always holds. When the line
+  // count lands below the current scroll position (a byte-seek estimate replaced by the real
+  // index), `scrollTop` still points past the end for a beat; an unclamped `visibleFrom`
+  // then overtook `visibleTo` and the fetch asked for a negative count (ERR-VDVHD).
   const visibleFrom = $derived.by(() => {
     if (heightMap.ready) {
       const unscaledY = scrollScale < 1 ? scrollTop / scrollScale : scrollTop
-      return Math.max(0, heightMap.getLineAtPosition(unscaledY) - BUFFER_LINES)
+      return Math.min(estimatedTotalLines(), Math.max(0, heightMap.getLineAtPosition(unscaledY) - BUFFER_LINES))
     }
-    return Math.max(0, Math.floor(scrollTop / scrollLineHeight) - BUFFER_LINES)
+    return Math.min(estimatedTotalLines(), Math.max(0, Math.floor(scrollTop / scrollLineHeight) - BUFFER_LINES))
   })
 
   const visibleTo = $derived.by(() => {
@@ -183,25 +187,36 @@ export function createViewerScroll(deps: ScrollDeps) {
     })
   }
 
+  /**
+   * What to ask the backend for to fill the rendered range `[from, to)`, or `null` when that
+   * range is empty (past the end of the file, or no lines yet): nothing to draw, so nothing to
+   * fetch. The count is always positive, which `viewer_get_lines`'s `usize` insists on.
+   */
+  function lineRequest(
+    from: number,
+    to: number,
+  ): { seekType: 'line' | 'fraction'; seekValue: number; fetchFrom: number; fetchCount: number } | null {
+    if (to <= from) return null
+    const fetchFrom = Math.max(0, from - BUFFER_LINES)
+    const fetchCount = Math.min(FETCH_BATCH, to - fetchFrom + BUFFER_LINES * 2)
+    if (deps.getTotalLines() !== null) return { seekType: 'line', seekValue: fetchFrom, fetchFrom, fetchCount }
+    // A 0 estimate would make the fraction division NaN (0/0) or Infinity (>0/0); both
+    // serialize to JSON null, which the Rust f64 `targetValue` rejects. With no line count
+    // to go on, seek to the start of the file (fraction 0).
+    const estimated = estimatedTotalLines()
+    return { seekType: 'fraction', seekValue: estimated > 0 ? fetchFrom / estimated : 0, fetchFrom, fetchCount }
+  }
+
   async function fetchLines(from: number, to: number) {
     const sessionId = deps.getSessionId()
     if (!sessionId) return
+    const request = lineRequest(from, to)
+    if (!request) return
+    const { seekType, seekValue, fetchFrom, fetchCount } = request
 
     const fetchId = ++currentFetchId
 
     try {
-      const fetchFrom = Math.max(0, from - BUFFER_LINES)
-      const fetchCount = Math.min(FETCH_BATCH, to - fetchFrom + BUFFER_LINES * 2)
-
-      const totalLines = deps.getTotalLines()
-      const supportsLineSeek = totalLines !== null
-      const seekType = supportsLineSeek ? 'line' : 'fraction'
-      // A 0 estimate would make the fraction division NaN (0/0) or Infinity (>0/0); both
-      // serialize to JSON null, which the Rust f64 `targetValue` rejects. With no line count
-      // to go on, seek to the start of the file (fraction 0).
-      const estimated = estimatedTotalLines()
-      const seekValue = supportsLineSeek ? fetchFrom : estimated > 0 ? fetchFrom / estimated : 0
-
       log.debug('fetchLines[{fetchId}]: requesting {seekType}={seekValue} count={fetchCount}', {
         fetchId,
         seekType,

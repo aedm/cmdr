@@ -12,7 +12,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createViewerScroll } from './viewer-scroll.svelte'
+import { createViewerScroll, getLineHeight } from './viewer-scroll.svelte'
 import { EOF_LINE } from './selection.svelte'
 import type { LineChunk } from '$lib/ipc/bindings'
 import { clearIpcMocks, installIpcMock } from '$lib/ipc/test-helpers'
@@ -30,23 +30,27 @@ const chunk: LineChunk = {
 }
 
 describe('createViewerScroll fraction seek', () => {
-  it('sends a finite targetValue when the line-count estimate is 0', async () => {
+  it('sends a finite targetValue when the line-count estimate drops to 0 before a scheduled fetch fires', async () => {
     const ipc = installIpcMock()
     ipc.mock('viewer_get_lines', () => chunk)
 
-    // A byte-seek backend that doesn't know its total lines, with a 0 estimate.
+    // A byte-seek backend that doesn't know its total lines. A 0 estimate on its own draws
+    // no rows and so fetches nothing; the divisor still meets 0 when a fetch was scheduled
+    // over a real range and the estimate dropped inside the debounce window.
+    let estimate = 100
     const scroll = createViewerScroll({
       getSessionId: () => 'sess-1',
       getTotalLines: () => null,
       setTotalLines: () => {},
-      getEstimatedLines: () => 0,
+      getEstimatedLines: () => estimate,
       getBackendType: () => 'byteSeek',
       onTimeoutError: () => {},
       getAllLines: () => null,
       getTextWidth: () => 0,
     })
 
-    scroll.fetchVisibleNow()
+    scroll.runFetchEffect()
+    estimate = 0
     await vi.waitFor(() => {
       expect(ipc.lastCall('viewer_get_lines')).toBeDefined()
     })
@@ -55,6 +59,47 @@ describe('createViewerScroll fraction seek', () => {
     expect(call?.payload).toMatchObject({ targetType: 'fraction' })
     const targetValue = (call?.payload as { targetValue: number }).targetValue
     expect(Number.isFinite(targetValue)).toBe(true)
+  })
+})
+
+describe('createViewerScroll range after the line count shrinks', () => {
+  it('never asks for a negative line count when the real total lands below the scroll position', async () => {
+    // A byte-seek open estimates 20 000 lines; the user scrolls to line ~10 000; then the
+    // line index finishes and the file turns out to have 3 000 (ERR-VDVHD: count -6724).
+    const ipc = installIpcMock()
+    ipc.mock('viewer_get_lines', () => chunk)
+    let totalLines = $state<number | null>(null)
+    const scroll = createViewerScroll({
+      getSessionId: () => 'sess-1',
+      getTotalLines: () => totalLines,
+      setTotalLines: (v) => {
+        totalLines = v
+      },
+      getEstimatedLines: () => 20_000,
+      getBackendType: () => 'byteSeek',
+      onTimeoutError: () => {},
+      getAllLines: () => null,
+      getTextWidth: () => 0,
+    })
+    const el = document.createElement('div')
+    Object.defineProperty(el, 'clientHeight', { value: 600 })
+    Object.defineProperty(el, 'scrollHeight', { value: 20_000 * getLineHeight() })
+    el.scrollTop = 10_000 * getLineHeight()
+    scroll.contentRef = el
+    scroll.handleScroll()
+
+    totalLines = 3_000
+    scroll.fetchVisibleNow()
+    await new Promise((r) => setTimeout(r, 0))
+
+    const counts = ipc.calls
+      .filter((c) => c.command === 'viewer_get_lines')
+      .map((c) => (c.payload as { count: number }).count)
+    expect(counts.every((count) => count > 0)).toBe(true)
+    // Past the end of the file there's nothing to draw, so there's nothing to fetch either.
+    expect(counts).toEqual([])
+    expect(scroll.visibleFrom).toBeLessThanOrEqual(3_000)
+    expect(scroll.visibleLines).toEqual([])
   })
 })
 
