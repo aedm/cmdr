@@ -3,7 +3,9 @@
 //! Only `errno` and `ErrorKind` are consulted, never the formatted message. The
 //! `IoResultExt` extension trait and the
 //! `From<std::io::Error>` impl are the two entry points local-FS code uses to
-//! attach a typed variant (and a path) to an IO failure.
+//! attach a typed variant (and a path) to an IO failure; the native copy calls
+//! (`macos_copy`, `linux_copy`) use `classify_copy_io_error`, which also picks
+//! the path.
 
 use std::path::Path;
 
@@ -13,7 +15,7 @@ use super::types::{ReadOnlySide, WriteOperationError};
 ///
 /// Only `errno` and `ErrorKind` are consulted — never the formatted message.
 /// Backend errors (SMB, MTP, etc.) are typed and flow through
-/// `transfer/volume/copy.rs::map_volume_error`, so this function only sees
+/// `transfer/volume/transfer_error.rs::map_volume_error`, so this function only sees
 /// `std::io::Error` values produced by local-FS calls, which always carry a
 /// `raw_os_error()` on Unix. Pre-fix the function had a lowercase-substring
 /// fallback (`"disconnect"`, `"read-only"`, `"connection"`, `"operation not
@@ -34,6 +36,14 @@ pub(super) fn classify_io_error(e: &std::io::Error, path: String) -> WriteOperat
                 };
             }
             libc::ENAMETOOLONG => return WriteOperationError::NameTooLong { path },
+            // The failing call has no space figures; `0` is the variant's "not measured".
+            libc::ENOSPC | libc::EDQUOT => {
+                return WriteOperationError::InsufficientSpace {
+                    required: 0,
+                    available: 0,
+                    volume_name: None,
+                };
+            }
             libc::ENOTCONN | libc::ENETDOWN | libc::ENETUNREACH | libc::EHOSTUNREACH | libc::ETIMEDOUT => {
                 return WriteOperationError::ConnectionInterrupted { path };
             }
@@ -54,6 +64,27 @@ pub(super) fn classify_io_error(e: &std::io::Error, path: String) -> WriteOperat
             message: e.to_string(),
         },
     }
+}
+
+/// Classifies a failure from a native copy call (`copyfile`, `copy_file_range`),
+/// which touches both ends, so the errno also decides which path the error names.
+///
+/// A refusal of the WRITE names the destination (read-only, full, a name it can't
+/// hold, no permission, occupied); a missing source, a dropped link, or anything
+/// unclassified names the source the user copied from. ❌ Don't give a platform
+/// its own copy of this table: the macOS one drifted and sent `EROFS` to the user
+/// as a generic failure.
+#[cfg(unix)]
+pub(super) fn classify_copy_io_error(err: &std::io::Error, source: &Path, destination: &Path) -> WriteOperationError {
+    let refused_by_destination = matches!(
+        err.kind(),
+        std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::AlreadyExists
+    ) || matches!(
+        err.raw_os_error(),
+        Some(libc::EROFS | libc::ENOSPC | libc::EDQUOT | libc::ENAMETOOLONG)
+    );
+    let path = if refused_by_destination { destination } else { source };
+    classify_io_error(err, path.display().to_string())
 }
 
 /// Extension trait for converting `io::Result` to `Result<T, WriteOperationError>` with path
@@ -94,6 +125,23 @@ impl WriteOperationError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A full disk and a spent quota have one fix, room, so neither may read as a
+    /// generic failure with a Retry.
+    #[cfg(unix)]
+    #[test]
+    fn a_full_disk_and_a_spent_quota_are_insufficient_space() {
+        for errno in [libc::ENOSPC, libc::EDQUOT] {
+            let err = classify_io_error(
+                &std::io::Error::from_raw_os_error(errno),
+                "/Volumes/Stick/a".to_string(),
+            );
+            assert!(
+                matches!(err, WriteOperationError::InsufficientSpace { .. }),
+                "errno {errno}: got {err:?}"
+            );
+        }
+    }
 
     #[test]
     fn archive_needs_password_is_expected_recoverable() {

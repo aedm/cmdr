@@ -100,7 +100,9 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
 - **`analytics.rs` is `pub(super)` and reached ONLY from `TauriEventSink::emit_complete`.** Every property is
   categorical (op kind, a count bucket, a bool): no names, no paths ever. Copy/Move → `file_transfer_completed`,
   Delete/Trash → `delete_used`.
-- **`error_classification.rs` classifies from `errno` / `ErrorKind` only, never the message**.
+- **`error_classification.rs` classifies from `errno` / `ErrorKind` only, never the message**. The native copy calls
+  on both platforms (`macos_copy`, `linux_copy`) share `classify_copy_io_error`, which also picks the path: a refused
+  write names the destination, anything else the source. One table, so the platforms can't drift apart again.
 - **`validation.rs`'s `ensure_destination_dir` runs AFTER `validate_destination_not_inside_source`**, so creating a
   missing destination (and its ancestors) can never materialize a folder inside a source. The volume-aware pipelines
   mirror both the behavior and the order with `Volume::create_directory_all(dest)`; see `../volume/DETAILS.md`

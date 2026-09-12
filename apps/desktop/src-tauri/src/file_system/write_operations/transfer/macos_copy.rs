@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 
 use crate::file_system::write_operations::WriteOperationError;
-use crate::file_system::write_operations::error_classification::IoResultExt;
+use crate::file_system::write_operations::error_classification::{IoResultExt, classify_copy_io_error};
 
 // ============================================================================
 // Type aliases for progress callbacks
@@ -381,7 +381,7 @@ pub fn copy_file_native(
     } else {
         // Get the actual error
         let err = std::io::Error::last_os_error();
-        Err(map_io_error_with_path(err, source, destination))
+        Err(classify_copy_io_error(&err, source, destination))
     }
 }
 
@@ -439,39 +439,6 @@ fn path_to_cstring(path: &Path) -> Result<CString, WriteOperationError> {
     })
 }
 
-/// Maps an IO error to a WriteOperationError with path context.
-fn map_io_error_with_path(err: std::io::Error, source: &Path, destination: &Path) -> WriteOperationError {
-    match err.kind() {
-        std::io::ErrorKind::NotFound => WriteOperationError::SourceNotFound {
-            path: source.display().to_string(),
-        },
-        std::io::ErrorKind::PermissionDenied => WriteOperationError::PermissionDenied {
-            path: destination.display().to_string(),
-            message: format!("Cannot write to {}: permission denied", destination.display()),
-        },
-        std::io::ErrorKind::AlreadyExists => WriteOperationError::DestinationExists {
-            path: destination.display().to_string(),
-        },
-        _ => {
-            // Check for disk full (ENOSPC = 28 on macOS)
-            if let Some(os_err) = err.raw_os_error()
-                && os_err == 28
-            {
-                // ENOSPC - we don't have exact space info here, so use 0
-                return WriteOperationError::InsufficientSpace {
-                    required: 0,
-                    available: 0,
-                    volume_name: None,
-                };
-            }
-            WriteOperationError::IoError {
-                path: source.display().to_string(),
-                message: err.to_string(),
-            }
-        }
-    }
-}
-
 // ============================================================================
 // Tests
 // ============================================================================
@@ -499,6 +466,48 @@ mod tests {
         assert!(result.is_ok());
         assert!(dst.exists());
         assert_eq!(fs::read_to_string(&dst).unwrap(), "Hello, world!");
+    }
+
+    /// ❗ `copyfile` onto a read-only mount (a mounted installer image) fails with
+    /// `EROFS`, and the user must read a read-only DESTINATION: as an `IoError`
+    /// they get a generic failure whose Retry can only fail again. `/` is the one
+    /// read-only filesystem every Mac has (the sealed system volume).
+    #[test]
+    fn a_copy_onto_a_read_only_filesystem_names_a_read_only_destination() {
+        use crate::file_system::write_operations::ReadOnlySide;
+
+        let temp_dir = create_temp_dir("read_only_dest");
+        let src = temp_dir.join("shortcut.lnk");
+        fs::write(&src, "lnk").unwrap();
+
+        let result = copy_single_file_native(&src, Path::new("/cmdr-read-only-probe.lnk"), false, None);
+
+        assert!(
+            matches!(
+                result,
+                Err(WriteOperationError::ReadOnlyDevice {
+                    side: ReadOnlySide::Destination,
+                    ..
+                })
+            ),
+            "got {result:?}"
+        );
+    }
+
+    /// `ENAMETOOLONG` has one fix, a shorter name, so it must not offer a Retry.
+    #[test]
+    fn a_name_too_long_for_the_destination_is_name_too_long() {
+        let temp_dir = create_temp_dir("name_too_long");
+        let src = temp_dir.join("short.txt");
+        fs::write(&src, "x").unwrap();
+        let dst = temp_dir.join("n".repeat(300));
+
+        let result = copy_single_file_native(&src, &dst, false, None);
+
+        assert!(
+            matches!(result, Err(WriteOperationError::NameTooLong { .. })),
+            "got {result:?}"
+        );
     }
 
     #[test]

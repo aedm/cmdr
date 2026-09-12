@@ -11,7 +11,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU8;
 
-use super::super::types::{ReadOnlySide, WriteOperationError};
+use super::super::error_classification::classify_copy_io_error;
+use super::super::types::WriteOperationError;
 
 /// Chunk size per `copy_file_range` call (4 MB).
 /// Larger than chunked_copy's 1 MB because this is an in-kernel operation
@@ -36,7 +37,7 @@ pub fn copy_single_file_linux(
     cancelled: &Arc<AtomicU8>,
     progress_callback: Option<&dyn Fn(u64, u64)>,
 ) -> Result<u64, WriteOperationError> {
-    let src_file = fs::File::open(source).map_err(|e| map_io_error(e, source, destination))?;
+    let src_file = fs::File::open(source).map_err(|e| classify_copy_io_error(&e, source, destination))?;
 
     let src_metadata = src_file.metadata().map_err(|e| WriteOperationError::ReadError {
         path: source.display().to_string(),
@@ -50,7 +51,7 @@ pub fn copy_single_file_linux(
     } else {
         fs::OpenOptions::new().write(true).create_new(true).open(destination)
     }
-    .map_err(|e| map_io_error(e, source, destination))?;
+    .map_err(|e| classify_copy_io_error(&e, source, destination))?;
 
     // Pre-allocate space to avoid fragmentation.
     if total_size > 0 {
@@ -97,7 +98,7 @@ pub fn copy_single_file_linux(
             let err = std::io::Error::last_os_error();
             drop(dst_file);
             let _ = fs::remove_file(destination);
-            return Err(map_io_error(err, source, destination));
+            return Err(classify_copy_io_error(&err, source, destination));
         }
 
         if result == 0 {
@@ -146,64 +147,6 @@ pub fn copy_single_file_linux(
     );
 
     Ok(bytes_copied)
-}
-
-/// Maps an IO error to a WriteOperationError with path context.
-fn map_io_error(err: std::io::Error, source: &Path, destination: &Path) -> WriteOperationError {
-    match err.kind() {
-        std::io::ErrorKind::NotFound => WriteOperationError::SourceNotFound {
-            path: source.display().to_string(),
-        },
-        std::io::ErrorKind::PermissionDenied => WriteOperationError::PermissionDenied {
-            path: destination.display().to_string(),
-            message: format!("Cannot write to {}: permission denied", destination.display()),
-        },
-        std::io::ErrorKind::AlreadyExists => WriteOperationError::DestinationExists {
-            path: destination.display().to_string(),
-        },
-        _ => {
-            if let Some(os_err) = err.raw_os_error() {
-                match os_err {
-                    libc::ENOSPC => {
-                        return WriteOperationError::InsufficientSpace {
-                            required: 0,
-                            available: 0,
-                            volume_name: None,
-                        };
-                    }
-                    // These use destination path (classify_io_error can't pick the right one)
-                    libc::ENAMETOOLONG => {
-                        return WriteOperationError::NameTooLong {
-                            path: destination.display().to_string(),
-                        };
-                    }
-                    libc::EROFS => {
-                        // EROFS on the destination of a copy.
-                        return WriteOperationError::ReadOnlyDevice {
-                            path: destination.display().to_string(),
-                            device_name: None,
-                            side: ReadOnlySide::Destination,
-                        };
-                    }
-                    libc::ENOTCONN | libc::ENETDOWN | libc::ENETUNREACH | libc::EHOSTUNREACH | libc::ETIMEDOUT => {
-                        return WriteOperationError::ConnectionInterrupted {
-                            path: source.display().to_string(),
-                        };
-                    }
-                    libc::ENODEV => {
-                        return WriteOperationError::DeviceDisconnected {
-                            path: source.display().to_string(),
-                        };
-                    }
-                    _ => {}
-                }
-            }
-            WriteOperationError::IoError {
-                path: source.display().to_string(),
-                message: err.to_string(),
-            }
-        }
-    }
 }
 
 #[cfg(test)]
