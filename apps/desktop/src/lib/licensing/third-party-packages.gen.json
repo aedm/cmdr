@@ -2872,6 +2872,18 @@
       "url": "https://github.com/GitoxideLabs/prodash"
     },
     {
+      "name": "pulldown-cmark",
+      "version": "0.13.4",
+      "license": "MIT",
+      "url": "https://github.com/raphlinus/pulldown-cmark"
+    },
+    {
+      "name": "pulldown-cmark-escape",
+      "version": "0.11.0",
+      "license": "MIT",
+      "url": "https://github.com/raphlinus/pulldown-cmark"
+    },
+    {
       "name": "pxfm",
       "version": "0.1.29",
       "license": "BSD-3-Clause OR Apache-2.0",

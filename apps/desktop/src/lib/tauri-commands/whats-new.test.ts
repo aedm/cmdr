@@ -21,7 +21,7 @@ describe('getWhatsNew wrapper', () => {
   })
 
   it('forwards sinceVersion and max and returns the releases', async () => {
-    const releases = [{ version: '0.26.0', date: '2026-06-11', lead: null, sections: [] }]
+    const releases = [{ version: '0.26.0', date: '2026-06-11', leadHtml: null, sections: [] }]
     vi.mocked(commands.getWhatsNew).mockResolvedValueOnce(releases)
     const result = await getWhatsNew('0.20.0', 5)
     expect(commands.getWhatsNew).toHaveBeenCalledWith('0.20.0', 5)
