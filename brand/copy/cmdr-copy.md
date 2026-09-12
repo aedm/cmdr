@@ -61,7 +61,7 @@ sections above.
 
 - Tagline (page title): `Finally, a file manager from {currentYear}!`
 - Hero headline: "Finally, a file manager from {currentYear}!"
-- Hero subhead: "Indexes your whole drive in minutes. Instant search, visible folder sizes, keyboard-driven everything.
+- Hero subhead: "Indexes your whole drive in minutes. Instant search, folder sizes, keyboard-driven everything.
   Built in Rust, free for personal use."
 - Pricing hint: "Source-available · Free for personal use · Commercial from $59/year"
 
