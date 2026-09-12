@@ -2,8 +2,8 @@
 //!
 //! Every device cell in this crate and every MTP cell in the app needs the same
 //! four steps: register a fixture-backed phone, find the id discovery gave it,
-//! connect, and prime the root listing (`resolve_path_to_handle` is cache-only,
-//! so nothing resolves until something has been listed). Written out per file
+//! connect, and prime the root listing (so a cell's first op reads the path
+//! cache instead of paying the resolver's heal listing). Written out per file
 //! that's forty lines each and six chances to get the teardown wrong.
 //!
 //! The one thing that differs across the boundary is WHICH manager: a cell here
@@ -125,9 +125,9 @@ pub async fn connect_fixture(manager: &Arc<MtpConnectionManager>, fixture: Virtu
 
 /// An `MtpVolume` over the device's writable storage, with `path` primed too.
 ///
-/// `resolve_path_to_handle` is cache-only and [`connect_virtual_device`] stops
-/// at the root, so anything nested has to be reached through its parent before a
-/// cell can name it. Pass `None` when the root is enough.
+/// [`connect_virtual_device`] stops at the root. Priming `path` too puts its
+/// entries in the path cache, for a cell that counts listings or wants its first
+/// op to skip the resolver's heal. Pass `None` when the root is enough.
 pub async fn volume_for(
     manager: &Arc<MtpConnectionManager>,
     device: &ConnectedDevice,

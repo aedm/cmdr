@@ -3,7 +3,6 @@
 use log::{debug, warn};
 use mtp_rs::{CancelToken, ObjectHandle, StorageId};
 use std::path::Path;
-use std::sync::Arc;
 
 use super::errors::MtpConnectionError;
 use super::{MtpConnectionManager, MtpObjectInfo, acquire_device_lock, normalize_mtp_path};
@@ -97,16 +96,8 @@ impl MtpConnectionManager {
             cancel.is_some()
         );
 
-        // Get the device and resolve path to handle
-        let (device_arc, object_handle) = {
-            let devices = self.devices.lock().await;
-            let entry = devices.get(device_id).ok_or_else(|| MtpConnectionError::NotConnected {
-                device_id: device_id.to_string(),
-            })?;
-
-            let handle = self.resolve_path_to_handle(entry, storage_id, object_path)?;
-            (Arc::clone(&entry.device), handle)
-        };
+        let object_handle = self.resolve_path_to_handle(device_id, storage_id, object_path).await?;
+        let device_arc = self.device_arc(device_id).await?;
 
         let device = acquire_device_lock(&device_arc, device_id, "delete_object").await?;
 
@@ -256,16 +247,8 @@ impl MtpConnectionManager {
             device_id, storage_id, parent_path, folder_name
         );
 
-        // Get device and resolve parent folder
-        let (device_arc, parent_handle) = {
-            let devices = self.devices.lock().await;
-            let entry = devices.get(device_id).ok_or_else(|| MtpConnectionError::NotConnected {
-                device_id: device_id.to_string(),
-            })?;
-
-            let parent = self.resolve_path_to_handle(entry, storage_id, parent_path)?;
-            (Arc::clone(&entry.device), parent)
-        };
+        let parent_handle = self.resolve_path_to_handle(device_id, storage_id, parent_path).await?;
+        let device_arc = self.device_arc(device_id).await?;
 
         let device = acquire_device_lock(&device_arc, device_id, "create_folder").await?;
 
@@ -345,16 +328,8 @@ impl MtpConnectionManager {
             device_id, storage_id, object_path, new_name
         );
 
-        // Get device and resolve object handle
-        let (device_arc, object_handle) = {
-            let devices = self.devices.lock().await;
-            let entry = devices.get(device_id).ok_or_else(|| MtpConnectionError::NotConnected {
-                device_id: device_id.to_string(),
-            })?;
-
-            let handle = self.resolve_path_to_handle(entry, storage_id, object_path)?;
-            (Arc::clone(&entry.device), handle)
-        };
+        let object_handle = self.resolve_path_to_handle(device_id, storage_id, object_path).await?;
+        let device_arc = self.device_arc(device_id).await?;
 
         let device = acquire_device_lock(&device_arc, device_id, "rename_object").await?;
 
@@ -439,17 +414,11 @@ impl MtpConnectionManager {
             device_id, storage_id, object_path, new_parent_path
         );
 
-        // Get device and resolve both handles
-        let (device_arc, object_handle, new_parent_handle) = {
-            let devices = self.devices.lock().await;
-            let entry = devices.get(device_id).ok_or_else(|| MtpConnectionError::NotConnected {
-                device_id: device_id.to_string(),
-            })?;
-
-            let obj_handle = self.resolve_path_to_handle(entry, storage_id, object_path)?;
-            let parent_handle = self.resolve_path_to_handle(entry, storage_id, new_parent_path)?;
-            (Arc::clone(&entry.device), obj_handle, parent_handle)
-        };
+        let object_handle = self.resolve_path_to_handle(device_id, storage_id, object_path).await?;
+        let new_parent_handle = self
+            .resolve_path_to_handle(device_id, storage_id, new_parent_path)
+            .await?;
+        let device_arc = self.device_arc(device_id).await?;
 
         let device = acquire_device_lock(&device_arc, device_id, "move_object").await?;
 

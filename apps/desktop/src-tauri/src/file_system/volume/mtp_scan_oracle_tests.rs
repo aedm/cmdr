@@ -160,9 +160,8 @@ async fn mtp_scan_cold_cache_still_uses_parent_grouping() {
     let (vol, vid) = (Arc::clone(&fixture.volume), fixture.volume_id.clone());
     get_volume_manager().register(&vid, vol.clone() as Arc<dyn Volume>);
 
-    // MTP needs the parent's path-handle cached before it can list any path
-    // (`resolve_path_to_handle` is cache-only; only `/` is auto-known). Walk
-    // root first so `/Documents` and `/DCIM` get into the path-handle cache.
+    // Walk root first so `/Documents` and `/DCIM` are in the path-handle cache
+    // before the scan, keeping a heal listing out of what the cell measures.
     // We don't care about the entries here, just the side effect on the cache.
     let root = vol.list_directory(Path::new("/"), None).await.expect("listing /");
     assert!(

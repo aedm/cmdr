@@ -27,8 +27,8 @@ struct Device {
     fixture: VirtualDeviceFixture,
 }
 
-/// Connects a virtual MTP device with the root listing primed, so mutations can
-/// resolve their parent handles (`resolve_path_to_handle` is cache-only).
+/// Connects a virtual MTP device with the root listing primed, so the cache
+/// already holds the parents the mutations below write beside.
 async fn connect_device() -> Device {
     let fixture = setup_virtual_mtp_device();
 

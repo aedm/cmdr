@@ -26,8 +26,9 @@ The MTP session layer: opens devices, owns the per-device tokio task, exposes ty
   index Stale, KEEPS the sidebar volume, and reopens with backoff. ❌ Never route it to `handle_device_disconnected`,
   tighten the backoff, or add a USB transport reset (`pnpm check mtp-no-transport-reset`). A REAL `Error::Disconnected`
   DOES take that path, else the next `connect()` fails as "already connected".
-- **The caches lie in specific ways.** `resolve_path_to_handle()` is cache-only, so list ancestors first.
-  `PathHandleCache` is bidirectional: write via `insert` / `remove_path`, ❌ never `path_to_handle`, since devices REUSE
+- **The caches lie in specific ways.** `resolve_path_to_handle()` heals a miss by listing the parent chain and answers
+  a typed `ObjectNotFound { path }` for a gone object; ❌ never call it holding the device lock. `PathHandleCache` is
+  bidirectional: write via `insert` / `remove_path`, ❌ never `path_to_handle`, since devices REUSE
   handles and a desynced reverse map resolves a new object to a dead path. `ListingCache`'s 5 s TTL survives mutations;
   invalidate for read-after-write.
 - **A copy scan takes `scan_for_copy_with_stop`** (`bulk_ops.rs`), consulting the `ScanStop` per entry and BEFORE each

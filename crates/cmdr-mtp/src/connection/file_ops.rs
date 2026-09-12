@@ -70,14 +70,13 @@ impl MtpConnectionManager {
             device_id, storage_id, path, offset
         );
 
-        // Get the device and resolve path to handle.
-        let (device_arc, object_handle) = {
+        let object_handle = self.resolve_path_to_handle(device_id, storage_id, path).await?;
+        let device_arc = {
             let devices = self.devices.lock().await;
             let entry = devices.get(device_id).ok_or_else(|| MtpConnectionError::NotConnected {
                 device_id: device_id.to_string(),
             })?;
-            let handle = self.resolve_path_to_handle(entry, storage_id, path)?;
-            (Arc::clone(&entry.device), handle)
+            Arc::clone(&entry.device)
         };
 
         let windowed = {
@@ -166,17 +165,17 @@ impl MtpConnectionManager {
         offset: u64,
         len: u32,
     ) -> Result<Vec<u8>, MtpConnectionError> {
-        let (device_arc, object_handle, storage_cache, cached) = {
+        let object_handle = self.resolve_path_to_handle(device_id, storage_id, path).await?;
+        let (device_arc, storage_cache, cached) = {
             let devices = self.devices.lock().await;
             let entry = devices.get(device_id).ok_or_else(|| MtpConnectionError::NotConnected {
                 device_id: device_id.to_string(),
             })?;
-            let handle = self.resolve_path_to_handle(entry, storage_id, path)?;
             let cache = Arc::clone(&entry.storage_cache);
             // Clone the handle out under the entry's own lock so the read below
             // never has to re-enter `devices` while holding the device lock.
             let cached = cache.read().ok().and_then(|m| m.get(&storage_id).cloned());
-            (Arc::clone(&entry.device), handle, cache, cached)
+            (Arc::clone(&entry.device), cache, cached)
         };
         #[cfg(any(test, feature = "testing"))]
         let storage_lookups = {
@@ -249,19 +248,13 @@ impl MtpConnectionManager {
             device_id, storage_id, dest_folder, filename, size,
         );
 
-        // Get device and resolve parent folder
-        let (device_arc, parent_handle) = {
+        let parent_handle = self.resolve_path_to_handle(device_id, storage_id, dest_folder).await?;
+        let device_arc = {
             let devices = self.devices.lock().await;
             let entry = devices.get(device_id).ok_or_else(|| MtpConnectionError::NotConnected {
                 device_id: device_id.to_string(),
             })?;
-
-            let parent = if dest_folder.is_empty() {
-                ObjectHandle::ROOT
-            } else {
-                self.resolve_path_to_handle(entry, storage_id, dest_folder)?
-            };
-            (Arc::clone(&entry.device), parent)
+            Arc::clone(&entry.device)
         };
 
         let device = acquire_device_lock(&device_arc, device_id, "upload_from_stream").await?;

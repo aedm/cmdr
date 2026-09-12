@@ -24,7 +24,8 @@ fn payload(len: usize) -> Vec<u8> {
 }
 
 /// Connects a virtual MTP device seeded with `bytes` at `internal/blob.bin`, with
-/// the root path cache primed (`read_range` resolves handles cache-only).
+/// the root path cache primed (so a read resolves from the cache, with no heal
+/// listing in the way of what a cell counts).
 async fn connect_device_with_blob(bytes: &[u8]) -> ConnectedDevice {
     connect_device_with_blob_named(bytes, "blob.bin").await
 }

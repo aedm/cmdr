@@ -698,9 +698,8 @@ mod device_tests {
             .connect(&device_id, DeviceWatch::Live)
             .await
             .expect("virtual-mtp connect should succeed");
-        // Prime the path cache the way navigating there does. Root first:
-        // `resolve_path_to_handle` is cache-only, so a folder whose parent was
-        // never listed has no handle to reach it by.
+        // Prime the path cache the way navigating there does, root first, so
+        // the handle→path walk short-circuits on cached ancestors.
         manager
             .list_directory(&device_id, storage_id, "/")
             .await

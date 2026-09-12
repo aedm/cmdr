@@ -31,6 +31,9 @@ mod mutation_ops;
 /// Every test here drives a virtual MTP device, so it carries that feature gate.
 #[cfg(all(test, feature = "virtual-device"))]
 mod path_cache_sync_test;
+/// Path → handle resolution on a cache miss: the heal, and the typed not-found.
+#[cfg(all(test, feature = "virtual-device"))]
+mod resolve_test;
 mod scheduler;
 mod session_reset;
 /// The manager and the recording registrar this crate's own device cells drive.
@@ -619,6 +622,18 @@ impl MtpConnectionManager {
     async fn priority_gate(&self, device_id: &str) -> Option<DevicePriorityGate> {
         let devices = self.devices.lock().await;
         devices.get(device_id).map(|entry| entry.priority_gate.clone())
+    }
+
+    /// The shared session handle for a connected device, or `NotConnected`. The
+    /// registry lock is held only to clone it out.
+    async fn device_arc(&self, device_id: &str) -> Result<Arc<Mutex<MtpDevice>>, MtpConnectionError> {
+        let devices = self.devices.lock().await;
+        devices
+            .get(device_id)
+            .map(|entry| Arc::clone(&entry.device))
+            .ok_or_else(|| MtpConnectionError::NotConnected {
+                device_id: device_id.to_string(),
+            })
     }
 
     /// Take a foreground-priority guard for a device op, so the background scan

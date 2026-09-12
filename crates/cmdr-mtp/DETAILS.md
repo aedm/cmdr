@@ -97,12 +97,10 @@ op drains it under the operation lock, one ~300 ms self-heal. ❌ Don't re-add a
 `FileDownload`, mtp-rs's unconsumed-drop panic can't apply.
 
 **A conflict scan settles a missing destination through `get_metadata`, not a `NotFound` arm.** Every other backend
-reads `VolumeError::NotFound` from the destination listing as "nothing clashes" and answers an empty list. MTP can't:
-`resolve_path_to_handle` is cache-only, so a path nobody has browsed to fails as a generic `IoError` ("path not in
-cache"), which is honest, because it means UNKNOWN rather than absent. Reading every listing failure as absence would
-let a disconnected device pass for an empty folder and clear the copy to run. `get_metadata` settles it by listing the
-PARENT, so only a confirmed-absent destination reads as empty and every other failure stays the caller's to see. It
-costs one extra parent listing, on the error path only.
+reads `VolumeError::NotFound` from the destination listing as "nothing clashes" and answers an empty list. MTP confirms
+it instead: `get_metadata` lists the PARENT, so only a confirmed-absent destination reads as empty and every other
+failure stays the caller's to see. It costs one extra parent listing, on the error path only. Known hole: `map_mtp_error`
+answers `NotFound` for `NotConnected` too, so a device that went away between the two listings still reads as empty.
 
 ### The no-clobber rename is check-then-act
 

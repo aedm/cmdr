@@ -452,10 +452,8 @@ mod device_tests {
             "handles don't survive a reset, so the reopened session must start with empty caches",
         );
 
-        // The one-shot is spent: the device is genuinely usable again. Listing
-        // the root first isn't ceremony: `resolve_path_to_handle` is cache-only,
-        // so the emptied caches make a re-navigation start from the top, which is
-        // what the pane does anyway.
+        // The one-shot is spent: the device is genuinely usable again, which a
+        // real listing over the reopened session proves.
         connection_manager()
             .list_directory(&device.id, device.storage_id, "/")
             .await

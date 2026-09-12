@@ -67,8 +67,8 @@ fn p90_ms(v: &mut [Duration]) -> f64 {
 }
 
 /// Walks the storage root two levels deep for a file of at least
-/// `MIN_TARGET_BYTES`, listing as it goes so `resolve_path_to_handle`
-/// (cache-only) can resolve the winner later.
+/// `MIN_TARGET_BYTES`, listing as it goes so the winner resolves from the path
+/// cache and no heal listing lands inside a timed read.
 async fn find_target(device_id: &str, storage_id: u32) -> Option<(String, u64)> {
     let roots = connection_manager()
         .list_directory(device_id, storage_id, "/")

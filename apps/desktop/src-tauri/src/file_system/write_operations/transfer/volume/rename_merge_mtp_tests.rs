@@ -57,8 +57,8 @@ async fn connect_seeded_device(
     (device, volume, backing, lock)
 }
 
-/// `resolve_path_to_handle` is cache-only, so a path is unreachable until an
-/// ancestor listing has put its handle in the cache. Walk each level top-down.
+/// Lists each level top-down, so every path the cell names resolves from the
+/// path cache rather than through the resolver's heal listing.
 async fn prime_path_handles(volume: &Arc<dyn Volume>, dirs: &[&str]) {
     for dir in dirs {
         volume

@@ -193,10 +193,30 @@ The delete needs a live device/session. If the device just disconnected, the del
 cleanup never masks the original upload error. Pinned by `upload_failure_deletes_partial_object_on_device` and
 `upload_cancel_deletes_partial_and_surfaces_cancelled` (both in `connection/upload_test.rs`).
 
+## Path → handle resolution heals a miss (`resolve_path_to_handle`)
+
+The path cache holds only what a listing put there, and a path reaches an op by routes that never listed its parent: a
+pane restored after a reconnect or a session reset, a search result, a go-to-path, or a pane still showing a file an
+earlier op removed. So every op resolves through `resolve_path_to_handle`, which on a miss lists the parent (resolving
+the parent the same way, recursively up to the constant root) and looks again.
+
+- **Still missing means gone.** It answers `MtpConnectionError::ObjectNotFound { path }` naming the path ASKED about,
+  also when a folder above it is what's missing, since the user acted on the file. `mapping.rs` turns that into
+  `VolumeError::NotFound(path)`, which the transfer engine reports as `SourceNotFound`. Field reports (Pixel 8a,
+  v0.44.0): repeated copies, moves, and deletes of files the pane still showed failed as a generic "Path not in cache"
+  `IoError`.
+- **The heal honors the 5 s listing cache.** Both caches are written together in `finalize_listing`, and every mutation
+  that drops a path also invalidates its parent's listing, so a fresh listing without the name is a real answer. A copy
+  of many already-gone siblings pays one listing, not one per file.
+- **The heal listing takes a foreground guard** (it goes through `list_directory`), even under a READ. That's safe: the
+  guard lives for the one listing, before any window is read, and no yield point runs inside it.
+- ❌ Never call it holding the device lock: the heal re-lists through that non-reentrant `tokio::sync::Mutex`.
+
+Pinned by `connection/resolve_test.rs`.
+
 ## Stale parent handle on upload (self-heal + one-shot retry)
 
-`resolve_path_to_handle` is cache-only: the parent-folder handle an upload uses comes from whenever the user last listed
-that folder. Android routes MTP through MediaProvider, whose object handles are NOT stable across a media rescan, so a
+The parent-folder handle an upload uses comes from the path cache, so from whenever the user last listed that folder. Android routes MTP through MediaProvider, whose object handles are NOT stable across a media rescan, so a
 handle can go stale between the listing and a later upload into the folder. The device then rejects `SendObjectInfo`
 (phase 1, before any source byte is read) with `InvalidParentObject` (or `InvalidObjectHandle`). Field report: a 307 MB
 upload into a Pixel's `/Documents` failed this way, surfaced to the user as a "Path not found" on the intact _source_
