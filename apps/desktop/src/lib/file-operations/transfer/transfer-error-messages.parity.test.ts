@@ -239,10 +239,9 @@ const cases: Case[] = [
     error: { type: 'invalid_name', path: '/p', message: 'm' },
     expected: {
       title: 'Invalid file name',
-      message:
-        "/p has a name the destination can't store, so the server turned it away without ever looking for the file.",
+      message: "/p has a name the destination can't store.",
       suggestion:
-        'Rename it to something shorter and plainer, then try again. Some servers also refuse reserved names like CON, NUL, or LPT1.',
+        'Rename it to something shorter and plainer, then try again. Some destinations also refuse reserved names like CON, NUL, or LPT1.',
     },
   },
   {
@@ -254,10 +253,9 @@ const cases: Case[] = [
     error: { type: 'invalid_name', path: '/share/<b>"a&b"</b>.json', message: 'm' },
     expected: {
       title: 'Invalid file name',
-      message:
-        '/share/&lt;b&gt;"a&amp;b"&lt;/b&gt;.json has a name the destination can\'t store, so the server turned it away without ever looking for the file.',
+      message: '/share/&lt;b&gt;"a&amp;b"&lt;/b&gt;.json has a name the destination can\'t store.',
       suggestion:
-        'Rename it to something shorter and plainer, then try again. Some servers also refuse reserved names like CON, NUL, or LPT1.',
+        'Rename it to something shorter and plainer, then try again. Some destinations also refuse reserved names like CON, NUL, or LPT1.',
     },
   },
   {

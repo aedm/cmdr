@@ -627,13 +627,13 @@
   "@errors.listing.invalidName.title": {
     "sourceHash": "69b2aa4"
   },
-  "errors.listing.invalidName.explanation": "`{path}` heeft een naam die de bestemming niet kan opslaan, dus heeft de server hem afgewezen zonder ooit naar het bestand te zoeken.",
+  "errors.listing.invalidName.explanation": "`{path}` heeft een naam die de bestemming niet kan opslaan, dus heeft de bestemming de naam geweigerd zonder naar het bestand te zoeken.",
   "@errors.listing.invalidName.explanation": {
-    "sourceHash": "a44a65f"
+    "sourceHash": "7000b52"
   },
-  "errors.listing.invalidName.suggestion": "Dit kun je proberen:\n- Geef het item een kortere, eenvoudigere naam\n- Sommige servers weigeren gereserveerde namen zoals `CON`, `NUL` of `LPT1`\n- Een heel lange naam kan over de limiet van de server heen gaan, ook als elk teken erin prima is",
+  "errors.listing.invalidName.suggestion": "Dit kun je proberen:\n- Geef het item een kortere, eenvoudigere naam\n- Sommige bestemmingen weigeren gereserveerde namen zoals `CON`, `NUL` of `LPT1`\n- Een heel lange naam kan over de eigen limiet van de bestemming heen gaan, ook als elk teken erin prima is",
   "@errors.listing.invalidName.suggestion": {
-    "sourceHash": "cc133da"
+    "sourceHash": "9074cf3"
   },
   "errors.listing.ioSerious.title": "Kon deze map niet lezen",
   "@errors.listing.ioSerious.title": {
@@ -1313,13 +1313,13 @@
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"
   },
-  "errors.write.invalidName.message": "{path} heeft een naam die de bestemming niet kan opslaan, dus heeft de server hem afgewezen zonder ooit naar het bestand te zoeken.",
+  "errors.write.invalidName.message": "{path} heeft een naam die de bestemming niet kan opslaan.",
   "@errors.write.invalidName.message": {
-    "sourceHash": "ae2537a"
+    "sourceHash": "0bd3e6a"
   },
-  "errors.write.invalidName.suggestion": "Geef het een kortere, eenvoudigere naam en probeer het opnieuw. Sommige servers weigeren ook gereserveerde namen zoals CON, NUL of LPT1.",
+  "errors.write.invalidName.suggestion": "Geef het een kortere, eenvoudigere naam en probeer het opnieuw. Sommige bestemmingen weigeren ook gereserveerde namen zoals CON, NUL of LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "7cfa12e"
+    "sourceHash": "3721c3d"
   },
   "errors.write.ioError.title.copy": "Kopiëren lukte niet",
   "@errors.write.ioError.title.copy": {

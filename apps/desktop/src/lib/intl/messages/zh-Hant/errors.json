@@ -627,13 +627,13 @@
   "@errors.listing.invalidName.title": {
     "sourceHash": "69b2aa4"
   },
-  "errors.listing.invalidName.explanation": "`{path}` 的名稱是目標位置存不下的，所以伺服器直接回絕了它，根本沒去找這個檔案。",
+  "errors.listing.invalidName.explanation": "`{path}` 的名稱是目標位置存不下的，所以它直接回絕了這個名稱，根本沒去找這個檔案。",
   "@errors.listing.invalidName.explanation": {
-    "sourceHash": "a44a65f"
+    "sourceHash": "7000b52"
   },
-  "errors.listing.invalidName.suggestion": "可以這樣試試：\n- 把這個項目改成短一點、單純一點的名稱\n- 有些伺服器會拒絕 `CON`、`NUL`、`LPT1` 這類保留名稱\n- 名稱太長也可能超出伺服器自己的上限，就算裡面每個字元都沒問題",
+  "errors.listing.invalidName.suggestion": "可以這樣試試：\n- 把這個項目改成短一點、單純一點的名稱\n- 有些目標位置會拒絕 `CON`、`NUL`、`LPT1` 這類保留名稱\n- 名稱太長也可能超出目標位置自己的上限，就算裡面每個字元都沒問題",
   "@errors.listing.invalidName.suggestion": {
-    "sourceHash": "cc133da"
+    "sourceHash": "9074cf3"
   },
   "errors.listing.ioSerious.title": "無法讀取這個資料夾",
   "@errors.listing.ioSerious.title": {
@@ -1313,13 +1313,13 @@
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"
   },
-  "errors.write.invalidName.message": "{path} 的名稱是目標位置存不下的，所以伺服器直接回絕了它，根本沒去找這個檔案。",
+  "errors.write.invalidName.message": "{path} 的名稱是目標位置存不下的。",
   "@errors.write.invalidName.message": {
-    "sourceHash": "ae2537a"
+    "sourceHash": "0bd3e6a"
   },
-  "errors.write.invalidName.suggestion": "把它改成短一點、單純一點的名稱再試一次。有些伺服器還會拒絕 CON、NUL、LPT1 這類保留名稱。",
+  "errors.write.invalidName.suggestion": "把它改成短一點、單純一點的名稱再試一次。有些目標位置還會拒絕 CON、NUL、LPT1 這類保留名稱。",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "7cfa12e"
+    "sourceHash": "3721c3d"
   },
   "errors.write.ioError.title.copy": "無法複製",
   "@errors.write.ioError.title.copy": {

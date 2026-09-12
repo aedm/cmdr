@@ -627,13 +627,13 @@
   "@errors.listing.invalidName.title": {
     "sourceHash": "69b2aa4"
   },
-  "errors.listing.invalidName.explanation": "A `{path}` elem neve olyan, amit a célhely nem tud tárolni, ezért a szerver visszautasította, anélkül hogy egyáltalán megkereste volna a fájlt.",
+  "errors.listing.invalidName.explanation": "A `{path}` elem neve olyan, amit a célhely nem tud tárolni, ezért visszautasította a nevet, anélkül hogy megkereste volna a fájlt.",
   "@errors.listing.invalidName.explanation": {
-    "sourceHash": "a44a65f"
+    "sourceHash": "7000b52"
   },
-  "errors.listing.invalidName.suggestion": "Ezeket próbálhatod:\n- Nevezd át az elemet valami rövidebbre és egyszerűbbre\n- Néhány szerver visszautasítja a fenntartott neveket, például a `CON`, `NUL` vagy `LPT1` nevet\n- Egy nagyon hosszú név a szerver saját korlátjába is ütközhet, akkor is, ha minden karakter rendben van benne",
+  "errors.listing.invalidName.suggestion": "Ezeket próbálhatod:\n- Nevezd át az elemet valami rövidebbre és egyszerűbbre\n- Néhány célhely visszautasítja a fenntartott neveket, például a `CON`, `NUL` vagy `LPT1` nevet\n- Egy nagyon hosszú név a célhely saját korlátjába is ütközhet, akkor is, ha minden karakter rendben van benne",
   "@errors.listing.invalidName.suggestion": {
-    "sourceHash": "cc133da"
+    "sourceHash": "9074cf3"
   },
   "errors.listing.ioSerious.title": "Nem sikerült beolvasni ezt a mappát",
   "@errors.listing.ioSerious.title": {
@@ -1313,13 +1313,13 @@
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"
   },
-  "errors.write.invalidName.message": "A(z) {path} elem neve olyan, amit a célhely nem tud tárolni, ezért a szerver visszautasította, anélkül hogy egyáltalán megkereste volna a fájlt.",
+  "errors.write.invalidName.message": "A(z) {path} elem neve olyan, amit a célhely nem tud tárolni.",
   "@errors.write.invalidName.message": {
-    "sourceHash": "ae2537a"
+    "sourceHash": "0bd3e6a"
   },
-  "errors.write.invalidName.suggestion": "Nevezd át valami rövidebbre és egyszerűbbre, majd próbáld újra. Néhány szerver a fenntartott neveket is visszautasítja, például a CON, NUL vagy LPT1 nevet.",
+  "errors.write.invalidName.suggestion": "Nevezd át valami rövidebbre és egyszerűbbre, majd próbáld újra. Néhány célhely a fenntartott neveket is visszautasítja, például a CON, NUL vagy LPT1 nevet.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "7cfa12e"
+    "sourceHash": "3721c3d"
   },
   "errors.write.ioError.title.copy": "Nem sikerült a másolás",
   "@errors.write.ioError.title.copy": {

@@ -627,13 +627,13 @@
   "@errors.listing.invalidName.title": {
     "sourceHash": "69b2aa4"
   },
-  "errors.listing.invalidName.explanation": "`{path}` porte un nom que la destination ne peut pas stocker : le serveur l'a refusé sans même chercher le fichier.",
+  "errors.listing.invalidName.explanation": "`{path}` porte un nom que la destination ne peut pas stocker : elle a refusé ce nom sans même chercher le fichier.",
   "@errors.listing.invalidName.explanation": {
-    "sourceHash": "a44a65f"
+    "sourceHash": "7000b52"
   },
-  "errors.listing.invalidName.suggestion": "Voici ce que vous pouvez essayer :\n- Renommez l'élément avec quelque chose de plus court et de plus simple\n- Certains serveurs refusent les noms réservés comme `CON`, `NUL` ou `LPT1`\n- Un nom très long peut dépasser la limite du serveur, même si chaque caractère est valide",
+  "errors.listing.invalidName.suggestion": "Voici ce que vous pouvez essayer :\n- Renommez l'élément avec quelque chose de plus court et de plus simple\n- Certaines destinations refusent les noms réservés comme `CON`, `NUL` ou `LPT1`\n- Un nom très long peut dépasser la limite propre à la destination, même si chaque caractère est valide",
   "@errors.listing.invalidName.suggestion": {
-    "sourceHash": "cc133da"
+    "sourceHash": "9074cf3"
   },
   "errors.listing.ioSerious.title": "Lecture du dossier impossible",
   "@errors.listing.ioSerious.title": {
@@ -1313,13 +1313,13 @@
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"
   },
-  "errors.write.invalidName.message": "{path} porte un nom que la destination ne peut pas stocker : le serveur l'a refusé sans même chercher le fichier.",
+  "errors.write.invalidName.message": "{path} porte un nom que la destination ne peut pas stocker.",
   "@errors.write.invalidName.message": {
-    "sourceHash": "ae2537a"
+    "sourceHash": "0bd3e6a"
   },
-  "errors.write.invalidName.suggestion": "Renommez-le avec quelque chose de plus court et de plus simple, puis réessayez. Certains serveurs refusent aussi les noms réservés comme CON, NUL ou LPT1.",
+  "errors.write.invalidName.suggestion": "Renommez-le avec quelque chose de plus court et de plus simple, puis réessayez. Certaines destinations refusent aussi les noms réservés comme CON, NUL ou LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "7cfa12e"
+    "sourceHash": "3721c3d"
   },
   "errors.write.ioError.title.copy": "Copie impossible",
   "@errors.write.ioError.title.copy": {

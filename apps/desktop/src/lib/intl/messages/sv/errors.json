@@ -627,13 +627,13 @@
   "@errors.listing.invalidName.title": {
     "sourceHash": "69b2aa4"
   },
-  "errors.listing.invalidName.explanation": "`{path}` har ett namn som målet inte kan lagra, så servern avvisade det utan att ens leta efter filen.",
+  "errors.listing.invalidName.explanation": "`{path}` har ett namn som målet inte kan lagra, så målet avvisade namnet utan att leta efter filen.",
   "@errors.listing.invalidName.explanation": {
-    "sourceHash": "a44a65f"
+    "sourceHash": "7000b52"
   },
-  "errors.listing.invalidName.suggestion": "Så här kan du prova:\n- Byt namn på objektet till något kortare och enklare\n- Vissa servrar avvisar reserverade namn som `CON`, `NUL` eller `LPT1`\n- Ett väldigt långt namn kan gå över serverns egen gräns, även om varje tecken i det är okej",
+  "errors.listing.invalidName.suggestion": "Så här kan du prova:\n- Byt namn på objektet till något kortare och enklare\n- Vissa mål avvisar reserverade namn som `CON`, `NUL` eller `LPT1`\n- Ett väldigt långt namn kan gå över målets egen gräns, även om varje tecken i det är okej",
   "@errors.listing.invalidName.suggestion": {
-    "sourceHash": "cc133da"
+    "sourceHash": "9074cf3"
   },
   "errors.listing.ioSerious.title": "Det gick inte att läsa den här mappen",
   "@errors.listing.ioSerious.title": {
@@ -1313,13 +1313,13 @@
   "@errors.write.invalidName.title": {
     "sourceHash": "1fb1e45"
   },
-  "errors.write.invalidName.message": "{path} har ett namn som målet inte kan lagra, så servern avvisade det utan att ens leta efter filen.",
+  "errors.write.invalidName.message": "{path} har ett namn som målet inte kan lagra.",
   "@errors.write.invalidName.message": {
-    "sourceHash": "ae2537a"
+    "sourceHash": "0bd3e6a"
   },
-  "errors.write.invalidName.suggestion": "Byt namn på den till något kortare och enklare och försök igen. Vissa servrar avvisar också reserverade namn som CON, NUL eller LPT1.",
+  "errors.write.invalidName.suggestion": "Byt namn på den till något kortare och enklare och försök igen. Vissa mål avvisar också reserverade namn som CON, NUL eller LPT1.",
   "@errors.write.invalidName.suggestion": {
-    "sourceHash": "7cfa12e"
+    "sourceHash": "3721c3d"
   },
   "errors.write.ioError.title.copy": "Det gick inte att kopiera",
   "@errors.write.ioError.title.copy": {
