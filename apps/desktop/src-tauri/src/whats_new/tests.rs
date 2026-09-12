@@ -95,6 +95,24 @@ fn versions(releases: &[WhatsNewRelease]) -> Vec<String> {
     releases.iter().map(|r| r.version.clone()).collect()
 }
 
+/// The embedded changelog's raw lines between `## [version]` and the next `###` or `##`.
+fn raw_lead_source(version: &str) -> String {
+    let heading = format!("## [{version}]");
+    CHANGELOG_MD
+        .lines()
+        .skip_while(|line| !line.starts_with(&heading))
+        .skip(1)
+        .take_while(|line| !line.starts_with("### ") && !line.starts_with("## "))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Parses a one-release changelog whose lead is `lead` and returns that lead's HTML.
+fn lead_html_of(lead: &str) -> Option<String> {
+    let md = format!("# Changelog\n\n## [1.0.0] - 2026-07-14\n\n{lead}\n\n### Added\n\n- Something (abc123)\n");
+    parse(&md).remove(0).lead_html
+}
+
 #[test]
 fn skips_unreleased_block() {
     let releases = parse(FIXTURE);
@@ -102,7 +120,7 @@ fn skips_unreleased_block() {
     // The Unreleased entry text must not leak into any release.
     for release in &releases {
         for section in &release.sections {
-            assert!(!section.entries.iter().any(|e| e.contains("must never appear")));
+            assert!(!section.entries_html.iter().any(|e| e.contains("must never appear")));
         }
     }
 }
@@ -116,83 +134,70 @@ fn recognizes_release_headings_in_order() {
 }
 
 #[test]
-fn extracts_wrapped_prose_lead() {
+fn renders_wrapped_prose_lead_as_one_paragraph() {
     let releases = parse(FIXTURE);
     let r = releases.iter().find(|r| r.version == "0.10.0").unwrap();
-    let lead = r.lead.as_ref().unwrap();
-    assert!(lead.starts_with("Double-digit minor lead."));
-    // Wrapped prose lines reflow onto one line with a space (a soft source `\n` and a
-    // space render identically, so the sentence reads as one line either way).
+    // The soft source wrap stays a `\n` inside the paragraph, which HTML collapses to a space.
     assert_eq!(
-        lead,
-        "Double-digit minor lead. This release sorts after 0.9.0 by semver, not by string order."
+        r.lead_html.as_deref(),
+        Some("<p>Double-digit minor lead. This release sorts after 0.9.0 by semver, not by string\norder.</p>\n")
     );
 }
 
 #[test]
-fn preserves_numbered_list_lead() {
-    // A lead written as a bold headline plus a Markdown numbered list must reach the
-    // renderer with each `N.` marker at the start of its own line; otherwise snarkdown
-    // (app) and marked (website) show literal "1. 2. 3." text instead of an <ol>.
-    let md = "\
-# Changelog
-
-## [1.0.0] - 2026-07-14
-
-**Big release.**
-
-1. First highlight.
-2. Second highlight.
-3. Third highlight.
-
-### Added
-
-- Something (abc123)
-";
-    let releases = parse(md);
+fn renders_multi_paragraph_lead_as_separate_paragraphs() {
+    let releases = parse(FIXTURE);
+    let r = releases.iter().find(|r| r.version == "0.9.0").unwrap();
     assert_eq!(
-        releases[0].lead.as_deref(),
-        Some("**Big release.**\n\n1. First highlight.\n2. Second highlight.\n3. Third highlight.")
+        r.lead_html.as_deref(),
+        Some("<p>First lead paragraph.</p>\n<p>Second lead paragraph after a blank line.</p>\n")
     );
 }
 
 #[test]
-fn reflows_wrapped_numbered_list_item() {
-    // A numbered highlight that soft-wraps across two source lines (the changelog
-    // formatter caps line length) must reach the renderer as ONE line per item.
-    // Otherwise the bare continuation line closes snarkdown's <ol> and the next `N.`
-    // opens a fresh list that restarts at "1." (marked survives it via lazy
-    // continuation, snarkdown does not).
-    let md = "\
-# Changelog
-
-## [1.0.0] - 2026-07-14
-
-1. First highlight.
-2. Second highlight that runs long enough that the formatter wraps it onto the next
-   line right here.
-3. Third highlight.
-
-### Added
-
-- Something (abc123)
-";
-    let releases = parse(md);
+fn renders_numbered_list_lead() {
     assert_eq!(
-        releases[0].lead.as_deref(),
+        lead_html_of("**Big release.**\n\n1. First highlight.\n2. Second highlight.\n3. Third highlight."),
         Some(
-            "1. First highlight.\n2. Second highlight that runs long enough that the formatter wraps it onto the next line right here.\n3. Third highlight."
+            "<p><strong>Big release.</strong></p>\n<ol>\n<li>First highlight.</li>\n<li>Second highlight.</li>\n<li>Third highlight.</li>\n</ol>\n"
+                .to_string()
         )
     );
 }
 
 #[test]
-fn extracts_multi_paragraph_lead() {
-    let releases = parse(FIXTURE);
-    let r = releases.iter().find(|r| r.version == "0.9.0").unwrap();
+fn renders_wrapped_numbered_list_item_as_one_item() {
+    // The changelog formatter wraps long highlights onto an indented continuation line.
     assert_eq!(
-        r.lead.as_deref(),
-        Some("First lead paragraph.\n\nSecond lead paragraph after a blank line.")
+        lead_html_of(
+            "1. First highlight.\n2. Second highlight that runs long enough that the formatter wraps it onto the next\n   line right here.\n3. Third highlight."
+        ),
+        Some(
+            "<ol>\n<li>First highlight.</li>\n<li>Second highlight that runs long enough that the formatter wraps it onto the next\nline right here.</li>\n<li>Third highlight.</li>\n</ol>\n"
+                .to_string()
+        )
+    );
+}
+
+#[test]
+fn renders_nested_list_under_a_numbered_highlight() {
+    // The 0.44.0 lead's shape. Pre-fix the parser trimmed the indentation away and the
+    // app's renderer merged everything into one `<ul>` whose first bullet was empty.
+    let lead = "\
+Thanks for the feedback!
+
+Some highlights:
+
+1. SFTP support. Try `⌘K`!
+2. Context menu updates:
+   - On files: a Share menu.
+   - On Cmdr in your Dock: tabs and bookmarks.";
+    assert_eq!(
+        lead_html_of(lead),
+        Some(
+            "<p>Thanks for the feedback!</p>\n<p>Some highlights:</p>\n<ol>\n<li>SFTP support. Try <code>⌘K</code>!</li>\n<li>Context menu updates:\n<ul>\n<li>On files: a Share menu.</li>\n<li>On Cmdr in your Dock: tabs and bookmarks.</li>\n</ul>\n</li>\n</ol>\n"
+                .to_string()
+        )
     );
 }
 
@@ -200,7 +205,7 @@ fn extracts_multi_paragraph_lead() {
 fn release_with_no_lead_has_none() {
     let releases = parse(FIXTURE);
     let r = releases.iter().find(|r| r.version == "0.8.0").unwrap();
-    assert_eq!(r.lead, None);
+    assert_eq!(r.lead_html, None);
     assert_eq!(r.sections.len(), 1);
     assert_eq!(r.sections[0].title, "Fixed");
 }
@@ -211,7 +216,12 @@ fn drops_non_app_section() {
     let r = releases.iter().find(|r| r.version == "0.10.0").unwrap();
     assert!(r.sections.iter().all(|s| s.title != "Non-app"));
     for section in &r.sections {
-        assert!(!section.entries.iter().any(|e| e.contains("entire section is dropped")));
+        assert!(
+            !section
+                .entries_html
+                .iter()
+                .any(|e| e.contains("entire section is dropped"))
+        );
     }
 }
 
@@ -236,9 +246,8 @@ fn strips_multi_hash_wrapped_commit_group() {
     let releases = parse(FIXTURE);
     let r = releases.iter().find(|r| r.version == "0.10.0").unwrap();
     let added = r.sections.iter().find(|s| s.title == "Added").unwrap();
-    let entry = &added.entries[0];
     assert_eq!(
-        entry,
+        added.entries_html[0],
         "A multi-line entry whose commit hashes wrap across two source lines and carry several of them"
     );
 }
@@ -248,7 +257,7 @@ fn strips_six_char_hash_commit_group() {
     let releases = parse(FIXTURE);
     let r = releases.iter().find(|r| r.version == "0.9.0").unwrap();
     let changed = r.sections.iter().find(|s| s.title == "Changed").unwrap();
-    assert_eq!(changed.entries[0], "A six-char-hash entry");
+    assert_eq!(changed.entries_html[0], "A six-char-hash entry");
 }
 
 #[test]
@@ -256,18 +265,28 @@ fn strips_eight_char_hash_commit_group() {
     let releases = parse(FIXTURE);
     let r = releases.iter().find(|r| r.version == "0.8.0").unwrap();
     let fixed = r.sections.iter().find(|s| s.title == "Fixed").unwrap();
-    assert_eq!(fixed.entries[0], "An entry with no lead above it");
+    assert_eq!(fixed.entries_html[0], "An entry with no lead above it");
 }
 
 #[test]
-fn keeps_inline_markdown_and_flattens_a_real_link() {
+fn renders_entry_inline_markdown_and_flattens_a_real_link() {
     let releases = parse(FIXTURE);
     let r = releases.iter().find(|r| r.version == "0.10.0").unwrap();
     let added = r.sections.iter().find(|s| s.title == "Added").unwrap();
-    // Second entry keeps bold + code, flattens the docs link to its label, strips the commit group.
+    // Inline HTML with no wrapping `<p>`: the dialog puts each entry in its own `<li>`.
     assert_eq!(
-        added.entries[1],
-        "Keep inline **bold** and `code` and a docs page flattened to text"
+        added.entries_html[1],
+        "Keep inline <strong>bold</strong> and <code>code</code> and a docs page flattened to text"
+    );
+}
+
+#[test]
+fn escapes_html_specials_in_an_entry() {
+    let md = "# Changelog\n\n## [1.0.0] - 2026-07-14\n\n### Added\n\n- Look for `Settings > Navigation & file ops` (abc123)\n";
+    let releases = parse(md);
+    assert_eq!(
+        releases[0].sections[0].entries_html[0],
+        "Look for <code>Settings &gt; Navigation &amp; file ops</code>"
     );
 }
 
@@ -278,15 +297,15 @@ fn keeps_a_real_trailing_parenthetical_that_is_not_a_commit_group() {
     let security = r.sections.iter().find(|s| s.title == "Security").unwrap();
     // The commit group is stripped, but the "(non-hash aside)" stays.
     assert_eq!(
-        security.entries[0],
+        security.entries_html[0],
         "Patch a thing while keeping a trailing (non-hash aside)"
     );
     // A trailing aside with no commit group at all survives untouched: the hash
     // shape is what makes a parenthetical machinery, not its position.
-    assert_eq!(security.entries[1], "Speed up the scan (~40x speed-up!)");
-    assert_eq!(security.entries[2], "Bump the dep (smb2 0.8.0)");
+    assert_eq!(security.entries_html[1], "Speed up the scan (~40x speed-up!)");
+    assert_eq!(security.entries_html[2], "Bump the dep (smb2 0.8.0)");
     // And the lead's real aside survives too.
-    assert!(r.lead.as_ref().unwrap().contains("(parenthetical aside)"));
+    assert!(r.lead_html.as_ref().unwrap().contains("(parenthetical aside)"));
 }
 
 // --- releases_between slicing, driven by parse_changelog output directly so the
@@ -385,12 +404,11 @@ fn smoke_real_changelog_parses() {
         "newest displayable release must be the current version"
     );
 
-    // Each parsed release has a lead (the release flow mandates a lead per release: a bold
-    // headline, optionally followed by a short numbered list of the highlights).
+    // Each parsed release has a lead (the release flow mandates one per release).
     for release in &latest_five {
         assert!(
-            release.lead.is_some(),
-            "release {} is missing its prose lead",
+            release.lead_html.is_some(),
+            "release {} is missing its lead",
             release.version
         );
         assert!(
@@ -405,7 +423,7 @@ fn smoke_real_changelog_parses() {
     for release in &latest_five {
         for section in &release.sections {
             assert!(DISPLAYABLE_SECTIONS.contains(&section.title.as_str()));
-            for entry in &section.entries {
+            for entry in &section.entries_html {
                 assert!(
                     !entry.contains("github.com/vdavid/cmdr/commit/"),
                     "commit link leaked into entry: {entry:?}"
@@ -414,6 +432,47 @@ fn smoke_real_changelog_parses() {
                     strip_trailing_commit_group(entry),
                     *entry,
                     "commit hash group leaked into entry: {entry:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn real_changelog_renders_as_commonmark_blocks() {
+    // What the popup actually shows for the latest five real releases. Every lead is block
+    // HTML, never raw markdown or the `<br />`-joined soup a toy renderer produces, and no
+    // list item opens straight into a nested list (the empty bullet 0.44.0 shipped with).
+    let current = env!("CARGO_PKG_VERSION");
+    for release in releases_between(None, current, 5) {
+        let version = &release.version;
+        let lead = release.lead_html.as_deref().unwrap_or_default();
+        // The lead reaches the renderer byte-faithful: exactly the source lines between the
+        // release heading and its first section, found here without the parser's walk.
+        assert_eq!(
+            lead,
+            render_block_html(&raw_lead_source(version)),
+            "release {version}'s lead was transformed on its way to the renderer"
+        );
+        assert!(
+            lead.starts_with('<') && lead.trim_end().ends_with('>'),
+            "release {version}'s lead isn't block HTML: {lead:?}"
+        );
+        assert!(
+            !lead.contains("<br"),
+            "release {version}'s lead has a hard break: {lead:?}"
+        );
+        for empty_bullet in ["<li><ul>", "<li><ol>", "<li>\n<ul>", "<li>\n<ol>"] {
+            assert!(
+                !lead.contains(empty_bullet),
+                "release {version}'s lead has a list item with no text of its own: {lead:?}"
+            );
+        }
+        for section in &release.sections {
+            for entry in &section.entries_html {
+                assert!(
+                    !entry.contains("<p>") && !entry.contains("<li>"),
+                    "release {version} has an entry that rendered as a block: {entry:?}"
                 );
             }
         }

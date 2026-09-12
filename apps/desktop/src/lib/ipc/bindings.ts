@@ -14383,8 +14383,11 @@ export type WhatsNewRelease = {
   version: string
   // Release date as written, for example `"2026-06-11"`. Display-only, never parsed.
   date: string
-  // The prose lead: paragraphs between the heading and the first `###` section. Markdown.
-  lead: string | null
+  /**
+   *  The lead (everything between the heading and the first `###` section), rendered as
+   *  CommonMark block HTML. Trusted: it's our committed changelog, fed to `{@html}`.
+   */
+  leadHtml: string | null
   // The displayable sections in changelog order (Added / Changed / Fixed / Security).
   sections: WhatsNewSection[]
 }
@@ -14393,8 +14396,11 @@ export type WhatsNewRelease = {
 export type WhatsNewSection = {
   // One of `Added`, `Changed`, `Fixed`, `Security`.
   title: string
-  // Bulleted entries, commit-hash groups already stripped, markdown links flattened to text.
-  entries: string[]
+  /**
+   *  Bulleted entries as inline HTML (no wrapping `<p>`), commit-hash groups stripped and
+   *  markdown links flattened to text before rendering. Trusted, same as `lead_html`.
+   */
+  entriesHtml: string[]
 }
 
 /**

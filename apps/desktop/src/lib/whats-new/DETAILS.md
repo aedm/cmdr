@@ -63,11 +63,20 @@ How the pieces hold together:
 
 ## Lead rendering
 
-The dialog renders each release's `lead` through `snarkdown` inside a `<div class="lead">` (NOT a `<p>`). A lead can be
-a `**bold headline**` followed by a Markdown numbered list; snarkdown emits a block `<ol>`, which a `<p>` can't legally
-contain (the browser force-closes the paragraph). CSS styles `.lead strong` (lifted to primary text, the part most
-people read) and `.lead ol`. The list only renders because the backend `build_lead` preserves in-paragraph newlines; the
-parse contract lives in `src-tauri/src/whats_new/DETAILS.md`.
+The backend renders each release's lead to CommonMark block HTML (`leadHtml`) and each entry to inline HTML
+(`entriesHtml`); the dialog drops them in with `{@html}` and adds no markdown pass of its own. The lead sits in a
+`<div class="lead">` (NOT a `<p>`), since it holds `<p>` and list blocks that a `<p>` can't legally contain. Rendering
+contract and the reason it lives in Rust: `src-tauri/src/whats_new/DETAILS.md` § Rendering.
+
+The CSS, for any shape CommonMark produces:
+
+- **Top-level blocks stack with one gap.** `.lead > *` has no margin and `.lead > * + *` a `--spacing-md` top margin, so
+  the spacing above and below the lead is the same whether it opens with a paragraph or a list.
+- **Lists share the entries' hanging-indent marker column** (below). A nested list gets `--spacing-xs` above it and its
+  own markers (bullets under a numbered item, a fresh counter under a nested `<ol>`).
+- **A loose list** (blank lines between items) wraps item text in `<p>`; the first one is `display: inline`, so the
+  marker keeps sharing its line.
+- `.lead strong` is lifted to primary text: a bold headline is the part most people read.
 
 ## Dev override
 
@@ -123,6 +132,6 @@ emit.
 The dialog's own chrome (title, empty state, links, footer, opt-out toast) lives in the `whatsNew.*` catalog
 (`$lib/intl/messages/en/whatsNew.json`), resolved via `tString()`; `cmdr/no-raw-user-facing-string` is enforced on
 `lib/whats-new/`. The release CONTENT (lead, section titles, entries) is NOT catalog copy: it's the committed
-`CHANGELOG.md` parsed backend-side and rendered through `snarkdown`, so changelog wording is fixed in `CHANGELOG.md`,
-not here. The title's apostrophe is the curly U+2019, kept byte-identical in the catalog value. Runtime rules:
+`CHANGELOG.md` parsed and rendered to HTML backend-side, so changelog wording is fixed in `CHANGELOG.md`, not here. The
+title's apostrophe is the curly U+2019, kept byte-identical in the catalog value. Runtime rules:
 [`$lib/intl/CLAUDE.md`](../intl/CLAUDE.md).

@@ -11,11 +11,12 @@ into a typed model; this frontend decides when to show it and renders it.
 - `whats-new-trigger.svelte.ts`: the effectful layer. Owns `whatsNewState` (`$state`), reads/writes settings, fetches
   the slice over IPC, opens the dialog. Exports `runWhatsNewStartupTrigger` (auto), `openWhatsNew` (manual reopen),
   `closeWhatsNew`.
-- `WhatsNewDialog.svelte`: the soft `ModalDialog` (`dialogId: 'whats-new'`), rendering releases via `snarkdown`.
+- `WhatsNewDialog.svelte`: the soft `ModalDialog` (`dialogId: 'whats-new'`), putting the backend's CommonMark HTML
+  (`leadHtml`, `entriesHtml`) on screen via `{@html}`.
 
 ## Must-knows
 
-- **The lead renders in a `<div>`, never a `<p>`.** A lead can be block markdown (a numbered list → `<ol>`), invalid
+- **The lead renders in a `<div>`, never a `<p>`.** A lead is block HTML (paragraphs, lists, nested lists), invalid
   inside a `<p>`. Don't revert it.
 - **Only the lead shows up front**; each release's Added / Changed / Fixed lists hide behind a "Show more" toggle,
   collapsed on every open. The disclosure animates a `0fr → 1fr` grid row and clips with `overflow: hidden`, so spacing
@@ -30,8 +31,9 @@ into a typed model; this frontend decides when to show it and renders it.
 - **An entry's bullet column is a hanging indent (`padding-left` + a negative-margin `::before`), ❌ never a grid.**
   Entries are rendered markdown: a grid makes every `<code>` / `<strong>` its own ITEM, and one lands in the bullet
   column stacked a character per line. `whats-new-markup.spec.ts` measures it; rationale in `DETAILS.md`.
-- **`{@html}` is trusted** (our committed `CHANGELOG.md`, backend-parsed): never feed it user input; fix bad entries in
-  `CHANGELOG.md`, never add fixup logic here.
+- **`{@html}` is trusted** (our committed `CHANGELOG.md`, rendered backend-side): never feed it user input; fix bad
+  entries in `CHANGELOG.md`, never add fixup logic here. ❌ Don't put a markdown pass back in the frontend: snarkdown
+  can't nest lists or make paragraphs, which is how 0.44.0's lead shipped broken (`src-tauri/src/whats_new/DETAILS.md`).
 - **E2E boot suppresses the auto-check** (`maybeRunWhatsNew` early-returns unless `force`); `whats-new.spec.ts` drives
   the real path. Don't remove the gate.
 

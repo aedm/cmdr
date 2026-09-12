@@ -2,7 +2,7 @@
  * A "What's new" entry keeps its inline markdown in the text flow.
  *
  * Changelog entries carry `code` spans and bold runs (about one entry in twelve
- * has a `code` span), and `snarkdown` renders each as its own element inside the
+ * has a `code` span), and the backend renders each as its own element inside the
  * entry's `<li>`. When that `<li>` was a two-column grid, every element became a
  * grid ITEM: the text split across cells and a `<code>` auto-placed into the
  * 1.15em bullet column, where `ModalDialog`'s inherited `overflow-wrap: anywhere`

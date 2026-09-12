@@ -40,20 +40,23 @@ const sampleReleases = [
   {
     version: '0.26.0',
     date: '2026-06-11',
-    lead: 'A focused release with a couple of nice touches.',
+    leadHtml: '<p>A focused release with a couple of nice touches.</p>\n',
     sections: [
-      { title: 'Added', entries: ['A shiny **new** thing', 'Inline `code` survives'] },
+      { title: 'Added', entriesHtml: ['A shiny <strong>new</strong> thing', 'Inline <code>code</code> survives'] },
       {
         title: 'Fixed',
-        entries: ['Squashed a flicker', 'The rest is in the [changelog](https://getcmdr.com/changelog/)'],
+        entriesHtml: [
+          'Squashed a flicker',
+          'The rest is in the <a href="https://getcmdr.com/changelog/">changelog</a>',
+        ],
       },
     ],
   },
   {
     version: '0.25.0',
     date: '2026-06-01',
-    lead: null,
-    sections: [{ title: 'Changed', entries: ['Tweaked a default'] }],
+    leadHtml: null,
+    sections: [{ title: 'Changed', entriesHtml: ['Tweaked a default'] }],
   },
 ]
 

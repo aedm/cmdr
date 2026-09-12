@@ -1,11 +1,12 @@
 //! Parses the repo-root `CHANGELOG.md` (embedded at compile time) into a typed,
-//! user-facing model for the "What's new" popup.
+//! user-facing model for the "What's new" popup, with each release's lead and entries
+//! rendered to HTML by a CommonMark renderer (`pulldown-cmark`).
 //!
-//! The changelog is the source of truth: whatever lands in a release's prose lead
-//! and its Added / Changed / Fixed / Security sections renders verbatim in the
-//! app. This parser only strips machinery the user shouldn't see (trailing
-//! commit-hash groups, the `Non-app` section, unknown sections) and never grows
-//! "fix up bad entries" logic. Garbage in the popup gets fixed in `CHANGELOG.md`,
+//! The changelog is the source of truth: whatever lands in a release's lead and its
+//! Added / Changed / Fixed / Security sections renders in the app the way GitHub and
+//! the website render it. This parser only strips machinery the user shouldn't see
+//! (trailing commit-hash groups, the `Non-app` section, unknown sections) and never
+//! grows "fix up bad entries" logic. Garbage in the popup gets fixed in `CHANGELOG.md`,
 //! never patched here. See `CLAUDE.md`.
 //!
 //! Resilience over strictness: malformed input must never panic or block startup.
@@ -13,6 +14,7 @@
 
 use std::sync::OnceLock;
 
+use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd, html};
 use semver::Version;
 use serde::Serialize;
 use specta::Type;
@@ -32,8 +34,9 @@ pub struct WhatsNewRelease {
     pub version: String,
     /// Release date as written, for example `"2026-06-11"`. Display-only, never parsed.
     pub date: String,
-    /// The prose lead: paragraphs between the heading and the first `###` section. Markdown.
-    pub lead: Option<String>,
+    /// The lead (everything between the heading and the first `###` section), rendered as
+    /// CommonMark block HTML. Trusted: it's our committed changelog, fed to `{@html}`.
+    pub lead_html: Option<String>,
     /// The displayable sections in changelog order (Added / Changed / Fixed / Security).
     pub sections: Vec<WhatsNewSection>,
 }
@@ -44,8 +47,9 @@ pub struct WhatsNewRelease {
 pub struct WhatsNewSection {
     /// One of `Added`, `Changed`, `Fixed`, `Security`.
     pub title: String,
-    /// Bulleted entries, commit-hash groups already stripped, markdown links flattened to text.
-    pub entries: Vec<String>,
+    /// Bulleted entries as inline HTML (no wrapping `<p>`), commit-hash groups stripped and
+    /// markdown links flattened to text before rendering. Trusted, same as `lead_html`.
+    pub entries_html: Vec<String>,
 }
 
 /// The section names we render, in their canonical display order. `Non-app` and
@@ -263,7 +267,7 @@ impl ReleaseBuilder {
                 } else {
                     Some(WhatsNewSection {
                         title: section.title,
-                        entries,
+                        entries_html: entries,
                     })
                 }
             })
@@ -277,82 +281,50 @@ impl ReleaseBuilder {
         Some(WhatsNewRelease {
             version: self.version,
             date: self.date,
-            lead,
+            lead_html: lead,
             sections,
         })
     }
 }
 
-/// Joins the lead lines into paragraphs. Blank lines separate paragraphs; within a
-/// paragraph, a line that starts a new Markdown list item begins a fresh line and every
-/// other line is soft-wrap continuation joined onto the previous line with a space.
-/// Returns `None` when there's no prose.
+/// Renders the lead lines as CommonMark block HTML, or `None` when there's no prose.
 ///
-/// Keeping each list marker at the start of its own line is what lets a lead carry a real
-/// numbered list (`1.` / `2.` / `3.`): both snarkdown (app popup) and marked (website)
-/// only recognize a marker at line-start. Reflowing continuation lines onto that same line
-/// matters for snarkdown, whose list parser has no lazy-continuation: a bare wrapped line
-/// (say a highlight the changelog formatter wrapped at ~100 chars) would otherwise close
-/// the `<ol>` and make the next `N.` open a fresh list that restarts at 1. Prose is
-/// unaffected: a soft `\n` and a space both collapse to a space when either renderer emits
-/// HTML, so the reflow reads identically.
+/// The lines reach the renderer exactly as written: no trimming, no re-joining. Indentation
+/// is what nests a list under a numbered highlight, and a wrapped line belongs to its list
+/// item by CommonMark's own rules, so any pre-processing here changes what renders.
 fn build_lead(lines: &[String]) -> Option<String> {
-    let mut paragraphs: Vec<String> = Vec::new();
-    let mut current: Vec<&str> = Vec::new();
-
-    for line in lines {
-        if line.trim().is_empty() {
-            if !current.is_empty() {
-                paragraphs.push(join_paragraph(&current));
-                current.clear();
-            }
-        } else {
-            current.push(line.trim());
-        }
+    if lines.iter().all(|line| line.trim().is_empty()) {
+        return None;
     }
-    if !current.is_empty() {
-        paragraphs.push(join_paragraph(&current));
-    }
-
-    let joined = paragraphs.join("\n\n");
-    if joined.trim().is_empty() { None } else { Some(joined) }
+    Some(render_block_html(&lines.join("\n")))
 }
 
-/// Assembles one paragraph's trimmed lines: a line that starts a list item begins a fresh
-/// line (`\n`), any other line is soft-wrap continuation joined with a space. See `build_lead`.
-fn join_paragraph(lines: &[&str]) -> String {
-    let mut out = String::new();
-    for (index, line) in lines.iter().enumerate() {
-        if index == 0 {
-            out.push_str(line);
-        } else if starts_list_item(line) {
-            out.push('\n');
-            out.push_str(line);
-        } else {
-            out.push(' ');
-            out.push_str(line);
-        }
-    }
+/// The extensions the website's renderer (marked, in its default GFM mode) also honors, so
+/// one changelog renders alike in the app, on the website, and on GitHub.
+fn markdown_options() -> Options {
+    Options::ENABLE_STRIKETHROUGH | Options::ENABLE_TABLES
+}
+
+/// Renders markdown as block HTML: paragraphs, lists (nested ones too), and inline markup.
+fn render_block_html(markdown: &str) -> String {
+    let mut out = String::with_capacity(markdown.len() * 3 / 2);
+    html::push_html(&mut out, Parser::new_ext(markdown, markdown_options()));
     out
 }
 
-/// True when a trimmed line begins a Markdown list item: an unordered marker
-/// (`- ` / `* ` / `+ `) or an ordered one (one or more digits then `.` or `)` then a space).
-fn starts_list_item(line: &str) -> bool {
-    if ["- ", "* ", "+ "].iter().any(|marker| line.starts_with(marker)) {
-        return true;
-    }
-    let digits = line.chars().take_while(char::is_ascii_digit).count();
-    if digits == 0 {
-        return false;
-    }
-    let rest = &line[digits..];
-    rest.starts_with(". ") || rest.starts_with(") ")
+/// Renders one entry as inline HTML. The paragraph wrapper is dropped because the dialog
+/// puts each entry in its own `<li>`.
+fn render_inline_html(markdown: &str) -> String {
+    let events = Parser::new_ext(markdown, markdown_options())
+        .filter(|event| !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph)));
+    let mut out = String::with_capacity(markdown.len() * 3 / 2);
+    html::push_html(&mut out, events);
+    out.trim_end().to_string()
 }
 
 /// Turns a section's raw source lines into entries: groups each bullet with its
-/// wrapped continuation lines, strips the trailing commit-link group, and
-/// flattens any remaining markdown links to plain text.
+/// wrapped continuation lines, strips the trailing commit-link group, flattens
+/// markdown links to plain text, and renders the rest as inline HTML.
 fn parse_entries(raw_lines: &[String]) -> Vec<String> {
     let mut entries: Vec<String> = Vec::new();
     let mut current: Option<String> = None;
@@ -396,10 +368,10 @@ fn strip_bullet_marker(line: &str) -> Option<&str> {
     None
 }
 
-/// Strips the trailing commit-hash group, then flattens markdown links.
+/// Strips the trailing commit-hash group, flattens markdown links, then renders inline HTML.
 fn finalize_entry(entry: &str) -> String {
     let without_hashes = strip_trailing_commit_group(entry);
-    flatten_markdown_links(&without_hashes)
+    render_inline_html(&flatten_markdown_links(&without_hashes))
 }
 
 /// Removes the trailing ` (hash, hash, …)` parenthetical that the release flow

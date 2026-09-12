@@ -13,7 +13,6 @@
      * The auto-popup never opens empty (the trigger collapses an empty slice to a silent
      * stamp); the empty state is reachable only via the manual Help reopen.
      */
-    import snarkdown from 'snarkdown'
     import { SvelteSet } from 'svelte/reactivity'
     import ModalDialog from '$lib/ui/ModalDialog.svelte'
     import Button from '$lib/ui/Button.svelte'
@@ -52,15 +51,6 @@
         } else {
             expandedVersions.add(version)
         }
-    }
-
-    /**
-     * Renders trusted changelog markdown to HTML. `{@html}` is safe here: the content is
-     * our own committed `CHANGELOG.md` (parsed backend-side), not user input. Same trust
-     * level as `FriendlyError`'s `md!` output that `renderErrorMarkdown` renders.
-     */
-    function renderMarkdown(md: string): string {
-        return snarkdown(md)
     }
 
     async function handleOpenChangelog() {
@@ -110,11 +100,11 @@
                             <span class="dot" aria-hidden="true">·</span>
                             <span class="date">{release.date}</span>
                         </h3>
-                        {#if release.lead != null}
-                            <!-- A <div>, not a <p>: a lead can be a bold headline plus a Markdown numbered
-                                 list, and snarkdown emits a block <ol> that's invalid inside a <p>. -->
-                            <!-- eslint-disable-next-line svelte/no-at-html-tags -- trusted: renders our committed CHANGELOG via renderMarkdown(), not user input -->
-                            <div class="lead">{@html renderMarkdown(release.lead)}</div>
+                        {#if release.leadHtml != null}
+                            <!-- A <div>, not a <p>: the lead is CommonMark block HTML (paragraphs,
+                                 lists), which a <p> can't contain. -->
+                            <!-- eslint-disable-next-line svelte/no-at-html-tags -- trusted: our committed CHANGELOG, rendered to HTML by the backend, not user input -->
+                            <div class="lead">{@html release.leadHtml}</div>
                         {/if}
                         {#if release.sections.length > 0}
                             <button
@@ -151,9 +141,9 @@
                                         {#each release.sections as section (section.title)}
                                             <h4 class="section-title">{section.title}</h4>
                                             <ul class="entries">
-                                                {#each section.entries as entry, i (i)}
-                                                    <!-- eslint-disable-next-line svelte/no-at-html-tags -- trusted: renders our committed CHANGELOG via renderMarkdown(), not user input -->
-                                                    <li>{@html renderMarkdown(entry)}</li>
+                                                {#each section.entriesHtml as entryHtml, i (i)}
+                                                    <!-- eslint-disable-next-line svelte/no-at-html-tags -- trusted: our committed CHANGELOG, rendered to HTML by the backend, not user input -->
+                                                    <li>{@html entryHtml}</li>
                                                 {/each}
                                             </ul>
                                         {/each}
@@ -260,17 +250,48 @@
         font-weight: 600;
     }
 
+    /* The lead is CommonMark block HTML: its top-level paragraphs and lists stack with one
+       gap between them and no outer margin, so the heading above and the toggle below keep
+       their own spacing whatever block the lead starts or ends with. */
+    .lead > :global(*) {
+        margin: 0;
+    }
+
+    .lead > :global(*) + :global(*) {
+        margin-top: var(--spacing-md);
+    }
+
     /* Lists sit flush with the surrounding text: the marker occupies its own column, so a
        wrapped line lines up under the first line instead of under the bullet. Applies to a
-       lead's authored list (snarkdown emits a bare <ul> / <ol>) and the entry lists alike. */
+       lead's authored lists (nested ones too) and the entry lists alike. */
     .lead :global(ul),
     .lead :global(ol),
     .entries {
-        /* Top margin only: the block below owns its own leading, so a list can't stack two
-           gaps at the end of a section. */
-        margin: var(--spacing-md) 0 0;
         padding: 0;
         list-style: none;
+    }
+
+    /* Top margin only: the block below owns its own leading, so a list can't stack two gaps
+       at the end of a section. */
+    .entries {
+        margin: var(--spacing-md) 0 0;
+    }
+
+    /* A nested list hangs under its parent item's text, as tight as the items around it. */
+    .lead :global(li) > :global(ul),
+    .lead :global(li) > :global(ol) {
+        margin: var(--spacing-xs) 0 0;
+    }
+
+    /* A loose list (blank lines between items) wraps each item's text in a <p>. The first
+       one stays inline (where a vertical margin does nothing), so the marker keeps sharing
+       its line. */
+    .lead :global(li) > :global(p) {
+        margin: var(--spacing-xs) 0 0;
+    }
+
+    .lead :global(li) > :global(p:first-child) {
+        display: inline;
     }
 
     /* A hanging indent, ❌ never a two-column grid. An entry is rendered markdown, and a
@@ -324,8 +345,6 @@
         margin-left: -1.6em;
     }
 
-    /* Same two-column grid as a list item, at the same font size: the chevron lands where a
-       bullet would, and the label where the entry text does. */
     /* Same two-column grid as a list item, at the same font size: the marker lands where a
        bullet would, the label where the entry text does. Full width so the whole row is the
        hit area. */

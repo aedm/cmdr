@@ -335,25 +335,27 @@ export const whatsNewFixtures: Record<string, Patch<typeof whatsNewState>> = {
       {
         version: '0.31.0',
         date: '2026-07-20',
-        lead: '**Ask Cmdr can rename in bulk now.** Describe the naming you want and review every row before anything touches disk.',
+        leadHtml:
+          '<p><strong>Ask Cmdr can rename in bulk now.</strong> Describe the naming you want and review every row before anything touches disk.</p>\n',
         sections: [
           {
             title: 'Added',
-            entries: [
+            entriesHtml: [
               'Bulk rename review: allow or deny each row, with warnings for extension changes and rename cycles.',
               'The operation log records who started an operation: you, an AI client, or the agent.',
             ],
           },
           {
             title: 'Fixed',
-            entries: ['Copying to a disconnected network share now explains itself instead of stalling.'],
+            entriesHtml: ['Copying to a disconnected network share now explains itself instead of stalling.'],
           },
         ],
       },
     ],
   },
-  // The realistic post-update case: several releases, long entries, and a lead
-  // that's a numbered list (block markdown, which is why the lead is a <div>).
+  // The realistic post-update case: several releases, long entries, and a lead with
+  // two paragraphs and a numbered list nesting a bulleted one. The HTML is exactly what
+  // the backend's CommonMark renderer (`src-tauri/src/whats_new/`) emits for that shape.
   'several-releases': {
     open: true,
     allowEmpty: false,
@@ -361,11 +363,15 @@ export const whatsNewFixtures: Record<string, Patch<typeof whatsNewState>> = {
       {
         version: '0.31.0',
         date: '2026-07-20',
-        lead: '**Two big ones this time:**\n\n1. Ask Cmdr can rename in bulk, with a review step.\n2. The file viewer opens 4 GB logs without breaking a sweat, and `⌘F` searches inside them.',
+        // The link is here so the gallery shows a clickable one: Tauri blocks raw <a>
+        // navigation, so the dialog routes it through `handleMarkdownLinkClick`. It sits in
+        // the lead because the backend flattens links in entries to their text.
+        leadHtml:
+          '<p><strong>Two big ones this time.</strong> Thanks for all the feedback, and the rest is in the <a href="https://getcmdr.com/changelog/">changelog</a>.</p>\n<p>Some highlights:</p>\n<ol>\n<li>Ask Cmdr can rename in bulk, with a review step.</li>\n<li>The file viewer opens 4 GB logs without breaking a sweat, and <code>⌘F</code> searches inside them.</li>\n<li>Context menu updates:\n<ul>\n<li>On files: <em>Share</em> and <em>Services</em> menus.</li>\n<li>On Cmdr in your Dock: your tabs, bookmarks, and servers.</li>\n</ul>\n</li>\n</ol>\n',
         sections: [
           {
             title: 'Added',
-            entries: [
+            entriesHtml: [
               'Bulk rename review: allow or deny each row, with warnings for extension changes and rename cycles.',
               'The file viewer streams big files instead of loading them, so a 4 GB log opens as fast as a 4 KB one.',
               'Volume tints: give each drive a colour so you always know which pane you’re in.',
@@ -373,22 +379,20 @@ export const whatsNewFixtures: Record<string, Patch<typeof whatsNewState>> = {
           },
           {
             title: 'Changed',
-            entries: [
+            entriesHtml: [
               'The transfer dialog shows real throughput and an honest ETA, and both keep updating while the scan is still running.',
             ],
           },
           {
             title: 'Fixed',
-            // Inline markdown on purpose. Roughly one changelog entry in twelve carries a
+            // Inline markup on purpose. Roughly one changelog entry in twelve carries a
             // `code` span, and an entry's markup has to stay in the text flow instead of
             // wrapping into the bullet column; `whats-new-markup.spec.ts` measures these.
-            // The link is here so the gallery shows a clickable one: Tauri blocks raw <a>
-            // navigation, so the dialog routes it through `handleMarkdownLinkClick`.
-            entries: [
+            entriesHtml: [
               'Copying to a disconnected network share explains itself instead of stalling.',
-              'Shares named `café` or `公開` mount again, and a `diskutil` message stops reaching a toast in English.',
-              'The crash dialog stops claiming Cmdr quit **unexpectedly** when it didn’t, and stops saying it twice.',
-              'Mounting a share over a flaky link retries instead of giving up. Background in the [changelog](https://getcmdr.com/changelog/).',
+              'Shares named <code>café</code> or <code>公開</code> mount again, and a <code>diskutil</code> message stops reaching a toast in English.',
+              'The crash dialog stops claiming Cmdr quit <strong>unexpectedly</strong> when it didn’t, and stops saying it twice.',
+              'Mounting a share over a flaky link retries instead of giving up.',
             ],
           },
         ],
@@ -396,29 +400,29 @@ export const whatsNewFixtures: Record<string, Patch<typeof whatsNewState>> = {
       {
         version: '0.30.2',
         date: '2026-07-11',
-        lead: null,
+        leadHtml: null,
         sections: [
           {
             title: 'Fixed',
-            entries: [
+            entriesHtml: [
               'MTP devices reconnect after sleep instead of showing an empty pane.',
               'The search index no longer re-scans an external drive that never went stale.',
             ],
           },
           {
             title: 'Security',
-            entries: ['Archive extraction rejects entries that would escape the destination folder.'],
+            entriesHtml: ['Archive extraction rejects entries that would escape the destination folder.'],
           },
         ],
       },
       {
         version: '0.30.1',
         date: '2026-07-03',
-        lead: 'A quiet one: mostly indexing throughput.',
+        leadHtml: '<p>A quiet one: mostly indexing throughput.</p>\n',
         sections: [
           {
             title: 'Changed',
-            entries: ['Indexing a big drive uses about a third of the memory it used to.'],
+            entriesHtml: ['Indexing a big drive uses about a third of the memory it used to.'],
           },
         ],
       },

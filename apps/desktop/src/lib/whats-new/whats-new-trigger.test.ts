@@ -15,8 +15,8 @@ vi.mock('@tauri-apps/api/app', () => ({
 interface MockRelease {
   version: string
   date: string
-  lead: string | null
-  sections: { title: string; entries: string[] }[]
+  leadHtml: string | null
+  sections: { title: string; entriesHtml: string[] }[]
 }
 const getWhatsNewMock = vi.fn<(since: string | null, max: number) => Promise<MockRelease[]>>()
 const whatsNewDevOverrideMock = vi.fn<() => Promise<string | null>>(() => Promise.resolve(null))
@@ -42,8 +42,8 @@ vi.mock('$lib/settings', () => ({
 const sampleRelease = {
   version: '0.26.0',
   date: '2026-06-11',
-  lead: 'A great release.',
-  sections: [{ title: 'Added', entries: ['A new thing'] }],
+  leadHtml: '<p>A great release.</p>\n',
+  sections: [{ title: 'Added', entriesHtml: ['A new thing'] }],
 }
 
 import { runWhatsNewStartupTrigger, openWhatsNew, whatsNewState, closeWhatsNew } from './whats-new-trigger.svelte'
