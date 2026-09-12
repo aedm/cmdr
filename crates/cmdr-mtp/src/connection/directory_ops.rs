@@ -266,24 +266,9 @@ impl MtpConnectionManager {
             for _ in 0..SCAN_METADATA_BATCH {
                 match listing.next().await {
                     Some(Ok(ListingItem::Object(info))) => {
-                        let is_dir = info.is_folder();
-                        let child_path = parent_path.join(&info.filename);
-                        cache_updates.push((child_path.clone(), info.handle));
-                        entries.push(FileEntry {
-                            size: if is_dir { None } else { Some(info.size) },
-                            modified_at: info.modified.map(convert_mtp_datetime),
-                            created_at: info.created.map(convert_mtp_datetime),
-                            permissions: NO_PERMISSION_CONCEPT,
-                            icon_id: get_mtp_icon_id(is_dir, &info.filename),
-                            extended_metadata_loaded: true,
-                            inode: Some(info.handle.0),
-                            ..FileEntry::new(
-                                info.filename.clone(),
-                                child_path.to_string_lossy().to_string(),
-                                is_dir,
-                                false,
-                            )
-                        });
+                        let (entry, cache_update) = entry_for_object(&parent_path, &info);
+                        entries.push(entry);
+                        cache_updates.push(cache_update);
                     }
                     Some(Ok(ListingItem::Skipped(skipped))) => {
                         // The device listed this handle and then wouldn't describe
@@ -593,29 +578,10 @@ impl MtpConnectionManager {
                 }
             };
 
-            let is_dir = info.is_folder();
-            let child_path = parent_path.join(&info.filename);
-
-            cache_updates.push((child_path.clone(), info.handle));
-
-            entries.push(FileEntry {
-                size: if is_dir { None } else { Some(info.size) },
-                modified_at: info.modified.map(convert_mtp_datetime),
-                created_at: info.created.map(convert_mtp_datetime),
-                permissions: NO_PERMISSION_CONCEPT,
-                icon_id: get_mtp_icon_id(is_dir, &info.filename),
-                extended_metadata_loaded: true,
-                // Carry the PTP object handle in `inode` so the index can store it
-                // per entry; `ObjectRemoved{handle}` then resolves via
-                // `find_entry_by_inode` even though the object is already gone.
-                inode: Some(info.handle.0),
-                ..FileEntry::new(
-                    info.filename.clone(),
-                    child_path.to_string_lossy().to_string(),
-                    is_dir,
-                    false,
-                )
-            });
+            let (entry, cache_update) = entry_for_object(&parent_path, &info);
+            let is_dir = entry.is_directory;
+            entries.push(entry);
+            cache_updates.push(cache_update);
 
             if is_dir {
                 tally.dirs += 1;
@@ -909,6 +875,32 @@ fn scan_cancelled(device_id: &str) -> MtpConnectionError {
     }
 }
 
+/// One listed object as the pane sees it, plus the path-cache update that lets a
+/// later op resolve it: the one place every listing path builds its rows.
+fn entry_for_object(parent_path: &Path, info: &mtp_rs::ObjectInfo) -> (FileEntry, (PathBuf, ObjectHandle)) {
+    let is_dir = info.is_folder();
+    let child_path = parent_path.join(&info.filename);
+    let entry = FileEntry {
+        size: if is_dir { None } else { Some(info.size) },
+        modified_at: info.modified.map(convert_mtp_datetime),
+        created_at: info.created.map(convert_mtp_datetime),
+        permissions: NO_PERMISSION_CONCEPT,
+        icon_id: get_mtp_icon_id(is_dir, &info.filename),
+        extended_metadata_loaded: true,
+        // Carry the PTP object handle in `inode` so the index can store it per
+        // entry; `ObjectRemoved{handle}` then resolves via `find_entry_by_inode`
+        // even though the object is already gone.
+        inode: Some(info.handle.0),
+        ..FileEntry::new(
+            info.filename.clone(),
+            child_path.to_string_lossy().to_string(),
+            is_dir,
+            false,
+        )
+    };
+    (entry, (child_path, info.handle))
+}
+
 /// Converts a list of `ObjectInfo` into `FileEntry` values and path-to-handle cache updates.
 fn convert_object_infos(
     parent_path: &Path,
@@ -918,28 +910,9 @@ fn convert_object_infos(
     let mut cache_updates = Vec::with_capacity(object_infos.len());
 
     for info in object_infos {
-        let is_dir = info.is_folder();
-        let child_path = parent_path.join(&info.filename);
-
-        cache_updates.push((child_path.clone(), info.handle));
-
-        entries.push(FileEntry {
-            size: if is_dir { None } else { Some(info.size) },
-            modified_at: info.modified.map(convert_mtp_datetime),
-            created_at: info.created.map(convert_mtp_datetime),
-            permissions: NO_PERMISSION_CONCEPT,
-            icon_id: get_mtp_icon_id(is_dir, &info.filename),
-            extended_metadata_loaded: true,
-            // Carry the PTP object handle in `inode` (see the streaming build site
-            // above): the index stores it per entry so removals resolve by handle.
-            inode: Some(info.handle.0),
-            ..FileEntry::new(
-                info.filename.clone(),
-                child_path.to_string_lossy().to_string(),
-                is_dir,
-                false,
-            )
-        });
+        let (entry, cache_update) = entry_for_object(parent_path, info);
+        entries.push(entry);
+        cache_updates.push(cache_update);
     }
 
     (entries, cache_updates)
