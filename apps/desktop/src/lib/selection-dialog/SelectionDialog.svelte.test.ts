@@ -266,6 +266,79 @@ describe('SelectionDialog', () => {
     cleanup()
   })
 
+  describe('closing from inside the dialog while the host tears its snapshot down', () => {
+    // The page renders the dialog under `{#if showSelectionDialog && selectionDialogSnapshot}`
+    // and nulls both on close. A click that closes the dialog keeps bubbling to the scrim's
+    // handler in the same dispatch, before Svelte unmounts anything (ERR-3ZQDK, ERR-D9XF2).
+    async function mountHost(onCommit: (idxs: number[]) => void = () => {}) {
+      const Host = (await import('../../../test/fixtures/selection-dialog-host-fixture.svelte')).default
+      const target = document.createElement('div')
+      document.body.appendChild(target)
+      const component = mount(Host, {
+        target,
+        props: { entries: [buildEntry('a.png'), buildEntry('b.txt'), buildEntry('c.png')], onCommit },
+      })
+      await tick()
+      await new Promise((r) => setTimeout(r, 0))
+      await tick()
+      return {
+        target,
+        cleanup: () => {
+          void unmount(component)
+          target.remove()
+        },
+      }
+    }
+
+    /** Clicks `el` and returns every error the click threw out of an event handler. */
+    async function clickCollectingErrors(el: HTMLElement): Promise<unknown[]> {
+      const errors: unknown[] = []
+      const onError = (e: ErrorEvent) => {
+        e.preventDefault()
+        errors.push(e.error)
+      }
+      window.addEventListener('error', onError)
+      try {
+        el.click()
+        await tick()
+      } finally {
+        window.removeEventListener('error', onError)
+      }
+      return errors
+    }
+
+    it('commits from the primary button and closes without throwing', async () => {
+      const matched: number[][] = []
+      const { target, cleanup } = await mountHost((idxs) => matched.push(idxs))
+      const input = target.querySelector('input[type="text"], input:not([type])') as HTMLInputElement
+      input.value = '*.png'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await tick()
+      // Wait for the auto-apply debounce so the primary button enables.
+      await new Promise((r) => setTimeout(r, 1100))
+      await tick()
+
+      const primary = target.querySelector('.query-dialog__actions button') as HTMLButtonElement
+      const errors = await clickCollectingErrors(primary)
+
+      expect(errors).toEqual([])
+      expect(matched).toEqual([[0, 2]])
+      expect(target.querySelector('.search-overlay')).toBeNull()
+      cleanup()
+    })
+
+    it('closes from the × button without throwing', async () => {
+      const { target, cleanup } = await mountHost()
+
+      const closeButton = target.querySelector('.modal-close-button') as HTMLButtonElement
+      const errors = await clickCollectingErrors(closeButton)
+
+      expect(errors).toEqual([])
+      expect(target.querySelector('.search-overlay')).toBeNull()
+      cleanup()
+    })
+  })
+
   it('shows the R7 banner when isSnapshotPane is true', async () => {
     const { overlay, cleanup } = await mountDialog({ isSnapshotPane: true })
     const banner = overlay.querySelector('.query-dialog__notice')

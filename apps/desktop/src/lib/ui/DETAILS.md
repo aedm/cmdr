@@ -85,7 +85,7 @@ Props:
 | `resizable`           | `boolean` \| `'horizontal'`   | Default `false`. Drag any edge or corner; `'horizontal'` locks height |
 | `ownsKeyboard`        | `boolean`                     | Default `false`. Forwards EVERY key to `onkeydown`, Escape included   |
 | `overlayClass`        | `string`                      | Extra class on the overlay, for a shared dialog's stable test hook    |
-| `closeOnOverlayClick` | `boolean`                     | Default `false`. Scrim click dismisses                                |
+| `closeOnOverlayClick` | `boolean`                     | Default `false`. Scrim click dismisses (see § "Scrim clicks")         |
 | `topmost`             | `boolean`                     | Default `false`. Renders at `--z-modal-top`, above every other modal  |
 
 **The panel surface is `--color-bg-dialog`**, not `--color-bg-secondary`. It's the opaque twin of the settings window's
@@ -211,6 +211,16 @@ The overlay element receives `tabindex="-1"` and is focused on mount so Escape/k
 carries `use:trapFocus={{ onEscape: onclose }}` (see § "Focus trapping" below), so every `ModalDialog` consumer gets Tab
 containment and the Escape fallback for free. `trapFocus` deliberately doesn't move focus on mount, so the scrim KEEPS
 focus for the dialog's whole life unless a control takes it.
+
+### Scrim clicks
+
+Every click inside the panel bubbles to the overlay's `onclick`, so `handleOverlayClick` checks that the click landed on
+the scrim itself BEFORE it reads `closeOnOverlayClick` or `onclose`. The order matters: the click on × or on a button
+that closes the dialog arrives after the host has already torn down what the dialog's props derive from, in the same
+event dispatch and before Svelte unmounts anything. Reading `onclose` then re-evaluates its getter against that torn-down
+data. The Selection dialog's `onclose` comes off a `config` derived from the pane snapshot the page nulls on close, so
+every commit click threw (ERR-3ZQDK, ERR-D9XF2). Pinned by `lib/selection-dialog/SelectionDialog.svelte.test.ts` §
+"closing from inside the dialog", through `test/fixtures/selection-dialog-host-fixture.svelte`.
 
 **That mount focus is conditional: the scrim skips it when focus already sits inside the overlay.** Child components
 mount BEFORE their parent, so a field that autofocuses in its own `onMount` (`NewEntryNameField`, in the New folder and

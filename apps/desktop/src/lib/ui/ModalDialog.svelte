@@ -392,10 +392,18 @@
         onkeydown?.(event)
     }
 
-    /** Scrim click (never a click that bubbled up from the panel) closes, when opted in. */
+    /**
+     * Scrim click (never a click that bubbled up from the panel) closes, when opted in.
+     *
+     * ❌ Keep the target check FIRST, before any prop read. Every click inside the panel
+     * bubbles here, including the one on ×, or on a button that just closed the dialog,
+     * and by then the host may have torn down the data its props derive from; reading
+     * `onclose` re-evaluates that getter and throws (the Selection dialog's `config`
+     * did, on every commit click).
+     */
     function handleOverlayClick(event: MouseEvent) {
-        if (!closeOnOverlayClick || !onclose) return
         if (event.target !== event.currentTarget) return
+        if (!closeOnOverlayClick || !onclose) return
         onclose()
     }
 
