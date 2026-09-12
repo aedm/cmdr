@@ -64,7 +64,7 @@ async fn callers_queued_behind_one_listing_share_it_instead_of_re_listing() {
     assert_eq!(
         manager.wire_listing_count(&device.id).await - before,
         1,
-        "{CALLERS} callers queued behind one listing must share it, not re-list the folder one after another"
+        "callers queued behind one listing (count: {CALLERS}) must share it, not re-list the folder one after another"
     );
 
     device.teardown(test_connection_manager()).await;
