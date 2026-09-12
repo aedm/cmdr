@@ -327,6 +327,66 @@ describe('SelectionDialog', () => {
       cleanup()
     })
 
+    /** Dispatches `key` on `el` and returns every error the dispatch threw out of a handler. */
+    async function pressCollectingErrors(el: Element, key: string): Promise<unknown[]> {
+      const errors: unknown[] = []
+      const onError = (e: ErrorEvent) => {
+        e.preventDefault()
+        errors.push(e.error)
+      }
+      window.addEventListener('error', onError)
+      try {
+        dispatchKey(el, key)
+        await tick()
+        await new Promise((r) => setTimeout(r, 0))
+      } finally {
+        window.removeEventListener('error', onError)
+      }
+      return errors
+    }
+
+    it('commits with Enter and closes without throwing', async () => {
+      const matched: number[][] = []
+      const { target, cleanup } = await mountHost((idxs) => matched.push(idxs))
+      const input = target.querySelector('input[type="text"], input:not([type])') as HTMLInputElement
+      input.value = '*.png'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await tick()
+      await new Promise((r) => setTimeout(r, 1100))
+      await tick()
+
+      const overlay = target.querySelector('.search-overlay') as HTMLElement
+      const errors = await pressCollectingErrors(overlay, 'Enter')
+
+      expect(errors).toEqual([])
+      expect(matched).toEqual([[0, 2]])
+      expect(target.querySelector('.search-overlay')).toBeNull()
+      cleanup()
+    })
+
+    it('closes with Escape without throwing', async () => {
+      const { target, cleanup } = await mountHost()
+
+      const overlay = target.querySelector('.search-overlay') as HTMLElement
+      const errors = await pressCollectingErrors(overlay, 'Escape')
+
+      expect(errors).toEqual([])
+      expect(target.querySelector('.search-overlay')).toBeNull()
+      cleanup()
+    })
+
+    it('closes with Escape from inside the query field without throwing', async () => {
+      const { target, cleanup } = await mountHost()
+
+      const input = target.querySelector('input[type="text"], input:not([type])') as HTMLInputElement
+      input.focus()
+      const errors = await pressCollectingErrors(input, 'Escape')
+
+      expect(errors).toEqual([])
+      expect(target.querySelector('.search-overlay')).toBeNull()
+      cleanup()
+    })
+
     it('closes from the × button without throwing', async () => {
       const { target, cleanup } = await mountHost()
 
