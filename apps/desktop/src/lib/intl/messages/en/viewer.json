@@ -37,6 +37,18 @@
     "screenshot": "viewer-search.png",
     "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
   },
+  "viewer.error.notFound": "Couldn''t find this file. It may have been moved, renamed, or deleted.",
+  "@viewer.error.notFound": {
+    "description": "Shown in the viewer window, in place of content, when the file it was asked to open no longer exists at that path, typically because it was moved, renamed, or deleted after the user picked it. There is no Retry button. Conversational; do not use the words \"error\" or \"failed\".",
+    "screenshot": "viewer-search.png",
+    "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
+  },
+  "viewer.error.isDirectory": "This is a folder, so there''s nothing to view here. Open it in the main window to see what''s inside.",
+  "@viewer.error.isDirectory": {
+    "description": "Shown in the viewer window, in place of content, when the path it was asked to open is a folder rather than a file (the viewer shows file contents only). \"main window\" means Cmdr's two-pane file list, where folders open. There is no Retry button. Conversational; do not use the words \"error\" or \"failed\".",
+    "screenshot": "viewer-search.png",
+    "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
+  },
   "viewer.error.timeout": "Couldn't load the file. The volume may be slow or unresponsive.",
   "@viewer.error.timeout": {
     "description": "Shown when opening the file timed out, typically on a slow or stalled drive or network share. \"volume\" means a disk or mounted drive. A Retry button sits below it.",

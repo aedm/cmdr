@@ -37,6 +37,13 @@ describe('viewer error + load states (en)', () => {
     expect(tString('viewer.loading')).toBe('Loading...')
   })
 
+  it('says why a file that is gone or a folder has nothing to show, instead of the generic read message', () => {
+    expect(tString('viewer.error.notFound')).toBe("Couldn't find this file. It may have been moved, renamed, or deleted.")
+    expect(tString('viewer.error.isDirectory')).toBe(
+      "This is a folder, so there's nothing to view here. Open it in the main window to see what's inside.",
+    )
+  })
+
   it('words the preview size cap for ANY source it pulls from, not just archives', () => {
     // The cap fires for a `.zip` entry, a blob in a repo's virtual `.git` snapshot,
     // and a file on a phone or server, so the copy names none of them. Pinned

@@ -78,4 +78,15 @@ describe('handleOpenFailure copy', () => {
   it('offers Retry for a timed-out open', () => {
     expect(copyFor({ kind: 'timedOut' })).toEqual({ message: tString('viewer.error.timeout'), canRetry: true })
   })
+
+  it('says a file that is gone was moved or deleted, not that reading it went wrong', () => {
+    expect(copyFor({ kind: 'notFound', path: '/gone.txt' })).toEqual({
+      message: tString('viewer.error.notFound'),
+      canRetry: false,
+    })
+  })
+
+  it('says a folder has nothing to view', () => {
+    expect(copyFor({ kind: 'isDirectory' })).toEqual({ message: tString('viewer.error.isDirectory'), canRetry: false })
+  })
 })

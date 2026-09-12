@@ -23,6 +23,14 @@
   "@viewer.error.readFailed": {
     "sourceHash": "ea7d976"
   },
+  "viewer.error.notFound": "Ce fichier est introuvable. Il a peut-être été déplacé, renommé ou supprimé.",
+  "@viewer.error.notFound": {
+    "sourceHash": "580b83c"
+  },
+  "viewer.error.isDirectory": "C''est un dossier, il n''y a donc rien à afficher ici. Ouvrez-le dans la fenêtre principale pour voir son contenu.",
+  "@viewer.error.isDirectory": {
+    "sourceHash": "b29fe2e"
+  },
   "viewer.error.timeout": "Chargement du fichier impossible. Le volume est peut-être lent ou ne répond pas.",
   "@viewer.error.timeout": {
     "sourceHash": "d163618"

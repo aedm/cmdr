@@ -23,6 +23,14 @@
   "@viewer.error.readFailed": {
     "sourceHash": "ea7d976"
   },
+  "viewer.error.notFound": "Diese Datei konnte nicht gefunden werden. Sie wurde vielleicht bewegt, umbenannt oder gelöscht.",
+  "@viewer.error.notFound": {
+    "sourceHash": "580b83c"
+  },
+  "viewer.error.isDirectory": "Das ist ein Ordner, hier gibt es also nichts anzusehen. Öffne ihn im Hauptfenster, um seinen Inhalt zu sehen.",
+  "@viewer.error.isDirectory": {
+    "sourceHash": "b29fe2e"
+  },
   "viewer.error.timeout": "Die Datei konnte nicht geladen werden. Das Volume ist möglicherweise langsam oder reagiert nicht.",
   "@viewer.error.timeout": {
     "sourceHash": "d163618"

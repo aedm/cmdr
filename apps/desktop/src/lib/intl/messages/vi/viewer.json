@@ -23,6 +23,14 @@
   "@viewer.error.readFailed": {
     "sourceHash": "ea7d976"
   },
+  "viewer.error.notFound": "Không tìm thấy tệp này. Có thể nó đã được di chuyển, đổi tên, hoặc xóa.",
+  "@viewer.error.notFound": {
+    "sourceHash": "580b83c"
+  },
+  "viewer.error.isDirectory": "Đây là một thư mục, nên không có gì để xem ở đây. Hãy mở thư mục trong cửa sổ chính để thấy bên trong có gì.",
+  "@viewer.error.isDirectory": {
+    "sourceHash": "b29fe2e"
+  },
   "viewer.error.timeout": "Không thể tải tệp. Ổ đĩa có thể đang chậm hoặc không phản hồi.",
   "@viewer.error.timeout": {
     "sourceHash": "d163618"

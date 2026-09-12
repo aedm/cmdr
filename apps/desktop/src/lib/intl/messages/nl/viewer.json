@@ -23,6 +23,14 @@
   "@viewer.error.readFailed": {
     "sourceHash": "ea7d976"
   },
+  "viewer.error.notFound": "Kon dit bestand niet vinden. Het is misschien verplaatst, hernoemd of verwijderd.",
+  "@viewer.error.notFound": {
+    "sourceHash": "580b83c"
+  },
+  "viewer.error.isDirectory": "Dit is een map, dus hier valt niets te bekijken. Open de map in het hoofdvenster om te zien wat erin staat.",
+  "@viewer.error.isDirectory": {
+    "sourceHash": "b29fe2e"
+  },
   "viewer.error.timeout": "Het bestand kon niet worden geladen. Het volume is mogelijk traag of reageert niet.",
   "@viewer.error.timeout": {
     "sourceHash": "d163618"

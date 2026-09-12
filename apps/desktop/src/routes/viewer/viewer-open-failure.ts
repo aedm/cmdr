@@ -25,6 +25,8 @@ function openFailureCopy(e: unknown): OpenFailure {
     if (ve.kind === 'stoppedResponding') {
       return { message: tString('viewer.error.stoppedResponding'), canRetry: true }
     }
+    if (ve.kind === 'notFound') return { message: tString('viewer.error.notFound'), canRetry: false }
+    if (ve.kind === 'isDirectory') return { message: tString('viewer.error.isDirectory'), canRetry: false }
     if (ve.kind === 'tooLargeToPreview') return { message: tString('viewer.error.tooLargeToPreview'), canRetry: false }
     if (ve.kind === 'archive') return { message: tString('viewer.error.archiveUnreadable'), canRetry: false }
   }

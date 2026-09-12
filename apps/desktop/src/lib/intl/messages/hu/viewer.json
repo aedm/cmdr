@@ -23,6 +23,14 @@
   "@viewer.error.readFailed": {
     "sourceHash": "ea7d976"
   },
+  "viewer.error.notFound": "Nem sikerült megtalálni ezt a fájlt. Lehet, hogy áthelyezték, átnevezték vagy törölték.",
+  "@viewer.error.notFound": {
+    "sourceHash": "580b83c"
+  },
+  "viewer.error.isDirectory": "Ez egy mappa, így itt nincs mit megtekinteni. Nyisd meg a főablakban, hogy lásd, mi van benne.",
+  "@viewer.error.isDirectory": {
+    "sourceHash": "b29fe2e"
+  },
   "viewer.error.timeout": "Nem sikerült betölteni a fájlt. Lehet, hogy a kötet lassú, vagy nem válaszol.",
   "@viewer.error.timeout": {
     "sourceHash": "d163618"

@@ -23,6 +23,14 @@
   "@viewer.error.readFailed": {
     "sourceHash": "ea7d976"
   },
+  "viewer.error.notFound": "Não foi possível encontrar este arquivo. Ele pode ter sido movido, renomeado ou apagado.",
+  "@viewer.error.notFound": {
+    "sourceHash": "580b83c"
+  },
+  "viewer.error.isDirectory": "Isto é uma pasta, então não há nada para visualizar aqui. Abra a pasta na janela principal para ver o que há dentro.",
+  "@viewer.error.isDirectory": {
+    "sourceHash": "b29fe2e"
+  },
   "viewer.error.timeout": "Não foi possível carregar o arquivo. O volume pode estar lento ou sem resposta.",
   "@viewer.error.timeout": {
     "sourceHash": "d163618"

@@ -23,6 +23,14 @@
   "@viewer.error.readFailed": {
     "sourceHash": "ea7d976"
   },
+  "viewer.error.notFound": "找不到這個檔案。它可能被移動、重新命名或刪除了。",
+  "@viewer.error.notFound": {
+    "sourceHash": "580b83c"
+  },
+  "viewer.error.isDirectory": "這是一個資料夾，所以這裡沒有東西可以檢視。在主視窗中開啟它，就能看到裡面有什麼。",
+  "@viewer.error.isDirectory": {
+    "sourceHash": "b29fe2e"
+  },
   "viewer.error.timeout": "無法載入這個檔案。這個卷宗可能很慢或沒有回應。",
   "@viewer.error.timeout": {
     "sourceHash": "d163618"

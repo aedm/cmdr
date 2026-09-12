@@ -552,8 +552,8 @@ glyphs (the a11y labels and tooltips carry the real copy). The runtime works in 
 VARIANT (`kind: 'timedOut'`) rather than a flag beside a sentence. Both surfaces read it the same way, through
 `asViewerError(e)?.kind`: `viewer-scroll.svelte.ts` routes `timedOut` to `deps.onTimeoutError()` and logs everything
 else by kind, and `viewer-open-failure.ts`'s `handleOpenFailure` (all three open sites) maps `timedOut` /
-`stoppedResponding` / `tooLargeToPreview` / `archive` to their own catalog keys and falls back to
-`viewer.error.readFailed` for anything else. `timedOut` and `stoppedResponding` also set `canRetry`, which puts Retry
+`stoppedResponding` / `notFound` / `isDirectory` / `tooLargeToPreview` / `archive` to their own catalog keys and falls
+back to `viewer.error.readFailed` for anything else. `timedOut` and `stoppedResponding` also set `canRetry`, which puts Retry
 and Cancel under the message. Nothing renders the backend's own words. The wider split:
 `docs/guides/error-handling.md`.
 
