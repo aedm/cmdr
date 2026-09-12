@@ -13,6 +13,8 @@ fn main() {
     // with an opaque glob error.
     ensure_llama_resources();
 
+    link_staged_safari_webkit();
+
     // `capabilities-e2e/playwright.json` is reachable only from a `playwright-e2e` build, because
     // `playwright:default` exists only when `tauri-plugin-playwright` is linked. Any other build
     // that globs it dies with "Permission playwright:default not found".
@@ -49,6 +51,29 @@ fn main() {
             panic!("tauri-build failed: {error:#}");
         }
     }
+}
+
+/// Lets macOS 10.15 and 11 run Cmdr on the WebKit a Safari update installed, instead of the one
+/// the OS shipped with.
+///
+/// A Safari update on those systems stages its WebKit under this directory and leaves
+/// `/System/Library/Frameworks/WebKit.framework` alone, and dyld only picks the staged copy for a
+/// process whose main executable carries this `LC_DYLD_ENVIRONMENT` command. Without it, a fully
+/// updated Catalina hands Cmdr Safari 13.1's WebKit, which can't run the UI. dyld takes whichever
+/// copy has the higher version, so a Mac without a newer staged copy loads the system one as before,
+/// and one with a Safari update newer than its OS gets the WebKit Safari itself runs. Why and
+/// evidence: `docs/notes/system-requirements-and-es2025.md` § "The WebKit an app gets on older
+/// macOS". `desktop-macos-framework-floor` fails a build that loses it.
+///
+/// `-bins` because dyld reads the command only from the MAIN executable; tests and the lib don't
+/// need it.
+fn link_staged_safari_webkit() {
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("macos") {
+        return;
+    }
+    println!(
+        "cargo:rustc-link-arg-bins=-Wl,-dyld_env,DYLD_VERSIONED_FRAMEWORK_PATH=/Library/Apple/System/Library/StagedFrameworks/Safari"
+    );
 }
 
 fn ensure_llama_resources() {

@@ -28,9 +28,10 @@ line up, and that's the design:
 - A stock Catalina 10.15.0 ships Safari 13, a stock Big Sur 11.0 ships Safari 14, and a stock Monterey 12.0 ships Safari
   15.0. The frontend needs newer than all three.
 - A **fully patched** Catalina 10.15.7 reaches Safari 15.6.1, Big Sur 11.7.10 reaches 16.6, and Monterey 12.7.6 reaches
-  17.6, and every one of those runs the frontend fine. That's the whole reason Catalina is worth offering: "install your
-  updates" is advice a user can act on (verified against WebKit's release history and Apple's security-update index,
-  2026-09-02).
+  17.6 (verified against WebKit's release history and Apple's security-update index, 2026-09-02). Safari's version is
+  only the WebKit an APP gets because Cmdr opts into Safari's staged copy; without that, a fully patched Catalina still
+  hands Cmdr Safari 13.1's WebKit (§ The WebKit an app gets on older macOS). With it, every one of those runs the
+  frontend, and that's the whole reason Catalina is worth offering: "install your updates" is advice a user can act on.
 
 Below the capability floor the app blocks itself rather than white-screening. Why the block can't live inside the app: §
 The two floors old WebKit crosses.
@@ -71,6 +72,39 @@ module boot script: a screen shipped inside the bundle is unreachable on exactly
 Its translated copy is spliced in at build time from the message catalogs, so the shell can't drift from what
 translators wrote; the mechanism is in `apps/desktop/src/lib/utils/DETAILS.md` § Old-WebKit boot guard.
 `webkit-compat.ts` runs the same capability probe inside the app, for the code that can reach it.
+
+## The WebKit an app gets on older macOS
+
+On a macOS older than the Safari it runs, a Safari update doesn't replace the system WebKit. It installs its own WebKit,
+WebCore, and JavaScriptCore under `/Library/Apple/System/Library/StagedFrameworks/Safari/` and leaves
+`/System/Library/Frameworks/WebKit.framework` at the version the OS shipped with. Safari gets the staged copy because
+its executable asks for it; every other app gets the OS's, unless it asks the same way.
+
+- **Measured on a fully patched Catalina** (a beta user's Mac reporting macOS 10.15.8 (19H2036) and Safari 15.6.1,
+  `defaults read <framework>/Resources/Info.plist CFBundleVersion`, 2026-09-12): the system `WebKit.framework` is
+  `15609.4.1.1.1`, Safari 13.1's generation, and the staged one is `15613.3.9.1.16`, Safari 15.6.1's. Cmdr ran on the
+  system one there, so the boot guard blocked it, and its advice to install updates couldn't help.
+- **The opt-in is a load command in the main executable**: `LC_DYLD_ENVIRONMENT` carrying
+  `DYLD_VERSIONED_FRAMEWORK_PATH=<staged dir>`, which `ld -dyld_env` writes. WebKit's own build does exactly this when
+  it's built for staging (`OTHER_LDFLAGS_VERSIONED_FRAMEWORK_PATH_YES` in
+  `Source/WebKit/Configurations/BaseTarget.xcconfig` on WebKit's `safari-613-branch`, with the `/Library/Apple` prefix
+  from 10.15 on). Cmdr links the same entry from `apps/desktop/src-tauri/build.rs`, and `desktop-macos-framework-floor`
+  fails a binary that lacks it in any slice.
+- **It survives hardened runtime** (read from Catalina's dyld, `dyld-750.6` `src/dyld2.cpp`, 2026-09-12). For a
+  restricted process dyld strips `DYLD_*` variables from the environment, but `pruneEnvironmentVariables` first applies
+  the main executable's own `LC_DYLD_ENVIRONMENT` `DYLD_*_PATH` entries (`checkLoadCommandEnvironmentVariables`). So
+  there's no need for `com.apple.security.cs.allow-dyld-environment-variables`, which would reopen library injection. A
+  versioned path also makes dyld skip its dyld3 launch closure and resolve through `checkVersionedPaths`, which loads
+  whichever copy has the higher `current_version`.
+- **What it changes elsewhere**: a Mac whose staged copy isn't newer than the OS's, or that has no staged directory at
+  all (macOS 26, verified 2026-09-12), loads the system WebKit exactly as before. A Mac that took a Safari update newer
+  than its OS gets the WebKit Safari itself runs on that machine. The entry costs about 2–3 ms of launch time even with
+  nothing staged: a minimal hardened, WebKit-linked probe took 8.0–13.7 ms per launch without it and 9.9–16.4 ms with it
+  (300 launches per variant, three alternating rounds, macOS 26.6.2 on Apple Silicon, 2026-09-13). Next to Cmdr's own
+  startup that's noise, which is why it's unconditional.
+- **Open questions** (2026-09-12): the whole chain is read from source, and the first build carrying the flag goes to
+  the Catalina user who reported the problem. On Apple Silicon Big Sur, WebKit's config links `DYLD_FRAMEWORK_PATH`
+  instead for arm64 on the macOS 11 SDK, so the versioned opt-in may not reach an M1 whose OS WebKit is below the floor.
 
 ## Effective minimums imposed by the stack
 

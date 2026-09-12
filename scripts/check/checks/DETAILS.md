@@ -1494,6 +1494,13 @@ How it decides:
 - **Only `/System/Library/Frameworks/` is judged.** Everything else a Mach-O loads is `/usr/lib` (shared-cache basics,
   older than any floor we could set) or `@rpath` / `@executable_path` (shipping inside the bundle, present by
   construction). A subframework is judged as itself, not as its umbrella, since the two ship on their own schedules.
+- **It also requires the staged-WebKit opt-in, in every architecture slice.** That's the `LC_DYLD_ENVIRONMENT` entry
+  `DYLD_VERSIONED_FRAMEWORK_PATH=/Library/Apple/System/Library/StagedFrameworks/Safari`, linked in by
+  `apps/desktop/src-tauri/build.rs`. Same failure from the other side: without it the app opens on Catalina but gets the
+  OS's Safari 13.1 WebKit, which can't run the UI, and nobody on the team runs Catalina to notice. Go's `debug/macho`
+  has no type for that command, so the check reads its raw bytes. Per slice because Catalina only ever runs the Intel
+  half of the universal binary. Why the entry matters: `docs/notes/system-requirements-and-es2025.md` § The WebKit an
+  app gets on older macOS.
 - **The versions are hand-recorded**, in `macos-framework-versions.json`. Nothing in the SDK carries a framework's own
   introduction version: its headers annotate only what is newer than the framework itself, so `UniformTypeIdentifiers`
   reads as 12.0 from its own headers and `PDFKit` as 13.0, when they arrived in 11.0 and 10.4. What IS enforced is that
