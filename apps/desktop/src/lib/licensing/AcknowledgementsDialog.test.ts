@@ -26,6 +26,14 @@ vi.mock('./third-party-packages.gen.json', () => ({
       { name: 'mystery', version: '1.0.0', license: 'MIT', url: '' },
     ],
     npm: [{ name: '@ark-ui/svelte', version: '5.22.1', license: 'MIT', url: 'https://ark-ui.com' }],
+    vendored: [
+      {
+        name: 'Material Symbols',
+        version: '',
+        license: 'Apache-2.0',
+        url: 'https://github.com/google/material-design-icons',
+      },
+    ],
   },
 }))
 
@@ -85,6 +93,17 @@ describe('AcknowledgementsDialog', () => {
     link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
 
     expect(openExternalUrl).toHaveBeenCalledWith(NOTICES_URL)
+  })
+
+  it('lists the vendored credits first, under a heading of their own', async () => {
+    // Icons and other files come from a hand-kept list, not a lockfile, and are
+    // only a few rows: first, they're visible the moment the dialog opens.
+    const target = await mountLoaded()
+    const headings = [...target.querySelectorAll('h3')].map((h) => h.textContent.trim())
+    expect(headings).toEqual(['Icons and other files (1)', 'Rust crates (2)', 'npm packages (1)'])
+    expect(byText(target, 'a', 'Material Symbols').getAttribute('href')).toBe(
+      'https://github.com/google/material-design-icons',
+    )
   })
 
   it('scrolls the npm heading into view from the jump button', async () => {

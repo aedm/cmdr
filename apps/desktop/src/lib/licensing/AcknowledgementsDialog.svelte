@@ -24,6 +24,7 @@
         url: string
     }
 
+    let vendored = $state<AttributedPackage[]>([])
     let rust = $state<AttributedPackage[]>([])
     let npm = $state<AttributedPackage[]>([])
     let loaded = $state(false)
@@ -34,15 +35,23 @@
         // Loaded on open, not at startup: the list is ~119 KB of generated JSON
         // and nothing else in the app needs it. Vite code-splits the import.
         const packages = await import('./third-party-packages.gen.json')
+        vendored = packages.default.vendored
         rust = packages.default.rust
         npm = packages.default.npm
         loaded = true
     })
 
-    // Two lists, same markup. Iterating sections rather than calling a snippet
-    // twice keeps this to one `{#each}` and avoids a second component (every
-    // `lib/` component needs its own a11y test).
+    // Three lists, same markup. Iterating sections rather than calling a snippet
+    // per list keeps this to one `{#each}` and avoids a second component (every
+    // `lib/` component needs its own a11y test). The vendored credits go first:
+    // they're a few rows, so they show on open, and the jump buttons cover the
+    // two long lists below them.
     const sections = $derived([
+        {
+            key: 'vendored',
+            heading: tString('licensing.acknowledgements.vendoredHeading', { count: vendored.length }),
+            packages: vendored,
+        },
         { key: 'rust', heading: tString('licensing.acknowledgements.rustHeading', { count: rust.length }), packages: rust },
         { key: 'npm', heading: tString('licensing.acknowledgements.npmHeading', { count: npm.length }), packages: npm },
     ])

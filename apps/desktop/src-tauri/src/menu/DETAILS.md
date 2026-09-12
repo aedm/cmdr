@@ -530,9 +530,10 @@ built from Drive's links.
   `every_svg_on_disk_is_a_logo_in_the_table` guard it.
 - **Sources and licenses:** Google Drive and OneDrive are selfh.st icons (CC BY 4.0, so the attribution comment stays in
   each file), Dropbox is `mdi:dropbox` (Material Design Icons by Pictogrammers, Apache 2.0), MacDroid is
-  `material-symbols:android` (Material Symbols by Google, Apache 2.0), and Box is Box's own mark. The Acknowledgements
-  dialog lists none of them: its list is generated from the lockfiles alone
-  (`../../../src/lib/licensing/DETAILS.md` § "Acknowledgements dialog").
+  `material-symbols:android` (Material Symbols by Google, Apache 2.0), and Box is Box's own mark. The three icon sets are
+  credited in `scripts/check/checks/third-party-vendored.json`, which feeds the Acknowledgements dialog and
+  `THIRD-PARTY-NOTICES.md`: a new, renamed, or re-sourced logo updates its credit there in the same commit
+  (`third-party-notices` fails on a credited file that's gone).
 
 ### The context menu's header line
 

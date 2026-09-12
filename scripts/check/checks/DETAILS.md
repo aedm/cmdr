@@ -20,7 +20,9 @@ recipe for adding one is § "Adding a new check". Only the layout rules live her
   shrink-wrap". Eleven exist today; `a11y-coverage-allowlist.json` and `ui-primitive-coverage-allowlist.json` are the
   two with no § of their own (both are exempt-with-reason lists whose checks FAIL on a dead or redundant entry rather
   than auto-removing it). `macos-availability-selectors.json` is a sibling JSON that isn't an allowlist: it's the SDK's
-  own answer, cached so the Linux CI lanes can enforce it (§ "macOS availability").
+  own answer, cached so the Linux CI lanes can enforce it (§ "macOS availability"). Neither is
+  `third-party-vendored.json`, the hand-kept credit list `third-party-notices` merges into its outputs; its loader and
+  validator live in `third-party-vendored.go` (§ "Vendored credits").
 - **Not every file here is a registry check.** `e2e-durations.go` is embedded in the two E2E checks (§ "E2E test
   duration flagger" has the why), `docs_graph.go` is a shared library behind both `docs-reachable` and the
   `--docs-graph` renderer in `../docs_graph_render.go`, and three files carve the Playwright lane into stages so
@@ -1505,6 +1507,31 @@ How it decides:
   binary right after `tauri-action` builds it; that's the only run that sees what users actually get, which is also why
   `ci-coverage` counts it as wired without a `ci.yml` step.
 
+## Vendored credits
+
+`third-party-vendored.json` credits the third-party material Cmdr ships as files that no lockfile knows about: icon
+sets, fonts, code snippets copied in. Vendoring something means adding or extending its credit in the same commit.
+`third-party-notices` loads the list (`third-party-vendored.go`) before cargo-about runs, then merges it into both
+outputs: a full entry per credit at the top of `THIRD-PARTY-NOTICES.md`, and a `vendored` list in
+`third-party-packages.gen.json` that the Acknowledgements dialog renders first, with the same row markup as the lockfile
+lists.
+
+Each credit carries `name`, `author`, `license` (an SPDX id), `license_url`, `url` (the source), `changes`, and `files`
+(repo-relative), plus an optional `version`. The dialog row shows name, version, license, and URL; the rest lives in the
+notices file.
+
+- **Why the extra fields**: CC BY 4.0 asks an attribution for the creator, the source, a link to the license, and
+  whether the material was changed, and Apache 2.0 asks that a changed file be marked as changed. `changes` is required
+  even when nothing changed, so "as published" is a statement rather than a forgotten field.
+- **Validation fails the check and lists every problem at once**: an empty required field, a `license` outside
+  `vendoredLicenses` (it catches the README spelling, `CC BY 4.0`; add an id there when material under a new license
+  ships), two names equal ignoring case, an empty `files`, and a path that isn't a clean repo-relative file on disk. An
+  unknown field fails the parse, so a typo like `licence_url` doesn't read as a missing link.
+- **A credited file must sit inside the check's `Inputs`**, or deleting it cache-skips the very check that fails on it.
+  The registry entry lists `apps/desktop/src-tauri/src/menu/provider_logos/**` for today's logos, and
+  `TestVendoredCreditsCoverOnlyFilesTheNoticesCheckFingerprints` fails on a credit for a file elsewhere until its glob
+  is added.
+
 ## Apps and check counts
 
 Checks by app and tech:
@@ -1630,9 +1657,9 @@ doubles as production code.
   macOS version to "the WebKit we must assume" is a product call, not a fact), knip, type-drift, tests,
   e2e-linux-typecheck, e2e-linux (slow), e2e-playwright (slow)
 - **Desktop / Docs**: pluralize-noun, third-party-notices (regenerate-and-diff `THIRD-PARTY-NOTICES.md` from
-  `Cargo.lock` + `pnpm-lock.yaml` via cargo-about and `pnpm licenses list`; the accepted-license list is derived from
-  `deny.toml` rather than duplicated, the output is pinned to be identical on macOS and Linux, and the runner's input
-  fingerprint is what keeps it off unrelated runs)
+  `Cargo.lock` + `pnpm-lock.yaml` via cargo-about and `pnpm licenses list`, plus the hand-kept vendored credits of §
+  "Vendored credits"; the accepted-license list is derived from `deny.toml` rather than duplicated, the output is pinned
+  to be identical on macOS and Linux, and the runner's input fingerprint is what keeps it off unrelated runs)
 - **Website / Astro**: prettier, astro-sync, eslint, typecheck, build, html-validate, bundle-size (warn-only), e2e.
   `astro-sync` generates Astro's gitignored `types.d.ts` and `website-eslint` depends on it: the type-aware rules read
   `astro:content` through it, and on an unsynced tree every blog-post field is `any`, so the `no-unsafe-*` rules bury

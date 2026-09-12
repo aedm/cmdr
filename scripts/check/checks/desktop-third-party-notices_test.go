@@ -92,7 +92,7 @@ func TestRenderNoticesIncludesEveryPackageAndText(t *testing.T) {
 		{Name: "@ark-ui/svelte", Version: "5.22.1", License: "MIT", URL: "https://ark-ui.com"},
 	}
 
-	out := string(renderNotices(rust, npm))
+	out := string(renderNotices(rust, npm, nil))
 
 	for _, needle := range []string{
 		"**serde** 1.0.228, MIT OR Apache-2.0, <https://github.com/serde-rs/serde>",
@@ -112,7 +112,7 @@ func TestRenderNoticesOmitsTheUrlWhenUnknown(t *testing.T) {
 	// One crate in the real graph has no repository; a bare `<>` would be a
 	// dead link and `dead-links` would be right to complain.
 	rust := rustCollection{packages: []attributedPackage{{Name: "mystery", Version: "1.0", License: "MIT"}}}
-	out := string(renderNotices(rust, nil))
+	out := string(renderNotices(rust, nil, nil))
 
 	if !strings.Contains(out, "- **mystery** 1.0, MIT\n") {
 		t.Errorf("expected a URL-less entry, got:\n%s", out)
@@ -127,8 +127,8 @@ func TestRenderNoticesIsDeterministic(t *testing.T) {
 		packages: []attributedPackage{{Name: "b", Version: "1", License: "MIT"}, {Name: "a", Version: "1", License: "MIT"}},
 	}
 	sortPackages(rust.packages)
-	first := string(renderNotices(rust, nil))
-	second := string(renderNotices(rust, nil))
+	first := string(renderNotices(rust, nil, nil))
+	second := string(renderNotices(rust, nil, nil))
 	if first != second {
 		t.Error("two renders of the same input differ")
 	}
@@ -260,7 +260,7 @@ func TestRenderNoticesNamesTheFileEachTextCameFrom(t *testing.T) {
 			{ID: "MIT", Text: "Other", UsedBy: []string{"synthesized 1.0"}},
 		},
 	}
-	out := string(renderNotices(rust, nil))
+	out := string(renderNotices(rust, nil, nil))
 
 	if !strings.Contains(out, "Text from: `c_src/mimalloc/v2/LICENSE`") {
 		t.Errorf("expected the source file to be named, got:\n%s", out)

@@ -1816,6 +1816,7 @@ export type MessageKey =
   | 'licensing.acknowledgements.signature'
   | 'licensing.acknowledgements.srTitle'
   | 'licensing.acknowledgements.thanks'
+  | 'licensing.acknowledgements.vendoredHeading'
   | 'licensing.commercialReminder.askCommercial'
   | 'licensing.commercialReminder.declinePersonal'
   | 'licensing.commercialReminder.getCommercial'

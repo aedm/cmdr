@@ -12,7 +12,8 @@ values via IPC.
 - `ExpirationModal.svelte`: shown when a commercial license expires.
 - `AboutWindow.svelte`: displays current license status.
 - `AcknowledgementsDialog.svelte` + `acknowledgements-trigger.svelte.ts`: credits the open-source libraries Cmdr ships.
-  ❌ Never hand-edit `third-party-packages.gen.json`; see `DETAILS.md`.
+  ❌ Never hand-edit `third-party-packages.gen.json`: a vendored icon, font, or snippet is credited in
+  `scripts/check/checks/third-party-vendored.json`. See `DETAILS.md`.
 
 ## License types
 

@@ -29,6 +29,10 @@
   "@licensing.acknowledgements.npmHeading": {
     "sourceHash": "44bdf59"
   },
+  "licensing.acknowledgements.vendoredHeading": "Biểu tượng và các tệp khác ({count, number})",
+  "@licensing.acknowledgements.vendoredHeading": {
+    "sourceHash": "f5bcd78"
+  },
   "licensing.acknowledgements.jumpToRust": "Chuyển đến các crate Rust",
   "@licensing.acknowledgements.jumpToRust": {
     "sourceHash": "60d4a21"

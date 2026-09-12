@@ -66,6 +66,14 @@ vi.mock('./third-party-packages.gen.json', () => ({
       { name: 'mystery', version: '1.0.0', license: 'MIT', url: '' },
     ],
     npm: [{ name: '@ark-ui/svelte', version: '5.22.1', license: 'MIT', url: 'https://ark-ui.com' }],
+    vendored: [
+      {
+        name: 'Material Symbols',
+        version: '',
+        license: 'Apache-2.0',
+        url: 'https://github.com/google/material-design-icons',
+      },
+    ],
   },
 }))
 

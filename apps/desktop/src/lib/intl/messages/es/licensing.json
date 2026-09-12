@@ -28,6 +28,10 @@
   "@licensing.acknowledgements.npmHeading": {
     "sourceHash": "44bdf59"
   },
+  "licensing.acknowledgements.vendoredHeading": "Iconos y otros archivos ({count, number})",
+  "@licensing.acknowledgements.vendoredHeading": {
+    "sourceHash": "f5bcd78"
+  },
   "licensing.acknowledgements.jumpToRust": "Ir a los crates de Rust",
   "@licensing.acknowledgements.jumpToRust": {
     "sourceHash": "60d4a21"

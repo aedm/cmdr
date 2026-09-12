@@ -470,7 +470,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
     label: 'Acknowledgements',
     hostWindow: 'main',
     status: 'ready',
-    note: 'Loads the generated dependency list on open, so the two long lists reflect what actually ships right now. Regenerate with `pnpm check third-party-notices`.',
+    note: 'Loads the generated credits on open, so the vendored files and the two long dependency lists reflect what actually ships right now. Regenerate with `pnpm check third-party-notices`.',
     states: [{ id: 'default', label: 'Open' }],
   },
   {

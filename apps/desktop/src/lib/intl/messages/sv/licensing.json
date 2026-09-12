@@ -28,6 +28,10 @@
   "@licensing.acknowledgements.npmHeading": {
     "sourceHash": "44bdf59"
   },
+  "licensing.acknowledgements.vendoredHeading": "Ikoner och andra filer ({count, number})",
+  "@licensing.acknowledgements.vendoredHeading": {
+    "sourceHash": "f5bcd78"
+  },
   "licensing.acknowledgements.jumpToRust": "Hoppa till Rust-cratesen",
   "@licensing.acknowledgements.jumpToRust": {
     "sourceHash": "60d4a21"

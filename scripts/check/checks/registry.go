@@ -1500,18 +1500,26 @@ var AllChecks = []CheckDefinition{
 		App:       AppDesktop,
 		Tech:      "📚 Docs",
 		CpuWeight: 4, // cargo-about walks the whole dependency graph and reads license files
-		// Only the two lockfiles decide the content, so a run where no dependency
-		// moved is a cache hit and never shells out. Deliberately NOT `IsFast`:
-		// the miss path is seconds, and a cold machine additionally pays a
-		// `cargo install cargo-about` build.
-		Inputs: []string{
-			"Cargo.lock",
-			"pnpm-lock.yaml",
-			"deny.toml", // the accepted-license list is derived from it
-			// Both generated outputs: a hand-edit must be caught, not cached over.
-			"THIRD-PARTY-NOTICES.md",
-			"apps/desktop/src/lib/licensing/third-party-packages.gen.json",
-		},
+		// Only the two lockfiles and the vendored credits decide the content, so a
+		// run where none moved is a cache hit and never shells out. Deliberately
+		// NOT `IsFast`: the miss path is seconds, and a cold machine additionally
+		// pays a `cargo install cargo-about` build.
+		Inputs: inputs(
+			[]string{
+				"Cargo.lock",
+				"pnpm-lock.yaml",
+				"deny.toml", // the accepted-license list is derived from it
+				// Both generated outputs: a hand-edit must be caught, not cached over.
+				"THIRD-PARTY-NOTICES.md",
+				"apps/desktop/src/lib/licensing/third-party-packages.gen.json",
+			},
+			// The hand-kept credits, plus every file they cover: renaming or deleting
+			// a credited file has to re-run the check that fails on it.
+			// `TestVendoredCreditsCoverOnlyFilesTheNoticesCheckFingerprints` fails on a
+			// credited file outside these globs.
+			runnerDataInputs("third-party-vendored.json"),
+			[]string{"apps/desktop/src-tauri/src/menu/provider_logos/**"},
+		),
 		Run: RunThirdPartyNotices,
 	},
 	{

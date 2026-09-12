@@ -41,6 +41,13 @@
     },
     "screenshot": "acknowledgements.png"
   },
+  "licensing.acknowledgements.vendoredHeading": "Icons and other files ({count, number})",
+  "@licensing.acknowledgements.vendoredHeading": {
+    "description": "Heading above the short list of third-party icon sets, fonts, and code snippets that Cmdr ships as files rather than as Rust or npm packages. It's the first list in the Acknowledgements dialog, above the Rust crates.",
+    "placeholders": {
+      "count": "how many sources the list credits; an icon set counts once however many of its icons Cmdr uses, e.g. 3"
+    }
+  },
   "licensing.acknowledgements.jumpToRust": "Jump to Rust crates",
   "@licensing.acknowledgements.jumpToRust": {
     "description": "Label of a button in the Acknowledgements dialog, above the scrollable package list. Pressing it scrolls the Rust crates section into view. 'Rust' is a product name and stays untranslated. Keep it short: it shares one row with the npm button, each taking half the width.",

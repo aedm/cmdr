@@ -17,7 +17,8 @@
 //! Sources: Dropbox is `mdi:dropbox` (Material Design Icons by Pictogrammers, Apache 2.0),
 //! MacDroid is `material-symbols:android` (Material Symbols by Google, Apache 2.0), Google
 //! Drive and OneDrive are selfh.st icons (CC BY 4.0, attribution kept in each file), and
-//! Box is Box's own mark.
+//! Box is Box's own mark. Adding, renaming, or re-sourcing a logo? Update its credit in
+//! `scripts/check/checks/third-party-vendored.json`, which the Acknowledgements dialog lists.
 
 /// One provider's logo and the apps that ship it.
 pub struct ProviderLogo {
