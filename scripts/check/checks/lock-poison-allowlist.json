@@ -33,7 +33,7 @@
     "crates/cmdr-git/src/status.rs": 4,
     "crates/cmdr-index/src/indexing/events/mod.rs": 8,
     "crates/cmdr-index/src/indexing/lifecycle/manager.rs": 3,
-    "crates/cmdr-mtp/src/connection/directory_ops.rs": 7,
+    "crates/cmdr-mtp/src/connection/directory_ops.rs": 4,
     "crates/cmdr-mtp/src/connection/file_ops.rs": 3,
     "crates/cmdr-mtp/src/connection/handle_resolver.rs": 2,
     "crates/cmdr-mtp/src/connection/mod.rs": 4,
