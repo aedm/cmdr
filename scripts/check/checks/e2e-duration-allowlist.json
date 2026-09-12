@@ -48,24 +48,64 @@
   "linux": {
     "accessibility.spec.ts::dark mode::Settings: all sections": "axe audits every settings section in one test; inherently heavy (3.5s at flagger introduction)",
     "accessibility.spec.ts::light mode::Settings: all sections": "axe audits every settings section in one test; inherently heavy (3.8s at flagger introduction)",
+    "archive-editing.spec.ts::Archive editing::MOVING a file into the archive root lands it inside and removes the original": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.4s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
     "background-while-scanning.spec.ts::Backgrounding a transfer that is still counting::sends a scanning copy to the queue window instead of losing it": "David approved (2026-08-14): inherent, not fixable. Same test and same reason as the `macos` entry: the open scan window IS what the test asserts survives being backgrounded. Measured 2.8-3.8s here over 15 runs.",
     "brief-cursor-visibility.spec.ts::Brief view cursor visibility::cursor stays in view under arrow nav, Home/End, PageUp/PageDown, and resize": {
       "maxMs": 3000,
       "reason": "one test drives many nav + window-resize cycles; ~2.9s under --include-slow contention on 2026-06-28, cap 3s"
     },
+    "dialog-inset.spec.ts::Dialog body inset::every dialog’s first body section lines up with its title": {
+      "maxMs": 8000,
+      "reason": "David approved (2026-09-12): 5.0s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "mcp-archive-password.spec.ts::MCP archive password::a transfer prompt is answerable, and unlocking still cannot start the write": {
+      "maxMs": 7000,
+      "reason": "David approved (2026-09-12): 4.4s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "media-index-slider.spec.ts::Image-index importance slider::persists a new level and updates its preview label": {
+      "maxMs": 7000,
+      "reason": "David approved (2026-09-12): 4.4s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
     "mtp-conflicts.spec.ts::MTP cross-volume copy conflicts::MTP-to-local copy with apply-to-all Skip credits byte progress": "virtual MTP per-operation protocol overhead (2.2s at flagger introduction)",
+    "mtp-conflicts.spec.ts::MTP cross-volume move conflicts::MTP-to-local move with overwrite replaces dest and removes source": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.0s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "mtp-conflicts.spec.ts::MTP cross-volume move conflicts::local-to-MTP move with overwrite replaces MTP file": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.0s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
     "mtp-conflicts.spec.ts::MTP same-volume move conflicts::same-volume MTP move with overwrite replaces dest": "virtual MTP per-operation protocol overhead (2.4s at flagger introduction)",
     "mtp-conflicts.spec.ts::MTP same-volume move conflicts::same-volume MTP move with skip preserves both files": {
       "maxMs": 3000,
       "reason": "virtual MTP per-operation protocol overhead; ~2.5s under --include-slow contention on 2026-06-28, cap 3s"
     },
+    "mtp-copy-preflight-uses-cache.spec.ts::MTP copy pre-flight reuses watcher-backed listing::F5 pre-flight scan completes from cache and reports the right file count": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.1s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
     "mtp-delete-no-double-scan.spec.ts::MTP delete reuses scan preview (no double scan)::F8 progresses Scanning -> Deleting exactly once and counts never go backwards": {
-      "maxMs": 3000,
-      "reason": "virtual MTP per-operation protocol overhead; ~2.3s under --include-slow contention on 2026-06-28, cap 3s"
+      "maxMs": 6000,
+      "reason": "David approved (2026-09-12): 3.1s (over its old 3s cap) on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "mtp-same-volume-move-merge.spec.ts::::same-volume MTP folder move auto-merges; file clash inside prompts; dest-only survives": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.1s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
     },
     "mtp.spec.ts::MTP cross-storage move::moves file from MTP to local": {
       "maxMs": 3000,
       "reason": "virtual MTP per-operation protocol overhead; ~2.8s under --include-slow contention on 2026-06-28, cap 3s"
+    },
+    "mtp.spec.ts::MTP cross-storage move::moves file from local to MTP": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.0s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "mtp.spec.ts::MTP file operations::deletes file on MTP with the permanent-delete dialog": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.4s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
     },
     "mtp.spec.ts::MTP file operations::deletes multiple selected files on MTP": {
       "maxMs": 3000,
@@ -77,7 +117,19 @@
       "maxMs": 3000,
       "reason": "50 MB payload through the virtual MTP protocol; ~2.0s under --include-slow contention on 2026-06-28, cap 3s"
     },
+    "mtp.spec.ts::MTP large file transfer::copies 50 MB file from local to MTP": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.2s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "search-live.spec.ts::Search dialog: a live search over unindexed ground::walks the folder, streams what it finds, and says the run covered it": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.8s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
     "search-open-in-pane.spec.ts::Search dialog: Open in pane::⌘[ leaves the snapshot view, ⌘] returns to it": "navigates out of and back into the search snapshot volume, two full pane loads (3.3s at flagger introduction)",
+    "search-walk-handoff.spec.ts::Search dialog: a walk that outlives its dialog::keeps filling the pane, and says so in a toast": {
+      "maxMs": 6000,
+      "reason": "David approved (2026-09-12): 3.5s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
     "viewer-wordwrap-persistence.spec.ts::Viewer word-wrap persistence::word wrap toggled in one viewer session is on in the next": "opens the viewer window twice to assert persistence across sessions (2.3s at flagger introduction)"
   }
 }
