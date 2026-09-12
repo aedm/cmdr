@@ -35,9 +35,11 @@ Prepare a release based on docs/guides/releasing.md.
    doubt.
 
    ### Style: plain-sentence, dense, impact-focused
-   - **Write a 1–2 sentence plain-prose lead** directly under the `## [Unreleased]` heading, before `### Added`: what
-     this release means for users, naming the one to three highlights. No links, no bullets. It opens the release notes
-     and the What's new popup; see the recent releases for examples.
+   - **Write a short lead** directly under the `## [Unreleased]` heading, before `### Added`: what this release means
+     for users, naming the highlights. It opens the release notes and the What's new popup, and it's the part most
+     people read, so keep it short. Any CommonMark works (paragraphs, a numbered list of highlights, bullets nested
+     under a highlight with a three-space indent): the app, the website, and GitHub all render it as CommonMark. See the
+     recent releases for examples.
    - **File each entry where a user would look for it.** A fix to previously shipped behavior is Fixed even when this
      release also adds a feature in that area (but see § Scope: no inflated fixes); perf and behavior tweaks are
      Changed; pure internals go to Non-app. Only Added / Changed / Fixed / Security / Non-app; never invent sections
