@@ -412,7 +412,8 @@ Every write to `PathHandleCache` goes through `insert` or `remove_path`, which t
 `remove_path(old)` then `insert(new, handle)`; without that guard, a later cleanup of a stale forward entry would erase
 the handle's current, correct reverse mapping.
 
-Pinned by `path_cache_sync_test.rs` (create folder, rename, move, upload, delete), which asserts the reverse map through
+Pinned by `path_cache_sync_test.rs` (create folder, rename, move, upload, delete, and a tree delete's per-child cache
+write), which asserts the reverse map through
 a test-only accessor rather than through `resolve_handle_to_path` — the USB fallback would otherwise make a desynced
 cache look healthy.
 

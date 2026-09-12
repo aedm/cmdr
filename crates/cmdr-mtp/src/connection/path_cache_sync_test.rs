@@ -214,3 +214,43 @@ async fn delete_clears_the_reverse_entry_too() {
 
     teardown(device).await;
 }
+
+/// A tree delete caches each child's handle before recursing into it, and must
+/// cache it BOTH ways: when the child's delete then fails (here the read-only
+/// storage refuses it), the entry outlives the op, resolvable path → handle only.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_tree_delete_caches_each_child_in_both_directions() {
+    let _guard = virtual_device_test_lock().lock().await;
+    let device = crate::testing::connect_virtual_device(connection_manager()).await;
+    let readonly = *device
+        .storage_ids
+        .get(1)
+        .expect("the virtual device has a read-only second storage");
+
+    let refused = connection_manager()
+        .delete_object(&device.id, readonly, "/photos", MtpDeleteScope::Tree)
+        .await;
+    assert!(
+        refused.is_err(),
+        "the read-only storage must refuse the child's delete, got {refused:?}"
+    );
+
+    let child = Path::new("/photos/sunset.jpg");
+    let handle = connection_manager()
+        .cached_handle_for_path(&device.id, readonly, child)
+        .await
+        .expect("the tree delete cached the child before recursing into it");
+    assert_eq!(
+        reverse_entry_on(&device.id, readonly, handle).await.as_deref(),
+        Some(child),
+        "a child the tree delete cached must be resolvable handle → path too"
+    );
+
+    device.teardown(connection_manager()).await;
+}
+
+async fn reverse_entry_on(device_id: &str, storage_id: u32, handle: ObjectHandle) -> Option<PathBuf> {
+    connection_manager()
+        .cached_path_for_handle(device_id, storage_id, handle)
+        .await
+}
