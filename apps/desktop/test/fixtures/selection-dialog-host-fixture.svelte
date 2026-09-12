@@ -21,7 +21,7 @@
     const { entries, onCommit }: Props = $props()
 
     let showSelectionDialog = $state<'add' | 'remove' | null>('add')
-    let selectionDialogSnapshot = $state<{
+    let selectionDialogSnapshot = $state.raw<{
         entries: FileEntry[]
         cursorIndex: number
         isSnapshotPane: boolean

@@ -114,9 +114,14 @@
      * Selection dialog state. `'add'` opens "Select files…", `'remove'` opens
      * "Deselect files…", `null` closes. The entries + cursor snapshot is captured
      * once when we flip from `null` to a non-null value.
+     *
+     * `$state.raw`: the snapshot is the focused pane's WHOLE listing, replaced wholesale and
+     * never mutated. A deep `$state` proxy wraps every entry the matcher touches, which made a
+     * match pass over 100,000 entries ~30x slower (425 ms vs 14 ms, measured in Vitest), on
+     * every auto-applied keystroke.
      */
     let showSelectionDialog = $state<'add' | 'remove' | null>(null)
-    let selectionDialogSnapshot = $state<{
+    let selectionDialogSnapshot = $state.raw<{
         entries: FileEntry[]
         cursorIndex: number
         isSnapshotPane: boolean
