@@ -172,6 +172,42 @@ describe('computePathPillsLayout (R2)', () => {
     expect(read).toHaveBeenCalledTimes(0)
   })
 
+  // WebKit brand-checks the window's timing functions: called as a method of any other
+  // object (`scheduler.requestFrame(cb)` with the bare global stored on the scheduler), it
+  // throws "Can only call Window.requestAnimationFrame on instances of Window". The Node
+  // test environment doesn't, so the fakes below reproduce the check.
+  it('the default scheduler survives WebKit refusing a timing function called as a method', () => {
+    const brandChecked = <A extends unknown[], R>(name: string, fn: (...args: A) => R) =>
+      function (this: unknown, ...args: A): R {
+        if (this !== undefined && this !== globalThis) {
+          throw new TypeError(`Can only call Window.${name} on instances of Window`)
+        }
+        return fn(...args)
+      }
+    const frames: (() => void)[] = []
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      brandChecked('requestAnimationFrame', (cb: () => void) => frames.push(cb)),
+    )
+    vi.stubGlobal(
+      'cancelAnimationFrame',
+      brandChecked('cancelAnimationFrame', () => {}),
+    )
+    vi.stubGlobal('setTimeout', brandChecked('setTimeout', setTimeout))
+    vi.stubGlobal('clearTimeout', brandChecked('clearTimeout', clearTimeout))
+    try {
+      const read = vi.fn()
+      const cancel = scheduleStableWidthMeasure(read)
+      frames.forEach((frame) => {
+        frame()
+      })
+      expect(read).toHaveBeenCalledTimes(1)
+      cancel()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('two-segment paths never collapse', () => {
     const out = computePathPillsLayout([seg('a', '/a'), seg('b', '/a/b')], {
       containerWidth: 1,

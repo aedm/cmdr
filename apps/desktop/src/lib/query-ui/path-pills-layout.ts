@@ -90,11 +90,18 @@ const DEFAULT_LATE_RE_MEASURE_MS = 80
 
 export function scheduleStableWidthMeasure(
   read: () => void,
+  // ❗ Wrapped, not the bare globals: `scheduler.requestFrame(cb)` would run them as methods
+  // of this object, and WebKit throws "Can only call Window.requestAnimationFrame on
+  // instances of Window". In the search dialog that surfaced as an unhandled rejection.
   scheduler: ReMeasureScheduler = {
-    requestFrame: requestAnimationFrame,
-    cancelFrame: cancelAnimationFrame,
-    setTimer: setTimeout,
-    clearTimer: clearTimeout,
+    requestFrame: (cb) => requestAnimationFrame(cb),
+    cancelFrame: (id) => {
+      cancelAnimationFrame(id)
+    },
+    setTimer: (cb, ms) => setTimeout(cb, ms),
+    clearTimer: (id) => {
+      clearTimeout(id)
+    },
   },
   lateMs: number = DEFAULT_LATE_RE_MEASURE_MS,
 ): () => void {
