@@ -27,6 +27,9 @@ pub(super) struct ManagerState {
     pub(super) cancel_requested: bool,
     /// Flag to prevent multiple concurrent downloads
     pub(super) download_in_progress: bool,
+    /// How many cancels were ever requested. A start that waits for a cancelled download to
+    /// wind down gives up when this moves, because a cancel after it is the newer choice.
+    pub(super) download_cancels: u64,
     /// True while the server is starting up (health check polling)
     pub(super) server_starting: bool,
     /// Cancels the in-flight startup health-check when the server is intentionally stopped
@@ -67,6 +70,7 @@ pub(super) fn new_manager_state(ai_dir: PathBuf, state: AiState) -> ManagerState
         child_pid: None,
         cancel_requested: false,
         download_in_progress: false,
+        download_cancels: 0,
         server_starting: false,
         start_cancel: None,
         provider: String::from("local"),

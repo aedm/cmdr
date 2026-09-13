@@ -130,7 +130,13 @@ The frontend (`AiSection.svelte`) tracks `installStep` state and displays "Step 
 - Stale PIDs from previous sessions are stopped on startup (alive -> SIGTERM/SIGKILL, dead -> state cleared).
 - Stale partial downloads (>24 hours) cleaned up at startup.
 - Binary re-extraction is possible if model exists but binary is missing.
-- Download guard: `download_in_progress` flag prevents concurrent downloads.
+- Download guard: `download_in_progress` prevents concurrent downloads, and every start goes through the pure
+  `install.rs::decide_start` so the latest choice wins. A start while an uncancelled download runs has nothing to add
+  (`Ok`). A start while a CANCELLED download winds down (Local, then Off, then Local again quickly) waits on a `Notify`
+  and then runs its own download, instead of returning `Ok` and leaving nothing running. A newer cancel while it waits
+  (`download_cancels` moved) makes it give up as cancelled. The cancel flag is reset under the same lock that claims
+  the download, ❌ never later in `do_download`, where a cancel landing in between would be wiped. Each start's promise
+  reports its own download.
 - Server logs written to `llama-server.log` in the AI dir for debugging.
 - Cloud config (api_key, base_url, model, requires_api_key) stored in `ManagerState` so suggestions.rs can read without settings files. The api_key originates from the OS secret store (`api_keys.rs`), pushed in via `configure_ai`; `requires_api_key` mirrors the provider preset's `requiresApiKey` and drives the `resolve_backend` empty-key gate.
 - `configure_ai` is idempotent -- frontend calls it on startup and whenever any AI setting changes.
