@@ -10,7 +10,7 @@
  */
 
 import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event'
-import { settingsRegistry } from './settings-registry'
+import { getSettingDefinition, settingsRegistry } from './settings-registry'
 import { getSetting, setSetting, isModified } from './settings-store'
 import type { SettingDefinition, SettingId, SettingsValues } from './types'
 import { getEffectiveShortcuts, getDefaultShortcuts, isShortcutModified } from '$lib/shortcuts'
@@ -77,6 +77,9 @@ function buildAllSettingsYaml(): string {
       if (def.constraints) {
         lines.push(`    constraints: ${JSON.stringify(def.constraints)}`)
       }
+      if (def.mcpSettable === false) {
+        lines.push('    mcpSettable: false')
+      }
     }
   }
 
@@ -129,9 +132,26 @@ interface SetSettingPayload {
   value: unknown
 }
 
+/** Why `set_setting` refused a write, carried in the response beside the sentence. */
+type SetSettingRefusal = 'notSettableOverMcp'
+
 async function handleSetSetting(event: { payload: SetSettingPayload }): Promise<void> {
   const { requestId, settingId, value } = event.payload
   log.debug('Handling mcp-set-setting: {settingId} = {value}', { settingId, value })
+
+  // A setting that records a person's consent answer is theirs alone to change: an AI client
+  // must never undo it. Decided by the registry's typed `mcpSettable`, ❌ never an id match.
+  if (getSettingDefinition(settingId)?.mcpSettable === false) {
+    const refusal: SetSettingRefusal = 'notSettableOverMcp'
+    log.warn('Refused an MCP write to {settingId}: it records a consent answer', { settingId })
+    await emit('mcp-response', {
+      requestId,
+      ok: false,
+      refusal,
+      error: `'${settingId}' records a person's consent answer, so it can't be set over MCP. Only the person can change it, in Cmdr itself.`,
+    })
+    return
+  }
 
   try {
     setSetting(settingId as SettingId, value as SettingsValues[SettingId])

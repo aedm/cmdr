@@ -415,6 +415,8 @@ export const advancedSettings: SettingDefinitionSource[] = [
     default: false,
     component: 'switch',
     hidden: true,
+    // An MCP client clearing it would undo the person's "no".
+    mcpSettable: false,
   },
   {
     // Onboarding's own internal state. Hidden: these record what the user already
@@ -453,6 +455,8 @@ export const advancedSettings: SettingDefinitionSource[] = [
     default: '',
     component: 'text-input',
     hidden: true,
+    // The person's acceptance of the terms: an MCP client must never write or clear it.
+    mcpSettable: false,
   },
   {
     id: 'onboarding.termsAcceptedAt',
@@ -463,6 +467,8 @@ export const advancedSettings: SettingDefinitionSource[] = [
     default: '',
     component: 'text-input',
     hidden: true,
+    // The person's acceptance of the terms: an MCP client must never write or clear it.
+    mcpSettable: false,
   },
   {
     id: 'advanced.updateCheckInterval',

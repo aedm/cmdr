@@ -378,7 +378,11 @@ split-layout rule, and the `SettingPasswordInput` store-driven vs controlled mod
   across rows under tabular figures with no split-cell trick; custom format default is `YYYY-MM-DD HH:mm`. The
   `'system'` formatter requests fixed-width components (2-digit month/day/hour/minute) so locale formats align too, and
   is memoized at module scope (constructing `Intl.DateTimeFormat` per call shows up in virtualized scroll profiles).
-- **mcp-main-bridge.ts**: MCP bridge for settings; handles `mcp-get-all-settings` and `mcp-set-setting` round-trip
+- **mcp-main-bridge.ts**: MCP bridge for settings. ❌ `set_setting` refuses a definition marked `mcpSettable: false` (a
+  setting that records a consent answer: `analytics.enabled`, `updates.crashReports`, `updates.errorReports`, the two
+  `onboarding.termsAccepted*`, `askCmdr.consentRevokePending`) with a typed `notSettableOverMcp` refusal, keyed on the
+  registry mark, never the id; a new consent-bearing setting sets the mark. The YAML lists it too. It handles
+  `mcp-get-all-settings` and `mcp-set-setting` round-trip
   events in the main window (always alive), enabling AI agents to query and modify settings without the settings window
   open
 

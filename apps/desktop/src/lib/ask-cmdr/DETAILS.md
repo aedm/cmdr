@@ -549,7 +549,8 @@ fake path — which never sets a real provider — needs the gate to treat the f
     status command, so the "no" holds from the next check on. `settleHeldConsentRevoke()` retries the store on every
     `refreshConsent()` and as a main-window startup step, and lets go once it lands; a deliberate accept lets go FIRST.
     While held, `needsReconsent` stays false: it's a "no", not a paused opt-in. ❌ The marker lives in `settings.json`
-    because `main.db` is the store that refused; don't mirror it anywhere else.
+    because `main.db` is the store that refused; don't mirror it anywhere else. MCP `set_setting` can't clear it: the
+    registry marks it `mcpSettable: false` (`lib/settings/DETAILS.md`, `mcp-main-bridge.ts`).
   - ⚠️ **`consentState.needsReconsent` is what keeps a copy-version bump from looking like a bug.** A bump revokes
     everybody, so somebody with a whole thread history lands on the opt-in screen with no explanation, and the settings
     section would say a bare "off" at them, indistinguishable from never having wanted AI. The flag (`accepted` false
