@@ -41,10 +41,6 @@
       "maxMs": 4000,
       "reason": "David approved (2026-09-13): 2.2s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
     },
-    "mcp-archive-password.spec.ts::MCP archive password::a transfer prompt is answerable, and unlocking still cannot start the write": {
-      "maxMs": 24000,
-      "reason": "David approved (2026-09-13): 22.2s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
-    },
     "mcp-conflicts.spec.ts::MCP per-file conflicts::a transfer can be left on stop, its clash read, and one file answered": {
       "maxMs": 4000,
       "reason": "David approved (2026-09-13): 2.7s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
@@ -132,10 +128,6 @@
   "linux": {
     "accessibility.spec.ts::dark mode::Settings: all sections": "axe audits every settings section in one test; inherently heavy (3.5s at flagger introduction)",
     "accessibility.spec.ts::light mode::Settings: all sections": "axe audits every settings section in one test; inherently heavy (3.8s at flagger introduction)",
-    "archive-editing.spec.ts::Archive editing::MOVING a file into the archive root lands it inside and removes the original": {
-      "maxMs": 5000,
-      "reason": "David approved (2026-09-12): 2.4s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
-    },
     "background-while-scanning.spec.ts::Backgrounding a transfer that is still counting::sends a scanning copy to the queue window instead of losing it": "David approved (2026-08-14): inherent, not fixable. Same test and same reason as the `macos` entry: the open scan window IS what the test asserts survives being backgrounded. Measured 2.8-3.8s here over 15 runs.",
     "brief-cursor-visibility.spec.ts::Brief view cursor visibility::cursor stays in view under arrow nav, Home/End, PageUp/PageDown, and resize": {
       "maxMs": 3000,
@@ -225,7 +217,6 @@
       "maxMs": 5000,
       "reason": "David approved (2026-09-12): 2.8s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
     },
-    "search-open-in-pane.spec.ts::Search dialog: Open in pane::⌘[ leaves the snapshot view, ⌘] returns to it": "navigates out of and back into the search snapshot volume, two full pane loads (3.3s at flagger introduction)",
     "search-walk-handoff.spec.ts::Search dialog: a walk that outlives its dialog::keeps filling the pane, and says so in a toast": {
       "maxMs": 6000,
       "reason": "David approved (2026-09-12): 3.5s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
