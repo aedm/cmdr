@@ -5,6 +5,54 @@ All notable changes to Cmdr will be documented in this file.
 The format is based on [keep a changelog](https://keepachangelog.com/en/1.1.0/), and we use
 [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
 
+## [0.45.1] - 2026-09-13
+
+Fix-up release. A few highlights:
+
+- MTP devices behave much better: deleted files now leave the pane as they should, and big photo pastes don't stall
+- Fully updated macOS Catalina Macs should run Cmdr now
+- Plus Dropbox, Google Drive, and other cloud storage services got nice logos in the context menu!
+
+### Changed
+
+- Show Dropbox, Google Drive, OneDrive, Box, and MacDroid logos next to their right-click actions (3fb44876b, 521c93d76,
+  9fe53de15)
+- Make matching in Select files about 30 times faster on a 100,000-file folder (99327953c)
+
+### Fixed
+
+- Fix a phone folder opened with Enter still showing files Cmdr just deleted or moved out of it (abd6f329e, d6e3668e1,
+  530712ee8, aa3ad61c4)
+- Fix copying, moving, or deleting on a phone failing for a folder Cmdr hadn't listed yet, like one reached from search
+  (779b697ac, a06e805cf)
+- Fix a big paste from a phone stalling while it re-listed the camera folder once per photo (69a0573bb, 1fb6a8247)
+- Fix a phone unplugged during a paste's conflict check reporting no conflicts instead of the disconnect (0f87dfae3)
+- Fix older Macs: an updated Catalina now runs Cmdr, and a too-old Safari shows why instead of an invisible window
+  (7499a8722, 13c482371)
+- Fix a copy onto a read-only disk, or under a name too long for it, showing a generic error with a useless Retry
+  (0334d5fb3, ffc58e847)
+- Fix a disk that fills up mid-copy saying it "needs 0 bytes but only has 0 bytes available" (aa222103c, 3ceca5d92)
+- Fix the invalid file name message blaming a server when copying to a local disk or a phone (75389e9ea)
+- Fix closing a copy, move, or delete dialog right as it opens leaving a folder scan running in the background
+  (a15339ad3, 98687ea08, 0f555c389, 12d99aec5)
+- Fix a navigation right after a volume switch getting pulled back to the folder you last used there (1dfd67bba)
+- Fix "Select these files" and × in Select files sending an error report (2f006d703, b727c5e0a)
+- Fix error reports going out for problems the app already shows you, like a viewer timeout or a slow destination
+  (e4bbfe13f, 06ded30d2, 7e735a4dd)
+- Fix the viewer showing a generic read error for a file that's gone, or for a folder (f0e569693)
+- Fix the viewer stopping loading lines when you scroll a big file while it's still counting them (7686cd267)
+- Fix search result paths not re-fitting their width once the dialog settles (52aa79a88)
+- Fix What's new showing some release highlights as one broken list (b24cd8148, 9ebb06144)
+- Fix Linux re-reading the mount table thousands of times a second, and one bad read dropping every volume (9118e9ad7)
+- Fix agents over MCP tripping on a volume switch that hadn't settled, or a dialog that opened mid-request (e9916ec14,
+  55d95af70)
+
+### Non-app
+
+- Refresh the website hero, the tagline, and the marketing screenshots, with the chat shots showing a conversation again
+  (38372f786, e87495429, d07447e46)
+- Fix flaky E2E readiness checks on short windows, and skip a redundant hop in MTP spec setup (b092e8522, 7df3b11c9)
+
 ## [0.45.0] - 2026-09-12
 
 The highlights:
