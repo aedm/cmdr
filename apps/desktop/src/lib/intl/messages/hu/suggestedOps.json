@@ -111,6 +111,22 @@
   "@suggestedOps.loadingFiles": {
     "sourceHash": "83257e6"
   },
+  "suggestedOps.filesLoadFailed": "A Cmdr nem tudta betölteni ezeket a fájlokat.",
+  "@suggestedOps.filesLoadFailed": {
+    "sourceHash": "c61d214"
+  },
+  "suggestedOps.retryFiles": "Próbáld újra",
+  "@suggestedOps.retryFiles": {
+    "sourceHash": "d8b8392"
+  },
+  "suggestedOps.decisionNotRecorded": "A Cmdr nem tudta menteni a válaszodat. Próbáld újra.",
+  "@suggestedOps.decisionNotRecorded": {
+    "sourceHash": "d4ee9cf"
+  },
+  "suggestedOps.approvalUnsure": "A Cmdr nem biztos benne, hogy a jóváhagyás átment. Mielőtt újra jóváhagyod, nézd meg a műveleti sort.",
+  "@suggestedOps.approvalUnsure": {
+    "sourceHash": "0cd408c"
+  },
   "suggestedOps.indicatorTooltip": "AI-javaslatok várnak rád. Kattints az áttekintésükhöz.",
   "@suggestedOps.indicatorTooltip": {
     "sourceHash": "4508b0b"

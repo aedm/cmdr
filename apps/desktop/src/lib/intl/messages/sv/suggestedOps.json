@@ -111,6 +111,22 @@
   "@suggestedOps.loadingFiles": {
     "sourceHash": "83257e6"
   },
+  "suggestedOps.filesLoadFailed": "Cmdr kunde inte läsa in de här filerna.",
+  "@suggestedOps.filesLoadFailed": {
+    "sourceHash": "c61d214"
+  },
+  "suggestedOps.retryFiles": "Försök igen",
+  "@suggestedOps.retryFiles": {
+    "sourceHash": "d8b8392"
+  },
+  "suggestedOps.decisionNotRecorded": "Cmdr kunde inte spara ditt svar. Försök igen.",
+  "@suggestedOps.decisionNotRecorded": {
+    "sourceHash": "d4ee9cf"
+  },
+  "suggestedOps.approvalUnsure": "Cmdr är inte säker på att godkännandet gick igenom. Titta i åtgärdskön innan du godkänner det igen.",
+  "@suggestedOps.approvalUnsure": {
+    "sourceHash": "0cd408c"
+  },
   "suggestedOps.indicatorTooltip": "AI-förslag väntar. Klicka för att granska dem.",
   "@suggestedOps.indicatorTooltip": {
     "sourceHash": "4508b0b"

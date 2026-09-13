@@ -111,6 +111,22 @@
   "@suggestedOps.loadingFiles": {
     "sourceHash": "83257e6"
   },
+  "suggestedOps.filesLoadFailed": "Cmdr n''a pas pu charger ces fichiers.",
+  "@suggestedOps.filesLoadFailed": {
+    "sourceHash": "c61d214"
+  },
+  "suggestedOps.retryFiles": "Réessayer",
+  "@suggestedOps.retryFiles": {
+    "sourceHash": "d8b8392"
+  },
+  "suggestedOps.decisionNotRecorded": "Cmdr n''a pas pu enregistrer votre réponse. Réessayez.",
+  "@suggestedOps.decisionNotRecorded": {
+    "sourceHash": "d4ee9cf"
+  },
+  "suggestedOps.approvalUnsure": "Cmdr ne sait pas si l''approbation a abouti. Vérifiez la file d''attente des opérations avant de l''approuver à nouveau.",
+  "@suggestedOps.approvalUnsure": {
+    "sourceHash": "0cd408c"
+  },
   "suggestedOps.indicatorTooltip": "Des suggestions de l''IA vous attendent. Cliquez pour les examiner.",
   "@suggestedOps.indicatorTooltip": {
     "sourceHash": "4508b0b"

@@ -111,6 +111,22 @@
   "@suggestedOps.loadingFiles": {
     "sourceHash": "83257e6"
   },
+  "suggestedOps.filesLoadFailed": "Cmdr konnte diese Dateien nicht laden.",
+  "@suggestedOps.filesLoadFailed": {
+    "sourceHash": "c61d214"
+  },
+  "suggestedOps.retryFiles": "Erneut versuchen",
+  "@suggestedOps.retryFiles": {
+    "sourceHash": "d8b8392"
+  },
+  "suggestedOps.decisionNotRecorded": "Cmdr konnte deine Antwort nicht speichern. Versuch es noch mal.",
+  "@suggestedOps.decisionNotRecorded": {
+    "sourceHash": "d4ee9cf"
+  },
+  "suggestedOps.approvalUnsure": "Cmdr ist nicht sicher, ob die Zustimmung angekommen ist. Sieh in der Vorgangswarteschlange nach, bevor du noch einmal zustimmst.",
+  "@suggestedOps.approvalUnsure": {
+    "sourceHash": "0cd408c"
+  },
   "suggestedOps.indicatorTooltip": "KI-Vorschläge warten auf dich. Zum Ansehen klicken.",
   "@suggestedOps.indicatorTooltip": {
     "sourceHash": "4508b0b"

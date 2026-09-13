@@ -1,6 +1,6 @@
 /** Carrying a typed `SuggestedOpsError` from a suggested-ops command to the dialog that words it. */
 import type { SuggestedOpsError } from '$lib/ipc/bindings'
-import { TypedFailure } from '$lib/ipc/typed-failure'
+import { TypedFailure, failureOf } from '$lib/ipc/typed-failure'
 
 /** An `Error` that still carries the backend's typed suggested-ops refusal. */
 export class SuggestedOpsFailure extends TypedFailure<SuggestedOpsError> {
@@ -19,4 +19,9 @@ export class SuggestedOpsFailure extends TypedFailure<SuggestedOpsError> {
 /** Throws a wire `SuggestedOpsError` as an `Error`, keeping the typed value. */
 export function throwSuggestedOpsError(failure: SuggestedOpsError): never {
   throw new SuggestedOpsFailure(failure)
+}
+
+/** The typed refusal behind a caught value, or `null` when it isn't one. */
+export function asSuggestedOpsError(error: unknown): SuggestedOpsError | null {
+  return failureOf(SuggestedOpsFailure, error)
 }

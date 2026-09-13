@@ -33,9 +33,11 @@ const { actions, store } = vi.hoisted(() => ({
       openGroupId: null as number | null,
       window: null as { groupId: number; offset: number; ops: unknown[]; total: number } | null,
       windowLoading: false,
+      windowError: false,
       deselected: new Set<number>(),
       changedUnderReview: false,
       busyGroupId: null as number | null,
+      decisionNotice: null as string | null,
     },
     ops: [] as unknown[],
   },
@@ -105,6 +107,8 @@ beforeEach(() => {
   store.state.loadError = false
   store.state.changedUnderReview = false
   store.state.busyGroupId = null
+  store.state.windowError = false
+  store.state.decisionNotice = null
   store.state.deselected = new Set<number>()
   store.ops = [
     {
@@ -236,6 +240,28 @@ describe('honest absence', () => {
     const host = mountDialog()
 
     expect(host.textContent).toContain('Nothing is waiting for you right now.')
+  })
+
+  it('says the files could not load, instead of promising they are loading, and offers to try again', async () => {
+    seed({}, true)
+    store.state.window = null
+    store.state.windowError = true
+    const host = mountDialog()
+
+    expect(host.textContent).toContain("Cmdr couldn't load these files.")
+    expect(host.textContent).not.toContain('Loading the files…')
+    const retry = [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Try again')
+    expect(retry).toBeDefined()
+    retry?.click()
+    expect(actions.ensure).toHaveBeenCalledWith({ groupId: 7, startIndex: 0 })
+    await expectNoA11yViolations(host)
+  })
+
+  it('says when an approval might not have gone through', () => {
+    store.state.decisionNotice = 'suggestedOps.approvalUnsure'
+    const host = mountDialog()
+
+    expect(host.textContent).toContain("Cmdr isn't sure the approval went through.")
   })
 
   it('distinguishes a read that failed from an empty list', () => {

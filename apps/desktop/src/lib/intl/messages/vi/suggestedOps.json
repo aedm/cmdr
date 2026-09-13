@@ -111,6 +111,22 @@
   "@suggestedOps.loadingFiles": {
     "sourceHash": "83257e6"
   },
+  "suggestedOps.filesLoadFailed": "Cmdr không tải được các tệp này.",
+  "@suggestedOps.filesLoadFailed": {
+    "sourceHash": "c61d214"
+  },
+  "suggestedOps.retryFiles": "Thử lại",
+  "@suggestedOps.retryFiles": {
+    "sourceHash": "d8b8392"
+  },
+  "suggestedOps.decisionNotRecorded": "Cmdr không lưu được câu trả lời của bạn. Hãy thử lại.",
+  "@suggestedOps.decisionNotRecorded": {
+    "sourceHash": "d4ee9cf"
+  },
+  "suggestedOps.approvalUnsure": "Cmdr không chắc việc phê duyệt đã hoàn tất. Hãy kiểm tra hàng đợi thao tác trước khi phê duyệt lại.",
+  "@suggestedOps.approvalUnsure": {
+    "sourceHash": "0cd408c"
+  },
   "suggestedOps.indicatorTooltip": "Có đề xuất từ AI đang chờ. Nhấp để xem lại.",
   "@suggestedOps.indicatorTooltip": {
     "sourceHash": "4508b0b"

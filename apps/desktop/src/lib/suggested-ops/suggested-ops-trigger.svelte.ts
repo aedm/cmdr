@@ -19,6 +19,7 @@
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { SvelteSet } from 'svelte/reactivity'
 import { getAppLogger } from '$lib/logging/logger'
+import type { MessageKey } from '$lib/intl/keys.gen'
 import {
   approveSuggestedGroup,
   listSuggestedOps,
@@ -28,6 +29,7 @@ import {
   type SuggestedOpView,
   type SuggestedSweepView,
 } from '$lib/tauri-commands'
+import { asSuggestedOpsError } from './suggested-ops-failure'
 
 const log = getAppLogger('suggestedOps')
 
@@ -45,6 +47,9 @@ interface OpWindow {
   total: number
 }
 
+/** Why the last Approve or Reject didn't happen, as the notice the dialog shows. */
+export type DecisionNotice = Extract<MessageKey, 'suggestedOps.decisionNotRecorded' | 'suggestedOps.approvalUnsure'>
+
 interface SuggestedOpsState {
   open: boolean
   /** True while the sweep list is loading (the dialog shows a spinner). */
@@ -57,6 +62,9 @@ interface SuggestedOpsState {
   openGroupId: number | null
   window: OpWindow | null
   windowLoading: boolean
+  /** True when the open group's last page read threw. The list says so and offers a retry,
+   *  rather than leaving its rows on a loading placeholder nothing will ever fill. */
+  windowError: boolean
   /** Op ids the user turned off in the open group. Survives scrolling: it is keyed by op id,
    *  not by row position. */
   deselected: SvelteSet<number>
@@ -65,6 +73,9 @@ interface SuggestedOpsState {
   /** The group whose decision is in flight, so its buttons can disable without freezing the
    *  rest of the dialog. */
   busyGroupId: number | null
+  /** Why the last decision didn't happen, or `null`. Set AFTER the re-read, so it speaks about
+   *  the list the user is now looking at, and cleared when the next decision starts. */
+  decisionNotice: DecisionNotice | null
 }
 
 export const suggestedOpsState = $state<SuggestedOpsState>({
@@ -75,9 +86,11 @@ export const suggestedOpsState = $state<SuggestedOpsState>({
   openGroupId: null,
   window: null,
   windowLoading: false,
+  windowError: false,
   deselected: new SvelteSet<number>(),
   changedUnderReview: false,
   busyGroupId: null,
+  decisionNotice: null,
 })
 
 /** Every group still waiting, flattened out of its sweep. */
@@ -105,6 +118,7 @@ let unlistenChanges: UnlistenFn | null = null
 
 export function closeSuggestedOps(): void {
   suggestedOpsState.open = false
+  suggestedOpsState.decisionNotice = null
   collapseGroup()
   unlistenChanges?.()
   unlistenChanges = null
@@ -184,6 +198,7 @@ export async function expandGroup(groupId: number): Promise<void> {
   if (suggestedOpsState.openGroupId === groupId) return
   suggestedOpsState.openGroupId = groupId
   suggestedOpsState.window = null
+  suggestedOpsState.windowError = false
   suggestedOpsState.deselected = new SvelteSet<number>()
   suggestedOpsState.changedUnderReview = false
   await ensureOpWindow(groupId, 0)
@@ -192,6 +207,7 @@ export async function expandGroup(groupId: number): Promise<void> {
 export function collapseGroup(): void {
   suggestedOpsState.openGroupId = null
   suggestedOpsState.window = null
+  suggestedOpsState.windowError = false
   suggestedOpsState.deselected = new SvelteSet<number>()
   suggestedOpsState.changedUnderReview = false
 }
@@ -199,8 +215,8 @@ export function collapseGroup(): void {
 /**
  * Make sure the rows around `startIndex` are loaded, fetching a window when they aren't.
  *
- * The virtual list calls this as it scrolls. A request for rows already held is a no-op, so
- * ordinary scrolling inside a window costs nothing.
+ * The virtual list calls this as it scrolls, and the retry after a failed read calls it too. A
+ * request for rows already held is a no-op, so ordinary scrolling inside a window costs nothing.
  */
 export async function ensureOpWindow(groupId: number, startIndex: number): Promise<void> {
   const held = suggestedOpsState.window
@@ -212,6 +228,7 @@ export async function ensureOpWindow(groupId: number, startIndex: number): Promi
   // Centre the window on what was asked for, so scrolling either way stays inside it.
   const offset = Math.max(0, startIndex - OP_WINDOW_SIZE / 4)
   suggestedOpsState.windowLoading = true
+  suggestedOpsState.windowError = false
   try {
     const page = await pageSuggestedOps(groupId, offset, OP_WINDOW_SIZE)
     // The user may have collapsed or switched groups while this was in flight.
@@ -223,6 +240,9 @@ export async function ensureOpWindow(groupId: number, startIndex: number): Promi
       total: page.total,
     }
   } catch (e) {
+    // The virtual list only asks again when the viewport moves, so without this the rows would
+    // sit on their loading placeholder for good while Approve stays live.
+    if (suggestedOpsState.openGroupId === groupId) suggestedOpsState.windowError = true
     log.warn("Couldn't read a page of proposed ops: {error}", { error: String(e) })
   } finally {
     suggestedOpsState.windowLoading = false
@@ -259,6 +279,7 @@ export function toggleOp(opId: number): void {
 export async function approveGroup(groupId: number): Promise<void> {
   if (suggestedOpsState.busyGroupId !== null) return
   suggestedOpsState.busyGroupId = groupId
+  suggestedOpsState.decisionNotice = null
   try {
     const result = await approveSuggestedGroup(groupId, [...suggestedOpsState.deselected])
     if (result.kind === 'started') {
@@ -274,6 +295,7 @@ export async function approveGroup(groupId: number): Promise<void> {
     await refreshSuggestions()
   } catch (e) {
     log.warn("Couldn't approve the group: {error}", { error: String(e) })
+    await answerFailedDecision(e)
   } finally {
     suggestedOpsState.busyGroupId = null
   }
@@ -288,6 +310,7 @@ export async function approveGroup(groupId: number): Promise<void> {
 export async function rejectGroup(groupId: number): Promise<void> {
   if (suggestedOpsState.busyGroupId !== null) return
   suggestedOpsState.busyGroupId = groupId
+  suggestedOpsState.decisionNotice = null
   try {
     const result = await rejectSuggestedGroup(groupId)
     if (result.kind !== 'rejected') {
@@ -297,7 +320,33 @@ export async function rejectGroup(groupId: number): Promise<void> {
     await refreshSuggestions()
   } catch (e) {
     log.warn("Couldn't record the rejection: {error}", { error: String(e) })
+    await answerFailedDecision(e)
   } finally {
     suggestedOpsState.busyGroupId = null
+  }
+}
+
+/**
+ * After an Approve or Reject that threw: re-read, then say what happened.
+ *
+ * The re-read comes first because the store is the only thing that knows whether the decision
+ * landed, and the group can read as pending while its ops already run.
+ */
+async function answerFailedDecision(error: unknown): Promise<void> {
+  await refreshSuggestions()
+  suggestedOpsState.decisionNotice = decisionNoticeFor(error)
+}
+
+/** Only a dead approval worker leaves "did it start?" open. A store refusal happens before the
+ *  claim transaction commits, so nothing ran and pressing again is safe. */
+function decisionNoticeFor(error: unknown): DecisionNotice {
+  switch (asSuggestedOpsError(error)?.type) {
+    case 'approvalDidntFinish':
+      return 'suggestedOps.approvalUnsure'
+    case 'storeNotOpen':
+    case 'store':
+    case 'unexpected':
+    case undefined:
+      return 'suggestedOps.decisionNotRecorded'
   }
 }

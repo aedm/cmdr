@@ -111,6 +111,22 @@
   "@suggestedOps.loadingFiles": {
     "sourceHash": "83257e6"
   },
+  "suggestedOps.filesLoadFailed": "Cmdr kon deze bestanden niet laden.",
+  "@suggestedOps.filesLoadFailed": {
+    "sourceHash": "c61d214"
+  },
+  "suggestedOps.retryFiles": "Probeer opnieuw",
+  "@suggestedOps.retryFiles": {
+    "sourceHash": "d8b8392"
+  },
+  "suggestedOps.decisionNotRecorded": "Cmdr kon je antwoord niet opslaan. Probeer het opnieuw.",
+  "@suggestedOps.decisionNotRecorded": {
+    "sourceHash": "d4ee9cf"
+  },
+  "suggestedOps.approvalUnsure": "Cmdr weet niet zeker of de goedkeuring is doorgekomen. Kijk in de bewerkingenwachtrij voordat je het opnieuw goedkeurt.",
+  "@suggestedOps.approvalUnsure": {
+    "sourceHash": "0cd408c"
+  },
   "suggestedOps.indicatorTooltip": "Er staan AI-suggesties klaar. Klik om ze te bekijken.",
   "@suggestedOps.indicatorTooltip": {
     "sourceHash": "4508b0b"

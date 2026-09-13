@@ -10,6 +10,8 @@ per-group approve and reject and per-op deselection. The backend it reads is
 - `suggested-ops-trigger.svelte.ts` — the dialog's state: the sweep list, the op WINDOW, deselection, approve, reject.
 - `SuggestedOpsDialog.svelte` — the dialog. Reads state, renders disclosure, owns the virtual list.
 - `suggested-ops-badge.svelte.ts` / `SuggestedOpsIndicator.svelte` — the status-corner count and its subscription.
+- `suggested-ops-failure.ts` — the `TypedFailure` every wrapper throws; a failed decision re-reads, then words the
+  variant (`DETAILS.md` § "When a read or an answer doesn't happen").
 
 ## Must-knows
 

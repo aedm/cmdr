@@ -86,6 +86,19 @@ Every command wrapper throws a `SuggestedOpsFailure` (`suggested-ops-failure.ts`
 generic path kept only the variant name and every log line read "store" with nothing about what SQLite said. The
 failure's message carries both.
 
+- **A page read that throws sets `windowError`.** The list says the files couldn't load and offers Try again, which
+  calls `ensureOpWindow` for the same rows. The virtual list only asks for rows when the viewport moves, so without it
+  the rows would sit on their loading placeholder for good.
+- **An Approve or Reject that throws re-reads FIRST, then sets `decisionNotice`.** The store is the only thing that
+  knows whether the decision landed, and the group could otherwise read as pending while its ops already run. The
+  notice sits above the list, not in the group, because after the re-read the group may be gone.
+- **The notice keys on the typed variant.** `approvalDidntFinish` means the approval worker died, so whether the claim
+  committed is unknown: "check the operation queue before you approve it again". Every other variant is a refusal that
+  lands before the claim transaction commits, so nothing ran and "try again" is safe
+  (`agent/suggested_ops/bridge/mod.rs::approve_and_execute`).
+- **Open product question:** Approve stays enabled while an expanded group's rows are loading or couldn't load (its
+  count comes from `COUNT(*)`). Whether it should wait for the first window is David's call, not decided here.
+
 ## What isn't here yet
 
 - **`interrupted` groups**: re-approving one mints a NEW group with a fresh preflight, which is spine machinery rather

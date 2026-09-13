@@ -89,6 +89,12 @@
 
     <p class="lede">{tString('suggestedOps.description')}</p>
 
+    {#if suggestedOpsState.decisionNotice}
+        <!-- Above the list rather than inside a group: after the re-read the group may be gone
+             (its approval did land), and the notice still has to be read. -->
+        <p class="notice notice-problem" role="alert">{tString(suggestedOpsState.decisionNotice)}</p>
+    {/if}
+
     {#if suggestedOpsState.loading}
         <p class="notice" role="status">{tString('suggestedOps.loadingFiles')}</p>
     {:else if suggestedOpsState.loadError}
@@ -194,6 +200,20 @@
                                 <span>{tString('suggestedOps.columnChanged')}</span>
                             </div>
 
+                            {#if suggestedOpsState.windowError}
+                                <!-- The list only asks for rows again when the viewport moves, so a
+                                     read that didn't come back needs its own way to ask. -->
+                                <div class="changed files-problem" role="alert">
+                                    <span>{tString('suggestedOps.filesLoadFailed')}</span>
+                                    <Button
+                                        variant="secondary"
+                                        onclick={() => void ensureOpWindow(g.groupId, virtual.startIndex)}
+                                    >
+                                        {tString('suggestedOps.retryFiles')}
+                                    </Button>
+                                </div>
+                            {/if}
+
                             <div
                                 class="op-list"
                                 onscroll={(e) => (scrollTop = e.currentTarget.scrollTop)}
@@ -229,7 +249,7 @@
                                                             <DateLabel modifiedAt={op.snapshotModified} />
                                                         {/if}
                                                     </span>
-                                                {:else}
+                                                {:else if !suggestedOpsState.windowError}
                                                     <span class="op-pending">{tString('suggestedOps.loadingFiles')}</span>
                                                 {/if}
                                             </div>
@@ -356,6 +376,12 @@
         padding: var(--spacing-xxs) var(--spacing-xs);
         border-radius: var(--radius-sm);
         background: var(--color-bg-tertiary);
+    }
+
+    /* Files that didn't load are a problem to act on, unlike the neutral change notice whose
+       box this borrows. */
+    .files-problem span {
+        color: var(--color-error-text);
     }
 
     .col-heads,

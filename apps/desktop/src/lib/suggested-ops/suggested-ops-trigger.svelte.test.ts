@@ -32,6 +32,7 @@ vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
 }))
 
+import { SuggestedOpsFailure } from './suggested-ops-failure'
 import {
   approvableCount,
   approveGroup,
@@ -387,6 +388,69 @@ describe('rejecting', () => {
 
     expect(suggestedOpsState.busyGroupId).toBeNull()
     expect(suggestedOpsState.open).toBe(true)
+  })
+})
+
+describe('a read or an answer that does not happen', () => {
+  it('says the files could not load, and loads them when asked again', async () => {
+    await openSuggestedOps()
+    pageMock.mockRejectedValueOnce(new SuggestedOpsFailure({ type: 'store', detail: 'database is locked' }))
+
+    await expandGroup(7)
+
+    expect(suggestedOpsState.windowError).toBe(true)
+
+    await ensureOpWindow(7, 0)
+
+    expect(suggestedOpsState.windowError).toBe(false)
+    expect(opAt(0)).not.toBeNull()
+  })
+
+  it('re-reads after an approval nobody can vouch for, and says to check the queue', async () => {
+    // The worker thread died, so whether the group was claimed is unknown. The re-read shows
+    // what the store holds; the notice keeps the person from approving twice on a guess.
+    approveMock.mockRejectedValueOnce(new SuggestedOpsFailure({ type: 'approvalDidntFinish' }))
+    await openSuggestedOps()
+    listMock.mockClear()
+
+    await approveGroup(7)
+
+    expect(listMock).toHaveBeenCalledTimes(1)
+    expect(suggestedOpsState.decisionNotice).toBe('suggestedOps.approvalUnsure')
+    expect(suggestedOpsState.busyGroupId).toBeNull()
+  })
+
+  it('re-reads after an approval the store refused, and asks to try again', async () => {
+    approveMock.mockRejectedValueOnce(new SuggestedOpsFailure({ type: 'store', detail: 'disk I/O error' }))
+    await openSuggestedOps()
+    listMock.mockClear()
+
+    await approveGroup(7)
+
+    expect(listMock).toHaveBeenCalledTimes(1)
+    expect(suggestedOpsState.decisionNotice).toBe('suggestedOps.decisionNotRecorded')
+  })
+
+  it('re-reads after a rejection that did not record, and says so', async () => {
+    rejectMock.mockRejectedValueOnce(new SuggestedOpsFailure({ type: 'storeNotOpen' }))
+    await openSuggestedOps()
+    listMock.mockClear()
+
+    await rejectGroup(7)
+
+    expect(listMock).toHaveBeenCalledTimes(1)
+    expect(suggestedOpsState.decisionNotice).toBe('suggestedOps.decisionNotRecorded')
+  })
+
+  it('takes the notice down once the next answer lands', async () => {
+    approveMock.mockRejectedValueOnce(new SuggestedOpsFailure({ type: 'store', detail: 'disk I/O error' }))
+    listMock.mockResolvedValue([sweep([group(7, 3), group(8, 3)])])
+    await openSuggestedOps()
+    await approveGroup(7)
+
+    await rejectGroup(8)
+
+    expect(suggestedOpsState.decisionNotice).toBeNull()
   })
 })
 
