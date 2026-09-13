@@ -15,8 +15,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { clearIpcMocks, installIpcMock, type IpcRecorder } from '$lib/ipc/test-helpers'
 
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+  getAppLogger: () => ({ warn, info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
 import { openAddServerSheet, openSignInForPlace } from './open-sign-in'
@@ -288,6 +289,26 @@ describe('add mode', () => {
     expect(ipc.callCount('connect_server')).toBe(0)
 
     closeSignInSheet({ kind: 'handed_off' })
+    await sheet
+  })
+
+  it('keeps a password typed into an SMB address out of the log when adding it breaks down', async () => {
+    // Warn lines reach the log file and every error-report bundle, and
+    // `smb://user:password@host` is a spelling people really paste.
+    ipc.mock('connect_to_server', () => {
+      throw new Error("Couldn't reach 192.168.1.5:445")
+    })
+    const sheet = openAddServerSheet({ onSmbHandOff: () => {} })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({ mode: 'add_smb', address: 'smb://ada:hunter2@naspolya/photos' })
+    expect(outcome).toEqual({ kind: 'refused', refusal: 'unreachable' })
+    expect(warn).toHaveBeenCalledOnce()
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('hunter2')
+    // Still names the machine, so the line stays useful at triage.
+    expect(warn.mock.calls[0][1]).toMatchObject({ host: 'naspolya' })
+
+    closeSignInSheet({ kind: 'cancelled' })
     await sheet
   })
 })

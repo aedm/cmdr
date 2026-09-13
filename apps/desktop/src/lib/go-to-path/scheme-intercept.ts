@@ -126,8 +126,9 @@ async function savedPlaceFor(path: string): Promise<string | null> {
     }
   } catch (e) {
     // A store that doesn't answer means the address opens the sheet instead of
-    // navigating: one extra step, ❌ never a wrong destination.
-    log.warn('Reading the saved servers for {path} broke down: {error}', { path, error: String(e) })
+    // navigating: one extra step, ❌ never a wrong destination. The log names the
+    // host, ❌ never the path: its account can be `user:password`.
+    log.warn('Reading the saved servers for {host} broke down: {error}', { host: parsed.host, error: String(e) })
   }
   return null
 }

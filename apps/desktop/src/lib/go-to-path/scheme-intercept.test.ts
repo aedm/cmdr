@@ -10,8 +10,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { clearIpcMocks, installIpcMock, type IpcRecorder } from '$lib/ipc/test-helpers'
 
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+  getAppLogger: () => ({ warn, info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
 import { _setLocaleForTests } from '$lib/intl/locale'
@@ -35,6 +36,7 @@ let ipc: IpcRecorder
 
 beforeEach(() => {
   _setLocaleForTests('en-US')
+  warn.mockClear()
   ipc = installIpcMock()
   ipc.mock('list_saved_servers', () => [SAVED_SERVER])
 })
@@ -42,6 +44,23 @@ afterEach(() => {
   closeSignInSheet({ kind: 'cancelled' })
   clearIpcMocks()
   _setLocaleForTests(null)
+})
+
+describe('readSchemeInput: a saved-servers store that does not answer', () => {
+  it('keeps a password typed into a server path out of the log', async () => {
+    // Warn lines reach the log file and every error-report bundle, and a server
+    // path's account accepts `user:password` as readily as `user`.
+    ipc.mock('list_saved_servers', () => {
+      throw new Error('store unavailable')
+    })
+
+    await readSchemeInput('sftp://ada:hunter2@nas.local:22/srv')
+
+    expect(warn).toHaveBeenCalledOnce()
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('hunter2')
+    // Still names the machine, so the line stays useful at triage.
+    expect(warn.mock.calls[0][1]).toMatchObject({ host: 'nas.local' })
+  })
 })
 
 describe('readSchemeInput: which scheme means what', () => {

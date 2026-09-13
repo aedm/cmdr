@@ -35,6 +35,7 @@ import type { NetworkHost } from '$lib/file-explorer/types'
 import { getAppLogger } from '$lib/logging/logger'
 import type { SignInSeamRequest, SignInSeamResult } from './connect-flow'
 import type { ConnectRefusalKind } from './connect-refusals'
+import { parseServerAddress } from './address-parser'
 import { parseServerPath, serverProtocolOfVolumeId } from './server-path-utils'
 import type {
   SignInAttempt,
@@ -192,7 +193,13 @@ async function attemptAdd(
       onSmbHandOff({ host: result.host, sharePath: result.sharePath })
       return { kind: 'handed_off' }
     } catch (e) {
-      log.warn('Adding the SMB host {address} broke down: {error}', { address: submission.address, error: String(e) })
+      // The host, ❌ never the typed address: `smb://user:password@host` is a
+      // spelling people paste, and this line reaches error-report bundles.
+      const parsed = parseServerAddress(submission.address)
+      log.warn('Adding the SMB host {host} broke down: {error}', {
+        host: parsed.kind === 'parsed' ? parsed.host : 'an address that does not parse',
+        error: String(e),
+      })
       return { kind: 'refused', refusal: 'unreachable' }
     }
   }
