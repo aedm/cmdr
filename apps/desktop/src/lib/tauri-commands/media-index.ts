@@ -184,10 +184,11 @@ export async function mediaIndexSetScope(scope: string): Promise<void> {
 
 /**
  * Set (or clear) a per-folder image-search EXCLUSION (the privacy veto): no image at or under
- * `folder` is enriched, beating any "always index" override. Excluding also retro-deletes the
- * folder's already-indexed rows backend-side; un-excluding just clears the veto. The FE also
- * persists `mediaIndex.excludedFolders`; both happen together in `excluded-folders.ts`. Rejects
- * if the backend rejects, so the caller can roll the persisted value back.
+ * `folder` is enriched, beating any "always index" override. Excluding also purges the
+ * folder's already-indexed rows backend-side, and a purge that doesn't land retries quietly on
+ * the drive's next pass; un-excluding just clears the veto. The FE also persists
+ * `mediaIndex.excludedFolders`; both happen together in `excluded-folders.ts`. The command has
+ * no error of its own, so a rejection only means the call never arrived.
  */
 export async function mediaIndexSetExcludedFolder(folder: string, excluded: boolean): Promise<void> {
   await commands.mediaIndexSetExcludedFolder(folder, excluded)

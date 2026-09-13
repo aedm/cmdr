@@ -9,7 +9,8 @@ Subsystem-wide invariants (deletion doctrine, the scope model, `should_stop`) ar
   volume, coalesced re-run). `lifecycle.rs` — the wiring/kick layer (`start`, `wire_volume`, `pass_coverage`,
   `spawn_pass`, `local_should_enrich`).
 - `enrich.rs` — the index walk + the shared enrich/GC core. `pool.rs` — the parallel workers. `live.rs` — the live
-  follow-the-index tick. `reclaim.rs` — the user-explicit prune.
+  follow-the-index tick. `reclaim.rs` — the user-explicit prune. `purge.rs` — the privacy retro-delete and the
+  purges it still owes, which every pass settles first.
 
 ## Must-knows
 

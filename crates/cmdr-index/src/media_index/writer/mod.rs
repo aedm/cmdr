@@ -32,14 +32,20 @@
 //!   (the privacy retro-delete + the reclaim prune), by an explicit path list or by a
 //!   folder prefix. Distinct from GC (which derives from scan state): these delete
 //!   because the user asked, so they need no completed-scan edge. Both return the row
-//!   count deleted (blocking, so they double as a flush barrier).
+//!   count deleted (blocking, so they double as a flush barrier), or the error that rolled
+//!   the delete back.
 //! - [`vacuum`](MediaWriter::vacuum): reclaim the free pages a prune leaves behind
-//!   (privacy: the deleted OCR text is gone from disk, not just logically). Blocking.
+//!   (privacy: the deleted OCR text is gone from disk, not just logically). Blocking, and
+//!   a failed `VACUUM` comes back as an error.
 //! - [`purge_volume`](MediaWriter::purge_volume): drop all rows (the feature was
 //!   disabled and the user chose to delete `media.db`'s contents).
 //! - [`flush_ann_index`](MediaWriter::flush_ann_index): land the buffered ANN index
 //!   ops (plan M6). The writer thread is the ONE producer of incremental ANN
 //!   mutations, mirroring each CLIP write/delete it commits; see [`super::ann`].
+//!
+//! ❌ A blocking call never turns a failure into a default (`Ok(0)`, `Ok(())`): its caller
+//! reads the answer as "done", and a refused delete once reached a user as "those entries
+//! are already cleared" while every row was still on disk.
 
 mod ann_pending;
 mod maintenance;
@@ -95,21 +101,28 @@ enum WriteMessage {
     GcPaths { paths: Vec<String> },
     /// USER-EXPLICIT prune of an explicit path list (the reclaim prune passes its
     /// Rust-selected doomed set here). Replies with the row count deleted, so the
-    /// caller both learns the count and gets a flush barrier. One transaction.
+    /// caller both learns the count and gets a flush barrier, or with the error that
+    /// rolled the delete back. One transaction.
     PrunePaths {
         paths: Vec<String>,
-        done: mpsc::Sender<usize>,
+        done: mpsc::Sender<Result<usize, MediaStoreError>>,
     },
     /// USER-EXPLICIT prune of every row at or under a folder `prefix` (the privacy
     /// retro-delete). The doomed set is derived on the writer thread from the CURRENT
     /// committed rows (trailing-slash-safe `path_is_within`), so it can't miss a row a
-    /// concurrent upsert just committed. Replies with the row count deleted. One
-    /// transaction.
-    PrunePrefix { prefix: String, done: mpsc::Sender<usize> },
+    /// concurrent upsert just committed. Replies with the row count deleted, or the
+    /// error that rolled it back. One transaction.
+    PrunePrefix {
+        prefix: String,
+        done: mpsc::Sender<Result<usize, MediaStoreError>>,
+    },
     /// Delete every `media_clip_embedding` row and reset every `media_status.clip_stamp`
     /// (the delete-CLIP-model reclaim). Vision columns/tables are untouched. Replies with
-    /// the embedding-row count deleted (a barrier). One transaction.
-    PruneAllClip { done: mpsc::Sender<usize> },
+    /// the embedding-row count deleted (a barrier), or the error that rolled it back. One
+    /// transaction.
+    PruneAllClip {
+        done: mpsc::Sender<Result<usize, MediaStoreError>>,
+    },
     /// Move a stored image's enrichment from `old` to `new` by a ONE-ROW
     /// `UPDATE media_file.path` — the whole point of integer-id keying (plan M4): every
     /// child (`media_status`, OCR, tags, embeddings) keys on the unchanged `file_id`, so
@@ -131,8 +144,11 @@ enum WriteMessage {
     },
     /// Reclaim free pages after a prune (`VACUUM`). `media.db` is a disposable cache,
     /// so `VACUUM` is acceptable, and for the privacy retro-delete it's what actually
-    /// removes the deleted text from disk. Replies when done (a barrier).
-    Vacuum { done: mpsc::Sender<()> },
+    /// removes the deleted text from disk. Replies when done (a barrier), with the error
+    /// when it didn't run.
+    Vacuum {
+        done: mpsc::Sender<Result<(), MediaStoreError>>,
+    },
     /// Drop every status and OCR row for this volume (disable + delete contents).
     /// ❌ No production sender yet: the rename-following hook this exists for
     /// isn't wired, so a rename still manifests as GC(old) + enrich(new). The
@@ -230,29 +246,30 @@ impl MediaWriter {
     }
 
     /// Prune an explicit path list (the reclaim prune's Rust-selected doomed set).
-    /// Blocks until the delete commits and returns the row count removed. A no-op on an
-    /// empty batch.
+    /// Blocks until the delete commits and returns the row count removed; a delete SQLite
+    /// refuses rolls back and comes back as the error. A no-op on an empty batch.
     pub fn prune_paths(&self, paths: Vec<String>) -> Result<usize, MediaStoreError> {
         if paths.is_empty() {
             return Ok(0);
         }
         let (tx, rx) = mpsc::channel();
         self.send(WriteMessage::PrunePaths { paths, done: tx })?;
-        Ok(rx.recv().unwrap_or(0))
+        Self::await_reply(&rx)
     }
 
     /// Prune every row at or under a folder `prefix` (the privacy retro-delete). Blocks
-    /// until the delete commits and returns the row count removed. Because it blocks
-    /// until committed, calling it twice in a row is a "delete → barrier → delete"
-    /// double-tap: the second call sweeps any straggler an in-flight upsert re-added
-    /// between the first delete and its barrier.
+    /// until the delete commits and returns the row count removed; a delete SQLite refuses
+    /// rolls back and comes back as the error. Because it blocks until committed, calling
+    /// it twice in a row is a "delete → barrier → delete" double-tap: the second call
+    /// sweeps any straggler an in-flight upsert re-added between the first delete and its
+    /// barrier.
     pub fn prune_under_folder(&self, prefix: &str) -> Result<usize, MediaStoreError> {
         let (tx, rx) = mpsc::channel();
         self.send(WriteMessage::PrunePrefix {
             prefix: prefix.to_string(),
             done: tx,
         })?;
-        Ok(rx.recv().unwrap_or(0))
+        Self::await_reply(&rx)
     }
 
     /// Move a stored image's enrichment from `old` to `new` with a one-row
@@ -278,22 +295,24 @@ impl MediaWriter {
     }
 
     /// Delete every CLIP embedding and reset every row's `clip_stamp` (the delete-model
-    /// reclaim). Blocks until committed and returns the embedding-row count removed.
-    /// Resetting each stamp to empty ("no model") means a later re-install re-embeds
-    /// (the row goes CLIP-stale again). Vision data (OCR/tags/feature print) is kept.
+    /// reclaim). Blocks until committed and returns the embedding-row count removed, or the
+    /// error that rolled it back. Resetting each stamp to empty ("no model") means a later
+    /// re-install re-embeds (the row goes CLIP-stale again). Vision data (OCR/tags/feature
+    /// print) is kept.
     pub fn prune_all_clip(&self) -> Result<usize, MediaStoreError> {
         let (tx, rx) = mpsc::channel();
         self.send(WriteMessage::PruneAllClip { done: tx })?;
-        Ok(rx.recv().unwrap_or(0))
+        Self::await_reply(&rx)
     }
 
     /// `VACUUM` the DB to reclaim the free pages a prune left (and, for the privacy
-    /// retro-delete, actually remove the deleted text from disk). Blocks until done.
+    /// retro-delete, actually remove the deleted text from disk). Blocks until done; a
+    /// `VACUUM` that didn't run comes back as the error, so the caller never reports space
+    /// the file still holds.
     pub fn vacuum(&self) -> Result<(), MediaStoreError> {
         let (tx, rx) = mpsc::channel();
         self.send(WriteMessage::Vacuum { done: tx })?;
-        let _ = rx.recv();
-        Ok(())
+        Self::await_reply(&rx)
     }
 
     /// Drop every status and OCR row for this volume. Schema stays.
@@ -347,13 +366,22 @@ impl MediaWriter {
     }
 
     fn send(&self, msg: WriteMessage) -> Result<(), MediaStoreError> {
-        self.sender.send(msg).map_err(|_| {
-            MediaStoreError::Io(std::io::Error::new(
-                std::io::ErrorKind::BrokenPipe,
-                "media writer thread is gone",
-            ))
-        })
+        self.sender.send(msg).map_err(|_| writer_gone())
     }
+
+    /// Wait for a blocking message's typed reply. A thread that dropped the reply sender
+    /// without answering (it died mid-message) is a failure too, never a default.
+    fn await_reply<T>(rx: &mpsc::Receiver<Result<T, MediaStoreError>>) -> Result<T, MediaStoreError> {
+        rx.recv().map_err(|_| writer_gone())?
+    }
+}
+
+/// The error for a writer thread that's no longer there to take or answer a message.
+fn writer_gone() -> MediaStoreError {
+    MediaStoreError::Io(std::io::Error::new(
+        std::io::ErrorKind::BrokenPipe,
+        "media writer thread is gone",
+    ))
 }
 
 /// The writer thread's main loop: own the write connection, apply each message
@@ -426,21 +454,21 @@ fn writer_loop(mut conn: Connection, receiver: mpsc::Receiver<WriteMessage>, vol
             // a flaky test rather than the stale folder count it is.
             WriteMessage::PrunePaths { paths, done } => {
                 ann_pending.mark_dirty();
-                let deleted = apply_prune_paths(&mut conn, &paths).unwrap_or_else(|e| {
-                    log::warn!(target: "media_index", "prune ({} paths) failed: {e}", paths.len());
-                    Vec::new()
-                });
-                note_deleted(&volume_id, &mut ann_pending, &deleted);
-                let _ = done.send(deleted.len());
+                let result = apply_prune_paths(&mut conn, &paths);
+                match &result {
+                    Ok(deleted) => note_deleted(&volume_id, &mut ann_pending, deleted),
+                    Err(e) => log::warn!(target: "media_index", "prune ({} paths) failed: {e}", paths.len()),
+                }
+                let _ = done.send(result.map(|deleted| deleted.len()));
             }
             WriteMessage::PrunePrefix { prefix, done } => {
                 ann_pending.mark_dirty();
-                let deleted = apply_prune_prefix(&mut conn, &prefix).unwrap_or_else(|e| {
-                    log::warn!(target: "media_index", "prune under '{prefix}' failed: {e}");
-                    Vec::new()
-                });
-                note_deleted(&volume_id, &mut ann_pending, &deleted);
-                let _ = done.send(deleted.len());
+                let result = apply_prune_prefix(&mut conn, &prefix);
+                match &result {
+                    Ok(deleted) => note_deleted(&volume_id, &mut ann_pending, deleted),
+                    Err(e) => log::warn!(target: "media_index", "prune under '{prefix}' failed: {e}"),
+                }
+                let _ = done.send(result.map(|deleted| deleted.len()));
             }
             WriteMessage::Rename { old, new, done } => {
                 // Deliberately NO ANN op: the index keys on the `media_file` id, which a
@@ -464,21 +492,24 @@ fn writer_loop(mut conn: Connection, receiver: mpsc::Receiver<WriteMessage>, vol
                 // CLIP embeddings aren't part of the accounted aggregate (that counts
                 // `media_status` rows, which this leaves intact), so no delta here.
                 ann_pending.mark_dirty();
-                let removed = apply_prune_all_clip(&mut conn).unwrap_or_else(|e| {
-                    log::warn!(target: "media_index", "prune-all-clip failed: {e}");
-                    0
-                });
-                // Every CLIP vector is gone, so the whole CLIP index goes with the rows
-                // (incl. the dirty marker); pending clip ops are moot.
-                ann::delete_index_files(&ann_pending.db_path, ann::AnnSpace::Clip);
-                ann_pending.clear_after_delete();
-                let _ = done.send(removed);
+                let result = apply_prune_all_clip(&mut conn);
+                match &result {
+                    // Every CLIP vector is gone, so the whole CLIP index goes with the rows
+                    // (incl. the dirty marker); pending clip ops are moot.
+                    Ok(_) => {
+                        ann::delete_index_files(&ann_pending.db_path, ann::AnnSpace::Clip);
+                        ann_pending.clear_after_delete();
+                    }
+                    Err(e) => log::warn!(target: "media_index", "prune-all-clip failed: {e}"),
+                }
+                let _ = done.send(result);
             }
             WriteMessage::Vacuum { done } => {
-                if let Err(e) = apply_vacuum(&conn) {
+                let result = apply_vacuum(&conn);
+                if let Err(e) = &result {
                     log::warn!(target: "media_index", "vacuum failed: {e}");
                 }
-                let _ = done.send(());
+                let _ = done.send(result);
             }
             WriteMessage::PurgeVolume => {
                 ann_pending.mark_dirty();

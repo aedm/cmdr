@@ -60,6 +60,8 @@ use crate::EventSink;
 
 mod reclaim;
 
+mod purge;
+
 mod coordinator;
 use coordinator::{BeginOutcome, FinishOutcome, PassCoordinator};
 
@@ -127,6 +129,13 @@ pub struct MediaScheduler {
     /// ticks drain one combined set, not one tick per batch — mirroring importance's
     /// `pending_incremental`.
     pending_touched_dirs: Mutex<HashMap<String, HashSet<String>>>,
+    /// Per-volume purges that haven't landed yet (a refused privacy retro-delete, or a
+    /// `VACUUM` a prune couldn't run), settled at the start of that volume's next pass.
+    /// The whole mechanism is in `purge.rs`.
+    owed_purges: Mutex<HashMap<String, purge::OwedPurge>>,
+    /// Serializes settling those purges, so a pass starting mid-purge waits for it to
+    /// finish rather than finding an empty ledger while the rows are still being deleted.
+    purge_serial: Mutex<()>,
 }
 
 impl MediaScheduler {
@@ -159,6 +168,8 @@ impl MediaScheduler {
             events,
             deferred_for_importance: Mutex::new(HashSet::new()),
             pending_touched_dirs: Mutex::new(HashMap::new()),
+            owed_purges: Mutex::new(HashMap::new()),
+            purge_serial: Mutex::new(()),
         }
     }
 
@@ -263,6 +274,9 @@ impl MediaScheduler {
     /// GCs vanished rows through the shared writer. GC is safe here: this runs only
     /// on a `Completed` edge / the Fresh sweep, so the tree is complete.
     pub(crate) fn run_pass_blocking(&self, volume_id: &str) -> Result<usize, String> {
+        // Settle any purge this volume still owes before anything else (`purge.rs`). A
+        // settle logs its own outcome, and the pass proceeds either way.
+        let _ = self.settle_owed_purges(volume_id);
         if !gate::is_enabled() {
             return Ok(0);
         }
@@ -399,73 +413,6 @@ impl MediaScheduler {
         super::coverage::importance_scores(&self.data_dir, volume_id, Some(threshold))
     }
 
-    /// Retro-delete every stored row at or under `folder` (an OS-mount path) across the
-    /// reachable volumes in `mounts` (`volume_id`, `mount_root`) — the privacy
-    /// complement to the veto, invoked when the user excludes a folder. USER-EXPLICIT
-    /// deletion: it derives ONLY from settings state, never scan/bus/gate state, so it
-    /// needs no completed-scan edge (unlike GC — see `../DETAILS.md` § The GC safety argument).
-    ///
-    /// Each volume maps the OS folder into its own index-path space
-    /// ([`os_folder_to_index_prefix`]): the folder passes through on a local volume,
-    /// strips the mount root on a network one, and a volume the folder isn't under is
-    /// skipped. The delete is a DOUBLE-TAP through the volume's ONE writer thread (the
-    /// second prune sweeps any straggler an in-flight upsert re-added), then a `VACUUM`
-    /// reclaims the pages (privacy: the OCR text leaves the disk), then the vector +
-    /// coverage caches for the volume drop. Returns the total rows deleted.
-    ///
-    /// **Offline network volumes** aren't in `mounts` (no mount root while unmounted),
-    /// so they're skipped here and the retro-delete re-fires on reconnect via
-    /// `lifecycle::wire_volume`. Runs off the IPC thread (the caller uses `spawn_blocking`), so
-    /// the blocking prunes are deadlock-safe.
-    ///
-    /// [`os_folder_to_index_prefix`]: super::network::fetch::os_folder_to_index_prefix
-    pub fn retro_delete_excluded_folder(&self, folder: &str, mounts: &[(String, String)]) -> usize {
-        let mut total = 0usize;
-        for (volume_id, mount_root) in mounts {
-            // Only volumes that were actually enriched have a `media.db`; don't create an
-            // empty one just to prune nothing.
-            let db_path = super::store::media_db_path(&self.data_dir, volume_id);
-            if !db_path.exists() {
-                continue;
-            }
-            // Map the OS folder into this volume's index-path space; `None` ⇒ the folder
-            // isn't under this mount, so this volume has no matching rows.
-            let Some(index_prefix) = network::fetch::os_folder_to_index_prefix(folder, mount_root) else {
-                continue;
-            };
-            let writer = match self.writers.writer_for(&self.data_dir, volume_id) {
-                Ok(w) => w,
-                Err(e) => {
-                    log::warn!(target: "media_index", "retro-delete: writer for '{volume_id}' failed: {e}");
-                    continue;
-                }
-            };
-            // Double-tap through the ONE writer thread: the first (blocking) prune drains
-            // the queue up to it; the second sweeps any straggler an in-flight upsert
-            // re-added before its own pre-upsert veto re-check could stop it.
-            let n1 = writer.prune_under_folder(&index_prefix).unwrap_or(0);
-            let n2 = writer.prune_under_folder(&index_prefix).unwrap_or(0);
-            let deleted = n1 + n2;
-            if deleted > 0 {
-                // Reclaim the pages (privacy: the OCR text leaves the disk), then drop
-                // the derived caches so a later search / slider preview rebuilds honestly.
-                // The ANN flush lands the buffered key removals first, so the pruned
-                // images stop being ANN-reachable at the same moment (plan M6).
-                let _ = writer.flush_ann_index();
-                let _ = writer.vacuum();
-                super::vector::cache::invalidate(&db_path);
-                super::coverage::invalidate(volume_id);
-                log::info!(
-                    target: "media_index",
-                    "retro-delete under '{folder}' on '{volume_id}': {} removed",
-                    cmdr_fs::pluralize::pluralize(deleted as u64, "row")
-                );
-                total += deleted;
-            }
-        }
-        total
-    }
-
     /// Delete the on-disk CLIP model + every enriched volume's CLIP embeddings (the
     /// settings "Delete model" action). Removes the shared `clip-model` dir, then, for
     /// every volume with a `media.db`, prunes its `media_clip_embedding` rows and resets
@@ -521,6 +468,9 @@ impl MediaScheduler {
     /// bus. A `NotIdle` yield returns [`PassOutcome::RetryWhenIdle`] so the caller resumes
     /// the pass once the app is idle again (it would otherwise stall permanently).
     pub(crate) fn run_network_pass_blocking(&self, volume_id: &str) -> Result<PassOutcome, String> {
+        // Settle any purge this volume still owes before anything else (`purge.rs`). A
+        // settle logs its own outcome, and the pass proceeds either way.
+        let _ = self.settle_owed_purges(volume_id);
         if !gate::is_enabled() {
             return Ok(PassOutcome::Done(0));
         }

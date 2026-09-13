@@ -166,6 +166,9 @@ impl MediaScheduler {
         volume_id: &str,
         touched_dirs: &HashSet<String>,
     ) -> Result<usize, String> {
+        // Settle any purge this volume still owes before anything else (`purge.rs`). A
+        // settle logs its own outcome, and the tick proceeds either way.
+        let _ = self.settle_owed_purges(volume_id);
         if !gate::is_enabled() {
             return Ok(0);
         }

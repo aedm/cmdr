@@ -352,7 +352,9 @@ pub(super) fn wire_volume(scheduler: Arc<MediaScheduler>, volume_id: String, kin
             crate::indexing::host::runtime::spawn_blocking(move || {
                 let mounts = [(re_volume, mount_root)];
                 for folder in &excluded {
-                    re_scheduler.retro_delete_excluded_folder(folder, &mounts);
+                    // Whatever doesn't land stays owed, and this volume's passes retry
+                    // it, so the outcome has no one to go to here.
+                    let _ = re_scheduler.retro_delete_excluded_folder(folder, &mounts);
                 }
             });
         }

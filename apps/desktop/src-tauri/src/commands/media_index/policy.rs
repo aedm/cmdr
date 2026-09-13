@@ -123,24 +123,27 @@ pub(super) fn scope_change_should_kick(previous: gate::IndexScope, next: gate::I
 /// 2. THEN retro-delete (a double-tap through each volume's one writer thread, so a
 ///    straggler upsert that squeezed in is swept), off the IPC thread.
 ///
-/// Un-EXCLUDING only clears the veto: NO re-delete and NO auto re-enrich — the next
-/// natural pass picks the folder up again. An offline network volume is skipped by the
-/// retro-delete (no mount root) and re-fires on reconnect via the registration bus.
-/// Live-applied; the frontend persists `mediaIndex.excludedFolders` and calls this on
-/// change (rolling the persisted value back if this rejects).
+/// There is no error to return. The veto is live before anything that can fail, and a
+/// purge that doesn't land (a full disk, a locked database) stays owed and retries on
+/// the volume's next pass and at launch (`scheduler/purge.rs`), so the outcome only
+/// feeds the log. Un-EXCLUDING only clears the veto: NO re-delete and NO auto re-enrich
+/// — the next natural pass picks the folder up again. An offline network volume is
+/// skipped by the retro-delete (no mount root) and re-fires on reconnect via the
+/// registration bus. Live-applied; the frontend persists `mediaIndex.excludedFolders`
+/// and calls this on change, and never rolls that value back.
 #[tauri::command]
 #[specta::specta]
-pub async fn media_index_set_excluded_folder(app: AppHandle, folder: String, excluded: bool) -> Result<(), String> {
+pub async fn media_index_set_excluded_folder(app: AppHandle, folder: String, excluded: bool) {
     // Live state FIRST (step 1): the veto must precede any delete.
     network_config::set_excluded_folder(&folder, excluded);
 
     if !excluded {
-        return Ok(());
+        return;
     }
     // Step 2: retro-delete across reachable volumes. Skip cleanly if the scheduler isn't
     // managed yet (nothing has been enriched, so there's nothing to purge).
     let Some(scheduler) = app.try_state::<Arc<MediaScheduler>>() else {
-        return Ok(());
+        return;
     };
     let scheduler = Arc::clone(scheduler.inner());
     // The reachable volumes + their mount roots. An unmounted volume isn't listed, so
@@ -151,11 +154,16 @@ pub async fn media_index_set_excluded_folder(app: AppHandle, folder: String, exc
         .map(|(id, vol)| (id, vol.root().to_string_lossy().into_owned()))
         .collect();
     // The prune blocks on the writer thread, so run it off the IPC thread.
-    tauri::async_runtime::spawn_blocking(move || {
-        scheduler.retro_delete_excluded_folder(&folder, &mounts);
-    })
-    .await
-    .map_err(|e| format!("retro-delete task panicked: {e}"))
+    let logged_folder = folder.clone();
+    match tauri::async_runtime::spawn_blocking(move || scheduler.retro_delete_excluded_folder(&folder, &mounts)).await
+    {
+        Ok(outcome) => log::debug!(target: "media_index", "retro-delete under '{logged_folder}': {outcome:?}"),
+        // The purge was owed before it started, so a panic mid-way leaves it for the next pass.
+        Err(e) => log::warn!(
+            target: "media_index",
+            "retro-delete under '{logged_folder}' panicked ({e}); the next pass retries it"
+        ),
+    }
 }
 
 /// Turn CLIP semantic search on or off (the "search photos by description" feature).

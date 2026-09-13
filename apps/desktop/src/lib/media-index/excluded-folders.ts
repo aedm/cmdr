@@ -25,19 +25,25 @@ function getExcludedFolders(): string[] {
 
 /**
  * Exclude (or re-include) a folder from image indexing. Persists the array AND
- * live-applies via IPC. Excluding also retro-deletes the folder's already-indexed rows
- * backend-side (the privacy veto is immediate, not "eventually"); un-excluding just
- * clears the veto (no re-delete, no auto re-enrich). On IPC failure the persisted value
- * rolls back so the setting and backend stay in agreement.
+ * live-applies via IPC. Excluding also purges the folder's already-indexed rows
+ * backend-side; a purge that doesn't land (a full disk, a locked database) stays owed and
+ * retries quietly on the volume's next pass, so nothing here waits on it or reports it.
+ * Un-excluding just clears the veto (no re-delete, no auto re-enrich).
+ *
+ * The persisted value is NEVER rolled back, even when the call rejects. The command sets
+ * the live veto before anything else and has no error of its own, so a rejection only
+ * means the call didn't arrive, and every launch seeds the veto from this value. A
+ * rollback would un-exclude a folder the running app may still be treating as excluded.
  */
 export async function setFolderExcluded(folder: string, excluded: boolean): Promise<void> {
-  const previous = getExcludedFolders()
-  setSetting('mediaIndex.excludedFolders', toggleInArray(previous, folder, excluded))
+  setSetting('mediaIndex.excludedFolders', toggleInArray(getExcludedFolders(), folder, excluded))
   try {
     await mediaIndexSetExcludedFolder(folder, excluded)
   } catch (err) {
-    setSetting('mediaIndex.excludedFolders', previous)
-    log.warn('Failed to apply folder exclusion for {folder}: {err}', { folder, err: String(err) })
+    log.warn('Folder exclusion for {folder} is saved but did not reach the backend; the next launch applies it: {err}', {
+      folder,
+      err: String(err),
+    })
     throw err
   }
 }

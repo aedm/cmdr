@@ -284,6 +284,34 @@ fn prune_then_vacuum_round_trips() {
     w.shutdown();
 }
 
+#[test]
+fn a_prune_whose_delete_fails_reports_the_failure_and_keeps_the_rows() {
+    // A blocking prune is a promise to its caller that the rows are gone. When SQLite
+    // refuses the delete, answering `Ok(0)` reads as "there was nothing to delete", which
+    // is how a full disk once told a user their entries were already cleared.
+    let dir = tempfile::tempdir().expect("temp");
+    let w = writer(dir.path(), "root");
+    let db_path = media_db_path(dir.path(), "root");
+    seed(&w, "/a/x.jpg");
+    w.flush_blocking().expect("flush");
+    crate::media_index::store::refuse_status_deletes(&db_path);
+
+    assert!(
+        w.prune_under_folder("/a").is_err(),
+        "a refused folder prune is a failure, not zero rows"
+    );
+    assert!(
+        w.prune_paths(vec!["/a/x.jpg".to_string()]).is_err(),
+        "a refused path prune is a failure, not zero rows"
+    );
+    assert_eq!(
+        row_counts(&db_path, "/a/x.jpg"),
+        (1, 2, 1, 1),
+        "the failed transaction rolled back"
+    );
+    w.shutdown();
+}
+
 // ── The accounted aggregate maintained through the writer path ───────────────
 // These use a UNIQUE volume id per test: the accounted cache is process-global and
 // keyed by volume id alone, so reusing one id would cross-contaminate.

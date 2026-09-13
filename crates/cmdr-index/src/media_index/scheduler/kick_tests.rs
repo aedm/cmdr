@@ -657,13 +657,17 @@ fn retro_delete_prunes_a_local_folder_and_skips_volumes_it_isnt_under() {
     // Excluding an OS folder deletes its rows on the local volume (index path == OS
     // path) and does NOT touch a NAS the folder isn't under (its index space is
     // different).
+    let _guard = crate::test_read_pool_lock();
     let dir = tempfile::tempdir().expect("temp");
     let sched = MediaScheduler::new(dir.path().to_path_buf(), fake_backend());
     seed_media_row_for(dir.path(), ROOT, "/secret/id.jpg");
     seed_media_row_for(dir.path(), ROOT, "/keep/a.jpg");
     seed_media_row_for(dir.path(), "smb-vol", "/Photos/p.jpg");
+    // The veto is live before the purge, as the command sets it; a purge only runs for a
+    // folder that's still excluded when it settles.
+    network::config::set_config(config_with(&[], &["/secret"]));
 
-    let deleted = sched.retro_delete_excluded_folder(
+    let outcome = sched.retro_delete_excluded_folder(
         "/secret",
         &[
             (ROOT.to_string(), "/".to_string()),
@@ -671,7 +675,8 @@ fn retro_delete_prunes_a_local_folder_and_skips_volumes_it_isnt_under() {
         ],
     );
     assert_eq!(
-        deleted, 1,
+        outcome,
+        purge::PurgeOutcome::Settled { deleted_rows: 1 },
         "only the local /secret row goes; /secret isn't under the NAS mount"
     );
 
@@ -686,22 +691,25 @@ fn retro_delete_prunes_a_local_folder_and_skips_volumes_it_isnt_under() {
         smb.status_for("/Photos/p.jpg").expect("read").is_some(),
         "the NAS row is untouched (the folder isn't under its mount)"
     );
+    reset_gate();
 }
 
 #[test]
 fn retro_delete_maps_a_network_folder_into_the_volumes_index_space() {
     // Excluding an OS-mount folder on a NAS strips the mount root to reach the stored
     // (index-relative) rows.
+    let _guard = crate::test_read_pool_lock();
     let dir = tempfile::tempdir().expect("temp");
     let sched = MediaScheduler::new(dir.path().to_path_buf(), fake_backend());
     seed_media_row_for(dir.path(), "smb-vol", "/Photos/p.jpg");
     seed_media_row_for(dir.path(), "smb-vol", "/Docs/d.jpg");
+    network::config::set_config(config_with(&[], &["/Volumes/naspi/Photos"]));
 
-    let deleted = sched.retro_delete_excluded_folder(
+    let outcome = sched.retro_delete_excluded_folder(
         "/Volumes/naspi/Photos",
         &[("smb-vol".to_string(), "/Volumes/naspi".to_string())],
     );
-    assert_eq!(deleted, 1);
+    assert_eq!(outcome, purge::PurgeOutcome::Settled { deleted_rows: 1 });
 
     let smb = MediaStore::open(&media_db_path(dir.path(), "smb-vol")).expect("open smb");
     assert!(
@@ -712,4 +720,50 @@ fn retro_delete_maps_a_network_folder_into_the_volumes_index_space() {
         smb.status_for("/Docs/d.jpg").expect("read").is_some(),
         "other folder kept"
     );
+    reset_gate();
+}
+
+#[test]
+fn a_retro_delete_that_does_not_land_is_retried_by_the_next_pass() {
+    // The exclusion is set and live, but SQLite refuses the purge (a full disk, a locked
+    // database). Nothing may give up on it: once the fault clears, the volume's next pass
+    // purges the rows before it does anything else. Without the retry, GC never collects
+    // them either, because the file still exists and stays in the walked set.
+    let _guard = crate::test_read_pool_lock();
+    reset_gate();
+    let dir = tempfile::tempdir().expect("temp");
+    let index_path = dir.path().join("index-root.db");
+    build_index(&index_path, &[("/secret", "id.jpg"), ("/keep", "a.jpg")]);
+    crate::test_install_root_read_pool(index_path).expect("install pool");
+    seed_media_row_for(dir.path(), ROOT, "/secret/id.jpg");
+    let db_path = media_db_path(dir.path(), ROOT);
+    network::config::set_config(config_with(&[], &["/secret"]));
+    let sched = MediaScheduler::new(dir.path().to_path_buf(), fake_backend());
+
+    crate::media_index::store::refuse_status_deletes(&db_path);
+    let outcome = sched.retro_delete_excluded_folder("/secret", &[(ROOT.to_string(), "/".to_string())]);
+    assert_eq!(
+        outcome,
+        purge::PurgeOutcome::Pending { deleted_rows: 0 },
+        "a refused purge is still owed, never a quiet zero"
+    );
+    let stored = |path: &str| {
+        MediaStore::open(&db_path)
+            .expect("open")
+            .status_for(path)
+            .expect("read")
+            .is_some()
+    };
+    assert!(stored("/secret/id.jpg"), "the refused purge left the row behind");
+
+    crate::media_index::store::allow_status_deletes(&db_path);
+    gate::set_enabled(true);
+    sched.run_pass_blocking(ROOT).expect("pass");
+    assert!(
+        !stored("/secret/id.jpg"),
+        "the next pass finished the purge the exclusion asked for"
+    );
+
+    crate::test_uninstall_root_read_pool();
+    reset_gate();
 }

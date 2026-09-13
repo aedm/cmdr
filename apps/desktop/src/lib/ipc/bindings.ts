@@ -2372,14 +2372,17 @@ export const commands = {
    *  2. THEN retro-delete (a double-tap through each volume's one writer thread, so a
    *     straggler upsert that squeezed in is swept), off the IPC thread.
    *
-   *  Un-EXCLUDING only clears the veto: NO re-delete and NO auto re-enrich — the next
-   *  natural pass picks the folder up again. An offline network volume is skipped by the
-   *  retro-delete (no mount root) and re-fires on reconnect via the registration bus.
-   *  Live-applied; the frontend persists `mediaIndex.excludedFolders` and calls this on
-   *  change (rolling the persisted value back if this rejects).
+   *  There is no error to return. The veto is live before anything that can fail, and a
+   *  purge that doesn't land (a full disk, a locked database) stays owed and retries on
+   *  the volume's next pass and at launch (`scheduler/purge.rs`), so the outcome only
+   *  feeds the log. Un-EXCLUDING only clears the veto: NO re-delete and NO auto re-enrich
+   *  — the next natural pass picks the folder up again. An offline network volume is
+   *  skipped by the retro-delete (no mount root) and re-fires on reconnect via the
+   *  registration bus. Live-applied; the frontend persists `mediaIndex.excludedFolders`
+   *  and calls this on change, and never rolls that value back.
    */
   mediaIndexSetExcludedFolder: (folder: string, excluded: boolean) =>
-    typedError<null, string>(__TAURI_INVOKE('media_index_set_excluded_folder', { folder, excluded })),
+    __TAURI_INVOKE<void>('media_index_set_excluded_folder', { folder, excluded }),
   /**
    *  Set the folder-importance threshold the scheduler enriches by — the importance settings
    *  slider's typed value (`0.0..=1.0`, clamped), never a string.

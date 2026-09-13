@@ -53,10 +53,12 @@ describe('excluded-folders', () => {
     expect(store.get('mediaIndex.excludedFolders')).toEqual(['/a'])
   })
 
-  it('rolls the persisted exclusion back when the IPC call rejects', async () => {
+  it('keeps the exclusion persisted when the IPC call rejects', async () => {
     setExcludedFolder.mockRejectedValueOnce(new Error('backend down'))
     await expect(prefs.setFolderExcluded('/a', true)).rejects.toThrow('backend down')
-    // The optimistic write was reverted so the store and backend stay in agreement.
-    expect(store.get('mediaIndex.excludedFolders')).toEqual([])
+    // The backend applies the live veto before anything that can fail, and every launch
+    // seeds it from this persisted value. Rolling back would un-exclude a folder the
+    // running app still treats as excluded, and a relaunch would then drop the veto.
+    expect(store.get('mediaIndex.excludedFolders')).toEqual(['/a'])
   })
 })

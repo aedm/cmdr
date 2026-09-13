@@ -687,3 +687,30 @@ pub(crate) fn read_tag_matches(
 }
 
 pub(super) const CREATE_TABLES: &str = CREATE_TABLES_SQL;
+
+/// The trigger [`refuse_status_deletes`] installs.
+#[cfg(test)]
+const REFUSE_STATUS_DELETES_TRIGGER: &str = "test_refuse_status_deletes";
+
+/// Test-only fault: every `media_status` delete fails inside SQLite while reads keep
+/// working, the way a locked or full database refuses a write. A trigger rather than a
+/// dropped table, because [`MediaStore::open`] re-creates a missing table and would heal
+/// the fault behind the test's back; and rather than file permissions, which a root test
+/// runner ignores. [`allow_status_deletes`] lifts it.
+#[cfg(test)]
+pub(crate) fn refuse_status_deletes(db_path: &Path) {
+    let conn = open_write_connection(db_path).expect("open media.db to install the fault");
+    conn.execute_batch(&format!(
+        "CREATE TRIGGER IF NOT EXISTS {REFUSE_STATUS_DELETES_TRIGGER} BEFORE DELETE ON media_status
+         BEGIN SELECT RAISE(ABORT, 'media_status deletes refused by a test'); END;"
+    ))
+    .expect("install the delete-refusing trigger");
+}
+
+/// Lift [`refuse_status_deletes`]'s fault.
+#[cfg(test)]
+pub(crate) fn allow_status_deletes(db_path: &Path) {
+    let conn = open_write_connection(db_path).expect("open media.db to lift the fault");
+    conn.execute_batch(&format!("DROP TRIGGER IF EXISTS {REFUSE_STATUS_DELETES_TRIGGER};"))
+        .expect("drop the delete-refusing trigger");
+}

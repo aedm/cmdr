@@ -367,6 +367,13 @@ OCR text stops being searchable at once (privacy is a hard requirement, not "eve
   cores). Belt-and-suspenders: the command sequences config-set (live veto first) → retro-delete → retro-delete again (a
   double-tap; the blocking prune is its own barrier), so a straggler upsert that squeezed into the enqueue window is
   swept. Order matters — the config write MUST precede the first delete, or in-flight images re-check stale state.
+- **A purge that doesn't land stays owed** (`scheduler/purge.rs`). SQLite refusing the delete (a full disk, a locked
+  database), a writer that won't open, or a failed `VACUUM` leaves the purge in a per-volume ledger, and every pass on
+  that volume (full, network, and the live tick) settles what it owes before its own work. The purge is owed BEFORE it
+  runs, so a panic part-way can't lose it, and a launch rebuilds the ledger through the `wire_volume` re-fire below. A
+  settle prunes only a folder that is STILL excluded, so un-excluding drops the debt. Nobody is told: the veto is already
+  live, and there's nothing a person could do that the retry doesn't, so `media_index_set_excluded_folder` has no error
+  and the FE never rolls the persisted exclusion back (every launch seeds the veto from it).
 - **Un-excluding** only clears the veto: NO re-delete and NO auto re-enrich — the next natural pass picks the folder up
   again.
 - **Offline network volumes** aren't reachable when the exclusion is set (no mount root to map with), so the
@@ -375,9 +382,9 @@ OCR text stops being searchable at once (privacy is a hard requirement, not "eve
 - **The trigger** is a folder context-menu item ("Don't index images in this folder" / "Index images here again", shown
   only while image indexing is on, exactly one keyed on the current state). It's a NATIVE (Rust) menu, so the click
   emits a `MediaIndexFolderExclusion` event to the FE, which persists `mediaIndex.excludedFolders` and calls
-  `media_index_set_excluded_folder` (the native menu can't write the FE settings store) — the persist + live-apply +
-  rollback pattern from `network-volume-prefs.ts`, in `src/lib/media-index/excluded-folders.ts`, wired in the main
-  route's `setupMenuListeners`.
+  `media_index_set_excluded_folder` (the native menu can't write the FE settings store) — the persist + live-apply
+  pattern from `network-volume-prefs.ts` minus its rollback (the owed-purge bullet above says why), in
+  `src/lib/media-index/excluded-folders.ts`, wired in the main route's `setupMenuListeners`.
 
 ## WAL checkpoint at pass completion (`writer/maintenance.rs`, plan M9)
 
