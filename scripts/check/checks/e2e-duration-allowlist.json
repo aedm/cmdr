@@ -39,11 +39,7 @@
       "reason": "virtual MTP per-operation protocol overhead; ~2.1s under --include-slow contention on 2026-06-28, cap 3s"
     },
     "search-open-in-pane.spec.ts::Search dialog: Open in pane::⌘[ leaves the snapshot view, ⌘] returns to it": "navigates out of and back into the search snapshot volume, two full pane loads (3.2s at flagger introduction)",
-    "viewer-wordwrap-persistence.spec.ts::Viewer word-wrap persistence::word wrap toggled in one viewer session is on in the next": "opens the viewer window twice to assert persistence across sessions (2.3s at flagger introduction)",
-    "whats-new.spec.ts::What's new popup::auto-shows on update, opts out, and stamps the running version": {
-      "maxMs": 3000,
-      "reason": "update flow drives a version stamp + popup lifecycle; ~2.2s under --include-slow contention on 2026-06-28, cap 3s"
-    }
+    "viewer-wordwrap-persistence.spec.ts::Viewer word-wrap persistence::word wrap toggled in one viewer session is on in the next": "opens the viewer window twice to assert persistence across sessions (2.3s at flagger introduction)"
   },
   "linux": {
     "accessibility.spec.ts::dark mode::Settings: all sections": "axe audits every settings section in one test; inherently heavy (3.5s at flagger introduction)",
