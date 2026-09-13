@@ -13,8 +13,10 @@
  * commits, before the correction moves the pane on, so a follow-up navigation still races
  * the correction.
  *
- * It rides the command bus (`volume.selectByName`) so the dialog gate applies, with the
- * request id in the command args the way the auto-confirmed file ops carry theirs.
+ * It rides the command bus (`volume.selectByName`), with the request id in the command args
+ * the way the auto-confirmed file ops carry theirs. The bus doesn't hold MCP back behind an
+ * open dialog (`DETAILS.md` § The dialog gate); what it buys is the typed command id and the
+ * log line and breadcrumb every command gets.
  */
 
 import { capabilitiesFor } from '$lib/file-explorer/pane/volume-capabilities'

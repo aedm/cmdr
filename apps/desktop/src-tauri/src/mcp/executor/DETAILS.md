@@ -176,8 +176,9 @@ and unit-tested in `mod.rs`). Per-tool:
   remembered-folder correction has landed and the pane has come to rest, and `select_volume_result` words the same
   three outcomes, its `OK` naming the folder the pane opened. A `navigated` reply is followed by a short `volume_name`
   poll so `cmdr://state` agrees. The request id reaches the FE through the command bus (`volume.selectByName`'s
-  `mcpRequestId`), so a dialog in front refuses the select before anything can reply, and the tool waits out its
-  budget.
+  `mcpRequestId`). The bus lets MCP through behind an open dialog, so the select runs there; only the tools that start
+  a file operation refuse (`refuse_while_dialog_blocks`). Why: `apps/desktop/src/routes/(main)/DETAILS.md` § The
+  dialog gate.
 - `open_under_cursor`: 5 s via `mcp_round_trip_with_timeout`; opening a file delegates to the OS default app, so neither
   `GenerationAdvanced` nor `WindowAppeared` would fire.
 - Resources that need FE data use `resource_round_trip` (same pattern, returns the `data` field). Used by

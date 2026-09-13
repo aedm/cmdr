@@ -256,7 +256,8 @@ export async function setupMcpListeners(ctx: McpListenerContext): Promise<void> 
   await listenTauri('mcp-volume-select', (event) => {
     // Round-trip through the bus, like the auto-confirmed file ops: the request id rides
     // the command args, and the handler replies once the pane has come to rest
-    // (`mcp-volume-select.ts`). A dialog in front refuses the command before it runs.
+    // (`mcp-volume-select.ts`). MCP is exempt from the dialog gate, so this runs behind an
+    // open dialog (`DETAILS.md` § The dialog gate).
     const raw = asRecord(event.payload)
     const pane = parsePane(raw.pane)
     const name = typeof raw.name === 'string' ? raw.name : undefined

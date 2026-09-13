@@ -159,9 +159,12 @@ the answer is the same whichever road a command came in by.
   `Record<DispatchSource, CommandDispatcher>`, so a new road doesn't compile until it's wired). That's how the core
   knows the source, which both the gate and the cross-source dedup read. The menu road also carries the Dock menu, other
   windows' `execute-command` emits, `view-mode-changed`, and `menu-sort`.
-- **MCP is exempt.** Its file-operation tools refuse with a typed `blockedBy` while a blocking dialog is up, and
-  `dialog.confirm` acts on the open dialog itself. A refusal from the gate would be silent, and the agent would read it
-  as success.
+- **MCP is exempt**, so every MCP pane command (`select_volume`, `select`, `move_cursor`, `sort`, and the rest) runs
+  behind an open dialog. Only the tools that start a file operation refuse, in Rust before they dispatch, with a typed
+  `data.blockingDialog` (`$lib/file-explorer/pane/DETAILS.md` § "The operation-start gate"), and `dialog.confirm` acts on
+  the open dialog itself. A refusal from this gate would be silent, so the agent would wait out its round-trip budget or
+  read it as success. Pane changes behind a copy, move, or delete confirmation can't change what it acts on: the dialog
+  confirms the `sourcePaths` it opened with (`dialog-state.svelte.ts`).
 - **The palette never blocks its own rows** (it closes on the way to the handler); every other road counts it as in the
   way.
 - **The keydown resolver asks the gate too**, before claiming a key. A key the core would refuse stays unclaimed, so Tab
@@ -253,8 +256,10 @@ path; its `fromMenu` flag picks `setViewModeFromMenu` (skip `pushViewMenuState`)
 ### `mcp-volume-select` replies from its handler
 
 The listener dispatches `volume.selectByName` with the `mcpRequestId` in its args, the way the auto-confirmed file ops
-carry theirs, so the dialog gate still applies. The handler voids `selectVolumeForMcp` (`mcp-volume-select.ts`), which
-switches the pane and replies with where it came to rest, on the same wire shape as `mcp-nav-to-path`:
+carry theirs. The bus doesn't gate it (MCP is exempt, § The dialog gate); what it buys is the typed `CommandId`, so a
+registry rename breaks compilation, and the `log.info` line and breadcrumb every command gets. The handler voids
+`selectVolumeForMcp` (`mcp-volume-select.ts`), which switches the pane and replies with where it came to rest, on the
+same wire shape as `mcp-nav-to-path`:
 
 1. Await the switch's `corrected`, so the folder the switch reopens (the one last used on the volume) is decided.
 2. Wait for the pane to go quiet (`mcp-nav-landing.ts`). It requires a NEW listing only when the landing differs from
@@ -265,8 +270,8 @@ switches the pane and replies with where it came to rest, on the same wire shape
 
 ❌ Don't wait on the pane's path instead of `corrected`: it reads as the volume's root the moment the switch commits.
 Waiting on it made nine MTP E2E tests fail deterministically with "Superseded by new navigation", because the correction
-then landed on top of the next `nav_to_path`. A dialog in front refuses the command before the handler runs, so nothing
-replies and the tool waits out its budget.
+then landed on top of the next `nav_to_path`. An open dialog doesn't hold the select back: it runs behind one, like
+every MCP pane command (§ The dialog gate).
 
 ### Focus follows the navigated pane
 
