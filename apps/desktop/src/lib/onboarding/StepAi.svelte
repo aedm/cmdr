@@ -225,11 +225,35 @@
         }
     }
 
+    /**
+     * How a download this step started came to an end without finishing. Typed so the two
+     * never blur: `cancelledByChoice` is the person switching away from Local, and `failed`
+     * is everything else (an HTTP status, a size check, a full disk). Only the log reads it
+     * today; whether onboarding should also SAY a genuine failure is an open product call.
+     */
+    type LocalDownloadEnd = { kind: 'cancelledByChoice' } | { kind: 'failed'; error: unknown }
+
+    /**
+     * The download attempt started most recently. Per attempt rather than one flag, because
+     * a start's rejection can land after the person already picked Local again: the call it
+     * answers was still cancelled by choice.
+     */
+    let currentDownload: { cancelledByChoice: boolean } | null = null
+
+    function logDownloadEnd(end: LocalDownloadEnd): void {
+        if (end.kind === 'cancelledByChoice') {
+            log.info('The AI download stopped because the person switched away from Local')
+        } else {
+            log.warn("Couldn't download the local AI model during onboarding: {error}", { error: end.error })
+        }
+    }
+
     function handleChoiceChange(next: WizardChoice): void {
         if (next === choice) return
         // Switching away from local mid-wizard cancels the background download.
         // Switching back to local re-starts it (HTTP-Range resume picks up where we left off).
         if (previousChoice === 'local' && next !== 'local') {
+            if (currentDownload) currentDownload.cancelledByChoice = true
             void cancelAiDownload().catch((error: unknown) => {
                 log.warn("Couldn't cancel AI download on choice change: {error}", { error })
             })
@@ -244,8 +268,10 @@
 
     function startBackgroundDownload(): void {
         didStartLocalDownload = true
+        const attempt = { cancelledByChoice: false }
+        currentDownload = attempt
         void startAiDownload().catch((error: unknown) => {
-            log.warn("Couldn't start AI download: {error}", { error })
+            logDownloadEnd(attempt.cancelledByChoice ? { kind: 'cancelledByChoice' } : { kind: 'failed', error })
         })
     }
 

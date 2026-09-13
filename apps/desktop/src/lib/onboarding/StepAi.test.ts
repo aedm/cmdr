@@ -132,6 +132,31 @@ vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
   acceptConsent: () => acceptConsent(),
 }))
 
+// The step's logger, so a test can tell a logged failure from a logged cancel. Lazy
+// wrappers: the step calls `getAppLogger` while its module loads, before these exist.
+const logWarn = vi.fn()
+const logInfo = vi.fn()
+vi.mock('$lib/logging/logger', () => ({
+  getAppLogger: () => ({
+    warn: (...args: unknown[]) => logWarn(...args),
+    info: (...args: unknown[]) => logInfo(...args),
+    debug: () => undefined,
+    error: () => undefined,
+  }),
+}))
+
+/** A start that stays pending until the test settles it, like a real download in flight. */
+function pendingStart(): { reject: (error: unknown) => void } {
+  const handle = { reject: (_error: unknown): void => undefined }
+  startAiDownload.mockImplementationOnce(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        handle.reject = reject
+      }),
+  )
+  return handle
+}
+
 // Cloud setup component reaches into the secret store; the parent test mocks above
 // cover it. No special mock for CloudProviderSetup itself; it renders inline.
 
@@ -181,8 +206,11 @@ describe('StepAi', () => {
     setStepTwoBanner('granted')
     checkFullDiskAccess.mockReset()
     checkFullDiskAccess.mockResolvedValue(true)
-    startAiDownload.mockClear()
+    startAiDownload.mockReset()
+    startAiDownload.mockResolvedValue(undefined)
     cancelAiDownload.mockClear()
+    logWarn.mockClear()
+    logInfo.mockClear()
     checkAiConnection.mockClear()
     saveAiApiKey.mockClear()
     getAiApiKeyStatus.mockReset()
@@ -280,6 +308,59 @@ describe('StepAi', () => {
     pickChoice(mounted.target, 'off')
     await waitForAsync()
     expect(cancelAiDownload).toHaveBeenCalled()
+  })
+
+  it("the download's end after switching away from Local logs as the person's own cancel, not a failure", async () => {
+    const start = pendingStart()
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+    pickChoice(mounted.target, 'off')
+    await waitForAsync()
+    logWarn.mockClear()
+    logInfo.mockClear()
+
+    start.reject(new Error('Download cancelled'))
+    await waitForAsync()
+
+    expect(logWarn).not.toHaveBeenCalled()
+    expect(logInfo).toHaveBeenCalledOnce()
+  })
+
+  it('a cancel stays a cancel even when the person already picked Local again', async () => {
+    // The first attempt's rejection lands after the second start: the call it answers was
+    // cancelled by choice, whatever the step shows now.
+    const first = pendingStart()
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+    pickChoice(mounted.target, 'off')
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+    logWarn.mockClear()
+
+    first.reject(new Error('Download cancelled'))
+    await waitForAsync()
+
+    expect(logWarn).not.toHaveBeenCalled()
+  })
+
+  it('a download that stops while Local is still picked logs as a failure, with its cause', async () => {
+    const start = pendingStart()
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'local')
+    await waitForAsync()
+    const failure = new Error('HTTP 503')
+
+    start.reject(failure)
+    await waitForAsync()
+
+    expect(logWarn).toHaveBeenCalledWith(expect.any(String), { error: failure })
+    expect(logInfo).not.toHaveBeenCalled()
   })
 
   it('Intel gate: when localAiSupported is false the local radio is disabled and ignored', async () => {

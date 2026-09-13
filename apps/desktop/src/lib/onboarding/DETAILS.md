@@ -248,7 +248,11 @@ Three pieces stacked top to bottom:
    other two options off screen. The pre-selection comes from the persisted `ai.provider` (default `off`), so a
    crash-then-resume user lands on their previous pick. Picking cloud reveals `CloudProviderPicker.svelte` (left) and
    `CloudProviderSetup.svelte` (right) through the group's `footer` snippet. Picking local kicks off `startAiDownload()`
-   in the background; switching away cancels (HTTP-Range resume picks up on switch-back). Intel Macs get the local
+   in the background; switching away cancels (HTTP-Range resume picks up on switch-back). A start that ends without
+   finishing is typed per attempt (`LocalDownloadEnd`): `cancelledByChoice` when the person switched away (logged at
+   info, even if they already picked Local again by the time the rejection lands) and `failed` for everything else
+   (logged at warn). Nothing in the wizard says a genuine failure yet, and nothing else listens (`initAiState` skipped
+   its listeners at launch because the provider wasn't local); whether it should is an open product call. Intel Macs get the local
    option disabled, with the reason ("Local LLM requires Apple Silicon. Cloud works on Intel.",
    `getAiRuntimeStatus().localAiSupported`) in VISIBLE text beside it: why an option is greyed out is the one thing the
    user most needs to read, and a tooltip on a control they can't reach is the worst place to put it.
