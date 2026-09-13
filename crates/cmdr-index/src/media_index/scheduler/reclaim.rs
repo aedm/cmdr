@@ -59,14 +59,35 @@ pub struct StoredCoverageCounts {
     pub covered_qualifying: Option<u64>,
 }
 
-/// What a reclaim prune did: the rows deleted and the freed-byte estimate.
-#[derive(Debug, Default, PartialEq, Eq)]
+/// What a reclaim prune did: the rows deleted and the space it gave back.
+#[derive(Debug, PartialEq, Eq)]
 pub struct PruneOutcome {
     /// The `media_status` rows removed (the images the user reclaimed).
     pub deleted_rows: u64,
     /// The content bytes the prune freed (OCR text + tags + embeddings; an "about"
-    /// estimate — a `VACUUM` reclaims at least this on disk).
-    pub freed_bytes: u64,
+    /// estimate — a `VACUUM` reclaims at least this on disk). `None` when the rows left but
+    /// the `VACUUM` didn't run: the file still holds that space until the volume's next
+    /// pass reclaims it, so no number would be honest.
+    pub freed_bytes: Option<u64>,
+}
+
+impl PruneOutcome {
+    /// Nothing was doomed, so nothing left and nothing is owed.
+    const NOTHING: Self = Self {
+        deleted_rows: 0,
+        freed_bytes: Some(0),
+    };
+}
+
+/// Why a reclaim prune removed none of the rows it was asked to. Every doomed row is still
+/// stored either way, so a caller may neither report space as freed nor say the entries
+/// were already cleared.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PruneFailure {
+    /// The volume's writer wouldn't start (its `media.db` wouldn't open for writing).
+    WriterUnavailable,
+    /// SQLite refused the delete and rolled it back (a full disk, a locked database).
+    DeleteFailed,
 }
 
 impl MediaScheduler {
@@ -223,8 +244,11 @@ impl MediaScheduler {
     /// set), `VACUUM` to reclaim the pages, and drop the vector + coverage caches. A
     /// USER-EXPLICIT deletion: it derives ONLY from settings state, so like the privacy
     /// retro-delete it needs no completed-scan edge (see `../DETAILS.md` § The GC safety argument).
-    /// Returns the rows deleted and the freed-byte estimate; a no-op (all zeros) when
-    /// the partition isn't safe or nothing is doomed.
+    ///
+    /// Answers the rows deleted and the freed-byte estimate, all zeros when the partition
+    /// isn't safe or nothing is doomed. A writer that won't start or a delete SQLite refuses
+    /// is a [`PruneFailure`], never zero rows. A `VACUUM` that fails after the delete landed
+    /// reports `freed_bytes: None` and owes the volume a `VACUUM` its next pass runs.
     ///
     /// [`stored_coverage`]: MediaScheduler::stored_coverage
     pub fn prune_below_threshold(
@@ -233,46 +257,61 @@ impl MediaScheduler {
         mount_root: &str,
         threshold: f64,
         scope: IndexScope,
-    ) -> PruneOutcome {
+    ) -> Result<PruneOutcome, PruneFailure> {
         let Some(coverage) = self.stored_coverage(volume_id, mount_root, threshold, scope) else {
-            return PruneOutcome::default();
+            return Ok(PruneOutcome::NOTHING);
         };
         if coverage.doomed_paths.is_empty() {
-            return PruneOutcome::default();
+            return Ok(PruneOutcome::NOTHING);
         }
         let db_path = store::media_db_path(&self.data_dir, volume_id);
 
         // The freed-byte estimate over the doomed set, BEFORE deleting (same content-byte
         // method the reclaim preview reports, so the "free about X" and "Freed X" numbers
         // agree). `VACUUM` reclaims at least this much on disk.
-        let freed_bytes = self.estimate_doomed_bytes(volume_id, &coverage.doomed_paths);
+        let freed_estimate = self.estimate_doomed_bytes(volume_id, &coverage.doomed_paths);
 
-        let writer = match self.writers.writer_for(&self.data_dir, volume_id) {
-            Ok(w) => w,
-            Err(e) => {
-                log::warn!(target: "media_index", "reclaim prune: writer for '{volume_id}' failed: {e}");
-                return PruneOutcome::default();
-            }
-        };
-        let deleted = writer.prune_paths(coverage.doomed_paths).unwrap_or(0);
-        if deleted > 0 {
-            // Reclaim the pages, then drop the derived caches so a later search / slider
-            // preview rebuilds honestly. The ANN flush lands the buffered key removals
-            // first, so pruned images stop being ANN-reachable too (plan M6).
-            let _ = writer.flush_ann_index();
-            let _ = writer.vacuum();
-            vector::cache::invalidate(&db_path);
-            coverage::invalidate(volume_id);
-            log::info!(
+        let writer = self.writers.writer_for(&self.data_dir, volume_id).map_err(|e| {
+            log::warn!(target: "media_index", "reclaim prune: writer for '{volume_id}' failed: {e}");
+            PruneFailure::WriterUnavailable
+        })?;
+        let deleted = writer.prune_paths(coverage.doomed_paths).map_err(|e| {
+            log::warn!(target: "media_index", "reclaim prune on '{volume_id}' didn't land: {e}");
+            PruneFailure::DeleteFailed
+        })?;
+        if deleted == 0 {
+            return Ok(PruneOutcome::NOTHING);
+        }
+
+        // Reclaim the pages, then drop the derived caches so a later search / slider
+        // preview rebuilds honestly. The ANN flush lands the buffered key removals first,
+        // so pruned images stop being ANN-reachable too (plan M6).
+        let _ = writer.flush_ann_index();
+        let vacuum = writer.vacuum();
+        if let Err(e) = &vacuum {
+            log::warn!(
                 target: "media_index",
-                "reclaim prune on '{volume_id}' at threshold {threshold}: {} removed (~{})",
-                cmdr_fs::pluralize::pluralize(deleted as u64, "row"),
-                cmdr_fs::pluralize::pluralize(freed_bytes, "byte")
+                "VACUUM after the reclaim prune on '{volume_id}' failed ({e}); retrying on its next pass"
             );
+            self.owe_vacuum(volume_id);
         }
-        PruneOutcome {
+        vector::cache::invalidate(&db_path);
+        coverage::invalidate(volume_id);
+        log::info!(
+            target: "media_index",
+            "reclaim prune on '{volume_id}' at threshold {threshold}: {} removed (~{})",
+            cmdr_fs::pluralize::pluralize(deleted as u64, "row"),
+            cmdr_fs::pluralize::pluralize(freed_estimate, "byte")
+        );
+        Ok(PruneOutcome {
             deleted_rows: deleted as u64,
-            freed_bytes,
-        }
+            freed_bytes: freed_bytes_after_vacuum(freed_estimate, &vacuum),
+        })
     }
+}
+
+/// The bytes a prune may report as freed: its estimate once `VACUUM` gave the pages back,
+/// and no number at all when it didn't (the file is exactly as large as before).
+pub(super) fn freed_bytes_after_vacuum(estimate: u64, vacuum: &Result<(), store::MediaStoreError>) -> Option<u64> {
+    vacuum.as_ref().ok().map(|()| estimate)
 }

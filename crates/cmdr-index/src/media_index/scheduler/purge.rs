@@ -10,6 +10,9 @@
 //! persisted exclusions (`lifecycle::wire_volume` re-runs the retro-delete for each one),
 //! so a restart doesn't forget a purge either. Nobody is told: the veto is already live,
 //! and there's nothing a person could do that the retry doesn't.
+//!
+//! The reclaim prune uses the same ledger for exactly one thing, a `VACUUM` it couldn't
+//! run (`reclaim.rs`).
 
 use std::collections::HashMap;
 
@@ -194,6 +197,16 @@ impl MediaScheduler {
             self.restore_owed_purge(volume_id, owed);
             PurgeOutcome::Pending { deleted_rows }
         }
+    }
+
+    /// Owe `volume_id` a `VACUUM`: its rows left but the pages didn't, so the next pass
+    /// reclaims them.
+    pub(super) fn owe_vacuum(&self, volume_id: &str) {
+        self.owed_purges
+            .lock_ignore_poison()
+            .entry(volume_id.to_string())
+            .or_default()
+            .vacuum = true;
     }
 
     /// Owe `volume_id` a purge of `folder`'s rows, which sit under `index_prefix` there.

@@ -330,3 +330,62 @@ mod file_status {
         assert_eq!(out[2].state, FileIndexState::Pending);
     }
 }
+
+// ── The reclaim prune's fold across volumes ──────────────────────────────────
+// `media_index_prune_below_threshold` needs an `AppHandle`, so the rule that turns each
+// volume's prune into the one answer the settings toast voices is extracted and pinned
+// here.
+
+use super::reclaim::{ReclaimError, ReclaimResult, fold_prune_outcomes};
+
+/// One volume's prune that landed.
+fn pruned(deleted_rows: u64, freed_bytes: Option<u64>) -> Result<ReclaimResult, ()> {
+    Ok(ReclaimResult {
+        deleted_rows,
+        freed_bytes,
+    })
+}
+
+#[test]
+fn a_reclaim_sums_every_volume_that_pruned() {
+    assert_eq!(
+        fold_prune_outcomes([pruned(3, Some(100)), pruned(2, Some(50))]),
+        Ok(ReclaimResult {
+            deleted_rows: 5,
+            freed_bytes: Some(150)
+        })
+    );
+}
+
+#[test]
+fn a_volume_whose_rows_stayed_makes_the_whole_reclaim_a_failure() {
+    // Another volume pruned, but "Freed about X" would tell the user the extra entries are
+    // gone while one drive still stores all of its own.
+    assert_eq!(
+        fold_prune_outcomes([pruned(3, Some(100)), Err(())]),
+        Err(ReclaimError::NotDeleted)
+    );
+}
+
+#[test]
+fn a_volume_whose_space_did_not_come_back_leaves_no_freed_total() {
+    // Summing only the volumes whose VACUUM ran would claim a total the disk doesn't have.
+    assert_eq!(
+        fold_prune_outcomes([pruned(3, Some(100)), pruned(2, None)]),
+        Ok(ReclaimResult {
+            deleted_rows: 5,
+            freed_bytes: None
+        })
+    );
+}
+
+#[test]
+fn nothing_to_reclaim_is_zero_rows_and_zero_bytes() {
+    assert_eq!(
+        fold_prune_outcomes(Vec::<Result<ReclaimResult, ()>>::new()),
+        Ok(ReclaimResult {
+            deleted_rows: 0,
+            freed_bytes: Some(0)
+        })
+    );
+}

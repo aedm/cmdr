@@ -743,6 +743,10 @@
   "@settings.mediaIndex.reclaim.couldNotDelete": {
     "sourceHash": "3295df4"
   },
+  "settings.mediaIndex.reclaim.deletedSpaceLater": "Les entrées supplémentaires ont été supprimées. Cmdr libérera l''espace disque plus tard.",
+  "@settings.mediaIndex.reclaim.deletedSpaceLater": {
+    "sourceHash": "fe08c54"
+  },
   "settings.indexing.askForEachDrive.label": "Demander pour chaque disque",
   "@settings.indexing.askForEachDrive.label": {
     "sourceHash": "774f72c"

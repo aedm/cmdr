@@ -739,6 +739,10 @@
   "@settings.mediaIndex.reclaim.couldNotDelete": {
     "sourceHash": "3295df4"
   },
+  "settings.mediaIndex.reclaim.deletedSpaceLater": "Đã xóa các mục bổ sung. Cmdr sẽ giải phóng dung lượng ổ đĩa sau.",
+  "@settings.mediaIndex.reclaim.deletedSpaceLater": {
+    "sourceHash": "fe08c54"
+  },
   "settings.indexing.askForEachDrive.label": "Hỏi cho từng ổ đĩa",
   "@settings.indexing.askForEachDrive.label": {
     "sourceHash": "774f72c"

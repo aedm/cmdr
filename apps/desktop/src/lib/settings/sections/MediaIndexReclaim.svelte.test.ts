@@ -138,4 +138,41 @@ describe('MediaIndexReclaim', () => {
     expect(pruneMock).not.toHaveBeenCalled()
     target.remove()
   })
+
+  it('says the space frees up later when the entries went but the space was not reclaimed', async () => {
+    // `freedBytes: null` is the backend saying the rows are gone but VACUUM didn't run, so
+    // "Freed about X" would claim disk space the file still holds.
+    previewMock.mockResolvedValue(LARGE_LEFTOVER)
+    confirmMock.mockResolvedValue(true)
+    pruneMock.mockResolvedValue({ deletedRows: 199_850, freedBytes: null })
+    const target = await mountReclaim({ threshold: 0.2, blocked: false })
+
+    const button = target.querySelector('button')
+    if (!button) throw new Error('reclaim button not found')
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flush()
+
+    expect(addToastMock).toHaveBeenCalledWith('settings.mediaIndex.reclaim.deletedSpaceLater', { level: 'info' })
+    expect(addToastMock).not.toHaveBeenCalledWith('settings.mediaIndex.reclaim.freed', expect.anything())
+    target.remove()
+  })
+
+  it('toasts that it could not delete and refreshes the preview when the prune fails', async () => {
+    // Some volumes may have pruned before one failed, so the line has to re-read what's
+    // left, or "Please try again" offers a count that's already out of date.
+    previewMock.mockResolvedValue(LARGE_LEFTOVER)
+    confirmMock.mockResolvedValue(true)
+    pruneMock.mockRejectedValue(new Error('notDeleted'))
+    const target = await mountReclaim({ threshold: 0.2, blocked: false })
+    expect(previewMock).toHaveBeenCalledOnce()
+
+    const button = target.querySelector('button')
+    if (!button) throw new Error('reclaim button not found')
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await flush()
+
+    expect(addToastMock).toHaveBeenCalledWith('settings.mediaIndex.reclaim.couldNotDelete', { level: 'warn' })
+    expect(previewMock).toHaveBeenCalledTimes(2)
+    target.remove()
+  })
 })

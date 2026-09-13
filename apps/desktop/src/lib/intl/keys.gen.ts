@@ -3150,6 +3150,7 @@ export type MessageKey =
   | 'settings.mediaIndex.reclaim.confirmBody'
   | 'settings.mediaIndex.reclaim.confirmTitle'
   | 'settings.mediaIndex.reclaim.couldNotDelete'
+  | 'settings.mediaIndex.reclaim.deletedSpaceLater'
   | 'settings.mediaIndex.reclaim.freed'
   | 'settings.mediaIndex.reclaim.line'
   | 'settings.mediaIndex.scope.description'

@@ -371,9 +371,9 @@ OCR text stops being searchable at once (privacy is a hard requirement, not "eve
   database), a writer that won't open, or a failed `VACUUM` leaves the purge in a per-volume ledger, and every pass on
   that volume (full, network, and the live tick) settles what it owes before its own work. The purge is owed BEFORE it
   runs, so a panic part-way can't lose it, and a launch rebuilds the ledger through the `wire_volume` re-fire below. A
-  settle prunes only a folder that is STILL excluded, so un-excluding drops the debt. Nobody is told: the veto is already
-  live, and there's nothing a person could do that the retry doesn't, so `media_index_set_excluded_folder` has no error
-  and the FE never rolls the persisted exclusion back (every launch seeds the veto from it).
+  settle prunes only a folder that is STILL excluded, so un-excluding drops the debt. Nobody is told: the veto is
+  already live, and there's nothing a person could do that the retry doesn't, so `media_index_set_excluded_folder` has
+  no error and the FE never rolls the persisted exclusion back (every launch seeds the veto from it).
 - **Un-excluding** only clears the veto: NO re-delete and NO auto re-enrich — the next natural pass picks the folder up
   again.
 - **Offline network volumes** aren't reachable when the exclusion is set (no mount root to map with), so the
@@ -478,7 +478,8 @@ and registered in the `ipc.rs` manifest — regen the typed bindings with `pnpm 
 - **Shapes for the frontend:** `SimilarImage { path, score: f32 }`, `DedupCluster { paths: Vec<String> }`,
   `TagHit { path, score: f32 }`, `CoveredCount { folders: u64, images: u64, pending: bool }`, `Tag { label, score }`,
   `ReclaimPreview { total_stored, covered_stored, doomed_count, estimated_bytes, pending }`,
-  `ReclaimResult { deleted_rows, freed_bytes }`, and
+  `ReclaimResult { deleted_rows, freed_bytes: Option<u64> }` (`None` when a `VACUUM` didn't run, so no size is honest)
+  with `ReclaimError::NotDeleted` when any volume's rows stayed, and
   `MediaIndexVolumeState { enabled, indexing, enriched_count, qualifying_count, covered_qualifying_count, kept_count, waiting_for_importance, network_opt_in, always_indexed, paused }`.
 
 ### Threshold-aware volume state
@@ -536,8 +537,9 @@ network-volume UI is in `network/DETAILS.md`, the CLIP UI in `clip/DETAILS.md`.
   scan, plus the backend `pending`) AND the leftover clears the pure `shouldOfferReclaim` floor (> 100 rows AND > 5% of
   stored). The copy frames value first (the extra entries "stay searchable"), then the button offers the
   space-vs-reindex tradeoff — one narrative, composing with the kept-rows line, never two sentences in tension. A
-  confirm dialog (recoverable, but re-reading costs time) precedes the prune; an honest toast reports the freed space.
-  The arithmetic behind it is `scheduler/DETAILS.md` § Reclaim space.
+  confirm dialog (recoverable, but re-reading costs time) precedes the prune; an honest toast reports the freed space,
+  says the space frees up later when `freedBytes` is `null`, or says it couldn't delete, and the preview re-reads after
+  every prune either way. The arithmetic behind it is `scheduler/DETAILS.md` § Reclaim space.
 
 ## What a bare "plan M<n>" in this subsystem means
 

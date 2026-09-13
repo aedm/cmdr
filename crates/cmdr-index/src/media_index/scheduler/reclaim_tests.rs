@@ -251,7 +251,9 @@ fn narrowing_the_scope_keeps_every_row_until_the_user_reclaims() {
     assert!(stored_exists(dir.path(), ROOT, "/chosen/b.jpg"));
 
     // The user then explicitly reclaims: only the uncovered row goes.
-    let outcome = sched.prune_below_threshold(ROOT, "/", 0.0, IndexScope::ChosenFolders);
+    let outcome = sched
+        .prune_below_threshold(ROOT, "/", 0.0, IndexScope::ChosenFolders)
+        .expect("the prune lands");
     assert_eq!(outcome.deleted_rows, 1);
     assert!(!stored_exists(dir.path(), ROOT, "/important/a.jpg"));
     assert!(
@@ -280,15 +282,71 @@ fn prune_below_threshold_deletes_the_doomed_set_and_keeps_the_rest() {
     network::config::set_config(NetworkEnrichConfig::default());
 
     let sched = MediaScheduler::new(dir.path().to_path_buf(), fake_backend());
-    let outcome = sched.prune_below_threshold(ROOT, "/", 0.5, IndexScope::ByImportance);
+    let outcome = sched
+        .prune_below_threshold(ROOT, "/", 0.5, IndexScope::ByImportance)
+        .expect("the prune lands");
     assert_eq!(outcome.deleted_rows, 1, "one doomed row deleted");
-    assert!(outcome.freed_bytes > 0, "a positive freed-byte estimate");
+    assert!(
+        outcome.freed_bytes.is_some_and(|bytes| bytes > 0),
+        "a positive freed-byte estimate"
+    );
 
     assert!(stored_exists(dir.path(), ROOT, "/keep/a.jpg"), "covered row survives");
     assert!(!stored_exists(dir.path(), ROOT, "/drop/c.jpg"), "doomed row gone");
 
     crate::test_uninstall_root_read_pool();
     network::config::set_config(NetworkEnrichConfig::default());
+}
+
+#[test]
+fn a_prune_whose_delete_does_not_land_claims_nothing() {
+    // A full disk or a locked database refuses the delete. The prune must not report the
+    // pre-delete byte estimate as freed, or the settings toast says "Freed about X" (or
+    // "already cleared") while every doomed row is still on disk.
+    let _guard = crate::test_read_pool_lock();
+    let dir = tempfile::tempdir().expect("temp");
+    let index_path = dir.path().join("index-root.db");
+    build_index(&index_path, &[("/keep", "a.jpg"), ("/drop", "c.jpg")]);
+    crate::test_install_root_read_pool(index_path).expect("install pool");
+    coverage::invalidate(ROOT);
+    seed_importance(dir.path(), ROOT, &[("/keep", 0.9), ("/drop", 0.1)]);
+    seed_media_row(dir.path(), ROOT, "/keep/a.jpg");
+    seed_media_row(dir.path(), ROOT, "/drop/c.jpg");
+    network::config::set_config(NetworkEnrichConfig::default());
+    crate::media_index::store::refuse_status_deletes(&media_db_path(dir.path(), ROOT));
+
+    let sched = MediaScheduler::new(dir.path().to_path_buf(), fake_backend());
+    let outcome = sched.prune_below_threshold(ROOT, "/", 0.5, IndexScope::ByImportance);
+    assert_eq!(
+        outcome,
+        Err(reclaim::PruneFailure::DeleteFailed),
+        "a delete that didn't land is a failure, with no rows or bytes to claim"
+    );
+    assert!(
+        stored_exists(dir.path(), ROOT, "/drop/c.jpg"),
+        "the doomed row is still there"
+    );
+
+    crate::test_uninstall_root_read_pool();
+    network::config::set_config(NetworkEnrichConfig::default());
+}
+
+#[test]
+fn a_vacuum_that_does_not_run_reports_no_freed_bytes() {
+    // SQLite offers no fast, deterministic way to make a real `VACUUM` fail after a delete
+    // succeeded (it takes a full disk, or a write lock held past the 5 s busy timeout, which
+    // would block the delete too), so the rule the prune applies to its outcome is pinned
+    // here directly.
+    use super::reclaim::freed_bytes_after_vacuum;
+    assert_eq!(freed_bytes_after_vacuum(4_096, &Ok(())), Some(4_096));
+    let refused = Err(crate::media_index::store::MediaStoreError::Io(std::io::Error::other(
+        "no space left on device",
+    )));
+    assert_eq!(
+        freed_bytes_after_vacuum(4_096, &refused),
+        None,
+        "the file still holds that space, so no size is honest"
+    );
 }
 
 #[test]
@@ -326,7 +384,9 @@ fn a_pass_enriching_covered_rows_and_a_prune_touch_disjoint_sets() {
     );
 
     // The prune removes the doomed /drop row, leaving the just-enriched /keep row intact.
-    let outcome = sched.prune_below_threshold(ROOT, "/", 0.5, IndexScope::ByImportance);
+    let outcome = sched
+        .prune_below_threshold(ROOT, "/", 0.5, IndexScope::ByImportance)
+        .expect("the prune lands");
     assert_eq!(outcome.deleted_rows, 1, "only the doomed /drop row is pruned");
     assert!(
         stored_exists(dir.path(), ROOT, "/keep/a.jpg"),
@@ -362,7 +422,9 @@ fn prune_leaves_an_override_covered_row_below_threshold() {
     });
 
     let sched = MediaScheduler::new(dir.path().to_path_buf(), fake_backend());
-    let outcome = sched.prune_below_threshold(ROOT, "/", 0.8, IndexScope::ByImportance);
+    let outcome = sched
+        .prune_below_threshold(ROOT, "/", 0.8, IndexScope::ByImportance)
+        .expect("the prune lands");
     assert_eq!(outcome.deleted_rows, 0, "the override-covered row is not pruned");
     assert!(
         stored_exists(dir.path(), ROOT, "/archive/a.jpg"),

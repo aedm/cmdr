@@ -744,6 +744,10 @@
   "@settings.mediaIndex.reclaim.couldNotDelete": {
     "sourceHash": "3295df4"
   },
+  "settings.mediaIndex.reclaim.deletedSpaceLater": "De extra vermeldingen zijn verwijderd. Cmdr maakt de schijfruimte later vrij.",
+  "@settings.mediaIndex.reclaim.deletedSpaceLater": {
+    "sourceHash": "fe08c54"
+  },
   "settings.indexing.askForEachDrive.label": "Per schijf vragen",
   "@settings.indexing.askForEachDrive.label": {
     "sourceHash": "774f72c"

@@ -742,6 +742,10 @@
   "@settings.mediaIndex.reclaim.couldNotDelete": {
     "sourceHash": "3295df4"
   },
+  "settings.mediaIndex.reclaim.deletedSpaceLater": "Se eliminaron las entradas adicionales. Cmdr liberará el espacio en disco más tarde.",
+  "@settings.mediaIndex.reclaim.deletedSpaceLater": {
+    "sourceHash": "fe08c54"
+  },
   "settings.indexing.askForEachDrive.label": "Preguntar por cada unidad",
   "@settings.indexing.askForEachDrive.label": {
     "sourceHash": "774f72c"

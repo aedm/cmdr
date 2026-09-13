@@ -2445,10 +2445,15 @@ export const commands = {
    *  which selects the doomed set Rust-side, deletes it through the volume's ONE writer
    *  thread (the serialization guarantee), `VACUUM`s, and drops the vector + coverage
    *  caches. A USER-EXPLICIT deletion (derives only from settings state), so it needs no
-   *  completed-scan edge. Runs OFF the IPC thread. Returns the rows deleted and bytes freed.
+   *  completed-scan edge. Runs OFF the IPC thread.
+   *
+   *  Returns the rows deleted and bytes freed, or [`ReclaimError::NotDeleted`] when any
+   *  volume's rows stayed ([`fold_prune_outcomes`] has the rule).
    */
   mediaIndexPruneBelowThreshold: (threshold: number, volumeIds: string[]) =>
-    typedError<ReclaimResult, string>(__TAURI_INVOKE('media_index_prune_below_threshold', { threshold, volumeIds })),
+    typedError<ReclaimResult, ReclaimError>(
+      __TAURI_INVOKE('media_index_prune_below_threshold', { threshold, volumeIds }),
+    ),
   /**
    *  Find the images most similar to the one at `source_path` on `volume_id` (by
    *  feature-print cosine), highest first, excluding the source (plan "find
@@ -10765,6 +10770,18 @@ export type RecentPathEntry = {
 }
 
 /**
+ *  Why a reclaim prune didn't finish. Typed so the settings panel picks its message by
+ *  the variant, never by wording.
+ */
+export type ReclaimError =
+  /**
+   *  Some volume's extra rows are still stored: its writer wouldn't start, or SQLite
+   *  refused the delete (a full disk, a locked database). Other volumes may have
+   *  pruned, so the caller re-reads the preview rather than assuming either way.
+   */
+  { kind: 'notDeleted' }
+
+/**
  *  The reclaim-space preview behind the settings "delete the extra entries" line:
  *  across the ENABLED volumes in `volume_ids`, how many stored image rows fall
  *  inside the current setting vs outside it, and the bytes the outside set would free.
@@ -10797,8 +10814,12 @@ export type ReclaimPreview = {
 export type ReclaimResult = {
   // The image rows deleted across the enabled volumes.
   deletedRows: number
-  // The content bytes freed (an "about" estimate; the toast voices it).
-  freedBytes: number
+  /**
+   *  The content bytes freed (an "about" estimate; the toast voices it). `None` when rows
+   *  left but some volume's `VACUUM` didn't run: that space comes back only once the
+   *  volume's next pass reclaims it, so no total would be honest.
+   */
+  freedBytes: number | null
 }
 
 /**

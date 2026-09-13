@@ -741,6 +741,10 @@
   "@settings.mediaIndex.reclaim.couldNotDelete": {
     "sourceHash": "3295df4"
   },
+  "settings.mediaIndex.reclaim.deletedSpaceLater": "已刪除多餘的項目。Cmdr 稍後會釋出磁碟空間。",
+  "@settings.mediaIndex.reclaim.deletedSpaceLater": {
+    "sourceHash": "fe08c54"
+  },
   "settings.indexing.askForEachDrive.label": "為每部磁碟機詢問",
   "@settings.indexing.askForEachDrive.label": {
     "sourceHash": "774f72c"

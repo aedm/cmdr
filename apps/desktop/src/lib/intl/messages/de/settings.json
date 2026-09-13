@@ -743,6 +743,10 @@
   "@settings.mediaIndex.reclaim.couldNotDelete": {
     "sourceHash": "3295df4"
   },
+  "settings.mediaIndex.reclaim.deletedSpaceLater": "Cmdr hat die zusätzlichen Einträge gelöscht und gibt den Speicherplatz später frei.",
+  "@settings.mediaIndex.reclaim.deletedSpaceLater": {
+    "sourceHash": "fe08c54"
+  },
   "settings.indexing.askForEachDrive.label": "Für jedes Laufwerk fragen",
   "@settings.indexing.askForEachDrive.label": {
     "sourceHash": "774f72c"

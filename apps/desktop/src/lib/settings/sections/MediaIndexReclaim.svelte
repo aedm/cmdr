@@ -85,20 +85,26 @@
         pruning = true
         try {
             const result = await mediaIndexPruneBelowThreshold(threshold, getEnabledMediaIndexVolumeIds())
-            if (result.deletedRows > 0) {
+            if (result.deletedRows === 0) {
+                addToast(tString('settings.mediaIndex.reclaim.alreadyCleared'), { level: 'info' })
+            } else if (result.freedBytes === null) {
+                // The rows went but the space didn't come back yet (the backend retries the
+                // VACUUM on the drive's next pass), so no size would be honest.
+                addToast(tString('settings.mediaIndex.reclaim.deletedSpaceLater'), { level: 'info' })
+            } else {
                 addToast(tString('settings.mediaIndex.reclaim.freed', { size: formatByteSize(result.freedBytes) }), {
                     level: 'success',
                 })
-            } else {
-                addToast(tString('settings.mediaIndex.reclaim.alreadyCleared'), { level: 'info' })
             }
-            await refreshPreview()
         } catch (err) {
             log.warn('reclaim prune failed: {err}', { err: String(err) })
             addToast(tString('settings.mediaIndex.reclaim.couldNotDelete'), { level: 'warn' })
         } finally {
             pruning = false
         }
+        // Re-read what's left either way: a failed prune may still have cleared some drives,
+        // and "Please try again" has to offer the count that's actually left.
+        await refreshPreview()
     }
 </script>
 

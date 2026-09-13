@@ -741,6 +741,10 @@
   "@settings.mediaIndex.reclaim.couldNotDelete": {
     "sourceHash": "3295df4"
   },
+  "settings.mediaIndex.reclaim.deletedSpaceLater": "A Cmdr törölte a további bejegyzéseket, a tárhelyet később szabadítja fel.",
+  "@settings.mediaIndex.reclaim.deletedSpaceLater": {
+    "sourceHash": "fe08c54"
+  },
   "settings.indexing.askForEachDrive.label": "Kérdezzen meghajtónként",
   "@settings.indexing.askForEachDrive.label": {
     "sourceHash": "774f72c"

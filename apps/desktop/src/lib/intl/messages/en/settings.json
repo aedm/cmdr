@@ -957,6 +957,10 @@
   "@settings.mediaIndex.reclaim.couldNotDelete": {
     "description": "Toast shown when deleting the leftover indexed entries did not complete. Avoids the words \"error\" and \"failed\" per the app voice."
   },
+  "settings.mediaIndex.reclaim.deletedSpaceLater": "Deleted the extra entries. Cmdr frees up the disk space later.",
+  "@settings.mediaIndex.reclaim.deletedSpaceLater": {
+    "description": "Toast shown when the leftover indexed entries were deleted but the disk space they used could not be reclaimed yet, so no size is shown. Cmdr reclaims the space by itself the next time it indexes that drive. Avoids the words \"error\" and \"failed\" per the app voice."
+  },
   "settings.indexing.askForEachDrive.label": "Ask for each drive",
   "@settings.indexing.askForEachDrive.label": {
     "description": "Label for the toggle that controls whether Cmdr asks, the first time you open a network share or USB device, if you''d like to index it. In Settings > Behavior > File system watching.",

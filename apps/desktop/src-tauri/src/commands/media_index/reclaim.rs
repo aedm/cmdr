@@ -36,13 +36,26 @@ pub struct ReclaimPreview {
 }
 
 /// What a reclaim prune freed: the rows deleted and the bytes reclaimed.
-#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReclaimResult {
     /// The image rows deleted across the enabled volumes.
     pub deleted_rows: u64,
-    /// The content bytes freed (an "about" estimate; the toast voices it).
-    pub freed_bytes: u64,
+    /// The content bytes freed (an "about" estimate; the toast voices it). `None` when rows
+    /// left but some volume's `VACUUM` didn't run: that space comes back only once the
+    /// volume's next pass reclaims it, so no total would be honest.
+    pub freed_bytes: Option<u64>,
+}
+
+/// Why a reclaim prune didn't finish. Typed so the settings panel picks its message by
+/// the variant, never by wording.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ReclaimError {
+    /// Some volume's extra rows are still stored: its writer wouldn't start, or SQLite
+    /// refused the delete (a full disk, a locked database). Other volumes may have
+    /// pruned, so the caller re-reads the preview rather than assuming either way.
+    NotDeleted,
 }
 
 /// Preview the reclaim-space split across `volume_ids` at the CURRENT `threshold`.
@@ -111,41 +124,82 @@ pub async fn media_index_reclaim_preview(
 /// which selects the doomed set Rust-side, deletes it through the volume's ONE writer
 /// thread (the serialization guarantee), `VACUUM`s, and drops the vector + coverage
 /// caches. A USER-EXPLICIT deletion (derives only from settings state), so it needs no
-/// completed-scan edge. Runs OFF the IPC thread. Returns the rows deleted and bytes freed.
+/// completed-scan edge. Runs OFF the IPC thread.
+///
+/// Returns the rows deleted and bytes freed, or [`ReclaimError::NotDeleted`] when any
+/// volume's rows stayed ([`fold_prune_outcomes`] has the rule).
 #[tauri::command]
 #[specta::specta]
 pub async fn media_index_prune_below_threshold(
     app: AppHandle,
     threshold: f64,
     volume_ids: Vec<String>,
-) -> Result<ReclaimResult, String> {
-    let empty = ReclaimResult {
+) -> Result<ReclaimResult, ReclaimError> {
+    let nothing = ReclaimResult {
         deleted_rows: 0,
-        freed_bytes: 0,
+        freed_bytes: Some(0),
     };
     if !gate::is_enabled() {
-        return Ok(empty);
+        return Ok(nothing);
     }
     let Some(scheduler) = app.try_state::<Arc<MediaScheduler>>().map(|s| Arc::clone(s.inner())) else {
-        return Ok(empty);
+        return Ok(nothing);
     };
     // Same live-gate read as the preview, so the prune deletes exactly the set the
     // preview counted.
     let scope = gate::scope();
     tauri::async_runtime::spawn_blocking(move || {
         let (volumes, _pending) = resolve_enabled_volumes(&volume_ids);
-        let mut deleted_rows = 0u64;
-        let mut freed_bytes = 0u64;
-        for (vid, mount) in &volumes {
-            let outcome = scheduler.prune_below_threshold(vid, mount, threshold, scope);
-            deleted_rows += outcome.deleted_rows;
-            freed_bytes += outcome.freed_bytes;
-        }
-        Ok(ReclaimResult {
-            deleted_rows,
-            freed_bytes,
-        })
+        // Every volume gets its prune even after one fails, so one full disk doesn't
+        // strand the space the others could free.
+        let outcomes: Vec<_> = volumes
+            .iter()
+            .map(|(vid, mount)| {
+                scheduler
+                    .prune_below_threshold(vid, mount, threshold, scope)
+                    .map(|outcome| ReclaimResult {
+                        deleted_rows: outcome.deleted_rows,
+                        freed_bytes: outcome.freed_bytes,
+                    })
+            })
+            .collect();
+        fold_prune_outcomes(outcomes)
     })
     .await
-    .map_err(|e| format!("reclaim-prune task panicked: {e}"))?
+    .map_err(|e| {
+        log::warn!(target: "media_index", "reclaim-prune task panicked: {e}");
+        ReclaimError::NotDeleted
+    })?
+}
+
+/// Sum each volume's prune into the one answer the settings panel voices. A volume whose
+/// rows stayed makes the whole answer [`ReclaimError::NotDeleted`], and a volume whose
+/// space didn't come back makes `freed_bytes` `None`: a total over only the volumes that
+/// worked would claim space the disk doesn't have. Pure, so the folding is unit-tested
+/// without an `AppHandle`.
+pub(super) fn fold_prune_outcomes<E>(
+    outcomes: impl IntoIterator<Item = Result<ReclaimResult, E>>,
+) -> Result<ReclaimResult, ReclaimError> {
+    let mut total = ReclaimResult {
+        deleted_rows: 0,
+        freed_bytes: Some(0),
+    };
+    let mut rows_stayed = false;
+    for outcome in outcomes {
+        match outcome {
+            Ok(volume) => {
+                total.deleted_rows += volume.deleted_rows;
+                total.freed_bytes = total
+                    .freed_bytes
+                    .zip(volume.freed_bytes)
+                    .map(|(sum, freed)| sum + freed);
+            }
+            Err(_) => rows_stayed = true,
+        }
+    }
+    if rows_stayed {
+        Err(ReclaimError::NotDeleted)
+    } else {
+        Ok(total)
+    }
 }
