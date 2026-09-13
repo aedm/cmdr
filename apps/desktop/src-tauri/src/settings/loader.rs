@@ -568,7 +568,10 @@ pub fn load_ask_cmdr_consent_revoke_pending<R: tauri::Runtime>(app: &tauri::AppH
 fn parse_ask_cmdr_consent_revoke_pending(contents: &str) -> bool {
     serde_json::from_str::<serde_json::Value>(contents)
         .ok()
-        .and_then(|json| json.get("askCmdr.consentRevokePending").and_then(serde_json::Value::as_bool))
+        .and_then(|json| {
+            json.get("askCmdr.consentRevokePending")
+                .and_then(serde_json::Value::as_bool)
+        })
         .unwrap_or(false)
 }
 

@@ -105,7 +105,9 @@ pub async fn start_ai_download<R: Runtime>(app: AppHandle<R>) -> Result<(), Stri
                 return Ok(());
             }
             StartDecision::WaitForWindDown => {
-                log::info!("AI download: Local was picked again while a cancelled download winds down; starting once it stops");
+                log::info!(
+                    "AI download: Local was picked again while a cancelled download winds down; starting once it stops"
+                );
                 wound_down.await;
             }
             StartDecision::CancelledWhileWaiting => return Err(String::from("Download cancelled")),
