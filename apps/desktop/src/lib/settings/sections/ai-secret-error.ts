@@ -3,10 +3,17 @@ import { isMacOS } from '$lib/shortcuts/key-capture'
 import type { AiApiKeyError } from '$lib/ipc/bindings'
 import { TypedFailure, failureOf } from '$lib/ipc/typed-failure'
 
-/** An `Error` that still carries the secret store's typed refusal. */
+/**
+ * An `Error` that still carries the secret store's typed refusal.
+ *
+ * The diagnostic carries the store's own message because no Rust path logs a save or status
+ * refusal, so this is the only record of what the Keychain or keyring said. Safe to log: every
+ * store builds that message from the OS error and the entry name, never from the secret
+ * (`src-tauri/src/secrets/`).
+ */
 export class AiSecretFailure extends TypedFailure<AiApiKeyError> {
   constructor(failure: AiApiKeyError) {
-    super(failure, `secret store refused: ${failure.type}`)
+    super(failure, `secret store refused (${failure.type}): ${failure.message}`)
     this.name = 'AiSecretFailure'
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, beforeAll, afterAll } from 'vitest'
 import { _setLocaleForTests } from '$lib/intl/locale'
-import { describeSecretError } from './ai-secret-error'
+import { AiSecretFailure, describeSecretError } from './ai-secret-error'
 
 function setUserAgent(value: string): void {
   Object.defineProperty(navigator, 'userAgent', { value, configurable: true })
@@ -74,5 +74,16 @@ describe('describeSecretError', () => {
 
     expect(out.title).not.toContain('Keychain')
     expect(out.detail).toBe('no such key')
+  })
+})
+
+describe('AiSecretFailure', () => {
+  it("carries the store's own words into its diagnostic, so the log line says why", () => {
+    // The Rust save and status paths don't log, so this diagnostic is the only record of
+    // what the Keychain or keyring said. The store's message never holds the key itself.
+    const failure = new AiSecretFailure({ type: 'access_denied', message: 'User interaction is not allowed.' })
+
+    expect(String(failure)).toContain('access_denied')
+    expect(String(failure)).toContain('User interaction is not allowed.')
   })
 })
