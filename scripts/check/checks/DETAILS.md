@@ -603,6 +603,12 @@ HEAD**, not merely present in the object DB: an abbreviated SHA of a rebased-awa
 reflog, but CI's clean clone has no reflog and would fail there instead. Findings cite the line the hash actually sits
 on, which for a wrapped group is a continuation line, not the entry's first.
 
+**The cache can't see a rebase.** `Inputs` is `CHANGELOG.md` alone, so a rebase that rewrites the cited commits while
+leaving the file untouched gets the previous run's cached OK. `scripts/release.sh` therefore runs it with `--fresh`
+right after its `git pull --rebase`. That pull once rewrote all 62 of 0.45.1's unpushed hashes (origin had gained the
+workflow's `latest.json` commit), and the script tagged a release commit with every changelog ref stranded; only a
+manual check before the push caught it.
+
 ## The doc-citation check
 
 `desktop-i18n-doc-citations` (nickname `i18n-citations`, `desktop-i18n-doc-citations.go`) reads every `.md` under

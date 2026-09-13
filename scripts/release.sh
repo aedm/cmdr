@@ -61,6 +61,12 @@ if [[ -z "$UNRELEASED_CONTENT" ]]; then
   exit 1
 fi
 
+# The rebase above gives every unpushed commit a new hash whenever origin/main moved (the release
+# workflow's own `latest.json` commit moves it after every release), which strands the changelog's
+# refs on commits GitHub never receives. The check requires each ref to be reachable from HEAD.
+# `--fresh`: its cache keys on CHANGELOG.md alone, which a rebase doesn't touch.
+pnpm check changelog-links -m --fresh
+
 echo "Releasing version $VERSION..."
 
 # Update version in package.json

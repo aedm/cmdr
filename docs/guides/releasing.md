@@ -45,8 +45,13 @@ compile.
 ## Release gates that abort before tagging
 
 `scripts/release.sh` runs a few hard gates locally before it commits and tags, so a release that can't ship is never
-tagged. Beyond the version/CHANGELOG checks and `oxfmt --ci`, two are worth knowing:
+tagged. Beyond the version/CHANGELOG checks and `oxfmt --ci`, three are worth knowing:
 
+- **Changelog refs must survive the script's own rebase.** The script's `git pull --rebase` rewrites every unpushed hash
+  whenever `origin/main` moved, so right after it, `pnpm check changelog-links --fresh` fails the release on any ref no
+  longer reachable from HEAD. Fix: re-derive the stranded refs from the rebased commits, then re-run. The `/release`
+  skill pulls before drafting, so this normally stays quiet. Why `--fresh`: `scripts/check/checks/DETAILS.md` §
+  "CHANGELOG commit refs".
 - **Visual baselines are auto-refreshed (Docker required).** After the CHANGELOG/roadmap/version are finalized, the
   script runs `apps/website/scripts/update-visual-baselines.sh`, which re-shoots any stale website baseline in a pinned
   Playwright container and folds the result into the release commit. Docker must be running; a stopped Docker aborts the

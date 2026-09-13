@@ -3,6 +3,9 @@ Prepare a release based on docs/guides/releasing.md.
 1. Prerequisite: Run `gh secret list` and verify that `TAURI_SIGNING_PRIVATE_KEY` and
    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` both exist. If either is missing, warn the user and stop.
 2. Update @CHANGELOG.md based on git commits since last release.
+   - **Run `git pull --rebase origin main` before reading a single hash.** `release.sh` pulls too, and when
+     `origin/main` has moved (the release workflow's `latest.json` commit moves it after every release), that rebase
+     rewrites every unpushed commit's hash, stranding the refs you cite. Pulling first makes the script's pull a no-op.
    - Commits have title + body. Read all!
    - You can reference multiple commits for changelog items if needed.
    - List major but non-app changes in a "Non-app" section.
