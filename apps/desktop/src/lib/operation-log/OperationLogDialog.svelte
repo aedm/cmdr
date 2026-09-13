@@ -65,8 +65,9 @@
         total: number
     }
 
-    // Per-operation expansion + lazily fetched items, keyed by opId. Fetched once
-    // on first expand and cached for the dialog's lifetime. Reactive Map/Set (Svelte
+    // Per-operation expansion + lazily fetched items, keyed by opId. Fetched on
+    // first expand and cached for the dialog's lifetime, except a read that threw,
+    // which the next expand tries again. Reactive Map/Set (Svelte
     // 5 tracks their mutations) so a `.get(id)` is honestly `ItemsState | undefined`.
     const expanded = new SvelteSet<string>()
     const itemsByOp = new SvelteMap<string, ItemsState>()
@@ -130,7 +131,9 @@
         const willOpen = !expanded.has(id)
         if (willOpen) expanded.add(id)
         else expanded.delete(id)
-        if (!willOpen || itemsByOp.has(id)) return
+        const cached = itemsByOp.get(id)
+        // A failed read isn't kept: expanding the row again is the retry.
+        if (!willOpen || (cached !== undefined && !cached.error)) return
 
         itemsByOp.set(id, { loading: true, error: false, items: [], total: 0 })
         try {

@@ -155,6 +155,45 @@ describe('OperationLogDialog', () => {
     expect(target.textContent).toContain('/right/file-a.txt')
   })
 
+  it('tries the read again when a row whose items failed to load is expanded again', async () => {
+    getOperationLogDetailMock.mockRejectedValueOnce(new Error('database is locked')).mockResolvedValueOnce({
+      operation: opRow({ opId: 'op-copy' }),
+      items: [
+        {
+          seq: 0,
+          entryType: 'file',
+          rowRole: 'rollbackUnit',
+          sourceVolumeId: 'root',
+          sourcePath: '/left/file-a.txt',
+          destVolumeId: 'root',
+          destPath: '/right/file-a.txt',
+          size: 10,
+          mtime: null,
+          outcome: 'done',
+          overwrote: false,
+          rollbackSkipReason: null,
+        },
+      ],
+      totalItems: 1,
+    })
+    setEntries([opRow({ opId: 'op-copy' })])
+    const target = await mountDialog()
+    const head = () => target.querySelector<HTMLButtonElement>('.op-head')
+
+    head()?.click()
+    await vi.waitFor(() => {
+      expect(target.querySelector('.op-items .notice-sm')).not.toBeNull()
+    })
+    head()?.click()
+    await tick()
+    head()?.click()
+
+    await vi.waitFor(() => {
+      expect(target.textContent).toContain('/left/file-a.txt')
+    })
+    expect(getOperationLogDetailMock).toHaveBeenCalledTimes(2)
+  })
+
   it('has no a11y violations with grouped rows rendered', async () => {
     setEntries([opRow({ opId: 'op-copy' }), opRow({ opId: 'op-del', kind: 'delete', itemCount: 5 })])
     const target = await mountDialog()

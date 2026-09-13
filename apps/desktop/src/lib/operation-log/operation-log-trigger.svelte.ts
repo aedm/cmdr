@@ -82,8 +82,8 @@ export async function loadMoreOperations(): Promise<void> {
     operationLogState.entries = [...operationLogState.entries, ...page]
     operationLogState.hasMore = page.length === OPERATION_LOG_PAGE
   } catch (e) {
-    // A failed append leaves what's already shown intact; stop offering more.
-    operationLogState.hasMore = false
+    // A failed append leaves what's already shown intact and keeps `hasMore`, so Load
+    // more stays up as the retry. Hiding it would make the list read as the whole history.
     log.warn("Couldn't load more operations: {error}", { error: String(e) })
   } finally {
     operationLogState.loadingMore = false

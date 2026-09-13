@@ -139,6 +139,26 @@ describe('loadMoreOperations', () => {
     expect(operationLogState.hasMore).toBe(false)
   })
 
+  it('keeps offering Load more after a failed append, so the button doubles as the retry', async () => {
+    // Hiding it would make the list read as the whole history.
+    getRecentMock
+      .mockResolvedValueOnce(fullPage('a'))
+      .mockRejectedValueOnce(new Error('db locked'))
+      .mockResolvedValueOnce(fullPage('b'))
+
+    await openOperationLog()
+    await loadMoreOperations()
+
+    expect(operationLogState.entries).toHaveLength(OPERATION_LOG_PAGE)
+    expect(operationLogState.hasMore).toBe(true)
+    expect(operationLogState.loadingMore).toBe(false)
+
+    await loadMoreOperations()
+
+    expect(getRecentMock).toHaveBeenNthCalledWith(3, { limit: OPERATION_LOG_PAGE, offset: OPERATION_LOG_PAGE })
+    expect(operationLogState.entries).toHaveLength(OPERATION_LOG_PAGE * 2)
+  })
+
   it('does nothing when there is no more to load', async () => {
     getRecentMock.mockResolvedValue([row('a')])
     await openOperationLog() // short page → hasMore false
