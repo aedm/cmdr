@@ -90,13 +90,35 @@ impl NetworkEnrichConfig {
     }
 }
 
-/// Whether `path` is `ancestor` itself or lives under it. Pure path-prefix arithmetic
-/// (a trailing-slash-safe prefix, so `/Photos2` isn't "within" `/Photos`).
+/// Whether `path` is `ancestor` itself or lives under it: a component-boundary prefix (so
+/// `/Photos2` isn't "within" `/Photos`, and a trailing slash doesn't matter), compared under
+/// the platform's filesystem name rules. Those rules are the drive index's own
+/// [`normalize_for_comparison`](crate::indexing::store::normalize_for_comparison), the
+/// folding behind its `platform_case` collation: on macOS the NFC and NFD forms of a name
+/// and a case-only difference name the same folder; elsewhere the comparison is byte-exact,
+/// as ext4 and btrfs are.
+///
+/// The ONE folder matcher the exclusion veto, the read-time exclusion filter, the purge, and
+/// the "always index" overrides share, so none of them can disagree about what a folder
+/// holds.
 pub(crate) fn path_is_within(path: &str, ancestor: &str) -> bool {
     let ancestor = ancestor.trim_end_matches('/');
     if ancestor.is_empty() {
         return true; // "/" (or empty) is an ancestor of everything
     }
+    // Byte-identical is the common case, and answering it needs no allocation.
+    if is_component_prefix(path, ancestor) {
+        return true;
+    }
+    is_component_prefix(
+        &crate::indexing::store::normalize_for_comparison(path),
+        &crate::indexing::store::normalize_for_comparison(ancestor),
+    )
+}
+
+/// `path` is `ancestor`, or continues past it at a `/`. Folding never adds or removes a
+/// `/`, so the boundary holds on the normalized forms too.
+fn is_component_prefix(path: &str, ancestor: &str) -> bool {
     path == ancestor || path.strip_prefix(ancestor).is_some_and(|rest| rest.starts_with('/'))
 }
 
@@ -200,6 +222,49 @@ pub fn is_paused(volume_id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn path_within_matches_across_unicode_normalization_forms() {
+        // macOS hands out NFD names, while a typed or stored folder can be NFC. The same
+        // folder in either form has to match, or an exclusion of `Útikönyv` misses its files.
+        use unicode_normalization::UnicodeNormalization;
+        let nfc_folder: String = "/Users/me/Útikönyv".nfc().collect();
+        let nfd_path: String = "/Users/me/Útikönyv/scan.jpg".nfd().collect();
+        assert!(
+            !nfd_path.starts_with(&nfc_folder),
+            "premise: the two forms differ byte for byte"
+        );
+        assert!(
+            path_is_within(&nfd_path, &nfc_folder),
+            "an NFC folder covers an NFD path"
+        );
+        let nfd_folder: String = "/Users/me/Útikönyv".nfd().collect();
+        let nfc_path: String = "/Users/me/Útikönyv/scan.jpg".nfc().collect();
+        assert!(path_is_within(&nfc_path, &nfd_folder), "and the other way round");
+        let sibling: String = "/Users/me/Útikönyv2/scan.jpg".nfd().collect();
+        assert!(
+            !path_is_within(&sibling, &nfc_folder),
+            "still component-safe after normalizing"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn path_within_ignores_case_where_the_filesystem_does() {
+        // APFS and SMB shares on macOS treat `IDs` and `ids` as one folder.
+        assert!(path_is_within("/Users/me/ids/passport.jpg", "/Users/me/IDs"));
+        assert!(path_is_within("/VOLUMES/NASPI/photos/a.jpg", "/Volumes/naspi/Photos/"));
+        assert!(!path_is_within("/Users/me/IDs2/a.jpg", "/users/me/ids"));
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    #[test]
+    fn path_within_is_byte_exact_where_the_filesystem_is() {
+        // ext4 and btrfs keep `IDs` and `ids` as two folders, so folding them would exclude a
+        // folder nobody named.
+        assert!(!path_is_within("/home/me/ids/passport.jpg", "/home/me/IDs"));
+    }
 
     #[test]
     fn path_within_is_trailing_slash_safe() {

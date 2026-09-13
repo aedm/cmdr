@@ -29,7 +29,9 @@ opt-in / override / exclusion globals, `enrich.rs` the parallel pipeline.
 - **Prefetch admission is bounded by BYTES, not file count** (`budget.rs`); a count-based queue would buffer gigabytes
   on a RAW-heavy corpus. An over-cap file is admitted alone (never deadlocks); a stop wakes a blocked acquire.
 - **`config` is a settings-seeded process global**, not a per-volume store, and `is_excluded` is read LIVE while
-  threshold/override stay pass-snapshot. `path_is_within` is trailing-slash-safe, so `/Photos2` isn't within `/Photos`.
+  threshold/override stay pass-snapshot. `path_is_within` is the ONE folder matcher (veto, read filter, purge,
+  overrides): component-safe (`/Photos2` isn't within `/Photos`) and folded like the `platform_case` collation (NFC≡NFD
+  and case on macOS). ❌ No raw `starts_with` on folders.
 
 The byte-fetch decision, the conservative-fetch policy, resumability, the parallel pipeline, and the network settings
 UI: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.

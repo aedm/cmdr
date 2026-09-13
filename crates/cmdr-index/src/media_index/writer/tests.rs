@@ -284,6 +284,40 @@ fn prune_then_vacuum_round_trips() {
     w.shutdown();
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn prune_under_folder_reaches_rows_across_normalization_and_case() {
+    // The purge must delete exactly what the veto forbids, and on macOS the veto treats NFC
+    // and NFD forms, and a case-only difference, as the same folder.
+    use unicode_normalization::UnicodeNormalization;
+    let dir = tempfile::tempdir().expect("temp");
+    let w = writer(dir.path(), "root");
+    let db_path = media_db_path(dir.path(), "root");
+    let nfd_path: String = "/Users/me/Útikönyv/scan.jpg".nfd().collect();
+    seed(&w, &nfd_path);
+    seed(&w, "/Users/me/IDS/passport.jpg");
+    seed(&w, "/Users/me/Keep/a.jpg");
+    w.flush_blocking().expect("flush");
+
+    let nfc_folder: String = "/Users/me/Útikönyv".nfc().collect();
+    assert_eq!(
+        w.prune_under_folder(&nfc_folder).expect("prune"),
+        1,
+        "the NFC folder reaches the NFD row"
+    );
+    assert_eq!(
+        w.prune_under_folder("/Users/me/ids").expect("prune"),
+        1,
+        "a case-only difference reaches its row too"
+    );
+    assert_eq!(
+        row_counts(&db_path, "/Users/me/Keep/a.jpg"),
+        (1, 2, 1, 1),
+        "the sibling stays"
+    );
+    w.shutdown();
+}
+
 #[test]
 fn a_prune_whose_delete_fails_reports_the_failure_and_keeps_the_rows() {
     // A blocking prune is a promise to its caller that the rows are gone. When SQLite

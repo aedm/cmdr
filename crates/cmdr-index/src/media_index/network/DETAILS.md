@@ -112,7 +112,10 @@ handful of volumes/folders), not per-image data, so they ride the sparse setting
 writer thread (the standing-cost note already flags per-volume thread growth). The scheduler runs off the IPC thread and
 consults `network::config` (a process-global `RwLock`) each pass, seeded from `load_settings` at startup and
 live-applied through the `media_index_set_*` commands. Folder overrides store absolute OS-mount paths; `path_is_within`
-is a trailing-slash-safe prefix so `/Photos2` isn't "within" `/Photos`.
+is a component-safe prefix (`/Photos2` isn't "within" `/Photos`, and a trailing slash doesn't matter), folded like the
+drive index's `platform_case` collation (`normalize_for_comparison`: the NFC and NFD forms of a name, and a case-only
+difference, match on macOS; byte-exact elsewhere). It's the ONE folder matcher the exclusion veto, the read-time
+exclusion filter, the purge, and these overrides share, so none of them can disagree about what a folder holds.
 
 **Two coverage questions, one prefix test.** `covers(volume_id, os_path)` answers it for a FILE.
 `may_cover_within(volume_id, dir)` answers it for a DIRECTORY, for a caller deciding whether a directory is worth

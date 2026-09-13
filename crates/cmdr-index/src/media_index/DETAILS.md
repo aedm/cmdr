@@ -352,10 +352,10 @@ OCR text stops being searchable at once (privacy is a hard requirement, not "eve
   ONLY row deletions are (a) vanished files via GC on a completed edge, (b) the reclaim prune, (c) this privacy
   retro-delete, and (d) the live-tick scoped GC.
 - **Precedence + path mapping.** Exclusion beats coverage everywhere (enrichment gate AND retro-delete), same
-  trailing-slash-safe `path_is_within` the veto uses. The exclusion config is OS-path keyed; local rows store index
-  paths == OS paths, network rows store mount-stripped index paths — so the retro-delete maps the OS folder into each
-  volume's index space via `network::fetch::os_folder_to_index_prefix` (the inverse of `os_join`: passes through on a
-  local volume, strips the mount root on a network one, `None` when the folder isn't under that mount).
+  component-safe, platform-folded `path_is_within` the veto uses. The exclusion config is OS-path keyed; local rows
+  store index paths == OS paths, network rows store mount-stripped index paths — so the retro-delete maps the OS folder
+  into each volume's index space via `network::fetch::os_folder_to_index_prefix` (the inverse of `os_join`: passes
+  through on a local volume, strips the mount root on a network one, `None` when the folder isn't under that mount).
   `MediaScheduler::retro_delete_excluded_folder(folder, mounts)` iterates the reachable volumes, prunes each via its ONE
   writer, `VACUUM`s (privacy: the text leaves the disk), and drops the vector + coverage caches.
 - **Two mid-pass races, both closed** (else the retro-delete is cosmetic). (1) A pass already running holds a
@@ -598,8 +598,9 @@ level owns:
   (`apps/desktop/src-tauri/src/commands/media_index/tests.rs`), the progress throttle (`progress.rs`).
 - **Privacy retro-delete (all real red→green — deletion is data-safety-critical):** the writer prune primitives
   (`writer/tests.rs`) — `prune_under_folder` deletes rows at or under a folder across ALL four tables and only those,
-  trailing-slash-safe (`/Photos2` survives pruning `/Photos`); `prune_paths` deletes only the explicit set; prune +
-  VACUUM round-trips; `prune_all_clip` drops embeddings, resets stamps, and keeps Vision data. The live veto and the
+  trailing-slash-safe (`/Photos2` survives pruning `/Photos`) and folded like the veto (on macOS an NFC folder prunes
+  NFD rows, and a case-only difference matches); `prune_paths` deletes only the explicit set; prune + VACUUM
+  round-trips; `prune_all_clip` drops embeddings, resets stamps, and keeps Vision data. The live veto and the
   mid-`analyze` TOCTOU are pinned on both cores (`scheduler/DETAILS.md`, `network/DETAILS.md`), and the scheduler
   retro-delete is covered in `scheduler/kick_tests.rs`.
 
