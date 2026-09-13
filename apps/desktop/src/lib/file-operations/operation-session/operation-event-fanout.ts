@@ -244,8 +244,7 @@ export function createOperationEventFanout(): OperationEventFanout {
   }
 
   async function init(): Promise<void> {
-    try {
-      const subscriptions = await Promise.all([
+    const subscriptions = await Promise.allSettled([
         onWriteProgress((event) => {
           route({ kind: 'progress', event })
         }),
@@ -267,17 +266,30 @@ export function createOperationEventFanout(): OperationEventFanout {
         onWriteConflictResolved((event) => {
           route({ kind: 'conflictResolved', event })
         }),
-        onOperationsChanged((event) => {
-          applySnapshot(event.operations)
-        }),
-      ])
-      unlisteners = subscriptions
-      // Disposed while we awaited: undo whatever landed late.
-      if (disposed) {
-        dropListeners()
-        return
-      }
+      onOperationsChanged((event) => {
+        applySnapshot(event.operations)
+      }),
+    ])
+    // Hold every listener that landed, even when another didn't: `dispose` can only
+    // release what it holds, and the streams that did subscribe still route. A
+    // missing stream means quieter sessions, not a dead window.
+    unlisteners = subscriptions.flatMap((subscription) =>
+      subscription.status === 'fulfilled' ? [subscription.value] : [],
+    )
+    // Disposed while we awaited: undo whatever landed late.
+    if (disposed) {
+      dropListeners()
+      return
+    }
+    const refused = subscriptions.find((subscription) => subscription.status === 'rejected')
+    if (refused) {
+      log.warn('{missing} of the operation event subscriptions didn’t start: {error}', {
+        missing: subscriptions.length - unlisteners.length,
+        error: String(refused.reason),
+      })
+    }
 
+    try {
       // Open holding the registry snapshot, so the first session to attach is
       // handed its row instead of asking for it. A cold window has heard no
       // `operations-changed` yet, and without this every row's session would
@@ -291,9 +303,8 @@ export function createOperationEventFanout(): OperationEventFanout {
       if (seedSuperseded()) return
       applySnapshot(operations)
     } catch (error) {
-      // A dead fan-out means silent sessions, not a dead window; a failed seed
-      // just leaves each session to seed itself, as it did before this call.
-      log.warn('Failed to start the operation event fan-out: {error}', { error: String(error) })
+      // A failed seed just leaves each session to seed itself.
+      log.warn("Couldn't seed the operation event fan-out: {error}", { error: String(error) })
     }
   }
 

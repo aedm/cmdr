@@ -223,6 +223,18 @@ describe('subscriptions', () => {
     }
   })
 
+  it('still releases the listeners that landed when one subscription fails', async () => {
+    vi.mocked(onWriteConflict).mockRejectedValueOnce(new Error('no event permission'))
+    const fanout = createOperationEventFanout()
+    await fanout.init()
+    fanout.dispose()
+
+    for (const [stream, unlisten] of Object.entries(unlisteners)) {
+      if (stream === 'conflict') continue
+      expect(unlisten, stream).toHaveBeenCalledTimes(1)
+    }
+  })
+
   it('unsubscribes whatever lands after a dispose that raced the init', async () => {
     const fanout = createOperationEventFanout()
     const pending = fanout.init()

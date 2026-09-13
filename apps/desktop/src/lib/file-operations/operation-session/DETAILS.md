@@ -161,7 +161,9 @@ here are async.
 - **(a) The fan-out subscribes at window init, before any session can exist.** `listen()` is async, so subscribing
   lazily on the first session would leave events arriving before that promise resolves unbuffered and unheard. That is
   exactly the dispatch → dialog → session sequence on a cold main window. The window's one `list_operations()` seed is
-  taken there too, immediately after those subscriptions resolve (§ Seeding).
+  taken there too, immediately after those subscriptions resolve (§ Seeding). The eight `listen()` calls are SETTLED,
+  not raced with `Promise.all`: one refused subscription must not strand the seven that landed where `dispose()` can't
+  release them. The ones that landed stay live and route, and the refusal logs a warn.
 - **(b) Claim, flush, and go live are one synchronous block, with no `await` between them.** Seeding is async, so a
   session that claims its id and then awaits `list_operations()` would overwrite live events with an older seed. The
   seed applies only if nothing has been delivered since the claim. `createOperationsStore.init` guards this exact shape
