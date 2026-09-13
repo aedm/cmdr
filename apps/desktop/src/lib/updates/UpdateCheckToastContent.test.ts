@@ -85,15 +85,32 @@ describe('UpdateCheckToastContent', () => {
     expect(target.textContent).toContain('Installing v1.3.0 (current: v1.2.3)…')
   })
 
-  it('renders the error message and a Send error report link when error is set', async () => {
-    updateState.error = 'kaboom'
+  it('words a check the network didn’t carry from the catalog, with no "Error:" and no report link', async () => {
+    updateState.failure = {
+      phase: 'check',
+      request: { type: 'unreachable', detail: 'error sending request for url (https://api.getcmdr.com/update-check)' },
+    }
     _setUpdateStatusForTest('idle')
     const target = render()
     await tick()
-    expect(target.textContent).toContain('Error: kaboom')
+    expect(target.textContent).toContain("Cmdr couldn't check for updates.")
+    expect(target.textContent).toContain('Check your internet connection')
+    expect(target.textContent).not.toContain('Error:')
+    expect(target.textContent).not.toContain('error sending request')
+    const link = Array.from(target.querySelectorAll('button')).find((b) => b.textContent.trim() === 'Send error report')
+    expect(link).toBeUndefined()
+  })
+
+  it('offers an error report for an install that didn’t finish, with the sentence it showed as the note', async () => {
+    updateState.failure = { phase: 'install' }
+    _setUpdateStatusForTest('idle')
+    const target = render()
+    await tick()
+    const shown = target.querySelector('.message')?.textContent.trim() ?? ''
+    expect(shown).toContain("Cmdr couldn't install the update.")
     const link = Array.from(target.querySelectorAll('button')).find((b) => b.textContent.trim() === 'Send error report')
     expect(link).toBeTruthy()
     link?.click()
-    expect(openErrorReportDialogMock).toHaveBeenCalledWith('Update check failed: kaboom')
+    expect(openErrorReportDialogMock).toHaveBeenCalledWith(shown)
   })
 })

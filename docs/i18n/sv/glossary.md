@@ -1736,8 +1736,8 @@ Varje rad som har en engelsk källsträng i parentes motsvarar en post i `i18n-t
   minimalparet: `”^0” kan inte öppnas medan Finder körs` (`N144`) mot `en annan åtgärd pågår` (`NE82`, `RN11`) och
   `några aktiviteter fortfarande pågår` (`A17`). `ai.local.statusRunning` är servern, `operationLog.status.running` är
   filoperationen.
-- **`Error` → `Fel` bara i diagnostikkontext, annars `Problem`** (`"Error"`) · `high`. `settings.updates.errorPrefix` är
-  en diagnostikrad och engelskans `@key` säger rakt ut att ordet är okej där;
+- **`Error` → `Problem`** (`"Error"`) · `high`. Ingen diagnostikrad med `Fel` finns kvar: en uppdateringskontroll som
+  inte gick igenom skrivs som hela meningar (`updates.failure.check`).
   `fileExplorer.network.browser.status.error` står bland `Kan inte nås`, `Tidsgränsen nåddes` och
   `Inloggningen gick inte`, där `style.md` förbjuder etiketten `fel`.
 - **`unknown` böjs efter det underförstådda huvudordet** · `high`. `fileOperations.transferProgress.sizeUnknown`

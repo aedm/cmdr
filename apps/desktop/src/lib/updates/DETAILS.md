@@ -31,9 +31,10 @@ idle ──invoke──► checking ──update found──► downloading ─�
   └──────error/no update
 ```
 
-`updateState` carries `status`, `error`, `previousVersion` (snapshot of `getVersion()` taken when entering `checking`),
-and `nextVersion` (set when an update is found). Settings > Updates and `UpdateCheckToastContent.svelte` both read the
-singleton and format via `formatUpdateStatus()`.
+`updateState` carries `status`, `failure` (a typed `UpdateFailure` for the check, download, or install that didn't
+finish, cleared when a check starts), `previousVersion` (snapshot of `getVersion()` taken when entering `checking`), and
+`nextVersion` (set when an update is found). Settings > Updates and `UpdateCheckToastContent.svelte` both read the
+singleton and format via `formatUpdateStatus()`, or `describeUpdateFailure()` while a failure stands.
 
 The macOS path runs `download_update` and `install_update` as two commands (distinct `downloading` / `installing`
 phases); the non-macOS path uses the plugin's fused `downloadAndInstall()` (stays in `downloading`, and the plugin is
@@ -167,8 +168,11 @@ and only then trash the original, so a helper dying at any point leaves two copi
 ## Menu-triggered "Check for updates"
 
 - **Settings > Updates**: a "Check for updates" button at the top of the section, disabled while
-  `updateState.status !== 'idle'`, with the status string from `formatUpdateStatus(updateState)` below. The error case
-  renders a "Send error report" link calling `openErrorReportDialog("Update check failed: ${error}")`.
+  `updateState.status !== 'idle'`, with the status string from `formatUpdateStatus(updateState)` below. A standing
+  failure renders `describeUpdateFailure()` instead, plus a "Send error report" link pre-filled with that same sentence,
+  but only where `updateFailureOffersReport()` says the failure is Cmdr's (a download or install that didn't finish, or
+  a check Cmdr's server refused or answered unreadably). Network trouble gets no link: the report would ride the same
+  broken connection. The toast follows the same rule.
 - **Cmdr menu > Check for updates…**: dispatched as `app.checkForUpdates`. The handler calls `runMenuTriggeredCheck()`,
   which fires `addToast(UpdateCheckToastContent, { id: 'update-check', timeoutMs: 10000 })` then awaits
   `checkForUpdates()`. `addToast` deduplicates by id, so the toast updates in place as the phase changes. When `status`
@@ -210,10 +214,14 @@ When a gate opens, the helper re-attempts the toast; if the download finished du
   download-and-install path stays untested (hard Tauri/network deps).
 - Version ordering comes from `compareVersions` (`$lib/utils/version.ts`), shared with `$lib/whats-new`. Don't re-roll
   it here: two comparators that disagree would let the updater call a release newer while What's New calls it older.
-- **The catch around a check logs `warn`, not `error`.** A background poll runs on whatever network the user happens to
-  be on, so a transient blip would otherwise trip the automatic error reporter (Flow B) on something nobody needs to see
-  a report about. Settings still surfaces the message through `updateState.error`. The convention itself is documented
-  in `src-tauri/src/error_reporter/DETAILS.md` § convention.
+- **A failed check logs at the level its typed failure earns, once per condition.** A background poll runs on whatever
+  network the user happens to be on, so no network, a timeout, or a server having a bad moment stay at `warn`: at
+  `error` they would trip the automatic error reporter (Flow B) on something nobody needs a report about. Only a
+  manifest Cmdr's own server refused or served unreadable logs at `error` (`$lib/error-messages/server-request.ts`),
+  and the plugin's untyped check on other platforms stays at `warn`. `checkFailureLog` holds each condition until a
+  check gets an answer, so an offline laptop writes one line, not one per tick, and a broken manifest can't auto-report
+  every hour. `updater.check-failure.test.ts` pins both. Settings and the toast read the failure from
+  `updateState.failure`. The convention itself is documented in `src-tauri/src/error_reporter/DETAILS.md` § convention.
 - `_resetUpdaterStateForTest` / `_setUpdateStatusForTest` exist for `updater.test.ts` and the toast tests. Don't reach
   for them from app code: they write the singleton without going through the state machine.
 - `startUpdateChecker()` returns a teardown fn that `+layout.svelte` must call in `onDestroy`, or the poll interval

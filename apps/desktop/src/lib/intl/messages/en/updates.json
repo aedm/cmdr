@@ -1,10 +1,28 @@
 {
-  "updates.checkToast.errorPrefix": "Error: {message}",
-  "@updates.checkToast.errorPrefix": {
-    "description": "Line in the menu-triggered update-check toast shown when the check failed, prefixing the raw error detail.",
+  "updates.failure.check": "Cmdr couldn''t check for updates. {reason}",
+  "@updates.failure.check": {
+    "description": "Shown in the menu-triggered update-check toast and in the status line of Settings > Updates & privacy when a check for a new version didn't get an answer. {reason} is one or two complete, already-translated sentences saying why and what to do (for example \"Cmdr couldn't reach its server. Check your internet connection and try again.\"), so end your sentence with a period and let the reason follow it. \"Cmdr\" is the product name (do not translate). Avoid the words \"error\" and \"failed\".",
     "placeholders": {
-      "message": "the underlying error message text from the failed update check"
+      "reason": "one or two already-translated sentences saying why the check didn't get an answer and what to do; Cmdr controls the wording but the length varies"
     },
+    "screenshot": "settings-updates.png",
+    "screenshotNote": "App-update messaging. The status line renders in the Settings > Updates & privacy panel pictured here, and the update toasts appear while that check runs. Version numbers are substituted, not translated."
+  },
+  "updates.failure.checkUntyped": "Cmdr couldn''t check for updates. Check your internet connection and try again later.",
+  "@updates.failure.checkUntyped": {
+    "description": "Same place as updates.failure.check, used when Cmdr can't tell why the check didn't get an answer (usually the internet connection). Two sentences: what didn't happen, then what to try. \"Cmdr\" is the product name (do not translate). Avoid the words \"error\" and \"failed\".",
+    "screenshot": "settings-updates.png",
+    "screenshotNote": "App-update messaging. The status line renders in the Settings > Updates & privacy panel pictured here, and the update toasts appear while that check runs. Version numbers are substituted, not translated."
+  },
+  "updates.failure.download": "Cmdr couldn''t download the update. Try again later.",
+  "@updates.failure.download": {
+    "description": "Shown in the update-check toast and in Settings > Updates & privacy when a new version was found but downloading it didn't finish. Nothing was installed, and the current version keeps working. \"Cmdr\" is the product name (do not translate). Avoid the words \"error\" and \"failed\".",
+    "screenshot": "settings-updates.png",
+    "screenshotNote": "App-update messaging. The status line renders in the Settings > Updates & privacy panel pictured here, and the update toasts appear while that check runs. Version numbers are substituted, not translated."
+  },
+  "updates.failure.install": "Cmdr couldn''t install the update. Try again later, or get the latest Cmdr from getcmdr.com.",
+  "@updates.failure.install": {
+    "description": "Shown in the update-check toast and in Settings > Updates & privacy when a new version was downloaded but writing it into the app didn't finish. Points at the website as the fallback. \"Cmdr\" is the product name and \"getcmdr.com\" the website address: keep both exactly as-is. Avoid the words \"error\" and \"failed\".",
     "screenshot": "settings-updates.png",
     "screenshotNote": "App-update messaging. The status line renders in the Settings > Updates & privacy panel pictured here, and the update toasts appear while that check runs. Version numbers are substituted, not translated."
   },

@@ -1266,7 +1266,7 @@ Cmdr 没能建立自己的直接连接，共享改走 macOS 提供的连接时�
   `这个密码不起作用。`；`fileOperations.archivePassword.retryMessage` 的 `这个密码没能解锁…` 是同一件事的长版本。❌ 不写
   `密码错误` · `confirmed`
 - **"couldn''t tell what"（说不出具体原因的兜底）→ `也说不清是什么`** · `出了点问题`
-  是目录里已定的兜底说法（5 处，`ai.cloud.genericError`、`updates.checkToast.errorPrefix` 等），`说不清`
+  是目录里已定的兜底说法（如 `ai.cloud.genericError`），`说不清`
   是日常口语，承接英文有意的谦虚语气 · `high`
 - **"may still land"（超时但操作可能仍会成功）→ `也许仍会生效`** · `生效` 目录里已用（6 处，如
   `onboarding.stepFda.postAction.intro`）；`还没有响应` 沿用停滞传输那一批定下的
@@ -1532,9 +1532,8 @@ Tier 1 是 macOS Finder `zh-CN`（`MenuBar.json`、`LocalizableMerged.json`，�
   `完成`）；操作的生命周期状态 `已完成`（`operationLog.status.done`／`.outcome.done`）·
   `high`。界线：一声宣告 vs 一个状态值。
 - **Error** · 面向用户的状态格 `出现问题`（`fileExplorer.network.browser.status.error`；英文 `@key`
-  自己就写了「风格指南若有更友好的说法就别用 error 的字面词」，而本语言风格指南正是这么规定的）；开发者／诊断前缀 `错误`
-  （`settings.updates.errorPrefix`，英文 `@key` 明说这里 `Error` 可以照用）· `confirmed`。**界线由英文的 `@key`
-  描述自己划定**，不是译者的偏好。
+  自己就写了「风格指南若有更友好的说法就别用 error 的字面词」，而本语言风格指南正是这么规定的）· `confirmed`。目录里已经没有
+  `错误` 这样的诊断前缀：检查更新没成功时，说的是完整的句子（`updates.failure.check`）。
 - **Modified** · 文件的修改日期 `修改日期`（macOS Finder `ArrangeByMenu` `Modified` → `修改日期`，Tier 1）；
   **快捷键被用户改过** `已修改`（`shortcuts.section.filterModified`，兄弟项 `shortcuts.section.modifiedTooltip`
   `已从默认值更改`）· `confirmed`。这里英文的 `Modified` 根本不是日期，套 `修改日期` 会彻底错。

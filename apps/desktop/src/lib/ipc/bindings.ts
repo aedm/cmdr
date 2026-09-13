@@ -4381,7 +4381,7 @@ export const commands = {
         url: string
         signature: string
       } | null,
-      string
+      ServerRequestError
     >(__TAURI_INVOKE('check_for_update')),
   /**
    *  Reports whether the running bundle sits somewhere an update can be written into, or `None`

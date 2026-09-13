@@ -1,8 +1,11 @@
 import { checkForUpdate, downloadUpdate, installUpdate, updateWriteBlocker } from '$lib/tauri-commands'
 import type { BundleWriteBlocker } from '$lib/tauri-commands'
+import type { ServerRequestError } from '$lib/ipc/bindings'
 import { getVersion } from '@tauri-apps/api/app'
 import { forceSave, getSetting, onSpecificSettingChange, setSetting } from '$lib/settings/settings-store'
 import { getAppLogger } from '$lib/logging/logger'
+import { LogOnceGate } from '$lib/logging/log-once'
+import { serverRequestFailureOf, serverRequestLogLevel } from '$lib/error-messages/server-request'
 import { pluralize } from '$lib/utils/pluralize'
 import { compareVersions } from '$lib/utils/version'
 import { blockerFailure, reportUpdateCheck, type UpdateCheckFailure, type UpdateCheckTrigger } from './update-analytics'
@@ -13,11 +16,23 @@ import { isMacOS } from '$lib/shortcuts/key-capture'
 // `updateState` lives in its own module to avoid an import cycle: toast components read it directly,
 // and this module also imports those toast components. Re-exported here so existing consumers
 // (Settings section, command-dispatch, tests) keep using the old import path.
-import { updateBlockerNotice, updateState, type UpdateInfo, type UpdateState } from './update-state.svelte'
+import {
+  updateBlockerNotice,
+  updateState,
+  type UpdateFailure,
+  type UpdateInfo,
+  type UpdateState,
+} from './update-state.svelte'
 export { updateBlockerNotice, updateState }
 export type { UpdateState }
 
 const log = getAppLogger('updater')
+
+/**
+ * A check that keeps failing the same way logs once, until a check gets an answer. An offline laptop would otherwise
+ * write the same warn every poll tick, and a manifest this build can't read would auto-send an error report every hour.
+ */
+const checkFailureLog = new LogOnceGate()
 
 /** Gets the update check interval from settings (in milliseconds) */
 function getCheckIntervalMs(): number {
@@ -200,14 +215,14 @@ export async function checkForUpdates(trigger: UpdateCheckTrigger): Promise<void
     updateState.previousVersion = currentVersion
     updateState.nextVersion = null
     updateState.status = 'checking'
-    updateState.error = null
+    updateState.failure = null
   }
 
   log.debug('Checking for updates (current: v{version})...', { version: currentVersion })
 
   // Platform branches diverge significantly: macOS runs three custom commands (split download +
   // install phases, preserves TCC), non-macOS uses the Tauri plugin's fused `downloadAndInstall`.
-  // The two-phase error handling (warn on check, error on download/install) lives inside each.
+  // Both hand their failures to `finishCheckWithFailure`, which picks the log level per phase.
   if (isMacOS()) {
     await runMacUpdateFlow(trigger, currentVersion, staged)
   } else {
@@ -232,6 +247,8 @@ async function runMacUpdateFlow(
     finishCheckWithFailure(trigger, error, 'check', staged)
     return
   }
+  // The check got an answer, so the next breakage speaks.
+  checkFailureLog.clear()
 
   if (update === null) {
     finishCheckWithNoUpdate(trigger, currentVersion, staged)
@@ -282,6 +299,8 @@ async function runPluginUpdateFlow(
     finishCheckWithFailure(trigger, error, 'check', staged)
     return
   }
+  // The check got an answer, so the next breakage speaks.
+  checkFailureLog.clear()
 
   if (!update) {
     finishCheckWithNoUpdate(trigger, currentVersion, staged)
@@ -362,7 +381,7 @@ function finishCheckWithStagedUpdate(trigger: UpdateCheckTrigger, update: Update
   updateState.status = 'ready'
   updateState.update = update
   updateState.nextVersion = update.version
-  updateState.error = null
+  updateState.failure = null
   lastRestartToastAt = null
   reportUpdateCheck({ trigger, outcome: 'staged', stagedVersion: update.version })
   showUpdateToast()
@@ -394,13 +413,16 @@ function finishCheckWithNoUpdate(trigger: UpdateCheckTrigger, currentVersion: st
 /**
  * Reset state and log the failure at the right level for the phase.
  *
- * - `'check'` failures (network, DNS, bad manifest) are transient and expected on the periodic
- *   background tick; log at warn so they don't trip the auto error reporter on a momentary blip.
+ * - `'check'` failures log once per condition until a check gets an answer (`checkFailureLog`). The macOS check is
+ *   typed, and its level follows `serverRequestLogLevel`: no network, a timeout, or a server having a bad moment stay at
+ *   warn, so a background tick on a flaky network doesn't trip the auto error reporter, and only a manifest Cmdr's own
+ *   server refused or served unreadable logs at error. The plugin's check elsewhere isn't typed, and its failures are
+ *   the network's as often as not, so it stays at warn.
  * - `'download-install'` failures (signature mismatch, FS errors, partial writes) reach a code
- *   path the user already opted into, so log at error so they DO trip auto-report. The Settings
- *   UI surfaces both via `updateState.error` regardless of log level.
+ *   path the user already opted into, so log at error so they DO trip auto-report.
  *
- * See `apps/desktop/src-tauri/src/error_reporter/CLAUDE.md` § convention.
+ * Both reach the UI as `updateState.failure`, a typed value the toast and Settings word from the catalog. See
+ * `apps/desktop/src-tauri/src/error_reporter/CLAUDE.md` § convention.
  *
  * `staged` is the version already synced into the bundle, if any. A build waiting for a restart
  * outlives a failed attempt at a newer one: the download writes to a temp dir, so a failure there
@@ -422,9 +444,13 @@ function finishCheckWithFailure(
     phase === 'check' ? 'check' : updateState.status === 'installing' ? 'install' : 'download'
   reportUpdateCheck({ trigger, outcome: 'failed', failure, stagedVersion: staged })
 
-  if (phase === 'check') {
-    log.warn('Check failed: {error}', { error: message })
+  let standing: UpdateFailure
+  if (failure === 'check') {
+    const request = serverRequestFailureOf(error)
+    standing = { phase: 'check', request }
+    logCheckFailure(request, message)
   } else {
+    standing = { phase: failure === 'install' ? 'install' : 'download' }
     log.error('Download/install failed: {error}', { error: message })
   }
 
@@ -437,7 +463,19 @@ function finishCheckWithFailure(
 
   updateState.status = 'idle'
   updateState.nextVersion = null
-  updateState.error = message
+  updateState.failure = standing
+}
+
+/** One line per failing condition until a check gets an answer, at the level the failure earns. */
+function logCheckFailure(request: ServerRequestError | null, message: string): void {
+  const condition =
+    request === null ? 'untyped' : request.type === 'refused' ? `refused ${String(request.status)}` : request.type
+  if (!checkFailureLog.shouldLog(condition)) return
+  if (request !== null && serverRequestLogLevel(request) === 'error') {
+    log.error('Check failed: {error}', { error: message })
+  } else {
+    log.warn('Check failed: {error}', { error: message })
+  }
 }
 
 /**
@@ -553,10 +591,11 @@ export function _resetUpdaterStateForTest(): void {
   lastRestartToastAt = null
   moveNudgeShown = false
   pendingMoveNudge = null
+  checkFailureLog.clear()
   updateBlockerNotice.blocker = null
   updateState.status = 'idle'
   updateState.update = null
-  updateState.error = null
+  updateState.failure = null
   updateState.previousVersion = null
   updateState.nextVersion = null
 }

@@ -2868,10 +2868,6 @@
     "description": "Button that manually triggers an update check. In Settings > Updates & privacy.",
     "screenshot": "settings-updates.png"
   },
-  "settings.updates.errorPrefix": "Error:",
-  "@settings.updates.errorPrefix": {
-    "description": "Label preceding an update-check error message. Followed by the specific message. Keep the trailing colon. (Developer/diagnostic context, so the word \"Error\" is acceptable here.)"
-  },
   "settings.updates.sendErrorReport": "Send error report",
   "@settings.updates.sendErrorReport": {
     "description": "Button that sends an error report after an update check fails. In Settings > Updates & privacy."

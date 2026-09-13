@@ -2310,10 +2310,6 @@
   "@settings.updates.checkForUpdates": {
     "sourceHash": "f26f327"
   },
-  "settings.updates.errorPrefix": "Erro:",
-  "@settings.updates.errorPrefix": {
-    "sourceHash": "6170629"
-  },
   "settings.updates.sendErrorReport": "Enviar relatório de problema",
   "@settings.updates.sendErrorReport": {
     "sourceHash": "c327e68"

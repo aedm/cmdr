@@ -8,7 +8,11 @@
     import Button from '$lib/ui/Button.svelte'
     import TextInput from '$lib/ui/TextInput.svelte'
     import { updateState, checkForUpdates } from '$lib/updates/updater.svelte'
-    import { formatUpdateStatus } from '$lib/updates/update-status-text'
+    import {
+        describeUpdateFailure,
+        formatUpdateStatus,
+        updateFailureOffersReport,
+    } from '$lib/updates/update-status-text'
     import { openErrorReportDialog } from '$lib/error-reporter/error-report-flow.svelte'
     import { createBetaEmailSignup } from './beta-email-signup.svelte'
     import { tString } from '$lib/intl/messages.svelte'
@@ -29,6 +33,8 @@
     const errorReportsDef = getSettingDefinition('updates.errorReports') ?? { label: '', description: '' }
 
     const statusText = $derived(formatUpdateStatus(updateState))
+    const failureText = $derived(updateState.failure === null ? null : describeUpdateFailure(updateState.failure))
+    const offersReport = $derived(updateState.failure !== null && updateFailureOffersReport(updateState.failure))
     const buttonDisabled = $derived(updateState.status !== 'idle')
 
     // The beta contact email field: persists on every keystroke, subscribes on commit. The logic is
@@ -40,7 +46,8 @@
     }
 
     function handleSendErrorReport() {
-        openErrorReportDialog(`Update check failed: ${updateState.error ?? ''}`)
+        // The note is the sentence the row showed; the raw detail is already in the log the report bundles.
+        openErrorReportDialog(failureText ?? '')
     }
 </script>
 
@@ -55,13 +62,13 @@
                         {tString('settings.updates.checkForUpdates')}
                     </Button>
                     <div class="status">
-                        {#if updateState.error !== null}
-                            <span class="error-message"
-                                >{tString('settings.updates.errorPrefix')} {updateState.error}</span
-                            >
-                            <button class="link-button" onclick={handleSendErrorReport}
-                                >{tString('settings.updates.sendErrorReport')}</button
-                            >
+                        {#if failureText !== null}
+                            <span class="failure-message">{failureText}</span>
+                            {#if offersReport}
+                                <button class="link-button" onclick={handleSendErrorReport}
+                                    >{tString('settings.updates.sendErrorReport')}</button
+                                >
+                            {/if}
                         {:else if statusText}
                             <span class="status-text">{statusText}</span>
                         {/if}
@@ -176,7 +183,7 @@
         min-height: 1.4em;
     }
 
-    .error-message {
+    .failure-message {
         color: var(--color-text-primary);
     }
 

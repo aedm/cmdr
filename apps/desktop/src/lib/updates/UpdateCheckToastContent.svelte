@@ -1,25 +1,30 @@
 <script lang="ts">
     import { updateState } from './update-state.svelte'
-    import { formatUpdateStatus } from './update-status-text'
+    import { describeUpdateFailure, formatUpdateStatus, updateFailureOffersReport } from './update-status-text'
     import Button from '$lib/ui/Button.svelte'
     import { openErrorReportDialog } from '$lib/error-reporter/error-report-flow.svelte'
-    import { t, tString } from '$lib/intl/messages.svelte'
+    import { tString } from '$lib/intl/messages.svelte'
 
     const statusText = $derived(formatUpdateStatus(updateState))
+    const failureText = $derived(updateState.failure === null ? null : describeUpdateFailure(updateState.failure))
+    const offersReport = $derived(updateState.failure !== null && updateFailureOffersReport(updateState.failure))
 
     function handleSendErrorReport() {
-        openErrorReportDialog(`Update check failed: ${updateState.error ?? ''}`)
+        // The note is the sentence the toast showed; the raw detail is already in the log the report bundles.
+        openErrorReportDialog(failureText ?? '')
     }
 </script>
 
 <div class="content">
-    {#if updateState.error !== null}
-        <span class="message">{t('updates.checkToast.errorPrefix', { message: updateState.error })}</span>
-        <div class="actions">
-            <Button size="mini" variant="secondary" onclick={handleSendErrorReport}
-                >{tString('updates.checkToast.sendErrorReport')}</Button
-            >
-        </div>
+    {#if failureText !== null}
+        <span class="message">{failureText}</span>
+        {#if offersReport}
+            <div class="actions">
+                <Button size="mini" variant="secondary" onclick={handleSendErrorReport}
+                    >{tString('updates.checkToast.sendErrorReport')}</Button
+                >
+            </div>
+        {/if}
     {:else}
         <span class="message">{statusText}</span>
     {/if}

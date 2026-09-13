@@ -1,7 +1,19 @@
 {
-  "updates.checkToast.errorPrefix": "Beim Suchen nach Updates ist etwas schiefgelaufen: {message}",
-  "@updates.checkToast.errorPrefix": {
-    "sourceHash": "020abfd"
+  "updates.failure.check": "Cmdr konnte nicht nach Updates suchen. {reason}",
+  "@updates.failure.check": {
+    "sourceHash": "66f0ef1"
+  },
+  "updates.failure.checkUntyped": "Cmdr konnte nicht nach Updates suchen. Prüfe deine Internetverbindung und versuch es später noch einmal.",
+  "@updates.failure.checkUntyped": {
+    "sourceHash": "55dcdd7"
+  },
+  "updates.failure.download": "Cmdr konnte das Update nicht laden. Versuch es später noch einmal.",
+  "@updates.failure.download": {
+    "sourceHash": "fdd5095"
+  },
+  "updates.failure.install": "Cmdr konnte das Update nicht installieren. Versuch es später noch einmal, oder hol dir das neueste Cmdr von getcmdr.com.",
+  "@updates.failure.install": {
+    "sourceHash": "c997a13"
   },
   "updates.checkToast.sendErrorReport": "Fehlerbericht senden",
   "@updates.checkToast.sendErrorReport": {

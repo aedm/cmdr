@@ -29,7 +29,7 @@ function render() {
 function resetState() {
   updateState.status = 'idle'
   updateState.update = null
-  updateState.error = null
+  updateState.failure = null
   updateState.previousVersion = null
   updateState.nextVersion = null
 }

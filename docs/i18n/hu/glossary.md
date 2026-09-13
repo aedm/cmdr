@@ -298,8 +298,9 @@ Settled while translating `search.json`, `feedback.json`, `crashReporter.json`, 
   past-outcome participle) · high.
 - "Show all in main window" (Search) → `Összes megjelenítése a főablakban` · descriptive (főablak settled in prior pass)
   · high.
-- error prefix label (`updates.checkToast.errorPrefix`, "Error: {message}") → `Probléma: {message}` (the
-  `error → Probléma` calm-voice rule, no bare "Hiba" label) · high.
+- error prefix label → none left: a failed update check reads as whole sentences (`updates.failure.check`,
+  `A Cmdr nem tudta megkeresni a frissítéseket. {reason}`), which keeps the `error → Probléma` calm-voice rule (no bare
+  "Hiba" label) · high.
 - Dismiss (crashReporter/lowDiskSpace) → `Elvetés` (consistent with the prior `fileOperations` pass; MS gives `bezárás`
   but that collides with the settled Close = `Bezárás`) · tentative.
 
@@ -352,8 +353,8 @@ Forward-references confirmed resolved against the final files:
 `host` register split is intentional and correct in the final files: `gazdagép` only in errors.json connection-failure
 prose; `gép`/`Gépnév` in the fileExplorer SMB browser and `commands.networkSelectHost` (`Hálózati gép`). `kiszolgáló` in
 errors.json is the participle "hosting/serving" (not the noun "server" = `szerver`), so it doesn't violate
-`server → szerver`. `settings.updates.errorPrefix` = `Hiba:` is correct (the en `@key` marks it dev/diagnostic, where
-"Error" is allowed), distinct from the user-facing `updates.checkToast.errorPrefix` = `Probléma:`.
+`server → szerver`. No update-check prefix is left (neither `Hiba:` nor `Probléma:`): a check that didn't land reads as
+whole sentences (`updates.failure.check`).
 
 Settled while translating `queue.json` + the new pause/queue/background keys in `fileOperations.json`/`commands.json`
 (transfer-queue feature, 2026-06-21):
@@ -1960,8 +1961,9 @@ parancspaletta a régi szót vitte tovább. A határvonalakat ez a szakasz írja
   `Zoom All` = `Összes méretezése`). Az angol leírás külön kiemeli, hogy a kettő nem ugyanaz.
 - **Select**: `Kijelölés` a fájlkijelölő menü és művelet, `Válassz` a legördülő lista helyőrzője
   (`ui.select.placeholder`) — ott a felhasználót szólítjuk meg, nem fájlt jelölünk ki.
-- **Error**: `Probléma` a felhasználónak szóló állapotcella (az angol `@key` maga kéri a barátságosabb szót), `Hiba` a
-  diagnosztikai előtag (`settings.updates.errorPrefix`, ahol az angol leírás kifejezetten megengedi).
+- **Error**: `Probléma` a felhasználónak szóló állapotcella (az angol `@key` maga kéri a barátságosabb szót). Diagnosztikai
+  `Hiba` előtag már nincs a katalógusban: ha a frissítéskeresés nem jár sikerrel, a Cmdr teljes mondatokban szól
+  (`updates.failure.check`).
 - **Bytes**: `Bájtok` a folyamatsáv címkéje, mert a párja a `Fájlok`; `Bájt` a mértékegység-választó gombja, mert a
   szomszédjai `kB`, `MB`, `GB`.
 - **From**: `Forrás` a `Cél` párja az átviteli párbeszéd fejlécében; `Innen:` a beágyazott útvonal előtti címke.

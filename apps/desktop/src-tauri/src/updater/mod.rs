@@ -105,7 +105,7 @@ fn skip_reason() -> Option<SkipReason> {
 /// - The manifest doesn't contain an entry for this platform
 #[tauri::command]
 #[specta::specta]
-pub async fn check_for_update() -> Result<Option<UpdateInfo>, String> {
+pub async fn check_for_update() -> Result<Option<UpdateInfo>, crate::server_request::ServerRequestError> {
     if let Some(reason) = skip_reason() {
         log::info!("Skipping update check: {reason}");
         return Ok(None);
@@ -117,35 +117,31 @@ pub async fn check_for_update() -> Result<Option<UpdateInfo>, String> {
     let arch = manifest::platform_key().strip_prefix("darwin-").unwrap_or("unknown");
     let url = format!("https://api.getcmdr.com/update-check/{current_version}?arch={arch}");
 
+    let manifest = fetch_manifest(&url).await?;
+    Ok(manifest::check_manifest(&manifest, current_version))
+}
+
+/// Fetches and parses the manifest at `url`. Split from the command so a test can point it at a mock
+/// server instead of the update endpoint.
+///
+/// The status is checked before the body is parsed (`server_request::send`): a 5xx or an HTML
+/// maintenance page would otherwise read as "the manifest is malformed" and send whoever reads the log
+/// to the wrong layer. A 2xx that doesn't parse is `BadResponse`, which the frontend logs at error:
+/// Cmdr's server and this build disagree on the contract. The frontend owns the log line, gated once
+/// per condition, so a Rust warn here would only repeat it every poll tick.
+async fn fetch_manifest(url: &str) -> Result<manifest::UpdateManifest, crate::server_request::ServerRequestError> {
     let client = reqwest::Client::builder()
         .connect_timeout(MANIFEST_CONNECT_TIMEOUT)
         .timeout(MANIFEST_REQUEST_TIMEOUT)
         .build()
-        .map_err(|e| format!("Couldn't build update HTTP client: {}", describe_error_chain(&e)))?;
-
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Couldn't fetch update manifest: {}", describe_error_chain(&e)))?;
-
-    // Check the status before parsing. A 5xx or an HTML maintenance page deserializes into a
-    // parse failure, which reads as "the manifest is malformed" and sends whoever is looking at
-    // the log to the wrong layer entirely: the manifest is fine, the server didn't serve it.
-    let status = response.status();
-    if !status.is_success() {
-        log::warn!("Update check got HTTP {status} from {url}; no manifest to read");
-        return Err(format!(
-            "The update server answered {status} instead of a manifest, so this check found nothing"
-        ));
-    }
-
-    let manifest: manifest::UpdateManifest = response
-        .json()
-        .await
-        .map_err(|e| format!("Couldn't parse update manifest: {}", describe_error_chain(&e)))?;
-
-    Ok(manifest::check_manifest(&manifest, current_version))
+        .map_err(|e| {
+            crate::server_request::ServerRequestError::unexpected(format!(
+                "update HTTP client: {}",
+                describe_error_chain(&e)
+            ))
+        })?;
+    let response = crate::server_request::send(client.get(url)).await?;
+    crate::server_request::read_json(response).await
 }
 
 /// Reports whether the running bundle sits somewhere an update can be written into, or `None`
@@ -317,6 +313,58 @@ mod tests {
         assert_eq!(
             SkipReason::NonProdEnv("CMDR_DATA_DIR").to_string(),
             "CMDR_DATA_DIR is set"
+        );
+    }
+
+    use crate::server_request::ServerRequestError;
+    use serde_json::json;
+    use wiremock::matchers::method;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    /// A mock server answering every GET with `response`, and the manifest URL on it. Keep the server
+    /// bound for the test's length: dropping it stops the mock.
+    async fn manifest_at(response: ResponseTemplate) -> (MockServer, String) {
+        let server = MockServer::start().await;
+        Mock::given(method("GET")).respond_with(response).mount(&server).await;
+        let url = format!("{}/latest.json", server.uri());
+        (server, url)
+    }
+
+    #[tokio::test]
+    async fn a_manifest_the_server_serves_parses() {
+        let (_server, url) = manifest_at(ResponseTemplate::new(200).set_body_json(json!({
+            "version": "0.45.1",
+            "platforms": { "darwin-aarch64": { "url": "https://example.invalid/Cmdr.tar.gz", "signature": "sig" } }
+        })))
+        .await;
+        let manifest = fetch_manifest(&url).await.expect("a well-formed manifest parses");
+        assert_eq!(manifest.version, "0.45.1");
+    }
+
+    /// The shape behind the old "Couldn't parse update manifest" lines: a 2xx that isn't a manifest
+    /// means Cmdr's server and this build disagree, which the frontend logs at error. It must never
+    /// read as a network blip.
+    #[tokio::test]
+    async fn a_2xx_that_isnt_a_manifest_is_a_bad_response() {
+        let (_server, url) =
+            manifest_at(ResponseTemplate::new(200).set_body_json(json!({ "version": "0.45.1" }))).await;
+        let err = fetch_manifest(&url)
+            .await
+            .expect_err("a manifest without platforms doesn't parse");
+        assert!(
+            matches!(err, ServerRequestError::BadResponse { .. }),
+            "expected BadResponse, got {err:?}"
+        );
+    }
+
+    /// A maintenance page on a 5xx stays a refusal with its status, never "the manifest is malformed".
+    #[tokio::test]
+    async fn a_5xx_maintenance_page_is_refused_not_malformed() {
+        let (_server, url) = manifest_at(ResponseTemplate::new(503).set_body_string("<html>maintenance</html>")).await;
+        let err = fetch_manifest(&url).await.expect_err("a 503 is a refusal");
+        assert!(
+            matches!(err, ServerRequestError::Refused { status: 503, .. }),
+            "expected a 503 Refused, got {err:?}"
         );
     }
 }

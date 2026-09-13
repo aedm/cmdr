@@ -1,21 +1,23 @@
 /**
- * Shared formatter for the update-check status string. Used by both the Settings > Updates
+ * Shared formatters for the update-check status and its failures. Used by both the Settings > Updates
  * section and the menu-triggered toast so the wording stays in sync.
  *
- * Returns `null` for the error case; callers render their own error UI (with a follow-up
- * "Send error report" link) and read `state.error` directly.
+ * `formatUpdateStatus` returns `null` while a failure stands; callers render `describeUpdateFailure`
+ * instead, with a follow-up "Send error report" link where `updateFailureOffersReport` says one is worth it.
  */
 import { tString } from '$lib/intl/messages.svelte'
+import { describeServerRequestFailure, serverRequestLogLevel } from '$lib/error-messages/server-request'
+import type { UpdateFailure } from './update-state.svelte'
 
 export interface UpdateStatusReadable {
   status: 'idle' | 'checking' | 'downloading' | 'installing' | 'ready'
-  error: string | null
+  failure: UpdateFailure | null
   previousVersion: string | null
   nextVersion: string | null
 }
 
 export function formatUpdateStatus(state: UpdateStatusReadable): string | null {
-  if (state.error !== null) return null
+  if (state.failure !== null) return null
 
   const prev = state.previousVersion ?? '?'
   const next = state.nextVersion ?? '?'
@@ -37,4 +39,28 @@ export function formatUpdateStatus(state: UpdateStatusReadable): string | null {
     case 'ready':
       return tString('updates.status.ready', { next })
   }
+}
+
+/** The sentence for a check, download, or install that didn't finish. ❌ Never the backend's detail. */
+export function describeUpdateFailure(failure: UpdateFailure): string {
+  switch (failure.phase) {
+    case 'check':
+      return failure.request === null
+        ? tString('updates.failure.checkUntyped')
+        : tString('updates.failure.check', { reason: describeServerRequestFailure(failure.request) })
+    case 'download':
+      return tString('updates.failure.download')
+    case 'install':
+      return tString('updates.failure.install')
+  }
+}
+
+/**
+ * Whether a failure is worth an error report: a download or install that didn't finish, or a check Cmdr's own server
+ * refused or answered unreadably. Network trouble isn't (the report would ride the same broken connection), and an
+ * untyped check can't tell the two apart, so neither offers one.
+ */
+export function updateFailureOffersReport(failure: UpdateFailure): boolean {
+  if (failure.phase !== 'check') return true
+  return failure.request !== null && serverRequestLogLevel(failure.request) === 'error'
 }

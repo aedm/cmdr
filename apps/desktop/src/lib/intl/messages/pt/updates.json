@@ -1,7 +1,19 @@
 {
-  "updates.checkToast.errorPrefix": "Erro: {message}",
-  "@updates.checkToast.errorPrefix": {
-    "sourceHash": "020abfd"
+  "updates.failure.check": "O Cmdr não conseguiu verificar atualizações. {reason}",
+  "@updates.failure.check": {
+    "sourceHash": "66f0ef1"
+  },
+  "updates.failure.checkUntyped": "O Cmdr não conseguiu verificar atualizações. Verifique sua conexão com a internet e tente novamente mais tarde.",
+  "@updates.failure.checkUntyped": {
+    "sourceHash": "55dcdd7"
+  },
+  "updates.failure.download": "O Cmdr não conseguiu baixar a atualização. Tente novamente mais tarde.",
+  "@updates.failure.download": {
+    "sourceHash": "fdd5095"
+  },
+  "updates.failure.install": "O Cmdr não conseguiu instalar a atualização. Tente novamente mais tarde ou baixe a versão mais recente do Cmdr em getcmdr.com.",
+  "@updates.failure.install": {
+    "sourceHash": "c997a13"
   },
   "updates.checkToast.sendErrorReport": "Enviar relatório de problema",
   "@updates.checkToast.sendErrorReport": {

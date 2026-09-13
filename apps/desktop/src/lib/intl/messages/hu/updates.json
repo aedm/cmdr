@@ -1,7 +1,19 @@
 {
-  "updates.checkToast.errorPrefix": "Probléma: {message}",
-  "@updates.checkToast.errorPrefix": {
-    "sourceHash": "020abfd"
+  "updates.failure.check": "A Cmdr nem tudta megkeresni a frissítéseket. {reason}",
+  "@updates.failure.check": {
+    "sourceHash": "66f0ef1"
+  },
+  "updates.failure.checkUntyped": "A Cmdr nem tudta megkeresni a frissítéseket. Ellenőrizd az internetkapcsolatot, és próbáld újra később.",
+  "@updates.failure.checkUntyped": {
+    "sourceHash": "55dcdd7"
+  },
+  "updates.failure.download": "A Cmdr nem tudta letölteni a frissítést. Próbáld újra később.",
+  "@updates.failure.download": {
+    "sourceHash": "fdd5095"
+  },
+  "updates.failure.install": "A Cmdr nem tudta telepíteni a frissítést. Próbáld újra később, vagy töltsd le a legújabb Cmdr-t a getcmdr.com oldalról.",
+  "@updates.failure.install": {
+    "sourceHash": "c997a13"
   },
   "updates.checkToast.sendErrorReport": "Hibajelentés küldése",
   "@updates.checkToast.sendErrorReport": {

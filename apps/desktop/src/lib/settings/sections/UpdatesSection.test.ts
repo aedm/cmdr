@@ -138,15 +138,17 @@ describe('UpdatesSection', () => {
     expect(target.textContent).toContain('Update found, downloading v1.3.0 (current: v1.2.3)…')
   })
 
-  it('renders an error and a Send error report link when error is set, calling openErrorReportDialog with the formatted note', async () => {
-    realUpdateState.error = 'something exploded'
+  it('words a download that didn’t finish from the catalog, and pre-fills the report with that sentence', async () => {
+    realUpdateState.failure = { phase: 'download' }
     const target = render()
     await tick()
-    expect(target.textContent).toContain('Error: something exploded')
+    const shown = target.querySelector('.failure-message')?.textContent.trim() ?? ''
+    expect(shown).toContain("Cmdr couldn't download the update.")
+    expect(target.textContent).not.toContain('Error:')
     const link = Array.from(target.querySelectorAll('button')).find((b) => b.textContent.trim() === 'Send error report')
     expect(link).toBeTruthy()
     link?.click()
-    expect(openErrorReportDialogMock).toHaveBeenCalledWith('Update check failed: something exploded')
+    expect(openErrorReportDialogMock).toHaveBeenCalledWith(shown)
   })
 
   function getEmailInput(target: HTMLElement): HTMLInputElement {

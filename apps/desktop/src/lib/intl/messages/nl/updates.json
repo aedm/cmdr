@@ -1,7 +1,19 @@
 {
-  "updates.checkToast.errorPrefix": "Probleem: {message}",
-  "@updates.checkToast.errorPrefix": {
-    "sourceHash": "020abfd"
+  "updates.failure.check": "Cmdr kon niet naar updates zoeken. {reason}",
+  "@updates.failure.check": {
+    "sourceHash": "66f0ef1"
+  },
+  "updates.failure.checkUntyped": "Cmdr kon niet naar updates zoeken. Controleer je internetverbinding en probeer het later opnieuw.",
+  "@updates.failure.checkUntyped": {
+    "sourceHash": "55dcdd7"
+  },
+  "updates.failure.download": "Cmdr kon de update niet downloaden. Probeer het later opnieuw.",
+  "@updates.failure.download": {
+    "sourceHash": "fdd5095"
+  },
+  "updates.failure.install": "Cmdr kon de update niet installeren. Probeer het later opnieuw, of download de nieuwste Cmdr van getcmdr.com.",
+  "@updates.failure.install": {
+    "sourceHash": "c997a13"
   },
   "updates.checkToast.sendErrorReport": "Verstuur foutrapport",
   "@updates.checkToast.sendErrorReport": {

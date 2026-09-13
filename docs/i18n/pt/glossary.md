@@ -1587,8 +1587,8 @@ por isso que uma varredura automática nunca poderá decidir sozinha em portugu�
 - **`Tentar novamente` (botão) vs `tente de novo` (texto corrido)**: o botão segue o Finder pt-BR (`NE106`, `PE110` =
   `Tentar Novamente`); a prosa do catálogo usa `de novo` em cerca de cem valores, e é o idioma natural ali. ❌ Não faça
   uma varredura trocando `de novo` por `novamente`.
-- **`Problema` (o que o usuário lê) vs `Erro` (prefixo de diagnóstico em `settings.updates.errorPrefix`, onde o próprio
-  `@key` inglês libera a palavra)**.
+- **`Problema` (o que o usuário lê)**: não sobrou nenhum prefixo de diagnóstico `Erro:` no catálogo; uma verificação de
+  atualização que não deu certo vira frases inteiras (`updates.failure.check`).
 - **`Em execução` (um servidor rodando) vs `Em andamento` (uma tarefa em progresso)** para `Running`; a própria checagem
   cita esse par como divergência legítima.
 - **`restaurado` (devolver o NOME anterior, `askCmdr.renameUndo.*`) vs `colocado de volta` (devolver o arquivo do Lixo,

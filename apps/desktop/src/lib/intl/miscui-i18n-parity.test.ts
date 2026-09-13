@@ -198,7 +198,14 @@ describe('updates area parity (en)', () => {
     )
     expect(tString('updates.toast.later')).toBe('Later')
     expect(tString('updates.toast.restart')).toBe('Restart now')
-    expect(t('updates.checkToast.errorPrefix', { message: 'boom' })).toBe('Error: boom')
+    expect(t('updates.failure.check', { reason: 'Try again.' })).toBe("Cmdr couldn't check for updates. Try again.")
+    expect(tString('updates.failure.checkUntyped')).toBe(
+      "Cmdr couldn't check for updates. Check your internet connection and try again later.",
+    )
+    expect(tString('updates.failure.download')).toBe("Cmdr couldn't download the update. Try again later.")
+    expect(tString('updates.failure.install')).toBe(
+      "Cmdr couldn't install the update. Try again later, or get the latest Cmdr from getcmdr.com.",
+    )
   })
 
   it('resolves the status-line composer byte-identically', () => {

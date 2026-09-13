@@ -51,7 +51,7 @@ describe('UpdateCheckToastContent a11y', () => {
   })
 
   it('error state with Send error report link has no a11y violations', async () => {
-    updateState.error = 'kaboom'
+    updateState.failure = { phase: 'install' }
     _setUpdateStatusForTest('idle')
     const target = document.createElement('div')
     document.body.appendChild(target)

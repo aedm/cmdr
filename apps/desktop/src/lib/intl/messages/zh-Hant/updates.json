@@ -1,7 +1,19 @@
 {
-  "updates.checkToast.errorPrefix": "無法檢查更新項目：{message}",
-  "@updates.checkToast.errorPrefix": {
-    "sourceHash": "020abfd"
+  "updates.failure.check": "Cmdr 無法檢查更新。{reason}",
+  "@updates.failure.check": {
+    "sourceHash": "66f0ef1"
+  },
+  "updates.failure.checkUntyped": "Cmdr 無法檢查更新。請檢查網路連線，然後稍後再試一次。",
+  "@updates.failure.checkUntyped": {
+    "sourceHash": "55dcdd7"
+  },
+  "updates.failure.download": "Cmdr 無法下載更新。請稍後再試一次。",
+  "@updates.failure.download": {
+    "sourceHash": "fdd5095"
+  },
+  "updates.failure.install": "Cmdr 無法安裝更新。請稍後再試一次，或到 getcmdr.com 下載最新版的 Cmdr。",
+  "@updates.failure.install": {
+    "sourceHash": "c997a13"
   },
   "updates.checkToast.sendErrorReport": "傳送錯誤報告",
   "@updates.checkToast.sendErrorReport": {

@@ -4,6 +4,7 @@
 // Tauri-plugin fallback).
 
 import { commands, type BundleWriteBlocker } from '$lib/ipc/bindings'
+import { throwServerRequestError } from '$lib/error-messages/server-request'
 import { throwIpcError } from './ipc-types'
 
 export type { BundleWriteBlocker }
@@ -26,10 +27,13 @@ export async function updateWriteBlocker(): Promise<BundleWriteBlocker | null> {
   return res.data
 }
 
-/** Fetches `latest.json` and returns update info if a newer version is available, else `null`. */
+/**
+ * Fetches `latest.json` and returns update info if a newer version is available, else `null`. A check that doesn't
+ * land throws a `ServerRequestFailure`, which the updater words and logs at the level it earns.
+ */
 export async function checkForUpdate(): Promise<UpdateCheckResult | null> {
   const res = await commands.checkForUpdate()
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwServerRequestError(res.error)
   return res.data
 }
 

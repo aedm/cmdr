@@ -1,7 +1,19 @@
 {
-  "updates.checkToast.errorPrefix": "Problème : {message}",
-  "@updates.checkToast.errorPrefix": {
-    "sourceHash": "020abfd"
+  "updates.failure.check": "Cmdr n''a pas pu rechercher les mises à jour. {reason}",
+  "@updates.failure.check": {
+    "sourceHash": "66f0ef1"
+  },
+  "updates.failure.checkUntyped": "Cmdr n''a pas pu rechercher les mises à jour. Vérifiez votre connexion Internet et réessayez plus tard.",
+  "@updates.failure.checkUntyped": {
+    "sourceHash": "55dcdd7"
+  },
+  "updates.failure.download": "Cmdr n''a pas pu télécharger la mise à jour. Réessayez plus tard.",
+  "@updates.failure.download": {
+    "sourceHash": "fdd5095"
+  },
+  "updates.failure.install": "Cmdr n''a pas pu installer la mise à jour. Réessayez plus tard, ou téléchargez la dernière version de Cmdr sur getcmdr.com.",
+  "@updates.failure.install": {
+    "sourceHash": "c997a13"
   },
   "updates.checkToast.sendErrorReport": "Envoyer un rapport d''incident",
   "@updates.checkToast.sendErrorReport": {

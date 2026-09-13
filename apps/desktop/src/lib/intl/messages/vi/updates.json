@@ -1,7 +1,19 @@
 {
-  "updates.checkToast.errorPrefix": "Sự cố: {message}",
-  "@updates.checkToast.errorPrefix": {
-    "sourceHash": "020abfd"
+  "updates.failure.check": "Cmdr không kiểm tra được bản cập nhật. {reason}",
+  "@updates.failure.check": {
+    "sourceHash": "66f0ef1"
+  },
+  "updates.failure.checkUntyped": "Cmdr không kiểm tra được bản cập nhật. Hãy kiểm tra kết nối internet rồi thử lại sau.",
+  "@updates.failure.checkUntyped": {
+    "sourceHash": "55dcdd7"
+  },
+  "updates.failure.download": "Cmdr không tải về được bản cập nhật. Hãy thử lại sau.",
+  "@updates.failure.download": {
+    "sourceHash": "fdd5095"
+  },
+  "updates.failure.install": "Cmdr không cài đặt được bản cập nhật. Hãy thử lại sau, hoặc tải bản Cmdr mới nhất từ getcmdr.com.",
+  "@updates.failure.install": {
+    "sourceHash": "c997a13"
   },
   "updates.checkToast.sendErrorReport": "Gửi báo cáo trục trặc",
   "@updates.checkToast.sendErrorReport": {

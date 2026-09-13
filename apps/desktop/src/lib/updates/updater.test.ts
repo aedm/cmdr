@@ -198,36 +198,36 @@ describe('setOnboardingShowing', () => {
 
 describe('formatUpdateStatus', () => {
   it('returns checking… string while checking', () => {
-    expect(formatUpdateStatus({ status: 'checking', error: null, previousVersion: '1.2.3', nextVersion: null })).toBe(
+    expect(formatUpdateStatus({ status: 'checking', failure: null, previousVersion: '1.2.3', nextVersion: null })).toBe(
       'Checking…',
     )
   })
 
   it('returns no-updates string for idle after a successful check', () => {
-    expect(formatUpdateStatus({ status: 'idle', error: null, previousVersion: '1.2.3', nextVersion: null })).toBe(
+    expect(formatUpdateStatus({ status: 'idle', failure: null, previousVersion: '1.2.3', nextVersion: null })).toBe(
       'No updates found. Current version: v1.2.3',
     )
   })
 
   it('returns empty string for idle before any check has run', () => {
-    expect(formatUpdateStatus({ status: 'idle', error: null, previousVersion: null, nextVersion: null })).toBe('')
+    expect(formatUpdateStatus({ status: 'idle', failure: null, previousVersion: null, nextVersion: null })).toBe('')
   })
 
   it('returns downloading string with both versions', () => {
     expect(
-      formatUpdateStatus({ status: 'downloading', error: null, previousVersion: '1.2.3', nextVersion: '1.3.0' }),
+      formatUpdateStatus({ status: 'downloading', failure: null, previousVersion: '1.2.3', nextVersion: '1.3.0' }),
     ).toBe('Update found, downloading v1.3.0 (current: v1.2.3)…')
   })
 
   it('returns installing string with both versions', () => {
     expect(
-      formatUpdateStatus({ status: 'installing', error: null, previousVersion: '1.2.3', nextVersion: '1.3.0' }),
+      formatUpdateStatus({ status: 'installing', failure: null, previousVersion: '1.2.3', nextVersion: '1.3.0' }),
     ).toBe('Installing v1.3.0 (current: v1.2.3)…')
   })
 
-  it('returns null when error is set so the caller can render its own error UI', () => {
+  it('returns null while a failure stands, so the caller renders the failure sentence instead', () => {
     expect(
-      formatUpdateStatus({ status: 'idle', error: 'boom', previousVersion: '1.2.3', nextVersion: null }),
+      formatUpdateStatus({ status: 'idle', failure: { phase: 'install' }, previousVersion: '1.2.3', nextVersion: null }),
     ).toBeNull()
   })
 })
@@ -299,10 +299,10 @@ describe('runMenuTriggeredCheck', () => {
     expect(dismissToastMock).not.toHaveBeenCalled()
   })
 
-  it('surfaces the error string on the state when the check rejects', async () => {
+  it('keeps an untyped check failure on the state as a check with no request, never its text', async () => {
     pluginCheckMock.mockRejectedValueOnce(new Error('network down'))
     await runMenuTriggeredCheck()
-    expect(updateState.error).toBe('network down')
+    expect(updateState.failure).toEqual({ phase: 'check', request: null })
     expect(updateState.status).toBe('idle')
     expect(dismissToastMock).not.toHaveBeenCalled()
   })
@@ -403,7 +403,7 @@ describe('checking again while an update is staged', () => {
     // network blip must not downgrade the state machine or raise a message at the user.
     expect(updateState.status).toBe('ready')
     expect(updateState.update?.version).toBe('0.29.0')
-    expect(updateState.error).toBeNull()
+    expect(updateState.failure).toBeNull()
   })
 
   it('keeps the staged update ready when downloading the newer build fails', async () => {

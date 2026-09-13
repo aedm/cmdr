@@ -32,10 +32,6 @@
         "reason": "`完成` is the visually-hidden word a screen reader appends to a finished checklist step (`Find files. Done.`), where a bare adjective is right. `已完成` is an operation's lifecycle status in the log, where the perfective aspect marks a finished run."
       },
       {
-        "source": "Error",
-        "reason": "`出現問題` is the network browser's connection STATUS, written conversationally per the house rule that user-facing copy avoids the word `error`. `settings.updates.errorPrefix` is a literal `Error:` label prefixed to a raw updater string, where `錯誤：` is the honest technical label."
-      },
-      {
         "source": "Modified",
         "reason": "`修改日期` is the Finder column header and the date filters, where `Modified` abbreviates `Date modified`. The keyboard-shortcuts filter chip means `commands whose shortcut YOU changed`, with no date involved, so it takes `已修改`."
       },
@@ -75,13 +71,13 @@
   },
   "notYetReviewed": {
     "de": 8,
-    "es": 7,
-    "fr": 13,
-    "hu": 11,
+    "es": 6,
+    "fr": 12,
+    "hu": 10,
     "nl": 17,
-    "pt": 7,
-    "sv": 8,
-    "vi": 3,
-    "zh": 12
+    "pt": 6,
+    "sv": 7,
+    "vi": 2,
+    "zh": 11
   }
 }

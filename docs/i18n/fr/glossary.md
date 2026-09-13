@@ -287,10 +287,10 @@ doubled below to match this doc's convention:
 - crash report → rapport d''incident; "send crash report" → "envoyer le rapport d''incident" · style guide (Apple
   "rapport d''incident", non-alarmist) · high
 - error report (the report-sending flow) → rapport d''incident · same flow as crash reports; kept consistent · high
-- "Error:" prefix (non-alarmist toast) → "Problème :" · style guide steers away from "erreur"; matches the `errors` pass
-  "problème" calm fallback. Applied to user-facing toasts such as `updates.checkToast.errorPrefix` ("Problème :
-  {message}"). EXCEPTION: `settings.updates.errorPrefix` stays "Erreur :" — its `@key` description explicitly marks it a
-  developer/diagnostic label where "Error" is acceptable. · high
+- "Error:" prefix → none left in the catalog: the update toast and Settings word a check that didn't land as whole
+  sentences (`updates.failure.check`, « Cmdr n'a pas pu rechercher les mises à jour. {reason} »), so neither
+  « Problème : » nor « Erreur : » survives there. The calm "problème" fallback from the `errors` pass still holds
+  wherever a status needs one · high
 - running low on space → l''espace libre devient faible / espace disque faible · descriptive FR, calm; pairs with
   "disque de démarrage" · high
 - free (space, adj.) → libre(s) · macOS Finder ("Disponible"/"libre") · high

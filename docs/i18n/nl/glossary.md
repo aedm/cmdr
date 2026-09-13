@@ -133,9 +133,8 @@ From the `errors.json` pass (mined `_ignored/i18n/nl/macOS`, 2026-06-21; mostly 
   failed" use "{Verb} lukte niet" to match this (NOT "mislukte", which reads as a bare failure label the voice rule
   discourages). "fout"/"mislukt" are fine only as descriptive words in flowing prose ("dat mislukt meestal", "wanneer er
   een fout optreedt"), never as an error label · high
-- "Error: {message}" prefix → "Probleem: {message}" · both `updates.checkToast.errorPrefix` and
-  `settings.updates.errorPrefix` use "Probleem:" (the latter was "Fout:", reconciled). Cmdr voice keeps the prefix calm
-  · high
+- "Error: {message}" prefix → none left: the update toast and Settings word a check that didn't land as whole sentences
+  (`updates.failure.check`, "Cmdr kon niet naar updates zoeken. {reason}"), and Cmdr voice keeps them calm · high
 - disk image → schijfkopie · macOS · high
 - symbolic link → symbolische koppeling · macOS ("koppeling") · high
 - alleen-lezen compounds → alleen-lezenvolume, alleen-lezenapparaat (no space) · macOS ("alleen-lezenvolume") · high

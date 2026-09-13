@@ -1,7 +1,19 @@
 {
-  "updates.checkToast.errorPrefix": "Det gick inte att söka efter uppdateringar: {message}",
-  "@updates.checkToast.errorPrefix": {
-    "sourceHash": "020abfd"
+  "updates.failure.check": "Cmdr kunde inte söka efter uppdateringar. {reason}",
+  "@updates.failure.check": {
+    "sourceHash": "66f0ef1"
+  },
+  "updates.failure.checkUntyped": "Cmdr kunde inte söka efter uppdateringar. Kontrollera din internetanslutning och försök igen senare.",
+  "@updates.failure.checkUntyped": {
+    "sourceHash": "55dcdd7"
+  },
+  "updates.failure.download": "Cmdr kunde inte hämta uppdateringen. Försök igen senare.",
+  "@updates.failure.download": {
+    "sourceHash": "fdd5095"
+  },
+  "updates.failure.install": "Cmdr kunde inte installera uppdateringen. Försök igen senare, eller hämta senaste Cmdr från getcmdr.com.",
+  "@updates.failure.install": {
+    "sourceHash": "c997a13"
   },
   "updates.checkToast.sendErrorReport": "Skicka felrapport",
   "@updates.checkToast.sendErrorReport": {

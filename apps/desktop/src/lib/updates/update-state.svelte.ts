@@ -6,6 +6,7 @@
  */
 
 import type { BundleWriteBlocker } from '$lib/tauri-commands'
+import type { ServerRequestError } from '$lib/ipc/bindings'
 
 /** Metadata returned by the `check_for_update` Tauri command */
 export interface UpdateInfo {
@@ -14,10 +15,23 @@ export interface UpdateInfo {
   signature: string
 }
 
+/**
+ * Why the last check, download, or install didn't finish, as a typed value the surfaces word from the catalog
+ * (`update-status-text.ts`). ❌ Never a message.
+ *
+ * `request` is the macOS check's typed failure, or `null` when the check failed untyped (the Tauri plugin on other
+ * platforms, or a broken IPC bridge).
+ */
+export type UpdateFailure =
+  | { phase: 'check'; request: ServerRequestError | null }
+  | { phase: 'download' }
+  | { phase: 'install' }
+
 export interface UpdateState {
   status: 'idle' | 'checking' | 'downloading' | 'installing' | 'ready'
   update: UpdateInfo | null
-  error: string | null
+  /** Why the last attempt didn't finish, or `null`. Cleared when a check starts. */
+  failure: UpdateFailure | null
   /** Version the user is currently running. Set when `checking` starts. */
   previousVersion: string | null
   /** Version we're moving to. Set when an update is found. Cleared on `idle`. */
@@ -27,7 +41,7 @@ export interface UpdateState {
 export const updateState = $state<UpdateState>({
   status: 'idle',
   update: null,
-  error: null,
+  failure: null,
   previousVersion: null,
   nextVersion: null,
 })

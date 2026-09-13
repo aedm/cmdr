@@ -2309,11 +2309,6 @@
   "@settings.updates.checkForUpdates": {
     "sourceHash": "f26f327"
   },
-  "settings.updates.errorPrefix": "Error:",
-  "@settings.updates.errorPrefix": {
-    "sourceHash": "6170629",
-    "sameAsSourceJustification": "'Error:' is a developer/diagnostic label where the @key description explicitly permits the word 'Error'; Spanish 'Error:' is identical (cognate) and keeps the trailing colon."
-  },
   "settings.updates.sendErrorReport": "Enviar informe de error",
   "@settings.updates.sendErrorReport": {
     "sourceHash": "c327e68"
