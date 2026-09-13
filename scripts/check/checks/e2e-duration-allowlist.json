@@ -3,11 +3,67 @@
   "macos": {
     "accessibility.spec.ts::dark mode::Settings: all sections": "axe audits every settings section in one test; inherently heavy (3.5s at flagger introduction)",
     "accessibility.spec.ts::light mode::Settings: all sections": "axe audits every settings section in one test; inherently heavy (3.5s at flagger introduction)",
+    "archive-editing.spec.ts::Archive editing::MOVING a file into the archive root lands it inside and removes the original": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.4s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "archive-editing.spec.ts::Archive editing::deleting a file inside the archive is permanent (no Trash) and removes it": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.2s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "archive-editing.spec.ts::Archive editing::pasting a file into the archive lands it inside the zip": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.4s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "background-while-scanning.spec.ts::Backgrounding a transfer that is still counting::sends a scanning copy to the queue window instead of losing it": "David approved (2026-08-14): inherent, not fixable. The test HOLDS a scan open, backgrounds it mid-count, then waits for the copy to finish to prove the operation outlived its dialog; the open scan window IS the thing under test, so shortening it deletes the coverage. Measured 3.4-4.7s on macOS over 26 runs (~3.8s typical). ❌ Don't ‘optimise’ the scan window away.",
     "brief-cursor-visibility.spec.ts::Brief view cursor visibility::cursor stays in view under arrow nav, Home/End, PageUp/PageDown, and resize": "one test drives many nav + window-resize cycles (2.3s at flagger introduction)",
+    "compress-basic.spec.ts::Compress (⌥F5)::the compression-level setting shapes the output: level 9 packs smaller than level 1": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.4s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "dialog-inset.spec.ts::Dialog body inset::every dialog’s first body section lines up with its title": {
+      "maxMs": 7000,
+      "reason": "David approved (2026-09-13): 5.1s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "i18n-capture-staging.spec.ts::i18n capture staging::frontend-toasts still stages every surface": {
+      "maxMs": 3000,
+      "reason": "David approved (2026-09-13): 2.0s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "i18n-capture-staging.spec.ts::i18n capture staging::settings-window still stages every surface": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 3.0s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "i18n-capture-staging.spec.ts::i18n capture staging::viewer still stages every surface": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.9s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "mcp-agent-tools.spec.ts::MCP agent tools::select by names → copy → await → delete → await not_has_item": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.2s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "mcp-archive-password.spec.ts::MCP archive password::a transfer prompt is answerable, and unlocking still cannot start the write": {
+      "maxMs": 24000,
+      "reason": "David approved (2026-09-13): 22.2s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "mcp-conflicts.spec.ts::MCP per-file conflicts::a transfer can be left on stop, its clash read, and one file answered": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.7s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "media-index-slider.spec.ts::Image-index importance slider::persists a new level and updates its preview label": {
+      "maxMs": 6000,
+      "reason": "David approved (2026-09-13): 4.3s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "mtp-cancel-volume-settled.spec.ts::MTP cancel: settle gate keeps \"Canceling…\" until BE quiets down::first cancel clears via settle, then immediately F8 again dispatches successfully": {
+      "maxMs": 6000,
+      "reason": "David approved (2026-09-13): 4.4s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "mtp-conflicts.spec.ts::MTP cross-volume copy conflicts::MTP-to-local copy with apply-to-all Skip credits byte progress": "virtual MTP per-operation protocol overhead (2.2s at flagger introduction)",
     "mtp-conflicts.spec.ts::MTP cross-volume move conflicts::MTP-to-local move with overwrite replaces dest and removes source": "virtual MTP per-operation protocol overhead (2.3s at flagger introduction)",
     "mtp-conflicts.spec.ts::MTP cross-volume move conflicts::MTP-to-local move with skip preserves both files": "virtual MTP per-operation protocol overhead (2.8s at flagger introduction)",
+    "mtp-conflicts.spec.ts::MTP cross-volume move conflicts::local-to-MTP move with overwrite replaces MTP file": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-13): 3.5s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "mtp-conflicts.spec.ts::MTP same-volume move conflicts::same-volume MTP move with overwrite replaces dest": "virtual MTP per-operation protocol overhead (2.5s at flagger introduction)",
     "mtp-conflicts.spec.ts::MTP same-volume move conflicts::same-volume MTP move with skip preserves both files": "virtual MTP per-operation protocol overhead (2.8s at flagger introduction)",
     "mtp-copy-preflight-uses-cache.spec.ts::MTP copy pre-flight reuses watcher-backed listing::F5 pre-flight scan completes from cache and reports the right file count": "virtual MTP per-operation protocol overhead (2.3s at flagger introduction)",
@@ -26,6 +82,14 @@
       "maxMs": 3000,
       "reason": "virtual MTP per-operation protocol overhead; ~2.7s under --include-slow contention on 2026-06-28, cap 3s"
     },
+    "mtp.spec.ts::MTP file operations::deletes file on MTP with the permanent-delete dialog": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.8s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "mtp.spec.ts::MTP file operations::deletes folder with nested files recursively on MTP": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.6s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "mtp.spec.ts::MTP file operations::deletes multiple selected files on MTP": "virtual MTP per-operation protocol overhead (2.0s at flagger introduction)",
     "mtp.spec.ts::MTP file operations::moves file between MTP directories": "virtual MTP per-operation protocol overhead (2.9s at flagger introduction)",
     "mtp.spec.ts::MTP file watching::detects externally added file in MTP backing dir": "waits for the real MTP watcher to pick up an external FS change (2.3s at flagger introduction)",
@@ -38,7 +102,31 @@
       "maxMs": 3000,
       "reason": "virtual MTP per-operation protocol overhead; ~2.1s under --include-slow contention on 2026-06-28, cap 3s"
     },
+    "mtp.spec.ts::MTP navigation::switching back to a storage reopens the folder last used there": {
+      "maxMs": 3000,
+      "reason": "David approved (2026-09-13): 2.0s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "mtp.spec.ts::MTP rename::a folder entered with Enter shows a rename made in it": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.2s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "operation-log-rollback.spec.ts::Rolling an operation back from the history dialog::a paused reversal stops advancing, and resumes where it left off": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.1s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "operation-log-rollback.spec.ts::Rolling an operation back from the history dialog::cancelling a reversal keeps what it reversed, and the row offers to finish the rest": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.1s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
+    "search-live.spec.ts::Search dialog: a live search over unindexed ground::walks the folder, streams what it finds, and says the run covered it": {
+      "maxMs": 8000,
+      "reason": "David approved (2026-09-13): 6.1s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "search-open-in-pane.spec.ts::Search dialog: Open in pane::⌘[ leaves the snapshot view, ⌘] returns to it": "navigates out of and back into the search snapshot volume, two full pane loads (3.2s at flagger introduction)",
+    "search-walk-handoff.spec.ts::Search dialog: a walk that outlives its dialog::keeps filling the pane, and says so in a toast": {
+      "maxMs": 8000,
+      "reason": "David approved (2026-09-13): 6.5s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "viewer-wordwrap-persistence.spec.ts::Viewer word-wrap persistence::word wrap toggled in one viewer session is on in the next": "opens the viewer window twice to assert persistence across sessions (2.3s at flagger introduction)"
   },
   "linux": {
@@ -52,6 +140,10 @@
     "brief-cursor-visibility.spec.ts::Brief view cursor visibility::cursor stays in view under arrow nav, Home/End, PageUp/PageDown, and resize": {
       "maxMs": 3000,
       "reason": "one test drives many nav + window-resize cycles; ~2.9s under --include-slow contention on 2026-06-28, cap 3s"
+    },
+    "compress-basic.spec.ts::Compress (⌥F5)::the compression-level setting shapes the output: level 9 packs smaller than level 1": {
+      "maxMs": 3000,
+      "reason": "David approved (2026-09-13): 2.0s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 1s of headroom"
     },
     "dialog-inset.spec.ts::Dialog body inset::every dialog’s first body section lines up with its title": {
       "maxMs": 8000,
@@ -99,9 +191,17 @@
       "maxMs": 5000,
       "reason": "David approved (2026-09-12): 2.0s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
     },
+    "mtp.spec.ts::MTP file operations::copies file from MTP to local": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.2s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "mtp.spec.ts::MTP file operations::deletes file on MTP with the permanent-delete dialog": {
       "maxMs": 5000,
       "reason": "David approved (2026-09-12): 2.4s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "mtp.spec.ts::MTP file operations::deletes folder with nested files recursively on MTP": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.3s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 1s of headroom"
     },
     "mtp.spec.ts::MTP file operations::deletes multiple selected files on MTP": {
       "maxMs": 3000,
@@ -117,6 +217,10 @@
       "maxMs": 5000,
       "reason": "David approved (2026-09-12): 2.2s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
     },
+    "mtp.spec.ts::MTP navigation::switching back to a storage reopens the folder last used there": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.1s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "search-live.spec.ts::Search dialog: a live search over unindexed ground::walks the folder, streams what it finds, and says the run covered it": {
       "maxMs": 5000,
       "reason": "David approved (2026-09-12): 2.8s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
@@ -125,6 +229,10 @@
     "search-walk-handoff.spec.ts::Search dialog: a walk that outlives its dialog::keeps filling the pane, and says so in a toast": {
       "maxMs": 6000,
       "reason": "David approved (2026-09-12): 3.5s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "smb.spec.ts::SMB authentication::listing shares with valid credentials returns private share": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.3s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 1s of headroom"
     },
     "viewer-wordwrap-persistence.spec.ts::Viewer word-wrap persistence::word wrap toggled in one viewer session is on in the next": "opens the viewer window twice to assert persistence across sessions (2.3s at flagger introduction)"
   }
