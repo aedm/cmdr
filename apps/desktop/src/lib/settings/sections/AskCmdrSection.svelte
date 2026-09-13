@@ -149,6 +149,8 @@
     let forgetOpen = $state(false)
     let forgetting = $state(false)
     let forgotten = $state(false)
+    /** The wipe stopped partway (the disk refused a delete), so some notes may remain. */
+    let notAllForgotten = $state(false)
 
     async function openMemoryFolder(): Promise<void> {
         try {
@@ -161,12 +163,16 @@
     async function forgetEverything(): Promise<void> {
         if (forgetting) return
         forgetting = true
+        notAllForgotten = false
         try {
             const count = await askCmdrForgetMemory()
             log.info('the user cleared Ask Cmdr’s memory: {count} note(s)', { count })
             forgotten = true
         } catch (e: unknown) {
+            // The backend logged the cause and how many notes went (`MemoryStore::forget_all`).
             log.warn('clearing Ask Cmdr’s memory failed: {error}', { error: String(e) })
+            forgotten = false
+            notAllForgotten = true
         } finally {
             forgetting = false
             forgetOpen = false
@@ -370,6 +376,9 @@
         {#if forgotten}
             <p class="memory-forgotten" role="status">{tString('settings.askCmdr.memory.forgotten')}</p>
         {/if}
+        {#if notAllForgotten}
+            <p class="memory-not-forgotten" role="status">{tString('settings.askCmdr.memory.notAllForgotten')}</p>
+        {/if}
     {/if}
 
     <!-- Spend -->
@@ -459,10 +468,18 @@
         color: var(--color-text-secondary);
     }
 
+    .memory-not-forgotten,
     .consent-not-saved {
-        margin: 0 0 var(--spacing-sm);
         font-size: var(--font-size-sm);
         color: var(--color-warning-text);
+    }
+
+    .memory-not-forgotten {
+        margin: var(--spacing-xs) 0 0;
+    }
+
+    .consent-not-saved {
+        margin: 0 0 var(--spacing-sm);
     }
 
     .disclosure {

@@ -43,10 +43,15 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   askCmdrCostSummary: vi.fn(() => Promise.resolve({ days: [] })),
   askCmdrModelWindow: vi.fn(() => Promise.resolve(modelWindow)),
+  askCmdrForgetMemory: vi.fn(() => Promise.resolve(3)),
+  // The forget confirmation is a `ModalDialog`, which reports itself open and closed.
+  notifyDialogOpened: vi.fn(() => Promise.resolve()),
+  notifyDialogClosed: vi.fn(() => Promise.resolve()),
 }))
 
 import AskCmdrSection from './AskCmdrSection.svelte'
 import { revokeConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+import { askCmdrForgetMemory } from '$lib/tauri-commands'
 
 /** Lets a click's awaited IPC settle and the section re-render. */
 async function settle(): Promise<void> {
@@ -149,6 +154,24 @@ describe('AskCmdrSection when the store says no', () => {
     await settle()
 
     expect(target.querySelector('.consent-not-saved')).toBeNull()
+    target.remove()
+  })
+
+  it('points at the memory folder when forgetting stopped partway, rather than closing without a word', async () => {
+    vi.mocked(askCmdrForgetMemory).mockRejectedValueOnce(new Error('unwritable'))
+    const target = await mountSection()
+
+    const forgetButton = target.querySelectorAll<HTMLButtonElement>('.memory-actions button')[1]
+    forgetButton.click()
+    await settle()
+    const dialogButtons = document.querySelectorAll<HTMLButtonElement>('[data-dialog-id="forget-memory"] button')
+    dialogButtons[dialogButtons.length - 1].click()
+    await settle()
+
+    expect(target.querySelector('.memory-not-forgotten')?.textContent.trim()).toBe(
+      'Cmdr couldn’t delete every note. Open the memory folder to remove the rest.',
+    )
+    expect(target.querySelector('.memory-forgotten')).toBeNull()
     target.remove()
   })
 })

@@ -1803,6 +1803,10 @@
   "@settings.askCmdr.memory.forgotten": {
     "sourceHash": "f3d9022"
   },
+  "settings.askCmdr.memory.notAllForgotten": "O Cmdr não conseguiu apagar todas as anotações. Abra a pasta de anotações para remover o resto.",
+  "@settings.askCmdr.memory.notAllForgotten": {
+    "sourceHash": "3ae9870"
+  },
   "settings.askCmdr.spend.title": "Gastos",
   "@settings.askCmdr.spend.title": {
     "sourceHash": "c2c7ae2"

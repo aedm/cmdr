@@ -2875,6 +2875,7 @@ export type MessageKey =
   | 'settings.askCmdr.intro'
   | 'settings.askCmdr.memory.description'
   | 'settings.askCmdr.memory.forgotten'
+  | 'settings.askCmdr.memory.notAllForgotten'
   | 'settings.askCmdr.memory.open'
   | 'settings.askCmdr.memory.title'
   | 'settings.askCmdr.proactive.description'

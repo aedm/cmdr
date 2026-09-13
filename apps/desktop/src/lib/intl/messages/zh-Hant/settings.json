@@ -1801,6 +1801,10 @@
   "@settings.askCmdr.memory.forgotten": {
     "sourceHash": "f3d9022"
   },
+  "settings.askCmdr.memory.notAllForgotten": "Cmdr 沒能刪除所有筆記。開啟筆記資料夾，刪除剩下的筆記。",
+  "@settings.askCmdr.memory.notAllForgotten": {
+    "sourceHash": "3ae9870"
+  },
   "settings.askCmdr.spend.title": "花費",
   "@settings.askCmdr.spend.title": {
     "sourceHash": "c2c7ae2"

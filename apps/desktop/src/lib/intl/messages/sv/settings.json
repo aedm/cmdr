@@ -1809,6 +1809,10 @@
   "@settings.askCmdr.memory.forgotten": {
     "sourceHash": "f3d9022"
   },
+  "settings.askCmdr.memory.notAllForgotten": "Cmdr kunde inte radera alla anteckningar. Öppna anteckningsmappen för att ta bort resten.",
+  "@settings.askCmdr.memory.notAllForgotten": {
+    "sourceHash": "3ae9870"
+  },
   "settings.askCmdr.spend.title": "Utgifter",
   "@settings.askCmdr.spend.title": {
     "sourceHash": "c2c7ae2"

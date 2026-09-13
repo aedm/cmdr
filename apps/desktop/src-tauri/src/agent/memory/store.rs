@@ -202,6 +202,10 @@ impl MemoryStore {
     /// the next write lands without the jail having to recreate it, and the user is not left
     /// looking at a pane for a directory that vanished under them.
     ///
+    /// A refusal can come after some notes are already gone, so it logs the io error and how
+    /// many went: the command answers only the token, and this is the one place the cause is
+    /// still known.
+    ///
     /// [`used_bytes`]: MemoryStore::used_bytes
     pub fn forget_all(&self) -> Result<usize, MemoryRefusal> {
         let mut forgotten = 0;
@@ -212,7 +216,7 @@ impl MemoryStore {
                 // An absent root is nothing to forget, which is a success: the button exists
                 // before the agent has ever written anything.
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
-                Err(e) => return Err(MemoryRefusal::Unwritable(e.to_string())),
+                Err(e) => return Err(stopped_forgetting(forgotten, e)),
             };
             for entry in entries.flatten() {
                 let Ok(kind) = entry.file_type() else { continue };
@@ -220,7 +224,7 @@ impl MemoryStore {
                 if kind.is_dir() {
                     folders.push(path);
                 } else if kind.is_file() && is_markdown(&path) {
-                    std::fs::remove_file(&path).map_err(|e| MemoryRefusal::Unwritable(e.to_string()))?;
+                    std::fs::remove_file(&path).map_err(|e| stopped_forgetting(forgotten, e))?;
                     forgotten += 1;
                 }
             }
@@ -255,6 +259,17 @@ impl MemoryStore {
 fn is_markdown(path: &Path) -> bool {
     path.extension()
         .is_some_and(|extension| extension.eq_ignore_ascii_case(jail::MEMORY_EXTENSION))
+}
+
+/// Logs why a wipe stopped and how many notes were already gone, then builds its refusal.
+/// ❌ No path in the line: a note's name is the agent's words about the user, and `cmdr.log`
+/// ships in diagnostic bundles.
+fn stopped_forgetting(forgotten: usize, error: std::io::Error) -> MemoryRefusal {
+    log::warn!(
+        target: LOG_TARGET,
+        "stopped clearing the agent's memory after {forgotten} note(s) deleted: {error}"
+    );
+    MemoryRefusal::Unwritable(error.to_string())
 }
 
 /// The temp file a durable write renames from: a hidden sibling, so it lands on the same

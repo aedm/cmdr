@@ -1802,6 +1802,10 @@
   "@settings.askCmdr.memory.forgotten": {
     "sourceHash": "f3d9022"
   },
+  "settings.askCmdr.memory.notAllForgotten": "A Cmdr nem tudott minden jegyzetet törölni. Nyisd meg a jegyzetmappát, és töröld a maradékot.",
+  "@settings.askCmdr.memory.notAllForgotten": {
+    "sourceHash": "3ae9870"
+  },
   "settings.askCmdr.spend.title": "Kiadás",
   "@settings.askCmdr.spend.title": {
     "sourceHash": "c2c7ae2"

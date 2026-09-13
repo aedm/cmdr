@@ -130,7 +130,10 @@ the agent's, the notes in it are about the user.
 - **Forget everything.** `MemoryStore::forget_all` deletes every `.md` under the root, subfolders included, and reports
   the count behind the `forget-memory` confirmation. It leaves the folders and any non-`.md` file alone, for the same
   reason `used_bytes` skips them: anything the agent could never have written is the user's. Keeping the root means the
-  next write lands without the jail recreating it.
+  next write lands without the jail recreating it. A read or delete the disk refuses stops the walk with
+  `Unwritable`, possibly after some notes are gone, so `forget_all` logs the io error and the count already deleted (❌
+  never a note's path: names are the agent's words about the user, and `cmdr.log` ships in bundles). The command answers
+  only the token, and the settings section shows `settings.askCmdr.memory.notAllForgotten`, pointing at the folder.
 
 ## What diagnostic bundles do NOT pick up
 
