@@ -109,9 +109,6 @@
     "file-operations/mkfile/NewFileDialog.svelte": {
       "reason": "UI modal, logic tested in new-file-operations.test.ts and filename-validation.test.ts"
     },
-    "file-operations/queue/queue-window.ts": {
-      "reason": "Depends on Tauri WebviewWindow / window-effects APIs; opens or focuses the queue window"
-    },
     "file-viewer/open-viewer.ts": {
       "reason": "Depends on Tauri WebviewWindow API"
     },
