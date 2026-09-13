@@ -145,6 +145,15 @@ No user impact, log truth only. About 60 lines, 100 with the rider.
   failure into a fallback, although every platform registers these commands, so a real failure hides as an empty or
   default answer. The FDA and privacy-settings wrappers beside them already lost theirs. Wider blast radius: check each
   caller before removing the fallback (M).
+- **"Delete model" can claim success when its prune failed.** `delete_clip_model` still `unwrap_or(0)`s
+  `prune_all_clip`, although the media writer now reports the failure. Fix: surface it like the reclaim path's typed
+  `PruneFailure` (S).
+- **An unreadable `media.db` reads as "already cleared"** on a reclaim: `stored_coverage` treats it as nothing doomed.
+  Fix: a typed unreadable answer that shows the existing `couldNotDelete` toast (S).
+- **The excluded-folder purge maps the mount root byte-exactly.** `os_folder_to_index_prefix` strips the root without
+  the case and Unicode folding `path_is_within` now applies, so an exclusion whose mount-root part is spelled in another
+  case or normalization form can't be purged. Reads and the enrichment veto still hide and block those images, so it's
+  disk space only (S).
 - **A leftover plaintext OpenAI key.** The legacy key migration was deleted past its removal date, so anyone who skipped
   every release that ran it keeps an unused `ai.openaiApiKey` in `settings.json`. Fix if it matters: delete the key on
   launch without reading it (S).
