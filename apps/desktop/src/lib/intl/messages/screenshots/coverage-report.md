@@ -16,14 +16,14 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2469 / 3568 keys have a screenshot (69%):** 1375 direct (39%) and 1094 representative (31%). 944 remain
+**Total: 2470 / 3577 keys have a screenshot (69%):** 1375 direct (38%) and 1095 representative (31%). 952 remain
 uncoupled, and 155 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
 | -------------- | -----: | -------------: | --------: | -----: | ----: | ----: |
 | adb            |      3 |              0 |        17 |      0 |    20 |   15% |
 | ai             |      0 |             89 |         0 |      0 |    89 |  100% |
-| askCmdr        |     78 |              2 |       122 |      0 |   202 |   40% |
+| askCmdr        |     78 |              2 |       123 |      0 |   203 |   39% |
 | commandPalette |      3 |              2 |         1 |      0 |     6 |   83% |
 | commands       |    148 |              1 |        59 |      0 |   208 |   72% |
 | common         |      1 |              1 |         4 |      0 |     6 |   33% |
@@ -36,7 +36,7 @@ uncoupled, and 155 are native surfaces a webview capture cannot reach.
 | fileOperations |    107 |             52 |        67 |      0 |   226 |   70% |
 | goToPath       |      5 |              5 |         2 |      0 |    12 |   83% |
 | indexing       |     33 |             16 |        17 |      0 |    66 |   74% |
-| licensing      |     48 |             35 |        25 |      0 |   108 |   77% |
+| licensing      |     48 |             35 |        26 |      0 |   109 |   76% |
 | lowDiskSpace   |      0 |              0 |         5 |      0 |     5 |    0% |
 | main           |      7 |              0 |        28 |      2 |    37 |   19% |
 | menu           |      0 |              0 |         0 |    153 |   153 |    0% |
@@ -48,10 +48,10 @@ uncoupled, and 155 are native surfaces a webview capture cannot reach.
 | queue          |     25 |             10 |         1 |      0 |    36 |   97% |
 | search         |      9 |             48 |         0 |      0 |    57 |  100% |
 | selection      |     14 |              0 |         1 |      0 |    15 |   93% |
-| servers        |     48 |             19 |        33 |      0 |   100 |   67% |
-| settings       |    343 |             38 |       244 |      0 |   625 |   61% |
+| servers        |     48 |             19 |        35 |      0 |   102 |   66% |
+| settings       |    343 |             39 |       244 |      0 |   626 |   61% |
 | shortcuts      |     31 |             28 |         0 |      0 |    59 |  100% |
-| suggestedOps   |      0 |              0 |        29 |      0 |    29 |    0% |
+| suggestedOps   |      0 |              0 |        33 |      0 |    33 |    0% |
 | transfer       |      2 |             11 |         0 |      0 |    13 |  100% |
 | ui             |     13 |              0 |        10 |      0 |    23 |   57% |
 | updates        |      5 |             13 |         0 |      0 |    18 |  100% |

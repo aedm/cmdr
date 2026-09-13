@@ -2277,7 +2277,9 @@
   },
   "settings.askCmdr.memory.notAllForgotten": "Cmdr couldn’t delete every note. Open the memory folder to remove the rest.",
   "@settings.askCmdr.memory.notAllForgotten": {
-    "description": "Line shown in Ask Cmdr settings when \"Forget everything\" stopped before deleting all of the assistant's notes (the disk refused a delete), so some notes may remain. \"Open the memory folder\" refers to the button just above it, labeled \"Open memory folder\": keep the wording recognizably the same action. The apostrophe is U+2019."
+    "description": "Line shown in Ask Cmdr settings when \"Forget everything\" stopped before deleting all of the assistant's notes (the disk refused a delete), so some notes may remain. \"Open the memory folder\" refers to the button just above it, labeled \"Open memory folder\": keep the wording recognizably the same action. The apostrophe is U+2019.",
+    "screenshot": "settings-ai-ask-cmdr.png",
+    "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
   },
   "settings.askCmdr.spend.title": "Spending",
   "@settings.askCmdr.spend.title": {
