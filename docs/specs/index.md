@@ -160,6 +160,12 @@ below is met.
 Deferred future work. Unchecked by default; the folder name is the status. Each entry notes what shipped and what's
 left, so the durable intent survives the wipe.
 
+- [ ] 2026-09-13 `later/warn-triage-follow-ups.md` - **The low-severity half of the frontend warn triage.** Frontend
+      warns reach prod logs now, and the triage's high- and medium-severity findings were fixed. Parked here: eight
+      small decisions (notification permission, hotkey restore, a dead MTP flow, bulk rename's 5 s budget, the
+      onboarding download toast, Approve before rows load, the Linux settings link, MCP consent direction), three fix
+      batches (bulk rename review failures, viewer and notifications, dead catches), and a list of S-sized leaks,
+      promotions, and hardening. Each item carries a severity, a size, and the file to start from.
 - [ ] 2026-09-02 `later/inspect-file-follow-ups.md` - **What Ask Cmdr's `inspect_file` still owes.** The tool shipped
       whole: up to 200 paths a call on the viewer's own backends, `find` across text and PDFs, PDF text by page with
       title and author, archive listings and files inside them, EXIF with GPS, every cut visible, and the consent copy
