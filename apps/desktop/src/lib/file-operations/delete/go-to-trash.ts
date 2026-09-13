@@ -27,6 +27,7 @@ import {
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
 import { getAppLogger } from '$lib/logging/logger'
+import { asMutationError } from '../mutation-error'
 
 const log = getAppLogger('fileOperations')
 
@@ -98,9 +99,25 @@ export async function goToTrashedItems(
   }
 }
 
-/** Resolve `path`'s volume trash and open it, or say the volume hasn't got one. */
+/**
+ * Resolve `path`'s volume trash and open it, or say the volume hasn't got one.
+ *
+ * Never throws: the toast fires this with `void`, where a rejection escapes as an
+ * unhandled one and auto-sends an error report for a slow drive.
+ */
 async function openTrashDirFor(explorer: PaneRevealAPI, path: string): Promise<void> {
-  const trashDir = await getTrashDir(path)
+  let trashDir: string | null
+  try {
+    trashDir = await getTrashDir(path)
+  } catch (error) {
+    // `timedOut` is the realistic one: a slow or sleeping volume that didn't answer in 2 s.
+    log.info("Couldn't look up the trash for {path}: {reason}", {
+      path,
+      reason: asMutationError(error)?.type ?? String(error),
+    })
+    addToast(tString('fileExplorer.navigation.locationUnreachableToast'), { level: 'info', id: NO_TRASH_TOAST_ID })
+    return
+  }
   if (!trashDir) {
     log.info('No trash directory for {path}; nowhere to go', { path })
     addToast(tString('fileOperations.trash.noTrashHere'), { level: 'info', id: NO_TRASH_TOAST_ID })
@@ -127,7 +144,17 @@ async function firstTrashedItemPath(operationId: string): Promise<{ dir: string;
     return null
   }
 
-  const detail = await getOperationLogDetail(operationId, ITEM_PAGE_SIZE, 0)
+  let detail: Awaited<ReturnType<typeof getOperationLogDetail>>
+  try {
+    detail = await getOperationLogDetail(operationId, ITEM_PAGE_SIZE, 0)
+  } catch (error) {
+    // The volume's trash is still the right place to go; only the cursor is lost.
+    log.info("Couldn't read where {operationId} put its items; opening the volume trash: {error}", {
+      operationId,
+      error: String(error),
+    })
+    return null
+  }
   const landed = detail?.items.find((item) => item.rowRole === 'rollbackUnit' && item.destPath !== null)
   if (!landed?.destPath) return null
 

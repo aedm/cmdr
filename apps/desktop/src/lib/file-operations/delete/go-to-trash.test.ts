@@ -12,6 +12,7 @@ import { goToTrash, goToTrashedItems } from './go-to-trash'
 import type { Location, OperationLogDetail } from '$lib/tauri-commands'
 import type { ToastOptions } from '$lib/ui/toast/toast-store.svelte'
 import type { PaneRevealAPI } from '$lib/file-explorer/navigation/navigate-and-select'
+import { MutationFailure } from '$lib/file-operations/mutation-error'
 
 const {
   getTrashDir,
@@ -176,5 +177,30 @@ describe('goToTrashedItems', () => {
   it('is a no-op without an explorer (HMR or pre-mount)', async () => {
     await goToTrashedItems(undefined, 'op-1', '/Users/me/Documents')
     expect(whenOperationSettled).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the source volume trash when the journal read fails', async () => {
+    // The toast fires this with `void`, so a throw here would escape as an
+    // unhandled rejection, log at error, and auto-send a report.
+    getOperationLogDetail.mockRejectedValue(new Error('database is locked'))
+    const explorer = explorerStub()
+
+    await expect(goToTrashedItems(explorer, 'op-1', '/Users/me/Documents')).resolves.toBeUndefined()
+
+    expect(getTrashDir).toHaveBeenCalledWith('/Users/me/Documents')
+    expect(navigateToDirInBestPane).toHaveBeenCalledWith(explorer, TRASH_LOCATION)
+  })
+
+  it("says the drive can't be reached when the trash lookup times out, and never throws", async () => {
+    getOperationLogDetail.mockResolvedValue(detail([trashedItem(null)]))
+    getTrashDir.mockRejectedValue(new MutationFailure({ type: 'timedOut' }))
+
+    await expect(goToTrashedItems(explorerStub(), 'op-1', '/Users/me/Documents')).resolves.toBeUndefined()
+
+    expect(navigateToDirInBestPane).not.toHaveBeenCalled()
+    expect(addToast).toHaveBeenCalledWith(
+      'fileExplorer.navigation.locationUnreachableToast',
+      expect.objectContaining({ level: 'info' }),
+    )
   })
 })
