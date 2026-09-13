@@ -136,8 +136,9 @@ Mechanics (`settings-store.ts`):
   default-equal choices and re-opens the leak.
 - **`getStore()` does not seed registry defaults into the plugin store**, so no save can flush a default into the file.
 - **`saveToStore()` writes exactly the explicit keys** and prunes any registry key that's persisted but no longer
-  explicit (e.g. after a reset). Non-registry/orphan keys are left alone (a `deleteRawStoreKeys` migration owns those,
-  and a not-yet-run raw-key migration must still be able to read them).
+  explicit (e.g. after a reset). Non-registry keys are left alone: a key that leaves the registry needs a
+  `migrateSettings()` case that deletes it. A failed write is retried once, and the retry re-runs the whole write (an
+  attempt can throw partway through the `set` loop), so `forceSave()` answering `true` means every explicit key landed.
 - **`resetSetting()` UNSETS** (drops from the ledger, prunes on save); it does not write the default back.
 - **`migrateSettings()` saves only when it changed a value or the file is already populated**, so a brand-new install
   writes nothing until an actor sets something. Consequence: migrations re-run each launch until the first real save

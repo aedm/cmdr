@@ -27,8 +27,11 @@ import { getDefaultValue } from './settings-registry'
 // `vi.resetModules()` to stand in for the on-disk `settings.json`.
 const disk = vi.hoisted(() => new Map<string, unknown>())
 
-/** Flipped by the `forceSave` test to make the fake disk reject every write. */
-const diskState = vi.hoisted(() => ({ saveFails: false }))
+/**
+ * Flipped by the `forceSave` tests: `saveFails` makes the fake disk reject every save, and
+ * `setFailsOnceFor` makes one key's next `set` throw, partway through a save's write loop.
+ */
+const diskState = vi.hoisted(() => ({ saveFails: false, setFailsOnceFor: null as string | null }))
 
 vi.mock('@tauri-apps/plugin-store', () => ({
   load: vi.fn((_path: string, opts?: { defaults?: Record<string, unknown> }) => {
@@ -39,6 +42,10 @@ vi.mock('@tauri-apps/plugin-store', () => ({
     return Promise.resolve({
       get: (key: string) => Promise.resolve(disk.get(key)),
       set: (key: string, value: unknown) => {
+        if (diskState.setFailsOnceFor === key) {
+          diskState.setFailsOnceFor = null
+          return Promise.reject(new Error('store hiccup'))
+        }
         disk.set(key, value)
         return Promise.resolve()
       },
@@ -90,6 +97,7 @@ function persistedSettingKeys(): string[] {
 beforeEach(() => {
   disk.clear()
   diskState.saveFails = false
+  diskState.setFailsOnceFor = null
   vi.resetModules()
 })
 
@@ -196,6 +204,21 @@ describe('sparse settings persistence', () => {
 
     diskState.saveFails = false
     expect(await store.forceSave()).toBe(true)
+  })
+
+  it('(h2) a write that throws partway through is retried in full, so a true means every key landed', async () => {
+    // Pre-fix the retry only re-ran `store.save()`, which flushed the keys set before the
+    // throw and reported `true` for the ones after it that never reached the store.
+    const store = await loadStore()
+    await store.initializeSettings()
+
+    store.setSetting('developer.mcpEnabled', true)
+    store.setSetting('developer.verboseLogging', true)
+    diskState.setFailsOnceFor = 'developer.verboseLogging'
+
+    expect(await store.forceSave()).toBe(true)
+    expect(disk.get('developer.mcpEnabled')).toBe(true)
+    expect(disk.get('developer.verboseLogging')).toBe(true)
   })
 
   it('(i) a hidden-files choice survives the default, an untouched store follows it', async () => {

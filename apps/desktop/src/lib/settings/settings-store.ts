@@ -710,48 +710,22 @@ function scheduleSave(): void {
 /**
  * Writes the sparse explicit set to disk. Returns whether the write landed, so
  * `forceSave()` can report it; the debounced path ignores the result.
+ *
+ * A failed attempt is retried once, and the retry re-runs the WHOLE write: an
+ * attempt can throw partway through the `set` loop, so re-flushing alone would
+ * report keys that never reached the store.
  */
 async function saveToStore(): Promise<boolean> {
   log.debug('saveToStore() called')
 
   try {
-    const store = await getStore()
-    const existingKeys = new Set(await store.keys())
-
-    // Sparse write: persist exactly the explicitly-set keys (structural — driven
-    // by which mutator ran, NEVER a value compare against the default), and drop
-    // any registry key that's persisted but no longer explicit (e.g. after a
-    // reset) so it resolves back to the registry default. Non-registry/orphan
-    // keys are left untouched; a dedicated migration (`deleteRawStoreKeys`) owns
-    // those, and a not-yet-run raw-key migration must still be able to read them.
-    let savedCount = 0
-    let removedCount = 0
-
-    for (const def of settingsRegistry) {
-      const id = def.id
-      if (explicitlySet.has(id)) {
-        await store.set(id, settingsCache.get(id))
-        savedCount++
-      } else if (existingKeys.has(id)) {
-        await store.delete(id)
-        removedCount++
-      }
-    }
-
-    await store.set('_schemaVersion', SCHEMA_VERSION)
-    await store.save()
-    log.info('Settings saved: {saved} explicit values, {removed} reset to default', {
-      saved: savedCount,
-      removed: removedCount,
-    })
+    await writeExplicitSettings()
     return true
   } catch (error) {
     log.error('Failed to save settings: {error}', { error })
-    // Retry once
     try {
       log.debug('Retrying save...')
-      const store = await getStore()
-      await store.save()
+      await writeExplicitSettings()
       log.info('Retry save succeeded')
       return true
     } catch (retryError) {
@@ -759,6 +733,38 @@ async function saveToStore(): Promise<boolean> {
       return false
     }
   }
+}
+
+async function writeExplicitSettings(): Promise<void> {
+  const store = await getStore()
+  const existingKeys = new Set(await store.keys())
+
+  // Sparse write: persist exactly the explicitly-set keys (structural — driven
+  // by which mutator ran, NEVER a value compare against the default), and drop
+  // any registry key that's persisted but no longer explicit (e.g. after a
+  // reset) so it resolves back to the registry default. Non-registry keys are
+  // left untouched: this loop only knows registered ids, so a key that left the
+  // registry needs a `migrateSettings()` case that deletes it.
+  let savedCount = 0
+  let removedCount = 0
+
+  for (const def of settingsRegistry) {
+    const id = def.id
+    if (explicitlySet.has(id)) {
+      await store.set(id, settingsCache.get(id))
+      savedCount++
+    } else if (existingKeys.has(id)) {
+      await store.delete(id)
+      removedCount++
+    }
+  }
+
+  await store.set('_schemaVersion', SCHEMA_VERSION)
+  await store.save()
+  log.info('Settings saved: {saved} explicit values, {removed} reset to default', {
+    saved: savedCount,
+    removed: removedCount,
+  })
 }
 
 // ============================================================================
