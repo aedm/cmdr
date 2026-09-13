@@ -9,10 +9,6 @@ reuse, model registry, and dev commands.
 `settings-registry.ts`. The main layout calls `configureAi(...)` after `initSettingsApplier()` to push config to the
 backend (the API key is fetched separately from the OS secret store).
 
-The flat legacy keys (`ai.openaiApiKey`, `ai.openaiBaseUrl`, `ai.openaiModel`) are gone from the registry.
-`ai-config.ts::migrateLegacyOpenAiKeys` lifts any stranded plaintext `ai.openaiApiKey` into the secret store and deletes
-all three on startup.
-
 The settings-applier listens for `ai.provider` / `ai.cloudProvider` / `ai.cloudProviderConfigs` changes and pushes fresh
 config to Rust via `lib/settings/ai-config.ts::pushConfigToBackend()`.
 

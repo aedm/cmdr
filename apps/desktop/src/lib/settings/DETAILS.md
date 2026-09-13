@@ -347,9 +347,8 @@ split-layout rule, and the `SettingPasswordInput` store-driven vs controlled mod
   item checked from the same persisted key), and the reverse direction, a menu click arriving as `settings-changed`,
   writes the setting from `routes/(main)/listener-setup.ts`. Pinned by `settings-applier-show-hidden.test.ts`.
 - **ai-config.ts**: AI configuration plumbing shared by Settings, the onboarding wizard, and the applier listener.
-  Exports `pushConfigToBackend()` (read-fresh push of the current AI config to Rust) and `migrateApiKeysFromSettings()`
-  (one-time lift of pre-launch `apiKey` strings from `settings.json` into the OS secret store). Lives here rather than
-  under `sections/` so it isn't tied to a UI subcomponent path.
+  Exports `pushConfigToBackend()` (read-fresh push of the current AI config to Rust). Lives here rather than under
+  `sections/` so it isn't tied to a UI subcomponent path.
 - **network-settings.ts**: Network-specific setting helpers (proxy config, SMB auth defaults)
 - **settings-window.ts**: Logic for opening/focusing/closing the settings window (Tauri window management). Takes a
   required `SettingsSurface` first (see § "Every open funnels through `openSettingsWindow`" below) plus an optional

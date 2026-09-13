@@ -10,7 +10,8 @@ via a typed API. Up: `apps/desktop/CLAUDE.md`, sibling: `../viewer/CLAUDE.md`.
 - `command-dispatch.ts` + `command-handlers/` are the dispatch core and its family-grouped handlers; `listener-setup.ts`
   holds the menu / MCP-dialog / window-focus listeners; `window-services.ts` starts and stops every subscription the
   window holds for its lifetime.
-- Supporting modules: `startup-gates.ts`, `mcp-listeners.ts`, `mcp-nav-landing.ts`, `mcp-volume-select.ts`,
+- Supporting modules: `startup-gates.ts`, `init-steps.ts` (the layout's startup steps, each failure isolated),
+  `mcp-listeners.ts`, `mcp-nav-landing.ts`, `mcp-volume-select.ts`,
   `explorer-api.ts`, `dispatch-dedup.ts`, `dialog-command-gate.ts`, `global-keydown.ts`, `global-contextmenu.ts`.
 
 ## Must-knows

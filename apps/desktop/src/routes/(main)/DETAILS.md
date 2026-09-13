@@ -27,6 +27,11 @@ here:
 - **`global-contextmenu.ts` is the same split for the right-click**: `resolveGlobalContextMenuAction(event)` is pure
   (`native-text-menu` / `suppress`), `+page.svelte` runs `stopPropagation` or `preventDefault`. § Right-click ownership.
 - **`startup-gates.ts` owns what a launch SHOWS.** § Startup gates.
+- **`init-steps.ts` runs `+layout.svelte`'s startup as a list of named steps**: in order, each awaited before the next,
+  each in its own catch that logs the step's name at error. A step handles its own outside failures, so reaching that
+  catch means Cmdr broke, and it still costs only that step. A bare `await` in the old sequence once skipped every step
+  after a rejecting one on every launch (the AI config push, shortcuts, the MCP bridges, the update checker, AI state).
+  ❌ A new startup step goes into the list, never as a bare `await` after `runInitSteps`.
 - **`window-services.ts` owns the window's LIFETIME subscriptions**, in two start phases whose order is load-bearing.
   `startEarlyWindowServices()` runs at the very top of `onMount` and holds only fire-and-forget subscribers (the menu
   gate, the suggestions badge, the Ask Cmdr turn stream, the wake indicator): each of them can miss events that arrive

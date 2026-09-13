@@ -14,7 +14,7 @@ llama-server process, inference client with provider routing).
   `showAiTranslateErrorToast(err)` (the one impure wrapper).
 
 No circular dependency: `ai-state.svelte.ts` never imports from the sync or content modules. Both are wired in
-`(main)/+layout.svelte`: `initAiToastSync()` synchronously in `onMount`, `initAiState()` inside the async IIFE.
+`(main)/+layout.svelte`: `initAiToastSync()` synchronously in `onMount`, `initAiState()` as its last startup step.
 
 ## Must-knows
 
@@ -52,5 +52,5 @@ No circular dependency: `ai-state.svelte.ts` never imports from the sync or cont
 - **Folder suggestions degrade gracefully**: `getFolderSuggestions()` returns `[]` after a 10s timeout; the UI hides the
   section with no error.
 
-Full details (settings registry + legacy-key migration, wizard reuse of the cloud pipeline, model registry, download
+Full details (settings registry and config push, wizard reuse of the cloud pipeline, model registry, download
 resumption, dev commands): `DETAILS.md`.

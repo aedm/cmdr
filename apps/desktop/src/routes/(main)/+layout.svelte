@@ -37,7 +37,8 @@
         type CrashReport,
     } from '$lib/tauri-commands'
     import { getSetting } from '$lib/settings'
-    import { migrateApiKeysFromSettings, pushConfigToBackend } from '$lib/settings/ai-config'
+    import { pushConfigToBackend } from '$lib/settings/ai-config'
+    import { runInitSteps } from './init-steps'
     import { initAiState } from '$lib/ai/ai-state.svelte'
     import { initAiToastSync } from '$lib/ai/ai-toast-sync.svelte'
     import { addToast } from '$lib/ui/toast'
@@ -205,97 +206,121 @@
         // with the offending activeElement so we can trace the culprit.
         initFocusWatchdog()
 
-        // Initialize all async setup
-        void (async () => {
-            try {
-                // Initialize reactive settings for UI components
-                await initReactiveSettings()
+        // All async setup, as ordered steps. Each is awaited before the next and runs inside
+        // its own catch (`init-steps.ts`), so one step that throws never skips the rest.
+        void runInitSteps([
+            {
+                name: 'settings',
+                run: async () => {
+                    try {
+                        // Initialize reactive settings for UI components
+                        await initReactiveSettings()
 
-                // Initialize settings and apply them to CSS variables
-                await initSettingsApplier()
+                        // Initialize settings and apply them to CSS variables
+                        await initSettingsApplier()
 
-                // Subscribe to volume-tint settings so FilePane bg updates live
-                initVolumeTints()
-            } finally {
-                // Settings are now loaded, applied to CSS, and volume tints are wired, so the
-                // file-explorer subtree can mount without any pre-init getSetting() reads (and
-                // without a flash of default git chip / volume tint). In `finally` so a settings
-                // load failure (which logs its own error in initializeSettings) still mounts the
-                // page on registry defaults rather than leaving a blank window. Everything below
-                // is independent of the children mounting, so it keeps running in the background.
-                settingsReady = true
-            }
-
-            // Log once whether this WebKit supports the modern CSS we lean on
-            // (`color-mix()`). Old Safari versions on macOS 12 Monterey fall
-            // back to the static declarations in `app.css`; surfacing this in
-            // logs lets us spot affected users in error reports without
-            // depending on UA-string sniffing.
-            logWebkitCompat()
-
-            // One-time migration of pre-launch testers' plaintext API keys from settings.json to
-            // the OS secret store. TODO: remove this call after 2026-09-01 (see function comment).
-            // Awaited so the config push below reads the freshly-migrated key from the secret store.
-            await migrateApiKeysFromSettings()
-
-            // Push AI config to the backend (triggers server start if provider is local + model
-            // installed). Goes through the single canonical `pushConfigToBackend()` — the same
-            // read-fresh pusher the settings-applier and onboarding use — so there's ONE place that
-            // reads `ai.provider` for the backend. Settings are already loaded by this point
-            // (initReactiveSettings → initializeSettings above), so the read returns real values.
-            void pushConfigToBackend()
-
+                        // Subscribe to volume-tint settings so FilePane bg updates live
+                        initVolumeTints()
+                    } finally {
+                        // Settings are now loaded, applied to CSS, and volume tints are wired, so
+                        // the file-explorer subtree can mount without any pre-init getSetting()
+                        // reads (and without a flash of default git chip / volume tint). In
+                        // `finally` so a settings load failure (which logs its own error in
+                        // initializeSettings) still mounts the page on registry defaults rather
+                        // than leaving a blank window. The steps below are independent of the
+                        // children mounting, so they keep running in the background.
+                        settingsReady = true
+                    }
+                },
+            },
+            {
+                // Log once whether this WebKit supports the modern CSS we lean on
+                // (`color-mix()`). Old Safari versions on macOS 12 Monterey fall
+                // back to the static declarations in `app.css`; surfacing this in
+                // logs lets us spot affected users in error reports without
+                // depending on UA-string sniffing.
+                name: 'webkitCompat',
+                run: logWebkitCompat,
+            },
+            {
+                // Push AI config to the backend (triggers server start if provider is local + model
+                // installed). Goes through the single canonical `pushConfigToBackend()` — the same
+                // read-fresh pusher the settings-applier and onboarding use — so there's ONE place
+                // that reads `ai.provider` for the backend. Settings are already loaded by this point
+                // (initReactiveSettings → initializeSettings above), so the read returns real values.
+                name: 'aiConfigPush',
+                run: () => {
+                    void pushConfigToBackend()
+                },
+            },
             // Read system accent color from macOS and listen for changes
-            await initAccentColor()
-
-            await initReduceTransparency()
-
-            // Apply compounded text size (system Accessibility × user setting).
-            // This is the window that renders Brief mode, so it's the one that
-            // measures font metrics; the others opt out by default.
-            await initTextSize({ measuresFontMetrics: true })
-
+            { name: 'accentColor', run: initAccentColor },
+            { name: 'reduceTransparency', run: initReduceTransparency },
+            {
+                // Apply compounded text size (system Accessibility × user setting).
+                // This is the window that renders Brief mode, so it's the one that
+                // measures font metrics; the others opt out by default.
+                name: 'textSize',
+                run: () => initTextSize({ measuresFontMetrics: true }),
+            },
             // Initialize keyboard shortcuts store (loads custom shortcuts from disk)
-            await initializeShortcuts()
-
+            { name: 'shortcuts', run: initializeShortcuts },
             // Set up MCP shortcuts listener (allows MCP tools to modify shortcuts)
-            await setupMcpShortcutsListener()
-
+            { name: 'mcpShortcutsListener', run: setupMcpShortcutsListener },
             // Set up MCP settings bridge (allows MCP tools to query/modify settings)
-            await setupMcpMainBridge()
-
+            { name: 'mcpMainBridge', run: setupMcpMainBridge },
             // Set up the restricted-settings bridge (persists viewer-originated
             // setting changes; the viewer window has no store capability)
-            await setupRestrictedSettingsBridge()
+            { name: 'restrictedSettingsBridge', run: setupRestrictedSettingsBridge },
+            {
+                name: 'mtpListeners',
+                run: () => {
+                    // Listen for MTP connection errors
+                    mtpExclusiveUnlistenPromise = onMtpExclusiveAccessError(handleMtpExclusiveAccessError)
+                    mtpPermissionUnlistenPromise = onMtpPermissionError(handleMtpPermissionError)
 
-            // Listen for MTP connection errors
-            mtpExclusiveUnlistenPromise = onMtpExclusiveAccessError(handleMtpExclusiveAccessError)
-            mtpPermissionUnlistenPromise = onMtpPermissionError(handleMtpPermissionError)
-
-            // Listen for MTP device connections and show info toast
-            mtpConnectedUnlistenPromise = onMtpDeviceConnected((event) => {
-                if (!getSetting('fileOperations.mtpConnectionWarning')) return
-                addToast(MtpConnectedToastContent, {
-                    id: 'mtp-connected',
-                    dismissal: 'persistent',
-                    level: 'info',
-                    props: { deviceName: event.deviceName },
-                })
-            })
-
-            // Check for pending crash reports from a previous session
-            void checkForPendingCrashReport()
-
-            // Listen for Flow B auto-send events so we can show the confirmation toast.
-            // Mounted alongside the Flow A `ErrorReportDialog` for symmetry.
-            void initAutoSendToastListener()
-
-            // Start checking for updates
-            updateCleanup = startUpdateChecker()
-
-            // Initialize AI state and event listeners (shows offer toast if eligible)
-            aiCleanup = await initAiState()
-        })()
+                    // Listen for MTP device connections and show info toast
+                    mtpConnectedUnlistenPromise = onMtpDeviceConnected((event) => {
+                        if (!getSetting('fileOperations.mtpConnectionWarning')) return
+                        addToast(MtpConnectedToastContent, {
+                            id: 'mtp-connected',
+                            dismissal: 'persistent',
+                            level: 'info',
+                            props: { deviceName: event.deviceName },
+                        })
+                    })
+                },
+            },
+            {
+                // Check for pending crash reports from a previous session
+                name: 'crashReportCheck',
+                run: () => {
+                    void checkForPendingCrashReport()
+                },
+            },
+            {
+                // Listen for Flow B auto-send events so we can show the confirmation toast.
+                // Mounted alongside the Flow A `ErrorReportDialog` for symmetry.
+                name: 'autoSendToastListener',
+                run: () => {
+                    void initAutoSendToastListener()
+                },
+            },
+            {
+                // Start checking for updates
+                name: 'updateChecker',
+                run: () => {
+                    updateCleanup = startUpdateChecker()
+                },
+            },
+            {
+                // Initialize AI state and event listeners (shows offer toast if eligible)
+                name: 'aiState',
+                run: async () => {
+                    aiCleanup = await initAiState()
+                },
+            },
+        ])
     })
 
     onDestroy(() => {

@@ -38,9 +38,7 @@ export type { SettingsSection } from './settings-registry'
 
 // Store
 export {
-  deleteRawStoreKeys,
   forceSave,
-  getRawStoreValue,
   getSetting,
   initializeSettings,
   isModified,
