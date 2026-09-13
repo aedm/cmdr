@@ -429,12 +429,16 @@ unmounts the dialog partway through, and the async function keeps running.
   2026-09-12).
 - **The rule both starts follow.** Read the props the start needs BEFORE the first await. After each await, check the
   plain-`let` `destroyed` flag: a listener that registered after teardown goes straight back, no scan starts, and a
-  preview whose id lands after teardown is cancelled right there, since teardown had no id to free.
-  `transfer-scan-state` also cancels and restarts its scan while the dialog stays open (the Copy/Move toggle around a
-  same-volume move), so its check is wider: destroyed, OR overtaken by a newer start generation. The backend leaves a
-  preview an operation already claimed alone, so that cancel can't hurt a confirmed operation. Pinned by
-  `delete/DeleteDialog.early-close.test.ts` and `transfer/transfer-scan-state.svelte.test.ts`.
-- **Why the fix lives in the dialogs, not the parents.** Deferring the null doesn't close the gap: the read comes an IPC
-  round trip later, well past the microtask `handleTransferConfirm` already waits, and E2E logs still showed the
-  transfer twin after `dialog confirm`. Keeping the props object alive instead would pin a possibly 50k-path selection
-  until the next open, in two parents.
+  preview whose id lands after teardown is cancelled right there, since teardown had no id to free. `TransferDialog`'s
+  mount resolves the home dir BEFORE it starts the scan, so it checks the flag there too: a close in that window would
+  otherwise land the start's own first reads after the props are gone. `transfer-scan-state` also cancels and restarts
+  its scan while the dialog stays open (the Copy/Move toggle around a same-volume move), so its check is wider:
+  destroyed, OR overtaken by a newer start generation. The backend leaves a preview an operation already claimed alone,
+  so that cancel can't hurt a confirmed operation. Pinned by `delete/DeleteDialog.early-close.test.ts`,
+  `transfer/transfer-scan-state.svelte.test.ts`, and
+  `../file-explorer/pane/dialog-state.transfer-confirm.svelte.test.ts` (a confirm at each point in the transfer dialog's
+  startup, through the real `DialogManager`).
+- **Why the fix lives in the dialogs, not the parents.** The reads come an IPC round trip after the close, so no
+  deferred null can outrun them; both parents null the props object in the same tick as a close, confirms included
+  (`handleTransferConfirm` and `handleDeleteConfirm` alike). Keeping the object alive would pin a possibly 50k-path
+  selection until the next open, in two parents.

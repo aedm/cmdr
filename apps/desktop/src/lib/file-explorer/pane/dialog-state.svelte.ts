@@ -364,10 +364,7 @@ export function createDialogState(deps: DialogStateDeps) {
       })
 
       showTransferDialog = false
-      // Defer nulling props so onDestroy fires first (avoids reactive reads of nulled props)
-      queueMicrotask(() => {
-        transferDialogProps = null
-      })
+      transferDialogProps = null
     },
 
     handleTransferCancel() {

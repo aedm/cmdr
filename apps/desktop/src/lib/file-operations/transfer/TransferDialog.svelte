@@ -406,6 +406,11 @@
 
         // Focus and select the path input
         await tick()
+        // Closed while resolving the home dir (an MCP `dialog confirm`, or a quick
+        // Escape): the props are already gone, so start nothing. The scan start's
+        // own reads would throw. `../DETAILS.md` § "A dialog's async start can
+        // outlive it".
+        if (destroyed) return
         pathInputRef?.focus()
         pathInputRef?.select()
 
