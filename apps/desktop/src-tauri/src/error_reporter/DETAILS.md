@@ -194,12 +194,15 @@ calling the network:
 
 `auto_sent::amend` carries the same two short-circuits, for the same reasons.
 
-On a non-2xx, [`upload`] returns `server returned <status>: <body>`, folding in the api
-server's own `{"error": "..."}` explanation (trimmed to 200 chars so a stray HTML error
-page can't flood the toast). The detail is displayed only, never branched on. A bare
-status code once hid a payload bug for a whole release: the server 400'd every note-less
-report over a `userNote: null` vs `undefined` mismatch, and the toast said only
-`server returned 400 Bad Request`, which named nothing actionable.
+[`upload`] and `auto_sent::amend` fail with `crate::server_request::ServerRequestError`, the
+classification every request to the api server shares: unreachable, timed out, refused with a
+status, a 2xx whose body doesn't parse, or a request Cmdr couldn't build. A refusal keeps the api
+server's own `{"error": "..."}` explanation in `detail` (trimmed to 200 chars), for the log: a bare
+status code once hid a payload bug for a whole release, when the server 400'd every note-less
+report over a `userNote: null` vs `undefined` mismatch and all anyone saw was
+`server returned 400 Bad Request`. ❌ No `detail` reaches a person, and nothing branches on it:
+`send_error_report` and `amend_error_report` wrap the failure in `ErrorReportSendError`, and the
+dialog words the variant from the catalog (`apps/desktop/src/lib/error-reporter/error-report-send-error.ts`).
 
 Debug builds **do** upload (that's the point of "Send error report" working in dev). The
 manifest carries `buildMode: "debug"`, which the api server reads to prefix the Discord
@@ -447,8 +450,8 @@ keeping their own copies of the host.
 Amending is **two steps**, because unlike `POST /error-report` the endpoint is per-report and the caller can't build
 the URL until it knows the id:
 
-1. `auto_sent::amend_target()` resolves the id and the credential in ONE read of the stash, or says why there's nothing
-   to amend. One read, not two, so an auto-send landing mid-amend can't pair report A's URL with report B's credential.
+1. `auto_sent::amend_target()` resolves the id and the credential in ONE read of the stash, or answers `None` when
+   there's nothing to amend (the command turns that into `ErrorReportSendError::NotAmendable`). One read, not two, so an auto-send landing mid-amend can't pair report A's URL with report B's credential.
 2. `amend_error_report` turns that id into a URL with `error_report_amend_url`, and `auto_sent::amend(target, url, …)`
    spends it.
 

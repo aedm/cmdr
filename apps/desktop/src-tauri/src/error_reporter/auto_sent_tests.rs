@@ -9,7 +9,7 @@
 //! The stash is process-global, so every test here holds `auto_sent::TEST_LOCK`.
 
 use super::auto_sent::{self, AutoSentPreview};
-use super::{AmendKey, BuildMode, BundleKind, BundleManifest, LogLevelSnapshot, ResolvedSettings};
+use super::{AmendKey, BuildMode, BundleKind, BundleManifest, LogLevelSnapshot, ResolvedSettings, ServerRequestError};
 use serde_json::{Value, json};
 use std::future::Future;
 use std::sync::MutexGuard;
@@ -239,7 +239,7 @@ fn an_amend_omits_a_note_and_an_address_the_user_did_not_give() {
 }
 
 #[test]
-fn a_rejected_amend_folds_the_servers_own_explanation_into_the_message() {
+fn a_rejected_amend_keeps_the_status_and_the_servers_own_explanation() {
     let _lock = locked();
     block_on(async {
         let server = stashed_report_and_server("key-one").await;
@@ -251,22 +251,24 @@ fn a_rejected_amend_folds_the_servers_own_explanation_into_the_message() {
 
         let target = auto_sent::amend_target().expect("a stashed report with a credential");
         let url = amend_url(&server, &target.id);
-        let message = auto_sent::amend(target, &url, Some("a note".to_string()), None)
+        let err = auto_sent::amend(target, &url, Some("a note".to_string()), None)
             .await
-            .expect_err("a 403 is an error");
+            .expect_err("a 403 is a refusal");
 
-        // A bare status code once hid a payload bug for a whole release; `upload` folds the
-        // server's own words in for the same reason.
-        assert!(
-            message.contains("amend key does not match"),
-            "the server's explanation must survive into the message: {message}",
+        // A bare status code once hid a payload bug for a whole release; `upload` keeps the
+        // server's own words for the same reason. They're for the log, never for branching.
+        assert_eq!(
+            err,
+            ServerRequestError::Refused {
+                status: 403,
+                detail: r#"{"error":"amend key does not match"}"#.to_string(),
+            }
         );
-        assert!(message.contains("403"), "and so must the status: {message}");
     });
 }
 
 #[test]
-fn a_rejected_amend_with_nothing_to_say_reports_the_status_alone() {
+fn a_rejected_amend_with_nothing_to_say_carries_the_status_alone() {
     let _lock = locked();
     block_on(async {
         let server = stashed_report_and_server("key-one").await;
@@ -274,11 +276,17 @@ fn a_rejected_amend_with_nothing_to_say_reports_the_status_alone() {
 
         let target = auto_sent::amend_target().expect("a stashed report with a credential");
         let url = amend_url(&server, &target.id);
-        let message = auto_sent::amend(target, &url, Some("a note".to_string()), None)
+        let err = auto_sent::amend(target, &url, Some("a note".to_string()), None)
             .await
-            .expect_err("a 500 is an error");
+            .expect_err("a 500 is a refusal");
 
-        assert!(message.contains("500"), "got {message}");
+        assert_eq!(
+            err,
+            ServerRequestError::Refused {
+                status: 500,
+                detail: String::new(),
+            }
+        );
     });
 }
 
@@ -315,7 +323,7 @@ fn a_second_amend_reuses_the_same_credential_and_is_an_ordinary_request() {
 #[test]
 fn amending_with_nothing_auto_sent_says_so_without_calling_out() {
     let _lock = locked();
-    assert!(auto_sent::amend_target().is_err(), "no stash, nothing to amend");
+    assert!(auto_sent::amend_target().is_none(), "no stash, nothing to amend");
 }
 
 #[test]
@@ -324,7 +332,7 @@ fn amending_a_report_with_no_credential_says_so_without_calling_out() {
     auto_sent::record("ERR-AB23X".to_string(), None, preview("ERR-AB23X"));
 
     assert!(
-        auto_sent::amend_target().is_err(),
+        auto_sent::amend_target().is_none(),
         "no credential, so there's no request to make"
     );
 }

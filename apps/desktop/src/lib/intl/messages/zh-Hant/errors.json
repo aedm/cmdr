@@ -1717,6 +1717,26 @@
   "@errors.mutation.trashRefused": {
     "sourceHash": "6d8a1b6"
   },
+  "errors.serverRequest.unreachable": "Cmdr 無法連線到它的伺服器。請檢查網路連線，然後再試一次。",
+  "@errors.serverRequest.unreachable": {
+    "sourceHash": "7f2a23e"
+  },
+  "errors.serverRequest.timedOut": "Cmdr 的伺服器沒有及時回應。請稍後再試一次。",
+  "@errors.serverRequest.timedOut": {
+    "sourceHash": "14b0dcd"
+  },
+  "errors.serverRequest.serverBusy": "Cmdr 的伺服器目前出了點問題。請稍後再試。",
+  "@errors.serverRequest.serverBusy": {
+    "sourceHash": "2df1f8d"
+  },
+  "errors.serverRequest.refused": "Cmdr 的伺服器拒絕了這個請求。如果持續發生，請到 getcmdr.com 下載最新版的 Cmdr。",
+  "@errors.serverRequest.refused": {
+    "sourceHash": "f36d8f8"
+  },
+  "errors.serverRequest.unexpected": "Cmdr 本身出了點問題。請再試一次；如果持續發生，請重新啟動 Cmdr。",
+  "@errors.serverRequest.unexpected": {
+    "sourceHash": "5be7ebd"
+  },
   "errors.eject.busy": "Cmdr 還在這個磁碟機上搬動檔案。等它做完再退出。",
   "@errors.eject.busy": {
     "sourceHash": "0600dd5"

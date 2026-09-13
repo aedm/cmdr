@@ -64,9 +64,17 @@
   "@errorReporter.dialog.preparing": {
     "sourceHash": "11e66e1"
   },
-  "errorReporter.dialog.prepareFailed": "Préparation de l''aperçu impossible : {error}",
+  "errorReporter.dialog.prepareFailed": "Préparation de l''aperçu impossible.",
   "@errorReporter.dialog.prepareFailed": {
-    "sourceHash": "21c4dd4"
+    "sourceHash": "3729966"
+  },
+  "errorReporter.dialog.tryAgain": "Réessayer",
+  "@errorReporter.dialog.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "errorReporter.dialog.bundleUnavailable": "Cmdr n''a pas pu rassembler ses fichiers journaux pour le rapport. Réessayez dans un instant.",
+  "@errorReporter.dialog.bundleUnavailable": {
+    "sourceHash": "3743aba"
   },
   "errorReporter.dialog.saveToDisk": "Enregistrer le lot sur le disque (debug)",
   "@errorReporter.dialog.saveToDisk": {
@@ -84,9 +92,9 @@
   "@errorReporter.dialog.sending": {
     "sourceHash": "b8ed527"
   },
-  "errorReporter.dialog.sendFailedToast": "Envoi du rapport d''incident impossible : {error}",
+  "errorReporter.dialog.sendFailedToast": "Envoi du rapport d''incident impossible. {reason}",
   "@errorReporter.dialog.sendFailedToast": {
-    "sourceHash": "38c0695"
+    "sourceHash": "75337c1"
   },
   "errorReporter.dialog.saveFailedToast": "Enregistrement du lot impossible : {error}",
   "@errorReporter.dialog.saveFailedToast": {
@@ -124,9 +132,9 @@
   "@errorReporter.amend.close": {
     "sourceHash": "7d9eb7a"
   },
-  "errorReporter.amend.addFailedToast": "Ajout de votre note impossible : {error}",
+  "errorReporter.amend.addFailedToast": "Ajout de votre note impossible. {reason}",
   "@errorReporter.amend.addFailedToast": {
-    "sourceHash": "69df136"
+    "sourceHash": "0b67749"
   },
   "errorReporter.sentToast.message": "Rapport d''incident envoyé. Votre identifiant de référence est",
   "@errorReporter.sentToast.message": {

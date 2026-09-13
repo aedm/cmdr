@@ -64,9 +64,17 @@
   "@errorReporter.dialog.preparing": {
     "sourceHash": "11e66e1"
   },
-  "errorReporter.dialog.prepareFailed": "Nem sikerült előkészíteni az előnézetet: {error}",
+  "errorReporter.dialog.prepareFailed": "Nem sikerült összeállítani az előnézetet.",
   "@errorReporter.dialog.prepareFailed": {
-    "sourceHash": "21c4dd4"
+    "sourceHash": "3729966"
+  },
+  "errorReporter.dialog.tryAgain": "Próbáld újra",
+  "@errorReporter.dialog.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "errorReporter.dialog.bundleUnavailable": "A Cmdr nem tudta összegyűjteni a naplóit a jelentéshez. Próbáld újra egy kicsit később.",
+  "@errorReporter.dialog.bundleUnavailable": {
+    "sourceHash": "3743aba"
   },
   "errorReporter.dialog.saveToDisk": "Csomag mentése lemezre (debug)",
   "@errorReporter.dialog.saveToDisk": {
@@ -84,9 +92,9 @@
   "@errorReporter.dialog.sending": {
     "sourceHash": "b8ed527"
   },
-  "errorReporter.dialog.sendFailedToast": "Nem sikerült elküldeni a hibajelentést: {error}",
+  "errorReporter.dialog.sendFailedToast": "Nem sikerült elküldeni a hibajelentést. {reason}",
   "@errorReporter.dialog.sendFailedToast": {
-    "sourceHash": "38c0695"
+    "sourceHash": "75337c1"
   },
   "errorReporter.dialog.saveFailedToast": "Nem sikerült menteni a csomagot: {error}",
   "@errorReporter.dialog.saveFailedToast": {
@@ -124,9 +132,9 @@
   "@errorReporter.amend.close": {
     "sourceHash": "7d9eb7a"
   },
-  "errorReporter.amend.addFailedToast": "Nem sikerült hozzáadni a megjegyzésedet: {error}",
+  "errorReporter.amend.addFailedToast": "Nem sikerült hozzáadni a megjegyzésedet. {reason}",
   "@errorReporter.amend.addFailedToast": {
-    "sourceHash": "69df136"
+    "sourceHash": "0b67749"
   },
   "errorReporter.sentToast.message": "A hibajelentés elment. A hivatkozási azonosítód:",
   "@errorReporter.sentToast.message": {

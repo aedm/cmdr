@@ -3,6 +3,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { type UnlistenFn } from '@tauri-apps/api/event'
 import { commands, events, type ErrorReportAutoSent, type SystemSnapshot } from '$lib/ipc/bindings'
+import { throwErrorReportSendError } from '$lib/error-reporter/error-report-send-error'
 import { throwIpcError } from './ipc-types'
 
 export interface ActiveSettingsSnapshot {
@@ -72,11 +73,12 @@ export interface AutoSentReport extends PreviewPayload {
  * omit it and the backend mints a fresh one, which is how a dialog ends up naming a report
  * that doesn't exist.
  *
- * `email` is included only when the user ticked the attach-email box.
+ * `email` is included only when the user ticked the attach-email box. A send that doesn't land
+ * throws an `ErrorReportSendFailure` carrying the typed reason.
  */
 export async function sendErrorReport(userNote?: string, email?: string, id?: string): Promise<{ id: string }> {
   const res = await commands.sendErrorReport(userNote ?? null, email ?? null, id ?? null)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwErrorReportSendError(res.error)
   return res.data
 }
 
@@ -95,13 +97,14 @@ export async function getAutoSentReportPreview(): Promise<AutoSentReport | null>
  * Returns that report's id. Callable more than once: amendments accumulate server-side,
  * so disable the button while the call is in flight rather than after it returns.
  *
- * Takes no id because there's only ever one stashed report. It throws when nothing was
- * auto-sent or the server never handed back an amend key; `canAmend` from
- * `getAutoSentReportPreview` is the flag to branch on beforehand.
+ * Takes no id because there's only ever one stashed report. It throws an
+ * `ErrorReportSendFailure` (`notAmendable` when nothing was auto-sent or the server never handed
+ * back an amend key); `canAmend` from `getAutoSentReportPreview` is the flag to branch on
+ * beforehand.
  */
 export async function amendErrorReport(userNote?: string, email?: string): Promise<{ id: string }> {
   const res = await commands.amendErrorReport(userNote ?? null, email ?? null)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwErrorReportSendError(res.error)
   return res.data
 }
 

@@ -1717,6 +1717,26 @@
   "@errors.mutation.trashRefused": {
     "sourceHash": "6d8a1b6"
   },
+  "errors.serverRequest.unreachable": "Cmdr nådde inte sin server. Kontrollera din internetanslutning och försök igen.",
+  "@errors.serverRequest.unreachable": {
+    "sourceHash": "7f2a23e"
+  },
+  "errors.serverRequest.timedOut": "Cmdrs server svarade inte i tid. Försök igen om en stund.",
+  "@errors.serverRequest.timedOut": {
+    "sourceHash": "14b0dcd"
+  },
+  "errors.serverRequest.serverBusy": "Cmdrs server har problem just nu. Försök igen senare.",
+  "@errors.serverRequest.serverBusy": {
+    "sourceHash": "2df1f8d"
+  },
+  "errors.serverRequest.refused": "Cmdrs server avvisade det här. Om det fortsätter, hämta senaste Cmdr från getcmdr.com.",
+  "@errors.serverRequest.refused": {
+    "sourceHash": "f36d8f8"
+  },
+  "errors.serverRequest.unexpected": "Cmdr stötte på ett internt problem. Försök igen, och om det fortsätter, starta om Cmdr.",
+  "@errors.serverRequest.unexpected": {
+    "sourceHash": "5be7ebd"
+  },
   "errors.eject.busy": "Cmdr flyttar fortfarande filer på den här enheten. Mata ut den när det är klart.",
   "@errors.eject.busy": {
     "sourceHash": "0600dd5"

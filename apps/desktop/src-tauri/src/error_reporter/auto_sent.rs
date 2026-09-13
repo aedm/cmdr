@@ -27,7 +27,7 @@
 //! parameter for the same reason [`super::upload`] takes one: the endpoint belongs to the
 //! caller, and a test can point it at a mock.
 
-use super::{AmendKey, AttachedEmail, BundleManifest};
+use super::{AmendKey, AttachedEmail, BundleManifest, ServerRequestError};
 use crate::IgnorePoison;
 use std::sync::Mutex;
 
@@ -92,22 +92,17 @@ pub struct AmendTarget {
     key: AmendKey,
 }
 
-/// Resolve what an amend would target, or say why there's nothing to amend.
+/// Resolve what an amend would target, or `None` when there's nothing to amend: nothing was sent
+/// automatically this session, or the server didn't hand back a key for the report that was.
 ///
 /// Callers need the id before [`amend`], because the endpoint is per-report: build the URL with
 /// [`super::error_report_amend_url`] and pass the target straight through.
-pub fn amend_target() -> Result<AmendTarget, String> {
+pub fn amend_target() -> Option<AmendTarget> {
     let guard = STASH.lock_ignore_poison();
-    let stashed = guard
-        .as_ref()
-        .ok_or("There's no report to add to: nothing was sent automatically this session.")?;
-    let key = stashed
-        .amend_key
-        .clone()
-        .ok_or("This report can't take a note. The server didn't hand back a key for it.")?;
-    Ok(AmendTarget {
+    let stashed = guard.as_ref()?;
+    Some(AmendTarget {
         id: stashed.id.clone(),
-        key,
+        key: stashed.amend_key.clone()?,
     })
 }
 
@@ -130,14 +125,14 @@ pub fn amend_target() -> Result<AmendTarget, String> {
 /// belongs in the frontend disabling its button while the call is in flight, not in discarding
 /// a credential that still works.
 ///
-/// Mirrors [`super::upload`]'s error handling: the server's own `{"error": "..."}` body is
-/// folded into the returned message, capped, and displayed only. ❌ Never branch on it.
+/// Fails the way every request to Cmdr's api server does, like [`super::upload`]: the server's own
+/// `{"error": "..."}` explanation rides in `Refused`'s detail, for the log. ❌ Never branch on it.
 pub async fn amend(
     target: AmendTarget,
     server_url: &str,
     user_note: Option<String>,
     email: Option<AttachedEmail>,
-) -> Result<String, String> {
+) -> Result<String, ServerRequestError> {
     send_amend(server_url, &target.key, user_note, email).await?;
     Ok(target.id)
 }
@@ -180,7 +175,7 @@ async fn send_amend(
     key: &AmendKey,
     user_note: Option<String>,
     email: Option<AttachedEmail>,
-) -> Result<(), String> {
+) -> Result<(), ServerRequestError> {
     let body = amend_body(key, user_note, email);
 
     #[cfg(feature = "playwright-e2e")]
@@ -207,31 +202,12 @@ async fn send_amend(
         // Shorter than the 30 s an upload gets: this request carries a note, not a bundle, and
         // someone is watching a dialog while it runs.
         const AMEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
-        // Cap on the server's own explanation, matching `upload`. Keeps a stray HTML error page
-        // out of a toast.
-        const MAX_SERVER_DETAIL_CHARS: usize = 200;
 
         let client = reqwest::Client::builder()
             .timeout(AMEND_TIMEOUT)
             .build()
-            .map_err(|e| format!("HTTP client: {e}"))?;
-
-        let response = client
-            .post(server_url)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| format!("amend request: {e}"))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let raw = response.text().await.unwrap_or_default();
-            let detail: String = raw.trim().chars().take(MAX_SERVER_DETAIL_CHARS).collect();
-            if detail.is_empty() {
-                return Err(format!("server returned {status}"));
-            }
-            return Err(format!("server returned {status}: {detail}"));
-        }
+            .map_err(|e| ServerRequestError::unexpected(format!("HTTP client: {e}")))?;
+        crate::server_request::send(client.post(server_url).json(&body)).await?;
 
         log::info!(target: "cmdr_lib::error_reporter", "Added a note to an error report");
         Ok(())

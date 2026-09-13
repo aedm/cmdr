@@ -1717,6 +1717,26 @@
   "@errors.mutation.trashRefused": {
     "sourceHash": "6d8a1b6"
   },
+  "errors.serverRequest.unreachable": "Cmdr hat seinen Server nicht erreicht. Prüfe deine Internetverbindung und versuch es noch einmal.",
+  "@errors.serverRequest.unreachable": {
+    "sourceHash": "7f2a23e"
+  },
+  "errors.serverRequest.timedOut": "Der Server von Cmdr hat nicht rechtzeitig geantwortet. Versuch es gleich noch einmal.",
+  "@errors.serverRequest.timedOut": {
+    "sourceHash": "14b0dcd"
+  },
+  "errors.serverRequest.serverBusy": "Der Server von Cmdr hat gerade Probleme. Versuch es später noch einmal.",
+  "@errors.serverRequest.serverBusy": {
+    "sourceHash": "2df1f8d"
+  },
+  "errors.serverRequest.refused": "Der Server von Cmdr hat das abgelehnt. Wenn das öfter passiert, hol dir das neueste Cmdr von getcmdr.com.",
+  "@errors.serverRequest.refused": {
+    "sourceHash": "f36d8f8"
+  },
+  "errors.serverRequest.unexpected": "Cmdr ist intern auf ein Problem gestoßen. Versuch es noch einmal, und wenn es wieder passiert, starte Cmdr neu.",
+  "@errors.serverRequest.unexpected": {
+    "sourceHash": "5be7ebd"
+  },
   "errors.eject.busy": "Auf diesem Laufwerk läuft noch ein Vorgang von Cmdr. Wirf es aus, sobald er fertig ist.",
   "@errors.eject.busy": {
     "sourceHash": "0600dd5"

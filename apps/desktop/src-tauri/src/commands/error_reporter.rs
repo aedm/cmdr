@@ -8,6 +8,7 @@ use crate::error_reporter::{
     self, AttachedEmail, BundleKind, BundleManifest, BundleRequest, BundleScope, FLOW_A_BUNDLE_CAP_MB,
     settings_defaults::SettingValue,
 };
+use crate::server_request::ServerRequestError;
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -82,6 +83,43 @@ pub struct AmendResult {
     pub id: String,
 }
 
+/// Why a Flow A send or an amend didn't land, for the dialog to word from the catalog.
+///
+/// The request itself fails the way every call to Cmdr's api server does ([`ServerRequestError`]);
+/// the other variants are this dialog's own. ❌ No variant carries a sentence: `detail` is for the
+/// log.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum ErrorReportSendError {
+    /// The note is over the cap. The dialog blocks this first, so it's a backstop.
+    NoteTooLong { max_chars: usize },
+    /// The bundle couldn't be built from the logs.
+    BundleUnavailable { detail: String },
+    /// Nothing was sent automatically this session, or the server didn't hand back a key for the
+    /// report that was. `can_amend` from [`get_auto_sent_report_preview`] is the flag to check first.
+    NotAmendable,
+    /// The request to the api server didn't land.
+    Server { failure: ServerRequestError },
+}
+
+impl From<ServerRequestError> for ErrorReportSendError {
+    fn from(failure: ServerRequestError) -> Self {
+        Self::Server { failure }
+    }
+}
+
+impl std::fmt::Display for ErrorReportSendError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            // allowed-pluralize-noun: max_chars is MAX_USER_NOTE_CHARS (100_000).
+            Self::NoteTooLong { max_chars } => write!(f, "the note is over {max_chars} chars"),
+            Self::BundleUnavailable { detail } => write!(f, "couldn't build the bundle: {detail}"),
+            Self::NotAmendable => f.write_str("no auto-sent report can take a note"),
+            Self::Server { failure } => write!(f, "{failure}"),
+        }
+    }
+}
+
 /// Build the bundle in-memory and return preview metadata. No network. No disk writes.
 /// The zip bytes are dropped after measuring so we don't ferry MB across IPC.
 ///
@@ -101,7 +139,8 @@ pub async fn prepare_error_report_preview(
     user_note: Option<String>,
     email: Option<String>,
 ) -> Result<PreviewPayload, String> {
-    let bundle = error_reporter::build_bundle(&app, flow_a_request(None, user_note, email)?)?;
+    let request = flow_a_request(None, user_note, email).map_err(|e| e.to_string())?;
+    let bundle = error_reporter::build_bundle(&app, request)?;
     let capped = error_reporter::cap_bundle_to_mb(bundle.zip_bytes, FLOW_A_BUNDLE_CAP_MB);
     Ok(PreviewPayload {
         id: bundle.id,
@@ -124,8 +163,9 @@ pub async fn send_error_report(
     user_note: Option<String>,
     email: Option<String>,
     id: Option<String>,
-) -> Result<SendResult, String> {
-    let bundle = error_reporter::build_bundle(&app, flow_a_request(id, user_note, email)?)?;
+) -> Result<SendResult, ErrorReportSendError> {
+    let bundle = error_reporter::build_bundle(&app, flow_a_request(id, user_note, email)?)
+        .map_err(|detail| ErrorReportSendError::BundleUnavailable { detail })?;
     let capped = error_reporter::cap_bundle_to_mb(bundle.zip_bytes, FLOW_A_BUNDLE_CAP_MB);
     let result = error_reporter::upload(capped, &bundle.manifest, &error_reporter::error_report_url()).await?;
     Ok(SendResult { id: result.id })
@@ -153,9 +193,9 @@ pub fn get_auto_sent_report_preview() -> Option<AutoSentReport> {
 /// Add a note (and optionally a reply-to address) to the report Flow B already sent.
 ///
 /// Takes no id: there's only ever one stashed report. Returns its id so the UI can confirm
-/// against what it was showing. Errs when nothing was auto-sent this run or the server never
-/// handed back an amend key; `can_amend` from [`get_auto_sent_report_preview`] is the flag to
-/// branch on, not the message.
+/// against what it was showing. Errs with `NotAmendable` when nothing was auto-sent this run or
+/// the server never handed back an amend key; `can_amend` from [`get_auto_sent_report_preview`]
+/// is the flag to branch on beforehand.
 ///
 /// Callable more than once for the same report: amendments accumulate, and `can_amend` stays
 /// true after one lands. Disable the button while the call is in flight rather than after it
@@ -166,11 +206,14 @@ pub fn get_auto_sent_report_preview() -> Option<AutoSentReport> {
 /// about. [`AttachedEmail`] is what carries that consent into the send.
 #[tauri::command]
 #[specta::specta]
-pub async fn amend_error_report(user_note: Option<String>, email: Option<String>) -> Result<AmendResult, String> {
+pub async fn amend_error_report(
+    user_note: Option<String>,
+    email: Option<String>,
+) -> Result<AmendResult, ErrorReportSendError> {
     let note = validate_user_note(user_note)?;
     // One read of the stash resolves both halves, so the URL below and the credential the
     // request carries can't come from two different reports.
-    let target = error_reporter::auto_sent::amend_target()?;
+    let target = error_reporter::auto_sent::amend_target().ok_or(ErrorReportSendError::NotAmendable)?;
     let url = error_reporter::error_report_amend_url(&target.id);
     let id = error_reporter::auto_sent::amend(target, &url, note, AttachedEmail::from_flow_a_dialog(email)).await?;
     Ok(AmendResult { id })
@@ -190,7 +233,8 @@ pub async fn save_error_report_to_disk(
     email: Option<String>,
     id: Option<String>,
 ) -> Result<String, String> {
-    let mut bundle = error_reporter::build_bundle(&app, flow_a_request(id, user_note, email)?)?;
+    let request = flow_a_request(id, user_note, email).map_err(|e| e.to_string())?;
+    let mut bundle = error_reporter::build_bundle(&app, request)?;
     bundle.zip_bytes = error_reporter::cap_bundle_to_mb(bundle.zip_bytes, FLOW_A_BUNDLE_CAP_MB);
     let path = error_reporter::save_bundle_to_disk(&app, &bundle)?;
     log::info!(
@@ -210,7 +254,7 @@ fn flow_a_request(
     id: Option<String>,
     user_note: Option<String>,
     email: Option<String>,
-) -> Result<BundleRequest, String> {
+) -> Result<BundleRequest, ErrorReportSendError> {
     Ok(BundleRequest {
         kind: BundleKind::User,
         scope: BundleScope::flow_a_default(),
@@ -222,13 +266,47 @@ fn flow_a_request(
     })
 }
 
-fn validate_user_note(user_note: Option<String>) -> Result<Option<String>, String> {
+fn validate_user_note(user_note: Option<String>) -> Result<Option<String>, ErrorReportSendError> {
     match user_note {
-        Some(n) if n.chars().count() > MAX_USER_NOTE_CHARS => Err(format!(
-            // allowed-pluralize-noun: both counts are guaranteed > MAX_USER_NOTE_CHARS (100_000).
-            "User note is too long ({} chars). Maximum is {MAX_USER_NOTE_CHARS} chars.",
-            n.chars().count(),
-        )),
+        Some(n) if n.chars().count() > MAX_USER_NOTE_CHARS => Err(ErrorReportSendError::NoteTooLong {
+            max_chars: MAX_USER_NOTE_CHARS,
+        }),
         other => Ok(other),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn a_note_over_the_cap_is_turned_down_with_the_cap_and_one_at_it_passes() {
+        let at_cap = "a".repeat(MAX_USER_NOTE_CHARS);
+        assert_eq!(validate_user_note(Some(at_cap.clone())), Ok(Some(at_cap)));
+        assert_eq!(
+            validate_user_note(Some("a".repeat(MAX_USER_NOTE_CHARS + 1))),
+            Err(ErrorReportSendError::NoteTooLong {
+                max_chars: MAX_USER_NOTE_CHARS
+            })
+        );
+    }
+
+    /// The dialog switches on `type` and reads the nested request failure; the shape is the contract.
+    #[test]
+    fn the_wire_shape_nests_the_request_failure_under_server() {
+        let value = serde_json::to_value(ErrorReportSendError::from(ServerRequestError::Refused {
+            status: 413,
+            detail: "too large".to_string(),
+        }))
+        .expect("serializes");
+        assert_eq!(
+            value,
+            json!({ "type": "server", "failure": { "type": "refused", "status": 413, "detail": "too large" } })
+        );
+        assert_eq!(
+            serde_json::to_value(ErrorReportSendError::NotAmendable).expect("serializes"),
+            json!({ "type": "notAmendable" })
+        );
     }
 }

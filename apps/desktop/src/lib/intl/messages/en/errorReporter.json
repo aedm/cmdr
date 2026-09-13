@@ -103,12 +103,19 @@
     "screenshot": "error-report.png"
   },
 
-  "errorReporter.dialog.prepareFailed": "Couldn''t prepare preview: {error}",
+  "errorReporter.dialog.prepareFailed": "Couldn''t put the preview together.",
   "@errorReporter.dialog.prepareFailed": {
-    "description": "Status line shown when building the preview didn't work. The reason follows the colon. Avoid the words \"error\" and \"failed\" in the translated wording (the variable text may contain technical detail).",
-    "placeholders": {
-      "error": "the technical reason the preview couldn't be built (not translated)"
-    }
+    "description": "Line shown in the error-report dialog when Cmdr couldn't build the preview of what it would send. A small Try again button (errorReporter.dialog.tryAgain) sits right after it, and the send button stays off until a preview builds. Avoid the words \"error\" and \"failed\" in the translated wording."
+  },
+
+  "errorReporter.dialog.tryAgain": "Try again",
+  "@errorReporter.dialog.tryAgain": {
+    "description": "Small button right after the line saying the report preview couldn't be put together (errorReporter.dialog.prepareFailed). Pressing it builds the preview again. Keep it short (a tight button)."
+  },
+
+  "errorReporter.dialog.bundleUnavailable": "Cmdr couldn''t gather its logs for the report. Try again in a moment.",
+  "@errorReporter.dialog.bundleUnavailable": {
+    "description": "Sentence explaining why the error report didn't go out: Cmdr couldn't collect its own log files into the report. It's shown right after errorReporter.dialog.sendFailedToast's lead (\"Couldn't send the error report.\"), as a separate sentence in the same toast. \"Cmdr\" is the product name (do not translate). Avoid the words \"error\" and \"failed\" in the translated wording."
   },
 
   "errorReporter.dialog.saveToDisk": "Save bundle to disk (debug)",
@@ -133,11 +140,11 @@
     "description": "Label on the send button while the report is being sent (button is disabled meanwhile). Ends with a single-character ellipsis (…). Keep it short."
   },
 
-  "errorReporter.dialog.sendFailedToast": "Couldn''t send error report: {error}",
+  "errorReporter.dialog.sendFailedToast": "Couldn''t send the error report. {reason}",
   "@errorReporter.dialog.sendFailedToast": {
-    "description": "Toast shown when sending the report didn't work. The reason follows the colon. Avoid the words \"error\" and \"failed\" in the translated wording.",
+    "description": "Toast shown when sending the error report didn't work. {reason} is one or two complete, already-translated sentences saying why and what to do (for example \"Cmdr couldn't reach its server. Check your internet connection and try again.\"), so end your lead as its own sentence and let the reason follow it. Avoid the words \"error\" and \"failed\" in your wording, apart from the feature's own name, \"error report\".",
     "placeholders": {
-      "error": "the technical reason the send didn't work (not translated)"
+      "reason": "one or two already-translated sentences saying why the report didn't go out and what to do; Cmdr controls the wording but the length varies"
     }
   },
 
@@ -196,11 +203,11 @@
     "screenshot": "error-report-amend.png"
   },
 
-  "errorReporter.amend.addFailedToast": "Couldn''t add your note: {error}",
+  "errorReporter.amend.addFailedToast": "Couldn''t add your note. {reason}",
   "@errorReporter.amend.addFailedToast": {
-    "description": "Toast shown when attaching the note to the already-sent report didn''t work. The reason follows the colon. Avoid the words \"error\" and \"failed\" in the translated wording.",
+    "description": "Toast shown when attaching the note to the already-sent report didn''t work. {reason} is one or two complete, already-translated sentences saying why and what to do (for example \"Cmdr couldn''t reach its server. Check your internet connection and try again.\"), so end your lead as its own sentence and let the reason follow it. Avoid the words \"error\" and \"failed\" in the translated wording.",
     "placeholders": {
-      "error": "the technical reason the note couldn''t be attached (not translated)"
+      "reason": "one or two already-translated sentences saying why the note didn''t get attached and what to do; Cmdr controls the wording but the length varies"
     }
   },
 

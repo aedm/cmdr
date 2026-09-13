@@ -33,10 +33,11 @@
         saveErrorReportToDisk,
         type PreviewPayload,
     } from '$lib/tauri-commands/error-reporter'
-     
+
     import ErrorReportToastContent from './ErrorReportToastContent.svelte'
     import BundleSavedToastContent from './BundleSavedToastContent.svelte'
     import { closeErrorReportDialog, errorReportFlow } from './error-report-flow.svelte'
+    import { errorReportSendFailureOf, errorReportSendReason } from './error-report-send-error'
     import { getAppLogger } from '$lib/logging/logger'
     import { t, tString } from '$lib/intl/messages.svelte'
 
@@ -63,7 +64,8 @@
     const attachEmail = createAttachEmail()
     let detailsExpanded = $state(false)
     let preview = $state<PreviewPayload | null>(null)
-    let preparingError = $state<string | null>(null)
+    // Compose mode only: the preview didn't build. The raw reason goes to the log, never the dialog.
+    let preparingFailed = $state(false)
     // Amend mode only: nothing was auto-sent this run, or the report can't take a note.
     // Either way the dialog offers no submit; ❌ never a fallback to a fresh send.
     let amendUnavailable = $state(false)
@@ -99,16 +101,22 @@
             } else {
                 preview = await prepareErrorReportPreview()
             }
-            preparingError = null
         } catch (e) {
             // Amend mode has nothing to fall back to, and falling back to a fresh send is
             // the very bug this mode exists to fix, so it lands on the honest dead end.
             if (isAmend) amendUnavailable = true
-            else preparingError = String(e)
+            else preparingFailed = true
             log.warn("Couldn't load the error report preview: {error}", { error: String(e) })
         } finally {
             preparing = false
         }
+    }
+
+    /** The Try again beside a preview that didn't build: the same build, once more. */
+    function retryPreview() {
+        preparing = true
+        preparingFailed = false
+        void loadPreview()
     }
 
     // Manifest shown in the preview: the cached one from `buildInitialPreview`, with
@@ -137,13 +145,18 @@
     // nor an address, so the button is what stops it, not a round trip.
     const hasAmendPayload = $derived(userNote.trim().length > 0 || attachEmail.emailToAttach !== undefined)
 
-    /** Blocks the submit button, the ⌘Enter combo, and `handleSend` itself, from one place. */
+    /**
+     * Blocks the submit button, the ⌘Enter combo, and `handleSend` itself, from one place.
+     * Both modes need the preview the person was shown: a compose send without one would ship a
+     * bundle nobody saw, and rebuild the same bundle that just didn't build.
+     */
     const canSend = $derived(
         !sending &&
             !noteOverLimit &&
             !preparing &&
             !attachEmail.blocksSend &&
-            (!isAmend || (preview !== null && hasAmendPayload)),
+            preview !== null &&
+            (!isAmend || hasAmendPayload),
     )
 
     async function handleSend() {
@@ -168,12 +181,15 @@
             })
             closeErrorReportDialog()
         } catch (e) {
+            // Warn for every kind, a 4xx from the server included: an error-level line would
+            // auto-send a report through this same endpoint, the one that just didn't take it.
             log.warn('Sending error report returned an error: {error}', { error: String(e) })
+            const reason = errorReportSendReason(errorReportSendFailureOf(e))
             // Suppress the inline "Send error report…" action: this toast is the failure
             // of that very flow, so offering to re-run it would be a confusing loop.
             const message = isAmend
-                ? tString('errorReporter.amend.addFailedToast', { error: String(e) })
-                : tString('errorReporter.dialog.sendFailedToast', { error: String(e) })
+                ? tString('errorReporter.amend.addFailedToast', { reason })
+                : tString('errorReporter.dialog.sendFailedToast', { reason })
             addToast(message, {
                 level: 'error',
                 suppressErrorReportAction: true,
@@ -332,10 +348,13 @@
         {#if preparing && !preview}
             <p class="status">{tString('errorReporter.dialog.preparing')}</p>
         {/if}
-        {#if preparingError}
-            <p class="status status-error">
-                {t('errorReporter.dialog.prepareFailed', { error: preparingError })}
-            </p>
+        {#if preparingFailed}
+            <div class="preview-failed">
+                <p class="status status-error" role="alert">{tString('errorReporter.dialog.prepareFailed')}</p>
+                <Button variant="secondary" size="mini" onclick={retryPreview}
+                    >{tString('errorReporter.dialog.tryAgain')}</Button
+                >
+            </div>
         {/if}
 
         <div class="button-row">
@@ -514,6 +533,17 @@
 
     .status-error {
         color: var(--color-error);
+    }
+
+    .preview-failed {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .preview-failed .status {
+        margin: 0;
     }
 
     .button-row {

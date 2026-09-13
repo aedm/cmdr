@@ -1622,10 +1622,10 @@ những gì đã gửi và viết thêm ghi chú **vào chính báo cáo đó**;
   `Thêm vào Thanh bên`; Xfce Thunar `vi` "Thêm vào bảng Địa điểm"; thuật ngữ Microsoft ("add" → `thêm`). Kiểm chứng
   trong pile 2026-08-28 · `high`. Cả họ dùng chung một gốc từ: tiêu đề `Thêm vào báo cáo sự cố của bạn`, nút
   `Thêm vào báo cáo`, trạng thái `Đang thêm…`, toast `Đã thêm ghi chú vào báo cáo`.
-- **"Couldn''t add your note: {error}" → `Không thể thêm ghi chú của bạn: {error}`** · đúng khuôn macOS `vi` "Không thể
-  thêm máy chủ ^0 vào mục ưa thích của bạn" và khuôn `Không thể …: {error}` mà catalog đã dùng
-  (`errorReporter.dialog.sendFailedToast`, `.prepareFailed`) · `high`. Không có chữ "lỗi"/"thất bại", đúng yêu cầu của
-  bản tiếng Anh.
+- **"Couldn''t add your note. {reason}" → `Không thể thêm ghi chú của bạn. {reason}`** · đúng khuôn macOS `vi` "Không
+  thể thêm máy chủ ^0 vào mục ưa thích của bạn"; câu dẫn đứng riêng và kết thúc bằng dấu chấm, rồi `{reason}` (một hoặc
+  hai câu đã dịch sẵn) theo sau, cùng khuôn với `errorReporter.dialog.sendFailedToast` · `high`. Không có chữ
+  "lỗi"/"thất bại", đúng yêu cầu của bản tiếng Anh.
 - **"That report can''t take a note any more." → `Không thể thêm ghi chú vào báo cáo đó nữa.`** · `high`. Chọn
   `Không thể … nữa` (khuôn tự nhiên nhất) thay vì dịch sát "báo cáo đó không nhận được ghi chú": tiếng Việt đặt việc bất
   khả thi lên trước đọc xuôi hơn, và câu vẫn nói về báo cáo chứ không trách người dùng. Khuôn `không còn … nữa` của

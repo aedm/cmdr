@@ -64,9 +64,17 @@
   "@errorReporter.dialog.preparing": {
     "sourceHash": "11e66e1"
   },
-  "errorReporter.dialog.prepareFailed": "Không thể chuẩn bị bản xem trước: {error}",
+  "errorReporter.dialog.prepareFailed": "Không thể chuẩn bị bản xem trước.",
   "@errorReporter.dialog.prepareFailed": {
-    "sourceHash": "21c4dd4"
+    "sourceHash": "3729966"
+  },
+  "errorReporter.dialog.tryAgain": "Thử lại",
+  "@errorReporter.dialog.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "errorReporter.dialog.bundleUnavailable": "Cmdr không thu thập được nhật ký cho báo cáo. Hãy thử lại sau giây lát.",
+  "@errorReporter.dialog.bundleUnavailable": {
+    "sourceHash": "3743aba"
   },
   "errorReporter.dialog.saveToDisk": "Lưu gói vào đĩa (debug)",
   "@errorReporter.dialog.saveToDisk": {
@@ -84,9 +92,9 @@
   "@errorReporter.dialog.sending": {
     "sourceHash": "b8ed527"
   },
-  "errorReporter.dialog.sendFailedToast": "Không thể gửi báo cáo trục trặc: {error}",
+  "errorReporter.dialog.sendFailedToast": "Không thể gửi báo cáo trục trặc. {reason}",
   "@errorReporter.dialog.sendFailedToast": {
-    "sourceHash": "38c0695"
+    "sourceHash": "75337c1"
   },
   "errorReporter.dialog.saveFailedToast": "Không thể lưu gói: {error}",
   "@errorReporter.dialog.saveFailedToast": {
@@ -124,9 +132,9 @@
   "@errorReporter.amend.close": {
     "sourceHash": "7d9eb7a"
   },
-  "errorReporter.amend.addFailedToast": "Không thể thêm ghi chú của bạn: {error}",
+  "errorReporter.amend.addFailedToast": "Không thể thêm ghi chú của bạn. {reason}",
   "@errorReporter.amend.addFailedToast": {
-    "sourceHash": "69df136"
+    "sourceHash": "0b67749"
   },
   "errorReporter.sentToast.message": "Đã gửi báo cáo trục trặc. ID tham chiếu của bạn là",
   "@errorReporter.sentToast.message": {

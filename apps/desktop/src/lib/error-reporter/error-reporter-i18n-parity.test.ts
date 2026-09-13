@@ -55,8 +55,14 @@ describe('error-reporter dialog copy parity (en)', () => {
     expect(t('errorReporter.dialog.totalLines', { countText: '1,234' })).toBe(
       'Total log lines (after redaction): 1,234',
     )
-    expect(t('errorReporter.dialog.prepareFailed', { error: 'boom' })).toBe("Couldn't prepare preview: boom")
-    expect(t('errorReporter.dialog.sendFailedToast', { error: 'boom' })).toBe("Couldn't send error report: boom")
+    expect(tString('errorReporter.dialog.prepareFailed')).toBe("Couldn't put the preview together.")
+    expect(tString('errorReporter.dialog.tryAgain')).toBe('Try again')
+    expect(t('errorReporter.dialog.sendFailedToast', { reason: 'Try again.' })).toBe(
+      "Couldn't send the error report. Try again.",
+    )
+    expect(tString('errorReporter.dialog.bundleUnavailable')).toBe(
+      "Cmdr couldn't gather its logs for the report. Try again in a moment.",
+    )
     expect(t('errorReporter.dialog.saveFailedToast', { error: 'boom' })).toBe("Couldn't save bundle: boom")
   })
 
@@ -116,6 +122,6 @@ describe('error-reporter amend-mode copy (en)', () => {
   })
 
   it('resolves the interpolated amend strings', () => {
-    expect(t('errorReporter.amend.addFailedToast', { error: 'boom' })).toBe("Couldn't add your note: boom")
+    expect(t('errorReporter.amend.addFailedToast', { reason: 'Try again.' })).toBe("Couldn't add your note. Try again.")
   })
 })

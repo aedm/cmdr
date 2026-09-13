@@ -133,6 +133,8 @@ pub mod services_menu;
 mod settings;
 // The saved-and-live SFTP and WebDAV servers, as volume rows. Gated with
 // `network`, whose stores it reads.
+/// One request to Cmdr's own api server, and the typed answer when it doesn't land.
+mod server_request;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod server_volumes;
 mod short_id;

@@ -65,9 +65,17 @@
   "@errorReporter.dialog.preparing": {
     "sourceHash": "11e66e1"
   },
-  "errorReporter.dialog.prepareFailed": "Voorvertoning voorbereiden lukte niet: {error}",
+  "errorReporter.dialog.prepareFailed": "Voorvertoning samenstellen lukte niet.",
   "@errorReporter.dialog.prepareFailed": {
-    "sourceHash": "21c4dd4"
+    "sourceHash": "3729966"
+  },
+  "errorReporter.dialog.tryAgain": "Probeer opnieuw",
+  "@errorReporter.dialog.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "errorReporter.dialog.bundleUnavailable": "Cmdr kon zijn logbestanden niet voor het rapport verzamelen. Probeer het zo opnieuw.",
+  "@errorReporter.dialog.bundleUnavailable": {
+    "sourceHash": "3743aba"
   },
   "errorReporter.dialog.saveToDisk": "Bewaar bundel op schijf (debug)",
   "@errorReporter.dialog.saveToDisk": {
@@ -85,9 +93,9 @@
   "@errorReporter.dialog.sending": {
     "sourceHash": "b8ed527"
   },
-  "errorReporter.dialog.sendFailedToast": "Foutrapport versturen lukte niet: {error}",
+  "errorReporter.dialog.sendFailedToast": "Foutrapport versturen lukte niet. {reason}",
   "@errorReporter.dialog.sendFailedToast": {
-    "sourceHash": "38c0695"
+    "sourceHash": "75337c1"
   },
   "errorReporter.dialog.saveFailedToast": "Bundel bewaren lukte niet: {error}",
   "@errorReporter.dialog.saveFailedToast": {
@@ -125,9 +133,9 @@
   "@errorReporter.amend.close": {
     "sourceHash": "7d9eb7a"
   },
-  "errorReporter.amend.addFailedToast": "Je notitie toevoegen lukte niet: {error}",
+  "errorReporter.amend.addFailedToast": "Je notitie toevoegen lukte niet. {reason}",
   "@errorReporter.amend.addFailedToast": {
-    "sourceHash": "69df136"
+    "sourceHash": "0b67749"
   },
   "errorReporter.sentToast.message": "Foutrapport verstuurd. Je referentie-ID is",
   "@errorReporter.sentToast.message": {

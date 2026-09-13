@@ -24,7 +24,7 @@ The consequence that bites: **reason, provider, and git-kind names are an IPC co
 variant, a `Provider` variant, or a `FriendlyGitErrorKind` on one side only and the parity test fails (or, worse, it
 mis-renders at runtime). Change both sides in the same commit.
 
-## Five error paths
+## Six error paths
 
 - **Listing errors** (a pane can't show a folder): the pipeline above, ending in `ErrorPane`.
 - **Write errors** (a copy, move, delete, or compress didn't finish): the backend emits `write-error` carrying a typed
@@ -48,6 +48,11 @@ mis-renders at runtime). Change both sides in the same commit.
   server's share LISTING that didn't load is worded the same way: `ShareListError`'s `message` is a diagnostic,
   `listSharesOnHost` / `listSharesWithCredentials` throw it as a `ShareListFailure` (`share-list-error.ts`), and
   `share-list-error-messages.ts` beside it words the type for the pane and the servers list's tooltip.
+- **Requests to Cmdr's own api server** (an error report or its note didn't go out): the command RETURNS a typed
+  `ServerRequestError` (`apps/desktop/src-tauri/src/server_request.rs`), nested in the command's own enum when it has
+  failures of its own (`ErrorReportSendError`). `apps/desktop/src/lib/error-messages/server-request.ts` words it as one
+  or two sentences that follow the surface's own lead ("Couldn't send the error report."), and decides the log level:
+  no network, a timeout, a 5xx, or a rate limit stays at warn, and only a refusal from Cmdr's own server logs at error.
 
 ## Every command family owns its error type
 
@@ -67,8 +72,10 @@ The rule that replaced it:
   Each is `specta::Type`, internally tagged
   (`#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]`), and carries the fields a caller
   acts on.
-- **`DeadlineError` is the ONE shared type**, and only where the wrapped work genuinely cannot refuse (the favorites
-  writes, `resolve_go_to_path`), so "the deadline passed" and "the task panicked" exhaust the failure modes.
+- **Two types are shared, each because it exhausts the failure modes of what it wraps.** `DeadlineError` only where the
+  wrapped work genuinely cannot refuse (the favorites writes, `resolve_go_to_path`), so "the deadline passed" and "the
+  task panicked" are all there is. `ServerRequestError` for a request to Cmdr's own api server (the path above), where
+  unreachable, timed out, refused, an unreadable answer, and a request that never got built are all there is.
 - **Free-form OS text is a `detail` field, never the message.** `MutationError::Unexpected { detail }`,
   `EjectError::UnmountRefused { detail }`, and their siblings carry what `diskutil` or the Trash actually said, for the
   log and a technical-details disclosure. The message the person reads always comes from a catalog key.

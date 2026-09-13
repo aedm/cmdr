@@ -1595,9 +1595,10 @@ informe ya no admite añadidos, el diálogo lo dice y remite al menú Ayuda.
   que sigue cabiendo junto a `Cambiar ajustes` en el aviso.
 - **`Note added to your report.` → `Nota añadida a tu informe.`** · el participio concuerda con `nota` (femenino), no
   con la persona, así que no expone ningún género · high.
-- Ningún valor lleva apóstrofo, así que no hay nada que duplicar para ICU; `{error}` va literal en
-  `No se pudo añadir tu nota: {error}`, con el mismo molde que `errorReporter.dialog.sendFailedToast`. Los once difieren
-  del inglés, así que ninguno necesita `sameAsSourceJustification`.
+- Ningún valor lleva apóstrofo, así que no hay nada que duplicar para ICU; `{reason}` va literal en
+  `No se pudo añadir tu nota. {reason}`, con el mismo molde que `errorReporter.dialog.sendFailedToast`: la frase propia
+  termina en punto y la razón, ya traducida, la sigue. Los once difieren del inglés, así que ninguno necesita
+  `sameAsSourceJustification`.
 
 ## El diálogo de seleccionar / deseleccionar archivos (`selection.*`, 2026-08-29)
 

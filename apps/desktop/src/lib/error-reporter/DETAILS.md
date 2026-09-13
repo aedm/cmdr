@@ -65,6 +65,18 @@ toast `{ path }`, and the auto-sent toast `{ reportId }`. Each closes itself thr
 it. The post-send toast's id and `kind` travel in one object from one call, so they can't drift apart: an amended report
 showing the "Error report sent" sentence would be the same class of lie amend mode exists to fix.
 
+## When a preview or a send doesn't land
+
+- **A preview that didn't build** (compose mode) shows `errorReporter.dialog.prepareFailed` and a Try again button that
+  re-runs the same build. Send stays off until a preview exists: a send without one would ship a bundle nobody saw, and
+  rebuild the bundle that just didn't build. The raw reason goes to the warn, never the dialog.
+- **A send or an amend that didn't land** throws an `ErrorReportSendFailure` (`error-report-send-error.ts`) carrying the
+  typed `ErrorReportSendError`. The toast is the surface's lead (`dialog.sendFailedToast` or `amend.addFailedToast`)
+  plus `errorReportSendReason`, which words a request failure through `$lib/error-messages/server-request` and the
+  dialog's own variants from this catalog. The dialog stays open, so Send is the retry.
+- **Every kind logs at warn here, a 4xx included**: an error-level line would auto-send a report through this same
+  endpoint, the one that just didn't take it.
+
 ## Note-capture timing and gotchas
 
 - The preview loads exactly once per mount, in an `$effect` whose synchronous phase reads NOTHING reactive. The email

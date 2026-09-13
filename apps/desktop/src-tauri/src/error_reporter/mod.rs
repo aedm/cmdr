@@ -36,6 +36,7 @@
 #[cfg(debug_assertions)]
 use crate::config;
 use crate::logging;
+use crate::server_request::ServerRequestError;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
@@ -493,7 +494,14 @@ pub fn generate_short_id() -> String {
 /// observe directly. The feature gate beats an env-var check because the only
 /// binaries carrying the feature are purpose-built for tests, with no way to
 /// launch one "for real."
-pub async fn upload(zip_bytes: Vec<u8>, manifest: &BundleManifest, server_url: &str) -> Result<UploadResult, String> {
+///
+/// Fails the way every request to Cmdr's api server does ([`ServerRequestError`]): the server's
+/// own `{"error": "..."}` explanation rides in `Refused`'s detail, for the log.
+pub async fn upload(
+    zip_bytes: Vec<u8>,
+    manifest: &BundleManifest,
+    server_url: &str,
+) -> Result<UploadResult, ServerRequestError> {
     #[cfg(feature = "playwright-e2e")]
     {
         let _ = (zip_bytes, server_url); // the network path is compiled out below
@@ -526,12 +534,13 @@ pub async fn upload(zip_bytes: Vec<u8>, manifest: &BundleManifest, server_url: &
             });
         }
 
-        let meta_json = serde_json::to_string(manifest).map_err(|e| format!("serialize manifest: {e}"))?;
+        let meta_json = serde_json::to_string(manifest)
+            .map_err(|e| ServerRequestError::unexpected(format!("serialize manifest: {e}")))?;
 
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
-            .map_err(|e| format!("HTTP client: {e}"))?;
+            .map_err(|e| ServerRequestError::unexpected(format!("HTTP client: {e}")))?;
 
         let form = reqwest::multipart::Form::new()
             .part(
@@ -539,36 +548,12 @@ pub async fn upload(zip_bytes: Vec<u8>, manifest: &BundleManifest, server_url: &
                 reqwest::multipart::Part::bytes(zip_bytes)
                     .file_name(format!("{}.zip", manifest.id))
                     .mime_str("application/zip")
-                    .map_err(|e| format!("bundle part: {e}"))?,
+                    .map_err(|e| ServerRequestError::unexpected(format!("bundle part: {e}")))?,
             )
             .text("meta", meta_json);
 
-        let response = client
-            .post(server_url)
-            .multipart(form)
-            .send()
-            .await
-            .map_err(|e| format!("upload request: {e}"))?;
-
-        if !response.status().is_success() {
-            // Include the server's own explanation (`{"error": "..."}`), not just the status
-            // code. A bare "server returned 400 Bad Request" hides which validation tripped,
-            // which once left a payload bug invisible from the toast. Displayed only, never
-            // branched on. Capped so a stray HTML error
-            // page can't dump a wall of text into the toast.
-            let status = response.status();
-            let body = response.text().await.unwrap_or_default();
-            let detail: String = body.trim().chars().take(200).collect();
-            if detail.is_empty() {
-                return Err(format!("server returned {status}"));
-            }
-            return Err(format!("server returned {status}: {detail}"));
-        }
-
-        response
-            .json::<UploadResult>()
-            .await
-            .map_err(|e| format!("parse upload response: {e}"))
+        let response = crate::server_request::send(client.post(server_url).multipart(form)).await?;
+        crate::server_request::read_json(response).await
     }
 }
 

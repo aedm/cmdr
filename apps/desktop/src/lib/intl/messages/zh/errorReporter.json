@@ -64,9 +64,17 @@
   "@errorReporter.dialog.preparing": {
     "sourceHash": "11e66e1"
   },
-  "errorReporter.dialog.prepareFailed": "无法准备预览：{error}",
+  "errorReporter.dialog.prepareFailed": "无法生成预览。",
   "@errorReporter.dialog.prepareFailed": {
-    "sourceHash": "21c4dd4"
+    "sourceHash": "3729966"
+  },
+  "errorReporter.dialog.tryAgain": "重试",
+  "@errorReporter.dialog.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "errorReporter.dialog.bundleUnavailable": "Cmdr 无法为这份报告收集日志。请稍后再试。",
+  "@errorReporter.dialog.bundleUnavailable": {
+    "sourceHash": "3743aba"
   },
   "errorReporter.dialog.saveToDisk": "将报告包保存到磁盘（调试）",
   "@errorReporter.dialog.saveToDisk": {
@@ -84,9 +92,9 @@
   "@errorReporter.dialog.sending": {
     "sourceHash": "b8ed527"
   },
-  "errorReporter.dialog.sendFailedToast": "无法发送错误报告：{error}",
+  "errorReporter.dialog.sendFailedToast": "无法发送错误报告。{reason}",
   "@errorReporter.dialog.sendFailedToast": {
-    "sourceHash": "38c0695"
+    "sourceHash": "75337c1"
   },
   "errorReporter.dialog.saveFailedToast": "无法保存报告包：{error}",
   "@errorReporter.dialog.saveFailedToast": {
@@ -124,9 +132,9 @@
   "@errorReporter.amend.close": {
     "sourceHash": "7d9eb7a"
   },
-  "errorReporter.amend.addFailedToast": "无法添加你的备注：{error}",
+  "errorReporter.amend.addFailedToast": "无法添加你的备注。{reason}",
   "@errorReporter.amend.addFailedToast": {
-    "sourceHash": "69df136"
+    "sourceHash": "0b67749"
   },
   "errorReporter.sentToast.message": "错误报告已发送。你的参考编号是",
   "@errorReporter.sentToast.message": {

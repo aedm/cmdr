@@ -1962,9 +1962,10 @@ Les 11 valeurs sont ICU (apostrophes doublées), espace ASCII avant `:`, aucun U
   `erreur` / `échec` / `bloqué` (règle du guide de style) · high
 - **`from the Help menu` → `depuis le menu Aide`** · `Aide` est le titre du menu chez Apple (`menu.bar.help`, Finder et
   Safari `fr`) et le catalogue dit déjà « depuis le menu Aide » dans `settings.updates.errorReports.description` · high
-- **`Couldn't add your note: {error}` → `Ajout de votre note impossible : {error}`** · moule figé de la famille
-  (`prepareFailed` « Préparation de l'aperçu impossible : », `sendFailedToast` « Envoi du rapport d'incident impossible
-  : », `saveFailedToast` « Enregistrement du lot impossible : ») : nom verbal + `impossible` + espace ASCII + `:` · high
+- **`Couldn't add your note. {reason}` → `Ajout de votre note impossible. {reason}`** · moule figé de la famille
+  (`sendFailedToast` « Envoi du rapport d'incident impossible. », `prepareFailed` « Préparation de l'aperçu
+  impossible. ») : nom verbal + `impossible` + point, puis la raison déjà traduite ; seul `saveFailedToast`
+  « Enregistrement du lot impossible : » garde l'espace ASCII + `:` devant son détail technique · high
 - **`Note added to your report. Your reference ID is` →
   `Note ajoutée à votre rapport. Votre identifiant de référence est`** · seconde moitié identique au frère
   `errorReporter.sentToast.message` (la valeur s'arrête juste avant le badge, sans ponctuation finale) ; `ajoutée`

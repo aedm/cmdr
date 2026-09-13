@@ -1717,6 +1717,26 @@
   "@errors.mutation.trashRefused": {
     "sourceHash": "6d8a1b6"
   },
+  "errors.serverRequest.unreachable": "Cmdr 无法连接到它的服务器。请检查网络连接，然后重试。",
+  "@errors.serverRequest.unreachable": {
+    "sourceHash": "7f2a23e"
+  },
+  "errors.serverRequest.timedOut": "Cmdr 的服务器没有及时响应。请稍后再试。",
+  "@errors.serverRequest.timedOut": {
+    "sourceHash": "14b0dcd"
+  },
+  "errors.serverRequest.serverBusy": "Cmdr 的服务器暂时出了点问题。请稍后再试。",
+  "@errors.serverRequest.serverBusy": {
+    "sourceHash": "2df1f8d"
+  },
+  "errors.serverRequest.refused": "Cmdr 的服务器拒绝了这个请求。如果一直这样，请从 getcmdr.com 获取最新版 Cmdr。",
+  "@errors.serverRequest.refused": {
+    "sourceHash": "f36d8f8"
+  },
+  "errors.serverRequest.unexpected": "Cmdr 自身出了点问题。请重试；如果问题仍然存在，请重启 Cmdr。",
+  "@errors.serverRequest.unexpected": {
+    "sourceHash": "5be7ebd"
+  },
   "errors.eject.busy": "Cmdr 还在读写这个驱动器上的文件。完成后再推出。",
   "@errors.eject.busy": {
     "sourceHash": "0600dd5"

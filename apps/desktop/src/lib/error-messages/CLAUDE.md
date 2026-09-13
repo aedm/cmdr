@@ -18,10 +18,10 @@ files. Writing rules: `docs/style-guide.md` (active voice, friendly, never the w
   `appBased.*` template with `{name}`/`{app}` tokens, plus bespoke per-provider keys; see DETAILS.md).
 - `listing-error.ts`: `renderListingError(error)` is the wire-`ListingError` → displayable adapter `ErrorPane` calls
   (picks the base message, applies the provider override).
-- `markdown-escape.ts`: `escapeMarkdown` is the XSS boundary. `compose.ts`: `esc(...)` (escape a param) +
-  `expandSystemStrings(...)` (localized macOS pane labels).
-- `friendly-error-message.ts`: the shared `FriendlyErrorMessage` shape (matches `transfer-error-messages.ts` so the two
-  paths can converge later).
+- `markdown-escape.ts`: `escapeMarkdown`. `compose.ts`: `esc(...)` (escape a param) + `expandSystemStrings(...)`
+  (localized macOS pane labels).
+- `friendly-error-message.ts`: the shared `FriendlyErrorMessage` shape.
+- `server-request.ts`: words a failed request to Cmdr's api server and picks its log level (`DETAILS.md`).
 
 ## Must-knows
 

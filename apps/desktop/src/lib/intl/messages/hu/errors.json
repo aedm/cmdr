@@ -1717,6 +1717,26 @@
   "@errors.mutation.trashRefused": {
     "sourceHash": "6d8a1b6"
   },
+  "errors.serverRequest.unreachable": "A Cmdr nem érte el a szerverét. Ellenőrizd az internetkapcsolatot, és próbáld újra.",
+  "@errors.serverRequest.unreachable": {
+    "sourceHash": "7f2a23e"
+  },
+  "errors.serverRequest.timedOut": "A Cmdr szervere nem válaszolt időben. Próbáld újra egy kicsit később.",
+  "@errors.serverRequest.timedOut": {
+    "sourceHash": "14b0dcd"
+  },
+  "errors.serverRequest.serverBusy": "A Cmdr szerverének most gondjai vannak. Próbáld újra később.",
+  "@errors.serverRequest.serverBusy": {
+    "sourceHash": "2df1f8d"
+  },
+  "errors.serverRequest.refused": "A Cmdr szervere ezt elutasította. Ha újra előfordul, töltsd le a legújabb Cmdr-t a getcmdr.com oldalról.",
+  "@errors.serverRequest.refused": {
+    "sourceHash": "f36d8f8"
+  },
+  "errors.serverRequest.unexpected": "A Cmdr belső problémába ütközött. Próbáld újra, és ha ismét előfordul, indítsd újra a Cmdr-t.",
+  "@errors.serverRequest.unexpected": {
+    "sourceHash": "5be7ebd"
+  },
   "errors.eject.busy": "A Cmdr még fájlokat mozgat ezen a meghajtón. Add ki, amint ez befejeződik.",
   "@errors.eject.busy": {
     "sourceHash": "0600dd5"

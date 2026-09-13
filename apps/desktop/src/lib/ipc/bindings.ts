@@ -1701,14 +1701,14 @@ export const commands = {
    *  omit it (or pass something that isn't an `ERR-XXXXX`) and a fresh one is minted.
    */
   sendErrorReport: (userNote: string | null, email: string | null, id: string | null) =>
-    typedError<SendResult, string>(__TAURI_INVOKE('send_error_report', { userNote, email, id })),
+    typedError<SendResult, ErrorReportSendError>(__TAURI_INVOKE('send_error_report', { userNote, email, id })),
   /**
    *  Add a note (and optionally a reply-to address) to the report Flow B already sent.
    *
    *  Takes no id: there's only ever one stashed report. Returns its id so the UI can confirm
-   *  against what it was showing. Errs when nothing was auto-sent this run or the server never
-   *  handed back an amend key; `can_amend` from [`get_auto_sent_report_preview`] is the flag to
-   *  branch on, not the message.
+   *  against what it was showing. Errs with `NotAmendable` when nothing was auto-sent this run or
+   *  the server never handed back an amend key; `can_amend` from [`get_auto_sent_report_preview`]
+   *  is the flag to branch on beforehand.
    *
    *  Callable more than once for the same report: amendments accumulate, and `can_amend` stays
    *  true after one lands. Disable the button while the call is in flight rather than after it
@@ -1719,7 +1719,7 @@ export const commands = {
    *  about. [`AttachedEmail`] is what carries that consent into the send.
    */
   amendErrorReport: (userNote: string | null, email: string | null) =>
-    typedError<AmendResult, string>(__TAURI_INVOKE('amend_error_report', { userNote, email })),
+    typedError<AmendResult, ErrorReportSendError>(__TAURI_INVOKE('amend_error_report', { userNote, email })),
   /**
    *  Pushes the FE settings-registry default map to the backend, where it feeds
    *  [`crate::error_reporter::ResolvedSettings::from_settings`] so manifests don't
@@ -6663,6 +6663,26 @@ export type ErrorCategory =
 export type ErrorReportAutoSent = {
   id: string
 }
+
+/**
+ *  Why a Flow A send or an amend didn't land, for the dialog to word from the catalog.
+ *
+ *  The request itself fails the way every call to Cmdr's api server does ([`ServerRequestError`]);
+ *  the other variants are this dialog's own. ❌ No variant carries a sentence: `detail` is for the
+ *  log.
+ */
+export type ErrorReportSendError =
+  // The note is over the cap. The dialog blocks this first, so it's a backstop.
+  | { type: 'noteTooLong'; maxChars: number }
+  // The bundle couldn't be built from the logs.
+  | { type: 'bundleUnavailable'; detail: string }
+  /**
+   *  Nothing was sent automatically this session, or the server didn't hand back a key for the
+   *  report that was. `can_amend` from [`get_auto_sent_report_preview`] is the flag to check first.
+   */
+  | { type: 'notAmendable' }
+  // The request to the api server didn't land.
+  | { type: 'server'; failure: ServerRequestError }
 
 /**
  *  How much of the delivered text a quote actually covers, and the line it came from.
@@ -12232,6 +12252,19 @@ export type ServerProtocol =
   | 'sftp'
   // A WebDAV server, one account per entry.
   | 'webdav'
+
+// Why a request to Cmdr's api server didn't come back with a usable answer.
+export type ServerRequestError =
+  // The request never got an answer: no network, a DNS failure, a refused connection, TLS.
+  | { type: 'unreachable'; detail: string }
+  // The server didn't answer within the request's time budget.
+  | { type: 'timedOut'; detail: string }
+  // The server answered with a non-2xx status. `detail` is its own explanation, trimmed.
+  | { type: 'refused'; status: number; detail: string }
+  // A 2xx whose body this client can't read: Cmdr and its server disagree on the contract.
+  | { type: 'badResponse'; detail: string }
+  // Cmdr couldn't put the request together (building the HTTP client, encoding the payload).
+  | { type: 'unexpected'; detail: string }
 
 /**
  *  Which server to dial, in add mode.

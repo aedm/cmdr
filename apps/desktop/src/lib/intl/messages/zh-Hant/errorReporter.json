@@ -64,9 +64,17 @@
   "@errorReporter.dialog.preparing": {
     "sourceHash": "11e66e1"
   },
-  "errorReporter.dialog.prepareFailed": "無法準備預覽：{error}",
+  "errorReporter.dialog.prepareFailed": "無法產生預覽。",
   "@errorReporter.dialog.prepareFailed": {
-    "sourceHash": "21c4dd4"
+    "sourceHash": "3729966"
+  },
+  "errorReporter.dialog.tryAgain": "再試一次",
+  "@errorReporter.dialog.tryAgain": {
+    "sourceHash": "d8b8392"
+  },
+  "errorReporter.dialog.bundleUnavailable": "Cmdr 無法為這份報告收集記錄檔。請稍後再試一次。",
+  "@errorReporter.dialog.bundleUnavailable": {
+    "sourceHash": "3743aba"
   },
   "errorReporter.dialog.saveToDisk": "將報告封存檔儲存到磁碟（除錯用）",
   "@errorReporter.dialog.saveToDisk": {
@@ -84,9 +92,9 @@
   "@errorReporter.dialog.sending": {
     "sourceHash": "b8ed527"
   },
-  "errorReporter.dialog.sendFailedToast": "無法傳送錯誤報告：{error}",
+  "errorReporter.dialog.sendFailedToast": "無法傳送錯誤報告。{reason}",
   "@errorReporter.dialog.sendFailedToast": {
-    "sourceHash": "38c0695"
+    "sourceHash": "75337c1"
   },
   "errorReporter.dialog.saveFailedToast": "無法儲存報告封存檔：{error}",
   "@errorReporter.dialog.saveFailedToast": {
@@ -124,9 +132,9 @@
   "@errorReporter.amend.close": {
     "sourceHash": "7d9eb7a"
   },
-  "errorReporter.amend.addFailedToast": "無法加入你的備註：{error}",
+  "errorReporter.amend.addFailedToast": "無法加入你的備註。{reason}",
   "@errorReporter.amend.addFailedToast": {
-    "sourceHash": "69df136"
+    "sourceHash": "0b67749"
   },
   "errorReporter.sentToast.message": "錯誤報告已傳送。你的參考 ID 是",
   "@errorReporter.sentToast.message": {

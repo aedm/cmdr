@@ -1717,6 +1717,26 @@
   "@errors.mutation.trashRefused": {
     "sourceHash": "6d8a1b6"
   },
+  "errors.serverRequest.unreachable": "Cmdr no pudo conectar con su servidor. Comprueba tu conexión a internet e inténtalo de nuevo.",
+  "@errors.serverRequest.unreachable": {
+    "sourceHash": "7f2a23e"
+  },
+  "errors.serverRequest.timedOut": "El servidor de Cmdr no respondió a tiempo. Inténtalo de nuevo en un momento.",
+  "@errors.serverRequest.timedOut": {
+    "sourceHash": "14b0dcd"
+  },
+  "errors.serverRequest.serverBusy": "El servidor de Cmdr tiene problemas en este momento. Inténtalo de nuevo más tarde.",
+  "@errors.serverRequest.serverBusy": {
+    "sourceHash": "2df1f8d"
+  },
+  "errors.serverRequest.refused": "El servidor de Cmdr lo rechazó. Si sigue pasando, descarga la versión más reciente de Cmdr desde getcmdr.com.",
+  "@errors.serverRequest.refused": {
+    "sourceHash": "f36d8f8"
+  },
+  "errors.serverRequest.unexpected": "Cmdr tuvo un problema interno. Inténtalo de nuevo y, si sigue pasando, reinicia Cmdr.",
+  "@errors.serverRequest.unexpected": {
+    "sourceHash": "5be7ebd"
+  },
   "errors.eject.busy": "Cmdr todavía está moviendo archivos en este disco. Expúlsalo cuando termine.",
   "@errors.eject.busy": {
     "sourceHash": "0600dd5"

@@ -372,10 +372,13 @@ use `spawn_blocking` wrap it with `tokio::time::timeout` instead.
 39 call sites and stringified whatever typed error reached it, so `EjectError::Busy` (a proper enum with fields and doc
 comments) arrived on the frontend as an English sentence that a translated toast then interpolated verbatim. The rule
 that replaced it: reuse the vocabulary the command belongs to (`MutationError` for a mutation, `ViewerError` for the
-viewer, `VolumeError` nested inside either), or add a small enum beside the family. `DeadlineError` is the ONE shared
-type, and only for commands whose wrapped work genuinely cannot refuse (the favorites writes, `resolve_go_to_path`),
-where "the deadline passed" and "the task panicked" exhaust the failure modes. The frontend renders every variant from
-the message catalog: `docs/guides/error-handling.md`.
+viewer, `VolumeError` nested inside either), or add a small enum beside the family. Two types are shared, each because
+it exhausts the failure modes of the work it wraps, and neither carries a sentence. `DeadlineError` is for commands whose
+wrapped work genuinely cannot refuse (the favorites writes, `resolve_go_to_path`), where "the deadline passed" and "the
+task panicked" are all there is. `ServerRequestError` (`crate::server_request`) is for a request to Cmdr's own api
+server, where unreachable, timed out, refused, an unreadable answer, and a request that never got built are all there
+is; a command with failures of its own nests it (`ErrorReportSendError::Server`). The frontend renders every variant
+from the message catalog: `docs/guides/error-handling.md`.
 
 **JSON for all Tauri IPC, not binary (MessagePack/Protobuf).** Benchmarked with real directory listings: MessagePack is
 34-58% SLOWER than JSON despite being 17-19% smaller. Tauri serializes `Vec<u8>` as a JSON array of numbers, so binary
