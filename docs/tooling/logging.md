@@ -99,14 +99,18 @@ Use `RUST_LOG` to enable FE debug logs in the terminal (no code changes needed):
 RUST_LOG=FE:fileExplorer=debug,info pnpm dev
 ```
 
-To also see debug logs in browser devtools, add the feature to `debugCategories` in
+In a production build, frontend warn and above from every category reach the log file (and so error-report bundles);
+info and debug don't. To make a feature's debug lines reach production logs too, add it to `debugCategories` in
 `apps/desktop/src/lib/logging/logger.ts`:
 
 ```typescript
-const debugCategories: string[] = [
-  'fileExplorer', // Now shows debug logs in browser devtools too
+export const debugCategories: readonly string[] = [
+  'fileExplorer', // Its debug lines now reach production logs and bundles
 ]
 ```
+
+That doesn't change the browser devtools console, which keeps its own gate; the verbose toggle below lifts it. Gate
+mechanics and why warn is the production line: `apps/desktop/src/lib/logging/DETAILS.md`.
 
 ## Backend (Rust)
 
@@ -282,7 +286,7 @@ Mechanism, budgets, and the memory bound: `crates/cmdr-index/src/indexing/reconc
 
 Toggle in **Settings > Advanced > Logging > "Verbose console output (developer)"**:
 
-- Flips frontend (LogTape) debug gating for the browser devtools console.
+- Lifts every frontend (LogTape) category to debug, in the browser devtools console and on the bridge to the log file.
 - Bumps the Rust **stdout chain** from Info to Debug (and back). The file chain stays at Debug regardless, so error
   reports are unaffected by the toggle.
 - Implemented via an `AtomicU8` consulted on every record: the toggle takes effect mid-stream without rebuilding the

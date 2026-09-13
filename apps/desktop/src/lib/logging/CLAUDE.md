@@ -20,9 +20,11 @@ Usage (adding logging, `RUST_LOG` recipes, the verbose toggle): `docs/tooling/lo
 ## Must-knows
 
 - **FE logs use `FE:{category}` as their log target**, so `RUST_LOG=FE:viewer=debug,info` filters them on the Rust side.
-- **`debugCategories` only affects the console sink** (browser devtools). The tauriBridge sink always sends debug+ to
-  Rust in dev, so `RUST_LOG=FE:fileExplorer=debug,info` works without touching `debugCategories`. The verbose-logging
-  toggle enables debug for both sinks.
+- **In production, warn and above from every category reach the log file and every error-report bundle**; info and debug
+  don't, except for `debugCategories`, which reach them at debug. So a warn is bundle content: an expected condition
+  logs at info, and a failure that can repeat per event goes through `LogOnceGate`. ❗ The `debugCategories` children
+  need `parentSinks: 'override'`, or each line reaches each sink twice (`logger.test.ts` pins the counts). Dev sends
+  debug+ to Rust for `RUST_LOG` to filter; the devtools console keeps its own gate, which only the verbose toggle lifts.
 - **The bridge forwards the rendered message and nothing else, so every property must appear in the template.**
   `FrontendLogEntry` is level + category + message; nothing reads `record.properties`. A field the message never names
   is discarded at the IPC boundary and reaches neither the log file nor a bundle. `cmdr/no-unrendered-log-fields`

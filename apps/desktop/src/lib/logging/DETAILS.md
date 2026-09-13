@@ -8,8 +8,9 @@ documented in `src-tauri/src/logging/CLAUDE.md` (canonical home for the fern/per
 ```
 getAppLogger('feature')
   -> LogTape (separate level gates per sink)
-    -> console sink (browser devtools): info+ default, debug for debugCategories
-    -> tauriBridge sink: debug+ in dev (RUST_LOG filters on Rust side), error+ in prod
+    -> console sink (browser devtools): info+ in dev, error+ in prod, debug+ with verbose
+    -> tauriBridge sink: debug+ in dev (RUST_LOG filters on Rust side); in prod warn+ for every category
+       and debug+ for debugCategories; debug+ with verbose
         -> batch for 100ms, dedup consecutive identical entries, throttle 200/s
         -> invoke('batch_fe_logs', entries[])
           -> Rust: log::info!(target: "FE:feature", msg)
@@ -22,6 +23,21 @@ getAppLogger('feature')
   (`debugCategories`); only the sink is ours.
 - **Custom batch IPC instead of the plugin JS API**: the bridge batches into one IPC call per 100 ms, with dedup and
   throttle (critical for infinite-loop protection).
+- **The production gate sits at warn for every category.** The Rust file target stays Debug precisely so a bundle
+  carries context, and a frontend gate at error would hide nearly every frontend warn from it, since only
+  `debugCategories` pass below the root gate. Info and debug stay gated for volume. Two costs follow from warn being
+  bundle content: an expected, recoverable condition logs at info (the archive-password prompt in
+  `transfer-progress-state.svelte.ts` is the standing case, and a warn there queued it into bundles), and a failure that
+  recurs per event, poll tick, or call goes through `LogOnceGate` (`log-once.ts`), or one broken store read fills the
+  file. Promoting a line to error instead is not free: `batch_fe_logs` routes Error through `log_error!`, which feeds
+  the error-report auto-send dispatcher.
+- **`parentSinks: 'override'` on the `debugCategories` children** (verified on LogTape 2.3.0, `dist/logger.js`
+  `createSinkDispatchPlan`, 2026-09-13). The default `inherit` unions the parent's sinks with the child's own for every
+  level the parent passes, and the children list the same two sinks, so each such line reached each sink twice: a real
+  prod log read `ERROR FE:fileExplorer … (x2, deduplicated)`. `logger.test.ts` configures LogTape with the real
+  `buildLoggerConfig` and counts deliveries per sink, per mode.
+- **`debugCategories` doesn't reach the devtools console**: its sink filters on its own level (info in dev), which a
+  logger's `lowestLevel` can't lower. Use the verbose toggle to see debug lines there.
 - **Hand-rolled fern dispatch instead of `tauri-plugin-log`**: the plugin routes everything through one shared level. We
   need per-output filtering (file at Debug for error reports, terminal at Info for clean dev output). fern's tree of
   `Dispatch` chains makes this trivial. Full mechanism in `src-tauri/src/logging/CLAUDE.md`.
