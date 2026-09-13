@@ -616,6 +616,9 @@ export interface SettingsValues {
   'askCmdr.wakeDelay': number
   // Whether a proposal Ask Cmdr staged on its own raises a toast.
   'askCmdr.wakeToast': boolean
+  // A "no AI" pick the consent store hasn't recorded yet. Every Rust consent gate reads it fresh from
+  // `settings.json`, so the "no" holds before the store catches up (`ask-cmdr-consent.svelte.ts`).
+  'askCmdr.consentRevokePending': boolean
 
   // Developer
   'developer.mcpEnabled': boolean

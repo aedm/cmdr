@@ -6,6 +6,8 @@ import type { AskCmdrConsentStatus } from '$lib/tauri-commands'
 
 const { statusMock, acceptMock, revokeMock, pendingChangedMock, settingsMock, order } = vi.hoisted(() => {
   const order: string[] = []
+  // An annotation, not an `as`: the lint auto-fix strips an assertion it thinks is unnecessary.
+  const values: Record<string, unknown> = {}
   return {
     order,
     statusMock: vi.fn<() => Promise<AskCmdrConsentStatus>>(),
@@ -13,7 +15,7 @@ const { statusMock, acceptMock, revokeMock, pendingChangedMock, settingsMock, or
     revokeMock: vi.fn<() => Promise<void>>(),
     pendingChangedMock: vi.fn<() => Promise<void>>(() => Promise.resolve()),
     settingsMock: {
-      values: {},
+      values,
       forceSave: vi.fn<() => Promise<boolean>>(() => Promise.resolve(true)),
     },
   }
