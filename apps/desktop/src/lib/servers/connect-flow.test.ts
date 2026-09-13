@@ -195,14 +195,16 @@ describe('arm 3: a saved place with nothing registered', () => {
     expect(result).toEqual({ kind: 'already_live' })
   })
 
-  it('says nothing about a place that was forgotten while its row still read as saved', async () => {
-    // The row leaves with the next `volumes-changed`. A refusal with Try again
-    // would offer to dial a server that is no longer saved.
+  it('still says the connection did not happen for a place nothing saved answers for', async () => {
+    // ❗ Not a silent cancel. A forget racing the dial clears the row with the
+    // next `volumes-changed`, but a row that outlives the refusal (a listing and
+    // a store that disagree) would otherwise leave the pane blank for good: it
+    // dials once per landing, so nothing asks again.
     ipc.mock('connect_saved_place', () => {
       throw { reason: 'no_such_server', volumeId: VOLUME_ID }
     })
     const result = await connectPlace({ volumeId: VOLUME_ID, connectionState: 'saved' })
-    expect(result).toEqual({ kind: 'cancelled' })
+    expect(result).toEqual({ kind: 'refused', refusal: 'unreachable' })
   })
 
   it('still says the connection did not happen when the dial broke down some other way', async () => {

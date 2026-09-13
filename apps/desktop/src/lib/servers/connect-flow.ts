@@ -136,16 +136,19 @@ export async function connectPlace(request: ConnectPlaceRequest): Promise<Connec
     outcome = await connectSavedPlace(volumeId, attemptId)
   } catch (e) {
     // ❗ A typed refusal means the `saved` row this arm was picked from went
-    // stale (`volumes-changed` is debounced): another pane's dial registered the
-    // place, or a forget took it away. ❌ Never "couldn't reach" for either.
+    // stale (`volumes-changed` is debounced). Another pane's dial registered the
+    // place, so it is live and the pane reloads onto it: ❌ never "couldn't reach".
     const refusal = asSavedPlaceRefusal(e)
+    if (refusal?.reason === 'already_connected') {
+      log.info('The saved place {volumeId} was already live when its dial landed', { volumeId })
+      return { kind: 'already_live' }
+    }
+    // Nothing saved answers for it. ❌ Not a silent cancel: a forget's row leaves
+    // with the next `volumes-changed`, but a row that outlives the refusal would
+    // leave the pane blank for good, since the pane dials once per landing.
     if (refusal) {
-      log.info('The saved place {volumeId} moved before its dial landed: {reason}', {
-        volumeId,
-        reason: refusal.reason,
-      })
-      // Live already, so the pane reloads onto it; gone, so there is nothing to say.
-      return refusal.reason === 'already_connected' ? { kind: 'already_live' } : { kind: 'cancelled' }
+      log.info('Nothing saved answers for the place {volumeId}', { volumeId })
+      return { kind: 'refused', refusal: 'unreachable' }
     }
     log.warn('Dialing the saved place {volumeId} broke down: {error}', { volumeId, error: String(e) })
     return { kind: 'refused', refusal: 'unreachable' }

@@ -171,7 +171,9 @@ describe('a place that is asking, with nothing registered', () => {
     await seam
   })
 
-  it('closes quietly when the server was forgotten while the sheet was open', async () => {
+  it('still says the connection did not happen when nothing saved answers for the place', async () => {
+    // ❗ Not a silent close: a closed sheet hands the pane nothing to say, and a
+    // row that outlives the refusal would leave the pane blank for good.
     ipc.mock('connect_saved_place', () => {
       throw { reason: 'no_such_server', volumeId: VOLUME_ID }
     })
@@ -183,8 +185,7 @@ describe('a place that is asking, with nothing registered', () => {
       secret: { secret: 'hunter2', remember: false },
       username: null,
     })
-    // Nothing is left to sign in to, so there is nothing to say either.
-    expect(outcome).toEqual({ kind: 'cancelled' })
+    expect(outcome).toEqual({ kind: 'refused', refusal: 'unreachable' })
 
     closeSignInSheet({ kind: 'cancelled' })
     await seam

@@ -109,10 +109,12 @@ the reason instead, and ❌ never renders an inert "Sign in…" button.
 
 **A `SavedPlaceRefusal` thrown by `connect_saved_place`** (`already_connected`, `no_such_server`) means the `saved` row
 the arm was picked from went stale: `volumes-changed` is debounced (150 ms), so another pane's dial can register the
-place, or a forget can take it away, between the read and the dial. It crosses the throw as a `SavedPlaceFailure`, and
-each caller maps it to a MOVE, ❌ never a sentence: `connect-flow.ts` answers `already_live` (the pane reloads onto the
-live place) or `cancelled` (the row is leaving), and `open-sign-in.ts`'s dial answers `connected` or `cancelled`, so the
-sheet closes. Only an untyped throw (a broken bridge) still reads as `unreachable`.
+place, or a forget can take it away, between the read and the dial. It crosses the throw as a `SavedPlaceFailure`.
+`already_connected` is a MOVE, ❌ never a sentence: `connect-flow.ts` answers `already_live` (the pane reloads onto the
+live place), and `open-sign-in.ts`'s dial answers `connected` (the sheet closes onto it). `no_such_server` still reads as
+`unreachable`, like an untyped throw (a broken bridge). A forget's row leaves with the next `volumes-changed`, but ❌ a
+silent cancel would leave the pane blank for good whenever the row outlives the refusal, since the pane dials once per
+landing; `apps/desktop/test/e2e-playwright/servers.spec.ts`'s synthetic place is exactly such a row.
 
 Two dials that both pass the registry check can't register one place twice: both mint the same id from
 `(host, port, username)`, and `install_retiring_incumbent` retires whichever volume held it
