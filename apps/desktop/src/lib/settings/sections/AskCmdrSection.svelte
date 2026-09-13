@@ -28,7 +28,7 @@
         requestRevealPath,
         type CostSummary,
     } from '$lib/tauri-commands'
-    import { consentState, refreshConsent, acceptConsent, revokeConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+    import { consentState, refreshConsent, acceptConsent, declineConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
     import { formatUsdMicros } from '$lib/ask-cmdr/ask-cmdr-cost'
     import ForgetMemoryDialog from './ForgetMemoryDialog.svelte'
     import type { MessageKey } from '$lib/intl/keys.gen'
@@ -63,7 +63,7 @@
         busy = true
         consentNotSaved = false
         try {
-            const outcome = enabled ? await revokeConsent() : await acceptConsent()
+            const outcome = enabled ? await declineConsent() : await acceptConsent()
             consentNotSaved = outcome === 'notSaved'
         } finally {
             busy = false

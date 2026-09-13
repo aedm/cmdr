@@ -34,6 +34,7 @@ vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
   refreshConsent: vi.fn(() => Promise.resolve()),
   acceptConsent: vi.fn(() => Promise.resolve('done')),
   revokeConsent: vi.fn(() => Promise.resolve('done')),
+  declineConsent: vi.fn(() => Promise.resolve('done')),
 }))
 
 const { modelWindow } = vi.hoisted(() => ({
@@ -50,7 +51,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
 }))
 
 import AskCmdrSection from './AskCmdrSection.svelte'
-import { revokeConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+import { declineConsent, revokeConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
 import { askCmdrForgetMemory } from '$lib/tauri-commands'
 
 /** Lets a click's awaited IPC settle and the section re-render. */
@@ -134,8 +135,21 @@ describe('AskCmdrSection chat memory size', () => {
 })
 
 describe('AskCmdrSection when the store says no', () => {
-  it('says so under the row when turning Ask Cmdr off didn\'t save, instead of re-enabling silently', async () => {
-    vi.mocked(revokeConsent).mockResolvedValueOnce('notSaved')
+  it('turns Ask Cmdr off the way onboarding does, so a refused "no" is retried and then held', async () => {
+    // Pre-fix Turn off called `revokeConsent` once, and a refusal left consent recorded with
+    // only a line under the row. `declineConsent` is the one "no" path: retry, then hold.
+    const target = await mountSection()
+
+    target.querySelector<HTMLButtonElement>('.enable-row button')?.click()
+    await settle()
+
+    expect(declineConsent).toHaveBeenCalledOnce()
+    expect(revokeConsent).not.toHaveBeenCalled()
+    target.remove()
+  })
+
+  it('says so under the row when turning Ask Cmdr off didn\'t take, even held, instead of re-enabling silently', async () => {
+    vi.mocked(declineConsent).mockResolvedValueOnce('notSaved')
     const target = await mountSection()
 
     target.querySelector<HTMLButtonElement>('.enable-row button')?.click()

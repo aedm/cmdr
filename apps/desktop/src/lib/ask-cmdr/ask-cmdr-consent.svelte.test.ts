@@ -48,6 +48,7 @@ import {
   refreshConsent,
   acceptConsent,
   revokeConsent,
+  declineConsent,
   holdConsentRevoke,
   settleHeldConsentRevoke,
 } from './ask-cmdr-consent.svelte'
@@ -55,7 +56,8 @@ import {
 const HELD = 'askCmdr.consentRevokePending'
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  // Reset, not clear: a `mockRejectedValueOnce` a test didn't consume must not leak into the next.
+  vi.resetAllMocks()
   order.length = 0
   settingsMock.values = {}
   settingsMock.forceSave.mockResolvedValue(true)
@@ -199,6 +201,43 @@ describe('acceptConsent', () => {
     expect(order.indexOf(`set ${HELD}=false`)).toBeLessThan(order.indexOf('accept'))
     expect(order.indexOf('save')).toBeLessThan(order.indexOf('accept'))
     expect(revokeMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('declineConsent', () => {
+  it('turns Ask Cmdr off, with nothing held, when the store takes the first try', async () => {
+    revokeMock.mockResolvedValue(undefined)
+    statusMock.mockResolvedValue(notAccepted)
+
+    expect(await declineConsent()).toBe('done')
+    expect(revokeMock).toHaveBeenCalledOnce()
+    expect(settingsMock.values[HELD]).toBeUndefined()
+  })
+
+  it('gives a refused "no" one more try before holding it', async () => {
+    revokeMock.mockRejectedValueOnce(new Error('database is locked')).mockResolvedValue(undefined)
+    statusMock.mockResolvedValue(notAccepted)
+
+    expect(await declineConsent()).toBe('done')
+    expect(revokeMock).toHaveBeenCalledTimes(2)
+    expect(settingsMock.values[HELD]).toBeUndefined()
+  })
+
+  it('holds a "no" the store refuses twice, and answers done: it holds from the next check on', async () => {
+    revokeMock.mockRejectedValue(new Error('disk I/O error'))
+    statusMock.mockResolvedValue(notAccepted)
+
+    expect(await declineConsent()).toBe('done')
+    expect(settingsMock.values[HELD]).toBe(true)
+    expect(pendingChangedMock).toHaveBeenCalled()
+  })
+
+  it('answers notSaved only when settings.json won\'t hold the "no" either', async () => {
+    revokeMock.mockRejectedValue(new Error('disk I/O error'))
+    settingsMock.forceSave.mockResolvedValue(false)
+    statusMock.mockResolvedValue(accepted)
+
+    expect(await declineConsent()).toBe('notSaved')
   })
 })
 

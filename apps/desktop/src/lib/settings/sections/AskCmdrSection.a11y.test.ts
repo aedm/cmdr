@@ -34,6 +34,7 @@ vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
   refreshConsent: vi.fn(() => Promise.resolve()),
   acceptConsent: vi.fn(() => Promise.resolve('done')),
   revokeConsent: vi.fn(() => Promise.resolve('done')),
+  declineConsent: vi.fn(() => Promise.resolve('done')),
 }))
 vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

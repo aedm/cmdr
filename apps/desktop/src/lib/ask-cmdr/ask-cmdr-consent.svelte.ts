@@ -134,8 +134,31 @@ export async function acceptConsent(): Promise<ConsentOutcome> {
 }
 
 /**
+ * Turn Ask Cmdr off as a person's answer, wherever they gave it (Settings' Turn off, onboarding's
+ * "no AI"). ❌ Every "no" goes through here, never a bare {@link revokeConsent}: a "no" means no
+ * wherever it was said.
+ *
+ * Revokes, gives a refusal one more try, and holds the "no" when the store refuses both, so every
+ * consent gate reads it from the next check on. `done` when the "no" holds (recorded, or held for
+ * the store); `notSaved` only when neither the store nor `settings.json` took it.
+ */
+export async function declineConsent(): Promise<ConsentOutcome> {
+  if ((await revokeConsent()) === 'done' || (await revokeConsent()) === 'done') return 'done'
+  if (await holdConsentRevoke()) {
+    log.warn("the store refused to turn Ask Cmdr off twice; holding the 'no' until it takes it")
+    await refreshConsent()
+    return 'done'
+  }
+  log.warn(
+    "the store refused to turn Ask Cmdr off twice, and settings.json wouldn't hold the 'no' either; consent stays recorded",
+  )
+  return 'notSaved'
+}
+
+/**
  * Turn Ask Cmdr off (clear consent) and refresh. Chats are kept. `notSaved` when the store
  * refused the write; the status is re-read either way, so the surfaces show what it holds.
+ * One attempt, no hold: a person's "no" goes through {@link declineConsent}.
  */
 export async function revokeConsent(): Promise<ConsentOutcome> {
   let outcome: ConsentOutcome = 'done'

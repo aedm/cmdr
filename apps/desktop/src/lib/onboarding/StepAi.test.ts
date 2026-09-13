@@ -126,13 +126,13 @@ vi.mock('$lib/settings/ai-config', () => ({
 
 // Ask Cmdr consent lives in `main.db`, not the registry, so the step drives it through
 // these commands. The wizard may only ever REVOKE (see the consent-bypass guard below).
-const revokeConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
+// `declineConsent` is the one "no" path (retry, then hold); its legs are pinned in
+// `ask-cmdr-consent.svelte.test.ts`, so here it's the seam.
+const declineConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
 const acceptConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
-const holdConsentRevoke = vi.fn<() => Promise<boolean>>(() => Promise.resolve(true))
 vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
-  revokeConsent: () => revokeConsent(),
+  declineConsent: () => declineConsent(),
   acceptConsent: () => acceptConsent(),
-  holdConsentRevoke: () => holdConsentRevoke(),
 }))
 
 // The step's logger, so a test can tell a logged failure from a logged cancel. Lazy
@@ -220,10 +220,9 @@ describe('StepAi', () => {
     getAiApiKeyStatus.mockResolvedValue({ isSet: false, fingerprint: '' })
     openExternalUrl.mockClear()
     pushConfigToBackend.mockClear()
-    revokeConsent.mockReset()
-    revokeConsent.mockResolvedValue('done')
+    declineConsent.mockReset()
+    declineConsent.mockResolvedValue('done')
     acceptConsent.mockClear()
-    holdConsentRevoke.mockClear()
     settingsMap['onboarding.fullDiskAccessChoice'] = 'allow'
     settingsMap['onboarding.completed'] = false
     getAiRuntimeStatus.mockReset()
@@ -432,7 +431,7 @@ describe('StepAi', () => {
     getOnboardingState().footerOverride?.[0].onclick()
     await waitForAsync()
     expect(settingsMap['ai.provider']).toBe('off')
-    expect(revokeConsent).toHaveBeenCalledTimes(1)
+    expect(declineConsent).toHaveBeenCalledTimes(1)
     expect(settingsMap['askCmdr.proactive']).toBe(false)
     expect(getOnboardingState().currentStep).toBe(3)
   })
@@ -448,7 +447,7 @@ describe('StepAi', () => {
     await waitForAsync()
     expect(settingsMap['ai.provider']).toBe('cloud')
     expect(acceptConsent).not.toHaveBeenCalled()
-    expect(revokeConsent).not.toHaveBeenCalled()
+    expect(declineConsent).not.toHaveBeenCalled()
     expect(settingsMap['askCmdr.proactive']).toBe(true)
   })
 
@@ -461,12 +460,12 @@ describe('StepAi', () => {
     await waitForAsync()
     expect(settingsMap['ai.provider']).toBe('local')
     expect(acceptConsent).not.toHaveBeenCalled()
-    expect(revokeConsent).not.toHaveBeenCalled()
+    expect(declineConsent).not.toHaveBeenCalled()
     expect(settingsMap['askCmdr.proactive']).toBe(true)
   })
 
-  it('a refused revoke is tried once more, so one store hiccup doesn\'t leave consent recorded', async () => {
-    revokeConsent.mockResolvedValueOnce('notSaved').mockResolvedValueOnce('done')
+  it('a "no" that not even a hold could keep is logged, and still never traps the person on the step', async () => {
+    declineConsent.mockResolvedValue('notSaved')
     mounted = mountStep()
     await waitForAsync()
     pickChoice(mounted.target, 'cloud')
@@ -475,42 +474,12 @@ describe('StepAi', () => {
     await waitForAsync()
     getOnboardingState().footerOverride?.[0].onclick()
     await waitForAsync()
-    expect(revokeConsent).toHaveBeenCalledTimes(2)
-    expect(logWarn).not.toHaveBeenCalled()
-    expect(holdConsentRevoke).not.toHaveBeenCalled()
-    expect(getOnboardingState().currentStep).toBe(3)
-  })
-
-  it('a revoke refused twice holds the "no" until the store takes it', async () => {
-    revokeConsent.mockResolvedValue('notSaved')
-    mounted = mountStep()
-    await waitForAsync()
-    pickChoice(mounted.target, 'cloud')
-    await waitForAsync()
-    pickChoice(mounted.target, 'off')
-    await waitForAsync()
-    getOnboardingState().footerOverride?.[0].onclick()
-    await waitForAsync()
-    expect(holdConsentRevoke).toHaveBeenCalledOnce()
-  })
-
-  it('a revoke refused twice is logged, and still never traps the person on the step', async () => {
-    revokeConsent.mockResolvedValue('notSaved')
-    mounted = mountStep()
-    await waitForAsync()
-    pickChoice(mounted.target, 'cloud')
-    await waitForAsync()
-    pickChoice(mounted.target, 'off')
-    await waitForAsync()
-    getOnboardingState().footerOverride?.[0].onclick()
-    await waitForAsync()
-    expect(revokeConsent).toHaveBeenCalledTimes(2)
     expect(logWarn).toHaveBeenCalledOnce()
     expect(getOnboardingState().currentStep).toBe(3)
   })
 
   it('a failing revoke still advances and leaves the forward button usable', async () => {
-    revokeConsent.mockResolvedValue('notSaved')
+    declineConsent.mockResolvedValue('notSaved')
     mounted = mountStep()
     await waitForAsync()
     pickChoice(mounted.target, 'cloud')
