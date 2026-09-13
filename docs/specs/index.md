@@ -49,16 +49,17 @@ below is met.
 
 ## In progress
 
-- [ ] 2026-09-12 `eject-diskarbitration-plan.md` - **A refused eject can't say what holds the drive, and a sibling
-      partition's refusal reads as done.** Planned, not started, review rounds 1 and 2 folded in. The retry, the
-      `NotEjectable` preflight, and the eject deadlines have landed; the index-stop wait fix (B1) must land before M2.
-      First a safety fix on today's path: resolve the physical disk, join ejects per disk, check every sibling for
-      writes, stop every sibling's index inside one deadline (an indexed exFAT sibling is the FSKit panic), and resume
-      them after a refusal. Then typed holders, classified without strings, so the toast names an app, several, a disk
-      image still open, Cmdr, or "macOS is still working with this drive". Then disk volumes move to DiskArbitration:
-      Whole-unmount every synthesized APFS container, then the physical disk, and eject only once a fresh mount table
-      shows everything gone. Order: M0a ∥ M0b ∥ M1 → M2 → M3a → M3b → M4 → checkpoint → M5 → M6; about five agent-days,
-      with eight open questions for David.
+- [ ] 2026-09-14 `eject-and-drive-safety-plan.md` - **Cmdr lets go of a drive before any unmount, survives one that
+      vanishes, and names what holds one it can't eject.** Planned, not started; every product decision is made. A
+      DiskArbitration unmount approver on its own session stops every volume of the disk inside the ask (7 s budget,
+      dissent as the non-force fallback) and resumes on DA's idle callback when the unmount doesn't happen, replacing
+      the racy `WillUnmount` handler. Every index worker carries a labelled share of `VolumeHold`, so "released" means
+      nothing reads the drive. A pulled drive or raw `umount` stops workers without deleting rows or stamping an index
+      complete, invalidates a suspect index with a notice, gives a transfer its progress facts, and sweeps leftover
+      temps when the drive returns. Cmdr's own eject goes per physical disk with the round-3 should-fixes, then a holder
+      scan and classification and the approved copy. Order: M1 harness → M2 lane → M3 holds → M4 approver → M5a index
+      vanish → M5b transfers and temps → M6 disk flights → M7 holder scan → M8 facts → M9 copy → checkpoint; about 4,600
+      lines. The DA teardown swap and "not powered down" are deferred with revisit triggers.
 - [ ] 2026-09-11 `text-editor-choice.md` - **F4 always opens files in TextEdit, and a user wants Sublime Text.** M1 (the
       Rust surface) landed: Cmdr lists what LaunchServices reports as plain-text EDITORS (the role-filtered C query; the
       spike confirmed Sublime Text and VS Code both show up there), launches a file in a stored bundle id or `.app` path
