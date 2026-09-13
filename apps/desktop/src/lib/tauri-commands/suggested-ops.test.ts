@@ -48,6 +48,20 @@ describe('listSuggestedOps', () => {
   })
 })
 
+describe('a refusal the backend typed', () => {
+  it("keeps the variant's detail, so the log line names the cause", async () => {
+    vi.mocked(commands.suggestedOpsList).mockResolvedValueOnce({
+      status: 'error',
+      error: { type: 'store', detail: 'database is locked' },
+    } as never)
+
+    const error = await listSuggestedOps().catch((e: unknown) => e)
+
+    expect(String(error)).toContain('store')
+    expect(String(error)).toContain('database is locked')
+  })
+})
+
 describe('pageSuggestedOps', () => {
   it('forwards the window it was asked for', async () => {
     const page = { ops: [], offset: 400, total: 60_000 }

@@ -16,13 +16,13 @@ import {
   type SuggestedSweepView,
   type SuggestionsChanged,
 } from '$lib/ipc/bindings'
-import { throwIpcError } from './ipc-types'
+import { throwSuggestedOpsError } from '$lib/suggested-ops/suggested-ops-failure'
 
 /** Every sweep with at least one group still waiting on the user, newest first. Counts only:
  *  not one op row is read, because a group of 60,000 ops is legitimate. */
 export async function listSuggestedOps(): Promise<SuggestedSweepView[]> {
   const res = await commands.suggestedOpsList()
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwSuggestedOpsError(res.error)
   return res.data
 }
 
@@ -30,7 +30,7 @@ export async function listSuggestedOps(): Promise<SuggestedSweepView[]> {
  *  list can size itself without loading the rest. */
 export async function pageSuggestedOps(groupId: number, offset: number, limit: number): Promise<SuggestedOpPage> {
   const res = await commands.suggestedOpsPage(groupId, offset, limit)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwSuggestedOpsError(res.error)
   return res.data
 }
 
@@ -38,7 +38,7 @@ export async function pageSuggestedOps(groupId: number, offset: number, limit: n
  *  decided keeps its answer, and the dialog re-reads rather than insisting. */
 export async function rejectSuggestedGroup(groupId: number): Promise<RejectResultView> {
   const res = await commands.suggestedOpsReject(groupId)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwSuggestedOpsError(res.error)
   return res.data
 }
 
@@ -46,7 +46,7 @@ export async function rejectSuggestedGroup(groupId: number): Promise<RejectResul
  *  never the ones they kept, so approving a 60,000-op group whole carries an empty list. */
 export async function approveSuggestedGroup(groupId: number, deselectedOpIds: number[]): Promise<ApprovalResultView> {
   const res = await commands.suggestedOpsApprove(groupId, deselectedOpIds)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwSuggestedOpsError(res.error)
   return res.data
 }
 

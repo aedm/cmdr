@@ -36,10 +36,17 @@ let unlisten: UnlistenFn | null = null
  */
 export async function startSuggestedOpsBadge(): Promise<void> {
   if (unlisten) return
-  unlisten = await onSuggestionsChanged((payload) => {
-    suggestedOpsBadge.pendingGroupCount = payload.pendingGroupCount
-    suggestedOpsBadge.pendingOpCount = payload.pendingOpCount
-  })
+  try {
+    unlisten = await onSuggestionsChanged((payload) => {
+      suggestedOpsBadge.pendingGroupCount = payload.pendingGroupCount
+      suggestedOpsBadge.pendingOpCount = payload.pendingOpCount
+    })
+  } catch (e) {
+    // Window services start this with `void`, so a throw here would be an unhandled rejection.
+    // The seed still runs: what was waiting at launch beats a badge stuck at zero, and a later
+    // start tries the subscription again.
+    log.warn("Couldn't subscribe the suggestions badge: {error}", { error: String(e) })
+  }
   await seedFromStore()
 }
 

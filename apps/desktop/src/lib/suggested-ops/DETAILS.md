@@ -75,6 +75,17 @@ It does two things that look redundant and are not:
 A count it cannot read is logged and dropped rather than propagated: an approval that already succeeded must not fail
 because a badge could not refresh.
 
+Neither half throws. Window services start the badge with `void`, where a rejection escapes as an unhandled one and
+auto-sends an error report, so a refused subscription logs a warn and the seed still runs; a later start tries the
+subscription again.
+
+## When a read or an answer doesn't happen
+
+Every command wrapper throws a `SuggestedOpsFailure` (`suggested-ops-failure.ts`, a `TypedFailure`), ❌ never
+`throwIpcError`. `SuggestedOpsError` is tagged by `type` and carries its cause in `detail`, with no `message`, so the
+generic path kept only the variant name and every log line read "store" with nothing about what SQLite said. The
+failure's message carries both.
+
 ## What isn't here yet
 
 - **`interrupted` groups**: re-approving one mints a NEW group with a fresh preflight, which is spine machinery rather

@@ -64,6 +64,17 @@ describe('seeding', () => {
     expect(suggestedOpsBadge.pendingGroupCount).toBe(0)
   })
 
+  it('still seeds, and never rejects, when the subscription itself fails', async () => {
+    // Window services start this with `void`, so a rejection would escape as an unhandled one,
+    // log at error, and auto-send a report.
+    listenMock.mockRejectedValueOnce(new Error('no event permission'))
+    listMock.mockResolvedValue([sweep([{ liveOpCount: 2 }])])
+
+    await expect(startSuggestedOpsBadge()).resolves.toBeUndefined()
+
+    expect(suggestedOpsBadge.pendingGroupCount).toBe(1)
+  })
+
   it('subscribes once however many times it is started', async () => {
     await startSuggestedOpsBadge()
     await startSuggestedOpsBadge()
