@@ -217,11 +217,11 @@ When a gate opens, the helper re-attempts the toast; if the download finished du
 - **A failed check logs at the level its typed failure earns, once per condition.** A background poll runs on whatever
   network the user happens to be on, so no network, a timeout, or a server having a bad moment stay at `warn`: at
   `error` they would trip the automatic error reporter (Flow B) on something nobody needs a report about. Only a
-  manifest Cmdr's own server refused or served unreadable logs at `error` (`$lib/error-messages/server-request.ts`),
-  and the plugin's untyped check on other platforms stays at `warn`. `checkFailureLog` holds each condition until a
-  check gets an answer, so an offline laptop writes one line, not one per tick, and a broken manifest can't auto-report
-  every hour. `updater.check-failure.test.ts` pins both. Settings and the toast read the failure from
-  `updateState.failure`. The convention itself is documented in `src-tauri/src/error_reporter/DETAILS.md` § convention.
+  manifest Cmdr's own server refused or served unreadable logs at `error` (`$lib/error-messages/server-request.ts`), and
+  the plugin's untyped check on other platforms stays at `warn`. `checkFailureLog` holds each condition until a check
+  gets an answer, so an offline laptop writes one line, not one per tick, and a broken manifest can't auto-report every
+  hour. `updater.check-failure.test.ts` pins both. Settings and the toast read the failure from `updateState.failure`.
+  The convention itself is documented in `src-tauri/src/error_reporter/DETAILS.md` § convention.
 - `_resetUpdaterStateForTest` / `_setUpdateStatusForTest` exist for `updater.test.ts` and the toast tests. Don't reach
   for them from app code: they write the singleton without going through the state machine.
 - `startUpdateChecker()` returns a teardown fn that `+layout.svelte` must call in `onDestroy`, or the poll interval

@@ -540,8 +540,8 @@ fake path — which never sets a real provider — needs the gate to treat the f
     stick.
   - **Every "no" goes through `declineConsent()`**, Settings' Turn off and onboarding's "no AI" alike: it revokes,
     retries a refusal once, and holds the "no" below when the store refuses both. It answers `done` when the "no" holds
-    (recorded or held) and `notSaved` only when even `settings.json` refused the hold. ❌ Never a bare
-    `revokeConsent()` for a person's answer.
+    (recorded or held) and `notSaved` only when even `settings.json` refused the hold. ❌ Never a bare `revokeConsent()`
+    for a person's answer.
   - **A "no" the store refused twice is HELD, fail-closed.** `holdConsentRevoke()` sets the hidden
     `askCmdr.consentRevokePending`, saves `settings.json` at once, and calls `ask_cmdr_consent_revoke_pending_changed`
     (the wake loop's readiness is cached). Every Rust gate takes the marker as an argument of `has_current_consent`

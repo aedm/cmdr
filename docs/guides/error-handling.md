@@ -51,8 +51,8 @@ mis-renders at runtime). Change both sides in the same commit.
 - **Requests to Cmdr's own api server** (an error report or its note didn't go out): the command RETURNS a typed
   `ServerRequestError` (`apps/desktop/src-tauri/src/server_request.rs`), nested in the command's own enum when it has
   failures of its own (`ErrorReportSendError`). `apps/desktop/src/lib/error-messages/server-request.ts` words it as one
-  or two sentences that follow the surface's own lead ("Couldn't send the error report."), and decides the log level:
-  no network, a timeout, a 5xx, or a rate limit stays at warn, and only a refusal from Cmdr's own server logs at error.
+  or two sentences that follow the surface's own lead ("Couldn't send the error report."), and decides the log level: no
+  network, a timeout, a 5xx, or a rate limit stays at warn, and only a refusal from Cmdr's own server logs at error.
 
 ## Every command family owns its error type
 

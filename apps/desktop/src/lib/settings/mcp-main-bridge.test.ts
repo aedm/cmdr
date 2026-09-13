@@ -59,7 +59,9 @@ async function setOverMcp(settingId: string, value: unknown): Promise<unknown> {
   await vi.waitFor(() => {
     expect(emitMock).toHaveBeenCalledWith('mcp-response', expect.objectContaining({ requestId: `req-${settingId}` }))
   })
-  return emitMock.mock.calls.find(([, payload]) => (payload as { requestId: string }).requestId === `req-${settingId}`)?.[1]
+  return emitMock.mock.calls.find(
+    ([, payload]) => (payload as { requestId: string }).requestId === `req-${settingId}`,
+  )?.[1]
 }
 
 beforeEach(async () => {

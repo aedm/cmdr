@@ -69,8 +69,18 @@ beforeEach(() => {
   consentState.needsReconsent = false
 })
 
-const notAccepted: AskCmdrConsentStatus = { accepted: false, currentVersion: 1, acceptedVersion: null, acceptedAt: null }
-const accepted: AskCmdrConsentStatus = { accepted: true, currentVersion: 1, acceptedVersion: 1, acceptedAt: 1_760_000_100 }
+const notAccepted: AskCmdrConsentStatus = {
+  accepted: false,
+  currentVersion: 1,
+  acceptedVersion: null,
+  acceptedAt: null,
+}
+const accepted: AskCmdrConsentStatus = {
+  accepted: true,
+  currentVersion: 1,
+  acceptedVersion: 1,
+  acceptedAt: 1_760_000_100,
+}
 
 describe('refreshConsent', () => {
   it('applies an accepted status (accepted + timestamp)', async () => {
@@ -162,7 +172,7 @@ describe('holdConsentRevoke', () => {
     expect(pendingChangedMock).toHaveBeenCalledOnce()
   })
 
-  it('answers false when the settings file won\'t take it either', async () => {
+  it("answers false when the settings file won't take it either", async () => {
     settingsMock.forceSave.mockResolvedValue(false)
     expect(await holdConsentRevoke()).toBe(false)
   })

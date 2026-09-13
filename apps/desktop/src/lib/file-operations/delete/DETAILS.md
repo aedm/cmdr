@@ -115,9 +115,9 @@ an item in the trash on purpose, because a rollback never overwrites.
   journal and lands the cursor on the item, falling back to the volume trash when no location was recorded or the
   journal read throws.
 
-Neither entry throws. The toast calls `goToTrashedItems` with `void`, so a rejection would escape as an unhandled one and
-auto-send an error report for what is usually a slow drive: `get_trash_dir` answers `MutationError::TimedOut` after 2 s.
-A failed trash lookup shows the shared `locationUnreachableToast` and logs at info.
+Neither entry throws. The toast calls `goToTrashedItems` with `void`, so a rejection would escape as an unhandled one
+and auto-send an error report for what is usually a slow drive: `get_trash_dir` answers `MutationError::TimedOut` after
+2 s. A failed trash lookup shows the shared `locationUnreachableToast` and logs at info.
 
 Reading the journal requires waiting out `write-settled` first: item rows are buffered in memory and flushed in the
 finalize barrier, so a read at completion time comes back empty (`../settled-operations.ts`). Rows come back `seq ASC`

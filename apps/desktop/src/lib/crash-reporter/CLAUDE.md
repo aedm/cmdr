@@ -24,8 +24,8 @@ and collects the user's choices.
 - **A crash loop overrides the opt-in.** Auto-send needs `updates.crashReports` AND `!report.possibleCrashLoop`;
   otherwise the dialog shows. A crashing app must never silently fire a report per launch. Don't simplify that condition
   to the setting alone.
-- **The dialog owns the send, `pending-crash-report.ts` the auto-send.** Both call `sendCrashReport`, and only the dialog path can
-  attach an email or flip `updates.crashReports` on. Adding a send path means deciding both again.
+- **The dialog owns the send, `pending-crash-report.ts` the auto-send.** Both call `sendCrashReport`, and only the
+  dialog path can attach an email or flip `updates.crashReports` on. Adding a send path means deciding both again.
 - **Attach-email comes from `$lib/attach-email`**, shared with the error-report and feedback dialogs; `persist()` runs
   only after `sendCrashReport` resolves. Don't hand-roll the checkbox or add a crash-specific copy of the label. The
   control's own rules: `apps/desktop/src/lib/attach-email/CLAUDE.md`.

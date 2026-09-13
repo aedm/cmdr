@@ -1737,9 +1737,8 @@ Varje rad som har en engelsk källsträng i parentes motsvarar en post i `i18n-t
   `några aktiviteter fortfarande pågår` (`A17`). `ai.local.statusRunning` är servern, `operationLog.status.running` är
   filoperationen.
 - **`Error` → `Problem`** (`"Error"`) · `high`. Ingen diagnostikrad med `Fel` finns kvar: en uppdateringskontroll som
-  inte gick igenom skrivs som hela meningar (`updates.failure.check`).
-  `fileExplorer.network.browser.status.error` står bland `Kan inte nås`, `Tidsgränsen nåddes` och
-  `Inloggningen gick inte`, där `style.md` förbjuder etiketten `fel`.
+  inte gick igenom skrivs som hela meningar (`updates.failure.check`). `fileExplorer.network.browser.status.error` står
+  bland `Kan inte nås`, `Tidsgränsen nåddes` och `Inloggningen gick inte`, där `style.md` förbjuder etiketten `fel`.
 - **`unknown` böjs efter det underförstådda huvudordet** · `high`. `fileOperations.transferProgress.sizeUnknown`
   ersätter en `storlek` (utrum) → `(okänd)`, och katalogen gör likadant där ordet står för sig: `ai.local.modelUnknown`
   = `Okänd` (en `modell`), `askCmdr.cost.unknown` = `kostnad okänd`. Allt som levereras i dag har ett utrumshuvudord och

@@ -841,8 +841,8 @@ otherwise the same one, down to the buttons. Four things differ, each for its ow
   emits progress with no terminal event, so the view closes through `onCancelled` once its session reports
   `leftRegistry`, whether it finished or a Cancel stopped it. Without that, it never closes on its own and every Cancel
   waits out `CANCEL_SETTLE_FALLBACK_MS`. ❌ The reading is gated on `snapshot.reverses`: an ordinary transfer's removal
-  can overtake its `write-complete`, and closing on it would report a cancel for a copy that finished. `canHandOff`
-  also refuses an operation that left, so closing the modal can't "background" something that's gone.
+  can overtake its `write-complete`, and closing on it would report a cancel for a copy that finished. `canHandOff` also
+  refuses an operation that left, so closing the modal can't "background" something that's gone.
 
 **An adopted view never shows `OPENING_PHASE`, and that is a decision.** `scanning` is what a DISPATCHING view opens on,
 because a confirmed transfer is about to count; an adopted operation could be anywhere, and titling a 21%-written copy

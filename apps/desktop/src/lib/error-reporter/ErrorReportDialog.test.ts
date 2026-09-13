@@ -107,7 +107,10 @@ describe('ErrorReportDialog failures', () => {
     api.sendErrorReport.mockRejectedValueOnce(
       new ErrorReportSendFailure({
         type: 'server',
-        failure: { type: 'unreachable', detail: 'upload request: error sending request for url (http://localhost:8787)' },
+        failure: {
+          type: 'unreachable',
+          detail: 'upload request: error sending request for url (http://localhost:8787)',
+        },
       }),
     )
     const target = await mountDialog()

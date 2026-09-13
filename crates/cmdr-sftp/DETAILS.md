@@ -889,11 +889,11 @@ a sign-in UI genuinely branches on all of it.
   settings screen.
 - `saveSftpCredentials(host, port, username, secret)` / `hasSftpCredentials(...)` → `boolean` /
   `deleteSftpCredentials(...)`. The two writing ones throw a `KeychainFailure` carrying the `KeychainError`
-  (`apps/desktop/src/lib/servers/keychain-failure.ts`). ❗ There is deliberately **no** command
-  that hands a secret back: the backend reads the store itself when it builds a session. ❗ **One entry per account,
-  whatever the rung uses it for** — see § "The one secret entry" below. ❗ **These three ARE the "remember the secret"
-  switch**: save turns it on, `hasSftpCredentials` reads it, delete turns it off, and there is no fourth flag to keep in
-  sync (§ "The two switches").
+  (`apps/desktop/src/lib/servers/keychain-failure.ts`). ❗ There is deliberately **no** command that hands a secret
+  back: the backend reads the store itself when it builds a session. ❗ **One entry per account, whatever the rung uses
+  it for** — see § "The one secret entry" below. ❗ **These three ARE the "remember the secret" switch**: save turns it
+  on, `hasSftpCredentials` reads it, delete turns it off, and there is no fourth flag to keep in sync (§ "The two
+  switches").
 - `getKnownSftpServers()` → `KnownSftpServer[]` / `forgetKnownSftpServer(host, port, username)` → `boolean`. Editing a
   server without connecting (renaming it, changing its root or key file, or moving the `autoReconnect` switch) goes
   through the protocol-agnostic `updateSavedServer` (`commands/servers.rs`), which calls

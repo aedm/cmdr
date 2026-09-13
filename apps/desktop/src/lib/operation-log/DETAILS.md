@@ -8,8 +8,8 @@ Depth behind `CLAUDE.md`. The durable journal, its schema, and the rollback engi
 - `operation-log-trigger.svelte.ts`: the reactive state and the open/close seam, modeled on the What's-new trigger
   (`$state` needs a `.svelte.ts` file, and `routes/(main)/+page.svelte` mounts the dialog against
   `operationLogState.open`). Reads the newest 50 on open, appends 50 per "Load more", and exposes
-  `markOperationRollingBack`. A failed append keeps `hasMore`, so Load more stays up as the retry rather than making
-  the list read as the whole history.
+  `markOperationRollingBack`. A failed append keeps `hasMore`, so Load more stays up as the retry rather than making the
+  list read as the whole history.
 - `OperationLogDialog.svelte`: the dialog. Lazily fetches an operation's item rows on first expand and caches them for
   the dialog's lifetime (except a read that threw, which the next expand retries), holds the pending rollback question,
   and renders per-row refusal notices.

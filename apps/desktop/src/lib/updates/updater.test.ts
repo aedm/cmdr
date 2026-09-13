@@ -227,7 +227,12 @@ describe('formatUpdateStatus', () => {
 
   it('returns null while a failure stands, so the caller renders the failure sentence instead', () => {
     expect(
-      formatUpdateStatus({ status: 'idle', failure: { phase: 'install' }, previousVersion: '1.2.3', nextVersion: null }),
+      formatUpdateStatus({
+        status: 'idle',
+        failure: { phase: 'install' },
+        previousVersion: '1.2.3',
+        nextVersion: null,
+      }),
     ).toBeNull()
   })
 })

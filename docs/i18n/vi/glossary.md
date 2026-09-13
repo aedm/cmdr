@@ -362,8 +362,9 @@ UI/path phrasings settled here (keep consistent across files):
 - **Settings > Updates & privacy: `Cài đặt > Cập nhật & quyền riêng tư`** · reuses the settings-pass section name.
   `high`.
 - **Settings > Updates (crash-toast button): `Cài đặt > Cập nhật`** · matches the settings-pass Updates section. `high`.
-- **An update check that didn't land (`updates.failure.check`): whole sentences, `Cmdr không kiểm tra được bản cập nhật.
-  {reason}`** · no "Error:" prefix is left, and no bare "Lỗi" label, keeping the calm voice. `high`.
+- **An update check that didn't land (`updates.failure.check`): whole sentences,
+  `Cmdr không kiểm tra được bản cập nhật. {reason}`** · no "Error:" prefix is left, and no bare "Lỗi" label, keeping the
+  calm voice. `high`.
 
 Settled term decision (2026-06-21):
 
@@ -1811,9 +1812,9 @@ các `*.loctable` của AppKit / các app hệ thống (macOS 26 đã chuyển p
   hướng dẫn nhập môn (`fileExplorer.network.back`, `.share.backArrow`, `fileExplorer.networkMount.back`,
   `onboarding.wizard.back`) là `Quay lại`, cùng với `Quay lại danh sách máy chủ` / `Quay lại trò chuyện`.
 - **`Error` → `Sự cố` (ô trạng thái)** · `fileExplorer.network.browser.status.error` bảo "tránh chữ 'error' nếu ngôn ngữ
-  có cách nói thân thiện hơn" · `high`. Không còn tiền tố chẩn đoán `Lỗi:` nào trong catalog: khi kiểm tra cập nhật không
-  xong, Cmdr nói bằng câu hoàn chỉnh (`updates.failure.check`). Đúng luôn với quy tắc giọng văn ở `style.md`: đừng dùng
-  `lỗi` làm nhãn trạng thái trần.
+  có cách nói thân thiện hơn" · `high`. Không còn tiền tố chẩn đoán `Lỗi:` nào trong catalog: khi kiểm tra cập nhật
+  không xong, Cmdr nói bằng câu hoàn chỉnh (`updates.failure.check`). Đúng luôn với quy tắc giọng văn ở `style.md`: đừng
+  dùng `lỗi` làm nhãn trạng thái trần.
 - **`Modified` → `Đã sửa đổi` (ngày sửa) VÀ `Đã thay đổi` (phím tắt người dùng đã đổi)** ·
   `shortcuts.section.filterModified` không nói về ngày: nó lọc ra những lệnh mà người dùng đã đổi phím tắt · `high`.
   Tiếng Anh dùng lại một chữ cho hai khái niệm; tiếng Việt tách ra thì rõ hơn, và gộp lại sẽ khiến bộ lọc phím tắt đọc

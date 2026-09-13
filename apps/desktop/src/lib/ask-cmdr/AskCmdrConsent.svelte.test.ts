@@ -47,7 +47,7 @@ beforeEach(() => {
 })
 
 describe('AskCmdrConsent', () => {
-  it('says the opt-in didn\'t save, and doesn\'t open the chat', async () => {
+  it("says the opt-in didn't save, and doesn't open the chat", async () => {
     acceptConsent.mockResolvedValue('notSaved')
     const { target, destroy } = mountConsent()
 

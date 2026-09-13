@@ -148,7 +148,7 @@ describe('AskCmdrSection when the store says no', () => {
     target.remove()
   })
 
-  it('says so under the row when turning Ask Cmdr off didn\'t take, even held, instead of re-enabling silently', async () => {
+  it("says so under the row when turning Ask Cmdr off didn't take, even held, instead of re-enabling silently", async () => {
     vi.mocked(declineConsent).mockResolvedValueOnce('notSaved')
     const target = await mountSection()
 

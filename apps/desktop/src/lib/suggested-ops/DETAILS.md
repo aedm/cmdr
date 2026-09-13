@@ -90,8 +90,8 @@ failure's message carries both.
   calls `ensureOpWindow` for the same rows. The virtual list only asks for rows when the viewport moves, so without it
   the rows would sit on their loading placeholder for good.
 - **An Approve or Reject that throws re-reads FIRST, then sets `decisionNotice`.** The store is the only thing that
-  knows whether the decision landed, and the group could otherwise read as pending while its ops already run. The
-  notice sits above the list, not in the group, because after the re-read the group may be gone.
+  knows whether the decision landed, and the group could otherwise read as pending while its ops already run. The notice
+  sits above the list, not in the group, because after the re-read the group may be gone.
 - **The notice keys on the typed variant.** `approvalDidntFinish` means the approval worker died, so whether the claim
   committed is unknown: "check the operation queue before you approve it again". Every other variant is a refusal that
   lands before the claim transaction commits, so nothing ran and "try again" is safe

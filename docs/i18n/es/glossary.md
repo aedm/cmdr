@@ -1730,9 +1730,9 @@ están; las trece restantes son fronteras DELIBERADAS y quedan anotadas abajo pa
   `@menu.bar.edit` pide esa palabra exacta · `high`.
 - **`View`: `Visualización` es el MENÚ, `Ver` es la acción F3** · mismo motivo; `@menu.bar.view` pide la palabra de
   Finder · `high`.
-- **`Error`: `Problema` es un estado que lee el usuario** · el `@key` de `fileExplorer.network.browser.status.error` pide
-  evitar la palabra literal. Ya no queda ninguna etiqueta de diagnóstico `Error:`: las actualizaciones cuentan un fallo
-  con frases completas (`updates.failure.check`) · `high`.
+- **`Error`: `Problema` es un estado que lee el usuario** · el `@key` de `fileExplorer.network.browser.status.error`
+  pide evitar la palabra literal. Ya no queda ninguna etiqueta de diagnóstico `Error:`: las actualizaciones cuentan un
+  fallo con frases completas (`updates.failure.check`) · `high`.
 - **`Modified`: `Modificación` es la FECHA, `Modificados` son los atajos que tú cambiaste** ·
   `shortcuts.section.filterModified` filtra comandos cuyo atajo modificó el usuario, sin fecha ninguna, y concuerda en
   masculino plural con ellos · `high`.

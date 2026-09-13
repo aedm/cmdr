@@ -122,17 +122,17 @@ into a single `nonTransient` key (they rendered identical copy for both). The `n
 ## Requests to Cmdr's api server (`server-request.ts`)
 
 A different family from the listing and write errors: the backend's `ServerRequestError`
-(`apps/desktop/src-tauri/src/server_request.rs`) classifies one request to Cmdr's own api server, and every surface that sends one
-(the error report and its amend today) words it here.
+(`apps/desktop/src-tauri/src/server_request.rs`) classifies one request to Cmdr's own api server, and every surface that
+sends one (the error report and its amend today) words it here.
 
 - **The words are one or two sentences that FOLLOW the surface's own lead** ("Couldn't send the error report."), so a
   translator gets a complete sentence and the surface keeps saying what didn't happen. `errors.serverRequest.*`, raw
   `getMessage()` like the rest of `errors.*`.
-- **The log level is the load-bearing half.** A frontend `log.error` auto-sends an error report for people who opted
-  in, so `serverRequestLogLevel` keeps everything the network or the moment can cause at warn (unreachable, timed out, a
+- **The log level is the load-bearing half.** A frontend `log.error` auto-sends an error report for people who opted in,
+  so `serverRequestLogLevel` keeps everything the network or the moment can cause at warn (unreachable, timed out, a
   5xx, 408, 429) and raises only what means Cmdr and its server disagree (another 4xx, a 2xx this client can't read, a
-  request Cmdr couldn't build, or an untyped failure, which means the IPC bridge broke). A surface whose error-level line
-  would auto-report through the very endpoint that just refused (the error-report dialog) keeps everything at warn.
+  request Cmdr couldn't build, or an untyped failure, which means the IPC bridge broke). A surface whose error-level
+  line would auto-report through the very endpoint that just refused (the error-report dialog) keeps everything at warn.
 - **`detail` rides the carrier's diagnostic, for the log.** ❌ Never interpolate it into copy.
 
 ## Convergence (future)

@@ -1961,9 +1961,9 @@ parancspaletta a régi szót vitte tovább. A határvonalakat ez a szakasz írja
   `Zoom All` = `Összes méretezése`). Az angol leírás külön kiemeli, hogy a kettő nem ugyanaz.
 - **Select**: `Kijelölés` a fájlkijelölő menü és művelet, `Válassz` a legördülő lista helyőrzője
   (`ui.select.placeholder`) — ott a felhasználót szólítjuk meg, nem fájlt jelölünk ki.
-- **Error**: `Probléma` a felhasználónak szóló állapotcella (az angol `@key` maga kéri a barátságosabb szót). Diagnosztikai
-  `Hiba` előtag már nincs a katalógusban: ha a frissítéskeresés nem jár sikerrel, a Cmdr teljes mondatokban szól
-  (`updates.failure.check`).
+- **Error**: `Probléma` a felhasználónak szóló állapotcella (az angol `@key` maga kéri a barátságosabb szót).
+  Diagnosztikai `Hiba` előtag már nincs a katalógusban: ha a frissítéskeresés nem jár sikerrel, a Cmdr teljes
+  mondatokban szól (`updates.failure.check`).
 - **Bytes**: `Bájtok` a folyamatsáv címkéje, mert a párja a `Fájlok`; `Bájt` a mértékegység-választó gombja, mert a
   szomszédjai `kB`, `MB`, `GB`.
 - **From**: `Forrás` a `Cél` párja az átviteli párbeszéd fejlécében; `Innen:` a beágyazott útvonal előtti címke.

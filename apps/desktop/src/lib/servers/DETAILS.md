@@ -57,13 +57,13 @@ it is the convention `mtp://` and `adb://` already carry.
 POSIX account may be case-sensitive, and `Ada` and `ada` can be two people), and the port is literal. A path folded
 differently misses the volume its own id names, which is the same tuple `sftp_volume_id` hashes.
 
-**The split has to match Rust's too.** `cmdr_fs::volume::ids::server_of_path` reads the account as everything before
-the authority's LAST `@` and the port as everything after its last `:`, and `SERVER_PATH_RE` splits at the same two
-places. An email login (`webdav://ada@example.com@cloud.example.com:443`, common on Nextcloud and Fastmail) and an IPv6
-literal host (`sftp://ada@::1:22`) both depend on it. ❌ Don't stop at the first `@`: such an account then reads as no
-place at all, so a pasted path to it opens the add sheet, an SFTP sign-in gets no secret writer, and the pane's refusal
-names the place instead of its host. The account can also hold a typed `user:password`, which is why the log lines on
-this path name the host and ❌ never the path.
+**The split has to match Rust's too.** `cmdr_fs::volume::ids::server_of_path` reads the account as everything before the
+authority's LAST `@` and the port as everything after its last `:`, and `SERVER_PATH_RE` splits at the same two places.
+An email login (`webdav://ada@example.com@cloud.example.com:443`, common on Nextcloud and Fastmail) and an IPv6 literal
+host (`sftp://ada@::1:22`) both depend on it. ❌ Don't stop at the first `@`: such an account then reads as no place at
+all, so a pasted path to it opens the add sheet, an SFTP sign-in gets no secret writer, and the pane's refusal names the
+place instead of its host. The account can also hold a typed `user:password`, which is why the log lines on this path
+name the host and ❌ never the path.
 
 **Matching is by whole components, never a string prefix.** `/srv/data-1` is a legal sibling of `/srv/data`, and a
 string-prefix containment test would strip the root off it and ask the server for `-1/photos`.
@@ -111,9 +111,9 @@ the reason instead, and ❌ never renders an inert "Sign in…" button.
 the arm was picked from went stale: `volumes-changed` is debounced (150 ms), so another pane's dial can register the
 place, or a forget can take it away, between the read and the dial. It crosses the throw as a `SavedPlaceFailure`.
 `already_connected` is a MOVE, ❌ never a sentence: `connect-flow.ts` answers `already_live` (the pane reloads onto the
-live place), and `open-sign-in.ts`'s dial answers `connected` (the sheet closes onto it). `no_such_server` still reads as
-`unreachable`, like an untyped throw (a broken bridge). A forget's row leaves with the next `volumes-changed`, but ❌ a
-silent cancel would leave the pane blank for good whenever the row outlives the refusal, since the pane dials once per
+live place), and `open-sign-in.ts`'s dial answers `connected` (the sheet closes onto it). `no_such_server` still reads
+as `unreachable`, like an untyped throw (a broken bridge). A forget's row leaves with the next `volumes-changed`, but ❌
+a silent cancel would leave the pane blank for good whenever the row outlives the refusal, since the pane dials once per
 landing; `apps/desktop/test/e2e-playwright/servers.spec.ts`'s synthetic place is exactly such a row.
 
 Two dials that both pass the registry check can't register one place twice: both mint the same id from
@@ -202,8 +202,8 @@ An EMPTY field means "I didn't come here to change the password", ❌ never "sto
 every time, since a stored secret is never read back out of the Keychain to prefill it. The typed password is written
 LAST, after the Remember flip, so it wins over a box the same visit turned off: a password field with text in it and
 Save pressed stores that password. A flip or a write that breaks down after the edit saved answers
-`saved_secret_not_updated` under the password field, ❌ never the dial's `unreachable`: the edit landed and no server was
-contacted, and Save again re-saves the same edit and retries the write.
+`saved_secret_not_updated` under the password field, ❌ never the dial's `unreachable`: the edit landed and no server
+was contacted, and Save again re-saves the same edit and retries the write.
 
 **Edit mode's name field holds what the user TYPED.** The store row's raw name opens it, empty for a server nobody
 named, with the listing's label (`username@host`, published as `nameSource: 'fallback'`) as its placeholder; the sheet's

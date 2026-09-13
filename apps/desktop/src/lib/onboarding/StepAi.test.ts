@@ -141,8 +141,12 @@ const logWarn = vi.fn<(...args: unknown[]) => void>()
 const logInfo = vi.fn<(...args: unknown[]) => void>()
 vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({
-    warn: (...args: unknown[]) => { logWarn(...args); },
-    info: (...args: unknown[]) => { logInfo(...args); },
+    warn: (...args: unknown[]) => {
+      logWarn(...args)
+    },
+    info: (...args: unknown[]) => {
+      logInfo(...args)
+    },
     debug: () => undefined,
     error: () => undefined,
   }),

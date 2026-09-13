@@ -219,8 +219,8 @@ advances normally).
 When System Settings doesn't open, Allow says so and gives the way there. `open_privacy_settings` waits on `open`'s exit
 status, so an unopenable pane comes back as an `Err`, and `openPrivacySettings` rejects instead of swallowing it. The
 step then shows `onboarding.stepFda.openSettingsFailed` in a `role="alert"` line, naming the panes with the OS's own
-localized labels (`systemStrings.privacyAndSecurity`, `.fullDiskAccess`). The footer still flips to Restart: a grant made
-by hand needs the relaunch just the same, and the live poller still catches it. `StepFda.test.ts` pins this.
+localized labels (`systemStrings.privacyAndSecurity`, `.fullDiskAccess`). The footer still flips to Restart: a grant
+made by hand needs the relaunch just the same, and the live poller still catches it. `StepFda.test.ts` pins this.
 
 ### Deny path
 
@@ -258,8 +258,8 @@ Three pieces stacked top to bottom:
    finishing is typed per attempt (`LocalDownloadEnd`): `cancelledByChoice` when the person switched away (logged at
    info, even if they already picked Local again by the time the rejection lands) and `failed` for everything else
    (logged at warn). Nothing in the wizard says a genuine failure yet, and nothing else listens (`initAiState` skipped
-   its listeners at launch because the provider wasn't local); whether it should is an open product call. Intel Macs get the local
-   option disabled, with the reason ("Local LLM requires Apple Silicon. Cloud works on Intel.",
+   its listeners at launch because the provider wasn't local); whether it should is an open product call. Intel Macs get
+   the local option disabled, with the reason ("Local LLM requires Apple Silicon. Cloud works on Intel.",
    `getAiRuntimeStatus().localAiSupported`) in VISIBLE text beside it: why an option is greyed out is the one thing the
    user most needs to read, and a tooltip on a control they can't reach is the worst place to put it.
 
@@ -329,9 +329,10 @@ consented (the store deletes two absent `meta` rows). The step goes through `dec
 Settings' Turn off: a refusal gets one more try, because a consent left recorded would greet a later "AI on" with Ask
 Cmdr already consented, and a second refusal HOLDS the "no" (the hidden `askCmdr.consentRevokePending` in
 `settings.json`), which every backend consent gate reads, so it holds at once while the store catches up on a later
-refresh or launch (`ask-cmdr/DETAILS.md` § Consent). Only when even the hold fails does the step log a warning; it
-moves on with the rest of the persist either way, and any other persist failure is logged and still advances. The footer's `advanceBusy` guard always clears in a `finally`. Same
-reasoning as the no-key-blocks-advance rule above: the wizard never traps someone on a step.
+refresh or launch (`ask-cmdr/DETAILS.md` § Consent). Only when even the hold fails does the step log a warning; it moves
+on with the rest of the persist either way, and any other persist failure is logged and still advances. The footer's
+`advanceBusy` guard always clears in a `finally`. Same reasoning as the no-key-blocks-advance rule above: the wizard
+never traps someone on a step.
 
 ### The missing-API-key gate (confirm once, never block)
 

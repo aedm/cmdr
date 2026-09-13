@@ -288,9 +288,9 @@ doubled below to match this doc's convention:
   "rapport d''incident", non-alarmist) · high
 - error report (the report-sending flow) → rapport d''incident · same flow as crash reports; kept consistent · high
 - "Error:" prefix → none left in the catalog: the update toast and Settings word a check that didn't land as whole
-  sentences (`updates.failure.check`, « Cmdr n'a pas pu rechercher les mises à jour. {reason} »), so neither
-  « Problème : » nor « Erreur : » survives there. The calm "problème" fallback from the `errors` pass still holds
-  wherever a status needs one · high
+  sentences (`updates.failure.check`, « Cmdr n'a pas pu rechercher les mises à jour. {reason} »), so neither « Problème
+  : » nor « Erreur : » survives there. The calm "problème" fallback from the `errors` pass still holds wherever a status
+  needs one · high
 - running low on space → l''espace libre devient faible / espace disque faible · descriptive FR, calm; pairs with
   "disque de démarrage" · high
 - free (space, adj.) → libre(s) · macOS Finder ("Disponible"/"libre") · high
@@ -1963,9 +1963,9 @@ Les 11 valeurs sont ICU (apostrophes doublées), espace ASCII avant `:`, aucun U
 - **`from the Help menu` → `depuis le menu Aide`** · `Aide` est le titre du menu chez Apple (`menu.bar.help`, Finder et
   Safari `fr`) et le catalogue dit déjà « depuis le menu Aide » dans `settings.updates.errorReports.description` · high
 - **`Couldn't add your note. {reason}` → `Ajout de votre note impossible. {reason}`** · moule figé de la famille
-  (`sendFailedToast` « Envoi du rapport d'incident impossible. », `prepareFailed` « Préparation de l'aperçu
-  impossible. ») : nom verbal + `impossible` + point, puis la raison déjà traduite ; seul `saveFailedToast`
-  « Enregistrement du lot impossible : » garde l'espace ASCII + `:` devant son détail technique · high
+  (`sendFailedToast` « Envoi du rapport d'incident impossible. », `prepareFailed` « Préparation de l'aperçu impossible.
+  ») : nom verbal + `impossible` + point, puis la raison déjà traduite ; seul `saveFailedToast` « Enregistrement du lot
+  impossible : » garde l'espace ASCII + `:` devant son détail technique · high
 - **`Note added to your report. Your reference ID is` →
   `Note ajoutée à votre rapport. Votre identifiant de référence est`** · seconde moitié identique au frère
   `errorReporter.sentToast.message` (la valeur s'arrête juste avant le badge, sans ponctuation finale) ; `ajoutée`

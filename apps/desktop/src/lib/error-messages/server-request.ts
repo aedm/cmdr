@@ -71,7 +71,9 @@ export function describeServerRequestFailure(failure: ServerRequestError | null)
     case 'timedOut':
       return getMessage('errors.serverRequest.timedOut')
     case 'refused':
-      return getMessage(isServerTrouble(failure.status) ? 'errors.serverRequest.serverBusy' : 'errors.serverRequest.refused')
+      return getMessage(
+        isServerTrouble(failure.status) ? 'errors.serverRequest.serverBusy' : 'errors.serverRequest.refused',
+      )
     case 'badResponse':
       return getMessage('errors.serverRequest.refused')
     case 'unexpected':

@@ -42,7 +42,9 @@ describe('crash-reporter dialog copy parity (en)', () => {
   })
 
   it('says a report that didn’t go out stayed behind, and lets the reason follow', () => {
-    expect(tString('crashReporter.dialog.notSent', { reason: 'Try again.' })).toBe("The report didn't go out. Try again.")
+    expect(tString('crashReporter.dialog.notSent', { reason: 'Try again.' })).toBe(
+      "The report didn't go out. Try again.",
+    )
   })
 })
 
