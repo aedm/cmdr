@@ -36,8 +36,9 @@ vi.mock('$lib/app-status-store', () => ({
     saveMock(s)
   },
 }))
+const logMocks = vi.hoisted(() => ({ warn: vi.fn(), info: vi.fn(), debug: vi.fn(), error: vi.fn() }))
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
+  getAppLogger: () => logMocks,
 }))
 vi.mock('$lib/file-explorer/pane/explorer-state.svelte', () => ({
   explorerState: { setRailFocused: vi.fn() },
@@ -50,8 +51,8 @@ vi.mock('./rail-window', () => ({
 vi.mock('./ask-cmdr-consent.svelte', () => ({
   consentState: { accepted: true, acceptedAt: null },
   refreshConsent: vi.fn(() => Promise.resolve()),
-  acceptConsent: vi.fn(() => Promise.resolve(true)),
-  revokeConsent: vi.fn(() => Promise.resolve()),
+  acceptConsent: vi.fn(() => Promise.resolve('done')),
+  revokeConsent: vi.fn(() => Promise.resolve('done')),
 }))
 
 import {
@@ -207,8 +208,11 @@ describe('sendMessage + streaming', () => {
     })
   })
 
-  it('a rejected send settles the turn as a provider failure', async () => {
-    sendMock.mockRejectedValueOnce(new Error('connection closed'))
+  it('a rejected send settles the turn without blaming the provider or showing raw IPC text', async () => {
+    // `sendAskCmdrMessage` turns every Rust refusal into an outcome, so a rejection means the
+    // invoke itself broke: a Cmdr bug, logged at error, and nothing the provider did.
+    logMocks.error.mockClear()
+    sendMock.mockRejectedValueOnce(new Error('command ask_cmdr_send_message not found'))
     sendMessage('hello')
 
     await vi.waitFor(() => {
@@ -217,9 +221,10 @@ describe('sendMessage + streaming', () => {
 
     expect(askCmdrState.messages.at(-1)).toEqual({
       kind: 'error',
-      errorKind: 'provider',
-      detail: 'Error: connection closed',
+      errorKind: 'unfinishedReply',
+      detail: undefined,
     })
+    expect(logMocks.error).toHaveBeenCalledOnce()
   })
 
   it("a failure with provider detail keeps the provider's wording for display", () => {

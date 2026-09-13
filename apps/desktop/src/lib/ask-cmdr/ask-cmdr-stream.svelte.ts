@@ -86,8 +86,11 @@ export function sendMessage(text: string): void {
       }
     },
     (e: unknown) => {
-      log.warn('sending a message failed: {error}', { error: String(e) })
-      if (askCmdrState.streaming) applyFailed('provider', String(e))
+      // `sendAskCmdrMessage` turns every Rust refusal into an outcome, so landing here means the
+      // invoke itself broke (a missing command, an argument shape that drifted): a Cmdr bug, not
+      // the provider. The turn ends as unfinished, with no raw IPC text in front of the person.
+      log.error('The send command itself broke, before any provider was involved: {error}', { error: String(e) })
+      if (askCmdrState.streaming) applyFailed('unfinishedReply', null)
     },
   )
 }
