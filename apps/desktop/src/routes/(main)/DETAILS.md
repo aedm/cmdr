@@ -161,10 +161,10 @@ the answer is the same whichever road a command came in by.
   windows' `execute-command` emits, `view-mode-changed`, and `menu-sort`.
 - **MCP is exempt**, so every MCP pane command (`select_volume`, `select`, `move_cursor`, `sort`, and the rest) runs
   behind an open dialog. Only the tools that start a file operation refuse, in Rust before they dispatch, with a typed
-  `data.blockingDialog` (`$lib/file-explorer/pane/DETAILS.md` § "The operation-start gate"), and `dialog.confirm` acts on
-  the open dialog itself. A refusal from this gate would be silent, so the agent would wait out its round-trip budget or
-  read it as success. Pane changes behind a copy, move, or delete confirmation can't change what it acts on: the dialog
-  confirms the `sourcePaths` it opened with (`dialog-state.svelte.ts`).
+  `data.blockingDialog` (`$lib/file-explorer/pane/DETAILS.md` § "The operation-start gate"), and `dialog.confirm` acts
+  on the open dialog itself. A refusal from this gate would be silent, so the agent would wait out its round-trip budget
+  or read it as success. Pane changes behind a copy, move, or delete confirmation can't change what it acts on: the
+  dialog confirms the `sourcePaths` it opened with (`dialog-state.svelte.ts`).
 - **The palette never blocks its own rows** (it closes on the way to the handler); every other road counts it as in the
   way.
 - **The keydown resolver asks the gate too**, before claiming a key. A key the core would refuse stays unclaimed, so Tab
