@@ -68,8 +68,21 @@ export function requestVolumeRefresh(): void {
   if (retryFailedTimer) clearTimeout(retryFailedTimer)
 
   // Tell the backend to re-broadcast. The result arrives via the
-  // `volumes-changed` event listener, which handles retryFailed.
-  void refreshVolumes()
+  // `volumes-changed` event listener, which handles retryFailed. ❗ A request
+  // the backend never took brings no event, so that case ends the refresh here.
+  void refreshVolumes().catch((e: unknown) => {
+    logger.warn('Asking the backend to list volumes again broke down: {error}', { error: String(e) })
+    refreshing = false
+    markRetryFailed()
+  })
+}
+
+/** Shows the retry as failed, then clears that after 3 seconds. */
+function markRetryFailed(): void {
+  retryFailed = true
+  retryFailedTimer = setTimeout(() => {
+    retryFailed = false
+  }, 3000)
 }
 
 /**
@@ -207,12 +220,7 @@ export async function initVolumeStore(): Promise<void> {
     // Detect retry failure: we were refreshing and it's still timed out
     if (refreshing) {
       refreshing = false
-      if (payload.timedOut) {
-        retryFailed = true
-        retryFailedTimer = setTimeout(() => {
-          retryFailed = false
-        }, 3000)
-      }
+      if (payload.timedOut) markRetryFailed()
     }
 
     logger.debug('volumes-changed: {count} {volumesNoun}, timedOut={timedOut}', {

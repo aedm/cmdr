@@ -47,14 +47,13 @@ export async function listVolumes(): Promise<TimedOut<VolumeInfo[]>> {
 /**
  * Triggers a fresh `volumes-changed` broadcast from the backend.
  * The result arrives via the event, not as a return value.
+ *
+ * `refresh_volumes` can't refuse, so a rejection means the IPC bridge itself
+ * broke. It reaches the caller, since no `volumes-changed` follows one and the
+ * caller is what knows a retry is waiting on it.
  */
 export async function refreshVolumes(): Promise<void> {
-  try {
-    await commands.refreshVolumes()
-  } catch {
-    // Command not available, fall back to listVolumes (shouldn't happen)
-    log.warn('refresh_volumes command not available')
-  }
+  await commands.refreshVolumes()
 }
 
 /**

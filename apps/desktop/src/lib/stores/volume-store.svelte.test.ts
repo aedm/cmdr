@@ -16,12 +16,13 @@ type VolumesPayload = { data: VolumeInfo[]; timedOut: boolean }
 
 // Hoisted mocks: must run before importing the module under test.
 const mockListVolumes = vi.fn<() => Promise<VolumesPayload>>()
+const mockRefreshVolumes = vi.fn<() => Promise<void>>(() => Promise.resolve())
 let lastVolumesHandler: ((payload: VolumesPayload) => void) | null = null
 const mockUnlisten = vi.fn()
 
 vi.mock('$lib/tauri-commands', () => ({
   listVolumes: () => mockListVolumes(),
-  refreshVolumes: () => Promise.resolve(),
+  refreshVolumes: () => mockRefreshVolumes(),
   onVolumesChanged: (handler: (payload: VolumesPayload) => void) => {
     lastVolumesHandler = handler
     return Promise.resolve(mockUnlisten)
@@ -56,8 +57,36 @@ import {
   initVolumeStore,
   cleanupVolumeStore,
   getVolumes,
+  isVolumeRetryFailed,
+  isVolumesRefreshing,
+  requestVolumeRefresh,
   toConnectionState,
 } from './volume-store.svelte'
+
+describe('requestVolumeRefresh', () => {
+  afterEach(() => {
+    cleanupVolumeStore()
+    warn.mockClear()
+  })
+
+  it('lets the retry go again when the backend never took the request', async () => {
+    // `refresh_volumes` can't refuse, so only a broken IPC bridge lands here, and
+    // no `volumes-changed` follows it. That event is the only other thing that
+    // ends a refresh, so the retry would sit on its spinner for good.
+    mockRefreshVolumes.mockRejectedValueOnce(new Error('the bridge is gone'))
+
+    requestVolumeRefresh()
+
+    await vi.waitFor(() => {
+      expect(isVolumesRefreshing()).toBe(false)
+    })
+    expect(isVolumeRetryFailed()).toBe(true)
+    expect(warn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ error: 'Error: the bridge is gone' }),
+    )
+  })
+})
 
 /** A share mounted twice: two paths, one volume ID. */
 function doublyMountedShare(): VolumeInfo[] {
