@@ -235,6 +235,20 @@ describe('subscriptions', () => {
     }
   })
 
+  it('never rejects when a subscription throws before it returns a promise', async () => {
+    // A dead fan-out means quiet sessions, not a dead window: `initOperationSessions` awaits
+    // this, and a rejection would take down whatever awaited it.
+    vi.mocked(onWriteConflict).mockImplementationOnce(() => {
+      throw new Error('no event bridge')
+    })
+    const fanout = createOperationEventFanout()
+
+    await expect(fanout.init()).resolves.toBeUndefined()
+
+    fanout.dispose()
+    expect(unlisteners.progress).toHaveBeenCalledTimes(1)
+  })
+
   it('unsubscribes whatever lands after a dispose that raced the init', async () => {
     const fanout = createOperationEventFanout()
     const pending = fanout.init()

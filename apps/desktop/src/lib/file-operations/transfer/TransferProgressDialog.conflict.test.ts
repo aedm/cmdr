@@ -41,6 +41,7 @@ vi.mock('$lib/tauri-commands', () => ({
   onWriteError: vi.fn(() => Promise.resolve(() => {})),
   onWriteCancelled: vi.fn(() => Promise.resolve(() => {})),
   onWriteSettled: vi.fn(() => Promise.resolve(() => {})),
+  onWriteConflictResolved: vi.fn(() => Promise.resolve(() => {})),
   onWriteConflict: vi.fn((cb: (e: WriteConflictEvent) => void) => {
     conflictCb = cb
     return Promise.resolve(() => {

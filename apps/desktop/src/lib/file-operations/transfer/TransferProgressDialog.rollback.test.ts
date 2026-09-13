@@ -63,6 +63,7 @@ vi.mock('$lib/tauri-commands', () => ({
       conflictCb = null
     })
   }),
+  onWriteConflictResolved: vi.fn(() => Promise.resolve(() => {})),
   resolveWriteConflict: vi.fn(() => Promise.resolve('resolved')),
   cancelOperation: vi.fn(() => Promise.resolve()),
   cancelWriteOperation: vi.fn(() => Promise.resolve()),
@@ -338,6 +339,10 @@ describe('TransferProgressDialog Rollback — main footer', () => {
     // has always read it — pre-fix this dialog offered a button that only
     // cancelled.
     registry.supportsRollback = false
+    // The window's fan-out seeds its registry snapshot once, at init, and hands that row to
+    // every session that attaches later, so the row has to say this before the window opens.
+    destroyOperationSessions()
+    await initOperationSessions()
     const target = await mountDialog({ operationType: 'move', sourceVolumeId: 'smb-share-1', destVolumeId: 'root' })
     const rollback = buttonByText(target, 'Rollback')
     expect(rollback?.getAttribute('aria-disabled')).toBe('true')
@@ -481,6 +486,10 @@ describe('TransferProgressDialog Rollback — conflict-section footer', () => {
     // The two footers ask the operation, not the volume ids, so a clash answered
     // mid-transfer can't be the one moment Rollback looks available.
     registry.supportsRollback = false
+    // The window's fan-out seeds its registry snapshot once, at init, and hands that row to
+    // every session that attaches later, so the row has to say this before the window opens.
+    destroyOperationSessions()
+    await initOperationSessions()
     const target = await mountDialog({ operationType: 'move', sourceVolumeId: 'smb-share-1', destVolumeId: 'root' })
     await fireConflict()
     const rollback = buttonByText(target, 'Rollback')

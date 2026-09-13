@@ -243,33 +243,53 @@ export function createOperationEventFanout(): OperationEventFanout {
     }
   }
 
+  /** Starts one subscription so that a throw BEFORE it hands back a promise settles as a
+   *  rejection too. Without this, that throw escapes `init`, which must never reject. */
+  function startSubscription(start: () => Promise<UnlistenFn>): Promise<UnlistenFn> {
+    try {
+      return start()
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)))
+    }
+  }
+
   async function init(): Promise<void> {
-    const subscriptions = await Promise.allSettled([
-        onWriteProgress((event) => {
-          route({ kind: 'progress', event })
-        }),
-        onWriteComplete((event) => {
-          route({ kind: 'complete', event })
-        }),
-        onWriteError((event) => {
-          route({ kind: 'error', event })
-        }),
-        onWriteCancelled((event) => {
-          route({ kind: 'cancelled', event })
-        }),
-        onWriteSettled((event) => {
-          route({ kind: 'settled', event })
-        }),
-        onWriteConflict((event) => {
-          route({ kind: 'conflict', event })
-        }),
-        onWriteConflictResolved((event) => {
-          route({ kind: 'conflictResolved', event })
-        }),
-      onOperationsChanged((event) => {
-        applySnapshot(event.operations)
-      }),
-    ])
+    const subscriptions = await Promise.allSettled(
+      [
+        () =>
+          onWriteProgress((event) => {
+            route({ kind: 'progress', event })
+          }),
+        () =>
+          onWriteComplete((event) => {
+            route({ kind: 'complete', event })
+          }),
+        () =>
+          onWriteError((event) => {
+            route({ kind: 'error', event })
+          }),
+        () =>
+          onWriteCancelled((event) => {
+            route({ kind: 'cancelled', event })
+          }),
+        () =>
+          onWriteSettled((event) => {
+            route({ kind: 'settled', event })
+          }),
+        () =>
+          onWriteConflict((event) => {
+            route({ kind: 'conflict', event })
+          }),
+        () =>
+          onWriteConflictResolved((event) => {
+            route({ kind: 'conflictResolved', event })
+          }),
+        () =>
+          onOperationsChanged((event) => {
+            applySnapshot(event.operations)
+          }),
+      ].map(startSubscription),
+    )
     // Hold every listener that landed, even when another didn't: `dispose` can only
     // release what it holds, and the streams that did subscribe still route. A
     // missing stream means quieter sessions, not a dead window.
