@@ -89,7 +89,9 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   - ❗ **`connect_saved_place` refuses a REGISTERED id** (`SavedPlaceRefusal::AlreadyConnected`). Re-dialing would
     register a second volume under the same id; a session that dropped is mended by
     `network.rs::reconnect_volume_with_credentials`, which is what enforces the read-only username rule and the
-    never-seeds rule. Neither refusal is something a person did, which is why they are an `Err` rather than an outcome.
+    never-seeds rule. Neither refusal is something a person did, which is why they are an `Err` rather than an outcome:
+    the frontend reads either as a `saved` row that went stale and moves on (reload or close), ❌ never a sentence
+    (`apps/desktop/src/lib/servers/DETAILS.md` § The three arms).
   - ❗ **An SMB host lists NO places and cannot be pinned here.** `known_shares.rs` stores no share rows, carries no
     port, and a mounted share's id comes from `statfs` (an IP where the store holds an mDNS name), so no id derivable
     from the store would match the mounted volume. SMB places keep reaching the switcher as mounted volumes.

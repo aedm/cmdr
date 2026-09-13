@@ -13,6 +13,7 @@
 import { commands } from '$lib/ipc/bindings'
 import type {
   SavedPlace,
+  SavedPlaceRefusal,
   SavedServer,
   SavedServerOutcome,
   SecretOffer,
@@ -20,16 +21,36 @@ import type {
   ServerProtocol,
   ServerTarget,
 } from '$lib/ipc/bindings'
-import { throwIpcError } from './ipc-types'
+import { TypedFailure, failureOf } from '$lib/ipc/typed-failure'
 
 export type {
   SavedPlace,
+  SavedPlaceRefusal,
   SavedServer,
   SavedServerOutcome,
   SecretOffer,
   ServerConnectOutcome,
   ServerProtocol,
   ServerTarget,
+}
+
+/**
+ * An `Error` that still carries `connect_saved_place`'s typed refusal.
+ *
+ * ❗ Both refusals mean the row the dial was picked from went stale:
+ * `volumes-changed` is debounced, so another pane's dial or a forget can land in
+ * between. Each caller maps them to a MOVE (reload, close), ❌ never a sentence.
+ */
+export class SavedPlaceFailure extends TypedFailure<SavedPlaceRefusal> {
+  constructor(failure: SavedPlaceRefusal) {
+    super(failure, `saved place refused: ${failure.reason} (${failure.volumeId})`)
+    this.name = 'SavedPlaceFailure'
+  }
+}
+
+/** The typed refusal behind a caught value, or `null` when it isn't one. */
+export function asSavedPlaceRefusal(error: unknown): SavedPlaceRefusal | null {
+  return failureOf(SavedPlaceFailure, error)
 }
 
 /**
@@ -56,9 +77,8 @@ export function newServerAttemptId(): string {
  *
  * ❗ Only for a place with NO registered volume. A registered volume that dropped
  * is mended by `reconnectVolumeWithCredentials`, and re-dialing it would register
- * a second volume. `servers/connect-flow.ts` is what picks between them; the two
- * ways of picking wrong throw a typed `SavedPlaceRefusal`, which a user should
- * never see.
+ * a second volume. `servers/connect-flow.ts` is what picks between them; a stale
+ * pick throws a {@link SavedPlaceFailure}, which a user should never see.
  */
 export async function connectSavedPlace(
   volumeId: string,
@@ -66,7 +86,7 @@ export async function connectSavedPlace(
   secret: SecretOffer | null = null,
 ): Promise<ServerConnectOutcome> {
   const result = await commands.connectSavedPlace(volumeId, attemptId, secret)
-  if (result.status === 'error') throwIpcError(result.error)
+  if (result.status === 'error') throw new SavedPlaceFailure(result.error)
   return result.data
 }
 

@@ -16,6 +16,7 @@
  */
 
 import {
+  asSavedPlaceRefusal,
   connectSavedPlace,
   connectServer,
   connectToServer,
@@ -217,9 +218,14 @@ function dialSavedPlaceAttempt(volumeId: string): SignInAttempt {
     try {
       return readConnectOutcome(await connectSavedPlace(volumeId, attemptId, submission.secret))
     } catch (e) {
-      // A typed `SavedPlaceRefusal`: the wrong move for this volume's standing.
-      // A bug to read in a log, ❌ never a sentence to put in front of a person.
-      log.warn('Dialing the saved place {volumeId} was refused: {error}', { volumeId, error: String(e) })
+      // ❗ A typed refusal means the place's standing moved while the sheet was
+      // open (`volumes-changed` is debounced). Another dial registered it, so the
+      // sheet closes onto the live place rather than dialing a second volume; or a
+      // forget took it away, so nothing is left to sign in to.
+      const refusal = asSavedPlaceRefusal(e)
+      if (refusal?.reason === 'already_connected') return { kind: 'connected', volumeId }
+      if (refusal?.reason === 'no_such_server') return { kind: 'cancelled' }
+      log.warn('Dialing the saved place {volumeId} broke down: {error}', { volumeId, error: String(e) })
       return { kind: 'refused', refusal: 'unreachable' }
     }
   }

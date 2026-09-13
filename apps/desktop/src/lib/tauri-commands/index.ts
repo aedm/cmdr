@@ -898,6 +898,8 @@ export type {
 export {
   listSavedServers,
   newServerAttemptId,
+  SavedPlaceFailure,
+  asSavedPlaceRefusal,
   connectSavedPlace,
   connectServer,
   cancelServerConnect,
@@ -910,6 +912,7 @@ export {
 } from './servers'
 export type {
   SavedPlace,
+  SavedPlaceRefusal,
   SavedServer,
   SecretOffer,
   ServerConnectOutcome,

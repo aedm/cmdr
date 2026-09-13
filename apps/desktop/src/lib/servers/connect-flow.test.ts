@@ -183,9 +183,31 @@ describe('arm 3: a saved place with nothing registered', () => {
     expect(result).toEqual({ kind: 'refused', refusal: 'auth_method_unsupported' })
   })
 
-  it('a typed refusal (the wrong arm for this volume) never reaches the user as itself', async () => {
+  it('reads a place another pane registered a moment ago as already live, so the pane reloads', async () => {
+    // ❗ `volumes-changed` is debounced, so a second pane can still read a
+    // `saved` row after the first pane's dial registered the volume. Its dial
+    // then refuses as `already_connected`, and the place IS live: ❌ never
+    // "couldn't reach".
     ipc.mock('connect_saved_place', () => {
       throw { reason: 'already_connected', volumeId: VOLUME_ID }
+    })
+    const result = await connectPlace({ volumeId: VOLUME_ID, connectionState: 'saved' })
+    expect(result).toEqual({ kind: 'already_live' })
+  })
+
+  it('says nothing about a place that was forgotten while its row still read as saved', async () => {
+    // The row leaves with the next `volumes-changed`. A refusal with Try again
+    // would offer to dial a server that is no longer saved.
+    ipc.mock('connect_saved_place', () => {
+      throw { reason: 'no_such_server', volumeId: VOLUME_ID }
+    })
+    const result = await connectPlace({ volumeId: VOLUME_ID, connectionState: 'saved' })
+    expect(result).toEqual({ kind: 'cancelled' })
+  })
+
+  it('still says the connection did not happen when the dial broke down some other way', async () => {
+    ipc.mock('connect_saved_place', () => {
+      throw new Error('the bridge is gone')
     })
     const result = await connectPlace({ volumeId: VOLUME_ID, connectionState: 'saved' })
     expect(result).toEqual({ kind: 'refused', refusal: 'unreachable' })

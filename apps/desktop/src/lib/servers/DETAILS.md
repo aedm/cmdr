@@ -107,9 +107,16 @@ the reason instead, and ❌ never renders an inert "Sign in…" button.
 
 `cancelled` returns silently in every arm: the user pressed the button and telling them what they just did is noise.
 
-**A `SavedPlaceRefusal` thrown by `connect_saved_place`** (`no_such_server`, `already_connected`) means the CALLER
-picked the wrong arm. It is logged and shown as `unreachable`, because there is no sentence for it that helps a person:
-a user should never see one, and the log line is what a maintainer needs.
+**A `SavedPlaceRefusal` thrown by `connect_saved_place`** (`already_connected`, `no_such_server`) means the `saved` row
+the arm was picked from went stale: `volumes-changed` is debounced (150 ms), so another pane's dial can register the
+place, or a forget can take it away, between the read and the dial. It crosses the throw as a `SavedPlaceFailure`, and
+each caller maps it to a MOVE, ❌ never a sentence: `connect-flow.ts` answers `already_live` (the pane reloads onto the
+live place) or `cancelled` (the row is leaving), and `open-sign-in.ts`'s dial answers `connected` or `cancelled`, so the
+sheet closes. Only an untyped throw (a broken bridge) still reads as `unreachable`.
+
+Two dials that both pass the registry check can't register one place twice: both mint the same id from
+`(host, port, username)`, and `install_retiring_incumbent` retires whichever volume held it
+(`apps/desktop/src-tauri/src/network/connect_wiring_test.rs` pins it).
 
 ## The sheet contract
 

@@ -150,6 +150,46 @@ describe('a place that is asking, with nothing registered', () => {
     expect(await seam).toEqual({ signedIn: true, volumeId: VOLUME_ID })
   })
 
+  it('closes onto the place when another dial registered it while the sheet was open', async () => {
+    // ❗ `volumes-changed` is debounced, so a sheet can be open over a place a
+    // second pane registers a moment later. The dial then refuses as
+    // `already_connected`: the place is live, ❌ never "couldn't reach".
+    ipc.mock('connect_saved_place', () => {
+      throw { reason: 'already_connected', volumeId: VOLUME_ID }
+    })
+    const seam = openSignInForPlace({ volumeId: VOLUME_ID, registered: false })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({
+      mode: 'sign-in',
+      secret: { secret: 'hunter2', remember: false },
+      username: null,
+    })
+    expect(outcome).toEqual({ kind: 'connected', volumeId: VOLUME_ID })
+
+    closeSignInSheet({ kind: 'connected', volumeId: VOLUME_ID })
+    await seam
+  })
+
+  it('closes quietly when the server was forgotten while the sheet was open', async () => {
+    ipc.mock('connect_saved_place', () => {
+      throw { reason: 'no_such_server', volumeId: VOLUME_ID }
+    })
+    const seam = openSignInForPlace({ volumeId: VOLUME_ID, registered: false })
+    const request = await parkedRequest()
+
+    const outcome = await attemptOf(request)({
+      mode: 'sign-in',
+      secret: { secret: 'hunter2', remember: false },
+      username: null,
+    })
+    // Nothing is left to sign in to, so there is nothing to say either.
+    expect(outcome).toEqual({ kind: 'cancelled' })
+
+    closeSignInSheet({ kind: 'cancelled' })
+    await seam
+  })
+
   it('reads a closed sheet as not signed in, and says nothing about it', async () => {
     const seam = openSignInForPlace({ volumeId: VOLUME_ID, registered: false })
     await parkedRequest()

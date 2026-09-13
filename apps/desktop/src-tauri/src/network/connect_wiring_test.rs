@@ -48,6 +48,31 @@ fn a_second_attempt_under_one_id_stays_cancelable_after_the_first_ends() {
     assert!(second_token.is_cancelled());
 }
 
+#[tokio::test]
+async fn two_dials_of_one_saved_place_leave_one_volume_serving_its_id() {
+    // ❗ Two panes can dial one saved place at once, and `connect_saved_place`
+    // checks the registry with a `get`, not a claim, so both dials pass it. That
+    // still can't register the place twice: both mint the same id from
+    // `(host, port, username)`, the registry is keyed by it, and the second
+    // install retires the first and takes the id over.
+    use crate::file_system::volume::InMemoryVolume;
+
+    let volume_id = cmdr_fs::volume::sftp_volume_id("two-dials.example", 22, "ada");
+    let first: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("first dial").with_root("/srv/data"));
+    let second: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("second dial").with_root("/srv/data"));
+
+    tokio::join!(
+        install_retiring_incumbent(&volume_id, Arc::clone(&first)),
+        install_retiring_incumbent(&volume_id, Arc::clone(&second)),
+    );
+
+    let serving = crate::file_system::volume::manager::get_volume_manager()
+        .get(&volume_id)
+        .expect("the place is registered");
+    assert!(Arc::ptr_eq(&serving, &second), "the later install holds the one id");
+    assert!(!Arc::ptr_eq(&serving, &first));
+}
+
 #[test]
 fn one_backends_cancel_never_reaches_another_backends_dial() {
     // ❗ Why each backend holds its own table rather than sharing one: the

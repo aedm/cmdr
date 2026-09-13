@@ -24,6 +24,7 @@
  */
 
 import {
+  asSavedPlaceRefusal,
   cancelServerConnect,
   connectSavedPlace,
   newServerAttemptId,
@@ -134,10 +135,19 @@ export async function connectPlace(request: ConnectPlaceRequest): Promise<Connec
   try {
     outcome = await connectSavedPlace(volumeId, attemptId)
   } catch (e) {
-    // A typed `SavedPlaceRefusal`: the caller picked the wrong arm for this
-    // volume's standing, which is a bug to read in a log, ❌ never a sentence to
-    // put in front of a person. The pane says the connection didn't happen.
-    log.warn('Dialing the saved place {volumeId} was refused: {error}', { volumeId, error: String(e) })
+    // ❗ A typed refusal means the `saved` row this arm was picked from went
+    // stale (`volumes-changed` is debounced): another pane's dial registered the
+    // place, or a forget took it away. ❌ Never "couldn't reach" for either.
+    const refusal = asSavedPlaceRefusal(e)
+    if (refusal) {
+      log.info('The saved place {volumeId} moved before its dial landed: {reason}', {
+        volumeId,
+        reason: refusal.reason,
+      })
+      // Live already, so the pane reloads onto it; gone, so there is nothing to say.
+      return refusal.reason === 'already_connected' ? { kind: 'already_live' } : { kind: 'cancelled' }
+    }
+    log.warn('Dialing the saved place {volumeId} broke down: {error}', { volumeId, error: String(e) })
     return { kind: 'refused', refusal: 'unreachable' }
   }
 
