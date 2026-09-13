@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   isMacOS: vi.fn(),
   addToast: vi.fn(),
   warn: vi.fn(),
+  error: vi.fn(),
   getLaunchDayCount: vi.fn(),
   getDockPinState: vi.fn(),
   getRevealHandlerState: vi.fn(),
@@ -62,7 +63,7 @@ vi.mock('$lib/shortcuts/key-capture', () => ({ isMacOS: mocks.isMacOS }))
 vi.mock('$lib/ui/toast', () => ({ addToast: mocks.addToast }))
 vi.mock('$lib/intl/messages.svelte', () => ({ tString: (key: string) => key }))
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ warn: mocks.warn, info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
+  getAppLogger: () => ({ warn: mocks.warn, info: vi.fn(), debug: vi.fn(), error: mocks.error }),
 }))
 
 import {
@@ -151,6 +152,29 @@ beforeEach(() => {
     throw new Error(`Unexpected getSetting(${id})`)
   })
   mocks.isMacOS.mockReturnValue(true)
+})
+
+// `check_full_disk_access` answers a bare bool on every platform, so its wrapper rejects only when the IPC
+// bridge broke. Launch must not strand on a blank window over it, and only error-level logging tells anyone.
+describe('a full disk access probe that broke', () => {
+  it('still shows the app at launch, reading it as granted, and logs it at error', async () => {
+    mocks.checkFullDiskAccess.mockRejectedValue(new Error('IPC bridge gone'))
+    settings('allow', true)
+
+    await resolveOnboardingMount(ctx)
+
+    expect(appShown).toBe(true)
+    expect(mocks.error).toHaveBeenCalledOnce()
+  })
+
+  it('still opens the wizard from the menu, and logs it at error', async () => {
+    mocks.checkFullDiskAccess.mockRejectedValue(new Error('IPC bridge gone'))
+
+    await openOnboardingFromMenuOrPalette(ctx, 'menu')
+
+    expect(mocks.openWizard).toHaveBeenCalledOnce()
+    expect(mocks.error).toHaveBeenCalledOnce()
+  })
 })
 
 describe('resolveOnboardingMount', () => {

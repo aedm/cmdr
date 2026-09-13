@@ -329,15 +329,13 @@ export async function setLowDiskSpaceConfig(enabled: boolean, thresholdPercent: 
 /**
  * Checks if the app has full disk access.
  * On macOS, checks the actual FDA status. On Linux, always returns true (no sandboxing).
+ *
+ * Every platform registers the command and it answers a bare `bool`, so a rejection means the IPC
+ * bridge itself broke. It reaches the caller rather than reading as "granted".
  * @returns True if the app has FDA, false otherwise
  */
 export async function checkFullDiskAccess(): Promise<boolean> {
-  try {
-    return await commands.checkFullDiskAccess()
-  } catch {
-    // Command not available (non-macOS) - assume we have access
-    return true
-  }
+  return commands.checkFullDiskAccess()
 }
 
 /**
@@ -347,16 +345,12 @@ export async function checkFullDiskAccess(): Promise<boolean> {
  * `read_dir` registration storm on a denial, so it's safe to call repeatedly.
  * The onboarding FDA step polls it every 500 ms to detect a same-session grant.
  * Use `checkFullDiskAccess` for the one-shot registration moments (it's the
- * call that gets Cmdr into the Full Disk Access list).
+ * call that gets Cmdr into the Full Disk Access list). A rejection reaches the
+ * caller, like `checkFullDiskAccess`'s.
  * @returns True if the app has FDA, false otherwise
  */
 export async function checkFullDiskAccessQuiet(): Promise<boolean> {
-  try {
-    return await commands.checkFullDiskAccessQuiet()
-  } catch {
-    // Command not available (non-macOS) - assume we have access
-    return true
-  }
+  return commands.checkFullDiskAccessQuiet()
 }
 
 /**
@@ -369,28 +363,23 @@ export async function getRestrictedPaths(): Promise<string[]> {
 }
 
 /**
- * Returns the macOS major version (e.g. 14 for Sonoma). Returns 0 on non-macOS
- * platforms or if the command is unavailable.
+ * Returns the macOS major version (e.g. 14 for Sonoma), or 0 on Linux, which registers the command too.
+ * A rejection means the IPC bridge broke, and reaches the caller rather than reading as 0.
  */
 export async function getMacosMajorVersion(): Promise<number> {
-  try {
-    return await commands.getMacosMajorVersion()
-  } catch {
-    return 0
-  }
+  return commands.getMacosMajorVersion()
 }
 
 /**
- * Opens the system privacy settings.
- * On macOS, opens System Settings > Privacy & Security. Not applicable on Linux.
+ * Opens System Settings on the Full Disk Access pane (macOS). Linux has no such pane and refuses.
+ *
+ * Rejects when System Settings didn't open (the backend waits on `open`'s exit status), so the
+ * caller can show the way there instead: a surface that swallows it tells the person Settings is
+ * open when it isn't.
  */
 export async function openPrivacySettings(): Promise<void> {
-  try {
-    const res = await commands.openPrivacySettings()
-    if (res.status === 'error') throwIpcError(res.error)
-  } catch {
-    // Command not available (non-macOS) - silently fail
-  }
+  const res = await commands.openPrivacySettings()
+  if (res.status === 'error') throwIpcError(res.error)
 }
 
 /**
@@ -401,13 +390,15 @@ export async function openPrivacySettings(): Promise<void> {
  * the Tauri opener plugin's default URL allowlist (http/https/mailto/tel) rejects
  * the `x-apple.systempreferences:` scheme silently. The Rust-side command also
  * validates the scheme, so passing arbitrary URLs through here is safe.
+ *
+ * Fire-and-forget for its link-click callers: a refusal is logged, never thrown.
  */
 export async function openSystemSettingsUrl(url: string): Promise<void> {
   try {
     const res = await commands.openSystemSettingsUrl(url)
     if (res.status === 'error') throwIpcError(res.error)
-  } catch {
-    // Command not available (non-macOS) or URL rejected. Silently fail.
+  } catch (error) {
+    log.warn("Couldn't open the System Settings link {url}: {error}", { url, error: String(error) })
   }
 }
 

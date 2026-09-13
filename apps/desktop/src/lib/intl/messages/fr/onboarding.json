@@ -151,6 +151,10 @@
   "@onboarding.stepFda.postAction.body": {
     "sourceHash": "f87a5fc"
   },
+  "onboarding.stepFda.openSettingsFailed": "Cmdr n''a pas pu ouvrir {systemSettings}. Ouvrez-le vous-même, allez dans <strong>{privacyAndSecurity}</strong>, puis <strong>{fullDiskAccess}</strong>, et activez <strong>Cmdr</strong>.",
+  "@onboarding.stepFda.openSettingsFailed": {
+    "sourceHash": "8cfce29"
+  },
   "onboarding.stepAi.bannerTitle.granted": "Accès complet au disque accordé",
   "@onboarding.stepAi.bannerTitle.granted": {
     "sourceHash": "f5872be"

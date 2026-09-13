@@ -216,6 +216,12 @@ after relaunch.
 The Allow / Deny buttons stay live in restart mode so the user can change their mind to Deny without restarting (Deny
 advances normally).
 
+When System Settings doesn't open, Allow says so and gives the way there. `open_privacy_settings` waits on `open`'s exit
+status, so an unopenable pane comes back as an `Err`, and `openPrivacySettings` rejects instead of swallowing it. The
+step then shows `onboarding.stepFda.openSettingsFailed` in a `role="alert"` line, naming the panes with the OS's own
+localized labels (`systemStrings.privacyAndSecurity`, `.fullDiskAccess`). The footer still flips to Restart: a grant made
+by hand needs the relaunch just the same, and the live poller still catches it. `StepFda.test.ts` pins this.
+
 ### Deny path
 
 `StepFda.svelte::handleDeny`:

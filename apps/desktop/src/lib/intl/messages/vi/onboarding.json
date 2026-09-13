@@ -151,6 +151,10 @@
   "@onboarding.stepFda.postAction.body": {
     "sourceHash": "f87a5fc"
   },
+  "onboarding.stepFda.openSettingsFailed": "Cmdr không mở được {systemSettings}. Hãy tự mở, vào <strong>{privacyAndSecurity}</strong>, rồi <strong>{fullDiskAccess}</strong>, và bật <strong>Cmdr</strong> lên.",
+  "@onboarding.stepFda.openSettingsFailed": {
+    "sourceHash": "8cfce29"
+  },
   "onboarding.stepAi.bannerTitle.granted": "Đã cấp quyền truy cập toàn bộ đĩa",
   "@onboarding.stepAi.bannerTitle.granted": {
     "sourceHash": "f5872be"

@@ -2,11 +2,20 @@
     import { dismissToast } from '$lib/ui/toast'
     import Button from '$lib/ui/Button.svelte'
     import { openPrivacySettings } from '$lib/tauri-commands'
+    import { getAppLogger } from '$lib/logging/logger'
     import { tString } from '$lib/intl/messages.svelte'
     import { LATEST_DOWNLOAD_FDA_TOAST_ID } from './go-to-latest-ids'
 
+    const log = getAppLogger('downloads')
+
     async function handleOpenSystemSettings() {
-        await openPrivacySettings()
+        try {
+            await openPrivacySettings()
+        } catch (error) {
+            // The toast stays up, so the button is still there to try again.
+            log.warn("Couldn't open System Settings from the latest-download toast: {error}", { error: String(error) })
+            return
+        }
         dismissToast(LATEST_DOWNLOAD_FDA_TOAST_ID)
     }
 

@@ -333,17 +333,60 @@ pub fn get_macos_major_version() -> u32 {
 /// `preference.security` host. Both anchor on `Privacy_AllFiles`.
 #[tauri::command]
 #[specta::specta]
-pub fn open_privacy_settings() -> Result<(), String> {
-    let url = if get_macos_major_version() >= 13 {
-        "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles"
-    } else {
-        "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
-    };
-    std::process::Command::new("open")
+pub async fn open_privacy_settings() -> Result<(), String> {
+    // Off the IPC thread: waiting on `open` (and `sw_vers` for the host) takes a few hundred
+    // milliseconds, which a sync command would spend blocking the app.
+    tauri::async_runtime::spawn_blocking(|| {
+        let url = if get_macos_major_version() >= 13 {
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles"
+        } else {
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+        };
+        open_with("open", url)
+    })
+    .await
+    .map_err(|e| format!("the task opening System Settings stopped: {e}"))?
+}
+
+/// Hands `url` to `program` (`open` in production) and waits for it to exit. Split out so a test
+/// can stand in a program whose exit status it controls.
+///
+/// A spawn alone isn't success: `open` exits non-zero when nothing handles the URL, and only an
+/// `Err` lets onboarding show the manual way to Full Disk Access. `open` returns as soon as it has
+/// handed the URL to LaunchServices, so the wait is short.
+fn open_with(program: &str, url: &str) -> Result<(), String> {
+    let status = std::process::Command::new(program)
         .arg(url)
-        .spawn()
-        .map_err(|e| format!("Failed to open System Settings: {}", e))?;
-    Ok(())
+        .status()
+        .map_err(|e| format!("couldn't run `{program}` for {url}: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("`{program}` couldn't open {url} ({status})"))
+    }
+}
+
+#[cfg(test)]
+mod open_with_tests {
+    use super::open_with;
+
+    /// `open` exits non-zero for a URL nothing handles. Onboarding shows the manual way to Full
+    /// Disk Access only when that comes back as an `Err`, so a spawn alone isn't success.
+    #[test]
+    fn an_opener_that_exits_non_zero_is_an_error() {
+        assert!(open_with("false", "x-apple.systempreferences:nowhere").is_err());
+    }
+
+    #[test]
+    fn an_opener_that_exits_zero_is_ok() {
+        assert!(
+            open_with(
+                "true",
+                "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"
+            )
+            .is_ok()
+        );
+    }
 }
 
 /// Opens System Settings > Appearance.

@@ -151,6 +151,10 @@
   "@onboarding.stepFda.postAction.body": {
     "sourceHash": "f87a5fc"
   },
+  "onboarding.stepFda.openSettingsFailed": "Cmdr kunde inte öppna {systemSettings}. Öppna det själv, gå till <strong>{privacyAndSecurity}</strong> och sedan <strong>{fullDiskAccess}</strong>, och slå på <strong>Cmdr</strong>.",
+  "@onboarding.stepFda.openSettingsFailed": {
+    "sourceHash": "8cfce29"
+  },
   "onboarding.stepAi.bannerTitle.granted": "Full skivtillgång beviljad",
   "@onboarding.stepAi.bannerTitle.granted": {
     "sourceHash": "f5872be"

@@ -59,6 +59,11 @@
     /** Has the user clicked "Open System Settings" this session? Drives the post-action hint. */
     let hasClickedOpenSettings = $state(false)
     /**
+     * Did the last click leave System Settings closed? Then the step spells out the way there,
+     * since the numbered steps assume it opened.
+     */
+    let openSettingsFailed = $state(false)
+    /**
      * Is the "Why?" disclosure open? Closed by default: a first launch opens on an apology
      * and three buttons, and the reasoning is there for whoever wants it. The state is
      * per-mount, so a Back into step 1 folds it away again.
@@ -135,6 +140,7 @@
 
     async function handleAllow() {
         hasClickedOpenSettings = true
+        openSettingsFailed = false
         // Re-probe right before opening Settings so the bundle is freshly registered
         // with TCC. Without this, the Cmdr row may not appear in the Full Disk Access
         // list (TCC only adds apps that have recently attempted to read a protected
@@ -154,7 +160,10 @@
         try {
             await openPrivacySettings()
         } catch (error) {
-            log.warn('openPrivacySettings failed: {error}', { error })
+            // The person can still get there by hand, and a grant made that way still needs the
+            // restart below, so the flow carries on with the manual path on screen.
+            log.warn('openPrivacySettings failed: {error}', { error: String(error) })
+            openSettingsFailed = true
         }
         // Pre-compute the step-2 banner so if the user changes their mind and comes back,
         // step 2 reads the right state. (We treat "Allow but not granted yet" as 'stuck',
@@ -295,6 +304,19 @@
                     >
                     <Button variant="danger" onclick={handleDeny}>{tString('onboarding.stepFda.deny')}</Button>
                 </div>
+                {#if openSettingsFailed}
+                    <p class="open-failed" role="alert">
+                        <Trans
+                            key="onboarding.stepFda.openSettingsFailed"
+                            snippets={{ strong }}
+                            params={{
+                                systemSettings: systemStrings.systemSettings,
+                                privacyAndSecurity: systemStrings.privacyAndSecurity,
+                                fullDiskAccess: systemStrings.fullDiskAccess,
+                            }}
+                        />
+                    </p>
+                {/if}
                 {#if hasClickedOpenSettings && onboardingState.step1FooterMode === 'restart'}
                     <div class="post-action">
                         <p>{tString('onboarding.stepFda.postAction.intro')}</p>
@@ -392,6 +414,12 @@
         justify-content: center;
         margin-top: auto;
         padding-top: var(--spacing-lg);
+    }
+
+    .open-failed {
+        margin: var(--spacing-md) 0 0;
+        text-align: center;
+        color: var(--color-text-primary);
     }
 
     .post-action {

@@ -36,8 +36,10 @@ command" routing map.
   onDestroy(() => { unlisten() })
   ```
 
-- **macOS-only commands** (`quickLook`, `getInfo`, `showInFinder`, `openPrivacySettings`, …) are wrapped in try/catch
-  returning safe empty/null fallbacks, so the same code runs on other platforms.
+- **macOS-only commands** (`quickLook`, `getInfo`, `showInFinder`, …) are wrapped in try/catch returning safe
+  empty/null fallbacks, so the same code runs on other platforms. ❌ Not the permission wrappers
+  (`checkFullDiskAccess`, `openPrivacySettings`, …): every platform registers those, so a fallback there only hid a
+  broken bridge or a System Settings that didn't open. They reject, and the caller decides.
 - **Timeout-aware return types distinguish "timed out" from "genuinely empty".** Don't collapse them.
   - `TimedOut<T>` (`{ data: T, timedOut: boolean }`): for commands returning collections, `Option`, or `()`. Unwrap
     `.data`, check `.timedOut`. Used by `listVolumes`, `getVolumeSpace`, `getSyncStatus`, `getIcons`,

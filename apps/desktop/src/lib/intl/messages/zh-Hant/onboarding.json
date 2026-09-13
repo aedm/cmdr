@@ -151,6 +151,10 @@
   "@onboarding.stepFda.postAction.body": {
     "sourceHash": "f87a5fc"
   },
+  "onboarding.stepFda.openSettingsFailed": "Cmdr 無法開啟 {systemSettings}。請自行開啟，前往 <strong>{privacyAndSecurity}</strong>，再進入 <strong>{fullDiskAccess}</strong>，然後打開 <strong>Cmdr</strong>。",
+  "@onboarding.stepFda.openSettingsFailed": {
+    "sourceHash": "8cfce29"
+  },
   "onboarding.stepAi.bannerTitle.granted": "已授予「完全取用磁碟」權限",
   "@onboarding.stepAi.bannerTitle.granted": {
     "sourceHash": "f5872be"

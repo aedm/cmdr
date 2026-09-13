@@ -200,6 +200,15 @@
   "@onboarding.stepFda.postAction.body": {
     "description": "Follow-up hint pointing the user to the restart button, or the Deny button if they change their mind. <restart> wraps the bolded \"Restart Cmdr\" button name (match onboarding.wizard.restart) and <deny> wraps the bolded \"Deny\" button name (match onboarding.stepFda.deny). \"Cmdr\" is the product name."
   },
+  "onboarding.stepFda.openSettingsFailed": "Cmdr couldn''t open {systemSettings}. Open it yourself, go to <strong>{privacyAndSecurity}</strong>, then <strong>{fullDiskAccess}</strong>, and turn on <strong>Cmdr</strong>.",
+  "@onboarding.stepFda.openSettingsFailed": {
+    "description": "Shown on the Full Disk Access step right after the user clicks the Open System Settings button, when System Settings didn't actually open. It gives the manual path instead, so the user can still grant access by hand; the restart hint below stays true. The three placeholders are macOS names already localized by the OS: keep each one exactly as supplied, and keep the <strong> wraps around the pane names and the product name. \"Cmdr\" is the product name (do not translate). Avoid the words \"error\" and \"failed\".",
+    "placeholders": {
+      "systemSettings": "the macOS System Settings app name, already localized by the OS (for example \"System Settings\")",
+      "privacyAndSecurity": "the name of the Privacy & Security section in System Settings, already localized by the OS",
+      "fullDiskAccess": "the name of the Full Disk Access list inside that section, already localized by the OS"
+    }
+  },
   "onboarding.stepAi.bannerTitle.granted": "Full disk access granted",
   "@onboarding.stepAi.bannerTitle.granted": {
     "description": "Title of the positive banner at the top of the AI step, shown when the user just granted Full Disk Access. \"full disk access\" is the macOS permission name.",

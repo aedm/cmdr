@@ -151,6 +151,10 @@
   "@onboarding.stepFda.postAction.body": {
     "sourceHash": "f87a5fc"
   },
+  "onboarding.stepFda.openSettingsFailed": "O Cmdr não conseguiu abrir {systemSettings}. Abra manualmente, vá em <strong>{privacyAndSecurity}</strong>, depois em <strong>{fullDiskAccess}</strong>, e ative o <strong>Cmdr</strong>.",
+  "@onboarding.stepFda.openSettingsFailed": {
+    "sourceHash": "8cfce29"
+  },
   "onboarding.stepAi.bannerTitle.granted": "Acesso total ao disco concedido",
   "@onboarding.stepAi.bannerTitle.granted": {
     "sourceHash": "f5872be"

@@ -11,6 +11,18 @@
     import { handleMarkdownLinkClick } from '$lib/ui/markdown-link-click'
     import { systemStrings } from '$lib/system-strings.svelte'
     import { tString } from '$lib/intl/messages.svelte'
+    import { getAppLogger } from '$lib/logging/logger'
+
+    const log = getAppLogger('errorPane')
+
+    /** The permission-denied CTA. A System Settings that didn't open leaves the button in place to try again. */
+    async function openFullDiskAccessPane() {
+        try {
+            await openPrivacySettings()
+        } catch (error) {
+            log.warn("Couldn't open System Settings from the error pane: {error}", { error: String(error) })
+        }
+    }
 
     interface Props {
         friendly: FriendlyError
@@ -154,7 +166,7 @@
             {/if}
 
             {#if isPermissionDenied && isMacOS()}
-                <Button variant="primary" onclick={() => openPrivacySettings()}
+                <Button variant="primary" onclick={() => void openFullDiskAccessPane()}
                     >{tString('fileExplorer.errorPane.openSystemSettings', {
                         systemSettings: systemStrings.systemSettings,
                     })}</Button

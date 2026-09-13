@@ -151,6 +151,10 @@
   "@onboarding.stepFda.postAction.body": {
     "sourceHash": "f87a5fc"
   },
+  "onboarding.stepFda.openSettingsFailed": "A Cmdr nem tudta megnyitni ezt: {systemSettings}. Nyisd meg magad, menj ide: <strong>{privacyAndSecurity}</strong>, majd <strong>{fullDiskAccess}</strong>, és kapcsold be a <strong>Cmdr</strong> appot.",
+  "@onboarding.stepFda.openSettingsFailed": {
+    "sourceHash": "8cfce29"
+  },
   "onboarding.stepAi.bannerTitle.granted": "Teljes lemezhozzáférés megadva",
   "@onboarding.stepAi.bannerTitle.granted": {
     "sourceHash": "f5872be"

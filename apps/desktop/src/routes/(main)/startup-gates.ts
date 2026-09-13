@@ -62,13 +62,32 @@ export interface StartupGatesContext {
 }
 
 /**
+ * The FDA probe for a gate that has to go on either way. `check_full_disk_access` answers a bare
+ * bool on every platform, so a rejection means the IPC bridge itself broke: it logs at error,
+ * since nothing else will say so, and the gate carries on with `fallback` instead of stranding
+ * launch on a blank window or the menu on a dead click.
+ */
+async function probeFullDiskAccess(fallback: boolean): Promise<boolean> {
+  try {
+    return await checkFullDiskAccess()
+  } catch (error) {
+    log.error('Full disk access probe returned an error; reading it as {fallback}: {error}', {
+      fallback,
+      error: String(error),
+    })
+    return fallback
+  }
+}
+
+/**
  * Reads `CMDR_FORCE_ONBOARDING`, settings, and the FDA probe, then flips the right
  * top-level state. See `apps/desktop/src/lib/onboarding/CLAUDE.md` § "Mount + onboarding
  * flag" for the truth table this implements.
  */
 export async function resolveOnboardingMount(ctx: StartupGatesContext): Promise<void> {
   const forceOnboarding = await isForceOnboarding().catch(() => false)
-  const hasFda = await checkFullDiskAccess()
+  // A broken probe reads as granted, so launch still reaches the explorer.
+  const hasFda = await probeFullDiskAccess(true)
   const fullDiskAccessChoice = getSetting('onboarding.fullDiskAccessChoice')
   const isOnboarded = getSetting('onboarding.completed')
   const wizardCtx = { fullDiskAccessChoice, isOnboarded, hasFda }
@@ -289,7 +308,8 @@ export async function openOnboardingFromMenuOrPalette(
   source: 'menu' | 'palette',
 ): Promise<void> {
   if (ctx.isOnboardingVisible()) return
-  const hasFda = await checkFullDiskAccess()
+  // A broken probe reads as not granted, so the wizard the person asked for still opens on step 1.
+  const hasFda = await probeFullDiskAccess(false)
   openOnboardingWizard(source, {
     fullDiskAccessChoice: getSetting('onboarding.fullDiskAccessChoice'),
     isOnboarded: getSetting('onboarding.completed'),

@@ -173,6 +173,26 @@ describe('StepFda', () => {
     expect(mounted.target.textContent).toContain('Cmdr needs to restart')
   })
 
+  it('Allow shows the way to Full Disk Access when System Settings didn’t open', async () => {
+    openPrivacySettings.mockRejectedValueOnce(new Error('`open` exited with 1'))
+    setStep1Variant('first-ask')
+    mounted = mountStep()
+    await tick()
+    const allow = findButtonContaining(mounted.target, 'Open')
+    if (!allow) throw new Error('Allow button missing')
+    allow.click()
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve()
+    }
+    flushSync()
+    const alert = mounted.target.querySelector('[role="alert"]')
+    expect(alert?.textContent).toContain('Privacy & Security')
+    expect(alert?.textContent).toContain('Full Disk Access')
+    expect(alert?.textContent).not.toContain('exited')
+    // The person can still grant it by hand, and a restart is still what makes the grant take effect.
+    expect(getOnboardingState().step1FooterMode).toBe('restart')
+  })
+
   it('Deny persists deny, fires startIndexingAfterFdaDecision, and advances to step 2', async () => {
     setStep1Variant('first-ask')
     mounted = mountStep()

@@ -2234,6 +2234,7 @@ export type MessageKey =
   | 'onboarding.stepFda.granted.title'
   | 'onboarding.stepFda.ifAllow'
   | 'onboarding.stepFda.openSettings'
+  | 'onboarding.stepFda.openSettingsFailed'
   | 'onboarding.stepFda.postAction.body'
   | 'onboarding.stepFda.postAction.intro'
   | 'onboarding.stepFda.pro.body'

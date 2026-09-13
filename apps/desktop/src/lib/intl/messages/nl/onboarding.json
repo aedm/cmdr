@@ -153,6 +153,10 @@
   "@onboarding.stepFda.postAction.body": {
     "sourceHash": "f87a5fc"
   },
+  "onboarding.stepFda.openSettingsFailed": "Cmdr kon {systemSettings} niet openen. Open het zelf, ga naar <strong>{privacyAndSecurity}</strong> en dan <strong>{fullDiskAccess}</strong>, en zet <strong>Cmdr</strong> aan.",
+  "@onboarding.stepFda.openSettingsFailed": {
+    "sourceHash": "8cfce29"
+  },
   "onboarding.stepAi.bannerTitle.granted": "Volledige schijftoegang verleend",
   "@onboarding.stepAi.bannerTitle.granted": {
     "sourceHash": "f5872be"
