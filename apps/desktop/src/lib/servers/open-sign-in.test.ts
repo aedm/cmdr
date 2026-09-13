@@ -386,6 +386,44 @@ describe('the Remember box in sign-in mode', () => {
     await seam
   })
 
+  it('files the secret for an SFTP account whose username is an email address', async () => {
+    // ❗ The account is read off the place's `appRoot`, which Rust mints with the
+    // username raw. A path that doesn't parse leaves SFTP without a port, so such
+    // a place got no writer: the box went ON and nothing was ever filed.
+    const emailId = 'sftp-nas-local-22-ada-corp'
+    ipc.mock('list_saved_servers', () => [
+      {
+        ...SAVED_SERVER,
+        id: emailId,
+        username: 'ada@corp.example',
+        places: [
+          { ...SAVED_SERVER.places[0], volumeId: emailId, appRoot: 'sftp://ada@corp.example@nas.local:22/srv/data' },
+        ],
+      },
+    ])
+    ipc.mock('save_sftp_credentials', () => null)
+    ipc.mock('reconnect_volume_with_credentials', () => null)
+    const seam = openSignInForPlace({ volumeId: emailId, registered: true })
+    const request = await parkedRequest()
+    if (request.mode !== 'sign-in') throw new Error('unreachable')
+    expect(request.endpoint).toMatchObject({ host: 'nas.local', username: 'ada@corp.example' })
+
+    await attemptOf(request)({
+      mode: 'sign-in',
+      secret: { secret: 'hunter2', remember: true },
+      username: null,
+    })
+    expect(ipc.lastCall('save_sftp_credentials')?.payload).toMatchObject({
+      host: 'nas.local',
+      port: 22,
+      username: 'ada@corp.example',
+      secret: 'hunter2',
+    })
+
+    closeSignInSheet({ kind: 'connected', volumeId: emailId })
+    await seam
+  })
+
   it('writes nothing at all when the box is left where it started', async () => {
     ipc.mock('has_server_secret', () => true)
     ipc.mock('reconnect_volume_with_credentials', () => null)

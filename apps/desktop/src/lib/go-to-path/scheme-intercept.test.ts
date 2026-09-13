@@ -61,6 +61,20 @@ describe('readSchemeInput: a saved-servers store that does not answer', () => {
     // Still names the machine, so the line stays useful at triage.
     expect(warn.mock.calls[0][1]).toMatchObject({ host: 'nas.local' })
   })
+
+  it('keeps the password out of the log for an account that is an email address, too', async () => {
+    // ❗ The account reads up to the LAST at sign, so a password typed after an
+    // email login lands inside the account and never in the host the line names.
+    ipc.mock('list_saved_servers', () => {
+      throw new Error('store unavailable')
+    })
+
+    await readSchemeInput('webdav://ada@example.com:hunter2@cloud.example.com:443/remote.php')
+
+    expect(warn).toHaveBeenCalledOnce()
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('hunter2')
+    expect(warn.mock.calls[0][1]).toMatchObject({ host: 'cloud.example.com' })
+  })
 })
 
 describe('readSchemeInput: which scheme means what', () => {
@@ -69,6 +83,25 @@ describe('readSchemeInput: which scheme means what', () => {
       kind: 'place',
       path: `${APP_ROOT}/photos`,
       label: 'Naspolya',
+    })
+  })
+
+  it('navigates to a saved place whose account is an email address', async () => {
+    // Email logins are common on WebDAV hosts. A path to such a place that didn't
+    // parse opened the add sheet over a server that is already saved.
+    const root = 'webdav://ada@example.com@cloud.example.com:443'
+    ipc.mock('list_saved_servers', () => [
+      {
+        ...SAVED_SERVER,
+        id: 'webdav-cloud',
+        protocol: 'webdav',
+        places: [{ ...SAVED_SERVER.places[0], volumeId: 'webdav-cloud', name: 'Cloud', appRoot: root }],
+      },
+    ])
+    expect(await readSchemeInput(`${root}/remote.php`)).toEqual({
+      kind: 'place',
+      path: `${root}/remote.php`,
+      label: 'Cloud',
     })
   })
 

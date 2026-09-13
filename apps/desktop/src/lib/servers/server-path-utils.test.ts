@@ -41,12 +41,45 @@ describe('parseServerPath', () => {
     expect(parseServerPath('sftp://ada@nas.local:22/')?.path).toBe('')
   })
 
+  it('reads an account that is an email address, splitting at the LAST at sign the way Rust does', () => {
+    // Email logins are common on Nextcloud, Fastmail, and other WebDAV hosts, and
+    // Rust mints the app root with the username raw.
+    // `cmdr_fs::volume::ids::server_of_path` takes the account as everything
+    // before the authority's last `@`, so this side has to as well.
+    expect(parseServerPath('webdav://ada@example.com@cloud.example.com:443/remote.php/dav')).toEqual({
+      protocol: 'webdav',
+      username: 'ada@example.com',
+      host: 'cloud.example.com',
+      port: 443,
+      path: 'remote.php/dav',
+    })
+    expect(parseServerPath('sftp://ada@corp.example@nas.local:22')).toEqual({
+      protocol: 'sftp',
+      username: 'ada@corp.example',
+      host: 'nas.local',
+      port: 22,
+      path: '',
+    })
+  })
+
+  it('reads an IPv6 literal host, taking the port after the LAST colon the way Rust does', () => {
+    expect(parseServerPath('sftp://ada@::1:22/srv')).toEqual({
+      protocol: 'sftp',
+      username: 'ada',
+      host: '::1',
+      port: 22,
+      path: 'srv',
+    })
+  })
+
   it('refuses anything that is not a server path', () => {
     // ❗ Every one of these would otherwise be handed to a server as a request.
     expect(parseServerPath('/srv/data/photos')).toBeNull()
     expect(parseServerPath('adb://R58M12345/sdcard')).toBeNull()
     expect(parseServerPath('smb://naspolya')).toBeNull()
     expect(parseServerPath('sftp://nas.local:22/srv')).toBeNull() // no account
+    expect(parseServerPath('sftp://@nas.local:22/srv')).toBeNull() // an empty account
+    expect(parseServerPath('sftp://ada@:22/srv')).toBeNull() // no host
     expect(parseServerPath('sftp://ada@nas.local/srv')).toBeNull() // no port
     expect(parseServerPath('sftp://ada@nas.local:notaport/srv')).toBeNull()
     expect(parseServerPath('sftp://ada@nas.local:0/srv')).toBeNull()
@@ -106,6 +139,14 @@ describe('walking a server tree', () => {
     expect(joinServerPath('sftp://ada@nas.local:22/srv', 'data')).toBe('sftp://ada@nas.local:22/srv/data')
     expect(joinServerPath('sftp://ada@nas.local:22', 'srv')).toBe('sftp://ada@nas.local:22/srv')
     expect(joinServerPath('/local/dir', 'child')).toBe('/local/dir')
+  })
+
+  it('walks and joins under an account that is an email address', () => {
+    const root = 'webdav://ada@example.com@cloud.example.com:443'
+    expect(getServerParentPath(`${root}/remote.php/dav`)).toBe(`${root}/remote.php`)
+    expect(getServerParentPath(`${root}/remote.php`)).toBe(root)
+    expect(joinServerPath(root, 'remote.php')).toBe(`${root}/remote.php`)
+    expect(getServerDisplayPath(`${root}/remote.php`)).toBe('/remote.php')
   })
 
   it('shows the server-side path, which is what a person on that server would type', () => {

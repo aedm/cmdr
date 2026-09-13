@@ -51,8 +51,14 @@ const SERVER_SCHEMES: ServerPathProtocol[] = ['sftp', 'webdav']
  * delimiter" rather than a character class: a username can hold almost anything,
  * and a host can be an IPv4 literal or an mDNS name. The port is digits, so a
  * hostless spelling can't slip through as one.
+ *
+ * ❗ It splits the authority exactly where `cmdr_fs::volume::ids::server_of_path`
+ * does: the account is everything before the LAST `@`, the port everything after
+ * the LAST `:`. The account takes `@` (an email login) and backtracks to the last
+ * one, since the host can't hold an `@`; the host takes `:`, so an IPv6 literal
+ * (`sftp://ada@::1:22`) still splits.
  */
-const SERVER_PATH_RE = /^(sftp|webdav):\/\/([^@/]+)@([^@/:]+):(\d{1,5})(?=\/|$)/
+const SERVER_PATH_RE = /^(sftp|webdav):\/\/([^/]+)@([^@/]+):(\d{1,5})(?=\/|$)/
 
 /** Whether a path is on one of the server schemes (`sftp://` or `webdav://`). */
 export function isServerPath(path: string): boolean {

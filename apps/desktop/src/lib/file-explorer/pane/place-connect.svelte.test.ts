@@ -143,6 +143,25 @@ describe('createPlaceConnect', () => {
     expect(connectPlace).toHaveBeenCalledTimes(2)
   })
 
+  it('words a refusal for an account that is an email address from its own host and account', async () => {
+    // Email logins are common on WebDAV hosts. A path that didn't parse put the
+    // place's display name in for both, on every refused dial.
+    info = {
+      ...savedPlace,
+      id: 'webdav-cloud-443-ada',
+      name: 'Cloud',
+      fsType: 'webdav',
+      path: 'webdav://ada@example.com@cloud.example.com:443',
+    }
+    connectPlace.mockResolvedValue({ kind: 'refused', refusal: 'unreachable' })
+    const { sub } = create()
+    await vi.waitFor(() => {
+      expect(sub.state?.kind).toBe('refused')
+    })
+    if (sub.state?.kind !== 'refused') throw new Error('not refused')
+    expect(sub.state.refusal).toBe('unreachable for ada@example.com at cloud.example.com')
+  })
+
   it('says nothing when the user cancels: the view just goes', async () => {
     connectPlace.mockResolvedValue({ kind: 'cancelled' })
     const { sub, onConnected } = create()

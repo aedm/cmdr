@@ -57,6 +57,14 @@ it is the convention `mtp://` and `adb://` already carry.
 POSIX account may be case-sensitive, and `Ada` and `ada` can be two people), and the port is literal. A path folded
 differently misses the volume its own id names, which is the same tuple `sftp_volume_id` hashes.
 
+**The split has to match Rust's too.** `cmdr_fs::volume::ids::server_of_path` reads the account as everything before
+the authority's LAST `@` and the port as everything after its last `:`, and `SERVER_PATH_RE` splits at the same two
+places. An email login (`webdav://ada@example.com@cloud.example.com:443`, common on Nextcloud and Fastmail) and an IPv6
+literal host (`sftp://ada@::1:22`) both depend on it. ❌ Don't stop at the first `@`: such an account then reads as no
+place at all, so a pasted path to it opens the add sheet, an SFTP sign-in gets no secret writer, and the pane's refusal
+names the place instead of its host. The account can also hold a typed `user:password`, which is why the log lines on
+this path name the host and ❌ never the path.
+
 **Matching is by whole components, never a string prefix.** `/srv/data-1` is a legal sibling of `/srv/data`, and a
 string-prefix containment test would strip the root off it and ask the server for `-1/photos`.
 `../file-explorer/pane/navigate.ts`'s `isUnderServerRoot` appends the separator for exactly that reason, and
