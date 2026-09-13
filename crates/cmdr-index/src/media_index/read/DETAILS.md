@@ -53,14 +53,18 @@ Excluding a folder vetoes its enrichment and purges its rows, but no read leans 
 and a row can commit between the veto and the delete. Ask Cmdr's `search_photos` and `image_facts` tools read through
 `MediaIndex`, so this filter is what keeps an excluded folder's OCR text away from a cloud model.
 
-- **One predicate, the veto's.** `ReadExclusion::hides` joins the stored path onto the volume's mount root and asks
-  `NetworkEnrichConfig::is_excluded`, the same component-boundary prefix match (`path_is_within`) the enrichment veto
-  uses, so reading can't disagree with indexing about what's excluded. Like the veto, it's byte-exact, including on a
-  case-insensitive volume.
-- **Where a volume's rows sit.** The live mount root while the volume is mounted; else the `mount_root` its last pass
-  recorded in `meta` (every local and network pass records it through the writer), so an unmounted NAS still hides its
-  excluded folders; else, while any folder is excluded, the volume shows NOTHING until a pass records the root. Only a
-  NAS indexed before the key existed, and offline ever since, can land in that last case.
+- **One predicate, the veto's.** `ReadExclusion::hides` joins the stored path onto the volume's roots and asks
+  `NetworkEnrichConfig::is_excluded`, the same component-boundary prefix match (`network/config.rs::path_is_within`) the
+  enrichment veto and the purge use, so reading can't disagree with indexing about what's excluded. It folds names the
+  way the drive index's `platform_case` collation does (`normalize_for_comparison`): on macOS an NFC exclusion covers
+  NFD paths and a case-only difference matches; elsewhere it's byte-exact.
+- **Where a volume's rows sit: every root it's known by.** Each local and network pass records its mount root in `meta`
+  through the writer (`mount_root:<root>`, one row per root, never overwritten), and the live mount root joins them
+  while the volume is mounted. A row is hidden when a folder excludes it at ANY of them, so an unmounted NAS still hides
+  its excluded folders, and a share remounted as `/Volumes/naspi-1` keeps a folder excluded at `/Volumes/naspi/Photos`
+  hidden. The network pass's veto (`is_excluded_at_known_roots`) and the retro-delete take the same union. A volume with
+  no known root shows NOTHING while any folder is excluded, until a pass records one; only a NAS indexed before roots
+  were recorded, and offline ever since, can land there.
 - **Filter before the cut.** A ranked read that dropped hidden rows after truncating would answer fewer than `k` hits
   whenever the excluded images ranked first. So the vector scans skip inside `top_k`; dedup drops skipped images BEFORE
   clustering (single linkage would otherwise chain two visible images through a hidden one and give it away); the OCR

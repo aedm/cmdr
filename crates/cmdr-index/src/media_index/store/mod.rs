@@ -389,28 +389,41 @@ fn stamp_schema_version(conn: &Connection) -> Result<(), MediaStoreError> {
     Ok(())
 }
 
-/// The `meta` key holding the mount root the volume's last pass ran under (`/` for a local
-/// volume). It's what lets an OFFLINE read place a network volume's index-relative rows
+/// The prefix of the `meta` keys naming every mount root the volume's passes have run under,
+/// one row per root (`mount_root:/Volumes/naspi`, or `mount_root:/` for a local volume).
+/// Every root stays recorded: a share remounted under a new name keeps an exclusion set under
+/// its old one, and an OFFLINE read can still place a network volume's index-relative rows
 /// against the OS-path folder exclusions (`read/exclusion.rs`).
-const MOUNT_ROOT_META_KEY: &str = "mount_root";
+const MOUNT_ROOT_META_PREFIX: &str = "mount_root:";
 
-/// Record the mount root the volume's pass runs under. Writer-thread only.
+/// Record a mount root the volume's pass runs under, keeping every root recorded before it.
+/// Writer-thread only.
 pub(crate) fn write_mount_root(conn: &Connection, root: &str) -> Result<(), MediaStoreError> {
     conn.execute(
-        "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)",
-        rusqlite::params![MOUNT_ROOT_META_KEY, root],
+        "INSERT OR IGNORE INTO meta (key, value) VALUES (?1, '')",
+        rusqlite::params![format!("{MOUNT_ROOT_META_PREFIX}{root}")],
     )?;
     Ok(())
 }
 
-/// The mount root the volume's last pass recorded, or `None` when the DB is missing,
-/// unreadable, or no pass has recorded one yet.
-pub(crate) fn read_mount_root(db_path: &Path) -> Option<String> {
+/// Every mount root the volume's passes have recorded, in no particular order. Empty when the
+/// DB is missing or unreadable, or no pass has recorded one yet.
+pub(crate) fn read_mount_roots(db_path: &Path) -> Vec<String> {
     if !db_path.exists() {
-        return None;
+        return Vec::new();
     }
-    let conn = open_read_connection(db_path).ok()?;
-    read_meta_value(&conn, MOUNT_ROOT_META_KEY).ok().flatten()
+    let Ok(conn) = open_read_connection(db_path) else {
+        return Vec::new();
+    };
+    let Ok(mut stmt) = conn.prepare("SELECT key FROM meta") else {
+        return Vec::new();
+    };
+    let Ok(keys) = stmt.query_map([], |row| row.get::<_, String>(0)) else {
+        return Vec::new();
+    };
+    keys.filter_map(Result::ok)
+        .filter_map(|key| key.strip_prefix(MOUNT_ROOT_META_PREFIX).map(str::to_string))
+        .collect()
 }
 
 fn read_meta_value(conn: &Connection, key: &str) -> Result<Option<String>, MediaStoreError> {

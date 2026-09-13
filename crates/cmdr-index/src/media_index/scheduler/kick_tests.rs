@@ -724,6 +724,33 @@ fn retro_delete_maps_a_network_folder_into_the_volumes_index_space() {
 }
 
 #[test]
+fn retro_delete_reaches_a_remounted_share_through_the_root_it_was_indexed_under() {
+    // The folder was excluded at /Volumes/naspi/Photos, but the share is mounted at
+    // /Volumes/naspi-1 today. The root it was indexed under still places the folder in its
+    // index space, so the purge lands instead of skipping the volume.
+    let _guard = crate::test_read_pool_lock();
+    let dir = tempfile::tempdir().expect("temp");
+    let sched = MediaScheduler::new(dir.path().to_path_buf(), fake_backend());
+    seed_media_row_for(dir.path(), "smb-vol", "/Photos/p.jpg");
+    seed_media_row_for(dir.path(), "smb-vol", "/Docs/d.jpg");
+    crate::media_index::store::seed_mount_root(&media_db_path(dir.path(), "smb-vol"), "/Volumes/naspi");
+    network::config::set_config(config_with(&[], &["/Volumes/naspi/Photos"]));
+
+    let outcome = sched.retro_delete_excluded_folder(
+        "/Volumes/naspi/Photos",
+        &[("smb-vol".to_string(), "/Volumes/naspi-1".to_string())],
+    );
+    assert_eq!(outcome, purge::PurgeOutcome::Settled { deleted_rows: 1 });
+    let smb = MediaStore::open(&media_db_path(dir.path(), "smb-vol")).expect("open smb");
+    assert!(smb.status_for("/Photos/p.jpg").expect("read").is_none(), "purged");
+    assert!(
+        smb.status_for("/Docs/d.jpg").expect("read").is_some(),
+        "other folder kept"
+    );
+    reset_gate();
+}
+
+#[test]
 fn a_retro_delete_that_does_not_land_is_retried_by_the_next_pass() {
     // The exclusion is set and live, but SQLite refuses the purge (a full disk, a locked
     // database). Nothing may give up on it: once the fault clears, the volume's next pass
@@ -764,8 +791,8 @@ fn a_retro_delete_that_does_not_land_is_retried_by_the_next_pass() {
         "the next pass finished the purge the exclusion asked for"
     );
     assert_eq!(
-        crate::media_index::store::read_mount_root(&db_path).as_deref(),
-        Some("/"),
+        crate::media_index::store::read_mount_roots(&db_path),
+        vec!["/".to_string()],
         "a local pass records the root a read places its rows against exclusions with"
     );
 

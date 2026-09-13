@@ -26,11 +26,11 @@ use super::MediaScheduler;
 /// whether a `VACUUM` is owed after a delete that did.
 #[derive(Debug, Default)]
 pub(super) struct OwedPurge {
-    /// The excluded OS folder → the index-space prefix its rows sit under on this volume.
-    /// Keyed by the folder, so un-excluding it drops the debt instead of deleting rows
-    /// nobody wants gone any more. The prefix is mapped once, when the purge is owed, so a
-    /// retry needs no mount root: a share remounted under a new name still stores the same
-    /// index-relative paths.
+    /// The index-space prefix whose rows haven't left yet → the excluded OS folder it maps
+    /// from. Keyed by prefix, so a folder reached through two of the volume's roots owes
+    /// both. The folder rides along so un-excluding it drops the debt instead of deleting
+    /// rows nobody wants gone any more. The prefix is mapped once, when the purge is owed, so
+    /// a retry needs no mount root.
     prefixes: HashMap<String, String>,
     /// Rows left the database but `VACUUM` didn't run, so their pages (and, after a
     /// retro-delete, the recognized text in them) are still in the file.
@@ -62,12 +62,14 @@ impl MediaScheduler {
     /// needs no completed-scan edge (unlike GC — see `../DETAILS.md` § The GC safety argument).
     ///
     /// Each volume maps the OS folder into its own index-path space
-    /// ([`os_folder_to_index_prefix`](network::fetch::os_folder_to_index_prefix)): the
-    /// folder passes through on a local volume, strips the mount root on a network one,
-    /// and a volume the folder isn't under is skipped. The purge is owed BEFORE it runs
-    /// and then settled ([`settle_owed_purges`](Self::settle_owed_purges)), so whatever
-    /// doesn't land stays owed for the volume's next pass. [`PurgeOutcome::Pending`] says
-    /// some volume still owes part of it.
+    /// ([`os_folder_to_index_prefix`](network::fetch::os_folder_to_index_prefix)) through
+    /// EVERY root it's known by: the live mount root plus each root its passes recorded, so
+    /// a share remounted under a new name still reaches a folder excluded under its old one.
+    /// The folder passes through on a local volume, and a volume the folder isn't under at
+    /// any root is skipped. The purge is owed BEFORE it runs and then settled
+    /// ([`settle_owed_purges`](Self::settle_owed_purges)), so whatever doesn't land stays
+    /// owed for the volume's next pass. [`PurgeOutcome::Pending`] says some volume still
+    /// owes part of it.
     ///
     /// **Offline network volumes** aren't in `mounts` (no mount root while unmounted),
     /// so they're skipped here and the retro-delete re-fires on reconnect via
@@ -79,17 +81,27 @@ impl MediaScheduler {
         for (volume_id, mount_root) in mounts {
             // Only volumes that were actually enriched have a `media.db`; don't create an
             // empty one just to prune nothing.
-            if !store::media_db_path(&self.data_dir, volume_id).exists() {
+            let db_path = store::media_db_path(&self.data_dir, volume_id);
+            if !db_path.exists() {
                 continue;
             }
-            // Map the OS folder into this volume's index-path space; `None` ⇒ the folder
-            // isn't under this mount, so this volume has no matching rows.
-            let Some(index_prefix) = network::fetch::os_folder_to_index_prefix(folder, mount_root) else {
+            let mut roots = store::read_mount_roots(&db_path);
+            if !roots.contains(mount_root) {
+                roots.push(mount_root.clone());
+            }
+            // `None` for a root ⇒ the folder isn't under it, so no rows sit there.
+            let prefixes: Vec<String> = roots
+                .iter()
+                .filter_map(|root| network::fetch::os_folder_to_index_prefix(folder, root))
+                .collect();
+            if prefixes.is_empty() {
                 continue;
-            };
+            }
             // Owe the purge BEFORE paying it, so a refused delete, or a panic part-way
             // through, leaves it on the books for the next pass.
-            self.owe_purge(volume_id, folder, index_prefix);
+            for index_prefix in prefixes {
+                self.owe_purge(volume_id, folder, index_prefix);
+            }
             match self.settle_owed_purges(volume_id) {
                 PurgeOutcome::Settled { deleted_rows: n } => deleted_rows += n,
                 PurgeOutcome::Pending { deleted_rows: n } => {
@@ -105,10 +117,10 @@ impl MediaScheduler {
         }
     }
 
-    /// Settle whatever `volume_id` owes: prune each owed folder that is STILL excluded
-    /// (dropping the ones that aren't), `VACUUM` when rows left or a `VACUUM` was owed, and
-    /// put back whatever didn't land. Every pass calls this before its own work, which is
-    /// what makes a refused purge retry until it lands. Answers
+    /// Settle whatever `volume_id` owes: prune each owed prefix whose folder is STILL
+    /// excluded (dropping the ones that aren't), `VACUUM` when rows left or a `VACUUM` was
+    /// owed, and put back whatever didn't land. Every pass calls this before its own work,
+    /// which is what makes a refused purge retry until it lands. Answers
     /// `Settled { deleted_rows: 0 }` at the cost of one map lookup when nothing is owed.
     pub(super) fn settle_owed_purges(&self, volume_id: &str) -> PurgeOutcome {
         const NOTHING_OWED: PurgeOutcome = PurgeOutcome::Settled { deleted_rows: 0 };
@@ -137,9 +149,9 @@ impl MediaScheduler {
 
         let excluded = network::config::snapshot().excluded_folders;
         let mut deleted_rows = 0u64;
-        owed.prefixes.retain(|folder, prefix| {
+        owed.prefixes.retain(|prefix, folder| {
             // Un-excluded since it was owed: nobody wants these rows gone any more.
-            if !excluded.contains(folder) {
+            if !excluded.contains(folder.as_str()) {
                 return false;
             }
             // Double-tap through the ONE writer thread: the first (blocking) prune drains
@@ -209,14 +221,14 @@ impl MediaScheduler {
             .vacuum = true;
     }
 
-    /// Owe `volume_id` a purge of `folder`'s rows, which sit under `index_prefix` there.
+    /// Owe `volume_id` a purge of the rows under `index_prefix`, which `folder` maps to there.
     fn owe_purge(&self, volume_id: &str, folder: &str, index_prefix: String) {
         self.owed_purges
             .lock_ignore_poison()
             .entry(volume_id.to_string())
             .or_default()
             .prefixes
-            .insert(folder.to_string(), index_prefix);
+            .insert(index_prefix, folder.to_string());
     }
 
     /// Put back what a settle couldn't finish, merged with anything owed while it ran.
@@ -224,8 +236,8 @@ impl MediaScheduler {
         let mut ledger = self.owed_purges.lock_ignore_poison();
         let entry = ledger.entry(volume_id.to_string()).or_default();
         entry.vacuum |= owed.vacuum;
-        for (folder, prefix) in owed.prefixes {
-            entry.prefixes.entry(folder).or_insert(prefix);
+        for (prefix, folder) in owed.prefixes {
+            entry.prefixes.entry(prefix).or_insert(folder);
         }
     }
 }

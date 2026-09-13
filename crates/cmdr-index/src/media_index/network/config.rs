@@ -219,9 +219,64 @@ pub fn is_paused(volume_id: &str) -> bool {
     PAUSED.read_ignore_poison().contains(volume_id)
 }
 
+/// The enrichment veto for an image a network pass reaches at `os_path` under its live
+/// `mount_root`: excluded when a folder excludes it at the live root OR at the same
+/// index-relative path under any root the share was recorded under (`recorded_roots`), so a
+/// share remounted under a new name keeps an exclusion set under its old one. Reads the live
+/// exclusion list, like [`is_excluded`]; `read/exclusion.rs` applies the same union to a read.
+pub(crate) fn is_excluded_at_known_roots(os_path: &str, mount_root: &str, recorded_roots: &[String]) -> bool {
+    let config = CONFIG.read_ignore_poison();
+    if config.is_excluded(os_path) {
+        return true;
+    }
+    let Some(index_path) = super::fetch::os_folder_to_index_prefix(os_path, mount_root) else {
+        return false;
+    };
+    recorded_roots
+        .iter()
+        .any(|root| config.is_excluded(&super::fetch::os_join(root, &index_path)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Resets the process-global config on drop, so a failing test can't leave a folder
+    /// excluded for the next one.
+    struct ResetConfig;
+
+    impl Drop for ResetConfig {
+        fn drop(&mut self) {
+            set_config(NetworkEnrichConfig::default());
+        }
+    }
+
+    #[test]
+    fn a_remounted_share_stays_excluded_at_the_root_its_exclusion_was_set_under() {
+        // The folder was excluded while the share mounted at /Volumes/naspi; today it's at
+        // /Volumes/naspi-1. The veto has to judge the image at every root the volume is known
+        // by, or the next pass re-reads the folder the person excluded.
+        let _reset = ResetConfig;
+        set_config(NetworkEnrichConfig {
+            excluded_folders: ["/Volumes/naspi/Photos".to_string()].into_iter().collect(),
+            ..NetworkEnrichConfig::default()
+        });
+        let recorded = ["/Volumes/naspi".to_string()];
+        assert!(is_excluded_at_known_roots(
+            "/Volumes/naspi-1/Photos/scan.jpg",
+            "/Volumes/naspi-1",
+            &recorded
+        ));
+        assert!(!is_excluded_at_known_roots(
+            "/Volumes/naspi-1/Docs/scan.jpg",
+            "/Volumes/naspi-1",
+            &recorded
+        ));
+        assert!(
+            is_excluded_at_known_roots("/Volumes/naspi/Photos/scan.jpg", "/Volumes/naspi", &[]),
+            "the live root alone still counts"
+        );
+    }
 
     #[cfg(target_os = "macos")]
     #[test]

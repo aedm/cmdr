@@ -575,7 +575,12 @@ impl MediaScheduler {
                 .map(|m| m.get(parent_dir(index_path)).copied().unwrap_or(0.0) as f32);
             network::policy::should_enrich_image(covered, importance, threshold as f32)
         };
-        let is_excluded = |os_path: &str| -> bool { network::config::is_excluded(os_path) };
+        // Every root this share was indexed under, so a folder excluded under an old mount
+        // name stays vetoed after the share remounts under a new one (`network/config.rs`).
+        let recorded_roots = super::store::read_mount_roots(&super::store::media_db_path(&self.data_dir, volume_id));
+        let is_excluded = |os_path: &str| -> bool {
+            network::config::is_excluded_at_known_roots(os_path, &mount_root, &recorded_roots)
+        };
         // Stop on the watchdog emergency stop OR a master-toggle OFF (§ gate), so
         // disabling image indexing halts a running NAS pass promptly.
         let cancel = || gate::should_stop();

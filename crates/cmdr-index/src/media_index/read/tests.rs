@@ -609,3 +609,91 @@ fn a_volume_with_no_known_mount_root_shows_nothing_while_a_folder_is_excluded() 
     writer.shutdown();
     assert!(hits.is_empty(), "an unplaceable row fails closed");
 }
+
+#[test]
+fn a_share_remounted_elsewhere_stays_placed_by_every_root_it_was_indexed_under() {
+    // Indexed at /Volumes/naspi, where the folder was excluded, then again at
+    // /Volumes/naspi-1 after a remount. Both roots stay known, so the folder stays hidden
+    // with the share offline.
+    let dir = tempfile::tempdir().expect("temp dir");
+    let db_path = media_db_path(dir.path(), "excluded-remounted-nas");
+    MediaStore::open(&db_path).expect("open store");
+    let writer = MediaWriter::spawn(&db_path, "excluded-remounted-nas").expect("writer");
+    seed_facts(&writer, "/Photos/scan.jpg", "invoice from the tax office", vec![]);
+    seed_facts(&writer, "/Docs/scan.jpg", "invoice from the plumber", vec![]);
+    writer.flush_blocking().expect("flush");
+    crate::media_index::store::seed_mount_root(&db_path, "/Volumes/naspi");
+    crate::media_index::store::seed_mount_root(&db_path, "/Volumes/naspi-1");
+    let _exclusions = exclude(&["/Volumes/naspi/Photos"]);
+
+    let hits: Vec<String> = MediaIndex::open(dir.path(), "excluded-remounted-nas")
+        .search_ocr("invoice", 10)
+        .expect("search")
+        .into_iter()
+        .map(|h| h.path)
+        .collect();
+    writer.shutdown();
+    assert_eq!(hits, vec!["/Docs/scan.jpg"]);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn an_nfc_exclusion_hides_an_nfd_stored_path() {
+    // macOS hands the index NFD names; the exclusion arrives in whatever form it was typed
+    // or stored. The read has to treat both as the same folder.
+    use unicode_normalization::UnicodeNormalization;
+    let nfd_path: String = "/Users/me/Útikönyv/scan.jpg".nfd().collect();
+    let nfc_folder: String = "/Users/me/Útikönyv".nfc().collect();
+    assert!(
+        !nfd_path.starts_with(&nfc_folder),
+        "premise: the two forms differ byte for byte"
+    );
+    let dir = tempfile::tempdir().expect("temp dir");
+    let db_path = media_db_path(dir.path(), "excluded-nfc");
+    MediaStore::open(&db_path).expect("open store");
+    let writer = MediaWriter::spawn(&db_path, "excluded-nfc").expect("writer");
+    seed_facts(&writer, &nfd_path, "passport number X1234567", vec![]);
+    writer.flush_blocking().expect("flush");
+    crate::media_index::store::seed_mount_root(&db_path, "/");
+    let _exclusions = exclude(&[&nfc_folder]);
+
+    let hits = MediaIndex::open(dir.path(), "excluded-nfc")
+        .search_ocr("passport", 10)
+        .expect("search");
+    writer.shutdown();
+    assert!(hits.is_empty(), "the NFD row sits under the NFC folder");
+}
+
+#[test]
+fn a_share_mounted_at_a_new_root_stays_excluded_at_the_root_it_was_excluded_under() {
+    // Mounted today at /Volumes/naspi-1, indexed earlier at /Volumes/naspi, where the folder
+    // was excluded. Placing the rows by the live root alone would put them under naspi-1
+    // and show them.
+    use cmdr_fs::volume::InMemoryVolume;
+    use std::sync::Arc;
+
+    let dir = tempfile::tempdir().expect("temp dir");
+    let db_path = media_db_path(dir.path(), "excluded-live-remount");
+    MediaStore::open(&db_path).expect("open store");
+    let writer = MediaWriter::spawn(&db_path, "excluded-live-remount").expect("writer");
+    seed_facts(&writer, "/Photos/scan.jpg", "invoice from the tax office", vec![]);
+    seed_facts(&writer, "/Docs/scan.jpg", "invoice from the plumber", vec![]);
+    writer.flush_blocking().expect("flush");
+    crate::media_index::store::seed_mount_root(&db_path, "/Volumes/naspi");
+    let provider = crate::indexing::host::volumes::FakeVolumeProvider::shared();
+    provider.register(
+        "excluded-live-remount",
+        Arc::new(InMemoryVolume::new("naspi").with_root("/Volumes/naspi-1")),
+    );
+    let _installed = crate::indexing::host::volumes::install_for_test(provider);
+    let _exclusions = exclude(&["/Volumes/naspi/Photos"]);
+
+    let hits: Vec<String> = MediaIndex::open(dir.path(), "excluded-live-remount")
+        .search_ocr("invoice", 10)
+        .expect("search")
+        .into_iter()
+        .map(|h| h.path)
+        .collect();
+    writer.shutdown();
+    assert_eq!(hits, vec!["/Docs/scan.jpg"]);
+}

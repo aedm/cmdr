@@ -376,7 +376,9 @@ OCR text stops being searchable at once (privacy is a hard requirement, not "eve
   no error and the FE never rolls the persisted exclusion back (every launch seeds the veto from it).
 - **Reads hide an excluded folder whatever the purge did** (`read/DETAILS.md` § Excluded folders at read time): OCR,
   tag, and description search, find-similar, dedup, `image_facts`, and the file badge never surface it, an unmounted NAS
-  included (placed by the mount root its last pass recorded).
+  included (placed by every mount root its passes recorded), and so does a share remounted under a new name. The veto,
+  this filter, and the purge share ONE folder matcher, `network/config.rs::path_is_within`, which folds names like the
+  drive index's `platform_case` collation (NFC and NFD, and case, on macOS).
 - **Un-excluding** only clears the veto: NO re-delete and NO auto re-enrich — the next natural pass picks the folder up
   again.
 - **Offline network volumes** aren't reachable when the exclusion is set (no mount root to map with), so the
