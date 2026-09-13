@@ -57,9 +57,13 @@ below is met.
       nothing reads the drive. A pulled drive or raw `umount` stops workers without deleting rows or stamping an index
       complete, invalidates a suspect index with a notice, gives a transfer its progress facts, and sweeps leftover
       temps when the drive returns. Cmdr's own eject goes per physical disk with the round-3 should-fixes, then a holder
-      scan and classification and the approved copy. Order: M1 harness → M2 lane → M3 holds → M4 approver → M5a index
-      vanish → M5b transfers and temps → M6 disk flights → M7 holder scan → M8 facts → M9 copy → checkpoint; about 4,600
-      lines. The DA teardown swap and "not powered down" are deferred with revisit triggers.
+      scan and classification and the approved copy. The adversarial review is folded in: resumes pass a per-volume gate
+      so they can't race the next unmount request, asks queued behind each other share one deadline, a Mac-to-drive move
+      deletes sources only after a real flush, and no sweep can remove a user's original. Order: M1 harness → M2 lane →
+      M3 hold leaf → M4 worker shares → M5 gated release and resume → M6 approver → M7 delete gates → M8 completion
+      gates and rebuild marker → M9 vanish causes → M10 transfers → M11 temps and asides → M12 disk flights → M13 holder
+      scan → M14 facts → M15 copy → checkpoint; about 8,200–10,000 lines. The DA teardown swap and "not powered down"
+      are deferred with revisit triggers.
 - [ ] 2026-09-11 `text-editor-choice.md` - **F4 always opens files in TextEdit, and a user wants Sublime Text.** M1 (the
       Rust surface) landed: Cmdr lists what LaunchServices reports as plain-text EDITORS (the role-filtered C query; the
       spike confirmed Sublime Text and VS Code both show up there), launches a file in a stored bundle id or `.app` path
