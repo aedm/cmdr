@@ -806,4 +806,190 @@ Recommendations come from the reviewers and the lead; all still wait for David.
 
 ## Spike results
 
-Filled in by M0a and M0b.
+M0a's holder spike adds its own subsection. The DiskArbitration approval-hook spike below covers the unmount-approval
+questions, part of M0b, and the M0a facts it could check without new risk.
+
+### DiskArbitration approval-hook spike
+
+Verified on macOS 26.6.2 (25G83), unsandboxed uid 501, load about 2, 2026-09-14, with a throwaway Swift probe (not
+committed): DA sessions on serial dispatch queues whose callbacks MATCH only the spike's own volume names, against fresh
+APFS and HFS+ DMGs attached `-nobrowse`, with every mutating call gated on `hdiutil info -plist` plus
+`diskutil info -plist` identity. Timings come from the probe's clock and `log stream` on `diskarbitrationd`. Apple
+sources: DiskArbitration-535.0.10.
+
+#### Design consequences
+
+- **An unmount-approval session is the reliable pre-unmount hook for DA-mediated unmounts.** DA asks it before
+  `diskutil unmount`, `unmountDisk`, and `eject`, `NSWorkspace unmountAndEjectDevice(at:)`, `hdiutil detach`, and
+  `hdiutil detach -force`, once per mounted volume. It never sees a raw `unmount(2)`: `/sbin/umount` by the mount's
+  owner needs no sudo and only shows up afterwards (`DidUnmount`, a `DAVolumePath` description change).
+- **It holds an unmount for less than 10 s per ask, never longer.** Past that, DA logs the session as not responding and
+  unmounts without the answer. An index stop inside the ask needs a budget well under 10 s, which `INDEX_STOP_DEADLINE`
+  (15 s) isn't.
+- **A timed-out session that registered ONLY approval callbacks is never asked again.** Register another callback kind
+  (idle or description-changed) on the same session, so its next delivery clears the timeout, or recreate the session.
+- **Asks run one after another on the session's queue.** A Whole request on a two-volume APFS container delivers both
+  asks back to back, so a slow first ask spends the second's 10 s too: stop every sibling in the first ask.
+- **Force can't be refused.** DA still asks, then ignores the dissent, so the hook does its stop work on every ask and
+  never relies on dissenting.
+- **An ask, or `WillUnmount`, doesn't mean the unmount happens.** Both fire for a request the kernel then refuses
+  (EBUSY), and for every volume of a Whole request before any unmount. Whatever the hook stops must resume after a
+  refusal; the trigger is DA's idle callback while the volume's `DAVolumePath` is still set.
+  - ❗ Today's `handle_volume_will_unmount` (`apps/desktop/src-tauri/src/volumes/watcher.rs`) stops the index, and
+    nothing resumes it when that unmount is refused.
+- **`WillUnmount` is posted synchronously from AppKit's own DA approval callback, on the main thread.** Today's handler
+  is racy only because it spawns a thread and returns. Blocking there would hold the unmount, but it freezes Cmdr's main
+  thread and meets the same 10 s limit, so a dedicated DA session on its own queue is the better home.
+- **Dissent works on non-force requests, and each caller reports it differently.** `diskutil` names the dissenting PID
+  and its parent; the DA API answers `0xF8DA0002` with the dissenter's PID; NSWorkspace throws a bare `OSStatus` -47 and
+  can leave a multi-partition disk partly unmounted. Dissenting to protect in-flight writes is a product decision with
+  that cost.
+- **A vanished disk is distinguishable from an eject**: a disappeared callback for the whole disk with NO eject approval
+  before it. A description change alone can't tell. Measured only with the volume already unmounted.
+- **`NSWorkspace unmountAndEjectDevice(at:)` on an APFS DMG ejects the synthesized container**: success, both volumes
+  unmounted, image still attached. It confirms "never eject the synthesized container", and warns that API-driven ejects
+  of APFS media may not power down.
+- **Responsible-PID attribution works, but responsible apps are often accessory (menu bar) apps, and Google Drive's has
+  no `NSRunningApplication`.** Facts steps 2 and 3 can't require a regular activation policy.
+- **Index databases live on the Mac, never on the drive**, so a pulled drive can't corrupt them; the pre-unmount stop
+  exists for the FSEvents stream and open handles. A copy interrupted by a pull leaves `<name>.cmdr-tmp-<uuid>` files
+  that nothing cleans up.
+
+#### 1. Approval coverage
+
+- **`diskutil unmount <path>`**: asked, 7–12 ms after the solicitation. On macOS 26, `diskutil` requests go through
+  `storagekitd`: DA's log names `storagekitd [47890]` as the requester.
+- **`diskutil unmountDisk disk7`** (HFS+, two partitions): asked once per volume, one after the other (s2, then s1 190
+  ms later).
+- **`diskutil eject <path>`** (APFS DMG): asked. The sequence is `DADiskUnmount(disk6s1)` (not Whole), then
+  `DADiskEject(disk6)` (the container), then `DADiskEject(disk5)` (physical, which detached); each eject asked the
+  eject-approval callback.
+- **`NSWorkspace unmountAndEjectDevice(at:)`**: asked; the requester is the calling process.
+  - APFS: `DADiskUnmount(container, Whole)`, both volumes asked, then `DADiskEject(container)`. It answered OK in 122
+    ms, and `hdiutil info` still listed the image.
+  - HFS+ two partitions: `WillUnmount` for both.
+- **`hdiutil detach disk8`** (APFS): asked. `DADiskUnmount(disk9 container, Whole)`, `DADiskUnmount(disk8, Whole)`, then
+  `DADiskEject(disk8)`, in 132 ms.
+- **`hdiutil detach -force`**: asked (options `0x00080001`, Force and Whole); it ignored a dissent and detached in 279
+  ms.
+- **`/sbin/umount /Volumes/X`, no sudo**: succeeded in 74 ms with no ask and no `WillUnmount`, only `DidUnmount`, a
+  `DAVolumePath` change, and idle. sudo isn't available, and root wasn't needed for a DA mount the user owns.
+
+#### 2. Per volume on a whole-disk eject
+
+- **Yes, one ask per mounted volume**: HFS+ partitions (`unmountDisk`, `hdiutil detach`) and APFS container volumes
+  (NSWorkspace eject, container Whole). The APFS pair arrived in the same millisecond.
+- **Building a two-volume APFS image**: `diskutil apfs addVolume` answered -69493 on the SYNTHESIZED container of a 128
+  MB image too, and succeeded on a 1.1 GB sparse image (`hdiutil create -size 1100m -type SPARSE -fs APFS`, then
+  `addVolume <container> APFS <name> -nomount`). So the earlier -69493 came from the container's size (APFS scales its
+  volume cap with container size), not the node. The exact formula is unverified.
+- **A two-GPT-partition image without FAT**: `hdiutil create -layout GPTSPUD -fs HFS+`, attach, then
+  `diskutil partitionDisk <disk> GPT JHFS+ A 60M JHFS+ B R`. `partitionDisk` remounts both browsable, so remount them
+  with `diskutil mount -mountOptions nobrowse`. This answers M0b's sibling-partition intention: real-image tests can
+  cover it.
+
+#### 3. Blocking answer
+
+- **2 s block**: `diskutil unmount` took 2.256 s (unblocked baseline 0.279 s). **8 s**: 8.368 s.
+- **12 s**: DA logged `daprobe [<pid>]:<id> not responding.` 10.66 s after the solicitation (`__kDAResponseTimerLimit`
+  10 plus the 1 s grace, `diskarbitrationd/DAQueue.c:45-46,174-199`), unmounted without the answer (`diskutil` 10.87 s),
+  and ignored the late approval. Reproduced twice.
+- **Recovery**: the timeout flag clears only when the client copies its callback queue (`DAServer.c:2147`), and approval
+  dispatch skips a flagged session (`DAQueue.c:609`).
+  - A session that also registered appeared, disappeared, description-changed, and idle callbacks was asked again on the
+    next request (and timed out again).
+  - An approval-only session was NOT asked on the next request (0.212 s, no ask): it stays silent for its lifetime.
+
+#### 4. Dissent
+
+`DADissenterCreate(kDAReturnBusy, "spike dissent")` from the approval callback:
+
+- **`diskutil unmount`**: exit 1 in 0.135 s; stderr named the dissent string, the approver's PID, and its parent's PID
+  and path.
+- **DA API `DADiskUnmount`** (not Whole): 9 ms, status `0xF8DA0002`, and `DADissenterGetProcessID` (through `dlsym`)
+  answered the approver's PID.
+- **`hdiutil detach`** (Whole, two partitions): both asked, exit 2, "Resource busy", nothing unmounted.
+- **NSWorkspace eject** (two HFS+ partitions, dissent on H1 only): threw `NSOSStatusErrorDomain` -47 with an empty
+  `userInfo` and no process named, in 82 ms, and left H2 unmounted with H1 still mounted.
+- **Force** (`diskutil unmount force`, `hdiutil detach -force`): asked, dissent ignored, unmounted (`DARequest.c:1610`).
+
+#### 5. Disappearance without a request
+
+- **Simulated** by SIGKILLing the image's own `diskimages-helper`: a legacy DiskImages image whose `hdid-pid` served
+  only that image, with its volume already unmounted. DA logged `removed disk` for all four nodes, and the watcher's
+  disappeared callbacks for `disk5`, `disk6`, and `disk6s1` came 12 ms later, with no eject solicitation, eject
+  approval, or unmount approval.
+- **Every DA-mediated eject or detach** in this spike delivered the whole disk's eject approval 14–18 ms before its
+  disappeared callbacks.
+- **`hdiutil detach -force` is not a simulation**: it asks (§ 1).
+- **Raw `umount` is the unmount-without-request shape**: `DidUnmount` with no `WillUnmount` and no ask, and the media
+  stays.
+- **Unverified: a MOUNTED volume vanishing** (a real pulled cable). From source: DA marks the disk a zombie and issues
+  its own `DADiskUnmount(disk, Force)` (`DAServer.c:1425-1434,1514`), a zombie request skips approval
+  (`DARequest.c:1388`), and it may show the device-removal dialog (`DAServer.c:1495,1537`). Not run: killing the helper
+  under a mounted filesystem is a new kernel-level risk.
+
+#### 6. Refused-unmount settle signal
+
+- **A holder process with the H1 volume root open**, so the kernel answers EBUSY:
+  - `diskutil unmount`: the idle callback came 53 ms after DA logged the failure, and `diskutil` exited 81 ms after
+    that; its stderr named the holder PID.
+  - DA API unmount: status `0x0000C010` with the holder as dissenter PID, in 132 ms; idle 1 ms after the requester's
+    callback.
+  - `unmountDisk` with H1 held: H2 unmounted, H1 refused (partial), idle after each.
+- **A refusal brings no description change and no `DidUnmount`**, but `WillUnmount` was posted for it.
+- **Idle means "DA's queue is quiet"** and also fires after successes, so pair it with the volume's `DAVolumePath`
+  (still set means refused). It's private (`DiskArbitrationPrivate.h:331`, `DARegisterIdleCallback` through `dlsym`); no
+  public callback marks a refusal to an observer.
+- **Refusals took 0.13–0.2 s at load about 2**, far below the 12.2 s under load in § "Evidence the design rests on", so
+  the budgets stand.
+
+#### 7. `NSWorkspaceWillUnmountNotification`
+
+- **Posted from AppKit's own DA approval callback, synchronously, on the main thread.** A watcher with NO approval
+  callback of its own, sleeping 8 s in its observer: `diskutil unmount` took 8.290 s, and DA logged "unmounted disk,
+  ongoing" in the same millisecond the observer returned.
+- **Sleeping 12 s**: DA logged the WATCHER process as not responding at 10.66 s (AppKit's is the only DA session in that
+  process) and unmounted; `DidUnmount` arrived after the observer returned. AppKit's session recovered: the next unmount
+  posted `WillUnmount` again.
+- **With an approval session present**, AppKit's `WillUnmount` and the probe's ask arrived 1–6 ms apart: DA asks every
+  session at once and waits for all of them.
+- **Unverified**: whether AppKit's session filters by disk, so whether a slow observer also delays OTHER disks' unmounts
+  (needs two concurrent disks).
+
+#### 8. M0a holder facts checked here
+
+- **`dlsym(RTLD_DEFAULT, "responsibility_get_pid_responsible_for_pid")`** resolves in an unsandboxed, non-root, unsigned
+  Swift binary, at 2–8 µs per call:
+  - `com.apple.WebKit.WebContent` (parent launchd) → BetterDisplay (accessory), Google Drive (`NSRunningApplication` nil
+    for the responsible PID), CleanShot X (accessory), and Cmdr.app (regular).
+  - `com.apple.WebKit.GPU` → iStat Menus Helper (accessory); a Chrome renderer → Google Chrome (regular).
+  - Standalone agents (iStat Menus Helper, `ViewBridgeAuxiliary`, `DiskUnmountWatcher`) → themselves.
+- **`DADissenterGetProcessID` through `dlsym`** resolves in a binary linking DA (also an M0b intention).
+- **`lstat` devices**: on the APFS image, `st_dev`, the mount point's `f_fsid.val[0]`, and its `getfsstat` entry all
+  read 16777241. On the boot volume, `/`'s `st_dev` (16777234) differs from its `f_fsid.val[0]` (16777235, the sealed
+  system snapshot), so compare against the mount point's own `stat().st_dev`, not `f_fsid`.
+- **Security calls off the volume** (`SecCodeCopyGuestWithAttributes`, then `SecCodeCopySigningInformation`): Finder 4
+  plus 3 ms; both `lsd` processes and a WebContent helper 1 ms or less each (platform identifier 26); iStat Menus Helper
+  2 plus 43 ms (no platform identifier).
+- **`hdiutil info -plist`** carries the typed per-image keys `hdid-pid` and `diskimages2` besides `image-path`.
+- **BSD units repeat at once**: a detached image's `disk8` and `disk9` went to the next attach, and image A came back as
+  `disk5` and `disk6` both times it was re-attached.
+- **Not run** (new risk, or M3b code): the nested-image signal, `diskimagesiod` holding an outer volume, and the
+  self-holder reproduction.
+
+#### 9. Code facts
+
+- **Index databases**: on the Mac, in the app data dir, never on the drive.
+  - `index-<volume_id>.db` plus its WAL and SHM (`crates/cmdr-index/src/indexing/lifecycle/state.rs:400`).
+  - `media-<volume_id>.db` (`crates/cmdr-index/src/media_index/store/mod.rs:259`); background media passes skip
+    `LocalExternal` drives (`media_index/scheduler/lifecycle.rs:184`).
+  - `importance-<volume_id>.db`. No indexer writes to the drive.
+- **In-progress copy temps**: `<name>.cmdr-tmp-<uuid v4>` beside the final file, plus `<name>.cmdr-temp-<uuid>` for an
+  original set aside during an overwrite (`crates/cmdr-fs/src/staging.rs:62,67,153`); `is_staging_temp_name` recognizes
+  both (`:80`). A cross-filesystem move stages under `<dest>/.cmdr-staging-<operation_id>/`
+  (`write_operations/transfer/move_op/cross_fs.rs:107`), which `is_staging_temp_name` doesn't match.
+- **Leftovers after a pull stay**: `discard_temp` ignores the failed remove and deregisters anyway
+  (`write_operations/overwrite.rs:176-178`), so the startup sweep (`in_flight_temps.rs:329`) never retries it, and that
+  sweep counts NotFound as gone (`:419`). The age-based reaper runs only in the cross-volume engine, not for Mac-to-USB
+  copies.
