@@ -40,10 +40,13 @@ export async function setFolderExcluded(folder: string, excluded: boolean): Prom
   try {
     await mediaIndexSetExcludedFolder(folder, excluded)
   } catch (err) {
-    log.warn('Folder exclusion for {folder} is saved but did not reach the backend; the next launch applies it: {err}', {
-      folder,
-      err: String(err),
-    })
+    log.warn(
+      'Folder exclusion for {folder} is saved but did not reach the backend; the next launch applies it: {err}',
+      {
+        folder,
+        err: String(err),
+      },
+    )
     throw err
   }
 }

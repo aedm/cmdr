@@ -155,8 +155,7 @@ pub async fn media_index_set_excluded_folder(app: AppHandle, folder: String, exc
         .collect();
     // The prune blocks on the writer thread, so run it off the IPC thread.
     let logged_folder = folder.clone();
-    match tauri::async_runtime::spawn_blocking(move || scheduler.retro_delete_excluded_folder(&folder, &mounts)).await
-    {
+    match tauri::async_runtime::spawn_blocking(move || scheduler.retro_delete_excluded_folder(&folder, &mounts)).await {
         Ok(outcome) => log::debug!(target: "media_index", "retro-delete under '{logged_folder}': {outcome:?}"),
         // The purge was owed before it started, so a panic mid-way leaves it for the next pass.
         Err(e) => log::warn!(
