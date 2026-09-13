@@ -5,8 +5,8 @@ payload catalog) is `apps/desktop/src-tauri/src/crash_reporter/DETAILS.md`; noth
 
 ## The next-launch flow
 
-Everything starts in `routes/(main)/+layout.svelte`, in `checkForPendingCrashReport`, called after settings load (the
-auto-send branch reads `updates.crashReports`, so running earlier would read the registry default):
+Everything starts in `pending-crash-report.ts`, which `routes/(main)/+layout.svelte` runs as an init step after settings
+load (the auto-send branch reads `updates.crashReports`, so running earlier would read the registry default):
 
 1. `checkPendingCrashReport()` over IPC. It returns `null` on the normal path, so a clean launch does nothing further.
 2. A report came back. With `updates.crashReports` on AND `possibleCrashLoop` false, `sendCrashReport(report)` fires and
@@ -15,8 +15,11 @@ auto-send branch reads `updates.crashReports`, so running earlier would read the
    which is why the condition is an AND rather than the setting alone: an app crashing on launch would otherwise mail a
    report every single time, and the user would have no way to intervene.
 
-Send failures are logged and swallowed at every step. A crash report is best-effort; a failed upload must never produce
-a second error surface on top of the crash the user already lived through.
+A failed auto-send never adds a second error surface on top of the crash the user already lived through, and the crash
+file stays until a send lands, so the report comes back next launch. It logs at warn for network trouble, a timeout, or
+a server having a bad moment, and at error for a refusal from Cmdr's own server, which means the contract broke
+(`$lib/error-messages/server-request.ts`). A check that breaks logs at error too: `check_pending_crash_report` can't
+refuse, so only a broken IPC bridge lands there. `pending-crash-report.test.ts` pins both.
 
 ## The three report consents
 
@@ -38,16 +41,18 @@ Where each population hears about the ON default:
 
 Someone who explicitly turned crash reports off keeps them off, since their stored `false` outranks the default.
 
-### Why the flow isn't in this directory
+### Why the flow lives in this directory
 
-The layout owns it because it's launch sequencing (ordered after settings load, alongside the other post-load checks),
-not crash-reporter behavior. This directory stays presentational: two components that render a report and report a
-choice. If the sequencing grows past a handful of lines, it moves to a `crash-report-flow.svelte.ts` here, mirroring
+The layout runs it as one init step and owns the dialog's visibility; the decision and its log levels live in
+`pending-crash-report.ts`, where a test reaches them without mounting the layout. Same split as
 `error-reporter/error-report-flow.svelte.ts`.
 
 ## Dialog states and choices
 
-`CrashReportDialog` renders one report and returns nothing; it calls the IPC itself and then `onClose()`.
+`CrashReportDialog` renders one report and calls the IPC itself. A send that lands closes it through `onClose()`. One
+that doesn't keeps it open with a `role="alert"` line (`crashReporter.dialog.notSent` plus the typed reason from
+`$lib/error-messages/server-request.ts`), Send stays the retry, and the log level follows the same split as the
+auto-send. `CrashReportDialog.test.ts` pins both.
 
 - **Opening sentence**: `crashDialogBodyKey(report)` picks one of `crashReporter.dialog.body.ended` / `.keptRunning` /
   `.unknown`. `ended` is the old fixed string; `keptRunning` says the app carried on and deliberately says "a report"

@@ -92,6 +92,16 @@
     "screenshotNote": "The crash-report dialog (shown on the next launch after Cmdr hit a problem) uses the same report-form layout as the error-report dialog pictured here: an intro, a privacy note, a copyable report ID, and Send/Cancel buttons."
   },
 
+  "crashReporter.dialog.notSent": "The report didn''t go out. {reason}",
+  "@crashReporter.dialog.notSent": {
+    "description": "Line shown inside the crash-report dialog when pressing Send didn't get the report to Cmdr's server. The dialog stays open, and the Send button is the retry. {reason} is one or two complete, already-translated sentences saying why and what to do (for example \"Cmdr couldn't reach its server. Check your internet connection and try again.\"), so end your sentence with a period and let the reason follow it. Say \"report\", not \"crash report\": not every report this dialog shows describes a crash. Avoid the words \"error\" and \"failed\".",
+    "placeholders": {
+      "reason": "one or two already-translated sentences saying why the report didn't go out and what to do; Cmdr controls the wording but the length varies"
+    },
+    "screenshot": "error-report.png",
+    "screenshotNote": "The crash-report dialog (shown on the next launch after Cmdr hit a problem) uses the same report-form layout as the error-report dialog pictured here: an intro, a privacy note, a copyable report ID, and Send/Cancel buttons."
+  },
+
   "crashReporter.sentToast.message.crash": "Crash report sent. Thanks for helping improve Cmdr.",
   "@crashReporter.sentToast.message.crash": {
     "description": "Toast confirming the report was sent, thanking the user. This is the wording for a report about a crash Cmdr went down with. \"Cmdr\" is the product name (do not translate).",

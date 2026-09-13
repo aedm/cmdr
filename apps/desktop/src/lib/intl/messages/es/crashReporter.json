@@ -59,6 +59,10 @@
   "@crashReporter.dialog.sending": {
     "sourceHash": "286a3af"
   },
+  "crashReporter.dialog.notSent": "El informe no se envió. {reason}",
+  "@crashReporter.dialog.notSent": {
+    "sourceHash": "71ae809"
+  },
   "crashReporter.sentToast.message.crash": "Informe de fallos enviado. Gracias por ayudar a mejorar Cmdr.",
   "@crashReporter.sentToast.message.crash": {
     "sourceHash": "734d62a"

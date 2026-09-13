@@ -11,10 +11,9 @@ and collects the user's choices.
   Dismiss / Send report).
 - `CrashReportToastContent.svelte`: the after-auto-send toast (one line + "Change in Settings > Updates").
 - `crash-copy.ts`: maps the report's `appFate` to the body, title, and sent-toast keys that are true of it.
+- `pending-crash-report.ts`: the next-launch check `routes/(main)/+layout.svelte` runs after settings load. Auto-sends
+  and toasts, or hands the report to the dialog.
 - `crash-reporter-i18n-parity.test.ts`: freezes the en copy for both. The `.a11y.test.ts` pair covers roles and labels.
-
-The flow lives in `routes/(main)/+layout.svelte` (`checkForPendingCrashReport`), not here: it calls
-`checkPendingCrashReport` after settings load, then auto-sends + toasts, or mounts the dialog.
 
 ## Must-knows
 
@@ -25,7 +24,7 @@ The flow lives in `routes/(main)/+layout.svelte` (`checkForPendingCrashReport`),
 - **A crash loop overrides the opt-in.** Auto-send needs `updates.crashReports` AND `!report.possibleCrashLoop`;
   otherwise the dialog shows. A crashing app must never silently fire a report per launch. Don't simplify that condition
   to the setting alone.
-- **The dialog owns the send, the layout owns the auto-send.** Both call `sendCrashReport`, and only the dialog path can
+- **The dialog owns the send, `pending-crash-report.ts` the auto-send.** Both call `sendCrashReport`, and only the dialog path can
   attach an email or flip `updates.crashReports` on. Adding a send path means deciding both again.
 - **Attach-email comes from `$lib/attach-email`**, shared with the error-report and feedback dialogs; `persist()` runs
   only after `sendCrashReport` resolves. Don't hand-roll the checkbox or add a crash-specific copy of the label. The

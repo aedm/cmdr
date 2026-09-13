@@ -542,6 +542,7 @@ export type MessageKey =
   | 'crashReporter.dialog.copied'
   | 'crashReporter.dialog.copy'
   | 'crashReporter.dialog.dismiss'
+  | 'crashReporter.dialog.notSent'
   | 'crashReporter.dialog.privacyNote'
   | 'crashReporter.dialog.reportIdHelp'
   | 'crashReporter.dialog.reportIdLabel'

@@ -9,6 +9,11 @@
     import { setSetting } from '$lib/settings'
     import { getAppLogger } from '$lib/logging/logger'
     import { tString } from '$lib/intl/messages.svelte'
+    import {
+        describeServerRequestFailure,
+        serverRequestFailureOf,
+        serverRequestLogLevel,
+    } from '$lib/error-messages/server-request'
     import { crashDialogBodyKey, crashDialogTitleKey } from './crash-copy'
 
     const log = getAppLogger('crashReportDialog')
@@ -24,6 +29,8 @@
     let alwaysSend = $state(false)
     let sending = $state(false)
     let copied = $state(false)
+    /** Why the last Send didn't land, worded from the catalog, or `null` before any attempt did that. */
+    let notSentReason = $state<string | null>(null)
 
     const attachEmail = createAttachEmail()
 
@@ -43,6 +50,7 @@
     async function handleSend() {
         if (!canSend) return
         sending = true
+        notSentReason = null
         try {
             if (alwaysSend) {
                 setSetting('updates.crashReports', true)
@@ -55,7 +63,19 @@
             attachEmail.persist()
             log.info('Crash report sent')
         } catch (e) {
-            log.warn('Crash report send attempt returned an error: {error}', { error: String(e) })
+            // The dialog stays open and Send is the retry. No network, a timeout, or a server having a
+            // bad moment stays at warn: an error line would try to auto-report through the server that
+            // just didn't answer. A refusal from Cmdr's own server means the contract broke.
+            const failure = serverRequestFailureOf(e)
+            const detail = { error: String(e) }
+            if (serverRequestLogLevel(failure) === 'error') {
+                log.error('Crash report send attempt returned an error: {error}', detail)
+            } else {
+                log.warn('Crash report send attempt returned an error: {error}', detail)
+            }
+            notSentReason = describeServerRequestFailure(failure)
+            sending = false
+            return
         }
         onClose()
     }
@@ -125,6 +145,12 @@
 
         <!-- The wider gap matches the always-send checkbox above it. -->
         <AttachEmailCheckbox email={attachEmail} containerStyle="margin-bottom: var(--spacing-lg)" />
+
+        {#if notSentReason !== null}
+            <p class="not-sent" role="alert">
+                {tString('crashReporter.dialog.notSent', { reason: notSentReason })}
+            </p>
+        {/if}
     </div>
 
     {#snippet footer()}
@@ -233,5 +259,11 @@
     .always-send {
         margin-bottom: var(--spacing-lg);
         color: var(--color-text-secondary);
+    }
+
+    .not-sent {
+        margin: 0 0 var(--spacing-md);
+        font-size: var(--font-size-sm);
+        color: var(--color-error);
     }
 </style>

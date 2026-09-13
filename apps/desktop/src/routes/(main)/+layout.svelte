@@ -30,8 +30,6 @@
         onMtpPermissionError,
         onMtpDeviceConnected,
         connectMtpDevice,
-        checkPendingCrashReport,
-        sendCrashReport,
         type MtpExclusiveAccessErrorEvent,
         type MtpPermissionErrorEvent,
         type CrashReport,
@@ -47,7 +45,7 @@
     import { MtpPermissionDialog, PtpcameradDialog } from '$lib/mtp'
     import MtpConnectedToastContent from '$lib/mtp/MtpConnectedToastContent.svelte'
     import CrashReportDialog from '$lib/crash-reporter/CrashReportDialog.svelte'
-    import CrashReportToastContent from '$lib/crash-reporter/CrashReportToastContent.svelte'
+    import { checkForPendingCrashReport } from '$lib/crash-reporter/pending-crash-report'
     import ErrorReportDialog from '$lib/error-reporter/ErrorReportDialog.svelte'
     import { errorReportFlow } from '$lib/error-reporter/error-report-flow.svelte'
     import FeedbackDialog from '$lib/feedback/FeedbackDialog.svelte'
@@ -55,7 +53,6 @@
     import SignInSheet from '$lib/servers/SignInSheet.svelte'
     import { closeSignInSheet, currentSignInRequest } from '$lib/servers/sign-in-sheet-state.svelte'
     import { initAutoSendToastListener, cleanupAutoSendToastListener } from '$lib/error-reporter/auto-send-toast.svelte'
-    import { getAppLogger } from '$lib/logging/logger'
     // Dialog gallery harness (Debug > Soft dialogs). Gated below on
     // `import.meta.env.DEV || __CMDR_E2E_BUILD__`, both of which Vite inlines to
     // build-time booleans, so the harness and every dialog it imports drop out of
@@ -65,8 +62,6 @@
     import QuitConfirmationDialog from '$lib/quit/QuitConfirmationDialog.svelte'
     import { quitPrompt, initQuitPrompt, cleanupQuitPrompt } from '$lib/quit/quit-prompt.svelte'
     import type { Snippet } from 'svelte'
-
-    const crashLog = getAppLogger('crashReporter')
 
     interface Props {
         children?: Snippet
@@ -149,39 +144,10 @@
         pendingCrashReport = null
     }
 
-    async function checkForPendingCrashReport() {
-        try {
-            const report = await checkPendingCrashReport()
-            if (!report) return
-
-            const autoSend = getSetting('updates.crashReports')
-
-            if (autoSend && !report.possibleCrashLoop) {
-                // Auto-send without dialog
-                try {
-                    await sendCrashReport(report)
-                    addToast(CrashReportToastContent, {
-                        id: 'crash-report-sent',
-                        level: 'info',
-                        dismissal: 'persistent',
-                        // The toast names the artifact, and "crash report" is only true when
-                        // the app actually went down with it. `$lib/crash-reporter/crash-copy`.
-                        props: { report },
-                    })
-                    crashLog.info('Crash report auto-sent')
-                } catch (e) {
-                    crashLog.warn('Auto-send crash report returned an error: {error}', {
-                        error: String(e),
-                    })
-                }
-            } else {
-                // Show dialog for user to decide
-                pendingCrashReport = report
-                showCrashReportDialog = true
-            }
-        } catch (e) {
-            crashLog.warn('Crash report check returned an error: {error}', { error: String(e) })
-        }
+    /** The dialog half of the next-launch crash check (`$lib/crash-reporter/pending-crash-report.ts`). */
+    function showCrashReport(report: CrashReport) {
+        pendingCrashReport = report
+        showCrashReportDialog = true
     }
 
     // Cleanup functions stored for onDestroy
@@ -303,7 +269,7 @@
                 // Check for pending crash reports from a previous session
                 name: 'crashReportCheck',
                 run: () => {
-                    void checkForPendingCrashReport()
+                    void checkForPendingCrashReport(showCrashReport)
                 },
             },
             {

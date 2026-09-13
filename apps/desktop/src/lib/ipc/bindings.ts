@@ -1692,8 +1692,12 @@ export const commands = {
    *  Skipped in debug builds, E2E builds (`playwright-e2e`), and CI to avoid polluting production
    *  data. The E2E skip mirrors `error_reporter::upload`: an E2E build is a release build, so without
    *  it a crash during a test run would reach the live channel looking like a real user's.
+   *
+   *  A failed send keeps the file, so the report is offered again next launch; the frontend words the
+   *  typed [`ServerRequestError`] and decides its log level.
    */
-  sendCrashReport: (report: CrashReport) => typedError<null, string>(__TAURI_INVOKE('send_crash_report', { report })),
+  sendCrashReport: (report: CrashReport) =>
+    typedError<null, ServerRequestError>(__TAURI_INVOKE('send_crash_report', { report })),
   /**
    *  Re-build the bundle and upload it. Returns the report's ID.
    *

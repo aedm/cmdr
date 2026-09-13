@@ -59,6 +59,10 @@
   "@crashReporter.dialog.sending": {
     "sourceHash": "286a3af"
   },
+  "crashReporter.dialog.notSent": "Rapporten skickades inte. {reason}",
+  "@crashReporter.dialog.notSent": {
+    "sourceHash": "71ae809"
+  },
   "crashReporter.sentToast.message.crash": "Kraschrapporten skickades. Tack för att du hjälper till att göra Cmdr bättre.",
   "@crashReporter.sentToast.message.crash": {
     "sourceHash": "734d62a"

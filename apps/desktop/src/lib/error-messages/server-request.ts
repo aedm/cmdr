@@ -32,6 +32,11 @@ export class ServerRequestFailure extends TypedFailure<ServerRequestError> {
   }
 }
 
+/** Throws a wire `ServerRequestError` as an `Error`, keeping the typed value. */
+export function throwServerRequestError(failure: ServerRequestError): never {
+  throw new ServerRequestFailure(failure)
+}
+
 /** The typed failure behind a caught value, or `null` when it isn't one. */
 export function serverRequestFailureOf(error: unknown): ServerRequestError | null {
   return failureOf(ServerRequestFailure, error)
