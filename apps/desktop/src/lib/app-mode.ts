@@ -154,7 +154,7 @@ export async function orderChildWindowToBackInE2e(win: WebviewWindow): Promise<v
     })
     await orderWindowToBack(win.label)
   } catch (e) {
-    log.warn('Could not order child window {label} to back in E2E: {error}', { label: win.label, error: String(e) })
+    log.debug('Could not order child window {label} to back in E2E: {error}', { label: win.label, error: String(e) })
   }
 }
 

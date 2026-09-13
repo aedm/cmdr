@@ -338,7 +338,7 @@ function finishCheckWithUnwritableBundle(
   blocker: BundleWriteBlocker,
   staged: string | null,
 ): void {
-  log.warn("An update is out, but this install can't write its own bundle ({blocker}); asking the user to move Cmdr", {
+  log.info("An update is out, but this install can't write its own bundle ({blocker}); asking the user to move Cmdr", {
     blocker,
   })
   reportUpdateCheck({ trigger, outcome: 'blocked', failure: blockerFailure(blocker), stagedVersion: staged })

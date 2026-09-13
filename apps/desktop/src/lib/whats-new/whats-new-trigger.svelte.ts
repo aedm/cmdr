@@ -98,7 +98,7 @@ export async function runWhatsNewStartupTrigger(gates: StartupGates): Promise<vo
       const releases = await getWhatsNew(override, MANUAL_MAX)
       openWith(releases, true)
     } catch (e) {
-      log.warn("Couldn't load the changelog for the dev override: {error}", { error: String(e) })
+      log.debug("Couldn't load the changelog for the dev override: {error}", { error: String(e) })
     }
     return
   }

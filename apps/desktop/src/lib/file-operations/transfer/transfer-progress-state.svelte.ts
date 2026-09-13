@@ -371,10 +371,11 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
         if (error.type === 'archive_needs_password') {
           // Expected, recoverable flow: the write-error only exists to prompt for
           // a password and retry (intercepted upstream in `handleTransferError`),
-          // so log at warn to keep it out of prod error-report bundles (error+).
+          // so it logs at info, which the prod gate keeps out of the log file and
+          // so out of error-report bundles (warn and above reach them).
           // `wrongAttempt` separates the first prompt from a retry after a bad
           // password, which is the only thing that distinguishes two of these.
-          log.warn('{op} operation needs an archive password (wrongAttempt={wrongAttempt})', {
+          log.info('{op} operation needs an archive password (wrongAttempt={wrongAttempt})', {
             op: operationLabel,
             wrongAttempt: error.wrongAttempt,
           })
@@ -477,7 +478,7 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
     if (operationId === null) {
       // The backend hasn't named the operation yet. Record the command; birth
       // issues it the moment the id lands.
-      log.warn('Cancel requested but no operationId yet; will cancel after the start command answers')
+      log.debug('Cancel requested but no operationId yet; will cancel after the start command answers')
       cancelRequestedBeforeId = true
       return
     }
@@ -578,7 +579,7 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
       // report a cancel for a transfer that is still copying — the pane tail
       // included. Stopping watching is what a detach means; the corner chip and
       // the queue window keep showing the operation.
-      log.warn('The modal closed for op={operationId} before its session took hold; leaving the operation alone', {
+      log.debug('The modal closed for op={operationId} before its session took hold; leaving the operation alone', {
         operationId,
       })
       return

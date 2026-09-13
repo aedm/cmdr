@@ -85,7 +85,7 @@ export async function goToPath(explorer: ExplorerAPI | undefined, input: string)
   if (result.status === 'error') {
     // The backend's refusal is typed, so the log names the REASON; there is no
     // sentence here for a copy edit to change under it.
-    log.warn("goToPath: couldn't resolve {input}: {reason}", { input, reason: result.error.type })
+    log.info("goToPath: couldn't resolve {input}: {reason}", { input, reason: result.error.type })
     return undefined
   }
 

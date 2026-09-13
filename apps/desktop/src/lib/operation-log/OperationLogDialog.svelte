@@ -116,7 +116,10 @@
         } catch (e) {
             const refusal = asRollbackRefusal(e)
             refusals.set(opId, rollbackRefusalNotice(refusal))
-            log.warn("Couldn't roll {opId} back: {reason}", { opId, reason: refusal?.kind ?? String(e) })
+            // A typed refusal is an answer the dialog already words; only an untyped
+            // throw is a diagnostic worth a warn.
+            if (refusal) log.info("Couldn't roll {opId} back: {reason}", { opId, reason: refusal.kind })
+            else log.warn("Couldn't roll {opId} back: {error}", { opId, error: String(e) })
         } finally {
             dispatching.delete(opId)
         }

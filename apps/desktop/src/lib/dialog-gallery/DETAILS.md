@@ -70,7 +70,7 @@ Not `+page.svelte`: it's already over its `file-length` allowlist entry.
 The main-window graph imports nothing from this directory. A previewed dialog suppresses global shortcuts the same way a
 real one does: `+page.svelte`'s `isModalDialogOpen()` asks `$lib/ui/open-dialogs.svelte`, and the gallery renders the
 SHIPPING component, which registers there on mount. The one case that falls through is a request whose fixture is
-missing, where the harness renders nothing and logs a warning; nothing is on screen to shadow, so nothing should be
+missing, where the harness renders nothing and logs it at debug; nothing is on screen to shadow, so nothing should be
 suppressed.
 
 ## Two more callers: the screenshot driver and the inset check
@@ -111,7 +111,7 @@ literals in `apps/desktop/build/`):
   preview modules — so are the dialog imports the harness would otherwise have added to the main-window graph. The
   `{#if import.meta.env.DEV || __CMDR_E2E_BUILD__}` in `+layout.svelte` is what does it (Vite inlines both flags, and a
   production build has neither). Markers checked: `Cmdr paused indexing because the drive is running on battery.`
-  (`fixtures/alert.ts`) and `Dialog gallery has no fixture for` (the harness's own warning). Neither appears anywhere
+  (`fixtures/alert.ts`) and `Dialog gallery has no fixture for` (the harness's own debug line). Neither appears anywhere
   under `build/`.
 - **Present**: `gallery-registry.ts`'s row copy and `DebugDialogsPanel.svelte`, inside the Debug route's own lazily
   loaded node chunk (`build/_app/immutable/nodes/<n>.*.js`) — where `DebugErrorPreviewPanel`, the closed-tabs panel, and

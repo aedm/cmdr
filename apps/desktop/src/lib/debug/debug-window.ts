@@ -98,7 +98,7 @@ export async function openDebugWindow(): Promise<void> {
           radius: 29,
         })
         .catch((error: unknown) => {
-          log.warn('Failed to apply debug window effects: {error}', { error: String(error) })
+          log.debug('Failed to apply debug window effects: {error}', { error: String(error) })
         })
     })
   }

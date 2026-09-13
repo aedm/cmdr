@@ -1,6 +1,6 @@
 /**
  * The harness's render decision: it shows the requested fixture, and shows
- * NOTHING (with a warning) when a request doesn't resolve to one. Half-filled
+ * NOTHING (with a debug line) when a request doesn't resolve to one. Half-filled
  * dialogs are the one thing a design-review instrument must never produce.
  *
  * The sweep at the bottom is the real guarantee: EVERY state of every `ready`
@@ -91,23 +91,28 @@ vi.mock('$lib/icon-cache', () => ({
   getCachedCustomFolderIcon: () => undefined,
 }))
 
-const warn = vi.fn()
+const debug = vi.fn()
 vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({
-    warn: (...args: unknown[]) => {
-      warn(...args)
-    },
+    warn: vi.fn(),
     info: vi.fn(),
     error: vi.fn(),
-    debug: vi.fn(),
+    debug: (...args: unknown[]) => {
+      debug(...args)
+    },
   }),
 }))
 
 /** The harness's own "this state resolved to nothing" message. */
-const NO_FIXTURE_WARNING = 'Dialog gallery has no fixture for {dialogId} / {stateId}'
+const NO_FIXTURE_MESSAGE = 'Dialog gallery has no fixture for {dialogId} / {stateId}'
+
+/** How many times the harness said a request resolved to nothing. */
+function noFixtureLines(): number {
+  return debug.mock.calls.filter((call: unknown[]) => call[0] === NO_FIXTURE_MESSAGE).length
+}
 
 // The store is module-level, so a harness left mounted from an earlier test would
-// react to the next test's store writes (and re-warn). Every mount is torn down.
+// react to the next test's store writes (and log again). Every mount is torn down.
 let mounted: Record<string, unknown> | undefined
 
 function mountGallery(): HTMLElement {
@@ -118,7 +123,7 @@ function mountGallery(): HTMLElement {
 }
 
 beforeEach(() => {
-  warn.mockClear()
+  debug.mockClear()
   vi.mocked(notifyDialogOpened).mockClear()
 })
 
@@ -133,7 +138,7 @@ describe('DialogGallery', () => {
     const target = mountGallery()
     await tick()
     expect(target.querySelector('[role="alertdialog"]')).toBeNull()
-    expect(warn).not.toHaveBeenCalled()
+    expect(noFixtureLines()).toBe(0)
   })
 
   it('renders the requested alert fixture', async () => {
@@ -143,7 +148,7 @@ describe('DialogGallery', () => {
     const dialog = target.querySelector('[role="alertdialog"]')
     expect(dialog).not.toBeNull()
     expect(dialog?.textContent).toContain('Nothing to copy')
-    expect(warn).not.toHaveBeenCalled()
+    expect(noFixtureLines()).toBe(0)
   })
 
   it('swaps to another state without leaving the previous one mounted', async () => {
@@ -157,20 +162,20 @@ describe('DialogGallery', () => {
     expect(target.textContent).not.toContain('Nothing to copy')
   })
 
-  it('renders nothing and warns when the state id has no fixture', async () => {
+  it('renders nothing and says so when the state id has no fixture', async () => {
     openGalleryDialog('alert', 'no-such-state')
     const target = mountGallery()
     await tick()
     expect(target.querySelector('[role="alertdialog"]')).toBeNull()
-    expect(warn).toHaveBeenCalledTimes(1)
+    expect(noFixtureLines()).toBe(1)
   })
 
-  it('renders nothing and warns for a dialog the harness has no case for', async () => {
+  it('renders nothing and says so for a dialog the harness has no case for', async () => {
     openGalleryDialog('whats-new', 'default')
     const target = mountGallery()
     await tick()
     expect(target.querySelector('[role="alertdialog"]')).toBeNull()
-    expect(warn).toHaveBeenCalledTimes(1)
+    expect(noFixtureLines()).toBe(1)
   })
 
   it('remounts the dialog when swapping between two states of the SAME dialog', async () => {
@@ -250,9 +255,9 @@ describe('every advertised gallery state opens its dialog', () => {
     // `ModalDialog`, so a `data-dialog-id` selector wouldn't cover all of them.
     expect(vi.mocked(notifyDialogOpened).mock.calls.map(([id]) => id)).toContain(dialogId)
     expect(target.childElementCount, 'nothing rendered').toBeGreaterThan(0)
-    // Other modules log their own warnings here (settings reads before init), so
-    // this pins the harness's own "no fixture" warning specifically.
-    expect(warn.mock.calls.map((call: unknown[]) => call[0])).not.toContain(NO_FIXTURE_WARNING)
+    // Other modules log their own lines here (settings reads before init), so
+    // this pins the harness's own "no fixture" line specifically.
+    expect(noFixtureLines()).toBe(0)
   })
 })
 
@@ -286,7 +291,7 @@ describe('every store-seeded state seeds and restores its store', () => {
     await tick()
     expect(seed.isOpen()).toBe(false)
     expect(JSON.stringify(seed.store), 'the store came back changed').toBe(before)
-    expect(warn.mock.calls.map((call: unknown[]) => call[0])).not.toContain(NO_FIXTURE_WARNING)
+    expect(noFixtureLines()).toBe(0)
   })
 })
 

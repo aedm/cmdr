@@ -254,7 +254,7 @@
         const resolved = planResolvers[open.dialogId]?.(open.stateId, open.disk) ?? null
         if (resolved) return resolved
 
-        log.warn('Dialog gallery has no fixture for {dialogId} / {stateId}', {
+        log.debug('Dialog gallery has no fixture for {dialogId} / {stateId}', {
             dialogId: open.dialogId,
             stateId: open.stateId,
         })

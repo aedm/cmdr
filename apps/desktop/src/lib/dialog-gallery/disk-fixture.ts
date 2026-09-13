@@ -54,7 +54,7 @@ export async function resolveDiskFixture(
   fixtures: FixtureDirPayload,
 ): Promise<GalleryDiskFixture | null> {
   if (!explorer) {
-    log.warn('Dialog gallery: no explorer yet, skipping the disk-backed preview')
+    log.debug('Dialog gallery: no explorer yet, skipping the disk-backed preview')
     return null
   }
 
@@ -67,13 +67,13 @@ export async function resolveDiskFixture(
   // the dialog would open against the WRONG directory with real-looking entries
   // and tallies. Nothing about the result would look wrong to a reviewer.
   if (!(await navigateToDirInPane(explorer, paneSide, location))) {
-    log.warn('Dialog gallery: the {pane} pane refused to navigate to {root}', { pane: paneSide, root: fixtures.root })
+    log.debug('Dialog gallery: the {pane} pane refused to navigate to {root}', { pane: paneSide, root: fixtures.root })
     return null
   }
 
   const listingId = explorer.getPaneListingId(paneSide)
   if (!listingId) {
-    log.warn('Dialog gallery: the {pane} pane has no listing for {root}', { pane: paneSide, root: fixtures.root })
+    log.debug('Dialog gallery: the {pane} pane has no listing for {root}', { pane: paneSide, root: fixtures.root })
     return null
   }
 
