@@ -14,6 +14,13 @@
 //! error, and binding doesn't help (the string is parsed as query syntax). Same
 //! gotcha as `agent/store`'s `sanitize_fts_query`; [`build_ocr_match_query`] is our
 //! sanitizer — it quotes each whitespace token so every term is a literal.
+//!
+//! ## Excluded folders
+//!
+//! Every read that can return an image's path, text, tag, score, or facts drops the images
+//! under a currently excluded folder, whatever the retro-delete managed ([`exclusion`]).
+
+mod exclusion;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -25,6 +32,7 @@ use super::store::{
     read_embeddings_for_ids, read_status, read_tag_matches,
 };
 use super::vector::{DedupCluster, SimilarImage, VectorStore, cache, cosine_f16};
+use exclusion::ReadExclusion;
 
 /// One OCR search hit: the matched image's path and a highlighted snippet of the
 /// matched text (the "why matched" reason the results grid shows). Crosses the IPC
@@ -81,6 +89,10 @@ pub struct ImageTag {
 /// opened lazily per call. A consumer keeps one per volume it searches.
 pub struct MediaIndex {
     db_path: PathBuf,
+    /// The volume this `media.db` belongs to, when known: how a read finds the live mount
+    /// root it places rows against folder exclusions with. `None` from
+    /// [`open_at`](Self::open_at), which relies on the root the volume's last pass recorded.
+    volume_id: Option<String>,
 }
 
 impl MediaIndex {
@@ -88,12 +100,23 @@ impl MediaIndex {
     /// until a read, so it's cheap and never fails on a missing file — a search of
     /// an un-enriched (or offline, purged) volume returns empty.
     pub fn open(data_dir: &std::path::Path, volume_id: &str) -> Self {
-        Self::open_at(media_db_path(data_dir, volume_id))
+        Self {
+            db_path: media_db_path(data_dir, volume_id),
+            volume_id: Some(volume_id.to_string()),
+        }
     }
 
     /// Open the read API directly at a `media.db` path.
     pub fn open_at(db_path: PathBuf) -> Self {
-        Self { db_path }
+        Self {
+            db_path,
+            volume_id: None,
+        }
+    }
+
+    /// The folder exclusion as this volume's reads see it right now.
+    fn exclusion(&self) -> ReadExclusion {
+        ReadExclusion::resolve(&self.db_path, self.volume_id.as_deref())
     }
 
     /// Search the OCR text. Returns up to `limit` hits, each with a highlighted
@@ -107,41 +130,25 @@ impl MediaIndex {
             return Ok(Vec::new());
         }
         let conn = open_read_connection(&self.db_path)?;
-        // `snippet(media_ocr, 2, ...)`: column 2 is `text` (0 is the UNINDEXED `file_id`,
-        // 1 the UNINDEXED `source`). `[`/`]` mark the matched terms; `…` is the
-        // ellipsis; 12 is the max snippet token count. A file can have two rows (OCR +
-        // folded tags); over-fetch then dedup by path in Rust, keeping the best-ranked. The
-        // join maps the matched `file_id` back to its path (plan M4).
-        let mut stmt = conn.prepare(
-            "SELECT f.path, snippet(media_ocr, 2, '[', ']', '…', 12) AS snip
-             FROM media_ocr JOIN media_file f ON f.id = media_ocr.file_id
-             WHERE media_ocr MATCH ?1
-             ORDER BY rank
-             LIMIT ?2",
-        )?;
-        let rows = stmt.query_map(rusqlite::params![match_query, (limit * 2) as i64], |row| {
-            Ok(OcrHit {
-                path: row.get(0)?,
-                snippet: row.get(1)?,
-            })
-        })?;
-        let mut seen = std::collections::HashSet::new();
-        let mut hits = Vec::new();
-        for hit in rows {
-            let hit = hit?;
-            if seen.insert(hit.path.clone()) {
-                hits.push(hit);
-                if hits.len() >= limit {
-                    break;
-                }
+        let exclusion = self.exclusion();
+        // A file can have two rows (OCR + folded tags), so over-fetch, then dedup by path.
+        // While a folder is excluded, a window that comes back short on visible hits with
+        // rows still to rank grows and re-runs, so hiding never shrinks the answer below
+        // `limit` just because the hidden images ranked first.
+        let mut window = limit.saturating_mul(2);
+        loop {
+            let (hits, returned) = ocr_window(&conn, &match_query, window, limit, &exclusion)?;
+            if !exclusion.is_active() || hits.len() >= limit || returned < window {
+                return Ok(hits);
             }
+            window = window.saturating_mul(4);
         }
-        Ok(hits)
     }
 
     /// The number of enriched images stored for this volume (a `COUNT(*)` over
     /// `media_status`) — the minimal per-volume coverage surface. `0` for a
-    /// missing/never-enriched DB.
+    /// missing/never-enriched DB. It counts every stored row, including one under an
+    /// excluded folder a purge hasn't reached yet: a number, never an image.
     pub fn enriched_count(&self) -> Result<u64, MediaStoreError> {
         if !self.db_path.exists() {
             return Ok(0);
@@ -155,9 +162,15 @@ impl MediaIndex {
     /// cosine), highest first, excluding the source itself. Reads the source's stored
     /// embedding, then brute-force ranks it against the volume's resident vector cache
     /// (loaded once, kept warm — plan § Query-time vector residency). An empty result
-    /// when the source has no embedding, or the volume is un-enriched/offline.
+    /// when the source has no embedding, sits under an excluded folder, or the volume is
+    /// un-enriched/offline.
     pub fn find_similar(&self, source_path: &str, k: usize) -> Result<Vec<SimilarImage>, MediaStoreError> {
         if !self.db_path.exists() {
+            return Ok(Vec::new());
+        }
+        let exclusion = self.exclusion();
+        // An excluded image is no source either: its neighbors would still say what it shows.
+        if exclusion.hides(source_path) {
             return Ok(Vec::new());
         }
         let conn = open_read_connection(&self.db_path)?;
@@ -166,14 +179,15 @@ impl MediaIndex {
         };
         drop(conn);
         let store = cache::get_or_load(&self.db_path);
-        Ok(store.top_k(&query, k, Some(source_path)))
+        Ok(store.top_k(&query, k, &|path| path == source_path || exclusion.hides(path)))
     }
 
-    /// Group the volume's images into near-duplicate clusters (feature-print cosine at
-    /// or above `threshold`). Reads the resident vector cache; empty for an
-    /// un-enriched/offline volume.
+    /// Group the volume's images into near-duplicate clusters (feature-print cosine at or
+    /// above `threshold`), leaving out images under an excluded folder. Reads the resident
+    /// vector cache; empty for an un-enriched/offline volume.
     pub fn dedup_clusters(&self, threshold: f32) -> Vec<DedupCluster> {
-        cache::get_or_load(&self.db_path).dedup_clusters(threshold)
+        let exclusion = self.exclusion();
+        cache::get_or_load(&self.db_path).dedup_clusters(threshold, &|path| exclusion.hides(path))
     }
 
     /// The `k` images whose CLIP embeddings are closest (by cosine) to an
@@ -199,12 +213,16 @@ impl MediaIndex {
         if k == 0 || query.is_empty() {
             return Vec::new();
         }
+        let exclusion = self.exclusion();
         let space = ann::AnnSpace::Clip;
         if let ann::cache::Route::Ann(handle) =
             ann::cache::route(&self.db_path, space, threshold, space.current_model_id())
         {
-            match self.search_semantic_ann(&handle, query, k) {
-                Ok(hits) => return hits,
+            match self.search_semantic_ann(&handle, query, k, &exclusion) {
+                // An over-fetch the exclusion thinned below `k` can't tell whether closer
+                // visible images sat past its window, so only a full answer comes from ANN.
+                Ok(hits) if hits.len() >= k || !exclusion.is_active() => return hits,
+                Ok(_) => {}
                 Err(e) => {
                     // A query-time engine failure demotes to the exact scan; the next
                     // route decision (post-invalidate) re-checks the index's health.
@@ -216,13 +234,13 @@ impl MediaIndex {
                 }
             }
         }
-        self.search_semantic_brute_force(query, k)
+        self.search_semantic_brute_force(query, k, &exclusion)
     }
 
     /// The exact path: brute-force cosine over the resident CLIP cache.
-    fn search_semantic_brute_force(&self, query: &[f32], k: usize) -> Vec<SemanticHit> {
+    fn search_semantic_brute_force(&self, query: &[f32], k: usize, exclusion: &ReadExclusion) -> Vec<SemanticHit> {
         cache::get_or_load_clip(&self.db_path)
-            .top_k(query, k, None)
+            .top_k(query, k, &|path| exclusion.hides(path))
             .into_iter()
             .map(|hit| SemanticHit {
                 path: hit.path,
@@ -237,12 +255,14 @@ impl MediaIndex {
     /// with the same `cosine_f16` the brute-force scan uses — and return the top
     /// `k`. The exact re-rank keeps result ORDERING at brute-force quality even
     /// when HNSW recall dips, and the DB join both follows renames and drops ghost
-    /// keys (a candidate whose row is gone yields no row and falls out).
+    /// keys (a candidate whose row is gone yields no row and falls out). A candidate
+    /// under an excluded folder falls out the same way.
     fn search_semantic_ann(
         &self,
         handle: &ann::cache::AnnHandle,
         query: &[f32],
         k: usize,
+        exclusion: &ReadExclusion,
     ) -> Result<Vec<SemanticHit>, MediaStoreError> {
         if query.len() != handle.dims {
             // A query from a different embedding world (model transition edge); the
@@ -261,6 +281,7 @@ impl MediaIndex {
         let candidates = read_embeddings_for_ids(&conn, EmbeddingTable::Clip, &matches.keys)?;
         let mut hits: Vec<SemanticHit> = candidates
             .into_iter()
+            .filter(|(path, _)| !exclusion.hides(path))
             .map(|(path, vector)| SemanticHit {
                 score: cosine_f16(query, &vector),
                 path,
@@ -279,8 +300,9 @@ impl MediaIndex {
     /// The raw stored enrichment rows for `paths`, keyed by path, for a caller running
     /// the same staleness rules a pass does (the per-file index-status badges).
     /// Bounded: one point lookup per requested path, never a scan. A path with no row
-    /// is simply absent from the map, and a missing DB (never enriched, offline and
-    /// purged) answers an empty map rather than erroring.
+    /// is simply absent from the map, and so is a path under an excluded folder; a
+    /// missing DB (never enriched, offline and purged) answers an empty map rather than
+    /// erroring.
     ///
     /// Prefer [`facts_for_paths`](Self::facts_for_paths) for "what does the index know
     /// about this image?" — this one hands back the storage row, provenance stamps
@@ -292,8 +314,10 @@ impl MediaIndex {
         let Ok(conn) = open_read_connection(&self.db_path) else {
             return HashMap::new();
         };
+        let exclusion = self.exclusion();
         paths
             .iter()
+            .filter(|p| !exclusion.hides(p))
             .filter_map(|p| read_status(&conn, p).ok().flatten().map(|row| (p.clone(), row)))
             .collect()
     }
@@ -303,7 +327,8 @@ impl MediaIndex {
     /// [`ImageFacts`] per requested path, in request order, so a never-enriched file is
     /// representable ("not indexed yet") rather than silently dropped. A missing DB
     /// (never enriched, offline and purged) answers every path as not-indexed rather
-    /// than erroring, matching [`Self::search_ocr`]'s empty-not-error convention.
+    /// than erroring, matching [`Self::search_ocr`]'s empty-not-error convention. So does
+    /// a path under an excluded folder, which is never even looked up.
     ///
     /// Unlike `search_ocr`, this returns the FULL stored OCR text, not a snippet: the
     /// caller is a model reasoning over what's in the image (naming a file after its
@@ -321,13 +346,20 @@ impl MediaIndex {
         if facts.is_empty() || !self.db_path.exists() {
             return Ok(facts);
         }
+        // An excluded image answers exactly as never indexed: its slot keeps the defaults
+        // above and its path is never bound into a query.
+        let exclusion = self.exclusion();
+        let visible: Vec<&str> = paths.iter().copied().filter(|p| !exclusion.hides(p)).collect();
+        if visible.is_empty() {
+            return Ok(facts);
+        }
         let mut by_path: HashMap<&str, usize> = HashMap::new();
         for (i, p) in paths.iter().enumerate() {
             by_path.entry(p).or_insert(i);
         }
 
         let conn = open_read_connection(&self.db_path)?;
-        for chunk in paths.chunks(PATH_CHUNK) {
+        for chunk in visible.chunks(PATH_CHUNK) {
             let placeholders = std::iter::repeat_n("?", chunk.len()).collect::<Vec<_>>().join(",");
             let params = rusqlite::params_from_iter(chunk.iter());
 
@@ -389,7 +421,7 @@ impl MediaIndex {
 
     /// The images tagged `label` at or above `min_score`, each with the matching
     /// tag's score, highest first — the tag-score filter. Empty for a
-    /// missing/never-enriched DB.
+    /// missing/never-enriched DB. Images under an excluded folder are left out.
     pub fn images_with_tag(&self, label: &str, min_score: f32) -> Result<Vec<TagHit>, MediaStoreError> {
         if !self.db_path.exists() {
             return Ok(Vec::new());
@@ -398,11 +430,54 @@ impl MediaIndex {
         // here to make tag search case-insensitive (a `Sky` query finds the `sky` tag).
         let folded = label.to_lowercase();
         let conn = open_read_connection(&self.db_path)?;
+        let exclusion = self.exclusion();
         Ok(read_tag_matches(&conn, &folded, min_score)?
             .into_iter()
+            .filter(|(path, _)| !exclusion.hides(path))
             .map(|(path, score)| TagHit { path, score })
             .collect())
     }
+}
+
+/// Run ONE ranked OCR query capped at `window` rows. Answers up to `limit` distinct hits
+/// the exclusion leaves visible, plus how many rows SQLite returned: fewer than `window`
+/// means the matches ran out, so a bigger window can't find more.
+fn ocr_window(
+    conn: &rusqlite::Connection,
+    match_query: &str,
+    window: usize,
+    limit: usize,
+    exclusion: &ReadExclusion,
+) -> Result<(Vec<OcrHit>, usize), MediaStoreError> {
+    // `snippet(media_ocr, 2, ...)`: column 2 is `text` (0 is the UNINDEXED `file_id`,
+    // 1 the UNINDEXED `source`). `[`/`]` mark the matched terms; `…` is the
+    // ellipsis; 12 is the max snippet token count. The join maps the matched `file_id`
+    // back to its path (plan M4).
+    let mut stmt = conn.prepare(
+        "SELECT f.path, snippet(media_ocr, 2, '[', ']', '…', 12) AS snip
+         FROM media_ocr JOIN media_file f ON f.id = media_ocr.file_id
+         WHERE media_ocr MATCH ?1
+         ORDER BY rank
+         LIMIT ?2",
+    )?;
+    let rows = stmt.query_map(rusqlite::params![match_query, window as i64], |row| {
+        Ok(OcrHit {
+            path: row.get(0)?,
+            snippet: row.get(1)?,
+        })
+    })?;
+    let mut seen = std::collections::HashSet::new();
+    let mut hits = Vec::new();
+    let mut returned = 0usize;
+    for hit in rows {
+        let hit = hit?;
+        returned += 1;
+        // Keep the best-ranked row per path.
+        if hits.len() < limit && !exclusion.hides(&hit.path) && seen.insert(hit.path.clone()) {
+            hits.push(hit);
+        }
+    }
+    Ok((hits, returned))
 }
 
 /// One tag-filter hit: an image path and the confidence of the matched tag. Crosses

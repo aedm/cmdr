@@ -299,6 +299,10 @@ impl MediaScheduler {
             .writers
             .writer_for(&self.data_dir, volume_id)
             .map_err(|e| e.to_string())?;
+        // A local volume stores OS paths, so its rows join onto `/`. Recorded so a read can
+        // place them against folder exclusions (`read/exclusion.rs`). Best-effort: a writer
+        // that can't take it can't take this pass's upserts either.
+        let _ = writer.record_mount_root("/");
 
         // Coverage per the user's SCOPE (§ Indexing scope). In the narrow scope
         // ("only folders I choose") coverage is override-only and importance is never
@@ -503,6 +507,9 @@ impl MediaScheduler {
             .writers
             .writer_for(&self.data_dir, volume_id)
             .map_err(|e| e.to_string())?;
+        // Recorded so a search of this NAS while it's unmounted can still place its
+        // index-relative rows against folder exclusions (`read/exclusion.rs`).
+        let _ = writer.record_mount_root(&mount_root);
 
         let policy = ConservativeFetchPolicy::default();
         // The byte-read transport (plan M1): a volume the app holds its own session

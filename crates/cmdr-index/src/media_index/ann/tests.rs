@@ -82,6 +82,42 @@ fn paths_of(hits: &[crate::media_index::read::SemanticHit]) -> Vec<String> {
 }
 
 #[test]
+fn an_ann_search_returns_the_k_nearest_visible_hits_when_its_candidates_are_all_excluded() {
+    // The folder a person excluded can hold every one of the ANN over-fetch's candidates
+    // (here 12 query-identical images against k = 3, over-fetch 12). Filtering them out
+    // must not shrink the answer: it has to be the k nearest VISIBLE images, exactly.
+    use crate::media_index::network::config::{NetworkEnrichConfig, set_config};
+    struct ResetExclusions;
+    impl Drop for ResetExclusions {
+        fn drop(&mut self) {
+            set_config(NetworkEnrichConfig::default());
+        }
+    }
+
+    let dir = tempfile::tempdir().expect("temp");
+    let (w, db_path) = writer(dir.path(), "ann-excluded-candidates");
+    for i in 0..12 {
+        seed_clip(&w, &format!("/secret/{i:03}.jpg"), query());
+    }
+    seed_corpus(&w, 6);
+    crate::media_index::store::seed_mount_root(&db_path, "/");
+    rebuild_now(&db_path);
+    let _reset = ResetExclusions;
+    set_config(NetworkEnrichConfig {
+        excluded_folders: ["/secret".to_string()].into_iter().collect(),
+        ..NetworkEnrichConfig::default()
+    });
+
+    let index = MediaIndex::open_at(db_path.clone());
+    let hits = index.search_semantic_with_threshold(&query(), 3, 1);
+    assert!(matches!(route_for(&db_path, 1), Route::Ann(_)), "the search ran ANN");
+    assert_eq!(paths_of(&hits), vec!["/p/000.jpg", "/p/001.jpg", "/p/002.jpg"]);
+
+    w.shutdown();
+    accounted::invalidate("ann-excluded-candidates");
+}
+
+#[test]
 fn expansion_search_scales_with_corpus_size() {
     // Spike guidance: 128 at 200k; 256–512 toward 1M+.
     assert_eq!(expansion_search_for(0), 128);

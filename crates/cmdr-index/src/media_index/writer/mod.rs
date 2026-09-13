@@ -169,6 +169,9 @@ enum WriteMessage {
     /// TRUNCATE the WAL file at a quiet point (enrichment-pass completion). Replies
     /// once the checkpoint attempt finishes (a barrier). See [`run_wal_checkpoint`].
     Checkpoint(mpsc::Sender<()>),
+    /// Record the mount root this volume's pass runs under in `meta`, so a read can place
+    /// the volume's rows against folder exclusions while it's unmounted.
+    RecordMountRoot { root: String },
     /// Shut the writer thread down.
     Shutdown,
 }
@@ -343,6 +346,14 @@ impl MediaWriter {
         self.send(WriteMessage::Checkpoint(tx))?;
         let _ = rx.recv();
         Ok(())
+    }
+
+    /// Record the mount root this volume's pass runs under (`/` for a local volume), so a
+    /// read of the volume while it's unmounted can still place its rows against folder
+    /// exclusions (`read/exclusion.rs`). Queued, not blocking: the pass's upserts follow it
+    /// through the same channel.
+    pub(crate) fn record_mount_root(&self, root: &str) -> Result<(), MediaStoreError> {
+        self.send(WriteMessage::RecordMountRoot { root: root.to_string() })
     }
 
     /// Apply the buffered ANN index ops (CLIP upserts/removes since the last flush)
@@ -533,6 +544,11 @@ fn writer_loop(mut conn: Connection, receiver: mpsc::Receiver<WriteMessage>, vol
             WriteMessage::Checkpoint(done) => {
                 run_wal_checkpoint(&conn);
                 let _ = done.send(());
+            }
+            WriteMessage::RecordMountRoot { root } => {
+                if let Err(e) = super::store::write_mount_root(&conn, &root) {
+                    log::warn!(target: "media_index", "recording mount root '{root}' failed: {e}");
+                }
             }
             WriteMessage::Shutdown => break,
         }

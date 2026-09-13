@@ -374,6 +374,9 @@ OCR text stops being searchable at once (privacy is a hard requirement, not "eve
   settle prunes only a folder that is STILL excluded, so un-excluding drops the debt. Nobody is told: the veto is
   already live, and there's nothing a person could do that the retry doesn't, so `media_index_set_excluded_folder` has
   no error and the FE never rolls the persisted exclusion back (every launch seeds the veto from it).
+- **Reads hide an excluded folder whatever the purge did** (`read/DETAILS.md` § Excluded folders at read time): OCR,
+  tag, and description search, find-similar, dedup, `image_facts`, and the file badge never surface it, an unmounted NAS
+  included (placed by the mount root its last pass recorded).
 - **Un-excluding** only clears the veto: NO re-delete and NO auto re-enrich — the next natural pass picks the folder up
   again.
 - **Offline network volumes** aren't reachable when the exclusion is set (no mount root to map with), so the

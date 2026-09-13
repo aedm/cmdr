@@ -17,6 +17,11 @@ fn store(entries: &[(&str, &[f32])]) -> BruteForceVectorStore {
     )
 }
 
+/// A `skip` that keeps every image.
+fn keep_all(_path: &str) -> bool {
+    false
+}
+
 #[test]
 fn cosine_is_one_for_identical_direction_and_zero_for_orthogonal() {
     assert!(
@@ -42,13 +47,28 @@ fn top_k_ranks_by_similarity_and_excludes_the_source() {
         ("/mid.jpg", &[0.5, 0.5, 0.0]),
         ("/far.jpg", &[0.0, 0.0, 1.0]),
     ]);
-    // Query with /a.jpg's vector, excluding itself: /near ranks above /mid above /far.
-    let hits = store.top_k(&[1.0, 0.0, 0.0], 10, Some("/a.jpg"));
+    // Query with /a.jpg's vector, skipping itself: /near ranks above /mid above /far.
+    let hits = store.top_k(&[1.0, 0.0, 0.0], 10, &|path| path == "/a.jpg");
     let paths: Vec<&str> = hits.iter().map(|h| h.path.as_str()).collect();
     assert_eq!(paths, vec!["/near.jpg", "/mid.jpg", "/far.jpg"]);
     assert!(!paths.contains(&"/a.jpg"), "the source is excluded");
     // Scores descend.
     assert!(hits[0].score > hits[1].score && hits[1].score > hits[2].score);
+}
+
+#[test]
+fn top_k_fills_k_from_past_the_skipped_images() {
+    // Skipping happens before the cut, so the nearest images being skipped can't shrink
+    // the answer below `k`.
+    let store = store(&[
+        ("/skip1.jpg", &[1.0, 0.0]),
+        ("/skip2.jpg", &[0.99, 0.01]),
+        ("/near.jpg", &[0.9, 0.1]),
+        ("/far.jpg", &[0.5, 0.5]),
+    ]);
+    let hits = store.top_k(&[1.0, 0.0], 2, &|path| path.starts_with("/skip"));
+    let paths: Vec<&str> = hits.iter().map(|h| h.path.as_str()).collect();
+    assert_eq!(paths, vec!["/near.jpg", "/far.jpg"]);
 }
 
 #[test]
@@ -84,7 +104,7 @@ fn top_k_order_matches_the_f32_reference_over_100_vectors() {
 
     let entries: Vec<(&str, &[f32])> = owned.iter().map(|(p, v)| (p.as_str(), v.as_slice())).collect();
     let store = store(&entries);
-    let hits = store.top_k(&query, 100, None);
+    let hits = store.top_k(&query, 100, &keep_all);
     let hit_paths: Vec<&str> = hits.iter().map(|h| h.path.as_str()).collect();
     assert_eq!(hit_paths, reference_paths, "f16 store preserves the f32 top-k order");
 }
@@ -96,8 +116,8 @@ fn top_k_caps_at_k_and_zero_k_is_empty() {
         ("/b.jpg", &[0.9, 0.1]),
         ("/c.jpg", &[0.8, 0.2]),
     ]);
-    assert_eq!(store.top_k(&[1.0, 0.0], 2, None).len(), 2);
-    assert!(store.top_k(&[1.0, 0.0], 0, None).is_empty());
+    assert_eq!(store.top_k(&[1.0, 0.0], 2, &keep_all).len(), 2);
+    assert!(store.top_k(&[1.0, 0.0], 0, &keep_all).is_empty());
 }
 
 #[test]
@@ -108,7 +128,7 @@ fn dedup_groups_near_duplicates_above_the_threshold() {
         ("/other.jpg", &[0.0, 1.0, 0.0]),  // unrelated
         ("/lone.jpg", &[0.0, 0.0, 1.0]),   // unrelated
     ]);
-    let clusters = store.dedup_clusters(0.95);
+    let clusters = store.dedup_clusters(0.95, &keep_all);
     assert_eq!(clusters.len(), 1, "only the two near-dupes cluster");
     assert_eq!(clusters[0].paths, vec!["/dup1.jpg", "/dup2.jpg"]);
 }
@@ -122,9 +142,22 @@ fn dedup_single_linkage_chains_a_transitive_group() {
         ("/b.jpg", &[0.98, 0.2]),
         ("/c.jpg", &[0.9, 0.44]),
     ]);
-    let clusters = store.dedup_clusters(0.95);
+    let clusters = store.dedup_clusters(0.95, &keep_all);
     assert_eq!(clusters.len(), 1);
     assert_eq!(clusters[0].paths, vec!["/a.jpg", "/b.jpg", "/c.jpg"]);
+}
+
+#[test]
+fn dedup_never_chains_two_images_through_a_skipped_one() {
+    // The same a~b~c chain with b skipped (an image under an excluded folder): a and c are
+    // too far apart on their own, so they must not share a cluster. Clustering first and
+    // dropping b afterwards would still pair them, and the pairing would give b away.
+    let store = store(&[
+        ("/a.jpg", &[1.0, 0.0]),
+        ("/b.jpg", &[0.98, 0.2]),
+        ("/c.jpg", &[0.9, 0.44]),
+    ]);
+    assert!(store.dedup_clusters(0.95, &|path| path == "/b.jpg").is_empty());
 }
 
 #[test]
@@ -135,7 +168,7 @@ fn dedup_returns_nothing_when_all_distinct() {
         ("/c.jpg", &[0.0, 0.0, 1.0]),
     ]);
     assert!(
-        store.dedup_clusters(0.9).is_empty(),
+        store.dedup_clusters(0.9, &keep_all).is_empty(),
         "no pair within threshold ⇒ no clusters"
     );
 }

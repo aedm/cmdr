@@ -19,6 +19,9 @@ answers OFFLINE after a volume unmounts. ❌ Don't add a second reader elsewhere
   not a `snippet` (its caller is a model reasoning about the image, not a UI highlighting a match).
 - **Chunk path lists at `PATH_CHUNK` (900) per `IN (…)`** — SQLite's default host-parameter ceiling is 999 and a rename
   over a big folder clears that immediately.
+- **Every read hides images under an excluded folder** (`exclusion.rs`), whatever the purge managed: it's what keeps
+  that folder's OCR text away from Ask Cmdr. ❌ A new read returning a path, text, tag, score, or fact asks
+  `ReadExclusion::hides`, and a ranked read filters BEFORE its cut, or hiding shrinks the answer.
 - **The reads are query-side only; they must not write.** Cache warming and invalidation belong to the pass seams
   (`../vector/CLAUDE.md`).
 

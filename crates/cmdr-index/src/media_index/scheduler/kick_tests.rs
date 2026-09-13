@@ -763,6 +763,11 @@ fn a_retro_delete_that_does_not_land_is_retried_by_the_next_pass() {
         !stored("/secret/id.jpg"),
         "the next pass finished the purge the exclusion asked for"
     );
+    assert_eq!(
+        crate::media_index::store::read_mount_root(&db_path).as_deref(),
+        Some("/"),
+        "a local pass records the root a read places its rows against exclusions with"
+    );
 
     crate::test_uninstall_root_read_pool();
     reset_gate();

@@ -389,6 +389,30 @@ fn stamp_schema_version(conn: &Connection) -> Result<(), MediaStoreError> {
     Ok(())
 }
 
+/// The `meta` key holding the mount root the volume's last pass ran under (`/` for a local
+/// volume). It's what lets an OFFLINE read place a network volume's index-relative rows
+/// against the OS-path folder exclusions (`read/exclusion.rs`).
+const MOUNT_ROOT_META_KEY: &str = "mount_root";
+
+/// Record the mount root the volume's pass runs under. Writer-thread only.
+pub(crate) fn write_mount_root(conn: &Connection, root: &str) -> Result<(), MediaStoreError> {
+    conn.execute(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES (?1, ?2)",
+        rusqlite::params![MOUNT_ROOT_META_KEY, root],
+    )?;
+    Ok(())
+}
+
+/// The mount root the volume's last pass recorded, or `None` when the DB is missing,
+/// unreadable, or no pass has recorded one yet.
+pub(crate) fn read_mount_root(db_path: &Path) -> Option<String> {
+    if !db_path.exists() {
+        return None;
+    }
+    let conn = open_read_connection(db_path).ok()?;
+    read_meta_value(&conn, MOUNT_ROOT_META_KEY).ok().flatten()
+}
+
 fn read_meta_value(conn: &Connection, key: &str) -> Result<Option<String>, MediaStoreError> {
     let mut stmt = conn.prepare_cached("SELECT value FROM meta WHERE key = ?1")?;
     let mut rows = stmt.query_map(rusqlite::params![key], |row| row.get::<_, String>(0))?;
@@ -713,4 +737,13 @@ pub(crate) fn allow_status_deletes(db_path: &Path) {
     let conn = open_write_connection(db_path).expect("open media.db to lift the fault");
     conn.execute_batch(&format!("DROP TRIGGER IF EXISTS {REFUSE_STATUS_DELETES_TRIGGER};"))
         .expect("drop the delete-refusing trigger");
+}
+
+/// Test-only: record the mount root `db_path`'s volume was last indexed under, the way a
+/// pass does, so a read can place the volume's index-relative rows against the OS-path
+/// exclusions while nothing live knows the root.
+#[cfg(test)]
+pub(crate) fn seed_mount_root(db_path: &Path, root: &str) {
+    let conn = open_write_connection(db_path).expect("open media.db to record a mount root");
+    write_mount_root(&conn, root).expect("record the mount root");
 }

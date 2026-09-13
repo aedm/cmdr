@@ -380,3 +380,232 @@ fn search_semantic_is_empty_without_clip_embeddings() {
     );
     writer.shutdown();
 }
+
+// ── Excluded folders never surface ─────────────────────────────────────────
+// An exclusion has to hold at READ time, whatever the retro-delete did: the purge can fail
+// to land (a full disk, a locked db), a folder excluded while its NAS was offline is only
+// purged on reconnect, and Ask Cmdr sends what these reads return to a cloud model. Each
+// test seeds an image under an excluded folder beside a kept one and asks ONE read path,
+// so a regression names the path that leaked.
+
+use crate::media_index::network::config::{NetworkEnrichConfig, set_config};
+
+const SECRET: &str = "/Users/me/IDs/passport.jpg";
+const KEPT: &str = "/Users/me/Photos/receipt.jpg";
+
+/// Resets the process-global exclusion on drop, so a failing test can't leave a folder
+/// excluded for the next one.
+struct Exclusions;
+
+impl Drop for Exclusions {
+    fn drop(&mut self) {
+        set_config(NetworkEnrichConfig::default());
+    }
+}
+
+fn exclude(folders: &[&str]) -> Exclusions {
+    set_config(NetworkEnrichConfig {
+        excluded_folders: folders.iter().map(|f| f.to_string()).collect(),
+        ..NetworkEnrichConfig::default()
+    });
+    Exclusions
+}
+
+/// One enriched image carrying everything a read can return: OCR text, a `document` tag,
+/// a feature print, and a CLIP vector.
+fn seed_searchable(writer: &MediaWriter, path: &str, text: &str, print: Vec<f32>, clip: Vec<f32>) {
+    writer
+        .upsert(
+            MediaStatusRow {
+                path: path.to_string(),
+                mtime: Some(1),
+                size: Some(2),
+                media_kind: MediaKind::Image,
+                state: EnrichmentState::Done,
+                engine_version: "e1".to_string(),
+                clip_stamp: String::new(),
+            },
+            Some(UpsertAnalysis {
+                ocr_text: text.to_string(),
+                tags: vec![Tag {
+                    label: "document".to_string(),
+                    score: 0.9,
+                }],
+                embedding: Some(print),
+            }),
+        )
+        .expect("seed image");
+    writer
+        .upsert_clip(path.to_string(), "clip-v1".to_string(), Some(clip))
+        .expect("seed clip");
+}
+
+/// A local volume holding [`SECRET`] under the excluded `/Users/me/IDs` and [`KEPT`]
+/// beside it, close enough in every space to match the same queries. Field order is drop
+/// order: the exclusion resets, the writer stops, then the directory goes.
+struct ExcludedFolderVolume {
+    index: MediaIndex,
+    _exclusions: Exclusions,
+    writer: MediaWriter,
+    _dir: tempfile::TempDir,
+}
+
+impl Drop for ExcludedFolderVolume {
+    fn drop(&mut self) {
+        self.writer.shutdown();
+    }
+}
+
+fn excluded_folder_volume(volume_id: &str) -> ExcludedFolderVolume {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let db_path = media_db_path(dir.path(), volume_id);
+    MediaStore::open(&db_path).expect("open store");
+    let writer = MediaWriter::spawn(&db_path, volume_id).expect("writer");
+    seed_searchable(
+        &writer,
+        SECRET,
+        "passport number X1234567",
+        vec![1.0, 0.0, 0.0],
+        vec![1.0, 0.0, 0.0],
+    );
+    seed_searchable(
+        &writer,
+        KEPT,
+        "passport photo booth receipt",
+        vec![0.99, 0.01, 0.0],
+        vec![0.9, 0.1, 0.0],
+    );
+    writer.flush_blocking().expect("flush");
+    // A local volume: its stored paths ARE its OS paths.
+    crate::media_index::store::seed_mount_root(&db_path, "/");
+    cache::invalidate(&db_path);
+    ExcludedFolderVolume {
+        index: MediaIndex::open(dir.path(), volume_id),
+        _exclusions: exclude(&["/Users/me/IDs"]),
+        writer,
+        _dir: dir,
+    }
+}
+
+#[test]
+fn an_excluded_folder_never_surfaces_in_ocr_search() {
+    let volume = excluded_folder_volume("excluded-ocr");
+    let hits: Vec<String> = volume
+        .index
+        .search_ocr("passport", 10)
+        .expect("search")
+        .into_iter()
+        .map(|h| h.path)
+        .collect();
+    assert_eq!(hits, vec![KEPT]);
+}
+
+#[test]
+fn an_excluded_folder_never_surfaces_in_tag_search() {
+    let volume = excluded_folder_volume("excluded-tag");
+    let hits: Vec<String> = volume
+        .index
+        .images_with_tag("document", 0.0)
+        .expect("search")
+        .into_iter()
+        .map(|h| h.path)
+        .collect();
+    assert_eq!(hits, vec![KEPT]);
+}
+
+#[test]
+fn an_excluded_folder_never_surfaces_in_description_search() {
+    let volume = excluded_folder_volume("excluded-semantic");
+    let hits: Vec<String> = volume
+        .index
+        .search_semantic(&[1.0, 0.0, 0.0], 10)
+        .into_iter()
+        .map(|h| h.path)
+        .collect();
+    assert_eq!(hits, vec![KEPT]);
+}
+
+#[test]
+fn an_excluded_image_is_no_find_similar_source() {
+    let volume = excluded_folder_volume("excluded-similar-source");
+    assert!(volume.index.find_similar(SECRET, 10).expect("similar").is_empty());
+}
+
+#[test]
+fn an_excluded_image_is_no_find_similar_result() {
+    // The kept image's only neighbor is the excluded one.
+    let volume = excluded_folder_volume("excluded-similar-result");
+    assert!(volume.index.find_similar(KEPT, 10).expect("similar").is_empty());
+}
+
+#[test]
+fn an_excluded_image_is_no_near_duplicate() {
+    // The two feature prints are near-identical, so the only cluster would pair them.
+    let volume = excluded_folder_volume("excluded-dedup");
+    assert!(volume.index.dedup_clusters(0.9).is_empty());
+}
+
+#[test]
+fn an_excluded_image_has_no_facts() {
+    // `image_facts` reads the FULL OCR text, the most sensitive thing any read returns.
+    let volume = excluded_folder_volume("excluded-facts");
+    let facts = volume.index.facts_for_paths(&[SECRET, KEPT]).expect("facts");
+    assert!(
+        !facts[0].indexed && facts[0].ocr_text.is_none() && facts[0].tags.is_empty(),
+        "reads exactly as never indexed"
+    );
+    assert!(facts[1].indexed);
+}
+
+#[test]
+fn an_excluded_image_has_no_stored_status() {
+    // The file-status badge then reads it as excluded rather than indexed.
+    let volume = excluded_folder_volume("excluded-status");
+    let status = volume.index.status_for_paths(&[SECRET.to_string(), KEPT.to_string()]);
+    assert!(!status.contains_key(SECRET));
+    assert!(status.contains_key(KEPT));
+}
+
+#[test]
+fn an_offline_network_volume_places_its_rows_by_the_mount_root_it_was_indexed_under() {
+    // The NAS is unmounted, so nothing live knows its mount root, yet its media.db still
+    // answers. The recorded root maps the OS-path exclusion onto its index-relative rows.
+    let dir = tempfile::tempdir().expect("temp dir");
+    let db_path = media_db_path(dir.path(), "excluded-offline-nas");
+    MediaStore::open(&db_path).expect("open store");
+    let writer = MediaWriter::spawn(&db_path, "excluded-offline-nas").expect("writer");
+    seed_facts(&writer, "/Photos/scan.jpg", "invoice from the tax office", vec![]);
+    seed_facts(&writer, "/Docs/scan.jpg", "invoice from the plumber", vec![]);
+    writer.flush_blocking().expect("flush");
+    crate::media_index::store::seed_mount_root(&db_path, "/Volumes/naspi");
+    let _exclusions = exclude(&["/Volumes/naspi/Photos"]);
+
+    let hits: Vec<String> = MediaIndex::open(dir.path(), "excluded-offline-nas")
+        .search_ocr("invoice", 10)
+        .expect("search")
+        .into_iter()
+        .map(|h| h.path)
+        .collect();
+    writer.shutdown();
+    assert_eq!(hits, vec!["/Docs/scan.jpg"]);
+}
+
+#[test]
+fn a_volume_with_no_known_mount_root_shows_nothing_while_a_folder_is_excluded() {
+    // Neither mounted nor ever recorded (a NAS indexed before roots were recorded, offline
+    // since): its rows can't be placed against the exclusion, so none may surface until
+    // the volume's next pass records the root.
+    let dir = tempfile::tempdir().expect("temp dir");
+    let db_path = media_db_path(dir.path(), "excluded-unknown-root");
+    MediaStore::open(&db_path).expect("open store");
+    let writer = MediaWriter::spawn(&db_path, "excluded-unknown-root").expect("writer");
+    seed_facts(&writer, "/Photos/scan.jpg", "invoice from the tax office", vec![]);
+    writer.flush_blocking().expect("flush");
+    let _exclusions = exclude(&["/Volumes/naspi/Photos"]);
+
+    let hits = MediaIndex::open(dir.path(), "excluded-unknown-root")
+        .search_ocr("invoice", 10)
+        .expect("search");
+    writer.shutdown();
+    assert!(hits.is_empty(), "an unplaceable row fails closed");
+}

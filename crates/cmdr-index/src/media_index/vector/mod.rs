@@ -99,15 +99,20 @@ pub(crate) fn cosine_f16(query: &[f32], stored: &[f16]) -> f32 {
 /// The vector-store seam. A brute-force impl ships now; a future `sqlite-vec`-backed
 /// impl would satisfy the same trait so callers don't change.
 pub(crate) trait VectorStore {
-    /// The `k` images most similar to `query` by cosine, highest first, excluding the
-    /// path in `exclude` (the source image of a "find similar" query, so it never
-    /// returns itself). Ties broken by path for determinism.
-    fn top_k(&self, query: &[f32], k: usize, exclude: Option<&str>) -> Vec<SimilarImage>;
+    /// The `k` images most similar to `query` by cosine, highest first, leaving out
+    /// every path `skip` answers `true` for (the source image of a "find similar" query,
+    /// so it never returns itself, and images under an excluded folder). Ties broken by
+    /// path for determinism.
+    fn top_k(&self, query: &[f32], k: usize, skip: &dyn Fn(&str) -> bool) -> Vec<SimilarImage>;
 
-    /// Group the stored images into near-duplicate clusters: every pair within
-    /// `threshold` cosine is placed in the same cluster (single-linkage). Only
+    /// Group the stored images `skip` leaves in into near-duplicate clusters: every pair
+    /// within `threshold` cosine is placed in the same cluster (single-linkage). Only
     /// clusters of two or more are returned. Deterministic ordering (by first path).
-    fn dedup_clusters(&self, threshold: f32) -> Vec<DedupCluster>;
+    ///
+    /// Skipped images leave BEFORE clustering, never after: single linkage would otherwise
+    /// chain two visible images through a skipped one, and the grouping would give away
+    /// the image a person excluded.
+    fn dedup_clusters(&self, threshold: f32, skip: &dyn Fn(&str) -> bool) -> Vec<DedupCluster>;
 }
 
 /// A brute-force cosine vector store over a snapshot of a volume's embeddings, held as
@@ -127,14 +132,14 @@ impl BruteForceVectorStore {
 }
 
 impl VectorStore for BruteForceVectorStore {
-    fn top_k(&self, query: &[f32], k: usize, exclude: Option<&str>) -> Vec<SimilarImage> {
+    fn top_k(&self, query: &[f32], k: usize, skip: &dyn Fn(&str) -> bool) -> Vec<SimilarImage> {
         if k == 0 || query.is_empty() {
             return Vec::new();
         }
         let mut scored: Vec<SimilarImage> = self
             .entries
             .iter()
-            .filter(|(path, _)| exclude != Some(path.as_str()))
+            .filter(|(path, _)| !skip(path))
             .map(|(path, vector)| SimilarImage {
                 path: path.clone(),
                 score: cosine_f16(query, vector),
@@ -151,8 +156,10 @@ impl VectorStore for BruteForceVectorStore {
         scored
     }
 
-    fn dedup_clusters(&self, threshold: f32) -> Vec<DedupCluster> {
-        let n = self.entries.len();
+    fn dedup_clusters(&self, threshold: f32, skip: &dyn Fn(&str) -> bool) -> Vec<DedupCluster> {
+        // Skip BEFORE clustering (see the trait): a skipped image must not bridge two others.
+        let entries: Vec<&(String, Vec<f16>)> = self.entries.iter().filter(|(path, _)| !skip(path)).collect();
+        let n = entries.len();
         // Single-linkage union-find over pairs within the threshold.
         let mut parent: Vec<usize> = (0..n).collect();
         fn find(parent: &mut [usize], mut x: usize) -> usize {
@@ -162,12 +169,12 @@ impl VectorStore for BruteForceVectorStore {
             }
             x
         }
-        for i in 0..n {
+        for (i, (_, vector_i)) in entries.iter().enumerate() {
             // Widen entry `i` to `f32` ONCE (not per pair), then score against each `j`'s
             // `f16` via `cosine_f16` — O(n) widenings, not O(n²).
-            let wi: Vec<f32> = self.entries[i].1.iter().map(|v| v.to_f32()).collect();
-            for j in (i + 1)..n {
-                if cosine_f16(&wi, &self.entries[j].1) >= threshold {
+            let wi: Vec<f32> = vector_i.iter().map(|v| v.to_f32()).collect();
+            for (j, (_, vector_j)) in entries.iter().enumerate().skip(i + 1) {
+                if cosine_f16(&wi, vector_j) >= threshold {
                     let (ri, rj) = (find(&mut parent, i), find(&mut parent, j));
                     if ri != rj {
                         parent[ri] = rj;
@@ -177,9 +184,9 @@ impl VectorStore for BruteForceVectorStore {
         }
         // Gather members per root, keeping only clusters of two or more.
         let mut groups: std::collections::HashMap<usize, Vec<String>> = std::collections::HashMap::new();
-        for i in 0..n {
+        for (i, (path, _)) in entries.iter().enumerate() {
             let root = find(&mut parent, i);
-            groups.entry(root).or_default().push(self.entries[i].0.clone());
+            groups.entry(root).or_default().push(path.clone());
         }
         let mut clusters: Vec<DedupCluster> = groups
             .into_values()

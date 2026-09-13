@@ -46,9 +46,36 @@ slot through an EXACT-string `by_path` map in Rust. A caller passing a different
 stored therefore reads as not-indexed. Callers pass paths from the same index/UI the enrichment pass saw, so this
 doesn't bite in practice; don't "fix" it by lowercasing, which would break case-sensitive volumes.
 
+## Excluded folders at read time (`exclusion.rs`)
+
+Excluding a folder vetoes its enrichment and purges its rows, but no read leans on either: a purge can fail to land
+(`../scheduler/purge.rs` keeps retrying it), a folder excluded while its NAS was offline is only purged on reconnect,
+and a row can commit between the veto and the delete. Ask Cmdr's `search_photos` and `image_facts` tools read through
+`MediaIndex`, so this filter is what keeps an excluded folder's OCR text away from a cloud model.
+
+- **One predicate, the veto's.** `ReadExclusion::hides` joins the stored path onto the volume's mount root and asks
+  `NetworkEnrichConfig::is_excluded`, the same component-boundary prefix match (`path_is_within`) the enrichment veto
+  uses, so reading can't disagree with indexing about what's excluded. Like the veto, it's byte-exact, including on a
+  case-insensitive volume.
+- **Where a volume's rows sit.** The live mount root while the volume is mounted; else the `mount_root` its last pass
+  recorded in `meta` (every local and network pass records it through the writer), so an unmounted NAS still hides its
+  excluded folders; else, while any folder is excluded, the volume shows NOTHING until a pass records the root. Only a
+  NAS indexed before the key existed, and offline ever since, can land in that last case.
+- **Filter before the cut.** A ranked read that dropped hidden rows after truncating would answer fewer than `k` hits
+  whenever the excluded images ranked first. So the vector scans skip inside `top_k`; dedup drops skipped images BEFORE
+  clustering (single linkage would otherwise chain two visible images through a hidden one and give it away); the OCR
+  search re-runs with a 4× larger window while hidden rows leave it short and matches remain; and the ANN over-fetch
+  falls back to the exact scan when hiding thinned it below `k`. With no folder excluded, all of it costs one config
+  snapshot per read.
+- **Per path.** `facts_for_paths` answers an excluded path as never indexed (its path is never bound into a query),
+  `status_for_paths` omits it (the file badge then reads `excluded`), and `find_similar` gives an excluded source no
+  neighbors. `enriched_count` still counts every stored row: a number, never an image.
+
 ## Testing
 
 `tests.rs` covers the OCR search round-trip, the fts5 sanitizer (`build_ocr_match_query`, pure — hostile query syntax
 must not error), the empty-not-error paths, and offline-after-unmount (enrich over the fake backend, drop the writer,
-assert the search still answers). The vector-math side of `find_similar` / `dedup_clusters` / `search_semantic` is
-tested in `../vector/tests.rs` and `../ann/tests.rs`.
+assert the search still answers). Its § "Excluded folders never surface" asks each read path once about an image under
+an excluded folder, plus an offline NAS placed by its recorded root and a volume with no known root. The vector-math
+side of `find_similar` / `dedup_clusters` / `search_semantic` is tested in `../vector/tests.rs` and `../ann/tests.rs`
+(which also pins the ANN fallback when every over-fetched candidate is excluded).
