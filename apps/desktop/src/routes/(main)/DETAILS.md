@@ -153,6 +153,10 @@ text-region intercept, then the dialog gate, then `log.info`, then `record_bread
 capability guard), then looks the id up in the flat `commandHandlers` record and awaits the handler. Arg-carrying ids
 take a typed payload.
 
+**The text-region intercept.** `handleTextRegionShortcut` short-circuits `edit.copy` and `selection.selectAll` when
+focus sits inside `.error-pane` or a `[data-text-region]`, so copying an error message copies its text rather than the
+files selected behind it.
+
 ## The dialog gate
 
 Every command declares what it does while a dialog, an explorer overlay, or the palette is up: `whileDialogOpen` in

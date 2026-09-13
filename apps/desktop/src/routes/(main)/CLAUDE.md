@@ -26,14 +26,14 @@ via a typed API. Up: `apps/desktop/CLAUDE.md`, sibling: `../viewer/CLAUDE.md`.
 - **`$state` lives in `+page.svelte`; logic leaves through a context of setters and GETTERS.** Dialogs flip via
   write-only `ctx.dialogs.showXxx(...)`, new listeners go in `listener-setup.ts`, startup decisions in
   `startup-gates.ts`. ❌ Never capture a `$state` value; `isOnboardingVisible()` reads live.
-- **The old-macOS notice is `topmost` AND rendered after `<OnboardingWizard>`**: that order is the only reason it clears
-  the wizard's overlay. ❌ Don't move it or drop the prop. DETAILS § Startup gates.
+- **The old-macOS notice is `topmost` AND rendered after `<OnboardingWizard>`**, or it hides under the wizard. ❌ Don't
+  move it or drop the prop. DETAILS § Startup gates.
 - **One dispatcher per road** (`dispatchers.*`), ❌ never shared. DETAILS § The dialog gate.
 - **`dialogsOnScreen()` reads the `open-dialogs` INVENTORY, ❌ never a list of `show*` booleans**: a hand list misses
   dialogs, and each miss lets a bare key (Tab, Space, F5) fire behind one. DETAILS § What `dialogsOnScreen()` is made
   of.
-- **Text-region intercept (⌘C / ⌘A)**: `handleTextRegionShortcut` short-circuits `edit.copy` / `selection.selectAll`
-  inside `.error-pane` or `[data-text-region]`, so copying error text doesn't copy files.
+- **Text-region intercept**: ⌘C / ⌘A inside a text region copy the text, not files (`handleTextRegionShortcut`).
+  DETAILS § Dispatch core.
 - **Gate on capabilities, ❌ never a `volumeId` compare**: `blockedByCapabilities` bails pre-dispatch for
   destination-side ops the focused pane can't satisfy.
 - **`mcp-listeners.ts` validate-parses each `mcp-*` payload** and dispatches typed `CommandId` consts, so a registry
