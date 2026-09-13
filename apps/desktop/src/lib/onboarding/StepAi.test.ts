@@ -128,9 +128,11 @@ vi.mock('$lib/settings/ai-config', () => ({
 // these commands. The wizard may only ever REVOKE (see the consent-bypass guard below).
 const revokeConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
 const acceptConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
+const holdConsentRevoke = vi.fn<() => Promise<boolean>>(() => Promise.resolve(true))
 vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
   revokeConsent: () => revokeConsent(),
   acceptConsent: () => acceptConsent(),
+  holdConsentRevoke: () => holdConsentRevoke(),
 }))
 
 // The step's logger, so a test can tell a logged failure from a logged cancel. Lazy
@@ -221,6 +223,7 @@ describe('StepAi', () => {
     revokeConsent.mockReset()
     revokeConsent.mockResolvedValue('done')
     acceptConsent.mockClear()
+    holdConsentRevoke.mockClear()
     settingsMap['onboarding.fullDiskAccessChoice'] = 'allow'
     settingsMap['onboarding.completed'] = false
     getAiRuntimeStatus.mockReset()
@@ -474,7 +477,21 @@ describe('StepAi', () => {
     await waitForAsync()
     expect(revokeConsent).toHaveBeenCalledTimes(2)
     expect(logWarn).not.toHaveBeenCalled()
+    expect(holdConsentRevoke).not.toHaveBeenCalled()
     expect(getOnboardingState().currentStep).toBe(3)
+  })
+
+  it('a revoke refused twice holds the "no" until the store takes it', async () => {
+    revokeConsent.mockResolvedValue('notSaved')
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'cloud')
+    await waitForAsync()
+    pickChoice(mounted.target, 'off')
+    await waitForAsync()
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+    expect(holdConsentRevoke).toHaveBeenCalledOnce()
   })
 
   it('a revoke refused twice is logged, and still never traps the person on the step', async () => {

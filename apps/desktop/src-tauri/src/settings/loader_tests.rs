@@ -256,6 +256,27 @@ fn the_proactive_toggle_reads_as_unset_when_nobody_has_touched_it() {
     }
 }
 
+/// A held consent revoke closes every Ask Cmdr gate, so only the value the frontend writes
+/// (a JSON `true`) may hold one. Anything else, including a stringly `"true"` from a hand edit,
+/// leaves the store record as the answer.
+#[test]
+fn a_held_consent_revoke_reads_only_from_a_real_true() {
+    assert!(parse_ask_cmdr_consent_revoke_pending(
+        r#"{ "askCmdr.consentRevokePending": true }"#
+    ));
+    for contents in [
+        "{}",
+        r#"{ "askCmdr.consentRevokePending": false }"#,
+        r#"{ "askCmdr.consentRevokePending": "true" }"#,
+        "not json at all",
+    ] {
+        assert!(
+            !parse_ask_cmdr_consent_revoke_pending(contents),
+            "{contents} must not read as a held revoke"
+        );
+    }
+}
+
 /// The cadence is stored as a plain count of seconds, which is what the slider persists. A
 /// zero, a negative, or a string is not a cadence anybody chose, so it reads as unset and the
 /// default applies rather than becoming a wake every no seconds.

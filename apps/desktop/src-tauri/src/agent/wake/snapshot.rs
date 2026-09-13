@@ -17,7 +17,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use super::channel::{WakeControl, send_control};
 use super::{AgentGates, ProviderGate, WakeReadiness, readiness};
 use crate::agent::AgentDb;
-use crate::agent::consent::has_current_consent;
+use crate::agent::consent::{RevokePending, has_current_consent};
 
 const LOG_TARGET: &str = "agent::wake";
 
@@ -86,13 +86,13 @@ pub fn refresh_readiness<R: Runtime>(app: &AppHandle<R>) {
 }
 
 /// Whether the user has accepted the current consent copy. Fails closed: no store, no
-/// connection, or an unreadable record all read as "no".
+/// connection, an unreadable record, or a "no" still held for the store all read as "no".
 fn consented<R: Runtime>(app: &AppHandle<R>) -> bool {
     let Some(db) = app.try_state::<AgentDb>() else {
         return false;
     };
     match db.open_read_connection() {
-        Ok(conn) => has_current_consent(&conn),
+        Ok(conn) => has_current_consent(&conn, RevokePending::load(app)),
         Err(e) => {
             log::warn!(target: LOG_TARGET, "reading consent for the wake gates failed, refusing: {e}");
             false

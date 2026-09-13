@@ -1365,6 +1365,10 @@
   "@settings.onboarding.upgradeNudgeShown.description": {
     "sourceHash": "5cfb2b5"
   },
+  "settings.askCmdr.consentRevokePending.label": "Ask Cmdr đã tắt, đang chờ lưu",
+  "@settings.askCmdr.consentRevokePending.label": {
+    "sourceHash": "1ecd887"
+  },
   "settings.onboarding.completed.label": "Đã hoàn tất phần giới thiệu",
   "@settings.onboarding.completed.label": {
     "sourceHash": "4730c4f"

@@ -1370,6 +1370,10 @@
   "@settings.onboarding.upgradeNudgeShown.description": {
     "sourceHash": "5cfb2b5"
   },
+  "settings.askCmdr.consentRevokePending.label": "Ask Cmdr av, väntar på att sparas",
+  "@settings.askCmdr.consentRevokePending.label": {
+    "sourceHash": "1ecd887"
+  },
   "settings.onboarding.completed.label": "Introduktionen slutförd",
   "@settings.onboarding.completed.label": {
     "sourceHash": "4730c4f"

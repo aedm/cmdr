@@ -7,7 +7,7 @@ use serde::Serialize;
 use tauri::AppHandle;
 
 use super::{now_secs, with_read_connection, with_write_connection};
-use crate::agent::consent::CONSENT_COPY_VERSION;
+use crate::agent::consent::{CONSENT_COPY_VERSION, RevokePending, has_current_consent};
 use crate::agent::store;
 
 /// Whether the user has opted into Ask Cmdr, and the audit of what they accepted. The rail
@@ -16,8 +16,9 @@ use crate::agent::store;
 #[derive(Clone, Copy, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AskCmdrConsentStatus {
-    /// True only when the user accepted the CURRENT `current_version`. The one flag the
-    /// rail and the settings toggle read.
+    /// True only when the user accepted the CURRENT `current_version` and no "no" is held for
+    /// the store: exactly what the send gate answers. The one flag the rail and the settings
+    /// toggle read.
     pub accepted: bool,
     /// The copy version the user must have accepted to be `accepted`.
     pub current_version: u32,
@@ -39,10 +40,11 @@ pub async fn ask_cmdr_consent_status(app: AppHandle) -> Result<AskCmdrConsentSta
         accepted_version: None,
         accepted_at: None,
     };
+    let revoke = RevokePending::load(&app);
     with_read_connection(app, not_accepted, move |conn| {
         let stored = store::get_consent(conn)?;
         Ok(AskCmdrConsentStatus {
-            accepted: stored.map(|c| c.version) == Some(CONSENT_COPY_VERSION),
+            accepted: has_current_consent(conn, revoke),
             current_version: CONSENT_COPY_VERSION,
             accepted_version: stored.map(|c| c.version),
             accepted_at: stored.map(|c| c.at),
@@ -74,4 +76,17 @@ pub async fn ask_cmdr_revoke_consent(app: AppHandle) -> Result<(), String> {
     let cleared = with_write_connection(app, store::clear_consent).await;
     crate::agent::wake::refresh_readiness(&handle);
     cleared
+}
+
+/// Tell the consent gates that a held "no" (`askCmdr.consentRevokePending`) was just set or let
+/// go of. No value crosses: the gates read `settings.json` themselves, so the frontend calls
+/// this right after saving it.
+///
+/// The send gate reads the marker fresh on every send, but the wake loop's readiness is a cached
+/// answer (`agent::wake::snapshot`). Without this a held "no" wouldn't close the wake gate until
+/// something else refreshed it.
+#[tauri::command]
+#[specta::specta]
+pub async fn ask_cmdr_consent_revoke_pending_changed(app: AppHandle) {
+    crate::agent::wake::refresh_readiness(&app);
 }

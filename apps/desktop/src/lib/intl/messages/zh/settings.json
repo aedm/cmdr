@@ -1367,6 +1367,10 @@
   "@settings.onboarding.upgradeNudgeShown.description": {
     "sourceHash": "5cfb2b5"
   },
+  "settings.askCmdr.consentRevokePending.label": "Ask Cmdr 已关闭，等待保存",
+  "@settings.askCmdr.consentRevokePending.label": {
+    "sourceHash": "1ecd887"
+  },
   "settings.onboarding.completed.label": "已完成引导",
   "@settings.onboarding.completed.label": {
     "sourceHash": "4730c4f"

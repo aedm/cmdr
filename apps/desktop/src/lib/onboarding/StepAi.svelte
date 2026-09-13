@@ -22,7 +22,7 @@
     import { systemStrings } from '$lib/system-strings.svelte'
     import { getCloudProvider, getSetting, setSetting, type AiProvider } from '$lib/settings'
     import { pushConfigToBackend } from '$lib/settings/ai-config'
-    import { revokeConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+    import { holdConsentRevoke, revokeConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
     import InfoTip from '$lib/ui/InfoTip.svelte'
     import RadioGroup from '$lib/ui/RadioGroup.svelte'
     import LinkButton from '$lib/ui/LinkButton.svelte'
@@ -302,7 +302,14 @@
             // Cmdr already consented. Never fatal: a wizard that traps the user because
             // `main.db` hiccuped is worse than a logged warning.
             if ((await revokeConsent()) === 'notSaved' && (await revokeConsent()) === 'notSaved') {
-                log.warn("Couldn't turn Ask Cmdr off for a 'no AI' pick, even on a second try; consent stays recorded")
+                // Refused twice: hold the "no" in `settings.json`, which every consent gate
+                // reads, so it holds now and the store catches up on a later refresh or launch.
+                const held = await holdConsentRevoke()
+                log.warn(
+                    held
+                        ? "Couldn't turn Ask Cmdr off for a 'no AI' pick, even on a second try; holding the 'no' until the store takes it"
+                        : "Couldn't turn Ask Cmdr off for a 'no AI' pick, and couldn't hold the 'no' in settings either; consent stays recorded",
+                )
             }
         }
         // Belt-and-braces: the applier listener fires on each setSetting above, but we

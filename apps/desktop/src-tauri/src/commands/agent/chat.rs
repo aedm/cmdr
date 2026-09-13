@@ -47,7 +47,7 @@ use crate::agent::chat::session::{
     AgentSlot, capture_envelope, local_offset, provider_and_model, resolve_agent_llm, resolve_prompt_budget,
 };
 use crate::agent::chat::stream::{AgentErrorKindView, AskCmdrStreamEvent, emit_turn_event, forward_to_windows};
-use crate::agent::consent::has_current_consent;
+use crate::agent::consent::{RevokePending, has_current_consent};
 use crate::agent::llm::AgentLlm;
 use crate::agent::llm::types::ProviderTag;
 use crate::agent::store;
@@ -182,9 +182,11 @@ pub async fn ask_cmdr_send_message(
     // The consent gate, enforced structurally: refuse BEFORE creating a thread or resolving
     // the LLM if the user hasn't accepted the current consent copy. The rail's frontend gate
     // is the UX layer; this is what makes "nothing reaches a provider without consent" true
-    // even if a caller bypasses the UI. Fails closed (an unreadable store reads as refused).
+    // even if a caller bypasses the UI. Fails closed (an unreadable store reads as refused, and
+    // so does a "no" still held for a store that refused to record it).
+    let revoke = RevokePending::load(&app);
     let consented = match store::open_read_connection(&db_path) {
-        Ok(conn) => has_current_consent(&conn),
+        Ok(conn) => has_current_consent(&conn, revoke),
         Err(e) => {
             log::warn!(target: LOG_TARGET, "reading consent failed, refusing the send: {e}");
             false

@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import layoutSource from './+layout.svelte?raw'
 
 const { logError } = vi.hoisted(() => ({ logError: vi.fn() }))
 vi.mock('$lib/logging/logger', () => ({
@@ -80,5 +81,13 @@ describe('runInitSteps', () => {
 
     expect(logError).toHaveBeenCalledOnce()
     expect(logError.mock.calls[0][1]).toEqual({ step: 'aiConfig', error })
+  })
+})
+
+describe("the main window's startup steps", () => {
+  it('retry a "no AI" revoke the store refused, on every launch until it lands', () => {
+    // The retry itself is pinned in `ask-cmdr-consent.svelte.test.ts`; this pins that launch
+    // runs it. Without the step, a held "no" would only settle once someone opened the rail.
+    expect(layoutSource).toContain('run: settleHeldConsentRevoke')
   })
 })

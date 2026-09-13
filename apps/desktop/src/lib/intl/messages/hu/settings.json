@@ -1368,6 +1368,10 @@
   "@settings.onboarding.upgradeNudgeShown.description": {
     "sourceHash": "5cfb2b5"
   },
+  "settings.askCmdr.consentRevokePending.label": "Ask Cmdr kikapcsolva, mentésre vár",
+  "@settings.askCmdr.consentRevokePending.label": {
+    "sourceHash": "1ecd887"
+  },
   "settings.onboarding.completed.label": "Bevezetés befejezve",
   "@settings.onboarding.completed.label": {
     "sourceHash": "4730c4f"

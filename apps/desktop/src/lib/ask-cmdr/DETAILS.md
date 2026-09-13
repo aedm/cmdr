@@ -538,6 +538,14 @@ fake path — which never sets a real provider — needs the gate to treat the f
     "off"), and every caller acts on it: the rail's gate and the settings row show `askCmdr.consent.notSaved`, and the
     onboarding "no AI" pick retries once. ❌ Never treat `notSaved` as `done`: a swallowed revoke is a "no" that didn't
     stick.
+  - **A "no" the store refused twice is HELD, fail-closed.** `holdConsentRevoke()` sets the hidden
+    `askCmdr.consentRevokePending`, saves `settings.json` at once, and calls `ask_cmdr_consent_revoke_pending_changed`
+    (the wake loop's readiness is cached). Every Rust gate takes the marker as an argument of `has_current_consent`
+    (`agent::consent::RevokePending`, read fresh from `settings.json`): the send gate, the wake readiness, and the
+    status command, so the "no" holds from the next check on. `settleHeldConsentRevoke()` retries the store on every
+    `refreshConsent()` and as a main-window startup step, and lets go once it lands; a deliberate accept lets go FIRST.
+    While held, `needsReconsent` stays false: it's a "no", not a paused opt-in. ❌ The marker lives in `settings.json`
+    because `main.db` is the store that refused; don't mirror it anywhere else.
   - ⚠️ **`consentState.needsReconsent` is what keeps a copy-version bump from looking like a bug.** A bump revokes
     everybody, so somebody with a whole thread history lands on the opt-in screen with no explanation, and the settings
     section would say a bare "off" at them, indistinguishable from never having wanted AI. The flag (`accepted` false

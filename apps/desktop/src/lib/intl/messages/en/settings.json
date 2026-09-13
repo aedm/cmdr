@@ -1713,6 +1713,12 @@
   "@settings.onboarding.upgradeNudgeShown.description": {
     "description": "Internal help text for the upgrade-nudge flag (not user-facing). \"Onboarding\" is the Cmdr setup-wizard feature name; \"toast\" = a small transient notification."
   },
+  "settings.askCmdr.consentRevokePending.label": "Ask Cmdr off, waiting to be saved",
+  "@settings.askCmdr.consentRevokePending.label": {
+    "description": "Internal, hidden-from-UI label for the flag that holds a person's choice to keep Ask Cmdr off while Cmdr can't yet write that choice to its own database. Surfaces only in settings search. \"Ask Cmdr\" is the in-app assistant's feature name and stays untranslated.",
+    "screenshot": "settings-ai-ask-cmdr.png",
+    "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
+  },
   "settings.onboarding.completed.label": "Onboarding completed",
   "@settings.onboarding.completed.label": {
     "description": "Internal, hidden-from-UI label for the flag recording that the user finished the setup wizard. Surfaces only in settings search. \"Onboarding\" is the Cmdr setup-wizard feature name."

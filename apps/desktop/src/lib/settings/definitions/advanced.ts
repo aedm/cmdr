@@ -402,6 +402,21 @@ export const advancedSettings: SettingDefinitionSource[] = [
     hidden: true,
   },
   {
+    // A "no" to Ask Cmdr that `main.db` refused to record, held here until the store takes
+    // it (`lib/ask-cmdr/ask-cmdr-consent.svelte.ts` holds, retries, and lets go). Hidden for
+    // the same reason as onboarding's flags below: a row offering to flip it would be a way
+    // to lie about consent. ⚠️ Every Rust consent gate reads it fresh from `settings.json`
+    // (`agent::consent::RevokePending`), so the "no" holds before the store catches up.
+    id: 'askCmdr.consentRevokePending',
+    section: ['Advanced'],
+    labelKey: 'settings.askCmdr.consentRevokePending.label',
+    keywords: [],
+    type: 'boolean',
+    default: false,
+    component: 'switch',
+    hidden: true,
+  },
+  {
     // Onboarding's own internal state. Hidden: these record what the user already
     // answered, so re-asking is the bug, and a Settings row offering to flip them
     // would be a way to lie about consent. Written from the wizard steps and the

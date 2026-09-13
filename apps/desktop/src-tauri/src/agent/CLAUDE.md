@@ -32,6 +32,9 @@ the surface, so every later slice grows here too.
 - **Consent is enforced in the BACKEND send path.** `ask_cmdr_send_message` checks `has_current_consent` before a
   thread or an LLM exists and answers a typed `NoConsent`, so a bypassed UI reaches no provider. **Bump
   `CONSENT_COPY_VERSION` whenever the copy changes materially**; the record is `main.db`'s `meta` table.
+- **A "no" `main.db` refused is held in `settings.json` and closes every gate** (`consent::RevokePending`, an
+  argument of `has_current_consent`): the send gate, wake readiness, and the status. ❌ Never check consent without
+  it. Frontend half: `apps/desktop/src/lib/ask-cmdr/DETAILS.md` § Consent.
 - **The interactive slot layers a model over shared `ai/` config.** `resolve_agent_llm` reads `askCmdr.interactiveModel`
   fresh; provider on/off, keys, and base URLs stay single-sourced in `ai/` (D49). Empty override ⇒ the `ai/` model.
 - **IPC is wired.** `agent::start` registers `ChatRuntime`; `../commands/agent/` is the thin surface. `run_turn` runs

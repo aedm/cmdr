@@ -321,8 +321,10 @@ it's why the cloud/local branches must not reach this call.
 **A refused revoke is retried, and still never strands the user.** `revokeConsent()` is a no-op for someone who never
 consented (the store deletes two absent `meta` rows). It answers `done` or `notSaved` and never throws, so the step can
 act on a refusal: a `notSaved` gets one more try, because a consent left recorded would greet a later "AI on" with Ask
-Cmdr already consented. Refused twice, the step logs a warning and moves on with the rest of the persist, and any other
-persist failure is logged and still advances. The footer's `advanceBusy` guard always clears in a `finally`. Same
+Cmdr already consented. Refused twice, the step HOLDS the "no" (`holdConsentRevoke()`, the hidden
+`askCmdr.consentRevokePending` in `settings.json`), which every backend consent gate reads, so it holds at once while
+the store catches up on a later refresh or launch (`ask-cmdr/DETAILS.md` § Consent). It logs a warning and moves on
+with the rest of the persist, and any other persist failure is logged and still advances. The footer's `advanceBusy` guard always clears in a `finally`. Same
 reasoning as the no-key-blocks-advance rule above: the wizard never traps someone on a step.
 
 ### The missing-API-key gate (confirm once, never block)

@@ -2868,6 +2868,7 @@ export type MessageKey =
   | 'settings.askCmdr.chatMemorySize.label'
   | 'settings.askCmdr.chatMemorySize.opt.auto'
   | 'settings.askCmdr.chatMemorySize.overWindow'
+  | 'settings.askCmdr.consentRevokePending.label'
   | 'settings.askCmdr.disclosure.title'
   | 'settings.askCmdr.interactiveModel.description'
   | 'settings.askCmdr.interactiveModel.label'

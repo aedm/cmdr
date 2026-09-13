@@ -433,6 +433,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::agent::ask_cmdr_consent_status,
                     crate::commands::agent::ask_cmdr_accept_consent,
                     crate::commands::agent::ask_cmdr_revoke_consent,
+                    crate::commands::agent::ask_cmdr_consent_revoke_pending_changed,
                     crate::commands::agent::ask_cmdr_conversation_cost,
                     crate::commands::agent::ask_cmdr_cost_summary,
                     crate::commands::agent::ask_cmdr_model_window,

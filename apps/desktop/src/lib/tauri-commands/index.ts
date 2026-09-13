@@ -389,6 +389,7 @@ export {
   askCmdrConsentStatus,
   acceptAskCmdrConsent,
   revokeAskCmdrConsent,
+  askCmdrConsentRevokePendingChanged,
   askCmdrConversationCost,
   askCmdrCostSummary,
   askCmdrModelWindow,

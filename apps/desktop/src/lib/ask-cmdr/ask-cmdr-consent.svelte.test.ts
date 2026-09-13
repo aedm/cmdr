@@ -1,31 +1,72 @@
-/** Unit tests for the consent gate state module (refresh / accept / revoke, fail-closed). */
+/** Unit tests for the consent gate state module (refresh / accept / revoke, fail-closed, the held revoke). */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import type { AskCmdrConsentStatus } from '$lib/tauri-commands'
 
-const { statusMock, acceptMock, revokeMock } = vi.hoisted(() => ({
-  statusMock: vi.fn<() => Promise<AskCmdrConsentStatus>>(),
-  acceptMock: vi.fn<() => Promise<void>>(),
-  revokeMock: vi.fn<() => Promise<void>>(),
-}))
+const { statusMock, acceptMock, revokeMock, pendingChangedMock, settingsMock, order } = vi.hoisted(() => {
+  const order: string[] = []
+  return {
+    order,
+    statusMock: vi.fn<() => Promise<AskCmdrConsentStatus>>(),
+    acceptMock: vi.fn<() => Promise<void>>(),
+    revokeMock: vi.fn<() => Promise<void>>(),
+    pendingChangedMock: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+    settingsMock: {
+      values: {},
+      forceSave: vi.fn<() => Promise<boolean>>(() => Promise.resolve(true)),
+    },
+  }
+})
 
 vi.mock('$lib/tauri-commands', () => ({
   askCmdrConsentStatus: () => statusMock(),
-  acceptAskCmdrConsent: () => acceptMock(),
+  acceptAskCmdrConsent: () => {
+    order.push('accept')
+    return acceptMock()
+  },
   revokeAskCmdrConsent: () => revokeMock(),
+  askCmdrConsentRevokePendingChanged: () => pendingChangedMock(),
+}))
+vi.mock('$lib/settings', () => ({
+  getSetting: (id: string): unknown => settingsMock.values[id] ?? false,
+  setSetting: (id: string, value: unknown) => {
+    order.push(`set ${id}=${String(value)}`)
+    settingsMock.values[id] = value
+  },
+  forceSave: () => {
+    order.push('save')
+    return settingsMock.forceSave()
+  },
 }))
 vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
 }))
 
-import { consentState, refreshConsent, acceptConsent, revokeConsent } from './ask-cmdr-consent.svelte'
+import {
+  consentState,
+  refreshConsent,
+  acceptConsent,
+  revokeConsent,
+  holdConsentRevoke,
+  settleHeldConsentRevoke,
+} from './ask-cmdr-consent.svelte'
+
+const HELD = 'askCmdr.consentRevokePending'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  order.length = 0
+  settingsMock.values = {}
+  settingsMock.forceSave.mockResolvedValue(true)
+  pendingChangedMock.mockResolvedValue(undefined)
   consentState.accepted = null
   consentState.acceptedAt = null
+  consentState.needsReconsent = false
 })
+
+const notAccepted: AskCmdrConsentStatus = { accepted: false, currentVersion: 1, acceptedVersion: null, acceptedAt: null }
+const accepted: AskCmdrConsentStatus = { accepted: true, currentVersion: 1, acceptedVersion: 1, acceptedAt: 1_760_000_100 }
 
 describe('refreshConsent', () => {
   it('applies an accepted status (accepted + timestamp)', async () => {
@@ -36,7 +77,7 @@ describe('refreshConsent', () => {
   })
 
   it('clears the timestamp when not accepted', async () => {
-    statusMock.mockResolvedValue({ accepted: false, currentVersion: 1, acceptedVersion: null, acceptedAt: null })
+    statusMock.mockResolvedValue(notAccepted)
     await refreshConsent()
     expect(consentState.accepted).toBe(false)
     expect(consentState.acceptedAt).toBeNull()
@@ -48,10 +89,80 @@ describe('refreshConsent', () => {
     expect(consentState.accepted).toBe(false)
     expect(consentState.acceptedAt).toBeNull()
   })
+
+  it('makes no revoke attempt when no "no" is held', async () => {
+    statusMock.mockResolvedValue(notAccepted)
+    await refreshConsent()
+    expect(revokeMock).not.toHaveBeenCalled()
+  })
+
+  it('retries a held revoke, and lets go of it once the store takes it', async () => {
+    settingsMock.values[HELD] = true
+    revokeMock.mockResolvedValue(undefined)
+    statusMock.mockResolvedValue(notAccepted)
+
+    await refreshConsent()
+
+    expect(revokeMock).toHaveBeenCalledOnce()
+    expect(settingsMock.values[HELD]).toBe(false)
+    expect(settingsMock.forceSave).toHaveBeenCalled()
+    expect(pendingChangedMock).toHaveBeenCalled()
+  })
+
+  it('keeps holding the "no" when the store refuses the retry too', async () => {
+    settingsMock.values[HELD] = true
+    revokeMock.mockRejectedValue(new Error('disk I/O error'))
+    statusMock.mockResolvedValue(notAccepted)
+
+    await refreshConsent()
+
+    expect(revokeMock).toHaveBeenCalledOnce()
+    expect(settingsMock.values[HELD]).toBe(true)
+  })
+
+  it('never reads a held "no" as someone to ask again about changed wording', async () => {
+    // The backend answers not-accepted while a revoke is held, and the store's audit still
+    // names the version they once accepted. That's a "no", not a paused opt-in.
+    settingsMock.values[HELD] = true
+    revokeMock.mockRejectedValue(new Error('disk I/O error'))
+    statusMock.mockResolvedValue({ accepted: false, currentVersion: 1, acceptedVersion: 1, acceptedAt: null })
+
+    await refreshConsent()
+
+    expect(consentState.accepted).toBe(false)
+    expect(consentState.needsReconsent).toBe(false)
+  })
 })
 
-const notAccepted: AskCmdrConsentStatus = { accepted: false, currentVersion: 1, acceptedVersion: null, acceptedAt: null }
-const accepted: AskCmdrConsentStatus = { accepted: true, currentVersion: 1, acceptedVersion: 1, acceptedAt: 1_760_000_100 }
+describe('settleHeldConsentRevoke', () => {
+  it('is the same retry the launch runs, and does nothing without a held "no"', async () => {
+    await settleHeldConsentRevoke()
+    expect(revokeMock).not.toHaveBeenCalled()
+
+    settingsMock.values[HELD] = true
+    revokeMock.mockResolvedValue(undefined)
+    await settleHeldConsentRevoke()
+    expect(revokeMock).toHaveBeenCalledOnce()
+    expect(settingsMock.values[HELD]).toBe(false)
+  })
+})
+
+describe('holdConsentRevoke', () => {
+  it('holds the "no" in settings, saves it now, and tells the backend gates', async () => {
+    const saved = await holdConsentRevoke()
+
+    expect(saved).toBe(true)
+    expect(settingsMock.values[HELD]).toBe(true)
+    // Saved BEFORE the backend is told: the gates read `settings.json` from disk.
+    expect(order).toEqual([`set ${HELD}=true`, 'save'])
+    expect(pendingChangedMock).toHaveBeenCalledOnce()
+  })
+
+  it('answers false when the settings file won\'t take it either', async () => {
+    settingsMock.forceSave.mockResolvedValue(false)
+    expect(await holdConsentRevoke()).toBe(false)
+  })
+})
 
 describe('acceptConsent', () => {
   it('records consent, refreshes, and answers done', async () => {
@@ -75,6 +186,19 @@ describe('acceptConsent', () => {
     acceptMock.mockResolvedValue(undefined)
     statusMock.mockResolvedValue(notAccepted)
     expect(await acceptConsent()).toBe('notSaved')
+  })
+
+  it('lets go of a held "no" before recording a deliberate yes', async () => {
+    settingsMock.values[HELD] = true
+    acceptMock.mockResolvedValue(undefined)
+    statusMock.mockResolvedValue(accepted)
+
+    await acceptConsent()
+
+    expect(settingsMock.values[HELD]).toBe(false)
+    expect(order.indexOf(`set ${HELD}=false`)).toBeLessThan(order.indexOf('accept'))
+    expect(order.indexOf('save')).toBeLessThan(order.indexOf('accept'))
+    expect(revokeMock).not.toHaveBeenCalled()
   })
 })
 

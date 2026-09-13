@@ -581,7 +581,7 @@ async fn attachments_reach_the_llm_in_the_envelope_and_nothing_more() {
 /// the gate refuses, and exactly one when it opens (so the empty case is meaningful).
 #[tokio::test]
 async fn a_send_without_current_consent_never_calls_the_llm() {
-    use crate::agent::consent::{CONSENT_COPY_VERSION, has_current_consent};
+    use crate::agent::consent::{CONSENT_COPY_VERSION, RevokePending, has_current_consent};
 
     let conn = migrated_conn();
     let id = conversation(&conn);
@@ -592,12 +592,12 @@ async fn a_send_without_current_consent_never_calls_the_llm() {
     let (tx, _rx) = unbounded_channel();
 
     // No consent recorded, then a STALE copy version — both keep the gate closed.
-    assert!(!has_current_consent(&conn), "no consent record ⇒ gate closed");
+    assert!(!has_current_consent(&conn, RevokePending::No), "no consent record ⇒ gate closed");
     store::set_consent(&conn, CONSENT_COPY_VERSION.wrapping_sub(1), 1_780_000_000).expect("set stale consent");
-    assert!(!has_current_consent(&conn), "a stale copy version ⇒ gate closed");
+    assert!(!has_current_consent(&conn, RevokePending::No), "a stale copy version ⇒ gate closed");
 
     // The command skips `run_turn` while the gate is closed, so the LLM is never called.
-    if has_current_consent(&conn) {
+    if has_current_consent(&conn, RevokePending::No) {
         run_turn(
             &llm,
             &OkDispatcher,
@@ -613,8 +613,8 @@ async fn a_send_without_current_consent_never_calls_the_llm() {
 
     // Accepting the CURRENT copy opens the gate; the send then drives the LLM once.
     store::set_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set current consent");
-    assert!(has_current_consent(&conn), "current consent ⇒ gate open");
-    if has_current_consent(&conn) {
+    assert!(has_current_consent(&conn, RevokePending::No), "current consent ⇒ gate open");
+    if has_current_consent(&conn, RevokePending::No) {
         run_turn(
             &llm,
             &OkDispatcher,
@@ -630,5 +630,42 @@ async fn a_send_without_current_consent_never_calls_the_llm() {
         llm.calls_seen().len(),
         1,
         "with consent, the send drives the LLM exactly once"
+    );
+}
+
+/// A "no AI" pick whose revoke `main.db` refused twice leaves the consent record in place, and
+/// the answer is held in `settings.json` until the store takes it. The gate honours the held
+/// "no" at once: with the record still there, the send makes ZERO LLM calls. Mirrors the
+/// command's control flow, like the test above.
+#[tokio::test]
+async fn a_held_revoke_keeps_a_send_from_the_llm_while_the_store_still_records_consent() {
+    use crate::agent::consent::{CONSENT_COPY_VERSION, RevokePending, has_current_consent};
+
+    let conn = migrated_conn();
+    let id = conversation(&conn);
+    let llm = ProgrammableLlm::new(vec![Program::Answer {
+        chunks: vec!["hi".to_string()],
+        usage: AgentUsage::default(),
+    }]);
+    let (tx, _rx) = unbounded_channel();
+
+    // The consent the refused revoke couldn't clear.
+    store::set_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set current consent");
+
+    if has_current_consent(&conn, RevokePending::Yes) {
+        run_turn(
+            &llm,
+            &OkDispatcher,
+            &conn,
+            &[],
+            &params(id, Some("hi")),
+            &tx,
+            &CancellationToken::new(),
+        )
+        .await;
+    }
+    assert!(
+        llm.calls_seen().is_empty(),
+        "a held revoke makes ZERO LLM calls, whatever the store still records"
     );
 }

@@ -2940,6 +2940,16 @@ export const commands = {
    */
   askCmdrRevokeConsent: () => typedError<null, string>(__TAURI_INVOKE('ask_cmdr_revoke_consent')),
   /**
+   *  Tell the consent gates that a held "no" (`askCmdr.consentRevokePending`) was just set or let
+   *  go of. No value crosses: the gates read `settings.json` themselves, so the frontend calls
+   *  this right after saving it.
+   *
+   *  The send gate reads the marker fresh on every send, but the wake loop's readiness is a cached
+   *  answer (`agent::wake::snapshot`). Without this a held "no" wouldn't close the wake gate until
+   *  something else refreshed it.
+   */
+  askCmdrConsentRevokePendingChanged: () => __TAURI_INVOKE<void>('ask_cmdr_consent_revoke_pending_changed'),
+  /**
    *  One conversation's cumulative token + cost total (all days, all models), for the
    *  per-thread footer. Zeroed for a thread with no metered turn yet. Empty store ⇒ zeroed.
    */
@@ -5058,8 +5068,9 @@ export type ArchiveSubkind = 'compress' | 'edit' | 'extract'
  */
 export type AskCmdrConsentStatus = {
   /**
-   *  True only when the user accepted the CURRENT `current_version`. The one flag the
-   *  rail and the settings toggle read.
+   *  True only when the user accepted the CURRENT `current_version` and no "no" is held for
+   *  the store: exactly what the send gate answers. The one flag the rail and the settings
+   *  toggle read.
    */
   accepted: boolean
   // The copy version the user must have accepted to be `accepted`.

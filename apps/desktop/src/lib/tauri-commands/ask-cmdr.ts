@@ -272,6 +272,14 @@ export async function revokeAskCmdrConsent(): Promise<void> {
   if (res.status === 'error') throwIpcError(res.error)
 }
 
+/**
+ * Tell the consent gates a held "no" (`askCmdr.consentRevokePending`) was set or let go of. No
+ * value crosses: call it right AFTER `settings.json` is saved, because the gates read that file.
+ */
+export async function askCmdrConsentRevokePendingChanged(): Promise<void> {
+  await commands.askCmdrConsentRevokePendingChanged()
+}
+
 /** One conversation's cumulative token + cost total (all days, all models). */
 export async function askCmdrConversationCost(id: number): Promise<ConversationCost> {
   const res = await commands.askCmdrConversationCost(id)

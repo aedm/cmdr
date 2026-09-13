@@ -38,6 +38,7 @@
     } from '$lib/tauri-commands'
     import { getSetting } from '$lib/settings'
     import { pushConfigToBackend } from '$lib/settings/ai-config'
+    import { settleHeldConsentRevoke } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
     import { runInitSteps } from './init-steps'
     import { initAiState } from '$lib/ai/ai-state.svelte'
     import { initAiToastSync } from '$lib/ai/ai-toast-sync.svelte'
@@ -232,6 +233,13 @@
                         settingsReady = true
                     }
                 },
+            },
+            {
+                // Retry a "no AI" revoke the store refused. It already holds (every consent gate
+                // reads the held "no"); this is what lets the store catch up without anyone
+                // opening the rail.
+                name: 'heldConsentRevoke',
+                run: settleHeldConsentRevoke,
             },
             {
                 // Log once whether this WebKit supports the modern CSS we lean on
