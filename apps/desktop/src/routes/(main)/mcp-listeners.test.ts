@@ -32,6 +32,11 @@ import type { NavigateResult } from '$lib/file-explorer/pane/navigate'
 const { resolveLocationMock } = vi.hoisted(() => ({ resolveLocationMock: vi.fn() }))
 vi.mock('$lib/file-explorer/navigation/resolve-location', () => ({ resolveLocation: resolveLocationMock }))
 
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
+vi.mock('$lib/logging/logger', () => ({
+  getAppLogger: () => ({ warn, info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
+}))
+
 describe('parsePane', () => {
   it('accepts left/right', () => {
     expect(parsePane('left')).toBe('left')
@@ -480,6 +485,63 @@ describe('mcp-nav-to-path listener', () => {
       ok: false,
       error: 'Pane is on the Network volume. Use select_volume to switch to a local volume first.',
     })
+  })
+
+  // The declines log because a fire-and-forget caller gets no reply, but an agent
+  // loop repeats the same call, and each line reaches the log file and every
+  // error-report bundle. One line per distinct decline, until a navigation lands.
+  it('logs a path that keeps failing to resolve once, however often an agent retries it', async () => {
+    resolveLocationMock.mockResolvedValue({ ok: false, reason: 'no-volume' })
+    const handlers = await setupWithExplorer(() => ({ status: 'started', settled: Promise.resolve() }))
+    warn.mockClear()
+
+    for (const requestId of ['req-a', 'req-b', 'req-c']) {
+      getHandler(handlers, 'mcp-nav-to-path')({ payload: { pane: 'left', path: '/Volumes/Gone/x', requestId } })
+      await flushAsyncWork()
+    }
+
+    expect(warn).toHaveBeenCalledOnce()
+    // Every call still gets its honest reply; only the log line is held back.
+    expect(vi.mocked(emit).mock.calls.filter(([name]) => name === 'mcp-response')).toHaveLength(3)
+  })
+
+  it('logs the failing path again once a navigation lands in between', async () => {
+    const handlers = await setupWithExplorer(() => ({ status: 'started', settled: Promise.resolve() }))
+    warn.mockClear()
+    const navTo = async (path: string, requestId: string): Promise<void> => {
+      getHandler(handlers, 'mcp-nav-to-path')({ payload: { pane: 'left', path, requestId } })
+      await flushAsyncWork()
+    }
+
+    resolveLocationMock.mockResolvedValue({ ok: false, reason: 'no-volume' })
+    await navTo('/Volumes/Gone/x', 'req-1')
+    resolveLocationMock.mockResolvedValue({ ok: true, location: { volumeId: 'root', path: '/Library' } })
+    await navTo('/Library', 'req-2')
+    resolveLocationMock.mockResolvedValue({ ok: false, reason: 'no-volume' })
+    await navTo('/Volumes/Gone/x', 'req-3')
+
+    expect(warn).toHaveBeenCalledTimes(2)
+  })
+
+  it('logs a missing explorer once while calls keep arriving', async () => {
+    const handlers = new Map<string, TauriEventHandler>()
+    await setupMcpListeners({
+      getExplorer: () => undefined,
+      dispatch: vi.fn(),
+      listenTauri: (event, handler) => {
+        handlers.set(event, handler)
+        return Promise.resolve()
+      },
+      isAiEnabled: () => false,
+    })
+    warn.mockClear()
+
+    for (const requestId of ['req-a', 'req-b']) {
+      getHandler(handlers, 'mcp-nav-to-path')({ payload: { pane: 'left', path: '/Users', requestId } })
+      await flushAsyncWork()
+    }
+
+    expect(warn).toHaveBeenCalledOnce()
   })
 })
 

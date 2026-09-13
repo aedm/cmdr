@@ -10,6 +10,8 @@ timestamps. The Rust side's fern dispatch tree, with its per-output level filter
 - **`log-bridge.ts`**: batching sink (collects FE logs for 100 ms, dedups, throttles at 200/s, sends to Rust via IPC).
 - **`uncaught-errors.ts`**: forwards `window` `error` / `unhandledrejection` to `log.error` under the `uncaught`
   category. Registered from `routes/+layout.ts`.
+- **`log-once.ts`**: `LogOnceGate`, which lets a failure that recurs per event, poll tick, or call log once until it
+  clears.
 - Rust side: `src-tauri/src/commands/logging.rs` (batch IPC receiver + runtime level control); the dispatch tree is in
   `src-tauri/src/logging/CLAUDE.md`.
 

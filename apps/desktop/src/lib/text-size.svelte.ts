@@ -32,10 +32,13 @@ import { type UnlistenFn } from '@tauri-apps/api/event'
 import { getSystemTextSizeMultiplier, onSystemTextSizeChanged } from '$lib/tauri-commands'
 import { SvelteSet } from 'svelte/reactivity'
 import { getAppLogger } from '$lib/logging/logger'
+import { LogOnceGate } from '$lib/logging/log-once'
 import { getSetting, onSpecificSettingChange } from '$lib/settings'
 import { ensureFontMetricsLoaded, setMeasuresFontMetrics } from '$lib/font-metrics'
 
 const log = getAppLogger('text-size')
+/** A listener that throws does so on every scale change: logged once until a pass runs clean. */
+const listenerFailures = new LogOnceGate()
 
 const REMEASURE_DEBOUNCE_MS = 1000
 
@@ -128,13 +131,16 @@ function computeAndApply(triggerRemeasure: boolean): number {
       // Defer heavy work to the idle window so the slider release frame is clean.
       const fire = () => {
         void ensureFontMetricsLoaded()
+        let anyThrew = false
         for (const cb of scaleChangeListeners) {
           try {
             cb(effective)
           } catch (e) {
-            log.warn('Scale-change listener threw: {error}', { error: e })
+            anyThrew = true
+            if (listenerFailures.shouldLog(String(e))) log.warn('Scale-change listener threw: {error}', { error: e })
           }
         }
+        if (!anyThrew) listenerFailures.clear()
       }
       if ('requestIdleCallback' in window) {
         requestIdleCallback(fire)

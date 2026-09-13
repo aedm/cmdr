@@ -43,6 +43,11 @@ vi.mock('$lib/ui/toast', () => ({
   },
 }))
 
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
+vi.mock('$lib/logging/logger', () => ({
+  getAppLogger: () => ({ warn, info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
+}))
+
 const seenFlag: Record<string, boolean> = {}
 const raisedToasts: Record<string, unknown>[] = []
 
@@ -195,6 +200,25 @@ describe('volume-store duplicate IDs', () => {
     await initVolumeStore()
 
     expect(getVolumes()).toEqual(distinct)
+  })
+
+  it('names a duplicate once while updates keep repeating it, and again after the list came back clean', async () => {
+    mockListVolumes.mockResolvedValue({ data: [], timedOut: false })
+    await initVolumeStore()
+    const push = lastVolumesHandler
+    if (!push) throw new Error("init() didn't install a listener")
+    warn.mockClear()
+
+    // A mount storm republishes the same doubled share on every update.
+    push({ data: doublyMountedShare(), timedOut: false })
+    push({ data: doublyMountedShare(), timedOut: false })
+    push({ data: doublyMountedShare(), timedOut: false })
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn.mock.calls[0][1]).toMatchObject({ ids: 'smb-naspi-a1b2c3' })
+
+    push({ data: doublyMountedShare().filter((v) => v.path !== '/Volumes/naspi-1'), timedOut: false })
+    push({ data: doublyMountedShare(), timedOut: false })
+    expect(warn).toHaveBeenCalledTimes(2)
   })
 })
 

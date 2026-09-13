@@ -13,6 +13,7 @@ import { listVolumes, refreshVolumes, onVolumesChanged, onVolumeConnectionChange
 import type { VolumeConnection, VolumeRootChanged } from '$lib/ipc/bindings'
 import type { ConnectionState, VolumeInfo } from '$lib/file-explorer/types'
 import { getAppLogger } from '$lib/logging/logger'
+import { LogOnceGate } from '$lib/logging/log-once'
 import { pluralize } from '$lib/utils/pluralize'
 import { getSetting, setSetting } from '$lib/settings'
 import { addToast } from '$lib/ui/toast'
@@ -20,6 +21,8 @@ import { shouldShowPinHint } from '$lib/file-explorer/navigation/should-show-pin
 import ServersPinHintToastContent from '$lib/file-explorer/navigation/ServersPinHintToastContent.svelte'
 
 const logger = getAppLogger('volume-store')
+/** Keyed by the repeated IDs: which duplicates the log already named. */
+const duplicateWarnings = new LogOnceGate()
 
 let volumes = $state<VolumeInfo[]>([])
 let timedOut = $state(false)
@@ -105,11 +108,24 @@ function dedupeById(list: VolumeInfo[]): VolumeInfo[] {
   // Keep-the-first by index comparison rather than a seen-set: the list is every
   // mounted volume (a handful, tens at most), so the scan costs nothing and the
   // function stays free of a mutable accumulator.
-  const unique = list.filter((volume, index) => list.findIndex((other) => other.id === volume.id) === index)
-  if (unique.length !== list.length) {
-    logger.warn('Dropped {count} {volumesNoun} repeating a volume ID already in the list', {
-      count: list.length - unique.length,
-      volumesNoun: pluralize(list.length - unique.length, 'volume'),
+  const isFirstOfItsId = (volume: VolumeInfo, index: number): boolean =>
+    list.findIndex((other) => other.id === volume.id) === index
+  const unique = list.filter(isFirstOfItsId)
+  if (unique.length === list.length) {
+    duplicateWarnings.clear()
+    return unique
+  }
+  const ids = [...new Set(list.filter((volume, index) => !isFirstOfItsId(volume, index)).map((volume) => volume.id))]
+    .sort()
+    .join(', ')
+  // Every update republishes the whole list, so a double mount that sticks
+  // around would log on each one. Named once, until the list comes back clean.
+  if (duplicateWarnings.shouldLog(ids)) {
+    const count = list.length - unique.length
+    logger.warn('Dropped {count} {volumesNoun} repeating a volume ID already in the list: {ids}', {
+      count,
+      volumesNoun: pluralize(count, 'volume'),
+      ids,
     })
   }
   return unique
@@ -261,4 +277,5 @@ export function cleanupVolumeStore(): void {
   retryFailedTimer = null
   receivedEvent = false
   initialized = false
+  duplicateWarnings.clear()
 }

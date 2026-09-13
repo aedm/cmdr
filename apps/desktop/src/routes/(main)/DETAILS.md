@@ -242,8 +242,10 @@ path; its `fromMenu` flag picks `setViewModeFromMenu` (skip `pushViewMenuState`)
   refusing, and no explorer being mounted — used to `return` in silence, because the only channel out is a reply keyed
   on `requestId`, and fire-and-forget callers (the E2E harness among them) don't send one. A navigation that never
   reaches the pane then looks exactly like one that ran and did nothing: a Linux E2E run where the panes stopped listing
-  for two hours left no frontend evidence at all. Keep the `log.warn` in each branch. Uncaught throws in this file are
-  covered separately by `lib/logging/uncaught-errors.ts`.
+  for two hours left no frontend evidence at all. Keep the `log.warn` in each branch. An agent loop repeats the same
+  declined call, though, and each warn reaches the log file and every error-report bundle, so the branches share one
+  `LogOnceGate` (`lib/logging/log-once.ts`): one line per distinct decline (kind, pane, path), until a navigation goes
+  through. Uncaught throws in this file are covered separately by `lib/logging/uncaught-errors.ts`.
 
 - **`mcp-response` round-trips** (`mcp-open-under-cursor`, `mcp-move-cursor`, `mcp-select`, `mcp-select-names`,
   `mcp-refresh`): the bus dispatches the `void`-returning intent; the adapter owns the `requestId` correlation and the

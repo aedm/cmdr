@@ -27,6 +27,11 @@ vi.mock('$lib/tauri-commands', () => ({
   },
 }))
 
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
+vi.mock('$lib/logging/logger', () => ({
+  getAppLogger: () => ({ warn, info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
+}))
+
 import {
   smbReconnectManager,
   RECONNECT_DELAYS_MS,
@@ -158,6 +163,34 @@ describe('smbReconnectManager', () => {
     expect(smbReconnectManager.getSignInShape('vol-prompt')?.kind).toBe('key_passphrase')
 
     smbReconnectManager.cancel('vol-prompt')
+    unsub()
+  })
+
+  it('logs an unreadable sign-in state once per volume, and again only after a read works', async () => {
+    await smbReconnectManager.init()
+    const unsub = smbReconnectManager.subscribe('vol-unreadable')
+    warn.mockClear()
+
+    // A flaky network flips the volume in and out of needs-auth, and every flip re-asks.
+    mockSignInState.mockRejectedValue(new Error('keychain locked'))
+    for (let flip = 0; flip < 3; flip++) {
+      emit('vol-unreadable', 'connected')
+      emit('vol-unreadable', 'needs_credentials')
+      await vi.advanceTimersByTimeAsync(0)
+    }
+    expect(warn).toHaveBeenCalledOnce()
+
+    mockSignInState.mockResolvedValue({ kind: 'password' })
+    emit('vol-unreadable', 'connected')
+    emit('vol-unreadable', 'needs_credentials')
+    await vi.advanceTimersByTimeAsync(0)
+    mockSignInState.mockRejectedValue(new Error('keychain locked'))
+    emit('vol-unreadable', 'connected')
+    emit('vol-unreadable', 'needs_credentials')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(warn).toHaveBeenCalledTimes(2)
+
+    smbReconnectManager.cancel('vol-unreadable')
     unsub()
   })
 

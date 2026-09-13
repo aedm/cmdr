@@ -49,6 +49,7 @@
     import Trans from '$lib/intl/Trans.svelte'
     import { formatInteger } from '$lib/intl/number-format'
     import { getAppLogger } from '$lib/logging/logger'
+    import { LogOnceGate } from '$lib/logging/log-once'
 
     const log = getAppLogger('servers')
 
@@ -145,6 +146,9 @@
         }
     })
 
+    /** Retried on every `volumes-changed`, so a store that stays broken logs once until a read works. */
+    const savedServersReadFailures = new LogOnceGate()
+
     async function refreshSavedServers(): Promise<void> {
         try {
             // `Array.isArray` because this is an IPC boundary: a command that
@@ -152,11 +156,15 @@
             // merge iterates, and the hub would render nothing at all.
             const answer: unknown = await listSavedServers()
             savedServers = Array.isArray(answer) ? (answer as SavedServer[]) : []
+            savedServersReadFailures.clear()
         } catch (e) {
             // A store that didn't answer costs the hub its saved rows, never the
             // nearby ones: the list is still useful, and the next `volumes-changed`
             // tries again.
-            log.warn('Reading the saved servers broke down: {error}', { error: String(e) })
+            const error = String(e)
+            if (savedServersReadFailures.shouldLog(error)) {
+                log.warn('Reading the saved servers broke down: {error}', { error })
+            }
         }
     }
 

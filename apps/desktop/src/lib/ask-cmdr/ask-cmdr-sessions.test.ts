@@ -22,8 +22,9 @@ vi.mock('$lib/tauri-commands', () => ({
   renameAskCmdrConversation: (id: number, t: string) => renameMock(id, t),
   archiveAskCmdrConversation: (id: number, a: boolean) => archiveMock(id, a),
 }))
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
+  getAppLogger: () => ({ warn, info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
 }))
 vi.mock('./ask-cmdr-trigger.svelte', () => ({
   switchToThread: (id: number) => switchMock(id),
@@ -160,6 +161,23 @@ describe('sessions search', () => {
     resolveFirst([hit(1)])
     await vi.runAllTimersAsync()
     expect(sessionsState.hits).toEqual([hit(2)])
+  })
+
+  it('logs a broken search once while the user keeps typing, and again after a search works', async () => {
+    warn.mockClear()
+    searchMock.mockRejectedValue(new Error('index unavailable'))
+    for (const query of ['b', 'bu', 'bud']) {
+      setSearchQuery(query)
+      await vi.runAllTimersAsync()
+    }
+    expect(warn).toHaveBeenCalledOnce()
+
+    searchMock.mockResolvedValueOnce([hit(1)])
+    setSearchQuery('budg')
+    await vi.runAllTimersAsync()
+    setSearchQuery('budge')
+    await vi.runAllTimersAsync()
+    expect(warn).toHaveBeenCalledTimes(2)
   })
 
   it('clearSearch restores the list view', async () => {

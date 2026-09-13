@@ -33,6 +33,7 @@ import { reconnectVolume, getVolumeSignInState, onVolumeConnectionChanged } from
 import type { SignInShape } from '$lib/tauri-commands'
 import { asReconnectError, describeReconnectRefusal } from './reconnect-error'
 import { getAppLogger } from '$lib/logging/logger'
+import { LogOnceGate } from '$lib/logging/log-once'
 import { tString } from '$lib/intl/messages.svelte'
 import { formatInteger } from '$lib/intl/number-format'
 
@@ -91,6 +92,8 @@ interface VolumeEntry {
 class SmbReconnectManager {
   /** Reactive map keyed by volumeId. Component reads via `getState(volumeId)`. */
   private map = new SvelteMap<string, VolumeEntry>()
+  /** Keyed by volume ID: which volumes already logged an unreadable sign-in state. */
+  private readonly signInReadFailures = new LogOnceGate()
   private unlisten: UnlistenFn | null = null
 
   /** Idempotent. Call once at app startup before any FilePane mounts. */
@@ -284,9 +287,14 @@ class SmbReconnectManager {
     try {
       prompt = await getVolumeSignInState(volumeId)
     } catch (e) {
-      log.warn('Reading the sign-in state for {volumeId} failed: {error}', { volumeId, error: String(e) })
+      // A flaky network flips a volume in and out of needs-auth, and every flip
+      // re-asks: logged once per volume until a read works.
+      if (this.signInReadFailures.shouldLog(volumeId)) {
+        log.warn('Reading the sign-in state for {volumeId} failed: {error}', { volumeId, error: String(e) })
+      }
       return
     }
+    this.signInReadFailures.clear(volumeId)
     untrack(() => {
       const entry = this.map.get(volumeId)
       if (!entry) return

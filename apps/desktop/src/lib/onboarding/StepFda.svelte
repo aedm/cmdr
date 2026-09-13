@@ -14,6 +14,7 @@
     import SectionCard from '$lib/ui/SectionCard.svelte'
     import OnboardingStepShell from './OnboardingStepShell.svelte'
     import { getAppLogger } from '$lib/logging/logger'
+    import { LogOnceGate } from '$lib/logging/log-once'
     import { systemStrings } from '$lib/system-strings.svelte'
     import { isMacOS } from '$lib/shortcuts/key-capture'
     import { tString } from '$lib/intl/messages.svelte'
@@ -104,17 +105,20 @@
         let stopped = false
         let inFlight = false
         const isStopped = (): boolean => stopped
+        // The poll ticks every 500 ms, so a probe that keeps failing logs once until one answers.
+        const pollFailures = new LogOnceGate()
 
         async function poll(): Promise<void> {
             if (isStopped() || inFlight) return
             inFlight = true
             try {
                 const granted = await checkFullDiskAccessQuiet()
+                pollFailures.clear()
                 // Re-check: the effect may have torn down during the await (e.g. the user
                 // clicked Deny and the step unmounted). Don't report a grant after that.
                 if (granted && !isStopped()) setStep1Granted()
             } catch (error) {
-                log.warn('FDA grant-detection poll failed: {error}', { error })
+                if (pollFailures.shouldLog(String(error))) log.warn('FDA grant-detection poll failed: {error}', { error })
             } finally {
                 inFlight = false
             }

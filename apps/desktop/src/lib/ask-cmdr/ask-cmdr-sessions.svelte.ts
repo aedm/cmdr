@@ -9,6 +9,7 @@
  */
 
 import { getAppLogger } from '$lib/logging/logger'
+import { LogOnceGate } from '$lib/logging/log-once'
 import {
   archiveAskCmdrConversation,
   listAskCmdrConversations,
@@ -126,6 +127,8 @@ export function toggleShowArchived(): void {
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 /** Guards against an out-of-order search response overwriting a newer one. */
 let searchSeq = 0
+/** A broken search fails again on every typed query: logged once until a search works. */
+const searchFailures = new LogOnceGate()
 
 /** Set the query and (debounced) run the cross-thread search. An empty query restores
  * the list. */
@@ -145,11 +148,13 @@ async function runSearch(query: string): Promise<void> {
   sessionsState.searching = true
   try {
     const hits = await searchAskCmdrConversations(query, SEARCH_LIMIT, 0)
+    searchFailures.clear()
     if (seq !== searchSeq) return // a newer search superseded this one
     sessionsState.hits = hits
   } catch (e) {
     if (seq === searchSeq) sessionsState.hits = []
-    log.warn('searching threads failed: {error}', { error: String(e) })
+    const error = String(e)
+    if (searchFailures.shouldLog(error)) log.warn('searching threads failed: {error}', { error })
   } finally {
     if (seq === searchSeq) sessionsState.searching = false
   }

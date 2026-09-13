@@ -14,8 +14,9 @@ vi.mock('$lib/settings', () => ({
   },
 }))
 
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ warn: vi.fn(), debug: vi.fn(), info: vi.fn(), error: vi.fn() }),
+  getAppLogger: () => ({ warn, debug: vi.fn(), info: vi.fn(), error: vi.fn() }),
 }))
 
 import {
@@ -30,6 +31,7 @@ import {
 } from './drive-index-prefs'
 
 beforeEach(() => {
+  warn.mockClear()
   store = {
     'indexing.silencedDrives': '[]',
     'indexing.firstStaleDialogShown': false,
@@ -70,6 +72,29 @@ describe('silenced drives', () => {
   it('drops non-string entries from a malformed array', () => {
     store['indexing.silencedDrives'] = '["smb-a", 42, null]'
     expect(getSilencedDrives()).toEqual(['smb-a'])
+  })
+
+  it('repairs a corrupt stored value, so it warns once rather than on every read', async () => {
+    store['indexing.silencedDrives'] = 'not json'
+    // Every reader asks again (the search CTA derives it, the first-connect prompt
+    // checks per drive), so a value left corrupt would warn on each of them.
+    expect(isDriveSilenced('smb-a')).toBe(false)
+    expect(hasSilencedDrives()).toBe(false)
+    // A reader can be a `$derived`, where a settings write is an unsafe state
+    // mutation, so the repair lands after the read returns, never inside it.
+    expect(store['indexing.silencedDrives']).toBe('not json')
+    await Promise.resolve()
+    expect(store['indexing.silencedDrives']).toBe('[]')
+    expect(getSilencedDrives()).toEqual([])
+    expect(warn).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the valid entries when it repairs a malformed array', async () => {
+    store['indexing.silencedDrives'] = '["smb-a", 42, null]'
+    expect(getSilencedDrives()).toEqual(['smb-a'])
+    await Promise.resolve()
+    expect(store['indexing.silencedDrives']).toBe('["smb-a"]')
+    expect(warn).toHaveBeenCalledOnce()
   })
 })
 

@@ -36,6 +36,7 @@
         type MediaIndexVolumeState,
     } from '$lib/tauri-commands'
     import { getAppLogger } from '$lib/logging/logger'
+    import { LogOnceGate } from '$lib/logging/log-once'
     import { shouldRepollPreview } from './media-index-preview-poll'
     import { shouldOfferReclaim } from './media-index-reclaim'
     import MediaIndexReclaim from './MediaIndexReclaim.svelte'
@@ -91,11 +92,15 @@
     // Per-volume enrichment progress (local root + opted-in network), polled while visible.
     let localState = $state<MediaIndexVolumeState | null>(null)
 
+    /** Queried per debounced drag step, so a backend that stays broken logs once until a query answers. */
+    const coveredCountFailures = new LogOnceGate()
+
     async function refreshPreview(targetBucket: number): Promise<void> {
         const seq = ++previewSeq
         const threshold = BUCKETS[targetBucket].threshold
         try {
             const result = await mediaIndexCoveredCount(threshold, getEnabledMediaIndexVolumeIds())
+            coveredCountFailures.clear()
             if (seq !== previewSeq) return
             covered = result
             // Seed the baseline the first time we get a real number, so the first drag has
@@ -107,7 +112,8 @@
         } catch (err) {
             if (seq !== previewSeq) return
             covered = null
-            log.warn('covered-count query failed: {err}', { err: String(err) })
+            const error = String(err)
+            if (coveredCountFailures.shouldLog(error)) log.warn('covered-count query failed: {err}', { err: error })
         }
     }
 
