@@ -129,6 +129,12 @@ export async function openQueueWindow(): Promise<void> {
     trafficLightPosition: new LogicalPosition(14, 18),
   })
 
+  // A refused creation doesn't throw here: it arrives afterwards as `tauri://error`,
+  // so without this a missing grant leaves no trace at all.
+  void win.once('tauri://error', (event) => {
+    log.warn("Couldn't create the queue window: {error}", { error: String(event.payload) })
+  })
+
   // Apply the `NSVisualEffectView` material AFTER creation (the `windowEffects`
   // creation option drops silently in this Tauri version; `setEffects` is the
   // reliable IPC path, gated by `core:window:allow-set-effects` in

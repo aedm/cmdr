@@ -312,6 +312,9 @@ and two buttons would have pushed the window's minimum width past 700 px for the
 
 ## Vibrancy + reduce-transparency
 
+`new WebviewWindow(...)` doesn't throw when creation is refused (a missing grant, a label clash): the refusal arrives
+afterwards as `tauri://error`, which `queue-window.ts` listens for and logs at warn, so it can't fail without a trace.
+
 `queue-window.ts` opens transparent and applies `Effect.UnderWindowBackground` via `setEffects` after creation (the
 `windowEffects` creation option drops silently in this Tauri version; `setEffects` is the reliable IPC path, gated by
 `core:window:allow-set-effects`). UnderWindowBackground reads as a clean utility/HUD-style panel — the macOS convention
