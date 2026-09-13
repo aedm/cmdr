@@ -238,11 +238,22 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
     return cancelledEvent()?.filesProcessed ?? bound.current?.progress?.filesDone ?? 0
   }
 
+  /** The operation-log reversal has ended. It emits progress and no terminal
+   *  event, so dropping out of the registry is the only word its end gets
+   *  (`../operation-session/DETAILS.md` § "Leaving the registry"). Read ONLY for
+   *  a reversal: an ordinary transfer's removal can overtake its `write-complete`
+   *  on another channel, and closing on that would report a cancel for a copy
+   *  that finished. */
+  const reversalLeftRegistry = (): boolean => {
+    const op = bound.current
+    return op !== null && op.leftRegistry && op.snapshot?.reverses != null
+  }
+
   /** Whether handing this operation to the queue window still makes sense: it
    *  is running rather than winding down or over. */
   const canHandOff = (): boolean => {
     const op = bound.current
-    return op !== null && !op.settled && !op.cancelling && !isRollingBack()
+    return op !== null && !op.settled && !op.leftRegistry && !op.cancelling && !isRollingBack()
   }
 
   /** A paused op is still mid-transfer (not cancelling, not settled, no
@@ -444,6 +455,19 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
     reportOutcome(settled, op.settleEventReceived)
   })
 
+  // An adopted reversal's ending, whether it finished or a Cancel stopped it:
+  // nothing else will ever close the view, and a cancel would otherwise sit on
+  // "Cancelling…" until the last-resort timer. `onCancelled` because there is
+  // no completion payload to report, and the adopted parent runs no pane tail.
+  $effect(() => {
+    const op = bound.current
+    if (op === null || op.outcome !== null || !reversalLeftRegistry()) return
+    log.info('The reversal op={operationId} left the registry; closing', { operationId })
+    close(() => {
+      config.onCancelled(reportedFilesProcessed())
+    })
+  })
+
   $effect(() => {
     const op = bound.current
     if (op === null) return
@@ -453,7 +477,7 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
     // backend refused lets go of `cancelling`, and a timer left running would
     // close the dialog on a transfer that is still going.
     const windingDown = op.cancelling || op.outcome?.kind === 'cancelled'
-    if (windingDown && !op.settleEventReceived) armWindDownTimers()
+    if (windingDown && !op.settleEventReceived && !reversalLeftRegistry()) armWindDownTimers()
     else clearWindDownTimers()
   })
 

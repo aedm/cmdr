@@ -1112,6 +1112,93 @@ describe('createTransferProgressState: adopting a running operation', () => {
   })
 })
 
+describe('createTransferProgressState: an adopted reversal', () => {
+  // The operation-log reversal (an undo, adopted through Show on its queue row)
+  // emits `write-progress` and no terminal event: no `write-cancelled`, no
+  // `write-settled`, no `write-complete`. Dropping out of the registry is the only
+  // word its end ever gets, so the view has to read `leftRegistry` for it.
+
+  const REVERSAL = 'op-undo'
+
+  function reversalSnapshot(): OperationSnapshot {
+    return { ...snapshot(REVERSAL, 'running', 'delete'), reverses: 'copy' }
+  }
+
+  /** An adopted reversal that holds its registry row, optionally with a tick. */
+  async function adoptedReversal({ withTick = true }: { withTick?: boolean } = {}) {
+    vi.mocked(listOperations).mockResolvedValue([reversalSnapshot()])
+    const config = makeConfig({ adoptOperationId: REVERSAL, operationType: 'delete' })
+    const state = makeState(config)
+    state.start()
+    await settle()
+    if (!opsChangedCb || !progressCb) throw new Error('subscribers never registered')
+    opsChangedCb({ operations: [reversalSnapshot()] })
+    if (withTick) {
+      progressCb(progressEvent({ operationId: REVERSAL, operationType: 'delete', phase: 'rolling_back', filesDone: 3 }))
+    }
+    flushSync()
+    return { state, config }
+  }
+
+  it('closes as soon as a Cancel stops it, rather than waiting out the fallback', async () => {
+    const { state, config } = await adoptedReversal()
+    void state.handleCancel(false)
+    await settle()
+    expect(state.isCancelling).toBe(true)
+
+    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
+    opsChangedCb({ operations: [] })
+    flushSync()
+    vi.advanceTimersByTime(450)
+
+    expect(config.onCancelled).toHaveBeenCalledWith(3)
+  })
+
+  it('closes when it finishes on its own', async () => {
+    const { config } = await adoptedReversal()
+
+    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
+    opsChangedCb({ operations: [] })
+    flushSync()
+    vi.advanceTimersByTime(450)
+
+    expect(config.onCancelled).toHaveBeenCalledWith(3)
+  })
+
+  it('never hands a reversal that already left the registry to the queue', async () => {
+    // A window that heard no tick (a reload, with the reversal paused) has no
+    // phase to read `rolling_back` from, so only `leftRegistry` says it's gone.
+    const { state } = await adoptedReversal({ withTick: false })
+    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
+    opsChangedCb({ operations: [] })
+    flushSync()
+
+    state.detach()
+
+    expect(openQueueWindow).not.toHaveBeenCalled()
+    expect(addToast).not.toHaveBeenCalled()
+  })
+
+  it('never reads an ORDINARY transfer leaving the registry as its ending', async () => {
+    // The removal travels on a different channel than `write-complete`, so it can
+    // arrive first. Closing on it would report a cancel for a copy that finished,
+    // and run the wrong tail over the user's panes.
+    const { config } = await startedState()
+    if (!opsChangedCb || !completeCb) throw new Error('subscribers never registered')
+    opsChangedCb({ operations: [snapshot('op-1', 'running')] })
+    opsChangedCb({ operations: [] })
+    flushSync()
+    vi.advanceTimersByTime(450)
+    expect(config.onCancelled).not.toHaveBeenCalled()
+
+    completeCb({ operationId: 'op-1', operationType: 'copy', filesProcessed: 2, filesSkipped: 0, bytesProcessed: 20 })
+    flushSync()
+    vi.advanceTimersByTime(450)
+    expect(config.onComplete).toHaveBeenCalledTimes(1)
+    expect(config.onCancelled).not.toHaveBeenCalled()
+  })
+})
+
 describe('createTransferProgressState: disposal', () => {
   it('an unexpected teardown leaves the operation running', async () => {
     // Replaces "fires the safety-net cancel for an unexpected teardown". A view

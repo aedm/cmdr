@@ -231,7 +231,9 @@ the view that dispatched it has already bound. A later snapshot naming the opera
 ❌ Never fold it into `settled`. The two travel on different Tauri channels, so a removal can overtake the
 `write-complete` that preceded it on the backend, and an outcome is write-once: a transfer would then lose its ending
 and its completion toast. A surface that reports HOW something ended reads `settled`; a surface that only offers
-CONTROLS reads both (`operation-log/RollbackControls.svelte` is the one that does).
+CONTROLS reads both (`operation-log/RollbackControls.svelte` does). The progress dialog reads `leftRegistry` as an
+ending for exactly one kind of operation, a reversal (`snapshot.reverses` set), which has no terminal event to wait for:
+`transfer/DETAILS.md` § "Birth is skippable".
 
 ## Read surface
 

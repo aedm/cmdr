@@ -824,7 +824,7 @@ what covers the gap between the start command answering and the binder acquiring
 
 **Birth is skippable.** `adoptOperationId` names an operation that is already running, and `start()` binds its session
 instead of dispatching: the queue's Show button, and the reason the two halves are worth separating at all. The view is
-otherwise the same one, down to the buttons. Three things differ, each for its own reason:
+otherwise the same one, down to the buttons. Four things differ, each for its own reason:
 
 - **Auto-queue is off.** It is a decision a DISPATCHING view makes (don't stack a second modal over the one already up);
   a view opened precisely to watch this operation would instead bounce it back out of sight, which reads as the button
@@ -837,6 +837,12 @@ otherwise the same one, down to the buttons. Three things differ, each for its o
   have.
 - **The parent runs no pane tail.** An adopted view has no birth context, and the two-slot arrangement in `dialog-state`
   is what makes the wrong version unreachable: `../../file-explorer/pane/DETAILS.md` § "Birth context".
+- **An adopted REVERSAL ends by leaving the registry.** Show is offered on an operation-log undo too, and that operation
+  emits progress with no terminal event, so the view closes through `onCancelled` once its session reports
+  `leftRegistry`, whether it finished or a Cancel stopped it. Without that, it never closes on its own and every Cancel
+  waits out `CANCEL_SETTLE_FALLBACK_MS`. ❌ The reading is gated on `snapshot.reverses`: an ordinary transfer's removal
+  can overtake its `write-complete`, and closing on it would report a cancel for a copy that finished. `canHandOff`
+  also refuses an operation that left, so closing the modal can't "background" something that's gone.
 
 **An adopted view never shows `OPENING_PHASE`, and that is a decision.** `scanning` is what a DISPATCHING view opens on,
 because a confirmed transfer is about to count; an adopted operation could be anywhere, and titling a 21%-written copy
