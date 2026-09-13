@@ -116,6 +116,7 @@ pub async fn execute_copy<R: Runtime>(app: &AppHandle<R>, params: &Value) -> Too
         // one). Replaces the generation ack so the tool returns the exact id.
         let operation_id = mcp_await_operation_start(
             app,
+            "copy",
             "mcp-copy",
             json!({"autoConfirm": true, "onConflict": on_conflict}),
             OPERATION_START_TIMEOUT,
@@ -154,6 +155,7 @@ pub async fn execute_move<R: Runtime>(app: &AppHandle<R>, params: &Value) -> Too
     if auto_confirm {
         let operation_id = mcp_await_operation_start(
             app,
+            "move",
             "mcp-move",
             json!({"autoConfirm": true, "onConflict": on_conflict}),
             OPERATION_START_TIMEOUT,
@@ -201,6 +203,7 @@ pub async fn execute_compress<R: Runtime>(app: &AppHandle<R>, params: &Value) ->
         // than silently overwriting). `operation_started_ok(None)` covers that arm.
         let operation_id = mcp_await_operation_start(
             app,
+            "compress",
             "mcp-compress",
             json!({"autoConfirm": true}),
             OPERATION_START_TIMEOUT,
@@ -255,7 +258,8 @@ pub async fn execute_delete<R: Runtime>(app: &AppHandle<R>, params: &Value) -> T
         if let Some(p) = permanent {
             payload["permanent"] = json!(p);
         }
-        let operation_id = mcp_await_operation_start(app, "mcp-delete", payload, OPERATION_START_TIMEOUT).await?;
+        let operation_id =
+            mcp_await_operation_start(app, "delete", "mcp-delete", payload, OPERATION_START_TIMEOUT).await?;
         Ok(operation_started_ok("Delete", operation_id))
     } else {
         let mut payload = json!({"autoConfirm": false});

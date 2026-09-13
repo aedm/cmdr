@@ -466,22 +466,37 @@ fn parse_mcp_response(payload: &str, expected_id: &str) -> Option<Result<(), Str
     })
 }
 
-/// Parse an `mcp-response` for an autoConfirm file operation, extracting the
-/// spawned `operationId` when present.
+/// What the frontend says an autoConfirm file operation's start did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum OperationStartAck {
+    /// The operation started. `None` when the FE acked without spawning one (the
+    /// compress auto-confirm that keeps its dialog open on an existing target).
+    Started { operation_id: Option<String> },
+    /// The FE refused the start because a dialog is in the way, and named it
+    /// (`blockedBy`). Its gate runs after `refuse_while_dialog_blocks` reads the
+    /// tracker, so this is a dialog that opened in between.
+    Blocked { blocking_dialog: String },
+}
+
+/// Parse an `mcp-response` for an autoConfirm file operation.
 ///
-/// Same `requestId` correlation as [`parse_mcp_response`], but the success arm
-/// also carries an optional `operationId` (a string): `Some(Ok(Some(id)))` when
-/// the op spawned, `Some(Ok(None))` when the FE acked without spawning one (the
-/// compress auto-confirm that keeps its dialog open on an existing target), and
-/// `Some(Err(msg))` on failure. `None` for a malformed or mismatched payload.
-fn parse_operation_start_response(payload: &str, expected_id: &str) -> Option<Result<Option<String>, String>> {
+/// Same `requestId` correlation as [`parse_mcp_response`]. `ok: true` is
+/// [`OperationStartAck::Started`], carrying the spawned `operationId` when present. A
+/// failure that names a dialog in `blockedBy` is [`OperationStartAck::Blocked`], so
+/// the refusal keeps its typed identity. Any other failure is `Some(Err(msg))`.
+/// `None` for a malformed or mismatched payload.
+fn parse_operation_start_response(payload: &str, expected_id: &str) -> Option<Result<OperationStartAck, String>> {
     let resp = serde_json::from_str::<Value>(payload).ok()?;
     if resp.get("requestId").and_then(|v| v.as_str()) != Some(expected_id) {
         return None;
     }
     if resp.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
         let operation_id = resp.get("operationId").and_then(|v| v.as_str()).map(str::to_string);
-        Some(Ok(operation_id))
+        Some(Ok(OperationStartAck::Started { operation_id }))
+    } else if let Some(blocking_dialog) = resp.get("blockedBy").and_then(|v| v.as_str()) {
+        Some(Ok(OperationStartAck::Blocked {
+            blocking_dialog: blocking_dialog.to_string(),
+        }))
     } else {
         let err = resp
             .get("error")
@@ -598,13 +613,30 @@ where
 /// the id, or `None` when the FE acked without spawning (compress on an existing
 /// target keeps its dialog open). The budget is generous because the flow spans
 /// dialog-open → confirm → the write-op IPC that mints the id.
+///
+/// `verb` is the one the caller gave `refuse_while_dialog_blocks`, so a refusal
+/// from either side reads the same.
 async fn mcp_await_operation_start<R: Runtime>(
     app: &AppHandle<R>,
+    verb: &str,
     event: &str,
     payload: Value,
     timeout_secs: u64,
 ) -> Result<Option<String>, ToolError> {
-    mcp_round_trip_parsed(app, event, payload, timeout_secs, parse_operation_start_response).await
+    let ack = mcp_round_trip_parsed(app, event, payload, timeout_secs, parse_operation_start_response).await?;
+    operation_start_result(verb, ack)
+}
+
+/// Word an operation start's [`OperationStartAck`] for the agent.
+///
+/// A blocked start is [`dialog_block_error`], the same refusal
+/// `refuse_while_dialog_blocks` gives, so the agent sees one answer whichever side
+/// caught the dialog.
+pub(super) fn operation_start_result(verb: &str, ack: OperationStartAck) -> Result<Option<String>, ToolError> {
+    match ack {
+        OperationStartAck::Started { operation_id } => Ok(operation_id),
+        OperationStartAck::Blocked { blocking_dialog } => Err(dialog_block_error(verb, &blocking_dialog)),
+    }
 }
 
 /// Emit a navigation event (`mcp-nav-to-path`, `mcp-volume-select`) and report what the

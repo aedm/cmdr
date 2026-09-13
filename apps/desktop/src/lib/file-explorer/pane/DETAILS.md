@@ -1232,7 +1232,9 @@ passing through any of the others.
   `no-error-string-match` rule applies to a sentence an agent parses just as it does to one our own code would. The
   conversational sentence stays alongside it for the human reading the transcript, and stops at "close it first": ❌
   don't restate the id or name the closing tool in prose. That's a second copy of what the typed field carries, and the
-  two drift the moment either side is edited.
+  two drift the moment either side is edited. A dialog that opens just after the Rust check is caught by the frontend's
+  own gate, whose reply names it in `blockedBy`; `mcp_await_operation_start` words that through the same
+  `dialog_block_error`, so the agent gets one refusal whichever side caught it.
 - **The native menu items grey out** (`routes/(main)/menu-operation-gate.svelte.ts` →
   `commands/menu.rs::set_file_operations_blocked`). ⚠️ CHROME ONLY. A disabled item's accelerator still fires, so this
   can never be the guard; it only stops the app offering what it would then turn down.

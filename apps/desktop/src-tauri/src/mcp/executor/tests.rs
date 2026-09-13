@@ -529,7 +529,9 @@ fn parse_operation_start_response_extracts_the_spawned_operation_id() {
     let payload = r#"{"requestId":"r-1","ok":true,"operationId":"op-42"}"#;
     assert_eq!(
         parse_operation_start_response(payload, "r-1"),
-        Some(Ok(Some("op-42".to_string())))
+        Some(Ok(OperationStartAck::Started {
+            operation_id: Some("op-42".to_string())
+        }))
     );
 }
 
@@ -538,7 +540,10 @@ fn parse_operation_start_response_ok_without_id_is_a_spawnless_ack() {
     // Compress auto-confirm on an existing target keeps its dialog open and mints
     // no op: an OK with no operationId, not a failure.
     let payload = r#"{"requestId":"r-1","ok":true}"#;
-    assert_eq!(parse_operation_start_response(payload, "r-1"), Some(Ok(None)));
+    assert_eq!(
+        parse_operation_start_response(payload, "r-1"),
+        Some(Ok(OperationStartAck::Started { operation_id: None }))
+    );
 }
 
 #[test]
@@ -547,6 +552,26 @@ fn parse_operation_start_response_maps_failure_to_error() {
     assert_eq!(
         parse_operation_start_response(payload, "r-1"),
         Some(Err("Nothing to copy".to_string()))
+    );
+    // A `blockedBy` that isn't a dialog id names nothing, so the sentence is all there is.
+    let malformed = r#"{"requestId":"r-1","ok":false,"blockedBy":7,"error":"Nothing to copy"}"#;
+    assert_eq!(
+        parse_operation_start_response(malformed, "r-1"),
+        Some(Err("Nothing to copy".to_string()))
+    );
+}
+
+#[test]
+fn parse_operation_start_response_keeps_the_frontend_dialog_refusal_typed() {
+    // The FE's own gate runs after the Rust pre-check, so a dialog that opens in between
+    // is caught there and named in `blockedBy`. Read as a plain failure, the agent got
+    // the sentence and no `data.blockingDialog`.
+    let payload = r#"{"requestId":"r-1","ok":false,"blockedBy":"transfer-progress","error":"The transfer-progress dialog is open, so nothing new can start. Close it first, then try again."}"#;
+    assert_eq!(
+        parse_operation_start_response(payload, "r-1"),
+        Some(Ok(OperationStartAck::Blocked {
+            blocking_dialog: "transfer-progress".to_string()
+        }))
     );
 }
 
@@ -638,4 +663,32 @@ fn a_blocked_operation_says_what_to_do_about_it() {
     );
     // Refusing a request the caller can fix is a bad-input answer, not a server fault.
     assert_eq!(err.code, INVALID_PARAMS);
+}
+
+#[test]
+fn a_frontend_dialog_refusal_reaches_the_agent_exactly_like_the_rust_pre_check() {
+    let from_frontend = operation_start_result(
+        "copy",
+        OperationStartAck::Blocked {
+            blocking_dialog: "transfer-progress".to_string(),
+        },
+    )
+    .expect_err("a blocked start is not an OK");
+    let from_pre_check = dialog_block_error("copy", "transfer-progress");
+
+    assert_eq!(from_frontend.code, from_pre_check.code);
+    assert_eq!(from_frontend.message, from_pre_check.message);
+    assert_eq!(from_frontend.data, from_pre_check.data);
+}
+
+#[test]
+fn a_started_operation_passes_its_id_through() {
+    let started = operation_start_result(
+        "copy",
+        OperationStartAck::Started {
+            operation_id: Some("op-42".to_string()),
+        },
+    )
+    .expect("a start is an OK");
+    assert_eq!(started, Some("op-42".to_string()));
 }
