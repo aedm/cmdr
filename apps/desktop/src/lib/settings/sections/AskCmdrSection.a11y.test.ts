@@ -32,8 +32,8 @@ const { consentState } = vi.hoisted(() => ({
 vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
   consentState,
   refreshConsent: vi.fn(() => Promise.resolve()),
-  acceptConsent: vi.fn(() => Promise.resolve(true)),
-  revokeConsent: vi.fn(() => Promise.resolve()),
+  acceptConsent: vi.fn(() => Promise.resolve('done')),
+  revokeConsent: vi.fn(() => Promise.resolve('done')),
 }))
 vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),

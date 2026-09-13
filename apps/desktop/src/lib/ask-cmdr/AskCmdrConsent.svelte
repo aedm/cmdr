@@ -13,6 +13,8 @@
 
     let acceptButton = $state<HTMLButtonElement | null>(null)
     let accepting = $state(false)
+    /** The last Turn on didn't reach the store, so the gate stays and says why. */
+    let notSaved = $state(false)
 
     // Focus the primary action on mount so the keyboard user lands on it (the rail mounts
     // this only when consent is needed, so the composer's focus effect doesn't run).
@@ -23,10 +25,13 @@
     async function onAccept(): Promise<void> {
         if (accepting) return
         accepting = true
+        notSaved = false
         try {
+            const outcome = await acceptConsent()
+            notSaved = outcome === 'notSaved'
             // Re-run open once consent lands so the rail bootstraps any existing thread
             // (a re-accept after a prior turn-off) and focuses the composer.
-            if (await acceptConsent()) await openRail()
+            if (outcome === 'done') await openRail()
         } finally {
             accepting = false
         }
@@ -62,6 +67,9 @@
         <p class="consent-note">{tString('askCmdr.consent.logsNote')}</p>
     </div>
     <div class="consent-actions">
+        {#if notSaved}
+            <p class="consent-not-saved" role="status">{tString('askCmdr.consent.notSaved')}</p>
+        {/if}
         <button type="button" class="consent-decline" onclick={closeRail}>
             {tString('askCmdr.consent.decline')}
         </button>
@@ -161,10 +169,21 @@
 
     .consent-actions {
         display: flex;
+        flex-wrap: wrap;
+        align-items: center;
         justify-content: flex-end;
         gap: var(--spacing-sm);
         padding: var(--spacing-sm) var(--spacing-md);
         border-top: 1px solid var(--color-border-subtle);
+    }
+
+    /* Takes the free space left of the buttons, and its own line when the rail is narrow. */
+    .consent-not-saved {
+        flex: 1 1 12rem;
+        margin: 0;
+        font-size: var(--font-size-sm);
+        line-height: var(--font-line-height-prose);
+        color: var(--color-warning-text);
     }
 
     .consent-accept,

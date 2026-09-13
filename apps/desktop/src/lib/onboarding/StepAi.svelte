@@ -297,12 +297,12 @@
             setSetting('askCmdr.proactive', false)
             // Revoking also purges the proactive pipeline's stored rows in the backend,
             // which is the intent of an explicit "no". It's a no-op for someone who never
-            // consented (the store just deletes two absent rows). Never fatal: a wizard
-            // that traps the user because `main.db` hiccuped is worse than a logged warning.
-            try {
-                await revokeConsent()
-            } catch (error) {
-                log.warn("Couldn't turn Ask Cmdr off for a 'no AI' pick: {error}", { error })
+            // consented (the store just deletes two absent rows). A refused revoke gets one
+            // more try, since a consent left recorded would greet a later "AI on" with Ask
+            // Cmdr already consented. Never fatal: a wizard that traps the user because
+            // `main.db` hiccuped is worse than a logged warning.
+            if ((await revokeConsent()) === 'notSaved' && (await revokeConsent()) === 'notSaved') {
+                log.warn("Couldn't turn Ask Cmdr off for a 'no AI' pick, even on a second try; consent stays recorded")
             }
         }
         // Belt-and-braces: the applier listener fires on each setSetting above, but we

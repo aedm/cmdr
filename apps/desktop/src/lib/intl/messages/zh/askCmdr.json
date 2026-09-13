@@ -416,6 +416,10 @@
   "@askCmdr.consent.decline": {
     "sourceHash": "a0e63d7"
   },
+  "askCmdr.consent.notSaved": "Cmdr 没能保存你的选择。要再试一次吗？",
+  "@askCmdr.consent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "askCmdr.consent.whatsNew.title": "自你开启以来有哪些变化",
   "@askCmdr.consent.whatsNew.title": {
     "sourceHash": "641705c"

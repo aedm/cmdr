@@ -418,6 +418,10 @@
   "@askCmdr.consent.decline": {
     "sourceHash": "a0e63d7"
   },
+  "askCmdr.consent.notSaved": "Cmdr no pudo guardar tu elección. ¿Lo intentas de nuevo?",
+  "@askCmdr.consent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "askCmdr.consent.whatsNew.title": "Qué ha cambiado desde que lo activaste",
   "@askCmdr.consent.whatsNew.title": {
     "sourceHash": "641705c"

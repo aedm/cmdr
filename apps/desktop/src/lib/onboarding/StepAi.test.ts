@@ -28,6 +28,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, tick, unmount, flushSync } from 'svelte'
+import type { ConsentOutcome } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
 import StepAi from './StepAi.svelte'
 import {
   closeWizard,
@@ -125,8 +126,8 @@ vi.mock('$lib/settings/ai-config', () => ({
 
 // Ask Cmdr consent lives in `main.db`, not the registry, so the step drives it through
 // these commands. The wizard may only ever REVOKE (see the consent-bypass guard below).
-const revokeConsent = vi.fn<() => Promise<void>>(() => Promise.resolve())
-const acceptConsent = vi.fn<() => Promise<boolean>>(() => Promise.resolve(true))
+const revokeConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
+const acceptConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
 vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
   revokeConsent: () => revokeConsent(),
   acceptConsent: () => acceptConsent(),
@@ -134,8 +135,8 @@ vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
 
 // The step's logger, so a test can tell a logged failure from a logged cancel. Lazy
 // wrappers: the step calls `getAppLogger` while its module loads, before these exist.
-const logWarn = vi.fn()
-const logInfo = vi.fn()
+const logWarn = vi.fn<(...args: unknown[]) => void>()
+const logInfo = vi.fn<(...args: unknown[]) => void>()
 vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({
     warn: (...args: unknown[]) => logWarn(...args),
@@ -218,7 +219,7 @@ describe('StepAi', () => {
     openExternalUrl.mockClear()
     pushConfigToBackend.mockClear()
     revokeConsent.mockReset()
-    revokeConsent.mockResolvedValue(undefined)
+    revokeConsent.mockResolvedValue('done')
     acceptConsent.mockClear()
     settingsMap['onboarding.fullDiskAccessChoice'] = 'allow'
     settingsMap['onboarding.completed'] = false
@@ -461,8 +462,38 @@ describe('StepAi', () => {
     expect(settingsMap['askCmdr.proactive']).toBe(true)
   })
 
+  it('a refused revoke is tried once more, so one store hiccup doesn\'t leave consent recorded', async () => {
+    revokeConsent.mockResolvedValueOnce('notSaved').mockResolvedValueOnce('done')
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'cloud')
+    await waitForAsync()
+    pickChoice(mounted.target, 'off')
+    await waitForAsync()
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+    expect(revokeConsent).toHaveBeenCalledTimes(2)
+    expect(logWarn).not.toHaveBeenCalled()
+    expect(getOnboardingState().currentStep).toBe(3)
+  })
+
+  it('a revoke refused twice is logged, and still never traps the person on the step', async () => {
+    revokeConsent.mockResolvedValue('notSaved')
+    mounted = mountStep()
+    await waitForAsync()
+    pickChoice(mounted.target, 'cloud')
+    await waitForAsync()
+    pickChoice(mounted.target, 'off')
+    await waitForAsync()
+    getOnboardingState().footerOverride?.[0].onclick()
+    await waitForAsync()
+    expect(revokeConsent).toHaveBeenCalledTimes(2)
+    expect(logWarn).toHaveBeenCalledOnce()
+    expect(getOnboardingState().currentStep).toBe(3)
+  })
+
   it('a failing revoke still advances and leaves the forward button usable', async () => {
-    revokeConsent.mockRejectedValue(new Error('main.db is unreachable'))
+    revokeConsent.mockResolvedValue('notSaved')
     mounted = mountStep()
     await waitForAsync()
     pickChoice(mounted.target, 'cloud')

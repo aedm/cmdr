@@ -134,6 +134,7 @@ export type MessageKey =
   | 'askCmdr.consent.local'
   | 'askCmdr.consent.logsNote'
   | 'askCmdr.consent.memory'
+  | 'askCmdr.consent.notSaved'
   | 'askCmdr.consent.proactive'
   | 'askCmdr.consent.title'
   | 'askCmdr.consent.whatsNew.body'

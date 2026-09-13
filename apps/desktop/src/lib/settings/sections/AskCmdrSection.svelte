@@ -47,6 +47,8 @@
     // Enable state = consent (main.db). Refresh on mount so the toggle reflects the store,
     // even if the rail changed it in the main window.
     let busy = $state(false)
+    /** The last Turn on or Turn off didn't reach the store; the status above shows what did. */
+    let consentNotSaved = $state(false)
     $effect(() => {
         void refreshConsent()
     })
@@ -59,9 +61,10 @@
     async function toggle(): Promise<void> {
         if (busy) return
         busy = true
+        consentNotSaved = false
         try {
-            if (enabled) await revokeConsent()
-            else await acceptConsent()
+            const outcome = enabled ? await revokeConsent() : await acceptConsent()
+            consentNotSaved = outcome === 'notSaved'
         } finally {
             busy = false
         }
@@ -236,6 +239,9 @@
                 {/if}
             </Button>
         </div>
+        {#if consentNotSaved}
+            <p class="consent-not-saved" role="status">{tString('askCmdr.consent.notSaved')}</p>
+        {/if}
     {/if}
 
     <!-- What Cmdr sends (the same copy as the opt-in screen). Open by default for
@@ -451,6 +457,12 @@
         margin: var(--spacing-xs) 0 0;
         font-size: var(--font-size-sm);
         color: var(--color-text-secondary);
+    }
+
+    .consent-not-saved {
+        margin: 0 0 var(--spacing-sm);
+        font-size: var(--font-size-sm);
+        color: var(--color-warning-text);
     }
 
     .disclosure {

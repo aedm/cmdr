@@ -416,6 +416,10 @@
   "@askCmdr.consent.decline": {
     "sourceHash": "a0e63d7"
   },
+  "askCmdr.consent.notSaved": "Cmdr không lưu được lựa chọn của bạn. Thử lại?",
+  "@askCmdr.consent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "askCmdr.consent.whatsNew.title": "Những gì đã thay đổi kể từ khi bạn bật tính năng này",
   "@askCmdr.consent.whatsNew.title": {
     "sourceHash": "641705c"

@@ -32,6 +32,13 @@ interface ConsentState {
   needsReconsent: boolean
 }
 
+/**
+ * What an accept or revoke came to. `notSaved` means the person's choice isn't what the store
+ * holds, so the caller has to say so (or try again): ❌ never let it pass as `done`, because a
+ * silently kept consent is a "no" that didn't stick.
+ */
+export type ConsentOutcome = 'done' | 'notSaved'
+
 export const consentState = $state<ConsentState>({ accepted: null, acceptedAt: null, needsReconsent: false })
 
 function apply(status: AskCmdrConsentStatus): void {
@@ -53,23 +60,32 @@ export async function refreshConsent(): Promise<void> {
   }
 }
 
-/** Record the opt-in (turn Ask Cmdr on) and refresh. Resolves to the new accepted state. */
-export async function acceptConsent(): Promise<boolean> {
+/**
+ * Record the opt-in (turn Ask Cmdr on) and refresh. `done` only when the store now reads
+ * accepted: a store that never opened takes the write as a no-op and still reads "off".
+ */
+export async function acceptConsent(): Promise<ConsentOutcome> {
   try {
     await acceptAskCmdrConsent()
-    await refreshConsent()
   } catch (e) {
     log.warn('recording consent failed: {error}', { error: String(e) })
   }
-  return consentState.accepted === true
+  await refreshConsent()
+  return consentState.accepted === true ? 'done' : 'notSaved'
 }
 
-/** Turn Ask Cmdr off (clear consent) and refresh. Chats are kept. */
-export async function revokeConsent(): Promise<void> {
+/**
+ * Turn Ask Cmdr off (clear consent) and refresh. Chats are kept. `notSaved` when the store
+ * refused the write; the status is re-read either way, so the surfaces show what it holds.
+ */
+export async function revokeConsent(): Promise<ConsentOutcome> {
+  let outcome: ConsentOutcome = 'done'
   try {
     await revokeAskCmdrConsent()
-    await refreshConsent()
   } catch (e) {
     log.warn('turning Ask Cmdr off failed: {error}', { error: String(e) })
+    outcome = 'notSaved'
   }
+  await refreshConsent()
+  return outcome
 }

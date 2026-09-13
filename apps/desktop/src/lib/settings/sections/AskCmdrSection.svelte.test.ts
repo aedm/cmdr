@@ -1,5 +1,6 @@
 /**
- * Tier-3 tests for `AskCmdrSection.svelte`, the chat memory size row.
+ * Tier-3 tests for `AskCmdrSection.svelte`: the chat memory size row, and what the section
+ * says when the store refuses a consent change or a memory wipe.
  *
  * Pins what the user can actually do and see: the presets are all there with Automatic
  * first, and a size larger than the window Cmdr believes the model has WARNS while keeping
@@ -31,8 +32,8 @@ vi.mock('$lib/settings/settings-store', () => ({
 vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
   consentState: { accepted: true, acceptedAt: 1_760_000_000 },
   refreshConsent: vi.fn(() => Promise.resolve()),
-  acceptConsent: vi.fn(() => Promise.resolve(true)),
-  revokeConsent: vi.fn(() => Promise.resolve()),
+  acceptConsent: vi.fn(() => Promise.resolve('done')),
+  revokeConsent: vi.fn(() => Promise.resolve('done')),
 }))
 
 const { modelWindow } = vi.hoisted(() => ({
@@ -45,6 +46,13 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
 }))
 
 import AskCmdrSection from './AskCmdrSection.svelte'
+import { revokeConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+
+/** Lets a click's awaited IPC settle and the section re-render. */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 5; i++) await Promise.resolve()
+  await tick()
+}
 
 async function mountSection(): Promise<HTMLElement> {
   const target = document.createElement('div')
@@ -116,6 +124,31 @@ describe('AskCmdrSection chat memory size', () => {
     modelWindow.knownWindowTokens = 16_384
     const target = await mountSection()
     expect(warningText(target)).toBeNull()
+    target.remove()
+  })
+})
+
+describe('AskCmdrSection when the store says no', () => {
+  it('says so under the row when turning Ask Cmdr off didn\'t save, instead of re-enabling silently', async () => {
+    vi.mocked(revokeConsent).mockResolvedValueOnce('notSaved')
+    const target = await mountSection()
+
+    target.querySelector<HTMLButtonElement>('.enable-row button')?.click()
+    await settle()
+
+    expect(target.querySelector('.consent-not-saved')?.textContent.trim()).toBe(
+      'Cmdr couldn’t save your choice. Try again?',
+    )
+    target.remove()
+  })
+
+  it('stays quiet when the change saved', async () => {
+    const target = await mountSection()
+
+    target.querySelector<HTMLButtonElement>('.enable-row button')?.click()
+    await settle()
+
+    expect(target.querySelector('.consent-not-saved')).toBeNull()
     target.remove()
   })
 })

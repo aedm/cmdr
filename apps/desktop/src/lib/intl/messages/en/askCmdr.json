@@ -454,6 +454,10 @@
     "description": "Secondary button on the Ask Cmdr consent screen that closes the rail without opting in. Sentence case.",
     "screenshot": "ask-cmdr-consent.png"
   },
+  "askCmdr.consent.notSaved": "Cmdr couldn’t save your choice. Try again?",
+  "@askCmdr.consent.notSaved": {
+    "description": "Short line shown when turning Ask Cmdr on or off didn't stick because Cmdr couldn't write the choice to its own local database. Appears beside the consent screen's buttons in the Ask Cmdr side panel, and under the on/off row in Ask Cmdr settings. The status next to it still shows what's actually saved. \"Ask Cmdr\" isn't named here; \"Cmdr\" is the app name and stays untranslated. The apostrophe is U+2019."
+  },
   "askCmdr.consent.whatsNew.title": "What’s changed since you turned this on",
   "@askCmdr.consent.whatsNew.title": {
     "description": "Heading above the Ask Cmdr consent screen, shown ONLY to someone who already accepted an older version of this copy, so they can see why they are being asked again. Sentence case. The apostrophe is U+2019.",

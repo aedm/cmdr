@@ -419,6 +419,10 @@
   "@askCmdr.consent.decline": {
     "sourceHash": "a0e63d7"
   },
+  "askCmdr.consent.notSaved": "Cmdr kon je keuze niet opslaan. Opnieuw proberen?",
+  "@askCmdr.consent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "askCmdr.consent.whatsNew.title": "Wat er veranderd is sinds je dit aanzette",
   "@askCmdr.consent.whatsNew.title": {
     "sourceHash": "641705c"

@@ -64,7 +64,7 @@ vi.mock('./ask-cmdr-trigger.svelte', () => ({
 vi.mock('./ask-cmdr-consent.svelte', () => ({
   consentState,
   refreshConsent: vi.fn(),
-  acceptConsent: vi.fn(() => Promise.resolve(true)),
+  acceptConsent: vi.fn(() => Promise.resolve('done')),
   revokeConsent: vi.fn(),
 }))
 

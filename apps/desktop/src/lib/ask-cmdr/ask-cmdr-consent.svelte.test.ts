@@ -50,23 +50,49 @@ describe('refreshConsent', () => {
   })
 })
 
+const notAccepted: AskCmdrConsentStatus = { accepted: false, currentVersion: 1, acceptedVersion: null, acceptedAt: null }
+const accepted: AskCmdrConsentStatus = { accepted: true, currentVersion: 1, acceptedVersion: 1, acceptedAt: 1_760_000_100 }
+
 describe('acceptConsent', () => {
-  it('records consent, refreshes, and returns the new accepted state', async () => {
+  it('records consent, refreshes, and answers done', async () => {
     acceptMock.mockResolvedValue(undefined)
-    statusMock.mockResolvedValue({ accepted: true, currentVersion: 1, acceptedVersion: 1, acceptedAt: 1_760_000_100 })
+    statusMock.mockResolvedValue(accepted)
     const result = await acceptConsent()
     expect(acceptMock).toHaveBeenCalledOnce()
-    expect(result).toBe(true)
+    expect(result).toBe('done')
     expect(consentState.accepted).toBe(true)
+  })
+
+  it('answers notSaved when the store refuses the write, and the gate stays shut', async () => {
+    acceptMock.mockRejectedValue(new Error('database is locked'))
+    statusMock.mockResolvedValue(notAccepted)
+    expect(await acceptConsent()).toBe('notSaved')
+    expect(consentState.accepted).toBe(false)
+  })
+
+  it('answers notSaved when the write went through but the store still reads not accepted', async () => {
+    // A store that never opened takes the write as a no-op and reads back "not accepted".
+    acceptMock.mockResolvedValue(undefined)
+    statusMock.mockResolvedValue(notAccepted)
+    expect(await acceptConsent()).toBe('notSaved')
   })
 })
 
 describe('revokeConsent', () => {
-  it('clears consent and refreshes to not-accepted', async () => {
+  it('clears consent, refreshes, and answers done', async () => {
     revokeMock.mockResolvedValue(undefined)
-    statusMock.mockResolvedValue({ accepted: false, currentVersion: 1, acceptedVersion: null, acceptedAt: null })
-    await revokeConsent()
+    statusMock.mockResolvedValue(notAccepted)
+    expect(await revokeConsent()).toBe('done')
     expect(revokeMock).toHaveBeenCalledOnce()
     expect(consentState.accepted).toBe(false)
+  })
+
+  it('answers notSaved when the store refuses, and re-reads so the status stays honest', async () => {
+    // Pre-fix this swallowed the refusal: a "turn off" or a wizard "no AI" pick silently left
+    // consent recorded, and no caller could tell.
+    revokeMock.mockRejectedValue(new Error('disk I/O error'))
+    statusMock.mockResolvedValue(accepted)
+    expect(await revokeConsent()).toBe('notSaved')
+    expect(consentState.accepted).toBe(true)
   })
 })

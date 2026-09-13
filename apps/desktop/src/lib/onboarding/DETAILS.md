@@ -318,11 +318,12 @@ silently restart an agent that starts conversations on its own; Settings › AI 
 the proactive pipeline's stored rows once readiness no longer permits them. That's the point of an explicit "no", and
 it's why the cloud/local branches must not reach this call.
 
-**Neither failure strands the user.** `revokeConsent()` is a no-op for someone who never consented (the store deletes
-two absent `meta` rows), and both it and the surrounding persist are wrapped: a revoke that throws is logged through the
-module's `getAppLogger` and the rest of the persist still runs, and any other persist failure is logged and still
-advances. The footer's `advanceBusy` guard always clears in a `finally`. Same reasoning as the no-key-blocks-advance
-rule above: the wizard never traps someone on a step.
+**A refused revoke is retried, and still never strands the user.** `revokeConsent()` is a no-op for someone who never
+consented (the store deletes two absent `meta` rows). It answers `done` or `notSaved` and never throws, so the step can
+act on a refusal: a `notSaved` gets one more try, because a consent left recorded would greet a later "AI on" with Ask
+Cmdr already consented. Refused twice, the step logs a warning and moves on with the rest of the persist, and any other
+persist failure is logged and still advances. The footer's `advanceBusy` guard always clears in a `finally`. Same
+reasoning as the no-key-blocks-advance rule above: the wizard never traps someone on a step.
 
 ### The missing-API-key gate (confirm once, never block)
 

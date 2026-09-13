@@ -416,6 +416,10 @@
   "@askCmdr.consent.decline": {
     "sourceHash": "a0e63d7"
   },
+  "askCmdr.consent.notSaved": "Cmdr kunde inte spara ditt val. Försök igen?",
+  "@askCmdr.consent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "askCmdr.consent.whatsNew.title": "Vad som har ändrats sedan du slog på det här",
   "@askCmdr.consent.whatsNew.title": {
     "sourceHash": "641705c"

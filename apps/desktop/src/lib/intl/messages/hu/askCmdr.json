@@ -416,6 +416,10 @@
   "@askCmdr.consent.decline": {
     "sourceHash": "a0e63d7"
   },
+  "askCmdr.consent.notSaved": "A Cmdr nem tudta elmenteni a választásodat. Próbáld újra?",
+  "@askCmdr.consent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "askCmdr.consent.whatsNew.title": "Mi változott azóta, hogy bekapcsoltad",
   "@askCmdr.consent.whatsNew.title": {
     "sourceHash": "641705c"

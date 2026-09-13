@@ -533,6 +533,11 @@ fake path — which never sets a real provider — needs the gate to treat the f
     `askCmdr.consent.*`, human-reviewed (principle 6) and shared verbatim with the settings section's disclosure.
     Nothing is sent to a provider until `accepted === true` for the CURRENT copy version. "Not now" closes the rail;
     accepting re-runs `openRail` to bootstrap history + focus the composer.
+  - **`acceptConsent` / `revokeConsent` answer a `ConsentOutcome` (`done` / `notSaved`) and never throw.** `notSaved`
+    means the store holds something other than the person's choice (a refused write, or an accept that still reads
+    "off"), and every caller acts on it: the rail's gate and the settings row show `askCmdr.consent.notSaved`, and the
+    onboarding "no AI" pick retries once. ❌ Never treat `notSaved` as `done`: a swallowed revoke is a "no" that didn't
+    stick.
   - ⚠️ **`consentState.needsReconsent` is what keeps a copy-version bump from looking like a bug.** A bump revokes
     everybody, so somebody with a whole thread history lands on the opt-in screen with no explanation, and the settings
     section would say a bare "off" at them, indistinguishable from never having wanted AI. The flag (`accepted` false
