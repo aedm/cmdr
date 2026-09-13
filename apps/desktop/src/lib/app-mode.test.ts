@@ -8,10 +8,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { getAutomatedRunSpy, orderWindowToBackSpy, warnSpy } = vi.hoisted(() => ({
+const { getAutomatedRunSpy, orderWindowToBackSpy, debugSpy } = vi.hoisted(() => ({
   getAutomatedRunSpy: vi.fn<() => Promise<'none' | 'e2e' | 'capture'>>(),
   orderWindowToBackSpy: vi.fn<(label: string) => Promise<void>>(),
-  warnSpy: vi.fn(),
+  debugSpy: vi.fn(),
 }))
 
 vi.mock('$lib/tauri-commands', () => ({
@@ -20,7 +20,7 @@ vi.mock('$lib/tauri-commands', () => ({
 }))
 
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: warnSpy, error: vi.fn() }),
+  getAppLogger: () => ({ debug: debugSpy, info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }))
 
 import {
@@ -51,7 +51,7 @@ describe('app-mode', () => {
     getAutomatedRunSpy.mockReset()
     orderWindowToBackSpy.mockReset()
     orderWindowToBackSpy.mockResolvedValue(undefined)
-    warnSpy.mockReset()
+    debugSpy.mockReset()
   })
 
   it('resolves to e2e when backend reports an E2E run', async () => {
@@ -157,7 +157,7 @@ describe('app-mode', () => {
       orderWindowToBackSpy.mockRejectedValue(new Error('no window'))
       const win = fakeWindow('shortcuts')
       await expect(orderChildWindowToBackInE2e(win)).resolves.toBeUndefined()
-      expect(warnSpy).toHaveBeenCalled()
+      expect(debugSpy).toHaveBeenCalled()
     })
   })
 
