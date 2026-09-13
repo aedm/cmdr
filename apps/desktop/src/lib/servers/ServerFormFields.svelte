@@ -69,6 +69,8 @@
         onStartFolderBlur?: () => void
         onChange: (patch: Partial<ServerForm>) => void
         addressInput?: HTMLInputElement
+        /** The password input, so a refusal under it can put the caret there. */
+        secretInput?: HTMLInputElement
         rootInput?: HTMLInputElement
         startFolderInput?: HTMLInputElement
     }
@@ -91,6 +93,7 @@
         onStartFolderBlur,
         onChange,
         addressInput = $bindable(),
+        secretInput = $bindable(),
         rootInput = $bindable(),
         startFolderInput = $bindable(),
     }: Props = $props()
@@ -193,6 +196,7 @@
         <label for="server-secret" class="field-label">{tString('servers.sheet.password')}</label>
         <TextInput
             id="server-secret"
+            bind:inputElement={secretInput}
             type="password"
             value={form.secret}
             oninput={(e: Event) => {

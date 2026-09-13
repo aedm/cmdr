@@ -162,7 +162,21 @@ function withRememberFlip(options: {
         await forgetServerSecret(options.volumeId)
         stored = false
       } else if (submission.mode === 'sign-in' && submission.secret && options.identity.saveSecret) {
-        await options.identity.saveSecret(submission.secret.secret)
+        try {
+          await options.identity.saveSecret(submission.secret.secret)
+        } catch (e) {
+          // ❗ A store that refuses (Deny on the Keychain prompt, a locked
+          // keychain, no secret service) is an ANSWER, ❌ never a throw out of the
+          // attempt, which left the sheet stuck on busy. Nothing was filed, so
+          // `stored` stays put and the next press writes again, and no round runs
+          // on a box the store just refused. The line carries the store's words,
+          // ❌ never the secret.
+          log.warn('The Keychain refused the password for {volumeId}: {error}', {
+            volumeId: options.volumeId,
+            error: String(e),
+          })
+          return { kind: 'refused', refusal: 'secret_not_stored' }
+        }
         stored = true
       }
     }

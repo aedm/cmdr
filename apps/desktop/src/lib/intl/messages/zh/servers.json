@@ -167,6 +167,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "Cmdr 没能把这个密码存到钥匙串。请再试一次，或者关闭“记住到钥匙串”，不存密码直接登录。",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr 已保存你的更改，但没能更新钥匙串里的密码。再保存一次即可重试。",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "添加服务器",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

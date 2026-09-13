@@ -169,6 +169,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "Cmdr konnte dieses Passwort nicht im Schlüsselbund sichern. Versuche es noch einmal oder deaktiviere „Im Schlüsselbund merken“, um dich anzumelden, ohne es zu sichern.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr hat deine Änderungen gesichert, konnte das Passwort im Schlüsselbund aber nicht aktualisieren. Sichere noch einmal, um es erneut zu versuchen.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "Server hinzufügen",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

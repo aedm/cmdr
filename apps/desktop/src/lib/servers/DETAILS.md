@@ -130,6 +130,11 @@ credentials, then connected), and a sheet that closed between them would lose wh
 somewhere other than under the field it belongs to. `connect-flow.ts` decides WHEN a human is needed; the sheet decides
 how many times to ask.
 
+**An attempt promises an outcome, and the sheet holds it to that.** One that throws anyway (a broken IPC bridge) is
+logged and reads as `unreachable`, so the sheet never sticks on busy behind a spinner nothing will stop. A secret write
+the Keychain refuses crosses the throw as a `KeychainFailure` (`keychain-failure.ts`), whose diagnostic keeps the
+variant and the store's own words, ❌ never the secret.
+
 **The three SMB sites, and what each `attempt` runs** (`../file-explorer/network/smb-sign-in.ts` builds all three
 requests, so the endpoint header, the remembered username, and the refusal vocabulary can't drift between them):
 
@@ -170,7 +175,9 @@ the standing picked, compares the box against what `hasServerSecret` answered, a
 mend over a live entry would put the just-declined password straight back; ON over an empty store →
 `saveSftpCredentials` / `saveWebdavCredentials` NOW, because an attended sign-in refreshes a remembered secret and never
 seeds one, so a box flipped on with nothing written would promise a thing that never happens. ❌ Neither ever happens as
-a side effect of a dial.
+a side effect of a dial. ❗ A save the Keychain refuses (Deny on the prompt, a locked keychain, no secret service)
+answers `secret_not_stored` under the password field and runs no round: nothing was filed, so the local reading stays
+where it was and the next press writes again.
 
 ❗ **The writer takes the whole tuple the volume id is minted from** (`(host, port, username)` for SFTP, the base URL
 and the account for WebDAV), read off the place's `appRoot` rather than rebuilt from a host plus a default port: an
@@ -192,7 +199,9 @@ about sign-in mode, where username editability is the SHAPE VARIANT's property (
 An EMPTY field means "I didn't come here to change the password", ❌ never "store an empty one": the field opens empty
 every time, since a stored secret is never read back out of the Keychain to prefill it. The typed password is written
 LAST, after the Remember flip, so it wins over a box the same visit turned off: a password field with text in it and
-Save pressed stores that password.
+Save pressed stores that password. A flip or a write that breaks down after the edit saved answers
+`saved_secret_not_updated` under the password field, ❌ never the dial's `unreachable`: the edit landed and no server was
+contacted, and Save again re-saves the same edit and retries the write.
 
 **Edit mode's name field holds what the user TYPED.** The store row's raw name opens it, empty for a server nobody
 named, with the listing's label (`username@host`, published as `nameSource: 'fallback'`) as its placeholder; the sheet's
@@ -280,6 +289,10 @@ token is the only sane state, and a revoked token surfaces as `needs_sign_in` be
   this account (missing, a file, or refused). They name the host.
 - `save_unconfirmed`: a save to a connected place that the server didn't confirm in time. Names the host and says
   nothing was saved.
+- `secret_not_stored`: sign-in mode, Remember went on and the Keychain wouldn't store the password, so no round ran.
+  Says how to sign in without storing it. ❌ Not `authentication_rejected`: no server was asked anything.
+- `saved_secret_not_updated`: edit mode, the settings saved and the password write didn't. Says the changes are saved,
+  so nobody re-saves an edit that landed.
 
 **Whose name a refusal says.** In sign-in mode the sentence names the account the refused ROUND sent
 (`SignInSheet.svelte`'s `roundUsername`), and only the refusal the sheet opened with names `endpoint.username`. Where
@@ -292,11 +305,13 @@ Keys live in `$lib/intl/messages/en/servers.json` under `servers.refusal.*`, rea
 dynamic-prefix entry. `$lib/error-messages/friendly-error-style.test.ts` renders all of them and holds them to the same
 writing rules the friendly-error copy obeys: they are error copy however they are filed.
 
-**A second `Record` says WHICH FIELD each sentence goes under** (`refusalField`): the secret for the two that are about
-a credential, the address for the four that are about the endpoint, the root folder or the start folder for the three
-that are about a folder, and the form for the five no field can fix. ❗ A refusal floating above a form reads as being
-about the whole form: "That password didn't work" under the password field is an instruction, and the same words above
-the address are a puzzle.
+**A second `Record` says WHICH FIELD each sentence goes under** (`refusalField`): the secret for the four that are about
+a credential or storing it, the address for the four that are about the endpoint, the root folder or the start folder
+for the three that are about a folder, and the form for the six no field can fix. ❗ A refusal floating above a form
+reads as being about the whole form: "That password didn't work" under the password field is an instruction, and the
+same words above the address are a puzzle. ❗ Sign-in mode renders only the password field, so there every refusal that
+isn't `secret` reads in the form slot, ❌ never under a field that isn't on screen: a sign-in round refused as
+`unreachable` once showed no word at all.
 
 ## Add mode, address first
 

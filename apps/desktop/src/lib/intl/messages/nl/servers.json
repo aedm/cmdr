@@ -170,6 +170,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "Cmdr kon dit wachtwoord niet bewaren in Sleutelhanger. Probeer het opnieuw of zet ‘Onthoud in Sleutelhanger’ uit om in te loggen zonder het te bewaren.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr heeft je wijzigingen bewaard, maar kon het wachtwoord in Sleutelhanger niet bijwerken. Bewaar opnieuw om het nog eens te proberen.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "Voeg server toe",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

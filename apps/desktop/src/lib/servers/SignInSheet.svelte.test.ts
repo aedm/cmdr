@@ -115,6 +115,38 @@ describe('SignInSheet: a refusal', () => {
     expect(document.activeElement).toBe(secret)
   })
 
+  it('says a refusal about the SERVER in sign-in mode too, where there is no address field to put it under', async () => {
+    // ❗ `unreachable` and `timed_out` belong under the address, which only add
+    // and edit mode render. A sign-in round refused that way showed nothing,
+    // and the person was left pressing Sign in at a sheet that said no word.
+    const attempt = (): Promise<SignInAttemptOutcome> => Promise.resolve({ kind: 'refused', refusal: 'unreachable' })
+    await renderSheet({ mode: 'sign-in', remembered: false, endpoint, shape: { kind: 'password' }, attempt })
+
+    typeInto(document.body.querySelector<HTMLInputElement>('#sign-in-secret') as HTMLInputElement, 'hunter2')
+    await tick()
+    buttonSaying('Sign in').click()
+    await flush()
+
+    const alert = document.body.querySelector('.form-refusal')
+    expect(alert?.getAttribute('role')).toBe('alert')
+    expect(alert?.textContent).toContain("Cmdr couldn't reach nas.local.")
+  })
+
+  it('lets the person try again when an attempt breaks down instead of answering', async () => {
+    // ❗ An attempt promises an outcome. One that throws anyway must not leave
+    // the sheet disabled behind a spinner nothing will ever stop.
+    const attempt = (): Promise<SignInAttemptOutcome> => Promise.reject(new Error('the bridge is gone'))
+    await renderSheet({ mode: 'sign-in', remembered: false, endpoint, shape: { kind: 'password' }, attempt })
+
+    typeInto(document.body.querySelector<HTMLInputElement>('#sign-in-secret') as HTMLInputElement, 'hunter2')
+    await tick()
+    buttonSaying('Sign in').click()
+    await flush()
+
+    expect(buttonSaying('Sign in').disabled).toBe(false)
+    expect(document.body.querySelector('.form-refusal')?.textContent).toContain("Cmdr couldn't reach nas.local.")
+  })
+
   it('offers the secret exactly once per press, and never a username the shape calls read-only', async () => {
     const attempt = (submission: SignInSubmission): Promise<SignInAttemptOutcome> => {
       submissions.push(submission)
@@ -472,6 +504,26 @@ describe('SignInSheet: edit mode', () => {
     // is the one this writes.
     expect(vi.mocked(commands.saveSftpCredentials)).toHaveBeenCalledWith('nas.local', 22, 'ada', 'hunter2')
     expect(vi.mocked(commands.forgetServerSecret)).not.toHaveBeenCalled()
+  })
+
+  it('says the edit landed but the password did not when the Keychain refuses it', async () => {
+    const commands = await import('$lib/tauri-commands')
+    vi.mocked(commands.saveSftpCredentials).mockRejectedValueOnce(new Error('keychain refused: access_denied'))
+    const { done } = await renderSheet({ mode: 'edit', server: SAVED })
+
+    const secret = document.body.querySelector<HTMLInputElement>('#server-secret') as HTMLInputElement
+    typeInto(secret, 'hunter2')
+    await tick()
+    buttonSaying('Save').click()
+    await flush()
+
+    // ❗ The edit WAS saved and no server was contacted. "Couldn't reach" under
+    // the address sent people to save again over an edit that had landed.
+    expect(done).toEqual([])
+    expect(document.body.textContent).toContain('Cmdr saved your changes')
+    expect(document.body.textContent).not.toContain("couldn't reach")
+    expect(secret.getAttribute('aria-invalid')).toBe('true')
+    expect(document.activeElement).toBe(secret)
   })
 
   it('leaves the store alone when the password field is left empty', async () => {

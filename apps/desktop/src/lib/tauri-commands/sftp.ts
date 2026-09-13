@@ -13,7 +13,7 @@ import type {
   SftpUnattendedReconnect,
   TrustedHostKey,
 } from '$lib/ipc/bindings'
-import { throwIpcError } from './ipc-types'
+import { throwKeychainError } from '$lib/servers/keychain-failure'
 
 export type { HostKeyPrompt, KnownSftpServer, SftpHostKeyApprovalResult, TrustedHostKey }
 export type { SftpHostKeyIdentity, SftpUnattendedReconnect } from '$lib/ipc/bindings'
@@ -84,11 +84,11 @@ export async function listTrustedSftpHostKeys(): Promise<TrustedHostKey[]> {
  * passphrase on the key-file rung. Remembering it makes an unattended reconnect
  * possible on those rungs; turning one on is the other switch (`autoReconnect`).
  *
- * Throws a `KeychainError` if the store refused.
+ * Throws a `KeychainFailure` if the store refused.
  */
 export async function saveSftpCredentials(host: string, port: number, username: string, secret: string): Promise<void> {
   const res = await commands.saveSftpCredentials(host, port, username, secret)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwKeychainError(res.error)
 }
 
 /**
@@ -101,10 +101,10 @@ export async function hasSftpCredentials(host: string, port: number, username: s
   return await commands.hasSftpCredentials(host, port, username)
 }
 
-/** Forgets the stored password for one account on one server. */
+/** Forgets the stored password for one account on one server. Throws a `KeychainFailure` if the store refused. */
 export async function deleteSftpCredentials(host: string, port: number, username: string): Promise<void> {
   const res = await commands.deleteSftpCredentials(host, port, username)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwKeychainError(res.error)
 }
 
 /** A saved server with every switch spelled out, which is what a picker or an edit form needs. */

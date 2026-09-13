@@ -168,6 +168,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "Cmdr kunde inte spara det här lösenordet i nyckelringen. Försök igen eller slå av ”Kom ihåg i nyckelringen” för att logga in utan att spara det.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr sparade dina ändringar men kunde inte uppdatera lösenordet i nyckelringen. Spara igen för att försöka en gång till.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "Lägg till server",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

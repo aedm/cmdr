@@ -52,6 +52,16 @@ export type ConnectRefusalKind =
    * ❗ Not `unreachable`: nothing was saved, and in edit mode the address that sentence points at is locked.
    */
   | 'save_unconfirmed'
+  /**
+   * Sign-in mode: Remember went on and the Keychain wouldn't store the password, so the round never dialed.
+   * ❗ Not `authentication_rejected`: no server was asked anything.
+   */
+  | 'secret_not_stored'
+  /**
+   * Edit mode: the settings saved, then the Keychain wouldn't store or forget the password.
+   * ❗ Not `unreachable`: the edit landed and no server was contacted.
+   */
+  | 'saved_secret_not_updated'
 
 const REFUSAL_KEYS: Record<ConnectRefusalKind, MessageKey> = {
   authentication_rejected: 'servers.refusal.authenticationRejected',
@@ -69,6 +79,8 @@ const REFUSAL_KEYS: Record<ConnectRefusalKind, MessageKey> = {
   root_not_found: 'servers.refusal.rootNotFound',
   start_folder_not_found: 'servers.refusal.startFolderNotFound',
   save_unconfirmed: 'servers.refusal.saveUnconfirmed',
+  secret_not_stored: 'servers.refusal.secretNotStored',
+  saved_secret_not_updated: 'servers.refusal.savedSecretNotUpdated',
 }
 
 /** What the place is called in a refusal: its host where there is one, else its name. */
@@ -126,6 +138,9 @@ const REFUSAL_FIELDS: Record<ConnectRefusalKind, RefusalField> = {
   start_folder_not_found: 'start_folder',
   // No field fixes a server that didn't answer.
   save_unconfirmed: 'form',
+  // The password is the one thing that didn't land, so its field is where the retry happens.
+  secret_not_stored: 'secret',
+  saved_secret_not_updated: 'secret',
 }
 
 /** Where `kind`'s sentence goes. */

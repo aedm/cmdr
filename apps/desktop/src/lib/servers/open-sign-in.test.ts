@@ -464,6 +464,33 @@ describe('the Remember box in sign-in mode', () => {
     await seam
   })
 
+  it('says the Keychain refused, and dials nothing, when the box goes ON and the password will not store', async () => {
+    // ❗ The flip lands before the round, so a store that refuses it (Deny on the
+    // Keychain prompt, a locked keychain, no secret service) must answer as a
+    // refusal: thrown out of the attempt, it left the sheet stuck on busy.
+    ipc.mock('save_sftp_credentials', () => {
+      throw { type: 'access_denied', message: 'User canceled the operation.' }
+    })
+    ipc.mock('reconnect_volume_with_credentials', () => null)
+    const seam = openSignInForPlace({ volumeId: VOLUME_ID, registered: true })
+    const request = await parkedRequest()
+    const attempt = attemptOf(request)
+    const offer = { mode: 'sign-in' as const, secret: { secret: 'hunter2', remember: true }, username: null }
+
+    expect(await attempt(offer)).toEqual({ kind: 'refused', refusal: 'secret_not_stored' })
+    // A box the store refused isn't what the user asked for, so the round waits.
+    expect(ipc.callCount('reconnect_volume_with_credentials')).toBe(0)
+    expect(JSON.stringify(warn.mock.calls)).not.toContain('hunter2')
+
+    // Nothing was filed, so the next press tries the write again.
+    ipc.mock('save_sftp_credentials', () => null)
+    expect(await attempt(offer)).toEqual({ kind: 'connected', volumeId: VOLUME_ID })
+    expect(ipc.callCount('save_sftp_credentials')).toBe(2)
+
+    closeSignInSheet({ kind: 'connected', volumeId: VOLUME_ID })
+    await seam
+  })
+
   it('writes nothing at all when the box is left where it started', async () => {
     ipc.mock('has_server_secret', () => true)
     ipc.mock('reconnect_volume_with_credentials', () => null)

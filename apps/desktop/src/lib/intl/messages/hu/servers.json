@@ -167,6 +167,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "A Cmdr nem tudta menteni ezt a jelszót a kulcskarikába. Próbáld újra, vagy kapcsold ki a „Megjegyzés a kulcskarikában” beállítást, hogy mentés nélkül jelentkezz be.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "A Cmdr mentette a módosításaidat, de a jelszót nem tudta frissíteni a kulcskarikában. Ments újra, és a Cmdr újra megpróbálja.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "Szerver hozzáadása",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

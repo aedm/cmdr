@@ -168,6 +168,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "O Cmdr não conseguiu salvar esta senha no Acesso às Chaves. Tente novamente ou desative “Lembrar no Acesso às Chaves” para iniciar a sessão sem salvá-la.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "O Cmdr salvou suas alterações, mas não conseguiu atualizar a senha no Acesso às Chaves. Salve novamente para tentar outra vez.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "Adicionar servidor",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

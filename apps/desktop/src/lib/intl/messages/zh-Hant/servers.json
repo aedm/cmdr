@@ -167,6 +167,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "Cmdr 沒辦法把這個密碼存進鑰匙圈。請再試一次，或關閉「記住在鑰匙圈中」，不儲存密碼直接登入。",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr 已儲存你的變更，但沒辦法更新鑰匙圈中的密碼。再儲存一次即可重試。",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "加入伺服器",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

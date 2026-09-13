@@ -6,7 +6,7 @@
 
 import { commands } from '$lib/ipc/bindings'
 import type { KnownWebdavServer, WebdavUnattendedReconnect } from '$lib/ipc/bindings'
-import { throwIpcError } from './ipc-types'
+import { throwKeychainError } from '$lib/servers/keychain-failure'
 
 export type { KnownWebdavServer, WebdavUnattendedReconnect }
 
@@ -41,11 +41,11 @@ export async function disconnectWebdavVolume(volumeId: string): Promise<boolean>
  * disagree with the store. Remembering it makes an unattended reconnect possible;
  * turning one on is the other switch (`autoReconnect`).
  *
- * Throws a `KeychainError` if the store refused, or if `url` never named a server.
+ * Throws a `KeychainFailure` if the store refused, or if `url` never named a server.
  */
 export async function saveWebdavCredentials(url: string, username: string, secret: string): Promise<void> {
   const res = await commands.saveWebdavCredentials(url, username, secret)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwKeychainError(res.error)
 }
 
 /**
@@ -58,10 +58,10 @@ export async function hasWebdavCredentials(url: string, username: string): Promi
   return await commands.hasWebdavCredentials(url, username)
 }
 
-/** Forgets the stored password for one account on one server. */
+/** Forgets the stored password for one account on one server. Throws a `KeychainFailure` if the store refused. */
 export async function deleteWebdavCredentials(url: string, username: string): Promise<void> {
   const res = await commands.deleteWebdavCredentials(url, username)
-  if (res.status === 'error') throwIpcError(res.error)
+  if (res.status === 'error') throwKeychainError(res.error)
 }
 
 /** A saved server with every switch spelled out, which is what a picker or an edit form needs. */

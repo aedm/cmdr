@@ -340,7 +340,15 @@
         roundUsername = submission.mode === 'sign-in' ? submission.username : null
         busy = true
         refusal = null
-        const outcome = await attempt(submission)
+        let outcome: SignInAttemptOutcome = { kind: 'refused', refusal: 'unreachable' }
+        try {
+            outcome = await attempt(submission)
+        } catch (e) {
+            // ❗ An attempt promises an outcome. One that throws anyway (a broken
+            // IPC bridge) must not leave the sheet disabled behind a spinner
+            // nothing will stop, so it reads as the connection that didn't happen.
+            log.warn('A sign-in round broke down instead of answering: {error}', { error: String(e) })
+        }
         busy = false
         await applyOutcome(outcome)
     }
@@ -472,9 +480,13 @@
             await writeTypedSecret(target)
             close({ kind: 'saved' })
         } catch (e) {
-            log.warn('Saving the edited server broke down: {error}', { error: String(e) })
+            // ❗ The edit already landed and no server was contacted, so the
+            // sentence says the password is the one thing that didn't: a Keychain
+            // refusal (Deny, a locked keychain, no secret service). Save again
+            // re-saves the same edit and retries the write.
+            log.warn('The edited server saved, but writing its password broke down: {error}', { error: String(e) })
             busy = false
-            await refuse('unreachable')
+            await refuse('saved_secret_not_updated')
         } finally {
             busy = false
         }
@@ -557,7 +569,9 @@
                     credentials = { ...credentials, ...patch }
                 }}
             />
-            {#if refusalWhere === 'form' && refusalText}
+            <!-- ❗ Sign-in mode renders no address or folder field, so every refusal that
+                 isn't about the password reads here rather than vanishing. -->
+            {#if refusalWhere !== 'secret' && refusalText}
                 <p class="form-refusal" role="alert">{refusalText}</p>
             {/if}
         {:else}
@@ -585,6 +599,7 @@
                     startFolderTouched = true
                 }}
                 bind:addressInput
+                bind:secretInput
                 bind:rootInput
                 bind:startFolderInput
                 onChange={(patch: Partial<ServerForm>) => {

@@ -167,6 +167,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "Cmdr no pudo guardar esta contraseña en el Llavero. Inténtalo de nuevo o desactiva “Recordar en el Llavero” para iniciar sesión sin guardarla.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr guardó tus cambios, pero no pudo actualizar la contraseña en el Llavero. Vuelve a guardar para intentarlo otra vez.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "Añadir servidor",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

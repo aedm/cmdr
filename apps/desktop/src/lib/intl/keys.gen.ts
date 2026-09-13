@@ -2656,6 +2656,8 @@ export type MessageKey =
   | 'servers.refusal.notAWebdavServer'
   | 'servers.refusal.rootNotFound'
   | 'servers.refusal.saveUnconfirmed'
+  | 'servers.refusal.savedSecretNotUpdated'
+  | 'servers.refusal.secretNotStored'
   | 'servers.refusal.startFolderNotFound'
   | 'servers.refusal.startFolderOutsideRoot'
   | 'servers.refusal.timedOut'

@@ -209,6 +209,8 @@ const REFUSAL_KINDS: ConnectRefusalKind[] = [
   'start_folder_not_found',
   'save_unconfirmed',
   'account_not_permitted',
+  'secret_not_stored',
+  'saved_secret_not_updated',
 ]
 
 /**

@@ -168,6 +168,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "Cmdr n''a pas pu enregistrer ce mot de passe dans le trousseau. Réessayez ou désactivez « Mémoriser dans le trousseau » pour vous identifier sans l''enregistrer.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr a enregistré vos modifications, mais n''a pas pu mettre à jour le mot de passe dans le trousseau. Enregistrez à nouveau pour réessayer.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "Ajouter un serveur",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

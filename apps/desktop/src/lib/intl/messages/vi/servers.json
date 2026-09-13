@@ -167,6 +167,14 @@
   "@servers.refusal.saveUnconfirmed": {
     "sourceHash": "f7bb3a6"
   },
+  "servers.refusal.secretNotStored": "Cmdr không thể lưu mật khẩu này vào chuỗi khóa. Hãy thử lại, hoặc tắt “Ghi nhớ trong chuỗi khóa” để đăng nhập mà không lưu mật khẩu.",
+  "@servers.refusal.secretNotStored": {
+    "sourceHash": "080b475"
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr đã lưu các thay đổi của bạn nhưng không thể cập nhật mật khẩu trong chuỗi khóa. Hãy nhấn Lưu lần nữa để thử lại.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "sourceHash": "471a6d8"
+  },
   "servers.sheet.addTitle": "Thêm máy chủ",
   "@servers.sheet.addTitle": {
     "sourceHash": "1099b2a"

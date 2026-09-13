@@ -223,6 +223,14 @@
       "host": "the server''s hostname or address, like \"nas.local\""
     }
   },
+  "servers.refusal.secretNotStored": "Cmdr couldn''t store this password in your Keychain. Try again, or turn off “Remember in Keychain” to sign in without storing it.",
+  "@servers.refusal.secretNotStored": {
+    "description": "Shown under the password field of the sign-in sheet when the user turned on “Remember in Keychain” and the system''s password store refused to keep the password: the user clicked Deny on the system prompt, the keychain is locked, or no password store is available. Cmdr hasn''t tried to sign in yet, and nothing else changed. “Remember in Keychain” must match the servers.sheet.remember checkbox label word for word, inside the quotation marks your language uses. “Keychain” is Apple''s name for the password store; use the name your language''s macOS uses."
+  },
+  "servers.refusal.savedSecretNotUpdated": "Cmdr saved your changes but couldn''t update the password in your Keychain. Save again to try once more.",
+  "@servers.refusal.savedSecretNotUpdated": {
+    "description": "Shown under the password field of the edit server sheet when the server''s other settings were saved, but the system''s password store refused to keep or remove the password: the user clicked Deny on the system prompt, the keychain is locked, or no password store is available. ❗ The other changes DID save, so don''t word it as if nothing was saved. Pressing Save again is safe and only retries the password. “Save” is the sheet''s button (servers.sheet.save). “Keychain” is Apple''s name for the password store; use the name your language''s macOS uses."
+  },
   "servers.sheet.addTitle": "Add server",
   "@servers.sheet.addTitle": {
     "description": "Title of the sheet where the user types a new server. VERB phrase, imperative.",

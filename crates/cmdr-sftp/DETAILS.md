@@ -888,7 +888,8 @@ a sign-in UI genuinely branches on all of it.
 - `listTrustedSftpHostKeys()` → `TrustedHostKey[]` (`host`, `port`, `algorithm`, `fingerprint`, `approvedAt`), for a
   settings screen.
 - `saveSftpCredentials(host, port, username, secret)` / `hasSftpCredentials(...)` → `boolean` /
-  `deleteSftpCredentials(...)`. The two writing ones throw a `KeychainError`. ❗ There is deliberately **no** command
+  `deleteSftpCredentials(...)`. The two writing ones throw a `KeychainFailure` carrying the `KeychainError`
+  (`apps/desktop/src/lib/servers/keychain-failure.ts`). ❗ There is deliberately **no** command
   that hands a secret back: the backend reads the store itself when it builds a session. ❗ **One entry per account,
   whatever the rung uses it for** — see § "The one secret entry" below. ❗ **These three ARE the "remember the secret"
   switch**: save turns it on, `hasSftpCredentials` reads it, delete turns it off, and there is no fourth flag to keep in
