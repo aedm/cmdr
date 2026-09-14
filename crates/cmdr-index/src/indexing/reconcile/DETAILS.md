@@ -217,7 +217,11 @@ the delete-critical per-dir diff for a perf gain the rare rescan doesn't need. H
 requirement, handled without touching the diff: each `read_fs_children` goes through a `GuardedReader` that caps the
 read at `LOCAL_LIST_TIMEOUT` (15 s) on a persistent 8 MB-stack helper thread; an overrun is abandoned and reported as
 unlistable (`None`), mapping onto the EXISTING skip handling (root won't list → failed rescan keeping the prior index;
-subdir won't list → skip and keep it stale). See `../scanner/DETAILS.md`. **Panic safety:** `start_local_reconcile`
+subdir won't list → skip and keep it stale). See `../scanner/DETAILS.md`. The walk thread carries its `LocalReconcile`
+work, and every reader thread takes a `ReconcileRead` share when it's spawned, so an abandoned reader still in a hung
+read keeps the drive held after the walk has moved on or ended (`../lifecycle/DETAILS.md` § "When a volume has been let
+go"). `start_local_reconcile_with` builds the tools on the thread from its work, which is the seam
+`tests::a_local_reconcile_holds_its_volume_until_its_thread_is_done` scripts the reader through. **Panic safety:** `start_local_reconcile`
 wraps `run_local_reconcile` in `std::panic::catch_unwind` and converts a panic into a typed `ScanError::Panicked(msg)`,
 so a walk panic resolves the `JoinHandle` to `Ok(Err(_))` (routed through the completion handler's failure arm), not the
 opaque raw-thread-panic arm. **Gotcha (hardlinks):** `build_live_children` dedups a multi-link inode's bytes ONLY in the

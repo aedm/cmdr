@@ -494,7 +494,9 @@ and drops it after its last read returns:
   hung read included, because the engine holds the share and every worker holds the engine;
 - the phase machine's thread (`Phases`) and every cover walk's (`PhaseCover`, or `SearchCover` for a search's, which
   `VolumeWork::linked` also stops on the volume's stop, one scheduler hop late);
-- a verification's task and the blocking reads under it (`Verifier`).
+- a verification's task and the blocking reads under it (`Verifier`);
+- a local reconcile's thread (`LocalReconcile`) and each `reconcile-read` thread it spawns (`ReconcileRead`), an
+  abandoned one still in a hung read included.
 
 ❌ **A worker stuck in a read keeps its share**, with no timeout that drops it early: the drive then reads as still
 releasing, and an eject doesn't unmount under the read.
@@ -504,6 +506,8 @@ search's walk and the phase machine, each still reading after the drain),
 `scanner::walker::tests::an_abandoned_worker_holds_its_volume_until_its_read_returns`,
 `scanner::tests::a_scan_holds_its_volume_until_its_thread_is_done`,
 `reconcile::verifier::tests::a_verification_holds_its_volume_until_its_walk_is_done`,
+`reconcile::local_reconcile::tests::a_local_reconcile_holds_its_volume_until_its_thread_is_done` and its
+`guarded_reader::an_abandoned_reader_holds_its_volume_until_its_read_returns`,
 `state::tests::a_removable_stop_waits_for_the_start_it_cancelled`,
 `state::tests::a_removable_stop_never_waits_on_a_drive_that_already_left`, and `hold::tests` (the wake, the per-kind
 counts, generations, and the linked cancel).

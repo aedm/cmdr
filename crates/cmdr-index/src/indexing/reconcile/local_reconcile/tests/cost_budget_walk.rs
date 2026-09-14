@@ -19,6 +19,7 @@ fn scripted_reader(marker: &'static str, slow: Duration) -> GuardedReader {
             }
             reconciler::read_fs_children(p, &space)
         }),
+        VolumeWork::for_test("cost-budget-walk-test"),
     )
 }
 

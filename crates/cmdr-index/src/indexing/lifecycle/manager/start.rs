@@ -653,7 +653,7 @@ impl IndexManager {
                 self.volume_root.clone(),
                 space.clone(),
                 &self.writer,
-                self.work.cancel.child_token(),
+                self.work.child(HoldKind::LocalReconcile),
             )
             .map_err(|e| format!("Failed to start reconcile rescan: {e}"))?
         } else {

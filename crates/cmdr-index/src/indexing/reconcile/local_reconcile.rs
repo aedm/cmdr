@@ -61,6 +61,7 @@ use latency_probe::LatencyProbe;
 
 use crate::indexing::DEBUG_STATS;
 use crate::indexing::IndexPathSpace;
+use crate::indexing::hold::{HoldKind, VolumeWork};
 use crate::indexing::reconcile::reconciler::{self, FsChild, LiveChild};
 use crate::indexing::scanner::{LOCAL_LIST_TIMEOUT, ScanError, ScanHandle, ScanProgress, ScanSummary};
 use crate::indexing::store::IndexStore;
@@ -89,6 +90,11 @@ const READER_STACK_SIZE: usize = 8 * 1024 * 1024;
 /// and moves on. Only a genuinely hung read ever spawns a replacement, so the cost
 /// is bounded and self-clearing. Reusing one persistent worker (not a thread per
 /// read) keeps a healthy full rescan free of per-directory thread churn.
+///
+/// Every reader thread carries its own share of the volume's hold, so an abandoned
+/// one keeps the drive held until its read returns, long after the walk has moved on
+/// or ended: a stop that answered "released" over it would unmount under a read in
+/// flight.
 struct GuardedReader {
     read_fn: ReadFn,
     timeout: Duration,
@@ -97,38 +103,46 @@ struct GuardedReader {
     /// Per-directory latency observability, `None` unless
     /// `CMDR_RECONCILE_LATENCY_SPIKE` is set. See [`latency_probe`].
     latency: Option<LatencyProbe>,
+    /// The readers' work (`ReconcileRead`), which each reader thread takes a share
+    /// of when it's spawned.
+    work: VolumeWork,
 }
 
 impl GuardedReader {
     /// Guard the production filesystem read (`reconciler::read_fs_children`) for the
     /// given volume path space (so a mount-rooted drive uses the right exclusion
     /// scope and skips firmlink normalization).
-    fn for_fs(timeout: Duration, space: IndexPathSpace) -> Self {
+    fn for_fs(timeout: Duration, space: IndexPathSpace, work: VolumeWork) -> Self {
         Self::with_read_fn(
             timeout,
             Arc::new(move |p: &Path| reconciler::read_fs_children(p, &space)),
+            work,
         )
     }
 
-    fn with_read_fn(timeout: Duration, read_fn: ReadFn) -> Self {
-        let (req_tx, res_rx) = Self::spawn_worker(&read_fn);
+    fn with_read_fn(timeout: Duration, read_fn: ReadFn, work: VolumeWork) -> Self {
+        let (req_tx, res_rx) = Self::spawn_worker(&read_fn, &work);
         Self {
             read_fn,
             timeout,
             req_tx,
             res_rx,
             latency: LatencyProbe::from_env(Instant::now()),
+            work,
         }
     }
 
-    fn spawn_worker(read_fn: &ReadFn) -> (Sender<PathBuf>, Receiver<FsChildrenResult>) {
+    fn spawn_worker(read_fn: &ReadFn, work: &VolumeWork) -> (Sender<PathBuf>, Receiver<FsChildrenResult>) {
         let (req_tx, req_rx) = channel::<PathBuf>();
         let (res_tx, res_rx) = channel::<FsChildrenResult>();
         let read_fn = Arc::clone(read_fn);
+        let share = work.clone();
         std::thread::Builder::new()
             .name("reconcile-read".into())
             .stack_size(READER_STACK_SIZE)
             .spawn(move || {
+                // Held until this thread exits, which is after its last read returns.
+                let _share = share;
                 // Yield CPU to the UI: this thread reads directories in the background.
                 cmdr_fs::thread_qos::set_current_thread_qos(cmdr_fs::thread_qos::QosClass::Utility);
                 while let Ok(path) = req_rx.recv() {
@@ -145,7 +159,7 @@ impl GuardedReader {
     }
 
     fn respawn(&mut self) {
-        let (req_tx, res_rx) = Self::spawn_worker(&self.read_fn);
+        let (req_tx, res_rx) = Self::spawn_worker(&self.read_fn, &self.work);
         self.req_tx = req_tx;
         self.res_rx = res_rx;
     }
@@ -221,14 +235,37 @@ struct WalkTools {
 /// Mirrors [`scan_volume`](crate::indexing::scanner::scan_volume)'s return shape so `manager::start_scan`'s
 /// completion handler is reused unchanged: a [`ScanHandle`] for progress +
 /// cancellation, and a `JoinHandle` the handler joins for the [`ScanSummary`].
+///
+/// The thread carries `work`, and each of its reader threads a `ReconcileRead`
+/// share under it, so the volume stays held until the walk and every read it
+/// started are done.
 pub(crate) fn start_local_reconcile(
     root: PathBuf,
     space: IndexPathSpace,
     writer: &IndexWriter,
-    cancel: CancellationToken,
+    work: VolumeWork,
+) -> Result<(ScanHandle, std::thread::JoinHandle<Result<ScanSummary, ScanError>>), ScanError> {
+    // Each directory read is capped at `LOCAL_LIST_TIMEOUT` (a hung File Provider
+    // mount is abandoned rather than freezing the rescan), and each subtree's total
+    // read time is capped by the cost budget.
+    start_local_reconcile_with(root, space, writer, work, |work, space| WalkTools {
+        reader: GuardedReader::for_fs(LOCAL_LIST_TIMEOUT, space.clone(), work.child(HoldKind::ReconcileRead)),
+        budget: CostBudget::production(),
+    })
+}
+
+/// [`start_local_reconcile`] with the walk's tools built by `tools`, on the thread,
+/// from the thread's own work: production builds the shipped reader and budget, and
+/// a test scripts the reader.
+fn start_local_reconcile_with(
+    root: PathBuf,
+    space: IndexPathSpace,
+    writer: &IndexWriter,
+    work: VolumeWork,
+    tools: impl FnOnce(&VolumeWork, &IndexPathSpace) -> WalkTools + Send + 'static,
 ) -> Result<(ScanHandle, std::thread::JoinHandle<Result<ScanSummary, ScanError>>), ScanError> {
     let progress = Arc::new(ScanProgress::new());
-    let handle = ScanHandle::new(Arc::clone(&progress), cancel.clone());
+    let handle = ScanHandle::new(Arc::clone(&progress), work.cancel.clone());
 
     let writer = writer.clone();
     let thread_handle = std::thread::Builder::new()
@@ -241,14 +278,8 @@ pub(crate) fn start_local_reconcile(
             // `Ok(Err(_))` (clean logged message + `ScanFailed` ⇒ Stale) rather
             // than a raw thread panic that surfaces as the handler's opaque
             // `Err(_)` "thread panicked" arm.
-            // Each directory read is capped at `LOCAL_LIST_TIMEOUT` (a hung File
-            // Provider mount is abandoned rather than freezing the rescan), and
-            // each subtree's total read time is capped by the cost budget.
-            let tools = WalkTools {
-                reader: GuardedReader::for_fs(LOCAL_LIST_TIMEOUT, space.clone()),
-                budget: CostBudget::production(),
-            };
-            run_catching_panics(|| run_local_reconcile(&root, &space, &writer, &progress, &cancel, tools))
+            let tools = tools(&work, &space);
+            run_catching_panics(|| run_local_reconcile(&root, &space, &writer, &progress, &work.cancel, tools))
         })
         .map_err(ScanError::Io)?;
 

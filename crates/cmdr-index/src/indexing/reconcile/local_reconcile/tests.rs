@@ -4,6 +4,7 @@ use tokio_util::sync::CancellationToken;
 use rusqlite::Connection;
 
 use super::*;
+use crate::indexing::hold::{self, Release};
 use crate::indexing::store::{self, DirStatsById, IndexStore, ROOT_ID};
 use crate::indexing::stress_test_helpers::check_db_consistency;
 use crate::indexing::writer::{IndexWriter, WriteMessage};
@@ -151,10 +152,71 @@ fn no_panic_passes_the_result_through() {
     assert!(matches!(errored, Err(ScanError::EmptyRoot)));
 }
 
+/// The reconcile walk's own thread holds its volume until the walk is done, and each
+/// reader under it holds a share of its own.
+#[test]
+fn a_local_reconcile_holds_its_volume_until_its_thread_is_done() {
+    let h = setup();
+    let root = tree_root();
+    let rp = root.path();
+    ensure_path_in_db(&h, &norm(rp));
+    let volume_id = "local-reconcile-test-holds";
+    let (entered, reading) = channel::<()>();
+    let (release, released) = channel::<()>();
+    let entered = std::sync::Mutex::new(entered);
+    let released = std::sync::Mutex::new(released);
+    let volume = VolumeWork::for_test(volume_id);
+
+    let (_handle, walk) = start_local_reconcile_with(
+        rp.to_path_buf(),
+        IndexPathSpace::root(),
+        &h.writer,
+        volume.child(HoldKind::LocalReconcile),
+        move |work, space| {
+            let space = space.clone();
+            WalkTools {
+                reader: GuardedReader::with_read_fn(
+                    Duration::from_secs(5),
+                    Arc::new(move |p: &Path| {
+                        let _ = entered.lock().unwrap_or_else(|e| e.into_inner()).send(());
+                        // Held until the test lets go: dropping the sender ends every wait.
+                        let _ = released.lock().unwrap_or_else(|e| e.into_inner()).recv();
+                        reconciler::read_fs_children(p, &space)
+                    }),
+                    work.child(HoldKind::ReconcileRead),
+                ),
+                budget: CostBudget::production(),
+            }
+        },
+    )
+    .expect("the reconcile starts");
+    reading
+        .recv_timeout(Duration::from_secs(5))
+        .expect("the reconcile reads its root");
+    drop(volume);
+
+    let held = match hold::wait_until_released(volume_id, Duration::ZERO) {
+        Release::Released => Vec::new(),
+        Release::StillHeld(holders) => holders,
+    };
+    assert!(
+        held.contains(&(HoldKind::LocalReconcile, 1)) && held.iter().any(|(kind, _)| *kind == HoldKind::ReconcileRead),
+        "the walk's thread and its reader still hold the volume: {held:?}"
+    );
+
+    drop(release);
+    let _ = walk.join().expect("the reconcile thread");
+    assert_eq!(
+        hold::wait_until_released(volume_id, Duration::from_secs(5)),
+        Release::Released,
+        "and both let go once the walk is done"
+    );
+}
+
 /// The shipped reader and budget, for the tests that don't script either.
 fn production_tools(space: IndexPathSpace) -> WalkTools {
     WalkTools {
-        reader: GuardedReader::for_fs(LOCAL_LIST_TIMEOUT, space),
+        reader: GuardedReader::for_fs(LOCAL_LIST_TIMEOUT, space, VolumeWork::for_test("local-reconcile-test")),
         budget: CostBudget::production(),
     }
 }
@@ -416,7 +478,7 @@ fn reconcile_after_real_fresh_scan_of_unchanged_tree_is_a_no_op() {
     std::fs::write(rp.join("top.txt"), b"topfil").unwrap(); // 6
 
     // Build the index with the REAL fresh scanner (epoch 1).
-    let work = crate::indexing::hold::VolumeWork::for_test("local-reconcile-test");
+    let work = VolumeWork::for_test("local-reconcile-test");
     let scan_summary = scan_subtree(rp, &IndexPathSpace::root(), &h.writer, &work).expect("fresh scan");
     h.writer.flush_blocking().unwrap();
     // 4 dirs (a, a/deep, b — the subtree root itself isn't counted by run_scan's
@@ -544,7 +606,7 @@ fn reconcile_after_fresh_scan_does_not_double_count_hardlinks() {
     }
 
     // Build the index with the REAL fresh scanner (which dedups hardlinks).
-    let work = crate::indexing::hold::VolumeWork::for_test("local-reconcile-test");
+    let work = VolumeWork::for_test("local-reconcile-test");
     let fresh_summary = scan_subtree(rp, &IndexPathSpace::root(), &h.writer, &work).expect("fresh scan");
     h.writer.flush_blocking().unwrap();
 
@@ -784,6 +846,7 @@ fn a_reconcile_cancelled_after_discovering_a_dir_leaves_no_exact_size_lies() {
             }
             children
         }),
+        VolumeWork::for_test("local-reconcile-test"),
     );
     let progress = ScanProgress::new();
     let summary = run_local_reconcile(
