@@ -8,13 +8,12 @@ instance-isolation reference (per-resource derivation, race-window analysis, deb
 
 `tauri-wrapper.ts` is the single composition point for dev vs prod. Pure helpers in `instance-id.ts` do the work so they
 stay testable. For `pnpm dev`, the wrapper resolves an instance ID (from `--worktree <slug>`, the existing
-`CMDR_INSTANCE_ID` env, or the default `"dev"`), reserves ephemeral ports, composes the bundle identifier + productName
-
-- data dir + generated config payload, writes the config to a `$TMPDIR/cmdr-tauri-instance-<rand>/tauri.instance.json`
-  (NOT in the repo, so a crashed wrapper can't pollute tracked space), writes the tauri-MCP port file BEFORE Tauri
-  launches (the plugin has no bound-port accessor, so external readers learn the port from the wrapper), and exports
-  `CMDR_DATA_DIR` + `CMDR_SECRET_STORE=file` for non-prod. Production leaves `CMDR_INSTANCE_ID` unset and runs
-  byte-identical to before instance isolation existed.
+`CMDR_INSTANCE_ID` env, or the default `"dev"`), reserves ephemeral ports, composes the bundle identifier, productName,
+data dir, and generated config payload, writes the config to a `$TMPDIR/cmdr-tauri-instance-<rand>/tauri.instance.json`
+(NOT in the repo, so a crashed wrapper can't pollute tracked space), writes the tauri-MCP port file BEFORE Tauri
+launches (the plugin has no bound-port accessor, so external readers learn the port from the wrapper), and exports
+`CMDR_DATA_DIR` and `CMDR_SECRET_STORE=file` for non-prod. Production leaves `CMDR_INSTANCE_ID` unset and runs
+byte-identical to before instance isolation existed.
 
 ### Dev forces the MCP server on (`CMDR_MCP_ENABLED=1`)
 
