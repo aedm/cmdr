@@ -31,7 +31,10 @@ late-subscriber replay, the registration bus, why the sender outlives the regist
 `wire_volume` routes by typed kind: LOCAL enriches by default (when the master toggle is on); an opted-in SMB volume
 runs the conservative network pass (`../network/DETAILS.md`); MTP is NEVER background-swept. Both local and SMB
 subscribe to the SAME bus the same way; only which pass method runs differs. The opt-in is checked INSIDE the network
-pass, so flipping it on takes effect on the next scan completion (and the opt-in command kicks an immediate pass).
+pass, so flipping it on takes effect on the next scan completion (and the opt-in command kicks an immediate pass). Right
+after the opt-in, and before any read, the network pass refuses a volume whose registered index isn't `Smb`: it reads
+through the mount root with no share of the drive's hold, so a hand-edited opt-in list naming a local drive would read
+it through an eject (`network_pass_tests.rs`).
 
 The edge-consumption discipline (`borrow_and_update`, never a poll) and why the startup sweep filters to `Fresh` are the
 GC safety argument: `../DETAILS.md` § The GC safety argument.

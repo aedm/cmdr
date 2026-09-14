@@ -88,6 +88,8 @@ mod live_bench;
 #[cfg(test)]
 mod live_tests;
 #[cfg(test)]
+mod network_pass_tests;
+#[cfg(test)]
 mod reclaim_tests;
 
 // ── The scheduler handle ────────────────────────────────────────────────────
@@ -483,6 +485,22 @@ impl MediaScheduler {
         if !network::config::is_opted_in(volume_id) {
             log::debug!(target: "media_index", "network enrichment skips '{volume_id}': not opted in");
             return Ok(PassOutcome::Done(0));
+        }
+        // Only a share's index runs this pass, the same mapping `lifecycle::wire_volume`
+        // kicks by. It reads straight through the volume's mount root, and nothing a
+        // drive's eject waits on holds it, so a hand-edited opt-in list naming a local
+        // drive would have it read a USB stick right through the unmount. ❌ Keep this
+        // before the first read.
+        match crate::indexing::lifecycle::state::volume_kind(volume_id) {
+            Some(crate::IndexVolumeKind::Smb) => {}
+            Some(kind) => {
+                log::warn!(target: "media_index", "network enrichment refuses '{volume_id}': its index is {kind:?}, not a share");
+                return Ok(PassOutcome::Done(0));
+            }
+            None => {
+                log::debug!(target: "media_index", "network enrichment skips '{volume_id}': no index registered");
+                return Ok(PassOutcome::Done(0));
+            }
         }
         // The registered volume: source of the mount root (`/Volumes/<share>`, the
         // same source `indexing::routing` uses for the read-side mount strip) AND
