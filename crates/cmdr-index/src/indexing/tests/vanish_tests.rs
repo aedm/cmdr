@@ -110,6 +110,7 @@ async fn scan_through_the_park(at_the_park: AtThePark) -> Observed {
     let parked = tokio::task::block_in_place(|| park.wait_until_parked(Duration::from_secs(20)));
     assert!(
         parked,
+        // allowed-pluralize-noun: PARK_AFTER_DIRS is a compile-time constant of 5, never 1.
         "the walk of {} never parked after {PARK_AFTER_DIRS} directories ({:?} after the scan started; events {:?})",
         root.display(),
         scan_started.elapsed(),
