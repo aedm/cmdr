@@ -96,6 +96,16 @@ filter = 'test(testing::disk_images::real_images::)'
 test-group = 'disk-image'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
+[[profile.default.overrides]]
+# The eject pins on real APFS/HFS+ images (`file_system::volume::eject::real_image`,
+# macOS-only, `#[ignore]`d): same group, same cap, same reason as the harness tests
+# above. A held-file refusal runs the production retries, about 3 s plus the daemon's
+# holder scan per attempt, inside the cap.
+# allowed-unmatched-nextest-filter: macos-only, hdiutil and diskutil have no Linux counterpart
+filter = 'test(file_system::volume::eject::real_image::)'
+test-group = 'disk-image'
+slow-timeout = { period = "30s", terminate-after = 1 }
+
 # SMB stress tests serialize on the shared server (see `smb-stress` group above).
 # The concurrent-streaming one additionally wraps its copy in a 120 s internal
 # `tokio::time::timeout` whose expiry dumps the last 30 `client-mutex:`/`recv:`

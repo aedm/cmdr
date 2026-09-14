@@ -450,6 +450,15 @@ only, so an eject that unmounted it while a sibling partition on the same disk r
 disk powered on, with the refusal kept only in the `info` line; a whole-disk status from DiskArbitration is what closes
 it.
 
+**Real-image pins of today's eject.** `eject/real_image.rs` (macOS, `#[ignore]`d, the `disk-image` nextest group) runs
+`settle_with_retries` with the real mount-table read and a `run_tool` that sends each `diskutil eject` through the
+disk-image harness (`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"), which proves the mount point is the image's
+own before every attempt. An idle APFS volume ejects and its image detaches; a file held open by a child process
+answers `UnmountRefused` after the retries, still mounted. The known gap above is pinned on a two-volume APFS container
+and on two HFS+ partitions of one disk: ejecting A while a file on B is held answers `Ok`, with A unmounted, B still
+mounted, and the image still attached (verified on macOS 26.6.2, hand run, 2026-09-14). Hand-run them with
+`cargo nextest run -p cmdr --run-ignored only -E 'test(file_system::volume::eject::real_image::)'`.
+
 **A refusal is retried before anyone hears about it.** When `settle` answers `UnmountRefused`,
 `unmount_tool::settle_with_retries` runs the tool again after each pause in `REFUSAL_RETRY_BACKOFF` (0.5 s, 1 s, 1.5 s:
 at most four runs), re-settling every time, so a volume that left the mount table in between counts as done. Why: the

@@ -27,6 +27,10 @@ mod deadlines;
 mod in_flight;
 mod unmount_tool;
 
+// Real-image pins of today's eject; `#[ignore]`d, hand-run (see the module).
+#[cfg(all(test, target_os = "macos"))]
+mod real_image;
+
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
