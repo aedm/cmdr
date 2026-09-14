@@ -664,6 +664,25 @@ var AllChecks = []CheckDefinition{
 		Run:             RunWebdavNextcloudTests,
 	},
 	{
+		ID: "desktop-rust-disk-images",
+		// Light: the `disk-image` nextest group runs one test at a time, over
+		// the build `desktop-rust-tests` already warmed.
+		CpuWeight:   2,
+		Exclusive:   ResourceCargoBuildDir,
+		Nickname:    "disk-images",
+		DisplayName: "tests on real APFS and HFS+ disk images",
+		App:         AppDesktop,
+		Tech:        "🦀 Rust",
+		// Opt-in: each test attaches and detaches real disk images, which no
+		// default `pnpm check` should do. `--include-slow` and `pnpm check
+		// disk-images` are the two ways in; off macOS it answers OK untouched.
+		IsSlow:    true,
+		NotInCI:   "every CI runner is ubuntu, and hdiutil and diskutil have no Linux counterpart; runs locally via --include-slow",
+		DependsOn: []string{"desktop-rust-clippy"},
+		Inputs:    rustCompileInputs,
+		Run:       RunDiskImageTests,
+	},
+	{
 		ID:          "desktop-fixture-lane-coverage",
 		Nickname:    "fixture-lane-coverage",
 		DisplayName: "every Docker fixture cell is one CI runs",

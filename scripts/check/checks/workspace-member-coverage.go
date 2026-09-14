@@ -111,6 +111,7 @@ var rustCargoLanes = map[string]string{
 	"nextest-filter-coverage":        "`--workspace` via HostCargoLaneArgs, listing rather than running, so it sees exactly the tests `desktop-rust-tests` does",
 	"desktop-rust-integration-tests": "`--workspace` via HostCargoLaneArgs, narrowed by a filter expression",
 	"desktop-rust-webdav-nextcloud":  "`--workspace` via HostCargoLaneArgs, narrowed to one module of `cmdr-webdav`; the cells the shared fixture lane subtracts",
+	"desktop-rust-disk-images":       "`--workspace` via HostCargoLaneArgs, narrowed to the real-image test modules (`cmdr-fs`, `cmdr`, `cmdr-index`) and run ignored-only; a targeted macOS lane, not a sweep",
 	"desktop-rust-tests-linux":       "`--workspace` computed for `linux`, since cargo runs in a container",
 	"desktop-bindings-fresh":         "hashes every member's sources and manifest to decide whether to regenerate; the regen itself is `--workspace` via `pnpm bindings:regen`",
 	// Not coverage lanes: a handful of named tests against a live endpoint, each

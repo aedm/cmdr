@@ -409,6 +409,7 @@ var realTreeReadingTests = map[string][]string{
 	"TestAllowlistFilesAreFingerprintedByTheirCheck":           {"scripts/check/checks/registry.go", "scripts/check/checks/file-length-allowlist.json"},
 	"TestBindingsRegenAsksCargoTheSameQuestionAsTheOtherLanes": {"apps/desktop/package.json", "Cargo.toml", "apps/desktop/src-tauri/Cargo.toml"},
 	"TestCommittedFrameworkVersionsMatchTheBundleFloor":        {"apps/desktop/src-tauri/tauri.conf.json", "scripts/check/checks/macos-framework-versions.json"},
+	"TestDiskImageLaneMatchesTheDiskImageNextestGroup":         {".config/nextest.toml"},
 	"TestEveryCheckGetsItsOwnRunnerSources":                    {"scripts/check/checks/registry.go"},
 	"TestGlobalInputsCoverWhatNoCheckCanReach":                 {"scripts/check/checks"},
 	"TestGoCompileLanesReadOnlyGoSources":                      {"scripts", "apps/desktop/scripts"},
