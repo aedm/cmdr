@@ -74,6 +74,8 @@ pub(super) enum Call<'a> {
     MountNobrowse { node: &'a str },
     /// `diskutil unmount` of a node.
     Unmount { node: &'a str },
+    /// `diskutil renameVolume <node> <name>`.
+    RenameVolume { node: &'a str, name: &'a str },
     /// `diskutil eject` of a mount point.
     Eject { mount_point: &'a Path },
 }
@@ -86,7 +88,9 @@ impl Call<'_> {
             Call::Detach { whole, .. } => Some(Target::Node(whole)),
             Call::AddApfsVolume { container, .. } => Some(Target::Node(container)),
             Call::PartitionTwoJhfs { whole, .. } => Some(Target::Node(whole)),
-            Call::MountNobrowse { node } | Call::Unmount { node } => Some(Target::Node(node)),
+            Call::MountNobrowse { node } | Call::Unmount { node } | Call::RenameVolume { node, .. } => {
+                Some(Target::Node(node))
+            }
             Call::Eject { mount_point } => Some(Target::MountPoint(mount_point)),
         }
     }
@@ -159,6 +163,7 @@ impl Call<'_> {
             ),
             Call::MountNobrowse { node } => ("diskutil", owned(&["mount", "-mountOptions", "nobrowse", node])),
             Call::Unmount { node } => ("diskutil", owned(&["unmount", node])),
+            Call::RenameVolume { node, name } => ("diskutil", owned(&["renameVolume", node, name])),
             Call::Eject { mount_point } => {
                 let mut args = owned(&["eject"]);
                 args.push(mount_point.to_string_lossy().into_owned());
@@ -361,6 +366,28 @@ mod tests {
         );
         assert!(result.is_ok());
         assert!(checked.get(), "a detach must be ownership-checked");
+    }
+
+    /// A rename changes a mounted volume, so it's proven ours like any other change.
+    #[test]
+    fn a_rename_is_checked_against_the_node_it_renames() {
+        let checked = Cell::new(false);
+        let call = Call::RenameVolume {
+            node: "disk5s1",
+            name: "CMDR1",
+        };
+        let result = gated(
+            &call,
+            |target| {
+                assert!(matches!(target, Target::Node("disk5s1")), "got {target:?}");
+                checked.set(true);
+                Ok(())
+            },
+            || Ok(()),
+        );
+        assert!(result.is_ok());
+        assert!(checked.get(), "a rename must be ownership-checked");
+        assert_eq!(call.describe(), "diskutil renameVolume disk5s1 CMDR1");
     }
 
     #[test]

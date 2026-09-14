@@ -512,7 +512,7 @@ would drift apart.
   rather than waiting on itself forever.
 - **The runner (`runner.rs`).** The closed `Call` enum IS the verb list: `hdiutil create`, `attach -plist -nobrowse`,
   `info -plist`, `detach` and `detach -force`; `diskutil info -plist`, `apfs addVolume … -nomount`,
-  `partitionDisk … JHFS+ … R`, `mount -mountOptions nobrowse`, `unmount`, and `eject`. A verb gets added with its first
+  `partitionDisk … JHFS+ … R`, `mount -mountOptions nobrowse`, `unmount`, `renameVolume`, and `eject`. A verb gets added with its first
   caller. Every call is SIGKILLed past 30 s and reaped. Output goes to anonymous temp files rather than pipes, so a
   large plist can't stall the tool and a helper holding a pipe can't block a read past the kill.
 - **Ownership before every change (`facts.rs`).** A call that changes a disk runs only after `diskutil info -plist`

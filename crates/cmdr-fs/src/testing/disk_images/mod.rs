@@ -441,6 +441,23 @@ impl DiskImage {
         self.run(Call::Eject { mount_point })
     }
 
+    /// `diskutil renameVolume` of volume `index` to a fresh unique name, once its node
+    /// is proven this image's. The volume list is read back from `hdiutil info`
+    /// afterwards, so [`Self::volumes`] says where the volume is mounted now.
+    pub fn rename_volume(&mut self, index: usize) -> Result<&MountedVolume, HarnessError> {
+        let node = self.volume(index)?.node.clone();
+        let name = self.session.unique_volume_name();
+        self.run(Call::RenameVolume {
+            node: &node,
+            name: &name,
+        })?;
+        let mut names: Vec<String> = self.volumes.iter().map(|volume| volume.name.clone()).collect();
+        names[index] = name;
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        self.volumes = self.mounted_volumes(&names)?;
+        self.volume(index)
+    }
+
     /// `hdiutil detach -force` of the whole image, once it's proven ours and not
     /// nested. A detached image answers [`Refusal::ImageNotAttached`].
     pub fn force_detach(&self) -> Result<(), HarnessError> {
