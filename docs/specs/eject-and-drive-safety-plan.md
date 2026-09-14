@@ -1234,6 +1234,8 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     table.
   - `WriteErrorEvent` is wire: `pnpm bindings:regen`; the transfer copy's key family decides whether counts are ICU
     plurals.
+  - M0's `FlushFailure { path, errno }` (`write_operations/durability.rs`) is ready to become the typed transfer variant
+    for a flush failure; build it from that, don't re-derive the errno.
 - **Test plan**:
   - unit: classification with a listed and an unlisted side for `ENOENT`, `EIO`, `ENXIO`, `EBADF`; Phase 4 skipped on an
     unlisted destination; the flush-failure variant; the sweep stops on an unlisted source;
@@ -1263,6 +1265,11 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - `is_one_of_ours` must accept staging dirs and asides for their own rules with strict parsing, or `sweep_on_volume`
     retires them silently (`in_flight_temps.rs:490-493`).
   - The old `+`/`-` lines still replay.
+  - The journal's created-dir rows (`final_dirs` in `transfer/move_op/cross_fs.rs`) still use the plain staging-prefix
+    swap, so after a conflict Rename or Skip they name `destination/name/...` rather than the real `name (N)` landing.
+    ❌ Never trust them for a conflicted move.
+  - A failed M0 flush skips Phase 5 and leaves an EMPTY `.cmdr-staging-<op>`; a merge-child Skip leaves a NON-EMPTY one.
+    The staging-dir sweep meets both.
 - **Test plan**:
   - unit: an old-format reader skips `A` lines (a copy of today's `read_recorded` in the test); a local temp on a
     non-root mount defers at launch; `discard_temp` keeps the record when the root is gone; each aside kind's sweep arm
