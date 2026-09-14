@@ -452,11 +452,11 @@ above defend, and in each a manager is still alive when it does:
 **The hold.** `try_reserve_initializing_phase` mints the volume's root `VolumeWork` (a fresh stop signal plus the first
 share of a new hold GENERATION) in the critical section that inserts the key. The instance keeps one clone
 (`IndexInstance::work`) and the start hands the other to `IndexManager::new_for_kind`. Each share drops with its owner:
-the instance with its removal (the `Initializing` arm of a teardown included), the manager after `shutdown` on every path
-(`finish_stopping`, `finish_clearing`, `finish_failing`, `hand_the_manager_back`'s orphan arm, the start's `(false, _)`
-arms) or with a failed constructor. So the drops ARE the release, and a new teardown path can't forget to report one. ⚠️
-Minted after the lock is released, a stop could free the slot in the gap, find nothing held, and answer `Released` while
-the start goes on to stand a manager up.
+the instance with its removal (the `Initializing` arm of a teardown included), the manager after `shutdown` on every
+path (`finish_stopping`, `finish_clearing`, `finish_failing`, `hand_the_manager_back`'s orphan arm, the start's
+`(false, _)` arms) or with a failed constructor. So the drops ARE the release, and a new teardown path can't forget to
+report one. ⚠️ Minted after the lock is released, a stop could free the slot in the gap, find nothing held, and answer
+`Released` while the start goes on to stand a manager up.
 
 **Shares and kinds.** The table counts shares per (volume id, generation, `HoldKind`). `VolumeWork` pairs a share with
 its stop signal: `child(kind)` shares the generation under a child token, and `linked(caller, volume, kind)` stays a
@@ -464,9 +464,9 @@ child of a caller's token while a forwarding task also cancels it on the volume'
 needs). A wait that runs out answers `StillHeld` with the outstanding shares per kind, and `stop_removable_volume`'s
 `warn` names them; `RemovableStop` itself carries no kinds.
 
-**A drive that's gone.** A re-plugged drive keeps its UUID, so its id, and a share stuck on the dead device must not hold
-up the drive's next life. The reservation reads the root's `MountIdentity` (which mounted filesystem it is) just before
-its lock, local-scanner kinds only, and the generation keeps it. Before it waits, `stop_removable_volume` asks
+**A drive that's gone.** A re-plugged drive keeps its UUID, so its id, and a share stuck on the dead device must not
+hold up the drive's next life. The reservation reads the root's `MountIdentity` (which mounted filesystem it is) just
+before its lock, local-scanner kinds only, and the generation keeps it. Before it waits, `stop_removable_volume` asks
 `VolumeProvider::is_mounted` about each live generation's identity (one read per identity, off the table lock);
 `Some(false)` flags the generation vanished, and neither the wait nor `is_held` counts it. After the wait, a vanished
 generation still held turns zombie with one `warn`: never counted again, even once the drive mounts again, and gone with
@@ -498,8 +498,8 @@ and drops it after its last read returns:
 - a local reconcile's thread (`LocalReconcile`) and each `reconcile-read` thread it spawns (`ReconcileRead`), an
   abandoned one still in a hung read included;
 - a scan's completion task (`ScanCompletion`), which checks the volume's stop before its replay and, under the live-loop
-  slot's lock, before it starts the loop, so a stop that landed first gets neither and a loop started after the check
-  is always one `shutdown` sees;
+  slot's lock, before it starts the loop, so a stop that landed first gets neither and a loop started after the check is
+  always one `shutdown` sees;
 - the live loop (`LiveLoop`, carried by its `EventReconciler`), which outlives `shutdown`'s five-second drain when it's
   stuck, and every subtree rescan it starts (`SubtreeRescan`), each taken under the walk before it, so no rescan thread
   carries the loop's share.

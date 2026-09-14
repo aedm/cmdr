@@ -120,12 +120,12 @@ why `CoverWalk` has no `cancel` of its own. DROPPING the handle does not stop th
 coverage work, matching is query work, so a superseded query keeps its walk). `finish` drops the batch channel BEFORE
 joining, so a caller that stopped reading can't deadlock against a walk parked on a full one.
 
-**The walk's own work.** `context_for_walk(volume_id, caller, for_whom)` mints it under the same registry lock that hands
-out the writer, so both name one life of the volume: `VolumeWork::linked` to the caller's token (so the caller, or a
-yield, stops it) and to the volume's own stop, which the caller's token never hears (one scheduler hop late). It rides
+**The walk's own work.** `context_for_walk(volume_id, caller, for_whom)` mints it under the same registry lock that
+hands out the writer, so both name one life of the volume: `VolumeWork::linked` to the caller's token (so the caller, or
+a yield, stops it) and to the volume's own stop, which the caller's token never hears (one scheduler hop late). It rides
 the walk thread inside `CoverContext`, so a removable stop waits for the walk's last read, and `run_scan` hands the
-walker's workers a child of it. A search's is `SearchCover`, the phase machine's `PhaseCover` (`WalkFor::hold_kind`).
-⚠️ A yield cancels it, which is why it's minted per walk and never a caller's own work.
+walker's workers a child of it. A search's is `SearchCover`, the phase machine's `PhaseCover` (`WalkFor::hold_kind`). ⚠️
+A yield cancels it, which is why it's minted per walk and never a caller's own work.
 
 **The channel is bounded at eight batches.** A consumer that falls behind slows the walk rather than growing a queue to
 the size of the subtree; each batch already carries up to 2 000 entries.

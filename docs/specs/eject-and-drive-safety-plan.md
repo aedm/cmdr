@@ -80,9 +80,8 @@ below.
   `start_volume` writes `user_enabled` and deletes `user_disabled` (`store/connection.rs:273-284`).
 - ❌ **On a local-scanner volume (`IndexVolumeKind::uses_local_scanner()`), a row is deleted only on
   `NotFound`/`ENOTDIR` from a complete observation, with presence `Some(true)` for the generation's mount identity read
-  AFTER that observation**; no
-  completion claim is written for a volume that isn't listed. SMB, MTP, and ADB deletes come from their own protocols
-  and keep today's behavior.
+  AFTER that observation**; no completion claim is written for a volume that isn't listed. SMB, MTP, and ADB deletes
+  come from their own protocols and keep today's behavior.
 - ❌ **Invalidating an index never calls `clear_index`** (it deletes the database, and the per-drive intent markers live
   in it, `lifecycle/master.rs:113-121`). The rebuild is the persisted `index_needs_rebuild` marker routed to
   `RebuildThenCoverInPhases`.
@@ -528,10 +527,10 @@ resume, and an `unmount_pending` flag.
   `wait_until_released` answers `Released` or `StillHeld(Vec<(HoldKind, usize)>)`, and `stop_removable_volume`'s `warn`
   names the kinds. `RemovableStop`'s public shape doesn't change.
 - **A drive that's gone doesn't stay held**: when `stop_removable_volume` runs, it asks the host's presence seam about
-  every live generation's filesystem, by the mount identity its start captured; a generation whose filesystem is
-  mounted nowhere (`Some(false)`) is flagged vanished at once. A wait counts only non-vanished generations, so a stuck
-  worker on a dead device never blocks the re-plugged drive (same UUID, same id). After the stop's wait, vanished
-  generations still held turn zombie with one `warn` naming their kinds.
+  every live generation's filesystem, by the mount identity its start captured; a generation whose filesystem is mounted
+  nowhere (`Some(false)`) is flagged vanished at once. A wait counts only non-vanished generations, so a stuck worker on
+  a dead device never blocks the re-plugged drive (same UUID, same id). After the stop's wait, vanished generations
+  still held turn zombie with one `warn` naming their kinds.
 - **Presence is by filesystem identity, ❌ never by root path.** Renaming a mounted volume moves its mount point while
   the filesystem stays mounted under it, and a file handle opened before the rename keeps writing (verified on macOS
   26.6.2, APFS and HFS+ images, `testing::disk_images::real_images` and `file_system::index_provider::real_image`,
@@ -645,9 +644,8 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
 - **Presence is read AFTER the listing.** An unmounted `/Volumes/X` whose mount-point folder still exists lists as empty
   and complete, so a presence read taken before the listing would let every top-level child be deleted. Gate point: per
   directory, one `is_mounted(identity)` (the generation's captured mount identity) after the read and before sending
-  that directory's deletes, for every local caller
-  (`reconcile_subtree` and its three users, the full local rescan, the stitch) and the verifier's diff. The
-  trait-scanned caller keeps today's behavior.
+  that directory's deletes, for every local caller (`reconcile_subtree` and its three users, the full local rescan, the
+  stitch) and the verifier's diff. The trait-scanned caller keeps today's behavior.
 - **Per-event deletes** (`handle_removal`, `handle_creation_or_modification`): a stat error deletes only on
   `NotFound`/`ENOTDIR`. The live loop, the post-scan replay, and cold-start replay gather an event batch's deletes, stat
   them, then ask `is_mounted(identity)` once before sending.
@@ -664,10 +662,10 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
 
 **Completion and rebuilds (M8)**:
 
-- **`Abandoned` marks** are sent only while `is_mounted(identity) == Some(true)`; a walk that would mark while the root is
-  unlisted drops the marks and reports a vanish. Marks can still persist in the window before DA's force unmount drops
-  the mount entry; that self-heals, because the next `LocalExternal` start clears `Abandoned` and a stamped index routes
-  to `ScanTheVolume` (`launch_route.rs:79-81`).
+- **`Abandoned` marks** are sent only while `is_mounted(identity) == Some(true)`; a walk that would mark while the root
+  is unlisted drops the marks and reports a vanish. Marks can still persist in the window before DA's force unmount
+  drops the mount entry; that self-heals, because the next `LocalExternal` start clears `Abandoned` and a stamped index
+  routes to `ScanTheVolume` (`launch_route.rs:79-81`).
 - **Clearing at start**: a `LocalExternal` start clears `UnreadableCause::Abandoned` through the writer before its first
   walk, only when the abandoned-retry meta window is armed (the arm at `writer/mod.rs:1493-1494` is the cheap "marks
   exist" signal; `clear_unreadable_cause` and any `COUNT` over `unreadable_cause` are full table scans). Ground an
@@ -679,8 +677,8 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
     (`ScanAborted`, freshness `ScanFailed`, no stamp);
   - the phase machine's `take_stock`: before `stamp_home` and `run_the_completion_sequence`.
 - **The rebuild marker**: when a presence read is `Some(false)` with a non-zero delete generation, or a stop finds the
-  generation vanished with a non-zero delete generation, the crate persists meta `index_needs_rebuild = 1`: through the writer when
-  it's alive (then flush), otherwise through a short-lived connection in the after-drain slot (the
+  generation vanished with a non-zero delete generation, the crate persists meta `index_needs_rebuild = 1`: through the
+  writer when it's alive (then flush), otherwise through a short-lived connection in the after-drain slot (the
   `set_drive_index_intent` pattern). It emits `IndexEvent::IndexNeedsFreshScan { volume_id }` (no new type) when the
   marker lands. Persisted, so it survives quit, a restart during the drain, and Linux, where unmounts never stop an
   index.
@@ -943,7 +941,8 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     names (`CMDR<pid><n>`), and the guarded runner with an explicit verb list:
     - `hdiutil`: `create`, `attach -plist -nobrowse`, `info -plist`, `detach`, `detach -force` (non-nested, ours only);
     - `diskutil`: `info -plist`, `apfs addVolume`, `partitionDisk`, `mount -mountOptions nobrowse`, `unmount`,
-      `unmountDisk`, `eject`, and `renameVolume` (added by M3). Every mutating verb re-checks identity first; every call has the SIGKILL deadline.
+      `unmountDisk`, `eject`, and `renameVolume` (added by M3). Every mutating verb re-checks identity first; every call
+      has the SIGKILL deadline.
   - `DiskImage::attach(ImageSpec)`: `Apfs`, `ApfsTwoVolumes` (`hdiutil create -size 1100m -type SPARSE -fs APFS`, then
     `addVolume <container> APFS <name> -nomount`, then a nobrowse mount), `Hfs` (one HFS+ volume, for the vanish pin),
     `HfsTwoPartitions` (`-layout GPTSPUD -fs HFS+`, then `partitionDisk <disk> GPT JHFS+ A 60M JHFS+ B R`, then nobrowse
@@ -1011,8 +1010,7 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - It runs nextest `--run-ignored only` over an explicit filter union of this plan's real-image paths: from M1,
     `testing::disk_images::real_images::` (the `cmdr-fs` harness self-tests),
     `file_system::volume::eject::real_image::`, and `indexing::tests::vanish_tests::`; M3 adds
-    `file_system::index_provider::real_image::`. ❌ Not
-    `external_drive_fixture::`: the FAT/exFAT tests stay hand-run.
+    `file_system::index_provider::real_image::`. ❌ Not `external_drive_fixture::`: the FAT/exFAT tests stay hand-run.
   - Machine-wide serialization comes from M1's per-test lock, not from the lane: the Go runner holding the same lock
     would block its own test processes.
   - Each later milestone adds its real-image path to the union.
@@ -1031,8 +1029,8 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
 - **Scope**: `crates/cmdr-index/src/indexing/hold.rs` (from `state/release.rs`) with `HoldKind`, per-generation keys,
   the vanished flag and zombie standing, `VolumeWork` and `VolumeWork::linked`; the identity-based presence seam
   (`MountIdentity`, `VolumeProvider::mount_identity` and `is_mounted`) with its app implementation (macOS and Linux) and
-  fake; the guarded `renameVolume` harness verb; the reservation's root `VolumeWork` on the instance (`IndexInstance::work`,
-  beside `signals`, since the hold is minted under the registry lock); the media kind gate.
+  fake; the guarded `renameVolume` harness verb; the reservation's root `VolumeWork` on the instance
+  (`IndexInstance::work`, beside `signals`, since the hold is minted under the registry lock); the media kind gate.
 - **Intentions**:
   - The hold is still taken inside the reservation's critical section.
   - `wait_until_released` counts non-vanished generations and names holders.

@@ -221,15 +221,15 @@ subdir won't list → skip and keep it stale). See `../scanner/DETAILS.md`. The 
 work, and every reader thread takes a `ReconcileRead` share when it's spawned, so an abandoned reader still in a hung
 read keeps the drive held after the walk has moved on or ended (`../lifecycle/DETAILS.md` § "When a volume has been let
 go"). `start_local_reconcile_with` builds the tools on the thread from its work, which is the seam
-`tests::a_local_reconcile_holds_its_volume_until_its_thread_is_done` scripts the reader through. **Panic safety:** `start_local_reconcile`
-wraps `run_local_reconcile` in `std::panic::catch_unwind` and converts a panic into a typed `ScanError::Panicked(msg)`,
-so a walk panic resolves the `JoinHandle` to `Ok(Err(_))` (routed through the completion handler's failure arm), not the
-opaque raw-thread-panic arm. **Gotcha (hardlinks):** `build_live_children` dedups a multi-link inode's bytes ONLY in the
-summary byte totals (one global `seen_inodes` for the whole walk) and deliberately leaves the per-entry `LiveChild`
-snapshot RAW, deferring per-entry dedup to the writer's `UpsertEntryV2` (`has_sized_entry_for_inode`). Don't "fix" this
-by zeroing the snapshot the way `run_scan` zeroes its per-entry size: the reconcile's first-seen-keeps choice is
-independent of which occurrence the DB already sized, so zeroing makes the writer null BOTH occurrences and the inode's
-bytes drop to zero (under-count).
+`tests::a_local_reconcile_holds_its_volume_until_its_thread_is_done` scripts the reader through. **Panic safety:**
+`start_local_reconcile` wraps `run_local_reconcile` in `std::panic::catch_unwind` and converts a panic into a typed
+`ScanError::Panicked(msg)`, so a walk panic resolves the `JoinHandle` to `Ok(Err(_))` (routed through the completion
+handler's failure arm), not the opaque raw-thread-panic arm. **Gotcha (hardlinks):** `build_live_children` dedups a
+multi-link inode's bytes ONLY in the summary byte totals (one global `seen_inodes` for the whole walk) and deliberately
+leaves the per-entry `LiveChild` snapshot RAW, deferring per-entry dedup to the writer's `UpsertEntryV2`
+(`has_sized_entry_for_inode`). Don't "fix" this by zeroing the snapshot the way `run_scan` zeroes its per-entry size:
+the reconcile's first-seen-keeps choice is independent of which occurrence the DB already sized, so zeroing makes the
+writer null BOTH occurrences and the inode's bytes drop to zero (under-count).
 
 ## No completion marker on an empty root
 
@@ -472,9 +472,10 @@ blocking read under it each carry a share, so a removable stop waits for them
 from the `RescanDrain`: the reconciler's (`LiveLoop`) for the first walk, then each walk's own (`SubtreeRescan`) for the
 walk it drains on to, so a rescan thread holds the drive while it walks and never carries the loop's share.
 `reconciler/rescan/gate.rs` is the test-only gate that holds a rescan walk before its first read
-(`reconciler::tests::must_scan_routing::a_subtree_rescan_holds_its_volume_until_its_walk_is_done`). ❌ Don't reach into `lifecycle::state` for a token by volume id:
-besides the import cycle, a walk that starts after its volume was torn down would find nothing, default to a token that
-never fires, and keep writing into a draining writer. Topology: `../host/DETAILS.md` § Cancellation.
+(`reconciler::tests::must_scan_routing::a_subtree_rescan_holds_its_volume_until_its_walk_is_done`). ❌ Don't reach into
+`lifecycle::state` for a token by volume id: besides the import cycle, a walk that starts after its volume was torn down
+would find nothing, default to a token that never fires, and keep writing into a draining writer. Topology:
+`../host/DETAILS.md` § Cancellation.
 
 **Progressive `index-dir-updated` emit during background verification.** `run_background_verification` emits one
 `index-dir-updated` per successfully-scanned new subtree, immediately after the post-scan writer flush. Don't buffer

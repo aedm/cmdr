@@ -117,7 +117,8 @@ fails.
 
 `VolumeProvider` covers five things the app is the only one that can answer: what's registered right now, what
 filesystem a path sits on, whether a volume's filesystem is still mounted, how to turn an OS-mounted share into a direct
-smb2 session, and what a PTP object handle resolves to. All at human cadence — once per scan start, per watch event, per enrichment pass.
+smb2 session, and what a PTP object handle resolves to. All at human cadence — once per scan start, per watch event, per
+enrichment pass.
 
 **What deliberately isn't on it.** Volume ID vocabulary: `mtp_ids` was nine references to pure string work with no host
 behind it, so it moved to `cmdr-fs` beside `smb_volume_id` rather than becoming four trait methods. The test is whether

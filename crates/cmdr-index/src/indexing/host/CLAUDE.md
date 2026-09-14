@@ -39,8 +39,7 @@ into a Tauri-free crate, and this directory is what it will ask its host for.
   `WorkClearance`, `OpenListing`, `priority_roots`, `AlwaysClear`, the test `FakeHostPolicy`. App side:
   `priority::host_policy::AppHostPolicy`.
 - `volumes.rs` — what's mounted (`MountIdentity`), where, what kind of storage, plus the SMB upgrade and MTP handle
-  resolution:
-  `VolumeProvider`, `MountFacts`, `NoVolumes`, and the test `FakeVolumeProvider`. App side:
+  resolution: `VolumeProvider`, `MountFacts`, `NoVolumes`, and the test `FakeVolumeProvider`. App side:
   `file_system::index_provider::AppVolumeProvider`.
 - `config.rs` — `IndexConfig` in, no settings reads: the data dir plus the media policy. App side:
   `commands::media_index::index_config_from`.
