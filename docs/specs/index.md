@@ -50,7 +50,10 @@ below is met.
 ## In progress
 
 - [ ] 2026-09-14 `eject-and-drive-safety-plan.md` - **Cmdr lets go of a drive before any unmount, survives one that
-      vanishes, and names what holds one it can't eject.** Planned, not started; every product decision is made. A
+      vanishes, and names what holds one it can't eject.** M0–M4 landed: moves keep their sources until every
+      destination directory is fsynced, real APFS and HFS+ disk images run in the `disk-images` lane, and a removable
+      stop waits on every worker still reading the drive (keyed on its mounted filesystem, never a stuck share of a
+      drive that already left). Next is M5, the gated stop, start, and resume; every product decision is made. A
       DiskArbitration unmount approver on its own session stops every volume of the disk inside the ask (7 s budget,
       dissent as the non-force fallback) and resumes on DA's idle callback when the unmount doesn't happen, replacing
       the racy `WillUnmount` handler. Every index worker carries a labelled share of `VolumeHold`, so "released" means
@@ -60,12 +63,11 @@ below is met.
       scan and classification and the approved copy. Two adversarial review rounds are folded in: every app-side index
       start holds a per-volume ticket and waits out an unmount in progress, so no start can land on a drive that's
       leaving; asks queued behind each other share one time-based deadline; and no sweep, at launch or on arrival, can
-      remove a user's original. **M0 comes first and stands alone**: today a Mac-to-USB move fsyncs no directory before
-      deleting its sources, so a stick pulled right after the progress bar can lose the moved files. Order: M0 move
-      durability → M1 harness → M2 lane → M3 hold leaf → M4 worker shares → M5 gated stop, start, and resume → M6
-      approver → M7 delete gates → M8 completion gates and rebuild marker → M9 vanish causes → M10 transfers → M11 temps
-      and asides → M12 disk flights → M13 holder scan → M14 facts → M15 copy → checkpoint; about 8,700–10,600 lines. The
-      DA teardown swap, per-disk DA sessions, and "not powered down" are deferred with revisit triggers.
+      remove a user's original. Order: M0 move durability → M1 harness → M2 lane → M3 hold leaf → M4 worker shares → M5
+      gated stop, start, and resume → M6 approver → M7 delete gates → M8 completion gates and rebuild marker → M9 vanish
+      causes → M10 transfers → M11 temps and asides → M12 disk flights → M13 holder scan → M14 facts → M15 copy →
+      checkpoint; about 8,700–10,600 lines. The DA teardown swap, per-disk DA sessions, and "not powered down" are
+      deferred with revisit triggers.
 - [ ] 2026-09-11 `text-editor-choice.md` - **F4 always opens files in TextEdit, and a user wants Sublime Text.** M1 (the
       Rust surface) landed: Cmdr lists what LaunchServices reports as plain-text EDITORS (the role-filtered C query; the
       spike confirmed Sublime Text and VS Code both show up there), launches a file in a stored bundle id or `.app` path

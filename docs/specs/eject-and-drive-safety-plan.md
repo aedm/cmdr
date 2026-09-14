@@ -3,15 +3,16 @@
 **Problem.** Cmdr doesn't reliably let go of a removable drive before it unmounts, doesn't survive a drive that
 vanishes, and can't say what holds a drive it couldn't eject.
 
-- **A move to a drive can lose files today.** A Mac-to-USB move syncs file data, fsyncs no directory, then deletes the
-  Mac sources; a stick pulled right after the progress bar finishes can lose the moved files (§ "Move durability").
+- **A move to a drive could lose files (fixed by M0).** A Mac-to-USB move synced file data, fsynced no directory, then
+  deleted the Mac sources; a stick pulled right after the progress bar finished could lose the moved files (§ "Move
+  durability").
 - **Letting go is racy.** Cmdr's own eject stops only THIS volume's index. An eject from Finder, `diskutil`, or another
   app reaches Cmdr through `NSWorkspaceWillUnmountNotification`, whose handler spawns a thread and returns, so the
   unmount races the stop (`apps/desktop/src-tauri/src/volumes/watcher.rs:257`). Nothing resumes an index that handler
   stopped when the unmount is then refused. An indexed exFAT drive unmounting under a live FSEvents stream is the FSKit
   wedge that kernel-panicked a Mac on 2026-07-15.
-- **"Released" doesn't mean nothing reads the drive.** The per-volume hold drops with the index manager, but 10 kinds of
-  worker keep reading after it drops (§ "Code map").
+- **"Released" didn't mean nothing reads the drive (fixed by M4).** The per-volume hold dropped with the index manager,
+  while 10 kinds of worker kept reading after it dropped (§ "Code map").
 - **A vanished drive corrupts what Cmdr knows.** A child whose stat fails drops out of a listing and its row is deleted;
   a live event whose stat fails for any reason deletes its row; a rebuild deletes a subtree before reading it; a scan
   whose drive left mid-walk stamps itself complete, and its `Abandoned` marks make the next start stamp completion over
@@ -37,10 +38,17 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** Planned 2026-09-14, not started; adversarial review rounds 1 and 2 folded in 2026-09-14. It combines the
-earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the drive-safety decisions
-below.
+**Status.** M0–M4 are done, and M5 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
+drive-safety decisions below.
 
+- **M0, move durability (done)**: `ab80d43fa`, `d4125d9f1`; plan edits `300a1ca1f`, `ebeabf08e`.
+- **M1, disk-image harness and pins (done)**: `cd5d046b5`, `cfa5de14d`, `7bef2f46a`, `7f794a140`, `92c228e5e`.
+- **M2, the disk-image lane (done)**: `341d2324e`, `8d23e4814`.
+- **M3, the hold leaf, generations, and the presence seam (done)**: `a93c62253`, `e8be1d34a`, `c36bb81b4`, `596d5b6e3`,
+  `a59afa424`, `6902a37a6`.
+- **M4, every worker carries a share (done)**: `fc94529b6`, `6993186b5`, `8d4395731`, `9564168e7`, `54272c798`.
+- **Next, M5**: `drive_release`, the gated stop, start, and resume.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
