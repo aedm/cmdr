@@ -162,3 +162,11 @@ No user impact, log truth only. About 60 lines, 100 with the rider.
   provider's key error under the newly picked one; the wake indicator seed can overwrite a newer event; Search and
   Selection recents log identical lines under one category; go-to-path records a recent even when navigation was
   refused.
+- **Renaming an indexed drive leaves the index on its old path** (low to medium). The index manager's `volume_root` goes
+  stale after a live rename, so listings of the old path fail and the index stops updating until Cmdr restarts. Nothing
+  is deleted, because the delete gates see an incomplete listing. Start from
+  `crates/cmdr-index/src/indexing/lifecycle/manager.rs` (the `volume_root` field and everything built from it).
+- **On external drives, the importance `last_used` sample looks up boot-disk paths** (low, no drive-safety impact).
+  `DirTree::path_at_into` yields index-relative paths, so the Spotlight lookup asks about a Mac path instead of the
+  mount's, and that signal is noise there. Start from `crates/cmdr-index/src/importance/scheduler/walk.rs`, where the
+  sampled paths are built.
