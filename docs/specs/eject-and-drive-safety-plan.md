@@ -1200,6 +1200,10 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
 - **Intentions**: every site in § "Index writes from a failed or missing observation" gets its named gate; re-audit the
   code for any site the inventory missed before changing anything.
 - **Landmines**:
+  - **Split two oversized files first, before adding any gate.** M4 grew `reconcile/reconciler.rs` to 1,802 lines
+    against its 1,634-line `file-length` allowlist, and `lifecycle/scan_completion.rs` to 891, newly over 800. M7
+    touches both, so its first step splits each by responsibility with every test unchanged. Leave both allowlists
+    alone: the split is what clears the warns.
   - The trait-scanned `diff_dir_against_db` caller and the SMB/MTP watch deletes don't change; gate at the local call
     sites, keyed on `uses_local_scanner()`.
   - A live removal on a healthy drive must keep deleting (`ENOENT` while listed is a real delete).
