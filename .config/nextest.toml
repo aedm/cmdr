@@ -119,6 +119,16 @@ filter = 'test(indexing::tests::vanish_tests::)'
 test-group = 'disk-image'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
+[[profile.default.overrides]]
+# The index presence pins on real APFS/HFS+ images (`file_system::index_provider::real_image`,
+# macOS-only, `#[ignore]`d): a rename keeps a filesystem's identity mounted, and a detach
+# takes it out of the mount table. Serialized in the `disk-image` group, with the same
+# 30 s cap as the harness tests above.
+# allowed-unmatched-nextest-filter: macos-only, hdiutil and diskutil have no Linux counterpart
+filter = 'test(file_system::index_provider::real_image::)'
+test-group = 'disk-image'
+slow-timeout = { period = "30s", terminate-after = 1 }
+
 # SMB stress tests serialize on the shared server (see `smb-stress` group above).
 # The concurrent-streaming one additionally wraps its copy in a 120 s internal
 # `tokio::time::timeout` whose expiry dumps the last 30 `client-mutex:`/`recv:`

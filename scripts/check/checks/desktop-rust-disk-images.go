@@ -33,6 +33,7 @@ import (
 var diskImageLaneTestAtoms = []string{
 	"testing::disk_images::real_images::",
 	"file_system::volume::eject::real_image::",
+	"file_system::index_provider::real_image::",
 	"indexing::tests::vanish_tests::",
 }
 

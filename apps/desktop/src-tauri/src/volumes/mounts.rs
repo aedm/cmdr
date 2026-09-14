@@ -27,6 +27,9 @@ struct MountEntry {
     mount_from: String,
     /// Whether the mount carries the `MNT_RDONLY` flag.
     is_read_only: bool,
+    /// The mounted filesystem's identity (`f_fsid`, its two words packed high then
+    /// low). Renaming a mounted volume moves the mount point and keeps this.
+    fsid: u64,
 }
 
 /// Snapshot the kernel mount table without blocking on any mount.
@@ -64,6 +67,7 @@ fn enumerate_mounts() -> Vec<MountEntry> {
             fs_type: cstr_field_to_string(&s.f_fstypename),
             mount_from: cstr_field_to_string(&s.f_mntfromname),
             is_read_only: (s.f_flags & libc::MNT_RDONLY as u32) != 0,
+            fsid: packed_fsid(s),
         })
         .collect()
 }
@@ -73,6 +77,14 @@ fn enumerate_mounts() -> Vec<MountEntry> {
 fn cstr_field_to_string(field: &[libc::c_char]) -> String {
     let bytes: Vec<u8> = field.iter().take_while(|&&c| c != 0).map(|&c| c as u8).collect();
     String::from_utf8_lossy(&bytes).into_owned()
+}
+
+/// A `statfs` record's `f_fsid`, its two words packed high then low into one `u64`.
+fn packed_fsid(stat: &libc::statfs) -> u64 {
+    // SAFETY: libc declares `fsid_t` `#[repr(C)]` around exactly one `[i32; 2]` and
+    // only keeps that field private, so reading the value as the array reads the field.
+    let [high, low]: [i32; 2] = unsafe { std::mem::transmute(stat.f_fsid) };
+    (u64::from(high.cast_unsigned()) << 32) | u64::from(low.cast_unsigned())
 }
 
 /// Whether `path` is a mount point in the kernel mount table. Reads the same
@@ -85,6 +97,30 @@ pub(crate) fn is_mount_point(path: &str) -> Option<bool> {
     }
     let path = Path::new(path);
     Some(mounts.iter().any(|m| Path::new(&m.mount_point) == path))
+}
+
+/// The identity of the filesystem mounted exactly at `path`, from the same
+/// non-blocking table: `None` when nothing is mounted there or the table couldn't be
+/// read. With mounts stacked on one path, the last one listed is the one a lookup
+/// reaches.
+pub(crate) fn mount_identity_at(path: &str) -> Option<u64> {
+    let path = Path::new(path);
+    enumerate_mounts()
+        .into_iter()
+        .rev()
+        .find(|m| Path::new(&m.mount_point) == path)
+        .map(|m| m.fsid)
+}
+
+/// Whether any filesystem in the kernel mount table has identity `fsid`: `None` when
+/// the table couldn't be read. The index asks this, ❌ never [`is_mount_point`], to
+/// tell a drive that's gone from one a rename moved.
+pub(crate) fn has_mount_identity(fsid: u64) -> Option<bool> {
+    let mounts = enumerate_mounts();
+    if mounts.is_empty() {
+        return None;
+    }
+    Some(mounts.iter().any(|m| m.fsid == fsid))
 }
 
 /// Whether a mount point should surface as an attached volume in the switcher.
@@ -258,6 +294,7 @@ mod tests {
             fs_type: fs_type.to_string(),
             mount_from: mount_from.to_string(),
             is_read_only,
+            fsid: 0,
         }
     }
 

@@ -133,6 +133,76 @@ pub fn is_network_fs_type(fstype: &str) -> bool {
     }
 }
 
+/// One mount in `/proc/self/mountinfo`: where it's mounted, and the device number
+/// (`major:minor`) that names its filesystem. `/proc/mounts` carries no device number.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MountDevice {
+    /// The mount point path.
+    pub mountpoint: String,
+    /// The filesystem's device number, `makedev(major, minor)`.
+    pub device: u64,
+}
+
+/// Parses `/proc/self/mountinfo`, or `None` when it can't be read. Reading it never
+/// touches a mount, so a hung network mount can't stall it.
+pub fn parse_mountinfo() -> Option<Vec<MountDevice>> {
+    match std::fs::read_to_string("/proc/self/mountinfo") {
+        Ok(contents) => Some(parse_mountinfo_from_content(&contents)),
+        Err(e) => {
+            log::warn!("Failed to read /proc/self/mountinfo: {e}");
+            None
+        }
+    }
+}
+
+/// Parses mountinfo content: `id parent major:minor root mountpoint options ...`.
+pub fn parse_mountinfo_from_content(contents: &str) -> Vec<MountDevice> {
+    contents
+        .lines()
+        .filter_map(|line| {
+            let mut fields = line.split(' ');
+            let _mount_id = fields.next()?;
+            let _parent_id = fields.next()?;
+            let (major, minor) = fields.next()?.split_once(':')?;
+            let _root = fields.next()?;
+            let mountpoint = unescape_octal(fields.next()?);
+            Some(MountDevice {
+                mountpoint,
+                device: libc::makedev(major.parse().ok()?, minor.parse().ok()?),
+            })
+        })
+        .collect()
+}
+
+/// The device number of the filesystem mounted exactly at `path`, or `None` when
+/// nothing is mounted there or the table couldn't be read. With mounts stacked on one
+/// path, the last one listed is the one a lookup reaches.
+pub fn mount_device_at(path: &str) -> Option<u64> {
+    device_mounted_at(&parse_mountinfo()?, path)
+}
+
+/// Whether any mount in the table has `device`, or `None` when the table couldn't be
+/// read. An empty table is unknown, never "not mounted": a readable one holds `/`.
+pub fn device_is_mounted(device: u64) -> Option<bool> {
+    table_lists_device(&parse_mountinfo()?, device)
+}
+
+fn device_mounted_at(mounts: &[MountDevice], path: &str) -> Option<u64> {
+    let path = Path::new(path);
+    mounts
+        .iter()
+        .rev()
+        .find(|mount| Path::new(&mount.mountpoint) == path)
+        .map(|mount| mount.device)
+}
+
+fn table_lists_device(mounts: &[MountDevice], device: u64) -> Option<bool> {
+    if mounts.is_empty() {
+        return None;
+    }
+    Some(mounts.iter().any(|mount| mount.device == device))
+}
+
 /// Unescapes octal sequences in mount paths (for example, `\040` -> space).
 /// `/proc/mounts` encodes special characters as `\NNN` octal sequences.
 fn unescape_octal(s: &str) -> String {
@@ -182,6 +252,28 @@ user@host:/path /mnt/sshfs fuse.sshfs rw,relatime 0 0
         assert_eq!(entries[2].device, "/dev/sda1");
         assert_eq!(entries[2].mountpoint, "/");
         assert_eq!(entries[2].fstype, "ext4");
+    }
+
+    const SAMPLE_MOUNTINFO: &str = "\
+22 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw
+40 22 8:17 / /media/usb\\040stick rw,nosuid shared:20 - vfat /dev/sdb1 rw
+41 22 0:45 / /mnt/nfs rw,relatime - nfs4 server:/share rw
+";
+
+    /// The index keys a drive's presence on its filesystem, so the table has to name
+    /// each mount's device, octal-escaped mount points included, and say a device
+    /// nothing has is mounted nowhere.
+    #[test]
+    fn mountinfo_names_each_mount_by_its_device() {
+        let mounts = parse_mountinfo_from_content(SAMPLE_MOUNTINFO);
+        assert_eq!(mounts.len(), 3);
+        let stick = libc::makedev(8, 17);
+
+        assert_eq!(device_mounted_at(&mounts, "/media/usb stick"), Some(stick));
+        assert_eq!(device_mounted_at(&mounts, "/media/usb"), None, "not a mount point");
+        assert_eq!(table_lists_device(&mounts, stick), Some(true));
+        assert_eq!(table_lists_device(&mounts, libc::makedev(8, 33)), Some(false));
+        assert_eq!(table_lists_device(&[], stick), None, "an empty table is unknown");
     }
 
     #[test]

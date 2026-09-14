@@ -719,46 +719,50 @@ fn a_removable_stop_waits_for_the_start_it_cancelled() {
     );
 }
 
-/// A drive pulled while a start on it was stuck: the stop finds its root gone from
-/// the mount table, so it answers "released" at once rather than waiting on work
-/// that can never let go. When the drive comes back under the same id, the stuck
-/// share of its last life still never holds up a stop of the new one.
+/// Reserve `volume_id` as a local external drive mounted at `root`, the way a start
+/// does: the reservation reads the root's mount identity from whatever host is
+/// installed.
+fn reserve_a_drive(dir: &std::path::Path, volume_id: &str, root: &str, life: &str) -> VolumeWork {
+    let db_path = dir.join(format!("{life}.db"));
+    try_reserve_initializing_phase(
+        volume_id,
+        StartRequest::for_test_at(IndexVolumeKind::LocalExternal, root),
+        IndexStore::open(&db_path).expect("store"),
+        Arc::new(ReadPool::new(db_path.clone()).expect("pool")),
+        Arc::new(PendingSizes::new()),
+        VolumeSignals::new(fresh(None), NoopEventSink::shared()),
+    )
+    .unwrap_or_else(|_| panic!("reserve {volume_id} must succeed from absent"))
+}
+
+/// A drive pulled while a start on it was stuck: the stop finds its filesystem mounted
+/// nowhere, so it answers "released" at once rather than waiting on work that can
+/// never let go. When the drive comes back under the same id, the stuck share of its
+/// last life still never holds up a stop of the new one.
 #[test]
 fn a_removable_stop_never_waits_on_a_drive_that_already_left() {
+    use crate::indexing::host::volumes::{FakeVolumeProvider, MountIdentity, install_for_test};
+
     let _lock = crate::indexing::handle::test_lock();
     let _guard = INDEX_REGISTRY_TEST_GUARD.lock().unwrap_or_else(|e| e.into_inner());
     clear_registry_and_pools();
-
-    let volume_id = "removable-vanished";
+    let volumes = FakeVolumeProvider::shared();
+    let _host = install_for_test(volumes.clone());
     let dir = tempfile::tempdir().expect("temp dir");
-    let reserve = |life: &str| {
-        let db_path = dir.path().join(format!("{life}.db"));
-        try_reserve_initializing_phase(
-            volume_id,
-            StartRequest::for_test(IndexVolumeKind::LocalExternal),
-            IndexStore::open(&db_path).expect("store"),
-            Arc::new(ReadPool::new(db_path.clone()).expect("pool")),
-            Arc::new(PendingSizes::new()),
-            VolumeSignals::new(fresh(None), NoopEventSink::shared()),
-        )
-        .unwrap_or_else(|_| panic!("reserve {volume_id} must succeed from absent"))
-    };
+    let (volume_id, root) = ("removable-vanished", "/Volumes/RemovableVanished");
 
-    let stuck = reserve("first-life");
-    {
-        let volumes = crate::indexing::host::volumes::FakeVolumeProvider::shared();
-        // `StartRequest::for_test` mounts the volume at `/`.
-        volumes.mark_unmounted("/");
-        let _pulled = crate::indexing::host::volumes::install_for_test(volumes);
-        assert_eq!(
-            stop_removable_volume(volume_id, Duration::ZERO),
-            RemovableStop::Released,
-            "nothing this stop does can let go of a drive that's gone"
-        );
-    }
+    volumes.mount(root, MountIdentity::from_raw(41));
+    let stuck = reserve_a_drive(dir.path(), volume_id, root, "first-life");
+    volumes.mark_unmounted(root);
+    assert_eq!(
+        stop_removable_volume(volume_id, Duration::ZERO),
+        RemovableStop::Released,
+        "nothing this stop does can let go of a drive that's gone"
+    );
 
     // The drive is back, and a new start reserves it under the same id.
-    let next_life = reserve("next-life");
+    volumes.mount(root, MountIdentity::from_raw(42));
+    let next_life = reserve_a_drive(dir.path(), volume_id, root, "next-life");
     assert_eq!(
         stop_removable_volume(volume_id, Duration::ZERO),
         RemovableStop::StillReleasing,
@@ -769,6 +773,40 @@ fn a_removable_stop_never_waits_on_a_drive_that_already_left() {
         stop_removable_volume(volume_id, Duration::ZERO),
         RemovableStop::NothingToStop,
         "and the stuck share of the drive's last life never does"
+    );
+    drop(stuck);
+}
+
+/// A drive renamed while mounted moves to a new mount point without ever leaving the
+/// mount table. Its work still counts: a stop that read the old root's absence as
+/// "gone" would answer "released" over work still reading a mounted drive, which is
+/// the wedge an eject must never meet. Pulled at its new name, it's gone all the same.
+#[test]
+fn a_removable_stop_still_waits_on_a_drive_renamed_while_mounted() {
+    use crate::indexing::host::volumes::{FakeVolumeProvider, MountIdentity, install_for_test};
+
+    let _lock = crate::indexing::handle::test_lock();
+    let _guard = INDEX_REGISTRY_TEST_GUARD.lock().unwrap_or_else(|e| e.into_inner());
+    clear_registry_and_pools();
+    let volumes = FakeVolumeProvider::shared();
+    let _host = install_for_test(volumes.clone());
+    let dir = tempfile::tempdir().expect("temp dir");
+    let volume_id = "removable-renamed";
+
+    volumes.mount("/Volumes/RemovableOldName", MountIdentity::from_raw(43));
+    let stuck = reserve_a_drive(dir.path(), volume_id, "/Volumes/RemovableOldName", "renamed");
+    volumes.rename_mount("/Volumes/RemovableOldName", "/Volumes/RemovableNewName");
+    assert_eq!(
+        stop_removable_volume(volume_id, Duration::ZERO),
+        RemovableStop::StillReleasing,
+        "the drive is still mounted, so the start working on it still holds it"
+    );
+
+    volumes.mark_unmounted("/Volumes/RemovableNewName");
+    assert_eq!(
+        stop_removable_volume(volume_id, Duration::ZERO),
+        RemovableStop::NothingToStop,
+        "pulled at its new name, its stuck start holds nothing up"
     );
     drop(stuck);
 }

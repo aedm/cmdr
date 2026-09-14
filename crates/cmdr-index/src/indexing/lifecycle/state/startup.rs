@@ -95,6 +95,15 @@ impl StartRequest {
         }
     }
 
+    /// [`Self::for_test`] for a volume mounted at `volume_root`.
+    #[cfg(test)]
+    pub(crate) fn for_test_at(kind: IndexVolumeKind, volume_root: impl Into<PathBuf>) -> Self {
+        Self {
+            volume_root: volume_root.into(),
+            ..Self::for_test(kind)
+        }
+    }
+
     /// The volume kind this start names, for the instance it reserves.
     pub(super) fn kind(&self) -> IndexVolumeKind {
         self.kind

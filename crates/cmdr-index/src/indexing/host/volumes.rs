@@ -60,6 +60,30 @@ impl MountFacts {
     };
 }
 
+/// Which mounted filesystem a volume's root is, as the host's mount table names it.
+///
+/// It stays the same for as long as the filesystem stays mounted, wherever its mount
+/// point moves: renaming a mounted volume moves the mount point and keeps the identity
+/// (verified on macOS 26.6.2, APFS and HFS+ disk images,
+/// `file_system::index_provider::real_image`, 2026-09-14). A filesystem that isn't
+/// mounted has an identity the table lists nowhere. Opaque: the host packs whatever its
+/// table carries (`f_fsid` on macOS, the device number on Linux), and the index only
+/// compares it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct MountIdentity(u64);
+
+impl MountIdentity {
+    /// The identity a host's mount table gives a filesystem, packed into 64 bits.
+    pub const fn from_raw(raw: u64) -> Self {
+        Self(raw)
+    }
+
+    /// The 64 bits a host packed, for that host to compare against its table.
+    pub const fn raw(self) -> u64 {
+        self.0
+    }
+}
+
 /// One MTP object, resolved from the bare PTP handle a device change event carries.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedMtpObject {
@@ -116,15 +140,23 @@ pub trait VolumeProvider: Send + Sync {
     /// under their own timeout and fall back to [`MountFacts::UNPROBEABLE`].
     fn mount_facts(&self, path: &Path) -> MountFacts;
 
-    /// Whether `root` is a mount point in the host's mount table right now:
-    /// `Some(true)` listed, `Some(false)` not listed, `None` when the table couldn't
-    /// be read.
+    /// The identity of the filesystem mounted exactly at `root`, from the host's mount
+    /// table: `None` when nothing is mounted at `root` or the table couldn't be read.
     ///
-    /// **Non-blocking**: the host reads its mount table, ❌ never the mount, so a
-    /// dead or hung drive can't stall the answer. The index asks it only about
-    /// local-scanner volumes, whose roots are mount points; a share or a phone has
-    /// its own disconnect path. ❌ A caller never reads `None` as "gone".
-    fn is_mounted(&self, root: &Path) -> Option<bool>;
+    /// **Non-blocking**: the host reads its mount table, ❌ never the mount, so a dead
+    /// or hung drive can't stall the answer. The index reads it once, when a
+    /// local-scanner volume's index starts; a share or a phone has its own disconnect
+    /// path.
+    fn mount_identity(&self, root: &Path) -> Option<MountIdentity>;
+
+    /// Whether any filesystem in the host's mount table right now has `identity`:
+    /// `Some(false)` means it's mounted nowhere, `None` that the table couldn't be read.
+    ///
+    /// **Non-blocking**, like [`mount_identity`](Self::mount_identity). ❌ A caller never
+    /// reads `None` as "gone", and ❌ never asks about a root path instead: renaming a
+    /// mounted volume takes its old root out of the table while the drive stays
+    /// mounted.
+    fn is_mounted(&self, identity: MountIdentity) -> Option<bool>;
 
     /// The SMB volume id for `path` when it resolves to an `smbfs`/`cifs` mount.
     ///
@@ -239,9 +271,13 @@ impl VolumeProvider for NoVolumes {
             inodes_trustworthy: true,
         }
     }
-    /// A host with no mount table has nothing that can unmount, so every root reads
-    /// as mounted: the index behaves as it does without a presence seam at all.
-    fn is_mounted(&self, _root: &Path) -> Option<bool> {
+    /// A host with no mount table names no filesystem, so no start captures an
+    /// identity to ask about later.
+    fn mount_identity(&self, _root: &Path) -> Option<MountIdentity> {
+        None
+    }
+    /// Nothing can unmount under a host that mounts nothing.
+    fn is_mounted(&self, _identity: MountIdentity) -> Option<bool> {
         Some(true)
     }
     fn smb_volume_id_for_path(&self, _path: &str) -> Option<String> {
@@ -272,7 +308,7 @@ pub struct FakeVolumeProvider {
     volumes: RwLock<std::collections::HashMap<String, Arc<dyn Volume>>>,
     network_mounts: RwLock<std::collections::HashSet<PathBuf>>,
     untrusted_inode_mounts: RwLock<std::collections::HashSet<PathBuf>>,
-    unmounted_roots: RwLock<std::collections::HashSet<PathBuf>>,
+    mounts: RwLock<std::collections::HashMap<PathBuf, MountIdentity>>,
 }
 
 #[cfg(any(test, feature = "testing"))]
@@ -301,10 +337,27 @@ impl FakeVolumeProvider {
         self
     }
 
-    /// Make `is_mounted` report `root` gone from the mount table, the way a pulled
-    /// drive or a finished unmount reads. Every other root reads as mounted.
-    pub fn mark_unmounted(&self, root: impl Into<PathBuf>) -> &Self {
-        self.unmounted_roots.write_ignore_poison().insert(root.into());
+    /// List a filesystem with `identity` as mounted at `root`, the way a plugged-in
+    /// drive reads. A root nothing was mounted at has no identity.
+    pub fn mount(&self, root: impl Into<PathBuf>, identity: MountIdentity) -> &Self {
+        self.mounts.write_ignore_poison().insert(root.into(), identity);
+        self
+    }
+
+    /// Move the filesystem mounted at `from` to `to`, keeping its identity: a rename.
+    pub fn rename_mount(&self, from: impl AsRef<Path>, to: impl Into<PathBuf>) -> &Self {
+        let mut mounts = self.mounts.write_ignore_poison();
+        if let Some(identity) = mounts.remove(from.as_ref()) {
+            mounts.insert(to.into(), identity);
+        }
+        drop(mounts);
+        self
+    }
+
+    /// Take the filesystem mounted at `root` out of the mount table, the way a pulled
+    /// drive or a finished unmount reads.
+    pub fn mark_unmounted(&self, root: impl AsRef<Path>) -> &Self {
+        self.mounts.write_ignore_poison().remove(root.as_ref());
         self
     }
 }
@@ -340,8 +393,17 @@ impl VolumeProvider for FakeVolumeProvider {
         }
     }
 
-    fn is_mounted(&self, root: &Path) -> Option<bool> {
-        Some(!self.unmounted_roots.read_ignore_poison().contains(root))
+    fn mount_identity(&self, root: &Path) -> Option<MountIdentity> {
+        self.mounts.read_ignore_poison().get(root).copied()
+    }
+
+    fn is_mounted(&self, identity: MountIdentity) -> Option<bool> {
+        Some(
+            self.mounts
+                .read_ignore_poison()
+                .values()
+                .any(|mounted| *mounted == identity),
+        )
     }
 
     fn smb_volume_id_for_path(&self, _path: &str) -> Option<String> {
@@ -431,23 +493,39 @@ mod tests {
         assert!(plain.inodes_trustworthy);
     }
 
-    /// A root the test marked unmounted reads as gone, and only that root: a
-    /// sibling drive stays mounted, or a presence test would pass by losing every
-    /// drive at once.
+    /// The fake's mount table follows a filesystem, not a path: a rename moves the
+    /// identity to the new root and keeps it mounted, and only an unmount makes it
+    /// gone. A sibling drive stays mounted throughout, or a presence test could pass by
+    /// losing every drive at once.
     #[test]
-    fn the_fake_reports_a_root_marked_unmounted_as_gone() {
+    fn the_fake_mount_table_follows_a_filesystem_across_a_rename() {
         let provider = FakeVolumeProvider::shared();
-        provider.mark_unmounted("/Volumes/pulled");
+        let (stick, sibling) = (MountIdentity::from_raw(7), MountIdentity::from_raw(8));
+        provider
+            .mount("/Volumes/Stick", stick)
+            .mount("/Volumes/Sibling", sibling);
+        assert_eq!(provider.mount_identity(Path::new("/Volumes/Stick")), Some(stick));
+        assert_eq!(
+            provider.mount_identity(Path::new("/Volumes/usb")),
+            None,
+            "nothing is mounted at that root"
+        );
 
-        assert_eq!(provider.is_mounted(Path::new("/Volumes/pulled")), Some(false));
-        assert_eq!(provider.is_mounted(Path::new("/Volumes/usb")), Some(true));
+        provider.rename_mount("/Volumes/Stick", "/Volumes/Photos");
+        assert_eq!(provider.mount_identity(Path::new("/Volumes/Stick")), None);
+        assert_eq!(provider.mount_identity(Path::new("/Volumes/Photos")), Some(stick));
+        assert_eq!(provider.is_mounted(stick), Some(true), "renamed, not gone");
+
+        provider.mark_unmounted("/Volumes/Photos");
+        assert_eq!(provider.is_mounted(stick), Some(false));
+        assert_eq!(provider.is_mounted(sibling), Some(true));
     }
 
-    /// With no host tracking mounts, nothing can unmount, so every root reads as
-    /// mounted. "Gone" or "don't know" here would change how the index treats
-    /// every volume a tool or test drives without a host.
+    /// With no host tracking mounts, no root names a filesystem for a start to
+    /// capture, and nothing can unmount.
     #[test]
-    fn an_uninstalled_provider_reads_every_root_as_mounted() {
-        assert_eq!(NoVolumes.is_mounted(Path::new("/Volumes/anything")), Some(true));
+    fn an_uninstalled_provider_names_no_filesystem_and_loses_none() {
+        assert_eq!(NoVolumes.mount_identity(Path::new("/Volumes/anything")), None);
+        assert_eq!(NoVolumes.is_mounted(MountIdentity::from_raw(1)), Some(true));
     }
 }

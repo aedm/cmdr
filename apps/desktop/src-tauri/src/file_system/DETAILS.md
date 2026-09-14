@@ -12,7 +12,10 @@ badges). The leaves beside them:
 - `staging.rs`: scratch visibility. The `StagingTemp` mint itself is `cmdr_fs::staging`.
 - `index_provider.rs`: the app's `VolumeProvider`, so the index never has to import `VolumeManager`. Its
   `ensure_direct_smb` is `network::smb_connect_directly::connect_directly`, with every `UpgradeResult` but `Success`
-  read as a refusal.
+  read as a refusal. Its presence answer (`mount_identity`, `is_mounted`) reads the non-blocking mount table by
+  filesystem identity (`f_fsid` on macOS, `major:minor` from `/proc/self/mountinfo` on Linux), ❌ never by root path: a
+  rename moves a mounted drive's root while the drive stays mounted. `index_provider/real_image.rs` pins that on real
+  APFS and HFS+ images (`crates/cmdr-index/src/indexing/host/DETAILS.md` § "The volume seam").
 - `backend_settings.rs`: live per-backend knobs.
 - `cloud_actions.rs`: iCloud download and eviction. `cloud_provider.rs`: who owns a path, and what they can do.
 - `google_drive/`: Drive item links, with `mirror_db.rs` as the mirror-mode fallback.

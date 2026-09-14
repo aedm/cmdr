@@ -12,7 +12,7 @@ use std::sync::Arc;
 use cmdr_fs::volume::Volume;
 
 use cmdr_index::host::volumes::{
-    EnsureDirectSmbFut, MountFacts, ResolveMtpFut, ResolvedMtpObject, SmbUpgradeRefusal, VolumeProvider,
+    EnsureDirectSmbFut, MountFacts, MountIdentity, ResolveMtpFut, ResolvedMtpObject, SmbUpgradeRefusal, VolumeProvider,
 };
 
 /// Whether `path` sits on a network filesystem (SMB, NFS, AFP, WebDAV, ...).
@@ -80,21 +80,37 @@ impl VolumeProvider for AppVolumeProvider {
         }
     }
 
-    fn is_mounted(&self, root: &Path) -> Option<bool> {
-        // The same non-blocking table eject reads to tell a refusal from a volume
-        // that's already gone, so a hung drive can't stall the answer.
+    // Both read the non-blocking mount table discovery and eject already read, so a
+    // hung or dead drive can't stall the answer.
+    fn mount_identity(&self, root: &Path) -> Option<MountIdentity> {
         let root = root.to_string_lossy();
         #[cfg(target_os = "macos")]
         {
-            crate::volumes::is_mount_point(&root)
+            crate::volumes::mount_identity_at(&root).map(MountIdentity::from_raw)
         }
         #[cfg(target_os = "linux")]
         {
-            super::linux_mounts::is_mount_point(&root)
+            super::linux_mounts::mount_device_at(&root).map(MountIdentity::from_raw)
         }
         #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {
             let _ = root;
+            None
+        }
+    }
+
+    fn is_mounted(&self, identity: MountIdentity) -> Option<bool> {
+        #[cfg(target_os = "macos")]
+        {
+            crate::volumes::has_mount_identity(identity.raw())
+        }
+        #[cfg(target_os = "linux")]
+        {
+            super::linux_mounts::device_is_mounted(identity.raw())
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        {
+            let _ = identity;
             None
         }
     }
@@ -192,6 +208,9 @@ pub(crate) fn smb_volume_id_for_path(path: &str) -> Option<String> {
     }
 }
 
+#[cfg(all(test, target_os = "macos"))]
+mod real_image;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,15 +233,27 @@ mod tests {
         assert!(facts.inodes_trustworthy);
     }
 
-    /// The index's presence seam reads the kernel mount table: the boot volume is a
-    /// mount point, and a plain folder isn't one, which is how a drive's root reads
-    /// once the drive is gone and its mount-point folder lingers.
+    /// The index's presence seam reads the kernel mount table by filesystem: the boot
+    /// volume's root names its filesystem and that filesystem reads mounted, a plain
+    /// folder names none (how a drive's lingering mount-point folder reads once the
+    /// drive is gone), and an identity nothing has is mounted nowhere.
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn presence_answers_from_the_mount_table() {
-        assert_eq!(AppVolumeProvider.is_mounted(Path::new("/")), Some(true));
+        let boot = AppVolumeProvider
+            .mount_identity(Path::new("/"))
+            .expect("`/` is a mount point");
+        assert_eq!(AppVolumeProvider.is_mounted(boot), Some(true));
         let folder = cmdr_fs::testing::TestDir::new("index-provider-presence");
-        assert_eq!(AppVolumeProvider.is_mounted(&folder), Some(false));
+        assert_eq!(
+            AppVolumeProvider.mount_identity(&folder),
+            None,
+            "a plain folder isn't a mount point"
+        );
+        assert_eq!(
+            AppVolumeProvider.is_mounted(MountIdentity::from_raw(u64::MAX)),
+            Some(false)
+        );
     }
 
     /// The negative half, against a REAL filesystem: a FAT32 mount's inodes are

@@ -118,12 +118,14 @@ pub enum RemovableStop {
 /// transient phase and return, and nothing that calls them may start blocking.
 ///
 /// ⚠️ **A generation whose drive has already left stops counting BEFORE the wait.**
-/// The stop asks the host whether each generation's root is still in the mount
-/// table, and one that reads `Some(false)` is flagged vanished: nothing this stop
-/// does can let go of it, and a worker stuck on the dead device must not hold up
-/// the drive's next life (a re-plugged drive keeps its UUID, so its id). Whatever
-/// is still held of it once the wait ends turns zombie with one `warn`
-/// (`../../hold.rs`).
+/// The stop asks the host whether each generation's filesystem is still mounted
+/// anywhere, by the mount identity its start captured, and one that reads
+/// `Some(false)` is flagged vanished: nothing this stop does can let go of it, and a
+/// worker stuck on the dead device must not hold up the drive's next life (a
+/// re-plugged drive keeps its UUID, so its id). ❌ Never by root path: a rename moves
+/// the root while the drive stays mounted, and its work still reads the drive.
+/// Whatever is still held of a vanished generation once the wait ends turns zombie
+/// with one `warn` (`../../hold.rs`).
 pub(crate) fn stop_removable_volume(volume_id: &str, wait_at_most: Duration) -> RemovableStop {
     let started = Instant::now();
     let kind = volume_kind(volume_id);
@@ -132,7 +134,7 @@ pub(crate) fn stop_removable_volume(volume_id: &str, wait_at_most: Duration) -> 
         return RemovableStop::NothingToStop;
     }
     let volumes = crate::indexing::host::volumes::current();
-    hold::flag_vanished(volume_id, |root| volumes.is_mounted(root));
+    hold::flag_vanished(volume_id, |identity| volumes.is_mounted(identity));
     let stopped = match kind {
         Some(_) => {
             if let Err(e) = stop_indexing(volume_id) {

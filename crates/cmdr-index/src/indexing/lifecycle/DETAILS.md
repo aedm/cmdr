@@ -463,11 +463,14 @@ needs). A wait that runs out answers `StillHeld` with the outstanding shares per
 `warn` names them; `RemovableStop` itself carries no kinds.
 
 **A drive that's gone.** A re-plugged drive keeps its UUID, so its id, and a share stuck on the dead device must not hold
-up the drive's next life. Before it waits, `stop_removable_volume` asks `VolumeProvider::is_mounted` about each live
-local-scanner generation's root (one read per root, off the table lock); `Some(false)` flags the generation vanished, and
-neither the wait nor `is_held` counts it. After the wait, a vanished generation still held turns zombie with one `warn`:
-never counted again, even once a new life mounts at the same root, and gone with its last share. ❌ `None`, an unreadable
-mount table, never flags.
+up the drive's next life. The reservation reads the root's `MountIdentity` (which mounted filesystem it is) just before
+its lock, local-scanner kinds only, and the generation keeps it. Before it waits, `stop_removable_volume` asks
+`VolumeProvider::is_mounted` about each live generation's identity (one read per identity, off the table lock);
+`Some(false)` flags the generation vanished, and neither the wait nor `is_held` counts it. After the wait, a vanished
+generation still held turns zombie with one `warn`: never counted again, even once the drive mounts again, and gone with
+its last share. ❌ `None`, an unreadable mount table, never flags, and a generation with no identity is never asked. ❌
+Never by root path: a rename moves a mounted drive's root while its work still reads it (`../host/DETAILS.md` § "The
+volume seam").
 
 **The wake.** One mutex and one condvar over the table. A generation's last share dropping and a generation vanishing
 both notify, and `wait_until_released` waits with `wait_timeout_while`, ❌ never a poll. The table is a leaf lock: the

@@ -116,7 +116,7 @@ fails.
 ## The volume seam
 
 `VolumeProvider` covers five things the app is the only one that can answer: what's registered right now, what
-filesystem a path sits on, whether a root is still in the mount table, how to turn an OS-mounted share into a direct
+filesystem a path sits on, whether a volume's filesystem is still mounted, how to turn an OS-mounted share into a direct
 smb2 session, and what a PTP object handle resolves to. All at human cadence — once per scan start, per watch event, per enrichment pass.
 
 **What deliberately isn't on it.** Volume ID vocabulary: `mtp_ids` was nine references to pure string work with no host
@@ -128,14 +128,19 @@ touch this mount, and may the rename pre-pass trust its inodes — and both are 
 is per-platform, and the probe itself can block for minutes on a wedged mount. Returning the two flags moved the whole
 macOS/Linux fork out of `transports/local_external`.
 
-**`is_mounted` is the presence seam, and it reads the mount table, never the mount.** It answers whether a local-scanner
-volume's root is still listed, `None` when the table couldn't be read, and no caller reads `None` as gone. The app
-answers from the non-blocking tables eject already reads (`volumes::mounts::is_mount_point`, `getfsstat(MNT_NOWAIT)` on
-macOS; `file_system::linux_mounts::is_mount_point`, `/proc/mounts` on Linux), so a dead drive can't stall it.
-`NoVolumes` answers `Some(true)`: a host with no mount table has nothing that can unmount, and "gone" or "don't know"
-would change how the index treats every volume a tool or test drives without a host. `FakeVolumeProvider::mark_unmounted`
-makes one root read as gone. The caller today is `stop_removable_volume`, which stops counting a generation whose root
-left (`../lifecycle/DETAILS.md` § "When a volume has been let go").
+**Presence is by filesystem identity, and it reads the mount table, never the mount.** `mount_identity(root)` names the
+filesystem mounted exactly at a root (a `MountIdentity`, opaque to the index), and `is_mounted(identity)` says whether
+any mounted filesystem has it, `None` when the table couldn't be read; no caller reads `None` as gone. ❌ Never by root
+path: renaming a mounted volume moves its mount point while the filesystem stays mounted under it and an open handle
+keeps writing (verified on macOS 26.6.2, APFS and HFS+ images, `cmdr_fs::testing::disk_images::real_images` and the
+app's `file_system::index_provider::real_image`, 2026-09-14), so a missing root is not a drive that's gone. The app
+reads `f_fsid` from `getfsstat(MNT_NOWAIT)` on macOS (`volumes::mounts::{mount_identity_at, has_mount_identity}`) and
+`major:minor` from `/proc/self/mountinfo` on Linux (`file_system::linux_mounts::{mount_device_at, device_is_mounted}`),
+so a dead drive can't stall either. A local-scanner reservation reads the identity just before its lock and the hold
+generation keeps it (`../hold.rs`). `NoVolumes` names no filesystem (and reads every identity as mounted: nothing can
+unmount under it), so a start without a host captures nothing to ask about. `FakeVolumeProvider` mounts, renames, and
+unmounts roots with `mount`, `rename_mount`, and `mark_unmounted`. The caller today is `stop_removable_volume`
+(`../lifecycle/DETAILS.md` § "When a volume has been let go").
 
 **Why the provider slot is an `RwLock`, unlike the runtime and the policy.** Tests swap it. Three tests used to register
 real `LocalPosixVolume`s into the process-wide `VolumeManager`, which is exactly the coupling the extraction removes;

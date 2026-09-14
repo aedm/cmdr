@@ -109,6 +109,15 @@ pub(super) fn try_reserve_initializing_phase_on(
     signals: VolumeSignals,
 ) -> Result<VolumeWork, Box<IndexStore>> {
     let kind = request.kind();
+    // Which filesystem this start's root is, read from the host's mount table BEFORE
+    // the lock. The generation is asked about by this identity for as long as it
+    // lives, ❌ never by its root path: a rename moves the root while the drive stays
+    // mounted. Only a local-scanner volume's root is a mount point to name.
+    let mount_identity = if kind.uses_local_scanner() {
+        crate::indexing::host::volumes::current().mount_identity(request.volume_root())
+    } else {
+        None
+    };
     let mut reg = registry.lock_ignore_poison();
     if let Some(instance) = reg.get_mut(volume_id) {
         if instance.phase.claim_the_restart(request) {
@@ -120,7 +129,7 @@ pub(super) fn try_reserve_initializing_phase_on(
     }
     install_read_pool(volume_id, read_pool);
     install_pending_sizes(volume_id, pending_sizes);
-    let work = VolumeWork::take(volume_id, request.volume_root(), kind);
+    let work = VolumeWork::take(volume_id, mount_identity);
     reg.insert(
         volume_id.to_string(),
         IndexInstance {
