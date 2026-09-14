@@ -15,7 +15,7 @@ Run all: through the checker: `pnpm check rust-tests`. Don't run raw `cargo test
 
 ### `crate::test_support::TestDir` (scratch directory)
 
-In `crates/cmdr-fs/src/testing.rs` beside the wait helpers, behind the `testing` feature, re-exported as
+In `crates/cmdr-fs/src/testing/mod.rs` beside the wait helpers, behind the `testing` feature, re-exported as
 `crate::test_support` in the app. `TestDir::new("label")` gives a process-unique directory that removes itself when the
 handle drops (unwind included); it derefs to `Path` and implements `AsRef<Path>`, so a converted test body reads like
 the `PathBuf` it replaced. It's the only sanctioned way to get a directory to write in — a fixed
@@ -24,7 +24,7 @@ the `PathBuf` it replaced. It's the only sanctioned way to get a directory to wr
 
 ### `crate::test_support::wait_until` / `wait_until_async` (waiting for background work)
 
-In `crates/cmdr-fs/src/testing.rs`, behind the `testing` feature, re-exported as `crate::test_support` in the app.
+In `crates/cmdr-fs/src/testing/mod.rs`, behind the `testing` feature, re-exported as `crate::test_support` in the app.
 `wait_until` for sync `#[test]`s, `wait_until_async` for `#[tokio::test]`s; both take a timeout, a description, and a
 condition closure, and panic on timeout. The only sanctioned sleep in Rust test code lives inside them. Rules and
 examples: `../testing.md` § "Waiting for background work (Rust)".

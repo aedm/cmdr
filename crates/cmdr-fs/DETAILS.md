@@ -513,20 +513,20 @@ would drift apart.
 - **The runner (`runner.rs`).** The closed `Call` enum IS the verb list: `hdiutil create`, `attach -plist -nobrowse`,
   `info -plist`, `detach` and `detach -force`; `diskutil info -plist`, `apfs addVolume … -nomount`,
   `partitionDisk … JHFS+ … R`, `mount -mountOptions nobrowse`, `unmount`, and `eject`. A verb gets added with its first
-  caller. Every call is SIGKILLed past 30 s and reaped. Output goes to anonymous temp files rather than pipes, so a large
-  plist can't stall the tool and a helper holding a pipe can't block a read past the kill.
+  caller. Every call is SIGKILLed past 30 s and reaped. Output goes to anonymous temp files rather than pipes, so a
+  large plist can't stall the tool and a helper holding a pipe can't block a read past the kill.
 - **Ownership before every change (`facts.rs`).** A call that changes a disk runs only after `diskutil info -plist`
   walks its target to the physical whole disk (a partition's `ParentWholeDisk`; for an APFS volume or container, through
   `APFSPhysicalStores` to the store's parent) and `hdiutil info -plist` lists BOTH the node and that whole disk under
   this image's `image-path`. A mount-point target must still be that volume's `MountPoint`. It's read fresh for every
   call because DiskArbitration hands a freed BSD unit to the next disk at once, so a node stored a second ago can name
   someone's Time Machine drive. `detach -force` also refuses an image stored on another attached image, and an image
-  another of the session's images is stored on (decided on the `statfs` host node of the session's OWN backing files,
-  ❌ never a stat of someone else's image).
+  another of the session's images is stored on (decided on the `statfs` host node of the session's OWN backing files, ❌
+  never a stat of someone else's image).
 - **`image-path` is compared exactly, never canonicalized.** `hdiutil info` spells the backing file the way
   `hdiutil attach` was given it (`/var/folders/…`, while its text-mode alias reads `/private/var/folders/…`), so the
-  harness compares against the path it attached with. Canonicalizing another image's path would stat a file that can
-  sit behind TCC or on a hung share.
+  harness compares against the path it attached with. Canonicalizing another image's path would stat a file that can sit
+  behind TCC or on a hung share.
 - **Specs** (verified on macOS 26.6.2, a hand probe plus the `real_images` tests, 2026-09-14). `Apfs` (64 MB) and `Hfs`
   (256 MB) are one GPT volume. `ApfsTwoVolumes` is a 1.1 GB SPARSE image plus `addVolume -nomount` and a nobrowse mount:
   `addVolume` answers -69493 on a small container. `HfsTwoPartitions` is `partitionDisk` into 60 MB plus the rest, which
@@ -536,8 +536,8 @@ would drift apart.
 - **Teardown.** `DiskImage`'s `Drop` resolves the whole disk fresh, detaches, falls back to a guarded `-force`, and then
   its `TestDir` deletes the file. An image that's already gone (an eject detached it) is fine; one that won't detach
   panics the test unless it's already panicking, so a leak never passes silently.
-- **`FileHolder`** holds a file open from a child `/bin/sleep`, so its volume refuses to unmount. The child descends from
-  the test process, so anything classifying holders by ancestry reads it as the test's own: identify it by `pid()`.
+- **`FileHolder`** holds a file open from a child `/bin/sleep`, so its volume refuses to unmount. The child descends
+  from the test process, so anything classifying holders by ancestry reads it as the test's own: identify it by `pid()`.
 - **Tests.** The pure decisions and the runner are default-suite unit tests. `real_images` attaches each spec for real,
   `#[ignore]`d in the `disk-image` nextest group:
   `cargo nextest run -p cmdr-fs --run-ignored only -E 'test(testing::disk_images::real_images::)'`.

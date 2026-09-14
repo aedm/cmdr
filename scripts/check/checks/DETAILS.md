@@ -1071,9 +1071,10 @@ Gotchas for anyone touching this:
   `FAIL` regex is line-anchored so it can't match them.
 - **The summary block repeats every `FAIL`/`TIMEOUT` line**, so classification dedupes by (binary, test) and keeps the
   first occurrence, which is the one carrying the panic body.
-- **`ClassInTestDeadline` recognition depends on a string Rust owns**: `timed_out()` in `crates/cmdr-fs/src/testing.rs`.
-  Nothing but `TestWaitUntilPanicFormatStillMatchesTheClassifier` ties the two languages together; without it, rewording
-  the panic would silently downgrade every `wait_until` timeout to `ClassOther`. Don't delete that test.
+- **`ClassInTestDeadline` recognition depends on a string Rust owns**: `timed_out()` in
+  `crates/cmdr-fs/src/testing/mod.rs`. Nothing but `TestWaitUntilPanicFormatStillMatchesTheClassifier` ties the two
+  languages together; without it, rewording the panic would silently downgrade every `wait_until` timeout to
+  `ClassOther`. Don't delete that test.
 - **Leaks are a PASS, not a failure.** nextest counts a leaky test in its "N passed (M leaky)" tally, so `RealFailures`
   drops them before anything re-runs or counts failures. Treating a leak as a failure both overstates a red run and
   sends the contention re-run chasing a test that passed.
