@@ -600,7 +600,7 @@ impl Index {
                 volume_id: volume_id.to_string(),
             });
         }
-        let context = cover::context_for_walk(volume_id).map_err(|e| match e {
+        let context = cover::context_for_walk(volume_id, &cancel, cover::WalkFor::TheUser).map_err(|e| match e {
             // Nothing to walk into and nothing built: from out here that reads
             // exactly like a drive that was never indexed, which is what it is.
             cover::NoCoverContext::NotMounted => IndexError::NotIndexed {
@@ -611,13 +611,7 @@ impl Index {
             // because the scan already covers what it would have walked.
             other => IndexError::Internal(Diagnostic(format!("can't walk '{volume_id}': {other}"))),
         })?;
-        Ok(cover::start(
-            context,
-            frontier,
-            dimension,
-            cancel,
-            cover::WalkFor::TheUser,
-        ))
+        Ok(cover::start(context, frontier, dimension))
     }
 
     /// The user is looking at this directory; check that the index still matches

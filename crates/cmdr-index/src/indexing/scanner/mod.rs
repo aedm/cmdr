@@ -23,6 +23,7 @@ use std::time::{Duration, Instant};
 use tokio_util::sync::CancellationToken;
 
 use crate::indexing::IndexPathSpace;
+use crate::indexing::hold::{HoldKind, VolumeWork};
 use crate::indexing::store::{IndexStore, UnreadableCause, resolve_scan_root};
 use crate::indexing::writer::{AggSource, IndexWriter, WriteMessage};
 use cmdr_fs::pluralize::{pluralize, pluralize_with};
@@ -41,8 +42,9 @@ mod insert_visitor;
 use insert_visitor::{InsertVisitor, UnreadableIds};
 
 mod walker;
-// The walker's test-only park point, for the real-image vanish pin in `indexing/tests/`.
-#[cfg(all(test, target_os = "macos"))]
+// The walker's test-only park point: the real-image vanish pin in `indexing/tests/`,
+// and the tests that hold a walk to prove it holds its volume (`hold.rs`).
+#[cfg(test)]
 pub(crate) use walker::park;
 use walker::{
     DEFAULT_GIVE_UP_AFTER, DEFAULT_PER_ENTRY_ALLOWANCE, DirTask, ReadDirFn, WalkConfig, default_reader, walk,
@@ -554,16 +556,19 @@ fn cover_walk_throttle() -> Option<Duration> {
 ///
 /// Returns a [`ScanHandle`] for progress/cancellation and a [`std::thread::JoinHandle`]
 /// for the scan result.
+///
+/// The thread carries `work`, so the volume stays held until the walk and the
+/// finish after it are done.
 pub fn scan_volume(
     config: ScanConfig,
     writer: &IndexWriter,
-    cancel: CancellationToken,
+    work: VolumeWork,
 ) -> Result<(ScanHandle, std::thread::JoinHandle<Result<ScanSummary, ScanError>>), ScanError> {
     let progress = Arc::new(ScanProgress::new());
 
     let handle = ScanHandle {
         progress: Arc::clone(&progress),
-        cancel: cancel.clone(),
+        cancel: work.cancel.clone(),
     };
 
     let writer = writer.clone();
@@ -576,7 +581,7 @@ pub fn scan_volume(
             let policy = WalkPolicy::for_walk(ScanRoot::Volume, &config.space, &config.root);
             let result = run_scan(
                 &config.root,
-                &cancel,
+                &work,
                 &progress,
                 &writer,
                 config.batch_size,
@@ -628,13 +633,13 @@ pub fn scan_subtree(
     root: &Path,
     space: &IndexPathSpace,
     writer: &IndexWriter,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
 ) -> Result<ScanSummary, ScanError> {
     walk_subtree(
         root,
         space,
         writer,
-        cancel,
+        work,
         WalkPolicy::for_walk(ScanRoot::Rebuild, space, root),
         None,
         default_reader(),
@@ -670,14 +675,14 @@ pub(in crate::indexing) fn cover_subtree(
     space: &IndexPathSpace,
     writer: &IndexWriter,
     emit: Option<EntrySender>,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
     heartbeat: &WalkHeartbeat,
 ) -> Result<ScanSummary, ScanError> {
     walk_subtree(
         root,
         space,
         writer,
-        cancel,
+        work,
         WalkPolicy::for_walk(ScanRoot::Virgin, space, root),
         emit,
         default_reader(),
@@ -703,7 +708,7 @@ fn walk_subtree(
     root: &Path,
     space: &IndexPathSpace,
     writer: &IndexWriter,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
     policy: WalkPolicy,
     emit: Option<EntrySender>,
     reader: ReadDirFn,
@@ -713,7 +718,7 @@ fn walk_subtree(
     let progress = Arc::new(ScanProgress::new());
     let outcome = run_scan(
         root,
-        cancel,
+        work,
         &progress,
         writer,
         2000,
@@ -752,7 +757,7 @@ fn walk_subtree(
 )]
 fn run_scan(
     root: &Path,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
     progress: &ScanProgress,
     writer: &IndexWriter,
     batch_size: usize,
@@ -821,10 +826,11 @@ fn run_scan(
             .map_err(|e| ScanError::WriterSend(e.to_string()))?;
     }
 
-    // A CHILD of the scan's token: cancelling the parent stops the walk, and the
+    // A CHILD of the scan's work: cancelling the parent stops the walk, and the
     // visitor can stop the walk on a writer-send failure WITHOUT that reading as
-    // a user cancel (`was_cancelled` below asks the parent).
-    let walk_cancel = cancel.child_token();
+    // a user cancel (`was_cancelled` below asks the parent). Its share is the
+    // walker's workers', which outlive this call when one is abandoned mid-read.
+    let walk_work = work.child(HoldKind::WalkerWorker);
     let emitting = emit.is_some();
     let visitor = Arc::new(InsertVisitor::new(
         writer.clone(),
@@ -832,7 +838,7 @@ fn run_scan(
         space.inodes_trustworthy(),
         batch_size,
         progress,
-        walk_cancel.clone(),
+        walk_work.cancel.clone(),
         epoch,
         emit,
     ));
@@ -863,7 +869,7 @@ fn run_scan(
         id: root_id,
     };
 
-    let walk_stats = walk(root_task, cfg, reader, Arc::clone(&visitor), walk_cancel);
+    let walk_stats = walk(root_task, cfg, reader, Arc::clone(&visitor), walk_work);
 
     // Flush the final batch and surface any writer-send failure.
     visitor.finish()?;
@@ -890,7 +896,7 @@ fn run_scan(
         heartbeat.abandoned(walk_stats.timed_out + walk_stats.subtrees_abandoned);
     }
 
-    let was_cancelled = cancel.is_cancelled();
+    let was_cancelled = work.cancel.is_cancelled();
 
     // A volume-root scan whose ROOT never listed (`dirs_read == 0`) means the mount
     // itself couldn't be read — it vanished or went unreadable mid-scan (a yanked
@@ -942,12 +948,12 @@ pub(in crate::indexing) fn cover_subtree_with_reader(
     space: &IndexPathSpace,
     writer: &IndexWriter,
     emit: Option<EntrySender>,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
     reader: ReadDirFn,
     heartbeat: Option<&WalkHeartbeat>,
 ) -> Result<ScanSummary, ScanError> {
     let policy = WalkPolicy::for_walk(ScanRoot::Virgin, space, root);
-    walk_subtree(root, space, writer, cancel, policy, emit, reader, 1, heartbeat)
+    walk_subtree(root, space, writer, work, policy, emit, reader, 1, heartbeat)
 }
 
 /// [`cover_subtree_with_reader`] with the device probe injected too, so a test
@@ -957,9 +963,9 @@ pub(in crate::indexing) fn cover_subtree_with_device_probe(
     root: &Path,
     space: &IndexPathSpace,
     writer: &IndexWriter,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
     device_of: fn(&Path) -> Option<u64>,
 ) -> Result<ScanSummary, ScanError> {
     let policy = WalkPolicy::with_device_probe(ScanRoot::Virgin, space, root, device_of);
-    walk_subtree(root, space, writer, cancel, policy, None, default_reader(), 1, None)
+    walk_subtree(root, space, writer, work, policy, None, default_reader(), 1, None)
 }

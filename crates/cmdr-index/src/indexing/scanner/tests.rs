@@ -3,6 +3,7 @@
 //! from the former `scanner.rs` `mod tests`; pure code movement.
 use super::test_fixtures::{create_test_tree, ensure_path_in_db, scan_test_tempdir, setup_writer};
 use super::*;
+use crate::indexing::hold;
 use crate::indexing::store::{self, IndexStore, ROOT_ID, ScanContext};
 use cmdr_fs::firmlinks;
 use std::fs;
@@ -183,6 +184,49 @@ fn should_not_exclude_linux_normal_paths() {
 // fixture paths under /tmp on Linux Docker. A unit test here would require
 // mutating the env (unsafe set_var) and nextest (OnceLock is per-process).
 
+/// A scan's own thread holds its volume, and so do the walker's workers under it,
+/// so a stop can't answer "released" while the scan still reads the drive. Both let
+/// go once the walk is done.
+#[test]
+fn a_scan_holds_its_volume_until_its_thread_is_done() {
+    let volume_id = "scanner-test-holds";
+    let scan_root = scan_test_tempdir();
+    create_test_tree(scan_root.path());
+    let (writer, _db_path, _db_dir) = setup_writer();
+    let config = ScanConfig {
+        root: scan_root.path().to_path_buf(),
+        batch_size: 100,
+        num_threads: 1,
+        ..ScanConfig::default()
+    };
+    let park = park::ParkHandle::arm(scan_root.path(), 0);
+    let volume = VolumeWork::for_test(volume_id);
+
+    let (_handle, join_handle) = scan_volume(config, &writer, volume.child(HoldKind::Scanner)).unwrap();
+    assert!(
+        park.wait_until_parked(Duration::from_secs(10)),
+        "the scan parks before its first read"
+    );
+    drop(volume);
+    assert_eq!(
+        hold::wait_until_released(volume_id, Duration::ZERO),
+        hold::Release::StillHeld(vec![(HoldKind::WalkerWorker, 1), (HoldKind::Scanner, 1)]),
+        "the scan's thread and its walker's workers still read the volume"
+    );
+
+    drop(park);
+    join_handle
+        .join()
+        .expect("scan thread panicked")
+        .expect("the scan completes");
+    assert_eq!(
+        hold::wait_until_released(volume_id, Duration::from_secs(5)),
+        hold::Release::Released,
+        "and both let go once the walk is done"
+    );
+    writer.shutdown();
+}
+
 #[test]
 fn scan_temp_directory_tree() {
     let scan_root = scan_test_tempdir();
@@ -197,7 +241,7 @@ fn scan_temp_directory_tree() {
         ..ScanConfig::default()
     };
 
-    let (handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     let summary = join_handle.join().expect("scan thread panicked").unwrap();
 
     // We created: subdir/, file1.txt, file2.txt, subdir/nested.txt, subdir/deep/, subdir/deep/leaf.txt
@@ -253,7 +297,7 @@ fn clean_scan_stamps_every_listed_dir_with_current_epoch() {
         ..ScanConfig::default()
     };
 
-    let (_handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (_handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     join_handle.join().expect("scan thread panicked").unwrap();
 
     writer.flush_blocking().unwrap();
@@ -288,7 +332,7 @@ fn scan_subtree_only() {
     create_test_tree(scan_root.path());
 
     let (writer, db_path, _db_dir) = setup_writer();
-    let cancelled = CancellationToken::new();
+    let cancelled = VolumeWork::for_test("scanner-test");
 
     let subtree_root = scan_root.path().join("subdir");
 
@@ -334,7 +378,7 @@ fn a_cancelled_subtree_scan_still_repairs_its_ancestors() {
         &subtree_root,
         &IndexPathSpace::root(),
         &writer,
-        &CancellationToken::new(),
+        &VolumeWork::for_test("scanner-test"),
     )
     .expect("the seeding scan");
     writer.flush_blocking().unwrap();
@@ -359,9 +403,9 @@ fn a_cancelled_subtree_scan_still_repairs_its_ancestors() {
     };
 
     // Now cancel before the walk can put anything back.
-    let cancel = CancellationToken::new();
-    cancel.cancel();
-    let result = scan_subtree(&subtree_root, &IndexPathSpace::root(), &writer, &cancel);
+    let work = VolumeWork::for_test("scanner-test");
+    work.cancel.cancel();
+    let result = scan_subtree(&subtree_root, &IndexPathSpace::root(), &writer, &work);
     assert!(
         matches!(result, Err(ScanError::Cancelled(_))),
         "a cancelled subtree scan must surface the typed cancellation, got {result:?}"
@@ -397,7 +441,7 @@ fn scan_cancellation() {
         ..ScanConfig::default()
     };
 
-    let (handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     // Cancel immediately
     handle.cancel();
 
@@ -422,7 +466,7 @@ fn scan_empty_directory() {
         ..ScanConfig::default()
     };
 
-    let (_handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (_handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     let summary = join_handle.join().expect("scan thread panicked").unwrap();
 
     assert_eq!(summary.total_entries, 0);
@@ -448,7 +492,7 @@ fn physical_size_is_captured() {
         ..ScanConfig::default()
     };
 
-    let (_handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (_handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     let _summary = join_handle.join().expect("scan thread panicked").unwrap();
 
     writer.flush_blocking().unwrap();
@@ -490,7 +534,7 @@ fn scan_nulls_inode_on_inode_untrusted_volume() {
             num_threads: 1,
             space: IndexPathSpace::root().with_inodes_trustworthy(inodes_trustworthy),
         };
-        let (_handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+        let (_handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
         join_handle.join().expect("scan thread panicked").unwrap();
         writer.flush_blocking().unwrap();
         writer.shutdown();
@@ -532,7 +576,7 @@ fn scan_handles_symlinks() {
         ..ScanConfig::default()
     };
 
-    let (_handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (_handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     let _summary = join_handle.join().expect("scan thread panicked").unwrap();
 
     writer.flush_blocking().unwrap();
@@ -574,7 +618,7 @@ fn scan_sets_recursive_has_symlinks_for_symlink_only_dir() {
         num_threads: 1,
         ..ScanConfig::default()
     };
-    let (_handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (_handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     let _summary = join_handle.join().expect("scan thread panicked").unwrap();
 
     // Trigger aggregation, then flush
@@ -638,7 +682,7 @@ fn scan_assigns_integer_ids() {
         ..ScanConfig::default()
     };
 
-    let (_handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (_handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     let _summary = join_handle.join().expect("scan thread panicked").unwrap();
 
     writer.flush_blocking().unwrap();
@@ -783,7 +827,7 @@ fn bytes_scanned_matches_stored_physical_sum_with_hardlinks() {
         ..ScanConfig::default()
     };
 
-    let (handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     join_handle.join().expect("scan thread panicked").unwrap();
 
     writer.flush_blocking().unwrap();
@@ -819,7 +863,7 @@ fn scan_summary_total_physical_bytes_equals_final_counter() {
         ..ScanConfig::default()
     };
 
-    let (handle, join_handle) = scan_volume(config, &writer, CancellationToken::new()).unwrap();
+    let (handle, join_handle) = scan_volume(config, &writer, VolumeWork::for_test("scanner-test")).unwrap();
     let summary = join_handle.join().expect("scan thread panicked").unwrap();
     writer.shutdown();
 
@@ -880,7 +924,7 @@ fn a_timed_out_dir_is_marked_abandoned_and_never_marked_listed() {
 
     let (writer, db_path, _db_dir) = setup_writer();
     let progress = Arc::new(ScanProgress::new());
-    let cancelled = CancellationToken::new();
+    let cancelled = VolumeWork::for_test("scanner-test");
 
     let start = Instant::now();
     let outcome = run_scan(
@@ -978,7 +1022,7 @@ fn volume_root_that_never_lists_surfaces_root_unlistable() {
 
     let (writer, _db_path, _db_dir) = setup_writer();
     let progress = Arc::new(ScanProgress::new());
-    let cancelled = CancellationToken::new();
+    let cancelled = VolumeWork::for_test("scanner-test");
 
     let result = run_scan(
         &root,

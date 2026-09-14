@@ -85,7 +85,7 @@ pub(in crate::indexing) async fn run_replay_event_loop(
         since_event_id,
         estimated_total,
         heal_after_replay,
-        cancel,
+        work,
         ground,
     } = config;
 
@@ -426,7 +426,7 @@ pub(in crate::indexing) async fn run_replay_event_loop(
     // search can walk a hole in it, and those events wait for that walk rather
     // than racing it (`branches`).
     let scope = WatchScope::WholeVolume(branches::live_for(&volume_id));
-    let mut reconciler = EventReconciler::new_for(volume_id.clone(), space.clone(), cancel.clone());
+    let mut reconciler = EventReconciler::new_for(volume_id.clone(), space.clone(), work.cancel.clone());
     reconciler.within(scope.clone());
     reconciler.switch_to_live();
 
@@ -436,9 +436,9 @@ pub(in crate::indexing) async fn run_replay_event_loop(
     if !origins_overflow {
         let verify_writer = writer.clone();
         let verify_events = Arc::clone(&events);
-        let verify_cancel = cancel.child_token();
+        let verification = work.child(crate::indexing::hold::HoldKind::Verifier);
         crate::indexing::host::runtime::spawn(async move {
-            run_background_verification(origin_dirs, verify_writer, verify_events, verify_cancel).await;
+            run_background_verification(origin_dirs, verify_writer, verify_events, verification).await;
         });
     }
 

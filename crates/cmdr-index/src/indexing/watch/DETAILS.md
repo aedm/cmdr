@@ -21,7 +21,8 @@ post-replay verification COST-BOUNDING (the two teeth) in `../reconcile/DETAILS.
   (below).
 - **event_loop.rs** — holds only what more than one loop uses: `merge_fs_events` (deduplication with flag priority),
   `open_read_conn_with_retry` (read-connection open at each loop's start), `ReplayConfig` (the manager→replay bridge
-  struct, which also carries the volume's stop token down so nothing here looks one up), the cross-loop flush/gap
+  struct, which also carries the loop's `VolumeWork` down, its stop signal and share of the volume's hold, so nothing
+  here looks one up), the cross-loop flush/gap
   constants (`LIVE_FLUSH_INTERVAL_MS`, `THROTTLE_SWEEP_INTERVAL_MS`, `JOURNAL_GAP_THRESHOLD`), and the
   ingestion-pressure model (`INGESTION_BACKLOG_WARN`, `INGESTION_HARD_CAP`, `classify_ingestion_pressure`,
   `BacklogTracker` / `report_backlog`). Re-exports `run_live_event_loop` / `process_live_batch` /

@@ -16,6 +16,7 @@ use crate::indexing::events::{
     ActivityPhase, DEBUG_STATS, IndexEvent, RescanReason, ScanRunKind, announce_whole_volume_walk,
     emit_rescan_notification, set_phase_for,
 };
+use crate::indexing::hold::HoldKind;
 use crate::indexing::lifecycle::cover;
 use crate::indexing::lifecycle::progress_reporter::ScanProgressReporter;
 use crate::indexing::lifecycle::rescan_request::ScanStartError;
@@ -174,10 +175,11 @@ impl IndexManager {
         // channel so the fallback logs the real cause instead of guessing "gap".
         let (fallback_tx, fallback_rx) = tokio::sync::oneshot::channel::<RescanReason>();
 
-        // The loop's own branch of this volume's stop signal. Taken here, where the
-        // manager owns it, so nothing below has to reach back into the registry for
-        // it (see `ReplayConfig::cancel`).
-        let replay_cancel = self.work.cancel.child_token();
+        // The loop's own work under this volume's: its stop signal and the share of
+        // the hold it carries while it runs. Taken here, where the manager owns the
+        // volume's, so nothing below has to reach back into the registry for it (see
+        // `ReplayConfig::work`).
+        let replay_work = self.work.child(HoldKind::LiveLoop);
 
         // Spawn through the host runtime seam, which resolves a handle instead of
         // inheriting one: indexing can start from the app's synchronous setup() hook,
@@ -194,7 +196,7 @@ impl IndexManager {
                     since_event_id,
                     estimated_total,
                     heal_after_replay,
-                    cancel: replay_cancel,
+                    work: replay_work,
                     ground,
                 },
                 fallback_tx,
@@ -669,7 +671,7 @@ impl IndexManager {
                 space: space.clone(),
                 ..ScanConfig::default()
             };
-            scanner::scan_volume(config, &self.writer, self.work.cancel.child_token())
+            scanner::scan_volume(config, &self.writer, self.work.child(HoldKind::Scanner))
                 .map_err(|e| format!("Failed to start scan: {e}"))?
         };
 

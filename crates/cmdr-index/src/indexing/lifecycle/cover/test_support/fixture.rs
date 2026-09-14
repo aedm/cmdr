@@ -6,8 +6,11 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 
-use super::super::{CoverContext, FlushOnFinish};
+use tokio_util::sync::CancellationToken;
+
+use super::super::{CoverContext, FlushOnFinish, WalkFor};
 use crate::indexing::IndexPathSpace;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::store::{IndexStore, ROOT_ID};
 use crate::indexing::volume::IndexVolumeKind;
 use crate::indexing::writer::IndexWriter;
@@ -66,13 +69,26 @@ impl Fixture {
         parent_id
     }
 
+    /// A background walk's context that nobody but the walk itself stops.
     pub(in crate::indexing::lifecycle::cover) fn context(&self) -> CoverContext {
+        self.context_for(&CancellationToken::new(), WalkFor::TheIndex)
+    }
+
+    /// A walk's context under `caller`'s token, the way `context_for_walk` mints one
+    /// off a running volume.
+    pub(in crate::indexing::lifecycle::cover) fn context_for(
+        &self,
+        caller: &CancellationToken,
+        for_whom: WalkFor,
+    ) -> CoverContext {
         CoverContext {
             volume_id: self.volume_id.clone(),
             writer: self.writer.clone(),
             space: IndexPathSpace::root(),
             kind: IndexVolumeKind::Local,
             flush: FlushOnFinish::default(),
+            for_whom,
+            work: VolumeWork::linked(caller, &VolumeWork::for_test(&self.volume_id), for_whom.hold_kind()),
         }
     }
 

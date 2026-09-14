@@ -21,6 +21,7 @@ use tokio_util::sync::CancellationToken;
 
 use self::ground::{Ground, RootOutcome};
 use crate::indexing::IndexPathSpace;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::metadata::MetadataSnapshot;
 use crate::indexing::read::coverage::CoverageDimension;
 use crate::indexing::scanner::{CoveredEntry, WalkHeartbeat};
@@ -99,9 +100,19 @@ pub struct CoverWalk {
     thread: Option<JoinHandle<CoverOutcome>>,
     deferred: Vec<String>,
     heartbeat: WalkHeartbeat,
+    /// The walk's own stop signal, so a test can wait for a stop to reach it
+    /// before letting a parked walk go on.
+    #[cfg(test)]
+    stop: CancellationToken,
 }
 
 impl CoverWalk {
+    /// Whether this walk has been told to stop, by anyone.
+    #[cfg(test)]
+    pub(in crate::indexing) fn is_stopped_for_test(&self) -> bool {
+        self.stop.is_cancelled()
+    }
+
     /// The handle for a request whose every frontier root belongs to a walk
     /// already running (and for the degenerate empty frontier): no thread, no
     /// batches, and [`finish`](Self::finish) answers on the spot.
@@ -119,6 +130,8 @@ impl CoverWalk {
             thread: None,
             deferred,
             heartbeat: WalkHeartbeat::new(),
+            #[cfg(test)]
+            stop: CancellationToken::new(),
         }
     }
 
@@ -188,6 +201,16 @@ pub(crate) struct CoverContext {
     pub kind: IndexVolumeKind,
     /// Who commits what the walk wrote before anyone reads it.
     pub flush: FlushOnFinish,
+    /// Who the walk runs for: whether it yields held ground or asks for it.
+    pub for_whom: WalkFor,
+    /// This walk's own work, minted for it alone ([`context_for_walk`]): a child of
+    /// the caller's stop signal, also stopped by the volume's, carrying a share of
+    /// the volume's hold. It rides into the walk thread, so the drive stays held
+    /// until the walk's last read returns.
+    ///
+    /// ⚠️ A yield cancels it, which is why it's the walk's alone: handing ground over
+    /// must stop this walk and nothing above it.
+    pub work: VolumeWork,
 }
 
 /// Who waits for the writer once a walk ends.
@@ -239,26 +262,21 @@ const YIELD_WAIT: std::time::Duration = std::time::Duration::from_millis(750);
 /// each taken whole: nothing under a frontier node is covered, so there is no
 /// pruning to do inside one. Ground another walk on this volume is already
 /// covering is left to it and reported as
-/// [`covered_by_another_walk`](CoverWalk::covered_by_another_walk) — unless
-/// `for_whom` says somebody is waiting on this walk, in which case the background
+/// [`covered_by_another_walk`](CoverWalk::covered_by_another_walk) — unless the
+/// context says somebody is waiting on this walk, in which case the background
 /// walk holding that ground is asked to hand it over.
-pub(crate) fn start(
-    context: CoverContext,
-    frontier: Vec<String>,
-    dimension: CoverageDimension,
-    cancel: CancellationToken,
-    for_whom: WalkFor,
-) -> CoverWalk {
+pub(crate) fn start(context: CoverContext, frontier: Vec<String>, dimension: CoverageDimension) -> CoverWalk {
     // Deliberately an irrefutable `let`: a second dimension has to become a
     // compile error here, not a silently-ignored parameter.
     let CoverageDimension::Listing = dimension;
 
-    // ⚠️ A CHILD of whatever the caller passed, always. Stopping one walk so its
-    // ground can change hands must not stop the volume, and a caller that handed
-    // its own token straight in would have every yield cancel everything else
-    // hanging off it. The caller's token still stops this walk, because that is
-    // what a parent does.
-    let walk_cancel = cancel.child_token();
+    // ⚠️ The walk's OWN stop signal, a child of whatever token the caller holds
+    // (`context_for_walk` mints it). Stopping one walk so its ground can change
+    // hands must not stop the volume, and a caller whose own token went into the
+    // claim would have every yield cancel everything else hanging off it. The
+    // caller's token and the volume's still stop this walk.
+    let walk_cancel = context.work.cancel.clone();
+    let for_whom = context.for_whom;
     // ONE pulse for the whole frontier, not one per root: a consumer watching a
     // walk of eight roots wants a count that keeps climbing, not one that restarts.
     // Made before the claim so the holder carries it: a walk in the table nobody
@@ -308,6 +326,8 @@ pub(crate) fn start(
 
     let (sender, batches) = sync_channel(BATCH_QUEUE_DEPTH);
     let walk_heartbeat = heartbeat.clone();
+    #[cfg(test)]
+    let stop = walk_cancel.clone();
     let thread = std::thread::Builder::new()
         .name("index-cover".into())
         .spawn(move || {
@@ -316,6 +336,8 @@ pub(crate) fn start(
             cmdr_fs::thread_qos::set_current_thread_qos(cmdr_fs::thread_qos::QosClass::Utility);
             // The claim lives as long as the walk and no longer, so its ground
             // frees up on the completion path, the cancel path, and a panic alike.
+            // The context's share of the volume's hold drops with this closure,
+            // after the walk's last read.
             let outcome = walk_frontier(&context, claim.mine(), &sender, &walk_cancel, &walk_heartbeat);
             release_ground(&context.volume_id, claim);
             outcome
@@ -332,6 +354,8 @@ pub(crate) fn start(
         thread: Some(thread),
         deferred,
         heartbeat,
+        #[cfg(test)]
+        stop,
     }
 }
 

@@ -283,11 +283,13 @@ longer un-routes reads; go through `stop_indexing` or uninstall explicitly.
 
 ## A volume's stop signal is handed down, never looked up
 
-`VolumeSignals::cancel` is the root of every cancellation under a volume: each long walk it starts (a full scan, a
-reconcile, a subtree rescan, a verification) runs on a `child_token()`, so tearing the volume down stops all of them at
-once. Whoever OWNS the token hands a child to the work it starts — `IndexManager` into `ScanCompletion` and
-`ReplayConfig` (and from there into `EventReconciler` and the post-replay verification walk), `trigger_verification`
-into `maybe_verify` while it already holds the instance.
+`IndexInstance::work`, the volume's root `VolumeWork`, is the root of every cancellation under a volume: each long walk
+it starts (a full scan, a reconcile, a subtree rescan, a verification, a cover walk) runs on a child, so tearing the
+volume down stops all of them at once, and a child that reads the drive carries a share of the hold (§ "When a volume
+has been let go"). Whoever OWNS the work hands a child to the work it starts — `IndexManager` into `ScanCompletion`,
+`ReplayConfig`, and the phase machine (and from there into `EventReconciler` and the post-replay verification walk),
+`trigger_verification` into `maybe_verify` while it already holds the instance, `cover_context_for` into a cover walk
+under the lock that hands out its writer.
 
 The same hand-down covers what a walk needs to know about its VOLUME. `trigger_verification` takes the volume id, the
 writer, and `IndexManager::path_space()` off one instance under one lock, so the verifier's read pool, its writer, and
@@ -484,11 +486,24 @@ that lands after the stop freed the slot takes a hold of its own, so a volume so
 ❌ **Only the removable stop waits.** The user's disable and every other teardown record their request on a transient
 phase and return (§ "The shutting-down window"), and nothing that calls them may start blocking.
 
-What "let go" covers is the MANAGER: its watcher, live-event loop, and writer thread, all stopped by `shutdown`. A
-cancelled scan thread isn't joined (`../transports/DETAILS.md` § "The drain is cooperative"), and a search's cover walk
-stops on its caller's token rather than the volume's (`cover/CLAUDE.md`), so neither is part of the answer.
+**What "let go" covers.** The manager (its watcher, live-event loop, and writer thread, all stopped by `shutdown`), and
+every worker that reads the drive and outlives it, none of which the drain joins. Each takes its share when it's spawned
+and drops it after its last read returns:
 
-Anchors: `cover::cold_drive_tests::removals` (a drain in flight and a claimed `Detached`, both over real managers),
+- a scan's thread (`Scanner`), and under every walk the walker's workers (`WalkerWorker`), an abandoned one parked in a
+  hung read included, because the engine holds the share and every worker holds the engine;
+- the phase machine's thread (`Phases`) and every cover walk's (`PhaseCover`, or `SearchCover` for a search's, which
+  `VolumeWork::linked` also stops on the volume's stop, one scheduler hop late);
+- a verification's task and the blocking reads under it (`Verifier`).
+
+❌ **A worker stuck in a read keeps its share**, with no timeout that drops it early: the drive then reads as still
+releasing, and an eject doesn't unmount under the read.
+
+Anchors: `cover::cold_drive_tests::removals` (a drain in flight and a claimed `Detached`, both over real managers; a
+search's walk and the phase machine, each still reading after the drain),
+`scanner::walker::tests::an_abandoned_worker_holds_its_volume_until_its_read_returns`,
+`scanner::tests::a_scan_holds_its_volume_until_its_thread_is_done`,
+`reconcile::verifier::tests::a_verification_holds_its_volume_until_its_walk_is_done`,
 `state::tests::a_removable_stop_waits_for_the_start_it_cancelled`,
 `state::tests::a_removable_stop_never_waits_on_a_drive_that_already_left`, and `hold::tests` (the wake, the per-kind
 counts, generations, and the linked cancel).

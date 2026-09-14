@@ -125,11 +125,9 @@ fn how_long_a_walk_takes_to_hand_its_ground_over(dirs: usize) -> Vec<Duration> {
     for round in 0..HANDOVER_ROUNDS {
         let cancel = CancellationToken::new();
         let walk = cover::start(
-            fixture.context().leaving_the_flush_to_the_caller(),
+            fixture.context_for(&cancel).leaving_the_flush_to_the_caller(),
             vec![fixture.path(&format!("big-{round}"))],
             CoverageDimension::Listing,
-            cancel.clone(),
-            cover::WalkFor::TheIndex,
         );
         let mut seen = 0;
         while let Some(batch) = walk.next_batch() {

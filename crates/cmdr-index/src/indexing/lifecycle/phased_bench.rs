@@ -56,10 +56,10 @@ use std::time::{Duration, Instant};
 use cmdr_fs::ignore_poison::IgnorePoison;
 use cmdr_fs::pluralize::{pluralize, pluralize_with};
 use rusqlite::Connection;
-use tokio_util::sync::CancellationToken;
 
 use crate::NoopEventSink;
 use crate::indexing::IndexPathSpace;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::metadata::extract_metadata;
 use crate::indexing::read::coverage::{CoverageDimension, coverage_for_scope};
 use crate::indexing::scanner::{
@@ -117,7 +117,8 @@ fn run_bulk(label: &'static str, full_sequence: bool) {
         root: PathBuf::from("/"),
         ..Default::default()
     };
-    let (_handle, thread) = scan_volume(config, &bench.writer, CancellationToken::new()).expect("start the scan");
+    let (_handle, thread) =
+        scan_volume(config, &bench.writer, VolumeWork::for_test("phased-bench")).expect("start the scan");
     let summary = thread.join().expect("scan thread").expect("scan completed");
     if let Some(pump) = pump {
         pump.stop();
@@ -677,8 +678,8 @@ impl Bench {
     fn cover_frontier_root(&self, root: &Path) {
         let started = Instant::now();
         let heartbeat = WalkHeartbeat::new();
-        let cancel = CancellationToken::new();
-        let entries = match cover_subtree(root, &self.space, &self.writer, None, &cancel, &heartbeat) {
+        let work = VolumeWork::for_test("phased-bench");
+        let entries = match cover_subtree(root, &self.space, &self.writer, None, &work, &heartbeat) {
             Ok(summary) => summary.total_entries,
             Err(e) => {
                 if matches!(e, crate::indexing::scanner::ScanError::NotVirgin) {
@@ -1053,13 +1054,13 @@ fn open_listing(conn: &Connection, path: &Path) {
 fn search_shaped_walk(space: &IndexPathSpace, writer: &IndexWriter) {
     let root = Path::new(SEARCH_WALK_ROOT);
     let heartbeat = WalkHeartbeat::new();
-    let cancel = CancellationToken::new();
+    let work = VolumeWork::for_test("phased-bench-search");
     let writer = writer.clone();
     let space = space.clone();
     std::thread::Builder::new()
         .name("phase-bench-search".into())
         .spawn(move || {
-            let result = cover_subtree(root, &space, &writer, None, &cancel, &heartbeat);
+            let result = cover_subtree(root, &space, &writer, None, &work, &heartbeat);
             let _ = writer.flush_blocking();
             let mut out = std::io::stderr();
             let _ = match result {

@@ -231,6 +231,15 @@ end rather than two that beat against each other.
 
 The engine itself, its progress timeout, and the macOS bulk reader: `walker/DETAILS.md`.
 
+## Every walk holds its volume
+
+`scan_volume`, `scan_subtree`, and `cover_subtree` take `VolumeWork` where they once took a bare token. `scan_volume`'s
+thread moves its work in (`Scanner`), and `run_scan` hands the walker a `WalkerWorker` child, which is also the token
+the visitor cancels on a writer-send failure without it reading as a user cancel. Each caller of a subtree walk carries
+its own share around it: the verifier (`Verifier`) and a cover walk (`PhaseCover` or `SearchCover`). Why, and the stop
+that waits on it: `../lifecycle/DETAILS.md` § "When a volume has been let go". Test:
+`tests.rs::a_scan_holds_its_volume_until_its_thread_is_done`.
+
 ## Scan-scope-aware exclusions (`scanner/exclusions.rs`)
 
 `should_exclude(path, &ExclusionScope)` splits the exclusion policy into two tiers so a mount-rooted scan can index its

@@ -127,7 +127,7 @@ impl Ground {
                     &context.space,
                     &context.writer,
                     Some(sender.clone()),
-                    cancel,
+                    &context.work,
                     heartbeat,
                 ) {
                     Ok(summary) => (Some(summary), RootOutcome::Covered),

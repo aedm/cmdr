@@ -24,6 +24,7 @@ use std::sync::Arc;
 
 use super::{IndexManager, ScanCalibration};
 use crate::indexing::events::ScanRunKind;
+use crate::indexing::hold::HoldKind;
 use crate::indexing::lifecycle::phases::{self, MachineContext};
 use crate::indexing::lifecycle::rescan_request::ScanStartError;
 use crate::indexing::scanner::{exclusion_policy_stamp_message, index_predates_exclusion_policy};
@@ -306,7 +307,7 @@ impl IndexManager {
                 writer: self.writer.clone(),
                 events: Arc::clone(&self.events),
                 freshness: Arc::clone(&self.freshness),
-                cancel: self.work.cancel.child_token(),
+                work: self.work.child(HoldKind::Phases),
             },
         })
     }

@@ -107,15 +107,15 @@ fn measure_one(root: &Path, primitive: Primitive) -> (std::time::Duration, u64, 
     }
 
     let space = IndexPathSpace::root();
-    let cancel = CancellationToken::new();
+    let work = VolumeWork::for_test("cover-bench");
     let start = std::time::Instant::now();
     match primitive {
         Primitive::Parallel => {
-            cover_subtree(root, &space, &writer, None, &cancel, &WalkHeartbeat::new()).expect("parallel walk");
+            cover_subtree(root, &space, &writer, None, &work, &WalkHeartbeat::new()).expect("parallel walk");
         }
         Primitive::Serial => {
             let conn = IndexStore::open_read_connection(&db_path).expect("read connection");
-            crate::indexing::reconcile::reconciler::reconcile_subtree(root, &space, &conn, &writer, &cancel, None)
+            crate::indexing::reconcile::reconciler::reconcile_subtree(root, &space, &conn, &writer, &work.cancel, None)
                 .expect("serial reconcile");
         }
     }

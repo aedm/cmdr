@@ -126,6 +126,17 @@ pub(crate) enum WalkFor {
     TheUser,
 }
 
+impl WalkFor {
+    /// What a walk for this caller holds its volume as, so a stop that runs out of
+    /// time can say whose walk still reads the drive.
+    pub(crate) fn hold_kind(self) -> crate::indexing::hold::HoldKind {
+        match self {
+            WalkFor::TheIndex => crate::indexing::hold::HoldKind::PhaseCover,
+            WalkFor::TheUser => crate::indexing::hold::HoldKind::SearchCover,
+        }
+    }
+}
+
 /// Who is taking ground, and how to reach them.
 ///
 /// The yield handle lives HERE rather than beside the table because a walking

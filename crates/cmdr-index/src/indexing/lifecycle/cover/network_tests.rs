@@ -790,14 +790,9 @@ fn a_walk_somebody_waits_on_takes_ground_off_a_background_walk() {
     let wanted = share.path("scope/a");
 
     // A background walk, holding `scope` and parked inside it.
-    let context = context_for_walk(volume_id).expect("the share is walkable");
-    let background = start(
-        context,
-        vec![scope.clone()],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let context =
+        context_for_walk(volume_id, &CancellationToken::new(), WalkFor::TheIndex).expect("the share is walkable");
+    let background = start(context, vec![scope.clone()], CoverageDimension::Listing);
     let background = std::thread::spawn(move || drain(background));
     backend.wait_for_the_gate();
     assert_eq!(

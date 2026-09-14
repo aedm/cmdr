@@ -12,8 +12,6 @@
 
 use std::path::{Path, PathBuf};
 
-use tokio_util::sync::CancellationToken;
-
 use super::test_fixtures::{self, MockChild, MockTree, dir, file, setup_writer};
 use super::*;
 use crate::indexing::IndexPathSpace;
@@ -112,7 +110,8 @@ fn a_cancelled_walk_leaves_durable_partial_coverage() {
     let c = b.join("C");
     seed_chain(&db_path, &a, &writer);
 
-    let cancel = CancellationToken::new();
+    let work = VolumeWork::for_test("convergence-test");
+    let cancel = work.cancel.clone();
     let reader = MockTree::new()
         .dir_at(a.clone(), level(Some("B")))
         .dir_at(b.clone(), level(Some("C")))
@@ -120,7 +119,7 @@ fn a_cancelled_walk_leaves_durable_partial_coverage() {
         .cancel_when_reading(c.clone())
         .reader(&cancel);
 
-    let result = cover_subtree_with_reader(&a, &IndexPathSpace::root(), &writer, None, &cancel, reader, None);
+    let result = cover_subtree_with_reader(&a, &IndexPathSpace::root(), &writer, None, &work, reader, None);
     assert!(
         matches!(result, Err(ScanError::Cancelled(_))),
         "a cancelled walk must surface the typed cancellation, got {result:?}"
@@ -199,7 +198,8 @@ fn a_folder_the_walk_cannot_read_stops_re_entering_the_frontier() {
     let healthy = a.join("healthy");
     seed_chain(&db_path, &a, &writer);
 
-    let cancel = CancellationToken::new();
+    let work = VolumeWork::for_test("convergence-test");
+    let cancel = work.cancel.clone();
     let reader = MockTree::new()
         // `flaky` is declared as a child but has no listing, so its read fails
         // with a plain not-found — the non-permission errno shape.
@@ -208,7 +208,7 @@ fn a_folder_the_walk_cannot_read_stops_re_entering_the_frontier() {
         .denied_at(denied.clone())
         .reader(&cancel);
 
-    cover_subtree_with_reader(&a, &IndexPathSpace::root(), &writer, None, &cancel, reader, None).expect("walk A");
+    cover_subtree_with_reader(&a, &IndexPathSpace::root(), &writer, None, &work, reader, None).expect("walk A");
     writer.flush_blocking().expect("flush");
     writer.shutdown();
 
@@ -290,7 +290,8 @@ fn marking_abandoned_ground_costs_no_coverage() {
     let wedged = b.join("wedged");
     seed_chain(&db_path, &a, &writer);
 
-    let cancel = CancellationToken::new();
+    let work = VolumeWork::for_test("convergence-test");
+    let cancel = work.cancel.clone();
     let reader = MockTree::new()
         .dir_at(a.clone(), level(Some("B")))
         // `wedged` has no listing, so its read fails with a non-permission errno.
@@ -302,7 +303,7 @@ fn marking_abandoned_ground_costs_no_coverage() {
         .dir_at(c.clone(), level(None))
         .reader(&cancel);
 
-    cover_subtree_with_reader(&a, &IndexPathSpace::root(), &writer, None, &cancel, reader, None).expect("walk A");
+    cover_subtree_with_reader(&a, &IndexPathSpace::root(), &writer, None, &work, reader, None).expect("walk A");
     writer.flush_blocking().expect("flush");
     writer.shutdown();
 
@@ -392,9 +393,10 @@ fn a_frontier_node_can_hold_a_listed_descendant() {
     writer.flush_blocking().expect("flush");
 
     // … and then G itself gets walked and marked.
-    let cancel = CancellationToken::new();
+    let work = VolumeWork::for_test("convergence-test");
+    let cancel = work.cancel.clone();
     let reader = MockTree::new().dir_at(g.clone(), level(None)).reader(&cancel);
-    cover_subtree_with_reader(&g, &IndexPathSpace::root(), &writer, None, &cancel, reader, None).expect("walk G");
+    cover_subtree_with_reader(&g, &IndexPathSpace::root(), &writer, None, &work, reader, None).expect("walk G");
     writer.flush_blocking().expect("flush");
     writer.shutdown();
 
@@ -453,9 +455,10 @@ fn covering_a_frontier_node_never_removes_a_row_it_did_not_write() {
         .expect("upsert G");
     writer.flush_blocking().expect("flush");
 
-    let cancel = CancellationToken::new();
+    let work = VolumeWork::for_test("convergence-test");
+    let cancel = work.cancel.clone();
     let reader = MockTree::new().dir_at(g.clone(), level(None)).reader(&cancel);
-    cover_subtree_with_reader(&g, &IndexPathSpace::root(), &writer, None, &cancel, reader, None).expect("walk G");
+    cover_subtree_with_reader(&g, &IndexPathSpace::root(), &writer, None, &work, reader, None).expect("walk G");
     writer.flush_blocking().expect("flush");
 
     let g_rows_before = child_ids(&db_path, &g.to_string_lossy());
@@ -464,12 +467,13 @@ fn covering_a_frontier_node_never_removes_a_row_it_did_not_write() {
     // Now cover F, the frontier node above it. G is unreadable this time round,
     // so anything the walk removes there is gone for good: a delete-then-rewalk
     // can't hide behind re-discovering the same names.
-    let cancel = CancellationToken::new();
+    let work = VolumeWork::for_test("convergence-test");
+    let cancel = work.cancel.clone();
     let reader = MockTree::new()
         .dir_at(f.clone(), level(Some("G")))
         .denied_at(g.clone())
         .reader(&cancel);
-    let outcome = cover_subtree_with_reader(&f, &IndexPathSpace::root(), &writer, None, &cancel, reader, None);
+    let outcome = cover_subtree_with_reader(&f, &IndexPathSpace::root(), &writer, None, &work, reader, None);
     writer.flush_blocking().expect("flush");
     writer.shutdown();
 

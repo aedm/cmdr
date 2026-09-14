@@ -398,8 +398,12 @@ mod tests {
         // Run the scan to completion: the scanner thread walks the mount, then sends
         // the mark + ComputeAllAggregates messages before returning, so joining it
         // and flushing the writer yields a fully aggregated index.
-        let (_handle, join) =
-            scan_volume(config, &writer, tokio_util::sync::CancellationToken::new()).expect("start scan");
+        let (_handle, join) = scan_volume(
+            config,
+            &writer,
+            crate::indexing::hold::VolumeWork::for_test("external-drive-fixture"),
+        )
+        .expect("start scan");
         join.join().expect("scan thread panicked").expect("scan ok");
         writer.flush_blocking().expect("flush aggregates");
 

@@ -13,6 +13,7 @@ use std::sync::atomic::Ordering;
 use cmdr_fs::ignore_poison::IgnorePoison;
 
 use super::{INDEX_REGISTRY, IndexInstance, IndexPhase};
+use crate::indexing::hold::HoldKind;
 use crate::indexing::lifecycle::cover;
 use crate::indexing::lifecycle::manager::{IndexManager, PhaseResume};
 use crate::indexing::lifecycle::rescan_request::{RescanOutcome, ScanStartError};
@@ -97,15 +98,15 @@ pub fn trigger_verification(volume_id: &str, dir_path: &str) {
             // (or resolving a mount-absolute path against root's index) made this a
             // silent no-op on every SMB, MTP, and external volume.
             let space = mgr.path_space();
-            // Hand the walk a child of THIS volume's stop signal, taken here where
-            // we already hold the instance. The verifier feeds this volume's writer,
-            // so tearing the volume down must stop the walk rather than let it write
-            // into a draining writer — and a token resolved here can't come back
-            // `None` (and silently never fire) the way a later lookup could, once the
-            // volume is gone.
-            let cancel = work.cancel.child_token();
+            // Hand the walk a child of THIS volume's work, taken here where we
+            // already hold the instance. The verifier feeds this volume's writer, so
+            // tearing the volume down must stop the walk rather than let it write
+            // into a draining writer — and work resolved here can't come back `None`
+            // (and silently never fire) the way a later lookup could, once the volume
+            // is gone. Its share holds the drive while the verification reads it.
+            let verification = work.child(HoldKind::Verifier);
             drop(reg);
-            verifier::maybe_verify(volume_id, dir_path, space, writer, events, ground_in_flux, cancel);
+            verifier::maybe_verify(volume_id, dir_path, space, writer, events, ground_in_flux, verification);
         }
     });
 }

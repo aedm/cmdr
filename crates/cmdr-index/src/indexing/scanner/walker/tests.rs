@@ -10,7 +10,8 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::sync::Mutex as StdMutex;
 use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::time::Instant;
-use tokio_util::sync::CancellationToken;
+
+use crate::indexing::hold::{self, HoldKind, VolumeWork};
 
 // ── Mock filesystem + reader ─────────────────────────────────────────
 
@@ -258,7 +259,7 @@ fn walk_plan(plan: BatchPlan, cfg: WalkConfig) -> (WalkStats, bool) {
         cfg,
         batched_reader(plan),
         visitor.clone(),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
     let rec = visitor.rec.lock().unwrap_or_else(|e| e.into_inner());
     let read = rec.read_ok.contains(Path::new("/r/big"));
@@ -333,7 +334,7 @@ fn a_read_that_stops_delivering_is_abandoned_promptly() {
         fast_cfg(2),
         reader,
         visitor.clone(),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
     let elapsed = start.elapsed();
 
@@ -420,7 +421,7 @@ fn walks_full_tree_and_attributes_parents() {
         fast_cfg(4),
         fs.clone().reader(),
         visitor.clone(),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
 
     let (ref_ok, ref_edges) = reference_walk(&fs, Path::new("/r"));
@@ -456,7 +457,7 @@ fn abandons_a_hung_dir_and_finishes_the_rest() {
         fast_cfg(4),
         fs.clone().reader(),
         visitor.clone(),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
     let elapsed = start.elapsed();
 
@@ -508,7 +509,7 @@ fn multiple_hung_dirs_do_not_starve_the_pool() {
         fast_cfg(2), // fewer threads than hung dirs
         fs.clone().reader(),
         visitor.clone(),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
     let elapsed = start.elapsed();
 
@@ -538,7 +539,7 @@ fn io_error_dir_is_reported_and_pruned() {
         fast_cfg(4),
         fs.clone().reader(),
         visitor.clone(),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
 
     assert_eq!(stats.io_errors, 1, "the missing dir surfaces as an io error");
@@ -587,7 +588,7 @@ fn parallel_result_matches_serial_reference() {
         fast_cfg(6),
         fs.clone().reader(),
         visitor.clone(),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
 
     let (ref_ok, ref_edges) = reference_walk(&fs, Path::new("/r"));
@@ -617,7 +618,8 @@ fn cancellation_returns_promptly() {
     let hang: HashSet<PathBuf> = [PathBuf::from("/r/slow")].into_iter().collect();
     let fs = b.build(hang, Duration::from_secs(5));
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test("walker-test");
+    let cancelled = work.cancel.clone();
     let visitor = Arc::new(RecordingVisitor::new());
     {
         let cancelled = cancelled.clone();
@@ -643,7 +645,7 @@ fn cancellation_returns_promptly() {
         },
         fs.clone().reader(),
         visitor,
-        cancelled,
+        work,
     );
     assert!(
         start.elapsed() < Duration::from_secs(1),
@@ -680,7 +682,7 @@ fn a_tiny_walk_returns_without_waiting_out_the_watchdog() {
         },
         fs.reader(),
         Arc::new(RecordingVisitor::new()),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
     assert_eq!(stats.dirs_read, 1, "it did read the one directory");
     assert!(
@@ -737,7 +739,7 @@ fn gives_up_on_a_dead_subtree_and_keeps_walking_a_healthy_sibling() {
         cfg,
         fs.clone().reader(),
         visitor.clone(),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
 
     let rec = visitor.rec.lock().unwrap_or_else(|e| e.into_inner());
@@ -833,7 +835,7 @@ fn a_parked_walk_holds_between_directories_with_nothing_in_flight_until_released
             fast_cfg(4),
             reader,
             walk_visitor,
-            CancellationToken::new(),
+            VolumeWork::for_test("walker-test"),
         )
     });
 
@@ -868,7 +870,57 @@ fn a_park_armed_for_another_root_leaves_a_walk_alone() {
         fast_cfg(4),
         reader,
         Arc::new(RecordingVisitor::new()),
-        CancellationToken::new(),
+        VolumeWork::for_test("walker-test"),
     );
     assert_eq!(stats.dirs_read, 9);
+}
+
+// ── Holding the volume ───────────────────────────────────────────────
+
+/// A worker the watchdog abandoned is still in its read after the walk has
+/// returned, so it still holds the volume: a stop answering "released" there would
+/// unmount under a read in flight. It lets go the moment that read returns.
+#[test]
+fn an_abandoned_worker_holds_its_volume_until_its_read_returns() {
+    let volume_id = "walker-test-abandoned-worker";
+    let (release, released) = std::sync::mpsc::channel::<()>();
+    let released = StdMutex::new(released);
+    let reader: ReadDirFn = Arc::new(move |path: &Path, _progress: &ReadProgress| {
+        if path == Path::new("/r") {
+            return Ok(vec![RawDirEntry {
+                path: PathBuf::from("/r/stuck"),
+                file_type: RawFileType::Dir,
+                stat: None,
+            }]);
+        }
+        // The hung read: nothing comes back until the test lets it.
+        let _ = released.lock().unwrap_or_else(|e| e.into_inner()).recv();
+        Ok(Vec::new())
+    });
+    let volume = VolumeWork::for_test(volume_id);
+
+    let stats = walk(
+        root_task("/r"),
+        fast_cfg(2),
+        reader,
+        Arc::new(RecordingVisitor::new()),
+        volume.child(HoldKind::WalkerWorker),
+    );
+    assert_eq!(
+        stats.timed_out, 1,
+        "precondition: the walk abandoned the stuck read and returned"
+    );
+    drop(volume);
+
+    assert_eq!(
+        hold::wait_until_released(volume_id, Duration::ZERO),
+        hold::Release::StillHeld(vec![(HoldKind::WalkerWorker, 1)]),
+        "the abandoned worker is still reading the volume"
+    );
+    release.send(()).expect("the stuck read is still waiting");
+    assert_eq!(
+        hold::wait_until_released(volume_id, Duration::from_secs(5)),
+        hold::Release::Released,
+        "and lets go once its read returns"
+    );
 }

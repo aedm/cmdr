@@ -32,13 +32,7 @@ fn a_walk_emits_what_it_writes() {
     f.seed_chain(&root.join("shallow"));
 
     let frontier = vec![f.path("shallow")];
-    let walk = start(
-        f.context(),
-        frontier,
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), frontier, CoverageDimension::Listing);
     let (entries, outcome) = drain(walk);
     f.writer.flush_blocking().expect("flush");
 
@@ -82,13 +76,7 @@ fn dropping_the_consumer_leaves_the_walk_running() {
     }
     f.seed_chain(&root.join("wide"));
 
-    let walk = start(
-        f.context(),
-        vec![f.path("wide")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), vec![f.path("wide")], CoverageDimension::Listing);
     // Never read a batch; `finish` drops the channel and waits it out.
     let outcome = walk.finish();
     f.writer.flush_blocking().expect("flush");
@@ -116,13 +104,7 @@ fn a_frontier_path_with_no_row_is_materialized_and_walked() {
     // Deliberately NO `seed_chain` for `fresh`: nothing has listed the tree root,
     // so neither `fresh` nor `fresh/deeper` has a row.
 
-    let walk = start(
-        f.context(),
-        vec![f.path("fresh/deeper")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), vec![f.path("fresh/deeper")], CoverageDimension::Listing);
     let (entries, outcome) = drain(walk);
     f.writer.flush_blocking().expect("flush");
 
@@ -152,13 +134,7 @@ fn a_materialized_ancestor_claims_no_listing() {
     std::fs::create_dir_all(root.join("fresh/deeper")).expect("dirs");
     std::fs::create_dir_all(root.join("fresh/untouched")).expect("dirs");
 
-    let walk = start(
-        f.context(),
-        vec![f.path("fresh/deeper")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), vec![f.path("fresh/deeper")], CoverageDimension::Listing);
     drain(walk);
     f.writer.flush_blocking().expect("flush");
 
@@ -193,13 +169,7 @@ fn a_chain_running_through_a_file_row_is_declined() {
             .expect("insert the file row");
     }
 
-    let walk = start(
-        f.context(),
-        vec![f.path("mixed/inner")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), vec![f.path("mixed/inner")], CoverageDimension::Listing);
     let (entries, outcome) = drain(walk);
 
     assert_eq!(outcome.roots_covered, 0, "the walk declined the broken chain");
@@ -273,8 +243,6 @@ fn a_walk_leaves_ground_another_walk_is_covering_to_it() {
         f.context(),
         vec![f.path("shared/inner"), f.path("mine")],
         CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
     );
 
     assert_eq!(
@@ -303,23 +271,11 @@ fn a_finished_walk_releases_the_ground_it_held() {
     std::fs::create_dir_all(f.tree.path().join("once")).expect("dirs");
     f.seed_chain(&f.tree.path().join("once"));
 
-    let walk = start(
-        f.context(),
-        vec![f.path("once")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), vec![f.path("once")], CoverageDimension::Listing);
     assert!(walk.covered_by_another_walk().is_empty(), "nobody else holds it");
     drain(walk);
 
-    let again = start(
-        f.context(),
-        vec![f.path("once")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let again = start(f.context(), vec![f.path("once")], CoverageDimension::Listing);
     assert!(
         again.covered_by_another_walk().is_empty(),
         "a finished walk holds nothing"
@@ -348,11 +304,9 @@ fn a_walk_cancelled_partway_reports_the_ground_it_covered() {
 
     let cancel = CancellationToken::new();
     let walk = start(
-        f.context(),
+        f.context_for(&cancel, WalkFor::TheIndex),
         vec![f.path("one"), f.path("two")],
         CoverageDimension::Listing,
-        cancel.clone(),
-        WalkFor::TheIndex,
     );
     // The first root's batch is in hand, so its walk is over; stop before the second.
     let first = walk.next_batch().expect("the first root's entries");
@@ -406,8 +360,6 @@ fn a_background_walk_hands_its_ground_to_the_walk_somebody_is_waiting_on() {
         f.context().leaving_the_flush_to_the_caller(),
         vec![f.path("big")],
         CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
     );
     // One batch in hand means the walk is writing, so what follows is about a
     // walk with rows in flight rather than one that never started.
@@ -483,11 +435,9 @@ fn a_walk_cancelled_up_front_covers_nothing_and_admits_it() {
     let cancel = CancellationToken::new();
     cancel.cancel();
     let walk = start(
-        f.context(),
+        f.context_for(&cancel, WalkFor::TheIndex),
         vec![f.path("untouched")],
         CoverageDimension::Listing,
-        cancel,
-        WalkFor::TheIndex,
     );
     let (entries, outcome) = drain(walk);
     f.writer.flush_blocking().expect("flush");

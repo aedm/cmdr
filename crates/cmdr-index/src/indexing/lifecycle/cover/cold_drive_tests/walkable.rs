@@ -90,19 +90,22 @@ fn a_volume_mid_full_scan_is_not_walked() {
     )
     .expect("stand the index up");
     assert!(
-        context_for_walk(drive.volume_id).is_ok(),
+        context_for_walk(drive.volume_id, &CancellationToken::new(), WalkFor::TheUser).is_ok(),
         "precondition: with no scan running, the walk reuses this writer"
     );
 
     crate::indexing::lifecycle::state::set_ground_in_flux_for_test(drive.volume_id, true);
     assert!(
-        matches!(context_for_walk(drive.volume_id), Err(NoCoverContext::ScanInProgress)),
+        matches!(
+            context_for_walk(drive.volume_id, &CancellationToken::new(), WalkFor::TheUser),
+            Err(NoCoverContext::ScanInProgress)
+        ),
         "a scan owns the volume while it runs"
     );
 
     crate::indexing::lifecycle::state::set_ground_in_flux_for_test(drive.volume_id, false);
     assert!(
-        context_for_walk(drive.volume_id).is_ok(),
+        context_for_walk(drive.volume_id, &CancellationToken::new(), WalkFor::TheUser).is_ok(),
         "and hands it back when it's done"
     );
 }

@@ -7,7 +7,7 @@ use crate::indexing::host::runtime;
 use crate::indexing::lifecycle::state;
 
 /// Start this drive's indexing the way the per-drive switch does.
-fn turn_on(drive: &ColdDrive) {
+pub(super) fn turn_on(drive: &ColdDrive) {
     runtime::block_on(drive.index.start_volume(drive.volume_id)).expect("turning drive indexing on is not an error");
 }
 

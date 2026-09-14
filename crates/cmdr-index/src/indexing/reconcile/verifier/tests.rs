@@ -1,6 +1,7 @@
 //! Tests for the per-navigation verifier.
 
 use super::*;
+use crate::indexing::hold::{self, HoldKind, Release};
 use crate::indexing::read::enrichment::{
     READ_POOL_TEST_MUTEX, ReadPool, install_read_pool as install_pool_for, uninstall_read_pool,
 };
@@ -113,7 +114,7 @@ async fn verify_root(dir: &Path, writer: &IndexWriter) -> Vec<String> {
         &dir.to_string_lossy(),
         &IndexPathSpace::root(),
         writer,
-        &CancellationToken::new(),
+        &VolumeWork::for_test(crate::ROOT_VOLUME_ID),
     )
     .await
 }
@@ -359,7 +360,7 @@ fn verify_corrects_a_mount_rooted_volumes_own_index() {
         &sub.to_string_lossy(),
         &space,
         &writer,
-        &CancellationToken::new(),
+        &VolumeWork::for_test(crate::ROOT_VOLUME_ID),
     ));
 
     writer.flush_blocking().unwrap();
@@ -406,7 +407,7 @@ fn verify_scans_a_new_directory_into_a_mount_rooted_volumes_index() {
         &sub.to_string_lossy(),
         &space,
         &writer,
-        &CancellationToken::new(),
+        &VolumeWork::for_test(crate::ROOT_VOLUME_ID),
     ));
 
     writer.flush_blocking().unwrap();
@@ -633,6 +634,52 @@ fn the_verifier_leaves_an_unlisted_directory_alone() {
 ///
 /// Two writers of one name allocate different ids, and `INSERT OR IGNORE` drops
 /// one and orphans its whole subtree — a data-safety bug, not a performance one.
+/// A verification's task walks the folders it finds new, and a stop can't wait on
+/// the walk without the task holding the volume: it holds it until that walk's last
+/// read returns, the walker's workers alongside it.
+#[test]
+fn a_verification_holds_its_volume_until_its_walk_is_done() {
+    let _pool_guard = READ_POOL_TEST_MUTEX.lock().unwrap();
+    let fs_root = test_tempdir();
+    fs::create_dir_all(fs_root.path().join("fresh/inner")).unwrap();
+    let (writer, db_path, _db_dir) = setup_writer();
+    ensure_path_in_db(&db_path, fs_root.path(), &writer);
+    install_read_pool(&db_path);
+    let fresh = fs_root.path().join("fresh");
+    let park = scanner::park::ParkHandle::arm(&fresh, 0);
+    let volume = VolumeWork::for_test(crate::ROOT_VOLUME_ID);
+
+    maybe_verify(
+        crate::ROOT_VOLUME_ID.to_string(),
+        fs_root.path().to_string_lossy().into_owned(),
+        IndexPathSpace::root(),
+        writer.clone(),
+        crate::NoopEventSink::shared(),
+        false,
+        volume.child(HoldKind::Verifier),
+    );
+    assert!(
+        park.wait_until_parked(std::time::Duration::from_secs(10)),
+        "the verification walks the folder it found new"
+    );
+    drop(volume);
+
+    assert_eq!(
+        hold::wait_until_released(crate::ROOT_VOLUME_ID, std::time::Duration::ZERO),
+        Release::StillHeld(vec![(HoldKind::WalkerWorker, 1), (HoldKind::Verifier, 1)]),
+        "the verification and its walk still read the volume"
+    );
+    drop(park);
+    assert_eq!(
+        hold::wait_until_released(crate::ROOT_VOLUME_ID, std::time::Duration::from_secs(10)),
+        Release::Released,
+        "and let go once the walk is done"
+    );
+
+    remove_read_pool();
+    writer.shutdown();
+}
+
 /// The verifier consults neither the claim nor `WatchScope::may_walk`, so what
 /// protects it is the durable fact that nothing has listed the directory yet.
 /// Walking-while-browsing is the central behavior of phased indexing, so this
@@ -656,11 +703,11 @@ fn a_listing_of_ground_a_walk_is_covering_writes_nothing() {
             space: IndexPathSpace::root(),
             kind: crate::indexing::volume::IndexVolumeKind::Local,
             flush: crate::indexing::lifecycle::cover::FlushOnFinish::default(),
+            for_whom: crate::indexing::lifecycle::cover::WalkFor::TheIndex,
+            work: VolumeWork::for_test(crate::ROOT_VOLUME_ID),
         },
         vec![fs_root.path().join("claimed").to_string_lossy().into_owned()],
         crate::indexing::read::coverage::CoverageDimension::Listing,
-        CancellationToken::new(),
-        crate::indexing::lifecycle::cover::WalkFor::TheIndex,
     );
 
     let rt = tokio::runtime::Runtime::new().unwrap();

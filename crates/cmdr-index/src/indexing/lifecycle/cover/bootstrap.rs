@@ -14,7 +14,9 @@
 
 use std::path::{Path, PathBuf};
 
-use super::{CoverContext, Ground};
+use tokio_util::sync::CancellationToken;
+
+use super::{CoverContext, Ground, WalkFor};
 use crate::indexing::host::volumes::MountFacts;
 use crate::indexing::lifecycle::state::{self, Activation};
 use crate::indexing::metadata::MetadataSnapshot;
@@ -65,8 +67,17 @@ impl std::fmt::Display for NoCoverContext {
 /// app would do UNINVITED, and a search is the opposite of uninvited. The
 /// `WriterOnly` start below is carved out of the master gate for the same reason
 /// (`state::start_indexing_for`).
-pub(crate) fn context_for_walk(volume_id: &str) -> Result<CoverContext, NoCoverContext> {
-    if let Some(context) = state::cover_context_for(volume_id) {
+///
+/// The context carries the walk's own work, minted with the writer under one
+/// registry lock so both name the same life of the volume: a child of `caller`, so
+/// the caller still stops it, also stopped by the volume's stop, which `caller`
+/// never hears, and holding the volume for as long as the walk runs.
+pub(crate) fn context_for_walk(
+    volume_id: &str,
+    caller: &CancellationToken,
+    for_whom: WalkFor,
+) -> Result<CoverContext, NoCoverContext> {
+    if let Some(context) = state::cover_context_for(volume_id, caller, for_whom) {
         return Ok(context);
     }
     if state::is_active(volume_id) {
@@ -99,7 +110,7 @@ pub(crate) fn context_for_walk(volume_id: &str) -> Result<CoverContext, NoCoverC
         crate::indexing::resources::retention::enforce_external_index_cap();
     }
 
-    state::cover_context_for(volume_id).ok_or_else(|| {
+    state::cover_context_for(volume_id, caller, for_whom).ok_or_else(|| {
         // The reservation was won by something else between the two calls, and
         // whatever won it is scanning the volume.
         NoCoverContext::Failed(format!("'{volume_id}' still has no writer after being started"))

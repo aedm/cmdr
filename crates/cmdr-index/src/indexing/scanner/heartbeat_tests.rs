@@ -13,8 +13,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio_util::sync::CancellationToken;
-
 use super::test_fixtures::setup_writer;
 use super::walker::{RawDirEntry, RawFileType, ReadDirFn, ReadProgress};
 use super::{ScanRoot, WalkHeartbeat, WalkPolicy, run_scan};
@@ -58,7 +56,7 @@ fn walk_with_heartbeat(
     let progress = Arc::new(ScanProgress::new());
     run_scan(
         root,
-        &CancellationToken::new(),
+        &crate::indexing::hold::VolumeWork::for_test("heartbeat-test"),
         &progress,
         &writer,
         100,

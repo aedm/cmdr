@@ -19,7 +19,6 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use rusqlite::Connection;
-use tokio_util::sync::CancellationToken;
 
 use super::watcher;
 use crate::indexing::IndexPathSpace;
@@ -217,14 +216,15 @@ pub(crate) struct ReplayConfig {
     /// `ComputeAllAggregates { source: Sql }` after the entries table is fully
     /// replayed. See `indexing/DETAILS.md` § "The dir_stats ledger".
     pub(crate) heal_after_replay: bool,
-    /// This volume's stop signal, handed down by the `IndexManager` that owns it.
-    /// Everything the loop starts that outlives a batch — the post-replay
-    /// verification walk, the reconciler's subtree rescans — hangs off a
-    /// `child_token()` of this, so tearing the volume down stops all of it.
+    /// This loop's work, handed down by the `IndexManager` that owns the volume's:
+    /// its stop signal, and the share of the volume's hold the loop carries for as
+    /// long as it runs. Everything the loop starts that outlives a batch — the
+    /// post-replay verification, the reconciler's subtree rescans — takes work
+    /// under this, so tearing the volume down stops all of it.
     /// ❌ Don't look this up from the registry down here instead: by the time a
     /// walk starts the volume may be gone, and the lookup would answer with a
     /// token that never fires.
-    pub(crate) cancel: CancellationToken,
+    pub(crate) work: crate::indexing::hold::VolumeWork,
     /// The volume's ground, claimed by `start_replay` and OWNED by the loop.
     ///
     /// Replay walks nothing, but it writes anywhere on the volume through the

@@ -55,6 +55,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::indexing::IndexPathSpace;
 use crate::indexing::events::{ActivityPhase, CoveragePhase, EventSink, IndexEvent, ScanRunKind, set_phase_for};
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::freshness::Freshness;
 use crate::indexing::lifecycle::progress_reporter::ScanProgressReporter;
 use crate::indexing::lifecycle::{cover, master};
@@ -247,9 +248,10 @@ pub(crate) struct MachineContext {
     pub writer: IndexWriter,
     pub events: Arc<dyn EventSink>,
     pub freshness: Arc<std::sync::Mutex<Option<Freshness>>>,
-    /// A child of the VOLUME's stop signal, so tearing the volume down stops the
-    /// machine with everything else under it.
-    pub cancel: CancellationToken,
+    /// A child of the VOLUME's work, so tearing the volume down stops the machine
+    /// with everything else under it, and a share of its hold that rides the driver
+    /// thread: the drive stays held until the machine's last read returns.
+    pub work: VolumeWork,
 }
 
 /// Start covering a volume, and hand back what the manager holds on to.
@@ -268,7 +270,7 @@ pub(crate) fn start(context: MachineContext) -> PhaseHandle {
         walked_roots: Arc::new(std::sync::Mutex::new(Vec::new())),
         coverage_phase: Arc::new(std::sync::Mutex::new(None)),
         visits: Arc::new(VisitLog::new()),
-        cancel: context.cancel.clone(),
+        cancel: context.work.cancel.clone(),
         done: Arc::new(AtomicBool::new(false)),
     };
 
@@ -281,7 +283,7 @@ pub(crate) fn start(context: MachineContext) -> PhaseHandle {
         coverage_phase: Arc::clone(&handle.coverage_phase),
         visits: Arc::clone(&handle.visits),
         done: Arc::clone(&handle.done),
-        cancel: context.cancel,
+        work: context.work,
         volume_id: context.volume_id,
         volume_root: context.volume_root,
         space: context.space,
@@ -363,7 +365,9 @@ struct Machine {
     coverage_phase: Arc<std::sync::Mutex<Option<CoveragePhase>>>,
     visits: Arc<VisitLog>,
     done: Arc<AtomicBool>,
-    cancel: CancellationToken,
+    /// The machine's stop signal and its share of the volume's hold, dropped when
+    /// the driver thread ends.
+    work: VolumeWork,
     volume_id: String,
     volume_root: PathBuf,
     space: IndexPathSpace,
@@ -575,7 +579,10 @@ impl Machine {
     /// so the gap between groups is not a fine enough grain: without this, "what
     /// you open gets indexed next" means "in forty seconds".
     fn walk_group(&self, roots: &[String], phase: &Phase, queue: &PhaseQueue) -> GroupOutcome {
-        let context = match cover::context_for_walk(&self.volume_id) {
+        // This walk's own stop signal, under the machine's: stopping it hands its
+        // ground on without ending the run.
+        let walk_cancel = self.work.cancel.child_token();
+        let context = match cover::context_for_walk(&self.volume_id, &walk_cancel, cover::WalkFor::TheIndex) {
             Ok(context) => context.leaving_the_flush_to_the_caller(),
             Err(e) => {
                 log::info!("Phases: can't walk '{}' right now: {e}", self.volume_id);
@@ -592,18 +599,9 @@ impl Machine {
             volume_id: self.volume_id.clone(),
             roots: roots.to_vec(),
         });
-        // This walk's own stop signal, under the machine's: stopping it hands its
-        // ground on without ending the run.
-        let walk_cancel = self.cancel.child_token();
-        let walk = cover::start(
-            context,
-            roots.to_vec(),
-            CoverageDimension::Listing,
-            walk_cancel.clone(),
-            // Background coverage: it leaves ground a search holds to the search,
-            // and hands its own over when one asks.
-            cover::WalkFor::TheIndex,
-        );
+        // Background coverage (the context's `WalkFor::TheIndex`): it leaves ground a
+        // search holds to the search, and hands its own over when one asks.
+        let walk = cover::start(context, roots.to_vec(), CoverageDimension::Listing);
         // Draining the batches is what keeps the live entry counter honest: the
         // walk's own heartbeat counts directories, and a phased run has no total to
         // measure itself against, so the counter IS the progress. It is also the
@@ -731,7 +729,7 @@ impl Machine {
     /// switches still say yes. Asked per phase and per root, so turning drive
     /// indexing off stops the walking rather than only the next launch.
     fn may_run(&self) -> bool {
-        if self.cancel.is_cancelled() {
+        if self.work.cancel.is_cancelled() {
             return false;
         }
         master::background_walk_allowed(master::master_enabled(), &self.writer.db_path())
@@ -766,7 +764,7 @@ impl Machine {
         self.events.emit(IndexEvent::ScanAborted {
             volume_id: self.volume_id.clone(),
         });
-        self.cancel.cancel();
+        self.work.cancel.cancel();
     }
 
     /// Tell the host a run started, with the calibration a progress tier needs.
@@ -858,7 +856,7 @@ impl Machine {
         // (`report_a_vanished_volume_if_that_is_what_happened` cancels for exactly
         // this reason). Scheduling a retry there would wake a drive nothing is
         // indexing any more, every minute, until the app quits.
-        if self.cancel.is_cancelled() {
+        if self.work.cancel.is_cancelled() {
             return;
         }
         crate::indexing::lifecycle::completion_retry::arm(&self.volume_id, crate::indexing::store::now_unix());

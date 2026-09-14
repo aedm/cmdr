@@ -174,9 +174,10 @@ One primitive, `tokio_util::sync::CancellationToken`, from the `Volume` trait in
 `indexing/` and `media_index/` run. It replaced five kinds of `Arc<AtomicBool>` plus a `Notify`, none of which could
 compose. `importance/` is the gap, not a third topology (below).
 
-**The topology is a tree, rooted per volume.** `VolumeSignals.cancel` (`lifecycle/state.rs`) is held by BOTH the
-registry `IndexInstance` and its `IndexManager`, so the two can't disagree. Everything below it runs on a
-`child_token()`:
+**The topology is a tree, rooted per volume.** The reservation mints the volume's root `VolumeWork` (`../hold.rs`: a
+stop signal paired with a share of the volume's hold), held by BOTH the registry `IndexInstance` (`work`) and its
+`IndexManager`, so the two can't disagree. Everything below it runs on a child, and a child that reads the drive is a
+`VolumeWork` too, so a removable stop can wait for it:
 
 - the full scan and the network trait scan (`manager::start_scan`, `network_scan::start_volume_scan`)
 - the local reconcile walk
@@ -191,12 +192,13 @@ that existed only to mirror one flag into another.
 `stop_scan` cancels one scan's child, so the volume can start another; `shutdown` cancels the volume token, so
 everything under it stops at once.
 
-**A child token is handed DOWN to the work, never looked up by volume id.** The manager passes one into `ScanCompletion`
-and `ReplayConfig` (and from there into `EventReconciler` and background verification); `trigger_verification` passes
-one into `maybe_verify` while it still holds the instance. This is both what keeps `lifecycle::state` out of the layers
-below and what makes cancellation correct: a walk that resolved its token after its volume was torn down would find
-nothing, default to a token that never fires, and run on into a draining writer. A test fixture with no volume behind it
-constructs a plain `CancellationToken::new()` and degrades the same way, on purpose.
+**A child is handed DOWN to the work, never looked up by volume id.** The manager passes one into `ScanCompletion`,
+`ReplayConfig`, and the phase machine (and from there into `EventReconciler` and background verification);
+`trigger_verification` passes one into `maybe_verify` while it still holds the instance; `cover_context_for` mints a
+cover walk's under the same registry lock that hands out its writer. This is both what keeps `lifecycle::state` out of
+the layers below and what makes cancellation correct: a walk that resolved its token after its volume was torn down
+would find nothing, default to a token that never fires, and run on into a draining writer. A test fixture with no
+volume behind it takes `VolumeWork::for_test`, a generation of its own that nothing else stops.
 
 **`media_index` shares the primitive but not the tree.** Its emergency stop (`gate::stop_token`) is process-wide, and
 re-enabling installs a FRESH token rather than un-cancelling — a token is one-shot by design, and a pass the user

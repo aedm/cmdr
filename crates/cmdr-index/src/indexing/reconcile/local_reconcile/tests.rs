@@ -416,8 +416,8 @@ fn reconcile_after_real_fresh_scan_of_unchanged_tree_is_a_no_op() {
     std::fs::write(rp.join("top.txt"), b"topfil").unwrap(); // 6
 
     // Build the index with the REAL fresh scanner (epoch 1).
-    let cancelled = CancellationToken::new();
-    let scan_summary = scan_subtree(rp, &IndexPathSpace::root(), &h.writer, &cancelled).expect("fresh scan");
+    let work = crate::indexing::hold::VolumeWork::for_test("local-reconcile-test");
+    let scan_summary = scan_subtree(rp, &IndexPathSpace::root(), &h.writer, &work).expect("fresh scan");
     h.writer.flush_blocking().unwrap();
     // 4 dirs (a, a/deep, b — the subtree root itself isn't counted by run_scan's
     // child walk) + 4 files. run_scan counts entries it WALKED (children), so the
@@ -544,8 +544,8 @@ fn reconcile_after_fresh_scan_does_not_double_count_hardlinks() {
     }
 
     // Build the index with the REAL fresh scanner (which dedups hardlinks).
-    let cancelled = CancellationToken::new();
-    let fresh_summary = scan_subtree(rp, &IndexPathSpace::root(), &h.writer, &cancelled).expect("fresh scan");
+    let work = crate::indexing::hold::VolumeWork::for_test("local-reconcile-test");
+    let fresh_summary = scan_subtree(rp, &IndexPathSpace::root(), &h.writer, &work).expect("fresh scan");
     h.writer.flush_blocking().unwrap();
 
     let rp_id = resolve(&h, rp).expect("root resolved");

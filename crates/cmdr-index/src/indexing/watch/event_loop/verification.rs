@@ -8,12 +8,12 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
-use tokio_util::sync::CancellationToken;
 
 use super::verify_guard::{self, VerifyVerdict};
 use crate::ROOT_VOLUME_ID;
 use crate::indexing::DEBUG_STATS;
 use crate::indexing::events::emit_dir_updated;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::lifecycle_bus;
 use crate::indexing::metadata;
 use crate::indexing::paths::path_prefix;
@@ -29,11 +29,15 @@ use cmdr_fs::pluralize::{pluralize, pluralize_with};
 /// Called after live mode starts so the app is responsive immediately.
 /// Corrections found by verification go through the writer channel,
 /// which serializes them with live writes.
+///
+/// `work` holds the volume for the task's whole run, and each blocking step
+/// carries a share of its own, since the blocking pool doesn't stop with a
+/// dropped task.
 pub(super) async fn run_background_verification(
     origin_dirs: HashSet<String>,
     writer: IndexWriter,
     events: std::sync::Arc<dyn crate::EventSink>,
-    cancel: CancellationToken,
+    work: VolumeWork,
 ) {
     DEBUG_STATS.verifying.store(true, Ordering::Relaxed);
     let verify_start = Instant::now();
@@ -65,7 +69,9 @@ pub(super) async fn run_background_verification(
     // be responsive).
     let verify_writer = writer.clone();
     let verify_affected_paths = affected_paths.clone();
+    let verify_share = work.clone();
     let verify_result = match crate::indexing::host::runtime::spawn_blocking(move || {
+        let _verify_share = verify_share;
         verify_affected_dirs(&verify_affected_paths, &verify_writer)
     })
     .await
@@ -97,6 +103,7 @@ pub(super) async fn run_background_verification(
         // pool is essential.
         let scan_writer = writer.clone();
         let scan_dirs = verify_result.new_dir_paths.clone();
+        let scan_work = work.clone();
         if let Err(e) = crate::indexing::host::runtime::spawn_blocking(move || {
             // Background verification backs FSEvents journal replay, which only a
             // journaled volume (the boot disk) has, so the space is root's.
@@ -105,7 +112,7 @@ pub(super) async fn run_background_verification(
                 if scanner::should_exclude(dir_path, space.exclusion_scope()) {
                     continue;
                 }
-                match scanner::scan_subtree(Path::new(dir_path), &space, &scan_writer, &cancel) {
+                match scanner::scan_subtree(Path::new(dir_path), &space, &scan_writer, &scan_work) {
                     Ok(summary) => {
                         log::debug!(
                             "Background verification: scanned new dir {dir_path} ({} entries, {}ms)",

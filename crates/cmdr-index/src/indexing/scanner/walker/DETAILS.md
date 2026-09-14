@@ -60,8 +60,9 @@ is offline, which froze the whole scan.
 
 `park.rs` lets a test hold a walk between directories, so it can change the volume under a walk that's provably not
 reading it. It's `#[cfg(test)]`: absent from release builds and from every build of the app, and reached from outside
-the walker only through a `#[cfg(all(test, target_os = "macos"))]` re-export in `../mod.rs`, for the real-image vanish
-pin (`../../tests/vanish_tests.rs`). Nothing of it is on `lib.rs`.
+the walker only through a `#[cfg(test)]` re-export in `../mod.rs`, for the real-image vanish pin
+(`../../tests/vanish_tests.rs`) and the tests that hold a walk to prove it holds its volume. Nothing of it is on
+`lib.rs`.
 
 - **Arming.** `ParkHandle::arm(root, after_dirs)` registers a park for the next walk of exactly `root`; `walk` picks it
   up at start by that path, so no other walk sees it. Dropping the handle releases and unregisters it.
@@ -80,6 +81,14 @@ pin (`../../tests/vanish_tests.rs`). Nothing of it is on `lib.rs`.
 - Tests: `tests.rs::a_parked_walk_holds_between_directories_with_nothing_in_flight_until_released` (nothing in flight
   while parked, every directory read once released, nothing abandoned) and
   `a_park_armed_for_another_root_leaves_a_walk_alone`.
+
+## The walk holds its volume
+
+`walk` takes the walk's own `VolumeWork` (a `WalkerWorker` child of its caller's, which `run_scan` mints) and the engine
+keeps it. Every worker thread holds the engine, so the share drops only once `walk` has returned AND the last worker is
+out of its read. An abandoned worker parked in a hung syscall keeps the volume held on purpose: a removable stop then
+answers `StillReleasing` instead of unmounting under a read in flight (`../../hold.rs`). Test:
+`tests.rs::an_abandoned_worker_holds_its_volume_until_its_read_returns`.
 
 ## The walker's progress timeout
 

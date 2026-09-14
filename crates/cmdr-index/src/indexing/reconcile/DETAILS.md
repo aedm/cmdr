@@ -461,9 +461,11 @@ it, and the stale bytes stay in every ancestor until a sweep. It also only ever 
 Those gaps are what the sweep scope and the coalesce count answer. An MTP volume gets nothing from it either way:
 `mtp://` paths have no POSIX `read_dir`, so the disk half bails and the pass is inert.
 
-**Every detached walk here runs on a token handed IN, never one looked up.** `maybe_verify` takes the volume's child
-token from `state::trigger_verification` (which already holds the instance), and the subtree-rescan drain takes it from
-the `RescanDrain` the `EventReconciler` was built with. ❌ Don't reach into `lifecycle::state` for a token by volume id:
+**Every detached walk here runs on a token handed IN, never one looked up.** `maybe_verify` takes a `Verifier` child of
+the volume's `VolumeWork` from `state::trigger_verification` (which already holds the instance); its task and the
+blocking read under it each carry a share, so a removable stop waits for them
+(`verifier::tests::a_verification_holds_its_volume_until_its_walk_is_done`). The subtree-rescan drain takes its token
+from the `RescanDrain` the `EventReconciler` was built with. ❌ Don't reach into `lifecycle::state` for a token by volume id:
 besides the import cycle, a walk that starts after its volume was torn down would find nothing, default to a token that
 never fires, and keep writing into a draining writer. Topology: `../host/DETAILS.md` § Cancellation.
 

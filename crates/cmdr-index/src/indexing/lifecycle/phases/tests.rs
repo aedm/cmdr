@@ -7,6 +7,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::{HOME_COVERED_AT_KEY, VisitLog, stitch};
 use crate::indexing::IndexPathSpace;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::cover::{self, CoverContext};
 use crate::indexing::read::coverage::{CoverageDimension, CoverageMap, coverage_for_scope};
 use crate::indexing::scanner::exclusion_policy_stamp_message;
@@ -95,24 +96,30 @@ impl Tree {
     }
 
     fn context(&self) -> CoverContext {
+        self.context_for(&CancellationToken::new())
+    }
+
+    /// A background walk's context under `caller`'s token, the way the machine
+    /// gets one per group.
+    fn context_for(&self, caller: &CancellationToken) -> CoverContext {
         CoverContext {
             volume_id: self.volume_id.clone(),
             writer: self.writer.clone(),
             space: self.space.clone(),
             kind: IndexVolumeKind::Local,
             flush: Default::default(),
+            for_whom: cover::WalkFor::TheIndex,
+            work: VolumeWork::linked(
+                caller,
+                &VolumeWork::for_test(&self.volume_id),
+                cover::WalkFor::TheIndex.hold_kind(),
+            ),
         }
     }
 
     /// Walk one frontier root to the end, the way the machine does.
     fn cover(&self, root: &str) {
-        let walk = cover::start(
-            self.context(),
-            vec![root.to_string()],
-            CoverageDimension::Listing,
-            CancellationToken::new(),
-            cover::WalkFor::TheIndex,
-        );
+        let walk = cover::start(self.context(), vec![root.to_string()], CoverageDimension::Listing);
         while walk.next_batch().is_some() {}
         walk.finish();
         self.writer.flush_blocking().expect("flush the walk");
@@ -128,8 +135,6 @@ impl Tree {
             self.context().leaving_the_flush_to_the_caller(),
             vec![root.to_string()],
             CoverageDimension::Listing,
-            CancellationToken::new(),
-            cover::WalkFor::TheIndex,
         );
         while walk.next_batch().is_some() {}
         walk.finish();

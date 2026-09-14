@@ -10,8 +10,6 @@
 
 use std::path::{Path, PathBuf};
 
-use tokio_util::sync::CancellationToken;
-
 use super::test_fixtures::{ensure_path_in_db, scan_test_tempdir, setup_writer};
 use super::*;
 use crate::indexing::IndexPathSpace;
@@ -97,7 +95,7 @@ impl Tree {
             space,
             &self.writer,
             None,
-            &CancellationToken::new(),
+            &VolumeWork::for_test("policy-test"),
             &WalkHeartbeat::new(),
         )
         .expect("the walk runs");
@@ -111,7 +109,7 @@ impl Tree {
             &self.path(relative),
             &IndexPathSpace::root(),
             &self.writer,
-            &CancellationToken::new(),
+            &VolumeWork::for_test("policy-test"),
             device_of,
         )
         .expect("the walk runs");
@@ -167,7 +165,7 @@ fn a_rebuild_walk_skips_a_structurally_excluded_child() {
         &tree.path("scope"),
         &IndexPathSpace::root(),
         &tree.writer,
-        &CancellationToken::new(),
+        &VolumeWork::for_test("policy-test"),
     )
     .expect("the rebuild runs");
     tree.writer.flush_blocking().expect("flush");
@@ -326,7 +324,7 @@ fn measure_boundary_probe() {
             &root,
             &IndexPathSpace::root(),
             &writer,
-            &CancellationToken::new(),
+            &VolumeWork::for_test("policy-test"),
             device_of,
         )
         .expect("the walk runs");

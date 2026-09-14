@@ -67,9 +67,11 @@ pub(crate) enum HoldKind {
     SubtreeRescan,
     /// The phase machine (`index-phases`).
     Phases,
-    /// A cover walk the phase machine runs (`index-cover`).
+    /// A background cover walk (`index-cover`, `WalkFor::TheIndex`): the phase
+    /// machine's.
     PhaseCover,
-    /// A search's cover walk, which runs on the search's token.
+    /// A cover walk somebody waits on (`index-cover`, `WalkFor::TheUser`): a search's,
+    /// which runs on the search's token and is linked to the volume's.
     SearchCover,
     /// A verifier task and its `scan_subtree` walk.
     Verifier,
@@ -283,10 +285,6 @@ impl VolumeWork {
 
     /// Work under this one: a child of its stop signal, sharing its generation as work
     /// of `kind`.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "constructed once a worker's spawn site carries a share")
-    )]
     pub(crate) fn child(&self, kind: HoldKind) -> Self {
         Self {
             cancel: self.cancel.child_token(),
@@ -304,10 +302,6 @@ impl VolumeWork {
     /// The volume's stop reaches the work through a small forwarding task, one
     /// scheduler hop later; the task ends as soon as either token fires or the work
     /// is gone.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "constructed once a search's cover walk carries a share")
-    )]
     pub(crate) fn linked(caller: &CancellationToken, volume: &VolumeWork, kind: HoldKind) -> Self {
         let cancel = caller.child_token();
         let finished = CancellationToken::new();

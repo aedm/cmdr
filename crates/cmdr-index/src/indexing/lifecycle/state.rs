@@ -452,10 +452,20 @@ pub(crate) fn get_writer_and_flux_for(volume_id: &str) -> Option<(crate::indexin
 /// (`IndexManager::claim_the_volume` takes the volume `Exclusive`ly before every
 /// blocking call in `start_scan`), so this is belt over braces rather than the
 /// protection itself.
-pub(crate) fn cover_context_for(volume_id: &str) -> Option<crate::indexing::lifecycle::cover::CoverContext> {
+///
+/// The walk's work is minted here too, off the SAME instance: a share of this life
+/// of the volume, linked to `caller`'s token and the volume's own stop
+/// (`VolumeWork::linked`). The hold table is a leaf lock, and the forwarding task
+/// `linked` spawns never touches the registry, so both are safe under it.
+pub(crate) fn cover_context_for(
+    volume_id: &str,
+    caller: &tokio_util::sync::CancellationToken,
+    for_whom: crate::indexing::lifecycle::cover::WalkFor,
+) -> Option<crate::indexing::lifecycle::cover::CoverContext> {
     let reg = INDEX_REGISTRY.lock_ignore_poison();
-    match reg.get(volume_id).map(|i| &i.phase) {
-        Some(IndexPhase::Running(mgr)) if !mgr.ground_in_flux.load(Ordering::Relaxed) => {
+    let instance = reg.get(volume_id)?;
+    match &instance.phase {
+        IndexPhase::Running(mgr) if !mgr.ground_in_flux.load(Ordering::Relaxed) => {
             Some(crate::indexing::lifecycle::cover::CoverContext {
                 volume_id: volume_id.to_string(),
                 writer: mgr.writer.clone(),
@@ -465,6 +475,8 @@ pub(crate) fn cover_context_for(volume_id: &str) -> Option<crate::indexing::life
                 // anywhere else could name a different volume than the writer does.
                 kind: mgr.kind,
                 flush: crate::indexing::lifecycle::cover::FlushOnFinish::default(),
+                for_whom,
+                work: VolumeWork::linked(caller, &instance.work, for_whom.hold_kind()),
             })
         }
         _ => None,

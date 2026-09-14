@@ -317,6 +317,9 @@ the picker, so a `Fresh→Stale` transition would pop the one-time stale dialog 
 
 **The drain is cooperative, so the ORDERING is what protects — not the drain.** `IndexManager::shutdown`'s cancel is
 cooperative and does NOT join the scan thread, so a scan worker already blocked inside a wedged FSKit `read_dir` won't
-block the drain (good) but also can't be interrupted and may still hold vnode locks. So the protection is the eject-stop
-_ordering_ (release the watcher + handles while the FS is healthy), NOT the drain making a mid-wedge unmount safe. Test
-with synthetic disk images ONLY (never a real physical FAT card — that's what panicked the machine).
+block the drain (good) but also can't be interrupted and may still hold vnode locks. That worker still holds its share
+of the volume's hold, so the removable stop answers `StillReleasing` and Cmdr's eject leaves the drive mounted rather
+than unmounting under the read (`../lifecycle/DETAILS.md` § "When a volume has been let go"). So the protection is the
+eject-stop _ordering_ (release the watcher + handles while the FS is healthy, and wait for every worker's last read),
+NOT the drain making a mid-wedge unmount safe. Test with synthetic disk images ONLY (never a real physical FAT card —
+that's what panicked the machine).

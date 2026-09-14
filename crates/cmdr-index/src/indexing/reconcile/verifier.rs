@@ -9,10 +9,10 @@ use std::sync::{LazyLock, Mutex};
 use std::time::Instant;
 
 use cmdr_fs::ignore_poison::IgnorePoison;
-use tokio_util::sync::CancellationToken;
 
 use crate::indexing::IndexPathSpace;
 use crate::indexing::events::emit_dir_updated;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::lifecycle_bus;
 use crate::indexing::metadata::extract_metadata;
 use crate::indexing::read::enrichment::get_read_pool_for;
@@ -78,6 +78,10 @@ fn release_in_flight_slot(state: &Mutex<VerifierState>, dir_path: &str) {
 /// space's mount root, so a mismatch either reads an index that can't hold the path
 /// (a silent no-op) or writes corrections derived from another volume's rows. The
 /// caller takes all three off the same running instance (`trigger_verification`).
+///
+/// `work` rides the verification task (and the blocking read under it), so the
+/// volume stays held until the verification's last read returns. A request this
+/// declines drops it at once.
 pub(crate) fn maybe_verify(
     volume_id: String,
     dir_path: String,
@@ -85,7 +89,7 @@ pub(crate) fn maybe_verify(
     writer: IndexWriter,
     events: std::sync::Arc<dyn crate::EventSink>,
     ground_in_flux: bool,
-    cancel: CancellationToken,
+    work: VolumeWork,
 ) {
     if ground_in_flux {
         return;
@@ -124,7 +128,7 @@ pub(crate) fn maybe_verify(
             dir_path: dir_path.clone(),
         };
 
-        let affected_paths = verify_and_correct(&volume_id, &dir_path, &space, &writer, &cancel).await;
+        let affected_paths = verify_and_correct(&volume_id, &dir_path, &space, &writer, &work).await;
 
         if !affected_paths.is_empty() {
             // Corrections publish under the volume they were read from and written
@@ -202,7 +206,7 @@ async fn verify_and_correct(
     dir_path: &str,
     space: &IndexPathSpace,
     writer: &IndexWriter,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
 ) -> Vec<String> {
     let normalized = space.absolute(dir_path);
 
@@ -242,11 +246,15 @@ async fn verify_and_correct(
         // volume's derived inode is dropped: an unstable inode reaching the index
         // would drive the live rename pre-pass into a false `MoveEntryV2`.
         let inode_space = space.clone();
+        // The read carries its own share: on the blocking pool it outlives this task
+        // if the task is dropped, and the drive is held until it returns.
+        let read_share = work.clone();
         // The closure returns `Option`: `None` distinguishes a `read_dir` failure
         // (bail, exactly as the old synchronous code did) from a genuinely empty
         // directory (`Some(empty map)`, which the diff below treats as "all DB
         // children are stale").
         let joined = tokio::task::spawn_blocking(move || {
+            let _read_share = read_share;
             let disk_entries = std::fs::read_dir(&scan_path).ok()?;
             let mut disk_map: HashMap<String, DiskEntry> = HashMap::new();
             for dir_entry in disk_entries.flatten() {
@@ -454,7 +462,7 @@ async fn verify_and_correct(
             if scanner::should_exclude(new_dir, space.exclusion_scope()) {
                 continue;
             }
-            match scanner::scan_subtree(Path::new(new_dir), space, writer, cancel) {
+            match scanner::scan_subtree(Path::new(new_dir), space, writer, work) {
                 Ok(summary) => {
                     log::debug!(
                         "Verifier: scanned new dir {} ({} entries, {}ms)",

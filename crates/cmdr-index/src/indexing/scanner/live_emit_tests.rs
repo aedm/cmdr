@@ -15,8 +15,6 @@ use std::sync::Arc;
 use std::sync::mpsc::sync_channel;
 use std::time::Duration;
 
-use tokio_util::sync::CancellationToken;
-
 use super::live_emit::EmitPacer;
 use super::test_fixtures::{MockTree, ReadGate, dir, file, setup_writer};
 use super::{ScanProgress, ScanRoot, WalkHeartbeat, WalkPolicy, run_scan};
@@ -48,15 +46,15 @@ fn a_sparse_walk_hands_over_its_rows_before_it_ends() {
     let tree = tree.gated_at(root.join(LEAVES[9]), &gate);
 
     let (entries, batches) = sync_channel(8);
-    let cancel = CancellationToken::new();
-    let reader = tree.reader(&cancel);
+    let work = crate::indexing::hold::VolumeWork::for_test("live-emit-test");
+    let reader = tree.reader(&work.cancel);
     let (writer, _db_path, _db_dir) = setup_writer();
 
     std::thread::scope(|scope| {
         let walking = scope.spawn(|| {
             run_scan(
                 &root,
-                &cancel,
+                &work,
                 &Arc::new(ScanProgress::new()),
                 &writer,
                 2000,
@@ -94,13 +92,13 @@ fn the_last_partial_batch_still_arrives_when_the_walk_ends() {
         .dir_at(root.join("one"), vec![file("leaf.txt", 4)]);
 
     let (entries, batches) = sync_channel(8);
-    let cancel = CancellationToken::new();
-    let reader = tree.reader(&cancel);
+    let work = crate::indexing::hold::VolumeWork::for_test("live-emit-test");
+    let reader = tree.reader(&work.cancel);
     let (writer, _db_path, _db_dir) = setup_writer();
 
     run_scan(
         &root,
-        &cancel,
+        &work,
         &Arc::new(ScanProgress::new()),
         &writer,
         2000,

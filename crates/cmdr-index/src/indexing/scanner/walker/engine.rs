@@ -9,11 +9,11 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
-use tokio_util::sync::CancellationToken;
 
 use cmdr_fs::ignore_poison::IgnorePoison;
 
 use super::{DirTask, DirVisitor, ReadDirFn, ReadProgress, WalkConfig, WalkReadError, WalkStats};
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::scanner::WalkHeartbeat;
 
 /// Scoped log target for the walker.
@@ -32,14 +32,20 @@ const COMPLETED: u8 = 1;
 const ABANDONED: u8 = 2;
 
 /// Walk `root` and everything under it, calling `visitor` per directory. Blocks
-/// until the walk completes (outstanding tasks reach zero) or `cancel` fires.
+/// until the walk completes (outstanding tasks reach zero) or `work.cancel` fires.
 /// Never blocks on a hung directory: see the module docs.
+///
+/// `work` is the walk's own: the engine keeps it, and every worker holds the
+/// engine, so its share of the volume's hold drops only once this has returned AND
+/// the last worker is out of its read, an abandoned one parked in a hung syscall
+/// included. That's what keeps a stop from answering "released" over a read still
+/// in flight.
 pub fn walk<V: DirVisitor + 'static>(
     root: DirTask,
     cfg: WalkConfig,
     reader: ReadDirFn,
     visitor: Arc<V>,
-    cancel: CancellationToken,
+    work: VolumeWork,
 ) -> WalkStats {
     let num_threads = if cfg.num_threads == 0 {
         std::thread::available_parallelism().map_or(4, |n| n.get())
@@ -54,7 +60,7 @@ pub fn walk<V: DirVisitor + 'static>(
         done: AtomicBool::new(false),
         watchdog_wake: Condvar::new(),
         watchdog_lock: Mutex::new(()),
-        cancel,
+        work,
         reader,
         visitor,
         stall_timeout: cfg.stall_timeout,
@@ -239,9 +245,11 @@ struct Engine<V: DirVisitor> {
     /// by `signal_done` before it notifies, so the wake can't be missed in the
     /// window between the check and the wait.
     watchdog_lock: Mutex<()>,
-    /// The walk's stop signal. Workers check it between tasks and between
-    /// entries, so a cancel lands within one directory read.
-    cancel: CancellationToken,
+    /// The walk's stop signal and its share of the volume's hold. Workers check
+    /// the signal between tasks and between entries, so a cancel lands within one
+    /// directory read; the share lives as long as the engine, so as long as any
+    /// worker. ❌ Don't hand a worker a bare token instead of the engine.
+    work: VolumeWork,
     reader: ReadDirFn,
     visitor: Arc<V>,
     stall_timeout: Duration,
@@ -333,7 +341,7 @@ impl<V: DirVisitor + 'static> Engine<V> {
             let scheduled = {
                 let mut q = self.queue.lock_ignore_poison();
                 loop {
-                    if self.done.load(Ordering::SeqCst) || self.cancel.is_cancelled() {
+                    if self.done.load(Ordering::SeqCst) || self.work.cancel.is_cancelled() {
                         return;
                     }
                     if let Some(task) = q.pop_front() {
@@ -402,7 +410,7 @@ impl<V: DirVisitor + 'static> Engine<V> {
             }
             *slot.lock_ignore_poison() = None;
 
-            if self.cancel.is_cancelled() {
+            if self.work.cancel.is_cancelled() {
                 self.complete_one();
                 continue;
             }
@@ -476,7 +484,7 @@ impl<V: DirVisitor + 'static> Engine<V> {
             if self.done.load(Ordering::SeqCst) {
                 return;
             }
-            if self.cancel.is_cancelled() {
+            if self.work.cancel.is_cancelled() {
                 self.signal_done();
                 return;
             }

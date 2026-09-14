@@ -44,13 +44,7 @@ fn a_non_virgin_frontier_node_is_repaired_without_losing_rows() {
         .expect("upsert G");
     f.writer.flush_blocking().expect("flush");
     // … and then G itself gets walked, so it holds rows F has no claim on.
-    let g_walk = start(
-        f.context(),
-        vec![f.path("F/G")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let g_walk = start(f.context(), vec![f.path("F/G")], CoverageDimension::Listing);
     drain(g_walk);
     f.writer.flush_blocking().expect("flush");
 
@@ -58,13 +52,7 @@ fn a_non_virgin_frontier_node_is_repaired_without_losing_rows() {
     assert_eq!(g_rows.len(), 1, "precondition: G holds kept.txt");
     assert_eq!(f.listed_epoch(&f.path("F")), 0, "precondition: F is a frontier node");
 
-    let walk = start(
-        f.context(),
-        vec![f.path("F")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), vec![f.path("F")], CoverageDimension::Listing);
     let (_, outcome) = drain(walk);
     f.writer.flush_blocking().expect("flush");
 
@@ -101,24 +89,12 @@ fn a_repaired_frontier_node_reports_the_rows_it_wrote() {
     f.seed_chain(&root.join("F"));
 
     // The first search covers G, materializing F above it without listing it.
-    drain(start(
-        f.context(),
-        vec![f.path("F/G")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    ));
+    drain(start(f.context(), vec![f.path("F/G")], CoverageDimension::Listing));
     f.writer.flush_blocking().expect("flush");
     assert_eq!(f.listed_epoch(&f.path("F")), 0, "precondition: F is a frontier node");
 
     // The second search asks for F, which the parallel walker refuses.
-    let (entries, outcome) = drain(start(
-        f.context(),
-        vec![f.path("F")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    ));
+    let (entries, outcome) = drain(start(f.context(), vec![f.path("F")], CoverageDimension::Listing));
     f.writer.flush_blocking().expect("flush");
 
     let mut emitted: Vec<String> = entries.iter().map(|e| e.path.to_string_lossy().to_string()).collect();
@@ -161,23 +137,11 @@ fn a_repair_whose_consumer_left_still_covers_the_ground() {
     f.seed_chain(&root.join("F"));
 
     // Cover G first, which materializes F above it without listing it.
-    drain(start(
-        f.context(),
-        vec![f.path("F/G")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    ));
+    drain(start(f.context(), vec![f.path("F/G")], CoverageDimension::Listing));
     f.writer.flush_blocking().expect("flush");
     assert_eq!(f.listed_epoch(&f.path("F")), 0, "precondition: F is a frontier node");
 
-    let walk = start(
-        f.context(),
-        vec![f.path("F")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), vec![f.path("F")], CoverageDimension::Listing);
     // One batch, so the repair is provably under way and filling the queue behind
     // it; then walk away. `finish` drops the channel and waits the walk out.
     walk.next_batch().expect("the repair emits");
@@ -214,22 +178,10 @@ fn a_repair_reports_the_directories_it_read() {
     f.seed_chain(&root.join("F"));
 
     // Cover G first, so F is a frontier node the parallel walker will refuse.
-    drain(start(
-        f.context(),
-        vec![f.path("F/G")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    ));
+    drain(start(f.context(), vec![f.path("F/G")], CoverageDimension::Listing));
     f.writer.flush_blocking().expect("flush");
 
-    let walk = start(
-        f.context(),
-        vec![f.path("F")],
-        CoverageDimension::Listing,
-        CancellationToken::new(),
-        WalkFor::TheIndex,
-    );
+    let walk = start(f.context(), vec![f.path("F")], CoverageDimension::Listing);
     let pulse = walk.dirs_scanned_counter();
     drain(walk);
 
