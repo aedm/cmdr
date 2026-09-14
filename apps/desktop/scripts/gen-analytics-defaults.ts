@@ -43,19 +43,26 @@ const MANIFEST_NOTE = [
   'for that release, at their default values. Entries are written only where a default actually changed,',
   'so resolution takes the newest entry at or below an install’s app version. A key missing from the',
   'resolved entry means the setting did not exist in that build, so that install has no opinion to count.',
+  '`promotedThrough` is the newest release `--promote` recorded, stamped even when it changed no default.',
   '`next` is the unreleased working-tree state; it is never resolved against.',
 ]
 
 /** An empty manifest, for the first run and for `--backfill` starting from scratch. */
 function emptyManifest(): DefaultsManifest {
-  return { note: MANIFEST_NOTE, versions: {}, next: {} }
+  return { note: MANIFEST_NOTE, promotedThrough: '', versions: {}, next: {} }
 }
 
 function readManifest(): DefaultsManifest {
   const path = join(ROOT_DIR, MANIFEST_PATH)
   if (!existsSync(path)) return emptyManifest()
   const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<DefaultsManifest>
-  return { note: MANIFEST_NOTE, versions: parsed.versions ?? {}, next: parsed.next ?? {} }
+  // Key order here is the order `serializeManifest` writes, so it stays stable across rewrites.
+  return {
+    note: MANIFEST_NOTE,
+    promotedThrough: parsed.promotedThrough ?? '',
+    versions: parsed.versions ?? {},
+    next: parsed.next ?? {},
+  }
 }
 
 function writeManifest(manifest: DefaultsManifest): void {
@@ -97,11 +104,15 @@ function releaseVersions(): string[] {
  * wire there's nothing to resolve, and an entry for them would only invite a reader to believe we
  * know something about those installs. A tag whose registry the parser can't read is skipped the
  * same way, and reported, so it stays visible rather than turning into a wrong number.
+ *
+ * It stamps `promotedThrough` with the newest tag whose defaults it read, since the rebuilt history
+ * describes that release whether or not it earned an entry.
  */
 function backfill(manifest: DefaultsManifest): DefaultsManifest {
   const versions: Record<string, DefaultsSnapshot> = {}
   const skipped: string[] = []
   let previous: DefaultsSnapshot | null = null
+  let readThrough = ''
 
   for (const version of releaseVersions()) {
     const result = buildSnapshot(gitTree(ROOT_DIR, `v${version}`))
@@ -116,6 +127,7 @@ function backfill(manifest: DefaultsManifest): DefaultsManifest {
       skipped.push(`${version}: ${e instanceof Error ? e.message.split('\n')[0] : String(e)}`)
       continue
     }
+    readThrough = version
     if (previous !== null && snapshotsEqual(previous, snapshot)) continue
     versions[version] = snapshot
     previous = snapshot
@@ -123,7 +135,7 @@ function backfill(manifest: DefaultsManifest): DefaultsManifest {
 
   console.log(`Backfilled ${String(Object.keys(versions).length)} version entries from the release tags.`)
   for (const line of skipped) console.log(`  skipped v${line}`)
-  return { ...manifest, versions: sortVersions(versions) }
+  return { ...manifest, promotedThrough: readThrough, versions: sortVersions(versions) }
 }
 
 function main(): void {

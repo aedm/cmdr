@@ -5,8 +5,10 @@
     "for that release, at their default values. Entries are written only where a default actually changed,",
     "so resolution takes the newest entry at or below an install’s app version. A key missing from the",
     "resolved entry means the setting did not exist in that build, so that install has no opinion to count.",
+    "`promotedThrough` is the newest release `--promote` recorded, stamped even when it changed no default.",
     "`next` is the unreleased working-tree state; it is never resolved against."
   ],
+  "promotedThrough": "0.45.1",
   "versions": {
     "0.25.0": {
       "advanced.diskSpaceChangeThreshold": 1,

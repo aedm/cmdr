@@ -198,7 +198,8 @@ resolved here instead, joined on the `app_version` every heartbeat already carri
 - **The manifest** is `src/lib/server/settings-defaults.gen.json`, generated from the desktop settings registry by
   `apps/desktop/scripts/gen-analytics-defaults.ts` and pinned to it by the `settings-defaults` check. ❌ Never hand-edit
   it. Entries are sparse along the version axis (written only where a default moved) but COMPLETE within an entry, which
-  is what lets an absent key mean something.
+  is what lets an absent key mean something. Its `promotedThrough` stamp exists for that check; resolution never reads
+  it.
 - **A key missing from the resolved entry means the setting did not exist in that build**, so that install drops OUT of
   that setting's denominator instead of counting as a default. Get this wrong and every newly added setting silently
   corrupts its own adoption number for every older install still running. `settings-defaults.test.ts` pins it.

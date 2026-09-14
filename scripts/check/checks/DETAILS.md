@@ -742,10 +742,13 @@ registry. A stale manifest breaks nothing loudly: every "how many people use X" 
 the ones already screenshotted into a decision.
 
 It also guards the history. Entries describe SHIPPED releases, so the check rejects an entry newer than the version in
-`apps/desktop/package.json`, and rejects the reverse hazard: `next` (the unreleased working-tree snapshot) having moved
-past a newest entry that is older than the last release, which means a release shipped defaults nobody recorded and its
-installs are being resolved against a predecessor's values. `scripts/release.sh` runs `--promote <version>` as part of
-the version bump, so the normal path can't drift.
+`apps/desktop/package.json`. Every `--promote` stamps `promotedThrough`, even for a release that changed no default and
+so earned no entry, and the check requires that stamp to equal the released version. Behind it, a release skipped the
+step and its installs may resolve against a predecessor's values; ahead of it, the stamp vouches for a version nobody
+runs. The stamp is what separates "this release changed nothing" from "nobody recorded this release", since `versions`
+looks the same for both. ❌ Don't infer it from `next` against the newest entry: that fails on the first setting added
+after any no-change release. `scripts/release.sh` runs `--promote <version>` as part of the version bump, so the normal
+path can't drift.
 
 ## Resident doc budget
 

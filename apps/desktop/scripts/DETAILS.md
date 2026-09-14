@@ -98,7 +98,7 @@ without that, the check fails on every `@key.screenshot` still naming the delete
 install runs with, per released app version, for exactly the keys the heartbeat's config shape can carry. The dashboard
 joins it on `app_version` to tell "the user is on the default" apart from "the setting didn't exist in that build".
 
-Two things about it are load-bearing:
+Three things about it are load-bearing:
 
 - **The registry is PARSED, not imported.** `definitions/appearance.ts` pulls in `$lib/intl`, whose `messages.svelte.ts`
   is rune-compiled, so a bare `node` import can't evaluate the registry. Reading the definition objects off the
@@ -107,6 +107,10 @@ Two things about it are load-bearing:
 - **`next` is not a version.** Between releases `package.json` still holds the LAST shipped version, so keying the
   working tree's snapshot by it would rewrite an entry that describes a release already in the field. `next` holds the
   unreleased state, is never resolved against, and `scripts/release.sh` promotes it under the real version number.
+- **`promotedThrough` records every promote, entry or not.** `promote()` writes an entry only when a default moved, so a
+  release that changed nothing leaves `versions` exactly as a skipped promotion would; the stamp is how
+  `settings-defaults` tells them apart. Promote on a tree whose settings match the release: a later working tree records
+  defaults that release never shipped. `--backfill` stamps the newest tag it could read.
 
 The two locale generators emit `#[rustfmt::skip]`, so they own their layout and need no Rust toolchain.
 

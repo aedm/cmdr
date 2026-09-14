@@ -21,8 +21,9 @@ const (
 
 // settingsDefaultsFile is the committed manifest, as much of it as this check reads.
 type settingsDefaultsFile struct {
-	Versions map[string]map[string]any `json:"versions"`
-	Next     map[string]any            `json:"next"`
+	PromotedThrough string                    `json:"promotedThrough"`
+	Versions        map[string]map[string]any `json:"versions"`
+	Next            map[string]any            `json:"next"`
 }
 
 // RunAnalyticsSettingsDefaults keeps the settings-defaults manifest pinned to the settings
@@ -41,9 +42,9 @@ type settingsDefaultsFile struct {
 //     outside `--ci` the rewrite is kept so the fix is already staged, and in `--ci` the original is
 //     restored and drift fails.
 //   - A release never shipped defaults nobody recorded. `release.sh` promotes `next` into
-//     `versions` under the new version number; if that step is skipped, the newest `versions` entry
-//     falls behind `package.json` while `next` has already moved on, and the installs running that
-//     release get resolved against a predecessor's defaults.
+//     `versions` under the new version number and stamps `promotedThrough`, whether or not the
+//     release changed a default. If that step is skipped, the stamp falls behind `package.json` and
+//     the installs running that release may be resolved against a predecessor's defaults.
 func RunAnalyticsSettingsDefaults(ctx *CheckContext) (CheckResult, error) {
 	desktopDir := filepath.Join(ctx.RootDir, "apps", "desktop")
 	manifestPath := filepath.Join(ctx.RootDir, settingsDefaultsManifest)
@@ -107,18 +108,15 @@ func RunAnalyticsSettingsDefaults(ctx *CheckContext) (CheckResult, error) {
 // unrecordedRelease reports the release whose defaults were never written into the manifest, or
 // "" when the history is intact.
 //
-// The rule: an entry is written only where a release actually changed a default, so `next` equal to
-// the newest entry means nothing has moved since that entry and any later release is faithfully
-// described by it. Once `next` differs, the newest entry has to be at least the last released
-// version, because otherwise that release shipped a state no entry describes.
+// The rule: `release.sh` runs `--promote` for every release, and every promote stamps
+// `promotedThrough`, including one for a release that changed no default and so earned no entry. So
+// the stamp must be exactly the last released version. A stamp behind it means a release skipped the
+// step, and nothing vouches for what its installs resolve against. `versions` alone can't say: a
+// release that changed nothing and a release nobody recorded leave it looking the same, which is why
+// the stamp exists. A stamp ahead of it, or an entry newer than it, describes a version no install
+// has run.
 func unrecordedRelease(manifest settingsDefaultsFile, released string) string {
-	newest := ""
-	for version := range manifest.Versions {
-		if newest == "" || compareVersions(version, newest) > 0 {
-			newest = version
-		}
-	}
-	if newest == "" {
+	if len(manifest.Versions) == 0 {
 		return fmt.Sprintf("%s has no version entries at all, so the dashboard can't resolve any install's "+
 			"defaults. Rebuild it with `node %s --backfill` from `apps/desktop/`",
 			settingsDefaultsManifest, settingsDefaultsGenerator)
@@ -129,13 +127,25 @@ func unrecordedRelease(manifest settingsDefaultsFile, released string) string {
 			settingsDefaultsManifest, strings.Join(unreleased, ", "),
 			Pluralize(len(unreleased), "is", "are"), released)
 	}
-	if snapshotsMatch(manifest.Next, manifest.Versions[newest]) || compareVersions(newest, released) >= 0 {
-		return ""
+	if manifest.PromotedThrough == "" {
+		return fmt.Sprintf("%s has no `promotedThrough` stamp, so nothing says which releases had their defaults "+
+			"recorded. Run `node %s --promote %s` from `apps/desktop/` on a tree whose settings match the v%s tag",
+			settingsDefaultsManifest, settingsDefaultsGenerator, released, released)
 	}
-	return fmt.Sprintf("v%s shipped settings defaults that %s never recorded: its newest entry is v%s, and the "+
-		"working tree has moved on since. Installs running v%s are being resolved against v%s's defaults. Run "+
-		"`node %s --promote %s` from `apps/desktop/`, which is what `scripts/release.sh` does for a normal release",
-		released, settingsDefaultsManifest, newest, released, newest, settingsDefaultsGenerator, released)
+	if compareVersions(manifest.PromotedThrough, released) > 0 {
+		return fmt.Sprintf("%s is stamped as promoted through v%s, which is newer than the released v%s. The "+
+			"stamp records SHIPPED releases, so an unreleased one would vouch for defaults no install has run",
+			settingsDefaultsManifest, manifest.PromotedThrough, released)
+	}
+	if compareVersions(manifest.PromotedThrough, released) < 0 {
+		return fmt.Sprintf("v%s shipped without its settings defaults being recorded: %s was last promoted through "+
+			"v%s, so installs running v%s may be resolved against an older release's defaults. Run `node %s --promote "+
+			"%s` from `apps/desktop/` on a tree whose settings match the v%s tag, which is what `scripts/release.sh` "+
+			"does for a normal release",
+			released, settingsDefaultsManifest, manifest.PromotedThrough, released, settingsDefaultsGenerator,
+			released, released)
+	}
+	return ""
 }
 
 // versionsAbove lists the manifest entries newer than the last released version, sorted.
@@ -148,14 +158,6 @@ func versionsAbove(versions map[string]map[string]any, released string) []string
 	}
 	sort.Slice(above, func(i, j int) bool { return compareVersions(above[i][1:], above[j][1:]) < 0 })
 	return above
-}
-
-// snapshotsMatch compares two default snapshots by their JSON encoding, which is stable because the
-// generator writes keys sorted.
-func snapshotsMatch(a, b map[string]any) bool {
-	encodedA, errA := json.Marshal(a)
-	encodedB, errB := json.Marshal(b)
-	return errA == nil && errB == nil && bytes.Equal(encodedA, encodedB)
 }
 
 // desktopPackageVersion reads the last released version off the desktop `package.json`, which

@@ -40,6 +40,12 @@ export type DefaultsSnapshot = Record<string, boolean | number | string>
 export interface DefaultsManifest {
   /** Written into the file so a human opening it knows what it is and what regenerates it. */
   note: string[]
+  /**
+   * The newest release `--promote` ran for, stamped even when that release changed no default and
+   * so earned no entry. It's what lets the check tell "this release changed nothing" from "nobody
+   * recorded this release": `versions` alone looks the same for both.
+   */
+  promotedThrough: string
   /** Released versions whose defaults differ from the entry before them, oldest key first. */
   versions: Record<string, DefaultsSnapshot>
   /** The working tree's snapshot. Never resolved against (it hasn't shipped); promoted at release. */
@@ -294,7 +300,8 @@ export function snapshotsEqual(a: DefaultsSnapshot, b: DefaultsSnapshot): boolea
 /**
  * Adds `version` to the manifest, keeping it sparse: an entry is written only when the release
  * actually changed a default (or added/removed a key) relative to the newest entry at or below it.
- * Re-promoting the same version is idempotent.
+ * Every call stamps `promotedThrough`, a release that earned no entry included. Re-promoting the
+ * same version is idempotent.
  */
 export function promote(manifest: DefaultsManifest, version: string, snapshot: DefaultsSnapshot): DefaultsManifest {
   const previous = resolveEntry(manifest.versions, version, { excludeSelf: true })
@@ -306,7 +313,7 @@ export function promote(manifest: DefaultsManifest, version: string, snapshot: D
     if (existing !== version) versions[existing] = entry
   }
   if (!unchanged) versions[version] = sortKeys(snapshot)
-  return { ...manifest, versions: sortVersions(versions), next: sortKeys(snapshot) }
+  return { ...manifest, promotedThrough: version, versions: sortVersions(versions), next: sortKeys(snapshot) }
 }
 
 export function sortVersions(versions: Record<string, DefaultsSnapshot>): Record<string, DefaultsSnapshot> {

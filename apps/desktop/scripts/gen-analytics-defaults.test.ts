@@ -190,12 +190,29 @@ describe('compareVersionsAsc', () => {
 })
 
 describe('promote', () => {
-  const base: DefaultsManifest = { note: [], versions: { '0.39.0': { 'indexing.enabled': true } }, next: {} }
+  const base: DefaultsManifest = {
+    note: [],
+    promotedThrough: '0.39.0',
+    versions: { '0.39.0': { 'indexing.enabled': true } },
+    next: {},
+  }
 
   it('writes no entry when the release changed no default, keeping the manifest sparse', () => {
     const promoted = promote(base, '0.40.0', { 'indexing.enabled': true })
     expect(Object.keys(promoted.versions)).toEqual(['0.39.0'])
     expect(promoted.next).toEqual({ 'indexing.enabled': true })
+  })
+
+  it('stamps the release as promoted even when it changed no default', () => {
+    // Without the stamp, a no-change release and a skipped promotion leave identical `versions`,
+    // and the check can't tell a setting added afterwards apart from a release nobody recorded.
+    const promoted = promote(base, '0.40.0', { 'indexing.enabled': true })
+    expect(promoted.promotedThrough).toBe('0.40.0')
+  })
+
+  it('stamps the release as promoted when it wrote an entry', () => {
+    const promoted = promote(base, '0.40.0', { 'indexing.enabled': false })
+    expect(promoted.promotedThrough).toBe('0.40.0')
   })
 
   it('writes an entry when a default moved', () => {

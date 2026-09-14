@@ -66,6 +66,14 @@ tagged. Beyond the version/CHANGELOG checks and `oxfmt --ci`, three are worth kn
   re-run the release. English-only today, so this is a clean no-op until a real locale exists. Mechanism and schema:
   `apps/desktop/src/lib/intl/messages/DETAILS.md` § `@key` metadata schema.
 
+## The settings-defaults stamp
+
+Right after bumping `package.json`, `scripts/release.sh` runs `gen-analytics-defaults.ts --promote <version>`. That
+records the release's settings defaults in the analytics manifest (an entry only when a default moved) and stamps
+`promotedThrough` either way. `settings-defaults` fails while the stamp is behind `package.json`. If a release ever
+skips the step, run the promote on a tree whose settings match that release's tag: a later working tree would record
+defaults the release never shipped. Mechanism: `apps/desktop/scripts/DETAILS.md` § "The defaults manifest".
+
 ## Pre-release smoke test on old macOS
 
 Cmdr opens on macOS 10.15 Catalina and up, which means two different old-WebKit paths, and both want a look before a
