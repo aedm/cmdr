@@ -1,132 +1,39 @@
 /**
- * Headless tests for `createTransferProgressState`: the progress dialog as a
- * VIEW of one operation, driven without rendering a component.
+ * Headless tests for `createTransferProgressState`: what the progress dialog's
+ * view shows and does across one operation's life (progress, birth, conflicts,
+ * cancel, rollback, pause and queue, the ETA smoother, disposal, and a
+ * still-scanning transfer), driven without rendering a component.
  *
- * The view holds runes (its session binding, and the effects that watch for an
- * outcome), so each case builds it inside an `$effect.root` and disposes that
- * root afterwards — standing in for the component scope it lives in.
- *
- * Mocking approach (mirrors `queue-row-session.svelte.test.ts`):
- * `$lib/tauri-commands` is fully mocked, and the window's session registry is
- * inited per test so the event fan-out subscribes through those mocks. The
- * `on<Event>` subscriber mocks capture the fan-out's callback into a
- * module-level `let`; calling it delivers an event down exactly the path a live
- * one takes — fan-out, session, view. The dispatch commands resolve with a fixed
- * `operationId`; per-test overrides cover the deferred-IPC and error paths.
- *
- * `listOperations` answers with this operation's row because that is what the
- * backend does: it registers the operation before the start command returns, so
- * a session seeding itself finds it. A mock that answered "no such operation"
- * would be telling the session the transfer was already over.
+ * The shared mocks, fixtures, and per-test lifecycle (and why they're shaped
+ * that way) live in `test-transfer-progress-harness.svelte.ts`. Who owns the
+ * operation (the foreground slot, adoption, an adopted reversal) is in
+ * `transfer-progress-state.ownership.svelte.test.ts`.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { flushSync } from 'svelte'
-import type {
-  WriteProgressEvent,
-  WriteCompleteEvent,
-  WriteErrorEvent,
-  WriteCancelledEvent,
-  WriteSettledEvent,
-  WriteConflictEvent,
-  OperationSnapshot,
-  WriteOperationStartResult,
-} from '$lib/tauri-commands'
-import type { WriteOperationError, WriteOperationType } from '$lib/file-explorer/types'
+import type { WriteConflictEvent, WriteOperationStartResult } from '$lib/tauri-commands'
+import type { WriteOperationError } from '$lib/file-explorer/types'
 
-// Callbacks the window's fan-out registers, captured so the test can deliver
-// events at a deterministic moment.
-let progressCb: ((e: WriteProgressEvent) => void) | null = null
-let completeCb: ((e: WriteCompleteEvent) => void) | null = null
-let errorCb: ((e: WriteErrorEvent) => void) | null = null
-let cancelledCb: ((e: WriteCancelledEvent) => void) | null = null
-let settledCb: ((e: WriteSettledEvent) => void) | null = null
-let conflictCb: ((e: WriteConflictEvent) => void) | null = null
-let opsChangedCb: ((e: { operations: OperationSnapshot[] }) => void) | null = null
+vi.mock('$lib/tauri-commands', async () =>
+  (await import('./test-transfer-progress-harness.svelte')).tauriCommandsMock(),
+)
+vi.mock('$lib/file-operations/queue/queue-window', async () =>
+  (await import('./test-transfer-progress-harness.svelte')).queueWindowMock(),
+)
+vi.mock('$lib/ui/toast', async () => (await import('./test-transfer-progress-harness.svelte')).toastMock())
+vi.mock('$lib/settings', async () => (await import('./test-transfer-progress-harness.svelte')).settingsMock())
+vi.mock('$lib/intl/messages.svelte', async () =>
+  (await import('./test-transfer-progress-harness.svelte')).messagesMock(),
+)
+vi.mock('../progress-readout', async (importOriginal) =>
+  (await import('./test-transfer-progress-harness.svelte')).progressReadoutMock(
+    await importOriginal<typeof import('../progress-readout')>(),
+  ),
+)
+vi.mock('$lib/logging/logger', async () => (await import('./test-transfer-progress-harness.svelte')).loggerMock())
 
-const noopUnlisten = () => {}
-
-vi.mock('$lib/tauri-commands', () => ({
-  copyBetweenVolumes: vi.fn(() => Promise.resolve({ operationId: 'op-1', operationType: 'copy' })),
-  moveBetweenVolumes: vi.fn(() => Promise.resolve({ operationId: 'op-1', operationType: 'move' })),
-  compressFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1', operationType: 'copy' })),
-  moveFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1', operationType: 'move' })),
-  deleteFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1', operationType: 'delete' })),
-  trashFiles: vi.fn(() => Promise.resolve({ operationId: 'op-1', operationType: 'trash' })),
-  onWriteProgress: vi.fn((cb: (e: WriteProgressEvent) => void) => {
-    progressCb = cb
-    return Promise.resolve(noopUnlisten)
-  }),
-  onWriteComplete: vi.fn((cb: (e: WriteCompleteEvent) => void) => {
-    completeCb = cb
-    return Promise.resolve(noopUnlisten)
-  }),
-  onWriteError: vi.fn((cb: (e: WriteErrorEvent) => void) => {
-    errorCb = cb
-    return Promise.resolve(noopUnlisten)
-  }),
-  onWriteCancelled: vi.fn((cb: (e: WriteCancelledEvent) => void) => {
-    cancelledCb = cb
-    return Promise.resolve(noopUnlisten)
-  }),
-  onWriteSettled: vi.fn((cb: (e: WriteSettledEvent) => void) => {
-    settledCb = cb
-    return Promise.resolve(noopUnlisten)
-  }),
-  onWriteConflict: vi.fn((cb: (e: WriteConflictEvent) => void) => {
-    conflictCb = cb
-    return Promise.resolve(noopUnlisten)
-  }),
-  onWriteConflictResolved: vi.fn(() => Promise.resolve(noopUnlisten)),
-  onOperationsChanged: vi.fn((cb: (e: { operations: OperationSnapshot[] }) => void) => {
-    opsChangedCb = cb
-    return Promise.resolve(noopUnlisten)
-  }),
-  resolveWriteConflict: vi.fn(() => Promise.resolve('resolved')),
-  cancelOperation: vi.fn(() => Promise.resolve()),
-  cancelWriteOperation: vi.fn(() => Promise.resolve()),
-  cancelScanPreview: vi.fn(() => Promise.resolve()),
-  pauseOperation: vi.fn(() => Promise.resolve()),
-  resumeOperation: vi.fn(() => Promise.resolve()),
-  listOperations: vi.fn(() => Promise.resolve<OperationSnapshot[]>([])),
-  DEFAULT_VOLUME_ID: 'root',
-}))
-
-vi.mock('$lib/file-operations/queue/queue-window', () => ({
-  openQueueWindow: vi.fn(() => Promise.resolve()),
-}))
-
-vi.mock('$lib/ui/toast', () => ({
-  addToast: vi.fn(),
-}))
-
-vi.mock('$lib/settings', () => ({
-  // Key-aware so the archive compression level is distinguishable from the
-  // progress-interval / max-conflicts settings (all others resolve to 200).
-  getSetting: vi.fn((key: string) => (key === 'behavior.archiveCompressionLevel' ? 6 : 200)),
-}))
-
-vi.mock('$lib/intl/messages.svelte', () => ({
-  tString: vi.fn((key: string) => key),
-}))
-
-// The real smoother, watched. The session resolves this same module, so the
-// count covers the whole main window.
-vi.mock('../progress-readout', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../progress-readout')>()
-  return { ...actual, createEtaSmoother: vi.fn(actual.createEtaSmoother) }
-})
-
-vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
-}))
-
-import { createTransferProgressState, type TransferProgressStateConfig } from './transfer-progress-state.svelte'
+import { createTransferProgressState } from './transfer-progress-state.svelte'
 import {
   copyBetweenVolumes,
   resolveWriteConflict,
@@ -147,127 +54,21 @@ import {
   initOperationSessions,
 } from '../operation-session/window-operation-sessions.svelte'
 import {
-  getForegroundOperationId,
-  setForegroundOperationId,
-  isForegroundClaimPending,
-  endForegroundClaim,
-} from '../foreground-operation.svelte'
+  listeners,
+  makeConfig,
+  progressEvent,
+  settle,
+  snapshot,
+  useTransferProgressState,
+} from './test-transfer-progress-harness.svelte'
 
-/** Drains the machine's `await` chains and then runs whatever effects they
- *  scheduled. Fake timers don't fake microtasks, so this works with timers
- *  active. */
-async function settle(): Promise<void> {
-  for (let round = 0; round < 2; round++) {
-    for (let i = 0; i < 25; i++) await Promise.resolve()
-    flushSync()
-  }
-}
-
-function makeConfig(over: Partial<TransferProgressStateConfig> = {}): TransferProgressStateConfig {
-  return {
-    operationType: 'copy',
-    sourcePaths: ['/src/file.txt'],
-    destinationPath: '/dst',
-    sortColumn: 'name',
-    sortOrder: 'ascending',
-    previewId: null,
-    sourceVolumeId: 'root',
-    destVolumeId: 'root',
-    conflictResolution: 'stop',
-    preKnownConflicts: [],
-    itemSizes: [],
-    onComplete: vi.fn(),
-    onCancelled: vi.fn(),
-    onError: vi.fn(),
-    onQueue: vi.fn(),
-    ...over,
-  }
-}
-
-function progressEvent(over: Partial<WriteProgressEvent> = {}): WriteProgressEvent {
-  return {
-    operationId: 'op-1',
-    operationType: 'copy',
-    phase: 'copying',
-    currentFile: 'file.txt',
-    filesDone: 1,
-    filesTotal: 4,
-    bytesDone: 100,
-    bytesTotal: 400,
-    ...over,
-  }
-}
-
-function snapshot(
-  id: string,
-  status: OperationSnapshot['status'],
-  type: WriteOperationType = 'copy',
-): OperationSnapshot {
-  return {
-    operationId: id,
-    operationType: type,
-    status,
-    source: '/s',
-    destination: '/d',
-    supportsRollback: true,
-    reverses: null,
-    error: null,
-  }
-}
-
-/** The reactive scope the view lives in. A component owns one in the app; a
- *  test owns one here, and disposing it is what releases the session. */
-let disposeScope: (() => void) | null = null
-
-function makeState(config: TransferProgressStateConfig): ReturnType<typeof createTransferProgressState> {
-  let created!: ReturnType<typeof createTransferProgressState>
-  disposeScope = $effect.root(() => {
-    created = createTransferProgressState(config)
-  })
-  return created
-}
-
-/** Builds the view, runs `start()`, and drains the async startup so the
- *  operation is named and its session bound. */
-async function startedState(over: Partial<TransferProgressStateConfig> = {}) {
-  const config = makeConfig(over)
-  const state = makeState(config)
-  state.start()
-  await settle()
-  return { state, config }
-}
-
-beforeEach(async () => {
-  progressCb = null
-  completeCb = null
-  errorCb = null
-  cancelledCb = null
-  settledCb = null
-  conflictCb = null
-  opsChangedCb = null
-  vi.clearAllMocks()
-  vi.mocked(listOperations).mockResolvedValue([snapshot('op-1', 'running')])
-  vi.useFakeTimers()
-  // The slot is module-scoped, so a test that leaves an owner behind would poison
-  // the next one.
-  setForegroundOperationId(null)
-  while (isForegroundClaimPending()) endForegroundClaim()
-  await initOperationSessions()
-  vi.mocked(createEtaSmoother).mockClear()
-})
-
-afterEach(() => {
-  disposeScope?.()
-  disposeScope = null
-  destroyOperationSessions()
-  vi.useRealTimers()
-})
+const { makeState, startedState } = useTransferProgressState(createTransferProgressState)
 
 describe('createTransferProgressState: progress + complete', () => {
   it('reflects a progress event in the exposed getters', async () => {
     const { state } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ filesDone: 2, filesTotal: 4, bytesDone: 200, bytesTotal: 400, etaSeconds: 12 }))
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent({ filesDone: 2, filesTotal: 4, bytesDone: 200, bytesTotal: 400, etaSeconds: 12 }))
     expect(state.phase).toBe('copying')
     expect(state.filesDone).toBe(2)
     expect(state.bytesDone).toBe(200)
@@ -283,9 +84,9 @@ describe('createTransferProgressState: progress + complete', () => {
 
   it('handles a scanning → copying phase transition and smooths the displayed ETA', async () => {
     const { state } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
     // Scanning phase: tallies + current dir come through the scan-meta fields.
-    progressCb(
+    listeners.progress(
       progressEvent({
         phase: 'scanning',
         filesDone: 3,
@@ -301,25 +102,31 @@ describe('createTransferProgressState: progress + complete', () => {
     expect(state.scan.currentDir).toBe('/src/sub')
 
     // Transition to copying: resets the smoothed ETA, then re-warms from raw.
-    progressCb(progressEvent({ phase: 'copying', etaSeconds: 10 }))
+    listeners.progress(progressEvent({ phase: 'copying', etaSeconds: 10 }))
     expect(state.etaSecondsDisplay).toBe(10)
     // A second copying tick smooths toward the new raw value (25% of the gap).
-    progressCb(progressEvent({ phase: 'copying', etaSeconds: 20 }))
+    listeners.progress(progressEvent({ phase: 'copying', etaSeconds: 20 }))
     expect(state.etaSecondsDisplay).toBeCloseTo(12.5)
   })
 
   it('enters rolling_back from a backend progress event', async () => {
     const { state } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ phase: 'rolling_back' }))
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent({ phase: 'rolling_back' }))
     expect(state.isRollingBack).toBe(true)
     expect(state.phase).toBe('rolling_back')
   })
 
   it('fires onComplete after the min-display window', async () => {
     const { state, config } = await startedState()
-    if (!completeCb) throw new Error('complete subscriber never registered')
-    completeCb({ operationId: 'op-1', operationType: 'copy', filesProcessed: 5, filesSkipped: 1, bytesProcessed: 999 })
+    if (!listeners.complete) throw new Error('complete subscriber never registered')
+    listeners.complete({
+      operationId: 'op-1',
+      operationType: 'copy',
+      filesProcessed: 5,
+      filesSkipped: 1,
+      bytesProcessed: 999,
+    })
     expect(state.operationSettled).toBe(true)
     flushSync()
     // Min-display floor: not yet called, then called after advancing past it.
@@ -336,9 +143,9 @@ describe('createTransferProgressState: progress + complete', () => {
 
   it('fires onError on a write-error event', async () => {
     const { state, config } = await startedState()
-    if (!errorCb) throw new Error('error subscriber never registered')
+    if (!listeners.error) throw new Error('error subscriber never registered')
     const error: WriteOperationError = { type: 'io_error', path: '/src/file.txt', message: 'boom' }
-    errorCb({ operationId: 'op-1', operationType: 'copy', error })
+    listeners.error({ operationId: 'op-1', operationType: 'copy', error })
     expect(state.operationSettled).toBe(true)
     flushSync()
     expect(config.onError).toHaveBeenCalledWith(error)
@@ -346,8 +153,8 @@ describe('createTransferProgressState: progress + complete', () => {
 
   it('ignores events for a different operation id', async () => {
     const { state } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ operationId: 'op-other', filesDone: 99 }))
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent({ operationId: 'op-other', filesDone: 99 }))
     expect(state.filesDone).toBe(0)
   })
 })
@@ -366,8 +173,8 @@ describe('createTransferProgressState: birth', () => {
     await settle()
     // Parked on the dispatch await: no session exists yet, so the fan-out holds
     // the tick.
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ filesDone: 7 }))
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent({ filesDone: 7 }))
     expect(state.filesDone).toBe(0)
 
     resolveDispatch({ operationId: 'op-1', operationType: 'copy' })
@@ -471,8 +278,8 @@ describe('createTransferProgressState: conflict resolution', () => {
 
   it('surfaces a conflict then clears it on resolve (skip all)', async () => {
     const { state } = await startedState()
-    if (!conflictCb) throw new Error('conflict subscriber never registered')
-    conflictCb(conflictEvent())
+    if (!listeners.conflict) throw new Error('conflict subscriber never registered')
+    listeners.conflict(conflictEvent())
     expect(state.conflict).not.toBeNull()
 
     await state.handleConflictResolution('skip', true)
@@ -482,8 +289,8 @@ describe('createTransferProgressState: conflict resolution', () => {
 
   it('resolves a single conflict with overwrite (proceed)', async () => {
     const { state } = await startedState()
-    if (!conflictCb) throw new Error('conflict subscriber never registered')
-    conflictCb(conflictEvent())
+    if (!listeners.conflict) throw new Error('conflict subscriber never registered')
+    listeners.conflict(conflictEvent())
     await state.handleConflictResolution('overwrite', false)
     expect(resolveWriteConflict).toHaveBeenCalledWith('op-1', 1, 'overwrite', false)
     expect(state.conflict).toBeNull()
@@ -494,8 +301,8 @@ describe('createTransferProgressState: conflict resolution', () => {
     // verdict. Being the second one is not a failure, so the dialog stops asking
     // rather than leaving the question on screen.
     const { state } = await startedState()
-    if (!conflictCb) throw new Error('conflict subscriber never registered')
-    conflictCb(conflictEvent())
+    if (!listeners.conflict) throw new Error('conflict subscriber never registered')
+    listeners.conflict(conflictEvent())
     vi.mocked(resolveWriteConflict).mockImplementationOnce(() => Promise.resolve('already_resolved'))
     await state.handleConflictResolution('overwrite', false)
     expect(state.conflict).toBeNull()
@@ -504,8 +311,8 @@ describe('createTransferProgressState: conflict resolution', () => {
 
   it('keeps the prompt up when the answer never lands', async () => {
     const { state } = await startedState()
-    if (!conflictCb) throw new Error('conflict subscriber never registered')
-    conflictCb(conflictEvent())
+    if (!listeners.conflict) throw new Error('conflict subscriber never registered')
+    listeners.conflict(conflictEvent())
     vi.mocked(resolveWriteConflict).mockImplementationOnce(() => Promise.reject(new Error('ipc down')))
     await state.handleConflictResolution('skip', false)
     // Nothing reached the backend, so the question is still open.
@@ -532,8 +339,8 @@ describe('createTransferProgressState: cancel + settle close-out', () => {
     vi.advanceTimersByTime(200)
     expect(state.settleSlow).toBe(true)
 
-    if (!cancelledCb || !settledCb) throw new Error('cancel/settle subscribers never registered')
-    cancelledCb({
+    if (!listeners.cancelled || !listeners.settled) throw new Error('cancel/settle subscribers never registered')
+    listeners.cancelled({
       operationId: 'op-1',
       operationType: 'copy',
       filesProcessed: 4,
@@ -549,7 +356,7 @@ describe('createTransferProgressState: cancel + settle close-out', () => {
     expect(state.operationSettled).toBe(true)
     expect(config.onCancelled).not.toHaveBeenCalled()
 
-    settledCb({ operationId: 'op-1', operationType: 'copy' })
+    listeners.settled({ operationId: 'op-1', operationType: 'copy' })
     flushSync()
     expect(state.settleSlow).toBe(false)
     vi.advanceTimersByTime(450)
@@ -594,8 +401,8 @@ describe('createTransferProgressState: cancel + settle close-out', () => {
 
   it('lets the user out at once while the backend is still winding down', async () => {
     const { state, config } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ filesDone: 3 }))
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent({ filesDone: 3 }))
     void state.handleCancel(false)
     await settle()
 
@@ -609,22 +416,22 @@ describe('createTransferProgressState: cancel + settle close-out', () => {
 describe('createTransferProgressState: rollback', () => {
   it('starts a rollback and closes when the cancelled event lands', async () => {
     const { state, config } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent())
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent())
 
     void state.handleCancel(true)
     await settle()
     expect(state.isRollingBack).toBe(true)
     expect(cancelWriteOperation).toHaveBeenCalledWith('op-1', true)
 
-    if (!cancelledCb || !settledCb) throw new Error('cancel/settle subscribers never registered')
-    cancelledCb({
+    if (!listeners.cancelled || !listeners.settled) throw new Error('cancel/settle subscribers never registered')
+    listeners.cancelled({
       operationId: 'op-1',
       operationType: 'copy',
       filesProcessed: 2,
       rollback: { outcome: 'rolledBack', reversed: 2, skips: [], stagedLeftovers: null, originalsStillInPlace: null },
     })
-    settledCb({ operationId: 'op-1', operationType: 'copy' })
+    listeners.settled({ operationId: 'op-1', operationType: 'copy' })
     flushSync()
     vi.advanceTimersByTime(450)
     expect(config.onCancelled).toHaveBeenCalledWith(2)
@@ -635,13 +442,13 @@ describe('createTransferProgressState: rollback', () => {
     // bar always lands on zero whether items came off the disk or were left alone.
     // Without a summary, "the bar hit zero" reads as "everything was removed".
     const { state } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent())
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent())
     void state.handleCancel(true)
     await settle()
 
-    if (!cancelledCb || !settledCb) throw new Error('cancel/settle subscribers never registered')
-    cancelledCb({
+    if (!listeners.cancelled || !listeners.settled) throw new Error('cancel/settle subscribers never registered')
+    listeners.cancelled({
       operationId: 'op-1',
       operationType: 'copy',
       filesProcessed: 4,
@@ -653,7 +460,7 @@ describe('createTransferProgressState: rollback', () => {
         originalsStillInPlace: null,
       },
     })
-    settledCb({ operationId: 'op-1', operationType: 'copy' })
+    listeners.settled({ operationId: 'op-1', operationType: 'copy' })
     flushSync()
     vi.advanceTimersByTime(450)
 
@@ -669,8 +476,8 @@ describe('createTransferProgressState: rollback', () => {
     void state.handleCancel(false)
     await settle()
 
-    if (!cancelledCb || !settledCb) throw new Error('cancel/settle subscribers never registered')
-    cancelledCb({
+    if (!listeners.cancelled || !listeners.settled) throw new Error('cancel/settle subscribers never registered')
+    listeners.cancelled({
       operationId: 'op-1',
       operationType: 'copy',
       filesProcessed: 4,
@@ -682,7 +489,7 @@ describe('createTransferProgressState: rollback', () => {
         originalsStillInPlace: null,
       },
     })
-    settledCb({ operationId: 'op-1', operationType: 'copy' })
+    listeners.settled({ operationId: 'op-1', operationType: 'copy' })
     flushSync()
     vi.advanceTimersByTime(450)
 
@@ -706,16 +513,16 @@ describe('createTransferProgressState: rollback', () => {
 describe('createTransferProgressState: pause, queue, and auto-queue', () => {
   it('tracks pause status from the operations-changed snapshot and toggles it', async () => {
     const { state } = await startedState()
-    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
+    if (!listeners.opsChanged) throw new Error('operations-changed subscriber never registered')
 
-    opsChangedCb({ operations: [snapshot('op-1', 'running')] })
+    listeners.opsChanged({ operations: [snapshot('op-1', 'running')] })
     expect(state.isPaused).toBe(false)
     expect(state.canPauseOrQueue).toBe(true)
 
     await state.handlePauseResume()
     expect(pauseOperation).toHaveBeenCalledWith('op-1')
 
-    opsChangedCb({ operations: [snapshot('op-1', 'paused')] })
+    listeners.opsChanged({ operations: [snapshot('op-1', 'paused')] })
     expect(state.isPaused).toBe(true)
 
     await state.handlePauseResume()
@@ -725,10 +532,11 @@ describe('createTransferProgressState: pause, queue, and auto-queue', () => {
 
   it('shows no speed but keeps the time left while paused, like every other view of the op', async () => {
     const { state } = await startedState()
-    if (!progressCb || !opsChangedCb) throw new Error('progress/operations-changed subscribers never registered')
+    if (!listeners.progress || !listeners.opsChanged)
+      throw new Error('progress/operations-changed subscribers never registered')
 
-    opsChangedCb({ operations: [snapshot('op-1', 'running')] })
-    progressCb(progressEvent({ bytesPerSecond: 4096, filesPerSecond: 1905, etaSeconds: 58 }))
+    listeners.opsChanged({ operations: [snapshot('op-1', 'running')] })
+    listeners.progress(progressEvent({ bytesPerSecond: 4096, filesPerSecond: 1905, etaSeconds: 58 }))
     expect(state.bytesPerSecond).toBe(4096)
     expect(state.filesPerSecond).toBe(1905)
     expect(state.etaSecondsDisplay).toBe(58)
@@ -736,7 +544,7 @@ describe('createTransferProgressState: pause, queue, and auto-queue', () => {
     // The queue row for this same operation drops the same two numbers and
     // keeps the same third: a speed over a parked transfer is invented, while
     // how much longer it has left is what the user paused to think about.
-    opsChangedCb({ operations: [snapshot('op-1', 'paused')] })
+    listeners.opsChanged({ operations: [snapshot('op-1', 'paused')] })
     expect(state.bytesPerSecond).toBeNull()
     expect(state.filesPerSecond).toBeNull()
     expect(state.etaSecondsDisplay).toBe(58)
@@ -744,8 +552,8 @@ describe('createTransferProgressState: pause, queue, and auto-queue', () => {
 
   it('backgrounds the op via Queue without cancelling it on teardown', async () => {
     const { state, config } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent())
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent())
 
     state.handleQueue()
     expect(openQueueWindow).toHaveBeenCalledTimes(1)
@@ -759,8 +567,8 @@ describe('createTransferProgressState: pause, queue, and auto-queue', () => {
 
   it('auto-queues when the manager admits the op behind a busy lane', async () => {
     const { state, config } = await startedState()
-    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
-    opsChangedCb({ operations: [snapshot('busy', 'running'), snapshot('op-1', 'queued')] })
+    if (!listeners.opsChanged) throw new Error('operations-changed subscriber never registered')
+    listeners.opsChanged({ operations: [snapshot('busy', 'running'), snapshot('op-1', 'queued')] })
     flushSync()
     expect(openQueueWindow).toHaveBeenCalledTimes(1)
     expect(config.onQueue).toHaveBeenCalledTimes(1)
@@ -791,10 +599,10 @@ describe('the main window smooths an ETA exactly once per operation', () => {
   // attaching to a transfer already in flight would do.
   it('builds one smoother however many ticks arrive', async () => {
     await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ etaSeconds: 80 }))
-    progressCb(progressEvent({ bytesDone: 200, etaSeconds: 70 }))
-    progressCb(progressEvent({ bytesDone: 300, etaSeconds: 60 }))
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent({ etaSeconds: 80 }))
+    listeners.progress(progressEvent({ bytesDone: 200, etaSeconds: 70 }))
+    listeners.progress(progressEvent({ bytesDone: 300, etaSeconds: 60 }))
 
     expect(vi.mocked(createEtaSmoother)).toHaveBeenCalledTimes(1)
   })
@@ -809,393 +617,12 @@ describe('the main window smooths an ETA exactly once per operation', () => {
     expect(vi.mocked(createEtaSmoother)).toHaveBeenCalledTimes(1)
 
     const { state } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ etaSeconds: 80 }))
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent({ etaSeconds: 80 }))
 
     expect(vi.mocked(createEtaSmoother)).toHaveBeenCalledTimes(1)
     expect(state.etaSecondsDisplay).toBe(80)
     registry.release('op-1')
-  })
-})
-
-describe('createTransferProgressState: foreground-operation ownership', () => {
-  // The slot tells ambient surfaces (the corner chip, the failure notice) which
-  // operation the modal is already showing in full. It has to empty on EVERY
-  // route out of the dialog, and it has to empty at the moment Queue hands the
-  // operation over — that's precisely when the chip must start speaking.
-  it('claims the slot once the operation id lands', async () => {
-    await startedState()
-    expect(getForegroundOperationId()).toBe('op-1')
-  })
-
-  it('never claims the slot when the dialog is torn down before the id arrives', async () => {
-    let resolveDispatch: (r: WriteOperationStartResult) => void = () => {}
-    vi.mocked(copyBetweenVolumes).mockImplementationOnce(
-      () => new Promise<WriteOperationStartResult>((res) => (resolveDispatch = res)),
-    )
-    const state = makeState(makeConfig())
-    state.start()
-    await settle()
-    state.destroy()
-    resolveDispatch({ operationId: 'op-1', operationType: 'copy' })
-    await settle()
-    expect(getForegroundOperationId()).toBeNull()
-  })
-
-  it('releases the slot on Queue, so the corner can pick the operation up', async () => {
-    const { state } = await startedState()
-    state.handleQueue()
-    expect(getForegroundOperationId()).toBeNull()
-  })
-
-  it('releases the slot when the manager auto-queues the op behind a busy lane', async () => {
-    await startedState()
-    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
-    opsChangedCb({ operations: [snapshot('busy', 'running'), snapshot('op-1', 'queued')] })
-    flushSync()
-    expect(getForegroundOperationId()).toBeNull()
-  })
-
-  it('releases the slot when the dialog unmounts after completing', async () => {
-    const { state } = await startedState()
-    if (!completeCb) throw new Error('complete subscriber never registered')
-    completeCb({ operationId: 'op-1', operationType: 'copy', filesProcessed: 1, filesSkipped: 0, bytesProcessed: 1 })
-    flushSync()
-    vi.advanceTimersByTime(450)
-    state.destroy()
-    expect(getForegroundOperationId()).toBeNull()
-  })
-
-  it('releases the slot when the dialog unmounts after a cancel', async () => {
-    const { state } = await startedState()
-    void state.handleCancel(false)
-    await settle()
-    if (!cancelledCb || !settledCb) throw new Error('cancel subscribers never registered')
-    cancelledCb({
-      operationId: 'op-1',
-      operationType: 'copy',
-      filesProcessed: 0,
-      rollback: {
-        outcome: 'notRolledBack',
-        reversed: 0,
-        skips: [],
-        stagedLeftovers: null,
-        originalsStillInPlace: null,
-      },
-    })
-    settledCb({ operationId: 'op-1', operationType: 'copy' })
-    state.destroy()
-    expect(getForegroundOperationId()).toBeNull()
-  })
-
-  it('releases the slot when the dialog unmounts after an error', async () => {
-    const { state } = await startedState()
-    if (!errorCb) throw new Error('error subscriber never registered')
-    errorCb({
-      operationId: 'op-1',
-      operationType: 'copy',
-      error: { type: 'io_error', path: '/src/file.txt', message: 'boom' },
-    })
-    flushSync()
-    state.destroy()
-    expect(getForegroundOperationId()).toBeNull()
-  })
-
-  it('flags a claim while the dispatch is in flight, and settles it with the id', async () => {
-    // The conflict host defers its ownership decision while this is up: a
-    // `write-conflict` can beat the start command's response, and deciding
-    // against an empty slot would prompt for an operation the modal owns.
-    let resolveDispatch: (r: WriteOperationStartResult) => void = () => {}
-    vi.mocked(copyBetweenVolumes).mockImplementationOnce(
-      () => new Promise<WriteOperationStartResult>((res) => (resolveDispatch = res)),
-    )
-    const state = makeState(makeConfig())
-    state.start()
-    await settle()
-
-    expect(isForegroundClaimPending()).toBe(true)
-    expect(getForegroundOperationId()).toBeNull()
-
-    resolveDispatch({ operationId: 'op-1', operationType: 'copy' })
-    await settle()
-
-    expect(isForegroundClaimPending()).toBe(false)
-    expect(getForegroundOperationId()).toBe('op-1')
-    state.destroy()
-  })
-
-  it('settles the claim when the dispatch itself never succeeds', async () => {
-    // Nothing is ever going to own this operation, so a deferred conflict must
-    // stop waiting on it rather than sit there forever.
-    vi.mocked(copyBetweenVolumes).mockImplementationOnce(() => Promise.reject(new Error('ipc down')))
-    const state = makeState(makeConfig())
-    state.start()
-    await settle()
-
-    expect(isForegroundClaimPending()).toBe(false)
-    state.destroy()
-  })
-
-  it('settles the claim when the dialog is torn down before the id arrives', async () => {
-    let resolveDispatch: (r: WriteOperationStartResult) => void = () => {}
-    vi.mocked(copyBetweenVolumes).mockImplementationOnce(
-      () => new Promise<WriteOperationStartResult>((res) => (resolveDispatch = res)),
-    )
-    const state = makeState(makeConfig())
-    state.start()
-    await settle()
-    state.destroy()
-    resolveDispatch({ operationId: 'op-1', operationType: 'copy' })
-    await settle()
-
-    expect(isForegroundClaimPending()).toBe(false)
-  })
-
-  it('a late teardown does not release the slot the next dialog claimed', async () => {
-    const { state } = await startedState()
-    // The next operation's dialog mounts and claims the slot before this one
-    // finishes tearing down.
-    setForegroundOperationId('op-2')
-    state.destroy()
-    expect(getForegroundOperationId()).toBe('op-2')
-  })
-})
-
-describe('createTransferProgressState: adopting a running operation', () => {
-  // Foreground from the queue: the view binds an operation that started
-  // somewhere else and dispatches nothing. Everything on screen comes from the
-  // session, which is the same session every other surface in this window reads.
-
-  /** The adopted operation is deliberately NOT the id the dispatch mock hands
-   *  back: a view that quietly dispatched would land on `op-1`, so every
-   *  assertion below would pass for the wrong reason. */
-  const ADOPTED = 'op-9'
-
-  /** Builds an adopting view and drains its startup, as `startedState` does for
-   *  a dispatching one. */
-  async function adoptedState(id = ADOPTED) {
-    vi.mocked(listOperations).mockResolvedValue([snapshot(id, 'running')])
-    const config = makeConfig({ adoptOperationId: id })
-    const state = makeState(config)
-    state.start()
-    await settle()
-    return { state, config }
-  }
-
-  it('leaves the operation alone when it closes before the session takes hold', async () => {
-    // The sliver between the id landing and the binder's effect flushing: no
-    // click can reach it, but a teardown can. Reporting a cancel from here
-    // would run the pane tail over an operation that is still copying, so the
-    // detach does what its name says and stops watching. Same refusal
-    // `handleCancel` makes with no session to command.
-    vi.mocked(listOperations).mockResolvedValue([snapshot(ADOPTED, 'running')])
-    const config = makeConfig({ adoptOperationId: ADOPTED })
-    const state = makeState(config)
-    // ❌ Nothing may `await` between these two lines: the whole point is the
-    // frame where `operationId` is set and `bound.current` is still null.
-    state.start()
-    state.detach()
-    vi.advanceTimersByTime(450)
-
-    expect(config.onCancelled).not.toHaveBeenCalled()
-    expect(cancelOperation).not.toHaveBeenCalled()
-    expect(cancelWriteOperation).not.toHaveBeenCalled()
-    await settle()
-  })
-
-  it('binds the named operation without starting a new one', async () => {
-    const { state } = await adoptedState()
-
-    expect(copyBetweenVolumes).not.toHaveBeenCalled()
-    expect(state.operationId).toBe(ADOPTED)
-  })
-
-  it('shows the live progress of the operation it adopted', async () => {
-    const { state } = await adoptedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-
-    progressCb(
-      progressEvent({
-        operationId: ADOPTED,
-        phase: 'copying',
-        filesDone: 7,
-        filesTotal: 10,
-        bytesDone: 700,
-        bytesTotal: 1000,
-      }),
-    )
-
-    expect(state.phase).toBe('copying')
-    expect(state.filesDone).toBe(7)
-    expect(state.bytesDone).toBe(700)
-  })
-
-  it('joins the session another surface already holds rather than estimating twice', async () => {
-    // The whole reason the registry exists: a smoother started twenty minutes
-    // in disagrees with the queue's for as long as it takes to converge. This is
-    // the ordinary case for adoption — the corner chip is already watching.
-    const registry = getOperationSessions()
-    if (!registry) throw new Error('the window has no session registry')
-    registry.acquire(ADOPTED)
-    expect(vi.mocked(createEtaSmoother)).toHaveBeenCalledTimes(1)
-
-    const { state } = await adoptedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ operationId: ADOPTED, etaSeconds: 80 }))
-
-    expect(vi.mocked(createEtaSmoother)).toHaveBeenCalledTimes(1)
-    expect(state.etaSecondsDisplay).toBe(80)
-    registry.release(ADOPTED)
-  })
-
-  it('claims the foreground slot, so ambient surfaces stop repeating it', async () => {
-    await adoptedState()
-    expect(getForegroundOperationId()).toBe(ADOPTED)
-  })
-
-  it('hands the operation back, still running, when the view closes again', async () => {
-    const { state, config } = await adoptedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ operationId: ADOPTED }))
-
-    state.detach()
-
-    expect(config.onQueue).toHaveBeenCalledTimes(1)
-    expect(getForegroundOperationId()).toBeNull()
-    state.destroy()
-    expect(cancelOperation).not.toHaveBeenCalled()
-    expect(cancelWriteOperation).not.toHaveBeenCalled()
-  })
-
-  it('keeps showing an operation the manager reports as queued', async () => {
-    // Auto-queue is a decision a DISPATCHING view makes: don't stack a second
-    // modal over the one already up. A view that was opened precisely to watch
-    // this operation would instead bounce it straight back out of sight.
-    vi.mocked(listOperations).mockResolvedValue([snapshot(ADOPTED, 'queued')])
-    const config = makeConfig({ adoptOperationId: ADOPTED })
-    const state = makeState(config)
-    state.start()
-    await settle()
-    flushSync()
-
-    expect(state.operationId).toBe(ADOPTED)
-    expect(config.onQueue).not.toHaveBeenCalled()
-  })
-
-  it("says nothing about a phase it hasn't heard, rather than inventing the scan", async () => {
-    // A dispatching view opens on `scanning`, because that is what a confirmed
-    // transfer is about to do. An adopted operation could be anywhere, and a
-    // window that has heard nothing (a reload, with the operation paused so no
-    // tick is coming) would otherwise title a 21%-written copy "Verifying before
-    // copy…" over an empty scan readout.
-    const { state } = await adoptedState()
-
-    expect(state.phase).toBeNull()
-
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ operationId: ADOPTED, phase: 'copying' }))
-    expect(state.phase).toBe('copying')
-  })
-
-  it('offers Rollback only where the operation says it can be reversed', async () => {
-    // The snapshot is the authority: this view has no birth context to reason
-    // about volumes from, and `supportsRollback` is a promise about the
-    // operation itself.
-    const { state } = await adoptedState()
-    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
-
-    opsChangedCb({ operations: [{ ...snapshot(ADOPTED, 'running'), supportsRollback: false }] })
-    expect(state.rollbackUnavailable).toBe(true)
-
-    opsChangedCb({ operations: [snapshot(ADOPTED, 'running')] })
-    expect(state.rollbackUnavailable).toBe(false)
-  })
-})
-
-describe('createTransferProgressState: an adopted reversal', () => {
-  // The operation-log reversal (an undo, adopted through Show on its queue row)
-  // emits `write-progress` and no terminal event: no `write-cancelled`, no
-  // `write-settled`, no `write-complete`. Dropping out of the registry is the only
-  // word its end ever gets, so the view has to read `leftRegistry` for it.
-
-  const REVERSAL = 'op-undo'
-
-  function reversalSnapshot(): OperationSnapshot {
-    return { ...snapshot(REVERSAL, 'running', 'delete'), reverses: 'copy' }
-  }
-
-  /** An adopted reversal that holds its registry row, optionally with a tick. */
-  async function adoptedReversal({ withTick = true }: { withTick?: boolean } = {}) {
-    vi.mocked(listOperations).mockResolvedValue([reversalSnapshot()])
-    const config = makeConfig({ adoptOperationId: REVERSAL, operationType: 'delete' })
-    const state = makeState(config)
-    state.start()
-    await settle()
-    if (!opsChangedCb || !progressCb) throw new Error('subscribers never registered')
-    opsChangedCb({ operations: [reversalSnapshot()] })
-    if (withTick) {
-      progressCb(progressEvent({ operationId: REVERSAL, operationType: 'delete', phase: 'rolling_back', filesDone: 3 }))
-    }
-    flushSync()
-    return { state, config }
-  }
-
-  it('closes as soon as a Cancel stops it, rather than waiting out the fallback', async () => {
-    const { state, config } = await adoptedReversal()
-    void state.handleCancel(false)
-    await settle()
-    expect(state.isCancelling).toBe(true)
-
-    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
-    opsChangedCb({ operations: [] })
-    flushSync()
-    vi.advanceTimersByTime(450)
-
-    expect(config.onCancelled).toHaveBeenCalledWith(3)
-  })
-
-  it('closes when it finishes on its own', async () => {
-    const { config } = await adoptedReversal()
-
-    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
-    opsChangedCb({ operations: [] })
-    flushSync()
-    vi.advanceTimersByTime(450)
-
-    expect(config.onCancelled).toHaveBeenCalledWith(3)
-  })
-
-  it('never hands a reversal that already left the registry to the queue', async () => {
-    // A window that heard no tick (a reload, with the reversal paused) has no
-    // phase to read `rolling_back` from, so only `leftRegistry` says it's gone.
-    const { state } = await adoptedReversal({ withTick: false })
-    if (!opsChangedCb) throw new Error('operations-changed subscriber never registered')
-    opsChangedCb({ operations: [] })
-    flushSync()
-
-    state.detach()
-
-    expect(openQueueWindow).not.toHaveBeenCalled()
-    expect(addToast).not.toHaveBeenCalled()
-  })
-
-  it('never reads an ORDINARY transfer leaving the registry as its ending', async () => {
-    // The removal travels on a different channel than `write-complete`, so it can
-    // arrive first. Closing on it would report a cancel for a copy that finished,
-    // and run the wrong tail over the user's panes.
-    const { config } = await startedState()
-    if (!opsChangedCb || !completeCb) throw new Error('subscribers never registered')
-    opsChangedCb({ operations: [snapshot('op-1', 'running')] })
-    opsChangedCb({ operations: [] })
-    flushSync()
-    vi.advanceTimersByTime(450)
-    expect(config.onCancelled).not.toHaveBeenCalled()
-
-    completeCb({ operationId: 'op-1', operationType: 'copy', filesProcessed: 2, filesSkipped: 0, bytesProcessed: 20 })
-    flushSync()
-    vi.advanceTimersByTime(450)
-    expect(config.onComplete).toHaveBeenCalledTimes(1)
-    expect(config.onCancelled).not.toHaveBeenCalled()
   })
 })
 
@@ -1207,8 +634,8 @@ describe('createTransferProgressState: disposal', () => {
     // and only the Cancel button asks for a cancel. Stopping a transfer because
     // the thing rendering it unmounted is the coupling this seam removes.
     const { state } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent())
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent())
     state.destroy()
     expect(cancelWriteOperation).not.toHaveBeenCalled()
     expect(cancelOperation).not.toHaveBeenCalled()
@@ -1216,8 +643,14 @@ describe('createTransferProgressState: disposal', () => {
 
   it('does not cancel a settled op on teardown', async () => {
     const { state } = await startedState()
-    if (!completeCb) throw new Error('complete subscriber never registered')
-    completeCb({ operationId: 'op-1', operationType: 'copy', filesProcessed: 1, filesSkipped: 0, bytesProcessed: 1 })
+    if (!listeners.complete) throw new Error('complete subscriber never registered')
+    listeners.complete({
+      operationId: 'op-1',
+      operationType: 'copy',
+      filesProcessed: 1,
+      filesSkipped: 0,
+      bytesProcessed: 1,
+    })
     flushSync()
     vi.advanceTimersByTime(450)
     state.destroy()
@@ -1227,8 +660,8 @@ describe('createTransferProgressState: disposal', () => {
 
   it('closing the modal hands a running operation to the queue instead of stopping it', async () => {
     const { state, config } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent())
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent())
 
     state.detach()
 
@@ -1243,8 +676,14 @@ describe('createTransferProgressState: disposal', () => {
     // its selection than a completion does. It must stay silent once the
     // operation ended some other way.
     const { state, config } = await startedState()
-    if (!completeCb) throw new Error('complete subscriber never registered')
-    completeCb({ operationId: 'op-1', operationType: 'copy', filesProcessed: 3, filesSkipped: 0, bytesProcessed: 9 })
+    if (!listeners.complete) throw new Error('complete subscriber never registered')
+    listeners.complete({
+      operationId: 'op-1',
+      operationType: 'copy',
+      filesProcessed: 3,
+      filesSkipped: 0,
+      bytesProcessed: 9,
+    })
 
     state.dismiss()
     flushSync()
@@ -1262,8 +701,8 @@ describe('createTransferProgressState: disposal', () => {
 
   it('closing the modal while a cancel winds down just stops watching', async () => {
     const { state, config } = await startedState()
-    if (!progressCb) throw new Error('progress subscriber never registered')
-    progressCb(progressEvent({ filesDone: 2 }))
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
+    listeners.progress(progressEvent({ filesDone: 2 }))
     void state.handleCancel(false)
     await settle()
 
@@ -1312,9 +751,9 @@ describe('createTransferProgressState: a still-scanning transfer', () => {
     // `phase: 'scanning'` under the operation's id, so one branch feeds the
     // readout for both the preview and the backend's own re-scan.
     const { state } = await startedState({ previewId: 'prev-1' })
-    if (!progressCb) throw new Error('progress subscriber never registered')
+    if (!listeners.progress) throw new Error('progress subscriber never registered')
 
-    progressCb({
+    listeners.progress({
       ...progressEvent(),
       phase: 'scanning',
       filesDone: 5,

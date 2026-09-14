@@ -149,7 +149,7 @@ where it is shown.
   one. ❌ Never on a failed row: there is nothing left to watch, and its reason is already on the row in full.
   - ❌ Don't write that the dialog would bounce a queued operation back: auto-queue is a dispatching view's decision
     only, and an adopted one stays put (`../transfer/DETAILS.md` § "Auto-queue surfacing", pinned by
-    `../transfer/transfer-progress-state.svelte.test.ts`).
+    `../transfer/transfer-progress-state.ownership.svelte.test.ts`).
 - **The main window can refuse.** Its dialog slot is single-occupancy; a refusal comes back as a toast there, next to
   the dialog that refused. Reasoning and the invisible-occupancy hazard: `../../file-explorer/pane/DETAILS.md` § "Birth
   context".

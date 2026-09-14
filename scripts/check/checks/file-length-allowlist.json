@@ -35,7 +35,6 @@
     "apps/desktop/src/lib/file-explorer/views/BriefList.svelte": 1111,
     "apps/desktop/src/lib/file-explorer/views/FullList.svelte": 1215,
     "apps/desktop/src/lib/file-operations/transfer/TransferDialog.svelte": 976,
-    "apps/desktop/src/lib/file-operations/transfer/transfer-progress-state.svelte.test.ts": 1160,
     "apps/desktop/src/lib/file-operations/transfer/transfer-progress-state.svelte.ts": 803,
     "apps/desktop/src/lib/onboarding/StepAi.svelte": 826,
     "apps/desktop/src/lib/query-ui/QueryDialog.svelte": 823,
