@@ -1594,6 +1594,7 @@
     "appearance.tintSmb": "none",
     "appearance.uiDensity": "comfortable",
     "appearance.useAppIconsForDocuments": true,
+    "askCmdr.consentRevokePending": false,
     "askCmdr.proactive": true,
     "askCmdr.wakeDelay": 5,
     "askCmdr.wakeToast": true,
