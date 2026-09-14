@@ -266,8 +266,8 @@ commands (`cargo metadata`, `about`, `deny`, `machete`) take the package-cache l
 `docs/notes/check-cpu-contention.md` § "Cargo's build-directory lock".
 
 **Slow checks:** `IsSlow: true` marks checks excluded by default (currently: `rust-tests-linux`, `desktop-e2e-linux`,
-`desktop-e2e-playwright`, `desktop-rust-webdav-nextcloud`). Naming a check (positionally or via `--check`) implicitly
-includes slow checks (`includeSlow = len(checkNames) > 0`); group/app selectors don't.
+`desktop-e2e-playwright`, `desktop-rust-webdav-nextcloud`, `desktop-rust-disk-images`). Naming a check (positionally or
+via `--check`) implicitly includes slow checks (`includeSlow = len(checkNames) > 0`); group/app selectors don't.
 
 **Fast lane (`--fast`):** `IsFast: true` marks the curated pre-commit check set: ~28 checks that finish in roughly 10s
 on a warm cache, intended to run before every commit. It's an editorial pick, not a timing-derived list (see Key

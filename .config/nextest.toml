@@ -62,7 +62,9 @@ real-notify = { max-threads = 1 }
 # delivery. Serialize them: concurrent attach/detach churn on the same FSKit service is
 # exactly the surface the FAT-unmount panic incident warns about, and multiplying live
 # watches starves delivery. Across runs (two worktrees), the harness's machine-wide lock
-# does the same job. See the overrides below for the timeout headroom.
+# does the same job. See the overrides below for the timeout headroom. The APFS/HFS+
+# ones run in `pnpm check disk-images`, whose filter (`desktop-rust-disk-images.go`)
+# must name the same paths as their overrides; the FAT/exFAT ones stay hand-run.
 disk-image = { max-threads = 1 }
 # SMB streaming STRESS tests hammer the SHARED Docker Samba stack with heavy
 # concurrent I/O (hundreds of MB). Running them at once — or alongside each other

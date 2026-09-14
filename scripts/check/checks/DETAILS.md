@@ -1389,6 +1389,31 @@ filterset rather than matching nothing (`error: operator didn't match any packag
 `crates/<name>/Cargo.toml` exists, and a fixture's `test(prefix)` clause — harmless when it matches nothing — can land
 ahead of its cells.
 
+## The disk-image lane
+
+`desktop-rust-disk-images` (nickname `disk-images`, `desktop-rust-disk-images.go`) runs the `#[ignore]`d tests that
+attach real synthetic APFS and HFS+ images through `cmdr_fs::testing::disk_images` (`crates/cmdr-fs/DETAILS.md` §
+"`testing::disk_images`"): the harness's own `real_images` tests, the eject pins, and the index's vanish pin.
+
+- **How to run it**: `pnpm check disk-images`, or any `pnpm check --include-slow` on a Mac. It's `IsSlow` because every
+  test attaches and detaches disk images, which no default run should do. 11 tests took 48 s, almost all of it the tests
+  themselves (macOS 26.6.2, `pnpm check disk-images`, 2026-09-14).
+- **When it skips**: off macOS it answers OK with "skipped: macOS only" and never touches cargo. It's `NotInCI`: every
+  CI runner is ubuntu, and `hdiutil` has no Linux counterpart.
+- **What it runs**: `cargo nextest run --run-ignored only` with `HostCargoLaneArgs`, so it reuses `desktop-rust-tests`'
+  build, over a filter built from two lists: the union of `diskImageLaneTestAtoms` (module paths ending in `::`) minus
+  every `diskImageHandRunTestAtoms` entry. A run that selects zero tests fails, since a moved module would otherwise
+  read as a clean run.
+- **❌ Never the FAT/exFAT `external_drive_fixture` tests.** An FSKit `msdos` unmount kernel-panicked a Mac
+  (`crates/cmdr-index/src/indexing/tests/CLAUDE.md`), so they stay hand-run. The filter SUBTRACTS them rather than
+  merely not naming them, so nextest keeps them out whatever a later atom in the union spells.
+- **No lock in the runner.** Each real-image test holds the machine-wide `flock` for its whole body, which keeps two
+  worktrees' runs apart; the Go runner taking the same lock would block its own nextest processes. Within one run, the
+  `disk-image` nextest group runs one test at a time.
+- **Adding a module**: a real-image test module goes into `diskImageLaneTestAtoms` AND gets a `disk-image` override in
+  `.config/nextest.toml` (its 30 s cap and serialization). `TestDiskImageLaneMatchesTheDiskImageNextestGroup` fails
+  until the lane and the hand-run list together name exactly the group's `test()` atoms.
+
 ## Workspace member coverage
 
 `workspace-member-coverage` (`IsFast`, error-level, app scope `crates`) is what stops the next crate from re-opening the
@@ -1593,7 +1618,8 @@ Checks by app and tech:
   cell in the app crate whose name the integration lane's filter won't select never runs anywhere, so it's a finding;
   one cell lived its whole life that way, and it was the sole caller of the crate extraction's one sanctioned
   public-surface widening — see § "Fixture lane coverage"), tests, integration-tests (Docker network fixtures),
-  tests-linux (slow)
+  disk-images (slow, macOS only, not in CI; the real-image tests on synthetic APFS and HFS+ disk images, see § "The
+  disk-image lane"), tests-linux (slow)
 
 The last three share one region tracker, `rustTestModState` / `advanceTestModRegion` (`desktop-rust-test-sleep.go`), in
 opposite polarities: test-sleep and fixed-temp-dir scan ONLY inside an inline test module, derive-default and

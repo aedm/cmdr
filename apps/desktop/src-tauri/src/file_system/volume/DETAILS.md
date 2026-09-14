@@ -456,8 +456,9 @@ disk-image harness (`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"), wh
 own before every attempt. An idle APFS volume ejects and its image detaches; a file held open by a child process
 answers `UnmountRefused` after the retries, still mounted. The known gap above is pinned on a two-volume APFS container
 and on two HFS+ partitions of one disk: ejecting A while a file on B is held answers `Ok`, with A unmounted, B still
-mounted, and the image still attached (verified on macOS 26.6.2, hand run, 2026-09-14). Hand-run them with
-`cargo nextest run -p cmdr --run-ignored only -E 'test(file_system::volume::eject::real_image::)'`.
+mounted, and the image still attached (verified on macOS 26.6.2, hand run, 2026-09-14). They run in the opt-in
+disk-image lane: `pnpm check disk-images`, or any `pnpm check --include-slow` on a Mac
+(`scripts/check/checks/DETAILS.md` § "The disk-image lane").
 
 **A refusal is retried before anyone hears about it.** When `settle` answers `UnmountRefused`,
 `unmount_tool::settle_with_retries` runs the tool again after each pause in `REFUSAL_RETRY_BACKOFF` (0.5 s, 1 s, 1.5 s:

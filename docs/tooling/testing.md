@@ -13,6 +13,15 @@ fixture trees, see `../guides/generating-test-files.md`.
 Standard. Faster than `cargo test`. Run a single test by name: `cd apps/desktop/src-tauri && cargo nextest run <name>`.
 Run all: through the checker: `pnpm check rust-tests`. Don't run raw `cargo test` (see AGENTS.md).
 
+### `pnpm check disk-images` (real APFS and HFS+ disk images)
+
+The opt-in macOS lane for tests that need a real removable volume: the `cmdr_fs::testing::disk_images` harness's own
+tests, the eject pins, and the index's vanish pin, all `#[ignore]`d in the `disk-image` nextest group. It runs by name
+or under `--include-slow`, never in CI (the ubuntu runners have no `hdiutil`), and answers OK untouched off macOS. The
+FAT/exFAT `external_drive_fixture` tests stay hand-run. Writing a test that needs a real volume:
+`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"; adding its module to the lane: `scripts/check/checks/DETAILS.md`
+§ "The disk-image lane".
+
 ### `crate::test_support::TestDir` (scratch directory)
 
 In `crates/cmdr-fs/src/testing/mod.rs` beside the wait helpers, behind the `testing` feature, re-exported as

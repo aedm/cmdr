@@ -93,7 +93,8 @@ The same runner builds the APFS and HFS+ images the eject pins use (`DiskImage::
 under test: the single-detach rule is about the FSKit `msdos` service, which those images never touch.
 
 The tests are `#[ignore]`d (each attaches a real disk image via hdiutil), so `pnpm check rust` compiles them but the
-default suite skips them; run them explicitly:
+default suite skips them. They stay hand-run: the opt-in disk-image lane subtracts them from its filter
+(`scripts/check/checks/DETAILS.md` § "The disk-image lane"). Run them explicitly:
 
 ```sh
 cargo nextest run -p cmdr-index --run-ignored only -E 'test(indexing::tests::external_drive_fixture::)'
@@ -130,9 +131,8 @@ image (`scanner/walker/DETAILS.md` § "The test-only park point").
   test can build one (40,040 entries in 46 ms, against 2.7 s to create them, same run), so no tree that fits the 30 s
   cap outlasts the 500 ms progress tick plus the guarded detach.
 
-```sh
-cargo nextest run -p cmdr-index --run-ignored only -E 'test(indexing::tests::vanish_tests::)'
-```
+Both run in the opt-in disk-image lane: `pnpm check disk-images`, or any `pnpm check --include-slow` on a Mac
+(`scripts/check/checks/DETAILS.md` § "The disk-image lane").
 
 For `platform_case_compare` in `store.rs`: proptests cover the comparator algebra (reflexive / antisymmetric /
 transitive) and NFC≡NFD equivalence on macOS. Don't regress those; see `store/tests/path_resolution.rs` for the property

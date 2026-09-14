@@ -539,5 +539,5 @@ would drift apart.
 - **`FileHolder`** holds a file open from a child `/bin/sleep`, so its volume refuses to unmount. The child descends
   from the test process, so anything classifying holders by ancestry reads it as the test's own: identify it by `pid()`.
 - **Tests.** The pure decisions and the runner are default-suite unit tests. `real_images` attaches each spec for real,
-  `#[ignore]`d in the `disk-image` nextest group:
-  `cargo nextest run -p cmdr-fs --run-ignored only -E 'test(testing::disk_images::real_images::)'`.
+  `#[ignore]`d in the `disk-image` nextest group, and runs with every real-image pin built on the harness in the opt-in
+  `pnpm check disk-images` lane (`scripts/check/checks/DETAILS.md` § "The disk-image lane").
