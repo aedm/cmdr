@@ -98,14 +98,23 @@ pub(super) fn flush_created_destinations(
         }
     }
 
+    // A filesystem that doesn't do directory fsync answers that for every
+    // directory on it, so it's said once per destination volume per operation.
+    let mut warned_volumes: HashSet<Option<u64>> = HashSet::new();
     for dir in directories_gaining_entries(created_files, created_dirs) {
         match fsync_dir(&dir) {
             Ok(()) => {}
-            Err(e) if refuses_directory_fsync(&e) => log::warn!(
-                target: "write_durability",
-                "flush: {} refuses directory fsync, counting its entries as done: {e}",
-                dir.display()
-            ),
+            Err(e) if refuses_directory_fsync(&e) => {
+                if warned_volumes.insert(volume_of(&dir)) {
+                    log::warn!(
+                        target: "write_durability",
+                        "flush: the filesystem holding {} doesn't support directory fsync, so its entries count as done for this operation: {e}",
+                        dir.display()
+                    );
+                    #[cfg(test)]
+                    test_hook::note_unsupported_warning(&dir);
+                }
+            }
             Err(e) => {
                 log::warn!(
                     target: "write_durability",
@@ -120,12 +129,34 @@ pub(super) fn flush_created_destinations(
     first_failure.map_or(Ok(()), Err)
 }
 
+/// The errnos a filesystem answers for a directory fsync it doesn't support at
+/// all. Raw `libc` values, which differ by platform: Linux's `ENOTSUP` and
+/// `EOPNOTSUPP` are one number, macOS keeps them apart, and `ENOSYS` is 78 on
+/// macOS and 38 on Linux (`durability_tests.rs` pins each one).
+const DIRECTORY_FSYNC_UNSUPPORTED: [i32; 5] = [
+    libc::ENOTSUP,
+    libc::EOPNOTSUPP,
+    libc::EINVAL,
+    libc::ENOSYS,
+    libc::ENOTTY,
+];
+
 /// Whether a directory fsync failed because the filesystem doesn't do directory
-/// fsync at all (`ENOTSUP`, `EINVAL`). Treating that as a failure would stop
-/// every move onto such a filesystem from ever deleting its sources. Any other
-/// errno (macOS's distinct `EOPNOTSUPP` and `ENOSYS` included) stays a failure.
+/// fsync at all. Network and FUSE mounts are the likely ones, and treating it as
+/// a failure would turn every move onto them into a failed move with duplicated
+/// files. Every other errno (`EIO`, `ENOSPC`, `EROFS`, `ENXIO`, `ENOENT`,
+/// `EACCES`, …), and an error carrying none, stays a failure that keeps sources.
 fn refuses_directory_fsync(e: &io::Error) -> bool {
-    matches!(e.raw_os_error(), Some(libc::ENOTSUP | libc::EINVAL))
+    e.raw_os_error()
+        .is_some_and(|errno| DIRECTORY_FSYNC_UNSUPPORTED.contains(&errno))
+}
+
+/// The device a directory lives on, to group the "doesn't support directory
+/// fsync" warning by volume. `None` when it can't be read, which groups those
+/// directories together rather than warning for each.
+fn volume_of(dir: &Path) -> Option<u64> {
+    use std::os::unix::fs::MetadataExt;
+    fs::metadata(dir).ok().map(|meta| meta.dev())
 }
 
 /// `fdatasync`s one created file. A symlink carries no data of its own, and
@@ -270,6 +301,7 @@ pub(super) mod test_hook {
 
     struct Hook {
         dirs: Rc<RefCell<Vec<PathBuf>>>,
+        unsupported_warnings: Rc<RefCell<Vec<PathBuf>>>,
         answer: Answer,
     }
 
@@ -281,6 +313,7 @@ pub(super) mod test_hook {
     /// Uninstalls the hook on drop.
     pub(crate) struct DirSyncLog {
         dirs: Rc<RefCell<Vec<PathBuf>>>,
+        unsupported_warnings: Rc<RefCell<Vec<PathBuf>>>,
     }
 
     impl DirSyncLog {
@@ -288,6 +321,12 @@ pub(super) mod test_hook {
         /// duplicates included.
         pub(crate) fn dirs(&self) -> Vec<PathBuf> {
             self.dirs.borrow().clone()
+        }
+
+        /// The directory each "doesn't support directory fsync" `warn` was
+        /// logged for, in order.
+        pub(crate) fn unsupported_warnings(&self) -> Vec<PathBuf> {
+            self.unsupported_warnings.borrow().clone()
         }
     }
 
@@ -301,13 +340,26 @@ pub(super) mod test_hook {
     /// `None` runs the real `fsync`, `Some(result)` returns `result` instead.
     pub(crate) fn record(answer: impl FnMut(&Path) -> Option<std::io::Result<()>> + 'static) -> DirSyncLog {
         let dirs = Rc::new(RefCell::new(Vec::new()));
+        let unsupported_warnings = Rc::new(RefCell::new(Vec::new()));
         HOOK.with(|h| {
             *h.borrow_mut() = Some(Hook {
                 dirs: Rc::clone(&dirs),
+                unsupported_warnings: Rc::clone(&unsupported_warnings),
                 answer: Box::new(answer),
             });
         });
-        DirSyncLog { dirs }
+        DirSyncLog {
+            dirs,
+            unsupported_warnings,
+        }
+    }
+
+    pub(super) fn note_unsupported_warning(dir: &Path) {
+        HOOK.with(|h| {
+            if let Some(hook) = h.borrow().as_ref() {
+                hook.unsupported_warnings.borrow_mut().push(dir.to_path_buf());
+            }
+        });
     }
 
     pub(super) fn intercept(dir: &Path) -> Option<std::io::Result<()>> {

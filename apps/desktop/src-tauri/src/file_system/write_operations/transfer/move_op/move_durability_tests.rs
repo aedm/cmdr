@@ -107,6 +107,32 @@ fn assert_synced_only_real_final_directories(synced: &[PathBuf]) {
     }
 }
 
+/// The user's file a conflict clashed with: its bytes are unchanged, and the flush
+/// never reached it or anything named under it.
+fn assert_left_alone(user_file: &Path, synced: &[PathBuf]) {
+    assert_eq!(
+        fs::read(user_file).expect("the user's file is still there"),
+        b"the user's file",
+        "{} must keep its bytes",
+        user_file.display()
+    );
+    assert!(
+        !synced.iter().any(|dir| dir.starts_with(user_file)),
+        "the flush reached {} or a path under it: {synced:?}",
+        user_file.display()
+    );
+}
+
+/// The errnos a filesystem answers when it doesn't do directory fsync at all.
+/// Spelled out here rather than read from the production list, so the tests pin it.
+const UNSUPPORTED_ERRNOS: [i32; 5] = [
+    libc::ENOTSUP,
+    libc::EOPNOTSUPP,
+    libc::EINVAL,
+    libc::ENOSYS,
+    libc::ENOTTY,
+];
+
 /// The fix's core: a chunked move's files are all in `already_synced`, and that
 /// used to skip their parent-directory fsync too, so a Mac → USB move fsynced no
 /// directory before deleting the originals. Now every final directory that
@@ -178,11 +204,13 @@ fn a_directory_fsync_failing_with_eio_keeps_every_source_and_what_landed() {
     );
 }
 
-/// A destination filesystem that refuses directory fsync (`ENOTSUP`, `EINVAL`)
-/// can't be allowed to block every move onto it, so the move completes.
+/// A destination filesystem that doesn't do directory fsync (`ENOTSUP`,
+/// `EOPNOTSUPP`, `EINVAL`, `ENOSYS`, `ENOTTY`; network and FUSE mounts are the
+/// likely ones) can't be allowed to fail every move onto it with duplicated
+/// files, so the move completes.
 #[test]
-fn a_directory_refusing_fsync_with_enotsup_or_einval_still_completes_the_move() {
-    for errno in [libc::ENOTSUP, libc::EINVAL] {
+fn a_directory_that_doesnt_support_fsync_still_completes_the_move() {
+    for errno in UNSUPPORTED_ERRNOS {
         let fixture = nested_move();
         let log = test_hook::record(fail_at(fixture.dst.join("tree"), errno));
 
@@ -238,6 +266,7 @@ fn a_folder_renamed_onto_a_same_named_file_flushes_where_it_landed() {
     assert_synced_only_real_final_directories(&synced);
     assert!(synced.contains(&landed), "the landing's own entry (`sub`) is flushed");
     assert!(synced.contains(&landed.join("sub")), "the leaf's entry is flushed");
+    assert_left_alone(&dst.join("tree"), &synced);
     assert!(!src.join("tree").exists(), "the source moved");
 }
 
@@ -272,6 +301,8 @@ fn a_merged_child_renamed_onto_a_same_named_file_flushes_where_it_landed() {
     assert!(synced.contains(&dst.join("tree")), "the merged folder gained `sub (1)`");
     assert!(synced.contains(&landed), "the landing's own entry (`deep`) is flushed");
     assert!(synced.contains(&landed.join("deep")), "the leaf's entry is flushed");
+    assert_left_alone(&dst.join("tree").join("sub"), &synced);
+    assert!(!src.join("tree").exists(), "the source moved");
 }
 
 /// A folder Skipped against a same-named file never lands, so nothing under its
@@ -296,14 +327,50 @@ fn a_folder_skipped_against_a_same_named_file_flushes_only_what_landed() {
     );
 
     assert!(result.is_ok(), "expected Ok, got {result:?}");
-    assert_eq!(
-        log.dirs(),
-        vec![dst.clone()],
-        "only `dst` gained an entry (`other.txt`)"
-    );
+    let synced = log.dirs();
+    assert_eq!(synced, vec![dst.clone()], "only `dst` gained an entry (`other.txt`)");
+    assert_left_alone(&dst.join("tree"), &synced);
     assert!(
         src.join("tree").join("sub").join("leaf.txt").exists(),
         "the skipped source stays"
     );
     assert!(!src.join("other.txt").exists(), "the landed source moved");
+}
+
+/// Inside a merge, a child folder Skipped against a same-named file stays staged
+/// and never lands. Its staged paths name nothing at the destination, so the flush
+/// leaves them out, while the sibling that did land is flushed and moves on.
+#[test]
+fn a_merged_child_skipped_against_a_same_named_file_flushes_only_what_landed() {
+    let dir = TestDir::new("move-durability-merge-skip");
+    let src = dir.join("src");
+    let dst = dir.join("dst");
+    fs::create_dir_all(src.join("tree").join("sub").join("deep")).unwrap();
+    fs::write(src.join("tree").join("sub").join("deep").join("leaf.txt"), b"leaf").unwrap();
+    fs::write(src.join("tree").join("other.txt"), b"other").unwrap();
+    fs::create_dir_all(dst.join("tree")).unwrap();
+    fs::write(dst.join("tree").join("sub"), b"the user's file").unwrap();
+    let log = test_hook::record(|_| None);
+
+    let (_events, result) = run(
+        &[src.join("tree")],
+        &dst,
+        ConflictResolution::Skip,
+        "op-move-durability-merge-skip",
+    );
+
+    assert!(result.is_ok(), "expected Ok, got {result:?}");
+    assert!(dst.join("tree").join("other.txt").is_file(), "the sibling landed");
+    let synced = log.dirs();
+    assert_synced_only_real_final_directories(&synced);
+    assert!(
+        synced.contains(&dst.join("tree")),
+        "the merged folder gained `other.txt`"
+    );
+    assert_left_alone(&dst.join("tree").join("sub"), &synced);
+    assert!(
+        src.join("tree").join("sub").join("deep").join("leaf.txt").exists(),
+        "the skipped child's source stays"
+    );
+    assert!(!src.join("tree").join("other.txt").exists(), "the landed sibling moved");
 }

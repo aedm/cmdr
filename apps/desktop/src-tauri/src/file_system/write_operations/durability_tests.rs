@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::test_hook;
-use super::{FlushFailure, flush_created_destinations};
+use super::{FlushFailure, flush_created_destinations, refuses_directory_fsync};
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 use crate::file_system::write_operations::state::WriteOperationState;
 use crate::file_system::write_operations::types::WriteOperationType;
@@ -141,12 +141,19 @@ fn a_directory_fsync_failing_with_eio_answers_that_directory_and_errno() {
     );
 }
 
-/// Some filesystems refuse to fsync a directory at all. Blocking on that would
-/// stop every move there from ever deleting its sources, so `ENOTSUP` and
-/// `EINVAL` count as done (with a `warn`), and the rest of the flush still runs.
+/// Some filesystems don't do directory fsync at all. Failing on that would turn
+/// every move there into a failed move with duplicated files, so the whole "not
+/// supported" class counts as done (with a `warn`), and the rest of the flush
+/// still runs.
 #[test]
-fn a_directory_refusing_fsync_with_enotsup_or_einval_still_answers_ok() {
-    for errno in [libc::ENOTSUP, libc::EINVAL] {
+fn a_directory_that_doesnt_support_fsync_still_answers_ok() {
+    for errno in [
+        libc::ENOTSUP,
+        libc::EOPNOTSUPP,
+        libc::EINVAL,
+        libc::ENOSYS,
+        libc::ENOTTY,
+    ] {
         let landed = landed_tree();
         let log = test_hook::record(fail_at(landed.dest.join("tree"), errno));
 
@@ -159,6 +166,197 @@ fn a_directory_refusing_fsync_with_enotsup_or_einval_still_answers_ok() {
             "errno {errno}: every directory is still attempted"
         );
     }
+}
+
+/// One errno's classification for a failed directory fsync, with its raw value on
+/// each platform. The values differ (`ENOSYS` is 78 on macOS and 38 on Linux, and
+/// Linux's `ENOTSUP` IS `EOPNOTSUPP`), so a constant that resolves differently
+/// can't quietly change which failures keep a move's sources.
+struct ErrnoRow {
+    name: &'static str,
+    errno: i32,
+    macos: i32,
+    linux: i32,
+    unsupported: bool,
+}
+
+const ERRNO_TABLE: &[ErrnoRow] = &[
+    ErrnoRow {
+        name: "ENOTSUP",
+        errno: libc::ENOTSUP,
+        macos: 45,
+        linux: 95,
+        unsupported: true,
+    },
+    ErrnoRow {
+        name: "EOPNOTSUPP",
+        errno: libc::EOPNOTSUPP,
+        macos: 102,
+        linux: 95,
+        unsupported: true,
+    },
+    ErrnoRow {
+        name: "EINVAL",
+        errno: libc::EINVAL,
+        macos: 22,
+        linux: 22,
+        unsupported: true,
+    },
+    ErrnoRow {
+        name: "ENOSYS",
+        errno: libc::ENOSYS,
+        macos: 78,
+        linux: 38,
+        unsupported: true,
+    },
+    ErrnoRow {
+        name: "ENOTTY",
+        errno: libc::ENOTTY,
+        macos: 25,
+        linux: 25,
+        unsupported: true,
+    },
+    ErrnoRow {
+        name: "EIO",
+        errno: libc::EIO,
+        macos: 5,
+        linux: 5,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "ENOSPC",
+        errno: libc::ENOSPC,
+        macos: 28,
+        linux: 28,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "EDQUOT",
+        errno: libc::EDQUOT,
+        macos: 69,
+        linux: 122,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "EROFS",
+        errno: libc::EROFS,
+        macos: 30,
+        linux: 30,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "ENXIO",
+        errno: libc::ENXIO,
+        macos: 6,
+        linux: 6,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "ENODEV",
+        errno: libc::ENODEV,
+        macos: 19,
+        linux: 19,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "ENOENT",
+        errno: libc::ENOENT,
+        macos: 2,
+        linux: 2,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "ENOTDIR",
+        errno: libc::ENOTDIR,
+        macos: 20,
+        linux: 20,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "EACCES",
+        errno: libc::EACCES,
+        macos: 13,
+        linux: 13,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "EPERM",
+        errno: libc::EPERM,
+        macos: 1,
+        linux: 1,
+        unsupported: false,
+    },
+    ErrnoRow {
+        name: "ETIMEDOUT",
+        errno: libc::ETIMEDOUT,
+        macos: 60,
+        linux: 110,
+        unsupported: false,
+    },
+];
+
+/// Only the "this filesystem doesn't do that" class counts as done; every other
+/// errno, and an error carrying none, keeps a move's sources.
+#[test]
+fn each_directory_fsync_errno_classifies_the_same_on_macos_and_linux() {
+    let (platform, expected_value): (&str, fn(&ErrnoRow) -> i32) = if cfg!(target_os = "macos") {
+        ("macOS", |row| row.macos)
+    } else {
+        ("Linux", |row| row.linux)
+    };
+    for row in ERRNO_TABLE {
+        assert_eq!(row.errno, expected_value(row), "{}'s value on {platform}", row.name);
+        assert_eq!(
+            refuses_directory_fsync(&io::Error::from_raw_os_error(row.errno)),
+            row.unsupported,
+            "{} ({}) should {}",
+            row.name,
+            row.errno,
+            if row.unsupported {
+                "count as done"
+            } else {
+                "keep the sources"
+            }
+        );
+    }
+    assert!(
+        !refuses_directory_fsync(&io::Error::other("no errno")),
+        "an error with no errno keeps the sources"
+    );
+}
+
+/// A filesystem that doesn't do directory fsync answers that for every directory
+/// on it, so one `warn` per destination volume per operation says so; a warn per
+/// directory would bury the log under a large tree. `/dev` stands in for a second
+/// volume (the hook answers for it, so nothing there is opened).
+#[test]
+fn a_volume_that_doesnt_support_directory_fsync_warns_once_per_operation() {
+    use std::os::unix::fs::MetadataExt;
+
+    let landed = landed_tree();
+    let other_volume = PathBuf::from("/dev");
+    let device = |path: &Path| fs::metadata(path).expect("stat for its device").dev();
+    assert_ne!(
+        device(&landed.dest),
+        device(&other_volume),
+        "premise: `/dev` is a different volume from the scratch dir"
+    );
+    let mut dirs = landed.dirs.clone();
+    dirs.push(other_volume.join("cmdr-placeholder-entry"));
+    let synced: HashSet<PathBuf> = landed.files.iter().cloned().collect();
+    let log = test_hook::record(|_| Some(Err(io::Error::from_raw_os_error(libc::ENOSYS))));
+
+    assert_eq!(flush(&landed.files, &dirs, &synced), Ok(()));
+    assert_eq!(log.dirs().len(), 5, "every directory is still attempted");
+    let warned = log.unsupported_warnings();
+    assert_eq!(warned.len(), 2, "one warn per volume, not per directory: {warned:?}");
+
+    assert_eq!(flush(&landed.files, &dirs, &synced), Ok(()));
+    assert_eq!(
+        log.unsupported_warnings().len(),
+        4,
+        "a new operation warns for each volume again"
+    );
 }
 
 /// A created file whose data the strategy didn't sync, and that the flush can't
