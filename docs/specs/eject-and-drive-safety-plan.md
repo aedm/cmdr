@@ -3,6 +3,8 @@
 **Problem.** Cmdr doesn't reliably let go of a removable drive before it unmounts, doesn't survive a drive that
 vanishes, and can't say what holds a drive it couldn't eject.
 
+- **A move to a drive can lose files today.** A Mac-to-USB move syncs file data, fsyncs no directory, then deletes the
+  Mac sources; a stick pulled right after the progress bar finishes can lose the moved files (§ "Move durability").
 - **Letting go is racy.** Cmdr's own eject stops only THIS volume's index. An eject from Finder, `diskutil`, or another
   app reaches Cmdr through `NSWorkspaceWillUnmountNotification`, whose handler spawns a thread and returns, so the
   unmount races the stop (`apps/desktop/src-tauri/src/volumes/watcher.rs:257`). Nothing resumes an index that handler
@@ -13,28 +15,31 @@ vanishes, and can't say what holds a drive it couldn't eject.
 - **A vanished drive corrupts what Cmdr knows.** A child whose stat fails drops out of a listing and its row is deleted;
   a live event whose stat fails for any reason deletes its row; a rebuild deletes a subtree before reading it; a scan
   whose drive left mid-walk stamps itself complete, and its `Abandoned` marks make the next start stamp completion over
-  ground nobody walked. A move from the Mac to a drive deletes the Mac sources after a flush that syncs nothing, and a
-  transfer ends with a generic error, no progress facts, and a partial file on the drive nothing ever sweeps.
+  ground nobody walked. A transfer ends with a generic error, no progress facts, and a partial file on the drive nothing
+  ever sweeps.
 - **A refused eject names nobody**, and a disk with two partitions or APFS volumes can read "ejected" while a sibling
   stays mounted and powered.
 
 **Outcome.**
 
+- A move deletes its sources only after the destination's data and directory entries are durable (M0), and only while
+  the destination is still mounted (M10).
 - Cmdr answers DiskArbitration's unmount approval for every DA-mediated unmount, whoever starts it: it lets go of every
   volume of the disk inside the ask's window, dissents when it can't in time, and resumes what it stopped when the
-  unmount doesn't happen, without ever racing the next request.
+  unmount doesn't happen. No index start, Cmdr's or the user's, can land on a drive an unmount is taking down.
 - "Released" means no Cmdr worker reads the drive; a worker stuck in a read keeps the drive mounted, the log names it,
   and a stuck worker on a drive that's already gone doesn't block that drive's next life.
 - A drive that vanishes (pulled cable, raw `umount`) stops every worker quietly: no row deleted from a failed read, no
   index or branch marked complete. An index that may have lost rows is marked for a rebuild on disk and announced; a
-  transfer says how far it got and what's where; Mac sources are deleted only after the destination is durable and still
-  there; leftovers on the drive are swept when it returns, and the user's originals are never among them.
+  transfer says how far it got and what's where; leftovers on the drive are swept when it returns, and the user's
+  originals are never among them.
 - Cmdr's own eject works per physical disk: sibling ejects join one flight, every sibling is gated and stopped first, a
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** Planned 2026-09-14, not started; adversarial review folded in 2026-09-14. It combines the earlier
-DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the drive-safety decisions below.
+**Status.** Planned 2026-09-14, not started; adversarial review rounds 1 and 2 folded in 2026-09-14. It combines the
+earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the drive-safety decisions
+below.
 
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
@@ -51,6 +56,8 @@ DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) wit
   runner's allowed verbs are listed in M1; production code under test (`diskutil eject`) runs through the same runner by
   way of the `run_tool` closure, never unguarded. `hdiutil detach -force` is allowed only on a non-nested image the test
   attached; detach nested images inner first, and never force an outer image.
+- ❌ **Mac sources are deleted only after a flush that returned `Ok` (M0) and a destination root still in the mount
+  table (M10).**
 - ❌ **The approver's ask path touches no filesystem, takes no SQLite connection, and never unwinds across FFI.** An ask
   for a disk with no Cmdr work answers at once, unless it's queued behind another ask on the session's serial queue,
   where it answers within the chain's shared deadline (§ "The unmount approver"). DA ignores a dissent under force, and
@@ -66,18 +73,20 @@ DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) wit
   check, and the index stop answer `NotResponding { step }` and stop there.
 - ❌ **A worker stuck in a read on a MOUNTED drive keeps it mounted** (`StillReleasing`, a dissent, `NotResponding`).
   Never unmount under it: that's the wedge-prone case.
-- ❌ **Every index start after a Cmdr-made stop goes through `drive_release`'s gate** (§ "One release, one resume"), and
-  so does the user's per-drive disable. ❌ Never a bare `Index::start_volume` from new code: it writes `user_enabled`
-  and deletes `user_disabled` (`store/connection.rs:273-284`).
+- ❌ **Every app-side start of a non-root index goes through `drive_release`**: Cmdr's resumes, the user's enable and
+  rescan (IPC and MCP), the master switch's resume loop, and a search's cover walk. Each takes a ticket and respects the
+  unmount-pending flag, and so does the user's per-drive disable. ❌ Never a bare `Index::start_volume`,
+  `rescan_volume`, or `cover` from app code: they create instances with no hold until their reservation, and
+  `start_volume` writes `user_enabled` and deletes `user_disabled` (`store/connection.rs:273-284`).
 - ❌ **On a local-scanner volume (`IndexVolumeKind::uses_local_scanner()`), a row is deleted only on
-  `NotFound`/`ENOTDIR` from a complete observation of a volume still in the mount table**; no completion claim is
-  written for a volume that isn't. SMB, MTP, and ADB deletes come from their own protocols and keep today's behavior.
+  `NotFound`/`ENOTDIR` from a complete observation, with presence `Some(true)` read AFTER that observation**; no
+  completion claim is written for a volume that isn't listed. SMB, MTP, and ADB deletes come from their own protocols
+  and keep today's behavior.
 - ❌ **Invalidating an index never calls `clear_index`** (it deletes the database, and the per-drive intent markers live
   in it, `lifecycle/master.rs:113-121`). The rebuild is the persisted `index_needs_rebuild` marker routed to
   `RebuildThenCoverInPhases`.
-- ❌ **Mac sources are deleted only after a flush that returned `Ok` and a destination root still in the mount table.**
-- ❌ **A sweep never removes an aside unless the destination is a regular file of exactly the recorded size**, never
-  removes a non-empty staging directory, and restores only through `rename_no_replace`.
+- ❌ **No sweep, at launch or on arrival, removes an aside unless the destination is a regular file of exactly the
+  recorded size**; no sweep removes a non-empty staging directory; restores go only through `rename_no_replace`.
 - ❌ **Private symbols come from `dlsym` only**: `DARegisterIdleCallback` and
   `responsibility_get_pid_responsible_for_pid`. A missing symbol degrades, never fails to link.
 - ❌ **Holder facts never run a code-signing query against a process whose executable lives on the target volume**, and
@@ -110,8 +119,10 @@ Product decisions are David's; technical ones are the lead's. Don't reopen them.
    unquoted; no Force Eject; an opt-in macOS disk-image lane under `--include-slow`.
 6. **The approver dissents while a write op is busy on the disk** (non-force requests honor it; under force DA ignores
    it). **The existing FAT/exFAT image tests stay hand-run**; the new work adds APFS and HFS+ only.
-7. **Deferred**: the DA teardown swap, and "unmounted but not powered down" stays a silent success (§ "Deferred").
-8. **Fix**: nothing resumes an index `handle_volume_will_unmount` stopped when the unmount is refused.
+7. **Move durability ships first, standalone (M0)**: it's a live data-loss bug in shipped code.
+8. **Deferred**: the DA teardown swap, per-disk DA sessions, and "unmounted but not powered down" stays a silent success
+   (§ "Deferred").
+9. **Fix**: nothing resumes an index `handle_volume_will_unmount` stopped when the unmount is refused.
 
 ## Evidence the design rests on
 
@@ -143,9 +154,9 @@ The following were verified by reading DiskArbitration-535.0.10 on 2026-09-14:
 
 - **Every approval callback has its own 10 s timer, started when the daemon queues it to the session**
   (`diskarbitrationd/DAQueue.c:627-629`, checked at `:178-180`), not when the client runs it. The daemon queues a second
-  callback to a session whose first is unanswered (`DASession.c:312-314`), and the client runs its queue one callback at
-  a time (`DiskArbitration/DASession.c:242,257-277`), so a callback's timer runs while the client is still busy with the
-  one before it.
+  callback to a session whose first is unanswered (`DASession.c:312-314`), and the client copies its queue and runs it
+  one callback at a time (`DiskArbitration/DASession.c:242,257-277`), so a queued ask either sits in the same copied
+  batch or arrives as the next mach message, runnable as the previous ask returns; its timer runs meanwhile.
 - **A timed-out answer counts as approval** (`DAQueue.c:115-121`): DA unmounts.
 - **Requests on different disks are in the approval stage at once**: serialization is per disk
   (`kDADiskStateCommandActive`, `DARequest.c:1396,1410,1914`), and a Whole request's per-volume subrequests go out in
@@ -164,7 +175,8 @@ The following were verified by reading DiskArbitration-535.0.10 on 2026-09-14:
   approval, `DAStage.c:341-343,439-445`; `CommandActive` covers the unmount, `DARequest.c:1442,1592`,
   `DAStage.c:211,338`), **but it does fire between two separate requests**: once one request completes and the stage
   pass is quiet, idle is queued before the tool's next request exists (`DARequest.c:1587-1594`, `DAStage.c:487-500`). So
-  `diskutil eject`'s unmount, eject-container, eject-physical sequence has idles in between.
+  `diskutil eject`'s unmount, eject-container, eject-physical sequence and `unmountDisk`'s per-volume requests have
+  idles in between.
 - **Idle is queued on the same per-session queue, in order**, at most once per burst of callbacks to that session
   (`DAQueue.c:63-75,727-734`, `DASession.c:310`), and once at registration if the daemon is already idle
   (`DAServer.c:2733-2747`).
@@ -181,6 +193,14 @@ The following were verified by reading DiskArbitration-535.0.10 on 2026-09-14:
   bound: the private `void DARegisterIdleCallback(DASessionRef, void (*)(void *context), void *context)`
   (`DiskArbitrationPrivate.h:329,331`). `dispatch2` 0.3.1 (2026-02-26) and `objc2-io-kit` 0.3.2 are in `Cargo.lock`
   transitively. Re-check versions and the 3-day window on the day of adding.
+
+### Filesystem durability
+
+- **`File::sync_data` is `fcntl(F_FULLFSYNC)` on Apple targets** (verified in the rustc 1.97.1 standard library,
+  `library/std/src/sys/fs/unix.rs:1409-1412`, 2026-09-14), so a chunked copy's data is durable once its temp is synced.
+- **A directory entry is durable only after its parent directory is fsynced**, and FAT/exFAT (the usual stick) keep no
+  journal to replay a lost entry. Some filesystems refuse a directory fsync, which is why today's flush ignores its
+  errors.
 
 ### Holders
 
@@ -207,7 +227,7 @@ The following were verified by reading DiskArbitration-535.0.10 on 2026-09-14:
 
 ## Code map
 
-Verified against this branch at `0bac2b015` on 2026-09-14, with `codegraph` and by reading the lines. Index paths are
+Verified against this branch at `9f9419c1d` on 2026-09-14, with `codegraph` and by reading the lines. Index paths are
 under `crates/cmdr-index/src/indexing/`, write-operation paths under
 `apps/desktop/src-tauri/src/file_system/write_operations/`.
 
@@ -234,35 +254,51 @@ under `crates/cmdr-index/src/indexing/`, write-operation paths under
 - `apps/desktop/src-tauri/src/mcp/executor/eject.rs`: flattens the error into `ToolError::internal(format!(..))`.
 - Frontend: `apps/desktop/src/lib/file-explorer/navigation/eject-error-messages.ts`, keys `errors.eject.*` in
   `apps/desktop/src/lib/intl/messages/en/errors.json` (a raw family: `getMessage`, literal tokens, no plurals).
-- App-side index IPC: `enable_drive_index` (`apps/desktop/src-tauri/src/commands/indexing.rs:261`) and
-  `disable_drive_index` (`:290-291`, `index().disable_volume`).
 
 ### The index: holds, starts, and routes
 
 - `lifecycle/state/release.rs`: `VolumeHold` (`:47`), a per-volume count and one condvar, `wait_until_released` (`:98`).
   Depends only on `volume.rs` and `cmdr_fs`. Taken inside `try_reserve_initializing_phase`'s critical section
-  (`state/reservation.rs:120-128`), stored as the manager's `_hold` (`lifecycle/manager.rs:112`).
+  (`state/reservation.rs:120-128`), moved into the manager (`lifecycle/manager.rs:112,353`).
 - `state/teardown.rs`: `stop_removable_volume` (`:119`: `NothingToStop` at `:131` when no instance and nothing held);
   `finish_stopping` (`:242-256`: `mgr.shutdown()`, then `start_again` for a start recorded during the drain, while `mgr`
   and its hold are still alive until the function returns); `record_the_disable` (`:320`), the after-drain write through
   its own connection.
-- **A start has no instance and no hold until its reservation**: `Index::start_volume` (`handle/mod.rs:207`) records the
-  enable marker (`:261`), `start_indexing_for_local_external` (`transports/local_external/index.rs:136-150`) runs a
-  mount-facts probe of up to `FS_PROBE_TIMEOUT` 2 s (`:35`, `:103-113`), and `start_indexing_for`
-  (`lifecycle/state/startup.rs:231-303`) opens the store and pool before `try_reserve_initializing_phase`. A stop in
-  that window answers `NothingToStop`, and nothing records it. No "start in progress" marker exists.
+- **What a `LocalExternal` start does before it returns** (all awaited by `Index::start_volume`, `handle/mod.rs:207`):
+  the enable marker (`:261`); `classify` with a mount-facts probe of up to `FS_PROBE_TIMEOUT` 2 s
+  (`transports/local_external/index.rs:35,103-113,144`); in `start_indexing_for` (`lifecycle/state/startup.rs:171`) the
+  store and pool open, then `try_reserve_initializing_phase` (`:303`), `IndexManager::new_for_kind`, then
+  `resume_or_scan` (`:343`: for a completed index `start_scan`, which flushes the writer and starts the watcher inline,
+  `manager/start.rs:416-674`), the re-lock, and `start_pending_phases` (`:394`, which spawns two threads); then
+  `enforce_external_index_cap` (`index.rs:156`). The walk itself runs on spawned threads. Before the reservation there's
+  no instance and no hold, so a stop answers `NothingToStop`; after it, a stop on `Initializing` cancels the start,
+  whose re-lock calls `manager.shutdown()` with the hold still alive (`startup.rs:362-370,436-446`).
+- **`start_volume` on an active volume awaiting its first scan calls `force_scan`** (`handle/mod.rs:227-237`;
+  `awaits_its_first_scan`, `state/queries.rs:126-149`: Running, no walk in flux, no phase work, no `scan_completed_at`).
+- **Every app-side start of a non-root index**:
+  - `enable_drive_index` (`apps/desktop/src-tauri/src/commands/indexing.rs:261-273`), called by
+    `VolumeBreadcrumb.svelte:680`, `apps/desktop/src/lib/search/coverage-actions.ts:27`, the master switch's resume loop
+    in `set_indexing_enabled` (`commands/indexing.rs:174-188`, over `drives_to_resume`), and MCP through
+    `enable_drive_index_via_handle` (`:361`);
+  - `rescan_drive_index` (`:320-331`, `Index::rescan_volume`, which starts an inactive volume, `handle/mod.rs:298-303`),
+    called by `VolumeBreadcrumb.svelte:681` and MCP through `rescan_drive_index_via_handle` (`:366`);
+  - a search's cover walk: `Index::cover` (`handle/mod.rs:584-621`) from
+    `apps/desktop/src-tauri/src/search/execute/live_run.rs:194`, whose `context_for_walk` stands up a writer-only
+    instance (`lifecycle/cover/bootstrap.rs:68,86-92`) that skips both switches.
+  - `disable_drive_index` (`:290-291`) is the per-drive disable.
 - `IndexManager::shutdown` (`lifecycle/manager.rs:716-754`): cancels the volume token, stops phases without joining,
   drops `scan_handle` without joining, stops the watcher (joins its run loop), waits for the live loop at most 5 s
-  (`:741`, then detaches), shuts the writer down (`:751`).
+  (`:741`, then detaches), shuts the writer down (`:751`). The writer is one `sync_channel` shared by every clone
+  (`writer/mod.rs:471,580`).
 - `lifecycle/master.rs`: `master_enabled()` is an in-memory atomic (`:63-65`); `drive_index_should_run` (`:113-121`)
   opens up to three read connections; `drives_to_resume` (`:175-196`) runs it for every registered volume, and its doc
   (`:169-174`) says the master toggle is deliberately its one caller.
-- **Launch routes** (`lifecycle/manager/launch_route.rs:14-27,71-86`): `ReplayTheJournal`, `ScanTheVolume` (completed
-  index, or phases off), `RebuildThenCoverInPhases` (rows but no covered-branch set), `CoverInPhases`. The rebuild is
-  `PhasedStart::RebuildFirst` (`manager/phased.rs:158-182`): `TruncateData` (keeps `meta`, `writer/entries.rs:757`),
-  delete `scan_completed_at` and `home_covered_at`, clear the branch set. Every `start_scan` deletes `scan_completed_at`
-  (`manager/start.rs:505-510`). `RescanReason::IncompletePreviousScan` (`events/payload.rs:114-115`) is never emitted.
-  No "needs rebuild" marker exists.
+- **Launch routes** (`lifecycle/manager/launch_route.rs:14-27,71-86`): `ReplayTheJournal`, `ScanTheVolume` (a stamped
+  index with no replayable journal, `:79-81`, or phases off), `RebuildThenCoverInPhases` (rows but no covered-branch
+  set), `CoverInPhases`. The rebuild is `PhasedStart::RebuildFirst` (`manager/phased.rs:158-182`): `TruncateData` (keeps
+  `meta`, `writer/entries.rs:757`), delete `scan_completed_at` and `home_covered_at`, clear the branch set. Every
+  `start_scan` deletes `scan_completed_at` (`manager/start.rs:505-510`). `RescanReason::IncompletePreviousScan`
+  (`events/payload.rs:114-115`) is never emitted. No "needs rebuild" marker exists.
 - **Quit never stops an index** (`apps/desktop/src-tauri/src/app_lifecycle.rs:30-37,141-161`).
 - **Volume ids**: a local volume's id comes from its volume UUID (`crates/cmdr-fs/src/volume/ids.rs:126-139`), so a
   re-plugged drive keeps its id; a volume with no UUID gets a path-derived id (`:150-155`).
@@ -286,23 +322,24 @@ File:line of the spawn:
 11. a media network pass on a `LocalExternal` id in a hand-edited opt-in list: `run_network_pass_blocking`
     (`crates/cmdr-index/src/media_index/scheduler/mod.rs:474-526`) has no kind gate.
 
-Not workers for this plan: the start probe above (no reservation exists; B1's gate covers it); the importance scheduler
-reads the DB (its Spotlight sample, `crates/cmdr-index/src/importance/last_used.rs:53`, is believed to use
-index-relative paths: M4 verifies); thumbnails (`apps/desktop/src-tauri/src/commands/media_index/thumbnail.rs:38-70`)
-are foreground. Nothing in `scanner/`, `reconcile/`, or `watch/` imports `lifecycle::state`; `volume.rs` (`:3-7`, "pure
-predicates only") and `metadata.rs` are the shared leaves.
+Not workers for this plan: the start's probe (no reservation exists; the gate covers it); the importance scheduler reads
+the DB (its Spotlight sample, `crates/cmdr-index/src/importance/last_used.rs:53`, is believed to use index-relative
+paths: M4 verifies); thumbnails (`apps/desktop/src-tauri/src/commands/media_index/thumbnail.rs:38-70`) are foreground.
+Nothing in `scanner/`, `reconcile/`, or `watch/` imports `lifecycle::state`; `volume.rs` (`:3-7`, "pure predicates
+only") and `metadata.rs` are the shared leaves.
 
 ### Index writes from a failed or missing observation
 
 The full inventory (M7 and M8 gate each; `reconciler.rs` is `reconcile/reconciler.rs`):
 
 - **`diff_dir_against_db`** (`reconciler.rs:818-827`): a DB child missing from a listing is deleted. A failed directory
-  read deletes nothing (`:1152-1158`), but a child whose entry iteration or stat fails is dropped from the listing
-  (`:1408-1413` macOS bulk path, `:1440-1448` portable path) and so deleted. Local callers: `reconcile_subtree`
-  (`:1184`) for the `MustScanSubDirs` drain (`reconcile/reconciler/rescan/mod.rs:526`) and cover repair
-  (`lifecycle/cover/ground.rs:214`); the full local rescan (`local_reconcile.rs:542`); the stitch
-  (`lifecycle/phases/stitch.rs:103`). The trait-scanned caller is `network_scanner/reconcile_scan.rs:287`.
-- **The verifier's own diff** (`reconcile/verifier.rs:249-257`: `.flatten()` and a stat `Err(_) => continue` drop
+  read deletes nothing (`:1152-1158`), but a child whose entry iteration or stat fails, for any error including
+  `NotFound` from a removal between `readdir` and `stat`, is dropped from the listing (`:1408-1413` macOS bulk path,
+  `:1440-1448` portable path) and so deleted. Local callers: `reconcile_subtree` (`:1184`) for the `MustScanSubDirs`
+  drain (`reconcile/reconciler/rescan/mod.rs:526`) and cover repair (`lifecycle/cover/ground.rs:214`); the full local
+  rescan (`local_reconcile.rs:542`); the stitch (`lifecycle/phases/stitch.rs:103`). The trait-scanned caller is
+  `network_scanner/reconcile_scan.rs:287`.
+- **The verifier's own diff** (`reconcile/verifier.rs:250-257`: `.flatten()` and a stat `Err(_) => continue` drop
   children; deletes at `:312-324`).
 - **`handle_removal`** (`reconciler.rs:1580`: anything but `symlink_metadata().is_ok()` deletes, `:1615-1619`) and
   **`handle_creation_or_modification`** (`:1646-1669`: any stat `Err` deletes). Reached per event from the live loop
@@ -310,15 +347,20 @@ The full inventory (M7 and M8 gate each; `reconciler.rs` is `reconcile/reconcile
 - **Boot-disk cold-start verification** (`watch/event_loop/verification.rs:340-349`): `!Path::exists()` (false on any
   error) deletes each DB child, and the parent's `read_dir` failure is checked only after (`:353-356`). `Local` kind
   only.
-- **`ScanRoot::Rebuild`** (`scanner/mod.rs:815-819`): `DeleteDescendantsById` before the walk reads anything. Callers:
-  `verifier.rs:457`, `verification.rs:108`.
+- **`ScanRoot::Rebuild`** (`scanner/mod.rs:815-819`): `DeleteDescendantsById` is sent before the visitor exists
+  (`:826-835`) and before the walk reads the root (`scanner/walker/engine.rs:379`). The root's visit is
+  `InsertVisitor::visit_dir` (`scanner/insert_visitor.rs:261`), which records the listed dir (`:266`) before its child
+  loop (`:270`) and sends rows only in `flush` (`:169,214-215,232-235`). Callers: `verifier.rs:457`,
+  `verification.rs:108`.
 - **`Abandoned` marks**: any non-permission read error, a timeout, or a pruned dir is marked
   (`scanner/insert_visitor.rs:442-467`) and persisted through `MarkDirsUnreadable` (`scanner/mod.rs:100-115,910`,
-  `writer/mod.rs:1484-1498`). `Abandoned` ground isn't frontier (`read/coverage.rs:226-229`,
-  `phases/completion.rs:6-9`), so the phase machine's `take_stock` (`completion.rs:46-53`, run after every drain,
-  `phases/mod.rs:391,450,453`) stamps completion over it in the same session, and `writer/abandoned_retry.rs:42-46`
-  never walks it (its doc still says the phase machine "doesn't exist yet").
-  `IndexStore::clear_unreadable_cause(conn, cause)` exists (`store/meta.rs:190`).
+  `writer/mod.rs:1484-1498`, which also arms the abandoned-retry meta window, `:1493-1494`). `Abandoned` ground isn't
+  frontier (`read/coverage.rs:226-229`, `phases/completion.rs:6-9`), so the phase machine's `take_stock`
+  (`completion.rs:46-53`, run after every drain, `phases/mod.rs:391,450,453`) stamps completion over it in the same
+  session, and `writer/abandoned_retry.rs:42-46` never walks it (its doc still says the phase machine "doesn't exist
+  yet"). `IndexStore::clear_unreadable_cause(conn, cause)` (`store/meta.rs:187-191`) is a full table scan:
+  `unreadable_cause` has no index (`store/schema.rs:101-105`), and no count query exists; the armed retry window
+  (`writer/abandoned_retry.rs:58,60,144-157`) is the cheap "marks exist" signal.
 - **Not observation-driven, left alone**: a type change seen in a successful listing (`reconciler.rs:762-767`,
   `verifier.rs:367-372`, `writer/entries.rs:141-156`); `MoveEntryV2`'s destination delete (`writer/entries.rs:518-520`);
   every `TruncateData` (`manager/start.rs:533`, `manager/phased.rs:173`, `lifecycle/network_scan.rs:294`); SMB and MTP
@@ -341,15 +383,18 @@ The full inventory (M7 and M8 gate each; `reconciler.rs` is `reconcile/reconcile
   LOCAL engine only absolute paths plus a positional `vec![source, dest]` used for busy tracking (`copy.rs:177-182`).
 - **The local cross-FS move** (`transfer/move_op/cross_fs.rs`), used by both Mac → drive and drive → Mac: staging dir
   `destination.join(".cmdr-staging-<op>")` (`:107`, on the destination's filesystem); Phase 2 copies into it
-  (`:177-249`, pause gate per file `:183`); Phase 3 renames out (`:290-409`, `rename_onto_free_name` `:402`); commit
-  (`:443-456`); `flush_created_destinations` (`:457-468`, returns `()`); Phase 4 deletes sources unconditionally
-  (`SourceSweep::plan` `:473-482`); Phase 5 `let _ = fs::remove_dir(&staging_dir)` (`:489`).
-- **The flush syncs nothing for a chunked copy**: `durability.rs:70-72` skips paths in `already_synced`, before both the
-  data sync and the directory fsync, and every chunked-copied file is marked durable
-  (`transfer/copy_strategy.rs:236-242`, `transfer/copy/single_item.rs:563-564`). Mac ↔ USB always copies chunked
-  (`copy_strategy.rs:166-172`), and the chunked copy's only sync is `sync_data` on the temp
-  (`transfer/chunked_copy.rs:171`); the landing rename and the aside removal get no directory fsync
-  (`overwrite.rs:120-165`).
+  (`:177-249`, pause gate per file `:183`); directories are created and recorded in `CopyTransaction.created_dirs`
+  (`ledger.rs:211,239-241`; `transfer/copy/single_item.rs:274-275,293-297,339-348`,
+  `transfer/copy/scanned_dirs.rs:68-74`); Phase 3 renames the top-level items out of staging into `destination`
+  (`:290-409`, `:301-302,402`); commit and remap (`:443-456`: `final_dirs` goes only to the journal, `:451-452`);
+  `flush_created_destinations(&final_dests, &final_already_synced)` (`:457-468`, returns `()`); Phase 4 deletes sources
+  unconditionally (`SourceSweep::plan` `:473-482`); Phase 5 `let _ = fs::remove_dir(&staging_dir)` (`:489`). The
+  comments at `:128-131` and `:422-430` claim the renames are made durable before Phase 4.
+- **The flush fsyncs no directory for a chunked copy**: `durability.rs:69-72` skips a path in `already_synced` before
+  both its data sync (`:90`) and its parent-directory fsync (`:107-118`), every chunked-copied file is in that set
+  (`transfer/copy_strategy.rs:236-242`, `transfer/copy/single_item.rs:563-564`), and Mac ↔ USB always copies chunked
+  (`copy_strategy.rs:166-172`). Created directories are never passed to it. Every failure there is logged and dropped
+  (`durability.rs:37-40,91-95`). The copy path calls the same flush (`transfer/copy/mod.rs:632-643`).
 - **The source sweep** (`transfer/move_op/source_sweep.rs`, only the local cross-FS move): `remove_landed_file` treats
   `NotFound` as done (`:304`), `remove_swept_dir` treats any failed stat as gone (`:313-316`), and a top-level source
   that can't be stat'ed is skipped and still counted done (`:238,269`).
@@ -359,7 +404,8 @@ The full inventory (M7 and M8 gate each; `reconciler.rs` is `reconcile/reconcile
   (`transfer/volume/transfer_error.rs:251-255,285`). `WriteErrorEvent` (`types/events.rs:158-165`) carries no progress;
   `files_done`/`bytes_done` live in the status cache (`status_cache.rs:70-74`).
 - **Asides**: four creators mint `.cmdr-temp-<uuid>` and none registers it:
-  - `stage_and_land_file` (`overwrite.rs:108`): the existing destination FILE set aside while a new file lands;
+  - `stage_and_land_file` (`overwrite.rs:108`): the existing destination FILE set aside after the new bytes are filled
+    and synced into the temp (`:98-117`);
   - `displace_with_directory` (`overwrite.rs:364`, from `transfer/copy/single_item.rs:274`): a blocking FILE set aside
     so a directory can be built at its path, filled leaf by leaf; the failure path keeps it as a recovered sibling
     (`ledger.rs:335-341`, `overwrite.rs:311`);
@@ -370,12 +416,14 @@ The full inventory (M7 and M8 gate each; `reconciler.rs` is `reconcile/reconcile
     otherwise) and `recovered_sibling` (`unique_name.rs:243,255-266`, "notes (recovered).txt") exist.
 - **The ledger** `in-flight-temps.log` (`in_flight_temps.rs`):
   `#[serde(untagged)] RecordedTemp { Local(PathBuf), OnVolume(VolumeTemp) }` (`:113-134`), lines `+`/`-` then JSON;
-  `read_recorded` skips unparsable JSON and ignores unknown op bytes (`:593-616`); the startup sweep truncates the log
-  (`:339`), deletes local records once, counts `NotFound` as gone (`:410-429`); `pending: BTreeSet<VolumeTemp>` (`:196`)
-  holds volume-homed records only, swept on `VolumeManager::on_volume_arrival` (`volume/manager.rs:135`;
-  `in_flight_temps.rs:469-479`), where anything failing `is_one_of_ours` is retired without deleting (`:490-493`).
-  `is_one_of_ours` accepts `.cmdr-tmp-` and `.cmdr-temp-` names (`:532-544`, `crates/cmdr-fs/src/staging.rs:79-81`).
-  `discard_temp` ignores a failed remove and deregisters (`overwrite.rs:176-179`).
+  `read_recorded` skips unparsable JSON and ignores unknown op bytes (`:593-616`). At every launch
+  (`apps/desktop/src-tauri/src/lib.rs:309-322`) `init_and_sweep` truncates the log (`:339`) and
+  `sweep_persisted_orphans` runs `remove_file` on every local record passing `is_one_of_ours` (`:410-429`), which
+  accepts `.cmdr-tmp-` AND `.cmdr-temp-` names (`:532-544`, `crates/cmdr-fs/src/staging.rs:79-81`), counting `NotFound`
+  as gone. `pending: BTreeSet<VolumeTemp>` (`:196`) holds volume-homed records only, swept on
+  `VolumeManager::on_volume_arrival` (`volume/manager.rs:135`; `in_flight_temps.rs:469-479`), where anything failing
+  `is_one_of_ours` is retired without deleting (`:490-493`). `discard_temp` ignores a failed remove and deregisters
+  (`overwrite.rs:176-179`).
 - **Test seams**: `copy_file_using(LocalCopyStrategy::Chunked, ..)` with an observe callback
   (`transfer/copy_strategy.rs:207`, used by `transfer/volume/copy_crashsafe_tests.rs:539-608`); nothing can pause a
   local move mid-file (the chunk loop checks cancel only, `chunked_copy.rs:126,158-160`).
@@ -388,43 +436,85 @@ The full inventory (M7 and M8 gate each; `reconciler.rs` is `reconcile/reconcile
 
 ## Target design
 
+### Move durability (M0)
+
+A standalone fix to shipped code; it depends on nothing else in this plan.
+
+- **Split data from directory durability** in `flush_created_destinations` (`durability.rs`): `already_synced` skips a
+  file's data sync only; its parent directory is fsynced whatever the set says.
+- **The cross-FS move passes every directory that gained an entry**, remapped from staging to final paths and de-duped:
+  the parent of every created file, the parent of every directory in `transaction.created_dirs`, and `destination`
+  itself (Phase 3's top-level renames land there). A folder that only received a `mkdir` (`dest/tree` holding `sub`) is
+  covered by its parent's fsync.
+- **The flush answers `Result<(), FlushFailure { path, errno }>`.** A directory fsync failing with `ENOTSUP` or `EINVAL`
+  counts as `Ok` with a `warn` (filesystems that refuse directory fsync exist, and blocking on them would stop every
+  move there from ever deleting its sources). A data sync failure, or any other directory fsync error, is an `Err`.
+- **Phase 4 and Phase 5 run only on `Ok`.** On `Err` the move keeps every source, keeps what landed, logs a `warn`
+  naming the path and errno, and answers the existing `WriteOperationError::IoError { path, message }`, whose generic
+  copy stays true (the move didn't finish). A typed variant waits for M10, which touches the transfer copy anyway.
+- **The copy path** (`transfer/copy/mod.rs:632-643`) gets the directory fsyncs too and keeps treating the result as
+  best-effort (it deletes nothing).
+- The comments at `cross_fs.rs:128-131` and `:422-430` are rewritten to say what's now true.
+- **The mount-table check** (the destination root still listed) is M10's, once sides are typed.
+
 ### One release, one resume (M5)
 
-`apps/desktop/src-tauri/src/file_system/volume/drive_release.rs` (new, `pub(crate)`, macOS and Linux) is the one place
-that stops removable indexes after Cmdr decided to, and the one place that starts them again. **Why one module**: the
-eject flight's sibling stop, the approver's stop, and the vanish stop are one piece of work with different budgets, and
-the resume must be serialized against all of them.
+`apps/desktop/src-tauri/src/file_system/volume/drive_release.rs` (new, `pub(crate)`, macOS and Linux) is the one door
+for every app-side stop of a removable index Cmdr decides on, and every app-side start of a non-root index. **Why one
+module**: the eject flight's sibling stop, the approver's stop, and the vanish stop are one piece of work with different
+budgets, and every start must be serialized against all of them.
 
-- **The gate**: per volume id, a mutex-held `epoch: u64` and an optional in-flight resume ticket, plus a condvar.
-- **`release(volume_ids, deadline) -> Release`**: for each id, bump its epoch first (an unstarted resume aborts), then
-  wait until no resume ticket is in flight for it (bounded by `deadline`), then run `Index::stop_removable_volume`
-  concurrently on blocking threads, all bounded by the same `deadline` instant. Per id: `NothingToStop`,
-  `Released { was_indexing }`, or `StillReleasing`; `was_indexing` is captured before the stop
-  (`Index::volume_kind(id) == Some(LocalExternal)`). A stop still running at the deadline keeps running detached, and
-  its eventual answer goes to an optional continuation. The stop function is a parameter beneath `release`, so tests
-  inject a slow or stuck stop and still exercise the real deadline.
+**Per volume id, under one mutex with a condvar**: an `epoch: u64`, an optional start ticket, an optional pending
+resume, and an `unmount_pending` flag.
+
+- **A ticket covers a whole start**, from the moment before its checks to the moment `Index::start_volume`,
+  `rescan_volume`, or `cover` returns. It must: a `LocalExternal` start has no instance and no hold through its probe
+  (up to 2 s) and store open, and `start_volume` returns only after `resume_or_scan` and `start_pending_phases` (§ "Code
+  map"). One ticket per id at a time.
+- **`release(volume_ids, deadline, stop) -> Release`**: for each id, bump its epoch first (an unstarted resume aborts),
+  then wait for its ticket to drop, bounded by `deadline`. An id whose ticket is still in flight at the deadline answers
+  `StillReleasing`, and its continuation (below) stops it once the ticket drops. Ids without a ticket run `stop` (by
+  default `Index::stop_removable_volume`) concurrently on blocking threads, all bounded by the same `deadline` instant.
+  Per id: `NothingToStop`, `Released { was_indexing }`, or `StillReleasing`; `was_indexing` is captured before the stop
+  (`Index::volume_kind(id) == Some(LocalExternal)`). A stop still running at the deadline keeps running detached. Every
+  `StillReleasing` id gets a continuation, which delivers the eventual `Released { was_indexing }` to the caller's
+  recorder, so a late release is still recorded for resume. `stop` is a parameter, so tests inject a slow or stuck stop
+  beneath the real deadline.
 - **`resume(candidates, owner)`**, never on a DA queue:
-  1. wait `RESUME_SETTLE` 2 s (one timer, cancelled by any `release` of the id): tools send follow-up requests within
-     milliseconds, and each would stop a fresh start again;
-  2. on a blocking thread, read intent for the whole candidate set once (`Index::drives_to_resume()`, which opens each
-     registered volume's DB; kept off the ask path);
-  3. per id, under the gate: the epoch equals the one recorded at the stop, the owner's generation check passes (the
-     approver's per-whole-disk ask generation, § "The unmount approver"), the volume is still in the mount table, it's
-     in the intent set, and no other owner is ejecting it; then take the ticket;
-  4. `Index::start_volume(id)` (on `tauri::async_runtime`; it returns once the reservation exists, so the hold is
-     visible to the next stop);
-  5. drop the ticket and notify.
-- **`disable(volume_id)`**: `disable_drive_index` (`commands/indexing.rs:290`) goes through the gate: bump the epoch,
-  wait for an in-flight ticket, then `Index::disable_volume`. So a disable is always the last word over a resume, which
-  closes the window where `start_volume` would delete a fresh `user_disabled`.
-- **Owners**: `Approver`, `EjectFlight(DiskKey)`, `Vanish` (never resumes). The approver skips ids in the ejecting set;
-  a flight resumes only its own.
+  1. a candidate for an id that already has a ticket in flight or a pending resume joins it and is dropped;
+  2. wait `RESUME_SETTLE` 2 s (one timer per batch, and any `release` of an id cancels that id);
+  3. on a blocking thread, read intent for the batch once (`Index::drives_to_resume()`, which opens each registered
+     volume's DB; kept off the ask path);
+  4. per id, under the gate: no ticket in flight, `unmount_pending` clear, the epoch equals the owner's recorded epoch,
+     the owner's generation check passes, the volume is still in the mount table, it's in the intent set, and no other
+     owner is ejecting it; then take the ticket. The caller's record for the id is consumed here, whether it took the
+     ticket or failed a check, so a later idle never re-runs a start (a stopped first scan would otherwise get
+     `force_scan`, `handle/mod.rs:233-235`);
+  5. `Index::start_volume(id)` on `tauri::async_runtime`;
+  6. drop the ticket and notify.
+- **`start(volume_id, kind)`** wraps every other app-side start of a non-root index:
+  - `UserEnable` (`enable_drive_index`, IPC and MCP) and `UserRescan` (`rescan_drive_index`, IPC and MCP): wait for
+    `unmount_pending` to clear and the id to leave the ejecting set, bounded by `UNMOUNT_PENDING_WAIT` 30 s (the slowest
+    measured refusal was 27.8 s); then take the ticket and call `start_volume` / `rescan_volume`. Past the bound, or if
+    the volume left the mount table, no start runs and the command logs a `warn` and answers the not-mounted outcome
+    `EnableIndexingOutcome` already has (M5 confirms one fits; if none does, it adds a typed variant with its copy).
+  - `MasterResume` (the `set_indexing_enabled` loop) and `SearchCover` (`live_run.rs:194`): skip at once if
+    `unmount_pending` is set or the id is being ejected (a drive that's leaving is owed no walk; the search answers
+    without that volume, as for an unmounted one); otherwise take the ticket for the call.
+- **`unmount_pending`**: set by an approver ask for every id in its group, and for a flight's siblings while the flight
+  runs (the ejecting set); cleared for every id by an idle callback (idle can't fire between an approval and its
+  unmount) and for a disk's ids by its `Disappeared`.
+- **`disable(volume_id)`**: `disable_drive_index` bumps the epoch, waits for an in-flight ticket, then
+  `Index::disable_volume`. A disable is always the last word over a resume.
+- **Owners**: `Approver` (records keyed by BSD name + `VolumeUUID`, with the epoch `release` set and the whole disk's
+  ask generation), `EjectFlight(DiskKey)` (records its epoch after its own teardown settles, § "Cmdr's own eject"),
+  `Vanish` (never resumes). The approver skips ids in the ejecting set; a flight resumes only its own.
 - **Why `drives_to_resume` instead of a per-id `Index` method**: the `Index` surface is at its ceiling (40 of 40), and a
   handful of read opens off the ask path is cheap. Its doc (`master.rs:169-174`) gets the resume named as its second
   caller, and still no launch caller.
-- **What a start racing a stop can still do**: a user's enable or a search walk landing during a drain restarts the
-  index before the old manager drops (`finish_stopping`), so the waiter answers `StillReleasing` and the eject or ask
-  refuses honestly. The gate removes Cmdr's own resumes from that race; user actions keep today's honest refusal.
+- **What a stop racing a user-less start can still do**: a restart recorded on `ShuttingDown` by a start that didn't go
+  through the gate (the index crate's own `start_again`) restarts before the old manager drops, so the waiter answers
+  `StillReleasing` and the ask or eject refuses honestly.
 
 ### Worker holds (M3 mechanism, M4 wiring)
 
@@ -462,7 +552,8 @@ the resume must be serialized against all of them.
 `start_volume_watcher` and after `index_host::install`:
 
 - `mod.rs`: `install(seams) -> Result<(), InstallFailure>`; one `DASession`, `DASessionSetDispatchQueue` on its own
-  serial `dispatch2::DispatchQueue`; registration; `catch_unwind` around every callback body.
+  serial `dispatch2::DispatchQueue` at user-initiated QoS (so Cmdr's own indexing load can't stall the queue);
+  registration; `catch_unwind` around every callback body.
 - `ask.rs`: the pure decision, including the shared deadline.
 - `records.rs`: the pure record and resume-candidate state.
 - `causes.rs` (M9): the pure unmount-cause machine.
@@ -481,49 +572,55 @@ the resume must be serialized against all of them.
 approval (M9, always answered at once).
 
 **The shared deadline.** DA times each callback from when it queued it, and asks run one at a time, so an ask that
-starts right behind another was probably queued during it. Each ask computes its deadline:
+starts while an earlier ask's 10 s window is still open may have been queued during it. Each ask computes its deadline:
 
-- if it starts within `CHAIN_GAP` 50 ms of the previous ask's end, it joins that chain:
+- if `now < chain_start + DA_RESPONSE_WINDOW` (10 s), it joins that chain:
   `deadline = chain_start + APPROVAL_STOP_BUDGET`;
-- otherwise it starts a chain: `deadline = now + APPROVAL_STOP_BUDGET`;
-- an ask whose deadline already passed does no waiting: it approves when its group has nothing to stop and is not busy;
-  otherwise it hands the stop to a detached `release` and dissents.
+- otherwise it starts a chain: `chain_start = now`, `deadline = now + APPROVAL_STOP_BUDGET`;
+- an ask whose deadline already passed does no waiting: it approves only when its group has nothing to stop, no ticket
+  in flight, and no busy write op; otherwise it hands the stop to a detached `release` and dissents.
 
-`CHAIN_GAP` is 50 ms because a callback queued during an ask runs microseconds after it returns, and 50 ms absorbs a
-loaded scheduler without swallowing an unrelated later request.
+**Why a time-based chain**: a gap-based one misfires when the queue stalls between asks, and a new chain would then hand
+the queued ask a fresh budget that DA's timer overruns. An unrelated request arriving inside an open window gets a
+shorter budget and may dissent, which is an honest refusal.
 
 **`APPROVAL_STOP_BUDGET` = 7 s per chain.** DA's timer is 10 s from queueing (`DAQueue.c:178-180`; the 1 s grace isn't
 relied on). 7 s leaves 3 s (30 %) for the client's wake-up and queue copy, the asks behind the stop that answer at once,
-and scheduling under load, and it still covers `shutdown`'s 5 s live-loop drain. The residual risk: several indexed
-drives ejected together share one 7 s chain; the later ones dissent on a non-force request (honest), and under force
-their stop races the unmount. That's the case a single serial session can't do better on.
+and scheduling under load, and it still covers `shutdown`'s 5 s live-loop drain.
+
+**The residual risk, stated plainly.** When several indexed drives are ejected together and the chain's budget runs out,
+the later asks dissent with their stops detached. On a non-force request that's an honest refusal. Under force DA
+ignores the dissent and unmounts under a live watcher: M7's gates and the unlisted-root marker protect the rows, but the
+FSKit wedge exposure remains for that drive. Only per-disk DA sessions (§ "Deferred") would beat it.
 
 **An ask** (on the DA queue):
 
 1. Copy the callback disk's description: `VolumePath`, `VolumeUUID`, BSD name, and the whole disk's unit
    (`DADiskCopyWholeDisk`). No path, or no Cmdr volume whose ACTIVE root is that path → approve.
-2. Bump the ask generation of that whole disk (keyed by whole BSD name, reset on `Appeared(whole)`).
-3. The group: every registered volume mounted on the same whole unit (`disk_units`). **Why the whole unit**: DA links a
-   Whole request's asks by BSD unit and they arrive back to back, so the first ask must stop the unit's group; a
-   physical disk's other container is a different request.
-4. `drive_release::release(group, deadline)`. A group with no index work answers `NothingToStop` for every id at once.
-5. Answer: dissent (`DADissenterCreate(kDAReturnBusy, NULL)`) if any id is `StillReleasing` or in `busy_volume_ids()`;
+2. Bump the ask generation of that whole disk (keyed by whole BSD name, reset on `Appeared(whole)`), compute the group
+   (every registered volume mounted on the same whole unit, via `disk_units`), and set `unmount_pending` for every id in
+   it. **Why the whole unit**: DA links a Whole request's asks by BSD unit and they arrive back to back, so the first
+   ask must stop the unit's group; a physical disk's other container is a different request.
+3. Carry forward every recorded id in the group (from an earlier refused request) to the new generation; its epoch is
+   refreshed in step 5.
+4. `drive_release::release(group, deadline)`. A group with no index work and no tickets answers `NothingToStop` at once.
+5. Record every `Released { was_indexing: true }` id, and refresh every carried-forward record, with the epoch `release`
+   set and the new generation. Continuations of `StillReleasing` ids record the same way when they land.
+6. Answer: dissent (`DADissenterCreate(kDAReturnBusy, NULL)`) if any id is `StillReleasing` or in `busy_volume_ids()`;
    otherwise approve.
-6. Record every `Released { was_indexing: true }` id, keyed by BSD name + `VolumeUUID`, with the epoch `release` set and
-   the whole disk's ask generation. An ask for an already-recorded volume (stopped by an earlier refused request)
-   carries its record forward with the new generation, since `was_indexing` now reads false.
 7. Log one `info` (volume, group, outcome, deadline left); the crate's `warn` names holders on `StillReleasing`.
 
-**Resume** (idle callback, same queue): snapshot the records as candidates and hand them to
-`drive_release::resume(candidates, Approver)`, where step 3's owner check is "the whole disk's ask generation still
-equals the record's" (no newer ask arrived) and presence is the mount table's entry for that BSD name. Records are
-dropped on `Appeared(whole)` and `Disappeared(whole)`. The callback does no I/O. If the idle symbol is missing, log one
-`warn` at install and resume nothing; ❌ no polling fallback.
+**Resume** (idle callback, same queue): clear every `unmount_pending` flag, snapshot the records as candidates, and hand
+them to `drive_release::resume(candidates, Approver)`, where the owner check is "the whole disk's ask generation still
+equals the record's" and presence is the mount table's entry for that BSD name. Records are consumed by `resume` step 4
+and dropped on `Appeared(whole)` and `Disappeared(whole)`. The callback does no I/O. If the idle symbol is missing, log
+one `warn` at install and resume nothing (and `unmount_pending` then clears only on `Disappeared` or a description
+change clearing the volume path); ❌ no polling fallback.
 
 **Cmdr's own eject** pre-stops its volumes, so its asks find nothing to stop and approve at once; before M12, siblings
 aren't in the ejecting set, and the approver's gated resume covers them.
 
-**Linux** has no approver; `drive_release` serves its eject flight.
+**Linux** has no approver; `drive_release` serves its eject flight and every start path.
 
 ### A vanished drive, index side (M7, M8)
 
@@ -532,27 +629,38 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
 **Deletes (M7)**, with the gate point per site:
 
 - **Listings become typed**: `read_fs_children` and the verifier's disk read answer
-  `Listing { children, complete: bool }`; any entry-iteration or stat error sets `complete = false`.
-  `diff_dir_against_db` deletes nothing for an incomplete listing. Before sending a directory's deletes, one
-  `is_mounted(root)` must be `Some(true)`. Gate point: per directory, for every local caller (`reconcile_subtree` and
-  its three users, the full local rescan, the stitch) and the verifier's diff. The trait-scanned caller keeps today's
-  behavior.
+  `Listing { children, complete: bool }`. A child whose stat answers `NotFound` was removed between `readdir` and
+  `stat`: it's absent and the listing stays complete. Any other entry-iteration or stat error sets `complete = false`.
+  `diff_dir_against_db` deletes nothing for an incomplete listing.
+- **Presence is read AFTER the listing.** An unmounted `/Volumes/X` whose mount-point folder still exists lists as empty
+  and complete, so a presence read taken before the listing would let every top-level child be deleted. Gate point: per
+  directory, one `is_mounted(root)` after the read and before sending that directory's deletes, for every local caller
+  (`reconcile_subtree` and its three users, the full local rescan, the stitch) and the verifier's diff. The
+  trait-scanned caller keeps today's behavior.
 - **Per-event deletes** (`handle_removal`, `handle_creation_or_modification`): a stat error deletes only on
-  `NotFound`/`ENOTDIR`. The live loop, the post-scan replay, and cold-start replay gather an event batch's deletes and
-  ask `is_mounted(root)` once per batch before sending them.
+  `NotFound`/`ENOTDIR`. The live loop, the post-scan replay, and cold-start replay gather an event batch's deletes, stat
+  them, then ask `is_mounted(root)` once before sending.
 - **Boot-disk verification**: `Path::exists()` becomes an errno-typed stat; the parent's `read_dir` result is checked
   before any child delete.
-- **`ScanRoot::Rebuild`**: `DeleteDescendantsById` is sent only after the walk reports the root's own read succeeded; a
-  failed root read deletes nothing.
-- **The delete generation**: a per-volume counter of delete batches sent since the last `Some(true)` presence reading
-  after a successful root listing.
+- **`ScanRoot::Rebuild`**: the visitor carries the rebuild root; at the top of `visit_dir` for that root, before it
+  pushes any row, it sends `DeleteDescendantsById`. A failed root read reaches `visit_read_error` instead, which sends
+  no delete. **Why inline**: the writer is one channel, so a delete sent from the scanner thread after the walk started
+  would interleave with the visitor's insert batches and delete fresh rows. That delete counts toward the delete
+  generation.
+- **The delete generation**: a per-volume counter of delete batches. It resets only when a successful root listing AND a
+  `Some(true)` presence read both come after the last batch was sent; a `Some(true)` read alone, taken inside an unmount
+  window, never resets it.
 
 **Completion and rebuilds (M8)**:
 
 - **`Abandoned` marks** are sent only while `is_mounted(root) == Some(true)`; a walk that would mark while the root is
-  unlisted drops the marks and reports a vanish. A `LocalExternal` start clears `UnreadableCause::Abandoned` once
-  (`IndexStore::clear_unreadable_cause`) through the writer before its first walk, so ground an earlier vanish left
-  unwalked is frontier again. `writer/abandoned_retry.rs`'s stale doc is fixed.
+  unlisted drops the marks and reports a vanish. Marks can still persist in the window before DA's force unmount drops
+  the mount entry; that self-heals, because the next `LocalExternal` start clears `Abandoned` and a stamped index routes
+  to `ScanTheVolume` (`launch_route.rs:79-81`).
+- **Clearing at start**: a `LocalExternal` start clears `UnreadableCause::Abandoned` through the writer before its first
+  walk, only when the abandoned-retry meta window is armed (the arm at `writer/mod.rs:1493-1494` is the cheap "marks
+  exist" signal; `clear_unreadable_cause` and any `COUNT` over `unreadable_cause` are full table scans). Ground an
+  earlier vanish left unwalked is frontier again. `writer/abandoned_retry.rs`'s stale doc is fixed.
 - **Completion gate**: one `is_mounted(root) == Some(true)` read decides, per path:
   - scanner thread and `finish_reconcile`: before queueing `ComputeAllAggregates` and `WalCheckpoint`;
   - `scan_completion`: `was_completed` also requires it; gated writes are `scan_completed_at`, sweep keys, calibration,
@@ -600,11 +708,8 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
 - **Progress facts**: `WriteErrorEvent` gains `progress_at_stop` (`files_done`, `files_total`, `bytes_done`,
   `bytes_total`) read from the status cache before the op unregisters, plus, for a move, `sources_removed` and
   `sources_left` counts.
-- **Moves delete sources only after a real flush**: `flush_created_destinations` returns `Result`, and for a cross-FS
-  move it fsyncs every destination directory that received a rename (the landed parents and the destination) even when a
-  file's data is already durable. Phase 4 runs only when the flush returned `Ok` AND the destination side's root is
-  still listed; otherwise the sources stay, and the error names what's where. ❗ Whether `sync_data` issues
-  `F_FULLFSYNC` on Apple targets is unverified; M10 checks the std source and records it.
+- **Phase 4 also requires the destination side's root still listed** (on top of M0's `Ok` flush); an M0 flush failure
+  gets a typed `WriteOperationError` variant and its copy here.
 - **The source sweep asks the mount table**: `remove_landed_file`'s `NotFound`, `remove_swept_dir`'s failed stat, and
   the per-source skip (`source_sweep.rs:238`) each check the source root; unlisted → stop the sweep and report
   `sources_left`.
@@ -614,15 +719,16 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
 ### A vanished drive, temps and asides (M11)
 
 1. **Records get a shape old builds skip.** New op bytes `A` (add) and `a` (retire) carry tagged JSON:
-   `{"kind": "temp"|"aside"|"staging_dir", "volume_id", "path", ...}`. An older `read_recorded` ignores unknown op bytes
-   and truncates the log at launch, so a reverted build forgets these records and deletes nothing. Existing `+`/`-`
-   lines still replay.
+   `{"kind": "temp"|"aside"|"staging_dir", "home": "local"|{"volume_id"}, "path", ...}`. An older `read_recorded`
+   ignores unknown op bytes and truncates the log at launch, so a reverted build forgets these records and deletes
+   nothing. Existing `+`/`-` lines still replay.
 2. **Temps on a non-root mount register volume-homed** (`volume_id` from the typed destination side, path relative to
-   the root), so a launch with the drive absent defers them to arrival. Mac-internal temps stay `LocalFs`.
+   the root), so a launch with the drive absent defers them to arrival. Mac-internal temps stay local-homed.
 3. **`discard_temp` deregisters only when the remove succeeded**, or failed with `NotFound` while the temp's root is
    still listed. Otherwise the record stays and joins `pending` at once, installing the arrival listener lazily, so a
    re-plug in the same session sweeps it. (Needs item 2: `pending` holds only volume-homed records.)
-4. **Every aside registers with its kind**: `FileAside { expected_size }` (`stage_and_land_file`; the new file's size),
+4. **Every aside registers with its kind, whatever its home** (a crash between the aside rename and the landing leaves a
+   Mac-internal aside as the only copy too): `FileAside { expected_size }` (`stage_and_land_file`; the new file's size),
    `DisplacedFile` (`displace_with_directory`), `DirOverwriteAside` (`safe_overwrite_dir`), and `VolumeAside`
    (`displaced_destination.rs`). The sweep:
    - destination missing → `rename_no_replace(aside, dest)`;
@@ -633,8 +739,11 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
    strict parse of the prefix plus the operation-id shape `cross_fs.rs:107` writes (verify it at
    `write_operations/manager.rs:431`). The move registers the dir when it creates it and retires it when Phase 5's
    `remove_dir` succeeds. The sweep only ever `remove_dir`s it: a non-empty staging dir stays, with a `warn` and the
-   notice in § "Copy drafts". `is_one_of_ours` accepts it; the listing hide gate learns the name, still by ownership.
-6. **The sweep runs on `on_volume_arrival`**, through the existing volume-record path.
+   notice in § "Copy drafts". The listing hide gate learns the name, still by ownership.
+6. **One set of rules at launch and on arrival.** The launch sweep (`sweep_persisted_orphans`) and the arrival sweep
+   apply item 4's and item 5's rules to every `A` record, whatever its home; `remove_file` is for `kind: temp` only. A
+   legacy `+` local record is removed only when its name carries `.cmdr-tmp-`: `is_one_of_ours` stops accepting
+   `.cmdr-temp-` for a plain removal.
 
 ### Cmdr's own eject, per physical disk (M12)
 
@@ -652,14 +761,18 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
    `mounted_volumes_on(session, [physical_whole_unit] + container_units)`; keep their paths.
 5. **Sibling busy gate**: `Busy` if any sibling is in `busy_volume_ids()`.
 6. **Stop every sibling**: `drive_release::release(siblings, now + INDEX_STOP_DEADLINE)`. Any `StillReleasing` →
-   `NotResponding { IndexStop }` and nothing unmounts; resume the released ones (owner `EjectFlight`), and a
-   still-releasing one from its continuation when its stop ends.
+   `NotResponding { IndexStop }` and nothing unmounts; resume the released ones (owner `EjectFlight`, epoch read right
+   after this release), and a still-releasing one from its continuation when its stop ends.
 7. **Teardown**: `diskutil eject <path>` through `settle_with_retries`, with `still_mounted` = any captured path still
    listed OR a fresh `mounted_volumes_on` non-empty (fail closed), and each retry aimed at a still-listed captured path.
-8. **Final `UnmountRefused`** → holders (M13, M14), then `drive_release::resume(siblings, EjectFlight)`.
-9. **`TimedOut`** → answer at once; `within_tool_timeout` hands the join handle to a detached settle task, and when the
-   tool exits, resume still-listed siblings.
-10. SMB keeps `diskutil unmount` and gains holders; Linux keeps `umount`. `EjectStep` gains `DiskResolve`.
+8. **The flight reads its siblings' epochs after the teardown settles.** Its own `diskutil eject` triggers asks whose
+   `release` bumps those epochs, and the approver records nothing for volumes the flight already stopped, so an epoch
+   read at the pre-stop would fail the resume check.
+9. **Final `UnmountRefused`** → holders (M13, M14), then `drive_release::resume(siblings, EjectFlight)` against the
+   epochs from step 8.
+10. **`TimedOut`** → answer at once; `within_tool_timeout` hands the join handle to a detached settle task, and when the
+    tool exits, read the epochs and resume still-listed siblings.
+11. SMB keeps `diskutil unmount` and gains holders; Linux keeps `umount`. `EjectStep` gains `DiskResolve`.
 
 ### Holders (M13 scan and wire, M14 facts)
 
@@ -716,8 +829,10 @@ pub enum HolderKind { App, Tool, DiskImage, System, Cmdr, Unclassified }
 
 ### Budgets and deadlines
 
-- `APPROVAL_STOP_BUDGET` 7 s per ask chain, `CHAIN_GAP` 50 ms (new): § "The unmount approver".
+- `APPROVAL_STOP_BUDGET` 7 s per ask chain; `DA_RESPONSE_WINDOW` 10 s, how long a chain stays joinable (new): § "The
+  unmount approver".
 - `RESUME_SETTLE` 2 s (new): the quiet period before a Cmdr resume starts, cancelled by any stop of that volume.
+- `UNMOUNT_PENDING_WAIT` 30 s (new): how long a user's enable or rescan waits out an unmount in progress.
 - `VANISH_STOP_WAIT` 15 s (new, replaces `INDEX_RELEASE_WAIT`): the stop after a vanish, off the DA queue; logs only.
 - `EJECTABILITY_CHECK_DEADLINE` 5 s (unchanged). `DISK_RESOLVE_DEADLINE` 5 s (new).
 - `INDEX_STOP_DEADLINE` 15 s (unchanged), covering all sibling stops, concurrently.
@@ -760,23 +875,54 @@ locale).
   your files are still on your Mac."
 - Transfer, move from the drive: "{volumeName} was disconnected after Cmdr moved {done} of {total} files to
   {destination}. The rest are still on the drive."
+- Move not confirmed on disk (M10's typed variant for an M0 flush failure): "Cmdr couldn't confirm the moved files were
+  saved on {volumeName}, so it kept your originals where they were."
 - Staging dir kept on a returning drive (M11), an info toast: "Cmdr found files from an unfinished move on {volumeName}
   and left them in place, in a hidden folder named {folderName}."
 
 ## Milestones
 
-Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → M11 → M12 → M13 → M14 → M15 → release checkpoint.**
+Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → M11 → M12 → M13 → M14 → M15 → release checkpoint.**
 
-- **M1, M2 first**: every later real-image test runs on the harness and the lane.
+- **M0 first, standalone**: it fixes a live data-loss bug and depends on nothing; it can land and ship on its own.
+- **M1, M2 next**: every later real-image test runs on the harness and the lane.
 - **M3, M4 before M5, M6**: the approver's "approve" is only honest when `Released` means no worker reads the drive, and
   the presence seam M3 adds is what keeps a dead drive's holds from blocking its next life.
-- **M5 before M6**: no resume may exist without the gate.
+- **M5 before M6**: no resume and no ask may exist without the gate.
 - **M7, M8 before M9**: the host's vanish handling relies on the crate refusing wrong writes and persisting the marker.
 - **M10, M11** are app-side and independent of M7–M9; they may run in a parallel worktree after M6.
 - **M12 → M13 → M14 → M15**, then the checkpoint (an FF-merge to David's local `main`; a tagged release only when he
   says).
 - **Cadence**: plain `pnpm check` per milestone; `pnpm check --include-slow` after M4, M6, M8, M10, M12, M14, and before
   the checkpoint.
+
+### M0: move durability
+
+- **Scope**: `write_operations/durability.rs` (`flush_created_destinations` split and `Result`), the cross-FS move's
+  flush inputs and Phase 4/5 gating (`transfer/move_op/cross_fs.rs`), the copy path's call (`transfer/copy/mod.rs`), and
+  the two comments.
+- **Intentions**: as § "Move durability". Every directory that gained an entry is fsynced whether or not its files' data
+  was already synced; `ENOTSUP`/`EINVAL` on a directory fsync is `Ok` with a `warn`; any other failure keeps the
+  sources.
+- **Landmines**:
+  - Remap `created_dirs` from staging to final paths the same way `final_dests` is remapped (`cross_fs.rs:443-456`), and
+    fsync the final parents, never the staging ones (they no longer hold the entries).
+  - One fsync per distinct directory; a large tree must not pay per file.
+  - The copy path must stay best-effort: it deletes nothing, so a flush failure there only logs.
+- **Test plan** (red first):
+  - The directory syncer is injectable (`fsync_dir` as a parameter, or a `cfg(test)` recorder).
+  - A chunked move (every file in `already_synced`) fsyncs the final parent of every nested file, the parent of every
+    created directory (including one that holds only a subdirectory), and `destination`, each once.
+  - A directory fsync answering `EIO` skips Phase 4 and Phase 5, keeps every source, and answers `IoError`.
+  - `ENOTSUP` and `EINVAL` proceed with a `warn`.
+  - The copy path calls the new fsyncs and ignores a failure.
+  - `pnpm check rust`, then `pnpm check`.
+  - **Must not change**: the `transfer/move_op` tests, the `durability` tests,
+    `transfer/volume/copy_crashsafe_tests.rs`.
+- **DONE**: no Mac-to-drive move deletes a source before its destination's directories are fsynced.
+- **Docs**: `write_operations/transfer/DETAILS.md` (the move's durability order and the `Result` rule),
+  `write_operations/DETAILS.md` if it describes the flush.
+- **Size**: 80–120 lines of code plus about 150 of tests.
 
 ### M1: disk-image harness and pins of today's behavior
 
@@ -909,59 +1055,76 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
   `transports/DETAILS.md` § "The drain is cooperative", `cover/DETAILS.md` (the linked cancel), `scanner/DETAILS.md`.
 - **Size**: 900–1,100 lines.
 
-### M5: `drive_release`, the gated stop and resume
+### M5: `drive_release`, the gated stop, start, and resume
 
-- **Scope**: `file_system/volume/drive_release.rs` with the gate, epochs, tickets, `RESUME_SETTLE`, the off-queue intent
-  read, owners, and `disable`; `stop_index_blocking` in `eject/mod.rs` moves onto `release` for its one volume;
-  `disable_drive_index` goes through the gate.
-- **Intentions**: as § "One release, one resume"; `master.rs:169-174` names the resume as the second caller.
+- **Scope**: `file_system/volume/drive_release.rs` with epochs, tickets, pending resumes, `unmount_pending`,
+  `RESUME_SETTLE`, the off-queue intent read, owners, `start`, and `disable`; `stop_index_blocking` in `eject/mod.rs`
+  moves onto `release` for its one volume; `enable_drive_index`, `rescan_drive_index`, the `set_indexing_enabled` loop,
+  the two MCP handles, `disable_drive_index`, and `search/execute/live_run.rs`'s `Index::cover` call go through the
+  module.
+- **Intentions**: as § "One release, one resume"; `master.rs:169-174` names the resume as the second caller; confirm an
+  `EnableIndexingOutcome` variant fits a start skipped for an unmounting volume, or add one with its copy.
 - **Landmines**:
   - `release` bumps the epoch BEFORE waiting on a ticket; the other order lets an unstarted resume slip through.
-  - `start_volume` must have returned (reservation made) before the ticket drops; don't drop it at spawn.
-  - Never block a DA or GCD thread on the gate; `release` is called from the approver's queue, so its waits stay inside
-    the caller's deadline.
+  - A ticket drops only when the start call has returned, never at spawn.
+  - A ticket in flight at `release`'s deadline is `StillReleasing`, never `NothingToStop`.
+  - A record is consumed when its resume takes the ticket or fails a check.
+  - Never block a DA or GCD thread on anything but `release`'s bounded wait.
   - `start_volume` runs on `tauri::async_runtime`, ❌ never `tokio::spawn` from a non-runtime thread.
+  - The root volume's launch and FDA starts stay outside the module.
 - **Test plan** (pure, deterministic, injected stop and start seams):
-  - a release arriving before the resumed start reserves: the epoch aborts the resume, or the release waits for the
-    ticket and then stops the new instance;
-  - a release during `RESUME_SETTLE` cancels the resume;
+  - an ask arriving during a start's probe window: the ticket is in flight, `release` waits, then stops the new
+    instance; at a passed deadline it answers `StillReleasing`, and the continuation stops the start once the ticket
+    drops;
+  - a release before a resume takes its ticket aborts it through the epoch;
+  - two resumes for one id (two idles inside one settle, and an approver resume with a flight resume): one start, and
+    the second joins;
+  - an idle after a consumed record starts nothing (no `force_scan` on a running first scan);
+  - a user enable during `unmount_pending` waits and starts after the flag clears while listed; past
+    `UNMOUNT_PENDING_WAIT`, or unlisted, no start runs; the master loop and a search cover skip at once;
   - a disable during an in-flight resume waits for it and wins;
-  - the deadline is one instant across ids; a stuck stop answers `StillReleasing` at the deadline and reaches its
-    continuation later;
-  - the intent read happens once per resume batch and never for a candidate that failed an earlier check;
+  - the deadline is one instant across ids; a stuck stop reaches its continuation, which records its late release;
+  - the intent read happens once per resume batch;
   - `pnpm check`.
-  - **Must not change**: `eject::tests::*` (the stop's answers), `deadlines::tests::*`.
-- **DONE**: every Cmdr-made stop and start of a removable index goes through the module.
-- **Docs**: `volume/DETAILS.md` § "Eject" (one stop, one resume), `lifecycle/DETAILS.md` (the resume caller).
-- **Size**: 450–550 lines.
+  - **Must not change**: `eject::tests::*` (the stop's answers), `deadlines::tests::*`, the `commands/indexing.rs`
+    tests.
+- **DONE**: every app-side stop Cmdr decides on and every app-side start of a non-root index goes through the module.
+- **Docs**: `volume/DETAILS.md` § "Eject" (one stop, one start), `lifecycle/DETAILS.md` (the resume caller), the
+  `commands` and `search/execute` docs where they describe starting an index.
+- **Size**: 650–800 lines.
 
 ### M6: the unmount approver
 
 - **Scope**: `volumes/unmount_approver/{mod.rs, ask.rs, records.rs, private_symbols.rs}`, `volumes/disk_units.rs`;
   `objc2-disk-arbitration` (features `DADisk`, `DADissenter`, `DASession`, `dispatch2`) and `dispatch2` as direct
   dependencies per `docs/guides/add-rust-dependency.md`; the install in `lib.rs` with the `WillUnmount` fallback.
-- **Intentions**: the ask, the shared deadline, dissent, records keyed by BSD name + `VolumeUUID`, the per-whole-disk
-  ask generation, and the resume hand-off exactly as § "The unmount approver"; decision 8 fixed by construction.
+- **Intentions**: the ask, the time-based shared deadline, dissent, `unmount_pending`, records keyed by BSD name +
+  `VolumeUUID`, carry-forward of every recorded id in the group, continuation recording, and the resume hand-off exactly
+  as § "The unmount approver"; decision 9 fixed by construction.
 - **Landmines**:
   - A test's approval session is asked about EVERY unmount on the Mac for its lifetime: its seams act only on the test
     image's BSD names and approve everything else at once, and it's unscheduled on drop. M1's session lock is held.
   - A retained callback disk's description is frozen: presence comes from the mount table.
   - An ask never opens SQLite and never calls `drive_release::resume` inline.
+  - The queue's QoS is user-initiated; a lower QoS stalls asks under Cmdr's own indexing.
   - `volume/CLAUDE.md` is at 599 words; `volumes/CLAUDE.md` at 490.
   - Hardened runtime: `dlsym` of a system symbol should work in a signed build; the checkpoint smoke-tests one.
 - **Test plan**:
   - Pure `ask.rs`: nothing to stop → approve; released → approve; still releasing → dissent; busy → dissent after the
-    stop; the first ask of a group stops every sibling, the second approves at once; queued behind a 5 s ask → 2 s left;
-    a passed deadline → answers at once (approve when nothing to stop, else detached stop and dissent).
+    stop; a ticket in flight → counted as work; the first ask of a group stops every sibling, the second approves at
+    once; queued behind a 5 s ask → 2 s left; a stall of more than 50 ms between asks inside the 10 s window still joins
+    the chain; a request after the window starts a new chain; a passed deadline → answers at once (approve only when
+    nothing to stop, no ticket, not busy; else detached stop and dissent).
   - Pure `records.rs`: a record survives a refused request and resumes after idle; a newer ask on the whole disk cancels
-    it; an ask for a recorded volume carries it forward; `Appeared` and `Disappeared` drop it.
+    it; ask 2 of a refused `unmountDisk` carries A's record forward with the new epoch and generation; a continuation's
+    late release records; `Appeared` and `Disappeared` drop records; idle clears `unmount_pending`.
   - Lane (the stop is injected beneath `release`, never the budget):
     - `diskutil unmount` of an idle volume → asked while still listed, unmounted, no resumed start;
     - a held file → refused, one resumed start after idle and settle;
     - `diskutil unmount A` then `diskutil unmount B` back to back on the two-partition image, A's ask having stopped
       both → no start for B between the requests, B unmounted with no live index;
-    - `diskutil unmountDisk` on the two-partition image → the second ask found nothing to stop, no resumed start in
-      between, both unmounted;
+    - `diskutil unmountDisk` on the two-partition image with A held → B unmounted, A refused, A's index resumed once;
+    - a user enable issued during an ask's stop → no index starts until the unmount settled;
     - an injected stop that overruns → dissent at the deadline, `diskutil unmount` refused;
     - with that stop, `hdiutil detach -force` → detached anyway (force ignores dissent);
     - an install failure (injected) → the `WillUnmount` observer is installed.
@@ -970,30 +1133,39 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
     `eject::tests::*`, M5's tests.
 - **DONE**: the approver runs in the app with the fallback; lane and checks green.
 - **Docs**: `volumes/CLAUDE.md`, `volumes/DETAILS.md` § "Key decisions" (DiskArbitration owns the pre-unmount hook; the
-  fallback), `transports/DETAILS.md` § "Unmount/eject lifecycle", `volume/DETAILS.md` § "Eject", `docs/architecture.md`
-  (the `volumes/` map line).
-- **Size**: 800–950 lines.
+  fallback; the residual under force), `transports/DETAILS.md` § "Unmount/eject lifecycle", `volume/DETAILS.md` §
+  "Eject", `docs/architecture.md` (the `volumes/` map line).
+- **Size**: 850–1,000 lines.
 
 ### M7: index delete gates
 
-- **Scope**: typed `Listing { children, complete }` for `read_fs_children` and the verifier; the per-directory gate in
+- **Scope**: typed `Listing { children, complete }` for `read_fs_children` and the verifier (a child's `NotFound` is
+  absent, other errors make the listing incomplete); the per-directory gate with presence read after the listing in
   `diff_dir_against_db`'s local callers and the verifier's diff; errno-typed per-event deletes with a per-batch presence
-  read in the live loop and both replays; the boot-disk verification fix; `ScanRoot::Rebuild`'s delete after the root
-  read; the delete generation.
+  read in the live loop and both replays; the boot-disk verification fix; `ScanRoot::Rebuild`'s delete sent inline by
+  the visitor; the delete generation and its reset rule.
 - **Intentions**: every site in § "Index writes from a failed or missing observation" gets its named gate; re-audit the
   code for any site the inventory missed before changing anything.
 - **Landmines**:
   - The trait-scanned `diff_dir_against_db` caller and the SMB/MTP watch deletes don't change; gate at the local call
     sites, keyed on `uses_local_scanner()`.
   - A live removal on a healthy drive must keep deleting (`ENOENT` while listed is a real delete).
-  - One presence read per directory diff or event batch, never per entry.
+  - One presence read per directory diff or event batch, never per entry, and always after the observation.
   - An incomplete listing must still upsert what it did see.
+  - ❗ Unverified: whether a path lookup can return `ENOENT` mid-unmount while the mount is still listed (no xnu source
+    at hand). Deletes made in that window pass every gate, and only the rebuild marker (M8) catches them, which is why
+    the delete generation must never reset inside an unmount window.
 - **Test plan** (red first; `FakeVolumeProvider::mark_unmounted` for determinism):
   - each local site deletes nothing when unmounted, and nothing on a non-`NotFound` error while mounted;
+  - a mount point that lists as empty and complete, with presence turning `Some(false)` after the listing, deletes
+    nothing;
+  - a child removed between `readdir` and `stat` is deleted and the rest of the diff still applies;
   - an incomplete listing deletes nothing and still upserts;
-  - `Rebuild` with a failing root read keeps the subtree;
+  - `Rebuild`: a failing root read keeps the subtree; on a present drive, no inserted row is deleted (the delete
+    precedes the root's first batch);
   - boot-disk verification with `EACCES` deletes nothing;
-  - the delete generation counts batches and resets on a good root listing;
+  - the delete generation counts batches, resets only after a later successful root listing plus a later `Some(true)`,
+    and a `Some(true)` read alone doesn't reset it;
   - lane: M1's vanish pin loses no rows; a new pin force-detaches while a live watcher processes removals;
   - `pnpm check`, `pnpm check disk-images`.
   - **Must not change**: the reconcile and verifier suites, `watch` suites, `integration_tests.rs`, `network_scanner`
@@ -1001,17 +1173,19 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
 - **DONE**: no local-scanner site deletes from a failed or unlisted observation.
 - **Docs**: `reconcile/DETAILS.md` (the gates), `watch/DETAILS.md` (per-batch presence), `scanner/DETAILS.md`
   (`Rebuild`).
-- **Size**: 650–800 lines.
+- **Size**: 700–850 lines.
 
 ### M8: completion gates, `Abandoned` marks, and the rebuild marker
 
-- **Scope**: presence-gated `Abandoned` marks; the `LocalExternal` start clearing `UnreadableCause::Abandoned`; the
-  completion gate on the scanner thread, `finish_reconcile`, `scan_completion`, and the phase machine's `take_stock`;
-  `index_needs_rebuild` (writer or after-drain connection), `IndexEvent::IndexNeedsFreshScan`; the `needs_rebuild`
-  launch-route input; the stale `abandoned_retry.rs` doc.
+- **Scope**: presence-gated `Abandoned` marks; the `LocalExternal` start clearing `UnreadableCause::Abandoned` when the
+  retry window is armed; the completion gate on the scanner thread, `finish_reconcile`, `scan_completion`, and the phase
+  machine's `take_stock`; `index_needs_rebuild` (writer or after-drain connection), `IndexEvent::IndexNeedsFreshScan`;
+  the `needs_rebuild` launch-route input; the stale `abandoned_retry.rs` doc.
 - **Intentions**: as § "A vanished drive, index side"; M1's vanish pin flips fully.
 - **Landmines**:
   - ❌ `clear_index` for invalidation.
+  - ❌ An unconditional `clear_unreadable_cause` or a `COUNT` over `unreadable_cause` at start: both scan the whole
+    table.
   - The after-drain connection must never open while a writer thread lives (the `set_drive_index_intent` contract); use
     the writer when it's alive.
   - `IndexEvent` variants carry no new type (a carried type spends a root promise).
@@ -1019,7 +1193,8 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
 - **Test plan** (red first):
   - a walk whose root goes unlisted persists no `Abandoned` marks, no aggregates, no stamp, and emits `ScanAborted`;
   - a phase pass whose root goes unlisted stamps nothing, and `take_stock` stamps nothing;
-  - `Abandoned` marks from an earlier session are frontier again after a `LocalExternal` start;
+  - `Abandoned` marks from an earlier session are frontier again after a `LocalExternal` start with the retry window
+    armed, and a start with the window unarmed runs no clear;
   - a delete batch then an unlisted root writes the marker (writer alive, and after drain), and emits the event once;
   - the route table: `needs_rebuild` wins over a completed index; `RebuildFirst` clears it with `user_enabled` intact;
   - lane: the vanish pin leaves no stamp, and a re-attach routes to a rebuild when deletes were in flight;
@@ -1027,8 +1202,8 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
   - **Must not change**: `scan_completion` tests (`scan_failure_is_vanished_volume`), `phases::tests`, `launch_route`
     tests (existing rows unchanged), `writer::abandoned_retry` tests, `cover::cold_drive_tests::*`.
 - **DONE**: no completion claim for an unlisted volume; the rebuild survives quit and restart.
-- **Docs**: `lifecycle/DETAILS.md` (gates, marker, route), `phases/DETAILS.md` (`take_stock`), `writer/DETAILS.md` (the
-  marker), `events/DETAILS.md` (the variant).
+- **Docs**: `lifecycle/DETAILS.md` (gates, marker, route, the self-healing mark window), `phases/DETAILS.md`
+  (`take_stock`), `writer/DETAILS.md` (the marker, the clear), `events/DETAILS.md` (the variant).
 - **Size**: 600–750 lines.
 
 ### M9: vanish causes and the index notice
@@ -1050,62 +1225,61 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
 ### M10: transfers on a vanished drive
 
 - **Scope**: `TransferSide` threaded into the local engine; presence-aware classification and the
-  `DeviceDisconnected { path, side }` wire change at every listed site; `progress_at_stop` and move source counts;
-  `flush_created_destinations` returning `Result` with directory fsyncs for moves; Phase 4 gating; the source-sweep
-  presence checks; a `cfg(test)` chunk hook in `chunked_copy.rs` that parks after N bytes; the transfer copy,
-  translated.
-- **Intentions**: as § "A vanished drive, transfers"; name each operation's "what's left where" from typed facts only;
-  check whether `sync_data` is `F_FULLFSYNC` on Apple targets and record it.
+  `DeviceDisconnected { path, side }` wire change at every listed site; `progress_at_stop` and move source counts; Phase
+  4's destination-listed check and a typed variant for M0's flush failure; the source-sweep presence checks; a
+  `cfg(test)` chunk hook in `chunked_copy.rs` that parks after N bytes; the transfer copy, translated.
+- **Intentions**: as § "A vanished drive, transfers"; name each operation's "what's left where" from typed facts only.
 - **Landmines**:
   - A `NotFound` from a gone mount isn't a gone file: every "already gone" decision in `source_sweep.rs` asks the mount
     table.
   - `WriteErrorEvent` is wire: `pnpm bindings:regen`; the transfer copy's key family decides whether counts are ICU
     plurals.
-  - The flush's directory fsyncs add latency on slow media; keep one fsync per distinct directory.
 - **Test plan**:
-  - unit: classification with a listed and an unlisted side for `ENOENT`, `EIO`, `ENXIO`, `EBADF`; Phase 4 skipped on a
-    failed flush and on an unlisted destination; the sweep stops on an unlisted source;
+  - unit: classification with a listed and an unlisted side for `ENOENT`, `EIO`, `ENXIO`, `EBADF`; Phase 4 skipped on an
+    unlisted destination; the flush-failure variant; the sweep stops on an unlisted source;
   - frontend: `transfer-error-messages.test.ts` cases per direction and op; the gallery fixture;
   - lane: copy onto an HFS+ image parked by the chunk hook, `detach -force`, assert `DeviceDisconnected` with progress
     and the Mac source untouched, and record the errnos actually seen in the commit body; a Mac → image move
     force-detached between Phase 3 and Phase 4 keeps every Mac source;
   - `pnpm check`, `pnpm check disk-images`, then `pnpm check --include-slow`.
-  - **Must not change**: `transfer/volume/copy_crashsafe_tests.rs`, `merge_case_fold_tests.rs` (updated for the field
-    only), `transfer-error-messages.parity.test.ts`, `overwrite_tests.rs`.
+  - **Must not change**: M0's tests, `transfer/volume/copy_crashsafe_tests.rs`, `merge_case_fold_tests.rs` (updated for
+    the field only), `transfer-error-messages.parity.test.ts`, `overwrite_tests.rs`.
 - **DONE**: a pulled transfer reports how far it got, and a move never deletes sources it can't prove landed.
-- **Docs**: `write_operations/transfer/DETAILS.md` (sides, flush, Phase 4), `write_operations/DETAILS.md`
-  (classification), `apps/desktop/src/lib/file-operations/transfer/DETAILS.md`, `docs/guides/error-handling.md` if it
-  lists the variant.
-- **Size**: 850–1,000 lines.
+- **Docs**: `write_operations/transfer/DETAILS.md` (sides, Phase 4), `write_operations/DETAILS.md` (classification),
+  `apps/desktop/src/lib/file-operations/transfer/DETAILS.md`, `docs/guides/error-handling.md` if it lists the variant.
+- **Size**: 750–900 lines.
 
 ### M11: temps, asides, and staging dirs
 
 - **Scope**: the `A`/`a` record shapes; volume-homed temps on non-root mounts; the `discard_temp` fix with in-session
-  pending; aside registration with kinds and the restore-or-recover sweep; staging-dir recognition, registration, and
-  the empty-only sweep with its notice.
+  pending; aside registration with kinds for every home; the one set of sweep rules at launch and on arrival;
+  staging-dir recognition, registration, and the empty-only sweep with its notice; `is_one_of_ours` no longer accepting
+  `.cmdr-temp-` for a plain removal.
 - **Intentions**: as § "A vanished drive, temps and asides", in that order.
 - **Landmines**:
-  - ❌ Never remove an aside whose destination isn't a regular file of exactly the recorded size; ❌ never a non-empty
-    staging dir.
+  - ❌ Never remove an aside whose destination isn't a regular file of exactly the recorded size, at launch or on
+    arrival; ❌ never a non-empty staging dir.
   - Every restore and recovery rename goes through `rename_no_replace`; a collision tries the next recovered name.
-  - `is_one_of_ours` must accept staging dirs and asides with strict parsing, or `sweep_on_volume` retires them silently
-    (`in_flight_temps.rs:490-493`).
+  - `is_one_of_ours` must accept staging dirs and asides for their own rules with strict parsing, or `sweep_on_volume`
+    retires them silently (`in_flight_temps.rs:490-493`).
   - The old `+`/`-` lines still replay.
 - **Test plan**:
   - unit: an old-format reader skips `A` lines (a copy of today's `read_recorded` in the test); a local temp on a
     non-root mount defers at launch; `discard_temp` keeps the record when the root is gone; each aside kind's sweep arm
     (missing destination restores; exact-size file removes; short file, displaced file, and dir overwrite recover); a
-    non-empty staging dir stays and warns; a strict-parse rejection of a look-alike name;
+    simulated crash between a Mac-internal aside rename and its landing, then the launch sweep → the original is
+    restored, never removed; a legacy `+` record with a `.cmdr-temp-` name is not removed; a non-empty staging dir stays
+    and warns; a strict-parse rejection of a look-alike name;
   - lane: a copy onto an HFS+ image parked mid-file, `detach -force`, re-attach the same image in the same session → the
     partial is swept; an overwrite parked mid-file, detached, re-attached → the original is back or recovered, never
     gone;
   - `pnpm check`, `pnpm check disk-images`.
-  - **Must not change**: `in_flight_temps_tests.rs`, `overwrite_tests.rs`, `copy_crashsafe_tests.rs`, the `staging.rs`
-    tests.
+  - **Must not change**: `in_flight_temps_tests.rs` (except the `.cmdr-temp-` removal case, which flips on purpose),
+    `overwrite_tests.rs`, `copy_crashsafe_tests.rs`, the `staging.rs` tests.
 - **DONE**: nothing Cmdr left on a drive is forgotten, and no sweep can delete a user's original.
-- **Docs**: `write_operations/DETAILS.md` (the ledger, record shapes, aside kinds), `file_system/DETAILS.md` § "Hiding
-  transient scratch", `crates/cmdr-fs/DETAILS.md` (staging names).
-- **Size**: 750–900 lines.
+- **Docs**: `write_operations/DETAILS.md` (the ledger, record shapes, aside kinds, the launch sweep),
+  `file_system/DETAILS.md` § "Hiding transient scratch", `crates/cmdr-fs/DETAILS.md` (staging names).
+- **Size**: 800–950 lines.
 
 ### M12: disk resolution, per-disk flights, and sibling safety
 
@@ -1114,17 +1288,18 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
   `objc2-io-kit` as a direct dependency.
 - **Intentions**: the order in § "Cmdr's own eject", each round-3 should-fix as its own tested behavior (resume after a
   settled timeout and after a partial `NotResponding`; resume through the gate; the NULL-resolution arms; fail closed; a
-  sibling joins before `is_already_unmounted`).
+  sibling joins before `is_already_unmounted`); epochs read after the teardown settles.
 - **Landmines**:
   - Resolution runs before the join, so two callers may each resolve (read-only, accepted).
   - A retry aimed at the original path after a partial unmount reads as done: aim at a still-listed captured path.
+  - An epoch read at the pre-stop fails every resume after a refusal (the flight's own asks bump it).
   - `volumes/disk_image.rs` stays on raw FFI (the DA teardown swap is deferred).
   - Register test volumes in the global `VolumeManager` under unique ids and remove them (`volume/DETAILS.md` § "Test
     isolation for the global `VolumeManager`").
 - **Test plan**:
   - pure: sibling selection over a fake target and registry; the busy gate; adoption into `IN_FLIGHT` in both orders (B
     after A's adoption joins in `join_or_start`; B before it awaits the disk flight); the resume matrix; the NULL arms;
-    the fail-closed `still_mounted`;
+    the fail-closed `still_mounted`; a refusal after the flight's own asks bumped the epochs still resumes;
   - lane: M1's two sibling pins flipped to `UnmountRefused` with a resume; a two-volume container keys the physical
     whole and stops both before the teardown;
   - `pnpm check`, `pnpm check disk-images`, then `pnpm check --include-slow`.
@@ -1200,10 +1375,11 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
   `pnpm check docs-dead-links docs-reachable docs-link-text docs-section-refs claude-md-length resident-doc-budget oxfmt`;
   `pnpm check --include-slow`.
 - **Manual QA list for David** (none of it automated): an APFS USB stick and an exFAT one ejected from Finder while Cmdr
-  indexes them; two indexed sticks ejected together from Finder; an SD card; a two-partition drive; a DMG opened from
-  Finder; an app launched from its DMG; Preview holding a file; a terminal `cd`'d into the drive; a copy and a move to a
-  stick with the cable pulled mid-file, then re-plugged; an overwrite on a stick pulled mid-file; a signed release
-  build.
+  indexes them; two indexed sticks ejected together from Finder; turning indexing on for a stick while Finder ejects it;
+  an SD card; a two-partition drive; a DMG opened from Finder; an app launched from its DMG; Preview holding a file; a
+  terminal `cd`'d into the drive; a copy and a move to a stick with the cable pulled mid-file, then re-plugged; a move
+  to a stick with the cable pulled right after the progress bar finishes; an overwrite on a stick pulled mid-file; a
+  signed release build.
 - **Then**: FF-merge to David's local `main`; move this plan to "Shipped, kept for review" in `docs/specs/index.md`.
 
 ## Rollback
@@ -1212,6 +1388,7 @@ Order: **M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M10 → 
 - Persistent shapes: the `index_needs_rebuild` meta key (an older build ignores it and routes as today), the `A`/`a`
   ledger records (an older build ignores them and forgets them at launch, deleting nothing), and wire types
   (`WriteErrorEvent`, `UnmountRefused`; regenerate bindings after a revert).
+- M0 reverts on its own (back to today's best-effort flush).
 - Reverting M6 brings back the unconditional `WillUnmount` handler; M5's gate stays harmless without it.
 - M7, M8, M10, and M11 revert independently. M12 reverts alone as long as M13's scan falls back to this volume's root
   when `disk` is `None`. M13, M14, and M15 revert together.
@@ -1222,21 +1399,25 @@ The conformance register for the checkpoint.
 
 1. No classification by any string.
 2. Before a DA-mediated unmount of a volume Cmdr indexes, an ask stops every volume on that whole unit within the
-   chain's shared deadline, or dissents. Bounds: DA ignores the dissent under force, and several indexed drives ejected
-   together share one chain.
+   time-based chain's shared deadline, or dissents. Bounds: DA ignores the dissent under force, and several indexed
+   drives ejected together share one chain; that residual is documented, and per-disk sessions are deferred.
 3. `Released` means no Cmdr index worker of a live generation holds the volume; every drive-reading spawn takes
    `VolumeWork`; a vanished generation never blocks a later one.
-4. Every Cmdr-made start of a removable index passes the gate: epoch unchanged, no newer ask on its whole disk, still
-   listed, intent says run, not ejected by another owner, after `RESUME_SETTLE`. A disable is serialized with it.
+4. Every app-side start of a non-root index holds a `drive_release` ticket for its whole duration, one per id; a ticket
+   in flight is work to every stop and ask; a start never runs while the id's unmount is pending or its disk is being
+   ejected; a Cmdr resume also needs an unchanged epoch, no newer ask on its whole disk, a listed volume, intent that
+   says run, and `RESUME_SETTLE`; a record is consumed by its resume. A disable is serialized with all of it.
 5. An `Unasked`, `Pulled`, or `Unknown` volume is never resumed.
-6. On a local-scanner volume, no row is deleted from an incomplete listing, a non-`NotFound` error, or an unlisted
-   volume; no `Abandoned` mark, aggregate, or completion claim is written for an unlisted volume.
+6. On a local-scanner volume, no row is deleted from an incomplete listing, a non-`NotFound` error, or an observation
+   whose following presence read isn't `Some(true)`; no `Abandoned` mark, aggregate, or completion claim is written for
+   an unlisted volume.
 7. Deletes that may have come from a leaving drive persist `index_needs_rebuild`, which routes the next start to a
    rebuild with intent markers kept, announced once.
-8. Mac sources are deleted only after a flush that returned `Ok` and a destination still listed.
-9. A temp, aside, or staging dir on a drive stays recorded until its handling is observed on a listed mount; an aside is
-   removed only against an exact-size regular file, otherwise restored or recovered; a non-empty staging dir is never
-   removed.
+8. A move deletes sources only after a flush that returned `Ok` (every directory that gained an entry fsynced) and a
+   destination still listed.
+9. A temp, aside, or staging dir stays recorded until its handling is observed on a listed mount; at launch and on
+   arrival, an aside is removed only against an exact-size regular file, otherwise restored or recovered; a non-empty
+   staging dir is never removed.
 10. Every registered volume on the physical disk passes the busy gate and has its index stopped inside one deadline
     before Cmdr's own teardown; a sibling's eject joins the disk flight in `join_or_start`.
 11. Success needs every captured sibling path gone and a fresh `mounted_volumes_on` empty.
@@ -1257,12 +1438,17 @@ The conformance register for the checkpoint.
   `docs/specs/eject-diskarbitration-plan.md` at `15292aa2b`, § "The DA teardown (M5)" and § "Statuses". **Revisit when**
   the eject `warn` lines show refusals with no nameable holder often enough to matter, or a report shows `diskutil`
   answering a partial unmount this plan's fail-closed check can't classify.
+- **Per-disk DA sessions**, each with a match dictionary for its own disk, so one disk's slow stop never spends another
+  disk's DA window. It's the only thing that beats the residual in § "The unmount approver" (several indexed drives
+  force-ejected together). **Revisit when** a log shows an ask answered past its chain deadline under force, or a wedge
+  report involves a multi-drive eject.
 - **"Unmounted but not powered down"** stays a silent `Ok` with an `info` line. **Revisit when** a person reports a
   drive still powered after Cmdr's eject, or the DA teardown lands.
 - **Linux unmounts don't stop an index** (`volumes_linux/watcher.rs:398-478`). The rebuild marker covers correctness;
   **revisit when** Linux builds ship (`docs/specs/later/linux-builds-plan.md`).
-- **Unverified and left alone**: whether AppKit's own DA session filters by disk (§ "Spike results" 7), and a MOUNTED
-  volume vanishing under a real pulled cable (§ "Spike results" 5). The checkpoint's manual QA covers the second.
+- **Unverified and left alone**: whether AppKit's own DA session filters by disk (§ "Spike results" 7), a MOUNTED volume
+  vanishing under a real pulled cable (§ "Spike results" 5), and whether a lookup can return `ENOENT` mid-unmount while
+  the mount is still listed (M7's landmine). The checkpoint's manual QA covers the second.
 
 ## Spike results
 

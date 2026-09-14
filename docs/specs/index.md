@@ -57,13 +57,15 @@ below is met.
       nothing reads the drive. A pulled drive or raw `umount` stops workers without deleting rows or stamping an index
       complete, invalidates a suspect index with a notice, gives a transfer its progress facts, and sweeps leftover
       temps when the drive returns. Cmdr's own eject goes per physical disk with the round-3 should-fixes, then a holder
-      scan and classification and the approved copy. The adversarial review is folded in: resumes pass a per-volume gate
-      so they can't race the next unmount request, asks queued behind each other share one deadline, a Mac-to-drive move
-      deletes sources only after a real flush, and no sweep can remove a user's original. Order: M1 harness → M2 lane →
-      M3 hold leaf → M4 worker shares → M5 gated release and resume → M6 approver → M7 delete gates → M8 completion
-      gates and rebuild marker → M9 vanish causes → M10 transfers → M11 temps and asides → M12 disk flights → M13 holder
-      scan → M14 facts → M15 copy → checkpoint; about 8,200–10,000 lines. The DA teardown swap and "not powered down"
-      are deferred with revisit triggers.
+      scan and classification and the approved copy. Two adversarial review rounds are folded in: every app-side index
+      start holds a per-volume ticket and waits out an unmount in progress, so no start can land on a drive that's
+      leaving; asks queued behind each other share one time-based deadline; and no sweep, at launch or on arrival, can
+      remove a user's original. **M0 comes first and stands alone**: today a Mac-to-USB move fsyncs no directory before
+      deleting its sources, so a stick pulled right after the progress bar can lose the moved files. Order: M0 move
+      durability → M1 harness → M2 lane → M3 hold leaf → M4 worker shares → M5 gated stop, start, and resume → M6
+      approver → M7 delete gates → M8 completion gates and rebuild marker → M9 vanish causes → M10 transfers → M11 temps
+      and asides → M12 disk flights → M13 holder scan → M14 facts → M15 copy → checkpoint; about 8,700–10,600 lines. The
+      DA teardown swap, per-disk DA sessions, and "not powered down" are deferred with revisit triggers.
 - [ ] 2026-09-11 `text-editor-choice.md` - **F4 always opens files in TextEdit, and a user wants Sublime Text.** M1 (the
       Rust surface) landed: Cmdr lists what LaunchServices reports as plain-text EDITORS (the role-filtered C query; the
       spike confirmed Sublime Text and VS Code both show up there), launches a file in a stored bundle id or `.app` path
