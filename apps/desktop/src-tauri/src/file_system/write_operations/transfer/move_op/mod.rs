@@ -641,6 +641,12 @@ mod move_symlink_tests;
 #[path = "move_race_tests.rs"]
 mod move_race_tests;
 
+/// What a cross-FS move makes durable before it deletes a source, and what it
+/// keeps when it can't.
+#[cfg(test)]
+#[path = "move_durability_tests.rs"]
+mod move_durability_tests;
+
 #[cfg(test)]
 #[path = "move_journal_tests.rs"]
 mod journal_tests;

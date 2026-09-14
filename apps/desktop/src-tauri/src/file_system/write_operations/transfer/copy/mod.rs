@@ -624,12 +624,13 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                 return Err(e);
             }
 
-            // Flush every created destination to disk before reporting
-            // complete, so "complete" means durable. Reuses the transaction's
-            // own `created_files`; skips paths the strategy already flushed.
+            // Flush every created file and every directory that gained an entry
+            // before reporting complete, so "complete" means durable. Reuses the
+            // transaction's own ledgers; skips data the strategy already synced.
             // Emits a `Flushing`-phase event first so the FE shows "Writing the
             // last piece…" instead of a bar frozen at 100% on slow media.
-            flush_created_destinations(
+            // Best-effort here: a copy deletes nothing, so a failure only logs.
+            if let Err(failure) = flush_created_destinations(
                 events,
                 operation_id,
                 WriteOperationType::Copy,
@@ -639,8 +640,15 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                 bytes_done,
                 total_bytes,
                 &transaction.created_file_paths(),
+                &transaction.created_dirs,
                 &already_synced,
-            );
+            ) {
+                log::warn!(
+                    target: "write_durability",
+                    "copy_files_with_progress: op={} completes without proof its output is durable ({failure})",
+                    operation_id
+                );
+            }
             commit_journaling_created_dirs(transaction, operation_id);
 
             log::info!(

@@ -13,7 +13,7 @@
 //! between them, and the conflict-landing and directory-merge helpers both
 //! engines share, live in `move_op` itself.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -117,18 +117,12 @@ pub(super) fn move_with_staging(
     let mut files_skipped = 0usize;
     let mut apply_to_all_resolution = ApplyToAll::default();
     let mut created_dirs: HashSet<PathBuf> = HashSet::new();
-    let mut dir_remap: std::collections::HashMap<PathBuf, PathBuf> = std::collections::HashMap::new();
-    // Durability bookkeeping. The Phase-2 copy records each per-file STAGING
-    // dest into `transaction.created_files` and (when the strategy already
-    // flushed it) into `already_synced`. Phase 3 renames the staging tree into
-    // place, so by flush time the staging paths are gone. After Phase 3 we
-    // remap both sets from the staging prefix to the final `destination` prefix
-    // and flush the FINAL per-file dests — this closes the gap where the
-    // Phase-3 renames-into-place (including the `throwaway_tx` path) aren't in
-    // the real transaction. A same-volume rename leaves data blocks in place,
-    // so on macOS the bytes are already durable (chunked) and the remapped
-    // `fdatasync` is a cheap no-op that still makes the new directory entry
-    // durable; on Linux (`copy_file_range` to staging) it's the real flush.
+    let mut dir_remap: HashMap<PathBuf, PathBuf> = HashMap::new();
+    // Durability bookkeeping. The Phase-2 copy records each file's STAGING dest
+    // in `transaction.created_files` (and in `already_synced` when the strategy
+    // already synced its data) and each directory it makes in
+    // `transaction.created_dirs`. Phase 3 moves the staged tree out, so before
+    // the flush every one of them is mapped to where it landed (`landed_at`).
     let mut already_synced: HashSet<PathBuf> = HashSet::new();
 
     // Emit initial copying phase event
@@ -286,6 +280,13 @@ pub(super) fn move_with_staging(
         return Err(e);
     }
 
+    // Where Phase 3 put a staged item under a name other than the one it staged
+    // with, or with its own rename inside a merge: staged path → landed path. And
+    // the staged items a Skip discarded, which never landed at all. The flush
+    // reads both to reach the directories entries actually landed in.
+    let mut landings: HashMap<PathBuf, PathBuf> = HashMap::new();
+    let mut discarded_staged: HashSet<PathBuf> = HashSet::new();
+
     // Phase 3: Atomic rename from staging to final destination
     let rename_result: Result<(), WriteOperationError> = (|| {
         for source in sources {
@@ -323,11 +324,17 @@ pub(super) fn move_with_staging(
                     &mut files_skipped,
                     &mut Some(&mut staged_skips),
                 )?;
-                for staged_skip in staged_skips {
+                for staged_skip in &staged_skips {
                     if let Ok(rel) = staged_skip.strip_prefix(&staged_path) {
                         skipped_source_paths.insert(source.join(rel));
                     }
                 }
+                discarded_staged.extend(staged_skips);
+                landings.extend(
+                    staging_move_tx
+                        .renamed_items()
+                        .map(|item| (item.original_source.clone(), item.landed.path.clone())),
+                );
                 // Same rule as the same-FS merge: the destination folder also
                 // holds files this operation never touched.
                 journal::note_not_rollbackable(
@@ -374,6 +381,7 @@ pub(super) fn move_with_staging(
                             },
                         );
                         move_resolved_into_place(&staged_path, &final_path, &resolved, None, &mut throwaway_tx)?;
+                        landings.insert(staged_path.clone(), resolved.path);
                     }
                     None => {
                         // Skip: discard the staged copy and remember the original
@@ -384,6 +392,7 @@ pub(super) fn move_with_staging(
                             let _ = fs::remove_file(&staged_path);
                         }
                         skipped_source_paths.insert(source.clone());
+                        discarded_staged.insert(staged_path.clone());
                         files_skipped += 1;
                         // The rows phase 2 wrote for this source name a
                         // destination that now holds the file the user chose to
@@ -419,19 +428,20 @@ pub(super) fn move_with_staging(
         return Err(e);
     }
 
-    // Durability MUST run BEFORE Phase 4's source delete. The source originals
-    // are the only other copy of the data; deleting them before the Phase-3
-    // rename-into-place is durable on disk widens the crash window — on power
-    // loss in that gap the file could be absent from its final path while the
-    // source is already gone. So we flush the final dests (and fsync their
-    // parent dir entries) here, upholding the move invariant "never delete the
-    // source if the destination isn't fully in place." Zero happy-path cost:
-    // the files were already data-synced in Phase 2; this only reorders the
-    // dir-entry fsync ahead of the delete.
+    // Durability MUST run BEFORE Phase 4's source delete, and Phases 4 and 5 run
+    // only once it answers `Ok`. The originals are the only other copy of the
+    // data: on power loss or a pulled drive before the new directory entries are
+    // on disk, the moved files can be missing from the destination, and FAT/exFAT
+    // keep no journal to replay them. So the flush syncs the data the copy didn't
+    // already sync AND fsyncs every final directory that gained an entry, Phase
+    // 3's renames included, whether or not its files' data was already synced.
+    // A failure keeps every source and everything that landed. Emits a
+    // `Flushing`-phase event first so the FE shows "Writing the last piece…".
     //
-    // Remap the Phase-2 staging dests to their final paths (Phase 3 renamed
-    // staging → destination). Emits a `Flushing`-phase event first so the FE
-    // shows "Writing the last piece…".
+    // Map each staged path to where Phase 3 put it: the nearest ancestor a
+    // conflict resolution or merge renamed decides (a `name (N)` included), one a
+    // Skip discarded drops the path (nothing of it landed), and otherwise the
+    // name carried over from `staging_dir` to `destination`.
     let remap = |p: &Path| -> PathBuf {
         match p.strip_prefix(&staging_dir) {
             Ok(rel) => destination.join(rel),
@@ -440,8 +450,27 @@ pub(super) fn move_with_staging(
             Err(_) => p.to_path_buf(),
         }
     };
-    let final_dests: Vec<PathBuf> = transaction.created_file_paths().iter().map(|p| remap(p)).collect();
-    let final_already_synced: HashSet<PathBuf> = already_synced.iter().map(|p| remap(p)).collect();
+    let landed_at = |p: &Path| -> Option<PathBuf> {
+        for ancestor in p.ancestors().take_while(|a| *a != staging_dir.as_path()) {
+            if discarded_staged.contains(ancestor) {
+                return None;
+            }
+            if let Some(landed) = landings.get(ancestor) {
+                return Some(match p.strip_prefix(ancestor) {
+                    Ok(rest) if !rest.as_os_str().is_empty() => landed.join(rest),
+                    _ => landed.clone(),
+                });
+            }
+        }
+        Some(remap(p))
+    };
+    let final_dests: Vec<PathBuf> = transaction
+        .created_file_paths()
+        .iter()
+        .filter_map(|p| landed_at(p))
+        .collect();
+    let final_already_synced: HashSet<PathBuf> = already_synced.iter().filter_map(|p| landed_at(p)).collect();
+    let final_created_dirs: Vec<PathBuf> = transaction.created_dirs.iter().filter_map(|p| landed_at(p)).collect();
     // Journal the destination directories this move created, under the paths they
     // LIVE at — the same staging→final rebase the leaf rows already got, since
     // phase 3 renamed the tree out of `.cmdr-staging-<op>/` moments ago. Without
@@ -454,7 +483,7 @@ pub(super) fn move_with_staging(
     // is still a partial to clean up: commit, or the `Drop` net runs a pointless
     // rollback over paths that moved.
     transaction.commit();
-    flush_created_destinations(
+    if let Err(failure) = flush_created_destinations(
         events,
         operation_id,
         WriteOperationType::Move,
@@ -464,8 +493,25 @@ pub(super) fn move_with_staging(
         bytes_done,
         scan_result.total_bytes,
         &final_dests,
+        &final_created_dirs,
         &final_already_synced,
-    );
+    ) {
+        log::warn!(
+            target: "write_durability",
+            "move_with_staging: op={} keeps every source, the destination isn't provably durable ({failure})",
+            operation_id
+        );
+        let e = WriteOperationError::IoError {
+            path: failure.path.display().to_string(),
+            message: format!("The destination isn't confirmed durable, so every source stays: {failure}"),
+        };
+        events.emit_error(WriteErrorEvent::new(
+            operation_id.to_string(),
+            WriteOperationType::Move,
+            e.clone(),
+        ));
+        return Err(e);
+    }
 
     // Phase 4: Delete source files (only after the destination is durable on
     // disk), removing exactly what this move landed. A Skip in either phase

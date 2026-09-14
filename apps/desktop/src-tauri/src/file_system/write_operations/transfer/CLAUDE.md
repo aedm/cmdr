@@ -25,8 +25,9 @@ File map: `DETAILS.md` § Files.
   leave it, report it on `write-cancelled`; an own-partial goes on sight; a move-back never overwrites an occupied
   source. Only the `Drop` net is unconditional, sweeping from `../ledger.rs`; ❌ don't route it through `reversal.rs`
   (module cycle). § "What a reversal does with that identity".
-- **A cross-FS move's source delete removes the LEDGER of what staged, ❌ never the tree** (`move_op/source_sweep.rs`,
-  dirs by `remove_dir`): what arrived mid-move keeps its original and rides out on `AppearedDuringMove`.
+- **A cross-FS move's source delete removes the LEDGER of what staged, ❌ never the tree** (`move_op/source_sweep.rs`),
+  only after the flush answers `Ok` (DETAILS § Durability): what arrived mid-move keeps its original, riding out on
+  `AppearedDuringMove`.
 - **A MERGED move is NOT rollbackable, and a cross-FS move journals FINAL paths, never staging ones**
   (`note_not_rollbackable`; `JournalDestUnder` rebases, created-dir rows included).
   `operation_log/DETAILS.md` § "Why a directory merge isn't reversible".

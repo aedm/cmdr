@@ -121,6 +121,42 @@ fn local_copy_emits_flushing_phase_before_complete() {
     assert_eq!(complete.len(), 1, "exactly one write-complete");
 }
 
+/// A local copy fsyncs every directory that gained an entry, the parents of the
+/// folders it created included, so a copied tree's entries are durable when it
+/// reports complete. It deletes nothing, so a flush failure only logs: the copy
+/// still completes.
+#[test]
+fn local_copy_fsyncs_its_created_directories_and_ignores_a_flush_failure() {
+    use crate::file_system::write_operations::durability::test_hook;
+
+    let dir = crate::test_support::TestDir::new("copy-durability");
+    let src = dir.join("src");
+    let dst = dir.join("dst");
+    fs::create_dir_all(src.join("tree").join("sub")).unwrap();
+    fs::write(src.join("tree").join("sub").join("leaf.txt"), b"leaf").unwrap();
+    fs::create_dir_all(&dst).unwrap();
+    let log = test_hook::record(|_| Some(Err(std::io::Error::from_raw_os_error(libc::EIO))));
+
+    let events = Arc::new(CollectorEventSink::new());
+    let result = copy_files_with_progress_inner(
+        &*events,
+        "op-local-copy-durability",
+        &make_state(200),
+        &[src.join("tree")],
+        &dst,
+        &WriteOperationConfig::default(),
+    );
+
+    assert!(result.is_ok(), "a copy's flush failure only logs, got {result:?}");
+    assert_eq!(events.complete.lock().unwrap().len(), 1);
+    let mut synced = log.dirs();
+    synced.sort();
+    let mut expected = vec![dst.clone(), dst.join("tree"), dst.join("tree").join("sub")];
+    expected.sort();
+    assert_eq!(synced, expected, "each directory that gained an entry, once");
+    assert!(dst.join("tree").join("sub").join("leaf.txt").is_file());
+}
+
 /// Copying an EMPTY directory must create it at the destination. The copy
 /// loop iterates `scan_result.files` only and creates directories lazily as
 /// file parents, so a source with zero files used to complete "successfully"
