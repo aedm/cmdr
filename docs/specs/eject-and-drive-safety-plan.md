@@ -42,12 +42,12 @@ vanishes, and can't say what holds a drive it couldn't eject.
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
-- **M0, move durability (done)**: `ab80d43fa`, `d4125d9f1`; plan edits `300a1ca1f`, `ebeabf08e`.
-- **M1, disk-image harness and pins (done)**: `cd5d046b5`, `cfa5de14d`, `7bef2f46a`, `7f794a140`, `92c228e5e`.
-- **M2, the disk-image lane (done)**: `341d2324e`, `8d23e4814`.
-- **M3, the hold leaf, generations, and the presence seam (done)**: `a93c62253`, `e8be1d34a`, `c36bb81b4`, `596d5b6e3`,
-  `a59afa424`, `6902a37a6`.
-- **M4, every worker carries a share (done)**: `fc94529b6`, `6993186b5`, `8d4395731`, `9564168e7`, `54272c798`.
+- **M0, move durability (done)**: `e8e9069d2`, `0dd3eb1cb`; plan edits `c32a98ad4`, `067b3a15c`.
+- **M1, disk-image harness and pins (done)**: `08c871372`, `901df359b`, `ed8c83c2b`, `cec2c5b47`, `d454b0afe`.
+- **M2, the disk-image lane (done)**: `20103dac4`, `c6900f4a7`.
+- **M3, the hold leaf, generations, and the presence seam (done)**: `94ce801a1`, `308e3583c`, `46888a7df`, `b02bb51dd`,
+  `71fc73dfc`, `1e4cd4085`.
+- **M4, every worker carries a share (done)**: `d6c32f603`, `678b249ef`, `44079fe6d`, `ef74beba9`, `07bedf6f4`.
 - **Next, M5**: `drive_release`, the gated stop, start, and resume.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
@@ -235,7 +235,7 @@ The following were verified by reading DiskArbitration-535.0.10 on 2026-09-14:
 
 ## Code map
 
-Verified against this branch at `9f9419c1d` on 2026-09-14, with `codegraph` and by reading the lines. Index paths are
+Verified against this branch at `81b4f6226` on 2026-09-14, with `codegraph` and by reading the lines. Index paths are
 under `crates/cmdr-index/src/indexing/`, write-operation paths under
 `apps/desktop/src-tauri/src/file_system/write_operations/`.
 
@@ -1517,7 +1517,7 @@ The conformance register for the checkpoint.
 
 - **The DA teardown swap** (Whole-unmount each synthesized container, then the physical whole, then `DADiskEject`, with
   typed statuses and DA's root-visible dissenter PID). The full design is in git:
-  `docs/specs/eject-diskarbitration-plan.md` at `15292aa2b`, § "The DA teardown (M5)" and § "Statuses". **Revisit when**
+  `docs/specs/eject-diskarbitration-plan.md` at `959670562`, § "The DA teardown (M5)" and § "Statuses". **Revisit when**
   the eject `warn` lines show refusals with no nameable holder often enough to matter, or a report shows `diskutil`
   answering a partial unmount this plan's fail-closed check can't classify.
 - **Per-disk DA sessions**, each with a match dictionary for its own disk, so one disk's slow stop never spends another
