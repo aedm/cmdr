@@ -9,6 +9,13 @@
 //!
 //! Gated behind the `testing` feature, so it exists in dev targets and in no
 //! shipped build.
+//!
+//! On macOS, [`disk_images`] is the third thing: synthetic APFS and HFS+ disk
+//! images for tests that need a real removable volume, created, attached, and torn
+//! down through one guarded runner.
+
+#[cfg(target_os = "macos")]
+pub mod disk_images;
 
 use std::future::Future;
 use std::panic::Location;

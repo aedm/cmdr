@@ -32,8 +32,9 @@ the next section.
 - Leaves: `archive_format.rs` (sole source of truth for archive detection), `firmlinks.rs` (`normalize_path`; the index
   and the app's watchers have to agree on it), `file_provider.rs` (the cloud-domain marker), `filesystem_kind.rs`,
   `path_locations.rs` (how many PLACES a set of directories amounts to), `git_meta` (what a git portal row's Size cell
-  states), `log_rollup`, `tcc_paths`, `ignore_poison`, `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`,
-  `testing`.
+  states), `log_rollup`, `tcc_paths`, `ignore_poison`, `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`.
+- `testing/`: behind the `testing` feature. `TestDir` and the two waits in `mod.rs`; on macOS, `disk_images/` (the
+  synthetic APFS/HFS+ image harness and its guarded runner, § "`testing::disk_images`").
 
 ## Why each thing is here rather than in the app
 
@@ -492,3 +493,51 @@ modules under `volume/` carry the arithmetic, each behind a trait the backend im
 SMB and MTP keep their own cache-aware batch scans (their watchers back the `authoritative_listing` shortcut) and borrow
 only the pure halves, `conflicts_against` and `fold_batch`, so every backend hands a conflict dialog the same shape and
 folds a batch the same way.
+
+## `testing::disk_images`: a real removable volume, through one guarded runner
+
+A test that needs a real removable volume (an eject `diskutil` can refuse, a drive that vanishes mid-scan) gets a
+synthetic APFS or HFS+ disk image from `testing::disk_images` (macOS, behind `testing`). It lives here because the app's
+eject pins and `cmdr-index`'s vanish pin both need it, and two copies of a runner whose whole value is its safety rules
+would drift apart.
+
+❌ Never a physical disk, and never a new FAT or exFAT image: an FSKit `msdos` unmount kernel-panicked a Mac
+(`crates/cmdr-index/src/indexing/tests/CLAUDE.md`). `CreateFs::LegacyFat32` / `LegacyExFat` exist only for the hand-run
+`external_drive_fixture`, through `DiskImage::attach_legacy_fat_fixture`.
+
+- **The session.** `DiskImageSession::acquire()` takes an exclusive `flock` on `$TMPDIR/cmdr-disk-image-tests.lock` and
+  hands back an `Arc`; every `DiskImage` holds a clone, so no image exists without the lock. The lock sits on its own
+  open file description, so it serializes threads of one process as well as processes: two worktrees running real-image
+  tests take turns, and one can't unmount under another. A second `acquire` on a thread that already holds one panics
+  rather than waiting on itself forever.
+- **The runner (`runner.rs`).** The closed `Call` enum IS the verb list: `hdiutil create`, `attach -plist -nobrowse`,
+  `info -plist`, `detach` and `detach -force`; `diskutil info -plist`, `apfs addVolume … -nomount`,
+  `partitionDisk … JHFS+ … R`, `mount -mountOptions nobrowse`, `unmount`, and `eject`. A verb gets added with its first
+  caller. Every call is SIGKILLed past 30 s and reaped. Output goes to anonymous temp files rather than pipes, so a large
+  plist can't stall the tool and a helper holding a pipe can't block a read past the kill.
+- **Ownership before every change (`facts.rs`).** A call that changes a disk runs only after `diskutil info -plist`
+  walks its target to the physical whole disk (a partition's `ParentWholeDisk`; for an APFS volume or container, through
+  `APFSPhysicalStores` to the store's parent) and `hdiutil info -plist` lists BOTH the node and that whole disk under
+  this image's `image-path`. A mount-point target must still be that volume's `MountPoint`. It's read fresh for every
+  call because DiskArbitration hands a freed BSD unit to the next disk at once, so a node stored a second ago can name
+  someone's Time Machine drive. `detach -force` also refuses an image stored on another attached image, and an image
+  another of the session's images is stored on (decided on the `statfs` host node of the session's OWN backing files,
+  ❌ never a stat of someone else's image).
+- **`image-path` is compared exactly, never canonicalized.** `hdiutil info` spells the backing file the way
+  `hdiutil attach` was given it (`/var/folders/…`, while its text-mode alias reads `/private/var/folders/…`), so the
+  harness compares against the path it attached with. Canonicalizing another image's path would stat a file that can
+  sit behind TCC or on a hung share.
+- **Specs** (verified on macOS 26.6.2, a hand probe plus the `real_images` tests, 2026-09-14). `Apfs` (64 MB) and `Hfs`
+  (256 MB) are one GPT volume. `ApfsTwoVolumes` is a 1.1 GB SPARSE image plus `addVolume -nomount` and a nobrowse mount:
+  `addVolume` answers -69493 on a small container. `HfsTwoPartitions` is `partitionDisk` into 60 MB plus the rest, which
+  mounts both browsable, so each is unmounted and remounted nobrowse. A volume `addVolume` or `partitionDisk` made is
+  found by its unique name among the nodes `hdiutil info` lists under the image (it lists them at once), ❌ never parsed
+  from the tool's text. Names are `CMDR<pid><n>`.
+- **Teardown.** `DiskImage`'s `Drop` resolves the whole disk fresh, detaches, falls back to a guarded `-force`, and then
+  its `TestDir` deletes the file. An image that's already gone (an eject detached it) is fine; one that won't detach
+  panics the test unless it's already panicking, so a leak never passes silently.
+- **`FileHolder`** holds a file open from a child `/bin/sleep`, so its volume refuses to unmount. The child descends from
+  the test process, so anything classifying holders by ancestry reads it as the test's own: identify it by `pid()`.
+- **Tests.** The pure decisions and the runner are default-suite unit tests. `real_images` attaches each spec for real,
+  `#[ignore]`d in the `disk-image` nextest group:
+  `cargo nextest run -p cmdr-fs --run-ignored only -E 'test(testing::disk_images::real_images::)'`.

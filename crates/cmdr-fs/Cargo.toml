@@ -29,8 +29,10 @@ playwright-e2e = []
 #    would start applying inside every consumer's parallel test run.
 # 3. Adds the recording and scripted fakes for the `volume::host` seams, so a
 #    backend crate's tests can assert on what their backend told its host.
-# 4. Pulls in `tempfile`, which only `TestDir` needs.
-testing = ["dep:tempfile"]
+# 4. Pulls in `tempfile`, which `TestDir` and the disk-image harness need.
+# 5. On macOS, adds the disk-image harness (`testing::disk_images`) and `plist`,
+#    which reads `hdiutil` and `diskutil` answers.
+testing = ["dep:tempfile", "dep:plist"]
 
 [dependencies]
 # The digest half of every volume ID (`volume::ids`). Cryptographic on purpose:
@@ -107,6 +109,15 @@ libc = "0.2"
 # explains it. macOS-only because `query_mimalloc_heap` is the sole caller and is
 # itself macOS-gated.
 libmimalloc-sys = { version = "0.1.49", features = ["extended"] }
+# `testing` only: the disk-image harness (`testing::disk_images`) reads
+# `hdiutil ... -plist` and `diskutil info -plist` answers as typed fields rather
+# than scraping their text. Same crate and major version the app already pins.
+plist = { version = "1.8.0", optional = true }
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+# This crate's OWN tests compile the harness with the `testing` feature off, so
+# they need `plist` the way they need the `tempfile` dev-dependency below.
+plist = "1.8.0"
 
 [dev-dependencies]
 serde_json = "1"

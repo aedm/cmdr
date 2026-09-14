@@ -8,33 +8,24 @@
 //! the machine.
 //!
 //! Safety rules this module enforces, in code:
-//! - **Synthetic images only.** [`DiskImageFixture::attach`] always goes through
-//!   `hdiutil create` + `hdiutil attach -nobrowse` on a fresh temp file.
-//! - **Every `hdiutil` call is hard-timeout-guarded** ([`run_hdiutil_guarded`]):
-//!   the child is SIGKILLed past the deadline, so a wedged FSKit service is
-//!   killed, never awaited.
-//! - **Attach once, detach once.** No mount/unmount cycling. Teardown lives in
-//!   [`DiskImageFixture`]'s `Drop`, so it runs even on panic or early return:
-//!   `hdiutil detach`, then a `hdiutil detach -force` fallback, each guarded.
+//! - **Synthetic images only**, created and attached `-nobrowse` through the one
+//!   guarded runner in `cmdr_fs::testing::disk_images`: every `hdiutil` call is
+//!   SIGKILLed past 30 s, the machine-wide disk-image lock keeps every other
+//!   real-image test out, and the detach is proven to be this image's own before
+//!   it runs.
+//! - **Attach once, detach once.** No mount/unmount cycling. Teardown is the
+//!   harness image's `Drop` (`hdiutil detach`, then a guarded `-force` fallback),
+//!   so it runs even on panic or early return.
 //!
 //! The human-run reference probes this ports live beside it in
 //! `external-drive-probes/`: `fat32-probe.sh` and `fsevents-probe.swift`.
 //!
 //! [`DETAILS.md`]: ./DETAILS.md
 
-use std::io::{self, Read};
+use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
-use std::time::{Duration, Instant};
 
-/// Hard cap on any single `hdiutil` invocation. Past this the child is
-/// SIGKILLed. Generous (a healthy create/attach/detach is ~1-2 s); the point is
-/// to never sit forever on a wedged FSKit service, not to be tight.
-const HDIUTIL_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// Image size. FAT32's floor is ~32 MB; 64 MB clears it with headroom while
-/// staying quick to create and attach.
-const IMAGE_SIZE: &str = "64m";
+use cmdr_fs::testing::disk_images::{CreateFs, DiskImage, DiskImageSession};
 
 /// The filesystem to format a synthetic image with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,11 +37,11 @@ pub enum DiskImageFilesystem {
 }
 
 impl DiskImageFilesystem {
-    /// The `-fs` argument `hdiutil create` expects.
-    fn hdiutil_fs(self) -> &'static str {
+    /// The harness's `hdiutil create` filesystem for it.
+    fn create_fs(self) -> CreateFs {
         match self {
-            DiskImageFilesystem::Fat32 => "MS-DOS FAT32",
-            DiskImageFilesystem::ExFat => "ExFAT",
+            DiskImageFilesystem::Fat32 => CreateFs::LegacyFat32,
+            DiskImageFilesystem::ExFat => CreateFs::LegacyExFat,
         }
     }
 }
@@ -67,66 +58,39 @@ pub struct KnownTreeEntry {
     pub size: u64,
 }
 
-/// An attached synthetic disk image. Dropping it detaches the image (guarded),
-/// then deletes the backing temp file, so teardown is panic- and
+/// An attached synthetic disk image. Dropping it detaches the image through the
+/// harness, then deletes the backing file, so teardown is panic- and
 /// early-return-safe.
 ///
-/// Construct with [`DiskImageFixture::attach`]. The image lives under a private
-/// temp dir; nothing is ever mounted browsable (`-nobrowse`).
+/// Construct with [`DiskImageFixture::attach`], which holds the machine-wide
+/// disk-image lock until the fixture drops. Nothing is ever mounted browsable
+/// (`-nobrowse`).
 pub struct DiskImageFixture {
-    /// Backing temp dir holding the `.dmg`. Dropped *after* detach (struct Drop
-    /// runs before field drops), so the image file outlives the detach.
-    _work_dir: tempfile::TempDir,
-    /// Whole-disk `/dev/diskN` node to detach (parent, not the `sN` partition).
-    device: String,
+    /// Detaches on drop, and holds the disk-image session (the lock) until then.
+    _image: DiskImage,
     /// `/Volumes/…` mount point.
     mount_point: PathBuf,
 }
 
 impl DiskImageFixture {
-    /// Create a synthetic image formatted `fs`, attach it `-nobrowse`, and parse
-    /// out its device node and mount point.
+    /// Create a 64 MB synthetic image formatted `fs` on an MBR disk, attach it
+    /// `-nobrowse`, and read back its mount point.
     ///
-    /// `volume_name` becomes the FAT/exFAT volume label (keep it short and
-    /// space-free; it also shapes the `/Volumes/…` path).
+    /// `volume_name` becomes the FAT/exFAT volume label, and the harness finds the
+    /// mounted volume by it: keep it short, uppercase, and space-free (FAT stores a
+    /// label uppercased in 11 bytes).
     pub fn attach(fs: DiskImageFilesystem, volume_name: &str) -> io::Result<Self> {
-        let work_dir = tempfile::tempdir()?;
-        let image_path = work_dir.path().join("fixture.dmg");
-
-        // create: -layout MBRSPUD matches the proven FAT32 probe; it also works
-        // for exFAT. A single FAT/exFAT partition on an MBR scheme.
-        let create = run_hdiutil_guarded(&[
-            "create",
-            "-size",
-            IMAGE_SIZE,
-            "-fs",
-            fs.hdiutil_fs(),
-            "-volname",
-            volume_name,
-            "-layout",
-            "MBRSPUD",
-            &image_path.to_string_lossy(),
-        ])?;
-        if !create.status.success() {
-            return Err(hdiutil_error("create", &create));
-        }
-
-        // attach -nobrowse: never surface the image in Finder/other apps.
-        let attach = run_hdiutil_guarded(&["attach", &image_path.to_string_lossy(), "-nobrowse"])?;
-        if !attach.status.success() {
-            return Err(hdiutil_error("attach", &attach));
-        }
-        let attach_out = String::from_utf8_lossy(&attach.stdout);
-
-        let (device, mount_point) = parse_attach_output(&attach_out).ok_or_else(|| {
-            io::Error::other(format!(
-                "could not parse device + mount point from hdiutil attach:\n{attach_out}"
-            ))
-        })?;
+        let session = DiskImageSession::acquire();
+        let image =
+            DiskImage::attach_legacy_fat_fixture(&session, fs.create_fs(), volume_name).map_err(io::Error::other)?;
+        let mount_point = image
+            .volumes()
+            .first()
+            .map(|volume| volume.mount_point.clone())
+            .ok_or_else(|| io::Error::other(format!("{volume_name} isn't mounted after attach")))?;
 
         let fixture = Self {
-            _work_dir: work_dir,
-            device,
+            _image: image,
             mount_point,
         };
 
@@ -168,47 +132,6 @@ impl DiskImageFixture {
             }
         }
         Ok(entries)
-    }
-}
-
-impl Drop for DiskImageFixture {
-    fn drop(&mut self) {
-        // Detach once, guarded. On any failure/timeout, try -force (also
-        // guarded). Never panic in Drop; log and move on. The backing temp dir
-        // is dropped after this, deleting the image file.
-        match run_hdiutil_guarded(&["detach", &self.device]) {
-            Ok(out) if out.status.success() => return,
-            Ok(out) => {
-                log::warn!(
-                    target: "indexing::tests::external_drive_fixture",
-                    "hdiutil detach {} failed ({}); forcing",
-                    self.device,
-                    out.status
-                );
-            }
-            Err(e) => {
-                log::warn!(
-                    target: "indexing::tests::external_drive_fixture",
-                    "hdiutil detach {} errored ({e}); forcing",
-                    self.device
-                );
-            }
-        }
-
-        match run_hdiutil_guarded(&["detach", "-force", &self.device]) {
-            Ok(out) if out.status.success() => {}
-            Ok(out) => log::warn!(
-                target: "indexing::tests::external_drive_fixture",
-                "hdiutil detach -force {} failed ({}); device may still be attached",
-                self.device,
-                out.status
-            ),
-            Err(e) => log::warn!(
-                target: "indexing::tests::external_drive_fixture",
-                "hdiutil detach -force {} errored ({e}); device may still be attached",
-                self.device
-            ),
-        }
     }
 }
 
@@ -254,139 +177,18 @@ pub fn known_tree_layout() -> Vec<KnownTreeEntry> {
     ]
 }
 
-/// Run `hdiutil <args>` with a hard [`HDIUTIL_TIMEOUT`]. Past the deadline the
-/// child is SIGKILLed (`Child::kill` sends `SIGKILL` on Unix) and a `TimedOut`
-/// error returned, so a wedged FSKit service is killed rather than awaited.
-///
-/// hdiutil's output is a handful of lines, well under the OS pipe buffer, so
-/// reading it after the process exits can't deadlock on a full pipe.
-fn run_hdiutil_guarded(args: &[&str]) -> io::Result<Output> {
-    let mut child = Command::new("hdiutil")
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let deadline = Instant::now() + HDIUTIL_TIMEOUT;
-    loop {
-        match child.try_wait()? {
-            Some(status) => {
-                let mut stdout = Vec::new();
-                let mut stderr = Vec::new();
-                if let Some(mut out) = child.stdout.take() {
-                    out.read_to_end(&mut stdout)?;
-                }
-                if let Some(mut err) = child.stderr.take() {
-                    err.read_to_end(&mut stderr)?;
-                }
-                return Ok(Output { status, stdout, stderr });
-            }
-            None => {
-                if Instant::now() >= deadline {
-                    let _ = child.kill(); // SIGKILL on Unix
-                    let _ = child.wait();
-                    return Err(io::Error::new(
-                        io::ErrorKind::TimedOut,
-                        format!(
-                            "hdiutil {} exceeded {HDIUTIL_TIMEOUT:?} and was killed",
-                            args.first().unwrap_or(&"")
-                        ),
-                    ));
-                }
-                // allowed-test-sleep: poll interval for a hard-timeout wait on a real `hdiutil`
-                // child. The timeout plus single-detach discipline is the FSKit kernel-panic
-                // guardrail (indexing/tests/CLAUDE.md); this is not waiting for in-process work
-                std::thread::sleep(Duration::from_millis(50));
-            }
-        }
-    }
-}
-
-/// Build an `io::Error` from a failed `hdiutil` invocation, quoting stderr.
-fn hdiutil_error(stage: &str, out: &Output) -> io::Error {
-    io::Error::other(format!(
-        "hdiutil {stage} failed ({}): {}",
-        out.status,
-        String::from_utf8_lossy(&out.stderr).trim()
-    ))
-}
-
-/// Parse `hdiutil attach` output into (whole-disk device node, mount point).
-///
-/// Output is tab-separated columns like:
-/// ```text
-/// /dev/disk4          \tFDisk_partition_scheme\t
-/// /dev/disk4s1        \tWindows_FAT_32        \t/Volumes/CMDRTEST
-/// ```
-/// The first `/dev/…` node is the whole disk; [`normalize_whole_disk`] reduces
-/// any partition node to it anyway, so detaching it tears down every child. The
-/// mount point is the `/Volumes/…` field.
-fn parse_attach_output(output: &str) -> Option<(String, PathBuf)> {
-    let mut device: Option<String> = None;
-    let mut mount_point: Option<PathBuf> = None;
-
-    for line in output.lines() {
-        let first = line.split_whitespace().next().unwrap_or("");
-
-        if device.is_none() && first.starts_with("/dev/") {
-            device = Some(first.to_string());
-        }
-
-        if mount_point.is_none()
-            && let Some(idx) = line.find("/Volumes/")
-        {
-            mount_point = Some(PathBuf::from(line[idx..].trim_end()));
-        }
-    }
-
-    match (device, mount_point) {
-        (Some(d), Some(m)) => Some((normalize_whole_disk(&d), m)),
-        _ => None,
-    }
-}
-
-/// Reduce a `/dev/diskNsM` partition node to its whole-disk `/dev/diskN`
-/// parent, so a detach tears down the whole image in one call. A node that is
-/// already whole-disk passes through unchanged.
-fn normalize_whole_disk(device: &str) -> String {
-    // e.g. "/dev/disk4s1" -> "/dev/disk4"; "/dev/disk4" -> "/dev/disk4".
-    if let Some(rest) = device.strip_prefix("/dev/disk") {
-        let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-        if !digits.is_empty() {
-            return format!("/dev/disk{digits}");
-        }
-    }
-    device.to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::indexing::watch::watcher::{DriveWatcher, FsChangeEvent};
     use std::collections::BTreeSet;
+    use std::time::{Duration, Instant};
     use tokio::sync::mpsc;
 
     /// Longest we'll wait for a single live FSEvents callback. Below the 30 s
     /// nextest cap this module runs under, so a merely-slow event still lands
     /// while the cap stays a hang-catcher.
     const FSEVENT_WAIT: Duration = Duration::from_secs(15);
-
-    #[test]
-    fn parses_hdiutil_attach_output() {
-        let sample = "/dev/disk4          \tFDisk_partition_scheme         \t\n\
-                      /dev/disk4s1        \tWindows_FAT_32                 \t/Volumes/CMDRTEST\n";
-        let (device, mount) = parse_attach_output(sample).expect("parse");
-        assert_eq!(device, "/dev/disk4");
-        assert_eq!(mount, PathBuf::from("/Volumes/CMDRTEST"));
-    }
-
-    #[test]
-    fn normalizes_partition_node_to_whole_disk() {
-        assert_eq!(normalize_whole_disk("/dev/disk9s1"), "/dev/disk9");
-        assert_eq!(normalize_whole_disk("/dev/disk12"), "/dev/disk12");
-        assert_eq!(normalize_whole_disk("/dev/disk3s2s1"), "/dev/disk3");
-    }
 
     /// Smoke test (per `test-infra-smoke-first`): attach a FAT32 image, read the
     /// populated tree back via `std::fs`, then assert the mount point is gone

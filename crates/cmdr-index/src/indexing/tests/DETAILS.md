@@ -82,10 +82,15 @@ So every external-drive test uses a **disposable synthetic disk image**, through
   file — the empty file matters because FAT/exFAT give it a sentinel inode that changes once content is written) and
   returns the entries for assertions.
 - The guard's `Drop` detaches once — `hdiutil detach`, then a `hdiutil detach -force` fallback — so teardown runs even
-  on panic or early return. **Attach once, detach once; never cycle mount/unmount, never `diskutil unmount` a path.**
-- **Every `hdiutil` call is hard-timeout-guarded** (`run_hdiutil_guarded`, `HDIUTIL_TIMEOUT = 30 s`): past the deadline
-  the child is SIGKILLed (`Child::kill` → `SIGKILL`), so a wedged FSKit service is killed, never awaited. ❌ Don't
+  on panic or early return. **Attach once, detach once; never cycle a FAT/exFAT mount, never `diskutil unmount` one.**
+- **Every `hdiutil` call goes through the one guarded runner**, `cmdr_fs::testing::disk_images`
+  (`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"), reached through `DiskImage::attach_legacy_fat_fixture`:
+  past 30 s the child is SIGKILLed, so a wedged FSKit service is killed, never awaited; the fixture holds the
+  machine-wide disk-image lock while it lives; and the detach is proven to be this image's own before it runs. ❌ Don't
   "clean up" these timeouts or the single-detach discipline — they're the guardrail against the incident above.
+
+The same runner builds the APFS and HFS+ images the eject pins use (`DiskImage::attach`), which may unmount and eject
+under test: the single-detach rule is about the FSKit `msdos` service, which those images never touch.
 
 The tests are `#[ignore]`d (each attaches a real disk image via hdiutil), so `pnpm check rust` compiles them but the
 default suite skips them; run them explicitly:

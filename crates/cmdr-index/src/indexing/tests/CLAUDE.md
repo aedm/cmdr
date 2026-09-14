@@ -23,10 +23,11 @@ tests stay colocated in each module; these are the integration tier.
   script.** On 2026-07-15 a `diskutil unmount` on a physical, nearly-full FAT32 SD card wedged macOS 26's userspace
   FSKit `msdos` service mid-unmount; it held kernel vnode locks until the pile-up blocked WindowServer and the watchdog
   **kernel-panicked and rebooted the machine**. The wedge happens DURING unmount, so no post-unmount hook can undo it —
-  the only defense is to never trigger it. Every external-drive test uses a disposable synthetic disk image through
-  `external_drive_fixture`. **Attach once, detach once; never cycle mount/unmount, never `diskutil unmount` a path.**
-  Every `hdiutil` call is hard-timeout-guarded (30 s → SIGKILL). ❌ Don't "clean up" the timeouts or the single-detach
-  discipline; they're the guardrail against the incident.
+  the only defense is to never trigger it. Every real-image test goes through the guarded runner in
+  `cmdr_fs::testing::disk_images` (30 s → SIGKILL per call, a machine-wide lock, an ownership proof before every
+  change). **A FAT/exFAT image (`external_drive_fixture`) is attached once and detached once: never cycle its mount,
+  never `diskutil unmount` it.** APFS and HFS+ images may unmount under test; that's what the pins are for. ❌ Don't
+  "clean up" the timeouts or the single-detach discipline; they're the guardrail against the incident.
 - **Tests serialize on a dedicated mutex.** `INDEX_REGISTRY` is a global; concurrent tests corrupt each other. The
   pattern (in `integration_tests.rs` and `state/tests.rs`): a dedicated guard mutex + an `IndexStore` fixtured via
   `tempdir`, clearing the `root` entry AND withdrawing root's read handles before and after. ❌ NEVER

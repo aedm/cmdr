@@ -55,13 +55,14 @@
 # putting it here only serializes something fast; give it a cap-only override
 # instead (see the arming-only block below).
 real-notify = { max-threads = 1 }
-# Synthetic FAT32/exFAT disk-image fixtures (`indexing::tests::external_drive_fixture`,
-# macOS-only, `#[ignore]`d — run via `--run-ignored`). Each attaches a real disk
-# image via hdiutil (FSKit `msdos`) and the live-FSEvents probes block on real
-# event delivery. Serialize them: concurrent attach/detach churn on the same
-# FSKit service is exactly the surface the FAT-unmount panic incident warns
-# about, and multiplying live watches starves delivery. See the override below
-# for the timeout headroom.
+# Real disk-image tests (macOS-only, `#[ignore]`d — run via `--run-ignored`): the
+# FAT32/exFAT fixtures (`indexing::tests::external_drive_fixture`), and the APFS/HFS+
+# harness (`cmdr_fs::testing::disk_images`) with the pins built on it. Each attaches a
+# real disk image via hdiutil, and the FAT live-FSEvents probes block on real event
+# delivery. Serialize them: concurrent attach/detach churn on the same FSKit service is
+# exactly the surface the FAT-unmount panic incident warns about, and multiplying live
+# watches starves delivery. Across runs (two worktrees), the harness's machine-wide lock
+# does the same job. See the overrides below for the timeout headroom.
 disk-image = { max-threads = 1 }
 # SMB streaming STRESS tests hammer the SHARED Docker Samba stack with heavy
 # concurrent I/O (hundreds of MB). Running them at once — or alongside each other
@@ -76,11 +77,22 @@ sftp-bench = { max-threads = 1 }
 [[profile.default.overrides]]
 # Disk-image fixtures: hdiutil create+attach+detach plus, for the FSEvents
 # probes, a 15 s internal wait for real live delivery — all past the global 8 s
-# cap. 30 s matches the fixture's own `HDIUTIL_TIMEOUT` SIGKILL guard, so a
-# genuinely wedged FSKit service is caught by the fixture first and the cap
+# cap. 30 s matches the harness runner's per-call SIGKILL deadline, so a
+# genuinely wedged FSKit service is killed by the runner first and the cap
 # stays a backstop. Serialized via the `disk-image` group above.
 # allowed-unmatched-nextest-filter: macos-only, hdiutil and FSKit `msdos` have no Linux counterpart
 filter = 'test(indexing::tests::external_drive_fixture::)'
+test-group = 'disk-image'
+slow-timeout = { period = "30s", terminate-after = 1 }
+
+[[profile.default.overrides]]
+# The APFS/HFS+ disk-image harness's own real-image tests (`cmdr_fs::testing::disk_images`,
+# macOS-only, `#[ignore]`d — run via `--run-ignored`). Serialized in the `disk-image`
+# group; ACROSS runs (two worktrees), the harness's session lock keeps them apart. 30 s
+# matches the harness's per-call SIGKILL deadline, so a wedged tool is killed by the
+# runner first and the cap stays a backstop.
+# allowed-unmatched-nextest-filter: macos-only, hdiutil and diskutil have no Linux counterpart
+filter = 'test(testing::disk_images::real_images::)'
 test-group = 'disk-image'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
