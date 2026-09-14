@@ -115,9 +115,9 @@ fails.
 
 ## The volume seam
 
-`VolumeProvider` covers four things the app is the only one that can answer: what's registered right now, what
-filesystem a path sits on, how to turn an OS-mounted share into a direct smb2 session, and what a PTP object handle
-resolves to. All at human cadence — once per scan start, per watch event, per enrichment pass.
+`VolumeProvider` covers five things the app is the only one that can answer: what's registered right now, what
+filesystem a path sits on, whether a root is still in the mount table, how to turn an OS-mounted share into a direct
+smb2 session, and what a PTP object handle resolves to. All at human cadence — once per scan start, per watch event, per enrichment pass.
 
 **What deliberately isn't on it.** Volume ID vocabulary: `mtp_ids` was nine references to pure string work with no host
 behind it, so it moved to `cmdr-fs` beside `smb_volume_id` rather than becoming four trait methods. The test is whether
@@ -127,6 +127,15 @@ you could compute the answer from a `&str`.
 touch this mount, and may the rename pre-pass trust its inodes — and both are host judgments: the kind → network mapping
 is per-platform, and the probe itself can block for minutes on a wedged mount. Returning the two flags moved the whole
 macOS/Linux fork out of `transports/local_external`.
+
+**`is_mounted` is the presence seam, and it reads the mount table, never the mount.** It answers whether a local-scanner
+volume's root is still listed, `None` when the table couldn't be read, and no caller reads `None` as gone. The app
+answers from the non-blocking tables eject already reads (`volumes::mounts::is_mount_point`, `getfsstat(MNT_NOWAIT)` on
+macOS; `file_system::linux_mounts::is_mount_point`, `/proc/mounts` on Linux), so a dead drive can't stall it.
+`NoVolumes` answers `Some(true)`: a host with no mount table has nothing that can unmount, and "gone" or "don't know"
+would change how the index treats every volume a tool or test drives without a host. `FakeVolumeProvider::mark_unmounted`
+makes one root read as gone. The caller today is `stop_removable_volume`, which stops counting a generation whose root
+left (`../lifecycle/DETAILS.md` § "When a volume has been let go").
 
 **Why the provider slot is an `RwLock`, unlike the runtime and the policy.** Tests swap it. Three tests used to register
 real `LocalPosixVolume`s into the process-wide `VolumeManager`, which is exactly the coupling the extraction removes;

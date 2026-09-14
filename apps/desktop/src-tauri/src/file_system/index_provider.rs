@@ -80,6 +80,25 @@ impl VolumeProvider for AppVolumeProvider {
         }
     }
 
+    fn is_mounted(&self, root: &Path) -> Option<bool> {
+        // The same non-blocking table eject reads to tell a refusal from a volume
+        // that's already gone, so a hung drive can't stall the answer.
+        let root = root.to_string_lossy();
+        #[cfg(target_os = "macos")]
+        {
+            crate::volumes::is_mount_point(&root)
+        }
+        #[cfg(target_os = "linux")]
+        {
+            super::linux_mounts::is_mount_point(&root)
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+        {
+            let _ = root;
+            None
+        }
+    }
+
     fn smb_volume_id_for_path(&self, path: &str) -> Option<String> {
         smb_volume_id_for_path(path)
     }
@@ -193,6 +212,17 @@ mod tests {
         let facts = AppVolumeProvider.mount_facts(Path::new("/"));
         assert!(!facts.is_network);
         assert!(facts.inodes_trustworthy);
+    }
+
+    /// The index's presence seam reads the kernel mount table: the boot volume is a
+    /// mount point, and a plain folder isn't one, which is how a drive's root reads
+    /// once the drive is gone and its mount-point folder lingers.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    #[test]
+    fn presence_answers_from_the_mount_table() {
+        assert_eq!(AppVolumeProvider.is_mounted(Path::new("/")), Some(true));
+        let folder = cmdr_fs::testing::TestDir::new("index-provider-presence");
+        assert_eq!(AppVolumeProvider.is_mounted(&folder), Some(false));
     }
 
     /// The negative half, against a REAL filesystem: a FAT32 mount's inodes are

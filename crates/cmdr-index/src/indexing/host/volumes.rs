@@ -116,6 +116,16 @@ pub trait VolumeProvider: Send + Sync {
     /// under their own timeout and fall back to [`MountFacts::UNPROBEABLE`].
     fn mount_facts(&self, path: &Path) -> MountFacts;
 
+    /// Whether `root` is a mount point in the host's mount table right now:
+    /// `Some(true)` listed, `Some(false)` not listed, `None` when the table couldn't
+    /// be read.
+    ///
+    /// **Non-blocking**: the host reads its mount table, ❌ never the mount, so a
+    /// dead or hung drive can't stall the answer. The index asks it only about
+    /// local-scanner volumes, whose roots are mount points; a share or a phone has
+    /// its own disconnect path. ❌ A caller never reads `None` as "gone".
+    fn is_mounted(&self, root: &Path) -> Option<bool>;
+
     /// The SMB volume id for `path` when it resolves to an `smbfs`/`cifs` mount.
     ///
     /// It's the SAME id the host registers the share under, so a listing beneath
@@ -229,6 +239,11 @@ impl VolumeProvider for NoVolumes {
             inodes_trustworthy: true,
         }
     }
+    /// A host with no mount table has nothing that can unmount, so every root reads
+    /// as mounted: the index behaves as it does without a presence seam at all.
+    fn is_mounted(&self, _root: &Path) -> Option<bool> {
+        Some(true)
+    }
     fn smb_volume_id_for_path(&self, _path: &str) -> Option<String> {
         None
     }
@@ -257,6 +272,7 @@ pub struct FakeVolumeProvider {
     volumes: RwLock<std::collections::HashMap<String, Arc<dyn Volume>>>,
     network_mounts: RwLock<std::collections::HashSet<PathBuf>>,
     untrusted_inode_mounts: RwLock<std::collections::HashSet<PathBuf>>,
+    unmounted_roots: RwLock<std::collections::HashSet<PathBuf>>,
 }
 
 #[cfg(any(test, feature = "testing"))]
@@ -282,6 +298,13 @@ impl FakeVolumeProvider {
     /// way a real FAT/exFAT mount does.
     pub fn mark_inodes_untrusted(&self, root: impl Into<PathBuf>) -> &Self {
         self.untrusted_inode_mounts.write_ignore_poison().insert(root.into());
+        self
+    }
+
+    /// Make `is_mounted` report `root` gone from the mount table, the way a pulled
+    /// drive or a finished unmount reads. Every other root reads as mounted.
+    pub fn mark_unmounted(&self, root: impl Into<PathBuf>) -> &Self {
+        self.unmounted_roots.write_ignore_poison().insert(root.into());
         self
     }
 }
@@ -315,6 +338,10 @@ impl VolumeProvider for FakeVolumeProvider {
             is_network: under(&self.network_mounts),
             inodes_trustworthy: !under(&self.untrusted_inode_mounts),
         }
+    }
+
+    fn is_mounted(&self, root: &Path) -> Option<bool> {
+        Some(!self.unmounted_roots.read_ignore_poison().contains(root))
     }
 
     fn smb_volume_id_for_path(&self, _path: &str) -> Option<String> {
@@ -402,5 +429,25 @@ mod tests {
         let plain = provider.mount_facts(Path::new("/Volumes/usb"));
         assert!(!plain.is_network);
         assert!(plain.inodes_trustworthy);
+    }
+
+    /// A root the test marked unmounted reads as gone, and only that root: a
+    /// sibling drive stays mounted, or a presence test would pass by losing every
+    /// drive at once.
+    #[test]
+    fn the_fake_reports_a_root_marked_unmounted_as_gone() {
+        let provider = FakeVolumeProvider::shared();
+        provider.mark_unmounted("/Volumes/pulled");
+
+        assert_eq!(provider.is_mounted(Path::new("/Volumes/pulled")), Some(false));
+        assert_eq!(provider.is_mounted(Path::new("/Volumes/usb")), Some(true));
+    }
+
+    /// With no host tracking mounts, nothing can unmount, so every root reads as
+    /// mounted. "Gone" or "don't know" here would change how the index treats
+    /// every volume a tool or test drives without a host.
+    #[test]
+    fn an_uninstalled_provider_reads_every_root_as_mounted() {
+        assert_eq!(NoVolumes.is_mounted(Path::new("/Volumes/anything")), Some(true));
     }
 }
