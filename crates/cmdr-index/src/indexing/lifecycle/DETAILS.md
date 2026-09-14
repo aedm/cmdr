@@ -447,16 +447,31 @@ above defend, and in each a manager is still alive when it does:
   manager down later, on its own thread, at its re-lock. With the key gone, the registry has nothing left to ask.
 - **A drain in flight**: another teardown published `ShuttingDown` and is still inside `mgr.shutdown()`.
 
-**The hold.** `try_reserve_initializing_phase` takes a `VolumeHold` in the critical section that inserts the key and
-returns it; the start hands it to `IndexManager::new_for_kind`, and it drops with the manager. Every path ends a manager
-after `shutdown` (`finish_stopping`, `finish_clearing`, `finish_failing`, `hand_the_manager_back`'s orphan arm, the
-start's `(false, _)` arms) or never built one (a failed constructor drops the hold with it), so the drop IS the release,
-and a new teardown path can't forget to report one. ⚠️ Taken after the lock is released, a stop could free the slot in
-the gap, find nothing held, and answer `Released` while the start goes on to stand a manager up.
+**The hold.** `try_reserve_initializing_phase` mints the volume's root `VolumeWork` (a fresh stop signal plus the first
+share of a new hold GENERATION) in the critical section that inserts the key. The instance keeps one clone
+(`IndexInstance::work`) and the start hands the other to `IndexManager::new_for_kind`. Each share drops with its owner:
+the instance with its removal (the `Initializing` arm of a teardown included), the manager after `shutdown` on every path
+(`finish_stopping`, `finish_clearing`, `finish_failing`, `hand_the_manager_back`'s orphan arm, the start's `(false, _)`
+arms) or with a failed constructor. So the drops ARE the release, and a new teardown path can't forget to report one. ⚠️
+Minted after the lock is released, a stop could free the slot in the gap, find nothing held, and answer `Released` while
+the start goes on to stand a manager up.
 
-**The wake.** A per-volume count behind one mutex and one condvar. The drop of a volume's LAST hold notifies, and
-`wait_until_released` waits with `wait_timeout_while`, ❌ never a poll. The table is a leaf lock: the reservation takes
-it under `INDEX_REGISTRY`, and nothing takes the registry while holding it.
+**Shares and kinds.** The table counts shares per (volume id, generation, `HoldKind`). `VolumeWork` pairs a share with
+its stop signal: `child(kind)` shares the generation under a child token, and `linked(caller, volume, kind)` stays a
+child of a caller's token while a forwarding task also cancels it on the volume's stop (the shape a search's cover walk
+needs). A wait that runs out answers `StillHeld` with the outstanding shares per kind, and `stop_removable_volume`'s
+`warn` names them; `RemovableStop` itself carries no kinds.
+
+**A drive that's gone.** A re-plugged drive keeps its UUID, so its id, and a share stuck on the dead device must not hold
+up the drive's next life. Before it waits, `stop_removable_volume` asks `VolumeProvider::is_mounted` about each live
+local-scanner generation's root (one read per root, off the table lock); `Some(false)` flags the generation vanished, and
+neither the wait nor `is_held` counts it. After the wait, a vanished generation still held turns zombie with one `warn`:
+never counted again, even once a new life mounts at the same root, and gone with its last share. ❌ `None`, an unreadable
+mount table, never flags.
+
+**The wake.** One mutex and one condvar over the table. A generation's last share dropping and a generation vanishing
+both notify, and `wait_until_released` waits with `wait_timeout_while`, ❌ never a poll. The table is a leaf lock: the
+reservation takes it under `INDEX_REGISTRY`, nothing takes the registry while holding it, and nothing blocks under it.
 
 **The bound** counts from the call, the synchronous drain included, so a host hands in the deadline it already puts on
 the call (eject passes `INDEX_STOP_DEADLINE`, 15 s) and the blocking thread ends when the eject stops waiting. A start
@@ -471,7 +486,9 @@ cancelled scan thread isn't joined (`../transports/DETAILS.md` § "The drain is 
 stops on its caller's token rather than the volume's (`cover/CLAUDE.md`), so neither is part of the answer.
 
 Anchors: `cover::cold_drive_tests::removals` (a drain in flight and a claimed `Detached`, both over real managers),
-`state::tests::a_removable_stop_waits_for_the_start_it_cancelled`, and `hold::tests` (the wake itself).
+`state::tests::a_removable_stop_waits_for_the_start_it_cancelled`,
+`state::tests::a_removable_stop_never_waits_on_a_drive_that_already_left`, and `hold::tests` (the wake, the per-kind
+counts, generations, and the linked cancel).
 
 ## Capability axes (`IndexVolumeKind`)
 

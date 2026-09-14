@@ -40,6 +40,7 @@ fn registry_of(volumes: &[(&str, IndexVolumeKind, Option<Freshness>)]) -> Regist
                 phase: IndexPhase::ShuttingDown { restart: None },
                 kind: *kind,
                 signals: VolumeSignals::new(Arc::new(Mutex::new(*freshness)), crate::NoopEventSink::shared()),
+                work: crate::indexing::hold::VolumeWork::for_test(volume_id),
             },
         );
     }

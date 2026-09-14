@@ -1117,6 +1117,7 @@ fn try_reserve_initializing_succeeds_only_from_disabled() {
                 phase: IndexPhase::ShuttingDown { restart: None },
                 kind: IndexVolumeKind::Local,
                 signals: VolumeSignals::new(Arc::new(std::sync::Mutex::new(None)), NoopEventSink::shared()),
+                work: hold::VolumeWork::for_test(ROOT_VOLUME_ID),
             },
         );
         // store_sd is unused after insert; the ShuttingDown phase carries no store.
@@ -1245,6 +1246,7 @@ fn shutdown_drain_does_not_hold_indexing_lock() {
                 phase: IndexPhase::ShuttingDown { restart: None },
                 kind: IndexVolumeKind::Local,
                 signals: VolumeSignals::new(Arc::new(std::sync::Mutex::new(None)), NoopEventSink::shared()),
+                work: hold::VolumeWork::for_test(ROOT_VOLUME_ID),
             },
         );
     }

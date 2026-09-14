@@ -61,6 +61,7 @@ impl TestInstanceGuard {
                 phase: IndexPhase::ShuttingDown { restart: None },
                 kind,
                 signals: VolumeSignals::new(Arc::new(std::sync::Mutex::new(None)), crate::NoopEventSink::shared()),
+                work: crate::indexing::hold::VolumeWork::for_test(&volume_id),
             },
         );
         Self { volume_id, tracker }

@@ -361,7 +361,7 @@ impl IndexManager {
         let progress = Arc::new(ScanProgress::new());
         // A CHILD of the volume's stop signal: stopping this scan leaves the
         // volume able to start another, while tearing the volume down stops it.
-        let cancel = self.volume_cancel.child_token();
+        let cancel = self.work.cancel.child_token();
         self.scan_handle = Some(ScanHandle::new(Arc::clone(&progress), cancel.clone()));
         // `ground_in_flux` was already set true above (pre-arm before truncate).
 

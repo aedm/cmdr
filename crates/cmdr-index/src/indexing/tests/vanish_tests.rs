@@ -23,7 +23,7 @@ use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, ImageSpec};
 use cmdr_fs::testing::wait_until_async;
 
 use crate::indexing::events::{ActivityPhase, IndexEvent, IndexEventKind, RecordingSink};
-use crate::indexing::hold::VolumeHold;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::manager::IndexManager;
 use crate::indexing::lifecycle::state::VolumeSignals;
 use crate::indexing::scanner::park::ParkHandle;
@@ -99,7 +99,7 @@ async fn scan_through_the_park(at_the_park: AtThePark) -> Observed {
             Arc::new(std::sync::Mutex::new(None)),
             Arc::clone(&events) as Arc<dyn crate::EventSink>,
         ),
-        VolumeHold::for_test(VOLUME_ID),
+        VolumeWork::for_test(VOLUME_ID),
     )
     .expect("build the index manager");
 

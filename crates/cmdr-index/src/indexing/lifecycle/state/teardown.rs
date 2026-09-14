@@ -116,28 +116,50 @@ pub enum RemovableStop {
 /// on the call and this wait end together. ❌ Don't move the wait into
 /// [`stop_indexing`] or the user's disable: those record their request on a
 /// transient phase and return, and nothing that calls them may start blocking.
+///
+/// ⚠️ **A generation whose drive has already left stops counting BEFORE the wait.**
+/// The stop asks the host whether each generation's root is still in the mount
+/// table, and one that reads `Some(false)` is flagged vanished: nothing this stop
+/// does can let go of it, and a worker stuck on the dead device must not hold up
+/// the drive's next life (a re-plugged drive keeps its UUID, so its id). Whatever
+/// is still held of it once the wait ends turns zombie with one `warn`
+/// (`../../hold.rs`).
 pub(crate) fn stop_removable_volume(volume_id: &str, wait_at_most: Duration) -> RemovableStop {
     let started = Instant::now();
-    match volume_kind(volume_id) {
-        Some(IndexVolumeKind::LocalExternal) => {
+    let kind = volume_kind(volume_id);
+    // A share or a phone keeps its index across an unmount.
+    if kind.is_some_and(|kind| kind != IndexVolumeKind::LocalExternal) {
+        return RemovableStop::NothingToStop;
+    }
+    let volumes = crate::indexing::host::volumes::current();
+    hold::flag_vanished(volume_id, |root| volumes.is_mounted(root));
+    let stopped = match kind {
+        Some(_) => {
             if let Err(e) = stop_indexing(volume_id) {
                 log::warn!("stopping the removable volume index '{volume_id}' failed: {e}");
             }
+            wait_for_the_release(volume_id, wait_at_most, started)
         }
-        // A share or a phone keeps its index across an unmount.
-        Some(_) => return RemovableStop::NothingToStop,
         // No instance, but a start that some other stop cancelled can still be
         // shutting its half-built manager down, and that start holds the volume.
-        None if !hold::is_held(volume_id) => return RemovableStop::NothingToStop,
-        None => {}
-    }
-    if hold::wait_until_released(volume_id, wait_at_most.saturating_sub(started.elapsed())) {
-        RemovableStop::Released
-    } else {
-        log::warn!(
-            "'{volume_id}' was still being let go of when its removable stop ran out of time ({wait_at_most:?})"
-        );
-        RemovableStop::StillReleasing
+        None if hold::is_held(volume_id) => wait_for_the_release(volume_id, wait_at_most, started),
+        None => RemovableStop::NothingToStop,
+    };
+    hold::zombify_vanished(volume_id);
+    stopped
+}
+
+/// Wait out what's left of a removable stop's bound for the volume's live
+/// generations to let go, naming the work that still holds it when they don't.
+fn wait_for_the_release(volume_id: &str, wait_at_most: Duration, started: Instant) -> RemovableStop {
+    match hold::wait_until_released(volume_id, wait_at_most.saturating_sub(started.elapsed())) {
+        hold::Release::Released => RemovableStop::Released,
+        hold::Release::StillHeld(holders) => {
+            log::warn!(
+                "'{volume_id}' was still being let go of when its removable stop ran out of time ({wait_at_most:?}); still held by {holders:?}"
+            );
+            RemovableStop::StillReleasing
+        }
     }
 }
 
@@ -198,7 +220,7 @@ fn stop_the_volume(volume_id: &str, persist: PersistDisable) -> Result<(), Strin
                     // in the window gets its instance overwritten by the old start's
                     // manager — two writer threads on one database, which is exactly
                     // what the reservation exists to prevent.
-                    instance.signals.cancel.cancel();
+                    instance.work.cancel.cancel();
                     // An in-flight start observes the removal and shuts its
                     // half-built manager down. Removing the whole instance is
                     // correct: it's disabled now.
@@ -460,7 +482,7 @@ pub fn clear_index(volume_id: &str) -> Result<(), String> {
             IndexPhase::Initializing { store } => {
                 // Same as the stop: cancel this start's stop signal so it can tell
                 // the freed slot from a successor's reservation.
-                instance.signals.cancel.cancel();
+                instance.work.cancel.cancel();
                 // No live writer thread to drain (still in resume_or_scan), but
                 // an in-flight start may be mid-`resume_or_scan`: publishing
                 // `ShuttingDown` makes it observe the change and shut its

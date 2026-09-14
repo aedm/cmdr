@@ -38,10 +38,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::atomic::Ordering;
-use tokio_util::sync::CancellationToken;
 
 use super::freshness::Freshness;
 use super::manager::IndexManager;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::store::{IndexFailure, IndexStore};
 use crate::indexing::volume::{IndexVolumeKind, VolumeId};
 use crate::indexing::watch::branches::{self, AfterWalk};
@@ -288,11 +288,13 @@ impl IndexPhase {
     }
 }
 
-/// The three handles a volume's registry instance and its `IndexManager` both
-/// hold: its freshness signal, where its reports go, and its stop signal. Passed
-/// as ONE value so the two can never be built with different halves — a manager
-/// firing freshness through a different `Arc`, or cancelling a token nothing
-/// else watches, is exactly the class of bug this shape rules out.
+/// The two handles a volume's registry instance and its `IndexManager` both
+/// hold: its freshness signal and where its reports go. Passed as ONE value so the
+/// two can never be built with different halves — a manager firing freshness
+/// through a different `Arc` is exactly the class of bug this shape rules out.
+///
+/// The third thing they share, the volume's stop signal with its hold, is a
+/// [`VolumeWork`] only the reservation mints (`reservation.rs`).
 #[derive(Clone)]
 pub(crate) struct VolumeSignals {
     /// This volume's freshness signal (gray = absent instance; blue/green/yellow
@@ -307,28 +309,12 @@ pub(crate) struct VolumeSignals {
     /// process-wide slot so the handle-free seams (the freshness transition, the
     /// failure supervisor) stay per-volume, like every other invariant here.
     pub(crate) events: Arc<dyn crate::EventSink>,
-    /// This volume's stop signal — the ROOT of every cancellation under it.
-    /// Every long walk it starts (a full scan, a reconcile, a subtree rescan, a
-    /// verification) runs on a `child_token()`, so tearing the volume down stops
-    /// all of them at once.
-    ///
-    /// ❌ Nothing below `lifecycle` looks this up by volume id. Whoever starts the
-    /// work is handed a child token by the layer that owns this one (the manager,
-    /// or `trigger_verification` while it already holds the instance). A late
-    /// lookup would answer `None` for a volume that just went away and hand the
-    /// walk a token that never fires — precisely the walk that needs to stop.
-    pub(crate) cancel: CancellationToken,
 }
 
 impl VolumeSignals {
-    /// Build a volume's shared handles: a fresh stop signal plus the caller's
-    /// freshness and sink.
+    /// Bundle a volume's shared handles: the caller's freshness and sink.
     pub(crate) fn new(freshness: Arc<std::sync::Mutex<Option<Freshness>>>, events: Arc<dyn crate::EventSink>) -> Self {
-        Self {
-            freshness,
-            events,
-            cancel: CancellationToken::new(),
-        }
+        Self { freshness, events }
     }
 }
 
@@ -349,6 +335,20 @@ pub(crate) struct IndexInstance {
     pub(crate) kind: IndexVolumeKind,
     /// The handles this volume shares with its `IndexManager`.
     pub(crate) signals: VolumeSignals,
+    /// The volume's root work, minted by its reservation: its stop signal, the ROOT
+    /// of every cancellation under it, and this instance's share of the hold. The
+    /// manager carries a clone of the same work, so the two can't disagree.
+    ///
+    /// Every long walk the volume starts runs on a child of it, so tearing the
+    /// volume down stops all of them at once. The share drops with the instance,
+    /// the `Initializing` arm of a teardown included.
+    ///
+    /// ❌ Nothing below `lifecycle` looks this up by volume id. Whoever starts the
+    /// work is handed a child by the layer that owns this one (the manager, or
+    /// `trigger_verification` while it already holds the instance). A late lookup
+    /// would answer `None` for a volume that just went away and hand the walk a
+    /// token that never fires — precisely the walk that needs to stop.
+    pub(crate) work: VolumeWork,
 }
 
 /// The registry as the jobs take it: a mutex over the per-volume map.

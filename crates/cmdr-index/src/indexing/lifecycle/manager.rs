@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use tokio_util::sync::CancellationToken;
 
 use super::phases;
 use super::state::{self, Handover};
@@ -13,7 +12,7 @@ use crate::indexing::events::{
     ActivityPhase, DEBUG_STATS, EventSink, IndexDebugStatusResponse, IndexStatusResponse, PhaseRecord, RescanReason,
     ScanRunKind, emit_rescan_notification, set_phase_for,
 };
-use crate::indexing::hold;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::rescan_request::ScanStartError;
 use crate::indexing::reconcile::reconciler;
 use crate::indexing::scanner;
@@ -52,12 +51,15 @@ pub(crate) struct IndexManager {
     pub(super) writer: IndexWriter,
     /// Handle to the active full scan (if running)
     pub(super) scan_handle: Option<scanner::ScanHandle>,
-    /// This VOLUME's stop signal, the root of every cancellation under it — the
-    /// SAME token the registry `IndexInstance` holds, so the two can't disagree.
-    /// Each scan, reconcile, and subtree walk runs on a `child_token()`, so
-    /// stopping one scan (`stop_scan`) leaves the volume able to start another,
-    /// while `shutdown` cancels this and everything below it at once.
-    pub(super) volume_cancel: CancellationToken,
+    /// This VOLUME's root work: the SAME stop signal the registry `IndexInstance`
+    /// holds, so the two can't disagree, and this manager's share of the hold its
+    /// reservation took. Each scan, reconcile, and subtree walk runs on a child of
+    /// the stop signal, so stopping one scan (`stop_scan`) leaves the volume able to
+    /// start another, while `shutdown` cancels this and everything below it at once.
+    /// The share drops with the manager, after `shutdown` on every teardown path,
+    /// which is part of what tells a removable-volume stop the volume has been let
+    /// go (`hold.rs`).
+    pub(super) work: VolumeWork,
     /// FSEvents watcher (started alongside scan, persists after scan completes)
     drive_watcher: Option<DriveWatcher>,
     /// Whether the watcher above covers only what a search walk covered, rather
@@ -106,11 +108,6 @@ pub(crate) struct IndexManager {
     /// `start_scan` is `&mut self` and `get_status` is `&self`. `None` until the
     /// first scan starts; refreshed at the start of every scan.
     pub(super) scan_calibration: Option<ScanCalibration>,
-    /// This manager's stake in its volume, taken by the reservation that started
-    /// it. Nothing reads it: it drops with the manager, after `shutdown` on every
-    /// teardown path, and that drop is what tells a removable-volume stop the
-    /// volume has been let go (`hold.rs`).
-    _hold: hold::VolumeHold,
 }
 
 /// The static, per-scan inputs the frontend needs to pick and drive a scan
@@ -308,7 +305,7 @@ impl IndexManager {
         kind: IndexVolumeKind,
         inodes_trustworthy: bool,
         signals: state::VolumeSignals,
-        hold: hold::VolumeHold,
+        work: VolumeWork,
     ) -> Result<Self, String> {
         let store = IndexStore::open(&db_path).map_err(|e| format!("Failed to open index store: {e}"))?;
 
@@ -318,11 +315,7 @@ impl IndexManager {
         // SMB/MTP writer must not invalidate the root search index it doesn't
         // feed, or every NAS/phone change-notify event would thrash a full root
         // search reload. See `writer::WRITER_GENERATION` and `indexing/DETAILS.md`.
-        let state::VolumeSignals {
-            freshness,
-            events,
-            cancel: volume_cancel,
-        } = signals;
+        let state::VolumeSignals { freshness, events } = signals;
 
         let feeds_search = kind.feeds_search();
         let writer = IndexWriter::spawn_for(&db_path, Arc::clone(&events), feeds_search, volume_id.clone())
@@ -341,7 +334,7 @@ impl IndexManager {
             store,
             writer,
             scan_handle: None,
-            volume_cancel,
+            work,
             drive_watcher: None,
             branch_watched: false,
             live_event_task: Arc::new(std::sync::Mutex::new(None)),
@@ -351,7 +344,6 @@ impl IndexManager {
             phases: None,
             pending_phases: PendingPhases::No,
             scan_calibration: None,
-            _hold: hold,
         })
     }
 
@@ -720,7 +712,7 @@ impl IndexManager {
         // 1. Cancel everything running for this volume — the active scan and every
         //    child operation under it (subtree verifications, a reconcile walk).
         //    Unlike `stop_scan`, this is terminal: no later scan starts here.
-        self.volume_cancel.cancel();
+        self.work.cancel.cancel();
         self.stop_phases();
         self.scan_handle = None;
         self.ground_in_flux.store(false, Ordering::Relaxed);

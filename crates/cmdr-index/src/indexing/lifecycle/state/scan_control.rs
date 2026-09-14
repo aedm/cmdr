@@ -79,7 +79,7 @@ pub fn trigger_verification(volume_id: &str, dir_path: &str) {
         let reg = INDEX_REGISTRY.lock_ignore_poison();
         if let Some(IndexInstance {
             phase: IndexPhase::Running(mgr),
-            signals,
+            work,
             ..
         }) = reg.get(&volume_id)
         {
@@ -103,7 +103,7 @@ pub fn trigger_verification(volume_id: &str, dir_path: &str) {
             // into a draining writer — and a token resolved here can't come back
             // `None` (and silently never fire) the way a later lookup could, once the
             // volume is gone.
-            let cancel = signals.cancel.child_token();
+            let cancel = work.cancel.child_token();
             drop(reg);
             verifier::maybe_verify(volume_id, dir_path, space, writer, events, ground_in_flux, cancel);
         }

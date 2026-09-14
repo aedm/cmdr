@@ -5,7 +5,7 @@
 //! whatever [`Activation`] says happens next. The per-transport entry points below
 //! it differ only in the kind they name.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -98,6 +98,11 @@ impl StartRequest {
     /// The volume kind this start names, for the instance it reserves.
     pub(super) fn kind(&self) -> IndexVolumeKind {
         self.kind
+    }
+
+    /// Where the volume this start names is mounted, for the hold it reserves.
+    pub(super) fn volume_root(&self) -> &Path {
+        &self.volume_root
     }
 }
 
@@ -290,17 +295,11 @@ pub(in crate::indexing::lifecycle) fn start_indexing_for(
     // (no registry re-lock), so a held-registry caller (`force_scan`, the
     // journal-gap fallback) can drive a scan without self-deadlocking.
     let signals = VolumeSignals::new(Arc::new(std::sync::Mutex::new(initial_freshness)), Arc::clone(&events));
-    // THIS start's stop signal, kept behind while `signals` moves on into the
-    // manager. It is what tells us, at the re-lock below, whether the slot we
-    // reserved is still ours: a teardown that meets `Initializing` cancels it and
-    // frees the slot, and without the check we would install our manager over a
-    // FRESH start's instance and leave two writer threads on one database.
-    let reservation = signals.cancel.clone();
-
-    // THIS start's stake in the volume. It rides into the manager below and drops
-    // with it, after `shutdown`, whichever way this start ends — which is what a
+    // THIS start's root work: the stop signal, and the share of the volume's hold
+    // its reservation minted. The share rides into the manager below and drops with
+    // it, after `shutdown`, whichever way this start ends, which is what a
     // removable-volume stop waits for (`hold.rs`).
-    let Ok(hold) = try_reserve_initializing_phase(
+    let Ok(work) = try_reserve_initializing_phase(
         volume_id,
         request,
         init_store,
@@ -310,6 +309,13 @@ pub(in crate::indexing::lifecycle) fn start_indexing_for(
     ) else {
         return Ok(());
     };
+
+    // THIS start's stop signal, kept behind while `work` moves on into the manager.
+    // It is what tells us, at the re-lock below, whether the slot we reserved is
+    // still ours: a teardown that meets `Initializing` cancels it and frees the
+    // slot, and without the check we would install our manager over a FRESH
+    // start's instance and leave two writer threads on one database.
+    let reservation = work.cancel.clone();
 
     // Announce the registration on the lifecycle bus so a backend subsystem (the
     // importance scheduler) can wire up per-volume subscriptions for a volume that
@@ -327,7 +333,7 @@ pub(in crate::indexing::lifecycle) fn start_indexing_for(
         kind,
         inodes_trustworthy,
         signals,
-        hold,
+        work,
     ) {
         Ok(m) => m,
         Err(e) => {

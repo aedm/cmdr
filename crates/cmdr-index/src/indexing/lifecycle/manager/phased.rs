@@ -306,7 +306,7 @@ impl IndexManager {
                 writer: self.writer.clone(),
                 events: Arc::clone(&self.events),
                 freshness: Arc::clone(&self.freshness),
-                cancel: self.volume_cancel.child_token(),
+                cancel: self.work.cancel.child_token(),
             },
         })
     }

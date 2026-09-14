@@ -177,7 +177,7 @@ impl IndexManager {
         // The loop's own branch of this volume's stop signal. Taken here, where the
         // manager owns it, so nothing below has to reach back into the registry for
         // it (see `ReplayConfig::cancel`).
-        let replay_cancel = self.volume_cancel.child_token();
+        let replay_cancel = self.work.cancel.child_token();
 
         // Spawn through the host runtime seam, which resolves a handle instead of
         // inheriting one: indexing can start from the app's synchronous setup() hook,
@@ -307,7 +307,7 @@ impl IndexManager {
         let space = self.path_space();
         let scope = WatchScope::Branches(Arc::clone(&branches));
         let mut reconciler =
-            EventReconciler::new_for(self.volume_id.clone(), space.clone(), self.volume_cancel.child_token());
+            EventReconciler::new_for(self.volume_id.clone(), space.clone(), self.work.cancel.child_token());
         reconciler.within(scope.clone());
         // Live from the first event: there is no scan to wait for, and the branches
         // that ARE being walked buffer on their own (`WatchScope`).
@@ -651,7 +651,7 @@ impl IndexManager {
                 self.volume_root.clone(),
                 space.clone(),
                 &self.writer,
-                self.volume_cancel.child_token(),
+                self.work.cancel.child_token(),
             )
             .map_err(|e| format!("Failed to start reconcile rescan: {e}"))?
         } else {
@@ -669,7 +669,7 @@ impl IndexManager {
                 space: space.clone(),
                 ..ScanConfig::default()
             };
-            scanner::scan_volume(config, &self.writer, self.volume_cancel.child_token())
+            scanner::scan_volume(config, &self.writer, self.work.cancel.child_token())
                 .map_err(|e| format!("Failed to start scan: {e}"))?
         };
 
@@ -728,7 +728,7 @@ impl IndexManager {
                 live_event_task_slot,
                 scan_start_event_id,
                 calibration_kind: run_kind.calibration_kind(),
-                cancel: self.volume_cancel.child_token(),
+                cancel: self.work.cancel.child_token(),
             },
         ));
 

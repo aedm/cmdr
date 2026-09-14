@@ -719,6 +719,60 @@ fn a_removable_stop_waits_for_the_start_it_cancelled() {
     );
 }
 
+/// A drive pulled while a start on it was stuck: the stop finds its root gone from
+/// the mount table, so it answers "released" at once rather than waiting on work
+/// that can never let go. When the drive comes back under the same id, the stuck
+/// share of its last life still never holds up a stop of the new one.
+#[test]
+fn a_removable_stop_never_waits_on_a_drive_that_already_left() {
+    let _lock = crate::indexing::handle::test_lock();
+    let _guard = INDEX_REGISTRY_TEST_GUARD.lock().unwrap_or_else(|e| e.into_inner());
+    clear_registry_and_pools();
+
+    let volume_id = "removable-vanished";
+    let dir = tempfile::tempdir().expect("temp dir");
+    let reserve = |life: &str| {
+        let db_path = dir.path().join(format!("{life}.db"));
+        try_reserve_initializing_phase(
+            volume_id,
+            StartRequest::for_test(IndexVolumeKind::LocalExternal),
+            IndexStore::open(&db_path).expect("store"),
+            Arc::new(ReadPool::new(db_path.clone()).expect("pool")),
+            Arc::new(PendingSizes::new()),
+            VolumeSignals::new(fresh(None), NoopEventSink::shared()),
+        )
+        .unwrap_or_else(|_| panic!("reserve {volume_id} must succeed from absent"))
+    };
+
+    let stuck = reserve("first-life");
+    {
+        let volumes = crate::indexing::host::volumes::FakeVolumeProvider::shared();
+        // `StartRequest::for_test` mounts the volume at `/`.
+        volumes.mark_unmounted("/");
+        let _pulled = crate::indexing::host::volumes::install_for_test(volumes);
+        assert_eq!(
+            stop_removable_volume(volume_id, Duration::ZERO),
+            RemovableStop::Released,
+            "nothing this stop does can let go of a drive that's gone"
+        );
+    }
+
+    // The drive is back, and a new start reserves it under the same id.
+    let next_life = reserve("next-life");
+    assert_eq!(
+        stop_removable_volume(volume_id, Duration::ZERO),
+        RemovableStop::StillReleasing,
+        "the new life's own start still counts"
+    );
+    drop(next_life);
+    assert_eq!(
+        stop_removable_volume(volume_id, Duration::ZERO),
+        RemovableStop::NothingToStop,
+        "and the stuck share of the drive's last life never does"
+    );
+    drop(stuck);
+}
+
 /// Tests that mutate `INDEX_REGISTRY` serialize on this guard (mirrors
 /// `tests/integration_tests.rs`'s `INDEXING_TEST_GUARD`).
 static INDEX_REGISTRY_TEST_GUARD: LazyLock<std::sync::Mutex<()>> = LazyLock::new(|| std::sync::Mutex::new(()));
@@ -821,6 +875,7 @@ fn a_start_answers_every_phase_it_can_meet() {
                 phase,
                 kind: IndexVolumeKind::Local,
                 signals: VolumeSignals::new(fresh(None), NoopEventSink::shared()),
+                work: VolumeWork::for_test("phase-table"),
             },
         );
         let db_path = dir.path().join(format!("phase-table-{nth}.db"));
