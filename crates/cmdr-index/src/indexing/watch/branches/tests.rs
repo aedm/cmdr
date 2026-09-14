@@ -10,12 +10,12 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 
 use super::*;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::reconcile::reconciler::EventReconciler;
 use crate::indexing::store::ROOT_ID;
 use crate::indexing::watch::activity_monitor::BatchObservers;
 use crate::indexing::watch::event_loop::{drain_promoted, process_live_batch, queue_admitted};
 use crate::indexing::watch::watcher::FsEventFlags;
-use tokio_util::sync::CancellationToken;
 
 // ── Fixtures ─────────────────────────────────────────────────────────
 
@@ -102,8 +102,11 @@ impl Fixture {
     /// live loop runs them through.
     fn run_batch(&self, scope: &WatchScope, events: Vec<FsChangeEvent>) {
         let space = IndexPathSpace::root();
-        let mut reconciler =
-            EventReconciler::new_for("branch-test".to_string(), space.clone(), CancellationToken::new());
+        let mut reconciler = EventReconciler::new_for(
+            "branch-test".to_string(),
+            space.clone(),
+            VolumeWork::for_test("branch-test"),
+        );
         reconciler.switch_to_live();
         let mut pending: HashMap<String, FsChangeEvent> = HashMap::new();
         // Through the loop's own promotion path, not a hand-rolled copy of it: the

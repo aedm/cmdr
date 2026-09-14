@@ -15,6 +15,9 @@
 //! anchor holds nothing.
 
 mod churn;
+// A test-only gate that holds a rescan walk before it reads (`gate.rs`).
+#[cfg(test)]
+pub(super) mod gate;
 mod hold;
 // `cardinality`, `route`, and `throttle` are `pub(super)`: `reconciler.rs`
 // re-exports the sweep record from one, holds a `RescanThrottle` field of another,
@@ -34,6 +37,7 @@ use super::{
     DEBUG_STATS, EventReconciler, IndexStore, IndexWriter, ReconcileSummary, RescanDrain, ScanTrigger, WriteMessage,
     reconcile_subtree,
 };
+use crate::indexing::hold::HoldKind;
 use crate::indexing::lifecycle::manager;
 use crate::indexing::paths::path_prefix;
 use cmdr_fs::ignore_poison::IgnorePoison;
@@ -53,7 +57,7 @@ impl EventReconciler {
             throttle: Arc::clone(&self.rescan_throttle),
             space: self.space.clone(),
             volume_id: self.volume_id.clone(),
-            cancel: self.cancel.clone(),
+            work: self.work.clone(),
         }
     }
 
@@ -426,7 +430,7 @@ pub(super) fn start_next_rescan(drain: RescanDrain, writer: &IndexWriter) {
         throttle: rescan_throttle,
         space,
         volume_id,
-        cancel: volume_cancel,
+        work: queued_under,
     } = drain;
     let path = {
         let mut pending = pending_rescans.lock_ignore_poison();
@@ -458,13 +462,15 @@ pub(super) fn start_next_rescan(drain: RescanDrain, writer: &IndexWriter) {
     let throttle_for_task = Arc::clone(&rescan_throttle);
     let space_for_task = space.clone();
     let volume_id_for_task = volume_id.clone();
-    // A child of THIS volume's stop signal, taken BEFORE the walk starts, so
-    // tearing the index down stops a long subtree walk instead of letting it write
-    // into a writer that's shutting down.
-    let cancel = volume_cancel.child_token();
+    // This walk's own work, a child of the work it was queued under, taken BEFORE
+    // the walk starts: tearing the index down stops a long subtree walk instead of
+    // letting it write into a writer that's shutting down, and the walk holds the
+    // drive until its last read.
+    let walk_work = queued_under.child(HoldKind::SubtreeRescan);
     // The same handles again, as one value, for the self-drain call this walk makes
     // when it finishes (on either exit path — the borrow checker sees the early
-    // return, so one binding covers both).
+    // return, so one binding covers both). It carries this walk's work, so the next
+    // walk is taken under it and no walk thread ever carries the live loop's share.
     let drain_for_next = RescanDrain {
         pending: Arc::clone(&pending_rescans),
         active: Arc::clone(&rescan_active),
@@ -472,7 +478,7 @@ pub(super) fn start_next_rescan(drain: RescanDrain, writer: &IndexWriter) {
         throttle: Arc::clone(&rescan_throttle),
         space: space.clone(),
         volume_id: volume_id.clone(),
-        cancel: volume_cancel,
+        work: walk_work,
     };
 
     // Debug, not info: this is one line per walk, thousands a day, and it's paired
@@ -523,24 +529,28 @@ pub(super) fn start_next_rescan(drain: RescanDrain, writer: &IndexWriter) {
                 }
             };
 
-            let (escalation, walk_cost) = match reconcile_subtree(&path, &space_for_task, &conn, &writer, &cancel, None)
-            {
-                Ok(summary) => {
-                    let (level, message) = reconcile_report(&path, &summary);
-                    log::log!(level, "{message}");
-                    let walk_cost = summary.walk_cost();
-                    // Feed the 15-minute aggregate that replaces this line at info.
-                    // Only a walk that finished is counted: a failed one measured
-                    // nothing, so it would report as free churn.
-                    churn::record_reconcile(&path, walk_cost, summary.added + summary.removed + summary.updated);
-                    (summary.escalation, walk_cost)
-                }
-                Err(e) => {
-                    log::warn!("MustScanSubDirs: reconcile failed for {}: {e}", path.display());
-                    // No measured walk, so the throttle falls back to its floor.
-                    (None, Duration::ZERO)
-                }
-            };
+            // A test's gate (`gate.rs`): the share is taken, and nothing is read yet.
+            #[cfg(test)]
+            gate::pass(&path);
+            let walk_cancel = &drain_for_next.work.cancel;
+            let (escalation, walk_cost) =
+                match reconcile_subtree(&path, &space_for_task, &conn, &writer, walk_cancel, None) {
+                    Ok(summary) => {
+                        let (level, message) = reconcile_report(&path, &summary);
+                        log::log!(level, "{message}");
+                        let walk_cost = summary.walk_cost();
+                        // Feed the 15-minute aggregate that replaces this line at info.
+                        // Only a walk that finished is counted: a failed one measured
+                        // nothing, so it would report as free churn.
+                        churn::record_reconcile(&path, walk_cost, summary.added + summary.removed + summary.updated);
+                        (summary.escalation, walk_cost)
+                    }
+                    Err(e) => {
+                        log::warn!("MustScanSubDirs: reconcile failed for {}: {e}", path.display());
+                        // No measured walk, so the throttle falls back to its floor.
+                        (None, Duration::ZERO)
+                    }
+                };
 
             // The subtree's chain was still (partly) missing: re-queue the anchor the
             // skip branch resolved (strictly closer to the volume root, so this

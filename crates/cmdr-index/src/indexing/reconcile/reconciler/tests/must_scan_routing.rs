@@ -3,6 +3,7 @@
 //! parent chain is missing, and the queue that drains itself.
 
 use super::*;
+use crate::indexing::hold::{self, HoldKind};
 use tokio_util::sync::CancellationToken;
 
 #[tokio::test]
@@ -63,8 +64,11 @@ async fn root_scale_must_scan_routes_to_scanner_without_a_stuck_hold() {
     // clean sweep window without touching the process-global `SHALLOW_SWEEPS`.
     let volume_id = "smb://reconciler-test-root-scale";
     let (writer, _dir, conn, instance) = setup_private_writer(volume_id);
-    let mut reconciler =
-        EventReconciler::new_for(volume_id.to_string(), IndexPathSpace::root(), CancellationToken::new());
+    let mut reconciler = EventReconciler::new_for(
+        volume_id.to_string(),
+        IndexPathSpace::root(),
+        VolumeWork::for_test("reconciler-test"),
+    );
     reconciler.switch_to_live();
     let sink = Arc::new(Mutex::new(Vec::<String>::new()));
     reconciler.set_recording_scan_trigger(Arc::clone(&sink));
@@ -110,8 +114,11 @@ async fn a_second_root_scale_must_scan_does_not_reach_the_scanner() {
     // window, so the first `/` sweeps and the second coalesces.
     let volume_id = "smb://reconciler-test-second-root-scale";
     let (writer, _dir, conn, _instance) = setup_private_writer(volume_id);
-    let mut reconciler =
-        EventReconciler::new_for(volume_id.to_string(), IndexPathSpace::root(), CancellationToken::new());
+    let mut reconciler = EventReconciler::new_for(
+        volume_id.to_string(),
+        IndexPathSpace::root(),
+        VolumeWork::for_test("reconciler-test"),
+    );
     reconciler.switch_to_live();
     let sink = Arc::new(Mutex::new(Vec::<String>::new()));
     reconciler.set_recording_scan_trigger(Arc::clone(&sink));
@@ -147,8 +154,11 @@ async fn deep_must_scan_keeps_the_reconcile_drain() {
     // cascaded into every other holder).
     let volume_id = "smb://reconciler-test-deep";
     let (writer, _dir, conn, instance) = setup_private_writer(volume_id);
-    let mut reconciler =
-        EventReconciler::new_for(volume_id.to_string(), IndexPathSpace::root(), CancellationToken::new());
+    let mut reconciler = EventReconciler::new_for(
+        volume_id.to_string(),
+        IndexPathSpace::root(),
+        VolumeWork::for_test("reconciler-test"),
+    );
     reconciler.switch_to_live();
     // Keep the queued anchor visible (no spawn), so we assert on the queue directly.
     reconciler.rescan_active.store(true, Ordering::Relaxed);
@@ -320,6 +330,58 @@ async fn queued_rescans_start_after_active_completes() {
     writer.shutdown();
 }
 
+/// A subtree rescan runs on a thread of its own that nothing joins, so it holds its
+/// volume from the moment it's spawned until its walk is done, whether or not the
+/// loop that queued it is still there.
+#[tokio::test]
+async fn a_subtree_rescan_holds_its_volume_until_its_walk_is_done() {
+    let volume_id = "reconciler-test-rescan-holds";
+    let (writer, dir, _conn) = setup_test_writer();
+    // A real, tiny tree the index already holds, so the walk has something to read and
+    // no reason to escalate to an ancestor.
+    let tree = tempfile::Builder::new()
+        .prefix("cmdr-rescan-holds-")
+        .tempdir_in(std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
+        .expect("temp tree");
+    let anchor = tree.path().join("anchor");
+    std::fs::create_dir_all(anchor.join("inner")).expect("dirs");
+    ensure_path_in_db(
+        &dir.path().join("test-reconciler.db"),
+        &anchor.to_string_lossy(),
+        &writer,
+    );
+    let gate = rescan::gate::GateHandle::arm(&anchor);
+    let volume = VolumeWork::for_test(volume_id);
+    let mut reconciler = EventReconciler::new_for(
+        volume_id.to_string(),
+        IndexPathSpace::root(),
+        volume.child(HoldKind::LiveLoop),
+    );
+    reconciler.disable_rescan_throttle_for_test();
+    reconciler.switch_to_live();
+
+    reconciler.queue_must_scan_sub_dirs(anchor.clone(), &writer);
+    assert!(
+        gate.wait_until_held(Duration::from_secs(10)),
+        "the rescan thread reaches its walk"
+    );
+    drop(reconciler);
+    drop(volume);
+    assert_eq!(
+        hold::wait_until_released(volume_id, Duration::ZERO),
+        hold::Release::StillHeld(vec![(HoldKind::SubtreeRescan, 1)]),
+        "the rescan thread still holds the volume, and the loop that queued it doesn't"
+    );
+
+    gate.open();
+    assert_eq!(
+        hold::wait_until_released(volume_id, Duration::from_secs(10)),
+        hold::Release::Released,
+        "and it lets go once its walk is done"
+    );
+    writer.shutdown();
+}
+
 /// A volume watched branch by branch never routes an anchor to the visible
 /// scanner, whatever its depth.
 ///
@@ -331,8 +393,11 @@ async fn queued_rescans_start_after_active_completes() {
 async fn a_branch_watched_volume_never_routes_an_anchor_to_the_whole_volume_scanner() {
     let volume_id = "smb://reconciler-test-branch-confined";
     let (writer, _dir, conn, _instance) = setup_private_writer(volume_id);
-    let mut reconciler =
-        EventReconciler::new_for(volume_id.to_string(), IndexPathSpace::root(), CancellationToken::new());
+    let mut reconciler = EventReconciler::new_for(
+        volume_id.to_string(),
+        IndexPathSpace::root(),
+        VolumeWork::for_test("reconciler-test"),
+    );
     reconciler.switch_to_live();
     let sink = Arc::new(Mutex::new(Vec::<String>::new()));
     reconciler.set_recording_scan_trigger(Arc::clone(&sink));
@@ -415,8 +480,11 @@ fn storm_of_distinct_deep_anchors(
 async fn a_storm_of_distinct_deep_anchors_routes_to_the_visible_sweep() {
     let volume_id = "smb://reconciler-test-anchor-cardinality";
     let (writer, _dir, conn, _instance) = setup_private_writer(volume_id);
-    let mut reconciler =
-        EventReconciler::new_for(volume_id.to_string(), IndexPathSpace::root(), CancellationToken::new());
+    let mut reconciler = EventReconciler::new_for(
+        volume_id.to_string(),
+        IndexPathSpace::root(),
+        VolumeWork::for_test("reconciler-test"),
+    );
     reconciler.switch_to_live();
     // Keep the queue visible (no spawn), so the drain's share is assertable.
     reconciler.rescan_active.store(true, Ordering::Relaxed);
@@ -455,8 +523,11 @@ async fn a_storm_of_distinct_deep_anchors_routes_to_the_visible_sweep() {
 async fn an_ordinary_machines_deep_anchors_keep_the_reconcile_drain() {
     let volume_id = "smb://reconciler-test-ordinary-cardinality";
     let (writer, _dir, conn, _instance) = setup_private_writer(volume_id);
-    let mut reconciler =
-        EventReconciler::new_for(volume_id.to_string(), IndexPathSpace::root(), CancellationToken::new());
+    let mut reconciler = EventReconciler::new_for(
+        volume_id.to_string(),
+        IndexPathSpace::root(),
+        VolumeWork::for_test("reconciler-test"),
+    );
     reconciler.switch_to_live();
     reconciler.rescan_active.store(true, Ordering::Relaxed);
     let sink = Arc::new(Mutex::new(Vec::<String>::new()));
@@ -497,7 +568,7 @@ async fn an_external_volume_keeps_the_drain_however_many_anchors_arrive() {
     let mut reconciler = EventReconciler::new_for(
         volume_id.to_string(),
         IndexPathSpace::mount_rooted("/Volumes/reconciler-test-external"),
-        CancellationToken::new(),
+        VolumeWork::for_test("reconciler-test"),
     );
     reconciler.switch_to_live();
     reconciler.rescan_active.store(true, Ordering::Relaxed);

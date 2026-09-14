@@ -16,7 +16,8 @@ tests stay colocated in each module; these are the integration tier.
   start/stop/restart-under-load, and the partial-aggregation differential test, plus shared setup helpers.
 - **external_drive_fixture.rs** — a macOS-only synthetic disk-image FIXTURE (`#[cfg(target_os = "macos")]`), NOT a test
   file. Its FSKit-panic-safe attach/detach discipline is load-bearing.
-- **vanish_tests.rs** — macOS real-image pins of a drive vanishing mid-scan, on the walker's park point (`#[ignore]`d).
+- **vanish_tests.rs** — macOS real-image pins on the walker's park point (`#[ignore]`d): a drive vanishing mid-scan, and
+  a parked worker still holding the drive once its manager is gone.
 
 ## Must-knows
 

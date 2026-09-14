@@ -1,5 +1,6 @@
-//! What the index does TODAY when its drive vanishes mid-scan, pinned on a real
-//! HFS+ disk image (macOS).
+//! What a scan parked on a real drive does, pinned on a real HFS+ disk image (macOS):
+//! what the index does TODAY when the drive vanishes mid-scan, and that a parked
+//! walker worker still holds the drive once its manager is gone.
 //!
 //! A real `IndexManager` scans a tree on the image, the way `event_stream_tests.rs`
 //! drives one over a temp dir. The walker's test-only park point
@@ -23,7 +24,7 @@ use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, ImageSpec};
 use cmdr_fs::testing::wait_until_async;
 
 use crate::indexing::events::{ActivityPhase, IndexEvent, IndexEventKind, RecordingSink};
-use crate::indexing::hold::VolumeWork;
+use crate::indexing::hold::{self, HoldKind, VolumeWork};
 use crate::indexing::lifecycle::manager::IndexManager;
 use crate::indexing::lifecycle::state::VolumeSignals;
 use crate::indexing::scanner::park::ParkHandle;
@@ -211,4 +212,60 @@ async fn a_drive_that_vanishes_mid_scan_is_stamped_complete_with_every_row_gone_
         "today the completion stamp lands over ground nobody walked: {observed:#?}"
     );
     assert_eq!(observed.rows, 0, "today every row is gone: {observed:#?}");
+}
+
+/// A walker worker parked on a real drive keeps it held after the manager has drained
+/// and gone: the drain joins none of the walk's threads, and a stop that answered
+/// "released" here would unmount under the read that worker is about to make. It lets
+/// go once it gets past that read.
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "attaches a real HFS+ disk image via hdiutil; run with --run-ignored"]
+async fn a_walker_worker_parked_on_a_real_drive_holds_it_after_the_manager_is_gone() {
+    let session = DiskImageSession::acquire();
+    let image = DiskImage::attach(&session, ImageSpec::Hfs).expect("attach the image");
+    let root = image.volumes()[0].mount_point.clone();
+    populate(&root);
+
+    let data = tempfile::tempdir().expect("index data dir");
+    let events = Arc::new(RecordingSink::new());
+    let mut manager = IndexManager::new_for_kind(
+        VOLUME_ID.to_string(),
+        root.clone(),
+        data.path().join(format!("index-{VOLUME_ID}.db")),
+        IndexVolumeKind::LocalExternal,
+        true,
+        VolumeSignals::new(
+            Arc::new(std::sync::Mutex::new(None)),
+            Arc::clone(&events) as Arc<dyn crate::EventSink>,
+        ),
+        VolumeWork::for_test(VOLUME_ID),
+    )
+    .expect("build the index manager");
+
+    let park = ParkHandle::arm(&root, PARK_AFTER_DIRS);
+    manager.start_scan("hold pin").expect("start the scan");
+    assert!(
+        tokio::task::block_in_place(|| park.wait_until_parked(Duration::from_secs(20))),
+        "the walk of {} never parked (events {:?})",
+        root.display(),
+        events.kinds_for(VOLUME_ID),
+    );
+
+    manager.shutdown();
+    drop(manager);
+    let held = match hold::wait_until_released(VOLUME_ID, Duration::ZERO) {
+        hold::Release::Released => Vec::new(),
+        hold::Release::StillHeld(holders) => holders,
+    };
+    assert!(
+        held.contains(&(HoldKind::WalkerWorker, 1)),
+        "the parked worker still holds the drive once the manager is gone: {held:?}"
+    );
+
+    drop(park);
+    assert_eq!(
+        tokio::task::block_in_place(|| hold::wait_until_released(VOLUME_ID, Duration::from_secs(20))),
+        hold::Release::Released,
+        "and lets go once it gets past its next read"
+    );
 }

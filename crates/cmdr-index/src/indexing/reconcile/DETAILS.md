@@ -468,8 +468,11 @@ Those gaps are what the sweep scope and the coalesce count answer. An MTP volume
 **Every detached walk here runs on a token handed IN, never one looked up.** `maybe_verify` takes a `Verifier` child of
 the volume's `VolumeWork` from `state::trigger_verification` (which already holds the instance); its task and the
 blocking read under it each carry a share, so a removable stop waits for them
-(`verifier::tests::a_verification_holds_its_volume_until_its_walk_is_done`). The subtree-rescan drain takes its token
-from the `RescanDrain` the `EventReconciler` was built with. ❌ Don't reach into `lifecycle::state` for a token by volume id:
+(`verifier::tests::a_verification_holds_its_volume_until_its_walk_is_done`). The subtree-rescan drain takes its work
+from the `RescanDrain`: the reconciler's (`LiveLoop`) for the first walk, then each walk's own (`SubtreeRescan`) for the
+walk it drains on to, so a rescan thread holds the drive while it walks and never carries the loop's share.
+`reconciler/rescan/gate.rs` is the test-only gate that holds a rescan walk before its first read
+(`reconciler::tests::must_scan_routing::a_subtree_rescan_holds_its_volume_until_its_walk_is_done`). ❌ Don't reach into `lifecycle::state` for a token by volume id:
 besides the import cycle, a walk that starts after its volume was torn down would find nothing, default to a token that
 never fires, and keep writing into a draining writer. Topology: `../host/DETAILS.md` § Cancellation.
 

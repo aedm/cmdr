@@ -496,7 +496,13 @@ and drops it after its last read returns:
   `VolumeWork::linked` also stops on the volume's stop, one scheduler hop late);
 - a verification's task and the blocking reads under it (`Verifier`);
 - a local reconcile's thread (`LocalReconcile`) and each `reconcile-read` thread it spawns (`ReconcileRead`), an
-  abandoned one still in a hung read included.
+  abandoned one still in a hung read included;
+- a scan's completion task (`ScanCompletion`), which checks the volume's stop before its replay and, under the live-loop
+  slot's lock, before it starts the loop, so a stop that landed first gets neither and a loop started after the check
+  is always one `shutdown` sees;
+- the live loop (`LiveLoop`, carried by its `EventReconciler`), which outlives `shutdown`'s five-second drain when it's
+  stuck, and every subtree rescan it starts (`SubtreeRescan`), each taken under the walk before it, so no rescan thread
+  carries the loop's share.
 
 ❌ **A worker stuck in a read keeps its share**, with no timeout that drops it early: the drive then reads as still
 releasing, and an eject doesn't unmount under the read.
@@ -508,6 +514,9 @@ search's walk and the phase machine, each still reading after the drain),
 `reconcile::verifier::tests::a_verification_holds_its_volume_until_its_walk_is_done`,
 `reconcile::local_reconcile::tests::a_local_reconcile_holds_its_volume_until_its_thread_is_done` and its
 `guarded_reader::an_abandoned_reader_holds_its_volume_until_its_read_returns`,
+`scan_completion::tests::the_completion_task_and_its_live_loop_hold_the_volume` and
+`a_stopped_volume_gets_no_replay_and_no_live_loop`, `watch::event_loop::tests::holds`,
+`reconcile::reconciler::tests::must_scan_routing::a_subtree_rescan_holds_its_volume_until_its_walk_is_done`,
 `state::tests::a_removable_stop_waits_for_the_start_it_cancelled`,
 `state::tests::a_removable_stop_never_waits_on_a_drive_that_already_left`, and `hold::tests` (the wake, the per-kind
 counts, generations, and the linked cancel).

@@ -308,8 +308,11 @@ impl IndexManager {
 
         let space = self.path_space();
         let scope = WatchScope::Branches(Arc::clone(&branches));
-        let mut reconciler =
-            EventReconciler::new_for(self.volume_id.clone(), space.clone(), self.work.cancel.child_token());
+        let mut reconciler = EventReconciler::new_for(
+            self.volume_id.clone(),
+            space.clone(),
+            self.work.child(HoldKind::LiveLoop),
+        );
         reconciler.within(scope.clone());
         // Live from the first event: there is no scan to wait for, and the branches
         // that ARE being walked buffer on their own (`WatchScope`).
@@ -730,7 +733,7 @@ impl IndexManager {
                 live_event_task_slot,
                 scan_start_event_id,
                 calibration_kind: run_kind.calibration_kind(),
-                cancel: self.work.cancel.child_token(),
+                work: self.work.child(HoldKind::ScanCompletion),
             },
         ));
 

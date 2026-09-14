@@ -18,6 +18,7 @@
 use super::*;
 
 mod activity;
+mod holds;
 mod ingestion;
 mod merge;
 mod rename;

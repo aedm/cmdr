@@ -26,7 +26,8 @@ use crate::indexing::watch::watcher::FsChangeEvent;
 use crate::indexing::writer::{IndexWriter, WriteMessage};
 use cmdr_fs::ignore_poison::IgnorePoison;
 use cmdr_fs::pluralize::pluralize;
-use tokio_util::sync::CancellationToken;
+
+use crate::indexing::hold::{HoldKind, VolumeWork};
 
 /// Everything the post-scan completion task takes ownership of from
 /// `start_scan`. These are exactly the variables the former inline closure
@@ -78,10 +79,10 @@ pub(super) struct ScanCompletion {
     /// two walks differ ~5x in wall clock, so writing them into one slot makes
     /// the next run of the OTHER kind predict a wildly wrong ETA.
     pub calibration_kind: ScanCalibrationKind,
-    /// This volume's stop signal (the same one the manager holds). Handed to the
-    /// post-scan reconciler so its detached subtree walks stop when the volume
-    /// does; see `EventReconciler::new_for`.
-    pub cancel: CancellationToken,
+    /// This task's work (`ScanCompletion`), a child of the volume's: the task holds
+    /// the drive for as long as it runs, the reconciler it hands to the live loop
+    /// takes a `LiveLoop` child, and a stopped volume gets no replay and no loop.
+    pub work: VolumeWork,
 }
 
 /// Whether a failed local scan should emit `index-scan-aborted`: only when the
@@ -125,7 +126,7 @@ async fn finish_the_scan(params: ScanCompletion) {
         live_event_task_slot,
         scan_start_event_id,
         calibration_kind,
-        cancel,
+        work,
     } = params;
 
     // Wait for scan to complete
@@ -196,7 +197,7 @@ async fn finish_the_scan(params: ScanCompletion) {
     // an indexed drive, and those events have to wait for that walk exactly as
     // they would on an unindexed one.
     let scope = WatchScope::WholeVolume(branches::live_for(&volume_id));
-    let mut reconciler = EventReconciler::new_for(volume_id.clone(), space.clone(), cancel.clone());
+    let mut reconciler = EventReconciler::new_for(volume_id.clone(), space.clone(), work.child(HoldKind::LiveLoop));
     reconciler.within(scope.clone());
 
     // Drain all buffered events from the channel into the reconciler
@@ -345,6 +346,13 @@ async fn finish_the_scan(params: ScanCompletion) {
         });
     }
 
+    // A volume stopped while its scan was finishing gets no replay: the replay reads
+    // the drive, and the manager that would drain what follows is already gone.
+    if work.cancel.is_cancelled() {
+        log::debug!("Scan completion: '{volume_id}' was stopped, so no replay and no live loop");
+        return;
+    }
+
     // Open a read connection for path resolution during replay
     let replay_conn = match IndexStore::open_read_connection(&writer.db_path()) {
         Ok(c) => c,
@@ -402,7 +410,15 @@ async fn finish_the_scan(params: ScanCompletion) {
         "post-scan reconciliation complete",
     );
 
-    // Step 5: Start live event processing loop
+    // Step 5: Start live event processing loop, under the slot's lock. A stop cancels
+    // the volume's work BEFORE `shutdown` takes the slot, so a loop started after this
+    // check is always one `shutdown` sees and waits on, and a stop that landed first
+    // gets no loop at all: nothing would ever drain it, and it would read the drive.
+    let mut slot = live_event_task_slot.lock_ignore_poison();
+    if work.cancel.is_cancelled() {
+        log::debug!("Scan completion: '{volume_id}' was stopped before its live loop started");
+        return;
+    }
     let writer_live = writer.clone();
     let events_live = Arc::clone(&events);
     let volume_id_live = volume_id.clone();
@@ -425,10 +441,7 @@ async fn finish_the_scan(params: ScanCompletion) {
     });
 
     // Store the handle so shutdown() can wait for it to drain
-    {
-        let mut guard = live_event_task_slot.lock_ignore_poison();
-        *guard = Some(handle);
-    }
+    *slot = Some(handle);
 }
 
 /// Report a scan that neither finished nor was cancelled: a typed failure, or a
@@ -502,6 +515,7 @@ fn report_unfinished_scan(
 mod tests {
     use super::*;
     use crate::indexing::events::{IndexEventKind, RecordingSink};
+    use crate::indexing::hold;
     use crate::indexing::lifecycle::freshness::Freshness;
 
     /// Everything `run_scan_completion` needs, with a real writer over a real DB
@@ -557,7 +571,7 @@ mod tests {
                 live_event_task_slot: Arc::new(std::sync::Mutex::new(None)),
                 scan_start_event_id: 0,
                 calibration_kind: ScanCalibrationKind::FullWalk,
-                cancel: CancellationToken::new(),
+                work: VolumeWork::for_test(volume_id),
             }
         }
 
@@ -770,6 +784,84 @@ mod tests {
         assert!(
             fx.completion_marker().await.is_some(),
             "a completed rescan heals the index that was left unmarked"
+        );
+    }
+
+    /// The completion task reads the drive while it replays, so it holds its volume
+    /// from the moment it's spawned, and the live loop it starts holds it from there:
+    /// the drain never joins the task, and waits on the loop for only five seconds.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn the_completion_task_and_its_live_loop_hold_the_volume() {
+        let volume_id = "done-holds";
+        let mut fx = Fixture::new(volume_id);
+        let (finish_the_walk, the_walk_finishes) = std::sync::mpsc::channel::<()>();
+        let volume = VolumeWork::for_test(volume_id);
+        let mut params = fx.completion(volume_id, Ok(summary(1)));
+        params.join_handle = std::thread::spawn(move || {
+            let _ = the_walk_finishes.recv();
+            Ok(summary(1))
+        });
+        params.work = volume.child(HoldKind::ScanCompletion);
+        let slot = Arc::clone(&params.live_event_task_slot);
+
+        let completion = crate::indexing::host::runtime::spawn(run_scan_completion(params));
+        drop(volume);
+        assert_eq!(
+            hold::wait_until_released(volume_id, std::time::Duration::ZERO),
+            hold::Release::StillHeld(vec![(HoldKind::ScanCompletion, 1)]),
+            "the task holds the drive while it waits on the walk"
+        );
+
+        finish_the_walk.send(()).expect("the walk is still waiting");
+        completion.await.expect("the completion task");
+        assert_eq!(
+            hold::wait_until_released(volume_id, std::time::Duration::ZERO),
+            hold::Release::StillHeld(vec![(HoldKind::LiveLoop, 1)]),
+            "and the live loop it started holds it from there"
+        );
+
+        let live = slot.lock_ignore_poison().take().expect("the task stored its live loop");
+        // The fixture holds the watcher's end of the channel the loop reads.
+        drop(fx);
+        live.await.expect("the live loop ends once its channel closes");
+        assert_eq!(
+            hold::wait_until_released(volume_id, std::time::Duration::from_secs(5)),
+            hold::Release::Released,
+            "and lets go as it ends"
+        );
+    }
+
+    /// A volume stopped while its scan was finishing gets no replay and no live loop:
+    /// both would read a drive whose manager is already gone, and nothing would ever
+    /// drain the loop.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_stopped_volume_gets_no_replay_and_no_live_loop() {
+        let volume_id = "done-stopped";
+        let mut fx = Fixture::new(volume_id);
+        let params = fx.completion(volume_id, Ok(summary(42)));
+        let slot = Arc::clone(&params.live_event_task_slot);
+        params.work.cancel.cancel();
+
+        run_scan_completion(params).await;
+
+        assert!(
+            slot.lock_ignore_poison().is_none(),
+            "no live loop was started for a stopped volume"
+        );
+        assert!(
+            !fx.events.events().iter().any(|event| matches!(
+                event,
+                IndexEvent::PhaseChanged {
+                    phase: ActivityPhase::Live,
+                    ..
+                }
+            )),
+            "and it never went live"
+        );
+        assert_eq!(
+            hold::wait_until_released(volume_id, std::time::Duration::ZERO),
+            hold::Release::Released,
+            "so nothing holds the drive"
         );
     }
 
