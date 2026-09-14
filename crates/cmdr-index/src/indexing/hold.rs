@@ -43,10 +43,9 @@ use crate::indexing::volume::VolumeId;
 /// the work still reading the drive.
 ///
 /// One variant per place that spawns drive-reading work, plus the start itself.
-#[expect(
-    dead_code,
-    reason = "a worker's variant is constructed once its spawn site carries a share"
-)]
+/// ❌ No variant for a volume-classification probe (a cover bootstrap's or a start's
+/// `statfs`): it runs before any reservation, so there's no generation to share, and
+/// the host's `drive_release` ticket spans it instead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum HoldKind {
     /// The start: its reservation, the registry instance, and the manager it builds.
@@ -75,8 +74,6 @@ pub(crate) enum HoldKind {
     SearchCover,
     /// A verifier task and its `scan_subtree` walk.
     Verifier,
-    /// A cover bootstrap's mount probe (`index-mount-probe`).
-    MountProbe,
 }
 
 /// Which of a volume's lives a share belongs to: one per reservation.

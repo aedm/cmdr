@@ -10,7 +10,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   unmount races the stop (`apps/desktop/src-tauri/src/volumes/watcher.rs:257`). Nothing resumes an index that handler
   stopped when the unmount is then refused. An indexed exFAT drive unmounting under a live FSEvents stream is the FSKit
   wedge that kernel-panicked a Mac on 2026-07-15.
-- **"Released" doesn't mean nothing reads the drive.** The per-volume hold drops with the index manager, but 11 kinds of
+- **"Released" doesn't mean nothing reads the drive.** The per-volume hold drops with the index manager, but 10 kinds of
   worker keep reading after it drops (§ "Code map").
 - **A vanished drive corrupts what Cmdr knows.** A child whose stat fails drops out of a listing and its row is deleted;
   a live event whose stat fails for any reason deletes its row; a rebuild deletes a subtree before reading it; a scan
@@ -318,15 +318,17 @@ File:line of the spawn:
 8. verifier tasks and their `scan_subtree` walks (`lifecycle/state/scan_control.rs:78,106`,
    `reconcile/verifier.rs:120,249`);
 9. the live loop after its 5 s drain timeout;
-10. `index-mount-probe` threads (`lifecycle/cover/bootstrap.rs:209`);
-11. a media network pass on a `LocalExternal` id in a hand-edited opt-in list: `run_network_pass_blocking`
+10. a media network pass on a `LocalExternal` id in a hand-edited opt-in list: `run_network_pass_blocking`
     (`crates/cmdr-index/src/media_index/scheduler/mod.rs:474-526`) has no kind gate.
 
-Not workers for this plan: the start's probe (no reservation exists; the gate covers it); the importance scheduler reads
-the DB (its Spotlight sample, `crates/cmdr-index/src/importance/last_used.rs:53`, is believed to use index-relative
-paths: M4 verifies); thumbnails (`apps/desktop/src-tauri/src/commands/media_index/thumbnail.rs:38-70`) are foreground.
-Nothing in `scanner/`, `reconcile/`, or `watch/` imports `lifecycle::state`; `volume.rs` (`:3-7`, "pure predicates
-only") and `metadata.rs` are the shared leaves.
+Not workers for this plan: neither volume-classification probe, the start's (`transports/local_external/index.rs:105`)
+nor a cover bootstrap's `index-mount-probe` thread (`lifecycle/cover/bootstrap.rs:209`). Both run before any
+reservation, so no generation exists to share, and M5's start ticket spans them (its residual is in § M5). The
+importance scheduler reads the DB: its Spotlight sample (`crates/cmdr-index/src/importance/last_used.rs:53`) takes
+index-relative paths (`store/dir_tree.rs::path_at_into`, verified in M4), so it never reads an external mount.
+Thumbnails (`apps/desktop/src-tauri/src/commands/media_index/thumbnail.rs:38-70`) are foreground. Nothing in `scanner/`,
+`reconcile/`, or `watch/` imports `lifecycle::state`; `volume.rs` (`:3-7`, "pure predicates only") and `metadata.rs` are
+the shared leaves.
 
 ### Index writes from a failed or missing observation
 
@@ -1067,10 +1069,12 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
 
 - **Scope**: every spawn site in § "Workers" takes `VolumeWork` (or `linked`): the walker and its workers, the scanner
   thread, local reconcile and its reader threads, the subtree rescan chain, the verifier and its `scan_subtree`, the
-  phase machine, cover walks and the mount probe, the scan completion task (token check before replay and before the
-  live-loop spawn), and the live loop.
+  phase machine, cover walks, the scan completion task (token check before replay and before the live-loop spawn), and
+  the live loop.
 - **Intentions**: no drive-reading spawn site takes a bare `CancellationToken`; verify the importance Spotlight sample
-  never touches a `LocalExternal` mount, and give it a share if it does.
+  never touches a `LocalExternal` mount, and give it a share if it does. Neither volume-classification probe is a worker
+  (§ "Code map"): both run before a reservation exists, so `HoldKind` has no variant for them and M5's ticket spans
+  them.
 - **Landmines**:
   - An abandoned walker worker holding its share turns a hung read on a mounted drive into `StillReleasing`; that's
     intended.
@@ -1108,6 +1112,11 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - Never block a DA or GCD thread on anything but `release`'s bounded wait.
   - `start_volume` runs on `tauri::async_runtime`, ❌ never `tokio::spawn` from a non-runtime thread.
   - The root volume's launch and FDA starts stay outside the module.
+  - A start's ticket is taken BEFORE anything classifies the volume: before `walkable_volume` / `context_for_walk` runs
+    a cover bootstrap's `index-mount-probe`, and before `local_external::classify` runs the start's own probe. Neither
+    probe holds a share (no reservation exists yet), so the ticket is the only thing an ask can wait on. Residual: a
+    `statfs` hung past its 2 s timeout (`FS_PROBE_TIMEOUT`) is abandoned and can outlive the ticket. On FSKit that call
+    goes through the userspace filesystem, so it's the stuck-worker shape, and the drive already isn't answering.
 - **Test plan** (pure, deterministic, injected stop and start seams):
   - an ask arriving during a start's probe window: the ticket is in flight, `release` waits, then stops the new
     instance; at a passed deadline it answers `StillReleasing`, and the continuation stops the start once the ticket
@@ -1240,6 +1249,9 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     can't be asked about, so every gate reads it as present: completion stamps as today in hostless tools and tests. A
     gate test installs a `FakeVolumeProvider`, `mount`s the root BEFORE the start (the reservation captures the
     identity), then `mark_unmounted`s it.
+  - A volume stopped while its scan's completion task is finishing still writes `scan_completed_at` and the calibration
+    meta: the task's stop check (M4, `lifecycle/scan_completion.rs`) comes after those writes and skips only the replay
+    and the live loop.
 - **Test plan** (red first):
   - a walk whose root goes unlisted persists no `Abandoned` marks, no aggregates, no stamp, and emits `ScanAborted`;
   - a phase pass whose root goes unlisted stamps nothing, and `take_stock` stamps nothing;
