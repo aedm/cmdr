@@ -934,22 +934,37 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     - `diskutil`: `info -plist`, `apfs addVolume`, `partitionDisk`, `mount -mountOptions nobrowse`, `unmount`,
       `unmountDisk`, `eject`. Every mutating verb re-checks identity first; every call has the SIGKILL deadline.
   - `DiskImage::attach(ImageSpec)`: `Apfs`, `ApfsTwoVolumes` (`hdiutil create -size 1100m -type SPARSE -fs APFS`, then
-    `addVolume <container> APFS <name> -nomount`, then a nobrowse mount), `HfsTwoPartitions`
-    (`-layout GPTSPUD -fs HFS+`, then `partitionDisk <disk> GPT JHFS+ A 60M JHFS+ B R`, then nobrowse remounts). `Drop`
-    detaches after the identity check.
+    `addVolume <container> APFS <name> -nomount`, then a nobrowse mount), `Hfs` (one HFS+ volume, for the vanish pin),
+    `HfsTwoPartitions` (`-layout GPTSPUD -fs HFS+`, then `partitionDisk <disk> GPT JHFS+ A 60M JHFS+ B R`, then nobrowse
+    remounts). `Drop` detaches after the identity check.
+  - `#[ignore]` harness self-tests in `cmdr_fs::testing::disk_images::real_images` (each spec attaches, mounts every
+    volume nobrowse, and leaves nothing behind), in the `disk-image` nextest group. They join M2's filter union; the
+    FAT/exFAT `external_drive_fixture` tests don't, and keep their attach-once, detach-once discipline.
   - `external_drive_fixture` repoints at the runner (one runner, no `jscpd` pair); its FAT/exFAT tests stay as they are.
   - A guarded `run_tool` closure for `unmount_tool::settle_with_retries` (a `diskutil eject` through the runner, each
     attempt identity-checked).
   - `#[ignore]` pins in `apps/desktop/src-tauri/src/file_system/volume/eject/real_image.rs`
     (`#[cfg(all(test, target_os = "macos"))] mod real_image;`), calling `settle_with_retries` with the guarded closure.
   - An `#[ignore]` pin in `crates/cmdr-index/src/indexing/tests/vanish_tests.rs` (macOS): a real `IndexManager` over an
-    HFS+ image (the `event_stream_tests.rs` shape) with a tree big enough to scan for a few seconds, detached with
-    `hdiutil detach -force` at the first `ScanProgress`.
+    HFS+ image (the `event_stream_tests.rs` shape), detached with `hdiutil detach -force` while the walk is PARKED.
+    Detaching at the first `ScanProgress` can't work: on an HFS+ image the walk read 40,040 entries in 46 ms, while
+    populating them took 2.7 s (macOS 26.6.2, hand run, 2026-09-14), so no tree that fits a 30 s cap outlasts the 500 ms
+    tick plus the guarded detach.
+  - **The walker park point** (`scanner/walker/park.rs`, `#[cfg(test)]`, so absent from release builds and from every
+    build of the app; reached through a `#[cfg(all(test, target_os = "macos"))]` re-export in `scanner/mod.rs`, nothing
+    on `lib.rs`). `ParkHandle::arm(root, after_dirs)` parks the next walk of exactly that root once it has read
+    `after_dirs` directories: the point is in `Engine::run_worker` after a task is popped and before its directory is
+    opened, and each worker counts itself busy from there until its task is handled (the read, whose fd `bulk_read`
+    closes before returning, then the visitor's per-child work). `wait_until_parked(timeout)` answers once the park has
+    tripped and no worker is busy, so no directory handle is open on the image and nothing touches it; `release()` (or
+    dropping the handle) lets the walk go on. A detach while parked is "vanished between reads", never "detached under
+    an open fd", which is a separate, riskier shape this plan doesn't pin.
 - **Intentions**:
   - Eject pins: idle → `Ok` and detached; a held file → `UnmountRefused`; two-volume APFS with a file held on B, eject A
     → whatever today answers, recorded and commented as the gap M12 flips; the same on the two-partition HFS+ image.
-  - The vanish pin records today's outcome (expected: rows gone and `scan_completed_at` written, or `Abandoned` marks
-    written), commented as the gap M7 and M8 flip.
+  - The vanish pin records today's outcome, commented as the gap M7 and M8 flip. Recorded 2026-09-14 (macOS 26.6.2,
+    three hand runs): the scan goes live, stamps `scan_completed_at`, and leaves zero rows. A control through the same
+    park, released without a detach, indexes every row with no `Abandoned` marks.
   - Plist parsing uses a workspace dependency already in `Cargo.lock` if one fits; otherwise the dependency guide.
 - **Landmines**:
   - A child `sleep` spawned by a test descends from the test process, so M14 classifies it `Cmdr`: assert PID
@@ -982,8 +997,10 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - `IsSlow: true`; `NotInCI` (every CI runner is ubuntu, and `hdiutil` has no Linux counterpart);
     `Exclusive: ResourceCargoBuildDir`; depends on clippy.
   - On a non-darwin host it answers OK with "skipped: macOS only".
-  - It runs nextest `--run-ignored only` over an explicit filter union of this plan's real-image paths. ❌ Not
-    `external_drive_fixture::`.
+  - It runs nextest `--run-ignored only` over an explicit filter union of this plan's real-image paths: from M1,
+    `testing::disk_images::real_images::` (the `cmdr-fs` harness self-tests),
+    `file_system::volume::eject::real_image::`, and `indexing::tests::vanish_tests::`. ❌ Not
+    `external_drive_fixture::`: the FAT/exFAT tests stay hand-run.
   - Machine-wide serialization comes from M1's per-test lock, not from the lane: the Go runner holding the same lock
     would block its own test processes.
   - Each later milestone adds its real-image path to the union.
@@ -1166,7 +1183,9 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - boot-disk verification with `EACCES` deletes nothing;
   - the delete generation counts batches, resets only after a later successful root listing plus a later `Some(true)`,
     and a `Some(true)` read alone doesn't reset it;
-  - lane: M1's vanish pin loses no rows; a new pin force-detaches while a live watcher processes removals;
+  - lane: M1's vanish pin loses no rows, flipped on the same seam it pins with, the walker park point
+    (`scanner/walker/park.rs`: `ParkHandle::arm` on the mount root, `wait_until_parked`, detach, `release`); a new pin
+    force-detaches while a live watcher processes removals;
   - `pnpm check`, `pnpm check disk-images`.
   - **Must not change**: the reconcile and verifier suites, `watch` suites, `integration_tests.rs`, `network_scanner`
     reconcile tests (an SMB/MTP reconcile still deletes a removed entry), the SMB and MTP watch tests.
@@ -1197,7 +1216,8 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     armed, and a start with the window unarmed runs no clear;
   - a delete batch then an unlisted root writes the marker (writer alive, and after drain), and emits the event once;
   - the route table: `needs_rebuild` wins over a completed index; `RebuildFirst` clears it with `user_enabled` intact;
-  - lane: the vanish pin leaves no stamp, and a re-attach routes to a rebuild when deletes were in flight;
+  - lane: the vanish pin leaves no stamp, flipped on the walker park point it pins with (`scanner/walker/park.rs`,
+    detach while parked, then `release`), and a re-attach routes to a rebuild when deletes were in flight;
   - `pnpm check`, `pnpm check disk-images`, then `pnpm check --include-slow`.
   - **Must not change**: `scan_completion` tests (`scan_failure_is_vanished_volume`), `phases::tests`, `launch_route`
     tests (existing rows unchanged), `writer::abandoned_retry` tests, `cover::cold_drive_tests::*`.

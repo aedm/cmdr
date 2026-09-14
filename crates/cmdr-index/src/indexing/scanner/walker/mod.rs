@@ -75,6 +75,10 @@ pub(super) mod bulk_read;
 mod engine;
 pub use engine::walk;
 
+// A test-only park point that holds a walk between directories (see the module).
+#[cfg(test)]
+pub(crate) mod park;
+
 #[cfg(test)]
 mod tests;
 

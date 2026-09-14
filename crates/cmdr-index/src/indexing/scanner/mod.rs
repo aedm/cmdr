@@ -41,6 +41,9 @@ mod insert_visitor;
 use insert_visitor::{InsertVisitor, UnreadableIds};
 
 mod walker;
+// The walker's test-only park point, for the real-image vanish pin in `indexing/tests/`.
+#[cfg(all(test, target_os = "macos"))]
+pub(crate) use walker::park;
 use walker::{
     DEFAULT_GIVE_UP_AFTER, DEFAULT_PER_ENTRY_ALLOWANCE, DirTask, ReadDirFn, WalkConfig, default_reader, walk,
 };

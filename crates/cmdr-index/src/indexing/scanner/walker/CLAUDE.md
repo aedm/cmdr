@@ -24,6 +24,9 @@ runs the walk (`walk`, the worker pool, the watchdog, `SubtreeBudget`); `bulk_re
   never widen the parse without widening that validation.
 - **Each batch publishes through `ReadProgress` as it arrives** — that IS how the watchdog knows this read is working.
   ❌ Don't buffer a whole directory before reporting.
+- **The park point (`park.rs`) is `#[cfg(test)]`, ❌ never `feature = "testing"`**: the app turns `testing` on for every
+  dev build, and its one consumer is this crate's vanish pin. It parks BEFORE a directory is opened; ❌ don't move it
+  inside a read. DETAILS § "The test-only park point".
 
 The engine's design, the progress-timeout rules, the give-up budget, and the bulk-reader parse: `DETAILS.md`. Read it
 before any non-trivial work here: editing, planning, reorganizing, or advising.

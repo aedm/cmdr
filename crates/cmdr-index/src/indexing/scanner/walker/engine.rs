@@ -63,6 +63,8 @@ pub fn walk<V: DirVisitor + 'static>(
         heartbeat: cfg.heartbeat,
         per_dir_delay: cfg.per_dir_delay,
         slots: Mutex::new(Vec::with_capacity(num_threads)),
+        #[cfg(test)]
+        park: super::park::armed_for(&root.path),
         dirs_read: AtomicU64::new(0),
         timed_out: AtomicU64::new(0),
         io_errors: AtomicU64::new(0),
@@ -253,6 +255,9 @@ struct Engine<V: DirVisitor> {
     per_dir_delay: Option<Duration>,
     /// One slot per live worker (initial + replacements). Grows on abandonment.
     slots: Mutex<Vec<Slot>>,
+    /// The park point a test armed for this walk's root, if any (`park.rs`).
+    #[cfg(test)]
+    park: Option<Arc<super::park::Park>>,
     dirs_read: AtomicU64,
     timed_out: AtomicU64,
     io_errors: AtomicU64,
@@ -352,6 +357,15 @@ impl<V: DirVisitor + 'static> Engine<V> {
                 self.complete_one();
                 continue;
             }
+
+            // A test's park point (`park.rs`): after the pop, before this directory is
+            // opened, so a parked worker holds no directory handle. The guard counts the
+            // worker busy until this task is fully handled, visitor work included.
+            #[cfg(test)]
+            let _busy = self
+                .park
+                .as_ref()
+                .map(|park| park.enter(self.dirs_read.load(Ordering::Relaxed)));
 
             // Say where the walk is BEFORE the read, not after it: a read that
             // hangs is exactly the one a watcher wants named, and it would never

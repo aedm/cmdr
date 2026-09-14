@@ -19,6 +19,10 @@ mod stress_tests_concurrency;
 mod stress_tests_lifecycle;
 #[cfg(test)]
 mod stress_tests_partial_aggregation;
+// What today's index does when its drive vanishes mid-scan, on a real HFS+ image.
+// macOS-only and `#[ignore]`d; see the module.
+#[cfg(all(test, target_os = "macos"))]
+mod vanish_tests;
 
 // Synthetic FAT32/exFAT disk-image fixtures for external-drive indexing tests.
 // macOS-only (hdiutil); see the module and the area DETAILS.

@@ -796,3 +796,79 @@ fn gives_up_on_a_dead_subtree_and_keeps_walking_a_healthy_sibling() {
         );
     }
 }
+
+// ── The test-only park point ─────────────────────────────────────────
+
+/// A root with `n` empty child directories, and a reader over it that counts the
+/// reads in flight.
+fn wide_tree_counting_reads(root: &str, n: usize) -> (ReadDirFn, Arc<std::sync::atomic::AtomicUsize>) {
+    let names: Vec<String> = (0..n).map(|i| format!("d{i:03}")).collect();
+    let children: Vec<(&str, RawFileType)> = names.iter().map(|name| (name.as_str(), RawFileType::Dir)).collect();
+    let mut builder = TreeBuilder::default();
+    builder.dir(root, &children);
+    for name in &names {
+        builder.dir(&format!("{root}/{name}"), &[]);
+    }
+    let inner = builder.build(HashSet::new(), Duration::ZERO).reader();
+    let in_flight = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter = Arc::clone(&in_flight);
+    let reader: ReadDirFn = Arc::new(move |path: &Path, progress: &ReadProgress| {
+        counter.fetch_add(1, Ordering::SeqCst);
+        let result = inner(path, progress);
+        counter.fetch_sub(1, Ordering::SeqCst);
+        result
+    });
+    (reader, in_flight)
+}
+
+#[test]
+fn a_parked_walk_holds_between_directories_with_nothing_in_flight_until_released() {
+    let (reader, in_flight) = wide_tree_counting_reads("/park-a", 64);
+    let park = park::ParkHandle::arm(Path::new("/park-a"), 3);
+    let visitor = Arc::new(RecordingVisitor::new());
+    let walk_visitor = Arc::clone(&visitor);
+    let walking = std::thread::spawn(move || {
+        walk(
+            root_task("/park-a"),
+            fast_cfg(4),
+            reader,
+            walk_visitor,
+            CancellationToken::new(),
+        )
+    });
+
+    assert!(
+        park.wait_until_parked(Duration::from_secs(5)),
+        "the walk parks once it has read 3 directories"
+    );
+    assert_eq!(
+        in_flight.load(Ordering::SeqCst),
+        0,
+        "no directory is being read while parked"
+    );
+    let read_while_parked = visitor.rec.lock().unwrap_or_else(|e| e.into_inner()).read_ok.len();
+    assert!(
+        (3..65).contains(&read_while_parked),
+        "parked after at least 3 of the 65 directories, before the last: {read_while_parked}"
+    );
+    assert!(!walking.is_finished(), "a parked walk doesn't end");
+
+    park.release();
+    let stats = walking.join().expect("the walk thread");
+    assert_eq!(stats.dirs_read, 65, "once released, the walk reads every directory");
+    assert_eq!(stats.timed_out, 0, "the watchdog never abandons a parked worker");
+}
+
+#[test]
+fn a_park_armed_for_another_root_leaves_a_walk_alone() {
+    let _elsewhere = park::ParkHandle::arm(Path::new("/park-elsewhere"), 0);
+    let (reader, _) = wide_tree_counting_reads("/park-b", 8);
+    let stats = walk(
+        root_task("/park-b"),
+        fast_cfg(4),
+        reader,
+        Arc::new(RecordingVisitor::new()),
+        CancellationToken::new(),
+    );
+    assert_eq!(stats.dirs_read, 9);
+}

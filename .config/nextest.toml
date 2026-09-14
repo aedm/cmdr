@@ -106,6 +106,17 @@ filter = 'test(file_system::volume::eject::real_image::)'
 test-group = 'disk-image'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
+[[profile.default.overrides]]
+# The index's vanish pin on a real HFS+ image (`indexing::tests::vanish_tests`,
+# macOS-only, `#[ignore]`d): a real `IndexManager` walks a tree on the image, the
+# walker's test-only park point holds it between directories, and the test
+# force-detaches the image there. Same group, same cap, same reason as the harness
+# tests above.
+# allowed-unmatched-nextest-filter: macos-only, hdiutil and diskutil have no Linux counterpart
+filter = 'test(indexing::tests::vanish_tests::)'
+test-group = 'disk-image'
+slow-timeout = { period = "30s", terminate-after = 1 }
+
 # SMB stress tests serialize on the shared server (see `smb-stress` group above).
 # The concurrent-streaming one additionally wraps its copy in a 120 s internal
 # `tokio::time::timeout` whose expiry dumps the last 30 `client-mutex:`/`recv:`

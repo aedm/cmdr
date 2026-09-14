@@ -75,8 +75,8 @@ never trigger it.
 So every external-drive test uses a **disposable synthetic disk image**, through
 `indexing::tests::external_drive_fixture` (macOS-only, `#[cfg(all(test, target_os = "macos"))]`):
 
-- `DiskImageFixture::attach(DiskImageFilesystem::Fat32 | ExFat, volume_name)` runs `hdiutil create` +
-  `hdiutil attach -nobrowse` on a fresh temp image, parses the `/dev/diskN` node and `/Volumes/…` mount, and returns a
+- `DiskImageFixture::attach(DiskImageFilesystem::Fat32 | ExFat, volume_name)` creates a fresh 64 MB temp image and
+  attaches it `-nobrowse` through the harness, reads its `/Volumes/…` mount from `hdiutil info -plist`, and returns a
   guard.
 - `mount_point()` is the mount; `populate_known_tree()` writes a fixed tree (nested dirs, sized files, and an **empty**
   file — the empty file matters because FAT/exFAT give it a sentinel inode that changes once content is written) and
@@ -84,10 +84,10 @@ So every external-drive test uses a **disposable synthetic disk image**, through
 - The guard's `Drop` detaches once — `hdiutil detach`, then a `hdiutil detach -force` fallback — so teardown runs even
   on panic or early return. **Attach once, detach once; never cycle a FAT/exFAT mount, never `diskutil unmount` one.**
 - **Every `hdiutil` call goes through the one guarded runner**, `cmdr_fs::testing::disk_images`
-  (`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"), reached through `DiskImage::attach_legacy_fat_fixture`:
-  past 30 s the child is SIGKILLed, so a wedged FSKit service is killed, never awaited; the fixture holds the
-  machine-wide disk-image lock while it lives; and the detach is proven to be this image's own before it runs. ❌ Don't
-  "clean up" these timeouts or the single-detach discipline — they're the guardrail against the incident above.
+  (`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"), reached through `DiskImage::attach_legacy_fat_fixture`: past
+  30 s the child is SIGKILLed, so a wedged FSKit service is killed, never awaited; the fixture holds the machine-wide
+  disk-image lock while it lives; and the detach is proven to be this image's own before it runs. ❌ Don't "clean up"
+  these timeouts or the single-detach discipline — they're the guardrail against the incident above.
 
 The same runner builds the APFS and HFS+ images the eject pins use (`DiskImage::attach`), which may unmount and eject
 under test: the single-detach rule is about the FSKit `msdos` service, which those images never touch.
@@ -113,6 +113,26 @@ asserts the drive's own index holds the tree under `ROOT_ID` by mount-relative n
 inode nulled. Asserts are lower bounds (macOS adds AppleDouble `._*` sidecars on FAT). The full app-level lifecycle
 (enable → scan → sizes → eject-safe stop → detach) is not an automated CI test — driving `hdiutil` in CI is the
 deliberately-avoided panic-class op; it's validated live via MCP against the running dev app instead.
+
+### A drive vanishing mid-scan (`vanish_tests.rs`)
+
+Two `#[ignore]`d macOS tests on a real HFS+ image from the harness (`DiskImage::attach(ImageSpec::Hfs)`), in the
+`disk-image` nextest group. Each scans a 4,000-file tree with a real `IndexManager` (the `event_stream_tests.rs` shape)
+and holds the walk on the walker's test-only park point after five directories, where no directory handle is open on the
+image (`scanner/walker/DETAILS.md` § "The test-only park point").
+
+- **The pin** force-detaches the image while the walk is parked, then releases it. Today the scan doesn't abort: it goes
+  live, stamps `scan_completed_at` over ground nobody walked, and leaves the index with zero rows (verified on macOS
+  26.6.2, three hand runs, 2026-09-14). That's the gap the index-side vanish work flips, on this same seam.
+- **The control** releases the same park without a detach, and must index every folder and file with no `Abandoned`
+  marks, so the pin's outcome is the vanish's doing, not the park's.
+- **Why a park, and not a detach at the first `ScanProgress`.** The walk reads an image's tree about 60× faster than a
+  test can build one (40,040 entries in 46 ms, against 2.7 s to create them, same run), so no tree that fits the 30 s
+  cap outlasts the 500 ms progress tick plus the guarded detach.
+
+```sh
+cargo nextest run -p cmdr-index --run-ignored only -E 'test(indexing::tests::vanish_tests::)'
+```
 
 For `platform_case_compare` in `store.rs`: proptests cover the comparator algebra (reflexive / antisymmetric /
 transitive) and NFC≡NFD equivalence on macOS. Don't regress those; see `store/tests/path_resolution.rs` for the property

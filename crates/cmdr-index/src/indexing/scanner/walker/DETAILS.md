@@ -56,6 +56,31 @@ is offline, which froze the whole scan.
   `std_read_dir` classifies each child from the dirent (`d_type`, no extra syscall on APFS); the visitor does its own
   per-child `symlink_metadata` for sizes/mtime.
 
+## The test-only park point
+
+`park.rs` lets a test hold a walk between directories, so it can change the volume under a walk that's provably not
+reading it. It's `#[cfg(test)]`: absent from release builds and from every build of the app, and reached from outside
+the walker only through a `#[cfg(all(test, target_os = "macos"))]` re-export in `../mod.rs`, for the real-image vanish
+pin (`../../tests/vanish_tests.rs`). Nothing of it is on `lib.rs`.
+
+- **Arming.** `ParkHandle::arm(root, after_dirs)` registers a park for the next walk of exactly `root`; `walk` picks it
+  up at start by that path, so no other walk sees it. Dropping the handle releases and unregisters it.
+- **Where it parks.** In `Engine::run_worker`, after a task is popped (and after the give-up prune check), before the
+  heartbeat, the throttle, and the read. Once the walk has read `after_dirs` directories, a worker reaching that point
+  waits. A worker holds nothing on the volume there: the reader opens its directory and closes the fd before returning
+  (`bulk_read`'s `DirFd` drop), and the task is only a path.
+- **"Parked" means nobody is touching the volume.** Each worker counts itself busy from the park point until its task is
+  fully handled, the visitor's per-child work included, and `wait_until_parked(timeout)` answers only once the park has
+  tripped and that count is zero. Workers already past the point when it trips finish their task first, so a walk parks
+  after at most `after_dirs` plus one directory per worker.
+- **Why between reads.** A volume detached while the walk is parked has vanished between reads: every later read fails
+  on a path that's gone. A detach under an open directory fd is a different, riskier shape, and nothing here pins it.
+- **The watchdog ignores it.** A parked worker has no in-flight read in its slot, so it's never abandoned. A cancel
+  doesn't wake a parked worker; `release()` or dropping the handle does.
+- Tests: `tests.rs::a_parked_walk_holds_between_directories_with_nothing_in_flight_until_released` (nothing in flight
+  while parked, every directory read once released, nothing abandoned) and
+  `a_park_armed_for_another_root_leaves_a_walk_alone`.
+
 ## The walker's progress timeout
 
 **Elapsed time cannot tell a BIG directory from a BROKEN one, so the walker doesn't measure it.** Every read publishes
