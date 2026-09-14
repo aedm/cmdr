@@ -5,7 +5,7 @@ description: How to update project dependencies
 1. Frontend: `ncu` to see them, then `ncu -u && pnpm install` to apply. Then check with `pnpm check --svelte`.
 2. Rust: `cd apps/desktop/src-tauri && cargo update && cargo outdated` (update within semver ranges; check for newer
    versions) If updating major versions, edit `Cargo.toml` manually, then do `cargo build`. Then check with
-   `pnpm check --rust` and `pnpm check desktop-e2e`.
+   `pnpm check --rust` and `pnpm check desktop-e2e-playwright`.
 
 3. Either way, finish with `pnpm check third-party-notices`. It rewrites `THIRD-PARTY-NOTICES.md` and
    `third-party-packages.gen.json` from the resolved graph, and both are committed and ship to users. Locally the check
