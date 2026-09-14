@@ -51,7 +51,7 @@ pub(crate) struct VolumeHold {
 impl VolumeHold {
     /// Stake a claim on `volume_id`. Only the reservation calls this, under the
     /// registry lock.
-    pub(super) fn take(volume_id: &str) -> Self {
+    pub(in crate::indexing) fn take(volume_id: &str) -> Self {
         *HOLDS
             .counts
             .lock_ignore_poison()
@@ -86,7 +86,7 @@ impl Drop for VolumeHold {
 }
 
 /// Whether any start or manager holds `volume_id` right now.
-pub(super) fn is_held(volume_id: &str) -> bool {
+pub(in crate::indexing) fn is_held(volume_id: &str) -> bool {
     HOLDS.counts.lock_ignore_poison().contains_key(volume_id)
 }
 
@@ -95,7 +95,7 @@ pub(super) fn is_held(volume_id: &str) -> bool {
 ///
 /// Woken by the drop of a volume's last hold, ❌ never by polling. A zero `wait`
 /// answers at once from what the table holds right now.
-pub(super) fn wait_until_released(volume_id: &str, wait: Duration) -> bool {
+pub(in crate::indexing) fn wait_until_released(volume_id: &str, wait: Duration) -> bool {
     let counts = HOLDS.counts.lock_ignore_poison();
     // Recovering is right for the same reason `lock_ignore_poison` is: this is a
     // count table, and no critical section here can panic part way through.

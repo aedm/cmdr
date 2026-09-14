@@ -299,7 +299,7 @@ pub(in crate::indexing::lifecycle) fn start_indexing_for(
 
     // THIS start's stake in the volume. It rides into the manager below and drops
     // with it, after `shutdown`, whichever way this start ends — which is what a
-    // removable-volume stop waits for (`release.rs`).
+    // removable-volume stop waits for (`hold.rs`).
     let Ok(hold) = try_reserve_initializing_phase(
         volume_id,
         request,

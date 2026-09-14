@@ -9,7 +9,8 @@
 use cmdr_fs::ignore_poison::IgnorePoison;
 use std::sync::Arc;
 
-use super::{INDEX_REGISTRY, IndexInstance, IndexPhase, Registry, StartRequest, VolumeHold, VolumeSignals};
+use super::{INDEX_REGISTRY, IndexInstance, IndexPhase, Registry, StartRequest, VolumeSignals};
+use crate::indexing::hold::VolumeHold;
 #[cfg(any(test, feature = "testing"))]
 use crate::indexing::lifecycle::freshness::Freshness;
 use crate::indexing::read::enrichment::{ReadPool, install_read_pool};
@@ -45,7 +46,7 @@ pub(crate) fn is_initializing_phase(phase: &IndexPhase) -> bool {
 /// ⚠️ **The hold is taken in the same critical section as the insert**, and the
 /// start hands it to the manager it builds. A teardown that meets `Initializing`
 /// frees the key long before that manager is gone, so the hold is the only thing
-/// still saying a start is working on the volume (`release.rs`).
+/// still saying a start is working on the volume (`hold.rs`).
 ///
 /// ⚠️ **A refusal is not always a no-op.** A volume that is on its way OUT of the
 /// registry still holds its key, and `request` is RECORDED on the transient phase

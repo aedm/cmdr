@@ -49,7 +49,6 @@ use crate::indexing::watch::branches::{self, AfterWalk};
 mod auto_start;
 mod freshness_bridge;
 mod queries;
-mod release;
 mod reservation;
 mod scan_control;
 mod startup;
@@ -70,7 +69,6 @@ pub(crate) use queries::{
     ready_volumes_with_kind, volume_kind,
 };
 pub use queries::{is_active, is_failed};
-pub(crate) use release::VolumeHold;
 #[cfg(any(test, feature = "testing"))]
 pub use reservation::reserve_initializing_index_for_test;
 pub(crate) use reservation::{is_initializing_phase, try_reserve_initializing_phase};

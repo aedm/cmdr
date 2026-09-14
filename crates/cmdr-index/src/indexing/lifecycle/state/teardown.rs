@@ -10,11 +10,11 @@ use std::time::{Duration, Instant};
 
 use cmdr_fs::ignore_poison::IgnorePoison;
 
-use super::release;
 use super::{
     INDEX_REGISTRY, IndexPhase, PersistDisable, Registry, StartRequest, TeardownClaim, all_registered_volume_ids,
     resolved_index_db_path, volume_kind,
 };
+use crate::indexing::hold;
 use crate::indexing::lifecycle::manager::IndexManager;
 use crate::indexing::read::enrichment::uninstall_read_pool;
 use crate::indexing::read::pending_sizes::uninstall_pending_sizes;
@@ -110,7 +110,7 @@ pub enum RemovableStop {
 /// reason: a stop CLAIMED on a `Detached` volume drains at the handback, a start
 /// caught `Initializing` shuts its half-built manager down on its own thread, and a
 /// drain somebody else started is still running. All three end with a
-/// [`VolumeHold`](super::VolumeHold) dropping, which is what this subscribes to.
+/// [`VolumeHold`](hold::VolumeHold) dropping, which is what this subscribes to.
 ///
 /// `wait_at_most` counts from the call, the drain included, so a host's deadline
 /// on the call and this wait end together. ❌ Don't move the wait into
@@ -128,10 +128,10 @@ pub(crate) fn stop_removable_volume(volume_id: &str, wait_at_most: Duration) -> 
         Some(_) => return RemovableStop::NothingToStop,
         // No instance, but a start that some other stop cancelled can still be
         // shutting its half-built manager down, and that start holds the volume.
-        None if !release::is_held(volume_id) => return RemovableStop::NothingToStop,
+        None if !hold::is_held(volume_id) => return RemovableStop::NothingToStop,
         None => {}
     }
-    if release::wait_until_released(volume_id, wait_at_most.saturating_sub(started.elapsed())) {
+    if hold::wait_until_released(volume_id, wait_at_most.saturating_sub(started.elapsed())) {
         RemovableStop::Released
     } else {
         log::warn!(

@@ -24,8 +24,6 @@ concurrently without corrupting each other. Every invariant below holds independ
     `disable_drive_index_persist_intent`, `remove_instance_and_handles`, and `stop_all_indexing`, all sharing the
     withdraw-then-publish-`ShuttingDown`-then-drop-the-guard-then-drain ordering. Plus `stop_removable_volume`, the one
     stop that waits for the volume to be let go.
-  - `release.rs` — `VolumeHold`, one start's stake in its volume from its reservation to its manager's drop, and the
-    condvar `stop_removable_volume` waits on (§ "When a volume has been let go").
   - `scan_control.rs` — `force_scan`, `stop_scan`, `trigger_verification`, plus `off_the_registry` and the
     `DetachedManager` guard behind it: the ONE place a live volume's manager comes out for blocking work.
   - `queries.rs` — the read-only surface: `is_active`, `is_failed`, `index_failure`, `awaits_its_first_scan`,
@@ -434,7 +432,7 @@ used to put the old phase back whole, recorded start included) and
 hold outside the manager. A prelude that blocks on neither needs no window at all. Larger than this design; see the
 spike note's § 6.
 
-## When a volume has been let go (`state/release.rs`)
+## When a volume has been let go (`../hold.rs`)
 
 An eject must not unmount a drive while any index manager still watches it: an FSEvents stream open at unmount can wedge
 macOS FSKit (`msdos`), which is the 2026-07-15 kernel panic (`../transports/DETAILS.md` § "Unmount/eject lifecycle"). So
@@ -473,7 +471,7 @@ cancelled scan thread isn't joined (`../transports/DETAILS.md` § "The drain is 
 stops on its caller's token rather than the volume's (`cover/CLAUDE.md`), so neither is part of the answer.
 
 Anchors: `cover::cold_drive_tests::removals` (a drain in flight and a claimed `Detached`, both over real managers),
-`state::tests::a_removable_stop_waits_for_the_start_it_cancelled`, and `state::release::tests` (the wake itself).
+`state::tests::a_removable_stop_waits_for_the_start_it_cancelled`, and `hold::tests` (the wake itself).
 
 ## Capability axes (`IndexVolumeKind`)
 

@@ -19,6 +19,7 @@
 pub(crate) mod aggregator;
 pub(crate) mod events;
 pub mod handle;
+mod hold;
 /// What the index asks its host for, as traits and values a host implements.
 pub mod host;
 pub(crate) mod lifecycle;

@@ -23,8 +23,9 @@ use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, ImageSpec};
 use cmdr_fs::testing::wait_until_async;
 
 use crate::indexing::events::{ActivityPhase, IndexEvent, IndexEventKind, RecordingSink};
+use crate::indexing::hold::VolumeHold;
 use crate::indexing::lifecycle::manager::IndexManager;
-use crate::indexing::lifecycle::state::{VolumeHold, VolumeSignals};
+use crate::indexing::lifecycle::state::VolumeSignals;
 use crate::indexing::scanner::park::ParkHandle;
 use crate::indexing::store::{IndexStore, UnreadableCause};
 use crate::indexing::volume::IndexVolumeKind;

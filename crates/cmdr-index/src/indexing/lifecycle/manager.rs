@@ -13,6 +13,7 @@ use crate::indexing::events::{
     ActivityPhase, DEBUG_STATS, EventSink, IndexDebugStatusResponse, IndexStatusResponse, PhaseRecord, RescanReason,
     ScanRunKind, emit_rescan_notification, set_phase_for,
 };
+use crate::indexing::hold;
 use crate::indexing::lifecycle::rescan_request::ScanStartError;
 use crate::indexing::reconcile::reconciler;
 use crate::indexing::scanner;
@@ -108,8 +109,8 @@ pub(crate) struct IndexManager {
     /// This manager's stake in its volume, taken by the reservation that started
     /// it. Nothing reads it: it drops with the manager, after `shutdown` on every
     /// teardown path, and that drop is what tells a removable-volume stop the
-    /// volume has been let go (`state/release.rs`).
-    _hold: state::VolumeHold,
+    /// volume has been let go (`hold.rs`).
+    _hold: hold::VolumeHold,
 }
 
 /// The static, per-scan inputs the frontend needs to pick and drive a scan
@@ -307,7 +308,7 @@ impl IndexManager {
         kind: IndexVolumeKind,
         inodes_trustworthy: bool,
         signals: state::VolumeSignals,
-        hold: state::VolumeHold,
+        hold: hold::VolumeHold,
     ) -> Result<Self, String> {
         let store = IndexStore::open(&db_path).map_err(|e| format!("Failed to open index store: {e}"))?;
 
