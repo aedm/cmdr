@@ -164,7 +164,9 @@ All under `apps/desktop/src-tauri/src/`.
   behind a facade module
 - `file_system/write_operations/delete/`: Delete walker, trash, oracle-aware delete semantics
 - `file_system/volume/`: `VolumeManager` plus the `backends/` umbrella, re-exporting the `Volume` trait and its types
-  from `crates/cmdr-fs/`. Checklist + capability matrix for new backends
+  from `crates/cmdr-fs/`. Checklist + capability matrix for new backends. `drive_release/` is the one gate for every
+  index stop of a removable drive and every non-root index start (`file_system/volume/DETAILS.md` § "One release, one
+  start")
 - `file_system/volume/backends/`: the one `Volume` impl that still lives in the app, `LocalPosixVolume`. Every crate
   backend (`cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-adb`, `cmdr-mtp`, `cmdr-git`) is imported by
   crate name at its call sites, and each one's app-side tests sit beside the app code they assert on. What stays

@@ -352,7 +352,10 @@ the index alone and says nothing about reporting; `execute/live_run.rs` is the r
 3. **The covered half** — `search_covered_half`, the identical engine pass `run_blocking` runs. The frontier is exactly
    the ground the arena has nothing to say about, so an unfiltered pass over the scope IS the covered half; nothing
    enumerates covered subtrees.
-4. **Walk the rest** — `Index::cover(volume, frontier, Listing, token)`, batches judged by the same `CompiledQuery` an
+4. **Walk the rest** — `Index::cover(volume, frontier, Listing, token)`, called through the drive-release gate
+   (`StartKind::SearchCover`: the call holds the volume's ticket, and a drive an unmount is taking down isn't walked, so
+   the run answers as for an unmounted drive; `file_system/volume/DETAILS.md` § "One release, one start"), batches
+   judged by the same `CompiledQuery` an
    arena row gets plus the same `ExcludeRules` (`excludes.rs`), streamed out through `ResultStream`.
 5. **A terminal event**, with what the run could not answer for.
 

@@ -300,11 +300,12 @@ holds its manager, returns with the watcher still up (`../lifecycle/DETAILS.md` 
 hooks themselves live in `file_system/volume/eject/mod.rs` and `volumes/watcher.rs`.
 
 - **Cmdr's own eject (`file_system/volume/eject/mod.rs`) — the reliable wedge-safe point.** For a
-  `DiskutilUnmount`/`DiskutilEject`, `stop_index_then_unmount` awaits `stop_index_blocking(volume_id)` on the blocking
-  pool and ONLY THEN runs `diskutil`, and only when the stop answered that nothing holds the drive: `StillReleasing`
-  (its wait, bounded by the eject's 15 s index-stop deadline, ran out) and a panicked stop both leave it mounted. This
-  is the one path where Cmdr controls the timing, so it's the guaranteed protection. SMB/MTP keep their own teardown and
-  their offline-browsable Stale index across an eject, so the eject-stop is a no-op for them.
+  `DiskutilUnmount`/`DiskutilEject`, `stop_index_then_unmount` awaits `stop_index_blocking(volume_id)`, which releases
+  the volume through the app's drive-release gate (so a start still probing the drive is waited for too), and ONLY THEN
+  runs `diskutil`, and only when the stop answered that nothing holds the drive: `StillReleasing` (its wait, bounded by
+  the eject's 15 s index-stop deadline, ran out) and a panicked stop both leave it mounted. This is the one path where
+  Cmdr controls the timing, so it's the guaranteed protection. SMB/MTP keep their own teardown and their
+  offline-browsable Stale index across an eject, so the eject-stop is a no-op for them.
 - **`NSWorkspaceWillUnmountNotification` — best-effort pre-unmount.** The earliest hook macOS offers for an OS/Finder
   eject, but RACY (the OS doesn't wait for our observer). Better than nothing; NOT a guarantee. Runs off-main, and logs
   a `warn` when the index was still letting go of the drive as the OS unmounted it: the line to look for after a hung

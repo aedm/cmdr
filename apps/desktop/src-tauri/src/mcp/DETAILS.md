@@ -177,7 +177,8 @@ provider-egress question and `CONSENT_COPY_VERSION` are unchanged by this tier.
   `Result<(), String>` directly. Either deferral (`DeferredUntilSearchEnds`, `DeferredUntilScanEnds`) returns straight
   away, saying which holder the scan is waiting on: the index remembers the request and runs it when that holder ends
   (model: `crates/cmdr-index/src/indexing/lifecycle/DETAILS.md` § The one walk a volume remembers), so the freshness the
-  ordering contract waits for isn't going to move yet and waiting for it would just burn the budget and then lie. Because the generic executor can't supply the concrete `AppHandle` that
+  ordering contract waits for isn't going to move yet and waiting for it would just burn the budget and then lie.
+  `DriveLeaving` (an unmount of the drive was under way, so the drive-release gate ran no start) is a tool error. Because the generic executor can't supply the concrete `AppHandle` that
   `enable`/`rescan` need, they route through handle-free `*_via_handle` wrappers backed by a startup-cached handle
   (`set_app_handle` in `setup()`). Status is NOT an action — it lives in `cmdr://indexing`.
 - Queue (1): `queue` (`action` = `pause` | `resume` | `cancel` | `pause_all` | `resume_all`; `operationId` for the

@@ -507,14 +507,16 @@ reaches the unmount, since an index that may still hold the volume can wedge FSK
 never block, and the unmount tool has `TOOL_TIMEOUT`. The tests hand `within_deadline` a future that never resolves and
 let a paused clock run out the deadline.
 
-**The index stop waits for the index to let go of the drive, not for the stop to be asked.** `stop_index_blocking` calls
-`Index::stop_removable_volume` with `INDEX_STOP_DEADLINE`, which answers `Released` only once every index manager on the
-drive has shut down (`crates/cmdr-index/src/indexing/lifecycle/DETAILS.md` § "When a volume has been let go"). A stop
-that lands while the drive's index is still starting, or while a scan start or another teardown holds its manager,
-returns before that manager is gone, and treating that return as done let the unmount run under a live watcher. So
-`StillReleasing` answers the same `NotResponding { step: IndexStop }` as the deadline, and a stop that panicked answers
-`Unexpected`: ❌ neither reaches the unmount. `stop_index_blocking` takes the stop as a parameter, so
-`eject::tests` pins both without an index.
+**The index stop waits for the index to let go of the drive, not for the stop to be asked.** `stop_index_blocking`
+releases the volume through the drive-release gate (§ "One release, one start") inside `INDEX_STOP_DEADLINE`: the gate
+waits for a start still in flight (a person's enable probing the drive), then runs `Index::stop_removable_volume` with the
+same wait, which answers `Released` only once every index manager on the drive has shut down
+(`crates/cmdr-index/src/indexing/lifecycle/DETAILS.md` § "When a volume has been let go"). A stop that lands while the
+drive's index is still starting, or while a scan start or another teardown holds its manager, returns before that
+manager is gone, and treating that return as done let the unmount run under a live watcher. So `StillReleasing` answers
+the same `NotResponding { step: IndexStop }` as the deadline, and a stop that panicked answers `Unexpected` (the gate
+reads a panic as still releasing, and `stop_index_blocking` remembers it): ❌ neither reaches the unmount.
+`stop_index_blocking` takes the stop as a parameter, so `eject::tests` pins both without an index.
 
 **One eject at a time per volume.** `eject` hands the pipeline to `in_flight::join_or_start`: a request for a volume
 whose eject is still running JOINS that flight and gets its answer, with no second teardown. A slow `diskutil` (10.5 s
@@ -562,6 +564,61 @@ the FSKit service mid-unmount, which on macOS 26 escalated to a WindowServer wat
 and closing its SQLite handles — BEFORE the `diskutil` subprocess runs. The post-unmount `NSWorkspaceDidUnmountNotification`
 hook is only cleanup (the volume's already gone), not wedge-prevention. See `crates/cmdr-index/src/indexing/transports/DETAILS.md`
 § "Unmount/eject lifecycle (the wedge-safe ordering)" for the full incident writeup and the ordering guarantee.
+
+## One release, one start
+
+`drive_release/` is the one door for every app-side index stop of a removable drive Cmdr decides on, and every app-side
+start of a non-root index. Stops: the eject's pre-stop (`stop_index_blocking`) and the `WillUnmount` / `DidUnmount`
+hooks (`volumes/watcher.rs`). Starts: `enable_drive_index` and `rescan_drive_index` (IPC and MCP), the master switch's
+resume loop in `set_indexing_enabled`, and a search's `Index::cover` (`search/execute/live_run.rs`). The user's
+`disable_drive_index` goes through it too. The boot disk's launch and FDA starts stay outside, and the gate passes `root`
+straight through: it never unmounts.
+
+**Why one door.** A `LocalExternal` start has no index instance and no `VolumeHold` through its classification probe (up
+to 2 s) and store open, and `Index::start_volume` returns only after `resume_or_scan` and `start_pending_phases`. A stop
+landing in that window finds nothing to stop, and the start then stands a watcher up on a drive that's unmounting. Every
+stop is one piece of work with its own budget, and every start has to be serialized against all of them. ❌ Never a bare
+`Index::start_volume`, `rescan_volume`, `cover`, or `stop_removable_volume` from app code.
+
+**Per volume id**, under one mutex and one condvar: an epoch, at most one ticket (held for a `Start`, a `Disable`, or a
+release's `LateStop`), a pending-resume flag, and an unmount-pending flag.
+
+- **`release(ids, deadline, stop, record_late)`** moves every epoch first (the other order lets an unstarted resume slip
+  through), waits for a ticket in flight, then runs each volume's `stop` on a thread of its own, concurrently, all bounded
+  by the one `deadline` instant. Per volume it answers `NothingToStop`, `Released { was_indexing }` (a `LocalExternal`
+  index was there before the stop), or `StillReleasing`, with the epoch it set. ❌ A ticket still in flight at the
+  deadline is `StillReleasing`, never `NothingToStop`. A stop still running keeps running detached and reports to
+  `record_late`; a volume whose ticket was still in flight gets a late stop that takes the ticket straight from the start
+  as it drops, so no waiting start slips in between. A stop that panicked reads as `StillReleasing`. It blocks up to
+  `deadline`, the one wait a DA queue may make.
+- **`start` / `start_blocking`** take the ticket before the start's first check and drop it when the start call has
+  returned, ❌ never at spawn. Every kind waits for a ticket in flight. A person's `UserEnable` / `UserRescan` also waits
+  out `unmount_pending` and Cmdr's own eject in flight (`eject::is_ejecting`), bounded by `UNMOUNT_PENDING_WAIT` (30 s;
+  the slowest refusal measured took 27.8 s). Past it, or when the drive left the mount table meanwhile, no start runs and
+  the command answers `EnableIndexingOutcome::DriveLeaving`. `MasterResume` and `SearchCover` skip a leaving drive at
+  once, and the search answers without it as for an unmounted drive. Past the wait with only another start in flight, the
+  answer is `AnotherStartStillRunning`, which the command returns as its `Err`.
+- **`disable`** moves the epoch, waits for a ticket in flight, holds a `Disable` ticket through `Index::disable_volume`,
+  and moves the epoch again before letting go: a disable always has the last word over a resume.
+- **`resume(candidates, owner)`** (`resume.rs`): a candidate joins a start or resume already under way. The rest settle
+  `RESUME_SETTLE` (2 s) on one thread and read intent once (`Index::drives_to_resume`, which opens databases, so ❌ never
+  on an ask). Then, per candidate: no ticket, no unmount pending, an unchanged epoch, the `ResumeOwner`'s checks (it still
+  owns the record, the volume is listed, no other owner is ejecting it), and intent. The record is consumed either way, so
+  a later idle never re-runs a start (a stopped first scan would get `force_scan`). The start runs on the Tauri runtime
+  holding the ticket. No owner calls `resume` yet, nor `set_unmount_pending` / `clear_unmount_pending`, so `resume.rs`
+  carries a `dead_code` expectation outside tests.
+
+**Lock order.** The gate reads `eject::is_ejecting` under its own lock, and an eject flight's `Landing` wakes the gate
+only after dropping `IN_FLIGHT`. ❌ Never take the gate's lock while holding `IN_FLIGHT`.
+
+**Residuals.** A start that doesn't come through the gate (the index crate's own `start_again` on `ShuttingDown`) can
+restart before the old manager drops, so the waiter answers `StillReleasing` and the eject refuses honestly. The unmount
+hooks pre-check the kind (`volume_kind == LocalExternal`), so they don't wait on a start still probing a drive Finder
+unmounts. A `statfs` hung past `FS_PROBE_TIMEOUT` is abandoned and can outlive its ticket.
+
+**Tests** (`drive_release/tests.rs`) run the gate on an injected `IndexDoor` (kind, intent, resumed starts, the ejecting
+set, presence) and a fake clock moved by hand, with starts and stops the test holds open, so no test waits out a real
+deadline.
 
 ## Key decisions
 

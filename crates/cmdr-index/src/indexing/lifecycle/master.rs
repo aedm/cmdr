@@ -166,7 +166,9 @@ pub(crate) fn branch_watch_allowed(master_on: bool, db_path: &Path) -> bool {
 /// caller routes each id through the normal per-drive enable, so each transport's
 /// own gate (the direct-smb2 upgrade, MTP device presence) still applies.
 ///
-/// ⚠️ **The master toggle is its ONE caller, and that is deliberate.** Nothing at
+/// ⚠️ **Two callers, and neither is a launch, deliberately**: the master toggle,
+/// and the app's drive-release resume, which starts again only a drive an unmount
+/// stopped and didn't take. Nothing at
 /// LAUNCH calls this: only the boot disk starts there, so a local external drive
 /// or a phone whose first index was interrupted waits for the user rather than
 /// walking itself on every launch and every replug. ❌ Don't wire this into the

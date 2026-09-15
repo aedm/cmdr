@@ -528,7 +528,7 @@ yellow tooltip branches on `liveWatch`: a phone over ADB, which nothing watches,
   lie; the drive's own choice is untouched and returns with the switch.
 - **What an enable/rescan owes the user is the pure `driveIndexActionFeedback`**, off the TYPED outcome, never message
   text. `VolumeBreadcrumb` runs the answer (toast it, or route a `refusal`), so the whole contract is unit-testable
-  without mounting anything. Its six arms:
+  without mounting anything. Its seven arms:
   - `started` → **silent**: the badge going blue is the feedback.
   - `deferred_until_search_ends` → the promise toast (`info`), worded per action (`deferredEnable` /`deferredRescan`). A
     search walking the same drive blocks a truncating scan, so the backend REMEMBERS the request and runs it when the
@@ -541,6 +541,9 @@ yellow tooltip branches on `liveWatch`: a phone over ADB, which nothing watches,
     the master switch can flip between the menu opening and the click, or MCP can call in.
   - `refused` → the typed `SmbIndexGateReason`, which `credentials_needed` routes into the direct-connect/login flow
     (`handleSubmenuAction`) and the rest turn into a friendly toast via `driveIndexRefusalMessageKey`.
+  - `drive_leaving` → the `driveLeaving` toast at `info`: an unmount of the drive was under way, so the backend's
+    drive-release gate ran no start (it waited out the request, then the drive left or the wait ran out). Not a refusal
+    to route: the drive is going away.
   - **`status: 'error'` → the generic toast.** ⚠️ It arrives as a VALUE, not a throw: `typedError` rethrows only real
     `Error` instances, and a Rust `Err(String)` isn't one, so a `catch` never sees it. An unhandled arm here is a click
     that does nothing and says nothing.

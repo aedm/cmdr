@@ -201,7 +201,9 @@ auto-indexing it is precisely what the opt-in forbids. See § The two indexing s
 own, but through its SESSION install rather than anything here: registering or reconnecting an smb2 session fires
 `resume_smb_index_if_enabled`, which acts on the share's persisted intent. A **local external drive or an MTP phone has
 no such hook**, so "quit half way through indexing a USB drive, relaunch" does not resume it, and neither does
-replugging it. `drives_to_resume()` would name it, and nothing at launch calls that.
+replugging it. `drives_to_resume()` would name it, and nothing at launch calls that. Its two callers are the master
+toggle and the app's drive-release resume, which starts again only a drive an unmount stopped and didn't take
+(`apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "One release, one start").
 
 ⚠️ **That is a decision, not a missing line** (David, 2026-08-16): refreshing the index for a NON-BOOT drive stays the
 user's to trigger. A removable drive being plugged in is not a request to spend minutes of walking and disk on it — the
