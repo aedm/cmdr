@@ -1280,7 +1280,7 @@ with the existing setting components (or, later, a dedicated `SectionRow` primit
 Every primitive listed above also has a section in the in-app, dev-only Components catalog at
 `apps/desktop/src/routes/dev/components/+page.svelte`. The catalog renders matrices of states (all `Button` variants ×
 sizes × states in one grid, every toast level, every loading message, etc.) so agents and humans can see the visual
-contract of a primitive at a glance. It's reachable in the running app via Debug window (`⌘D`) → "Components", or
+contract of a primitive at a glance. It's reachable in the running app via Debug window (`⌘⇧D`, dev builds) → "Components", or
 directly in a browser tab at `http://localhost:<port>/dev/components`.
 
 When you add a new primitive to `lib/ui/`:

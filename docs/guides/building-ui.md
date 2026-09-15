@@ -6,7 +6,7 @@ the `cmdr/prefer-ui-primitive` ESLint rule (no raw native controls) and the `ui-
 primitive appears in the live catalog).
 
 The canonical token and pattern catalog is `../design-system.md`. The LIVE catalog, every primitive rendered flat with
-all variants and states, is Debug window (`⌘D`) → "Components" (`apps/desktop/src/routes/dev/components/`). Open it
+all variants and states, is Debug window (`⌘⇧D`, dev builds) → "Components" (`apps/desktop/src/routes/dev/components/`). Open it
 before building; it's faster than reading source.
 
 ## Building a dialog
