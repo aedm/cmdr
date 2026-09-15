@@ -629,6 +629,27 @@
     "description": "COLOR NAME. The last of the seven macOS Finder tag colors in a file's right-click menu. Use the exact name macOS uses for this tag color in this language (note that macOS's British English says \"Grey\")."
   },
 
+  "menu.tag.rowLabel": "Tags",
+  "@menu.tag.rowLabel": {
+    "description": "NOUN (plural). macOS only. The small gray caption under the row of seven tag-color circles in a file's right-click menu, shown while the pointer isn't on any circle. It names the row like a heading; it isn't a command, so it takes no ellipsis. While a circle is hovered, menu.tag.addNamed or menu.tag.removeNamed replaces it. Use your Finder's word for \"Tags\" (its \"Tags…\" menu item, without the ellipsis)."
+  },
+
+  "menu.tag.addNamed": "Add \"{color}\"",
+  "@menu.tag.addNamed": {
+    "description": "VERB (imperative). macOS only. The small gray caption under the row of tag-color circles in a file's right-click menu, shown while the pointer is on a color that isn't on every selected file yet; clicking that circle adds the tag to the files that lack it. This is Finder's own \"Add \"Green\"\" caption under its tag row; match your Finder's phrasing and its quotation marks. Its opposite is menu.tag.removeNamed, and the two must read as a pair. Keep the {color} token exactly as written, braces included; it is replaced literally, with no formatting.",
+    "placeholders": {
+      "color": "the tag color's name exactly as this language translates menu.tag.red … menu.tag.gray (e.g. \"Green\"); it's inserted unchanged, so it can't take a case ending or an article"
+    }
+  },
+
+  "menu.tag.removeNamed": "Remove \"{color}\"",
+  "@menu.tag.removeNamed": {
+    "description": "VERB (imperative). macOS only. The small gray caption under the row of tag-color circles in a file's right-click menu, shown while the pointer is on a color every selected file already has; clicking that circle removes the tag from all of them. This is Finder's own \"Remove \"Green\"\" caption under its tag row; match your Finder's phrasing and its quotation marks. Its opposite is menu.tag.addNamed, and the two must read as a pair. Keep the {color} token exactly as written, braces included; it is replaced literally, with no formatting.",
+    "placeholders": {
+      "color": "the tag color's name exactly as this language translates menu.tag.red … menu.tag.gray (e.g. \"Green\"); it's inserted unchanged, so it can't take a case ending or an article"
+    }
+  },
+
   "menu.mediaIndex.addFolder": "Add to indexed folders",
   "@menu.mediaIndex.addFolder": {
     "description": "VERB phrase (imperative). A folder's right-click menu: adds this folder to the list Cmdr scans so its photos become searchable. \"indexed\" means cataloged for search. Its opposite is menu.mediaIndex.removeFolder, and the two must read as a pair."
