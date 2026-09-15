@@ -169,7 +169,80 @@ panes off ejected volumes.
 `get_volume_space(path)` uses `NSURLVolumeTotalCapacityKey` and `NSURLVolumeAvailableCapacityForImportantUsageKey`
 (falls back to `NSURLVolumeAvailableCapacityKey`). Returns `None` for non-existent paths.
 
+## The unmount approver
+
+`unmount_approver/` answers DiskArbitration's unmount approval, so a drive is let go BEFORE any DA-mediated unmount,
+whoever started it: Finder, `diskutil`, `hdiutil`, `NSWorkspace`, another app, or Cmdr's own eject. It replaces the
+`NSWorkspaceWillUnmountNotification` handler as the pre-unmount hook, which was racy by construction (it spawned a
+thread and returned, so the unmount ran alongside the stop) and left a refused unmount's index stopped for good.
+
+**The session.** One `DASession` on its own serial queue at user-initiated QoS (a lower one lets Cmdr's own indexing
+load stall an ask), carrying unmount-approval, appeared, disappeared, description-changed (watching
+`kDADiskDescriptionVolumePathKey`), and idle callbacks. It gets its dispatch queue LAST, after every registration, so no
+callback can run against a half-registered session. Registering the non-approval kinds is also what keeps it
+recoverable: DA stops asking a session that timed out until that session copies its callback queue again, and it's the
+other callback kinds' delivery that clears the flag (`DAQueue.c:548-550`, `DAServer.c:2147`, read from
+DiskArbitration-535.0.10, 2026-09-14).
+
+**What an ask does**, on that queue, in `callbacks.rs`:
+
+1. Reads the disk's description: BSD node, volume UUID, whole-disk BSD unit, and volume path. No path, no registered
+   volume whose ACTIVE root is that path, or a disk this session doesn't act on → approve at once.
+2. Moves that whole disk's ask generation, which voids every resume candidate offered before it.
+3. Computes the group: every registered volume mounted on the same BSD unit (`disk_units.rs`). **Why the unit**: a
+   whole-disk request's per-volume asks are linked by BSD unit and arrive back to back, so the first ask has to let go
+   of the group or the second spends its own window waiting. A physical disk's other container is a different request.
+4. Marks the group unmount-pending at the drive-release gate, so no start lands on it meanwhile.
+5. `drive_release::release(group, deadline)`: the one wait a DA queue may make.
+6. Records every volume it stopped while indexing, and carries an earlier ask's record forward to this epoch and
+   generation. A volume Cmdr's own eject is taking down belongs to that flight, so the approver records none of those.
+7. Answers: dissent (`kDAReturnBusy`) if anything is still letting go or a write op is busy on the disk; otherwise
+   approve.
+
+**The shared deadline** (`ask.rs`). DA times each callback from when it QUEUED it (10 s, `DAQueue.c:178-180`), not from
+when the client runs it, and a session runs its callbacks one at a time. So an ask starting while an earlier ask's
+window is still open may have been queued inside it, and joins that chain: its deadline is `chain_start +
+APPROVAL_STOP_BUDGET` (7 s), leaving 3 s for the client's wake-up, the asks queued behind the stop, and scheduling under
+load, while still covering an index shutdown's 5 s live-loop drain. **Time-based, ❌ never gap-based**: a queue that
+stalls between two asks would otherwise start a new chain and hand a queued ask a budget its DA timer has already spent.
+An ask with no time left answers without waiting, approving only a disk with no index, no ticket in flight, and no busy
+write op, and leaving its stop to a detached thread.
+
+**Handing the drive back** (`records.rs`). An ask, or a whole-disk request, doesn't mean the unmount happens: the kernel
+can still answer EBUSY. The signal that a refusal settled is DA's private idle callback (`DARegisterIdleCallback`,
+through `dlsym`); no public callback marks a refusal to an observer. At idle, every unmount-pending flag clears and
+every record goes to `drive_release::resume`, which settles, re-checks, and starts what's still owed. The owner stands
+behind a record until a newer ask on its disk, and presence comes from the mount table, ❌ never from the callback
+disk's description, which is a frozen copy nothing refreshes (`DiskArbitration/DADisk.c:184`). A record is consumed by
+its resume, so a later idle can't start the same volume twice. `Appeared` and `Disappeared` drop a disk's records,
+because DA hands a freed BSD unit to the next disk at once.
+
+**What it can't do.** Under force (`diskutil unmount force`, `hdiutil detach -force`), DA asks, ignores the dissent, and
+unmounts anyway (`DARequest.c:1610`), so the stop work happens on every ask and the dissent is only the non-force
+fallback. When several indexed drives are ejected together and the chain's budget runs out, the later asks dissent with
+their stops detached; under force that leaves the FSKit wedge exposure for that drive. Per-disk DA sessions are the only
+thing that would beat it, and they're deferred (`docs/specs/eject-and-drive-safety-plan.md` § Deferred). A raw
+`/sbin/umount` bypasses DA entirely: no ask, no `WillUnmount`, only the aftermath.
+
+**Install failure** keeps the old hook: `install_or_fall_back` installs the `WillUnmount` observer only when the
+approver couldn't install, and logs an `error`. ❌ Never both: two pre-unmount hooks stop the same index twice.
+
+**Tests.** `callbacks.rs` and `records.rs` run on injected seams (`test_seams.rs`) and a fake clock. The real-image lane
+(`real_image.rs`, `pnpm check disk-images`) installs a session that acts only on its own image's BSD nodes and drives
+real `diskutil` unmounts: verified on macOS 27.0 (2026-09-16) that an idle volume's unmount is asked about while it's
+still mounted, a held file's refusal hands the index back after the idle, the first ask of a two-partition disk lets go
+of both partitions, a dissent refuses a non-force unmount, `hdiutil detach -force` ignores that dissent, and a person's
+enable issued during an ask never lands an index on the drive that's leaving.
+
 ## Key decisions
+
+**Decision**: DiskArbitration owns the pre-unmount hook; `NSWorkspaceWillUnmountNotification` is only its fallback.
+**Why**: the AppKit notification is posted from AppKit's own DA approval callback on the MAIN thread, so the only way to
+hold an unmount from there is to block the main thread, which freezes Cmdr and still meets DA's 10 s limit. A dedicated
+session on its own queue holds the unmount without touching the main thread, hears about the refusal (idle) so it can
+hand the index back, and is asked for every DA-mediated unmount, `hdiutil` and force included. The fallback keeps the
+old best-effort behavior for a Mac where the session can't be created. Measured with a throwaway probe on macOS 26.6.2,
+2026-09-14, and against the real session on macOS 27.0, 2026-09-16 (§ "The unmount approver").
 
 **Decision**: Detect mounted disk images (`.dmg`) via DiskArbitration's `DADeviceModel`, set on
 `LocationInfo::is_disk_image` (see `disk_image.rs`).

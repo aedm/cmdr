@@ -568,8 +568,10 @@ hook is only cleanup (the volume's already gone), not wedge-prevention. See `cra
 ## One release, one start
 
 `drive_release/` is the one door for every app-side index stop of a removable drive Cmdr decides on, and every app-side
-start of a non-root index. Stops: the eject's pre-stop (`stop_index_blocking`) and the `WillUnmount` / `DidUnmount`
-hooks (`volumes/watcher.rs`). Starts: `enable_drive_index` and `rescan_drive_index` (IPC and MCP), the master switch's
+start of a non-root index. Stops: the eject's pre-stop (`stop_index_blocking`), the DiskArbitration unmount approver's
+ask (`volumes/unmount_approver/`, which also sets the unmount-pending flag and resumes what it stopped), and the
+`WillUnmount` / `DidUnmount` hooks (`volumes/watcher.rs`; `WillUnmount` only stands in for an approver that couldn't
+install). Starts: `enable_drive_index` and `rescan_drive_index` (IPC and MCP), the master switch's
 resume loop in `set_indexing_enabled`, and a search's `Index::cover` (`search/execute/live_run.rs`). The user's
 `disable_drive_index` goes through it too. The boot disk's launch and FDA starts stay outside, and the gate passes `root`
 straight through: it never unmounts.

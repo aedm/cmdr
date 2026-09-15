@@ -268,8 +268,9 @@ All under `apps/desktop/src-tauri/src/`.
 - `favorites/`: User-editable favorites. Ordered `favorites.json` store (`{ id, path, name }`) backing the volume
   switcher's "Favorites" section. Seed-once-on-absence, dedup-by-path, pure testable core. Read by `get_favorites()` in
   both `volumes/` twins; mutated via `commands/favorites.rs` (which re-emits `volumes-changed`)
-- `volumes/`: macOS location/volume discovery + `NSWorkspace` mount/unmount watcher. Distinct from
-  `file_system/volume/`. `get_favorites()` reads the `favorites/` store
+- `volumes/`: macOS location/volume discovery, the `NSWorkspace` mount/unmount watcher, and
+  `unmount_approver/`, the DiskArbitration approval session that holds every DA-mediated unmount while the drive's index
+  lets go. Distinct from `file_system/volume/`. `get_favorites()` reads the `favorites/` store
 - `volumes_linux/`: Linux equivalent: location discovery + mount/unmount via `/proc/mounts` and GVFS
 - `volume_listing.rs`: the one volume-list pipeline. Aliases whichever discovery module the platform has, bounds it with
   a timeout, appends every device provider's storages (`device_volumes.rs`), and enriches from the registry;

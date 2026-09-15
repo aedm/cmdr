@@ -306,10 +306,16 @@ hooks themselves live in `file_system/volume/eject/mod.rs` and `volumes/watcher.
   the eject's 15 s index-stop deadline, ran out) and a panicked stop both leave it mounted. This is the one path where
   Cmdr controls the timing, so it's the guaranteed protection. SMB/MTP keep their own teardown and their
   offline-browsable Stale index across an eject, so the eject-stop is a no-op for them.
-- **`NSWorkspaceWillUnmountNotification` — best-effort pre-unmount.** The earliest hook macOS offers for an OS/Finder
-  eject, but RACY (the OS doesn't wait for our observer). Better than nothing; NOT a guarantee. Runs off-main, and logs
-  a `warn` when the index was still letting go of the drive as the OS unmounted it: the line to look for after a hung
-  unmount.
+- **The DiskArbitration unmount approver (`volumes/unmount_approver/`) — the reliable point for an unmount Cmdr didn't
+  start.** DA asks Cmdr's own approval session before every DA-mediated unmount (Finder, `diskutil`, `hdiutil`,
+  `NSWorkspace`, another app) and WAITS for the answer, so the stop finishes while the filesystem is still healthy. It
+  stops every indexed volume of the whole disk in the first ask, dissents while anything is still letting go, and hands
+  back what it stopped once DA goes idle with the drive still mounted. Bounds: DA ignores a dissent under force, and it
+  never sees a raw `/sbin/umount`. `apps/desktop/src-tauri/src/volumes/DETAILS.md` § "The unmount approver".
+- **`NSWorkspaceWillUnmountNotification` — the best-effort FALLBACK, installed only when the approver can't be.** The
+  earliest hook AppKit offers, but RACY (the OS doesn't wait for our observer). Runs off-main, and logs a `warn` when
+  the index was still letting go of the drive as the OS unmounted it: the line to look for after a hung unmount. ❌
+  Never installed beside the approver, or one unmount stops the same index twice.
 - **`NSWorkspaceDidUnmountNotification` — CLEANUP only.** By the time it fires the volume is gone, so it can't prevent a
   wedge; it releases the now-dangling watcher + handles for a volume that unmounted without going through Cmdr's eject.
 

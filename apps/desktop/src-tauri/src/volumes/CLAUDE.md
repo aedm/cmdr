@@ -8,7 +8,8 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
 `mod.rs` holds the model types and orchestrators and re-exports everything, so `crate::volumes::X` stays stable:
 `ids.rs` (ID derivation), `fs_type.rs` (non-blocking `statfs`) and `nsurl.rs` (blocking NSURL enrichment), `mounts.rs`
 (`getfsstat` enumeration), `smb.rs`, `cloud.rs`, `disk_image.rs`, `watcher.rs` (the `NSWorkspace` observer behind
-`volume-mounted` / `volume-unmounted`).
+`volume-mounted` / `volume-unmounted`), `disk_units.rs` (which volumes sit on which whole disk), and
+`unmount_approver/` (the DiskArbitration approval session).
 
 ## Must-knows
 
@@ -41,6 +42,12 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
   servers arm, enrichment) and the only `append_device_volumes` call.
 - **Wrap every objc-touching `spawn_blocking` body in `objc2::rc::autoreleasepool`**, or the objects leak. Keep
   `watcher.rs`'s observer block cheap: it runs on the main thread, so no blocking I/O.
+- **Every DA-mediated unmount waits while Cmdr lets go of the drive** (`unmount_approver/`): one ask per volume, which
+  stops every indexed volume of the whole BSD unit inside the chain's shared budget and dissents when it can't. ❌ On
+  the ask path, never touch the filesystem, take a SQLite connection, or let an unwind cross back into DiskArbitration;
+  the gate's bounded wait is the only wait it may make. ❌ Never install the `WillUnmount` observer beside it: it's the
+  fallback for a session that couldn't install, and two pre-unmount hooks stop the same index twice. `DETAILS.md`
+  § "The unmount approver".
 
 Decisions, edge cases, the servers arm, and the `Retained::cast_unchecked` contract: `DETAILS.md`. Read it before any
 non-trivial work here: editing, planning, reorganizing, or advising.
