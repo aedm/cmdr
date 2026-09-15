@@ -596,37 +596,37 @@
 
   "menu.tag.red": "Red",
   "@menu.tag.red": {
-    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu; clicking it tags or untags the selection. The item shows a colored circle, and this text is what a screen reader announces. Use the exact name macOS uses for this tag color in this language, so it matches what Finder shows."
+    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu, drawn as a colored circle in the tag row; clicking it tags or untags the selection. The name appears in three places: it's what a screen reader announces for the circle, it's the label of the plain menu item shown where the row can't be, and it's quoted inside menu.tag.addNamed and menu.tag.removeNamed (\"Add \"Red\"\"). Use the exact name macOS uses for this tag color in this language, so it matches what Finder shows, in its bare form so it also reads well between quotation marks."
   },
 
   "menu.tag.orange": "Orange",
   "@menu.tag.orange": {
-    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu. Use the exact name macOS uses for this tag color in this language."
+    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu; menu.tag.red explains the three places the name appears (a circle's screen-reader name, the plain menu item, and quoted inside the add/remove caption). Use the exact name macOS uses for this tag color in this language."
   },
 
   "menu.tag.yellow": "Yellow",
   "@menu.tag.yellow": {
-    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu. Use the exact name macOS uses for this tag color in this language."
+    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu; menu.tag.red explains the three places the name appears (a circle's screen-reader name, the plain menu item, and quoted inside the add/remove caption). Use the exact name macOS uses for this tag color in this language."
   },
 
   "menu.tag.green": "Green",
   "@menu.tag.green": {
-    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu. Use the exact name macOS uses for this tag color in this language."
+    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu; menu.tag.red explains the three places the name appears (a circle's screen-reader name, the plain menu item, and quoted inside the add/remove caption). Use the exact name macOS uses for this tag color in this language."
   },
 
   "menu.tag.blue": "Blue",
   "@menu.tag.blue": {
-    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu. Use the exact name macOS uses for this tag color in this language."
+    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu; menu.tag.red explains the three places the name appears (a circle's screen-reader name, the plain menu item, and quoted inside the add/remove caption). Use the exact name macOS uses for this tag color in this language."
   },
 
   "menu.tag.purple": "Purple",
   "@menu.tag.purple": {
-    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu. Use the exact name macOS uses for this tag color in this language."
+    "description": "COLOR NAME. One of the seven macOS Finder tag colors in a file's right-click menu; menu.tag.red explains the three places the name appears (a circle's screen-reader name, the plain menu item, and quoted inside the add/remove caption). Use the exact name macOS uses for this tag color in this language."
   },
 
   "menu.tag.gray": "Gray",
   "@menu.tag.gray": {
-    "description": "COLOR NAME. The last of the seven macOS Finder tag colors in a file's right-click menu. Use the exact name macOS uses for this tag color in this language (note that macOS's British English says \"Grey\")."
+    "description": "COLOR NAME. The last of the seven macOS Finder tag colors in a file's right-click menu; menu.tag.red explains the three places the name appears (a circle's screen-reader name, the plain menu item, and quoted inside the add/remove caption). Use the exact name macOS uses for this tag color in this language (note that macOS's British English says \"Grey\")."
   },
 
   "menu.tag.rowLabel": "Tags",
