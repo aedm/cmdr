@@ -1,8 +1,8 @@
 //! Handing back what a stop let go of: [`DriveRelease::resume`], and the unmount-pending flag an
 //! unmount's owner sets and clears.
 #![cfg_attr(
-    not(test),
-    expect(dead_code, reason = "no owner resumes through the gate outside its tests yet")
+    all(not(test), not(target_os = "macos")),
+    expect(dead_code, reason = "only the macOS unmount approver resumes through the gate")
 )]
 
 use std::collections::HashSet;
@@ -69,6 +69,13 @@ pub(crate) enum ResumeRefusal {
 }
 
 /// A resume in progress. Dropping it detaches the batch; a test waits for it.
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "the app lets a batch settle on its own; only a test waits on one"
+    )
+)]
 pub(crate) struct ResumeBatch {
     verdicts: Vec<(String, ResumeVerdict)>,
     settling: Option<std::thread::JoinHandle<Vec<(String, ResumeVerdict)>>>,
@@ -76,6 +83,13 @@ pub(crate) struct ResumeBatch {
 
 impl ResumeBatch {
     /// Wait for the batch's checks and hand back every candidate's verdict, joined ones first.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "the app lets a batch settle on its own; only a test waits on one"
+        )
+    )]
     pub(crate) fn wait(self) -> Vec<(String, ResumeVerdict)> {
         let mut verdicts = self.verdicts;
         if let Some(settling) = self.settling {
@@ -257,6 +271,18 @@ impl DriveRelease {
         }
     }
 
+    /// Clear every unmount-pending flag, waking the starts waiting them out: DiskArbitration's queue
+    /// went quiet, so no unmount is on its way any more. An ask is the only thing that sets one.
+    pub(crate) fn clear_all_unmount_pending(&self) {
+        {
+            let mut gates = self.shared.gates.lock_ignore_poison();
+            for gate in gates.volumes.values_mut() {
+                gate.unmount_pending = false;
+            }
+        }
+        self.shared.changed.notify_all();
+    }
+
     /// Clear the unmount-pending flag of every volume in `volume_ids`, waking the starts waiting it
     /// out.
     pub(crate) fn clear_unmount_pending(&self, volume_ids: &[String]) {
@@ -271,6 +297,10 @@ impl DriveRelease {
 
     /// The volume's current epoch. An eject flight reads it after its own teardown settles, since
     /// the asks its unmount triggers move it.
+    #[cfg_attr(
+        not(test),
+        expect(dead_code, reason = "M12's eject flight reads epochs after its teardown settles")
+    )]
     pub(crate) fn epoch(&self, volume_id: &str) -> u64 {
         self.shared.gates.lock_ignore_poison().gate(volume_id).epoch
     }

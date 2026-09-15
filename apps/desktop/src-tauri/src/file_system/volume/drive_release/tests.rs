@@ -40,10 +40,6 @@ impl Drop for ParkedMark<'_> {
 }
 
 impl DriveRelease {
-    fn now(&self) -> Instant {
-        self.shared.clock.now()
-    }
-
     fn advance(&self, by: Duration) {
         {
             let _gates = self.shared.gates.lock_ignore_poison();
@@ -53,14 +49,6 @@ impl DriveRelease {
             *elapsed.lock_ignore_poison() += by;
         }
         self.shared.changed.notify_all();
-    }
-
-    fn parked(&self) -> usize {
-        self.shared.parked.load(Ordering::SeqCst)
-    }
-
-    fn holds_ticket(&self, volume_id: &str) -> bool {
-        self.shared.gates.lock_ignore_poison().gate(volume_id).ticket.is_some()
     }
 
     fn is_unmount_pending(&self, volume_id: &str) -> bool {
@@ -706,6 +694,26 @@ fn a_persons_start_runs_nothing_past_the_unmount_wait_or_once_the_drive_left_the
         Gated::Skipped(SkipReason::DriveLeaving)
     );
     assert!(!fx.gate.holds_ticket(A));
+}
+
+#[test]
+fn an_idle_clears_every_unmount_pending_flag_and_wakes_the_start_waiting_it_out() {
+    let fx = fixture();
+    fx.gate.set_unmount_pending(&ids(&[A, B]));
+    let start = {
+        let gate = fx.gate.clone();
+        std::thread::spawn(move || gate.start_blocking(A, StartKind::UserEnable, || "started"))
+    };
+    wait_until(PATIENCE, "the start to wait on the unmount", || fx.gate.parked() == 1);
+
+    fx.gate.clear_all_unmount_pending();
+
+    assert_eq!(start.join().expect("the start thread"), Gated::Ran("started"));
+    assert!(!fx.gate.is_unmount_pending(A));
+    assert!(
+        !fx.gate.is_unmount_pending(B),
+        "every flag clears, not only the waited-on one"
+    );
 }
 
 #[test]

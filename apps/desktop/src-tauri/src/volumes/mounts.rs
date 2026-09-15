@@ -112,6 +112,27 @@ pub(crate) fn mount_identity_at(path: &str) -> Option<u64> {
         .map(|m| m.fsid)
 }
 
+/// A mount's point and the source it was mounted from (`f_mntfromname`), for code that maps
+/// mounts to the disks under them. Straight from the non-blocking snapshot: no syscall per entry.
+pub(crate) struct MountSource {
+    /// Mount point, e.g. `/Volumes/naspi`.
+    pub(crate) mount_point: std::path::PathBuf,
+    /// Mount source, e.g. `/dev/disk5s1` for a local disk.
+    pub(crate) mount_from: String,
+}
+
+/// Every mount's point and source, from the same non-blocking `getfsstat` snapshot discovery reads.
+/// Empty when the table couldn't be read.
+pub(crate) fn mount_sources() -> Vec<MountSource> {
+    enumerate_mounts()
+        .into_iter()
+        .map(|mount| MountSource {
+            mount_point: std::path::PathBuf::from(mount.mount_point),
+            mount_from: mount.mount_from,
+        })
+        .collect()
+}
+
 /// Whether any filesystem in the kernel mount table has identity `fsid`: `None` when
 /// the table couldn't be read. The index asks this, ❌ never [`is_mount_point`], to
 /// tell a drive that's gone from one a rename moved.

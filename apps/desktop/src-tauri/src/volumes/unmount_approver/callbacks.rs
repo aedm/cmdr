@@ -1,0 +1,303 @@
+//! What the approver does for each DiskArbitration callback, over injected seams.
+//!
+//! Every callback runs on the session's one serial queue, so these run one at a time and in DA's
+//! delivery order. ❌ The ask path touches no filesystem and takes no SQLite connection: the one
+//! wait it makes is the gate's own, bounded by the chain's deadline.
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
+
+use cmdr_index::RemovableStop;
+
+use super::ask::{self, Answer, Chain, Unwaited};
+use super::records::{DiskVolume, Records};
+use crate::file_system::volume::drive_release::{
+    DriveRelease, LateRelease, Release, ResumeBatch, ResumeCandidate, ResumeOwner,
+};
+use crate::ignore_poison::IgnorePoison;
+use crate::volumes::disk_units::MountedVolume;
+
+/// What an ask asks of the app: the registry, the index, and the mount table. The app's answers are
+/// `AppHost`; a lane test hands in its own, so its session acts only on its own disk image and its
+/// stop is injected.
+pub(crate) trait Host: Send + Sync + 'static {
+    /// Whether the approver acts on this BSD node at all, rather than approving at once. The app
+    /// acts on every disk.
+    fn acts_on(&self, bsd_name: &str) -> bool;
+    /// The registered volume whose ACTIVE root is `path`. A volume reachable through a spare mount
+    /// keeps working when that mount goes, so only the active root counts.
+    fn volume_at_active_root(&self, path: &Path) -> Option<String>;
+    /// Whether `bsd_name` is still mounted at `path`, from the non-blocking mount table.
+    fn is_mounted_at(&self, bsd_name: &str, path: &Path) -> bool;
+    /// Stop the volume's index and wait for it to let go of the drive.
+    fn stop(&self, volume_id: &str) -> RemovableStop;
+    /// Whether the volume has a local external index right now.
+    fn is_indexing(&self, volume_id: &str) -> bool;
+    /// The volumes a write op is busy on.
+    fn busy_volume_ids(&self) -> Vec<String>;
+    /// Whether Cmdr's own eject of the volume is in flight. Such a volume is the flight's to stop
+    /// and to resume.
+    fn is_ejecting(&self, volume_id: &str) -> bool;
+    /// An idle callback came. For a test that waits for one.
+    fn note_idle(&self) {}
+    /// An idle handed these volumes back to the gate. For a test that waits for the batch.
+    fn note_resume(&self, batch: ResumeBatch) {
+        drop(batch);
+    }
+}
+
+/// The disk a callback is about, read from its description.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct AskedDisk {
+    pub(crate) bsd_name: String,
+    pub(crate) volume_uuid: Option<String>,
+    pub(crate) whole_unit: u32,
+    /// Where its volume is mounted, `None` for a disk with no mounted volume.
+    pub(crate) path: Option<PathBuf>,
+}
+
+// DEFAULT-OK: no ask has come yet, so there's no chain to join and nothing is remembered.
+#[derive(Debug, Default)]
+struct State {
+    chain: Chain,
+    records: Records,
+}
+
+/// The approver's own state, minus DiskArbitration.
+pub(crate) struct Approver {
+    gate: DriveRelease,
+    host: Arc<dyn Host>,
+    state: Arc<Mutex<State>>,
+    owner: Arc<dyn ResumeOwner>,
+}
+
+impl Approver {
+    pub(crate) fn new(gate: DriveRelease, host: Arc<dyn Host>) -> Arc<Self> {
+        let state = Arc::new(Mutex::new(State::default()));
+        let owner = Arc::new(RecordOwner {
+            state: Arc::clone(&state),
+            host: Arc::clone(&host),
+        });
+        Arc::new(Self {
+            gate,
+            host,
+            state,
+            owner,
+        })
+    }
+
+    /// DiskArbitration asks whether `disk` may unmount. `volumes_on_unit` answers which volumes are
+    /// mounted on the same whole disk, and is called only once a Cmdr volume is on it.
+    ///
+    /// Blocks until the disk's every volume has let go or the chain's deadline passes, which is the
+    /// one wait the DA queue may make.
+    pub(crate) fn on_unmount_ask(
+        &self,
+        disk: &AskedDisk,
+        volumes_on_unit: impl FnOnce(u32) -> Vec<MountedVolume>,
+    ) -> Answer {
+        if !self.host.acts_on(&disk.bsd_name) {
+            return Answer::Approve;
+        }
+        let Some(path) = disk.path.as_deref() else {
+            return Answer::Approve;
+        };
+        let Some(volume_id) = self.host.volume_at_active_root(path) else {
+            return Answer::Approve;
+        };
+        let group = self.group_of(disk, path, volume_id, volumes_on_unit);
+        let ids: Vec<String> = group.iter().map(|volume| volume.volume_id.clone()).collect();
+
+        let now = self.gate.now();
+        let (generation, deadline) = {
+            let mut state = self.state.lock_ignore_poison();
+            (
+                state.records.begin_ask(disk.whole_unit, &group),
+                state.chain.deadline_for(now),
+            )
+        };
+        self.gate.set_unmount_pending(&ids);
+
+        // Read before the release: past the deadline it answers without waiting on any of it.
+        let unwaited = (now >= deadline).then(|| Unwaited {
+            indexing: ids.iter().any(|id| self.host.is_indexing(id)),
+            ticket_in_flight: ids.iter().any(|id| self.gate.holds_ticket(id)),
+            busy: self.is_busy(&ids),
+        });
+
+        let release = self.release(&group, generation, deadline);
+        {
+            let mut state = self.state.lock_ignore_poison();
+            for released in &release.volumes {
+                let Some(volume) = group.iter().find(|volume| volume.volume_id == released.volume_id) else {
+                    continue;
+                };
+                // A volume Cmdr's own eject is taking down is that flight's to resume.
+                if self.host.is_ejecting(&volume.volume_id) {
+                    continue;
+                }
+                state
+                    .records
+                    .note_release(volume, released.outcome, released.epoch, generation);
+            }
+        }
+
+        let answer = match unwaited {
+            Some(disk_facts) => ask::without_waiting(disk_facts),
+            None => ask::after_release(
+                release.volumes.iter().map(|released| released.outcome),
+                self.is_busy(&ids),
+            ),
+        };
+        log::info!(
+            target: "unmount_approver",
+            "{} of {:?} is about to unmount: {answer:?} after letting go of {ids:?} ({:?} of the chain's budget left)",
+            disk.bsd_name,
+            path,
+            deadline.saturating_duration_since(self.gate.now()),
+        );
+        answer
+    }
+
+    /// Every registered volume mounted on the asked disk's whole unit, the asked one first.
+    ///
+    /// **Why the whole unit**: DiskArbitration links a whole-disk request's asks by BSD unit and
+    /// they arrive back to back, so the first ask has to stop the unit's group or the second ask
+    /// spends its own window waiting.
+    fn group_of(
+        &self,
+        disk: &AskedDisk,
+        path: &Path,
+        volume_id: String,
+        volumes_on_unit: impl FnOnce(u32) -> Vec<MountedVolume>,
+    ) -> Vec<DiskVolume> {
+        let mut group = vec![DiskVolume {
+            volume_id,
+            bsd_name: disk.bsd_name.clone(),
+            volume_uuid: disk.volume_uuid.clone(),
+            whole_unit: disk.whole_unit,
+            path: path.to_path_buf(),
+        }];
+        for mounted in volumes_on_unit(disk.whole_unit) {
+            let Some(volume_id) = self.host.volume_at_active_root(&mounted.path) else {
+                continue;
+            };
+            if group.iter().any(|volume| volume.volume_id == volume_id) {
+                continue;
+            }
+            group.push(DiskVolume {
+                volume_id,
+                bsd_name: mounted.bsd_name,
+                volume_uuid: mounted.volume_uuid,
+                whole_unit: mounted.whole_unit,
+                path: mounted.path,
+            });
+        }
+        group
+    }
+
+    /// Let go of the whole group under one deadline. A stop the deadline cut short keeps running and
+    /// records what it eventually answered, so a late release is still owed a resume.
+    fn release(&self, group: &[DiskVolume], generation: u64, deadline: Instant) -> Release {
+        let ids: Vec<String> = group.iter().map(|volume| volume.volume_id.clone()).collect();
+        let stop = {
+            let host = Arc::clone(&self.host);
+            move |volume_id: &str| host.stop(volume_id)
+        };
+        let record_late = {
+            let host = Arc::clone(&self.host);
+            let state = Arc::clone(&self.state);
+            let volumes: HashMap<String, DiskVolume> = group
+                .iter()
+                .map(|volume| (volume.volume_id.clone(), volume.clone()))
+                .collect();
+            move |late: LateRelease| {
+                let Some(volume) = volumes.get(&late.volume_id) else {
+                    return;
+                };
+                if host.is_ejecting(&late.volume_id) {
+                    return;
+                }
+                state
+                    .lock_ignore_poison()
+                    .records
+                    .note_late_release(volume, late.outcome, late.epoch, generation);
+            }
+        };
+        self.gate.release(&ids, deadline, stop, record_late)
+    }
+
+    fn is_busy(&self, ids: &[String]) -> bool {
+        let busy = self.host.busy_volume_ids();
+        ids.iter().any(|id| busy.contains(id))
+    }
+
+    /// DiskArbitration's queue went quiet: no unmount is pending any more, and whatever an ask
+    /// stopped and still owes back goes to the gate, which settles and checks it off this queue.
+    pub(crate) fn on_idle(&self) {
+        self.gate.clear_all_unmount_pending();
+        let candidates = self.state.lock_ignore_poison().records.idle();
+        self.host.note_idle();
+        if candidates.is_empty() {
+            return;
+        }
+        log::info!(target: "unmount_approver", "DiskArbitration is idle; handing back {candidates:?}");
+        let batch = self.gate.resume(candidates, Arc::clone(&self.owner));
+        self.host.note_resume(batch);
+    }
+
+    /// A whole disk appeared: whatever was remembered about an earlier disk with its unit is void,
+    /// since DiskArbitration hands a freed unit to the next disk at once.
+    pub(crate) fn on_appeared(&self, whole_unit: u32) {
+        self.state.lock_ignore_poison().records.appeared(whole_unit);
+    }
+
+    /// A whole disk disappeared: nothing on it can be resumed, and its volumes' pending flags go.
+    pub(crate) fn on_disappeared(&self, whole_unit: u32) {
+        let cleared = self.state.lock_ignore_poison().records.disappeared(whole_unit);
+        self.gate.clear_unmount_pending(&cleared);
+    }
+
+    /// A volume's path cleared, so its unmount happened, whether Cmdr was asked or not.
+    pub(crate) fn on_volume_path_cleared(&self, bsd_name: &str) {
+        let cleared = self.state.lock_ignore_poison().records.volume_path_cleared(bsd_name);
+        self.gate.clear_unmount_pending(&Vec::from_iter(cleared));
+    }
+}
+
+/// The approver as a resume owner: it stands behind a record until a newer ask on its disk, and
+/// reads presence from the mount table, ❌ never from a callback disk's frozen description.
+struct RecordOwner {
+    state: Arc<Mutex<State>>,
+    host: Arc<dyn Host>,
+}
+
+impl ResumeOwner for RecordOwner {
+    fn name(&self) -> &'static str {
+        "the unmount approver"
+    }
+
+    fn still_owns(&self, candidate: &ResumeCandidate) -> bool {
+        self.state.lock_ignore_poison().records.still_owns(candidate)
+    }
+
+    fn is_listed(&self, candidate: &ResumeCandidate) -> bool {
+        let state = self.state.lock_ignore_poison();
+        let Some(volume) = state.records.volume_of(candidate) else {
+            return false;
+        };
+        let (bsd_name, path) = (volume.bsd_name.clone(), volume.path.clone());
+        drop(state);
+        self.host.is_mounted_at(&bsd_name, &path)
+    }
+
+    fn is_ejected_by_another_owner(&self, candidate: &ResumeCandidate) -> bool {
+        self.host.is_ejecting(&candidate.volume_id)
+    }
+
+    fn consume(&self, candidate: &ResumeCandidate) {
+        self.state.lock_ignore_poison().records.consume(candidate);
+    }
+}

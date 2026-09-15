@@ -405,6 +405,12 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             volumes::watcher::start_volume_watcher(app.handle());
 
+            // DiskArbitration holds every DA-mediated unmount while Cmdr lets go of the drive,
+            // whoever started it. It installs the racy `WillUnmount` observer instead when it
+            // can't. See `volumes/unmount_approver/`.
+            #[cfg(target_os = "macos")]
+            volumes::unmount_approver::install_for_app();
+
             #[cfg(target_os = "linux")]
             volumes_linux::watcher::start_volume_watcher(app.handle());
 

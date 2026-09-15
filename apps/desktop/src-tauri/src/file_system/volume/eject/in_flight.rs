@@ -58,7 +58,7 @@ pub fn ejecting_volume_ids() -> Vec<String> {
 
 /// Whether an eject of `volume_id` is in flight. The drive-release gate reads it
 /// under its own lock, so this lock is never held while taking that one.
-pub(in crate::file_system::volume) fn is_ejecting(volume_id: &str) -> bool {
+pub(crate) fn is_ejecting(volume_id: &str) -> bool {
     IN_FLIGHT.lock_ignore_poison().contains_key(volume_id)
 }
 

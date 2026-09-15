@@ -37,7 +37,8 @@ use std::sync::Arc;
 use crate::device_volumes::DeviceVolumeProvider;
 use unmount_tool::UnmountVerb;
 
-pub(in crate::file_system::volume) use in_flight::is_ejecting;
+pub(crate) use deadlines::INDEX_STOP_DEADLINE;
+pub(crate) use in_flight::is_ejecting;
 pub use in_flight::{VolumesEjectingChanged, ejecting_volume_ids, init_ejecting_volume_emitter};
 pub(in crate::file_system::volume) use unmount_tool::is_still_mounted;
 
@@ -445,20 +446,14 @@ where
     F: FnOnce() -> Fut,
     Fut: Future<Output = Result<(), EjectError>>,
 {
-    deadlines::within_deadline(
-        EjectStep::IndexStop,
-        volume_id,
-        deadlines::INDEX_STOP_DEADLINE,
-        stop_index,
-    )
-    .await??;
+    deadlines::within_deadline(EjectStep::IndexStop, volume_id, INDEX_STOP_DEADLINE, stop_index).await??;
     unmount().await
 }
 
 /// The index stop an eject runs: the drive's own index, waiting for it to let go
 /// of the drive for as long as the eject waits for the stop.
 fn stop_removable_index(volume_id: &str) -> cmdr_index::RemovableStop {
-    crate::index_host::index().stop_removable_volume(volume_id, deadlines::INDEX_STOP_DEADLINE)
+    crate::index_host::index().stop_removable_volume(volume_id, INDEX_STOP_DEADLINE)
 }
 
 /// Stop `volume_id`'s index through the drive-release gate, awaited so the stop
@@ -491,7 +486,7 @@ async fn stop_index_blocking(volume_id: String, stop: fn(&str) -> cmdr_index::Re
     };
     let vid = volume_id.clone();
     let released = tokio::task::spawn_blocking(move || {
-        let deadline = std::time::Instant::now() + deadlines::INDEX_STOP_DEADLINE;
+        let deadline = std::time::Instant::now() + INDEX_STOP_DEADLINE;
         drive_release::gate().release(std::slice::from_ref(&vid), deadline, guarded_stop, |late| {
             log::info!(
                 target: "eject",

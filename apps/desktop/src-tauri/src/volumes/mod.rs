@@ -12,9 +12,11 @@
 //! re-exports every submodule item so `crate::volumes::X` paths stay stable.
 
 pub mod disk_image;
+pub(crate) mod unmount_approver;
 pub mod watcher;
 
 mod cloud;
+mod disk_units;
 mod fs_type;
 mod ids;
 mod mounts;

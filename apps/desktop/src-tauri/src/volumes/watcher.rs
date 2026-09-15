@@ -71,16 +71,6 @@ fn install_observers() {
         }
     });
 
-    let will_unmount_block = RcBlock::new(|n: NonNull<NSNotification>| {
-        // SAFETY: NSNotificationCenter delivers a valid notification pointer.
-        let notification = unsafe { n.as_ref() };
-        if let Some(path) = volume_path_from_notification(notification) {
-            handle_volume_will_unmount(&path);
-        } else {
-            debug!("NSWorkspaceWillUnmountNotification missing NSWorkspaceVolumeURLKey");
-        }
-    });
-
     // SAFETY: the notification name constants are valid AppKit globals, and
     // `addObserverForName:object:queue:usingBlock:` retains the block for the
     // lifetime of the observer registration. We never remove the observer
@@ -99,15 +89,47 @@ fn install_observers() {
             None,
             &unmount_block,
         );
-        center.addObserverForName_object_queue_usingBlock(
-            Some(NSWorkspaceWillUnmountNotification),
-            None,
-            None,
-            &will_unmount_block,
-        );
     }
 
     debug!("NSWorkspace volume mount/unmount observer installed");
+}
+
+/// Marker: set after the will-unmount observer has been installed.
+static WILL_UNMOUNT_OBSERVER_INSTALLED: OnceLock<()> = OnceLock::new();
+
+/// Install the `NSWorkspaceWillUnmountNotification` observer: the FALLBACK pre-unmount hook, for
+/// when the DiskArbitration approver can't install (`volumes/unmount_approver/`). It's racy — the
+/// OS doesn't wait for the observer — so it only ever runs instead of the approver, never beside
+/// it, or one unmount would stop the same index twice. Idempotent.
+pub(crate) fn install_will_unmount_observer() {
+    if WILL_UNMOUNT_OBSERVER_INSTALLED.set(()).is_err() {
+        return;
+    }
+    let will_unmount_block = RcBlock::new(|n: NonNull<NSNotification>| {
+        // SAFETY: NSNotificationCenter delivers a valid notification pointer.
+        let notification = unsafe { n.as_ref() };
+        if let Some(path) = volume_path_from_notification(notification) {
+            handle_volume_will_unmount(&path);
+        } else {
+            debug!("NSWorkspaceWillUnmountNotification missing NSWorkspaceVolumeURLKey");
+        }
+    });
+
+    // SAFETY: the notification name constant is a valid AppKit global, and
+    // `addObserverForName:object:queue:usingBlock:` retains the block for the lifetime of the
+    // observer registration, which is never removed (as above).
+    unsafe {
+        NSWorkspace::sharedWorkspace()
+            .notificationCenter()
+            .addObserverForName_object_queue_usingBlock(
+                Some(NSWorkspaceWillUnmountNotification),
+                None,
+                None,
+                &will_unmount_block,
+            );
+    }
+
+    debug!("NSWorkspace will-unmount observer installed as the pre-unmount fallback");
 }
 
 /// Extract the volume path from an `NSWorkspace` mount/unmount notification's

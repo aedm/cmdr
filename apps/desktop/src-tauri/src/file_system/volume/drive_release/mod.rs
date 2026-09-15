@@ -32,7 +32,12 @@ use cmdr_index::{IndexVolumeKind, ROOT_VOLUME_ID};
 
 use crate::ignore_poison::IgnorePoison;
 
-pub(crate) use release::VolumeRelease;
+pub(crate) use release::{LateRelease, Release, VolumeRelease};
+#[cfg_attr(
+    all(not(test), not(target_os = "macos")),
+    expect(unused_imports, reason = "only the macOS unmount approver resumes through the gate")
+)]
+pub(crate) use resume::{ResumeBatch, ResumeCandidate, ResumeOwner};
 
 /// How long a person's enable or rescan waits out an unmount in progress before it gives up on the
 /// start. The slowest refused unmount measured took 27.8 s to answer (`diskarbitrationd` scans for
@@ -274,6 +279,32 @@ impl DriveRelease {
                 parked: std::sync::atomic::AtomicUsize::new(0),
             }),
         }
+    }
+
+    /// The gate's clock. A caller computing a deadline for [`Self::release`] reads the time here, so
+    /// a test moves the deadline and the gate together.
+    #[cfg_attr(
+        all(not(test), not(target_os = "macos")),
+        expect(dead_code, reason = "only the macOS unmount approver times itself by the gate")
+    )]
+    pub(crate) fn now(&self) -> Instant {
+        self.shared.clock.now()
+    }
+
+    /// Whether a start, a disable, or a late stop holds `volume_id`'s ticket right now. An ask with
+    /// no time left counts a ticket in flight as work it can't wait for.
+    #[cfg_attr(
+        all(not(test), not(target_os = "macos")),
+        expect(dead_code, reason = "only the macOS unmount approver asks without waiting")
+    )]
+    pub(crate) fn holds_ticket(&self, volume_id: &str) -> bool {
+        self.shared.gates.lock_ignore_poison().gate(volume_id).ticket.is_some()
+    }
+
+    /// How many threads are parked at the gate: a test knows a waiter arrived before it acts.
+    #[cfg(test)]
+    pub(crate) fn parked(&self) -> usize {
+        self.shared.parked.load(std::sync::atomic::Ordering::SeqCst)
     }
 
     /// Run `call`, a start of `volume_id`'s index, holding the volume's ticket for the whole call.
