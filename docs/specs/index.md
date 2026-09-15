@@ -82,6 +82,15 @@ below is met.
       so progress, cancel, and rollback stay in the engine. macOS 13+. Reads never escalate, and MCP can see the wait
       but never answer it. M0 stands alone (drop `disable-library-validation`, point the permission hint at the folder
       that actually refused); M1 is a spike that answers seven open questions, TCC for a root daemon first.
+- [ ] 2026-09-15 `error-report-triage-plan.md` - **Auto-sent error reports arrive one by one, and nothing says whether
+      one is fixed, known, or new.** Plan only, awaiting David's review. Every error gets a stable signature (a hash of
+      its log target and code template), a D1 registry tracks each one as new, regressed, open, fixed, or ignored, and
+      `Fixes-error:` commit trailers mark signatures fixed when a release ships them. Intake caps floods per install and
+      pings Discord only for new or regressed signatures. An agent on the M1 box diagnoses only those, reading the
+      laptop's local `main` mirrored to the box, and the Worker mails one digest at 06:00 Stockholm time every day.
+      Decided: M1 box, Discord for new and regressed only, diagnosis only, 06:00 daily. Six milestones: app signatures →
+      registry and intake → triage API and fix marking → daily email → the `/error-triage` command → infra (the mirror
+      hook, the generic agent-job runner, secrets); about 2,700–3,650 lines across the Cmdr and infra repos.
 - [ ] 2026-09-14 `eject-and-drive-safety-plan.md` - **Cmdr lets go of a drive before any unmount, survives one that
       vanishes, and names what holds one it can't eject.** M0–M4 landed: moves keep their sources until every
       destination directory is fsynced, real APFS and HFS+ disk images run in the `disk-images` lane, and a removable
