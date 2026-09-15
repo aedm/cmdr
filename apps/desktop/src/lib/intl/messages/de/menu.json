@@ -504,6 +504,19 @@
   "@menu.tag.gray": {
     "sourceHash": "0d5adda"
   },
+  "menu.tag.rowLabel": "Tags",
+  "@menu.tag.rowLabel": {
+    "sourceHash": "1331275",
+    "sameAsSourceJustification": "'Tags' is the word German macOS Finder itself shows for its tag row and menu (Finder LocalizableMerged N169.37 and MenuBar 300893 = 'Tags'), and the catalog already uses it (settings.listing.showTags.label 'Tags anzeigen')."
+  },
+  "menu.tag.addNamed": "„{color}“ hinzufügen",
+  "@menu.tag.addNamed": {
+    "sourceHash": "1d50324"
+  },
+  "menu.tag.removeNamed": "„{color}“ entfernen",
+  "@menu.tag.removeNamed": {
+    "sourceHash": "15d0171"
+  },
   "menu.mediaIndex.addFolder": "Zu indizierten Ordnern hinzufügen",
   "@menu.mediaIndex.addFolder": {
     "sourceHash": "c0a87cd"

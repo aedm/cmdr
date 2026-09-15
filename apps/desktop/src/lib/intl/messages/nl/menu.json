@@ -510,6 +510,19 @@
   "@menu.tag.gray": {
     "sourceHash": "0d5adda"
   },
+  "menu.tag.rowLabel": "Tags",
+  "@menu.tag.rowLabel": {
+    "sourceHash": "1331275",
+    "sameAsSourceJustification": "'Tags' is the word Dutch macOS Finder itself shows for its tag row and menu (Finder LocalizableMerged N169.37 and MenuBar 300893 = 'Tags'), and the catalog already uses it (settings.listing.showTags.label 'Tags tonen')."
+  },
+  "menu.tag.addNamed": "Voeg ‘{color}’ toe",
+  "@menu.tag.addNamed": {
+    "sourceHash": "1d50324"
+  },
+  "menu.tag.removeNamed": "Verwijder ‘{color}’",
+  "@menu.tag.removeNamed": {
+    "sourceHash": "15d0171"
+  },
   "menu.mediaIndex.addFolder": "Voeg toe aan geïndexeerde mappen",
   "@menu.mediaIndex.addFolder": {
     "sourceHash": "c0a87cd"

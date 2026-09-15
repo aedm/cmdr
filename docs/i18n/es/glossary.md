@@ -1290,6 +1290,10 @@ Microsoft lo que Apple no nombra. Familia RAW: **apóstrofos simples**, un `''` 
   resto del catálogo, y `anclar` queda registrado como la variante Tier 1.
 - **Colores de etiqueta del Finder → `Rojo, Naranja, Amarillo, Verde, Azul, Morado, Gris`** · macOS Finder
   (`TG_COLOR_*`) · high.
+- **Fila de etiquetas (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) → `Etiquetas`,
+  `Añadir “{color}”`, `Quitar “{color}”`** · macOS Finder (`TG5` = `Añadir “^0”`, `N169.37` = `Etiquetas`) · high. `TG6`
+  dice `Eliminar “^0”`, pero se usa `Quitar`: quitar una etiqueta no borra nada, y el catálogo ya lo dice así
+  (`commands.tagsToggleRed.description` “Añade o quita la etiqueta”), como la regla `remove → Quitar`.
 - **busy (volumen en uso) → `(ocupado)`** · terminología de Microsoft · high.
 - **Eject → `Expulsar`, Disconnect → `Desconectar`, Remove (de una lista) → `Quitar`** · macOS Finder · high. `Quitar`
   evita que borrar un favorito suene a borrar archivos.

@@ -1194,12 +1194,16 @@ erscheinen.
   nicht belegt; `lösen` ist die natürliche Umkehrung und deckt sich mit `commands.tabTogglePin.label` („Tab
   fixieren/lösen“).
 - **Finder-Tag-Farben → `Rot, Orange, Gelb, Grün, Blau, Lila, Grau`** · macOS Finder (`TG_COLOR_*`) · high.
+- **Tag-Leiste (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) → `Tags`, `„{color}“ hinzufügen`,
+  `„{color}“ entfernen`** · macOS Finder (`TG5` = `„^0“ hinzufügen`, `TG6` = `„^0“ entfernen`, `N169.37` = `Tags`) ·
+  high. Dasselbe Verbpaar wie `commands.tagsToggleRed.description` („Fügt … hinzu oder entfernt ihn“).
 - **busy (Volume in Benutzung) → `(in Benutzung)`** · beschreibend · tentative. MS bietet nur `beschäftigt`/`besetzt`
   (Person bzw. Telefon); für eine Festplatte liest sich beides falsch.
 - **„Eject“ → `Auswerfen`, „Disconnect“ → `Trennen`, „Remove“ (aus einer Liste) → `Entfernen`** · macOS Finder · high.
 - **forget (Server, Passwort) → `vergessen`** · bereits im Katalog (`fileExplorer.network.share.forgetPassword`) · high.
 - **Deliberately identical to English** (`sameAsSourceJustification` gesetzt): `menu.bar.tab` (Tab), `menu.view.zoom`
-  (Zoom), `menu.sort.name` (Name), `menu.tag.orange` (Orange), `menu.view.askCmdr` (Produktname).
+  (Zoom), `menu.sort.name` (Name), `menu.tag.orange` (Orange), `menu.tag.rowLabel` (Tags), `menu.view.askCmdr`
+  (Produktname).
 
 ## SMB-Fallback-Hinweis: die Freigabe hängt an der Systemverbindung (`fileExplorer.network.osMountFallback.*`, 2026-08-21)
 

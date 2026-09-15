@@ -505,6 +505,18 @@
   "@menu.tag.gray": {
     "sourceHash": "0d5adda"
   },
+  "menu.tag.rowLabel": "Thẻ",
+  "@menu.tag.rowLabel": {
+    "sourceHash": "1331275"
+  },
+  "menu.tag.addNamed": "Thêm “{color}”",
+  "@menu.tag.addNamed": {
+    "sourceHash": "1d50324"
+  },
+  "menu.tag.removeNamed": "Gỡ bỏ “{color}”",
+  "@menu.tag.removeNamed": {
+    "sourceHash": "15d0171"
+  },
   "menu.mediaIndex.addFolder": "Thêm vào thư mục được lập chỉ mục",
   "@menu.mediaIndex.addFolder": {
     "sourceHash": "c0a87cd"

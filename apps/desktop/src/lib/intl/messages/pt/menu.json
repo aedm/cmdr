@@ -506,6 +506,18 @@
   "@menu.tag.gray": {
     "sourceHash": "0d5adda"
   },
+  "menu.tag.rowLabel": "Etiquetas",
+  "@menu.tag.rowLabel": {
+    "sourceHash": "1331275"
+  },
+  "menu.tag.addNamed": "Adicionar “{color}”",
+  "@menu.tag.addNamed": {
+    "sourceHash": "1d50324"
+  },
+  "menu.tag.removeNamed": "Remover “{color}”",
+  "@menu.tag.removeNamed": {
+    "sourceHash": "15d0171"
+  },
   "menu.mediaIndex.addFolder": "Adicionar às pastas indexadas",
   "@menu.mediaIndex.addFolder": {
     "sourceHash": "c0a87cd"

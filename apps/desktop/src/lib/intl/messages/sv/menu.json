@@ -502,6 +502,18 @@
   "@menu.tag.gray": {
     "sourceHash": "0d5adda"
   },
+  "menu.tag.rowLabel": "Taggar",
+  "@menu.tag.rowLabel": {
+    "sourceHash": "1331275"
+  },
+  "menu.tag.addNamed": "Lägg till ”{color}”",
+  "@menu.tag.addNamed": {
+    "sourceHash": "1d50324"
+  },
+  "menu.tag.removeNamed": "Ta bort ”{color}”",
+  "@menu.tag.removeNamed": {
+    "sourceHash": "15d0171"
+  },
   "menu.mediaIndex.addFolder": "Lägg till i indexerade mappar",
   "@menu.mediaIndex.addFolder": {
     "sourceHash": "c0a87cd"

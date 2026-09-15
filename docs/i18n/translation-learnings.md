@@ -221,6 +221,15 @@ parallel":
 - **`remove` vs `delete` is a systematic trap.** macOS and Microsoft render both with one verb in many languages, so
   Tier-1 evidence actively pushes toward a verb meaning "delete" on a button that doesn't delete. Check this pair
   explicitly per locale instead of following the pile (es `Quitar`, fr `Retirer`, vi `Gỡ` all diverge deliberately).
+- **Finder's tag UI strings are the `TG*` keys in `LocalizableMerged.strings`, and its "Remove" is still the trap
+  above.** `TG5` / `TG6` are the `Add “^0”` / `Remove “^0”` captions under Finder's context-menu tag row, `TG_COLOR_*`
+  the color names, and `N169.37` (also `MenuBar.strings` `300893.title`) the bare "Tags" without an ellipsis. `TG6` uses
+  the DELETE verb in fr (`Supprimer`), es (`Eliminar`), and vi (`Xóa`), on a surface that matches Cmdr's tag row
+  exactly, and those three still kept their catalog's un-list verb (`Retirer`, `Quitar`, `Gỡ bỏ`): removing a tag
+  deletes nothing, and each catalog already says so in `commands.tagsToggle*`. An exact Finder counterpart doesn't
+  override a locale's settled remove/delete split. Its typography doesn't either: fr `TG5` carries NBSPs inside the
+  guillemets and nl uses straight `'`, while both catalogs keep their own settled quotes (verified on macOS 27.0, build
+  26A428, Finder `.lproj` key match, 2026-09-16).
 - **A counted "…and N other items" tail has first-party evidence in every language: macOS Finder's `MR101_V2/_V3`,
   `MR201_V2/_V3`, and `PE106_V3/_V4` keys** (`macOS/Finder/LocalizableMerged.json`, English side `en/macOS/`). They ship
   both the singular and the plural of `“^1” and ^0 other item(s)`, so they show how a language counts the followers AND

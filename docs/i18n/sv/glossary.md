@@ -1334,6 +1334,9 @@ det Apple inte namnger. RAW-familj: **enkla apostrofer**, ett `''` skulle synas 
 - **„Edit in editor” → `Öppna i redigeraren`** · beskrivande · tentative. Den ordagranna `Redigera i redigeraren`
   upprepar samma stam; `öppna i` läser naturligt och skiljer sig från `Visa` raden ovanför.
 - **Finder-etikettfärger → `Röd, Orange, Gul, Grön, Blå, Lila, Grå`** · macOS Finder (`TG_COLOR_*`) · high.
+- **Taggraden (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) → `Taggar`, `Lägg till ”{color}”`,
+  `Ta bort ”{color}”`** · macOS Finder (`TG5`, `TG6`, `N169.37`) · high. Samma verbpar som
+  `commands.tagsToggleRed.description` (”Lägger till eller tar bort”).
 - **busy (volym som används) → `(upptagen)`** · Microsofts terminologi · high.
 - **Eject → `Mata ut`, Disconnect → `Koppla från`, Remove (ur en lista) → `Ta bort`** · macOS Finder · high. `Radera` är
   fortfarande reserverat för permanent radering, enligt `style.md`.

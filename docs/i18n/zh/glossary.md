@@ -1213,6 +1213,9 @@ macOS Finder/AppKit zh-CN Tier 1, plus the zh catalog's own already-settled "cou
 - **word wrap → `自动换行`** · Microsoft 术语库 `zh-Hans`，Double Commander `zh-CN` · high。
 - **pin / unpin tab → `固定标签页` / `取消固定标签页`** · Safari `zh-CN`（「固定标签页」）· high。
 - **Finder 标签颜色 → `红色、橙色、黄色、绿色、蓝色、紫色、灰色`** · macOS Finder（`TG_COLOR_*`）· high。
+- **标签行（`menu.tag.rowLabel`、`menu.tag.addNamed`、`menu.tag.removeNamed`）→
+  `标签`、`添加“{color}”`、`移除“{color}”`** · macOS Finder（`TG5`、`TG6`、`N169.37`）· high。动词与
+  `commands.tagsToggleRed.description`（“添加或移除”）一致。
 - **busy（宗卷正在使用）→ `（占用中）`** · Microsoft 术语库（`忙碌`）· high。磁盘用「占用中」比「忙碌」自然。
 - **Eject → `推出`、Disconnect → `断开连接`、Remove（从列表中移除）→ `移除`** · macOS Finder · high。
 - **括号与引号用全角**：`{app}（默认）`、`推出（{name}）`、`拷贝“{name}”`。占位符本身保持半角原样。

@@ -1518,6 +1518,10 @@ szóhasználatot, a Microsoft-terminológia azt, aminek az Apple-nél nincs neve
   `Képek indexelésének engedélyezése itt`** · névszói címkealak, a magyar UI-konvenció szerint · tentative. A tiltó
   felszólító mód (`Ne indexeld…`) tegező közvetlen megszólítás lenne, amit a címkéknél a `style.md` kerül.
 - **Finder-címkeszínek → `Piros, Narancs, Sárga, Zöld, Kék, Bíbor, Szürke`** · macOS Finder (`TG_COLOR_*`) · high.
+- **Címkesor (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) → `Címkék`, `„{color}” hozzáadása`,
+  `„{color}” eltávolítása`** · macOS Finder (`TG5` = `„^0” hozzáadása`, `TG6` = `„^0” eltávolítása`, `N169.37` =
+  `Címkék`) · high. A színnév változatlanul kerül be, ezért áll idézőjelben az igenév előtt, toldalék nélkül; ugyanaz a
+  szópár, mint a `commands.tagsToggleRed.description` („Hozzáadja vagy eltávolítja”) mondatban.
 - **busy (használatban lévő kötet) → `(foglalt)`** · Microsoft-terminológia (`foglalt` = vonal foglalt) · high.
 - **Eject → `Kiadás`, Disconnect → `Leválasztás`, Remove (listából) → `Eltávolítás`** · macOS Finder · high.
 - **A márkanév toldalékolása: `Kilépés a cmdrből`** · a `style.md` kötőjel nélküli, kiejtés szerinti szabálya

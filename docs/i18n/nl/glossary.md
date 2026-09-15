@@ -1546,10 +1546,13 @@ verschijnen.
 - **word wrap → `Tekstterugloop`** · Microsoft-terminologie · high.
 - **pin / unpin tab → `Maak tabblad vast` / `Maak tabblad los`** · Safari `nl` („Maak tabblad vast”) · high.
 - **Finder-tagkleuren → `Rood, Oranje, Geel, Groen, Blauw, Paars, Grijs`** · macOS Finder (`TG_COLOR_*`) · high.
+- **Tagrij (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) → `Tags`, `Voeg ‘{color}’ toe`,
+  `Verwijder ‘{color}’`** · macOS Finder (`TG5` = `Voeg '^0' toe`, `TG6` = `Verwijder '^0'`, `N169.37` = `Tags`) · high.
+  Finder zet hier rechte `'`; de catalogus houdt zijn `‘…’` aan, net als `menu.context.copyNamed`.
 - **busy (volume in gebruik) → `(bezet)`** · Microsoft-terminologie · high.
 - **disconnect → `Verbreek verbinding`** · macOS Finder `nl` („Verbreek”), aangevuld tot een begrijpelijk label · high.
 - **Bewust gelijk aan het Engels** (met `sameAsSourceJustification`): `menu.bar.help`, `menu.app.onboarding`,
-  `menu.file.open`, `menu.view.zoom`, `menu.zoom.in`, `menu.zoom.percent*`, `menu.view.askCmdr`.
+  `menu.file.open`, `menu.view.zoom`, `menu.zoom.in`, `menu.zoom.percent*`, `menu.tag.rowLabel`, `menu.view.askCmdr`.
 
 ## De terugvalmelding voor de systeem-SMB-verbinding (`fileExplorer.network.osMountFallback.*`, 2026-08-21)
 

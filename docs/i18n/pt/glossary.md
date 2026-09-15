@@ -1128,6 +1128,10 @@ menu.
 - **pin / unpin tab → `Fixar aba` / `Desafixar aba`** · Safari `pt-BR` („Fixar Aba”) · high.
 - **Cores de etiqueta do Finder → `Vermelho, Laranja, Amarelo, Verde, Azul, Roxo, Cinza`** · macOS Finder (`TG_COLOR_*`)
   · high.
+- **Linha de etiquetas (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) → `Etiquetas`,
+  `Adicionar “{color}”`, `Remover “{color}”`** · macOS Finder `pt-BR` (`TG5`, `TG6`, `N169.37`) · high. `Remover` bate
+  com `commands.tagsToggleRed.description` (“Adiciona ou remove a etiqueta”): tirar uma etiqueta não apaga nada. O
+  Finder `pt-PT` diz `Identificadores`, variante que o catálogo não segue.
 - **busy (volume em uso) → `(ocupado)`** · terminologia da Microsoft · high.
 - **Eject → `Ejetar`, Disconnect → `Desconectar`, Remove (de uma lista) → `Remover`** · macOS Finder · high. `Apagar`
   fica reservado para arquivos, como manda o `style.md`.

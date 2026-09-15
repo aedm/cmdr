@@ -712,6 +712,10 @@ Read off the exact strings Finder's own Tags UI shows (`macOS/Finder/Localizable
 - ❌ **Don't "Taiwanize" orange to `橘色`**: Finder itself says `橙色` in Taiwan (33 TW / 28 HK live, against `橘色`
   2/2). `灰色` has no competitor (49/50). Both are TW = HK on exact-key matches too.
 - `TG_COLOR_0` = "No Color" → `沒有顏色` (TW = HK), if a clear-tags string ever needs it.
+- **Tag row captions** (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) · `標籤`, `加入「{color}」`,
+  `移除「{color}」` · Finder `TG5` / `TG6` / `N169.37`, TW = HK · `high`. The label takes Finder's `加入` even though
+  `commands.tagsToggleRed.description` says `加上或移除`: that one is running prose, this is the label Finder shows in
+  the same spot.
 
 ### Select / Deselect files dialog (`selection.*`, 2026-08-29)
 

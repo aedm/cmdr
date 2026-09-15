@@ -1312,6 +1312,10 @@ bù vào chỗ Apple không đặt tên. Họ RAW: **dấu nháy đơn**, một 
 - **pin / unpin tab → `Ghim thẻ` / `Bỏ ghim thẻ`** · Safari `vi` („Ghim tab”), chuyển sang thuật ngữ `thẻ` của catalog ·
   high.
 - **Màu nhãn Finder → `Đỏ, Cam, Vàng, Lục, Lam, Tía, Xám`** · macOS Finder (`TG_COLOR_*`) · high.
+- **Hàng thẻ (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) → `Thẻ`, `Thêm “{color}”`,
+  `Gỡ bỏ “{color}”`** · macOS Finder (`TG5` = `Thêm “^0”`, `N169.37` = `Thẻ`) · high. `TG6` là `Xóa “^0”`, nhưng dùng
+  `Gỡ bỏ`: gỡ thẻ không xóa gì cả, và catalog đã nói vậy (`commands.tagsToggleRed.description` “Thêm hoặc gỡ bỏ thẻ”),
+  đúng quy tắc `remove → gỡ bỏ`.
 - **busy (ổ đĩa đang được dùng) → `(đang bận)`** · thuật ngữ Microsoft (`bận`) · high.
 - **Eject → `Tháo`, Disconnect → `Ngắt kết nối`, Remove (khỏi một danh sách) → `Gỡ bỏ`** · macOS Finder và Thunar `vi` ·
   high. `Gỡ bỏ` tránh nghe giống `Xóa` (xóa tệp).

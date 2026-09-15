@@ -1591,13 +1591,18 @@ dans le menu.
   `Présentation brève`** · `présentation` est le terme macOS pour un mode d'affichage (« Présentation par liste ») ·
   high.
 - **Couleurs de tag du Finder → `Rouge, Orange, Jaune, Vert, Bleu, Violet, Gris`** · macOS Finder (`TG_COLOR_*`) · high.
+- **Rangée de tags (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`) → `Tags`, `Ajouter « {color} »`,
+  `Retirer « {color} »`** · macOS Finder (`TG5` = `Ajouter « ^0 »`, `N169.37` = `Tags`) · high. `TG6` dit
+  `Supprimer « ^0 »`, mais on garde `Retirer` : retirer un tag ne supprime rien, et le catalogue le dit déjà ainsi
+  (`commands.tagsToggleRed.description` « Ajoute ou retire le tag »), comme la règle `remove → Retirer`. Finder met des
+  espaces insécables dans les guillemets ; le catalogue garde son espace ASCII.
 - **busy (volume occupé) → `(occupé)`** · terminologie Microsoft · high.
 - **Eject → `Éjecter`, Disconnect → `Se déconnecter`, Remove (d'une liste) → `Retirer`** · macOS Finder · high.
   `Retirer` évite que le retrait d'un favori se lise comme une suppression de fichiers.
 - **`{name}` entre guillemets → `« {name} »`**, avec l'espace ASCII normale des deux côtés, conformément au réglage
   typographique du catalogue `fr`.
 - **Identiques à l'anglais à dessein** (avec `sameAsSourceJustification`) : `menu.app.services`, `menu.sort.extension`,
-  `menu.view.zoom`, `menu.tag.orange`, `menu.view.askCmdr`.
+  `menu.view.zoom`, `menu.tag.orange`, `menu.tag.rowLabel`, `menu.view.askCmdr`.
 
 ## Notification de repli sur le montage macOS (`fileExplorer.network.osMountFallback.*`, 2026-08-21)
 
