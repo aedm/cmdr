@@ -400,11 +400,11 @@ opacity fade.
 ## Component patterns
 
 For a live view of every primitive in `lib/ui/`, with all variants and states rendered flat, open the in-app **component
-catalog**: Debug window (`⌘⇧D`, dev builds) → "Components", or `http://localhost:<port>/dev/components` in a browser tab. The
-canonical "grouped card" wrapper used there (and intended for Settings refactors) is `SectionCard.svelte`. Its `tone`
-prop (`neutral` | `info` | `warning` | `error`) is how a block says "pay attention here": it tints the card's fill and
-border and leaves the text inside its normal color, so the signal rides the surface rather than turning a paragraph into
-colored type. Reach for a toned card instead of hand-rolling a tinted `<p>` banner; prop table in
+catalog**: Debug window (`⌘⇧D`, dev builds) → "Components", or `http://localhost:<port>/dev/components` in a browser
+tab. The canonical "grouped card" wrapper used there (and intended for Settings refactors) is `SectionCard.svelte`. Its
+`tone` prop (`neutral` | `info` | `warning` | `error`) is how a block says "pay attention here": it tints the card's
+fill and border and leaves the text inside its normal color, so the signal rides the surface rather than turning a
+paragraph into colored type. Reach for a toned card instead of hand-rolling a tinted `<p>` banner; prop table in
 `apps/desktop/src/lib/ui/DETAILS.md` § SectionCard.
 
 ### Focus indicators (app)
