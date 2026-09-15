@@ -19,7 +19,7 @@
 //! dark, and highlight, and it tracks the menu's font size.
 //!
 //! `IconMenuItem` stays right for the icons that ARE pixels (app icons in "Open with",
-//! `NSSharingService` icons in `Share`, the tag colour circles), which is why those
+//! `NSSharingService` icons in `Share`, the plain tag items' fallback circles), which is why those
 //! don't come through here.
 //!
 //! ## Provider logos come through here too

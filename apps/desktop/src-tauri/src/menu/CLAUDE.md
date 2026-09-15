@@ -8,7 +8,7 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
 - `menu_bar.rs`: both platforms' menu bar, one row per item (words: `menu_spec.rs`; built by `menu_bar_builder.rs`).
   `menu_structure.rs`: context and viewer menus. `macos_appkit.rs`: the objc2 boundary the right-click extras cross
   (`services_context.rs`, `share_submenu.rs`, `context_menu_icons.rs` with `provider_logos.rs`,
-  `context_menu_header.rs`). One line per file: DETAILS § File layout.
+  `context_menu_header.rs`, `tag_row/`). One line per file: DETAILS § File layout.
 
 ## Must-knows
 
@@ -16,10 +16,10 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
   before display; `cleanup_macos_menus` only strips what AppKit injects *after*.
 - **The macOS right-click extras, all `DETAILS.md`, and ❗ every loan must outlive `popup()` — ❌ never
   `let _ =`.** `Services`: AppKit owns ONE, already in the app menu, so `ServicesLoan` borrows it, aimed at the
-  RIGHT-CLICKED rows. `Share`: ours, from `file_system/share.rs`'s enumeration, ids
-  `share-service:<index>`, closing with `Edit extensions…`, ❌ never empty. SF Symbols: set on
-  `NSMenuDidBeginTrackingNotification`, ❌ never `IconMenuItem` — muda's bitmaps can't be TEMPLATE images, so a glyph
-  vanishes in one appearance and goes dark when highlighted. `IconMenuItem` stays right for real pixels.
+  RIGHT-CLICKED rows. `Share`: ours (`file_system/share.rs`), ids `share-service:<index>`, ending `Edit extensions…`, ❌
+  never empty. SF Symbols: set on `NSMenuDidBeginTrackingNotification`, ❌ never `IconMenuItem` — muda's bitmaps can't
+  be TEMPLATE images, so a glyph vanishes in one appearance. `IconMenuItem` stays right for real pixels. Tag row: a
+  circle fires its item synchronously, ❌ no hardcoded selector.
 - **The context menu's first line is a disabled HEADER naming what it acts on** (the selection vs the clicked row). Rust
   picks the shape from `context_paths.len()` and formats NOTHING: ❌ every number arrives pre-rendered from the
   frontend; ❌ no file KIND. `context_menu_header.rs`.

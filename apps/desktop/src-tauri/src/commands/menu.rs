@@ -203,6 +203,12 @@ pub fn show_file_context_menu<R: Runtime>(
     #[cfg(target_os = "macos")]
     let _header_loan = crate::menu::lend_context_menu_header(&result.menu);
 
+    // The tag colors as Finder's one row of circles instead of seven stacked items, swapped
+    // in at the same moment and for the same reason. ❌ Never `let _ =`: its `Drop` also lets
+    // the row go of the items, which must not happen before `popup()` returns.
+    #[cfg(target_os = "macos")]
+    let _tag_row_loan = crate::menu::lend_tag_row(&result.menu, &info.applied_tag_colors);
+
     focus_for_context_menu(&window);
     result.menu.popup(window).map_err(|e| e.to_string())?;
 

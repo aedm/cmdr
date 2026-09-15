@@ -381,6 +381,12 @@ objc2-app-kit = { version = "0.3", features = [
     # as a header instead of a greyed-out command. Both are AppKit-only additions to
     # frameworks already linked; nothing here raises the 10.15 floor.
     "NSAttributedString", "NSFont",
+    # The file context menu's tag row (`menu/tag_row/`): a custom `NSView` in a menu item,
+    # drawn with `NSBezierPath` and `NSStringDrawing` in the colors its `NSAppearance` picks,
+    # following the pointer with an `NSTrackingArea`, and giving VoiceOver one
+    # `NSAccessibilityElement` per circle. All within the 10.15 floor.
+    "NSAppearance", "NSBezierPath", "NSStringDrawing", "NSTrackingArea",
+    "NSAccessibility", "NSAccessibilityConstants", "NSAccessibilityElement", "NSAccessibilityProtocols",
 ] }
 # Native macOS Quick Look panel (QLPreviewPanel + protocols). Published 2025-10-04, well
 # outside the 14-day cool-off; tracks the same objc2 0.6 family as the other bindings above.

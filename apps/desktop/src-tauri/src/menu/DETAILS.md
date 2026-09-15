@@ -73,6 +73,10 @@ window focus context.
   lives with the feature rather than beside `PaneContextMenuFacts`), and — macOS only, in a nested `macos` module —
   `lend_context_menu_header`, which restyles it as a header on the tracking notification. See "The context menu's header
   line".
+- `tag_row/` (macOS): the file context menu's Finder tag colors as one row of circles. `model.rs` holds the portable
+  rules (the `SWATCHES` color table, layout, hit-testing, glyphs, captions, `find_tag_run`), `view.rs` the `NSView` that
+  draws them, and `loan.rs` `lend_tag_row`, which installs the row on the tracking notification. See "The tag row".
+- `tag_icons.rs` (macOS): the circle bitmaps on the seven plain tag items, the look the row falls back to.
 - `media_index_items.rs`: `image_index_menu_items`, which decides the image-search group's labels and which of them are
   clickable.
 - `rebuild.rs`: `rebuild_menu_bar`, which throws the bar away and builds a new one in the current UI language.
@@ -168,7 +172,8 @@ Exceptions that do NOT use `"execute-command"`:
   bundles and launches the chosen app the same way.
 - **Finder tag colors** (macOS): the file context menu carries seven `IconMenuItem` circles
   (`menu_structure.rs::append_tag_color_group`, shown for files AND folders), IDs `tag-color:<1..=7>`,
-  built with bitmaps from `menu/tag_icons.rs`. Like "Open with", they're prefix-routed
+  which `tag_row/` draws as Finder's one row of circles once the menu tracks ("The tag row"). Like "Open with", they're
+  prefix-routed
   (`on_menu_event` matches `tag-color:`) — NOT in `menu_id_to_command` — and call
   `file_system::tags::toggle_color` on the RIGHT-CLICKED selection (`MenuState.context.paths`),
   then `apply_tags_to_listing(MenuState.context.tags_listing_id, …)`. Acting on the right-clicked set
@@ -177,15 +182,13 @@ Exceptions that do NOT use `"execute-command"`:
   `spawn_blocking` (off the main/menu thread). The keyboard-assignable `tags.toggle*` commands cover
   the focused-selection case via the frontend (`pane-commands.ts::toggleTagOnFocusedSelection` →
   `toggle_tags` IPC); no default shortcut.
-  - **Checked state = applied tag**: muda's `IconMenuItem` has no native gutter checkmark (a fork
-    would be a two-repo muda+Tauri patch), so the "applied" circle composites a white check INTO the
-    bitmap. A color is "applied" when EVERY selected path already carries it
-    (`FileContextInfo.applied_tag_colors`, computed from `tags::applied_colors` at menu-build time);
-    `toggle_color` then removes it (all-have) or adds it (some/none have). Circles render at 36 px
-    (2× the 18 pt logical menu-icon size) with a baked 1 px darkened-edge border so a pale fill
-    (yellow) reads on light/dark menus; colors mirror the light-mode `--color-tag-*` tokens. The 14
-    bitmaps (7 colors × {normal, checked}) are cached once in a `LazyLock`. macOS-only — Linux menus
-    carry no icons.
+  - **Applied = every selected path carries the color** (`FileContextInfo.applied_tag_colors`, computed from
+    `tags::applied_colors` at menu-build time); `toggle_color` then removes it (all-have) or adds it (some/none have).
+    The row's hover caption says which of the two a click does, and nothing else can happen.
+  - **The plain items' look is the fallback**: muda's `IconMenuItem` has no native gutter checkmark (a fork would be a
+    two-repo muda+Tauri patch), so an applied color's bitmap composites a white check INTO the circle (`tag_icons.rs`,
+    36 px, 2× the 18 pt menu-icon size, in the row's light-mode colors with its darkened ring baked in). The 14 bitmaps
+    are cached once in a `LazyLock`. macOS-only — Linux menus carry no icons.
 - **Share** (macOS): a submenu of one item per service macOS offers for the RIGHT-CLICKED rows, built by
   `share_submenu.rs` from the enumeration `show_file_context_menu` made. Ids are
   `share-service:<index>` into that offer, prefix-routed in `handle_menu_event` rather than listed in
@@ -361,6 +364,11 @@ AppKit drew, so a translated label matches itself.
 breaks the moment a title is translated, silently in both cases: icons vanish, and AppKit's injected
 Edit items come back.
 
+A live title is still only a title, so it can collide with another item's. When a pass needs a GROUP of items, it
+matches the whole group as one contiguous run rather than each title on its own: the tag row's `find_tag_run` takes
+the seven color titles in order or nothing, because the header line carries the bare filename and a folder named `Red`
+puts a `Red` item above the real one.
+
 This is why every top-level menu in `menu_bar.rs` carries an ID from `command_map.rs`, which the macOS
 bar builds it with (Linux looks nothing up, so it builds its menus without one). Two IDs are shared
 with the viewer menu bar (`menu_structure.rs`): `EDIT_MENU_ID` and `HELP_MENU_ID`, because
@@ -501,7 +509,8 @@ provider's logo instead, which only says whose action a line is (next section).
 
 **Full-color non-template images do render correctly** through `IconMenuItem`, and that is what stays
 there: app-bundle icons in "Open with" (via `file_system::open_with::load_app_icon`), each
-`NSSharingService`'s own icon in `Share`, and the tag colour circles.
+`NSSharingService`'s own icon in `Share`, and the plain tag items' fallback circles (the row itself is drawn, see "The
+tag row").
 
 #### Provider logos on a CONTEXT menu
 
@@ -592,6 +601,46 @@ can hang on a dead mount, which "immediate feedback" forbids. Name and size answ
 `fileExplorer.contextMenu.itemCount`, an ICU plural in the FRONTEND catalog, resolved there and sent as text — which is
 what keeps the native catalog free of the count-plus-noun shape `menu_t` can't render properly.
 
+### The tag row
+
+`tag_row/`. Finder shows its seven tag colors as one line of circles with a caption under it. Cmdr builds seven plain
+`tag-color:<index>` items (see "Unified dispatch"), and on macOS the row replaces their look while keeping every bit of
+their behavior.
+
+- **Look**, Finder's own, measured off @2x screenshots of its row (dark mode, macOS 27.0, 2026-09-15): 14 pt circles on
+  a 24 pt pitch, a 1 pt ring darker than the fill, a white check on an applied color. A hovered circle grows to 20 pt
+  and shows a plus (the click adds) or a cross (it removes), with no animation and no highlight band. The caption reads
+  `Tags`, or `Add "Green"` / `Remove "Green"` over a circle, in the menu font and `secondaryLabelColor`. The fills are
+  Cmdr's `--color-tag-*` tokens in both modes, picked per draw from the view's `effectiveAppearance`. `model.rs::SWATCHES`
+  mirrors them by hand, with a pointer comment on each side: a Rust test embedding `app.css` would make every CSS edit
+  re-run the Rust lanes.
+- **Install**: `lend_tag_row` reads the seven live titles and applied flags and resolves the three captions
+  (`menu.tag.rowLabel`, `menu.tag.addNamed`, `menu.tag.removeNamed`, the color's name as `{color}`). On
+  `NSMenuDidBeginTrackingNotification` the observer finds the seven as ONE contiguous run of top-level titles
+  (`find_tag_run`), clears the first item's bitmap, sets the row as that item's view, and hides the other six. No run,
+  no change, and the plain items are a correct menu. ❗ Hold `TagRowLoan` past `popup()` like the other loans.
+- **Click**: `mouseUp:` on a circle, or VoiceOver's press, reads that item's `action` and `target` and sends them through
+  `NSApplication.sendAction:to:from:` synchronously, then `cancelTracking`. `handle_menu_event` toggles exactly as it
+  does for the plain item. The row holds its items WEAKLY (each item retains its view), and the loan's `Drop` empties
+  that list, so a press arriving after `popup()` returns does nothing.
+- **Alignment**: the caption and the first circle line up with the menu's title column, which AppKit doesn't expose.
+  `TITLE_COLUMN_X` is an estimate to tune by eye; when any visible item has an image, titles move right by
+  `IMAGE_COLUMN_WIDTH` (measured) and the row follows.
+- **Accessibility**: the row is an `AXGroup` named like its idle caption, holding seven `AXCheckBox` elements, each named
+  after its color, valued 1 when applied, with a press that clicks. No keyboard path: views in menu items get no key
+  events, and Finder's row has none either.
+- **What's verified where**: a test can't drive a real menu. The drawing, the menu size before and after the swap, the
+  click path against muda-shaped items, and the accessibility tree were checked offscreen (macOS 27.0, a throwaway
+  AppKit harness rendering `view.rs`, 2026-09-16). Hover inside real tracking, the click-through, VoiceOver, and the
+  title inset need a live look.
+
+**Decision**: one `NSView` installed over the seven plain items at tracking time, whose clicks fire those items.
+**Why**: Tauri has no custom-view menu item, and a hand-built one would sit outside muda's bookkeeping and
+`handle_menu_event`'s routing. Keeping the items keeps the IDs, the handler, the right-clicked-selection semantics, and
+a working fallback; the row changes only the look. The click reads `action` and `target` at click time because the
+selector is muda's (`fireMenuItemAction:` in 0.19.3, `customAction:` in 0.20), and sends synchronously because 0.19.3's
+item ivar points into a `MenuChild` freed when `show_file_context_menu` returns.
+
 ## Platform differences
 
 Every difference is marked on its row in `menu_bar.rs`, and `menu_bar_test.rs` spells out each bar in full.
@@ -606,6 +655,7 @@ Every difference is marked on its row in `menu_bar.rs`, and `menu_bar_test.rs` s
 - **System cleanup**: on macOS, objc2 strips the injected Edit items. Linux needs none.
 - **Menu icons**: macOS sets SF Symbols via objc2 (menu bar and context menus), provider logos (SVG) via objc2 on
   context menus, and `IconMenuItem` for pixel icons. Linux doesn't support menu icons.
+- **Tag colors**: macOS only, drawn as one row by a custom `NSView` over seven plain items. Linux has no tags.
 
 ## Menu structure
 
@@ -775,7 +825,8 @@ stays dark on a highlighted row. `NSMenuItem.setImage:` with a real symbol image
 and highlight. The menu BAR is reached by walking `NSApplication.mainMenu()` post-construction (`set_macos_menu_icons`);
 a CONTEXT menu has no `NSMenu` to walk, so it goes through `NSMenuDidBeginTrackingNotification` instead — see "SF
 Symbols on a CONTEXT menu", and "The context menu's header line", which crosses the same boundary for its attributed
-title. `IconMenuItem` stays right for images that ARE pixels (app icons, share-service icons, tag circles).
+title. `IconMenuItem` stays right for images that ARE pixels (app icons, share-service icons, the plain tag items'
+fallback circles).
 
 ## Gotchas
 
@@ -803,6 +854,9 @@ title. `IconMenuItem` stays right for images that ARE pixels (app icons, share-s
   PredefinedMenuItem::select_all which would conflict with the custom MenuItem. Deselect all (⌘⇧A)
   stays on the plain `FileScoped` path: AppKit has no standard "deselect all" responder action for
   text fields, so there's nothing native to forward to.
+- **An item carrying a view still claims the image column.** AppKit reserves image space for a view item's `image`, so
+  `tag_row/loan.rs` clears the first tag item's bitmap before `setView:`, or every title in the menu moves 24 pt right.
+  Hidden items don't count. (macOS 27.0, `NSMenu.size` offscreen, 2026-09-16.)
 - **Pin tab label**: `pin_tab` in MenuState is updated dynamically by the frontend to show
   "Pin tab" or "Unpin tab" based on the active tab's state.
 - **Reopen closed tab item**: The Tab submenu includes "Reopen closed tab" (⌘⇧T on macOS) between

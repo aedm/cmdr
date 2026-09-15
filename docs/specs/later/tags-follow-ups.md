@@ -5,7 +5,7 @@ menu group, seven keyboard-assignable toggle commands, an MCP `tag` tool, and a 
 design decision lives beside the code: `apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "Finder tags" (the
 parse, the deferred visible-range-first pass with its 15 µs/file anchor, carry-forward, and the write path),
 `apps/desktop/src/lib/file-explorer/views/DETAILS.md` (the dot cluster and the column-width settle),
-`apps/desktop/src-tauri/src/menu/DETAILS.md` (the circle bitmaps and the composited checkmark), and
+`apps/desktop/src-tauri/src/menu/DETAILS.md` (the tag row of color circles, and the plain items it falls back to), and
 `apps/desktop/src-tauri/src/file_system/DETAILS.md` (the MCP consumer and the analytics event).
 
 Two things are open. Neither blocks anything shipped, and both are judgment calls rather than unsolved problems.

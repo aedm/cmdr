@@ -442,32 +442,22 @@ pub fn build_context_menu<R: Runtime>(
 /// Each item is an `IconMenuItem` showing its color circle (open_with.rs pattern); the
 /// "applied" colors (every selected file already carries them) get the checkmark-
 /// composited variant. IDs are `tag-color:<index>`, prefix-routed in
-/// `handle_menu_event`. Colors run in Finder's order (Red … Gray). The label carries
-/// the color's NAME so the items stay accessible (screen readers read the text; the
-/// circle is the icon), which is why the names are translated alongside everything
-/// else. macOS-only — Linux menus carry no icons.
+/// `handle_menu_event`. Colors run in Finder's order (Red … Gray). These are the
+/// FALLBACK look: once the menu tracks, `tag_row` folds them into Finder's single row of
+/// circles and fires these same items on a click. The label carries the color's NAME,
+/// which the row matches on and VoiceOver reads, which is why the names are translated
+/// alongside everything else. macOS-only — Linux menus carry no icons.
 #[cfg(target_os = "macos")]
 fn append_tag_color_group<R: Runtime>(app: &AppHandle<R>, menu: &Menu<R>, info: &FileContextInfo) -> tauri::Result<()> {
     use tauri::menu::IconMenuItem;
 
-    // (color index, catalog key), in Finder's color-row order.
-    const COLORS: [(u8, &str); 7] = [
-        (6, "menu.tag.red"),
-        (7, "menu.tag.orange"),
-        (5, "menu.tag.yellow"),
-        (2, "menu.tag.green"),
-        (4, "menu.tag.blue"),
-        (3, "menu.tag.purple"),
-        (1, "menu.tag.gray"),
-    ];
-
-    for (color, name_key) in COLORS {
-        let id = format!("{}{}", super::TAG_COLOR_ID_PREFIX, color);
-        let checked = info.applied_tag_colors[color as usize];
+    for swatch in &super::tag_row::SWATCHES {
+        let id = format!("{}{}", super::TAG_COLOR_ID_PREFIX, swatch.color);
+        let checked = info.applied_tag_colors[usize::from(swatch.color)];
         // `IconMenuItem` with `Some(image)` falls back to a text-only item if the image
         // build fails, so the menu still works without the circle.
-        let icon = super::tag_icons::tag_circle_image(color, checked);
-        let item = IconMenuItem::with_id(app, &id, menu_t(name_key), true, icon, None::<&str>)?;
+        let icon = super::tag_icons::tag_circle_image(swatch.color, checked);
+        let item = IconMenuItem::with_id(app, &id, menu_t(swatch.name_key), true, icon, None::<&str>)?;
         menu.append(&item)?;
     }
     menu.append(&PredefinedMenuItem::separator(app)?)?;

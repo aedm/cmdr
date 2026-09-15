@@ -1,4 +1,8 @@
-//! Finder-tag color circles for the context menu (macOS).
+//! Finder-tag color circles for the context menu's plain tag items (macOS).
+//!
+//! These bitmaps are the FALLBACK look. Once the menu tracks, `tag_row` folds the seven
+//! items into Finder's single row of circles, drawn live; the bitmaps show only where that
+//! doesn't happen.
 //!
 //! muda's `IconMenuItem` renders an arbitrary RGBA bitmap but has no native gutter
 //! checkmark, so the "applied" state composites a check INTO the circle (D7) — the
@@ -6,46 +10,32 @@
 //! `MainThreadMarker` needed) and cached once in a `LazyLock`: the 14 bitmaps (seven
 //! colors × {normal, checked}) are tiny and identical every right-click.
 //!
-//! Colors mirror the light-mode `--color-tag-*` tokens in `apps/desktop/src/app.css`;
-//! a 1 px (2 px at 2×) darkened-edge border is baked in so a pale fill (yellow) still
-//! reads on a light menu. We render at 36 px square because muda fixes menu images to
-//! 18 pt logical — 2× keeps them crisp on Retina.
+//! Colors are the row's light-mode ones (`tag_row::SWATCHES`, the `--color-tag-*` tokens),
+//! with the row's darkened ring baked in so a pale fill (yellow) still reads on a light
+//! menu. We render at 36 px square because muda fixes menu images to 18 pt logical — 2×
+//! keeps them crisp on Retina.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use tauri::image::Image;
 
+use super::tag_row::{SWATCHES, ring_rgb};
+
 /// Rendered side length in pixels (2× the 18 pt logical menu-icon size).
 const SIZE: u32 = 36;
 
-/// Light-mode `--color-tag-*` RGB by color index (1 grey … 7 orange). Index 0 is
-/// colorless and has no circle.
-fn color_rgb(color: u8) -> Option<(u8, u8, u8)> {
-    Some(match color {
-        1 => (0x9a, 0x9a, 0x9e), // grey
-        2 => (0x5a, 0xa8, 0x4f), // green
-        3 => (0xa8, 0x6f, 0xd0), // purple
-        4 => (0x4b, 0x8f, 0xe0), // blue
-        5 => (0xe6, 0xb9, 0x3f), // yellow
-        6 => (0xdf, 0x5b, 0x56), // red
-        7 => (0xe0, 0x8a, 0x3c), // orange
-        _ => return None,
-    })
-}
-
 /// Renders one tag circle into a fresh RGBA buffer. Pure float math, so the bytes are
 /// deterministic (the unit test pins dimensions and normal≠checked).
-fn render_circle(rgb: (u8, u8, u8), checked: bool) -> Vec<u8> {
+fn render_circle(rgb: [u8; 3], checked: bool) -> Vec<u8> {
     let d = SIZE as f32;
     let center = d / 2.0;
     let outer = center - 1.0; // 1 px transparent margin so the disk isn't clipped
     let border = 2.0; // 1 px logical at 2×
     let inner = outer - border;
 
-    let (fr, fg, fb) = (rgb.0 as f32, rgb.1 as f32, rgb.2 as f32);
-    // The border is `rgba(0,0,0,0.22)` over the fill, i.e. the fill darkened to 78%.
-    let (br, bg, bb) = (fr * 0.78, fg * 0.78, fb * 0.78);
+    let [fr, fg, fb] = rgb.map(f32::from);
+    let [br, bg, bb] = ring_rgb(rgb).map(f32::from);
 
     let mut buf = vec![0u8; (SIZE * SIZE * 4) as usize];
     for y in 0..SIZE {
@@ -117,14 +107,10 @@ fn dist_to_segment(px: f32, py: f32, a: (f32, f32), b: (f32, f32)) -> f32 {
 
 /// Cache of the 14 rendered bitmaps, keyed by `(color, checked)`. Built once.
 static TAG_BITMAPS: LazyLock<HashMap<(u8, bool), Vec<u8>>> = LazyLock::new(|| {
-    let mut map = HashMap::new();
-    for color in 1u8..=7 {
-        if let Some(rgb) = color_rgb(color) {
-            map.insert((color, false), render_circle(rgb, false));
-            map.insert((color, true), render_circle(rgb, true));
-        }
-    }
-    map
+    SWATCHES
+        .iter()
+        .flat_map(|swatch| [false, true].map(|checked| ((swatch.color, checked), render_circle(swatch.light, checked))))
+        .collect()
 });
 
 /// The tag circle as a Tauri `Image` for `IconMenuItem`, or `None` for an out-of-range

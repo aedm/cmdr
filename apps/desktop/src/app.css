@@ -306,7 +306,9 @@
      * `--color-tag-border` ring so a pale fill (yellow) still reads on white and
      * the cluster stays legible over the selection highlight. Light-mode values
      * lean a touch deeper than Finder's so they hold contrast on white rows; the
-     * dark override below brightens them for dark rows. */
+     * dark override below brightens them for dark rows. The native context menu's
+     * tag row mirrors both blocks in `src-tauri/src/menu/tag_row/model.rs`
+     * (`SWATCHES`): change the two together. */
   --color-tag-grey: #9a9a9e;
   --color-tag-green: #5aa84f;
   --color-tag-purple: #a86fd0;

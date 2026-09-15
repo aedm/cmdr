@@ -30,6 +30,9 @@
 //! - `provider_logos.rs` (macOS): which File Provider's logo is which, by app bundle ID.
 //! - `context_menu_header.rs`: the right-click menu's first line, naming what it will act on, plus
 //!   the macOS pass that makes it read as a header rather than a greyed-out command.
+//! - `tag_row/`: the right-click menu's Finder tag colors as one row of circles (macOS), installed
+//!   over the seven plain tag items when the menu starts tracking. `tag_icons.rs` draws those
+//!   items' fallback bitmaps.
 
 mod accelerators;
 mod command_map;
@@ -64,6 +67,7 @@ mod services_context;
 pub mod share_submenu;
 #[cfg(target_os = "macos")]
 mod tag_icons;
+mod tag_row;
 mod view_mode_items;
 
 use std::collections::{HashMap, HashSet};
@@ -108,6 +112,8 @@ pub use menu_structure::{
 pub use rebuild::rebuild_menu_bar;
 #[cfg(target_os = "macos")]
 pub use services_context::lend_services_menu;
+#[cfg(target_os = "macos")]
+pub use tag_row::lend_tag_row;
 pub use view_mode_items::{rebuild_view_mode_items, sync_view_mode_check_states};
 
 /// `settings-changed`: a CheckMenuItem toggle (currently only "Show hidden
