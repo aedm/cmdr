@@ -53,8 +53,8 @@ Download it from [getcmdr.com](https://getcmdr.com), or install with Homebrew:
 brew trust --cask vdavid/tap/cmdr && brew tap vdavid/tap && brew install --cask cmdr
 ```
 
-The `brew trust` step is Homebrew's safety gate: it has you okay a third-party tap once before it runs any of its code. A
-star, watch, or fork on [the repo](https://github.com/vdavid/cmdr) helps Cmdr reach Homebrew's notability bar (225
+The `brew trust` step is Homebrew's safety gate: it has you okay a third-party tap once before it runs any of its code.
+A star, watch, or fork on [the repo](https://github.com/vdavid/cmdr) helps Cmdr reach Homebrew's notability bar (225
 stars), which unlocks a tap-free, trust-free `brew install --cask cmdr`.
 
 Windows and Linux users: sorry, you'll need to wait. The Rust+Tauri stack allows for cross-platform deployment, but the

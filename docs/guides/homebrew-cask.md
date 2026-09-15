@@ -14,9 +14,9 @@ the tap and the trust step, since the official taps are trusted by default.
 **Trust goes before `brew tap`.** Homebrew 7.0.0 and 7.0.1 load every cask while tapping, so tapping an untrusted tap
 dies with `Cannot tap vdavid/tap: invalid syntax in tap!` and the `&&` chain stops there (vdavid/cmdr#102; Homebrew
 7.0.2 fixed it in Homebrew/brew#23972). `brew trust --cask` with an explicit type needs no tap files, so trusting first
-works on every Homebrew from 6.0.0 on (verified reading `trust.rb` at 6.0.0, and running the chain on Homebrew
-7.0.1-21, 2026-09-16). Don't shorten it to `brew install --cask vdavid/tap/cmdr`: current Homebrew won't auto-tap an
-untrusted tap and asks for an explicit `brew tap` instead (same run).
+works on every Homebrew from 6.0.0 on (verified reading `trust.rb` at 6.0.0, and running the chain on Homebrew 7.0.1-21,
+2026-09-16). Don't shorten it to `brew install --cask vdavid/tap/cmdr`: current Homebrew won't auto-tap an untrusted tap
+and asks for an explicit `brew tap` instead (same run).
 
 The cask file in this repo, `apps/desktop/packaging/homebrew/cmdr.rb`, is the source of truth for the cask's **shape**:
 the `url`, `livecheck`, `depends_on`, `app`, `uninstall`, and `zap` blocks. Release CI rewrites only the tap's `version`
