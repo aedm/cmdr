@@ -75,6 +75,13 @@ below is met.
       rewritten). Order: M1 the primitive → M2 the switcher ported onto it and `VolumeBreadcrumb.svelte` split, both a
       pure refactor David QAs before anything else → M3 the favorites menu itself (ship point) → M4 the last two menus
       (separable); about five agent-days.
+- [ ] 2026-09-15 `elevated-file-operations.md` - **A user couldn't move root-owned files out of a folder their macOS user
+      can't change, and had to finish the job with `sudo` (ERR-4TEMD).** Draft, not started. Cmdr asks in an
+      out-of-process native alert (`[Cancel] [Skip] [Allow]`), unlocks a Cmdr-specific admin right for 24 hours (revoked
+      on lock, sleep, and quit), and routes only the refused steps through a tiny on-demand `SMAppService` root helper,
+      so progress, cancel, and rollback stay in the engine. macOS 13+. Reads never escalate, and MCP can see the wait
+      but never answer it. M0 stands alone (drop `disable-library-validation`, point the permission hint at the folder
+      that actually refused); M1 is a spike that answers seven open questions, TCC for a root daemon first.
 - [ ] 2026-09-14 `eject-and-drive-safety-plan.md` - **Cmdr lets go of a drive before any unmount, survives one that
       vanishes, and names what holds one it can't eject.** M0–M4 landed: moves keep their sources until every
       destination directory is fsynced, real APFS and HFS+ disk images run in the `disk-images` lane, and a removable
