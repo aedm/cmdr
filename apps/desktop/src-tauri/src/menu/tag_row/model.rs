@@ -148,6 +148,27 @@ pub const TITLE_COLUMN_X: f64 = 14.0;
 /// widens a one-item menu by 24 pt (macOS 27.0, `NSMenu.size` offscreen, 2026-09-16).
 pub const IMAGE_COLUMN_WIDTH: f64 = 24.0;
 
+/// What the title column needs to know about one top-level item of the menu.
+#[derive(Debug, Clone, Copy)]
+pub struct ColumnItem {
+    /// One of the seven tag items: the one carrying the row, or one of the six it hides.
+    pub in_tag_run: bool,
+    pub hidden: bool,
+    pub has_image: bool,
+}
+
+/// Whether AppKit moves this menu's titles right to make room for images: some visible
+/// item outside the tag run carries one.
+///
+/// The run doesn't count. Its first item's bitmap is cleared when the row lands, and the
+/// other six are hidden, which AppKit already ignores; excluding them outright keeps the
+/// answer right however the install is ordered.
+pub fn menu_shows_images(items: impl IntoIterator<Item = ColumnItem>) -> bool {
+    items
+        .into_iter()
+        .any(|item| !item.in_tag_run && !item.hidden && item.has_image)
+}
+
 /// Where this menu's titles start, which is where the row's label starts too.
 pub fn title_column_x(menu_shows_images: bool) -> f64 {
     if menu_shows_images {
@@ -309,6 +330,38 @@ mod tests {
     fn titles_start_further_right_when_the_menu_shows_images() {
         assert_eq!(title_column_x(false), TITLE_COLUMN_X);
         assert_eq!(title_column_x(true), TITLE_COLUMN_X + IMAGE_COLUMN_WIDTH);
+    }
+
+    fn column_item(in_tag_run: bool, hidden: bool, has_image: bool) -> ColumnItem {
+        ColumnItem {
+            in_tag_run,
+            hidden,
+            has_image,
+        }
+    }
+
+    /// A Drive row's SF Symbol lands from another observer on the same notification, maybe
+    /// after the row installed; asking at draw time sees it either way.
+    #[test]
+    fn a_visible_image_outside_the_run_moves_the_titles() {
+        let plain = column_item(false, false, false);
+        let drive_row = column_item(false, false, true);
+        assert!(menu_shows_images([plain, drive_row, plain]));
+    }
+
+    #[test]
+    fn the_tag_run_and_hidden_items_dont_move_the_titles() {
+        let plain = column_item(false, false, false);
+        let tag_item_with_bitmap = column_item(true, false, true);
+        let hidden_tag_item = column_item(true, true, true);
+        let hidden_other = column_item(false, true, true);
+        assert!(!menu_shows_images([
+            plain,
+            tag_item_with_bitmap,
+            hidden_tag_item,
+            hidden_other
+        ]));
+        assert!(!menu_shows_images([]));
     }
 
     #[test]

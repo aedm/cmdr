@@ -624,8 +624,11 @@ their behavior.
   does for the plain item. The row holds its items WEAKLY (each item retains its view), and the loan's `Drop` empties
   that list, so a press arriving after `popup()` returns does nothing.
 - **Alignment**: the caption and the first circle line up with the menu's title column, which AppKit doesn't expose.
-  `TITLE_COLUMN_X` is an estimate to tune by eye; when any visible item has an image, titles move right by
-  `IMAGE_COLUMN_WIDTH` (measured) and the row follows.
+  `TITLE_COLUMN_X` is an estimate to tune by eye; when any visible item outside the tag run has an image, titles move
+  right by `IMAGE_COLUMN_WIDTH` (measured) and the row follows. ❗ The row asks the live menu at every draw, hit-test,
+  and accessibility-frame refresh (`TagRowView::title_x`, over the pure `menu_shows_images`), never once at install:
+  `context_menu_icons.rs` sets Drive and provider images from its own observer of the same notification, and
+  `NSNotificationCenter` promises no order between observers.
 - **Accessibility**: the row is an `AXGroup` named like its idle caption, holding seven `AXCheckBox` elements, each named
   after its color, valued 1 when applied, with a press that clicks. No keyboard path: views in menu items get no key
   events, and Finder's row has none either.

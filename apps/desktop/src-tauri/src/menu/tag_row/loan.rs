@@ -16,7 +16,7 @@ use tauri::menu::Menu;
 
 use super::super::TAG_COLOR_ID_PREFIX;
 use super::super::macos_appkit::{menu_item_text, observe_menu_tracking, tracking_menu};
-use super::model::{ROW_LABEL_KEY, SWATCH_COUNT, SWATCHES, find_tag_run, hover_label_key, title_column_x};
+use super::model::{ROW_LABEL_KEY, SWATCH_COUNT, SWATCHES, find_tag_run, hover_label_key};
 use super::view::{RowContent, SwatchContent, TagRowView};
 use crate::intl::{menu_t, menu_t_with};
 
@@ -144,18 +144,9 @@ fn install(mtm: MainThreadMarker, menu: &NSMenu, armed: ArmedRow) {
     if items[start].view().is_some() {
         return;
     }
-    // Titles move right to make room for images when any visible item has one, and the row
-    // lines up with the titles.
-    let menu_shows_images = items
-        .iter()
-        .enumerate()
-        .any(|(index, item)| !run.contains(&index) && !item.isHidden() && item.image().is_some());
-    let row = TagRowView::new(
-        mtm,
-        armed.content,
-        title_column_x(menu_shows_images),
-        &items[run.clone()],
-    );
+    // The row reads the title column from the menu whenever it draws or hit-tests, not here:
+    // another observer of this same notification may not have put its images on yet.
+    let row = TagRowView::new(mtm, armed.content, &items[run.clone()]);
     // ❗ Drop the fallback bitmap from the item that carries the row: AppKit still reserves the
     // image column for an item's image when a view draws it, which would push every title in
     // the menu 24 pt right (measured on macOS 27.0, `NSMenu.size` offscreen, 2026-09-16).

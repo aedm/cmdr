@@ -23,8 +23,8 @@ use objc2_foundation::{
 };
 
 use super::model::{
-    GLYPH_STROKE, LABEL_BASELINE_Y, Point, RING_WIDTH, ROW_HEIGHT, Rgb, SWATCH_DIAMETER, glyph_for, glyph_strokes,
-    ring_rgb, row_width, swatch_at, swatch_center, swatch_diameter,
+    ColumnItem, GLYPH_STROKE, LABEL_BASELINE_Y, Point, RING_WIDTH, ROW_HEIGHT, Rgb, SWATCH_DIAMETER, glyph_for,
+    glyph_strokes, menu_shows_images, ring_rgb, row_width, swatch_at, swatch_center, swatch_diameter, title_column_x,
 };
 
 /// What one circle shows and says, resolved when the menu was armed.
@@ -50,8 +50,6 @@ pub(super) struct RowContent {
 
 pub(super) struct RowIvars {
     content: RowContent,
-    /// Where the menu's titles start, which the label and the first circle line up with.
-    title_x: f64,
     hovered: Cell<Option<usize>>,
     /// The seven menu items in row order, WEAK: each item retains its view, so a strong
     /// reference back would be a cycle. Emptied by [`TagRowView::disarm`], after which a
@@ -112,7 +110,7 @@ define_class!(
 
         #[unsafe(method(mouseUp:))]
         fn mouse_up(&self, event: &NSEvent) {
-            if let Some(index) = swatch_at(self.local_point(event), self.ivars().title_x) {
+            if let Some(index) = swatch_at(self.local_point(event), self.title_x()) {
                 self.press(index);
             }
         }
@@ -121,12 +119,7 @@ define_class!(
 
 impl TagRowView {
     /// A row for `items`, the seven tag items in row order.
-    pub(super) fn new(
-        mtm: MainThreadMarker,
-        content: RowContent,
-        title_x: f64,
-        items: &[Retained<NSMenuItem>],
-    ) -> Retained<Self> {
+    pub(super) fn new(mtm: MainThreadMarker, content: RowContent, items: &[Retained<NSMenuItem>]) -> Retained<Self> {
         let font = NSFont::menuFontOfSize(0.0);
         let attributes = label_attributes(&font);
         let widest_label = content
@@ -136,13 +129,14 @@ impl TagRowView {
             .chain([content.idle_label.as_str()])
             .map(|label| label_size(label, &attributes).width)
             .fold(0.0, f64::max);
+        // Wide enough for the further-right title column, since images can still arrive
+        // after the row is built (see `title_x`); the menu stretches the row to its own width.
         let frame = NSRect::new(
             NSPoint::new(0.0, 0.0),
-            NSSize::new(row_width(title_x, widest_label), ROW_HEIGHT),
+            NSSize::new(row_width(title_column_x(true), widest_label), ROW_HEIGHT),
         );
         let this = Self::alloc(mtm).set_ivars(RowIvars {
             content,
-            title_x,
             hovered: Cell::new(None),
             items: RefCell::new(items.iter().map(Weak::from_retained).collect()),
             elements: RefCell::new(Vec::new()),
@@ -202,7 +196,33 @@ impl TagRowView {
     }
 
     fn follow_pointer(&self, event: &NSEvent) {
-        self.set_hovered(swatch_at(self.local_point(event), self.ivars().title_x));
+        self.set_hovered(swatch_at(self.local_point(event), self.title_x()));
+    }
+
+    /// Where the menu's titles start right now, which the label and the first circle line
+    /// up with.
+    ///
+    /// ❗ Asked at every use, never cached at install. `context_menu_icons.rs` puts images on
+    /// Drive and provider rows from its own observer of the same tracking notification, and
+    /// `NSNotificationCenter` promises no order between observers, so an answer taken when the
+    /// row landed can miss the images that move every title 24 pt right.
+    fn title_x(&self) -> f64 {
+        // SAFETY: `menu` is unretained only in that it doesn't outlive the item; it's read at
+        // once, on the main thread, while the item (held here) keeps it attached.
+        let Some(menu) = self.enclosingMenuItem().and_then(|item| unsafe { item.menu() }) else {
+            return title_column_x(false);
+        };
+        let run: Vec<Retained<NSMenuItem>> = self.ivars().items.borrow().iter().filter_map(Weak::load).collect();
+        let items = (0..menu.numberOfItems())
+            .filter_map(|index| menu.itemAtIndex(index))
+            .map(|item| ColumnItem {
+                in_tag_run: run
+                    .iter()
+                    .any(|tag_item| Retained::as_ptr(tag_item) == Retained::as_ptr(&item)),
+                hidden: item.isHidden(),
+                has_image: item.image().is_some(),
+            });
+        title_column_x(menu_shows_images(items))
     }
 
     fn local_point(&self, event: &NSEvent) -> Point {
@@ -251,15 +271,31 @@ impl TagRowView {
         // is what the children array must hold.
         unsafe { self.setAccessibilityChildren(Some(&NSArray::from_slice(&children))) };
         *ivars.elements.borrow_mut() = elements;
+        self.place_accessibility_elements(self.title_x());
+    }
+
+    /// Puts each circle's accessibility frame where the circle is drawn. Refreshed on every
+    /// draw, since the title column can move after the row lands (see `title_x`).
+    fn place_accessibility_elements(&self, title_x: f64) {
+        let radius = SWATCH_DIAMETER / 2.0;
+        for (index, element) in self.ivars().elements.borrow().iter().enumerate() {
+            let center = swatch_center(index, title_x);
+            element.setAccessibilityFrameInParentSpace(NSRect::new(
+                NSPoint::new(center.x - radius, center.y - radius),
+                NSSize::new(SWATCH_DIAMETER, SWATCH_DIAMETER),
+            ));
+        }
     }
 
     fn draw(&self) {
         let ivars = self.ivars();
         let dark = is_dark(&self.effectiveAppearance());
         let hovered = ivars.hovered.get();
+        let title_x = self.title_x();
+        self.place_accessibility_elements(title_x);
         for (index, swatch) in ivars.content.swatches.iter().enumerate() {
             let is_hovered = hovered == Some(index);
-            let center = swatch_center(index, ivars.title_x);
+            let center = swatch_center(index, title_x);
             let diameter = swatch_diameter(is_hovered);
             let fill = if dark { swatch.dark } else { swatch.light };
             fill_disc(center, diameter, ring_rgb(fill));
@@ -269,7 +305,7 @@ impl TagRowView {
         let label = hovered
             .and_then(|index| ivars.content.swatches.get(index))
             .map_or(ivars.content.idle_label.as_str(), |swatch| swatch.hover_label.as_str());
-        draw_label(label, ivars.title_x);
+        draw_label(label, title_x);
     }
 }
 
@@ -326,12 +362,6 @@ impl TagSwatchElement {
         unsafe { element.setAccessibilityValue(Some(checked.as_ref())) };
         // SAFETY: the parent is the view that owns this element and lists it as a child.
         unsafe { element.setAccessibilityParent(Some(parent.as_ref())) };
-        let center = swatch_center(index, parent.ivars().title_x);
-        let radius = SWATCH_DIAMETER / 2.0;
-        element.setAccessibilityFrameInParentSpace(NSRect::new(
-            NSPoint::new(center.x - radius, center.y - radius),
-            NSSize::new(SWATCH_DIAMETER, SWATCH_DIAMETER),
-        ));
         element
     }
 }
