@@ -95,7 +95,8 @@ impl DriveRelease {
     /// still vouches for. Returns at once: the batch settles on a thread of its own, so it's safe
     /// from any queue.
     ///
-    /// 1. A candidate whose volume already has a start in flight or a pending resume joins it.
+    /// 1. A candidate whose volume already has a start in flight or a pending resume joins it. A
+    ///    release or disable since that resume was queued cancelled it, so the candidate queues.
     /// 2. The rest wait out [`RESUME_SETTLE`] together.
     /// 3. The batch reads intent once (`Index::drives_to_resume`, which opens databases).
     /// 4. Per candidate, at the gate: no ticket in flight, no unmount pending, an unchanged epoch,
@@ -105,21 +106,21 @@ impl DriveRelease {
     pub(crate) fn resume(&self, candidates: Vec<ResumeCandidate>, owner: Arc<dyn ResumeOwner>) -> ResumeBatch {
         let mut verdicts = Vec::new();
         let mut batch = Vec::new();
-        {
+        let serial = {
             let mut gates = self.shared.gates.lock_ignore_poison();
+            gates.last_resume_batch += 1;
+            let serial = gates.last_resume_batch;
             for candidate in candidates {
                 let gate = gates.gate(&candidate.volume_id);
-                if gate.resume_pending || gate.ticket == Some(TicketFor::Start) {
+                if gate.resume_batch.is_some_and(|queued| queued != serial) || gate.ticket == Some(TicketFor::Start) {
                     verdicts.push((candidate.volume_id, ResumeVerdict::Joined));
-                } else if !batch
-                    .iter()
-                    .any(|queued: &ResumeCandidate| queued.volume_id == candidate.volume_id)
-                {
-                    gate.resume_pending = true;
+                } else if gate.resume_batch.is_none() {
+                    gate.resume_batch = Some(serial);
                     batch.push(candidate);
                 }
             }
-        }
+            serial
+        };
         if batch.is_empty() {
             return ResumeBatch {
                 verdicts,
@@ -132,7 +133,7 @@ impl DriveRelease {
         let batch_ids: Vec<String> = batch.iter().map(|candidate| candidate.volume_id.clone()).collect();
         let spawned = std::thread::Builder::new()
             .name("drive-resume".to_string())
-            .spawn(move || gate.settle_and_resume(batch, owner.as_ref(), settle_ends));
+            .spawn(move || gate.settle_and_resume(batch, serial, owner.as_ref(), settle_ends));
         match spawned {
             Ok(settling) => ResumeBatch {
                 verdicts,
@@ -142,7 +143,10 @@ impl DriveRelease {
                 crate::log_error!(target: "drive_release", "Couldn't start a resume batch for {batch_ids:?}: {e}");
                 let mut gates = self.shared.gates.lock_ignore_poison();
                 for volume_id in &batch_ids {
-                    gates.gate(volume_id).resume_pending = false;
+                    let gate = gates.gate(volume_id);
+                    if gate.resume_batch == Some(serial) {
+                        gate.resume_batch = None;
+                    }
                 }
                 ResumeBatch {
                     verdicts,
@@ -155,6 +159,7 @@ impl DriveRelease {
     fn settle_and_resume(
         &self,
         batch: Vec<ResumeCandidate>,
+        serial: u64,
         owner: &dyn ResumeOwner,
         settle_ends: Instant,
     ) -> Vec<(String, ResumeVerdict)> {
@@ -169,7 +174,7 @@ impl DriveRelease {
         batch
             .into_iter()
             .map(|candidate| {
-                let checked = self.check_resume(&candidate, owner, &intent);
+                let checked = self.check_resume(&candidate, serial, owner, &intent);
                 owner.consume(&candidate);
                 let verdict = match checked {
                     Ok(ticket) => {
@@ -202,6 +207,7 @@ impl DriveRelease {
     fn check_resume(
         &self,
         candidate: &ResumeCandidate,
+        serial: u64,
         owner: &dyn ResumeOwner,
         intent: &HashSet<String>,
     ) -> Result<Ticket, ResumeRefusal> {
@@ -209,7 +215,12 @@ impl DriveRelease {
         {
             let mut gates = self.shared.gates.lock_ignore_poison();
             let gate = gates.gate(volume_id);
-            gate.resume_pending = false;
+            if gate.resume_batch != Some(serial) {
+                // An epoch move cancelled this batch's claim, and a newer batch may hold the
+                // volume now: leave its claim alone.
+                return Err(ResumeRefusal::EpochMoved);
+            }
+            gate.resume_batch = None;
             if gate.ticket.is_some() {
                 return Err(ResumeRefusal::TicketInFlight);
             }

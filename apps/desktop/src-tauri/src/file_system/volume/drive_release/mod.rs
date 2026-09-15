@@ -115,8 +115,10 @@ struct Gate {
     /// Moves on every release and disable; a resume recorded against an older one is void.
     epoch: u64,
     ticket: Option<TicketFor>,
-    /// A resume batch has this volume and hasn't reached its checks yet.
-    resume_pending: bool,
+    /// The resume batch that has this volume and hasn't reached its checks yet. Any epoch move
+    /// cancels it: that batch's candidate is void, and a newer one must start a batch of its own
+    /// rather than join it.
+    resume_batch: Option<u64>,
     /// An unmount approval asked about this volume and nothing has cleared it since.
     unmount_pending: bool,
     /// Releases whose deadline passed while a start held the ticket: they stop the volume once it
@@ -132,6 +134,7 @@ struct Gates {
     /// Every release's stops still in flight, by serial.
     stops: HashMap<u64, release::StopSlot>,
     last_stop: u64,
+    last_resume_batch: u64,
 }
 
 impl Gates {
@@ -139,11 +142,14 @@ impl Gates {
         self.volumes.entry(volume_id.to_string()).or_default()
     }
 
-    /// Epochs come from one counter across volumes, so no two moves ever read equal.
+    /// Epochs come from one counter across volumes, so no two moves ever read equal. A move
+    /// cancels the volume's pending resume, whose candidate carries the epoch it just left.
     fn bump_epoch(&mut self, volume_id: &str) -> u64 {
         self.last_epoch += 1;
         let epoch = self.last_epoch;
-        self.gate(volume_id).epoch = epoch;
+        let gate = self.gate(volume_id);
+        gate.epoch = epoch;
+        gate.resume_batch = None;
         epoch
     }
 }

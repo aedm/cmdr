@@ -600,7 +600,10 @@ release's `LateStop`), a pending-resume flag, and an unmount-pending flag.
   answer is `AnotherStartStillRunning`, which the command returns as its `Err`.
 - **`disable`** moves the epoch, waits for a ticket in flight, holds a `Disable` ticket through `Index::disable_volume`,
   and moves the epoch again before letting go: a disable always has the last word over a resume.
-- **`resume(candidates, owner)`** (`resume.rs`): a candidate joins a start or resume already under way. The rest settle
+- **`resume(candidates, owner)`** (`resume.rs`): a candidate joins a start or resume already under way. Any epoch move
+  (a release or a disable) cancels a pending resume, so a newer candidate queues a batch of its own: on a refused
+  `unmountDisk`, the second volume's ask releases the first again while the first idle's resume still settles, and
+  joining that void batch would lose the resume for good. The rest settle
   `RESUME_SETTLE` (2 s) on one thread and read intent once (`Index::drives_to_resume`, which opens databases, so ❌ never
   on an ask). Then, per candidate: no ticket, no unmount pending, an unchanged epoch, the `ResumeOwner`'s checks (it still
   owns the record, the volume is listed, no other owner is ejecting it), and intent. The record is consumed either way, so

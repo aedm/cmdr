@@ -532,6 +532,28 @@ fn two_resumes_of_one_volume_start_it_once_and_every_later_one_joins() {
 }
 
 #[test]
+fn a_release_while_a_resume_settles_voids_it_and_a_newer_candidate_resumes_the_volume() {
+    // A refused `unmountDisk`: the first volume's ask stops A and its idle queues a resume; the
+    // second volume's ask releases A again while that resume still settles, and the idle after
+    // the refusal offers A with the newer epoch. Joining the void batch would lose A for good.
+    let fx = fixture();
+    fx.door.intend(A);
+    let owner = Arc::new(FakeOwner::default());
+
+    let first_idle = fx.gate.resume(vec![candidate(A, released(&fx, A))], owner.clone());
+    let newer = released(&fx, A);
+    let second_idle = fx.gate.resume(vec![candidate(A, newer)], owner);
+    fx.gate.advance(RESUME_SETTLE);
+
+    assert_eq!(
+        first_idle.wait(),
+        verdicts(&[(A, ResumeVerdict::NotResumed(ResumeRefusal::EpochMoved))])
+    );
+    assert_eq!(second_idle.wait(), verdicts(&[(A, ResumeVerdict::Started)]));
+    assert_eq!(fx.door.resumed_ids(), [A]);
+}
+
+#[test]
 fn an_idle_after_a_consumed_record_starts_nothing() {
     let fx = fixture();
     fx.door.intend(A);
