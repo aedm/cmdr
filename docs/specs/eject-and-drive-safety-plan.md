@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M4 are done, and M5 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M5 are done, and M6 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -48,7 +48,8 @@ drive-safety decisions below.
 - **M3, the hold leaf, generations, and the presence seam (done)**: `94ce801a1`, `308e3583c`, `46888a7df`, `b02bb51dd`,
   `71fc73dfc`, `1e4cd4085`.
 - **M4, every worker carries a share (done)**: `d6c32f603`, `678b249ef`, `44079fe6d`, `ef74beba9`, `07bedf6f4`.
-- **Next, M5**: `drive_release`, the gated stop, start, and resume.
+- **M5, `drive_release`, the gated stop, start, and resume (done)**: `4549ba539`, `7430e9416`.
+- **Next, M6**: the unmount approver.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -102,7 +103,7 @@ drive-safety decisions below.
 - **Every user-facing word comes from the catalog, in all 13 catalogs.** English drafts below are for David's later
   review and don't block.
 - **Docs ship with each milestone** (`AGENTS.md` § Docs). `apps/desktop/src-tauri/src/file_system/volume/CLAUDE.md` is
-  at 599 words and `crates/cmdr-index/src/indexing/lifecycle/cover/CLAUDE.md` at 598: rewrite a bullet no longer, move
+  at 600 words and `crates/cmdr-index/src/indexing/lifecycle/cover/CLAUDE.md` at 598: rewrite a bullet no longer, move
   depth to the sibling `DETAILS.md`.
 - **Checks run through `pnpm check`, foreground only.** Until M2 lands the lane, M1's real-image tests are a hand-run
   `cargo nextest` whose result goes in the commit body; from M2 on, `pnpm check disk-images`.
@@ -469,10 +470,11 @@ A standalone fix to shipped code; it depends on nothing else in this plan.
 
 ### One release, one resume (M5)
 
-`apps/desktop/src-tauri/src/file_system/volume/drive_release.rs` (new, `pub(crate)`, macOS and Linux) is the one door
-for every app-side stop of a removable index Cmdr decides on, and every app-side start of a non-root index. **Why one
-module**: the eject flight's sibling stop, the approver's stop, and the vanish stop are one piece of work with different
-budgets, and every start must be serialized against all of them.
+`apps/desktop/src-tauri/src/file_system/volume/drive_release/` (`mod.rs`: the gate, starts, and disable; `release.rs`;
+`resume.rs`; `pub(crate)`, every platform) is the one door for every app-side stop of a removable index Cmdr decides on,
+and every app-side start of a non-root index. **Why one module**: the eject flight's sibling stop, the approver's stop,
+and the vanish stop are one piece of work with different budgets, and every start must be serialized against all of
+them.
 
 **Per volume id, under one mutex with a condvar**: an `epoch: u64`, an optional start ticket, an optional pending
 resume, and an `unmount_pending` flag.
@@ -525,6 +527,26 @@ resume, and an `unmount_pending` flag.
 - **What a stop racing a user-less start can still do**: a restart recorded on `ShuttingDown` by a start that didn't go
   through the gate (the index crate's own `start_again`) restarts before the old manager drops, so the waiter answers
   `StillReleasing` and the ask or eject refuses honestly.
+- **As landed**: one gate, `drive_release::gate()`, over an injected `IndexDoor` and clock. The canonical description is
+  `apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "One release, one start"; what later milestones build on:
+  - `release(ids, deadline, stop: Fn(&str) -> RemovableStop, record_late: Fn(LateRelease)) -> Release`, whose `volumes`
+    are `ReleasedVolume { volume_id, outcome: VolumeRelease, epoch }`. The stop picks its own wait: pass one at least as
+    long as the caller's budget (the eject passes `INDEX_STOP_DEADLINE`), or a stop cut short by its own wait answers
+    `StillReleasing` late and there's nothing to record. A stop that panicked reads as `StillReleasing`.
+  - A ticket is held for a `Start`, a `Disable`, or a `LateStop`. `disable` holds one through `Index::disable_volume`
+    and moves the epoch before and after it. A volume whose start was in flight at the deadline gets a late stop that
+    takes the ticket straight from that start's ticket as it drops, so no waiting start slips in between.
+  - Every start kind waits for a ticket in flight within `UNMOUNT_PENDING_WAIT`; past it with only a start in flight,
+    the answer is `SkipReason::AnotherStartStillRunning` (the IPC command's `Err`). The not-mounted outcome is a new
+    `EnableIndexingOutcome::DriveLeaving` with key `fileExplorer.navigation.driveIndex.driveLeaving`:
+    `Refused { NotRegistered }` words an internal snag and `Disconnected` an smb2 session's state, so neither fit. The
+    gate passes `root` straight through.
+  - Owners implement `ResumeOwner { name, still_owns, is_listed, is_ejected_by_another_owner, consume }`, and
+    `resume(Vec<ResumeCandidate { volume_id, epoch }>, Arc<dyn ResumeOwner>) -> ResumeBatch` returns at once and settles
+    on its own thread. A candidate joins only a `Start` ticket or a pending resume.
+  - The `WillUnmount` and `DidUnmount` hook stops (`volumes/watcher.rs::stop_local_external_index`) release through the
+    gate with `INDEX_RELEASE_WAIT`, but keep their `volume_kind == LocalExternal` pre-check, so they don't wait on a
+    start still probing.
 
 ### Worker holds (M3 mechanism, M4 wiring)
 
@@ -1160,8 +1182,17 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - A retained callback disk's description is frozen: presence comes from the mount table.
   - An ask never opens SQLite and never calls `drive_release::resume` inline.
   - The queue's QoS is user-initiated; a lower QoS stalls asks under Cmdr's own indexing.
-  - `volume/CLAUDE.md` is at 599 words; `volumes/CLAUDE.md` at 490.
+  - `volume/CLAUDE.md` is at 600 words; `volumes/CLAUDE.md` at 490.
   - Hardened runtime: `dlsym` of a system symbol should work in a signed build; the checkpoint smoke-tests one.
+  - `drive_release/resume.rs` carries `#![cfg_attr(not(test), expect(dead_code, ..))]`, since nothing outside its tests
+    calls `resume`, `set_unmount_pending`, `clear_unmount_pending`, or `epoch` yet. Delete it once the approver calls
+    them; an expectation nothing fulfils fails the build.
+  - The gate clears `unmount_pending` per id only (`clear_unmount_pending(ids)`); an idle clears every id, so add a
+    clear-all with its test, or pass every id the approver ever flagged.
+  - An ask's `stop` passes a wait longer than `APPROVAL_STOP_BUDGET` (`INDEX_STOP_DEADLINE` fits), so a stop the chain's
+    deadline cut short still hands `Released { was_indexing }` to its continuation, which records it.
+  - `release` blocks the calling thread on its own condvar up to the deadline and runs each stop on a thread of its own:
+    call it straight from the ask, ❌ no runtime hop on the DA queue.
 - **Test plan**:
   - Pure `ask.rs`: nothing to stop → approve; released → approve; still releasing → dissent; busy → dissent after the
     stop; a ticket in flight → counted as work; the first ask of a group stops every sibling, the second approves at
@@ -1289,6 +1320,9 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
 - **Landmines**:
   - A raw `umount` racing Cmdr's own eject: the flight's resume must find the volume unlisted and do nothing.
   - The toast fires once per marker write, not per launch.
+  - The `DidUnmount` hook's stop already releases through the gate with `INDEX_RELEASE_WAIT`
+    (`volumes/watcher.rs::stop_local_external_index`); the vanish path replaces it with owner `Vanish` and
+    `VANISH_STOP_WAIT`, and its `volume_kind` pre-check goes with it.
 - **Test plan**: pure `causes.rs` (asked unmount, raw `umount`, eject then disappear, disappear with no eject, an
   overlong ask making it `Unknown`, re-appear); lane: `/sbin/umount` of an indexed image's volume → `Unasked`, index
   stopped, no resume; the toast's copy test; `pnpm check`, `pnpm check disk-images`, the i18n checks from M15's list.
@@ -1378,6 +1412,12 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - `volumes/disk_image.rs` stays on raw FFI (the DA teardown swap is deferred).
   - Register test volumes in the global `VolumeManager` under unique ids and remove them (`volume/DETAILS.md` § "Test
     isolation for the global `VolumeManager`").
+  - `stop_index_blocking` (`eject/mod.rs`) is the one-volume release today, with an adapter that keeps a panicked stop
+    `Unexpected`; the sibling release replaces it, and without that adapter a sibling's panic reads as `StillReleasing`.
+  - The gate reads the ejecting set through `in_flight::is_ejecting` under its own lock, and every `Landing` drop wakes
+    it after dropping `IN_FLIGHT`. Sibling ids adopted into `IN_FLIGHT` are ejecting at the gate with no more wiring; ❌
+    nothing may take the gate's lock while holding `IN_FLIGHT`.
+  - A flight reads epochs through `drive_release::gate().epoch(id)`.
 - **Test plan**:
   - pure: sibling selection over a fake target and registry; the busy gate; adoption into `IN_FLIGHT` in both orders (B
     after A's adoption joins in `join_or_start`; B before it awaits the disk flight); the resume matrix; the NULL arms;
