@@ -283,12 +283,34 @@ const INDEX_RELEASE_WAIT: std::time::Duration = std::time::Duration::from_secs(1
 /// SMB and MTP indexes tear down through their own disconnect paths, and stopping
 /// them here would fight those.
 ///
+/// Through the drive-release gate, like every stop Cmdr decides on: it waits for a
+/// start in flight to return, and moves the volume's epoch so no resume recorded
+/// before it brings the index back.
+///
 /// Synchronous. The `NSWorkspace` observer blocks run on the MAIN THREAD and
 /// `stop_indexing`'s drain can take a few seconds, so the observer callers wrap this
 /// via [`stop_local_external_index_off_main`]; tests call it directly for a
 /// deterministic result.
 fn stop_local_external_index(volume_id: &str) -> cmdr_index::RemovableStop {
-    crate::index_host::index().stop_removable_volume(volume_id, INDEX_RELEASE_WAIT)
+    use crate::file_system::volume::drive_release::{self, VolumeRelease};
+    use cmdr_index::RemovableStop;
+
+    let release = drive_release::gate().release(
+        &[volume_id.to_string()],
+        std::time::Instant::now() + INDEX_RELEASE_WAIT,
+        |id| crate::index_host::index().stop_removable_volume(id, INDEX_RELEASE_WAIT),
+        |late| {
+            debug!(
+                "The index for {} answered its unmount stop late: {:?}",
+                late.volume_id, late.outcome
+            )
+        },
+    );
+    match release.outcome(volume_id) {
+        Some(VolumeRelease::Released { .. }) => RemovableStop::Released,
+        Some(VolumeRelease::StillReleasing) => RemovableStop::StillReleasing,
+        Some(VolumeRelease::NothingToStop) | None => RemovableStop::NothingToStop,
+    }
 }
 
 /// Run [`stop_local_external_index`] off the main thread. The `NSWorkspace` observer

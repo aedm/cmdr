@@ -2233,6 +2233,13 @@
       "name": "the drive''s display name (e.g. Backups)"
     }
   },
+  "fileExplorer.navigation.driveIndex.driveLeaving": "{name} is being disconnected, so Cmdr left its index as it was. If the drive stays connected, try again in a moment.",
+  "@fileExplorer.navigation.driveIndex.driveLeaving": {
+    "description": "Toast shown when a per-drive \"turn on indexing\" or \"rescan now\" request arrives while the drive is being ejected or unmounted (from Finder, another app, or Cmdr itself), so nothing started. The drive may already be gone, or the unmount may still be refused. Sentence case; avoid the words ''error'' and ''failed''.",
+    "placeholders": {
+      "name": "the drive''s display name (e.g. Backups)"
+    }
+  },
   "fileExplorer.navigation.driveIndex.tooltipIndexingOff": "Drive indexing is off in Settings, so no drive is indexed right now.",
   "@fileExplorer.navigation.driveIndex.tooltipIndexingOff": {
     "description": "Hover tooltip on the gray drive-index dot when the master drive-indexing switch is off. Explains that the gray dot is about the global switch, not this one drive."

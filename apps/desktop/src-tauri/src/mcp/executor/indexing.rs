@@ -68,6 +68,12 @@ pub async fn execute_indexing(params: &Value) -> ToolResult {
                              it starts on its own when that walk ends"
                         )));
                     }
+                    // An unmount of the drive was under way, so no start ran.
+                    if matches!(started, EnableIndexingOutcome::DriveLeaving) {
+                        return Err(ToolError::internal(format!(
+                            "Can't {action} indexing for {volume_id}: an unmount of the drive was under way"
+                        )));
+                    }
                     if matches!(started, EnableIndexingOutcome::DeferredUntilScanEnds) {
                         return Ok(json!(format!(
                             "OK: {action} indexing for {volume_id} is queued behind the walk already \

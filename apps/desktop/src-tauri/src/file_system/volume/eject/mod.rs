@@ -37,7 +37,9 @@ use std::sync::Arc;
 use crate::device_volumes::DeviceVolumeProvider;
 use unmount_tool::UnmountVerb;
 
+pub(in crate::file_system::volume) use in_flight::is_ejecting;
 pub use in_flight::{VolumesEjectingChanged, ejecting_volume_ids, init_ejecting_volume_emitter};
+pub(in crate::file_system::volume) use unmount_tool::is_still_mounted;
 
 /// Action the eject pipeline takes for a given volume.
 #[derive(Debug, PartialEq, Eq)]
@@ -275,7 +277,7 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
         // A drive whose eject just landed lingers in the switcher until
         // `volumes-changed` arrives, and a click there would read "not ejectable"
         // from `resolve_is_ejectable` on a path that's gone. Its goal is met.
-        if is_already_unmounted(volume_id, || unmount_tool::is_still_mounted(&mount_path)) {
+        if is_already_unmounted(volume_id, || is_still_mounted(&mount_path)) {
             log::info!(
                 target: "eject",
                 "{volume_id} at {mount_path} is no longer mounted, so there's nothing left to eject"
@@ -404,7 +406,7 @@ async fn run_teardown(volume_id: &str, teardown: Teardown<'_>) -> Result<(), Eje
             unmount_tool::settle_with_retries(
                 target,
                 || unmount_tool::run(verb, mount_path),
-                || unmount_tool::is_still_mounted(mount_path),
+                || is_still_mounted(mount_path),
             )
             .await
         }
@@ -459,10 +461,11 @@ fn stop_removable_index(volume_id: &str) -> cmdr_index::RemovableStop {
     crate::index_host::index().stop_removable_volume(volume_id, deadlines::INDEX_STOP_DEADLINE)
 }
 
-/// Stop `volume_id`'s index on the blocking pool, awaited so the stop COMPLETES
-/// before the caller unmounts. `stop_indexing` drains the writer/live-event task
-/// (up to a few seconds of blocking work), so it must not run on the async executor
-/// directly.
+/// Stop `volume_id`'s index through the drive-release gate, awaited so the stop
+/// COMPLETES before the caller unmounts. The gate moves the volume's epoch, waits
+/// for a start in flight (a person's enable still probing the drive) to return,
+/// then runs `stop`, all inside [`deadlines::INDEX_STOP_DEADLINE`]. It blocks for
+/// that long at most, so it runs on the blocking pool.
 ///
 /// Only a `LocalExternal` index is stopped here: it's the one carrying an FSEvents
 /// watcher + open SQLite handles that can wedge a FSKit (`msdos`) unmount, and it's
@@ -471,14 +474,40 @@ fn stop_removable_index(volume_id: &str) -> cmdr_index::RemovableStop {
 /// across an eject, so this must not remove them. No-op for a non-`LocalExternal` or
 /// unindexed volume. `stop` is a parameter so a test can hand in an answer.
 async fn stop_index_blocking(volume_id: String, stop: fn(&str) -> cmdr_index::RemovableStop) -> Result<(), EjectError> {
-    use cmdr_index::RemovableStop;
+    use super::drive_release::{self, VolumeRelease};
+    use std::sync::atomic::{AtomicBool, Ordering};
 
+    // The gate reads a stop that panicked as still releasing; this remembers the
+    // panic so the answer can say nobody knows how the stop ended.
+    let panicked = Arc::new(AtomicBool::new(false));
+    let guarded_stop = {
+        let panicked = Arc::clone(&panicked);
+        move |id: &str| {
+            std::panic::catch_unwind(|| stop(id)).unwrap_or_else(|_| {
+                panicked.store(true, Ordering::SeqCst);
+                cmdr_index::RemovableStop::StillReleasing
+            })
+        }
+    };
     let vid = volume_id.clone();
-    match tokio::task::spawn_blocking(move || stop(&vid)).await {
-        Ok(RemovableStop::Released | RemovableStop::NothingToStop) => Ok(()),
-        // Its own wait ran out before the index let go, which is the same thing the
-        // eject's deadline catching the stop means: nothing unmounted, still connected.
-        Ok(RemovableStop::StillReleasing) => {
+    let released = tokio::task::spawn_blocking(move || {
+        let deadline = std::time::Instant::now() + deadlines::INDEX_STOP_DEADLINE;
+        drive_release::gate().release(std::slice::from_ref(&vid), deadline, guarded_stop, |late| {
+            log::info!(
+                target: "eject",
+                "the index for {} answered after the eject stopped waiting: {:?}",
+                late.volume_id,
+                late.outcome
+            );
+        })
+    })
+    .await;
+
+    match released.map(|release| release.outcome(&volume_id)) {
+        Ok(Some(VolumeRelease::Released { .. } | VolumeRelease::NothingToStop)) => Ok(()),
+        // A start still in flight, or the index still letting go, when the deadline
+        // passed: nothing unmounted, still connected.
+        Ok(Some(VolumeRelease::StillReleasing)) if !panicked.load(Ordering::SeqCst) => {
             log::warn!(
                 target: "eject",
                 "the index for {volume_id} was still letting go of the drive when its stop ran out of time; leaving it mounted"
@@ -489,6 +518,16 @@ async fn stop_index_blocking(volume_id: String, stop: fn(&str) -> cmdr_index::Re
         }
         // A stop that panicked says nothing about whether the index let go. ❌ Never
         // read it as done.
+        Ok(outcome) => {
+            log::warn!(
+                target: "eject",
+                "the index stop for {volume_id} ended without an answer ({outcome:?}, panicked: {}); leaving it mounted",
+                panicked.load(Ordering::SeqCst)
+            );
+            Err(EjectError::Unexpected {
+                detail: format!("{}: the stop ended without an answer", EjectStep::IndexStop),
+            })
+        }
         Err(join_err) => {
             log::warn!(target: "eject", "index-stop task for {volume_id} failed to join: {join_err}; leaving it mounted");
             Err(EjectError::Unexpected {

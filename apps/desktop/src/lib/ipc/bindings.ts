@@ -2212,6 +2212,10 @@ export const commands = {
    *    classifies it by typed variant. FDA-independent.
    *
    *  Idempotent: a no-op (`Started`) if the drive's index is already active.
+   *
+   *  Through the drive-release gate: while an unmount of the drive is pending or
+   *  Cmdr's eject of it is in flight, the enable waits it out, and answers
+   *  `DriveLeaving` if the drive leaves or the wait runs out.
    */
   enableDriveIndex: (volumeId: string) =>
     typedError<EnableIndexingOutcome, string>(__TAURI_INVOKE('enable_drive_index', { volumeId })),
@@ -2225,6 +2229,9 @@ export const commands = {
    *  user turned off (`disable_drive_index_persist_intent`); re-enabling clears it,
    *  "Forget this drive" deletes the whole DB. Local `root` disable/enable still
    *  works (don't break it). A no-op if the drive isn't indexed.
+   *
+   *  Through the drive-release gate, so it has the last word: it runs once a start
+   *  in flight returns, and no resume recorded before it brings the drive back.
    */
   disableDriveIndex: (volumeId: string) =>
     typedError<null, string>(__TAURI_INVOKE('disable_drive_index', { volumeId })),
@@ -6585,6 +6592,12 @@ export type EnableIndexingOutcome =
    *  `credentials_needed`, can route into the reconnect/login flow.
    */
   | { status: 'refused'; reason: SmbIndexGateReason }
+  /**
+   *  An unmount of the drive was under way, so no start ran: it hadn't settled
+   *  when the wait for it ran out (`drive_release::UNMOUNT_PENDING_WAIT`), or it
+   *  landed and the drive left the mount table. ❌ Never worded as a start.
+   */
+  | { status: 'drive_leaving' }
 
 // One row in the encoding dropdown.
 export type EncodingChoice = {

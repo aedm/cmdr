@@ -1275,6 +1275,7 @@ export type MessageKey =
   | 'fileExplorer.navigation.driveIndex.ariaLabel'
   | 'fileExplorer.navigation.driveIndex.deferredEnable'
   | 'fileExplorer.navigation.driveIndex.deferredRescan'
+  | 'fileExplorer.navigation.driveIndex.driveLeaving'
   | 'fileExplorer.navigation.driveIndex.durationMinSec'
   | 'fileExplorer.navigation.driveIndex.durationSec'
   | 'fileExplorer.navigation.driveIndex.footer'

@@ -302,6 +302,10 @@ export function driveIndexActionFeedback(
       return { kind: 'toast', key: 'fileExplorer.navigation.driveIndex.refusedIndexingOff', level: 'info' }
     case 'refused':
       return { kind: 'refusal', reason: result.data.reason }
+    // An unmount of the drive was under way, so nothing started. Not a refusal to
+    // fix: the drive is going away, or just did.
+    case 'drive_leaving':
+      return { kind: 'toast', key: 'fileExplorer.navigation.driveIndex.driveLeaving', level: 'info' }
   }
 }
 

@@ -231,6 +231,16 @@ describe('driveIndexActionFeedback', () => {
     })
   })
 
+  it('says the drive is going away when an unmount of it was under way, whichever button was pressed', () => {
+    for (const action of ['rescan', 'enable'] as const) {
+      expect(driveIndexActionFeedback(action, { status: 'ok', data: { status: 'drive_leaving' } })).toEqual({
+        kind: 'toast',
+        key: 'fileExplorer.navigation.driveIndex.driveLeaving',
+        level: 'info',
+      })
+    }
+  })
+
   it('hands a typed per-drive refusal back for the caller to route', () => {
     expect(
       driveIndexActionFeedback('enable', {

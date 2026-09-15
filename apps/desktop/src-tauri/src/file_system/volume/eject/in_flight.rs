@@ -56,6 +56,12 @@ pub fn ejecting_volume_ids() -> Vec<String> {
     sorted_ids(&IN_FLIGHT.lock_ignore_poison())
 }
 
+/// Whether an eject of `volume_id` is in flight. The drive-release gate reads it
+/// under its own lock, so this lock is never held while taking that one.
+pub(in crate::file_system::volume) fn is_ejecting(volume_id: &str) -> bool {
+    IN_FLIGHT.lock_ignore_poison().contains_key(volume_id)
+}
+
 /// Joins the eject in flight for `volume_id`, or starts one from `start`.
 ///
 /// Synchronous on purpose: the join-or-start decision is made under the lock
@@ -116,13 +122,21 @@ struct Landing {
 
 impl Drop for Landing {
     fn drop(&mut self) {
-        let mut in_flight = IN_FLIGHT.lock_ignore_poison();
-        if in_flight
-            .get(&self.volume_id)
-            .is_some_and(|running| running.flight_id == self.flight_id)
-        {
-            in_flight.remove(&self.volume_id);
-            emit_changed(&in_flight);
+        let landed = {
+            let mut in_flight = IN_FLIGHT.lock_ignore_poison();
+            let ours = in_flight
+                .get(&self.volume_id)
+                .is_some_and(|running| running.flight_id == self.flight_id);
+            if ours {
+                in_flight.remove(&self.volume_id);
+                emit_changed(&in_flight);
+            }
+            ours
+        };
+        // A person's start waiting out this eject reads the set again. Outside the
+        // lock: the gate takes its own lock first and reads this set under it.
+        if landed {
+            crate::file_system::volume::drive_release::notify_ejecting_changed();
         }
     }
 }

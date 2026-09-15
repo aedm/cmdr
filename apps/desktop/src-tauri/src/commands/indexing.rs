@@ -7,10 +7,11 @@ use std::sync::OnceLock;
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
+use crate::file_system::volume::drive_release::{self, Gated, SkipReason, StartKind};
 use crate::index_host::index;
 use cmdr_index::{
-    IndexDebugStatusResponse, IndexStatusResponse, ROOT_VOLUME_ID, SmbIndexGateReason, StartOutcome, VolumeIndexStatus,
-    store::DirStats,
+    IndexDebugStatusResponse, IndexError, IndexStatusResponse, ROOT_VOLUME_ID, SmbIndexGateReason, StartOutcome,
+    VolumeIndexStatus, store::DirStats,
 };
 
 /// The outcome of a per-drive "Turn on indexing" request.
@@ -42,6 +43,10 @@ pub enum EnableIndexingOutcome {
     /// credentials needed, disconnected). The FE shows an honest status and, for
     /// `credentials_needed`, can route into the reconnect/login flow.
     Refused { reason: SmbIndexGateReason },
+    /// An unmount of the drive was under way, so no start ran: it hadn't settled
+    /// when the wait for it ran out (`drive_release::UNMOUNT_PENDING_WAIT`), or it
+    /// landed and the drive left the mount table. ❌ Never worded as a start.
+    DriveLeaving,
 }
 
 impl From<StartOutcome> for EnableIndexingOutcome {
@@ -180,8 +185,9 @@ pub async fn set_indexing_enabled(app: AppHandle, enabled: bool) -> Result<(), S
             // Each drive routes through the normal per-drive enable, so its own gate
             // (the direct-smb2 upgrade, MTP device presence) still applies. A refusal
             // is expected here (a share that's offline right now) and only logged;
-            // the reconnect resume picks it up when the drive comes back.
-            match enable_drive_index(app.clone(), volume_id.clone()).await {
+            // the reconnect resume picks it up when the drive comes back. A drive
+            // that's leaving is skipped at once rather than waited out.
+            match start_drive_index_as(app.clone(), volume_id.clone(), StartKind::MasterResume).await {
                 Ok(EnableIndexingOutcome::Started) => {}
                 Ok(other) => log::info!("set_indexing_enabled: '{volume_id}' not resumed: {other:?}"),
                 Err(e) => log::warn!("set_indexing_enabled: resuming '{volume_id}' failed: {e}"),
@@ -256,24 +262,54 @@ pub async fn start_indexing_after_fda_decision(app: AppHandle) -> Result<(), Str
 ///   classifies it by typed variant. FDA-independent.
 ///
 /// Idempotent: a no-op (`Started`) if the drive's index is already active.
+///
+/// Through the drive-release gate: while an unmount of the drive is pending or
+/// Cmdr's eject of it is in flight, the enable waits it out, and answers
+/// `DriveLeaving` if the drive leaves or the wait runs out.
 #[tauri::command]
 #[specta::specta]
 pub async fn enable_drive_index(app: AppHandle, volume_id: String) -> Result<EnableIndexingOutcome, String> {
-    // Kick mDNS first so a freshly-typed server name resolves during a share's
-    // direct-session upgrade. Idempotent, and cheap enough not to branch on the
-    // volume's kind (which is the index's business, not this command's).
+    start_drive_index_as(app, volume_id, StartKind::UserEnable).await
+}
+
+/// Start a drive's index as `kind`, holding the drive-release ticket for the whole
+/// start call.
+async fn start_drive_index_as(
+    app: AppHandle,
+    volume_id: String,
+    kind: StartKind,
+) -> Result<EnableIndexingOutcome, String> {
+    kick_mdns_for(&app, &volume_id);
+    let gated = drive_release::gate()
+        .start(&volume_id, kind, || index().start_volume(&volume_id))
+        .await;
+    gated_outcome(&volume_id, gated)
+}
+
+/// Kick mDNS first so a freshly-typed server name resolves during a share's
+/// direct-session upgrade. Idempotent, and cheap enough not to branch on the
+/// volume's kind (which is the index's business, not this command's).
+fn kick_mdns_for(app: &AppHandle, volume_id: &str) {
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     if volume_id != ROOT_VOLUME_ID {
         crate::network::ensure_mdns_started(app.clone());
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let _ = &app;
+    let _ = (app, volume_id);
+}
 
-    index()
-        .start_volume(&volume_id)
-        .await
-        .map(EnableIndexingOutcome::from)
-        .map_err(|e| e.to_string())
+/// What the frontend hears about a start that went through the drive-release gate.
+fn gated_outcome(
+    volume_id: &str,
+    gated: Gated<Result<StartOutcome, IndexError>>,
+) -> Result<EnableIndexingOutcome, String> {
+    match gated {
+        Gated::Ran(outcome) => outcome.map(EnableIndexingOutcome::from).map_err(|e| e.to_string()),
+        Gated::Skipped(SkipReason::DriveLeaving) => Ok(EnableIndexingOutcome::DriveLeaving),
+        Gated::Skipped(SkipReason::AnotherStartStillRunning) => {
+            Err(format!("another start of the index for {volume_id} is still running"))
+        }
+    }
 }
 
 /// Turn off indexing for a specific drive.
@@ -285,10 +321,17 @@ pub async fn enable_drive_index(app: AppHandle, volume_id: String) -> Result<Ena
 /// user turned off (`disable_drive_index_persist_intent`); re-enabling clears it,
 /// "Forget this drive" deletes the whole DB. Local `root` disable/enable still
 /// works (don't break it). A no-op if the drive isn't indexed.
+///
+/// Through the drive-release gate, so it has the last word: it runs once a start
+/// in flight returns, and no resume recorded before it brings the drive back.
 #[tauri::command]
 #[specta::specta]
 pub async fn disable_drive_index(volume_id: String) -> Result<(), String> {
-    index().disable_volume(&volume_id).map_err(|e| e.to_string())
+    let id = volume_id.clone();
+    drive_release::gate()
+        .disable(&volume_id, move || index().disable_volume(&id))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Forget a drive's index entirely: stop it, DELETE its index DB (plus WAL/SHM
@@ -320,18 +363,11 @@ pub async fn forget_drive_index(volume_id: String) -> Result<(), String> {
 pub async fn rescan_drive_index(app: AppHandle, volume_id: String) -> Result<EnableIndexingOutcome, String> {
     // Not active: enabling is what triggers the (first) scan, so this is the same
     // call either way.
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    if volume_id != ROOT_VOLUME_ID {
-        crate::network::ensure_mdns_started(app.clone());
-    }
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    let _ = &app;
-
-    index()
-        .rescan_volume(&volume_id)
-        .await
-        .map(EnableIndexingOutcome::from)
-        .map_err(|e| e.to_string())
+    kick_mdns_for(&app, &volume_id);
+    let gated = drive_release::gate()
+        .start(&volume_id, StartKind::UserRescan, || index().rescan_volume(&volume_id))
+        .await;
+    gated_outcome(&volume_id, gated)
 }
 
 // ── App handle for handle-free callers (the MCP `indexing` tool) ─────

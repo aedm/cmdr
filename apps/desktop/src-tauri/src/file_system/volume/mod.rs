@@ -17,6 +17,9 @@ pub use cmdr_fs::volume::*;
 // importing `volume::LocalPosixVolume`, `volume::MtpVolume`, etc. without
 // caring about the `backends/` split.
 pub mod backends;
+// The per-volume gate every app-side index stop of a removable drive and every
+// non-root index start goes through.
+pub(crate) mod drive_release;
 // Volume teardown (USB/SD/DMG/SMB/MTP), used only by the macOS+Linux eject
 // command. The macOS-vs-Linux difference (diskutil vs umount, NSURL vs
 // `/sys/block`) lives inside via per-fn `#[cfg]`.

@@ -13,6 +13,7 @@
 //! the parent module's `search_covered_half`, the same pass a plain
 //! `run_blocking` makes.
 
+use crate::file_system::volume::drive_release::{self, Gated, StartKind};
 use crate::index_host::index;
 use cmdr_index::CoverageDimension;
 
@@ -191,13 +192,19 @@ pub(super) fn run_live_blocking(query: SearchQuery, target: Target, run: &LiveRu
                 return;
             }
         };
-        match index().cover(
-            &target.volume_id,
-            ground.question.frontier.clone(),
-            CoverageDimension::Listing,
-            run.cancel_token(),
-        ) {
-            Ok(walk) => {
+        // Through the drive-release gate: a cover call stands an index instance up on
+        // a cold drive, so it holds the volume's ticket for the call, and a drive an
+        // unmount is taking down is owed no walk.
+        let walk = drive_release::gate().start_blocking(&target.volume_id, StartKind::SearchCover, || {
+            index().cover(
+                &target.volume_id,
+                ground.question.frontier.clone(),
+                CoverageDimension::Listing,
+                run.cancel_token(),
+            )
+        });
+        match walk {
+            Gated::Ran(Ok(walk)) => {
                 let deferred = walk.covered_by_another_walk().to_vec();
                 if deferred.len() < ground.question.frontier.len() || !index_gave_nothing(&ground) {
                     started = Some((walk, deferred, compiled));
@@ -223,11 +230,17 @@ pub(super) fn run_live_blocking(query: SearchQuery, target: Target, run: &LiveRu
                     }
                 }
             }
-            Err(e) => {
+            Gated::Ran(Err(e)) => {
                 // Nothing to walk with: the drive isn't mounted, or it's mid-scan
                 // (in which case the scan is covering that ground anyway). Either
                 // way this run's answer is a lower bound and says so.
                 log::warn!("Live search: can't walk '{}': {e}", target.volume_id);
+                break;
+            }
+            // The drive is leaving, so the run answers without walking it, the same
+            // lower bound as an unmounted drive.
+            Gated::Skipped(reason) => {
+                log::info!("Live search: not walking '{}': {reason:?}", target.volume_id);
                 break;
             }
         }

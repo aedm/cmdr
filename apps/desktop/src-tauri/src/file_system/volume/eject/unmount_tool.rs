@@ -189,7 +189,7 @@ pub(super) fn settle(outcome: &ToolOutcome, verb: UnmountVerb, still_mounted: im
 /// Whether `mount_path` is still in the OS mount table, read without touching the
 /// mount itself. A table that can't be read answers "still mounted": reading it
 /// as gone would turn a real refusal into a silent success.
-pub(super) fn is_still_mounted(mount_path: &str) -> bool {
+pub(in crate::file_system::volume) fn is_still_mounted(mount_path: &str) -> bool {
     #[cfg(target_os = "macos")]
     let listed = crate::volumes::is_mount_point(mount_path);
     #[cfg(target_os = "linux")]
