@@ -2,19 +2,27 @@
 
 How Cmdr ships through Homebrew, and how the cask stays current.
 
-Users install with `brew tap vdavid/tap && brew trust --cask vdavid/tap/cmdr && brew install --cask cmdr`. The live cask
+Users install with `brew trust --cask vdavid/tap/cmdr && brew tap vdavid/tap && brew install --cask cmdr`. The live cask
 lives in the personal tap repo [`vdavid/homebrew-tap`](https://github.com/vdavid/homebrew-tap) (as `Casks/cmdr.rb`).
 
-The `brew trust` step is required as of Homebrew 6.0.0 (2026-06-11): Homebrew now refuses to load a cask from any
+The `brew trust` step is required as of Homebrew 6.0.0 (2026-06-11): Homebrew refuses to load a cask from any
 third-party tap until the user explicitly trusts it (`brew trust --cask <tap>/<cask>`), since a tap is arbitrary Ruby
-that runs with the user's privileges. It's a client-side consent gate with no publisher-side opt-out — there's nothing
-the tap can do to pre-bless itself. Landing the cask in `Homebrew/homebrew-cask` (the notability path below) is what
-removes both the tap and the trust step, since the official taps are trusted by default.
+that runs with the user's privileges. It's a client-side consent gate with no publisher-side opt-out: nothing the tap
+can do pre-blesses itself. Landing the cask in `Homebrew/homebrew-cask` (the notability path below) is what removes both
+the tap and the trust step, since the official taps are trusted by default.
+
+**Trust goes before `brew tap`.** Homebrew 7.0.0 and 7.0.1 load every cask while tapping, so tapping an untrusted tap
+dies with `Cannot tap vdavid/tap: invalid syntax in tap!` and the `&&` chain stops there (vdavid/cmdr#102; Homebrew
+7.0.2 fixed it in Homebrew/brew#23972). `brew trust --cask` with an explicit type needs no tap files, so trusting first
+works on every Homebrew from 6.0.0 on (verified reading `trust.rb` at 6.0.0, and running the chain on Homebrew
+7.0.1-21, 2026-09-16). Don't shorten it to `brew install --cask vdavid/tap/cmdr`: current Homebrew won't auto-tap an
+untrusted tap and asks for an explicit `brew tap` instead (same run).
 
 The cask file in this repo, `apps/desktop/packaging/homebrew/cmdr.rb`, is the source of truth for the cask's **shape**:
-the `url`, `livecheck`, `depends_on`, `app`, and `zap` blocks. The tap copy carries that exact shape; release CI
-rewrites only its `version` and `sha256` lines on each release. So edit structural changes here, and let CI propagate
-version bumps to the tap.
+the `url`, `livecheck`, `depends_on`, `app`, `uninstall`, and `zap` blocks. Release CI rewrites only the tap's `version`
+and `sha256` lines, so a shape edit here reaches users only when you copy the file into the tap in the same effort,
+keeping the tap's `version` and `sha256`. Skipping that once left the tap on a Monterey floor and without the
+`uninstall` block for several releases. Let CI propagate version bumps.
 
 ## Release automation: the tap bump
 

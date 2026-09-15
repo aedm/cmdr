@@ -11,11 +11,11 @@ Commander, but on macOS.
 Give it a try: [download for macOS](https://getcmdr.com), or install with Homebrew:
 
 ```bash
-brew tap vdavid/tap && brew trust --cask vdavid/tap/cmdr && brew install --cask cmdr
+brew trust --cask vdavid/tap/cmdr && brew tap vdavid/tap && brew install --cask cmdr
 ```
 
-The `brew trust` step is new in Homebrew 6: it asks you to okay any third-party tap once before it runs. Cmdr's tap is
-one of those for now.
+The `brew trust` step comes first: Homebrew asks you to okay a third-party tap once before it loads anything from it.
+Cmdr's tap is one of those for now.
 
 **Note:** If you'd love a nice short `brew install --cask cmdr`, **star** this repo! Once it hits 225 stars, Homebrew
 lets it into its main tap.
@@ -50,10 +50,10 @@ Core features:
 Download it from [getcmdr.com](https://getcmdr.com), or install with Homebrew:
 
 ```bash
-brew tap vdavid/tap && brew trust --cask vdavid/tap/cmdr && brew install --cask cmdr
+brew trust --cask vdavid/tap/cmdr && brew tap vdavid/tap && brew install --cask cmdr
 ```
 
-The `brew trust` step is Homebrew 6's new safety gate: it has you okay a third-party tap once before it runs any code. A
+The `brew trust` step is Homebrew's safety gate: it has you okay a third-party tap once before it runs any of its code. A
 star, watch, or fork on [the repo](https://github.com/vdavid/cmdr) helps Cmdr reach Homebrew's notability bar (225
 stars), which unlocks a tap-free, trust-free `brew install --cask cmdr`.
 
