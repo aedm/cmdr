@@ -1538,6 +1538,10 @@
   "@fileExplorer.navigation.driveIndex.refusedIndexingOff": {
     "sourceHash": "ce0d45c"
   },
+  "fileExplorer.navigation.driveIndex.driveLeaving": "{name} håller på att kopplas från, så Cmdr lät indexet vara orört. Om enheten förblir ansluten, försök igen om en stund.",
+  "@fileExplorer.navigation.driveIndex.driveLeaving": {
+    "sourceHash": "99f19f9"
+  },
   "fileExplorer.navigation.driveIndex.tooltipIndexingOff": "Enhetsindexering är avstängd i Inställningar, så ingen enhet indexeras just nu.",
   "@fileExplorer.navigation.driveIndex.tooltipIndexingOff": {
     "sourceHash": "6ebf6f4"

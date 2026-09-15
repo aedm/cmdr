@@ -1544,6 +1544,10 @@
   "@fileExplorer.navigation.driveIndex.refusedIndexingOff": {
     "sourceHash": "ce0d45c"
   },
+  "fileExplorer.navigation.driveIndex.driveLeaving": "{name} est en cours de déconnexion, Cmdr a donc laissé son index tel quel. Si le disque reste connecté, réessayez dans un instant.",
+  "@fileExplorer.navigation.driveIndex.driveLeaving": {
+    "sourceHash": "99f19f9"
+  },
   "fileExplorer.navigation.driveIndex.tooltipIndexingOff": "L''indexation est désactivée dans les Réglages, donc aucun disque n''est indexé pour le moment.",
   "@fileExplorer.navigation.driveIndex.tooltipIndexingOff": {
     "sourceHash": "6ebf6f4"

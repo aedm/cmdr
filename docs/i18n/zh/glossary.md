@@ -2620,3 +2620,10 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
 - "Choose an app…"、"Checking your apps…" 与 `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking` 一致。提示（`fileExplorer.edit.hint`）沿用
   `commands.handler.openTerminalHere.hint` 的句式，但不写设置的位置，因为它的按钮直接跳过去。
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected（推出或卸载进行中）→ `正在断开连接`** · 沿用已定的 `disconnect → 断开连接`，加 `正在`
+  表示进行中，同 Thunar `zh`（「正在卸载设备」/「正在弹出设备」）· `high`。「Left its index as it was」→「保持原样」，同
+  `operationLog.rollback.partiallyRolledBackNotice`；「try again in a moment」→「请稍后重试」，同一文件里的
+  `fileExplorer.pane.directConnectionMountNotRespondingToast`。

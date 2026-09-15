@@ -1548,6 +1548,10 @@
   "@fileExplorer.navigation.driveIndex.refusedIndexingOff": {
     "sourceHash": "ce0d45c"
   },
+  "fileExplorer.navigation.driveIndex.driveLeaving": "{name} wordt losgekoppeld, dus Cmdr heeft de index gelaten zoals die was. Als de schijf verbonden blijft, probeer het dan zo meteen opnieuw.",
+  "@fileExplorer.navigation.driveIndex.driveLeaving": {
+    "sourceHash": "99f19f9"
+  },
   "fileExplorer.navigation.driveIndex.tooltipIndexingOff": "Het indexeren van schijven staat uit in Instellingen, dus er wordt nu geen schijf geïndexeerd.",
   "@fileExplorer.navigation.driveIndex.tooltipIndexingOff": {
     "sourceHash": "6ebf6f4"

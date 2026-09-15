@@ -3375,3 +3375,11 @@ gevallen voor „Verbind met server” formuleert en niet in de stapel zit.
 - ‘Choose an app…’ en ‘Checking your apps…’ gelijk aan `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking`. De hint (`fileExplorer.edit.hint`) volgt
   `commands.handler.openTerminalHere.hint`, zonder de plek in Instellingen: de knop gaat er direct heen.
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected (uitwerpen of ontkoppelen bezig) → `wordt losgekoppeld`** · de al vastgelegde vorm voor een
+  schijf die tijdens een ronde wegvalt, en Thunar `nl` („Ontkoppelen van apparaat...”) zegt het lopende proces met
+  dezelfde stam · `high`. „Left its index as it was” → „gelaten zoals die was”, zoals
+  `operationLog.rollback.partiallyRolledBackNotice`; „try again in a moment” → „zo meteen opnieuw”, zoals
+  `fileExplorer.pane.directConnectionMountNotRespondingToast`.

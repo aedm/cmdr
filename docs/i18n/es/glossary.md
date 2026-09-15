@@ -3101,3 +3101,11 @@ casos para «Conectarse al servidor» y no está en la pila.
 - "Choose an app…" y "Checking your apps…" iguales que `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking`. El aviso (`fileExplorer.edit.hint`) sigue a
   `commands.handler.openTerminalHere.hint`, sin decir dónde está el ajuste: su botón lleva directo.
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected (expulsión o desmontaje en curso) → `se está desconectando`** · gerundio del ya fijado
+  `disconnect → desconectar`, como Thunar `es` («Desmontando el dispositivo» / «Expulsando el dispositivo») · `high`. El
+  reflexivo no concuerda en género con `{name}`. «Left its index as it was» sigue a
+  `operationLog.rollback.partiallyRolledBackNotice` («como estaba»), y «try again in a moment» a
+  `errors.eject.notResponding` («en un momento»).

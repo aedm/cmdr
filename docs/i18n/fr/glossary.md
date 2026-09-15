@@ -3379,3 +3379,11 @@ mêmes cas pour « Se connecter au serveur » et n'est pas dans le tas de réfé
 - « Choose an app… » et « Checking your apps… » identiques à `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking`. L’astuce (`fileExplorer.edit.hint`) suit
   `commands.handler.openTerminalHere.hint`, sans dire où se trouve le réglage : son bouton y mène directement.
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected (éjection ou démontage en cours) → `est en cours de déconnexion`** · nom d’action du
+  `déconnecter` transitif déjà fixé, sur le modèle nominal de Thunar `fr` (« Démontage du périphérique » / « Éjection du
+  périphérique ») · `high`. La tournure nominale évite tout accord avec `{name}`. « Left its index as it was » → « tel
+  quel », comme `operationLog.rollback.partiallyRolledBackNotice` ; « try again in a moment » → « Réessayez dans un
+  instant », comme `errors.eject.notResponding`.

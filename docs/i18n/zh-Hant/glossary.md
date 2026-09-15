@@ -1758,3 +1758,10 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
 - 「Choose an app…」、「Checking your apps…」與 `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking` 一致。提示（`fileExplorer.edit.hint`）沿用
   `commands.handler.openTerminalHere.hint` 的句式，但不寫設定的位置，因為它的按鈕直接跳過去。
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected（退出或卸除進行中）→ `正在中斷連線`** · 沿用已定的 `disconnect → 中斷連線`，加 `正在`
+  表示進行中，同 Thunar `zh-TW`（「正在卸載裝置」/「正在退出裝置」）· `high`。「Left its index as it
+  was」→「維持原樣」，同 `operationLog.rollback.partiallyRolledBackNotice`；「try again in a
+  moment」→「請稍後再試一次」，同一檔案裡的 `fileExplorer.pane.directConnectionMountNotRespondingToast`。

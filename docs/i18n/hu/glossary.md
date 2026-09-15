@@ -3329,3 +3329,12 @@ csatlakozni ehhez: {hostName}” (`fileExplorer.network.share.connectFailedTitle
   `settings.behavior.openTerminalHereApp.checking` fordításával. A tipp (`fileExplorer.edit.hint`) a
   `commands.handler.openTerminalHere.hint` mintáját követi, a beállítás helye nélkül, mert a gombja egyenesen odavisz; a
   `{app}` itt is toldalék nélkül áll.
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected (kiadás vagy leválasztás folyamatban) → `A(z) {name} leválasztása folyamatban van`** · a
+  szándékos kiadásra már rögzített `leválasztás` (lásd fent: a magától megszakadó kapcsolat `megszakad a kapcsolat`, ez
+  nem az), a Thunar `hu` „Eszköz leválasztása” alakjára építve · `high`. A főnévi szerkezet miatt a `{name}` nem kap
+  toldalékot. „Left its index as it was” → „úgy hagyta …, ahogy volt”, mint az
+  `operationLog.rollback.partiallyRolledBackNotice`; „try again in a moment” → „egy pillanat múlva”, mint a
+  `fileExplorer.pane.directConnectionMountNotRespondingToast`.

@@ -1544,6 +1544,10 @@
   "@fileExplorer.navigation.driveIndex.refusedIndexingOff": {
     "sourceHash": "ce0d45c"
   },
+  "fileExplorer.navigation.driveIndex.driveLeaving": "O disco {name} está sendo desconectado, então o Cmdr deixou o índice como estava. Se ele continuar conectado, tente novamente em instantes.",
+  "@fileExplorer.navigation.driveIndex.driveLeaving": {
+    "sourceHash": "99f19f9"
+  },
   "fileExplorer.navigation.driveIndex.tooltipIndexingOff": "A indexação de disco está desativada nos Ajustes, então nenhum disco é indexado no momento.",
   "@fileExplorer.navigation.driveIndex.tooltipIndexingOff": {
     "sourceHash": "6ebf6f4"

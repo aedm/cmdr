@@ -1533,6 +1533,10 @@
   "@fileExplorer.navigation.driveIndex.refusedIndexingOff": {
     "sourceHash": "ce0d45c"
   },
+  "fileExplorer.navigation.driveIndex.driveLeaving": "{name} 正在中斷連線，所以 Cmdr 讓它的索引維持原樣。如果磁碟機仍保持連線，請稍後再試一次。",
+  "@fileExplorer.navigation.driveIndex.driveLeaving": {
+    "sourceHash": "99f19f9"
+  },
   "fileExplorer.navigation.driveIndex.tooltipIndexingOff": "磁碟機索引已在設定中關閉，所以目前沒有任何磁碟機在建立索引。",
   "@fileExplorer.navigation.driveIndex.tooltipIndexingOff": {
     "sourceHash": "6ebf6f4"

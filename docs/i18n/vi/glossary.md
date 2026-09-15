@@ -3033,3 +3033,11 @@ trường hợp này cho "Kết nối với máy chủ", và kho tham chiếu kh
 - "Choose an app…" và "Checking your apps…" giống `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking`. Gợi ý (`fileExplorer.edit.hint`) theo mẫu
   `commands.handler.openTerminalHere.hint` nhưng không nêu vị trí trong Cài đặt, vì nút của nó dẫn thẳng tới đó.
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected (đang tháo hoặc tháo gắn kết) → `đang được ngắt kết nối`** · dùng `ngắt kết nối` đã chốt, thêm
+  `đang` như Thunar `vi` (“Đang tháo gắn kết thiết bị” / “Đang ngắt thiết bị”) · `high`. Chọn `được` thay vì `bị`
+  (`fileExplorer.navigation.driveIndex.tooltipStale` dùng `bị` cho ổ đĩa rơi mất) vì ở đây việc tháo là chủ ý của người
+  dùng. “Left its index as it was” → “để nguyên”, như `operationLog.rollback.partiallyRolledBackNotice`; “try again in a
+  moment” → “sau giây lát”, như `errors.eject.notResponding`.

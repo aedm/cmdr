@@ -2877,3 +2877,11 @@ genau diese Fälle für „Mit Server verbinden“ und fehlt im Stapel.
 - „Choose an app…“ und „Checking your apps…“ wortgleich mit `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking`. Der Hinweis (`fileExplorer.edit.hint`) folgt
   `commands.handler.openTerminalHere.hint`, nennt aber keinen Ort in den Einstellungen: sein Knopf führt direkt hin.
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected (eject or unmount in progress) → `wird gerade getrennt`** · Passiv-Verlaufsform des gesetzten
+  `disconnect → trennen`, nach Thunar `de` („Gerät wird ausgehängt“ / „Gerät wird ausgeworfen“), das den laufenden
+  Vorgang ebenso passivisch sagt · `high`. „Left its index as it was“ folgt
+  `operationLog.rollback.partiallyRolledBackNotice` („so gelassen, wie er war“), „try again in a moment“
+  `errors.eject.notResponding` („gleich noch einmal“).

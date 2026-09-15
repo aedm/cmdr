@@ -1540,6 +1540,10 @@
   "@fileExplorer.navigation.driveIndex.refusedIndexingOff": {
     "sourceHash": "ce0d45c"
   },
+  "fileExplorer.navigation.driveIndex.driveLeaving": "{name} se está desconectando, así que Cmdr dejó su índice como estaba. Si la unidad sigue conectada, vuelve a intentarlo en un momento.",
+  "@fileExplorer.navigation.driveIndex.driveLeaving": {
+    "sourceHash": "99f19f9"
+  },
   "fileExplorer.navigation.driveIndex.tooltipIndexingOff": "La indexación de unidades está desactivada en Ajustes, así que ahora mismo no se indexa ninguna unidad.",
   "@fileExplorer.navigation.driveIndex.tooltipIndexingOff": {
     "sourceHash": "6ebf6f4"

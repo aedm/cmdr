@@ -1541,6 +1541,10 @@
   "@fileExplorer.navigation.driveIndex.refusedIndexingOff": {
     "sourceHash": "ce0d45c"
   },
+  "fileExplorer.navigation.driveIndex.driveLeaving": "{name} wird gerade getrennt, deshalb hat Cmdr den Index so gelassen, wie er war. Falls das Laufwerk verbunden bleibt, versuche es gleich noch einmal.",
+  "@fileExplorer.navigation.driveIndex.driveLeaving": {
+    "sourceHash": "99f19f9"
+  },
   "fileExplorer.navigation.driveIndex.tooltipIndexingOff": "Die Laufwerksindizierung ist in den Einstellungen aus, deshalb wird gerade kein Laufwerk indiziert.",
   "@fileExplorer.navigation.driveIndex.tooltipIndexingOff": {
     "sourceHash": "6ebf6f4"

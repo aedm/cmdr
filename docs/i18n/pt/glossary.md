@@ -2902,3 +2902,11 @@ que redige esses mesmos casos para «Conectar ao Servidor» e não está na pilh
 - "Choose an app…" e "Checking your apps…" iguais a `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking`. A dica (`fileExplorer.edit.hint`) segue
   `commands.handler.openTerminalHere.hint`, sem dizer onde fica o ajuste: o botão dela leva direto.
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected (ejeção ou desmontagem em andamento) → `O disco {name} está sendo desconectado`** · gerúndio
+  do já fixado `disconnect → Desconectar`, como o Thunar `pt-BR` (“Desmontando o dispositivo” / “Ejetando dispositivo”)
+  · `high`. O substantivo `disco` vem na frente para que o particípio concorde com ele, e o gênero desconhecido de
+  `{name}` não pesa. “Left its index as it was” → “como estava”, como `operationLog.rollback.partiallyRolledBackNotice`;
+  “try again in a moment” → “em instantes”, como `fileExplorer.pane.directConnectionMountNotRespondingToast`.

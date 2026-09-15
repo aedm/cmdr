@@ -2953,3 +2953,10 @@ formulerar just de här fallen för ”Anslut till server” och saknas i refere
 - ”Choose an app…” och ”Checking your apps…” samma som `settings.behavior.openTerminalHereApp.chooseApp` /
   `settings.behavior.openTerminalHereApp.checking`. Tipset (`fileExplorer.edit.hint`) följer
   `commands.handler.openTerminalHere.hint`, utan platsen i Inställningar: knappen leder dit direkt.
+
+## A drive leaving mid-request (`fileExplorer.navigation.driveIndex.driveLeaving`)
+
+- **is being disconnected (utmatning eller avmontering pågår) → `håller på att kopplas från`** · passiv form av det
+  satta `koppla från`, med `håller på att` för det pågående förloppet som Thunar `sv` uttrycker med presens (”Avmonterar
+  enhet” / ”Matar ut enhet”) · `high`. ”Left its index as it was” → ”lät indexet vara orört”; ”try again in a moment” →
+  ”försök igen om en stund”, som `errors.eject.notResponding`.
