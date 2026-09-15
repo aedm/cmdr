@@ -307,6 +307,37 @@ impl DriveRelease {
         self.shared.parked.load(std::sync::atomic::Ordering::SeqCst)
     }
 
+    /// A gate on a fake clock over an injected index, so no test waits out a real deadline.
+    #[cfg(test)]
+    pub(crate) fn with_fake_clock(door: Arc<dyn IndexDoor>) -> Self {
+        Self::new(
+            door,
+            Clock::Fake {
+                origin: Instant::now(),
+                elapsed: Mutex::new(Duration::ZERO),
+            },
+        )
+    }
+
+    /// A gate on the real clock over an injected index, for a test that drives real unmounts.
+    #[cfg(test)]
+    pub(crate) fn with_door(door: Arc<dyn IndexDoor>) -> Self {
+        Self::new(door, Clock::Real)
+    }
+
+    /// Move the fake clock on, waking every waiter.
+    #[cfg(test)]
+    pub(crate) fn advance(&self, by: Duration) {
+        {
+            let _gates = self.shared.gates.lock_ignore_poison();
+            let Clock::Fake { elapsed, .. } = &self.shared.clock else {
+                panic!("only a fake clock moves by hand");
+            };
+            *elapsed.lock_ignore_poison() += by;
+        }
+        self.shared.changed.notify_all();
+    }
+
     /// Run `call`, a start of `volume_id`'s index, holding the volume's ticket for the whole call.
     ///
     /// Blocks while it waits for the ticket, so call it on a thread that may wait (a search's own

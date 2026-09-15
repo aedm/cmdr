@@ -129,6 +129,22 @@ filter = 'test(file_system::index_provider::real_image::)'
 test-group = 'disk-image'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
+[[profile.default.overrides]]
+# The unmount approver's pins on real APFS/HFS+ images (`volumes::unmount_approver::real_image`,
+# macOS-only, `#[ignore]`d): a real DiskArbitration approval session answers real `diskutil`
+# unmounts of the test's own image.
+#
+# 90 s rather than the 30 s the other image blocks get, because these spend real time on purpose
+# rather than on one tool call: building the two-partition image costs a `partitionDisk` plus two
+# remounts, one test lets an injected stop overrun the chain's whole 7 s budget, and every resume
+# waits out `RESUME_SETTLE`. The runner still SIGKILLs any single `hdiutil`/`diskutil` call at 30 s,
+# so a wedged tool is caught there and this cap stays the backstop for the test as a whole.
+# (Measured 2026-09-16 on macOS 27.0: 2.5-27.3 s per test, the two-partition ones slowest.)
+# allowed-unmatched-nextest-filter: macos-only, DiskArbitration and diskutil have no Linux counterpart
+filter = 'test(volumes::unmount_approver::real_image::)'
+test-group = 'disk-image'
+slow-timeout = { period = "90s", terminate-after = 1 }
+
 # SMB stress tests serialize on the shared server (see `smb-stress` group above).
 # The concurrent-streaming one additionally wraps its copy in a 120 s internal
 # `tokio::time::timeout` whose expiry dumps the last 30 `client-mutex:`/`recv:`

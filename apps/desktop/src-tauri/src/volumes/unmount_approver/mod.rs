@@ -11,6 +11,11 @@ mod callbacks;
 mod private_symbols;
 mod records;
 
+#[cfg(all(test, target_os = "macos"))]
+mod real_image;
+#[cfg(test)]
+mod test_seams;
+
 use std::ffi::c_void;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;

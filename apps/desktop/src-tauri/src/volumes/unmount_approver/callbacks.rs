@@ -301,3 +301,145 @@ impl ResumeOwner for RecordOwner {
         self.state.lock_ignore_poison().records.consume(candidate);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::super::ask::{APPROVAL_STOP_BUDGET, DA_RESPONSE_WINDOW};
+    use super::super::test_seams::{asked, fixture, mounted};
+    use super::*;
+    use crate::test_support::wait_until;
+
+    /// How long a test waits for a detached stop. Never a deadline under test.
+    const PATIENCE: Duration = Duration::from_secs(5);
+    /// Well past `RESUME_SETTLE`, so a resume batch's quiet period is over.
+    const SETTLED: Duration = Duration::from_secs(30);
+    const UNIT: u32 = 7;
+
+    fn path(name: &str) -> PathBuf {
+        PathBuf::from(format!("/Volumes/cmdr-test-{name}"))
+    }
+
+    #[test]
+    fn the_first_ask_of_a_disk_lets_go_of_every_volume_on_it_and_the_second_finds_nothing_left() {
+        let fx = fixture();
+        let (a, b) = (path("A"), path("B"));
+        fx.indexed_volume("vol-a", "disk7s2", &a);
+        fx.indexed_volume("vol-b", "disk7s3", &b);
+        let group = vec![mounted("disk7s2", UNIT, &a), mounted("disk7s3", UNIT, &b)];
+
+        let first = fx
+            .approver
+            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| group.clone());
+
+        assert_eq!(first, Answer::Approve);
+        assert_eq!(
+            fx.index.stops_that_found_an_index(),
+            2,
+            "a whole-disk request's asks arrive back to back, so the first one lets go of the group"
+        );
+        assert!(fx.host.stops.all_ran_while_mounted(), "the stop is a PRE-unmount hook");
+
+        let second = fx
+            .approver
+            .on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| group.clone());
+
+        assert_eq!(second, Answer::Approve);
+        assert_eq!(
+            fx.index.stops_that_found_an_index(),
+            2,
+            "the sibling's ask finds its own volume already let go of"
+        );
+    }
+
+    #[test]
+    fn a_disk_cmdr_has_nothing_on_is_approved_without_a_group_lookup() {
+        let fx = fixture();
+        let unknown = path("SomeoneElses");
+        fx.host.nodes.lock_ignore_poison().insert("disk7s2".to_string());
+
+        let answer = fx.approver.on_unmount_ask(&asked("disk7s2", UNIT, &unknown), |_| {
+            panic!("a disk with no Cmdr volume on it never needs its group")
+        });
+
+        assert_eq!(answer, Answer::Approve);
+        assert!(fx.host.stops.asked().is_empty());
+
+        // And a disk this session doesn't act on at all is approved before anything else is read.
+        let elsewhere = path("AnotherMac");
+        fx.indexed_volume("vol-elsewhere", "disk9s1", &elsewhere);
+        fx.host.nodes.lock_ignore_poison().remove("disk9s1");
+        let answer = fx
+            .approver
+            .on_unmount_ask(&asked("disk9s1", 9, &elsewhere), |_| panic!("not this session's disk"));
+        assert_eq!(answer, Answer::Approve);
+        assert!(fx.host.stops.asked().is_empty());
+    }
+
+    #[test]
+    fn a_refused_unmount_hands_the_index_back_at_the_next_idle_and_never_twice() {
+        let fx = fixture();
+        let a = path("A");
+        fx.indexed_volume("vol-a", "disk7s2", &a);
+
+        fx.approver
+            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| vec![mounted("disk7s2", UNIT, &a)]);
+        assert!(!fx.index.is_indexing("vol-a"), "the ask let go of the drive");
+
+        // The kernel refused the unmount, so DiskArbitration went quiet with the volume still there.
+        fx.approver.on_idle();
+        fx.gate.advance(SETTLED);
+        for batch in fx.host.take_resumes() {
+            batch.wait();
+        }
+        assert_eq!(fx.index.started(), ["vol-a"]);
+
+        fx.approver.on_idle();
+        fx.gate.advance(SETTLED);
+        for batch in fx.host.take_resumes() {
+            batch.wait();
+        }
+        assert_eq!(
+            fx.index.started(),
+            ["vol-a"],
+            "the record was spent by the first resume"
+        );
+    }
+
+    #[test]
+    fn an_ask_with_no_time_left_dissents_and_leaves_its_stop_to_a_thread() {
+        let fx = fixture();
+        let (a, b) = (path("A"), path("B"));
+        fx.indexed_volume("vol-a", "disk7s2", &a);
+        fx.indexed_volume("vol-b", "disk7s3", &b);
+
+        let first = fx
+            .approver
+            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| vec![mounted("disk7s2", UNIT, &a)]);
+        assert_eq!(first, Answer::Approve);
+
+        // The queue delivers the next ask late in the chain's window: its own DA timer started
+        // inside it, so the budget is spent.
+        fx.gate.advance(APPROVAL_STOP_BUDGET + Duration::from_secs(1));
+        let second = fx
+            .approver
+            .on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| vec![mounted("disk7s3", UNIT, &b)]);
+
+        assert_eq!(
+            second,
+            Answer::Dissent,
+            "with no time left, a drive that still has an index on it is refused, never unmounted under one"
+        );
+        wait_until(PATIENCE, "the detached stop to let go of B", || {
+            !fx.index.is_indexing("vol-b")
+        });
+
+        // An ask after the window starts a chain of its own, so it waits for its stop again.
+        fx.gate.advance(DA_RESPONSE_WINDOW);
+        let third = fx
+            .approver
+            .on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| vec![mounted("disk7s3", UNIT, &b)]);
+        assert_eq!(third, Answer::Approve);
+    }
+}

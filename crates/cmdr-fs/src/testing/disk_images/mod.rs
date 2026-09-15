@@ -441,6 +441,19 @@ impl DiskImage {
         self.run(Call::Eject { mount_point })
     }
 
+    /// `diskutil unmount` of volume `index`, once its node is proven this image's. The unmount
+    /// DiskArbitration mediates, so an approval session hears about it.
+    pub fn unmount_volume(&self, index: usize) -> Result<Finished, HarnessError> {
+        let node = self.volume(index)?.node.clone();
+        self.run(Call::Unmount { node: &node })
+    }
+
+    /// `diskutil unmountDisk` of this image's whole disk: every volume on it, as its own DA request.
+    pub fn unmount_disk(&self) -> Result<Finished, HarnessError> {
+        let whole = self.whole()?;
+        self.run(Call::UnmountDisk { whole: &whole })
+    }
+
     /// `diskutil renameVolume` of volume `index` to a fresh unique name, once its node
     /// is proven this image's. The volume list is read back from `hdiutil info`
     /// afterwards, so [`Self::volumes`] says where the volume is mounted now.

@@ -40,17 +40,6 @@ impl Drop for ParkedMark<'_> {
 }
 
 impl DriveRelease {
-    fn advance(&self, by: Duration) {
-        {
-            let _gates = self.shared.gates.lock_ignore_poison();
-            let Clock::Fake { elapsed, .. } = &self.shared.clock else {
-                panic!("only a fake clock moves by hand");
-            };
-            *elapsed.lock_ignore_poison() += by;
-        }
-        self.shared.changed.notify_all();
-    }
-
     fn is_unmount_pending(&self, volume_id: &str) -> bool {
         self.shared.gates.lock_ignore_poison().gate(volume_id).unmount_pending
     }
@@ -141,12 +130,8 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let door = Arc::new(FakeDoor::default());
-    let clock = Clock::Fake {
-        origin: Instant::now(),
-        elapsed: Mutex::new(Duration::ZERO),
-    };
     Fixture {
-        gate: DriveRelease::new(Arc::clone(&door) as Arc<dyn IndexDoor>, clock),
+        gate: DriveRelease::with_fake_clock(Arc::clone(&door) as Arc<dyn IndexDoor>),
         door,
     }
 }

@@ -35,6 +35,7 @@ var diskImageLaneTestAtoms = []string{
 	"file_system::volume::eject::real_image::",
 	"file_system::index_provider::real_image::",
 	"indexing::tests::vanish_tests::",
+	"volumes::unmount_approver::real_image::",
 }
 
 // diskImageHandRunTestAtoms are the `disk-image` group's modules this lane

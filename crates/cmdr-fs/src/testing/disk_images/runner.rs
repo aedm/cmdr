@@ -74,6 +74,8 @@ pub(super) enum Call<'a> {
     MountNobrowse { node: &'a str },
     /// `diskutil unmount` of a node.
     Unmount { node: &'a str },
+    /// `diskutil unmountDisk` of a whole disk: every volume on it, one request per volume.
+    UnmountDisk { whole: &'a str },
     /// `diskutil renameVolume <node> <name>`.
     RenameVolume { node: &'a str, name: &'a str },
     /// `diskutil eject` of a mount point.
@@ -91,6 +93,7 @@ impl Call<'_> {
             Call::MountNobrowse { node } | Call::Unmount { node } | Call::RenameVolume { node, .. } => {
                 Some(Target::Node(node))
             }
+            Call::UnmountDisk { whole } => Some(Target::Node(whole)),
             Call::Eject { mount_point } => Some(Target::MountPoint(mount_point)),
         }
     }
@@ -163,6 +166,7 @@ impl Call<'_> {
             ),
             Call::MountNobrowse { node } => ("diskutil", owned(&["mount", "-mountOptions", "nobrowse", node])),
             Call::Unmount { node } => ("diskutil", owned(&["unmount", node])),
+            Call::UnmountDisk { whole } => ("diskutil", owned(&["unmountDisk", whole])),
             Call::RenameVolume { node, name } => ("diskutil", owned(&["renameVolume", node, name])),
             Call::Eject { mount_point } => {
                 let mut args = owned(&["eject"]);
