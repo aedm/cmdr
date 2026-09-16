@@ -1889,11 +1889,11 @@
   "@errors.write.readOnlyDevice.source.title": {
     "sourceHash": "5d77aa4"
   },
-  "errors.write.readOnlyDevice.source.message": "{deviceName} est en lecture seule. Tu peux en copier des fichiers, mais pas les déplacer hors de là.",
+  "errors.write.readOnlyDevice.source.message": "{deviceName} est en lecture seule. Vous pouvez en copier des fichiers, mais pas les déplacer hors de là.",
   "@errors.write.readOnlyDevice.source.message": {
     "sourceHash": "ec7d263"
   },
-  "errors.write.readOnlyDevice.source.suggestion": "Copie-les plutôt. Les originaux restent où ils sont.",
+  "errors.write.readOnlyDevice.source.suggestion": "Copiez-les plutôt. Les originaux restent où ils sont.",
   "@errors.write.readOnlyDevice.source.suggestion": {
     "sourceHash": "f6a307b"
   },
