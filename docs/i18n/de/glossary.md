@@ -70,6 +70,17 @@ Format, the confidence scale, and the full process: `docs/guides/i18n-translatio
 - working tree (git) → Arbeitsbaum · DE git docs render "working tree" as "Arbeitsbaum" · high
 - cloud provider → Cloud-Anbieter; cloud mount → Cloud-Mount · standard DE compound formation (loanword "Cloud" kept, as
   in macOS "iCloud") · high
+- cloud service (Dropbox, Google Drive, OneDrive …) → Cloud-Dienst · macOS Finder `Localizable` („Choose a cloud
+  service“ → „Cloud-Dienst wählen“, live pile 2026-09-17) und der Katalog selbst
+  (`settings.ai.cloudProvider.description` = „Welcher Cloud-KI-Dienst verwendet wird.“) · high. Im zweiten Satz eines
+  Absatzes kürzt der Rückverweis auf `der Dienst`, wie das Englische auf „the service“
+- to sync (ein Ordner wird von einem Dienst synchronisiert) → mit … synchronisiert werden (Passiv) · macOS Finder („Your
+  Desktop & Documents folders are being synced with %@.“ → „Deine Ordner „Schreibtisch“ und „Dokumente“ werden mit „%@“
+  synchronisiert.“) · high. Die aktive Form („der Ordner synchronisiert“) gibt es in macOS `de` nur mit dem DIENST als
+  Subjekt („iCloud synchronisiert nicht“, `IC3`), nicht mit dem Ordner
+- restore (eine Kopie zurückholen) → wiederherstellen · macOS AppKit `Revisions`/`Document` („Restore“ →
+  „Wiederherstellen“, „Restore a Copy“ → „Eine Kopie wiederherstellen“) · high. Abgrenzung: `put back` (aus dem
+  Papierkorb an den alten Ort) bleibt `zurücklegen`, siehe § Papierkorb-Toast
 - connect → verbinden; "Connect to server" → "Mit Server verbinden"; "Connecting…" → "Verbindung wird hergestellt …" ·
   macOS Finder ("Mit Server verbinden", button "Verbinden", "Serveradresse") · high
 - disconnect → trennen; "Disconnected from X" → "Verbindung zu X getrennt" · macOS Finder · high
@@ -3231,3 +3242,29 @@ replacement target. Four rules bind this whole group:
   other and the sentence points at a badge that reads differently.
 - "somewhere macOS keeps to itself" → `an einem Ort, den macOS für sich behält`, reusing the wording already settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
+
+## Der Cloud-Warnhinweis im Löschdialog (`fileOperations.delete.cloudNoTrashWarningStrong`/`.cloudNoTrashWarningRest`, 2026-09-17)
+
+Liegt jedes ausgewählte Objekt in einem Cloud-Ordner, dessen File Provider nichts in den Papierkorb legt, öffnet Cmdr
+statt des Papierkorb-Wegs den Dialog zum endgültigen Löschen und erklärt das im Banner oben. Zwei Schlüssel, fett und
+normal, die als EIN Hinweis gelesen werden.
+
+- **`.cloudNoTrashWarningStrong` →
+  `Dieser Ordner wird mit einem Cloud-Dienst synchronisiert, der keinen Papierkorb hat.`** ·
+  `cloud service → Cloud-Dienst` und das Sync-Passiv aus § Terms (beide macOS Finder); `der keinen Papierkorb hat`
+  übernimmt den Satzbau des Geschwisters `fileOperations.trash.noTrashHere` („Dieses Laufwerk hat keinen Papierkorb.“) ·
+  high. Der Relativsatz stellt die Tatsache ans Satzende, wo das Englische sie auch hat; die kürzere Attributform („mit
+  einem Cloud-Dienst ohne Papierkorb“) vergräbt sie in der Mitte.
+- **`.cloudNoTrashWarningRest` →
+  `Du kannst hier nur löschen, und der Dienst behält eine eigene Kopie, die du wiederherstellen kannst.`** ·
+  `hier nur … löschen` steht schon in `errors.mutation.trashNotSupported` („… deshalb kannst du hier nur endgültig
+  löschen.“), also trägt der Katalog den Rahmen; `behält … Kopie` folgt macOS AppKit `Document` („Möchtest du diese neue
+  Kopie „%@“ behalten?“), `die du wiederherstellen kannst` dem dortigen „Eine Kopie wiederherstellen“ · high.
+- **❌ Kein `endgültig` in diesem Wert.** Die englische Quelle sagt hier bloß „Deleting“, und der Hinweis beruhigt
+  gerade: der Dienst hat noch eine Kopie. Das Adverb gehört in den Nachbarn `noTrashWarningRest`, wo wirklich nichts
+  zurückbleibt.
+- **Der Rückverweis heißt `der Dienst`**, nicht `er` oder noch einmal `der Cloud-Dienst`: dasselbe Kürzen wie im
+  Englischen („the service“), und ein Pronomen wäre über die Satzgrenze hinweg schwer zu greifen.
+- Kein `sameAsSourceJustification` nötig: beide Werte unterscheiden sich vom Englischen.
+- Zu prüfen beim Overflow-Check: der fette Teil läuft mit 83 Zeichen gegenüber 55 im Englischen rund 50 % länger und
+  steht in einem schmalen Banner über der Dateiliste des Dialogs.

@@ -66,6 +66,9 @@ mod validation;
 // keeps resolving (used by `commands/rename.rs`).
 pub(crate) use delete::trash;
 
+// The F8 routing question, asked by the IPC command before the confirmation dialog opens.
+pub use delete::cloud_trash::{TrashRouting, routing_for_selection as trash_routing_for_selection};
+
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;

@@ -3,6 +3,10 @@
   "@fileOperations.delete.noTrashWarningStrong": {
     "sourceHash": "ef122e2"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "This folder syncs to a cloud service that has no Bin.",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
   "fileOperations.delete.archiveWarningStrong": "There''s no Bin inside an archive.",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"

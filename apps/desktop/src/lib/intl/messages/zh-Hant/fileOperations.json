@@ -19,6 +19,14 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "這個資料夾會與沒有垃圾桶的雲端服務同步。",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
+  "fileOperations.delete.cloudNoTrashWarningRest": "這裡只能刪除，不過雲端服務自己會留一份副本，你可以從那裡回復。",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "sourceHash": "1abc686"
+  },
   "fileOperations.delete.archiveWarningStrong": "壓縮檔裡沒有垃圾桶。",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"

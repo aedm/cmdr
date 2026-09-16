@@ -7,7 +7,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // which each factory below reaches by a lazy `await import`.
 vi.mock('$lib/tauri-commands', async () => {
   const { spies } = await import('./file-operation-commands.test-harness')
-  return { DEFAULT_VOLUME_ID: 'root', getFileAt: spies.getFileAt, getFilesAtIndices: spies.getFilesAtIndices }
+  return {
+    DEFAULT_VOLUME_ID: 'root',
+    getFileAt: spies.getFileAt,
+    getFilesAtIndices: spies.getFilesAtIndices,
+    trashRoutingForPaths: spies.trashRoutingForPaths,
+  }
 })
 
 vi.mock('$lib/ui/toast', async () => ({
@@ -72,7 +77,7 @@ import {
   type DialogsStub,
 } from './file-operation-commands.test-harness'
 
-const { addToast: addToastSpy, getSnapshot: getSnapshotSpy } = spies
+const { addToast: addToastSpy, getSnapshot: getSnapshotSpy, trashRoutingForPaths: trashRoutingSpy } = spies
 
 function create(access: ReturnType<typeof buildAccess>, dialogs: DialogsStub) {
   return createFileOperationCommands(access, dialogs as unknown as Parameters<typeof createFileOperationCommands>[1])
@@ -80,6 +85,9 @@ function create(access: ReturnType<typeof buildAccess>, dialogs: DialogsStub) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // `clearAllMocks` leaves implementations in place, so the routing answer is
+  // re-stated here: an unset one would leak across tests in file order.
+  trashRoutingSpy.mockResolvedValue('trash')
 })
 
 describe('openTransferDialog on a search-results pane', () => {
@@ -283,6 +291,36 @@ describe('openDeleteDialog on a search-results pane', () => {
     await create(access, dialogs).openDeleteDialog({ permanent: false })
 
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({ supportsTrash: false })
+  })
+
+  /** A search reaches into cloud-storage folders too, and a hit there can't be
+   *  trashed, so the same routing applies to a result row. */
+  it('routes a hit in a cloud-storage folder to the permanent delete', async () => {
+    trashRoutingSpy.mockResolvedValue('permanentDeleteCloudStorage')
+    getSnapshotSpy.mockReturnValue(
+      snapshot([
+        snapshotEntry({
+          name: 'a.pkg',
+          path: '/Users/me/Library/CloudStorage/Dropbox/a.pkg',
+          parentPath: '/Users/me/Library/CloudStorage/Dropbox',
+        }),
+      ]),
+    )
+    const paneRef = buildPaneRef({ currentPath: 'search-results://sr-1', selectedIndices: [0] })
+    const access = buildAccess({
+      paneRefs: { left: paneRef },
+      volumeIds: { left: 'search-results' },
+      volumes: [volume({ id: 'root', path: '/' })],
+    })
+    const dialogs = buildDialogs()
+
+    await create(access, dialogs).openDeleteDialog({ permanent: false })
+
+    expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
+      isPermanent: true,
+      supportsTrash: false,
+      cloudStorageWithoutTrash: true,
+    })
   })
 
   it('keeps root and its trash for rows on the boot volume', async () => {

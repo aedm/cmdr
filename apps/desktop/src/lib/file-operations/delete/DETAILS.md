@@ -141,3 +141,26 @@ the operation that started it.
 
 **Platform reality.** Linux's trash backend surfaces no in-trash location, so neither action has anything to work with
 there; both degrade to their fallbacks rather than being gated on the platform.
+
+## Cloud storage: when a trash opens the delete dialog
+
+`~/Library/CloudStorage/<provider>/` is Apple's location for third-party File Provider drives, and a provider there may
+implement no trash at all. `trashItemAtURL` then fails with `NSFeatureUnsupportedError`, which macOS words as if the
+BOOT volume had no trash. The user-visible symptom is "I can't delete anything from my Dropbox folder", and the message
+sends them looking in the wrong place (`ERR-2YGHG`).
+
+So `openDeleteDialog` (and its search-results twin) asks `trashRoutingForPaths(sourcePaths)` before it opens anything.
+On `permanentDeleteCloudStorage` it passes `cloudStorageWithoutTrash: true`, forces `isPermanent`, and drops
+`supportsTrash`, which is what hides the in-dialog switch. `DeleteDialog` then renders the cloud banner in place of the
+generic no-trash one, so a person who pressed Trash reads why they're being asked about a delete, and confirm dispatches
+the same permanent delete Shift+F8 would have.
+
+Three things that belong to the backend and must not be re-derived here (`write_operations/delete/cloud_trash.rs`,
+DETAILS § "A trash in a cloud-storage folder becomes a delete"): which locations count, the all-or-nothing rule across a
+mixed selection, and symlink resolution (`~/Dropbox` is a link into the same drive). The frontend contributes one rule
+of its own: a question that can't be answered keeps today's behavior. A thrown IPC or a backend timeout logs a warning
+and leaves the dialog on the trash, because attempting a trash and getting the typed refusal is always recoverable,
+while a permanent delete isn't.
+
+The question is asked for Shift+F8 too, not only F8: the dialog's own switch could otherwise flip a permanent delete
+back to a trash and walk straight into the refusal.

@@ -3264,3 +3264,37 @@ replacement target. Four rules bind this whole group:
   (214 of them, zero `“`).
 - "somewhere macOS keeps to itself" → `på ett ställe som macOS håller för sig själv`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
+
+## Molnvarningen i raderingsdialogen (`fileOperations.delete.cloudNoTrashWarningStrong`/`.cloudNoTrashWarningRest`)
+
+Bannern högst upp i raderingsdialogen när allt som är markerat ligger i en molnmapp (Dropbox, Google Drive, OneDrive, …)
+vars File Provider vägrar slänga något, så Cmdr öppnade permanent-raderingen i stället. ICU-familj, men inga
+platshållare och inga taggar i de två värdena.
+
+- **cloud service → `molntjänst`** · Microsoft `sv` terminologi (`SWEDISH.tbx`, `cloud service` id 1518183 →
+  `molntjänst` id 2342822, "A service that works in a cloud computing environment"; samma par en gång till i
+  entry 33357) · `high`. ❌ Inte `molnleverantör`: det är katalogens satta ord för engelskans `cloud provider`
+  (`errors.provider.genericCloudStorage.displayName` = "din molnleverantör"), alltså FÖRETAGET. Engelskan säger
+  `service` här, och de två orden hålls isär precis som engelskan håller isär sina.
+- **"syncs to" → `synkroniseras med`** · macOS Finder `sv` Tier 1: `IC1` "Synkroniseras med iCloud", `IC2.7` "Vissa
+  ändringar synkroniseras med servern" och "Mapparna Skrivbord och Dokument synkroniseras med %@" (`Localizable.json`,
+  engelskan `Your Desktop & Documents folders are being synced with %@`) · `high`. Svenskan tar `med`, aldrig engelskans
+  `till`.
+- **Ramen är systersträngens** · `noTrashWarningStrong` säger redan "Den här volymen saknar papperskorg.", så molnarmen
+  blir "Den här mappen … som saknar papperskorg."; `errors.provider.genericCloudStorage.transient` bekräftar inledningen
+  "Den här mappen …" för just en molnmapp · `high`.
+- **restore (hämta tillbaka en raderad fil ur tjänstens egen kopia) → `återskapa`** · macOS `sv` Tier 1: AppKit
+  `Revisions` `Restore` → "Återskapa", `Restore a Copy` → "Återskapa en kopia", och Finder `MT43` "Det går att återskapa
+  eller ta bort objekt från papperskorgen inom 30 dagar" — exakt den här situationen, en molntjänst som håller kvar det
+  raderade en tid · `high`. Apple använder `återställ` för `reset`/`revert` (`Återställ till förval`,
+  `Återställ ändringar`), inte för det här. Microsoft `sv` säger visserligen `restore → återställa` (och en gång
+  `återskapa`), men Finder-regeln vinner. Familjen har nu tre skilda verb, ett per yta: `lägga tillbaka` (Finders
+  `Put Back` ur papperskorgen), `återställa` (ett gammalt NAMN, `askCmdr.renameUndo.*`, plus `reset`), `återskapa` (en
+  fil ur molntjänstens egen kopia).
+- **"Deleting is the only option here" → `Här går det bara att radera`** · `gå att` + infinitiv i stället för passivt
+  `-s` (`style.md`, och `errors.eject.*`: "så den går inte att koppla från"), plus det satta `radera` för permanent
+  radering · `high`. Objektet i andra satsen är `filerna`, som systersträngen `noTrashWarningRest` ("Filerna raderas
+  permanent.") redan valt för samma plats i samma banner.
+- **Kommat före `och` står kvar** · `style.md` stryker det mellan två KORTA huvudsatser; här bär andra satsen en
+  relativsats ("… en egen kopia som du kan återskapa filerna från"), och då behöver läsaren pausen.
+- **Inga `sameAsSourceJustification`** · båda värdena skiljer sig från engelskan.

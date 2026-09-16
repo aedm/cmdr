@@ -8,6 +8,7 @@
 //! See `CLAUDE.md` in this directory for delete walker semantics, the
 //! oracle-aware fast path, trash, and the volume-delete preview-reuse path.
 
+pub(crate) mod cloud_trash;
 pub(crate) mod trash;
 mod volume_start;
 mod walker;

@@ -19,6 +19,14 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "这个文件夹同步到的云服务没有废纸篓。",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
+  "fileOperations.delete.cloudNoTrashWarningRest": "这里只能彻底删除，不过云服务自己会留一份副本，你可以从那里把文件恢复回来。",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "sourceHash": "1abc686"
+  },
   "fileOperations.delete.archiveWarningStrong": "压缩文件里没有废纸篓。",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"

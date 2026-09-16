@@ -3748,3 +3748,44 @@ replacement target. Four rules bind this whole group:
   single `'` (`Pas d'accès`). `i18n-terms` normalizes that difference away, `i18n-icu` fails the other way round.
 - "somewhere macOS keeps to itself" → `à un endroit que macOS garde pour lui`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
+
+## L'avertissement « dossier cloud sans corbeille » (`fileOperations.delete.cloudNoTrashWarningStrong` / `.cloudNoTrashWarningRest`)
+
+Deux clés qui forment une seule bannière dans la boîte de confirmation de suppression : la personne a demandé la mise à
+la corbeille, mais tous les éléments choisis vivent dans un dossier cloud dont le File Provider de macOS refuse toute
+mise à la corbeille, donc Cmdr ouvre la boîte de suppression définitive. Famille ICU (`fileOperations.*`) : apostrophes
+doublées.
+
+- **cloud service → `service cloud`** · MS terminology FRA (`cloud service` → « service cloud », deux entrées
+  concordantes) · high. L'adjectif `cloud` invariable est déjà la norme du catalogue (`errors.provider.cmVolumes` «
+  Montage cloud », `errors.provider.genericCloudStorage` « votre fournisseur cloud »,
+  `errors.write.trashRefused.suggestion.noTrashForVolume` « les dossiers cloud »). ❌ Ni « nuage » ni « infonuagique »
+  (registre fr-CA). On garde `service` distinct de `fournisseur` parce que l'anglais distingue les deux :
+  `cloud provider` reste « fournisseur cloud ».
+- **`syncs to` → `est synchronisé avec`** · macOS Finder dit exactement cette phrase pour des dossiers qui se
+  synchronisent vers un service : « Vos dossiers Bureau et Documents sont synchronisés avec %@. »
+  (`fr/macOS/Finder/Localizable.json`), et `IC7` « Synchronisé avec ^0 » (`LocalizableMerged`, relevé 2026-09-17) ·
+  high. Le participe s'accorde avec `dossier` (masculin), donc aucune trace de genre sur la personne. La forme
+  pronominale existe aussi chez Apple (`IC5` « ^0 ne se synchronise pas ») : elle décrit une action en cours, alors que
+  la bannière énonce une propriété du dossier.
+- **`that has no trash` → `qui n'a pas de corbeille`** · reprend mot pour mot la formule déjà arbitrée pour
+  `errors.mutation.trashNotSupported` (« Ce volume n'a pas de corbeille ») et `fileOperations.trash.noTrashHere` (« Ce
+  disque n'a pas de corbeille. ») · high. ❌ Pas « ne prend pas en charge la corbeille » (la tournure de
+  `noTrashWarningStrong`, plus lourde et déjà écartée).
+- **`Deleting is the only option here` → `Ici, la seule option est de supprimer`** · moule déjà livré par
+  `errors.mutation.trashNotSupported` (« … : la seule option est de supprimer définitivement. ») · high. ❌ Pas de
+  `définitivement` ici : l'anglais ne le dit pas dans cette moitié, et la seconde proposition rassure justement sur le
+  fait que le service garde une copie.
+- **`restore from` (récupérer un fichier supprimé chez le service) → `récupérer`** · macOS Finder `MT43`, la bannière de
+  la corbeille iCloud : « Vous avez 30 jours pour récupérer ou retirer les éléments de la Corbeille. »
+  (`LocalizableMerged`, relevé 2026-09-17) · high ; MS terminology FRA donne aussi `recover` → « récupérer ». ❌ Pas
+  `restaurer` : le catalogue le réserve au renommage annulé (voir § La famille `rollback` et § La notification de
+  corbeille), et Nautilus (« Restaurer … depuis la corbeille ») n'est que du Tier 3 face à la source Apple de la surface
+  exactement équivalente.
+- **`the service keeps its own copy` → `le service conserve sa propre copie`** · `conserver` est le verbe d'Apple pour
+  ce sens (« Conservez vos dossiers Bureau et Documents dans %@ », Finder) · high. La relative est détachée par une
+  virgule (« …, que vous pouvez récupérer. ») : elle ajoute la réassurance, elle ne restreint pas la copie.
+
+Les deux valeurs se lisent dans l'ordre et chacune reste une phrase autonome. Apostrophe ASCII doublée dans la première
+(`n''a pas`), aucune dans la seconde ; aucun `: ; ! ? %`, donc pas d'espace avant ponctuation ; aucun U+2019 ni U+202F.
+Aucun `sameAsSourceJustification` : les deux valeurs diffèrent de l'anglais.

@@ -31,6 +31,7 @@ import type {
   ScanPreviewErrorEvent,
   ScanPreviewProgressEvent,
   ScanProgressEvent,
+  TrashRouting,
   TransferActivity,
   TransferWaitReason,
   WriteCancelledEvent,
@@ -193,6 +194,13 @@ export async function trashFiles(
   const res = await commands.trashFiles(sources, itemSizes ?? null, config ?? null, initiator ?? null)
   if (res.status === 'error') throwIpcError(res.error)
   return res.data
+}
+
+/** What an F8 over these paths should actually run: the OS trash, or the permanent
+ *  delete a cloud-storage folder with no trash of its own forces. The backend
+ *  decides; see `write_operations/delete/cloud_trash.rs`. */
+export async function trashRoutingForPaths(sources: string[]): Promise<TrashRouting> {
+  return await commands.trashRoutingForPaths(sources)
 }
 
 export async function cancelWriteOperation(operationId: string, rollback: boolean): Promise<void> {

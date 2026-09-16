@@ -19,6 +19,14 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "Esta carpeta se sincroniza con un servicio en la nube que no tiene papelera.",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
+  "fileOperations.delete.cloudNoTrashWarningRest": "Aquí la única opción es eliminar, y el servicio conserva su propia copia desde la que puedes recuperar los archivos.",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "sourceHash": "1abc686"
+  },
   "fileOperations.delete.archiveWarningStrong": "Dentro de un archivo comprimido no hay papelera.",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"

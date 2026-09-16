@@ -166,6 +166,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::file_system::move_files,
                     crate::commands::file_system::delete_files,
                     crate::commands::file_system::trash_files,
+                    crate::commands::file_system::trash_routing_for_paths,
                     crate::commands::file_system::cancel_write_operation,
                     crate::commands::file_system::cancel_all_write_operations,
                     crate::commands::file_system::start_scan_preview,

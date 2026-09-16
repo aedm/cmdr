@@ -240,6 +240,7 @@
                 isPermanent={deleteDialogProps.isPermanent}
                 supportsTrash={deleteDialogProps.supportsTrash}
                 isArchive={deleteDialogProps.isArchive}
+                cloudStorageWithoutTrash={deleteDialogProps.cloudStorageWithoutTrash}
                 isFromCursor={deleteDialogProps.isFromCursor}
                 sortColumn={deleteDialogProps.sortColumn}
                 sortOrder={deleteDialogProps.sortOrder}

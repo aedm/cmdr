@@ -1,10 +1,12 @@
 //! Tauri commands for write operations (create, copy, move, delete, trash) and scan preview.
 
+use crate::file_system::write_operations::TrashRouting;
 use crate::file_system::write_operations::{
     ConflictId, ConflictResolution, ConflictResolutionOutcome, MutationError, ScanPreviewStartResult,
     cancel_scan_preview as ops_cancel_scan_preview, create_directory_managed as ops_create_directory_managed,
     create_file_managed as ops_create_file_managed, get_scan_preview_totals as ops_get_scan_preview_totals,
     resolve_write_conflict as ops_resolve_write_conflict, start_scan_preview as ops_start_scan_preview,
+    trash_routing_for_selection as ops_trash_routing_for_selection,
 };
 use crate::file_system::{
     OperationEventSink, OperationSnapshot, OperationStatus, OperationSummary, PauseAllOutcome, PauseOutcome,
@@ -22,7 +24,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::time::Duration;
 
-use crate::deadline::{DeadlineError, timeout_detached_typed};
+use crate::deadline::{DeadlineError, blocking_with_timeout, timeout_detached_typed};
 use crate::file_system::Volume;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::operation_log::types::Initiator;
@@ -321,6 +323,27 @@ pub async fn trash_files(
         // No source binding: the user picked these in the pane they are looking at.
         None,
     )
+    .await
+}
+
+/// Paths come from the pane the user is looking at, so this is a read-tier
+/// question. The work is a handful of `canonicalize` calls; the timeout only
+/// bites when one of them sits on a hung mount.
+const TRASH_ROUTING_TIMEOUT: Duration = Duration::from_secs(2);
+
+/// Answers whether an F8 over `sources` has to run as a permanent delete because
+/// every item lives in a cloud-storage folder whose File Provider has no trash.
+///
+/// Asked before the confirmation dialog opens, so the dialog can say why it's
+/// asking about a delete. A timeout degrades to `Trash`, which is today's
+/// behavior: the attempt goes to the OS and a refusal speaks for itself.
+#[tauri::command]
+#[specta::specta]
+pub async fn trash_routing_for_paths(sources: Vec<String>) -> TrashRouting {
+    let sources: Vec<PathBuf> = sources.iter().map(|s| PathBuf::from(expand_tilde(s))).collect();
+    blocking_with_timeout(TRASH_ROUTING_TIMEOUT, TrashRouting::Trash, move || {
+        ops_trash_routing_for_selection(&sources)
+    })
     .await
 }
 

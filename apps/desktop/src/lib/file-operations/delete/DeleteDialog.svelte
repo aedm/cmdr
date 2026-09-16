@@ -43,6 +43,10 @@
         supportsTrash: boolean
         /** Source is inside a zip: deletes are permanent (no Trash inside an archive). */
         isArchive?: boolean
+        /** Every source is in a cloud-storage folder whose provider has no trash, so
+         *  the trash was routed here as a permanent delete. Swaps the no-trash banner
+         *  for one that says the service keeps its own copy. */
+        cloudStorageWithoutTrash?: boolean
         isFromCursor: boolean
         /** Current sort column on source pane (for scan preview ordering) */
         sortColumn: SortColumn
@@ -66,6 +70,7 @@
         isPermanent: initialIsPermanent,
         supportsTrash,
         isArchive = false,
+        cloudStorageWithoutTrash = false,
         isFromCursor,
         sortColumn,
         sortOrder,
@@ -103,7 +108,7 @@
     const dialogRole = $derived<'dialog' | 'alertdialog'>(isPermanent ? 'alertdialog' : 'dialog')
     // `delete-warning-text` only exists while a banner renders, so point
     // `aria-describedby` at the banner's condition, not at `isPermanent`.
-    const hasWarningBanner = $derived(isArchive || !supportsTrash)
+    const hasWarningBanner = $derived(isArchive || cloudStorageWithoutTrash || !supportsTrash)
 
     // Scan preview state
     let previewId = $state<string | null>(null)
@@ -342,7 +347,9 @@
 
     <div class="dialog-body">
         <!-- Warning banner: archive deletes are permanent (no Trash inside a zip);
-             other no-trash volumes get the generic banner. -->
+             a cloud folder whose provider has no trash says so in its own words,
+             since the person pressed Trash and got a delete; other no-trash volumes
+             get the generic banner. -->
         {#if isArchive}
             <div class="warning-banner" role="alert">
                 <span class="warning-icon" aria-hidden="true">
@@ -351,6 +358,16 @@
                 <p id="delete-warning-text">
                     <strong>{tString('fileOperations.delete.archiveWarningStrong')}</strong>
                     {tString('fileOperations.delete.archiveWarningRest')}
+                </p>
+            </div>
+        {:else if cloudStorageWithoutTrash}
+            <div class="warning-banner" role="alert">
+                <span class="warning-icon" aria-hidden="true">
+                    <Icon name="triangle-alert" size={18} />
+                </span>
+                <p id="delete-warning-text">
+                    <strong>{tString('fileOperations.delete.cloudNoTrashWarningStrong')}</strong>
+                    {tString('fileOperations.delete.cloudNoTrashWarningRest')}
                 </p>
             </div>
         {:else if !supportsTrash}

@@ -218,6 +218,13 @@ export interface DeleteDialogPropsData {
    * archive-specific warning instead of the generic no-trash banner.
    */
   isArchive?: boolean
+  /**
+   * Every source sits in a cloud-storage folder whose File Provider implements no
+   * trash (`~/Library/CloudStorage/<provider>/…`), so the OS refuses a trash there.
+   * The dialog forces permanent mode and explains that the service keeps its own
+   * copy. Decided in Rust: `write_operations/delete/cloud_trash.rs`.
+   */
+  cloudStorageWithoutTrash?: boolean
   /** When true, dialog auto-confirms without user interaction (MCP auto-confirm). */
   autoConfirm?: boolean
   /** MCP round-trip id, present only for an auto-confirmed MCP delete/trash.

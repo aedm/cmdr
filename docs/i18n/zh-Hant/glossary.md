@@ -194,6 +194,14 @@ Rationale, counts, and the "don't revert this" warning: `style.md` § The Apple-
 - **remote** · `遠端` · AP-TW, MS, THU; AP-HK says 遙距 · `high`
 - **local** · `本機` · AP-TW = AP-HK, MS, NAU · `confirmed`
 - **cloud** · `雲端` · AP-TW = AP-HK (`Cloud Storage` → 雲端儲存空間), MS · `confirmed`
+- **cloud service** · `雲端服務` · AP-TW Finder (`Choose a cloud service` → `選擇雲端服務`), MS (`cloud service`,
+  flagged `HKG, TWN`) · `high`. The catalog also carries `雲端服務供應商` for the PROVIDER (the company) in
+  `errors.provider.genericCloudStorage.*`; keep the two apart, since `fileOperations.delete.cloudNoTrashWarning*` talks
+  about the service that holds the files, not the company behind it.
+- **sync (verb)** · `同步` · AP-TW (`Synced with iCloud` → `與iCloud同步`,
+  `Your Desktop & Documents folders are being synced with %@` → `「桌面與文件」檔案夾正與%@同步`), MS (verb) · `high`.
+  Apple's attested frame is `與 X 同步`, which is why `cloudNoTrashWarningStrong` says `會與…雲端服務同步` rather than
+  the unattested `同步到`.
 - **iCloud Drive** · `iCloud 雲碟` · AP-TW = AP-HK (both render it `iCloud雲碟`, 49 occurrences each; AP-CN says
   `iCloud云盘`) · `high`. Apple localizes the descriptor, so this is NOT a kept-English brand like the sibling
   `errors.provider.*` names. **Spaced**, against Apple's tight rendering: a brand + Han descriptor is a Latin run like
@@ -296,6 +304,16 @@ reference pile is absent on the agent box, so these were verified against the LI
 - **roll back / rollback** · `復原` · MS · `high`. ❗ Deliberately NOT `還原`, which this catalog spends on _undo_
   (`menu.edit.undo`, `fileOperations.trash.undoAction`, `askCmdr.renameUndo.undo`). Cmdr ships both concepts on the same
   progress dialog, so they must stay two words.
+- **restore (get a deleted file back from somewhere that kept it)** · `回復` · AP-TW Finder
+  (`Some items can't be restored.` → `部分項目無法回復。`; `…replace it with the restored volume…` →
+  `以回復的卷宗來取代`; `a folder for the restored volume's items` → `為回復的卷宗項目選擇一個檔案夾`) · `high`. ❗
+  Deliberately NOT `還原` (spent on _undo_) and NOT `復原` (spent on _rollback_), so Cmdr's three "get it back" concepts
+  stay three words. MS says `還原` and Nautilus and Dolphin say `從垃圾桶還原`; both lose to Apple here, because the
+  collision inside our own catalog is the bigger cost. Live in `fileOperations.delete.cloudNoTrashWarningRest`
+  (`你可以從那裡回復`).
+- **copy (the noun: one more instance of a file)** · `副本` · AP-TW Finder (`keep a resumable copy` →
+  `保留可恢復的副本`) · `high`. The verb stays `複製`, and `製作副本` remains the _duplicate_ COMMAND; a bare `副本` as
+  a thing the cloud service holds reads fine beside both.
 - **background (running out of sight)** · `背景` · MS, AP-TW (`背景` in AppKit) · `high`. ❗ The `*Aria` pair
   constraint: `fileOperations.transferProgress.background` = `背景執行` must stay a verbatim substring of
   `backgroundAria` = `讓它繼續在背景執行` (WCAG 2.5.3). Reword neither alone.

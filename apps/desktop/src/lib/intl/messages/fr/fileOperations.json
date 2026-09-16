@@ -20,6 +20,14 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "Ce dossier est synchronisé avec un service cloud qui n''a pas de corbeille.",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
+  "fileOperations.delete.cloudNoTrashWarningRest": "Ici, la seule option est de supprimer, et le service conserve sa propre copie, que vous pouvez récupérer.",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "sourceHash": "1abc686"
+  },
   "fileOperations.delete.archiveWarningStrong": "Il n''y a pas de corbeille dans une archive.",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"
