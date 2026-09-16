@@ -194,13 +194,17 @@ DiskArbitration-535.0.10, 2026-09-14).
    whole-disk request's per-volume asks are linked by BSD unit and arrive back to back, so the first ask has to let go
    of the group or the second spends its own window waiting. A physical disk's other container is a different request.
    `disk_units.rs` is shared with Cmdr's own eject, which passes a whole PHYSICAL disk's units (its own plus every
-   synthesized container on it) rather than one, and reads `bsd_name_at` to name the node under a mount.
+   synthesized container on it) rather than one, and reads `bsd_name_at` to name the node under a mount. ❗ **An
+   `AskGroup` has TWO answers, ❌ never one list**, the same rule `DiskMounts` and `HolderScan` carry: a mount table
+   that wouldn't answer sets `unit_unreadable`, and step 7 then dissents whatever the volumes it COULD see said. Reading
+   it as an empty unit would let the ask stop only the volume that was clicked and approve an unmount that takes a
+   sibling down under its live FSEvents watcher.
 4. Marks the group unmount-pending at the drive-release gate, so no start lands on it meanwhile.
 5. `drive_release::release(group, deadline)`: the one wait a DA queue may make.
 6. Records every volume it stopped while indexing, and carries an earlier ask's record forward to this epoch and
    generation. A volume Cmdr's own eject is taking down belongs to that flight, so the approver records none of those.
-7. Answers: dissent (`kDAReturnBusy`) if anything is still letting go or a write op is busy on the disk; otherwise
-   approve.
+7. Answers: dissent (`kDAReturnBusy`) if anything is still letting go, a write op is busy on the disk, or the unit read
+   came back unreadable; otherwise approve.
 
 **The shared deadline** (`ask.rs`). DA times each callback from when it QUEUED it (10 s, `DAQueue.c:178-180`), not from
 when the client runs it, and a session runs its callbacks one at a time. So an ask starting while an earlier ask's

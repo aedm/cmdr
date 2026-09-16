@@ -63,6 +63,19 @@ pub(crate) struct AskedDisk {
     pub(crate) path: Option<PathBuf>,
 }
 
+/// The volumes one ask found on its whole disk, and whether it could see all of them.
+///
+/// ❗ Two answers, ❌ never one list, the same rule `DiskMounts` and `HolderScan` carry. The
+/// volumes are what this ask will let go of; `unit_unreadable` says the mount table wouldn't
+/// answer, so the disk may hold volumes that aren't in the list and this ask can't promise it
+/// stopped them. Only a READ unit may be approved.
+struct AskGroup {
+    /// The asked volume, plus every registered volume found on the same whole disk.
+    volumes: Vec<DiskVolume>,
+    /// The mount table wouldn't answer, so `volumes` is what could be seen, not what's there.
+    unit_unreadable: bool,
+}
+
 /// How long the stop after a vanish waits for the index to let go of the drive.
 ///
 /// Nothing waits on the answer, and nothing can be refused: the mount is already gone, so this only
@@ -102,14 +115,15 @@ impl Approver {
     }
 
     /// DiskArbitration asks whether `disk` may unmount. `volumes_on_unit` answers which volumes are
-    /// mounted on the same whole disk, and is called only once a Cmdr volume is on it.
+    /// mounted on the same whole disk (❗ `None` when nobody could read the mount table, ❌ never an
+    /// empty list), and is called only once a Cmdr volume is on it.
     ///
     /// Blocks until the disk's every volume has let go or the chain's deadline passes, which is the
     /// one wait the DA queue may make.
     pub(crate) fn on_unmount_ask(
         &self,
         disk: &AskedDisk,
-        volumes_on_unit: impl FnOnce(u32) -> Vec<MountedVolume>,
+        volumes_on_unit: impl FnOnce(u32) -> Option<Vec<MountedVolume>>,
     ) -> Answer {
         if !self.host.acts_on(&disk.bsd_name) {
             return Answer::Approve;
@@ -120,7 +134,10 @@ impl Approver {
         let Some(volume_id) = self.host.volume_at_active_root(path) else {
             return Answer::Approve;
         };
-        let group = self.group_of(disk, path, volume_id, volumes_on_unit);
+        let AskGroup {
+            volumes: group,
+            unit_unreadable,
+        } = self.group_of(disk, path, volume_id, volumes_on_unit);
         let ids: Vec<String> = group.iter().map(|volume| volume.volume_id.clone()).collect();
         {
             // Every volume the ask can see, recorded while it's still mounted: once its disk is
@@ -167,13 +184,18 @@ impl Approver {
             }
         }
 
-        let answer = match unwaited {
+        let released = match unwaited {
             Some(disk_facts) => ask::without_waiting(disk_facts),
             None => ask::after_release(
                 release.volumes.iter().map(|released| released.outcome),
                 self.is_busy(&ids),
             ),
         };
+        // ❗ An ask that couldn't read its disk refuses, whatever the volumes it COULD see answered:
+        // it can't name the disk's other volumes, so it can't have let go of them, and approving
+        // would unmount a sibling under a live FSEvents watcher. ❌ An unreadable mount table is
+        // never an empty disk — the same collapse this area has shipped three times.
+        let answer = if unit_unreadable { Answer::Dissent } else { released };
         // This ask's OWN runtime: past DiskArbitration's window, the approvals after it on this disk
         // may have been skipped, which is what makes a later disappearance's cause unknowable.
         self.state.lock_ignore_poison().causes.asked(
@@ -259,23 +281,35 @@ impl Approver {
         disk: &AskedDisk,
         path: &Path,
         volume_id: String,
-        volumes_on_unit: impl FnOnce(u32) -> Vec<MountedVolume>,
-    ) -> Vec<DiskVolume> {
-        let mut group = vec![DiskVolume {
+        volumes_on_unit: impl FnOnce(u32) -> Option<Vec<MountedVolume>>,
+    ) -> AskGroup {
+        let mut volumes = vec![DiskVolume {
             volume_id,
             bsd_name: disk.bsd_name.clone(),
             volume_uuid: disk.volume_uuid.clone(),
             whole_unit: disk.whole_unit,
             path: path.to_path_buf(),
         }];
-        for mounted in volumes_on_unit(disk.whole_unit) {
+        let Some(on_unit) = volumes_on_unit(disk.whole_unit) else {
+            log::warn!(
+                target: "unmount_approver",
+                "Nobody could say what else is mounted on {}'s disk, so this ask can only let go of {:?} and must refuse the unmount",
+                disk.bsd_name,
+                path
+            );
+            return AskGroup {
+                volumes,
+                unit_unreadable: true,
+            };
+        };
+        for mounted in on_unit {
             let Some(volume_id) = self.host.volume_at_active_root(&mounted.path) else {
                 continue;
             };
-            if group.iter().any(|volume| volume.volume_id == volume_id) {
+            if volumes.iter().any(|volume| volume.volume_id == volume_id) {
                 continue;
             }
-            group.push(DiskVolume {
+            volumes.push(DiskVolume {
                 volume_id,
                 bsd_name: mounted.bsd_name,
                 volume_uuid: mounted.volume_uuid,
@@ -283,7 +317,10 @@ impl Approver {
                 path: mounted.path,
             });
         }
-        group
+        AskGroup {
+            volumes,
+            unit_unreadable: false,
+        }
     }
 
     /// Let go of the whole group under one deadline. A stop the deadline cut short keeps running and
@@ -452,7 +489,7 @@ mod tests {
 
         let first = fx
             .approver
-            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| group.clone());
+            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| Some(group.clone()));
 
         assert_eq!(first, Answer::Approve);
         assert_eq!(
@@ -464,7 +501,7 @@ mod tests {
 
         let second = fx
             .approver
-            .on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| group.clone());
+            .on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| Some(group.clone()));
 
         assert_eq!(second, Answer::Approve);
         assert_eq!(
@@ -504,8 +541,9 @@ mod tests {
         let a = path("A");
         fx.indexed_volume("vol-a", "disk7s2", &a);
 
-        fx.approver
-            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| vec![mounted("disk7s2", UNIT, &a)]);
+        fx.approver.on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| {
+            Some(vec![mounted("disk7s2", UNIT, &a)])
+        });
         assert!(!fx.index.is_indexing("vol-a"), "the ask let go of the drive");
 
         // The kernel refused the unmount, so DiskArbitration went quiet with the volume still there.
@@ -581,8 +619,9 @@ mod tests {
 
         // The whole sequence of an ordinary eject: the ask lets go of the drive, the path clears,
         // the eject is approved, the disk goes.
-        fx.approver
-            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| vec![mounted("disk7s2", UNIT, &a)]);
+        fx.approver.on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| {
+            Some(vec![mounted("disk7s2", UNIT, &a)])
+        });
         fx.approver.on_volume_path_cleared("disk7s2");
         fx.approver.on_eject_approved(UNIT);
         fx.approver.on_disappeared(UNIT);
@@ -601,17 +640,17 @@ mod tests {
         fx.indexed_volume("vol-a", "disk7s2", &a);
         fx.indexed_volume("vol-b", "disk7s3", &b);
 
-        let first = fx
-            .approver
-            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| vec![mounted("disk7s2", UNIT, &a)]);
+        let first = fx.approver.on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| {
+            Some(vec![mounted("disk7s2", UNIT, &a)])
+        });
         assert_eq!(first, Answer::Approve);
 
         // The queue delivers the next ask late in the chain's window: its own DA timer started
         // inside it, so the budget is spent.
         fx.gate.advance(APPROVAL_STOP_BUDGET + Duration::from_secs(1));
-        let second = fx
-            .approver
-            .on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| vec![mounted("disk7s3", UNIT, &b)]);
+        let second = fx.approver.on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| {
+            Some(vec![mounted("disk7s3", UNIT, &b)])
+        });
 
         assert_eq!(
             second,
@@ -624,9 +663,41 @@ mod tests {
 
         // An ask after the window starts a chain of its own, so it waits for its stop again.
         fx.gate.advance(DA_RESPONSE_WINDOW);
-        let third = fx
-            .approver
-            .on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| vec![mounted("disk7s3", UNIT, &b)]);
+        let third = fx.approver.on_unmount_ask(&asked("disk7s3", UNIT, &b), |_| {
+            Some(vec![mounted("disk7s3", UNIT, &b)])
+        });
         assert_eq!(third, Answer::Approve);
+    }
+
+    #[test]
+    fn an_ask_that_cannot_read_its_disk_dissents_rather_than_calling_the_disk_empty() {
+        let fx = fixture();
+        let (a, b) = (path("A"), path("B"));
+        fx.indexed_volume("vol-a", "disk7s2", &a);
+        fx.indexed_volume("vol-b", "disk7s3", &b);
+
+        // The mount table wouldn't answer, so the ask can't name the sibling, can't have stopped it,
+        // and must not let the unmount take the disk down under its live watcher.
+        let answer = fx.approver.on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| None);
+
+        assert_eq!(
+            answer,
+            Answer::Dissent,
+            "a disk nobody could read is refused, ❌ never approved as an empty one"
+        );
+        assert!(
+            fx.index.is_indexing("vol-b"),
+            "the sibling was never seen, so it was never let go of — which is exactly why the ask dissents"
+        );
+
+        // A read that DID answer and found one volume still approves, so the fix can't be mistaken
+        // for "dissent whenever a disk looks small".
+        let alone = path("Alone");
+        fx.indexed_volume("vol-alone", "disk8s1", &alone);
+        fx.gate.advance(DA_RESPONSE_WINDOW);
+        let answer = fx.approver.on_unmount_ask(&asked("disk8s1", 8, &alone), |_| {
+            Some(vec![mounted("disk8s1", 8, &alone)])
+        });
+        assert_eq!(answer, Answer::Approve);
     }
 }

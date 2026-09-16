@@ -118,6 +118,9 @@ pub(super) enum DiskMounts {
 /// Its own session each call: a `DASession` isn't `Send`, and a flight's future
 /// crosses `await` points. Creating one is a local object allocation, and the lookups
 /// are the same MIG calls the approver's group read makes.
+///
+/// ❗ EITHER half of the read can fail, and both answer `Unreadable`: the DiskArbitration
+/// session, and the kernel mount table the units are matched against.
 pub(super) fn mounted_volumes_on_disk(units: &[u32]) -> DiskMounts {
     // SAFETY: `DASessionCreate` with the default allocator answers under the Create
     // rule, which `CFRetained` balances; NULL means the daemon couldn't be reached.
@@ -125,7 +128,11 @@ pub(super) fn mounted_volumes_on_disk(units: &[u32]) -> DiskMounts {
         log::warn!(target: "eject", "DiskArbitration wouldn't open a session, so what's mounted on the disk is unknown");
         return DiskMounts::Unreadable;
     };
-    DiskMounts::Read(disk_units::mounted_volumes_on(&session, units))
+    let Some(mounted) = disk_units::mounted_volumes_on(&session, units) else {
+        log::warn!(target: "eject", "The kernel mount table wouldn't answer, so what's mounted on the disk is unknown");
+        return DiskMounts::Unreadable;
+    };
+    DiskMounts::Read(mounted)
 }
 
 /// The IOKit media object for the BSD node `bsd_name`, `None` when IOKit doesn't know

@@ -5,8 +5,8 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
 
 ## Module map
 
-`mod.rs` holds the model types and orchestrators and re-exports everything, so `crate::volumes::X` stays stable:
-`ids.rs` (ID derivation), `fs_type.rs` (non-blocking `statfs`) and `nsurl.rs` (blocking NSURL enrichment), `mounts.rs`
+`mod.rs` holds the model types and orchestrators and re-exports everything (`crate::volumes::X` stays stable):
+`ids.rs` (ID derivation), `fs_type.rs` (non-blocking `statfs`), `nsurl.rs` (blocking NSURL enrichment), `mounts.rs`
 (`getfsstat` enumeration), `smb.rs`, `cloud.rs`, `disk_image.rs`, `watcher.rs` (the `NSWorkspace` observer behind
 `volume-mounted` / `volume-unmounted`), `disk_units.rs` (which volumes sit on which whole disk), and
 `unmount_approver/` (the DiskArbitration approval session).
@@ -15,38 +15,37 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
 
 - **❌ Never derive or parse a volume ID yourself; call `ids::volume_id_for`** (or `volume_id_for_mount` given only a
   path). An ID keys the index DB, `lastUsedPaths`, tabs, and routing, so a lossy one sends reads and deletes to the
-  wrong disk. Only its scheme prefix means anything: ❌ never match on the slug or rebuild one from parts.
+  wrong disk. Only the scheme prefix means anything: ❌ never match the slug or rebuild one from parts.
 - **One volume ID publishes ONE location at ONE canonical root**: mounts sharing an ID collapse to the shortest path
-  via `cmdr_fs::volume::canonical_root::collapse_by_volume_id` (shared with `volumes_linux/`: ❌ never re-copy it here),
+  via `cmdr_fs::volume::canonical_root::collapse_by_volume_id` (shared with `volumes_linux/`: ❌ never re-copy it),
   and `list_locations` dedupes on ID, ❌ never on path alone.
 - **The unmount path can't use `volume_id_for_mount`**: nothing identifies a gone mount, so it falls back to the wrong
   id. Use `VolumeManager::remove_root(volume_path)` (`handle_volume_unmounted`).
 - **Check cloud-drive prefixes BEFORE `statfs` in `resolve_path_volume_fast()`**: a cloud drive is a folder on the data
-  volume, so `statfs` answers `/` for it and mis-highlights "Macintosh HD".
+  volume, so `statfs` answers `/` and mis-highlights "Macintosh HD".
 - **Discovery must never block on a hung mount** (a wedged NAS once froze launch): enumerate with
   `getfsstat(MNT_NOWAIT)`, ❌ never NSFileManager; run blocking NSURL / NSWorkspace / DiskArbitration enrichment for
-  LOCAL mounts only; never discover on the main thread.
+  LOCAL mounts only; never on the main thread.
 - **Launch-time icon, LaunchServices, and TCC-protected `read_dir` calls need the FDA gate**
   (`crate::fda_gate::is_fda_pending_runtime()`), or onboarding stacks 5-10 native TCC popups.
 - **Detect SMB with `is_smb_fs_type()`**, ❌ never raw `"smbfs"` / `"cifs"`: one place covers both platforms.
 - **An SMB share is ONE path segment; everything below it is a directory INSIDE the share** (`SmbMountInfo::subpath`,
-  filled by `parse_smb_mount_source`). ❌ Never split a mount source on the first `/`: a DFS sub-mount records
-  `//user@domain/SYSVOL/domain`, and sending that tail to TreeConnect earns `STATUS_BAD_NETWORK_NAME` while the share
-  picks up a second volume ID (ERR-48RZX). Such a mount is the SAME volume as its share. `DETAILS.md` § "A mount can
-  sit inside its share".
+  from `parse_smb_mount_source`), and such a mount is the SAME volume as its share. ❌ Never split a mount source on the
+  first `/` (a DFS sub-mount records `//user@domain/SYSVOL/domain`: wrong share, second volume ID, ERR-48RZX). `DETAILS.md` § "A mount can sit inside its share".
 - **`mount_is_read_only` and `is_disk_image` are set in BOTH `get_attached_volumes` and `resolve_path_volume_fast`**, or
-  they drift. ❌ Read-only is not a disk-image proxy: a writable `.dmg` is read-write.
+  they drift. ❌ Read-only is no disk-image proxy: a writable `.dmg` is read-write.
 - **Only `enrich_from_volume_registry` copies registry state onto a `LocationInfo`** (`capabilities` +
-  `connection_state`); a new field goes there once, in BOTH twins. ❌ Never from a discovery constructor.
-- **A published volume list is assembled by `volume_listing::complete`**, which owns the order (device providers,
+  `connection_state`); a new field goes there once, in BOTH twins. ❌ Never a discovery constructor.
+- **`volume_listing::complete` assembles the published volume list**, owning the order (device providers,
   servers arm, enrichment) and the only `append_device_volumes` call.
 - **Wrap every objc-touching `spawn_blocking` body in `objc2::rc::autoreleasepool`**, or the objects leak. Keep
-  `watcher.rs`'s observer block cheap: it runs on the main thread, so no blocking I/O.
+  `watcher.rs`’s observer block cheap: main thread, so no blocking I/O.
 - **Every DA-mediated unmount waits while Cmdr lets go of the drive** (`unmount_approver/`): each ask stops every
-  indexed volume of the whole BSD unit, or dissents. ❌ On the ask path, no filesystem, no SQLite, no unwind back into
-  DiskArbitration, and no wait but the gate's. ❌ Never install the `WillUnmount` observer beside it (the fallback; two
-  pre-unmount hooks stop one index twice). A mount that ended with NO ask is a vanished drive (`causes.rs`): stopped as
+  indexed volume of the whole BSD unit, or dissents. ❌ On the ask path, no filesystem, no SQLite, no unwind into
+  DiskArbitration, no wait but the gate’s. ❌ Never install the `WillUnmount` observer beside it (the fallback; two hooks stop one index twice). A mount that ended with NO ask is a vanished drive (`causes.rs`): stopped as
   `Vanish`, ❌ never resumed, and `watcher.rs`'s stop stands down. `DETAILS.md` § "The unmount approver".
+- **❗ A mount table that wouldn't answer is its OWN answer, ❌ never an empty one**: `mount_sources` says `None`, an ask
+  `unit_unreadable`, an eject `DiskMounts::Unreadable`. Folding them unmounts a disk past a sibling nobody stopped.
 
 Decisions, edge cases, the servers arm, and the `Retained::cast_unchecked` contract: `DETAILS.md`. Read it before any
 non-trivial work here: editing, planning, reorganizing, or advising.

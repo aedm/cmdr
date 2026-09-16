@@ -57,21 +57,46 @@ fn volumes_on(
         .collect()
 }
 
-/// The BSD node mounted exactly at `path`, `None` when nothing is or when what is isn't
-/// device-backed (a share, a macFUSE mount). What an eject reads before it asks IOKit which physical
-/// disk the volume sits on.
+/// Every mounted volume of `whole_units` from a mount-table read, `facts` asked once per
+/// device-backed mount.
+///
+/// ❗ **`None` in is `None` out**: a table nobody could read is ❌ never an empty disk. Folding the
+/// two is the collapse this subsystem has now shipped three times (a failed listing read as a
+/// deleted row, a timed-out probe read as an absent file, a silent DiskArbitration read as an empty
+/// disk), and here it would let a whole-disk unmount past a sibling's live FSEvents watcher. Pure,
+/// so both arms are pinned without a mount table.
+fn volumes_from_read(
+    mounts: Option<Vec<MountSource>>,
+    whole_units: &[u32],
+    facts: impl FnMut(&str) -> Option<NodeFacts>,
+) -> Option<Vec<MountedVolume>> {
+    Some(volumes_on(&mounts?, whole_units, facts))
+}
+
+/// The BSD node mounted exactly at `path`, `None` when nothing is, when what is isn't device-backed
+/// (a share, a macFUSE mount), or when the mount table wouldn't answer. What an eject reads before
+/// it asks IOKit which physical disk the volume sits on.
+///
+/// The three fold together safely HERE and only here: `disk_target::resolve` answers `NoDisk` for
+/// all of them (its `Gone` arm needs `is_mount_point` to say `Some(false)`), which tears down the
+/// one volume rather than a disk nobody could describe.
 pub(crate) fn bsd_name_at(path: &Path) -> Option<String> {
-    let mounts = mount_sources();
+    let mounts = mount_sources()?;
     let mount = mounts.iter().find(|mount| mount.mount_point == path)?;
     bsd_name_of(&mount.mount_from).map(ToString::to_string)
 }
 
 /// Whether `bsd_name` is still mounted at `path`, from the non-blocking mount table. What a resume
 /// asks before it starts an index again.
+///
+/// A table that wouldn't answer is `false`: a resume deliberately fails CLOSED, since not starting
+/// an index costs a rescan later and starting one on a drive that's leaving is the wedge.
 pub(crate) fn is_volume_mounted_at(bsd_name: &str, path: &Path) -> bool {
-    mount_sources()
-        .iter()
-        .any(|mount| mount.mount_point == path && bsd_name_of(&mount.mount_from) == Some(bsd_name))
+    mount_sources().is_some_and(|mounts| {
+        mounts
+            .iter()
+            .any(|mount| mount.mount_point == path && bsd_name_of(&mount.mount_from) == Some(bsd_name))
+    })
 }
 
 #[cfg(target_os = "macos")]
@@ -86,7 +111,7 @@ mod macos {
         kDADiskDescriptionVolumePathKey, kDADiskDescriptionVolumeUUIDKey,
     };
 
-    use super::{MountedVolume, NodeFacts, mount_sources, volumes_on};
+    use super::{MountedVolume, NodeFacts, mount_sources, volumes_from_read};
 
     /// A disk description, with the keys this module reads typed.
     pub(crate) type Description = CFRetained<CFDictionary<CFString, CFType>>;
@@ -95,8 +120,11 @@ mod macos {
     /// device-backed mount belongs to. One MIG call to `diskarbitrationd` per such mount and ❌ no
     /// filesystem access, so it's safe on the approver's queue; still, it runs only when an ask
     /// needs a group.
-    pub(crate) fn mounted_volumes_on(session: &DASession, whole_units: &[u32]) -> Vec<MountedVolume> {
-        volumes_on(&mount_sources(), whole_units, |bsd_name| node_facts(session, bsd_name))
+    ///
+    /// ❗ `None` when the mount table wouldn't answer, ❌ never an empty disk. Both callers fail
+    /// closed on it: the approver dissents, and the eject reads `DiskMounts::Unreadable`.
+    pub(crate) fn mounted_volumes_on(session: &DASession, whole_units: &[u32]) -> Option<Vec<MountedVolume>> {
+        volumes_from_read(mount_sources(), whole_units, |bsd_name| node_facts(session, bsd_name))
     }
 
     /// What DiskArbitration says about the BSD node `bsd_name`, `None` when it doesn't know it.
@@ -227,6 +255,21 @@ mod tests {
     fn a_node_diskarbitration_doesnt_know_is_left_out() {
         let mounts = [mount("/Volumes/Gone", "/dev/disk7s2")];
         assert!(volumes_on(&mounts, &[7], |_| None).is_empty());
+    }
+
+    #[test]
+    fn a_mount_table_nobody_could_read_is_not_an_empty_disk() {
+        // The regression fence for the collapse this whole area exists to prevent. An unreadable
+        // table must stay unreadable all the way up, so the eject can call it `DiskMounts::Unreadable`
+        // and the approver can dissent; ❌ the moment it becomes `Some([])` both read "nothing is on
+        // this disk" and a sibling gets unmounted under its live watcher.
+        assert_eq!(volumes_from_read(None, &[7], |_| facts(7)), None);
+
+        // A table that DID answer and holds nothing for this disk is a different, legitimate answer.
+        assert_eq!(
+            volumes_from_read(Some(Vec::new()), &[7], |_| facts(7)),
+            Some(Vec::new())
+        );
     }
 
     #[test]

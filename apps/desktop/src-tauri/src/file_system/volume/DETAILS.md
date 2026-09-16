@@ -632,8 +632,10 @@ flight match the tool:
    what's mounted, nothing, and "nobody could say". A silent DiskArbitration read as an empty disk would answer `Ok`
    for an eject that left the drive powered on, and at step 2 it would hide the siblings the pre-stop has to cover and
    then unmount under one's live watcher, so the capture answers `NotResponding { DiskResolve }` on it and the teardown
-   reads it as still mounted. The mount table's own unreadable answer already fails closed the same way
-   (`is_still_mounted`).
+   reads it as still mounted. ❗ **BOTH halves of that read can fail and both answer `Unreadable`**: the
+   DiskArbitration session, and the kernel mount table the units are matched against
+   (`volumes::mounts::mount_sources`, which answers `None`, ❌ never an empty list, for the same reason). The mount
+   table's own unreadable answer fails closed the same way (`is_still_mounted`).
 5. **Hand back what stayed**: a refusal resumes every sibling that was indexing, through the gate with the flight as
    `ResumeOwner` (presence from each sibling's captured root, so the volume that really went stays stopped). ❗ The
    epochs are read AFTER the teardown settles: the flight's own `diskutil eject` triggers an unmount approval per

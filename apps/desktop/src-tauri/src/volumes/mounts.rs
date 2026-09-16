@@ -36,14 +36,21 @@ struct MountEntry {
 ///
 /// `getfsstat(MNT_NOWAIT)` returns cached mount metadata and never round-trips to
 /// a filesystem, so a wedged network mount can't stall it — unlike `MNT_WAIT`,
-/// which is what makes plain `df` hang. Returns an empty list if the syscall fails.
-fn enumerate_mounts() -> Vec<MountEntry> {
+/// which is what makes plain `df` hang.
+///
+/// ❗ **`None` when the syscall wouldn't answer, ❌ never an empty list.** A live
+/// system always lists `/`, so an empty table is a failed read wearing a positive
+/// answer's clothes: every caller above reads "nothing is mounted", and the one that
+/// groups a disk's volumes then lets an unmount take a sibling down under its live
+/// FSEvents watcher. Callers name the third answer (`is_mount_point`,
+/// `has_mount_identity`, `mount_sources`) or fold it deliberately.
+fn enumerate_mounts() -> Option<Vec<MountEntry>> {
     // First pass: ask how many mounts exist (null buffer writes nothing).
     // SAFETY: `getfsstat(NULL, 0, flags)` is the documented count query; with a
     // null buffer and zero size the kernel only returns the mount count.
     let count = unsafe { libc::getfsstat(std::ptr::null_mut(), 0, libc::MNT_NOWAIT) };
     if count <= 0 {
-        return Vec::new();
+        return None;
     }
 
     // A few slots of slack in case a mount appears between the two calls.
@@ -55,21 +62,23 @@ fn enumerate_mounts() -> Vec<MountEntry> {
     // how many it wrote.
     let filled = unsafe { libc::getfsstat(buf.as_mut_ptr(), bufsize, libc::MNT_NOWAIT) };
     if filled <= 0 {
-        return Vec::new();
+        return None;
     }
     // SAFETY: the kernel initialized `filled` records; clamp to our capacity in
     // case the mount table grew past the slack between the two calls.
     unsafe { buf.set_len((filled as usize).min(capacity)) };
 
-    buf.iter()
-        .map(|s| MountEntry {
-            mount_point: cstr_field_to_string(&s.f_mntonname),
-            fs_type: cstr_field_to_string(&s.f_fstypename),
-            mount_from: cstr_field_to_string(&s.f_mntfromname),
-            is_read_only: (s.f_flags & libc::MNT_RDONLY as u32) != 0,
-            fsid: packed_fsid(s),
-        })
-        .collect()
+    Some(
+        buf.iter()
+            .map(|s| MountEntry {
+                mount_point: cstr_field_to_string(&s.f_mntonname),
+                fs_type: cstr_field_to_string(&s.f_fstypename),
+                mount_from: cstr_field_to_string(&s.f_mntfromname),
+                is_read_only: (s.f_flags & libc::MNT_RDONLY as u32) != 0,
+                fsid: packed_fsid(s),
+            })
+            .collect(),
+    )
 }
 
 /// Convert a NUL-terminated `c_char` array from `statfs` into a `String`
@@ -91,10 +100,7 @@ fn packed_fsid(stat: &libc::statfs) -> u64 {
 /// non-blocking `getfsstat` snapshot discovery does, so a hung mount can't stall
 /// it. `None` when the table couldn't be read (a live system always lists `/`).
 pub(crate) fn is_mount_point(path: &str) -> Option<bool> {
-    let mounts = enumerate_mounts();
-    if mounts.is_empty() {
-        return None;
-    }
+    let mounts = enumerate_mounts()?;
     let path = Path::new(path);
     Some(mounts.iter().any(|m| Path::new(&m.mount_point) == path))
 }
@@ -105,7 +111,7 @@ pub(crate) fn is_mount_point(path: &str) -> Option<bool> {
 /// reaches.
 pub(crate) fn mount_identity_at(path: &str) -> Option<u64> {
     let path = Path::new(path);
-    enumerate_mounts()
+    enumerate_mounts()?
         .into_iter()
         .rev()
         .find(|m| Path::new(&m.mount_point) == path)
@@ -122,25 +128,27 @@ pub(crate) struct MountSource {
 }
 
 /// Every mount's point and source, from the same non-blocking `getfsstat` snapshot discovery reads.
-/// Empty when the table couldn't be read.
-pub(crate) fn mount_sources() -> Vec<MountSource> {
-    enumerate_mounts()
-        .into_iter()
-        .map(|mount| MountSource {
-            mount_point: std::path::PathBuf::from(mount.mount_point),
-            mount_from: mount.mount_from,
-        })
-        .collect()
+///
+/// ❗ `None` when the table couldn't be read, ❌ never an empty list: this is what maps mounts to the
+/// disks under them, so an empty answer reads as "nothing is on this disk" and lets a whole-disk
+/// unmount past a sibling nobody stopped.
+pub(crate) fn mount_sources() -> Option<Vec<MountSource>> {
+    Some(
+        enumerate_mounts()?
+            .into_iter()
+            .map(|mount| MountSource {
+                mount_point: std::path::PathBuf::from(mount.mount_point),
+                mount_from: mount.mount_from,
+            })
+            .collect(),
+    )
 }
 
 /// Whether any filesystem in the kernel mount table has identity `fsid`: `None` when
 /// the table couldn't be read. The index asks this, ❌ never [`is_mount_point`], to
 /// tell a drive that's gone from one a rename moved.
 pub(crate) fn has_mount_identity(fsid: u64) -> Option<bool> {
-    let mounts = enumerate_mounts();
-    if mounts.is_empty() {
-        return None;
-    }
+    let mounts = enumerate_mounts()?;
     Some(mounts.iter().any(|m| m.fsid == fsid))
 }
 
@@ -278,7 +286,10 @@ pub fn get_attached_volumes() -> Vec<LocationInfo> {
     // Drain autoreleased ObjC objects from the per-local-mount NSURL enrichment.
     // Called from spawn_blocking / helper threads that lack AppKit's pool.
     autoreleasepool(|_| {
+        // A table nobody could read means no rows this pass. The switcher keeps what it has and the
+        // next discovery asks again; ❌ nothing downstream may read this list as "the disk is empty".
         let discovered: Vec<LocationInfo> = enumerate_mounts()
+            .unwrap_or_default()
             .iter()
             .filter_map(|mount| {
                 build_attached_location(mount, |path| {
@@ -452,7 +463,7 @@ mod tests {
     fn enumerate_mounts_finds_the_boot_volume() {
         // getfsstat should always return at least the root mount on a live system,
         // and it must never block (this test would hang if it did).
-        let mounts = enumerate_mounts();
+        let mounts = enumerate_mounts().expect("getfsstat answers on a live system");
         assert!(!mounts.is_empty(), "getfsstat returned no mounts");
         assert!(mounts.iter().any(|m| m.mount_point == "/"), "root mount missing");
     }
