@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use super::disk_target::{self, DiskTarget};
 use super::in_flight::{self, DiskFlight, DiskOwnership};
-use super::unmount_tool::{DiskTeardown, UnmountVerb};
+use super::unmount_tool::{AbandonedRun, UnmountVerb};
 use super::{EjectError, EjectStep, IndexStopped, Teardown, deadlines, run_teardown, stop_indexes_blocking};
 use crate::file_system::volume::drive_release::{
     self, DriveRelease, LateRelease, Release, ResumeCandidate, ResumeOwner, VolumeRelease,
@@ -28,11 +28,11 @@ use crate::volumes::disk_units::MountedVolume;
 
 /// A registered volume of the disk being ejected.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Sibling {
-    volume_id: String,
+pub(super) struct Sibling {
+    pub(super) volume_id: String,
     /// Where it was mounted when the flight captured it. ❗ Captured, because once the
     /// disk is down nothing can look up where its volumes were.
-    path: PathBuf,
+    pub(super) path: PathBuf,
 }
 
 /// Ejects the physical disk under `volume_id`, which is mounted at `mount_path`.
@@ -168,7 +168,7 @@ fn mounted_now(target: &DiskTarget) -> Vec<MountedVolume> {
 /// Every mount the teardown has to see gone: the disk's mounted volumes, plus every
 /// sibling's captured root (a volume whose mount left the table between the capture
 /// and here is already gone, and one the fresh read missed still counts).
-fn captured_paths(mounted: &[MountedVolume], siblings: &[Sibling]) -> Vec<PathBuf> {
+pub(super) fn captured_paths(mounted: &[MountedVolume], siblings: &[Sibling]) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = siblings.iter().map(|sibling| sibling.path.clone()).collect();
     for volume in mounted {
         if !paths.contains(&volume.path) {
@@ -182,7 +182,7 @@ fn captured_paths(mounted: &[MountedVolume], siblings: &[Sibling]) -> Vec<PathBu
 ///
 /// ❗ By ACTIVE root: a volume reachable through a spare mount keeps working when that
 /// mount goes, so a mount that isn't its current root names nobody.
-fn capture(
+pub(super) fn capture(
     volume_id: &str,
     mount_path: &Path,
     mounted: &[MountedVolume],
@@ -207,6 +207,76 @@ fn capture(
     siblings
 }
 
+/// A whole physical disk's teardown: where its volumes were mounted when the flight
+/// captured them, and how to ask whether anything at all is still mounted on it.
+///
+/// ❗ A disk's `diskutil eject` can unmount some volumes and stop at one that's held
+/// (verified on macOS 27.0, `diskutil unmountDisk` of a two-partition image with one
+/// partition held, 2026-09-16), so "this volume's root is gone" would read that
+/// partial unmount as done and leave the disk powered on.
+pub(super) struct DiskTeardown {
+    /// Every mounted volume of the disk when the flight captured it, its own first.
+    captured: Vec<PathBuf>,
+    /// Whether any volume the capture didn't name is still mounted on the disk.
+    fresh_look: Box<dyn Fn() -> bool + Send + Sync>,
+    abandoned: AbandonedRun,
+}
+
+impl DiskTeardown {
+    pub(super) fn new(captured: Vec<PathBuf>, fresh_look: impl Fn() -> bool + Send + Sync + 'static) -> Self {
+        Self {
+            captured,
+            fresh_look: Box::new(fresh_look),
+            abandoned: AbandonedRun::default(),
+        }
+    }
+
+    /// Which path this attempt runs the tool against.
+    pub(super) fn aim(&self, fallback: &str) -> String {
+        aim_at(&self.captured, fallback, listed)
+    }
+
+    /// Where a run this teardown's timeout gave up on lands.
+    pub(super) fn abandoned(&self) -> &AbandonedRun {
+        &self.abandoned
+    }
+
+    /// Whether anything of the disk is still mounted.
+    pub(super) fn is_still_mounted(&self) -> bool {
+        disk_is_still_mounted(&self.captured, listed, &self.fresh_look)
+    }
+}
+
+/// Whether `path` is still in the OS mount table.
+fn listed(path: &Path) -> bool {
+    super::is_still_mounted(&path.to_string_lossy())
+}
+
+/// Which of a disk's captured mounts the next attempt aims at: the first still listed,
+/// or `fallback` when none is.
+///
+/// ❗ A retry aimed at the volume the person clicked reads a PARTIAL unmount as done,
+/// since that one really did go. Aiming at a mount that's still there is what makes the
+/// retry mean anything; with none left, `fallback` lets `diskutil` answer "no such
+/// disk", which `unmount_tool::settle` counts as done once the table agrees.
+fn aim_at(captured: &[PathBuf], fallback: &str, listed: impl Fn(&Path) -> bool) -> String {
+    captured
+        .iter()
+        .find(|path| listed(path))
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+/// Whether anything of a disk is still mounted: any captured mount still listed, or a
+/// fresh look finding one the capture didn't name.
+///
+/// ❗ Fail closed. A volume mounted after the capture, or one that was never registered,
+/// keeps the disk alive just as much, and reading the disk as gone would answer `Ok` for
+/// an eject that left it powered on.
+fn disk_is_still_mounted(captured: &[PathBuf], listed: impl Fn(&Path) -> bool, fresh_look: impl Fn() -> bool) -> bool {
+    captured.iter().any(|path| listed(path)) || fresh_look()
+}
+
 /// The first volume of the disk a write op is busy on.
 ///
 /// ❗ Every volume, not just the one clicked: the teardown takes the whole disk down,
@@ -218,7 +288,7 @@ fn busy_sibling<'a>(ids: &'a [String], busy: &[String]) -> Option<&'a str> {
 /// Every volume the release stopped that was indexing before it: what a flight owes
 /// back when the disk stays. ❌ Nothing else: a volume with no index had nothing taken
 /// from it, and one still releasing is handed back by its own continuation.
-fn owed_ids(release: &Release) -> Vec<String> {
+pub(super) fn owed_ids(release: &Release) -> Vec<String> {
     release
         .volumes
         .iter()
@@ -229,7 +299,7 @@ fn owed_ids(release: &Release) -> Vec<String> {
 
 /// The epoch the release itself set for `volume_id`, for a hand-back with no unmount
 /// in between.
-fn epoch_of(release: &Release, volume_id: &str) -> u64 {
+pub(super) fn epoch_of(release: &Release, volume_id: &str) -> u64 {
     release
         .volumes
         .iter()
@@ -238,7 +308,12 @@ fn epoch_of(release: &Release, volume_id: &str) -> u64 {
 }
 
 /// Hand `owed` back to the gate at `epoch`.
-fn hand_back(gate: &DriveRelease, owner: &Arc<FlightResume>, owed: Vec<String>, epoch: impl Fn(&str) -> u64) {
+pub(super) fn hand_back(
+    gate: &DriveRelease,
+    owner: &Arc<FlightResume>,
+    owed: Vec<String>,
+    epoch: impl Fn(&str) -> u64,
+) {
     if owed.is_empty() {
         return;
     }
@@ -291,10 +366,10 @@ fn resume_when_the_tool_ends(
 
 /// The flight as a resume owner: what it stopped it hands back, for as long as no
 /// other eject has taken the volume over.
-struct FlightResume {
-    flight_id: u64,
+pub(super) struct FlightResume {
+    pub(super) flight_id: u64,
     /// Each sibling's captured mount root, which is where presence is read.
-    paths: HashMap<String, PathBuf>,
+    pub(super) paths: HashMap<String, PathBuf>,
 }
 
 impl ResumeOwner for FlightResume {
@@ -386,6 +461,51 @@ mod tests {
         let disk = [mounted("/Volumes/A", 7), mounted("/Volumes/A-1", 7)];
         let siblings = capture("vol-a", Path::new("/Volumes/A"), &disk, |_| Some("vol-a".to_string()));
         assert_eq!(siblings.len(), 1, "got {siblings:?}");
+    }
+
+    // ── What the teardown aims at, and what counts as done ───────────
+
+    fn captured() -> Vec<PathBuf> {
+        [PathBuf::from("/Volumes/A"), PathBuf::from("/Volumes/B")].to_vec()
+    }
+
+    #[test]
+    fn a_disk_whose_captured_mounts_are_all_gone_is_done_only_if_nothing_else_is_mounted_on_it() {
+        // `diskutil eject` of a two-partition disk unmounts what it can and exits
+        // nonzero on the held one. Asking only about the volume the person clicked
+        // would call that done and leave the disk powered on.
+        assert!(
+            disk_is_still_mounted(&captured(), |path| path == Path::new("/Volumes/B"), || false),
+            "a sibling that stayed mounted means the disk is still up"
+        );
+        assert!(
+            disk_is_still_mounted(&captured(), |_| false, || true),
+            "and so does a volume the capture never named"
+        );
+        assert!(
+            !disk_is_still_mounted(&captured(), |_| false, || false),
+            "every captured mount gone and nothing else on the disk is the only 'done'"
+        );
+    }
+
+    #[test]
+    fn a_retry_aims_at_a_mount_thats_still_there_not_at_the_one_that_already_went() {
+        // Aimed at `/Volumes/A` after a partial unmount, `diskutil` answers "no such
+        // disk" and the retry proves nothing.
+        assert_eq!(
+            aim_at(&captured(), "/Volumes/A", |path| path == Path::new("/Volumes/B")),
+            "/Volumes/B"
+        );
+        assert_eq!(
+            aim_at(&captured(), "/Volumes/A", |_| true),
+            "/Volumes/A",
+            "with everything still mounted it aims at the disk's own volume, which is captured first"
+        );
+        assert_eq!(
+            aim_at(&captured(), "/Volumes/A", |_| false),
+            "/Volumes/A",
+            "with nothing left it falls back, and `settle` reads the tool's refusal as already gone"
+        );
     }
 
     #[test]

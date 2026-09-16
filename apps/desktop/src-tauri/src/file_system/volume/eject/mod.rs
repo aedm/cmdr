@@ -397,7 +397,7 @@ enum Teardown<'a> {
         verb: UnmountVerb,
         mount_path: &'a str,
         #[cfg(target_os = "macos")]
-        disk: Option<&'a unmount_tool::DiskTeardown>,
+        disk: Option<&'a disk_flight::DiskTeardown>,
     },
 }
 

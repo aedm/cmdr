@@ -11,12 +11,17 @@
 //! which proves the mount point is this image's before it runs and SIGKILLs a stuck
 //! tool.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, FileHolder, HarnessError, ImageSpec};
 
-use super::EjectError;
+use super::disk_flight::DiskTeardown;
+use super::disk_flight::{FlightResume, Sibling, capture, captured_paths, hand_back, owed_ids};
+use super::disk_target::{self, Resolution};
 use super::unmount_tool::{self, Target, ToolOutcome, UnmountVerb};
+use super::{EjectError, INDEX_STOP_DEADLINE};
+use crate::file_system::volume::drive_release::{DriveRelease, IndexDoor};
 
 /// A `run_tool` for `settle_with_retries`: `diskutil eject <mount_point>` through the
 /// harness. A target the harness can't prove is this image's never runs; that reads
@@ -94,14 +99,76 @@ async fn a_held_file_answers_unmount_refused_and_the_volume_stays_mounted() {
     drop(holder);
 }
 
-/// Ejects volume A of a two-volume `spec` while a file on its sibling B is held open,
-/// and pins what today answers.
+// ── The whole physical disk (M12) ─────────────────────────────────
+
+/// The physical disk under `mount_point`, as `eject_now` resolves it.
+fn disk_under(mount_point: &Path) -> disk_target::DiskTarget {
+    match disk_target::resolve(&mount_point.to_string_lossy()) {
+        Resolution::Disk(target) => target,
+        other => panic!("an attached image's volume sits on a physical disk, got {other:?}"),
+    }
+}
+
+fn sibling(volume_id: &str, path: &Path) -> Sibling {
+    Sibling {
+        volume_id: volume_id.to_string(),
+        path: path.to_path_buf(),
+    }
+}
+
+/// The teardown the flight hands `run_teardown` for `target`: every mount of the disk
+/// captured, plus a fresh read for the ones it never named.
+fn disk_teardown(target: &disk_target::DiskTarget, siblings: &[Sibling]) -> DiskTeardown {
+    let mounted = disk_target::mounted_volumes_on_disk(&target.units);
+    let units = target.units.clone();
+    DiskTeardown::new(captured_paths(&mounted, siblings), move || {
+        !disk_target::mounted_volumes_on_disk(&units).is_empty()
+    })
+}
+
+/// One `diskutil eject` at `aimed_at` through the harness runner.
+fn guarded_eject_at(image: &DiskImage, aimed_at: PathBuf) -> ToolOutcome {
+    match image.eject(&aimed_at) {
+        Ok(_) => ToolOutcome::Succeeded,
+        Err(HarnessError::Failed { code, stderr, .. }) => ToolOutcome::Exited { code, stderr },
+        Err(HarnessError::TimedOut { .. }) => ToolOutcome::TimedOut,
+        Err(other) => ToolOutcome::CouldNotStart {
+            detail: other.to_string(),
+        },
+    }
+}
+
+/// Tears the whole disk down the way the flight does, with the guarded tool: each
+/// attempt aimed at a mount of the disk that's still listed, and success needing every
+/// captured mount gone AND a fresh read finding nothing else on it.
+async fn eject_the_disk_through_the_production_retries(
+    image: &DiskImage,
+    mount_point: &Path,
+    teardown: &DiskTeardown,
+) -> Result<(), EjectError> {
+    let mount_path = mount_point.to_string_lossy().to_string();
+    unmount_tool::settle_with_retries(
+        Target {
+            volume_id: "real-image-disk-pin",
+            verb: UnmountVerb::Eject,
+            mount_path: &mount_path,
+        },
+        || {
+            let aimed_at = teardown.aim(&mount_path);
+            async move { guarded_eject_at(image, PathBuf::from(aimed_at)) }
+        },
+        || teardown.is_still_mounted(),
+    )
+    .await
+}
+
+/// Ejects volume A of a two-volume `spec` while a file on its sibling B is held open.
 ///
-/// ❗ **Today's gap, which M12 flips.** `diskutil eject` unmounts A, then can't take
-/// down the rest of the disk while B is held. `settle` asks only whether A is still
-/// listed, so the eject reads as done while B stays mounted and the image stays
-/// attached.
-async fn ejecting_a_while_b_is_held_answers_ok_and_leaves_b_mounted(spec: ImageSpec) {
+/// ❗ **This is M12's flip.** `diskutil eject` unmounts A, then can't take the rest of
+/// the disk down while B is held. Asking only about A read that partial unmount as a
+/// clean eject, leaving the drive powered on with B still mounted; now every mount of
+/// the disk has to be gone, so it's an honest refusal.
+async fn ejecting_a_while_b_is_held_is_refused_and_leaves_the_disk_up(spec: ImageSpec) {
     let session = DiskImageSession::acquire();
     let image = DiskImage::attach(&session, spec).expect("attach the image");
     let (a, b) = (
@@ -111,26 +178,232 @@ async fn ejecting_a_while_b_is_held_answers_ok_and_leaves_b_mounted(spec: ImageS
     let held = b.join("held.txt");
     std::fs::write(&held, b"held").expect("write the held file");
     let holder = FileHolder::hold(&held).expect("hold the file open");
+    let siblings = [sibling("vol-a", &a), sibling("vol-b", &b)];
+    let teardown = disk_teardown(&disk_under(&a), &siblings);
 
-    let result = eject_through_the_production_retries(&image, &a).await;
+    let result = eject_the_disk_through_the_production_retries(&image, &a, &teardown).await;
 
-    assert!(result.is_ok(), "got {result:?}");
-    assert!(!is_mounted(&a), "A was unmounted");
+    assert!(
+        matches!(result, Err(EjectError::UnmountRefused { .. })),
+        "a disk whose sibling is held is refused, not read as half-ejected, got {result:?}"
+    );
     assert!(is_mounted(&b), "B, held, is still mounted");
     assert!(image.is_attached().expect("hdiutil info"), "the disk is still attached");
     drop(holder);
 }
 
-/// Today's sibling gap on two APFS volumes in one container.
+/// M12's flip on two APFS volumes in one container.
 #[tokio::test]
 #[ignore = "attaches a real APFS disk image via hdiutil; run with --run-ignored"]
-async fn ejecting_one_apfs_volume_while_its_sibling_is_held_answers_ok_and_leaves_the_sibling_mounted_today() {
-    ejecting_a_while_b_is_held_answers_ok_and_leaves_b_mounted(ImageSpec::ApfsTwoVolumes).await;
+async fn ejecting_one_apfs_volume_while_its_sibling_is_held_is_refused_and_leaves_the_disk_attached() {
+    ejecting_a_while_b_is_held_is_refused_and_leaves_the_disk_up(ImageSpec::ApfsTwoVolumes).await;
 }
 
-/// Today's sibling gap on two HFS+ partitions of one GPT disk.
+/// M12's flip on two HFS+ partitions of one GPT disk.
 #[tokio::test]
 #[ignore = "attaches a real HFS+ disk image via hdiutil; run with --run-ignored"]
-async fn ejecting_one_hfs_partition_while_its_sibling_is_held_answers_ok_and_leaves_the_sibling_mounted_today() {
-    ejecting_a_while_b_is_held_answers_ok_and_leaves_b_mounted(ImageSpec::HfsTwoPartitions).await;
+async fn ejecting_one_hfs_partition_while_its_sibling_is_held_is_refused_and_leaves_the_disk_attached() {
+    ejecting_a_while_b_is_held_is_refused_and_leaves_the_disk_up(ImageSpec::HfsTwoPartitions).await;
+}
+
+/// Both volumes of an APFS container key ONE physical disk, and the flight sees both.
+///
+/// The container is a synthesized whole disk of its own, so keying by DiskArbitration's
+/// whole disk alone would stop at the container and miss the hardware carrying it.
+#[tokio::test]
+#[ignore = "attaches a real APFS disk image via hdiutil; run with --run-ignored"]
+async fn two_volumes_of_one_container_key_the_same_physical_disk_and_name_each_other() {
+    let session = DiskImageSession::acquire();
+    let image = DiskImage::attach(&session, ImageSpec::ApfsTwoVolumes).expect("attach the image");
+    let (a, b) = (
+        image.volumes()[0].mount_point.clone(),
+        image.volumes()[1].mount_point.clone(),
+    );
+
+    let (from_a, from_b) = (disk_under(&a), disk_under(&b));
+
+    assert_eq!(from_a.key, from_b.key, "one disk, one flight");
+    assert!(
+        from_a.units.len() >= 2,
+        "the physical disk and its synthesized container are both units, got {:?}",
+        from_a.units
+    );
+    let mounted = disk_target::mounted_volumes_on_disk(&from_a.units);
+    let paths: Vec<PathBuf> = mounted.iter().map(|volume| volume.path.clone()).collect();
+    assert!(paths.contains(&a) && paths.contains(&b), "got {paths:?}");
+
+    // And the capture turns those mounts into the volumes the flight stops, whichever
+    // one the person clicked.
+    let registered = |path: &Path| {
+        if path == a {
+            Some("vol-a".to_string())
+        } else if path == b {
+            Some("vol-b".to_string())
+        } else {
+            None
+        }
+    };
+    let siblings = capture("vol-b", &b, &mounted, registered);
+    assert_eq!(
+        siblings.iter().map(|s| s.volume_id.as_str()).collect::<Vec<_>>(),
+        ["vol-b", "vol-a"],
+        "the clicked volume leads and its sibling comes with it"
+    );
+}
+
+/// An idle two-volume disk goes down whole, and only then does the eject answer `Ok`.
+#[tokio::test]
+#[ignore = "attaches a real APFS disk image via hdiutil; run with --run-ignored"]
+async fn an_idle_two_volume_disk_ejects_whole_and_its_image_detaches() {
+    let session = DiskImageSession::acquire();
+    let image = DiskImage::attach(&session, ImageSpec::ApfsTwoVolumes).expect("attach the image");
+    let (a, b) = (
+        image.volumes()[0].mount_point.clone(),
+        image.volumes()[1].mount_point.clone(),
+    );
+    let siblings = [sibling("vol-a", &a), sibling("vol-b", &b)];
+    let teardown = disk_teardown(&disk_under(&a), &siblings);
+
+    let result = eject_the_disk_through_the_production_retries(&image, &a, &teardown).await;
+
+    assert!(result.is_ok(), "got {result:?}");
+    assert!(!is_mounted(&a) && !is_mounted(&b), "both volumes left the mount table");
+    assert!(
+        !image.is_attached().expect("hdiutil info"),
+        "the whole image detached, not just the volume that was clicked"
+    );
+}
+
+/// A refused disk eject hands back the index of the sibling that's STILL mounted, and
+/// leaves the one that really went alone.
+///
+/// The partial unmount is the point: A is gone, so starting its index again would walk a
+/// drive that isn't there; B stayed, so it's owed the index the pre-stop took.
+#[tokio::test]
+#[ignore = "attaches a real APFS disk image via hdiutil; run with --run-ignored"]
+async fn a_refused_disk_eject_hands_back_only_the_sibling_that_stayed_mounted() {
+    let session = DiskImageSession::acquire();
+    let image = DiskImage::attach(&session, ImageSpec::ApfsTwoVolumes).expect("attach the image");
+    let (a, b) = (
+        image.volumes()[0].mount_point.clone(),
+        image.volumes()[1].mount_point.clone(),
+    );
+    let held = b.join("held.txt");
+    std::fs::write(&held, b"held").expect("write the held file");
+    let holder = FileHolder::hold(&held).expect("hold the file open");
+
+    let index = Arc::new(test_index::FakeIndex::default());
+    index.indexes("vol-a");
+    index.indexes("vol-b");
+    let gate = DriveRelease::with_door(Arc::clone(&index) as Arc<dyn IndexDoor>);
+    let siblings = [sibling("vol-a", &a), sibling("vol-b", &b)];
+    let owner = Arc::new(FlightResume {
+        flight_id: u64::MAX,
+        paths: siblings
+            .iter()
+            .map(|sibling| (sibling.volume_id.clone(), sibling.path.clone()))
+            .collect(),
+    });
+
+    // The pre-stop, then the teardown the held sibling refuses.
+    let ids: Vec<String> = siblings.iter().map(|sibling| sibling.volume_id.clone()).collect();
+    let release = gate.release(
+        &ids,
+        std::time::Instant::now() + INDEX_STOP_DEADLINE,
+        index.stop(),
+        |_| {},
+    );
+    let teardown = disk_teardown(&disk_under(&a), &siblings);
+    let result = eject_the_disk_through_the_production_retries(&image, &a, &teardown).await;
+    assert!(
+        matches!(result, Err(EjectError::UnmountRefused { .. })),
+        "got {result:?}"
+    );
+    assert!(!is_mounted(&a), "A really went, so it's owed nothing back");
+
+    hand_back(&gate, &owner, owed_ids(&release), |id| gate.epoch(id));
+    index.wait_for_a_resume_to_settle();
+
+    assert_eq!(
+        index.started(),
+        ["vol-b"],
+        "only the volume still in the mount table gets its index back"
+    );
+    drop(holder);
+}
+
+/// The index the resume pin drives: nothing here touches a real one.
+mod test_index {
+    use super::*;
+    use crate::file_system::volume::drive_release::{IndexDoor, RESUME_SETTLE, Ticket};
+    use crate::ignore_poison::IgnorePoison;
+    use cmdr_index::{IndexVolumeKind, RemovableStop};
+    use std::collections::HashSet;
+    use std::sync::Mutex;
+
+    #[derive(Default)]
+    pub(super) struct FakeIndex {
+        indexing: Mutex<HashSet<String>>,
+        intent: Mutex<HashSet<String>>,
+        started: Mutex<Vec<String>>,
+    }
+
+    impl FakeIndex {
+        pub(super) fn indexes(&self, volume_id: &str) {
+            self.indexing.lock_ignore_poison().insert(volume_id.to_string());
+            self.intent.lock_ignore_poison().insert(volume_id.to_string());
+        }
+
+        pub(super) fn started(&self) -> Vec<String> {
+            let mut started = self.started.lock_ignore_poison().clone();
+            started.sort();
+            started
+        }
+
+        /// The stop a release runs: it lets go of whatever this index has.
+        pub(super) fn stop(self: &Arc<Self>) -> impl Fn(&str) -> RemovableStop + Send + Sync + 'static {
+            let index = Arc::clone(self);
+            move |volume_id: &str| {
+                if index.indexing.lock_ignore_poison().remove(volume_id) {
+                    RemovableStop::Released
+                } else {
+                    RemovableStop::NothingToStop
+                }
+            }
+        }
+
+        /// A resume batch settles after `RESUME_SETTLE` on a thread of its own, and this
+        /// gate runs on the real clock.
+        pub(super) fn wait_for_a_resume_to_settle(&self) {
+            crate::test_support::wait_until(RESUME_SETTLE * 4, "the resume batch to settle", || {
+                !self.started.lock_ignore_poison().is_empty()
+            });
+        }
+    }
+
+    impl IndexDoor for FakeIndex {
+        fn volume_kind(&self, volume_id: &str) -> Option<IndexVolumeKind> {
+            self.indexing
+                .lock_ignore_poison()
+                .contains(volume_id)
+                .then_some(IndexVolumeKind::LocalExternal)
+        }
+
+        fn drives_to_resume(&self) -> Vec<String> {
+            self.intent.lock_ignore_poison().iter().cloned().collect()
+        }
+
+        fn start_resumed(&self, volume_id: String, ticket: Ticket) {
+            self.started.lock_ignore_poison().push(volume_id);
+            drop(ticket);
+        }
+
+        fn is_ejecting(&self, _volume_id: &str) -> bool {
+            false
+        }
+
+        fn is_listed(&self, _volume_id: &str) -> bool {
+            true
+        }
+    }
 }

@@ -41,6 +41,8 @@ pub(crate) use release::VolumeRelease;
     )
 )]
 pub(crate) use release::{LateRelease, Release};
+#[cfg(test)]
+pub(crate) use resume::RESUME_SETTLE;
 #[cfg_attr(
     all(not(test), not(target_os = "macos")),
     expect(unused_imports, reason = "only the macOS unmount approver resumes through the gate")
