@@ -30,14 +30,21 @@ pub fn frontend_shortcut_to_menu_text(shortcut: &str) -> Option<String> {
 }
 
 /// Convert frontend shortcut format (⌘2) to a Tauri accelerator the menu BAR may
-/// register (Cmd+2). Returns None if the shortcut is empty, or carries no ⌘ / ⌃ / ⌥.
+/// register (Cmd+2). Returns None if the shortcut is empty, carries no ⌘ / ⌃ / ⌥, or names a
+/// key muda has no `Code` for.
 ///
 /// ❗ The modifier floor is what keeps a bare key out of the menu bar. AppKit fires a
 /// registered accelerator app-wide, ahead of the webview, so a menu item bound to `*`
 /// or `+` would eat that character in every text field in the app. Shift alone doesn't
-/// clear the floor either: `⇧8` IS `*`. A combo refused here isn't lost — it becomes a
-/// display-only accelerator (`menu_spec::ItemSpec::display_accelerator`), drawn beside
-/// the item while the file pane's keydown handler does the work.
+/// clear the floor either: `⇧8` IS `*`.
+///
+/// ❗ The second refusal is [`is_codeable_key`], and it exists because the failure is SILENT:
+/// Tauri discards a parse error and builds the item with no accelerator at all, so a string muda
+/// can't read is indistinguishable from no shortcut until someone opens the menu and looks.
+///
+/// A combo refused for either reason isn't lost — it becomes a display-only accelerator
+/// (`menu_spec::ItemSpec::display_accelerator`), drawn beside the item while the file pane's
+/// keydown handler does the work.
 pub fn frontend_shortcut_to_accelerator(shortcut: &str) -> Option<String> {
     match convert(shortcut)? {
         (accelerator, true) => Some(accelerator),
@@ -45,8 +52,33 @@ pub fn frontend_shortcut_to_accelerator(shortcut: &str) -> Option<String> {
     }
 }
 
-/// The converted accelerator, plus whether it carries a modifier the menu bar may
-/// register it with (⌘, ⌃, or ⌥).
+/// The punctuation muda names a physical key for, verbatim from `parse_code`
+/// (`muda-0.19.3/src/accelerator.rs:151`). ASCII letters and digits are the rest of it.
+const CODEABLE_PUNCTUATION: &str = "`\\[],=-./';";
+
+/// Whether muda can turn this key into a `Code`, which decides whether an accelerator naming
+/// it can be REGISTERED at all.
+///
+/// ❗ The SHIFTED characters are the gap: `+`, `*`, `(`, `_` and friends have no `Code` of their
+/// own, only the unshifted key they sit on. So `⌘+` can't be a real accelerator however it's
+/// spelled — Tauri would discard the parse error and build the item with no key, silently. It
+/// routes to the display path instead, exactly like a bare key, which is honest: the glyph shows
+/// and the frontend's keydown dispatch runs the command.
+///
+/// ❌ Don't "fix" this by emitting `Cmd+Shift+Equal` for `⌘+`: that's a guess about the user's
+/// layout, and the physical key that types `+` moves between them.
+fn is_codeable_key(key: &str) -> bool {
+    let mut chars = key.chars();
+    let (Some(only), None) = (chars.next(), chars.next()) else {
+        // A word form that reached here fell through every named-key arm above, so muda has no
+        // name for it either.
+        return false;
+    };
+    only.is_ascii_alphanumeric() || CODEABLE_PUNCTUATION.contains(only)
+}
+
+/// The converted accelerator, plus whether the menu bar may register it: it needs a command
+/// modifier (⌘, ⌃, or ⌥) AND a key muda can name.
 fn convert(shortcut: &str) -> Option<(String, bool)> {
     if shortcut.is_empty() {
         return None;
@@ -147,6 +179,9 @@ fn convert(shortcut: &str) -> Option<(String, bool)> {
                     result.push_str("End");
                 } else {
                     // Single character or unknown - use as-is (uppercase for letters)
+                    if !is_codeable_key(&remaining) {
+                        registerable = false;
+                    }
                     result.push_str(&remaining.to_uppercase());
                 }
                 break;
@@ -273,13 +308,39 @@ mod tests {
     /// Any one of the three clears it, and the two paths then agree.
     #[test]
     fn one_command_modifier_is_enough_to_register() {
-        for combo in ["⌘K", "⌃Enter", "⌥+", "⌥⇧=", "⇧⌘A"] {
+        for combo in ["⌘K", "⌃Enter", "⌥⇧=", "⇧⌘A"] {
             assert_eq!(
                 frontend_shortcut_to_accelerator(combo),
                 frontend_shortcut_to_menu_text(combo),
                 "`{combo}` carries a command modifier, so both paths spell it the same way"
             );
             assert!(frontend_shortcut_to_accelerator(combo).is_some(), "`{combo}`");
+        }
+    }
+
+    /// The SECOND refusal: a command modifier isn't enough if the key itself has no muda `Code`.
+    ///
+    /// Every shifted character is in this hole — muda names the physical key, and `+` doesn't have
+    /// one. `view.zoom.in` ships `⌘+`, so this is a combo the app really produces. Registering it
+    /// is impossible however it's spelled, and the silent failure (Tauri discards the parse error)
+    /// is why refusing beats emitting something that looks fine and does nothing.
+    #[test]
+    fn a_key_muda_cannot_name_is_no_menu_bar_accelerator_either() {
+        for uncodeable in ["⌘+", "⌘*", "⌥(", "⌃_"] {
+            assert_eq!(
+                frontend_shortcut_to_accelerator(uncodeable),
+                None,
+                "`{uncodeable}` names a key muda has no `Code` for, so registering it would \
+                 silently produce a menu item with no accelerator"
+            );
+        }
+        // The unshifted keys those characters sit on are fine, which is what makes the hole
+        // specific rather than a blanket refusal of punctuation.
+        for codeable in ["⌘=", "⌘-", "⌘[", "⌘,", "⌘.", "⌘/", "⌘;", "⌘'", "⌘`"] {
+            assert!(
+                frontend_shortcut_to_accelerator(codeable).is_some(),
+                "`{codeable}` sits on a key muda names, so it registers"
+            );
         }
     }
 
@@ -318,8 +379,8 @@ mod tests {
     /// muda is a dev-dependency so this parses through the same code Tauri will.
     #[test]
     fn every_accelerator_this_converter_emits_is_one_muda_can_parse() {
-        // Every modifier, every key shape the converter has a branch for, and the two combos
-        // whose spelling the menu bar hardcodes.
+        // Every modifier and every key shape the converter has a branch for, plus the shifted
+        // characters that have no `Code` and the combos the registry actually ships.
         let combos = [
             "⌘K",
             "⌥⌘O",
@@ -331,7 +392,18 @@ mod tests {
             "⌘←",
             "⌘→",
             "⌘[",
+            "⌘]",
             "⌘,",
+            "⌘=",
+            "⌘-",
+            "⌘+",
+            "⌘*",
+            "⌥⇧=",
+            "⌥+",
+            "⇧8",
+            "+",
+            "-",
+            "*",
             "⌘Backspace",
             "⌘⌥Escape",
             "⌥Enter",
@@ -344,10 +416,16 @@ mod tests {
             "⌥Home",
             "⌥End",
             "⌥F4",
+            "",
         ];
         for combo in combos {
-            let accelerator = frontend_shortcut_to_accelerator(combo)
-                .unwrap_or_else(|| panic!("`{combo}` carries a command modifier, so it should convert"));
+            // ❗ The contract, and the whole reason this test exists: whatever comes back has to
+            // PARSE. `None` is a fine answer — it routes to the display path — but a `Some` that
+            // muda refuses is the silent failure, because Tauri discards the parse error and
+            // builds the item with no accelerator at all.
+            let Some(accelerator) = frontend_shortcut_to_accelerator(combo) else {
+                continue;
+            };
             assert!(
                 accelerator.parse::<muda::accelerator::Accelerator>().is_ok(),
                 "`{combo}` converts to `{accelerator}`, which muda refuses — so Tauri would build \

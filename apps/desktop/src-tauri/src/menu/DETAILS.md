@@ -278,6 +278,22 @@ without one of the three (Shift alone doesn't clear it, since `⇧8` IS `*`), so
 accident — including through a rebind in Settings > Keyboard shortcuts, which is how one used to. The unfloored
 conversion is `frontend_shortcut_to_menu_text`, and it belongs to popups alone (above).
 
+**The second refusal is a key muda can't name** (`is_codeable_key`). muda parses an accelerator into a `Code`, a
+PHYSICAL key, so every shifted character falls in a hole: `+`, `*`, `(`, `_` have no `Code` of their own, only the
+unshifted key they sit on. `view.zoom.in` ships `⌘+`, so this is a combo the app really produces, and a non-US layout's
+letters (`ö`) land in the same hole. ❌ Don't paper over it by emitting `Cmd+Shift+Equal`: which physical key types `+`
+is a layout question, and guessing wrong binds something else. It routes to the display path instead, which is honest —
+the glyph shows and the frontend's keydown dispatch runs the command.
+
+❗ **Both refusals exist because the failure they prevent is SILENT.** `tauri::menu::MenuItem::new` is
+`accelerator.and_then(|s| s.as_ref().parse().ok())` (`tauri-2.11.5/src/menu/normal.rs:65`): a string muda rejects is
+discarded and the item is built with no accelerator at all — no error, no panic, no log line, indistinguishable from a
+command nobody bound. `Opt` (muda accepts `OPTION` and `ALT` only, `muda-0.19.3/src/accelerator.rs:534`) cost Copy path,
+Show in Finder and every rebound ⌥ combo their menu keys for the app's whole life, and `Cmd+Plus` cost Zoom in its own,
+while green unit tests compared the output to strings we had made up. So `accelerators.rs` now PARSES what it emits, and
+a second test parses every accelerator `MENU_BAR` hardcodes. ❗ Keep both: a string comparison cannot see this class of
+bug.
+
 **Two ways the glyph reaches the user.** `ItemSpec::display_accelerator` carries ONE string for both platforms, set by
 `menu_spec::displayed_item`, which pairs it with `NONE` so a row can't register and display a shortcut at once
 (`menu_bar_test.rs` pins that too). `display_accelerator_label` is where they part:
