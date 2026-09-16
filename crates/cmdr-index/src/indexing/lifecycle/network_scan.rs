@@ -469,37 +469,16 @@ impl IndexManager {
                         ("dirs", summary.total_dirs.to_string()),
                     ]);
 
-                    // Persist the completion marker so reads see Fresh and a
-                    // future restart knows a scan finished (loads Stale then).
-                    let now = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map(|d| d.as_secs().to_string())
-                        .unwrap_or_default();
-                    let _ = writer.send(WriteMessage::UpdateMeta {
-                        key: "scan_completed_at".to_string(),
-                        value: now,
-                    });
-                    // Both buckets: this walk kind's own keys (so the next run of the
-                    // same kind gets a comparable ETA) and the unsuffixed
-                    // last-completed-scan keys. Same split as the local path.
-                    for (key, value) in [
-                        ("scan_duration_ms", summary.duration_ms.to_string()),
-                        ("total_entries", summary.total_entries.to_string()),
-                        ("total_physical_bytes", summary.total_physical_bytes.to_string()),
-                    ] {
-                        let _ = writer.send(WriteMessage::UpdateMeta {
-                            key: calibration_kind.meta_key(key),
-                            value: value.clone(),
-                        });
-                        let _ = writer.send(WriteMessage::UpdateMeta {
-                            key: key.to_string(),
-                            value,
-                        });
-                    }
-                    let _ = writer.send(WriteMessage::UpdateMeta {
-                        key: "volume_path".to_string(),
-                        value: volume_root_str.clone(),
-                    });
+                    // The completion marker (so reads see Fresh and a future restart
+                    // knows a scan finished), the two-bucket calibration numbers, and
+                    // the volume root. Shared with the local completion path so the
+                    // bucket split can't drift between them.
+                    crate::indexing::lifecycle::scan_completion::stamps::stamp_what_every_completed_walk_records(
+                        &summary,
+                        &volume_root_str,
+                        calibration_kind,
+                        &writer,
+                    );
                     let _ = writer.flush().await;
 
                     events.emit(IndexEvent::ScanComplete {

@@ -79,6 +79,10 @@ concurrently without corrupting each other. Every invariant below holds independ
   own; everything about the walk, its bootstrap, its claims, and its four test harnesses is canonical there. What the
   registry side of it owes is below.
 - **scan_completion.rs** — the post-scan handler: the vanished-volume abort and the LOCAL failure→Stale arm (below).
+  Its `stamps.rs` child holds what a completed walk writes about itself, and `stamp_what_every_completed_walk_records`
+  there is the ONE place the `scan_completed_at` marker, the two-bucket calibration keys, and `volume_path` are written:
+  `network_scan.rs` calls it too, so a trait-scanned volume's completion can't drift from a local one's. Only the
+  shallow-sweep-window reset stays local-walk-only, since a trait-scanned volume has no FSEvents stream.
 - **freshness.rs** — the `Fresh`/`Stale`/`Scanning`/`Failed` transition table (`Freshness::on`) +
   `initial_freshness_on_launch`.
 - **failure.rs** — `IndexFailureSignal`, the one-shot per-volume fatal-storage-error signal.

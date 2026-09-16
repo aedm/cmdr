@@ -33,7 +33,7 @@ use cmdr_fs::pluralize::pluralize;
 
 use crate::indexing::hold::{HoldKind, VolumeWork};
 
-mod stamps;
+pub(in crate::indexing::lifecycle) mod stamps;
 mod unfinished;
 
 use stamps::stamp_a_completed_walk;
