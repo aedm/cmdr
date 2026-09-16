@@ -317,16 +317,9 @@ shared modules, and every menu behavior it used to hand-roll is now the primitiv
 
 ✅ **David QA'd it on 2026-09-16: "it looks and feels as before."** M3 is cleared to start.
 
-Two decisions are still open, neither blocking M3:
-
-- **Where the submenu arrow sits.** It's at the row's far right now (what macOS does); it used to sit between the
-  connection dot and the eject button, since it belongs to that dot. (a) Leave it, free. (b) Render it before
-  `trailing`, a one-line no-API change that lands it in a third spot, right after the label and ahead of the filesystem
-  tag. (c) Restore the old spot exactly: `hasSubmenu` on `MenuRowContext`, a `submenuArrow: 'end' | 'caller'` prop so
-  the primitive suppresses its own, and a small exported arrow component, about 20 lines plus permanent API surface that
-  re-opens the placement question for every later consumer. Recommendation: (a).
-- **The `volume-breadcrumb-handlers.svelte.ts` coverage-allowlist entry** (now 94.3% covered, so it looks unneeded).
-  Removing an allowlist entry needs David's consent, so it stays as a warn until he answers.
+Both of the port's open calls are answered (David, 2026-09-16): **the submenu arrow stays at the row's far right**,
+where the primitive renders it and where macOS puts one, so no consumer places it and no `submenuArrow` prop exists; and
+the `volume-breadcrumb-handlers.svelte.ts` **coverage-allowlist entry is removed**, the file having reached 94.3%.
 
 ### M3. The favorites menu
 
