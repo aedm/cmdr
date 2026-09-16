@@ -1606,15 +1606,16 @@ pushed for it (`src-tauri/src/services_menu/DETAILS.md` § "The right-click menu
 
 ## Analytics emitted from this directory
 
-Three of this directory's modules are analytics chokepoints, and they're chokepoints on purpose — a per-call-site event
-drifts the moment a fourth trigger appears.
+Two of this directory's modules are analytics chokepoints, and they're chokepoints on purpose — a per-call-site event
+drifts the moment a fourth trigger appears. A third module reaches one that lives elsewhere.
 
 - `tab-operations.ts` emits the four `tab_*` events. It's the layer every trigger funnels through (the tab bar, the File
   menu, the keyboard, the palette, the MCP `tab` tool), and the pure `tabs/tab-state-manager.svelte.ts` beneath it is
   deliberately left alone: unit tests drive it directly, so emitting there would fire events from the test suite.
 - `drag-drop-controller.svelte.ts::handleDrop` emits `drop_received` on EVERY arm, refusals included.
-- `volume-selection.ts` emits `favorite_opened` from its `category === 'favorite'` branch, matching
-  `VolumeBreadcrumb.handleVolumeSelect`. There's no lower chokepoint: both fold onto
+- `volume-selection.ts` does NOT emit its own `favorite_opened`. Its `category === 'favorite'` branch calls
+  `../navigation/open-favorite.ts`, which owns the single emit and takes the `{ surface, via }` payload from whichever
+  surface made the pick. There's no lower chokepoint than that module: every route folds onto
   `navigate({ to: { selectVolume } })`, which by then holds the containing volume's id and can't tell a favorite from a
   drive.
 

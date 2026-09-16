@@ -375,6 +375,60 @@ export function paneRowsAreOsVisible(kind: VolumeKind): boolean {
 }
 
 /**
+ * Whether a folder on this kind can become a favorite: it has to be a real
+ * folder that's still there next launch, and that a cold start can open without
+ * dialing anything first.
+ *
+ * `local` and `smb` yes — both are ordinary `/Volumes/…` paths the Mac itself
+ * mounts, so `resolve_path_to_volume` answers from the mount table. Every other
+ * kind fails one half:
+ *
+ * - `sftp` / `webdav` / `mtp` / `adb` carry a scheme path that resolves only
+ *   while that server or device is live, and the volume list filters a favorite
+ *   whose path doesn't exist on disk — so one of these stores fine and then
+ *   never shows up again, with no row and no word about why.
+ * - `search-results` is a per-session snapshot id: dead the moment the app
+ *   restarts, and the one kind that can't point at a folder at all.
+ * - `archive` and `git-portal` are views synthesized from a container, not
+ *   directories. The `.git` portal's paths exist only while its setting is on.
+ * - `network` lists hosts rather than files.
+ *
+ * ❗ This is the AFFORDANCE half only: it decides whether the favorites menu's
+ * "Add current folder to favorites" row is enabled and what its disabled
+ * tooltip says. The authoritative rejection lives in Rust's `add_favorite`,
+ * which also covers the MCP tool and the folder-row context menus. ❌ Don't
+ * "de-duplicate" the two: a frontend gate a backend trusts is no gate.
+ *
+ * ❌ Never a test on the path string: an archive-inner path and a `.git`-portal
+ * path both look exactly like ordinary folder paths.
+ */
+export function kindCanBeFavorited(kind: VolumeKind): boolean {
+  switch (kind) {
+    case 'local':
+    case 'smb':
+      return true
+    case 'sftp':
+    case 'webdav':
+    case 'mtp':
+    case 'adb':
+    case 'network':
+    case 'search-results':
+    case 'archive':
+    case 'git-portal':
+      return false
+  }
+}
+
+/**
+ * Whether THIS pane's folder can become a favorite — `kindCanBeFavorited` fed the
+ * pane's routed kind, so an archive or `.git`-portal pane is judged as what it
+ * shows rather than as the writable drive its `volumeId` names.
+ */
+export function paneFolderCanBeFavorited(volumeId: string, path: string | undefined): boolean {
+  return kindCanBeFavorited(capabilitiesForPane(volumeId, path).kind)
+}
+
+/**
  * Pure: lay the backend's published answer over the per-kind defaults.
  *
  * `published` is absent for everything Rust has no volume for (the two virtual

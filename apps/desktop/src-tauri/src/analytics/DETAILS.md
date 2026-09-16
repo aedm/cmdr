@@ -271,11 +271,20 @@ Backend events fire at success chokepoints; frontend events ride `track_event`.
   (`done` / `partial`). Per drag SESSION, matching the toast — one gesture is one drag however many files it carried.
   Counted at the drain rather than at the start, because a promise-backed drag (MTP, a NAS) can be abandoned before
   anything fulfills. ❌ The payload's `failures` holds leaf NAMES; only its length crosses.
-- `favorite_opened` (frontend, `file-explorer/navigation/favorites-analytics.ts`): `surface` (`breadcrumb` /
-  `command`). The payoff half of favorites — `favorite_changed` counts the list being edited and can't say whether
-  anybody ever goes anywhere with it. Two call sites rather than one, and there's no lower chokepoint: both fold onto
-  `navigate({ to: { selectVolume } })`, which by then holds the CONTAINING volume's id and can't tell a favorite from
-  a drive.
+- `favorite_opened` (frontend, `file-explorer/navigation/favorites-analytics.ts`): `surface` (`favorites_menu` /
+  `command`) plus `via` (`digit` / `keyboard` / `pointer` / `command`). The payoff half of favorites —
+  `favorite_changed` counts the list being edited and can't say whether anybody ever goes anywhere with it. `via` is
+  what says whether the menu's number keys earn their column. ❗ `surface: command` ALWAYS pairs with `via: command`
+  (the command IS the interaction, so there's no row to point at), and the TS payload is one union rather than two
+  enums so that pairing can't be got wrong and `via` can't go missing from a dashboard. Emitted from ONE place,
+  `file-explorer/navigation/open-favorite.ts`, the single way a favorite opens; the surface hands its payload down,
+  because every route folds onto `navigate({ to: { selectVolume } })`, which by then holds the CONTAINING volume's id
+  and can't tell a favorite from a drive. A favorite whose containing volume doesn't resolve navigates nowhere and
+  reports nothing: this counts arrivals.
+- `favorites_menu_opened` (frontend, same module): `trigger` (`command` / `switcher_row`). The denominator
+  `favorite_opened` reads against, and the one question the volume switcher's "See N favorites" row asks: is the row
+  how people find the menu, or does everyone already know ⌃D? A menu-bar accelerator and a palette pick both arrive as
+  `command`, so that arm doesn't split further.
 - `settings_opened` (frontend, `$lib/settings/settings-window.ts` `openSettingsWindow`): `surface` enum (the
   `SettingsSurface` union in that file, one member per entry point); never the section. It sits in the
   window helper every entry point funnels through, so it counts all dozen of them and covers a new one for free. Why

@@ -42,6 +42,8 @@ import {
   capabilitiesFor,
   capabilitiesForPane,
   withBackendCapabilities,
+  kindCanBeFavorited,
+  paneFolderCanBeFavorited,
   paneFolderIsPolledForDeletion,
   paneRowsAreOsVisible,
   rowIsOsVisible,
@@ -674,5 +676,103 @@ describe('rowIsOsVisible — the per-ROW share gate', () => {
   it('says no on a phone, whatever the row looks like', () => {
     volumes.list = [vol({ id: 'mtp-1:1', category: 'mobile_device' })]
     expect(rowIsOsVisible('mtp-1:1', '/DCIM/IMG_0001.jpg')).toBe(false)
+  })
+})
+
+describe('kindCanBeFavorited — where a favorite may point', () => {
+  it('says yes for the two kinds the Mac itself mounts', () => {
+    expect(kindCanBeFavorited('local')).toBe(true)
+    expect(kindCanBeFavorited('smb')).toBe(true)
+  })
+
+  it('says no for every kind a favorite would silently vanish from', () => {
+    // A scheme path resolves only while its server or device is live, and the
+    // volume list drops a favorite whose path isn't on disk — so each of these
+    // stores fine and then never shows up again.
+    for (const kind of ['sftp', 'webdav', 'mtp', 'adb'] as const) {
+      expect(kindCanBeFavorited(kind), kind).toBe(false)
+    }
+  })
+
+  it('says no for the two virtual kinds and the two routed ones', () => {
+    for (const kind of ['network', 'search-results', 'archive', 'git-portal'] as const) {
+      expect(kindCanBeFavorited(kind), kind).toBe(false)
+    }
+  })
+
+  it('answers every kind in the union, so a new kind can`t be silently favoritable', () => {
+    const kinds: VolumeKind[] = [
+      'local',
+      'smb',
+      'sftp',
+      'webdav',
+      'mtp',
+      'adb',
+      'network',
+      'search-results',
+      'archive',
+      'git-portal',
+    ]
+    for (const kind of kinds) {
+      expect(typeof kindCanBeFavorited(kind), kind).toBe('boolean')
+    }
+  })
+})
+
+describe('paneFolderCanBeFavorited — the pane-level add gate', () => {
+  it('says yes for an ordinary folder on a local volume', () => {
+    volumes.list = [vol({ id: 'disk1', category: 'main_volume' })]
+    expect(paneFolderCanBeFavorited('disk1', '/Users/me/photos')).toBe(true)
+  })
+
+  it('says yes for a folder on a mounted SMB share', () => {
+    volumes.list = [vol({ id: 'share1', fsType: 'smbfs', category: 'network' })]
+    expect(paneFolderCanBeFavorited('share1', '/Volumes/share/docs')).toBe(true)
+  })
+
+  it('says no INSIDE an archive, on the very same writable drive', () => {
+    // The regression this gate exists for: an archive pane keeps the parent
+    // drive's volumeId, so a volume-level reading would call it local and a
+    // path-string test would call it an ordinary folder. Only the routed kind knows.
+    volumes.list = [vol({ id: 'disk1', category: 'main_volume' })]
+    expect(paneFolderCanBeFavorited('disk1', '/Users/me/trip.zip/photos')).toBe(false)
+  })
+
+  it('still says yes for the folder HOLDING the archive', () => {
+    volumes.list = [vol({ id: 'disk1', category: 'main_volume' })]
+    expect(paneFolderCanBeFavorited('disk1', '/Users/me')).toBe(true)
+  })
+
+  it('says no inside the virtual git portal while the portal is on', () => {
+    volumes.list = [vol({ id: 'disk1', category: 'main_volume' })]
+    expect(paneFolderCanBeFavorited('disk1', '/repo/.git/branches/main')).toBe(false)
+  })
+
+  it('says yes for that same path once the portal is switched off', () => {
+    // With the portal off nothing routes it, so the path is whatever is on disk.
+    volumes.list = [vol({ id: 'disk1', category: 'main_volume' })]
+    gitPortal.on = false
+    try {
+      expect(paneFolderCanBeFavorited('disk1', '/repo/.git/branches/main')).toBe(true)
+    } finally {
+      gitPortal.on = true
+    }
+  })
+
+  it('says no on the search-results snapshot and on the servers hub', () => {
+    volumes.list = []
+    expect(paneFolderCanBeFavorited('search-results', 'search-results://abc')).toBe(false)
+    expect(paneFolderCanBeFavorited('network', 'smb://')).toBe(false)
+  })
+
+  it('says no on a phone', () => {
+    volumes.list = [vol({ id: 'mtp-1:1', category: 'mobile_device' })]
+    expect(paneFolderCanBeFavorited('mtp-1:1', '/DCIM')).toBe(false)
+  })
+
+  it('says no on a server', () => {
+    volumes.list = [vol({ id: 'sftp-1', fsType: 'sftp' }), vol({ id: 'dav-1', fsType: 'webdav' })]
+    expect(paneFolderCanBeFavorited('sftp-1', 'sftp://host/home/me')).toBe(false)
+    expect(paneFolderCanBeFavorited('dav-1', 'webdav://host/files')).toBe(false)
   })
 })

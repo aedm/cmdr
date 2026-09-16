@@ -108,6 +108,19 @@ describe('createVolumeSelection', () => {
     })
   })
 
+  it('selectVolumeByName says not-found for a favorite whose containing volume does not resolve', async () => {
+    // ❗ It used to fall back to volume `root` at the raw path, which for a dead
+    // `search-results://` favorite evicts the pane and then errors about a path
+    // nobody typed. `navigation/open-favorite.ts` refuses instead, and a volume
+    // this pane can't be sent to is exactly what `not-found` means here.
+    resolvePathVolumeSpy.mockResolvedValue({ volume: null })
+    const { ops, navigate } = setup([
+      vol({ id: 'fav', name: 'Old search', path: 'search-results://dead-id', category: 'favorite' }),
+    ])
+    expect(await ops.selectVolumeByName('left', 'Old search')).toEqual({ kind: 'not-found' })
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
   it('selectVolumeByName says not-found and does not navigate when the name is unknown', async () => {
     const { ops, navigate } = setup([vol({ name: 'USB' })])
     expect(await ops.selectVolumeByName('left', 'Nope')).toEqual({ kind: 'not-found' })

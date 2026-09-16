@@ -11,7 +11,7 @@
      */
     import { onDestroy, onMount, untrack } from 'svelte'
     import type { UnlistenFn } from '@tauri-apps/api/event'
-    import { onVolumeContextAction, resolvePathVolume, showVolumeRowContextMenu } from '$lib/tauri-commands'
+    import { onVolumeContextAction, showFavoriteContextMenu, showVolumeRowContextMenu } from '$lib/tauri-commands'
     import { getVolumes, getVolumesTimedOut, isVolumesRefreshing, isVolumeRetryFailed, requestVolumeRefresh } from '$lib/stores/volume-store.svelte'
     import { isVolumeBusy, isVolumeEjecting } from '$lib/stores/volume-busy-store.svelte'
     import { isRestricted } from '$lib/stores/restricted-paths-store.svelte'
@@ -50,8 +50,8 @@
     import { isVolumeEjectable } from './eject-predicate'
     import { buildFavoriteTooltip } from './favorite-tooltip'
     import { createFavoritesController } from './favorites-controller.svelte'
-    import { reportFavoriteOpened } from './favorites-analytics'
     import { filesystemLabel } from './filesystem-label'
+    import { openFavorite } from './open-favorite'
     import { pathForPickedVolume } from './picked-volume-path'
     import { disconnectServerPlace, isServerPlaceRow, openServerRowMenu } from './server-row-actions'
     import { shouldShowCheckmark } from './volume-checkmark'
@@ -260,19 +260,14 @@
         if (!volume) return
 
         if (volume.category === 'favorite') {
-            reportFavoriteOpened('breadcrumb')
-            // For favorites, navigate to the favorite's path but set the pane's volume to the
-            // one that really contains it.
-            const { volume: containingVolume } = await resolvePathVolume(volume.path)
-            if (containingVolume) {
-                onVolumeChange?.({
-                    volumeId: containingVolume.id,
-                    volumePath: containingVolume.path,
-                    targetPath: volume.path,
-                })
-            } else {
-                onVolumeChange?.({ volumeId: 'root', volumePath: '/', targetPath: volume.path })
-            }
+            // `open-favorite.ts` owns the whole favorite open: resolve the containing
+            // volume, emit, and switch onto it. A favorite that resolves to no volume
+            // leaves the pane where it is.
+            await openFavorite({
+                favoritePath: volume.path,
+                picked: { surface: 'favorites_menu', via: 'pointer' },
+                go: (target) => onVolumeChange?.(target),
+            })
             return
         }
 
@@ -305,7 +300,8 @@
             return
         }
         if (!isFavorite && !ejectable) return
-        void showVolumeRowContextMenu(volume.id, volume.name, isFavorite, ejectable)
+        if (isFavorite) void showFavoriteContextMenu(volume.id, volume.name)
+        else void showVolumeRowContextMenu(volume.id, volume.name, ejectable)
     }
 
     // Rename / remove a favorite when the user picks it from the native row menu. Both panes'

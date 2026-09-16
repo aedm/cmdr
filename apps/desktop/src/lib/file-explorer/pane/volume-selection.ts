@@ -5,19 +5,19 @@
  *
  * Both routes fold onto `navigate({ to: { selectVolume }, source: 'user' })`, so
  * the standard volume-switch mechanics (focus shift, history push, new-tab-on-
- * pinned) apply uniformly. Matches `VolumeBreadcrumb`'s `handleVolumeSelect`: a
- * favorite navigates to its path on the containing volume; a real volume opens
- * where `pathForPickedVolume` says (a saved server place on its start folder,
- * anything else at its root); the virtual servers-hub volume isn't in the
+ * pinned) apply uniformly. A favorite goes through the shared
+ * `navigation/open-favorite.ts`, which navigates to its path on the containing
+ * volume; a real volume opens where `pathForPickedVolume` says (a saved server
+ * place on its start folder, anything else at its root); the virtual servers-hub
+ * volume isn't in the
  * volumes list, so it's special-cased. The switch arm shifts STORE focus but not DOM focus — re-
  * anchoring the container would drop a Space press during the multi-select-then-
  * delete sequence (regression guard: mtp.spec.ts).
  */
 
-import { resolvePathVolume } from '$lib/tauri-commands'
 import { tString } from '$lib/intl/messages.svelte'
 import { getAppLogger } from '$lib/logging/logger'
-import { reportFavoriteOpened } from '../navigation/favorites-analytics'
+import { openFavorite } from '../navigation/open-favorite'
 import { pathForPickedVolume } from '../navigation/picked-volume-path'
 import type { VolumeInfo } from '../types'
 import type { NavigateIntent, NavigateResult } from './navigate'
@@ -61,12 +61,16 @@ export function createVolumeSelection(deps: VolumeSelectionDeps): VolumeSelectio
 
     const volume = volumes[index]
 
-    // Handle favorites differently from actual volumes (same as VolumeBreadcrumb).
+    // A favorite is a row pointing at a path on some other volume, so it takes the
+    // shared open (`navigation/open-favorite.ts`), which resolves that volume and
+    // emits. One that resolves to nothing is a volume this pane can't be sent to.
     if (volume.category === 'favorite') {
-      reportFavoriteOpened('command')
-      // For favorites, navigate to the favorite's path on its containing volume.
-      const { volume: containingVolume } = await resolvePathVolume(volume.path)
-      return select(pane, containingVolume?.id ?? 'root', volume.path)
+      const opened = await openFavorite({
+        favoritePath: volume.path,
+        picked: { surface: 'command', via: 'command' },
+        go: (target) => select(pane, target.volumeId, target.targetPath),
+      })
+      return opened.kind === 'opened' ? opened.opened : { kind: 'not-found' }
     }
     // A saved server place opens on its start folder; anything else at its root.
     return select(pane, volume.id, pathForPickedVolume(volume))
