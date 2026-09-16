@@ -276,6 +276,18 @@ describe('keyboard versus pointer mode', () => {
     expect(menu.keyboardMode).toBe(false)
   })
 
+  // ❗ Otherwise there would be two cursors: `:hover` paints again the moment keyboard mode
+  // drops, and no `mouseover` is coming for a row the pointer never left.
+  it('takes the cursor to the row the pointer is already on when it leaves keyboard mode', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.handleKey(keydown('ArrowDown')) // keyboard mode, cursor on fav-b
+    menu.surface.pointerMoved(pointerAt(100, 100), 'vol-1')
+    menu.surface.pointerMoved(pointerAt(140, 100), 'vol-1')
+    expect(menu.keyboardMode).toBe(false)
+    expect(menu.highlightedValue).toBe('vol-1')
+  })
+
   it('ignores hover while in keyboard mode, and follows it otherwise', () => {
     const menu = build()
     menu.openUnder(anchorEl())
@@ -515,6 +527,66 @@ describe('pointer drag reorder', () => {
     menu.surface.startDrag('fav-a', mouse('mousedown', 10))
     window.dispatchEvent(mouse('mousemove', 20))
     expect(menu.dropSlot).toBeNull()
+  })
+
+  /**
+   * The drop-line cue, pinned as pure input to output: a row geometry, a pointer Y, and the
+   * gap the line lands in. The cue rides the RAW insertion slot (the visual gap), which is
+   * what keeps a downward drag from drawing the line one row too high. Rows are 20px tall
+   * from y=0 here, so the midpoints are 10 / 30 / 50, and slot `k` means "the line above row
+   * k" (slot `length` means below the last row).
+   *
+   * These three came from the switcher's own suite with the port: the behavior is the
+   * primitive's now, and only the three helpers below had to be re-pointed.
+   */
+  function grabRow(menu: MenuController, value: string, atY: number): void {
+    bindMidpoints(menu)
+    menu.surface.startDrag(value, mouse('mousedown', atY))
+  }
+  function movePointerTo(y: number): void {
+    window.dispatchEvent(mouse('mousemove', y))
+  }
+  function releasePointerAt(y: number): void {
+    window.dispatchEvent(mouse('mouseup', y))
+  }
+
+  it('puts the drop-line cue on the gap under the pointer, dragging DOWN', () => {
+    const menu = build({ onReorder: vi.fn() })
+    menu.openUnder(anchorEl())
+    grabRow(menu, 'fav-a', 10)
+    // Past row 1's midpoint: the line belongs in the gap above row 2.
+    movePointerTo(35)
+    expect(menu.dropSlot).toBe(2)
+    // Past the last midpoint: the line belongs below the last row.
+    movePointerTo(55)
+    expect(menu.dropSlot).toBe(3)
+    releasePointerAt(55)
+  })
+
+  it('puts the drop-line cue on the gap under the pointer, dragging UP', () => {
+    const menu = build({ onReorder: vi.fn() })
+    menu.openUnder(anchorEl())
+    grabRow(menu, 'fav-c', 50)
+    // Above every midpoint: the line belongs above row 0.
+    movePointerTo(5)
+    expect(menu.dropSlot).toBe(0)
+    // Between the first two midpoints: the line belongs above row 1.
+    movePointerTo(20)
+    expect(menu.dropSlot).toBe(1)
+    releasePointerAt(20)
+  })
+
+  it('draws no cue where a drop would leave the row where it already is', () => {
+    const menu = build({ onReorder: vi.fn() })
+    menu.openUnder(anchorEl())
+    grabRow(menu, 'fav-b', 30)
+    // Both gaps touching the grabbed row (slot 1 above it, slot 2 below it) leave it in
+    // place, so neither draws a line.
+    movePointerTo(25)
+    expect(menu.dropSlot).toBeNull()
+    movePointerTo(35)
+    expect(menu.dropSlot).toBeNull()
+    releasePointerAt(35)
   })
 
   it('never drags from a section that is not reorderable', () => {

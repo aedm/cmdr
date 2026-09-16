@@ -166,6 +166,7 @@ describe('test hooks', () => {
     expect(row('backup')?.hasAttribute('data-disabled')).toBe(true)
     expect(row('projects')?.hasAttribute('data-checked')).toBe(false)
     expect(document.querySelector('[data-menu-section="volumes"]')).not.toBeNull()
+    expect(document.querySelector('[data-menu-section="volumes"] [data-menu-heading]')?.textContent).toBe('Volumes')
     expect(document.querySelector('[data-menu-empty]')).not.toBeNull()
   })
 

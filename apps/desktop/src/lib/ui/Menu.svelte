@@ -192,7 +192,8 @@
             style:min-width="{minWidth}px"
             style:visibility={position ? 'visible' : 'hidden'}
             onmousemove={(event: MouseEvent) => {
-                menu.surface.pointerMoved(event)
+                const row = (event.target as HTMLElement | null)?.closest('[data-menu-row]')
+                menu.surface.pointerMoved(event, row?.getAttribute('data-menu-row') ?? null)
             }}
         >
             {#each menu.sections as section, sectionIndex (section.id)}
@@ -201,7 +202,7 @@
                 {/if}
                 <div role="group" data-menu-section={section.id} aria-label={section.heading ?? undefined}>
                     {#if section.heading}
-                        <div class="menu-heading" aria-hidden="true">{section.heading}</div>
+                        <div class="menu-heading" data-menu-heading="" aria-hidden="true">{section.heading}</div>
                     {/if}
                     {#if section.items.length === 0 && section.emptyLabel}
                         <!-- A real (empty) state, not a missing section: present, said, and unfocusable. -->

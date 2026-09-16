@@ -60,7 +60,12 @@ export interface MenuSurfaceHooks {
 /** The wiring `Menu.svelte` drives. Consumers never touch this; they use the surface above it. */
 export interface MenuSurface {
   hover: (value: string) => void
-  pointerMoved: (event: MouseEvent) => void
+  /**
+   * A pointer move over the surface. `valueUnderPointer` is the row it happened over (null
+   * between rows): leaving keyboard mode hands it the cursor, so the `:hover` paint that
+   * comes back can't light a second row.
+   */
+  pointerMoved: (event: MouseEvent, valueUnderPointer?: string | null) => void
   activate: (value: string) => void
   contextMenu: (value: string, event: MouseEvent) => void
   startDrag: (value: string, event: MouseEvent) => void
@@ -377,7 +382,7 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
       if (keyboardMode) return
       setHighlight(value)
     },
-    pointerMoved(event) {
+    pointerMoved(event, valueUnderPointer = null) {
       if (!keyboardMode) return
       if (!lastPointerPos) {
         lastPointerPos = { x: event.clientX, y: event.clientY }
@@ -388,6 +393,10 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
       if (dx <= KEYBOARD_MODE_EXIT_PX && dy <= KEYBOARD_MODE_EXIT_PX) return
       keyboardMode = false
       lastPointerPos = null
+      // ❗ The cursor goes to the row the pointer is already on. Without this there would be
+      // two: `:hover` starts painting again the moment keyboard mode drops, and no
+      // `mouseover` is coming for a row the pointer never left.
+      if (valueUnderPointer !== null) setHighlight(valueUnderPointer)
     },
     activate,
     contextMenu(value, event) {
