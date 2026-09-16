@@ -1971,3 +1971,22 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
   AP-HK的「…並傳送報告給Apple」）；句中用量詞版本，與 `settings.updates.crashReports.description` 的 `自動傳送一份報告`
   一致，按鈕才是裸的 `傳送報告` · `high`。**if it keeps happening → `如果一直這樣`**，逐字沿用
   `errors.listing.resourceBusy.suggestion` · `high`。
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `種類`** · macOS Finder `ArrangeByMenu`
+  `119.title`/`338.title`, the Kind sort criterion. Every source in this section comes from the reference pile's
+  `zh-TW/` folder, which is where Traditional lives (`zh-Hant/` holds only the Microsoft sets) · `high`.
+- **"Select all with extension `*.{extension}`" → `選取所有副檔名為 *.{extension} 的檔案`** · Double Commander
+  (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" → `選擇所有相同副檔名`) and Total
+  Commander (`WCMD.INC` `527` → `全選: 副檔名相同的項目`) name this exact command, and the mask replaces their "same
+  extension" because Cmdr shows the concrete one · `high`. 遮罩是一段拉丁文字，依 `style.md`
+  § 間距 兩側各空一格：`副檔名為 *.{extension} 的檔案`。
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `選取範圍`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description`（`加入選取範圍`） · `high`. Its siblings
+  in that menu are verbs; this one names what the submenu holds. ❌ 不用動詞 `選取`（那是 `menu.bar.select`），也不用
+  `最近的選取` 那個「過去查詢」的用法。
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.

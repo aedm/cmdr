@@ -199,19 +199,19 @@
   "@menu.select.deselectAll": {
     "sourceHash": "9675494"
   },
-  "menu.select.sameKind": "Select all of the same kind",
+  "menu.select.sameKind": "选择所有种类相同的项目",
   "@menu.select.sameKind": {
     "sourceHash": "9933028"
   },
-  "menu.select.allFolders": "Select all folders",
+  "menu.select.allFolders": "选择所有文件夹",
   "@menu.select.allFolders": {
     "sourceHash": "5351f8b"
   },
-  "menu.select.sameExtension": "Select all with extension *.{extension}",
+  "menu.select.sameExtension": "选择所有扩展名为 *.{extension} 的文件",
   "@menu.select.sameExtension": {
     "sourceHash": "7809a58"
   },
-  "menu.select.noExtension": "Select all files with no extension",
+  "menu.select.noExtension": "选择所有没有扩展名的文件",
   "@menu.select.noExtension": {
     "sourceHash": "d04751e"
   },
@@ -440,7 +440,7 @@
   "@menu.context.edit": {
     "sourceHash": "464c4ff"
   },
-  "menu.context.selection": "Selection",
+  "menu.context.selection": "选择",
   "@menu.context.selection": {
     "sourceHash": "ca40670"
   },

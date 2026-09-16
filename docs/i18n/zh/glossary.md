@@ -2844,3 +2844,21 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   `errors.listing.diskReadProblem.suggestion`、`errors.serverRequest.refused` 等九处 · `confirmed`。用全角分号 `；`
   接在前半句后面，对应英文的 `or`，比拆成第三句更贴原文。
 - 六个值都与英文不同，无需 `sameAsSourceJustification`；中文侧没有撇号。
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `种类`** · macOS Finder `zh`
+  `ArrangeByMenu` `119.title`/`338.title`, the Kind sort criterion · `high`.
+- **"Select all with extension `*.{extension}`" → `选择所有扩展名为 *.{extension} 的文件`** · Double Commander
+  (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" → `选择所有扩展名相同的文件`) and
+  Total Commander (`WCMD.INC` `527` → `选择扩展名相同的文件`) name this exact command, and the mask replaces their "same
+  extension" because Cmdr shows the concrete one · `high`. 掩码是一段拉丁文本，按 `style.md`
+  的规则两侧各留一个空格：`扩展名为 *.{extension} 的文件`。
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `选择`** · the catalog's settled noun for the
+  SET of selected files, from `commands.selectionSelectFiles.description`（`将匹配的文件加入选择`） · `high`. Its
+  siblings in that menu are verbs; this one names what the submenu holds. `menu.bar.select` 也是
+  `选择`，两者相同；中文不作名动之分，右键子菜单标题与「选择」菜单同名反而更一致。
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.

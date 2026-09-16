@@ -199,19 +199,19 @@
   "@menu.select.deselectAll": {
     "sourceHash": "9675494"
   },
-  "menu.select.sameKind": "Select all of the same kind",
+  "menu.select.sameKind": "選取所有種類相同的項目",
   "@menu.select.sameKind": {
     "sourceHash": "9933028"
   },
-  "menu.select.allFolders": "Select all folders",
+  "menu.select.allFolders": "選取所有資料夾",
   "@menu.select.allFolders": {
     "sourceHash": "5351f8b"
   },
-  "menu.select.sameExtension": "Select all with extension *.{extension}",
+  "menu.select.sameExtension": "選取所有副檔名為 *.{extension} 的檔案",
   "@menu.select.sameExtension": {
     "sourceHash": "7809a58"
   },
-  "menu.select.noExtension": "Select all files with no extension",
+  "menu.select.noExtension": "選取所有沒有副檔名的檔案",
   "@menu.select.noExtension": {
     "sourceHash": "d04751e"
   },
@@ -440,7 +440,7 @@
   "@menu.context.edit": {
     "sourceHash": "464c4ff"
   },
-  "menu.context.selection": "Selection",
+  "menu.context.selection": "選取範圍",
   "@menu.context.selection": {
     "sourceHash": "ca40670"
   },
