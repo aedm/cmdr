@@ -107,9 +107,10 @@ type opacityDecorativeEntry struct {
 var opacityDecorativeAllowlist = []opacityDecorativeEntry{
 	{"StatusGlyph.svelte", ".status-glyph", "wraps an <Icon>, renders no text glyph"},
 	{"VolumeBreadcrumb.svelte", ".read-only-indicator", `wraps <Icon name="lock">`},
-	{"VolumeBreadcrumb.svelte", ".smb-indicator", "empty span, pure CSS-colored status dot"},
-	{"VolumeBreadcrumb.svelte", ".smb-indicator-saved", "empty span, pure CSS-colored dot outline"},
-	{"VolumeBreadcrumb.svelte", ".usb-speed-indicator", "empty span, pure CSS-colored status dot"},
+	{"VolumeChooserMenu.svelte", ".read-only-indicator", `wraps <Icon name="lock">`},
+	{"ConnectionDot.svelte", ".smb-indicator", "empty span, pure CSS-colored status dot"},
+	{"ConnectionDot.svelte", ".smb-indicator-saved", "empty span, pure CSS-colored dot outline"},
+	{"UsbSpeedDot.svelte", ".usb-speed-indicator", "empty span, pure CSS-colored status dot"},
 	{"DriveIndexBadge.svelte", ".drive-index-badge", "empty <button>, pure CSS-colored status dot"},
 	{"ImageIndexDriveBadge.svelte", ".image-index-drive-badge", `empty <span role="img">, pure CSS-colored status dot`},
 	{"TabBar.svelte", ".warning-icon", "wraps an <Icon>"},
