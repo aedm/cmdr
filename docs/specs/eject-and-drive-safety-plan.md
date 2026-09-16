@@ -90,7 +90,12 @@ drive-safety decisions below.
   fix), `df09b3023` (a lane test's panic message exempted from `pluralize-noun`), `7a9961fe6`, `1bf9f6c99`, and
   `95b98813f` (the availability selector list refreshed from the macOS 27.0 SDK, the ping-pong documented, then made
   impossible: the stored SDK is a resolved version now and only moves forward), `d616f47cd` (a menu doc's forbidden
-  specifier unbackticked, so `dead-links` stops reading it as a reference).
+  specifier unbackticked, so `dead-links` stops reading it as a reference), `26240abab` (the Linux build, red since M12
+  across three hidden layers), `a790f9241` (`gocyclo`, red since the SDK ping-pong guard landed).
+- ❗ **Two default-off lanes had been red for milestones without anyone noticing**: `rust-tests-linux` since M12 and
+  `gocyclo` since `95b98813f`. Both are fixed above. Run `pnpm check rust-tests-linux --include-slow` and
+  `pnpm check gocyclo` at least once per milestone from here: a macOS-only subsystem grows dead code on Linux with every
+  milestone, and `-D unused` is fatal there.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -1685,6 +1690,11 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     one fails the check as unused.
   - The lane's `a_refused_disk_eject_hands_back_only_the_sibling_that_stayed_mounted` starved under load and passed
     alone at the same deadline, the documented shape (`scripts/check/checks/DETAILS.md` § "The disk-image lane").
+  - ❗ **Every macOS-only item this plan adds is dead code on Linux, where `-D unused` is fatal.** M13's own three got
+    the treatment, and the twelve M12 had left took the Linux build down with them. The pattern is
+    `#[cfg_attr(not(target_os = "macos"), expect(dead_code, reason = "…"))]`, and it needs a `test` arm only when the
+    item has a non-macOS test caller. Prefer routing the non-macOS path through the SAME seam where that's honest (M13's
+    `scan_path`), since one shape beats one exemption.
 - **Test plan (all covered)**: pure `merge` (five cases); the budget on a paused clock, plus its real-clock twin; the
   device-change discard through `scan_path_with`; an unignored macOS test where a child holds a temp FILE and the real
   walk names its pid without `PATH_IS_VOLUME`, plus an idle file answering an empty list and a missing path answering
