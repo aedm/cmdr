@@ -316,8 +316,12 @@ hooks themselves live in `file_system/volume/eject/mod.rs` and `volumes/watcher.
   earliest hook AppKit offers, but RACY (the OS doesn't wait for our observer). Runs off-main, and logs a `warn` when
   the index was still letting go of the drive as the OS unmounted it: the line to look for after a hung unmount. ❌
   Never installed beside the approver, or one unmount stops the same index twice.
-- **`NSWorkspaceDidUnmountNotification` — CLEANUP only.** By the time it fires the volume is gone, so it can't prevent a
-  wedge; it releases the now-dangling watcher + handles for a volume that unmounted without going through Cmdr's eject.
+- **`NSWorkspaceDidUnmountNotification` — CLEANUP only, and only without the approver.** By the time it fires the volume
+  is gone, so it can't prevent a wedge; it releases the now-dangling watcher + handles for a volume that unmounted
+  without going through Cmdr's eject. With the approver installed it stands down, because the approver's cause machine
+  already stops a drive that went away AND knows why it went (`volumes/unmount_approver/causes.rs`); two hooks would
+  race the same stop. It stays the whole post-unmount cleanup on a Mac where the approver couldn't install, which is
+  also the only place the `WillUnmount` fallback runs.
 
 The DidUnmount/WillUnmount handlers do NOT flip freshness to Stale: for a physically removed drive the volume row leaves
 the picker, so a `Fresh→Stale` transition would pop the one-time stale dialog about a drive that's simply gone.

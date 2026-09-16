@@ -217,6 +217,29 @@ disk's description, which is a frozen copy nothing refreshes (`DiskArbitration/D
 its resume, so a later idle can't start the same volume twice. `Appeared` and `Disappeared` drop a disk's records,
 because DA hands a freed BSD unit to the next disk at once.
 
+**Why a mount ended** (`causes.rs`). An unmount Cmdr was asked about has already let go of the drive. One nobody asked
+about hasn't, and leaves an index holding a filesystem that isn't there. The machine is pure and fed by the same
+callbacks, in DiskArbitration's delivery order, ❌ never by timing:
+
+- a volume path clearing is `Asked` when an ask marked that BSD node, otherwise `Unasked` (a raw `/sbin/umount`, or an
+  unmount DA made while this session was skipped);
+- a whole disk disappearing is `Ejected` when an eject approval came, otherwise `Pulled` — or `Unknown` when an ask on
+  that disk had overrun `DA_RESPONSE_WINDOW`, because DA skips a timed-out session for approvals and the eject approval
+  that would have said "ejected" may never have arrived. `Unknown` acts like `Pulled`: stopping an index twice is cheap,
+  leaving one on a gone drive isn't.
+
+`Unasked`, `Pulled`, and `Unknown` release through the gate with owner `Vanish` under `VANISH_STOP_WAIT` (15 s), on a
+thread off the DA queue, with one `warn` naming the cause. ❌ No resume: a drive that vanished is owed nothing back, and
+the crate's own stop writes the rebuild marker when deletes were in flight
+(`crates/cmdr-index/src/indexing/lifecycle/DETAILS.md` § "The rebuild marker").
+
+❗ **A pull can only stop what was recorded while the drive was still mounted**, since a disk that's gone can't be looked
+up in the mount table. So a Cmdr volume is noted from every callback that carries a volume path — a disk appearing, and
+each ask's own group — and an `Appeared` voids a disk's DECISIONS, never its volume map. Residual: a drive mounted
+before the session installs is known only from DA's appeared burst at registration, which races volume discovery; and
+"overran the window" is measured as the ask's OWN runtime, so an ask that joined a chain and answered inside 10 s can
+still have overrun DA's timer, which started when DA queued it. The eject approval itself is always answered at once.
+
 **What it can't do.** Under force (`diskutil unmount force`, `hdiutil detach -force`), DA asks, ignores the dissent, and
 unmounts anyway (`DARequest.c:1610`), so the stop work happens on every ask and the dissent is only the non-force
 fallback. When several indexed drives are ejected together and the chain's budget runs out, the later asks dissent with

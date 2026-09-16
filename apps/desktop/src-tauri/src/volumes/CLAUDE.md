@@ -44,8 +44,9 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
   `watcher.rs`'s observer block cheap: it runs on the main thread, so no blocking I/O.
 - **Every DA-mediated unmount waits while Cmdr lets go of the drive** (`unmount_approver/`): each ask stops every
   indexed volume of the whole BSD unit, or dissents. ❌ On the ask path, no filesystem, no SQLite, no unwind back into
-  DiskArbitration, and no wait but the gate's. ❌ Never install the `WillUnmount` observer beside it (it's the fallback,
-  and two pre-unmount hooks stop one index twice). `DETAILS.md` § "The unmount approver".
+  DiskArbitration, and no wait but the gate's. ❌ Never install the `WillUnmount` observer beside it (the fallback; two
+  pre-unmount hooks stop one index twice). A mount that ended with NO ask is a vanished drive (`causes.rs`): stopped as
+  `Vanish`, ❌ never resumed, and `watcher.rs`'s stop stands down. `DETAILS.md` § "The unmount approver".
 
 Decisions, edge cases, the servers arm, and the `Retained::cast_unchecked` contract: `DETAILS.md`. Read it before any
 non-trivial work here: editing, planning, reorganizing, or advising.
