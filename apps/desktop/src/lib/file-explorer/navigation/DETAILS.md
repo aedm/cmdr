@@ -386,6 +386,12 @@ through `wordEjectRefusal(e)` in `eject-error-messages.ts`, which:
 compiling until it has words for it. Backend classification and the variant list:
 `src-tauri/src/file_system/volume/DETAILS.md`; the whole error-path map is `docs/guides/error-handling.md`.
 
+`unmountRefused` also carries `holders`, the processes the backend found holding the drive. Every refusal still reads
+the one `errors.eject.unmountRefused` line today; M15 is what words the named cases
+(`docs/specs/eject-and-drive-safety-plan.md` § "Copy drafts"). ❗ When it does, only `holders.type === 'complete'` with
+an empty `named` may read as "nothing is using this drive": `incomplete` means the scan couldn't cover every mount of
+the drive, and wording that as free would be a lie about a drive something is plainly holding.
+
 ### Editable favorites
 
 The "Favorites" group in the switcher is user-owned: add, remove, rename, reorder. Favorites arrive from `volume-store`

@@ -414,7 +414,8 @@ destination goes through, plus `path_exists`.
 
 `eject/` (macOS+Linux) owns volume teardown across every kind, so it lives next to the `VolumeManager` and `Volume`
 trait it dispatches over: `mod.rs` holds the pipeline and `EjectError`, `unmount_tool.rs` the `diskutil` / `umount`
-subprocess, and `disk_target.rs` + `disk_flight.rs` (macOS) the per-physical-disk eject below.
+subprocess, `disk_target.rs` + `disk_flight.rs` (macOS) the per-physical-disk eject below, and `holders/` the scan that
+names a refusal's holders.
 `commands::eject::eject_volume` is a thin delegate; the pipeline is:
 
 1. **Busy gate**: refuse (`EjectError::Busy`) if a write op is touching the volume (`file_system::busy_volume_ids`), so
@@ -455,12 +456,13 @@ held sibling would otherwise read as done.
 `settle_with_retries` with the real mount-table read and a `run_tool` that sends each `diskutil eject` through the
 disk-image harness (`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"), which proves the mount point is the image's
 own before every attempt. An idle APFS volume ejects and its image detaches; a file held open by a child process
-answers `UnmountRefused` after the retries, still mounted. Five more pin the per-disk eject: both volumes of an APFS
+answers `UnmountRefused` after the retries, still mounted, and NAMES that child's pid. Five more pin the per-disk eject: both volumes of an APFS
 container resolve to one `DiskKey` whose units carry the physical disk and the container; an idle two-volume disk
 answers `Ok` only once both volumes went and the image detached; ejecting A while a file on B is held answers
-`UnmountRefused` with the disk still attached, on a two-volume APFS container and on two HFS+ partitions of one disk;
-and after that partial unmount the sibling still mounted gets its index back while the one that really went stays
-stopped (verified on macOS 27.0, hand run, 2026-09-16). They run in the opt-in disk-image lane: `pnpm check
+`UnmountRefused` with the disk still attached, naming the holder that sits on the SIBLING (which is what proves the
+scan covers every captured mount, not just the volume clicked), on a two-volume APFS container and on two HFS+
+partitions of one disk; and after that partial unmount the sibling still mounted gets its index back while the one that
+really went stays stopped (verified on macOS 27.0, hand run, 2026-09-16). They run in the opt-in disk-image lane: `pnpm check
 disk-images`, or any `pnpm check --include-slow` on a Mac (`scripts/check/checks/DETAILS.md` § "The disk-image lane").
 
 **A refusal is retried before anyone hears about it.** When `settle` answers `UnmountRefused`,
@@ -477,6 +479,40 @@ count. Both verbs retry, so `disconnect_smb` does too; for an eject the loop run
 covers it and a joined caller gets the final answer. The cost: a real hold (an app with a file open on the drive)
 reports about 3 s later than it would without the retries. The loop takes the tool and the mount-table read as
 closures, so its tests run a scripted fake tool on a paused clock.
+
+**A refusal names who held the drive.** `eject/holders/` asks the kernel which processes have the drive open, so the
+toast can say which app to close rather than only that something is using it. `run_teardown` runs it ONCE, after the
+last attempt, over the teardown's mounts that are still in the table: the per-disk flight's captured mounts, an SMB
+share's own mount path, or the one volume of a macFUSE mount. Inside the retry loop it would multiply a scan that takes
+142 ms to 9.4 s by four attempts and describe holds that had already let go; hooked in `run_teardown` rather than in the
+flight, every kind is named the same way and a flight that hands an index back has already named its holders. The
+answer rides on `EjectError::UnmountRefused`, and the MCP `eject` tool repeats it in `ToolError.data` beside
+`"outcome": "unmountRefused"`, so an agent acts on the typed value rather than on our sentence. `HolderKind` is
+`Unclassified` for every holder until M14 fills it in; `docs/specs/eject-and-drive-safety-plan.md` § "Holders" has the
+classification design.
+
+- **The walk**: `proc_listpidspath(PROC_ALL_PIDS, PATH_IS_VOLUME | EXCLUDE_EVTONLY)` per path, then `proc_pidpath` per
+  pid for a name, deduped by pid in first-seen order, dropping a pid that ended meanwhile (ESRCH). Two `extern "C"`
+  lines in `holders/scan.rs`; ❌ no `libproc` crate for two functions. It sees SAME-UID processes only (`CHECK_SAME_USER`,
+  `xnu/bsd/kern/proc_info.c:2196-2211`) and misses a memory-mapped-only holder, so a root-owned dissenter leaves a
+  refusal naming nobody. That's the residual the deferred DA teardown would close.
+- **Bounded and abandonable.** `proc_listpidspath` `stat`s its path before it walks the process list (142 ms to 9.4 s
+  under load, and forever on a wedged mount), so the walk runs on ONE plain std thread nobody joins, under
+  `HOLDER_BUDGET` (1.5 s, injected so the real-image lane can give a loaded machine more room). ❌ Never
+  `spawn_blocking`: a wedged scan would hold one of the pool's threads for as long as the mount stays wedged. Past the
+  budget the thread is left to end on its own.
+- ❗ **`HolderScan` has TWO answers, ❌ never one list**, the same rule `DiskMounts` carries. Only `Complete` with an
+  empty list may read as "nobody is holding it". A scan with nothing to ask about (every captured mount left the table),
+  one the budget walked away from, or one whose mount changed device under it is `Incomplete`, and it still carries
+  whatever it did name. Collapsing the two would word a plainly-held drive as free, which is the exact shape of the two
+  defects M11 and M12 found.
+- **The device is read on BOTH sides of each walk** (`stat().st_dev`; ❌ not `f_fsid`, which on the boot volume names the
+  sealed system snapshot). DiskArbitration reuses mount points and BSD units at once, so a volume that went away and a
+  different one that took its place mid-scan would have the scan name somebody else's drive's holders, which is worse
+  than naming nobody. That `stat` is the ONE sanctioned probe of a mount root in the app, and it's sound only because it
+  lives on the thread the budget abandons.
+- **Linux answers `Incomplete`**, having no walk at all: ❌ not an empty `Complete`, which would claim nothing holds the
+  drive.
 
 **A slow refusal is still a refusal, and retries stop at a budget.** A refusal can take a long time to ARRIVE: after
 `unmount(2)` answers EBUSY, `diskarbitrationd` scans every process with `proc_listpidspath(PROC_ALL_PIDS,
@@ -599,7 +635,8 @@ Errors are the typed `EjectError` (`Busy`, `VolumeNotFound`, `NotEjectable`,
 `commands::eject` passes it straight through, so nothing is flattened on the way out and the frontend words each
 variant from `errors.eject.*` (`src/lib/file-explorer/navigation/DETAILS.md` § "Eject button + row context menu").
 `diskutil`'s own stderr rides in the `detail` field of `UnmountRefused` / `DeviceDisconnectRefused` and goes to the LOG,
-never into the toast.
+never into the toast; who held the drive rides beside it as the typed `HolderScan` (§ "A refusal names who held the
+drive").
 Returns once teardown is *initiated* — `volume-unmounted` / `mtp-device-disconnected` fire
 shortly after and panes rooted at the volume redirect to root. `disconnect_smb_volume` (in `commands::network`) is the
 same `diskutil unmount` pattern for the explicit SMB-disconnect path.

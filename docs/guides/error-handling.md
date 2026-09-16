@@ -79,6 +79,12 @@ The rule that replaced it:
 - **Free-form OS text is a `detail` field, never the message.** `MutationError::Unexpected { detail }`,
   `EjectError::UnmountRefused { detail }`, and their siblings carry what `diskutil` or the Trash actually said, for the
   log and a technical-details disclosure. The message the person reads always comes from a catalog key.
+- **What the copy needs to NAME comes back typed beside the detail.** `EjectError::UnmountRefused` also carries a
+  `HolderScan`, the processes that held the drive, so the toast can name the app to close rather than parse `diskutil`'s
+  prose for it (`error-string-match` forbids that anyway). ❗ It's a typed answer with TWO arms, so "the scan couldn't
+  run" stays distinct from "nothing holds it": an enum that can only say "here's the list" forces callers to read an
+  empty one as the second, which is a lie whenever it was really the first. Same rule as `DiskMounts`; the design is in
+  `apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "A refusal names who held the drive".
 - **A typed error needs a typed carrier on the frontend.** `throwIpcError` flattens anything without a `.message` into
   `new Error(JSON.stringify(...))`, which is exactly the string this design exists to end. A refusal that reaches a
   human crosses the throw as a `TypedFailure` subclass (`apps/desktop/src/lib/ipc/typed-failure.ts`: `MutationFailure`,
