@@ -1057,6 +1057,10 @@
   "@fileExplorer.selectionInfo.noSelection": {
     "sourceHash": "beea8ac"
   },
+  "fileExplorer.selectionInfo.noSelectionOfMatches": "未選取項目，{count, plural, other {{totalText} 個相符項目中的 {shownText} 個}}。",
+  "@fileExplorer.selectionInfo.noSelectionOfMatches": {
+    "sourceHash": "4063c2b"
+  },
   "fileExplorer.tabBar.paneTabsAriaLabel": "{paneId} 窗格的分頁",
   "@fileExplorer.tabBar.paneTabsAriaLabel": {
     "sourceHash": "d641870"

@@ -1065,6 +1065,10 @@
   "@fileExplorer.selectionInfo.noSelection": {
     "sourceHash": "beea8ac"
   },
+  "fileExplorer.selectionInfo.noSelectionOfMatches": "Geen selectie, {shownText} van {count, plural, one {{totalText} resultaat} other {{totalText} resultaten}}.",
+  "@fileExplorer.selectionInfo.noSelectionOfMatches": {
+    "sourceHash": "4063c2b"
+  },
   "fileExplorer.tabBar.paneTabsAriaLabel": "Tabbladen van {paneId} paneel",
   "@fileExplorer.tabBar.paneTabsAriaLabel": {
     "sourceHash": "d641870"

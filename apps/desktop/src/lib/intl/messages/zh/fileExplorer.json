@@ -1057,6 +1057,10 @@
   "@fileExplorer.selectionInfo.noSelection": {
     "sourceHash": "beea8ac"
   },
+  "fileExplorer.selectionInfo.noSelectionOfMatches": "未选择，{count, plural, other {{totalText} 个匹配中的 {shownText} 个}}。",
+  "@fileExplorer.selectionInfo.noSelectionOfMatches": {
+    "sourceHash": "4063c2b"
+  },
   "fileExplorer.tabBar.paneTabsAriaLabel": "{paneId} 窗格标签页",
   "@fileExplorer.tabBar.paneTabsAriaLabel": {
     "sourceHash": "d641870"

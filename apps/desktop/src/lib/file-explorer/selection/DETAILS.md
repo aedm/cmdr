@@ -133,6 +133,15 @@ Other layout: filename truncation uses `useShortenMiddle` with `preferBreakAt: '
 `measureDateColumnWidth(formatDateTime)` to stay in sync with FullList; `formatDateTime` comes from
 `reactive-settings.svelte`.
 
+Two props exist for the search-results pane, which shows the same footer over a snapshot instead of a folder:
+
+- `showVolumeSpace` (default `true`) switches the free-space text off. It's a separate prop rather than "pass no
+  `volumeSpace`", because `null` there already means "not fetched yet". Who passes what: `../pane/pane-footer.ts`.
+- `totalMatches` turns the `no-selection` line into "No selection, 10,000 of 34,512 matches." whenever the search found
+  more than the pane holds (the row cap, or a walk still filling it). Equal or absent, the line counts files and dirs as
+  usual. The numbers themselves come from `../pane/snapshot-stats.ts`, a fold over the snapshot's rows that stands in
+  for the stats IPC.
+
 ## Phone-storage hint (MTP)
 
 On a phone reached over USB (MTP), the disk-space readout reports the whole device userdata partition, but Cmdr can only

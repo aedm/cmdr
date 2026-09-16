@@ -1062,6 +1062,10 @@
   "@fileExplorer.selectionInfo.noSelection": {
     "sourceHash": "beea8ac"
   },
+  "fileExplorer.selectionInfo.noSelectionOfMatches": "Aucune sélection, {shownText} sur {count, plural, one {{totalText} résultat} many {{totalText} résultats} other {{totalText} résultats}}.",
+  "@fileExplorer.selectionInfo.noSelectionOfMatches": {
+    "sourceHash": "4063c2b"
+  },
   "fileExplorer.tabBar.paneTabsAriaLabel": "Onglets du panneau {paneId}",
   "@fileExplorer.tabBar.paneTabsAriaLabel": {
     "sourceHash": "d641870"

@@ -1059,6 +1059,10 @@
   "@fileExplorer.selectionInfo.noSelection": {
     "sourceHash": "beea8ac"
   },
+  "fileExplorer.selectionInfo.noSelectionOfMatches": "Inget markerat, {shownText} av {count, plural, one {{totalText} träff} other {{totalText} träffar}}.",
+  "@fileExplorer.selectionInfo.noSelectionOfMatches": {
+    "sourceHash": "4063c2b"
+  },
   "fileExplorer.tabBar.paneTabsAriaLabel": "Flikar för {paneId} panel",
   "@fileExplorer.tabBar.paneTabsAriaLabel": {
     "sourceHash": "d641870"

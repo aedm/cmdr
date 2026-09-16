@@ -67,6 +67,20 @@
         /** Disk space info for current volume (null when unavailable) */
         volumeSpace?: SpaceInfo | null
         /**
+         * Whether this pane talks about disk space at all. A search-results pane
+         * sets it `false`: its rows aren't a place on a disk, so a free-space
+         * figure there answers a question nobody asked. Which pane gets it:
+         * `../pane/pane-footer.ts`.
+         */
+        showVolumeSpace?: boolean
+        /**
+         * How many matches the search found, when this pane shows a search-results
+         * snapshot whose row list is a LOWER BOUND (the 10,000-row cap, or a walk
+         * still filling it). The no-selection line then counts the rows against it
+         * rather than claiming the pane holds every hit. Absent on a normal pane.
+         */
+        totalMatches?: number
+        /**
          * Phone-storage caveat for the disk-space readout, set only on MTP
          * volumes. When present, it tooltips the free/total text to explain why
          * the browsable folders add up to less than the used space.
@@ -74,7 +88,21 @@
         mtpSpaceHint?: string
     }
 
-    const { viewMode, volumeId, entry, currentDirModifiedAt, stats, selectedCount, volumeSpace, mtpSpaceHint }: Props = $props()
+    const {
+        viewMode,
+        volumeId,
+        entry,
+        currentDirModifiedAt,
+        stats,
+        selectedCount,
+        volumeSpace,
+        showVolumeSpace = true,
+        totalMatches,
+        mtpSpaceHint,
+    }: Props = $props()
+
+    /** The free-space readout: a figure to show, and a pane allowed to show it. */
+    const spaceReadout = $derived(showVolumeSpace ? (volumeSpace ?? null) : null)
 
     // ========================================================================
     // Display mode determination
@@ -194,6 +222,17 @@
         if (!stats) return ''
         const { totalFiles, totalDirs } = stats
 
+        // A search that found more than the pane holds counts rows against matches,
+        // so the figure never reads as "this is everything".
+        const shown = totalFiles + totalDirs
+        if (totalMatches !== undefined && totalMatches > shown) {
+            return tString('fileExplorer.selectionInfo.noSelectionOfMatches', {
+                count: totalMatches,
+                shownText: formatNumber(shown),
+                totalText: formatNumber(totalMatches),
+            })
+        }
+
         const filesPart = tString('fileExplorer.selectionInfo.noSelectionFiles', {
             count: totalFiles,
             countText: formatNumber(totalFiles),
@@ -257,8 +296,8 @@
 <div class="selection-info">
     {#if displayMode === 'empty'}
         <span class="summary-text">{tString('fileExplorer.selectionInfo.nothingHere')}</span>
-        {#if volumeSpace}
-            <span class="disk-space-text" use:tooltip={diskSpaceTooltipText(volumeSpace)}>{diskSpaceStatusText(volumeSpace)}</span>
+        {#if spaceReadout}
+            <span class="disk-space-text" use:tooltip={diskSpaceTooltipText(spaceReadout)}>{diskSpaceStatusText(spaceReadout)}</span>
         {/if}
     {:else if displayMode === 'file-info' && entry}
         <!-- Brief mode without selection: show file info -->
@@ -304,14 +343,14 @@
         <span class="date" style="width: {dateColumnWidth}px;" use:tooltip={dateTooltip}>
             {#if datePlaceholder !== null}{datePlaceholder}{:else}<DateLabel modifiedAt={dateTimestamp} />{/if}
         </span>
-        {#if volumeSpace}
-            <span class="disk-space-text" use:tooltip={diskSpaceTooltipText(volumeSpace)}>{diskSpaceStatusText(volumeSpace)}</span>
+        {#if spaceReadout}
+            <span class="disk-space-text" use:tooltip={diskSpaceTooltipText(spaceReadout)}>{diskSpaceStatusText(spaceReadout)}</span>
         {/if}
     {:else if displayMode === 'no-selection'}
         <!-- Full mode without selection: show totals -->
         <span class="summary-text">{noSelectionText}</span>
-        {#if volumeSpace}
-            <span class="disk-space-text" use:tooltip={diskSpaceTooltipText(volumeSpace)}>{diskSpaceStatusText(volumeSpace)}</span>
+        {#if spaceReadout}
+            <span class="disk-space-text" use:tooltip={diskSpaceTooltipText(spaceReadout)}>{diskSpaceStatusText(spaceReadout)}</span>
         {/if}
     {:else if displayMode === 'selection-summary' && stats}
         <!-- Selection summary -->

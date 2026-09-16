@@ -47,7 +47,8 @@
     import VolumeUnreachableBanner from './VolumeUnreachableBanner.svelte'
     import NetworkMountView from './NetworkMountView.svelte'
     import SearchResultsView from './SearchResultsView.svelte'
-    import type { CancelLoadingPayload, SearchResultsViewAPI, VolumeChangePayload } from './types'
+    import type { CancelLoadingPayload, PaneViewKind, SearchResultsViewAPI, VolumeChangePayload } from './types'
+    import { paneFooterVisibility } from './pane-footer'
     import { getMutationTick, getSnapshot, snapshotIdFromPanePath } from '$lib/search/snapshot-store.svelte'
     import MtpConnectionView from './MtpConnectionView.svelte'
     import RemoteConnectView from './RemoteConnectView.svelte'
@@ -534,8 +535,13 @@
      * this in the chain, with byte-identical precedence: a runtime
      * state always wins over the kind view, exactly as the string-compare chain did.
      */
-    const paneViewKind = $derived<'network' | 'search-results' | 'mtp-connect' | 'normal'>(
+    const paneViewKind = $derived<PaneViewKind>(
         isNetworkView ? 'network' : isSearchResultsView ? 'search-results' : isMtpDeviceOnly ? 'mtp-connect' : 'normal',
+    )
+
+    /** Which pieces of the status footer this pane renders (`pane-footer.ts`). */
+    const footer = $derived(
+        paneFooterVisibility({ kind: paneViewKind, hasError: Boolean(friendlyError || error || unreachable) }),
     )
 
     // Look up the live volume info (used for the share name in the reconnecting
@@ -1933,14 +1939,16 @@
             />
         {/if}
     </div>
-    <!-- SelectionInfo shown in both modes (not in network view, MTP connecting state, or error states) -->
-    {#if paneViewKind === 'normal' && !friendlyError && !error && !unreachable}
+    <!-- The status footer: which panes get it, and which of those talk about disk
+         space, is `pane-footer.ts`. A search-results pane counts its hits here but
+         has no free space to report. -->
+    {#if footer.selectionInfo}
         <!-- ❗ The bar is a fill against a total, so it renders only where a total
              exists. Storage with no ceiling (`usageBar === null`) shows the used
              figure in `SelectionInfo` below and no bar at all: an empty track
              would read as "0% full", which is a claim nothing supports. A `null`
              `volumeSpace` is the not-yet-fetched state and keeps the empty track. -->
-        {#if !isDiskImageVolume && (!diskSpace.volumeSpace || usageBar)}
+        {#if footer.volumeSpace && !isDiskImageVolume && (!diskSpace.volumeSpace || usageBar)}
         <div
             class="disk-usage-bar-wrapper"
             use:tooltip={diskSpace.volumeSpace
@@ -1966,13 +1974,15 @@
         </div>
         {/if}
         <SelectionInfo
-            {viewMode}
-            {volumeId}
+            viewMode={isSearchResultsView ? 'full' : viewMode}
+            volumeId={searchSnapshot?.volumeId ?? volumeId}
             entry={selectionInfo.entry}
             currentDirModifiedAt={undefined}
             stats={selectionInfo.stats}
             selectedCount={selection.selectedIndices.size}
             volumeSpace={diskSpace.volumeSpace}
+            showVolumeSpace={footer.volumeSpace}
+            totalMatches={searchSnapshot?.totalCount}
             {mtpSpaceHint}
         />
     {/if}

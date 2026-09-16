@@ -324,6 +324,45 @@ describe('createSelectionInfoFeed', () => {
     })
   })
 
+  describe('the search-results stats', () => {
+    const twoRows = () =>
+      snapshot([
+        { name: 'one.txt', path: '/dir/one.txt' },
+        { name: 'two.txt', path: '/dir/two.txt' },
+      ])
+
+    it('folds the snapshot instead of asking the backend, which has no listing to answer for', () => {
+      const created = create({ isSearchResultsView: true, listingId: '', searchSnapshot: twoRows() })
+      expect(ipc.getListingStats).not.toHaveBeenCalled()
+      expect(created.feed.stats?.totalFiles).toBe(2)
+      expect(created.feed.stats?.totalSize).toBe(24)
+    })
+
+    it('follows the selection without waiting out the backend throttle', () => {
+      const created = create({ isSearchResultsView: true, listingId: '', searchSnapshot: twoRows() })
+      created.setSelectedIndices([1])
+      expect(created.feed.stats?.selectedFiles).toBe(1)
+      expect(created.feed.stats?.selectedSize).toBe(12)
+    })
+
+    it('follows a still-running walk as rows land in the snapshot', () => {
+      const created = create({
+        isSearchResultsView: true,
+        listingId: '',
+        searchSnapshot: snapshot([{ name: 'one.txt', path: '/dir/one.txt' }]),
+      })
+      expect(created.feed.stats?.totalFiles).toBe(1)
+      created.setSnapshot(twoRows())
+      expect(created.feed.stats?.totalFiles).toBe(2)
+    })
+
+    it('clears the stats when the snapshot is gone', () => {
+      const created = create({ isSearchResultsView: true, listingId: '', searchSnapshot: twoRows() })
+      created.setSnapshot(undefined)
+      expect(created.feed.stats).toBeNull()
+    })
+  })
+
   it('cleanup drops the pending debounce and throttle', async () => {
     const created = create()
     ipc.getFileAt.mockClear()

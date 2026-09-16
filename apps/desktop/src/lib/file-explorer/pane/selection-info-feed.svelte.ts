@@ -11,8 +11,9 @@
  * range-select can't flood the backend with per-keystroke IPC. The virtual
  * scroll is fully synchronous and unaffected by either.
  *
- * On a search-results pane there's no backend listing to query, so the cursor
- * entry is mirrored straight out of the in-memory snapshot instead.
+ * On a search-results pane there's no backend listing to query, so both halves
+ * come straight out of the in-memory snapshot: the cursor entry is mirrored from
+ * the row under the cursor, and the stats are folded by `snapshot-stats.ts`.
  */
 
 import { getFileAt, getListingStats } from '$lib/tauri-commands'
@@ -22,6 +23,7 @@ import type { SearchSnapshot } from '$lib/search/snapshot-store.svelte'
 import { updateIndexSizesInPlace } from '../views/file-list-utils'
 import { createDebounce, createThrottle } from '$lib/utils/timing'
 import { createParentEntry } from './parent-entry'
+import { computeSnapshotStats } from './snapshot-stats'
 
 /** The status bar can lag a frame behind the cursor; the list itself never does. */
 const CURSOR_FETCH_DEBOUNCE_MS = 16
@@ -114,6 +116,14 @@ export function createSelectionInfoFeed(deps: SelectionInfoFeedDeps): SelectionI
   }
 
   async function fetchStats(): Promise<void> {
+    // A snapshot pane's rows are already in memory, so the same numbers come from
+    // a fold instead of an IPC. Synchronous: the `await` below never runs here.
+    if (deps.getIsSearchResultsView()) {
+      const snap = deps.getSearchSnapshot()
+      stats = snap ? computeSnapshotStats(snap.entries, deps.getSelectedIndices()) : null
+      return
+    }
+
     const listingId = deps.getListingId()
     if (!listingId) {
       stats = null
@@ -189,9 +199,23 @@ export function createSelectionInfoFeed(deps: SelectionInfoFeedDeps): SelectionI
   // Re-fetch listing stats when the selection changes.
   $effect(() => {
     void deps.getSelectionSize() // Track selection changes
+    if (deps.getIsSearchResultsView()) return // The effect below owns a snapshot pane's stats.
     if (deps.getListingId() && !deps.getLoading()) {
       throttledFetchStats.call()
     }
+  })
+
+  /**
+   * Search-results pane: fold the stats out of the snapshot, unthrottled. There's
+   * no IPC to spare here, and the snapshot is also the thing that CHANGES (a
+   * still-running walk appends rows, a delete-sync purges them), so the read of
+   * `getSearchSnapshot()` is what keeps the count honest while the walk fills.
+   */
+  $effect(() => {
+    if (!deps.getIsSearchResultsView()) return
+    void deps.getSearchSnapshot() // Track appends and purges
+    void deps.getSelectionSize() // Track selection changes
+    void fetchStats()
   })
 
   return {

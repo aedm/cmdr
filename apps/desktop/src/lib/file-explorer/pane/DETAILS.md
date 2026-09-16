@@ -73,7 +73,9 @@ suite:
     batches it and joins concurrent requests for overlapping paths, where it has more information than a pane does.
 - `selection-info-feed.svelte.ts`: the entry under the cursor and the listing stats, with their debounce/throttle and
   the search-results snapshot mirror. `parent-entry.ts` builds the synthetic `..` row it and `entries-snapshot.ts`
-  share.
+  share. `snapshot-stats.ts` is the fold it uses in place of the stats IPC on a snapshot pane (§ Conventions).
+- `pane-footer.ts`: which parts of the status footer a view kind renders. Two answers, because they differ on exactly
+  one pane: a search-results pane counts its rows like any folder but reports no free space.
 - `pane-key-router.ts` / `pane-pointer.ts`: keyboard routing and mouse handling for a focused pane.
 - `entry-activation.ts`: what opening an entry does (redirect, archive Enter policy, browse, viewer, OS default app).
 - `breadcrumb-bar.ts`: the displayed path plus the segment-click, context-menu, and volume-switch handlers.
@@ -237,9 +239,9 @@ a just-deselected row reads as wrong. The target comes from `firstSelectedIndex`
 land on the same first row it actually selected. Both sides apply the identical skip, so an `idxs` still carrying a
 leading `0` can't park the cursor on the synthetic `..` row.
 
-**Snapshot pane (`volumeId === 'search-results'`).** FIVE integration points that MUST stay coupled, and skipping one
+**Snapshot pane (`volumeId === 'search-results'`).** SIX integration points that MUST stay coupled, and skipping one
 gives an off-by-one selection, a stuck `search-results` path, a delete on rows nobody picked, an MCP delete refused by
-stale pane state, or a folder re-sorted from a pane that isn't showing it:
+stale pane state, a folder re-sorted from a pane that isn't showing it, or a footer that counts nothing:
 
 1. `computeHasParent` returns `false` (no `..` row, via the `hasParentRow` capability).
 2. Opening a real entry from the result rows leaves the snapshot volume (below).
@@ -249,6 +251,10 @@ stale pane state, or a folder re-sorted from a pane that isn't showing it:
 5. Its column header sorts the SNAPSHOT in the store (`sort-operations.ts::snapshotPaneId` returns before any
    `setPaneSort` or `resortListing`), because every consumer resolves the index the user sees against
    `snapshot.entries[i]`. The header itself reads no capability (below).
+6. The status footer's numbers are folded from the snapshot (`snapshot-stats.ts`), since `getListingStats` has no
+   listing to answer for. The feed's search branch is unthrottled and re-reads the snapshot itself, so the count follows
+   a walk that's still filling the pane. Without it `stats` stays `null`, and a null `stats` costs more than the footer:
+   the native context menu's header line loses its size and count too (§ "The context menu's header line").
 
 `FilePane.handleNavigate` gates the second on the `isSearchResultsView` capability (the `caps.kind === 'search-results'`
 classifier, never a raw id compare), resolves the entry's `Location` (`resolveLocationOrToast`, shared with the other
@@ -257,6 +263,22 @@ volume (a different volume than `search-results`). An unresolvable entry shows t
 resolve+switch and the pane is poisoned with `volumeId === 'search-results'` + a real path. `onGoToLocation` (go to a
 location) and `onVolumeChange` (deliberate volume-(re)select) are the two distinct intents — `Location` carries no
 `volumePath`, so the location-only callback is the clean seam.
+
+**The status footer (`pane-footer.ts`).** `paneFooterVisibility` answers two questions from the view kind, and they part
+company on the snapshot pane:
+
+- `selectionInfo` — the counts and the selection summary. A search-results pane gets them: "how many hits, and how big
+  are the ones I picked" is the question a search exists to answer, and until it did, the pane's footer was blank.
+- `volumeSpace` — the free-space text plus the 3px usage bar above it. The snapshot pane gets neither. Its rows all live
+  on ONE volume (`snapshot-source-volume.ts`), so a figure would be computable, but the pane isn't sitting IN that
+  volume: a free-space readout there answers a question nobody asked and would follow the user around their history.
+  `SelectionInfo` takes this as its own `showVolumeSpace` prop rather than inferring it from a `null` space, which
+  already means "not fetched yet" and keeps the empty bar track.
+
+The snapshot pane also passes `totalMatches` (the snapshot's `totalCount`). When the search found MORE than the pane
+holds — the 10,000-row cap, or a walk still filling it — the no-selection line reads "No selection, 10,000 of 34,512
+matches." instead of claiming the rows are everything. Equal counts fall back to the normal "No selection, 112 files."
+It renders `viewMode: 'full'` regardless of the pane's own view mode, because `SearchResultsView` is always a full list.
 
 **Volume capabilities (`volume-capabilities.ts`).** Guard logic branches on a `VolumeCapabilities` record, ❌ never on a
 volume-id string. The record has two halves, and which half answers is the whole design:

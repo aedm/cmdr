@@ -315,6 +315,13 @@ export interface PlacesBrowserAPI extends BrowserAPI {
 }
 
 /** Typed interface for SearchResultsView's exported methods. */
+/**
+ * Which view a pane renders, as a function of its capability KIND (plus the MTP
+ * device-only connection sub-state). `FilePane`'s alt-view `{#if}` chain branches
+ * on it, and `pane-footer.ts` decides the status footer from it.
+ */
+export type PaneViewKind = 'network' | 'search-results' | 'mtp-connect' | 'normal'
+
 export interface SearchResultsViewAPI {
   setCursorIndex(index: number): void
   findItemIndex(name: string): number

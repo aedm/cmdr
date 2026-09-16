@@ -1546,6 +1546,15 @@
     },
     "screenshot": "main-window.png"
   },
+  "fileExplorer.selectionInfo.noSelectionOfMatches": "No selection, {shownText} of {count, plural, one {{totalText} match} other {{totalText} matches}}.",
+  "@fileExplorer.selectionInfo.noSelectionOfMatches": {
+    "description": "Status-bar summary for a pane showing search results, when the search found more hits than the pane holds, e.g. \"No selection, 10,000 of 34,512 matches.\" A \"match\" is one file the search found.",
+    "placeholders": {
+      "shownText": "how many result rows the pane holds, already formatted for display",
+      "totalText": "how many hits the search found in total, already formatted for display",
+      "count": "the same total (drives the singular/plural form)"
+    }
+  },
   "fileExplorer.tabBar.paneTabsAriaLabel": "{paneId} pane tabs",
   "@fileExplorer.tabBar.paneTabsAriaLabel": {
     "description": "Accessibility label for one pane''s tab strip. {paneId} is the side, \"left\" or \"right\".",
