@@ -268,6 +268,13 @@ export interface VolumeInfo {
   mountIsReadOnly?: boolean
   /** Whether this volume is a mounted disk image (.dmg): no indexing affordances, no space bars. */
   isDiskImage?: boolean
+  /**
+   * Whether a cloud provider's own filesystem serves this mount (pCloud's `pcloudfs`, CloudMounter, …),
+   * so every entry read costs a round trip to that provider's daemon: grouped under CLOUD, and no
+   * indexing affordances. ❗ `false` for a `~/Library/CloudStorage` folder, which is an ordinary
+   * directory on the data volume and stays indexable.
+   */
+  isCloudMount?: boolean
   /** Filesystem type from statfs (for example, "apfs", "smbfs", "exfat") */
   fsType?: string
   /** Whether this volume supports macOS trash. `undefined` means unknown (treat as `true`). */

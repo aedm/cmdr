@@ -29,11 +29,17 @@ import { capabilitiesForInfo } from '../pane/volume-capabilities'
  * gets no index badge (neither the active-volume spot nor its dropdown row), no
  * first-connect "index this drive?" prompt, and no per-volume index-status fetch.
  *
- * Three reasons to drop a row, each a different kind of answer:
+ * Four reasons to drop a row, each a different kind of answer:
  *
  * - **A favorite** is a shortcut into a drive, not a drive.
  * - **A mounted disk image** could be indexed, and we deliberately don't: a
  *   `.dmg` mount is transient.
+ * - **A cloud provider's own mount** (`isCloudMount`: pCloud's `pcloudfs`,
+ *   CloudMounter, …) could be too, and we deliberately don't either: every entry
+ *   is a round trip to the provider's daemon, so a walk would spend hours asking
+ *   their service for a picture another device's sync invalidates. ❗ This is the
+ *   MOUNT, not a `~/Library/CloudStorage` folder — those are ordinary directories
+ *   on the data volume, and Cmdr has always indexed them at local speed.
  * - **No drive index can serve it** (`canBeIndexed`, a typed capability): the
  *   synthetic `network` / `search-results` rows, and an SFTP or WebDAV server
  *   (whose `sftp://…` root no local walker can read, so an enable would leave a
@@ -45,6 +51,7 @@ import { capabilitiesForInfo } from '../pane/volume-capabilities'
 export function isDriveRow(volume: VolumeInfo): boolean {
   if (volume.category === 'favorite') return false
   if (volume.isDiskImage) return false
+  if (volume.isCloudMount) return false
   return capabilitiesForInfo(volume).canBeIndexed
 }
 

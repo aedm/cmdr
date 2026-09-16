@@ -128,6 +128,7 @@ fn location_from_entry(entry: DeviceVolumeEntry) -> LocationInfo {
         is_ejectable: true,
         mount_is_read_only: entry.mount_is_read_only,
         is_disk_image: false,
+        is_cloud_mount: false,
         fs_type: Some(entry.fs_type.to_string()),
         supports_trash: false,
         connection_state: None,

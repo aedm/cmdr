@@ -5,6 +5,22 @@
 //! and the file context menu (which needs to know what each provider can
 //! actually do).
 //!
+//! ## Not the same question as `friendly_error::provider`
+//!
+//! There are two provider tables, and they answer different questions about
+//! different things. This one identifies a FOLDER, by name, under
+//! `~/Library/CloudStorage` or `~/Library/Mobile Documents`: the File Provider
+//! world, where the files are ordinary directory entries on the data volume.
+//! `cmdr_fs::volume::friendly_error::provider` identifies a MOUNT, by
+//! filesystem type as well as by path (`pcloudfs`, `macfuse`), which is the
+//! other way a provider can present itself, and what the switcher asks through
+//! `volumes::is_cloud_provider_mount`.
+//!
+//! The distinction is load-bearing rather than cosmetic: a folder is indexed at
+//! local speed and a provider mount is not indexed at all, because every entry
+//! there costs a round trip to the provider's daemon. Merging the two tables
+//! means picking one of those answers for both.
+//!
 //! ## Why a provider is a type, not a string
 //!
 //! The eviction pair ("Make available offline" / "Remove download") works for

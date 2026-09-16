@@ -154,6 +154,7 @@ async fn resolve_path_to_volume(path: String, fs_timeout: Duration) -> (Option<V
                 supports_trash: false,
                 mount_is_read_only: false,
                 is_disk_image: false,
+                is_cloud_mount: false,
                 connection_state: None,
                 pinned: None,
                 landing_path: None,
