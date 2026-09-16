@@ -95,7 +95,10 @@ prompt in § "Archive-password prompt", the `..` helpers in § "Index conversion
 ## How transfer flows
 
 1. **TransferDialog** (destination picker + dry-run scan)
-   - Pre-fills destination from the opposite pane.
+   - Pre-fills destination from the opposite pane, volume-relative via `toVolumeRelativePath`. That derivation is
+     load-bearing rather than cosmetic: a prefill that comes out RELATIVE fails the absolute-path check below, and
+     `handleConfirm` then refuses to dispatch, so the Copy button does nothing and says nothing. Why a remote volume's
+     root needs trimming before the slice: `$lib/path/DETAILS.md` § "Volume membership is a component match".
    - The segmented Copy/Move toggle is always shown so the user can flip the operation regardless of how the dialog was
      triggered (F5/F6, command palette, drag-and-drop).
    - Validates path structure via `validateDirectoryPath()` from `$lib/utils/filename-validation` (empty, absolute, null

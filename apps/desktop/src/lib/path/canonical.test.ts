@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { basenameOf, isPlainFilesystemPath, parentOf, toCanonical } from './canonical'
+import { basenameOf, isPathOnVolume, isPlainFilesystemPath, parentOf, toCanonical } from './canonical'
 
 const HOME = '/Users/foo'
 
@@ -91,5 +91,43 @@ describe('isPlainFilesystemPath', () => {
     expect(isPlainFilesystemPath('~/Documents/a.txt')).toBe(false)
     expect(isPlainFilesystemPath('foo/bar')).toBe(false)
     expect(isPlainFilesystemPath('')).toBe(false)
+  })
+})
+
+describe('isPathOnVolume', () => {
+  it('accepts an exact match', () => {
+    expect(isPathOnVolume('/Volumes/naspi', '/Volumes/naspi')).toBe(true)
+  })
+
+  it('accepts a descendant path', () => {
+    expect(isPathOnVolume('/Volumes/naspi/photos/2024', '/Volumes/naspi')).toBe(true)
+  })
+
+  it('rejects a sibling whose name shares a prefix', () => {
+    expect(isPathOnVolume('/Volumes/naspi-backup', '/Volumes/naspi')).toBe(false)
+  })
+
+  it('rejects a foreign path', () => {
+    expect(isPathOnVolume('/Users/test/project', '/Volumes/naspi')).toBe(false)
+  })
+
+  it('treats root volume `/` as matching any absolute path', () => {
+    expect(isPathOnVolume('/Users/test', '/')).toBe(true)
+    expect(isPathOnVolume('/', '/')).toBe(true)
+  })
+
+  it('handles a volumePath that already ends in `/`', () => {
+    expect(isPathOnVolume('smb://host/share/foo', 'smb://')).toBe(true)
+    expect(isPathOnVolume('/Users/test', 'smb://')).toBe(false)
+  })
+
+  // A remote volume rooted at `/` carries a trailing slash in its own root, so
+  // this is the everyday shape for SFTP, WebDAV, and ADB, not a curiosity.
+  it('accepts a descendant of a remote volume rooted at /', () => {
+    expect(isPathOnVolume('sftp://ada@nas.local:22/home/ada', 'sftp://ada@nas.local:22/')).toBe(true)
+  })
+
+  it('rejects a sibling server-side root that merely shares a prefix', () => {
+    expect(isPathOnVolume('sftp://ada@nas.local:22/srv/data-1', 'sftp://ada@nas.local:22/srv/data')).toBe(false)
   })
 })

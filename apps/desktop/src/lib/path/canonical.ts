@@ -54,6 +54,27 @@ export function isPlainFilesystemPath(raw: string): boolean {
   return raw.startsWith('/')
 }
 
+/**
+ * True when `path` equals `volumePath` or sits under it.
+ *
+ * Matches whole path COMPONENTS, never a raw string prefix: `/Volumes/naspi`
+ * must not claim `/Volumes/naspi-backup`, and a remote volume rooted at
+ * `/srv/data` must not claim a sibling `/srv/data-1`. The Rust side draws the
+ * same line for the same reason (`cmdr-fs`'s `RemoteRoot::to_remote_path`).
+ *
+ * Tolerates a trailing slash on `volumePath`, which a remote volume rooted at
+ * `/` really does carry: its root is `<prefix><server-side root>`, so an SFTP
+ * volume at `/` spells itself `sftp://ada@nas.local:22/`.
+ *
+ * Takes plain `string`s on purpose: callers hold raw paths off IPC, persisted
+ * tab state, and volume records, none of them branded.
+ */
+export function isPathOnVolume(path: string, volumePath: string): boolean {
+  if (path === volumePath) return true
+  const prefix = volumePath.endsWith('/') ? volumePath : volumePath + '/'
+  return path.startsWith(prefix)
+}
+
 /** Returns the parent of a canonical path. `parentOf('/') === '/'`. */
 export function parentOf(p: CanonicalPath): CanonicalPath {
   const i = p.lastIndexOf('/')
