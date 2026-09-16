@@ -28,6 +28,10 @@
     import type { MenuController } from './menu-controller.svelte'
     import type { MenuItem, MenuRowContext, MenuSection } from './menu-types'
 
+    /* eslint-disable @typescript-eslint/no-unnecessary-type-arguments -- `T` is this component's OWN
+       generic and only looks equal to the `unknown` default these types carry. The auto-fixer strips
+       `<T>` here, which erases the payload type from `menu` and from every snippet's `MenuRowContext`,
+       so a consumer passing `createMenu<VolumeInfo>` gets `unknown` data back in its snippets. */
     interface Props {
         menu: MenuController<T>
         ariaLabel: string
@@ -100,7 +104,7 @@
         const value = menu.highlightedValue
         if (!menu.isOpen || value === null) return
         void tick().then(() => {
-            surfaceEl?.querySelector(`[data-menu-value="${CSS.escape(value)}"]`)?.scrollIntoView({ block: 'nearest' })
+            surfaceEl?.querySelector(`[data-menu-row="${CSS.escape(value)}"]`)?.scrollIntoView({ block: 'nearest' })
         })
     })
 
@@ -112,7 +116,7 @@
             return
         }
         void tick().then(() => {
-            const row = surfaceEl?.querySelector(`[data-menu-value="${CSS.escape(parent)}"]`)
+            const row = surfaceEl?.querySelector(`[data-menu-row="${CSS.escape(parent)}"]`)
             if (!row) return
             const rect = row.getBoundingClientRect()
             // A few px of overlap, the way macOS hands a submenu off from its parent row.
@@ -176,6 +180,8 @@
             bind:this={surfaceEl}
             class="menu-surface"
             class:keyboard-mode={menu.keyboardMode}
+            data-menu=""
+            data-keyboard-mode={menu.keyboardMode ? '' : undefined}
             role="menu"
             aria-label={ariaLabel}
             aria-activedescendant={menu.highlightedValue ? rowId(menu.highlightedValue) : undefined}
@@ -193,13 +199,13 @@
                 {#if sectionIndex > 0}
                     <div class="menu-separator"></div>
                 {/if}
-                <div role="group" aria-label={section.heading ?? undefined}>
+                <div role="group" data-menu-section={section.id} aria-label={section.heading ?? undefined}>
                     {#if section.heading}
                         <div class="menu-heading" aria-hidden="true">{section.heading}</div>
                     {/if}
                     {#if section.items.length === 0 && section.emptyLabel}
                         <!-- A real (empty) state, not a missing section: present, said, and unfocusable. -->
-                        <div class="menu-empty" role="menuitem" aria-disabled="true" tabindex="-1">
+                        <div class="menu-empty" data-menu-empty="" role="menuitem" aria-disabled="true" tabindex="-1">
                             {section.emptyLabel}
                         </div>
                     {/if}
@@ -221,7 +227,13 @@
                             aria-disabled={item.disabled ? 'true' : undefined}
                             aria-haspopup={item.submenu?.length ? 'menu' : undefined}
                             aria-expanded={item.submenu?.length ? menu.openSubmenuValue === item.value : undefined}
-                            data-menu-value={item.value}
+                            data-menu-row={item.value}
+                            data-highlighted={context.highlighted ? '' : undefined}
+                            data-checked={item.checked ? '' : undefined}
+                            data-disabled={item.disabled ? '' : undefined}
+                            data-dragging={context.dragging ? '' : undefined}
+                            data-drop-cue={cue}
+                            data-drop-slot={cue === null ? undefined : menu.dropSlot}
                             use:tooltip={item.tooltip ?? ''}
                             onclick={(event: MouseEvent) => {
                                 if (isOwnControl(event)) return
@@ -276,6 +288,7 @@
         {#if menu.openSubmenuValue !== null && submenuPosition}
             <div
                 class="menu-surface menu-submenu"
+                data-menu-submenu=""
                 role="menu"
                 aria-label={ariaLabel}
                 style:top="{submenuPosition.top}px"
@@ -291,7 +304,8 @@
                         class:is-highlighted={menu.submenuHighlighted}
                         role="menuitem"
                         tabindex="-1"
-                        data-menu-value={child.value}
+                        data-menu-row={child.value}
+                        data-highlighted={menu.submenuHighlighted ? '' : undefined}
                         onmouseover={() => {
                             menu.surface.setSubmenuHighlighted(true)
                         }}

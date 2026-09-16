@@ -57,11 +57,11 @@ async function open(
 }
 
 function surface(): HTMLElement | null {
-  return document.querySelector('[role="menu"]')
+  return document.querySelector('[data-menu]')
 }
 
 function row(value: string): HTMLElement | null {
-  return document.querySelector(`[data-menu-value="${value}"]`)
+  return document.querySelector(`[data-menu-row="${value}"]`)
 }
 
 afterEach(() => {
@@ -144,6 +144,61 @@ describe('pointer selection', () => {
     expect(onEject).toHaveBeenCalled()
     // The row must stay put: no call site should need `stopPropagation`.
     expect(onSelect).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * The `data-*` hooks are a contract other suites select on (`lib/ui/DETAILS.md` § Menu),
+ * so they're asserted here rather than left to rot as decoration.
+ */
+describe('test hooks', () => {
+  it('names the surface, each row by value, and the checked and disabled states', async () => {
+    await open()
+    expect(surface()).not.toBeNull()
+    expect(row('hd')?.hasAttribute('data-checked')).toBe(true)
+    expect(row('backup')?.hasAttribute('data-disabled')).toBe(true)
+    expect(row('projects')?.hasAttribute('data-checked')).toBe(false)
+    expect(document.querySelector('[data-menu-section="volumes"]')).not.toBeNull()
+    expect(document.querySelector('[data-menu-empty]')).not.toBeNull()
+  })
+
+  it('moves data-highlighted with the cursor, and marks keyboard mode', async () => {
+    const { menu } = await open()
+    menu.highlight('downloads')
+    await tick()
+    expect(document.querySelector('[data-menu-row][data-highlighted]')?.getAttribute('data-menu-row')).toBe('downloads')
+    expect(surface()?.hasAttribute('data-keyboard-mode')).toBe(false)
+    menu.handleKey(new KeyboardEvent('keydown', { key: 'ArrowDown', cancelable: true }))
+    await tick()
+    expect(surface()?.hasAttribute('data-keyboard-mode')).toBe(true)
+  })
+
+  it('names the submenu surface and its highlighted row', async () => {
+    const { menu } = await open()
+    menu.surface.openSubmenu('share', true)
+    // Twice: the submenu renders only once its position effect has measured the parent row,
+    // and that effect resolves inside a `tick().then(...)` of its own.
+    await tick()
+    await tick()
+    const submenu = document.querySelector('[data-menu-submenu]')
+    expect(submenu).not.toBeNull()
+    expect(submenu?.querySelector('[data-menu-row="connect"][data-highlighted]')).not.toBeNull()
+  })
+
+  it('marks the dragged row, and the cue row carries its insertion slot', async () => {
+    const { menu } = await open()
+    // Two favorite rows 20px tall from y=0: midpoints 10 and 30.
+    menu.surface.bindSurface({ getRowMidpoints: () => [10, 30] })
+    menu.surface.startDrag('projects', new MouseEvent('mousedown', { clientY: 10, button: 0 }))
+    window.dispatchEvent(new MouseEvent('mousemove', { clientY: 45 }))
+    await tick()
+    expect(row('projects')?.hasAttribute('data-dragging')).toBe(true)
+    // Dropping past the last row: the cue sits below it, at slot 2.
+    const cueRow = document.querySelector('[data-drop-cue]')
+    expect(cueRow?.getAttribute('data-menu-row')).toBe('downloads')
+    expect(cueRow?.getAttribute('data-drop-cue')).toBe('below')
+    expect(cueRow?.getAttribute('data-drop-slot')).toBe('2')
+    window.dispatchEvent(new MouseEvent('mouseup', { clientY: 45 }))
   })
 })
 

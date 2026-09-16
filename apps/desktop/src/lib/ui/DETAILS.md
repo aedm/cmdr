@@ -848,8 +848,13 @@ a sub-line (the disk-space bar), and `footer` sits under the last section. Each 
 **What the primitive owns**:
 
 - **Keyboard**: arrows wrap and skip headings, separators, disabled rows, and empty placeholders; Home/End; Enter and
-  Space activate; Escape closes; ArrowRight opens a submenu and ArrowLeft closes it; ⌥↑/⌥↓ reorder inside a
-  `reorderable` section. A bare cursor key only: ⌘↓ / ⌃↓ / ⌥↓ belong to somebody else and pass through.
+  Space activate; ArrowRight opens a submenu and ArrowLeft closes it; ⌥↑/⌥↓ reorder inside a `reorderable` section. A
+  bare cursor key only: ⌘↓ / ⌃↓ / ⌥↓ belong to somebody else and pass through.
+- **Escape closes the open submenu if there is one, otherwise the menu**, down ONE path. The switcher used to disagree
+  with itself here: its routed handler closed only the submenu while a second document listener closed the whole
+  dropdown, so which happened depended on how the key arrived. The primitive has no second listener, and this matches
+  macOS. ❗ M2's characterization pin for the old DOM-Escape-closes-everything case is expected to fail, and gets
+  updated deliberately then.
 - **Every key while open.** `onKey` gets the first look, then the menu's own handling, and anything left over is
   swallowed (`stopPropagation`), which is what keeps the panes behind it inert. ❗ A swallowed key is never
   `preventDefault`ed, so ⌘Q and the menu-bar accelerators still mean what they mean.
@@ -863,6 +868,18 @@ a sub-line (the disk-space bar), and `footer` sits under the last section. Each 
   Because the cursor is a VALUE rather than an index, it rides along with the moved row for free.
 - **Placement**: fixed, clamped into the viewport, `max-height` to the room below the anchor with its own scroll, the
   cursor scrolled into view, and submenus positioned off the row's rect with a small overlap.
+
+**Test hooks are a contract**, like `.ui-popover` and the `.select-*` classes: other suites select on these, so ❌ don't
+rename one without updating them. They're `data-*` attributes rather than CSS classes, because a class is styling and
+gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them rots into decoration.
+
+- `data-menu` on the surface, `data-keyboard-mode` on it while the keyboard is driving, `data-menu-submenu` on the
+  submenu surface.
+- `data-menu-section="<id>"` on a section, `data-menu-empty` on an empty section's placeholder.
+- `data-menu-row="<value>"` on every row (submenu rows too), plus `data-highlighted`, `data-checked`, `data-disabled`,
+  and `data-dragging` as bare present-or-absent marks.
+- `data-drop-cue="above" | "below"` on the row bordering the drop gap, carrying `data-drop-slot="<n>"`, the insertion
+  slot the drop would use.
 
 **Gotchas**:
 

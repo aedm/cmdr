@@ -35,7 +35,7 @@ const DRAG_THRESHOLD_PX = 4
 /** Pointer travel that ends keyboard mode, so a resting mouse can't steal the cursor. */
 const KEYBOARD_MODE_EXIT_PX = 5
 
-export interface MenuDeps<T = undefined> {
+export interface MenuDeps<T = unknown> {
   /** Read live on every access, so the menu tracks the caller's state with no syncing. */
   getSections: () => MenuSection<T>[]
   onSelect: (item: MenuItem<T>) => void
@@ -70,7 +70,7 @@ export interface MenuSurface {
   bindSurface: (hooks: MenuSurfaceHooks) => void
 }
 
-export interface MenuController<T = undefined> {
+export interface MenuController<T = unknown> {
   readonly isOpen: boolean
   readonly anchor: MenuAnchor | null
   readonly sections: MenuSection<T>[]
@@ -97,7 +97,7 @@ export interface MenuController<T = undefined> {
   destroy: () => void
 }
 
-export function createMenu<T = undefined>(deps: MenuDeps<T>): MenuController<T> {
+export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
   let open = $state(false)
   let anchor = $state<MenuAnchor | null>(null)
   let highlightedValue = $state<string | null>(null)

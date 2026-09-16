@@ -134,7 +134,9 @@ of snippets, and never touch a key handler, a highlight index, or a `getBounding
 **Files** (all in `apps/desktop/src/lib/ui/`)
 
 - `Menu.svelte`: the surface. Portal, glass, positioning, rows, submenu, footer.
-- `menu.svelte.ts`: `createMenu(deps)`, the controller, in the codebase's factory idiom.
+- `menu-controller.svelte.ts`: `createMenu(deps)`, the controller, in the codebase's factory idiom. ❗ NOT
+  `menu.svelte.ts`: case-insensitive macOS resolves `./menu.svelte` to the `Menu.svelte` COMPONENT while CI resolves it
+  to the controller, so one import would mean two different modules (measured 2026-09-16 on vite 8).
 - `menu-types.ts`: the types below (it stays a `.ts` for the reason its header already gives).
 - `menu-navigation.ts`: pure key-to-action and next-highlight math.
 - `menu-reorder.ts`: the pure drag math, moved from `navigation/favorites-reorder.ts` (`moveItem`,
@@ -146,7 +148,7 @@ of snippets, and never touch a key handler, a highlight index, or a `getBounding
 /** A lucide glyph, or an image the caller already has a URL for (a volume or folder icon). */
 export type MenuIcon = { lucide: IconName } | { src: string }
 
-export interface MenuItem<T = undefined> {
+export interface MenuItem<T = unknown> {
   value: string // stable identity, emitted on select
   label: string
   icon?: MenuIcon
@@ -157,7 +159,7 @@ export interface MenuItem<T = undefined> {
   data?: T // the caller's payload, handed back on select and to every snippet
 }
 
-export interface MenuSection<T = undefined> {
+export interface MenuSection<T = unknown> {
   id: string
   heading?: string
   items: MenuItem<T>[]
@@ -213,9 +215,11 @@ warning).
 **What the primitive owns**
 
 - **Keyboard**: arrows wrap and skip headings, separators, disabled rows, and empty placeholders; Home/End; Enter and
-  Space activate; Escape closes; ArrowRight opens a submenu and ArrowLeft closes it; ⌥↑/⌥↓ reorder inside a reorderable
-  section and carry the highlight with the moved row. While `isEditing()` is true it handles nothing, so the editor
-  keeps every keystroke.
+  Space activate; ArrowRight opens a submenu and ArrowLeft closes it; ⌥↑/⌥↓ reorder inside a reorderable section and
+  carry the highlight with the moved row. While `isEditing()` is true it handles nothing, so the editor keeps every
+  keystroke.
+- **Escape closes the open submenu if there is one, otherwise the menu**, down one path and with no second document
+  listener, settling the switcher's two disagreeing Escape paths.
 - **Every key while open.** `onKey` gets the first look, then the menu's own handling, and anything left over is
   swallowed: an open menu owns the keyboard, which is what keeps the panes behind it inert.
 - **Focus**: the menu container takes focus on open (`tabindex="-1"`, `aria-activedescendant` on the highlighted row)
@@ -238,6 +242,9 @@ warning).
   and its highlighted row, and the drag state including the slot the drop-line cue sits in. ❗ Without these, M2's
   characterization pins (which select on switcher markup the port deletes) can only be rewritten by hand, and the proof
   that the port changed nothing weakens to "the new tests pass".
+  **Shipped in M1**: `data-menu` (+ `data-keyboard-mode`), `data-menu-submenu`, `data-menu-section="<id>"`,
+  `data-menu-empty`, `data-menu-row="<value>"` with `data-highlighted` / `data-checked` / `data-disabled` /
+  `data-dragging`, and `data-drop-cue="above|below"` carrying `data-drop-slot="<n>"`.
 
 **What the caller still owns**: the data and its order (including an optimistic override while a reorder persists),
 persistence, navigation, toasts, and any inline editor's state.
@@ -250,7 +257,7 @@ translates its own new copy into all ten languages (English left in a locale, or
 
 ### M1. The house `Menu`
 
-1. Build it per § The `Menu` API: `Menu.svelte`, `menu.svelte.ts`, `menu-types.ts`, `menu-navigation.ts`,
+1. Build it per § The `Menu` API: `Menu.svelte`, `menu-controller.svelte.ts`, `menu-types.ts`, `menu-navigation.ts`,
    `menu-reorder.ts` (the pure reorder math moved out of `navigation/favorites-reorder.ts`, tests included).
 2. Move the archive Enter popup (`pane/enter-menu.svelte.ts`, `enter-menu.ts`, `FilePane.svelte`'s render site) onto it.
    Behavior stays, except arrows now wrap like the switcher's. Its document-capture listener becomes the primitive's.
