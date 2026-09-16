@@ -225,7 +225,7 @@ mod tests {
     fn a_rebuild_marker_nobody_could_read_counts_as_set() {
         // A real failure, not a hand-made `Err`: a database with no schema at all can't
         // answer the marker, which is the shape a corrupt or half-open index takes.
-        let conn = rusqlite::Connection::open_in_memory().expect("an in-memory connection");
+        let conn = cmdr_fs::sqlite_util::open_in_memory().expect("an in-memory connection");
         let unreadable = IndexStore::index_needs_rebuild(&conn);
         assert!(unreadable.is_err(), "a schema-less database can't answer the marker");
         assert!(
