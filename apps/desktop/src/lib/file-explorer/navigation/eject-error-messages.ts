@@ -17,8 +17,9 @@
  * ❌ `diskutil`'s own stderr is NEVER the message. {@link ejectTechnicalDetail}
  * returns it separately, for the log.
  */
-import type { EjectError } from '$lib/ipc/bindings'
+import type { EjectError, HolderScan, VolumeHolder } from '$lib/ipc/bindings'
 import { getMessage } from '$lib/intl/messages.svelte'
+import { formatConjunctionList } from '$lib/intl/list-format'
 import type { MessageKey } from '$lib/intl/keys.gen'
 import { getAppLogger } from '$lib/logging/logger'
 import { asEjectError } from './eject-error'
@@ -30,19 +31,79 @@ function raw(key: MessageKey): string {
   return getMessage(key)
 }
 
+/** Substitutes `{token}` placeholders in a raw catalog value with runtime strings. */
+function interpolate(template: string, params: Record<string, string>): string {
+  let out = template
+  for (const [name, value] of Object.entries(params)) out = out.replaceAll(`{${name}}`, value)
+  return out
+}
+
+/** How many holder names a refusal spells out before it says "other apps". */
+const NAMES_SPELLED_OUT = 3
+
+/**
+ * The names an `App` or `Tool` holder contributes, deduped and in the order the
+ * scan saw them.
+ *
+ * `App` and `Tool` word the same: what a person can act on is the NAME, and both
+ * carry one they'd recognize (an app's display name, a tool's executable name).
+ * Two processes of one app are one name, so a helper-heavy app doesn't fill the
+ * toast with itself.
+ */
+function actionableNames(named: readonly VolumeHolder[]): string[] {
+  const seen = new Set<string>()
+  for (const holder of named) {
+    if (holder.kind === 'app' || holder.kind === 'tool') seen.add(holder.name)
+  }
+  return [...seen]
+}
+
+/**
+ * The one sentence a refused unmount says, given who the backend found holding
+ * the drive.
+ *
+ * Precedence, most actionable first: a named app or tool (something the person
+ * can go and close), then a disk image (which has to be ejected first), then
+ * Cmdr itself (a bug), then macOS (nothing to do but wait), then the unnamed
+ * fallback.
+ *
+ * ❗ The fallback is also where an `Unclassified` holder lands: it's a real
+ * answer meaning "named, but nothing said what kind", so it is ❌ never worded as
+ * an app or a tool.
+ *
+ * ❗ The two `HolderScan` arms word the SAME. `Incomplete` means the scan
+ * couldn't cover every mount, so its names are worth saying but its emptiness
+ * says nothing; only a `Complete` scan with no names would license "nothing is
+ * using this drive", and no copy says that today.
+ */
+export function wordUnmountRefusal(holders: HolderScan): string {
+  const named = holders.named
+  const names = actionableNames(named)
+  if (names.length === 1) return interpolate(raw('errors.eject.unmountRefusedByApp'), { app: names[0] })
+  if (names.length > 1) {
+    const listed =
+      names.length > NAMES_SPELLED_OUT ? [...names.slice(0, NAMES_SPELLED_OUT), raw('errors.eject.otherApps')] : names
+    return interpolate(raw('errors.eject.unmountRefusedByApps'), { apps: formatConjunctionList(listed) })
+  }
+  if (named.some((h) => h.kind === 'diskImage')) return raw('errors.eject.unmountRefusedByDiskImage')
+  if (named.some((h) => h.kind === 'cmdr')) return raw('errors.eject.unmountRefusedByCmdr')
+  if (named.some((h) => h.kind === 'system')) return raw('errors.eject.unmountRefusedBySystem')
+  return raw('errors.eject.unmountRefused')
+}
+
 /**
  * One renderer per `EjectError` variant.
  *
  * A record rather than a `switch`: the mapped type still demands every variant,
  * so a backend that grows one stops the frontend compiling until it has words.
  */
-const EJECT_MESSAGE: { [K in EjectError['type']]: () => string } = {
+const EJECT_MESSAGE: { [K in EjectError['type']]: (error: Extract<EjectError, { type: K }>) => string } = {
   busy: () => raw('errors.eject.busy'),
   volumeNotFound: () => raw('errors.eject.volumeNotFound'),
   notEjectable: () => raw('errors.eject.notEjectable'),
   notAnSmbVolume: () => raw('errors.eject.notAnSmbVolume'),
   deviceDisconnectRefused: () => raw('errors.eject.deviceDisconnectRefused'),
-  unmountRefused: () => raw('errors.eject.unmountRefused'),
+  unmountRefused: (e) => wordUnmountRefusal(e.holders),
   timedOut: () => raw('errors.eject.timedOut'),
   // Nothing was unmounted, so it must NOT share `timedOut`'s "may still eject".
   notResponding: () => raw('errors.eject.notResponding'),
@@ -53,7 +114,8 @@ const EJECT_MESSAGE: { [K in EjectError['type']]: () => string } = {
 
 /** The one sentence an `EjectError` says. */
 export function renderEjectError(error: EjectError): string {
-  return EJECT_MESSAGE[error.type]()
+  const render = EJECT_MESSAGE[error.type] as (error: EjectError) => string
+  return render(error)
 }
 
 /** `EjectError` variants that carry their own free-text `detail` field. */
@@ -87,5 +149,24 @@ export function wordEjectRefusal(error: unknown): string {
   const detail = ejectTechnicalDetail(typed)
   if (detail === null) log.warn('Eject refused: {reason}', { reason: typed.type })
   else log.warn('Eject refused: {reason} ({detail})', { reason: typed.type, detail })
+  warnIfCmdrHeldTheDrive(typed)
   return renderEjectError(typed)
+}
+
+/**
+ * A line of its own whenever Cmdr is among the holders.
+ *
+ * ❗ Keyed on PRESENCE, not on winning the precedence: an app beside a Cmdr
+ * holder rightly gets the sentence, but Cmdr holding a drive it's trying to let
+ * go of is a bug worth seeing whichever sentence won. The backend logs the whole
+ * `HolderScan` at `info` in `name_the_holders`; this is the line that says it
+ * was us.
+ */
+function warnIfCmdrHeldTheDrive(error: EjectError): void {
+  if (error.type !== 'unmountRefused') return
+  const ours = error.holders.named.filter((h) => h.kind === 'cmdr')
+  if (ours.length === 0) return
+  log.warn('Cmdr itself held the drive when the unmount was refused: {pids}', {
+    pids: ours.map((h) => h.pid).join(', '),
+  })
 }

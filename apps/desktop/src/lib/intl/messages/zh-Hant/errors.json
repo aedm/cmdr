@@ -1793,6 +1793,30 @@
   "@errors.eject.unmountRefused": {
     "sourceHash": "1ff7d31"
   },
+  "errors.eject.unmountRefusedByApp": "{app} is still using this drive. Close anything it has open there, then eject again.",
+  "@errors.eject.unmountRefusedByApp": {
+    "sourceHash": "bee2660"
+  },
+  "errors.eject.unmountRefusedByApps": "{apps} are still using this drive. Close anything they have open there, then eject again.",
+  "@errors.eject.unmountRefusedByApps": {
+    "sourceHash": "0864134"
+  },
+  "errors.eject.otherApps": "other apps",
+  "@errors.eject.otherApps": {
+    "sourceHash": "09fe5b1"
+  },
+  "errors.eject.unmountRefusedByDiskImage": "A disk image stored on this drive is still open. Eject that image first, then eject this drive.",
+  "@errors.eject.unmountRefusedByDiskImage": {
+    "sourceHash": "82fc540"
+  },
+  "errors.eject.unmountRefusedBySystem": "macOS is still working with this drive. Wait a minute, then eject again.",
+  "@errors.eject.unmountRefusedBySystem": {
+    "sourceHash": "27636e6"
+  },
+  "errors.eject.unmountRefusedByCmdr": "Cmdr itself is still using this drive. Wait a moment and eject again, or send a report if it keeps happening.",
+  "@errors.eject.unmountRefusedByCmdr": {
+    "sourceHash": "2f56d2c"
+  },
   "errors.eject.timedOut": "這個磁碟機還沒回應，過一會兒它可能會自己退出。",
   "@errors.eject.timedOut": {
     "sourceHash": "c592421"

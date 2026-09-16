@@ -8,14 +8,17 @@
  * writing rules, and — the one that used to reach users — `diskutil`'s raw
  * English stderr leaking into the sentence a person reads.
  */
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
-import type { EjectError, HolderScan } from '$lib/ipc/bindings'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
+import type { EjectError, HolderKind, HolderScan, VolumeHolder } from '$lib/ipc/bindings'
 import { _setLocaleForTests } from '$lib/intl/locale'
 import { renderEjectError, ejectTechnicalDetail, wordEjectRefusal } from './eject-error-messages'
 import { EjectFailure, asEjectError, throwEjectError } from './eject-error'
 
+// One stable spy, so the Cmdr-holder warn can be asserted on.
+const { warn } = vi.hoisted(() => ({ warn: vi.fn() }))
+
 vi.mock('$lib/logging/logger', () => ({
-  getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+  getAppLogger: () => ({ warn, info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
 beforeAll(() => {
@@ -26,8 +29,8 @@ afterAll(() => {
 })
 
 /**
- * A refusal nothing could scan. M15 words the named cases; until then every refusal reads the same,
- * and this is the shape that says "nobody could be named", never "nobody is holding it".
+ * A refusal nothing could scan: the shape that says "nobody could be named", never "nobody is
+ * holding it". It words the same unnamed sentence a complete scan with no names does.
  */
 const NOBODY_NAMED: HolderScan = { type: 'incomplete', named: [] }
 
@@ -141,5 +144,141 @@ describe('wordEjectRefusal', () => {
     const rendered = wordEjectRefusal(new Error('IPC channel closed'))
     expect(rendered).toBe(renderEjectError({ type: 'unexpected', detail: '' }))
     expect(rendered).not.toContain('IPC channel')
+  })
+})
+
+/** One holder, named and classified. `pid` only has to be unique within a case. */
+function holder(kind: HolderKind, name: string, pid = 1000 + name.length): VolumeHolder {
+  return { pid, name, bundleId: kind === 'app' ? `com.example.${name.toLowerCase()}` : null, kind }
+}
+
+/** The refusal a set of holders produces, as a complete scan. */
+function refusedBy(named: VolumeHolder[]): EjectError {
+  return { type: 'unmountRefused', holders: { type: 'complete', named }, detail: 'diskutil said no' }
+}
+
+describe('a refused unmount names who held the drive', () => {
+  it('names the one app, so the person knows what to close', () => {
+    expect(renderEjectError(refusedBy([holder('app', 'Preview')]))).toBe(
+      'Preview is still using this drive. Close anything it has open there, then eject again.',
+    )
+  })
+
+  it('joins two names with "and"', () => {
+    expect(renderEjectError(refusedBy([holder('app', 'Preview'), holder('app', 'Warp')]))).toBe(
+      'Preview and Warp are still using this drive. Close anything they have open there, then eject again.',
+    )
+  })
+
+  it('joins three names as a list', () => {
+    const rendered = renderEjectError(
+      refusedBy([holder('app', 'Preview'), holder('app', 'Warp'), holder('app', 'Photos')]),
+    )
+    expect(rendered).toBe(
+      'Preview, Warp, and Photos are still using this drive. Close anything they have open there, then eject again.',
+    )
+  })
+
+  it('stops at three names and says "other apps" for the rest, so the toast stays one line', () => {
+    const four = [holder('app', 'Preview'), holder('app', 'Warp'), holder('app', 'Photos'), holder('app', 'Music')]
+    expect(renderEjectError(refusedBy(four))).toBe(
+      'Preview, Warp, Photos, and other apps are still using this drive. Close anything they have open there, then eject again.',
+    )
+    const six = [...four, holder('app', 'Mail'), holder('app', 'Notes')]
+    expect(renderEjectError(refusedBy(six))).toBe(renderEjectError(refusedBy(four)))
+  })
+
+  it('words a tool exactly like an app, because a name is a name to the person reading it', () => {
+    expect(renderEjectError(refusedBy([holder('tool', 'mds_stores')]))).toBe(
+      'mds_stores is still using this drive. Close anything it has open there, then eject again.',
+    )
+  })
+
+  it('counts two processes of one app once, so a helper-heavy app reads as one name', () => {
+    const twoOfOne = [holder('app', 'Warp', 101), holder('app', 'Warp', 102)]
+    expect(renderEjectError(refusedBy(twoOfOne))).toBe(renderEjectError(refusedBy([holder('app', 'Warp', 101)])))
+  })
+
+  it('sends someone to the disk image first, since the drive can’t go before it does', () => {
+    expect(renderEjectError(refusedBy([holder('diskImage', 'Installer')]))).toBe(
+      'A disk image stored on this drive is still open. Eject that image first, then eject this drive.',
+    )
+  })
+
+  it('tells someone to wait when macOS itself is the holder, because there is nothing to close', () => {
+    expect(renderEjectError(refusedBy([holder('system', 'mds_stores')]))).toBe(
+      'macOS is still working with this drive. Wait a minute, then eject again.',
+    )
+  })
+
+  it('owns it when Cmdr is the holder, and invites a report', () => {
+    expect(renderEjectError(refusedBy([holder('cmdr', 'cmdr')]))).toBe(
+      'Cmdr itself is still using this drive. Wait a moment and eject again, or send a report if it keeps happening.',
+    )
+  })
+
+  it('words the app a person can act on when kinds are mixed', () => {
+    const mixed = [holder('system', 'mds_stores'), holder('app', 'Preview'), holder('cmdr', 'cmdr')]
+    expect(renderEjectError(refusedBy(mixed))).toBe(renderEjectError(refusedBy([holder('app', 'Preview')])))
+  })
+
+  it('falls back to the unnamed sentence when the scan named nobody', () => {
+    expect(renderEjectError(refusedBy([]))).toBe(
+      'Something is still using this drive. Close any open files and apps, then eject again.',
+    )
+  })
+
+  it('falls back to the unnamed sentence when nothing said what the holders are, and never calls one an app', () => {
+    const rendered = renderEjectError(
+      refusedBy([holder('unclassified', 'some-helper'), holder('unclassified', 'mdworker')]),
+    )
+    expect(rendered).toBe(renderEjectError(refusedBy([])))
+    expect(rendered).not.toContain('some-helper')
+    expect(rendered).not.toContain('mdworker')
+  })
+
+  it('words an incomplete scan from the names it did see', () => {
+    const partial: HolderScan = { type: 'incomplete', named: [holder('app', 'Preview')] }
+    expect(renderEjectError({ type: 'unmountRefused', holders: partial, detail: 'x' })).toBe(
+      renderEjectError(refusedBy([holder('app', 'Preview')])),
+    )
+  })
+
+  it("never words a scan that couldn't finish as a drive nothing is using", () => {
+    // ❗ The one thing this copy may not say. `incomplete` with no names means
+    // Cmdr couldn't tell, which is not the same as nobody holding the drive.
+    const rendered = renderEjectError({ type: 'unmountRefused', holders: NOBODY_NAMED, detail: 'x' })
+    expect(rendered).toBe(renderEjectError(refusedBy([])))
+    expect(rendered.toLowerCase()).not.toContain('nothing is using')
+    expect(rendered.toLowerCase()).not.toContain('no app')
+  })
+
+  for (const named of [
+    [holder('app', 'Preview')],
+    [holder('app', 'Preview'), holder('tool', 'rsync')],
+    [holder('diskImage', 'Installer')],
+    [holder('system', 'mds_stores')],
+    [holder('cmdr', 'cmdr')],
+    [holder('unclassified', 'some-helper')],
+  ]) {
+    it(`keeps the error-copy rules for a refusal held by ${named.map((h) => h.kind).join(' + ')}`, () => {
+      assertErrorCopyRules(renderEjectError(refusedBy(named)), `refusal held by ${named[0].kind}`)
+    })
+  }
+})
+
+describe('a Cmdr holder is logged as a bug', () => {
+  beforeEach(() => {
+    warn.mockClear()
+  })
+
+  it('warns when Cmdr holds the drive, even though the app got the sentence', () => {
+    wordEjectRefusal(new EjectFailure(refusedBy([holder('app', 'Preview'), holder('cmdr', 'cmdr')])))
+    expect(warn.mock.calls.some(([template]) => String(template).includes('Cmdr'))).toBe(true)
+  })
+
+  it('stays quiet about Cmdr when no Cmdr holder is in the list', () => {
+    wordEjectRefusal(new EjectFailure(refusedBy([holder('app', 'Preview')])))
+    expect(warn.mock.calls.some(([template]) => String(template).includes('Cmdr'))).toBe(false)
   })
 })
