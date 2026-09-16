@@ -26,6 +26,10 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
 - **A popup item's accelerator is a LABEL the payload carries, ❌ never a literal**: `context_item()` looks its own
   menu id up via `frontend_shortcut_to_menu_text`, ❌ not the bar's floored `frontend_shortcut_to_accelerator`.
   `DETAILS.md`.
+- **A menu-BAR combo with no ⌘/⌃/⌥ is DISPLAYED, never registered**: AppKit fires a registered one app-wide, and `⇧8`
+  IS `*`. `displayed_item` carries the glyph; `display_accelerators.rs` draws it dimmed on an attributed title, Linux
+  spells it into the label. ❗ That title dies with its `NSMenuItem` (re-apply at all FOUR `set_macos_menu_icons`
+  sites), and `setAttributedTitle:` rewrites `title`, so `find_ns_item` matches only to the first TAB. `DETAILS.md`.
 - **Accelerator changes go remove/recreate/reinsert** (Tauri has no `set_accelerator()`), so `MenuState` tracks each
   item's submenu and index: the builder registers a tracked row at its own index. A new item is one row in
   `menu_bar.rs`, plus its line in the `menu_bar_test.rs` snapshot.
@@ -39,8 +43,8 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
   `FileScoped`. DETAILS § Dialog refusals.
 - **macOS swaps the app menu bar on focus-gain (`activate_window_menu`); Linux uses per-window menus.** One app-level
   bar, so each window's focus handler `app.set_menu()`s between main and viewer. Re-run `cleanup_macos_menus` after
-  every swap, and `set_macos_menu_icons` on the way back (SF Symbols don't survive it). `window.set_menu()` is a macOS
-  no-op.
+  every swap, and `set_macos_menu_icons` + `set_display_accelerators` on the way back (neither survives it).
+  `window.set_menu()` is a macOS no-op.
 - **Custom (not Predefined) MenuItems for Cut/Copy/Paste/Move here/Select all**: in non-main windows they forward the
   native selector via `send_native_edit_action()`, or ⌘A and the clipboard die in settings/viewer text fields. ❌ Not
   `PredefinedMenuItem::select_all`: it conflicts. Predefined items need explicit text (muda's is English).
@@ -52,6 +56,7 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
 - **Trailing `…` means the dialog can change WHAT the command acts on** (`Copy…` takes a destination), not that it
   merely confirms (`Delete`). Always U+2026 (`menu_labels_end_with_the_ellipsis_character`). `DETAILS.md`.
 - **Menus and items are keyed by ID, never title** (translation moves titles); `macos_appkit.rs` resolves IDs to live
-  titles only at the AppKit boundary. Rebinding replaces an item, so `update_menu_accelerator` re-applies its icon.
+  titles only at the AppKit boundary. Rebinding replaces an item, so `update_menu_accelerator` re-applies its icon and
+  its display accelerator.
 
 Architecture, flows, decisions: `DETAILS.md`. Read it before any non-trivial work here.

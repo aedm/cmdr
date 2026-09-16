@@ -171,10 +171,7 @@ fn apply_display_accelerators<R: Runtime>(
             log::warn!(target: "menu", "A nested submenu wants display accelerators but is built with no ID, so they can't be found");
             continue;
         };
-        let Some(child) = tauri_menu
-            .get(nested_id)
-            .and_then(|built| built.as_submenu().cloned())
-        else {
+        let Some(child) = tauri_menu.get(nested_id).and_then(|built| built.as_submenu().cloned()) else {
             log::warn!(target: "menu", "The bar holds no `{nested_id}` submenu, so its display accelerators are missing");
             continue;
         };

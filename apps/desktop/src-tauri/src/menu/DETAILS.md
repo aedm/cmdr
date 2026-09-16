@@ -24,6 +24,8 @@ window focus context.
   every host.
 - `menu_bar_builder.rs`: `build_menu`, which builds `MENU_BAR` for `Platform::current()`, allocates the mnemonics,
   registers the tracked items, and hands back `MenuItems`.
+- `display_accelerators.rs` (macOS): `set_display_accelerators`, the pass that draws a shortcut the bar can't register
+  as a right-aligned, dimmed run on an item's attributed title. See "Display-only accelerators" below.
 - `menu_items.rs`: small shared pieces: `APP_MENU_TITLE`, `pin_tab_label`, `truncate_for_menu_label`, plus
   `DetachWord` / `detach_label`, which decide whether a row's leave-this-volume item reads `Eject ({name})` or
   `Disconnect` (a phone gets the second: `adb` has no per-client detach, so nothing is made safe to unplug).
@@ -263,6 +265,55 @@ The frontend triggers regular-item updates via `invoke('update_menu_accelerator'
 the rows its submenu shows on this platform, nested submenus (Sort by) included. There's no hand-typed
 position anywhere: the index stored IS the item's index in the rows the submenu is built from, so adding,
 moving, or platform-tagging a row can't desync one from the other.
+
+### Display-only accelerators
+
+Three Select-menu rows run on `*`, `+`, and `-`, and `⌥+` will join them. None of those keys carries ⌘, ⌃, or ⌥, and a
+menu-bar accelerator with no such modifier is fired by AppKit app-wide, ahead of the webview: registering `⇧8` would
+stop `*` reaching every text field in the app. So the file pane's keydown handler owns the keys and the menu only says
+what they are.
+
+**The modifier floor** is where that rule lives. `frontend_shortcut_to_accelerator` answers `None` for any combo
+without one of the three (Shift alone doesn't clear it, since `⇧8` IS `*`), so a bare key can't reach a menu item by
+accident — including through a rebind in Settings > Keyboard shortcuts, which is how one used to. The unfloored
+conversion is `frontend_shortcut_to_menu_text`, and it belongs to popups alone (above).
+
+**Two ways the glyph reaches the user.** `ItemSpec::display_accelerator` carries ONE string for both platforms, set by
+`menu_spec::displayed_item`, which pairs it with `NONE` so a row can't register and display a shortcut at once
+(`menu_bar_test.rs` pins that too). `display_accelerator_label` is where they part:
+
+- **Linux** spells it into the label (`Invert selection (⇧8)`). GTK offers no other hook. The mnemonic is allocated on
+  the bare label first, so no underline lands inside the parens.
+- **macOS** leaves the label alone and `display_accelerators.rs` sets an attributed title shaped `"{label}\t{glyph}"`:
+  a right `NSTextTab` puts the glyph in the key-equivalent column, and `secondaryLabelColor` on that run alone dims it
+  while the label keeps its own color. The font attribute is load-bearing — an attributed title with no
+  `NSFontAttributeName` falls back to the system face, not the menu font.
+
+The two blocks in the `menu_bar_test.rs` snapshot diverge for this submenu because of this, and that's correct.
+
+**Placing the tab stop.** AppKit lays a menu out as `widest label + gap + widest key equivalent` and right-aligns the
+key equivalents against the content's right edge. `tab_stop_for` reproduces that, measuring the labels (from muda's own
+text, which is always plain) and every sibling's key equivalent (reconstructed from `keyEquivalent` and its modifier
+mask). Only the gap is a constant, `KEY_EQUIVALENT_COLUMN_GAP`, because AppKit exposes no metric for it and the laid-out
+width isn't known until the menu opens. Nothing here may be a fixed column: a translated label can be half again as long
+as the English one.
+
+**❗ Re-apply it wherever a fresh `NSMenuItem` can appear**, which is every place `set_macos_menu_icons` runs: the
+startup install, the main↔viewer swap, `rebuild_menu_bar`, and after `update_menu_item_accelerator`'s remove/recreate.
+Miss one and the glyph vanishes after a rebind or an app-switch, with nothing but a log line to say so.
+
+**❗ `setAttributedTitle:` also rewrites `title`.** A styled item reads back as `"Invert selection\t⇧8"`, so
+`find_ns_item` matches only up to the first tab. Without that, the SF Symbol pass stopped finding those three rows and
+their icons went missing on the first menu-bar swap (seen in the running app on macOS 26, 2026-09-16). No label of ours
+holds a tab for any other reason.
+
+**A rebind stays honest.** `update_menu_accelerator` computes both halves: a combo that clears the floor becomes a real
+accelerator, anything else becomes the displayed one, never both. It records the verdict in
+`MenuState.display_accelerators` so a later menu swap redraws what the user bound rather than what `MENU_BAR` was built
+with, and `MenuItemEntry::label` keeps the label without a shortcut spelled into it so a Linux rebind can't stack a
+second `(⇧8)` on the end. The glyph is the frontend's own spelling (`⇧8`), ❌ not the Tauri one (`Shift+8`): it is drawn,
+never parsed. A word key shows as `Backspace` where AppKit would draw `⌫`; nobody has hit that yet, and the fix would be
+a display-spelling table Rust doesn't have today.
 
 ### Where a CONTEXT menu's accelerator comes from
 
