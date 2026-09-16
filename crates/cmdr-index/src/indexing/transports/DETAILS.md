@@ -300,12 +300,15 @@ holds its manager, returns with the watcher still up (`../lifecycle/DETAILS.md` 
 hooks themselves live in `file_system/volume/eject/mod.rs` and `volumes/watcher.rs`.
 
 - **Cmdr's own eject (`file_system/volume/eject/mod.rs`) — the reliable wedge-safe point.** For a
-  `DiskutilUnmount`/`DiskutilEject`, `stop_index_then_unmount` awaits `stop_index_blocking(volume_id)`, which releases
-  the volume through the app's drive-release gate (so a start still probing the drive is waited for too), and ONLY THEN
-  runs `diskutil`, and only when the stop answered that nothing holds the drive: `StillReleasing` (its wait, bounded by
-  the eject's 15 s index-stop deadline, ran out) and a panicked stop both leave it mounted. This is the one path where
-  Cmdr controls the timing, so it's the guaranteed protection. SMB/MTP keep their own teardown and their
-  offline-browsable Stale index across an eject, so the eject-stop is a no-op for them.
+  `DiskutilUnmount`/`DiskutilEject`, the eject releases the volume through the app's drive-release gate (so a start
+  still probing the drive is waited for too), and ONLY THEN runs `diskutil`, and only when the stop answered that
+  nothing holds the drive: `StillReleasing` (its wait, bounded by the eject's 15 s index-stop deadline, ran out) and a
+  panicked stop both leave it mounted. This is the one path where Cmdr controls the timing, so it's the guaranteed
+  protection. ❗ A `diskutil eject` takes the whole PHYSICAL disk down, so on macOS it stops EVERY indexed volume of
+  that disk under the one deadline, not just the one asked about: a sibling partition or APFS volume would otherwise
+  meet the unmount with its watcher still up, which is this very wedge (`file_system/volume/DETAILS.md` § "Eject").
+  SMB/MTP keep their own teardown and their offline-browsable Stale index across an eject, so the eject-stop is a no-op
+  for them.
 - **The DiskArbitration unmount approver (`volumes/unmount_approver/`) — the reliable point for an unmount Cmdr didn't
   start.** DA asks Cmdr's own approval session before every DA-mediated unmount (Finder, `diskutil`, `hdiutil`,
   `NSWorkspace`, another app) and WAITS for the answer, so the stop finishes while the filesystem is still healthy. It

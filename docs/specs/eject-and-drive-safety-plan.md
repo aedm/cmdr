@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M11 are done, and M12 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M12 are done, and M13 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -78,7 +78,10 @@ drive-safety decisions below.
   `move-leftovers-kept` notice, its English copy, and the frontend bridge), `827204516` (the two real-detach lane tests,
   `DiskImage::reattach`, and `overwrite::aside_park`), `79a6b5581` (the docs, and the `test-sleep` / `jscpd-rust` lanes
   back to green).
-- **Next, M12**: disk resolution, per-disk flights, and sibling safety.
+- **M12, disk resolution, per-disk flights, and sibling safety (done)**: `13a6d91f5` (the IOKit resolution, the disk
+  flight and its adoption, the whole-disk teardown and the resumes), `9e797ac9d` (M1's two sibling pins flipped plus
+  three more, and `DiskTeardown` moved to `disk_flight.rs`), plus the docs commit that follows them.
+- **Next, M13**: the holder scan and the wire type.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -893,6 +896,38 @@ that one key).
     tool exits, read the epochs and resume still-listed siblings.
 11. SMB keeps `diskutil unmount` and gains holders; Linux keeps `umount`. `EjectStep` gains `DiskResolve`.
 
+**As landed.** The canonical description is `apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "Eject"; what
+M13 and M14 build on:
+
+- **Resolution is IOKit-first, with no DiskArbitration call and no `statfs`.** The mount table names the volume's BSD
+  node (`disk_units::bsd_name_at`, new), then `IOBSDNameMatching` + a walk up `kIOServicePlane` to the TOPMOST whole
+  media, and a recursive walk down for every whole media on it. `DADiskCreateFromVolumePath` and `DADiskCopyWholeDisk`
+  aren't used: the first runs `statfs` then `realpath` (the hang the deadline existed for), and the second only reaches
+  the synthesized container anyway, so the ancestor walk has to happen regardless. Whole-ness is IOKit's `Whole`
+  property and the unit its `BSD Unit`; ❌ neither is a class name or a `diskNsM` parse. `DISK_RESOLVE_DEADLINE` stays,
+  now guarding a wedged `diskarbitrationd` reached through `mounted_volumes_on`.
+- `Resolution::{Gone, NoDisk, Disk(DiskTarget)}`; `DiskTarget { key: DiskKey, units: Vec<u32> }`. A NULL/absent node
+  answers `NoDisk` when the path is still a mount and `Gone` when it isn't.
+- `mounted_volumes_on_disk(units)` opens a `DASession` per call: `DASession` isn't `Send` and the flight's future
+  crosses `await` points. It's a local allocation plus the MIG calls `mounted_volumes_on` already made.
+- **`in_flight` now holds disks too**: `join_or_own_disk(key, volume_id, sibling_ids) -> DiskFlight::{Owner, Joined}`
+  under the ONE `IN_FLIGHT` lock, and `is_ejecting_by_another(volume_id, flight_id)`, which a resume owner needs since
+  its own adopted siblings read as ejecting until it lands. `DiskOwnership` drops the disk entry, then its landings.
+- **`stop_index_blocking` is a wrapper now**:
+  `stop_indexes_blocking(ids, stop, record_late) -> IndexStopped::{LetGo, Refused { release, error }}` keeps the panic
+  adapter and hands the partial release back, which is what lets a refused stop resume the siblings that did let go.
+  `eject::tests` are untouched.
+- **`run_teardown` grew a `disk: Option<&DiskTeardown>`** (`disk_flight.rs`, macOS-only; every other caller passes
+  `None`), which carries the captured mounts, the fail-closed fresh look, and the `AbandonedRun` slot. M13's holder scan
+  wants the same captured, still-listed paths: take them from that `DiskTeardown`, or from the flight's `siblings`.
+- **The refusal path is where M13 hooks in**: `disk_flight::eject_stopped_disk` has the siblings, their captured paths,
+  and the `Err(UnmountRefused)` in hand between the teardown and the hand-back. Scan there, once, before the resume.
+- **No new i18n keys.** `errors.eject.notResponding`'s copy and its `@key` description already cover a stalled step
+  before the unmount, so `DiskResolve` needed none; `bindings.ts` regenerates with the new variant.
+- **The eject lane grew from 4 tests to 7 and runs about 56 s** (macOS 27.0, 2026-09-16): a two-volume image's setup is
+  the cost, and the held-file pins still follow `diskarbitrationd`'s holder scan. ❌ Never read a failure there as a
+  defect without the alone-run line (§ "The unmount approver" § "As landed").
+
 ### Holders (M13 scan and wire, M14 facts)
 
 - **When**: once, in `run_teardown`, after a final `UnmountRefused`, for disks and SMB shares.
@@ -1603,6 +1638,13 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   after check, one abandonable thread, injected budget; Linux empty.
 - **Landmines**: scanning inside the retry loop multiplies up to 9.4 s by the attempts; an SMB `stat` can hang, so the
   budget detaches the thread; `// SAFETY:` on the FFI; `specta` doc comments land in `bindings.ts`.
+- **From M12**: the disk's still-listed paths are the flight's captured mounts, in `disk_flight::eject_stopped_disk`
+  (which has the siblings, the `DiskTeardown`, and the `Err(UnmountRefused)` between the teardown and the hand-back) —
+  scan there, before the resume, so a refusal that hands an index back has already named its holders. The per-volume
+  path (SMB, macFUSE, Linux) still goes through `run_teardown`, so ❗ a scan placed only in the flight misses SMB: hook
+  both, or hook `run_teardown` and hand it the paths. `EjectError::UnmountRefused` is built in `unmount_tool::settle`
+  and in three tests, so adding `holders` touches those construction sites (`eject::tests` builds it too, and the plan's
+  "must not change" covers the assertion, not the field).
 - **Test plan**: pure `merge` and the budget on a paused clock; a device change mid-scan discards the result; an
   unignored macOS test where a child holds a temp FILE and `proc_listpidspath` on that file path WITHOUT
   `PATH_IS_VOLUME` returns its PID inside the 8 s cap; lane: M1's held-file pin asserts the holder PID; `pnpm check`,

@@ -192,6 +192,8 @@ DiskArbitration-535.0.10, 2026-09-14).
 3. Computes the group: every registered volume mounted on the same BSD unit (`disk_units.rs`). **Why the unit**: a
    whole-disk request's per-volume asks are linked by BSD unit and arrive back to back, so the first ask has to let go
    of the group or the second spends its own window waiting. A physical disk's other container is a different request.
+   `disk_units.rs` is shared with Cmdr's own eject, which passes a whole PHYSICAL disk's units (its own plus every
+   synthesized container on it) rather than one, and reads `bsd_name_at` to name the node under a mount.
 4. Marks the group unmount-pending at the drive-release gate, so no start lands on it meanwhile.
 5. `drive_release::release(group, deadline)`: the one wait a DA queue may make.
 6. Records every volume it stopped while indexing, and carries an earlier ask's record forward to this epoch and

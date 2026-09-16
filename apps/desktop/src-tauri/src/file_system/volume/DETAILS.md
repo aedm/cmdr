@@ -414,7 +414,8 @@ destination goes through, plus `path_exists`.
 
 `eject/` (macOS+Linux) owns volume teardown across every kind, so it lives next to the `VolumeManager` and `Volume`
 trait it dispatches over: `mod.rs` holds the pipeline and `EjectError`, `unmount_tool.rs` the `diskutil` / `umount`
-subprocess. `commands::eject::eject_volume` is a thin delegate; the pipeline is:
+subprocess, and `disk_target.rs` + `disk_flight.rs` (macOS) the per-physical-disk eject below.
+`commands::eject::eject_volume` is a thin delegate; the pipeline is:
 
 1. **Busy gate**: refuse (`EjectError::Busy`) if a write op is touching the volume (`file_system::busy_volume_ids`), so
    a transfer can't be truncated. The picker already disables Eject for busy volumes; this defends against a race or an
@@ -425,7 +426,8 @@ subprocess. `commands::eject::eject_volume` is a thin delegate; the pipeline is:
    DMGs). The pure `decide_eject_action` makes this choice and is unit-tested without touching the FS.
 3. **Execute**, always through `run_teardown`: the provider's eject (MTP closes the session; ADB only retires the
    volume, since `adb` has no per-client detach), or a `diskutil`/`umount` subprocess under a 30 s timeout (why:
-   "A slow refusal is still a refusal" below).
+   "A slow refusal is still a refusal" below). A `diskutil eject` on macOS goes the per-disk way below; SMB, a mount no
+   physical disk backs, and every Linux teardown stay per volume.
 
 **Every refusal is logged once, in Rust.** `run_teardown` is the choke point every eject and SMB disconnect passes
 through, and it writes one `warn` on target `eject` naming the volume ID, the command (`diskutil eject`, `umount`) or
@@ -445,20 +447,21 @@ what the tool said. The evidence is typed and can't block: ❌ not the tool's st
 probe of the mount root (a `statfs` on a hung network mount blocks 30–120 s), and not the registry either, because the
 unmount notification can land milliseconds after `diskutil` exits. A mount table that can't be read counts as "still
 mounted", so a real refusal never turns into a silent success. The decision is the pure `unmount_tool::settle`, with
-the table read passed in as a closure it calls only on failure. ❗ Known gap: it asks about THIS volume's mount root
-only, so an eject that unmounted it while a sibling partition on the same disk refused counts as done and leaves the
-disk powered on, with the refusal kept only in the `info` line; a whole-disk status from DiskArbitration is what closes
-it.
+the table read passed in as a closure it calls only on failure. For a physical disk that closure asks about the WHOLE
+disk (§ "Cmdr's own eject, per physical disk"), since a `diskutil eject` that unmounted this volume and stopped at a
+held sibling would otherwise read as done.
 
-**Real-image pins of today's eject.** `eject/real_image.rs` (macOS, `#[ignore]`d, the `disk-image` nextest group) runs
+**Real-image pins of the eject.** `eject/real_image.rs` (macOS, `#[ignore]`d, the `disk-image` nextest group) runs
 `settle_with_retries` with the real mount-table read and a `run_tool` that sends each `diskutil eject` through the
 disk-image harness (`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"), which proves the mount point is the image's
 own before every attempt. An idle APFS volume ejects and its image detaches; a file held open by a child process
-answers `UnmountRefused` after the retries, still mounted. The known gap above is pinned on a two-volume APFS container
-and on two HFS+ partitions of one disk: ejecting A while a file on B is held answers `Ok`, with A unmounted, B still
-mounted, and the image still attached (verified on macOS 26.6.2, hand run, 2026-09-14). They run in the opt-in
-disk-image lane: `pnpm check disk-images`, or any `pnpm check --include-slow` on a Mac
-(`scripts/check/checks/DETAILS.md` § "The disk-image lane").
+answers `UnmountRefused` after the retries, still mounted. Five more pin the per-disk eject: both volumes of an APFS
+container resolve to one `DiskKey` whose units carry the physical disk and the container; an idle two-volume disk
+answers `Ok` only once both volumes went and the image detached; ejecting A while a file on B is held answers
+`UnmountRefused` with the disk still attached, on a two-volume APFS container and on two HFS+ partitions of one disk;
+and after that partial unmount the sibling still mounted gets its index back while the one that really went stays
+stopped (verified on macOS 27.0, hand run, 2026-09-16). They run in the opt-in disk-image lane: `pnpm check
+disk-images`, or any `pnpm check --include-slow` on a Mac (`scripts/check/checks/DETAILS.md` § "The disk-image lane").
 
 **A refusal is retried before anyone hears about it.** When `settle` answers `UnmountRefused`,
 `unmount_tool::settle_with_retries` runs the tool again after each pause in `REFUSAL_RETRY_BACKOFF` (0.5 s, 1 s, 1.5 s:
@@ -494,12 +497,14 @@ through the real `within_tool_timeout`, on a paused clock.
 backing FILE lives on a hung SMB share looks like a local ejectable volume, yet its `statfs`/NSURL lookup and its index
 stop can block for 30–120 s or for good; with the in-flight join below, one wedged flight would strand every later
 click on a spinner and keep the volume in the ejecting set. `eject/deadlines.rs` holds the tiers: the ejectability
-check gets 5 s (a read, but one that may wake a sleeping disk), the index stop 15 s (it drains the index writer, which
+check gets 5 s (a read, but one that may wake a sleeping disk), the disk lookup 5 s (all memory and MIG calls, so only a
+wedged `diskarbitrationd` reaches it), the index stop 15 s (it drains the index writer, which
 takes seconds), and a device provider's eject 15 s (MTP closes its session when the last
 handle drops, which a wedged phone can stall). Each races a join handle through `deadline::timeout_detached_typed`, so
 a stuck blocking thread is detached (it can't be cancelled), logged at `warn`, and the flight lands. Each expiry keeps
-its copy true: a stalled ejectability check or index stop answers `NotResponding { step }` ("isn't responding, so it's
-still connected"), because nothing was unmounted and `TimedOut`'s copy promises the eject may still land. ❌ A stalled
+its copy true: a stalled ejectability check, disk lookup, or index stop answers `NotResponding { step }` ("isn't
+responding, so it's still connected"), because nothing was unmounted and `TimedOut`'s copy promises the eject may still
+land. The `errors.eject.notResponding` copy already covers the new step, so no key changed. ❌ A stalled
 check is never guessed `NotEjectable` (the false-alarm family ERR-TT2FH belongs to), and ❌ a stalled index stop never
 reaches the unmount, since an index that may still hold the volume can wedge FSKit. A stalled device eject answers
 `TimedOut`, which IS true there: its disconnect already started and runs on. `provider_for_volume_id` needs no deadline
@@ -517,6 +522,43 @@ manager is gone, and treating that return as done let the unmount run under a li
 the same `NotResponding { step: IndexStop }` as the deadline, and a stop that panicked answers `Unexpected` (the gate
 reads a panic as still releasing, and `stop_index_blocking` remembers it): ❌ neither reaches the unmount.
 `stop_index_blocking` takes the stop as a parameter, so `eject::tests` pins both without an index.
+`stop_indexes_blocking` underneath it stops a whole disk's volumes under that one deadline, answering an `IndexStopped`
+that still names which volumes DID let go, so the flight below can hand those back.
+
+**Cmdr's own eject, per physical disk.** `diskutil eject` works per DISK, so an eject aimed at one volume takes the
+whole disk down: a sibling partition or APFS volume Cmdr indexes would meet that unmount with a live FSEvents watcher on
+it, and an eject that unmounted the volume clicked while a held sibling kept the disk up used to answer `Ok`, leaving
+the drive powered on. `disk_target.rs` and `disk_flight.rs` (macOS; Linux and SMB keep the per-volume path) make the
+flight match the tool:
+
+1. **Resolve** (`disk_target::resolve`, under `DISK_RESOLVE_DEADLINE`): the non-blocking mount table names the volume's
+   BSD node, then IOKit's `IOService` plane is walked up to the topmost WHOLE media and back down (recursively) for
+   every whole media on it. The topmost one is the HARDWARE: an APFS volume's own whole disk is the synthesized
+   container, so stopping there would miss the physical disk carrying it, and a second container on that disk would
+   never be seen. `DiskKey` is the physical whole's `IORegistryEntryGetRegistryEntryID`, and the disk's reach is those
+   BSD units, which `volumes::disk_units::mounted_volumes_on` turns into its mounted volumes. ❗ Whole-ness comes from
+   IOKit's own `Whole` property and the unit from `BSD Unit`: ❌ never a class name or the shape of a `diskNsM` string.
+   ❌ No `statfs` and no `realpath` (what `DADiskCreateFromVolumePath` runs), so a disk image backed by a file on a hung
+   share can't block it. A path that left the table answers `Ok` like `is_already_unmounted`; a mount no physical disk
+   backs (macFUSE) keeps the per-volume teardown.
+2. **Capture and adopt**: the disk's mounted volumes become its registered SIBLINGS by active root, the clicked one
+   first, and the flight claims its `DiskKey` in `in_flight`, taking every sibling into the ejecting set under its own
+   flight. So a sibling's own `eject()` joins in `join_or_start` before `is_already_unmounted` ever runs, and a sibling
+   whose flight had already started resolves to the same key and awaits this one. One teardown per disk, both orders.
+3. **Gate and stop together**: a write op on ANY of the disk's volumes answers `Busy` (the teardown would truncate a
+   transfer on a sibling just as surely), and one `release` stops every sibling inside the one `INDEX_STOP_DEADLINE`.
+4. **Teardown**: each attempt is aimed at a mount of the disk that's still LISTED, not at the volume clicked, which a
+   partial unmount has already taken away; and "done" needs every captured mount gone AND a fresh
+   `mounted_volumes_on` finding nothing else on the disk. Fail closed: a volume mounted after the capture, or one Cmdr
+   never registered, keeps the disk alive.
+5. **Hand back what stayed**: a refusal resumes every sibling that was indexing, through the gate with the flight as
+   `ResumeOwner` (presence from each sibling's captured root, so the volume that really went stays stopped). ❗ The
+   epochs are read AFTER the teardown settles: the flight's own `diskutil eject` triggers an unmount approval per
+   volume, and each ask's release moves the epoch, so one read at the pre-stop would fail every check. A partial stop
+   hands back what did let go and leaves the rest to their own continuations; a `TimedOut` answers at once and waits for
+   the run the timeout abandoned (`unmount_tool::AbandonedRun`) to end before handing anything back, since that unmount
+   may still land. The owner asks `is_ejecting_by_another`, not `is_ejecting`: its own adopted siblings read as ejecting
+   until it lands.
 
 **One eject at a time per volume.** `eject` hands the pipeline to `in_flight::join_or_start`: a request for a volume
 whose eject is still running JOINS that flight and gets its answer, with no second teardown. A slow `diskutil` (10.5 s
