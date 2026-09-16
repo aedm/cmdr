@@ -272,7 +272,7 @@ test.describe('Archive Enter-behavior menu', () => {
       .poll(
         async () =>
           tauriPage.evaluate<boolean>(
-            `(function(){ var el = document.querySelector('.menu-item.is-highlighted'); return !!el && (el.textContent || '').indexOf('Open') !== -1; })()`,
+            `(function(){ var el = document.querySelector('[data-menu-row][data-highlighted]'); return !!el && (el.textContent || '').indexOf('Open') !== -1; })()`,
           ),
         { timeout: 2000 },
       )

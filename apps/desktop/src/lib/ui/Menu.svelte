@@ -84,14 +84,25 @@
         position = { left, top, maxHeight: window.innerHeight - top - VIEWPORT_MARGIN }
     }
 
-    /** Measure and focus on open; the container holds focus so `aria-activedescendant` is announced. */
+    /**
+     * Measure and focus on open; the container holds focus so `aria-activedescendant` is
+     * announced.
+     *
+     * ❗ It depends on `surfaceEl`, ❌ not on `menu.isOpen` alone. Ark's `Portal` mounts its
+     * children in a `tick().then(…)` of its own, so this can run its first pass before the
+     * node exists — and with nothing to re-run it, the surface would keep the
+     * `visibility: hidden` it starts with while the menu takes keys and shows NOTHING. jsdom
+     * wins that race and WKWebView loses it, so only the E2E lane ever saw it (three shards
+     * red on `[data-menu]` never becoming visible, 2026-09-16).
+     */
     $effect(() => {
-        if (!menu.isOpen) {
+        const el = surfaceEl
+        if (!menu.isOpen || !el) {
             position = null
             return
         }
         void fitToViewport().then(() => {
-            surfaceEl?.focus()
+            el.focus()
         })
     })
 

@@ -89,9 +89,13 @@ describe('rendering', () => {
     void unmount(component)
   })
 
-  it('renders a labelled menu with one group per section', async () => {
+  it('renders a labelled menu with one group per section, measured and visible', async () => {
     await open()
     expect(surface()?.getAttribute('aria-label')).toBe('Volumes')
+    // ❗ It starts `visibility: hidden` and is only shown once measured. If measuring can
+    // miss (the portal mounts a beat later), the menu takes keys and shows nothing.
+    expect(surface()?.style.visibility).toBe('visible')
+    expect(surface()?.style.top).toBeTruthy()
     expect(document.querySelectorAll('[role="group"]')).toHaveLength(3)
     expect(document.body.textContent).toContain('Favorites')
     expect(document.body.textContent).toContain('Macintosh HD')

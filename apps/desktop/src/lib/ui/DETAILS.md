@@ -836,8 +836,8 @@ sibling component.
 
 **Building one**: `createMenu(deps)` takes `getSections` (read live on every access, so the menu tracks the caller's
 state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isEditing`, `onOpenChange`, `restoreFocus`,
-`keepOpenWithin`.
-Hand the result to `<Menu {menu} ariaLabel minWidth>`; it renders nothing while closed, so there's no `{#if}`.
+`keepOpenWithin`. Hand the result to `<Menu {menu} ariaLabel minWidth>`; it renders nothing while closed, so there's no
+`{#if}`.
 
 **Consumer surface**: `openUnder(el)`, `openAt(point)`, `toggleUnder(el)`, `close()`, `highlight(value)`,
 `handleKey(event)`, `destroy()`, plus the reactive `isOpen` / `highlightedValue`. Everything under `menu.surface.*` is

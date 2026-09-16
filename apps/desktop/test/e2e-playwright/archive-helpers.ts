@@ -27,7 +27,7 @@ import { mcpCall } from '../e2e-shared/mcp-client.js'
 export type PageLike = TauriPage | BrowserPageAdapter
 
 /** The Enter-behavior popup (Browse | Open | Configure), rendered by the house `Menu`. */
-export const ENTER_MENU = '.menu-surface'
+export const ENTER_MENU = '[data-menu]'
 
 /** Navigate a pane to a path via the same `mcp-nav-to-path` event the MCP server uses. */
 export async function navigatePaneTo(tauriPage: PageLike, pane: 'left' | 'right', targetPath: string): Promise<void> {
