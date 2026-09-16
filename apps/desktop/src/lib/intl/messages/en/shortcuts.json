@@ -55,6 +55,12 @@
     "screenshot": "settings-keyboard-shortcuts.png"
   },
 
+  "shortcuts.scope.favoritesMenu": "Favorites menu",
+  "@shortcuts.scope.favoritesMenu": {
+    "description": "Group heading in the Keyboard shortcuts list for keys that work inside the favorites menu (the list of bookmarked folders that opens over a pane). A short section title.",
+    "screenshot": "settings-keyboard-shortcuts.png"
+  },
+
   "shortcuts.scope.servers": "Servers",
   "@shortcuts.scope.servers": {
     "description": "Group heading in the Keyboard shortcuts list for keys that work in the servers hub: the list of every server the user saved plus the ones Cmdr found nearby. A short section title.",

@@ -177,6 +177,11 @@ pub const SERVERS_SHOW_ID: &str = "servers_show";
 /// at which point the accelerator-sync pass fills it in.
 pub const FAVORITES_ADD_ID: &str = "favorites_add";
 
+/// "Show favorites" (⌃D): opens the favorites menu over the focused pane, the same
+/// `favorites.open` the palette runs. Total Commander and Double Commander bind the same key
+/// for the same list.
+pub const FAVORITES_OPEN_ID: &str = "favorites_open";
+
 /// "Add to favorites", folder-row + parent-row CONTEXT menus: favorites `MenuState.context.path`
 /// directly in `on_menu_event` (the right-clicked folder, or the parent dir for `..`). A separate id
 /// from `FAVORITES_ADD_ID` so the menu-bar item (focused-pane dir) and the context item
@@ -330,6 +335,7 @@ pub fn menu_id_to_command(menu_id: &str) -> Option<(&'static str, CommandScope)>
         GO_LATEST_DOWNLOAD_ID => Some(("downloads.goToLatest", CommandScope::FileScoped)),
         GO_HOME_ID => Some(("nav.goHome", CommandScope::FileScoped)),
         FAVORITES_ADD_ID => Some(("favorites.add", CommandScope::FileScoped)),
+        FAVORITES_OPEN_ID => Some(("favorites.open", CommandScope::FileScoped)),
 
         // Servers commands (file-scoped: both act in the main window's focused pane)
         SERVERS_CONNECT_ID => Some(("servers.connect", CommandScope::FileScoped)),
@@ -443,6 +449,7 @@ pub fn command_id_to_menu_id(command_id: &str) -> Option<&'static str> {
         "downloads.goToLatest" => Some(GO_LATEST_DOWNLOAD_ID),
         "nav.goHome" => Some(GO_HOME_ID),
         "favorites.add" => Some(FAVORITES_ADD_ID),
+        "favorites.open" => Some(FAVORITES_OPEN_ID),
         "servers.connect" => Some(SERVERS_CONNECT_ID),
         "servers.show" => Some(SERVERS_SHOW_ID),
         "tab.new" => Some(NEW_TAB_ID),
@@ -631,6 +638,7 @@ mod tests {
             "nav.goToPath",
             "downloads.goToLatest",
             "favorites.add",
+            "favorites.open",
             "tab.new",
             "tab.close",
             "tab.reopen",

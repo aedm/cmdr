@@ -135,4 +135,31 @@ export const browsersCommands: CommandSource[] = [
     whileDialogOpen: BLOCKED_BY_DIALOGS,
     fixedKey: true,
   },
+
+  // ============================================================================
+  // Favorites menu
+  // ============================================================================
+  // The two digit rows the open menu answers itself, here so Settings > Keyboard shortcuts
+  // and the Help window say the menu HAS them. `fixedKey`, like the chooser's Enter: the
+  // house `Menu`'s accelerator column decides which digits exist from the caller's data, so
+  // a rebind would be an illusion. The command that OPENS the menu is `favorites.open`
+  // (`main-window.ts`), which is window-wide.
+  {
+    id: 'favorites.openByNumber',
+    nameKey: 'commands.favoritesOpenByNumber.label',
+    scope: 'Main window/Favorites menu',
+    showInPalette: false,
+    shortcuts: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    fixedKey: true,
+  },
+  {
+    id: 'favorites.addFromMenu',
+    nameKey: 'commands.favoritesAddFromMenu.label',
+    scope: 'Main window/Favorites menu',
+    showInPalette: false,
+    shortcuts: ['0'],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    fixedKey: true,
+  },
 ]

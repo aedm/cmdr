@@ -120,6 +120,7 @@ menu menu.bar.go id=menu_go
   7 item go_latest_download menu.go.goToLatestDownload [Cmd+J] tracked
   8 separator
   9 item favorites_add menu.go.addToFavorites tracked
+  10 item favorites_open menu.go.showFavorites [Ctrl+D] tracked
 menu menu.bar.servers id=menu_servers
   0 item servers_connect menu.servers.connectToServer [Cmd+K] tracked
   1 item servers_show menu.servers.showServers tracked
@@ -232,6 +233,7 @@ menu menu.bar.go
   7 item go_latest_download menu.go.goToLatestDownload [Cmd+J] tracked
   8 separator
   9 item favorites_add menu.go.addToFavorites tracked
+  10 item favorites_open menu.go.showFavorites [Ctrl+D] tracked
 menu menu.bar.servers
   0 item servers_connect menu.servers.connectToServer [Cmd+K] tracked
   1 item servers_show menu.servers.showServers tracked

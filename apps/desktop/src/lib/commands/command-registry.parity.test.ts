@@ -41,6 +41,9 @@ const EXPECTED_NAMES: Record<string, string> = {
   'search.open': 'Search files',
   'nav.goToPath': 'Go to path…',
   'favorites.add': 'Add to favorites',
+  'favorites.open': 'Show favorites',
+  'favorites.openByNumber': 'Open the favorite with that number',
+  'favorites.addFromMenu': 'Add the current folder to favorites',
   'downloads.goToLatest': 'Go to latest download',
   'view.showHidden': 'Toggle hidden files',
   'view.briefMode': 'Switch to Brief view',
@@ -181,6 +184,7 @@ const EXPECTED_DESCRIPTIONS: Record<string, string | undefined> = {
   'nav.goToPath': 'Jump the focused pane to a typed, pasted, or recent path.',
   'file.goToTrash': "Open the trash of the drive you're browsing",
   'favorites.add': "Add the focused pane's current folder to the switcher's Favorites.",
+  'favorites.open': 'Open the favorites menu on the focused pane, and press a number to go.',
   'downloads.goToLatest': 'Open ~/Downloads and select the most recent file.',
   'pane.copyPathLeftToRight':
     'Open the left pane’s location on the right. When the left pane is focused and the cursor is on a folder, that folder opens on the right instead.',

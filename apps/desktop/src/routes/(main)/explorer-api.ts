@@ -46,7 +46,9 @@ export interface ExplorerAPI {
   copyPathBetweenPanes: (args: CopyPathBetweenPanesArgs) => void
   toggleVolumeChooser: (pane: 'left' | 'right') => void
   openVolumeChooser: () => void
-  closeVolumeChooser: () => void
+  /** Open/toggle the focused pane's favorites menu (⌃D), the `favorites.open` command. */
+  toggleFavoritesMenu: () => void
+  closeHeaderMenus: () => void
   setViewMode: (mode: ViewMode, pane?: 'left' | 'right') => void
   /**
    * Sets a specific pane's view mode in response to a native-menu click
@@ -199,12 +201,12 @@ export interface ExplorerAPI {
   isConfirmationDialogOpen: () => boolean
   isRenaming: () => boolean
   /**
-   * Whether the volume switcher dropdown is open on either pane. The dropdown
-   * hosts the inline favorite-rename input, so `dialogsOnScreen()` reads this
-   * and the dialog gate suppresses pane/global shortcuts while it's open (so
+   * Whether a header menu — the volume switcher or the favorites menu — is open on either
+   * pane. The favorites menu hosts the inline rename input, so `dialogsOnScreen()` reads
+   * this and the dialog gate suppresses pane/global shortcuts while one is open (so
    * text-editing keys reach the textbox instead of the panes).
    */
-  isVolumeChooserOpen: () => boolean
+  isHeaderMenuOpen: () => boolean
   openViewerForCursor: () => Promise<void>
   /**
    * Open a search-results snapshot in the target pane (defaults to focused).

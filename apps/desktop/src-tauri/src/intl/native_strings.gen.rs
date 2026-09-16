@@ -266,6 +266,7 @@ pub(crate) const NATIVE_STRINGS: &[LocaleStrings] = &[
             ("menu.go.goToPath", "Go to path…"),
             ("menu.go.home", "Home"),
             ("menu.go.parentFolder", "Parent folder"),
+            ("menu.go.showFavorites", "Show favorites"),
             ("menu.help.keyboardShortcuts", "Keyboard shortcuts"),
             ("menu.help.sendErrorReport", "Send error report…"),
             ("menu.help.sendFeedback", "Send feedback…"),

@@ -11,8 +11,11 @@ export interface VolumeGroup {
 
 // Labels are resolved lazily (per call) so they track the active locale; the
 // caller invokes `groupByCategory` from a reactive `$derived`.
+//
+// ❗ No `favorite` row. Favorites have their own menu (⌃D, `FavoritesMenu.svelte`), and
+// the switcher offers one "See N favorites" row that opens it — so a favorite arriving in
+// the volume list is deliberately grouped NOWHERE here.
 const categoryOrder: { category: LocationCategory; labelKey: MessageKey | null }[] = [
-  { category: 'favorite', labelKey: 'fileExplorer.navigation.groupFavorites' },
   { category: 'main_volume', labelKey: 'fileExplorer.navigation.groupVolumes' },
   { category: 'attached_volume', labelKey: null }, // No label, continues main volumes
   { category: 'cloud_drive', labelKey: 'fileExplorer.navigation.groupCloud' },
@@ -25,14 +28,7 @@ export function groupByCategory(vols: VolumeInfo[]): VolumeGroup[] {
 
   for (const { category, labelKey } of categoryOrder) {
     const label = labelKey ? tString(labelKey) : ''
-    if (category === 'favorite') {
-      // The Favorites group always renders, even when empty: an emptied list is a real
-      // user state (they can remove every favorite), and the switcher shows a disabled
-      // "(Your favorites will show here)" placeholder for it. Every other group hides when
-      // empty.
-      const items = vols.filter((v) => v.category === 'favorite')
-      groups.push({ category, label, items })
-    } else if (category === 'mobile_device') {
+    if (category === 'mobile_device') {
       const mobileItems = vols.filter((v) => v.category === 'mobile_device')
       if (mobileItems.length > 0) {
         groups.push({ category, label, items: mobileItems })

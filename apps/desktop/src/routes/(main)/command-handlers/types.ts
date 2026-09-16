@@ -51,6 +51,10 @@ export type DispatchExemptId =
   | 'palette.close'
   | 'volume.select'
   | 'volume.close'
+  // The digits an open favorites menu answers itself, through the house `Menu`'s
+  // accelerator column. Registered so Settings and the Help window say the menu has them.
+  | 'favorites.openByNumber'
+  | 'favorites.addFromMenu'
   | 'network.selectHost'
   | 'share.back'
   | 'share.selectShare'

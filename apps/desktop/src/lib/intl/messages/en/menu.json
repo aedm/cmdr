@@ -428,6 +428,10 @@
     "description": "VERB phrase (imperative). Jumps the active pane to the most recently downloaded file and puts the cursor on it (⌘J). \"latest\" means most recent in time, and \"download\" is the downloaded FILE, not the act of downloading. No ellipsis: it acts immediately."
   },
 
+  "menu.go.showFavorites": "Show favorites",
+  "@menu.go.showFavorites": {
+    "description": "VERB phrase (imperative). Opens Cmdr's favorites list as a menu over the current file pane, where each of the first nine entries carries a number key that jumps straight to it. \"Favorites\" is Cmdr's own list of bookmarked folders, the same word the Add to favorites item uses. No ellipsis: it opens a menu, not a dialog."
+  },
   "menu.go.addToFavorites": "Add to favorites",
   "@menu.go.addToFavorites": {
     "description": "VERB phrase (imperative). Pins the current folder to Cmdr's own favorites list in the volume dropdown, for one-click return later. \"favorites\" is Cmdr's list, not macOS's sidebar Favorites, but using the same word your macOS Finder uses keeps it recognizable. No ellipsis: nothing is asked."

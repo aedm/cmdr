@@ -6,8 +6,9 @@
  *
  * `handleKeyDown` dispatch order is load-bearing and unchanged:
  *   1. Escape while loading → cancel the load (and swallow the key).
- *   2. A volume chooser open on either pane → swallow (the panes behind it stay
- *      inert, Fix E). The menu itself already caught what it wanted.
+ *   2. A header menu (volume switcher or favorites) open on either pane → swallow
+ *      (the panes behind it stay inert, Fix E). The menu itself already caught what
+ *      it wanted.
  *   3. Type-to-jump intercept → route printable keys into the active pane's buffer
  *      BEFORE any shortcut sees them. Once a jump is active the captured set
  *      widens to any printable key (L9 — mirror of `pane-commands.routePanelKey`).
@@ -38,18 +39,18 @@ export function isTypingInInput(e: KeyboardEvent): boolean {
 
 export function createKeyDispatch(deps: KeyDispatchDeps): KeyDispatch {
   /**
-   * SWALLOWS every key from the panes while a volume switcher is open on either one
-   * (⌥F1/⌥F2 can open one on the non-focused pane, so we scan both).
+   * SWALLOWS every key from the panes while a header menu — the volume switcher or the
+   * favorites menu — is open on either one (⌥F1/⌥F2 can open one on the non-focused pane,
+   * so we scan both).
    *
-   * ❗ No routing: the open switcher is a house `Menu`, which catches keys on its own
-   * document-level CAPTURE listener before this handler runs, and stops the ones it uses.
-   * What reaches here is what the menu deliberately let through — the inline favorite-rename
+   * ❗ No routing: both are a house `Menu`, which catches keys on its own document-level
+   * CAPTURE listener before this handler runs, and stops the ones it uses. What reaches
+   * here is what the menu deliberately let through — the inline favorite-rename
    * `<input>`'s keystrokes — and those must still never move the pane cursor behind it.
    */
-  function swallowedByVolumeChooser(): boolean {
+  function swallowedByHeaderMenu(): boolean {
     return (
-      (deps.getPaneRef('left')?.isVolumeChooserOpen() ?? false) ||
-      (deps.getPaneRef('right')?.isVolumeChooserOpen() ?? false)
+      (deps.getPaneRef('left')?.isHeaderMenuOpen() ?? false) || (deps.getPaneRef('right')?.isHeaderMenuOpen() ?? false)
     )
   }
 
@@ -94,8 +95,8 @@ export function createKeyDispatch(deps: KeyDispatchDeps): KeyDispatch {
       return
     }
 
-    // A volume switcher owns the keyboard while it's open
-    if (swallowedByVolumeChooser()) {
+    // A header menu owns the keyboard while it's open
+    if (swallowedByHeaderMenu()) {
       return
     }
 

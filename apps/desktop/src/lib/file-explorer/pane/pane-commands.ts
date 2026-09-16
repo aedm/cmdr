@@ -29,28 +29,37 @@ export function createPaneCommands(access: PaneAccess, dialogs: DialogState) {
 
   /**
    * Open/toggle volume chooser for the specified pane.
-   * Closes the other pane's volume chooser to ensure only one is open at a time.
+   * Closes the other pane's header menu, so only one is open across the whole window.
    */
   function toggleVolumeChooser(pane: 'left' | 'right') {
-    access.getPaneRef(access.otherPane(pane))?.closeVolumeChooser()
+    access.getPaneRef(access.otherPane(pane))?.closeHeaderMenu()
     access.getPaneRef(pane)?.toggleVolumeChooser()
   }
 
   /**
    * Open volume chooser for the focused pane.
-   * Closes the other pane's volume chooser first.
+   * Closes the other pane's header menu first.
    */
   function openVolumeChooser() {
-    access.getPaneRef(access.otherPane(access.getFocusedPane()))?.closeVolumeChooser()
+    access.getPaneRef(access.otherPane(access.getFocusedPane()))?.closeHeaderMenu()
     access.getPaneRef(access.getFocusedPane())?.openVolumeChooser()
   }
 
   /**
-   * Close volume chooser on all panes.
+   * Open/toggle the FOCUSED pane's favorites menu (⌃D). Same one-at-a-time rule: the other
+   * pane's header menu closes, and the chip itself keeps the switcher and this one apart.
    */
-  function closeVolumeChooser() {
+  function toggleFavoritesMenu() {
+    access.getPaneRef(access.otherPane(access.getFocusedPane()))?.closeHeaderMenu()
+    access.getPaneRef(access.getFocusedPane())?.toggleFavoritesMenu()
+  }
+
+  /**
+   * Close whichever header menu is open, on both panes.
+   */
+  function closeHeaderMenus() {
     for (const side of ['left', 'right'] as const) {
-      access.getPaneRef(side)?.closeVolumeChooser()
+      access.getPaneRef(side)?.closeHeaderMenu()
     }
   }
 
@@ -523,7 +532,8 @@ export function createPaneCommands(access: PaneAccess, dialogs: DialogState) {
     confirmDialog,
     toggleVolumeChooser,
     openVolumeChooser,
-    closeVolumeChooser,
+    toggleFavoritesMenu,
+    closeHeaderMenus,
     getFileAndPathUnderCursor,
     getPathToCopyUnderCursor,
     getCursorRowForTerminal,

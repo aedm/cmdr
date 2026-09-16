@@ -30,5 +30,21 @@
   "fileExplorer.navigation.reorderFavoritesFailed": "Couldn''t reorder favourites. Try again?",
   "@fileExplorer.navigation.reorderFavoritesFailed": {
     "sourceHash": "1b16941"
+  },
+  "fileExplorer.navigation.favoritesAddCurrent": "Add current folder to favourites",
+  "@fileExplorer.navigation.favoritesAddCurrent": {
+    "sourceHash": "7d7e21c"
+  },
+  "fileExplorer.navigation.favoritesAlreadyAdded": "This folder is already a favourite",
+  "@fileExplorer.navigation.favoritesAlreadyAdded": {
+    "sourceHash": "731a929"
+  },
+  "fileExplorer.navigation.favoritesCantAddHere": "Favourites can only point at a folder on a disk or a mounted share",
+  "@fileExplorer.navigation.favoritesCantAddHere": {
+    "sourceHash": "07c0e12"
+  },
+  "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {See favourites} one {See {count} favourite} other {See {count} favourites}}",
+  "@fileExplorer.navigation.seeFavorites": {
+    "sourceHash": "7a7e169"
   }
 }

@@ -85,7 +85,8 @@ function buildPaneRef(
     // Delegate spies
     toggleVolumeChooser: vi.fn(),
     openVolumeChooser: vi.fn(),
-    closeVolumeChooser: vi.fn(),
+    toggleFavoritesMenu: vi.fn(),
+    closeHeaderMenu: vi.fn(),
     openCursorItem: vi.fn(() => Promise.resolve()),
     refreshView: vi.fn(),
     refreshNetworkHosts: vi.fn(),
@@ -506,7 +507,7 @@ describe('delegating commands', () => {
     const right = buildPaneRef()
     const cmds = create(buildAccess({ paneRefs: { left, right } }))
     cmds.toggleVolumeChooser('left')
-    expect(right.closeVolumeChooser).toHaveBeenCalledOnce()
+    expect(right.closeHeaderMenu).toHaveBeenCalledOnce()
     expect(left.toggleVolumeChooser).toHaveBeenCalledOnce()
   })
 
@@ -515,17 +516,28 @@ describe('delegating commands', () => {
     const right = buildPaneRef()
     const cmds = create(buildAccess({ focusedPane: 'left', paneRefs: { left, right } }))
     cmds.openVolumeChooser()
-    expect(right.closeVolumeChooser).toHaveBeenCalledOnce()
+    expect(right.closeHeaderMenu).toHaveBeenCalledOnce()
     expect(left.openVolumeChooser).toHaveBeenCalledOnce()
   })
 
-  it('closeVolumeChooser closes both panes', () => {
+  // The one-menu-at-a-time rule crosses panes as well as menus: ⌃D over one pane must
+  // leave nothing open over the other.
+  it('toggleFavoritesMenu toggles the focused pane after closing the other', () => {
+    const left = buildPaneRef()
+    const right = buildPaneRef()
+    const cmds = create(buildAccess({ focusedPane: 'left', paneRefs: { left, right } }))
+    cmds.toggleFavoritesMenu()
+    expect(right.closeHeaderMenu).toHaveBeenCalledOnce()
+    expect(left.toggleFavoritesMenu).toHaveBeenCalledOnce()
+  })
+
+  it('closeHeaderMenus closes both panes', () => {
     const left = buildPaneRef()
     const right = buildPaneRef()
     const cmds = create(buildAccess({ paneRefs: { left, right } }))
-    cmds.closeVolumeChooser()
-    expect(left.closeVolumeChooser).toHaveBeenCalledOnce()
-    expect(right.closeVolumeChooser).toHaveBeenCalledOnce()
+    cmds.closeHeaderMenus()
+    expect(left.closeHeaderMenu).toHaveBeenCalledOnce()
+    expect(right.closeHeaderMenu).toHaveBeenCalledOnce()
   })
 
   it('sendKeyToFocusedPane synthesises a keydown for the focused pane', () => {

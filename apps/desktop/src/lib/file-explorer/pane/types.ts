@@ -2,6 +2,7 @@ import type { FileEntry, FriendlyError, NetworkHost, ShareInfo } from '../types'
 import type { DragAutoScrollFrameResult, DragAutoScrollPointer } from '../drag/drag-auto-scroll'
 import type { Initiator, Location } from '$lib/tauri-commands'
 import type { HubRow } from '../network/servers-hub-rows'
+import type { FavoritesMenuOpenTrigger } from '../navigation/favorites-analytics'
 
 /** Options for `startRename`. */
 export interface StartRenameOptions {
@@ -130,9 +131,11 @@ export interface SwapState {
 /** Typed interface for FilePane's exported methods. */
 export interface FilePaneAPI {
   toggleVolumeChooser(): void
-  isVolumeChooserOpen(): boolean
-  closeVolumeChooser(): void
   openVolumeChooser(): void
+  toggleFavoritesMenu(): void
+  /** Whether the volume switcher OR the favorites menu is up over this pane's header. */
+  isHeaderMenuOpen(): boolean
+  closeHeaderMenu(): void
 
   getListingId(): string
   isLoading(): boolean
@@ -268,14 +271,40 @@ export interface ListViewAPI {
  * @public consumed via `import type` from FilePane.svelte; knip's Svelte parser misses type-only imports
  */
 /**
- * The switcher chip's four commands. ❗ No key handler: the house `Menu` behind the chip
- * catches keys itself, on a document capture listener that lives only while it's open.
+ * The chip's commands, over BOTH menus it hosts (the volume switcher and the favorites
+ * menu). ❗ No key handler: each menu is a house `Menu` and catches keys itself, on a
+ * document capture listener that lives only while it's open.
  */
 export interface VolumeBreadcrumbAPI {
+  toggleVolumeChooser(): void
+  openVolumeChooser(): void
+  toggleFavoritesMenu(): void
+  /** Whether EITHER menu is up, which is what suppresses the panes' keys behind it. */
+  isHeaderMenuOpen(): boolean
+  closeHeaderMenu(): void
+}
+
+/**
+ * The volume switcher's own four commands, as the chip drives them.
+ * @public consumed via `import type` from VolumeBreadcrumb.svelte; knip's Svelte parser misses type-only imports
+ */
+export interface VolumeChooserMenuAPI {
   toggle(): void
-  getIsOpen(): boolean
-  close(): void
   open(): void
+  close(): void
+  getIsOpen(): boolean
+}
+
+/**
+ * The favorites menu's, which differ in one way: opening it records WHAT brought it up,
+ * so the analytics can say whether the switcher's row is how people find it.
+ * @public consumed via `import type` from VolumeBreadcrumb.svelte; knip's Svelte parser misses type-only imports
+ */
+export interface FavoritesMenuAPI {
+  toggle(trigger: FavoritesMenuOpenTrigger): void
+  open(trigger: FavoritesMenuOpenTrigger): void
+  close(): void
+  getIsOpen(): boolean
 }
 
 /** Typed interface for ServersHub/PlacesBrowser shared methods. */

@@ -44,6 +44,7 @@ const scopeOrder: readonly { scope: CommandScope; titleKey: MessageKey }[] = [
   { scope: 'Main window/Brief mode', titleKey: 'shortcuts.scope.briefMode' },
   { scope: 'Main window/Full mode', titleKey: 'shortcuts.scope.fullMode' },
   { scope: 'Main window/Volume chooser', titleKey: 'shortcuts.scope.volumeChooser' },
+  { scope: 'Main window/Favorites menu', titleKey: 'shortcuts.scope.favoritesMenu' },
   { scope: 'Main window/Servers', titleKey: 'shortcuts.scope.servers' },
   { scope: 'Main window/Places', titleKey: 'shortcuts.scope.places' },
   { scope: 'Main window/Error screen', titleKey: 'shortcuts.scope.errorScreen' },

@@ -20,9 +20,10 @@ export type { CommandScope }
  *   siblings (neither chain contains the other), so they don't conflict with each
  *   other — the registry binds ←/→ in both on purpose, and the modes never coexist.
  * - `Main window/Servers`, `Main window/Places`, `Main window/Volume chooser`,
- *   and `Main window/Error screen` are siblings of `Main window/File list`: a pane
- *   shows one of them INSTEAD of the file list, so their keys don't collide with
- *   File-list keys (they share only `Main window` + `App`). The error screen's ⌘D
+ *   `Main window/Favorites menu`, and `Main window/Error screen` are siblings of
+ *   `Main window/File list`: a pane shows one of them INSTEAD of the file list (or, for the
+ *   two header menus, OVER it while central dispatch is suppressed), so their keys don't
+ *   collide with File-list keys (they share only `Main window` + `App`). The error screen's ⌘D
  *   is the clearest case — it deliberately shadows whatever ⌘D is bound to
  *   elsewhere, and that's not a conflict to report.
  *
@@ -40,6 +41,7 @@ const scopeHierarchy: Record<CommandScope, CommandScope[]> = {
   'Main window/Servers': ['Main window/Servers', 'Main window', 'App'],
   'Main window/Places': ['Main window/Places', 'Main window', 'App'],
   'Main window/Volume chooser': ['Main window/Volume chooser', 'Main window', 'App'],
+  'Main window/Favorites menu': ['Main window/Favorites menu', 'Main window', 'App'],
   'Main window/Error screen': ['Main window/Error screen', 'Main window', 'App'],
   'About window': ['About window', 'App'],
   Onboarding: ['Onboarding', 'App'],

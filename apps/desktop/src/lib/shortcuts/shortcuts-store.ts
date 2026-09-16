@@ -312,6 +312,7 @@ export const menuCommands = [
   'downloads.goToLatest',
   // Favorites
   'favorites.add',
+  'favorites.open',
   // Servers
   'servers.connect',
   'servers.show',

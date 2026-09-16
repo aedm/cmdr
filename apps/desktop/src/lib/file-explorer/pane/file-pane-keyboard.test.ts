@@ -213,7 +213,7 @@ describe('FilePane keyboard handling', () => {
       expect(typeof (component as unknown as Record<string, unknown>).toggleVolumeChooser).toBe('function')
     })
 
-    it('exports isVolumeChooserOpen method', async () => {
+    it('exports isHeaderMenuOpen method', async () => {
       const component = mount(FilePane, {
         target: getTarget(),
         props: {
@@ -228,13 +228,13 @@ describe('FilePane keyboard handling', () => {
 
       await waitForUpdates(100)
 
-      expect(typeof (component as unknown as Record<string, unknown>).isVolumeChooserOpen).toBe('function')
+      expect(typeof (component as unknown as Record<string, unknown>).isHeaderMenuOpen).toBe('function')
     })
 
     // ❗ No `handleVolumeChooserKeyDown` counterpart: the switcher's `Menu` catches keys on
     // its own document capture listener, so the pane has no key handler to forward.
 
-    it('isVolumeChooserOpen returns false initially', async () => {
+    it('isHeaderMenuOpen returns false initially', async () => {
       const component = mount(FilePane, {
         target: getTarget(),
         props: {
@@ -249,11 +249,11 @@ describe('FilePane keyboard handling', () => {
 
       await waitForUpdates(100)
 
-      const isVolumeChooserOpen = (component as unknown as { isVolumeChooserOpen: () => boolean }).isVolumeChooserOpen
-      expect(isVolumeChooserOpen()).toBe(false)
+      const isHeaderMenuOpen = (component as unknown as { isHeaderMenuOpen: () => boolean }).isHeaderMenuOpen
+      expect(isHeaderMenuOpen()).toBe(false)
     })
 
-    it('isVolumeChooserOpen returns true after toggle', async () => {
+    it('isHeaderMenuOpen returns true after toggle', async () => {
       const component = mount(FilePane, {
         target: getTarget(),
         props: {
@@ -273,8 +273,8 @@ describe('FilePane keyboard handling', () => {
 
       await tick()
 
-      const isVolumeChooserOpen = (component as unknown as { isVolumeChooserOpen: () => boolean }).isVolumeChooserOpen
-      expect(isVolumeChooserOpen()).toBe(true)
+      const isHeaderMenuOpen = (component as unknown as { isHeaderMenuOpen: () => boolean }).isHeaderMenuOpen
+      expect(isHeaderMenuOpen()).toBe(true)
     })
   })
 

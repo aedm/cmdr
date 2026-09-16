@@ -64,6 +64,9 @@ export const COMMAND_IDS = [
 
   // Favorites
   'favorites.add',
+  'favorites.open',
+  'favorites.openByNumber',
+  'favorites.addFromMenu',
 
   // Downloads
   'downloads.goToLatest',

@@ -1,7 +1,7 @@
 /**
  * Integration tests for VolumeBreadcrumb.
  */
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { mount, tick } from 'svelte'
 import VolumeBreadcrumb from '../navigation/VolumeBreadcrumb.svelte'
 import { waitForUpdates, useMountTarget } from './integration-test-utils'
@@ -147,6 +147,8 @@ vi.mock('$lib/tauri-commands', () => ({
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
   showVolumeRowContextMenu: vi.fn().mockResolvedValue(undefined),
   showFavoriteContextMenu: vi.fn().mockResolvedValue(undefined),
+  addFavorite: vi.fn().mockResolvedValue(undefined),
+  trackEvent: vi.fn().mockResolvedValue(undefined),
   onVolumeContextAction: vi.fn(() => Promise.resolve(() => {})),
 }))
 
@@ -183,6 +185,9 @@ vi.mock('$lib/settings/reactive-settings.svelte', () => ({
   getFileSizeFormat: vi.fn().mockReturnValue('binary'),
   getFileSizeUnit: vi.fn().mockReturnValue('bytes'),
   getUseAppIconsForDocuments: vi.fn().mockReturnValue(true),
+  // `volume-capabilities` reads it to classify a `.git`-portal path, which the favorites
+  // menu's add row asks about.
+  getShowVirtualGitPortal: () => false,
   getSizeDisplayMode: vi.fn().mockReturnValue('smart'),
   getNetworkEnabled: vi.fn().mockReturnValue(true),
 }))
@@ -222,6 +227,7 @@ describe('VolumeBreadcrumb', () => {
       mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -236,6 +242,7 @@ describe('VolumeBreadcrumb', () => {
       mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -249,10 +256,11 @@ describe('VolumeBreadcrumb', () => {
   })
 
   describe('Dropdown', () => {
-    it('exports toggle method', async () => {
+    it('exports toggleVolumeChooser method', async () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -260,13 +268,14 @@ describe('VolumeBreadcrumb', () => {
 
       await waitForUpdates(100)
 
-      expect(typeof (component as unknown as Record<string, unknown>).toggle).toBe('function')
+      expect(typeof (component as unknown as Record<string, unknown>).toggleVolumeChooser).toBe('function')
     })
 
     it('toggle method opens dropdown', async () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -278,7 +287,7 @@ describe('VolumeBreadcrumb', () => {
       expect(menuSurface()).toBeNull()
 
       // Call toggle
-      const toggle = (component as unknown as { toggle: () => void }).toggle
+      const toggle = (component as unknown as { toggleVolumeChooser: () => void }).toggleVolumeChooser
       toggle()
 
       // The menu portals itself into `document.body`, which lands a beat after the toggle.
@@ -292,6 +301,7 @@ describe('VolumeBreadcrumb', () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -300,7 +310,7 @@ describe('VolumeBreadcrumb', () => {
       await waitForUpdates(100)
 
       // Open dropdown
-      const toggle = (component as unknown as { toggle: () => void }).toggle
+      const toggle = (component as unknown as { toggleVolumeChooser: () => void }).toggleVolumeChooser
       toggle()
 
       await waitForUpdates()
@@ -315,6 +325,7 @@ describe('VolumeBreadcrumb', () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
           onVolumeChange: volumeChangeFn,
@@ -324,13 +335,16 @@ describe('VolumeBreadcrumb', () => {
       await waitForUpdates(100)
 
       // Open dropdown
-      const toggle = (component as unknown as { toggle: () => void }).toggle
+      const toggle = (component as unknown as { toggleVolumeChooser: () => void }).toggleVolumeChooser
       toggle()
 
       await waitForUpdates()
 
-      // Find another volume item and click it
-      const volumeItems = document.querySelectorAll('[data-menu-row]:not([data-checked])')
+      // Find another volume item and click it. ❗ The "See N favorites" row is
+      // unchecked too and swaps menus rather than moving the pane, so skip it.
+      const volumeItems = document.querySelectorAll(
+        '[data-menu-row]:not([data-checked]):not([data-menu-row="favorites:see"])',
+      )
       if (volumeItems.length > 0) {
         volumeItems[0].dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
@@ -344,6 +358,7 @@ describe('VolumeBreadcrumb', () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -352,7 +367,7 @@ describe('VolumeBreadcrumb', () => {
       await waitForUpdates(100)
 
       // Open dropdown
-      const toggle = (component as unknown as { toggle: () => void }).toggle
+      const toggle = (component as unknown as { toggleVolumeChooser: () => void }).toggleVolumeChooser
       toggle()
 
       await waitForUpdates()
@@ -373,6 +388,7 @@ describe('VolumeBreadcrumb', () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -381,7 +397,7 @@ describe('VolumeBreadcrumb', () => {
       await waitForUpdates(100)
 
       // Open dropdown
-      const toggle = (component as unknown as { toggle: () => void }).toggle
+      const toggle = (component as unknown as { toggleVolumeChooser: () => void }).toggleVolumeChooser
       toggle()
 
       await waitForUpdates()
@@ -394,25 +410,37 @@ describe('VolumeBreadcrumb', () => {
   })
 
   describe('Keyboard navigation', () => {
+    // Three volumes, so the arrow walk has somewhere to go past the checked row and the
+    // "See N favorites" row the switcher leads with.
+    beforeEach(() => {
+      vi.mocked(getVolumes).mockReturnValue([
+        { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
+        { id: 'volumes-a', name: 'Alpha', path: '/Volumes/Alpha', category: 'attached_volume', isEjectable: true },
+        { id: 'volumes-b', name: 'Beta', path: '/Volumes/Beta', category: 'attached_volume', isEjectable: true },
+      ] as ReturnType<typeof getVolumes>)
+    })
+
     async function mountAndOpen() {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
       })
       await waitForUpdates(100)
-      ;(component as unknown as { toggle: () => void }).toggle()
+      ;(component as unknown as { toggleVolumeChooser: () => void }).toggleVolumeChooser()
       // The menu portals itself into `document.body`, which lands a beat after the toggle.
       await waitForUpdates()
       return component
     }
 
-    it('exports getIsOpen method', async () => {
+    it('exports isHeaderMenuOpen method', async () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -420,13 +448,14 @@ describe('VolumeBreadcrumb', () => {
 
       await waitForUpdates(100)
 
-      expect(typeof (component as unknown as Record<string, unknown>).getIsOpen).toBe('function')
+      expect(typeof (component as unknown as Record<string, unknown>).isHeaderMenuOpen).toBe('function')
     })
 
-    it('getIsOpen returns false when dropdown is closed', async () => {
+    it('isHeaderMenuOpen returns false when no menu is open', async () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -434,21 +463,22 @@ describe('VolumeBreadcrumb', () => {
 
       await waitForUpdates(100)
 
-      const getIsOpen = (component as unknown as { getIsOpen: () => boolean }).getIsOpen
-      expect(getIsOpen()).toBe(false)
+      const isHeaderMenuOpen = (component as unknown as { isHeaderMenuOpen: () => boolean }).isHeaderMenuOpen
+      expect(isHeaderMenuOpen()).toBe(false)
     })
 
-    it('getIsOpen returns true when dropdown is open', async () => {
+    it('isHeaderMenuOpen returns true when the switcher is open', async () => {
       const component = await mountAndOpen()
 
-      const getIsOpen = (component as unknown as { getIsOpen: () => boolean }).getIsOpen
-      expect(getIsOpen()).toBe(true)
+      const isHeaderMenuOpen = (component as unknown as { isHeaderMenuOpen: () => boolean }).isHeaderMenuOpen
+      expect(isHeaderMenuOpen()).toBe(true)
     })
 
     it('a key reaches nobody while the dropdown is closed', async () => {
       mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
         },
@@ -462,10 +492,11 @@ describe('VolumeBreadcrumb', () => {
     it('ArrowDown moves highlight down', async () => {
       await mountAndOpen()
 
-      // Verify dropdown is open and first item is highlighted
+      // The cursor opens on the CHECKED row — the boot disk, which sits after the
+      // "See N favorites" row the switcher leads with.
       const items = menuRows()
-      expect(items.length).toBeGreaterThan(1)
-      expect(isHighlighted(items[0])).toBe(true)
+      expect(items.length).toBeGreaterThan(2)
+      expect(isHighlighted(items[1])).toBe(true)
 
       // Press ArrowDown
       const handled = press('ArrowDown')
@@ -473,8 +504,8 @@ describe('VolumeBreadcrumb', () => {
       await tick()
 
       expect(handled).toBe(true)
-      expect(isHighlighted(items[0])).toBe(false)
-      expect(isHighlighted(items[1])).toBe(true)
+      expect(isHighlighted(items[1])).toBe(false)
+      expect(isHighlighted(items[2])).toBe(true)
     })
 
     it('ArrowUp moves highlight up', async () => {
@@ -484,17 +515,21 @@ describe('VolumeBreadcrumb', () => {
       press('ArrowDown')
       await tick()
 
-      // Now move back up
+      // Now move back up, to the checked row the menu opened on
       const handled = press('ArrowUp')
 
       await tick()
 
       expect(handled).toBe(true)
-      expect(isHighlighted(menuRows()[0])).toBe(true)
+      expect(isHighlighted(menuRows()[1])).toBe(true)
     })
 
     it('ArrowUp at first item wraps to last', async () => {
       await mountAndOpen()
+
+      // Home first: the menu opens on the checked row, not on the top one.
+      press('Home')
+      await tick()
 
       // Move up from first: should wrap to last
       press('ArrowUp')
@@ -510,7 +545,9 @@ describe('VolumeBreadcrumb', () => {
     it('ArrowDown at last item wraps to first', async () => {
       await mountAndOpen()
 
-      // Walk down to the last item
+      // Walk down to the last item, from the top of the list
+      press('Home')
+      await tick()
       const items = menuRows()
       expect(items.length).toBeGreaterThan(1)
       for (let i = 0; i < items.length - 1; i++) {
@@ -533,6 +570,7 @@ describe('VolumeBreadcrumb', () => {
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
         props: {
+          paneId: 'left' as const,
           volumeId: 'root',
           currentPath: '/',
           onVolumeChange: volumeChangeFn,
@@ -542,7 +580,7 @@ describe('VolumeBreadcrumb', () => {
       await waitForUpdates(100)
 
       // Open dropdown
-      const toggle = (component as unknown as { toggle: () => void }).toggle
+      const toggle = (component as unknown as { toggleVolumeChooser: () => void }).toggleVolumeChooser
       toggle()
 
       await waitForUpdates()
@@ -611,7 +649,7 @@ describe('VolumeBreadcrumb', () => {
     })
   })
 
-  describe('Favorites section', () => {
+  describe('Favorites menu', () => {
     const fav = (id: string, name: string, path: string) => ({
       id: `fav-${id}`,
       name,
@@ -627,10 +665,10 @@ describe('VolumeBreadcrumb', () => {
       ])
       const component = mount(VolumeBreadcrumb, {
         target: getTarget(),
-        props: { volumeId: 'root', currentPath: '/' },
+        props: { paneId: 'left' as const, volumeId: 'root', currentPath: '/' },
       })
       await waitForUpdates(100)
-      ;(component as unknown as { toggle: () => void }).toggle()
+      ;(component as unknown as { toggleFavoritesMenu: () => void }).toggleFavoritesMenu()
       // The menu portals itself into `document.body`, which lands a beat after the toggle.
       await waitForUpdates()
       return component

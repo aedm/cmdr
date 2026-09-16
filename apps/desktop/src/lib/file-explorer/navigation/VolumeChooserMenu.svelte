@@ -9,26 +9,25 @@
      * `volume-grouping.ts`) and what a row shows: the filesystem tag, the badges, the
      * eject or disconnect control, the disk-space line, and the inline rename field.
      */
-    import { onDestroy, onMount, untrack } from 'svelte'
-    import type { UnlistenFn } from '@tauri-apps/api/event'
-    import { onVolumeContextAction, showFavoriteContextMenu, showVolumeRowContextMenu } from '$lib/tauri-commands'
+    import { onDestroy, untrack } from 'svelte'
+    import { showVolumeRowContextMenu } from '$lib/tauri-commands'
     import { getVolumes, getVolumesTimedOut, isVolumesRefreshing, isVolumeRetryFailed, requestVolumeRefresh } from '$lib/stores/volume-store.svelte'
     import { isVolumeBusy, isVolumeEjecting } from '$lib/stores/volume-busy-store.svelte'
     import { isRestricted } from '$lib/stores/restricted-paths-store.svelte'
     import { getCachedIcon, iconCacheVersion } from '$lib/icon-cache'
     import { dependOn } from '$lib/utils/reactivity'
-    import { isMacOS } from '$lib/shortcuts/key-capture'
+    import { eventMatchesCommand } from '$lib/shortcuts'
     import { tString } from '$lib/intl/messages.svelte'
     import { restrictedFolderTooltip } from '$lib/system-strings.svelte'
     import { formatByteSize } from '$lib/units'
     import { tooltip } from '$lib/tooltip/tooltip'
     import Icon from '$lib/ui/Icon.svelte'
     import Menu from '$lib/ui/Menu.svelte'
+    import ShortcutChip from '$lib/ui/ShortcutChip.svelte'
     import Spinner from '$lib/ui/Spinner.svelte'
     import StatusGlyph from '$lib/ui/StatusGlyph.svelte'
     import { createMenu } from '$lib/ui/menu-controller.svelte'
     import type { MenuIcon, MenuItem, MenuRowContext, MenuSection } from '$lib/ui/menu-types'
-    import type { VolumeContextActionKind } from '$lib/ipc/bindings'
     import { deviceVolumeLabel } from '$lib/adb/adb-volume-label'
     import { deviceRowState } from '$lib/adb/device-readiness'
     import { maybePromptFirstConnect } from '$lib/indexing/first-connect-trigger'
@@ -48,16 +47,14 @@
     import { detachVolume } from './detach-volume'
     import { isDriveRow } from './drive-index-manager.svelte'
     import { isVolumeEjectable } from './eject-predicate'
-    import { buildFavoriteTooltip } from './favorite-tooltip'
-    import { createFavoritesController } from './favorites-controller.svelte'
     import { filesystemLabel } from './filesystem-label'
-    import { openFavorite } from './open-favorite'
     import { pathForPickedVolume } from './picked-volume-path'
     import { disconnectServerPlace, isServerPlaceRow, openServerRowMenu } from './server-row-actions'
     import { shouldShowCheckmark } from './volume-checkmark'
     import { groupByCategory } from './volume-grouping'
     import { createVolumeSpaceManager } from './volume-space-manager.svelte'
     import type { DriveBadges } from './drive-badges.svelte'
+    import type { FavoritesMenuOpenTrigger } from './favorites-analytics'
 
     interface Props {
         /** The volume the pane's path really sits on: the row wearing the checkmark. */
@@ -69,9 +66,16 @@
         /** The chip's whole control cluster: pressing a control in it doesn't close the list. */
         getChipCluster: () => HTMLElement | undefined
         onVolumeChange?: (change: VolumeChangePayload) => void
+        /**
+         * Hand the header over to the favorites menu: the "See N favorites" row, or ⌃D
+         * typed right here (the row has just taught that key, so it has to work).
+         */
+        onShowFavorites: (trigger: FavoritesMenuOpenTrigger) => void
+        /** So the chip can keep one header menu open at a time. */
+        onOpenChange: (open: boolean) => void
     }
 
-    const { containingVolumeId, badges, getAnchor, getChipCluster, onVolumeChange }: Props = $props()
+    const { containingVolumeId, badges, getAnchor, getChipCluster, onVolumeChange, onShowFavorites, onOpenChange }: Props = $props()
 
     const volumes = $derived(getVolumes())
     const volumesTimedOut = $derived(getVolumesTimedOut())
@@ -96,16 +100,6 @@
         spaceAutoRetryingSet,
     } = spaceManager
 
-    let renameInputRef: HTMLInputElement | undefined = $state()
-
-    // Favorites: inline rename, remove, and the local-first optimistic order. The reorder
-    // MECHANICS are the primitive's; this holds what the backend and the eye need.
-    const fav = createFavoritesController({
-        getFavorites: () => favorites,
-        getVolumes: () => volumes,
-        getRenameInputRef: () => renameInputRef,
-    })
-
     // Generic macOS folder icon used as fallback when a volume has no icon (for example,
     // FDA-gated favorites whose icons aren't fetched yet to avoid TCC popups). Reading
     // `$iconCacheVersion` re-evaluates this once the icon lands.
@@ -114,27 +108,15 @@
         return getCachedIcon('dir')
     })
 
-    // `volumes` with favorites reordered per the optimistic override (each favorite SLOT keeps
-    // its position; only which favorite fills it changes). Everything below derives from this,
-    // so an optimistic reorder shows without waiting for the backend round-trip.
-    const effectiveVolumes = $derived.by(() => {
-        const order = fav.optimisticFavoriteIds
-        if (!order) return volumes
-        const rank = new Map(order.map((id, i) => [id, i]))
-        const orderedFavs = volumes
-            .filter((v) => v.category === 'favorite')
-            .slice()
-            .sort((a, b) => (rank.get(a.id) ?? Number.POSITIVE_INFINITY) - (rank.get(b.id) ?? Number.POSITIVE_INFINITY))
-        let fi = 0
-        return volumes.map((v) => (v.category === 'favorite' ? orderedFavs[fi++] : v))
-    })
-
-    const groupedVolumes = $derived(groupByCategory(effectiveVolumes))
+    const groupedVolumes = $derived(groupByCategory(volumes))
     const allVolumes = $derived(groupedVolumes.flatMap((g) => g.items))
-    const favorites = $derived(effectiveVolumes.filter((v) => v.category === 'favorite'))
+    const favoritesCount = $derived(volumes.filter((v) => v.category === 'favorite').length)
 
     /** A submenu row's value, so a pick tells itself apart from the volume rows. */
     const CONNECT_PREFIX = 'connect:'
+
+    /** The row that hands the header over to the favorites menu, and teaches ⌃D doing it. */
+    const SEE_FAVORITES_VALUE = 'favorites:see'
 
     function rowIcon(volume: VolumeInfo, restricted: boolean): MenuIcon | undefined {
         if (volume.category === 'cloud_drive') return { src: '/icons/sync-online-only.svg' }
@@ -163,13 +145,7 @@
             icon: rowIcon(volume, restricted),
             checked: shouldShowCheckmark(volume, containingVolumeId),
             disabled: !rowState.openable,
-            tooltip:
-                rowState.tooltip ??
-                (restricted
-                    ? RESTRICTED_FOLDER_TOOLTIP
-                    : volume.category === 'favorite'
-                      ? buildFavoriteTooltip(volume.path, isMacOS())
-                      : ''),
+            tooltip: rowState.tooltip ?? (restricted ? RESTRICTED_FOLDER_TOOLTIP : ''),
             // The OS mounted this share for us, so the row offers the direct session it could
             // have instead. One row today, and the primitive walks however many there are.
             submenu:
@@ -180,37 +156,53 @@
         }
     }
 
-    const sections: MenuSection<VolumeInfo>[] = $derived.by(() =>
-        groupedVolumes.map((group) => ({
+    const sections: MenuSection<VolumeInfo>[] = $derived.by(() => [
+        // One row on top for the favorites, which live in their own menu (⌃D). It keeps
+        // them a click away and is where the key gets taught; ❌ the switcher lists no
+        // favorites itself, so there's no second place to manage them from.
+        {
+            id: 'favorites',
+            items: [
+                {
+                    value: SEE_FAVORITES_VALUE,
+                    label: tString('fileExplorer.navigation.seeFavorites', { count: favoritesCount }),
+                    icon: { lucide: 'star' },
+                },
+            ],
+        },
+        ...groupedVolumes.map((group) => ({
             id: group.category,
             heading: group.label || undefined,
-            // Favorites are the user's own order, so they drag and ⌥↑/⌥↓ within their section.
-            reorderable: group.category === 'favorite',
-            // An emptied list is a real user state (they can remove every favorite), unlike
-            // every other group, which `volume-grouping.ts` hides when empty.
-            emptyLabel: group.category === 'favorite' ? tString('fileExplorer.navigation.favoritesEmpty') : undefined,
             items: group.items.map(toMenuItem),
         })),
-    )
+    ])
 
     /** Where focus was when the menu opened, so closing it doesn't move the focused pane. */
     let focusBeforeOpen: HTMLElement | null = null
+
+    /**
+     * ⌃D right here swaps to the favorites menu. Central dispatch is suppressed while a
+     * header menu is open, so nothing else would answer it, and the row above has just
+     * taught the key — it has to work where it's advertised. `eventMatchesCommand` means a
+     * rebind follows.
+     */
+    function handleKey(event: KeyboardEvent): boolean {
+        if (!eventMatchesCommand(event, 'favorites.open')) return false
+        onShowFavorites('command')
+        return true
+    }
 
     const menu = createMenu<VolumeInfo>({
         getSections: () => sections,
         onSelect: (item) => {
             void handleSelect(item)
         },
-        onReorder: ({ sectionId, orderedValues }) => {
-            if (sectionId === 'favorite') fav.applyReorder(orderedValues)
-        },
         onContextMenu: (item) => {
             openRowMenu(item)
         },
-        // While a favorite is being renamed inline, the `<input>` owns every keystroke:
-        // arrows and Home/End move the text cursor, not the menu's.
-        isEditing: () => fav.renamingFavoriteId !== null,
+        onKey: handleKey,
         onOpenChange: (open) => {
+            onOpenChange(open)
             if (!open) return
             void spaceManager.fetchVolumeSpaces(volumes)
             badges.fetchForRows(volumes)
@@ -252,24 +244,16 @@
     }
 
     async function handleSelect(item: MenuItem<VolumeInfo>): Promise<void> {
+        if (item.value === SEE_FAVORITES_VALUE) {
+            onShowFavorites('switcher_row')
+            return
+        }
         if (item.value.startsWith(CONNECT_PREFIX)) {
             await connectDirectlyToRow(item.value.slice(CONNECT_PREFIX.length), volumes)
             return
         }
         const volume = item.data
         if (!volume) return
-
-        if (volume.category === 'favorite') {
-            // `open-favorite.ts` owns the whole favorite open: resolve the containing
-            // volume, emit, and switch onto it. A favorite that resolves to no volume
-            // leaves the pane where it is.
-            await openFavorite({
-                favoritePath: volume.path,
-                picked: { surface: 'favorites_menu', via: 'pointer' },
-                go: (target) => onVolumeChange?.(target),
-            })
-            return
-        }
 
         // A saved server place opens on its start folder; anything else at its root.
         onVolumeChange?.({ volumeId: volume.id, volumePath: volume.path, targetPath: pathForPickedVolume(volume) })
@@ -284,36 +268,22 @@
         }
     }
 
-    // Per-row right-click menu. Favorites get Rename / Remove; ejectable volumes get their
-    // detach item; a server row gets its own menu; anything else has none. It's the NATIVE
-    // (muda) menu, matching the breadcrumb / tab menus. While it tracks, the webview is
-    // frozen, so the cursor can't drift onto another row — it acts on the right-clicked one.
-    // The pick returns over `volume-context-action`: eject is handled in `DualPaneExplorer`;
-    // rename / remove land in `handleVolumeContextAction` below.
+    // Per-row right-click menu. Ejectable volumes get their detach item; a server row gets
+    // its own menu; anything else has none. It's the NATIVE (muda) menu, matching the
+    // breadcrumb / tab menus. While it tracks, the webview is frozen, so the cursor can't
+    // drift onto another row — it acts on the right-clicked one. The pick returns over
+    // `volume-context-action`, where `DualPaneExplorer` handles eject. A FAVORITE's menu is
+    // `FavoritesMenu.svelte`'s: no favorite is listed here.
     function openRowMenu(item: MenuItem<VolumeInfo>): void {
         const volume = item.data
         if (!volume) return
-        const isFavorite = volume.category === 'favorite'
-        const ejectable = isVolumeEjectable(volume)
         if (isServerPlaceRow(volume)) {
             void openServerRowMenu(volume)
             return
         }
-        if (!isFavorite && !ejectable) return
-        if (isFavorite) void showFavoriteContextMenu(volume.id, volume.name)
-        else void showVolumeRowContextMenu(volume.id, volume.name, ejectable)
-    }
-
-    // Rename / remove a favorite when the user picks it from the native row menu. Both panes'
-    // breadcrumbs receive this global event, but only the one whose menu is open owns the menu
-    // it spawned (favorites are global, so the id alone can't tell the panes apart).
-    function handleVolumeContextAction(payload: { action: VolumeContextActionKind; volumeId: string }): void {
-        if (!menu.isOpen) return
-        if (payload.action !== 'rename-favorite' && payload.action !== 'remove-favorite') return
-        const volume = favorites.find((f) => f.id === payload.volumeId)
-        if (!volume) return
-        if (payload.action === 'rename-favorite') fav.startRename(volume)
-        else void fav.remove(volume)
+        const ejectable = isVolumeEjectable(volume)
+        if (!ejectable) return
+        void showVolumeRowContextMenu(volume.id, volume.name, ejectable)
     }
 
     /** The row's Disconnect control. Guarded like Eject: never mid-transfer. */
@@ -334,18 +304,9 @@
         prevVolumeIds = ids
     })
 
-    let unlistenVolumeContext: UnlistenFn | undefined
-
-    onMount(() => {
-        void onVolumeContextAction(handleVolumeContextAction).then((unlisten) => {
-            unlistenVolumeContext = unlisten
-        })
-    })
-
     onDestroy(() => {
         spaceManager.destroy()
         menu.destroy()
-        unlistenVolumeContext?.()
     })
 </script>
 
@@ -354,34 +315,25 @@
 <Menu {menu} ariaLabel={tString('shortcuts.scope.volumeChooser')}>
     {#snippet label(ctx: MenuRowContext<VolumeInfo>)}
         {@const volume = ctx.item.data}
-        {#if volume}
-            {#if fav.renamingFavoriteId === volume.id}
-                <!-- eslint-disable-next-line cmdr/prefer-ui-primitive -- Dense inline editor inside a menu row: it inherits the row's font and sits at row height with 2px side padding, which the framed `TextInput`'s padding would blow past, and it carries a resting accent border to read as "editing" rather than one that appears on focus. -->
-                <input
-                    class="favorite-rename-input"
-                    bind:this={renameInputRef}
-                    bind:value={fav.renameDraft}
-                    onkeydown={(e: KeyboardEvent) => { fav.handleRenameKeyDown(e, volume) }}
-                    onblur={() => { void fav.commitRename(volume) }}
-                    aria-label={tString('fileExplorer.navigation.renameFavoriteAriaLabel')}
-                />
-            {:else}
-                <!-- TCC-restricted entries read quiet + italic (the shared `--color-text-quiet`
-                     token, as the file list's hidden entries do); a pinned place nobody has
-                     dialed is quiet too, so the connected rows above it read as the live ones.
-                     ❌ Not `aria-disabled`: opening one is what dials it. -->
-                <span
-                    class="volume-label"
-                    class:is-restricted={isRestricted(volume.path)}
-                    class:is-saved-place={volume.connectionState === 'saved'}>{ctx.item.label}</span
-                >
-            {/if}
-        {/if}
+        <!-- TCC-restricted entries read quiet + italic (the shared `--color-text-quiet`
+             token, as the file list's hidden entries do); a pinned place nobody has
+             dialed is quiet too, so the connected rows above it read as the live ones.
+             ❌ Not `aria-disabled`: opening one is what dials it. The favorites row
+             carries no volume and takes neither treatment. -->
+        <span
+            class="volume-label"
+            class:is-restricted={volume ? isRestricted(volume.path) : false}
+            class:is-saved-place={volume?.connectionState === 'saved'}>{ctx.item.label}</span
+        >
     {/snippet}
 
     {#snippet trailing(ctx: MenuRowContext<VolumeInfo>)}
         {@const volume = ctx.item.data}
-        {#if volume}
+        {#if ctx.item.value === SEE_FAVORITES_VALUE}
+            <!-- The key that opens the same menu from anywhere, live: a rebind shows here.
+                 Not clickable — inside a row, a second target would double-activate. -->
+            <ShortcutChip commandId="favorites.open" clickable={false} />
+        {:else if volume}
             {@const fsLabel = filesystemLabel(volume)}
             {#if fsLabel}
                 <!-- Filesystem name tag, sitting just right of the volume name. Quiet
@@ -549,21 +501,6 @@
     /*noinspection CssUnusedSymbol*/
     .is-saved-place {
         color: var(--color-text-quiet);
-    }
-
-    .favorite-rename-input {
-        flex: 1;
-        min-width: 0;
-        font: inherit;
-        color: var(--color-text-primary);
-        background-color: var(--color-bg-primary);
-        border: 1px solid var(--color-accent);
-        border-radius: var(--radius-sm);
-        padding: 0 var(--spacing-xxs);
-    }
-
-    .favorite-rename-input:focus {
-        outline: none;
     }
 
     .volume-fs {

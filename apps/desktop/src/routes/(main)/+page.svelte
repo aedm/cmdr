@@ -162,14 +162,14 @@
 
     /**
      * Explorer-owned overlays that should suppress centralized dispatch: a
-     * confirmation dialog, an active inline rename, OR the volume switcher
-     * dropdown (it hosts the inline favorite-rename input + a focusable list, so
-     * while it's open pane/global shortcuts must not fire — text-editing keys
-     * reach the textbox instead — Fix E).
+     * confirmation dialog, an active inline rename, OR a header menu (the volume
+     * switcher or the favorites menu, which hosts the inline favorite-rename input;
+     * both are a focusable list, so while one is open pane/global shortcuts must not
+     * fire — text-editing keys reach the textbox instead — Fix E).
      */
     function isExplorerOverlayOpen(): boolean {
         if (!explorerRef) return false
-        return explorerRef.isConfirmationDialogOpen() || explorerRef.isRenaming() || explorerRef.isVolumeChooserOpen()
+        return explorerRef.isConfirmationDialogOpen() || explorerRef.isRenaming() || explorerRef.isHeaderMenuOpen()
     }
 
     /**

@@ -64,6 +64,8 @@ export const FIXED_KEY_COMMAND_IDS = [
   'palette.close',
   'volume.select',
   'volume.close',
+  'favorites.openByNumber',
+  'favorites.addFromMenu',
   'network.selectHost',
   'share.back',
   'share.selectShare',

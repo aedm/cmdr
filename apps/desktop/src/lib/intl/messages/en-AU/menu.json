@@ -30,5 +30,9 @@
   "menu.tag.gray": "Grey",
   "@menu.tag.gray": {
     "sourceHash": "0d5adda"
+  },
+  "menu.go.showFavorites": "Show favourites",
+  "@menu.go.showFavorites": {
+    "sourceHash": "f4dfe9b"
   }
 }

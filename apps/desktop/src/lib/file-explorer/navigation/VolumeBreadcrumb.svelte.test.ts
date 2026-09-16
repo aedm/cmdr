@@ -1,8 +1,9 @@
 /**
- * Behavioral tests for the volume switcher: the chip (`VolumeBreadcrumb.svelte`) plus the
- * list it opens (`VolumeChooserMenu.svelte`, the house `Menu`). They're the behavior
- * contract the M2 port had to keep, so they mount the chip and drive it the way a person
- * does — real keydowns, real clicks.
+ * Behavioral tests for the chip (`VolumeBreadcrumb.svelte`) and BOTH menus it hosts: the
+ * volume switcher (`VolumeChooserMenu.svelte`) and the favorites menu
+ * (`FavoritesMenu.svelte`), each on the house `Menu`. They're the behavior contract the M2
+ * port had to keep, so they mount the chip and drive it the way a person does — real
+ * keydowns, real clicks.
  *
  * One of them is the favorite-rename keyboard guard (Fix E): while a favorite is being
  * renamed inline, the menu must NOT consume arrow / Home / End keys, so the textbox keeps
@@ -39,6 +40,8 @@ const stubs = vi.hoisted(() => ({
    * block here except the drive-index one wants.
    */
   indexStatus: null as Record<string, unknown> | null,
+  /** What `resolvePathVolume` answers: the volume the checkmark tracks. */
+  containingVolumeId: 'root',
 }))
 
 const connectDirectly = vi.fn(() => Promise.resolve({ kind: 'connected' }))
@@ -68,7 +71,7 @@ Element.prototype.scrollIntoView = vi.fn()
 let volumeContextActionHandler: ((payload: { action: string; volumeId: string }) => void) | undefined
 
 vi.mock('$lib/tauri-commands', () => ({
-  resolvePathVolume: vi.fn(() => Promise.resolve({ volume: { id: 'root', path: '/' } })),
+  resolvePathVolume: vi.fn(() => Promise.resolve({ volume: { id: stubs.containingVolumeId, path: '/' } })),
   upgradeToSmbVolume: vi.fn(() => Promise.resolve({ status: 'success' })),
   ejectVolume: (...args: unknown[]) => ejectVolume(...(args as [])),
   getVolumeSpace: vi.fn(() => Promise.resolve(null)),
@@ -85,6 +88,8 @@ vi.mock('$lib/tauri-commands', () => ({
   forgetServerSecret: vi.fn(() => Promise.resolve(true)),
   hasServerSecret: (...args: unknown[]) => hasServerSecret(...(args as [])),
   listSavedServers: () => listSavedServers(),
+  addFavorite: vi.fn(() => Promise.resolve()),
+  trackEvent: vi.fn(() => Promise.resolve()),
   onVolumeContextAction: (cb: (payload: { action: string; volumeId: string }) => void) => {
     volumeContextActionHandler = cb
     return Promise.resolve(() => {})
@@ -118,6 +123,9 @@ vi.mock('$lib/settings/reactive-settings.svelte', () => ({
   getFileSizeUnit: () => 'bytes',
   getNetworkEnabled: () => true,
   getUseAppIconsForDocuments: () => false,
+  // `volume-capabilities` reads it to classify a `.git`-portal path, which the favorites
+  // menu's add row asks about.
+  getShowVirtualGitPortal: () => false,
   // The drive-index badge's master switch. On, so a row carrying a status renders
   // the badge with its actions rather than the "indexing is off" note.
   getDriveIndexingEnabled: () => true,
@@ -134,10 +142,11 @@ vi.mock('$lib/icon-cache', async () => {
 })
 
 interface BreadcrumbInstance {
-  open: () => void
-  close: () => void
-  toggle: () => void
-  getIsOpen: () => boolean
+  openVolumeChooser: () => void
+  toggleVolumeChooser: () => void
+  toggleFavoritesMenu: () => void
+  closeHeaderMenu: () => void
+  isHeaderMenuOpen: () => boolean
 }
 
 // ============================================================================
@@ -155,6 +164,15 @@ function menuSurface(): HTMLElement | null {
 /** The main list's rows. The submenu is its own surface, so its row never lands here. */
 function menuRows(): NodeListOf<HTMLElement> {
   return document.querySelectorAll('[data-menu] [data-menu-row]')
+}
+
+/**
+ * The VOLUME rows alone. The switcher now leads with a "See N favorites" row that swaps in
+ * the favorites menu, so a pin counting volume rows by index has to skip it — ❌ don't fold
+ * this back into `menuRows`, which several pins use to count what the menu really renders.
+ */
+function volumeRows(): HTMLElement[] {
+  return [...menuRows()].filter((row) => row.getAttribute('data-menu-row') !== 'favorites:see')
 }
 
 function isHighlighted(row: Element | null | undefined): boolean {
@@ -189,7 +207,7 @@ function mountBreadcrumb(props: BreadcrumbProps = {}): { instance: BreadcrumbIns
   document.body.appendChild(target)
   const instance = mount(VolumeBreadcrumb, {
     target,
-    props: { volumeId: 'root', currentPath: '/Users/test', ...props },
+    props: { paneId: 'left' as const, volumeId: 'root', currentPath: '/Users/test', ...props },
   }) as unknown as BreadcrumbInstance
   // Settle the chip's `bind:this`: the menu hangs under that element, so `open()` called
   // before the binding lands would have nothing to anchor to.
@@ -204,13 +222,13 @@ async function openWithRows(
 ): Promise<{ instance: BreadcrumbInstance; target: HTMLDivElement }> {
   stubs.volumes = rows
   const mounted = mountBreadcrumb(props)
-  mounted.instance.open()
+  mounted.instance.openVolumeChooser()
   await tick()
   flushSync()
   return mounted
 }
 
-describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () => {
+describe('Favorites menu: keyboard reorder (Alt+Up / Alt+Down)', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     reorderFavorites.mockClear()
@@ -218,7 +236,7 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
 
   it('Alt+ArrowDown on the highlighted favorite persists the moved order via reorderFavorites', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.toggleFavoritesMenu()
     await tick()
     flushSync()
 
@@ -238,7 +256,7 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
 
   it('two quick Alt+ArrowDown presses keep moving the SAME favorite (optimistic local order, no stale-state race)', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.toggleFavoritesMenu()
     await tick()
     flushSync()
 
@@ -264,7 +282,7 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
 
   it('Alt+ArrowUp at the top favorite is a no-op (no persist)', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.toggleFavoritesMenu()
     await tick()
     flushSync()
 
@@ -279,13 +297,13 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
     expect(reorderFavorites).not.toHaveBeenCalled()
   })
 
-  it('Alt+ArrowDown on a non-favorite (real volume) does not reorder', async () => {
+  it('Alt+ArrowDown on the add row (a non-reorderable section) does not reorder', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.toggleFavoritesMenu()
     await tick()
     flushSync()
 
-    // End jumps to the last item: the real volume (Macintosh HD), not a favorite.
+    // End jumps to the last row: the `0` add row, which sits in its own section.
     expect(press('End')).toBe(true)
     await tick()
     flushSync()
@@ -297,28 +315,28 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
   })
 })
 
-describe('VolumeBreadcrumb favorite-rename keyboard guard', () => {
+describe('Favorites menu: the rename keyboard guard', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
   })
 
-  it('claims no key while the dropdown is closed', () => {
+  it('claims no key while no menu is open', () => {
     mountBreadcrumb()
     expect(press('ArrowDown')).toBe(false)
   })
 
-  it('consumes ArrowDown when the dropdown is open and not renaming', async () => {
+  it('consumes ArrowDown when the menu is open and not renaming', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.toggleFavoritesMenu()
     await tick()
     flushSync()
-    expect(instance.getIsOpen()).toBe(true)
+    expect(instance.isHeaderMenuOpen()).toBe(true)
     expect(press('ArrowDown')).toBe(true)
   })
 
   it('does NOT consume ArrowDown / Home / End while a favorite rename is active', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.toggleFavoritesMenu()
     await tick()
     flushSync()
 
@@ -341,7 +359,7 @@ describe('VolumeBreadcrumb favorite-rename keyboard guard', () => {
 
   it('stops EVERY key (Space included) from bubbling out of the rename input to the pane', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.toggleFavoritesMenu()
     await tick()
     flushSync()
 
@@ -396,7 +414,7 @@ describe('VolumeBreadcrumb server rows', () => {
   async function openWith(rows: unknown[]) {
     stubs.volumes = rows
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.openVolumeChooser()
     await tick()
     flushSync()
   }
@@ -451,7 +469,7 @@ describe('VolumeBreadcrumb server rows', () => {
   it('opens a server menu on right-click, with the row read as the caller sees it', async () => {
     await openWith([serverRow({ connectionState: 'direct' })])
     // Row 0 is the hub ("Servers"); the place is the one after it.
-    const row = menuRows()[1]
+    const row = volumeRows()[1]
     row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
     // One store read runs before the popup: let it settle. ❗ One, ❌ not two —
     // deciding whether a secret is stored would cost a Keychain read, and every
@@ -484,7 +502,7 @@ describe('VolumeBreadcrumb eject in progress', () => {
   async function openWith(rows: unknown[]) {
     stubs.volumes = rows
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.openVolumeChooser()
     await tick()
     flushSync()
   }
@@ -561,7 +579,7 @@ describe('VolumeBreadcrumb phone rows', () => {
   async function openWith(rows: unknown[]) {
     stubs.volumes = rows
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.openVolumeChooser()
     await tick()
     flushSync()
   }
@@ -590,14 +608,14 @@ describe('VolumeBreadcrumb phone rows', () => {
   // every non-ready row.
   it('keeps a phone waiting for its Allow tap openable, and says what it waits for', async () => {
     await openWith([phoneRow({ deviceReadiness: { kind: 'waiting_for_authorization' } })])
-    const row = menuRows()[0]
+    const row = volumeRows()[0]
     expect(row.hasAttribute('data-disabled')).toBe(false)
     expect(row.getAttribute('aria-disabled')).toBeNull()
   })
 
   it('greys a phone the daemon lists but cannot use, and refuses to open it', async () => {
     await openWith([phoneRow({ deviceReadiness: { kind: 'unavailable', reason: 'offline' } })])
-    const row = menuRows()[0]
+    const row = volumeRows()[0]
     // Greyed and unopenable is what `disabled` means to the menu: it paints the row down,
     // says so to assistive tech, and never activates it.
     expect(row.hasAttribute('data-disabled')).toBe(true)
@@ -620,37 +638,47 @@ describe('VolumeBreadcrumb highlight on open', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     stubs.volumes = null
+    stubs.containingVolumeId = 'root'
   })
 
   it('starts on the row carrying the checkmark, not on row 0', async () => {
+    // The pane sits on the LAST drive, so the checked row is neither the first volume
+    // row nor the first row of the menu.
+    stubs.containingVolumeId = 'volumes-b'
+    stubs.volumes = [
+      { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
+      { id: 'volumes-a', name: 'Alpha', path: '/Volumes/Alpha', category: 'attached_volume', isEjectable: true },
+      { id: 'volumes-b', name: 'Beta', path: '/Volumes/Beta', category: 'attached_volume', isEjectable: true },
+    ]
     const { instance, target } = mountBreadcrumb()
     // The checkmark tracks `containingVolumeId`, which `resolvePathVolume` fills in
     // asynchronously; the chip naming the volume is that answer having landed.
     await vi.waitFor(() => {
-      expect(target.querySelector('.volume-name')?.textContent).toContain('Macintosh HD')
+      expect(target.querySelector('.volume-name')?.textContent).toContain('Beta')
     })
-    instance.open()
+    instance.openVolumeChooser()
     await tick()
     flushSync()
 
-    // Three favorites lead the list, so the containing volume is row 3 — the case
-    // that tells "the checked row" apart from "the first row".
-    const rows = menuRows()
-    expect(rows[3].hasAttribute('data-checked')).toBe(true)
-    expect(isHighlighted(rows[3])).toBe(true)
+    // Two drives lead it, so the containing volume is volume row 2 — the case that
+    // tells "the checked row" apart from "the first row".
+    const rows = volumeRows()
+    expect(rows[2].hasAttribute('data-checked')).toBe(true)
+    expect(isHighlighted(rows[2])).toBe(true)
     expect(isHighlighted(rows[0])).toBe(false)
   })
 
-  it('falls back to row 0 when no row is the containing volume', async () => {
-    // Favorites only: they never carry a checkmark, and the synthetic Servers row
-    // isn't the pane's volume either, so nothing is checked.
+  it("falls back to the menu's first row when no row is the containing volume", async () => {
+    // A phone: it isn't the pane's volume, and neither is the synthetic Servers row,
+    // so nothing is checked. ❗ The fallback is the FIRST row of the menu, which since
+    // M3 is the "See N favorites" row rather than the first volume.
     await openWithRows([
-      { id: 'fav-1', name: 'Documents', path: '/Users/test/Documents', category: 'favorite', isEjectable: false },
-      { id: 'fav-2', name: 'Downloads', path: '/Users/test/Downloads', category: 'favorite', isEjectable: false },
+      { id: 'mtp-1', name: 'Pixel', path: 'mtp://pixel', category: 'mobile_device', isEjectable: true },
     ])
 
     expect(document.querySelector('[data-menu-row][data-checked]')).toBeNull()
     expect(isHighlighted(menuRows()[0])).toBe(true)
+    expect(menuRows()[0].getAttribute('data-menu-row')).toBe('favorites:see')
   })
 })
 
@@ -662,12 +690,17 @@ describe('VolumeBreadcrumb highlight on open', () => {
 describe('VolumeBreadcrumb keyboard vs pointer mode', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
-    stubs.volumes = null
+    // Three volume rows, so "another row" is a row the cursor is genuinely not on.
+    stubs.volumes = [
+      { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
+      { id: 'volumes-a', name: 'Alpha', path: '/Volumes/Alpha', category: 'attached_volume', isEjectable: true },
+      { id: 'volumes-b', name: 'Beta', path: '/Volumes/Beta', category: 'attached_volume', isEjectable: true },
+    ]
   })
 
   it('suppresses hover highlighting once the keyboard has the cursor', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.openVolumeChooser()
     await tick()
     flushSync()
 
@@ -679,7 +712,9 @@ describe('VolumeBreadcrumb keyboard vs pointer mode', () => {
     expect(dropdown?.classList.contains('keyboard-mode')).toBe(true)
 
     // Hovering another row must not move the cursor off row 0 while keyboard mode holds.
-    const rows = menuRows()
+    // ❗ `menuRows`, not `volumeRows`: Home lands on the menu's first row, which is the
+    // "See N favorites" row the switcher now leads with.
+    const rows = [...menuRows()]
     rows[2].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
     await tick()
     flushSync()
@@ -689,7 +724,7 @@ describe('VolumeBreadcrumb keyboard vs pointer mode', () => {
 
   it('a pointer move over 5 px leaves keyboard mode and takes the highlight to the row under the cursor', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.openVolumeChooser()
     await tick()
     flushSync()
 
@@ -698,7 +733,7 @@ describe('VolumeBreadcrumb keyboard vs pointer mode', () => {
     flushSync()
 
     const dropdown = menuSurface()
-    const rows = menuRows()
+    const rows = [...menuRows()]
 
     // The first move only records where the pointer was: a mouse sitting still under
     // a moving list must not steal the cursor.
@@ -746,7 +781,7 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
     await openWithRows([share])
     expect(document.querySelector('[data-menu-submenu]')).toBeNull()
 
-    menuRows()[SHARE_ROW].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    volumeRows()[SHARE_ROW].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
     await tick()
     flushSync()
     expect(document.querySelector('[data-menu-submenu]')).toBeTruthy()
@@ -755,6 +790,8 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
   it('ArrowRight opens it at the highlight, and ArrowLeft closes it again', async () => {
     await openWithRows([share])
 
+    // Two steps down: the menu leads with the "See N favorites" row, then the hub.
+    press('ArrowDown')
     press('ArrowDown')
     await tick()
     flushSync()
@@ -774,6 +811,7 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
   it('Escape closes the submenu and leaves the switcher open', async () => {
     const { instance } = await openWithRows([share])
     press('ArrowDown')
+    press('ArrowDown')
     await tick()
     flushSync()
     press('ArrowRight')
@@ -785,15 +823,16 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
     flushSync()
     expect(document.querySelector('[data-menu-submenu]')).toBeNull()
     expect(menuSurface()).toBeTruthy()
-    expect(instance.getIsOpen()).toBe(true)
+    expect(instance.isHeaderMenuOpen()).toBe(true)
   })
 
   it('suppresses the parent row highlight while the submenu is up (one cursor at a time)', async () => {
     await openWithRows([share])
     press('ArrowDown')
+    press('ArrowDown')
     await tick()
     flushSync()
-    const rows = menuRows()
+    const rows = volumeRows()
     expect(isHighlighted(rows[SHARE_ROW])).toBe(true)
 
     press('ArrowRight')
@@ -805,6 +844,7 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
 
   it('Enter runs "Connect directly" for the row the submenu belongs to', async () => {
     await openWithRows([share])
+    press('ArrowDown')
     press('ArrowDown')
     await tick()
     flushSync()
@@ -839,7 +879,7 @@ describe('VolumeBreadcrumb dropdown placement', () => {
     anchor.getBoundingClientRect = () =>
       ({ top: 30, bottom: 50, left: 12, right: 200, width: 188, height: 20, x: 12, y: 30 }) as DOMRect
 
-    instance.open()
+    instance.openVolumeChooser()
     // `querySelector<HTMLElement>` rather than an `as` cast: eslint's
     // `no-unnecessary-type-assertion` fixer strips the cast, and `Element.style`
     // then can't resolve (`docs/testing.md` § "Merging test files").
@@ -854,12 +894,18 @@ describe('VolumeBreadcrumb dropdown placement', () => {
   })
 
   it('scrolls the row the keyboard just landed on into view', async () => {
+    stubs.volumes = [
+      { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
+      { id: 'volumes-a', name: 'Alpha', path: '/Volumes/Alpha', category: 'attached_volume', isEjectable: true },
+    ]
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.openVolumeChooser()
     await tick()
     flushSync()
 
-    const rows = menuRows()
+    // `menuRows`: the cursor opens on the menu's first row (the favorites one), so one
+    // ArrowDown lands on the row after it.
+    const rows = [...menuRows()]
     const scrollIntoView = vi.fn()
     rows[1].scrollIntoView = scrollIntoView
 
@@ -1008,15 +1054,15 @@ describe('VolumeBreadcrumb row context menu targeting', () => {
 
   it('acts on the right-clicked row, not on wherever the keyboard cursor sits', async () => {
     const { instance } = mountBreadcrumb()
-    instance.open()
+    instance.toggleFavoritesMenu()
     await tick()
     flushSync()
 
-    // Park the cursor at the far end of the list.
+    // Park the cursor at the far end of the list (the `0` add row).
     press('End')
     await tick()
     flushSync()
-    const rows = menuRows()
+    const rows = [...menuRows()]
     expect(isHighlighted(rows[rows.length - 1])).toBe(true)
 
     // Right-click the FIRST favorite: the menu is built from that row's own facts.

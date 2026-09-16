@@ -37,6 +37,7 @@ const EXPECTED_PALETTE_IDS: readonly CommandId[] = [
   'search.open',
   'nav.goToPath',
   'favorites.add',
+  'favorites.open',
   'downloads.goToLatest',
   'view.showHidden',
   'view.briefMode',

@@ -53,12 +53,6 @@ export type FavoritesMenuOpenTrigger =
  * Reports the favorites menu coming up, against which `favorite_opened` reads as
  * a hit rate. Its `trigger` is the one question the switcher row asks: is the row
  * how people find the menu, or does everyone already know ⌃D?
- *
- * @public ❗ TEMPORARY tag: the `favorites.open` command and the switcher's
- * "See N favorites" row are the two callers, and neither exists yet. Delete this
- * line when the first one lands — knip is right that nothing calls it today, and
- * the catalog contract (`src-tauri/src/analytics/DETAILS.md`) is what keeps the
- * emitter and its doc bullet arriving together.
  */
 export function reportFavoritesMenuOpened({ trigger }: { trigger: FavoritesMenuOpenTrigger }): void {
   void trackEvent('favorites_menu_opened', { trigger })

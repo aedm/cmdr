@@ -55,6 +55,20 @@ export const mainWindowCommands: CommandSource[] = [
     descriptionKey: 'commands.favoritesAdd.description',
     keywords: ['bookmark', 'favorite', 'pin', 'shortcut'],
   },
+  {
+    // ⌃D, what Total Commander and Double Commander bind for the same list. It's free:
+    // ⌃Tab / ⌃⇧Tab are the only other Control defaults in the registry, so Duplicate keeps
+    // ⌘D. The keys the menu itself answers live in the `Main window/Favorites menu` scope
+    // (`browsers.ts`), which is where the digit rows are documented.
+    id: 'favorites.open',
+    nameKey: 'commands.favoritesOpen.label',
+    scope: 'Main window',
+    showInPalette: true,
+    shortcuts: ['⌃D'],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.favoritesOpen.description',
+    keywords: ['bookmark', 'hotlist', 'favorite'],
+  },
 
   // ============================================================================
   // Main window - Downloads

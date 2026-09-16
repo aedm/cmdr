@@ -21,6 +21,7 @@ export type CommandScope =
   | 'Main window/Servers' // The servers hub (the saved-and-nearby list)
   | 'Main window/Places' // The places under one account (an SMB host's shares)
   | 'Main window/Volume chooser' // Volume dropdown
+  | 'Main window/Favorites menu' // The ⌃D favorites menu, the volume dropdown's sibling
   | 'Main window/Error screen' // The full-pane error screen (ErrorPane)
   | 'About window' // About window commands
   | 'Onboarding' // FDA prompt

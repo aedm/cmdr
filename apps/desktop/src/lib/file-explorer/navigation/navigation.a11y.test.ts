@@ -63,6 +63,9 @@ vi.mock('$lib/settings/reactive-settings.svelte', async (importOriginal) => ({
   getNetworkEnabled: () => true,
   // VolumeBreadcrumb's `onMount` prefetches the generic folder icon with this flag.
   getUseAppIconsForDocuments: () => false,
+  // `volume-capabilities` reads it to classify a `.git`-portal path, which the favorites
+  // menu's add row asks about.
+  getShowVirtualGitPortal: () => false,
 }))
 
 vi.mock('$lib/tauri-commands', async (importOriginal) => ({
@@ -294,6 +297,7 @@ describe('VolumeBreadcrumb a11y', () => {
     mount(VolumeBreadcrumb, {
       target,
       props: {
+        paneId: 'left' as const,
         volumeId: 'root',
         currentPath: '/Users/test',
       },
@@ -308,6 +312,7 @@ describe('VolumeBreadcrumb a11y', () => {
     mount(VolumeBreadcrumb, {
       target,
       props: {
+        paneId: 'left' as const,
         volumeId: 'network',
         currentPath: 'smb://',
       },
@@ -426,6 +431,8 @@ describe('VolumeChooserMenu a11y', () => {
         badges: noBadges,
         getAnchor: () => anchor,
         getChipCluster: () => anchor,
+        onShowFavorites: () => {},
+        onOpenChange: () => {},
       },
     }) as unknown as { open: () => void }
     flushSync()

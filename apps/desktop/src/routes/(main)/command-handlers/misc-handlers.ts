@@ -11,20 +11,11 @@
  */
 import { goToLatestDownload } from '$lib/downloads/go-to-latest'
 import { goToTrash } from '$lib/file-operations/delete/go-to-trash'
-import { addFavorite } from '$lib/tauri-commands'
+import { addFavoriteFolder } from '$lib/file-explorer/navigation/add-favorite-folder'
 import { getFocusedPanePath } from '$lib/file-explorer/pane/focused-pane-reads'
-import { addToast } from '$lib/ui/toast'
-import { tString } from '$lib/intl/messages.svelte'
 import type { CommandArgs } from '$lib/commands'
 import { selectVolumeForMcp } from '../mcp-volume-select'
 import type { CommandHandlerRecord } from './types'
-
-/** The last path segment, for a friendly toast label (`/Users/me/Docs` → `Docs`). */
-function lastSegment(path: string): string {
-  const trimmed = path.replace(/\/+$/, '')
-  const slash = trimmed.lastIndexOf('/')
-  return slash >= 0 ? trimmed.slice(slash + 1) || trimmed : trimmed
-}
 
 export const miscHandlers = {
   'downloads.goToLatest': async ({ explorerRef }) => {
@@ -41,12 +32,11 @@ export const miscHandlers = {
     // handler only covers the palette / menu / shortcut surface.
     const path = getFocusedPanePath()
     if (!path) return
-    try {
-      await addFavorite(path, null)
-      addToast(tString('commands.handler.favoriteAdded', { name: lastSegment(path) }), { level: 'success' })
-    } catch {
-      addToast(tString('commands.handler.favoriteAddFailed'), { level: 'error' })
-    }
+    await addFavoriteFolder(path)
+  },
+
+  'favorites.open': ({ explorerRef }) => {
+    explorerRef?.toggleFavoritesMenu()
   },
 
   'network.refresh': ({ explorerRef }) => {

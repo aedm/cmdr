@@ -706,15 +706,15 @@
     }
 
     /**
-     * Returns whether the volume switcher dropdown is open on EITHER pane. The
-     * dropdown hosts the inline favorite-rename `<input>` plus a focusable list,
-     * so while it's open the app must stop firing pane/global shortcuts (⌘A,
-     * ⌥←/→, ⌘[/], Backspace, etc.) that would otherwise steal keystrokes from
-     * the textbox. `+page.svelte`'s `dialogsOnScreen()` reads this through the
-     * ExplorerAPI, and the dispatch core's dialog gate does the suppressing.
+     * Returns whether a header menu — the volume switcher or the favorites menu — is open
+     * on EITHER pane. Both host the inline favorite-rename `<input>` or a focusable list,
+     * so while one is open the app must stop firing pane/global shortcuts (⌘A, ⌥←/→,
+     * ⌘[/], Backspace, etc.) that would otherwise steal keystrokes from the textbox.
+     * `+page.svelte`'s `dialogsOnScreen()` reads this through the ExplorerAPI, and the
+     * dispatch core's dialog gate does the suppressing.
      */
-    export function isVolumeChooserOpen(): boolean {
-        return (paneRefs.left?.isVolumeChooserOpen() ?? false) || (paneRefs.right?.isVolumeChooserOpen() ?? false)
+    export function isHeaderMenuOpen(): boolean {
+        return (paneRefs.left?.isHeaderMenuOpen() ?? false) || (paneRefs.right?.isHeaderMenuOpen() ?? false)
     }
 
     /** Opens the file viewer for the file under the cursor. */
@@ -797,8 +797,8 @@
      * Switch focus to the other pane.
      */
     export function switchPane() {
-        getPaneRef('left')?.closeVolumeChooser()
-        getPaneRef('right')?.closeVolumeChooser()
+        getPaneRef('left')?.closeHeaderMenu()
+        getPaneRef('right')?.closeHeaderMenu()
         const newFocus = otherPane(focusedPane)
         explorerState.setFocusedPane(newFocus)
         void updateFocusedPane(newFocus)
@@ -822,8 +822,13 @@
         paneCommands.openVolumeChooser()
     }
 
-    export function closeVolumeChooser() {
-        paneCommands.closeVolumeChooser()
+    export function closeHeaderMenus() {
+        paneCommands.closeHeaderMenus()
+    }
+
+    /** Open/toggle the FOCUSED pane's favorites menu (⌃D), the `favorites.open` command. */
+    export function toggleFavoritesMenu() {
+        paneCommands.toggleFavoritesMenu()
     }
 
     /**

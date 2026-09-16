@@ -626,22 +626,27 @@
 
     // noinspection JSUnusedGlobalSymbols -- Used dynamically
     export function toggleVolumeChooser() {
-        volumeBreadcrumbRef?.toggle()
-    }
-
-    // noinspection JSUnusedGlobalSymbols -- Used dynamically
-    export function isVolumeChooserOpen(): boolean {
-        return volumeBreadcrumbRef?.getIsOpen() ?? false
-    }
-
-    // noinspection JSUnusedGlobalSymbols -- Used dynamically
-    export function closeVolumeChooser() {
-        volumeBreadcrumbRef?.close()
+        volumeBreadcrumbRef?.toggleVolumeChooser()
     }
 
     // noinspection JSUnusedGlobalSymbols -- Used dynamically
     export function openVolumeChooser() {
-        volumeBreadcrumbRef?.open()
+        volumeBreadcrumbRef?.openVolumeChooser()
+    }
+
+    // noinspection JSUnusedGlobalSymbols -- Used dynamically
+    export function toggleFavoritesMenu() {
+        volumeBreadcrumbRef?.toggleFavoritesMenu()
+    }
+
+    // noinspection JSUnusedGlobalSymbols -- Used dynamically
+    export function isHeaderMenuOpen(): boolean {
+        return volumeBreadcrumbRef?.isHeaderMenuOpen() ?? false
+    }
+
+    // noinspection JSUnusedGlobalSymbols -- Used dynamically
+    export function closeHeaderMenu() {
+        volumeBreadcrumbRef?.closeHeaderMenu()
     }
 
     export function getListingId(): string {
@@ -1759,6 +1764,7 @@
     <div class="header" oncontextmenu={breadcrumb.handleContextMenu}>
         <VolumeBreadcrumb
             bind:this={volumeBreadcrumbRef}
+            {paneId}
             {volumeId}
             {currentPath}
             onVolumeChange={breadcrumb.handleVolumeChange}

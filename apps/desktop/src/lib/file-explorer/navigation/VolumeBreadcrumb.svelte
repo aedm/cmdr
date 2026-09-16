@@ -4,6 +4,11 @@
      * say how it's doing, and the control that takes it away. Clicking it opens the switcher,
      * which is `VolumeChooserMenu.svelte` (the house `Menu`, portaled).
      *
+     * ❗ It hosts TWO menus off the same chip — the switcher and the favorites menu
+     * (`FavoritesMenu.svelte`, ⌃D) — and holds the ONE `openMenu` that says which. Each
+     * reports through `onOpenChange`, so whichever opens (a command, a click, a swap from
+     * inside the other) closes the other from one place.
+     *
      * Presentational: it reads the volume list from the shared `volume-store.svelte.ts` and
      * fetches nothing of its own except the containing volume behind the checkmark.
      */
@@ -18,13 +23,16 @@
     import { tooltip } from '$lib/tooltip/tooltip'
     import { tString } from '$lib/intl/messages.svelte'
     import Icon from '$lib/ui/Icon.svelte'
-    import type { VolumeChangePayload, VolumeBreadcrumbAPI } from '../pane/types'
+    import type { PaneId } from '$lib/commands/types'
+    import type { VolumeChangePayload, VolumeChooserMenuAPI, FavoritesMenuAPI } from '../pane/types'
     import ConnectionDot from './ConnectionDot.svelte'
     import DetachButton from './DetachButton.svelte'
     import DriveIndexBadge from './DriveIndexBadge.svelte'
+    import FavoritesMenu from './FavoritesMenu.svelte'
     import ImageIndexDriveBadge from './ImageIndexDriveBadge.svelte'
     import UsbSpeedDot from './UsbSpeedDot.svelte'
     import VolumeChooserMenu from './VolumeChooserMenu.svelte'
+    import type { FavoritesMenuOpenTrigger } from './favorites-analytics'
     import { connectDirectlyToRow } from './connect-directly-row'
     import { detachControl } from './detach-control'
     import { detachVolume } from './detach-volume'
@@ -36,12 +44,14 @@
     import { createBreadcrumbPopupController } from './volume-breadcrumb-handlers.svelte'
 
     interface Props {
+        /** Which pane the chip belongs to, so the favorites menu knows whose switcher ⌥F1 / ⌥F2 means. */
+        paneId: PaneId
         volumeId: string
         currentPath: string
         onVolumeChange?: (change: VolumeChangePayload) => void
     }
 
-    const { volumeId, currentPath, onVolumeChange }: Props = $props()
+    const { paneId, volumeId, currentPath, onVolumeChange }: Props = $props()
 
     const volumes = $derived(getVolumes())
 
@@ -49,9 +59,29 @@
     // The whole chip: the name plus every control beside it. A pointer-down in here belongs to
     // the switcher, so pressing the eject button doesn't close the list it opened.
     let clusterEl: HTMLDivElement | undefined = $state()
-    // The menu's four commands are the chip's own, which is why this forwards rather than
-    // wraps: `VolumeBreadcrumbAPI` describes both ends.
-    let chooser: VolumeBreadcrumbAPI | undefined = $state()
+    // The two menus that hang off this chip. The pane's commands are the chip's own, which
+    // is why this forwards rather than wraps.
+    let chooser: VolumeChooserMenuAPI | undefined = $state()
+    let favoritesMenu: FavoritesMenuAPI | undefined = $state()
+
+    /**
+     * Which menu the chip has open, and the reason the two can never both be. Each menu
+     * reports through `onOpenChange`, so ONE place answers it however the menu came up: a
+     * command, a click on the chip, or a swap from inside the other one.
+     */
+    let openMenu = $state<'volumes' | 'favorites' | null>(null)
+
+    function handleMenuOpenChange(which: 'volumes' | 'favorites', open: boolean): void {
+        if (open) {
+            openMenu = which
+            // Close the other one AFTER claiming the slot: its own close notification then
+            // sees a slot that isn't its own and leaves it alone.
+            if (which === 'volumes') favoritesMenu?.close()
+            else chooser?.close()
+        } else if (openMenu === which) {
+            openMenu = null
+        }
+    }
 
     // The ID of the actual volume that contains the current path. It's what the switcher's
     // checkmark tracks, ❌ not the `volumeId` prop (which is virtual for a favorite).
@@ -119,17 +149,27 @@
     }
 
     /** Exported for keyboard shortcut access from parent. */
-    export function toggle() {
+    export function toggleVolumeChooser() {
         chooser?.toggle()
     }
-    export function getIsOpen(): boolean {
-        return chooser?.getIsOpen() ?? false
-    }
-    export function close() {
-        chooser?.close()
-    }
-    export function open() {
+    export function openVolumeChooser() {
         chooser?.open()
+    }
+    export function toggleFavoritesMenu() {
+        favoritesMenu?.toggle('command')
+    }
+    /** Whether EITHER menu is up: what suppresses the panes' keys behind it. */
+    export function isHeaderMenuOpen(): boolean {
+        return openMenu !== null
+    }
+    export function closeHeaderMenu() {
+        chooser?.close()
+        favoritesMenu?.close()
+    }
+
+    /** The favorites menu takes the header: from the switcher's own row, or ⌃D typed in it. */
+    function showFavorites(trigger: FavoritesMenuOpenTrigger) {
+        favoritesMenu?.open(trigger)
     }
 
     // Update containing volume when the current path changes.
@@ -173,10 +213,10 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <span
         class="volume-name"
-        class:is-open={getIsOpen()}
+        class:is-open={openMenu !== null}
         bind:this={chipEl}
         use:tooltip={currentVolumeFsLabel ?? ''}
-        onclick={toggle}
+        onclick={toggleVolumeChooser}
     >
         {#if currentVolume && isRestricted(currentVolume.path) && dirIconFallback}
             <!-- TCC-denied paths: `NSWorkspace.iconForFile` returns a confusing "no
@@ -210,7 +250,7 @@
             use:tooltip={breadcrumbPopup.isOpen ? '' : tString('fileExplorer.navigation.volumeOptionsTooltip')}
             onclick={(e: MouseEvent) => {
                 e.stopPropagation()
-                close()
+                closeHeaderMenu()
                 breadcrumbPopup.toggle()
             }}
         >
@@ -272,6 +312,19 @@
         {onVolumeChange}
         getAnchor={() => chipEl}
         getChipCluster={() => clusterEl}
+        onShowFavorites={showFavorites}
+        onOpenChange={(open: boolean) => { handleMenuOpenChange('volumes', open) }}
+    />
+    <FavoritesMenu
+        bind:this={favoritesMenu}
+        {paneId}
+        {volumeId}
+        {currentPath}
+        {onVolumeChange}
+        getAnchor={() => chipEl}
+        getChipCluster={() => clusterEl}
+        onShowVolumes={() => { chooser?.open() }}
+        onOpenChange={(open: boolean) => { handleMenuOpenChange('favorites', open) }}
     />
 </div>
 

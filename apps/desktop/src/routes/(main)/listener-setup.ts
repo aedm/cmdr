@@ -407,7 +407,7 @@ export async function setupDialogListeners(ctx: ListenerSetupContext): Promise<v
     getExplorer()?.openVolumeChooser()
   })
   await listenTauri('close-volume-picker', () => {
-    getExplorer()?.closeVolumeChooser()
+    getExplorer()?.closeHeaderMenus()
   })
   await listenTauri('focus-volume-picker', () => {
     // Volume picker is handled by DualPaneExplorer

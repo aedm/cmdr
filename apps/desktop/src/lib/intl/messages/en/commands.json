@@ -153,6 +153,25 @@
   "@commands.favoritesAdd.description": {
     "description": "Longer help text for the \"Add to favorites\" command, shown as a secondary line in the command palette. \"Pane\" is one of the two side-by-side file lists; \"switcher\" is the volume/location switcher; \"Favorites\" is its bookmarked-folders list."
   },
+  "commands.favoritesOpen.label": "Show favorites",
+  "@commands.favoritesOpen.label": {
+    "description": "Command name that opens the favorites menu over the focused pane. Appears in the command palette and in the Go menu. \"Favorites\" is the named list of bookmarked folders; match the term used in the volume switcher UI.",
+    "screenshot": "settings-keyboard-shortcuts.png"
+  },
+  "commands.favoritesOpen.description": "Open the favorites menu on the focused pane, and press a number to go.",
+  "@commands.favoritesOpen.description": {
+    "description": "Longer help text for the \"Show favorites\" command, shown as a secondary line in the command palette. \"Pane\" is one of the two side-by-side file lists. The second half refers to the number keys shown beside the first nine favorites."
+  },
+  "commands.favoritesOpenByNumber.label": "Open the favorite with that number",
+  "@commands.favoritesOpenByNumber.label": {
+    "description": "Row in the Keyboard shortcuts list, describing what the number keys 1-9 do while the favorites menu is open: each one jumps straight to the favorite shown beside it. Read-only (the keys can't be rebound), so this is a description of the behavior rather than a command name.",
+    "screenshot": "settings-keyboard-shortcuts.png"
+  },
+  "commands.favoritesAddFromMenu.label": "Add the current folder to favorites",
+  "@commands.favoritesAddFromMenu.label": {
+    "description": "Row in the Keyboard shortcuts list, describing what the 0 key does while the favorites menu is open: it runs the menu's last row, which adds the focused pane's folder to the list. Read-only (the key can't be rebound).",
+    "screenshot": "settings-keyboard-shortcuts.png"
+  },
   "commands.downloadsGoToLatest.label": "Go to latest download",
   "@commands.downloadsGoToLatest.label": {
     "description": "Command name that opens the Downloads folder with the newest file selected. Appears in the command palette.",

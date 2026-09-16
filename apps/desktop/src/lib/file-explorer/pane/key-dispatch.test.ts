@@ -6,7 +6,7 @@ function makePaneRef(overrides: Record<string, unknown> = {}) {
   return {
     isLoading: vi.fn(() => false),
     handleCancelLoading: vi.fn(),
-    isVolumeChooserOpen: vi.fn(() => false),
+    isHeaderMenuOpen: vi.fn(() => false),
     isRenaming: vi.fn(() => false),
     isJumpActive: vi.fn(() => false),
     handleJumpKeystroke: vi.fn(),
@@ -58,7 +58,7 @@ describe('createKeyDispatch', () => {
   // listener). What this covers is everything the menu deliberately let through — the inline
   // favorite-rename input's keystrokes — which must still not move the pane cursor behind it.
   it('an open volume chooser swallows the key from the pane behind (panes stay inert)', () => {
-    const left = makePaneRef({ isVolumeChooserOpen: vi.fn(() => true) })
+    const left = makePaneRef({ isHeaderMenuOpen: vi.fn(() => true) })
     const kd = setup({ left })
 
     kd.handleKeyDown(keyEvent('ArrowDown'))
@@ -68,7 +68,7 @@ describe('createKeyDispatch', () => {
 
   it('swallows for a chooser open on the OTHER pane too (⌥F2 opens one over an unfocused pane)', () => {
     const left = makePaneRef()
-    const right = makePaneRef({ isVolumeChooserOpen: vi.fn(() => true) })
+    const right = makePaneRef({ isHeaderMenuOpen: vi.fn(() => true) })
     const kd = setup({ left, right })
 
     kd.handleKeyDown(keyEvent('ArrowDown'))
