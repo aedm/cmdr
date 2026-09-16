@@ -337,9 +337,9 @@ mcp_tools! {
 
     // ── Favorites ───────────────────────────────────────────────────────────
     "favorites" => {
-        desc: "Manage the user's favorites (the switcher's Favorites section). add: path (+ \
-               optional name). rename: id + name. remove: id. reorder: orderedIds, the COMPLETE \
-               new ordering. Discover ids in cmdr://state favorites.",
+        desc: "Manage the user's favorites (the bookmarked folders the favorites menu lists). \
+               add: path (+ optional name). rename: id + name. remove: id. reorder: orderedIds, \
+               the COMPLETE new ordering. Discover ids in cmdr://state favorites.",
         schema: schemas::favorites_schema(),
         gate: TokenGate::Always,
         consumers: &[Consumer::AiClient],
