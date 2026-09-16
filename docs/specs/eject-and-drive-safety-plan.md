@@ -86,9 +86,10 @@ drive-safety decisions below.
 - **M13, the holder scan and the wire type (done)**: `a30c59fc1` (`eject/holders/`, `HolderScan` on `UnmountRefused`,
   the MCP `data`, the bindings, and the two lane pins asserting the holder's pid), `f531922ed` (the docs), `c347d870f`
   and `89f81ed05` (the plan, and the two default-off lanes it records).
-- **M14, holder facts and classification (done)**: `b1494215b` (`holders/facts.rs` and its nested-image lookup, the
-  rules, the `dlsym` and Security externs, and the facts as a second stage inside the one budget), `8b513cb90` (the
-  real-image lane: the disk-image pin, and the two held-file pins asserting `Cmdr`).
+- **M14, holder facts and classification (done)**: `5a2739f7e` (`holders/facts.rs` and its nested-image lookup, the
+  rules, the `dlsym` and Security externs, and the facts as a second loop inside the one budget), `dc6092850` (the
+  real-image lane: the disk-image pin, and the two held-file pins asserting `Cmdr`), `e6b4d866e` (rustfmt), `164c70b3a`
+  and `70836987a` (the docs, and what the kinds don't say for themselves).
 - **Next, M15**: the eject copy in every catalog.
 - **Belonging to no milestone, since M11 merged**: `b3ea68362` (the parked hazard names the six cells that aren't its
   fix), `df09b3023` (a lane test's panic message exempted from `pluralize-noun`), `7a9961fe6`, `1bf9f6c99`, and
