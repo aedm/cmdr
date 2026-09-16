@@ -18,8 +18,9 @@
 //! - `menu_handlers.rs`: `handle_menu_event`, the `.on_menu_event` dispatcher wired into the Tauri
 //!   builder, plus the macOS post-construction helpers it shares a platform with
 //!   (`cleanup_macos_menus`, `set_macos_menu_icons`, and the responder-chain edit actions).
-//! - `accelerators.rs`: `frontend_shortcut_to_accelerator` (frontend glyphs → Tauri accelerator
-//!   strings) and `update_menu_item_accelerator` (swapping one on a live item).
+//! - `accelerators.rs`: `frontend_shortcut_to_menu_text` (frontend glyphs → Tauri accelerator
+//!   strings), `frontend_shortcut_to_accelerator` (the same, floored to combos the menu bar may
+//!   register), and `update_menu_item_accelerator` (swapping one on a live item).
 //! - `view_mode_items.rs`: keeping the per-pane view-mode items in step, via a full
 //!   `rebuild_view_mode_items` or a cheap `sync_view_mode_check_states`.
 //! - `macos_appkit.rs`: the objc2 passes that fix the built menu bar up (`cleanup_macos_menus`,
@@ -85,7 +86,9 @@ use tauri::{
 // Re-export the public API consumed from outside the menu module.
 // All menu item ID constants and the ID ↔ command-registry mapping functions live in
 // `command_map`; the glob keeps every existing `crate::menu::…` / `super::…` import path valid.
-pub use accelerators::{frontend_shortcut_to_accelerator, update_menu_item_accelerator};
+pub use accelerators::{
+    frontend_shortcut_to_accelerator, frontend_shortcut_to_menu_text, update_menu_item_accelerator,
+};
 pub use command_map::*;
 #[cfg(target_os = "macos")]
 pub use context_menu_header::lend_context_menu_header;
