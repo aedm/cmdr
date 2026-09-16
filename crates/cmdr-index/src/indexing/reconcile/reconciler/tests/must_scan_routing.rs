@@ -251,8 +251,7 @@ fn reconcile_subtree_missing_chain_escalates() {
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     let leaf_abs = space.absolute(&deep.to_string_lossy());
-    let summary =
-        reconcile_subtree(Path::new(&leaf_abs), &space, &conn, &writer, &work, None).expect("reconcile ok");
+    let summary = reconcile_subtree(Path::new(&leaf_abs), &space, &conn, &writer, &work, None).expect("reconcile ok");
     assert_eq!(
         summary.escalation,
         Some(PathBuf::from(format!("{base_abs}/mid"))),

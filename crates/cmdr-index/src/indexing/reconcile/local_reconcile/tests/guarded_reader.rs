@@ -5,10 +5,12 @@ use super::*;
 
 #[test]
 fn guarded_reader_returns_a_quick_result() {
-    let read_fn: ReadFn = Arc::new(|_p| Some(Listing {
+    let read_fn: ReadFn = Arc::new(|_p| {
+        Some(Listing {
             children: vec![],
             complete: true,
-        }));
+        })
+    });
     let mut reader = GuardedReader::with_read_fn(
         Duration::from_secs(5),
         read_fn,
@@ -36,9 +38,9 @@ fn guarded_reader_abandons_a_hung_read_and_recovers() {
                 std::thread::sleep(Duration::from_secs(2));
             }
             Some(Listing {
-            children: vec![],
-            complete: true,
-        })
+                children: vec![],
+                complete: true,
+            })
         })
     };
     let mut reader = GuardedReader::with_read_fn(

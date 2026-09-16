@@ -20,8 +20,8 @@ use crate::indexing::scanner::{self, LiveWalk};
 use crate::indexing::store::IndexStore;
 use crate::indexing::writer::{IndexWriter, WriteMessage};
 
-use super::dir_read::read_fs_children;
 use super::diff::{LiveChild, MissingRows, diff_dir_against_db};
+use super::dir_read::read_fs_children;
 use super::escalation::resolve_escalation_anchor;
 
 /// Summary of a subtree reconciliation.

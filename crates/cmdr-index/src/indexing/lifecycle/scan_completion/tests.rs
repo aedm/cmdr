@@ -1,8 +1,8 @@
 //! What the post-scan completion task does with each of its three outcomes,
 //! against a real writer over a real DB and a `RecordingSink` in place of the app.
 
-use super::*;
 use super::unfinished::scan_failure_is_vanished_volume;
+use super::*;
 use crate::indexing::events::{IndexEventKind, RecordingSink};
 use crate::indexing::hold;
 use crate::indexing::lifecycle::freshness::Freshness;

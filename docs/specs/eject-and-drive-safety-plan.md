@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M6 are done, and M7 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M7 are done, and M8 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -51,7 +51,10 @@ drive-safety decisions below.
 - **M5, `drive_release`, the gated stop, start, and resume (done)**: `4549ba539`, `7430e9416`.
 - **M6, the unmount approver (done)**: `8f9e3795f` (the gate's resume-cancellation fix M6 needed), `b799c713d`,
   `8b07495f3`, `26be0b461`, `3cb145804`; plan edits `819074fd5`.
-- **Next, M7**: index delete gates.
+- **M7, index delete gates (done)**: `fbc39db0f` and `f649ed582` (the two prerequisite splits), `acbbdb78c` (the
+  presence seam, the typed listing, `MissingRows`, and the delete generation), `f95c1f482` (boot-disk verification),
+  `3575d2395` (the reconcile doc), `409fa913a` (`ScanRoot::Rebuild`), `95e79a962` (per-event deletes).
+- **Next, M8**: completion gates, `Abandoned` marks, and the rebuild marker.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -1311,6 +1314,21 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   machine's `take_stock`; `index_needs_rebuild` (writer or after-drain connection), `IndexEvent::IndexNeedsFreshScan`;
   the `needs_rebuild` launch-route input; the stale `abandoned_retry.rs` doc.
 - **Intentions**: as § "A vanished drive, index side"; M1's vanish pin flips fully.
+- **What M7 landed that M8 builds on**:
+  - **The presence read is `VolumeWork::drive_is_listed`**, and it already answers the two "don't knows" the completion
+    gate needs: a generation that never captured an identity reads PRESENT (so hostless tools and `for_test` work stamp
+    as today), and one whose table won't read now reads GONE. A gate test uses `VolumeWork::for_test_on` to capture an
+    identity and `FakeVolumeProvider::{mount, mark_unmounted, mark_table_unreadable}` to move it.
+  - **The delete generation is `indexing/deletes.rs`**: `batch_sent`, `root_listed`, `drive_seen`, and `outstanding`.
+    `outstanding` carries a `cfg_attr(not(test), expect(dead_code))` naming the rebuild marker as its production reader
+    — M8 removes that attribute when it reads the count.
+  - Every gate calls `drive_seen` on a `Some(true)`, so M8 only has to ADD the marker write, never re-plumb presence.
+- **❗ M1's vanish pin did NOT flip in M7, and the plan expected it to.** `a_drive_that_vanishes_mid_scan_is_stamped_
+  complete_with_every_row_gone_today` still passes unchanged (`pnpm check disk-images --include-slow`, green). That pin
+  drives a FRESH `ScanRoot::Volume` scan, so its rows were never written rather than deleted by a gated path: the walk
+  parks after five directories, the image detaches, and the walk reads nothing more. No M7 gate is on that route.
+  **Both halves of that pin are M8's**: the completion gate is what stops the stamp, and the rebuild marker is what
+  makes the re-attach heal. Expect to flip it with the completion work, not before.
 - **Landmines**:
   - ❌ `clear_index` for invalidation.
   - ❌ An unconditional `clear_unreadable_cause` or a `COUNT` over `unreadable_cause` at start: both scan the whole

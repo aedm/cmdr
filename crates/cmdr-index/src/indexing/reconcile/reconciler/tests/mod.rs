@@ -11,10 +11,10 @@ use super::*;
 use super::escalation::resolve_escalation_anchor;
 use crate::indexing::metadata::extract_metadata;
 use crate::indexing::store::{self, IndexStore, ROOT_ID};
-use crate::indexing::writer::AggSource;
 use crate::indexing::stress_test_helpers::{TestInstanceGuard, check_db_consistency};
 use crate::indexing::volume::IndexVolumeKind;
 use crate::indexing::watch::watcher::FsEventFlags;
+use crate::indexing::writer::AggSource;
 use std::os::unix::ffi::OsStrExt;
 use std::time::Duration;
 

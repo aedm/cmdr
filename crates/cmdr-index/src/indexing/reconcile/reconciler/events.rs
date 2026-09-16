@@ -174,8 +174,9 @@ pub(crate) fn process_fs_event(
     origins
 }
 
-/// [`process_fs_event`], gathering the deletes it decides on into `deletes` instead
-/// of sending them.
+/// The gathering form of the event path: it collects the deletes it decides on into
+/// `deletes` instead of sending them. (`process_fs_event` is the test-only
+/// immediate-send twin, so this doc can't link to it.)
 ///
 /// ⚠️ The caller owns the gate: it sends the batch only after asking whether the
 /// drive is still listed, ONCE for the batch and ❌ never per event. An event whose

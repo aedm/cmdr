@@ -50,15 +50,7 @@ fn reconcile_deduped_hardlink_writes_nothing_on_a_repeat_pass() {
     ensure_path_in_db(&db_path, &parent, &writer);
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
-    let first = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    )
-    .unwrap();
+    let first = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     assert_eq!(first.added, 2, "both links are new");
     writer.flush_blocking().unwrap();
 
@@ -71,15 +63,7 @@ fn reconcile_deduped_hardlink_writes_nothing_on_a_repeat_pass() {
         "exactly one occurrence of the inode carries its bytes: {rows:?}"
     );
 
-    let second = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    )
-    .unwrap();
+    let second = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     assert_eq!(
         (second.added, second.removed, second.updated),
         (0, 0, 0),
@@ -87,15 +71,7 @@ fn reconcile_deduped_hardlink_writes_nothing_on_a_repeat_pass() {
     );
     writer.flush_blocking().unwrap();
 
-    let third = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    )
-    .unwrap();
+    let third = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     assert_eq!(third.updated, 0, "and it must stay converged");
 
     writer.flush_blocking().unwrap();
@@ -120,15 +96,7 @@ fn reconcile_deduped_hardlink_with_a_new_mtime_is_written() {
     ensure_path_in_db(&db_path, &parent, &writer);
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
-    reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    )
-    .unwrap();
+    reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     writer.flush_blocking().unwrap();
 
     // Backdate the DB mtime of the deduped (NULL-sized) row.
@@ -144,15 +112,7 @@ fn reconcile_deduped_hardlink_with_a_new_mtime_is_written() {
             .unwrap();
     }
 
-    let summary = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    )
-    .unwrap();
+    let summary = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     assert_eq!(summary.updated, 1, "a changed mtime still writes the deduped row");
     writer.flush_blocking().unwrap();
 
@@ -182,15 +142,7 @@ fn reconcile_restores_the_size_when_a_hardlink_drops_to_one_link() {
     ensure_path_in_db(&db_path, &parent, &writer);
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
-    reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    )
-    .unwrap();
+    reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     writer.flush_blocking().unwrap();
 
     // Delete whichever link the writer sized, leaving the deduped one alone on disk.
@@ -200,15 +152,7 @@ fn reconcile_restores_the_size_when_a_hardlink_drops_to_one_link() {
         .expect("one row is sized");
     std::fs::remove_file(test_dir.path().join(&sized_name)).unwrap();
 
-    reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    )
-    .unwrap();
+    reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     writer.flush_blocking().unwrap();
 
     let rows = db_children_sizes(&db_path, &parent);
@@ -268,15 +212,7 @@ fn reconcile_sized_hardlink_still_compares_on_size() {
     }
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
-    let summary = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    )
-    .unwrap();
+    let summary = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     assert_eq!(summary.updated, 1, "only the wrongly-sized row is re-written");
     writer.flush_blocking().unwrap();
 

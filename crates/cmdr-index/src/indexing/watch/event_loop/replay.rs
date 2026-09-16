@@ -26,9 +26,9 @@ use super::{
 use crate::ActivityPhase;
 use crate::indexing::DEBUG_STATS;
 use crate::indexing::IndexPathSpace;
+use crate::indexing::deletes;
 use crate::indexing::events::emit_dir_updated;
 use crate::indexing::events::{EventSink, IndexEvent, RescanReason, emit_rescan_notification, set_phase_for};
-use crate::indexing::deletes;
 use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::lifecycle_bus;
 use crate::indexing::paths::path_prefix;
@@ -669,15 +669,9 @@ fn flush_replay_batch(
     let mut batch_deletes = Vec::new();
     for (_path, event) in pending.drain() {
         let mut escalation: Option<std::path::PathBuf> = None;
-        if let Some(paths) = reconciler::process_fs_event_into(
-            &event,
-            space,
-            conn,
-            writer,
-            None,
-            &mut escalation,
-            &mut batch_deletes,
-        ) && !*origins_overflow
+        if let Some(paths) =
+            reconciler::process_fs_event_into(&event, space, conn, writer, None, &mut escalation, &mut batch_deletes)
+            && !*origins_overflow
         {
             origin_dirs.extend(paths);
             if origin_dirs.len() >= MAX_ORIGIN_DIRS {

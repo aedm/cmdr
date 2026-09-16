@@ -36,12 +36,7 @@ pub(super) fn report_unfinished_scan(
             // freshness to Scanning, so reset it to Stale — honest "rescan
             // available" instead of a stuck spinner. Fire through the cloned handle,
             // never the registry (no re-lock).
-            state::apply_freshness_event_on(
-                freshness_slot,
-                events,
-                volume_id,
-                freshness::FreshnessEvent::ScanFailed,
-            );
+            state::apply_freshness_event_on(freshness_slot, events, volume_id, freshness::FreshnessEvent::ScanFailed);
 
             // If the failure is a VANISHED volume (its root went unlistable —
             // a yanked external drive), the scan will never complete on its own, so
@@ -67,12 +62,7 @@ pub(super) fn report_unfinished_scan(
             // The walker thread itself panicked (the reconcile walk is
             // `catch_unwind`-wrapped, so this is the residual guarded-walker/thread
             // case). Same honest reset as the `Ok(Err(_))` arm above.
-            state::apply_freshness_event_on(
-                freshness_slot,
-                events,
-                volume_id,
-                freshness::FreshnessEvent::ScanFailed,
-            );
+            state::apply_freshness_event_on(freshness_slot, events, volume_id, freshness::FreshnessEvent::ScanFailed);
         }
         // The caller routes finished and cancelled walks itself and never gets
         // here; matching exhaustively keeps that split visible rather than

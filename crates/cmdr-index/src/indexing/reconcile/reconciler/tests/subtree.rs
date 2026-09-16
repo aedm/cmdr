@@ -97,14 +97,7 @@ fn reconcile_new_file() {
     ensure_path_in_db(&db_path, &test_dir.path().to_string_lossy(), &writer);
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
-    let result = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    );
+    let result = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
     assert_eq!(summary.added, 1);
@@ -150,14 +143,7 @@ fn reconcile_deleted_file() {
     }
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
-    let result = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    );
+    let result = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
     assert_eq!(summary.removed, 1);
@@ -207,14 +193,7 @@ fn reconcile_unchanged() {
     }
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
-    let result = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    );
+    let result = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
     assert_eq!(summary.added, 0);
@@ -255,14 +234,7 @@ fn reconcile_modified_file() {
     }
 
     let work = VolumeWork::for_test(ROOT_VOLUME_ID);
-    let result = reconcile_subtree(
-        test_dir.path(),
-        &IndexPathSpace::root(),
-        &conn,
-        &writer,
-        &work,
-        None,
-    );
+    let result = reconcile_subtree(test_dir.path(), &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
     assert_eq!(summary.updated, 1);

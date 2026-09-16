@@ -63,17 +63,17 @@ mod throttle;
 
 pub(crate) use diff::{LiveChild, MissingRows, diff_dir_against_db};
 pub(crate) use dir_read::{FsChild, Listing, child_is_absent, read_fs_children};
-pub(crate) use events::process_fs_event_into;
 /// The immediate-send form, reached only by the per-event tests (see its doc).
 #[cfg(test)]
 pub(crate) use events::process_fs_event;
+pub(crate) use events::process_fs_event_into;
 pub(crate) use finish::{BulkReconcileGuard, finish_reconcile, send_marks};
 pub(in crate::indexing) use subtree::{ReconcileSummary, reconcile_subtree};
 
-use events::origin_dir;
 /// The portable read, reached only by the tests that pin it against the batched one.
 #[cfg(test)]
 use dir_read::read_fs_children_via_read_dir;
+use events::origin_dir;
 
 /// The shallow-anchor sweep window, re-exported for its out-of-module users:
 /// `manager::resume_or_scan` reseeds it from `meta` at index start,
