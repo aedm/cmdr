@@ -23,6 +23,10 @@ pub(super) struct AttachedImage {
     /// The backing file, spelled exactly as it was passed to `hdiutil attach`.
     #[serde(rename = "image-path")]
     pub image_path: PathBuf,
+    /// The `hdid` process serving the image, which is the one holding the backing file
+    /// open. Absent for an image nothing backs.
+    #[serde(rename = "hdid-pid")]
+    pub hdid_pid: Option<u32>,
     #[serde(rename = "system-entities", default)]
     pub entities: Vec<SystemEntity>,
 }

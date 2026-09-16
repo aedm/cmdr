@@ -20,7 +20,7 @@ use super::disk_flight::DiskTeardown;
 use super::disk_flight::test_support::FakeIndex;
 use super::disk_flight::{FlightResume, Sibling, capture, captured_paths, hand_back, owed_ids};
 use super::disk_target::{self, DiskMounts, Resolution};
-use super::holders::{HolderScan, VolumeHolder};
+use super::holders::{self, HolderKind, HolderScan, VolumeHolder};
 use super::unmount_tool::{self, Target, ToolOutcome, UnmountVerb};
 use super::{EjectError, INDEX_STOP_DEADLINE, name_the_holders};
 use crate::file_system::volume::drive_release::{DriveRelease, IndexDoor};
@@ -83,12 +83,12 @@ fn holders_of(result: &Result<(), EjectError>) -> &HolderScan {
     }
 }
 
-/// Whether `holders` names `pid`.
-fn names(holders: &HolderScan, pid: u32) -> bool {
+/// What `holders` says `pid` is, or `None` when it didn't name it at all.
+fn kind_of(holders: &HolderScan, pid: u32) -> Option<HolderKind> {
     let named: &[VolumeHolder] = match holders {
         HolderScan::Complete { named } | HolderScan::Incomplete { named } => named,
     };
-    named.iter().any(|holder| holder.pid == pid)
+    named.iter().find(|holder| holder.pid == pid).map(|holder| holder.kind)
 }
 
 fn is_mounted(mount_point: &Path) -> bool {
@@ -129,18 +129,52 @@ async fn a_held_file_answers_unmount_refused_and_the_volume_stays_mounted() {
         "got {result:?}"
     );
     assert!(is_mounted(&mount_point), "a refused eject leaves the volume mounted");
-    // ❗ And it NAMES the holder. `diskutil`'s stderr says the same thing in prose we're
-    // forbidden to parse, so the typed answer is the only one the copy can use.
+    // ❗ And it NAMES the holder, and says what kind it is. `diskutil`'s stderr says the
+    // same thing in prose we're forbidden to parse, so the typed answer is the only one
+    // the copy can use.
     let holders = holders_of(&result);
-    assert!(
-        names(holders, holder.pid()),
-        "the child holding a file open is named, got {holders}"
+    assert_eq!(
+        kind_of(holders, holder.pid()),
+        Some(HolderKind::Cmdr),
+        // The holder is a child of this test process, so `Cmdr` is the honest answer, and
+        // it's the whole lineage walk running against a real process tree.
+        "the child holding a file open is named, and it descends from us, got {holders}"
     );
     assert!(
         matches!(holders, HolderScan::Complete { .. }),
         "and the scan covered the one mount it was asked about, got {holders}"
     );
     drop(holder);
+}
+
+/// ❗ A disk image stored ON the drive is its own kind of holder: closing apps can't free
+/// that one, the image has to be ejected first, and that's a different sentence.
+///
+/// The image's backing `.dmg` sits in the scratch directory, so the volume THAT sits on
+/// plays the drive — the same shape as a `.dmg` kept on a USB stick, with a real attached
+/// image and the real `hdiutil` answer behind it.
+///
+/// Aimed at the serving pid rather than run through `scan`: the walk asks about a whole
+/// VOLUME, and the scratch directory's volume is the Mac's own, whose every process would
+/// answer.
+#[tokio::test]
+#[ignore = "attaches a real HFS+ disk image via hdiutil; run with --run-ignored"]
+async fn a_disk_image_stored_on_the_drive_is_named_as_one() {
+    let session = DiskImageSession::acquire();
+    let image = DiskImage::attach(&session, ImageSpec::Hfs).expect("attach the image");
+    let backing_file = image.image_path().to_path_buf();
+    let serving = image.serving_pid().expect("hdiutil names the process serving the image");
+
+    assert_eq!(
+        holders::kind_of(serving, &[backing_file]),
+        HolderKind::DiskImage,
+        "the process serving an image stored on the drive is a disk image, not the app that ran it"
+    );
+    assert_ne!(
+        holders::kind_of(serving, &[PathBuf::from("/dev")]),
+        HolderKind::DiskImage,
+        "and an image stored somewhere else has nothing to do with this drive"
+    );
 }
 
 // ── The whole physical disk (M12) ─────────────────────────────────
@@ -243,9 +277,10 @@ async fn ejecting_a_while_b_is_held_is_refused_and_leaves_the_disk_up(spec: Imag
     // ❗ The holder sits on the SIBLING, not on the volume that was clicked, so the scan
     // has to cover every captured mount of the disk to name it.
     let holders = holders_of(&result);
-    assert!(
-        names(holders, holder.pid()),
-        "the sibling's holder is named, got {holders}"
+    assert_eq!(
+        kind_of(holders, holder.pid()),
+        Some(HolderKind::Cmdr),
+        "the sibling's holder is named, and it descends from us, got {holders}"
     );
     assert!(is_mounted(&b), "B, held, is still mounted");
     assert!(image.is_attached().expect("hdiutil info"), "the disk is still attached");

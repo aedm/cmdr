@@ -521,6 +521,23 @@ impl DiskImage {
         &self.image_path
     }
 
+    /// The process serving this image, which is the one holding its backing FILE open.
+    ///
+    /// What a test needs to ask "who holds the volume the `.dmg` sits on": that process
+    /// is a real holder of it, for as long as the image stays attached.
+    pub fn serving_pid(&self) -> Result<u32, HarnessError> {
+        let attached = self.session.attached_images()?;
+        attached
+            .images
+            .iter()
+            .find(|image| image.image_path == self.image_path)
+            .and_then(|image| image.hdid_pid)
+            .ok_or_else(|| HarnessError::Unreadable {
+                call: "hdiutil info -plist".to_string(),
+                detail: format!("no process serves {}", self.image_path.display()),
+            })
+    }
+
     /// Whether `hdiutil info` still lists this image.
     pub fn is_attached(&self) -> Result<bool, HarnessError> {
         let attached = self.session.attached_images()?;

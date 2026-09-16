@@ -22,7 +22,7 @@
 //! [`HolderKind::Unclassified`] rather than dropping the ones it never reached.
 
 #[cfg(all(test, target_os = "macos"))]
-pub(super) mod detached_holder;
+mod detached_holder;
 mod facts;
 mod scan;
 
@@ -214,6 +214,23 @@ pub(super) async fn scan(paths: Vec<PathBuf>, budget: Duration) -> HolderScan {
     let mut scanned = merge(&found, expected);
     apply_kinds(&mut scanned, &kinds.lock_ignore_poison());
     scanned
+}
+
+/// What kind of holder `pid` is, for a drive whose mounts are `paths`.
+///
+/// ❗ The real-image lane's one seam past [`scan`]. Everything else it pins runs through
+/// the production path; this doesn't, because the walk is what a lane can't aim at a
+/// single pid: `PATH_IS_VOLUME` on the volume a `.dmg` sits on names every process on it.
+#[cfg(all(test, target_os = "macos"))]
+pub(super) fn kind_of(pid: u32, paths: &[PathBuf]) -> HolderKind {
+    let mut kind = HolderKind::Unclassified;
+    facts::name_the_kinds(
+        &[pid],
+        paths,
+        Instant::now() + Duration::from_secs(20),
+        |_, what| kind = what.kind,
+    );
+    kind
 }
 
 /// Puts what the facts found onto each holder the walk named.
