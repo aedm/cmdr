@@ -3086,6 +3086,7 @@ weggefallen und durch eine einzelne Zeile ersetzt, die das Menü öffnet.
   `auf Laufwerken … funktionieren` ist ein schlichter Lokativ. Kein Punkt am Ende (Tooltip).
 - Kein `sameAsSourceJustification` nötig: alle Werte unterscheiden sich vom Englischen. `menu.go.showFavorites` gehört
   zur RAW-Familie, trägt aber ohnehin keinen Apostroph; in den ICU-Dateien ebenso wenig, also nichts zu verdoppeln.
+
 ## Wer das Laufwerk festhält: die sechs benannten Absagen (`errors.eject.unmountRefusedBy*`, `.otherApps`)
 
 Sechs Zeilen, die die generische Absage `errors.eject.unmountRefused` aufschlüsseln: macOS hat das Auswerfen abgelehnt,

@@ -3548,6 +3548,7 @@ helyén egy sor áll, ami átvált erre a menüre.
   listáról van szó, amit a felhasználó épp lát. Pont nincs a végén, ahogy az angolban sincs (buborék, nem mondat).
 - **Egyik érték sem azonos az angollal**, tehát `sameAsSourceJustification` egyikhez sem kell. Aposztróf egyikben sincs,
   így az ICU-kettőzés kérdése fel sem merül; a `menu.go.showFavorites` RAW kulcs, de nincs benne mit kettőzni.
+
 ## Az elutasított kiadás megnevezi, KI fogja a meghajtót (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
 
 Hat kulcs, mind ugyanabban a buborékban, a `fileExplorer.pane.ejectFailedToast`

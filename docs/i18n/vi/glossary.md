@@ -3226,6 +3226,7 @@ thích bên trong nữa, chỉ còn một hàng trên cùng mở menu này.
   (theo tiếng Anh), không dùng `lỗi` hay `không thể`.
 - Không giá trị nào trong đợt này chứa dấu nháy đơn, nên không phát sinh `''` của ICU; `menu.go.showFavorites` thuộc họ
   RAW (Rust vẽ menu gốc) và cũng không có gì phải nhân đôi.
+
 ## macOS từ chối tháo ổ đĩa, và Cmdr nói rõ ai đang giữ (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
 
 Sáu khóa nối tiếp `errors.eject.unmountRefused` (khóa chung, khi Cmdr không đoán được ai giữ). Cả sáu đều rơi vào sau

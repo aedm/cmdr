@@ -3315,6 +3315,7 @@ selector de volúmenes ya no trae una SECCIÓN de favoritos; en su lugar tiene u
   y la forma que `style.md` ya prefiere para las descripciones.
 - Ningún valor lleva apóstrofo, así que no hay nada que duplicar (`''`) en la familia ICU ni nada que arreglar en la
   clave RAW `menu.go.showFavorites`. Los diez difieren del inglés, así que ninguno necesita `sameAsSourceJustification`.
+
 ## Quién retiene el disco cuando la expulsión se rechaza (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
 
 Seis claves que amplían § Expulsar y desconectar: en vez del genérico `unmountRefused` («Algo sigue usando este disco»),

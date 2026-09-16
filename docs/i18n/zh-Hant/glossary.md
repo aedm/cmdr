@@ -1919,6 +1919,7 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
 - 這十條值裡都沒有撇號，所以 ICU 的雙寫撇號規則用不到；`menu.go.showFavorites`
   是 RAW 鍵，就算以後要加撇號也只能用單撇號。標點全形，只有英文原句有句號的那條（`commands.favoritesOpen.description`）才收
   `。`。
+
 ## 退出被擋下來時，說出是誰佔著磁碟機（`errors.eject.unmountRefusedBy*`、`errors.eject.otherApps`，2026-09-16）
 
 按下退出、macOS 不放行時的六條。全部落進 `fileExplorer.pane.ejectFailedToast`（`無法退出 {volumeName}：{message}`）或

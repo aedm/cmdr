@@ -2792,6 +2792,7 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   `menu.servers.showServers` 一样光板收尾，而 `menu.go.goToPath`（`前往路径…`）那种开对话框的才留 `…`。
 - 十条值都与英文不同，均不需要 `sameAsSourceJustification`。中文侧没有撇号，ICU 的 `''` 规则用不上。这批没有 `*Aria`
   键， `fileExplorer.navigation.renameFavoriteAriaLabel` 与 `menu.volume.renameFavorite` 的包含关系未被触碰。
+
 ## 推出被拒时说清是谁占着盘（`errors.eject.unmountRefusedByApp`/`…ByApps`/`otherApps`/`…ByDiskImage`/`…BySystem`/`…ByCmdr`）
 
 `errors.eject.unmountRefused`

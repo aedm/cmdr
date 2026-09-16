@@ -3149,6 +3149,7 @@ favoritavdelning är borta och ersatt av en enda topprad som byter ut växlaren 
   decisions. Engelskan har kommat, svenskan inte.
 - Inga apostrofer i något av de tio värdena, så varken ICU-dubbleringen `''` eller RAW-familjens raka apostrof blir
   aktuell. Inget `sameAsSourceJustification`: alla tio skiljer sig från engelskan.
+
 ## Utmatningen som vägrades av en namngiven app (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`, 2026-09-16)
 
 Sex nya värden i samma toast som § Utmatning och frånkoppling, alltså fortfarande EFTER kolon i

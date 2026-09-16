@@ -3160,6 +3160,7 @@ pt-PT (`ficheiro`, `partilha`, `estar a` + infinitivo, `consoante`, próclise an
 `compartilhamento`, `pressione`, `em foco`. Nenhum valor leva apóstrofo, então não há `''` a dobrar nas famílias ICU, e
 `menu.go.showFavorites` (família RAW) também fica sem apóstrofo. Nenhum `sameAsSourceJustification`: os dez valores
 diferem do inglês. Glifos de modificador e os dígitos 0–9 não aparecem em nenhum valor.
+
 ## Quem está segurando o disco: a recusa que NOMEIA (`errors.eject.unmountRefusedByApp`/`ByApps`/`otherApps`/`ByDiskImage`/`BySystem`/`ByCmdr`, 2026-09-16)
 
 Seis chaves novas da mesma família das nove da § Recusas de ejetar e desconectar: o macOS recusou a ejeção e agora o

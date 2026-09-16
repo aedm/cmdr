@@ -3594,6 +3594,7 @@ rij die naar dit menu springt. De term `favorieten` lag al vast in de catalogus
   in het Engels. Controleer hem in de echte tooltip tegen de pseudolocale.
 - `Voeg huidige map aan favorieten toe` en `Voeg de huidige map aan favorieten toe` verschillen alleen in het lidwoord,
   net als hun Engelse origineel. Bevestig dat dat verschil in de interface niet als een fout leest.
+
 ## Wie de schijf vasthoudt: de zes geweigerde-uitwerpzinnen (`errors.eject.unmountRefusedBy*`, `.otherApps`, 2026-09-16)
 
 Zes zinnen die de generieke `errors.eject.unmountRefused` opvolgen zodra Cmdr wél weet wie de schijf vasthoudt: één app,
