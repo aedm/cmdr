@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M12 are done, and M13 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M13 are done, and M14 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -83,11 +83,14 @@ drive-safety decisions below.
   three more, and `DiskTeardown` moved to `disk_flight.rs`), `dee0eef40` (the docs), `590e76e4b` (`EjectStep` carries
   the disk lookup), `6673a2e19` (one test fake for both the pure tests and the real-image pin), `0a534e1b7` (the typed
   `DiskMounts`: a silent DiskArbitration is its own answer, never an empty disk).
-- **Next, M13**: the holder scan and the wire type.
+- **M13, the holder scan and the wire type (done)**: `b4d73b596` (`eject/holders/`, `HolderScan` on `UnmountRefused`,
+  the MCP `data`, the bindings, and the two lane pins asserting the holder's pid), `fc146e06c` (the docs).
+- **Next, M14**: holder facts and classification.
 - **Belonging to no milestone, since M11 merged**: `b3ea68362` (the parked hazard names the six cells that aren't its
   fix), `df09b3023` (a lane test's panic message exempted from `pluralize-noun`), `7a9961fe6`, `1bf9f6c99`, and
   `95b98813f` (the availability selector list refreshed from the macOS 27.0 SDK, the ping-pong documented, then made
-  impossible: the stored SDK is a resolved version now and only moves forward).
+  impossible: the stored SDK is a resolved version now and only moves forward), `d616f47cd` (a menu doc's forbidden
+  specifier unbackticked, so `dead-links` stops reading it as a reference).
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -943,12 +946,14 @@ M13 and M14 build on:
 ### Holders (M13 scan and wire, M14 facts)
 
 - **When**: once, in `run_teardown`, after a final `UnmountRefused`, for disks and SMB shares.
-- **Scan**: `proc_listpidspath(PROC_ALL_PIDS, 0, path, PATH_IS_VOLUME | EXCLUDE_EVTONLY)` over each still-listed
-  captured path (the share's mount path for SMB), on ONE abandonable std thread under `HOLDER_BUDGET` 1.5 s (a
-  parameter). The thread records the root's `stat().st_dev` before and after each scan and discards a result whose
+- **Scan** (landed): `proc_listpidspath(PROC_ALL_PIDS, 0, path, PATH_IS_VOLUME | EXCLUDE_EVTONLY)` over each
+  still-listed captured path (the share's mount path for SMB), on ONE abandonable std thread under `HOLDER_BUDGET` 1.5 s
+  (a parameter). The thread records the root's `stat().st_dev` before and after each scan and discards a result whose
   device changed or whose stat failed. Past the budget the thread is detached. FFI: a two-line `extern "C"` plus
   `PROC_ALL_PIDS = 1`, `PROC_LISTPIDSPATH_PATH_IS_VOLUME = 1`, `PROC_LISTPIDSPATH_EXCLUDE_EVTONLY = 2`
-  (`libproc.h:52,61`, `sys/proc_info.h:51`). ❌ No `libproc` crate. Linux answers empty.
+  (`libproc.h:52,61`, `sys/proc_info.h:51`). ❌ No `libproc` crate. Linux answers `Incomplete`, ❌ not an empty
+  `Complete`. The pid buffer starts at 4,096 entries and doubles when a result fills it exactly, since a holder list
+  missing the holder is worse than no list.
 - **Facts**, cheapest first, inside `objc2::rc::autoreleasepool`, ancestors up to eight levels, stopping at PID 1:
   1. `pid == own_pid` or an ancestor is → `Cmdr`.
   2. `NSRunningApplication` for the process, then each ancestor, any activation policy but prohibited →
@@ -967,14 +972,24 @@ M13 and M14 build on:
   answer and a launchd parent reads `System`; an orphaned platform CLI reads `System`; a path heuristic was rejected;
   root-owned holders aren't visible to a same-uid scan, so those refusals name nobody until the deferred DA teardown.
 
-**Wire** (M13):
+**Wire, as landed (M13).** The canonical description is `apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "A
+refusal names who held the drive"; what M14 and M15 build on:
 
 ```rust
 UnmountRefused {
-    /// Who held the drive when the last attempt was refused, deduped by PID. Empty when nothing could be named.
-    holders: Vec<VolumeHolder>,
+    /// Who held the drive when the last attempt was refused.
+    holders: HolderScan,
     /// The tool's own output, for the log and the details line. ❌ Never the message.
     detail: String,
+}
+
+/// ❗ TWO answers, ❌ never one list — the same rule `DiskMounts` carries.
+pub enum HolderScan {
+    /// Every still-listed mount was scanned. An empty `named` genuinely means nobody.
+    Complete { named: Vec<VolumeHolder> },
+    /// Nothing to ask about, past the budget, or a mount's device moved under the scan.
+    /// `named` is what it did see, ❌ never the whole story.
+    Incomplete { named: Vec<VolumeHolder> },
 }
 
 pub struct VolumeHolder {
@@ -988,10 +1003,20 @@ pub struct VolumeHolder {
 pub enum HolderKind { App, Tool, DiskImage, System, Cmdr, Unclassified }
 ```
 
+- **`HolderScan`, not a bare `Vec`.** The plan's own shape would have made "the scan couldn't run" indistinguishable
+  from "nobody is holding it", which is the collapse M11's sweep and M12's `DiskMounts` each found a live defect behind.
+  Both arms carry their names, so a partial scan loses nothing and still can't pass itself off as the whole story.
 - M13 ships every holder `Unclassified` with its executable name; M14 fills in kinds.
-- `Display`: `unmount refused (held by Warp [app, pid 94646], lsd [system, pid 983]): <detail>`.
-- MCP: keep the message; set `ToolError.data` (`mcp/executor/mod.rs:62`) to
-  `{ "outcome": "unmountRefused", "holders": [...] }`.
+- `Display`: `unmount refused (held by Warp [app, pid 94646], lsd [system, pid 983]): <detail>`, and for the two empty
+  cases `held by nobody a same-uid scan can see` / `held by nobody anything could name`.
+- MCP: keep the message; `ToolError.data` is `{ "outcome": "unmountRefused", "holders": <the tagged HolderScan> }`.
+- **Hooked in `run_teardown`, not in the flight.** It has both paths' still-listed mounts (`DiskTeardown::captured()`
+  for a disk, the one `mount_path` otherwise), so the disk eject, SMB, macFUSE, and Linux are named in ONE place, and
+  the flight's refusal already carries its holders by the time it resumes.
+- **The budget is a parameter of `name_the_holders`**, so the real-image lane can hand a loaded machine 20 s where
+  production hands a waiting person 1.5 s.
+- `holders/mod.rs` keeps `merge`, `scan_path_with` (the device-before/after rule), and `within_budget` pure or
+  seam-driven; `holders/scan.rs` holds the two `extern "C"` lines and is the only macOS-gated file.
 
 ### Budgets and deadlines
 
@@ -1642,31 +1667,31 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   describes eject.
 - **Size**: 700–850 lines.
 
-### M13: holder scan and wire type
+### M13: holder scan and wire type (done)
 
-- **Scope**: `eject/holders/{mod.rs, scan.rs}`, `merge`, `UnmountRefused { holders, detail }`, `VolumeHolder`,
-  `Display`, the MCP `data`, bindings, and a frontend stub keeping today's `unmountRefused` copy.
-- **Intentions**: scan once after the final refusal, disks and SMB, still-listed paths only, the `st_dev` before and
-  after check, one abandonable thread, injected budget; Linux empty.
-- **Landmines**: scanning inside the retry loop multiplies up to 9.4 s by the attempts; an SMB `stat` can hang, so the
-  budget detaches the thread; `// SAFETY:` on the FFI; `specta` doc comments land in `bindings.ts`.
-- **From M12**: the disk's still-listed paths are the flight's captured mounts, in `disk_flight::eject_stopped_disk`
-  (which has the siblings, the `DiskTeardown`, and the `Err(UnmountRefused)` between the teardown and the hand-back) —
-  scan there, before the resume, so a refusal that hands an index back has already named its holders. The per-volume
-  path (SMB, macFUSE, Linux) still goes through `run_teardown`, so ❗ a scan placed only in the flight misses SMB: hook
-  both, or hook `run_teardown` and hand it the paths. `EjectError::UnmountRefused` is built in `unmount_tool::settle`
-  and in three tests, so adding `holders` touches those construction sites (`eject::tests` builds it too, and the plan's
-  "must not change" covers the assertion, not the field).
-- **Test plan**: pure `merge` and the budget on a paused clock; a device change mid-scan discards the result; an
-  unignored macOS test where a child holds a temp FILE and `proc_listpidspath` on that file path WITHOUT
-  `PATH_IS_VOLUME` returns its PID inside the 8 s cap; lane: M1's held-file pin asserts the holder PID; `pnpm check`,
-  `pnpm check disk-images`.
-  - **Must not change**: `eject::tests::eject_error_crosses_the_wire_as_a_tagged_value` (updated for the field only),
-    the `in_flight` and `unmount_tool` tests that build `UnmountRefused`.
-- **DONE**: MCP replies carry holders in `data`; bindings regenerated.
-- **Docs**: `volume/DETAILS.md` § "Eject", `mcp/DETAILS.md` (the `eject` tool's `data`),
-  `docs/guides/error-handling.md`.
-- **Size**: 300–400 lines.
+- **Scope**: `eject/holders/{mod.rs, scan.rs, tests.rs}`, `merge`, `UnmountRefused { holders, detail }`, `HolderScan`,
+  `VolumeHolder`, `Display`, the MCP `data`, bindings, and the frontend keeping today's `unmountRefused` copy.
+- **What landed**: § "Holders (M13 scan and wire, M14 facts)" carries the shape. One scan in `run_teardown` after the
+  last attempt, over the still-listed mounts of BOTH paths, so SMB and macFUSE are covered by the same hook as the disk
+  flight; the typed `HolderScan` in place of the planned `Vec<VolumeHolder>`; the budget injected so the lane can widen
+  it. `DiskTeardown::captured()` is new. `❌ No frontend copy changed`: M15 owns that.
+- **Landmines that held**: the scan sits outside the retry loop (inside it, 9.4 s × four attempts, describing holds that
+  had already let go); `// SAFETY:` on both FFI calls; `specta` doc comments land in `bindings.ts`.
+- **What the flight verified**:
+  - ❗ **A paused tokio clock auto-advances past a plain std thread**, so every `start_paused` test of a real scan reads
+    as abandoned. The "finishes in time" assertion has to run on the real clock, and it failed exactly that way first.
+    Any later milestone timing this thread inherits the trap.
+  - `discarded-outcome` flags `let _ = tx.send(..)` as no violation at all, so an `allowed-discarded-outcome` comment on
+    one fails the check as unused.
+  - The lane's `a_refused_disk_eject_hands_back_only_the_sibling_that_stayed_mounted` starved under load and passed
+    alone at the same deadline, the documented shape (`scripts/check/checks/DETAILS.md` § "The disk-image lane").
+- **Test plan (all covered)**: pure `merge` (five cases); the budget on a paused clock, plus its real-clock twin; the
+  device-change discard through `scan_path_with`; an unignored macOS test where a child holds a temp FILE and the real
+  walk names its pid without `PATH_IS_VOLUME`, plus an idle file answering an empty list and a missing path answering
+  `None`; lane: both held-file pins assert the holder's pid, one on the clicked volume and one on a held SIBLING.
+- **Docs**: `volume/DETAILS.md` § "A refusal names who held the drive" (new), `volume/CLAUDE.md`, `mcp/DETAILS.md`,
+  `docs/guides/error-handling.md`, `navigation/DETAILS.md`.
+- **Size**: about 950 lines added, most of it the module and its tests.
 
 ### M14: holder facts and classification
 
@@ -1679,10 +1704,18 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   budget stay `Unclassified`.
 - **Landmines**: a Security call against an executable on the volume makes Cmdr the holder; `NSRunningApplication`
   without an autorelease pool leaks; release every `SecCode` and CF reference; ❌ not `csops`; ❌ no path-prefix test.
+- **From M13**: the seam is `holders/scan.rs`'s `name_of(pid) -> Option<VolumeHolder>`, which today answers the
+  executable's file name and `HolderKind::Unclassified`. Facts belong inside it, so they run on the SAME abandonable
+  thread and inside the same `HOLDER_BUDGET`; ❗ facts the budget cuts short must leave the holder `Unclassified` rather
+  than drop it, since a named pid with no kind still words better than nothing. `executable_path(pid)` (a `proc_pidpath`
+  wrapper) is already there for the "executable on the target volume" test, and `scan_path_with` already hands `name` in
+  as a parameter, so a `classify` table tests without a real process. ❗ The paused-clock trap above applies to any new
+  timing test.
 - **Test plan**: pure `classify` over recorded facts; lane: a binary copied onto the image and run from it names `Tool`;
   a nested image stored on the outer image names `DiskImage`; `pnpm check`, `pnpm check disk-images`, then
   `pnpm check --include-slow`.
-  - **Must not change**: M13's tests.
+  - **Must not change**: M13's tests, and in particular the two lane pins that assert the holder's pid, whose kind M14
+    flips from `Unclassified` to `Tool`.
 - **DONE**: kinds filled in.
 - **Docs**: `volume/DETAILS.md` § "Eject" (classification, accepted tradeoffs).
 - **Size**: 450–550 lines.
@@ -1698,6 +1731,10 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   `desktop-i18n-parity`; a key with no call site fails `desktop-message-keys-unused`; run `pnpm intl:keys` and
   `node apps/desktop/scripts/sync-locale-keys.ts`; fold the list formatter into `apps/desktop/src/lib/intl/CLAUDE.md`'s
   number-format bullet.
+- **From M13**: `wordUnmountRefusal` reads `error.holders`, a tagged `HolderScan`, ❌ not a bare array. Its precedence
+  runs over `holders.named` whichever arm it is, and the existing `errors.eject.unmountRefused` is the fallback for an
+  empty one. ❗ The ONE thing M15 may not do is word an empty `incomplete` as "nothing is using this drive": only
+  `complete` with an empty `named` means that, and today no copy says it at all. A test case per arm.
 - **Test plan**: `eject-error-messages.test.ts` (one, two, three, four, and six apps; `DiskImage`; `Cmdr`; `System`;
   mixed; empty; only `Unclassified`); a list-formatter test with a pinned locale; `pnpm check svelte` plus
   `desktop-i18n-icu`, `desktop-i18n-parity`, `desktop-i18n-coverage`, `desktop-i18n-term-consistency`,
@@ -1762,7 +1799,8 @@ The conformance register for the checkpoint.
 11. Success needs every captured sibling path gone and a fresh `mounted_volumes_on` empty.
 12. Nothing unmounts after resolution, the ejectability check, or an index stop fails or stalls.
 13. Holders are captured once per eject, after the last attempt, over still-listed paths with an unchanged root device,
-    within the injected budget.
+    within the injected budget. A scan that couldn't cover every path is its own typed answer (`HolderScan::Incomplete`)
+    and ❌ never an empty list of holders.
 14. No code-signing query runs against a process whose executable is on the target volume.
 15. Private symbols come from `dlsym`; their absence degrades, never fails. An approver that can't install leaves the
     `WillUnmount` handler in place.
