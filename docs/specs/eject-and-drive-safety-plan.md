@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M9 are done, and M10 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M10 are done, and M11 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -62,10 +62,15 @@ drive-safety decisions below.
   the eject-approval registration, the `Vanish` stop off the queue, and the `DidUnmount` hook standing down),
   `ea5b9c6c3` (the guarded `/sbin/umount` verb and the real-image pin), `548d66d6e` (the toast, its key, and the
   frontend docs), `badf76277` (the backend docs).
+- **M10, transfers on a vanished drive (done)**: `613adf0c0` (the typed sides on the operation's state, classification
+  by the mount table, Phase 4's destination-listed gate, the sweep's four presence checks, `MoveNotConfirmed` for M0's
+  flush failure, `progress_at_stop` on `WriteErrorEvent`, and the English copy), `666048eb9` (the real-detach lane test
+  on a live HFS+ image, the `cfg(test)` chunk park, and the docs). Its eight new keys are English-only, so
+  `desktop-i18n-coverage` is red for them in all ten translated catalogs until the translations land.
 - **Belonging to no milestone**: `56eca71f4` and `6f2eb84ed` (the two toasts translated into every shipped catalog),
   `654a2d075` (the disk-image harness reclaims an attachment a killed test stranded), `1c7057a09` (rustls to 0.23.45 for
   RUSTSEC-2026-0285), `0122d4c43` and `6ebf9fe0b` (the two lanes' starvation notes).
-- **Next, M10**: transfers on a vanished drive.
+- **Next, M11**: temps, asides, and staging dirs.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -1485,7 +1490,15 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     swap, so after a conflict Rename or Skip they name `destination/name/...` rather than the real `name (N)` landing.
     ❌ Never trust them for a conflicted move.
   - A failed M0 flush skips Phase 5 and leaves an EMPTY `.cmdr-staging-<op>`; a merge-child Skip leaves a NON-EMPTY one.
-    The staging-dir sweep meets both.
+    The staging-dir sweep meets both. M10 added a THIRD producer: a destination that left the mount table returns
+    before Phase 5, and its staging dir can hold a whole staged tree (Phase 3 may never have run), on a drive that
+    comes back later. That's the case the arrival sweep is for, and it must still only ever `remove_dir`.
+  - **M10 left three seams M11 builds on**: the typed destination side for item 2's `volume_id` and relative path
+    (`state.sides.destination`, `write_operations/transfer_sides.rs`); the one mount-table question for item 3's "is
+    the temp's root still listed" (`TransferSide::has_left`, which reads an unreadable table as "still there"); and the
+    `cfg(test)` chunk park (`transfer::chunked_copy::chunk_park`, process-global because the engine runs in
+    `spawn_blocking`) that M11's lane test uses to stop a copy mid-file before detaching. The real-detach rig is
+    `write_operations/transfer/real_image.rs`.
 - **Test plan**:
   - unit: an old-format reader skips `A` lines (a copy of today's `read_recorded` in the test); a local temp on a
     non-root mount defers at launch; `discard_temp` keeps the record when the root is gone; each aside kind's sweep arm
