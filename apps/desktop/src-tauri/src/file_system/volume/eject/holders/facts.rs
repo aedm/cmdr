@@ -61,6 +61,10 @@ pub(super) struct AppFacts {
 /// answer was no". That's what keeps [`classify`] pure while the gathering stays lazy:
 /// a holder rule 1 answered for carries none of the later signals, and classifying it
 /// again from this struct gives the same answer.
+// DEFAULT-OK: every field's zero value means "no rule needed this signal", which is the
+// lazy-gathering contract above, ❌ never "we asked the disk and the answer was no". The
+// one field that could be mistaken for a negative answer, `platform_binary`, is an
+// `Option` for exactly that reason.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(super) struct ProcessFacts {
     /// Cmdr's own process, or one it started.
