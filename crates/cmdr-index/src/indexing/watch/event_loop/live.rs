@@ -630,6 +630,13 @@ pub(in crate::indexing) fn process_live_batch(
             } else if processed_any_dir && !flushed_dirs {
                 // Reached the first file after ≥1 dir removal: commit the dir
                 // removals so the file-siblings resolve to nothing and skip.
+                //
+                // ⚠️ The gathered deletes go out HERE rather than only at the end of
+                // the batch, or there would be nothing committed for the siblings to
+                // resolve against and the ~3-5x saving below would quietly stop
+                // working. It costs one more presence read per batch, never one per
+                // event.
+                reconciler.flush_deletes(writer);
                 tokio::task::block_in_place(|| {
                     let _ = writer.flush_blocking();
                 });
@@ -639,6 +646,11 @@ pub(in crate::indexing) fn process_live_batch(
             reconciler.process_live_event(event, conn, writer, pending_origins);
         }
     }
+
+    // Everything this batch decided to delete, behind one presence read: a drive that
+    // left mid-batch made every stat fail, and those failures read exactly like
+    // removals.
+    reconciler.flush_deletes(writer);
 
     if max_event_id > 0 {
         let _ = writer.send(WriteMessage::UpdateLastEventId(max_event_id));

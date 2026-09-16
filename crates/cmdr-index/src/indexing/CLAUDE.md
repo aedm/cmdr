@@ -51,12 +51,14 @@ read it before non-trivial work there.
 - **`transports/CLAUDE.md`** — per-transport enable + live watch: `smb/`, `mtp/`, `local_external/`.
 - **`tests/CLAUDE.md`** — whole-pipeline integration + stress tests + the disk-image fixture.
 
-Three loose shared leaves sit beside the areas, all because homing them in any one area would invert a dependency:
+Four loose shared leaves sit beside the areas, all because homing them in any one area would invert a dependency:
 
 - `metadata.rs`: the single platform-specific metadata-extraction primitive (`extract_metadata`, `MetadataSnapshot`),
   used by scanner, reconcile, watch, and verifier.
 - `hold.rs`: `VolumeHold`, a start's stake in its volume, and the wait a removable stop answers from. A leaf so the
   workers that read a drive can carry a share without importing `lifecycle::state`.
+- `deletes.rs`: the delete generation — how many batches of index deletes have gone out since the drive was last proved
+  to be there. A leaf for the same reason: scanner, reconcile, watch, and verifier all send deletes.
 - `volume.rs`: a volume's identity — `VolumeId`, `ROOT_VOLUME_ID`, and `IndexVolumeKind` with its pure capability
   predicates. ❌ Don't put these back in `lifecycle/state.rs`: identity is what everything needs, the registry is what
   only `lifecycle` needs, and merging them welds the whole subsystem into one cycle. Nothing below `lifecycle` should

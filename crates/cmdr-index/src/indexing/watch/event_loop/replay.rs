@@ -28,6 +28,8 @@ use crate::indexing::DEBUG_STATS;
 use crate::indexing::IndexPathSpace;
 use crate::indexing::events::emit_dir_updated;
 use crate::indexing::events::{EventSink, IndexEvent, RescanReason, emit_rescan_notification, set_phase_for};
+use crate::indexing::deletes;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::lifecycle_bus;
 use crate::indexing::paths::path_prefix;
 use crate::indexing::reconcile::reconciler::{self, EventReconciler};
@@ -178,6 +180,7 @@ pub(in crate::indexing) async fn run_replay_event_loop(
                 &space,
                 &conn,
                 &writer,
+                &work,
                 &mut origin_dirs,
                 &mut origins_overflow,
                 &mut pending_rescans,
@@ -187,11 +190,20 @@ pub(in crate::indexing) async fn run_replay_event_loop(
             // A missing-parent escalation here DEFERS into the pending list (no
             // live queueing during replay), same as a must_scan_sub_dirs event.
             let mut escalation: Option<std::path::PathBuf> = None;
-            if let Some(paths) = reconciler::process_fs_event(&event, &space, &conn, &writer, None, &mut escalation)
-                && !origins_overflow
+            let mut event_deletes = Vec::new();
+            if let Some(paths) = reconciler::process_fs_event_into(
+                &event,
+                &space,
+                &conn,
+                &writer,
+                None,
+                &mut escalation,
+                &mut event_deletes,
+            ) && !origins_overflow
             {
                 origin_dirs.extend(paths);
             }
+            send_replay_deletes(event_deletes, &work, &writer);
             if let Some(anchor) = escalation {
                 defer_replay_rescan(&mut pending_rescans, anchor.to_string_lossy().to_string());
             }
@@ -256,6 +268,7 @@ pub(in crate::indexing) async fn run_replay_event_loop(
                 &space,
                 &conn,
                 &writer,
+                &work,
                 &mut origin_dirs,
                 &mut origins_overflow,
                 &mut pending_rescans,
@@ -594,6 +607,34 @@ pub(in crate::indexing) async fn run_replay_event_loop(
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+/// Send a replay batch's gathered deletes, but only if the drive is still listed.
+///
+/// ⚠️ **The presence read comes AFTER the batch's events were stat'd.** A drive that
+/// went away makes every stat fail, and those failures are indistinguishable from
+/// real removals — a cold-start replay of a journal recorded before the drive left is
+/// exactly the shape that would reap a whole index. One read per batch, ❌ never per
+/// event. Nothing is lost when it drops a batch: no row is deleted, and the delete
+/// generation is what marks the index for a rebuild instead.
+fn send_replay_deletes(deletes_to_send: Vec<WriteMessage>, work: &VolumeWork, writer: &IndexWriter) {
+    if deletes_to_send.is_empty() {
+        return;
+    }
+    if !work.drive_is_listed() {
+        log::info!(
+            "Replay: '{}' stopped being listed, so {} went unsent rather than deleting rows against a drive that left",
+            work.volume_id(),
+            pluralize(deletes_to_send.len() as u64, "gathered delete"),
+        );
+        return;
+    }
+    // A `Some(true)` here is also the presence half of the delete generation's reset.
+    deletes::drive_seen(work.volume_id());
+    for message in deletes_to_send {
+        let _ = writer.send(message);
+    }
+    deletes::batch_sent(work.volume_id());
+}
+
 /// Defer a rescan anchor into the replay-phase pending set. Shared by
 /// must_scan_sub_dirs events and missing-parent escalations: both are the same
 /// "go look here" signal, deferred identically during replay (no live queueing
@@ -609,20 +650,34 @@ fn defer_replay_rescan(pending_rescans: &mut HashSet<String>, path: String) {
 /// reconciler, and collect the ORIGIN dirs it changed. Returns the number of
 /// deduplicated events processed. Missing-parent escalations DEFER into the
 /// pending-rescan list (no live queueing during replay).
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the replay drain's state plus the work its delete gate reads; a struct would add indirection without clarity"
+)]
 fn flush_replay_batch(
     pending: &mut HashMap<String, watcher::FsChangeEvent>,
     space: &IndexPathSpace,
     conn: &Connection,
     writer: &IndexWriter,
+    work: &VolumeWork,
     origin_dirs: &mut HashSet<String>,
     origins_overflow: &mut bool,
     pending_rescans: &mut HashSet<String>,
 ) -> usize {
     let count = pending.len();
+    // Gathered across the whole drain, so one presence read covers it.
+    let mut batch_deletes = Vec::new();
     for (_path, event) in pending.drain() {
         let mut escalation: Option<std::path::PathBuf> = None;
-        if let Some(paths) = reconciler::process_fs_event(&event, space, conn, writer, None, &mut escalation)
-            && !*origins_overflow
+        if let Some(paths) = reconciler::process_fs_event_into(
+            &event,
+            space,
+            conn,
+            writer,
+            None,
+            &mut escalation,
+            &mut batch_deletes,
+        ) && !*origins_overflow
         {
             origin_dirs.extend(paths);
             if origin_dirs.len() >= MAX_ORIGIN_DIRS {
@@ -638,5 +693,6 @@ fn flush_replay_batch(
             defer_replay_rescan(pending_rescans, anchor.to_string_lossy().to_string());
         }
     }
+    send_replay_deletes(batch_deletes, work, writer);
     count
 }

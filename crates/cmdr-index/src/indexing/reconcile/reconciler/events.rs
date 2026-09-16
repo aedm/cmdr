@@ -16,6 +16,7 @@ use crate::indexing::scanner;
 use crate::indexing::watch::watcher::FsChangeEvent;
 use crate::indexing::writer::{IndexWriter, WriteMessage};
 
+use super::dir_read::child_is_absent;
 use super::escalation::resolve_escalation_anchor;
 use super::throttle::ThrottleOutcome;
 use super::{LiveThrottle, PendingUpsert};
@@ -150,6 +151,13 @@ mod skip_aggregator {
 /// (`process_live_event` live, buffered replay) owns the reconciler state and
 /// queues or defers it. `None` means nothing to escalate. A typed `PathBuf`
 /// out-param, never a string signal — no string-matching classification.
+/// ⚠️ **Test-only.** Every production path can name the volume it is processing for,
+/// so every one of them takes [`process_fs_event_into`] and holds its deletes until
+/// the batch has read presence. This form sends them straight away, which is what the
+/// per-event tests want: they assert on one event's writes with no batch around it.
+/// ❌ Don't reach for it from production code — an ungated delete is exactly what the
+/// batch gate exists to prevent.
+#[cfg(test)]
 pub(crate) fn process_fs_event(
     event: &FsChangeEvent,
     space: &IndexPathSpace,
@@ -157,6 +165,34 @@ pub(crate) fn process_fs_event(
     writer: &IndexWriter,
     throttle: Option<&mut LiveThrottle>,
     escalation: &mut Option<PathBuf>,
+) -> Option<Vec<String>> {
+    let mut deletes = Vec::new();
+    let origins = process_fs_event_into(event, space, conn, writer, throttle, escalation, &mut deletes);
+    for message in deletes {
+        let _ = writer.send(message);
+    }
+    origins
+}
+
+/// [`process_fs_event`], gathering the deletes it decides on into `deletes` instead
+/// of sending them.
+///
+/// ⚠️ The caller owns the gate: it sends the batch only after asking whether the
+/// drive is still listed, ONCE for the batch and ❌ never per event. An event whose
+/// stat failed because the drive went away looks exactly like a removal, so a batch
+/// sent unconditionally is how a vanished drive deletes its own index.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the event-processing param set plus the batch it gathers into; a struct would add indirection without clarity"
+)]
+pub(crate) fn process_fs_event_into(
+    event: &FsChangeEvent,
+    space: &IndexPathSpace,
+    conn: &Connection,
+    writer: &IndexWriter,
+    throttle: Option<&mut LiveThrottle>,
+    escalation: &mut Option<PathBuf>,
+    deletes: &mut Vec<WriteMessage>,
 ) -> Option<Vec<String>> {
     // The canonical ABSOLUTE path in this volume's world. It stays absolute through
     // the whole function (FS stat, exclusion, the origin dirs, the FE emit);
@@ -184,7 +220,17 @@ pub(crate) fn process_fs_event(
     let mut origins: Vec<String> = origin_dir(&normalized).into_iter().collect();
 
     if event.flags.item_removed {
-        return handle_removal(&normalized, space, conn, event, writer, origins, throttle, escalation);
+        return handle_removal(
+            &normalized,
+            space,
+            conn,
+            event,
+            writer,
+            origins,
+            throttle,
+            escalation,
+            deletes,
+        );
     }
 
     if event.flags.item_created || event.flags.item_modified || event.flags.item_renamed {
@@ -198,6 +244,7 @@ pub(crate) fn process_fs_event(
             &mut origins,
             throttle,
             escalation,
+            deletes,
         );
     }
 
@@ -213,6 +260,7 @@ pub(crate) fn process_fs_event(
             &mut origins,
             throttle,
             escalation,
+            deletes,
         );
     }
 
@@ -239,24 +287,33 @@ fn handle_removal(
     mut origins: Vec<String>,
     throttle: Option<&mut LiveThrottle>,
     escalation: &mut Option<PathBuf>,
+    deletes: &mut Vec<WriteMessage>,
 ) -> Option<Vec<String>> {
     // Check if the path actually exists on disk before deleting from the DB.
     // `normalized` is the absolute FS path, so this stat is correct on any volume.
-    if Path::new(normalized).symlink_metadata().is_ok() {
-        // Path still exists, so treat as a modification, not a removal (throttled
-        // like any other in-place rewrite). Deletes themselves are never throttled.
-        let parent_path = compute_parent_path(normalized);
-        return handle_creation_or_modification(
-            normalized,
-            &parent_path,
-            space,
-            conn,
-            event,
-            writer,
-            &mut origins,
-            throttle,
-            escalation,
-        );
+    match Path::new(normalized).symlink_metadata() {
+        Ok(_) => {
+            // Path still exists, so treat as a modification, not a removal (throttled
+            // like any other in-place rewrite). Deletes themselves are never throttled.
+            let parent_path = compute_parent_path(normalized);
+            return handle_creation_or_modification(
+                normalized,
+                &parent_path,
+                space,
+                conn,
+                event,
+                writer,
+                &mut origins,
+                throttle,
+                escalation,
+                deletes,
+            );
+        }
+        // Really gone: the one observation that earns a delete.
+        Err(e) if child_is_absent(&e) => {}
+        // We never got to look — a permission wall, an I/O error, a drive on its way
+        // out. ❌ Not evidence of a removal, so the row stays and a later pass heals it.
+        Err(_) => return Some(origins),
     }
 
     // Path is truly gone; resolve (mount-strip for a mount-rooted drive) and delete.
@@ -278,9 +335,9 @@ fn handle_removal(
     };
 
     if event.flags.item_is_dir {
-        let _ = writer.send(WriteMessage::DeleteSubtreeById(entry_id));
+        deletes.push(WriteMessage::DeleteSubtreeById(entry_id));
     } else {
-        let _ = writer.send(WriteMessage::DeleteEntryById(entry_id));
+        deletes.push(WriteMessage::DeleteEntryById(entry_id));
     }
 
     Some(origins)
@@ -305,23 +362,26 @@ fn handle_creation_or_modification(
     origins: &mut Vec<String>,
     throttle: Option<&mut LiveThrottle>,
     escalation: &mut Option<PathBuf>,
+    deletes: &mut Vec<WriteMessage>,
 ) -> Option<Vec<String>> {
     // Stat the file to get current metadata. `normalized` is the absolute FS path.
     let path = Path::new(normalized);
     let metadata = match std::fs::symlink_metadata(path) {
         Ok(m) => m,
+        // We never got to look at it: ❌ not evidence that it went away.
+        Err(e) if !child_is_absent(&e) => return Some(origins.clone()),
         Err(_) => {
             // Path doesn't exist (deleted since event was generated).
-            // Treat as a removal: resolve to entry ID and send integer-keyed delete.
+            // Treat as a removal: resolve to entry ID and gather an integer-keyed delete.
             // Use DeleteSubtreeById for directories to also remove child entries;
             // journal replay may coalesce child events into a parent dir event,
             // leaving orphaned children without a subtree delete.
             match space.resolve_abs(conn, normalized) {
                 Ok(Some(id)) => {
                     if event.flags.item_is_dir {
-                        let _ = writer.send(WriteMessage::DeleteSubtreeById(id));
+                        deletes.push(WriteMessage::DeleteSubtreeById(id));
                     } else {
-                        let _ = writer.send(WriteMessage::DeleteEntryById(id));
+                        deletes.push(WriteMessage::DeleteEntryById(id));
                     }
                 }
                 Ok(None) => {

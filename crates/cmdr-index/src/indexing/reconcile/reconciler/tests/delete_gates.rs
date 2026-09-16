@@ -167,6 +167,80 @@ fn an_incomplete_listing_reaps_nothing_and_still_upserts() {
     );
 }
 
+/// Index one file under `root`, then send a removal event for it after deleting it
+/// on disk. `pull_the_drive` runs between the two, before the event is processed.
+/// Reports the names the index still holds.
+fn live_removal_after_a_deletion(volume_id: &str, pull_the_drive: bool) -> Vec<String> {
+    let _serialized = crate::indexing::handle::test_lock();
+    let dir = non_excluded_tempdir();
+    let root = dir.path();
+    let doomed = root.join("doomed.txt");
+    std::fs::write(&doomed, b"doomed").expect("write doomed.txt");
+
+    let (writer, db_dir, conn) = setup_test_writer();
+    let db_path = db_dir.path().join("test-reconciler.db");
+    let root_str = root.to_string_lossy().to_string();
+    ensure_path_in_db(&db_path, &root_str, &writer);
+    {
+        let wconn = IndexStore::open_write_connection(&db_path).expect("write connection");
+        let parent_id = store::resolve_path(&wconn, &root_str)
+            .expect("resolve")
+            .expect("the root is indexed");
+        IndexStore::insert_entry_v2(&wconn, parent_id, "doomed.txt", false, false, Some(6), None, None, None)
+            .expect("index the file");
+        let next_id = IndexStore::get_next_id(&wconn).expect("next id");
+        writer.next_id().fetch_max(next_id, Ordering::Relaxed);
+    }
+
+    let drive = mount_a_drive(root, volume_id);
+    let mut reconciler = EventReconciler::new_for(
+        volume_id.to_string(),
+        IndexPathSpace::root(),
+        drive.work.child(crate::indexing::hold::HoldKind::LiveLoop),
+    );
+    reconciler.switch_to_live();
+
+    // The file really is gone, so the removal is genuine as far as the event path can
+    // tell — only the presence read can say whether the drive was there to see it.
+    std::fs::remove_file(&doomed).expect("remove doomed.txt");
+    if pull_the_drive {
+        drive.provider.mark_unmounted(root);
+    }
+
+    let event = make_event(&doomed.to_string_lossy(), 7, removed_file_flags());
+    let mut origins = HashSet::new();
+    reconciler.process_live_event(&event, &conn, &writer, &mut origins);
+    reconciler.flush_deletes(&writer);
+    writer.flush_blocking().expect("flush the batch");
+
+    let names = indexed_children(&conn, &root_str);
+    writer.shutdown();
+    names
+}
+
+/// The control: on a drive that is still listed, a real removal still deletes. A gate
+/// that withheld every delete would satisfy the test below and stop the live loop
+/// ever converging.
+#[test]
+fn a_removal_event_on_a_listed_drive_still_deletes() {
+    assert!(
+        live_removal_after_a_deletion("gate-test-live-listed", false).is_empty(),
+        "a real removal on a healthy drive is still a delete"
+    );
+}
+
+/// The case the batch gate exists for: the drive left before the event was processed,
+/// so the stat that would "prove" the removal failed for a reason that says nothing
+/// about the file.
+#[test]
+fn a_removal_event_whose_drive_left_deletes_nothing() {
+    assert_eq!(
+        live_removal_after_a_deletion("gate-test-live-left", true),
+        vec!["doomed.txt".to_string()],
+        "a drive that stopped being listed authorizes no deletes, so the row survives"
+    );
+}
+
 /// What makes a listing whole, decided on the ERRNO and ❌ never on a message.
 ///
 /// A child that vanished between `readdir` and `stat` is genuinely absent, so the

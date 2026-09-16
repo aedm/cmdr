@@ -205,6 +205,44 @@ Cold-start replay (boot disk only, has_event_journal()):
   |-- sinceWhen replay -> two-phase drain -> hands off to live mode -> spawns run_background_verification
 ```
 
+## A batch's deletes wait for one presence read
+
+An FSEvent that says "removed" is a claim the loop has to CHECK, because the check and
+the failure mode look identical: `handle_removal` stats the path, and a drive that
+went away fails that stat for every event in the batch at once. Sent per event, a
+vanishing drive deletes its own index one event at a time, and every one of those
+deletes passes a per-event test.
+
+So `process_fs_event_into` GATHERS the deletes it decides on instead of sending them,
+and the batch sends them behind one `VolumeWork::drive_is_listed` read. ❌ Never one
+read per event: a removal storm is tens of thousands of events, and that would be
+that many mount-table reads. Two rules hold it together:
+
+- **The read comes AFTER the events were stat'd.** Taken first it would miss exactly
+  the case it exists for, a drive that leaves partway through a batch.
+- **A dropped batch deletes nothing and loses nothing.** The rows stay, and the
+  delete generation (`../deletes.rs`) is what marks the index for a rebuild.
+
+Three drivers own a gate. The live loop flushes through `EventReconciler::flush_deletes`
+at the end of `process_live_batch` **and** at Pass 2's dir-removal boundary — ⚠️ the
+second one is load-bearing, not incidental: the file-removal pass relies on the dir
+removals being committed so file-siblings resolve to nothing and become cheap
+unknown-path skips (the ~3-5× saving above), and deferring every delete to the end of
+the batch would leave nothing committed for them to resolve against. The post-scan
+buffered replay flushes once at the end of `EventReconciler::replay`. Cold-start
+replay gathers per dedup batch and per HistoryDone event, through
+`send_replay_deletes`.
+
+`reconciler::process_fs_event` is kept as the immediate-send form for callers with no
+volume to name (tests, and anything hostless), matching how a generation with no mount
+identity reads as present rather than blocking a delete — see `../reconcile/DETAILS.md`
+§ "The delete gates".
+
+**A stat failure is only a removal on the right errno.** `handle_removal` and
+`handle_creation_or_modification` delete on `NotFound` / `NotADirectory` and on nothing
+else; a permission wall or an I/O error means the event was never observed, so the row
+stays. Same `child_is_absent` rule the reconcile listing uses, ❌ never a message.
+
 ## Unbounded ingestion buffer
 
 The watcher→loop channel (`mpsc::unbounded_channel`, created in `lifecycle/manager.rs`'s `start_scan` / `start_replay`)

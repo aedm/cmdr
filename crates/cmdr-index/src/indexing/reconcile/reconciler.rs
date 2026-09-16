@@ -40,6 +40,7 @@ use std::time::Duration;
 use rusqlite::Connection;
 
 use crate::indexing::IndexPathSpace;
+use crate::indexing::deletes;
 use crate::indexing::hold::VolumeWork;
 use crate::indexing::watch::watcher::FsChangeEvent;
 use crate::indexing::writer::{IndexWriter, WriteMessage};
@@ -62,6 +63,9 @@ mod throttle;
 
 pub(crate) use diff::{LiveChild, MissingRows, diff_dir_against_db};
 pub(crate) use dir_read::{FsChild, Listing, child_is_absent, read_fs_children};
+pub(crate) use events::process_fs_event_into;
+/// The immediate-send form, reached only by the per-event tests (see its doc).
+#[cfg(test)]
 pub(crate) use events::process_fs_event;
 pub(crate) use finish::{BulkReconcileGuard, finish_reconcile, send_marks};
 pub(in crate::indexing) use subtree::{ReconcileSummary, reconcile_subtree};
@@ -187,6 +191,14 @@ pub struct EventReconciler {
     /// `None` for a reconciler with no live loop behind it (a test, a one-shot
     /// subtree reconcile), where nothing is walking and everything is in scope.
     scope: Option<crate::indexing::watch::branches::WatchScope>,
+    /// Deletes this batch decided on, held until [`flush_deletes`](Self::flush_deletes)
+    /// can prove the drive was still there.
+    ///
+    /// An event whose stat failed because the drive went away looks exactly like a
+    /// removal, so sending per event would let a vanishing drive delete its own
+    /// index one event at a time. Gathering is what makes ONE presence read cover a
+    /// whole batch.
+    pending_deletes: Vec<WriteMessage>,
 }
 
 /// Everything a rescan walk needs, cloned out of the [`EventReconciler`] so the
@@ -271,7 +283,39 @@ impl EventReconciler {
             scan_trigger: ScanTrigger::Registry,
             work,
             scope: None,
+            pending_deletes: Vec::new(),
         }
+    }
+
+    /// Send the deletes this batch gathered, but only if the drive is still listed.
+    ///
+    /// ⚠️ **The presence read comes AFTER the events were stat'd**, which is the whole
+    /// point: a drive that went away mid-batch makes every stat fail, and those
+    /// failures are indistinguishable from real removals. One read per batch, ❌ never
+    /// per event — a storm is tens of thousands of events and would be that many
+    /// mount-table reads.
+    ///
+    /// A batch it drops is not lost work: nothing was deleted, so the rows stay and
+    /// the index is marked for a rebuild through the delete generation instead.
+    pub(crate) fn flush_deletes(&mut self, writer: &IndexWriter) {
+        if self.pending_deletes.is_empty() {
+            return;
+        }
+        if !self.work.drive_is_listed() {
+            log::info!(
+                "Reconciler: '{}' stopped being listed, so {} went unsent rather than deleting rows against a drive that left",
+                self.volume_id,
+                pluralize(self.pending_deletes.len() as u64, "gathered delete"),
+            );
+            self.pending_deletes.clear();
+            return;
+        }
+        // A `Some(true)` here is also the presence half of the delete generation's reset.
+        deletes::drive_seen(self.work.volume_id());
+        for message in self.pending_deletes.drain(..) {
+            let _ = writer.send(message);
+        }
+        deletes::batch_sent(self.work.volume_id());
     }
 
     /// Tell this reconciler how much of its volume the loop behind it answers for.
@@ -376,7 +420,15 @@ impl EventReconciler {
             // a rescan (no live queueing during replay); the live loop that follows
             // drains them via `kick_pending_rescans`.
             let mut escalation: Option<PathBuf> = None;
-            if let Some(paths) = process_fs_event(event, &self.space, conn, writer, None, &mut escalation) {
+            if let Some(paths) = process_fs_event_into(
+                event,
+                &self.space,
+                conn,
+                writer,
+                None,
+                &mut escalation,
+                &mut self.pending_deletes,
+            ) {
                 origin_dirs.extend(paths);
             }
             if let Some(anchor) = escalation {
@@ -386,6 +438,9 @@ impl EventReconciler {
             last_event_id = event.event_id;
             processed += 1;
         }
+
+        // The replay is one batch, so its deletes take one presence read.
+        self.flush_deletes(writer);
 
         // Hand the caller every ORIGIN dir the replay touched (the dirs whose own
         // listings changed). The caller expands to the ancestor closure for the
@@ -455,13 +510,14 @@ impl EventReconciler {
         // the index, `process_fs_event` sets `escalation` to the rescan anchor
         // instead of dropping the credit. Live mode queues it right away.
         let mut escalation: Option<PathBuf> = None;
-        if let Some(origins) = process_fs_event(
+        if let Some(origins) = process_fs_event_into(
             event,
             &self.space,
             conn,
             writer,
             Some(&mut self.throttle),
             &mut escalation,
+            &mut self.pending_deletes,
         ) {
             pending_origins.extend(origins);
         }
