@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use super::in_flight_temps::TempHome;
+use super::in_flight_temps::{self, ItemKind, TrackedRecord};
 use super::state::WriteOperationState;
 use super::types::{RecoveredOriginal, WriteOperationError};
 use super::unique_name::{NameCandidates, RESCUE_NAME_ATTEMPTS, recovered_sibling};
@@ -93,23 +93,42 @@ where
     // unlike the async cross-volume path (`transfer/staged_write.rs`), landing
     // here is one synchronous syscall, so there is no window in which the temp
     // holds the only complete copy of anything.
-    super::in_flight_temps::register(state, temp_path, Some(TempHome::LocalFs));
+    let temp_record = in_flight_temps::track(state, ItemKind::Temp, temp_path);
 
     // Step 1: fill the temp.
     let bytes = match write_bytes(temp_path) {
         Ok(bytes) => bytes,
         Err(e) => {
-            discard_temp(state, temp_path);
+            discard_temp(state, &temp_record);
             return Err(e);
         }
     };
 
     // Step 2: move the existing entry out of the way (overwrite only).
+    //
+    // Recorded BEFORE the rename, with the size the replacement is about to
+    // reach: a crash between the rename and the record would leave the user's
+    // original wearing a scratch name with nothing that knows what it is. A
+    // record for a rename that then fails is retired a line later, and would
+    // have cost one `already gone` either way.
     let aside = replacing.then(|| StagingTemp::mint_aside(dest, uuid, owner));
+    let aside_record = aside.as_ref().map(|aside| {
+        in_flight_temps::track(
+            state,
+            ItemKind::FileAside {
+                destination: dest.to_path_buf(),
+                expected_size: bytes,
+            },
+            aside.path(),
+        )
+    });
     if let Some(aside) = &aside
         && let Err(e) = fs::rename(dest, aside.path())
     {
-        discard_temp(state, temp_path);
+        if let Some(record) = &aside_record {
+            in_flight_temps::retire(state, record);
+        }
+        discard_temp(state, &temp_record);
         return Err(WriteOperationError::IoError {
             path: dest.display().to_string(),
             message: format!("Failed to set aside existing destination: {}", e),
@@ -120,19 +139,30 @@ where
     if let Err(e) = land_temp(temp_path, dest, replacing) {
         // Restore the aside if we set one. If the restore ALSO fails, the user's
         // original survives orphaned under the recognizable `.cmdr-temp-<uuid>`
-        // name; log so the trail tells anyone it's recoverable (AGENTS.md
-        // principle 1: protect the user's data).
-        if let Some(aside) = &aside
-            && let Err(restore_err) = fs::rename(aside.path(), dest)
-        {
-            crate::log_error!(
-                "stage_and_land_file: failed to restore aside {} -> {}: {}",
-                aside.path().display(),
-                dest.display(),
-                restore_err
-            );
+        // name, and its RECORD survives with it, so the next launch (or the
+        // drive's return) puts it back rather than leaving it for someone to
+        // find by hand (AGENTS.md principle 1: protect the user's data).
+        if let Some(aside) = &aside {
+            match fs::rename(aside.path(), dest) {
+                Ok(()) => {
+                    if let Some(record) = &aside_record {
+                        in_flight_temps::retire(state, record);
+                    }
+                }
+                Err(restore_err) => {
+                    crate::log_error!(
+                        "stage_and_land_file: failed to restore aside {} -> {}: {}",
+                        aside.path().display(),
+                        dest.display(),
+                        restore_err
+                    );
+                    if let Some(record) = aside_record {
+                        in_flight_temps::keep_for_arrival(state, record);
+                    }
+                }
+            }
         }
-        discard_temp(state, temp_path);
+        discard_temp(state, &temp_record);
         // A destination that appeared underneath a non-replacing write is a
         // typed outcome the caller acts on, not an opaque IO failure.
         return Err(match e.kind() {
@@ -146,7 +176,7 @@ where
         });
     }
     // The temp is gone (it IS `dest` now), so it stops being a partial.
-    super::in_flight_temps::deregister(state, temp_path, Some(TempHome::LocalFs));
+    in_flight_temps::retire(state, &temp_record);
 
     // Step 4: Delete the renamed-aside original (non-critical, ignore errors).
     // Use remove_dir_all for directory asides (file-over-folder overwrite).
@@ -156,11 +186,27 @@ where
     // unexpectedly filling the user's drive on a large Overwrite. Consequence:
     // rollback removes new files but can't restore overwritten originals.
     // Revisit if users complain. See transfer/volume/DETAILS.md § "Overwrite isn't reversible".
+    //
+    // The record only retires when the removal really happened. One that didn't
+    // leaves the user's original on disk under a scratch name, and the sweep's
+    // exact-size rule then settles it against the file that took its place.
     if let Some(aside) = &aside {
-        if aside.path().is_dir() {
-            let _ = fs::remove_dir_all(aside.path());
+        let removed = if aside.path().is_dir() {
+            fs::remove_dir_all(aside.path())
         } else {
-            let _ = fs::remove_file(aside.path());
+            fs::remove_file(aside.path())
+        };
+        match (removed, aside_record) {
+            (_, None) => {}
+            (Ok(()), Some(record)) => in_flight_temps::retire(state, &record),
+            (Err(e), Some(record)) => {
+                log::debug!(
+                    target: "copy",
+                    "couldn't remove the replaced original at {}: {e}. It keeps its record.",
+                    aside.path().display()
+                );
+                in_flight_temps::keep_for_arrival(state, record);
+            }
         }
     }
 
@@ -173,9 +219,38 @@ where
 /// disk, since the caller reports the item failed and never deletes a source),
 /// so there is nothing to preserve. Best-effort: a temp a wedged thread still
 /// holds open may refuse to go, which is why it wears a recognizable name.
-fn discard_temp(state: &Arc<WriteOperationState>, temp_path: &Path) {
-    let _ = fs::remove_file(temp_path);
-    super::in_flight_temps::deregister(state, temp_path, Some(TempHome::LocalFs));
+///
+/// ❗ The record only retires on a removal that HAPPENED. A `NotFound` is the
+/// settled answer only while the destination drive is still listed: on a drive
+/// that was pulled, "not found" is the mount being gone, and the partial is
+/// still sitting on the drive in the user's hand. That record stays, and joins
+/// the pending set, so plugging the drive back in this same session sweeps it.
+fn discard_temp(state: &Arc<WriteOperationState>, temp: &TrackedRecord) {
+    let settled = match fs::remove_file(temp.absolute()) {
+        Ok(()) => true,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => !destination_has_left(state),
+        Err(e) => {
+            log::debug!(
+                target: "copy",
+                "couldn't remove the partial at {}: {e}. It keeps its record.",
+                temp.absolute().display()
+            );
+            false
+        }
+    };
+    if settled {
+        in_flight_temps::retire(state, temp);
+    } else {
+        in_flight_temps::keep_for_arrival(state, temp.clone());
+    }
+}
+
+/// Whether the mount table SAYS this operation's destination drive is gone.
+///
+/// `false` for an operation with no second side and for a table that couldn't be
+/// read: neither is evidence of leaving.
+fn destination_has_left(state: &WriteOperationState) -> bool {
+    state.sides.as_ref().is_some_and(|sides| sides.destination.has_left())
 }
 
 /// Renames `temp` onto `dest`, refusing to replace an existing entry unless
@@ -268,26 +343,49 @@ pub(super) fn rename_no_replace(temp: &Path, dest: &Path) -> std::io::Result<()>
 ///
 /// The guard rides along so the aside stays hidden from the pane for exactly as
 /// long as it's on disk.
-#[cfg_attr(test, derive(Debug))]
 pub(crate) struct DisplacedEntry {
     aside: StagingTemp,
     /// Where it came from, and where [`DisplacedEntry::restore`] puts it back.
     original: PathBuf,
+    /// The ledger's record of it, retired by whichever ending really happened.
+    /// A record that outlives the process is what gets the file back after a
+    /// crash, and the operation is the one that knows which ending it was.
+    record: TrackedRecord,
+    /// Kept so every ending can reach the ledger; `DisplacedEntry` outlives the
+    /// call that made it (the transaction holds it for the rest of the copy).
+    state: Arc<WriteOperationState>,
+}
+
+/// Hand-rolled rather than derived: the entry now carries the operation's
+/// state, which has no `Debug` of its own and would say nothing useful in a
+/// test dump anyway. The two paths are the whole story.
+#[cfg(test)]
+impl std::fmt::Debug for DisplacedEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DisplacedEntry")
+            .field("aside", &self.aside.path())
+            .field("original", &self.original)
+            .finish()
+    }
 }
 
 impl DisplacedEntry {
     /// Puts the entry back at its own name. Best-effort: something else standing
     /// there is left alone, and a failed rename leaves the aside on disk under
-    /// its recognizable name with a log line saying where it belongs.
+    /// its recognizable name, with its RECORD, so the sweep answers for it.
     pub(crate) fn restore(self) {
         let aside = self.aside.path();
-        if let Err(e) = rename_no_replace(aside, &self.original) {
-            crate::log_error!(
-                "DisplacedEntry::restore: failed to put {} back at {}: {}",
-                aside.display(),
-                self.original.display(),
-                e
-            );
+        match rename_no_replace(aside, &self.original) {
+            Ok(()) => in_flight_temps::retire(&self.state, &self.record),
+            Err(e) => {
+                crate::log_error!(
+                    "DisplacedEntry::restore: failed to put {} back at {}: {}",
+                    aside.display(),
+                    self.original.display(),
+                    e
+                );
+                in_flight_temps::keep_for_arrival(&self.state, self.record.clone());
+            }
         }
     }
 
@@ -315,7 +413,10 @@ impl DisplacedEntry {
         let mut candidate = recovered.clone();
         loop {
             match rename_no_replace(self.aside.path(), &candidate) {
-                Ok(()) => return RecoveredOriginal::new(&self.original, &candidate),
+                Ok(()) => {
+                    in_flight_temps::retire(&self.state, &self.record);
+                    return RecoveredOriginal::new(&self.original, &candidate);
+                }
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
                 Err(e) => {
                     crate::log_error!(
@@ -323,6 +424,7 @@ impl DisplacedEntry {
                         self.aside.path().display(),
                         e
                     );
+                    in_flight_temps::keep_for_arrival(&self.state, self.record.clone());
                     return RecoveredOriginal::new(&self.original, self.aside.path());
                 }
             }
@@ -331,6 +433,7 @@ impl DisplacedEntry {
                     "DisplacedEntry::keep_as_recovered_sibling: every ` (N)` variant of {} is taken",
                     recovered.display()
                 );
+                in_flight_temps::keep_for_arrival(&self.state, self.record.clone());
                 return RecoveredOriginal::new(&self.original, self.aside.path());
             }
             candidate = candidates.current();
@@ -339,13 +442,25 @@ impl DisplacedEntry {
     }
 
     /// Drops the entry for good, the operation having committed the thing that
-    /// replaced it. Non-critical: a leftover wears a recognizable name.
+    /// replaced it. Non-critical: a leftover wears a recognizable name, and
+    /// keeps its record so a sweep gives it a real one.
     pub(crate) fn discard(self) {
         let aside = self.aside.path();
-        if aside.is_dir() {
-            let _ = fs::remove_dir_all(aside);
+        let removed = if aside.is_dir() {
+            fs::remove_dir_all(aside)
         } else {
-            let _ = fs::remove_file(aside);
+            fs::remove_file(aside)
+        };
+        match removed {
+            Ok(()) => in_flight_temps::retire(&self.state, &self.record),
+            Err(e) => {
+                log::debug!(
+                    target: "copy",
+                    "couldn't remove the displaced original at {}: {e}. It keeps its record.",
+                    aside.display()
+                );
+                in_flight_temps::keep_for_arrival(&self.state, self.record.clone());
+            }
         }
     }
 }
@@ -362,13 +477,28 @@ pub(super) fn displace_with_directory(
     dest: &Path,
 ) -> Result<DisplacedEntry, WriteOperationError> {
     let aside = StagingTemp::mint_aside(dest, Uuid::new_v4(), state.liveness_token());
-    fs::rename(dest, aside.path()).map_err(|e| WriteOperationError::IoError {
-        path: dest.display().to_string(),
-        message: format!("Failed to set aside existing destination: {}", e),
-    })?;
+    // Recorded before the rename, for the same reason `stage_and_land_file`
+    // records its aside there: a crash in between would leave the user's file
+    // under a scratch name with nothing that knows what it is.
+    let record = in_flight_temps::track(
+        state,
+        ItemKind::DisplacedFile {
+            destination: dest.to_path_buf(),
+        },
+        aside.path(),
+    );
+    if let Err(e) = fs::rename(dest, aside.path()) {
+        in_flight_temps::retire(state, &record);
+        return Err(WriteOperationError::IoError {
+            path: dest.display().to_string(),
+            message: format!("Failed to set aside existing destination: {}", e),
+        });
+    }
     let displaced = DisplacedEntry {
         aside,
         original: dest.to_path_buf(),
+        record,
+        state: Arc::clone(state),
     };
     if let Err(e) = fs::create_dir(dest) {
         displaced.restore();
@@ -420,7 +550,11 @@ pub(super) fn displace_with_directory(
 /// leave a half-written entry at `dest`, but the original is recoverable
 /// from the aside even on a crash — the aside has the recognizable
 /// `cmdr-temp-` prefix so a user can restore it by hand.
-pub(super) fn safe_overwrite_dir<F>(dest: &Path, materialize: F) -> Result<(), WriteOperationError>
+pub(super) fn safe_overwrite_dir<F>(
+    state: &Arc<WriteOperationState>,
+    dest: &Path,
+    materialize: F,
+) -> Result<(), WriteOperationError>
 where
     F: FnOnce(&Path) -> Result<(), WriteOperationError>,
 {
@@ -428,10 +562,21 @@ where
     // pane for as long as it's on disk.
     let aside = StagingTemp::mint_aside(dest, Uuid::new_v4(), None);
     let aside_path = aside.path();
+    // And the ledger outlives the function, which is what the guard can't do: a
+    // force-quit while `materialize` is halfway through a subtree leaves this
+    // aside holding the only copy of whatever was at `dest`.
+    let record = in_flight_temps::track(
+        state,
+        ItemKind::DirOverwriteAside {
+            destination: dest.to_path_buf(),
+        },
+        aside_path,
+    );
 
     // Step 1: Rename existing dest aside. This survives a crash: the original
-    // is recognizable on next launch and the user can rename it back by hand.
+    // is recognizable on next launch and the sweep puts it back.
     if let Err(e) = fs::rename(dest, aside_path) {
+        in_flight_temps::retire(state, &record);
         return Err(WriteOperationError::IoError {
             path: dest.display().to_string(),
             message: format!("Failed to set aside existing destination: {}", e),
@@ -444,12 +589,14 @@ where
 
     match materialize_result {
         Ok(()) => {
-            // Step 3: Remove the aside. Best-effort; a leftover is recognizable.
-            if aside_path.is_dir() {
-                let _ = fs::remove_dir_all(aside_path);
+            // Step 3: Remove the aside. Best-effort; a leftover is recognizable
+            // and keeps its record, so a sweep gives it a real name.
+            let removed = if aside_path.is_dir() {
+                fs::remove_dir_all(aside_path)
             } else {
-                let _ = fs::remove_file(aside_path);
-            }
+                fs::remove_file(aside_path)
+            };
+            settle_aside_record(state, record, removed, aside_path);
             Ok(())
         }
         Err(e) => {
@@ -462,7 +609,8 @@ where
                     let _ = fs::remove_file(dest);
                 }
             }
-            if let Err(restore_err) = fs::rename(aside_path, dest) {
+            let restored = fs::rename(aside_path, dest);
+            if let Err(restore_err) = &restored {
                 crate::log_error!(
                     "safe_overwrite_dir: failed to restore aside {} -> {}: {}",
                     aside_path.display(),
@@ -470,7 +618,33 @@ where
                     restore_err
                 );
             }
+            settle_aside_record(state, record, restored, aside_path);
             Err(e)
+        }
+    }
+}
+
+/// Retires an aside's record when the thing that was meant to happen to it
+/// really did, and keeps it for a sweep when it didn't.
+///
+/// ❗ The asymmetry is the point: a record that stays costs one line in a log
+/// file, and a record retired over a removal that silently failed costs the user
+/// their file.
+fn settle_aside_record(
+    state: &Arc<WriteOperationState>,
+    record: TrackedRecord,
+    outcome: std::io::Result<()>,
+    aside_path: &Path,
+) {
+    match outcome {
+        Ok(()) => in_flight_temps::retire(state, &record),
+        Err(e) => {
+            log::debug!(
+                target: "copy",
+                "the aside at {} is still there ({e}), so it keeps its record",
+                aside_path.display()
+            );
+            in_flight_temps::keep_for_arrival(state, record);
         }
     }
 }

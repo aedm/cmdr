@@ -1,33 +1,56 @@
-//! The `.cmdr-tmp-*` partials Cmdr is writing RIGHT NOW, kept in two ledgers.
+//! What Cmdr has on a disk RIGHT NOW that isn't the user's file yet, kept in two
+//! ledgers.
 //!
 //! - **The operation's own**, `WriteOperationState::in_flight_temps`, in memory.
 //!   It answers "what did this operation's abandoned tasks leave behind?" while
 //!   the operation is still alive, and its sweep is
-//!   `transfer::volume::cleanup::clean_abandoned_staged_writes`.
+//!   `transfer::volume::cleanup::clean_abandoned_staged_writes`. ❗ Staged
+//!   partials only: that sweep DELETES what it finds, and an aside or a staging
+//!   directory can hold the user's only copy.
 //! - **A process-wide file in the app data dir**, so the answer survives the
 //!   process. An in-memory list dies with a force-quit or a crash — exactly the
-//!   two endings that leave partials — and the directory scan that would
+//!   two endings that leave leftovers — and the directory scan that would
 //!   otherwise find them (`reap_stale_transfer_temps`)
 //!   only runs when something copies into that same directory, and only for
 //!   leftovers over an hour old. So a quit-orphaned temp could sit there for
-//!   days. [`sweep_persisted_orphans`] clears the recorded ones at the next
-//!   launch instead.
+//!   days. The sweep in `in_flight_sweep.rs` clears the recorded ones at the
+//!   next launch instead, and again whenever a volume they wait on returns.
 //!
 //! **No age gate on the persisted sweep, and that's safe.** The hour the
 //! directory scan waits exists to protect a temp a CONCURRENT Cmdr is streaming
 //! into. These paths aren't guesses from a name pattern: each one is a path this
 //! app recorded when it minted the UUID in it, so no other instance can own it,
 //! and the instance lock already keeps two processes off one data dir. What is
-//! recorded and still on disk at startup is ours and is garbage.
+//! recorded and still on disk at startup is ours.
+//!
+//! ## Three things get recorded, and only one of them is disposable
+//!
+//! A **temp** (`.cmdr-tmp-*`) holds bytes on their way in; nothing else has
+//! them, so a leftover is garbage and goes. An **aside** (`.cmdr-temp-*`) holds
+//! bytes that were ALREADY the user's, renamed out of the way so a replacement
+//! could take their name — a leftover one is a file whose replacement never
+//! landed, and removing it would be the one unrecoverable mistake this whole
+//! module exists to prevent. A **staging directory** (`.cmdr-staging-<op>`) is a
+//! cross-filesystem move's half-built tree, which can be the only copy of
+//! everything in it when the drive left before Phase 3 ran.
+//!
+//! So a record carries its [`ItemKind`], and `in_flight_sweep.rs` acts per kind.
 //!
 //! ## A record names its path space, not just its path
 //!
 //! A staged partial is a sibling of the file being written, so it lives wherever
-//! the DESTINATION lives: on the local filesystem for a local copy, and in an
-//! SMB / SFTP / WebDAV / MTP volume's own path space for a transfer to one. A
-//! path alone can't tell those apart, so every record carries a [`TempHome`]:
-//! either the local filesystem, or a volume ID. The sweep then deletes through
-//! the volume that wrote it (`Volume::delete`), never through `std::fs`.
+//! the DESTINATION lives: on the local filesystem for a Mac-internal copy, and
+//! in an SMB / SFTP / WebDAV / MTP volume's own path space for a transfer to
+//! one. A path alone can't tell those apart, so every record carries a home:
+//! either the local filesystem, or a volume ID.
+//!
+//! **A path on a removable drive is volume-homed too**, even though it's an
+//! ordinary local path. A drive can be unplugged at the next launch, and a
+//! record resolved against its mount point then reads as already gone — so the
+//! ledger forgets the only trace of a leftover that's still sitting on the
+//! drive. Volume-homed, the record is deferred to the drive's return instead,
+//! and its path is stored RELATIVE to the volume root, so a remount at
+//! `/Volumes/Backups 1` still finds it ([`home_for`]).
 //!
 //! **A volume the sweep can't reach keeps its record.** The startup sweep runs
 //! before `init_volume_manager`, and a NAS registers later still (or not at all
@@ -59,23 +82,29 @@
 //!   log is rewritten down to just what's recorded (a handful of paths), so
 //!   nothing accumulates across a long copy or a long session.
 //!
-//! The format is one line per record: `+` or `-`, then the record as a JSON
-//! value (so a newline in a filename can't forge a record). A bare JSON STRING
-//! is a local path; a JSON OBJECT (`{"volume_id":…,"path":…}`) is a path in that
-//! volume's space. A trailing torn line — the process died mid-`write` — is
+//! The format is one line per record: an op byte, then the record as a JSON
+//! value (so a newline in a filename can't forge a record). `+` and `-` add and
+//! retire a bare TEMP, in the shape every build since the ledger existed writes:
+//! a JSON STRING for a local path, a JSON OBJECT (`{"volume_id":…,"path":…}`)
+//! for a path in that volume's space. `A` and `a` add and retire a KINDED record
+//! ([`TrackedItem`]). A trailing torn line — the process died mid-`write` — is
 //! ignored on read. A path that isn't valid UTF-8 can't be written as JSON and
 //! goes unrecorded; the hour-gated directory scan remains its backstop.
+//!
+//! **Why two op bytes rather than one widened shape.** A build without the
+//! kinded records skips an op byte it doesn't know and truncates the log at
+//! launch, so rolling back to it forgets these records and deletes nothing. A
+//! widened `+` line would have been read by that build as a temp, and a temp is
+//! the one kind it removes on sight — which is exactly the aside it must never
+//! touch.
 
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{LazyLock, Mutex, Once};
 
-use serde::{Deserialize, Serialize};
-
 use super::state::WriteOperationState;
-use crate::file_system::volume::VolumeError;
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::ignore_poison::IgnorePoison;
 
@@ -86,52 +115,6 @@ const STORE_FILENAME: &str = "in-flight-temps.log";
 /// Small enough that a session never carries a big file, large enough that a
 /// serial copy doesn't rewrite after every single file (~50 files' worth).
 const COMPACT_ABOVE_BYTES: u64 = 8 * 1024;
-
-/// Which path space a partial lives in, so a later launch reaches it through the
-/// same one that wrote it.
-///
-/// ❌ Never guess this from the path. An absolute-looking path means one thing
-/// on the local filesystem and quite another inside a share's own namespace, and
-/// resolving the wrong one is how a sweep silently does nothing on a NAS — or,
-/// worse, removes a local file the ledger never meant.
-#[derive(Clone, Copy, Debug)]
-pub(super) enum TempHome<'a> {
-    /// The local filesystem, addressed by an absolute OS path. What
-    /// `overwrite.rs`'s synchronous staging writes.
-    LocalFs,
-    /// One volume's own path space, keyed by the volume ID — the identity that
-    /// survives a remount, so a record written last week still names the same
-    /// share today.
-    Volume(&'a str),
-}
-
-/// One partial as the log holds it.
-///
-/// Serialized untagged, which is what makes the two shapes tell themselves
-/// apart on disk and keeps a local record byte-identical to what every earlier
-/// build wrote.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(untagged)]
-enum RecordedTemp {
-    /// A path on the local filesystem.
-    ///
-    /// This is also what a BARE-PATH line means: that's all the old one-field
-    /// format could express correctly, since a volume path recorded without its
-    /// volume resolves against the local filesystem — usually as nothing, and
-    /// occasionally as somebody else's file.
-    Local(PathBuf),
-    /// A path in one volume's own space.
-    OnVolume(VolumeTemp),
-}
-
-/// A partial living in a volume's path space.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-struct VolumeTemp {
-    /// The volume ID the path belongs to (`cmdr_fs::volume::ids`).
-    volume_id: String,
-    /// The path, in that volume's own space.
-    path: PathBuf,
-}
 
 /// What one sweep did, so the outcome is observable rather than inferred from
 /// files that quietly aren't there any more.
@@ -146,7 +129,7 @@ struct VolumeTemp {
 // The counts are this run's own tallies, not a claim about the disk.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct SweepTally {
-    /// Partials this sweep removed.
+    /// Leftovers this sweep removed.
     pub swept: usize,
     /// Records whose file was already gone — the common, healthy case (the temp
     /// landed under its real name before the crash).
@@ -156,6 +139,12 @@ pub struct SweepTally {
     /// Records the sweep refused to act on (a path that isn't one of our
     /// scratch files) or couldn't remove.
     pub left_alone: usize,
+    /// Originals an aside put back at their own name, because the replacement
+    /// that displaced them never landed.
+    pub restored: usize,
+    /// Originals kept under a ` (recovered)` name, because something else is
+    /// standing where they belong.
+    pub recovered: usize,
 }
 
 impl SweepTally {
@@ -170,6 +159,8 @@ impl SweepTally {
         self.already_gone += other.already_gone;
         self.deferred += other.deferred;
         self.left_alone += other.left_alone;
+        self.restored += other.restored;
+        self.recovered += other.recovered;
     }
 }
 
@@ -187,19 +178,30 @@ struct Store {
     /// check costs no syscall.
     logged_bytes: u64,
     /// Every record the log currently claims exists: this session's in-flight
-    /// partials plus the deferred orphans below. Compaction rewrites the log
+    /// leftovers plus the deferred orphans below. Compaction rewrites the log
     /// from exactly this set, so anything missing here is forgotten on disk.
-    recorded: BTreeSet<RecordedTemp>,
-    /// The deferred orphans: recorded by an EARLIER run, on a volume that hasn't
-    /// shown up in the registry yet. A subset of [`recorded`](Self::recorded) —
-    /// never this session's own live partials, which nothing may sweep.
-    pending: BTreeSet<VolumeTemp>,
+    recorded: BTreeSet<Record>,
+    /// The deferred orphans: recorded by an EARLIER run or by this one, on a
+    /// volume that isn't reachable right now. A subset of
+    /// [`recorded`](Self::recorded), and volume-homed by construction — a local
+    /// record has nothing to wait for.
+    pending: BTreeSet<Record>,
 }
 
 static STORE: LazyLock<Mutex<Store>> = LazyLock::new(|| Mutex::new(Store::default()));
 
 /// Guards the one-time install of the volume-arrival listener.
 static ARRIVAL_LISTENER: Once = Once::new();
+
+/// Asks the registry to tell us when a volume arrives, once per process.
+///
+/// Installed lazily, so an app whose ledger stays clean (the overwhelming case)
+/// carries no listener at all.
+fn ensure_arrival_listener() {
+    ARRIVAL_LISTENER.call_once(|| {
+        get_volume_manager().on_volume_arrival(sweep::on_volume_arrival);
+    });
+}
 
 /// Records `temp` as a partial this operation is writing, in both ledgers.
 ///
@@ -224,7 +226,7 @@ pub(super) fn register(state: &WriteOperationState, temp: &Path, home: Option<Te
     };
     let mut store = STORE.lock_ignore_poison();
     store.recorded.insert(record.clone());
-    append(&mut store, b'+', &record);
+    append(&mut store, record.add_op(), &record);
 }
 
 /// Stops tracking `temp`: it landed under its real name, or it's gone. `home`
@@ -236,19 +238,103 @@ pub(super) fn deregister(state: &WriteOperationState, temp: &Path, home: Option<
     };
     let mut store = STORE.lock_ignore_poison();
     store.recorded.remove(&record);
-    append(&mut store, b'-', &record);
+    append(&mut store, record.retire_op(), &record);
     compact_if_large(&mut store);
 }
 
 /// The log-shaped record for a path in `home`.
-fn record_for(temp: &Path, home: Option<TempHome<'_>>) -> Option<RecordedTemp> {
-    match home? {
-        TempHome::LocalFs => Some(RecordedTemp::Local(temp.to_path_buf())),
-        TempHome::Volume(volume_id) => Some(RecordedTemp::OnVolume(VolumeTemp {
+fn record_for(temp: &Path, home: Option<TempHome<'_>>) -> Option<Record> {
+    let temp = match home? {
+        TempHome::LocalFs => RecordedTemp::Local(temp.to_path_buf()),
+        TempHome::Volume(volume_id) => RecordedTemp::OnVolume(VolumeTemp {
             volume_id: volume_id.to_string(),
             path: temp.to_path_buf(),
-        })),
+        }),
+    };
+    Some(Record::Legacy(temp))
+}
+
+/// Records something at `absolute` under the rules its `kind` earns at the next
+/// sweep, and hands back the record for whoever made it to settle.
+///
+/// Paths in `kind` are absolute too, as every producer holds them; the record
+/// states them the way its home needs.
+///
+/// A TEMP also joins the operation's own in-memory ledger, the way [`register`]
+/// does. ❌ Nothing else may: that ledger's sweep deletes what it finds, and
+/// every other kind can be the user's only copy.
+pub(super) fn track(state: &WriteOperationState, kind: ItemKind, absolute: &Path) -> TrackedRecord {
+    record(state, home_for(state, absolute), kind, absolute)
+}
+
+/// [`track`], with the path space named outright rather than worked out from
+/// the operation's sides.
+///
+/// For the cross-volume engine, whose paths are already in the destination
+/// volume's own namespace ([`RecordHome::volume_space`]).
+pub(super) fn track_in(
+    state: &WriteOperationState,
+    home: RecordHome,
+    kind: ItemKind,
+    path: &Path,
+) -> TrackedRecord {
+    record(state, home, kind, path)
+}
+
+/// [`track`] and [`track_in`]'s shared body.
+fn record(state: &WriteOperationState, home: RecordHome, kind: ItemKind, absolute: &Path) -> TrackedRecord {
+    let kind = match kind.destination() {
+        Some(destination) => {
+            let stated = home.record_path(destination);
+            kind.with_destination(stated)
+        }
+        None => kind,
+    };
+    let is_temp = matches!(kind, ItemKind::Temp);
+    let record = Record::Tracked(TrackedItem {
+        kind,
+        path: home.record_path(absolute),
+        home: home.home,
+    });
+
+    if is_temp {
+        state.in_flight_temps.lock_ignore_poison().push(absolute.to_path_buf());
     }
+    let mut store = STORE.lock_ignore_poison();
+    store.recorded.insert(record.clone());
+    append(&mut store, record.add_op(), &record);
+
+    TrackedRecord {
+        record,
+        absolute: absolute.to_path_buf(),
+    }
+}
+
+/// The thing this record names is settled — it landed under its real name, or
+/// it's provably gone — so stop claiming it exists.
+pub(super) fn retire(state: &WriteOperationState, record: &TrackedRecord) {
+    state
+        .in_flight_temps
+        .lock_ignore_poison()
+        .retain(|p| p != &record.absolute);
+    retire_record(&record.record);
+}
+
+/// The thing is still on disk and its volume isn't reachable, so hold the record
+/// and act on it the moment that volume comes back — this session included.
+///
+/// A local-homed record just stays recorded: the next launch's sweep is what
+/// answers for it, since the boot volume never "arrives".
+pub(super) fn keep_for_arrival(state: &WriteOperationState, record: TrackedRecord) {
+    state
+        .in_flight_temps
+        .lock_ignore_poison()
+        .retain(|p| p != &record.absolute);
+    if record.record.volume_id().is_none() {
+        return;
+    }
+    STORE.lock_ignore_poison().pending.insert(record.record);
+    ensure_arrival_listener();
 }
 
 /// Pushes whatever the ledger is holding out to the kernel, so the next launch's
@@ -274,7 +360,7 @@ pub fn flush() {
 /// that it has finished.
 ///
 /// **The launch path drops it.** Waiting there is the one thing this must never
-/// do: a recorded partial can sit on a Finder-mounted NAS that is no longer
+/// do: a recorded leftover can sit on a Finder-mounted NAS that is no longer
 /// answering, and `unlink` on a dead mount blocks for a minute or two, which
 /// reads to the user as an app that won't launch. Whoever can afford to wait —
 /// a test asserting on what the sweep removed — calls [`SweepHandle::wait`]
@@ -309,16 +395,16 @@ impl SweepHandle {
             return SweepTally::default();
         };
         handle.join().unwrap_or_else(|_| {
-            log::warn!(target: "copy", "the orphaned-partial sweep panicked; some partials may remain");
+            log::warn!(target: "copy", "the orphaned-leftover sweep panicked; some leftovers may remain");
             SweepTally::default()
         })
     }
 }
 
-/// Points the persisted ledger at the app data dir and clears whatever an
+/// Points the persisted ledger at the app data dir and settles whatever an
 /// earlier run left behind. Call once at startup, before any copy can start.
 ///
-/// Only the app-data-dir work happens inline. **The deletes go to their own
+/// Only the app-data-dir work happens inline. **The disk work goes to its own
 /// thread** (see [`SweepHandle`] for why nothing on the launch path waits on
 /// it): the records it acts on were already retired from the log by the
 /// truncate below, so a new copy can start underneath it safely.
@@ -344,7 +430,7 @@ pub fn init_and_sweep(data_dir: &Path) -> SweepHandle {
         Err(e) => log::warn!(
             target: "copy",
             "couldn't open the in-flight temp ledger at {}: {e}. A copy interrupted this session will \
-             leave its partial for the next transfer into that directory to reap.",
+             leave its leftovers for the next transfer into that directory to reap.",
             path.display()
         ),
     }
@@ -354,200 +440,51 @@ pub fn init_and_sweep(data_dir: &Path) -> SweepHandle {
     }
 
     // Split by path space. The local ones this thread can act on directly; a
-    // volume's can only be reached through its volume, which at this point in
-    // the launch usually isn't registered yet.
-    let mut locals: Vec<PathBuf> = Vec::new();
-    let mut on_volumes: Vec<VolumeTemp> = Vec::new();
-    for record in recorded {
-        match record {
-            RecordedTemp::Local(path) => locals.push(path),
-            RecordedTemp::OnVolume(temp) => on_volumes.push(temp),
-        }
-    }
+    // volume's can only be reached once that volume is registered, which at this
+    // point in the launch it usually isn't.
+    let (on_volumes, locals): (Vec<Record>, Vec<Record>) =
+        recorded.into_iter().partition(|record| record.volume_id().is_some());
     if !on_volumes.is_empty() {
         defer(on_volumes);
-        // Installed only once a launch has something waiting on a volume, so an
-        // app whose ledger is clean (the overwhelming case) carries no listener.
-        ARRIVAL_LISTENER.call_once(|| {
-            get_volume_manager().on_volume_arrival(sweep_arrived_volume);
-        });
+        ensure_arrival_listener();
     }
 
     match std::thread::Builder::new()
         .name("cmdr-temp-sweep".to_string())
-        .spawn(move || sweep_persisted_orphans(&locals))
+        .spawn(move || sweep::persisted_orphans(&locals))
     {
         Ok(sweep) => SweepHandle(Some(sweep)),
         Err(e) => {
-            log::warn!(target: "copy", "couldn't start the orphaned-partial sweep: {e}");
+            log::warn!(target: "copy", "couldn't start the orphaned-leftover sweep: {e}");
             SweepHandle(None)
         }
     }
 }
 
-/// Re-records `temps` and holds them until their volumes show up.
+/// Re-records `records` and holds the ones with a volume to wait for.
 ///
 /// The re-record is what carries them past the truncate in [`init_and_sweep`]:
 /// a record the sweep couldn't act on has to outlive the launch that replayed
-/// it, or a NAS orphan is forgotten by the one ledger that knew about it.
-fn defer(temps: Vec<VolumeTemp>) {
+/// it, or a NAS orphan is forgotten by the one ledger that knew about it. A
+/// LOCAL record is re-recorded but not held pending: nothing is going to arrive
+/// for it, so the next launch is when it gets another look.
+fn defer(records: Vec<Record>) {
     let mut store = STORE.lock_ignore_poison();
-    for temp in temps {
-        let record = RecordedTemp::OnVolume(temp.clone());
+    for record in records {
         store.recorded.insert(record.clone());
-        append(&mut store, b'+', &record);
-        store.pending.insert(temp);
-    }
-}
-
-/// Removes the local partials an earlier run recorded and never finished, then
-/// takes whatever pending volume is already reachable.
-///
-/// Skips anything that isn't one of ours by name: the ledger should only ever
-/// hold `.cmdr-tmp-*` paths, and a delete driven by a file is worth one cheap
-/// check that the file wasn't tampered with. A path that's already gone (the
-/// normal case — it landed under its real name) is counted, not silent.
-fn sweep_persisted_orphans(locals: &[PathBuf]) -> SweepTally {
-    let mut tally = SweepTally::default();
-    for temp in locals {
-        if !is_one_of_ours(temp) {
-            tally.left_alone += 1;
-            continue;
-        }
-        match std::fs::remove_file(temp) {
-            Ok(()) => tally.swept += 1,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => tally.already_gone += 1,
-            Err(e) => {
-                tally.left_alone += 1;
-                log::debug!(
-                    target: "copy",
-                    "couldn't sweep the orphaned transfer partial {}: {e}",
-                    temp.display()
-                );
-            }
+        append(&mut store, record.add_op(), &record);
+        if record.volume_id().is_some() {
+            store.pending.insert(record);
         }
     }
-
-    // A volume registered before the sweep thread got here (the boot volume, an
-    // external disk) can be served right away; everything else waits for its
-    // arrival. Asking the registry whether an ID is present is a lock and a hash
-    // lookup, so a dead NAS costs nothing and blocks nobody.
-    for volume_id in pending_volume_ids() {
-        if get_volume_manager().get(&volume_id).is_none() {
-            continue;
-        }
-        let claimed = claim_pending(&volume_id);
-        tally.add(tauri::async_runtime::block_on(sweep_on_volume(&volume_id, claimed)));
-    }
-    // ASSIGNED, not added: a record a reachable volume then refused is already
-    // back in `pending`, so counting both would report it twice. What's still
-    // waiting when the launch finishes is the one honest number.
-    tally.deferred = pending_count();
-
-    report(&tally);
-    tally
-}
-
-/// Says what the sweep did, so a partial that survives leaves a trail.
-fn report(tally: &SweepTally) {
-    if tally.is_empty() {
-        return;
-    }
-    log::info!(
-        target: "copy",
-        "recorded transfer partials: {} swept, {} already gone, {} waiting for their volume, {} left alone",
-        tally.swept, tally.already_gone, tally.deferred, tally.left_alone
-    );
-}
-
-/// The volume registry took on `volume_id`: clear whatever the ledger has been
-/// holding for it.
-///
-/// Cheap when there's nothing waiting, which is every registration after the
-/// first launch that had an orphan. The deletes go to a task, so a registration
-/// never waits on a share.
-fn sweep_arrived_volume(volume_id: &str) {
-    let claimed = claim_pending(volume_id);
-    if claimed.is_empty() {
-        return;
-    }
-    let volume_id = volume_id.to_string();
-    tauri::async_runtime::spawn(async move {
-        let tally = sweep_on_volume(&volume_id, claimed).await;
-        report(&tally);
-    });
-}
-
-/// Removes `temps` through the volume that owns them.
-///
-/// Anything it can't remove goes back to pending, so the next time that volume
-/// arrives (this session or a later launch) the sweep tries again. ❌ Never
-/// reconnects or authenticates: the volume is used exactly as the registry hands
-/// it over.
-async fn sweep_on_volume(volume_id: &str, temps: Vec<VolumeTemp>) -> SweepTally {
-    let mut tally = SweepTally::default();
-    for temp in temps {
-        if !is_one_of_ours(&temp.path) {
-            tally.left_alone += 1;
-            retire(&RecordedTemp::OnVolume(temp));
-            continue;
-        }
-        // `resolve`, not `get`: the site is passing a path, and a read-only
-        // routed volume (an archive, a git snapshot) is one this sweep must
-        // never delete through.
-        let resolved = get_volume_manager().resolve(volume_id, &temp.path).await;
-        let is_routed = resolved.is_routed();
-        let Some(volume) = resolved.volume.filter(|_| !is_routed) else {
-            tally.deferred += 1;
-            defer(vec![temp]);
-            continue;
-        };
-        match volume.delete(&resolved.path).await {
-            Ok(()) => {
-                tally.swept += 1;
-                retire(&RecordedTemp::OnVolume(temp));
-            }
-            Err(VolumeError::NotFound(_)) => {
-                tally.already_gone += 1;
-                retire(&RecordedTemp::OnVolume(temp));
-            }
-            Err(e) => {
-                log::debug!(
-                    target: "copy",
-                    "couldn't sweep the orphaned transfer partial {} on `{volume_id}`: {e}",
-                    temp.path.display()
-                );
-                tally.deferred += 1;
-                defer(vec![temp]);
-            }
-        }
-    }
-    tally
-}
-
-/// Whether the ledger's entry really names one of our scratch files.
-///
-/// The sweep deletes files and follows a file to decide which, so a corrupted
-/// or hand-edited store must not become a delete-anything primitive.
-fn is_one_of_ours(temp: &Path) -> bool {
-    let is_ours = temp
-        .file_name()
-        .is_some_and(|n| cmdr_fs::staging::is_staging_temp_name(&n.to_string_lossy()));
-    if !is_ours {
-        log::warn!(
-            target: "copy",
-            "in-flight temp ledger holds a path that isn't one of our scratch files, leaving it: {}",
-            temp.display()
-        );
-    }
-    is_ours
 }
 
 /// Drops a record the sweep is done with, on disk too.
-fn retire(record: &RecordedTemp) {
+fn retire_record(record: &Record) {
     let mut store = STORE.lock_ignore_poison();
     store.recorded.remove(record);
-    append(&mut store, b'-', record);
+    store.pending.remove(record);
+    append(&mut store, record.retire_op(), record);
 }
 
 /// The volume IDs the ledger is currently waiting on.
@@ -556,7 +493,7 @@ fn pending_volume_ids() -> BTreeSet<String> {
         .lock_ignore_poison()
         .pending
         .iter()
-        .map(|temp| temp.volume_id.clone())
+        .filter_map(|record| record.volume_id().map(str::to_string))
         .collect()
 }
 
@@ -568,66 +505,69 @@ fn pending_count() -> usize {
 /// Takes the pending records for `volume_id`, so exactly one sweep acts on each.
 ///
 /// They stay in [`Store::recorded`] until a sweep retires them: a claim that
-/// fails has to leave the log still claiming the file exists.
-fn claim_pending(volume_id: &str) -> Vec<VolumeTemp> {
+/// fails has to leave the log still claiming the thing exists.
+fn claim_pending(volume_id: &str) -> Vec<Record> {
     let mut store = STORE.lock_ignore_poison();
-    let claimed: Vec<VolumeTemp> = store
+    let claimed: Vec<Record> = store
         .pending
         .iter()
-        .filter(|temp| temp.volume_id == volume_id)
+        .filter(|record| record.volume_id() == Some(volume_id))
         .cloned()
         .collect();
-    for temp in &claimed {
-        store.pending.remove(temp);
+    for record in &claimed {
+        store.pending.remove(record);
     }
     claimed
 }
 
-/// Replays the log and returns what an earlier session left in flight.
+/// Replays the log and returns what an earlier session left behind.
 ///
 /// Every failure means "nothing recorded": a missing file is the normal
 /// clean-exit case, and an unreadable one is not worth failing a launch over. A
 /// line that doesn't parse is skipped rather than aborting the replay — the
 /// last one can be a torn `write` from the process dying, which is exactly the
-/// case this whole ledger exists for.
-fn read_recorded(path: &Path) -> Vec<RecordedTemp> {
+/// case this whole ledger exists for. An op byte from a NEWER build is skipped
+/// the same way, which is what lets a rollback forget those records instead of
+/// acting on them with the wrong rules.
+fn read_recorded(path: &Path) -> Vec<Record> {
     let Ok(contents) = std::fs::read_to_string(path) else {
         return Vec::new();
     };
-    let mut live: BTreeSet<RecordedTemp> = BTreeSet::new();
+    let mut live: BTreeSet<Record> = BTreeSet::new();
     for line in contents.lines() {
         let Some((op, encoded)) = line.split_at_checked(1) else {
             continue;
         };
-        let Ok(temp) = serde_json::from_str::<RecordedTemp>(encoded) else {
+        let record = match op {
+            "+" | "-" => serde_json::from_str::<RecordedTemp>(encoded).ok().map(Record::Legacy),
+            "A" | "a" => serde_json::from_str::<TrackedItem>(encoded).ok().map(Record::Tracked),
+            _ => None,
+        };
+        let Some(record) = record else {
             continue;
         };
-        match op {
-            "+" => {
-                live.insert(temp);
-            }
-            "-" => {
-                live.remove(&temp);
-            }
-            _ => {}
+        if op == "+" || op == "A" {
+            live.insert(record);
+        } else {
+            live.remove(&record);
         }
     }
     live.into_iter().collect()
 }
 
-/// Appends one record. See the module docs for the format and why there's no
-/// fsync.
+/// Appends one record under `op`. See the module docs for the format and why
+/// there's no fsync.
 ///
 /// Best-effort: a record we couldn't write costs a leftover the hour-gated
 /// directory scan still catches, so it must never fail a copy.
-fn append(store: &mut Store, op: u8, record: &RecordedTemp) {
+fn append(store: &mut Store, op: u8, record: &Record) {
     let Some(log) = &mut store.log else {
         return;
     };
-    let Ok(encoded) = serde_json::to_string(record) else {
+    let Some(encoded) = record.encode() else {
         // Not valid UTF-8, so it can't be a JSON string. Rare enough to accept:
         // the directory scan is this path's backstop.
-        log::debug!(target: "copy", "not recording an in-flight temp: its name isn't UTF-8");
+        log::debug!(target: "copy", "not recording an in-flight leftover: its name isn't UTF-8");
         return;
     };
     let mut line = Vec::with_capacity(encoded.len() + 2);
@@ -636,7 +576,7 @@ fn append(store: &mut Store, op: u8, record: &RecordedTemp) {
     line.push(b'\n');
     match log.write_all(&line) {
         Ok(()) => store.logged_bytes += line.len() as u64,
-        Err(e) => log::debug!(target: "copy", "couldn't record an in-flight temp: {e}"),
+        Err(e) => log::debug!(target: "copy", "couldn't record an in-flight leftover: {e}"),
     }
 }
 
@@ -652,7 +592,7 @@ fn compact_if_large(store: &mut Store) {
     if store.logged_bytes < COMPACT_ABOVE_BYTES {
         return;
     }
-    let recorded: Vec<RecordedTemp> = store.recorded.iter().cloned().collect();
+    let recorded: Vec<Record> = store.recorded.iter().cloned().collect();
     let Some(log) = &mut store.log else {
         return;
     };
@@ -663,13 +603,22 @@ fn compact_if_large(store: &mut Store) {
     }
     store.logged_bytes = 0;
     for record in &recorded {
-        append(store, b'+', record);
+        append(store, record.add_op(), record);
     }
 }
 
+#[path = "in_flight_records.rs"]
+mod records;
+pub(super) use records::{ItemKind, RecordHome, Record, RecordedTemp, TempHome, TrackedItem, TrackedRecord, VolumeTemp};
+use records::{ItemHome, home_for};
+
+#[path = "in_flight_sweep.rs"]
+mod sweep;
+
 #[cfg(test)]
 pub(super) mod test_support {
-    use super::{File, PathBuf, RecordedTemp, STORE};
+    use super::{File, Path, Record, STORE};
+    use std::path::PathBuf;
     use crate::ignore_poison::IgnorePoison;
     use std::sync::{Mutex, MutexGuard};
 
@@ -718,7 +667,7 @@ pub(super) mod test_support {
 
     /// [`take_store`], then points the ledger at `data_dir` so [`super::register`]
     /// records into a file this test can read back.
-    pub(in crate::file_system::write_operations) fn use_store_in(data_dir: &std::path::Path) -> StoreGuard {
+    pub(in crate::file_system::write_operations) fn use_store_in(data_dir: &Path) -> StoreGuard {
         let guard = take_store();
         let log = File::options()
             .create(true)
@@ -754,7 +703,7 @@ pub(super) mod test_support {
         }
     }
 
-    /// The set the process currently believes is in flight.
+    /// The set the process currently believes is on disk.
     ///
     /// Process-wide, so a concurrent transfer test's staged write shows up here
     /// too: ask whether it holds the path under test, ❌ never whether it's
@@ -764,10 +713,8 @@ pub(super) mod test_support {
             .lock_ignore_poison()
             .recorded
             .iter()
-            .map(|record| match record {
-                RecordedTemp::Local(path) => path.clone(),
-                RecordedTemp::OnVolume(temp) => temp.path.clone(),
-            })
+            .map(Record::path)
+            .map(Path::to_path_buf)
             .collect()
     }
 }

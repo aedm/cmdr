@@ -377,7 +377,7 @@ pub(super) fn move_with_staging(
                                 crate::operation_log::types::NotRollbackableReason::StagedConflictResolved
                             },
                         );
-                        move_resolved_into_place(&staged_path, &final_path, &resolved, None, &mut throwaway_tx)?;
+                        move_resolved_into_place(state, &staged_path, &final_path, &resolved, None, &mut throwaway_tx)?;
                         landings.insert(staged_path.clone(), resolved.path);
                     }
                     None => {

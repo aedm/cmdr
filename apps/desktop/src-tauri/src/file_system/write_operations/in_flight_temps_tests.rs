@@ -14,6 +14,7 @@ use crate::file_system::volume::{InMemoryVolume, Volume};
 use crate::test_support::TestDir;
 use cmdr_fs::staging::StagingTemp;
 use cmdr_fs::testing::wait_until_async;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -72,7 +73,7 @@ fn a_recorded_orphan_is_swept_at_startup_however_fresh_it_is() {
         "and the new session must not start with the swept path in flight"
     );
     assert!(
-        !read_recorded(&data_dir.join(STORE_FILENAME)).contains(&RecordedTemp::Local(orphan.clone())),
+        !read_recorded(&data_dir.join(STORE_FILENAME)).contains(&Record::Legacy(RecordedTemp::Local(orphan.clone()))),
         "the swept record must be retired on disk too, so the next launch has nothing to redo"
     );
 }
@@ -135,10 +136,10 @@ fn a_record_whose_volume_isnt_reachable_survives_for_the_next_launch() {
         "an unreachable volume's record is deferred, never swept or dropped"
     );
     assert!(
-        read_recorded(&data_dir.join(STORE_FILENAME)).contains(&RecordedTemp::OnVolume(VolumeTemp {
+        read_recorded(&data_dir.join(STORE_FILENAME)).contains(&Record::Legacy(RecordedTemp::OnVolume(VolumeTemp {
             volume_id: volume_id.to_string(),
             path: orphan,
-        })),
+        }))),
         "and it has to still be on disk, or the next launch has nothing to retry"
     );
 }
@@ -204,10 +205,10 @@ async fn a_delete_the_volume_refuses_leaves_the_record_to_retry() {
     assert_eq!(tally.swept, 0, "nothing was removed: {tally:?}");
     assert_eq!(tally.deferred, 1, "so the record has to be waiting again: {tally:?}");
     assert!(
-        read_recorded(&data_dir.join(STORE_FILENAME)).contains(&RecordedTemp::OnVolume(VolumeTemp {
+        read_recorded(&data_dir.join(STORE_FILENAME)).contains(&Record::Legacy(RecordedTemp::OnVolume(VolumeTemp {
             volume_id: volume_id.to_string(),
             path: orphan,
-        })),
+        }))),
         "and it must still be on disk for the next launch"
     );
 }
@@ -301,7 +302,7 @@ fn a_landed_temp_is_retired_from_the_log() {
     deregister(&state, &temp, Some(TempHome::LocalFs));
 
     assert!(
-        !read_recorded(&data_dir.join(STORE_FILENAME)).contains(&RecordedTemp::Local(temp)),
+        !read_recorded(&data_dir.join(STORE_FILENAME)).contains(&Record::Legacy(RecordedTemp::Local(temp))),
         "a temp that came and went must replay as nothing in flight"
     );
 }
@@ -338,13 +339,13 @@ fn compaction_shrinks_the_log_without_forgetting_what_is_still_in_flight() {
     );
     let replayed = read_recorded(&log_path);
     assert!(
-        replayed.contains(&RecordedTemp::Local(long_lived)),
+        replayed.contains(&Record::Legacy(RecordedTemp::Local(long_lived))),
         "compaction must keep the partial that is still being written"
     );
     assert!(
         churned
             .iter()
-            .all(|churn| !replayed.contains(&RecordedTemp::Local(churn.clone()))),
+            .all(|churn| !replayed.contains(&Record::Legacy(RecordedTemp::Local(churn.clone())))),
         "and must forget every partial that already landed"
     );
 }
@@ -379,10 +380,10 @@ fn compaction_keeps_the_records_waiting_for_a_volume() {
     }
 
     assert!(
-        read_recorded(&log_path).contains(&RecordedTemp::OnVolume(VolumeTemp {
+        read_recorded(&log_path).contains(&Record::Legacy(RecordedTemp::OnVolume(VolumeTemp {
             volume_id: volume_id.to_string(),
             path: waiting,
-        })),
+        }))),
         "a compaction mid-session must not forget the orphan waiting for its volume"
     );
 }
@@ -399,7 +400,7 @@ fn a_torn_last_line_doesnt_cost_the_records_before_it() {
     contents.push_str("+\"/half-a-pa"); // the process died here
     std::fs::write(&log, contents).unwrap();
 
-    assert_eq!(read_recorded(&log), vec![RecordedTemp::Local(good)]);
+    assert_eq!(read_recorded(&log), vec![Record::Legacy(RecordedTemp::Local(good))]);
 }
 
 /// A temp that landed under its real name before the crash leaves a
@@ -560,9 +561,134 @@ fn deregistering_clears_both_ledgers() {
     assert!(state.in_flight_temps.lock_ignore_poison().is_empty());
     assert!(!test_support::live_paths().contains(&temp));
     assert!(
-        !read_recorded(&data_dir.join(STORE_FILENAME)).contains(&RecordedTemp::Local(temp)),
+        !read_recorded(&data_dir.join(STORE_FILENAME)).contains(&Record::Legacy(RecordedTemp::Local(temp))),
         "the log must replay as nothing in flight"
     );
+}
+
+/// A state whose destination side is a removable drive rooted at `root`, the
+/// way every transfer the dialog starts onto a USB stick is built.
+fn state_writing_to_drive(volume_id: &str, root: &Path) -> Arc<WriteOperationState> {
+    use crate::file_system::write_operations::transfer_sides::{TransferSide, TransferSides};
+    Arc::new(
+        WriteOperationState::new(Duration::from_millis(50)).with_sides(Some(TransferSides::new(
+            TransferSide::new("root".to_string(), "Macintosh HD".to_string(), PathBuf::from("/")),
+            TransferSide::new(volume_id.to_string(), "Fältkamera".to_string(), root.to_path_buf()),
+        ))),
+    )
+}
+
+/// ❗ A build without the kinded records must FORGET them, never act on them.
+/// Its reader skips an op byte it doesn't know, and its launch truncates the
+/// log, so a rollback loses the records rather than putting an aside through the
+/// one rule that removes things on sight.
+///
+/// The reader here is a copy of the old one, kept deliberately literal: the
+/// point is what a DIFFERENT binary does with today's file.
+#[test]
+fn a_build_without_kinded_records_skips_them_rather_than_acting_on_them() {
+    let dir = TestDir::new("in_flight_temps_old_reader");
+    let data_dir = dir.join("data");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let _store = test_support::use_store_in(&data_dir);
+
+    let state = state();
+    let aside = dir.join("notes.txt.cmdr-temp-1234");
+    let survivor = dir.join("holiday.raw.cmdr-tmp-5678");
+    track(
+        &state,
+        ItemKind::FileAside {
+            destination: dir.join("notes.txt"),
+            expected_size: 12,
+        },
+        &aside,
+    );
+    register(&state, &survivor, Some(TempHome::LocalFs));
+
+    // What a build that only knows `+` and `-` would replay.
+    let contents = std::fs::read_to_string(data_dir.join(STORE_FILENAME)).unwrap();
+    let mut old_reader_saw: Vec<PathBuf> = Vec::new();
+    for line in contents.lines() {
+        let Some((op, encoded)) = line.split_at_checked(1) else {
+            continue;
+        };
+        if op != "+" {
+            continue;
+        }
+        if let Ok(path) = serde_json::from_str::<PathBuf>(encoded) {
+            old_reader_saw.push(path);
+        }
+    }
+
+    assert_eq!(
+        old_reader_saw,
+        vec![survivor],
+        "an older build replays the plain temp and nothing else; the aside must be invisible to it"
+    );
+}
+
+/// The bug item 2 fixes: a partial on a drive that's unplugged at the next
+/// launch used to resolve against a mount point that isn't there, read as
+/// already gone, and take the only trace of it with it. Homed to the VOLUME, it
+/// waits for the drive instead.
+#[test]
+fn a_leftover_on_a_removable_drive_waits_for_that_drive_rather_than_being_forgotten() {
+    let dir = TestDir::new("in_flight_temps_drive_homed");
+    let data_dir = dir.join("data");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let store = test_support::use_store_in(&data_dir);
+
+    let volume_id = "in-flight-temps-test-stick-away";
+    let drive_root = dir.join("Volumes").join("Faltkamera");
+    let state = state_writing_to_drive(volume_id, &drive_root);
+    let temp = drive_root.join("footage.mov.cmdr-tmp-2468");
+    track(&state, ItemKind::Temp, &temp);
+    store.simulate_process_exit();
+
+    // The drive isn't plugged in, so nothing is registered for it.
+    let tally = init_and_sweep(&data_dir).wait();
+
+    assert_eq!(
+        tally,
+        SweepTally {
+            deferred: 1,
+            ..SweepTally::default()
+        },
+        "a drive that isn't here defers rather than resolving against an empty mount point: {tally:?}"
+    );
+    let replayed = read_recorded(&data_dir.join(STORE_FILENAME));
+    assert_eq!(replayed.len(), 1, "exactly the one record survives: {replayed:?}");
+    assert_eq!(
+        replayed[0].volume_id(),
+        Some(volume_id),
+        "and it names the drive it waits on, so plugging it back in settles it"
+    );
+    assert_eq!(
+        replayed[0].path(),
+        Path::new("footage.mov.cmdr-tmp-2468"),
+        "stored relative to the drive's root, so a remount at another mount point still finds it"
+    );
+}
+
+/// A Mac-internal path has nothing to wait for, so it stays local-homed and the
+/// launch sweep answers for it before the volume registry even exists.
+#[test]
+fn a_leftover_on_the_mac_stays_local_homed() {
+    let dir = TestDir::new("in_flight_temps_mac_homed");
+    let data_dir = dir.join("data");
+    std::fs::create_dir_all(&data_dir).unwrap();
+    let _store = test_support::use_store_in(&data_dir);
+
+    // The destination side is the boot volume, which is what a Mac-to-Mac copy
+    // and a drive-to-Mac move both carry.
+    let state = state_writing_to_drive("root", Path::new("/"));
+    let temp = dir.join("notes.txt.cmdr-tmp-1357");
+    track(&state, ItemKind::Temp, &temp);
+
+    let replayed = read_recorded(&data_dir.join(STORE_FILENAME));
+    assert_eq!(replayed.len(), 1, "{replayed:?}");
+    assert_eq!(replayed[0].volume_id(), None, "nothing to wait for");
+    assert_eq!(replayed[0].path(), temp, "so the whole path is the record");
 }
 
 /// The registry's arrival announcement is what makes a deferred record

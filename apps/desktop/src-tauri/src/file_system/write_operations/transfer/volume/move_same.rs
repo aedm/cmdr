@@ -512,7 +512,7 @@ pub(crate) async fn move_within_same_volume_with_progress(
                                     // backend can refuse, and a delete makes that
                                     // refusal fatal to the user's file.
                                     if let Some(displaced) =
-                                        displace_destination(&volume, &orig, state.liveness_token()).await?
+                                        displace_destination(&state, &volume, &orig).await?
                                     {
                                         displaced_dests
                                             .lock_ignore_poison()

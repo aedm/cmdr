@@ -237,7 +237,11 @@ fn progress_at_stop(operation_id: &str, sources: Option<MoveSourceCounts>) -> Op
 /// `None` when the table couldn't be read at all, which every caller treats as
 /// "still there": the destination-listed gate that guards a move's source delete
 /// must never act on a guess.
-fn root_is_listed(root: &Path) -> Option<bool> {
+///
+/// Shared with the leftover sweep (`in_flight_sweep.rs`), which asks the same
+/// question about a drive the registry says is back, and gets the test hook
+/// below along with it.
+pub(in crate::file_system::write_operations) fn root_is_listed(root: &Path) -> Option<bool> {
     #[cfg(test)]
     if let Some(answer) = test_hook::intercept(root) {
         return answer;

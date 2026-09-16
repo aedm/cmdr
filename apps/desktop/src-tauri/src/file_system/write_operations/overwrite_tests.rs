@@ -254,7 +254,7 @@ fn test_safe_overwrite_dir_materializes_folder_over_existing_file() {
     let dest = temp_dir.join("dest");
     fs::write(&dest, "I am the existing file").unwrap();
 
-    let result = safe_overwrite_dir(&dest, |target| {
+    let result = safe_overwrite_dir(&overwrite_state(), &dest, |target| {
         fs::create_dir_all(target).map_err(|e| WriteOperationError::IoError {
             path: target.display().to_string(),
             message: format!("create_dir_all: {e}"),
@@ -296,7 +296,7 @@ fn test_safe_overwrite_dir_restores_original_on_materialize_failure() {
     fs::write(dest.join("keep-me.txt"), "do not lose this").unwrap();
     fs::write(dest.join("also-keep.txt"), "also important").unwrap();
 
-    let result: Result<(), WriteOperationError> = safe_overwrite_dir(&dest, |target| {
+    let result: Result<(), WriteOperationError> = safe_overwrite_dir(&overwrite_state(), &dest, |target| {
         // Pretend the caller got partway through and then was cancelled.
         fs::create_dir_all(target).ok();
         fs::write(target.join("partial.txt"), "half-written").ok();
@@ -348,7 +348,7 @@ fn test_safe_overwrite_dir_over_folder_dest_replaces_contents() {
     fs::create_dir_all(&dest).unwrap();
     fs::write(dest.join("old.txt"), "old").unwrap();
 
-    let result = safe_overwrite_dir(&dest, |target| {
+    let result = safe_overwrite_dir(&overwrite_state(), &dest, |target| {
         fs::create_dir_all(target).map_err(|e| WriteOperationError::IoError {
             path: target.display().to_string(),
             message: format!("create_dir_all: {e}"),

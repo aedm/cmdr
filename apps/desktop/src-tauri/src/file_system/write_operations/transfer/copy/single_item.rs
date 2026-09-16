@@ -418,7 +418,7 @@ pub(in crate::file_system::write_operations::transfer) fn copy_single_item(
             // can't lose the folder. Pre-fix this branch did a direct
             // `fs::remove_dir_all` then created the symlink, which had no
             // crash-recoverable intermediate state.
-            safe_overwrite_dir(&actual_dest, create_symlink)?;
+            safe_overwrite_dir(state, &actual_dest, create_symlink)?;
         } else {
             if needs_safe_overwrite {
                 fs::remove_file(&actual_dest).with_path(&actual_dest)?;

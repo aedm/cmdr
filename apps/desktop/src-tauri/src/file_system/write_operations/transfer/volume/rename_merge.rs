@@ -392,7 +392,7 @@ async fn apply_child_decision(
         // Replacing a dest FILE with this dir subtree destroys it: an overwrite.
         // ❗ It goes ASIDE, never straight to a delete — the rename that replaces
         // it is a separate call the backend can refuse.
-        let displaced = displace_destination(ctx.volume, &write_path, ctx.state.liveness_token()).await?;
+        let displaced = displace_destination(ctx.state, ctx.volume, &write_path).await?;
         if displaced.is_some() {
             ctx.overwrote.store(true, std::sync::atomic::Ordering::Relaxed);
         }
@@ -412,7 +412,7 @@ async fn apply_child_decision(
         // replacing rename is a separate call, and a backend that refuses it
         // after a delete leaves the user with neither copy.
         Some(orig) => {
-            let displaced = displace_destination(ctx.volume, &orig, ctx.state.liveness_token()).await?;
+            let displaced = displace_destination(ctx.state, ctx.volume, &orig).await?;
             // A file→file safe-replace: mark the op as having overwritten (not
             // rollbackable).
             if displaced.is_some() {

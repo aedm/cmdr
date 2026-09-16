@@ -318,6 +318,7 @@ fn rename_onto_free_name(source: &Path, dest: &Path) -> std::io::Result<()> {
 ///   can't rename over a file, so we remove the placeholder first (the
 ///   reservation still holds the name against concurrent writers).
 fn move_resolved_into_place(
+    state: &Arc<WriteOperationState>,
     source: &Path,
     dest_path: &Path,
     resolved: &super::super::overwrite::ResolvedDestination,
@@ -353,7 +354,7 @@ fn move_resolved_into_place(
     if source_is_dir != dest_is_dir {
         // Type-mismatch overwrite: set the dest aside, move the source in.
         let source_path = source.to_path_buf();
-        safe_overwrite_dir(&resolved.path, |target| {
+        safe_overwrite_dir(state, &resolved.path, |target| {
             fs::rename(&source_path, target).map_err(|e| WriteOperationError::IoError {
                 path: source_path.display().to_string(),
                 message: format!("Failed to rename across types: {}", e),
@@ -554,7 +555,7 @@ fn merge_move_directory(
                     // halves of the rename; no-ops outside ~/Downloads.
                     crate::downloads::note_pending_write_for_cmdr(&source_child);
                     crate::downloads::note_pending_write_for_cmdr(&resolved.path);
-                    move_resolved_into_place(&source_child, &dest_child, &resolved, child_stat.as_ref(), move_tx)?;
+                    move_resolved_into_place(state, &source_child, &dest_child, &resolved, child_stat.as_ref(), move_tx)?;
                 }
                 None => {
                     // Skip: source file stays in place. Record it so a cross-FS

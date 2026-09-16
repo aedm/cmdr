@@ -170,7 +170,7 @@ pub(super) fn move_with_rename(
                         // file; a rename-aside (different name) did not.
                         item_overwrote = resolved.path == dest_path;
                         landed_path = resolved.path.clone();
-                        move_resolved_into_place(source, &dest_path, &resolved, source_meta.as_ref(), &mut move_tx)?;
+                        move_resolved_into_place(state, source, &dest_path, &resolved, source_meta.as_ref(), &mut move_tx)?;
                     }
                     None => {
                         // Skip this file
