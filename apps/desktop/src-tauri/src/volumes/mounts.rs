@@ -118,6 +118,16 @@ pub(crate) fn mount_identity_at(path: &str) -> Option<u64> {
         .map(|m| m.fsid)
 }
 
+/// Every mount point the kernel currently lists, from the same non-blocking snapshot.
+///
+/// What the volume REGISTRY sweeps (`file_system::volume::mount_registration`), which is a
+/// different question from what the switcher shows: resolution can mint an ID for any of these,
+/// so registration has to cover all of them. ❗ `None` when the table couldn't be read, ❌ never an
+/// empty list, or the sweep would read a machine with no mounts and register nothing.
+pub(crate) fn mount_roots() -> Option<Vec<String>> {
+    Some(enumerate_mounts()?.into_iter().map(|mount| mount.mount_point).collect())
+}
+
 /// A mount's point and the source it was mounted from (`f_mntfromname`), for code that maps
 /// mounts to the disks under them. Straight from the non-blocking snapshot: no syscall per entry.
 pub(crate) struct MountSource {

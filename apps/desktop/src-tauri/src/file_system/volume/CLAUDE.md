@@ -8,6 +8,7 @@ through a `Volume`, **relative to the volume root**.
 - `mod.rs` re-exports all of `cmdr_fs::volume`; the trait is `crates/cmdr-fs/src/volume/mod.rs`.
 - `manager.rs` (+ `manager/`: `routing.rs`'s two routes, the mount-root set): the registry behind
   `get_volume_manager()`.
+- `mount_registration.rs`: the one way a MOUNT becomes a registered volume (startup sweep, mount watcher, adoption).
 - `backends/` (own `CLAUDE.md`), `eject/` (teardown by kind, macOS+Linux), `drive_release/` (the index stop/start
   gate), `friendly_error/` (in `cmdr-fs`).
 
@@ -17,6 +18,13 @@ through a `Volume`, **relative to the volume root**.
   `resolve_local_only` serves the ONE caller that can't `.await`. `DETAILS.md` § "Resolving a path: the two routes".
 - **Watcher-pre-registered volumes use `register_if_absent`** (else FSEvents overwrites an `SmbVolume`). `register`
   replaces only at the SAME root; an edited root uses `replace_root_in_place`. `DETAILS.md` § "Key decisions".
+- **❗ Registration must never be cleverer than resolution: a MOUNT is registered through
+  `mount_registration`, ❌ never by a caller's own `LocalPosixVolume::new` + `register`.** Resolution mints an ID for
+  any row of the kernel's mount table, so the startup sweep takes that whole table unfiltered; registering only the
+  switcher's `/Volumes/*` rows left a cloud drive in the home folder (`~/pCloud Drive`) resolving to an ID nothing
+  served, and the pane died on "Volume not found". What the SWITCHER shows is a separate, stricter question
+  (`volumes/mounts.rs`). Adoption is the net under both: it registers a live mount ONLY when that mount derives exactly
+  the requested ID, ❌ never on a prefix or path-shape test.
 - **A volume the registry REMOVES is retired** (`Volume::retirement`), so a backend's watcher and reconnect loop stand
   down; a replace doesn't. § "Leaving the registry".
 - **Work that must WAIT for a volume subscribes with `on_volume_arrival`, ❌ never polls the registry.** A listener gets

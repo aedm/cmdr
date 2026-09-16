@@ -13,11 +13,11 @@ use tokio_util::sync::CancellationToken;
 use crate::benchmark;
 use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE};
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
-use crate::file_system::volume::VolumeError;
 use crate::file_system::volume::friendly_error::{
     ListingError, archive_needs_password_listing_error, archive_unreadable_listing_error, enrich_with_provider,
     listing_error_for_restricted_empty_root, listing_error_from_volume_error,
 };
+use crate::file_system::volume::{Volume, VolumeError};
 use crate::file_system::watcher::start_watching_detached;
 #[cfg(test)]
 use crate::ignore_poison::IgnorePoison;
@@ -397,6 +397,35 @@ pub async fn list_directory_start_streaming(
     })
 }
 
+/// How long the last-chance mount adoption may take before the listing gives up
+/// and reports the volume missing. It reads the mount table and one NSURL
+/// resource, which is sub-millisecond locally and can hang on a wedged mount, so
+/// it's bounded like every other mount-touching read (`commands/CLAUDE.md`).
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+const ADOPT_MOUNT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
+
+/// Registers the live mount serving `path` when it derives exactly `volume_id`,
+/// off the async thread and under a deadline.
+///
+/// Reached only when the registry had nothing, so its cost is paid on a path
+/// that was about to fail anyway.
+async fn adopt_mount_for_listing(volume_id: &str, path: &Path) -> Option<Arc<dyn Volume>> {
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        let volume_id = volume_id.to_string();
+        let path = path.to_path_buf();
+        crate::deadline::blocking_with_timeout(ADOPT_MOUNT_TIMEOUT, None, move || {
+            crate::file_system::volume::mount_registration::adopt_mount_serving(&volume_id, &path)
+        })
+        .await
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    {
+        let _ = (volume_id, path);
+        None
+    }
+}
+
 /// Why a listing found no volume registered under `volume_id`, in the listing's
 /// vocabulary: a listed phone or saved server nobody connected is `NotConnected`,
 /// any other id `NotFound`, as an unmount race is. The why of both answers:
@@ -470,7 +499,16 @@ pub(crate) async fn read_directory_with_progress(
     let is_routed = resolved.is_routed();
     let volume = match resolved.volume {
         Some(volume) => volume,
-        None => return Err(missing_volume_error(volume_id, path).await),
+        // Nothing serves this ID. Before calling it gone, ask whether the mount
+        // under `path` IS this volume and nobody had registered it — a cloud
+        // drive that mounted into the home folder posts no `NSWorkspace`
+        // notification, and the startup sweep runs off the main thread, so a
+        // restored tab can resolve ahead of it. Adoption only ever confirms the
+        // caller's own ID (`mount_registration::adopt_mount_serving`).
+        None => match adopt_mount_for_listing(volume_id, path).await {
+            Some(adopted) => adopted,
+            None => return Err(missing_volume_error(volume_id, path).await),
+        },
     };
     // The listing task consumes its own handle; keep `volume` for the watcher
     // check and `volume_root` below (an archive's `root()` is the `.zip` path).

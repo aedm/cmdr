@@ -24,6 +24,22 @@ pub fn get_mounted_volumes(mounts: &[MountEntry]) -> Vec<LocationInfo> {
     get_mounted_volumes_with(mounts, volume_id_for_mount)
 }
 
+/// Every mount point `/proc/mounts` currently lists.
+///
+/// What the volume REGISTRY sweeps (`file_system::volume::mount_registration`), which is a
+/// different question from what the switcher shows: resolution can mint an ID for any of these,
+/// so registration has to cover all of them, filters and all. ❗ `None` when the table couldn't be
+/// read, ❌ never an empty list, or the sweep would read a machine with no mounts and register
+/// nothing.
+pub(crate) fn mount_roots() -> Option<Vec<String>> {
+    Some(
+        crate::file_system::linux_mounts::parse_proc_mounts()?
+            .into_iter()
+            .map(|mount| mount.mountpoint)
+            .collect(),
+    )
+}
+
 /// The body of [`get_mounted_volumes`], with ID derivation injected.
 ///
 /// `volume_id` is a parameter purely for testability: [`volume_id_for_mount`]
