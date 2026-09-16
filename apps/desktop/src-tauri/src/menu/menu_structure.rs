@@ -28,7 +28,6 @@ use super::context_menu_header::{ContextMenuTargetFacts, append_context_menu_hea
 #[cfg(target_os = "macos")]
 use super::OPEN_TERMINAL_HERE_ID;
 use super::menu_bar::SHOW_IN_FILE_MANAGER_KEY;
-use super::{frontend_shortcut_to_menu_text, menu_id_to_command};
 #[cfg(target_os = "macos")]
 use super::menu_items::APP_MENU_TITLE;
 use super::menu_items::{COPY_FILENAME_MAX_CHARS, DetachWord, detach_label, pin_tab_label, truncate_for_menu_label};
@@ -46,6 +45,7 @@ use super::{
     SERVER_UNPIN_ID, SHOW_IN_FINDER_ID, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, TOGGLE_SELECTION_ID,
     VIEWER_WORD_WRAP_ID, ViewerMenuItems, image_index_menu_items,
 };
+use super::{frontend_shortcut_to_menu_text, menu_id_to_command};
 
 /// Per-file information needed to build a fully-populated context menu.
 ///
