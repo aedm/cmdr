@@ -129,9 +129,7 @@ export function onIndexAggregationComplete(
  * away while Cmdr was writing to it. Once per marker write, never per launch, and
  * nothing is asked of the person: the rebuild is already arranged.
  */
-export function onIndexNeedsFreshScan(
-  callback: (payload: IndexNeedsFreshScanEvent) => void,
-): Promise<UnlistenFn> {
+export function onIndexNeedsFreshScan(callback: (payload: IndexNeedsFreshScanEvent) => void): Promise<UnlistenFn> {
   return events.indexNeedsFreshScan.listen((event) => {
     callback(event.payload)
   })

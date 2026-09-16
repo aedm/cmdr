@@ -132,14 +132,14 @@ launch (~30 s on a 600k-directory index).
 **The shared local read (`reconciler::read_fs_children`).** Both local walks — the live `reconcile_subtree` and the
 full-tree `local_reconcile` — list a directory through this one function, which returns `Option<Listing>`: `None` means
 "couldn't list" (the walk skips the dir and keeps it honestly stale), and a `Listing` with empty `children` means
-"listed, empty". An `FsChild` carries a `MetadataSnapshot` rather than a `std::fs::Metadata`, which is what lets the read
-come from a batched syscall — a `Metadata` can't be synthesized.
+"listed, empty". An `FsChild` carries a `MetadataSnapshot` rather than a `std::fs::Metadata`, which is what lets the
+read come from a batched syscall — a `Metadata` can't be synthesized.
 
-`Listing::complete` is the third answer, and it exists for the diff's delete half. A child whose stat says it is GONE was
-removed between `readdir` and `stat`: genuinely absent, so the listing still saw everything and stays complete. Any other
-entry-iteration or stat failure means the walk never looked at that child, so the listing is a SUBSET of the directory
-and must not be diffed for deletes. The classification is errno-typed in `child_is_absent` (`NotFound` / `NotADirectory`),
-❌ never a message. See § "The delete gates".
+`Listing::complete` is the third answer, and it exists for the diff's delete half. A child whose stat says it is GONE
+was removed between `readdir` and `stat`: genuinely absent, so the listing still saw everything and stays complete. Any
+other entry-iteration or stat failure means the walk never looked at that child, so the listing is a SUBSET of the
+directory and must not be diffed for deletes. The classification is errno-typed in `child_is_absent` (`NotFound` /
+`NotADirectory`), ❌ never a message. See § "The delete gates".
 
 On macOS the read is the fresh scan's `getattrlistbulk` batch (`scanner::bulk_read_dir_unwatched`), which returns each
 child's name, type, sizes, mtime, inode, and link count _with_ the directory entry, so the walk never stats an entry
@@ -172,19 +172,19 @@ field-for-field over a tree of files with known sizes, an empty dir, a symlink, 
 unicode name, a fifo, and an excluded basename.
 
 **The shared per-dir diff.** `reconciler::diff_dir_against_db(dir_id, live_children, db_children, missing, writer)` is
-the one place the add/remove/modify/type-change diff lives. `missing` is a `MissingRows`, and it governs ONLY the reaping
-of rows the listing didn't mention: adds and updates are driven by what the walk actually saw and always run (§ "The
-delete gates"). It hands back the children it CREATED (`DirDiff::added_children`,
-borrowed from the listing, empty on an unchanged dir so the no-op-cheap property survives) alongside the counts. ⚠️ That
-set is NOT `new_child_dir_names`: a child that was a file and is now a directory is an UPDATE whose subtree still has to
-be walked, so it is in the second list and not the first. `reconcile_subtree`'s optional `scanner::LiveWalk` is who is
-watching the pass happen: `emit` takes the created rows in `EMIT_CHUNK` batches, and `heartbeat` takes one `entering`
-per directory read. ❌ Both or neither, which is why they travel as one parameter — a pass with rows but no pulse fills
-a search's list under "0 folders scanned", and a run waiting on that ground reads the unmoving zero as a stall. It lives
-in `../scanner/` because both walks that report through it are downstream of the two primitives it pairs. That is what
-the cover walk's repair path needs; see `../lifecycle/cover/DETAILS.md` § "The repair path REPORTS". THREE walk sources
-feed the diff source-agnostic `LiveChild`s: the local live small-scope reconcile (`reconcile_subtree`), the local
-full-tree rescan (`local_reconcile::run_local_reconcile`, a BFS), and the network full rescan
+the one place the add/remove/modify/type-change diff lives. `missing` is a `MissingRows`, and it governs ONLY the
+reaping of rows the listing didn't mention: adds and updates are driven by what the walk actually saw and always run (§
+"The delete gates"). It hands back the children it CREATED (`DirDiff::added_children`, borrowed from the listing, empty
+on an unchanged dir so the no-op-cheap property survives) alongside the counts. ⚠️ That set is NOT
+`new_child_dir_names`: a child that was a file and is now a directory is an UPDATE whose subtree still has to be walked,
+so it is in the second list and not the first. `reconcile_subtree`'s optional `scanner::LiveWalk` is who is watching the
+pass happen: `emit` takes the created rows in `EMIT_CHUNK` batches, and `heartbeat` takes one `entering` per directory
+read. ❌ Both or neither, which is why they travel as one parameter — a pass with rows but no pulse fills a search's
+list under "0 folders scanned", and a run waiting on that ground reads the unmoving zero as a stall. It lives in
+`../scanner/` because both walks that report through it are downstream of the two primitives it pairs. That is what the
+cover walk's repair path needs; see `../lifecycle/cover/DETAILS.md` § "The repair path REPORTS". THREE walk sources feed
+the diff source-agnostic `LiveChild`s: the local live small-scope reconcile (`reconcile_subtree`), the local full-tree
+rescan (`local_reconcile::run_local_reconcile`, a BFS), and the network full rescan
 (`volume_scanner::reconcile_volume_via_trait`, `Volume::list_directory` BFS). It keeps `next_id` from the shared
 `Arc<AtomicI64>` (never `MAX(id)`). The shared FINISH (stamp listed dirs → ONE `ComputeAllAggregates`) lives once in
 `reconciler::finish_reconcile`/`send_marks`, called by both full-rescan walkers so they can't drift on the
@@ -241,10 +241,10 @@ writer null BOTH occurrences and the inode's bytes drop to zero (under-count).
 
 ## The delete gates
 
-A reconcile reaps every DB row its live listing didn't mention. That is right when the listing was a whole observation of
-a drive that was really there, and catastrophic when it wasn't: an unmounted `/Volumes/X` whose mount-point FOLDER
-survives lists as empty and complete, so the next pass would reap the drive's entire index. Two conditions must both hold
-before any row is reaped, and `MissingRows::{Delete, Keep}` is how the decision reaches the diff.
+A reconcile reaps every DB row its live listing didn't mention. That is right when the listing was a whole observation
+of a drive that was really there, and catastrophic when it wasn't: an unmounted `/Volumes/X` whose mount-point FOLDER
+survives lists as empty and complete, so the next pass would reap the drive's entire index. Two conditions must both
+hold before any row is reaped, and `MissingRows::{Delete, Keep}` is how the decision reaches the diff.
 
 **1. The listing saw everything** (`Listing::complete`, above).
 
@@ -257,10 +257,10 @@ The presence read answers two different "don't knows" differently, and the split
 - A generation whose start could name no filesystem (no host installed, a root that isn't a mount point) is never asked
   and reads PRESENT, so hostless tools and every test built on `VolumeWork::for_test` delete exactly as before. A gate
   test that needs the host consulted uses `VolumeWork::for_test_on`, which captures an identity.
-- A generation that HAS an identity but whose mount table won't read now reads GONE. A delete needs `Some(true)`;
-  "don't know" must never authorize one. ⚠️ This is the OPPOSITE disposition to `hold::flag_vanished`, which never FLAGS
-  on `None` — both refuse to act on a don't-know, but for a stop the safe act is to keep waiting and for a delete it is
-  to keep the row.
+- A generation that HAS an identity but whose mount table won't read now reads GONE. A delete needs `Some(true)`; "don't
+  know" must never authorize one. ⚠️ This is the OPPOSITE disposition to `hold::flag_vanished`, which never FLAGS on
+  `None` — both refuse to act on a don't-know, but for a stop the safe act is to keep waiting and for a delete it is to
+  keep the row.
 
 **Who is gated.** Every local-scanner caller: `reconcile_subtree`, the full-tree `local_reconcile`, the phase
 `stitch::directory`, and the verifier's own inline diff (which classifies its own `read_dir` the same way). The
@@ -269,16 +269,16 @@ behavior: SMB and MTP deletes come from their own protocols, and that walk's lis
 
 **Why the walks take `VolumeWork` and not a bare token.** `reconcile_subtree`, `run_local_reconcile`, and
 `stitch::{down_to, directory}` take the work itself, which carries both the stop signal and the gate's answer — so
-drive-reading work cannot be written that holds the drive without being gatable, or vice versa. `cover::repair_non_virgin`
-therefore stops on `context.work` rather than a token of its own.
+drive-reading work cannot be written that holds the drive without being gatable, or vice versa.
+`cover::repair_non_virgin` therefore stops on `context.work` rather than a token of its own.
 
 **The delete generation** (`../deletes.rs`, a leaf beside `hold.rs` for the same reason: the scanner, reconcile, watch,
 and verifier all send deletes and none may import `lifecycle::state`). Every gate that sends a delete batch bumps a
 per-volume counter. It resets only when a successful listing of the volume ROOT and a `Some(true)` presence read BOTH
 land after the last batch. ❌ A presence read alone never resets it: taken inside an unmount window it can answer
 `Some(true)` over batches already sent. That is the one thing that can catch the unverified window where a path lookup
-might answer `ENOENT` while the mount is still in the table — deletes made there pass every gate above, so the counter is
-what remembers them for the rebuild marker.
+might answer `ENOENT` while the mount is still in the table — deletes made there pass every gate above, so the counter
+is what remembers them for the rebuild marker.
 
 **The control is load-bearing in the tests.** A gate that refused every delete would satisfy every "reaps nothing" case
 and quietly stop the index converging, so `reconciler/tests/delete_gates.rs` pairs each one with a drive that is still

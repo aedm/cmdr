@@ -50,8 +50,8 @@ host's own machinery instead:
   acceptable (the folder will change again) and it is said at the variant, so the `EventSink` contract doesn't look
   silently violated.
 
-**`IndexNeedsFreshScan { volume_id }`** is the one event that reports a decision the crate has already taken: this
-index may have lost rows to a drive that went away, so it is marked on disk and the next start rebuilds it
+**`IndexNeedsFreshScan { volume_id }`** is the one event that reports a decision the crate has already taken: this index
+may have lost rows to a drive that went away, so it is marked on disk and the next start rebuilds it
 (`../lifecycle/DETAILS.md` § "The rebuild marker"). It fires once per marker write, ❌ never per launch — the marker is
 persisted, and a host that re-announced it every start would keep apologizing for one disconnection. Nothing is asked of
 the person; it exists so the folder sizes about to be recomputed have a reason.

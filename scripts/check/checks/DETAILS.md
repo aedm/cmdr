@@ -1149,8 +1149,8 @@ after) because all three sit in areas that milestone touched:
   suite size**, which is also why "a branch added tests and pushed them over" is the wrong reading.
 
 **What this means for triage.** A red here is answered by the re-run's own verdict line, ❌ never by reading the test
-names and guessing at the diff. If the line says "passed alone at the same deadline, so the suite was starving it",
-that is the answer. Only "still failing alone with headroom" is yours. (`cmdr-fs`
+names and guessing at the diff. If the line says "passed alone at the same deadline, so the suite was starving it", that
+is the answer. Only "still failing alone with headroom" is yours. (`cmdr-fs`
 `process_memory::vm_regions::tests::a_big_system_zone_block_becomes_a_malloc_large_region_of_exactly_its_size` is the
 standing example of the latter: it failed identically at both commits with 0.08 s runtimes, a genuine failure that
 belongs to nobody's branch either.)
