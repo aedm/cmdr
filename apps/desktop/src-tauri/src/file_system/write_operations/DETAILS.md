@@ -1199,6 +1199,11 @@ is never treated as "nothing there" (`Standing::Unknown` defers). Same rule one 
 record on a `NotFound` only while the destination is still listed, because on a pulled drive "not found" is the mount
 being gone and the partial is still on the drive.
 
+❌ **Neither entry point runs on a runtime worker.** The rules are `async` so the `Surface::Volume` arm can await a
+backend, but every `Surface::Local` arm is plain blocking `std::fs` aimed at a removable drive — the one place a `stat`
+or an `unlink` sits for 30-120 s on a wedged mount. The launch sweep gets its own thread, the arrival sweep a
+`spawn_blocking`, and both `block_on` from there. ❌ Never `async_runtime::spawn`.
+
 **A file→folder overwrite sets a whole DIRECTORY aside.** Even with the replacement provably complete it gets a real
 name rather than a recursive delete; the person decides what to do with the folder.
 

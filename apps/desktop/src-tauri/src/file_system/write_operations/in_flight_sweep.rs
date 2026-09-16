@@ -23,6 +23,13 @@
 //! is gated on a presence read, and a read that FAILS is never treated as
 //! "nothing there" — it defers. `Standing::Unknown` exists for exactly that.
 //!
+//! ❌ **Neither entry point may run on a runtime worker.** These rules are
+//! `async` so the `Surface::Volume` arm can await a backend, but every
+//! `Surface::Local` arm is plain blocking `std::fs` — pointed at a removable
+//! drive, which is exactly where a `stat` or an `unlink` can sit for 30-120 s on
+//! a slow or wedged mount. The launch sweep gets its own thread and the arrival
+//! sweep a `spawn_blocking`; both `block_on` from there.
+//!
 //! ## Which filesystem answers
 //!
 //! [`Surface`] is the four primitives the rules need, pointed at either this
@@ -82,16 +89,26 @@ pub(super) fn persisted_orphans(locals: &[Record]) -> SweepTally {
 /// holding for it.
 ///
 /// Cheap when there's nothing waiting, which is every registration after the
-/// first launch that had a leftover. The work goes to a task, so a registration
-/// never waits on a share.
+/// first launch that had a leftover. The work goes elsewhere, so a registration
+/// never waits on a share (the listener runs INSIDE the registration).
+///
+/// ❗ `spawn_blocking`, ❌ never `spawn`. Every `Surface::Local` rule is ordinary
+/// blocking `std::fs`, and the drive it runs against has just this moment
+/// arrived — the one place a `stat` or an `unlink` can sit on a slow or wedged
+/// mount for 30-120 s. On a runtime worker that parks a thread the whole app
+/// shares. "It's only a handful of records" is today's shape, not a property: a
+/// drive back from a long trip can carry many.
 pub(super) fn on_volume_arrival(volume_id: &str) {
     let claimed = claim_pending(volume_id);
     if claimed.is_empty() {
         return;
     }
     let volume_id = volume_id.to_string();
-    tauri::async_runtime::spawn(async move {
-        let tally = on_volume(&volume_id, claimed).await;
+    tauri::async_runtime::spawn_blocking(move || {
+        // The same shape the launch sweep runs in: a blocking context that
+        // `block_on`s the volume-backed rules. One shape for both entry points
+        // is what keeps the rules themselves a single set.
+        let tally = tauri::async_runtime::block_on(on_volume(&volume_id, claimed));
         report(&tally);
     });
 }
