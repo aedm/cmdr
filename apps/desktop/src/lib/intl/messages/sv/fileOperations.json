@@ -809,6 +809,10 @@
   "@fileOperations.cancelRollback.stagedLeftover.counted": {
     "sourceHash": "becfef5"
   },
+  "fileOperations.leftovers.stagingFolderKept": "Cmdr found files from an unfinished move on {volumeName} and left them in place, in a hidden folder named {folderName}.",
+  "@fileOperations.leftovers.stagingFolderKept": {
+    "sourceHash": "fd848b8"
+  },
   "fileOperations.errorDialog.technicalDetails": "Tekniska detaljer",
   "@fileOperations.errorDialog.technicalDetails": {
     "sourceHash": "890ab35"

@@ -3193,3 +3193,39 @@ cuatro claves no pueden insinuar que el movimiento saliera mal ni que los archiv
   `errors.write.moveNotConfirmed.message.named`, que es lo que refuerza la tranquilización.
 - Ningún valor lleva apóstrofo ni marcador aparte de `{volumeName}`; los cuatro difieren del inglés, así que no hace
   falta `sameAsSourceJustification`.
+
+## La carpeta de trabajo de un movimiento que volvió con la unidad (`fileOperations.leftovers.stagingFolderKept`)
+
+Aviso informativo al reconectar una unidad (o al arrancar Cmdr): dentro quedó la carpeta de trabajo de un movimiento que
+nunca terminó, con archivos todavía dentro. Cmdr los deja a propósito donde están, porque pueden ser la única copia de
+esa persona. No se le pide nada ni hay nada en peligro: la línea existe para que esos archivos tengan un sitio
+localizable. ❌ Nunca insinuar que se pueden borrar.
+
+- **unfinished move → `un movimiento sin terminar`** · `terminar el movimiento` es la forma de la clave hermana más
+  cercana (`errors.write.deviceDisconnected.sided.destination.move`, «antes de que Cmdr pudiera terminar el
+  movimiento»), y `el movimiento` es el sustantivo ya fijado en § A drive pulled mid-transfer · high. ❌ No
+  `movimiento parcial`: `parcial` está reservado al ARTEFACTO (`copia parcial`, macOS `NE109`/`NE111`, ya en §
+  `cancelRollback.stagedLeftover.*`), y «parcial» aquí prometería que una parte del movimiento sí salió bien. ❌ Tampoco
+  `interrumpido`, que el catálogo usa para una conexión cortada (`errors.write.connectionInterrupted.title`) y que suena
+  a algo que salió mal.
+- **left them in place → `los conservó donde estaban`**, no `los dejó donde estaban` · high. Es el mismo verbo y el
+  mismo cierre de la clave hermana `errors.write.moveNotConfirmed.message.named` («conservó tus originales donde
+  estaban»), y `conservar` es lo que macOS `es` usa para guardar algo a salvo a propósito (`Conservar original`,
+  `Conservar copia parcial`). `dejar` en español se lee como descuido («ahí se los dejó»), que debilitaría justo la
+  tranquilización que sostiene toda la línea: el inglés «left them in place» ya suena deliberado, `dejó` no.
+- **hidden folder → `una carpeta oculta`** · `oculto` es la forma de todo el catálogo (`menu.view.showHiddenFiles`,
+  `commands.viewShowHidden.label`, `fileExplorer.rename.hiddenAfterRename`) y de las cuatro fuentes (macOS Finder, «El
+  Finder oculta los archivos que empiezan por un punto»; Nautilus, Dolphin y Total Commander, «Archivos ocultos») ·
+  high. Decirlo es obligatorio: es lo único accionable de la línea, porque sin activar los archivos ocultos la carpeta
+  no se ve.
+- **named {folderName} → `llamada {folderName}`** · molde literal de macOS Finder (`Crear una carpeta llamada
+  ${fileName} dentro de ${target}`) · high.
+- **La esquiva de los dos marcadores**: `{folderName}` va detrás de `carpeta`, que es quien carga el género, así que
+  `llamada` concuerda con el sustantivo español y nunca con el nombre real (siempre `.cmdr-staging-<uuid>`).
+  `{volumeName}` va tras la preposición desnuda `en`, sin artículo, como `{counterpart}` en § A drive pulled
+  mid-transfer: el nombre de la unidad es texto arbitrario en cualquier alfabeto y cualquier artículo acertaría solo la
+  mitad de las veces.
+- `en {volumeName}` cuelga de `movimiento`, no del verbo, igual que en el inglés: los archivos y el movimiento están en
+  esa unidad.
+- El valor no lleva apóstrofo, así que no hay duplicación ICU (`''`), y difiere del inglés, así que no hace falta
+  `sameAsSourceJustification`.

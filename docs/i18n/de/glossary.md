@@ -2973,3 +2973,36 @@ verloren, und Cmdr hat die Originale gerade DESHALB behalten, weil es den Schrei
   verneint: `errors.write.readOnlyDevice.source.suggestion` sagt „Die Originale bleiben, wo sie sind.“ für dasselbe
   Versprechen · `high`. Ein wörtliches „haben sich nicht bewegt“ würde `bewegen` als Cmdrs Befehlsnamen anklingen lassen
   (`style.md` § Notes and decisions).
+
+## Ein wiedergefundener Staging-Ordner (`fileOperations.leftovers.stagingFolderKept`)
+
+Ein Info-Toast beim Wiederverbinden eines Laufwerks: Cmdr hat den Arbeitsordner einer nie beendeten Bewegung gefunden,
+und darin liegen noch Dateien der Person. Cmdr lässt jede einzelne davon bewusst liegen, weil sie die einzige Kopie sein
+kann. Der Ton ist Entwarnung, keine Aufgabe: nichts ist zu tun, nichts ist in Gefahr. ❌ Nie zum Löschen raten.
+Abgrenzung zu `### cancelRollback.stagedLeftover.*`: dort sind es Cmdrs EIGENE Arbeitsdateien, hier die der Person.
+
+- **„an unfinished move“ → `eine nicht abgeschlossene Bewegung`** · `nicht abgeschlossen` ist die gesetzte Form für
+  „unfinished“ (`askCmdr.error.unfinishedReply` „Die Antwort wurde nicht abgeschlossen.“, `queue.failureToast.title`
+  „Bewegen nicht abgeschlossen“), und `die Bewegung` ist das gesetzte Nomen für diesen EINEN Move-Vorgang (§ A move that
+  could not be confirmed) · `high`. ❌ Nicht `unvollständig`: das Glossar hält es für „incomplete“ frei, also für Cmdrs
+  eigene `unvollständige Kopie` in `fileOperations.cancelRollback.stagedLeftover.named`.
+- **„left them in place“ → `sie an ihrem Platz gelassen`** · `an ihrem Platz` steht schon für dieselbe Entwarnung in
+  `errors.write.deviceDisconnected.sided.destination.copy` („liegen unberührt an ihrem Platz“), und das Verb `lassen`
+  trägt die Absicht wie in `errors.write.moveNotConfirmed.message.named` („hat es deine Originale dort gelassen, wo sie
+  waren“) · `high`. ❌ Nicht `liegen geblieben` o. Ä.: eine Zustandsbeschreibung ohne Handelnden liest sich wie ein
+  Versäumnis, und der Satz soll sagen, dass Cmdr sich dafür ENTSCHIEDEN hat.
+- **„hidden“ (Dot-Ordner) → `verborgen`** · der Katalog hat den Sinn schon gesetzt
+  (`settings.listing.showHiddenFiles.description` „die das System als verborgen markiert“), Microsoft-Terminologie führt
+  `verborgenes Feld` · `high`. ❌ Nicht `ausgeblendet` (das Glossar reserviert es für „aus der Ansicht genommen“) und
+  nicht `versteckt`, obwohl Nautilus, Thunar und Dolphin mehrheitlich so sagen: Tier 3 gegen eine getroffene
+  Katalogentscheidung.
+- **Platzhalter-Kniff: `auf {volumeName}` und `namens {folderName}`** · `{volumeName}` hängt wie in der ganzen
+  `deviceDisconnected.sided.*`-Familie an `auf`, also braucht der fremde Laufwerksname weder Artikel noch Genus.
+  `{folderName}` steht als Apposition nach `namens` und bleibt damit unflektiert, genau wie in
+  `errors.write.duplicateSourceNames.message` („zwei Objekte namens {name}“) · `high`. Ohne Anführungszeichen, weil das
+  Englische hier keine setzt.
+- **Der Doppelpunkt ersetzt das englische Komma.** „left them in place, in a hidden folder …“ ist eine lose Apposition,
+  die im Deutschen mit Komma nachklappert; der Doppelpunkt sagt sauber, WO dieser Platz ist, und lässt den Satz auf dem
+  Ordnernamen enden, den die Person suchen soll.
+- Kein `sameAsSourceJustification` nötig: der Wert unterscheidet sich vom Englischen. Keine Apostrophe im Wert, also
+  nichts zu verdoppeln (die Datei ist ein ICU-Katalog).

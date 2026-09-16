@@ -810,6 +810,10 @@
   "@fileOperations.cancelRollback.stagedLeftover.counted": {
     "sourceHash": "becfef5"
   },
+  "fileOperations.leftovers.stagingFolderKept": "Cmdr heeft op {volumeName} bestanden gevonden waarvan het verplaatsen niet is voltooid, en heeft ze allemaal laten staan, in een verborgen map met de naam {folderName}.",
+  "@fileOperations.leftovers.stagingFolderKept": {
+    "sourceHash": "fd848b8"
+  },
   "fileOperations.errorDialog.technicalDetails": "Technische details",
   "@fileOperations.errorDialog.technicalDetails": {
     "sourceHash": "890ab35"

@@ -251,8 +251,14 @@ fn a_local_record_stays_a_bare_path_on_disk() {
     let temp = dir.join("holiday.raw.cmdr-tmp-2222");
     register(&state, &temp, Some(TempHome::LocalFs));
 
+    // The LINE, ❌ not the whole file: a concurrent transfer test staging a
+    // write records into this same log, so an equality check here is an
+    // assertion about the rest of the suite.
     let written = std::fs::read_to_string(data_dir.join(STORE_FILENAME)).unwrap();
-    assert_eq!(written, format!("+{}\n", serde_json::to_string(&temp).unwrap()));
+    assert!(
+        written.contains(&format!("+{}\n", serde_json::to_string(&temp).unwrap())),
+        "a local record has to stay the bare path an older build wrote; got {written}"
+    );
 }
 
 /// An operation that never named its destination volume can't have its partial
@@ -279,10 +285,14 @@ fn a_partial_with_no_named_path_space_is_kept_in_memory_but_not_persisted() {
         !test_support::live_paths().contains(&temp),
         "but nothing may be persisted about a path whose space we can't name"
     );
-    assert_eq!(
-        std::fs::read_to_string(data_dir.join(STORE_FILENAME)).unwrap(),
-        "",
-        "and the log must be untouched"
+    // About THIS path, ❌ never about the whole log: the store is process-wide,
+    // and any concurrent transfer test that stages a write records into it. An
+    // emptiness check here is an assertion about the rest of the suite.
+    assert!(
+        !std::fs::read_to_string(data_dir.join(STORE_FILENAME))
+            .unwrap()
+            .contains("holiday.raw.cmdr-tmp-3333"),
+        "and nothing about it may reach the log"
     );
 }
 
@@ -507,8 +517,19 @@ fn the_sweep_refuses_a_recorded_path_that_isnt_one_of_our_scratch_files() {
         precious.exists(),
         "the sweep must only ever remove files carrying our scratch marker"
     );
-    assert_eq!(tally.swept, 1, "{tally:?}");
-    assert_eq!(tally.left_alone, 1, "{tally:?}");
+    // Both records retired says the sweep VISITED each one and decided, which is
+    // what separates "it refused `taxes.pdf`" from "it never got that far".
+    // ❌ Not the tally's counts: the store is process-wide, so `tally.swept` is
+    // an assertion about every other test staging a write at the same moment.
+    let replayed = read_recorded(&data_dir.join(STORE_FILENAME));
+    assert!(
+        !replayed.iter().any(|record| record.path() == precious),
+        "the refused record is settled, not left to be retried forever: {tally:?}"
+    );
+    assert!(
+        !replayed.iter().any(|record| record.path() == real_temp),
+        "and so is the one it removed: {tally:?}"
+    );
 }
 
 /// The same refusal on the volume side, where the sweep now has a `delete`
@@ -539,7 +560,15 @@ async fn the_sweep_refuses_a_volume_path_that_isnt_one_of_our_scratch_files() {
         volume.exists(&precious).await,
         "the sweep must only ever remove files carrying our scratch marker"
     );
-    assert_eq!(tally.left_alone, 1, "{tally:?}");
+    // The record retired says the sweep reached it and refused, rather than
+    // never arriving. ❌ Not `tally.left_alone`, which counts every other
+    // concurrent test's records too (the store is one process-wide singleton).
+    assert!(
+        !read_recorded(&data_dir.join(STORE_FILENAME))
+            .iter()
+            .any(|record| record.path() == precious),
+        "the refused record is settled, not left to be retried forever: {tally:?}"
+    );
 }
 
 /// Registering and deregistering keep both ledgers in step, so nothing
@@ -648,26 +677,26 @@ fn a_leftover_on_a_removable_drive_waits_for_that_drive_rather_than_being_forgot
     // The drive isn't plugged in, so nothing is registered for it.
     let tally = init_and_sweep(&data_dir).wait();
 
-    assert_eq!(
-        tally,
-        SweepTally {
-            deferred: 1,
-            ..SweepTally::default()
-        },
-        "a drive that isn't here defers rather than resolving against an empty mount point: {tally:?}"
+    // About THIS record, ❌ never the whole tally or the whole log: the store is
+    // one process-wide singleton and any concurrent transfer test records into
+    // it, so `tally.deferred` and `replayed.len()` are assertions about the rest
+    // of the suite.
+    assert!(
+        tally.swept == 0 && tally.already_gone == 0,
+        "a drive that isn't here decides nothing, rather than resolving against an empty mount point: {tally:?}"
     );
     let replayed = read_recorded(&data_dir.join(STORE_FILENAME));
-    assert_eq!(replayed.len(), 1, "exactly the one record survives: {replayed:?}");
+    let kept = replayed
+        .iter()
+        .find(|record| record.path() == Path::new("footage.mov.cmdr-tmp-2468"))
+        .unwrap_or_else(|| panic!("the record survives the launch: {replayed:?}"));
     assert_eq!(
-        replayed[0].volume_id(),
+        kept.volume_id(),
         Some(volume_id),
         "and it names the drive it waits on, so plugging it back in settles it"
     );
-    assert_eq!(
-        replayed[0].path(),
-        Path::new("footage.mov.cmdr-tmp-2468"),
-        "stored relative to the drive's root, so a remount at another mount point still finds it"
-    );
+    // Finding it by that relative path IS the claim: stored whole, it would read
+    // as an absolute path under a mount point that may never come back.
 }
 
 /// A Mac-internal path has nothing to wait for, so it stays local-homed and the
@@ -685,10 +714,13 @@ fn a_leftover_on_the_mac_stays_local_homed() {
     let temp = dir.join("notes.txt.cmdr-tmp-1357");
     track(&state, ItemKind::Temp, &temp);
 
+    // By path, ❌ not by index into a log the rest of the suite also writes to.
     let replayed = read_recorded(&data_dir.join(STORE_FILENAME));
-    assert_eq!(replayed.len(), 1, "{replayed:?}");
-    assert_eq!(replayed[0].volume_id(), None, "nothing to wait for");
-    assert_eq!(replayed[0].path(), temp, "so the whole path is the record");
+    let recorded = replayed
+        .iter()
+        .find(|record| record.path() == temp)
+        .unwrap_or_else(|| panic!("the temp is recorded under its whole path: {replayed:?}"));
+    assert_eq!(recorded.volume_id(), None, "nothing to wait for");
 }
 
 /// The registry's arrival announcement is what makes a deferred record

@@ -809,6 +809,10 @@
   "@fileOperations.cancelRollback.stagedLeftover.counted": {
     "sourceHash": "becfef5"
   },
+  "fileOperations.leftovers.stagingFolderKept": "Cmdr encontró archivos de un movimiento sin terminar en {volumeName} y los conservó donde estaban, en una carpeta oculta llamada {folderName}.",
+  "@fileOperations.leftovers.stagingFolderKept": {
+    "sourceHash": "fd848b8"
+  },
   "fileOperations.errorDialog.technicalDetails": "Detalles técnicos",
   "@fileOperations.errorDialog.technicalDetails": {
     "sourceHash": "890ab35"

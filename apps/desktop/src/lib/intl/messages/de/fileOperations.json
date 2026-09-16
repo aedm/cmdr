@@ -812,6 +812,10 @@
   "@fileOperations.cancelRollback.stagedLeftover.counted": {
     "sourceHash": "becfef5"
   },
+  "fileOperations.leftovers.stagingFolderKept": "Cmdr hat auf {volumeName} Dateien aus einer nicht abgeschlossenen Bewegung gefunden und sie an ihrem Platz gelassen: in einem verborgenen Ordner namens {folderName}.",
+  "@fileOperations.leftovers.stagingFolderKept": {
+    "sourceHash": "fd848b8"
+  },
   "fileOperations.errorDialog.technicalDetails": "Technische Details",
   "@fileOperations.errorDialog.technicalDetails": {
     "sourceHash": "890ab35"
