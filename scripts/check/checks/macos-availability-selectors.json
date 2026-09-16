@@ -1,6 +1,6 @@
 {
   "floor": "10.15",
-  "sdk": "MacOSX.sdk",
+  "sdk": "27.0",
   "selectors": {
     "CGDirectDisplayID": "26.0",
     "CGPath": "14.0",

@@ -75,8 +75,10 @@ func (v macOSVersion) newerThan(other macOSVersion) bool {
 // was built for.
 type macOSSelectorIndex struct {
 	Floor string `json:"floor"`
-	// SDK is the SDK the list was read from, so a reader can tell how current
-	// the answer is. Nothing keys off it.
+	// SDK is the macOS SDK VERSION the list was read from (`26.5`, `27.0`), so a
+	// reader can tell how current the answer is and a downgrade can be caught.
+	// ❌ Never the SDK path's basename: that's the unversioned `MacOSX.sdk`
+	// symlink on every machine, so it says nothing and can't be compared.
 	SDK string `json:"sdk"`
 	// Selectors maps a selector to the macOS version that introduced it,
 	// `objc2`-spelled (keywords joined by underscores).
@@ -241,9 +243,13 @@ func selectorsNewerThanFloor(ctx *CheckContext, floor macOSVersion) (map[string]
 		return nil, false, err
 	}
 
+	sdkVersion, err := macOSSDKVersion(ctx)
+	if err != nil {
+		return nil, false, err
+	}
 	fresh := macOSSelectorIndex{
 		Floor:     floor.String(),
-		SDK:       filepath.Base(sdkPath),
+		SDK:       sdkVersion.String(),
 		Selectors: make(map[string]string, len(newer)),
 	}
 	for name, version := range newer {
@@ -251,7 +257,21 @@ func selectorsNewerThanFloor(ctx *CheckContext, floor macOSVersion) (map[string]
 	}
 
 	stored, readErr := readSelectorIndex(path)
-	if readErr == nil && sameSelectorIndex(stored, fresh) {
+	// ❗ The file records the NEWEST SDK it's been built against, and an older Mac
+	// never walks that back. An older SDK knows fewer selectors, and writing those
+	// back would loosen every Linux lane for everyone, silently, on someone's first
+	// run — after which the file ping-pongs between the two machines forever.
+	if readErr == nil && olderThanStoredSDK(sdkVersion, stored.SDK) {
+		if sameSelectorIndex(stored, fresh) {
+			// The same answer from an older SDK: nothing to record, nothing to warn about.
+			return newer, false, nil
+		}
+		return nil, false, fmt.Errorf(
+			"%s was built on the macOS %s SDK and this machine has %s, which knows a different set of selectors, so the file is left alone. "+
+				"Re-run on the newer SDK, or delete the file and re-run to rebuild it against this one",
+			macOSAvailabilitySelectorsFile, stored.SDK, fresh.SDK)
+	}
+	if readErr == nil && sameSelectorIndex(stored, fresh) && stored.SDK == fresh.SDK {
 		return newer, false, nil
 	}
 	if ctx.CI {
@@ -263,6 +283,18 @@ func selectorsNewerThanFloor(ctx *CheckContext, floor macOSVersion) (map[string]
 		return nil, false, err
 	}
 	return newer, true, nil
+}
+
+// olderThanStoredSDK answers whether this machine's SDK predates the one the
+// committed list was built on. An unparsable stored value (a file from before the
+// version was recorded, or a hand-edit) answers false, so the rewrite goes ahead and
+// repairs it.
+func olderThanStoredSDK(sdk macOSVersion, storedSDK string) bool {
+	previous, ok := parseMacOSVersion(storedSDK)
+	if !ok {
+		return false
+	}
+	return previous.newerThan(sdk)
 }
 
 // readSelectorIndex reads the committed list. Its absence is an error: an empty
@@ -297,9 +329,9 @@ func parseSelectorVersions(index macOSSelectorIndex) (map[string]macOSVersion, e
 	return out, nil
 }
 
-// sameSelectorIndex compares what the SDK says against what's committed. The SDK
-// NAME is deliberately not part of it: an Xcode update that adds no API to the
-// frameworks we bind shouldn't rewrite the file.
+// sameSelectorIndex compares the ANSWER: the floor and the selectors. The SDK
+// version is its caller's business, since what it means depends on the direction
+// (a newer one may add selectors, an older one may never subtract them).
 func sameSelectorIndex(stored, fresh macOSSelectorIndex) bool {
 	if stored.Floor != fresh.Floor || len(stored.Selectors) != len(fresh.Selectors) {
 		return false
@@ -386,6 +418,25 @@ func macOSSDKPath(ctx *CheckContext) (string, error) {
 		return "", fmt.Errorf("xcrun named no macOS SDK path")
 	}
 	return path, nil
+}
+
+// macOSSDKVersion answers the installed SDK's version, which is what the committed
+// list records and compares against.
+//
+// ❗ Asked of `xcrun`, ❌ never read off the SDK PATH: `--show-sdk-path` answers the
+// unversioned `MacOSX.sdk` symlink, whose basename is identical on every machine.
+func macOSSDKVersion(ctx *CheckContext) (macOSVersion, error) {
+	cmd := exec.Command("xcrun", "--sdk", "macosx", "--show-sdk-version")
+	cmd.Dir = ctx.RootDir
+	out, err := RunCommand(cmd, true)
+	if err != nil {
+		return macOSVersion{}, fmt.Errorf("couldn't read the macOS SDK version:\n%s", indentOutput(out))
+	}
+	version, ok := parseMacOSVersion(out)
+	if !ok {
+		return macOSVersion{}, fmt.Errorf("xcrun named no usable macOS SDK version (%q)", strings.TrimSpace(out))
+	}
+	return version, nil
 }
 
 // boundFrameworkHeaderDirs maps every `objc2-*` dependency in the workspace to the

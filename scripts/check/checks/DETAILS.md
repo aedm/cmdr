@@ -1532,15 +1532,15 @@ How it decides:
   file from the installed SDK and every run scans against it. A stale file under `--ci` is an error, and a file built
   against a different floor is too, since it only lists what was above the floor at the time. Not hand-edited: run
   `pnpm check macos-availability` on a Mac and commit the rewrite.
-- ❗ **The file follows the SDK it was last written on, so two Macs on different SDKs rewrite it back and forth.**
-  `sameSelectorIndex` compares the FLOOR and the selector set, never the SDK, and the stored `sdk` is
-  `filepath.Base(sdkPath)` of the unversioned symlink (`MacOSX.sdk` on every machine), so it can't tell the two apart. A
-  newer SDK adds selectors; an older one silently drops them again on its next run, which is why a first run on a
-  different Mac can hand you a dirty tree you didn't ask for. Harmless in one direction and not in the other: a superset
-  makes the Linux lanes STRICTER, and reverting makes them looser, so keep the newest-SDK version. Linux never rewrites
-  (it reads the file and only errors when the floor moved). To make a downgrade loud instead of silent, store the
-  resolved SDK VERSION (`xcrun --show-sdk-version`) and compare it. Measured 2026-09-16 on macOS 27.0: 43 selectors
-  appeared against a file last written on an earlier SDK, floor unchanged at 10.15.
+- ❗ **The recorded SDK only moves FORWARD, so two Macs on different SDKs can't rewrite the file back and forth.** `sdk`
+  is the resolved version from `xcrun --show-sdk-version` (`27.0`), ❌ never `filepath.Base` of `--show-sdk-path`, which
+  answers the unversioned `MacOSX.sdk` symlink and reads identical on every machine — the reason this went unnoticed. A
+  Mac whose SDK predates the stored one never writes: same selectors, it's a quiet no-op; different selectors, it's an
+  error naming both versions, with the file left alone. Why the direction is the whole point: a newer SDK's superset
+  makes the Linux lanes STRICTER, and a revert makes them looser, silently, on someone's first run. `sameSelectorIndex`
+  still compares the floor and the selectors alone, so what an SDK difference MEANS stays the caller's to judge. Linux
+  never rewrites at all (it reads the file and only errors when the floor moved). Measured 2026-09-16 on macOS 27.0: 43
+  selectors appeared against a file last written on an earlier SDK, floor unchanged at 10.15.
 - **Two deliberate blind spots.** A grep can't resolve a Rust receiver's class, so (a) the OLDEST declaration of a name
   wins, and a name some class has carried since 10.x is never flagged, and (b) a selector has to carry an uppercase
   letter to count, because `bytes`, `close`, and `title` are selectors AND ordinary Rust method names. Both trade recall

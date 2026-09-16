@@ -288,7 +288,7 @@ func TestParseMacOSVersion(t *testing.T) {
 
 func TestSelectorIndexRoundTrips(t *testing.T) {
 	path := filepath.Join(t.TempDir(), macOSAvailabilitySelectorsFile)
-	index := macOSSelectorIndex{Floor: "12.0", SDK: "MacOSX26.5.sdk", Selectors: map[string]string{"regionCode": "14.0"}}
+	index := macOSSelectorIndex{Floor: "12.0", SDK: "26.5", Selectors: map[string]string{"regionCode": "14.0"}}
 	if err := writeSelectorIndex(path, index); err != nil {
 		t.Fatalf("writeSelectorIndex: %v", err)
 	}
@@ -299,15 +299,44 @@ func TestSelectorIndexRoundTrips(t *testing.T) {
 	if !sameSelectorIndex(stored, index) {
 		t.Errorf("round trip changed the index: %+v", stored)
 	}
-	// The SDK name is deliberately not compared: an Xcode update that adds no API
+	// The SDK version is deliberately not compared: an Xcode update that adds no API
 	// to the frameworks we bind shouldn't rewrite the file.
-	index.SDK = "MacOSX27.0.sdk"
+	index.SDK = "27.0"
 	if !sameSelectorIndex(stored, index) {
-		t.Error("a new SDK name alone must not count as a change")
+		t.Error("a new SDK version alone must not count as a change")
 	}
 	index.Selectors["somethingElse"] = "15.0"
 	if sameSelectorIndex(stored, index) {
 		t.Error("a new selector has to count as a change")
+	}
+}
+
+// A file built on a newer SDK must not be quietly reverted by a Mac on an older one:
+// it knows fewer selectors, and writing those back loosens every Linux lane for
+// everyone. The rewrite is refused instead, so the downgrade is loud.
+func TestOlderThanStoredSDK(t *testing.T) {
+	older := macOSVersion{major: 26, minor: 5}
+	newer := macOSVersion{major: 27, minor: 0}
+
+	if !olderThanStoredSDK(older, "27.0") {
+		t.Error("a 26.5 SDK against a file built on 27.0 is a downgrade")
+	}
+	if olderThanStoredSDK(newer, "26.5") {
+		t.Error("a 27.0 SDK against a file built on 26.5 may rewrite: a superset only tightens the check")
+	}
+	if olderThanStoredSDK(newer, "27.0") {
+		t.Error("the same SDK may rewrite, which is how a floor change rebuilds the list")
+	}
+	if olderThanStoredSDK(newer, "26.10") {
+		t.Error("versions compare numerically, so 26.10 is older than 27.0")
+	}
+	// A pre-versioned file stored the `MacOSX.sdk` symlink basename, and a hand-edit
+	// can store anything. Neither may wedge the check: the rewrite repairs the value.
+	if olderThanStoredSDK(older, "MacOSX.sdk") {
+		t.Error("an unparsable stored SDK must let the rewrite through")
+	}
+	if olderThanStoredSDK(older, "") {
+		t.Error("a missing stored SDK must let the rewrite through")
 	}
 }
 
