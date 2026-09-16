@@ -761,8 +761,7 @@
   },
   "commands.selectionSelectSameKind.label": "Select all of the same kind",
   "@commands.selectionSelectSameKind.label": {
-    "description": "Command name that adds every entry of the same kind as the one under the cursor to the selection: every folder, every file with the same extension, or every file with no extension. This static name appears in the keyboard-shortcuts settings and the help window; the command palette shows one of the three live variants below instead.",
-    "screenshot": "settings-keyboard-shortcuts.png"
+    "description": "Command name that adds every entry of the same kind as the one under the cursor to the selection: every folder, every file with the same extension, or every file with no extension. This static name appears in the keyboard-shortcuts settings and the help window; the command palette shows one of the three live variants below instead."
   },
   "commands.selectionSelectSameKind.description": "Adds every entry like the one under the cursor to the selection, without clearing it",
   "@commands.selectionSelectSameKind.description": {
