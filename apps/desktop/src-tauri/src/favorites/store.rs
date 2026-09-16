@@ -1,6 +1,6 @@
 //! Persistent, user-editable favorites store (`favorites.json`).
 //!
-//! An ordered list of `{ id, path, name }` favorites that the volume switcher's "Favorites" section
+//! An ordered list of `{ id, path, name }` favorites that the frontend's favorites menu (⌃D)
 //! renders. The store is the single source of truth: it replaces the previously hardcoded four
 //! favorites (`/Applications`, `~/Desktop`, `~/Documents`, `~/Downloads`).
 //!
@@ -23,7 +23,7 @@
 //! - `add` dedups by normalized path: re-adding an existing path moves it to the end (keeps its id),
 //!   so the user's existing label and position context isn't silently dropped.
 //! - Schema-versioned: a parse error or version mismatch quarantines the file aside and starts
-//!   fresh, so a stray hand-edit can't break the switcher forever.
+//!   fresh, so a stray hand-edit can't break the menu forever.
 //! - The disk file is never locked across an `.await`; the in-memory mutex guard is always dropped
 //!   before any `fs` call.
 

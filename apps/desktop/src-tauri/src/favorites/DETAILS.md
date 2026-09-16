@@ -1,6 +1,6 @@
 # Favorites (backend) details
 
-User-editable favorites. The volume switcher's "Favorites" section is fully user-owned: add, remove,
+User-editable favorites. The frontend's favorites menu (⌃D) is fully user-owned: add, remove,
 rename, reorder. This module owns the ordered `favorites.json` store; the IPC layer
 (`commands/favorites.rs`) is a thin pass-through. Read `CLAUDE.md` first for the
 must-knows.
@@ -27,7 +27,7 @@ the Linux `volumes_linux/mod.rs` twins) reads `favorites::store::list()` and map
 }
 ```
 
-- `id`: a random UUID minted on add, never derived from `path`. The switcher exposes it as
+- `id`: a random UUID minted on add, never derived from `path`. The frontend exposes it as
   `LocationInfo.id = "fav-<id>"`.
 - `path`: the absolute filesystem path.
 - `name`: the display label. Defaults to the path's file name on add; the user can override via
@@ -101,7 +101,7 @@ would resolve symlinks and require the path to exist).
 
 Thin async pass-throughs, each `blocking_typed_result_with_timeout` (5 s, the write tier) since the
 store write touches the filesystem. After persisting, each re-emits `volumes-changed` via
-`volume_broadcast::emit_volumes_changed()` so both panes' switchers refresh live
+`volume_broadcast::emit_volumes_changed()` so both panes' menus refresh live
 (subscribe-don't-poll). Listing rides the existing `list_volumes` / `volumes-changed` path, so
 there's no `list_favorites` command.
 

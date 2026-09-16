@@ -75,7 +75,13 @@ trigger the frontend's follow-up. Reusing `dialog.confirm` for that third one is
 
 `CommandScope` is a union of string literals: `'App'`, `'Main window'`, `'Main window/File list'`,
 `'Main window/Brief mode'`, `'Main window/Full mode'`, `'Main window/Servers'`, `'Main window/Places'`,
-`'Main window/Volume chooser'`, `'About window'`, `'Onboarding'`, `'Command palette'`. Scope is documentation-only.
+`'Main window/Volume chooser'`, `'Main window/Favorites menu'`, `'About window'`, `'Onboarding'`,
+`'Command palette'`. Scope is documentation-only.
+
+❗ **A NEW scope is three places**: the `CommandScope` union here, its ancestry chain in
+`shortcuts/scope-hierarchy.ts` (without one, `getActiveScopes` returns `[]` and its commands can never conflict with
+anything), and a row in `settings/sections/keyboard-shortcuts-grouping.ts`'s `scopeOrder` — miss that last one and every
+command on the scope silently vanishes from the rebinding UI, which its exhaustiveness test catches.
 
 ## Command registry
 

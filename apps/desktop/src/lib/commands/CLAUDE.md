@@ -40,7 +40,7 @@ Centralized command registry and fuzzy search engine for the command palette.
   truth that makes the shortcuts editor render them read-only and the store mutators refuse to write them
   (`DISPATCH_EXEMPT_IDS` sources its native-menu family from the same list).
 - **`scope` is documentation-only, not runtime-enforced** (keyboard routing is each UI component's job; scope drives
-  conflict detection and Settings display).
+  conflict detection and Settings display). A NEW scope is three places: `DETAILS.md` § "Adding a command".
 - **The uFuzzy instance is a module-level singleton**; `info.ranges` is a flat `[start, end, …]` array (`end`
   exclusive), unpacked into per-char `matchedIndices`. Understand this before changing highlighting (see DETAILS.md).
 
@@ -58,8 +58,7 @@ Centralized command registry and fuzzy search engine for the command palette.
 ## Adding a command
 
 The full step list (ids, registry entry, arg overrides, handler, palette pin, native-menu wiring) is in `DETAILS.md` §
-"Adding a command". The compile-time and set-equality guards above catch most omissions; the four-places gotcha covers
-the menu-item case.
+"Adding a command". The guards above catch most omissions; the four-places gotcha covers the menu-item case.
 
-Full details (the `Command` / `CommandArgs` / `CommandDispatchArgs` type definitions, the uFuzzy config and ranking
-behavior, `searchAllCommands` rationale, the `view.showHidden` local-first path, and decision rationale): `DETAILS.md`.
+Full details (the `Command` / `CommandArgs` / `CommandDispatchArgs` types, the uFuzzy config and ranking, the
+`searchAllCommands` rationale, the `view.showHidden` local-first path, and decisions): `DETAILS.md`.

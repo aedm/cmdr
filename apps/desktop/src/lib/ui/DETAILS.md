@@ -820,10 +820,11 @@ those.
 
 The house menu, and the app's only in-app menu primitive (context menus are otherwise native/muda): a portaled, glass,
 keyboard-first popup built from SECTIONS of rows. Data in, callbacks out — the caller hands over sections and gets
-`onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Two consumers: the
-volume switcher (`file-explorer/navigation/VolumeChooserMenu.svelte`, the rich one — grouped sections, reorderable
-favorites, a submenu, and all four snippets) and the archive Enter popup (`file-explorer/pane/enter-menu.svelte.ts`,
-three flat rows).
+`onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Three consumers:
+the volume switcher (`file-explorer/navigation/VolumeChooserMenu.svelte`, the rich one — grouped sections, a submenu,
+and all four snippets), the favorites menu (`file-explorer/navigation/FavoritesMenu.svelte` — a reorderable section, the
+digit accelerators, and an inline rename field in the `label` snippet), and the archive Enter popup
+(`file-explorer/pane/enter-menu.svelte.ts`, three flat rows).
 
 ❗ **Deliberately NOT Ark-backed.** Ark's `Menu` machine is trigger-driven and doesn't reliably open
 (mounted-already-open) or close (controlled `open=false`) when driven programmatically, which every caller here needs.
@@ -839,6 +840,13 @@ sibling component.
 state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isEditing`, `onOpenChange`, `restoreFocus`,
 `keepOpenWithin`. Hand the result to `<Menu {menu} ariaLabel minWidth>`; it renders nothing while closed, so there's no
 `{#if}`.
+
+**A pick says how it was made.** `onSelect(item, source)`'s second argument is a `MenuActivationSource`:
+`'pointer'` (a click, or a drag that never crossed the threshold), `'keyboard'` (Enter or Space on the highlighted row),
+or `'accelerator'` (the row's digit was typed). The primitive is the only thing that knows — by the time a consumer sees
+the pick, all three have collapsed into one call — and the favorites menu's `favorite_opened.via` is what asks. A
+consumer that doesn't care declares one parameter and ignores it. ❌ Don't rebuild the answer by sniffing `onKey`: it
+drifts the moment the keyboard contract grows a case.
 
 **Consumer surface**: `openUnder(el)`, `openAt(point)`, `toggleUnder(el)`, `close()`, `highlight(value)`,
 `handleKey(event)`, `destroy()`, plus the reactive `isOpen` / `highlightedValue`. Everything under `menu.surface.*` is

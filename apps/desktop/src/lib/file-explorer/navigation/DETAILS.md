@@ -3,14 +3,15 @@
 Pull-tier docs for `apps/desktop/src/lib/file-explorer/navigation/`: architecture, flows, and decision rationale.
 Must-know invariants and gotchas live in `CLAUDE.md`.
 
-Browser-style back/forward history, path resolution, paged keyboard shortcuts, and volume selector breadcrumb.
+Browser-style back/forward history, path resolution, paged keyboard shortcuts, and the volume chip with the two menus
+it hosts.
 
 ## Key files
 
 Where a symbol lives and who calls it: `codegraph_search` / `codegraph_explore`. The area's shape: `CLAUDE.md` § Module
 map. What each piece DOES is in the sections below (a `##` per module for `navigation-history`, `path-navigation`,
 `path-resolution`, `keyboard-shortcuts`, `volume-grouping`, and `volume-space-manager`, plus a `###` per breadcrumb
-feature: the TCC indicator, SMB indicator, eject button, editable favorites, USB link speed, and the two per-drive
+feature: the TCC indicator, SMB indicator, eject button, the favorites menu, USB link speed, and the two per-drive
 badges). `resolve-location.ts` and `breadcrumb-navigation.ts` are documented where they're used, in
 `../pane/DETAILS.md`. Only the layout facts that none of those carry live here:
 
@@ -341,8 +342,8 @@ same detach item alongside "Copy path" when the pane's volume is ejectable. All 
 `volume-context-action` Tauri event, whose `action` is the TYPED `VolumeContextActionKind` (`open`, `eject`,
 `disconnect`, `pin`, `unpin`, `edit`, `forget-secret`, `forget-server`, `rename-favorite`, `remove-favorite`), ❌ never
 a free string: `eject` is handled in `DualPaneExplorer.svelte` (calls `ejectVolume`); `rename-favorite` /
-`remove-favorite` land in `VolumeBreadcrumb.handleVolumeContextAction`, which only acts when its own dropdown `isOpen`
-(both panes' breadcrumbs receive the global event, but only the open one owns the menu it spawned). Going native means
+`remove-favorite` land in `FavoritesMenu.handleVolumeContextAction`, which only acts when its own menu `isOpen` (every
+pane's menu receives the global event, but only the open one owns the menu it spawned). Going native means
 the webview is frozen while the menu tracks, so the switcher's cursor can't drift onto another row under the pointer or
 arrow keys — the menu always acts on the right-clicked row.
 
@@ -392,63 +393,103 @@ the one `errors.eject.unmountRefused` line today; M15 is what words the named ca
 an empty `named` may read as "nothing is using this drive": `incomplete` means the scan couldn't cover every mount of
 the drive, and wording that as free would be a lie about a drive something is plainly holding.
 
-### Editable favorites
+### The favorites menu (⌃D)
 
-The "Favorites" group in the switcher is user-owned: add, remove, rename, reorder. Favorites arrive from `volume-store`
-as `VolumeInfo` with `category: 'favorite'` and `id: 'fav-<favoriteId>'` (the backend `favorites/` store is the source
-of truth; see `src-tauri/src/favorites/CLAUDE.md`). All mutations go through the typed `commands.*` wrappers in
-`$lib/tauri-commands/favorites.ts`; each re-emits `volumes-changed`, so the switcher re-renders live with no manual
-refresh. `stripFavoritePrefix(locationId)` recovers the bare favorite id (the remove / rename / reorder commands take
-the bare id, not the `fav-…` switcher id).
+A menu of its own, hanging off the same chip as the volume switcher: `FavoritesMenu.svelte` (the surface and the two
+keys that swap menus) over `favorites-menu.svelte.ts` (the rows, the `0` row's three states, what a pick does, and the
+three edits a favorite takes). Favorites arrive from `volume-store` as `VolumeInfo` with `category: 'favorite'` and
+`id: 'fav-<favoriteId>'` (the backend `favorites/` store is the source of truth; see
+`src-tauri/src/favorites/CLAUDE.md`). Every mutation goes through the typed `commands.*` wrappers in
+`$lib/tauri-commands/favorites.ts`, each of which re-emits `volumes-changed`, so the menu re-renders live with no manual
+refresh. `stripFavoritePrefix(locationId)` recovers the bare favorite id (remove / rename / reorder take the bare id,
+never the `fav-…` switcher id).
 
-- **Add** has three surfaces: the `favorites.add` command (palette + the Go menu's "Add to favorites", with NO default
-  shortcut since adding a favorite is infrequent; it's assignable in Settings > Keyboard shortcuts, and the Go-menu
-  item's accelerator syncs to whatever the user binds) favorites the focused pane's current dir (handler in
-  `routes/(main)/command-handlers/misc-handlers.ts`); the folder-row and `..` context menus favorite a SPECIFIC path.
-  The context-menu add is handled entirely in Rust (`menu/menu_handlers.rs` intercepts `FAVORITES_ADD_CONTEXT_ID` and
-  favorites `MenuState.context.path`), so it never routes through `favorites.add` (which would favorite the wrong dir).
-  The folder-row item lives in `build_context_menu` (directories only, not on search-results panes); the `..` row gets
-  its own one-item menu via `show_parent_row_context_menu` (`FilePane.handleContextMenu` calls it with the parent dir
-  path). The favorites INTERACTION layer that ISN'T the menu's (rename, remove, and the local-first optimistic-order
-  override + its reconciliation `$effect`) lives in `favorites-controller.svelte.ts`
-  (`createFavoritesController(deps)`), instantiated as `fav` at the top of `VolumeChooserMenu.svelte`'s script. The
-  component keeps the template and the `effectiveVolumes` / `favorites` deriveds (which read
-  `fav.optimisticFavoriteIds`); it calls `fav.*` for everything below. The three deps are getters (`getFavorites`,
-  `getVolumes`, `getRenameInputRef`); the controller imports `reorderFavorites` / `removeFavorite` / `renameFavorite` /
-  `addToast` directly. Pinned by `favorites-controller.svelte.test.ts` (rename, remove, and the optimistic order) plus
-  the component-level `VolumeBreadcrumb.svelte.test.ts`.
+**Two sections, and the primitive draws the separator between them**: the favorites (`reorderable`, with an `emptyLabel`
+so an emptied list still reads as a real state) and a one-row `add` section. The first nine favorites carry
+`accelerator: '1'`…`'9'`; past nine there's no single digit left to give, so those are listed with a blank number column
+and reached by arrow or pointer. The add row carries `'0'`.
 
-- **Remove / Rename** are per-item. Right-clicking a favorite opens the NATIVE row menu (`show_volume_row_context_menu`,
-  see § Eject button + row context menu); picking `Rename` / `Remove` routes back over `volume-context-action` to
-  `VolumeChooserMenu.handleVolumeContextAction`, which calls `fav.startRename` / `fav.remove` on the open menu. Rename
-  swaps the label for an inline `<input>` (Enter commits, Escape/blur cancels). Both strip the `fav-` prefix before
-  calling the command. `fav.handleRenameKeyDown` calls `e.stopPropagation()` on EVERY key: the focused input owns its
-  keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered by the dispatch-level guard, so
-  a leaked Space would select the file under the cursor while the user types into the box. Enter commits, Escape
-  cancels, everything else edits the text. While a rename is active the menu's `isEditing()` is true, so the primitive
-  handles nothing at all (not even swallowing) and the box keeps every keystroke. The broader keystroke-leak guard lives
-  one level up: while ANY pane's switcher is open, `pane/key-dispatch.ts` swallows the key from the pane behind it, and
-  `+page.svelte`'s `isModalDialogOpen()` reads `explorerRef.isVolumeChooserOpen()` to suppress centralized
-  webview-keydown dispatch.
-- **Reorder** is pointer-drag within the section AND keyboard (⌥↑ / ⌥↓, since the app is keyboard-first; the row tooltip
-  reads `⌥↑ / ⌥↓` on macOS, `Alt+↑ / Alt+↓` elsewhere, built by the pure `favorite-tooltip.ts`).
-  - **The mechanics are the `Menu` primitive's**: the drag threshold, the drop-line cue at the insertion gap, ⌥↑/⌥↓, and
-    carrying the cursor with the moved row all live in `$lib/ui/menu-controller.svelte.ts` and its `menu-reorder.ts`,
-    switched on by `reorderable: true` on the favorites section. It reports a settled order once, through `onReorder`.
-    ❗ That includes the reason it's POINTER-based: under Tauri's `dragDropEnabled` macOS intercepts drag gestures
-    before the WKWebView sees `dragstart`/`drop`, so an HTML5-`draggable` reorder looks wired up and silently never
-    fires (the same reason `views/FullList.svelte` is `onmousedown`-based).
-  - **Local-first / optimistic:** `fav.applyReorder(orderedIds)` takes that order, sets its `optimisticFavoriteIds`
-    override (which `effectiveVolumes` / `favorites` derive from) SYNCHRONOUSLY, then persists via `reorderFavorites` in
-    the background. The list re-renders instantly, and a rapid second ⌥↑/↓ computes against the fresh order instead of
-    racing the `volumes-changed` round-trip (which would move the wrong item). A reconciliation `$effect` clears the
-    override once the store catches up (or the favorite set changes elsewhere); a failed persist drops it, reverting to
-    the store truth with a toast. Don't make the reorder await the IPC before updating the UI.
-  - The FULL order is persisted, as bare ids (`reorderFavorites(bareIds)`). The favorite row's tooltip leads with the
-    PATH (then the reorder hint) so a renamed favorite still reveals where it points.
-- **Empty state** is a real state (the user can remove every favorite). The `favorite` group in `volume-grouping.ts`
-  always renders (unlike every other group, which hides when empty), and the section carries an `emptyLabel`, which the
-  primitive renders as a disabled, unfocusable placeholder the cursor skips: "(Your favorites will show here)".
+**Opening a favorite** is `open-favorite.ts`'s, the one way it happens anywhere: resolve the containing volume, emit
+`favorite_opened`, then switch the pane onto that volume with the favorite's path. `via` comes from the primitive's
+`MenuActivationSource` (`accelerator` → `digit`, `keyboard`, `pointer`), which is the only honest source: by the time a
+consumer sees the pick, the digit, the Enter, and the click have collapsed into one call. ❌ Don't rebuild it by
+sniffing `onKey`.
+
+**The `0` row's three states.** Enabled; disabled saying "This folder is already a favorite"; disabled saying a favorite
+can only point at a folder on a disk or a mounted share. The reason IS the tooltip — a greyed row that says nothing is a
+dead end. ❗ Capability first (`paneFolderCanBeFavorited`, `pane/volume-capabilities.ts`), THEN the already-a-favorite
+test: on an archive or `.git`-portal pane the folder could never be a favorite at all, so "already a favorite" would be
+answering a question that doesn't arise. Re-adding a folder that IS one is refused rather than allowed because the store
+answers a duplicate by moving that favorite to the END of the list, which looks like the row jumping for no reason
+(David, 2026-09-16). The add itself is `add-favorite-folder.ts`, shared with the `favorites.add` command so the success
+and failure wording can't drift.
+
+**Add** has three surfaces. The `favorites.add` command (palette + the Go menu's "Add to favorites", no default
+shortcut, handler in `routes/(main)/command-handlers/misc-handlers.ts`) favorites the focused pane's current dir; the
+`0` row does the same for the pane its menu belongs to; and the folder-row / `..` context menus favorite a SPECIFIC
+path. That last pair is handled entirely in Rust (`menu/menu_handlers.rs` intercepts `FAVORITES_ADD_CONTEXT_ID` and
+favorites `MenuState.context.path`), so it never routes through `favorites.add`, which would favorite the wrong dir.
+Both native items are gated on `can_favorite`, the caller's `paneFolderCanBeFavorited` reading of the row: `add_favorite`
+refuses an archive-inner or protocol path, and offering an item that silently does nothing is worse than offering none.
+The `..` menu holds nothing else, so where the parent can't be favorited no menu pops at all.
+
+**Remove / Rename** are per-item. Right-clicking a favorite opens the NATIVE row menu (`show_favorite_context_menu`,
+its own command rather than a flag on the volume-row one: different surface, no shared item); picking `Rename` /
+`Remove from favorites` routes back over `volume-context-action` to `FavoritesMenu.handleVolumeContextAction`. ❗ Every
+pane's menu hears that global event, so the handler self-gates on ITS menu being open — favorites are global, and the id
+alone can't tell the panes apart. Rename swaps the label for an inline `<input>` in the `label` snippet (Enter commits,
+Escape/blur cancels). `handleRenameKeyDown` calls `e.stopPropagation()` on EVERY key: the focused input owns its
+keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered by the dispatch-level guard, so a
+leaked Space would select the file under the cursor while the user types. While a rename is active the menu's
+`isEditing()` is true, so the primitive handles nothing at all — not even swallowing — and the box keeps every
+keystroke. The broader guard is one level up: while ANY header menu is open, `pane/key-dispatch.ts` swallows the key
+from the pane behind it, and `+page.svelte`'s `isExplorerOverlayOpen()` reads `explorerRef.isHeaderMenuOpen()` to
+suppress centralized dispatch.
+
+**Reorder** is pointer-drag within the section AND keyboard (⌥↑ / ⌥↓, since the app is keyboard-first; the row tooltip
+reads `⌥↑ / ⌥↓` on macOS, `Alt+↑ / Alt+↓` elsewhere, built by the pure `favorite-tooltip.ts`, which leads with the PATH
+so a renamed favorite still reveals where it points).
+
+- **The mechanics are the `Menu` primitive's**: the drag threshold, the drop-line cue at the insertion gap, ⌥↑/⌥↓, and
+  carrying the cursor with the moved row all live in `$lib/ui/menu-controller.svelte.ts` and its `menu-reorder.ts`,
+  switched on by `reorderable: true`. It reports a settled order once, through `onReorder`. ❗ That includes the reason
+  it's POINTER-based: under Tauri's `dragDropEnabled` macOS intercepts drag gestures before the WKWebView sees
+  `dragstart`/`drop`, so an HTML5-`draggable` reorder looks wired up and silently never fires (the same reason
+  `views/FullList.svelte` is `onmousedown`-based).
+- **Local-first / optimistic:** `applyReorder(orderedIds)` sets the `optimisticFavoriteIds` override (which the
+  `favorites` derived reads) SYNCHRONOUSLY, then persists via `reorderFavorites` in the background. The list re-renders
+  instantly, and a rapid second ⌥↑/↓ computes against the fresh order instead of racing the `volumes-changed`
+  round-trip, which would move the wrong item. A reconciliation `$effect` clears the override once the store catches up
+  (or the favorite set changes elsewhere); a failed persist drops it, reverting to the store truth with a toast. Don't
+  make the reorder await the IPC before updating the UI.
+- The FULL order is persisted, as bare ids (`reorderFavorites(bareIds)`).
+
+### The chip hosts two menus, and only ever one at a time
+
+`VolumeBreadcrumb.svelte` holds ONE `openMenu: 'volumes' | 'favorites' | null`. Each menu reports through
+`onOpenChange`, and the chip's handler claims the slot first and then closes the other, so its close notification sees a
+slot that isn't its own and leaves it alone. That's why the invariant holds however a menu came up — a command, a click
+on the chip, or a swap from inside the other — and why there's no `$effect` syncing a controlled `open` prop, which the
+primitive deliberately doesn't support.
+
+The pane-level API is `toggleVolumeChooser()` / `openVolumeChooser()` / `toggleFavoritesMenu()` / `closeHeaderMenu()` /
+`isHeaderMenuOpen()`. `pane-commands.ts` closes the OTHER pane's header menu before opening either one, so the
+one-at-a-time rule spans the window and not just the chip.
+
+**The swap keys work inside a menu.** Central dispatch is suppressed while a header menu is open, so nothing else would
+answer them; each menu's `onKey` matches with `eventMatchesCommand`, so a rebind follows. ⌃D inside the switcher goes to
+favorites (the "See N favorites" row has just taught that key, so it has to work right where it's advertised), ⌃D inside
+favorites closes it, and the pane's OWN chooser key swaps back — ❗ `paneId`'s, not either one, so ⌥F2 pressed over the
+left pane's favorites still means the right pane's switcher.
+
+**The switcher's row.** One selectable row on top, "See {count} favorites" with a live `ShortcutChip` for
+`favorites.open` (`clickable={false}`: a second click target inside a row would double-activate). Enter or a click swaps
+the menus in place and reports `trigger: 'switcher_row'`, where ⌃D reports `'command'`. ❗ `volume-grouping.ts` groups
+the `favorite` category NOWHERE, so a favorite arriving in the volume list is deliberately absent from the switcher.
+
+**One consequence worth knowing**: with nothing checked, the switcher's cursor opens on that top row rather than on the
+first volume, so Enter straight after ⌥F1 swaps menus. With a checked row — the ordinary case — the cursor lands there
+as before.
 
 ### USB link-speed indicator (MTP)
 

@@ -1,8 +1,8 @@
 # Favorites (backend)
 
-User-editable favorites: the ordered `favorites.json` store that backs the volume switcher's
-"Favorites" section. The store is the single source of truth and replaces the previously hardcoded
-four favorites. Full depth in `DETAILS.md`.
+User-editable favorites: the ordered `favorites.json` store that backs the frontend's favorites
+menu (⌃D). The store is the single source of truth and replaces the previously hardcoded four
+favorites. Full depth in `DETAILS.md`.
 
 ## Module map
 
@@ -24,11 +24,11 @@ four favorites. Full depth in `DETAILS.md`.
   distinction the whole contract rests on.
 - **Every add goes through `commands::favorites::add_favorite`, ❌ never `store::add`.** That's the
   only place the add gate runs, and the gate isn't optional: `volumes::get_favorites` HIDES a
-  favorite whose path isn't on disk, so an ungated add writes an entry no switcher can ever show.
+  favorite whose path isn't on disk, so an ungated add writes an entry no menu can ever show.
   The native folder-row menu calls the command for exactly this reason. What it accepts and why:
   `DETAILS.md` § The add gate.
 - **`id` is a random UUID minted on add, never derived from `path`.** Paths repeat across renames
-  and re-adds, so the id must outlive the path. The switcher's `LocationInfo.id` is `format!("fav-{id}")`.
+  and re-adds, so the id must outlive the path. The frontend's `LocationInfo.id` is `format!("fav-{id}")`.
 - **Data dir is resolved WITHOUT an `AppHandle`** (mirrors `install_id.rs`: `CMDR_DATA_DIR` else the
   OS default for `BUNDLE_ID`). Load-bearing: `get_favorites()` (the read path, in `volumes/mod.rs`
   and `volumes_linux/mod.rs`) is sync and `AppHandle`-free, so `store::list()` must stay no-arg. Keep
@@ -39,7 +39,7 @@ four favorites. Full depth in `DETAILS.md`.
   This now applies to ANY user-added path, not just the old hardcoded three. Linux has no TCC, so its
   twin existence-checks everything.
 - **Mutations re-emit `volumes-changed`.** Every command calls `volume_broadcast::emit_volumes_changed()`
-  after persisting, so both panes' switchers update live. Don't add a polling path.
+  after persisting, so both panes' menus update live. Don't add a polling path.
 - **Lock-poison + log compliance.** Uses `IgnorePoison::lock_ignore_poison()` (not `.lock().unwrap()`)
   and `log::{info,warn}!` with `target: "favorites::store"` (no `println!`). The disk lock is never
   held across an `.await`.

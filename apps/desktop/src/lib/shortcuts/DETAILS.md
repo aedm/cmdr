@@ -140,9 +140,10 @@ The chains mirror what renders together in the app:
   The file list renders in both view modes, so a mode-scoped key genuinely collides with a File-list key. Brief and Full
   stay siblings (neither chain contains the other), so they don't conflict with each other — the registry binds `←`/`→`
   in both on purpose, and the modes never coexist.
-- `Main window/Servers`, `Main window/Places`, `Main window/Volume chooser` → siblings of `Main window/File list` (under
-  `Main window` → `App`, but not under the file list). A pane shows one of them INSTEAD of the file list, so their keys
-  don't collide with File-list keys.
+- `Main window/Servers`, `Main window/Places`, `Main window/Volume chooser`, `Main window/Favorites menu` → siblings of
+  `Main window/File list` (under `Main window` → `App`, but not under the file list). A pane shows one of them INSTEAD
+  of the file list, or — for the two header menus — OVER it while central dispatch is suppressed, so their keys don't
+  collide with File-list keys.
 - `Command palette` → inherits `Main window` → `App` (it overlays the main window).
 - `About window` and `Onboarding` → inherit `App` only (standalone/modal contexts).
 
@@ -361,6 +362,15 @@ Cross-platform normalization of the MODIFIERS is complex and error-prone, so eac
 native modifier form (`⌘⇧P` vs `Ctrl+Shift+P`); `toPlatformShortcut` converts the macOS-form registry defaults for
 Linux. The KEY NAMES are platform-neutral words, and the macOS glyphs are a render-time concern — see § Key capture for
 why that separation is load-bearing.
+
+❗ **`toPlatformShortcut` is NOT injective off macOS**: `macModifierToLinux` maps BOTH `⌘` and `⌃` onto `Ctrl`, because
+Linux has no separate Command key. So two distinct macOS defaults can arrive as one Linux combo, and
+`shortcut-dispatch`'s one-winner-per-combo rule then picks between them by scope specificity. The live case is `⌃D`
+(`favorites.open`) against `⌘D` (`file.duplicate`, and the error screen's deliberate shadow of it): on Linux, Ctrl+D
+duplicates and never opens the favorites menu. `conflict-detector-registry.test.ts` names that one pair and refuses to
+grow; a second one means fixing the mapping (a lone `⌃` → `Super`, the way the function already remaps `⌃` → `Shift`
+when both appear together) rather than adding a line there. ❗ The native menu bar doesn't share the collapse: muda maps
+`"CMD"` to Super on GTK, so Linux's Duplicate accelerator is Super+D (`menu/menu_bar.rs`'s header has the full story).
 
 ### Why delta-only persistence?
 
