@@ -859,7 +859,7 @@ describe('VolumeBreadcrumb dropdown placement', () => {
 
     const rows = menuRows()
     const scrollIntoView = vi.fn()
-    ;(rows[1]).scrollIntoView = scrollIntoView
+    rows[1].scrollIntoView = scrollIntoView
 
     press('ArrowDown')
     await vi.waitFor(() => {

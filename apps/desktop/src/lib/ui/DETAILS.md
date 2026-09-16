@@ -822,8 +822,8 @@ The house menu, and the app's only in-app menu primitive (context menus are othe
 keyboard-first popup built from SECTIONS of rows. Data in, callbacks out — the caller hands over sections and gets
 `onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Two consumers: the
 volume switcher (`file-explorer/navigation/VolumeChooserMenu.svelte`, the rich one — grouped sections, reorderable
-favorites, a submenu, and all four snippets) and the archive Enter popup
-(`file-explorer/pane/enter-menu.svelte.ts`, three flat rows).
+favorites, a submenu, and all four snippets) and the archive Enter popup (`file-explorer/pane/enter-menu.svelte.ts`,
+three flat rows).
 
 ❗ **Deliberately NOT Ark-backed.** Ark's `Menu` machine is trigger-driven and doesn't reliably open
 (mounted-already-open) or close (controlled `open=false`) when driven programmatically, which every caller here needs.
@@ -892,8 +892,8 @@ switcher's port is what moved them here):
 
 - **CSS triangles for arrows and chevrons, ❌ never font characters.** `▾` and `›` render at inconsistent sizes across
   fonts and OS versions; the border trick is pixel-exact.
-- **An element with its own action sits OUTSIDE its parent's click area** — a sibling, not a child, so
-  `stopPropagation` never has to fight a parent handler. The row's `isOwnControl` check is how that holds here.
+- **An element with its own action sits OUTSIDE its parent's click area** — a sibling, not a child, so `stopPropagation`
+  never has to fight a parent handler. The row's `isOwnControl` check is how that holds here.
 - **Fixed positioning for anything that must escape the scroller.** A submenu inside the `overflow-y: auto` surface
   would be clipped, so it's placed from the parent row's `getBoundingClientRect()`.
 - **macOS-native feel**: the submenu overlaps its parent by ~5px, hovering the ROW (not just the arrow) opens it, and

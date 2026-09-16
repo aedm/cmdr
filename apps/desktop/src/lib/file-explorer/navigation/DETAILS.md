@@ -286,9 +286,9 @@ grant would free it, so an indicator promising one would mislead.
 Every volume a connecting backend serves carries a `connectionState`; `crates/cmdr-fs/src/volume/connection.rs` holds
 the six variants, `saved` (a saved place with nothing in flight) among them. `ConnectionDot.svelte` renders the small
 colored circle in both placements (a switcher row and the closed chip), its modifier class built from the state name —
-so ❗ a variant with no `.smb-indicator-<state>` rule in THAT file renders as an unpainted circle. Green = a
-live session, amber = the OS-mount fallback or a waiting sign-in, red = a changed host key, hollow = `saved`. Each state
-gets its OWN tooltip sentence (`getConnectionTooltip`, a `Record` over the union, so a new state is a compile error);
+so ❗ a variant with no `.smb-indicator-<state>` rule in THAT file renders as an unpainted circle. Green = a live
+session, amber = the OS-mount fallback or a waiting sign-in, red = a changed host key, hollow = `saved`. Each state gets
+its OWN tooltip sentence (`getConnectionTooltip`, a `Record` over the union, so a new state is a compile error);
 `connection-tooltips.test.ts` also catches a BORROWED one, since five states once shared two sentences and a signed-out
 SFTP server hovered as "Using system connection".
 
@@ -310,10 +310,11 @@ of each switcher row and on the right of the closed/header chip — one `DetachB
 (the third is a server row's Disconnect), so their states can't drift. Pressing it runs `detach-volume.ts`, which calls
 `ejectVolume(id)`; the backend dispatches: SMB → `diskutil unmount`, MTP → connection manager disconnect, physical / DMG
 → `diskutil eject`. A click on it does NOT close the menu (it's a control inside a row, which the primitive never lets
-activate its row), so the user can eject several drives in a row; each ejected volume vanishes from the list via the existing `volume-unmounted` /
-`mtp-device-disconnected` flow — no extra success toast. ❗ `volume-unmounted` carries an optional `volumeId`, and the
-consumer reads THAT first: a "Forget server" takes the row out of the store, so a path lookup would find nothing if the
-`volumes-changed` refresh won the race. The mount watchers leave it null and the path lookup is their fallback.
+activate its row), so the user can eject several drives in a row; each ejected volume vanishes from the list via the
+existing `volume-unmounted` / `mtp-device-disconnected` flow — no extra success toast. ❗ `volume-unmounted` carries an
+optional `volumeId`, and the consumer reads THAT first: a "Forget server" takes the row out of the store, so a path
+lookup would find nothing if the `volumes-changed` refresh won the race. The mount watchers leave it null and the path
+lookup is their fallback.
 
 Right-clicking a dropdown row opens a NATIVE (muda) context menu via `show_volume_row_context_menu`: a favorite row gets
 `Rename` + `Remove`, an ejectable volume row gets its detach item (`Eject ({name})` for a disk, `Disconnect` for a
@@ -406,28 +407,28 @@ the bare id, not the `fav-…` switcher id).
 
 - **Remove / Rename** are per-item. Right-clicking a favorite opens the NATIVE row menu (`show_volume_row_context_menu`,
   see § Eject button + row context menu); picking `Rename` / `Remove` routes back over `volume-context-action` to
-  `VolumeChooserMenu.handleVolumeContextAction`, which calls `fav.startRename` / `fav.remove` on the open menu.
-  Rename swaps the label for an inline `<input>` (Enter commits, Escape/blur cancels). Both strip the `fav-` prefix
-  before calling the command. `fav.handleRenameKeyDown` calls `e.stopPropagation()` on EVERY key: the focused input owns
-  its keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered by the dispatch-level
-  guard, so a leaked Space would select the file under the cursor while the user types into the box. Enter commits,
-  Escape cancels, everything else edits the text. While a rename is active the menu's `isEditing()` is true, so the
-  primitive handles nothing at all (not even swallowing) and the box keeps every keystroke. The broader keystroke-leak
-  guard lives one level up: while ANY pane's switcher is open, `pane/key-dispatch.ts` swallows the key from the pane
-  behind it, and `+page.svelte`'s `isModalDialogOpen()` reads `explorerRef.isVolumeChooserOpen()` to suppress
-  centralized webview-keydown dispatch.
-- **Reorder** is pointer-drag within the section AND keyboard (⌥↑ / ⌥↓, since the app is keyboard-first; the row
-  tooltip reads `⌥↑ / ⌥↓` on macOS, `Alt+↑ / Alt+↓` elsewhere, built by the pure `favorite-tooltip.ts`).
-  - **The mechanics are the `Menu` primitive's**: the drag threshold, the drop-line cue at the insertion gap, ⌥↑/⌥↓,
-    and carrying the cursor with the moved row all live in `$lib/ui/menu-controller.svelte.ts` and its
-    `menu-reorder.ts`, switched on by `reorderable: true` on the favorites section. It reports a settled order once,
-    through `onReorder`. ❗ That includes the reason it's POINTER-based: under Tauri's `dragDropEnabled` macOS
-    intercepts drag gestures before the WKWebView sees `dragstart`/`drop`, so an HTML5-`draggable` reorder looks wired
-    up and silently never fires (the same reason `views/FullList.svelte` is `onmousedown`-based).
+  `VolumeChooserMenu.handleVolumeContextAction`, which calls `fav.startRename` / `fav.remove` on the open menu. Rename
+  swaps the label for an inline `<input>` (Enter commits, Escape/blur cancels). Both strip the `fav-` prefix before
+  calling the command. `fav.handleRenameKeyDown` calls `e.stopPropagation()` on EVERY key: the focused input owns its
+  keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered by the dispatch-level guard, so
+  a leaked Space would select the file under the cursor while the user types into the box. Enter commits, Escape
+  cancels, everything else edits the text. While a rename is active the menu's `isEditing()` is true, so the primitive
+  handles nothing at all (not even swallowing) and the box keeps every keystroke. The broader keystroke-leak guard lives
+  one level up: while ANY pane's switcher is open, `pane/key-dispatch.ts` swallows the key from the pane behind it, and
+  `+page.svelte`'s `isModalDialogOpen()` reads `explorerRef.isVolumeChooserOpen()` to suppress centralized
+  webview-keydown dispatch.
+- **Reorder** is pointer-drag within the section AND keyboard (⌥↑ / ⌥↓, since the app is keyboard-first; the row tooltip
+  reads `⌥↑ / ⌥↓` on macOS, `Alt+↑ / Alt+↓` elsewhere, built by the pure `favorite-tooltip.ts`).
+  - **The mechanics are the `Menu` primitive's**: the drag threshold, the drop-line cue at the insertion gap, ⌥↑/⌥↓, and
+    carrying the cursor with the moved row all live in `$lib/ui/menu-controller.svelte.ts` and its `menu-reorder.ts`,
+    switched on by `reorderable: true` on the favorites section. It reports a settled order once, through `onReorder`.
+    ❗ That includes the reason it's POINTER-based: under Tauri's `dragDropEnabled` macOS intercepts drag gestures
+    before the WKWebView sees `dragstart`/`drop`, so an HTML5-`draggable` reorder looks wired up and silently never
+    fires (the same reason `views/FullList.svelte` is `onmousedown`-based).
   - **Local-first / optimistic:** `fav.applyReorder(orderedIds)` takes that order, sets its `optimisticFavoriteIds`
-    override (which `effectiveVolumes` / `favorites` derive from) SYNCHRONOUSLY, then persists via `reorderFavorites`
-    in the background. The list re-renders instantly, and a rapid second ⌥↑/↓ computes against the fresh order instead
-    of racing the `volumes-changed` round-trip (which would move the wrong item). A reconciliation `$effect` clears the
+    override (which `effectiveVolumes` / `favorites` derive from) SYNCHRONOUSLY, then persists via `reorderFavorites` in
+    the background. The list re-renders instantly, and a rapid second ⌥↑/↓ computes against the fresh order instead of
+    racing the `volumes-changed` round-trip (which would move the wrong item). A reconciliation `$effect` clears the
     override once the store catches up (or the favorite set changes elsewhere); a failed persist drops it, reverting to
     the store truth with a toast. Don't make the reorder await the IPC before updating the UI.
   - The FULL order is persisted, as bare ids (`reorderFavorites(bareIds)`). The favorite row's tooltip leads with the

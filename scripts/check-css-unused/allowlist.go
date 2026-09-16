@@ -52,15 +52,17 @@ var allowedUnusedClasses = map[string]bool{
 	"hidden-pills": true,
 	"hidden-pill":  true,
 	"hidden-sep":   true,
-	// VolumeBreadcrumb.svelte - connection-indicator state classes applied dynamically via
+	// ConnectionDot.svelte - connection-indicator state classes applied dynamically via
 	// `smb-indicator-{state}` template string, where `state` is the ConnectionState enum value.
-	// The `direct` and `os_mount` rules are also written out literally in the breadcrumb markup,
-	// so only the dropdown-only states need listing here.
+	// All six live here since the switcher's port: the chip renders the dot through the same
+	// component, so `direct` and `os_mount` are no longer written out literally anywhere.
+	"smb-indicator-direct":                  true,
+	"smb-indicator-os_mount":                true,
 	"smb-indicator-disconnected":            true,
 	"smb-indicator-needs_sign_in":           true,
 	"smb-indicator-needs_host_key_approval": true,
 	"smb-indicator-saved":                   true,
-	// VolumeBreadcrumb.svelte - USB-speed indicator tier classes applied dynamically via
+	// UsbSpeedDot.svelte - USB-speed indicator tier classes applied dynamically via
 	// `usb-speed-indicator-{tier}` template string, where `tier` is the UsbSpeed enum value.
 	"usb-speed-indicator-low":        true,
 	"usb-speed-indicator-full":       true,

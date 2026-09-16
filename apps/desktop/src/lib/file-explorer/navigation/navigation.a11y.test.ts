@@ -75,6 +75,8 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
   showVolumeRowContextMenu: vi.fn(() => Promise.resolve()),
   onVolumeContextAction: vi.fn(() => Promise.resolve(() => {})),
+  // The switcher fetches disk space on open; nothing to show keeps the rows plain.
+  getVolumeSpace: vi.fn(() => Promise.resolve(null)),
 }))
 
 vi.mock('$lib/stores/volume-store.svelte', () => ({
@@ -106,9 +108,14 @@ vi.mock('$lib/icon-cache', async (importOriginal) => {
   }
 })
 
+import ConnectionDot from './ConnectionDot.svelte'
+import DetachButton from './DetachButton.svelte'
 import DriveIndexBadge from './DriveIndexBadge.svelte'
 import ImageIndexDriveBadge from './ImageIndexDriveBadge.svelte'
+import UsbSpeedDot from './UsbSpeedDot.svelte'
 import VolumeBreadcrumb from './VolumeBreadcrumb.svelte'
+import VolumeChooserMenu from './VolumeChooserMenu.svelte'
+import type { DriveBadges } from './drive-badges.svelte'
 
 // These components share one jsdom document, the badge menu portals out of its
 // container, and axe resolves ARIA id references document-wide. Clearing between
@@ -328,5 +335,99 @@ describe('ServersPinHintToastContent a11y', () => {
     mount(ServersPinHintToastContent, { target, props: { toastId: 'pin-hint', mentionFavorites: true } })
     await tick()
     await expectNoA11yViolations(target)
+  })
+})
+
+/**
+ * Tier 3 a11y for the three row/chip pieces the chip and the switcher share, and for the
+ * switcher's list itself. The list is the house `Menu`, so its surface rules are audited in
+ * `$lib/ui/overlays.a11y.test.ts`; what's audited here is what THIS consumer puts in a row.
+ */
+describe('switcher row pieces a11y', () => {
+  /** A container in the document, since axe resolves ARIA references document-wide. */
+  function hostElement(): HTMLDivElement {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    return target
+  }
+
+  it('the connection dot has no violations, in every state', async () => {
+    for (const state of [
+      'direct',
+      'os_mount',
+      'disconnected',
+      'needs_sign_in',
+      'needs_host_key_approval',
+      'saved',
+    ] as const) {
+      document.body.innerHTML = ''
+      const target = hostElement()
+      mount(ConnectionDot, { target, props: { state } })
+      await tick()
+      expect(target.querySelector(`.smb-indicator-${state}`)).not.toBeNull()
+      await expectNoA11yViolations(target)
+    }
+  })
+
+  it('the USB-speed dot has no violations', async () => {
+    const target = hostElement()
+    mount(UsbSpeedDot, { target, props: { speed: 'super' } })
+    await tick()
+    expect(target.querySelector('.usb-speed-indicator-super')).not.toBeNull()
+    await expectNoA11yViolations(target)
+  })
+
+  it('the detach button has no violations, idle and while ejecting', async () => {
+    const target = hostElement()
+    mount(DetachButton, {
+      target,
+      props: { label: 'Eject Backup', icon: 'eject', disabled: false, ejecting: false, onclick: () => {} },
+    })
+    await tick()
+    expect(target.querySelector('button')?.getAttribute('aria-label')).toBe('Eject Backup')
+    await expectNoA11yViolations(target)
+
+    document.body.innerHTML = ''
+    const ejecting = hostElement()
+    mount(DetachButton, {
+      target: ejecting,
+      props: { label: 'Ejecting Backup…', icon: 'eject', disabled: true, ejecting: true, onclick: () => {} },
+    })
+    await tick()
+    await expectNoA11yViolations(ejecting)
+  })
+})
+
+/**
+ * Tier 3 a11y for `VolumeChooserMenu.svelte`, OPEN: the rows it builds carry a checkmark, an
+ * icon, a label, and a trailing cluster, and the menu portals out of its container — so the
+ * audit looks at the whole document.
+ */
+describe('VolumeChooserMenu a11y', () => {
+  /** The index dots are the chip's to own, so the list takes them as a prop; nothing to show. */
+  const noBadges: DriveBadges = {
+    statusFor: () => undefined,
+    imageStateFor: () => undefined,
+    fetchForRows: () => {},
+    runAction: () => {},
+    destroy: () => {},
+  }
+
+  it('the open list has no a11y violations', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const anchor = document.createElement('span')
+    document.body.appendChild(anchor)
+    const instance = mount(VolumeChooserMenu, {
+      target,
+      props: { containingVolumeId: 'root', badges: noBadges, getAnchor: () => anchor },
+    }) as unknown as { open: () => void }
+    flushSync()
+    instance.open()
+    // The surface portals itself into `document.body`, which lands a beat after the open.
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-menu-row="root"]')).not.toBeNull()
+    })
+    await expectNoA11yViolations(document.body)
   })
 })

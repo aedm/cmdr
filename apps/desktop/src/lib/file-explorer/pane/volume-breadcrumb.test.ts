@@ -637,7 +637,7 @@ describe('VolumeBreadcrumb', () => {
     it('renders the disabled empty-state placeholder when there are no favorites', async () => {
       await openWithFavorites([])
       const placeholder = document.querySelector('[data-menu-empty]')
-      expect(placeholder?.textContent?.trim()).toBe('(Your favorites will show here)')
+      expect(placeholder?.textContent.trim()).toBe('(Your favorites will show here)')
       expect(placeholder?.getAttribute('aria-disabled')).toBe('true')
       // Not focusable, not clickable. `tabindex="-1"` is the primitive's: it keeps the
       // placeholder out of the tab order while letting the menu own the cursor, and
