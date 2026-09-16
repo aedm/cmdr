@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M5 are done, and M6 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M6 are done, and M7 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -49,7 +49,9 @@ drive-safety decisions below.
   `71fc73dfc`, `1e4cd4085`.
 - **M4, every worker carries a share (done)**: `d6c32f603`, `678b249ef`, `44079fe6d`, `ef74beba9`, `07bedf6f4`.
 - **M5, `drive_release`, the gated stop, start, and resume (done)**: `4549ba539`, `7430e9416`.
-- **Next, M6**: the unmount approver.
+- **M6, the unmount approver (done)**: `8f9e3795f` (the gate's resume-cancellation fix M6 needed), `b799c713d`, plus the
+  lane pins and docs commits that follow them.
+- **Next, M7**: index delete gates.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -547,6 +549,9 @@ resume, and an `unmount_pending` flag.
   - The `WillUnmount` and `DidUnmount` hook stops (`volumes/watcher.rs::stop_local_external_index`) release through the
     gate with `INDEX_RELEASE_WAIT`, but keep their `volume_kind == LocalExternal` pre-check, so they don't wait on a
     start still probing.
+  - **Any epoch move (a release or a disable) cancels a pending resume** (`Gate::resume_batch`), so a candidate offered
+    after it queues a batch of its own instead of joining one whose check can only fail. Without it, the second ask of a
+    refused `unmountDisk` swallowed the first volume's resume for good (`8f9e3795f`, found while landing M6).
 
 ### Worker holds (M3 mechanism, M4 wiring)
 
@@ -660,6 +665,31 @@ change clearing the volume path); ❌ no polling fallback.
 
 **Cmdr's own eject** pre-stops its volumes, so its asks find nothing to stop and approve at once; before M12, siblings
 aren't in the ejecting set, and the approver's gated resume covers them.
+
+**As landed.** The canonical description is `apps/desktop/src-tauri/src/volumes/DETAILS.md` § "The unmount approver";
+what later milestones build on:
+
+- `unmount_approver/{mod.rs, ask.rs, records.rs, callbacks.rs, private_symbols.rs, test_seams.rs, real_image.rs}`.
+  `callbacks.rs` holds the DA-free handlers (`Approver::on_unmount_ask`, `on_idle`, `on_appeared`, `on_disappeared`,
+  `on_volume_path_cleared`) over the `Host` seam; `mod.rs` holds the FFI trampolines, `install`, and `AppHost`. **M9's
+  `causes.rs` feeds off those same handlers**, and the eject-approval callback is still unregistered, so M9 adds it.
+- **Groups are keyed by BSD UNIT** (`u32`), not by whole BSD name: `disk_units::mounted_volumes_on(session, units)`
+  answers `MountedVolume { bsd_name, whole_unit, volume_uuid, path }` from the non-blocking mount table plus one MIG
+  describe per device-backed mount. M12 shares it. `disk_units::is_volume_mounted_at(bsd, path)` is the presence read a
+  resume owner makes.
+- `eject::is_ejecting` and `eject::INDEX_STOP_DEADLINE` are `pub(crate)` now; the gate's `epoch()` still carries a
+  `dead_code` expectation naming M12 as its caller, and `ResumeBatch::wait` one naming its tests.
+- An ask **records nothing for a volume in the ejecting set** (M12's flight owns those), and its `record_late`
+  continuation skips them too.
+- **A panicking callback approves**: the approver must never be the reason a drive can't be ejected. `in_callback`
+  catches the unwind and logs an `error`.
+- The 90 s nextest cap on the lane block is setup cost (two-partition images) plus the budget an overrun test spends on
+  purpose, ❌ not a wedged tool: the harness still SIGKILLs any single call at 30 s.
+- **The lane is about 8 minutes now, and the held-file pins starve at that length.** On the M6 run, M1's three held-file
+  eject pins failed under load and all three passed when the runner re-ran them alone at the same deadline: a refusal's
+  arrival time follows `diskarbitrationd`'s holder scan, which is what the 0.13–27.8 s spread in § "Evidence" measures.
+  A later milestone adding image tests should expect that warn shape, and ❌ never read it as a defect without the
+  alone-run line.
 
 **Linux** has no approver; `drive_release` serves its eject flight and every start path.
 
@@ -1323,6 +1353,18 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - The `DidUnmount` hook's stop already releases through the gate with `INDEX_RELEASE_WAIT`
     (`volumes/watcher.rs::stop_local_external_index`); the vanish path replaces it with owner `Vanish` and
     `VANISH_STOP_WAIT`, and its `volume_kind` pre-check goes with it.
+  - **M6 landed the callbacks `causes.rs` feeds off**:
+    `Approver::{on_unmount_ask, on_appeared, on_disappeared, on_volume_path_cleared}` in
+    `unmount_approver/callbacks.rs`, each already fed in DA's delivery order on the one serial queue. `records.rs`
+    already tracks the pending-unmount volumes per BSD node and per whole unit, and already clears the gate's flags on
+    `Disappeared` and on a cleared volume path; the cause machine reads the same events.
+  - **The eject-approval callback isn't registered yet.** M9 adds `DARegisterDiskEjectApprovalCallback` beside the
+    others in `unmount_approver/mod.rs::install`, answers it at once, and unregisters it in `Approval::drop`, which
+    names each callback's function pointer explicitly.
+  - Appeared and disappeared arrive for the whole disk AND for each volume node; `whole_disk_unit` already filters to
+    whole disks through `kDADiskDescriptionMediaWholeKey`.
+  - The vanish stop's seam is the `Host` trait (`callbacks.rs`), which `test_seams.rs` already fakes: add a method there
+    rather than reaching for the index from a callback.
 - **Test plan**: pure `causes.rs` (asked unmount, raw `umount`, eject then disappear, disappear with no eject, an
   overlong ask making it `Unknown`, re-appear); lane: `/sbin/umount` of an indexed image's volume → `Unasked`, index
   stopped, no resume; the toast's copy test; `pnpm check`, `pnpm check disk-images`, the i18n checks from M15's list.
@@ -1417,7 +1459,17 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - The gate reads the ejecting set through `in_flight::is_ejecting` under its own lock, and every `Landing` drop wakes
     it after dropping `IN_FLIGHT`. Sibling ids adopted into `IN_FLIGHT` are ejecting at the gate with no more wiring; ❌
     nothing may take the gate's lock while holding `IN_FLIGHT`.
-  - A flight reads epochs through `drive_release::gate().epoch(id)`.
+  - A flight reads epochs through `drive_release::gate().epoch(id)`, which carries a `dead_code` expectation naming M12
+    as its caller: delete it when the flight reads them, or an expectation nothing fulfils fails the build.
+  - **`volumes/disk_units.rs` landed with M6 and is keyed by BSD UNIT**, not by whole BSD name:
+    `mounted_volumes_on(session, whole_units)` answers `MountedVolume { bsd_name, whole_unit, volume_uuid, path }` from
+    the non-blocking mount table plus one MIG describe per device-backed mount. The flight passes the physical whole's
+    unit plus its container units to the same function.
+  - **The approver records nothing for a volume in the ejecting set**, so once a flight adopts its siblings they're the
+    flight's alone to resume; `eject::is_ejecting` and `eject::INDEX_STOP_DEADLINE` are `pub(crate)` now.
+  - Verified on macOS 27.0 (2026-09-16, `volumes::unmount_approver::real_image`): `diskutil unmountDisk` of a
+    two-partition disk with one partition held asks per volume, unmounts the free one, and exits nonzero, leaving the
+    held one mounted. That's exactly the partial-unmount shape step 7's fail-closed `still_mounted` has to classify.
 - **Test plan**:
   - pure: sibling selection over a fake target and registry; the busy gate; adoption into `IN_FLIGHT` in both orders (B
     after A's adoption joins in `join_or_start`; B before it awaits the disk flight); the resume matrix; the NULL arms;
@@ -1755,3 +1807,20 @@ sources: DiskArbitration-535.0.10.
   (`write_operations/overwrite.rs:176-178`), so the startup sweep (`in_flight_temps.rs:329`) never retries it, and that
   sweep counts NotFound as gone (`:419`). The age-based reaper runs only in the cross-volume engine, not for Mac-to-USB
   copies.
+
+### What the landed approver confirmed
+
+Verified on macOS 27.0 (2026-09-16) by `volumes::unmount_approver::real_image`: a real approval session on its own
+serial queue, against synthetic HFS+ images. The spike's design consequences hold on this macOS.
+
+- DA asks Cmdr's session before `diskutil unmount` and `diskutil unmountDisk`, and waits for the answer: every stop in
+  these runs ran while its volume was still in the mount table.
+- A whole-disk request's per-volume asks really do arrive back to back, so the first ask's group stop is what protects
+  the sibling: after the first ask, both partitions had been let go of, and the next request met no live index.
+- A dissent refuses a non-force `diskutil unmount`; `hdiutil detach -force` asks, ignores it, and detaches anyway.
+- The idle callback (`DARegisterIdleCallback` through `dlsym`) resolves on this macOS and fires after a refused unmount,
+  which is what hands the index back. After an unmount that succeeded, the volume is unlisted and its resume starts
+  nothing.
+- ❗ A DA lookup from INSIDE an approval callback (`DADiskCreateFromBSDName` plus `DADiskCopyDescription`, how an ask
+  computes its group) doesn't deadlock against the daemon waiting for that same ask's answer.
+- Timing: 4–24 s per test, dominated by building a two-partition image (`partitionDisk` plus two remounts), not by DA.

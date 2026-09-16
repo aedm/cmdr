@@ -1396,11 +1396,15 @@ ahead of its cells.
 
 `desktop-rust-disk-images` (nickname `disk-images`, `desktop-rust-disk-images.go`) runs the `#[ignore]`d tests that
 attach real synthetic APFS and HFS+ images through `cmdr_fs::testing::disk_images` (`crates/cmdr-fs/DETAILS.md` §
-"`testing::disk_images`"): the harness's own `real_images` tests, the eject pins, and the index's vanish pin.
+"`testing::disk_images`"): the harness's own `real_images` tests, the eject pins, the index's presence and vanish pins,
+and the unmount approver's pins.
 
 - **How to run it**: `pnpm check disk-images`, or any `pnpm check --include-slow` on a Mac. It's `IsSlow` because every
-  test attaches and detaches disk images, which no default run should do. 11 tests took 48 s, almost all of it the tests
-  themselves (macOS 26.6.2, `pnpm check disk-images`, 2026-09-14).
+  test attaches and detaches disk images, which no default run should do. 11 tests took 48 s (macOS 26.6.2, 2026-09-14);
+  with the index-provider and unmount-approver pins it takes about 8m20s (macOS 27.0, 2026-09-16), nearly all of it
+  image setup and real DiskArbitration waits. ❗ At that length the held-file eject pins can starve: when a refusal
+  arrives depends on `diskarbitrationd`'s own holder scan, which spans 0.13–27.8 s by load, so a "failed under load,
+  passed alone at the same deadline" warn from the retry runner is the expected shape there, ❌ not a defect.
 - **When it skips**: off macOS it answers OK with "skipped: macOS only" and never touches cargo. It's `NotInCI`: every
   CI runner is ubuntu, and `hdiutil` has no Linux counterpart.
 - **What it runs**: `cargo nextest run --run-ignored only` with `HostCargoLaneArgs`, so it reuses `desktop-rust-tests`'
@@ -1414,8 +1418,9 @@ attach real synthetic APFS and HFS+ images through `cmdr_fs::testing::disk_image
   worktrees' runs apart; the Go runner taking the same lock would block its own nextest processes. Within one run, the
   `disk-image` nextest group runs one test at a time.
 - **Adding a module**: a real-image test module goes into `diskImageLaneTestAtoms` AND gets a `disk-image` override in
-  `.config/nextest.toml` (its 30 s cap and serialization). `TestDiskImageLaneMatchesTheDiskImageNextestGroup` fails
-  until the lane and the hand-run list together name exactly the group's `test()` atoms.
+  `.config/nextest.toml` (serialization, plus a cap: 30 s for most, 90 s for the unmount approver's block, which spends
+  a chain's whole budget and builds two-partition images on purpose). `TestDiskImageLaneMatchesTheDiskImageNextestGroup`
+  fails until the lane and the hand-run list together name exactly the group's `test()` atoms.
 
 ## Workspace member coverage
 
