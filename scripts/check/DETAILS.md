@@ -218,10 +218,10 @@ in front of it is not ours to gate.
 through `pnpm install` first, whose `prepare` step runs `svelte-kit sync` per app; two of those walking the same
 `.svelte-kit/types/` tree have one deleting a generated file while the other stats it, so the install dies with an
 `ENOENT` on a path that is present a second later and the whole run fails before a single check starts (measured
-2026-09-16, three agents sharing a worktree). Nothing gates it: the lease in `stacklease/` covers Docker fixtures
-across worktrees, and the cache is per-worktree, but the pnpm wrapper in front of `check.sh` is not ours to serialize.
-So when a lead fans agents out into one worktree, the lead runs the lanes; ❌ don't have several agents run them at
-once. A run in a DIFFERENT worktree is fine, since each has its own `node_modules` and `.svelte-kit`.
+2026-09-16, three agents sharing a worktree). Nothing gates it: the lease in `stacklease/` covers Docker fixtures across
+worktrees, and the cache is per-worktree, but the pnpm wrapper in front of `check.sh` is not ours to serialize. So when
+a lead fans agents out into one worktree, the lead runs the lanes; ❌ don't have several agents run them at once. A run
+in a DIFFERENT worktree is fine, since each has its own `node_modules` and `.svelte-kit`.
 
 A sentinel whose pid is dead is treated as "proceed, and say so", never "wait forever": the runner reports it, removes
 the marker, and continues. A half-cloned `target/` is safe to build on, since cargo treats a missing artifact as one

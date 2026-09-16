@@ -608,8 +608,8 @@ never comes back". Within a session the store is what makes Back into a results 
 snapshot by clearing it early.
 
 Each record keeps TWO arrays: the `entries` the pane renders and the `rankedEntries` the engine produced, which are the
-same array until a sort splits them (§ "The snapshot pane's row order"). The store has no hard cap on its
-own — **refcount is the only authority**. Refs come from two sources:
+same array until a sort splits them (§ "The snapshot pane's row order"). The store has no hard cap on its own —
+**refcount is the only authority**. Refs come from two sources:
 
 - **Pane history entries** whose `path` starts with `search-results://<id>` hold +1 per occurrence. The tab-state
   manager (`pushHistoryEntry` and the closed-tab lifecycle) drives inc/dec — `navigation-history.ts` itself stays pure
