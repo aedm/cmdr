@@ -128,6 +128,7 @@ manualLicenses.post('/admin/generate', async (c) => {
       organizationName: request.organizationName ?? undefined,
       licenseType: request.licenseType,
       expiresAt: request.expiresAt ?? undefined,
+      issuedManually: true,
     })
   } catch (error) {
     // The license exists and works; only the delivery didn't. Say so, and hand the code back so

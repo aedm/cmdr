@@ -140,6 +140,11 @@ when you're pasting it into a reply yourself.
   unrepresentable.
 - **A rejected email answers 502 with the code in the body.** The license exists and works; only delivery failed, so the
   script prints the code to hand over rather than inviting a second mint.
+- **The email says what's true of THIS license.** `sendLicenseEmail` takes `expiresAt` and `issuedManually`, which pick
+  between three validity sentences (perpetual, dated, renewing) and drop the thanks-for-your-purchase opener for a
+  license nobody bought. ❌ Never let the subscription wording reach a dated license: a prospect forwards this mail to
+  their IT department, and "will auto-renew" on an evaluation that simply stops is the sentence that ends a deal. Pinned
+  by `../email/license.test.ts`.
 
 **Revoking** (`/admin/revoke`) sets `revoked_at` and deletes the short codes from KV:
 

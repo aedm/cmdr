@@ -23,32 +23,52 @@ interface EmailParams {
   organizationName?: string
   licenseType?: LicenseType
   /**
-   * ISO 8601, and only set for a hand-issued license with a fixed end date. A Paddle subscription
-   * auto-renews, so it says so instead; promising that to someone whose free evaluation license
-   * simply stops would be a lie.
+   * ISO 8601, and only set for a license with a fixed end date, which today means a hand-issued
+   * one. A Paddle subscription renews instead of ending, so it has no date to name here.
    */
   expiresAt?: string
+  /**
+   * True when we gave this license away rather than sold it. It changes what the email can honestly
+   * claim: there was no purchase to thank anyone for.
+   */
+  issuedManually?: boolean
 }
 
-function getLicenseDescription(type: LicenseType | undefined, orgName?: string, expiresAt?: string): string {
+/**
+ * The one sentence saying how long the license lasts. Three shapes, and each has to be true on its
+ * own, because this is what someone forwards to their IT department:
+ *
+ * - **Perpetual**: never ends.
+ * - **Dated**: ends on a day we name, and nothing renews it. A hand-issued evaluation is this.
+ * - **Subscription**: renews on its own until it's canceled, so it names no end date. Only a Paddle
+ *   purchase is this, and ❌ its wording must never reach a dated license: promising a renewal to
+ *   someone whose license simply stops is the kind of sentence that ends a deal.
+ */
+export function getLicenseDescription(type: LicenseType | undefined, orgName?: string, expiresAt?: string): string {
+  const licensee = orgName ? ` for ${orgName}` : ''
   switch (type) {
     case 'commercial_subscription':
       if (expiresAt) {
-        const until = expiresAt.slice(0, 10)
-        return orgName
-          ? `Your commercial license for ${orgName} is valid until ${until}.`
-          : `Your commercial license is valid until ${until}.`
+        return `Your commercial license${licensee} is valid until ${expiresAt.slice(0, 10)}, and doesn't renew automatically.`
       }
-      return orgName
-        ? `Your commercial license for ${orgName} is valid for one year and will auto-renew.`
-        : 'Your commercial license is valid for one year and will auto-renew.'
+      return `Your commercial license${licensee} is valid for one year and will auto-renew.`
     case 'commercial_perpetual':
-      return orgName
-        ? `Your perpetual commercial license for ${orgName} is valid forever.`
-        : 'Your perpetual commercial license is valid forever.'
+      return `Your perpetual commercial license${licensee} is valid forever, with no renewal and no expiry.`
     default:
       return 'This is an unknown license type. This is weird. Please contact support.'
   }
+}
+
+/** The opening line. ❌ Never thank someone for a purchase they didn't make. */
+export function getIntroText(count: number, productName: string, issuedManually: boolean): string {
+  if (issuedManually) {
+    return count > 1
+      ? `Here are your ${String(count)} license keys for ${productName}:`
+      : `Here's your license key for ${productName}:`
+  }
+  return count > 1
+    ? `Thanks for purchasing ${String(count)} licenses for ${productName}! Here are your license keys:`
+    : `Thanks for purchasing ${productName}! Here's your license key:`
 }
 
 export async function sendLicenseEmail(params: EmailParams): Promise<void> {
@@ -83,9 +103,7 @@ export async function sendLicenseEmail(params: EmailParams): Promise<void> {
     ? params.licenseKeys.map((key, i) => `License ${String(i + 1)} of ${String(count)}:\n${key}`).join('\n\n')
     : params.licenseKeys[0]
 
-  const introText = isMultiple
-    ? `Thanks for purchasing ${String(count)} licenses for ${params.productName}! Here are your license keys:`
-    : `Thanks for purchasing ${params.productName}! Here's your license key:`
+  const introText = getIntroText(count, params.productName, params.issuedManually === true)
 
   await sendViaResend(
     resend,
