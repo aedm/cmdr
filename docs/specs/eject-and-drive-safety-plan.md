@@ -78,10 +78,16 @@ drive-safety decisions below.
   `move-leftovers-kept` notice, its English copy, and the frontend bridge), `827204516` (the two real-detach lane tests,
   `DiskImage::reattach`, and `overwrite::aside_park`), `79a6b5581` (the docs, and the `test-sleep` / `jscpd-rust` lanes
   back to green).
-- **M12, disk resolution, per-disk flights, and sibling safety (done)**: `13a6d91f5` (the IOKit resolution, the disk
-  flight and its adoption, the whole-disk teardown and the resumes), `9e797ac9d` (M1's two sibling pins flipped plus
-  three more, and `DiskTeardown` moved to `disk_flight.rs`), plus the docs commit that follows them.
+- **M12, disk resolution, per-disk flights, and sibling safety (done)**: `1a6e2fcc6` (the IOKit resolution, the disk
+  flight and its adoption, the whole-disk teardown and the resumes), `1c973e294` (M1's two sibling pins flipped plus
+  three more, and `DiskTeardown` moved to `disk_flight.rs`), `dee0eef40` (the docs), `590e76e4b` (`EjectStep` carries
+  the disk lookup), `6673a2e19` (one test fake for both the pure tests and the real-image pin), `0a534e1b7` (the typed
+  `DiskMounts`: a silent DiskArbitration is its own answer, never an empty disk).
 - **Next, M13**: the holder scan and the wire type.
+- **Belonging to no milestone, since M11 merged**: `b3ea68362` (the parked hazard names the six cells that aren't its
+  fix), `df09b3023` (a lane test's panic message exempted from `pluralize-noun`), `7a9961fe6`, `1bf9f6c99`, and
+  `95b98813f` (the availability selector list refreshed from the macOS 27.0 SDK, the ping-pong documented, then made
+  impossible: the stored SDK is a resolved version now and only moves forward).
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
