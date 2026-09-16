@@ -116,21 +116,64 @@ function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
 }
 
+interface MintedLicense {
+  code: string
+  transactionId: string
+  type: string
+  organizationName: string | null
+  expiresAt: string | null
+  emailed: boolean
+  error?: string
+}
+
+/** The body comes back as text as well as parsed: a route that throws answers with bare 500 text. */
+async function generate(
+  body: Record<string, unknown>,
+  token = adminToken,
+): Promise<{ status: number; text: string; minted: MintedLicense }> {
+  const response = await server.fetch('http://api.getcmdr.com/admin/generate', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const text = await response.text()
+  return { status: response.status, text, minted: parseMinted(text) }
+}
+
+/**
+ * Parse, tolerating a non-JSON body. A route that throws inside workerd answers with bare 500 text,
+ * and a parse error thrown here would bury the status assertion that explains what happened.
+ */
+function parseMinted(text: string): MintedLicense {
+  try {
+    return JSON.parse(text) as MintedLicense
+  } catch {
+    return {} as MintedLicense
+  }
+}
+
+async function revoke(body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const response = await server.fetch('http://api.getcmdr.com/admin/revoke', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  return { status: response.status, body: JSON.parse(await response.text()) as Record<string, unknown> }
+}
+
 describe('minting a license in the Worker runtime', () => {
   it('signs, encodes, and stores a license key', async () => {
-    const response = await server.fetch('http://api.getcmdr.com/admin/generate', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${webhookSecret}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'buyer@example.com', type: 'commercial_perpetual' }),
+    const { status, text, minted } = await generate({
+      email: 'buyer@example.com',
+      note: 'Runtime test: the whole signing path',
     })
 
     // Carry the body and the runtime logs into the failure message: a route that throws inside
     // workerd answers with a bare 500, and the reason only exists in the logs.
-    const body = await response.text()
     const logs = server.getLogs().map((log) => JSON.stringify(log))
-    expect(response.status, `Body: ${body}\nWorker logs:\n${logs.join('\n')}`).toBe(200)
+    expect(status, `Body: ${text}\nWorker logs:\n${logs.join('\n')}`).toBe(200)
 
-    const { code } = JSON.parse(body) as { code: string }
+    const code = minted.code
     expect(isValidShortCode(code)).toBe(true)
 
     // The key the buyer would receive, read back from the KV namespace the route wrote it to.
@@ -146,6 +189,117 @@ describe('minting a license in the Worker runtime', () => {
     expect(payload.email).toBe('buyer@example.com')
     expect(payload.type).toBe('commercial_perpetual')
     expect(payload.shortCode).toBe(code)
+  })
+
+  it('mints a license that validates as active, which is the whole point of minting one', async () => {
+    const { status, minted } = await generate({
+      email: 'prospect@mbition.io',
+      customerName: 'Sven',
+      organizationName: 'MBition',
+      note: 'Sven Kopetzki, MBition, evaluation',
+    })
+    expect(status).toBe(200)
+    expect(minted.emailed).toBe(false)
+
+    const { body } = await validate(minted.transactionId)
+
+    expect(body.status).toBe('active')
+    expect(body.type).toBe('commercial_perpetual')
+    expect(body.organizationName).toBe('MBition')
+  })
+
+  it('takes an expiry, and calls that license a subscription', async () => {
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    const { minted } = await generate({ email: 'trial@example.com', note: 'trial', expiresAt })
+
+    expect(minted.type).toBe('commercial_subscription')
+    expect(minted.expiresAt).toBe(expiresAt)
+    expect((await validate(minted.transactionId)).body.status).toBe('active')
+  })
+
+  it('refuses to mint without a note, so no license is untraceable', async () => {
+    expect((await generate({ email: 'anonymous@example.com' })).status).toBe(400)
+  })
+
+  it('refuses a perpetual license with an expiry, which would be a lie either way', async () => {
+    const { status } = await generate({
+      email: 'contradiction@example.com',
+      note: 'contradiction',
+      type: 'commercial_perpetual',
+      expiresAt: new Date(Date.now() + 1000 * 60).toISOString(),
+    })
+
+    expect(status).toBe(400)
+  })
+
+  it('refuses an expiry in the past', async () => {
+    const { status } = await generate({
+      email: 'past@example.com',
+      note: 'past',
+      expiresAt: '2020-01-01T00:00:00.000Z',
+    })
+
+    expect(status).toBe(400)
+  })
+
+  it('keeps the license when delivery falls over, and hands the code back', async () => {
+    // The harness has no Resend key, so asking for the email is a guaranteed delivery failure.
+    const { status, minted } = await generate({
+      email: 'undeliverable@example.com',
+      note: 'delivery test',
+      sendEmail: true,
+    })
+
+    expect(status).toBe(502)
+    expect(minted.error).toBe('email_not_sent')
+    expect(isValidShortCode(minted.code)).toBe(true)
+    // The license itself is real, so it can be handed over by hand instead of minted again.
+    expect((await validate(minted.transactionId)).body.status).toBe('active')
+  })
+
+  it('no longer accepts the Paddle webhook secret as an admin credential', async () => {
+    const { status } = await generate({ email: 'buyer@example.com', note: 'wrong credential' }, webhookSecret)
+
+    expect(status).toBe(401)
+  })
+})
+
+describe('revoking a manual license', () => {
+  it('turns a live license invalid and takes its activation code out of circulation', async () => {
+    const { minted } = await generate({ email: 'leaked@example.com', note: 'posted the key on a forum' })
+    expect((await validate(minted.transactionId)).body.status).toBe('active')
+
+    const revoked = await revoke({ code: minted.code })
+
+    expect(revoked.status).toBe(200)
+    expect(revoked.body.status).toBe('revoked')
+    expect((await validate(minted.transactionId)).body.status).toBe('invalid')
+
+    const env = await server.getWorker<HarnessEnv>().getEnv()
+    expect(await env.LICENSE_CODES.get(minted.code)).toBeNull()
+  })
+
+  it('says so rather than revoking twice', async () => {
+    const { minted } = await generate({ email: 'twice@example.com', note: 'mistake' })
+    await revoke({ transactionId: minted.transactionId })
+
+    const second = await revoke({ transactionId: minted.transactionId })
+
+    expect(second.status).toBe(200)
+    expect(second.body.status).toBe('already_revoked')
+  })
+
+  it('refuses a Paddle transaction id, which it could not actually revoke', async () => {
+    const response = await revoke({ transactionId: 'txn_01abcdef' })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('reports an unknown code as not found', async () => {
+    const response = await revoke({ code: 'CMDR-2345-6789-ABCD' })
+
+    expect(response.status).toBe(404)
   })
 })
 

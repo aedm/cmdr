@@ -3,6 +3,12 @@ import * as ed from '@noble/ed25519'
 export const licenseTypes = ['commercial_subscription', 'commercial_perpetual'] as const
 export type LicenseType = (typeof licenseTypes)[number]
 
+/** What a short code resolves to in the `LICENSE_CODES` KV namespace. `/activate` returns it. */
+export interface StoredLicense {
+  fullKey: string
+  organizationName?: string
+}
+
 export interface LicenseData {
   email: string
   transactionId: string
