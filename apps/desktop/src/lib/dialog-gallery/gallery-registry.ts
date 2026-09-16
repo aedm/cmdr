@@ -210,6 +210,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
       { id: 'new_data_kept_at', label: 'New file kept under another name' },
       { id: 'originals_kept_aside', label: 'Your file kept under another name' },
       { id: 'io_error', label: 'I/O error' },
+      { id: 'trash_refused', label: 'Trash refused (permission)' },
       { id: 'archive_needs_password', label: 'Archive needs a password' },
     ],
   },
