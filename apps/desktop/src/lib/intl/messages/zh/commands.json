@@ -640,6 +640,26 @@
   "@commands.selectionInvert.description": {
     "sourceHash": "b63ce32"
   },
+  "commands.selectionSelectSameKind.label": "Select all of the same kind",
+  "@commands.selectionSelectSameKind.label": {
+    "sourceHash": "9933028"
+  },
+  "commands.selectionSelectSameKind.description": "Adds every entry like the one under the cursor to the selection, without clearing it",
+  "@commands.selectionSelectSameKind.description": {
+    "sourceHash": "9a95212"
+  },
+  "commands.selectionSelectSameKind.allFolders": "Select all folders",
+  "@commands.selectionSelectSameKind.allFolders": {
+    "sourceHash": "5351f8b"
+  },
+  "commands.selectionSelectSameKind.sameExtension": "Select all with extension *.{extension}",
+  "@commands.selectionSelectSameKind.sameExtension": {
+    "sourceHash": "7809a58"
+  },
+  "commands.selectionSelectSameKind.noExtension": "Select all files with no extension",
+  "@commands.selectionSelectSameKind.noExtension": {
+    "sourceHash": "d04751e"
+  },
   "commands.selectionSelectFiles.label": "选择文件…",
   "@commands.selectionSelectFiles.label": {
     "sourceHash": "b7f202e"

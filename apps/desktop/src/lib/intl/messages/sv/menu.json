@@ -199,6 +199,22 @@
   "@menu.select.deselectAll": {
     "sourceHash": "9675494"
   },
+  "menu.select.sameKind": "Select all of the same kind",
+  "@menu.select.sameKind": {
+    "sourceHash": "9933028"
+  },
+  "menu.select.allFolders": "Select all folders",
+  "@menu.select.allFolders": {
+    "sourceHash": "5351f8b"
+  },
+  "menu.select.sameExtension": "Select all with extension *.{extension}",
+  "@menu.select.sameExtension": {
+    "sourceHash": "7809a58"
+  },
+  "menu.select.noExtension": "Select all files with no extension",
+  "@menu.select.noExtension": {
+    "sourceHash": "d04751e"
+  },
   "menu.select.invert": "Invertera markering",
   "@menu.select.invert": {
     "sourceHash": "d2e128a"
@@ -420,6 +436,10 @@
   "menu.context.edit": "Redigera",
   "@menu.context.edit": {
     "sourceHash": "464c4ff"
+  },
+  "menu.context.selection": "Selection",
+  "@menu.context.selection": {
+    "sourceHash": "ca40670"
   },
   "menu.context.toggleSelection": "Växla markering",
   "@menu.context.toggleSelection": {
