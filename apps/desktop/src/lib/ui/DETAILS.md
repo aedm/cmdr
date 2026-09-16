@@ -327,6 +327,15 @@ an unregistered dialog exist that MCP knows nothing about.
 `bulk-rename-review` is an Ask Cmdr-owned modal mounted beside the rail, rather than a pane command dialog. Its review
 rows are display-only; the frontend returns opaque proposal and row ids to the backend for preflight or apply.
 
+### Reading the inventory (`open-dialogs.svelte.ts`)
+
+The same paired announcement feeds a reactive `SvelteSet` that anything can ask: `isAnySoftDialogOpen()`,
+`blockingSoftDialog()` (the topmost one that blocks a file operation), and `isDialogOpen(id)` for one named dialog. The
+last one is how an ambient affordance steps aside for the dialog it points at, without the hosting component threading
+its own visibility flag down: `$lib/onboarding/`'s FDA badge hides while the onboarding wizard's own FDA step is up.
+Reads only. ❌ Marking a dialog open from anywhere but `ModalDialog` (or `OnboardingWizard`, the one hand-registrar)
+breaks the set's exhaustiveness.
+
 ### Generic close (`dialog-close-registry.ts`)
 
 The MCP `dialog` tool's generic `close` action closes any registered soft dialog by id. `dialog-close-registry.ts` holds

@@ -18,18 +18,32 @@
     // right-aligned and grows leftward, so a member that comes and goes with
     // each wake can't be allowed to shove the persistent badge sideways every
     // time the agent has a look at something.
+    //
+    // The FDA badge is the least transient member of all (a missing grant stays
+    // missing until someone goes and gives it), so it takes the one slot left of
+    // the hourglass and everything that comes and goes renders further left.
     import type { Snippet } from 'svelte'
     import WakeIndicator from '$lib/ask-cmdr/WakeIndicator.svelte'
     import IndexingStatusIndicator from '$lib/indexing/IndexingStatusIndicator.svelte'
+    import FdaBadge from '$lib/onboarding/FdaBadge.svelte'
     import SuggestedOpsIndicator from '$lib/suggested-ops/SuggestedOpsIndicator.svelte'
     import OperationChip from './OperationChip.svelte'
 
     interface Props {
         /** Rendered left of the indexing hourglass. */
         children?: Snippet
+        /**
+         * Opens onboarding at its Full Disk Access step, for `FdaBadge`.
+         *
+         * The one prop the corner forwards to a member, and it's here because the wizard's
+         * visibility is `routes/(main)/+page.svelte` `$state`: only the page can mount it.
+         * Required, so a corner mounted without it is a compile error rather than a badge
+         * that quietly does nothing when clicked.
+         */
+        onOpenOnboarding: () => void
     }
 
-    const { children }: Props = $props()
+    const { children, onOpenOnboarding }: Props = $props()
 </script>
 
 <div class="status-corner">
@@ -37,6 +51,7 @@
     <OperationChip />
     <WakeIndicator />
     <SuggestedOpsIndicator />
+    <FdaBadge {onOpenOnboarding} />
     <IndexingStatusIndicator />
 </div>
 

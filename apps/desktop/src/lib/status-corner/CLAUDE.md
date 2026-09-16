@@ -2,16 +2,21 @@
 
 The main window's word on background work: the top-right row (`StatusCorner.svelte`, mounted once by
 `routes/(main)/+page.svelte`) hosting `OperationChip.svelte`, `$lib/ask-cmdr/WakeIndicator.svelte`,
-`$lib/suggested-ops/SuggestedOpsIndicator.svelte`, and `$lib/indexing/IndexingStatusIndicator.svelte` (the hourglass),
-with any `children` to their left. The chip's pick-and-measure rules are pure, in `operation-chip.ts`;
-`operation-failure-watch.svelte.ts` raises the failure toast.
+`$lib/suggested-ops/SuggestedOpsIndicator.svelte`, `$lib/onboarding/FdaBadge.svelte`, and
+`$lib/indexing/IndexingStatusIndicator.svelte` (the hourglass), with any `children` to their left.
+`operation-chip.ts` holds the chip's pure pick-and-measure rules; `operation-failure-watch.svelte.ts` raises the
+failure toast.
 
 ## Must-knows
 
 - **The corner owns placement AND order, its members don't**: it carries the `position: absolute`, the offsets, and
-  `--z-sticky`, and each member is a plain inline box. The hourglass stays last; everything else renders left of it. ⚠️
-  A TRANSIENT member goes LEFT of a persistent one (the wake indicator left of the suggestions badge): the row is
-  right-aligned and grows leftward, so the other order shoves the persistent one sideways every time it appears.
+  `--z-sticky`, and each member is a plain inline box. The hourglass stays last. ⚠️ The more TRANSIENT a member, the
+  further LEFT (wake indicator, suggestions badge, then the FDA badge right before the hourglass): the row grows
+  leftward, so the other order shoves the persistent one sideways whenever the transient one shows up. ❌ No `order`
+  prop; render order here says it.
+- **An ambient top-right indicator belongs HERE, ❌ never in the title-bar header**, which the corner overlays: a
+  header-placed one draws over the hourglass. `onOpenOnboarding` is the one prop the corner forwards (only
+  `+page.svelte` can mount the wizard); the FDA badge asks `$lib/onboarding/` for the rest.
 - **A member opens NO subscription at mount.** `StatusCorner.svelte.test.ts` and `StatusCorner.a11y.test.ts` mount the
   real corner and stub neither the suggestions badge nor the wake indicator, so a listener in a member's `onMount`
   breaks both suites. Each member's state lives in its own `*.svelte.ts`, started from `routes/(main)/`.
@@ -23,26 +28,23 @@ with any `children` to their left. The chip's pick-and-measure rules are pure, i
   comes from `$lib/file-operations/reversal-wording.ts` (`snapshot.reverses` set), ❌ never `queue.row.label` (undoing a
   copy runs as a delete, so the corner would say "Deleting" over an undo).
 - **Both gates are pure, in `operation-chip.ts`** (`pickChipOperation`, `pickChipState`): add and test one there, not in
-  the markup. The bar is bytes, falling back to the file count when `bytesTotal` is 0 (a same-volume move moves none);
-  instant ops are excluded by TYPED `operationType`, ❌ never a substring test.
-- **A scanning operation gets a SPINNER and "Scanning…", never a bar** (both totals 0); a PAUSED one neither. Spoken
-  label: `queue.chip.scanningAriaLabel`, ❌ never the tooltip's, which drops the verb and the "Open the queue" tail.
-- **A paused-only queue KEEPS the chip**, still bar, label "Paused": hiding it would re-hide the work the chip exists to
-  surface. Tooltip and aria-label lead with that label, ❌ never the verb, so every `queue.chip.tooltip` clause carries
-  its own leading `·`.
+  the markup. The bar is bytes, falling back to the file count when `bytesTotal` is 0; instant ops are excluded by
+  TYPED `operationType`, ❌ never a substring test.
+- **Scanning gets a SPINNER and "Scanning…", never a bar** (both totals 0); a PAUSED queue KEEPS its bar under the
+  label "Paused", since hiding it re-hides the work the chip exists to surface. Both spoken labels lead with that
+  state, ❌ never the verb and ❌ never the tooltip's string, so every `queue.chip.tooltip` clause carries its own
+  leading `·`.
 - **Render the session's `etaSecondsDisplay`, ❌ never `progress.etaSeconds`**: the raw value once read "8m 12s" in one
   window, "5m 46s" in the other.
 - **The FIRST appearance waits `CHIP_SETTLE_MS`** (blink-long work never flashes the corner, and the beat closes a race
-  with the foreground modal's claim); a handover to the next operation is immediate.
+  with the foreground modal's claim); a handover is immediate.
 - **The failure toast NEVER auto-dismisses**, and past three they collapse into one summary. A stack full of persistent
   toasts silently DROPS new ones, so ❌ don't raise that cap, and keep `toastGroup: 'operation-failure'`.
 - **Suppression needs BOTH foreground slots**, in the chip and in the watch: the dialog releases
   `getForegroundOperationId()` as it unmounts and the failure row lands only after, so `getForegroundFailureId()` is
   what stops a double report.
-- **The summary toast reads its count off the store, ❌ never a prop** (the dedup path replaces content and level, not
-  props, so a prop-carried count freezes at the fourth failure).
-- **A failure's toast title is `queue.failureToast.title`, ❌ not the pipeline's**: it names the work the user started,
-  while the explanation under it IS the pipeline's.
+- **The toast takes its title from `queue.failureToast.title` and its count off the store**, ❌ neither the pipeline's
+  title nor a prop. DETAILS § "The failure notice" has the why for both.
 
 Layout model, member contract, the chip's states, and decisions: `DETAILS.md`. Read it before any non-trivial work here:
 editing, planning, reorganizing, or advising.

@@ -1,7 +1,7 @@
 /**
  * Whether this Mac has given Cmdr Full Disk Access, as one reactive fact the whole UI reads.
  *
- * Two surfaces need it and they must never disagree: the title-bar badge that makes a missing
+ * Two surfaces need it and they must never disagree: the status-corner badge that makes a missing
  * grant visible at all, and the extra paragraph an error message adds when a refusal is the
  * kind FDA explains. Both ask here.
  *

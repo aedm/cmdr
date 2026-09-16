@@ -193,8 +193,8 @@ describe('OnboardingStepShell a11y', () => {
 })
 
 /**
- * Tier 3 a11y test for `FdaBadge.svelte`. The badge is a bare button in the title bar, so
- * its whole a11y story is its accessible name: the visible text is a fragment ("No full
+ * Tier 3 a11y test for `FdaBadge.svelte`. The badge is a bare button in the status corner,
+ * so its whole a11y story is its accessible name: the visible text is a fragment ("No full
  * disk access") that says nothing about what activating it does, which is why the button
  * carries an `aria-label` naming the destination too.
  */
@@ -205,7 +205,7 @@ describe('FdaBadge a11y', () => {
     document.body.appendChild(target)
     const instance = mount(FdaBadge, {
       target,
-      props: { onboardingOnFdaStep: false, onOpenOnboarding: () => {} },
+      props: { onOpenOnboarding: () => {} },
     })
     mounted = { target, instance }
     await tick()

@@ -3,9 +3,7 @@
     import DualPaneExplorer from '$lib/file-explorer/pane/DualPaneExplorer.svelte'
     import FunctionKeyBar from '$lib/file-explorer/pane/FunctionKeyBar.svelte'
     import OnboardingWizard from '$lib/onboarding/OnboardingWizard.svelte'
-    import FdaBadge from '$lib/onboarding/FdaBadge.svelte'
     import { refreshFdaStatus } from '$lib/onboarding/fda-status.svelte'
-    import { getOnboardingState } from '$lib/onboarding/onboarding-state.svelte'
     import AlertDialog from '$lib/ui/AlertDialog.svelte'
     import ExpirationModal from '$lib/licensing/ExpirationModal.svelte'
     import CommercialReminderModal from '$lib/licensing/CommercialReminderModal.svelte'
@@ -309,7 +307,7 @@
         // Fetch platform-specific path limits (non-blocking, macOS defaults until resolved)
         void initPathLimits()
 
-        // Answer the Full Disk Access question for the title-bar badge and for the extra
+        // Answer the Full Disk Access question for the status corner's badge and for the extra
         // paragraph error messages add when a refusal is the kind FDA explains. Quiet probe,
         // so it never raises a TCC popup of its own.
         void refreshFdaStatus()
@@ -680,12 +678,6 @@
                 <!-- eslint-disable-next-line cmdr/no-raw-user-facing-string -- dev/E2E-only title-bar markers (incl. the worktree label), not shipped user copy; they only render under non-default app modes. -->
                 {decorateMainWindowTitle(windowTitle, appMode)}
             </span>
-            <!-- Deliberately NOT a drag region: it's a button. Hidden while the wizard sits on
-                 step 1, which is this badge's own destination. -->
-            <FdaBadge
-                onboardingOnFdaStep={showOnboarding && getOnboardingState().currentStep === 1}
-                onOpenOnboarding={() => void openOnboardingFromMenuOrPalette(startupGatesCtx, 'menu')}
-            />
         </header>
     {/if}
 
@@ -792,7 +784,7 @@
             {#if askCmdrState.renameReview}
                 <BulkRenameReviewDialog />
             {/if}
-            <StatusCorner />
+            <StatusCorner onOpenOnboarding={() => void openOnboardingFromMenuOrPalette(startupGatesCtx, 'menu')} />
             <StaleDriveDialog />
             <OperationConflictDialog />
         {/if}

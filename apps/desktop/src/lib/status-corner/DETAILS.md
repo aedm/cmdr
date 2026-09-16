@@ -5,7 +5,7 @@ Depth for `CLAUDE.md`. Up: `apps/desktop/src/CLAUDE.md`.
 ## What's here
 
 - `StatusCorner.svelte`: the row. One optional `children` snippet, then `OperationChip`, then `WakeIndicator`, then
-  `SuggestedOpsIndicator`, then `IndexingStatusIndicator`.
+  `SuggestedOpsIndicator`, then `$lib/onboarding/FdaBadge.svelte`, then `IndexingStatusIndicator`.
 - `OperationChip.svelte`: the corner chip (markup, copy, and the settle timer), in either of its two states.
 - `operation-chip.ts`: pure — what the corner has to say (`pickChipState`), which operation it previews, how full its
   bar is, and the destination name its tooltip uses.
@@ -53,18 +53,31 @@ A member is a plain inline box:
 
 The hourglass renders last so the eye finds it in the same place regardless of what else is showing. A member this
 module owns renders inline, before it; a member owned elsewhere arrives through `children`, which keeps the corner from
-importing half the app. The two AI members break that last rule on purpose and are NAMED imports, because David placed
-them between the chip and the hourglass and `children` renders left of both — the corner owns ordering, and having it
-visible in one file beats spreading it across the callers.
+importing half the app. The two AI members and the FDA badge break that last rule on purpose and are NAMED imports,
+because each belongs somewhere between the chip and the hourglass and `children` renders left of all of them. The
+corner owns ordering, and having it visible in one file beats spreading it across the callers.
 
-Among those two, the wake indicator goes on the LEFT. The row is right-aligned and shrink-to-fit, so it grows leftward:
-a member that comes and goes with every wake would otherwise shove the persistent suggestions badge sideways each time
-the agent had a look at something. The transient member takes the moving edge.
+Order among them follows one rule: **the more transient a member, the further LEFT.** The row is right-aligned and
+shrink-to-fit, so it grows leftward, and the moving edge is where something that comes and goes belongs. The wake
+indicator would otherwise shove the persistent suggestions badge sideways every time the agent had a look at something.
+The FDA badge is the least transient thing in the row (a missing grant stays missing until someone goes and gives it),
+so it takes the slot right before the hourglass. ❌ Don't add an `order` prop or any other ordering machinery: render
+order in this one file already says all of it, and a second way to express the same thing is what the rule avoids.
+
+### The FDA badge's one prop
+
+`onOpenOnboarding` is the only thing the corner forwards to a member, and it's required so a corner mounted without it
+is a compile error rather than a badge that quietly does nothing when clicked. It exists because the onboarding
+wizard's visibility is `routes/(main)/+page.svelte` `$state`, so only the page can mount the wizard. The badge's other
+input needs no prop: it asks `isWizardOnFdaStep()` in `$lib/onboarding/onboarding-state.svelte` whether its own
+destination is already on screen.
 
 ⚠️ **A member must open no subscription at mount.** `StatusCorner.svelte.test.ts` and `StatusCorner.a11y.test.ts` mount
 the real corner with the AI members unstubbed, so a listener in a member's `onMount` breaks both. Each member reads
-module `$state` that a `*.svelte.ts` populates, started from `routes/(main)/window-services.ts`. Both AI members are
-also silent in their default state, which is what lets those suites mount them without any setup at all.
+module `$state` that a `*.svelte.ts` populates, started from `routes/(main)/window-services.ts`. The AI members and the
+FDA badge are also silent in their default state, which is what lets those suites mount them without any setup at all;
+the badge's fact lives in `$lib/onboarding/fda-status.svelte`, refreshed from `routes/(main)/`, and it reads it without
+ever probing itself.
 
 ## The operation chip
 

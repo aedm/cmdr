@@ -26,28 +26,28 @@ via a typed API. Up: `apps/desktop/CLAUDE.md`, sibling: `../viewer/CLAUDE.md`.
 - **`$state` lives in `+page.svelte`; logic leaves through a context of setters and GETTERS.** Dialogs flip via
   write-only `ctx.dialogs.showXxx(...)`, new listeners go in `listener-setup.ts`, startup decisions in
   `startup-gates.ts`. ❌ Never capture a `$state` value; `isOnboardingVisible()` reads live.
+- **Ambient top-right indicators go in `<StatusCorner>`, ❌ never the `.title-bar` header** it overlays: a header child
+  lands on the hourglass.
 - **The old-macOS notice is `topmost` AND rendered after `<OnboardingWizard>`**, or it hides under the wizard. ❌ Don't
   move it or drop the prop. DETAILS § Startup gates.
 - **One dispatcher per road** (`dispatchers.*`), ❌ never shared. DETAILS § The dialog gate.
 - **`dialogsOnScreen()` reads the `open-dialogs` INVENTORY, ❌ never a list of `show*` booleans**: a hand list misses
-  dialogs, and each miss lets a bare key (Tab, Space, F5) fire behind one. DETAILS § What `dialogsOnScreen()` is made
-  of.
-- **Text-region intercept**: ⌘C / ⌘A inside a text region copy the text, not files (`handleTextRegionShortcut`). DETAILS
-  § Dispatch core.
+  dialogs, and each miss lets a bare key (Tab, Space, F5) fire behind one.
+- **Text-region intercept**: ⌘C / ⌘A inside a text region copy the text, not files (`handleTextRegionShortcut`).
 - **Gate on capabilities, ❌ never a `volumeId` compare**: `blockedByCapabilities` bails pre-dispatch for
   destination-side ops the focused pane can't satisfy.
 - **`mcp-listeners.ts` validate-parses each `mcp-*` payload** and dispatches typed `CommandId` consts, so a registry
   rename breaks compilation here. The `nav_to_path` and `select_volume` acks report the pane's LANDING, ❌ never
   `settled` alone (`mcp-nav-landing.ts`).
-- **E2E and debug listeners stay off the bus by design** (`e2e-trigger-file-drop`, the DEV `debug-*-error` ones call
-  `explorerRef.*` directly). Don't "finish the migration". DETAILS § Off-bus hooks.
+- **E2E and debug listeners stay off the bus** (`e2e-trigger-file-drop`, the DEV `debug-*-error` ones call
+  `explorerRef.*` directly). Don't "finish the migration".
 - **`foreground-operation` is the one inbound channel from another WINDOW** (the queue's Show button). ❌ Never route it
-  through the bus: a bus dispatch is fire-and-forget and would drop the verdict. DETAILS § Cross-window.
+  through the bus: a bus dispatch is fire-and-forget and would drop the verdict.
 
 ## Gotchas
 
-- **❌ Never cancel work from a window-teardown hook**: the quit gate owns stopping operations, and its
-  `initQuitPrompt()` must stay SYNCHRONOUS at the top of `onMount`. `$lib/quit/CLAUDE.md`.
+- **❌ Never cancel work from a window-teardown hook**: the quit gate owns that, and its `initQuitPrompt()` must stay
+  SYNCHRONOUS at the top of `onMount`. `$lib/quit/CLAUDE.md`.
 - **Don't remove the `{#if settingsReady}` wrapper** in `+layout.svelte`, and don't read settings ahead of the flag: a
   pre-init `getSetting()` returns registry defaults that can get hot-applied to the backend as if chosen.
 - **Native-menu accelerators fire before the webview keydown**, so a focused text input owns `edit.cut` / `edit.copy` /

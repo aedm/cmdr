@@ -148,5 +148,14 @@ question is still open, NOT that onboarding never ran: the wizard opens on that 
 so a long-time user can sit there. Reports from before these fields exist need the old route: grep `fda_probe` and
 `FDA choice:` in `logs/cmdr.log`.
 
+⚠️ **A `FDA choice:` line is written ONCE per launch, at boot, so it can be hours stale.** It says what the setting held
+when that launch started, never what the grant is now. Before concluding anything from one, find the LAST `FDA probe:`
+line at or after the `Logger initialized` line of the launch the failure actually happened in; a single log file holds
+several launches. `ERR-2YGHG` (app 0.45.1) is the example: its first launch logged
+`Drive indexing auto-start skipped (indexing enabled: None, FDA choice: NotAskedYet, OS-granted: false)`, 30 seconds
+later the same log has `FDA probe: read OK → FDA granted` and `Downloads watcher started (FDA gate open)`, and all three
+later launches in the file were granted, the reported failure among them. Reading the boot line alone sends you
+diagnosing a permission problem that was fixed before the report was written.
+
 A useful clustering signal: bundles that arrived in pairs minutes apart with overlapping log timestamps are usually the
 same incident; compare `breadcrumbs` and the `logs/cmdr.log` ERROR/WARN lines across bundles to group them.

@@ -614,7 +614,22 @@ contradict each other. Three rules it exists to enforce:
 - **A failed probe keeps the last answer.** An IPC hiccup must not put a warning in the title bar.
 
 The badge hides while the wizard is on step 1, because that page is where the badge sends people. Everywhere else it
-stays, including behind the other steps: the choice is still unanswered there.
+stays, including behind the other steps: the choice is still unanswered there. `isWizardOnFdaStep()` in
+`onboarding-state.svelte.ts` is the one answer to that, and it asks the `$lib/ui/open-dialogs.svelte` inventory whether
+the wizard is on screen at all. ⚠️ `currentStep` alone can't say it: the wizard closes by being unmounted, so the step
+cursor keeps its last value and a badge reading the cursor would stay hidden for the rest of the session.
+
+### Where the badge lives
+
+`$lib/status-corner/StatusCorner.svelte` renders it, in the slot right before the indexing hourglass. ❌ Never move it
+into the `.title-bar` header: the corner is absolutely positioned over that same strip, so a header-placed badge lands
+on top of the hourglass. The badge is a plain inline box with no `position` of its own (the corner's member contract,
+`$lib/status-corner/DETAILS.md`), and the corner forwards it one prop, `onOpenOnboarding`, because only
+`routes/(main)/+page.svelte` can mount the wizard.
+
+The corner lives inside the app shell (`showApp`), which `resolveOnboardingMount` reveals on every branch including the
+two that open the wizard, so the badge is available from the same moment it always was. `routes/(main)/` still owns
+refreshing `fda-status.svelte.ts`, on mount and whenever the wizard closes.
 
 ## What an error message may add about it
 
