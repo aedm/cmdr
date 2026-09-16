@@ -759,6 +759,30 @@
   "@commands.selectionInvert.description": {
     "description": "Longer help text for the \"Invert selection\" command, shown as a secondary line in the command palette."
   },
+  "commands.selectionSelectSameKind.label": "Select all of the same kind",
+  "@commands.selectionSelectSameKind.label": {
+    "description": "Command name that adds every entry of the same kind as the one under the cursor to the selection: every folder, every file with the same extension, or every file with no extension. This static name appears in the keyboard-shortcuts settings and the help window; the command palette shows one of the three live variants below instead.",
+    "screenshot": "settings-keyboard-shortcuts.png"
+  },
+  "commands.selectionSelectSameKind.description": "Adds every entry like the one under the cursor to the selection, without clearing it",
+  "@commands.selectionSelectSameKind.description": {
+    "description": "Longer help text for the \"Select all of the same kind\" command, shown as a secondary line in the command palette. \"Like the one under the cursor\" means same extension for a file, or a folder for a folder."
+  },
+  "commands.selectionSelectSameKind.allFolders": "Select all folders",
+  "@commands.selectionSelectSameKind.allFolders": {
+    "description": "Command palette row for \"Select all of the same kind\" while the cursor sits on a folder, so the row says what running it would do right now. A terse control label."
+  },
+  "commands.selectionSelectSameKind.sameExtension": "Select all with extension *.{extension}",
+  "@commands.selectionSelectSameKind.sameExtension": {
+    "description": "Command palette row for \"Select all of the same kind\" while the cursor sits on a file that has an extension, so the row says what running it would do right now. The asterisk-dot is a filename mask, the same shape the Select files dialog uses; restructure the sentence around the placeholder freely, and keep the mask readable.",
+    "placeholders": {
+      "extension": "the extension with no leading dot, lowercased, e.g. \"pdf\" or \"gz\""
+    }
+  },
+  "commands.selectionSelectSameKind.noExtension": "Select all files with no extension",
+  "@commands.selectionSelectSameKind.noExtension": {
+    "description": "Command palette row for \"Select all of the same kind\" while the cursor sits on a file with no extension (like \"README\" or \".gitignore\"), so the row says what running it would do right now."
+  },
   "commands.selectionSelectFiles.label": "Select files…",
   "@commands.selectionSelectFiles.label": {
     "description": "Command name that opens a dialog to select files matching a pattern. The trailing ellipsis (…) signals it opens a dialog; keep it. Appears in the command palette.",

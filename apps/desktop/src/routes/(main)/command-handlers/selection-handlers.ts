@@ -1,7 +1,7 @@
 /**
- * Selection handlers: toggle / toggle-and-down / select-all / deselect-all / invert, the
- * MCP range-select, and the two selection-dialog openers (Select files… /
- * Deselect files…). `selection.selectAll` carries its own `activeElement` input
+ * Selection handlers: toggle / toggle-and-down / select-all / deselect-all /
+ * invert / select-same-kind, the MCP range-select, and the two selection-dialog
+ * openers (Select files… / Deselect files…). `selection.selectAll` carries its own `activeElement` input
  * branch (a focused `<input>` selects its own text), distinct from the core's
  * pre-dispatch text-region intercept.
  */
@@ -35,6 +35,10 @@ export const selectionHandlers = {
 
   'selection.invert': ({ explorerRef }) => {
     explorerRef?.handleSelectionAction({ action: 'invert' })
+  },
+
+  'selection.selectSameKind': ({ explorerRef }) => {
+    explorerRef?.handleSelectionAction({ action: 'selectSameKind' })
   },
 
   'selection.mcpSelect': async ({ explorerRef, dispatchArgs }) => {

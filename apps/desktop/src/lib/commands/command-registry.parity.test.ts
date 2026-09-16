@@ -144,6 +144,7 @@ const EXPECTED_NAMES: Record<string, string> = {
   'selection.selectAll': 'Select all',
   'selection.deselectAll': 'Deselect all',
   'selection.invert': 'Invert selection',
+  'selection.selectSameKind': 'Select all of the same kind',
   'selection.selectFiles': 'Select files…',
   'selection.deselectFiles': 'Deselect files…',
   'selection.mcpSelect': 'Select range in pane',
@@ -214,6 +215,7 @@ const EXPECTED_DESCRIPTIONS: Record<string, string | undefined> = {
   'tags.toggleOrange': 'Adds or removes the orange Finder tag on the selected files',
   'selection.toggleAndDown': 'Selects or deselects the file under the cursor, then moves down (Total Commander style)',
   'selection.invert': 'Selects every unselected file and deselects every selected one',
+  'selection.selectSameKind': 'Adds every entry like the one under the cursor to the selection, without clearing it',
   'selection.selectFiles': 'Opens the Select files dialog to add matching files to the selection',
   'selection.deselectFiles': 'Opens the Deselect files dialog to remove matching files from the selection',
 }

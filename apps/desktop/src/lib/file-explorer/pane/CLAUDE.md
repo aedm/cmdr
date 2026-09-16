@@ -48,6 +48,9 @@ Per-pane orchestrator: cursor, focus, tabs, selection, type-to-jump, dialogs, dr
   on CONNECTION STATE, `device-connect` on `deviceReadiness`, both in FRONT of the kind chain. ❌ No second renderer, no
   inert affordance. ❗ `device-connect` is a phone's ONE dialer and HOLDS the listing (`holdsListing`): an undialed
   phone's listing can only refuse. An eject (row loses `capabilities`) re-dials.
+- **Select-same-kind (`⌥⇧=`) adds through `selection.applyIndices` over the whole-listing SNAPSHOT**, ❌ never
+  `FilePane.applyIndices` (it yanks the cursor) and ❌ never the rendered window's cache (off-screen matches vanish).
+  Its kind rule is `getDisplayExtension`, what the Ext column shows (`DETAILS.md` § Select all of the same kind).
 - **`DualPaneExplorer.svelte` / `FilePane.svelte` are at their size cap**: cross-cutting state → a `*.svelte.ts`
   factory, pure logic → a `*.ts` helper, ❌ never a child component.
 

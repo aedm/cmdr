@@ -9,7 +9,7 @@
  * - the ⌘-variants stop propagation so the document dispatcher can't run the
  *   same command a second time (⌘↑ → grandparent, ⌘↓ → double-open),
  * - bare `+` / `-` bubble the Selection dialog commands out of the pane,
- * - the five selection keys act and stop propagation, and Space also raises the
+ * - the six selection keys act and stop propagation, and Space also raises the
  *   one-time Quick Look hint,
  * - the leftovers reach the Brief or Full cursor handler per the view mode,
  * - key-up on Shift ends the mouse range-anchor gesture.
@@ -119,6 +119,7 @@ describe('createPaneKeyRouter', () => {
       selectAll: vi.fn(),
       deselectAll: vi.fn(),
       invertSelection: vi.fn(),
+      selectSameKind: vi.fn(),
       clearRangeState: vi.fn(),
     }
   })
@@ -267,6 +268,17 @@ describe('createPaneKeyRouter', () => {
       onlyCommand('selection.invert')
       router().handleKeyDown(keyEvent())
       expect(deps.invertSelection).toHaveBeenCalledTimes(1)
+    })
+
+    it('selects everything of the cursor row’s kind on ⌥⇧=', () => {
+      onlyCommand('selection.selectSameKind')
+      const e = keyEvent()
+      router().handleKeyDown(e)
+      expect(deps.selectSameKind).toHaveBeenCalledTimes(1)
+      // Stopped here, or the document dispatcher would run the command again.
+      expect(e.preventDefault).toHaveBeenCalledTimes(1)
+      expect(e.stopPropagation).toHaveBeenCalledTimes(1)
+      expect(deps.handleFullModeKeys).not.toHaveBeenCalled()
     })
   })
 

@@ -1,6 +1,7 @@
 /**
- * Pure helper: classifies a `keydown` in a file pane against the five selection
- * commands (`Space`, `Insert`, `⌘A`, `⌘⇧A`, `⇧8` / numpad `*` by default).
+ * Pure helper: classifies a `keydown` in a file pane against the six selection
+ * commands (`Space`, `Insert`, `⌘A`, `⌘⇧A`, `⇧8` / numpad `*`, and `⌥⇧=` /
+ * numpad `⌥+` by default).
  *
  * Resolved through the command registry rather than hand-rolled key predicates, so
  * the keys stay customizable AND the match is exact: `⌥⌘A` (Ask Cmdr) is not `⌘A`,
@@ -20,8 +21,9 @@ export type SelectionKeyCommand =
   | 'selection.selectAll'
   | 'selection.deselectAll'
   | 'selection.invert'
+  | 'selection.selectSameKind'
 
-// Order matters only for readability: the five commands can't share a combo (that
+// Order matters only for readability: the six commands can't share a combo (that
 // would be a registry conflict the Settings editor warns about).
 const selectionCommands = [
   'selection.toggle',
@@ -29,6 +31,7 @@ const selectionCommands = [
   'selection.selectAll',
   'selection.deselectAll',
   'selection.invert',
+  'selection.selectSameKind',
 ] as const satisfies readonly SelectionKeyCommand[]
 
 /** The selection command this keypress triggers, or `null` to let it fall through. */

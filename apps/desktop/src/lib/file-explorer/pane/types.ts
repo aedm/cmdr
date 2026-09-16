@@ -195,6 +195,13 @@ export interface FilePaneAPI {
   selectAll(): void
   /** Flip every selectable row; `..` stays untouched. */
   invertSelection(): void
+  /**
+   * ADD every row of the same kind as the one under the cursor (every folder, or
+   * every file sharing its extension) to the selection, without clearing it and
+   * without moving the cursor. No-op on the `..` row. Async: it re-reads the
+   * cursor row and the pane's whole-listing snapshot.
+   */
+  selectSameKind(): Promise<void>
   toggleSelectionAtCursor(): void
   toggleSelectionAndMoveDownAtCursor(): void
   selectRange(startIndex: number, endIndex: number): void

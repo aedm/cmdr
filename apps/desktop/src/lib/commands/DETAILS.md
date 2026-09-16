@@ -100,9 +100,9 @@ platform-aware without platform checks scattered through the UI.
 ### i18n: keys, not English
 
 Each entry is authored as a `CommandSource` (`Omit<Command, 'name' | 'displayName' | 'description'>` plus `nameKey`, an
-optional `descriptionKey`, and an optional `displayName`). `resolveCommand` maps each source to a `Command` whose
-`name` / `displayName` / `description` are getters calling `tString()` against `messages/en/commands.json`, mirroring
-the settings-registry pattern. Reading `command.name` resolves the current catalog string, so the palette, the fuzzy
+optional `descriptionKey`, and an optional `displayName`). `resolveCommand` maps each source to a `Command` whose `name`
+/ `displayName` / `description` are getters calling `tString()` against `messages/en/commands.json`, mirroring the
+settings-registry pattern. Reading `command.name` resolves the current catalog string, so the palette, the fuzzy
 haystack (rebuilt per search), the shortcuts list, and the menus all stay unchanged and reactive; the per-key base-en
 parity net is `command-registry.parity.test.ts`. Key shape is `commands.<idish>.label` / `.description` (the command id
 flattened to a lowerCamel leaf, e.g. `view.zoom.set75` → `commands.viewZoomSet75.label`); the command IDS themselves
@@ -136,11 +136,16 @@ Three sources of a non-constant label, all generic — ❌ `resolveCommand` carr
   `commands.appLicenseKey.seeDetails.label` or `…enterKey.label`. `updateLicenseCommandName(hasLicense)` flips the flag
   — it doesn't rewrite English in place — keeping the palette label in step with the native menu.
 - **A `displayName` resolver** composes the palette label outright, when no fixed set of catalog keys covers it.
+  `selection.selectSameKind` is the one user: it renders whatever the focused pane published into
+  `file-explorer/pane/same-kind-target.svelte.ts` ("Select all with extension *.pdf"), falling back to its static name
+  when the cursor row has no kind. ❗ The command itself never reads that store — it re-reads the cursor row when it
+  runs — so a stale label can't change what gets selected (`file-explorer/pane/DETAILS.md` § Select all of the same
+  kind).
 
 **Rust's menu labels are a SEPARATE mechanism, and stay that way.** Native menus never read `Command.name`: they resolve
-through Rust's own `menu_t` catalog, and `Label::License` (`src-tauri/src/menu/menu_spec.rs`) is a second,
-independently maintained dynamic-label path that happens to track the same license state. Generalizing the frontend's
-naming, as `nameKey` thunks and `displayName` just did, fixed nothing on that side. Keeping them separate is deliberate
+through Rust's own `menu_t` catalog, and `Label::License` (`src-tauri/src/menu/menu_spec.rs`) is a second, independently
+maintained dynamic-label path that happens to track the same license state. Generalizing the frontend's naming, as
+`nameKey` thunks and `displayName` just did, fixed nothing on that side. Keeping them separate is deliberate
 (`docs/specs/select-same-kind.md` § Not in scope); the duality is documented rather than merged.
 
 ## Adding a command (full steps)

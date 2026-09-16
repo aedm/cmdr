@@ -48,6 +48,33 @@ describe('classifySelectionKey', () => {
     expect(classifySelectionKey(keydown({ key: '*', code: 'NumpadMultiply' }))).toBe('selection.invert')
   })
 
+  it('maps ⌥⇧= to select-same-kind by its physical key, whatever the layout types', () => {
+    // macOS types `±` on a US layout with ⌥⇧ held, and something else again on a
+    // Hungarian one; both are the Equal key. Same problem as ⇧8, one key over.
+    expect(classifySelectionKey(keydown({ key: '±', code: 'Equal', altKey: true, shiftKey: true }))).toBe(
+      'selection.selectSameKind',
+    )
+    expect(classifySelectionKey(keydown({ key: '=', code: 'Equal', altKey: true, shiftKey: true }))).toBe(
+      'selection.selectSameKind',
+    )
+  })
+
+  it('maps the numpad ⌥+ to select-same-kind, the way Total Commander users type it', () => {
+    // `Alt+Num +` in Total Commander. The numpad key reports `+` with no Shift on
+    // every layout, so it needs its own default.
+    expect(classifySelectionKey(keydown({ key: '+', code: 'NumpadAdd', altKey: true }))).toBe(
+      'selection.selectSameKind',
+    )
+  })
+
+  it('ignores a bare `=` and a ⌘-carrying ⌥⇧=', () => {
+    // A bare `=` has to stay typable; `⌘⌥⇧=` is a different combo entirely.
+    expect(classifySelectionKey(keydown({ key: '=', code: 'Equal' }))).toBeNull()
+    expect(
+      classifySelectionKey(keydown({ key: '±', code: 'Equal', altKey: true, shiftKey: true, metaKey: true })),
+    ).toBeNull()
+  })
+
   it('ignores an unshifted 8 and a ⌘-carrying ⇧8', () => {
     expect(classifySelectionKey(keydown({ key: '8', code: 'Digit8' }))).toBeNull()
     expect(classifySelectionKey(keydown({ key: '*', code: 'Digit8', shiftKey: true, metaKey: true }))).toBeNull()

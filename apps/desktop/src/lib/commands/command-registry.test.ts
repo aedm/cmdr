@@ -106,6 +106,7 @@ const EXPECTED_PALETTE_IDS: readonly CommandId[] = [
   'selection.selectAll',
   'selection.deselectAll',
   'selection.invert',
+  'selection.selectSameKind',
   'selection.selectFiles',
   'selection.deselectFiles',
   'network.refresh',

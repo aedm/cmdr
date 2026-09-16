@@ -269,6 +269,12 @@ export function createPaneCommands(access: PaneAccess, dialogs: DialogState) {
       case 'invert':
         paneRef.invertSelection()
         break
+      case 'selectSameKind':
+        // Two round trips (the cursor row, then the whole-listing snapshot), so
+        // it's the one async arm. Fire-and-forget like every other arm here: the
+        // selection lands when it lands, and nothing acks this command.
+        void paneRef.selectSameKind()
+        break
       case 'toggleAtCursor':
         paneRef.toggleSelectionAtCursor()
         break

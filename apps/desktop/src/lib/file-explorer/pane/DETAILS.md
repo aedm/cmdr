@@ -1526,6 +1526,44 @@ open in the default app, or ask. The decision is a pure function; the UI is a sm
   Installs from before the split are carried over by settings migration 5 (`settings/settings-store.ts`), which unpacks
   the old `behavior.archiveEnterBehavior` JSON blob into the three keys and deletes it.
 
+## Select all of the same kind
+
+`selection.selectSameKind` (`⌥⇧=`, or the numpad `⌥+`) adds every row of the cursor row's kind to the selection, the way
+Total Commander's `Alt+Num +` does. `select-same-kind.ts` holds the whole rule as two pure functions, so the palette's
+label and the selection itself can't disagree: `sameKindTargetFor(cursorEntry)` reads the row into a `SameKindTarget`,
+and `sameKindIndices(target, entries)` asks a listing snapshot which rows match.
+
+- **Three kinds, and they never mix.** A folder means every folder, whatever dots its name carries; a file with an
+  extension means every file with that extension, case-insensitively, folders excluded; an extension-less file means
+  every extension-less file. The `..` row has no kind, so the command no-ops there and the label falls back to its
+  neutral form.
+- **The extension rule is `getDisplayExtension`** (`../views/full-list-utils.ts`), what the **Ext column the user is
+  looking at** renders and what Rust sorts by. ❌ Never `getExtension` (`$lib/utils/filename-validation`): it returns
+  the last dot segment WITH its dot and calls `file.` an extension of `"."`, where the column says "no extension". They
+  agree on everything else that matters here (`archive.tar.gz` → `gz`, `.gitignore` → none). What the command groups has
+  to be what the column shows.
+- **It ADDS, never replaces** (decision, matching Total Commander): the matches union into whatever is already selected.
+- **❗ `FilePane.selectSameKind` applies through `selection.applyIndices`, ❌ NOT the component's own `applyIndices`.**
+  That one moves the cursor to the first newly-selected row and scrolls there on `'add'`, which is right for the Select
+  files… dialog and wrong here: the point of the command is that the user keeps standing on the file they aimed at.
+  Nothing else enforces this, and the regression would look like a scroll jump, not a bug.
+- **❗ It matches against `getEntriesSnapshot()`, the WHOLE listing**, ❌ never `views/full-list-cache.svelte.ts`'s
+  `getEntryAt`, which returns `undefined` outside the rendered window — off-screen matches would silently vanish.
+  Snapshot indices ARE frontend indices (the `..` sits at 0 when `hasParent`), so nothing needs offsetting, and
+  `selection-state::applyIndices` skips index 0 itself. One `applyIndices` call fires `onChanged` once for any number of
+  rows, so thousands of matches cost one IPC.
+- **The cursor row is RE-READ (`refreshCursorEntry`), not taken from the feed**, which runs a 16 ms debounce behind:
+  arrow-down then `⌥⇧=` is an ordinary keyboard sequence, and acting on the row the cursor just left would select the
+  wrong kind. A snapshot pane has no backend listing to re-read from and would have its feed entry cleared, so it reads
+  the live mirrored value instead.
+- **The palette's row label is a separate, best-effort path.** `same-kind-target.svelte.ts` holds a module `$state` the
+  FOCUSED pane publishes its target into (`FilePane`'s effect bails when `isFocused` is false, so a blurred pane can't
+  clobber it), and the registry's `displayName` resolver renders it ("Select all with extension *.pdf"). Only the
+  palette reads `displayName`; Settings > Shortcuts, the help window, the conflict toast, and the MCP bridge keep the
+  static name. ❗ The command itself never reads this store, so a label one frame behind can't change what gets
+  selected. Rust's native menus don't read it either — they resolve labels through their own `menu_t` catalog
+  (`src-tauri/src/menu/DETAILS.md`), a second mechanism on purpose.
+
 ## The context menu's header line
 
 The native file context menu opens with a line naming what it will act on (`photo.jpg · 2.1 MB`, or `3 items · 3.2 MB`

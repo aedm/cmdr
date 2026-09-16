@@ -6,6 +6,7 @@
 import type { CommandSource } from '../types'
 import { getBadgeStatus } from '$lib/feature-status'
 import { isMacOS } from '$lib/shortcuts/key-capture'
+import { sameKindCommandLabel } from '$lib/file-explorer/pane/same-kind-target.svelte'
 import { BLOCKED_BY_DIALOGS, IN_TEXT_INPUTS_ONLY } from '../while-dialog-open'
 
 export const fileListCommands: CommandSource[] = [
@@ -554,6 +555,24 @@ export const fileListCommands: CommandSource[] = [
     shortcuts: ['⇧8', '*'],
     whileDialogOpen: BLOCKED_BY_DIALOGS,
     descriptionKey: 'commands.selectionInvert.description',
+  },
+  {
+    id: 'selection.selectSameKind',
+    nameKey: 'commands.selectionSelectSameKind.label',
+    scope: 'Main window/File list',
+    showInPalette: true,
+    // Total Commander's `Alt+Num +`, both ways it's typed: the main-row key and
+    // the numpad one. `⌥⇧=` is `±` on a US layout, matched by physical key
+    // (`eventMatchesCommand`'s punctuation fallback) so it works wherever the
+    // combo types something else. It stays first because that's the combo the
+    // menu DISPLAYS; the file pane's keydown handler owns both, so neither is a
+    // real menu accelerator (a bare-ish `⌥` combo would eat the character in
+    // every text field).
+    shortcuts: ['⌥⇧=', '⌥+'],
+    whileDialogOpen: BLOCKED_BY_DIALOGS,
+    descriptionKey: 'commands.selectionSelectSameKind.description',
+    // The palette alone reads this; every listing surface keeps the static name.
+    displayName: sameKindCommandLabel,
   },
   {
     id: 'selection.selectFiles',

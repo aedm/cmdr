@@ -75,6 +75,8 @@
     import { createSearchPaneKeys } from './search-pane-keys'
     import { computeHasParent } from './has-parent'
     import { firstSelectedIndex } from './first-selected-index'
+    import { sameKindIndices, sameKindTargetFor } from './select-same-kind'
+    import { publishSameKindTarget } from './same-kind-target.svelte'
     import { capabilitiesForPane, paneFolderIsPolledForDeletion, paneRowsAreOsVisible } from './volume-capabilities'
     import { createEnterMenu } from './enter-menu.svelte'
     import Menu from '$lib/ui/Menu.svelte'
@@ -863,6 +865,36 @@
         selection.invertSelection(hasParent, effectiveTotalCount)
     }
 
+    /**
+     * Adds every row of the same kind as the one under the cursor (Total
+     * Commander's `Alt+Num +`). The kind rule and the matcher are pure, in
+     * `select-same-kind.ts`.
+     *
+     * Three deliberate choices:
+     * - ❗ It goes through `selection.applyIndices`, ❌ NOT this component's
+     *   `applyIndices`, which moves the cursor to the first newly-selected row.
+     *   That is right for the Select files… dialog and wrong here: it would yank
+     *   the cursor off the file the user is standing on.
+     * - ❗ It matches against `getEntriesSnapshot()`, the WHOLE listing. The
+     *   rendered window's cache knows nothing off-screen, so matches would
+     *   silently vanish. Snapshot indices are frontend indices already
+     *   (the `..` row sits at 0 when `hasParent`), so nothing needs offsetting.
+     * - The cursor row is RE-READ rather than taken from the feed, which runs a
+     *   debounce behind: arrow-down then ⌥⇧= is an ordinary keyboard sequence,
+     *   and acting on the row the cursor just left would select the wrong kind.
+     *   A snapshot pane has no backend listing to re-read from; its feed mirrors
+     *   the snapshot synchronously, so the live value is already current there.
+     */
+    export async function selectSameKind(): Promise<void> {
+        const cursorEntry = isSearchResultsView ? selectionInfo.entry : await refreshCursorEntry()
+        const target = sameKindTargetFor(cursorEntry)
+        if (!target) return
+        const entries = await getEntriesSnapshot()
+        const idxs = sameKindIndices(target, entries)
+        if (idxs.length === 0) return
+        selection.applyIndices(idxs, 'add', hasParent)
+    }
+
     export function toggleSelectionAtCursor(): void {
         selection.toggleAt(cursorIndex, hasParent)
     }
@@ -1420,7 +1452,7 @@
     })
 
     // Keydown routing for a focused pane: the rename / network / search-results
-    // bails, the open + parent keys, the Selection dialog's `+` / `-`, the four
+    // bails, the open + parent keys, the Selection dialog's `+` / `-`, the six
     // selection commands, and the Brief/Full split. All of it in
     // `pane-key-router.ts`; the pane keeps the refs and state it reads.
     const keyRouter = createPaneKeyRouter({
@@ -1442,6 +1474,7 @@
         selectAll: () => { selection.selectAll(hasParent, effectiveTotalCount); },
         deselectAll: () => { selection.deselectAll(); },
         invertSelection: () => { selection.invertSelection(hasParent, effectiveTotalCount); },
+        selectSameKind: () => { void selectSameKind(); },
         clearRangeState: () => { selection.clearRangeState(); },
     })
 
@@ -1578,6 +1611,15 @@
         if (!isFocused) return
         dependOn(selectionInfo.entry, caps.kind, listingId, includeHidden, hasParent, searchSnapshot)
         debouncedServicesSelection.call()
+    })
+
+    // What "Select all of the same kind" would do right now, for the command
+    // palette's row label. Focus-gated like the two effects above: one pane owns
+    // the answer, and the blurred pane bails instead of clobbering it. The
+    // COMMAND never reads this — it re-reads the cursor row when it runs.
+    $effect(() => {
+        if (!isFocused) return
+        publishSameKindTarget(sameKindTargetFor(selectionInfo.entry))
     })
 
     // The pane's cursor-entry + listing-stats feed: the two fetchers, their
