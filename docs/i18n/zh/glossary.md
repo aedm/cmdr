@@ -2720,3 +2720,73 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
 - **「in place, in a hidden folder…」这个同位语 → `…原处，也就是在…里`** · 英文用逗号同位，中文直接接一个 `在…里`
   会读成后加的状语（像是 Cmdr 把文件搬了进去）。`也就是在…` 明确它就是「原处」本身，事情的经过没变 · `high`。
 - 值与英文不同，无需 `sameAsSourceJustification`。中文侧没有撇号，ICU 的 `''` 规则用不上。
+
+## 个人收藏菜单（`commands.favoritesOpen.label`/`.description`、`commands.favoritesOpenByNumber.label`、`commands.favoritesAddFromMenu.label`、`fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`、`menu.go.showFavorites`、`shortcuts.scope.favoritesMenu`）
+
+⌃D 在焦点窗格上拉出一个菜单，列出用户收藏的文件夹，前九行各带一个数字键 1–9，最后一行是 `0`
+「把当前文件夹加入个人收藏」。宗卷选择器里原来的「个人收藏」分区没有了，换成顶部一行「查看 N 项个人收藏」，点它就切到这个菜单。
+
+- **favorites（这份列表本身）→ `个人收藏`** · macOS Finder `FI10`/`TL4`/`SD8.1` 都是 `个人收藏`，`MN2`
+  写「不能将服务器“^0”添加到你的个人收藏」；目录里 `fileExplorer.navigation.groupFavorites`、
+  `fileExplorer.navigation.favoritesEmpty`、`commands.favoritesAdd.label`、`menu.go.addToFavorites` 已经全部用它 ·
+  `confirmed`。❗ 这份列表只有这一个名字，别再造第二个（`收藏夹`、`书签`、`喜好`
+  都不要）。这一族里只要英文出现 favorite/favorites，中文一律 `个人收藏`，包括单数的那一条
+  `fileExplorer.navigation.favoritesAlreadyAdded`：中文不为单复数换词。
+- **favorites menu（这个菜单）→ `个人收藏菜单`** · `菜单` 是目录里 menu 的既定说法（`commands.fileContextMenu.label` =
+  `打开右键菜单`）· `high`。`shortcuts.scope.favoritesMenu` 就写 `个人收藏菜单`，长度和相邻的
+  `shortcuts.scope.volumeChooser`（`宗卷选择器`）、`shortcuts.scope.commandPalette`（`命令面板`）一档。❗ 不要把它叫成
+  `个人收藏选择器` 或 `个人收藏面板`：`选择器` 归宗卷选择器，`面板` 归命令面板，混了就是 `i18n-translation.md` §
+  Auditing a finished locale 里讲的那种漂移（繁体曾经菜单写 `命令選擇區…`、面板标题写 `指令面板`）。
+- **`显示` 与 `查看` 的分界（这批最容易被后人「改回去」的一处）** · 英文本来就是两个词，中文跟着分：
+  - `Show favorites` → `显示个人收藏`，用在 `menu.go.showFavorites` 和
+    `commands.favoritesOpen.label`。依据是同在「前往」菜单 / 命令族里的 `menu.servers.showServers` =
+    `显示服务器`（英文同为 `Show …`），两条必须读起来是一家 · `high`。
+  - `See {count} favorites` → `查看 {count} 项个人收藏`，只用在宗卷选择器顶部那一行
+    `fileExplorer.navigation.seeFavorites`。`style.md` 已经定下「`查看` 是去看内容，`显示`
+    是「显示」菜单」，这里英文也确实换了词 · `high`。
+  - ❗ 所以这不是漂移，是英文自己的分界。别把 `查看 {count} 项个人收藏` 统一成 `显示`，也别反过来。
+- **`seeFavorites` 的复数形状：只写 `=0` 和 `other`** · `new Intl.PluralRules('zh')` 只有 `other`
+  一个 CLDR 类别（`style.md` § "Plurals"，2026-06-20 核实），中文名词也没有数的变化 · `confirmed`。英文那三条 `=0` /
+  `one` / `other` 是英文的，别照抄。❗ 后来人别「补回」缺失的 `one`：`desktop-i18n-plural`
+  要的是本语言需要的类别，多写一个 `one` 分支只会让同一句话有两个永远不会都命中的版本。 `=0`
+  分支保留，写「还没有」那版措辞 `查看个人收藏`，且**不带** `{count}`；`other` 分支必须带 `{count}`。
+- **量词用 `项`，不用 `个`** · `个人收藏` 前面接 `个` 会写成「{count} 个个人收藏」，叠字读着别扭；`项`
+  在目录里已经管抽象条目（`queue.row.reversalInFolder`
+  一族的「{countText} 项操作」、`fileExplorer.git.size.stashEntries` 的「{countText} 项贮藏」）· `high`。`{count}`
+  是拉丁数字，按 `style.md` § Numerals, punctuation, and spacing 两侧加空格。
+- **current folder → `当前文件夹`** · 目录里已经定下，同
+  `commands.favoritesAdd.description`（`把焦点窗格的当前文件夹加入切换器的个人收藏。`）·
+  `confirmed`。指的是窗格此刻所在的文件夹，不是光标所在的那个（那是 `光标所在的`，见上文术语表）。
+- **Add (the) current folder to favorites → `把当前文件夹加入个人收藏`** · 动词 `加入` 取自
+  `commands.favoritesAdd.label`、`menu.go.addToFavorites`、`menu.context.addToFavorites`（均为 `加入个人收藏`）·
+  `confirmed`。`fileExplorer.navigation.favoritesAddCurrent` 和 `commands.favoritesAddFromMenu.label`
+  **中文完全相同**：英文两条只差一个冠词 the，中文没有冠词，硬造差别只会变成假漂移。两条英文不同，
+  `desktop-i18n-term-consistency` 不会要求也不会拦。真正要守住的分界是它们与
+  `commands.favoritesAdd.label`（`加入个人收藏`，不带宾语）之间的那条：英文刻意让真命令短、让这两条描述性的行长，中文靠带不带
+  `把当前文件夹` 表达同一件事。
+- **Open the favorite with that number → `打开数字键对应的个人收藏`** · 键盘快捷键列表里的只读行，写法参照同为只读行的
+  `commands.volumeSelectByName.label`（`按名称选择窗格宗卷`）· `high`。没用 `该数字`：`style.md` § Voice and
+  tone要求口语的 `这个`/`这项` 而不是书面的 `此`/`该`，而「that number」在中文里本来也不需要指示词，说 `数字键`
+  就够了（列表左边那一列正好显示 1–9）。
+- **press a number to go → `按数字键前往对应的文件夹`** · `前往` 是目录里 go 的既定动词，但**中文的 `前往`
+  必须带宾语**： `commands.navGoToPath.label`（`前往路径…`）、`commands.navParent.label`（`前往上层文件夹`）、
+  `commands.fileGoToTrash.label`（`前往废纸篓`）无一例外，光写「按数字键前往。」会断在半空 ·
+  `high`。所以中文补出了英文省略的落点（`对应的文件夹`）。这也是给英文提的意见，见下面一条。
+- **a mounted share → `已装载的共享`** · `装载` 有 Tier 1 佐证（macOS
+  Finder：`Mount the volume and try opening the document again.` →
+  `装载此宗卷并再次尝试打开该文稿。`），目录里也已定型：`fileExplorer.network.browser.noMountedShares` =
+  `{hostName} 没有已装载的共享`、`settings.network.enabled.description`（`仍可在已装载的共享上读写文件`）·
+  `confirmed`。❗ 别改成错误文案那一族的
+  `挂载`（见上文术语表的分工），也别写出协议名：英文特意避开了 SMB/MTP/ADB，中文照办。
+- **整句 `Favorites can only point at a folder on a disk or a mounted share` →
+  `个人收藏只能指向磁盘或已装载的共享上的文件夹`** · `指向` 同
+  `errors.listing.notAFolder.suggestion`（`确认它指向的是文件夹`）；`磁盘` 见术语表 · `high`。「A 上的 B」连着两个 `的`
+  是中文正常的多层定语，读得通；拆成两句反而比英文这条一行提示更啰嗦。
+- **This folder is already a favorite → `这个文件夹已经在个人收藏里了`** · 句式取自
+  `main.dockPinNudge.added`（`Cmdr 已经在程序坞里了。`）、`fileOperations.transferDialog.pathErrorAlreadyThere`（`“{name}”已经在这个位置了`）·
+  `high`。英文没有句号，中文也不加（悬停提示里的短句）。语气是陈述不是报错，所以没有 `无法`/`不能` 开头。
+- **`menu.go.showFavorites`
+  是 RAW 键**：用普通半角撇号（这条中文没有撇号，无影响），不带省略号 —— 它拉开的是菜单不是对话框，和
+  `menu.servers.showServers` 一样光板收尾，而 `menu.go.goToPath`（`前往路径…`）那种开对话框的才留 `…`。
+- 十条值都与英文不同，均不需要 `sameAsSourceJustification`。中文侧没有撇号，ICU 的 `''` 规则用不上。这批没有 `*Aria`
+  键， `fileExplorer.navigation.renameFavoriteAriaLabel` 与 `menu.volume.renameFavorite` 的包含关系未被触碰。

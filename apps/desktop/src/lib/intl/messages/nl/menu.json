@@ -354,6 +354,10 @@
   "@menu.go.goToLatestDownload": {
     "sourceHash": "492d0b6"
   },
+  "menu.go.showFavorites": "Toon favorieten",
+  "@menu.go.showFavorites": {
+    "sourceHash": "f4dfe9b"
+  },
   "menu.go.addToFavorites": "Voeg aan favorieten toe",
   "@menu.go.addToFavorites": {
     "sourceHash": "7f3c078"

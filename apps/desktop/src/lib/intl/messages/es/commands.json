@@ -132,6 +132,22 @@
   "@commands.favoritesAdd.description": {
     "sourceHash": "84dcbf8"
   },
+  "commands.favoritesOpen.label": "Mostrar favoritos",
+  "@commands.favoritesOpen.label": {
+    "sourceHash": "f4dfe9b"
+  },
+  "commands.favoritesOpen.description": "Abre el menú de favoritos en el panel activo y pulsa un número para ir a esa carpeta.",
+  "@commands.favoritesOpen.description": {
+    "sourceHash": "289478e"
+  },
+  "commands.favoritesOpenByNumber.label": "Abrir el favorito de ese número",
+  "@commands.favoritesOpenByNumber.label": {
+    "sourceHash": "e74b98f"
+  },
+  "commands.favoritesAddFromMenu.label": "Añadir la carpeta actual a favoritos",
+  "@commands.favoritesAddFromMenu.label": {
+    "sourceHash": "2593d8a"
+  },
   "commands.downloadsGoToLatest.label": "Ir a la última descarga",
   "@commands.downloadsGoToLatest.label": {
     "sourceHash": "492d0b6"

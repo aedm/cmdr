@@ -1862,3 +1862,53 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
   `errors.write.deviceDisconnected.sided.destination.move`）；`{folderName}` 是 `.cmdr-staging-<uuid>`
   這種很長的拉丁字串，包進直角引號當名字看，引號與內文之間不空格，依 `style.md` § Punctuation · `high`。
 - 值裡沒有撇號，所以 ICU 的雙寫撇號規則在這條用不到；標點全形，語序與英文相同（先說找到什麼，再說放在哪裡）。
+
+## 喜好項目選單（`commands.favoritesOpen.*`、`commands.favoritesOpenByNumber.label`、`commands.favoritesAddFromMenu.label`、`fileExplorer.navigation.favoritesAddCurrent`／`.favoritesAlreadyAdded`／`.favoritesCantAddHere`／`.seeFavorites`、`menu.go.showFavorites`、`shortcuts.scope.favoritesMenu`）
+
+⌃D 會在焦點窗格上打開一張選單，列出使用者收藏的資料夾，前九列各帶一個數字鍵，最後一列是
+`0`：把窗格目前的資料夾加進清單。原本卷宗切換器裡的「喜好項目」區塊沒有了，改成切換器最上面一列，按下去就換成這張選單。
+
+- **favorites menu → `喜好項目選單`** · `喜好項目` 是本目錄既定的 favorite（見 § UI chrome 那一條，AP-TW =
+  AP-HK），`選單` 是既定的 menu（同節，AP-HK／TC／DOL；MS 的 `功能表` 是 Windows 用語）· `high`。❗
+  **三個近義介面要分清楚**，這正是本語言最容易漂移的地方（`docs/guides/i18n-translation.md` § Auditing a finished
+  locale 就是拿 zh-Hant 當例子：曾經出現 `命令選擇區…` 打開一個叫 `指令面板` 的東西）： `喜好項目選單`
+  是這張新的選單（`shortcuts.scope.favoritesMenu`）、`卷宗切換器`
+  是裝磁碟和位置的那個下拉（`shortcuts.scope.volumeChooser`）、`指令面板`
+  是 ⌘K 那個（`shortcuts.scope.commandPalette`）。❌ 不要把這張選單叫成 `面板`、`清單` 或
+  `切換器`；它是一張真的選單，鍵盤操作也跟選單一樣。另外 `標籤`（tag）／`分頁`（tab）的老界線照舊，這批沒有動到。
+- **Show favorites（雙胞胎）→ `顯示喜好項目`** · `commands.favoritesOpen.label` 與 `menu.go.showFavorites`
+  英文同字，中文也必須同字（`desktop-i18n-term-consistency` 會抓）。`顯示` 取自目錄自己的
+  `commands.serversShow.label`／`menu.servers.showServers`（都是 `顯示伺服器`），Apple zh-TW 的 `Show …` 也一律是
+  `顯示…` · `high`。動詞用 `顯示` 而不是 `開啟`：`開啟` 在本目錄是 open a file／folder 的保留字。
+- **current folder → `目前的資料夾`** · 目錄既有寫法（`commands.favoritesAdd.description`、
+  `queryUi.scope.currentFolder`）· `high`。❗ 指的是窗格現在待著的資料夾，不是游標底下那個；中文不用特別加字，因為
+  `目前的資料夾` 本來就讀成「窗格現在在的這個」，要講游標那個時目錄一律寫 `游標所在的…` （見
+  `commands.fileContextMenu.description`）。
+- **mounted share → `已裝載的共享資料夾`** · 目錄既有寫法（`fileExplorer.network.browser.noMountedShares`：
+  `{hostName} 沒有已裝載的共享資料夾`；`errors.mount.shareNotFound` 也用 `共享資料夾`）· `high`。❗
+  **不要換成通訊協定名稱**：英文刻意不提 SMB／MTP／ADB，中文也一樣，因為使用者要判斷的是「這個地方像不像一顆磁碟」，不是它走什麼協定。`fileExplorer.navigation.favoritesCantAddHere`
+  因此寫成 `喜好項目只能指向磁碟或已裝載的共享資料夾上的資料夾`：句尾連著兩個 `資料夾` 看起來重複，但目錄自己就有同形的
+  `起始資料夾只能是根資料夾，或是它裡面的資料夾`（`servers.refusal.startFolderOutsideRoot`），比硬換成 `位置` 精確。
+- **press a number to go → 補出目的地** · `按數字鍵就能跳到對應的資料夾` · 英文的 "go" 沒有受詞，中文的 `跳到`／`前往`
+  一定要帶地方，不然讀起來是斷句 · `high`。受詞取 `對應的資料夾`，跟 `commands.favoritesOpenByNumber.label` 的
+  `開啟數字對應的喜好項目` 用同一個「數字↔項目對應」的說法。動詞 `跳` 沿用
+  `commands.navGoToPath.description`（`讓焦點窗格跳至…`）。
+- **數字鍵、`0`–`9`、⌃D 等鍵名一律不譯** · `數字鍵` 只是泛稱，鍵面上的字元保持原樣 · `confirmed`（`style.md` §
+  "Punctuation"：數字一律用阿拉伯數字）。
+- **`fileExplorer.navigation.favoritesAddCurrent` 與 `commands.favoritesAddFromMenu.label` 中文完全一樣，這是對的**
+  ·兩條都寫 `把目前的資料夾加入喜好項目` · `high`。英文只差一個冠詞（"Add current folder…" ／ "Add the current
+  folder…"），中文沒有冠詞可差，而兩條的意思真的一樣（一條是選單那一列，一條是快速鍵清單裡對 `0`
+  的說明），分處兩個介面、不會並排出現。❌ 不要為了讓它們看起來不同而硬改一個。真正要保持區別的是
+  `commands.favoritesAdd.label`（`加入喜好項目`，那是指令本身的名字，不帶受詞），這個區別中文有守住。
+- **`.seeFavorites` 的複數形狀：只有 `=0` 和 `other`** ·
+  `{count, plural, =0 {查看喜好項目} other {查看 {count} 個喜好項目}}` · `confirmed`（CLDR 中文只有 `other`
+  一個複數類別，見 `style.md`；目錄裡每一條 ICU 複數都是這個形狀）。❗ **下一位譯者不要「補回」`one`
+  那一支**：英文有三支是英文的事，中文寫 `one` 會是憑空多出來的分支。 `=0`
+  不是複數類別而是明確值比對，所以留著，而且照英文的用意寫成「你還沒有」的說法，❌ 裡面不准出現 `0`。 `{count}`
+  只出現在會顯示數字的那一支，`=0` 那支不帶；兩側留空格（`style.md` § "Spacing"）。量詞用 `個`，跟目錄裡
+  `個{count, plural, other {項目}}` 一致，不用 `項`（會跟 `項目` 疊字）。
+- **`查看`（See）** · 目錄既有寫法（`commands.logOperationLog.description`、`commands.appLicenseKey.seeDetails.label`
+  都把 "See …" 寫成 `查看…`）· `high`。
+- 這十條值裡都沒有撇號，所以 ICU 的雙寫撇號規則用不到；`menu.go.showFavorites`
+  是 RAW 鍵，就算以後要加撇號也只能用單撇號。標點全形，只有英文原句有句號的那條（`commands.favoritesOpen.description`）才收
+  `。`。

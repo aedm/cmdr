@@ -132,6 +132,22 @@
   "@commands.favoritesAdd.description": {
     "sourceHash": "84dcbf8"
   },
+  "commands.favoritesOpen.label": "显示个人收藏",
+  "@commands.favoritesOpen.label": {
+    "sourceHash": "f4dfe9b"
+  },
+  "commands.favoritesOpen.description": "在焦点窗格上打开个人收藏菜单，按数字键前往对应的文件夹。",
+  "@commands.favoritesOpen.description": {
+    "sourceHash": "289478e"
+  },
+  "commands.favoritesOpenByNumber.label": "打开数字键对应的个人收藏",
+  "@commands.favoritesOpenByNumber.label": {
+    "sourceHash": "e74b98f"
+  },
+  "commands.favoritesAddFromMenu.label": "把当前文件夹加入个人收藏",
+  "@commands.favoritesAddFromMenu.label": {
+    "sourceHash": "2593d8a"
+  },
   "commands.downloadsGoToLatest.label": "前往最新下载",
   "@commands.downloadsGoToLatest.label": {
     "sourceHash": "492d0b6"

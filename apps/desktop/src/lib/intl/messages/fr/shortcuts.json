@@ -35,6 +35,10 @@
   "@shortcuts.scope.volumeChooser": {
     "sourceHash": "16c042e"
   },
+  "shortcuts.scope.favoritesMenu": "Menu des favoris",
+  "@shortcuts.scope.favoritesMenu": {
+    "sourceHash": "7e9f06e"
+  },
   "shortcuts.scope.servers": "Serveurs",
   "@shortcuts.scope.servers": {
     "sourceHash": "68d7beb"

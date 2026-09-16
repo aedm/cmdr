@@ -128,9 +128,25 @@
   "@commands.favoritesAdd.label": {
     "sourceHash": "7f3c078"
   },
-  "commands.favoritesAdd.description": "Thêm thư mục hiện tại của khung đang chọn vào Mục ưa thích của bộ chuyển đổi.",
+  "commands.favoritesAdd.description": "Thêm thư mục hiện tại của khung đang chọn vào Mục ưa thích của bộ chọn ổ đĩa.",
   "@commands.favoritesAdd.description": {
     "sourceHash": "84dcbf8"
+  },
+  "commands.favoritesOpen.label": "Hiển thị mục ưa thích",
+  "@commands.favoritesOpen.label": {
+    "sourceHash": "f4dfe9b"
+  },
+  "commands.favoritesOpen.description": "Mở menu mục ưa thích trên khung đang chọn, rồi nhấn một con số để đi tới thư mục đó.",
+  "@commands.favoritesOpen.description": {
+    "sourceHash": "289478e"
+  },
+  "commands.favoritesOpenByNumber.label": "Mở mục ưa thích có số đó",
+  "@commands.favoritesOpenByNumber.label": {
+    "sourceHash": "e74b98f"
+  },
+  "commands.favoritesAddFromMenu.label": "Thêm thư mục hiện tại vào mục ưa thích",
+  "@commands.favoritesAddFromMenu.label": {
+    "sourceHash": "2593d8a"
   },
   "commands.downloadsGoToLatest.label": "Đi tới bản tải về mới nhất",
   "@commands.downloadsGoToLatest.label": {

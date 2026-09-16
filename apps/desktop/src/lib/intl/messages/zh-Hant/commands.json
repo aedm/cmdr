@@ -132,6 +132,22 @@
   "@commands.favoritesAdd.description": {
     "sourceHash": "84dcbf8"
   },
+  "commands.favoritesOpen.label": "顯示喜好項目",
+  "@commands.favoritesOpen.label": {
+    "sourceHash": "f4dfe9b"
+  },
+  "commands.favoritesOpen.description": "在焦點窗格上開啟喜好項目選單，按數字鍵就能跳到對應的資料夾。",
+  "@commands.favoritesOpen.description": {
+    "sourceHash": "289478e"
+  },
+  "commands.favoritesOpenByNumber.label": "開啟數字對應的喜好項目",
+  "@commands.favoritesOpenByNumber.label": {
+    "sourceHash": "e74b98f"
+  },
+  "commands.favoritesAddFromMenu.label": "把目前的資料夾加入喜好項目",
+  "@commands.favoritesAddFromMenu.label": {
+    "sourceHash": "2593d8a"
+  },
   "commands.downloadsGoToLatest.label": "前往最新下載項目",
   "@commands.downloadsGoToLatest.label": {
     "sourceHash": "492d0b6"

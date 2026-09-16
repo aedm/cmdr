@@ -132,6 +132,22 @@
   "@commands.favoritesAdd.description": {
     "sourceHash": "84dcbf8"
   },
+  "commands.favoritesOpen.label": "Visa favoriter",
+  "@commands.favoritesOpen.label": {
+    "sourceHash": "f4dfe9b"
+  },
+  "commands.favoritesOpen.description": "Öppna favoritmenyn på den fokuserade panelen och tryck på en siffra för att gå dit.",
+  "@commands.favoritesOpen.description": {
+    "sourceHash": "289478e"
+  },
+  "commands.favoritesOpenByNumber.label": "Öppna favoriten med den siffran",
+  "@commands.favoritesOpenByNumber.label": {
+    "sourceHash": "e74b98f"
+  },
+  "commands.favoritesAddFromMenu.label": "Lägg till den aktuella mappen i favoriter",
+  "@commands.favoritesAddFromMenu.label": {
+    "sourceHash": "2593d8a"
+  },
   "commands.downloadsGoToLatest.label": "Gå till senaste hämtning",
   "@commands.downloadsGoToLatest.label": {
     "sourceHash": "492d0b6"

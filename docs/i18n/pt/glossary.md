@@ -3055,3 +3055,94 @@ pasta, e ❌ nunca as palavras `erro` ou `falha`. Atenção à distinção com a
   `alterar o nome`, `guardar`, `você` omitido em frase de resultado): zero ocorrências; marca brasileira: `arquivos`. O
   valor não leva apóstrofo nem aspas, então não há `''` a dobrar mesmo sendo família ICU. Nenhum
   `sameAsSourceJustification`: o valor difere do inglês.
+
+## O menu de favoritos (`commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent` / `favoritesAlreadyAdded` / `favoritesCantAddHere` / `seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
+
+⌃D abre a lista de pastas marcadas como um MENU sobre o painel em foco: as nove primeiras linhas trazem as teclas 1–9,
+que levam direto à pasta, e a última linha é o `0`, que adiciona a pasta atual do painel. O seletor de volumes não tem
+mais uma SEÇÃO de favoritos: no lugar dela ficou uma linha única no topo (`seeFavorites`), que troca o seletor por esse
+menu.
+
+- **favorites (a lista do Cmdr) · `favoritos`** · macOS pt-BR Finder, Tier 1 (`LocalizableMerged`: `FI10`, `TL4`,
+  `SD8.1` → `Favoritos`; `TL_HELP_FAVS` → "Ir para a sua pasta de seus Favoritos", lido em 2026-09-16); o catálogo já
+  publica `Favoritos` em `fileExplorer.navigation.groupFavorites` e `favoritos` minúsculo em
+  `commands.favoritesAdd.label` e `fileExplorer.navigation.favoritesEmpty` · confirmed. Minúscula quando o inglês
+  escreve `favorites` minúsculo (é substantivo comum), maiúscula só onde ele nomeia a SEÇÃO (`Favorites`), como em
+  `groupFavorites` e `commands.favoritesAdd.description`.
+- **favorites menu · `menu de favoritos`** · composição direta do termo acima; no cabeçalho de escopo dos atalhos vira
+  **`Menu de favoritos`**, na mesma forma `substantivo + de + substantivo` que as chaves vizinhas já usam
+  (`shortcuts.scope.volumeChooser` = `Seletor de volumes`, `.commandPalette` = `Paleta de comandos`, `.fileList` =
+  `Lista de arquivos`) · high.
+- **Show favorites · `Mostrar favoritos`** · `Mostrar` é o verbo de "Show" no Finder pt-BR (`MenuBar`:
+  `Mostrar Opções de Visualização`, `Mostrar Conteúdo do Pacote`, `Mostrar Original`, `Mostrar Janela de Progresso`,
+  lido em 2026-09-16), e o catálogo já publica `Mostrar detalhes técnicos`
+  (`commands.errorPaneToggleTechnicalDetails.label`) · confirmed. Caixa de frase, não o Title Case do Finder (regra da §
+  Menus nativos). `commands.favoritesOpen.label` e `menu.go.showFavorites` têm o MESMO inglês, então o
+  `desktop-i18n-term-consistency` exige o mesmo valor byte a byte: os dois são `Mostrar favoritos`.
+- **current folder · `a pasta atual`** · macOS pt-BR Finder (`Localizable`: `Search the Current Folder` →
+  `Buscar na Pasta Atual`, lido em 2026-09-16); o catálogo já publica `a pasta atual do painel em foco` em
+  `commands.favoritesAdd.description` · confirmed. `atual` é a pasta que o painel está MOSTRANDO, não a que está sob o
+  cursor; nenhuma das duas chaves precisa desambiguar isso porque o menu só tem uma leitura possível.
+- **mounted share · `compartilhamento montado`** · o catálogo já fechou os dois pedaços: `mounted shares` →
+  `compartilhamentos já montados` em `settings.network.enabled.description` e `settings.network.permissionWithout`, e
+  `network share` → `compartilhamento de rede` em nove chaves de `errors.json` · confirmed. ❌ Nunca `partilha` (pt-PT)
+  nem um nome de protocolo (SMB/MTP/ADB): o inglês evita o jargão de propósito e a tradução mantém isso.
+- **point at (um favorito apontando para uma pasta) · `apontar para`** · molde já publicado em
+  `errors.listing.notAFolder.suggestion` e `isAFolderErrno.suggestion` ("confirme que ele aponta para uma pasta, não
+  para um arquivo") · high.
+- **disk · `disco`** · macOS pt-BR Finder (`Discos rígidos`, `Discos externos`, `Disco de Inicialização`), e a § Notes
+  do `style.md` já trava `disco` como o termo do disco em todos os sentidos · confirmed.
+- **press a key · `pressione`** · o catálogo já publica `pressione <chip>{key}</chip>` (`downloads.toast.inAppHint`),
+  `Pressione as teclas...` (`downloads.shortcutRow.pressKeys`) e `Pressione {binding}`
+  (`downloads.toggleDescription.bound`) · confirmed. ❌ Não `aperte`, que o catálogo não usa.
+- **Registro das duas famílias de verbo, que esta rodada mistura**: um `commands.*.label` vai no INFINITIVO
+  (`Selecionar arquivo anterior`, `Abrir item sob o cursor`, `Mostrar detalhes técnicos`), e um `commands.*.description`
+  vai no IMPERATIVO de 2ª pessoa (`Abra…`, `Adicione…`, `Leve…`). Por isso `favoritesOpen.label` é `Mostrar favoritos` e
+  `favoritesOpen.description` começa com `Abra`.
+
+### `seeFavorites`: as categorias de plural
+
+`{count, plural, =0 {Ver favoritos} one {Ver {count} favorito} many {Ver {count} favoritos} other {Ver {count} favoritos}}`
+
+- **Categorias `one` / `many` / `other`**, as do CLDR para `pt` (a § Plurals do `style.md`), mais o braço `=0` que o
+  inglês carrega. `many` existe de verdade em português moderno (números compactos), e mesmo com o texto igual ao de
+  `other` ele é obrigatório: 33 plurais do catálogo de `fileExplorer` e 12 do de `settings` já escrevem os três braços.
+  Verificado com `intl-messageformat` em `pt`: 0 → `Ver favoritos`, 1 → `Ver 1 favorito`, 2 → `Ver 2 favoritos`, 1000000
+  → `Ver 1000000 favoritos`.
+- **O `=0` não diz "0"** (é a frase de "você ainda não tem nenhum") e é o único braço SEM `{count}`, como o inglês.
+- **See · `Ver`** · todas as chaves cujo inglês começa em "See" já saem com `Ver`: `Ver detalhes da licença`
+  (`commands.appLicenseKey.seeDetails.label`, `menu.app.licenseDetails`), `Ver por quê`
+  (`askCmdr.wakeToast.openThread`), `Veja o que mudou…` (`commands.helpWhatsNew.description`) · high.
+
+### As duas chaves que ficaram idênticas, de propósito
+
+`fileExplorer.navigation.favoritesAddCurrent` ("Add current folder to favorites") e
+`commands.favoritesAddFromMenu.label` ("Add the current folder to favorites") saem as duas como
+**`Adicionar a pasta atual aos favoritos`**. O inglês separa as duas só pelo artigo `the`, e o português é obrigado a
+escrever o artigo (`a pasta atual`), então a diferença não tem como ser carregada. Os ingleses DIFEREM, então o
+`desktop-i18n-term-consistency` (que pareia por valor inglês) não olha para esse par; e a distinção que a
+`@key.description` pede de verdade — não confundir com o comando real `commands.favoritesAdd.label`
+(`Adicionar aos favoritos`) — continua de pé, porque as duas chaves acrescentam `a pasta atual`.
+
+### `favoritesAlreadyAdded`: reestruturado para `já está nos favoritos`
+
+`Esta pasta já está nos favoritos`, não `Esta pasta já é um favorito`. O predicativo forçaria `um favorito` (masculino)
+concordando com `pasta` (feminino), que soa torto; `estar nos favoritos` espelha o `Adicionar aos favoritos` que a
+pessoa acabou de ler na mesma linha do menu. Continua sendo uma constatação calma, sem `erro` nem `falha`, como a
+`@key.description` pede.
+
+### `favoritesOpen.description`: o "to go" ganhou destino
+
+`Abra o menu de favoritos no painel em foco e pressione um número para ir até a pasta.` O inglês termina em "press a
+number to go", e `ir` sozinho não fecha frase em português: pede destino. `a pasta` é o destino concreto (todo favorito
+é uma pasta) e evita repetir `favorito` na mesma frase. `ir até` em vez de `ir para` para não emendar dois `para`
+seguidos; o molde `ir até` já está no catálogo (`downloads.empty.message`: "Ir até lá mesmo assim?";
+`errors.listing.notFound.suggestion`: "Vá até a pasta principal") · high.
+
+### Varredura final
+
+pt-PT (`ficheiro`, `partilha`, `estar a` + infinitivo, `consoante`, próclise antes de infinitivo, `Rever`,
+`alterar o nome`, `guardar`, `só de leitura`, formas de `tu`): zero ocorrências nos dez valores. Marcas brasileiras:
+`compartilhamento`, `pressione`, `em foco`. Nenhum valor leva apóstrofo, então não há `''` a dobrar nas famílias ICU, e
+`menu.go.showFavorites` (família RAW) também fica sem apóstrofo. Nenhum `sameAsSourceJustification`: os dez valores
+diferem do inglês. Glifos de modificador e os dígitos 0–9 não aparecem em nenhum valor.

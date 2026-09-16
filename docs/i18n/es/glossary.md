@@ -3229,3 +3229,81 @@ localizable. ❌ Nunca insinuar que se pueden borrar.
   esa unidad.
 - El valor no lleva apóstrofo, así que no hay duplicación ICU (`''`), y difiere del inglés, así que no hace falta
   `sameAsSourceJustification`.
+
+## El menú de favoritos: ⌃D, las teclas 1–9 y la fila que lo abre desde el selector (`commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.{favoritesAddCurrent,favoritesAlreadyAdded,favoritesCantAddHere,seeFavorites}`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`, 2026-09-16)
+
+⌃D abre la lista de carpetas guardadas como un menú sobre el panel activo: las nueve primeras filas llevan una tecla de
+número que salta directamente ahí, y la última, marcada con el `0`, añade la carpeta que el panel está mostrando. El
+selector de volúmenes ya no trae una SECCIÓN de favoritos; en su lugar tiene una sola fila arriba que abre este menú.
+
+- **favorites (la lista) → `favoritos`** · ya fijado en § Terms («favorites → Favoritos · macOS Finder/AppKit · high») y
+  en todo el catálogo (`fileExplorer.navigation.groupFavorites` = `Favoritos`, `favoritesEmpty` =
+  `(Tus favoritos aparecerán aquí)`, `commands.favoritesAdd.label` = `Añadir a favoritos`, `menu.go.addToFavorites`) ·
+  high. Mayúscula solo cuando nombra el epígrafe del selector; dentro de una frase va en minúscula, que es lo que hacen
+  macOS Finder (`Añadir a favoritos`, `Eliminar de favoritos`) y el catálogo. ❌ Nunca `marcadores`: es la palabra con
+  la que Double Commander y Dolphin `es` traducen su «Directory Hotlist» y el «Bookmark» de Nautilus, y esa es otra
+  función (gotcha 2 de § Researching terms de `docs/guides/i18n-translation.md`); macOS es Tier 1 y dice `Favoritos`.
+- **favorites menu (el epígrafe de la lista de atajos) → `Menú de favoritos`** · macOS `es` publica exactamente este
+  molde en `Menú de búsqueda` (Finder, mined 2026-09-16), y encaja con los epígrafes vecinos del mismo panel, que son
+  todos sustantivo + `de` + sustantivo (`shortcuts.scope.volumeChooser` = `Selector de volúmenes`,
+  `shortcuts.scope.commandPalette` = `Paleta de comandos`) · high.
+- **Show favorites → `Mostrar favoritos`**, en las DOS claves que comparten ese inglés (`commands.favoritesOpen.label`,
+  paleta y menú Ir; `menu.go.showFavorites`, el ítem nativo) · high. `show → mostrar` ya está fijado en § Terms frente a
+  `view → ver`, y macOS Finder `es` usa justo la forma verbo + sustantivo sin artículo (`Mostrar barra lateral`,
+  `Mostrar carpeta Biblioteca`, `Mostrar barra de ruta`). Es un menú, no un diálogo: sin elipsis, como el inglés.
+- **See {count} favorites → `Ver {count} favoritos`** · el propio catálogo traduce `See X` por `Ver X` en las tres
+  etiquetas que lo llevan (`commands.appLicenseKey.seeDetails.label` y `menu.app.licenseDetails` =
+  `Ver detalles de la licencia`, `whatsNew.dialog.seeFullChangelog` = `Ver registro de cambios completo`,
+  `askCmdr.wakeToast.openThread` = `Ver por qué`) · high. **Frontera deliberada con `Mostrar`**: el inglés separa a
+  propósito el `See` de la fila del selector del `Show` del comando y del menú nativo, y `ver`/`mostrar` mantiene esa
+  separación en español. Ojo: las tres cadenas de accesibilidad de macOS `es` que empiezan por `See` en inglés SÍ dicen
+  `Mostrar` (`See the location of the current folder` → `Mostrar la ubicación de la carpeta actual`); son descripciones
+  para lectores de pantalla, otro registro, y pierden frente a la coherencia interna del catálogo.
+- **La forma plural de `seeFavorites` es `=0` + `one` + `many` + `other`** · las categorías CLDR reales del español son
+  `one`, `many`, `other` (`new Intl.PluralRules('es')`, verificado 2026-09-16), así que NO se copian las tres del
+  inglés: su `other` cubre el plural normal y el `many` español cubre las formas compactas (`1 millón`), que aquí
+  repiten el `other` palabra por palabra, igual que en `fileExplorer.network.share.shareCount`. El `=0` se conserva
+  porque es la redacción de «aún no tienes ninguno» y no puede decir `0`: queda `Ver favoritos`, sin `{count}`, que es
+  además la única rama donde el marcador no aparece.
+- **current folder → `la carpeta actual`, con artículo** · lo fija el propio catálogo
+  (`commands.favoritesAdd.description`, «Añade la carpeta actual del panel activo…») y macOS Finder
+  (`Mostrar la ubicación de la carpeta actual`) · high. Es la carpeta que el panel está mostrando, no la que está bajo
+  el cursor. Aquí el artículo se queda: la regla `Añadir X` sin artículo de `style.md` es para lo que se crea de nuevo
+  (`Añadir servidor…`), y esta carpeta ya existe y es una concreta.
+- **Add (the) current folder to favorites → `Añadir la carpeta actual a favoritos`**, en las dos claves
+  (`fileExplorer.navigation.favoritesAddCurrent`, la última fila del menú; `commands.favoritesAddFromMenu.label`, la
+  fila de la tecla `0` en la lista de atajos) · high. El inglés solo se diferencia por el artículo, y en español las dos
+  caen en la misma frase; lo que sí se mantiene es la distancia con el comando de verdad `commands.favoritesAdd.label`
+  (`Añadir a favoritos`), que es la que el inglés marca a propósito. Infinitivo, porque son etiquetas (§ Formality
+  mechanics de `style.md`).
+- **Open the favorite with that number → `Abrir el favorito de ese número`** · infinitivo, como cualquier fila de la
+  lista de atajos, y `el favorito` como sustantivo contable ya está en el catálogo
+  (`fileExplorer.navigation.removeFavoriteFailed`, «No se pudo quitar ese favorito»; `renameFavoriteAriaLabel` =
+  `Renombrar favorito`) · high. `de ese número` frente al calco `con ese número`: la fila se lee junto a la columna de
+  teclas `1–9`, y el español dice `el favorito de ese número` como diría `la puerta del número 3`.
+- **This folder is already a favorite → `Esta carpeta ya está en favoritos`** · high. Es la reformulación que esquiva la
+  concordancia: `ya es un favorito` obliga a un masculino que choca con `carpeta`, y `ya es una favorita` convierte el
+  nombre de la lista en adjetivo. `estar en favoritos` es además el reverso exacto de `Añadir a favoritos`, así que el
+  tooltip y la fila gris que lo dispara hablan el mismo idioma. Es una constatación tranquila, no un aviso: sin
+  `no se puede`, sin signos de admiración (regla de `style.md`: nunca decir que algo ha ido mal).
+- **mounted share → `recurso compartido montado`** · el catálogo lo tiene fijado
+  (`fileExplorer.network.browser.noMountedShares` = `No hay recursos compartidos montados de {hostName}`,
+  `settings.network.permissionWithout` = `recursos compartidos que ya estén montados`) · high. Es la carpeta de red que
+  monta el propio Mac y que se comporta como un disco local. ❌ Sin jerga de protocolos: el inglés evita a propósito
+  nombrar SMB/MTP/ADB en esta línea, y el español tampoco los nombra.
+- **point at → `apuntar a`** · el catálogo (`errors.listing.symlinkLoopErrno.explanation`, «accesos directos que apuntan
+  a otros accesos directos») · high.
+  `Los favoritos solo pueden apuntar a una carpeta de un disco o de un recurso compartido montado`: se mantiene el
+  sujeto en plural del inglés y la idea de que el favorito es un puntero, en vez de reformularlo como «solo se pueden
+  añadir…», que cambiaría el foco de la línea.
+- **focused pane → `el panel activo`** · ya en el catálogo (`commands.navGoToPath.description`,
+  `commands.favoritesAdd.description`) · high.
+- **press a number → `pulsa un número`** · `pulsar` es el verbo del catálogo para una TECLA (`search.runHint` =
+  `Pulsa Intro para buscar`, `goToPath.toast.pressToGoBack`, `ui.loadingIcon.cancelHint`), frente a `hacer clic en` para
+  el ratón (§ Notes and decisions de `style.md`) · high. La línea de ayuda (`commands.favoritesOpen.description`) cierra
+  con `para ir a esa carpeta` en vez del `to go` desnudo del inglés: en español `para ir` a secas se queda sin
+  referente, y `allí` se pegaría al menú, que es el sustantivo anterior. `Abre … y pulsa …` funciona a la vez como
+  tercera persona (lo que hace el comando) y como imperativo (lo que haces tú), que es el mismo doble filo que el inglés
+  y la forma que `style.md` ya prefiere para las descripciones.
+- Ningún valor lleva apóstrofo, así que no hay nada que duplicar (`''`) en la familia ICU ni nada que arreglar en la
+  clave RAW `menu.go.showFavorites`. Los diez difieren del inglés, así que ninguno necesita `sameAsSourceJustification`.

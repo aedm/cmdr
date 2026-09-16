@@ -3502,3 +3502,83 @@ het verschil met `fileOperations.cancelRollback.stagedLeftover.named` hierboven:
 REVIEW FLAG: `waarvan het verplaatsen niet is voltooid` is correct maar iets stijver dan het Engelse „from an unfinished
 move"; een moedertaalspreker mag kijken of de melding lichter kan zonder `de verplaatsing` terug te halen. De zin loopt
 ook zo'n 40 tekens langer dan het Engels: controleer hem in een smalle melding tegen de pseudolocale.
+
+## Het favorietenmenu (`commands.favoritesOpen.label`/`.description`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
+
+⌃D opent de favorieten als een menu over het actieve paneel: de eerste negen rijen dragen de cijfers 1–9, de laatste rij
+het cijfer `0` en voegt de huidige map toe. De volumekiezer heeft geen favorietensectie meer, alleen nog één bovenste
+rij die naar dit menu springt. De term `favorieten` lag al vast in de catalogus
+(`fileExplorer.navigation.groupFavorites`, `fileExplorer.navigation.favoritesEmpty`, `commands.favoritesAdd.label`,
+`menu.go.addToFavorites`); deze pass munt er geen tweede woord voor.
+
+- **„favorites" → `favorieten`** · macOS Tier 1 door de hele bundel heen (Finder `Favorieten`, `Favoriete servers:`, „De
+  server '^0' kan niet aan je favorieten worden toegevoegd.", AppKit `Zet in favorieten` / `Verwijder uit Favorieten`,
+  Systeeminstellingen `Favorieten`) en al de catalogusterm · `high`. Kleine letter in een werkwoordszin
+  (`Toon favorieten`), hoofdletter alleen waar het een kopje is (`Favorieten` als groepsnaam).
+- **„favorites menu" → `favorietenmenu`, aaneen** · Nederlandse samenstellingen plakken (stijlgids § Notes and
+  decisions), macOS doet het net zo met `locatiemenu` en `venstermenu`, en de zusterkopjes in dezelfde lijst zijn
+  eveneens samenstellingen (`shortcuts.scope.volumeChooser` → `Volumekiezer`, `shortcuts.scope.fileList` →
+  `Bestandenlijst`, `shortcuts.scope.commandPalette` → `Opdrachtenpalet`) · `high`. Het streepje uit `het Help-menu`
+  hoort bij de Engelse eigennaam ervoor en geldt hier dus niet.
+- **„Show favorites" → `Toon favorieten`**, in zowel het native Ga-menu als het opdrachtenpalet · macOS rendert `Show X`
+  consequent als `Toon X` (AppKit `Show Details` → `Toon details`, `Show Fonts` → `Toon lettertypen`, `Show Sidebar` →
+  `Toon navigatiekolom`), en de catalogus doet dat al bij `menu.servers.showServers` (`Toon servers`) · `high`. De twee
+  sleutels zijn bewust byte-identiek: `menu.go.showFavorites` is de native tweeling van `commands.favoritesOpen.label`.
+  `menu.go.showFavorites` is een RAW-sleutel, maar de waarde draagt geen apostrof, dus er valt niets te verdubbelen.
+- **„See {count} favorites" → `Bekijk {count} favorieten`, met `Bekijk` en niet `Toon`** · het Engels zet hier bewust
+  „See" tegenover het „Show" van de opdracht, en de catalogus kent die scheiding al: `commands.logOperationLog.label`
+  houdt `Bekijk` voor alleen-kijken, terwijl `Toon` bij het tevoorschijn halen van een oppervlak hoort (stijlgids §
+  Notes and decisions, de `beoordelen`/`bekijken`-regel) · `high`. Stam-imperatief, want de rij is een echte knop.
+- **Meervoudsvorm van `fileExplorer.navigation.seeFavorites`: `=0` + `one` + `other`** · dat zijn de echte
+  CLDR-categorieën van het Nederlands (`new Intl.PluralRules('nl')`, ook vastgelegd in de stijlgids § Plurals), en ze
+  vallen hier toevallig samen met de drie armen van het Engels. `=0` houdt de „je hebt er nog geen"-tekst zonder cijfer
+  (`Bekijk favorieten`), `one` en `other` dragen allebei `{count}`. Geen werkwoordsval zoals bij `is`/`zijn`: een
+  imperatief heeft geen onderwerp dat meetelt · `high`.
+- **„current folder" → `huidige map`, zonder lidwoord in de menurij en mét lidwoord in de gedragsregel** · het Engels
+  maakt precies dat onderscheid (`Add current folder to favorites` op de menurij tegenover
+  `Add the current folder to favorites` in de sneltoetsenlijst), en het Nederlands kan het meemaken: de catalogus laat
+  het lidwoord al weg in korte labels (`commands.fileCopyCurrentDirectoryPath.label` → `Kopieer pad van huidige map`,
+  `queryUi.scope.useCurrentFolder` → `Gebruik huidige map`) en macOS doet hetzelfde („Ga naar map in huidige locatie",
+  „Dupliceert onderdelen op huidige locatie") · `high`. In een hele zin blijft het lidwoord staan, zoals
+  `commands.favoritesAdd.description` al doet.
+- **Het scheidbare partikel gaat naar het eind, ook met een lijdend voorwerp ervoor**:
+  `Voeg huidige map aan favorieten toe` · de knopregel van de stijlgids § Formality mechanics, en macOS AppKit zegt het
+  net zo („Voeg het lettertype aan de stijl toe") · `high`. Zo blijft de rij in dezelfde familie als
+  `commands.favoritesAdd.label` (`Voeg aan favorieten toe`) en `menu.go.addToFavorites`.
+- **„the favorite with that number" → `de favoriet met dat nummer`, en de toets zelf is een `cijfer`** ·
+  `commands.favoritesOpenByNumber.label` gaat over het nummer dat naast de rij staat, terwijl
+  `commands.favoritesOpen.description` over de toetsaanslag gaat, en het Nederlands scheidt die twee: een `nummer`
+  identificeert, een `cijfer` is het teken op de toets · `high`. De catalogus zegt `druk op` voor een toetsaanslag
+  (`downloads.toast.inAppHint`, `goToPath.toast.pressToGoBack`, `fileExplorer.edit.notOnThisMac`), dus
+  `druk op een cijfer om naar die favoriet te springen`; `springen` is de vastgelegde vorm voor navigeren met een paneel
+  (`commands.navGoToPath.description`).
+- **„This folder is already a favorite" → `Deze map staat al in je favorieten`** · een herstructurering: het Engels zegt
+  wát de map is, het Nederlands zegt wáár ze staat, wat vlotter leest en het al vastgelegde bezittelijke kader
+  hergebruikt (`fileExplorer.navigation.favoritesEmpty` → „(Je favorieten verschijnen hier)", Finder: „kan niet aan je
+  favorieten worden toegevoegd") · `high`. Rustige mededeling, geen fout: geen `lukt niet`, geen uitroepteken.
+- **„a mounted share" → `een gekoppelde netwerkshare`** · de catalogus staat al helemaal op `koppelen` voor _mount_
+  („Dit volume is alleen-lezen gekoppeld", „nadat … de share opnieuw is gekoppeld", „de momenteel gekoppelde volumes",
+  `errors.listing.readOnlyVolumeErrno.explanation`, `errors.listing.staleConnection.suggestion`) en op `netwerkshare`
+  voor _share_ (`errors.eject.notAnSmbVolume`: „Dit is geen netwerkshare") · `high`. macOS zelf zegt `activeren`
+  („Activeer het volume", „kon niet worden geactiveerd", AppKit `Document.json`), maar dat woord staat nergens in deze
+  catalogus en zou naast al het bestaande `losgekoppeld`/`aangekoppeld` een tweede term voor één handeling zijn. Het
+  bijvoeglijke `gekoppelde` is dragend: het onderscheidt een share die de Mac zelf aankoppelt van een server waarmee
+  Cmdr zelf verbindt. ❌ Geen protocolnamen (`SMB`, `MTP`, `ADB`) erbij halen; het Engels vermijdt ze bewust.
+- **„point at" → `wijzen naar`** · de catalogus rendert „points to" al zo (`errors.listing.notAFolder.suggestion`: „zorg
+  dat het naar een map wijst"; `fileExplorer.selectionInfo.symlinkHint`) · `high`. De lange voorzetselgroep komt ná het
+  werkwoord (`kunnen alleen wijzen naar …`), wat in een tooltip natuurlijker loopt dan de werkwoordfinale variant.
+- Geen apostrof in een van de tien waarden, dus niets te verdubbelen voor ICU, en geen enkele waarde is identiek aan het
+  Engels, dus geen `sameAsSourceJustification` nodig.
+
+### Review-vlaggen van deze pass
+
+- `Deze map staat al in je favorieten` wijkt qua zinsbouw af van het Engelse „is already a favorite". Bevestig dat de
+  waar-vorm beter leest dan het letterlijke `Deze map is al een favoriet`.
+- `een gekoppelde netwerkshare` kiest de catalogusterm boven Apples `geactiveerd`. Bevestig dat `gekoppelde` hier als
+  „door je Mac aangekoppeld" gelezen wordt en niet als „verbonden" in het algemeen.
+- `druk op een cijfer om naar die favoriet te springen` vult in wat het Engelse „press a number to go" weglaat (het
+  Nederlands heeft een doel nodig). Bevestig de toevoeging, en de wisseling `cijfer` (toets) / `nummer` (rij).
+- `Favorieten kunnen alleen wijzen naar een map op een schijf of een gekoppelde netwerkshare` loopt 87 tekens tegen 65
+  in het Engels. Controleer hem in de echte tooltip tegen de pseudolocale.
+- `Voeg huidige map aan favorieten toe` en `Voeg de huidige map aan favorieten toe` verschillen alleen in het lidwoord,
+  net als hun Engelse origineel. Bevestig dat dat verschil in de interface niet als een fout leest.

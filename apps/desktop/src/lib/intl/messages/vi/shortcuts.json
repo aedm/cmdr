@@ -35,6 +35,10 @@
   "@shortcuts.scope.volumeChooser": {
     "sourceHash": "16c042e"
   },
+  "shortcuts.scope.favoritesMenu": "Menu mục ưa thích",
+  "@shortcuts.scope.favoritesMenu": {
+    "sourceHash": "7e9f06e"
+  },
   "shortcuts.scope.servers": "Máy chủ",
   "@shortcuts.scope.servers": {
     "sourceHash": "68d7beb"

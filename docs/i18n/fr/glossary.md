@@ -3538,3 +3538,73 @@ jamais suggérer de supprimer le dossier, et ❌ jamais « erreur » / « échec
   même parade que § A move that could not be confirmed.
 - Famille ICU : `d''un` avec l'apostrophe ASCII doublée, aucun U+2019, pas de deux-points donc pas d'espace avant. Pas
   de `sameAsSourceJustification` : la valeur diffère de l'anglais.
+
+## Le menu des favoris : les 10 clés du jalon M3 (2026-09-16)
+
+⌃D ouvre la liste des dossiers mis en favori sous forme de menu par-dessus le panneau actif. Les neuf premières lignes
+portent une touche chiffrée (1–9) qui y mène directement ; la dernière porte le `0` et ajoute le dossier courant du
+panneau à la liste. Le sélecteur de volume n'a plus de SECTION Favoris : il n'en garde qu'une ligne de tête qui bascule
+vers ce menu.
+
+- **favorite (le dossier mis en signet) → `favori` / `favoris`** · déjà posé plus haut dans ce fichier
+  (`bookmark / favorite → favori`) et tenu par tout le catalogue : `fileExplorer.navigation.groupFavorites` « Favoris »,
+  `fileExplorer.navigation.favoritesEmpty` « (Vos favoris s''afficheront ici) », `commands.favoritesAdd.label` « Ajouter
+  aux favoris », `menu.go.addToFavorites` « Ajouter aux favoris ». Source Tier 1 : macOS Finder (« Favoris », « Ajouter
+  aux favoris », « Supprimer des favoris », « Serveurs favoris : ») · `high`. ❌ Jamais `signet` : c'est le mot de GNOME
+  Nautilus (« Ajouter aux _signets », « Nouveau signet »), pas celui du Mac, et le catalogue en a déjà dix-huit
+  occurrences en `favori`.
+- **the favorites menu → `le menu des favoris`** · le concept n'existe pas chez Apple, mais la paire orthodoxe le nomme
+  exactement : Total Commander `WCMD.INC` id 526 « Menu local des répertoires favoris » (le _directory hotlist_), Double
+  Commander `doublecmd.po` « dossiers favoris (.hotlist) » · `high` pour le mot, avec la réserve de la gotcha 2 du guide
+  : la _hotlist_ orthodoxe est une fonctionnalité voisine mais distincte (un menu arborescent configurable), donc on lui
+  emprunte le mot, pas la définition. `shortcuts.scope.favoritesMenu` est livré « Menu des favoris », au registre de ses
+  voisins (`shortcuts.scope.volumeChooser` « Sélecteur de volume », `shortcuts.scope.commandPalette` « Palette de
+  commandes »).
+- **Show favorites → `Afficher les favoris`, See favorites → `Voir les favoris`** · l'anglais tient deux verbes pour
+  deux surfaces, et le français les tient pareil. `Afficher` pour ce qui OUVRE le menu (`menu.go.showFavorites` dans le
+  menu Aller et son jumeau `commands.favoritesOpen.label` dans la palette), sur le moule du menu Présentation du Finder
+  (« Afficher la barre latérale », « Afficher l'aperçu », « Afficher les éléments ») · `high`. `Voir` pour la ligne de
+  tête du sélecteur (`fileExplorer.navigation.seeFavorites`), parce que c'est le plus court des deux et que la ligne
+  partage sa largeur avec la pastille du raccourci ; ce partage est déjà celui de l'entrée `view` plus haut. Pas de
+  points de suspension : ça ouvre un menu, pas une fenêtre.
+- **Pluriel de `seeFavorites` : `=0` + `one` + `many` + `other`** · les catégories CLDR du français sont bien `one` /
+  `many` / `other` (voir `style.md` § Plurals), et le français range 0 dans `one`. La branche `=0` l'emporte sur toute
+  catégorie, donc la branche `one` ne voit jamais que 1 (« Voir 1 favori ») et reste juste ; `=0` porte le texte « vous
+  n'en avez pas encore » et ne montre donc pas `{count}`. `many` est écrit à l'identique de `other`, comme partout dans
+  le `fr` : un entier simple ne sélectionne jamais `many`, mais la parité et le check de pluriel veulent la branche.
+  Vérifié en exécutant les cinq cas (0, 1, 2, 5, 1 000 000) dans `intl-messageformat` avec la locale `fr`.
+- **current folder (celui que le panneau AFFICHE, pas celui sous le curseur) → `le dossier actuel`** · le catalogue le
+  pose déjà dans `commands.favoritesAdd.description` (« Ajouter le dossier actuel du panneau actif aux favoris du
+  sélecteur ») · `high`. ❌ Pas `dossier courant`, l'anglicisme habituel, ni `répertoire`, réservé au sens technique. Le
+  libellé de la dernière ligne du menu (`fileExplorer.navigation.favoritesAddCurrent`) et la ligne descriptive de la
+  liste des raccourcis (`commands.favoritesAddFromMenu.label`) sortent donc identiques : « Ajouter le dossier actuel aux
+  favoris ». L'anglais ne les sépare que par l'article (`Add current folder…` / `Add the current folder…`), que le
+  français doit écrire dans les deux cas ; forcer une différence serait artificiel. La distinction qui compte, elle,
+  tient : `commands.favoritesAdd.label` reste « Ajouter aux favoris », court et sans complément.
+- **mounted share → `un partage monté`** · le catalogue le dit déjà mot pour mot
+  (`fileExplorer.network.browser.noMountedShares` « Aucun partage monté depuis {hostName} »,
+  `settings.network.enabled.description` « … sur les partages déjà montés »), et les deux moitiés viennent du tas :
+  `share → partage` (macOS « Partage et permissions : ») et `mount → monter` (macOS AppKit « Le volume « %@ » n'a pas pu
+  être monté. ») · `high`. ❌ Ne jamais remonter à un nom de protocole (`SMB`, `MTP`, `ADB`) dans cette phrase :
+  l'anglais évite le jargon exprès, parce que la personne visée est justement celle qui ne sait pas sur quoi elle se
+  trouve.
+- **`Favorites can only point at …` → `Un favori ne peut mener qu'à …`** · le moule restrictif vient du Finder, qui
+  formule exactement cette contrainte : « Vous ne pouvez créer un alias que dans un dossier ou disque. » (macOS Finder,
+  relevé dans le tas 2026-09-16) · `high` pour la structure, `tentative` pour le verbe. `mener à` est le verbe le plus
+  plat disponible ; `pointer vers` (le calque direct) n'a aucune attestation dans le tas, ni chez Apple, ni chez
+  Microsoft, ni chez les cinq gestionnaires. Le singulier `Un favori` vaut règle générale et évite le pluriel
+  administratif. Valeur livrée : `fileExplorer.navigation.favoritesCantAddHere`.
+- **already a favorite → `est déjà dans vos favoris`** · l'info-bulle de la ligne grisée
+  (`fileExplorer.navigation.favoritesAlreadyAdded`) nomme l'appartenance à la LISTE, pas une qualité du dossier ; le
+  possessif reprend celui de `fileExplorer.navigation.favoritesEmpty` (« Vos favoris s'afficheront ici ») · `high`.
+  C'est un constat, pas un refus : ni « erreur », ni « impossible », ni point final (aucune des info-bulles voisines
+  n'en porte).
+- **Open the favorite with that number → `Ouvrir le favori portant ce numéro`** · ligne en lecture seule de la liste des
+  raccourcis, donc un CONSTAT au registre infinitif de ses voisines (`commands.volumeSelect.label` « Sélectionner le
+  volume », `commands.volumeClose.label` « Fermer le sélecteur de volume ») · `high`. `numéro` (le rang attribué au
+  favori), pas `chiffre` (la touche) : c'est le favori qui porte le numéro. Les chiffres 0–9 et les glyphes ⌘ ⌥ ⌃ ⇧ ne
+  se traduisent jamais.
+- **`…, and press a number to go` → `…, puis appuyer sur un chiffre pour y aller`** · deuxième ligne de la palette
+  (`commands.favoritesOpen.description`), au moule des descriptions voisines : infinitif, `panneau actif`, et la
+  brièveté de l'anglais gardée. Ici c'est bien `chiffre` (la touche qu'on presse) et non `numéro`, l'inverse de la clé
+  du dessus.

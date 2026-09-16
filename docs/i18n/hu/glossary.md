@@ -3484,3 +3484,57 @@ Helyőrző-kerülések (mindkettő ragozatlanul marad):
   - A `rejtett` szándékosan az idézőjeles név ELÉ került: ez az egyetlen tartalom, amivel az illető kezdeni tud valamit,
     és így nem a hosszú azonosító után kell megkeresnie.
 - Nem kell `sameAsSourceJustification`: az érték eltér az angoltól.
+
+## A kedvencek menüje (`commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent`, `fileExplorer.navigation.favoritesAlreadyAdded`, `fileExplorer.navigation.favoritesCantAddHere`, `fileExplorer.navigation.seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
+
+Tíz új kulcs: a ⌃D a fókuszált panel fölött nyitja meg a kedvencek listáját menüként, az első kilenc sor mellett egy-egy
+számbillentyűvel, a `0` sor pedig hozzáadja a panel aktuális mappáját. A kötetválasztóból eltűnt a Kedvencek SZAKASZ, a
+helyén egy sor áll, ami átvált erre a menüre.
+
+- **A lista szava marad `kedvenc` / `Kedvencek`**, a `style.md` szótári sora és a szállított alakok szerint
+  (`fileExplorer.navigation.groupFavorites` = `Kedvencek`, `commands.favoritesAdd.label` = `Hozzáadás a kedvencekhez`,
+  `menu.go.addToFavorites`, `fileExplorer.navigation.favoritesEmpty` = `(A kedvenceid itt jelennek meg)`) · `high`. ❌
+  Erre a listára soha nem `könyvjelző`: az a szótárban a _bookmark_ tentative sora, más funkcióé.
+- **favorites menu (a FELÜLET NEVE, címpozícióban) → `Kedvencek menü`** · macOS Tier 1 (`Apple menü`), Double Commander
+  hu (`Fanézet menü`, `Fastruktúra menü`), Nautilus hu (`Parancsfájlok menüben`), és a katalógus saját `a Súgó menüből`
+  alakja (`style.md` § Notes) · `high`. Az értelmezős (név + `menü`) szerkezet a magyar UI szabványa, és a
+  `shortcuts.scope.*` szomszédai is rövid felületnevek (`Kötetválasztó`, `Parancspaletta`, `Fájllista`).
+- **favorites menu (PRÓZÁBAN, közszóként) → `a kedvencek menüje`** · Nautilus hu (`mappa menüje`, `mappa menüjének`) ·
+  `high`. Az angol is kisbetűvel, köznévként írja („the favorites menu”), tehát itt a birtokos szerkezet a természetes;
+  az értelmezős alak a CÍMÉ. A kettő tudatos, nem elcsúszás: egy táblázatcímke nem mondat.
+- **Show favorites → `Kedvencek megjelenítése`** · macOS Tier 1: a Finder kivétel nélkül `X megjelenítése` alakban hozza
+  a „Show X”-et (`Oldalsáv megjelenítése`, `Állapotsor megjelenítése`, `Útvonalsor megjelenítése`,
+  `Összes megjelenítése`, `Infó megjelenítése`) · `high`. A `commands.favoritesOpen.label` és a `menu.go.showFavorites`
+  angolja betű szerint azonos, tehát a magyarnak is egynek kell lennie (`desktop-i18n-term-consistency`) — és a natív
+  Ugrás menüben amúgy is pont a Finder szóhasználata kell.
+- **See {count} favorites → `{count} kedvenc megtekintése`** · a `view (a művelet) → megtekintés` szótári sor (macOS
+  Tier 1) · `high`. Szándékosan NEM `megjelenítése`: az angol is két igét használ a két felületen (`See` a kötetválasztó
+  sorában, `Show` a parancsnál/menüben), és a magyarban is jobb, ha a sor nem a parancs nevét ismétli.
+- **A `seeFavorites` ágai: `=0` + `one` + `other`, és a két számos ág SZÖVEGE azonos** · CLDR `hu` = `one`/`other`
+  (`style.md` § Plurals), a számnév után a főnév egyes számú, és semmi más nem egyeztet a mondatban, tehát az
+  `1 kedvenc megtekintése` és a `3 kedvenc megtekintése` ugyanaz a séma · `high`. Ugyanaz a helyzet, mint a szállított
+  `servers.hub.rowCount`-nál. Az ICU megköveteli az `other` ágat, az `one` pedig valódi `hu` kategória, ezért mindkettő
+  kiírva marad. A `=0` ág az angol szándéka szerint nem mond nullát: `Kedvencek megtekintése`, `{count}` nélkül.
+- **current folder → `(az) aktuális mappa`** · az `aktuális` a katalógus szava a „current”-re
+  (`commands.editPaste.description`, `commands.favoritesAdd.description` = `a fókuszált panel aktuális mappáját`) ·
+  `high`. A menüsor (`fileExplorer.navigation.favoritesAddCurrent`) névelő nélkül rövidebb és menüpontszerű
+  (`Aktuális mappa hozzáadása a kedvencekhez`), a billentyűparancs-lista viselkedésleírása névelővel mondatszerű
+  (`Az aktuális mappa hozzáadása a kedvencekhez`) — pontosan az a különbség, amit az angol is tart a két kulcs között.
+- **A `commands.favoritesAddFromMenu.label` szándékosan más, mint a `commands.favoritesAdd.label`**
+  (`Hozzáadás a kedvencekhez`): az előbbi a `0` billentyű VISELKEDÉSÉT írja le egy csak olvasható sorban, ezért nevezi
+  meg, MIT ad hozzá. Ne vond össze őket egy alakra.
+- **mounted share → `csatolt megosztás`** · macOS Tier 1 (`mount` = `csatol`: „Csatolja a kötetet…”, „nem csatolható”,
+  „nem sikerült felcsatolni”), Nautilus hu („Ez a fájl nem csatolható”), plusz a szótár `share → megosztás` sora ·
+  `high`. ❌ NEM `csatlakoztatott` (az a Double Commander eszközszava) és ❌ nem protokollnév: az angol tudatosan kerüli
+  az SMB/MTP/ADB említését, mert a felhasználónak az számít, hogy a Mac maga csatolta-e.
+- **disk (ebben a buborékban) → `lemez`** · macOS Tier 1 (`Adja ki a lemezt, és csatoljon le szervereket`) · `high`. Itt
+  az angol `disk`-et mond, nem `drive`-ot, tehát nem a szótár `drive → meghajtó` sora a mérvadó.
+- **„Favorites can only point at …” → `A kedvencek csak … mutathatnak`** · általános alany magyarul határozott névelővel
+  áll, a `mutat` vonzata pedig `-ra/-re` (`mappára mutathatnak`) · `high`. A buborék tényközlés, nem hibaüzenet, ezért
+  nincs benne se `nem sikerült`, se `hiba`.
+- **„This folder is already a favorite” → `Ez a mappa már a kedvencek között van`** · a lista-metafora a katalógus
+  egészében a `kedvencek` halmaz (`Hozzáadás a kedvencekhez`, `Eltávolítás a kedvencekből` – macOS `100384.title`) ·
+  `high`. A rövidebb `már kedvenc` állítmányi alak nyelvtanilag rendben van, de a `között van` mondja ki, hogy a
+  listáról van szó, amit a felhasználó épp lát. Pont nincs a végén, ahogy az angolban sincs (buborék, nem mondat).
+- **Egyik érték sem azonos az angollal**, tehát `sameAsSourceJustification` egyikhez sem kell. Aposztróf egyikben sincs,
+  így az ICU-kettőzés kérdése fel sem merül; a `menu.go.showFavorites` RAW kulcs, de nincs benne mit kettőzni.

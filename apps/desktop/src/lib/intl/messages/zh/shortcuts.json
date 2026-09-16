@@ -35,6 +35,10 @@
   "@shortcuts.scope.volumeChooser": {
     "sourceHash": "16c042e"
   },
+  "shortcuts.scope.favoritesMenu": "个人收藏菜单",
+  "@shortcuts.scope.favoritesMenu": {
+    "sourceHash": "7e9f06e"
+  },
   "shortcuts.scope.servers": "服务器",
   "@shortcuts.scope.servers": {
     "sourceHash": "68d7beb"

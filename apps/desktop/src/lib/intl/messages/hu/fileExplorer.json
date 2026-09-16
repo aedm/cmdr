@@ -1232,6 +1232,22 @@
   "@fileExplorer.navigation.favoritesEmpty": {
     "sourceHash": "b4f099e"
   },
+  "fileExplorer.navigation.favoritesAddCurrent": "Aktuális mappa hozzáadása a kedvencekhez",
+  "@fileExplorer.navigation.favoritesAddCurrent": {
+    "sourceHash": "7d7e21c"
+  },
+  "fileExplorer.navigation.favoritesAlreadyAdded": "Ez a mappa már a kedvencek között van",
+  "@fileExplorer.navigation.favoritesAlreadyAdded": {
+    "sourceHash": "731a929"
+  },
+  "fileExplorer.navigation.favoritesCantAddHere": "A kedvencek csak lemezen vagy csatolt megosztáson lévő mappára mutathatnak",
+  "@fileExplorer.navigation.favoritesCantAddHere": {
+    "sourceHash": "07c0e12"
+  },
+  "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {Kedvencek megtekintése} one {{count} kedvenc megtekintése} other {{count} kedvenc megtekintése}}",
+  "@fileExplorer.navigation.seeFavorites": {
+    "sourceHash": "7a7e169"
+  },
   "fileExplorer.navigation.favoriteTooltip": "{path}\nHúzd az átrendezéshez, vagy {reorder}. Kattints jobb gombbal az átnevezéshez vagy eltávolításhoz.",
   "@fileExplorer.navigation.favoriteTooltip": {
     "sourceHash": "88d54d3"

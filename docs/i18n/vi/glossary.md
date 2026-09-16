@@ -3159,3 +3159,57 @@ gợi ý bỏ đi thứ gì, nên `dọn dẹp` và `xóa` đều bị cấm tro
   `ẩn` là phần duy nhất người đọc có thể làm gì đó với nó (phải bật hiển thị tệp ẩn mới thấy), nên không được lược.
 - `{volumeName}` và `{folderName}` giữ nguyên từng byte, đứng trần không có loại từ đi trước (tên ổ đĩa là chuỗi tùy ý,
   theo quy tắc ở `style.md`); giá trị không có dấu nháy đơn nào nên không phát sinh `''` của ICU.
+
+## Menu mục ưa thích (10 khóa: `commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent` / `.favoritesAlreadyAdded` / `.favoritesCantAddHere` / `.seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
+
+⌃D mở danh sách thư mục đã đánh dấu thành một menu phủ lên khung đang chọn; chín hàng đầu mang phím số 1–9 để nhảy thẳng
+tới nơi đó, hàng cuối mang phím `0` và thêm thư mục hiện tại của khung vào danh sách. Bộ chọn ổ đĩa không còn mục Mục ưa
+thích bên trong nữa, chỉ còn một hàng trên cùng mở menu này.
+
+- **favorites (danh sách của Cmdr) → `mục ưa thích`** · macOS AppKit `FontManager` dịch thẳng `Favorites` thành
+  `Mục ưa thích`, và catalog đã chốt từ này ở `fileExplorer.navigation.groupFavorites`,
+  `fileExplorer.navigation.favoritesEmpty`, `commands.favoritesAdd.label`, `menu.go.addToFavorites` · `high`. ❌ Không
+  lấy `yêu thích` của Microsoft (thuật ngữ Windows, quy tắc "ưu tiên từ của Finder"). Viết hoa theo đúng tiếng Anh: chữ
+  thường trong câu (`Hiển thị mục ưa thích`), viết hoa khi đứng đầu câu hoặc là tên riêng của danh sách
+  (`Mục ưa thích của bộ chọn ổ đĩa` ở `commands.favoritesAdd.description`).
+- **favorites menu → `menu mục ưa thích`; làm tiêu đề nhóm thì `Menu mục ưa thích`** · Microsoft terminology giữ `menu`
+  nguyên dạng (`menu` → `menu`, `submenu` → `menu con`), và `style.md` đã có luật "nhắc tới một menu thì viết
+  `menu <Tên>`" · `high`. Trật tự trung tâm-trước-bổ-nghĩa-sau nên `menu mục ưa thích` đọc đúng là "menu của các mục ưa
+  thích". `shortcuts.scope.favoritesMenu` = `Menu mục ưa thích` để khớp độ dài và giọng của các tiêu đề nhóm hàng xóm
+  (`shortcuts.scope.volumeChooser` = `Bộ chọn ổ đĩa`).
+- **show → `hiển thị`; see → `xem`** · giữ hai động từ tách nhau đúng như tiếng Anh: `commands.favoritesOpen.label` và
+  `menu.go.showFavorites` (hai bề mặt của một lệnh, phải khớp từng chữ) đều là `Hiển thị mục ưa thích` theo luật "show =
+  `hiển thị`, không bao giờ `hiện`" ở `style.md`; `fileExplorer.navigation.seeFavorites` là `Xem …` theo macOS Finder,
+  nơi `Xem` phủ nghĩa "see/view" trong các chú giải thanh công cụ (`TL_HELP_BACK` =
+  `Xem các thư mục bạn đã xem trước đây`, `TL_HELP_INFO`, `TL_HELP_PATH`) · `high`.
+- **Số nhiều của `fileExplorer.navigation.seeFavorites`: chỉ `=0` + `other`** · CLDR cho `vi` chỉ có đúng một hạng
+  `other` (`new Intl.PluralRules('vi')`; GNOME `nplurals=1`), vì tiếng Việt không có hình thái số · `high`. Giá trị là
+  `{count, plural, =0 {Xem mục ưa thích} other {Xem {count} mục ưa thích}}`. ❌ **Đừng "khôi phục" nhánh `one` của tiếng
+  Anh**: nó không phải hạng CLDR của tiếng Việt, `desktop-i18n-plural` không đòi, và một nhánh thừa chỉ tạo ra hai câu
+  phải sửa song song. Nhánh `=0` cố ý không có `{count}` (đó là câu "bạn chưa có cái nào", không được hiện số 0).
+- **current folder → `thư mục hiện tại`** · macOS Finder `vi` (`Search the Current Folder` →
+  `Tìm kiếm trong thư mục hiện tại`, `TL_HELP_PATH` = `Xem vị trí của thư mục hiện tại`), và catalog đã dùng ở
+  `commands.favoritesAdd.description` · `high`. Là thư mục KHUNG đang mở, không phải mục dưới con trỏ, nên không thêm
+  `đang chọn` vào cụm này (`đang chọn` thuộc về khung: `khung đang chọn`, theo `commands.navGoToPath.description`).
+- **mounted share → `mục chia sẻ đã gắn kết`** · catalog đã chốt `mục chia sẻ` cho một share (33 lần, trong đó
+  `fileExplorer.network.browser.noMountedShares`, `fileExplorer.networkMount.mountFailedTitle`) và `gắn kết` cho "mount"
+  (macOS AppKit `Document`: `couldn't be mounted` → `không thể gắn ổ đĩa`; GNOME
+  `Danh sách các lối tắt, điểm gắn, và đánh dấu`) · `high`. ❌ Đừng viết `bản chia sẻ` (16 lần trong catalog, thiểu số)
+  cho chuỗi mới, và ❌ đừng gọi tên giao thức: tiếng Anh cố ý tránh SMB/MTP/ADB ở
+  `fileExplorer.navigation.favoritesCantAddHere`, tiếng Việt cũng vậy. `disk` trong cùng câu là `ổ đĩa`, khớp Microsoft
+  (`drive` → `ổ đĩa`) và toàn bộ catalog.
+- **press (một phím) → `nhấn`, không phải `bấm`** · catalog tách đôi: `nhấn` cho phím (`shortcuts.section.pressKeys`,
+  `settings.behavior.fileSystemWatching.globalGoToLatestShortcut.enabled.description`), `bấm` cho chuột · `high`. Các
+  phím `0`–`9` và ký hiệu ⌘ ⌥ ⌃ ⇧ giữ nguyên, không dịch.
+- **"press a number to go" → thêm đích đến: `nhấn một con số để đi tới thư mục đó`** · `go` trơ trọi không có đích trong
+  tiếng Anh; tiếng Việt `để đi` cụt nghĩa hẳn, nên câu phải nói rõ đi đâu · `high`. Động từ `đi tới` là của họ menu Go
+  (`menu.bar.go` = `Đi`, `menu.go.goToPath` = `Đi tới đường dẫn…`, macOS Finder `Go To Location` → `Đi tới vị trí`).
+- **`commands.favoritesAddFromMenu.label` và `fileExplorer.navigation.favoritesAddCurrent` trùng nhau từng chữ, và đó là
+  đúng** · cả hai đều là `Thêm thư mục hiện tại vào mục ưa thích`. Tiếng Anh phân biệt chúng bằng mỗi mạo từ "the", thứ
+  tiếng Việt không có · `high`. Điều PHẢI giữ tách là so với lệnh thật `commands.favoritesAdd.label` =
+  `Thêm vào mục ưa thích` (không nhắc thư mục nào), và sự phân biệt đó vẫn còn nguyên.
+- **already → `đã`** · macOS AppKit `SavePanel` / `Document` (`already exists` → `đã tồn tại`) · `high`.
+  `fileExplorer.navigation.favoritesAlreadyAdded` = `Thư mục này đã là mục ưa thích`: câu kể bình thản, không dấu chấm
+  (theo tiếng Anh), không dùng `lỗi` hay `không thể`.
+- Không giá trị nào trong đợt này chứa dấu nháy đơn, nên không phát sinh `''` của ICU; `menu.go.showFavorites` thuộc họ
+  RAW (Rust vẽ menu gốc) và cũng không có gì phải nhân đôi.

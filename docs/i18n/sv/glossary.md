@@ -3083,3 +3083,59 @@ arbetsfil, här är det användarens filer som Cmdr medvetet skyddar.
   inget komma mellan två huvudsatser och krockar inte med `style.md` § Notes and decisions.
 - ICU-fil, men värdet innehåller ingen apostrof, så dubbleringen `''` blir aldrig aktuell. Inget
   `sameAsSourceJustification`: värdet skiljer sig från engelskan.
+
+## Favoritmenyn: ⌃D-ytan och dess tio strängar (2026-09-16; 4 `commands.favorites*` + 4 `fileExplorer.navigation.favorites*`/`.seeFavorites` + `menu.go.showFavorites` + `shortcuts.scope.favoritesMenu`)
+
+⌃D fäller ut användarens bokmärkta mappar som en meny över den fokuserade panelen. De nio första raderna bär
+siffertangenterna 1–9, sista raden är märkt `0` och lägger till panelens aktuella mapp. Volymväljarens tidigare
+favoritavdelning är borta och ersatt av en enda topprad som byter ut växlaren mot menyn.
+
+- **favorites menu: `favoritmeny` (rubrik), `favoritmenyn` (löptext)** · katalogen har redan `favoriter`/`favorit`
+  (macOS Finder ”Favoriter”), och macOS `sv` bildar sammansättningen med `favorit-` som förled (”Favoritservrar:” i
+  Finders anslutningsfönster). `high`. **Gränsen mellan formerna:** `shortcuts.scope.favoritesMenu` är en
+  avdelningsrubrik och står därför obestämt, `Favoritmeny`, precis som sina grannar `shortcuts.scope.volumeChooser`
+  (`Volymväljare`), `shortcuts.scope.fileList` (`Fillista`) och `shortcuts.scope.commandPalette` (`Kommandopalett`). I
+  en mening är ytan däremot ett bestämt föremål, så `commands.favoritesOpen.description` säger `Öppna favoritmenyn …`.
+  Den svenska bestämdhetsfällan (`../../guides/i18n-translation.md` § An `*Aria` key must contain its visible label)
+  slår inte till här: ingen `*Aria`-nyckel citerar rubriken, så formerna får skilja sig. Skulle en sådan nyckel
+  tillkomma är det rubriken som ska byta form, inte meningen.
+- **Show favorites: `Visa favoriter`** · `menu.servers.showServers` (”Show servers”) är redan `Visa servrar`, och macOS
+  `sv` har ett dussin `Visa …`-alternativ i samma imperativform (”Visa sidofältet”, ”Visa förhandsvisning”). Gäller båda
+  tvillingarna: `commands.favoritesOpen.label` och den nativa `menu.go.showFavorites`, som ska läsa likadant. `high`.
+- **See {count} favorites: `Visa {count} favoriter`, alltså samma verb som `Show`** · engelskan växlar mellan `See` och
+  `Show` för samma handling, svenskan gör det inte: `Visa` är det satta ordet för att fälla ut en lista, och katalogen
+  säger redan `Visa licensinformation` (`commands.appLicenseKey.seeDetails.label`) och `Visa hela ändringsloggen`
+  (`whatsNew.dialog.seeFullChangelog`) för engelskans `See`. `Se` är reserverat för att titta på något
+  (`commands.helpWhatsNew.description`: ”Se vad som ändrats”). `high`. Följden är att `=0`-grenen blir teckenidentisk
+  med `commands.favoritesOpen.label`; det är rätt, det ÄR samma handling.
+- **Pluralformen i `fileExplorer.navigation.seeFavorites`: `=0` + `one` + `other`** · svenskans CLDR-kategorier är `one`
+  och `other` (`new Intl.PluralRules('sv')`, se `style.md` § Plurals), och `=0`-grenen behålls för att engelskan bär
+  den: den säger ”du har inga än” utan att skriva ut nollan, så `{count}` får inte stå där. `favorit` är en-genus och
+  böjs `favorit`/`favoriter`. `high`.
+- **current folder: `aktuell mapp` i etikett, `den aktuella mappen` i löptext** · `queryUi.scope.currentFolder` är redan
+  `Aktuell mapp` och `queryUi.scope.useCurrentFolder` är `Använd aktuell mapp`, medan `commands.editPaste.description`
+  skriver ut `i den aktuella mappen`. Total Commander `sv` har samma artikellösa etikettform (`Lägg till aktuell mapp`).
+  `high`. **Det är också så artikelskillnaden i engelskan bärs:** `fileExplorer.navigation.favoritesAddCurrent`
+  (menyraden, etikett) blir `Lägg till aktuell mapp i favoriter` och `commands.favoritesAddFromMenu.label` (raden i
+  genvägslistan, beskrivande) blir `Lägg till den aktuella mappen i favoriter`. Båda skiljer sig dessutom tydligt från
+  det riktiga kommandot `commands.favoritesAdd.label` (`Lägg till i favoriter`), vilket engelskan avser.
+- **mounted share: `monterad delad mapp`** · `fileExplorer.network.browser.noMountedShares` är redan
+  `Inga monterade delade mappar från {hostName}`, och `settings.network.permissionWithout` säger
+  `delade mappar som redan är monterade`. `delad mapp` är den satta termen för share (`style.md` § Terminology). `high`.
+  Inga protokollnamn i `fileExplorer.navigation.favoritesCantAddHere`, precis som engelskan undviker dem.
+- **a disk: `en disk`** · katalogen skiljer redan på `disk` (engelskans `disk`: ”en intern disk”, ”en extern disk”, ”På
+  disk”) och `enhet` (engelskans `drive`). `skiva` är reserverat för när Finders egen ordalydelse speglas (`style.md` §
+  Terminology). `high`. Prepositionerna delas inte: `på en disk` men `i en monterad delad mapp`, så meningen blir
+  `Favoriter kan bara peka på mappar på en disk eller i en monterad delad mapp`. `peka på` är katalogens verb för vad en
+  sökväg eller genväg refererar till (`errors.listing.notAFolder.suggestion`).
+- **siffertangenterna 1–9: `siffra`, inte `nummer`** · tangenterna är bokstavligen siffror, och `nummer` är i katalogen
+  ett löpnummer på något (`viewer.statusBar.badge.indexedTooltip`: `radnumren`). Därav `Öppna favoriten med den siffran`
+  (`commands.favoritesOpenByNumber.label`) och `tryck på en siffra` i `commands.favoritesOpen.description`. `tentative`:
+  ingen källa i referenssamlingen namnger just den här ytan, men risken är låg och båda nycklarna använder samma ord.
+- **`press a number to go` behöver ett mål på svenska** · engelskans `go` står utan destination; ett naket `att gå` går
+  inte i svenskan, så meningen avslutas `för att gå dit`. Samma reflex som katalogens
+  `errors.listing.notAFolder.suggestion`-familj, där ”Gå hit igen” alltid får ut sitt mål. `high`.
+- Inget komma före `och` i `commands.favoritesOpen.description`: två korta huvudsatser, enligt `style.md` § Notes and
+  decisions. Engelskan har kommat, svenskan inte.
+- Inga apostrofer i något av de tio värdena, så varken ICU-dubbleringen `''` eller RAW-familjens raka apostrof blir
+  aktuell. Inget `sameAsSourceJustification`: alla tio skiljer sig från engelskan.

@@ -3006,3 +3006,65 @@ Abgrenzung zu `### cancelRollback.stagedLeftover.*`: dort sind es Cmdrs EIGENE A
   Ordnernamen enden, den die Person suchen soll.
 - Kein `sameAsSourceJustification` nötig: der Wert unterscheidet sich vom Englischen. Keine Apostrophe im Wert, also
   nichts zu verdoppeln (die Datei ist ein ICU-Katalog).
+
+## Das Favoritenmenü (`menu.go.showFavorites`, `commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`, `shortcuts.scope.favoritesMenu`)
+
+⌃D klappt die gemerkten Ordner als Menü über dem fokussierten Bereich auf; die ersten neun Zeilen tragen die Ziffern
+1–9, die letzte die `0` und legt den aktuellen Ordner dazu. Die Favoriten-Rubrik in der Volume-Auswahl ist dafür
+weggefallen und durch eine einzelne Zeile ersetzt, die das Menü öffnet.
+
+- **favorites (Cmdrs Liste gemerkter Ordner) → `Favoriten`** · macOS Tier 1 durchgehend: Finder `FI10`/`TL4`/`SD8.1`
+  `Favorites` → `Favoriten`, `MN2` „Der Server „^0“ konnte nicht zu deinen Favoriten hinzugefügt werden.“, AppKit
+  `Ruler.json` `Add To Favorites` → `Als Favoriten sichern`; der Katalog hatte das Wort schon
+  (`fileExplorer.navigation.groupFavorites`, `commands.favoritesAdd.label`) · `high`. ❌ Nie `Lesezeichen`: das Glossar
+  hält es für „bookmark“ frei (Dolphin `&Bookmarks` → `&Lesezeichen`), und zwei Wörter für dieselbe Liste wären genau
+  der Term-Drift, den der Audit-Abschnitt beschreibt.
+- **Der orthodoxe Zwei-Fenster-Stapel liefert hier KEIN Wort** · Total Commander nennt seine `Strg+D`-Liste
+  `Verzeichnisliste` (`WCMD.LNG.utf8` `1538="Verzeichnisliste (Strg+D)"`), Double Commander schreibt seine „Favorite
+  Tabs“ als Glyphe `☆-Tabs`. Beides ist ein ANDERES Feature bzw. gar kein generischer Begriff (die vierte Mining-Falle
+  in `../../guides/i18n-translation.md` § Researching terms), also bleibt macOS die Quelle, obwohl Cmdr dieselbe Taste
+  belegt · `high`.
+- **„Show favorites“ → `Favoriten anzeigen`** (`menu.go.showFavorites` UND `commands.favoritesOpen.label`, gleicher
+  englischer Wert, gleicher `sourceHash`, also zwingend ein Wortlaut) · das direkte Geschwister im Katalog ist
+  `Show servers` → `Server anzeigen` (`menu.servers.showServers`, `commands.serversShow.label`), und beide öffnen eine
+  Liste · `high`. ❌ Nicht `einblenden`: das reserviert der Katalog für Umschalter (`menu.view.showHiddenFiles`
+  „Verborgene Dateien einblenden“, macOS `Alle einblenden`), hier wird nichts ein- und ausgeblendet.
+- **„See {count} favorites“ → `{count} Favoriten ansehen`, `=0` → `Favoriten ansehen`** · `ansehen` ist die Katalogform
+  für „see/view“ (`suggestedOps.indicatorTooltip` „Zum Ansehen klicken.“) und hält die Zeile bewusst von `anzeigen` (=
+  „show“) getrennt, so wie das Englische `See` von `Show` trennt · `high`.
+- **Plural: `one` + `other`, plus der `=0`-Arm aus dem Englischen** · das sind Deutschs echte CLDR-Kategorien
+  (`new Intl.PluralRules('de')`, im Style-Guide § Plurals festgehalten), also keine Kopie der englischen Dreiteilung.
+  `{count}` steht in `one` und `other`, im `=0`-Arm bewusst nicht, damit dort keine „0“ auftaucht. Die Zählphrase bleibt
+  NOMINATIV (`5 Favoriten`, nie `5 Favoriten n`-Dativ): kein Vorwort regiert sie (Style-Guide § Plurals).
+- **„the current folder“ → `der aktuelle Ordner`** · gesetzt im Katalog (`commands.favoritesAdd.description` „Den
+  aktuellen Ordner des fokussierten Bereichs …“, `commands.editPaste.description`, `askCmdr.consent.item.envelope`) ·
+  `high`. Gemeint ist der Ordner, den der Bereich GERADE ZEIGT, nicht der unter dem Cursor; das Deutsche trägt das wie
+  das Englische implizit.
+- **„a mounted share“ → `eine eingebundene Freigabe`** · der Katalog hat genau diesen Ausdruck schon
+  (`fileExplorer.network.browser.noMountedShares` „Keine eingebundenen Freigaben von {hostName}“), `einbinden` ist
+  durchgehend das Verb für „mount“ (`errors.listing.staleConnection.*`, `errors.listing.readOnlyVolumeErrno.explanation`
+  „schreibgeschützt eingebunden“), und `Freigabe` ist die Glossarzeile für „share“ · `high`. ❌ Nicht `gemountet` und
+  nicht `Netzwerkfreigabe`: das Englische vermeidet hier bewusst Protokolljargon und sagt nur, dass der Mac die Freigabe
+  selbst eingebunden hat.
+- **„a folder on a disk“ → `Ordner auf einem Laufwerk`** · `Laufwerk` ist die Glossarzeile für „drive“ (MS-Terminologie
+  DEU/AUT/CHE) und das schlichteste Wort für „disk“ im Fließtext · `high`. ❌ Nicht `Volume`: das reserviert der Katalog
+  für den technischen Volume-Begriff (Volume-Auswahl, `Zielvolume`), und der Tooltip spricht bewusst Alltagssprache.
+- **„point at“ → `verweisen auf`** · trägt die Zeiger-Idee, die `zeigen` im Deutschen nur schwach hat, und hält die
+  Aussage im Aktiv · `high`.
+- **„Favorites menu“ (Abschnittsüberschrift der Tastaturkurzbefehle) → `Favoritenmenü`** · Kompositum wie das
+  Nachbarpaar `Volume switcher` → `Volume-Auswahl` (`shortcuts.scope.volumeChooser`) und `Kontextmenü` im Katalog
+  (`commands.fileContextMenu.label`) · `high`. Abgrenzung zur Style-Guide-Notiz „Ein Menü im Fließtext heißt
+  `das Menü „Hilfe“`“: die gilt für einen benannten Menüleisten-Eintrag, hier benennt das Kompositum eine Fläche.
+- **Label vs. Verhaltensbeschreibung: der Artikel macht den Unterschied.** `fileExplorer.navigation.favoritesAddCurrent`
+  ist die Menüzeile selbst und bleibt artikellos-knapp (`Aktuellen Ordner zu Favoriten hinzufügen`, Wortfamilie von
+  `Zu Favoriten hinzufügen`); `commands.favoritesAddFromMenu.label` beschreibt in der Kurzbefehl-Liste nur, was die `0`
+  TUT, und nimmt die bestimmten Artikel (`Den aktuellen Ordner zu den Favoriten hinzufügen`), genau wie
+  `commands.favoritesOpenByNumber.label` (`Den Favoriten mit dieser Nummer öffnen`). Das spiegelt die Absicht des
+  Englischen, das dieselben zwei Zeilen über „current folder“ vs. „the current folder“ trennt. `Favorit` ist schwach
+  dekliniert, im Akkusativ also `den Favoriten`.
+- **„press a number“ → `mit einer Zifferntaste`** · `tentative`: weder macOS (`de/macOS/`, Wertsuche über alle Bundles)
+  noch die Microsoft-Terminologie kennt `Zifferntaste`/`Zahlentaste`; das Wort ist Standarddeutsch (Duden) und sagt
+  klarer als „eine Zahl drücken“, dass eine Taste gemeint ist. Die Ziffern selbst bleiben unübersetzt.
+- Kein `sameAsSourceJustification` nötig: alle zehn Werte unterscheiden sich vom Englischen. `menu.go.showFavorites`
+  gehört zur RAW-Familie, trägt aber ohnehin keinen Apostroph; in den ICU-Dateien ebenso wenig, also nichts zu
+  verdoppeln.
