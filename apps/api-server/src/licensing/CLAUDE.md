@@ -9,8 +9,9 @@ licenses behind `/admin/generate` and `/admin/revoke`. `licensing.ts` holds the 
 
 - **❌ No Node globals anywhere the money path reaches.** The Worker runs without `nodejs_compat`, so `Buffer` and
   `process` don't exist in production, and a test in the node project sails past one: a `Buffer.from()` in the key
-  encoder made every mint throw for real buyers while the suite stayed green. `production-runtime.test.ts` runs the real
-  Worker in workerd and is the only lane that catches it. `../../DETAILS.md` § Test runtimes.
+  encoder made every mint throw for real buyers while the suite stayed green. `production-runtime.test.ts` and
+  `webhook-runtime.test.ts` run the real Worker in workerd and are the only lanes that catch it, the second over the
+  purchase path itself (Paddle and Resend stubbed at the socket). `../../DETAILS.md` § Test runtimes.
 - **Sandbox and live never mix** (accounts, keys, price IDs, webhook secrets, notification targets):
   `PADDLE_ENVIRONMENT` routes. ❌ Never infer the environment from a transaction id, both use `txn_`.
 - **`ED25519_PRIVATE_KEY` is per-environment for the same reason.** `.dev.vars` holds the DEV signer; production's lives
