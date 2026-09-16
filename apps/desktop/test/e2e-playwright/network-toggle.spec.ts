@@ -35,15 +35,15 @@ const LOCAL_VOLUME_NAME = os.platform() === 'linux' ? 'Root' : 'Macintosh HD'
 const SERVERS_VOLUME_NAME = 'Servers'
 
 const PICKER_TRIGGER = '.volume-name'
-const PICKER_DROPDOWN = '.volume-dropdown'
-const ANY_VOLUME_ITEM = '.volume-item'
+const PICKER_DROPDOWN = '[data-menu]'
+const ANY_VOLUME_ITEM = '[data-menu-row]'
 const HUB = '.servers-hub'
 const DISCOVERY_OFF = '.servers-hub .discovery-off'
 
 /** Reads the visible label of the servers hub row in the switcher. */
 async function readServersLabel(tauriPage: Parameters<typeof pollUntil>[0]): Promise<string | null> {
   return tauriPage.evaluate<string | null>(`(function() {
-    var items = document.querySelectorAll('.volume-item');
+    var items = document.querySelectorAll('[data-menu-row]');
     for (var i = 0; i < items.length; i++) {
       var label = items[i].querySelector('.volume-label');
       if (!label) continue;
@@ -128,7 +128,7 @@ test.describe('Local network discovery off', () => {
     // Close the volume picker the read-only tests leave open. They assert on the
     // dropdown's label and have no reason to dismiss it themselves, but the
     // fixtures safety-net afterEach (which runs AFTER this one — Playwright runs
-    // afterEach hooks inner-to-outer) fails the test on a leaked `.volume-dropdown`.
+    // afterEach hooks inner-to-outer) fails the test on a leaked `[data-menu]`.
     await closeVolumePicker(tauriPage)
     // Restore the default so the next spec file starts clean, and leave the pane
     // off the hub so the next spec doesn't inherit it.

@@ -222,11 +222,31 @@ boundary (intended distance > actual distance). Home/End are always overflow. Pa
 step would cross 0 or `totalCount - 1`. Callers wiring keyboard Shift+nav use this to decide whether to include the
 landing item in the toggle-and-fill range — see `file-explorer/CLAUDE.md` § Selection.
 
-## `VolumeBreadcrumb.svelte`
+## The switcher: `VolumeBreadcrumb.svelte` + `VolumeChooserMenu.svelte`
 
-Pure presentational component. Reads the volume list from the shared `volume-store.svelte.ts` (no fetching, no event
-listeners for volume changes). Volume grouping logic and disk-space retry state are extracted into `volume-grouping.ts`
-and `volume-space-manager.svelte.ts` respectively.
+Two components, one feature. **`VolumeBreadcrumb.svelte` is the CHIP** at the head of the path bar (the icon, the name,
+the badges, the detach control, and the `os_mount` options popup), and it owns the four commands the pane calls:
+`toggle()`, `open()`, `close()`, `getIsOpen()` — each forwarded to the menu. **`VolumeChooserMenu.svelte` is the LIST**,
+built on the house `Menu` primitive (`$lib/ui/DETAILS.md` § Menu).
+
+❗ **The primitive owns every interaction**: open and close, anchoring and viewport fitting, the cursor, the whole
+keyboard contract (arrows, Home/End, Enter, Escape, ⌥↑/⌥↓ reorder, the submenu), keyboard-vs-pointer mode, the drag,
+scroll-into-view, and focus. `VolumeChooserMenu` hands it DATA (`MenuSection`s built from `volume-grouping.ts`) plus
+four snippets, and gets `onSelect` / `onReorder` / `onContextMenu` back. ❌ Don't reintroduce a key handler, a highlight
+index, or a `getBoundingClientRect` here; that's what the port removed.
+
+- **`label`** is the row's text, swapped for the inline rename `<input>` on the favorite being renamed.
+- **`trailing`** is the filesystem tag, the restricted glyph, and the `.row-trailing` badge cluster (read-only, the
+  connection dot, the USB dot, both index badges, and the eject-or-disconnect button). `.row-trailing` is
+  `display: contents` so an empty cluster costs the row nothing and each badge stays a direct flex child; one rule
+  spaces them, replacing the pile of `margin-left: auto` + adjacent-sibling overrides the old markup carried.
+- **`below`** is the disk-space line (`volume-space-manager.svelte.ts`), **`footer`** the volume-list timeout warning.
+- **`disabled`** is how an unopenable device row is expressed (`deviceRowState`), so the primitive greys it, skips it
+  with the arrows, and never opens it — ❌ no separate "is it openable" check at the click site.
+- **Focus** returns to whatever held it when the menu opened, ❌ not to this pane: ⌥F2 opens the OTHER pane's switcher,
+  and closing it must not move the focus across.
+- **The two of them share one `createDriveBadges`** (`drive-badges.svelte.ts`): one index-status manager, one
+  image-index map, one action runner for both placements, so the event subscriptions and fetches happen once.
 
 Props: `volumeId`, `currentPath`, `onVolumeChange?`.
 
@@ -239,16 +259,12 @@ to the `--spacing-sm` that `.file-entry` puts between icon and name. The margin 
 `gap`, so the chevron, read-only badge, and connection indicators after the label keep their tighter spacing. Nothing
 enforces this: if the pane gutter, the row padding, or the header inset changes, re-derive it here.
 
-`containingVolumeId` is derived separately via `resolvePathVolume(currentPath)`: the active checkmark tracks the real
-containing volume, not the `volumeId` prop (which may be a favorite's virtual ID).
-
-Keyboard/mouse mode: entering keyboard nav sets `isKeyboardMode = true`, suppressing CSS `:hover` highlights. Mouse
-movement > 5px threshold exits keyboard mode.
+`containingVolumeId` is resolved in the chip via `resolvePathVolume(currentPath)` and handed to the menu, where
+`volume-checkmark.ts` decides per row: the checkmark tracks the real containing volume, not the `volumeId` prop (which
+may be a favorite's virtual ID).
 
 Volumes (including MTP) come from the shared `volume-store` which is pushed by the backend via a single
 `volumes-changed` event. MTP volume space is fetched via `getVolumeSpace()` like any other volume.
-
-Exported methods for parent components: `toggle()`, `open()`, `close()`, `getIsOpen()`, `handleKeyDown(e)`.
 
 ### Restricted-folder indicator (TCC)
 
@@ -268,9 +284,9 @@ grant would free it, so an indicator promising one would mislead.
 ### Connection indicator
 
 Every volume a connecting backend serves carries a `connectionState`; `crates/cmdr-fs/src/volume/connection.rs` holds
-the six variants, `saved` (a saved place with nothing in flight) among them. The component renders a small colored
-circle both in the dropdown and in the closed breadcrumb label, its modifier class built from the state name — so ❗ a
-variant with no `.smb-indicator-<state>` rule in `VolumeBreadcrumb.svelte` renders as an unpainted circle. Green = a
+the six variants, `saved` (a saved place with nothing in flight) among them. `ConnectionDot.svelte` renders the small
+colored circle in both placements (a switcher row and the closed chip), its modifier class built from the state name —
+so ❗ a variant with no `.smb-indicator-<state>` rule in THAT file renders as an unpainted circle. Green = a
 live session, amber = the OS-mount fallback or a waiting sign-in, red = a changed host key, hollow = `saved`. Each state
 gets its OWN tooltip sentence (`getConnectionTooltip`, a `Record` over the union, so a new state is a compile error);
 `connection-tooltips.test.ts` also catches a BORROWED one, since five states once shared two sentences and a signed-out
@@ -284,15 +300,17 @@ whole flow (stored credentials → saved-password probe → login form) and ever
 notice presses the same function. This component hands it the volume id and the share's name, read while the row is
 still listed: the name is what words the answer if the share goes away before the backend gets there. A credential
 question opens the one sign-in sheet, which the flow raises itself. The flow itself: `../network/DETAILS.md` § "Connect
-directly". Submenu supports full keyboard navigation (ArrowRight to open, ArrowLeft/Escape to close, Enter to activate).
+directly". In the switcher it's a one-row `MenuItem.submenu`, so the primitive carries the keyboard (ArrowRight opens,
+ArrowLeft / Escape closes, Enter activates) and the single-cursor rule.
 
 ### Eject button + row context menu
 
 Ejectable volumes (USB, SD, DMG, MTP, SMB — see `eject-predicate.ts`) show a small `⏏`-shaped icon button on the right
-of each dropdown row and on the right of the closed/header chip. Clicking it calls `ejectVolume(id)` which dispatches in
-the backend: SMB → `diskutil unmount`, MTP → connection manager disconnect, physical / DMG → `diskutil eject`. Clicking
-the inline button does NOT close the dropdown (`handleEjectClick` leaves `isOpen` alone), so the user can eject several
-drives in a row; each ejected volume vanishes from the list via the existing `volume-unmounted` /
+of each switcher row and on the right of the closed/header chip — one `DetachButton.svelte` for all three placements
+(the third is a server row's Disconnect), so their states can't drift. Pressing it runs `detach-volume.ts`, which calls
+`ejectVolume(id)`; the backend dispatches: SMB → `diskutil unmount`, MTP → connection manager disconnect, physical / DMG
+→ `diskutil eject`. A click on it does NOT close the menu (it's a control inside a row, which the primitive never lets
+activate its row), so the user can eject several drives in a row; each ejected volume vanishes from the list via the existing `volume-unmounted` /
 `mtp-device-disconnected` flow — no extra success toast. ❗ `volume-unmounted` carries an optional `volumeId`, and the
 consumer reads THAT first: a "Forget server" takes the row out of the store, so a path lookup would find nothing if the
 `volumes-changed` refresh won the race. The mount watchers leave it null and the path lookup is their fallback.
@@ -317,8 +335,8 @@ same detach item alongside "Copy path" when the pane's volume is ejectable. All 
 a free string: `eject` is handled in `DualPaneExplorer.svelte` (calls `ejectVolume`); `rename-favorite` /
 `remove-favorite` land in `VolumeBreadcrumb.handleVolumeContextAction`, which only acts when its own dropdown `isOpen`
 (both panes' breadcrumbs receive the global event, but only the open one owns the menu it spawned). Going native means
-the webview is frozen while the menu tracks, so the dropdown's `highlightedIndex` can't drift onto another row under the
-cursor or arrow keys — the menu always acts on the right-clicked row.
+the webview is frozen while the menu tracks, so the switcher's cursor can't drift onto another row under the pointer or
+arrow keys — the menu always acts on the right-clicked row.
 
 **Busy gating.** While a copy / move / delete reads from or writes to a volume, ejecting it is blocked so a disconnect
 can't truncate an in-flight file. `$lib/stores/volume-busy-store.svelte`'s `isVolumeBusy(id)` (fed by the backend
@@ -377,68 +395,46 @@ the bare id, not the `fav-…` switcher id).
   favorites `MenuState.context.path`), so it never routes through `favorites.add` (which would favorite the wrong dir).
   The folder-row item lives in `build_context_menu` (directories only, not on search-results panes); the `..` row gets
   its own one-item menu via `show_parent_row_context_menu` (`FilePane.handleContextMenu` calls it with the parent dir
-  path). The favorites INTERACTION layer (rename, pointer-drag + keyboard reorder, remove, and the local-first
-  optimistic-order override + its reconciliation `$effect`) lives in `favorites-controller.svelte.ts`
-  (`createFavoritesController(deps)`), instantiated as `fav` at the top of `VolumeBreadcrumb.svelte`'s script. The
-  component keeps the template, the shared `highlightedIndex`, and the `effectiveVolumes` / `favorites` deriveds (which
-  read `fav.optimisticFavoriteIds`); it calls `fav.*` for everything below. The deps in are getters/callbacks
-  (`getFavorites`, `getVolumes`, `getDropdownRef`, `getRenameInputRef`, `navigate`); the controller imports
-  `reorderFavorites` / `removeFavorite` / `renameFavorite` / `addToast` / the `$lib/ui/menu-reorder.ts` helpers
-  directly. Pinned by `favorites-controller.svelte.test.ts` (the pointer-drag / rename / remove unit tests) plus the
-  component-level `VolumeBreadcrumb.svelte.test.ts`.
+  path). The favorites INTERACTION layer that ISN'T the menu's (rename, remove, and the local-first optimistic-order
+  override + its reconciliation `$effect`) lives in `favorites-controller.svelte.ts`
+  (`createFavoritesController(deps)`), instantiated as `fav` at the top of `VolumeChooserMenu.svelte`'s script. The
+  component keeps the template and the `effectiveVolumes` / `favorites` deriveds (which read
+  `fav.optimisticFavoriteIds`); it calls `fav.*` for everything below. The three deps are getters (`getFavorites`,
+  `getVolumes`, `getRenameInputRef`); the controller imports `reorderFavorites` / `removeFavorite` / `renameFavorite` /
+  `addToast` directly. Pinned by `favorites-controller.svelte.test.ts` (rename, remove, and the optimistic order) plus
+  the component-level `VolumeBreadcrumb.svelte.test.ts`.
 
 - **Remove / Rename** are per-item. Right-clicking a favorite opens the NATIVE row menu (`show_volume_row_context_menu`,
   see § Eject button + row context menu); picking `Rename` / `Remove` routes back over `volume-context-action` to
-  `VolumeBreadcrumb.handleVolumeContextAction`, which calls `fav.startRename` / `fav.remove` on the open dropdown.
+  `VolumeChooserMenu.handleVolumeContextAction`, which calls `fav.startRename` / `fav.remove` on the open menu.
   Rename swaps the label for an inline `<input>` (Enter commits, Escape/blur cancels). Both strip the `fav-` prefix
   before calling the command. `fav.handleRenameKeyDown` calls `e.stopPropagation()` on EVERY key: the focused input owns
   its keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered by the dispatch-level
   guard, so a leaked Space would select the file under the cursor while the user types into the box. Enter commits,
-  Escape cancels, everything else edits the text. While a rename is active, `VolumeBreadcrumb.handleKeyDown` also bails
-  (`fav.renamingFavoriteId !== null`) so the dropdown's list-nav keys (arrows / Home / End) don't steal them. The
-  broader keystroke-leak guard lives one level up: while ANY pane's switcher dropdown is open,
-  `DualPaneExplorer.routeToVolumeChooser` swallows the key from the pane behind it (returns true even when the dropdown
-  ignores the key), and `+page.svelte`'s `isModalDialogOpen()` reads `explorerRef.isVolumeChooserOpen()` to suppress
+  Escape cancels, everything else edits the text. While a rename is active the menu's `isEditing()` is true, so the
+  primitive handles nothing at all (not even swallowing) and the box keeps every keystroke. The broader keystroke-leak
+  guard lives one level up: while ANY pane's switcher is open, `pane/key-dispatch.ts` swallows the key from the pane
+  behind it, and `+page.svelte`'s `isModalDialogOpen()` reads `explorerRef.isVolumeChooserOpen()` to suppress
   centralized webview-keydown dispatch.
-- **Reorder** is pointer-drag within the section AND keyboard (Option+Up / Option+Down, since the app is keyboard-first;
-  the row tooltip reads `⌥↑ / ⌥↓` on macOS, `Alt+↑ / Alt+↓` elsewhere, built by the pure `favorite-tooltip.ts`).
-  - **Pointer drag** uses `onmousedown` on the row + `window` `mousemove`/`mouseup` listeners (armed on mousedown,
-    removed on mouseup and on `fav.destroy()`, called from the component's `onDestroy`), NOT HTML5 drag-and-drop. A
-    reorder begins only once the pointer moves past a small threshold (`DRAG_THRESHOLD_PX`); below it, a mouseup is a
-    plain click that navigates. So favorite rows skip the `onclick` navigate path (it would double-fire with the
-    mouseup) and the controller's `navigate` dep (the component's `handleVolumeSelect`) runs from mouseup instead.
-    During the drag, `favoriteRowMidpoints()` feeds two pure helpers from `$lib/ui/menu-reorder.ts`: the CUE uses the
-    raw `pointerInsertionSlot()` (the visual gap, `0..length`) so the drop-line sits at the right gap — `is-drag-over`
-    (top border) for an in-list gap, `is-drag-over-end` (bottom border on the last row) for dropping past the end —
-    while the DROP uses `pointerReorderTarget()` (that slot adjusted for the grabbed item being removed first). Driving
-    the cue off the move-target instead put the line one row too high on downward drags. The grabbed row carries
-    `is-dragging`.
-  - **Local-first / optimistic:** both reorder paths persist through the controller, which sets its
-    `optimisticFavoriteIds` override (that the component's `effectiveVolumes` / `favorites` derive from via
-    `fav.optimisticFavoriteIds`) SYNCHRONOUSLY, then persists via `reorderFavorites` in the background. The list
-    re-renders instantly, and a rapid second Alt+↑/↓ computes against the fresh order instead of racing the
-    `volumes-changed` round-trip (which would move the wrong item). A reconciliation `$effect` clears the override once
-    the store catches up (or the favorite set changes elsewhere); a failed persist drops it, reverting to the store
-    truth with a toast. Don't make the reorder await the IPC before updating the UI.
-  - **Why pointer and not HTML5 DnD:** under Tauri's `dragDropEnabled` (on by default), macOS intercepts drag gestures
-    at the OS layer before the WKWebView sees `dragstart`/`dragover`/`drop`, so an HTML5-`draggable` reorder silently
-    never fires (the events don't arrive). This is the same reason the native file-list drag (`views/FullList.svelte`)
-    is `onmousedown`-based, not `draggable`. Don't reintroduce HTML5 drag here; it'll look wired-up and do nothing.
-    Synthetic MCP/test events bypass the OS interception, so "it works under MCP" is not proof it works with a real
-    mouse.
-  - **Keyboard** (Alt+↑ / Alt+↓) is handled in the exported `handleKeyDown`, BEFORE `handleDropdownKey` consumes the
-    bare arrows, and acts on the highlighted favorite (`allVolumes[highlightedIndex]`) since the rows aren't DOM-focused
-    (the dropdown navigates by a virtual `highlightedIndex`). It calls `fav.reorderHighlighted(volume, delta)`, which
-    returns the favorite's new index (or null at an edge); the component then sets `highlightedIndex` to it so repeated
-    Alt+↓ keeps moving the same item. `highlightedIndex` stays in the component (the dropdown's general nav uses it
-    too); the controller never touches it.
-  - Both paths compute the new order with the pure `$lib/ui/menu-reorder.ts` helpers (`moveItem`,
-    `clampedReorderTarget`, `pointerReorderTarget`) and persist the FULL order via `reorderFavorites(bareIds)`. The
-    favorite row's tooltip leads with the PATH (then the reorder hint) so a renamed favorite still reveals where it
-    points.
+- **Reorder** is pointer-drag within the section AND keyboard (⌥↑ / ⌥↓, since the app is keyboard-first; the row
+  tooltip reads `⌥↑ / ⌥↓` on macOS, `Alt+↑ / Alt+↓` elsewhere, built by the pure `favorite-tooltip.ts`).
+  - **The mechanics are the `Menu` primitive's**: the drag threshold, the drop-line cue at the insertion gap, ⌥↑/⌥↓,
+    and carrying the cursor with the moved row all live in `$lib/ui/menu-controller.svelte.ts` and its
+    `menu-reorder.ts`, switched on by `reorderable: true` on the favorites section. It reports a settled order once,
+    through `onReorder`. ❗ That includes the reason it's POINTER-based: under Tauri's `dragDropEnabled` macOS
+    intercepts drag gestures before the WKWebView sees `dragstart`/`drop`, so an HTML5-`draggable` reorder looks wired
+    up and silently never fires (the same reason `views/FullList.svelte` is `onmousedown`-based).
+  - **Local-first / optimistic:** `fav.applyReorder(orderedIds)` takes that order, sets its `optimisticFavoriteIds`
+    override (which `effectiveVolumes` / `favorites` derive from) SYNCHRONOUSLY, then persists via `reorderFavorites`
+    in the background. The list re-renders instantly, and a rapid second ⌥↑/↓ computes against the fresh order instead
+    of racing the `volumes-changed` round-trip (which would move the wrong item). A reconciliation `$effect` clears the
+    override once the store catches up (or the favorite set changes elsewhere); a failed persist drops it, reverting to
+    the store truth with a toast. Don't make the reorder await the IPC before updating the UI.
+  - The FULL order is persisted, as bare ids (`reorderFavorites(bareIds)`). The favorite row's tooltip leads with the
+    PATH (then the reorder hint) so a renamed favorite still reveals where it points.
 - **Empty state** is a real state (the user can remove every favorite). The `favorite` group in `volume-grouping.ts`
-  always renders (unlike every other group, which hides when empty), and the switcher shows a single disabled,
-  non-focusable placeholder row: "(Your favorites will show here)".
+  always renders (unlike every other group, which hides when empty), and the section carries an `emptyLabel`, which the
+  primitive renders as a disabled, unfocusable placeholder the cursor skips: "(Your favorites will show here)".
 
 ### USB link-speed indicator (MTP)
 
@@ -576,28 +572,6 @@ pulse.
 - **Non-interactive**: unlike the freshness badge (a `<button>` with a menu), this is a focusable `role="img"` span with
   an `aria-label` + `use:tooltip` (the sanctioned status-glyph pattern, mirroring the corner indicator). There's no
   menu: the image-search on/off + scope controls live in Settings.
-
-### Dropdown and submenu UI patterns
-
-These patterns emerged during the volume picker implementation and should be followed in future dropdown/submenu work:
-
-- **CSS triangles for arrows/chevrons**, not font characters. Font-based arrows (`▾`, `›`) render at inconsistent sizes
-  across fonts and OS versions. Use the CSS border trick
-  (`border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentcolor`) for
-  pixel-perfect control.
-- **Single cursor rule.** When a submenu opens, suppress the main menu highlight. Exactly one cursor should be visible
-  at all times. Use a state flag (like `submenuVolumeId`) to conditionally remove the `is-focused-and-under-cursor`
-  class from the main menu.
-- **Elements with independent actions must be outside their parent's click area.** If a button inside another button has
-  a different action (like "Volume options" inside "Volume selector"), it must be a sibling, not a child. Otherwise
-  `stopPropagation` fights with the parent's click handler.
-- **Fixed positioning for submenus inside scrollable containers.** A submenu inside a `overflow-y: auto` dropdown gets
-  clipped. Use `position: fixed` with coordinates calculated from `getBoundingClientRect()` of the trigger element.
-- **Tooltip dismissal.** Pass empty string to the `use:tooltip` directive when the element's popup is open. The
-  directive's `update` handler calls `hideTooltip()` automatically.
-- **macOS-native menu feel.** Submenu overlaps the parent slightly (~5px). Hovering the row opens the submenu (not just
-  the arrow). Submenu highlight appears only on direct interaction (mouse hover on the item, or keyboard navigation),
-  not automatically when the submenu opens via row hover.
 
 ## `volume-grouping.ts`
 

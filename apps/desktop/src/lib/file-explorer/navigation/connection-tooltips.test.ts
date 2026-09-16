@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { _setLocaleForTests } from '$lib/intl/locale'
-import { getConnectionTooltip } from './volume-breadcrumb-handlers.svelte'
+import { getConnectionTooltip } from './connection-tooltips'
 import type { ConnectionState } from '../types'
 
 beforeAll(() => {

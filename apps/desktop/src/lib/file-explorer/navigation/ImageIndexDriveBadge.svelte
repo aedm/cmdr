@@ -2,7 +2,7 @@
     /**
      * Per-drive IMAGE-search status dot: a small colored dot immediately after the
      * filesystem `DriveIndexBadge` in `VolumeBreadcrumb.svelte` (both the active-drive
-     * breadcrumb and the volume-dropdown rows). Three states: gray `off`, pulsing yellow
+     * breadcrumb and the switcher's rows). Three states: gray `off`, pulsing yellow
      * `indexing`, green `done`. Non-interactive — a labeled status glyph (`role="img"` +
      * `aria-label`), NOT focusable: unlike the sibling `DriveIndexBadge` (a menu button),
      * it has no action, so it stays out of the tab order rather than adding a dead tab stop
@@ -127,8 +127,6 @@
         margin-left: var(--spacing-xs);
     }
 
-    /* In a dropdown row it follows the right-aligned filesystem dot; a small gap after it. */
-    :global(.volume-item) .image-index-drive-badge {
-        margin-left: var(--spacing-sm);
-    }
+    /* In a switcher row it follows the filesystem dot inside the trailing cluster, which
+       spaces the two (`VolumeChooserMenu.svelte` § `.row-trailing`). */
 </style>

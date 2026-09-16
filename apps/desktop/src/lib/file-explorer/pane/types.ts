@@ -133,7 +133,6 @@ export interface FilePaneAPI {
   isVolumeChooserOpen(): boolean
   closeVolumeChooser(): void
   openVolumeChooser(): void
-  handleVolumeChooserKeyDown(e: KeyboardEvent): boolean
 
   getListingId(): string
   isLoading(): boolean
@@ -268,12 +267,15 @@ export interface ListViewAPI {
  * Typed interface for VolumeBreadcrumb's exported methods.
  * @public consumed via `import type` from FilePane.svelte; knip's Svelte parser misses type-only imports
  */
+/**
+ * The switcher chip's four commands. ❗ No key handler: the house `Menu` behind the chip
+ * catches keys itself, on a document capture listener that lives only while it's open.
+ */
 export interface VolumeBreadcrumbAPI {
   toggle(): void
   getIsOpen(): boolean
   close(): void
   open(): void
-  handleKeyDown(e: KeyboardEvent): boolean
 }
 
 /** Typed interface for ServersHub/PlacesBrowser shared methods. */

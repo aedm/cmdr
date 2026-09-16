@@ -6,8 +6,10 @@ Browser-style back/forward history, path resolution, paged keyboard shortcuts, a
 
 - Paths and history: `navigation-history.ts` (immutable stack), `path-navigation.ts`, `path-resolution.ts`,
   `keyboard-shortcuts.ts`.
-- The switcher: `VolumeBreadcrumb.svelte` plus a helper per concern (grouping, disk space, favorites, connection state,
-  eject, labels), and `server-row-actions.ts` for a SERVER row's menu, shared with the hub and the palette.
+- The switcher is two components: `VolumeBreadcrumb.svelte` (the chip) and `VolumeChooserMenu.svelte` (the list, on the
+  house `Menu`), plus a helper per concern (grouping, disk space, favorites, connection state, eject, labels, badges)
+  and the three dots/buttons both placements share (`ConnectionDot`, `UsbSpeedDot`, `DetachButton`).
+- `server-row-actions.ts` holds a SERVER row's menu, shared with the hub and the palette.
 
 ## Must-knows
 
@@ -41,7 +43,10 @@ Browser-style back/forward history, path resolution, paged keyboard shortcuts, a
   group renders even when empty (the placeholder row), so ❌ no hide-when-empty branch. `favorites-controller.svelte.ts`
   is getter-exposed, so template reads go through `fav.*` or lose reactivity.
 - **The favorite-rename `<input>` must not leak keystrokes to the panes**: four guards hold that line, and removing any
-  one reopens it. **Reorder is POINTER-based**, ❌ never HTML5 drag (the OS intercepts drag under `dragDropEnabled`).
+  one reopens it.
+- **❗ The switcher's list is the house `Menu`** (`$lib/ui/DETAILS.md` § Menu), which owns keys, the cursor, pointer
+  mode, the submenu, drag reorder, placement, and focus. `VolumeChooserMenu.svelte` hands it sections plus four
+  snippets. ❌ Never add a key handler, a highlight index, or a `getBoundingClientRect` back here.
 
 Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
 reorganizing, or advising.

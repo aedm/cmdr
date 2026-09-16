@@ -231,23 +231,8 @@ describe('FilePane keyboard handling', () => {
       expect(typeof (component as unknown as Record<string, unknown>).isVolumeChooserOpen).toBe('function')
     })
 
-    it('exports handleVolumeChooserKeyDown method', async () => {
-      const component = mount(FilePane, {
-        target: getTarget(),
-        props: {
-          initialPath: '/test',
-          volumeId: 'root',
-          volumePath: '/',
-          isFocused: true,
-          showHiddenFiles: true,
-          viewMode: 'brief',
-        },
-      })
-
-      await waitForUpdates(100)
-
-      expect(typeof (component as unknown as Record<string, unknown>).handleVolumeChooserKeyDown).toBe('function')
-    })
+    // ❗ No `handleVolumeChooserKeyDown` counterpart: the switcher's `Menu` catches keys on
+    // its own document capture listener, so the pane has no key handler to forward.
 
     it('isVolumeChooserOpen returns false initially', async () => {
       const component = mount(FilePane, {

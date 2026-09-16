@@ -335,17 +335,8 @@
         }
     }
 
-    /* In a dropdown row, push the badge to the far right (same as the SMB dot). */
-    :global(.volume-item) .drive-index-badge {
-        margin-left: auto;
-    }
-
-    /* If another right-aligned badge precedes us, just add a small gap. */
-    :global(.volume-item) :global(.smb-indicator) + .drive-index-badge,
-    :global(.volume-item) :global(.usb-speed-indicator) + .drive-index-badge,
-    :global(.volume-item) :global(.read-only-indicator) + .drive-index-badge {
-        margin-left: var(--spacing-sm);
-    }
+    /* In a switcher row the badge sits in the trailing cluster, which spaces it
+       (`VolumeChooserMenu.svelte` § `.row-trailing`); nothing to do here. */
 
     /* Closed-breadcrumb placement: a small left margin so it sits next to the
        SMB / USB badges instead of jamming against them. */
@@ -359,7 +350,7 @@
         left: 0;
         margin-top: var(--spacing-xs);
         min-width: 220px;
-        /* Same frosted glass as the breadcrumb popup. See `.volume-dropdown`. */
+        /* Same frosted glass as the breadcrumb popup and the house menu. */
         background: var(--color-bg-glass);
         -webkit-backdrop-filter: saturate(180%) blur(20px);
         backdrop-filter: saturate(180%) blur(20px);

@@ -7,7 +7,6 @@ function makePaneRef(overrides: Record<string, unknown> = {}) {
     isLoading: vi.fn(() => false),
     handleCancelLoading: vi.fn(),
     isVolumeChooserOpen: vi.fn(() => false),
-    handleVolumeChooserKeyDown: vi.fn(() => false),
     isRenaming: vi.fn(() => false),
     isJumpActive: vi.fn(() => false),
     handleJumpKeystroke: vi.fn(),
@@ -55,25 +54,23 @@ describe('createKeyDispatch', () => {
     expect(left.handleKeyDown).not.toHaveBeenCalled()
   })
 
-  it('an open volume chooser that consumes the key swallows it from the pane behind', () => {
-    const left = makePaneRef({
-      isVolumeChooserOpen: vi.fn(() => true),
-      handleVolumeChooserKeyDown: vi.fn(() => true),
-    })
+  // The switcher's own keys never reach here (its `Menu` catches them on a document capture
+  // listener). What this covers is everything the menu deliberately let through — the inline
+  // favorite-rename input's keystrokes — which must still not move the pane cursor behind it.
+  it('an open volume chooser swallows the key from the pane behind (panes stay inert)', () => {
+    const left = makePaneRef({ isVolumeChooserOpen: vi.fn(() => true) })
     const kd = setup({ left })
-    const e = keyEvent('ArrowDown')
 
-    kd.handleKeyDown(e)
+    kd.handleKeyDown(keyEvent('ArrowDown'))
 
     expect(left.handleKeyDown).not.toHaveBeenCalled()
   })
 
-  it('an open volume chooser that ignores the key STILL swallows it (panes stay inert)', () => {
-    const left = makePaneRef({
-      isVolumeChooserOpen: vi.fn(() => true),
-      handleVolumeChooserKeyDown: vi.fn(() => false),
-    })
-    const kd = setup({ left })
+  it('swallows for a chooser open on the OTHER pane too (⌥F2 opens one over an unfocused pane)', () => {
+    const left = makePaneRef()
+    const right = makePaneRef({ isVolumeChooserOpen: vi.fn(() => true) })
+    const kd = setup({ left, right })
+
     kd.handleKeyDown(keyEvent('ArrowDown'))
 
     expect(left.handleKeyDown).not.toHaveBeenCalled()

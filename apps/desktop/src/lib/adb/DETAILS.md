@@ -27,8 +27,9 @@ second field and answers only two things: whether the row opens, and what its to
 - `unavailable { offline }`: greyed, tooltipped to wake the screen or reseat the cable.
 - `unavailable { no_permissions }`: greyed, tooltipped that this Mac can't reach the phone over USB.
 
-The greying is `.volume-item.is-unavailable` plus `aria-disabled`, and `handleVolumeSelect` returns early on a row that
-doesn't open, so the keyboard path and the pointer path refuse together.
+A row that doesn't open is `disabled` to the switcher's `Menu` (`VolumeChooserMenu.svelte` builds it from
+`deviceRowState`), so the primitive greys it, marks it `aria-disabled`, skips it with the arrows, and never activates
+it: the keyboard path and the pointer path refuse together, with nothing to keep in sync.
 
 **Decision / a `waiting_for_authorization` row opens.** The row is visible at all because hiding it left the one moment
 a user needs feedback silent, and a row you can see but cannot open reproduces that silence one step later. Opening it

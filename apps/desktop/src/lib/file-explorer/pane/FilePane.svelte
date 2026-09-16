@@ -638,11 +638,6 @@
         volumeBreadcrumbRef?.open()
     }
 
-    // noinspection JSUnusedGlobalSymbols -- Used dynamically
-    export function handleVolumeChooserKeyDown(e: KeyboardEvent): boolean {
-        return volumeBreadcrumbRef?.handleKeyDown(e) ?? false
-    }
-
     export function getListingId(): string {
         return listingId
     }

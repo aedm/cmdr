@@ -180,14 +180,14 @@ test.describe('MTP device discovery', () => {
         })()`)
 
     // Wait for the dropdown to appear
-    await expect.poll(async () => tauriPage.isVisible('.volume-dropdown'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('[data-menu]'), { timeout: 5000 }).toBeTruthy()
 
     // Wait for "Mobile" category label to appear (MTP volumes load reactively)
     await expect
       .poll(
         async () =>
           tauriPage.evaluate<boolean>(`(function() {
-            var labels = document.querySelectorAll('.volume-dropdown .category-label');
+            var labels = document.querySelectorAll('[data-menu] [data-menu-heading]');
             for (var i = 0; i < labels.length; i++) {
                 if (labels[i].textContent.trim() === 'Mobile') return true;
             }
@@ -199,7 +199,7 @@ test.describe('MTP device discovery', () => {
 
     // Check that Internal Storage is listed
     const hasInternal = await tauriPage.evaluate<boolean>(`(function() {
-            var labels = document.querySelectorAll('.volume-dropdown .volume-label');
+            var labels = document.querySelectorAll('[data-menu] .volume-label');
             for (var i = 0; i < labels.length; i++) {
                 if (labels[i].textContent.trim() === ${JSON.stringify(INTERNAL_STORAGE)}) return true;
             }
@@ -209,7 +209,7 @@ test.describe('MTP device discovery', () => {
 
     // Check that SD Card is listed
     const hasSdCard = await tauriPage.evaluate<boolean>(`(function() {
-            var labels = document.querySelectorAll('.volume-dropdown .volume-label');
+            var labels = document.querySelectorAll('[data-menu] .volume-label');
             for (var i = 0; i < labels.length; i++) {
                 if (labels[i].textContent.trim() === ${JSON.stringify(SD_CARD)}) return true;
             }
@@ -287,14 +287,14 @@ test.describe('MTP navigation', () => {
             var breadcrumb = document.querySelector('.volume-breadcrumb .volume-name');
             if (breadcrumb) breadcrumb.click();
         })()`)
-    await expect.poll(async () => tauriPage.isVisible('.volume-dropdown'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('[data-menu]'), { timeout: 5000 }).toBeTruthy()
 
     // Poll for space info: MTP space data may load asynchronously after dropdown opens
     await expect
       .poll(
         async () =>
           tauriPage.evaluate<boolean>(`(function() {
-            var items = document.querySelectorAll('.volume-dropdown .volume-item');
+            var items = document.querySelectorAll('[data-menu] [data-menu-row]');
             for (var i = 0; i < items.length; i++) {
                 var label = items[i].querySelector('.volume-label');
                 if (label && label.textContent.trim() === ${JSON.stringify(INTERNAL_STORAGE)}) {

@@ -730,7 +730,7 @@ cancels with Rollback and then ends leaks a toast into the `afterEach`. Match th
 (`Cmdr had written`) rather than its count, which varies with how far the copy got.
 
 **A SOFT SHEET is not covered by either helper, and neither is the leak guard.** `dismissOverlay` walks a fixed list
-(`.ui-popover`, `.palette-overlay`, `.search-overlay`, `.modal-overlay`, `.volume-dropdown`) and the `afterEach` leak
+(`.ui-popover`, `.palette-overlay`, `.search-overlay`, `.modal-overlay`, `[data-menu]`) and the `afterEach` leak
 guard probes exactly the same five plus toasts. The onboarding wizard is a sheet: it matches none of them AND swallows
 Escape by design, so a spec that opens one and trusts `dismissOverlay` leaves it up — silently, past the guard. It then
 eats the keystrokes of every later spec on that shard: `dialog-inset.spec.ts` opening `onboarding/step-1-fda` in its
@@ -752,7 +752,7 @@ element fires its handler in the target phase AND bubbles to any window-level li
 kinds.
 
 **`dismissOverlay(tauriPage)`** (helpers.ts) does exactly that: finds the topmost open overlay in priority order
-(`.ui-popover` > `.palette-overlay` > `.search-overlay` > `.modal-overlay` > `.volume-dropdown`), dispatches synthetic
+(`.ui-popover` > `.palette-overlay` > `.search-overlay` > `.modal-overlay` > `[data-menu]`), dispatches synthetic
 Escape on it, then `expect.poll`s that it actually closed. Throws if no overlay is open (catches tests that forgot to
 wait for the dialog to appear, or that mistakenly call dismiss twice). `.search-overlay` and `.modal-overlay` land on
 the SAME element for the query dialogs (`QueryDialog` is a `ModalDialog` that adds `.search-overlay` as its stable hook

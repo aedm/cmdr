@@ -1,9 +1,13 @@
 /**
- * Behavioral tests for `VolumeBreadcrumb.svelte` focused on the favorite-rename
- * keyboard guard (Fix E): while a favorite is being renamed inline, the dropdown
- * must NOT consume arrow / Home / End / Enter keys, so the textbox keeps them and
- * the panes behind the dropdown stay inert. The cross-pane suppression itself
- * lives in `DualPaneExplorer.routeToVolumeChooser`; here we pin the leaf guard.
+ * Behavioral tests for the volume switcher: the chip (`VolumeBreadcrumb.svelte`) plus the
+ * list it opens (`VolumeChooserMenu.svelte`, the house `Menu`). They're the behavior
+ * contract the M2 port had to keep, so they mount the chip and drive it the way a person
+ * does — real keydowns, real clicks.
+ *
+ * One of them is the favorite-rename keyboard guard (Fix E): while a favorite is being
+ * renamed inline, the menu must NOT consume arrow / Home / End keys, so the textbox keeps
+ * them. The cross-pane suppression itself lives in `pane/key-dispatch.ts`; here we pin the
+ * leaf guard.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -132,8 +136,45 @@ interface BreadcrumbInstance {
   close: () => void
   toggle: () => void
   getIsOpen: () => boolean
-  handleKeyDown: (e: KeyboardEvent) => boolean
 }
+
+// ============================================================================
+// The switcher is the house `Menu`: it PORTALS to `document.body`, carries the documented
+// `data-*` hooks (`$lib/ui/DETAILS.md` § Menu), and catches keys on its own document capture
+// listener. So these look at the document rather than the mount target, select on hooks
+// rather than on classes, and press keys for real.
+// ============================================================================
+
+/** The open switcher's surface, or null when none is open. */
+function menuSurface(): HTMLElement | null {
+  return document.querySelector('[data-menu]')
+}
+
+/** The main list's rows. The submenu is its own surface, so its row never lands here. */
+function menuRows(): NodeListOf<HTMLElement> {
+  return document.querySelectorAll('[data-menu] [data-menu-row]')
+}
+
+function isHighlighted(row: Element | null | undefined): boolean {
+  return row?.hasAttribute('data-highlighted') ?? false
+}
+
+/**
+ * Press a key the way the app does. Returns true when the menu claimed it, which is the
+ * answer the switcher's own `handleKeyDown` gave before the primitive took the keyboard.
+ */
+function press(key: string, modifiers: KeyboardEventInit = {}): boolean {
+  return !document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...modifiers }))
+}
+
+// A switcher left open outlives its target div: it's portaled, and its key listener lives on
+// the document. Escape closes whichever ones are open before the next test mounts — twice,
+// because the first one only backs out of an open submenu.
+afterEach(() => {
+  press('Escape')
+  press('Escape')
+  document.body.innerHTML = ''
+})
 
 interface BreadcrumbProps {
   volumeId?: string
@@ -148,6 +189,9 @@ function mountBreadcrumb(props: BreadcrumbProps = {}): { instance: BreadcrumbIns
     target,
     props: { volumeId: 'root', currentPath: '/Users/test', ...props },
   }) as unknown as BreadcrumbInstance
+  // Settle the chip's `bind:this`: the menu hangs under that element, so `open()` called
+  // before the binding lands would have nothing to anchor to.
+  flushSync()
   return { instance, target }
 }
 
@@ -177,12 +221,12 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
     flushSync()
 
     // Highlight the first favorite (fav-1). Home jumps the virtual highlight to index 0.
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }))).toBe(true)
+    expect(press('Home')).toBe(true)
     await tick()
     flushSync()
 
     // Alt+ArrowDown moves fav-1 down one slot: ['2', '1', '3'] (bare ids).
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true }))).toBe(true)
+    expect(press('ArrowDown', { altKey: true })).toBe(true)
     await tick()
     flushSync()
 
@@ -196,19 +240,19 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
     await tick()
     flushSync()
 
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }))).toBe(true)
+    expect(press('Home')).toBe(true)
     await tick()
     flushSync()
 
     // First press: fav-1 (index 0) → index 1, order ['2', '1', '3'].
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true }))).toBe(true)
+    expect(press('ArrowDown', { altKey: true })).toBe(true)
     await tick()
     flushSync()
 
     // Second press immediately, BEFORE any `volumes-changed` refresh (the mock store never updates).
     // It must compute against the optimistic order, moving fav-1 from index 1 → 2: ['2', '3', '1'].
     // Without the local-first override it would re-read the stale store and wrongly emit ['2','1','3'].
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true }))).toBe(true)
+    expect(press('ArrowDown', { altKey: true })).toBe(true)
     await tick()
     flushSync()
 
@@ -222,12 +266,12 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
     await tick()
     flushSync()
 
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }))).toBe(true)
+    expect(press('Home')).toBe(true)
     await tick()
     flushSync()
 
     // Already at the top: Alt+ArrowUp is consumed but persists nothing.
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true }))).toBe(true)
+    expect(press('ArrowUp', { altKey: true })).toBe(true)
     await tick()
     flushSync()
     expect(reorderFavorites).not.toHaveBeenCalled()
@@ -240,11 +284,11 @@ describe('VolumeBreadcrumb favorite keyboard reorder (Alt+Up / Alt+Down)', () =>
     flushSync()
 
     // End jumps to the last item: the real volume (Macintosh HD), not a favorite.
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'End' }))).toBe(true)
+    expect(press('End')).toBe(true)
     await tick()
     flushSync()
 
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true }))
+    press('ArrowDown', { altKey: true })
     await tick()
     flushSync()
     expect(reorderFavorites).not.toHaveBeenCalled()
@@ -256,9 +300,9 @@ describe('VolumeBreadcrumb favorite-rename keyboard guard', () => {
     document.body.innerHTML = ''
   })
 
-  it('handleKeyDown returns false when the dropdown is closed', () => {
-    const { instance } = mountBreadcrumb()
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))).toBe(false)
+  it('claims no key while the dropdown is closed', () => {
+    mountBreadcrumb()
+    expect(press('ArrowDown')).toBe(false)
   })
 
   it('consumes ArrowDown when the dropdown is open and not renaming', async () => {
@@ -267,45 +311,45 @@ describe('VolumeBreadcrumb favorite-rename keyboard guard', () => {
     await tick()
     flushSync()
     expect(instance.getIsOpen()).toBe(true)
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))).toBe(true)
+    expect(press('ArrowDown')).toBe(true)
   })
 
   it('does NOT consume ArrowDown / Home / End while a favorite rename is active', async () => {
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
 
     // Start the inline rename the way the native row menu does: the backend emits
     // `volume-context-action` with `rename-favorite` for the right-clicked favorite.
-    const favRow = target.querySelector('.favorite-item') as HTMLElement
+    const favRow = menuRows()[0]
     expect(favRow).toBeTruthy()
     volumeContextActionHandler?.({ action: 'rename-favorite', volumeId: 'fav-1' })
     await tick()
     flushSync()
 
-    expect(target.querySelector('.favorite-rename-input')).toBeTruthy()
+    expect(document.querySelector('.favorite-rename-input')).toBeTruthy()
 
     // The guard: keys the dropdown would otherwise eat must fall through (false)
     // so the rename textbox keeps them.
     for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End']) {
-      expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key }))).toBe(false)
+      expect(press(key)).toBe(false)
     }
   })
 
   it('stops EVERY key (Space included) from bubbling out of the rename input to the pane', async () => {
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
 
-    const favRow = target.querySelector('.favorite-item') as HTMLElement
+    const favRow = menuRows()[0]
     expect(favRow).toBeTruthy()
     volumeContextActionHandler?.({ action: 'rename-favorite', volumeId: 'fav-1' })
     await tick()
     flushSync()
 
-    const input = target.querySelector('.favorite-rename-input') as HTMLInputElement
+    const input = document.querySelector('.favorite-rename-input') as HTMLInputElement
     expect(input).toBeTruthy()
 
     // A document-level listener stands in for the pane's Space-selection / type-to-jump
@@ -349,11 +393,10 @@ describe('VolumeBreadcrumb server rows', () => {
 
   async function openWith(rows: unknown[]) {
     stubs.volumes = rows
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
-    return target
   }
 
   beforeEach(() => {
@@ -364,8 +407,8 @@ describe('VolumeBreadcrumb server rows', () => {
   })
 
   it('gives a live place a Disconnect control, and clicking it drops the session', async () => {
-    const target = await openWith([serverRow({ connectionState: 'direct' })])
-    const button = target.querySelector('.volume-item .eject-button') as HTMLButtonElement
+    await openWith([serverRow({ connectionState: 'direct' })])
+    const button = document.querySelector('[data-menu-row] .eject-button') as HTMLButtonElement
     expect(button).toBeTruthy()
     expect(button.getAttribute('aria-label')).toBe('Disconnect Naspolya')
 
@@ -375,16 +418,16 @@ describe('VolumeBreadcrumb server rows', () => {
   })
 
   it('gives a dropped-but-registered place one too: there is still a session to close', async () => {
-    const target = await openWith([serverRow({ connectionState: 'disconnected' })])
-    const button = target.querySelector('.volume-item .eject-button') as HTMLButtonElement
+    await openWith([serverRow({ connectionState: 'disconnected' })])
+    const button = document.querySelector('[data-menu-row] .eject-button') as HTMLButtonElement
     expect(button.getAttribute('aria-label')).toBe('Disconnect Naspolya')
   })
 
   it('gives a saved place NO control: nothing is open to close', async () => {
-    const target = await openWith([serverRow({ connectionState: 'saved' })])
-    expect(target.querySelector('.volume-item .eject-button')).toBeNull()
+    await openWith([serverRow({ connectionState: 'saved' })])
+    expect(document.querySelector('[data-menu-row] .eject-button')).toBeNull()
     // ❗ And it reads as saved rather than as a failure: greyed, hollow dot.
-    expect(target.querySelector('.volume-item.is-saved-place')).toBeTruthy()
+    expect(document.querySelector('[data-menu-row] .is-saved-place')).toBeTruthy()
   })
 
   // The dot's WORDS are pinned in `connection-tooltips.test.ts` (a pure call, no
@@ -393,20 +436,20 @@ describe('VolumeBreadcrumb server rows', () => {
   it('paints one dot class per connection state', async () => {
     for (const state of ['direct', 'disconnected', 'needs_sign_in', 'needs_host_key_approval', 'saved'] as const) {
       document.body.innerHTML = ''
-      const target = await openWith([serverRow({ connectionState: state })])
-      expect(target.querySelector(`.volume-item .smb-indicator-${state}`), `no dot for ${state}`).toBeTruthy()
+      await openWith([serverRow({ connectionState: state })])
+      expect(document.querySelector(`[data-menu-row] .smb-indicator-${state}`), `no dot for ${state}`).toBeTruthy()
     }
   })
 
   it('shows the protocol in the filesystem slot, so a row says what it speaks', async () => {
-    const target = await openWith([serverRow({ connectionState: 'direct' })])
-    expect(target.querySelector('.volume-item .volume-fs')?.textContent).toBe('SFTP')
+    await openWith([serverRow({ connectionState: 'direct' })])
+    expect(document.querySelector('[data-menu-row] .volume-fs')?.textContent).toBe('SFTP')
   })
 
   it('opens a server menu on right-click, with the row read as the caller sees it', async () => {
-    const target = await openWith([serverRow({ connectionState: 'direct' })])
+    await openWith([serverRow({ connectionState: 'direct' })])
     // Row 0 is the hub ("Servers"); the place is the one after it.
-    const row = target.querySelectorAll('.volume-item')[1] as HTMLElement
+    const row = menuRows()[1]
     row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
     // One store read runs before the popup: let it settle. ❗ One, ❌ not two —
     // deciding whether a secret is stored would cost a Keychain read, and every
@@ -438,11 +481,10 @@ describe('VolumeBreadcrumb eject in progress', () => {
 
   async function openWith(rows: unknown[]) {
     stubs.volumes = rows
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
-    return target
   }
 
   beforeEach(() => {
@@ -459,8 +501,8 @@ describe('VolumeBreadcrumb eject in progress', () => {
 
   it('shows a drive whose eject is running as in progress, and a click starts nothing', async () => {
     stubs.ejecting = new Set([drive.id])
-    const target = await openWith([drive])
-    const button = target.querySelector('.volume-item .eject-button') as HTMLButtonElement
+    await openWith([drive])
+    const button = document.querySelector('[data-menu-row] .eject-button') as HTMLButtonElement
     expect(button.disabled).toBe(true)
     expect(button.getAttribute('aria-label')).toBe('Ejecting Backup…')
     expect(button.querySelector('.spinner')).toBeTruthy()
@@ -481,16 +523,16 @@ describe('VolumeBreadcrumb eject in progress', () => {
       deviceReadiness: { kind: 'ready' },
     }
     stubs.ejecting = new Set([phone.id])
-    const target = await openWith([phone])
-    const button = target.querySelector('.volume-item .eject-button') as HTMLButtonElement
+    await openWith([phone])
+    const button = document.querySelector('[data-menu-row] .eject-button') as HTMLButtonElement
     expect(button.disabled).toBe(true)
     expect(button.getAttribute('aria-label')).toBe('Disconnecting Pixel 7…')
     expect(button.querySelector('.spinner')).toBeTruthy()
   })
 
   it('keeps an idle drive pressable, with its eject glyph', async () => {
-    const target = await openWith([drive])
-    const button = target.querySelector('.volume-item .eject-button') as HTMLButtonElement
+    await openWith([drive])
+    const button = document.querySelector('[data-menu-row] .eject-button') as HTMLButtonElement
     expect(button.disabled).toBe(false)
     expect(button.getAttribute('aria-label')).toBe('Eject Backup')
     expect(button.querySelector('.spinner')).toBeNull()
@@ -516,11 +558,10 @@ describe('VolumeBreadcrumb phone rows', () => {
 
   async function openWith(rows: unknown[]) {
     stubs.volumes = rows
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
-    return target
   }
 
   beforeEach(() => {
@@ -533,8 +574,8 @@ describe('VolumeBreadcrumb phone rows', () => {
   // The ACTION is still the ordinary eject path (which for ADB answers
   // `DeviceDisconnect`); only the word changes.
   it('says Disconnect on a phone, and still runs the eject path', async () => {
-    const target = await openWith([phoneRow({ deviceReadiness: { kind: 'ready' } })])
-    const button = target.querySelector('.volume-item .eject-button') as HTMLButtonElement
+    await openWith([phoneRow({ deviceReadiness: { kind: 'ready' } })])
+    const button = document.querySelector('[data-menu-row] .eject-button') as HTMLButtonElement
     expect(button.getAttribute('aria-label')).toBe('Disconnect Pixel 7')
 
     button.click()
@@ -546,22 +587,24 @@ describe('VolumeBreadcrumb phone rows', () => {
   // is the point — it is what fails the day someone "tidies up" by disabling
   // every non-ready row.
   it('keeps a phone waiting for its Allow tap openable, and says what it waits for', async () => {
-    const target = await openWith([phoneRow({ deviceReadiness: { kind: 'waiting_for_authorization' } })])
-    const row = target.querySelector('.volume-item') as HTMLElement
-    expect(row.classList.contains('is-unavailable')).toBe(false)
+    await openWith([phoneRow({ deviceReadiness: { kind: 'waiting_for_authorization' } })])
+    const row = menuRows()[0]
+    expect(row.hasAttribute('data-disabled')).toBe(false)
     expect(row.getAttribute('aria-disabled')).toBeNull()
   })
 
   it('greys a phone the daemon lists but cannot use, and refuses to open it', async () => {
-    const target = await openWith([phoneRow({ deviceReadiness: { kind: 'unavailable', reason: 'offline' } })])
-    const row = target.querySelector('.volume-item') as HTMLElement
-    expect(row.classList.contains('is-unavailable')).toBe(true)
+    await openWith([phoneRow({ deviceReadiness: { kind: 'unavailable', reason: 'offline' } })])
+    const row = menuRows()[0]
+    // Greyed and unopenable is what `disabled` means to the menu: it paints the row down,
+    // says so to assistive tech, and never activates it.
+    expect(row.hasAttribute('data-disabled')).toBe(true)
     expect(row.getAttribute('aria-disabled')).toBe('true')
 
     // Clicking it leaves the dropdown where it was: there is nothing to open.
     row.click()
     await tick()
-    expect(target.querySelector('.volume-dropdown')).toBeTruthy()
+    expect(menuSurface()).toBeTruthy()
   })
 })
 
@@ -590,26 +633,22 @@ describe('VolumeBreadcrumb highlight on open', () => {
 
     // Three favorites lead the list, so the containing volume is row 3 — the case
     // that tells "the checked row" apart from "the first row".
-    const checked = target.querySelector('.volume-item[data-index="3"]')
-    expect(checked?.classList.contains('is-under-cursor')).toBe(true)
-    expect(checked?.classList.contains('is-focused-and-under-cursor')).toBe(true)
-    expect(
-      target.querySelector('.volume-item[data-index="0"]')?.classList.contains('is-focused-and-under-cursor'),
-    ).toBe(false)
+    const rows = menuRows()
+    expect(rows[3].hasAttribute('data-checked')).toBe(true)
+    expect(isHighlighted(rows[3])).toBe(true)
+    expect(isHighlighted(rows[0])).toBe(false)
   })
 
   it('falls back to row 0 when no row is the containing volume', async () => {
     // Favorites only: they never carry a checkmark, and the synthetic Servers row
     // isn't the pane's volume either, so nothing is checked.
-    const { target } = await openWithRows([
+    await openWithRows([
       { id: 'fav-1', name: 'Documents', path: '/Users/test/Documents', category: 'favorite', isEjectable: false },
       { id: 'fav-2', name: 'Downloads', path: '/Users/test/Downloads', category: 'favorite', isEjectable: false },
     ])
 
-    expect(target.querySelector('.volume-item.is-under-cursor')).toBeNull()
-    expect(
-      target.querySelector('.volume-item[data-index="0"]')?.classList.contains('is-focused-and-under-cursor'),
-    ).toBe(true)
+    expect(document.querySelector('[data-menu-row][data-checked]')).toBeNull()
+    expect(isHighlighted(menuRows()[0])).toBe(true)
   })
 })
 
@@ -625,39 +664,39 @@ describe('VolumeBreadcrumb keyboard vs pointer mode', () => {
   })
 
   it('suppresses hover highlighting once the keyboard has the cursor', async () => {
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
 
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }))
+    press('Home')
     await tick()
     flushSync()
 
-    const dropdown = target.querySelector('.volume-dropdown')
+    const dropdown = menuSurface()
     expect(dropdown?.classList.contains('keyboard-mode')).toBe(true)
 
     // Hovering another row must not move the cursor off row 0 while keyboard mode holds.
-    const rows = target.querySelectorAll('.volume-item')
+    const rows = menuRows()
     rows[2].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
     await tick()
     flushSync()
-    expect(rows[0].classList.contains('is-focused-and-under-cursor')).toBe(true)
-    expect(rows[2].classList.contains('is-focused-and-under-cursor')).toBe(false)
+    expect(isHighlighted(rows[0])).toBe(true)
+    expect(isHighlighted(rows[2])).toBe(false)
   })
 
   it('a pointer move over 5 px leaves keyboard mode and takes the highlight to the row under the cursor', async () => {
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
 
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }))
+    press('Home')
     await tick()
     flushSync()
 
-    const dropdown = target.querySelector('.volume-dropdown')
-    const rows = target.querySelectorAll('.volume-item')
+    const dropdown = menuSurface()
+    const rows = menuRows()
 
     // The first move only records where the pointer was: a mouse sitting still under
     // a moving list must not steal the cursor.
@@ -665,15 +704,15 @@ describe('VolumeBreadcrumb keyboard vs pointer mode', () => {
     await tick()
     flushSync()
     expect(dropdown?.classList.contains('keyboard-mode')).toBe(true)
-    expect(rows[0].classList.contains('is-focused-and-under-cursor')).toBe(true)
+    expect(isHighlighted(rows[0])).toBe(true)
 
     // A move past the 5 px threshold is a real gesture: the pointer takes over.
     rows[2].dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 100, clientY: 120 }))
     await tick()
     flushSync()
     expect(dropdown?.classList.contains('keyboard-mode')).toBe(false)
-    expect(rows[2].classList.contains('is-focused-and-under-cursor')).toBe(true)
-    expect(rows[0].classList.contains('is-focused-and-under-cursor')).toBe(false)
+    expect(isHighlighted(rows[2])).toBe(true)
+    expect(isHighlighted(rows[0])).toBe(false)
   })
 })
 
@@ -702,76 +741,76 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
   })
 
   it('opens the submenu when the pointer rests on the row', async () => {
-    const { target } = await openWithRows([share])
-    expect(target.querySelector('.connection-submenu')).toBeNull()
+    await openWithRows([share])
+    expect(document.querySelector('[data-menu-submenu]')).toBeNull()
 
-    target.querySelectorAll('.volume-item')[SHARE_ROW].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    menuRows()[SHARE_ROW].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
     await tick()
     flushSync()
-    expect(target.querySelector('.connection-submenu')).toBeTruthy()
+    expect(document.querySelector('[data-menu-submenu]')).toBeTruthy()
   })
 
   it('ArrowRight opens it at the highlight, and ArrowLeft closes it again', async () => {
-    const { instance, target } = await openWithRows([share])
+    await openWithRows([share])
 
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    press('ArrowDown')
     await tick()
     flushSync()
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowRight' }))).toBe(true)
+    expect(press('ArrowRight')).toBe(true)
     await tick()
     flushSync()
-    expect(target.querySelector('.connection-submenu')).toBeTruthy()
+    expect(document.querySelector('[data-menu-submenu]')).toBeTruthy()
 
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))).toBe(true)
+    expect(press('ArrowLeft')).toBe(true)
     await tick()
     flushSync()
-    expect(target.querySelector('.connection-submenu')).toBeNull()
+    expect(document.querySelector('[data-menu-submenu]')).toBeNull()
   })
 
   // Escape belongs to the submenu while the submenu is up: it backs out one level
   // rather than dropping the whole switcher.
   it('Escape closes the submenu and leaves the switcher open', async () => {
-    const { instance, target } = await openWithRows([share])
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    const { instance } = await openWithRows([share])
+    press('ArrowDown')
     await tick()
     flushSync()
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    press('ArrowRight')
     await tick()
     flushSync()
 
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'Escape' }))).toBe(true)
+    expect(press('Escape')).toBe(true)
     await tick()
     flushSync()
-    expect(target.querySelector('.connection-submenu')).toBeNull()
-    expect(target.querySelector('.volume-dropdown')).toBeTruthy()
+    expect(document.querySelector('[data-menu-submenu]')).toBeNull()
+    expect(menuSurface()).toBeTruthy()
     expect(instance.getIsOpen()).toBe(true)
   })
 
   it('suppresses the parent row highlight while the submenu is up (one cursor at a time)', async () => {
-    const { instance, target } = await openWithRows([share])
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    await openWithRows([share])
+    press('ArrowDown')
     await tick()
     flushSync()
-    const rows = target.querySelectorAll('.volume-item')
-    expect(rows[SHARE_ROW].classList.contains('is-focused-and-under-cursor')).toBe(true)
+    const rows = menuRows()
+    expect(isHighlighted(rows[SHARE_ROW])).toBe(true)
 
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    press('ArrowRight')
     await tick()
     flushSync()
-    expect(target.querySelector('.connection-submenu-item.is-highlighted')).toBeTruthy()
-    expect(rows[SHARE_ROW].classList.contains('is-focused-and-under-cursor')).toBe(false)
+    expect(document.querySelector('[data-menu-submenu] [data-menu-row][data-highlighted]')).toBeTruthy()
+    expect(isHighlighted(rows[SHARE_ROW])).toBe(false)
   })
 
   it('Enter runs "Connect directly" for the row the submenu belongs to', async () => {
-    const { instance } = await openWithRows([share])
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    await openWithRows([share])
+    press('ArrowDown')
     await tick()
     flushSync()
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    press('ArrowRight')
     await tick()
     flushSync()
 
-    expect(instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))).toBe(true)
+    expect(press('Enter')).toBe(true)
     await tick()
     flushSync()
     // The share's NAME rides along, read while the row is still listed: it's what
@@ -803,9 +842,9 @@ describe('VolumeBreadcrumb dropdown placement', () => {
     // `no-unnecessary-type-assertion` fixer strips the cast, and `Element.style`
     // then can't resolve (`docs/testing.md` § "Merging test files").
     await vi.waitFor(() => {
-      expect(target.querySelector<HTMLElement>('.volume-dropdown')?.style.top).toBeTruthy()
+      expect(menuSurface()?.style.top).toBeTruthy()
     })
-    const dropdown = target.querySelector<HTMLElement>('.volume-dropdown')
+    const dropdown = menuSurface()
 
     expect(dropdown?.style.top).toBe('54px') // the anchor's bottom, plus 4px of air
     expect(dropdown?.style.left).toBe('12px') // flush with the anchor's left edge
@@ -813,16 +852,16 @@ describe('VolumeBreadcrumb dropdown placement', () => {
   })
 
   it('scrolls the row the keyboard just landed on into view', async () => {
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
 
-    const rows = target.querySelectorAll('.volume-item')
+    const rows = menuRows()
     const scrollIntoView = vi.fn()
-    ;(rows[1] as HTMLElement).scrollIntoView = scrollIntoView
+    ;(rows[1]).scrollIntoView = scrollIntoView
 
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    press('ArrowDown')
     await vi.waitFor(() => {
       expect(scrollIntoView).toHaveBeenCalled()
     })
@@ -859,9 +898,9 @@ describe('VolumeBreadcrumb row controls do not activate their row', () => {
 
   it('the eject button ejects, without navigating the pane or closing the switcher', async () => {
     const onVolumeChange = vi.fn()
-    const { target } = await openWithRows([drive], { onVolumeChange })
+    await openWithRows([drive], { onVolumeChange })
 
-    const button = target.querySelector('.volume-item .eject-button') as HTMLButtonElement
+    const button = document.querySelector('[data-menu-row] .eject-button') as HTMLButtonElement
     button.click()
     await tick()
     flushSync()
@@ -869,12 +908,12 @@ describe('VolumeBreadcrumb row controls do not activate their row', () => {
     expect(ejectVolume).toHaveBeenCalledWith('volumes-backup')
     expect(onVolumeChange).not.toHaveBeenCalled()
     // Still open, so several drives can be ejected in a row.
-    expect(target.querySelector('.volume-dropdown')).toBeTruthy()
+    expect(menuSurface()).toBeTruthy()
   })
 
   it("a server row's Disconnect drops the session, without navigating the pane", async () => {
     const onVolumeChange = vi.fn()
-    const { target } = await openWithRows(
+    await openWithRows(
       [
         {
           id: 'sftp-nas-local-22-ada',
@@ -889,14 +928,14 @@ describe('VolumeBreadcrumb row controls do not activate their row', () => {
       { onVolumeChange },
     )
 
-    const button = target.querySelector('.volume-item .eject-button') as HTMLButtonElement
+    const button = document.querySelector('[data-menu-row] .eject-button') as HTMLButtonElement
     button.click()
     await tick()
     flushSync()
 
     expect(disconnectPlace).toHaveBeenCalledWith('sftp-nas-local-22-ada')
     expect(onVolumeChange).not.toHaveBeenCalled()
-    expect(target.querySelector('.volume-dropdown')).toBeTruthy()
+    expect(menuSurface()).toBeTruthy()
   })
 
   it('the drive-index badge opens its own menu, without navigating the pane', async () => {
@@ -914,19 +953,19 @@ describe('VolumeBreadcrumb row controls do not activate their row', () => {
       liveWatch: true,
     }
     const onVolumeChange = vi.fn()
-    const { target } = await openWithRows([drive], { onVolumeChange })
+    await openWithRows([drive], { onVolumeChange })
 
     // The status fetch is async, so the badge arrives a beat after the row.
     await vi.waitFor(() => {
-      expect(target.querySelector('.volume-item .drive-index-badge')).not.toBeNull()
+      expect(document.querySelector('[data-menu-row] .drive-index-badge')).not.toBeNull()
     })
-    target.querySelector<HTMLButtonElement>('.volume-item .drive-index-badge')?.click()
+    document.querySelector<HTMLButtonElement>('[data-menu-row] .drive-index-badge')?.click()
     await tick()
     flushSync()
 
-    expect(target.querySelector('.drive-index-menu')).toBeTruthy()
+    expect(document.querySelector('.drive-index-menu')).toBeTruthy()
     expect(onVolumeChange).not.toHaveBeenCalled()
-    expect(target.querySelector('.volume-dropdown')).toBeTruthy()
+    expect(menuSurface()).toBeTruthy()
   })
 })
 
@@ -943,17 +982,17 @@ describe('VolumeBreadcrumb row context menu targeting', () => {
   })
 
   it('acts on the right-clicked row, not on wherever the keyboard cursor sits', async () => {
-    const { instance, target } = mountBreadcrumb()
+    const { instance } = mountBreadcrumb()
     instance.open()
     await tick()
     flushSync()
 
     // Park the cursor at the far end of the list.
-    instance.handleKeyDown(new KeyboardEvent('keydown', { key: 'End' }))
+    press('End')
     await tick()
     flushSync()
-    const rows = target.querySelectorAll('.volume-item')
-    expect(rows[rows.length - 1].classList.contains('is-focused-and-under-cursor')).toBe(true)
+    const rows = menuRows()
+    expect(isHighlighted(rows[rows.length - 1])).toBe(true)
 
     // Right-click the FIRST favorite: the menu is built from that row's own facts.
     rows[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))

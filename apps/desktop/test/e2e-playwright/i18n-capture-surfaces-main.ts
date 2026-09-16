@@ -137,7 +137,7 @@ export async function captureMainExplorerSurfaces(
       if (!name) throw new Error('no volume breadcrumb in the focused pane');
       name.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     })()`)
-    await main.waitForSelector('.volume-dropdown .category-label', 5000)
+    await main.waitForSelector('[data-menu] [data-menu-heading]', 5000)
     return { page: main }
   })
   // Escape closes the dropdown; the poll keeps a slow close from bleeding into the
@@ -146,7 +146,7 @@ export async function captureMainExplorerSurfaces(
     .evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
     .catch(() => {})
   await expect
-    .poll(async () => main.evaluate<number>(`document.querySelectorAll('.volume-dropdown').length`), { timeout: 3000 })
+    .poll(async () => main.evaluate<number>(`document.querySelectorAll('[data-menu]').length`), { timeout: 3000 })
     .toBe(0)
     .catch(() => {})
   await captureCall(main, 'disable').catch(() => {})

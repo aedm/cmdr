@@ -1,97 +1,39 @@
 <script lang="ts">
-    import { onMount, onDestroy, tick, untrack } from 'svelte'
+    /**
+     * The volume chip at the head of the path bar: what the pane's volume is, the badges that
+     * say how it's doing, and the control that takes it away. Clicking it opens the switcher,
+     * which is `VolumeChooserMenu.svelte` (the house `Menu`, portaled).
+     *
+     * Presentational: it reads the volume list from the shared `volume-store.svelte.ts` and
+     * fetches nothing of its own except the containing volume behind the checkmark.
+     */
+    import { onMount, onDestroy } from 'svelte'
     import { dependOn } from '$lib/utils/reactivity'
-    import {
-        disableDriveIndex,
-        ejectVolume,
-        enableDriveIndex,
-        forgetDriveIndex,
-        mediaIndexVolumeState,
-        onVolumeContextAction,
-        rescanDriveIndex,
-        resolvePathVolume,
-        showVolumeRowContextMenu,
-        type MediaIndexVolumeState,
-    } from '$lib/tauri-commands'
-    import { getEnrichingVolumes } from '$lib/indexing/media-enrich-state.svelte'
-    import { SvelteMap } from 'svelte/reactivity'
-    import type { UnlistenFn } from '@tauri-apps/api/event'
-    import { connectDirectly } from '../network/direct-connect'
-    import { addToast } from '$lib/ui/toast'
-    import { getUsageBar, formatDiskSpaceShort } from '../disk-space-utils'
-    import { getUseAppIconsForDocuments } from '$lib/settings/reactive-settings.svelte'
-    import { formatByteSize } from '$lib/units'
-    import { tooltip } from '$lib/tooltip/tooltip'
-    import { getCachedIcon, iconCacheVersion, prefetchIcons } from '$lib/icon-cache'
-    import { isRestricted } from '$lib/stores/restricted-paths-store.svelte'
-    import { isMacOS } from '$lib/shortcuts/key-capture'
-    import Icon from '$lib/ui/Icon.svelte'
-    import StatusGlyph from '$lib/ui/StatusGlyph.svelte'
-    import Spinner from '$lib/ui/Spinner.svelte'
-    import { describeUsbSpeed, type VolumeInfo } from '../types'
-    import type { VolumeChangePayload } from '../pane/types'
-    import { filesystemLabel } from './filesystem-label'
-    import { isVolumeEjectable } from './eject-predicate'
-    import { detachControl } from './detach-control'
-    import { showsDisconnect } from './connection-state'
-    import { disconnectServerPlace, isServerPlaceRow, openServerRowMenu } from './server-row-actions'
-    import { wordEjectRefusal } from './eject-error-messages'
-    import { buildFavoriteTooltip } from './favorite-tooltip'
-    import { pathForPickedVolume } from './picked-volume-path'
-    import { tString } from '$lib/intl/messages.svelte'
-    const favoriteTooltip = (volume: VolumeInfo): string => buildFavoriteTooltip(volume.path, isMacOS())
-
-    /** "USB 3.2 Gen 1 (Max. 625 MB/s)" - shared between the chip tooltip and the dropdown subline. */
-    function usbSpeedDisplay(volume: VolumeInfo | undefined): string {
-        if (!volume?.usbSpeed) return ''
-        const { label, maxMBps } = describeUsbSpeed(volume.usbSpeed)
-        const mbps = maxMBps >= 10 ? String(Math.round(maxMBps)) : maxMBps.toFixed(1)
-        return tString('fileExplorer.navigation.usbSpeed', { label, mbps })
-    }
-
-    import { restrictedFolderTooltip } from '$lib/system-strings.svelte'
-    const RESTRICTED_FOLDER_TOOLTIP = $derived(restrictedFolderTooltip())
-    /* Short, because a screen reader reads it on every restricted volume; the instruction
-       above is the tooltip the whole volume row carries. */
-    const RESTRICTED_FOLDER_LABEL = $derived(tString('fileExplorer.restrictedFolder.label'))
-    import {
-        getVolumes,
-        getVolumesTimedOut,
-        isVolumesRefreshing,
-        isVolumeRetryFailed,
-        requestVolumeRefresh,
-    } from '$lib/stores/volume-store.svelte'
+    import { resolvePathVolume } from '$lib/tauri-commands'
+    import { getVolumes } from '$lib/stores/volume-store.svelte'
     import { isVolumeBusy, isVolumeEjecting } from '$lib/stores/volume-busy-store.svelte'
-
-    /** A server row's Disconnect control, disabled while a transfer touches the volume. */
-    const DISCONNECT_BUSY_TOOLTIP = $derived(tString('fileExplorer.navigation.disconnectBusyTooltip'))
-    import { groupByCategory, getIconForVolume } from './volume-grouping'
-    import { deviceVolumeLabel } from '$lib/adb/adb-volume-label'
-    import { deviceRowState } from '$lib/adb/device-readiness'
-    import { createVolumeSpaceManager } from './volume-space-manager.svelte'
-    import { createDriveIndexManager, isDriveRow } from './drive-index-manager.svelte'
+    import { isRestricted } from '$lib/stores/restricted-paths-store.svelte'
+    import { getUseAppIconsForDocuments } from '$lib/settings/reactive-settings.svelte'
+    import { getCachedIcon, iconCacheVersion, prefetchIcons } from '$lib/icon-cache'
+    import { tooltip } from '$lib/tooltip/tooltip'
+    import { tString } from '$lib/intl/messages.svelte'
+    import Icon from '$lib/ui/Icon.svelte'
+    import type { VolumeChangePayload, VolumeBreadcrumbAPI } from '../pane/types'
+    import ConnectionDot from './ConnectionDot.svelte'
+    import DetachButton from './DetachButton.svelte'
     import DriveIndexBadge from './DriveIndexBadge.svelte'
     import ImageIndexDriveBadge from './ImageIndexDriveBadge.svelte'
-    import {
-        driveIndexActionFeedback,
-        driveIndexRefusalMessageKey,
-        type DriveIndexMenuAction,
-    } from './drive-index-status'
-    import type { SmbIndexGateReason, VolumeContextActionKind } from '$lib/ipc/bindings'
-    import { maybePromptFirstConnect } from '$lib/indexing/first-connect-trigger'
-    import { silenceDrive } from '$lib/indexing/drive-index-prefs'
-    import { setSetting } from '$lib/settings'
-    import { createFavoritesController } from './favorites-controller.svelte'
-    import { reportFavoriteOpened } from './favorites-analytics'
-    import {
-        createBreadcrumbPopupController,
-        createKeyboardModeTracker,
-        createSubmenuController,
-        getConnectionTooltip,
-        handleDropdownKey,
-        handleSubmenuKey,
-        shouldShowCheckmark,
-    } from './volume-breadcrumb-handlers.svelte'
+    import UsbSpeedDot from './UsbSpeedDot.svelte'
+    import VolumeChooserMenu from './VolumeChooserMenu.svelte'
+    import { connectDirectlyToRow } from './connect-directly-row'
+    import { detachControl } from './detach-control'
+    import { detachVolume } from './detach-volume'
+    import { createDriveBadges } from './drive-badges.svelte'
+    import { isDriveRow } from './drive-index-manager.svelte'
+    import { isVolumeEjectable } from './eject-predicate'
+    import { filesystemLabel } from './filesystem-label'
+    import { getIconForVolume } from './volume-grouping'
+    import { createBreadcrumbPopupController } from './volume-breadcrumb-handlers.svelte'
 
     interface Props {
         volumeId: string
@@ -101,73 +43,24 @@
 
     const { volumeId, currentPath, onVolumeChange }: Props = $props()
 
-    // Volumes come from the shared store (pushed by backend)
     const volumes = $derived(getVolumes())
-    const volumesTimedOut = $derived(getVolumesTimedOut())
-    const volumesRefreshing = $derived(isVolumesRefreshing())
-    const volumeRetryFailed = $derived(isVolumeRetryFailed())
 
-    let isOpen = $state(false)
-    let highlightedIndex = $state(-1)
-    let dropdownRef: HTMLDivElement | undefined = $state()
-    // Keyboard mode: when true, CSS :hover is suppressed to avoid double-highlight
-    const keyboardMode = createKeyboardModeTracker()
+    let chipEl: HTMLSpanElement | undefined = $state()
+    // The menu's four commands are the chip's own, which is why this forwards rather than
+    // wraps: `VolumeBreadcrumbAPI` describes both ends.
+    let chooser: VolumeBreadcrumbAPI | undefined = $state()
 
-    // The ID of the actual volume that contains the current path
-    // This is used to show the checkmark on the correct volume, not on favorites
+    // The ID of the actual volume that contains the current path. It's what the switcher's
+    // checkmark tracks, ❌ not the `volumeId` prop (which is virtual for a favorite).
     let containingVolumeId = $state<string | null>(null)
 
-    // Submenu state for "Connect directly" option on os_mount volumes
-    const submenu = createSubmenuController()
-    let submenuRef: HTMLDivElement | undefined = $state()
-
-    // Breadcrumb inline popup state (for yellow indicator in closed breadcrumb)
+    // Breadcrumb inline popup state (for the yellow os_mount indicator).
     const breadcrumbPopup = createBreadcrumbPopupController()
     let breadcrumbPopupRef: HTMLSpanElement | undefined = $state()
 
-    const spaceManager = createVolumeSpaceManager()
-    const {
-        volumeSpaceMap,
-        spaceTimedOutSet,
-        spaceRetryingSet,
-        spaceRetryFailedSet,
-        spaceRetryAttemptedSet,
-        spaceAutoRetryingSet,
-    } = spaceManager
-
-    // Per-drive index freshness status, kept live via the indexing events.
-    const driveIndex = createDriveIndexManager()
-    const driveIndexStatusMap = driveIndex.statusMap
-
-    // Per-drive IMAGE-index state, feeding the second (image-search) dot next to each
-    // filesystem `DriveIndexBadge`. Fetched lazily (active drive always, dropdown rows on
-    // open) and refreshed on that volume's enrich events — bounded to the handful of shown
-    // drives, so no poll. The `ImageIndexDriveBadge` hides itself on drives with no images.
-    const imageIndexStateMap = new SvelteMap<string, MediaIndexVolumeState>()
-    async function fetchImageIndexState(vid: string) {
-        try {
-            imageIndexStateMap.set(vid, await mediaIndexVolumeState(vid))
-        } catch {
-            // Media index not ready / unavailable: leave the dot hidden until a later fetch.
-        }
-    }
-
-    // Favorites interaction layer (rename, pointer-drag + keyboard reorder, remove, optimistic order).
-    // Instantiated at top level so its reconciliation `$effect` registers during component init.
-    // `effectiveVolumes` / `favorites` below read `fav.optimisticFavoriteIds`, so they re-derive on a
-    // local-first reorder before the backend round-trip lands.
-    let renameInputRef: HTMLInputElement | undefined = $state()
-    const fav = createFavoritesController({
-        getFavorites: () => favorites,
-        getVolumes: () => volumes,
-        getDropdownRef: () => dropdownRef,
-        getRenameInputRef: () => renameInputRef,
-        navigate: (volume) => { void handleVolumeSelect(volume) },
-    })
-
-    // Current volume info derived from volumes list (the actual containing volume)
-    // Special case: 'network' is a virtual volume, not from the backend
-    // For MTP volumes, look up by volumeId directly; for filesystem volumes, use containingVolumeId
+    // Current volume info derived from the volume list (the actual containing volume).
+    // Special case: 'network' is a virtual volume, not from the backend. For MTP volumes,
+    // look up by `volumeId` directly; for filesystem volumes, use `containingVolumeId`.
     const currentVolume = $derived(
         volumeId === 'network'
             ? { id: 'network', name: tString('fileExplorer.navigation.networkVolume'), path: 'smb://', category: 'network' as const, isEjectable: false }
@@ -210,500 +103,36 @@
         return getCachedIcon('dir')
     })
 
-    // `volumes` with favorites reordered per the optimistic override (each favorite SLOT keeps its
-    // position; only which favorite fills it changes). Everything below derives from this, so an
-    // optimistic reorder shows without waiting for the backend round-trip. The override itself lives
-    // in `fav` (the favorites controller); a local-first reorder there re-derives this synchronously.
-    const effectiveVolumes = $derived.by(() => {
-        const order = fav.optimisticFavoriteIds
-        if (!order) return volumes
-        const rank = new Map(order.map((id, i) => [id, i]))
-        const orderedFavs = volumes
-            .filter((v) => v.category === 'favorite')
-            .slice()
-            .sort((a, b) => (rank.get(a.id) ?? Number.POSITIVE_INFINITY) - (rank.get(b.id) ?? Number.POSITIVE_INFINITY))
-        let fi = 0
-        return volumes.map((v) => (v.category === 'favorite' ? orderedFavs[fi++] : v))
+    // The two index dots, in both placements: this chip's (the active drive) and the
+    // switcher's rows. One instance, so the fetches and event subscriptions happen once.
+    const badges = createDriveBadges({
+        getVolumes: () => volumes,
+        getActiveVolume: () => currentVolume,
     })
-
-    // Group volumes by category for display.
-    const groupedVolumes = $derived(groupByCategory(effectiveVolumes))
-
-    // Flat list of all volumes for keyboard navigation
-    const allVolumes = $derived(groupedVolumes.flatMap((g) => g.items))
-
-    // When dropdown opens, initialize highlight to current volume and fit to viewport.
-    $effect(() => {
-        if (isOpen) {
-            // Init ONCE on open. Read the volume list untracked: otherwise a later `volumes-changed`
-            // refresh (for example right after a favorite reorder) re-runs this effect and resets the
-            // highlight to the current volume, stealing it from the just-moved favorite.
-            untrack(() => {
-                const currentIdx = allVolumes.findIndex((v) => shouldShowCheckmark(v, containingVolumeId))
-                highlightedIndex = currentIdx >= 0 ? currentIdx : 0
-                void fitDropdownToViewport()
-            })
-        } else {
-            highlightedIndex = -1
-            keyboardMode.reset()
-        }
-    })
-
-    // Clear cached space info when the volume list changes (mount/unmount/MTP connect)
-    // and re-fetch if the dropdown is open
-    let prevVolumeIds = ''
-    $effect(() => {
-        const ids = volumes.map((v) => v.id).join(',')
-        if (prevVolumeIds && ids !== prevVolumeIds) {
-            spaceManager.clearAll()
-            if (isOpen) {
-                void spaceManager.fetchVolumeSpaces(volumes)
-            }
-        }
-        prevVolumeIds = ids
-    })
-
-    async function fitDropdownToViewport() {
-        await tick()
-        const dropdown = dropdownRef?.querySelector('.volume-dropdown') as HTMLElement | null
-        const anchor = dropdownRef?.querySelector('.volume-name, .breadcrumb-options-trigger') as HTMLElement | null
-        if (dropdown && anchor) {
-            const rect = anchor.getBoundingClientRect()
-            const top = rect.bottom + 4 // spacing below the breadcrumb
-            dropdown.style.top = `${String(top)}px`
-            dropdown.style.left = `${String(rect.left)}px`
-            dropdown.style.maxHeight = `${String(window.innerHeight - top - 8)}px`
-        }
-    }
-
-    // Re-fit dropdown on window resize so it adapts to the available space
-    function handleResize() {
-        if (isOpen) {
-            void fitDropdownToViewport()
-        }
-    }
 
     async function updateContainingVolume(path: string) {
         const { volume: containing } = await resolvePathVolume(path)
         containingVolumeId = containing?.id ?? volumeId
     }
 
-    async function handleVolumeSelect(volume: VolumeInfo) {
-        // ❗ A device the daemon lists but can't use (a sleeping phone, a cable
-        // this Mac can't claim) has nothing to open. Its row is greyed and its
-        // reason is its tooltip; activating it does nothing rather than sending
-        // the pane somewhere that answers nothing. ❌ A `waiting_for_authorization`
-        // row is NOT one of these: opening it is what ends the silence.
-        if (!deviceRowState(volume.deviceReadiness).openable) return
-        isOpen = false
-
-        // Check if this is a favorite (shortcut) or an actual volume
-        if (volume.category === 'favorite') {
-            reportFavoriteOpened('breadcrumb')
-            // For favorites, find the actual containing volume
-            const { volume: containingVolume } = await resolvePathVolume(volume.path)
-            if (containingVolume) {
-                // Navigate to the favorite's path, but set the volume to the containing volume
-                onVolumeChange?.({
-                    volumeId: containingVolume.id,
-                    volumePath: containingVolume.path,
-                    targetPath: volume.path,
-                })
-            } else {
-                // Fallback: use root volume
-                onVolumeChange?.({ volumeId: 'root', volumePath: '/', targetPath: volume.path })
-            }
-        } else {
-            // A saved server place opens on its start folder; anything else at its root
-            onVolumeChange?.({ volumeId: volume.id, volumePath: volume.path, targetPath: pathForPickedVolume(volume) })
-            // First-connect indexing prompt (D6): self-gates on settings,
-            // per-drive silence, and whether the drive is already indexed.
-            if (isDriveRow(volume)) {
-                void maybePromptFirstConnect(volume.id, volume.name, {
-                    onEnable: (vid) => { void handleDriveIndexAction(vid, 'enable') },
-                    onSilenceDrive: (vid) => { silenceDrive(vid) },
-                    onSilenceAll: () => { setSetting('indexing.askForEachDrive', false) },
-                })
-            }
-        }
-    }
-
-    function setOpen(value: boolean) {
-        isOpen = value
-        if (value) {
-            void spaceManager.fetchVolumeSpaces(volumes)
-            void driveIndex.fetchStatuses(volumes)
-        }
-    }
-
-    function handleToggle() {
-        setOpen(!isOpen)
-    }
-
     /** Exported for keyboard shortcut access from parent. */
     export function toggle() {
-        setOpen(!isOpen)
+        chooser?.toggle()
     }
     export function getIsOpen(): boolean {
-        return isOpen
+        return chooser?.getIsOpen() ?? false
     }
     export function close() {
-        isOpen = false
+        chooser?.close()
     }
     export function open() {
-        setOpen(true)
+        chooser?.open()
     }
 
-    /**
-     * Exactly ⌥↑ / ⌥↓, no extra modifiers. The volume chooser isn't in the command
-     * registry, so this one matches locally, but it still pins the WHOLE combo:
-     * ⌥⌘↑ and ⇧⌥↑ mean other things and must not reorder a favorite too.
-     */
-    function isFavoriteReorderKey(e: KeyboardEvent): boolean {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || !e.altKey) return false
-        return e.key === 'ArrowUp' || e.key === 'ArrowDown'
-    }
-
-    // Export keyboard handler for parent components to call
-    export function handleKeyDown(e: KeyboardEvent): boolean {
-        if (!isOpen) return false
-
-        // While renaming a favorite, the inline `<input>` owns every key: arrows,
-        // Home/End, etc. move the text cursor, not the dropdown highlight. Bail so
-        // the dropdown's list navigation doesn't steal them from the textbox. Enter
-        // / Escape never reach here (the input's own handler stops propagation), so
-        // commit / cancel still work.
-        if (fav.renamingFavoriteId !== null) return false
-
-        // Keyboard reorder of the highlighted favorite (⌥↑ / ⌥↓). The rows aren't
-        // DOM-focused (the dropdown navigates by a virtual `highlightedIndex`), so
-        // this must run here, BEFORE `handleDropdownKey` consumes the bare arrows.
-        // Exactly ⌥, no extras: ⌥⌘↑ and ⇧⌥↑ are other combos and must not reorder a
-        // favorite on their way elsewhere.
-        if (isFavoriteReorderKey(e)) {
-            const highlighted =
-                highlightedIndex >= 0 && highlightedIndex < allVolumes.length
-                    ? allVolumes[highlightedIndex]
-                    : undefined
-            if (highlighted && highlighted.category === 'favorite') {
-                e.preventDefault()
-                const delta = e.key === 'ArrowUp' ? -1 : 1
-                // Synchronous + local-first: `fav.reorderHighlighted` sets the optimistic order, so
-                // `favorites` / `allVolumes` re-derive immediately and a rapid next press computes
-                // against the fresh order (no stale-state race). Favorites lead `allVolumes` in order,
-                // so the favorite's new index IS its new list index; set the highlight to it directly
-                // so repeated Alt+Down keeps walking the same item. The open-effect's `untrack` keeps
-                // the later refresh from resetting it.
-                const newFavIndex = fav.reorderHighlighted(highlighted, delta)
-                if (newFavIndex !== null) {
-                    highlightedIndex = newFavIndex
-                    enterKeyboardMode()
-                }
-                return true
-            }
-        }
-
-        const submenuResult = handleSubmenuKey(e.key, {
-            isOpen: () => submenu.volumeId !== null,
-            close: () => { submenu.close(); },
-            activate: () => {
-                void handleSubmenuAction()
-            },
-        })
-        if (submenuResult !== null) {
-            e.preventDefault()
-            return submenuResult
-        }
-
-        const handled = handleDropdownKey(e.key, {
-            moveHighlight: (delta) => {
-                highlightedIndex = (highlightedIndex + delta + allVolumes.length) % allVolumes.length
-                enterKeyboardMode()
-            },
-            goHome: () => {
-                highlightedIndex = 0
-                enterKeyboardMode()
-            },
-            goEnd: () => {
-                highlightedIndex = allVolumes.length - 1
-                enterKeyboardMode()
-            },
-            activate: () => {
-                if (highlightedIndex >= 0 && highlightedIndex < allVolumes.length) {
-                    void handleVolumeSelect(allVolumes[highlightedIndex])
-                }
-            },
-            close: () => {
-                isOpen = false
-            },
-            highlightedSupportsSubmenu: () =>
-                highlightedIndex >= 0 && allVolumes[highlightedIndex]?.connectionState === 'os_mount',
-            openSubmenuAtHighlight: () => {
-                const el = dropdownRef?.querySelector(
-                    `.volume-item[data-index="${String(highlightedIndex)}"]`,
-                ) as HTMLElement | null
-                if (el) submenu.open(allVolumes[highlightedIndex].id, el, true)
-            },
-        })
-        if (handled) e.preventDefault()
-        return handled
-    }
-
-    function enterKeyboardMode() {
-        keyboardMode.enter()
-        void scrollHighlightedIntoView()
-    }
-
-    async function scrollHighlightedIntoView() {
-        await tick()
-        const el = dropdownRef?.querySelector(
-            `.volume-item[data-index="${String(highlightedIndex)}"]`,
-        ) as HTMLElement | null
-        el?.scrollIntoView({ block: 'nearest' })
-    }
-
-    // Handle mouse hover to sync with keyboard navigation
-    function handleVolumeHover(volume: VolumeInfo) {
-        if (keyboardMode.isKeyboardMode) return
-        const idx = allVolumes.indexOf(volume)
-        if (idx >= 0) highlightedIndex = idx
-    }
-
-    function handleDropdownMouseMove(e: MouseEvent) {
-        const idx = keyboardMode.onMouseMove(e)
-        if (idx !== null) highlightedIndex = idx
-    }
-
-    function handleClickOutside(event: MouseEvent) {
-        if (dropdownRef && !dropdownRef.contains(event.target as Node)) {
-            isOpen = false
-        }
-    }
-
-    // Document-level keyboard handler for Escape when dropdown is open
-    function handleDocumentKeyDown(event: KeyboardEvent) {
-        if (event.key === 'Escape' && isOpen) isOpen = false
-    }
-
-    // Update containing volume when current path changes
+    // Update containing volume when the current path changes.
     $effect(() => {
         void updateContainingVolume(currentPath)
     })
-
-    // Keep the always-visible active-drive badge's status fresh: refetch whenever
-    // the active drive changes. Subsequent live updates arrive via the manager's
-    // event subscriptions (subscribe, don't poll).
-    $effect(() => {
-        const active = currentVolume
-        if (active && isDriveRow(active)) {
-            void driveIndex.fetchStatus(active.id)
-        }
-    })
-
-    // The always-visible active-drive image-index dot: fetch when the active drive changes.
-    $effect(() => {
-        const active = currentVolume
-        if (active && isDriveRow(active)) {
-            void fetchImageIndexState(active.id)
-        }
-    })
-
-    // Dropdown image-index dots: fetch (once) for each shown drive row when the menu opens.
-    $effect(() => {
-        if (!isOpen) return
-        for (const volume of untrack(() => allVolumes)) {
-            if (isDriveRow(volume) && !imageIndexStateMap.has(volume.id)) {
-                void fetchImageIndexState(volume.id)
-            }
-        }
-    })
-
-    // Keep the tracked drives' image-index counts live: refetch whenever ANY volume's
-    // enrichment activity changes (a pass starting, ticking, or ending). Reads the GLOBAL
-    // `media-enrich-state` reactivity (app-wide, one publisher), so VolumeBreadcrumb needs
-    // no `media-enrich-*` listeners of its own. Bounded to the handful of shown drives. The
-    // map read is untracked so re-setting it here doesn't re-trigger this effect.
-    $effect(() => {
-        getEnrichingVolumes() // reactive dep: re-runs on any enrichment-activity change
-        for (const vid of untrack(() => [...imageIndexStateMap.keys()])) {
-            void fetchImageIndexState(vid)
-        }
-    })
-
-    onMount(() => {
-        void updateContainingVolume(currentPath)
-
-        // Make sure the generic dir icon is cached for the fallback below.
-        if (!getCachedIcon('dir')) {
-            void prefetchIcons(['dir'], getUseAppIconsForDocuments())
-        }
-
-        // Close on click outside
-        document.addEventListener('click', handleClickOutside)
-        document.addEventListener('click', handleBreadcrumbPopupClickOutside)
-        document.addEventListener('keydown', handleDocumentKeyDown)
-        document.addEventListener('keydown', handleBreadcrumbPopupKeyDown)
-        window.addEventListener('resize', handleResize)
-
-        // Native row context menu (Rename / Remove a favorite) routes its pick back here.
-        void onVolumeContextAction(handleVolumeContextAction).then((unlisten) => {
-            unlistenVolumeContext = unlisten
-        })
-    })
-
-    let unlistenVolumeContext: UnlistenFn | undefined
-
-    onDestroy(() => {
-        spaceManager.destroy()
-        driveIndex.destroy()
-        fav.destroy()
-        unlistenVolumeContext?.()
-        document.removeEventListener('click', handleClickOutside)
-        document.removeEventListener('click', handleBreadcrumbPopupClickOutside)
-        document.removeEventListener('keydown', handleDocumentKeyDown)
-        document.removeEventListener('keydown', handleBreadcrumbPopupKeyDown)
-        window.removeEventListener('resize', handleResize)
-    })
-
-    async function handleSubmenuAction(overrideVolumeId?: string) {
-        const vid = overrideVolumeId ?? submenu.volumeId
-        submenu.close()
-        breadcrumbPopup.close()
-        if (!vid) return
-
-        // The flow itself lives in `../network/direct-connect`, shared with the retry
-        // button on the OS-mount fallback notice. It raises the one sign-in sheet
-        // itself when a credential is what's missing. The name is read NOW, while the
-        // row is still listed: it's what words the answer if the share goes away
-        // before the backend gets there.
-        const shareName = allVolumes.find((volume) => volume.id === vid)?.name ?? vid
-        await connectDirectly({ volumeId: vid, shareName })
-    }
-
-    // Per-row right-click context menu. Favorites get Rename / Remove; ejectable
-    // volumes get Eject ({name}); anything else has no menu. Uses the NATIVE (muda)
-    // menu via `showVolumeRowContextMenu`, matching the breadcrumb / tab menus. While
-    // the native menu tracks, the webview is frozen, so the dropdown highlight can't
-    // drift onto another row under the cursor or arrow keys — it stays pinned to the
-    // right-clicked one. The picked action returns via the `volume-context-action`
-    // event: eject is handled in `DualPaneExplorer`; rename / remove land in
-    // `handleVolumeContextAction` below (the open dropdown owns them).
-    function openRowMenu(volume: VolumeInfo, event: MouseEvent) {
-        event.preventDefault()
-        event.stopPropagation()
-        const isFavorite = volume.category === 'favorite'
-        const ejectable = isVolumeEjectable(volume)
-        if (isServerPlaceRow(volume)) {
-            void openServerRowMenu(volume)
-            return
-        }
-        if (!isFavorite && !ejectable) return
-        void showVolumeRowContextMenu(volume.id, volume.name, isFavorite, ejectable)
-    }
-
-    // Rename / remove a favorite when the user picks it from the native row menu.
-    // Both panes' breadcrumbs receive this global event, but only the one whose
-    // dropdown is open owns the menu it spawned (favorites are global, so the id
-    // alone can't tell the panes apart; `isOpen` can). Eject is handled elsewhere.
-    function handleVolumeContextAction(payload: { action: VolumeContextActionKind; volumeId: string }) {
-        if (!isOpen) return
-        if (payload.action !== 'rename-favorite' && payload.action !== 'remove-favorite') return
-        const volume = favorites.find((f) => f.id === payload.volumeId)
-        if (!volume) return
-        if (payload.action === 'rename-favorite') fav.startRename(volume)
-        else void fav.remove(volume)
-    }
-
-    // ── Favorites: remove, rename, reorder ───────────────────────────────
-    // Favorites arrive as VolumeInfo with `category: 'favorite'` and `id: 'fav-<favId>'`.
-    // The mutate commands take the bare id (strip the `fav-` prefix). Each mutation re-emits
-    // `volumes-changed`, so the list below re-derives with no manual refresh.
-    const favorites = $derived(effectiveVolumes.filter((v) => v.category === 'favorite'))
-
-    async function handleEjectClick(volume: VolumeInfo, event?: MouseEvent) {
-        event?.stopPropagation()
-        // Guard: the eject controls are disabled while the volume is busy or its
-        // eject is still running, but a keyboard / edge path could still reach here.
-        // Don't tear down a volume mid-transfer, and don't ask twice (the backend
-        // would only join the running eject).
-        if (isVolumeBusy(volume.id) || isVolumeEjecting(volume.id)) return
-        breadcrumbPopup.close()
-        // Keep the dropdown open so several drives can be ejected in a row; the ejected
-        // volume disappears on its own via `volume-unmounted` / `mtp-device-disconnected`.
-        try {
-            await ejectVolume(volume.id)
-            // Success: the volume disappears via `volume-unmounted` (disk) or
-            // `mtp-device-disconnected` (MTP). No toast needed — the change is
-            // visible. Panes redirect to root via the existing listeners.
-        } catch (e) {
-            addToast(tString('fileExplorer.pane.ejectFailedToast', { volumeName: volume.name, message: wordEjectRefusal(e) }), {
-                level: 'error',
-            })
-        }
-    }
-
-    /** The row's Disconnect control. Guarded like Eject: never mid-transfer. */
-    function handleDisconnectClick(volume: VolumeInfo, event?: MouseEvent) {
-        event?.stopPropagation()
-        if (isVolumeBusy(volume.id)) return
-        breadcrumbPopup.close()
-        void disconnectServerPlace(volume.id, volume.name)
-    }
-
-    // ── Drive-index badge menu actions ───────────────────────────────────
-    // Run the per-drive IPC for a picked menu action and refresh the badge.
-    // `enable`/`rescan` can be refused on SMB (typed `SmbIndexGateReason`); we
-    // classify by variant (never by message) and route `credentials_needed` into
-    // the existing direct-connect/login flow.
-    /** Sync adapter for the badge's `onAction` prop (its callback returns void). */
-    function onDriveIndexAction(vid: string, action: DriveIndexMenuAction) {
-        void handleDriveIndexAction(vid, action)
-    }
-
-    async function handleDriveIndexAction(vid: string, action: DriveIndexMenuAction) {
-        const volume = volumes.find((v) => v.id === vid)
-        const name = volume?.name ?? vid
-        try {
-            if (action === 'forget') {
-                // Delete the drive's index DB entirely (vs disable, which keeps it
-                // on disk to resume). The recovery path for an index stuck in a bad
-                // state. Its badge goes gray; re-enabling does a fresh full scan.
-                await forgetDriveIndex(vid)
-            } else if (action === 'disable' || action === 'stop') {
-                await disableDriveIndex(vid)
-            } else {
-                // enable | rescan: both return an EnableIndexingOutcome, and what
-                // it's worth telling the user is the pure, unit-tested
-                // `driveIndexActionFeedback` — this only carries the answer out.
-                const res =
-                    action === 'enable'
-                        ? await enableDriveIndex(vid)
-                        : await rescanDriveIndex(vid)
-                const feedback = driveIndexActionFeedback(action, res)
-                if (feedback.kind === 'refusal') {
-                    handleIndexRefusal(vid, name, feedback.reason)
-                } else if (feedback.kind === 'toast') {
-                    addToast(tString(feedback.key, { name }), { level: feedback.level })
-                }
-            }
-        } catch (_e) {
-            addToast(tString('fileExplorer.navigation.driveIndex.refusedGeneric', { name }), { level: 'error' })
-        }
-        await driveIndex.fetchStatus(vid)
-    }
-
-    /** Surface a typed index refusal: route credentials to login, else a friendly toast.
-     *  The variant→copy mapping is the pure `driveIndexRefusalMessageKey` (unit-tested). */
-    function handleIndexRefusal(vid: string, name: string, reason: SmbIndexGateReason) {
-        const messageKey = driveIndexRefusalMessageKey(reason)
-        if (messageKey === null) {
-            // `credentials_needed`: reuse the direct-connect flow, which prompts for
-            // the password and reconnects; the user can then turn indexing on again.
-            void handleSubmenuAction(vid)
-            return
-        }
-        addToast(tString(messageKey, { name }), { level: 'error' })
-    }
 
     function handleBreadcrumbPopupClickOutside(event: MouseEvent) {
         if (breadcrumbPopupRef && !breadcrumbPopupRef.contains(event.target as Node)) {
@@ -717,17 +146,35 @@
         }
     }
 
-    // Close submenu when the dropdown closes (covers click-outside too)
-    $effect(() => {
-        if (!isOpen) submenu.close()
+    onMount(() => {
+        void updateContainingVolume(currentPath)
+
+        // Make sure the generic dir icon is cached for the fallback below.
+        if (!getCachedIcon('dir')) {
+            void prefetchIcons(['dir'], getUseAppIconsForDocuments())
+        }
+
+        document.addEventListener('click', handleBreadcrumbPopupClickOutside)
+        document.addEventListener('keydown', handleBreadcrumbPopupKeyDown)
     })
 
+    onDestroy(() => {
+        badges.destroy()
+        document.removeEventListener('click', handleBreadcrumbPopupClickOutside)
+        document.removeEventListener('keydown', handleBreadcrumbPopupKeyDown)
+    })
 </script>
 
-<div class="volume-breadcrumb" bind:this={dropdownRef}>
+<div class="volume-breadcrumb">
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <span class="volume-name" class:is-open={isOpen} use:tooltip={currentVolumeFsLabel ?? ''} onclick={handleToggle}>
+    <span
+        class="volume-name"
+        class:is-open={getIsOpen()}
+        bind:this={chipEl}
+        use:tooltip={currentVolumeFsLabel ?? ''}
+        onclick={toggle}
+    >
         {#if currentVolume && isRestricted(currentVolume.path) && dirIconFallback}
             <!-- TCC-denied paths: `NSWorkspace.iconForFile` returns a confusing "no
                  access" placeholder. Use the generic Aqua folder icon instead. -->
@@ -746,16 +193,10 @@
         <span class="chevron"></span>
     </span>
     {#if currentVolume?.usbSpeed}
-        <span
-            class="usb-speed-indicator breadcrumb-usb-speed-indicator usb-speed-indicator-{describeUsbSpeed(currentVolume.usbSpeed).tier}"
-            use:tooltip={`${usbSpeedDisplay(currentVolume)}\n${tString('fileExplorer.navigation.usbSpeedNegotiated')}`}
-        ></span>
+        <UsbSpeedDot speed={currentVolume.usbSpeed} breadcrumb />
     {/if}
     {#if currentVolume?.connectionState === 'direct'}
-        <span
-            class="smb-indicator breadcrumb-smb-indicator smb-indicator-direct"
-            use:tooltip={getConnectionTooltip('direct')}
-        ></span>
+        <ConnectionDot state="direct" breadcrumb />
     {:else if currentVolume?.connectionState === 'os_mount'}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -766,11 +207,12 @@
             use:tooltip={breadcrumbPopup.isOpen ? '' : tString('fileExplorer.navigation.volumeOptionsTooltip')}
             onclick={(e: MouseEvent) => {
                 e.stopPropagation()
-                isOpen = false
+                close()
                 breadcrumbPopup.toggle()
             }}
         >
-            <span class="smb-indicator smb-indicator-os_mount"></span>
+            <!-- The trigger carries the sentence, so the dot inside it stays quiet. -->
+            <ConnectionDot state="os_mount" explain={false} />
             <span class="chevron"></span>
         </span>
         {#if breadcrumbPopup.isOpen}
@@ -781,7 +223,8 @@
                     class="breadcrumb-popup-item"
                     onclick={(e: MouseEvent) => {
                         e.stopPropagation()
-                        void handleSubmenuAction(currentVolume.id)
+                        breadcrumbPopup.close()
+                        void connectDirectlyToRow(currentVolume.id, volumes)
                     }}
                 >
                     {tString('fileExplorer.navigation.connectDirectly')}
@@ -790,331 +233,42 @@
         {/if}
     {/if}
     {#if currentVolume && isDriveRow(currentVolume)}
-        {@const activeIndexStatus = driveIndexStatusMap.get(currentVolume.id)}
+        {@const activeIndexStatus = badges.statusFor(currentVolume.id)}
         {#if activeIndexStatus}
             <DriveIndexBadge
                 volumeId={currentVolume.id}
                 status={activeIndexStatus}
                 driveName={currentVolume.name}
                 breadcrumb
-                onAction={onDriveIndexAction}
+                onAction={badges.runAction}
             />
         {/if}
-        {@const activeImageState = imageIndexStateMap.get(currentVolume.id)}
+        {@const activeImageState = badges.imageStateFor(currentVolume.id)}
         {#if activeImageState}
             <ImageIndexDriveBadge volumeId={currentVolume.id} volumeState={activeImageState} breadcrumb />
         {/if}
     {/if}
-    <!-- The eject-or-disconnect control, shared by the header chip and each dropdown
-         row. Its words, glyph, and states (ejecting, busy, idle) are `detachControl`'s. -->
-    {#snippet detachButton(volume: VolumeInfo, inHeader: boolean)}
-        {@const control = detachControl(volume, { busy: isVolumeBusy(volume.id), ejecting: isVolumeEjecting(volume.id) })}
-        <button
-            type="button"
-            class="eject-button"
-            class:breadcrumb-eject-button={inHeader}
-            class:is-ejecting={control.ejecting}
-            aria-label={control.label}
-            disabled={control.disabled}
-            use:tooltip={control.label}
-            onclick={(e: MouseEvent) => { void handleEjectClick(volume, e) }}
-        >
-            {#if control.ejecting}
-                <Spinner size="sm" />
-            {:else}
-                <Icon name={control.icon} size={14} aria-hidden="true" />
-            {/if}
-        </button>
-    {/snippet}
     {#if currentVolume && isVolumeEjectable(currentVolume)}
-        <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- Svelte {@render} syntax -->
-        {@render detachButton(currentVolume, true)}
+        <DetachButton
+            {...detachControl(currentVolume, {
+                busy: isVolumeBusy(currentVolume.id),
+                ejecting: isVolumeEjecting(currentVolume.id),
+            })}
+            breadcrumb
+            onclick={() => {
+                breadcrumbPopup.close()
+                void detachVolume(currentVolume)
+            }}
+        />
     {/if}
 
-    {#if isOpen && (groupedVolumes.length > 0 || volumesTimedOut)}
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="volume-dropdown" class:keyboard-mode={keyboardMode.isKeyboardMode} onmousemove={handleDropdownMouseMove}>
-            {#each groupedVolumes as group, groupIndex (group.category)}
-                {#if group.label && groupIndex > 0}
-                    <div class="category-separator"></div>
-                {/if}
-                {#if group.label}
-                    <div class="category-label">{group.label}</div>
-                {/if}
-                {#if group.category === 'favorite' && group.items.length === 0}
-                    <!-- Empty state: the user removed every favorite. A disabled, non-focusable,
-                         non-clickable placeholder so the section reads as a real (empty) state. -->
-                    <div class="favorites-empty" aria-disabled="true">{tString('fileExplorer.navigation.favoritesEmpty')}</div>
-                {/if}
-                {#each group.items as volume (volume.id)}
-                    {@const isFavorite = volume.category === 'favorite'}
-                    {@const favIndex = isFavorite ? favorites.findIndex((f) => f.id === volume.id) : -1}
-                    {@const fsLabel = filesystemLabel(volume)}
-                    <!-- What the DEVICE's presence makes of the row: openable or
-                         greyed, and the sentence that says why. `null` readiness
-                         (every disk, every server) answers "openable, nothing to
-                         say", so this costs non-device rows nothing. -->
-                    {@const rowState = deviceRowState(volume.deviceReadiness)}
-                    <!-- svelte-ignore a11y_mouse_events_have_key_events -->
-                    <div
-                        class="volume-item"
-                        class:favorite-item={isFavorite}
-                        class:is-dragging={isFavorite && fav.draggingFavoriteId === volume.id}
-                        class:is-drag-over={isFavorite && fav.dragOverIndex === favIndex && fav.draggingFavoriteId !== volume.id}
-                        class:is-drag-over-end={isFavorite &&
-                            fav.draggingFavoriteId !== volume.id &&
-                            fav.dragOverIndex === favorites.length &&
-                            favIndex === favorites.length - 1}
-                        class:is-under-cursor={shouldShowCheckmark(volume, containingVolumeId)}
-                        class:is-focused-and-under-cursor={allVolumes.indexOf(volume) === highlightedIndex && !submenu.volumeId}
-                        class:is-restricted={isRestricted(volume.path)}
-                        class:is-saved-place={volume.connectionState === 'saved'}
-                        class:is-unavailable={!rowState.openable}
-                        aria-disabled={rowState.openable ? undefined : 'true'}
-                        data-index={allVolumes.indexOf(volume)}
-                        data-fav-id={isFavorite ? volume.id : undefined}
-                        use:tooltip={rowState.tooltip ??
-                            (isRestricted(volume.path)
-                                ? RESTRICTED_FOLDER_TOOLTIP
-                                : isFavorite
-                                  ? favoriteTooltip(volume)
-                                  : '')}
-                        onclick={() => {
-                            // Favorites navigate from the pointer mouseup handler (it decides
-                            // click-vs-drag), so skip the click path for them to avoid a double-fire.
-                            if (isFavorite || fav.renamingFavoriteId === volume.id) return
-                            void handleVolumeSelect(volume)
-                        }}
-                        oncontextmenu={(e: MouseEvent) => { openRowMenu(volume, e); }}
-                        onmousedown={isFavorite ? (e: MouseEvent) => { fav.handleMouseDown(volume, e) } : undefined}
-                        onmouseover={(e: MouseEvent) => {
-                            handleVolumeHover(volume)
-                            if (volume.connectionState === 'os_mount') {
-                                submenu.open(volume.id, e.currentTarget as HTMLElement)
-                            } else if (submenu.volumeId) {
-                                submenu.close()
-                            }
-                        }}
-                    >
-                        {#if shouldShowCheckmark(volume, containingVolumeId)}
-                            <span class="checkmark"><Icon name="check" size={14} aria-hidden="true" /></span>
-                        {:else}
-                            <span class="checkmark-placeholder"></span>
-                        {/if}
-                        {#if volume.category === 'cloud_drive'}
-                            <img class="volume-icon" src="/icons/sync-online-only.svg" alt="" />
-                        {:else if volume.category === 'mobile_device'}
-                            <img class="volume-icon" src="/icons/mobile-device.svg" alt="" />
-                        {:else if volume.category === 'network'}
-                            <span class="volume-icon-placeholder"><Icon name="globe" size={16} aria-hidden="true" /></span>
-                        {:else if isRestricted(volume.path) && dirIconFallback}
-                            <!-- TCC-denied paths: `NSWorkspace.iconForFile` returns a confusing "no
-                                 access" placeholder. Use the generic Aqua folder icon instead. -->
-                            <img class="volume-icon" src={dirIconFallback} alt="" />
-                        {:else if volume.icon}
-                            <img class="volume-icon" src={volume.icon} alt="" />
-                        {:else if dirIconFallback}
-                            <img class="volume-icon" src={dirIconFallback} alt="" />
-                        {:else}
-                            <span class="volume-icon-placeholder"><Icon name="folder" size={16} aria-hidden="true" /></span>
-                        {/if}
-                        {#if fav.renamingFavoriteId === volume.id}
-                            <!-- eslint-disable-next-line cmdr/prefer-ui-primitive -- Dense inline editor inside a volume dropdown row: it inherits the row's font and sits at row height with 2px side padding, which the framed `TextInput`'s padding would blow past, and it carries a resting accent border to read as "editing" rather than one that appears on focus. -->
-                            <input
-                                class="favorite-rename-input"
-                                bind:this={renameInputRef}
-                                bind:value={fav.renameDraft}
-                                onclick={(e: MouseEvent) => { e.stopPropagation() }}
-                                onkeydown={(e: KeyboardEvent) => { fav.handleRenameKeyDown(e, volume) }}
-                                onblur={() => { void fav.commitRename(volume) }}
-                                aria-label={tString('fileExplorer.navigation.renameFavoriteAriaLabel')}
-                            />
-                        {:else}
-                            <span class="volume-label">{deviceVolumeLabel(volume, volumes)}</span>
-                        {/if}
-                        {#if fsLabel}
-                            <span class="volume-fs">{fsLabel}</span>
-                        {/if}
-                        {#if isRestricted(volume.path)}
-                            <!-- No tooltip of its own: the whole row already carries this
-                                 same string, and the row is the honest target (the italic
-                                 dimmed label needs the explanation as much as the glyph). -->
-                            <StatusGlyph name="info" label={RESTRICTED_FOLDER_LABEL} tooltip={null} />
-                        {/if}
-                        {#if volume.mountIsReadOnly}
-                            <span class="read-only-indicator" use:tooltip={tString('fileExplorer.navigation.readOnlyTooltip')}><Icon name="lock" size={14} aria-hidden="true" /></span>
-                        {/if}
-                        {#if volume.connectionState}
-                            <span
-                                class="smb-indicator smb-indicator-{volume.connectionState}"
-                                use:tooltip={getConnectionTooltip(volume.connectionState)}
-                            ></span>
-                            {#if volume.connectionState === 'os_mount'}
-                                <span class="submenu-trigger"></span>
-                            {/if}
-                        {/if}
-                        {#if volume.usbSpeed}
-                            <span
-                                class="usb-speed-indicator usb-speed-indicator-{describeUsbSpeed(volume.usbSpeed).tier}"
-                                use:tooltip={`${usbSpeedDisplay(volume)}\n${tString('fileExplorer.navigation.usbSpeedNegotiated')}`}
-                            ></span>
-                        {/if}
-                        {#if isDriveRow(volume)}
-                            {@const rowIndexStatus = driveIndexStatusMap.get(volume.id)}
-                            {#if rowIndexStatus}
-                                <DriveIndexBadge
-                                    volumeId={volume.id}
-                                    status={rowIndexStatus}
-                                    driveName={volume.name}
-                                    onAction={onDriveIndexAction}
-                                />
-                            {/if}
-                            {@const rowImageState = imageIndexStateMap.get(volume.id)}
-                            {#if rowImageState}
-                                <ImageIndexDriveBadge volumeId={volume.id} volumeState={rowImageState} />
-                            {/if}
-                        {/if}
-                        {#if isServerPlaceRow(volume) && showsDisconnect(volume.connectionState)}
-                            <!-- A server has nothing to unplug, so its slot says Disconnect
-                                 (D6). The place stays saved; only the session goes. -->
-                            {@const disconnectLabel = isVolumeBusy(volume.id)
-                                ? DISCONNECT_BUSY_TOOLTIP
-                                : tString('fileExplorer.navigation.disconnectPlaceAriaLabel', { name: volume.name })}
-                            <button
-                                type="button"
-                                class="eject-button"
-                                aria-label={disconnectLabel}
-                                disabled={isVolumeBusy(volume.id)}
-                                use:tooltip={disconnectLabel}
-                                onclick={(e: MouseEvent) => { handleDisconnectClick(volume, e) }}
-                            >
-                                <Icon name="unplug" size={14} aria-hidden="true" />
-                            </button>
-                        {:else if isVolumeEjectable(volume)}
-                            <!-- ❗ Gated on `isVolumeEjectable`, which for a phone reads its
-                                 READINESS: a device row carries `isEjectable: true`
-                                 unconditionally and no `connectionState` at all, so
-                                 without the gate a greyed `unavailable` row nobody can
-                                 open still offered a live Disconnect. -->
-                            <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- Svelte {@render} syntax -->
-                            {@render detachButton(volume, false)}
-                        {/if}
-                    </div>
-                    {#if volumeSpaceMap.has(volume.id)}
-                        {@const space = volumeSpaceMap.get(volume.id)}
-                        {#if space}
-                            {@const bar = getUsageBar(space)}
-                            <!-- svelte-ignore a11y_click_events_have_key_events -->
-                            <!-- svelte-ignore a11y_no_static_element_interactions -->
-                            <!-- svelte-ignore a11y_mouse_events_have_key_events -->
-                            <div
-                                class="volume-space-info"
-                                onclick={() => { void handleVolumeSelect(volume) }}
-                                onmouseover={() => { handleVolumeHover(volume) }}
-                            >
-                                <!-- No bar where there is no total to fill it against: the
-                                     line carries the used figure on its own. -->
-                                {#if bar}
-                                    <div class="volume-space-bar">
-                                        <div
-                                            class="volume-space-fill"
-                                            style:width="{bar.usedPercent}%"
-                                            style:background-color="var({bar.cssVar})"
-                                        ></div>
-                                    </div>
-                                {/if}
-                                <span class="volume-space-text">{formatDiskSpaceShort(space, formatByteSize)}</span>
-                            </div>
-                        {/if}
-                    {:else if spaceRetryingSet.has(volume.id)}
-                        <div
-                            class="volume-space-info volume-space-timeout"
-                            use:tooltip={spaceAutoRetryingSet.has(volume.id)
-                                ? tString('fileExplorer.navigation.spaceRetryingAuto')
-                                : tString('fileExplorer.navigation.spaceRetrying')}
-                        >
-                            <div class="volume-space-bar volume-space-bar-timeout">
-                                <Spinner size="sm" />
-                            </div>
-                            <span class="volume-space-text volume-space-text-timeout"
-                                >{tString('fileExplorer.navigation.spaceRetryingText')}</span
-                            >
-                        </div>
-                    {:else if spaceTimedOutSet.has(volume.id)}
-                        <!-- svelte-ignore a11y_click_events_have_key_events -->
-                        <!-- svelte-ignore a11y_no_static_element_interactions -->
-                        <div
-                            class="volume-space-info volume-space-timeout"
-                            class:space-shake={spaceRetryFailedSet.has(volume.id)}
-                            use:tooltip={spaceRetryAttemptedSet.has(volume.id)
-                                ? tString('fileExplorer.navigation.spaceStillUnavailable')
-                                : tString('fileExplorer.navigation.spaceFetchFailed')}
-                            onclick={(e: MouseEvent) => {
-                                e.stopPropagation()
-                                spaceManager.retryVolumeSpace(volume)
-                            }}
-                        >
-                            <div class="volume-space-bar volume-space-bar-timeout">
-                                <span class="volume-space-timeout-icon">?</span>
-                            </div>
-                            <span class="volume-space-text volume-space-text-timeout"
-                                >{tString('fileExplorer.navigation.spaceUnavailableText')}</span
-                            >
-                        </div>
-                    {/if}
-                {/each}
-            {/each}
-            {#if volumesTimedOut}
-                <div class="category-separator"></div>
-                <div class="timeout-warning-row" class:retry-failed={volumeRetryFailed}>
-                    <span class="timeout-warning-text"
-                        >{volumeRetryFailed
-                            ? tString('fileExplorer.navigation.volumesStillUnreachable')
-                            : tString('fileExplorer.navigation.volumesMayBeMissing')}</span
-                    >
-                    <button
-                        class="timeout-retry-button"
-                        disabled={volumesRefreshing}
-                        use:tooltip={tString('fileExplorer.navigation.refreshVolumeList')}
-                        onclick={() => {
-                            requestVolumeRefresh()
-                        }}
-                    >
-                        <span class="timeout-retry-icon" class:is-retrying={volumesRefreshing}><Icon name="rotate-cw" size={14} aria-hidden="true" /></span>
-                    </button>
-                </div>
-            {/if}
-        </div>
-        {#if submenu.volumeId && submenu.position}
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <div
-                class="connection-submenu"
-                bind:this={submenuRef}
-                style:top="{submenu.position.top}px"
-                style:left="{submenu.position.left}px"
-                onmouseleave={() => {
-                    submenu.setHighlighted(false)
-                    submenu.close()
-                }}
-            >
-                <!-- svelte-ignore a11y_mouse_events_have_key_events -->
-                <div
-                    class="connection-submenu-item"
-                    class:is-highlighted={submenu.highlighted}
-                    onmouseover={() => {
-                        submenu.setHighlighted(true)
-                    }}
-                    onclick={(e: MouseEvent) => {
-                        e.stopPropagation()
-                        void handleSubmenuAction()
-                    }}
-                >
-                    {tString('fileExplorer.navigation.connectDirectly')}
-                </div>
-            </div>
-        {/if}
-    {/if}
+    <VolumeChooserMenu
+        bind:this={chooser}
+        {containingVolumeId}
+        {badges}
+        {onVolumeChange}
+        getAnchor={() => chipEl}
+    />
 </div>
 
 <span class="path-separator">▸</span>
@@ -1201,489 +355,10 @@
         font-size: var(--font-size-xs);
     }
 
-    .volume-dropdown {
-        position: fixed;
-        min-width: 220px;
-        max-height: calc(100vh - 30px); /* Fallback, overridden dynamically by fitDropdownToViewport() */
-        overflow-y: auto;
-        /* Frosted-glass material: shared tokens with the tooltip / filter-chip popover so the
-           whole app reads as one glass. See `app.css` § Frosted-glass material. The translucent
-           fill flips to opaque when reduce-transparency is active via the `--color-bg-glass`
-           token (in `app.css`); the blur is dropped at the rule site below. */
-        background: var(--color-bg-glass);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
-        backdrop-filter: saturate(180%) blur(20px);
-        border: 0.5px solid var(--color-border-glass);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-md);
-        z-index: var(--z-overlay); /* Above function key bar and other pane elements */
-        padding: var(--spacing-xs) 0;
-    }
-
-    .category-label {
-        font-size: var(--font-size-sm);
-        font-weight: 500;
-        color: var(--color-text-tertiary);
-        padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
-        text-transform: uppercase;
-        /*noinspection CssNonIntegerLengthInPixels*/
-        letter-spacing: 0.5px;
-    }
-
-    .category-separator {
-        height: 1px;
-        background-color: var(--color-border-strong);
-        margin: var(--spacing-xs) var(--spacing-sm);
-    }
-
-    .volume-item {
-        position: relative;
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-sm);
-        padding: var(--spacing-sm) var(--spacing-md);
-        cursor: default;
-    }
-
-    /* Show hover only when NOT in keyboard mode */
-    /*noinspection CssUnusedSymbol*/
-    .volume-dropdown:not(.keyboard-mode) .volume-item:hover,
-    .volume-item.is-focused-and-under-cursor {
-        background-color: var(--color-accent-subtle);
-    }
-
-    .volume-icon {
-        width: var(--spacing-icon-size);
-        height: var(--spacing-icon-size);
-        object-fit: contain;
-        flex-shrink: 0;
-    }
-
-    .volume-icon-placeholder {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: var(--spacing-icon-size);
-        flex-shrink: 0;
-        color: var(--color-text-secondary);
-    }
-
-    .volume-label {
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    /* Filesystem name tag, sitting just right of the volume name. Quiet
-       secondary text so it reads as metadata, not a second title. */
-    .volume-fs {
-        flex-shrink: 0;
-        margin-left: var(--spacing-sm);
-        font-size: var(--font-size-xs);
-        color: var(--color-text-tertiary);
-        white-space: nowrap;
-    }
-
-    /* ── Favorites section ──────────────────────────────────────────── */
-
-    .favorites-empty {
-        padding: var(--spacing-sm) var(--spacing-md);
-        color: var(--color-text-tertiary);
-        font-style: italic;
-        cursor: default;
-        user-select: none;
-    }
-
-    .favorite-item {
-        cursor: grab;
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .favorite-item.is-dragging {
-        cursor: grabbing;
-        opacity: 0.5;
-    }
-
-    /* Drop-line cue: a top border marking the gap the pointer is over. */
-    /*noinspection CssUnusedSymbol*/
-    .favorite-item.is-drag-over {
-        box-shadow: inset 0 2px 0 0 var(--color-accent);
-    }
-
-    /* Drop at the very end of the list: bottom border on the last favorite. */
-    /*noinspection CssUnusedSymbol*/
-    .favorite-item.is-drag-over-end {
-        box-shadow: inset 0 -2px 0 0 var(--color-accent);
-    }
-
-    .favorite-rename-input {
-        flex: 1;
-        min-width: 0;
-        font: inherit;
-        color: var(--color-text-primary);
-        background-color: var(--color-bg-primary);
-        border: 1px solid var(--color-accent);
-        border-radius: var(--radius-sm);
-        padding: 0 var(--spacing-xxs);
-    }
-
-    .favorite-rename-input:focus {
-        outline: none;
-    }
-
-    /* TCC-restricted entries: quiet text (the same shared token the file-list's
-       hidden-entry dim uses, see `--color-text-quiet` in `app.css`) + italic +
-       (i) icon. The tooltip explains the restriction and points to System
-       Settings. See `restricted-paths-store`. */
-    .volume-item.is-restricted .volume-label {
-        font-style: italic;
-        color: var(--color-text-quiet);
-    }
-
-    .checkmark {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: calc(14px * var(--font-scale));
-        flex-shrink: 0;
-    }
-
-    .checkmark-placeholder {
-        width: 14px;
-        flex-shrink: 0;
-    }
-
     .read-only-indicator {
         display: inline-flex;
         align-items: center;
-        margin-left: auto;
         opacity: 0.7;
-    }
-
-    .volume-space-info {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-sm);
-        /* stylelint-disable-next-line declaration-property-value-disallowed-list -- left pad aligns to a computed icon+gap offset; 14px/16px are measured widths */
-        padding: 0 var(--spacing-md) var(--spacing-xs) calc(14px + var(--spacing-sm) + 16px + var(--spacing-sm));
-    }
-
-    .volume-space-bar {
-        flex: 1;
-        height: 2px;
-        background-color: var(--color-disk-track);
-        border-radius: var(--radius-sm);
-    }
-
-    .volume-space-fill {
-        height: 100%;
-        border-radius: var(--radius-sm);
-    }
-
-    .volume-space-text {
-        font-size: var(--font-size-xs);
-        color: var(--color-text-tertiary);
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
-
-    /* Volume space timeout placeholder */
-    .volume-space-timeout {
-        cursor: default;
-    }
-
-    .volume-space-bar-timeout {
-        border: 1px dashed var(--color-border);
-        background-color: transparent;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 8px;
-    }
-
-    .volume-space-timeout-icon {
-        font-size: var(--font-size-xs);
-        color: var(--color-warning);
-        line-height: var(--font-line-height-flat);
-        transition: opacity var(--transition-base);
-    }
-
-    /* Shake on retry failure */
-    /*noinspection CssUnusedSymbol*/
-    .space-shake {
-        animation: shake 300ms ease;
-    }
-
-    @keyframes shake {
-        0%,
-        100% {
-            transform: translateX(0);
-        }
-        25% {
-            transform: translateX(-3px);
-        }
-        75% {
-            transform: translateX(3px);
-        }
-    }
-
-    .volume-space-text-timeout {
-        color: var(--color-warning);
-    }
-
-    /* Volumes timeout warning row */
-    .timeout-warning-row {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-sm);
-        padding: var(--spacing-xs) var(--spacing-md);
-    }
-
-    .timeout-warning-text {
-        font-size: var(--font-size-xs);
-        color: var(--color-warning);
-        flex: 1;
-    }
-
-    .timeout-retry-button {
-        background: none;
-        border: none;
-        padding: 0 var(--spacing-xs);
-        cursor: default;
-        color: var(--color-warning-text);
-        font-size: var(--font-size-md);
-        line-height: var(--font-line-height-flat);
-        border-radius: var(--radius-sm);
-        transition: background-color var(--transition-base);
-    }
-
-    .timeout-retry-button:hover {
-        background-color: var(--color-bg-tertiary);
-    }
-
-    .timeout-retry-button:focus-visible {
-        outline: 2px solid var(--color-accent);
-        outline-offset: 1px;
-    }
-
-    .timeout-retry-button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-    }
-
-    .timeout-retry-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .timeout-retry-icon.is-retrying {
-        animation: spin 0.8s linear infinite;
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .timeout-warning-row.retry-failed {
-        animation: flash-warning 0.3s ease;
-    }
-
-    @keyframes flash-warning {
-        0%,
-        100% {
-            background-color: transparent;
-        }
-        50% {
-            background-color: var(--color-warning-bg);
-        }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        /*noinspection CssUnusedSymbol*/
-        .timeout-retry-icon.is-retrying {
-            animation: none;
-        }
-
-        /*noinspection CssUnusedSymbol*/
-        .timeout-warning-row.retry-failed {
-            animation: none;
-        }
-
-        /* Reduced motion: opacity flash instead of shake */
-        /*noinspection CssUnusedSymbol*/
-        .space-shake {
-            animation: flash-warning 300ms ease;
-        }
-    }
-
-    /* ── Connection indicators ───────────────────────────────────────
-       One dot per remote row, its modifier class built from the state
-       name, so every `ConnectionState` variant needs a rule here or its
-       dot renders as an unpainted circle. */
-
-    .smb-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        opacity: 0.8;
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .smb-indicator-direct {
-        background-color: var(--color-allow);
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .smb-indicator-os_mount {
-        background-color: var(--color-warning);
-    }
-
-    /* The session dropped and the backoff loop owns getting it back: grey
-       and filled, so it reads as "not right now" rather than as something
-       the user has to answer. */
-    /*noinspection CssUnusedSymbol*/
-    .smb-indicator-disconnected {
-        background-color: var(--color-text-tertiary);
-    }
-
-    /* Waiting on the user, not on the network: the same amber as the
-       OS-mount fallback, because both are "reachable, but not the way you
-       asked for". */
-    /*noinspection CssUnusedSymbol*/
-    .smb-indicator-needs_sign_in {
-        background-color: var(--color-warning);
-    }
-
-    /* A changed host key is the one state that is a warning about the
-       server rather than about Cmdr. */
-    /*noinspection CssUnusedSymbol*/
-    .smb-indicator-needs_host_key_approval {
-        background-color: var(--color-error);
-    }
-
-    /* A saved place nobody has dialed: hollow, so a row the user can open
-       reads as "here, not connected" rather than as a failure. */
-    /*noinspection CssUnusedSymbol*/
-    .smb-indicator-saved {
-        background-color: transparent;
-        border: 1.5px solid var(--color-border-strong);
-        opacity: 0.7;
-    }
-
-    /* A pinned place nobody has dialed. Dimmed (the shared `--color-text-quiet`
-       token, see the file-list's hidden-entry dim), so the connected rows
-       above it read as the live ones; it is still fully clickable, and
-       opening it is what dials. ❌ Not `aria-disabled`: it is the opposite of
-       disabled. */
-    .volume-item.is-saved-place .volume-label,
-    .volume-item.is-saved-place .volume-fs {
-        color: var(--color-text-quiet);
-    }
-
-    /* In the dropdown, push the indicator to the far right */
-    .volume-item .smb-indicator {
-        margin-left: auto;
-    }
-
-    /* If read-only badge is also present, don't double-auto-margin */
-    .volume-item .read-only-indicator + .smb-indicator {
-        margin-left: var(--spacing-sm);
-    }
-
-    /* ── USB speed indicators (MTP volumes) ──────────────────────────
-       Same shape as the SMB dot, with a 5-tier rainbow keyed to the
-       negotiated USB generation: red → orange → yellow → light green →
-       dark green. Dark green matches `--color-allow`, the same shade
-       SMB uses for a healthy direct session. */
-
-    .usb-speed-indicator {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        opacity: 0.8;
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .usb-speed-indicator-low {
-        background-color: var(--color-apple-red);
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .usb-speed-indicator-full {
-        background-color: var(--color-apple-orange);
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .usb-speed-indicator-high {
-        background-color: var(--color-apple-yellow);
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .usb-speed-indicator-super {
-        background-color: var(--color-apple-green);
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .usb-speed-indicator-super_plus {
-        background-color: var(--color-allow);
-    }
-
-    /* In the dropdown, push the indicator to the far right (same as SMB) */
-    .volume-item .usb-speed-indicator {
-        margin-left: auto;
-    }
-
-    /* If another right-aligned badge is already present, don't double-auto-margin */
-    .volume-item .smb-indicator + .usb-speed-indicator,
-    .volume-item .submenu-trigger + .usb-speed-indicator,
-    .volume-item .read-only-indicator + .usb-speed-indicator {
-        margin-left: var(--spacing-sm);
-    }
-
-    .breadcrumb-usb-speed-indicator {
-        margin-left: var(--spacing-xs);
-    }
-
-    .submenu-trigger {
-        /* CSS right-pointing triangle (matches macOS submenu arrow) */
-        display: inline-block;
-        width: 0;
-        height: 0;
-        border-top: 4px solid transparent;
-        border-bottom: 4px solid transparent;
-        border-left: 5px solid var(--color-text-tertiary);
-        flex-shrink: 0;
-        margin-left: auto;
-        padding: 0;
-    }
-
-    .connection-submenu {
-        position: fixed;
-        min-width: 220px;
-        /* Same frosted glass as the dropdown it extends. See `.volume-dropdown`. */
-        background: var(--color-bg-glass);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
-        backdrop-filter: saturate(180%) blur(20px);
-        border: 0.5px solid var(--color-border-glass);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-md);
-        /* Must be above the dropdown (--z-overlay: 200) */
-        z-index: calc(var(--z-overlay) + 1);
-        padding: var(--spacing-xs) 0;
-    }
-
-    .connection-submenu-item {
-        padding: var(--spacing-sm) var(--spacing-md);
-        cursor: default;
-        white-space: nowrap;
-    }
-
-    /*noinspection CssUnusedSymbol*/
-    .connection-submenu-item.is-highlighted,
-    .connection-submenu-item:hover {
-        background-color: var(--color-accent-subtle);
     }
 
     /* ── Breadcrumb inline popup ───────────────────────────────── */
@@ -1708,17 +383,16 @@
         background-color: var(--color-bg-tertiary);
     }
 
-    .breadcrumb-smb-indicator {
-        margin-left: var(--spacing-xs);
-    }
-
     .breadcrumb-popup {
         position: absolute;
         top: 100%;
         left: 0;
         margin-top: var(--spacing-xs);
         min-width: 220px;
-        /* Same frosted glass as the dropdown. See `.volume-dropdown`. */
+        /* Frosted-glass material: shared tokens with the tooltip / menu surface so the whole
+           app reads as one glass. See `app.css` § Frosted-glass material. The translucent
+           fill flips to opaque when reduce-transparency is active via the `--color-bg-glass`
+           token; the blur is dropped at the rule site below. */
         background: var(--color-bg-glass);
         -webkit-backdrop-filter: saturate(180%) blur(20px);
         backdrop-filter: saturate(180%) blur(20px);
@@ -1739,88 +413,8 @@
         background-color: var(--color-accent-subtle);
     }
 
-    /* A device the daemon lists but cannot use: present, explained by its
-       tooltip, and not openable. Same weight as a `saved` place's greying, so a
-       row that can't be entered reads the same wherever it comes from. */
-    .volume-item.is-unavailable {
-        opacity: 0.5;
-    }
-
-    /* ── Eject button ────────────────────────────────────────────────
-       Right-aligned next to the SMB / USB badges. Same flex-shrink and
-       margin rules as the other right-aligned indicators so the badges
-       and the button line up cleanly when both are present. */
-
-    .eject-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: none;
-        border: none;
-        padding: var(--spacing-xxs);
-        margin: 0;
-        cursor: default;
-        color: var(--color-text-secondary);
-        border-radius: var(--radius-sm);
-        flex-shrink: 0;
-        font: inherit;
-        line-height: var(--font-line-height-flat);
-        transition: background-color var(--transition-base), color var(--transition-base);
-    }
-
-    .eject-button:hover:not(:disabled) {
-        background-color: var(--color-bg-tertiary);
-        color: var(--color-text-primary);
-    }
-
-    .eject-button:focus-visible {
-        outline: 2px solid var(--color-accent);
-        outline-offset: 1px;
-    }
-
-    /* Busy: a write op is reading from / writing to this volume, so ejecting is
-       blocked. Greyed out, no hover affordance; the tooltip explains why. */
-    .eject-button:disabled {
-        opacity: 0.4;
-        cursor: default;
-    }
-
-    /* Ejecting: the eject is underway, not unavailable, so the spinner keeps full
-       strength. The 12px spinner plus its margin fills the 14px glyph's box, so the
-       row doesn't shift when it swaps in. */
-    .eject-button.is-ejecting:disabled {
-        opacity: 1;
-    }
-
-    .eject-button.is-ejecting :global(.spinner) {
-        margin: 1px;
-    }
-
-    /* In the dropdown row, push the button to the far right when it's the only
-       right-aligned element; otherwise sit next to whatever badge precedes it. */
-    .volume-item .eject-button {
-        margin-left: auto;
-    }
-
-    /* If a badge (smb / usb / submenu / read-only) is right before us, the
-       badge already carries the auto margin — we just need a small gap. */
-    .volume-item .smb-indicator + .eject-button,
-    .volume-item .usb-speed-indicator + .eject-button,
-    .volume-item .submenu-trigger + .eject-button,
-    .volume-item .read-only-indicator + .eject-button {
-        margin-left: var(--spacing-xs);
-    }
-
-    /* Closed-state (header) eject button: small left margin so it sits next
-       to the SMB / USB badges instead of jamming against them. */
-    .breadcrumb-eject-button {
-        margin-left: var(--spacing-xs);
-    }
-
     /* Reduced transparency: the `--color-bg-glass` token already flips to opaque
-       (in `app.css`), so here we only drop the blur on the three glass surfaces. */
-    :global(html.reduce-transparency) .volume-dropdown,
-    :global(html.reduce-transparency) .connection-submenu,
+       (in `app.css`), so here we only drop the blur. */
     :global(html.reduce-transparency) .breadcrumb-popup {
         -webkit-backdrop-filter: none;
         backdrop-filter: none;

@@ -193,7 +193,7 @@ async function failOnLeaks(tauriPage: EvaluatablePage): Promise<void> {
   let leaked: string[] | null
   try {
     leaked = await tauriPage.evaluate<string[] | null>(`(function(){
-            var overlays = ['.ui-popover', '.palette-overlay', '.search-overlay', '.modal-overlay', '.volume-dropdown'];
+            var overlays = ['.ui-popover', '.palette-overlay', '.search-overlay', '.modal-overlay', '[data-menu]'];
             // Name WHICH overlay leaked, not just that one did. A bare
             // \`.modal-overlay\` is the same label for every dialog in the app,
             // and a CI-only leak leaves no other trace to identify it from:
@@ -248,7 +248,7 @@ async function reportAndCleanOverlayLeak(
   for (let round = 0; round < 2; round++) {
     try {
       await tauriPage.evaluate(`(function(){
-            var overlays = ['.ui-popover', '.palette-overlay', '.search-overlay', '.modal-overlay', '.volume-dropdown'];
+            var overlays = ['.ui-popover', '.palette-overlay', '.search-overlay', '.modal-overlay', '[data-menu]'];
             overlays.forEach(function(s){
                 var el = document.querySelector(s);
                 if (el) el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -299,7 +299,7 @@ async function breakTheCascade(tauriPage: EvaluatablePage): Promise<string | nul
     try {
       return (
         (await tauriPage.evaluate<string[] | null>(`(function(){
-                return ['.ui-popover', '.palette-overlay', '.search-overlay', '.modal-overlay', '.volume-dropdown']
+                return ['.ui-popover', '.palette-overlay', '.search-overlay', '.modal-overlay', '[data-menu]']
                     .filter(function(s){ return document.querySelector(s) !== null; });
             })()`)) ?? []
       )
@@ -353,7 +353,7 @@ async function breakTheCascade(tauriPage: EvaluatablePage): Promise<string | nul
                 await new Promise(function(r) { setTimeout(r, 100); });
             }
             for (var round = 0; round < 2; round++) {
-                ['.ui-popover', '.palette-overlay', '.search-overlay', '.modal-overlay', '.volume-dropdown']
+                ['.ui-popover', '.palette-overlay', '.search-overlay', '.modal-overlay', '[data-menu]']
                     .forEach(function(s){
                         var el = document.querySelector(s);
                         if (el) el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

@@ -44,7 +44,7 @@ type PageLike = TauriPage | BrowserPageAdapter
 /** "Macintosh HD" on macOS, "Root" on Linux: where both panes start and end. */
 const LOCAL_VOLUME_NAME = os.platform() === 'linux' ? 'Root' : 'Macintosh HD'
 
-const PICKER_DROPDOWN = '.volume-dropdown'
+const PICKER_DROPDOWN = '[data-menu]'
 
 /**
  * A phone nothing real can claim. The serial is not a shape any vendor mints,
@@ -130,7 +130,8 @@ test.describe('A phone in the volume switcher', () => {
     await publishPhone(tauriPage, { kind: 'unavailable', reason: 'offline' })
 
     const html = await switcherRowHtml(tauriPage, PHONE_NAME)
-    expect(html).toContain('is-unavailable')
+    // `data-disabled` is the menu's mark for a greyed, unopenable row.
+    expect(html).toContain('data-disabled')
     expect(html).toContain('aria-disabled="true"')
   })
 
@@ -140,7 +141,7 @@ test.describe('A phone in the volume switcher', () => {
     const html = await switcherRowHtml(tauriPage, PHONE_NAME)
     // ❗ NOT greyed. A disabled row here is the silence that makes people
     // conclude Cmdr cannot see their phone.
-    expect(html).not.toContain('is-unavailable')
+    expect(html).not.toContain('data-disabled')
     await closeVolumePicker(tauriPage)
 
     await openPhone(tauriPage)

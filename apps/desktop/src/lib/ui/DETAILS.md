@@ -820,8 +820,10 @@ those.
 
 The house menu, and the app's only in-app menu primitive (context menus are otherwise native/muda): a portaled, glass,
 keyboard-first popup built from SECTIONS of rows. Data in, callbacks out — the caller hands over sections and gets
-`onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Its consumer today
-is the archive Enter popup (`file-explorer/pane/enter-menu.svelte.ts`); the volume switcher moves onto it next.
+`onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Two consumers: the
+volume switcher (`file-explorer/navigation/VolumeChooserMenu.svelte`, the rich one — grouped sections, reorderable
+favorites, a submenu, and all four snippets) and the archive Enter popup
+(`file-explorer/pane/enter-menu.svelte.ts`, three flat rows).
 
 ❗ **Deliberately NOT Ark-backed.** Ark's `Menu` machine is trigger-driven and doesn't reliably open
 (mounted-already-open) or close (controlled `open=false`) when driven programmatically, which every caller here needs.
@@ -863,8 +865,10 @@ a sub-line (the disk-space bar), and `footer` sits under the last section. Each 
 - **Focus**: the container takes focus on open (`tabindex="-1"` plus `aria-activedescendant` on the highlighted row) and
   calls `restoreFocus` on close. Keys route through a document-level CAPTURE listener that lives only while open, the
   model `enter-menu.svelte.ts` proved deterministic against focus timing.
-- **Pointer**: hover moves the cursor unless keyboard mode is on; a pointer move over 5 px leaves keyboard mode; a click
-  activates; a right-click calls `onContextMenu`; a pointer-down outside closes.
+- **Pointer**: hover moves the cursor unless keyboard mode is on; a pointer move over 5 px leaves keyboard mode AND
+  hands the cursor to the row it happened over (❗ otherwise there would be two: `:hover` paints again the moment
+  keyboard mode drops, and no `mouseover` is coming for a row the pointer never left); a click activates; a right-click
+  calls `onContextMenu`; a pointer-down outside closes.
 - **Reorder**: drag past a 4 px threshold, the drop-line cue at the insertion gap, and `onReorder` once, on drop.
   Because the cursor is a VALUE rather than an index, it rides along with the moved row for free.
 - **Placement**: fixed, clamped into the viewport, `max-height` to the room below the anchor with its own scroll, the
@@ -876,11 +880,26 @@ gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them 
 
 - `data-menu` on the surface, `data-keyboard-mode` on it while the keyboard is driving, `data-menu-submenu` on the
   submenu surface.
-- `data-menu-section="<id>"` on a section, `data-menu-empty` on an empty section's placeholder.
+- `data-menu-section="<id>"` on a section, `data-menu-heading` on its heading (an E2E spec reads the group names from
+  it), `data-menu-empty` on an empty section's placeholder.
 - `data-menu-row="<value>"` on every row (submenu rows too), plus `data-highlighted`, `data-checked`, `data-disabled`,
   and `data-dragging` as bare present-or-absent marks.
 - `data-drop-cue="above" | "below"` on the row bordering the drop gap, carrying `data-drop-slot="<n>"`, the insertion
   slot the drop would use.
+
+**Surface rules this primitive enforces**, so no consumer re-decides them (they came out of the volume picker, and the
+switcher's port is what moved them here):
+
+- **CSS triangles for arrows and chevrons, ❌ never font characters.** `▾` and `›` render at inconsistent sizes across
+  fonts and OS versions; the border trick is pixel-exact.
+- **An element with its own action sits OUTSIDE its parent's click area** — a sibling, not a child, so
+  `stopPropagation` never has to fight a parent handler. The row's `isOwnControl` check is how that holds here.
+- **Fixed positioning for anything that must escape the scroller.** A submenu inside the `overflow-y: auto` surface
+  would be clipped, so it's placed from the parent row's `getBoundingClientRect()`.
+- **macOS-native feel**: the submenu overlaps its parent by ~5px, hovering the ROW (not just the arrow) opens it, and
+  its cursor appears only on direct interaction.
+- **A popup's trigger drops its tooltip while the popup is up**: pass `''` to `use:tooltip` then, and the directive's
+  `update` hides it.
 
 **Gotchas**:
 

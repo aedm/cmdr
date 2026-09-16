@@ -2,31 +2,21 @@ import { tick } from 'svelte'
 import { removeFavorite, renameFavorite, reorderFavorites, stripFavoritePrefix } from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
-import { moveItem, clampedReorderTarget, pointerReorderTarget, pointerInsertionSlot } from '$lib/ui/menu-reorder'
 import type { VolumeInfo } from '../types'
-
-/** Below this many pixels of pointer travel, a mouseup is a plain click (navigate), not a drag. */
-const DRAG_THRESHOLD_PX = 4
 
 export interface FavoritesControllerDeps {
   /** The favorites in current display order (the component's `favorites` derived list). */
   getFavorites: () => VolumeInfo[]
   /** The full store volume list, for reconciling the optimistic order against store truth. */
   getVolumes: () => VolumeInfo[]
-  /** The dropdown root element, used to measure favorite rows for pointer-drag reorder. */
-  getDropdownRef: () => HTMLElement | undefined
   /** The inline rename `<input>`, focused + selected when a rename starts. */
   getRenameInputRef: () => HTMLInputElement | undefined
-  /** Navigate to a favorite (the component's `handleVolumeSelect`). */
-  navigate: (volume: VolumeInfo) => void
 }
 
 export interface FavoritesController {
   /** Optimistic favorite-id order override (null = render the store order). Read by the component's
    *  `effectiveVolumes` / `favorites` deriveds so a reorder shows instantly, before the IPC round-trip. */
   get optimisticFavoriteIds(): string[] | null
-  get draggingFavoriteId(): string | null
-  get dragOverIndex(): number | null
   get renamingFavoriteId(): string | null
   get renameDraft(): string
   set renameDraft(value: string)
@@ -35,15 +25,21 @@ export interface FavoritesController {
   cancelRename: () => void
   commitRename: (volume: VolumeInfo) => Promise<void>
   handleRenameKeyDown: (e: KeyboardEvent, volume: VolumeInfo) => void
-  handleMouseDown: (volume: VolumeInfo, e: MouseEvent) => void
-  /** Keyboard reorder (Alt+↑/↓) of the highlighted favorite by ±1. Returns the favorite's new
-   *  index so the caller can follow the moved item with the dropdown highlight, or null on no-op. */
-  reorderHighlighted: (volume: VolumeInfo, delta: -1 | 1) => number | null
-  destroy: () => void
+  /** Take the new favorite order the menu just settled on (drag or ⌥↑/⌥↓) and persist it. */
+  applyReorder: (orderedLocationIds: string[]) => void
 }
 
+/**
+ * The favorites the switcher owns: inline rename, remove, and the local-first optimistic
+ * order behind a reorder.
+ *
+ * ❗ The reorder MECHANICS (the drag threshold, the drop-line cue, ⌥↑/⌥↓, and carrying the
+ * cursor with the moved row) belong to the house `Menu` primitive, which hands the settled
+ * order here through `onReorder`. This module's half is what the primitive deliberately has
+ * no business knowing: which ids the backend wants, and what to show while it answers.
+ */
 export function createFavoritesController(deps: FavoritesControllerDeps): FavoritesController {
-  // Optimistic favorite order for instant, local-first reorder. A keyboard (Alt+↑/↓) or pointer
+  // Optimistic favorite order for instant, local-first reorder. A keyboard (⌥↑/⌥↓) or pointer
   // reorder sets this to the new order of favorite ids SYNCHRONOUSLY, so the switcher re-renders
   // immediately and a rapid next press computes against fresh state; the backend persist runs in the
   // background. Reconciled to `null` once `volumes-changed` brings the store to the same order (or
@@ -53,14 +49,6 @@ export function createFavoritesController(deps: FavoritesControllerDeps): Favori
   // ── Inline rename ────────────────────────────────────────────────────
   let renamingFavoriteId = $state<string | null>(null)
   let renameDraft = $state('')
-
-  // ── Pointer-drag reorder scratch state ───────────────────────────────
-  let draggingFavoriteId = $state<string | null>(null)
-  let dragOverIndex = $state<number | null>(null)
-  // Set once the threshold is crossed; before that a mouseup is a plain click.
-  let dragActive = false
-  let dragStartY = 0
-  let pendingDragFavorite: VolumeInfo | null = null
 
   // Drop the optimistic order once the store catches up to it (the persisted `volumes-changed`
   // landed), or if the favorite set changed elsewhere (add / remove) so the override is stale.
@@ -127,97 +115,9 @@ export function createFavoritesController(deps: FavoritesControllerDeps): Favori
     }
   }
 
-  // ── Pointer-drag reorder within the Favorites section ───────────────
-  // HTML5 drag-and-drop does NOT fire under Tauri's `dragDropEnabled` (the OS
-  // intercepts drag gestures before the webview sees `dragstart`/`drop`), so
-  // we roll our own with pointer events, mirroring the native file-list drag.
-  // `mousedown` on a favorite row records the grabbed id + start Y and arms
-  // window-level move/up listeners; an actual reorder begins only once the
-  // pointer crosses a small threshold, so a plain click still navigates.
-  // `dragOverIndex` is the live insertion slot driving the drop-line cue.
-
-  /** Midpoints of each favorite row in list order, for `pointerReorderTarget`. */
-  function favoriteRowMidpoints(): number[] {
-    const root = deps.getDropdownRef()
-    if (!root) return []
-    return deps.getFavorites().map((f) => {
-      const el = root.querySelector(`.favorite-item[data-fav-id="${CSS.escape(f.id)}"]`)
-      if (!el) return Number.POSITIVE_INFINITY
-      const rect = el.getBoundingClientRect()
-      return rect.top + rect.height / 2
-    })
-  }
-
-  function handleMouseDown(volume: VolumeInfo, e: MouseEvent) {
-    // Left button only; never start a drag from the inline rename input.
-    if (e.button !== 0 || renamingFavoriteId === volume.id) return
-    pendingDragFavorite = volume
-    dragStartY = e.clientY
-    dragActive = false
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', handleMouseUp)
-  }
-
-  function handleMouseMove(e: MouseEvent) {
-    const grabbed = pendingDragFavorite
-    if (!grabbed) return
-    if (!dragActive) {
-      if (Math.abs(e.clientY - dragStartY) < DRAG_THRESHOLD_PX) return
-      // Threshold crossed: begin the reorder.
-      dragActive = true
-      draggingFavoriteId = grabbed.id
-    }
-    const favorites = deps.getFavorites()
-    const from = favorites.findIndex((f) => f.id === grabbed.id)
-    if (from < 0) return
-    // Drive the cue off the RAW insertion slot (the visual gap), not the move-target: dropping at
-    // slot `from` or `from + 1` leaves the item in place, so hide the cue then (matches when the
-    // drop's `pointerReorderTarget` returns null). Using the move-target here put the line one row
-    // too high on downward drags.
-    const slot = pointerInsertionSlot(favoriteRowMidpoints(), e.clientY)
-    dragOverIndex = slot === from || slot === from + 1 ? null : slot
-  }
-
-  function handleMouseUp(e: MouseEvent) {
-    window.removeEventListener('mousemove', handleMouseMove)
-    window.removeEventListener('mouseup', handleMouseUp)
-    const grabbed = pendingDragFavorite
-    const wasDragging = dragActive
-    endDrag()
-    if (!grabbed) return
-    if (!wasDragging) {
-      // Never crossed the threshold: treat as a plain click → navigate.
-      if (renamingFavoriteId !== grabbed.id) deps.navigate(grabbed)
-      return
-    }
-    const ids = deps.getFavorites().map((f) => f.id)
-    const from = ids.indexOf(grabbed.id)
-    if (from < 0) return
-    const to = pointerReorderTarget(favoriteRowMidpoints(), e.clientY, from)
-    if (to === null) return
-    persistOrder(moveItem(ids, from, to))
-  }
-
-  function endDrag() {
-    draggingFavoriteId = null
-    dragOverIndex = null
-    dragActive = false
-    dragStartY = 0
-    pendingDragFavorite = null
-  }
-
-  function reorderHighlighted(volume: VolumeInfo, delta: -1 | 1): number | null {
-    const ids = deps.getFavorites().map((f) => f.id)
-    const from = ids.indexOf(volume.id)
-    const to = clampedReorderTarget(from, delta, ids.length)
-    if (to === null) return null
-    persistOrder(moveItem(ids, from, to))
-    return to
-  }
-
   /** Local-first reorder: show the new order instantly via the optimistic override, then persist in
    *  the background. On failure, drop the override so the UI reverts to the store truth. */
-  function persistOrder(orderedLocationIds: string[]) {
+  function applyReorder(orderedLocationIds: string[]) {
     optimisticFavoriteIds = orderedLocationIds
     void reorderFavorites(orderedLocationIds.map(stripFavoritePrefix)).catch(() => {
       addToast(tString('fileExplorer.navigation.reorderFavoritesFailed'), { level: 'error' })
@@ -225,21 +125,9 @@ export function createFavoritesController(deps: FavoritesControllerDeps): Favori
     })
   }
 
-  function destroy() {
-    // Tear down any in-flight pointer-drag listeners if the component unmounts mid-drag.
-    window.removeEventListener('mousemove', handleMouseMove)
-    window.removeEventListener('mouseup', handleMouseUp)
-  }
-
   return {
     get optimisticFavoriteIds() {
       return optimisticFavoriteIds
-    },
-    get draggingFavoriteId() {
-      return draggingFavoriteId
-    },
-    get dragOverIndex() {
-      return dragOverIndex
     },
     get renamingFavoriteId() {
       return renamingFavoriteId
@@ -255,8 +143,6 @@ export function createFavoritesController(deps: FavoritesControllerDeps): Favori
     cancelRename,
     commitRename,
     handleRenameKeyDown,
-    handleMouseDown,
-    reorderHighlighted,
-    destroy,
+    applyReorder,
   }
 }

@@ -6,8 +6,8 @@
  *
  * `handleKeyDown` dispatch order is load-bearing and unchanged:
  *   1. Escape while loading → cancel the load (and swallow the key).
- *   2. A volume-chooser dropdown open on either pane → route/swallow (the panes
- *      behind it stay inert, Fix E).
+ *   2. A volume chooser open on either pane → swallow (the panes behind it stay
+ *      inert, Fix E). The menu itself already caught what it wanted.
  *   3. Type-to-jump intercept → route printable keys into the active pane's buffer
  *      BEFORE any shortcut sees them. Once a jump is active the captured set
  *      widens to any printable key (L9 — mirror of `pane-commands.routePanelKey`).
@@ -38,30 +38,19 @@ export function isTypingInInput(e: KeyboardEvent): boolean {
 
 export function createKeyDispatch(deps: KeyDispatchDeps): KeyDispatch {
   /**
-   * Routes keys to whichever pane has its volume switcher dropdown open, and
-   * SWALLOWS them from the pane behind it. Returns true whenever a chooser is
-   * open (F1/F2 can open one on the non-focused pane, so we scan both):
+   * SWALLOWS every key from the panes while a volume switcher is open on either one
+   * (⌥F1/⌥F2 can open one on the non-focused pane, so we scan both).
    *
-   * - If the dropdown's own handler consumes the key (arrow nav, Enter, Escape),
-   *   we're done.
-   * - If it doesn't (the inline favorite-rename `<input>` is active, so the
-   *   dropdown deliberately ignores arrows/Home/End and lets the textbox edit),
-   *   we STILL return true so the key never reaches `activePaneRef.handleKeyDown`
-   *   and moves the pane cursor. While the switcher is open it owns keyboard
-   *   focus; the panes behind it must stay inert (Fix E).
+   * ❗ No routing: the open switcher is a house `Menu`, which catches keys on its own
+   * document-level CAPTURE listener before this handler runs, and stops the ones it uses.
+   * What reaches here is what the menu deliberately let through — the inline favorite-rename
+   * `<input>`'s keystrokes — and those must still never move the pane cursor behind it.
    */
-  function routeToVolumeChooser(e: KeyboardEvent): boolean {
-    let chooserOpen = false
-    for (const side of ['left', 'right'] as const) {
-      const ref = deps.getPaneRef(side)
-      if (ref?.isVolumeChooserOpen()) {
-        chooserOpen = true
-        if (ref.handleVolumeChooserKeyDown(e)) {
-          return true
-        }
-      }
-    }
-    return chooserOpen
+  function swallowedByVolumeChooser(): boolean {
+    return (
+      (deps.getPaneRef('left')?.isVolumeChooserOpen() ?? false) ||
+      (deps.getPaneRef('right')?.isVolumeChooserOpen() ?? false)
+    )
   }
 
   function handleEscapeDuringLoading(): boolean {
@@ -105,8 +94,8 @@ export function createKeyDispatch(deps: KeyDispatchDeps): KeyDispatch {
       return
     }
 
-    // Route to volume chooser if one is open
-    if (routeToVolumeChooser(e)) {
+    // A volume switcher owns the keyboard while it's open
+    if (swallowedByVolumeChooser()) {
       return
     }
 

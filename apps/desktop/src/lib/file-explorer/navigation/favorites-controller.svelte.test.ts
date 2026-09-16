@@ -1,11 +1,16 @@
 /**
- * Unit tests for the favorites interaction controller extracted from `VolumeBreadcrumb.svelte`.
+ * Unit tests for the favorites interaction controller behind the volume switcher.
  *
  * This file uses Svelte runes (`$effect.root`) to instantiate the rune-based factory outside a
  * component, so the filename carries the `.svelte.test.ts` suffix. The component-level behavior
- * (keyboard reorder, the rename keyboard guard) is pinned by `VolumeBreadcrumb.svelte.test.ts` and
- * `pane/volume-breadcrumb.test.ts`; here we cover the pointer-drag reorder, rename, and remove paths
- * directly so the local-first / click-vs-drag logic stays tested as its own unit.
+ * (the rename keyboard guard, the native row menu's picks) is pinned by
+ * `VolumeBreadcrumb.svelte.test.ts` and `pane/volume-breadcrumb.test.ts`; here we cover rename,
+ * remove, and the local-first order directly.
+ *
+ * ❗ The reorder MECHANICS live in the house `Menu` primitive now
+ * (`$lib/ui/menu-controller.svelte.test.ts`: the drag threshold, the drop-line cue, ⌥↑/⌥↓, and
+ * carrying the cursor with the moved row). What stays here is the half the primitive has no
+ * business knowing: which ids the backend wants, and what to show while it answers.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -32,51 +37,20 @@ function fav(id: string, name = id): VolumeInfo {
   return { id, name, path: `/Users/test/${name}`, category: 'favorite', isEjectable: false }
 }
 
-/** Builds a dropdown root with a `.favorite-item[data-fav-id]` row per favorite, each row's
- *  `getBoundingClientRect` stubbed to a 20px-tall slot stacked from y=0, so the pointer-drag
- *  midpoint math (`favoriteRowMidpoints`) returns deterministic values. */
-function buildDropdown(favorites: VolumeInfo[]): HTMLDivElement {
-  const root = document.createElement('div')
-  favorites.forEach((f, i) => {
-    const row = document.createElement('div')
-    row.className = 'favorite-item'
-    row.setAttribute('data-fav-id', f.id)
-    const top = i * 20
-    row.getBoundingClientRect = () => ({
-      top,
-      height: 20,
-      bottom: top + 20,
-      left: 0,
-      right: 100,
-      width: 100,
-      x: 0,
-      y: top,
-      toJSON: () => ({}),
-    })
-    root.appendChild(row)
-  })
-  return root
-}
-
 describe('favorites-controller', () => {
   let dispose: (() => void) | undefined
   let favorites: VolumeInfo[]
-  let dropdown: HTMLDivElement
   let renameInput: HTMLInputElement | undefined
-  const navigate = vi.fn<(v: VolumeInfo) => void>()
 
   function create(initialFavorites: VolumeInfo[]) {
     favorites = [...initialFavorites]
-    dropdown = buildDropdown(favorites)
     renameInput = document.createElement('input')
     let controller!: ReturnType<typeof createFavoritesController>
     dispose = $effect.root(() => {
       controller = createFavoritesController({
         getFavorites: () => favorites,
         getVolumes: () => favorites,
-        getDropdownRef: () => dropdown,
         getRenameInputRef: () => renameInput,
-        navigate,
       })
     })
     return controller
@@ -91,136 +65,25 @@ describe('favorites-controller', () => {
     dispose = undefined
   })
 
-  describe('pointer-drag reorder', () => {
-    it('treats a mousedown+mouseup below the threshold as a plain click (navigate, no reorder)', () => {
+  describe('reorder', () => {
+    it('persists the settled order with bare ids, and shows it at once', () => {
       const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      c.handleMouseDown(favorites[0], new MouseEvent('mousedown', { button: 0, clientY: 10 }))
-      // Move 2px (< DRAG_THRESHOLD_PX of 4): still a click.
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 12 }))
-      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 12 }))
-      expect(navigate).toHaveBeenCalledWith(favorites[0])
-      expect(reorderFavorites).not.toHaveBeenCalled()
-      expect(c.draggingFavoriteId).toBe(null)
-    })
-
-    it('crossing the threshold begins a drag and dropping past a row persists the reordered list', () => {
-      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      c.handleMouseDown(favorites[0], new MouseEvent('mousedown', { button: 0, clientY: 10 }))
-      // Drag well past the threshold, down to below row index 1 (midpoint 30): marks dragging.
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 35 }))
-      expect(c.draggingFavoriteId).toBe('fav-1')
-      // Drop at y=35: below midpoints 10 and 30 → slot 2, move target for from=0 is 1.
-      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 35 }))
-      expect(navigate).not.toHaveBeenCalled()
+      c.applyReorder(['fav-2', 'fav-1', 'fav-3'])
       expect(reorderFavorites).toHaveBeenCalledTimes(1)
       expect(reorderFavorites).toHaveBeenCalledWith(['2', '1', '3'])
-      // Optimistic order set synchronously, drag scratch cleared.
+      // Optimistic order set synchronously, so the list re-renders before the round-trip.
       expect(c.optimisticFavoriteIds).toEqual(['fav-2', 'fav-1', 'fav-3'])
-      expect(c.draggingFavoriteId).toBe(null)
-      expect(c.dragOverIndex).toBe(null)
-    })
-
-    it('a drag that lands on the same slot is a no-op (no persist)', () => {
-      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      c.handleMouseDown(favorites[0], new MouseEvent('mousedown', { button: 0, clientY: 10 }))
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 18 }))
-      // Drop back at y=5: above all midpoints → slot 0 == from, no reorder.
-      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 5 }))
-      expect(reorderFavorites).not.toHaveBeenCalled()
-    })
-
-    it('ignores a non-left mousedown', () => {
-      const c = create([fav('fav-1'), fav('fav-2')])
-      c.handleMouseDown(favorites[0], new MouseEvent('mousedown', { button: 2, clientY: 10 }))
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 50 }))
-      expect(c.draggingFavoriteId).toBe(null)
-    })
-
-    /**
-     * The drop-line cue, pinned as pure input to output: a row geometry, a pointer Y, and
-     * the gap the line lands in. The cue rides the RAW insertion slot (the visual gap),
-     * which is what keeps a downward drag from drawing the line one row too high. Rows are
-     * 20px tall from y=0 here, so the midpoints are 10 / 30 / 50, and slot `k` means "the
-     * line above row k" (slot `length` means below the last row).
-     *
-     * ❗ In M2 this decision moves INTO the `lib/ui/Menu` primitive, which owns the cue;
-     * the controller keeps the optimistic order, rename, remove, and persistence. The three
-     * tests below are written to travel there unchanged: the only controller-specific
-     * touchpoints are the two helpers right here (how a drag starts, and where the cue is
-     * read), so the move is an import swap plus re-pointing these. ❌ Keep persistence out
-     * of them — that stays behind, and `reorderFavorites` is already pinned by the
-     * same-slot no-op test above.
-     */
-    function grabRow(c: ReturnType<typeof createFavoritesController>, index: number, atY: number) {
-      c.handleMouseDown(favorites[index], new MouseEvent('mousedown', { button: 0, clientY: atY }))
-    }
-    function movePointerTo(y: number) {
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: y }))
-    }
-    function releasePointerAt(y: number) {
-      window.dispatchEvent(new MouseEvent('mouseup', { clientY: y }))
-    }
-
-    it('puts the drop-line cue on the gap under the pointer, dragging DOWN', () => {
-      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      grabRow(c, 0, 10)
-      // Past row 1's midpoint: the line belongs in the gap above row 2.
-      movePointerTo(35)
-      expect(c.dragOverIndex).toBe(2)
-      // Past the last midpoint: the line belongs below the last row.
-      movePointerTo(55)
-      expect(c.dragOverIndex).toBe(3)
-      releasePointerAt(55)
-    })
-
-    it('puts the drop-line cue on the gap under the pointer, dragging UP', () => {
-      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      grabRow(c, 2, 50)
-      // Above every midpoint: the line belongs above row 0.
-      movePointerTo(5)
-      expect(c.dragOverIndex).toBe(0)
-      // Between the first two midpoints: the line belongs above row 1.
-      movePointerTo(20)
-      expect(c.dragOverIndex).toBe(1)
-      releasePointerAt(20)
-    })
-
-    it('draws no cue where a drop would leave the row where it already is', () => {
-      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      grabRow(c, 1, 30)
-      // Both gaps touching the grabbed row (slot 1 above it, slot 2 below it) leave it in
-      // place, so neither draws a line.
-      movePointerTo(25)
-      expect(c.dragOverIndex).toBe(null)
-      movePointerTo(35)
-      expect(c.dragOverIndex).toBe(null)
-      releasePointerAt(35)
     })
 
     it('reverts the optimistic order when the background persist rejects', async () => {
       reorderFavorites.mockRejectedValueOnce(new Error('nope'))
       const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      const newIndex = c.reorderHighlighted(favorites[0], 1)
-      expect(newIndex).toBe(1)
+      c.applyReorder(['fav-2', 'fav-1', 'fav-3'])
       expect(c.optimisticFavoriteIds).toEqual(['fav-2', 'fav-1', 'fav-3'])
       await tick()
       await Promise.resolve()
       expect(c.optimisticFavoriteIds).toBe(null)
       expect(addToast).toHaveBeenCalledWith("Couldn't reorder favorites. Try again?", { level: 'error' })
-    })
-  })
-
-  describe('keyboard reorder', () => {
-    it('returns the new index and persists when moving down', () => {
-      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      expect(c.reorderHighlighted(favorites[0], 1)).toBe(1)
-      expect(reorderFavorites).toHaveBeenCalledWith(['2', '1', '3'])
-    })
-
-    it('returns null and does not persist at the top edge', () => {
-      const c = create([fav('fav-1'), fav('fav-2')])
-      expect(c.reorderHighlighted(favorites[0], -1)).toBe(null)
-      expect(reorderFavorites).not.toHaveBeenCalled()
     })
   })
 
@@ -293,16 +156,6 @@ describe('favorites-controller', () => {
       const c = create([fav('fav-1')])
       await c.remove(favorites[0])
       expect(addToast).toHaveBeenCalledWith("Couldn't remove that favorite. Try again?", { level: 'error' })
-    })
-  })
-
-  describe('destroy', () => {
-    it('removes window drag listeners (a post-destroy mousemove does not start a drag)', () => {
-      const c = create([fav('fav-1'), fav('fav-2')])
-      c.handleMouseDown(favorites[0], new MouseEvent('mousedown', { button: 0, clientY: 10 }))
-      c.destroy()
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 80 }))
-      expect(c.draggingFavoriteId).toBe(null)
     })
   })
 })

@@ -66,7 +66,7 @@ export async function restoreRealVolumes(tauriPage: PageLike, goneName: string):
 }
 
 const PICKER_TRIGGER = '.volume-name'
-const PICKER_DROPDOWN = '.volume-dropdown'
+const PICKER_DROPDOWN = '[data-menu]'
 
 /** Opens the volume switcher, or leaves it open. */
 export async function openVolumePicker(tauriPage: PageLike): Promise<void> {
@@ -80,7 +80,7 @@ export async function switcherNames(tauriPage: PageLike): Promise<string[]> {
   await openVolumePicker(tauriPage)
   return tauriPage.evaluate<string[]>(`(function () {
     var out = [];
-    document.querySelectorAll('.volume-item .volume-label').forEach(function (el) { out.push(el.textContent || ''); });
+    document.querySelectorAll('[data-menu-row] .volume-label').forEach(function (el) { out.push(el.textContent || ''); });
     return out;
   })()`)
 }
@@ -89,7 +89,7 @@ export async function switcherNames(tauriPage: PageLike): Promise<string[]> {
 export async function switcherRowHtml(tauriPage: PageLike, label: string): Promise<string> {
   await openVolumePicker(tauriPage)
   return tauriPage.evaluate<string>(`(function () {
-    var items = document.querySelectorAll('.volume-item');
+    var items = document.querySelectorAll('[data-menu-row]');
     for (var i = 0; i < items.length; i++) {
       var el = items[i].querySelector('.volume-label');
       if (el && el.textContent === ${JSON.stringify(label)}) return items[i].outerHTML;

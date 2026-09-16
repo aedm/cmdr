@@ -43,7 +43,7 @@ const LOCAL_VOLUME_NAME = os.platform() === 'linux' ? 'Root' : 'Macintosh HD'
 /** The hub row's name, which is also the Rust `SERVERS_VOLUME_NAME` const. */
 const SERVERS_VOLUME_NAME = 'Servers'
 
-const PICKER_DROPDOWN = '.volume-dropdown'
+const PICKER_DROPDOWN = '[data-menu]'
 
 /**
  * A saved SFTP place nothing real can claim: `.invalid` is reserved by RFC 2606
@@ -77,7 +77,7 @@ async function publishSyntheticServer(tauriPage: PageLike): Promise<void> {
  *
  * ❗ Closes the picker on the way out: the check for the row reads the switcher,
  * which means opening it, and the fixtures' leak guard fails a test that leaves a
- * `.volume-dropdown` behind.
+ * `[data-menu]` behind.
  */
 async function restoreRealVolumes(tauriPage: PageLike): Promise<void> {
   await dropSyntheticVolumes(tauriPage, SYNTHETIC_NAME)
@@ -138,7 +138,7 @@ test.describe('The servers hub', () => {
     expect(await switcherNames(tauriPage)).toContain(SERVERS_VOLUME_NAME)
     const groups = await tauriPage.evaluate<string[]>(`(function () {
       var out = [];
-      document.querySelectorAll('.volume-dropdown .category-label').forEach(function (el) { out.push(el.textContent || ''); });
+      document.querySelectorAll('[data-menu] [data-menu-heading]').forEach(function (el) { out.push(el.textContent || ''); });
       return out;
     })()`)
     expect(groups).toContain('Network')

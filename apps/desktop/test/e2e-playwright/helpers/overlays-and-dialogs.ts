@@ -26,7 +26,7 @@ const OVERLAY_SELECTORS = [
   '.palette-overlay',
   '.search-overlay',
   '.modal-overlay',
-  '.volume-dropdown',
+  '[data-menu]',
 ] as const
 
 // ── Overlay + toast dismissal ───────────────────────────────────────────────
