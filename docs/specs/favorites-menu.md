@@ -308,10 +308,9 @@ is provable (`docs/guides/multi-agent-refactors.md`).
      rather than `.is-unavailable`. That last one also means the arrows now SKIP such a row instead of landing on it.
    - **The submenu arrow sits at the row's far right**, after the eject button, because the primitive renders it last.
      Before, `.submenu-trigger` sat between the connection dot and the eject button.
-   - **Clicking a control in the CHIP while the list is open now closes the list** (the eject button, an index badge):
-     the primitive's outside-pointerdown check knows the chip, not its siblings.
-   - One primitive bug fell out of the port and is fixed in `429923068`: leaving keyboard mode with the pointer resting
-     over a row left two rows lit.
+   Two primitive bugs fell out of the port and are fixed rather than carried: leaving keyboard mode with the pointer
+   resting over a row lit two rows (`429923068`), and a pointer-down on a control BESIDE the anchor counted as outside,
+   so the chip's eject button closed the list it was ejecting from (`keepOpenWithin`).
 
 Net effect: the switcher's own code went from 1,828 + 200 lines to 422 (chip) + 755 (list) + ~330 across the eight
 shared modules, and every menu behavior it used to hand-roll is now the primitive's. **Then David QAs before M3

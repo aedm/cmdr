@@ -124,7 +124,7 @@
         })
     })
 
-    /** A pointer-down outside the menu and its anchor closes it. */
+    /** A pointer-down outside the menu, its anchor, and the anchor's cluster closes it. */
     function handleDocumentPointerDown(event: PointerEvent): void {
         if (!menu.isOpen) return
         const target = event.target as Node | null
@@ -132,6 +132,9 @@
         if (surfaceEl?.contains(target)) return
         const anchor = menu.anchor
         if (anchor?.kind === 'element' && anchor.element.contains(target)) return
+        // The controls BESIDE the anchor belong to the menu too: pressing one (the switcher
+        // chip's eject button) must act without the menu closing out from under it.
+        if (menu.keepOpenWithin?.contains(target)) return
         menu.close()
     }
 

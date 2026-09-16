@@ -420,7 +420,12 @@ describe('VolumeChooserMenu a11y', () => {
     document.body.appendChild(anchor)
     const instance = mount(VolumeChooserMenu, {
       target,
-      props: { containingVolumeId: 'root', badges: noBadges, getAnchor: () => anchor },
+      props: {
+        containingVolumeId: 'root',
+        badges: noBadges,
+        getAnchor: () => anchor,
+        getChipCluster: () => anchor,
+      },
     }) as unknown as { open: () => void }
     flushSync()
     instance.open()

@@ -46,6 +46,9 @@
     const volumes = $derived(getVolumes())
 
     let chipEl: HTMLSpanElement | undefined = $state()
+    // The whole chip: the name plus every control beside it. A pointer-down in here belongs to
+    // the switcher, so pressing the eject button doesn't close the list it opened.
+    let clusterEl: HTMLDivElement | undefined = $state()
     // The menu's four commands are the chip's own, which is why this forwards rather than
     // wraps: `VolumeBreadcrumbAPI` describes both ends.
     let chooser: VolumeBreadcrumbAPI | undefined = $state()
@@ -165,7 +168,7 @@
     })
 </script>
 
-<div class="volume-breadcrumb">
+<div class="volume-breadcrumb" bind:this={clusterEl}>
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <span
@@ -268,6 +271,7 @@
         {badges}
         {onVolumeChange}
         getAnchor={() => chipEl}
+        getChipCluster={() => clusterEl}
     />
 </div>
 

@@ -66,10 +66,12 @@
         badges: DriveBadges
         /** The chip the list hangs under, read at open time. */
         getAnchor: () => HTMLElement | undefined
+        /** The chip's whole control cluster: pressing a control in it doesn't close the list. */
+        getChipCluster: () => HTMLElement | undefined
         onVolumeChange?: (change: VolumeChangePayload) => void
     }
 
-    const { containingVolumeId, badges, getAnchor, onVolumeChange }: Props = $props()
+    const { containingVolumeId, badges, getAnchor, getChipCluster, onVolumeChange }: Props = $props()
 
     const volumes = $derived(getVolumes())
     const volumesTimedOut = $derived(getVolumesTimedOut())
@@ -219,6 +221,9 @@
             focusBeforeOpen?.focus()
             focusBeforeOpen = null
         },
+        // ❗ The chip's own controls sit BESIDE the anchor, and ejecting from one deliberately
+        // leaves the list open so several drives can go in a row.
+        keepOpenWithin: getChipCluster,
     })
 
     export function open(): void {

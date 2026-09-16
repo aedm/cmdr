@@ -835,7 +835,8 @@ import returned the component and `createMenu is not a function`.) No `.svelte.t
 sibling component.
 
 **Building one**: `createMenu(deps)` takes `getSections` (read live on every access, so the menu tracks the caller's
-state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isEditing`, `onOpenChange`, `restoreFocus`.
+state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isEditing`, `onOpenChange`, `restoreFocus`,
+`keepOpenWithin`.
 Hand the result to `<Menu {menu} ariaLabel minWidth>`; it renders nothing while closed, so there's no `{#if}`.
 
 **Consumer surface**: `openUnder(el)`, `openAt(point)`, `toggleUnder(el)`, `close()`, `highlight(value)`,
@@ -906,8 +907,11 @@ switcher's port is what moved them here):
 - **A row's own controls act for themselves.** A click on a `<button>` / `<a>` / `<input>` inside a row never activates
   the row, so no call site needs `stopPropagation`.
 - **A pointer-down outside closes the menu and still reaches what it landed on** (there's no click-catching backdrop).
-  That's what the switcher does today and what M2 has to preserve; it's a deliberate break from the macOS menu, which
-  swallows that click.
+  It's a deliberate break from the macOS menu, which swallows that click.
+- ❗ **"Outside" excludes the anchor's whole control cluster, when the caller names one** (`keepOpenWithin`). The anchor
+  element alone is exempt by default, which is wrong for a chip whose other controls sit BESIDE it: the switcher's
+  header eject button closed the list out from under itself, and ejecting is meant to LEAVE the list open so several
+  drives can go in a row.
 - **The single-cursor rule**: an open submenu takes the parent row's highlight (`parentHighlightSuppressed`), and a
   submenu opened by hovering its parent row shows no cursor until the pointer or the keyboard reaches into it.
 - **A submenu's cursor is a VALUE too** (`submenuHighlightedValue`), so render against it per row. ❌ Never a boolean:

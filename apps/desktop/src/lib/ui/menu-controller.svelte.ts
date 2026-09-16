@@ -49,6 +49,12 @@ export interface MenuDeps<T = unknown> {
   onOpenChange?: (open: boolean) => void
   /** Called on close, so the caller can put focus back where it was. */
   restoreFocus?: () => void
+  /**
+   * The anchor's whole control cluster: a pointer-down anywhere inside it is INSIDE the menu,
+   * so it doesn't close. The anchor element alone is exempt already; this covers the controls
+   * BESIDE it, which a pointer-down would otherwise close the menu on before they act.
+   */
+  keepOpenWithin?: () => HTMLElement | null | undefined
 }
 
 /** What `Menu.svelte` registers so the controller can do drag math against real rows. */
@@ -79,6 +85,8 @@ export interface MenuSurface {
 export interface MenuController<T = unknown> {
   readonly isOpen: boolean
   readonly anchor: MenuAnchor | null
+  /** The anchor's control cluster, if the caller named one: a pointer-down in it isn't outside. */
+  readonly keepOpenWithin: HTMLElement | null
   readonly sections: MenuSection<T>[]
   readonly highlightedValue: string | null
   /** True once a key moved the cursor: the surface suppresses `:hover` so there's one cursor. */
@@ -430,6 +438,9 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     },
     get anchor() {
       return anchor
+    },
+    get keepOpenWithin() {
+      return deps.keepOpenWithin?.() ?? null
     },
     get sections() {
       return sections()

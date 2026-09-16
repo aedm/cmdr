@@ -911,6 +911,29 @@ describe('VolumeBreadcrumb row controls do not activate their row', () => {
     expect(menuSurface()).toBeTruthy()
   })
 
+  // ❗ The chip's own eject button sits BESIDE the anchor, so the menu's outside-pointer-down
+  // close treated it as outside and shut the list before the button could act. Ejecting
+  // deliberately leaves the list open, so several drives can go in a row.
+  it('the CHIP eject button ejects without closing the open list', async () => {
+    const onVolumeChange = vi.fn()
+    // The pane's own volume, so the chip itself carries a detach control.
+    const { target } = await openWithRows(
+      [{ id: 'root', name: 'Backup', path: '/', category: 'attached_volume', isEjectable: true }],
+      { onVolumeChange },
+    )
+
+    const button = target.querySelector('.eject-button') as HTMLButtonElement
+    expect(button).toBeTruthy()
+    button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    button.click()
+    await tick()
+    flushSync()
+
+    expect(ejectVolume).toHaveBeenCalledWith('root')
+    expect(onVolumeChange).not.toHaveBeenCalled()
+    expect(menuSurface()).toBeTruthy()
+  })
+
   it("a server row's Disconnect drops the session, without navigating the pane", async () => {
     const onVolumeChange = vi.fn()
     await openWithRows(

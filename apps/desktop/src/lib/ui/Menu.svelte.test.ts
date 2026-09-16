@@ -129,6 +129,50 @@ describe('rendering', () => {
   })
 })
 
+/**
+ * What counts as "outside". A pointer-down there closes the menu and still reaches what it
+ * landed on, which is a deliberate break from the macOS menu (that one swallows the click).
+ */
+describe('closing on an outside pointer-down', () => {
+  /** A chip: the anchor plus a control beside it, the shape the volume switcher's header has. */
+  function chip(): { cluster: HTMLElement; anchor: HTMLElement; control: HTMLButtonElement } {
+    const cluster = document.createElement('div')
+    const anchor = document.createElement('span')
+    const control = document.createElement('button')
+    cluster.append(anchor, control)
+    document.body.appendChild(cluster)
+    return { cluster, anchor, control }
+  }
+
+  it('closes on a pointer-down somewhere else entirely', async () => {
+    const { menu } = await open()
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(menu.isOpen).toBe(false)
+  })
+
+  // ❗ The controls BESIDE the anchor belong to the menu too. Without this, pressing the
+  // switcher chip's eject button closed the list before the button could act — and ejecting
+  // deliberately leaves it open so several drives can go in a row.
+  it('stays open for a pointer-down anywhere in the anchor’s control cluster', async () => {
+    const { cluster, anchor, control } = chip()
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const menu = createMenu({ getSections: sections, onSelect: () => {}, keepOpenWithin: () => cluster })
+    menu.openUnder(anchor)
+    const component = mount(Menu, { target, props: { menu, ariaLabel: 'Volumes' } })
+    await tick()
+    mounted.push(() => {
+      menu.destroy()
+      void unmount(component)
+    })
+
+    control.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(menu.isOpen).toBe(true)
+    anchor.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(menu.isOpen).toBe(true)
+  })
+})
+
 describe('pointer selection', () => {
   it('activates the row that was clicked', async () => {
     const onSelect = vi.fn()
