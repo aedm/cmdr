@@ -17,6 +17,7 @@ use std::sync::Arc;
 use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, FileHolder, HarnessError, ImageSpec};
 
 use super::disk_flight::DiskTeardown;
+use super::disk_flight::test_support::FakeIndex;
 use super::disk_flight::{FlightResume, Sibling, capture, captured_paths, hand_back, owed_ids};
 use super::disk_target::{self, Resolution};
 use super::unmount_tool::{self, Target, ToolOutcome, UnmountVerb};
@@ -292,7 +293,7 @@ async fn a_refused_disk_eject_hands_back_only_the_sibling_that_stayed_mounted() 
     std::fs::write(&held, b"held").expect("write the held file");
     let holder = FileHolder::hold(&held).expect("hold the file open");
 
-    let index = Arc::new(test_index::FakeIndex::default());
+    let index = Arc::new(FakeIndex::default());
     index.indexes("vol-a");
     index.indexes("vol-b");
     let gate = DriveRelease::with_door(Arc::clone(&index) as Arc<dyn IndexDoor>);
@@ -330,80 +331,4 @@ async fn a_refused_disk_eject_hands_back_only_the_sibling_that_stayed_mounted() 
         "only the volume still in the mount table gets its index back"
     );
     drop(holder);
-}
-
-/// The index the resume pin drives: nothing here touches a real one.
-mod test_index {
-    use super::*;
-    use crate::file_system::volume::drive_release::{IndexDoor, RESUME_SETTLE, Ticket};
-    use crate::ignore_poison::IgnorePoison;
-    use cmdr_index::{IndexVolumeKind, RemovableStop};
-    use std::collections::HashSet;
-    use std::sync::Mutex;
-
-    #[derive(Default)]
-    pub(super) struct FakeIndex {
-        indexing: Mutex<HashSet<String>>,
-        intent: Mutex<HashSet<String>>,
-        started: Mutex<Vec<String>>,
-    }
-
-    impl FakeIndex {
-        pub(super) fn indexes(&self, volume_id: &str) {
-            self.indexing.lock_ignore_poison().insert(volume_id.to_string());
-            self.intent.lock_ignore_poison().insert(volume_id.to_string());
-        }
-
-        pub(super) fn started(&self) -> Vec<String> {
-            let mut started = self.started.lock_ignore_poison().clone();
-            started.sort();
-            started
-        }
-
-        /// The stop a release runs: it lets go of whatever this index has.
-        pub(super) fn stop(self: &Arc<Self>) -> impl Fn(&str) -> RemovableStop + Send + Sync + 'static {
-            let index = Arc::clone(self);
-            move |volume_id: &str| {
-                if index.indexing.lock_ignore_poison().remove(volume_id) {
-                    RemovableStop::Released
-                } else {
-                    RemovableStop::NothingToStop
-                }
-            }
-        }
-
-        /// A resume batch settles after `RESUME_SETTLE` on a thread of its own, and this
-        /// gate runs on the real clock.
-        pub(super) fn wait_for_a_resume_to_settle(&self) {
-            crate::test_support::wait_until(RESUME_SETTLE * 4, "the resume batch to settle", || {
-                !self.started.lock_ignore_poison().is_empty()
-            });
-        }
-    }
-
-    impl IndexDoor for FakeIndex {
-        fn volume_kind(&self, volume_id: &str) -> Option<IndexVolumeKind> {
-            self.indexing
-                .lock_ignore_poison()
-                .contains(volume_id)
-                .then_some(IndexVolumeKind::LocalExternal)
-        }
-
-        fn drives_to_resume(&self) -> Vec<String> {
-            self.intent.lock_ignore_poison().iter().cloned().collect()
-        }
-
-        fn start_resumed(&self, volume_id: String, ticket: Ticket) {
-            self.started.lock_ignore_poison().push(volume_id);
-            drop(ticket);
-        }
-
-        fn is_ejecting(&self, _volume_id: &str) -> bool {
-            false
-        }
-
-        fn is_listed(&self, _volume_id: &str) -> bool {
-            true
-        }
-    }
 }
