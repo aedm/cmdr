@@ -254,6 +254,15 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     if (values.length > 0) activate(values[0])
   }
 
+  /**
+   * A typed digit. No row claims it (or the one that would is disabled): nothing happens, and
+   * the digit still goes no further, because an open menu owns the keyboard.
+   */
+  function activateAccelerator(char: string): void {
+    const item = itemByAccelerator(sections(), char)
+    if (item) activate(item.value)
+  }
+
   function reorderHighlighted(delta: -1 | 1): void {
     const value = highlightedValue
     if (value === null) return
@@ -345,48 +354,66 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     }
   }
 
-  /** Carry out what `menuKeyAction` decided. The event is already claimed by the caller. */
+  /** Move the parent list's cursor: one step from where it is, or to an end. */
+  function applyCursorMove(action: Extract<MenuAction, { kind: 'move' } | { kind: 'edge' }>): void {
+    const values = navigableValues(sections())
+    if (action.kind === 'move') {
+      setHighlight(nextValue(values, highlightedValue, action.delta))
+    } else {
+      // Nothing to land on (every section empty or disabled): leave the cursor alone.
+      if (values.length === 0) return
+      setHighlight(action.edge === 'first' ? values[0] : values[values.length - 1])
+    }
+    enterKeyboardMode()
+  }
+
+  /** Open a submenu, close it, or walk its own rows. */
+  function applySubmenuAction(
+    action: Extract<MenuAction, { kind: 'openSubmenu' } | { kind: 'closeSubmenu' } | { kind: 'moveSubmenu' }>,
+  ): void {
+    if (action.kind === 'moveSubmenu') {
+      moveSubmenu(action.delta)
+      return
+    }
+    if (action.kind === 'openSubmenu') {
+      if (highlightedValue !== null) openSubmenu(highlightedValue, true)
+    } else {
+      closeSubmenu()
+    }
+    enterKeyboardMode()
+  }
+
+  /**
+   * Carry out what `menuKeyAction` decided. The event is already claimed by the caller.
+   *
+   * Every arm is one call, deliberately: a single body deciding every class of key ran past the
+   * complexity cap once accelerators joined it, and the cap was right — the cursor moves and the
+   * submenu moves are separate decisions that just happened to share a switch. Keep the dispatch
+   * flat and put any new branching in a named helper.
+   */
   function applyAction(action: MenuAction): void {
     switch (action.kind) {
       case 'move':
-        setHighlight(nextValue(navigableValues(sections()), highlightedValue, action.delta))
-        enterKeyboardMode()
+      case 'edge':
+        applyCursorMove(action)
         return
-      case 'edge': {
-        const values = navigableValues(sections())
-        // Nothing to land on (every section empty or disabled): leave the cursor alone.
-        if (values.length === 0) return
-        setHighlight(action.edge === 'first' ? values[0] : values[values.length - 1])
-        enterKeyboardMode()
+      case 'openSubmenu':
+      case 'closeSubmenu':
+      case 'moveSubmenu':
+        applySubmenuAction(action)
         return
-      }
       case 'activate':
         activateHighlighted()
         return
       case 'close':
         close()
         return
-      case 'openSubmenu':
-        if (highlightedValue !== null) openSubmenu(highlightedValue, true)
-        enterKeyboardMode()
-        return
-      case 'closeSubmenu':
-        closeSubmenu()
-        enterKeyboardMode()
-        return
-      case 'moveSubmenu':
-        moveSubmenu(action.delta)
-        return
       case 'reorder':
         reorderHighlighted(action.delta)
         return
-      case 'accelerator': {
-        // No row claims it (or the one that would is disabled): nothing happens, and the digit
-        // still goes no further, because an open menu owns the keyboard.
-        const item = itemByAccelerator(sections(), action.char)
-        if (item) activate(item.value)
+      case 'accelerator':
+        activateAccelerator(action.char)
         return
-      }
       case 'absorb':
       case 'none':
         return
