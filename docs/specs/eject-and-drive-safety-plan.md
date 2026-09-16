@@ -38,9 +38,9 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M14 are done, and M15 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
-same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
-drive-safety decisions below.
+**Status.** M0–M15 are done, and the release checkpoint is next. Planned 2026-09-14, with adversarial review rounds 1
+and 2 folded in the same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the
+approval-hook spike) with the drive-safety decisions below.
 
 - **M0, move durability (done)**: `e8e9069d2`, `0dd3eb1cb`; plan edits `c32a98ad4`, `067b3a15c`.
 - **M1, disk-image harness and pins (done)**: `08c871372`, `901df359b`, `ed8c83c2b`, `cec2c5b47`, `d454b0afe`.
@@ -90,7 +90,9 @@ drive-safety decisions below.
   rules, the `dlsym` and Security externs, and the facts as a second loop inside the one budget), `dc6092850` (the
   real-image lane: the disk-image pin, and the two held-file pins asserting `Cmdr`), `e6b4d866e` (rustfmt), `164c70b3a`
   and `70836987a` (the docs, and what the kinds don't say for themselves).
-- **Next, M15**: the eject copy in every catalog.
+- **M15, the eject copy (done)**: `c5e4d4c4f` (`$lib/intl/list-format.ts`), `98fa38d19` (`wordUnmountRefusal`, the six
+  keys, and the per-case tests), `32fcbdd83` (the docs).
+- **Next, the release checkpoint**: the close-out sweep and David's manual QA list.
 - **Belonging to no milestone, since M11 merged**: `b3ea68362` (the parked hazard names the six cells that aren't its
   fix), `df09b3023` (a lane test's panic message exempted from `pluralize-noun`), `7a9961fe6`, `1bf9f6c99`, and
   `95b98813f` (the availability selector list refreshed from the macOS 27.0 SDK, the ping-pong documented, then made
@@ -1766,7 +1768,7 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
 - **Size**: about 1,100 lines, over the 450–550 estimate: the estimate didn't carry the FFI for four separate macOS
   signals, nor the detached-holder fixture the responsibility finding forced.
 
-### M15: eject copy in every catalog
+### M15: eject copy in every catalog (done)
 
 - **Scope**: `wordUnmountRefusal`, `formatConjunctionList`, the six approved keys with `@key` descriptions, translations
   per `docs/guides/i18n-translation.md` (ten full locales; `en-GB`/`en-AU` only where wording differs).
@@ -1811,15 +1813,47 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   `desktop-message-keys-fresh`, `desktop-message-keys-unused`.
   - **Must not change**: the existing `eject-error-messages.test.ts` cases.
 - **DONE**: every locale carries the keys.
-- **Docs**: `apps/desktop/src/lib/file-explorer/navigation/DETAILS.md` § "A refusal speaks the catalog", its `CLAUDE.md`
-  line on `wordEjectRefusal`, `apps/desktop/src/lib/intl/CLAUDE.md`.
-- **Size**: 150–200 lines plus six keys across the catalogs.
+- **What landed**: `wordUnmountRefusal(holders)` in `eject-error-messages.ts` with the approved precedence, the six keys
+  with full `@key` descriptions, and `formatConjunctionList` in the new `apps/desktop/src/lib/intl/list-format.ts`
+  (`Intl.ListFormat`, memoized per UI locale). `EJECT_MESSAGE` now passes each error to its renderer, so
+  `unmountRefused` is the one variant whose sentence depends on its payload; every other arm is unchanged. The `Cmdr`
+  warn sits in `wordEjectRefusal`, keeping `renderEjectError` free of side effects.
+- **What the flight found**:
+  - **English only, by the lead's call**: `sync-locale-keys.ts` put English skeletons in the ten translated catalogs, so
+    `desktop-i18n-coverage` is red with 60 findings (6 keys × 10 locales) until the translation pass runs. That's the
+    same shape M9's notice key passed through. `desktop-i18n-parity` stays green throughout: it only inspects keys a
+    locale defines, and an English skeleton carries the same tokens.
+  - **Both `CLAUDE.md`s were AT the 600-word budget** (598 and 592), so the addition was paid for by condensing
+    neighbouring bullets, ❌ never by an allowlist entry. The cheapest win was a sentence the module map already said.
+  - A `vi.spyOn(Intl, 'ListFormat')` hands the caller an instance carrying the SPY's prototype, so a stand-in
+    constructor's own `format` never arrives. `vi.stubGlobal('Intl', { ...Intl, ListFormat })` is what works. (The
+    `Intl.NumberFormat` twin in `number-format.test.ts` gets away with the spy because it's callable without `new`.)
+- **Test plan (all covered)**: `eject-error-messages.test.ts` pins one, two, three, four, and six names (four and six
+  read the same, which is the `otherApps` cutoff), a `Tool` wording identically to an `App`, two pids of one app
+  deduping to one name, `DiskImage`, `System`, `Cmdr`, mixed kinds, empty, `Unclassified`-only, and both `HolderScan`
+  arms; the error-copy writing rules run over every new sentence; the `Cmdr` warn is asserted both ways (fires beside an
+  app, silent without one). `list-format.test.ts` pins en-US and de-DE plus the memoization. The existing cases are
+  untouched.
+- **Docs**: `apps/desktop/src/lib/file-explorer/navigation/DETAILS.md` § "A refused unmount names who held the drive"
+  (new, replacing the M15 forward-reference), its `CLAUDE.md` line on `wordEjectRefusal`,
+  `apps/desktop/src/lib/intl/CLAUDE.md`, `docs/guides/error-handling.md`.
+- **Left for David** (❌ not M15's to decide): a refusal whose holders are ALL `Unclassified` reads identically to one
+  that named nobody, since both fall through to `errors.eject.unmountRefused`. The names are on the wire, so a "Cmdr
+  couldn't tell which app, but N processes hold it" sentence is possible; the approved copy set has no key for it.
+- **Size**: about 330 lines, over the 150–200 estimate: the per-case test table and the `@key` descriptions are most of
+  it.
 
 ### Release checkpoint
 
 - **Close-out sweep**: a conformance pass against § "Invariants"; read every commit body and every touched `CLAUDE.md`;
   `pnpm check docs-dead-links docs-reachable docs-link-text docs-section-refs claude-md-length resident-doc-budget oxfmt`;
   `pnpm check --include-slow`.
+- **From M15, what the QA should read**: every refusal toast now names its holder, so check the SENTENCE as well as the
+  outcome. Preview holding a file should say "Preview is still using this drive…"; a DMG opened from Finder should send
+  you to the image first; a terminal `cd`'d into the drive names the terminal APP (responsibility is inherited, M14);
+  and a refusal reading "Something is still using this drive" means either nothing was nameable or every holder came
+  back `Unclassified`, which the log tells apart. ❗ A `warn` saying Cmdr itself held the drive is a bug to report, not
+  a copy issue.
 - **Manual QA list for David** (none of it automated): an APFS USB stick and an exFAT one ejected from Finder while Cmdr
   indexes them; two indexed sticks ejected together from Finder; turning indexing on for a stick while Finder ejects it;
   an SD card; a two-partition drive; a DMG opened from Finder; an app launched from its DMG; Preview holding a file; a
