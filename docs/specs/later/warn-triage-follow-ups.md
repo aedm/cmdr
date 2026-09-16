@@ -3,8 +3,10 @@
 **Problem.** Frontend warns now reach the prod log file and error-report bundles. A triage of the 174 warns that used to
 be silent found 21 Cmdr bugs, 17 outside failures handled poorly, and 22 unrelated bugs. The high- and medium-severity
 ones are handled on the `drive-safety-and-warns` worktree (operation progress, server sign-in, AI startup and consent,
-report senders and the update check, the excluded-folder privacy leak). Everything below is low severity, parked on
-purpose so the fixes didn't turn into yak shaving.
+report senders and the update check, the excluded-folder privacy leak). What the triage left is low severity, parked on
+purpose so the fixes didn't turn into yak shaving. Later work has since parked items here that aren't from the triage
+and aren't all low severity, so read each item's own marker: the eject close-out sweep added three, one of them a
+data-loss path.
 
 **How to use this.** Each item stands alone, carries a severity (low unless noted), a size (S under 30 lines, M under
 150, L more), and the file to start from. Paths are under `apps/desktop/src/` unless they start with `src-tauri/` or
@@ -191,6 +193,33 @@ No user impact, log truth only. About 60 lines, 100 with the rider.
   it. The fix is per-test isolation of the store instead of a singleton plus a partial mutex, which is a fixture
   redesign, and ❌ it can't be validated by a lane that's already green. Start from the ledger's test fixture and
   `SINGLE_FILE` (M).
+- **`rename_no_replace`'s fallback clobbers on a stat it couldn't make** (HIGH, data loss; predates the eject work,
+  found by its close-out sweep). `src-tauri/src/file_system/write_operations/overwrite.rs`, the arm after the atomic
+  attempt: `if fs::symlink_metadata(dest).is_ok() { AlreadyExists } else { fs::rename(temp, dest) }`. Only a `NotFound`
+  means the name is free; every OTHER stat error (`EACCES`, `EIO`, a mount on its way out) takes the same branch and
+  falls into a **plain `fs::rename`, which overwrites whatever is actually there**. ❗ The fallback runs exactly where
+  `RENAME_EXCL` / `renameat2(RENAME_NOREPLACE)` is unsupported — FAT and exFAT sticks, FUSE and SMB mounts — so the
+  filesystems that reach it are the ones most likely to answer a stat with something that isn't `NotFound`. It is also
+  the primitive the aside RESTORES rest on, which is what makes the eject plan's invariant 9 ("restores go only through
+  `rename_no_replace`") true on paper and not in the one case that matters. Two siblings, same shape: the
+  `safe_overwrite_dir` failure arm guards its cleanup with `if dest.exists()`, which collapses every stat error (and a
+  dangling symlink) to "nothing there" and then restores with a plain `fs::rename`; and the `land_temp` failure arm
+  restores the aside with a plain `fs::rename` and never goes through `rename_no_replace` at all, unlike the launch
+  sweep's restores. Fix: `match` on the error kind, propagate anything that isn't `NotFound`, and route both sibling
+  restores through the same primitive — all three sites as ONE piece of work, since fixing the primitive alone leaves
+  the two callers that bypass it. ❌ Red test first (a stat that fails with something other than `NotFound`, which needs
+  a permission wall or an injected seam rather than a real dying mount) (M).
+- **A holder scan can run a code-signing query against the drive it's ejecting** (low to medium; narrow).
+  `src-tauri/src/file_system/volume/eject/holders/facts.rs`: `target_devices` builds rule 5's device list with
+  `paths.iter().filter_map(root_device)`, so a mount root whose `stat` FAILS is silently dropped rather than noted. A
+  holder whose executable lives on that mount then reads as "not on the drive" from `owns_executable` (which also
+  answers `false` outright on an empty list), rule 5's short-circuit is skipped, and `is_platform_binary` runs
+  `SecCodeCopyGuestWithAttributes` against a binary on the volume being torn down — the multi-second read that puts Cmdr
+  itself into the kernel's holder list, which is the whole reason the guard exists. Invariant 14's guard collapsing on a
+  "couldn't tell", so the same family as the mount-table and rebuild-marker collapses the effort fixed. Needs a `stat`
+  failure on a still-listed mount root, on the abandonable thread, so it is narrow. Fix: keep the unreadable roots
+  rather than dropping them, and skip the signing query whenever any target device is unknown; it wants a test of its
+  own, since no existing pin can distinguish "not on the drive" from "couldn't tell" (S).
 - **The favorites add-gate's two tests fail on this Mac at every load level, and CI can't see it** (medium, invisible to
   CI). `commands::favorites::add_gate_tests::an_ordinary_local_folder_can_be_favorited` and
   `an_archive_inner_path_cannot_be_favorited` both trip `assert!(path_can_be_favorited(…).await)` on an ordinary
