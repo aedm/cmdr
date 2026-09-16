@@ -477,6 +477,12 @@
      */
     export function openSearchSnapshotInPane(snapshotId: string, pane?: 'left' | 'right'): void {
         const target = pane ?? focusedPane
+        // Results land in a tab of their own, so the folder the user searched stays one
+        // tab away and ⌘W is the way out. The clone trick puts the copy to the LEFT and
+        // keeps this tab active, which is the one we then route to the snapshot; a pinned
+        // tab keeps its pin on that copy. At the tab cap it answers false and the
+        // snapshot opens in place, which is still the result the user asked for.
+        tabOpsNewTab(target, getTabMgr, (h) => $state.snapshot(h))
         navigateIntent({ pane: target, to: { snapshot: snapshotId }, source: 'user' })
     }
 

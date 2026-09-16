@@ -21,6 +21,8 @@ import {
   getTabCount,
   MAX_TABS_PER_PANE,
   pushHistoryEntry,
+  retainSnapshotRefs,
+  transferSnapshotRefs,
 } from './tab-state-manager.svelte'
 import {
   _resetForTesting as resetSnapshotStore,
@@ -681,6 +683,25 @@ describe('tab-state-manager', () => {
       const after = pushHistoryEntry(back1, { volumeId: 'root', path: '/b' })
       expect(after.stack.map((e) => e.path)).toEqual(['/a', '/b'])
       expect(getRefCount('sr-1')).toBe(0)
+    })
+
+    it('retainSnapshotRefs claims a second ref when a history stack is cloned into a new tab', () => {
+      // The new-tab clone trick duplicates the active tab's history, so two tabs point at
+      // one snapshot. Without the second ref, closing either one evicts rows the other is
+      // still showing. "Open in pane" clones on every promotion, so this is the common path.
+      const tab = makeTabWithSnapshotRef('tab-1', 'sr-1')
+      const mgr = createTabManager(tab)
+      expect(getRefCount('sr-1')).toBe(1)
+
+      const clone = makeTab({ id: 'tab-2', history: structuredClone(tab.history) })
+      retainSnapshotRefs(clone.history)
+      addTab(mgr, 'tab-1', clone)
+      expect(getRefCount('sr-1')).toBe(2)
+
+      // The clone's tab going away for good leaves the other tab's rows on screen.
+      transferSnapshotRefs({ tab: clone, originalIndex: 1 }, 'release')
+      expect(getRefCount('sr-1')).toBe(1)
+      expect(getSnapshot('sr-1')).toBeDefined()
     })
 
     it('closeTabRecording transfers refs (no release until eviction)', () => {

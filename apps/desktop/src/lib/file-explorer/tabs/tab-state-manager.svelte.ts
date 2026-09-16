@@ -1,6 +1,10 @@
 import type { TabId, TabState } from './tab-types'
 import { push as navHistoryPush, type HistoryEntry, type NavigationHistory } from '../navigation/navigation-history'
-import { decrementRef as decrementSnapshotRef, snapshotIdFromPanePath } from '$lib/search/snapshot-store.svelte'
+import {
+  decrementRef as decrementSnapshotRef,
+  incrementRef as incrementSnapshotRef,
+  snapshotIdFromPanePath,
+} from '$lib/search/snapshot-store.svelte'
 
 export const MAX_TABS_PER_PANE = 10
 
@@ -23,6 +27,22 @@ function releaseSnapshotRefs(entries: HistoryEntry[]): void {
   for (const entry of entries) {
     const id = snapshotIdFromEntry(entry)
     if (id !== null) decrementSnapshotRef(id)
+  }
+}
+
+/**
+ * Claims a snapshot ref for every `search-results://` entry in `history`.
+ *
+ * The counterpart to the release above, for the one place a history stack is COPIED
+ * rather than moved: the new-tab clone trick (`../pane/tab-operations.ts::newTab`). Two
+ * tabs then point at the same snapshot, and with a single ref between them the first one
+ * closed takes the rows out from under the other. "Open in pane" clones a tab on every
+ * promotion, so this is an ordinary path, not a corner.
+ */
+export function retainSnapshotRefs(history: NavigationHistory): void {
+  for (const entry of history.stack) {
+    const id = snapshotIdFromEntry(entry)
+    if (id !== null) incrementSnapshotRef(id)
   }
 }
 

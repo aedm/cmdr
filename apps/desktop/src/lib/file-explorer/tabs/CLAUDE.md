@@ -39,6 +39,9 @@ Architecture, decision rationale, persistence, and closed-tab-history detail: `D
   eviction (cap overflow or `trimClosedStack`). The non-recording `closeTab` / `closeOtherTabs` release immediately. All
   bookkeeping flows through `transferSnapshotRefs(closedTab, 'transfer' | 'release')`. See `lib/search/DETAILS.md` §
   "Snapshot store".
+- **A CLONED history claims its own refs**: `newTab` copies the active tab's stack, so `retainSnapshotRefs` runs on the
+  clone. Skip it and the first of the two tabs to close evicts rows the other still shows. "Open in pane" clones on
+  every promotion, so this path is ordinary.
 - **`tab-label.ts` special-cases only the MTP scheme.** For `mtp://…` paths it derives from the within-storage path
   (`getMtpDisplayPath`) so the storage root shows "/" instead of the raw storage id (`65537`); normal paths and mounted
   volume roots (`/Volumes/USB`) keep their basename. Pinned by `tab-label.test.ts`.

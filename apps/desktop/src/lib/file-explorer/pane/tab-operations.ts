@@ -15,6 +15,7 @@ import {
   pinTab,
   unpinTab,
   MAX_TABS_PER_PANE,
+  retainSnapshotRefs,
   type TabManager,
 } from '../tabs/tab-state-manager.svelte'
 import { reportTabClosed, reportTabOpened, reportTabPinToggled, reportTabSwitched } from '../tabs/tab-analytics'
@@ -86,9 +87,7 @@ function persistedLocation(tab: TabState): Location {
   // one the user had navigated away from would be a place they never chose to leave open.
   const visited = tab.history.stack.slice(0, tab.history.currentIndex + 1)
   const entry = latestRealFolder(visited, (e) => e.path)
-  return entry === null
-    ? { path: tab.path, volumeId: tab.volumeId }
-    : { path: entry.path, volumeId: entry.volumeId }
+  return entry === null ? { path: tab.path, volumeId: tab.volumeId } : { path: entry.path, volumeId: entry.volumeId }
 }
 
 export function buildPersistedPaneTabs(mgr: TabManager): PersistedPaneTabs {
@@ -267,6 +266,11 @@ export function newTab(
   }
 
   const success = addTab(mgr, activeTab.id, cloneTab)
+  if (success) {
+    // The clone carries a COPY of the history, so every `search-results://` entry in it
+    // now has a second holder and needs a second ref.
+    retainSnapshotRefs(cloneTab.history)
+  }
   if (success && wasPinned) {
     unpinTab(mgr, activeTab.id)
   }

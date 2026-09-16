@@ -164,8 +164,7 @@ export async function loadAppStatus(pathExists: (p: string) => Promise<boolean>)
     const right = await restoreSnapshotLocation(rightPath, rightVolumeId)
 
     // Resolve paths with fallback - skip for virtual 'network' volume
-    const resolvedLeftPath =
-      left.volumeId === 'network' ? left.path : await resolvePersistedPath(left.path, pathExists)
+    const resolvedLeftPath = left.volumeId === 'network' ? left.path : await resolvePersistedPath(left.path, pathExists)
     const resolvedRightPath =
       right.volumeId === 'network' ? right.path : await resolvePersistedPath(right.path, pathExists)
 

@@ -84,7 +84,10 @@ describe('a stored tab on a search-results path', () => {
   })
 
   it('leaves a real folder alone', async () => {
-    disk.set('leftTabs', { tabs: [storedTab({ path: '/Users/me/Documents', volumeId: 'usb-1' })], activeTabId: 'tab-1' })
+    disk.set('leftTabs', {
+      tabs: [storedTab({ path: '/Users/me/Documents', volumeId: 'usb-1' })],
+      activeTabId: 'tab-1',
+    })
     disk.set('lastUsedPaths', { root: '/Users/me/Projects' })
 
     const paneTabs = await loadPaneTabs('left', alwaysExists)

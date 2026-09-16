@@ -8,9 +8,8 @@ one module per job: `search-lifecycle.svelte.ts` (index prepare/release + readin
 and live paths + their query builder), `ai-translate.ts` (the AI's filter writes), `coverage-cta.svelte.ts` (what may be
 offered over a gap), `snapshot-promotion.ts` ("Open in pane" + recent-search writes), `snapshot-fill.ts` (a pane's full
 row set), `search-run-tracking.ts` (the analytics clock), `snapshot-store.svelte.ts` + `snapshot-sort.svelte.ts`
-(snapshots and their row order).
-`search-state.svelte.ts` is the façade over those plus `searchable-folder`, `search-target-volume`, and
-`SearchResultsView.svelte`.
+(snapshots and their row order). `search-state.svelte.ts` is the façade over those plus `searchable-folder`,
+`search-target-volume`, and `SearchResultsView.svelte`.
 
 ## Must-knows
 
@@ -26,8 +25,8 @@ row set), `search-run-tracking.ts` (the analytics clock), `snapshot-store.svelte
 - **The DIALOG lists 30 rows; a PANE gets every hit**, via `snapshot-fill.ts`. ❌ Never promote `getResults()`, and ❌
   never let a top-up shrink a pane.
 - **"Open in pane" during a live walk KEEPS the walk** (`walk-handoff.svelte.ts`), so the close must NAME it
-  (`releaseSearchIndex(handedOffRunId())`) or the walk dies silently as the pane appears. Its ENDING fills the pane
-  (a walk can't be widened mid-flight). A reopen ADOPTS through `source.resume`, ❌ never re-runs.
+  (`releaseSearchIndex(handedOffRunId())`) or the walk dies silently as the pane appears. Its ENDING fills the pane (a
+  walk can't be widened mid-flight). A reopen ADOPTS through `source.resume`, ❌ never re-runs.
 - **A vanished file leaves every snapshot from ONE place**, `snapshot-purge.ts`, off `write-source-item-done`'s
   `sourceRemoved` flag, ❌ never its `outcome`. ❌ Never purge from a dialog or pane: they hold intent, and a snapshot
   outlives both.

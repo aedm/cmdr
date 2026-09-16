@@ -527,11 +527,17 @@ Click on the footer's "Open in pane" button promotes the current result set into
    §3.5: auto-applies and Enter-runs don't pollute the history). For AI mode, the entry's `query` carries the original
    natural-language prompt (via `getLastAiPrompt()`), not the AI's translated pattern.
 5. Returns the id, and the wrapper hands it to the host via `onShowAllInMainWindow?.(id)` (`+page.svelte` →
-   `DualPaneExplorer.openSearchSnapshotInPane`), which routes through the
+   `DualPaneExplorer.openSearchSnapshotInPane`), which opens a NEW TAB and routes it through the
    `navigate({ to: { snapshot }, source: 'user' })` transaction so pinned-tab fork / focus / history-push all apply
    uniformly.
-6. The wrapper closes the dialog. State is preserved (module-level `$state` survives unmount); ⌘F reopens to the same
-   place.
+
+**The results get a tab of their own**, via the same clone trick `⌘T` uses: the copy goes to the LEFT holding the
+folder, and the active tab (the one that becomes the snapshot pane) is the one ⌘W closes. A user who has finished with a
+result set reaches for "close this", and before this they had only Back, which nothing on screen advertised. At the tab
+cap the clone refuses and the snapshot opens in place, which is still what was asked for. The clone copies the history
+stack, so `retainSnapshotRefs` claims a ref per `search-results://` entry in it (`../file-explorer/tabs/CLAUDE.md`). 6.
+The wrapper closes the dialog. State is preserved (module-level `$state` survives unmount); ⌘F reopens to the same
+place.
 
 The label shown in the pane breadcrumb (and the snapshot's `label` field) is built by
 `snapshot-label.ts::buildSnapshotLabel`:
@@ -579,15 +585,15 @@ while nobody was listening, or the dialog would show a count the list can't acco
 **Appends need the mutation tick.** `appendSnapshotEntries` bumps it; snapshots aren't `$state`, so without it the rows
 land in the store and never reach the screen.
 
-**The ending is what fills the pane, because a walk can't be widened mid-flight.** `ResultStream` takes its row cap
-from the query it STARTED with (the dialog's `limit: 30`) while `match_count` keeps climbing, so a handed-off walk
-streams 30 rows under a toast counting thousands. Everything the walk reads lands in the index on the way, so
-`takeSettled` asks the index for the whole set and replaces the snapshot's rows (`snapshot-fill.ts`). Until it ends, the
-pane and the toast disagree by however much the walk has found; both numbers are true, and the gap closes at the end.
+**The ending is what fills the pane, because a walk can't be widened mid-flight.** `ResultStream` takes its row cap from
+the query it STARTED with (the dialog's `limit: 30`) while `match_count` keeps climbing, so a handed-off walk streams 30
+rows under a toast counting thousands. Everything the walk reads lands in the index on the way, so `takeSettled` asks
+the index for the whole set and replaces the snapshot's rows (`snapshot-fill.ts`). Until it ends, the pane and the toast
+disagree by however much the walk has found; both numbers are true, and the gap closes at the end.
 
 ❗ **The top-up only ever ADDS.** An index that hasn't caught up with the walk it just finished answers with fewer rows
-than the pane is showing, and applying that would take files off a screen the user is selecting from. `fillSnapshotFromIndex`
-drops any answer no bigger than what's there.
+than the pane is showing, and applying that would take files off a screen the user is selecting from.
+`fillSnapshotFromIndex` drops any answer no bigger than what's there.
 
 ## Snapshot store
 
