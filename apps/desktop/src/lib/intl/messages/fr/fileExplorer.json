@@ -733,7 +733,7 @@
   "@fileExplorer.git.useTransferToCopyOut": {
     "sourceHash": "a0d65fe"
   },
-  "fileExplorer.rename.hiddenAfterRename": "Votre fichier a disparu de la vue, car les fichiers masqués ne sont pas affichés.",
+  "fileExplorer.rename.hiddenAfterRename": "Votre fichier a disparu de la vue, car les fichiers cachés ne sont pas affichés.",
   "@fileExplorer.rename.hiddenAfterRename": {
     "sourceHash": "445d02a"
   },

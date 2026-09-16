@@ -176,3 +176,14 @@ No user impact, log truth only. About 60 lines, 100 with the rider.
   which that glossary reserves for a transfer's pre-count, where a drive scan is `varredura`. Both found while
   translating `indexing.needsFreshScan.afterDisconnect` on 2026-09-16, and left alone to keep that commit to one key.
   Fix: one consistency pass per language, catalog and glossary together (S).
+- **The in-flight ledger's test store is one singleton behind a mutex only some tests take** (medium, invisible to CI).
+  A guarded cell's `init_and_sweep` replays records that non-guarded engine tests wrote into the shared log, and deletes
+  their in-flight temps mid-write: `overwrite::tests::test_safe_overwrite_different_sizes` fails that way under a
+  contended `cargo test`, with no ledger assertion in it at all. `SINGLE_FILE` serializes guard-holders against each
+  other, but around 80 engine tests write to the store without ever taking it. Nextest hides it completely, because
+  per-process isolation removes the shared store, so `pnpm check` and CI have never been exposed (134/134, repeatedly).
+  The hazard predates the eject work; M11 surfaced it by roughly tripling the write volume, since `track` now fires for
+  a temp, an aside, and a staging dir where only `register` fired before. Tightening assertions is not the fix: six
+  cells were tightened (`2c9870162`) and the engine test still failed. The fix is per-test isolation of the store
+  instead of a singleton plus a partial mutex, which is a fixture redesign, and ❌ it can't be validated by a lane
+  that's already green. Start from the ledger's test fixture and `SINGLE_FILE` (M).
