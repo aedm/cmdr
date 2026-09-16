@@ -380,13 +380,21 @@ mod tests {
     }
 
     #[test]
-    fn a_big_system_zone_block_becomes_a_malloc_large_region_of_exactly_its_size() {
+    fn a_big_system_zone_block_becomes_a_malloc_large_region_sized_to_its_request() {
         // The mechanism the 2026-08 memory attribution leans on: macOS routes any
         // allocation past its 127 KB large-zone threshold to its own VM region, sized
         // to the request. So a repeated exact region size in `MALLOC_LARGE` is the
         // fingerprint of whatever asked for that many bytes — which is how a block
         // no allocator API can name still gets named. ❌ Break this and the region
         // histogram stops being evidence.
+        //
+        // ⚠️ "Sized to the request" means the request rounded up to a page, PLUS however
+        // many pages the zone keeps for itself, and that second number is Apple's to
+        // change. Measured on macOS 26.0 (Apple Silicon, 16 KiB pages, 2026-09-16): a
+        // 9 MiB request comes back as 9 MiB + 16 KiB, one header page. It was request-
+        // exact on earlier systems, which is why this test used to assert `== BLOCK`.
+        // ❌ Don't tighten it back: the histogram needs the size to be a DETERMINISTIC
+        // function of the request, not equal to it.
         //
         // 9 MiB is not arbitrary: it's one of the two exact sizes the 2026-07-28 idle
         // profile reported for its unattributed block, and a Core ML scratch buffer
@@ -417,10 +425,16 @@ mod tests {
             "MALLOC_LARGE should grow by most of the block: {before_dirty} -> {}",
             large.dirty_bytes
         );
+        // SAFETY: `sysconf` reads a system constant and touches nothing of ours.
+        let page = u64::try_from(unsafe { libc::sysconf(libc::_SC_PAGESIZE) }).unwrap_or(16 * 1024);
+        // One page of slack, enough for the zone header macOS 26 adds and for the
+        // request-exact behavior older systems had. Anything wider would stop
+        // distinguishing this block from its neighbours, which is the whole point.
+        let want = BLOCK as u64..=(BLOCK as u64 + page);
         assert!(
-            large.sizes.iter().any(|s| s.region_bytes == BLOCK as u64),
+            large.sizes.iter().any(|s| want.contains(&s.region_bytes)),
             // allowed-pluralize-noun: `BLOCK` is a compile-time 9 MiB constant, never 1.
-            "the block should show as a region of exactly {BLOCK} bytes, saw {:?}",
+            "the block should show as a region of {BLOCK} bytes plus at most one {page}-byte page, saw {:?}",
             large.sizes.iter().map(|s| s.region_bytes).collect::<Vec<_>>()
         );
     }
