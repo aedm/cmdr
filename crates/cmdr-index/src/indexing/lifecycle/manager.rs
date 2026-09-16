@@ -8,6 +8,7 @@ use std::time::Duration;
 use super::phases;
 use super::state::{self, Handover};
 use crate::indexing::IndexPathSpace;
+use crate::indexing::deletes;
 use crate::indexing::events::{
     ActivityPhase, DEBUG_STATS, EventSink, IndexDebugStatusResponse, IndexStatusResponse, PhaseRecord, RescanReason,
     ScanRunKind, emit_rescan_notification, set_phase_for,
@@ -460,8 +461,9 @@ impl IndexManager {
             journal_gap_too_wide,
             phased_first_index: phases::phased_first_index(),
             // Read FIRST in the table it feeds, because an index a vanishing drive
-            // deleted from can look perfectly finished.
-            needs_rebuild: IndexStore::index_needs_rebuild(read_conn).unwrap_or(false),
+            // deleted from can look perfectly finished. ❗ A read that FAILED counts as
+            // set: `deletes::marker_reads_as_set` owns that call and says why.
+            needs_rebuild: deletes::marker_reads_as_set(IndexStore::index_needs_rebuild(read_conn), &self.volume_id),
         });
 
         match route {

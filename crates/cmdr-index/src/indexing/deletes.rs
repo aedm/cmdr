@@ -25,7 +25,7 @@ use std::sync::{LazyLock, Mutex};
 use cmdr_fs::ignore_poison::IgnorePoison;
 
 use crate::indexing::events::IndexEvent;
-use crate::indexing::store::{INDEX_NEEDS_REBUILD_KEY, IndexStore};
+use crate::indexing::store::{INDEX_NEEDS_REBUILD_KEY, IndexStore, IndexStoreError};
 use crate::indexing::volume::VolumeId;
 use crate::indexing::writer::{IndexWriter, WriteMessage};
 
@@ -123,6 +123,27 @@ pub(crate) fn note_the_drive_left_after_the_drain(volume_id: &str, db_path: &Pat
     announce_the_rebuild(volume_id, crate::indexing::host::events::current().as_ref());
 }
 
+/// Whether the rebuild marker counts as SET, from a read of it that may have failed.
+///
+/// ❗ **A read that couldn't answer counts as SET, ❌ never as "no marker".** This one
+/// row outranks every other cell of the launch-routing table
+/// (`lifecycle/manager/launch_route.rs`), and an index a vanishing drive deleted from
+/// looks perfectly finished to all of them, so folding the failure into `false` sends
+/// the launch replaying or reconciling in place over holes nobody would ever notice.
+/// A spurious rebuild costs one rescan; a skipped one carries the holes forward for
+/// the life of the index.
+pub(crate) fn marker_reads_as_set(read: Result<bool, IndexStoreError>, volume_id: &str) -> bool {
+    match read {
+        Ok(set) => set,
+        Err(e) => {
+            log::warn!(
+                "'{volume_id}': the rebuild marker wouldn't read, so the launch rebuilds rather than trusting an index that may be missing rows: {e}"
+            );
+            true
+        }
+    }
+}
+
 /// One `warn` for the log and one event for the host, for a marker that just landed.
 fn announce_the_rebuild(volume_id: &str, events: &dyn crate::indexing::events::EventSink) {
     log::warn!(
@@ -194,6 +215,27 @@ mod tests {
     fn is_marked(db_path: &Path) -> bool {
         let conn = IndexStore::open_read_connection(db_path).expect("read connection");
         IndexStore::index_needs_rebuild(&conn).expect("read the marker")
+    }
+
+    /// ❗ A marker nobody could read is not "no marker". The launch-routing table asks
+    /// this row first precisely because an index a vanishing drive deleted from looks
+    /// finished to every other cell, so a failed read that answered `false` would send
+    /// the launch replaying over holes.
+    #[test]
+    fn a_rebuild_marker_nobody_could_read_counts_as_set() {
+        // A real failure, not a hand-made `Err`: a database with no schema at all can't
+        // answer the marker, which is the shape a corrupt or half-open index takes.
+        let conn = rusqlite::Connection::open_in_memory().expect("an in-memory connection");
+        let unreadable = IndexStore::index_needs_rebuild(&conn);
+        assert!(unreadable.is_err(), "a schema-less database can't answer the marker");
+        assert!(
+            marker_reads_as_set(unreadable, "vol-unreadable"),
+            "a marker that wouldn't read routes the launch to a rebuild"
+        );
+
+        // And a read that DID answer is still believed both ways.
+        assert!(!marker_reads_as_set(Ok(false), "vol-clean"));
+        assert!(marker_reads_as_set(Ok(true), "vol-marked"));
     }
 
     /// ❗ What the whole count is for: deletes went out, the drive then read gone,

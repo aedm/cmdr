@@ -970,7 +970,10 @@ from files the user really removed — so the index records that it may be short
   sentence a person who just pulled a drive reads.
 - **Read FIRST at launch** (`manager/launch_route.rs`), ahead of a completion marker and a replayable journal: an index
   a vanishing drive deleted from looks finished, so replaying or reconciling over it carries the holes forward. With the
-  phased switch off it routes to `ScanTheVolume`, the same repair by the other path.
+  phased switch off it routes to `ScanTheVolume`, the same repair by the other path. ❗ **A read that FAILED counts as
+  SET** (`deletes::marker_reads_as_set`): a marker nobody could read is ❌ never "no marker", because this one row
+  outranks every other cell and no other cell can see the holes. A spurious rebuild costs one rescan; a skipped one
+  carries the holes for the life of the index.
 - **Cleared where the index it condemns is replaced**: the phased `RebuildFirst` truncate (in the same writer batch, so
   a death in between leaves the marker standing) and `start_scan`, beside `scan_completed_at`. ❌ Never `clear_index`,
   which deletes the database and the per-drive intent markers in it.

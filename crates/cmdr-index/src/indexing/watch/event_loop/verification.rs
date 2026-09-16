@@ -355,6 +355,17 @@ fn verify_affected_dirs_with(affected_paths: &HashSet<String>, writer: &IndexWri
             Err(_) => continue,
         };
 
+        // ❗ **These deletes carry no drive-presence gate and no `deletes::batch_sent`,
+        // and that is sound ONLY because this path is boot-disk-only.** Verification
+        // runs off journal replay, which is gated on `has_event_journal()` (`Local`, the
+        // boot disk), and the boot-disk scan excludes `/Volumes/` outright
+        // (`scanner/exclusions.rs`), so no row reachable from here sits on a drive that
+        // can leave the mount table. ❌ The moment verification runs for any other
+        // volume kind, gather these into a batch and send it the way
+        // `replay.rs::send_replay_deletes` does — a presence read AFTER the probes, then
+        // `deletes::batch_sent` — or a drive pulled mid-pass reaps its whole index and
+        // nothing marks the index for a rebuild.
+        //
         // Detect stale entries (in DB but not on disk)
         for child in db_children {
             let child_path = format!("{}/{}", parent_prefix, child.name);
