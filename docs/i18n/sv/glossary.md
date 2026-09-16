@@ -3046,3 +3046,40 @@ Ingenting gick sönder, och ingen variant får läsas som att flytten gick fel.
   `igen … på nytt`-formeln behövs först när engelskan upprepar ”again”.
 - Inga `sameAsSourceJustification`: alla fyra värdena skiljer sig från engelskan. RAW-familj, alltså inga ICU-strukturer
   och vanliga apostrofer (inga används här).
+
+## Arbetsmappen som blev kvar efter en flytt (`fileOperations.leftovers.stagingFolderKept`)
+
+En informationstoast när en enhet ansluts igen (eller när Cmdr startar) och Cmdr hittar arbetsmappen från en flytt som
+aldrig blev klar, med filer kvar i. Cmdr låter varje fil ligga, eftersom de kan vara personens enda exemplar. Ingenting
+begärs av läsaren och ingenting står på spel: raden finns för att filer som saknas ska ha en plats att hittas på. ❌
+Aldrig ett förslag om att radera mappen. Skilj den från `### cancelRollback.stagedLeftover.*`: där är resten Cmdrs egen
+arbetsfil, här är det användarens filer som Cmdr medvetet skyddar.
+
+- **unfinished (om själva flytten) → `avbruten`** · katalogens `settings.advanced.showStagingTempFiles.description`
+  säger redan ”Rester från en avbruten kopiering” om exakt samma arbetsmapp, och Total Commander `sv` har `avbruten` för
+  ett förlopp som inte blev klart (`555` ”Återta avbruten nedladdning”, `1233` ”Återuppta avbruten överföring”) ·
+  `high`. Valet stod mot `ofullständig`, som `cancelRollback.stagedLeftover.*` satte för `unfinished copy`: det ordet
+  beskriver ett halvfärdigt FÖREMÅL (en fil), medan `avbruten` beskriver ett förlopp som tog slut i förtid, vilket är
+  det engelskan menar här. Båda är gångbara; gränsen går mellan sak och händelse.
+- **the move (substantiv) → `flytten`, obestämt `en … flytt`** · redan satt i § A move that could not be confirmed ·
+  `high`.
+- **left them in place → `lät dem ligga kvar`** · `operationLog.rollback.partiallyRolledBackNotice` har exakt samma ram
+  (”Cmdr ångrade det som gick och lät resten ligga kvar”), och `lät` bär att Cmdr VALDE att inte röra filerna, vilket är
+  hela poängen · `high`. ❌ Inte `blev kvar` (som `cancelRollback.stagedLeftover.*`): det läses som en rest ingen tog
+  hand om, och tar bort försäkran engelskan lägger i ”left them in place”.
+- **a hidden folder named {folderName} → `en dold mapp som heter {folderName}`** · `dold` är glossaryns satta adjektiv
+  för `hidden` (se § Fixat i den manuella passningen), `mapp` är en-genus så obestämd form blir `en dold mapp` · `high`.
+  `som heter` är katalogens egen formel för `named {x}` (`errors.mount.shareNotFound`,
+  `errors.write.duplicateSourceNames.message`); macOS `sv` säger `med namnet` om samma sak (”Skapa en mapp med namnet
+  ${fileName} inuti ${target}”) och hade fungerat lika bra, men katalogformen är talspråkligare och står redan på två
+  ställen. Båda lämnar platshållaren oböjd, vilket är det som avgör.
+- **Platshållarknepet: `på {volumeName}` och `som heter {folderName}`, båda utan artikel och utan böjning** · samma
+  lösning som § A drive pulled mid-transfer (`på {counterpart}`, `hade sparats på {volumeName}`) · `high`. Enhetsnamnet
+  är okontrollerad text i vilken skrift som helst, så ingen bestämd form, ingen genitiv och ingen kongruens får hänga på
+  det. `{folderName}` är alltid `.cmdr-staging-<uuid>`, och `som heter` bär namnet som ett citat i stället för som ett
+  led i satsen.
+- **Kommat före `i en dold mapp`** står kvar från engelskan: det är en efterställd bestämning, samma rytm som
+  `cancelRollback.stagedLeftover.named` (”… {name}, en ofullständig kopia som blev kvar …”) i samma fil. Det är alltså
+  inget komma mellan två huvudsatser och krockar inte med `style.md` § Notes and decisions.
+- ICU-fil, men värdet innehåller ingen apostrof, så dubbleringen `''` blir aldrig aktuell. Inget
+  `sameAsSourceJustification`: värdet skiljer sig från engelskan.

@@ -3462,3 +3462,43 @@ staan. Nergens mag de tekst zeggen dat het verplaatsen is misgegaan.
 - **„Your originals haven't moved.” → `Je originelen staan nog waar ze stonden.`** · dezelfde staart als de twee
   berichtregels, zodat het venster één belofte doet · `high`. Een letterlijke ontkenning („zijn niet verplaatst”) legt
   de nadruk op de handeling die niet doorging in plaats van op waar de bestanden staan.
+
+## Files a drive brings back from a move that never finished (`fileOperations.leftovers.stagingFolderKept`)
+
+Een informatieve melding als een schijf terugkomt (of Cmdr opstart) en Cmdr de werkmap van een verplaatsing aantreft met
+bestanden erin. Geen fout en geen vraag: Cmdr laat alles bewust staan, want het kan het enige exemplaar zijn. De melding
+bestaat alleen zodat bestanden die iemand mist een vindbare plek hebben. ❌ Nooit suggereren dat de map weg mag. Let op
+het verschil met `fileOperations.cancelRollback.stagedLeftover.named` hierboven: dáár gaat het om Cmdrs eigen restanten
+(„Je kunt het gerust verwijderen"), hier om de bestanden van de gebruiker, die Cmdr juist beschermt.
+
+- **„an unfinished move" → `waarvan het verplaatsen niet is voltooid`** · `het verplaatsen` is de vastgelegde
+  naamwoordsvorm (macOS Finder: „zoals het verplaatsen of kopiëren van een onderdeel"), en `niet voltooid` is wat de
+  catalogus over een gestrande bewerking zegt (`queue.failureToast.title`: „Verplaatsen niet voltooid") · `high`. ❌
+  Geen `een verplaatsing die niet is voltooid`: `de verplaatsing` is al afgewezen als UI-vorm, en het pile bevestigt dat
+  (geen enkele treffer in `nl/macOS/`, en de bestandsbeheerders kennen het woord alleen in de betekenis „beweging"). ❌
+  Ook niet `bestanden die niet helemaal zijn verplaatst`: dat leest als half geschreven bestanden en botst met het
+  `onvolledig exemplaar` van de `stagedLeftover`-broers, terwijl deze bestanden juist gaaf zijn.
+- **`voltooid`, niet `afgerond`** · beide staan in de catalogus, maar `afgerond` hoort bij het doorzoeken en bij een
+  antwoord (`indexing.rescan.incompletePreviousScan`, `askCmdr.error.unfinishedReply`) en `voltooid` bij de
+  bestandsbewerkingen zelf (de hele `queue.failureToast.title`-selectie) · `high`.
+- **„left them in place" → `heeft ze allemaal laten staan`** · glossaryregel `left where it is → laten staan`, de vorm
+  voor iets wat Cmdr bewust niet aanraakt (`errors.write.moveNotConfirmed.message.named` gebruikt haar al) · `high`.
+  Bewust géén `waar ze stonden` zoals bij `moveNotConfirmed`: die originelen zijn nooit vertrokken, deze bestanden staan
+  juist op hun nieuwe plek. `allemaal` vervangt het Engelse „in place", dat naast de maplocatie dubbelop zou zijn, en
+  draagt de belofte van de `@key` („every one of them") die anders in het Nederlands verdampt.
+- **„a hidden folder named {folderName}" → `een verborgen map met de naam {folderName}`** · `met de naam` is de vorm van
+  macOS Finder („Er bestaat al een map met de naam '^0' op deze locatie") en staat al in de catalogus
+  (`errors.mount.shareNotFound`, `errors.write.duplicateSourceNames.message`) · `high`. `genaamd` komt in het hele pile
+  niet voor.
+- **`hidden` → `verborgen`** · macOS („wordt het bestand een verborgen bestand"), Nautilus („verborgen mappen"), en de
+  catalogus zegt het al zo (`menu.view.showHiddenFiles`, `fileExplorer.rename.hiddenAfterRename`,
+  `settings.listing.showHiddenFiles.description`) · `high`. Geen verbuigingsvraag bij `map`: een bijvoeglijk gebruikt
+  voltooid deelwoord op `-en` krijgt nooit een extra `-e`.
+- **De plaatshouder-ontwijking: `op {volumeName}` en `met de naam {folderName}`, allebei zonder lidwoord.** Beide dragen
+  willekeurige tekst, dus geen `de`/`het` en geen verwijzend voornaamwoord dat een geslacht moet kiezen — dezelfde regel
+  als bij `errors.write.deviceDisconnected.sided.source.move` · `high`.
+- Geen apostrof in de waarde, dus niets te verdubbelen voor ICU.
+
+REVIEW FLAG: `waarvan het verplaatsen niet is voltooid` is correct maar iets stijver dan het Engelse „from an unfinished
+move"; een moedertaalspreker mag kijken of de melding lichter kan zonder `de verplaatsing` terug te halen. De zin loopt
+ook zo'n 40 tekens langer dan het Engels: controleer hem in een smalle melding tegen de pseudolocale.

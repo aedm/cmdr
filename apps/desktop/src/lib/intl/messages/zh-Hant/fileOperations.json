@@ -807,7 +807,7 @@
   "@fileOperations.cancelRollback.stagedLeftover.counted": {
     "sourceHash": "becfef5"
   },
-  "fileOperations.leftovers.stagingFolderKept": "Cmdr found files from an unfinished move on {volumeName} and left them in place, in a hidden folder named {folderName}.",
+  "fileOperations.leftovers.stagingFolderKept": "Cmdr 在 {volumeName} 上找到一次還沒完成的移動留下的檔案，沒有動它們，全都留在名為「{folderName}」的隱藏資料夾裡。",
   "@fileOperations.leftovers.stagingFolderKept": {
     "sourceHash": "fd848b8"
   },

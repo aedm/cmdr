@@ -1833,3 +1833,32 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
 
 兩組共 8 個值都與英文不同，都不需要
 `sameAsSourceJustification`。這一族屬於 RAW 家族，不經過 ICU，所有標點取全形；中文本來就不需要撇號，真要用也一律維持單引號。
+
+## 沒做完的移動留在磁碟機上的那個資料夾（`fileOperations.leftovers.stagingFolderKept`）
+
+磁碟機重新接上（或 Cmdr 啟動）時跳出來的一則資訊提示：Cmdr 發現某次移動的工作資料夾裡還有檔案，就刻意一個都不動。這些可能是使用者僅存的一份，因為移動也許已經把來源刪掉了。❗ 這條**不是**
+`fileOperations.cancelRollback.stagedLeftover.named`
+那一家：那邊是 Cmdr 自己清不掉的殘留（`不完整副本`），❌ 這裡的檔案是完整的、是使用者的，寫成 `不完整副本`
+會說錯。也 ❌ 絕不暗示可以刪掉它。
+
+- **an unfinished move → `一次還沒完成的移動`** · `移動` 是已定術語（見上面 § Apple-zh-TW
+  outlier 的 move 一列）；`還沒完成` 逐字沿用目錄自己的
+  `errors.listing.cancelled.explanation`（`這項操作還沒完成就被取消了`）與
+  `errors.volume.deviceDisconnected`（`更動還沒完成`）· `high`。❗ **不要寫 `未完成的移動`**：`未完成` 在本目錄是
+  `operationLog.status.failed` 的狀態標籤，也就是「失敗」，用在這裡會把一件保護性的事說成出了問題。
+- **left them in place → `沒有動它們，全都留在…裡`** · `沒有動` 取自
+  `errors.write.moveNotConfirmed.message.named`（`把你原本的檔案留在原處沒有動`），`全都` 取自
+  `errors.write.deviceDisconnected.sided.destination.move`（`你的檔案全都還在 {counterpart} 上`）· `high`。❗ **不要寫
+  `留在原處`**：依 `style.md` § Notes and decisions 的那條，`原處`
+  會被讀成「回到它們原本的地方」，但這些檔案正好不在原本的地方，而是在工作資料夾裡。這裡把地方指名出來（`隱藏資料夾`），正是那條規則要求的做法。
+- **a hidden folder named X → `名為「{folderName}」的隱藏資料夾`** · `名為「…」的<名詞>` 是 Apple 的句型（AppKit
+  `An item named “%@” already exists…` →
+  `名為「%@」的項目已經存在此位置上。`），目錄自己也已經在用（`errors.mount.shareNotFound`：`名為「{share}」的共享資料夾`）；`隱藏`
+  是已定術語（`settings.listing.showHiddenFiles.label`、`commands.viewShowHidden.label`、
+  `fileExplorer.rename.hiddenAfterRename`），Dolphin zh-TW 也寫 `隱藏的 .directory 檔案` · `high`。寫成複合詞
+  `隱藏資料夾` 而不是 `隱藏的資料夾`，因為前面已經有一個 `的`。**`隱藏`
+  兩個字非留不可**：這是整條文案唯一能讓人採取行動的資訊（要先打開顯示隱藏檔案才看得到那個資料夾）。
+- **兩個佔位符的處理** · `{volumeName}` 裸用、兩側留空格（`在 {volumeName} 上`，同
+  `errors.write.deviceDisconnected.sided.destination.move`）；`{folderName}` 是 `.cmdr-staging-<uuid>`
+  這種很長的拉丁字串，包進直角引號當名字看，引號與內文之間不空格，依 `style.md` § Punctuation · `high`。
+- 值裡沒有撇號，所以 ICU 的雙寫撇號規則在這條用不到；標點全形，語序與英文相同（先說找到什麼，再說放在哪裡）。

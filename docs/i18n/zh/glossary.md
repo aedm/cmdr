@@ -2689,3 +2689,34 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
 - **Your originals haven't moved → `你的原文件还在原来的位置`** · `原来的位置` 同
   `fileOperations.rollbackConfirm.bodyUndoByMovingBack` ·
   `high`。直译「没有移动过」偏否定式，改成正面说它们在哪儿，和这一族「告诉你文件在哪」的语气一致。
+
+## A staging folder kept after an unfinished move (`fileOperations.leftovers.stagingFolderKept`)
+
+驱动器重新接上（或 Cmdr 启动）时的一条提示条：一次移动没走完，Cmdr 找到了它的工作文件夹，里面还装着用户的文件，就**原样不动**地留着。⚠️ 它跟
+`fileOperations.cancelRollback.stagedLeftover.named`
+那一族**不是一回事**：那边是 Cmdr 自己写了一半的残留，可以删；这边是**用户的文件**，可能是仅存的一份，所以既不能说「不完整」，也**绝不能**提删除。
+
+- **found（不是搜出来的，是撞见的）→ `发现`** · 同 `errors.listing.symlinkLoopErrno.explanation`（「Cmdr 在 `{path}`
+  发现了一串首尾相连的符号链接」），句首骨架也照搬它的「Cmdr 在 X 发现了…」· `high`。没用 `找到`：本目录里 `找到`
+  归搜索结果和定位用（`search.imageResults.count`、`settings.adb.status.notFound`），这条不是用户找过东西。
+- **unfinished（move）→ `没完成的`** · 同 `errors.volume.deviceDisconnected`（「改动还没完成」）、
+  `indexing.rescan.incompletePreviousScan`（「上一次扫描没有完成」）· `high`。❗ 不用 `不完整`：那是
+  `fileOperations.cancelRollback.stagedLeftover.named` 里 "incomplete
+  copy" 的词，用在这儿会把用户完好的文件说成残品。口语的 `没做完` 也通，选 `没完成` 是为了跟上面两条对齐。
+- **left them in place → `把它们都留在了原处`** · 几乎逐字取自今天同批的
+  `errors.write.moveNotConfirmed.message.named`（「把你的原文件留在了原处」）；`原处` 有 Tier 1 佐证，macOS
+  Finder 的 Put Back 就是 `放回原处` · `confirmed`。`都` 是刻意加的，同
+  `errors.write.deviceDisconnected.sided.destination.copy` 那条的理由：中文光说「留在了原处」容易读成随口一提，`都`
+  才把「一个没少」说满。保留 `把` 字句是因为英文强调这是 Cmdr 的**有意**之举，不是没来得及收拾。
+- **hidden folder → `隐藏文件夹`** · `隐藏` 是已定的点文件义（`menu.view.showHiddenFiles` = `显示隐藏文件`、
+  `commands.viewShowHidden.label`、`fileExplorer.rename.hiddenAfterRename`），`文件夹` 见术语表 ·
+  `high`。说出「隐藏」是这条文案里唯一可操作的信息：不打开隐藏文件就看不到它。
+- **a folder named {folderName} → `一个名为 {folderName} 的隐藏文件夹`** · `名为 … 的文件夹` 取自 Nautilus
+  zh-CN（「此文件夹已包含一个名为 “%s” 的文件夹。」）；本目录 `errors.mount.shareNotFound` 也是 `名为…的共享` · `high`。
+- **`{folderName}` 不加引号** · 规则是**跟着英文走**：英文加引号的键中文才加（`errors.mount.shareNotFound` 的英文写
+  `"{share}"`），这条英文没引号，同一个占位符在 `transfer.appearedDuringMove` 里也是光板的 ·
+  `high`。两个占位符都是拉丁字符，按 `style.md` § Numerals, punctuation, and
+  spacing 两侧加空格（`在 {volumeName} 上`、`名为 {folderName} 的`）。
+- **「in place, in a hidden folder…」这个同位语 → `…原处，也就是在…里`** · 英文用逗号同位，中文直接接一个 `在…里`
+  会读成后加的状语（像是 Cmdr 把文件搬了进去）。`也就是在…` 明确它就是「原处」本身，事情的经过没变 · `high`。
+- 值与英文不同，无需 `sameAsSourceJustification`。中文侧没有撇号，ICU 的 `''` 规则用不上。

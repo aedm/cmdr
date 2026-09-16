@@ -3122,3 +3122,40 @@ thành một lần hỏng việc: không có gì mất cả, Cmdr giữ lại c�
   thành `chưa di chuyển`: `di chuyển` là từ đã chốt cho thao tác Move, nên "các bản gốc chưa di chuyển" sẽ đọc như thể
   thao tác vẫn đang chờ chạy, chứ không phải các tệp vẫn nằm yên chỗ cũ.
 - Không giá trị nào trong tám khóa có dấu nháy đơn, nên không có `''` nào phải nhân đôi; `errors.*` là họ RAW.
+
+## Thư mục làm việc còn lại sau một lần di chuyển dang dở (`fileOperations.leftovers.stagingFolderKept`)
+
+Toast báo tin, hiện khi cắm lại ổ đĩa (hoặc khi Cmdr khởi động) và Cmdr thấy thư mục làm việc của một lần di chuyển
+không chạy xong, bên trong vẫn còn tệp. Cmdr cố ý không đụng vào chúng, vì đó có thể là bản duy nhất người dùng còn.
+Giọng trấn an, kể việc, không đòi hỏi gì. ❌ Đây KHÔNG phải họ `fileOperations.cancelRollback.stagedLeftover.*`: ở đó là
+phần thừa của chính Cmdr và người dùng được mời xóa, còn ở đây là tệp của người dùng và câu này **không bao giờ** được
+gợi ý bỏ đi thứ gì, nên `dọn dẹp` và `xóa` đều bị cấm trong chuỗi này.
+
+- **found → `tìm thấy`, không phải `phát hiện`** · catalog dùng `tìm thấy` cho việc Cmdr tìm rồi thấy
+  (`errors.listing.symlinkLoopErrno.explanation`: "Cmdr tìm thấy một chuỗi liên kết tượng trưng vòng tròn"), và để dành
+  `phát hiện` cho việc dò tự động (`settings.adb.status.watching`, `viewer.toolbar.encoding.detectedSuffix`) · `high`.
+  macOS Finder có `Đã phát hiện thấy bản sao một phần của thư mục “^0”` cho đúng tình huống này, nhưng `phát hiện` nghe
+  như máy dò ra một dấu hiệu, còn ở đây Cmdr chỉ đơn giản nhìn thấy tệp.
+- **an unfinished move → `một lần di chuyển chưa hoàn tất`** · macOS Finder `vi` chốt đúng cụm cho một thao tác dở dang:
+  `Một số thông tin đã được ghi vào đĩa này, nhưng thao tác chưa hoàn tất.`; `hoàn tất` cũng đã ở trong catalog
+  (`errors.write.deviceDisconnected.sided.destination.move`: "trước khi Cmdr kịp hoàn tất việc di chuyển") · `high`. ❌
+  Không mượn `chưa hoàn chỉnh` của `fileOperations.cancelRollback.stagedLeftover.named`: `hoàn chỉnh` tả một VẬT đủ đầy
+  (bản sao), `hoàn tất` tả một VIỆC chạy xong, và giữ hai từ tách nhau cũng giữ hai họ chuỗi tách nhau. Khuôn
+  `từ một lần <động từ> <tính từ>` lấy của `settings.advanced.showStagingTempFiles.description` ("Các tệp còn sót lại từ
+  lần sao chép bị gián đoạn"); ở đây bỏ `còn sót lại` vì cụm đó đã thuộc về phần thừa của chính Cmdr.
+- **left them in place → `giữ nguyên chúng ở đó`** · chọn giữa hai lựa chọn đều đúng: `giữ nguyên` là động từ catalog
+  dùng khi Cmdr chủ động bảo vệ tệp của người dùng (`errors.write.moveNotConfirmed.message.named`: "nó giữ nguyên các
+  bản gốc của bạn ở chỗ cũ"), còn `để nguyên` là khi Cmdr chỉ không đụng tới một thứ của chính nó
+  (`fileExplorer.navigation.driveIndex.driveLeaving`: "để nguyên chỉ mục của ổ đĩa",
+  `operationLog.rollback.partiallyRolledBackNotice`) · `high`. Chuỗi này thuộc vế bảo vệ, nên lấy `giữ nguyên`. ⚠️
+  `ở đó`, ❌ không phải `ở chỗ cũ`: các tệp đang nằm trong thư mục làm việc chứ không phải chỗ xuất phát của chúng, nên
+  `chỗ cũ` sẽ nói sai. Vế `ở nguyên chỗ` của `fileOperations.cancelRollback.leftBehind` là dạng nội động, không ghép
+  được vào câu có tân ngữ này.
+- **a hidden folder named X → `một thư mục ẩn có tên {folderName}`** · `ẩn` là từ của macOS Finder `vi`
+  (`Hệ thống coi các mục có tên như vậy là tệp ẩn.`, `Finder ẩn các tệp bắt đầu bằng dấu chấm.`) và của catalog
+  (`menu.view.showHiddenFiles` = `Hiển thị tệp ẩn`); KDE Dolphin có sẵn `thư mục ẩn`. Khuôn `có tên` lấy nguyên của
+  Finder (`… đã được di chuyển vào một thư mục mới có tên “^0”`) · `high`. Giữ tên thư mục đứng trần, không ngoặc kép,
+  theo tiếng Anh và theo `fileOperations.cancelRollback.stagedLeftover.named`, dù Finder có đóng ngoặc ở câu của nó. Chữ
+  `ẩn` là phần duy nhất người đọc có thể làm gì đó với nó (phải bật hiển thị tệp ẩn mới thấy), nên không được lược.
+- `{volumeName}` và `{folderName}` giữ nguyên từng byte, đứng trần không có loại từ đi trước (tên ổ đĩa là chuỗi tùy ý,
+  theo quy tắc ở `style.md`); giá trị không có dấu nháy đơn nào nên không phát sinh `''` của ICU.

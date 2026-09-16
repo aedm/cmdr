@@ -3428,3 +3428,59 @@ Négy kulcs, egy panel. A művelet NEM kudarc: a másolatok valószínűleg megv
 - **„Have a look at the destination” → `Nézd meg a célhelyet`** · tegező felszólítás, a `style.md` szerinti
   regiszterben; a `célhely` tárgyesete rendes szó, nem helyőrző, tehát ragozható · `high`.
 - Egyik kulcsnál sem kell `sameAsSourceJustification`: mind a négy érték eltér az angoltól.
+
+## A visszadugott meghajtón maradt áthelyezési munkamappa (`fileOperations.leftovers.stagingFolderKept`)
+
+Tájékoztató buborék, amikor egy meghajtó visszakerül (vagy a Cmdr elindul), és egy soha be nem fejezett áthelyezés
+munkamappája még fájlokat tartalmaz. A Cmdr SZÁNDÉKOSAN mindent a helyén hagy: ezek lehetnek az illető egyetlen
+példányai, mert az áthelyezés az eredetieket már eltávolíthatta. Nincs se kérés, se veszély; a mondat egyetlen
+cselekvésre bírható tartalma az, hogy a mappa REJTETT. ❌ Soha nem javasoljuk a törlését. ICU-fájl, tehát minden
+aposztróf kettőződne; ebben az értékben nincs egy sem.
+
+- **„unfinished” (egy el nem készült MŰVELET, nem egy hiányos fájl) → `félbemaradt`** · a tő fedezete erős: a szállított
+  `errors.listing.deviceReconnecting.explanation` a „canceled or interrupted transfer”-t
+  `megszakított vagy félbeszakadt átvitel` alakkal mondja, a Microsoft-terminológia pedig hozza a `félbehagy` címszót; a
+  macOS Tier 1 az igés alakra ad mintát („did not finish in time” → `nem fejeződött be időben`), a Double Commander
+  ugyanígy (`Néhány fájlművelet még nem fejeződött be.`) · a `félbe-` tő `high`, a konkrét `félbemaradt` alak
+  `tentative` (a kupacban nincs rá találat; a negyedik bányászati gotcha „közös tő = bizonyíték” esete).
+  - ❌ **NEM `befejezetlen`**: a `hu` kupacban ez a szó KIZÁRÓLAG könyvelési terminus (`befejezetlen termelés`,
+    `befejezetlen beruházás`), tehát rossz jelentésbokor (a negyedik forráscsapda: az első találat gyakran nem a
+    felületi jelentés).
+  - ❌ **NEM `félbeszakadt`**, pedig az a szállított alak: azt a katalógus az „interrupted”-re foglalta le (lásd fent),
+    és okot is sugall (valami elvágta). Az angol „unfinished” ágensmentes, a `félbemaradt` pontosan az.
+  - ❌ **NEM `hiányos`**, pedig a legközelebbi rokon, a `fileOperations.cancelRollback.stagedLeftover.named` azt mondja:
+    ott az „unfinished copy” egy FÉLIG MEGÍRT FÁJL (hiányos tárgy), itt egy be nem fejezett MŰVELET. A két kulcs
+    regisztere is szemben áll: ott a Cmdr a saját maradékáról számol be, itt az illető fájljait védi.
+- **„hidden” (a pont kezdetű, listából kimaradó értelemben) → `rejtett`** · a szállított katalógus egyöntetű
+  (`menu.view.showHiddenFiles`, `settings.listing.showHiddenFiles.label`, `commands.viewShowHidden.label`,
+  `fileExplorer.rename.hiddenAfterRename`), és a kupac is: KDE Dolphin hu („rejtett mappákat”, „A nevükben ponttal
+  kezdődő mappák rejtettek”), Thunar hu, Nautilus hu, Total Commander hu · `high`.
+- **„left them in place” → `a helyükön hagyta őket`** · a settled alak, szó szerint az
+  `errors.write.moveNotConfirmed.message.named` záró fordulata (`az eredetieket a helyükön hagyta`), rokona az
+  `errors.write.readOnlyDevice.source.suggestion` (`Az eredetiek a helyükön maradnak.`) · `high`. A `helyükön` szórendi
+  fókuszba kerül, tehát épp a megnyugtatás hangsúlyos, ahogy az angolban.
+- **„found” → `találta`, ❌ nem `bukkant rá` és nem `megtalálta`** · a `talál` a katalógus igéje a felfedezésre
+  (`errors.listing.symlinkLoopErrno.explanation`: „körkörös láncát találta itt”), míg a `bukkan` egyszer sem szerepel
+  benne · `high`. A `megtalálta` semleges szórendje azt sugallná, hogy a Cmdr kereste őket; az igekötőtlen, fókuszos
+  „X-et találta” pont azt mondja, AMIT talált, ami ennek a buboréknak a hírértéke.
+
+Helyőrző-kerülések (mindkettő ragozatlanul marad):
+
+- **`{volumeName}` → `a(z) {volumeName} meghajtón`** · a katalógus bevett fogása: alaptag viseli a ragot, a névhez nem
+  tapad semmi (`errors.write.moveNotConfirmed.message.named`: `a(z) {volumeName} meghajtóra`,
+  `errors.write.deviceDisconnected.sided.destination.move`: `a(z) {counterpart} meghajtón`,
+  `fileExplorer.navigation.driveIndex.driveLeaving`, `indexing.needsFreshScan.afterDisconnect`) · `high`. A meghajtónév
+  itt is idézőjel NÉLKÜL áll, a testvérkulcsok mintájára.
+- **`{folderName}` → `egy rejtett, „{folderName}” nevű mappában`** · a `nevű` szerkezet a magyar szabvány megoldása
+  arra, hogy egy ismeretlen kiejtésű név toldalék nélkül maradjon, és a macOS Tier 1 egyöntetűen így írja (Finder `PE1`,
+  `PE62.2`, `PE68.1`: „Már létezik egy „^0” nevű elem ezen a helyen.”; AppKit: „Már létezik egy „%@” nevű elem ezen a
+  helyen.”), a Nautilus hu szintén („„%s” nevű elem már létezik ezen a helyen.”) · `high`. Az `egy` határozatlan névelő
+  semmivel nem egyeztet, tehát a név kezdőhangja közömbös.
+  - **Itt KELL az idézőjel**, a `style.md` „csak a felhasználó által írt névre” szabálya ellenére: a név 45 karakternyi
+    átlátszatlan azonosító (`.cmdr-staging-` + egy UUID), amit az illetőnek a Finderben meg kell találnia, tehát a
+    mondattól el kell határolni. A legközelebbi rokon, a `fileOperations.cancelRollback.stagedLeftover.named` szintén
+    idézőjelezi a Cmdr saját gyártású munkanevét (`A(z) „{name}”`). A szabály tiltó fele a MÁRKA- és szolgáltatónevekre
+    vonatkozik, ahol az idézőjel gúnyosnak olvasódna.
+  - A `rejtett` szándékosan az idézőjeles név ELÉ került: ez az egyetlen tartalom, amivel az illető kezdeni tud valamit,
+    és így nem a hosszú azonosító után kell megkeresnie.
+- Nem kell `sameAsSourceJustification`: az érték eltér az angoltól.

@@ -3218,8 +3218,8 @@ localizable. ❌ Nunca insinuar que se pueden borrar.
   Finder oculta los archivos que empiezan por un punto»; Nautilus, Dolphin y Total Commander, «Archivos ocultos») ·
   high. Decirlo es obligatorio: es lo único accionable de la línea, porque sin activar los archivos ocultos la carpeta
   no se ve.
-- **named {folderName} → `llamada {folderName}`** · molde literal de macOS Finder (`Crear una carpeta llamada
-  ${fileName} dentro de ${target}`) · high.
+- **named {folderName} → `llamada {folderName}`** · molde literal de macOS Finder
+  (`Crear una carpeta llamada ${fileName} dentro de ${target}`) · high.
 - **La esquiva de los dos marcadores**: `{folderName}` va detrás de `carpeta`, que es quien carga el género, así que
   `llamada` concuerda con el sustantivo español y nunca con el nombre real (siempre `.cmdr-staging-<uuid>`).
   `{volumeName}` va tras la preposición desnuda `en`, sin artículo, como `{counterpart}` en § A drive pulled

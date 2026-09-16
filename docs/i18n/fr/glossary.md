@@ -3471,3 +3471,70 @@ prouver que les copies sont arrivées. La valeur ne doit jamais laisser entendre
   (`errors.write.deviceDisconnected.suggestion` : « …et réessayez. », `errors.eject.notResponding` : « Réessayez dans un
   instant. ») · `high`.
 - Famille brute : apostrophes ASCII SIMPLES dans les huit valeurs, aucun `sameAsSourceJustification`.
+
+## Les fichiers d'un déplacement incomplet retrouvés sur un disque (`fileOperations.leftovers.stagingFolderKept`)
+
+Notification d'information affichée quand un disque revient (ou au démarrage de Cmdr) et que Cmdr retrouve le dossier de
+travail d'un déplacement qui ne s'est jamais terminé, avec des fichiers encore dedans. Cmdr les laisse tous où ils sont,
+parce qu'ils peuvent être l'unique exemplaire de la personne : le déplacement a peut-être déjà retiré les originaux. On
+ne demande rien, rien n'est en danger ; la ligne existe pour que des fichiers qui manquent aient une adresse. ❌ Ne
+jamais suggérer de supprimer le dossier, et ❌ jamais « erreur » / « échec ».
+
+- **hidden (l'attribut du fichier lui-même : nom commençant par un point, ou drapeau « hidden » du système) → `caché`**
+  · le catalogue le pose déjà sur les trois surfaces qui NOMMENT la fonction (`menu.view.showHiddenFiles` et
+  `settings.listing.showHiddenFiles.label` « Afficher les fichiers cachés », `commands.viewShowHidden.label` « Afficher
+  ou masquer les fichiers cachés ») et sur celle qui la DÉFINIT (`settings.listing.showHiddenFiles.description` « … les
+  éléments que le système marque comme cachés ») ; les cinq gestionnaires de fichiers du tas sont unanimes sur «
+  fichiers cachés » (Nautilus `nautilus.po` « Afficher ou masquer les fichiers cachés », Dolphin `dolphin.po` « Afficher
+  les fichiers cachés », Thunar `thunar.po` « Nombre de fichiers cachés », Total Commander `WCMD.INC` « Affiche les
+  fichiers cachés », Double Commander `doublecmd.po` « Afficher les fichiers cachés et système »), et Microsoft FRA
+  donne les deux formes pour la même définition « Not visible to the user » (`caché` id 326097, `masqué` id 61317), donc
+  ne tranche pas · `high`. Relevé dans `~/projects-git/vdavid/cmdr/_ignored/i18n/fr/`, 2026-09-16.
+  - **La frontière `caché` / `masqué`** : `caché` qualifie ce que le fichier EST (son attribut, qui ne dépend pas de la
+    vue) ; `masqué` qualifie ce que l'interface NE MONTRE PAS en ce moment (`fileExplorer.functionKeyBar.hiddenToast` «
+    La barre des touches de fonction est maintenant masquée », `queryUi.pathPills.hiddenAria` « Segments de chemin
+    masqués », `settings.indexing.silencedDrives.label` « Demandes d'indexation masquées »). `masquer` reste le VERBE de
+    l'action, chez Apple comme chez nous (`commands.viewShowHidden.label` réunit les deux : « Afficher ou masquer les
+    fichiers cachés »).
+  - Le macOS français ne publie aucun « fichiers cachés » : il tourne la chose au verbe, y compris pour le point initial
+    (`SavePanel` / `Document` : « Le Finder masque les fichiers commençant par un point. », Finder `FI16` : « … le
+    fichier sera masqué. »). Ce n'est donc pas une preuve Tier 1 CONTRE `caché`, seulement l'absence de la collocation ;
+    le catalogue et les cinq gestionnaires décident.
+  - Raison décisive pour cette clé : son seul contenu actionnable est d'aller activer l'affichage, et l'interrupteur
+    s'appelle « Afficher les fichiers cachés ». Le mot de la notification doit être celui de l'interrupteur, comme le
+    veut `style.md` (« Un renvoi à un réglage … réutilise le libellé du bouton qui l'ouvre, mot pour mot »).
+  - ⚠️ `fileExplorer.rename.hiddenAfterRename` dit « les fichiers masqués ne sont pas affichés » là où il parle de
+    l'attribut : c'est la seule valeur du catalogue du mauvais côté de la frontière. À aligner sur `cachés` lors d'une
+    passe qui touche ce fichier.
+- **unfinished (move) → `incomplet`** · la sœur d'à côté dans le même fichier fixe déjà `unfinished copy` →
+  `copie incomplète` (`fileOperations.cancelRollback.stagedLeftover.named`), et les deux notifications peuvent se suivre
+  chez la même personne · `high`. Le tas de références ne contient ni `unfinished` ni `inachevé` (vérifié 2026-09-16),
+  donc c'est la cohérence interne qui décide. ❌ Pas `interrompu`, qui rend `interrupted` ailleurs
+  (`settings.advanced.showStagingTempFiles.description` « les restes d'une copie interrompue »,
+  `errors.write.connectionInterrupted.title`) : garder les deux mots anglais distincts. `inachevé` était l'autre
+  candidat naturel, écarté pour ne pas ouvrir un deuxième mot sur la même notion.
+- **files from a <opération> → `des fichiers issus d''un <opération>`** · `tentative` pour le connecteur. Le moule du
+  catalogue pour l'origine est le génitif nu (`showStagingTempFiles.description` : « Les restes d'une copie interrompue
+  »), mais il marche parce que « restes de » porte déjà l'origine ; « des fichiers d'un déplacement » se lit comme une
+  appartenance et non comme une provenance, d'où `issus de`. Aucune attestation dans le tas pour l'un ou l'autre.
+- **left them in place → `les a laissés là où ils sont`** · reprise mot pour mot du registre déjà posé par
+  `errors.write.moveNotConfirmed.message.named` (« a donc laissé vos originaux là où ils étaient ») et
+  `errors.write.readOnlyDevice.source.suggestion` (« Les originaux restent où ils sont. ») · `high`. Le PRÉSENT, pas
+  l'imparfait de la sœur : là-bas la phrase raconte ce que Cmdr a décidé sur le moment, ici elle dit où les fichiers se
+  trouvent maintenant, ce qui est justement l'information utile.
+- **a folder named {x} → `un dossier nommé {x}`** · macOS Finder `Localizable` (« Create a folder named
+  ${fileName}
+  inside ${target} » → « Créer un dossier nommé ${fileName} dans ${target} »), `LocalizableMerged` `A32` /
+  `A35` (« un nouveau dossier nommé « ^0 » ») et Double Commander (« Il existe déjà un dossier nommé "%s". ») · `high`.
+  Apple encadre le nom de guillemets ; le catalogue ne le fait pas (`stagedLeftover.named` laisse `{name}` nu) et
+  l'anglais non plus, donc `{folderName}` reste nu ici aussi.
+- **Le créneau des deux `{placeholder}`** : `sur {volumeName}` (préposition sans article ni accord, exactement comme
+  `errors.write.moveNotConfirmed.message.named` et les quatre `deviceDisconnected.sided.*`), et `{folderName}` en fin de
+  phrase après `nommé`, qui s'accorde avec `dossier` (masculin singulier) et jamais avec l'insertion. Le participe
+  `laissés` s'accorde avec `des fichiers`, connu à l'écriture. Aucun des deux placeholders ne touche un article, un
+  genre ou une élision.
+- Sujet unique `Cmdr` et deuxième verbe coordonné (`et les a laissés`), ❌ jamais le pronom `il` : l'antécédent masculin
+  le plus proche serait `{volumeName}`, et la phrase dirait que c'est le disque qui a laissé les fichiers. Même piège et
+  même parade que § A move that could not be confirmed.
+- Famille ICU : `d''un` avec l'apostrophe ASCII doublée, aucun U+2019, pas de deux-points donc pas d'espace avant. Pas
+  de `sameAsSourceJustification` : la valeur diffère de l'anglais.

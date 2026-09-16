@@ -3008,3 +3008,50 @@ movimentação deu errado”, pela mesma regra das linhas de desfecho da § O co
   corpo, que aparece logo acima no MESMO painel; o inglês também varia a formulação entre as duas.
 - Varredura pt-PT dos quatro valores e checagem de apóstrofo/aspas: zero ocorrências. Nenhum
   `sameAsSourceJustification`: os quatro diferem do inglês.
+
+## An unfinished move's staging folder left in place (`fileOperations.leftovers.stagingFolderKept`)
+
+Toast informativo quando um disco volta (ou o Cmdr inicia) e há a pasta de trabalho de uma movimentação que não
+terminou, com arquivos dentro. O Cmdr deixa TODOS eles onde estão de propósito: podem ser a única cópia da pessoa,
+porque a movimentação talvez já tenha tirado os originais. Nada é pedido e nada corre risco. ❌ Nunca sugerir apagar a
+pasta, e ❌ nunca as palavras `erro` ou `falha`. Atenção à distinção com a § `cancelRollback.stagedLeftover.*` acima: lá
+é sobra do PRÓPRIO Cmdr no destino, aqui são os arquivos DA PESSOA que ele está protegendo.
+
+- **unfinished move · `movimentação incompleta`** · `incompleto` é a palavra da Apple para "incomplete" (macOS pt-BR
+  `LA33`: "danificado ou incompleto"), já fixada na § `cancelRollback.stagedLeftover.*` para `unfinished copy` →
+  `cópia incompleta`; **movimentação** é o substantivo de "move" da § Error-copy phrasings, publicado em
+  `errors.write.cancelled.message.move` · high. ❌ Não `inacabada` (sem atestação na pilha) nem
+  `movimentação que não terminou` (perifrástico e mais longo num toast).
+- **hidden (sentido dotfile) · `oculta`** · macOS pt-BR Finder atesta exatamente esse sentido: "Se você decidir
+  continuar e usar um nome que comece com um ponto, o arquivo ficará oculto." (`LocalizableMerged`, lido em 2026-09-16);
+  o catálogo já publica `arquivos ocultos` em `menu.view.showHiddenFiles`, `commands.viewShowHidden.label` e
+  `fileExplorer.rename.hiddenAfterRename` · confirmed. Termo do Finder, não da Microsoft (princípio 2). É a única parte
+  acionável da frase: sem ligar os arquivos ocultos, a pessoa não vê a pasta.
+- **a folder named {folderName} · `uma pasta chamada {folderName}`** · molde literal da Apple pt-BR, que usa
+  `uma pasta chamada "^0"` e `um item chamado "^0"` em várias folhas do Finder · confirmed. `chamada` concorda com
+  `pasta`, nunca com o placeholder.
+- **`em uma`, ❌ nunca `numa`, nesta frase** · o Finder pt-BR escreve `em uma` por extenso e não tem nenhuma ocorrência
+  de `numa` ("está em uma pasta que você não tem permissão para modificar"); o catálogo também prefere `em uma pasta` (4
+  chaves) a `numa pasta` (1) · high.
+- **on {volumeName} · `no disco {volumeName}`** · o esquive já fechado: `em` pede artigo e `{volumeName}` é texto
+  arbitrário que não pode carregar gênero, então o substantivo **disco** vem na frente, como em
+  `errors.write.moveNotConfirmed.message.named` e `indexing.needsFreshScan.afterDisconnect` · confirmed.
+- **left them in place · `deixou tudo onde está`** · `ficar/deixar onde está` é o molde da família
+  (`errors.write.readOnlyDevice.source.suggestion`: "Os originais ficam onde estão.";
+  `fileOperations.cancelRollback.leftBehind`: "estes ficaram onde estão") · high. O **tudo** invariável entra no lugar
+  do pronome objeto: evita a próclise/ênclise que o `style.md` regula e ainda diz "todos eles", que é o que a
+  `@key.description` pede. Presente (`está`), não `estava`: os arquivos continuam lá agora. ❌ Não `no lugar`, que o
+  catálogo já usa no sentido de "em vez de" (`main.revealNudge.body`, `onboarding.stepOptional.indexing.descCost`).
+- **Sujeito explícito `O Cmdr`** · a § Notes do `style.md` ("Uma frase de resultado nunca fica sem sujeito") e o molde
+  de `errors.write.moveNotConfirmed.message.named`; os dois verbos (`encontrou`, `deixou`) dividem o mesmo sujeito, sem
+  brecha para ler `você`.
+- ⚠️ **A tranquilização ficou um pouco mais fria que a do inglês.** "left them in place" carrega a deliberação do Cmdr
+  na própria escolha de verbo; `deixou tudo onde está` diz o fato e o `tudo` recupera o "every one of them", mas não há
+  um equivalente pt-BR que soe tão intencional sem acrescentar palavras que o inglês não tem (`deixou tudo intacto`
+  prejulga que nada foi tocado, e `intacto` já está reservado a "untouched" em
+  `errors.write.deviceDisconnected.sided.*`). Compensação: `no disco {volumeName}` + `em uma pasta oculta chamada …`
+  mantêm a frase concreta e endereçável, que é a função do toast.
+- Varredura pt-PT do valor (`ficheiro`, `estar a` + infinitivo, `consoante`, próclise antes de infinitivo, `Rever`,
+  `alterar o nome`, `guardar`, `você` omitido em frase de resultado): zero ocorrências; marca brasileira: `arquivos`. O
+  valor não leva apóstrofo nem aspas, então não há `''` a dobrar mesmo sendo família ICU. Nenhum
+  `sameAsSourceJustification`: o valor difere do inglês.
