@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { classifyIssuance, issuanceStaleAfterMs, type IssuanceRecord } from './license-issuance'
+import {
+  classifyIssuance,
+  classifyManualLicense,
+  issuanceStaleAfterMs,
+  type IssuanceRecord,
+  type ManualLicenseRecord,
+} from './license-issuance'
 
 const claimedAt = '2026-08-12T10:00:00.000Z'
 const claimedAtMs = Date.parse(claimedAt)
@@ -39,5 +45,47 @@ describe('classifyIssuance', () => {
 
   it('treats an unreadable claim timestamp as stale, so a purchase is never stuck undelivered', () => {
     expect(classifyIssuance(record({ claimedAt: 'not a date' }), claimedAtMs)).toBe('remint')
+  })
+})
+
+const expiresAt = '2026-09-01T00:00:00.000Z'
+const expiresAtMs = Date.parse(expiresAt)
+
+function manual(overrides: Partial<ManualLicenseRecord> = {}): ManualLicenseRecord {
+  return {
+    transactionId: 'manual-A2B3C4D5E6F7',
+    licenseType: 'commercial_perpetual',
+    organizationName: 'Acme Inc',
+    expiresAt: null,
+    revokedAt: null,
+    shortCodes: ['CMDR-2345-6789-ABCD'],
+    customerEmail: 'friend@example.com',
+    note: 'evaluation',
+    ...overrides,
+  }
+}
+
+describe('classifyManualLicense', () => {
+  it('keeps a license with no expiry active forever', () => {
+    expect(classifyManualLicense(manual(), expiresAtMs + 100 * 365 * 24 * 60 * 60 * 1000)).toBe('active')
+  })
+
+  it('holds a dated license active right up to its expiry', () => {
+    expect(classifyManualLicense(manual({ expiresAt }), expiresAtMs - 1)).toBe('active')
+    expect(classifyManualLicense(manual({ expiresAt }), expiresAtMs)).toBe('expired')
+  })
+
+  it('reports a revoked license as invalid, however far off its expiry is', () => {
+    const revoked = manual({ revokedAt: '2026-08-01T00:00:00.000Z', expiresAt })
+
+    expect(classifyManualLicense(revoked, expiresAtMs - 1000)).toBe('invalid')
+  })
+
+  it('reports a revoked perpetual license as invalid', () => {
+    expect(classifyManualLicense(manual({ revokedAt: '2026-08-01T00:00:00.000Z' }), expiresAtMs)).toBe('invalid')
+  })
+
+  it('treats an unreadable expiry as expired, so a broken row never grants a license', () => {
+    expect(classifyManualLicense(manual({ expiresAt: 'whenever' }), expiresAtMs)).toBe('expired')
   })
 })

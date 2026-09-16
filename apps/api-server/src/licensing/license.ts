@@ -53,6 +53,28 @@ export function generateShortId(prefix: string, len: number): string {
 }
 
 /**
+ * Paddle transaction ids all start with this, in both sandbox and live, so it's what tells a
+ * bought license from a hand-issued one. ❌ It says nothing about WHICH Paddle environment issued
+ * it; `PADDLE_ENVIRONMENT` is the only signal for that.
+ */
+export const paddleTransactionIdPrefix = 'txn_'
+
+export function isPaddleTransactionId(transactionId: string): boolean {
+  return transactionId.startsWith(paddleTransactionIdPrefix)
+}
+
+/**
+ * Mint an id for a manually issued license. Its own namespace, so `/validate` can tell from the id
+ * alone whether to ask Paddle or read the ledger.
+ *
+ * Random rather than time-based: the id travels inside the license payload and is the value
+ * `/validate` looks up, so a guessable one invites probing for other people's licenses.
+ */
+export function generateManualTransactionId(): string {
+  return generateShortId('manual', 12)
+}
+
+/**
  * Validate that a string looks like a short license code.
  */
 export function isValidShortCode(code: string): boolean {
