@@ -16,6 +16,13 @@
 //! - GTK `&` mnemonics on Linux, allocated per submenu from the translated labels
 //!   (`mnemonics.rs`), so no row names one.
 //!
+//! ❗ Every accelerator here is a string muda parses, and a token it doesn't know is DISCARDED
+//! rather than reported (`tauri::menu::MenuItem::new` is `.parse().ok()`), so the item comes up
+//! with no key at all and nothing says a word. muda's modifier vocabulary is `OPTION`/`ALT`,
+//! `CONTROL`/`CTRL`, `COMMAND`/`CMD`/`SUPER`, `SHIFT` (`muda-0.19.3/src/accelerator.rs:534`): ❌
+//! never `Opt`, which cost Copy path and Show in Finder their accelerators in every release until
+//! 2026-09-16. `accelerators.rs` guards its own output with a real parse.
+//!
 //! ❗ The `Cmd+…` accelerators both platforms share bind to SUPER on Linux, not Ctrl: muda maps
 //! `"CMD"` to `Modifiers::META`, which is Super on GTK, and only `CmdOrCtrl` resolves to Ctrl off
 //! macOS. So the Linux menu prints Super chords. Users still get Ctrl because the frontend keydown
@@ -49,7 +56,7 @@ use super::{
 /// "Copy path", matching Finder's "Copy as Pathname". Must stay in sync with the `file.copyPath`
 /// default in `src/lib/commands/sources/file-list.ts` (`⌘⌥C`), which is what the frontend
 /// dispatcher listens for. The file context menu uses it too.
-pub(crate) const COPY_PATH_ACCELERATOR: Accelerator = split("Cmd+Opt+C", "Ctrl+Alt+C");
+pub(crate) const COPY_PATH_ACCELERATOR: Accelerator = split("Cmd+Alt+C", "Ctrl+Alt+C");
 
 /// "Show in Finder" / "Show in file manager", here and in the file context menu.
 ///
@@ -60,7 +67,7 @@ pub(crate) const SHOW_IN_FILE_MANAGER_KEY: PerPlatform<&str> = PerPlatform {
     macos: "menu.file.showInFinder",
     linux: "menu.file.showInFileManager",
 };
-pub(crate) const SHOW_IN_FILE_MANAGER_ACCELERATOR: Accelerator = split("Opt+Cmd+O", "Alt+Ctrl+O");
+pub(crate) const SHOW_IN_FILE_MANAGER_ACCELERATOR: Accelerator = split("Alt+Cmd+O", "Alt+Ctrl+O");
 
 // The items the macOS app menu holds, which Linux spreads over Edit and Help.
 const ABOUT: Entry = item(ABOUT_ID, "menu.app.about", NONE);
@@ -264,8 +271,11 @@ pub(crate) const MENU_BAR: &[BarMenu] = &[
                 ],
             ),
             // Each preset writes `appearance.textSize` through the command-execute event, and Zoom
-            // in / out move it by 10 percentage points. GTK intercepts `Cmd+Plus` / `Cmd+Minus`, so
-            // Linux leaves those two to JS dispatch.
+            // in / out move it by 10 percentage points. GTK intercepts these two, so Linux leaves
+            // them to JS dispatch.
+            // ❗ Zoom in is `Cmd+Equal`, ❌ never `Cmd+Plus`: muda's key vocabulary has no `Plus`
+            // (`accelerator.rs:151`'s `parse_code`), so the item came up with no key at all. `=` is
+            // the physical key, and `view.zoom.in` already binds `⌘=` alongside `⌘+`.
             submenu(
                 None,
                 "menu.view.zoom",
@@ -276,7 +286,7 @@ pub(crate) const MENU_BAR: &[BarMenu] = &[
                     item(VIEW_ZOOM_125_ID, "menu.zoom.percent125", NONE).untracked(),
                     item(VIEW_ZOOM_150_ID, "menu.zoom.percent150", NONE).untracked(),
                     SEPARATOR,
-                    item(VIEW_ZOOM_IN_ID, "menu.zoom.in", macos("Cmd+Plus")).untracked(),
+                    item(VIEW_ZOOM_IN_ID, "menu.zoom.in", macos("Cmd+Equal")).untracked(),
                     item(VIEW_ZOOM_OUT_ID, "menu.zoom.out", macos("Cmd+Minus")).untracked(),
                 ],
             ),

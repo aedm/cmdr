@@ -441,6 +441,15 @@ objc2-io-kit = { version = "0.3.2", default-features = false, features = ["std",
 
 
 [dev-dependencies]
+# Parsing an accelerator string FOR REAL in `menu/accelerators.rs`'s tests. muda is where Tauri
+# parses one, and `tauri::menu::MenuItem::new` is `.parse().ok()`, which throws the error away and
+# builds the item with no key at all — so a converter test that only compares strings is blind to a
+# token muda rejects. One was: `Opt` cost every ⌥ accelerator in the app until 2026-09-16.
+# No new package in the graph: cargo unifies this with the copy Tauri already resolves.
+# ❗ `default-features = false` is load-bearing, not tidiness: muda's defaults turn on `libxdo`,
+# whose `libxdo` + `libxdo-sys` crates Tauri deliberately leaves off (`tauri-2.11.5/Cargo.toml:344`)
+# and which a parser test has no use for. With it on, this dev-dependency ADDS two packages.
+muda = { version = "0.19", default-features = false }
 # `Bytes`, the chunk type the MTP upload cells feed a fake source stream with.
 # Dev-only now: the production upload path moved into `cmdr-mtp`, which declares
 # its own copy.

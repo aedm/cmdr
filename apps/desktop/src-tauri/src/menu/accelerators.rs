@@ -77,7 +77,11 @@ fn convert(shortcut: &str) -> Option<(String, bool)> {
                 if !result.is_empty() {
                     result.push('+');
                 }
-                result.push_str("Opt");
+                // ❗ `Alt`, ❌ never `Opt`: muda accepts `OPTION` and `ALT` and nothing else
+                // (`muda-0.19.3/src/accelerator.rs:534`), and Tauri throws the parse error away
+                // (`normal.rs:65` is `.parse().ok()`), so `Opt` built items with NO accelerator at
+                // all, silently. `an_accelerator_muda_refuses_is_dropped_without_a_word` guards it.
+                result.push_str("Alt");
             }
             '⇧' => {
                 if !result.is_empty() {
@@ -218,7 +222,7 @@ mod tests {
         assert_eq!(frontend_shortcut_to_accelerator("⌘1"), Some("Cmd+1".to_string()));
         assert_eq!(frontend_shortcut_to_accelerator("⌘2"), Some("Cmd+2".to_string()));
         assert_eq!(frontend_shortcut_to_accelerator("⌘⇧P"), Some("Cmd+Shift+P".to_string()));
-        assert_eq!(frontend_shortcut_to_accelerator("⌥⌘O"), Some("Opt+Cmd+O".to_string()));
+        assert_eq!(frontend_shortcut_to_accelerator("⌥⌘O"), Some("Alt+Cmd+O".to_string()));
         assert_eq!(frontend_shortcut_to_accelerator("⌃⌘C"), Some("Ctrl+Cmd+C".to_string()));
     }
 
@@ -291,7 +295,7 @@ mod tests {
         );
         assert_eq!(
             frontend_shortcut_to_accelerator("⌘⌥Escape"),
-            Some("Cmd+Opt+Escape".to_string())
+            Some("Cmd+Alt+Escape".to_string())
         );
     }
 
@@ -299,5 +303,92 @@ mod tests {
     fn test_frontend_shortcut_to_accelerator_empty() {
         assert_eq!(frontend_shortcut_to_accelerator(""), None);
         assert_eq!(frontend_shortcut_to_menu_text(""), None);
+    }
+
+    /// ❗ The test the other ones in this file couldn't be: it PARSES the output instead of
+    /// comparing it to a string we made up.
+    ///
+    /// Everything downstream throws a parse failure away. `tauri::menu::MenuItem::new` is
+    /// `accelerator.and_then(|s| s.as_ref().parse().ok())` (`tauri-2.11.5/src/menu/normal.rs:65`),
+    /// so a token muda doesn't know builds an item with no key at all, with no error, no panic and
+    /// no log line. `Opt` was exactly that: every ⌥ accelerator in the app — Copy path, Show in
+    /// Finder, Open terminal here, and any ⌥ combo a user rebound to — silently had none, while a
+    /// green `assert_eq!(…, "Cmd+Opt+C")` right here said it was fine.
+    ///
+    /// muda is a dev-dependency so this parses through the same code Tauri will.
+    #[test]
+    fn every_accelerator_this_converter_emits_is_one_muda_can_parse() {
+        // Every modifier, every key shape the converter has a branch for, and the two combos
+        // whose spelling the menu bar hardcodes.
+        let combos = [
+            "⌘K",
+            "⌥⌘O",
+            "⌃⌘C",
+            "⌘⇧P",
+            "⌃⌥⇧⌘A",
+            "⌘↑",
+            "⌘↓",
+            "⌘←",
+            "⌘→",
+            "⌘[",
+            "⌘,",
+            "⌘Backspace",
+            "⌘⌥Escape",
+            "⌥Enter",
+            "⌥Space",
+            "⌥Tab",
+            "⌥Delete",
+            "⌥Insert",
+            "⌥PageUp",
+            "⌥PageDown",
+            "⌥Home",
+            "⌥End",
+            "⌥F4",
+        ];
+        for combo in combos {
+            let accelerator = frontend_shortcut_to_accelerator(combo)
+                .unwrap_or_else(|| panic!("`{combo}` carries a command modifier, so it should convert"));
+            assert!(
+                accelerator.parse::<muda::accelerator::Accelerator>().is_ok(),
+                "`{combo}` converts to `{accelerator}`, which muda refuses — so Tauri would build \
+                 the item with NO accelerator and say nothing"
+            );
+        }
+    }
+
+    /// The other half of the same guard: the menu bar's own hardcoded accelerator strings go
+    /// straight to Tauri without passing through the converter, so they need parsing too.
+    #[test]
+    fn every_accelerator_the_menu_bar_hardcodes_is_one_muda_can_parse() {
+        use crate::menu::menu_bar::MENU_BAR;
+        use crate::menu::menu_spec::{EntryKind, Platform, SubmenuSpec};
+
+        fn check(spec: &'static SubmenuSpec, platform: Platform) {
+            for entry in spec.entries_on(platform) {
+                let (id, accelerator) = match entry {
+                    EntryKind::Item(item) => (item.id, item.accelerator.on(platform)),
+                    EntryKind::Check(item) => (item.id, item.accelerator.on(platform)),
+                    EntryKind::Submenu(nested) => {
+                        check(nested, platform);
+                        continue;
+                    }
+                    _ => continue,
+                };
+                let Some(accelerator) = accelerator else {
+                    continue;
+                };
+                assert!(
+                    accelerator.parse::<muda::accelerator::Accelerator>().is_ok(),
+                    "`{id}` on {platform:?} is built with `{accelerator}`, which muda refuses, so \
+                     the item comes up with no key and nothing says a word"
+                );
+            }
+        }
+
+        for platform in [Platform::MacOs, Platform::Linux] {
+            for bar_menu in MENU_BAR.iter().filter(|bar_menu| bar_menu.is_on(platform)) {
+                check(&bar_menu.submenu, platform);
+            }
+        }
     }
 }

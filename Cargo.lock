@@ -1395,6 +1395,7 @@ dependencies = [
  "mimalloc",
  "mime_guess",
  "minisign-verify",
+ "muda",
  "notify",
  "notify-debouncer-full",
  "nucleo-matcher",

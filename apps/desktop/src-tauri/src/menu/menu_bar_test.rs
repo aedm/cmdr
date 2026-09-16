@@ -55,7 +55,7 @@ menu menu.bar.file id=menu_file
   12 separator
   13 item rename menu.file.rename [F2] tracked
   14 separator
-  15 item show_in_finder menu.file.showInFinder [Opt+Cmd+O] tracked
+  15 item show_in_finder menu.file.showInFinder [Alt+Cmd+O] tracked
   16 item open_terminal_here menu.file.openTerminalHere [Alt+Cmd+T] tracked
   17 item get_info menu.file.getInfo [Cmd+I] tracked
   18 item quick_look menu.file.quickLook [Shift+Space] tracked
@@ -68,7 +68,7 @@ menu menu.bar.edit id=menu_edit
   5 item edit_paste menu.edit.paste [Cmd+V] tracked
   6 item edit_paste_move menu.edit.moveHere [Alt+Cmd+V] tracked
   7 separator
-  8 item copy_path menu.edit.copyPath [Cmd+Opt+C] tracked
+  8 item copy_path menu.edit.copyPath [Cmd+Alt+C] tracked
   9 item copy_filename menu.edit.copyFilename tracked
   10 separator
   11 item search_files menu.edit.searchFiles [Cmd+F] tracked
@@ -103,7 +103,7 @@ menu menu.bar.view id=menu_view
       2 item view_zoom_125 menu.zoom.percent125 untracked
       3 item view_zoom_150 menu.zoom.percent150 untracked
       4 separator
-      5 item view_zoom_in menu.zoom.in [Cmd+Plus] untracked
+      5 item view_zoom_in menu.zoom.in [Cmd+Equal] untracked
       6 item view_zoom_out menu.zoom.out [Cmd+Minus] untracked
   6 separator
   7 item switch_pane menu.view.switchPane [Tab] tracked
