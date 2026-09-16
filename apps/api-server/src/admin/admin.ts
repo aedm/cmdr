@@ -84,7 +84,7 @@ async function listProdErrorReports(bucket: R2Bucket, cutoffDate: string | null)
 }
 
 // Admin stats: returns activation count and device count
-// Auth: dedicated ADMIN_API_TOKEN, separate from the Paddle secrets used by /admin/generate
+// Auth: ADMIN_API_TOKEN, the one admin credential (the Paddle secrets verify webhooks, nothing else)
 admin.get('/admin/stats', async (c) => {
   const token = c.env.ADMIN_API_TOKEN
   if (!token) {
