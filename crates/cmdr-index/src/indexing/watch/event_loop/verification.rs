@@ -15,6 +15,7 @@ use crate::indexing::DEBUG_STATS;
 use crate::indexing::events::emit_dir_updated;
 use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::lifecycle_bus;
+use crate::indexing::reconcile::reconciler;
 use crate::indexing::metadata;
 use crate::indexing::paths::path_prefix;
 use crate::indexing::read::enrichment::get_read_pool;
@@ -343,24 +344,35 @@ fn verify_affected_dirs_with(affected_paths: &HashSet<String>, writer: &IndexWri
             parent_path.clone()
         };
 
-        // Detect stale entries (in DB but not on disk)
-        for child in db_children {
-            let child_path = format!("{}/{}", parent_prefix, child.name);
-            if !Path::new(&child_path).exists() {
-                if child.is_directory {
-                    let _ = writer.send(WriteMessage::DeleteSubtreeById(child.id));
-                } else {
-                    let _ = writer.send(WriteMessage::DeleteEntryById(child.id));
-                }
-                stale_count += 1;
-            }
-        }
-
-        // Detect missing entries (on disk but not in DB)
+        // ⚠️ **The parent's own listing FIRST, before any child is probed.** A
+        // directory we couldn't read tells us nothing about what is in it, and the
+        // probe below reads every failure as "gone" — so probing first reaps the
+        // entire listing of a directory that merely went unreadable. A directory the
+        // user really deleted still loses its rows, from its PARENT's pass, whose
+        // listing genuinely stops mentioning it.
         let read_dir = match std::fs::read_dir(parent_path) {
             Ok(rd) => rd,
             Err(_) => continue,
         };
+
+        // Detect stale entries (in DB but not on disk)
+        for child in db_children {
+            let child_path = format!("{}/{}", parent_prefix, child.name);
+            // Errno-typed, ❌ never `Path::exists()`, which collapses every error to
+            // `false`: only a child that is really absent may be swept, and a
+            // permission wall or an I/O error means we never got to look.
+            match std::fs::symlink_metadata(&child_path) {
+                Ok(_) => continue,
+                Err(e) if !reconciler::child_is_absent(&e) => continue,
+                Err(_) => {}
+            }
+            if child.is_directory {
+                let _ = writer.send(WriteMessage::DeleteSubtreeById(child.id));
+            } else {
+                let _ = writer.send(WriteMessage::DeleteEntryById(child.id));
+            }
+            stale_count += 1;
+        }
 
         // ── Guard tooth 2 ────────────────────────────────────────────────
         // Cap ITERATIONS, not upserts. The loop below `continue`s past every
@@ -492,6 +504,78 @@ mod tests {
 
     fn remove_read_pool() {
         uninstall_read_pool(ROOT_VOLUME_ID);
+    }
+
+    /// A directory this pass couldn't LIST tells us nothing about its children, so
+    /// none of their rows may be swept.
+    ///
+    /// The order is the whole bug: every child is probed with `Path::exists()`, which
+    /// is false for any error at all, and the parent's own `read_dir` failure is only
+    /// consulted afterwards — so an unreadable or vanished parent reaps its entire
+    /// listing on the way past. A directory the user really deleted still loses its
+    /// rows, just from its PARENT's pass, whose listing genuinely stops mentioning it.
+    #[test]
+    fn a_parent_that_cannot_be_listed_sweeps_none_of_its_children() {
+        let _guard = READ_POOL_TEST_MUTEX.lock_ignore_poison();
+        let tree = test_tempdir();
+        let gone = tree.path().join("gone");
+        fs::create_dir_all(&gone).unwrap();
+        write_files(&gone, &["one", "two"]);
+
+        let (writer, db_path, _db_dir) = setup_writer();
+        let gone_id = ensure_path_in_db(&db_path, &gone, &writer);
+        insert_children_from_disk(&writer, gone_id, &gone);
+        writer.flush_blocking().unwrap();
+        install_read_pool(&db_path);
+
+        // The directory itself goes, so `read_dir` on it fails and every child path
+        // stats as absent for a reason that says nothing about the child.
+        fs::remove_dir_all(&gone).unwrap();
+
+        let affected: HashSet<String> = [gone.to_string_lossy().to_string()].into_iter().collect();
+        verify_affected_dirs_with(&affected, &writer, 100);
+        writer.flush_blocking().unwrap();
+
+        let after = db_children(&db_path, gone_id);
+        let names: Vec<&str> = after.iter().map(|e| e.name.as_str()).collect();
+        assert!(
+            names.contains(&"one") && names.contains(&"two"),
+            "an unlistable parent proves nothing about its children, so their rows stay: got {names:?}"
+        );
+        remove_read_pool();
+    }
+
+    /// The control for the pass above: a directory that still LISTS is still diffed,
+    /// so a child that really went away is still swept. Without this, refusing every
+    /// sweep would pass the test above and quietly stop verification converging.
+    #[test]
+    fn a_parent_that_lists_still_sweeps_a_child_that_went_away() {
+        let _guard = READ_POOL_TEST_MUTEX.lock_ignore_poison();
+        let tree = test_tempdir();
+        let live = tree.path().join("live");
+        fs::create_dir_all(&live).unwrap();
+        write_files(&live, &["kept", "removed"]);
+
+        let (writer, db_path, _db_dir) = setup_writer();
+        let live_id = ensure_path_in_db(&db_path, &live, &writer);
+        insert_children_from_disk(&writer, live_id, &live);
+        writer.flush_blocking().unwrap();
+        install_read_pool(&db_path);
+
+        fs::remove_file(live.join("removed")).unwrap();
+
+        let affected: HashSet<String> = [live.to_string_lossy().to_string()].into_iter().collect();
+        verify_affected_dirs_with(&affected, &writer, 100);
+        writer.flush_blocking().unwrap();
+
+        let after = db_children(&db_path, live_id);
+        let names: Vec<&str> = after.iter().map(|e| e.name.as_str()).collect();
+        assert!(names.contains(&"kept"), "the surviving child stays: got {names:?}");
+        assert!(
+            !names.contains(&"removed"),
+            "a real removal under a readable parent is still swept: got {names:?}"
+        );
+        remove_read_pool();
     }
 
     /// Insert the directory chain for `path` and return the deepest dir's id.
