@@ -1,9 +1,9 @@
 # Licensing
 
-Everything money touches: the Paddle webhook that fulfills a purchase, `/activate`, `/validate`, and `/admin/generate`.
-`licensing.ts` holds the routes; `license.ts` (short codes, key signing, `generateShortId`), `license-issuance.ts` (the
-D1 fulfillment record), `paddle.ts` (HMAC verify, `constantTimeEqual`), `paddle-api.ts` (Paddle REST), and
-`device-tracking.ts` (fair-use device sets) are its leaves.
+Everything money touches: the Paddle webhook that fulfills a purchase, `/activate`, `/validate`, and the hand-issued
+licenses behind `/admin/generate` and `/admin/revoke`. `licensing.ts` holds the routes and mounts `manual-licenses.ts`;
+`license.ts` (short codes, key signing, id namespaces), `license-issuance.ts` (the D1 ledger), `paddle.ts` (HMAC verify,
+`constantTimeEqual`), `paddle-api.ts` (Paddle REST), and `device-tracking.ts` (fair-use device sets) are its leaves.
 
 ## Must-knows
 
@@ -31,8 +31,10 @@ D1 fulfillment record), `paddle.ts` (HMAC verify, `constantTimeEqual`), `paddle-
 - **Device tracking never affects the validation response**: it's fire-and-forget, and the server never rejects a
   validation over device count. Alerts go to a human. DETAILS § Device tracking.
 - **Paddle preserves `custom_data` key casing**, so it's `organizationName`, ❌ never `organization_name`.
-- **`/admin/generate` takes the Paddle webhook secret as its bearer token**, unlike every other admin route (those take
-  `ADMIN_API_TOKEN`).
+- **A license we hand out lives in our ledger, not in Paddle.** `/validate` dispatches on the id namespace: `txn_` asks
+  Paddle, anything else resolves from `license_issuance` where `source = 'manual'`. ❌ Never answer a `txn_` id from the
+  table, a canceled subscription would keep validating. `/admin/generate` and `/admin/revoke` (`manual-licenses.ts`)
+  take `ADMIN_API_TOKEN` like every other admin route, and minting refuses without a `note`. DETAILS § Manual licenses.
 
 Fulfillment states, webhook verification, the replay-tolerance gap, price-ID mapping, device sets, and the sandbox
 runbooks: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.
