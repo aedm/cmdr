@@ -299,8 +299,17 @@ pub async fn set_show_virtual_git_portal(enabled: bool) {
 pub fn update_menu_accelerator(app: AppHandle, command_id: &str, shortcut: &str) -> Result<(), String> {
     let menu_state = app.state::<MenuState<tauri::Wry>>();
 
-    // Convert frontend shortcut format to Tauri accelerator format
+    // Convert frontend shortcut format to Tauri accelerator format. A combo carrying no
+    // ⌘ / ⌃ / ⌥ can't be registered without swallowing the key app-wide, so it comes back
+    // `None` and the menu only DISPLAYS it instead. The two are exclusive, so the item never
+    // shows one shortcut while firing on another.
     let accelerator = frontend_shortcut_to_accelerator(shortcut);
+    // The frontend's own spelling, ❌ not the Tauri one: this is drawn, never parsed, and
+    // `⇧8` is what AppKit would print for a real accelerator where `Shift+8` is not.
+    let display = match (&accelerator, shortcut.is_empty()) {
+        (None, false) => Some(shortcut.to_string()),
+        _ => None,
+    };
 
     match command_id {
         // View mode CheckMenuItems are per-pane and the accelerator only attaches to the
@@ -321,13 +330,20 @@ pub fn update_menu_accelerator(app: AppHandle, command_id: &str, shortcut: &str)
         // All other commands: use the generic HashMap-based update
         _ => {
             if let Some(menu_id) = command_id_to_menu_id(command_id) {
-                update_menu_item_accelerator(&app, &menu_state, menu_id, accelerator.as_deref())
+                update_menu_item_accelerator(&app, &menu_state, menu_id, accelerator.as_deref(), display.as_deref())
                     .map_err(|e| format!("Failed to update {command_id} accelerator: {e}"))?;
+                menu_state
+                    .display_accelerators
+                    .lock_ignore_poison()
+                    .insert(menu_id.to_string(), display);
                 // Tauri has no `set_accelerator()`, so the update replaced the item with a fresh
-                // one, and a fresh NSMenuItem carries no image. Without this, rebinding a shortcut
-                // silently strips that item's SF Symbol until the next menu-bar swap.
+                // one, and a fresh NSMenuItem carries neither an image nor an attributed title.
+                // Without these two, rebinding a shortcut silently strips that item's SF Symbol
+                // and its display-only accelerator until the next menu-bar swap.
                 #[cfg(target_os = "macos")]
                 crate::menu::set_macos_menu_icons_from_command(&app);
+                #[cfg(target_os = "macos")]
+                crate::menu::set_display_accelerators_from_command(&app);
             }
             // Silently succeed for commands that don't have menu items
             Ok(())

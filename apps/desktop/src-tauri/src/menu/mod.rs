@@ -25,6 +25,8 @@
 //!   `rebuild_view_mode_items` or a cheap `sync_view_mode_check_states`.
 //! - `macos_appkit.rs`: the objc2 passes that fix the built menu bar up (`cleanup_macos_menus`,
 //!   `set_macos_menu_icons`), plus the `MENU_BAR_ICONS` table.
+//! - `display_accelerators.rs` (macOS): the third such pass, drawing the shortcuts a menu item can
+//!   only SHOW as a right-aligned, dimmed run on its attributed title.
 //! - `open_with.rs` (macOS): "Open with" submenu builder.
 //! - `context_menu_icons.rs` (macOS): SF Symbols and provider logos on right-click items, which
 //!   needs the tracking notification because Tauri exposes no `NSMenu` for a context menu.
@@ -40,6 +42,8 @@ mod command_map;
 mod context_menu_header;
 #[cfg(target_os = "macos")]
 mod context_menu_icons;
+#[cfg(target_os = "macos")]
+mod display_accelerators;
 #[cfg(target_os = "macos")]
 mod file_provider_items;
 pub mod install;
@@ -280,6 +284,11 @@ pub struct MenuItemEntry<R: Runtime> {
     pub item: MenuItem<R>,
     pub submenu: Submenu<R>,
     pub position: usize,
+    /// The item's label WITHOUT any display-only accelerator spelled into it, mnemonic and
+    /// all. ❗ Kept separately because `item.text()` is the built label, which on Linux ends
+    /// in ` (⇧8)`: recreating the item from that would stack a second shortcut on the end
+    /// every time the user rebinds. `update_menu_item_accelerator` composes from here.
+    pub label: String,
 }
 
 /// Stores references to menu items and current context.
@@ -347,6 +356,16 @@ pub struct MenuState<R: Runtime> {
     pub commands_refused_over_dialog: Mutex<HashSet<String>>,
     /// Generic menu items keyed by menu item ID, for accelerator and enable/disable updates.
     pub items: Mutex<HashMap<String, MenuItemEntry<R>>>,
+    /// What each rebound item's DISPLAY-only accelerator should say now, overriding the one
+    /// `MENU_BAR` was built with. `Some` draws that combo, `None` draws nothing at all.
+    ///
+    /// Written by `update_menu_accelerator` alone, which knows which way a rebind went:
+    /// a combo carrying ⌘ / ⌃ / ⌥ becomes a real accelerator and this says `None` so the two
+    /// can't both show; anything else can't be registered (`accelerators.rs`'s modifier floor)
+    /// and lands here instead. Empty until the first rebind, which is why a fresh bar reads
+    /// straight off the spec. A language rebuild throws the map away with the bar it described
+    /// and the frontend re-pushes, exactly as it does for real accelerators.
+    pub display_accelerators: Mutex<HashMap<String, Option<String>>>,
     /// Sort by submenu (disabled when not in explorer context)
     pub sort_submenu: Mutex<Option<Submenu<R>>>,
     /// Context for the most recent network host context menu (host_id + host_name)
@@ -399,6 +418,7 @@ impl<R: Runtime> Default for MenuState<R> {
             reopen_closed_tab_enabled: AtomicBool::new(false),
             commands_refused_over_dialog: Mutex::new(HashSet::new()),
             items: Mutex::new(HashMap::new()),
+            display_accelerators: Mutex::new(HashMap::new()),
             sort_submenu: Mutex::new(None),
             network_host_context: Mutex::new(NetworkHostMenuContext::default()),
             volume_row_context: Mutex::new(VolumeRowMenuContext::default()),
@@ -438,6 +458,10 @@ impl<R: Runtime> MenuState<R> {
         *self.view_right_pane_submenu.lock_ignore_poison() = Some(items.view_right_pane_submenu);
         *self.pin_tab.lock_ignore_poison() = Some(items.pin_tab);
         *self.items.lock_ignore_poison() = items.items;
+        // The overrides described the bar being replaced, so they go with it. The frontend
+        // re-pushes every custom shortcut after a rebuild (`MenuBarRebuilt`), which is what
+        // puts back the real accelerators too.
+        self.display_accelerators.lock_ignore_poison().clear();
         *self.sort_submenu.lock_ignore_poison() = Some(items.sort_submenu);
         items.menu
     }

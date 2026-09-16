@@ -96,20 +96,22 @@ impl<R: Runtime> Builder<'_, R> {
         let platform = self.platform;
         let mut mnemonics = Mnemonics::new();
         let mut children = Vec::new();
-        let mut tracked = Vec::new();
+        // `(id, position, built item, the label WITHOUT a display accelerator on it)`.
+        let mut tracked: Vec<(&str, usize, MenuItem<R>, String)> = Vec::new();
         for (position, entry) in spec.entries_on(platform).enumerate() {
             let child = match entry {
                 EntryKind::Item(item) => {
                     // The mnemonic is assigned on the bare label, then the display shortcut goes
                     // on the end: GTK would otherwise happily underline a letter inside `(⇧8)`.
                     let label = self.label(item.label, &mut mnemonics);
-                    let label = match item.display_accelerator {
+                    let built_label = match item.display_accelerator {
                         Some(shortcut) => display_accelerator_label(&label, shortcut, platform),
-                        None => label,
+                        None => label.clone(),
                     };
-                    let built = MenuItem::with_id(app, item.id, label, item.enabled, item.accelerator.on(platform))?;
+                    let built =
+                        MenuItem::with_id(app, item.id, built_label, item.enabled, item.accelerator.on(platform))?;
                     match item.tracking {
-                        Tracking::Tracked => tracked.push((item.id, position, built.clone())),
+                        Tracking::Tracked => tracked.push((item.id, position, built.clone(), label)),
                         Tracking::Untracked => {}
                         Tracking::PinTab => self.pin_tab = Some(built.clone()),
                     }
@@ -154,13 +156,14 @@ impl<R: Runtime> Builder<'_, R> {
             Some(id) => Submenu::with_id_and_items(app, id, title, true, &refs)?,
             None => Submenu::with_items(app, title, true, &refs)?,
         };
-        for (id, position, item) in tracked {
+        for (id, position, item, label) in tracked {
             self.items.insert(
                 id.to_string(),
                 MenuItemEntry {
                     item,
                     submenu: submenu.clone(),
                     position,
+                    label,
                 },
             );
         }

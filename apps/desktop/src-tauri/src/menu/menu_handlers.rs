@@ -3,8 +3,8 @@
 //! `handle_menu_event` is the `.on_menu_event` dispatcher wired into the Tauri
 //! builder: it maps a clicked item's ID to a command, a settings toggle, or a
 //! native responder-chain action. The macOS post-construction passes live here
-//! too (`cleanup_macos_menus`, `set_macos_menu_icons`), since they share this
-//! file's platform seam onto AppKit.
+//! too (`cleanup_macos_menus`, `set_macos_menu_icons`, `set_display_accelerators`),
+//! since they share this file's platform seam onto AppKit.
 //!
 //! The other two live-update lanes moved out: `accelerators.rs` for shortcut
 //! strings, `view_mode_items.rs` for the per-pane view-mode items.
@@ -76,6 +76,33 @@ pub fn set_macos_menu_icons_from_command<R: Runtime>(app: &AppHandle<R>) {
     let handle = app.clone();
     if let Err(e) = app.run_on_main_thread(move || set_macos_menu_icons(&handle)) {
         log::warn!(target: "menu", "Failed to dispatch macOS menu icons to the main thread: {e}");
+    }
+}
+
+/// Draws the display-only accelerators on the installed menu bar, post-construction via AppKit.
+///
+/// The counterpart of [`set_macos_menu_icons`] for the shortcuts a menu item can only SHOW
+/// (`menu_spec::ItemSpec::display_accelerator`), and it has to run everywhere that one does:
+/// neither an attributed title nor an image survives a fresh `NSMenuItem`.
+#[cfg(target_os = "macos")]
+pub fn set_display_accelerators<R: Runtime>(app: &AppHandle<R>, menu_state: &MenuState<R>) {
+    super::display_accelerators::set_display_accelerators(app, menu_state);
+}
+
+/// Runs [`set_display_accelerators`] on the main thread, for callers on a Tauri command thread.
+///
+/// Same fire-and-forget contract as [`set_macos_menu_icons_from_command`]: a failed hop costs a
+/// glyph until the next menu-bar swap, never correctness. Reads `MenuState` inside the hop, which
+/// is safe because every caller of this variant runs long after `app.manage`.
+#[cfg(target_os = "macos")]
+pub fn set_display_accelerators_from_command<R: Runtime>(app: &AppHandle<R>) {
+    let handle = app.clone();
+    let dispatched = app.run_on_main_thread(move || {
+        let menu_state = handle.state::<MenuState<R>>();
+        set_display_accelerators(&handle, &menu_state);
+    });
+    if let Err(e) = dispatched {
+        log::warn!(target: "menu", "Failed to dispatch the menu bar's display accelerators to the main thread: {e}");
     }
 }
 

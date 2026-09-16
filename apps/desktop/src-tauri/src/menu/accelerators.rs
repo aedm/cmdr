@@ -16,6 +16,7 @@ use tauri::{AppHandle, Runtime, menu::MenuItem};
 
 use crate::ignore_poison::IgnorePoison;
 
+use super::menu_spec::{Platform, display_accelerator_label};
 use super::{MenuItemEntry, MenuState};
 
 /// Convert frontend shortcut format (⌘2) to the text a menu item shows (Cmd+2).
@@ -159,25 +160,38 @@ fn convert(shortcut: &str) -> Option<(String, bool)> {
 /// Update the accelerator for any menu item tracked in the items HashMap.
 /// Removes the old item, creates a new one with the same ID/label/enabled state
 /// but a new accelerator, and reinserts at the same position.
+///
+/// `display_accelerator` is the combo to SHOW when `new_accelerator` is `None` because the
+/// modifier floor refused it. It rebuilds the label from `MenuItemEntry::label` rather than
+/// from the live item, so a rebind can't stack a second `(⇧8)` onto a Linux label.
+///
+/// ❗ On macOS the fresh `NSMenuItem` carries no attributed title, so the caller must re-run
+/// `macos_appkit::set_display_accelerators` afterwards or the glyph disappears until the next
+/// menu-bar swap. Same contract as the SF Symbols.
 pub fn update_menu_item_accelerator<R: Runtime>(
     app: &AppHandle<R>,
     menu_state: &MenuState<R>,
     menu_item_id: &str,
     new_accelerator: Option<&str>,
+    display_accelerator: Option<&str>,
 ) -> tauri::Result<()> {
     let mut items_guard = menu_state.items.lock_ignore_poison();
     let entry = items_guard
         .get(menu_item_id)
         .ok_or_else(|| tauri::Error::InvalidWindowHandle)?;
 
-    let label = entry.item.text()?;
+    let label = entry.label.clone();
+    let built_label = match display_accelerator {
+        Some(shortcut) => display_accelerator_label(&label, shortcut, Platform::current()),
+        None => label.clone(),
+    };
     let enabled = entry.item.is_enabled()?;
     let submenu = entry.submenu.clone();
     let position = entry.position;
 
     // Remove old item, create replacement with new accelerator, reinsert
     submenu.remove(&entry.item)?;
-    let new_item = MenuItem::with_id(app, menu_item_id, &label, enabled, new_accelerator)?;
+    let new_item = MenuItem::with_id(app, menu_item_id, &built_label, enabled, new_accelerator)?;
     submenu.insert(&new_item, position)?;
 
     // Update the HashMap entry
@@ -187,6 +201,7 @@ pub fn update_menu_item_accelerator<R: Runtime>(
             item: new_item,
             submenu,
             position,
+            label,
         },
     );
 

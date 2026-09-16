@@ -99,11 +99,12 @@ fn install<R: Runtime>(
         ActiveMenuKind::Viewer => viewer_menu,
     })?;
 
-    // AppKit re-injects its Edit items on every `set_menu`, and SF Symbols never
-    // survive one.
+    // AppKit re-injects its Edit items on every `set_menu`, and neither SF Symbols nor
+    // display-only accelerators ever survive one.
     super::cleanup_macos_menus(app);
     if active == ActiveMenuKind::Main {
         super::set_macos_menu_icons(app);
+        super::set_display_accelerators(app, menu_state);
     }
     Ok(())
 }

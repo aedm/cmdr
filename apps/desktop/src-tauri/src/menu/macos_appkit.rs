@@ -345,7 +345,7 @@ fn apply_icon_group<R: Runtime>(ns_parent: &NSMenu, tauri_menu: &Submenu<R>, gro
 }
 
 /// The submenu with this ID directly inside `menu`, if it has one.
-fn submenu_by_id<R: Runtime>(menu: &Menu<R>, id: &str) -> Option<Submenu<R>> {
+pub(super) fn submenu_by_id<R: Runtime>(menu: &Menu<R>, id: &str) -> Option<Submenu<R>> {
     menu.get(id)?.as_submenu().cloned()
 }
 
@@ -364,7 +364,7 @@ pub(super) fn menu_item_text<R: Runtime>(item: &MenuItemKind<R>) -> Option<Strin
 }
 
 /// The `NSMenu` hanging off the item in `parent` with this title.
-fn find_ns_submenu(parent: &NSMenu, title: &str) -> Option<Retained<NSMenu>> {
+pub(super) fn find_ns_submenu(parent: &NSMenu, title: &str) -> Option<Retained<NSMenu>> {
     (0..parent.numberOfItems())
         .filter_map(|index| parent.itemAtIndex(index)?.submenu())
         .find(|submenu| submenu.title().to_string() == title)

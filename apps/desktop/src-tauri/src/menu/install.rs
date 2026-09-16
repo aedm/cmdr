@@ -69,6 +69,11 @@ pub fn at_startup(app: &tauri::App, settings: &Settings) -> tauri::Result<()> {
     #[cfg(target_os = "macos")]
     super::set_macos_menu_icons(app.handle());
 
+    // Draw the shortcuts the menu bar can only SHOW. Takes the local `menu_state`: it isn't
+    // managed yet, and won't be until the bottom of this function.
+    #[cfg(target_os = "macos")]
+    super::set_display_accelerators(app.handle(), &menu_state);
+
     // Subscribe to NSWorkspace launch/terminate notifications so the "Open with"
     // candidate cache invalidates when the user installs or removes apps.
     #[cfg(target_os = "macos")]

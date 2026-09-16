@@ -23,8 +23,9 @@ use super::{
 
 /// Swaps the app-level menu bar to the main menu, if a different menu is installed.
 ///
-/// After the swap, re-runs the macOS Edit-item cleanup and re-applies SF Symbol icons (neither
-/// reliably survives `app.set_menu()`). Skips all of this when the main menu is already active.
+/// After the swap, re-runs the macOS Edit-item cleanup and re-applies the SF Symbol icons and the
+/// display-only accelerators (none of the three survives `app.set_menu()`, which builds fresh
+/// `NSMenuItem`s). Skips all of this when the main menu is already active.
 #[cfg(target_os = "macos")]
 pub(crate) fn swap_to_main_menu<R: Runtime>(app: &AppHandle<R>) {
     use crate::menu::ActiveMenuKind;
@@ -47,10 +48,12 @@ pub(crate) fn swap_to_main_menu<R: Runtime>(app: &AppHandle<R>) {
         *active = ActiveMenuKind::Main;
     }
 
-    // macOS re-injects Edit items on every `set_menu`, and SF Symbol icons don't survive the swap,
-    // so re-run both on the main thread (mirrors the startup ordering in `lib.rs`).
+    // macOS re-injects Edit items on every `set_menu`, and neither the SF Symbol icons nor the
+    // display-only accelerators survive the swap, so re-run all three on the main thread
+    // (mirrors the startup ordering in `lib.rs`).
     crate::menu::cleanup_macos_menus_from_command(app);
     crate::menu::set_macos_menu_icons_from_command(app);
+    crate::menu::set_display_accelerators_from_command(app);
 }
 
 /// Swaps the app-level menu bar to the shared viewer menu, if a different menu is installed.

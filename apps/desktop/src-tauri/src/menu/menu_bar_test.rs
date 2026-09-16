@@ -339,6 +339,29 @@ fn a_panes_full_item_sits_at_0_and_brief_at_1() {
     }
 }
 
+/// A display-only accelerator exists BECAUSE the combo can't be registered. An item carrying
+/// both would show one shortcut and fire on another, and on macOS the attributed title would
+/// draw the display glyph right where AppKit draws the real key equivalent.
+#[test]
+fn no_item_both_registers_and_displays_a_shortcut() {
+    for platform in PLATFORMS {
+        for entry in every_entry(platform) {
+            let EntryKind::Item(item) = entry else {
+                continue;
+            };
+            let Some(shortcut) = item.display_accelerator else {
+                continue;
+            };
+            assert_eq!(
+                item.accelerator.on(platform),
+                None,
+                "`{}` displays `{shortcut}` on {platform:?} while also registering an accelerator",
+                item.id
+            );
+        }
+    }
+}
+
 /// `MenuState.items` is keyed by ID, so a second item with an ID already taken would silently
 /// replace the first one's registration.
 #[test]

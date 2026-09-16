@@ -381,6 +381,14 @@ objc2-app-kit = { version = "0.3", features = [
     # as a header instead of a greyed-out command. Both are AppKit-only additions to
     # frameworks already linked; nothing here raises the 10.15 floor.
     "NSAttributedString", "NSFont",
+    # The menu bar's display-only accelerators (`menu/macos_appkit.rs`): a right `NSTextTab`
+    # in an `NSMutableParagraphStyle` is what right-aligns the glyph on an item's attributed
+    # title. (`NSStringDrawing`, which measures the labels to place that tab stop, is below.)
+    "NSParagraphStyle",
+    # Gates `NSTextTab::initWithType_location` (its `loc` is a `CGFloat`), which is the
+    # deprecated-but-10.15-safe initializer. `initWithTextAlignment_location_options` would
+    # additionally need the `NSText` feature for `NSTextAlignment`.
+    "objc2-core-foundation",
     # The file context menu's tag row (`menu/tag_row/`): a custom `NSView` in a menu item,
     # drawn with `NSBezierPath` and `NSStringDrawing` in the colors its `NSAppearance` picks,
     # following the pointer with an `NSTrackingArea`, and giving VoiceOver one
