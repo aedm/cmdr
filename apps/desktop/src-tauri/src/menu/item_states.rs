@@ -5,7 +5,7 @@
 //! recomputed from every [`MenuState`] input at once so no writer can undo another's verdict by
 //! running after it. [`set_menu_context`] and the macOS-only `swap_to_main_menu` /
 //! `swap_to_viewer_menu` decide which window's menu is installed and which items that leaves in
-//! scope; both are called from `commands::menu::activate_window_menu` on focus-gain.
+//! scope; both are called from `commands::menu_state::activate_window_menu` on focus-gain.
 
 use std::collections::HashSet;
 use std::sync::atomic::Ordering;
