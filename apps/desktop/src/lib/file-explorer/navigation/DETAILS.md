@@ -22,6 +22,13 @@ badges). `resolve-location.ts` and `breadcrumb-navigation.ts` are documented whe
 - **`path-resolution.ts` exists to break an import cycle**, holding only the walk-up `resolveValidPath`:
   `path-navigation.ts` imports `getLastUsedPathForVolume` from `app-status-store.ts`, so `app-status-store.ts` needs a
   cycle-free way to reach the resolver. Folding it back into `path-navigation.ts` reintroduces the cycle.
+- **`real-folder-history.ts` answers "where was this pane really", skipping `search-results://` snapshot paths.** One
+  backward walk over a history stack, shared by two callers that each need a FOLDER and can't use a snapshot: the Search
+  dialog's "current folder" scope (`$lib/search/searchable-folder.ts`) and tab persistence
+  (`../pane/tab-operations.ts`), which must not write a per-session snapshot id to disk. It's generic over the entry
+  with a `pathOf` reader, so the persistence side walks whole `HistoryEntry`s and gets the folder's `volumeId` with its
+  path, while the scope side walks a bare path list. Why persistence cares: `../pane/DETAILS.md` § "A snapshot never
+  comes back".
 - **`path-segments.ts` flags segments inside a `.git/…` portal** as it splits the breadcrumb display path, purely so
   `FilePane.svelte` can paint them with `--color-git-portal-text`. It's the only consumer of that flag.
 - **`eject-predicate.ts::isVolumeEjectable` is true when the OS says ejectable OR the row has a session to end**

@@ -80,6 +80,10 @@ The tab context menu (pin/unpin, close, close others) uses a native Tauri popup 
 Tab state persists via `loadPaneTabs` / `savePaneTabs` in `app-status-store.ts`. Migrates from old scalar keys on first
 load.
 
+A tab showing a search-results snapshot persists the folder it searched from instead, and any snapshot path still on
+disk is swapped for a real folder at load. Its live `path` is untouched, so Back still reaches the snapshot within the
+session. Both layers and the launch loop they prevent: `../pane/DETAILS.md` § "A snapshot never comes back".
+
 ## Closed-tab history (Cmd+Shift+T)
 
 Per-pane in-memory LIFO stack of recently closed tabs (`closedStack: ClosedTab[]` on `TabManager`). Session-only. Capped

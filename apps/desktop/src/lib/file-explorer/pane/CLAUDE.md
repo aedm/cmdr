@@ -27,6 +27,8 @@ Per-pane orchestrator: cursor, focus, tabs, selection, type-to-jump, dialogs, dr
   `pathInsideArchive` (strictly inside) about a site acting ON one.
 - **The snapshot pane (`volumeId === 'search-results'`) couples five points**, and skipping one silently breaks
   selection, the path, delete, the MCP mirror, or sort (`DETAILS.md` § Conventions).
+- **A `search-results://` path must NEVER reach disk**: saving writes the tab's newest real folder instead, and loading
+  swaps out any already stored (`DETAILS.md` § "A snapshot never comes back"). The live `path` stays a snapshot.
 - **BIRTH CONTEXT and an ADOPTED operation are separate slots in separate MODULES**: flow modules get a read-only
   `hasBirthContext()`, ❌ never a writer.
 - **Every dialog renders inside ONE `<svelte:boundary>` in `DialogManager.svelte`**: `show*` flips first and suppresses

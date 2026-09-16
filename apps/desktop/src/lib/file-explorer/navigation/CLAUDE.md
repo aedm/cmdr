@@ -4,8 +4,8 @@ Browser-style back/forward history, path resolution, paged keyboard shortcuts, a
 
 ## Module map
 
-- Paths and history: `navigation-history.ts` (immutable stack), `path-navigation.ts`, `path-resolution.ts`,
-  `keyboard-shortcuts.ts`.
+- Paths and history: `navigation-history.ts` (immutable stack), `real-folder-history.ts` (the newest non-snapshot entry
+  in one), `path-navigation.ts`, `path-resolution.ts`, `keyboard-shortcuts.ts`.
 - The switcher is two components: `VolumeBreadcrumb.svelte` (the chip) and `VolumeChooserMenu.svelte` (the list, on the
   house `Menu`), plus a helper per concern (grouping, disk space, favorites, connection state, eject, labels, badges)
   and the three dots/buttons both placements share (`ConnectionDot`, `UsbSpeedDot`, `DetachButton`).

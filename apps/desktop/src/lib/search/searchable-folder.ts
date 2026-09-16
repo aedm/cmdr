@@ -14,7 +14,7 @@
 import { tString } from '$lib/intl/messages.svelte'
 import type { ScopePresets } from '$lib/query-ui/query-dialog-config'
 import type { LocationCategory, VolumeInfo } from '$lib/file-explorer/types'
-import { snapshotIdFromPanePath } from './snapshot-store.svelte'
+import { isSnapshotPath, latestRealFolder } from '$lib/file-explorer/navigation/real-folder-history'
 
 /** The boot volume: every path is under it, so it's the last-resort scope. */
 const BOOT_VOLUME_ROOT = '/'
@@ -58,13 +58,8 @@ export function resolveSearchScope({ currentPath, history, volumeRoots }: Search
 
 /** The pane's current folder, or `null` when only snapshot paths are reachable. */
 function resolveCurrentFolder(currentPath: string, history: string[]): string | null {
-  if (snapshotIdFromPanePath(currentPath) === null) return currentPath
-  // Walk backward through history for the newest non-snapshot path.
-  for (let i = history.length - 1; i >= 0; i--) {
-    const entry = history[i]
-    if (snapshotIdFromPanePath(entry) === null) return entry
-  }
-  return null
+  if (!isSnapshotPath(currentPath)) return currentPath
+  return latestRealFolder(history, (path) => path)
 }
 
 /**

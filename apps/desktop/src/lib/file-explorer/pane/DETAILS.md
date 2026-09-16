@@ -512,7 +512,8 @@ capability record is the "differently complicated" failure mode to avoid:
   `isNetworkView` / `isSearchResultsView` named deriveds; the MTP device-only sub-state + the `loadDirectory` skip for
   network/device-only panes), `MtpConnectionView.svelte` (device-only sub-state).
 - **Persistence / init mechanics.** `app-status-store.ts` (skip filesystem path-resolution for the virtual `network`
-  volume on persist), `initialization.ts` (trust the stored `network` id at startup, no `resolvePathVolume`).
+  volume on persist, and swap a stored `search-results://` path for a real folder at load — § "A snapshot never comes
+  back"), `initialization.ts` (trust the stored `network` id at startup, no `resolvePathVolume`).
 - **Kind-scoped toast wording (reads the record, then picks words).** `command-dispatch.ts` +
   `file-operation-commands.ts` (`caps.kind === 'search-results'` decides the WORDING after the capability decides the
   block).
@@ -1055,6 +1056,29 @@ single module — A5 is per concern, not per call shape):
 - **Dotfile visibility**: the `listing.showHiddenFiles` SETTING, not pane state and not `app-status`. Both panes read
   the one reactive value (`getShowHiddenFiles()` from `$lib/settings/reactive-settings.svelte`), the settings store
   persists it, and `settings-applier.ts` mirrors it onto the View menu's CheckMenuItem.
+
+### A snapshot never comes back
+
+A `search-results://<id>` path means something only inside the session that minted it: its rows live in the frontend's
+in-memory snapshot store (`$lib/search/DETAILS.md` § "Snapshot store"). Two layers keep one off the next launch. The
+tab's live `path` is untouched by both, because navigating Back into a snapshot within the session is the whole point of
+that store; this is only about what reaches disk and what comes off it.
+
+- **On save**, `tab-operations.ts::buildPersistedPaneTabs` writes the newest real folder from that tab's own history in
+  place of the snapshot, with that history entry's `volumeId` — the snapshot pane's own is the virtual `search-results`,
+  which says nothing about where the rows live. The backward walk is shared with the Search dialog's "current folder"
+  scope: `../navigation/real-folder-history.ts`.
+- **On load**, `app-status-store.ts::restoreSnapshotLocation` replaces every path still shaped like a snapshot (in
+  `loadPaneTabs`, in its scalar-key migration, and in `loadAppStatus`'s `leftPath` / `rightPath`) with the default
+  volume's last-used folder, else `~`, and puts the pane on the default volume.
+
+Both layers earn their place: the save side keeps the user on the folder they searched from, and the load side is what
+rescues an `app-status.json` that already holds a snapshot path, plus the tab whose history had no real folder to write.
+
+**Why it mattered.** `resolvePersistedPath` passes every `scheme://` path through unprobed (a server or phone path can't
+answer a probe at launch) and `initialization.ts::resolveVolumeId` exempts only `network`, so a restored snapshot tab
+came back on the DEFAULT volume still carrying its `search-results://` path — a normal-kind pane pointed at something
+that isn't a folder, which showed up as an app flickering in a loop at startup instead of listing anything.
 
 ### First-run pane layout
 

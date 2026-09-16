@@ -20,7 +20,9 @@ import {
 import { reportTabClosed, reportTabOpened, reportTabPinToggled, reportTabSwitched } from '../tabs/tab-analytics'
 import type { TabState, TabId, PersistedTab, PersistedPaneTabs } from '../tabs/tab-types'
 import { createHistory } from '../navigation/navigation-history'
+import { isSnapshotPath, latestRealFolder } from '../navigation/real-folder-history'
 import { DEFAULT_SORT_BY, defaultSortOrders, type SortColumn } from '../types'
+import type { Location } from '$lib/tauri-commands'
 import { getAppLogger } from '$lib/logging/logger'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
@@ -66,12 +68,34 @@ export function createTabManagerFromPersisted(paneTabs: PersistedPaneTabs): TabM
   return mgr
 }
 
+/**
+ * Where a tab should come back next launch. Its own location, unless that's a
+ * `search-results://` snapshot: a snapshot id names an in-memory, per-session result set,
+ * so a stored one names nothing by the time it's read back and leaves the pane with no
+ * folder to list. The newest real folder in the tab's history stands in for it, carrying
+ * that entry's volume (the snapshot pane's own is the virtual `search-results`).
+ *
+ * The tab's live `path` is untouched: navigating Back into a snapshot within the session
+ * is what the in-memory store is for. A tab whose history holds no real folder persists
+ * as it stands, and `$lib/app-status-store.ts` rescues it at load.
+ */
+function persistedLocation(tab: TabState): Location {
+  if (!isSnapshotPath(tab.path)) return { path: tab.path, volumeId: tab.volumeId }
+  // Only where the tab has BEEN, never its forward history: a pane that reached this
+  // snapshot by walking Back still has later folders ahead of it, and coming back up in
+  // one the user had navigated away from would be a place they never chose to leave open.
+  const visited = tab.history.stack.slice(0, tab.history.currentIndex + 1)
+  const entry = latestRealFolder(visited, (e) => e.path)
+  return entry === null
+    ? { path: tab.path, volumeId: tab.volumeId }
+    : { path: entry.path, volumeId: entry.volumeId }
+}
+
 export function buildPersistedPaneTabs(mgr: TabManager): PersistedPaneTabs {
   return {
     tabs: getAllTabs(mgr).map((tab): PersistedTab => ({
       id: tab.id,
-      path: tab.path,
-      volumeId: tab.volumeId,
+      ...persistedLocation(tab),
       sortBy: tab.sortBy,
       sortOrder: tab.sortOrder,
       viewMode: tab.viewMode,

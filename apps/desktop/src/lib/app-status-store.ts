@@ -6,7 +6,9 @@ import type { SortColumn } from './file-explorer/types'
 import { defaultSortOrders } from './file-explorer/types'
 import type { PersistedTab, PersistedPaneTabs } from './file-explorer/tabs/tab-types'
 import { resolveValidPath } from './file-explorer/navigation/path-resolution'
+import { isSnapshotPath } from './file-explorer/navigation/real-folder-history'
 import { resolveStorePath } from './settings/store-path'
+import type { Location } from './tauri-commands'
 
 const STORE_NAME = 'app-status.json'
 const DEFAULT_PATH = '~'
@@ -95,6 +97,24 @@ async function resolvePersistedPath(path: string, pathExistsFn: (p: string) => P
   return (await resolveValidPath(path, { pathExistsFn, timeoutMs: 0 })) ?? DEFAULT_PATH
 }
 
+/**
+ * A stored location, with a `search-results://` snapshot swapped for somewhere real.
+ *
+ * A snapshot id names an in-memory, per-session result set, so one that reaches disk
+ * names nothing by the time it's read back: the pane came up on a path that isn't a
+ * folder and the app flickered instead of listing anything. `tab-operations.ts` keeps
+ * snapshots out of new writes; this is what rescues the installs that already stored one,
+ * and the tabs whose history held no real folder to write instead.
+ *
+ * The default volume's last-used folder is where the pane lands, which is the same
+ * fallback ladder an unresolvable path gets, ending at `~`.
+ */
+async function restoreSnapshotLocation(path: string, volumeId: string): Promise<Location> {
+  if (!isSnapshotPath(path)) return { path, volumeId }
+  const lastUsed = await getLastUsedPathForVolume(DEFAULT_VOLUME_ID)
+  return { path: lastUsed ?? DEFAULT_PATH, volumeId: DEFAULT_VOLUME_ID }
+}
+
 function parseViewMode(raw: unknown): ViewMode {
   return raw === 'full' || raw === 'brief' ? raw : 'full'
 }
@@ -139,10 +159,15 @@ export async function loadAppStatus(pathExists: (p: string) => Promise<boolean>)
     const askCmdrRailWidth = parseRailWidth(await store.get('askCmdrRailWidth'))
     const firstRunLayoutApplied = (await store.get('firstRunLayoutApplied')) === true
 
+    // A stored snapshot path can't come back; it's swapped for a real folder first.
+    const left = await restoreSnapshotLocation(leftPath, leftVolumeId)
+    const right = await restoreSnapshotLocation(rightPath, rightVolumeId)
+
     // Resolve paths with fallback - skip for virtual 'network' volume
-    const resolvedLeftPath = leftVolumeId === 'network' ? leftPath : await resolvePersistedPath(leftPath, pathExists)
+    const resolvedLeftPath =
+      left.volumeId === 'network' ? left.path : await resolvePersistedPath(left.path, pathExists)
     const resolvedRightPath =
-      rightVolumeId === 'network' ? rightPath : await resolvePersistedPath(rightPath, pathExists)
+      right.volumeId === 'network' ? right.path : await resolvePersistedPath(right.path, pathExists)
 
     return {
       leftPath: resolvedLeftPath,
@@ -150,8 +175,8 @@ export async function loadAppStatus(pathExists: (p: string) => Promise<boolean>)
       focusedPane,
       leftViewMode,
       rightViewMode,
-      leftVolumeId,
-      rightVolumeId,
+      leftVolumeId: left.volumeId,
+      rightVolumeId: right.volumeId,
       leftSortBy,
       rightSortBy,
       leftPaneWidthPercent,
@@ -465,9 +490,11 @@ export async function loadPaneTabs(
       // Validate paths exist, fall back for any that don't
       const validatedTabs = await Promise.all(
         raw.tabs.map(async (tab) => {
-          if (tab.volumeId === 'network') return tab
-          const resolvedPath = await resolvePersistedPath(tab.path, pathExistsFn)
-          return { ...tab, path: resolvedPath }
+          // A stored snapshot path can't come back; it's swapped for a real folder first.
+          const restored = await restoreSnapshotLocation(tab.path, tab.volumeId)
+          if (restored.volumeId === 'network') return { ...tab, ...restored }
+          const resolvedPath = await resolvePersistedPath(restored.path, pathExistsFn)
+          return { ...tab, ...restored, path: resolvedPath }
         }),
       )
       return { tabs: validatedTabs, activeTabId: raw.activeTabId }
@@ -479,12 +506,14 @@ export async function loadPaneTabs(
     const volumeId = ((await store.get(`${side}VolumeId`)) as string) || DEFAULT_VOLUME_ID
     const sortBy = parseSortColumn(await store.get(`${side}SortBy`))
     const viewMode = parseViewMode(await store.get(`${side}ViewMode`))
-    const resolvedPath = volumeId === 'network' ? path : await resolvePersistedPath(path, pathExistsFn)
+    const restored = await restoreSnapshotLocation(path, volumeId)
+    const resolvedPath =
+      restored.volumeId === 'network' ? restored.path : await resolvePersistedPath(restored.path, pathExistsFn)
 
     const tab: PersistedTab = {
       id: crypto.randomUUID(),
       path: resolvedPath,
-      volumeId,
+      volumeId: restored.volumeId,
       sortBy,
       sortOrder: defaultSortOrders[sortBy],
       viewMode,
