@@ -37,6 +37,17 @@ export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
+/**
+ * An ISO timestamp as `YYYY-MM-DD HH:MM` in UTC. UTC rather than local time because every other day
+ * bucket on the dashboard is UTC, and a ledger row read in two zones must not look like two events.
+ * An unparseable timestamp comes back verbatim, so a broken row shows what it actually holds.
+ */
+export function formatUtcDateTime(iso: string): string {
+  const ms = Date.parse(iso)
+  if (Number.isNaN(ms)) return iso
+  return new Date(ms).toISOString().slice(0, 16).replace('T', ' ')
+}
+
 /** Converts daily rows ({day, views/count}) into uPlot's AlignedData format [timestamps[], values[]]. */
 export function toChartData(rows: Array<{ day: string; views?: number; count?: number }>): [number[], number[]] {
   const timestamps = rows.map((r) => new Date(r.day).getTime() / 1000)
