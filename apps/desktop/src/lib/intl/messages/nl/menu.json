@@ -203,19 +203,19 @@
   "@menu.select.deselectAll": {
     "sourceHash": "9675494"
   },
-  "menu.select.sameKind": "Select all of the same kind",
+  "menu.select.sameKind": "Selecteer alles van dezelfde soort",
   "@menu.select.sameKind": {
     "sourceHash": "9933028"
   },
-  "menu.select.allFolders": "Select all folders",
+  "menu.select.allFolders": "Selecteer alle mappen",
   "@menu.select.allFolders": {
     "sourceHash": "5351f8b"
   },
-  "menu.select.sameExtension": "Select all with extension *.{extension}",
+  "menu.select.sameExtension": "Selecteer alles met extensie *.{extension}",
   "@menu.select.sameExtension": {
     "sourceHash": "7809a58"
   },
-  "menu.select.noExtension": "Select all files with no extension",
+  "menu.select.noExtension": "Selecteer alle bestanden zonder extensie",
   "@menu.select.noExtension": {
     "sourceHash": "d04751e"
   },
@@ -446,7 +446,7 @@
   "@menu.context.edit": {
     "sourceHash": "464c4ff"
   },
-  "menu.context.selection": "Selection",
+  "menu.context.selection": "Selectie",
   "@menu.context.selection": {
     "sourceHash": "ca40670"
   },

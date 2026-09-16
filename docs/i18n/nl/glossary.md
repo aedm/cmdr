@@ -3651,3 +3651,22 @@ REVIEW FLAGS:
   leest vlot, maar wie strenger is, wil `en werp daarna deze schijf uit`, wat `werp … uit` twee keer in één korte zin
   zet. Bevestig welke in een smalle melding wint.
 - `Wacht een minuutje` is warm maar kan als schattig lezen; `Wacht een minuut` is zakelijker. Bevestig de toon.
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `Soort`** · macOS Finder `nl`
+  `ArrangeByMenu` `119.title`/`338.title`, the Kind sort criterion · `high`.
+- **"Select all with extension `*.{extension}`" → `Selecteer alles met extensie *.{extension}`** · Double Commander
+  (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" →
+  `Kies alles met hetzelfde achtervoegsel`) and Total Commander (`WCMD.INC` `527` →
+  `Alle bestanden met dezelfde extensie markeren`) name this exact command, and the mask replaces their "same extension"
+  because Cmdr shows the concrete one · `high`. Het masker staat na `met extensie`, dus er hoeft niets met `{extension}`
+  te congrueren. `extensie` (macOS) wint van DC’s `achtervoegsel`, zoals de extension-regel hierboven al vastlegde.
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `Selectie`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description` („aan de selectie toe te voegen”) ·
+  `high`. Its siblings in that menu are verbs; this one names what the submenu holds. ❌ Not the verb `Selecteer`, which
+  is `menu.bar.select`.
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.

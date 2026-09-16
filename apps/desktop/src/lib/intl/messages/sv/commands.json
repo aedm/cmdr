@@ -640,23 +640,23 @@
   "@commands.selectionInvert.description": {
     "sourceHash": "b63ce32"
   },
-  "commands.selectionSelectSameKind.label": "Select all of the same kind",
+  "commands.selectionSelectSameKind.label": "Markera allt av samma typ",
   "@commands.selectionSelectSameKind.label": {
     "sourceHash": "9933028"
   },
-  "commands.selectionSelectSameKind.description": "Adds every entry like the one under the cursor to the selection, without clearing it",
+  "commands.selectionSelectSameKind.description": "Lägger till varje objekt av samma typ som det under markören i markeringen, utan att tömma den",
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
-  "commands.selectionSelectSameKind.allFolders": "Select all folders",
+  "commands.selectionSelectSameKind.allFolders": "Markera alla mappar",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"
   },
-  "commands.selectionSelectSameKind.sameExtension": "Select all with extension *.{extension}",
+  "commands.selectionSelectSameKind.sameExtension": "Markera allt med filtillägget *.{extension}",
   "@commands.selectionSelectSameKind.sameExtension": {
     "sourceHash": "7809a58"
   },
-  "commands.selectionSelectSameKind.noExtension": "Select all files with no extension",
+  "commands.selectionSelectSameKind.noExtension": "Markera alla filer utan filtillägg",
   "@commands.selectionSelectSameKind.noExtension": {
     "sourceHash": "d04751e"
   },

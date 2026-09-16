@@ -3201,3 +3201,19 @@ Sex nya värden i samma toast som § Utmatning och frånkoppling, alltså fortfa
   här hänger ett `och`-par framför, så kommat markerar vilket led `eller` delar — samma lösning som
   `servers.hub.emptyMessage`.
 - **Inga `sameAsSourceJustification`** · alla sex värdena skiljer sig från engelskan.
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `Typ`** · macOS Finder `sv`
+  `ArrangeByMenu` `119.title`/`338.title`, the Kind sort criterion · `high`.
+- **"Select all with extension `*.{extension}`" → `Markera allt med filtillägget *.{extension}`** · Total Commander
+  (`WCMD.INC` `527` → `Markera alla filer med samma suffix`) name this exact command, and the mask replaces their "same
+  extension" because Cmdr shows the concrete one · `high`. Masken följer på `med filtillägget`, så inget böjs efter
+  `{extension}`. TC `sv` säger `suffix`, men katalogens satta term är `filtillägg` (macOS Finder), och den vinner.
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `Markering`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description` (”… i markeringen”) · `high`. Its siblings
+  in that menu are verbs; this one names what the submenu holds. ❌ Not the verb `Markera`, which is `menu.bar.select`.
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.

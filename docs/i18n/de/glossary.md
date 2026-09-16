@@ -3156,3 +3156,22 @@ Geschwister `unmountRefused` / `…ByApp` / `…ByApps` müssen als eine Familie
   `errors.eject.*`-Familie (Englisch: 110) und erscheint hinter dem Rahmensatz, der bei einem langen `{volumeName}`
   schon breit ist. `…ByApp` / `…ByApps` liegen bei rund 101 Zeichen und damit unter dem ausgelieferten `unmountRefused`
   (114), tragen aber zusätzlich den eingesetzten Namen.
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `Art`** · macOS Finder `de`
+  `ArrangeByMenu` `119.title`/`338.title`, the Kind sort criterion · `high`.
+- **"Select all with extension `*.{extension}`" → `Alle mit Endung *.{extension} auswählen`** · Double Commander
+  (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" →
+  `Alle mit gleicher Erweiterung wählen`) and Total Commander (`WCMD.INC` `527` →
+  `Alle Dateien mit gleicher Erweiterung markieren`) name this exact command, and the mask replaces their "same
+  extension" because Cmdr shows the concrete one · `high`. Die Maske hängt an der Präposition `mit`, also muss nichts
+  mit `{extension}` kongruieren.
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `Auswahl`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description` („… zur Auswahl hinzuzufügen“) · `high`.
+  Its siblings in that menu are verbs; this one names what the submenu holds. ❌ Not the verb `Auswählen`, which is
+  `menu.bar.select`.
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.

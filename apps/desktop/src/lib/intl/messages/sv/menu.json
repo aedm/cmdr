@@ -199,19 +199,19 @@
   "@menu.select.deselectAll": {
     "sourceHash": "9675494"
   },
-  "menu.select.sameKind": "Select all of the same kind",
+  "menu.select.sameKind": "Markera allt av samma typ",
   "@menu.select.sameKind": {
     "sourceHash": "9933028"
   },
-  "menu.select.allFolders": "Select all folders",
+  "menu.select.allFolders": "Markera alla mappar",
   "@menu.select.allFolders": {
     "sourceHash": "5351f8b"
   },
-  "menu.select.sameExtension": "Select all with extension *.{extension}",
+  "menu.select.sameExtension": "Markera allt med filtillägget *.{extension}",
   "@menu.select.sameExtension": {
     "sourceHash": "7809a58"
   },
-  "menu.select.noExtension": "Select all files with no extension",
+  "menu.select.noExtension": "Markera alla filer utan filtillägg",
   "@menu.select.noExtension": {
     "sourceHash": "d04751e"
   },
@@ -437,7 +437,7 @@
   "@menu.context.edit": {
     "sourceHash": "464c4ff"
   },
-  "menu.context.selection": "Selection",
+  "menu.context.selection": "Markering",
   "@menu.context.selection": {
     "sourceHash": "ca40670"
   },
