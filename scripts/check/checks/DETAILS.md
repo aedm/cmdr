@@ -1138,7 +1138,7 @@ when they go red:
 - `indexing::lifecycle::phases::tests::relaunch::the_kill_switch_gives_a_phased_partial_back_to_the_bulk_scan`
 - `indexing::tests::event_stream_tests::two_concurrent_scans_produce_two_independent_streams`
 
-Measured 2026-09-16 on macOS 27.0, bisecting them across an eject-plan milestone (`394e9b2d5` before it, `cb83432dd`
+Measured 2026-09-16 on macOS 27.0, bisecting them across an eject-plan milestone (`6ebf9fe0b` before it, `8523e32c8`
 after) because all three sit in areas that milestone touched:
 
 - **Alone, 3 runs at each commit: 6/6 passed**, 0.36–1.03 s each against the 8 s cap. The durations are the same either
@@ -1433,8 +1433,8 @@ and the unmount approver's pins.
   a defect and ❌ not the unmount approver: when a refusal ARRIVES follows `diskarbitrationd`'s own holder scan, which
   spans 0.13–27.8 s by load, so "failed under load, passed alone at the same deadline" from the retry runner is the
   expected shape. Measured on macOS 27.0, 2026-09-16: run alone, the four eject pins take 2.0–8.2 s each against their
-  30 s cap, and the set reads the same before and after the approver landed (22.6 s at `ef041e313`; 22.2 s and 24.1 s at
-  `6b7528978`). It can't be the approver by construction either: no approval session exists in a test process at all,
+  30 s cap, and the set reads the same before and after the approver landed (22.6 s at `56eca71f4`; 22.2 s and 24.1 s at
+  `270a97766`). It can't be the approver by construction either: no approval session exists in a test process at all,
   since `install_for_app` runs only from the app's Tauri setup and the approver's own pins drop their session per test.
 - **When it skips**: off macOS it answers OK with "skipped: macOS only" and never touches cargo. It's `NotInCI`: every
   CI runner is ubuntu, and `hdiutil` has no Linux counterpart.

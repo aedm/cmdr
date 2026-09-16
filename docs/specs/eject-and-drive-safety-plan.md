@@ -48,19 +48,23 @@ drive-safety decisions below.
 - **M3, the hold leaf, generations, and the presence seam (done)**: `94ce801a1`, `308e3583c`, `46888a7df`, `b02bb51dd`,
   `71fc73dfc`, `1e4cd4085`.
 - **M4, every worker carries a share (done)**: `d6c32f603`, `678b249ef`, `44079fe6d`, `ef74beba9`, `07bedf6f4`.
-- **M5, `drive_release`, the gated stop, start, and resume (done)**: `4549ba539`, `7430e9416`.
-- **M6, the unmount approver (done)**: `8f9e3795f` (the gate's resume-cancellation fix M6 needed), `b799c713d`,
-  `8b07495f3`, `26be0b461`, `3cb145804`; plan edits `819074fd5`.
-- **M7, index delete gates (done)**: `fbc39db0f` and `f649ed582` (the two prerequisite splits), `acbbdb78c` (the
-  presence seam, the typed listing, `MissingRows`, and the delete generation), `f95c1f482` (boot-disk verification),
-  `3575d2395` (the reconcile doc), `409fa913a` (`ScanRoot::Rebuild`), `95e79a962` (per-event deletes).
-- **M8, completion gates, `Abandoned` marks, and the rebuild marker (done)**: `c18fa649a` (the walk's own gate: no marks
-  and a typed vanish), `60b589fa9` (the completion gates, the marker, the launch route, the start-time reopen),
-  `33015f3d0` (docs, and M1's vanish pin flipped).
-- **M9, vanish causes and the index notice (done)**: `9a5aeac90` (the pure cause machine), `f8d1e471e` (the callbacks,
+- **M5, `drive_release`, the gated stop, start, and resume (done)**: `dd4e07f0a`, `f9049c7a9`.
+- **M6, the unmount approver (done)**: `4b6683e18` (the gate's resume-cancellation fix M6 needed), `2fbd81ff6`,
+  `186151ec5`, `51f43cd1f`, `e2ab22788`; plan edits `939295bbb`, `270a97766`.
+- **M7, index delete gates (done)**: `dd09033f1` and `5100dda3f` (the two prerequisite splits), `34104e35b` (the
+  presence seam, the typed listing, `MissingRows`, and the delete generation), `3dd6c43cb` (boot-disk verification),
+  `0d1a5112e` (the reconcile doc), `d3c33beb3` (`ScanRoot::Rebuild`), `f4e0f37a1` (per-event deletes).
+- **M8, completion gates, `Abandoned` marks, and the rebuild marker (done)**: `970ebeb55` (the walk's own gate: no marks
+  and a typed vanish), `dbf0654e4` (the completion gates, the marker, the launch route, the start-time reopen),
+  `166b924f0` (docs, and M1's vanish pin flipped), `88fea6ca5` (the two `await`-holding-lock fixes and the event's
+  generated bindings).
+- **M9, vanish causes and the index notice (done)**: `5c6309198` (the pure cause machine), `43f09f3bd` (the callbacks,
   the eject-approval registration, the `Vanish` stop off the queue, and the `DidUnmount` hook standing down),
-  `4c1017339` (the guarded `/sbin/umount` verb and the real-image pin), `48d114b40` (the toast, its key, and the
-  frontend docs), `fa7c7803c` (the backend docs).
+  `ea5b9c6c3` (the guarded `/sbin/umount` verb and the real-image pin), `548d66d6e` (the toast, its key, and the
+  frontend docs), `badf76277` (the backend docs).
+- **Belonging to no milestone**: `56eca71f4` and `6f2eb84ed` (the two toasts translated into every shipped catalog),
+  `654a2d075` (the disk-image harness reclaims an attachment a killed test stranded), `1c7057a09` (rustls to 0.23.45
+  for RUSTSEC-2026-0285), `0122d4c43` and `6ebf9fe0b` (the two lanes' starvation notes).
 - **Next, M10**: transfers on a vanished drive.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
@@ -561,7 +565,7 @@ resume, and an `unmount_pending` flag.
     start still probing.
   - **Any epoch move (a release or a disable) cancels a pending resume** (`Gate::resume_batch`), so a candidate offered
     after it queues a batch of its own instead of joining one whose check can only fail. Without it, the second ask of a
-    refused `unmountDisk` swallowed the first volume's resume for good (`8f9e3795f`, found while landing M6).
+    refused `unmountDisk` swallowed the first volume's resume for good (`4b6683e18`, found while landing M6).
 
 ### Worker holds (M3 mechanism, M4 wiring)
 
@@ -700,7 +704,7 @@ what later milestones build on:
   arrival time follows `diskarbitrationd`'s holder scan, which is what the 0.13–27.8 s spread in § "Evidence" measures.
   A later milestone adding image tests should expect that warn shape, and ❌ never read it as a defect without the
   alone-run line. **The approver isn't the cause**: no approval session is installed in a test process, and the pins
-  read the same before and after it landed (the set takes 22.6 s at `ef041e313`, 22.2 s and 24.1 s at `6b7528978`;
+  read the same before and after it landed (the set takes 22.6 s at `56eca71f4`, 22.2 s and 24.1 s at `270a97766`;
   2.0–8.2 s per pin alone, macOS 27.0, 2026-09-16). Method and evidence: `scripts/check/checks/DETAILS.md` § "The
   disk-image lane".
 
