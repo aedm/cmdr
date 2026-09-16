@@ -276,6 +276,12 @@ impl DiskTeardown {
         aim_at(&self.captured, fallback, listed)
     }
 
+    /// Every mount of the disk the flight captured, which is where a refusal's holder
+    /// scan looks (`run_teardown` keeps only the ones still listed).
+    pub(super) fn captured(&self) -> &[PathBuf] {
+        &self.captured
+    }
+
     /// Where a run this teardown's timeout gave up on lands.
     pub(super) fn abandoned(&self) -> &AbandonedRun {
         &self.abandoned

@@ -19,11 +19,27 @@ pub async fn execute_eject(params: &Value) -> ToolResult {
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     {
+        use crate::file_system::volume::eject::EjectError;
+
         match crate::file_system::volume::eject::eject(volume_id).await {
             Ok(()) => Ok(json!(format!(
                 "OK: Ejecting {volume_id}. The volume disappears once teardown completes."
             ))),
-            Err(e) => Err(ToolError::internal(format!("Couldn't eject {volume_id}: {e}"))),
+            Err(error) => {
+                let reply = ToolError::internal(format!("Couldn't eject {volume_id}: {error}"));
+                // A refusal is the one answer an agent can act on, so who holds the drive
+                // rides in `data` as the typed value rather than only in the sentence
+                // (`no-error-string-match` applies to an agent parsing us too). ❗ The
+                // holders keep their own tag: an agent may not read an empty list as
+                // "nobody is holding it".
+                Err(match error {
+                    EjectError::UnmountRefused { holders, .. } => reply.with_data(json!({
+                        "outcome": "unmountRefused",
+                        "holders": holders,
+                    })),
+                    _ => reply,
+                })
+            }
         }
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]

@@ -1,3 +1,4 @@
+use super::holders::{HolderKind, VolumeHolder};
 use super::*;
 
 #[test]
@@ -235,13 +236,40 @@ fn eject_error_crosses_the_wire_as_a_tagged_value() {
         serde_json::json!({ "type": "volumeNotFound", "volumeId": "volumes-usb" })
     );
 
+    // ❗ `holders` is its own tagged value, so the frontend can tell "the scan found
+    // nobody" from "nobody could say", which ❌ an empty list alone never could.
     let json = serde_json::to_value(EjectError::UnmountRefused {
+        holders: HolderScan::Complete {
+            named: vec![VolumeHolder {
+                pid: 1234,
+                name: "mds".to_string(),
+                bundle_id: None,
+                kind: HolderKind::Unclassified,
+            }],
+        },
         detail: "in use by process 1234 (mds)".to_string(),
     })
     .unwrap();
     assert_eq!(
         json,
-        serde_json::json!({ "type": "unmountRefused", "detail": "in use by process 1234 (mds)" })
+        serde_json::json!({
+            "type": "unmountRefused",
+            "holders": {
+                "type": "complete",
+                "named": [{ "pid": 1234, "name": "mds", "bundleId": null, "kind": "unclassified" }],
+            },
+            "detail": "in use by process 1234 (mds)",
+        })
+    );
+
+    assert_eq!(
+        serde_json::to_value(EjectError::UnmountRefused {
+            holders: HolderScan::not_scanned(),
+            detail: "diskutil eject: Unmount was dissented".to_string(),
+        })
+        .unwrap()["holders"],
+        serde_json::json!({ "type": "incomplete", "named": [] }),
+        "a refusal nobody could scan is typed as such, ❌ never as an empty holder list"
     );
 
     assert_eq!(

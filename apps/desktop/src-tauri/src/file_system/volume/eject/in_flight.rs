@@ -317,6 +317,7 @@ mod tests {
                 runs.fetch_add(1, Ordering::SeqCst);
                 let _ = held.await;
                 Err(EjectError::UnmountRefused {
+                    holders: super::super::HolderScan::not_scanned(),
                     detail: "held by sleep".to_string(),
                 })
             }
@@ -349,7 +350,7 @@ mod tests {
         );
         for result in [first, second] {
             assert!(
-                matches!(result, Err(EjectError::UnmountRefused { ref detail }) if detail == "held by sleep"),
+                matches!(result, Err(EjectError::UnmountRefused { ref detail, .. }) if detail == "held by sleep"),
                 "both callers get the one flight's answer, got {result:?}"
             );
         }
@@ -408,6 +409,7 @@ mod tests {
                 let _ = held.await;
                 drop(ownership);
                 Err(EjectError::UnmountRefused {
+                    holders: super::super::HolderScan::not_scanned(),
                     detail: "held by sleep".to_string(),
                 })
             }

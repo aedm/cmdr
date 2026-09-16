@@ -31,6 +31,14 @@ pub(crate) const INDEX_STOP_DEADLINE: Duration = Duration::from_secs(15);
 /// handle drops, which a wedged phone can stall.
 pub(super) const DEVICE_EJECT_DEADLINE: Duration = Duration::from_secs(15);
 
+/// How long naming a refusal's holders gets, all paths together. `proc_listpidspath`
+/// `stat`s its path first and then walks every process: 142 ms to 9.4 s under load, and
+/// for good on a wedged mount. A person is already waiting on the refusal, so the scan
+/// buys its names within 1.5 s or the refusal goes out without them (`holders`).
+///
+/// ❗ It bounds a thread nobody joins, ❌ never one the eject waits on past this.
+pub(super) const HOLDER_BUDGET: Duration = Duration::from_millis(1500);
+
 /// Runs `work` under `deadline`, answering [`EjectError::NotResponding`] for
 /// `step` when it doesn't finish in time.
 ///

@@ -6536,10 +6536,16 @@ export type EjectError =
     }
   /**
    *  `diskutil` / `umount` turned the unmount down. The overwhelmingly common
-   *  case is an open file somewhere, and `detail` usually names the process.
+   *  case is an open file somewhere.
    */
   | {
       type: 'unmountRefused'
+      /**
+       *  Who held the drive when the last attempt was refused. ❗ Two answers:
+       *  a scan that couldn't run names nobody, which is ❌ never "nobody is
+       *  holding it".
+       */
+      holders: HolderScan
       // The tool's own stderr, for the log and the details line.
       detail: string
     }
@@ -7459,6 +7465,54 @@ export type HistoryFilters = {
 
 // Search modes recorded in history. Mirrors the frontend `SearchMode` union.
 export type HistoryMode = 'ai' | 'filename' | 'regex'
+
+/**
+ *  What kind of thing is holding the drive. It picks which sentence the refusal says,
+ *  so each variant is a decision, ❌ never a guess from a name or a path.
+ */
+export type HolderKind =
+  // An app the person can switch to and close.
+  | 'app'
+  // A command-line tool or a helper with no app behind it.
+  | 'tool'
+  // A disk image stored on this drive, which has to be ejected first.
+  | 'diskImage'
+  // macOS itself (Spotlight, LaunchServices, Time Machine).
+  | 'system'
+  // Cmdr, which is a bug worth reporting.
+  | 'cmdr'
+  // Named, but nothing said what kind it is.
+  | 'unclassified'
+
+/**
+ *  Who held the drive when the last attempt was refused.
+ *
+ *  ❗ TWO answers, ❌ never one list. A scan that couldn't run, ran out of its budget,
+ *  or found the mount replaced under it names nobody, and reading that as "nobody is
+ *  holding it" would word a plainly-held drive as free. Only [`Self::Complete`] with an
+ *  empty list means the scan really found nothing.
+ */
+export type HolderScan =
+  /**
+   *  Every still-listed mount of the teardown was scanned, so `named` is the whole
+   *  story. Empty means no same-uid process held the drive (a root-owned holder is
+   *  invisible to this scan).
+   */
+  | {
+      type: 'complete'
+      // The holders, deduped by pid.
+      named: VolumeHolder[]
+    }
+  /**
+   *  The scan didn't cover every mount: it had nothing to scan, ran past its budget,
+   *  or a mount's device changed under it. `named` is what it did see, ❌ never the
+   *  whole story, and an empty one is ❌ never "nobody is holding it".
+   */
+  | {
+      type: 'incomplete'
+      // The holders it managed to see, deduped by pid.
+      named: VolumeHolder[]
+    }
 
 /**
  *  A server whose key nobody has approved yet, and what to say about it.
@@ -14211,6 +14265,21 @@ export type VolumeError =
    *  (`try_route_listing`, `try_route_metadata`, `try_open_blob_stream`).
    */
   | { type: 'friendlyGit'; data: FriendlyGitError }
+
+// One process that held the drive when the unmount was refused.
+export type VolumeHolder = {
+  // The process id, as the scan saw it.
+  pid: number
+  /**
+   *  What to call it: an app's display name, a disk image's volume name, or the
+   *  executable's own name (the last only for the log and MCP).
+   */
+  name: string
+  // The bundle id, when an app names this holder.
+  bundleId: string | null
+  // What kind of holder it is, which is what picks the words.
+  kind: HolderKind
+}
 
 /**
  *  Per-volume index status for the per-drive freshness badge.

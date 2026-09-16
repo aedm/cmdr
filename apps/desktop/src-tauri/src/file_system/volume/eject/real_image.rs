@@ -20,8 +20,9 @@ use super::disk_flight::DiskTeardown;
 use super::disk_flight::test_support::FakeIndex;
 use super::disk_flight::{FlightResume, Sibling, capture, captured_paths, hand_back, owed_ids};
 use super::disk_target::{self, DiskMounts, Resolution};
+use super::holders::{HolderScan, VolumeHolder};
 use super::unmount_tool::{self, Target, ToolOutcome, UnmountVerb};
-use super::{EjectError, INDEX_STOP_DEADLINE};
+use super::{EjectError, INDEX_STOP_DEADLINE, name_the_holders};
 use crate::file_system::volume::drive_release::{DriveRelease, IndexDoor};
 use crate::volumes::disk_units::MountedVolume;
 
@@ -45,10 +46,17 @@ fn guarded_eject<'a>(
     }
 }
 
-/// Ejects `mount_point` the way `run_teardown` does, with the guarded tool.
+/// How long the lane gives the holder scan. Far above production's 1.5 s: a machine
+/// running the whole suite can spend seconds inside `proc_listpidspath`, and a flaky
+/// lane test teaches nobody anything. What the budget itself does is pinned in
+/// `holders::tests`.
+const LANE_HOLDER_BUDGET: std::time::Duration = std::time::Duration::from_secs(20);
+
+/// Ejects `mount_point` the way `run_teardown` does, with the guarded tool: the retries,
+/// then the one holder scan a refusal gets.
 async fn eject_through_the_production_retries(image: &DiskImage, mount_point: &Path) -> Result<(), EjectError> {
     let mount_path = mount_point.to_string_lossy().to_string();
-    unmount_tool::settle_with_retries(
+    let settled = unmount_tool::settle_with_retries(
         Target {
             volume_id: "real-image-pin",
             verb: UnmountVerb::Eject,
@@ -57,7 +65,30 @@ async fn eject_through_the_production_retries(image: &DiskImage, mount_point: &P
         guarded_eject(image, mount_point),
         || unmount_tool::is_still_mounted(&mount_path),
     )
+    .await;
+    name_the_holders(
+        "real-image-pin",
+        settled,
+        &[PathBuf::from(&mount_path)],
+        LANE_HOLDER_BUDGET,
+    )
     .await
+}
+
+/// Who a refused eject named, or a panic saying it wasn't refused at all.
+fn holders_of(result: &Result<(), EjectError>) -> &HolderScan {
+    match result {
+        Err(EjectError::UnmountRefused { holders, .. }) => holders,
+        other => panic!("expected a refusal that named its holders, got {other:?}"),
+    }
+}
+
+/// Whether `holders` names `pid`.
+fn names(holders: &HolderScan, pid: u32) -> bool {
+    let named: &[VolumeHolder] = match holders {
+        HolderScan::Complete { named } | HolderScan::Incomplete { named } => named,
+    };
+    named.iter().any(|holder| holder.pid == pid)
 }
 
 fn is_mounted(mount_point: &Path) -> bool {
@@ -98,6 +129,17 @@ async fn a_held_file_answers_unmount_refused_and_the_volume_stays_mounted() {
         "got {result:?}"
     );
     assert!(is_mounted(&mount_point), "a refused eject leaves the volume mounted");
+    // ❗ And it NAMES the holder. `diskutil`'s stderr says the same thing in prose we're
+    // forbidden to parse, so the typed answer is the only one the copy can use.
+    let holders = holders_of(&result);
+    assert!(
+        names(holders, holder.pid()),
+        "the child holding a file open is named, got {holders}"
+    );
+    assert!(
+        matches!(holders, HolderScan::Complete { .. }),
+        "and the scan covered the one mount it was asked about, got {holders}"
+    );
     drop(holder);
 }
 
@@ -157,7 +199,7 @@ async fn eject_the_disk_through_the_production_retries(
     teardown: &DiskTeardown,
 ) -> Result<(), EjectError> {
     let mount_path = mount_point.to_string_lossy().to_string();
-    unmount_tool::settle_with_retries(
+    let settled = unmount_tool::settle_with_retries(
         Target {
             volume_id: "real-image-disk-pin",
             verb: UnmountVerb::Eject,
@@ -169,7 +211,8 @@ async fn eject_the_disk_through_the_production_retries(
         },
         || teardown.is_still_mounted(),
     )
-    .await
+    .await;
+    name_the_holders("real-image-disk-pin", settled, teardown.captured(), LANE_HOLDER_BUDGET).await
 }
 
 /// Ejects volume A of a two-volume `spec` while a file on its sibling B is held open.
@@ -196,6 +239,13 @@ async fn ejecting_a_while_b_is_held_is_refused_and_leaves_the_disk_up(spec: Imag
     assert!(
         matches!(result, Err(EjectError::UnmountRefused { .. })),
         "a disk whose sibling is held is refused, not read as half-ejected, got {result:?}"
+    );
+    // ❗ The holder sits on the SIBLING, not on the volume that was clicked, so the scan
+    // has to cover every captured mount of the disk to name it.
+    let holders = holders_of(&result);
+    assert!(
+        names(holders, holder.pid()),
+        "the sibling's holder is named, got {holders}"
     );
     assert!(is_mounted(&b), "B, held, is still mounted");
     assert!(image.is_attached().expect("hdiutil info"), "the disk is still attached");

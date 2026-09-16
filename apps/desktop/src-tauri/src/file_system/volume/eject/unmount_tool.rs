@@ -228,7 +228,10 @@ pub(super) enum Settled {
 pub(super) fn settle(outcome: &ToolOutcome, verb: UnmountVerb, still_mounted: impl FnOnce() -> bool) -> Settled {
     let error = match outcome {
         ToolOutcome::Succeeded => return Settled::Done,
+        // ❗ Nobody has scanned yet, which is `Incomplete`, ❌ never an empty
+        // "nobody is holding it". `run_teardown` runs the one scan after the retries.
         ToolOutcome::Exited { code: Some(_), stderr } => EjectError::UnmountRefused {
+            holders: super::HolderScan::not_scanned(),
             detail: format!("{verb}: {stderr}"),
         },
         ToolOutcome::TimedOut => EjectError::TimedOut,
@@ -399,7 +402,7 @@ mod tests {
             UnmountVerb::Eject
         );
         assert!(
-            matches!(error, EjectError::UnmountRefused { ref detail } if *detail == expected_detail),
+            matches!(error, EjectError::UnmountRefused { ref detail, .. } if *detail == expected_detail),
             "got {error:?}"
         );
     }
@@ -518,7 +521,7 @@ mod tests {
             UnmountVerb::Eject
         );
         assert!(
-            matches!(result, Err(EjectError::UnmountRefused { ref detail }) if *detail == expected_detail),
+            matches!(result, Err(EjectError::UnmountRefused { ref detail, .. }) if *detail == expected_detail),
             "got {result:?}"
         );
         assert_eq!(runs.get(), 4, "one run plus three retries");

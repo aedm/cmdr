@@ -28,6 +28,7 @@ mod deadlines;
 mod disk_flight;
 #[cfg(target_os = "macos")]
 mod disk_target;
+pub mod holders;
 mod in_flight;
 mod unmount_tool;
 
@@ -36,12 +37,14 @@ mod unmount_tool;
 mod real_image;
 
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::device_volumes::DeviceVolumeProvider;
 use unmount_tool::UnmountVerb;
 
 pub(crate) use deadlines::INDEX_STOP_DEADLINE;
+use holders::HolderScan;
 pub(crate) use in_flight::is_ejecting;
 pub use in_flight::{VolumesEjectingChanged, ejecting_volume_ids, init_ejecting_volume_emitter};
 pub(in crate::file_system::volume) use unmount_tool::is_still_mounted;
@@ -160,8 +163,12 @@ pub enum EjectError {
         detail: String,
     },
     /// `diskutil` / `umount` turned the unmount down. The overwhelmingly common
-    /// case is an open file somewhere, and `detail` usually names the process.
+    /// case is an open file somewhere.
     UnmountRefused {
+        /// Who held the drive when the last attempt was refused. ❗ Two answers:
+        /// a scan that couldn't run names nobody, which is ❌ never "nobody is
+        /// holding it".
+        holders: HolderScan,
         /// The tool's own stderr, for the log and the details line.
         detail: String,
     },
@@ -221,7 +228,7 @@ impl std::fmt::Display for EjectError {
             Self::DeviceDisconnectRefused { provider, detail } => {
                 write!(f, "{provider} disconnect refused: {detail}")
             }
-            Self::UnmountRefused { detail } => write!(f, "unmount refused: {detail}"),
+            Self::UnmountRefused { holders, detail } => write!(f, "unmount refused ({holders}): {detail}"),
             Self::TimedOut => f.write_str("timed out"),
             Self::NotResponding { step } => write!(f, "{step} didn't finish in time, so nothing was unmounted"),
             Self::Unexpected { detail } => write!(f, "unexpected: {detail}"),
@@ -453,7 +460,7 @@ async fn run_teardown(volume_id: &str, teardown: Teardown<'_>) -> Result<(), Eje
             };
             #[cfg(target_os = "macos")]
             if let Some(disk) = disk {
-                return unmount_tool::settle_with_retries(
+                let settled = unmount_tool::settle_with_retries(
                     target,
                     || {
                         // ❗ Re-aimed per attempt: a partial unmount leaves the volume the
@@ -464,15 +471,57 @@ async fn run_teardown(volume_id: &str, teardown: Teardown<'_>) -> Result<(), Eje
                     || disk.is_still_mounted(),
                 )
                 .await;
+                return name_the_holders(volume_id, settled, disk.captured(), deadlines::HOLDER_BUDGET).await;
             }
-            unmount_tool::settle_with_retries(
+            let settled = unmount_tool::settle_with_retries(
                 target,
                 || unmount_tool::run(verb, mount_path),
                 || is_still_mounted(mount_path),
             )
+            .await;
+            name_the_holders(
+                volume_id,
+                settled,
+                &[PathBuf::from(mount_path)],
+                deadlines::HOLDER_BUDGET,
+            )
             .await
         }
     }
+}
+
+/// Names who held the drive on a refusal: ONE scan, here, after the last attempt.
+///
+/// ❗ Once, and after the retries. `proc_listpidspath` took 142 ms to 9.4 s under load,
+/// so a scan inside `settle_with_retries` would multiply that by up to four attempts,
+/// and three of those answers would be about holds that had already let go. Every
+/// teardown passes through here, so the disk flight and the per-volume path (SMB,
+/// macFUSE, Linux) are named the same way, and a flight that hands an index back has
+/// already named its holders.
+///
+/// Only the mounts still in the table are scanned: a volume that really went takes its
+/// holders with it. ❗ An empty list of those is `Incomplete`, ❌ never "nobody is
+/// holding it".
+///
+/// `budget` is a parameter so the real-image lane can give a loaded machine more room
+/// than a person waiting on a spinner would.
+async fn name_the_holders(
+    volume_id: &str,
+    settled: Result<(), EjectError>,
+    paths: &[PathBuf],
+    budget: std::time::Duration,
+) -> Result<(), EjectError> {
+    let Err(EjectError::UnmountRefused { detail, .. }) = settled else {
+        return settled;
+    };
+    let listed: Vec<PathBuf> = paths
+        .iter()
+        .filter(|path| is_still_mounted(&path.to_string_lossy()))
+        .cloned()
+        .collect();
+    let holders = holders::scan(listed, budget).await;
+    log::info!(target: "eject", "The refused unmount of {volume_id} is {holders}");
+    Err(EjectError::UnmountRefused { holders, detail })
 }
 
 /// Whether a registered volume's eject is already done before anything runs: its

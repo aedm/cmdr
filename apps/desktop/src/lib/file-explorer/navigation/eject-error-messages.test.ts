@@ -9,7 +9,7 @@
  * English stderr leaking into the sentence a person reads.
  */
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
-import type { EjectError } from '$lib/ipc/bindings'
+import type { EjectError, HolderScan } from '$lib/ipc/bindings'
 import { _setLocaleForTests } from '$lib/intl/locale'
 import { renderEjectError, ejectTechnicalDetail, wordEjectRefusal } from './eject-error-messages'
 import { EjectFailure, asEjectError, throwEjectError } from './eject-error'
@@ -25,6 +25,12 @@ afterAll(() => {
   _setLocaleForTests(null)
 })
 
+/**
+ * A refusal nothing could scan. M15 words the named cases; until then every refusal reads the same,
+ * and this is the shape that says "nobody could be named", never "nobody is holding it".
+ */
+const NOBODY_NAMED: HolderScan = { type: 'incomplete', named: [] }
+
 /** One value per `EjectError` variant, in declaration order. Adding a variant makes this list fail to typecheck. */
 const EJECT_CASES: EjectError[] = [
   { type: 'busy' },
@@ -32,7 +38,11 @@ const EJECT_CASES: EjectError[] = [
   { type: 'notEjectable', volumeId: 'root' },
   { type: 'notAnSmbVolume', volumeId: 'volumes-usb-drive' },
   { type: 'deviceDisconnectRefused', provider: 'mtp', detail: 'PTP CloseSession timed out' },
-  { type: 'unmountRefused', detail: 'Unmount failed for /Volumes/Trip: in use by process 1234 (mds)' },
+  {
+    type: 'unmountRefused',
+    holders: NOBODY_NAMED,
+    detail: 'Unmount failed for /Volumes/Trip: in use by process 1234 (mds)',
+  },
   { type: 'timedOut' },
   { type: 'notResponding', step: 'indexStop' },
   { type: 'unexpected', detail: 'the eject task panicked' },
@@ -74,6 +84,7 @@ describe('renderEjectError', () => {
   it('never renders the untranslated OS text as the message', () => {
     const rendered = renderEjectError({
       type: 'unmountRefused',
+      holders: NOBODY_NAMED,
       detail: 'Unmount failed for /Volumes/Trip: in use by process 1234 (mds)',
     })
     expect(rendered).not.toContain('mds')
@@ -81,15 +92,17 @@ describe('renderEjectError', () => {
   })
 
   it('tells a busy drive apart from a drive the OS refused, which used to read the same', () => {
-    expect(renderEjectError({ type: 'busy' })).not.toBe(renderEjectError({ type: 'unmountRefused', detail: 'x' }))
+    expect(renderEjectError({ type: 'busy' })).not.toBe(
+      renderEjectError({ type: 'unmountRefused', holders: NOBODY_NAMED, detail: 'x' }),
+    )
   })
 })
 
 describe('ejectTechnicalDetail', () => {
   it("hands back the OS's own words, which often name the process holding the drive", () => {
-    expect(ejectTechnicalDetail({ type: 'unmountRefused', detail: 'in use by process 1234 (mds)' })).toBe(
-      'in use by process 1234 (mds)',
-    )
+    expect(
+      ejectTechnicalDetail({ type: 'unmountRefused', holders: NOBODY_NAMED, detail: 'in use by process 1234 (mds)' }),
+    ).toBe('in use by process 1234 (mds)')
   })
 
   it('has nothing to add for a refusal that carries no diagnostic', () => {
@@ -101,10 +114,14 @@ describe('ejectTechnicalDetail', () => {
 describe('EjectFailure', () => {
   it('survives the throw with its typed value intact', () => {
     try {
-      throwEjectError({ type: 'unmountRefused', detail: 'in use by process 1234 (mds)' })
+      throwEjectError({ type: 'unmountRefused', holders: NOBODY_NAMED, detail: 'in use by process 1234 (mds)' })
       expect.unreachable('throwEjectError must throw')
     } catch (e) {
-      expect(asEjectError(e)).toEqual({ type: 'unmountRefused', detail: 'in use by process 1234 (mds)' })
+      expect(asEjectError(e)).toEqual({
+        type: 'unmountRefused',
+        holders: NOBODY_NAMED,
+        detail: 'in use by process 1234 (mds)',
+      })
       expect(e).toBeInstanceOf(Error)
     }
   })
