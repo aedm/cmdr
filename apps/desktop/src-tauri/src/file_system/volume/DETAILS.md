@@ -456,7 +456,10 @@ held sibling would otherwise read as done.
 `settle_with_retries` with the real mount-table read and a `run_tool` that sends each `diskutil eject` through the
 disk-image harness (`crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`"), which proves the mount point is the image's
 own before every attempt. An idle APFS volume ejects and its image detaches; a file held open by a child process
-answers `UnmountRefused` after the retries, still mounted, and NAMES that child's pid. Five more pin the per-disk eject: both volumes of an APFS
+answers `UnmountRefused` after the retries, still mounted, and NAMES that child's pid AND its kind, which is `Cmdr`
+because a holder this test started really is Cmdr's own descendant. One more pins the disk-image rule: the process
+serving an attached image reads `DiskImage` against the drive its backing file sits on, and doesn't against a drive it
+doesn't. Five more pin the per-disk eject: both volumes of an APFS
 container resolve to one `DiskKey` whose units carry the physical disk and the container; an idle two-volume disk
 answers `Ok` only once both volumes went and the image detached; ejecting A while a file on B is held answers
 `UnmountRefused` with the disk still attached, naming the holder that sits on the SIBLING (which is what proves the
@@ -487,9 +490,7 @@ share's own mount path, or the one volume of a macFUSE mount. Inside the retry l
 142 ms to 9.4 s by four attempts and describe holds that had already let go; hooked in `run_teardown` rather than in the
 flight, every kind is named the same way and a flight that hands an index back has already named its holders. The
 answer rides on `EjectError::UnmountRefused`, and the MCP `eject` tool repeats it in `ToolError.data` beside
-`"outcome": "unmountRefused"`, so an agent acts on the typed value rather than on our sentence. `HolderKind` is
-`Unclassified` for every holder until M14 fills it in; `docs/specs/eject-and-drive-safety-plan.md` § "Holders" has the
-classification design.
+`"outcome": "unmountRefused"`, so an agent acts on the typed value rather than on our sentence.
 
 - **The walk**: `proc_listpidspath(PROC_ALL_PIDS, PATH_IS_VOLUME | EXCLUDE_EVTONLY)` per path, then `proc_pidpath` per
   pid for a name, deduped by pid in first-seen order, dropping a pid that ended meanwhile (ESRCH). Two `extern "C"`
@@ -513,6 +514,47 @@ classification design.
   lives on the thread the budget abandons.
 - **Linux answers `Incomplete`**, having no walk at all: ❌ not an empty `Complete`, which would claim nothing holds the
   drive.
+
+**What KIND of holder each one is** (`holders/facts.rs`) is what picks the sentence: "macOS is still working with this
+drive" and "Photos is still using this drive" are different actions. ❌ Never decided from a process name, a path
+prefix, or a message. The rules run in order and the first that answers wins:
+
+1. Cmdr's own process, or one it started (its whole ancestor chain, up to eight levels, stopping at launchd) → `Cmdr`.
+2. An app this process or an ancestor belongs to (`NSRunningApplication`, any activation policy but prohibited) →
+   `App`. This is what names Warp for a `zsh` a person `cd`'d into the drive.
+3. A disk image whose backing `.dmg` sits on the drive → `DiskImage`, the one a person frees by ejecting the image
+   rather than by closing anything.
+4. The app macOS holds RESPONSIBLE for it (`responsibility_get_pid_responsible_for_pid`, through `dlsym`) → `App`,
+   which turns a `com.apple.WebKit.WebContent` helper into the browser behind it. A responsible process with no
+   `NSRunningApplication` (Google Drive's is one) still names itself, from the display name its signature seals.
+5. An executable that lives on the drive being ejected → `Tool`, with ❗ no code-signing query.
+6. An Apple platform binary (`kSecCodeInfoPlatformIdentifier`) → `System`; anything else → `Tool`. A signature nothing
+   could read stays `Unclassified`, since "tool" would be a guess.
+
+- ❗ **No code-signing query ever runs against a process whose executable is on the target volume** (invariant 14).
+  `SecCodeCopyGuestWithAttributes` READS the binary, which puts Cmdr itself in the kernel's holder list for the very
+  drive it's letting go of: measured at 4.5 s, with a Whole unmount in that window naming the prober as the dissenter.
+  Rule 5 is that guard as much as it is a classification, and rule 4's signature fallback carries its own copy of it.
+  The device comparison is the executable's own `lstat().st_dev` against each mount's; ❌ never `f_fsid`, and ❌ never a
+  path prefix.
+- **Two stages, one budget.** The walk names every holder by its executable; the facts run after every path has
+  answered, on the same abandonable thread. That order is what gives rule 5 the device of EVERY mount of the teardown
+  (a process holding one partition may run from a sibling), and it's what makes the budget behave: a holder the facts
+  never reached keeps its name and stays `Unclassified`, where facts inside the walk would have taken its whole path's
+  list with them.
+- **Disk images come from `hdiutil info -plist`**, whose `hdid-pid` IS the process holding the backing file, so an
+  image lands on a pid the walk already named instead of an invented one. ❌ Not IOKit's `IOHDIXHDDriveOutKernel`
+  `image-path`, which names the image but carries no pid. Read at most once per refusal, and only for a holder no
+  earlier rule answered for (18 ms with two images attached, macOS 27.0, 2026-09-16).
+- **Responsibility is INHERITED, and launchd adopting a process doesn't clear it** (verified on macOS 27.0,
+  2026-09-16): a holder started through a shell that exited, `PPID` 1, still answered the terminal app behind it. So
+  rule 4 names the app a drive-resident tool was STARTED from, and rule 5 answers for a holder no app ever launched.
+  Both are honest sentences, and neither reads the binary.
+- **Accepted tradeoffs.** `backupd` reads `System`, and so does a helper with no responsible answer under launchd and
+  an orphaned platform CLI: each is "wait a minute", which is the right advice for all three. A path heuristic was
+  rejected outright. Root-owned holders aren't visible to a same-uid walk at all, so those refusals still name nobody
+  until the deferred DA teardown. And the private responsible-process symbol is allowed to be missing: that costs a
+  WebKit helper its browser's name, never the eject.
 
 **A slow refusal is still a refusal, and retries stop at a budget.** A refusal can take a long time to ARRIVE: after
 `unmount(2)` answers EBUSY, `diskarbitrationd` scans every process with `proc_listpidspath(PROC_ALL_PIDS,

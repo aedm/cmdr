@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M13 are done, and M14 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M14 are done, and M15 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -86,7 +86,10 @@ drive-safety decisions below.
 - **M13, the holder scan and the wire type (done)**: `a30c59fc1` (`eject/holders/`, `HolderScan` on `UnmountRefused`,
   the MCP `data`, the bindings, and the two lane pins asserting the holder's pid), `f531922ed` (the docs), `c347d870f`
   and `89f81ed05` (the plan, and the two default-off lanes it records).
-- **Next, M14**: holder facts and classification.
+- **M14, holder facts and classification (done)**: `b1494215b` (`holders/facts.rs` and its nested-image lookup, the
+  rules, the `dlsym` and Security externs, and the facts as a second stage inside the one budget), `8b513cb90` (the
+  real-image lane: the disk-image pin, and the two held-file pins asserting `Cmdr`).
+- **Next, M15**: the eject copy in every catalog.
 - **Belonging to no milestone, since M11 merged**: `b3ea68362` (the parked hazard names the six cells that aren't its
   fix), `df09b3023` (a lane test's panic message exempted from `pluralize-noun`), `7a9961fe6`, `1bf9f6c99`, and
   `95b98813f` (the availability selector list refreshed from the macOS 27.0 SDK, the ping-pong documented, then made
@@ -276,6 +279,10 @@ The following were verified by reading DiskArbitration-535.0.10 on 2026-09-14:
   - `/bin/sleep` and Calculator are platform binaries too, so "platform binary" alone never means "macOS".
   - Responsible-PID attribution works, but responsible apps are often accessory apps, and Google Drive's has no
     `NSRunningApplication` (§ "Spike results" 8).
+  - ❗ **Responsibility is INHERITED, and launchd adopting a process doesn't clear it** (verified on macOS 27.0,
+    2026-09-16, by a holder started through a shell that exited: `PPID` 1, still attributed to the terminal app). So the
+    responsible-app rule names the app a tool was STARTED from, and the executable-on-the-drive rule below it answers
+    only for a holder no app ever launched.
 - **ERR-TT2FH**: the dissenter was `/usr/libexec/lsd`, registering an unseen `.app` after a pane fetched its icon, for
   about 0.3–0.9 s. The retry exists for it.
 - **Holds "wait a minute" doesn't fit**: `diskimagesiod` holds a volume while an image stored on it stays attached;
@@ -960,7 +967,10 @@ M13 and M14 build on:
   (`libproc.h:52,61`, `sys/proc_info.h:51`). ❌ No `libproc` crate. Linux answers `Incomplete`, ❌ not an empty
   `Complete`. The pid buffer starts at 4,096 entries and doubles when a result fills it exactly, since a holder list
   missing the holder is worse than no list.
-- **Facts**, cheapest first, inside `objc2::rc::autoreleasepool`, ancestors up to eight levels, stopping at PID 1:
+- **Facts** (as landed; the canonical description is `volume/DETAILS.md` § "A refusal names who held the drive"),
+  cheapest first, inside `objc2::rc::autoreleasepool`, ancestors up to eight levels, stopping at PID 1. They run as a
+  SECOND stage after every path's walk, on the same thread and inside the same budget (M14, § "M14"), with the
+  nested-image rule between 2 and 3:
   1. `pid == own_pid` or an ancestor is → `Cmdr`.
   2. `NSRunningApplication` for the process, then each ancestor, any activation policy but prohibited →
      `App { name, bundle_id }` (a shell under Warp names Warp).
@@ -970,9 +980,12 @@ M13 and M14 build on:
   4. The executable's device (`lstat` of `proc_pidpath`) equals a mounted target root's own `stat().st_dev` (❌ not
      `f_fsid`) → `Tool { name }`, with no Security call.
   5. Apple platform binary (`kSecCodeInfoPlatformIdentifier`) → `System`; else `Tool`.
-- **Nested images**: an attached image whose backing file's `st_dev` equals a target root's → one `DiskImage { name }`.
-  M14 picks how to list attached images (an IOKit property of the disk-image device, or `hdiutil info -plist` under a
-  timeout) inside the budget.
+- **Nested images** (as landed): an attached image whose backing file's `st_dev` equals a target root's →
+  `DiskImage { name }`, on the image's OWN serving pid. The list comes from `hdiutil info -plist`, whose `hdid-pid` is
+  the process holding the backing file, so the kind lands on a pid the walk already named rather than on an invented
+  one; ❌ not IOKit's `IOHDIXHDDriveOutKernel` `image-path`, which names the image but carries no pid. Read at most once
+  per refusal, and only for a holder no earlier rule answered for. The scan's budget is its timeout: it runs on the same
+  thread nobody joins.
 - **Merge**: dedupe by PID in first-seen order, drop ESRCH.
 - **Accepted tradeoffs** (recorded in `volume/DETAILS.md`): `backupd` reads `System`; a helper with no responsible
   answer and a launchd parent reads `System`; an orphaned platform CLI reads `System`; a path heuristic was rejected;
@@ -1704,32 +1717,53 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   `docs/guides/error-handling.md`, `navigation/DETAILS.md`.
 - **Size**: about 950 lines added, most of it the module and its tests.
 
-### M14: holder facts and classification
+### M14: holder facts and classification (done)
 
-- **Scope**: `eject/holders/{facts.rs, nested_images.rs}`, `classify`, the responsible-PID `dlsym`, and the Security
-  extern for the platform identifier and Info.plist.
-- **Intentions**: the facts order in § "Holders"; a `classify` table for `lsd`, Finder, zsh under Warp, the WebKit
-  helper with and without the responsible symbol, Google Drive's nil-`NSRunningApplication` responsible app, an
-  accessory app, an orphaned `sleep`, a third-party daemon, an executable on the target volume, self, and a descendant
-  of self; the nested-image signal picked and recorded in § "Spike results" with an evidence anchor; facts past the
-  budget stay `Unclassified`.
-- **Landmines**: a Security call against an executable on the volume makes Cmdr the holder; `NSRunningApplication`
-  without an autorelease pool leaks; release every `SecCode` and CF reference; ❌ not `csops`; ❌ no path-prefix test.
-- **From M13**: the seam is `holders/scan.rs`'s `name_of(pid) -> Option<VolumeHolder>`, which today answers the
-  executable's file name and `HolderKind::Unclassified`. Facts belong inside it, so they run on the SAME abandonable
-  thread and inside the same `HOLDER_BUDGET`; ❗ facts the budget cuts short must leave the holder `Unclassified` rather
-  than drop it, since a named pid with no kind still words better than nothing. `executable_path(pid)` (a `proc_pidpath`
-  wrapper) is already there for the "executable on the target volume" test, and `scan_path_with` already hands `name` in
-  as a parameter, so a `classify` table tests without a real process. ❗ The paused-clock trap above applies to any new
-  timing test.
-- **Test plan**: pure `classify` over recorded facts; lane: a binary copied onto the image and run from it names `Tool`;
-  a nested image stored on the outer image names `DiskImage`; `pnpm check`, `pnpm check disk-images`, then
-  `pnpm check --include-slow`.
-  - **Must not change**: M13's tests, and in particular the two lane pins that assert the holder's pid, whose kind M14
-    flips from `Unclassified` to `Tool`.
-- **DONE**: kinds filled in.
-- **Docs**: `volume/DETAILS.md` § "Eject" (classification, accepted tradeoffs).
-- **Size**: 450–550 lines.
+- **Scope**: `eject/holders/facts.rs` + `facts/nested_images.rs`, `classify`, the responsible-PID `dlsym`, and the
+  Security extern for the platform identifier and Info.plist.
+- **What landed**: the rules in § "Holders", in that order, with the canonical description in
+  `apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "A refusal names who held the drive". `classify` is pure
+  and table-driven; the gathering runs in rule order and stops at the first rule that answers, so it stays lazy without
+  the decision being spread out. The nested-image signal is `hdiutil info -plist` (below). `holders/detached_holder.rs`
+  is a test-only holder that runs a binary FROM the drive and descends from launchd, which is the only way to reach the
+  rules below `Cmdr` with a real process.
+- **The one design change**: ❗ **the facts run as a SECOND stage, after every path's walk, ❌ not inside `scan.rs`'s
+  `name_of`.** Rule 5 needs the device of EVERY mount of the teardown, not just the one being walked (a process holding
+  one partition may run from a sibling, and a code-signing query there is just as wrong), and `name_of` only ever sees
+  one path. Running the facts after every path has answered also makes the budget behave the way this milestone asked
+  for: a holder the budget never reaches keeps its name and stays `Unclassified`, where facts inside the walk would have
+  taken its whole path's list down with it. Both stages are on the one abandonable thread and inside the one
+  `HOLDER_BUDGET`; the stage boundary costs a second `stat` of each mount root, paid only after every name is already
+  safe.
+- **Landmines that held**: the Security query is guarded by the executable's device on both paths that could make one
+  (rule 5, and rule 4's signature fallback); every gather runs inside `objc2::rc::autoreleasepool`; `security-framework`
+  owns the `SecCode` lifetime and `core-foundation` the dictionaries, so nothing is released by hand; ❌ no `csops` and
+  ❌ no path-prefix test.
+- **What the flight found**:
+  - ❗ **Responsibility is INHERITED, and launchd adopting a process doesn't clear it** (verified on macOS 27.0,
+    2026-09-16): a holder started through a shell that exited, `PPID` 1, still answered the terminal app behind it. So
+    rule 4 names the app a drive-resident tool was STARTED from, and rule 5 answers only for a holder no app ever
+    launched. Both are honest, and neither reads the binary — but it means a lane test can't pin `Tool` for a binary the
+    lane itself started, which is why that pin is a unit test against a real detached process instead.
+  - ❗ **macOS SIGKILLs a plain copy of an arm64e platform binary** (`/bin/sleep` copied and run: exit 137). A test that
+    needs a binary ON the drive has to re-sign the copy ad-hoc, which also leaves it un-platform.
+  - **`hdiutil info -plist` answers in 18 ms** with two images attached, and its `hdid-pid` IS the pid `lsof` shows
+    holding the backing file, so a nested image lands on a pid the walk already named.
+  - The plan's own prediction that the two lane pins flip to `Tool` was wrong about the FIXTURE: their holder is a child
+    of the test process, so `Cmdr` is what rule 1 rightly says, and asserting it runs the whole lineage walk against a
+    real process tree.
+- **Test plan (all covered)**: the pure `classify` table (Cmdr and a descendant of Cmdr, Finder, a shell under its
+  terminal, a disk image, a responsible app with and without an `NSRunningApplication`, the same helper with the symbol
+  missing, an executable on the drive, a platform binary, a third-party binary, and facts nobody could read); the
+  applier that puts kinds onto named holders, including the budget's leftovers; the nested-image parse against a
+  recorded `hdiutil` answer plus the real tool's live one; real-process pins of the lineage walk, the platform-binary
+  read (`/bin/sleep` yes, this test binary no), the executable-device test, and the responsible-PID symbol; ❗ invariant
+  14 against a real process running from a stand-in drive; lane: the disk-image rule on a real attached image, and the
+  two held-file pins asserting `Cmdr`.
+- **Docs**: `volume/DETAILS.md` § "A refusal names who held the drive" (the rules, the two stages, the tradeoffs),
+  `crates/cmdr-fs/DETAILS.md` (`serving_pid`).
+- **Size**: about 1,100 lines, over the 450–550 estimate: the estimate didn't carry the FFI for four separate macOS
+  signals, nor the detached-holder fixture the responsibility finding forced.
 
 ### M15: eject copy in every catalog
 
@@ -1746,6 +1780,22 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   runs over `holders.named` whichever arm it is, and the existing `errors.eject.unmountRefused` is the fallback for an
   empty one. ❗ The ONE thing M15 may not do is word an empty `incomplete` as "nothing is using this drive": only
   `complete` with an empty `named` means that, and today no copy says it at all. A test case per arm.
+- **From M14**, what the kinds actually carry:
+  - **`Unclassified` is a real arm, not a leftover**, and it's what the budget and an unreadable signature both leave
+    behind. It has no copy of its own: a holder that's only `Unclassified` falls through the precedence to
+    `errors.eject.unmountRefused`, exactly like an empty list. ❗ It is ❌ never worded as a tool or an app.
+  - **`App` and `Tool` word the same** (the approved precedence already deduped them by name), so the split costs no
+    copy. What differs is the NAME: an `App` carries its display name and a `bundleId`, a `Tool` carries its
+    executable's file name (`cmdr-holder`, `mds_stores`). Both are what a person sees, which is why `{app}` and `{apps}`
+    stay unquoted.
+  - **`bundleId` is set only for an `App` that had an `NSRunningApplication`** — a responsible app named from its
+    signature (Google Drive's shape) carries a name and no bundle id. ❌ Don't key anything on its presence.
+  - **`DiskImage` carries the image's mounted VOLUME name** in `name` (else its `.dmg` file name), which the approved
+    `unmountRefusedByDiskImage` copy doesn't use. Leave it unused rather than inventing a token for it.
+  - **A holder's `name` is never empty**: the walk names every pid by its executable before any rule runs, and a pid it
+    couldn't name is dropped rather than carried blank. So `{app}` always has something to say.
+  - Two or more holders of DIFFERENT kinds in one refusal is ordinary (a `System` beside an `App`), which is what the
+    precedence is for; the `mixed` case in the test plan is the one that pins it.
 - **Test plan**: `eject-error-messages.test.ts` (one, two, three, four, and six apps; `DiskImage`; `Cmdr`; `System`;
   mixed; empty; only `Unclassified`); a list-formatter test with a pinned locale; `pnpm check svelte` plus
   `desktop-i18n-icu`, `desktop-i18n-parity`, `desktop-i18n-coverage`, `desktop-i18n-term-consistency`,
@@ -2003,8 +2053,12 @@ sources: DiskArbitration-535.0.10.
 - **`hdiutil info -plist`** carries the typed per-image keys `hdid-pid` and `diskimages2` besides `image-path`.
 - **BSD units repeat at once**: a detached image's `disk8` and `disk9` went to the next attach, and image A came back as
   `disk5` and `disk6` both times it was re-attached.
-- **Not run** (new risk, or M14 code): the nested-image signal, `diskimagesiod` holding an outer volume, and the
-  self-holder reproduction.
+- **The nested-image signal** (run during M14, macOS 27.0, 2026-09-16): an HFS+ image attached from a file on another
+  attached image's volume reads `hdid-pid` 12984 in `hdiutil info -plist`, and `lsof` shows that same pid holding the
+  outer volume's `inner.dmg` — uid 501, so a same-uid walk sees it. The tool answers in 18 ms. IOKit carries the same
+  image under `IOHDIXController` → `IOHDIXHDDriveOutKernel`, whose `image-path` property names the backing file but
+  carries no pid; its user client's `IOUserClientCreator` does, as a sentence, which is why the plist won.
+- **Not run** (new risk): the self-holder reproduction.
 
 #### 9. Code facts
 
