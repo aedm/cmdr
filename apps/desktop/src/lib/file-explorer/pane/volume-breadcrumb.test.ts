@@ -749,6 +749,32 @@ describe('VolumeBreadcrumb', () => {
       expect(placeholder?.getAttribute('role')).toBeNull()
     })
 
+    it('never lands the keyboard cursor on the empty-state placeholder', async () => {
+      const component = await openWithFavorites([])
+      const handleKeyDown = (component as unknown as { handleKeyDown: (e: KeyboardEvent) => boolean }).handleKeyDown
+      const placeholder = getTarget().querySelector('.favorites-empty')
+      expect(placeholder).toBeTruthy()
+
+      // The placeholder is not a `.volume-item`, so it never enters the navigable list.
+      // Walk the whole list twice over (arrows wrap) and it must stay unhighlighted,
+      // with the cursor on exactly one real row the whole way.
+      const rows = getTarget().querySelectorAll('.volume-item')
+      expect(rows.length).toBeGreaterThan(0)
+      for (let i = 0; i < rows.length * 2; i++) {
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+        await tick()
+        expect(placeholder?.classList.contains('is-focused-and-under-cursor')).toBe(false)
+        expect(getTarget().querySelectorAll('.volume-item.is-focused-and-under-cursor').length).toBe(1)
+      }
+
+      // Home is the other way onto the top of the list, and it lands on the first real
+      // row rather than on the placeholder sitting above it.
+      handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }))
+      await tick()
+      expect(placeholder?.classList.contains('is-focused-and-under-cursor')).toBe(false)
+      expect(rows[0].classList.contains('is-focused-and-under-cursor')).toBe(true)
+    })
+
     it('renders favorites as pointer-draggable rows (no HTML5 draggable, not DOM-focusable)', async () => {
       await openWithFavorites([fav('1', 'Documents', '/Users/me/Documents')])
       const item = getTarget().querySelector('.favorite-item')

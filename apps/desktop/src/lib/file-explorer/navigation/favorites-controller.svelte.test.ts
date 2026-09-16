@@ -136,6 +136,46 @@ describe('favorites-controller', () => {
       expect(c.draggingFavoriteId).toBe(null)
     })
 
+    // The cue rides the RAW insertion slot (the visual gap), which is what keeps a
+    // downward drag from drawing the line one row too high. Rows are 20px tall from
+    // y=0 here, so the midpoints are 10 / 30 / 50.
+    it('puts the drop-line cue on the gap under the pointer, dragging DOWN', () => {
+      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
+      c.handleMouseDown(favorites[0], new MouseEvent('mousedown', { button: 0, clientY: 10 }))
+      // Past row 1's midpoint: the line belongs in the gap above row 2.
+      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 35 }))
+      expect(c.dragOverIndex).toBe(2)
+      // Past the last midpoint: the line belongs below the last row.
+      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 55 }))
+      expect(c.dragOverIndex).toBe(3)
+      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 55 }))
+    })
+
+    it('puts the drop-line cue on the gap under the pointer, dragging UP', () => {
+      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
+      c.handleMouseDown(favorites[2], new MouseEvent('mousedown', { button: 0, clientY: 50 }))
+      // Above every midpoint: the line belongs above row 0.
+      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 5 }))
+      expect(c.dragOverIndex).toBe(0)
+      // Between the first two midpoints: the line belongs above row 1.
+      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 20 }))
+      expect(c.dragOverIndex).toBe(1)
+      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 20 }))
+    })
+
+    it('draws no cue where a drop would leave the row where it already is', () => {
+      const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
+      c.handleMouseDown(favorites[1], new MouseEvent('mousedown', { button: 0, clientY: 30 }))
+      // Both gaps touching the grabbed row (slot 1 above it, slot 2 below it) are no-ops,
+      // so neither draws a line, and the drop itself persists nothing.
+      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 25 }))
+      expect(c.dragOverIndex).toBe(null)
+      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 35 }))
+      expect(c.dragOverIndex).toBe(null)
+      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 35 }))
+      expect(reorderFavorites).not.toHaveBeenCalled()
+    })
+
     it('reverts the optimistic order when the background persist rejects', async () => {
       reorderFavorites.mockRejectedValueOnce(new Error('nope'))
       const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
