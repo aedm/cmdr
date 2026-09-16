@@ -50,6 +50,12 @@ Format, the confidence scale, and the full process: `docs/guides/i18n-translatio
 - mount (verb, a volume) → einbinden; unmount → aushängen; force-unmount → zwangsweise aushängen · macOS Finder
   ("eingebunden"/"einbinden"); MS "Einbinden" · high
 - eject → auswerfen · macOS Finder ("Auswerfen") · high
+- disk image (eine .dmg, die sich wie ein eigenes Laufwerk einbindet) → Image · der Katalog
+  (`errors.listing.readOnlyVolumeErrno.suggestion` „Wenn es ein Image ist …“,
+  `updates.moveToApplicationsDialog.readOnlyVolume` „einem noch geöffneten Image“) und macOS `de` im Fließtext („Image
+  „^0“ auf das Medium brennen …“) · high. `Disk-Image` steht in macOS nur als Etikett im Informationsfenster (Finder
+  `InfoWindowGeneralView` „Disk-Image-Wert“); ❌ nicht `Datenträgerabbild`, das macOS `de` gar nicht kennt. Worked set:
+  § Wer das Laufwerk festhält.
 - handle (open file handle, OS sense) → Handle (kept; no settled DE UI term, technical context only) · tentative
 - quota → Kontingent · MS terminology ("Kontingent" for disk quota) · high
 - attribute (file attribute / metadata) → Attribut · MS terminology, standard DE · high
@@ -3080,3 +3086,72 @@ weggefallen und durch eine einzelne Zeile ersetzt, die das Menü öffnet.
   `auf Laufwerken … funktionieren` ist ein schlichter Lokativ. Kein Punkt am Ende (Tooltip).
 - Kein `sameAsSourceJustification` nötig: alle Werte unterscheiden sich vom Englischen. `menu.go.showFavorites` gehört
   zur RAW-Familie, trägt aber ohnehin keinen Apostroph; in den ICU-Dateien ebenso wenig, also nichts zu verdoppeln.
+## Wer das Laufwerk festhält: die sechs benannten Absagen (`errors.eject.unmountRefusedBy*`, `.otherApps`)
+
+Sechs Zeilen, die die generische Absage `errors.eject.unmountRefused` aufschlüsseln: macOS hat das Auswerfen abgelehnt,
+und Cmdr kann diesmal sagen, WER das Laufwerk hält. Sie erben den Rahmen und die Regeln von § Auswerfen und Trennen
+(Rohfamilie, einfache Apostrophe, kein ICU, jeder Wert ein eigenständiger Satz hinter einem Doppelpunkt). Die drei
+Geschwister `unmountRefused` / `…ByApp` / `…ByApps` müssen als eine Familie lesbar sein.
+
+- **„is still using this drive“ → `verwendet dieses Laufwerk noch`** · macOS Finder `de` sagt genau diesen Vorwurf mit
+  `verwenden`: „Das Objekt „^0“ wird von macOS verwendet …“, „Das Wechselmedium „^0“ wird gerade verwendet und kann
+  nicht ausgeworfen werden.“, „… da das Laufwerk möglicherweise gerade von einem anderen Programm verwendet wird“ ·
+  `high`. Damit trägt die Zeile dasselbe Wortfeld wie das Geschwister `unmountRefused` („noch in Verwendung“), nur
+  aktiv, weil hier ein Subjekt zum Nennen da ist. ❌ Nicht `belegt`, `blockiert` oder `greift zu`.
+- **Der Platzhalter steht am Satzanfang, aktiv, ohne Artikel** · `{app}` trägt einen echten Prozessnamen („Vorschau“,
+  „Warp“, „mds_stores“), also ein fremdes Wort ohne bekanntes Genus. Als Subjekt im Nominativ braucht es keinen Artikel
+  und keine Flexion, und der Name steht sofort hinter dem Doppelpunkt des Rahmens, wo er am meisten nützt. Die
+  Passiv-Variante nach macOS-Vorbild („Dieses Laufwerk wird noch von {app} verwendet.“) wäre grammatisch ebenso sauber,
+  begräbt den Namen aber in der Satzmitte; die Stilregel „lieber aktiv“ entscheidet zusätzlich. Ein kleingeschriebener
+  Werkzeugname am Satzanfang (`mds_stores …`) ist dabei hinzunehmen, das Englische hat dieselbe Stelle.
+- **Der Rückverweis auf den Halter entfällt in BEIDEN Zeilen** · das Englische sagt „Close anything **it** has open
+  there“ / „**they** have open there“. Im Singular ist das Pronomen versperrt: `style.md` § Notes and decisions
+  verbietet den Pronomen-Rückverweis auf einen `{name}`-Platzhalter, und ein „es“ für die App würde sich mit dem „es“
+  für das Laufwerk im nächsten Teilsatz stoßen. Also steht in beiden Zeilen derselbe Nachsatz („Schließe alles, was dort
+  geöffnet ist, …“), obwohl der Plural ein genusfreies „sie“ vertragen hätte: die drei Geschwister bleiben so als eine
+  Familie lesbar, und der Halter ist im ersten Satz ohnehin benannt. `dort` zeigt auf das zuletzt genannte Laufwerk,
+  genau wie das englische „there“.
+- **`other apps` → `andere Apps`, Nominativ Plural** · `Intl.ListFormat('de')` hängt es ohne Komma an („Vorschau, Warp,
+  Fotos **und** andere Apps“, gemessen mit Node), und `{apps}` ist in der deutschen Fassung IMMER das Satzsubjekt. Damit
+  braucht das Listenende keine Kasusform: die Grundform stimmt. Würde ein späterer Satzbau `{apps}` in einen Dativ
+  schieben („von anderen Apps“), müsste das `-n` mit; genau deshalb bleibt der Satz aktiv mit dem Platzhalter als
+  Subjekt. `App` ist im Katalog gesetzt (§ Auswerfen und Trennen), auch für Kommandozeilen-Werkzeuge, wie schon im
+  Englischen.
+- **`disk image` → `Image`** · der Katalog sagt es zweimal genau so (`errors.listing.readOnlyVolumeErrno.suggestion`
+  „Wenn es ein Image ist, binde es mit Schreibzugriff erneut ein“, `updates.moveToApplicationsDialog.readOnlyVolume`
+  „meist einem noch geöffneten Image“), und macOS `de` nimmt im Fließtext dieselbe Kurzform („Image „^0“ auf das Medium
+  brennen …“) · `high`. Der Zweitplatzierte `Disk-Image` steht in macOS nur als Info-Fenster-Etikett (Finder
+  `InfoWindowGeneralView` „Disk-Image-Wert“); er wäre für sich klarer, würde aber gegen zwei bereits ausgelieferte
+  Katalogstellen driften. ❌ Nicht `Datenträgerabbild` (kommt in macOS `de` gar nicht vor).
+- **Der Image-Satz nimmt den Rahmen von `errors.eject.busy`** · „**Auf diesem Laufwerk liegt** ein Image, das noch
+  geöffnet ist.“ neben „**Auf diesem Laufwerk läuft** noch ein Vorgang von Cmdr.“ · `liegen` ist das Katalogverb für „wo
+  etwas ist“ (§ A drive pulled mid-transfer), und die vorangestellte Ortsangabe sagt genau das, worauf es ankommt: die
+  DATEI des Images liegt auf dem Laufwerk. Eine eingeschobene Relativkonstruktion („Ein Image, das auf diesem Laufwerk
+  liegt, ist noch geöffnet.“) wäre dieselbe Aussage, liest sich aber verschachtelt.
+- **„Eject that image first, then eject this drive.“ → `Wirf erst das Image aus, dann das Laufwerk.`** · Gapping mit
+  geteiltem trennbaren Verb ist normales Deutsch („Räum erst die Küche auf, dann das Bad.“) und hält den Satz kurz. Das
+  zweite `wirf … aus` auszuschreiben wäre in einem so knappen Toast Wortwiederholung.
+- **„is still working with this drive“ → `arbeitet noch mit diesem Laufwerk`** · bewusst NICHT `verwenden`: das
+  Englische unterscheidet an dieser Stelle selbst („working with“ statt „using“), weil hier niemand etwas zu schließen
+  hat, sondern Spotlight oder Time Machine im Hintergrund arbeitet. `mit … arbeiten` steht im Katalog schon für genau
+  diesen Sinn (`errors.listing.lockUnavailable.suggestion` „Apps, die mit vielen Dateien arbeiten“) · `high`.
+- **`macOS` steht unverändert am Satzanfang** · die Kleinschreibung bleibt (Apples Schreibweise), und der Katalog setzt
+  das schon so: `errors.listing.notPermitted.explanation` „macOS hat Cmdr den Zugriff auf `{path}` verwehrt.“ ❌ Keine
+  Kasus-Endung, kein `Mac OS`, kein `das System`.
+- **`Cmdr itself` → `Cmdr selbst`, direkt hinter dem Subjekt** · „Cmdr selbst verwendet dieses Laufwerk noch.“ Die
+  Abgrenzung zu `errors.eject.busy` ist wichtig und darf nicht verwischen: `busy` meint einen LAUFENDEN Vorgang („Auf
+  diesem Laufwerk läuft noch ein Vorgang von Cmdr.“), `unmountRefusedByCmdr` meint einen Griff, den Cmdr fälschlich
+  nicht losgelassen hat. Deshalb hier `verwenden` und nicht `Vorgang`.
+- **„send a report“ → `sende einen Fehlerbericht`** · der volle Feature-Name, weil die Zeile ihn zum ersten und einzigen
+  Mal nennt (`style.md` § Notes and decisions: voll nennen, dann kürzen). Er ist zeichengleich mit dem, was der Nutzer
+  im Menü und im Toast sieht: `menu.help.sendErrorReport` / `ui.toast.sendErrorReport` „Fehlerbericht senden“ · `high`.
+  ❌ Nicht `Absturzbericht` (der ist für einen echten Absturz reserviert, § Absturzdialog) und nicht das bloße
+  `Bericht`, das erst nach einer vollen Nennung in der Nähe zulässig ist.
+- **„if it keeps happening“ → `wenn das immer wieder passiert`** · die gesetzte Katalogwendung, mehrfach in
+  `errors.listing.*.suggestion` („Wenn das immer wieder passiert, …“) · `high`.
+- Kein `sameAsSourceJustification` nötig: alle sechs Werte unterscheiden sich vom Englischen. Keine Apostrophe in den
+  Werten, also nichts zu verdoppeln (und in dieser Rohfamilie wäre ein `''` ohnehin ein Fehler, nicht die Pflicht).
+- Zu prüfen beim Overflow-Check: `unmountRefusedByCmdr` ist mit rund 155 Zeichen die längste Zeile der ganzen
+  `errors.eject.*`-Familie (Englisch: 110) und erscheint hinter dem Rahmensatz, der bei einem langen `{volumeName}`
+  schon breit ist. `…ByApp` / `…ByApps` liegen bei rund 101 Zeichen und damit unter dem ausgelieferten `unmountRefused`
+  (114), tragen aber zusätzlich den eingesetzten Namen.

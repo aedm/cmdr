@@ -3548,3 +3548,72 @@ helyén egy sor áll, ami átvált erre a menüre.
   listáról van szó, amit a felhasználó épp lát. Pont nincs a végén, ahogy az angolban sincs (buborék, nem mondat).
 - **Egyik érték sem azonos az angollal**, tehát `sameAsSourceJustification` egyikhez sem kell. Aposztróf egyikben sincs,
   így az ICU-kettőzés kérdése fel sem merül; a `menu.go.showFavorites` RAW kulcs, de nincs benne mit kettőzni.
+## Az elutasított kiadás megnevezi, KI fogja a meghajtót (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
+
+Hat kulcs, mind ugyanabban a buborékban, a `fileExplorer.pane.ejectFailedToast`
+(`Nem sikerült kiadni: {volumeName}: {message}`) vagy a `fileExplorer.pane.disconnectFailedToast`
+(`Nem sikerült a leválasztás: {message}`) kettőspontja után. RAW család (nincs ICU): egyszeres aposztróf, a `{app}` /
+`{apps}` puszta szövegcsere. A hatból egyik értékben sincs aposztróf. Az `unmountRefused`
+(`Valami még használja ezt a meghajtót. …`) a család generikus tagja, tehát a megnevezett változatok ugyanazt a
+mondatvázat viszik: **`X még használja ezt a meghajtót.` + egy tegező felszólítás**.
+
+- **„is still using this drive” → `még használja ezt a meghajtót`** · a szállított `errors.eject.unmountRefused` alakja
+  betűre, és a `használ` tő a macOS Tier 1 kiadás-elutasításaié (AppKit `AppKitErrors`: „The disk could not be ejected
+  because it is in use by „%@”.” → „… a(z) „%@” által használatban van.”, Finder `NE66`/`NE31`/`NE79`/`NE80`;
+  ellenőrizve a referenciakupac `hu/macOS/` állományaiban, 2026-09-16) · `high`. A magyar az AKTÍV alakot tartja meg (az
+  angol is azt mondja), nem az Apple szenvedő `által használatban van` szerkezetét: annak a mondatnak amúgy is hibás a
+  magyar burkolata (az Apple `A lemezt sikerült kiadni`-t ír a „could not be ejected” helyett), tehát keretként nem is
+  másolható.
+- **`{app}` névelője a `A(z)` hedge** · a katalógus ugyanezt a szerkezetet szállítja appnév-helyőrzőre
+  (`commands.handler.openTerminalHere.appMissing`: `A(z) {app} már nincs telepítve, …`, `errors.provider.appBased.*`:
+  `a(z) {app} appot`, `main.revealNudge.heldByOtherApp`: `a(z) {app} appnál`), és a macOS Tier 1 is hedge-el ugyanebben
+  a mondatban (`a(z) „%@” által`) · `high`. Az `{app}` futásidejű folyamatnév (`Preview`, `Warp`, `mds_stores`), tehát a
+  kezdőhangja ismeretlen: a hedge pont erre való (`style.md` § Notes and decisions).
+  - **Idézőjel NÉLKÜL**, pedig a macOS idézőjelezi: a `style.md` szabálya szerint az idézőjel a felhasználó által ÍRT
+    névre való, a márka- és appnév-helyőrző pedig puszta `a(z) {name}` (így írja mind a három szállított kulcs is).
+- **A TÖBBES kulcs (`unmountRefusedByApps`) nem kaphat névelőt** · a `{apps}` már kész, `Intl.ListFormat`-tal
+  összefűzött felsorolás (`Preview, Warp, Photos és egyéb alkalmazások`, ellenőrizve `node`-dal, `hu` locale,
+  2026-09-16), a magyar felsorolásban viszont minden tag SAJÁT névelőt kívánna, amit egy helyőrzőbe nem lehet belefűzni;
+  ráadásul a záró `egyéb alkalmazások` határozatlan, tehát elé végképp nem kerülhet `a(z)`. Ezért a lista névelőtlenül,
+  mondatkezdő alanyként áll · `high`. Az egyes és a többes kulcs közti névelő-aszimmetria (`A(z) {app}` vs. puszta
+  `{apps}`) SZÁNDÉKOS és nyelvtani kényszer; ne „egységesítse” egy későbbi menet.
+- **A többes alany TÖBBES igét kap: `még használják`** · két egyes számú név mellett a magyar egyes számú állítmányt is
+  megengedne (`Preview és Warp még használja`), de a lista utolsó tagja gyakran a többes `egyéb alkalmazások`, ami
+  mellett az egyes szám hibás. Egyetlen alak kell mindkét esetre, tehát a többes az · `high`. (Ez nem mond ellent a
+  `style.md` § Plurals számnév-szabályának: ott SZÁMNÉV az alany, itt felsorolás.)
+- **„Close anything it/they have open there” → `Zárd be, amit ott nyitva tart/tartanak`** · a `nyitva tart` a katalógus
+  igéje erre (`errors.listing.deletePending.suggestion`: „Zárj be minden más appot, ami nyitva tarthatja ezt a fájlt”) ·
+  `high`. A vonatkozó mellékmondat tárgyként határozott ragozást kíván (`Zárd be, amit…`), az `ott` pedig az angol
+  „there”-t viszi, és kerüli a `meghajtó` harmadik említését.
+- **other apps → `egyéb alkalmazások`** · Thunar hu közvetlen msgid-egyezés (`Other Applications` =
+  `Egyéb alkalmazások`, `thunar-chooser-model.c:330`); a főnév a macOS Tier 1 `alkalmazás`-a, és a szállított
+  testvérkulcs is ezt viszi (`errors.eject.unmountRefused`: „a nyitott fájlokat és alkalmazásokat”) · a főnév `high`, az
+  `egyéb` vs. `más` választás `tentative`. A `más alkalmazások` is élő alak (Dolphin hu: „Akár más alkalmazásokba is”),
+  de arra nincs msgid-szintű egyezés, és a `más` kontrasztot (= másfélét) sugall, míg itt maradékról van szó. Kisbetűs,
+  mert mondat közepén, felsorolás utolsó tagjaként áll, alanyesetben, ahogy a `használják` kívánja.
+- **disk image → `lemezkép`** · macOS Tier 1 (Finder `BN53`: „A(z) „^0” lemezkép lemezre írása…”,
+  `InfoWindowGeneralView` „Lemezkép:”, „Lemezkép értéke”) · `high`.
+  - **„is still open” → `még nyitva van`** · Double Commander hu közvetlen msgid-egyezés („the file is open in another
+    program” = „a fájl más programban nyitva van”) · `high`. Nem `csatolva van`: az angol is a köznyelvi „open”-t
+    mondja, és a felhasználó a lemezképet a Finderben nyitva látja.
+  - A mondat egzisztenciális szórendű (`Ezen a meghajtón még nyitva van egy lemezkép.`), mert a magyarban a határozatlan
+    alany az ige MÖGÉ kerül; az angol jelzős szerkezete („A disk image stored on this drive”) magyarul nehéz előtaggá
+    válna (`Egy ezen a meghajtón tárolt lemezkép…`). A második mondat `azt`-ja igei fókuszban áll (`Előbb azt add ki`),
+    ami pont az angol „that image first” hangsúlyát adja.
+- **„macOS is still working with this drive” → `A macOS még dolgozik ezen a meghajtón`** · a `dolgozik` a katalógus
+  igéje (`fileExplorer.navigation.connectionTooltipDisconnected`: „A Cmdr dolgozik a helyreállításán.”), az
+  `ezen a meghajtón` helyhatározó pedig a testvér `errors.eject.busy` alakja („A Cmdr még fájlokat mozgat ezen a
+  meghajtón”) · `high`. A `macOS` névelője `a`, nem hedge: a kezdőhang ismert, és a katalógus végig `a macOS`-t ír.
+- **„Cmdr itself” → `Maga a Cmdr`** · a `maga a X` a magyar nyomatékosító szerkezet, és a mondatváz marad a családé
+  (alany elöl), hogy a hat kulcs egy hangon szóljon · `high`. A `Ezt a meghajtót még maga a Cmdr használja.` fókuszos
+  szórend is jó lett volna, de a családi váz megtartása többet ér: az olvasó a hat mondatot ugyanabban a buborékban
+  látja, egymás után soha.
+  - **„send a report” → `küldj jelentést`** · a katalógus a puszta `jelentés`-t használja a beépített
+    visszajelzésküldésre (`errorReporter.amend.unavailable`: „küldj új jelentést a Súgó menüből”) · `high`. Nem
+    `hibajelentést`: a `hiba` szót a hang kerüli (`style.md` § Voice and tone), és az angol is csak „a report”-ot mond.
+  - **„if it keeps happening” → `ha továbbra is előfordul`** · a szállított alak ugyanerre az angolra
+    (`errors.listing.resourceBusy.suggestion`: „Ha továbbra is előfordul, …”) · `high`. A katalógusban él a hosszabb
+    `Ha ez folyamatosan előfordul` is, de az a „If this keeps happening” párja; a rövidebb illik a buborékba.
+  - A `Várj egy percet` (rendszer) és a `Várj egy pillanatot` (Cmdr) különbsége szándékos, az angolt követi („a minute”
+    vs. „a moment”): a Spotlight-indexelés tovább tart, mint egy Cmdr-beli leíró elengedése.
+- Egyik kulcsnál sem kell `sameAsSourceJustification`: mind a hat érték eltér az angoltól.

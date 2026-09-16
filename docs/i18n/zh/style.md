@@ -129,6 +129,12 @@ to a pan-Traditional consensus that serves Taiwan, Hong Kong, and Macau from one
 - **No spaces between Chinese characters**, but insert a thin/normal space between Chinese text and adjacent Latin brand
   words or numbers where it aids readability (common house style; follow what reads cleanly against the
   `{placeholder}`).
+- **A list-final placeholder item takes no measure word, and the joiner is never in the string.**
+  `Intl.ListFormat('zh')` joins with `、` and a trailing `和`, adding no spaces of its own
+  (`Preview、Warp、Photos和其他 App`, verified with Node 24, 2026-09-16). So a string that stands in for the tail of
+  such a list (`errors.eject.otherApps` = `其他 App`) is a bare noun phrase: `其他` modifies the noun directly, and
+  adding `几个` would invent a count the English doesn't have. The sentence holding `{apps}` still spaces its own side
+  (`{apps} 还在使用…`), because the joined phrase ends in a Latin word.
 - **Pre-formatted placeholders are often Latin, so space them on both sides.** Several placeholders arrive already
   formatted and unlocalized (`{duration}` = `45s` / `2m 30s` / `1h 5m`, sizes, speeds), so they land as Latin text mid
   sentence: write `已有 {duration} 没有进度`, not `已有{duration}没有进度`. The whole catalog does this

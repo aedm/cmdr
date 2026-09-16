@@ -3594,3 +3594,59 @@ rij die naar dit menu springt. De term `favorieten` lag al vast in de catalogus
   in het Engels. Controleer hem in de echte tooltip tegen de pseudolocale.
 - `Voeg huidige map aan favorieten toe` en `Voeg de huidige map aan favorieten toe` verschillen alleen in het lidwoord,
   net als hun Engelse origineel. Bevestig dat dat verschil in de interface niet als een fout leest.
+## Wie de schijf vasthoudt: de zes geweigerde-uitwerpzinnen (`errors.eject.unmountRefusedBy*`, `.otherApps`, 2026-09-16)
+
+Zes zinnen die de generieke `errors.eject.unmountRefused` opvolgen zodra Cmdr wél weet wie de schijf vasthoudt: één app,
+meerdere apps, een schijfkopie, macOS zelf, of Cmdr zelf. Ze vallen achter dezelfde dubbele punt als de negen zinnen
+hierboven (`{volumeName} uitwerpen lukte niet: …`), dus dezelfde regels gelden: geen herhaling van het wikkelwerkwoord,
+en `errors.*` is RAW, dus enkele apostrofs. Geen van de zes waarden draagt er een.
+
+- **De hele familie deelt één werkwoord: `gebruikt … nog`.** De generieke broer zegt `Deze schijf is nog in gebruik`;
+  zodra er een naam bekend is, wordt dat een actief `{app} gebruikt deze schijf nog`, met `{apps} gebruiken` in het
+  meervoud. Apple gebruikt beide vormen (`… is in gebruik`, en `in gebruik door een andere app` in het
+  verplaats-waarschuwingsvenster van de Finder), dus de keuze valt op wat de naam vooraan zet · `high`.
+- **`{app}` staat vooraan zonder lidwoord.** Een procesnaam is een eigennaam, dus Nederlands zet er net zomin een
+  lidwoord voor als Engels: `Voorvertoning gebruikt deze schijf nog`, `mds_stores gebruikt deze schijf nog`. Vooraan
+  zetten is bewust: in een korte melding is de naam het enige wat de lezer nodig heeft om iets te kunnen doen · `high`.
+  Het alternatief `Deze schijf is nog in gebruik door {app}` is even goed Nederlands maar begraaft de naam achteraan.
+- ❌ **Geen voornaamwoord dat naar `{app}` terugwijst.** Het Engels zegt „anything **it** has open there"; een
+  procesnaam kan in het Nederlands een de- of een het-woord zijn, dus elk voornaamwoord is de helft van de tijd fout (de
+  regel uit `style.md` § Notes and decisions). Daarom `Sluit alles wat daar openstaat`: het plaatsbijwoord `daar` wijst
+  naar de schijf, die wél een vast geslacht heeft. Bonus: enkelvoud en meervoud kunnen zo dezelfde tweede zin delen ·
+  `high`.
+- **`other apps` → `andere apps`, niet `andere programma's`** · de map `Applications` heet in het Nederlandse macOS
+  `Apps` (zie § Het Dock-aanbod en `style.md`), Finder schrijft `Stop geopende apps` en
+  `in gebruik door een andere app`, en de catalogus zegt al overal `apps` · `high`. `Programma's` leeft in het
+  Nederlandse macOS alleen nog in `Hulpprogramma's`. Meegenomen voordeel: `andere apps` draagt geen apostrof, dus de
+  RAW-familie kan er niets aan verkeerd doen.
+  - De lijstvoegwoorden komen van `Intl.ListFormat('nl')`, niet uit de string:
+    `Voorvertoning, Warp, Foto's en andere apps` (nagemeten met Node, 2026-09-16). `andere apps` heeft op die laatste
+    plek geen naamvals- of lidwoordaanpassing nodig, dus de waarde blijft de kale zelfstandignaamwoordgroep.
+- **disk image → `schijfkopie`** · macOS Finder `InfoWindowGeneralView` (`tvy-hx-Gou.title` = `Schijfkopie:`) · `high`.
+  Een de-woord. De zin herhaalt het naamwoord (`Werp eerst die schijfkopie uit en daarna deze schijf`) in plaats van een
+  `die` te gebruiken, want `schijf` is óók een de-woord en zou de verwijzing dubbelzinnig maken; dezelfde regel als bij
+  `Open de server opnieuw` in `style.md`.
+- **„is still open" → `staat nog open`** · gemunt, want het pile kent `openstaan` niet voor bestanden. Het Engels kiest
+  bewust het alledaagse „open" boven het technische „mounted", en `staat nog open` draagt precies diezelfde lichtheid;
+  het technisch preciezere `is nog gekoppeld` zou het register optillen · `tentative`. In de bijzin wordt het één woord
+  (`wat daar openstaat`).
+- **macOS blijft `macOS`, ook aan het begin van de zin**, met de kleine letter die de merknaam draagt, net als in het
+  Engels. Geen verbuiging nodig: `macOS is nog met deze schijf bezig`, met `bezig` achteraan zoals Nederlands dat wil
+  (Apple schrijft `iCloud is bezig met synchronisatie`, dezelfde constructie met een langere bepaling) · `high`.
+- **„Wait a minute" en „Wait a moment" blijven twee verschillende wachttijden** · `Wacht een minuutje` voor macOS (dat
+  echt even bezig kan zijn met indexeren) en `Wacht even` voor Cmdr zelf. Het Engels maakt datzelfde onderscheid, en
+  `minuutje` past bij de informele toon · `high`.
+- **„send a report" → `verstuur een rapport`** · de vastgelegde `versturen` plus `rapport` (`crashReporter.dialog.send`
+  = `Verstuur rapport`) · `high`. „if it keeps happening" → `als het blijft gebeuren`, letterlijk de vorm van
+  `errors.serverRequest.unexpected` · `high`.
+- **`Cmdr zelf gebruikt deze schijf nog`**: `zelf` staat direct achter het onderwerp, waar het Engelse „itself" ook
+  staat, zodat de zin de schuld meteen bij Cmdr legt in plaats van halverwege · `high`.
+
+REVIEW FLAGS:
+
+- `staat nog open` voor een gekoppelde schijfkopie is gemunt (zie hierboven). Bevestig tegenover het preciezere
+  `is nog gekoppeld`, dat verder van het Engels af staat.
+- `Werp eerst die schijfkopie uit en daarna deze schijf.` laat het scheidbare werkwoord weg in de tweede helft. Dat
+  leest vlot, maar wie strenger is, wil `en werp daarna deze schijf uit`, wat `werp … uit` twee keer in één korte zin
+  zet. Bevestig welke in een smalle melding wint.
+- `Wacht een minuutje` is warm maar kan als schattig lezen; `Wacht een minuut` is zakelijker. Bevestig de toon.

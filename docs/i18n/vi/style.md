@@ -259,6 +259,13 @@ Vietnamese has no grammatical number, so one form covers all counts.
   `Không thể tháo {volumeName}: …` or `Không thể ngắt kết nối: …`, so the wrapper already carries the "couldn't" part.
   Write only the reason plus the next step; don't restate the refusal. Terms and evidence: `glossary.md` § Lỗi khi tháo
   ổ đĩa / ngắt kết nối.
+- **Một danh sách tên ứng dụng không làm động từ đổi dạng, nên đừng bịa dấu hiệu số.**
+  `errors.eject.unmountRefusedByApp` và `…ByApps` chỉ khác nhau đúng một đại từ (`nó` / `chúng`); danh sách tên đứng
+  ngay trước đã nói số rồi. Mục cuối của danh sách (`errors.eject.otherApps`) thì PHẢI có loại từ: `các ứng dụng khác`,
+  vì `và ứng dụng khác` đọc thành "và một cái nữa". Bằng chứng: `glossary.md` § macOS từ chối tháo ổ đĩa.
+- **disk image là `ảnh đĩa`, và không bao giờ rút gọn thành `ảnh`** (`ảnh` một mình là bức ảnh chụp). Kho tham chiếu
+  không có chuỗi nào; nguồn Tier 1 nằm trong Disk Utility và `DiskImages.framework` của máy, phải quét `.loctable` mới
+  thấy. `glossary.md` § macOS từ chối tháo ổ đĩa.
 - **`di chuyển` is reserved for the Move operation.** When English uses a loose "moving files" that also covers copies
   and deletes, write the plain `chuyển tệp`; `di chuyển tệp` would narrow the sentence to one operation.
 - **`rút` (unplug) has no pile source in Vietnamese** and rests entirely on catalog consistency (four shipped MTP

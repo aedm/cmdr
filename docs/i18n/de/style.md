@@ -265,7 +265,8 @@ Dateien".
 - **A toast value that lands AFTER a colon still has to be a whole sentence.** The `errors.eject.*` values are dropped
   into „{volumeName} ließ sich nicht auswerfen: …“ and „Trennen nicht möglich: …“, and the same value serves both
   frames. So write each one so it stands alone, and accept a repeated verb („… nichts zu trennen“ after „Trennen nicht
-  möglich:“) rather than trimming the value to fit one frame. Worked set: `glossary.md` § Auswerfen und Trennen.
+  möglich:“) rather than trimming the value to fit one frame. Worked sets: `glossary.md` § Auswerfen und Trennen, sowie
+  § Wer das Laufwerk festhält (die benannten Halter: App, Image, macOS, Cmdr selbst).
 - **Don't translate „moving files“ literally when the message also covers copying and deleting.** `bewegen` is the NAME
   of Cmdr's Move command in German, so it reads as that one operation; use the catalog's `Vorgang` instead („Auf diesem
   Laufwerk läuft noch ein Vorgang von Cmdr.“).

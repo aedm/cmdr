@@ -1793,27 +1793,27 @@
   "@errors.eject.unmountRefused": {
     "sourceHash": "1ff7d31"
   },
-  "errors.eject.unmountRefusedByApp": "{app} is still using this drive. Close anything it has open there, then eject again.",
+  "errors.eject.unmountRefusedByApp": "{app} gebruikt deze schijf nog. Sluit alles wat daar openstaat en werp hem daarna opnieuw uit.",
   "@errors.eject.unmountRefusedByApp": {
     "sourceHash": "bee2660"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} are still using this drive. Close anything they have open there, then eject again.",
+  "errors.eject.unmountRefusedByApps": "{apps} gebruiken deze schijf nog. Sluit alles wat daar openstaat en werp hem daarna opnieuw uit.",
   "@errors.eject.unmountRefusedByApps": {
     "sourceHash": "0864134"
   },
-  "errors.eject.otherApps": "other apps",
+  "errors.eject.otherApps": "andere apps",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByDiskImage": "A disk image stored on this drive is still open. Eject that image first, then eject this drive.",
+  "errors.eject.unmountRefusedByDiskImage": "Een schijfkopie op deze schijf staat nog open. Werp eerst die schijfkopie uit en daarna deze schijf.",
   "@errors.eject.unmountRefusedByDiskImage": {
     "sourceHash": "82fc540"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS is still working with this drive. Wait a minute, then eject again.",
+  "errors.eject.unmountRefusedBySystem": "macOS is nog met deze schijf bezig. Wacht een minuutje en werp hem daarna opnieuw uit.",
   "@errors.eject.unmountRefusedBySystem": {
     "sourceHash": "27636e6"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr itself is still using this drive. Wait a moment and eject again, or send a report if it keeps happening.",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr zelf gebruikt deze schijf nog. Wacht even en werp hem opnieuw uit, of verstuur een rapport als het blijft gebeuren.",
   "@errors.eject.unmountRefusedByCmdr": {
     "sourceHash": "2f56d2c"
   },

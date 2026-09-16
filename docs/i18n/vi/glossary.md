@@ -3226,3 +3226,61 @@ thích bên trong nữa, chỉ còn một hàng trên cùng mở menu này.
   (theo tiếng Anh), không dùng `lỗi` hay `không thể`.
 - Không giá trị nào trong đợt này chứa dấu nháy đơn, nên không phát sinh `''` của ICU; `menu.go.showFavorites` thuộc họ
   RAW (Rust vẽ menu gốc) và cũng không có gì phải nhân đôi.
+## macOS từ chối tháo ổ đĩa, và Cmdr nói rõ ai đang giữ (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
+
+Sáu khóa nối tiếp `errors.eject.unmountRefused` (khóa chung, khi Cmdr không đoán được ai giữ). Cả sáu đều rơi vào sau
+dấu hai chấm của `Không thể tháo {volumeName}: …`, nên chỉ nêu lý do và bước tiếp theo. Cả họ dùng chung khuôn
+`… vẫn đang sử dụng ổ đĩa này. Hãy … , rồi tháo lại.` để ba khóa đọc như một nhà.
+
+- **"is still using this drive" → `vẫn đang sử dụng ổ đĩa này`, thể CHỦ ĐỘNG** · macOS AppKit `AppKitErrors` có sẵn câu
+  này ở thể bị động (`The disk could not be ejected because it is in use by “%@”.` →
+  `Không thể tháo ổ đĩa vì ổ đĩa này đang được “%@” sử dụng.`, kiểm chứng trên macOS 26.6.2, quét `.loctable` toàn hệ
+  thống, 2026-09-16) · `high`. Chọn thể chủ động vì `{app}` đứng đầu câu và vì khóa anh em `errors.eject.unmountRefused`
+  (`Vẫn còn thứ gì đó đang sử dụng ổ đĩa này`) và `errors.eject.busy` (`Cmdr vẫn đang chuyển tệp trên ổ đĩa này`) đã
+  viết chủ động. Khuôn `được “%@” sử dụng` của Apple cần tên trong ngoặc kép, còn `{app}` ở đây đi trần (tên tiến trình
+  là chuỗi tùy ý, như `{volumeName}`).
+- **`{app}` một mình và `{apps}` nhiều tên chỉ khác nhau đúng một đại từ** · tiếng Việt không đánh dấu số ở động từ, nên
+  hai câu không thể khác nhau ở `is`/`are` như tiếng Anh. Khác biệt duy nhất là `nó` (một ứng dụng) so với `chúng`
+  (nhiều ứng dụng), cả hai đều là đại từ catalog đã dùng cho vật
+  (`fileOperations.transferProgress.rollbackAlreadyLandedTooltip` "trước khi nó xóa những bản gốc còn lại",
+  `askCmdr.renameUndo.skipReason.*` "chúng đã thay đổi") · `high`. ❌ Đừng bịa thêm dấu hiệu số (`các ứng dụng đó`,
+  `những ứng dụng này`) để "cho giống tiếng Anh": danh sách tên đứng ngay trước đã nói số rồi.
+- **"Close anything it has open there" → `Hãy đóng những gì nó đang mở ở đó`** · `Hãy đóng …` theo Tier 1 macOS
+  DiscRecordingUI (`Other applications may be using this media. Close those applications and try again.` →
+  `Các ứng dụng khác có thể đang sử dụng phương tiện này. Đóng các ứng dụng này và thử lại.`); `những gì` và `ở đó` đều
+  là cách viết catalog đã ship (`askCmdr.consent.whatsNew.body` "những gì bạn đang duyệt",
+  `fileOperations.leftovers.stagingFolderKept` "giữ nguyên chúng ở đó") · `high`. Giữ `những gì` chứ không thu hẹp thành
+  `các tệp`: bản tiếng Anh cố ý nói "anything" (cửa sổ, tệp, phiên terminal).
+- **"other apps" (mục cuối trong danh sách) → `các ứng dụng khác`, CÓ loại từ `các`** · macOS `SESUIServiceCore`
+  (`Other Apps` → `Các ứng dụng khác`) và hàng chục chuỗi văn xuôi (`TCC.framework`: "data from other apps" →
+  `dữ liệu từ các ứng dụng khác`), kiểm chứng 2026-09-16 · `high`. `Intl.ListFormat('vi')` ghép thành
+  `Preview, Warp, Photos và các ứng dụng khác`; bỏ `các` thì `… và ứng dụng khác` đọc thành "và một ứng dụng khác nữa",
+  tức là một cái, chứ không phải phần còn lại. Viết thường vì nó nằm giữa câu, và không thêm dấu chấm.
+- **disk image → `ảnh đĩa`, và luôn nhắc lại đủ hai chữ** · Tier 1 macOS áp đảo: Disk Utility, `DiskImages.framework`,
+  DiskImageMounter đều viết `ảnh đĩa` (`Disk Image` → `Ảnh đĩa`, `The disk image “%@” contains an APFS volume.` →
+  `Ảnh đĩa “%@” chứa ổ đĩa APFS.`), kiểm chứng trên macOS 26.6.2, quét `.loctable`, 2026-09-16 · `high`. Kho tham chiếu
+  KHÔNG có chuỗi "disk image" nào (cả macOS lẫn thuật ngữ Microsoft), phải quét hệ điều hành đã cài mới ra. ❌ Câu thứ
+  hai không được rút gọn thành `tháo ảnh đó`: `ảnh` một mình là bức ảnh chụp (`askCmdr` dùng `ảnh` đúng nghĩa đó), nên
+  viết `tháo ảnh đĩa đó trước`.
+- **"stored on this drive" → `nằm trên ổ đĩa này`** · `errors.listing.crossDeviceOperation.explanation` ("nguồn và đích
+  nằm trên các ổ đĩa khác nhau") · `high`. ❌ Không dùng `được lưu trữ trên`: `lưu trữ` đọc ra nghĩa sao lưu, trong khi
+  ở đây chỉ là tệp `.dmg` tình cờ nằm ở đó.
+- **"macOS is still working with this drive" → `macOS vẫn đang làm việc với ổ đĩa này`** · Tier 1 macOS có đúng cụm này
+  (`Working with %@` → `Đang làm việc với %@`, `Working with Safari` → `Đang làm việc với Safari`), kiểm chứng
+  2026-09-16 · `high`. Cố ý đổi động từ so với `sử dụng` của hai khóa ứng dụng: bản tiếng Anh cũng đổi, vì ở đây không
+  có gì để người dùng đóng, chỉ có việc chờ.
+- **"Wait a minute" → `Hãy đợi một phút`; "Wait a moment" → `Hãy đợi một chút`** · macOS dịch "a minute" là `một phút`
+  (`About a minute` → `Khoảng một phút`) và "Wait a moment and try again" là `Chờ một lát rồi thử lại`; catalog đã chốt
+  `Đợi một chút rồi thử lại` (`errors.write.deletePending.suggestion`) · `high`. Giữ hai độ dài tách nhau: khóa macOS
+  nói chờ lâu hơn thật (Spotlight đang lập chỉ mục), khóa Cmdr chỉ là một nhịp.
+- **"Cmdr itself" → `Chính Cmdr`** · `chính` là cách tiếng Việt nhấn "đúng nó chứ không phải ai khác", và câu này cố ý
+  nhận lỗi về phía Cmdr · `high`.
+- **"send a report" → `gửi báo cáo`, trần** · đúng nút trong ứng dụng (`errorReporter.dialog.send` và
+  `crashReporter.dialog.send` đều là `Gửi báo cáo`) · `high`. ❌ Không viết `báo cáo sự cố` (đó là crash report) hay
+  `báo cáo trục trặc` (tên đầy đủ của luồng error report): bản tiếng Anh cố ý nói "a report", theo đúng luật hai tên báo
+  cáo ở `style.md`.
+- **"if it keeps happening" → `nếu vẫn tiếp diễn`** · `errors.serverRequest.unexpected` ("Hãy thử lại, và nếu vẫn tiếp
+  diễn, hãy khởi động lại Cmdr.") có y hệt khuôn "làm X, và nếu vẫn tiếp diễn thì làm Y" · `high`. Biến thể
+  `Nếu vẫn cứ vậy` của `errors.listing.resourceBusy.suggestion` cũng đúng nhưng suồng sã hơn.
+- `errors.*` là họ RAW: `{app}` / `{apps}` là chỗ thay chuỗi thuần, không phải cú pháp ICU, và không giá trị nào trong
+  sáu khóa có dấu nháy đơn nên không có `''` nào cả.

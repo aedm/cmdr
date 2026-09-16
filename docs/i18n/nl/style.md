@@ -303,6 +303,10 @@ second half is now a normal plural with a real verb
 - **Een `…summary`-regel naast een schakelaar mag niet omlopen**, dus die erft de terminologie van zijn lange
   `…desc`-buur maar niet diens zinsbouw: benoem in telegramstijl de kosten en de baten, en houd de regel rond de lengte
   van het Engels. Wordt het langer, snoei dan een bijwoord of een lidwoord weg, nooit een van de feiten.
+- **Een `{app}`-achtige procesnaam staat vooraan zonder lidwoord, en krijgt nooit een voornaamwoord.** Een naam die Cmdr
+  uit een draaiend proces leest, is een eigennaam, dus `{app} gebruikt deze schijf nog` (geen `de`/`het`), en het
+  Engelse „anything **it** has open" wordt een plaatsbijwoord: `Sluit alles wat daar openstaat`. Dezelfde reden als bij
+  een ongecontroleerde `{name}`: het geslacht van de naam is onbekend. Bewijs: `glossary.md` § Wie de schijf vasthoudt.
 - **Een leeg inline-vakje (`<field></field>`) hoort achter het scheidbare partikel**, niet ertussenin:
   `Vul je e-mailadres in <field></field> om …`. Het partikel hoort bij zijn werkwoord; het vakje komt daarna, op
   dezelfde plek als in het Engels.
@@ -404,6 +408,11 @@ The formality (`je`) and the send/cancel/copy terms are settled from macOS (Tier
   catalogusconsistentie hier zwaarder weegt dan Apples woorden voor dezelfde handeling.
 - **`dus het lijkt goed te bevallen`** (`main.dockPinNudge.body`): vrijere weergave van "so it seems to be working for
   you". Letterlijker is `dus het werkt blijkbaar goed voor je`, wat stroever leest. Bevestig de toon.
+- **`staat nog open` voor een gekoppelde schijfkopie** (`errors.eject.unmountRefusedByDiskImage`): gemunt, want het pile
+  kent `openstaan` niet voor bestanden. Het houdt de lichte toon van het Engelse „open", waar het preciezere
+  `is nog gekoppeld` het register optilt. Bevestig de ruil, plus `Wacht een minuutje` (warm) tegenover
+  `Wacht een minuut` (zakelijk) in `errors.eject.unmountRefusedBySystem`. Bewijs: `glossary.md` § Wie de schijf
+  vasthoudt.
 - **"camera details" → `cameragegevens`** (`askCmdr.consent.item.contents`, `contentsRule`, `whatsNew.body`): a coined
   compound for a photo's EXIF block, no source has a collective noun for it. Confirm it reads as "what the camera
   recorded", not "data about the camera". Evidence and the fallback: `glossary.md` § Ask Cmdr looks inside files.

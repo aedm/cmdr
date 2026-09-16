@@ -1793,27 +1793,27 @@
   "@errors.eject.unmountRefused": {
     "sourceHash": "1ff7d31"
   },
-  "errors.eject.unmountRefusedByApp": "{app} is still using this drive. Close anything it has open there, then eject again.",
+  "errors.eject.unmountRefusedByApp": "{app} 還在用這個磁碟機。請關掉它在上面開著的東西，然後再退出一次。",
   "@errors.eject.unmountRefusedByApp": {
     "sourceHash": "bee2660"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} are still using this drive. Close anything they have open there, then eject again.",
+  "errors.eject.unmountRefusedByApps": "{apps} 還在用這個磁碟機。請關掉它們在上面開著的東西，然後再退出一次。",
   "@errors.eject.unmountRefusedByApps": {
     "sourceHash": "0864134"
   },
-  "errors.eject.otherApps": "other apps",
+  "errors.eject.otherApps": "其他 App",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByDiskImage": "A disk image stored on this drive is still open. Eject that image first, then eject this drive.",
+  "errors.eject.unmountRefusedByDiskImage": "這個磁碟機上有一個磁碟映像檔還開著。請先退出那個映像檔，然後再退出這個磁碟機。",
   "@errors.eject.unmountRefusedByDiskImage": {
     "sourceHash": "82fc540"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS is still working with this drive. Wait a minute, then eject again.",
+  "errors.eject.unmountRefusedBySystem": "macOS 還在處理這個磁碟機。請稍等一下，然後再退出一次。",
   "@errors.eject.unmountRefusedBySystem": {
     "sourceHash": "27636e6"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr itself is still using this drive. Wait a moment and eject again, or send a report if it keeps happening.",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr 自己還在用這個磁碟機。請等一下再退出一次，如果一直這樣，請傳送一份報告。",
   "@errors.eject.unmountRefusedByCmdr": {
     "sourceHash": "2f56d2c"
   },

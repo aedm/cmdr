@@ -1793,27 +1793,27 @@
   "@errors.eject.unmountRefused": {
     "sourceHash": "1ff7d31"
   },
-  "errors.eject.unmountRefusedByApp": "{app} is still using this drive. Close anything it has open there, then eject again.",
+  "errors.eject.unmountRefusedByApp": "{app} verwendet dieses Laufwerk noch. Schließe alles, was dort geöffnet ist, dann wirf es erneut aus.",
   "@errors.eject.unmountRefusedByApp": {
     "sourceHash": "bee2660"
   },
-  "errors.eject.unmountRefusedByApps": "{apps} are still using this drive. Close anything they have open there, then eject again.",
+  "errors.eject.unmountRefusedByApps": "{apps} verwenden dieses Laufwerk noch. Schließe alles, was dort geöffnet ist, dann wirf es erneut aus.",
   "@errors.eject.unmountRefusedByApps": {
     "sourceHash": "0864134"
   },
-  "errors.eject.otherApps": "other apps",
+  "errors.eject.otherApps": "andere Apps",
   "@errors.eject.otherApps": {
     "sourceHash": "09fe5b1"
   },
-  "errors.eject.unmountRefusedByDiskImage": "A disk image stored on this drive is still open. Eject that image first, then eject this drive.",
+  "errors.eject.unmountRefusedByDiskImage": "Auf diesem Laufwerk liegt ein Image, das noch geöffnet ist. Wirf erst das Image aus, dann das Laufwerk.",
   "@errors.eject.unmountRefusedByDiskImage": {
     "sourceHash": "82fc540"
   },
-  "errors.eject.unmountRefusedBySystem": "macOS is still working with this drive. Wait a minute, then eject again.",
+  "errors.eject.unmountRefusedBySystem": "macOS arbeitet noch mit diesem Laufwerk. Warte eine Minute, dann wirf es erneut aus.",
   "@errors.eject.unmountRefusedBySystem": {
     "sourceHash": "27636e6"
   },
-  "errors.eject.unmountRefusedByCmdr": "Cmdr itself is still using this drive. Wait a moment and eject again, or send a report if it keeps happening.",
+  "errors.eject.unmountRefusedByCmdr": "Cmdr selbst verwendet dieses Laufwerk noch. Warte einen Moment und wirf es dann erneut aus, oder sende einen Fehlerbericht, wenn das immer wieder passiert.",
   "@errors.eject.unmountRefusedByCmdr": {
     "sourceHash": "2f56d2c"
   },

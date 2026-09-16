@@ -176,9 +176,14 @@ Two mechanics that bite in Portuguese specifically:
   `errors.json`, e `fileExplorer.unreachable.detailTimeout`. Sobram só marcas (iCloud Drive), o placeholder `{drive}` e
   os nomes de chave `driveIndex.*`. Evidência: `glossary.md` § "drive de rede" reconciliado e § O bolsão de `drive`
   fechado.
-- **Os nove avisos de ejetar/desconectar entram depois de dois pontos** (`fileExplorer.pane.ejectFailedToast` /
+- **Os avisos de ejetar/desconectar entram depois de dois pontos** (`fileExplorer.pane.ejectFailedToast` /
   `disconnectFailedToast`), então cada valor é uma oração completa, começa com maiúscula e cabe em uma ou duas frases
   curtas. `timedOut` não pode soar como falha. Evidência: `glossary.md` § Recusas de ejetar e desconectar.
+- **As recusas que NOMEIAM quem segura o disco repetem o molde da genérica.** `unmountRefusedByApp` /`ByApps` e
+  `unmountRefused` são uma família só (`<sujeito> ainda está usando este disco. <ação>, depois ejete-o de novo.`);
+  `{app}` abre a frase sem artigo e sem aspas, `outros apps` é item final de lista (o `e` vem do `Intl.ListFormat`,
+  nunca da string), e o `BySystem` troca o verbo de propósito (`trabalhando com`), porque lá não há nada para fechar.
+  Evidência: `glossary.md` § Quem está segurando o disco.
 - **Um relatório já enviado recebe uma NOTA, nunca um segundo envio.** As chaves de `errorReporter.amend.*` falam do
   mesmo relatório (`e isso entra no mesmo relatório que a equipe já tem`), a caixa continua sendo uma **nota** (o termo
   do diálogo de envio, para as duas telas não terem costura) e o encaminhamento quando não dá mais para acrescentar é

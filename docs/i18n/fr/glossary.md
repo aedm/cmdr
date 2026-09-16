@@ -1902,6 +1902,70 @@ Aucun `sameAsSourceJustification` nécessaire : les neuf valeurs diffèrent de l
 valeurs, donc la règle d'espace avant ponctuation ne se pose pas ; aucune apostrophe doublée (famille RAW), aucun U+2019
 ni U+202F.
 
+## Le refus d'éjection nommé : qui tient le disque (`errors.eject.unmountRefusedBy*`, `otherApps`)
+
+Six clés qui affinent `errors.eject.unmountRefused` : au lieu de « Quelque chose utilise encore ce disque. », macOS a pu
+dire QUI tient le disque. Mêmes contraintes que le lot précédent (valeur après le deux-points du moule, majuscule
+initiale, famille RAW, apostrophes ASCII simples). Les trois clés `unmountRefused*` se lisent comme une seule famille :
+même verbe, même seconde phrase, même chute « puis éjectez-le à nouveau ».
+
+- **`X is still using this drive` → `X utilise encore ce disque.`** · reprend MOT POUR MOT le verbe du frère générique
+  `errors.eject.unmountRefused` (« Quelque chose utilise encore ce disque. ») · high. macOS `fr` dit le même fait au
+  passif (« Impossible d'éjecter le disque car il est utilisé par « %@ ». », `Finder`) ; on garde la voix active, comme
+  le lot précédent l'avait déjà tranché, et le passif d'Apple ne sert que de caution pour le verbe `utiliser`.
+- **Le `{app}` en tête de phrase ne prend ni article ni accord.** Le genre du nom inséré est inconnu à l'écriture («
+  Preview », « Warp », « mds_stores »), donc il occupe un créneau de sujet nu, exactement comme
+  `fileExplorer.navigation.driveIndex.driveLeaving` (« {name} est en cours de déconnexion, … »),
+  `indexing.needsFreshScan.afterDisconnect` (« {name} a été déconnecté … ») et
+  `errors.write.deviceDisconnected.sided.destination.copy` (« {volumeName} a été déconnecté … ») · high. Le verbe se met
+  à la 3e personne du singulier pour `{app}` et du pluriel pour `{apps}`, qui porte toujours au moins deux noms.
+- **`Close anything it / they have open there` → `Fermez ce que cette app / ces apps y a / ont ouvert`** · le
+  démonstratif REMPLACE le pronom anglais · high. ❌ Jamais « ce qu'il y a ouvert » : l'antécédent masculin le plus
+  proche est `ce disque`, et la phrase dirait que le disque a ouvert quelque chose (le même piège d'antécédent que la
+  section précédente documente déjà deux fois). `app` couvre aussi les outils en ligne de commande, comme en anglais et
+  comme `otherApps`.
+- **`other apps` (dernier élément de la liste) → `d'autres apps`** · macOS `fr` l'écrit tel quel en position finale de
+  liste : « … en le faisant glisser ici depuis le Finder ou d'autres apps. »
+  (`fr/macOS/Finder/ICloudNoDocumentsView.json`, relevé 2026-09-16) · high. ❌ Pas « d'autres applications » : le
+  catalogue `fr` dit « apps » partout (`errors.eject.unmountRefused` « les fichiers et les apps ouverts »,
+  `errors.listing.notEnoughMemory.*` « beaucoup d'apps sont ouvertes », « Fermez quelques apps ») et macOS `fr` aussi («
+  Apps », « toutes les apps », `AppKit/TouchBar.json`) ; « applications » est le registre Microsoft, pas le registre
+  Apple. La valeur reste minuscule et sans point : `Intl.ListFormat('fr')` la soude au reste (« Preview et d'autres apps
+  », « Preview, Warp, Photos et d'autres apps » — pas de virgule d'Oxford en français, et le joignant vient du
+  formateur, jamais de la chaîne).
+- **`disk image` → `image disque`** · macOS Tier 1 (`Finder/InfoWindowGeneralView.json` « Image disque : », « Valeur
+  d'image disque » ; `Finder` « Graver l'image disque « ^0 » sur le disque… ») et déjà en place dans ce fichier
+  (`errors.listing.readOnlyVolumeErrno.*` « une image disque montée en lecture seule ») · high. Féminin : « une image
+  disque … ouverte ».
+- **La clé de l'image disque part du DISQUE pour ne pas empiler trois « disque » d'affilée.** L'anglais attaque par
+  l'image (« A disk image stored on this drive is still open. ») ; « Une image disque stockée sur ce disque » colle le
+  mot deux fois en cinq syllabes. On écrit « Ce disque contient une image disque encore ouverte. Éjectez d'abord
+  l'image, puis le disque. » : même information, sujet connu en tête, et la seconde phrase fait l'ellipse du verbe pour
+  donner l'ordre des deux éjections d'un coup.
+- **`still working with this drive` (macOS) → `travaille encore sur ce disque`** · `travailler sur` est la collocation
+  française (`travailler avec` est un calque) et le catalogue atteste le verbe
+  (`errors.listing.lockUnavailable.suggestion` « celles qui travaillent avec de nombreux fichiers ») · high. Verbe
+  DIFFÉRENT d'`utiliser` à dessein, comme en anglais : `utiliser` est réservé à ce qui tient le disque et qu'on peut
+  fermer ; ici il n'y a rien à fermer, seulement à attendre. `macOS` reste tel quel, y compris en tête de phrase avec sa
+  minuscule (déjà livré : `errors.listing.notPermitted.explanation` « macOS a empêché Cmdr … »).
+- **`Wait a minute` → `Patientez une minute` ; `Wait a moment` → `Patientez un instant`** · `patienter` est le verbe du
+  catalogue pour une attente courte (`errors.listing.resourceBusy.suggestion` « Patientez un instant, puis revenez ici.
+  », `errors.listing.deviceReconnecting.suggestion` « Patientez quelques secondes ») · high. La distinction minute /
+  instant de l'anglais est gardée.
+- **`Cmdr itself` → `Cmdr lui-même`** · Cmdr est masculin dans tout le catalogue `fr` (voir la note
+  `crashed → s'est fermé de façon inattendue` du style guide) · high.
+- **`send a report` → `envoyez un rapport`** · le catalogue nomme déjà l'action manuelle ainsi
+  (`settings.updates.errorReports.description` « Vous pouvez toujours envoyer un rapport manuel depuis le menu Aide. »,
+  `errorReporter.amend.unavailable` « envoyez un nouveau rapport depuis le menu Aide ») · high. ❌ Pas « envoyez un
+  retour » : c'est l'autre surface (`feedback.dialog.title` « Envoyer un retour »), celle des idées et des envies, pas
+  celle du problème technique. `rapport` nu, sans « d'incident », parce qu'il n'y a pas eu de plantage (règle du style
+  guide).
+- **`if it keeps happening` → `si cela continue`** · déjà livré dans ce fichier
+  (`errors.listing.unexpectedSystemResponse.suggestion` « Si cela continue, ouvrez **Utilitaire de disque** … ») · high.
+
+Aucun `sameAsSourceJustification` : les six valeurs diffèrent de l'anglais. Aucun `: ; ! ? %`, aucune apostrophe doublée
+(famille RAW), aucun U+2019 ni U+202F.
+
 ## La notification de corbeille : annuler et remettre en place (`fileOperations.trash.*`, `commands.fileGoToTrash.*`, 2026-08-27)
 
 Nouvelle surface : après un déplacement vers la corbeille, une notification propose deux boutons (« Annuler », « Aller à

@@ -116,6 +116,8 @@ GNOME/Xfce (Tier 3). Confidence: `confirmed` (human signed off), `high` (authori
 - view (look at something) → ver; show (reveal something) → mostrar · the catalog's own split (`menu.file.view` = "Ver",
   `commands.fileShowInFinder` = "Mostrar en el Finder") · high
 - drive → unidad · the catalog throughout (`askCmdr.renameUndo.unavailable`) · high
+- disk image → imagen de disco · macOS Finder (`LocalizableMerged` `BN53` "Grabar imagen de disco “^0” en el disco…", y
+  las etiquetas "Imagen de disco:" de `InfoWindowGeneralView`) · high
 - file system / filesystem → sistema de archivos · macOS AppKit `DocumentDragging.loctable` ("could not be found in the
   file system" → "no se ha encontrado en el sistema de archivos", verified on macOS 26.6.2 build 25G83, 2026-09-06) ·
   high

@@ -3160,3 +3160,67 @@ pt-PT (`ficheiro`, `partilha`, `estar a` + infinitivo, `consoante`, próclise an
 `compartilhamento`, `pressione`, `em foco`. Nenhum valor leva apóstrofo, então não há `''` a dobrar nas famílias ICU, e
 `menu.go.showFavorites` (família RAW) também fica sem apóstrofo. Nenhum `sameAsSourceJustification`: os dez valores
 diferem do inglês. Glifos de modificador e os dígitos 0–9 não aparecem em nenhum valor.
+## Quem está segurando o disco: a recusa que NOMEIA (`errors.eject.unmountRefusedByApp`/`ByApps`/`otherApps`/`ByDiskImage`/`BySystem`/`ByCmdr`, 2026-09-16)
+
+Seis chaves novas da mesma família das nove da § Recusas de ejetar e desconectar: o macOS recusou a ejeção e agora o
+Cmdr sabe DIZER o que segura o disco. Entram no mesmo aviso rápido depois de dois pontos
+(`fileExplorer.pane.ejectFailedToast` / `disconnectFailedToast`), família RAW (apóstrofo simples, `{app}` / `{apps}` são
+alvos literais, nada de ICU), e a genérica `errors.eject.unmountRefused` é a irmã das duas primeiras: as três repetem o
+mesmo molde `<sujeito> ainda está usando este disco. <ação>, depois ejete-o de novo.`
+
+- **`{app}` entra SEM artigo e abre a frase** · `{app} ainda está usando este disco.` O nome chega do disco em tempo de
+  execução (`Preview`, `Warp`, `mds_stores`), então nenhum artigo pode prejulgá-lo: o Finder pt-BR só escreve
+  `O aplicativo “^0”` porque ele mesmo põe as aspas, e o inglês desta chave dispensa as duas coisas · high. Um nome
+  próprio como sujeito é natural em pt-BR (`Safari não respondeu`), e pôr o nome em primeiro lugar é justamente o ponto
+  da chave. ❌ Nunca `O app {app}` (quebra com `mds_stores`, que é comando, não app) nem aspas em volta.
+- **`it` / `they` viram `ele` / `eles`, e isso é seguro** · `Feche o que ele tiver aberto lá` /
+  `Feche o que eles tiverem aberto lá`. A regra "nada concorda com um `{name}`" do `style.md` vale para arquivo/pasta,
+  de gênero desconhecido; aqui o referente é sempre um APP, e app é masculino em pt-BR (`o Fotos`, `o Preview`),
+  qualquer que seja a forma do nome · high. O pronome também é o que separa a chave de um app da de vários, como no
+  inglês. O futuro do subjuntivo composto (`tiver aberto` / `tiverem aberto`) traduz o "has open" como estado, não como
+  ação passada.
+- **"there" (no disco) → `lá`** · o catálogo já publica `lá` para "there" em uma dúzia de chaves
+  (`fileOperations.cancelRollback.reason.drift.named` "depois que o Cmdr colocou lá",
+  `errors.write.newDataKeptAt.message` "já não está lá") e nenhuma `aí` · confirmed. Evita repetir `disco` três vezes em
+  duas frases curtas.
+- **other apps → `outros apps`**, masculino plural e SEM artigo · o catálogo fechou `app` no lugar de `aplicativo` (§
+  "Abrir terminal aqui" e o seletor de app, `Escolher app…`) e já publica exatamente `outros apps` em seis chaves
+  (`main.revealNudge.turnedOn`, `settings.network.directSmbConnection.description`,
+  `settings.advanced.showSafeSaveFiles.label`, `settings.revealHandler.label`, `viewer.copyDialog.confirmBody`,
+  `errors.write.deletePending.suggestion`) · confirmed. É o ÚLTIMO item de uma lista que o `Intl.ListFormat` do locale
+  junta (`Preview, Warp, Photos e outros apps`), então ele não leva artigo nem ponto, e o `e` NUNCA entra na string. O
+  masculino plural também é o que faz `eles` funcionar na frase seguinte. ⚠️ A irmã `errors.eject.unmountRefused` ainda
+  diz `aplicativos abertos` (decisão de 2026-08-23, do Finder): deriva a reconciliar numa varredura, fora do escopo
+  deste lote.
+- **disk image → `imagem de disco`** · macOS pt-BR Finder (`InfoWindowGeneralView.json` `tvy-hx-Gou.title`:
+  `Imagem de disco:`; `LocalizableMerged` `Volume de Imagem de Disco`), e o catálogo já publica a forma em caixa baixa
+  em quatro chaves (`errors.listing.readOnly.explanation`, `.readOnlyVolumeErrno.*`,
+  `updates.moveToApplicationsDialog.readOnlyVolume`) · confirmed.
+- **"is still open" (de uma imagem de disco) → `ainda está montada`, não `ainda está aberta`** · `montar` é o verbo da
+  Apple para uma imagem que virou volume, e o catálogo já o usa para esta mesma coisa
+  (`errors.listing.readOnly.explanation`: "a imagem de disco foi montada como somente leitura") · high. `aberta` puxaria
+  para "feche o arquivo", e a ação certa é EJETAR: `montada` é o que torna a frase acionável.
+- **"stored on this drive" → `armazenada neste disco`** · `armazenar` é o verbo do catálogo para onde um dado fica
+  (`errors.listing.notSupportedErrno.suggestion` "não armazena arquivos maiores que 4 GB") · high. ❌ Nunca `guardada`,
+  indício pt-PT que o `style.md` lista.
+- **`macOS` leva artigo e é sujeito: `O macOS`** · o catálogo já abre frase assim
+  (`errors.listing.notPermitted.explanation` "O macOS impediu o Cmdr…", "O macOS controla quais apps…") e o Finder pt-BR
+  usa `pelo macOS` (`LA10` "está sendo usado pelo macOS") · confirmed. A marca fica intacta; só o artigo entra.
+- **"is working with this drive" → `está trabalhando com este disco`** · colocação já publicada em
+  `errors.listing.notSupportedErrno.suggestion` ("Se estiver trabalhando com um disco externo") · high. Deliberadamente
+  DIFERENTE do `está usando` das outras cinco: aqui não há nada para fechar, e a ação é esperar. ❌ Não
+  `está ocupado com` (`ocupado` está reservado ao sufixo de item de menu, § busy).
+- **`Wait a minute` → `Espere um minuto`; `Wait a moment` → `Espere um momento`** · `Espere um momento` já está
+  publicado três vezes (`errors.listing.resourceBusy.suggestion`, `errors.listing.deletePending.suggestion`,
+  `errors.write.deletePending.suggestion`) · confirmed. O inglês distingue as duas durações de propósito, e o português
+  mantém a distinção.
+- **`Cmdr itself` → `O próprio Cmdr`** · o `próprio` assume a culpa sem a palavra `falha`, que a voz do Cmdr não usa ·
+  high. **`send a report` → `envie um relatório`**, sem `de problema`: o inglês também encurtou de propósito (ver a
+  `@key.description` de `settings.updates.crashReports.description`), e o comando completo (`menu.help.sendErrorReport`,
+  `Enviar relatório de problema…`) é que nomeia a superfície.
+- **`if it keeps happening` → `se isso continuar acontecendo`** · forma já publicada em sete chaves de `errors.json` ·
+  confirmed. O `isso` explícito (e não o `se continuar acontecendo` de `errors.serverRequest.unexpected`) porque a
+  oração vem logo depois de `ejete-o de novo`, e sem sujeito ela se leria como "se a ejeção continuar acontecendo".
+- Varredura pt-PT dos seis valores (`ficheiro`, `estar a` + infinitivo, `consoante`, próclise antes de infinitivo,
+  `Rever`, `alterar o nome`, `guardar`, `você` omitido em frase de resultado), mais U+2019, apóstrofo duplo e espaço
+  duplo: zero ocorrências. Nenhum `sameAsSourceJustification`: os seis diferem do inglês.

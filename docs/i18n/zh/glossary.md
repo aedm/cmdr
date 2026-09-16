@@ -2792,3 +2792,54 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   `menu.servers.showServers` 一样光板收尾，而 `menu.go.goToPath`（`前往路径…`）那种开对话框的才留 `…`。
 - 十条值都与英文不同，均不需要 `sameAsSourceJustification`。中文侧没有撇号，ICU 的 `''` 规则用不上。这批没有 `*Aria`
   键， `fileExplorer.navigation.renameFavoriteAriaLabel` 与 `menu.volume.renameFavorite` 的包含关系未被触碰。
+## 推出被拒时说清是谁占着盘（`errors.eject.unmountRefusedByApp`/`…ByApps`/`otherApps`/`…ByDiskImage`/`…BySystem`/`…ByCmdr`）
+
+`errors.eject.unmountRefused`
+的六个具名分支：macOS 拒绝推出时，Cmdr 已经查出是谁占着盘，这几条就把名字说出来并给出唯一一个动作。都落在
+`fileExplorer.pane.ejectFailedToast`（`无法推出 {volumeName}：…`）的冒号之后，所以全部承接上一句往下写，句尾沿用
+`unmountRefused` 的 `…，然后再次推出。`。`errors.*` 是 **raw 族，不是 ICU**：撇号不加倍，`{app}` / `{apps}`
+只是纯文本替换位。
+
+- **is still using this drive → `还在使用这个驱动器`** · 与同族
+  `errors.eject.unmountRefused`（`还有东西在使用这个驱动器`）、 `errors.eject.busy`（`Cmdr 还在读写…`）同一句式；macOS
+  AppKit zh-CN 的 `The disk could not be ejected because it is in use by “%@”.` →
+  `未能推出该磁盘，因为它正在被“%@”使用。` 是 Tier 1 佐证 ·
+  `confirmed`。中文无主谓一致，单个 App 与多个 App 的谓语完全相同，两条只差 `它` / `它们`。
+- **`{app}` 不加引号** · Apple 在这条里给 `%@` 加了 `“…”`，本目录跟英文走（英文源没有引号），同
+  `fileOperations.leftovers.stagingFolderKept` 的 `{folderName}` · `high`。`{app}`
+  是运行时读到的真实进程名（`Preview`、`Warp`、`mds_stores`），必然是拉丁字符：句中按 `style.md`
+  的规则两侧留空格（`{app} 还在…`），句首紧跟全角冒号时不留（不与全角标点之间加空格）。
+- **Close anything it has open there → `请关闭它在上面打开的内容`** · `关闭` 沿用 `unmountRefused` 的
+  `请关闭打开的文件和 App`；`内容` 取 Apple 的泛指用法（`没有要发送的内容`，见 `style.md`）· `high`。没写 `文件`：英文的
+  `anything` 故意比文件宽。没用 macOS `NE20` 的
+  `请退出应用程序`（quit），英文说的是关掉它打开的东西，不是退出这个App。`在上面` 回指上一句的
+  `这个驱动器`，避免第二次写出这个名词。
+- **other apps（列表末位）→ `其他 App`** · `App` 保留拉丁形是本目录在**错误文案里**的既定写法（`ai.local.warningCaution`
+  的 `其他 App 可能会变慢`、`errors.listing.deletePending.suggestion` 的 `关掉其他可能打开着这个文件的 App`、
+  `errors.write.deletePending.suggestion`），也是 Apple zh-CN 自己的写法 · `confirmed`。 **不加量词**：`其他`
+  直接修饰名词就够了，加 `几个` 会凭空给出英文没有的数量。 `Intl.ListFormat('zh')` 用 `、` 和 `和` 拼接且不加空格，实测
+  `Preview、Warp、Photos和其他 App`（Node 24，2026-09-16），末位读起来正常，连接词绝不能写死在串里。
+- **disk image → `磁盘映像`** · macOS Finder zh-CN `InfoWindowGeneralView`（`磁盘映像：`）、`BN53`
+  （`将磁盘映像“^0”刻录到光盘…`），本目录 `errors.listing.readOnly.explanation`、
+  `errors.listing.readOnlyVolumeErrno.explanation`、`settings.listing.sizeDisplay.description` 已在用 · `confirmed`。
+- **is still open（磁盘映像）→ `还开着`** · 跟英文的口语 register 走：英文写 `open` 而不是 `mounted`，中文也用日常词 ·
+  `high`。⚠️ 本目录 `updates.moveToApplicationsDialog.readOnlyVolume` 写作 `仍然挂载着的磁盘映像`，那条英文说的就是
+  `mounted`，两者是有意的分界，别去统一。句式 `这个驱动器上有一个磁盘映像还开着`
+  是存现句（`桌子上有一本书摊开着`），把驱动器留在句首，与本族其他几条一致。
+- **Eject that image first, then eject this drive → `请先推出那个映像，再推出这个驱动器`** · 用 `先…再…` 这组关联词，比
+  `然后` 更紧凑；第二次提映像时简写成 `那个映像`，紧接上文不会有歧义 · `high`。这条英文本身就没走 `eject again`
+  的句尾，所以中文也不套本族的 `然后再次推出`。
+- **macOS is still working with this drive → `macOS 还在处理这个驱动器`** · `处理` 而不是
+  `使用`：占着盘的是系统的后台活儿（聚焦建索引、时间机器），跟 App「在用」不是一回事，英文也特意换了动词 ·
+  `high`。`macOS` 保留原形，后面留空格。
+- **Wait a minute / Wait a moment → `请稍等一会儿` / `请稍等片刻`** · 英文用了两个不同长短的等待，中文照分： `稍等片刻`
+  同 `errors.write.deletePending.suggestion`、`errors.listing.resourceBusy.suggestion` · `high`。
+- **Cmdr itself → `Cmdr 自己`** · 同 `fileExplorer.navigation.driveIndex.tooltipStalePhone` 的 `Cmdr 自己做的更改` ·
+  `high`。这条是 Cmdr 自己的 bug，中文保持主语在 Cmdr 身上，不推给用户。
+- **send a report → `发送一份报告`** · 同 `settings.updates.crashReports.description`（`自动发送一份报告`）·
+  `high`。❗ 不写 `发送错误报告`（`menu.help.sendErrorReport` 的菜单项名）：英文这里故意用泛指的
+  `a report`，而且 Cmdr 的文案不出现「错误」二字。
+- **if it keeps happening → `如果一直这样`** · 本目录已成句式，见 `errors.listing.resourceBusy.suggestion`、
+  `errors.listing.diskReadProblem.suggestion`、`errors.serverRequest.refused` 等九处 · `confirmed`。用全角分号 `；`
+  接在前半句后面，对应英文的 `or`，比拆成第三句更贴原文。
+- 六个值都与英文不同，无需 `sameAsSourceJustification`；中文侧没有撇号。

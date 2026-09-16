@@ -3315,3 +3315,56 @@ selector de volúmenes ya no trae una SECCIÓN de favoritos; en su lugar tiene u
   y la forma que `style.md` ya prefiere para las descripciones.
 - Ningún valor lleva apóstrofo, así que no hay nada que duplicar (`''`) en la familia ICU ni nada que arreglar en la
   clave RAW `menu.go.showFavorites`. Los diez difieren del inglés, así que ninguno necesita `sameAsSourceJustification`.
+## Quién retiene el disco cuando la expulsión se rechaza (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`)
+
+Seis claves que amplían § Expulsar y desconectar: en vez del genérico `unmountRefused` («Algo sigue usando este disco»),
+ahora Cmdr **nombra** lo que retiene el disco. Toda la familia hereda de ahí el `disco`, el cierre
+`y vuelve a expulsarlo` y el clítico `-lo`, que concuerda con `disco` y nunca con el nombre del volumen.
+
+- **is still using this drive → `sigue usando este disco`** · calca literalmente a su hermano genérico
+  `errors.eject.unmountRefused` («Algo sigue usando este disco»), que es la frase que el usuario ya conoce · high. En
+  plural, `siguen usando`: `{apps}` siempre trae dos nombres o más. La versión pasiva de macOS AppKit (`AppKitErrors`,
+  «está siendo usado por “%@”») dice lo mismo, pero la voz de Cmdr es activa y nombra al sujeto primero.
+- **`{app}` abre la frase sin artículo** · un nombre de proceso es un nombre propio (`Preview`, `Warp`, `mds_stores`), y
+  el español pone los nombres de app desnudos en posición de sujeto, como hace macOS («Ajustes del Sistema está en uso y
+  no se puede cerrar», `SystemSettings`, `ERR_CANT_QUIT_BKG_PREF`) · high. Un artículo obligaría a adivinar género y
+  fallaría con los nombres de herramientas de línea de comandos.
+- **Close anything it has open there → `Cierra lo que tenga abierto ahí`** (plural: `tengan`) · `lo que` + subjuntivo
+  evita nombrar el género de los archivos o las apps, y `ahí` es el adverbio de lugar que `style.md` ya documenta para
+  no concordar con un volumen desconocido (§ A drive pulled mid-transfer, «terminara de escribir ahí») · high. ❌ No
+  `cualquier cosa que tenga abierta`, que arrastra una concordancia y suena a traducción.
+- **other apps (último ítem de la lista) → `otras apps`** · macOS `es` lo escribe exactamente así, dos veces, en la
+  barra de menús: `Ocultar otras apps` (Finder `MenuBar` `300729.title`, SystemSettings `MainMenu` `145.title`), y una
+  tercera en posición final de lista, que es la nuestra: «desde el Finder u otras apps» (Finder `ICloudNoDocumentsView`)
+  · high. Femenino plural porque `app` es femenina (`la app`, de `la aplicación`), y en posición final no concuerda con
+  nada: los otros ítems de la lista son nombres propios extranjeros. ❌ No `otras aplicaciones`: el catálogo entero dice
+  `app` (`errors.eject.unmountRefused`, «las apps que tengas abiertos») y macOS también. La `y` de unión la pone
+  `Intl.ListFormat`, nunca esta cadena; sale `Preview, Warp, Photos y otras apps` (comprobado con
+  `new Intl.ListFormat('es')`, 2026-09-16).
+- **disk image → `imagen de disco`** · macOS Finder, tres cadenas: `BN53` («Grabar imagen de disco “^0” en el disco…»),
+  y las dos etiquetas de la ventana de información (`InfoWindowGeneralView`, «Imagen de disco:») · high.
+- **`disco` dos veces en la misma frase es correcto** («Una imagen de disco guardada en este disco») · `imagen de disco`
+  es un término compuesto que se lee como una unidad, y el propio Finder lo repite en `BN53` («Grabar imagen de disco
+  “^0” en el disco…») · high. La alternativa de llamar `unidad` al volumen rompería la frontera de § Expulsar y
+  desconectar, donde el sentido de expulsión manda `disco`.
+- **macOS is still working with this drive → `macOS sigue trabajando con este disco`** · high (el giro), tentative (el
+  verbo). `trabajar` no aparece en el corpus `es` de macOS, así que no hay fuente que lo fije; se elige por lo que dice
+  el inglés: el sistema está ocupado con lo suyo (Spotlight, Time Machine), no hay ninguna app que cerrar.
+  `sigue usando` lo confundiría con las dos claves de apps de arriba, que piden justo lo contrario. `sigue ocupado con`
+  es la segunda opción si alguien la prefiere.
+- **Wait a minute / Wait a moment → `Espera un minuto` / `Espera un momento`** · el inglés distingue los dos y el
+  español también puede, así que se mantiene la diferencia; `un momento` ya es del catálogo
+  (`errors.listing.resourceBusy.suggestion`, `errors.eject.notResponding`) · high.
+- **Cmdr itself → `El propio Cmdr`** · `propio` es lo que carga el «itself» sin tocar la marca, que
+  `desktop-i18n-dont-translate` exige intacta · high. Esta clave sigue el molde de `errors.eject.busy` («Cmdr todavía
+  está moviendo archivos en este disco»), no el `sigue usando` de sus hermanas: mismo sujeto, mismo disco, y así se
+  evita el eco con `si sigue pasando` del final.
+- **if it keeps happening → `si sigue pasando`** · es la forma ya asentada del catálogo para esta frase inglesa exacta,
+  en nueve claves de `errors.listing.*` y `errors.provider.*` · high. La clave entera copia la forma de dos frases de
+  `errors.listing.resourceBusy.suggestion` («Espera un momento y vuelve a abrir esta carpeta. Si sigue pasando,
+  comprueba…»), que traduce la misma pareja inglesa, en vez de encadenarlo todo con `o`.
+- **send a report → `envía un informe`** · la acción de Cmdr se llama `Enviar informe de error…` en el menú Ayuda
+  (`menu.help.sendErrorReport`), y el catálogo ya usa este imperativo para mandar al usuario allí
+  (`errorReporter.amend.unavailable`, «envía un informe nuevo desde el menú Ayuda») · high.
+- Familia RAW: ningún valor lleva apóstrofo (nada de `''`), `{app}` y `{apps}` son sustituciones literales, y los seis
+  difieren del inglés, así que no hace falta `sameAsSourceJustification`.

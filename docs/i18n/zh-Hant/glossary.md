@@ -1919,3 +1919,54 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
 - 這十條值裡都沒有撇號，所以 ICU 的雙寫撇號規則用不到；`menu.go.showFavorites`
   是 RAW 鍵，就算以後要加撇號也只能用單撇號。標點全形，只有英文原句有句號的那條（`commands.favoritesOpen.description`）才收
   `。`。
+## 退出被擋下來時，說出是誰佔著磁碟機（`errors.eject.unmountRefusedBy*`、`errors.eject.otherApps`，2026-09-16）
+
+按下退出、macOS 不放行時的六條。全部落進 `fileExplorer.pane.ejectFailedToast`（`無法退出 {volumeName}：{message}`）或
+`fileExplorer.pane.disconnectFailedToast`（`無法中斷連線：{message}`），所以每一條都是全形冒號**後面**那句話。整族的句形照抄已經上線的
+`errors.eject.unmountRefused`（`還有東西在用這個磁碟機。請關掉開著的檔案和 App，然後再退出一次。`）：先講誰佔著，再講要關掉什麼，最後
+`然後再退出一次`。❗ 這一族是 RAW 家族，不經過 ICU，`{app}` / `{apps}`
+是字面替換，撇號一律單引號（中文這六條本來就沒有）。
+
+- **`{app}` / `{apps}` 裸用、不加直角引號** · 目錄裡每個執行期填入的名字都是裸的（`無法退出 {volumeName}：`、
+  `{name} 正在中斷連線`、`{volumeName} 在 Cmdr 把 …`）· `high`。❗ Apple 相反：AppKit 的
+  `The disk could not be ejected because it is in use by “%@”.` → `磁碟正由「%@」使用中，因此無法退出。`
+  有加引號。這裡**不跟**，因為 `{apps}` 是 `Intl.ListFormat`
+  併好的一整串，沒有辦法逐項加引號，單數那條加了就跟複數那條不成一家。依 `style.md` §
+  "Spacing"，兩個佔位符都兩側留空格。
+- **is still using this drive → `還在用這個磁碟機`** · `磁碟機` 是已定的 drive（見上面 § drive），`還在用` 逐字沿用
+  `errors.eject.unmountRefused` 的 `還有東西在用這個磁碟機` · `high`。❗ 不要改寫成 Apple 的 `正在使用中`
+  書面語：同一族的兄弟鍵已經上線，口語的 `還在用` 才是這個目錄的聲音。
+- **Close anything it/they have open there → `請關掉它／它們在上面開著的東西`** · `關掉` + `開著`
+  都是目錄自己的詞（`errors.eject.unmountRefused`、`errors.write.deletePending.suggestion` 的
+  `關掉其他可能開著它的 App`）· `high`。`在上面` 回指前一句的 `這個磁碟機`（目錄的搭配是
+  `還在磁碟機上`），避免第二次寫出 `這個磁碟機`。中文沒有數的變化，單複數兩條只差 `它` / `它們`。
+- **other apps → `其他 App`** · 目錄自己的 app 就是拉丁的 `App`（111 處，`ai.local.warningCaution` 正好就是
+  `其他 App 可能會變慢`），兄弟鍵 `errors.eject.unmountRefused` 也寫 `關掉開著的檔案和 App` · `high`。❗ **不要寫
+  `其他應用程式`**：`應用程式` 在本目錄只留給 Apple 的既有標籤和「應用程式」資料夾（見上面 § application、§
+  `Applications`）。小寫的英文 `other apps` 在中文沒有大小寫可分，純名詞片語，不加句號。
+- **⚠️ `Intl.ListFormat('zh-Hant')` 的接合處是緊排的，字串救不了** · 實測（Node 24，2026-09-16）
+  `['Preview','Warp','Photos','其他 App']` → `Preview、Warp、Photos和其他 App`，兩項時
+  `mds_stores和Warp`。CLDR 的 zh-Hant 末項樣式是 `{0}和{1}`，`和` 直接貼上前面那個拉丁字，違反 `style.md` §
+  "Spacing"。這是 ICU 資料，不是這六條的值能控制的； `其他 App` 自己的 `Han→Latin` 接合處有留空格。要修只能改
+  `apps/desktop/src/lib/intl` 那層的併字方式，記在這裡免得有人回頭改字串。
+- **disk image → `磁碟映像檔`** · AP-TW = AP-HK，Finder 簡介視窗的 `InfoWindowGeneralView.json`（`tvy-hx-Gou.title` =
+  `磁碟映像檔：`），Finder 的 `BN53` 也是 `將磁碟映像檔「^0」燒錄至光碟⋯` · `confirmed`。第二次提到時縮成
+  `那個映像檔`，跟英文的 `that image` 一樣。
+- **A disk image stored on this drive is still open → `這個磁碟機上有一個磁碟映像檔還開著`**
+  ·改成主題句（先講磁碟機、再講上面有什麼），比逐字的 `存在這個磁碟機上的磁碟映像檔` 好讀 · `high`。`開著` 不用
+  `已裝載`：英文刻意講一般人聽得懂的 open。
+- **macOS is still working with this drive → `macOS 還在處理這個磁碟機`** · `處理`
+  是目錄自己的泛用進行式動詞（`askCmdr.tool.unknown.doing`、`queue.row.label` 的 `正在處理`）·
+  `high`。❗ 這裡刻意**不**寫 `還在使用`：英文把 using（第 1、2 條）換成 working
+  with，就是要讓人知道這件事沒有東西可關、只能等，`處理` 保住了那個差別。Apple 的
+  `項目「^0」正由macOS所使用，所以無法打開。`（Finder `LA10`）證實 `macOS` 直接當主詞、原樣不譯。
+- **Wait a minute / Wait a moment → `請稍等一下` / `請等一下`** · `稍等一下` 取自
+  `errors.listing.resourceBusy.suggestion` · `high`。中文沒有辦法把這兩個一樣模糊的說法分得更開，靠 `稍`
+  一個字留下差別就夠。
+- **Cmdr itself → `Cmdr 自己`** · `自己` 扛下「是 Cmdr 的問題」這層意思 ·
+  `high`。第 6 條的三段用逗號串成流水句（`請等一下再退出一次，如果一直這樣，請傳送一份報告。`），❌ 不用全形分號（`style.md`
+  § "Punctuation"）。
+- **send a report → `傳送一份報告`** · 見上面 § report / send a report（`傳送報告`，AP-TW =
+  AP-HK的「…並傳送報告給Apple」）；句中用量詞版本，與 `settings.updates.crashReports.description` 的 `自動傳送一份報告`
+  一致，按鈕才是裸的 `傳送報告` · `high`。**if it keeps happening → `如果一直這樣`**，逐字沿用
+  `errors.listing.resourceBusy.suggestion` · `high`。

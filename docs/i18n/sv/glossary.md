@@ -3149,3 +3149,54 @@ favoritavdelning är borta och ersatt av en enda topprad som byter ut växlaren 
   decisions. Engelskan har kommat, svenskan inte.
 - Inga apostrofer i något av de tio värdena, så varken ICU-dubbleringen `''` eller RAW-familjens raka apostrof blir
   aktuell. Inget `sameAsSourceJustification`: alla tio skiljer sig från engelskan.
+## Utmatningen som vägrades av en namngiven app (`errors.eject.unmountRefusedBy*`, `errors.eject.otherApps`, 2026-09-16)
+
+Sex nya värden i samma toast som § Utmatning och frånkoppling, alltså fortfarande EFTER kolon i
+`fileExplorer.pane.ejectFailedToast` och RAW (vanliga apostrofer, `{app}`/`{apps}` som rena ersättningsmål). De tre
+`unmountRefusedBy*`-nycklarna för appar är syskon till `unmountRefused`, så de delar dess ram ordagrant:
+`… använder fortfarande den här enheten` + `… och mata sedan ut igen`. Bara subjektet och objektet byts ut.
+
+- **`{app}` står först i meningen, obestämt och oböjt** · `unmountRefused` har redan `Något` i den positionen, så
+  platshållaren ärver en färdig subjektsplats: `{app} använder fortfarande den här enheten.` Svenskans V2-ordföljd tar
+  ett naket främmande namn utan artikel, och ingenting i satsen kongruerar med det · `high`. macOS AppKit `sv` säger
+  samma sak passivt med citattecken (`The disk could not be ejected because it is in use by ”%@”` → ”Skivan kunde inte
+  matas ut eftersom den används av ”%@””, läst i pilen 2026-09-16), vilket belägger `används` om ett namngivet program
+  men inte formen: `style.md` avråder från passiv-`-s` när en aktiv sats finns, och nyckelns `@key` förbjuder
+  citattecken runt namnet. Aktiv sats vinner alltså på båda punkterna.
+- **”Close anything it has open there” → `Stäng allt den har öppet där`** · `allt` slipper `det den`-stammandet och
+  `öppet` kongruerar med neutrum singular; `ha något öppet` är katalogens egen konstruktion
+  (`errors.listing.deletePending.suggestion` ”appar som kan ha den här filen öppen”,
+  `fileOperations.transferProgress.operationBlockedToast` ”Något annat är öppet här. Stäng det …”) · `high`.
+  Pluralvarianten byter bara pronomen: `allt de har öppet där`. Verbet böjs inte efter numerus i svenskan, så
+  `{apps} använder` bär två eller fler namn utan någon ändring.
+- **`other apps` → `andra appar`, obestämt** · listans sista led, sammanfogat av `Intl.ListFormat('sv')` till ”Preview,
+  Warp, Photos och andra appar” (kört 2026-09-16) · `high`. Obestämd form, eftersom ledet står för en öppen rest, inte
+  för en känd mängd: `de andra apparna` hade påstått att läsaren vet vilka de är. ❌ Inte `andra program`: `style.md`
+  har redan avgjort `app` mot `program` för macOS 26 (mappen heter `Appar`), katalogen säger
+  `Stäng öppna filer och appar` om exakt det här läget, och `@key` säger att ordet också ska täcka kommandoradsverktyg,
+  vilket `appar` gör i Finders eget språkbruk (”Avsluta alla öppna appar”).
+- **disk image → `skivavbild`, bestämt `avbilden`** · macOS Finder `sv` genomgående (`BN53` ”Bränn skivavbilden ”^0” på
+  skiva…”, Infofönstrets `tvy-hx-Gou.title` ”Skivavbild:”, lästa i pilen 2026-09-16) · `high`. En-genus, alltså ”En
+  skivavbild … är fortfarande öppen”. Andra meningen kortar till `avbilden` och hoppar över ett andra `mata ut`: ”Mata
+  ut avbilden först och sedan enheten.” ❌ Inte Microsofts `avbildning`, som är Windows-sidans ord
+  (`Windows-avbildning`, `startavbildning`) och aldrig Apples.
+- **”stored on this drive” → `som ligger på den här enheten`** · `ligga` är katalogens verb för var en fil finns
+  (`fileOperations.cancelRollback.stoppedDeleting` ”Resten ligger kvar.”, § A drive pulled mid-transfer) · `high`.
+- **”is still working with” → `arbetar fortfarande med`, inte `använder`** · engelskan skiljer medvetet systemets
+  `working with` från appens `using`, och katalogen har redan `arbetar fortfarande` om just indexeringen
+  (`fileExplorer.imageIndex.drive.indexing`), vilket är precis det Spotlight gör med enheten · `high`. `macOS` står som
+  subjekt utan böjning, som Finders `LA10` (”Objektet ”^0” används av macOS …”).
+- **”Wait a minute” → `Vänta en minut`, mot `Wait a moment` → `Vänta en stund`** · engelskan skiljer på hur länge, och
+  `Vänta en stund` är katalogens satta form för det korta väntandet (`errors.listing.resourceBusy.suggestion`,
+  `errors.listing.deletePending.suggestion`, `errors.write.deletePending.suggestion`) · `high`. Skillnaden överlever
+  alltså till svenskan utan att någon av dem blir en ny formulering.
+- **”Cmdr itself” → `Cmdr själv`** · katalogens egen form (`indexing.staleDialog.bodyPhone`: ”de ändringar Cmdr själv
+  gör”) · `high`. Subjektet först, `fortfarande` kvar på sin vanliga plats: ”Cmdr själv använder fortfarande den här
+  enheten.”
+- **”send a report” → `skicka en rapport`, och ”if it keeps happening” → `om det fortsätter`** · katalogen säger båda
+  ordagrant (`settings.updates.errorReports.description` ”skicka en manuell rapport från Hjälp-menyn”,
+  `errors.listing.resourceBusy.suggestion` ”Om det fortsätter, …”) · `high`.
+- **Kommat före `eller` står kvar i `unmountRefusedByCmdr`** · `style.md` stryker det mellan två KORTA huvudsatser, men
+  här hänger ett `och`-par framför, så kommat markerar vilket led `eller` delar — samma lösning som
+  `servers.hub.emptyMessage`.
+- **Inga `sameAsSourceJustification`** · alla sex värdena skiljer sig från engelskan.
