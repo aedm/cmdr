@@ -83,6 +83,7 @@ fn detach_mid_transfer(
     let written = park
         .wait_until_parked(Duration::from_secs(20))
         .expect("the copy parks mid-file");
+    // allowed-pluralize-noun: a test's panic message, read by whoever debugs a red lane, and `written` is a byte count in the hundreds of thousands here
     assert!(written >= PARK_AFTER, "parked after {written} bytes");
 
     image.force_detach().expect("the drive is pulled");
