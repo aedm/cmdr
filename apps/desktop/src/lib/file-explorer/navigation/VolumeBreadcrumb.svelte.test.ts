@@ -1,14 +1,11 @@
 /**
- * Behavioral tests for the chip (`VolumeBreadcrumb.svelte`) and BOTH menus it hosts: the
- * volume switcher (`VolumeChooserMenu.svelte`) and the favorites menu
- * (`FavoritesMenu.svelte`), each on the house `Menu`. They're the behavior contract the M2
- * port had to keep, so they mount the chip and drive it the way a person does — real
+ * Behavioral tests for the chip (`VolumeBreadcrumb.svelte`) and the volume switcher it
+ * hosts (`VolumeChooserMenu.svelte`, the house `Menu`). They're the behavior contract the
+ * M2 port had to keep, so they mount the chip and drive it the way a person does — real
  * keydowns, real clicks.
  *
- * One of them is the favorite-rename keyboard guard (Fix E): while a favorite is being
- * renamed inline, the menu must NOT consume arrow / Home / End keys, so the textbox keeps
- * them. The cross-pane suppression itself lives in `pane/key-dispatch.ts`; here we pin the
- * leaf guard.
+ * The chip's OTHER menu is `FavoritesMenu.svelte.test.ts`: the favorites cases moved
+ * there whole when the favorites left the switcher, ❌ they weren't dropped.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -16,11 +13,9 @@ import { mount, tick, flushSync } from 'svelte'
 import VolumeBreadcrumb from './VolumeBreadcrumb.svelte'
 import type { VolumeChangePayload } from '../pane/types'
 
-const reorderFavorites = vi.fn(() => Promise.resolve())
 const ejectVolume = vi.fn(() => Promise.resolve())
 const disconnectPlace = vi.fn(() => Promise.resolve(true))
 const showVolumeRowContextMenu = vi.fn(() => Promise.resolve())
-const showFavoriteContextMenu = vi.fn(() => Promise.resolve())
 const hasServerSecret = vi.fn(() => Promise.resolve(true))
 const listSavedServers = vi.fn(() =>
   Promise.resolve([{ id: 'sftp-nas-local-22-ada', places: [{ volumeId: 'sftp-nas-local-22-ada' }] }]),
@@ -66,10 +61,6 @@ vi.mock('$lib/tauri-commands/indexing', () => ({
 // from throwing into a floating promise, and lets a test watch it.
 Element.prototype.scrollIntoView = vi.fn()
 
-// Captures the `volume-context-action` listener the component registers in `onMount`, so a
-// test can fire a native row-menu pick (Rename / Remove) the same way the backend would.
-let volumeContextActionHandler: ((payload: { action: string; volumeId: string }) => void) | undefined
-
 vi.mock('$lib/tauri-commands', () => ({
   resolvePathVolume: vi.fn(() => Promise.resolve({ volume: { id: stubs.containingVolumeId, path: '/' } })),
   upgradeToSmbVolume: vi.fn(() => Promise.resolve({ status: 'success' })),
@@ -79,10 +70,10 @@ vi.mock('$lib/tauri-commands', () => ({
   upgradeToSmbVolumeUsingSavedPassword: vi.fn(() => Promise.resolve({ status: 'success' })),
   removeFavorite: vi.fn(() => Promise.resolve()),
   renameFavorite: vi.fn(() => Promise.resolve()),
-  reorderFavorites: (...args: unknown[]) => reorderFavorites(...(args as [])),
+  reorderFavorites: vi.fn(() => Promise.resolve()),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
   showVolumeRowContextMenu: (...args: unknown[]) => showVolumeRowContextMenu(...(args as [])),
-  showFavoriteContextMenu: (...args: unknown[]) => showFavoriteContextMenu(...(args as [])),
+  showFavoriteContextMenu: vi.fn(() => Promise.resolve()),
   disconnectPlace: (...args: unknown[]) => disconnectPlace(...(args as [])),
   forgetServer: vi.fn(() => Promise.resolve(true)),
   forgetServerSecret: vi.fn(() => Promise.resolve(true)),
@@ -90,10 +81,9 @@ vi.mock('$lib/tauri-commands', () => ({
   listSavedServers: () => listSavedServers(),
   addFavorite: vi.fn(() => Promise.resolve()),
   trackEvent: vi.fn(() => Promise.resolve()),
-  onVolumeContextAction: (cb: (payload: { action: string; volumeId: string }) => void) => {
-    volumeContextActionHandler = cb
-    return Promise.resolve(() => {})
-  },
+  // The favorites menu the chip also hosts subscribes on mount; its own picks are
+  // driven in `FavoritesMenu.svelte.test.ts`.
+  onVolumeContextAction: () => Promise.resolve(() => {}),
 }))
 
 vi.mock('$lib/stores/volume-store.svelte', () => ({
@@ -227,168 +217,6 @@ async function openWithRows(
   flushSync()
   return mounted
 }
-
-describe('Favorites menu: keyboard reorder (Alt+Up / Alt+Down)', () => {
-  beforeEach(() => {
-    document.body.innerHTML = ''
-    reorderFavorites.mockClear()
-  })
-
-  it('Alt+ArrowDown on the highlighted favorite persists the moved order via reorderFavorites', async () => {
-    const { instance } = mountBreadcrumb()
-    instance.toggleFavoritesMenu()
-    await tick()
-    flushSync()
-
-    // Highlight the first favorite (fav-1). Home jumps the virtual highlight to index 0.
-    expect(press('Home')).toBe(true)
-    await tick()
-    flushSync()
-
-    // Alt+ArrowDown moves fav-1 down one slot: ['2', '1', '3'] (bare ids).
-    expect(press('ArrowDown', { altKey: true })).toBe(true)
-    await tick()
-    flushSync()
-
-    expect(reorderFavorites).toHaveBeenCalledTimes(1)
-    expect(reorderFavorites).toHaveBeenCalledWith(['2', '1', '3'])
-  })
-
-  it('two quick Alt+ArrowDown presses keep moving the SAME favorite (optimistic local order, no stale-state race)', async () => {
-    const { instance } = mountBreadcrumb()
-    instance.toggleFavoritesMenu()
-    await tick()
-    flushSync()
-
-    expect(press('Home')).toBe(true)
-    await tick()
-    flushSync()
-
-    // First press: fav-1 (index 0) → index 1, order ['2', '1', '3'].
-    expect(press('ArrowDown', { altKey: true })).toBe(true)
-    await tick()
-    flushSync()
-
-    // Second press immediately, BEFORE any `volumes-changed` refresh (the mock store never updates).
-    // It must compute against the optimistic order, moving fav-1 from index 1 → 2: ['2', '3', '1'].
-    // Without the local-first override it would re-read the stale store and wrongly emit ['2','1','3'].
-    expect(press('ArrowDown', { altKey: true })).toBe(true)
-    await tick()
-    flushSync()
-
-    expect(reorderFavorites).toHaveBeenCalledTimes(2)
-    expect(reorderFavorites).toHaveBeenLastCalledWith(['2', '3', '1'])
-  })
-
-  it('Alt+ArrowUp at the top favorite is a no-op (no persist)', async () => {
-    const { instance } = mountBreadcrumb()
-    instance.toggleFavoritesMenu()
-    await tick()
-    flushSync()
-
-    expect(press('Home')).toBe(true)
-    await tick()
-    flushSync()
-
-    // Already at the top: Alt+ArrowUp is consumed but persists nothing.
-    expect(press('ArrowUp', { altKey: true })).toBe(true)
-    await tick()
-    flushSync()
-    expect(reorderFavorites).not.toHaveBeenCalled()
-  })
-
-  it('Alt+ArrowDown on the add row (a non-reorderable section) does not reorder', async () => {
-    const { instance } = mountBreadcrumb()
-    instance.toggleFavoritesMenu()
-    await tick()
-    flushSync()
-
-    // End jumps to the last row: the `0` add row, which sits in its own section.
-    expect(press('End')).toBe(true)
-    await tick()
-    flushSync()
-
-    press('ArrowDown', { altKey: true })
-    await tick()
-    flushSync()
-    expect(reorderFavorites).not.toHaveBeenCalled()
-  })
-})
-
-describe('Favorites menu: the rename keyboard guard', () => {
-  beforeEach(() => {
-    document.body.innerHTML = ''
-  })
-
-  it('claims no key while no menu is open', () => {
-    mountBreadcrumb()
-    expect(press('ArrowDown')).toBe(false)
-  })
-
-  it('consumes ArrowDown when the menu is open and not renaming', async () => {
-    const { instance } = mountBreadcrumb()
-    instance.toggleFavoritesMenu()
-    await tick()
-    flushSync()
-    expect(instance.isHeaderMenuOpen()).toBe(true)
-    expect(press('ArrowDown')).toBe(true)
-  })
-
-  it('does NOT consume ArrowDown / Home / End while a favorite rename is active', async () => {
-    const { instance } = mountBreadcrumb()
-    instance.toggleFavoritesMenu()
-    await tick()
-    flushSync()
-
-    // Start the inline rename the way the native row menu does: the backend emits
-    // `volume-context-action` with `rename-favorite` for the right-clicked favorite.
-    const favRow = menuRows()[0]
-    expect(favRow).toBeTruthy()
-    volumeContextActionHandler?.({ action: 'rename-favorite', volumeId: 'fav-1' })
-    await tick()
-    flushSync()
-
-    expect(document.querySelector('.favorite-rename-input')).toBeTruthy()
-
-    // The guard: keys the dropdown would otherwise eat must fall through (false)
-    // so the rename textbox keeps them.
-    for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End']) {
-      expect(press(key)).toBe(false)
-    }
-  })
-
-  it('stops EVERY key (Space included) from bubbling out of the rename input to the pane', async () => {
-    const { instance } = mountBreadcrumb()
-    instance.toggleFavoritesMenu()
-    await tick()
-    flushSync()
-
-    const favRow = menuRows()[0]
-    expect(favRow).toBeTruthy()
-    volumeContextActionHandler?.({ action: 'rename-favorite', volumeId: 'fav-1' })
-    await tick()
-    flushSync()
-
-    const input = document.querySelector('.favorite-rename-input') as HTMLInputElement
-    expect(input).toBeTruthy()
-
-    // A document-level listener stands in for the pane's Space-selection / type-to-jump
-    // DOM listeners. The rename input must stop ALL keys from reaching it.
-    const leaked: string[] = []
-    const docListener = (e: KeyboardEvent) => leaked.push(e.key)
-    document.addEventListener('keydown', docListener)
-    try {
-      for (const key of [' ', 'a', 'ArrowDown', 'Backspace']) {
-        input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
-      }
-      await tick()
-      flushSync()
-      expect(leaked).toEqual([])
-    } finally {
-      document.removeEventListener('keydown', docListener)
-    }
-  })
-})
 
 /**
  * The switcher's server rows: the dot that says how live the place is, and the
@@ -1037,39 +865,5 @@ describe('VolumeBreadcrumb row controls do not activate their row', () => {
     expect(document.querySelector('.drive-index-menu')).toBeTruthy()
     expect(onVolumeChange).not.toHaveBeenCalled()
     expect(menuSurface()).toBeTruthy()
-  })
-})
-
-/**
- * The native row menu is built from the row that was right-clicked, whatever the
- * keyboard cursor is doing. (The webview freezes while a muda menu tracks, so the
- * highlight can't drift onto another row mid-menu either.)
- */
-describe('VolumeBreadcrumb row context menu targeting', () => {
-  beforeEach(() => {
-    document.body.innerHTML = ''
-    stubs.volumes = null
-    showFavoriteContextMenu.mockClear()
-  })
-
-  it('acts on the right-clicked row, not on wherever the keyboard cursor sits', async () => {
-    const { instance } = mountBreadcrumb()
-    instance.toggleFavoritesMenu()
-    await tick()
-    flushSync()
-
-    // Park the cursor at the far end of the list (the `0` add row).
-    press('End')
-    await tick()
-    flushSync()
-    const rows = [...menuRows()]
-    expect(isHighlighted(rows[rows.length - 1])).toBe(true)
-
-    // Right-click the FIRST favorite: the menu is built from that row's own facts.
-    rows[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
-    await vi.waitFor(() => {
-      expect(showFavoriteContextMenu).toHaveBeenCalled()
-    })
-    expect(showFavoriteContextMenu).toHaveBeenCalledWith('fav-1', 'Documents')
   })
 })
