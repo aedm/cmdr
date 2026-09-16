@@ -28,7 +28,14 @@ function sections(): MenuSection[] {
       items: [
         { value: 'hd', label: 'Macintosh HD', checked: true },
         { value: 'backup', label: 'Backup', disabled: true },
-        { value: 'share', label: 'Team share', submenu: [{ value: 'connect', label: 'Connect directly' }] },
+        {
+          value: 'share',
+          label: 'Team share',
+          submenu: [
+            { value: 'connect', label: 'Connect directly' },
+            { value: 'forget', label: 'Forget this share' },
+          ],
+        },
       ],
     },
     { id: 'empty', heading: 'Nothing here', items: [], emptyLabel: '(This section is empty)' },
@@ -183,6 +190,8 @@ describe('test hooks', () => {
     const submenu = document.querySelector('[data-menu-submenu]')
     expect(submenu).not.toBeNull()
     expect(submenu?.querySelector('[data-menu-row="connect"][data-highlighted]')).not.toBeNull()
+    // Exactly one row lights up: a boolean here lit every row of a multi-item submenu.
+    expect(submenu?.querySelectorAll('[data-highlighted]')).toHaveLength(1)
   })
 
   it('marks the dragged row, and the cue row carries its insertion slot', async () => {

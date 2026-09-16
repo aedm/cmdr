@@ -848,8 +848,9 @@ a sub-line (the disk-space bar), and `footer` sits under the last section. Each 
 **What the primitive owns**:
 
 - **Keyboard**: arrows wrap and skip headings, separators, disabled rows, and empty placeholders; Home/End; Enter and
-  Space activate; ArrowRight opens a submenu and ArrowLeft closes it; ⌥↑/⌥↓ reorder inside a `reorderable` section. A
-  bare cursor key only: ⌘↓ / ⌃↓ / ⌥↓ belong to somebody else and pass through.
+  Space activate; ArrowRight opens a submenu and ArrowLeft closes it, and while one is open the arrows walk ITS rows and
+  Enter takes the row they landed on; ⌥↑/⌥↓ reorder inside a `reorderable` section. A bare cursor key only: ⌘↓ / ⌃↓ /
+  ⌥↓ belong to somebody else and pass through.
 - **Escape closes the open submenu if there is one, otherwise the menu**, down ONE path. The switcher used to disagree
   with itself here: its routed handler closed only the submenu while a second document listener closed the whole
   dropdown, so which happened depended on how the key arrived. The primitive has no second listener, and this matches
@@ -890,6 +891,9 @@ gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them 
   swallows that click.
 - **The single-cursor rule**: an open submenu takes the parent row's highlight (`parentHighlightSuppressed`), and a
   submenu opened by hovering its parent row shows no cursor until the pointer or the keyboard reaches into it.
+- **A submenu's cursor is a VALUE too** (`submenuHighlightedValue`), so render against it per row. ❌ Never a boolean:
+  that lights every row of a multi-item submenu, which today's one-row "Connect directly" would have hidden until the
+  second consumer added a second row.
 - **`MenuItem` lives in `menu-types.ts`, NOT the component's module script** (unlike `SelectItem`): non-Svelte
   controllers import it, and a type imported from a `.svelte` file resolves to `any` under the plain-TypeScript lint
   service.

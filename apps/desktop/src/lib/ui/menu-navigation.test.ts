@@ -106,13 +106,15 @@ describe('menuKeyAction', () => {
     expect(menuKeyAction(key('ArrowRight'), plain)).toEqual({ kind: 'none' })
   })
 
-  it('closes an open submenu with ArrowLeft or Escape, and absorbs its other arrows', () => {
+  it('closes an open submenu with ArrowLeft or Escape, and walks it with the arrows', () => {
     const open = { hasSubmenu: true, submenuOpen: true, reorderable: false }
     expect(menuKeyAction(key('ArrowLeft'), open)).toEqual({ kind: 'closeSubmenu' })
     expect(menuKeyAction(key('Escape'), open)).toEqual({ kind: 'closeSubmenu' })
     expect(menuKeyAction(key('Enter'), open)).toEqual({ kind: 'activate' })
-    // A single-item submenu has nowhere to move: absorb rather than moving the parent's cursor.
-    expect(menuKeyAction(key('ArrowDown'), open)).toEqual({ kind: 'absorb' })
+    // An open submenu owns the cursor keys: they move WITHIN it, never the list behind it.
+    expect(menuKeyAction(key('ArrowDown'), open)).toEqual({ kind: 'moveSubmenu', delta: 1 })
+    expect(menuKeyAction(key('ArrowUp'), open)).toEqual({ kind: 'moveSubmenu', delta: -1 })
+    // Nothing further right (one level), so it's swallowed rather than moving the parent's cursor.
     expect(menuKeyAction(key('ArrowRight'), open)).toEqual({ kind: 'absorb' })
   })
 

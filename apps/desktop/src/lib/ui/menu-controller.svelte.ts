@@ -66,7 +66,8 @@ export interface MenuSurface {
   startDrag: (value: string, event: MouseEvent) => void
   openSubmenu: (value: string, fromKeyboard: boolean) => void
   closeSubmenu: () => void
-  setSubmenuHighlighted: (highlighted: boolean) => void
+  /** Pointer hover inside an open submenu: moves ITS cursor to that row. */
+  hoverSubmenu: (value: string) => void
   bindSurface: (hooks: MenuSurfaceHooks) => void
 }
 
@@ -78,6 +79,9 @@ export interface MenuController<T = unknown> {
   /** True once a key moved the cursor: the surface suppresses `:hover` so there's one cursor. */
   readonly keyboardMode: boolean
   readonly openSubmenuValue: string | null
+  /** The row an open submenu's own cursor sits on, or null while it shows no cursor. */
+  readonly submenuHighlightedValue: string | null
+  /** Whether the open submenu shows a cursor at all. */
   readonly submenuHighlighted: boolean
   /** The single-cursor rule: an open submenu takes the parent row's highlight. */
   readonly parentHighlightSuppressed: boolean
@@ -103,8 +107,9 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
   let highlightedValue = $state<string | null>(null)
   let keyboardMode = $state(false)
   let openSubmenuValue = $state<string | null>(null)
-  let submenuHighlighted = $state(false)
-  let submenuValue = $state<string | null>(null)
+  // The submenu's cursor is a VALUE, like the parent list's: a boolean would light every row
+  // of a multi-item submenu, which the one-item "Connect directly" happened to hide.
+  let submenuHighlightedValue = $state<string | null>(null)
   let draggingValue = $state<string | null>(null)
   let draggingSectionId = $state<string | null>(null)
   let dropSlot = $state<number | null>(null)
@@ -181,8 +186,14 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
 
   function closeSubmenu(): void {
     openSubmenuValue = null
-    submenuValue = null
-    submenuHighlighted = false
+    submenuHighlightedValue = null
+  }
+
+  /** The rows an open submenu offers, disabled ones skipped. */
+  function submenuValues(): string[] {
+    if (openSubmenuValue === null) return []
+    const parent = itemOf(sections(), openSubmenuValue)
+    return (parent?.submenu ?? []).filter((child) => !child.disabled).map((child) => child.value)
   }
 
   function openSubmenu(value: string, fromKeyboard: boolean): void {
@@ -190,10 +201,17 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     const first = item?.submenu?.find((child) => !child.disabled)
     if (!first) return
     openSubmenuValue = value
-    submenuValue = first.value
     // A submenu opened by hovering its parent row shows no cursor until the pointer or the
     // keyboard reaches INTO it; opened by keyboard, the cursor is already there.
-    submenuHighlighted = fromKeyboard
+    submenuHighlightedValue = fromKeyboard ? first.value : null
+  }
+
+  /** Walk an open submenu's own rows, wrapping; from no cursor, enter at the near end. */
+  function moveSubmenu(delta: -1 | 1): void {
+    const values = submenuValues()
+    if (values.length === 0) return
+    submenuHighlightedValue = nextValue(values, submenuHighlightedValue, delta)
+    enterKeyboardMode()
   }
 
   function activate(value: string): void {
@@ -209,8 +227,17 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
   }
 
   function activateHighlighted(): void {
-    const value = openSubmenuValue !== null ? submenuValue : highlightedValue
-    if (value !== null) activate(value)
+    if (openSubmenuValue === null) {
+      if (highlightedValue !== null) activate(highlightedValue)
+      return
+    }
+    if (submenuHighlightedValue !== null) {
+      activate(submenuHighlightedValue)
+      return
+    }
+    // A hover-opened submenu shows no cursor yet; Enter still means its first row.
+    const values = submenuValues()
+    if (values.length > 0) activate(values[0])
   }
 
   function reorderHighlighted(delta: -1 | 1): void {
@@ -333,6 +360,9 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
         closeSubmenu()
         enterKeyboardMode()
         return
+      case 'moveSubmenu':
+        moveSubmenu(action.delta)
+        return
       case 'reorder':
         reorderHighlighted(action.delta)
         return
@@ -377,8 +407,8 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     },
     openSubmenu,
     closeSubmenu,
-    setSubmenuHighlighted(highlighted) {
-      submenuHighlighted = highlighted
+    hoverSubmenu(value) {
+      submenuHighlightedValue = value
     },
     bindSurface(next) {
       hooks = next
@@ -404,8 +434,11 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     get openSubmenuValue() {
       return openSubmenuValue
     },
+    get submenuHighlightedValue() {
+      return submenuHighlightedValue
+    },
     get submenuHighlighted() {
-      return submenuHighlighted
+      return submenuHighlightedValue !== null
     },
     get parentHighlightSuppressed() {
       return openSubmenuValue !== null

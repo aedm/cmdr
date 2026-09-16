@@ -15,7 +15,9 @@ export type MenuAction =
   | { kind: 'close' }
   | { kind: 'openSubmenu' }
   | { kind: 'closeSubmenu' }
-  /** Consumed on purpose so it can't reach the parent menu (a single-item submenu's arrows). */
+  /** Move the cursor WITHIN an open submenu, which has its own. */
+  | { kind: 'moveSubmenu'; delta: -1 | 1 }
+  /** Consumed on purpose so it can't reach the parent menu (ArrowRight inside a submenu). */
   | { kind: 'absorb' }
   | { kind: 'reorder'; delta: -1 | 1 }
   | { kind: 'none' }
@@ -93,7 +95,7 @@ function isReorderCombo(event: KeyboardEvent): boolean {
   return event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey
 }
 
-/** One level, one item: a submenu absorbs its arrows rather than moving the parent's cursor. */
+/** An open submenu owns the cursor keys: it has its own cursor, and its own rows to walk. */
 function submenuKeyAction(key: string): MenuAction {
   switch (key) {
     case 'ArrowLeft':
@@ -103,8 +105,12 @@ function submenuKeyAction(key: string): MenuAction {
     case ' ':
       return { kind: 'activate' }
     case 'ArrowUp':
+      return { kind: 'moveSubmenu', delta: -1 }
     case 'ArrowDown':
+      return { kind: 'moveSubmenu', delta: 1 }
     case 'ArrowRight':
+      // One level only, so there is nothing further right: swallow it rather than letting it
+      // reach the parent list and move the cursor behind the open submenu.
       return { kind: 'absorb' }
     default:
       return { kind: 'none' }

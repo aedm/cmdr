@@ -29,7 +29,15 @@ function makeSections(): MenuSection[] {
       items: [
         { value: 'vol-1', label: 'Macintosh HD' },
         { value: 'vol-2', label: 'Backup', disabled: true },
-        { value: 'vol-3', label: 'Share', submenu: [{ value: 'connect', label: 'Connect directly' }] },
+        {
+          value: 'vol-3',
+          label: 'Share',
+          // TWO rows on purpose: a one-row submenu hides a cursor that lights every row.
+          submenu: [
+            { value: 'connect', label: 'Connect directly' },
+            { value: 'forget', label: 'Forget this share' },
+          ],
+        },
       ],
     },
   ]
@@ -320,6 +328,92 @@ describe('submenus', () => {
     menu.handleKey(keydown('ArrowRight'))
     expect(menu.submenuHighlighted).toBe(true)
     expect(menu.parentHighlightSuppressed).toBe(true)
+  })
+
+  it('opens onto the submenu’s first row, and only that one', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.highlight('vol-3')
+    menu.handleKey(keydown('ArrowRight'))
+    expect(menu.submenuHighlightedValue).toBe('connect')
+  })
+
+  it('walks the submenu’s own rows with the arrows, wrapping', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.highlight('vol-3')
+    menu.handleKey(keydown('ArrowRight'))
+    menu.handleKey(keydown('ArrowDown'))
+    expect(menu.submenuHighlightedValue).toBe('forget')
+    // The parent's cursor never moves while its submenu owns the keys.
+    expect(menu.highlightedValue).toBe('vol-3')
+    menu.handleKey(keydown('ArrowDown'))
+    expect(menu.submenuHighlightedValue).toBe('connect')
+    menu.handleKey(keydown('ArrowUp'))
+    expect(menu.submenuHighlightedValue).toBe('forget')
+  })
+
+  it('activates the submenu row the cursor is on, not its first', () => {
+    const onSelect = vi.fn()
+    const menu = build({ onSelect })
+    menu.openUnder(anchorEl())
+    menu.highlight('vol-3')
+    menu.handleKey(keydown('ArrowRight'))
+    menu.handleKey(keydown('ArrowDown'))
+    menu.handleKey(keydown('Enter'))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'forget' }))
+  })
+
+  it('shows no submenu cursor when the pointer opened it, until the pointer reaches in', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.surface.openSubmenu('vol-3', false)
+    expect(menu.submenuHighlightedValue).toBeNull()
+    expect(menu.submenuHighlighted).toBe(false)
+    menu.surface.hoverSubmenu('forget')
+    expect(menu.submenuHighlightedValue).toBe('forget')
+  })
+
+  it('still activates the first row when Enter lands on a hover-opened submenu', () => {
+    const onSelect = vi.fn()
+    const menu = build({ onSelect })
+    menu.openUnder(anchorEl())
+    menu.highlight('vol-3')
+    menu.surface.openSubmenu('vol-3', false)
+    menu.handleKey(keydown('Enter'))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'connect' }))
+  })
+})
+
+/**
+ * The payload type is the API's promise to consumers, so it's pinned here rather than
+ * eyeballed: the no-type-argument call must compile, and a typed one must reach the snippets.
+ */
+describe('the payload type', () => {
+  it('needs no type argument, and `unknown` is what a row without one carries', () => {
+    const plain = createMenu({ getSections: makeSections, onSelect: () => {} })
+    // @ts-expect-error `data` is `unknown` here, so it can't be used as a string without narrowing.
+    const _payload: string = plain.sections[0].items[0].data
+    expect(plain.isOpen).toBe(false)
+  })
+
+  it('hands a typed payload back on select', () => {
+    interface Place {
+      id: string
+    }
+    let captured: string | null = null
+    const menu = createMenu<Place>({
+      getSections: () => [{ id: 'places', items: [{ value: 'a', label: 'A', data: { id: 'x' } }] }],
+      onSelect: (item) => {
+        // Compile-time half: this assignment fails if `data` ever widens back to `unknown`.
+        const payload: Place | undefined = item.data
+        captured = payload ? payload.id : null
+      },
+    })
+    menus.push(menu)
+    menu.openUnder(anchorEl())
+    menu.surface.activate('a')
+    expect(captured).toBe('x')
   })
 })
 

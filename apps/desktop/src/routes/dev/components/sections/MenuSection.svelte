@@ -41,7 +41,10 @@
                     value: 'share',
                     label: 'Team share',
                     icon: { lucide: 'globe' },
-                    submenu: [{ value: 'connect', label: 'Connect directly' }],
+                    submenu: [
+                        { value: 'connect', label: 'Connect directly' },
+                        { value: 'forget', label: 'Forget this share' },
+                    ],
                 },
             ],
         },

@@ -301,13 +301,13 @@
                     <!-- svelte-ignore a11y_mouse_events_have_key_events -->
                     <div
                         class="menu-row"
-                        class:is-highlighted={menu.submenuHighlighted}
+                        class:is-highlighted={menu.submenuHighlightedValue === child.value}
                         role="menuitem"
                         tabindex="-1"
                         data-menu-row={child.value}
-                        data-highlighted={menu.submenuHighlighted ? '' : undefined}
+                        data-highlighted={menu.submenuHighlightedValue === child.value ? '' : undefined}
                         onmouseover={() => {
-                            menu.surface.setSubmenuHighlighted(true)
+                            menu.surface.hoverSubmenu(child.value)
                         }}
                         onclick={() => {
                             menu.surface.activate(child.value)

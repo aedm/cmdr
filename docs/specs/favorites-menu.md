@@ -215,7 +215,8 @@ warning).
 **What the primitive owns**
 
 - **Keyboard**: arrows wrap and skip headings, separators, disabled rows, and empty placeholders; Home/End; Enter and
-  Space activate; ArrowRight opens a submenu and ArrowLeft closes it; ⌥↑/⌥↓ reorder inside a reorderable section and
+  Space activate; ArrowRight opens a submenu and ArrowLeft closes it, and while one is open the arrows walk ITS rows
+  (its cursor is a value, so a multi-item submenu lights exactly one); ⌥↑/⌥↓ reorder inside a reorderable section and
   carry the highlight with the moved row. While `isEditing()` is true it handles nothing, so the editor keeps every
   keystroke.
 - **Escape closes the open submenu if there is one, otherwise the menu**, down one path and with no second document
