@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "O disco {volumeName} foi desconectado depois que o Cmdr copiou {done} de {total} arquivos para ele. Seus originais continuam intactos onde estavam, então nada se perdeu.",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "O disco {volumeName} foi desconectado antes de o Cmdr concluir a movimentação, então todos os seus arquivos continuam no disco {counterpart}.",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "O disco {volumeName} foi desconectado depois que o Cmdr copiou {done} de {total} arquivos para {counterpart}. O resto continua no disco.",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "O disco {volumeName} foi desconectado depois que o Cmdr moveu {done} de {total} arquivos para {counterpart}. O resto continua no disco.",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "Não foi possível confirmar a movimentação",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "O Cmdr não conseguiu confirmar que os arquivos movidos foram salvos no disco {volumeName}, então ele manteve seus originais onde estavam.",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "O Cmdr não conseguiu confirmar que os arquivos movidos foram salvos no destino, então ele manteve seus originais onde estavam.",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "Dê uma olhada no destino e depois tente mover de novo. Seus originais não saíram do lugar.",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "O Lixo não tem suporte",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

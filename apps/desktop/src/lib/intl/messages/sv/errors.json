@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "{volumeName} kopplades från efter att Cmdr hade kopierat {done} av {total} filer dit. Dina original är orörda där de låg, så ingenting har gått förlorat.",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "{volumeName} kopplades från innan Cmdr hann göra klart flytten, så alla dina filer ligger kvar på {counterpart}.",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "{volumeName} kopplades från efter att Cmdr hade kopierat {done} av {total} filer till {counterpart}. Resten ligger kvar på enheten.",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "{volumeName} kopplades från efter att Cmdr hade flyttat {done} av {total} filer till {counterpart}. Resten ligger kvar på enheten.",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "Det gick inte att bekräfta flytten",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "Cmdr kunde inte bekräfta att de flyttade filerna hade sparats på {volumeName}, så dina original ligger kvar där de låg.",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "Cmdr kunde inte bekräfta att de flyttade filerna hade sparats på målet, så dina original ligger kvar där de låg.",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "Titta i målmappen och försök sedan flytta igen. Dina original är orörda.",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "Papperskorgen stöds inte",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

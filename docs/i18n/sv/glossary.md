@@ -2968,3 +2968,80 @@ formulerar just de här fallen för ”Anslut till server” och saknas i refere
   pågående formen ”håller på att kopplas från” i `fileExplorer.navigation.driveIndex.driveLeaving`. ”Starts from
   scratch” → ”startar från början”, som `indexing.rescan.incompletePreviousScan`; `genomsökning` och `mappstorlekar`
   kommer från samma familj.
+
+## A drive pulled mid-transfer (errors.write.deviceDisconnected.sided.destination.copy)
+
+De fyra sidobestämda varianterna (`errors.write.deviceDisconnected.sided.destination.copy`,
+`errors.write.deviceDisconnected.sided.destination.move`, `errors.write.deviceDisconnected.sided.source.copy`,
+`errors.write.deviceDisconnected.sided.source.move`) står i samma dialog som
+`errors.write.deviceDisconnected.message.copy` och får inte säga emot den. Läsaren har just ryckt ut en enhet mitt i en
+överföring, så varje mening slutar med VAR filerna finns, inte med vad som hände.
+
+- **was disconnected (redan skett) → `kopplades från`** · preteritum, som `indexing.needsFreshScan.afterDisconnect` och
+  katalogens egen `errors.write.deviceDisconnected.message.copy` (”Enheten kopplades från under kopieringen”) · `high`.
+  ❌ Inte den pågående formen `håller på att kopplas från` i `fileExplorer.navigation.driveIndex.driveLeaving`: här är
+  enheten redan borta.
+- **originals → `original`, bestämt `originalen`** · katalogen (`fileOperations.transferProgress.titleRemovingOriginals`
+  ”Tar bort originalen...”, `fileOperations.cancelRollback.moveAlreadyLanded`), och macOS Finder `sv` har `originalet` i
+  alias- och papperskorgssträngarna (”originalet ligger i papperskorgen”, verifierat i pilen 2026-09-16) · `high`.
+- **untouched → `orörd`** · katalogens `errors.write.destinationNotFound.message.copy` (”Originalen är orörda”) och
+  `errors.write.notConnected.message.destination` (”Dina filer är orörda”), plus macOS AppKit `Document` (”lämna filen
+  orörd och jobba med en kopia”) · `high`.
+- **so nothing is lost → `så ingenting har gått förlorat`** · macOS AppKit `Document` (”Ändringarna går förlorade om du
+  inte sparar dem”) och Thunar `sv` (”så går den förlorad permanent”) · `high`. Perfekt, inte presens: enheten är redan
+  ute, och `har gått förlorat` säger att läget står fast i stället för att varna för något som kan hända.
+- **the rest → `resten`, still on the drive → `ligger kvar på enheten`** · `fileOperations.cancelRollback.stoppedDeleting`
+  säger ordagrant ”Resten ligger kvar.”, och `ligger kvar` är katalogens ord för det som blev stående
+  (`fileExplorer.navigation.forgetServerConfirm`) · `high`. `enhet` är glossaryns satta ord för drive.
+- **{done} of {total} files → `{done} av {total} filer`** · `av` genomgående i katalogen (`viewer.pull.progress`,
+  `fileExplorer.imageIndex.folder.someIndexed`) och i macOS Finders AirDrop-förlopp (”64,0 MB av 1,33 GB”) · `high`.
+  Båda är färdigformaterade strängar: ingen ICU-siffersyntax runt dem.
+- **”to it” → `dit`, och `{counterpart}` tar bara preposition** · ett riktningsadverb slipper gissa om enhetsnamnet är
+  en- eller ett-genus, och `på {counterpart}` / `till {counterpart}` står utan artikel och utan böjning av samma skäl ·
+  `high`.
+- **before Cmdr could finish the move → `innan Cmdr hann göra klart flytten`** · `hann` är katalogens ord för det som
+  inte blev av i tid (`errors.write.destinationFull.message` ”innan allt hann skrivas”,
+  `queryUi.results.live.incomplete` ”Cmdr hann inte klart”) · `high`.
+- **Försäkran i presens, platsen i preteritum**: ”Your originals are untouched where they were” blir ”Dina original är
+  orörda där de låg”. Presens säger hur det ÄR nu, vilket är det lugnande, och `där de låg` pekar ut platsen utan att
+  hänga på en relativsats som skjuter beskedet till slutet av meningen.
+- Inga `sameAsSourceJustification`: alla fyra värdena skiljer sig från engelskan. Familjen är RAW, alltså vanliga
+  apostrofer och `{token}` som ren ersättningsmål.
+
+## A move that could not be confirmed (errors.write.moveNotConfirmed.title)
+
+Dialogen som visas när Cmdr inte kunde få bekräftat att de flyttade filerna landade, och därför behöll originalen.
+Ingenting gick sönder, och ingen variant får läsas som att flytten gick fel.
+
+- **couldn't confirm → `det gick inte att bekräfta` (rubrik), `Cmdr kunde inte bekräfta` (brödtext)** · katalogens satta
+  formel för just det här läget: `fileExplorer.pane.trashUnconfirmedToast`, `fileExplorer.rename.unconfirmed` och
+  `fileOperations.mkdir.timeoutMessage` säger alla ”Det gick inte att bekräfta att …” · `high`. Rubriken följer
+  systernyckeln `errors.write.destinationNotFound.title` (”Det gick inte att hitta målmappen”), brödtexten behåller
+  subjektet `Cmdr` eftersom engelskan har det och katalogen skriver aktivt (`settings.askCmdr.memory.notAllForgotten`
+  ”Cmdr kunde inte radera alla anteckningar”). ❌ Inget `fel` och inget `misslyckades`: `kunde inte bekräfta` är
+  bokstavligt, filerna kan mycket väl ligga där.
+- **the move (substantiv) → `flytten`** · `errors.write.deviceDisconnected.message.move` (”Enheten kopplades från under
+  flytten”) · `high`.
+- **were saved on {volumeName} → `hade sparats på {volumeName}`** · pluskvamperfekt för det som skulle ha hunnit ske före
+  bekräftelsen; `spara` är katalogens verb för att lägga undan data (`settings.advanced.logLlmCalls.description`) ·
+  `high`. ❌ Inte `skrevs till`: `skriva` bär i katalogen själva överföringen som pågår
+  (`fileOperations.transferProgress.rollbackTooltip`, `errors.write.writeError.message`), och poängen här är att filerna
+  ska ha landat.
+- **at the destination → `på målet`, men `målmappen` när man ska titta in i den** · `målet` är katalogens satta ord
+  (`errors.write.destinationExists.message`, `errors.write.writeError.message`), och `errors.write.destinationNotFound.title`
+  har `målmappen` om samma yta · `high`. `Titta i målet` går inte att läsa, så
+  `errors.write.moveNotConfirmed.suggestion` tar mappformen.
+- **it kept your originals where they were → `så dina original ligger kvar där de låg`** · omskrivet till presens ·
+  `high`. `så Cmdr lät originalen ligga kvar` hade krävt ett andra `Cmdr` i meningen (se § Utmatning och frånkoppling:
+  `Cmdr` upprepas inte i andra satsen), och presensformen svarar dessutom på frågan läsaren faktiskt har: var ligger
+  mina filer nu?
+- **Your originals haven't moved → `Dina original är orörda`** · `har inte flyttats` är den passiv-`-s` som `style.md`
+  avråder från, och den hade upprepat brödtextens sista sats ordagrant två rader ned i samma panel. `är orörda` är
+  katalogens egen försäkran (`errors.write.destinationNotFound.message.copy`) och varierar formuleringen precis som
+  engelskan gör · `high`.
+- **Have a look at the destination, then try … again → `Titta i målmappen och försök sedan flytta igen`** · `titta` är
+  katalogens verb (`errors.write.newDataKeptAt.suggestion` ”Öppna {keptAt} och titta på den”), och `sedan` markerar
+  ordningen utan komma mellan de två leden, som i § Utmatning och frånkoppling · `high`. Bara ett `igen`: `igen … på
+  nytt`-formeln behövs först när engelskan upprepar ”again”.
+- Inga `sameAsSourceJustification`: alla fyra värdena skiljer sig från engelskan. RAW-familj, alltså inga ICU-strukturer
+  och vanliga apostrofer (inga används här).

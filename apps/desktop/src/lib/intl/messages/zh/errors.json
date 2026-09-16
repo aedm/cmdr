@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "{volumeName} 在 Cmdr 往它拷贝了 {done} 个文件（共 {total} 个）之后断开了连接。你的原文件都还在原处，没有被动过，所以什么都没丢失。",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "{volumeName} 在 Cmdr 完成这次移动之前断开了连接，所以你的文件都还在 {counterpart} 上。",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "{volumeName} 在 Cmdr 往 {counterpart} 拷贝了 {done} 个文件（共 {total} 个）之后断开了连接。其余的都还在这个驱动器上。",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "{volumeName} 在 Cmdr 往 {counterpart} 移动了 {done} 个文件（共 {total} 个）之后断开了连接。其余的都还在这个驱动器上。",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "无法确认这次移动",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "Cmdr 无法确认移过去的文件是否已经保存到 {volumeName} 上，所以把你的原文件留在了原处。",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "Cmdr 无法确认移过去的文件是否已经保存到目标位置，所以把你的原文件留在了原处。",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "去目标位置看一下，然后再移动一次。你的原文件还在原来的位置。",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "不支持废纸篓",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

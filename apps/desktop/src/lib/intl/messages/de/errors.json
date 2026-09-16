@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "{volumeName} wurde getrennt, nachdem Cmdr {done} von {total} Dateien darauf kopiert hatte. Deine Originale liegen unberührt an ihrem Platz, es ist also nichts verloren gegangen.",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "{volumeName} wurde getrennt, bevor Cmdr das Bewegen abschließen konnte, deshalb liegen alle deine Dateien noch auf {counterpart}.",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "{volumeName} wurde getrennt, nachdem Cmdr {done} von {total} Dateien auf {counterpart} kopiert hatte. Der Rest liegt noch auf dem Laufwerk.",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "{volumeName} wurde getrennt, nachdem Cmdr {done} von {total} Dateien auf {counterpart} bewegt hatte. Der Rest liegt noch auf dem Laufwerk.",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "Die Bewegung ließ sich nicht bestätigen",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "Cmdr konnte nicht bestätigen, dass die bewegten Dateien auf {volumeName} geschrieben wurden, deshalb hat es deine Originale dort gelassen, wo sie waren.",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "Cmdr konnte nicht bestätigen, dass die bewegten Dateien am Ziel geschrieben wurden, deshalb hat es deine Originale dort gelassen, wo sie waren.",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "Sieh am Ziel nach und versuche es dann noch einmal. Deine Originale liegen noch dort, wo sie waren.",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "Papierkorb nicht unterstützt",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

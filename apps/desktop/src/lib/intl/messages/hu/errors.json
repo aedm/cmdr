@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "A(z) {volumeName} leválasztódott, miután a Cmdr {total} fájlból {done} fájlt átmásolt rá. Az eredetiek érintetlenül a helyükön vannak, így semmi sem veszett el.",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "A(z) {volumeName} leválasztódott, mielőtt a Cmdr befejezhette volna az áthelyezést, így minden fájlod továbbra is a(z) {counterpart} meghajtón van.",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "A(z) {volumeName} leválasztódott, miután a Cmdr {total} fájlból {done} fájlt átmásolt ide: {counterpart}. A többi továbbra is a meghajtón van.",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "A(z) {volumeName} leválasztódott, miután a Cmdr {total} fájlból {done} fájlt áthelyezett ide: {counterpart}. A többi továbbra is a meghajtón van.",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "Nem sikerült ellenőrizni az áthelyezést",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "A Cmdr nem tudta ellenőrizni, hogy az áthelyezett fájlok kiíródtak-e a(z) {volumeName} meghajtóra, ezért az eredetieket a helyükön hagyta.",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "A Cmdr nem tudta ellenőrizni, hogy az áthelyezett fájlok kiíródtak-e a célhelyre, ezért az eredetieket a helyükön hagyta.",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "Nézd meg a célhelyet, majd próbáld újra az áthelyezést. Az eredetiek nem mozdultak el.",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "A Kuka nem támogatott",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

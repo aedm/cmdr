@@ -2920,3 +2920,91 @@ que redige esses mesmos casos para «Conectar ao Servidor» e não está na pilh
   from scratch” → “começa do zero”. A varredura é `varredura`, o substantivo do glossário para a varredura de disco, e
   não “análise”, reservado à pré-contagem de transferência (`indexing.rescan.incompletePreviousScan` ainda diz
   “análise”: deriva antiga, a corrigir numa varredura).
+
+## A drive pulled mid-transfer (errors.write.deviceDisconnected.sided.destination.copy)
+
+As quatro linhas com lado (`errors.write.deviceDisconnected.sided.destination.copy`,
+`errors.write.deviceDisconnected.sided.destination.move`, `errors.write.deviceDisconnected.sided.source.copy` e
+`errors.write.deviceDisconnected.sided.source.move`) entram no MESMO diálogo das genéricas
+`errors.write.deviceDisconnected.message.copy` e `errors.write.deviceDisconnected.message.move`, e dividem com elas a
+`errors.write.deviceDisconnected.suggestion`. Família RAW, sem ICU, apóstrofo simples (nenhum dos quatro leva
+apóstrofo). O cabo foi arrancado: não é ejeção voluntária, então o pretérito **foi desconectado** vale para as quatro, e
+não o gerúndio de `fileExplorer.navigation.driveIndex.driveLeaving`.
+
+- **was disconnected (o disco saiu sozinho) · `O disco {volumeName} foi desconectado`** · idêntico à irmã
+  `indexing.needsFreshScan.afterDisconnect` (§ A drive unplugged mid-index); `disconnect → Desconectar` é o termo do
+  macOS pt-BR (`LocalizableMerged.json`: “Desconectar”) · high. O substantivo **disco** vem na frente para o particípio
+  concordar com ele: `{volumeName}` é um nome de disco arbitrário e não pode carregar gênero.
+- **drive nestas quatro é `disco`, mesmo que as genéricas digam `dispositivo`** · o inglês faz o mesmo corte (“The
+  device was disconnected” nas genéricas, “still on the drive” nestas): as com lado só existem quando há um VOLUME com
+  nome, as genéricas cobrem também celular e servidor. ❌ Não uniformize as duas famílias · high.
+- **your originals are untouched · `Seus originais continuam intactos`** · **intactos** é o que o catálogo já publica
+  para “untouched” (`errors.write.destinationNotFound.message.copy` “Os originais estão intactos.”,
+  `errors.write.notConnected.message.destination` “Seus arquivos estão intactos.”) · high. O **continuam** entra no
+  lugar de “estão” porque o inglês acrescenta “where they were”, e é o verbo que a próxima linha fixa.
+- **where they were · `onde estavam`** · `fileOperations.cancelRollback.moveAlreadyLanded` já publica
+  “originais continuam onde estavam” para um “are still where they were” · confirmed.
+- **so nothing is lost · `então nada se perdeu`** · a passiva-reflexiva mantém a tranquilização em voz ativa e no fim da
+  frase, que é onde o inglês a põe; o pile só tem a forma perifrástica (“serão perdidas se você não as salvar”, macOS
+  pt-BR) · tentative. ❌ Não “nada foi perdido” (passiva sem agente, mais fria) nem “nada se perde” (genérico demais
+  para um fato já ocorrido). A irmã `errors.write.originalsKeptAside.message.one` fecha com “Nada foi descartado.”, que
+  é outro sentido (descartar ≠ perder).
+- **The rest are still on the drive · `O resto continua no disco`** · cópia exata do molde já publicado em
+  `fileOperations.cancelRollback.stoppedDeleting` (“The rest are still there.” → “O resto continua no destino.”) ·
+  confirmed. O `no disco` sem nome aponta para `o disco {volumeName}` do começo da frase, o único chamado de “disco”
+  ali: repetir o placeholder seria acrescentar um token que o inglês não tem.
+- **`{counterpart}` entra sem artigo depois de `para`, e com `no disco` depois de `em`** · `para {counterpart}` dispensa
+  artigo e não prejulga gênero, então `errors.write.deviceDisconnected.sided.source.copy` e
+  `errors.write.deviceDisconnected.sided.source.move` usam essa forma;
+  `errors.write.deviceDisconnected.sided.destination.move` precisa de “em”, que em pt-BR pede artigo, então escreve o
+  substantivo (`no disco {counterpart}`), o mesmo recurso de `o disco {volumeName}`. ❌ Nunca `do {counterpart}` nem
+  `no {counterpart}` · high.
+- **before Cmdr could finish the move · `antes de o Cmdr concluir a movimentação`** · a regência
+  `antes de o Cmdr {infinitivo}` já está publicada em `errors.listing.connectionDropped.explanation` (“antes de o Cmdr
+  terminar de ler”); **movimentação** é o substantivo de “move” fixado na § Error-copy phrasings e já publicado em
+  `errors.write.cancelled.message.move` e `errors.write.deviceDisconnected.message.move`; **concluir** é o verbo do
+  Finder para completar, e a irmã `errors.volume.deviceDisconnected` já diz “antes de a alteração ser concluída” ·
+  confirmed.
+- **after Cmdr copied/moved · `depois que o Cmdr copiou` / `moveu`** · molde já publicado em
+  `fileOperations.cancelRollback.reason.drift.named` (“depois que o Cmdr colocou lá”) · high. O sintagma
+  `{done} de {total} arquivos` fica na ordem do inglês; os dois números chegam já formatados, então nada de ICU em
+  volta deles.
+- Varredura pt-PT dos quatro valores (ficheiro, `estar a` + infinitivo, consoante, próclise antes de infinitivo, Rever,
+  alterar o nome, guardar, você omitido em frase de resultado), mais U+2019, apóstrofo duplo e espaço duplo: zero
+  ocorrências. Nenhum `sameAsSourceJustification`: os quatro diferem do inglês.
+
+## A move that could not be confirmed (errors.write.moveNotConfirmed.title)
+
+Nem falha nem perda: o Cmdr copiou, não conseguiu PROVAR que o destino gravou, e por isso guardou os originais. As
+quatro linhas (`errors.write.moveNotConfirmed.title`, `errors.write.moveNotConfirmed.message.named`,
+`errors.write.moveNotConfirmed.message.unnamed` e `errors.write.moveNotConfirmed.suggestion`) não podem soar como “a
+movimentação deu errado”, pela mesma regra das linhas de desfecho da § O convite para fixar o Cmdr no Dock.
+
+- **Couldn''t confirm the move · `Não foi possível confirmar a movimentação`** · a abertura de “couldn''t” fixada na §
+  Error-copy phrasings, e a mesma da irmã `fileExplorer.rename.unconfirmed` (“Não foi possível confirmar a renomeação
+  de …”) · confirmed. Título em caixa de frase e sem ponto final, como `errors.write.destinationNotFound.title`.
+- **Cmdr couldn''t confirm · `O Cmdr não conseguiu confirmar`** · no CORPO o inglês nomeia o sujeito, então o português
+  também: `O Cmdr não conseguiu {infinitivo}` é o molde já publicado em `errors.eject.unexpected` (“o Cmdr não
+  conseguiu identificar o quê”) · high. O impessoal fica só para o TÍTULO, onde não há espaço para sujeito.
+- **the moved files were saved · `os arquivos movidos foram salvos`** · **salvar** é o verbo travado do glossário (❌
+  nunca `guardar`, indício pt-PT); a passiva é do inglês e o sujeito é `os arquivos`, então a frase não fica sem sujeito
+  · high. `servers.refusal.saveUnconfirmed` usa a mesma passiva pelo mesmo motivo (“nada foi salvo”).
+- **so it kept your originals · `então ele manteve seus originais onde estavam`** · o pronome **ele** retoma `O Cmdr`
+  explicitamente porque a terceira pessoa também se lê como `você` (§ Notes do `style.md`, “Uma frase de resultado nunca
+  fica sem sujeito”); `onde estavam` é a forma da seção acima · high.
+- **on {volumeName} · `no disco {volumeName}`** · `em` pede artigo, e `{volumeName}` não pode carregar gênero, então
+  entra o substantivo, como nas quatro linhas com lado. Na variante sem nome, o inglês diz “at the destination” e o
+  português usa **no destino**, o termo que o `errors.json` já publica dezenas de vezes · confirmed.
+- **Have a look at · `Dê uma olhada em`** · o catálogo já traduz esse mesmo “Have a look” assim em
+  `settings.askCmdr.memory.description` · confirmed. Mantém o convite leve que o inglês tem; ❌ não “Verifique o
+  destino”, que soa a dever de casa e colide com o `verificar` reservado ao que o Cmdr faz sozinho.
+- **try the move again · `tente mover de novo`** · **tente … de novo** é o fecho de sugestão padrão de todo o
+  `errors.json` (`errors.write.deviceDisconnected.suggestion`, `errors.write.readError.suggestion`) · confirmed. O
+  infinitivo **mover** em vez do substantivo `a movimentação` porque o substantivo já está no título logo acima e a
+  repetição pesa; o sentido é o mesmo.
+- **Your originals haven''t moved · `Seus originais não saíram do lugar`** · sem atestação no pile (nenhuma ocorrência
+  de “sair do lugar” no macOS pt-BR) · tentative. A alternativa atestada é `continuam onde estavam`
+  (`fileOperations.cancelRollback.moveAlreadyLanded`), recusada aqui só porque repetiria palavra por palavra a frase do
+  corpo, que aparece logo acima no MESMO painel; o inglês também varia a formulação entre as duas.
+- Varredura pt-PT dos quatro valores e checagem de apóstrofo/aspas: zero ocorrências. Nenhum
+  `sameAsSourceJustification`: os quatro diferem do inglês.

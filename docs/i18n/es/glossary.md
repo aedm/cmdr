@@ -3117,3 +3117,78 @@ casos para «Conectarse al servidor» y no está en la pila.
   `{name}`, a diferencia del participio «desconectada» de esa clave hermana. NO es el gerundio «se está desconectando»
   de `fileExplorer.navigation.driveIndex.driveLeaving`: allí la expulsión sigue en curso. «Starts from scratch» → «desde
   cero», como `indexing.rescan.incompletePreviousScan`; `análisis` y `tamaños de carpetas` vienen de la misma familia.
+
+## A drive pulled mid-transfer (`errors.write.deviceDisconnected.sided.destination.copy`)
+
+Cuatro claves que se leen justo después de que alguien haya tirado del cable a mitad de una copia o un movimiento. Quien
+las lee está asustado por sus archivos, así que la frase existe para decir **dónde** están, no qué salió mal.
+
+- **was disconnected (ya ocurrido) → `se desconectó`** · pretérito reflexivo ya fijado en § A drive unplugged mid-index
+  (`indexing.needsFreshScan.afterDisconnect`) y en `errors.write.deviceDisconnected.message.move` · high. El reflexivo
+  evita concordar en género con `{volumeName}`, que es un nombre de disco arbitrario. NO es el gerundio
+  `se está desconectando` de `fileExplorer.navigation.driveIndex.driveLeaving`: aquí la unidad ya no está.
+- **drive (la unidad que se desconectó sola) → `unidad`**, no `disco` · es la palabra de las dos hermanas más cercanas
+  (`indexing.needsFreshScan.afterDisconnect`, `fileExplorer.navigation.driveIndex.driveLeaving`) y de
+  `errors.write.destinationNotFound.suggestion` («o que la unidad se haya desconectado»), todas en el sentido de
+  conexión perdida · high. **Frontera deliberada con § Expulsar y desconectar**, donde `drive` → `disco`: allí manda el
+  corpus de expulsión del Finder («El disco “^0” está en uso y no se puede expulsar»), que es una acción del usuario;
+  aquí el cable se fue solo y la familia de la desconexión ya dice `unidad`. No se unifican.
+- **the move (el sustantivo) → `el movimiento`** · lo fija la clave hermana del mismo diálogo,
+  `errors.write.deviceDisconnected.message.move` («durante el movimiento»), y `mover` es el verbo del catálogo
+  (`errors.write.destinationInsideSource.suggestion.move`) · high
+- **your originals are untouched → `tus originales siguen intactos`** · `intactos` es lo que ya dicen dos hermanas de
+  `errors.write.*` para esta misma tranquilización: `errors.write.destinationNotFound.message.copy` («Los originales
+  están intactos.») y `errors.write.notConnected.message.destination` («Tus archivos están intactos.») · high. Se
+  mantiene el posesivo `tus` del inglés, como en la segunda; `siguen` en vez de `están` porque el inglés añade
+  «where they were» y `siguen … donde estaban` lo carga sin repetir el verbo.
+- **where they were → `donde estaban`** · el catálogo ya lo tiene en `fileOperations.cancelRollback.moveAlreadyLanded`
+  («Quedan {countText} originales donde estaban.») y en presente en `errors.write.readOnlyDevice.source.suggestion`
+  («Los originales se quedan donde están.») · high
+- **so nothing is lost → `así que no has perdido nada`**, no el impersonal `así que no se pierde nada` · high (el giro),
+  tentative (que la segunda persona sea preferible al impersonal). El impersonal esconde de quién son los archivos, que
+  es justo lo que la frase tiene que decir; macOS `es` también se dirige a quien lee cuando habla de pérdida
+  («Si seleccionas Bloqueo, perderás los datos no guardados», AppKit `es`, minado 2026-09-16). El participio con
+  `haber` es invariable, así que no expone el género de quien lee.
+- **the rest are still on the drive → `el resto sigue en la unidad`** · `el resto` ya es del catálogo
+  (`operationLog.rollback.partiallyRolledBackNotice` «dejó el resto como estaba»,
+  `fileOperations.transferProgress.rollbackAlreadyLandedTooltip` «el resto de los originales») · high. Singular
+  (`sigue`), y sin nombrar `archivos`: el inglés tampoco los nombra y la frase ya viene de una que los cuenta.
+- **to it (el disco al que se copiaba) → `ahí`** · adverbio de lugar, sin género ni artículo, que es la salida ya
+  documentada en `style.md` para no concordar con un `{name}` desconocido («terminara de escribir ahí») · high. `en ella`
+  concordaría con `unidad`, pero `{volumeName}` puede ser cualquier cosa.
+- **after Cmdr copied … → `después de que Cmdr copiara …`** · subjuntivo tras `después de que` / `antes de que`, con
+  Cmdr de sujeto, como el ejemplo de `style.md` · high. Mantiene la marca `Cmdr` que exige
+  `desktop-i18n-dont-translate`.
+- `{counterpart}` va siempre tras preposición desnuda (`a {counterpart}`, `en {counterpart}`), nunca con artículo: es un
+  nombre de volumen arbitrario y cualquier artículo acertaría solo la mitad de las veces.
+- Ningún valor lleva apóstrofo ni comillas, y los cuatro difieren del inglés, así que no hace falta
+  `sameAsSourceJustification`.
+
+## A move that could not be confirmed (`errors.write.moveNotConfirmed.title`)
+
+Ni un fallo ni una pérdida: Cmdr **no pudo demostrar** que las copias llegaran, y por eso conservó los originales. Las
+cuatro claves no pueden insinuar que el movimiento saliera mal ni que los archivos no estén en el destino.
+
+- **Couldn't confirm … → `No se pudo confirmar …`** · patrón ya asentado para este mismo caso de «no hubo respuesta»:
+  `fileOperations.mkdir.timeoutMessage`, `fileExplorer.rename.unconfirmed` y `fileExplorer.pane.trashUnconfirmedToast` ·
+  high. Es literal, como pide el inglés: no se sube a «el movimiento salió mal».
+- **the moved files were saved → `que los archivos movidos se guardaran`** · subjuntivo tras `confirmar` negado, calcado
+  de `fileOperations.mkdir.timeoutMessage` («No se pudo confirmar que la carpeta se creara») · high
+- **it kept your originals → `conservó tus originales`**, no `dejó tus originales` · `conservar` es el verbo de macOS
+  `es` para guardar a salvo algo a propósito (`Conservar original`, `Conservar copia parcial`, `Conservar cambios en el
+  documento original`; Finder + AppKit, minado 2026-09-16) · high. `dejar` se leería como descuido («se los dejó ahí»),
+  cuando el inglés nombra un acto deliberado de protección, que es el porqué de todo el diálogo.
+- **at the destination → `en el destino`** · terminología de Microsoft (`destination` → `destino`, ids 653190 y 683503,
+  con etiqueta panregional ESP + MEX + ARG + 419 + …), macOS `es` («la carpeta de destino», «el volumen de destino») y
+  el catálogo entero (`errors.write.destinationNotFound.title`, `errors.write.insufficientSpace.suggestion`) · high
+- **Have a look at the destination → `Revisa el destino`** · `revisar` es el verbo del catálogo para ir a comprobar algo
+  después de una operación sin confirmar (`fileExplorer.pane.trashUnconfirmedToast`, «Revisa la Papelera para
+  asegurarte») · high. `Echa un vistazo` traduciría mejor el registro informal del inglés, pero el catálogo ya eligió
+  `revisar` para la situación idéntica.
+- **Your originals haven't moved. → `Tus originales siguen donde estaban.`** · high (el giro), tentative (apartarse de la
+  negación del inglés). La traducción literal obliga a elegir entre `no se han movido` (perfecto compuesto, peninsular,
+  contra la regla del pretérito de `style.md`) y `no se movieron` (pretérito, que suena a crónica, no a garantía). La
+  afirmación positiva dice lo mismo, esquiva las dos y repite el `donde estaban` de la clave hermana
+  `errors.write.moveNotConfirmed.message.named`, que es lo que refuerza la tranquilización.
+- Ningún valor lleva apóstrofo ni marcador aparte de `{volumeName}`; los cuatro difieren del inglés, así que no hace
+  falta `sameAsSourceJustification`.

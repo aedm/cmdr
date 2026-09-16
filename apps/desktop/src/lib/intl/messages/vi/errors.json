@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "{volumeName} bị ngắt kết nối sau khi Cmdr đã sao chép {done} trên {total} tệp tới đó. Các bản gốc của bạn vẫn nguyên vẹn ở chỗ cũ, nên không mất gì cả.",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "{volumeName} bị ngắt kết nối trước khi Cmdr kịp hoàn tất việc di chuyển, nên mọi tệp của bạn vẫn nguyên vẹn trên {counterpart}.",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "{volumeName} bị ngắt kết nối sau khi Cmdr đã sao chép {done} trên {total} tệp tới {counterpart}. Các tệp còn lại vẫn nguyên vẹn trên ổ đĩa.",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "{volumeName} bị ngắt kết nối sau khi Cmdr đã di chuyển {done} trên {total} tệp tới {counterpart}. Các tệp còn lại vẫn nguyên vẹn trên ổ đĩa.",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "Chưa xác nhận được việc di chuyển",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "Cmdr chưa xác nhận được là các tệp vừa di chuyển đã được lưu trên {volumeName}, nên nó giữ nguyên các bản gốc của bạn ở chỗ cũ.",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "Cmdr chưa xác nhận được là các tệp vừa di chuyển đã được lưu ở đích, nên nó giữ nguyên các bản gốc của bạn ở chỗ cũ.",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "Hãy kiểm tra đích, rồi thử lại việc di chuyển. Các bản gốc của bạn vẫn ở nguyên chỗ cũ.",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "Không hỗ trợ thùng rác",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

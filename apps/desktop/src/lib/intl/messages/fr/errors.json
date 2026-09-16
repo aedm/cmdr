@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "{volumeName} a été déconnecté alors que Cmdr y avait déjà copié {done} des {total} fichiers. Vos originaux sont intacts là où ils étaient, rien n'est donc perdu.",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "{volumeName} a été déconnecté avant que Cmdr ait pu terminer le déplacement, tous vos fichiers sont donc toujours sur {counterpart}.",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "{volumeName} a été déconnecté alors que Cmdr avait déjà copié {done} des {total} fichiers vers {counterpart}. Les autres fichiers sont toujours sur ce disque.",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "{volumeName} a été déconnecté alors que Cmdr avait déjà déplacé {done} des {total} fichiers vers {counterpart}. Les autres fichiers sont toujours sur ce disque.",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "Impossible de confirmer le déplacement",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "Cmdr n'a pas pu confirmer que les fichiers déplacés étaient bien enregistrés sur {volumeName}, et a donc laissé vos originaux là où ils étaient.",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "Cmdr n'a pas pu confirmer que les fichiers déplacés étaient bien enregistrés à destination, et a donc laissé vos originaux là où ils étaient.",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "Jetez un œil à la destination, puis réessayez le déplacement. Vos originaux restent où ils sont.",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "Corbeille non prise en charge",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

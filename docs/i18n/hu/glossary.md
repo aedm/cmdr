@@ -3347,3 +3347,83 @@ csatlakozni ehhez: {hostName}” (`fileExplorer.network.share.connectFailedTitle
   nincs bennük minta). Szándékosan NEM a `fileExplorer.navigation.driveIndex.driveLeaving` folyamatban lévő alakja
   („leválasztása folyamatban van”). „Starts from scratch” → „az elejéről”, mint az
   `indexing.rescan.incompletePreviousScan`; az `átvizsgálás` és a `mappaméretek` ugyanebből a fájlból.
+
+## A drive pulled mid-transfer (errors.write.deviceDisconnected.sided.destination.copy)
+
+Négy kulcs: ugyanaz az átviteli hibapanel, mint a `errors.write.deviceDisconnected.title` alattiak, de megnevezi,
+MELYIK meghajtó tűnt el, és megmondja, hol vannak most a fájlok. A felhasználó ezt egy kirántott meghajtó után olvassa,
+tehát a mondat súlya a megnyugtatáson van, nem a diagnózison. RAW család (nincs ICU), egyszeres aposztróf; a négy érték
+egyikében sincs aposztróf. A `{volumeName}`, `{counterpart}`, `{done}` és `{total}` fordíthatatlan, és `{done}`/`{total}`
+már kész sztringként érkezik, tehát semmilyen szám-formázás nem kerülhet rájuk.
+
+- **„was disconnected” (a meghajtót átvitel közben kihúzták) → `leválasztódott`** · a tegnapi testvérkulcs,
+  `indexing.needsFreshScan.afterDisconnect` pontosan ezt az eseményt (menet közben kihúzott meghajtó)
+  `A(z) {name} leválasztódott` alakkal mondja; a `leválaszt` tő a `style.md` Tier-1 döntése (macOS „Leválaszt”,
+  „Kapcsolat bontása”) · a tő `high`, a mediopasszív alak `tentative` (a referenciákban csak a tárgyas
+  „Eszköz leválasztása” szerepel, cselekvő nélküli múltra nincs mintájuk).
+- **A `leválasztás` / `megszakad a kapcsolat` hasadásból SZÁNDÉKOSAN a `leválasztás` oldala.** A
+  `megszakad a kapcsolat` alakot a katalógus a magától elhaló HÁLÓZATI kapcsolatra tartja fenn
+  (`errors.volume.deviceDisconnected`, `errors.write.connectionInterrupted.title`); itt viszont egy fizikai meghajtó
+  tűnt el a csatolási táblából, ami ugyanaz az esemény, mint a fenti két testvérkulcsé. Hogy a felhasználó rántotta-e
+  ki vagy szoftver adta ki, ezekből a kulcsokból nem derül ki (az angol „disconnected” sem mondja meg), és a magyar
+  `leválasztódott` pont ilyen ágensmentes · `high`.
+- **❌ NEM `A(z) {volumeName}-t leválasztották`**, pedig a panel testvére (`errors.write.deviceDisconnected.message.copy`)
+  a tárgyas `Az eszközt leválasztották` alakot használja: ott nincs helyőrző, itt viszont a `{volumeName}` tárgyragot
+  kapna, amit egy ismeretlen kiejtésű névhez nem lehet illeszteni. A mediopasszív alak az egyetlen, amelyben a név
+  ragozatlan marad. Ugyanezért `A(z)` a névelő, a `driveLeaving` mintájára.
+- **A meghajtónév idézőjel NÉLKÜL áll** (`A(z) {volumeName} leválasztódott`) · a két testvérkulcs
+  (`fileExplorer.navigation.driveIndex.driveLeaving`, `indexing.needsFreshScan.afterDisconnect`) is így írja · `high`.
+  A `style.md` idézőjel-szabálya a felhasználó által ÍRT névre való; egy meghajtónevet a mondat maga elhatárol.
+- **„{done} of {total} files” → `{total} fájlból {done} fájlt`** · a magyar sorrend fordított, és így a `-ból` rag a
+  `fájl` szóra kerül, nem a helyőrzőre · `high`. A számnév után a főnév egyes számban marad (`style.md` § Plurals).
+- **„to {counterpart}” → `ide: {counterpart}`** · a katalógus és a macOS Tier-1 bevett deiktikus szerkezete
+  (`Áthelyezés ide: %@`; lásd fent § A műveleti sor), és ragmentes · `high`. Mondatzáró kettőspont után a pont
+  következik, ahogy a `errors.write.newDataKeptAt.message` teszi.
+- **„all your files are still on {counterpart}” → `minden fájlod továbbra is a(z) {counterpart} meghajtón van`** · itt
+  nem irány, hanem HELY kell, amit a kettőspontos alak nem ad ki, ezért alaptagos szerkezet: a `meghajtó` viseli a
+  ragot, a név ragozatlan · `high`. Ugyanaz a fogás, mint az `az Android platform tools csomag`-nál (`style.md`).
+- **„The rest are still on the drive.” → `A többi továbbra is a meghajtón van.`** · a `többi` alakra a Thunar `hu`
+  („folytathatja a többi fájl átnevezésével”) és a Dolphin `hu` („A többi lap bezárása”) ad fedezetet, a `meghajtó` a
+  `style.md` szótári szava · `high`. Külön mondat, ahogy az angolban, hogy a megnyugtatás önállóan álljon.
+- **„Your originals are untouched…, so nothing is lost.” →
+  `Az eredetiek érintetlenül a helyükön vannak, így semmi sem veszett el.`** · az `eredetiek` és az `érintetlen` a
+  szállított `errors.write.destinationNotFound.message.copy` szavai („Az eredetiek érintetlenek.”), a `helyükön` a
+  `errors.write.readOnlyDevice.source.suggestion`-é („Az eredetiek a helyükön maradnak.”); a macOS Tier-1 a főnévre is
+  ad fedezetet (Finder `InfoWindowGeneralView` „Eredeti:”, „Új eredeti kijelölése…”) · az `eredeti` `high`, az
+  `érintetlen` `high` a katalógusból, de a `hu` kupacban NULLA találata van, tehát kupac-forrásból `tentative`.
+- **„nothing is lost” → `semmi sem veszett el`**, nem `nincs adatvesztés` · a `hu` kupac egyetlen közeli alakja a
+  Double Commander `adatvesztést okozhat` figyelmeztetése, ami rémisztő szakregiszter; a mi mondatunk épp az
+  ellenkezőjét állítja, és a hangunk köznyelvi · `tentative`.
+- Egyik kulcsnál sem kell `sameAsSourceJustification`: mind a négy érték eltér az angoltól.
+
+## A move that could not be confirmed (errors.write.moveNotConfirmed.title)
+
+Négy kulcs, egy panel. A művelet NEM kudarc: a másolatok valószínűleg megvannak, a Cmdr csak nem tudta bizonyítani, és
+épp ezért hagyta meg az eredetiket. A magyar sem fogalmazhat kudarcként, és nem erősítheti fel a „couldn't confirm”-ot
+„elromlott az áthelyezés” irányba.
+
+- **„confirm” (itt: meggyőződni róla, hogy a fájlok kiíródtak) → `ellenőrizni`, ❌ NEM `megerősíteni`** · a szállított
+  `fileOperations.cancelRollback.reason.unverifiable.named` ugyanerre az ismeretelméleti jelentésre már ezt mondja
+  („a Cmdr nem tudta ellenőrizni, hogy módosult-e”) · `high`. A macOS Tier-1 `Confirm` → `Megerősítés` (AppKit
+  `Common`) a JÓVÁHAGYÁS jelentésre való; magyarul a `megerősíteni az áthelyezést` úgy olvasódna, mintha a
+  felhasználónak kellett volna rábólintania, ami tárgyi tévedés lenne.
+- **„Couldn't confirm the move” → `Nem sikerült ellenőrizni az áthelyezést`** · a `nem sikerült …` a settled alak a
+  „couldn't”-ra (lásd fent a hibakulcsok második passzának szakaszát), és a panelcímek szállított regisztere is ez
+  (`errors.write.sourceNotFound.title`, `errors.write.destinationNotFound.title`,
+  `errors.write.permissionDenied.title`) · `high`. Nincs benne se `hiba`, se `sikertelen` címke.
+- **„were saved on {volumeName}” → `kiíródtak-e a(z) {volumeName} meghajtóra`** · a `kiír` a katalógus szava a lemezre
+  írásra (`errors.write.newDataKeptAt.message` „teljesen kiírva megvan”, `fileOperations.rollbackConfirm.body` „amit a
+  művelet eddig kiírt”) · `high`. Az `elment` igét kerüljük: a mediopasszív `elmentődött` csúnya, a tárgyas `elmentette`
+  pedig hamis ágenst adna. A helyőrző itt is alaptagot (`meghajtóra`) kap, hogy ragozatlan maradjon.
+- **„at the destination” → `a célhelyre`** · a settled `célhely` (lásd fent § Terms: `target`), irányraggal, mert a
+  `kiíródik` hova-kérdésre felel · `high`. A névtelen és a neves változat ettől eltekintve betűre azonos, ahogy az
+  angolban is.
+- **„so it kept your originals where they were” → `ezért az eredetieket a helyükön hagyta`** · ugyanaz az `eredeti` +
+  `helyükön` pár, mint a fenti szakaszban · `high`. A magyar ok-okozat (`ezért`) az angol `so`-t viszi, és a mondat
+  végére teszi a megnyugtatást, ahogy az angol.
+- **„Your originals haven't moved.” → `Az eredetiek nem mozdultak el.`** · szándékosan MÁS alak, mint a fölötte álló
+  üzenet `a helyükön hagyta` fordulata, mert az angol is variál (`kept … where they were` / `haven't moved`), és két
+  egymás alatti sorban a szó szerinti ismétlés magyarul feltűnőbb · `high`.
+- **„Have a look at the destination” → `Nézd meg a célhelyet`** · tegező felszólítás, a `style.md` szerinti
+  regiszterben; a `célhely` tárgyesete rendes szó, nem helyőrző, tehát ragozható · `high`.
+- Egyik kulcsnál sem kell `sameAsSourceJustification`: mind a négy érték eltér az angoltól.

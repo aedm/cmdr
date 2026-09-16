@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "{volumeName} werd losgekoppeld nadat Cmdr er {done} van {total} bestanden naartoe had gekopieerd. Je originelen zijn onaangeroerd en staan nog waar ze stonden, dus er is niets verloren gegaan.",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "{volumeName} werd losgekoppeld voordat Cmdr het verplaatsen kon voltooien, dus al je bestanden staan nog op {counterpart}.",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "{volumeName} werd losgekoppeld nadat Cmdr {done} van {total} bestanden naar {counterpart} had gekopieerd. De rest staat nog op de schijf.",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "{volumeName} werd losgekoppeld nadat Cmdr {done} van {total} bestanden naar {counterpart} had verplaatst. De rest staat nog op de schijf.",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "Kon het verplaatsen niet bevestigen",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "Cmdr kon niet bevestigen dat de verplaatste bestanden op {volumeName} zijn bewaard, dus heeft het je originelen laten staan waar ze stonden.",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "Cmdr kon niet bevestigen dat de verplaatste bestanden op de bestemming zijn bewaard, dus heeft het je originelen laten staan waar ze stonden.",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "Kijk even op de bestemming en probeer het verplaatsen daarna opnieuw. Je originelen staan nog waar ze stonden.",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "Prullenmand niet ondersteund",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

@@ -1225,6 +1225,38 @@
   "@errors.write.deviceDisconnected.suggestion": {
     "sourceHash": "f003d9c"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "{volumeName} 在 Cmdr 把 {total} 個檔案中的 {done} 個複製過去之後斷線了。你原本的檔案都還在原處，完全沒有被動過，什麼都沒被丟掉。",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "sourceHash": "37342c4"
+  },
+  "errors.write.deviceDisconnected.sided.destination.move": "{volumeName} 在 Cmdr 完成移動之前就斷線了，所以你的檔案全都還在 {counterpart} 上。",
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "sourceHash": "7da0918"
+  },
+  "errors.write.deviceDisconnected.sided.source.copy": "{volumeName} 在 Cmdr 把 {total} 個檔案中的 {done} 個複製到 {counterpart} 之後斷線了。其餘的都還在磁碟機上。",
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "sourceHash": "70d4976"
+  },
+  "errors.write.deviceDisconnected.sided.source.move": "{volumeName} 在 Cmdr 把 {total} 個檔案中的 {done} 個移動到 {counterpart} 之後斷線了。其餘的都還在磁碟機上。",
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "sourceHash": "bf2d6e7"
+  },
+  "errors.write.moveNotConfirmed.title": "無法確認這次移動",
+  "@errors.write.moveNotConfirmed.title": {
+    "sourceHash": "5d64df8"
+  },
+  "errors.write.moveNotConfirmed.message.named": "Cmdr 無法確認移動過去的檔案已經儲存到 {volumeName} 上，所以把你原本的檔案留在原處沒有動。",
+  "@errors.write.moveNotConfirmed.message.named": {
+    "sourceHash": "0c2dfb6"
+  },
+  "errors.write.moveNotConfirmed.message.unnamed": "Cmdr 無法確認移動過去的檔案已經儲存到目標位置，所以把你原本的檔案留在原處沒有動。",
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "sourceHash": "fefb520"
+  },
+  "errors.write.moveNotConfirmed.suggestion": "打開目標位置看一下，然後再移動一次。你原本的檔案都還在原處。",
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "sourceHash": "d9500f3"
+  },
   "errors.write.trashNotSupported.title": "不支援垃圾桶",
   "@errors.write.trashNotSupported.title": {
     "sourceHash": "af90a02"

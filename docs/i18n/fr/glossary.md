@@ -3396,3 +3396,78 @@ mêmes cas pour « Se connecter au serveur » et n'est pas dans le tas de réfé
   `fileExplorer.navigation.driveIndex.driveLeaving`, qui décrit une éjection encore en cours. « Starts from scratch » →
   « repart de zéro », comme `indexing.rescan.incompletePreviousScan` ; `analyse` et `taille des dossiers` viennent de la
   même famille.
+
+## A drive pulled mid-transfer (`errors.write.deviceDisconnected.sided.destination.copy`)
+
+Les quatre valeurs « sided » disent de quel CÔTÉ le disque est parti et où sont les fichiers maintenant. Le câble a été
+tiré, ce n'est pas une éjection voulue. Elles s'affichent dans le même dialogue que
+`errors.write.deviceDisconnected.message.move`, donc le vocabulaire ne peut pas diverger. La réassurance finale est la
+raison d'être de chaque phrase : elle reste en FIN de valeur, là où l'anglais la met, parce que c'est la dernière chose
+que la personne lit.
+
+- **was disconnected → `a été déconnecté`** · même passé composé et même accord masculin (« disque ») que la sœur
+  `indexing.needsFreshScan.afterDisconnect` et que `indexing.staleDialog.body` · `high`. ❌ Pas « est en cours de
+  déconnexion » (`fileExplorer.navigation.driveIndex.driveLeaving`) : là-bas l'éjection est encore en cours, ici le
+  disque est déjà parti.
+- **the drive that left → `ce disque` ; l'autre disque → `{counterpart}` nu** · `drive → disque` déjà fixé, et
+  `ce disque` reprend `errors.eject.volumeNotFound` (« Ce disque n'est plus connecté ») · `high`. ❌ Jamais d'article
+  élidable ni de contraction devant `{volumeName}` ou `{counterpart}` : leur genre et leur initiale sont inconnus à
+  l'écriture. D'où `sur {counterpart}` et `vers {counterpart}`, qui ne demandent ni article ni accord ; `vers` est le
+  macOS Finder Tier 1 du geste (`FR2`/`FR3` : « Déplacer vers » / « Copier vers »).
+- **{done} of {total} files → `{done} des {total} fichiers`** · `high`. Le partitif est la seule forme juste quand
+  `{done}` vaut 1 (« 1 des 5 fichiers ») ; « {done} fichiers sur {total} », pourtant plus proche du moule macOS
+  (`LocalizableMerged.json` `PW8` « ^0 sur ^1 copiés », `PW35` « Éléments à mettre à jour : ^0 sur ^1 »), écrirait
+  « 1 fichiers », et la famille est brute : aucun pluriel ICU n'est disponible pour rattraper. macOS atteste la
+  contraction devant un compteur (`N169.21_V2` : « Supprimer toutes les sauvegardes des ^0 éléments. »).
+- **Your originals are untouched → `Vos originaux sont intacts`** · paire minimale déjà dans le catalogue :
+  `errors.write.destinationNotFound.message.copy` rend « The originals are untouched. » par « Les originaux sont
+  intacts. », et `errors.write.notConnected.message.destination` rend « Your files are untouched. » par « Vos fichiers
+  sont intacts. » · `high`. Le possessif suit donc l'anglais clé par clé : `vos` quand il dit « your ».
+- **so nothing is lost → `rien n'est donc perdu`** · le `donc` postposé du catalogue (`errors.mutation.volumeGone` :
+  « …, rien n'a donc été modifié. ») ; « perdu » est le mot macOS `fr` pour « lost » (`FF45`, `FF46`) · `high`.
+- **The rest are still on the drive → `Les autres fichiers sont toujours sur ce disque.`** · `high` pour les mots,
+  `tentative` pour le choix de tournure. « Le reste » est pourtant attesté en Tier 1 (`PE30` : « …les ignorer et copier
+  le reste ? ») et dans le catalogue (`fileOperations.transferProgress.rollbackAlreadyLandedTooltip` : « le reste des
+  originaux »), mais « Le reste est toujours… » repasse au singulier juste après un compte pluriel et rend la
+  réassurance vague ; nommer les fichiers dit explicitement ce qui n'a pas bougé.
+- **before Cmdr could finish the move → `avant que Cmdr ait pu terminer le déplacement`** · moule exact de
+  `errors.listing.connectionDropped.explanation` (« avant que Cmdr ait pu terminer la lecture ») · `high`.
+- **after Cmdr copied … → `alors que Cmdr avait déjà copié …`** · `high`. Le plus-que-parfait avec `déjà` dit ce que
+  l'anglais dit avec « after », sans le « après que » + indicatif qui alourdit une phrase déjà longue. Dans la variante
+  destination, « to it » devient le pronom `y` (« y avait déjà copié ») : neutre en genre, donc sans pari sur
+  `{volumeName}`.
+
+## A move that could not be confirmed (`errors.write.moveNotConfirmed.title`)
+
+Ni panne ni déconnexion : le déplacement s'est arrêté à sa dernière étape parce que la destination n'a pas pu garantir
+que les copies étaient écrites. Rien n'est perdu, et Cmdr a gardé les originaux JUSTEMENT parce qu'il ne peut pas
+prouver que les copies sont arrivées. La valeur ne doit jamais laisser entendre que le déplacement a mal tourné.
+
+- **Couldn't confirm the move → `Impossible de confirmer le déplacement`** · moule figé du catalogue pour exactement
+  cette situation (`fileOperations.mkdir.timeoutMessage`, `fileExplorer.rename.unconfirmed`,
+  `fileExplorer.pane.trashUnconfirmedToast` : « Impossible de confirmer … ») · `high`. ❌ Pas « Déplacement impossible »,
+  qui est déjà le titre d'un vrai refus de lecture (`errors.write.readError.title.move`) et qui dirait que rien n'a eu
+  lieu. Titre sans point final, comme les autres titres de la famille.
+- **Cmdr couldn't confirm → `Cmdr n'a pas pu confirmer`** · voix active avec Cmdr sujet, comme le demande `style.md` ;
+  `confirm → confirmer` est la terminologie Microsoft FRA (ids 1475887, 37786) et le verbe des trois toasts ci-dessus ·
+  `high`.
+- **were saved on {volumeName} → `étaient bien enregistrés sur {volumeName}`** · `enregistrer` est le verbe macOS `fr`
+  de « save » (« Vos modifications ont été enregistrées ») · `high`. Le `bien` porte ce que la confirmation aurait
+  établi ; sans lui, la phrase se lit comme un simple constat technique.
+- **at the destination → `à destination`** · déjà dans le catalogue (`fileOperations.cancelRollback.moveAlreadyLanded` :
+  « est déjà arrivé à destination ») · `high`.
+- **it kept your originals where they were → `et a donc laissé vos originaux là où ils étaient`** · `high`. Sujet
+  coordonné, ❌ PAS le pronom `il` : l'antécédent masculin le plus proche est `{volumeName}`, et la phrase dirait que
+  c'est le disque qui a gardé les originaux. Même discipline que « Renommage non confirmé » plus haut. Ne pas
+  « corriger » vers `il a donc laissé`.
+- **Your originals haven't moved → `Vos originaux restent où ils sont.`** · phrase déjà expédiée par
+  `errors.write.readOnlyDevice.source.suggestion` (« The originals stay where they are. » → « Les originaux restent où
+  ils sont. »), avec le possessif que l'anglais porte ici · `high`. ❌ Pas « n'ont pas bougé » (idiomatique, mais absent
+  du pile), ❌ pas « ne se sont pas déplacés », qui répéterait `déplacement` de la phrase précédente.
+- **Have a look at the destination → `Jetez un œil à la destination`** · `settings.askCmdr.memory.description`
+  (« Jetez-y un œil, ou repartez de zéro. ») · `high`. La ligature `œ` est celle du catalogue et de macOS (« Coup
+  d'œil ») ; seules les apostrophes restent ASCII.
+- **try the move again → `réessayez le déplacement`** · `réessayez` est le verbe de reprise de la famille
+  (`errors.write.deviceDisconnected.suggestion` : « …et réessayez. », `errors.eject.notResponding` : « Réessayez dans un
+  instant. ») · `high`.
+- Famille brute : apostrophes ASCII SIMPLES dans les huit valeurs, aucun `sameAsSourceJustification`.

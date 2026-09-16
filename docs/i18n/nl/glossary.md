@@ -3391,3 +3391,73 @@ gevallen voor „Verbind met server” formuleert en niet in de stapel zit.
   vorm „wordt losgekoppeld” uit `fileExplorer.navigation.driveIndex.driveLeaving`. „Starts from scratch” → „helemaal
   opnieuw”, in de lijn van `indexing.rescan.incompletePreviousScan` („begint opnieuw met doorzoeken”); `doorzoeken` en
   `mapgroottes` komen uit dezelfde familie.
+
+## A drive pulled mid-transfer (`errors.write.deviceDisconnected.sided.destination.copy`)
+
+Vier zinnen over een schijf die er tijdens een kopie of verplaatsing uit werd getrokken. De geruststelling is de kern:
+elke waarde moet eindigen op wáár de bestanden staan, niet op wat er misging. `errors.*` is een RAW-familie, dus gewone
+apostrofs en geen ICU; geen van de vier waarden bevat er een.
+
+- **was disconnected → `werd losgekoppeld`** · overgenomen van `indexing.needsFreshScan.afterDisconnect` hierboven, de
+  al vastgelegde verleden tijd voor een schijf die al weg is · `high`. Bewust NIET de lopende vorm „wordt losgekoppeld”
+  van `fileExplorer.navigation.driveIndex.driveLeaving`: die gaat over uitwerpen of ontkoppelen dat nog bezig is, terwijl
+  deze vier over een schijf gaan die er zomaar uit is getrokken.
+- **„{done} of {total} files” → `{done} van {total} bestanden`, zonder lidwoord** · de telformule van de catalogus
+  (`indexing.enrich.progress`, `fileExplorer.imageIndex.folder.someIndexed`, `viewer.pull.progress`) en macOS AppKit
+  („Page %ld of %ld” → „Pagina %1$ld van %2$ld”); Thunar `nl` zegt „%s van %s” · `high`. ❌ Geen `van de`: nergens in de
+  catalogus staat die vorm.
+- **originals → `originelen`; untouched → `onaangeroerd`** · woordelijk uit
+  `errors.write.destinationNotFound.message.copy` („The originals are untouched.” → „De originelen zijn onaangeroerd.”)
+  en `errors.write.notConnected.message.destination`; `fileOperations.transferProgress.titleRemovingOriginals` gebruikt
+  hetzelfde woord voor deze fase van een verplaatsing · `high`.
+- **„where they were” → `waar ze stonden`** · `fileOperations.cancelRollback.moveAlreadyLanded` vertaalt precies deze
+  Engelse staart („are still where they were” → „staan nog op hun oude plek”) · `high` op de betekenis. Hier `waar ze
+  stonden` en niet `op hun oude plek`, want er is geen nieuwe plek: deze bestanden zijn nooit vertrokken.
+- **„so nothing is lost” → `dus er is niets verloren gegaan`** · `verloren gaan` is Apples eigen werkwoord hiervoor
+  (macOS Finder `FF45`/`FF46` „gaan ze verloren”, AppKit „Je wijzigingen gaan verloren als je ze niet bewaart”) ·
+  `high`. De voltooide tijd omdat het hier al gebeurd is, niet dreigt.
+- **„The rest are still on the drive” → `De rest staat nog op de schijf.`** ·
+  `fileOperations.cancelRollback.stoppedDeleting` („De rest staat er nog.”) en
+  `fileOperations.cancelRollback.stoppedMovingBack` („De rest staat nog op de nieuwe plek.”) geven de vorm; `de rest` is
+  enkelvoud, dus `staat`. `drive → schijf` is de glossaryregel hierboven · `high`.
+- **„before Cmdr could finish the move” → `voordat Cmdr het verplaatsen kon voltooien`** · macOS Finder `NE111` zegt
+  precies dit over een overdracht („Je kunt het kopiëren nu voltooien”), met dezelfde naamwoordelijke werkwoordsvorm die
+  de catalogus al gebruikt (`fileOperations.transferProgress.scanTitleMove` „Controleren voor het verplaatsen...”) ·
+  `high`. `voordat Cmdr klaar was met verplaatsen` uit `errors.listing.connectionDropped.explanation` was het
+  alternatief; `voltooien` blijft dichter bij „finish”.
+- **Naar de bestemmingsschijf toe: `er … naartoe`, en nooit een lidwoord bij de naam.** `{volumeName}` en
+  `{counterpart}` dragen willekeurige schijfnamen, dus geen `de`/`het` ervoor en geen voornaamwoord dat een geslacht
+  kiest: `nadat Cmdr er {done} van {total} bestanden naartoe had gekopieerd` · `high`.
+- **Woordvolgorde: de geruststelling staat in een hoofdzin.** Het Engels hangt „so nothing is lost” achter een
+  `nadat`-bijzin; in het Nederlands duwt die bijzin het werkwoord naar achteren en begraaft ze de geruststelling.
+  Daarom twee zinnen, waarvan de tweede met het onderwerp begint en het werkwoord op plaats twee houdt („Je originelen
+  zijn onaangeroerd …”, „De rest staat nog op de schijf.”).
+
+## A move that could not be confirmed (`errors.write.moveNotConfirmed.title`)
+
+Geen mislukking: Cmdr kon niet aantonen dat de kopieën waren weggeschreven, en heeft de originelen juist daaróm laten
+staan. Nergens mag de tekst zeggen dat het verplaatsen is misgegaan.
+
+- **„Couldn't confirm …” → `kon niet bevestigen`** · het vastgelegde patroon van de catalogus voor precies deze
+  onzekerheid (`fileOperations.mkdir.timeoutMessage` „We konden niet bevestigen dat de map is aangemaakt”,
+  `fileExplorer.pane.trashUnconfirmedToast`, `fileExplorer.rename.unconfirmed`), en `bevestigen` is Microsoft Tier 2
+  (`DUTCH.tbx`) plus macOS AppKit („Confirm” → „Bevestig”) · `high`. Hier `Cmdr kon` in plaats van het `We konden` van
+  die drie, want het Engels noemt Cmdr zelf als onderwerp.
+- **Kop → `Kon het verplaatsen niet bevestigen`** · de koppenvorm van deze familie laat het onderwerp weg
+  (`errors.write.destinationNotFound.title` „Kon de doelmap niet vinden”, `errors.write.sourceNotFound.title` „Kon het
+  bestand niet vinden”) · `high`. `het verplaatsen` als naamwoord volgt macOS Finder `NE111` en de catalogus; ❌ niet
+  `de verplaatsing`, dat is in de terugdraaironde al afgewezen als UI-vorm.
+- **„were saved on {volumeName}” → `op {volumeName} zijn bewaard`** · de glossaryregel `save → bewaren` (macOS gebruikt
+  `bewaren`, niet `opslaan`) · `high`. `weggeschreven` uit `errors.write.newDataKeptAt.message` viel af: dat is
+  technischer dan het Engelse „saved” en trekt de zin naar de schijfkant in plaats van naar de gebruiker.
+- **„it kept your originals where they were” → `dus heeft het je originelen laten staan waar ze stonden`** ·
+  `laten staan` is de vastgelegde vorm voor iets wat Cmdr bewust niet verplaatst (glossaryregel `left where it is →
+  laten staan`), en `het` als voornaamwoord voor Cmdr staat al in `fileOperations.cancelRollback.moveAlreadyLanded`
+  („alles wat het heeft verplaatst”) · `high`. De handelende vorm blijft staan: dát Cmdr de originelen bewust heeft
+  laten staan, is de geruststelling zelf. Een lijdende vorm („zijn blijven staan”) zou verbergen wie ze beschermde.
+- **„Have a look at …” → `Kijk even op …`** · `onboarding.stepBeta.signup.rejected` („Kijk even of er een typefout in
+  zit”) en `adb.connect.unauthorized` („Kijk op je telefoon”) · `high`. Het `even` draagt de lichte toon van „have a
+  look”; `Controleer` zou hier als een opdracht klinken.
+- **„Your originals haven't moved.” → `Je originelen staan nog waar ze stonden.`** · dezelfde staart als de twee
+  berichtregels, zodat het venster één belofte doet · `high`. Een letterlijke ontkenning („zijn niet verplaatst”) legt
+  de nadruk op de handeling die niet doorging in plaats van op waar de bestanden staan.

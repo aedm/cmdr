@@ -2893,3 +2893,84 @@ genau diese Fälle für „Mit Server verbinden“ und fehlt im Stapel.
   Verlaufsform „wird gerade getrennt“ aus `fileExplorer.navigation.driveIndex.driveLeaving`: dort läuft das Auswerfen
   noch, hier ist es schon passiert. „Starts from scratch“ → „startet von vorn“ wie
   `indexing.rescan.incompletePreviousScan`; `Durchlauf` und `Ordnergrößen` stammen aus derselben Datei.
+
+## A drive pulled mid-transfer (`errors.write.deviceDisconnected.sided.destination.copy`)
+
+Vier Sätze für den Moment, in dem jemandem mitten im Kopieren oder Bewegen das Laufwerk herausgezogen wurde.
+Rohfamilie: kein ICU, einfache Apostrophe, und `{volumeName}`, `{counterpart}`, `{done}`, `{total}` bleiben
+zeichengleich. Die Arbeit macht jeweils der ZWEITE Satz: er sagt, wo die Dateien jetzt liegen. Er darf nie zu einer
+bloßen Sachmeldung schrumpfen, und er steht am Satzende, weil das Deutsche dort seine Betonung trägt.
+
+- **„was disconnected“ (das Laufwerk ist schon weg) → `wurde getrennt`** · dieselbe Vergangenheitsform wie in § A drive
+  unplugged mid-index und in `errors.volume.deviceDisconnected` („Das Gerät wurde getrennt, bevor die Änderung
+  abgeschlossen war.“) · `high`. Bewusst NICHT die Verlaufsform „wird gerade getrennt“ aus
+  `fileExplorer.navigation.driveIndex.driveLeaving`, und bewusst nichts aus der `auswerfen`-Wortfamilie (§ Auswerfen und
+  Trennen): hier wurde gezogen, nicht ausgeworfen. Der Dialogtitel daneben bleibt `errors.write.deviceDisconnected.title`
+  („Gerät getrennt“), der Satz widerspricht ihm also nicht.
+- **„the drive“ (das gezogene Laufwerk) → `das Laufwerk`** · gesetzt in § Auswerfen und Trennen; `Volume` bleibt dem
+  technischen Sinn vorbehalten · `high`.
+- **Quell- und Ziellaufwerk bekommen KEIN eigenes Wort** · `{volumeName}` ist immer das getrennte Laufwerk,
+  `{counterpart}` immer die Gegenseite, und beide stehen mit `auf` im Satz („auf {counterpart} kopiert“, „liegen noch
+  auf {counterpart}“). So braucht kein Satz `Quelllaufwerk`/`Ziellaufwerk` (Total Commander `1141`, Double Commander
+  `doublecmd.po`), und kein Artikel muss sich auf das unbekannte Genus eines fremden Laufwerksnamens festlegen · `high`.
+- **„Your originals are untouched where they were“ → `Deine Originale liegen unberührt an ihrem Platz`** · der Katalog
+  hat beide Hälften schon: `errors.write.destinationNotFound.message.copy` übersetzt dasselbe englische „The originals
+  are untouched.“ mit „Die Originale sind unberührt.“, und `fileOperations.cancelRollback.moveAlreadyLanded` sagt
+  „liegen noch an ihrem alten Platz“ · `high`. `Originale` ist damit gesetzt, passend zu
+  `fileOperations.transferProgress.titleRemovingOriginals` („Originale werden entfernt …“).
+- **„so nothing is lost“ → `es ist also nichts verloren gegangen`** · macOS `de` sagt Verlust durchweg mit
+  `verloren gehen` (Finder `FF45`/`FF46` „Wenn du nicht sicherst, gehen deine Änderungen verloren.“; AppKit „Deine
+  Änderungen gehen verloren, wenn du diese nicht sicherst.“) · `high`. Perfekt statt Präsens, weil der Vorfall vorbei
+  ist.
+- **„The rest are still on the drive“ → `Der Rest liegt noch auf dem Laufwerk`** · `Der Rest` ist die gesetzte
+  Entsprechung: `fileOperations.cancelRollback.stoppedDeleting` übersetzt „The rest are still there.“ mit „Der Rest ist
+  noch da.“, `fileOperations.cancelRollback.stoppedMovingBack` „The rest stayed …“ mit „Der Rest liegt noch dort, …“ ·
+  `high`. Das Verb `liegen` hält alle vier Sätze zusammen: jeder sagt, WO etwas liegt.
+- **„before Cmdr could finish the move“ → `bevor Cmdr das Bewegen abschließen konnte`** · substantivierter Infinitiv wie
+  im Geschwister `errors.write.deviceDisconnected.message.move` („während des Bewegens“), Satzbau nach
+  `errors.volume.deviceDisconnected` · `high`. `bewegen` ist das gesetzte Move-Verb (macOS Finder, § Terms in
+  `style.md`).
+- **„to it“ → `darauf`, nicht `auf es`/`auf sie`** · `{volumeName}` trägt einen fremden Laufwerksnamen ohne bekanntes
+  Genus, und das Pronominaladverb `darauf` ist genusfrei · `high`. Dieselbe Mechanik wie die `{name}`-Regel in
+  `style.md` § Notes and decisions.
+
+## A move that could not be confirmed (`errors.write.moveNotConfirmed.title`)
+
+Der Dialog nach einem Bewegen, dessen Ankunft das Ziel nicht quittiert hat. Bewusst KEINE Misserfolgsmeldung: nichts
+ist verloren, und Cmdr hat die Originale gerade DESHALB behalten, weil es den Schreibvorgang nicht nachweisen konnte.
+`couldn't confirm` bleibt wörtlich und darf nicht zu „ist schiefgegangen“ aufgewertet werden.
+
+- **„Couldn't confirm the move“ → `Die Bewegung ließ sich nicht bestätigen`** · `ließ sich nicht …` ist das gesetzte
+  Titelmuster für eine nicht geglückte Handlung (`errors.write.permissionDenied.title` „Dieser Ort ließ sich nicht
+  öffnen“), und `bestätigen` ist das gesetzte Wort für `confirm` in genau diesem Sinn:
+  `fileExplorer.pane.trashUnconfirmedToast`, `fileExplorer.rename.unconfirmed` und `fileOperations.mkdir.timeoutMessage`
+  übersetzen „Couldn't confirm …“ alle mit „Es ließ sich nicht bestätigen, dass …“ · `high`. ❌ Nicht
+  `Fehler`/`fehlgeschlagen` (Stilregel), und nicht `prüfen`: `prüfen` gehört im Katalog zum Nachsehen, `bestätigen` zum
+  Quittieren.
+- **`die Bewegung` (das Nomen für diesen EINEN Move-Vorgang)** · der Katalog führt es bereits:
+  `fileOperations.transferProgress.rollbackAlreadyLandedTooltip` („lässt sich die Bewegung jetzt nicht mehr
+  zurücknehmen“) und `queue.empty.body` („Kopier-, Bewegungs- und Löschvorgänge“) · `high`. Abgrenzung zur
+  `style.md`-Notiz „`moves` als Nomen hat kein brauchbares deutsches Nomen“: die gilt für die AUFZÄHLUNG mehrerer
+  Vorgangsarten, wo Verben besser tragen; der eine benannte Vorgang heißt `die Bewegung`.
+- **„were saved on {volumeName}“ → `auf {volumeName} geschrieben wurden`** · die `@key`-Beschreibung meint „written to
+  disk“, und `schreiben` ist dafür das Katalogwort (`errors.write.destinationFull.message` „bevor alles geschrieben
+  war“, `errors.write.newDataKeptAt.message` „vollständig geschrieben“) · `high`. ❌ Nicht `gesichert`: `Sichern` ist im
+  Katalog Apples Save-Wort für die Taste (§ Die Einführungs-Checkliste), nicht das Wort für einen Schreibvorgang auf die
+  Platte.
+- **„at the destination“ → `am Ziel`** · MS-Terminologie (`destination` → `Ziel`, AUT/DEU/CHE/LUX) und Nautilus `de`
+  („Das Ziel ist kein Ordner.“), und der Katalog sagt es genauso (`errors.write.destinationFull.message` „Am Ziel war
+  kein Speicher mehr frei“) · `high`.
+- **„so it kept your originals where they were“ → `deshalb hat es deine Originale dort gelassen, wo sie waren`** ·
+  `deshalb` als Hauptsatz-Anschluss wie in `errors.write.originalsKeptAside.message.many`, das Versprechen selbst wie in
+  `errors.write.readOnlyDevice.source.suggestion` („Die Originale bleiben, wo sie sind.“) · `high`. Der Nebensatz steht
+  am ENDE, damit der Satz auf der Entwarnung endet und nicht auf dem Problem.
+- **„Have a look at the destination“ → `Sieh am Ziel nach`** · `nachsehen` ist die Katalogwendung für dieses
+  freundliche „have a look“ (`fileExplorer.pane.trashUnconfirmedToast` „Sieh zur Sicherheit im Papierkorb nach.“) ·
+  `high`.
+- **„then try the move again“ → `und versuche es dann noch einmal`** · `es` zeigt auf die im Titel benannte Bewegung
+  zurück, wie `errors.write.deviceDisconnected.suggestion` („und versuche es erneut“) · `high`. Eine zweite Nennung der
+  `Bewegung` im selben kurzen Absatz liest sich gestelzt.
+- **„Your originals haven't moved.“ → `Deine Originale liegen noch dort, wo sie waren.`** · positiv gewendet statt
+  verneint: `errors.write.readOnlyDevice.source.suggestion` sagt „Die Originale bleiben, wo sie sind.“ für dasselbe
+  Versprechen · `high`. Ein wörtliches „haben sich nicht bewegt“ würde `bewegen` als Cmdrs Befehlsnamen anklingen lassen
+  (`style.md` § Notes and decisions).
