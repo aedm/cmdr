@@ -1402,9 +1402,13 @@ and the unmount approver's pins.
 - **How to run it**: `pnpm check disk-images`, or any `pnpm check --include-slow` on a Mac. It's `IsSlow` because every
   test attaches and detaches disk images, which no default run should do. 11 tests took 48 s (macOS 26.6.2, 2026-09-14);
   with the index-provider and unmount-approver pins it takes about 8m20s (macOS 27.0, 2026-09-16), nearly all of it
-  image setup and real DiskArbitration waits. ❗ At that length the held-file eject pins can starve: when a refusal
-  arrives depends on `diskarbitrationd`'s own holder scan, which spans 0.13–27.8 s by load, so a "failed under load,
-  passed alone at the same deadline" warn from the retry runner is the expected shape there, ❌ not a defect.
+  image setup and real DiskArbitration waits. ❗ At that length the held-file eject pins can starve. That's load, ❌ not
+  a defect and ❌ not the unmount approver: when a refusal ARRIVES follows `diskarbitrationd`'s own holder scan, which
+  spans 0.13–27.8 s by load, so "failed under load, passed alone at the same deadline" from the retry runner is the
+  expected shape. Measured on macOS 27.0, 2026-09-16: run alone, the four eject pins take 2.0–8.2 s each against their
+  30 s cap, and the set reads the same before and after the approver landed (22.6 s at `ef041e313`; 22.2 s and 24.1 s at
+  `6b7528978`). It can't be the approver by construction either: no approval session exists in a test process at all,
+  since `install_for_app` runs only from the app's Tauri setup and the approver's own pins drop their session per test.
 - **When it skips**: off macOS it answers OK with "skipped: macOS only" and never touches cargo. It's `NotInCI`: every
   CI runner is ubuntu, and `hdiutil` has no Linux counterpart.
 - **What it runs**: `cargo nextest run --run-ignored only` with `HostCargoLaneArgs`, so it reuses `desktop-rust-tests`'

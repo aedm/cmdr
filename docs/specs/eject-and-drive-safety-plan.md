@@ -689,7 +689,10 @@ what later milestones build on:
   eject pins failed under load and all three passed when the runner re-ran them alone at the same deadline: a refusal's
   arrival time follows `diskarbitrationd`'s holder scan, which is what the 0.13–27.8 s spread in § "Evidence" measures.
   A later milestone adding image tests should expect that warn shape, and ❌ never read it as a defect without the
-  alone-run line.
+  alone-run line. **The approver isn't the cause**: no approval session is installed in a test process, and the pins
+  read the same before and after it landed (the set takes 22.6 s at `ef041e313`, 22.2 s and 24.1 s at `6b7528978`;
+  2.0–8.2 s per pin alone, macOS 27.0, 2026-09-16). Method and evidence: `scripts/check/checks/DETAILS.md` § "The
+  disk-image lane".
 
 **Linux** has no approver; `drive_release` serves its eject flight and every start path.
 
