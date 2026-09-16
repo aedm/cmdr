@@ -226,6 +226,15 @@ Colocated `C+D.md` files get updated as each milestone lands, not here; this mil
 translator pass over the ~8 new keys in 10 locales, per `docs/guides/i18n-translation.md`. **It runs after David's QA**,
 so his copy edits translate once rather than twice.
 
+Two extra jobs land here, both David's explicit calls:
+
+- **Cut `apps/desktop/src-tauri/src/menu/CLAUDE.md` to 300–400 words** (it reached 693 during this effort, against a
+  600-word warn, and was already at 624 before it started). Depth moves to `DETAILS.md`; ❌ never an allowlist bump.
+  Read `docs/doc-system.md` first — this is the slimming playbook's exact case.
+- **Fix the stale comment at `apps/desktop/src/lib/commands/sources/main-window.ts:153`**, which says "⌘+ is the native
+  menu accelerator (Cmd+Plus on macOS = Cmd+Shift+=)". That was never true: muda's key vocabulary has no `Plus` token,
+  so `Cmd+Plus` silently produced no accelerator at all until M4 changed it to `Cmd+Equal`.
+
 ## Order and parallelism
 
 - **Wave 1** (independent surfaces, in parallel): M1 + M2 (frontend shortcuts and registry) ‖ M4 (Rust menu bar,
