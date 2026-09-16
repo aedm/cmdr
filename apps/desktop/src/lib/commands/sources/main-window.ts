@@ -164,8 +164,10 @@ export const mainWindowCommands: CommandSource[] = [
     id: 'view.zoom.in',
     nameKey: 'commands.viewZoomIn.label',
     scope: 'Main window',
-    // ⌘+ is the native menu accelerator (Cmd+Plus on macOS = Cmd+Shift+=);
-    // ⌘= is included so the unshifted `=` key fires zoom-in too.
+    // Both fire from the webview's own keydown: `+` is what Shift+= types, `=` the
+    // unshifted key. The menu row spells it `Cmd+Equal` (`menu/menu_bar.rs`), because
+    // muda parses an accelerator into a PHYSICAL key and has no `Plus` token, so
+    // `Cmd+Plus` registered nothing at all and Zoom in showed no key.
     shortcuts: ['⌘+', '⌘='],
     showInPalette: true,
     whileDialogOpen: ZOOM_SCALES_APP,
@@ -315,7 +317,7 @@ export const mainWindowCommands: CommandSource[] = [
     // The only key that re-reads a directory. Scoped to the whole main window, not
     // the file list: a pane shows either the file list or the network browser, and
     // ⌘R refreshes whichever is up (`refreshPane` in `pane-commands.ts` routes it).
-    // That's also why `network.refresh` no longer carries ⌘R: one combo, one winner.
+    // That's also why `network.refresh` carries no ⌘R of its own: one combo, one winner.
     id: 'pane.refresh',
     nameKey: 'commands.paneRefresh.label',
     scope: 'Main window',

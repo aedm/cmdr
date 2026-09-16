@@ -19,9 +19,9 @@ import {
  * The native menu bar was thrown away and rebuilt in a new language, so every
  * item is a NEW object and anything the frontend had pushed onto the old ones is
  * gone: custom accelerators, the pin/unpin label, the "Reopen closed tab"
- * enabled flag, and the enable/disable context. The listener's job is to push
- * all of it back. Checked states and the per-pane view modes survive the rebuild
- * (Rust restores those itself).
+ * enabled flag, the "Select all of the same kind" label, and the enable/disable
+ * context. The listener's job is to push all of it back. Checked states and the
+ * per-pane view modes survive the rebuild (Rust restores those itself).
  */
 export function onMenuBarRebuilt(handler: (payload: MenuBarRebuilt) => void): Promise<UnlistenFn> {
   return events.menuBarRebuilt.listen((event) => {

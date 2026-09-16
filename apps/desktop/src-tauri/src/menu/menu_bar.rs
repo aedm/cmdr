@@ -8,7 +8,7 @@
 //! Where the platforms differ, the row says so:
 //! - `macos_only` / `linux_only` rows, and `macos_menu` for the app and Window menus. Linux has no
 //!   app menu, so About and the credits sit under Help, and Settings and the license under Edit.
-//! - `macos(…)` accelerators, which Linux leaves out. For the F-keys, Tab, Space, and `Cmd+Plus` /
+//! - `macos(…)` accelerators, which Linux leaves out. For the F-keys, Tab, Space, and `Cmd+Equal` /
 //!   `Cmd+Minus` that's because GTK intercepts them before the webview (and `is_focused()` fails
 //!   there), so the frontend's keydown dispatch handles them.
 //! - `split(…)` accelerators and `Label::PerPlatformKey` labels, spelled per platform.

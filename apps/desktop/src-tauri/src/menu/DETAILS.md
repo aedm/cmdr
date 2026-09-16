@@ -115,8 +115,9 @@ Three shapes are worth knowing here:
 
 ### Rebuilding on a language change
 
-A label can't be translated in place (muda has no `set_text` for a `Submenu` title, and the AppKit passes resolve items
-through the live bar anyway), so `rebuild_menu_bar` builds the whole thing again. Two callers: the `set_ui_language`
+`rebuild_menu_bar` builds the whole bar again rather than retitling it in place. Every label moves at once, the Linux
+mnemonics have to be reallocated from the new words (below), and `PredefinedMenuItem`s carry text of their own, so a
+walk that retitled each item would be the build, minus the guarantee that it covered everything. Two callers: the `set_ui_language`
 command (the user picked a language in Settings) and `intl/live_locale.rs`'s emit site (the OS moved under a `'system'`
 setting). Both first ask `refresh_active_locale` whether the answer actually MOVED, because a rebuild is a visible
 flicker plus a round of frontend re-pushes.
@@ -128,8 +129,9 @@ bars is installed (`active_menu_kind`, so a focused viewer isn't yanked back to 
 and `set_macos_menu_icons` run exactly as the focus-swap path does.
 
 What does NOT survive is everything the frontend had pushed onto the old items: custom accelerators, the pin/unpin
-label, the "Reopen closed tab" enabled flag, and the file-scoped enable/disable state. The `menu-bar-rebuilt` event
-carries that news to `DualPaneExplorer.svelte`, which re-pushes all four. Re-pushing everything beats tracking what
+label, the "Reopen closed tab" enabled flag, the "Select all of the same kind" label, and the file-scoped
+enable/disable state. The `menu-bar-rebuilt` event carries that news to `DualPaneExplorer.svelte`, which re-pushes all
+five. Re-pushing everything beats tracking what
 moved: the event is rare, and a missed re-push is invisible until a user reaches for a shortcut. "Open terminal here"
 needs no re-push of its own: its verdict is stored in `MenuState` and re-applied by the `activate_window_menu('main')`
 that handler already makes.
@@ -254,11 +256,20 @@ Shared state managed via `tauri::State<MenuState<Wry>>`. Holds:
 
 ### Accelerator sync
 
-Menu accelerators must match user-customized shortcuts. Since Tauri has no `set_accelerator()` API,
-updating an accelerator requires removing the old item, creating a new one with the new accelerator,
-and reinserting at the same position. `update_menu_item_accelerator()` handles regular items via the
+Menu accelerators must match user-customized shortcuts. An update removes the old item, creates a new
+one carrying the new accelerator, and reinserts it at the same position.
+`update_menu_item_accelerator()` handles regular items via the
 HashMap; `rebuild_view_mode_items()` handles the four per-pane view-mode CheckMenuItems together
 because they share a single accelerator pair (⌘1 / ⌘2 by default) that "follows" the active pane.
+
+⚠️ **This design is stated everywhere as "Tauri has no `set_accelerator()`", and that is false.** Tauri 2.11.5 exposes
+one on all three item kinds (`tauri-2.11.5/src/menu/normal.rs:110`, `check.rs:112`, `icon.rs:191`), over muda 0.19.3's
+own (`muda-0.19.3/src/items/normal.rs:104`) — read from the vendored sources, 2026-09-16. So the machinery this section
+describes is probably reducible to one call per item, and an in-place set would ALSO keep the item's SF Symbol and its
+attributed title instead of destroying and restoring them (see "Display-only accelerators"). Nobody has tried it; it's
+its own change, gated on the `menu_bar_test.rs` snapshot plus a live rebind on both platforms. ❗ Whatever replaces
+this must keep parsing what it emits: `set_accelerator` swallows a string muda can't parse exactly the way
+`MenuItem::new` does (`accelerator.and_then(|s| s.as_ref().parse().ok())`).
 
 The frontend triggers regular-item updates via `invoke('update_menu_accelerator')` from
 `shortcuts-store.ts`, and triggers view-mode rebuilds via `invoke('update_view_mode_menu')` from
@@ -944,7 +955,7 @@ focus-gain (see "Per-window menu activation" above).
 **Why**: The frontend already has a unified command dispatch system (keyboard shortcuts, command palette, MCP tools all use it). Routing menu clicks through the same path avoids duplicating command handling logic. The few exceptions (CheckMenuItems, sort, close-tab) exist because they need side effects *before* or *instead of* the generic emit (toggling checked state, attaching payloads, or closing non-main windows).
 
 **Decision**: Accelerator updates via remove/recreate/reinsert instead of in-place mutation.
-**Why**: Tauri's menu API has no `set_accelerator()` method. The only way to change a displayed accelerator is to destroy the old `MenuItem`, create a new one with the new accelerator string, and reinsert it at the same position in the parent submenu. This is why `MenuState` tracks both the `Submenu` reference and the positional index for every updatable item.
+**Why**: it is what the code does, and `MenuState` tracks both the `Submenu` reference and the positional index for every updatable item to make it possible. ⚠️ The reason recorded for it — that Tauri's menu API has no `set_accelerator()` — is false, and the simplification it blocks is described under "Accelerator sync". Read that before extending this machinery.
 
 **Decision**: one menu bar for both platforms, written as data (`menu_bar.rs`) and built by one generic builder (`menu_bar_builder.rs`), with every platform difference marked on the row it changes: `macos_only` / `linux_only` rows and menus, `macos(…)` / `split(…)` accelerators, per-platform label keys, and top-level IDs that reach macOS alone.
 **Why**: per-platform builders write each item's ID, label, and accelerator twice, so a new item is two edits in lockstep and a drift between them goes unnoticed. As data, a new item is one row, its registration position is its index among the rows its submenu shows, and the table carries no `cfg`, so `menu_bar_test.rs` pins BOTH bars as text on any host. That's the only way to check the Linux bar on a Mac (a real `muda::Menu` panics off the main thread), and the snapshot doubles as the review surface: a menu change reads as a diff of the bar. Sort by, Zoom, and the pane view-mode submenus are rows too, so nothing about the bar lives in a helper.

@@ -1,8 +1,12 @@
 //! The per-pane view-mode menu items, kept in step with the app.
 //!
 //! Two levers, deliberately separate: a full rebuild when the active pane or a
-//! shortcut changed (Tauri has no `set_accelerator()`, so the items are removed
-//! and reinserted), and a cheap check-state sync when only the selection moved.
+//! shortcut changed (the items are removed and reinserted), and a cheap
+//! check-state sync when only the selection moved.
+//!
+//! ⚠️ The recorded reason for the remove/reinsert is that Tauri has no
+//! `set_accelerator()`, which is false — see `DETAILS.md` § Accelerator sync
+//! before extending this.
 
 use std::sync::Mutex;
 
@@ -27,8 +31,8 @@ use super::{
 /// The accelerator is attached only to the active pane's pair, so that the
 /// shortcut hint visually "follows" focus. Items are removed from the per-pane
 /// submenu (Left pane / Right pane) and reinserted at the same position
-/// (Full=0, Brief=1), since Tauri has no `set_accelerator()` API. The new
-/// `CheckMenuItem` references replace the old ones in `MenuState`.
+/// (Full=0, Brief=1). The new `CheckMenuItem` references replace the old ones
+/// in `MenuState`.
 ///
 /// Frontend pushes a rebuild on pane focus change and on shortcut customization.
 pub fn rebuild_view_mode_items<R: Runtime>(app: &AppHandle<R>, menu_state: &MenuState<R>) -> tauri::Result<()> {

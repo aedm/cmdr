@@ -336,8 +336,8 @@ pub fn update_menu_accelerator(app: AppHandle, command_id: &str, shortcut: &str)
                     .display_accelerators
                     .lock_ignore_poison()
                     .insert(menu_id.to_string(), display);
-                // Tauri has no `set_accelerator()`, so the update replaced the item with a fresh
-                // one, and a fresh NSMenuItem carries neither an image nor an attributed title.
+                // The update replaced the item with a fresh one, and a fresh NSMenuItem carries
+                // neither an image nor an attributed title.
                 // Without these two, rebinding a shortcut silently strips that item's SF Symbol
                 // and its display-only accelerator until the next menu-bar swap.
                 #[cfg(target_os = "macos")]
