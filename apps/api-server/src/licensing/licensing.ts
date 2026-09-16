@@ -1,5 +1,12 @@
 import { Hono } from 'hono'
-import { generateLicenseKey, generateShortCode, isValidShortCode, licenseTypes, type LicenseType } from './license'
+import {
+  generateLicenseKey,
+  generateShortCode,
+  isPaddleTransactionId,
+  isValidShortCode,
+  licenseTypes,
+  type LicenseType,
+} from './license'
 import { sendLicenseEmail } from '../email/license'
 import { sendDeviceCountAlert } from '../email/ops-alerts'
 import { constantTimeEqual, verifyPaddleWebhookMulti } from './paddle'
@@ -15,7 +22,9 @@ import { pruneStaleDevices, shouldAlert, type DeviceSet } from './device-trackin
 import {
   claimIssuance,
   classifyIssuance,
+  classifyManualLicense,
   loadIssuance,
+  loadManualLicense,
   markIssuanceDelivered,
   recordIssuedCodes,
   takeOverIssuance,
@@ -200,6 +209,11 @@ async function handleValidation(
     return { response: { body: invalidResponse(), status: 200 }, trackingPromise: null }
   }
 
+  // Anything outside Paddle's id namespace is one we issued by hand, and Paddle would 404 on it.
+  if (!isPaddleTransactionId(transactionId)) {
+    return { response: await validateManualLicense(transactionId, env.TELEMETRY_DB), trackingPromise: null }
+  }
+
   const baseTransactionId = transactionId.replace(/-\d+$/, '')
 
   const paddleConfig = getPaddleConfig(env)
@@ -240,6 +254,44 @@ async function handleValidation(
     : null
 
   return { response: { body, status: 200 }, trackingPromise }
+}
+
+/**
+ * Answer for a manually issued license out of the `license_issuance` ledger, which is the whole
+ * record of it: there is no Paddle transaction behind a manual license.
+ *
+ * A ledger read that throws answers 502 `upstream_error`, exactly like a Paddle outage does, so the
+ * app falls back to its cached status instead of dropping a working license to Personal.
+ *
+ * Device tracking doesn't run here: the fair-use alert resolves the customer through the Paddle
+ * API, and a manual license has no Paddle customer to resolve.
+ */
+async function validateManualLicense(
+  transactionId: string,
+  db: D1Database,
+): Promise<{ body: ValidationResponse | { error: string }; status: 200 | 502 }> {
+  let record
+  try {
+    record = await loadManualLicense(db, transactionId)
+  } catch (error) {
+    console.error('Ledger read failed during validation:', error instanceof Error ? error.message : String(error))
+    return { body: { error: 'upstream_error' }, status: 502 }
+  }
+
+  if (!record) return { body: invalidResponse(), status: 200 }
+
+  const state = classifyManualLicense(record, Date.now())
+  if (state === 'invalid') return { body: invalidResponse(), status: 200 }
+
+  return {
+    body: {
+      status: state,
+      type: record.licenseType,
+      organizationName: record.organizationName,
+      expiresAt: record.expiresAt,
+    },
+    status: 200,
+  }
 }
 
 function isValidDeviceId(deviceId: unknown): string | null {

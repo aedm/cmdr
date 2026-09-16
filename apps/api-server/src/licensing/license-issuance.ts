@@ -1,12 +1,20 @@
 /**
- * Durable fulfillment record for a paid Paddle transaction (D1 table `license_issuance`).
+ * The license ledger (D1 table `license_issuance`): one row per license this server has issued,
+ * whether a customer bought it (`source = 'paddle'`) or we handed it out (`source = 'manual'`).
  *
- * Minting codes must happen exactly once per transaction; emailing them is fine to repeat. This
- * module keeps those two apart: a row is claimed atomically before any side effect, the minted
- * codes are stored before the email goes out, and the row is marked delivered only after Resend
- * accepts it. A redelivery therefore re-sends the SAME codes instead of minting a second set.
- * Rows never expire: "this purchase was fulfilled" has no useful end date.
+ * **Paddle rows are a fulfillment record.** Minting codes must happen exactly once per transaction;
+ * emailing them is fine to repeat. This module keeps those two apart: a row is claimed atomically
+ * before any side effect, the minted codes are stored before the email goes out, and the row is
+ * marked delivered only after Resend accepts it. A redelivery therefore re-sends the SAME codes
+ * instead of minting a second set. Rows never expire: "this purchase was fulfilled" has no useful
+ * end date.
+ *
+ * **Manual rows are the license itself.** There is no Paddle transaction to resolve against, so the
+ * row is what `/validate` answers from: its type, organization, expiry, and revocation. See the
+ * manual section at the bottom of this file.
  */
+
+import { licenseTypes, type LicenseType } from './license'
 
 /** How long a claim may sit unfinished before another delivery may take it over. */
 export const issuanceStaleAfterMs = 5 * 60 * 1000
@@ -137,6 +145,141 @@ export async function markIssuanceDelivered(db: D1Database, transactionId: strin
     .prepare(`UPDATE license_issuance SET emailed_at = ? WHERE transaction_id = ?`)
     .bind(now.toISOString(), transactionId)
     .run()
+}
+
+/**
+ * A manually issued license, as `/validate` and `/admin/revoke` need to see it. Only `source =
+ * 'manual'` rows load through here: a Paddle license's status lives in Paddle, and answering one
+ * from this table would let a canceled subscription keep validating.
+ */
+export interface ManualLicenseRecord {
+  transactionId: string
+  /** NULL only on a row written by something other than `/admin/generate`. */
+  licenseType: LicenseType | null
+  organizationName: string | null
+  /** ISO 8601; null means perpetual. */
+  expiresAt: string | null
+  /** ISO 8601; set means the license is dead, whatever its expiry says. */
+  revokedAt: string | null
+  shortCodes: string[]
+  customerEmail: string | null
+  note: string | null
+}
+
+/** What `/validate` should answer for a manual license. Mirrors `ValidationResponse['status']`. */
+export type ManualLicenseState = 'active' | 'expired' | 'invalid'
+
+export function classifyManualLicense(record: ManualLicenseRecord, nowMs: number): ManualLicenseState {
+  if (record.revokedAt) return 'invalid'
+  if (!record.expiresAt) return 'active'
+  const expiresMs = Date.parse(record.expiresAt)
+  // An unreadable expiry counts as expired. Unlike a Paddle fulfillment, where failing open costs a
+  // paying customer their licenses, a manual row we wrote ourselves is only unreadable if something
+  // is wrong, and the holder has a support path (us) to get a fresh one.
+  if (Number.isNaN(expiresMs)) return 'expired'
+  return expiresMs > nowMs ? 'active' : 'expired'
+}
+
+export async function loadManualLicense(db: D1Database, transactionId: string): Promise<ManualLicenseRecord | null> {
+  const row = await db
+    .prepare(
+      `SELECT transaction_id, license_type, organization_name, expires_at, revoked_at, short_codes,
+              customer_email, note
+       FROM license_issuance WHERE transaction_id = ? AND source = 'manual'`,
+    )
+    .bind(transactionId)
+    .first<{
+      transaction_id: string
+      license_type: string | null
+      organization_name: string | null
+      expires_at: string | null
+      revoked_at: string | null
+      short_codes: string | null
+      customer_email: string | null
+      note: string | null
+    }>()
+  if (!row) return null
+
+  return {
+    transactionId: row.transaction_id,
+    licenseType: isLicenseType(row.license_type) ? row.license_type : null,
+    organizationName: row.organization_name,
+    expiresAt: row.expires_at,
+    revokedAt: row.revoked_at,
+    shortCodes: parseShortCodes(row.short_codes),
+    customerEmail: row.customer_email,
+    note: row.note,
+  }
+}
+
+/** Find a manual license by one of its short codes, for revoking from the code in a support thread. */
+export async function findManualLicenseByCode(db: D1Database, shortCode: string): Promise<ManualLicenseRecord | null> {
+  const row = await db
+    .prepare(`SELECT transaction_id FROM license_issuance WHERE source = 'manual' AND short_codes LIKE ?`)
+    // The column holds a JSON array of codes, and a code is a fixed, unambiguous format, so the
+    // quoted match can't hit a different license by accident.
+    .bind(`%"${shortCode}"%`)
+    .first<{ transaction_id: string }>()
+  return row ? await loadManualLicense(db, row.transaction_id) : null
+}
+
+/**
+ * Write the ledger row for a manual license. Runs BEFORE the code reaches anyone: a row with no
+ * key out in the world is invisible, while a key with no row validates as invalid, which would
+ * hand someone a license that silently doesn't work.
+ */
+export async function recordManualLicense(
+  db: D1Database,
+  params: {
+    transactionId: string
+    shortCode: string
+    licenseType: LicenseType
+    customerEmail: string
+    organizationName: string | null
+    expiresAt: string | null
+    note: string
+    now: Date
+  },
+): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO license_issuance
+         (transaction_id, source, short_codes, quantity, license_type, customer_email,
+          organization_name, expires_at, note, claimed_at, issued_at)
+       VALUES (?, 'manual', ?, 1, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      params.transactionId,
+      JSON.stringify([params.shortCode]),
+      params.licenseType,
+      params.customerEmail,
+      params.organizationName,
+      params.expiresAt,
+      params.note,
+      params.now.toISOString(),
+      params.now.toISOString(),
+    )
+    .run()
+}
+
+/**
+ * Kill a manual license. Returns false when another call got there first, so the caller can say
+ * "already revoked" rather than reporting a second revocation.
+ */
+export async function revokeManualLicense(db: D1Database, transactionId: string, now: Date): Promise<boolean> {
+  const revoked = await db
+    .prepare(
+      `UPDATE license_issuance SET revoked_at = ?
+       WHERE transaction_id = ? AND source = 'manual' AND revoked_at IS NULL
+       RETURNING transaction_id`,
+    )
+    .bind(now.toISOString(), transactionId)
+    .first()
+  return revoked !== null
+}
+
+function isLicenseType(value: string | null): value is LicenseType {
+  return value !== null && (licenseTypes as readonly string[]).includes(value)
 }
 
 function parseShortCodes(raw: string | null): string[] {
