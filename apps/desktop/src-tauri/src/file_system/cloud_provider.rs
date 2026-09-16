@@ -90,6 +90,35 @@ impl CloudProvider {
         matches!(self, Self::ICloudDrive)
     }
 
+    /// Whether deleting a file here leaves a copy the person can get back.
+    ///
+    /// Every provider listed by name keeps its own server-side trash for a
+    /// while (Dropbox and Google Drive say 30 days), so a local delete inside
+    /// their drive syncs as a delete and the file waits on the service. That is
+    /// what lets `delete/cloud_trash.rs` route a trash into a permanent delete,
+    /// and what the delete dialog's copy promises.
+    ///
+    /// ❌ False for [`Self::Other`] on purpose, and it is not a formality: a
+    /// `CloudStorage` directory can belong to something that is not a cloud
+    /// service at all. MacDroid publishes an Android phone as a File Provider
+    /// (`CloudStorage/MacDroid-<device>/`), and a delete there is final. An
+    /// unrecognized provider keeps the OS trash and its refusal, which loses
+    /// nothing; promising recovery we can't deliver would.
+    pub fn keeps_deleted_items_recoverable(&self) -> bool {
+        match self {
+            // iCloud Drive has Recently Deleted, though `cloud_trash.rs` leaves
+            // it alone for its own reason: Finder trashes from there fine.
+            Self::ICloudDrive
+            | Self::GoogleDrive
+            | Self::Dropbox
+            | Self::OneDrive
+            | Self::OneDriveForBusiness
+            | Self::Box
+            | Self::PCloud => true,
+            Self::Other(_) => false,
+        }
+    }
+
     /// Identifies a provider from its `~/Library/CloudStorage` directory name,
     /// which macOS shapes as `<Provider>` or `<Provider>-<account>`.
     pub fn from_cloud_storage_dir(dir_name: &str) -> Option<Self> {

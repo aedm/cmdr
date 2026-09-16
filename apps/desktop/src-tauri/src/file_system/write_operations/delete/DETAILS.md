@@ -138,6 +138,10 @@ the same permanent delete Shift+F8 runs, with the same `WriteOperationType::Dele
   macOS 12.3. Provider identity itself is `cloud_provider.rs`'s single source; this module only asks it.
 - ❌ NOT iCloud Drive (`~/Library/Mobile Documents/`). Finder trashes from there fine, so it keeps today's behavior. A
   provider that refuses anyway is already covered by the typed `TrashRefusalKind` path.
+- ❌ NOT a provider Cmdr doesn't know by name (`CloudProvider::keeps_deleted_items_recoverable`). A `CloudStorage`
+  directory is not proof of a cloud service: MacDroid publishes an Android phone as a File Provider
+  (`CloudStorage/MacDroid-<device>/`), where a delete is final and nothing keeps a copy. The dialog this routing opens
+  promises one, so an unknown provider keeps the OS trash and its refusal, which loses nothing.
 - ❌ NOT the `CloudStorage` container, and ❌ NOT a drive's own root. Deleting a whole cloud root permanently would take
   the account's entire local copy; that one keeps the OS trash and its refusal.
 - ❌ NOT "any location with no trash". A freshly formatted USB stick answers "no trash" from a volume probe only because

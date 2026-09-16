@@ -54,8 +54,8 @@ A member is a plain inline box:
 The hourglass renders last so the eye finds it in the same place regardless of what else is showing. A member this
 module owns renders inline, before it; a member owned elsewhere arrives through `children`, which keeps the corner from
 importing half the app. The two AI members and the FDA badge break that last rule on purpose and are NAMED imports,
-because each belongs somewhere between the chip and the hourglass and `children` renders left of all of them. The
-corner owns ordering, and having it visible in one file beats spreading it across the callers.
+because each belongs somewhere between the chip and the hourglass and `children` renders left of all of them. The corner
+owns ordering, and having it visible in one file beats spreading it across the callers.
 
 Order among them follows one rule: **the more transient a member, the further LEFT.** The row is right-aligned and
 shrink-to-fit, so it grows leftward, and the moving edge is where something that comes and goes belongs. The wake
@@ -67,10 +67,10 @@ order in this one file already says all of it, and a second way to express the s
 ### The FDA badge's one prop
 
 `onOpenOnboarding` is the only thing the corner forwards to a member, and it's required so a corner mounted without it
-is a compile error rather than a badge that quietly does nothing when clicked. It exists because the onboarding
-wizard's visibility is `routes/(main)/+page.svelte` `$state`, so only the page can mount the wizard. The badge's other
-input needs no prop: it asks `isWizardOnFdaStep()` in `$lib/onboarding/onboarding-state.svelte` whether its own
-destination is already on screen.
+is a compile error rather than a badge that quietly does nothing when clicked. It exists because the onboarding wizard's
+visibility is `routes/(main)/+page.svelte` `$state`, so only the page can mount the wizard. The badge's other input
+needs no prop: it asks `isWizardOnFdaStep()` in `$lib/onboarding/onboarding-state.svelte` whether its own destination is
+already on screen.
 
 ⚠️ **A member must open no subscription at mount.** `StatusCorner.svelte.test.ts` and `StatusCorner.a11y.test.ts` mount
 the real corner with the AI members unstubbed, so a listener in a member's `onMount` breaks both. Each member reads

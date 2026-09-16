@@ -295,8 +295,12 @@ impl ResolvedSettings {
                 crate::settings::loader::FullDiskAccessChoice::Unanswered => "unanswered".to_string(),
             },
             // The QUIET probe: a report bundle must never be the thing that raises a TCC
-            // popup at someone already dealing with a problem.
+            // popup at someone already dealing with a problem. Off macOS there's no such
+            // permission to lack, so the honest answer is "nothing is withheld".
+            #[cfg(target_os = "macos")]
             os_full_disk_access: crate::permissions::check_full_disk_access_quiet(),
+            #[cfg(not(target_os = "macos"))]
+            os_full_disk_access: true,
         }
     }
 }

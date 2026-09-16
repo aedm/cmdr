@@ -1,7 +1,7 @@
 # Delete + trash
 
-Delete and trash operations: a local-FS walker (`walkdir` + `fs::remove_file`), a volume-aware walker (MTP, SMB, over
-the `Volume` trait, oracle-aware), and OS-native trash.
+A local-FS walker (`walkdir` + `fs::remove_file`), a volume-aware walker (MTP, SMB, over the `Volume` trait,
+oracle-aware), and OS-native trash.
 
 `../CLAUDE.md` holds the shared `WriteOperationState`, `OperationIntent`, cancel, ETA, and settle contracts;
 `../transfer/CLAUDE.md` is the copy + move parallel. Frontend counterpart:
@@ -9,18 +9,18 @@ the `Volume` trait, oracle-aware), and OS-native trash.
 
 ## Files
 
-- **`walker.rs`**: local (`delete_files_with_progress_inner`) and volume (`delete_volume_files_with_progress_inner`)
-  delete, both taking `&dyn OperationEventSink`; `delete_files_start` routes by `volume_id`. The volume walker asks
-  `try_get_authoritative_listing` before every `list_directory`, so a subtree open in another pane is cache-fed.
-  DETAILS § "Volume-delete internals".
+- **`walker.rs`**: local and volume delete, both taking `&dyn OperationEventSink`; `delete_files_start` routes by
+  `volume_id`. The volume walker asks `try_get_authoritative_listing` before every `list_directory`, so a subtree open
+  in another pane is cache-fed. DETAILS § "Volume-delete internals".
 - **`trash.rs`**: `move_to_trash_sync()` (macOS `trashItemAtURL`; Linux `trash` crate; reused by
   `commands/rename.rs`), `trash_files_with_progress()` (batch, per-item progress, cancel, partial failure), and
-  `trash_dir_for_path()` (`get_trash_dir`; ❌ keep its ancestor walk, DETAILS § Where a trash is). Refusals are a typed
-  `MutationError`, ❌ never a sentence; every item it can't take emits its own `Failed` source-item event. Existence
-  checks use `symlink_metadata()`.
+  `trash_dir_for_path()` (❌ keep its ancestor walk, DETAILS § Where a trash is). Refusals are a typed `MutationError`,
+  ❌ never a sentence; every item it can't take emits its own `Failed` source-item event. Existence checks use
+  `symlink_metadata()`.
 - **`cloud_trash.rs`**: `routing_for_selection()` behind the `trash_routing_for_paths` command, answering whether F8
   must run as a permanent delete. DETAILS § "A trash in a cloud-storage folder becomes a delete".
-- **`volume_start.rs`**: a volume delete's managed lifecycle, here rather than `../mod.rs` because its body is `async`. DETAILS § "The volume delete's own lifecycle".
+- **`volume_start.rs`**: a volume delete's managed lifecycle, here rather than `../mod.rs` because its body is `async`.
+  DETAILS § "The volume delete's own lifecycle".
 - Test siblings: `delete_integration_test.rs`, `delete_volume_reuse_tests.rs`, `preview_binding_tests.rs`,
   `volume_cancel_tests.rs`, `delete_cancel_tests.rs`, `trash_tests.rs`.
 
@@ -40,9 +40,10 @@ the `Volume` trait, oracle-aware), and OS-native trash.
   `scan_volume_recursive`, which propagates a failed probe: a guessed "file" books zero bytes for a whole tree.
 - **Trash has no scan phase**: `trashItemAtURL` is atomic per top-level item, so progress tracks items (bytes from
   pre-computed sizes), and partial failure is supported.
-- **A trash inside `~/Library/CloudStorage/<domain>/` runs as a permanent delete instead** (the provider implements
-  none, and macOS blames the boot volume for it). ❌ Never widen that to "any location with no trash": a fresh USB
-  stick answers the same and would lose data. All-or-nothing across the selection; ❌ not a volume question. DETAILS.
+- **A trash inside `~/Library/CloudStorage/<domain>/` runs as a permanent delete**, but ONLY under a provider we know
+  by name: the dialog promises the service kept a copy, and `MacDroid-<device>` there is an Android phone. ❌ Never
+  widen it to "any location with no trash" either: a fresh USB stick answers the same and would lose data.
+  All-or-nothing across the selection; ❌ not a volume question. DETAILS.
 - **A refusal carries a typed `TrashRefusalKind`, read from the `NSError` DOMAIN + CODE**, ❌ never its localized words
   (`error-string-match` forbids it). A failed batch is `WriteOperationError::TrashRefused`, ❌ not an `IoError` (one
   flattened sentence leaves the dialog only "try again"), reporting `strongest_refusal`, the reason that opens the most

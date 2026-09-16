@@ -584,8 +584,8 @@ The Tauri command is idempotent: `set_fda_pending` is a plain store, `start_mtp_
 (`WATCHER_STARTED`), and `start_volume` no-ops while indexing is running or initializing.
 
 An unreadable `onboarding.fullDiskAccessChoice` in `settings.json` falls back to `Unanswered`, which leaves the gate
-pending. `settings/loader.rs::read_fda_choice` separates that from an absent key so the loader can warn: the fallback
-is the safe one, but a silently lost `Deny` defers the launch work with no trace anywhere.
+pending. `settings/loader.rs::read_fda_choice` separates that from an absent key so the loader can warn: the fallback is
+the safe one, but a silently lost `Deny` defers the launch work with no trace anywhere.
 
 See `src-tauri/src/fda_gate.rs`, `src-tauri/src/volumes/CLAUDE.md` § "FDA gate", and
 `crates/cmdr-index/src/indexing/lifecycle/DETAILS.md` § "FDA-deferred root auto-start".
