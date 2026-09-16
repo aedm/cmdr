@@ -15,19 +15,31 @@ use std::time::Duration;
 
 use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, ImageSpec};
 
+use cmdr_fs::testing::wait_until_async;
+
 use super::chunked_copy::chunk_park;
 use super::copy::copy_files_with_progress_inner;
 use super::move_op::move_files_with_progress_inner;
+use crate::file_system::volume::Volume;
+use crate::file_system::volume::backends::LocalPosixVolume;
+use crate::file_system::volume::manager::test_support::TestVolumeRegistration;
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
+use crate::file_system::write_operations::in_flight_temps::test_support as in_flight_temps_test_support;
+use crate::file_system::write_operations::overwrite::aside_park;
 use crate::file_system::write_operations::state::{
     WriteOperationState, register_operation_status, unregister_operation_status,
 };
 use crate::file_system::write_operations::transfer_sides::{TransferSide, TransferSides};
 use crate::file_system::write_operations::types::{
-    TransferRole, WriteOperationConfig, WriteOperationError, WriteOperationType,
+    ConflictResolution, TransferRole, WriteOperationConfig, WriteOperationError, WriteOperationType,
 };
 use crate::ignore_poison::IgnorePoison;
 use crate::test_support::TestDir;
+
+/// The bytes of the file already on the drive, which an overwrite displaces.
+/// Deliberately unlike the source's, so "the original survived" can't pass on
+/// the replacement's bytes.
+const ORIGINAL_BYTES: &[u8] = b"the user's own footage, already on the drive";
 
 /// Big enough to span several 1 MiB chunks, small enough to write in a moment.
 const SOURCE_SIZE: usize = 8 * 1024 * 1024;
@@ -128,6 +140,178 @@ async fn a_copy_onto_a_drive_that_is_pulled_mid_file_names_the_drive_and_keeps_t
         SOURCE_SIZE as u64,
         "nothing on the Mac side may be touched by a copy"
     );
+    drop(mac_dir);
+    unregister_operation_status(op_id);
+}
+
+/// Every `.cmdr-` scratch name sitting in `dir`, so a cell can say what the
+/// drive is carrying rather than guessing at one path.
+fn scratch_in(dir: &std::path::Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .filter(|name| cmdr_fs::staging::is_cmdr_scratch_name(name))
+        .collect()
+}
+
+/// Stands in for the drive coming back: the volume registry takes the image's
+/// new mount point under the id the transfer was started with, which is what
+/// announces the arrival the ledger has been waiting on.
+fn drive_is_back(volume: &cmdr_fs::testing::disk_images::MountedVolume) -> TestVolumeRegistration {
+    TestVolumeRegistration::install(
+        "vol-image",
+        Arc::new(LocalPosixVolume::new(volume.name.clone(), &volume.mount_point)) as Arc<dyn Volume>,
+    )
+}
+
+/// M11's end of the story, against a real detach: a copy's partial on a drive
+/// that was pulled is not forgotten. The record survives the disconnect, waits
+/// for the drive rather than resolving against a mount point that isn't there,
+/// and is settled the moment the drive is back — in the SAME session.
+///
+/// ❗ Asserts on what the drive carries, not on one path: a force-detach mid-write
+/// may or may not have got the partial's own bytes onto the platter, and either
+/// way nothing of Cmdr's may be left behind once the sweep has been.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "attaches a real HFS+ disk image via hdiutil; run with --run-ignored"]
+async fn a_partial_left_on_a_pulled_drive_is_settled_when_that_drive_comes_back() {
+    let session = DiskImageSession::acquire();
+    let mut image = DiskImage::attach(&session, ImageSpec::Hfs).expect("attach an HFS+ image");
+    let volume = image.volumes()[0].clone();
+    let (mac_dir, source) = mac_source("real-image-arrival-copy");
+    let ledger_dir = TestDir::new("real-image-arrival-ledger");
+    let store = in_flight_temps_test_support::use_store_in(&ledger_dir);
+
+    let events = Arc::new(CollectorEventSink::new());
+    let state = state_onto(&volume.mount_point, &volume.name, std::path::Path::new("/"));
+    let op_id = "op-real-image-arrival";
+    register_operation_status(op_id, WriteOperationType::Copy, Vec::new());
+
+    let sources = vec![source.clone()];
+    let destination = volume.mount_point.clone();
+    let result = detach_mid_transfer(&image, Arc::clone(&events), Arc::clone(&state), move |events, state| {
+        copy_files_with_progress_inner(
+            &*events,
+            op_id,
+            &state,
+            &sources,
+            &destination,
+            &WriteOperationConfig::default(),
+        )
+    });
+    assert!(result.is_err(), "a copy onto a pulled drive can't succeed");
+
+    // The engine has unwound. Its partial could not be removed — the drive was
+    // gone — so the record has to have survived rather than being read as
+    // "already gone" and dropped.
+    assert!(
+        in_flight_temps_test_support::live_paths()
+            .iter()
+            .any(|path| path.to_string_lossy().contains(".cmdr-tmp-")),
+        "the ledger must still be holding the partial the pulled drive kept"
+    );
+
+    image.reattach().expect("the drive is plugged back in");
+    let back = image.volumes()[0].clone();
+    let _registration = drive_is_back(&back);
+
+    wait_until_async(Duration::from_secs(20), "the returned drive's scratch to be settled", || {
+        scratch_in(&back.mount_point).is_empty()
+    })
+    .await;
+
+    assert_eq!(
+        std::fs::metadata(&source).expect("the Mac original is untouched").len(),
+        SOURCE_SIZE as u64,
+        "and the Mac side is whole, since a copy never touches it"
+    );
+    drop(store);
+    drop(mac_dir);
+    unregister_operation_status(op_id);
+}
+
+/// The window the whole milestone exists for, against a real detach: the user's
+/// original is sitting under a scratch name, the replacement hasn't landed, and
+/// the drive is pulled right there. When it comes back, those bytes are still
+/// findable — at their own name or beside it — and ❌ never removed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "attaches a real HFS+ disk image via hdiutil; run with --run-ignored"]
+async fn an_original_set_aside_when_the_drive_was_pulled_is_still_there_when_it_comes_back() {
+    let session = DiskImageSession::acquire();
+    let mut image = DiskImage::attach(&session, ImageSpec::Hfs).expect("attach an HFS+ image");
+    let volume = image.volumes()[0].clone();
+    let (mac_dir, source) = mac_source("real-image-aside");
+    let ledger_dir = TestDir::new("real-image-aside-ledger");
+    let store = in_flight_temps_test_support::use_store_in(&ledger_dir);
+
+    // The file the user already has on the drive, which the copy will replace.
+    let original = volume.mount_point.join("footage.mov");
+    std::fs::write(&original, ORIGINAL_BYTES).expect("the user's file is on the drive");
+
+    let events = Arc::new(CollectorEventSink::new());
+    let state = state_onto(&volume.mount_point, &volume.name, std::path::Path::new("/"));
+    let op_id = "op-real-image-aside";
+    register_operation_status(op_id, WriteOperationType::Copy, Vec::new());
+
+    let park = aside_park::park_next_overwrite();
+    let sources = vec![source.clone()];
+    let destination = volume.mount_point.clone();
+    let worker = {
+        let events = Arc::clone(&events);
+        let state = Arc::clone(&state);
+        std::thread::spawn(move || {
+            copy_files_with_progress_inner(
+                &*events,
+                op_id,
+                &state,
+                &sources,
+                &destination,
+                &WriteOperationConfig {
+                    conflict_resolution: ConflictResolution::Overwrite,
+                    ..WriteOperationConfig::default()
+                },
+            )
+        })
+    };
+
+    assert!(
+        park.wait_until_parked(Duration::from_secs(30)),
+        "the overwrite must park with the original set aside"
+    );
+    image.force_detach().expect("the drive is pulled mid-overwrite");
+    park.release();
+    let result = worker.join().expect("the engine thread finishes");
+    assert!(result.is_err(), "a copy onto a pulled drive can't succeed");
+
+    image.reattach().expect("the drive is plugged back in");
+    let back = image.volumes()[0].clone();
+    let _registration = drive_is_back(&back);
+
+    wait_until_async(Duration::from_secs(20), "the returned drive's scratch to be settled", || {
+        scratch_in(&back.mount_point).is_empty()
+    })
+    .await;
+
+    // The bytes are the point, not the name: the sweep puts them back at
+    // `footage.mov` when that name is free and beside it when something else
+    // took it. ❌ What it may never do is remove them.
+    let landed = back.mount_point.join("footage.mov");
+    let recovered = back.mount_point.join("footage (recovered).mov");
+    let found = [landed, recovered]
+        .into_iter()
+        .filter_map(|path| std::fs::read(&path).ok())
+        .any(|bytes| bytes == ORIGINAL_BYTES);
+    assert!(
+        found,
+        "the user's original must still be on the drive, at its own name or beside it; the drive holds {:?}",
+        std::fs::read_dir(&back.mount_point)
+            .map(|entries| entries.flatten().map(|e| e.file_name()).collect::<Vec<_>>())
+            .unwrap_or_default()
+    );
+    drop(store);
     drop(mac_dir);
     unregister_operation_status(op_id);
 }

@@ -587,6 +587,34 @@ impl DiskImage {
         .map(|_| ())
     }
 
+    /// Attaches this image's backing file again, after a [`force_detach`], and
+    /// reads its mount points fresh.
+    ///
+    /// [`force_detach`]: Self::force_detach
+    ///
+    /// What plugging a drive back in looks like. The volume NAMES are unchanged
+    /// (they live in the filesystem, not in the attachment), but the mount point
+    /// can come back somewhere else, which is the whole reason a leftover record
+    /// stores its path relative to the root.
+    ///
+    /// ❗ Goes through `session.run` like every other call, but the identity
+    /// check can't run first: a detached image has no node to map back to its
+    /// path. That's the same position `create_and_attach`'s attach is in, and
+    /// safe for the same reason — the argument is OUR backing file, named from
+    /// this guard, so there is no stored node to have gone stale.
+    pub fn reattach(&mut self) -> Result<(), HarnessError> {
+        let names: Vec<String> = self.volumes.iter().map(|volume| volume.name.clone()).collect();
+        self.session.run(
+            &self.image_path,
+            Call::Attach {
+                image: &self.image_path,
+            },
+        )?;
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        self.volumes = self.mounted_volumes(&names)?;
+        Ok(())
+    }
+
     fn run(&self, call: Call<'_>) -> Result<Finished, HarnessError> {
         self.session.run(&self.image_path, call)
     }
