@@ -49,6 +49,19 @@ below is met.
 
 ## In progress
 
+- [ ] 2026-09-16 `select-same-kind.md` - **Cmdr can select everything, nothing, the inverse, or a typed glob, but not
+      "the rest of these, the same kind as this one."** `⌥+` (canonically `⌥⇧=` plus the numpad `⌥+`) adds every entry
+      of the cursor row's kind: same extension case-insensitively, or every extension-less file, or every folder. The
+      Select menu grows an item whose label says what it will do right now, rendered in Rust from a typed payload the
+      frontend pushes 200 ms-debounced. Three gaps ride along: bare-key shortcuts (`⇧8`, `+`, `-`) finally show in the
+      menu bar as display-only glyphs (macOS attributed title with a right-aligned tab stop, Linux label suffix) with a
+      modifier floor in `frontend_shortcut_to_accelerator` so a bare accelerator can never be registered; the context
+      menu's 15 hardcoded accelerator labels start reading the live registry, so they stop lying after a rebind; and
+      `⌃⏎` opens the context menu at the cursor row, Finder-style, the first keyboard path to a native popup. "Toggle
+      selection" becomes a "Selection" submenu. Order: M1 physical-key matching for Option-modified punctuation → M2
+      generic dynamic command names (the `app.licenseKey` special case dies) → M3 the command itself (QA point) → M4
+      display-only accelerators → M5 the menu item and its live label (QA point) → M6 registry-driven context-menu
+      accelerators → M7 the submenu → M8 `⌃⏎` → M9 docs and the 10-locale pass after QA.
 - [ ] 2026-09-16 `favorites-menu.md` - **Opening a favorite takes a click on the volume switcher, and there's no
       shortcut** (GitHub #91). ⌃D opens a favorites menu at the switcher's spot: `1`–`9` open a favorite, `0` adds the
       current folder, drag or ⌥↑/⌥↓ reorders, right-click renames or removes. The switcher's Favorites section becomes
