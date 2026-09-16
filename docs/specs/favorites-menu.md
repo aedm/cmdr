@@ -263,8 +263,19 @@ About 1,100–1,500 lines with tests.
 Characterization first: the switcher's behavior gets pinned in tests BEFORE the port, so a behavior-preserving refactor
 is provable (`docs/guides/multi-agent-refactors.md`).
 
-1. Pin what the existing suites miss: keyboard-vs-mouse mode, the submenu's open and close paths, fit-to-viewport,
-   scroll-into-view, the drag cue and drop, and the row controls that mustn't activate their row.
+1. ✅ **Done** (commit `9bc288359`): 16 pins across `navigation/VolumeBreadcrumb.svelte.test.ts`,
+   `pane/volume-breadcrumb.test.ts`, and `navigation/favorites-controller.svelte.test.ts` covering highlight-on-open,
+   keyboard-vs-pointer mode, the submenu's four key paths and the single-cursor rule, placement and scroll-into-view,
+   the three row controls that mustn't activate their row, right-click targeting, the empty-favorites placeholder being
+   skipped by arrows, and the drag cue's gap. Every pin was verified to fail when its behavior is broken. Two
+   carry-forwards for the port:
+   - **Escape is deliberately unified.** Today the routed handler closes only an open submenu while a DOM-dispatched
+     Escape closes the whole dropdown through a second document listener. The primitive has one path: Escape closes the
+     submenu if one is open, otherwise the menu. So the pin asserting today's DOM-Escape-closes-everything case gets
+     updated with the port, ❌ never quietly deleted.
+   - `volume-breadcrumb-handlers.svelte.ts` now measures 94.3% covered, so its `coverage-allowlist.json` entry looks
+     unneeded. Left as a warn on purpose (the file is about to lose most of its contents to the primitive anyway);
+     ❗ removing the entry needs David's consent.
 2. Render the switcher through `Menu`: sections from `volume-grouping.ts`, `trailing` carrying the filesystem label,
    status glyphs, dots, badges, and the eject or disconnect button, `below` carrying the disk-space line, `footer`
    carrying the volume-list timeout warning, and the favorites section as a `reorderable` one with `label` swapped for
