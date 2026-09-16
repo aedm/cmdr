@@ -97,4 +97,10 @@ describe('indexing catalog parity (en)', () => {
     )
     expect(tString('indexing.rescan.fallback')).toBe('Running a fresh drive scan to keep the index accurate.')
   })
+
+  it('names the drive in the notice a disconnection leaves behind', () => {
+    expect(tString('indexing.needsFreshScan.afterDisconnect', { name: 'Backups' })).toBe(
+      'Backups was disconnected while Cmdr was updating its index. The next scan of this drive starts from scratch, so its folder sizes are right again.',
+    )
+  })
 })

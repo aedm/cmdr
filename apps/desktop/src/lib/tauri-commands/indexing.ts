@@ -15,6 +15,7 @@ import {
   type IndexDirUpdatedEvent,
   type IndexFreshnessChangedEvent,
   type IndexMemoryWarningEvent,
+  type IndexNeedsFreshScanEvent,
   type IndexPhaseChangedEvent,
   type IndexReplayCompleteEvent,
   type IndexReplayProgressEvent,
@@ -119,6 +120,19 @@ export function onIndexAggregationComplete(
   callback: (payload: IndexAggregationCompleteEvent) => void,
 ): Promise<UnlistenFn> {
   return events.indexAggregationComplete.listen((event) => {
+    callback(event.payload)
+  })
+}
+
+/**
+ * Fires when a drive's index has been marked for a rebuild because the drive went
+ * away while Cmdr was writing to it. Once per marker write, never per launch, and
+ * nothing is asked of the person: the rebuild is already arranged.
+ */
+export function onIndexNeedsFreshScan(
+  callback: (payload: IndexNeedsFreshScanEvent) => void,
+): Promise<UnlistenFn> {
+  return events.indexNeedsFreshScan.listen((event) => {
     callback(event.payload)
   })
 }

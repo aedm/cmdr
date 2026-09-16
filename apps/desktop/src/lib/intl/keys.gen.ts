@@ -1761,6 +1761,7 @@ export type MessageKey =
   | 'indexing.firstConnect.silenceAll'
   | 'indexing.firstConnect.silenceDrive'
   | 'indexing.firstConnect.title'
+  | 'indexing.needsFreshScan.afterDisconnect'
   | 'indexing.phase.home'
   | 'indexing.phase.priorityFolders'
   | 'indexing.phase.wholeDrive'

@@ -27,6 +27,7 @@ import {
   onIndexCoverageBranchEnded,
   onIndexCoverageBranchStarted,
   onIndexCoveragePhaseStarted,
+  onIndexNeedsFreshScan,
   onIndexPhaseChanged,
   onIndexReplayComplete,
   onIndexReplayProgress,
@@ -38,6 +39,7 @@ import {
   type UnlistenFn,
 } from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast'
+import { getVolumes } from '$lib/stores/volume-store.svelte'
 import { NO_WALKED_GROUND, type WalkedGround } from './walked-ground'
 import { tString } from '$lib/intl/messages.svelte'
 import type { MessageKey } from '$lib/intl/keys.gen'
@@ -482,6 +484,19 @@ export async function initIndexState(): Promise<void> {
     addToast(tString(messageKey), { level: 'info', timeoutMs: 8000, id: 'index-rescan' })
   })
   unlistenHandles.push(unlistenRescan)
+
+  const unlistenNeedsFreshScan = await onIndexNeedsFreshScan((payload) => {
+    // Nothing is asked of the person — the rebuild is already arranged — so this only
+    // gives the folder sizes about to be recomputed a reason. Keyed per volume, so two
+    // drives pulled together don't replace each other's notice.
+    const name = getVolumes().find((volume) => volume.id === payload.volumeId)?.name ?? payload.volumeId
+    addToast(tString('indexing.needsFreshScan.afterDisconnect', { name }), {
+      level: 'info',
+      timeoutMs: 8000,
+      id: `index-needs-fresh-scan-${payload.volumeId}`,
+    })
+  })
+  unlistenHandles.push(unlistenNeedsFreshScan)
 
   const unlistenReplayProgress = await onIndexReplayProgress((payload) => {
     const existing = activity.get(payload.volumeId)

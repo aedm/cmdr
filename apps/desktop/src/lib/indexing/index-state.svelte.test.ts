@@ -93,6 +93,7 @@ vi.mock('$lib/tauri-commands', () => ({
     return Promise.resolve(noopUnlisten)
   },
   onIndexRescanNotification: () => Promise.resolve(noopUnlisten),
+  onIndexNeedsFreshScan: () => Promise.resolve(noopUnlisten),
   onIndexReplayProgress: (cb: (p: IndexReplayProgressEvent) => void) => {
     replayProgressCb = cb
     return Promise.resolve(noopUnlisten)

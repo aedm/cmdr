@@ -70,7 +70,7 @@ with a path-prefix comparison, which relies on trailing-slash normalization.
 
 ## Scan-state events (`index-state.svelte.ts`)
 
-Ten Tauri events drive the state. All of them carry a `volumeId`: scan and replay key the live-`activity` map,
+Eleven Tauri events drive the state. All of them carry a `volumeId`: scan and replay key the live-`activity` map,
 aggregation keys its own `aggregation` map, and the phase event keys its own `phase` map.
 
 - **`index-scan-started`** (`{ volumeId, scanRunKind, priorTotalEntries, priorScanDurationMs, volumeUsedBytes }`):
@@ -103,6 +103,12 @@ aggregation keys its own `aggregation` map, and the phase event keys its own `ph
   Subtract rather than clear, so a later overlap can't take an unrelated branch's hourglass with it. Never held back,
   and the terminal scan events drop the volume's entry outright.
 - **`index-rescan-notification`** (`{ volumeId, reason, details }`): show an info toast with a reason-specific message.
+- **`index-needs-fresh-scan`** (`{ volumeId }`): the drive went away while Cmdr was writing to its index, so that index
+  is marked for a rebuild and the next scan starts from scratch. Show an info toast naming the drive
+  (`indexing.needsFreshScan.afterDisconnect`), keyed `index-needs-fresh-scan-<volumeId>` so two drives pulled together
+  don't replace each other's notice. Keeps NO state: the backend fires it once per marker write, ❌ never per launch, so
+  there's no dedup to do on this side and nothing to clear on a terminal event. Nothing is asked of the person either —
+  the rebuild is already arranged — so it exists to give the folder sizes about to be recomputed a reason.
 - **`index-replay-progress`** (`{ volumeId, eventsProcessed, estimatedTotal }`): create/replace the volume's `activity`
   entry as `phase: 'replaying'`, update counters.
 - **`index-replay-complete`** (`{ volumeId, durationMs }`): remove the volume's replay entry.
@@ -424,12 +430,14 @@ Manual end-to-end testing runs the Rust indexer via `pnpm dev`.
 
 - `$lib/ipc/bindings`: `commands` (status query).
 - `$lib/tauri-commands`: the `tauri-specta`-typed indexing event wrappers (`onIndexScan*`, `onIndexAggregation*`,
-  `onIndexReplay*`, `onIndexRescanNotification`, `onIndexDirUpdated`) + `UnlistenFn`, in `tauri-commands/indexing.ts`.
-- `$lib/ui/toast`: `addToast` (rescan notification toasts).
+  `onIndexReplay*`, `onIndexRescanNotification`, `onIndexNeedsFreshScan`, `onIndexDirUpdated`) + `UnlistenFn`, in
+  `tauri-commands/indexing.ts`.
+- `$lib/ui/toast`: `addToast` (the rescan-notification and needs-fresh-scan toasts).
 - `$lib/file-explorer/selection/selection-info-utils`: `formatNumber` (indicator only, `'en-US'` locale).
 - `$lib/tooltip/tooltip`: `tooltip` action with the `contentEl` live-content param (indicator only).
 - `$lib/ui/ProgressBar.svelte`: size `sm` (drive row).
-- `$lib/stores/volume-store.svelte`: `getVolumes` (indicator resolves `volumeId` → display name).
+- `$lib/stores/volume-store.svelte`: `getVolumes` (the indicator and the needs-fresh-scan toast each resolve a
+  `volumeId` → display name, both falling back to the id — a drive that just went away may already be out of the store).
 
 ## i18n
 

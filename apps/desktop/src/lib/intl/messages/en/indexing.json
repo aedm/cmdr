@@ -302,6 +302,14 @@
     "description": "Generic fallback info toast shown when Cmdr rescans the drive for a reason not covered by the specific messages. Calm and explanatory."
   },
 
+  "indexing.needsFreshScan.afterDisconnect": "{name} was disconnected while Cmdr was updating its index. The next scan of this drive starts from scratch, so its folder sizes are right again.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "description": "Info toast shown once when a drive was unplugged, or otherwise went away, while Cmdr was writing to its index, so that index is thrown away and rebuilt next time the drive is connected. Nothing is asked of the person and nothing of theirs is at risk: the index is Cmdr's own cache of what's on the drive, and the only consequence is that folder sizes are recomputed. Reassuring and matter-of-fact.",
+    "placeholders": {
+      "name": "the drive''s display name (e.g. Backups)"
+    }
+  },
+
   "indexing.firstConnect.title": "Index {name}?",
   "@indexing.firstConnect.title": {
     "description": "Heading of the notification shown the first time the user opens a new external drive (a network share or device). Asks whether to index it for folder sizes and search.",
