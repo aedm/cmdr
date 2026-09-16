@@ -8,7 +8,8 @@ versions.
 
 Four areas own their own code, tests, and `CLAUDE.md` + `DETAILS.md`; read an area's docs before working in it.
 
-- `src/licensing/` — the Paddle webhook, `/activate`, `/validate`, `/admin/generate`, `/admin/revoke`.
+- `src/licensing/` — the Paddle webhook, `/activate`, `/validate`, `/admin/generate`, `/admin/revoke`,
+  `/admin/licenses`.
 - `src/telemetry/` — crash reports, heartbeats, downloads, update checks, error reports, feedback.
 - `src/website/` — `/beta-signup`, `/likes/:slug`, the `?r=` link codes.
 - `src/admin/` — the dashboard's read-only aggregations, including `/admin/funnel`.

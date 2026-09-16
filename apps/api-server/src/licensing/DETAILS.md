@@ -9,6 +9,8 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 
 - **`licensing.ts`**: routes `/webhook/paddle`, `/activate`, `/validate`, and the mount for `manual-licenses.ts`.
 - **`manual-licenses.ts`**: `/admin/generate` and `/admin/revoke`, the licenses we hand out rather than sell.
+- **`admin-licenses.ts`**: `GET /admin/licenses`, the dashboard's view of every license we've issued, plus the pure
+  `classifyLedgerEntry`. § The licenses listing.
 - **`license.ts`**: short-code and license-key generation, the `LicenseType` enum, `isPaddleTransactionId` /
   `generateManualTransactionId` (the id namespaces `/validate` dispatches on), and `generateShortId(prefix, len)` (also
   used for the `ERR-XXXXX` error-report ids).
@@ -21,7 +23,8 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - **`device-tracking.ts`**: device-set helpers — prune stale devices, alert threshold.
 - Tests: `license.test.ts`, `paddle.test.ts`, `license-issuance.test.ts` (the two pure classifiers),
   `device-tracking.test.ts`, `webhook-paddle.test.ts` (first delivery, duplicate, retry after a failed email, concurrent
-  delivery, Resend rejection), and two real-runtime suites that run the built Worker in workerd (`../../DETAILS.md` §
+  delivery, Resend rejection), `admin-licenses.test.ts` (the states, the orphan and missing-code reconciliation), and
+  two real-runtime suites that run the built Worker in workerd (`../../DETAILS.md` §
   Test runtimes): `production-runtime.test.ts` (minting, manual validation, revocation) and `webhook-runtime.test.ts`
   (the purchase path end to end, with Paddle and Resend stubbed at the socket).
 
@@ -164,6 +167,40 @@ from an argument, so the credential stays out of shell history.
 **Gotcha: device tracking doesn't run on the manual path.** The fair-use alert resolves the customer through the Paddle
 API, and a manual license has no Paddle customer. A shared hand-issued key is therefore invisible to the 6-device alert;
 revocation is the lever.
+
+## The licenses listing (`GET /admin/licenses`)
+
+What the private dashboard's Licenses page reads, and the only place any question about license codes can be answered:
+Paddle's dashboard knows about money, not about codes, activations, or anything we handed out by hand. One call returns
+every row of the ledger (`listLedger`, newest claim first, capped at `ledgerListLimit` = 1000) with its columns mapped
+to camelCase, plus a computed `state`.
+
+`classifyLedgerEntry` (pure, unit-tested) decides the state, in this order:
+
+- `revoked`: `revokedAt` set. Its codes are gone from KV by design.
+- `expired`: past `expiresAt` (or an unreadable one, the same call `classifyManualLicense` makes, so the page and the
+  app never disagree in front of the same person). Only a hand-issued license carries an expiry.
+- `unfinished`: claimed, never minted. A delivery that died, or one in flight this second.
+- `undelivered`: minted but never emailed, and only for a `paddle` row: someone paid and is waiting. A manual license is
+  often deliberately not emailed (the code goes into a reply by hand), so the same shape there is normal.
+- `active`: everything else.
+
+**`active` on a Paddle row means "we fulfilled this purchase", never "the subscription is still running."** Only Paddle
+knows the latter, and asking it per row would cost one API call per license on every page load. The vocabulary is
+therefore deliberately NOT `/validate`'s (`active` / `expired` / `invalid`); for a manual row the two agree, except that
+`/validate` calls a revoked license `invalid`.
+
+**The orphan check is the point of reading KV at all.** The endpoint scans the `LICENSE_CODES` namespace (paging
+through `list`, keeping only keys that match the short-code format, since device sets and the activation counter share
+the namespace) and reconciles it against the ledger both ways:
+
+- `orphanCodes`: in KV, explained by no row. A license handed out before the ledger existed, or minted by a delivery
+  that died before recording it. Someone may be holding one, and nothing in our records says whether it ever worked.
+- `missingCodes`: on a row, absent from KV, so it can't be activated. Revoked rows are excluded, since revoking deletes
+  their codes on purpose.
+
+Both are read-only observations. ❌ Don't make this endpoint repair what it finds: an orphan needs a human to decide
+whether to honor, ledger, or ignore it.
 
 ## Webhook verification
 

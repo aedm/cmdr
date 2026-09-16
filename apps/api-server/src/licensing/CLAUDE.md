@@ -1,8 +1,9 @@
 # Licensing
 
 Everything money touches: the Paddle webhook that fulfills a purchase, `/activate`, `/validate`, and the hand-issued
-licenses behind `/admin/generate` and `/admin/revoke`. `licensing.ts` holds the routes and mounts `manual-licenses.ts`;
-`license.ts` (short codes, key signing, id namespaces), `license-issuance.ts` (the D1 ledger), `paddle.ts` (HMAC verify,
+licenses behind `/admin/generate` and `/admin/revoke`. `licensing.ts` holds the routes and mounts `manual-licenses.ts`
+plus `admin-licenses.ts` (`GET /admin/licenses`, the dashboard's list of every license we've issued); `license.ts`
+(short codes, key signing, id namespaces), `license-issuance.ts` (the D1 ledger), `paddle.ts` (HMAC verify,
 `constantTimeEqual`), `paddle-api.ts` (Paddle REST), and `device-tracking.ts` (fair-use device sets) are its leaves.
 
 ## Must-knows
@@ -36,6 +37,8 @@ licenses behind `/admin/generate` and `/admin/revoke`. `licensing.ts` holds the 
   Paddle, anything else resolves from `license_issuance` where `source = 'manual'`. ❌ Never answer a `txn_` id from the
   table, a canceled subscription would keep validating. `/admin/generate` and `/admin/revoke` (`manual-licenses.ts`)
   take `ADMIN_API_TOKEN` like every other admin route, and minting refuses without a `note`. DETAILS § Manual licenses.
+- **`/admin/licenses` reports OUR records, ❌ never Paddle's truth.** `active` on a `paddle` row means we fulfilled the
+  purchase; whether the subscription still runs only Paddle knows. DETAILS § The licenses listing.
 
 Fulfillment states, webhook verification, the replay-tolerance gap, price-ID mapping, device sets, and the sandbox
 runbooks: `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.

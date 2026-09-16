@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { createTestHarness } from 'wrangler'
 import * as ed from '@noble/ed25519'
 import { isValidShortCode, type LicenseData } from './license'
+import type { LicenseListing } from './admin-licenses'
 import { issuanceStaleAfterMs } from './license-issuance'
 
 /**
@@ -20,6 +21,7 @@ import { issuanceStaleAfterMs } from './license-issuance'
  */
 
 const webhookSecret = 'test-webhook-secret'
+const adminToken = 'test-admin-token'
 const perpetualPriceId = 'pri_perpetual'
 const privateKey = ed.utils.randomSecretKey()
 const privateKeyHex = Array.from(privateKey, (byte) => byte.toString(16).padStart(2, '0')).join('')
@@ -33,6 +35,7 @@ const server = createTestHarness({
         ED25519_PRIVATE_KEY: privateKeyHex,
         PADDLE_WEBHOOK_SECRET_LIVE: webhookSecret,
         PADDLE_API_KEY_LIVE: 'test-paddle-key',
+        ADMIN_API_TOKEN: adminToken,
         PRICE_ID_COMMERCIAL_PERPETUAL: perpetualPriceId,
         RESEND_API_KEY: 'test-resend-key',
       },
@@ -394,5 +397,44 @@ describe('redelivering a purchase in the Worker runtime', () => {
     } finally {
       held.release()
     }
+  })
+})
+
+/**
+ * `GET /admin/licenses` reconciles the ledger with the KV namespace, so a mock of either proves
+ * nothing about the real pair. Here the rows are ones the webhook actually wrote, and the query runs
+ * against a real SQLite through the D1 binding.
+ */
+describe('listing licenses in the Worker runtime', () => {
+  it('shows what the webhook issued, and flags a code no row explains', async () => {
+    const env = await server.getWorker<HarnessEnv>().getEnv()
+    const orphan = 'CMDR-2345-6789-ABCD'
+    await env.LICENSE_CODES.put(orphan, JSON.stringify({ fullKey: 'from.before' }))
+
+    const response = await server.fetch('http://api.getcmdr.com/admin/licenses', {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    })
+    const text = await response.text()
+    expect(response.status, `Body: ${text}\nWorker logs:\n${workerLogs()}`).toBe(200)
+    const listing = JSON.parse(text) as LicenseListing
+
+    const fulfilled = listing.licenses.find((license) => license.transactionId === 'txn_runtime_single')
+    expect(fulfilled).toMatchObject({
+      source: 'paddle',
+      state: 'active',
+      licenseType: 'commercial_perpetual',
+      customerEmail: paddleCustomer.email,
+      quantity: 1,
+    })
+    expect(fulfilled?.shortCodes).toHaveLength(1)
+
+    expect(listing.orphanCodes).toEqual([orphan])
+    expect(listing.missingCodes).toEqual([])
+  })
+
+  it('refuses a caller without the admin token', async () => {
+    const response = await server.fetch('http://api.getcmdr.com/admin/licenses')
+
+    expect(response.status).toBe(401)
   })
 })
