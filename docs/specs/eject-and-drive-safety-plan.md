@@ -90,8 +90,9 @@ approval-hook spike) with the drive-safety decisions below.
   rules, the `dlsym` and Security externs, and the facts as a second loop inside the one budget), `dc6092850` (the
   real-image lane: the disk-image pin, and the two held-file pins asserting `Cmdr`), `e6b4d866e` (rustfmt), `164c70b3a`
   and `70836987a` (the docs, and what the kinds don't say for themselves).
-- **M15, the eject copy (done)**: `c5e4d4c4f` (`$lib/intl/list-format.ts`), `98fa38d19` (`wordUnmountRefusal`, the six
-  keys, and the per-case tests), `32fcbdd83` (the docs).
+- **M15, the eject copy (done)**: `d80392eaf` (`$lib/intl/list-format.ts`), `17e78ee40` (`wordUnmountRefusal`, the six
+  keys, and the per-case tests), `3a3b11f66` (the docs), `f231c3d7c` (this plan), `503706817` (the six keys in the ten
+  translated catalogs, with a glossary entry per language).
 - **Next, the release checkpoint**: the close-out sweep and David's manual QA list.
 - **Belonging to no milestone, since M11 merged**: `b3ea68362` (the parked hazard names the six cells that aren't its
   fix), `df09b3023` (a lane test's panic message exempted from `pluralize-noun`), `7a9961fe6`, `1bf9f6c99`, and
