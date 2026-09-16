@@ -123,6 +123,12 @@ pub struct ContextMenuPaneFacts {
     /// no, so the two can't be folded into one flag. `Share` needs one more yes on top:
     /// macOS has to actually offer a service (`FileContextInfo::share_services`).
     pub can_share: bool,
+    /// Whether "Add to favorites" may appear on a folder row at all: whether that row is a
+    /// place a favorite could point back to next launch. The ROW's answer, like `can_share`,
+    /// and the affordance half of Rust's own `add_favorite` gate — which refuses an archive's
+    /// insides, a `.git`-portal folder, a phone, and a protocol-only server. Without it the
+    /// item is offered where the add would be refused, and the user gets silence.
+    pub can_favorite: bool,
 }
 
 /// Builds a context menu for a specific file.
@@ -151,6 +157,7 @@ pub fn build_context_menu<R: Runtime>(
         restrict_destination_actions,
         can_open_terminal_here,
         can_share,
+        can_favorite,
     } = pane;
     // Both gate macOS-only items, so on Linux they're read nowhere.
     #[cfg(not(target_os = "macos"))]
@@ -303,10 +310,11 @@ pub fn build_context_menu<R: Runtime>(
     menu.append(&copy_filename_item)?;
     menu.append(&copy_path_item)?;
 
-    // Add to favorites — directories only (favorites are folders), and not on the search-results
-    // snapshot pane (its rows aren't a stable folder to favorite). Favorites the right-clicked
-    // folder's path, which `on_menu_event` reads from `MenuState.context.path`.
-    if is_directory && !restrict_destination_actions {
+    // Add to favorites — directories only (favorites are folders), and only where a favorite
+    // could point back: `can_favorite` is the caller's reading of the row, matching the gate
+    // `add_favorite` enforces. Favorites the right-clicked folder's path, which
+    // `on_menu_event` reads from `MenuState.context.path`.
+    if is_directory && can_favorite {
         let add_favorite_item = MenuItem::with_id(
             app,
             FAVORITES_ADD_CONTEXT_ID,

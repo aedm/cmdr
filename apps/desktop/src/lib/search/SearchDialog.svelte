@@ -218,7 +218,9 @@
             entry.name,
             entry.isDirectory,
             [entry.path],
-            {},
+            // A hit comes from the file index, which only walks drives a favorite may point
+            // at, so a folder row here is always favoritable.
+            { canFavorite: entry.isDirectory },
             { sizeText: contextMenuSizeText(contextMenuSizeBytes([entry])) },
         ).catch(() => {
             // Silent: a missing menu is preferable to a stuck dialog.

@@ -84,6 +84,13 @@ export interface PaneContextMenuFacts {
    * search-results snapshot has no folder of its own yet lists real files.
    */
   canShare?: boolean
+  /**
+   * Whether "Add to favorites" appears on a folder row. A favorite has to point somewhere
+   * that's still there next launch and openable from a cold start, so an archive's insides,
+   * a `.git`-portal folder, a phone, and a protocol-only server all say no. Omitting it
+   * hides the item: Rust's `add_favorite` would refuse anyway, and it refuses silently.
+   */
+  canFavorite?: boolean
 }
 
 /**
@@ -143,6 +150,7 @@ export async function showFileContextMenu(
       listingId: pane.listingId ?? '',
       canOpenTerminalHere: pane.canOpenTerminalHere ?? false,
       canShare: pane.canShare ?? false,
+      canFavorite: pane.canFavorite ?? false,
     },
     target: {
       countText: target.countText ?? null,

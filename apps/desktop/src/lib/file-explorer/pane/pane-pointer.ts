@@ -15,7 +15,7 @@ import { contextMenuCountText, contextMenuSizeBytes, contextMenuSizeText } from 
 import type { FileEntry, SelectPayload } from '../types'
 import { getSetting, setSetting } from '$lib/settings'
 import { addToast } from '$lib/ui/toast'
-import { capabilitiesFor, rowIsOsVisible } from './volume-capabilities'
+import { capabilitiesFor, paneFolderCanBeFavorited, rowIsOsVisible } from './volume-capabilities'
 import { canOpenTerminalIn } from '$lib/open-terminal/terminal-target'
 import { isFileListBackgroundClick } from './pane-background-dblclick'
 import DoubleClickPaneHintToastContent from './DoubleClickPaneHintToastContent.svelte'
@@ -86,9 +86,11 @@ export function createPanePointer(deps: PanePointerDeps): PanePointer {
     if (entry.name === '..') {
       // The `..` row gets its own one-item menu: "Add to favorites" (favorites the
       // parent dir `entry.path`). The full file menu (Copy / Move / Delete) makes no
-      // sense on `..`. On a snapshot pane there's no real parent to favorite, so skip.
+      // sense on `..`. Where that parent isn't somewhere a favorite could point back to
+      // — a snapshot pane, an archive's insides, a `.git`-portal folder, a phone — the
+      // menu would hold nothing but an item `add_favorite` refuses, so none pops at all.
       deps.clearJump()
-      if (deps.getVolumeId() === 'search-results') return
+      if (!paneFolderCanBeFavorited(deps.getVolumeId(), entry.path)) return
       await showParentRowContextMenu(entry.path)
       return
     }
@@ -128,6 +130,10 @@ export function createPanePointer(deps: PanePointerDeps): PanePointer {
         // folder to `cd` into but lists real files, and an archive's insides are the
         // other way round.
         canShare: rowIsOsVisible(volumeId, entry.path),
+        // "Add to favorites" acts on the right-clicked FOLDER, and asks a stricter
+        // question than sharing does: not just whether the OS can read it now, but
+        // whether it's still there next launch. A snapshot row fails exactly there.
+        canFavorite: paneFolderCanBeFavorited(volumeId, entry.path),
       },
       { countText: contextMenuCountText(paths.length), sizeText: contextMenuSizeText(sizeBytes) },
     )

@@ -163,6 +163,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: true,
           canShare: true,
+          canFavorite: true,
         },
         { countText: '2 items', sizeText: undefined },
       )
@@ -181,6 +182,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: true,
           canShare: true,
+          canFavorite: true,
         },
         { countText: undefined, sizeText: undefined },
       )
@@ -199,6 +201,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: true,
           canShare: true,
+          canFavorite: true,
         },
         { countText: undefined, sizeText: undefined },
       )
@@ -217,6 +220,7 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: false,
           canShare: false,
+          canFavorite: false,
         },
         { countText: undefined, sizeText: undefined },
       )
@@ -236,6 +240,9 @@ describe('createPanePointer', () => {
           listingId: 'listing-1',
           canOpenTerminalHere: false,
           canShare: true,
+          // The third fact parts company with the other two: a snapshot row is a real
+          // file, so it shares, but it isn't a folder that will still be there next launch.
+          canFavorite: false,
         },
         { countText: undefined, sizeText: undefined },
       )
@@ -250,7 +257,7 @@ describe('createPanePointer', () => {
         'a.txt',
         false,
         ['/dir/trip.zip/IMG_0001.jpg'],
-        { listingId: 'listing-1', canOpenTerminalHere: true, canShare: false },
+        { listingId: 'listing-1', canOpenTerminalHere: true, canShare: false, canFavorite: false },
         { countText: undefined, sizeText: undefined },
       )
     })
@@ -264,6 +271,16 @@ describe('createPanePointer', () => {
     it('shows no `..` menu on a snapshot pane, which has no real parent to favorite', async () => {
       state.volumeId = 'search-results'
       await createPanePointer(deps).handleContextMenu(entryOf({ name: '..', path: '/dir', isDirectory: true }))
+      expect(ipc.showParentRowContextMenu).not.toHaveBeenCalled()
+    })
+
+    // The menu holds nothing but "Add to favorites", and `add_favorite` refuses an
+    // archive-inner path. Before the gate the user got a menu item that silently did
+    // nothing; now the menu doesn't come up at all.
+    it('shows no `..` menu inside an archive, where a favorite could never point', async () => {
+      await createPanePointer(deps).handleContextMenu(
+        entryOf({ name: '..', path: '/dir/trip.zip/photos', isDirectory: true }),
+      )
       expect(ipc.showParentRowContextMenu).not.toHaveBeenCalled()
     })
 

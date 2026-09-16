@@ -72,6 +72,10 @@ pub struct PaneContextMenuFacts {
     /// needs. Not the same question as `can_open_terminal_here`: the search-results
     /// snapshot has no folder of its own yet lists real files.
     pub can_share: bool,
+    /// Whether the right-clicked folder is somewhere a favorite could point back to, so the
+    /// "Add to favorites" item is offered. The affordance half of [`crate::commands::favorites`]'s
+    /// own gate; ❗ enforcement stays there, since a context menu is not the only add surface.
+    pub can_favorite: bool,
 }
 
 /// Shows the file context menu.
@@ -163,6 +167,7 @@ pub fn show_file_context_menu<R: Runtime>(
             restrict_destination_actions: pane.restrict_destination_actions,
             can_open_terminal_here: pane.can_open_terminal_here,
             can_share: pane.can_share,
+            can_favorite: pane.can_favorite,
         },
         image_index,
         crate::menu::ContextMenuTargetFacts {
