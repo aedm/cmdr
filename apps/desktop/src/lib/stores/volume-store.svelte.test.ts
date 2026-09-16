@@ -276,16 +276,6 @@ function pinnedPlace(index: number): VolumeInfo {
   }
 }
 
-function favorite(index: number): VolumeInfo {
-  return {
-    id: `favorite-${String(index)}`,
-    name: `Folder ${String(index)}`,
-    path: `/Users/ada/folder-${String(index)}`,
-    category: 'favorite',
-    isEjectable: false,
-  }
-}
-
 /**
  * The switcher's Network group can only grow past what fits by the user pinning
  * things, so the store that publishes the list is where the count is noticed.
@@ -319,18 +309,7 @@ describe('the pin hint, raised where the pinned count is observed', () => {
     lastVolumesHandler?.({ data: [...five, pinnedPlace(6)], timedOut: false })
 
     expect(raisedToasts).toHaveLength(1)
-    expect(raisedToasts[0]).toEqual({ mentionFavorites: false })
     expect(seenFlag['behavior.serversPinHintSeen']).toBe(true)
-  })
-
-  it('adds the favorites line when those are piling up too', async () => {
-    await initVolumeStore()
-    lastVolumesHandler?.({
-      data: [...[1, 2, 3, 4, 5].map(pinnedPlace), favorite(1), favorite(2), favorite(3)],
-      timedOut: false,
-    })
-
-    expect(raisedToasts[0]).toEqual({ mentionFavorites: true })
   })
 
   it('notices a list that arrives through the bootstrap, not the event', async () => {

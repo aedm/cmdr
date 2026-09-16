@@ -1,20 +1,20 @@
 /**
  * When the Network group has grown long enough to be worth a word about
- * unpinning, and whether that word should mention favorites too.
+ * unpinning.
  */
 
 import { describe, it, expect } from 'vitest'
-import { shouldShowPinHint, PIN_HINT_AT, FAVORITES_LINE_AT } from './should-show-pin-hint'
+import { shouldShowPinHint, PIN_HINT_AT } from './should-show-pin-hint'
 
-const quiet = { pinnedCount: 0, favoriteCount: 0, seen: false }
+const quiet = { pinnedCount: 0, seen: false }
 
 describe('shouldShowPinHint', () => {
   it('says nothing while the group is still short', () => {
-    expect(shouldShowPinHint({ ...quiet, pinnedCount: PIN_HINT_AT - 1 })).toBeNull()
+    expect(shouldShowPinHint({ ...quiet, pinnedCount: PIN_HINT_AT - 1 })).toBe(false)
   })
 
   it('speaks up the moment the fifth server is pinned', () => {
-    expect(shouldShowPinHint({ ...quiet, pinnedCount: PIN_HINT_AT })).toEqual({ mentionFavorites: false })
+    expect(shouldShowPinHint({ ...quiet, pinnedCount: PIN_HINT_AT })).toBe(true)
   })
 
   /**
@@ -23,22 +23,10 @@ describe('shouldShowPinHint', () => {
    * landed": nothing records what the count was last launch.
    */
   it('speaks up for a list that was already long', () => {
-    expect(shouldShowPinHint({ ...quiet, pinnedCount: 12 })).toEqual({ mentionFavorites: false })
+    expect(shouldShowPinHint({ ...quiet, pinnedCount: 12 })).toBe(true)
   })
 
   it('stays quiet forever once the user has said Got it', () => {
-    expect(shouldShowPinHint({ ...quiet, pinnedCount: 40, seen: true })).toBeNull()
-  })
-
-  it('mentions favorites when those are piling up too', () => {
-    expect(shouldShowPinHint({ pinnedCount: PIN_HINT_AT, favoriteCount: FAVORITES_LINE_AT, seen: false })).toEqual({
-      mentionFavorites: true,
-    })
-  })
-
-  it('leaves favorites out when the user has only a couple', () => {
-    expect(shouldShowPinHint({ pinnedCount: PIN_HINT_AT, favoriteCount: FAVORITES_LINE_AT - 1, seen: false })).toEqual({
-      mentionFavorites: false,
-    })
+    expect(shouldShowPinHint({ ...quiet, pinnedCount: 40, seen: true })).toBe(false)
   })
 })

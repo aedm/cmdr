@@ -11,10 +11,6 @@
   "@servers.pinHint.body": {
     "sourceHash": "0663b02"
   },
-  "servers.pinHint.favorites": "Les favoris fonctionnent de la même façon.",
-  "@servers.pinHint.favorites": {
-    "sourceHash": "932faeb"
-  },
   "servers.pinHint.gotIt": "D''accord",
   "@servers.pinHint.gotIt": {
     "sourceHash": "5ad3dbd"

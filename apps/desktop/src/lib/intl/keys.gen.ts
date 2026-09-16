@@ -2703,7 +2703,6 @@ export type MessageKey =
   | 'servers.paneState.signedOutNothingToAsk'
   | 'servers.paneState.tryAgain'
   | 'servers.pinHint.body'
-  | 'servers.pinHint.favorites'
   | 'servers.pinHint.gotIt'
   | 'servers.pinHint.title'
   | 'servers.refusal.accountNotPermitted'

@@ -153,18 +153,16 @@ function dedupeById(list: VolumeInfo[]): VolumeInfo[] {
  * it. The decision itself is `should-show-pin-hint.ts`; this counts and speaks.
  */
 function notePinnedCount(list: VolumeInfo[]): void {
-  const hint = shouldShowPinHint({
+  const shouldShow = shouldShowPinHint({
     pinnedCount: list.filter((volume) => volume.pinned === true).length,
-    favoriteCount: list.filter((volume) => volume.category === 'favorite').length,
     seen: getSetting('behavior.serversPinHintSeen'),
   })
-  if (!hint) return
+  if (!shouldShow) return
   setSetting('behavior.serversPinHintSeen', true)
   addToast(ServersPinHintToastContent, {
     level: 'info',
     dismissal: 'persistent',
     id: 'servers-pin-hint',
-    props: { mentionFavorites: hint.mentionFavorites },
   })
 }
 

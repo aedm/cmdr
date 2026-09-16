@@ -2376,7 +2376,7 @@ reservvägen är `docs/i18n/reference-pile/how-to-mine.md` § ”No pile on this
 Ingen `sameAsSourceJustification` i passet: båda värdena skiljer sig från engelskan. Ingen apostrof i något värde, så
 ICU-dubbleringen `''` blir aldrig aktuell, och `{name}` står kvar oförändrad i den enda nyckel som bär den.
 
-## Fästa servrar, betrodda värdnycklar och Android-raden i Inställningar (2026-09-07; 2 `menu.network.*` + 4 `servers.pinHint.*` + 21 `settings.*`)
+## Fästa servrar, betrodda värdnycklar och Android-raden i Inställningar (2026-09-07; 2 `menu.network.*` + 3 `servers.pinHint.*` + 21 `settings.*`)
 
 Tre ytor i samma pass: snabbmenyn på en serverrad i volymväljaren, engångsaviseringen som säger att `Nätverk`-gruppen
 blivit lång, och två nya underavsnitt under Filsystem (`Servrar (SFTP, WebDAV)` med de betrodda värdnycklarna, och

@@ -18,11 +18,9 @@
     interface Props {
         /** Dedup id of this toast, so "Got it" can retire it. */
         toastId: string
-        /** Whether the user's favorites are piling up too, which earns a line. */
-        mentionFavorites: boolean
     }
 
-    const { toastId, mentionFavorites }: Props = $props()
+    const { toastId }: Props = $props()
 
     const body = $derived(
         tString('servers.pinHint.body', { command: getMessage('commands.serversTogglePin.label') }),
@@ -32,9 +30,6 @@
 <div class="content">
     <strong class="title">{tString('servers.pinHint.title')}</strong>
     <span class="body">{body}</span>
-    {#if mentionFavorites}
-        <span class="body">{tString('servers.pinHint.favorites')}</span>
-    {/if}
     <div class="actions">
         <Button
             size="mini"
