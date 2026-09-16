@@ -27,11 +27,6 @@ export function fdaIsMissing(): boolean {
   return isMacOS() && granted === false
 }
 
-/** The raw answer: `null` before the first probe lands. */
-export function fdaGranted(): boolean | null {
-  return granted
-}
-
 /**
  * Re-probe and store the answer. Safe to call often (it's a cheap syscall-level check) and
  * safe to call off macOS, where it records "granted" so nothing downstream offers a fix for
