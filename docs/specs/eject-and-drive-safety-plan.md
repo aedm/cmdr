@@ -63,8 +63,8 @@ drive-safety decisions below.
   `ea5b9c6c3` (the guarded `/sbin/umount` verb and the real-image pin), `548d66d6e` (the toast, its key, and the
   frontend docs), `badf76277` (the backend docs).
 - **Belonging to no milestone**: `56eca71f4` and `6f2eb84ed` (the two toasts translated into every shipped catalog),
-  `654a2d075` (the disk-image harness reclaims an attachment a killed test stranded), `1c7057a09` (rustls to 0.23.45
-  for RUSTSEC-2026-0285), `0122d4c43` and `6ebf9fe0b` (the two lanes' starvation notes).
+  `654a2d075` (the disk-image harness reclaims an attachment a killed test stranded), `1c7057a09` (rustls to 0.23.45 for
+  RUSTSEC-2026-0285), `0122d4c43` and `6ebf9fe0b` (the two lanes' starvation notes).
 - **Next, M10**: transfers on a vanished drive.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers

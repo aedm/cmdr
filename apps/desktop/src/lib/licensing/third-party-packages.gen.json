@@ -161,13 +161,13 @@
     },
     {
       "name": "aws-lc-rs",
-      "version": "1.17.1",
+      "version": "1.18.1",
       "license": "ISC AND (Apache-2.0 OR ISC)",
       "url": "https://github.com/aws/aws-lc-rs"
     },
     {
       "name": "aws-lc-sys",
-      "version": "0.42.0",
+      "version": "0.45.0",
       "license": "ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0)",
       "url": "https://github.com/aws/aws-lc-rs"
     },
@@ -2464,6 +2464,12 @@
       "url": "https://github.com/madsmtm/objc2"
     },
     {
+      "name": "objc2-disk-arbitration",
+      "version": "0.3.2",
+      "license": "Zlib OR Apache-2.0 OR MIT",
+      "url": "https://github.com/madsmtm/objc2"
+    },
+    {
       "name": "objc2-encode",
       "version": "4.1.0",
       "license": "MIT",
@@ -3065,7 +3071,7 @@
     },
     {
       "name": "rustls",
-      "version": "0.23.41",
+      "version": "0.23.45",
       "license": "Apache-2.0 OR ISC OR MIT",
       "url": "https://github.com/rustls/rustls"
     },
@@ -3083,7 +3089,7 @@
     },
     {
       "name": "rustls-webpki",
-      "version": "0.103.13",
+      "version": "0.103.15",
       "license": "ISC",
       "url": "https://github.com/rustls/webpki"
     },
