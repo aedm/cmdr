@@ -829,8 +829,9 @@ three flat rows).
 (mounted-already-open) or close (controlled `open=false`) when driven programmatically, which every caller here needs.
 
 ❗ **The controller is `menu-controller.svelte.ts`, never `menu.svelte.ts`.** macOS filesystems are case-insensitive, so
-the specifier `./menu.svelte` resolves to the sibling `Menu.svelte` COMPONENT locally and to the controller on a
-case-sensitive CI runner: one import, two different modules on the two platforms. (Verified 2026-09-16 on vite 8: the
+the specifier "./menu.svelte" (quoted, not backticked: it names a file that must never exist, and `docs-dead-links`
+reads a backticked path as a reference) resolves to the sibling `Menu.svelte` COMPONENT locally and to the controller on
+a case-sensitive CI runner: one import, two different modules on the two platforms. (Verified 2026-09-16 on vite 8: the
 import returned the component and `createMenu is not a function`.) No `.svelte.ts` module may case-collide with a
 sibling component.
 
