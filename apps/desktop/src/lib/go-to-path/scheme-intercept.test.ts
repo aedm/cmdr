@@ -155,10 +155,27 @@ describe('readSchemeInput: which scheme means what', () => {
   })
 })
 
+describe('readSchemeInput: a search-results path', () => {
+  it('reads a snapshot URL as its own thing, never as a server address', async () => {
+    // Left to the local resolver it joins onto the pane's folder, misses, and
+    // walks the pane to the nearest existing ancestor — a jump nobody asked for,
+    // reported as a success.
+    expect(await readSchemeInput('search-results://sr-9')).toEqual({ kind: 'snapshot' })
+  })
+
+  it('reads the bare scheme the same way', async () => {
+    expect(await readSchemeInput('search-results://')).toEqual({ kind: 'snapshot' })
+  })
+})
+
 describe('previewSchemeInput: what the box says under it', () => {
   it('names what will open, or says a server gets added', () => {
     expect(previewSchemeInput({ kind: 'place', path: APP_ROOT, label: 'Naspolya' })).toBe('Opens Naspolya')
     expect(previewSchemeInput({ kind: 'add', address: 'smb://naspolya' })).toBe('Adds a server')
+  })
+
+  it('says a search-results path is not somewhere to go', () => {
+    expect(previewSchemeInput({ kind: 'snapshot' })).toBe("Search results aren't a path you can go to.")
   })
 })
 

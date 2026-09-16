@@ -136,12 +136,14 @@ import {
   type HistoryEntry,
 } from '../navigation/navigation-history'
 import { isPathOnVolume } from '../navigation/path-navigation'
+import { isSnapshotPath } from '../navigation/real-folder-history'
 import { tString } from '$lib/intl/messages.svelte'
 import type { Location } from '$lib/tauri-commands'
 import {
   NETWORK_VOLUME_PATH,
   PANE_UNAVAILABLE_REFUSAL,
   SMB_PATH_REFUSAL,
+  SNAPSHOT_PATH_REFUSAL,
   onNetworkRefusal,
   validateAdbNavigation,
   validateMtpNavigation,
@@ -422,6 +424,11 @@ function navigateToLocation(deps: NavigateDeps, intent: NavigateIntent, location
   // A share inside the Network volume has no path to navigate to (see the refusal).
   if (location.path.startsWith(NETWORK_VOLUME_PATH) && location.path !== NETWORK_VOLUME_PATH) {
     return { status: 'refused', reason: SMB_PATH_REFUSAL }
+  }
+  // A snapshot path is the `{ snapshot }` arm's alone, whatever volume the backend
+  // resolver decided it belongs to (see the refusal).
+  if (isSnapshotPath(location.path)) {
+    return { status: 'refused', reason: SNAPSHOT_PATH_REFUSAL }
   }
   if (location.volumeId === deps.getPaneVolumeId(pane)) {
     return navigateInPlace(deps, intent, location.path)

@@ -17,6 +17,7 @@
  * everywhere; only the jump calls [`actOnSchemeInput`].
  */
 
+import { isSnapshotPath } from '$lib/file-explorer/navigation/real-folder-history'
 import { parseServerAddress } from '$lib/servers/address-parser'
 import { isServerPath, parseServerPath } from '$lib/servers/server-path-utils'
 import { openAddServerSheet } from '$lib/servers/open-sign-in'
@@ -42,6 +43,12 @@ export type SchemeIntent =
   | { kind: 'place'; path: string; label: string }
   /** An address for a server nothing has saved. The sheet opens on it. */
   | { kind: 'add'; address: string }
+  /**
+   * A `search-results://` URL: a result set living in memory for this session,
+   * which only the Search dialog can open (it claims the snapshot's refcount).
+   * Nothing to navigate to, and nothing to add.
+   */
+  | { kind: 'snapshot' }
 
 /** Devices already carry a scheme and already resolve; a path on one just navigates. */
 const DEVICE_SCHEMES = ['adb://', 'mtp://']
@@ -56,6 +63,11 @@ const DEVICE_SCHEMES = ['adb://', 'mtp://']
 export async function readSchemeInput(input: string): Promise<SchemeIntent | null> {
   const trimmed = input.trim()
   if (trimmed === '') return null
+
+  // ❗ Before everything: the local resolver would join this onto the pane's
+  // folder, miss, and answer `nearestAncestor`, which walks the pane somewhere
+  // the user never asked for and reports it as a jump.
+  if (isSnapshotPath(trimmed)) return { kind: 'snapshot' }
 
   if (DEVICE_SCHEMES.some((scheme) => trimmed.startsWith(scheme))) {
     // A device path is already resolvable, so it navigates rather than
@@ -80,9 +92,9 @@ export async function readSchemeInput(input: string): Promise<SchemeIntent | nul
 
 /** The line the dialog shows under the box for a scheme input. */
 export function previewSchemeInput(intent: SchemeIntent): string {
-  return intent.kind === 'place'
-    ? tString('goToPath.dialog.opensServer', { name: intent.label })
-    : tString('goToPath.dialog.addsServer')
+  if (intent.kind === 'place') return tString('goToPath.dialog.opensServer', { name: intent.label })
+  if (intent.kind === 'snapshot') return tString('goToPath.dialog.snapshotNotAPath')
+  return tString('goToPath.dialog.addsServer')
 }
 
 /**
@@ -107,6 +119,12 @@ export async function actOnSchemeInput(
   },
 ): Promise<GoToPathOutcome> {
   if (intent.kind === 'place') return { kind: 'directory', path: intent.path }
+  // ❗ `invalid` keeps the dialog OPEN with the preview line still under the box,
+  // which is the honest answer: there's nowhere to send the person, and closing
+  // on it would look like the jump worked.
+  if (intent.kind === 'snapshot') {
+    return { kind: 'invalid', reason: tString('goToPath.dialog.snapshotNotAPath') }
+  }
   await openAddServerSheet({ prefill: intent.address, onSmbHandOff: deps.onSmbHandOff })
   return { kind: 'handed_off' }
 }

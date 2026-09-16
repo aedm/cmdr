@@ -72,5 +72,11 @@
     "description": "Preview line under the Go to path box when what the user typed is a server address nothing has saved yet, so going there opens the form that adds it. Present tense, third person.",
     "screenshot": "go-to-path.png",
     "screenshotNote": "The Go to path dialog, pictured here. Your string belongs to a state this screenshot doesn’t show: its list of recent paths, or a hint under the field about the path you typed."
+  },
+  "goToPath.dialog.snapshotNotAPath": "Search results aren''t a path you can go to.",
+  "@goToPath.dialog.snapshotNotAPath": {
+    "description": "Preview line under the Go to path box when the user typed a search-results:// address. A list of search results only exists inside the running app, so there is no folder to go to; the user reaches one by searching again. Do not translate the scheme itself.",
+    "screenshot": "go-to-path.png",
+    "screenshotNote": "The Go to path dialog, pictured here. Your string belongs to a state this screenshot doesn’t show: its list of recent paths, or a hint under the field about the path you typed."
   }
 }

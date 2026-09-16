@@ -46,5 +46,9 @@
   "goToPath.dialog.addsServer": "添加一台服务器",
   "@goToPath.dialog.addsServer": {
     "sourceHash": "8e73f74"
+  },
+  "goToPath.dialog.snapshotNotAPath": "搜索结果不是可以跳转的路径。",
+  "@goToPath.dialog.snapshotNotAPath": {
+    "sourceHash": "e613c52"
   }
 }

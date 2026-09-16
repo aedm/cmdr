@@ -109,6 +109,10 @@ over a tilde-expanded, base-dir-joined path). A scheme input joins onto the pane
 
 - `adb://`, `mtp://`: a device path already resolves, so it navigates. The pane's own scheme guards then decide
   reachability.
+- `search-results://`: refused, with a preview line saying so and an `invalid` outcome that keeps the dialog open. A
+  snapshot id names an in-memory result set only the Search dialog can open (it claims the refcount), and the local
+  resolver would answer `nearestAncestor` for it — walking the pane somewhere nobody asked for and calling it a jump.
+  The navigation side refuses the same shape in `../file-explorer/pane/navigate-refusals.ts`.
 - `sftp://`, `webdav://` matching a saved place's app root: navigates, showing the place's name. Matching is by whole
   components, per the grammar in `apps/desktop/src/lib/servers/DETAILS.md` § The path grammar.
 - Any other input carrying a scheme `address-parser.ts` parses: opens the sign-in sheet in add mode, prefilled. ❗ A

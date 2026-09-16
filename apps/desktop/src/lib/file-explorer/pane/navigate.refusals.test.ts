@@ -179,6 +179,26 @@ describe('refusal strings (L12) — byte-for-byte contract', () => {
     })
   })
 
+  it('a search-results:// destination is refused: only the snapshot arm may open one', () => {
+    // A hand-typed snapshot path names an in-memory result set that only
+    // `{ snapshot }` can open with its refcount claimed. On Linux the backend
+    // resolver's longest-prefix mount match hands this back as the ROOT volume,
+    // which would leave a normal pane holding a path nothing can list.
+    const result = navigate(
+      { pane: 'left', to: { goTo: { volumeId: 'root', path: 'search-results://sr-9' } }, source: 'mcp' },
+      h.deps,
+    )
+    expect(result).toEqual({
+      status: 'refused',
+      reason: {
+        kind: 'snapshot-path-unsupported',
+        message:
+          "nav_to_path doesn't take search-results:// paths. A result set lives in memory for this session only, so run search and open its results instead.",
+      },
+    })
+    expect(h.tab('left').path).not.toBe('search-results://sr-9')
+  })
+
   it('pane-unavailable returns the exact "Pane not available" string', () => {
     h = makeHarness({ suppressRef: ['left'] })
     const result = navigate(

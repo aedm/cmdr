@@ -1744,6 +1744,7 @@ export type MessageKey =
   | 'goToPath.dialog.opensServer'
   | 'goToPath.dialog.recentsAriaLabel'
   | 'goToPath.dialog.removeFromList'
+  | 'goToPath.dialog.snapshotNotAPath'
   | 'goToPath.dialog.title'
   | 'goToPath.toast.landedOnAncestor'
   | 'goToPath.toast.pressToGoBack'

@@ -46,5 +46,9 @@
   "goToPath.dialog.addsServer": "Ajoute un serveur",
   "@goToPath.dialog.addsServer": {
     "sourceHash": "8e73f74"
+  },
+  "goToPath.dialog.snapshotNotAPath": "Les résultats de recherche ne sont pas un chemin où aller.",
+  "@goToPath.dialog.snapshotNotAPath": {
+    "sourceHash": "e613c52"
   }
 }

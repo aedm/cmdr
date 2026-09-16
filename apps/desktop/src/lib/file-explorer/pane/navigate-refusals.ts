@@ -12,6 +12,7 @@ export interface NavigateRefusal {
   kind:
     | 'on-network-volume'
     | 'smb-path-unsupported'
+    | 'snapshot-path-unsupported'
     | 'mtp-unconnected'
     | 'adb-unconnected'
     | 'server-unconnected'
@@ -49,6 +50,21 @@ export const SMB_PATH_REFUSAL: NavigateRefusal = {
   kind: 'smb-path-unsupported',
   message:
     "nav_to_path doesn't take smb:// paths. A mounted share is its own volume, so use select_volume with the name from cmdr://state volumes; for a share that isn't mounted, use select_volume Network and open the host.",
+}
+
+/**
+ * A `search-results://<id>` path names an in-memory result set, not a place. Only the
+ * `{ snapshot }` arm may open one: it routes through the volume-change machinery that
+ * claims the snapshot's refcount, so a path arriving any other way (a hand-typed
+ * `nav_to_path`) would leave a pane holding an id nothing is keeping alive. macOS's
+ * `resolve_location` already answers "unreachable" for the shape, but Linux's
+ * longest-prefix mount match hands it back as the ROOT volume, which a pane would then
+ * try to list.
+ */
+export const SNAPSHOT_PATH_REFUSAL: NavigateRefusal = {
+  kind: 'snapshot-path-unsupported',
+  message:
+    "nav_to_path doesn't take search-results:// paths. A result set lives in memory for this session only, so run search and open its results instead.",
 }
 
 /**

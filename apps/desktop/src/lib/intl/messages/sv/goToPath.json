@@ -46,5 +46,9 @@
   "goToPath.dialog.addsServer": "Lägger till en server",
   "@goToPath.dialog.addsServer": {
     "sourceHash": "8e73f74"
+  },
+  "goToPath.dialog.snapshotNotAPath": "Sökresultat är inte en sökväg du kan gå till.",
+  "@goToPath.dialog.snapshotNotAPath": {
+    "sourceHash": "e613c52"
   }
 }

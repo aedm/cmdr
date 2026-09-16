@@ -969,14 +969,20 @@ return-point bookkeeping. `navigate.ts` re-exports the names callers use, so the
   cursor after (`navigate-and-select`, `revealSearchResultInPane`) bridge the gap via `moveCursor`'s internal
   `whenLoadSettles`. History / edge flows: match the primitive they drive.
 - **`NavigateResult` (L12).** `{ status: 'started', settled }` or `{ status: 'refused', reason }`. The refusal `message`
-  strings (on-network, smb-path-unsupported, MTP-mismatch, on-MTP-volume, pane-unavailable) are EXACT contract — the MCP
-  adapter forwards them verbatim as the `mcp-response` error; `navigate.refusals.test.ts` + the handler suite pin them
-  byte-for-byte.
+  strings (on-network, smb-path-unsupported, snapshot-path-unsupported, MTP-mismatch, on-MTP-volume, pane-unavailable)
+  are EXACT contract — the MCP adapter forwards them verbatim as the `mcp-response` error; `navigate.refusals.test.ts` +
+  the handler suite pin them byte-for-byte.
 - **An `smb://` path below the host-list sentinel is refused (`smb-path-unsupported`).** `resolve_location` maps EVERY
   `smb://` path onto the virtual `network` volume, whose state is a host plus a share list rather than a path, so
   `smb://` itself is the only navigable one. A longer path used to take the switch arm and report success from the host
   list, which is why `nav_to_path` advertised `smb://` support it never had. A mounted share is its own volume
   (`select_volume` by name); an unmounted one opens from the Network host list.
+- **A `search-results://` path in a `{ goTo }` is refused (`snapshot-path-unsupported`).** Only the `{ snapshot }` arm
+  may open a result set: it routes through the volume-change machinery that claims the snapshot's refcount, so a path
+  arriving any other way would leave a pane holding an id nothing keeps alive. The refusal is the frontend's own answer
+  rather than a platform accident — macOS's `resolve_location` already fails the shape (`statfs` on a non-path), but
+  Linux's longest-prefix mount match hands it back as the ROOT volume, which a pane would then try to list. Go to path
+  refuses the same shape one layer earlier (`$lib/go-to-path/DETAILS.md` § The scheme intercept).
 - **A switch TO the `network` volume resets the pane's open host** (`commitVolumeSwitch` calls
   `paneRef.setNetworkHost(options.networkHost ?? null)`, mirroring what `commitHistoryWalk` does for a history entry).
   The pane's own effect only clears the host when it LEAVES the network volume, so without this a re-select from inside
