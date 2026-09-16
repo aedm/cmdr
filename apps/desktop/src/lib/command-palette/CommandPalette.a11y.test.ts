@@ -28,7 +28,14 @@ vi.mock('$lib/commands', () => {
       shortcuts: ['\u2318Q'],
       showInPalette: true,
     },
-    { id: 'app.about', name: 'About Cmdr', displayName: 'About Cmdr', scope: 'App', shortcuts: [], showInPalette: true },
+    {
+      id: 'app.about',
+      name: 'About Cmdr',
+      displayName: 'About Cmdr',
+      scope: 'App',
+      shortcuts: [],
+      showInPalette: true,
+    },
     {
       id: 'file.copyPath',
       name: 'Copy path to clipboard',

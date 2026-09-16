@@ -32,15 +32,15 @@ All of these were settled with David before any code. They are the answers, not 
    "no extension" and `getExtension` says `"."`. Match what the user sees: use `getDisplayExtension`. ❌ Don't
    reimplement either rule.
 4. **`⌥+` is NOT a real menu accelerator.** David wants that combo free for typing. Like `⇧8` / `+` / `-` before it, the
-   file pane's keydown handler owns it and the menu only *displays* it.
+   file pane's keydown handler owns it and the menu only _displays_ it.
 5. **Canonical spelling `['⌥⇧=', '⌥+']`**, matching Invert selection's existing `['⇧8', '*']` shape: the main-row key
    plus the numpad key. The menu displays `⌥⇧=`, which is honest on every layout. ❌ No display rule rewriting it to
    `⌥+` — David uses a custom mixed English/Hungarian layout and wants the physical truth.
 6. **The context menu reads live shortcuts from the registry**, all 15 of them, not just the new submenu. They are
    hardcoded today and already lie after any rebind.
 7. **Menu-bar label debounce: 200 ms, debounce (not throttle).** The context menu and the command itself always compute
-   live; only the menu-bar label is debounced, because `⌃⏎` means a user can now open the context menu without the
-   mouse trip that used to hide staleness.
+   live; only the menu-bar label is debounced, because `⌃⏎` means a user can now open the context menu without the mouse
+   trip that used to hide staleness.
 8. **The dynamic label is rendered in Rust from `menu_t`**, from a typed payload the frontend pushes — the
    `update_pin_tab_menu` pattern. ❌ Never a frontend-composed literal: `menu/CLAUDE.md`'s "every label comes from
    `menu_t`" invariant holds.
@@ -57,9 +57,9 @@ All of these were settled with David before any code. They are the answers, not 
 Facts the plan rests on, each verified in the tree at the commit this branch started from.
 
 - **A bare accelerator really would swallow the key app-wide.** `menu_bar.rs:178-188` already says so in its own
-  comments, which is why those three items carry `NONE` today. Worse,
-  `menu/accelerators.rs:18-118` (`frontend_shortcut_to_accelerator`) has **no modifier floor**: hand it `"*"` and it
-  cheerfully returns `Some("*")`, a real single-character accelerator. That gap is part of this work.
+  comments, which is why those three items carry `NONE` today. Worse, `menu/accelerators.rs:18-118`
+  (`frontend_shortcut_to_accelerator`) has **no modifier floor**: hand it `"*"` and it cheerfully returns `Some("*")`, a
+  real single-character accelerator. That gap is part of this work.
 - **The attributed-title technique already exists here**: `menu/context_menu_header.rs:234-254` (`style_as_header`) sets
   an `NSAttributedString` title with font + colour attributes. A right-aligned shortcut needs one more attribute
   (`NSParagraphStyleAttributeName` → `NSMutableParagraphStyle` with a right `NSTextTab`) and a `"{label}\t{glyph}"`
@@ -70,11 +70,11 @@ Facts the plan rests on, each verified in the tree at the commit this branch sta
   `initWithTextAlignment_location_options`, which would additionally need the `NSText` feature.
 - **The menu bar is reachable directly**, `app.menu()` → `ns_app.mainMenu()` → `find_ns_item`
   (`macos_appkit.rs:443-447`). ❌ No `NSMenuDidBeginTrackingNotification` hack needed — that's only for context menus.
-  Model the new pass on `set_macos_menu_icons`, and call it from the same three places (startup install, the
-  main↔viewer menu swap, `rebuild_menu_bar`) **plus** after `update_menu_item_accelerator`'s remove/recreate, which
-  hands back a fresh `NSMenuItem` with no attributed title. Miss one and the glyph silently vanishes.
+  Model the new pass on `set_macos_menu_icons`, and call it from the same three places (startup install, the main↔viewer
+  menu swap, `rebuild_menu_bar`) **plus** after `update_menu_item_accelerator`'s remove/recreate, which hands back a
+  fresh `NSMenuItem` with no attributed title. Miss one and the glyph silently vanishes.
 - **All 15 hardcoded context-menu accelerators live in one function**, `menu_structure.rs::build_context_menu`. Two of
-  them (`SHOW_IN_FILE_MANAGER_ACCELERATOR.current()`, `COPY_PATH_ACCELERATOR.current()`) *look* live but
+  them (`SHOW_IN_FILE_MANAGER_ACCELERATOR.current()`, `COPY_PATH_ACCELERATOR.current()`) _look_ live but
   `PerPlatform::current()` only picks macOS-vs-Linux at compile time. Every other popup builder in the file already
   passes `None::<&str>`, and `build_breadcrumb_context_menu` (`menu_structure.rs:514-546`) **already takes a live
   shortcut from the frontend** — that is the pattern to generalize.
@@ -120,8 +120,8 @@ listed in `key-capture.ts`'s `codeToKey` when a character-altering modifier is h
 from the physical character. Route the shortcut-**capture** UI through the same helper, so a rebind persists the
 physical form rather than `⌥⇧±`.
 
-❌ Don't touch `resolveGlobalKeyAction`. Keeping the fallback out of the global path is deliberate: it's what stops
-`⇧8` firing outside the file pane today, and this change shouldn't quietly widen that.
+❌ Don't touch `resolveGlobalKeyAction`. Keeping the fallback out of the global path is deliberate: it's what stops `⇧8`
+firing outside the file pane today, and this change shouldn't quietly widen that.
 
 Tests (red first): `⌥⇧=` on a US layout and on a layout where the same physical key types something else, `⌥` plus the
 numpad `+`, and a regression that `⇧8` still resolves. `shortcut-vocabulary.test.ts` stays green.
@@ -151,8 +151,8 @@ The command itself, no menus yet. David can QA it entirely from the keyboard and
   `first-selected-index.ts` pairs: given the cursor entry and the full snapshot, return the frontend indices to add.
   This is where decisions 2 and 3 live, and where TDD pays: write the folder / extension / no-extension / `..` /
   case-insensitivity / `archive.tar.gz` / `.gitignore` / trailing-dot cases red first.
-- `FilePane.selectSameKind()`: `getEntriesSnapshot()` → predicate → `selection.applyIndices(idxs, 'add', hasParent)`.
-  ❌ Not `FilePane.applyIndices` (see the recon note on the cursor jump).
+- `FilePane.selectSameKind()`: `getEntriesSnapshot()` → predicate → `selection.applyIndices(idxs, 'add', hasParent)`. ❌
+  Not `FilePane.applyIndices` (see the recon note on the cursor jump).
 - Key routing: add the id to `selection-keys.ts`'s `selectionCommands`, and a `case` plus a `selectSameKind` dep in
   `pane-key-router.ts`'s `handleSelectionKeys`. Extend `selection-keys.test.ts` and `pane-key-router.test.ts`.
 
@@ -160,7 +160,7 @@ The command itself, no menus yet. David can QA it entirely from the keyboard and
 
 - Enable the two `objc2-app-kit` features, each with a comment saying why.
 - `ItemSpec` gains `display_accelerator: Option<&'static str>`, carried as a plain glyph (the platform difference is in
-  *rendering*, not in the spec). Add a sibling constructor rather than changing every `const fn item()` call site.
+  _rendering_, not in the spec). Add a sibling constructor rather than changing every `const fn item()` call site.
 - macOS: a `set_display_accelerators` pass modeled 1:1 on `set_macos_menu_icons`, setting an attributed
   `"{label}\t{glyph}"` title with a right-aligned tab stop and `secondaryLabelColor`, reusing `style_as_header`'s shape.
   Call it from all four sites listed in the recon.
@@ -229,8 +229,8 @@ so his copy edits translate once rather than twice.
 ## Order and parallelism
 
 - **Wave 1** (independent surfaces, in parallel): M1 + M2 (frontend shortcuts and registry) ‖ M4 (Rust menu bar,
-  `Cargo.toml`, `accelerators.rs`) ‖ M6 (Rust context menu and its IPC). M4 and M6 share the `menu/` directory but
-  touch disjoint files; M4 owns `accelerators.rs` and M6 only calls into it.
+  `Cargo.toml`, `accelerators.rs`) ‖ M6 (Rust context menu and its IPC). M4 and M6 share the `menu/` directory but touch
+  disjoint files; M4 owns `accelerators.rs` and M6 only calls into it.
 - **Wave 2**: M3 (needs M1 and M2) ‖ M8 (needs M6's payload shape).
 - **Wave 3**: M5 and M7 together — same surfaces, both need M3 plus wave 1.
 - **Wave 4**: M9, after QA.

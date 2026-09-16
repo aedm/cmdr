@@ -25,8 +25,8 @@ Centralized command registry and fuzzy search engine for the command palette.
 - **`name` is every listing surface's label** (Settings, help window, conflict toast, MCP); **`displayName` is the
   PALETTE's alone**, falling back to `name`. A live-state label uses a generic hook: a `nameKey` thunk
   (`app.licenseKey`) or a `displayName` resolver — ❌ never a per-id branch in `resolveCommand`. Rust's native-menu
-  labels (`Label::License`) are a SEPARATE mechanism; generalizing this side fixed nothing there. `DETAILS.md` §
-  "Two labels".
+  labels (`Label::License`) are a SEPARATE mechanism; generalizing this side fixed nothing there. `DETAILS.md` § "Two
+  labels".
 - **Two set-equality guards keep tuple and registry in sync.** `Command.id: CommandId` enforces tuple ⊇ registry at
   compile time; `command-registry.test.ts` enforces registry ⊇ tuple. Adding to one without the other fails the build or
   the test.
