@@ -11,6 +11,7 @@ import {
   renameFavorite,
   reorderFavorites,
   showVolumeRowContextMenu,
+  showFavoriteContextMenu,
   onVolumeContextAction,
 } from '$lib/tauri-commands'
 
@@ -145,6 +146,7 @@ vi.mock('$lib/tauri-commands', () => ({
   reorderFavorites: vi.fn().mockResolvedValue(undefined),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
   showVolumeRowContextMenu: vi.fn().mockResolvedValue(undefined),
+  showFavoriteContextMenu: vi.fn().mockResolvedValue(undefined),
   onVolumeContextAction: vi.fn(() => Promise.resolve(() => {})),
 }))
 
@@ -697,8 +699,9 @@ describe('VolumeBreadcrumb', () => {
       const item = menuRow('fav-x') as HTMLElement
       item.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
       await tick()
-      // The native (muda) row menu is requested for the right-clicked favorite (not ejectable).
-      expect(showVolumeRowContextMenu).toHaveBeenCalledWith('fav-x', 'Pics', true, false)
+      // The native (muda) favorite menu is requested for the right-clicked favorite.
+      expect(showFavoriteContextMenu).toHaveBeenCalledWith('fav-x', 'Pics')
+      expect(showVolumeRowContextMenu).not.toHaveBeenCalled()
       // The backend emits the pick back over `volume-context-action`.
       latestVolumeContextHandler()({ action: 'remove-favorite', volumeId: 'fav-x' })
       await tick()
@@ -710,7 +713,7 @@ describe('VolumeBreadcrumb', () => {
       const item = menuRow('fav-y') as HTMLElement
       item.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
       await tick()
-      expect(showVolumeRowContextMenu).toHaveBeenCalledWith('fav-y', 'Old', true, false)
+      expect(showFavoriteContextMenu).toHaveBeenCalledWith('fav-y', 'Old')
       latestVolumeContextHandler()({ action: 'rename-favorite', volumeId: 'fav-y' })
       await tick()
       const input = document.querySelector('.favorite-rename-input') as HTMLInputElement

@@ -208,15 +208,14 @@ export async function showBreadcrumbContextMenu(
 }
 
 /**
- * Shows the native context menu for a row in the volume-selector dropdown.
+ * Shows the native context menu for a VOLUME row in the volume switcher.
  *
- * A favorite row gets `Rename` + `Remove`; an ejectable volume row gets `Eject ({name})`.
- * The picked action arrives via the `volume-context-action` event (`onVolumeContextAction`),
- * the same path as the breadcrumb eject item.
+ * An ejectable volume row gets `Eject ({name})`; a server row gets its own items. A FAVORITE row
+ * is [`showFavoriteContextMenu`]'s job. The picked action arrives via the `volume-context-action`
+ * event (`onVolumeContextAction`), the same path as the breadcrumb eject item.
  *
- * @param volumeId - Target row's id (the `fav-…` switcher id for a favorite).
- * @param volumeName - Target row's display name (used in the eject label / rename seed).
- * @param isFavorite - True for a favorite row (Rename / Remove); false for a volume row.
+ * @param volumeId - Target row's id.
+ * @param volumeName - Target row's display name (used in the eject label).
  * @param isEjectable - True when the volume row can be ejected (adds the Eject item).
  * @param server - Present for a SERVER row, which gets Disconnect / Pin to switcher or Unpin /
  *   Forget saved password / Forget server instead of Eject. The caller decides which apply; the backend fills in
@@ -225,7 +224,6 @@ export async function showBreadcrumbContextMenu(
 export async function showVolumeRowContextMenu(
   volumeId: string,
   volumeName: string,
-  isFavorite: boolean,
   isEjectable: boolean,
   server?: ServerRowMenu,
 ): Promise<void> {
@@ -233,11 +231,24 @@ export async function showVolumeRowContextMenu(
   await invoke('show_volume_row_context_menu', {
     volumeId,
     volumeName,
-    isFavorite,
     isEjectable,
     // `busy` is the backend's own answer, so it is sent as a placeholder and overwritten there.
     server: server ? { ...server, busy: false } : null,
   })
+}
+
+/**
+ * Shows the native context menu for a FAVORITE row: `Rename` + `Remove from favorites`.
+ *
+ * The pick arrives on the same `volume-context-action` event as a volume row's
+ * (`onVolumeContextAction`), as `rename-favorite` / `remove-favorite`.
+ *
+ * @param volumeId - The favorite's `fav-…` switcher id.
+ * @param volumeName - The favorite's label, which seeds the inline rename field.
+ */
+export async function showFavoriteContextMenu(volumeId: string, volumeName: string): Promise<void> {
+  // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- generic <R: Runtime> command, excluded from specta bindings (see the `ipc.rs` manifest)
+  await invoke('show_favorite_context_menu', { volumeId, volumeName })
 }
 
 /**

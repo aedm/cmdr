@@ -89,7 +89,7 @@ describe('isServerPlaceRow', () => {
 describe('openServerRowMenu', () => {
   it('reads the row and the saved-server store, and hands the answer to the native menu', async () => {
     await openServerRowMenu(place)
-    expect(showVolumeRowContextMenu).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'Naspolya', false, false, {
+    expect(showVolumeRowContextMenu).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'Naspolya', false, {
       showsDisconnect: true,
       isSaved: true,
       pinned: false,
@@ -114,7 +114,6 @@ describe('openServerRowMenu', () => {
       'sftp-nas-local-22-ada',
       'Naspolya',
       false,
-      false,
       expect.objectContaining({ showsDisconnect: false }),
     )
   })
@@ -125,7 +124,6 @@ describe('openServerRowMenu', () => {
     expect(showVolumeRowContextMenu).toHaveBeenCalledWith(
       'sftp-nas-local-22-ada',
       'Naspolya',
-      false,
       false,
       expect.objectContaining({ isSaved: false }),
     )

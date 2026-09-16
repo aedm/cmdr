@@ -97,6 +97,7 @@ export {
   showFileContextMenu,
   showBreadcrumbContextMenu,
   showVolumeRowContextMenu,
+  showFavoriteContextMenu,
   type ServerRowMenu,
   showParentRowContextMenu,
   showInFinder,

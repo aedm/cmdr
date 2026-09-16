@@ -813,16 +813,18 @@ pub fn build_network_host_context_menu(
     Ok(menu)
 }
 
-/// Builds the context menu for a row in the volume-selector dropdown.
+/// Builds the context menu for a VOLUME row in the volume switcher.
 ///
-/// Favorites get `Rename` + `Remove`; an ejectable volume gets its detach item,
-/// `Eject ({name})` for a disk and `Disconnect` for a phone (`detach_word`),
-/// disabled with a ` (busy)` suffix while a write op touches it, mirroring the
-/// breadcrumb menu and the inline control. The caller stashes the target id +
-/// name in `MenuState.volume_row_context` so `on_menu_event` can dispatch the click.
+/// An ejectable volume gets its detach item, `Eject ({name})` for a disk and
+/// `Disconnect` for a phone (`detach_word`), disabled with a ` (busy)` suffix while a
+/// write op touches it, mirroring the breadcrumb menu and the inline control. A SERVER
+/// row gets its own items instead. The caller stashes the target id + name in
+/// `MenuState.volume_row_context` so `on_menu_event` can dispatch the click.
+///
+/// A FAVORITE row is a different surface with a different menu:
+/// [`build_favorite_context_menu`].
 pub fn build_volume_row_context_menu<R: Runtime>(
     app: &AppHandle<R>,
-    is_favorite: bool,
     eject_volume_name: Option<&str>,
     eject_busy: bool,
     detach_word: DetachWord,
@@ -835,24 +837,7 @@ pub fn build_volume_row_context_menu<R: Runtime>(
         return Ok(menu);
     }
 
-    if is_favorite {
-        let rename_item = MenuItem::with_id(
-            app,
-            FAVORITE_RENAME_ID,
-            menu_t("menu.volume.renameFavorite"),
-            true,
-            None::<&str>,
-        )?;
-        menu.append(&rename_item)?;
-        let remove_item = MenuItem::with_id(
-            app,
-            FAVORITE_REMOVE_ID,
-            menu_t("menu.volume.removeFavorite"),
-            true,
-            None::<&str>,
-        )?;
-        menu.append(&remove_item)?;
-    } else if let Some(name) = eject_volume_name {
+    if let Some(name) = eject_volume_name {
         let eject_item = MenuItem::with_id(
             app,
             EJECT_VOLUME_ID,
@@ -862,6 +847,36 @@ pub fn build_volume_row_context_menu<R: Runtime>(
         )?;
         menu.append(&eject_item)?;
     }
+
+    Ok(menu)
+}
+
+/// Builds the context menu for a FAVORITE row: `Rename` + `Remove from favorites`.
+///
+/// Both items are always enabled: a favorite is a stored `{ path, name }` pair, so
+/// neither action can be refused by anything the popup could read. A favorite is never
+/// ejectable and never a server, which is why this shares nothing with
+/// [`build_volume_row_context_menu`] beyond the `MenuState.volume_row_context` stash and
+/// the `volume-context-action` event both picks ride home on.
+pub fn build_favorite_context_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let menu = Menu::new(app)?;
+
+    let rename_item = MenuItem::with_id(
+        app,
+        FAVORITE_RENAME_ID,
+        menu_t("menu.volume.renameFavorite"),
+        true,
+        None::<&str>,
+    )?;
+    menu.append(&rename_item)?;
+    let remove_item = MenuItem::with_id(
+        app,
+        FAVORITE_REMOVE_ID,
+        menu_t("menu.volume.removeFavorite"),
+        true,
+        None::<&str>,
+    )?;
+    menu.append(&remove_item)?;
 
     Ok(menu)
 }

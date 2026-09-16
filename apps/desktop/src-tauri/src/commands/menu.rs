@@ -1,4 +1,4 @@
-//! Native menu commands: context menus (file / breadcrumb / volume row / parent
+//! Native menu commands: context menus (file / breadcrumb / volume row / favorite row / parent
 //! row / tab / network host / function key bar), the macOS app-menu-bar swap on focus change, and
 //! the menu-state sync commands (view mode, hidden files, pin tab, reopen tab).
 //!
@@ -7,10 +7,10 @@
 use crate::ignore_poison::IgnorePoison;
 use crate::menu::{
     ContextMenuPaneFacts, DetachWord, FileContextInfo, MenuState, ServerRowMenu, SettingsChanged, ViewMode,
-    apply_menu_item_states, build_breadcrumb_context_menu, build_context_menu, build_function_key_bar_context_menu,
-    build_network_host_context_menu, build_parent_row_context_menu, build_tab_context_menu,
-    build_volume_row_context_menu, frontend_shortcut_to_accelerator, rebuild_view_mode_items, set_menu_context,
-    sync_view_mode_check_states,
+    apply_menu_item_states, build_breadcrumb_context_menu, build_context_menu, build_favorite_context_menu,
+    build_function_key_bar_context_menu, build_network_host_context_menu, build_parent_row_context_menu,
+    build_tab_context_menu, build_volume_row_context_menu, frontend_shortcut_to_accelerator, rebuild_view_mode_items,
+    set_menu_context, sync_view_mode_check_states,
 };
 #[cfg(target_os = "macos")]
 use crate::menu::{swap_to_main_menu, swap_to_viewer_menu};
@@ -356,11 +356,11 @@ fn is_ejecting(volume_id: &str) -> bool {
     }
 }
 
-/// Shows a native context menu for a row in the volume-selector dropdown (fire-and-forget).
+/// Shows a native context menu for a VOLUME row in the volume switcher (fire-and-forget).
 ///
-/// A favorite row (`is_favorite`) gets `Rename` + `Remove`; an ejectable volume row gets
-/// `Eject ({name})`; a SERVER row (`server` present) gets Disconnect / Forget saved password /
-/// Forget server instead, because a server has nothing to unplug. The picked action is delivered
+/// An ejectable volume row gets `Eject ({name})`; a SERVER row (`server` present) gets
+/// Disconnect / Forget saved password / Forget server instead, because a server has nothing to
+/// unplug. A FAVORITE row is [`show_favorite_context_menu`]'s job. The picked action is delivered
 /// asynchronously via the `volume-context-action` Tauri event from `on_menu_event` (the same path
 /// as the breadcrumb eject item). The target id + name are stashed in
 /// `MenuState.volume_row_context` so the handler can read them back.
@@ -375,7 +375,6 @@ pub fn show_volume_row_context_menu<R: Runtime>(
     window: Window<R>,
     volume_id: String,
     volume_name: String,
-    is_favorite: bool,
     is_ejectable: bool,
     server: Option<ServerRowMenu>,
 ) -> Result<(), String> {
@@ -383,14 +382,12 @@ pub fn show_volume_row_context_menu<R: Runtime>(
 
     // Disable the eject item while a write op touches this volume or its eject is
     // still running (matches the inline eject button and the breadcrumb menu).
-    // Favorites are never ejectable.
     let busy = crate::file_system::busy_volume_ids().contains(&volume_id);
     let eject_busy = is_ejectable && (busy || is_ejecting(&volume_id));
-    let eject_name = (is_ejectable && !is_favorite).then_some(volume_name.as_str());
+    let eject_name = is_ejectable.then_some(volume_name.as_str());
     let server = server.map(|s| ServerRowMenu { busy, ..s });
     let menu = build_volume_row_context_menu(
         app,
-        is_favorite,
         eject_name,
         eject_busy,
         DetachWord::for_volume_id(&volume_id),
@@ -398,8 +395,42 @@ pub fn show_volume_row_context_menu<R: Runtime>(
     )
     .map_err(|e| e.to_string())?;
 
+    popup_volume_row_menu(window, menu, volume_id, volume_name)
+}
+
+/// Shows a native context menu for a FAVORITE row (fire-and-forget): `Rename` and
+/// `Remove from favorites`.
+///
+/// Its own command rather than a flag on [`show_volume_row_context_menu`]: a favorite row lives on
+/// a different surface, and the two menus share no item. The pick comes home the same way, over
+/// `volume-context-action` with the `RenameFavorite` / `RemoveFavorite` kinds, reading the id +
+/// name back out of `MenuState.volume_row_context`.
+///
+/// `volume_id` is the switcher's `fav-<id>` form, and `volume_name` seeds the rename field.
+#[tauri::command]
+#[specta::specta]
+pub fn show_favorite_context_menu<R: Runtime>(
+    window: Window<R>,
+    volume_id: String,
+    volume_name: String,
+) -> Result<(), String> {
+    let menu = build_favorite_context_menu(window.app_handle()).map_err(|e| e.to_string())?;
+    popup_volume_row_menu(window, menu, volume_id, volume_name)
+}
+
+/// Stashes the row's id + name for `on_menu_event` and pops the menu up under the pointer.
+///
+/// Shared by the volume-row and favorite-row commands so the stash and the popup can't drift:
+/// `on_menu_event` reads ONE context for both, and a menu popped without filling it would act on
+/// whichever row was right-clicked last.
+fn popup_volume_row_menu<R: Runtime>(
+    window: Window<R>,
+    menu: tauri::menu::Menu<R>,
+    volume_id: String,
+    volume_name: String,
+) -> Result<(), String> {
     {
-        let state = app.state::<MenuState<R>>();
+        let state = window.app_handle().state::<MenuState<R>>();
         let mut ctx = state.volume_row_context.lock_ignore_poison();
         ctx.volume_id = volume_id;
         ctx.volume_name = volume_name;

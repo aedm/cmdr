@@ -73,7 +73,7 @@ export async function openServerRowMenu(volume: VolumeInfo): Promise<void> {
     isSaved,
     pinned: volume.pinned === true,
   }
-  await showVolumeRowContextMenu(volume.id, volume.name, false, false, server)
+  await showVolumeRowContextMenu(volume.id, volume.name, false, server)
 }
 
 /**

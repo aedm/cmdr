@@ -74,6 +74,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   reorderFavorites: vi.fn(() => Promise.resolve()),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
   showVolumeRowContextMenu: vi.fn(() => Promise.resolve()),
+  showFavoriteContextMenu: vi.fn(() => Promise.resolve()),
   onVolumeContextAction: vi.fn(() => Promise.resolve(() => {})),
   // The switcher fetches disk space on open; nothing to show keeps the rows plain.
   getVolumeSpace: vi.fn(() => Promise.resolve(null)),

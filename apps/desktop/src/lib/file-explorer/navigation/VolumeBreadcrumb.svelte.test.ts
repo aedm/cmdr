@@ -19,6 +19,7 @@ const reorderFavorites = vi.fn(() => Promise.resolve())
 const ejectVolume = vi.fn(() => Promise.resolve())
 const disconnectPlace = vi.fn(() => Promise.resolve(true))
 const showVolumeRowContextMenu = vi.fn(() => Promise.resolve())
+const showFavoriteContextMenu = vi.fn(() => Promise.resolve())
 const hasServerSecret = vi.fn(() => Promise.resolve(true))
 const listSavedServers = vi.fn(() =>
   Promise.resolve([{ id: 'sftp-nas-local-22-ada', places: [{ volumeId: 'sftp-nas-local-22-ada' }] }]),
@@ -78,6 +79,7 @@ vi.mock('$lib/tauri-commands', () => ({
   reorderFavorites: (...args: unknown[]) => reorderFavorites(...(args as [])),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
   showVolumeRowContextMenu: (...args: unknown[]) => showVolumeRowContextMenu(...(args as [])),
+  showFavoriteContextMenu: (...args: unknown[]) => showFavoriteContextMenu(...(args as [])),
   disconnectPlace: (...args: unknown[]) => disconnectPlace(...(args as [])),
   forgetServer: vi.fn(() => Promise.resolve(true)),
   forgetServerSecret: vi.fn(() => Promise.resolve(true)),
@@ -457,7 +459,7 @@ describe('VolumeBreadcrumb server rows', () => {
     await vi.waitFor(() => {
       expect(showVolumeRowContextMenu).toHaveBeenCalled()
     })
-    expect(showVolumeRowContextMenu).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'Naspolya', false, false, {
+    expect(showVolumeRowContextMenu).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'Naspolya', false, {
       showsDisconnect: true,
       isSaved: true,
       pinned: false,
@@ -1001,7 +1003,7 @@ describe('VolumeBreadcrumb row context menu targeting', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     stubs.volumes = null
-    showVolumeRowContextMenu.mockClear()
+    showFavoriteContextMenu.mockClear()
   })
 
   it('acts on the right-clicked row, not on wherever the keyboard cursor sits', async () => {
@@ -1020,8 +1022,8 @@ describe('VolumeBreadcrumb row context menu targeting', () => {
     // Right-click the FIRST favorite: the menu is built from that row's own facts.
     rows[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
     await vi.waitFor(() => {
-      expect(showVolumeRowContextMenu).toHaveBeenCalled()
+      expect(showFavoriteContextMenu).toHaveBeenCalled()
     })
-    expect(showVolumeRowContextMenu).toHaveBeenCalledWith('fav-1', 'Documents', true, false)
+    expect(showFavoriteContextMenu).toHaveBeenCalledWith('fav-1', 'Documents')
   })
 })
