@@ -14,6 +14,11 @@
 //! ❗ This module composes no user-facing WORDS and formats no numbers. It decides the
 //! label's shape from the one fact it owns — how many rows the menu will act on — and
 //! fills each slot with text the frontend already rendered. See [`ContextMenuTarget`].
+//!
+//! ❌ The line carries no file KIND either ("PNG image", which Finder shows): `UTType`
+//! would pull `UniformTypeIdentifiers.framework` past the app's 10.15 floor, and the
+//! `NSURL` alternative reads the disk on every right-click and can hang on a dead
+//! mount. Name and size answer the question the header exists for. `DETAILS.md`.
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::{AppHandle, Runtime};
