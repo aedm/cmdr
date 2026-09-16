@@ -168,6 +168,23 @@ fn scratch_in(dir: &std::path::Path) -> Vec<String> {
         .collect()
 }
 
+/// The ASIDE records the ledger is holding right now.
+///
+/// `.cmdr-temp-` is the marker only a displaced ORIGINAL wears, so this counts
+/// exactly the records whose file is the user's own. ❗ It's the evidence that
+/// separates "the sweep put the original back" from "the detach rolled the
+/// aside rename back in the journal and the sweep never ran": a rollback leaves
+/// the record DEFERRED, because the aside it names isn't on disk to rename.
+fn aside_records() -> Vec<std::path::PathBuf> {
+    in_flight_temps_test_support::live_paths()
+        .into_iter()
+        .filter(|path| {
+            path.file_name()
+                .is_some_and(|name| name.to_string_lossy().contains(cmdr_fs::staging::STAGING_ASIDE_MARKER))
+        })
+        .collect()
+}
+
 /// Stands in for the drive coming back: the volume registry takes the image's
 /// new mount point under the id the transfer was started with, which is what
 /// announces the arrival the ledger has been waiting on.
@@ -285,16 +302,33 @@ async fn an_original_set_aside_when_the_drive_was_pulled_is_still_there_when_it_
     let result = worker.join().expect("the engine thread finishes");
     assert!(result.is_err(), "a copy onto a pulled drive can't succeed");
 
+    // The drive went while the original was under a scratch name and its
+    // replacement hadn't landed, so nothing could put it back. The record is the
+    // only thing that still knows where the user's file is.
+    assert_eq!(
+        aside_records().len(),
+        1,
+        "the pulled drive left the original set aside, and the ledger has to be holding it"
+    );
+
     image.reattach().expect("the drive is plugged back in");
     let back = image.volumes()[0].clone();
     let _registration = drive_is_back(&back);
 
-    wait_until_async(
-        Duration::from_secs(20),
-        "the returned drive's scratch to be settled",
-        || scratch_in(&back.mount_point).is_empty(),
-    )
+    // ❗ Waits on the RECORD, ❌ not on the drive looking clean. A force-detach
+    // can roll the aside rename back in the HFS+ journal, and then the bytes sit
+    // at their own name with the sweep never having run — a pass that proves
+    // nothing. The record only retires once the sweep reached the aside and
+    // acted on it; a rollback leaves it deferred and this wait fails loudly.
+    wait_until_async(Duration::from_secs(20), "the sweep to settle the aside", || {
+        aside_records().is_empty()
+    })
     .await;
+    assert!(
+        scratch_in(&back.mount_point).is_empty(),
+        "and the sweep leaves nothing of Cmdr's on the drive: {:?}",
+        scratch_in(&back.mount_point)
+    );
 
     // The bytes are the point, not the name: the sweep puts them back at
     // `footage.mov` when that name is free and beside it when something else
