@@ -2,7 +2,7 @@ import { tick } from 'svelte'
 import { removeFavorite, renameFavorite, reorderFavorites, stripFavoritePrefix } from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
-import { moveItem, clampedReorderTarget, pointerReorderTarget, pointerInsertionSlot } from './favorites-reorder'
+import { moveItem, clampedReorderTarget, pointerReorderTarget, pointerInsertionSlot } from '$lib/ui/menu-reorder'
 import type { VolumeInfo } from '../types'
 
 /** Below this many pixels of pointer travel, a mouseup is a plain click (navigate), not a drag. */
