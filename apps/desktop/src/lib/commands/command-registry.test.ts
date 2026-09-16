@@ -7,6 +7,7 @@ import {
   FIXED_KEY_COMMAND_IDS,
   whileDialogOpenFor,
 } from './command-registry'
+import { appCommands } from './sources/app'
 import { COMMAND_IDS, isCommandId, type CommandId } from './command-ids'
 import type { CommandArgs, CommandDispatchArgs } from './types'
 import { DISPATCH_EXEMPT_IDS } from '../../routes/(main)/command-handlers/types'
@@ -357,6 +358,25 @@ describe('updateLicenseCommandName', () => {
 
     updateLicenseCommandName(true)
     expect(commands.find((c) => c.id === 'app.licenseKey')?.name).toBe('See license details')
+  })
+
+  it('rides the generic thunk nameKey, so the registry carries no per-id special case', () => {
+    // A `() => MessageKey` is the one mechanism for a name that depends on live
+    // state. `resolveCommand` branching on an id instead would have to grow a
+    // branch per command that ever needs one.
+    const source = appCommands.find((c) => c.id === 'app.licenseKey')
+    expect(typeof source?.nameKey).toBe('function')
+  })
+})
+
+describe('displayName', () => {
+  it('falls back to name for every command that declares no override', () => {
+    // Only the palette reads `displayName`; Settings > Shortcuts, the help
+    // window, the conflict toast, and the MCP bridge all keep reading `name`.
+    // With no overrides declared, the two must be indistinguishable.
+    for (const command of commands) {
+      expect(command.displayName, command.id).toBe(command.name)
+    }
   })
 })
 

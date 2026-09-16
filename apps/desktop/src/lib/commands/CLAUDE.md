@@ -13,16 +13,20 @@ Centralized command registry and fuzzy search engine for the command palette.
   there, not inline).
 - **`fuzzy-search.ts`**: `searchCommands()` (palette set) + `searchAllCommands()` (full registry), via
   `@leeoniya/ufuzzy`.
-- Tests: `fuzzy-search.test.ts`, `command-registry.test.ts` (tuple ↔ registry set-equality, palette-visible-set pin),
-  `command-types.test.ts` (compile-time arg-shape guards), `rust-command-id-drift.test.ts` (every Rust-emitted id ∈
-  `COMMAND_IDS`).
+- Tests: `fuzzy-search.test.ts`, `command-registry.test.ts` (set-equality + palette pin), `command-types.test.ts`
+  (arg-shape guards), `rust-command-id-drift.test.ts` (Rust-emitted ids ∈ `COMMAND_IDS`).
 
 ## Must-knows (invariants and guardrails)
 
 - **Entries hold i18n message KEYS, not English** (`CommandSource.nameKey` / `descriptionKey`); copy lives in
   `messages/en/commands.json`, resolved via getter-backed `name` / `description`. Don't hardcode a label
-  (`cmdr/no-raw-user-facing-string` is enforced here); IDS stay untouched. `updateLicenseCommandName` flips a flag, not
-  the text. The array stays a getter-backed mutable `Command[]`. Details: `DETAILS.md` § i18n.
+  (`cmdr/no-raw-user-facing-string`); IDS stay untouched. The array stays a getter-backed mutable `Command[]`.
+  `DETAILS.md` § i18n.
+- **`name` is every listing surface's label** (Settings, help window, conflict toast, MCP); **`displayName` is the
+  PALETTE's alone**, falling back to `name`. A live-state label uses a generic hook: a `nameKey` thunk
+  (`app.licenseKey`) or a `displayName` resolver — ❌ never a per-id branch in `resolveCommand`. Rust's native-menu
+  labels (`Label::License`) are a SEPARATE mechanism; generalizing this side fixed nothing there. `DETAILS.md` §
+  "Two labels".
 - **Two set-equality guards keep tuple and registry in sync.** `Command.id: CommandId` enforces tuple ⊇ registry at
   compile time; `command-registry.test.ts` enforces registry ⊇ tuple. Adding to one without the other fails the build or
   the test.
@@ -35,14 +39,13 @@ Centralized command registry and fuzzy search engine for the command palette.
   `routes/(main)/command-handlers/`), keyed by `Exclude<CommandId, DispatchExemptId>` so every dispatchable id has a
   handler at compile time; handlerless ids go in `DISPATCH_EXEMPT_IDS` and silently no-op.
 - **Native macOS commands (quit, hide, hide others, show all) carry `nativeShortcut: true` and `showInPalette: false`.**
-  AppKit owns both the behavior and the accelerator via `PredefinedMenuItems`; including them in JS shortcut dispatch
-  would double-execute. `nativeShortcut: true` (set on exactly `NATIVE_SHORTCUT_COMMAND_IDS`) is the single source of
-  truth that makes the shortcuts editor render them read-only and the store mutators refuse to write them
-  (`DISPATCH_EXEMPT_IDS` sources its native-menu family from the same list).
+  AppKit owns both behavior and accelerator via `PredefinedMenuItems`, so JS dispatch would double-execute. The flag
+  sits on exactly `NATIVE_SHORTCUT_COMMAND_IDS` and is the single source of truth for the read-only editor rows, the
+  store mutators' refusal, and `DISPATCH_EXEMPT_IDS`'s native family.
 - **`scope` is documentation-only, not runtime-enforced** (keyboard routing is each UI component's job; scope drives
   conflict detection and Settings display). A NEW scope is three places: `DETAILS.md` § "Adding a command".
 - **The uFuzzy instance is a module-level singleton**; `info.ranges` is a flat `[start, end, …]` array (`end`
-  exclusive), unpacked into per-char `matchedIndices`. Understand this before changing highlighting (see DETAILS.md).
+  exclusive), unpacked into per-char `matchedIndices`. Read `DETAILS.md` before changing highlighting.
 
 ## Gotchas
 
@@ -60,5 +63,6 @@ Centralized command registry and fuzzy search engine for the command palette.
 The full step list (ids, registry entry, arg overrides, handler, palette pin, native-menu wiring) is in `DETAILS.md` §
 "Adding a command". The guards above catch most omissions; the four-places gotcha covers the menu-item case.
 
-Full details (the `Command` / `CommandArgs` / `CommandDispatchArgs` types, the uFuzzy config and ranking, the
-`searchAllCommands` rationale, the `view.showHidden` local-first path, and decisions): `DETAILS.md`.
+Full details (the `Command` / `CommandArgs` / `CommandDispatchArgs` types, the two labels `name` and `displayName`, the
+uFuzzy config and ranking, the `searchAllCommands` rationale, the `view.showHidden` local-first path, and decisions):
+`DETAILS.md`.

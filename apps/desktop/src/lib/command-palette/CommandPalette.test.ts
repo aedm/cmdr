@@ -9,14 +9,31 @@ import { setShortcut, resetShortcut } from '$lib/shortcuts/shortcuts-store'
 // reads (which hit the real registry + store, not the mocked `$lib/commands`)
 // resolve against known bindings. `app.quit` defaults to ⌘Q, `app.about` is unbound.
 const ALL_COMMANDS = [
-  { id: 'app.quit', name: 'Quit Cmdr', scope: 'App', shortcuts: ['⌘Q'], showInPalette: true },
-  { id: 'app.about', name: 'About Cmdr', scope: 'App', shortcuts: [], showInPalette: true },
-  { id: 'file.copyPath', name: 'Copy path to clipboard', scope: 'Main window', shortcuts: [], showInPalette: true },
-  { id: 'view.showHidden', name: 'Toggle hidden files', scope: 'Main window', shortcuts: ['⌘⇧.'], showInPalette: true },
+  { id: 'app.quit', name: 'Quit Cmdr', displayName: 'Quit Cmdr', scope: 'App', shortcuts: ['⌘Q'], showInPalette: true },
+  { id: 'app.about', name: 'About Cmdr', displayName: 'About Cmdr', scope: 'App', shortcuts: [], showInPalette: true },
+  {
+    id: 'file.copyPath',
+    name: 'Copy path to clipboard',
+    displayName: 'Copy path to clipboard',
+    scope: 'Main window',
+    shortcuts: [],
+    showInPalette: true,
+  },
+  // The one row whose label depends on live state: the palette must render the
+  // `displayName`, while every other surface keeps reading the static `name`.
+  {
+    id: 'view.showHidden',
+    name: 'Toggle hidden files',
+    displayName: 'Show hidden files',
+    scope: 'Main window',
+    shortcuts: ['⌘⇧.'],
+    showInPalette: true,
+  },
   // Carries a stability badge so the palette's StatusBadge wiring is exercised.
   {
     id: 'search.open',
     name: 'Search files',
+    displayName: 'Search files',
     scope: 'Main window',
     shortcuts: [],
     showInPalette: true,
@@ -307,6 +324,19 @@ describe('CommandPalette', () => {
     // Check that shortcuts are displayed
     const shortcutElements = target.querySelectorAll('[class*="shortcut"]')
     expect(shortcutElements.length).toBeGreaterThan(0)
+  })
+
+  it('labels a row with its displayName, so a live label reads as what it will do now', async () => {
+    const target = document.createElement('div')
+    mount(CommandPalette, {
+      target,
+      props: { onExecute: mockOnExecute, onClose: mockOnClose },
+    })
+
+    await tick()
+
+    const row = target.querySelector('[id="palette-option-view.showHidden"]')
+    expect(row?.querySelector('.command-name')?.textContent?.trim()).toBe('Show hidden files')
   })
 
   it('renders a status badge on rows whose command carries one, and only on those', async () => {

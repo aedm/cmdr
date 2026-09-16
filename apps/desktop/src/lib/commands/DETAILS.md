@@ -99,15 +99,30 @@ platform-aware without platform checks scattered through the UI.
 
 ### i18n: keys, not English
 
-Each entry is authored as a `CommandSource` (`Omit<Command, 'name' | 'description'>` plus `nameKey: MessageKey` and an
-optional `descriptionKey`). `resolveCommand` maps each source to a `Command` whose `name` / `description` are getters
-calling `tString()` against `messages/en/commands.json`, mirroring the settings-registry pattern. Reading `command.name`
-resolves the current catalog string, so the palette, the fuzzy haystack (rebuilt per search from `c.name`), the
-shortcuts list, and the menus all stay unchanged and reactive; the per-key base-en parity net is
-`command-registry.parity.test.ts`. Key shape is `commands.<idish>.label` / `.description` (the command id flattened to a
-lowerCamel leaf, e.g. `view.zoom.set75` → `commands.viewZoomSet75.label`); the command IDS themselves never change.
+Each entry is authored as a `CommandSource` (`Omit<Command, 'name' | 'displayName' | 'description'>` plus `nameKey`, an
+optional `descriptionKey`, and an optional `displayName`). `resolveCommand` maps each source to a `Command` whose
+`name` / `displayName` / `description` are getters calling `tString()` against `messages/en/commands.json`, mirroring
+the settings-registry pattern. Reading `command.name` resolves the current catalog string, so the palette, the fuzzy
+haystack (rebuilt per search), the shortcuts list, and the menus all stay unchanged and reactive; the per-key base-en
+parity net is `command-registry.parity.test.ts`. Key shape is `commands.<idish>.label` / `.description` (the command id
+flattened to a lowerCamel leaf, e.g. `view.zoom.set75` → `commands.viewZoomSet75.label`); the command IDS themselves
+never change.
 
-Three special cases:
+### Two labels: `name` and `displayName`
+
+`name` is the command's one static label, and it's what every listing surface reads: Settings > Shortcuts, the help
+window, the conflict toast, and the MCP bridge. A row in those lists names a command; it doesn't offer to run it on
+whatever's under the cursor, so a live label there would be noise at best.
+
+`displayName` is the COMMAND PALETTE's label, and the palette is its only reader (the `fuzzy-search.ts` haystack and
+`CommandPalette.svelte`, which highlights against the same string — so the fuzzy indices clamp to `displayName.length`,
+never `name.length`). A source declares `displayName?: () => string` when its effect depends on where the cursor is and
+saying so is worth it ("Select all with extension .pdf"); omit it and the getter falls back to `name`, which is why a
+command's Settings row can read a plain static label while its palette row reads the live one. Nothing caches either
+value — the getters resolve at read time, `fuzzy-search` rebuilds its haystack each keystroke, and
+`CommandPalette.svelte`'s results are a `$derived` — so a label can change between two reads with nothing to invalidate.
+
+Three sources of a non-constant label, all generic — ❌ `resolveCommand` carries no per-id branch:
 
 - **`favorites.addFromMenu` points at `fileExplorer.navigation.favoritesAddCurrent`**, the only `nameKey` outside
   `commands.*`. The entry is `showInPalette: false` + `fixedKey: true`: it exists so Settings > Keyboard shortcuts can
@@ -116,9 +131,17 @@ Three special cases:
   English edit would have split. A row that QUOTES a surface should read that surface's key.
 - **The three `isMacOS()` commands** (`file.showInFinder` / `file.getInfo` / `file.quickLook`) pick one of two keys at
   module load (`.mac.label` vs `.other.label`), so each platform's wording is a distinct, separately-translatable key.
-- **`app.licenseKey`** has no fixed label: its `name` getter reads the module-level `hasExistingLicense` flag and
-  resolves `commands.appLicenseKey.seeDetails.label` or `…enterKey.label`. `updateLicenseCommandName(hasLicense)` flips
-  the flag (it no longer rewrites English in place), keeping the palette label in step with the native menu.
+- **A `nameKey` thunk** (`() => MessageKey`) picks between catalog keys on live state, resolved on every read.
+  `app.licenseKey` is the one user: it reads `hasExistingLicense` (in `sources/app.ts`, beside the entry) and resolves
+  `commands.appLicenseKey.seeDetails.label` or `…enterKey.label`. `updateLicenseCommandName(hasLicense)` flips the flag
+  — it doesn't rewrite English in place — keeping the palette label in step with the native menu.
+- **A `displayName` resolver** composes the palette label outright, when no fixed set of catalog keys covers it.
+
+**Rust's menu labels are a SEPARATE mechanism, and stay that way.** Native menus never read `Command.name`: they resolve
+through Rust's own `menu_t` catalog, and `Label::License` (`src-tauri/src/menu/menu_spec.rs`) is a second,
+independently maintained dynamic-label path that happens to track the same license state. Generalizing the frontend's
+naming, as `nameKey` thunks and `displayName` just did, fixed nothing on that side. Keeping them separate is deliberate
+(`docs/specs/select-same-kind.md` § Not in scope); the duality is documented rather than merged.
 
 ## Adding a command (full steps)
 

@@ -19,6 +19,27 @@ const OPENS_OWN_WINDOW_STEERING = runsOverDialogs(
   'Opens its own window, and steering a running operation is what people reach for while its progress dialog is up.',
 )
 
+/**
+ * Whether the user already has a license, picking `app.licenseKey`'s label
+ * between "See license details" and "Enter license key". It lives here, next to
+ * the entry that reads it, because that entry's `nameKey` thunk is the only
+ * reader. Kept in sync with the native menu's license item, which resolves its
+ * own label through Rust's `Label::License` — a separate mechanism (see
+ * `../CLAUDE.md`).
+ */
+let hasExistingLicense = true
+
+/**
+ * Update the license command name based on whether a license exists, keeping the
+ * palette in sync with the native menu label. The `nameKey` thunk reads the flag
+ * at access time, so flipping it re-resolves the catalog label on the next read
+ * with nothing to invalidate. Re-exported from `../command-registry.ts`, which is
+ * where callers import it from.
+ */
+export function updateLicenseCommandName(hasLicense: boolean): void {
+  hasExistingLicense = hasLicense
+}
+
 export const appCommands: CommandSource[] = [
   // ============================================================================
   // App scope (work everywhere, regardless of window/modal state)
@@ -79,11 +100,12 @@ export const appCommands: CommandSource[] = [
     shortcuts: [],
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
-  // `app.licenseKey` resolves its name from one of two keys via the license-state
-  // getter below (see `resolveCommand`), so it carries no `nameKey` here.
   {
     id: 'app.licenseKey',
-    nameKey: 'commands.appLicenseKey.seeDetails.label',
+    // Two labels, one command: a thunk, so the `name` getter picks the catalog
+    // key from live license state every time it's read.
+    nameKey: () =>
+      hasExistingLicense ? 'commands.appLicenseKey.seeDetails.label' : 'commands.appLicenseKey.enterKey.label',
     scope: 'App',
     showInPalette: true,
     shortcuts: [],

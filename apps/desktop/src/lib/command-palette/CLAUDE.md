@@ -35,6 +35,10 @@ calls `onExecute(commandId)` → `handleCommandExecute()` on Enter / click.
 - **Shortcut chips read live effective bindings, not registry defaults.** Each row reads
   `getEffectiveShortcutsReactive(command.id)` (capped at `MAX_SHORTCUTS_SHOWN = 3`), so a Settings/MCP rebind updates an
   open palette without reopening. Reading `command.shortcuts` instead would show stale, no-longer-working combos.
+- **Rows render `command.displayName`, and the palette is its only reader.** The fuzzy haystack is built from the same
+  string, so highlight indices line up; reading `name` in one place and `displayName` in the other would highlight the
+  wrong characters. `displayName` falls back to `name` unless the registry entry declares a resolver, which is how a
+  command whose effect depends on the cursor row says what it will do right now. `commands/CLAUDE.md`.
 - **Recents are pruned on mount.** `pruneRecentCommands(validIds)` loads persisted recents, drops ids no longer valid
   palette commands, saves the cleaned list, and feeds it to `searchCommands`. `pushRecentCommand(id)` on every Enter /
   click moves the id to front, dedups, caps at 10. The query is never persisted: the palette opens empty so the

@@ -77,15 +77,6 @@ export const FIXED_KEY_COMMAND_IDS = [
   'errorPane.toggleTechnicalDetails',
 ] as const
 
-/**
- * Whether the user already has a license, driving the `app.licenseKey` command's
- * name (`See license details` vs `Enter license key`). The label depends on
- * runtime license state, so it can't be a single static key. `updateLicenseCommandName`
- * flips this; the resolved command's `name` getter reads it live. Kept in sync
- * with the native menu's license item.
- */
-let hasExistingLicense = true
-
 // The registry data lives in `sources/`, one file per top-level scope, each
 // exporting a `CommandSource[]`. They're concatenated here in the original
 // authoring order (order matters: it drives palette listing and shortcut
@@ -118,23 +109,26 @@ export function whileDialogOpenFor(id: CommandId): WhileDialogOpen {
 }
 
 /**
- * Resolves an authored `CommandSource` into a `Command` whose `name` (and, where
- * present, `description`) are getters that read the catalog through `t()` at
- * access time, so palette/menu/shortcut consumers stay unchanged and reactivity
- * holds in markup. `app.licenseKey` resolves its name from one of two keys based
- * on the live `hasExistingLicense` flag (`updateLicenseCommandName` flips it).
+ * Resolves an authored `CommandSource` into a `Command` whose `name`,
+ * `displayName` (and, where present, `description`) are getters reading through
+ * `t()` at access time, so palette/menu/shortcut consumers stay unchanged and
+ * reactivity holds in markup.
+ *
+ * Two of those getters carry live state, both generically — ❌ no per-id branch
+ * here. A `nameKey` thunk picks between several catalog keys (`app.licenseKey`
+ * flips on license state); a `displayName` resolver composes the palette's row
+ * label outright, and falls back to `name` when a source declares none.
  */
 function resolveCommand(src: CommandSource): Command {
-  const { nameKey, descriptionKey, ...rest } = src
+  const { nameKey, descriptionKey, displayName, ...rest } = src
+  const resolveName = (): string => tString(typeof nameKey === 'function' ? nameKey() : nameKey)
   const cmd = {
     ...rest,
     get name(): string {
-      if (rest.id === 'app.licenseKey') {
-        return tString(
-          hasExistingLicense ? 'commands.appLicenseKey.seeDetails.label' : 'commands.appLicenseKey.enterKey.label',
-        )
-      }
-      return tString(nameKey)
+      return resolveName()
+    },
+    get displayName(): string {
+      return displayName ? displayName() : resolveName()
     },
   } as Command
   if (descriptionKey !== undefined) {
@@ -147,8 +141,7 @@ function resolveCommand(src: CommandSource): Command {
  * Every command, with copy resolved through the catalog. A getter-backed
  * `Command[]` (not `as const`), so `getPaletteCommands()` and the shortcuts
  * conflict detector keep a mutable `Command[]`; the names themselves come from
- * the catalog, so there's nothing to mutate in place anymore (the license name
- * is driven by `hasExistingLicense` via `updateLicenseCommandName`).
+ * the catalog, so there's nothing to mutate in place.
  */
 export const commands: Command[] = commandSources.map(resolveCommand)
 
@@ -157,12 +150,7 @@ export function getPaletteCommands(): Command[] {
   return commands.filter((c) => c.showInPalette)
 }
 
-/**
- * Update the license command name based on whether a license exists. Keeps the
- * command palette in sync with the native menu label. The `app.licenseKey`
- * command's `name` getter reads `hasExistingLicense` live, so flipping this flag
- * re-resolves the catalog label on the next read.
- */
-export function updateLicenseCommandName(hasLicense: boolean): void {
-  hasExistingLicense = hasLicense
-}
+// Re-exported from `sources/app.ts`, where the flag it flips lives beside the
+// `app.licenseKey` entry that reads it. Callers (`routes/(main)/+page.svelte`)
+// keep importing it from the registry.
+export { updateLicenseCommandName } from './sources/app'

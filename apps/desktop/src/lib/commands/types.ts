@@ -139,8 +139,19 @@ export type CommandDispatchArgs<K extends CommandId> = K extends CommandId
 export interface Command {
   /** Unique identifier (like 'file.open', 'nav.parent') */
   id: CommandId
-  /** Display name shown in palette */
+  /**
+   * The command's one static name. Read by Settings > Shortcuts, the help
+   * window, the conflict toast, and the MCP bridge — every surface that lists
+   * the command rather than offering to run it right now.
+   */
   name: string
+  /**
+   * What the COMMAND PALETTE labels the row, and the only surface that reads
+   * it. A command whose effect depends on where the cursor is stands to say so
+   * ("Select all with extension .pdf"); everything else falls back to `name`,
+   * which is what this resolves to unless the source declares an override.
+   */
+  displayName: string
   /** Hierarchical scope */
   scope: CommandScope
   /** Show in command palette? (false for low-level nav like ↑/↓) */
@@ -198,17 +209,29 @@ export interface Command {
  * `messages/en/commands.json`. The id and all behavioral flags carry through
  * unchanged.
  */
-export type CommandSource = Omit<Command, 'name' | 'description'> & {
-  /** Message key for the command's display name (`commands.<idish>.label`). */
-  nameKey: MessageKey
+export type CommandSource = Omit<Command, 'name' | 'displayName' | 'description'> & {
+  /**
+   * Message key for the command's display name (`commands.<idish>.label`), or a
+   * thunk returning one when the command has several labels and live state picks
+   * between them (`app.licenseKey`). The `name` getter calls it at read time, so
+   * flipping that state re-resolves on the next read with nothing to invalidate.
+   */
+  nameKey: MessageKey | (() => MessageKey)
   /** Optional message key for the longer palette help text. */
   descriptionKey?: MessageKey
+  /**
+   * Resolver for the palette's row label, when a static `nameKey` can't say what
+   * the command will do right now. Called at read time, like `nameKey`. Omit it
+   * and `Command.displayName` falls back to `name` — which is what every other
+   * surface keeps reading either way.
+   */
+  displayName?: () => string
 }
 
 /** Result of a fuzzy search match */
 export interface CommandMatch {
   /** The matched command */
   command: Command
-  /** Indices of matched characters in command.name for highlighting */
+  /** Indices of matched characters in `command.displayName` for highlighting */
   matchedIndices: number[]
 }

@@ -163,7 +163,10 @@
 
     /** Render command name with matched characters highlighted */
     function highlightMatches(match: CommandMatch): { text: string; highlighted: boolean }[] {
-        const { name } = match.command
+        // `displayName`, which falls back to `name`: a command whose effect depends
+        // on the cursor row labels itself with what it will do right now, and the
+        // fuzzy indices are computed against that same string.
+        const name = match.command.displayName
         const indices = new Set(match.matchedIndices)
         const segments: { text: string; highlighted: boolean }[] = []
 
@@ -255,7 +258,7 @@
                         tabindex={index === cursorIndex ? 0 : -1}
                         aria-selected={index === cursorIndex}
                     >
-                        <span class="command-name" use:tooltip={{ text: match.command.name, overflowOnly: true }}>
+                        <span class="command-name" use:tooltip={{ text: match.command.displayName, overflowOnly: true }}>
                             {#each highlightMatches(match) as segment, segIdx (segIdx)}
                                 {#if segment.highlighted}
                                     <mark class="match-highlight">{segment.text}</mark>

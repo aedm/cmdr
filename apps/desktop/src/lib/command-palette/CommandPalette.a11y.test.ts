@@ -17,12 +17,22 @@ vi.mock('$lib/app-status-store', () => ({
 }))
 
 vi.mock('$lib/commands', () => {
+  // `displayName` is what the rows render; the registry resolves it to `name`
+  // for every command that declares no override, as these do.
   const all = [
-    { id: 'app.quit', name: 'Quit Cmdr', scope: 'App', shortcuts: ['\u2318Q'], showInPalette: true },
-    { id: 'app.about', name: 'About Cmdr', scope: 'App', shortcuts: [], showInPalette: true },
+    {
+      id: 'app.quit',
+      name: 'Quit Cmdr',
+      displayName: 'Quit Cmdr',
+      scope: 'App',
+      shortcuts: ['\u2318Q'],
+      showInPalette: true,
+    },
+    { id: 'app.about', name: 'About Cmdr', displayName: 'About Cmdr', scope: 'App', shortcuts: [], showInPalette: true },
     {
       id: 'file.copyPath',
       name: 'Copy path to clipboard',
+      displayName: 'Copy path to clipboard',
       scope: 'Main window',
       shortcuts: [],
       showInPalette: true,

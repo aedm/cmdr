@@ -13,6 +13,9 @@ function cmd(partial: { id: string; name?: string; nativeShortcut?: true; fixedK
   const command: Command = {
     id: partial.id as Command['id'],
     name: partial.name ?? partial.id,
+    // The banner reads `name`; `displayName` is the palette's, and resolves to
+    // `name` for every command that declares no override.
+    displayName: partial.name ?? partial.id,
     scope: 'App',
     showInPalette: false,
     shortcuts: [],

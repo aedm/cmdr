@@ -7,8 +7,10 @@
  * mangled apostrophe) fails here. A DELIBERATE copy change lands in the catalog
  * and in this pin together.
  *
- * The license command (`app.licenseKey`) has two states; both are pinned via
- * `updateLicenseCommandName`. The three platform-conditional commands
+ * The license command (`app.licenseKey`) has two states, reached through the
+ * generic `nameKey` thunk; both are pinned via `updateLicenseCommandName`. The
+ * carve-out below stays because the label is state-dependent, not because the
+ * registry treats that command specially. The three platform-conditional commands
  * (`file.showInFinder` / `file.getInfo` / `file.quickLook`) resolve their name
  * by `isMacOS()`; the test runs under jsdom (non-macOS), so it pins the
  * non-macOS labels and asserts the macOS catalog keys exist separately.

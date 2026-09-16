@@ -65,10 +65,13 @@ export function searchAllCommands(query: string): CommandMatch[] {
 
 /** Runs uFuzzy over the given commands and maps hits back to `CommandMatch`es. */
 function fuzzyMatchCommands(commandList: Command[], query: string): CommandMatch[] {
-  // Build haystack from command names plus any extra keywords. A keyword match still ranks and
-  // returns the command, but its indices land past `name.length` and get clamped out below so the
-  // visible label never shows a bogus highlight.
-  const haystack = commandList.map((c) => (c.keywords?.length ? `${c.name} ${c.keywords.join(' ')}` : c.name))
+  // Build the haystack from what the palette RENDERS (`displayName`, which falls back to `name`)
+  // plus any extra keywords. A keyword match still ranks and returns the command, but its indices
+  // land past the label's length and get clamped out below so the visible label never shows a
+  // bogus highlight.
+  const haystack = commandList.map((c) =>
+    c.keywords?.length ? `${c.displayName} ${c.keywords.join(' ')}` : c.displayName,
+  )
 
   // Perform fuzzy search
   const [idxs, info, order] = fuzzy.search(haystack, query)
@@ -89,9 +92,9 @@ function fuzzyMatchCommands(commandList: Command[], query: string): CommandMatch
     // uFuzzy's info.ranges contains arrays of [start, end) pairs (end is exclusive)
     const ranges = info.ranges[orderIdx]
     // ranges is an array of [start, end, start, end, ...] pairs where end is exclusive.
-    // Clamp to the visible name length: indices that fall in the appended keyword text
-    // (>= name.length) would highlight characters the user can't see.
-    const nameLength = command.name.length
+    // Clamp to the visible label length: indices that fall in the appended keyword text
+    // (>= displayName.length) would highlight characters the user can't see.
+    const nameLength = command.displayName.length
     for (let i = 0; i < ranges.length; i += 2) {
       const start = ranges[i]
       const end = Math.min(ranges[i + 1], nameLength)
