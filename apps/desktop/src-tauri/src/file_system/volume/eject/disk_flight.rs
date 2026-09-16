@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use super::disk_target::{self, DiskTarget};
+use super::disk_target::{self, DiskMounts, DiskTarget};
 use super::in_flight::{self, DiskFlight, DiskOwnership};
 use super::unmount_tool::{AbandonedRun, UnmountVerb};
 use super::{EjectError, EjectStep, IndexStopped, Teardown, deadlines, run_teardown, stop_indexes_blocking};
@@ -37,7 +37,19 @@ pub(super) struct Sibling {
 
 /// Ejects the physical disk under `volume_id`, which is mounted at `mount_path`.
 pub(super) async fn eject_disk(volume_id: &str, mount_path: &str, target: DiskTarget) -> Result<(), EjectError> {
-    let mounted = disk_target::mounted_volumes_on_disk(&target.units);
+    // ❗ Fail closed: without the disk's volumes nobody knows which siblings the
+    // teardown would take down, so stopping only the volume that was clicked and
+    // unmounting anyway is exactly the live-watcher unmount the pre-stop exists to
+    // avoid. ❌ An unreadable answer is never an empty disk.
+    let DiskMounts::Read(mounted) = disk_target::mounted_volumes_on_disk(&target.units) else {
+        log::warn!(
+            target: "eject",
+            "DiskArbitration wouldn't say what's mounted on {volume_id}'s disk, so nothing is unmounted"
+        );
+        return Err(EjectError::NotResponding {
+            step: EjectStep::DiskResolve,
+        });
+    };
     let siblings = capture(volume_id, Path::new(mount_path), &mounted, |path| {
         let (id, volume) = crate::file_system::volume::manager::get_volume_manager().find_by_root(path)?;
         (volume.root() == path).then_some(id)
@@ -53,6 +65,7 @@ pub(super) async fn eject_disk(volume_id: &str, mount_path: &str, target: DiskTa
     if !ownership.adopted().is_empty() {
         log::info!(
             target: "eject",
+            // allowed-pluralize-noun: a log line, and `{:?}` is a list of sibling volume ids, never a count
             "Ejecting {volume_id} takes its whole disk down, so {:?} come with it",
             ownership.adopted()
         );
@@ -134,7 +147,7 @@ async fn eject_stopped_disk(
 
     let teardown = DiskTeardown::new(captured_paths(&mounted_now(target), siblings), {
         let units = target.units.clone();
-        move || !disk_target::mounted_volumes_on_disk(&units).is_empty()
+        move || anything_mounted_on(&units)
     });
     let result = run_teardown(
         volume_id,
@@ -161,8 +174,35 @@ async fn eject_stopped_disk(
 }
 
 /// The disk's mounted volumes right now, for the capture the teardown checks against.
+/// An unreadable answer contributes nothing: the captured sibling roots still stand,
+/// and [`anything_mounted_on`] is what keeps the teardown from calling the disk gone.
 fn mounted_now(target: &DiskTarget) -> Vec<MountedVolume> {
-    disk_target::mounted_volumes_on_disk(&target.units)
+    match disk_target::mounted_volumes_on_disk(&target.units) {
+        DiskMounts::Read(mounted) => mounted,
+        DiskMounts::Unreadable => Vec::new(),
+    }
+}
+
+/// Whether anything is still mounted on the disk. ❗ An unreadable answer counts as
+/// YES: reading a silent DiskArbitration as an empty disk would answer `Ok` for an
+/// eject that left the drive powered on.
+fn anything_mounted_on(units: &[u32]) -> bool {
+    reads_as_mounted(disk_target::mounted_volumes_on_disk(units))
+}
+
+/// What a disk read means for "is anything still mounted". Pure, so the three answers
+/// are pinned without a DiskArbitration session.
+fn reads_as_mounted(mounts: DiskMounts) -> bool {
+    match mounts {
+        DiskMounts::Read(mounted) => !mounted.is_empty(),
+        DiskMounts::Unreadable => {
+            log::warn!(
+                target: "eject",
+                "Nobody could say what's still mounted on the disk, so the eject reads it as still up"
+            );
+            true
+        }
+    }
 }
 
 /// Every mount the teardown has to see gone: the disk's mounted volumes, plus every
@@ -567,6 +607,22 @@ mod tests {
         assert!(
             !disk_is_still_mounted(&captured(), |_| false, || false),
             "every captured mount gone and nothing else on the disk is the only 'done'"
+        );
+    }
+
+    #[test]
+    fn a_disk_nobody_could_read_counts_as_still_mounted_and_an_empty_one_doesnt() {
+        // ❗ Three answers, not two. DiskArbitration going silent is NOT an empty disk:
+        // collapsing them would answer `Ok` for an eject that left the drive powered on
+        // with a volume Cmdr never registered still mounted on it.
+        assert!(
+            reads_as_mounted(DiskMounts::Unreadable),
+            "nobody could say, so the disk is still up"
+        );
+        assert!(reads_as_mounted(DiskMounts::Read(vec![mounted("/Volumes/A", 7)])));
+        assert!(
+            !reads_as_mounted(DiskMounts::Read(Vec::new())),
+            "a disk genuinely read as empty is the only one that's gone"
         );
     }
 

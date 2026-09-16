@@ -19,10 +19,11 @@ use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, FileHolder, Har
 use super::disk_flight::DiskTeardown;
 use super::disk_flight::test_support::FakeIndex;
 use super::disk_flight::{FlightResume, Sibling, capture, captured_paths, hand_back, owed_ids};
-use super::disk_target::{self, Resolution};
+use super::disk_target::{self, DiskMounts, Resolution};
 use super::unmount_tool::{self, Target, ToolOutcome, UnmountVerb};
 use super::{EjectError, INDEX_STOP_DEADLINE};
 use crate::file_system::volume::drive_release::{DriveRelease, IndexDoor};
+use crate::volumes::disk_units::MountedVolume;
 
 /// A `run_tool` for `settle_with_retries`: `diskutil eject <mount_point>` through the
 /// harness. A target the harness can't prove is this image's never runs; that reads
@@ -120,11 +121,19 @@ fn sibling(volume_id: &str, path: &Path) -> Sibling {
 /// The teardown the flight hands `run_teardown` for `target`: every mount of the disk
 /// captured, plus a fresh read for the ones it never named.
 fn disk_teardown(target: &disk_target::DiskTarget, siblings: &[Sibling]) -> DiskTeardown {
-    let mounted = disk_target::mounted_volumes_on_disk(&target.units);
     let units = target.units.clone();
-    DiskTeardown::new(captured_paths(&mounted, siblings), move || {
-        !disk_target::mounted_volumes_on_disk(&units).is_empty()
+    DiskTeardown::new(captured_paths(&mounts_on(&target.units), siblings), move || {
+        !mounts_on(&units).is_empty()
     })
+}
+
+/// What's mounted on the disk, for a lane where DiskArbitration is answering (the
+/// production path fails closed on an unreadable answer instead).
+fn mounts_on(units: &[u32]) -> Vec<MountedVolume> {
+    match disk_target::mounted_volumes_on_disk(units) {
+        DiskMounts::Read(mounted) => mounted,
+        DiskMounts::Unreadable => panic!("DiskArbitration answers for an attached image's disk"),
+    }
 }
 
 /// One `diskutil eject` at `aimed_at` through the harness runner.
@@ -229,7 +238,7 @@ async fn two_volumes_of_one_container_key_the_same_physical_disk_and_name_each_o
         "the physical disk and its synthesized container are both units, got {:?}",
         from_a.units
     );
-    let mounted = disk_target::mounted_volumes_on_disk(&from_a.units);
+    let mounted = mounts_on(&from_a.units);
     let paths: Vec<PathBuf> = mounted.iter().map(|volume| volume.path.clone()).collect();
     assert!(paths.contains(&a) && paths.contains(&b), "got {paths:?}");
 

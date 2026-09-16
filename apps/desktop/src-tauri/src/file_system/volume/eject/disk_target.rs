@@ -97,20 +97,35 @@ pub(super) fn resolve(mount_path: &str) -> Resolution {
     }
 }
 
+/// What a read of a disk's mounted volumes found.
+///
+/// ❗ "Couldn't read" is its own answer, ❌ never an empty list. A silent
+/// DiskArbitration read as "nothing is mounted on this disk any more" would let an
+/// eject report success over a drive still powered on, and let a flight stop only the
+/// volume that was clicked and then unmount the disk under a sibling's live watcher —
+/// the FSKit wedge the pre-stop exists to avoid. Every caller fails closed on it.
+#[derive(Debug)]
+pub(super) enum DiskMounts {
+    /// What's mounted on the disk, which may legitimately be nothing.
+    Read(Vec<MountedVolume>),
+    /// DiskArbitration wouldn't answer, so nobody knows what's on the disk.
+    Unreadable,
+}
+
 /// Every volume mounted on `units` right now, from the mount table plus one
 /// DiskArbitration lookup per device-backed mount.
 ///
 /// Its own session each call: a `DASession` isn't `Send`, and a flight's future
 /// crosses `await` points. Creating one is a local object allocation, and the lookups
 /// are the same MIG calls the approver's group read makes.
-pub(super) fn mounted_volumes_on_disk(units: &[u32]) -> Vec<MountedVolume> {
+pub(super) fn mounted_volumes_on_disk(units: &[u32]) -> DiskMounts {
     // SAFETY: `DASessionCreate` with the default allocator answers under the Create
     // rule, which `CFRetained` balances; NULL means the daemon couldn't be reached.
     let Some(session) = (unsafe { DASession::new(None) }) else {
-        log::warn!(target: "eject", "DiskArbitration wouldn't open a session, so the disk's volumes can't be listed");
-        return Vec::new();
+        log::warn!(target: "eject", "DiskArbitration wouldn't open a session, so what's mounted on the disk is unknown");
+        return DiskMounts::Unreadable;
     };
-    disk_units::mounted_volumes_on(&session, units)
+    DiskMounts::Read(disk_units::mounted_volumes_on(&session, units))
 }
 
 /// The IOKit media object for the BSD node `bsd_name`, `None` when IOKit doesn't know
@@ -163,6 +178,7 @@ fn topmost_whole(media: io_object_t) -> Option<io_object_t> {
             entry = parent;
         }
     }
+    // allowed-pluralize-noun: a log line, and `MAX_ANCESTORS` is a compile-time bound well above one
     log::warn!(target: "eject", "An IOKit media has more than {MAX_ANCESTORS} ancestors; taking the highest whole disk found so far");
     whole
 }
@@ -267,7 +283,9 @@ mod tests {
         );
 
         // And the resolution is what finds the boot volume among the disk's mounts.
-        let mounted = mounted_volumes_on_disk(&target.units);
+        let DiskMounts::Read(mounted) = mounted_volumes_on_disk(&target.units) else {
+            panic!("DiskArbitration answers for the boot disk");
+        };
         assert!(
             mounted.iter().any(|volume| volume.path == std::path::Path::new("/")),
             "the disk's mounted volumes include the boot volume, got {mounted:?}"

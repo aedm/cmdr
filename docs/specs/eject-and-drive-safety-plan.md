@@ -908,6 +908,12 @@ M13 and M14 build on:
   now guarding a wedged `diskarbitrationd` reached through `mounted_volumes_on`.
 - `Resolution::{Gone, NoDisk, Disk(DiskTarget)}`; `DiskTarget { key: DiskKey, units: Vec<u32> }`. A NULL/absent node
   answers `NoDisk` when the path is still a mount and `Gone` when it isn't.
+- **A read of a disk's volumes has THREE answers**, `DiskMounts::{Read(Vec<MountedVolume>), Unreadable}`, ❌ never an
+  empty list for "couldn't tell". A silent DiskArbitration collapsed into "nothing is mounted here" would answer `Ok`
+  for an eject that left the drive powered on, and at the capture it would hide the siblings the pre-stop must cover and
+  then unmount under one's live watcher. So the capture answers `NotResponding { DiskResolve }` on `Unreadable` and the
+  teardown reads it as still mounted (`reads_as_mounted`, pinned over all three). M13's holder scan inherits the same
+  rule: a scan that couldn't run names nobody, ❌ which is not "nobody is holding it".
 - `mounted_volumes_on_disk(units)` opens a `DASession` per call: `DASession` isn't `Send` and the flight's future
   crosses `await` points. It's a local allocation plus the MIG calls `mounted_volumes_on` already made.
 - **`in_flight` now holds disks too**: `join_or_own_disk(key, volume_id, sibling_ids) -> DiskFlight::{Owner, Joined}`
