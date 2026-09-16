@@ -21,6 +21,9 @@
 //!   images.
 //! - **Unique volume names** (`CMDR<pid><n>`), `-nobrowse` everywhere, and a
 //!   [`DiskImage`] detaches and deletes itself on drop, unwind included.
+//! - **Leftovers are reclaimed at [`DiskImageSession::acquire`]**, because a drop can't
+//!   run when the test process is SIGKILLed. See `reclaim_orphans` for why that's safe
+//!   only there.
 
 mod facts;
 mod runner;
@@ -173,11 +176,93 @@ impl DiskImageSession {
         lock.lock()
             .unwrap_or_else(|error| panic!("couldn't take the disk-image lock at {}: {error}", path.display()));
         HOLDERS.lock_ignore_poison().push(owner);
-        Arc::new(Self {
+        let session = Arc::new(Self {
             _lock: lock,
             owner,
             images: Mutex::new(Vec::new()),
-        })
+        });
+        session.reclaim_orphans();
+        session
+    }
+
+    /// Detach whatever a previous run left attached.
+    ///
+    /// ❗ **Why this is safe here and nowhere else**: the machine-wide `flock` is held by
+    /// the time this runs, and the kernel releases a dead process's `flock`. So no LIVE
+    /// harness session can own a matching attachment — anything still attached that passes
+    /// every check in [`facts::orphan_verdict`] was left by a run that is already gone.
+    ///
+    /// **Why it's needed**: [`DiskImage`]'s `Drop` covers a panic and an early return, but
+    /// nothing covers a SIGKILL, which is what nextest sends a test that overruns its cap.
+    /// Six images were found attached this way (macOS 27.0, 2026-09-16) with their backing
+    /// files still on disk, which is the signature of a process that died without running a
+    /// destructor: the attach-window path below deletes its file on the way out.
+    ///
+    /// ❌ Never `-force`, and ❌ never anything that fails a check: those are left alone.
+    fn reclaim_orphans(&self) {
+        let attached = match self.attached_images() {
+            Ok(attached) => attached,
+            Err(error) => {
+                log::warn!(
+                    target: "testing::disk_images",
+                    "couldn't read the attached images, so leftovers stay attached: {error}"
+                );
+                return;
+            }
+        };
+        let temp_dir = std::env::temp_dir();
+        for image in &attached.images {
+            match facts::orphan_verdict(image, &temp_dir) {
+                Ok(whole) => self.detach_orphan(&image.image_path, whole),
+                // Only what LOOKS like ours earns a line: this Mac may have any number of
+                // unrelated images attached, and naming each one every run would bury the
+                // ones that matter.
+                Err(facts::NotAnOrphan::NotInTempDir | facts::NotAnOrphan::DirNotOurs) => {}
+                Err(reason) => log::warn!(
+                    target: "testing::disk_images",
+                    "leaving {} attached, since it isn't provably ours: {reason:?}",
+                    image.image_path.display()
+                ),
+            }
+        }
+    }
+
+    /// Detach one leftover, through the same ownership check every other change makes, so
+    /// `hdiutil` has to agree the node and its whole disk belong to that backing file.
+    fn detach_orphan(&self, image_path: &Path, whole: &str) {
+        let node = whole.strip_prefix("/dev/").unwrap_or(whole);
+        match self.run(
+            image_path,
+            Call::Detach {
+                whole: node,
+                force: false,
+            },
+        ) {
+            Ok(_) => log::info!(
+                target: "testing::disk_images",
+                "detached {}, left attached by a run that couldn't clean up after itself",
+                image_path.display()
+            ),
+            Err(error) => log::warn!(
+                target: "testing::disk_images",
+                "couldn't detach the leftover image {}: {error}",
+                image_path.display()
+            ),
+        }
+    }
+
+    /// Detach `image_path` if `hdiutil` still lists it, for the window between an attach
+    /// that landed and the guard that would have owned it. Same evidence as the sweep.
+    fn detach_if_attached(&self, image_path: &Path) {
+        let Ok(attached) = self.attached_images() else {
+            return;
+        };
+        let Some(image) = attached.images.iter().find(|image| image.image_path == image_path) else {
+            return;
+        };
+        if let Ok(whole) = facts::orphan_verdict(image, &std::env::temp_dir()) {
+            self.detach_orphan(image_path, whole);
+        }
     }
 
     /// A volume name no other run on this machine is using: `CMDR<pid><n>`.
@@ -404,7 +489,14 @@ impl DiskImage {
                 sparse,
             },
         )?;
-        session.run(&image_path, Call::Attach { image: &image_path })?;
+        if let Err(error) = session.run(&image_path, Call::Attach { image: &image_path }) {
+            // ❗ The attach may have LANDED before the runner killed it at its deadline, and
+            // the guard that would own it doesn't exist yet. `dir` drops on the way out and
+            // takes the backing file with it, so an attachment left here would outlive its
+            // own file and the sweep above would be its only hope.
+            session.detach_if_attached(&image_path);
+            return Err(error);
+        }
         session.images.lock_ignore_poison().push(image_path.clone());
         // Attached from here on: the guard exists before anything else can fail, so
         // an early return still detaches. The mount points come from `hdiutil info`,

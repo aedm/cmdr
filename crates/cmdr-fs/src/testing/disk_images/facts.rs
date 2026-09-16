@@ -247,6 +247,95 @@ pub(super) fn check_force_detach(
     Ok(())
 }
 
+/// The directory-name prefix `TestDir::new("disk_image")` gives every harness image.
+const IMAGE_DIR_PREFIX: &str = "cmdr_disk_image_";
+
+/// The two file names `DiskImage::create_and_attach` gives a backing file.
+const IMAGE_FILE_NAMES: [&str; 2] = ["image.dmg", "image.sparseimage"];
+
+/// Why an attached image isn't provably this harness's, so it's left alone.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum NotAnOrphan {
+    /// Its backing file isn't under this process's temp directory.
+    NotInTempDir,
+    /// Its backing file isn't in a `cmdr_disk_image_*` directory.
+    DirNotOurs,
+    /// Its backing file isn't named the way the harness names one.
+    FileNotOurs,
+    /// It has a volume mounted somewhere the harness would never mount one.
+    VolumeNotOurs {
+        /// Where that volume is mounted.
+        mount_point: PathBuf,
+    },
+    /// `hdiutil` lists no whole disk for it, so there's nothing to detach.
+    NoWholeDisk,
+}
+
+/// Whether `image` is an attachment THIS harness left behind, answering the whole disk
+/// to detach.
+///
+/// ❗ EVERY check must pass, because the cost of a false positive is detaching a disk
+/// that isn't ours. The evidence is layered on purpose: the backing file sits under this
+/// process's own temp directory, in a `cmdr_disk_image_*` directory, named the way
+/// `create_and_attach` names one, and every volume it has mounted carries the
+/// `CMDR<digits>` shape `DiskImageSession::unique_volume_name` produces.
+pub(super) fn orphan_verdict<'a>(image: &'a AttachedImage, temp_dir: &Path) -> Result<&'a str, NotAnOrphan> {
+    if !image.image_path.starts_with(temp_dir) {
+        return Err(NotAnOrphan::NotInTempDir);
+    }
+    let dir_is_ours = image
+        .image_path
+        .parent()
+        .and_then(Path::file_name)
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with(IMAGE_DIR_PREFIX));
+    if !dir_is_ours {
+        return Err(NotAnOrphan::DirNotOurs);
+    }
+    let file_is_ours = image
+        .image_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| IMAGE_FILE_NAMES.contains(&name));
+    if !file_is_ours {
+        return Err(NotAnOrphan::FileNotOurs);
+    }
+    for entity in &image.entities {
+        if let Some(mount_point) = &entity.mount_point
+            && !is_harness_volume(mount_point)
+        {
+            return Err(NotAnOrphan::VolumeNotOurs {
+                mount_point: mount_point.clone(),
+            });
+        }
+    }
+    image
+        .entities
+        .iter()
+        .map(|entity| entity.dev_entry.as_str())
+        .find(|dev_entry| is_whole_disk_node(dev_entry))
+        .ok_or(NotAnOrphan::NoWholeDisk)
+}
+
+/// Whether `mount_point` is where the harness mounts a volume: a `CMDR<digits>` name
+/// directly under `/Volumes`.
+fn is_harness_volume(mount_point: &Path) -> bool {
+    mount_point.parent() == Some(Path::new("/Volumes"))
+        && mount_point
+            .file_name()
+            .and_then(|name| name.to_str())
+            .and_then(|name| name.strip_prefix("CMDR"))
+            .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit()))
+}
+
+/// Whether `dev_entry` names a whole disk (`/dev/diskN`) rather than one of its slices
+/// (`/dev/diskNsM`).
+fn is_whole_disk_node(dev_entry: &str) -> bool {
+    dev_entry
+        .strip_prefix("/dev/disk")
+        .is_some_and(|unit| !unit.is_empty() && unit.bytes().all(|byte| byte.is_ascii_digit()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -501,5 +590,102 @@ mod tests {
             check_force_detach(Path::new(OURS), &attached(), &[PathBuf::from(OURS)], &mut host),
             Err(Refusal::HostUnknown { .. })
         ));
+    }
+
+    /// The temp directory the recorded `image-path`s sit under.
+    const TEMP_DIR: &str = "/var/folders/xy/T";
+
+    fn image_named(path: &str, entities: &[(&str, Option<&str>)]) -> AttachedImage {
+        AttachedImage {
+            image_path: PathBuf::from(path),
+            entities: entities
+                .iter()
+                .map(|(dev_entry, mount_point)| SystemEntity {
+                    dev_entry: (*dev_entry).to_string(),
+                    mount_point: mount_point.map(PathBuf::from),
+                })
+                .collect(),
+        }
+    }
+
+    /// The shape a run killed by SIGKILL leaves behind: still attached, still mounted.
+    #[test]
+    fn a_stale_attachment_of_ours_is_reclaimed_by_its_whole_disk() {
+        let ours = &attached().images[1];
+        assert_eq!(orphan_verdict(ours, Path::new(TEMP_DIR)), Ok("/dev/disk5"));
+    }
+
+    #[test]
+    fn someone_elses_image_is_never_reclaimed() {
+        let theirs = &attached().images[0];
+        assert_eq!(
+            orphan_verdict(theirs, Path::new(TEMP_DIR)),
+            Err(NotAnOrphan::NotInTempDir),
+            "a Finder-opened DMG in ~/Downloads is nobody's to detach"
+        );
+    }
+
+    /// The checks are layered, so each one is the ONLY thing standing between a disk and
+    /// a detach when the others happen to pass.
+    #[test]
+    fn an_image_failing_any_single_check_is_left_alone() {
+        // In our temp dir, but not in a directory the harness made.
+        let stranger = image_named("/var/folders/xy/T/someone_else/image.dmg", &[("/dev/disk5", None)]);
+        assert_eq!(
+            orphan_verdict(&stranger, Path::new(TEMP_DIR)),
+            Err(NotAnOrphan::DirNotOurs)
+        );
+
+        // Our directory, but not a backing file the harness would have created.
+        let wrong_file = image_named(
+            "/var/folders/xy/T/cmdr_disk_image_a/payload.dmg",
+            &[("/dev/disk5", None)],
+        );
+        assert_eq!(
+            orphan_verdict(&wrong_file, Path::new(TEMP_DIR)),
+            Err(NotAnOrphan::FileNotOurs)
+        );
+
+        // Ours by every path check, but mounted where the harness never mounts.
+        let wrong_mount = image_named(
+            "/var/folders/xy/T/cmdr_disk_image_a/image.dmg",
+            &[("/dev/disk5", None), ("/dev/disk5s1", Some("/Volumes/Backup"))],
+        );
+        assert_eq!(
+            orphan_verdict(&wrong_mount, Path::new(TEMP_DIR)),
+            Err(NotAnOrphan::VolumeNotOurs {
+                mount_point: PathBuf::from("/Volumes/Backup")
+            })
+        );
+
+        // A name that merely starts like ours isn't the `CMDR<digits>` shape.
+        let lookalike = image_named(
+            "/var/folders/xy/T/cmdr_disk_image_a/image.dmg",
+            &[("/dev/disk5", None), ("/dev/disk5s1", Some("/Volumes/CMDRBackup"))],
+        );
+        assert!(matches!(
+            orphan_verdict(&lookalike, Path::new(TEMP_DIR)),
+            Err(NotAnOrphan::VolumeNotOurs { .. })
+        ));
+
+        // Ours, but `hdiutil` lists only slices, so there's no whole disk to detach.
+        let no_whole = image_named(
+            "/var/folders/xy/T/cmdr_disk_image_a/image.dmg",
+            &[("/dev/disk5s1", Some("/Volumes/CMDR1"))],
+        );
+        assert_eq!(
+            orphan_verdict(&no_whole, Path::new(TEMP_DIR)),
+            Err(NotAnOrphan::NoWholeDisk)
+        );
+    }
+
+    #[test]
+    fn an_unmounted_leftover_of_ours_is_still_reclaimed() {
+        // A run that died between attach and mount leaves no volume to check.
+        let ours = image_named(
+            "/var/folders/xy/T/cmdr_disk_image_a/image.sparseimage",
+            &[("/dev/disk5", None), ("/dev/disk5s1", None)],
+        );
+        assert_eq!(orphan_verdict(&ours, Path::new(TEMP_DIR)), Ok("/dev/disk5"));
     }
 }

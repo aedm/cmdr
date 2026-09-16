@@ -1448,6 +1448,11 @@ and the unmount approver's pins.
 - **No lock in the runner.** Each real-image test holds the machine-wide `flock` for its whole body, which keeps two
   worktrees' runs apart; the Go runner taking the same lock would block its own nextest processes. Within one run, the
   `disk-image` nextest group runs one test at a time.
+- **A killed test leaks its image, and the next `acquire` reclaims it.** nextest SIGKILLs a test past its cap, so no
+  `Drop` runs and the image stays attached (six were found this way on 2026-09-16). `DiskImageSession::acquire` sweeps
+  provably-ours leftovers before each test, so a red run doesn't poison the next one. ❗ If a lane leaves images
+  attached anyway, that's the sweep's evidence gates refusing them, and the log says which check failed:
+  `crates/cmdr-fs/DETAILS.md` § "`testing::disk_images`".
 - **Adding a module**: a real-image test module goes into `diskImageLaneTestAtoms` AND gets a `disk-image` override in
   `.config/nextest.toml` (serialization, plus a cap: 30 s for most, 90 s for the unmount approver's block, which spends
   a chain's whole budget and builds two-partition images on purpose). `TestDiskImageLaneMatchesTheDiskImageNextestGroup`

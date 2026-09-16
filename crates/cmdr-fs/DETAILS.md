@@ -540,6 +540,15 @@ would drift apart.
 - **Teardown.** `DiskImage`'s `Drop` resolves the whole disk fresh, detaches, falls back to a guarded `-force`, and then
   its `TestDir` deletes the file. An image that's already gone (an eject detached it) is fine; one that won't detach
   panics the test unless it's already panicking, so a leak never passes silently.
+- **Leftovers are reclaimed at `acquire`**, because no `Drop` runs when the test process is SIGKILLed — which is what
+  nextest does to a test past its cap, and what left six images attached on 2026-09-16. `reclaim_orphans` detaches only
+  what `facts::orphan_verdict` proves is ours on EVERY count: the backing file under this process's temp dir, in a
+  `cmdr_disk_image_*` directory, named `image.dmg` / `image.sparseimage`, with every mounted volume carrying the
+  `CMDR<digits>` shape — then through the normal ownership check, and ❌ never `-force`. Anything failing a check is
+  left alone, and logged when it looked like ours. ❗ Safe only at `acquire`: the machine-wide `flock` is held, and the
+  kernel releases a dead process's `flock`, so no live session can own a matching attachment. The attach itself is
+  covered separately: a failed or killed `hdiutil attach` re-checks and detaches what it left, since the guard that
+  would own it doesn't exist yet.
 - **`FileHolder`** holds a file open from a child `/bin/sleep`, so its volume refuses to unmount. The child descends
   from the test process, so anything classifying holders by ancestry reads it as the test's own: identify it by `pid()`.
 - **Tests.** The pure decisions and the runner are default-suite unit tests. `real_images` attaches each spec for real,
