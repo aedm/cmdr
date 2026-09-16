@@ -186,6 +186,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "A(z) {name} leválasztódott, miközben a Cmdr éppen frissítette az indexét. A meghajtó következő átvizsgálása az elejéről indul, így a mappaméretei újra pontosak lesznek.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "Indexeljük a(z) {name} meghajtót?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

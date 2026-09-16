@@ -3041,3 +3041,11 @@ trường hợp này cho "Kết nối với máy chủ", và kho tham chiếu kh
   (`fileExplorer.navigation.driveIndex.tooltipStale` dùng `bị` cho ổ đĩa rơi mất) vì ở đây việc tháo là chủ ý của người
   dùng. “Left its index as it was” → “để nguyên”, như `operationLog.rollback.partiallyRolledBackNotice`; “try again in a
   moment” → “sau giây lát”, như `errors.eject.notResponding`.
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected (đã xảy ra, ổ đĩa không còn đó) → `bị ngắt kết nối`** · dùng `ngắt kết nối` đã chốt với `bị`, như
+  `indexing.staleDialog.body` (“Trong khi {name} bị ngắt kết nối”) · `high`. Chọn `bị` chứ không phải `được` của
+  `fileExplorer.navigation.driveIndex.driveLeaving`: ở đây ổ đĩa rơi mất giữa chừng, chứ không phải người dùng chủ ý
+  tháo. “Starts from scratch” → “bắt đầu lại từ đầu”, như `indexing.rescan.incompletePreviousScan`; `lần quét` và
+  `kích cỡ thư mục` lấy từ cùng họ khóa.

@@ -3383,3 +3383,11 @@ gevallen voor „Verbind met server” formuleert en niet in de stapel zit.
   dezelfde stam · `high`. „Left its index as it was” → „gelaten zoals die was”, zoals
   `operationLog.rollback.partiallyRolledBackNotice`; „try again in a moment” → „zo meteen opnieuw”, zoals
   `fileExplorer.pane.directConnectionMountNotRespondingToast`.
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected (al gebeurd, de schijf is weg) → `werd losgekoppeld`** · verleden tijd van het vastgelegde
+  `loskoppelen`, zoals `indexing.staleDialog.body` („Terwijl {name} losgekoppeld was”) · `high`. Bewust NIET de lopende
+  vorm „wordt losgekoppeld” uit `fileExplorer.navigation.driveIndex.driveLeaving`. „Starts from scratch” → „helemaal
+  opnieuw”, in de lijn van `indexing.rescan.incompletePreviousScan` („begint opnieuw met doorzoeken”); `doorzoeken` en
+  `mapgroottes` komen uit dezelfde familie.

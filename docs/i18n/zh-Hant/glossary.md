@@ -1765,3 +1765,10 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
   表示進行中，同 Thunar `zh-TW`（「正在卸載裝置」/「正在退出裝置」）· `high`。「Left its index as it
   was」→「維持原樣」，同 `operationLog.rollback.partiallyRolledBackNotice`；「try again in a
   moment」→「請稍後再試一次」，同一檔案裡的 `fileExplorer.pane.directConnectionMountNotRespondingToast`。
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected（已經發生，磁碟機已不在）→ `中斷了連線`** · 沿用已定的 `disconnect → 中斷連線`，取完成態，同
+  `indexing.staleDialog.body`（「{name} 沒有連接的期間」）· `high`。不用
+  `fileExplorer.navigation.driveIndex.driveLeaving` 的進行態「正在中斷連線」，那裡退出還沒結束。「Starts from
+  scratch」→「從頭開始」，同 `indexing.rescan.incompletePreviousScan`；`掃描` 與 `資料夾大小` 取自同一檔案。

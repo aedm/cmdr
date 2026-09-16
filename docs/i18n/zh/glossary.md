@@ -2627,3 +2627,12 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   表示进行中，同 Thunar `zh`（「正在卸载设备」/「正在弹出设备」）· `high`。「Left its index as it was」→「保持原样」，同
   `operationLog.rollback.partiallyRolledBackNotice`；「try again in a moment」→「请稍后重试」，同一文件里的
   `fileExplorer.pane.directConnectionMountNotRespondingToast`。
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected（已经发生，驱动器已不在）→ `断开了连接`** · 沿用已定的 `disconnect → 断开连接`，取完成态，同
+  `indexing.staleDialog.body`（「在 {name} 断开连接期间」）· `high`。不用
+  `fileExplorer.navigation.driveIndex.driveLeaving` 的进行态「正在断开连接」，那里弹出还没结束。「Starts from
+  scratch」→「从头开始」，同 `indexing.rescan.incompletePreviousScan`；`扫描` 与 `文件夹大小` 取自同一文件。注意
+  `indexing.staleDialog.body`、`indexing.staleDialog.bodyPhone`、`indexing.firstConnect.body`
+  仍写作「目录大小」，属旧漂移，待统一。

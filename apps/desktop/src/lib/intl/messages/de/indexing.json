@@ -185,6 +185,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "{name} wurde getrennt, während Cmdr gerade seinen Index aktualisiert hat. Der nächste Durchlauf dieses Laufwerks startet von vorn, damit die Ordnergrößen wieder stimmen.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "{name} indizieren?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

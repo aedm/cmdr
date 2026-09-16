@@ -186,6 +186,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "O disco {name} foi desconectado enquanto o Cmdr atualizava o índice. A próxima varredura deste disco começa do zero, então os tamanhos das pastas voltam a ficar certos.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "Indexar {name}?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

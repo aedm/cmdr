@@ -185,6 +185,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "{name} 在 Cmdr 更新索引時中斷了連線。這個磁碟機下次會從頭開始掃描，資料夾大小就會重新準確。",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "要為 {name} 建立索引嗎？",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

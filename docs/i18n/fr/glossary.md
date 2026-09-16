@@ -3387,3 +3387,12 @@ mêmes cas pour « Se connecter au serveur » et n'est pas dans le tas de réfé
   périphérique ») · `high`. La tournure nominale évite tout accord avec `{name}`. « Left its index as it was » → « tel
   quel », comme `operationLog.rollback.partiallyRolledBackNotice` ; « try again in a moment » → « Réessayez dans un
   instant », comme `errors.eject.notResponding`.
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected (déjà fait, le disque est parti) → `a été déconnecté`** · passé composé du `déconnecter` déjà fixé,
+  avec l’accord au masculin de « disque » que retient `indexing.staleDialog.body` (« Pendant que {name} était déconnecté
+  ») · `high`. Ce n’est PAS la tournure nominale « est en cours de déconnexion » de
+  `fileExplorer.navigation.driveIndex.driveLeaving`, qui décrit une éjection encore en cours. « Starts from scratch » →
+  « repart de zéro », comme `indexing.rescan.incompletePreviousScan` ; `analyse` et `taille des dossiers` viennent de la
+  même famille.

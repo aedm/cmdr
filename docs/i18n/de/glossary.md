@@ -2885,3 +2885,11 @@ genau diese Fälle für „Mit Server verbinden“ und fehlt im Stapel.
   Vorgang ebenso passivisch sagt · `high`. „Left its index as it was“ folgt
   `operationLog.rollback.partiallyRolledBackNotice` („so gelassen, wie er war“), „try again in a moment“
   `errors.eject.notResponding` („gleich noch einmal“).
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected (abgeschlossen, das Laufwerk ist weg) → `wurde getrennt`** · Vergangenheitsform des gesetzten
+  `disconnect → trennen`, wie `indexing.staleDialog.body` („Während {name} getrennt war“) · `high`. Bewusst NICHT die
+  Verlaufsform „wird gerade getrennt“ aus `fileExplorer.navigation.driveIndex.driveLeaving`: dort läuft das Auswerfen
+  noch, hier ist es schon passiert. „Starts from scratch“ → „startet von vorn“ wie
+  `indexing.rescan.incompletePreviousScan`; `Durchlauf` und `Ordnergrößen` stammen aus derselben Datei.

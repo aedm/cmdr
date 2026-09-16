@@ -186,6 +186,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "{name} se desconectó mientras Cmdr actualizaba su índice. El próximo análisis de esta unidad empieza desde cero, así que sus tamaños de carpetas vuelven a ser correctos.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "¿Indexar {name}?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

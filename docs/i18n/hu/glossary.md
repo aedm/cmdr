@@ -3338,3 +3338,12 @@ csatlakozni ehhez: {hostName}” (`fileExplorer.network.share.connectFailedTitle
   toldalékot. „Left its index as it was” → „úgy hagyta …, ahogy volt”, mint az
   `operationLog.rollback.partiallyRolledBackNotice`; „try again in a moment” → „egy pillanat múlva”, mint a
   `fileExplorer.pane.directConnectionMountNotRespondingToast`.
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected (már megtörtént, a meghajtó nincs ott) → `leválasztódott`** · a rögzített `leválaszt` mediopasszív
+  alakja; az `indexing.staleDialog.body` ugyanerre az állapotra a „le volt választva” formát használja · a szótő `high`,
+  a mediopasszív alak `tentative` (a referenciákban a tárgyas „Eszköz leválasztása” szerepel, cselekvő nélküli múltra
+  nincs bennük minta). Szándékosan NEM a `fileExplorer.navigation.driveIndex.driveLeaving` folyamatban lévő alakja
+  („leválasztása folyamatban van”). „Starts from scratch” → „az elejéről”, mint az
+  `indexing.rescan.incompletePreviousScan`; az `átvizsgálás` és a `mappaméretek` ugyanebből a fájlból.

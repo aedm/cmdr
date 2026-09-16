@@ -186,6 +186,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "{name} bị ngắt kết nối khi Cmdr đang cập nhật chỉ mục. Lần quét tiếp theo của ổ đĩa này sẽ bắt đầu lại từ đầu, nên kích cỡ thư mục sẽ chính xác trở lại.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "Lập chỉ mục {name}?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

@@ -2910,3 +2910,13 @@ que redige esses mesmos casos para «Conectar ao Servidor» e não está na pilh
   · `high`. O substantivo `disco` vem na frente para que o particípio concorde com ele, e o gênero desconhecido de
   `{name}` não pesa. “Left its index as it was” → “como estava”, como `operationLog.rollback.partiallyRolledBackNotice`;
   “try again in a moment” → “em instantes”, como `fileExplorer.pane.directConnectionMountNotRespondingToast`.
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected (já aconteceu, o disco saiu) → `O disco {name} foi desconectado`** · pretérito do já fixado
+  `disconnect → Desconectar`, como `indexing.staleDialog.body` · `high`. O substantivo “disco” vem na frente para o
+  particípio concordar com ele, e o gênero de `{name}` não pesa — mesma solução da irmã
+  `fileExplorer.navigation.driveIndex.driveLeaving`, mas no passado, porque lá a ejeção ainda está em andamento. “Starts
+  from scratch” → “começa do zero”. A varredura é `varredura`, o substantivo do glossário para a varredura de disco, e
+  não “análise”, reservado à pré-contagem de transferência (`indexing.rescan.incompletePreviousScan` ainda diz
+  “análise”: deriva antiga, a corrigir numa varredura).

@@ -3109,3 +3109,11 @@ casos para «Conectarse al servidor» y no está en la pila.
   reflexivo no concuerda en género con `{name}`. «Left its index as it was» sigue a
   `operationLog.rollback.partiallyRolledBackNotice` («como estaba»), y «try again in a moment» a
   `errors.eject.notResponding` («en un momento»).
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected (ya ocurrido, la unidad ya no está) → `se desconectó`** · pretérito del ya fijado
+  `disconnect → desconectar`, como `indexing.staleDialog.body` · `high`. El reflexivo evita concordar en género con
+  `{name}`, a diferencia del participio «desconectada» de esa clave hermana. NO es el gerundio «se está desconectando»
+  de `fileExplorer.navigation.driveIndex.driveLeaving`: allí la expulsión sigue en curso. «Starts from scratch» → «desde
+  cero», como `indexing.rescan.incompletePreviousScan`; `análisis` y `tamaños de carpetas` vienen de la misma familia.

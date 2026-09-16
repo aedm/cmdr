@@ -186,6 +186,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "{name} werd losgekoppeld terwijl Cmdr de index bijwerkte. Cmdr doorzoekt deze schijf de volgende keer helemaal opnieuw, zodat de mapgroottes weer kloppen.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "{name} indexeren?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

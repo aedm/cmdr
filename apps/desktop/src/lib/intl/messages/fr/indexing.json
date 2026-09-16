@@ -185,6 +185,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "{name} a été déconnecté pendant que Cmdr mettait son index à jour. La prochaine analyse de ce disque repart de zéro, pour que la taille des dossiers redevienne exacte.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "Indexer {name} ?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

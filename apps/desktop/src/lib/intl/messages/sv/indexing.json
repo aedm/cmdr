@@ -186,6 +186,10 @@
   "@indexing.rescan.fallback": {
     "sourceHash": "cd99826"
   },
+  "indexing.needsFreshScan.afterDisconnect": "{name} kopplades från medan Cmdr uppdaterade indexet. Nästa genomsökning av enheten startar från början, så att mappstorlekarna stämmer igen.",
+  "@indexing.needsFreshScan.afterDisconnect": {
+    "sourceHash": "a90dbdf"
+  },
   "indexing.firstConnect.title": "Indexera {name}?",
   "@indexing.firstConnect.title": {
     "sourceHash": "0734a24"

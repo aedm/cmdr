@@ -2960,3 +2960,11 @@ formulerar just de här fallen för ”Anslut till server” och saknas i refere
   satta `koppla från`, med `håller på att` för det pågående förloppet som Thunar `sv` uttrycker med presens (”Avmonterar
   enhet” / ”Matar ut enhet”) · `high`. ”Left its index as it was” → ”lät indexet vara orört”; ”try again in a moment” →
   ”försök igen om en stund”, som `errors.eject.notResponding`.
+
+## A drive unplugged mid-index (`indexing.needsFreshScan.afterDisconnect`)
+
+- **was disconnected (redan skett, enheten är borta) → `kopplades från`** · preteritum av det satta `koppla från`, och
+  `indexing.staleDialog.body` säger samma sak om samma läge (”Medan {name} var frånkopplad”) · `high`. Alltså INTE den
+  pågående formen ”håller på att kopplas från” i `fileExplorer.navigation.driveIndex.driveLeaving`. ”Starts from
+  scratch” → ”startar från början”, som `indexing.rescan.incompletePreviousScan`; `genomsökning` och `mappstorlekar`
+  kommer från samma familj.
