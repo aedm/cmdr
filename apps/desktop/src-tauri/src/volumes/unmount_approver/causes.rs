@@ -7,13 +7,6 @@
 //! ❌ Never decided on timing: every fact below arrives as a callback on the session's one serial
 //! queue, in DiskArbitration's delivery order. The one duration read is an ask's OWN runtime, which
 //! the client measured itself.
-#![cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the callbacks feed this in the next commit of M9; an expectation nothing fulfils then fails the build"
-    )
-)]
 
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;

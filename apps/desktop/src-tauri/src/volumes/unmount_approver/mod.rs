@@ -28,14 +28,14 @@ use dispatch2::{DispatchQoS, DispatchQueue, DispatchQueueAttr, DispatchRetained}
 use objc2_core_foundation::{CFArray, CFRetained};
 use objc2_disk_arbitration::{
     DADisk, DADissenter, DARegisterDiskAppearedCallback, DARegisterDiskDescriptionChangedCallback,
-    DARegisterDiskDisappearedCallback, DARegisterDiskUnmountApprovalCallback, DASession, DAUnregisterCallback,
-    kDADiskDescriptionWatchVolumePath, kDAReturnBusy,
+    DARegisterDiskDisappearedCallback, DARegisterDiskEjectApprovalCallback, DARegisterDiskUnmountApprovalCallback,
+    DASession, DAUnregisterCallback, kDADiskDescriptionWatchVolumePath, kDAReturnBusy,
 };
 
 use crate::file_system::volume::drive_release::{self, DriveRelease};
 use crate::volumes::disk_units;
 use ask::Answer;
-use callbacks::Approver;
+use callbacks::{Approver, VANISH_STOP_WAIT};
 pub(crate) use callbacks::{AskedDisk, Host};
 
 /// Why the approver couldn't install. The app then keeps the `NSWorkspace` will-unmount observer,
@@ -100,6 +100,7 @@ impl Drop for Approval {
                 function_pointer(description_changed as *const c_void),
                 self.context,
             );
+            DAUnregisterCallback(session, function_pointer(eject_approval as *const c_void), self.context);
             if self.idle_registered {
                 DAUnregisterCallback(session, function_pointer(da_idle as *const c_void), self.context);
             }
@@ -146,6 +147,7 @@ pub(crate) fn install(gate: DriveRelease, host: Arc<dyn Host>) -> Result<Approva
             Some(description_changed),
             context,
         );
+        DARegisterDiskEjectApprovalCallback(&session, None, Some(eject_approval), context);
     }
     // Registering a non-approval callback kind is also what keeps the session recoverable: a
     // session DA timed out is skipped for approvals until it copies its callback queue again.
@@ -219,6 +221,15 @@ pub(crate) fn install_for_app() {
     }
 }
 
+/// Whether the app's approver is answering DiskArbitration.
+///
+/// The post-unmount cleanup hook (`volumes/watcher.rs`) reads it: with the approver installed, a
+/// drive that went away is stopped by the cause machine that also knows WHY it went, and a second
+/// hook would only race it to the same stop.
+pub(crate) fn is_installed() -> bool {
+    APPROVER.get().is_some()
+}
+
 /// The app's answers: the volume registry, the index, the write-operation status cache, and the
 /// eject flights.
 struct AppHost;
@@ -242,6 +253,10 @@ impl Host for AppHost {
         // answers, and its continuation records the release for the resume.
         crate::index_host::index()
             .stop_removable_volume(volume_id, crate::file_system::volume::eject::INDEX_STOP_DEADLINE)
+    }
+
+    fn stop_after_vanish(&self, volume_id: &str) -> RemovableStop {
+        crate::index_host::index().stop_removable_volume(volume_id, VANISH_STOP_WAIT)
     }
 
     fn is_indexing(&self, volume_id: &str) -> bool {
@@ -276,7 +291,7 @@ unsafe extern "C-unwind" fn unmount_approval(disk: NonNull<DADisk>, context: *mu
     let answer = in_callback(context, |callbacks| {
         // SAFETY: DiskArbitration hands a live disk object for the callback's duration.
         let disk = unsafe { disk.as_ref() };
-        let Some(asked) = asked_disk(disk) else {
+        let Some((asked, _)) = described_disk(disk) else {
             return Answer::Approve;
         };
         callbacks.approver.on_unmount_ask(&asked, |whole_unit| {
@@ -292,11 +307,24 @@ unsafe extern "C-unwind" fn unmount_approval(disk: NonNull<DADisk>, context: *mu
     }
 }
 
+/// DiskArbitration is about to eject a disk. Always approved at once: the drive was let go of at the
+/// unmount approval that precedes every eject, so there's nothing left to wait for. Answering it is
+/// what lets a later disappearance read as an eject rather than a pulled cable.
+unsafe extern "C-unwind" fn eject_approval(disk: NonNull<DADisk>, context: *mut c_void) -> *const DADissenter {
+    in_callback(context, |callbacks| {
+        // SAFETY: DiskArbitration hands a live disk object for the callback's duration.
+        if let Some((ejected, _)) = described_disk(unsafe { disk.as_ref() }) {
+            callbacks.approver.on_eject_approved(ejected.whole_unit);
+        }
+    });
+    std::ptr::null()
+}
+
 unsafe extern "C-unwind" fn disk_appeared(disk: NonNull<DADisk>, context: *mut c_void) {
     in_callback(context, |callbacks| {
         // SAFETY: DiskArbitration hands a live disk object for the callback's duration.
-        if let Some(whole_unit) = whole_disk_unit(unsafe { disk.as_ref() }) {
-            callbacks.approver.on_appeared(whole_unit);
+        if let Some((appeared, is_whole)) = described_disk(unsafe { disk.as_ref() }) {
+            callbacks.approver.on_appeared(&appeared, is_whole);
         }
     });
 }
@@ -331,15 +359,17 @@ unsafe extern "C-unwind" fn da_idle(context: *mut c_void) {
     in_callback(context, |callbacks| callbacks.approver.on_idle());
 }
 
-/// The disk a callback is about, `None` when its description names no BSD unit to group by.
-fn asked_disk(disk: &DADisk) -> Option<AskedDisk> {
+/// The disk a callback is about and whether it IS a whole disk rather than one of its volumes,
+/// `None` when its description names no BSD unit to group by. One description read serves both.
+fn described_disk(disk: &DADisk) -> Option<(AskedDisk, bool)> {
     let description = disk_units::description(disk)?;
-    Some(AskedDisk {
+    let asked = AskedDisk {
         bsd_name: disk_units::bsd_name(disk)?,
         volume_uuid: disk_units::volume_uuid(&description),
         whole_unit: disk_units::whole_unit(&description)?,
         path: disk_units::volume_path(&description),
-    })
+    };
+    Some((asked, disk_units::is_whole(&description)))
 }
 
 /// The BSD unit of a disk that IS a whole disk, `None` for one of its volumes.

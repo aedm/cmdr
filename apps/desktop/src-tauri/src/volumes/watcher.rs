@@ -343,6 +343,14 @@ fn stop_local_external_index(volume_id: &str) -> cmdr_index::RemovableStop {
 /// unmounts while its index is still letting go of it is the shape the FSKit wedge
 /// needs, so that one is a `warn`: it's the line to find after a hung unmount.
 fn stop_local_external_index_off_main(volume_id: String) {
+    // With the DiskArbitration approver installed, a drive that went away is stopped by the cause
+    // machine that also knows WHY it went (`unmount_approver/causes.rs`), so this hook would only
+    // race it to the same stop and log half the story. It stays the whole cleanup on a Mac where the
+    // approver couldn't install, which is also where the `WillUnmount` fallback lives.
+    #[cfg(target_os = "macos")]
+    if crate::volumes::unmount_approver::is_installed() {
+        return;
+    }
     // Skip the thread spawn entirely for the common non-LocalExternal case (root,
     // SMB, MTP): the kind check is a cheap registry lock.
     if crate::index_host::index().volume_kind(&volume_id) != Some(cmdr_index::IndexVolumeKind::LocalExternal) {

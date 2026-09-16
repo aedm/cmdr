@@ -175,6 +175,9 @@ pub(super) struct FakeHost {
     pub(super) stops: Arc<Stops>,
     pub(super) busy: Mutex<HashSet<String>>,
     pub(super) ejecting: Mutex<HashSet<String>>,
+    /// Every volume a VANISH stop was asked about, kept apart from the pre-unmount stops so a test
+    /// can tell "let go of before the unmount" from "cleaned up after the drive went".
+    vanish_stops: Mutex<Vec<String>>,
     presence: Presence,
     /// What's mounted, for [`Presence::AsTold`].
     pub(super) mounted: Mutex<HashSet<PathBuf>>,
@@ -196,6 +199,11 @@ impl FakeHost {
     /// The volume mounted at `path`, however the test said so.
     pub(super) fn volume_at(&self, path: &Path) -> Option<String> {
         self.volumes.lock_ignore_poison().get(path).cloned()
+    }
+
+    /// Every volume stopped because its drive went away, in order.
+    pub(super) fn vanish_stops(&self) -> Vec<String> {
+        self.vanish_stops.lock_ignore_poison().clone()
     }
 
     fn is_mounted(&self, path: &Path) -> bool {
@@ -230,6 +238,11 @@ impl Host for FakeHost {
     fn stop(&self, volume_id: &str) -> RemovableStop {
         let was_mounted = self.root_of(volume_id).is_some_and(|root| self.is_mounted(&root));
         self.stops.run(volume_id, was_mounted);
+        self.index.stop(volume_id)
+    }
+
+    fn stop_after_vanish(&self, volume_id: &str) -> RemovableStop {
+        self.vanish_stops.lock_ignore_poison().push(volume_id.to_string());
         self.index.stop(volume_id)
     }
 
@@ -295,6 +308,7 @@ fn build(presence: Presence, gate: impl FnOnce(Arc<dyn IndexDoor>) -> DriveRelea
         stops: Arc::new(Stops::default()),
         busy: Mutex::default(),
         ejecting: Mutex::default(),
+        vanish_stops: Mutex::default(),
         presence,
         mounted: Mutex::default(),
         idles: AtomicUsize::new(0),

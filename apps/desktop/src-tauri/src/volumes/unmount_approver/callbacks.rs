@@ -7,11 +7,12 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use cmdr_index::RemovableStop;
 
 use super::ask::{self, Answer, Chain, Unwaited};
+use super::causes::{Causes, Vanished};
 use super::records::{DiskVolume, Records};
 use crate::file_system::volume::drive_release::{
     DriveRelease, LateRelease, Release, ResumeBatch, ResumeCandidate, ResumeOwner,
@@ -33,6 +34,10 @@ pub(crate) trait Host: Send + Sync + 'static {
     fn is_mounted_at(&self, bsd_name: &str, path: &Path) -> bool;
     /// Stop the volume's index and wait for it to let go of the drive.
     fn stop(&self, volume_id: &str) -> RemovableStop;
+    /// Stop the volume's index after its drive went away with nobody asking Cmdr to let go of it
+    /// first. Nothing waits on the answer: the mount is already gone, so this only releases the
+    /// watcher and the handles still pointed at it.
+    fn stop_after_vanish(&self, volume_id: &str) -> RemovableStop;
     /// Whether the volume has a local external index right now.
     fn is_indexing(&self, volume_id: &str) -> bool;
     /// The volumes a write op is busy on.
@@ -58,11 +63,19 @@ pub(crate) struct AskedDisk {
     pub(crate) path: Option<PathBuf>,
 }
 
+/// How long the stop after a vanish waits for the index to let go of the drive.
+///
+/// Nothing waits on the answer, and nothing can be refused: the mount is already gone, so this only
+/// bounds how long the stopping thread goes before it says so in the log. The same tier as the
+/// eject's own index-stop deadline, so both paths call a stop "still releasing" by one clock.
+pub(super) const VANISH_STOP_WAIT: Duration = Duration::from_secs(15);
+
 // DEFAULT-OK: no ask has come yet, so there's no chain to join and nothing is remembered.
 #[derive(Debug, Default)]
 struct State {
     chain: Chain,
     records: Records,
+    causes: Causes,
 }
 
 /// The approver's own state, minus DiskArbitration.
@@ -109,6 +122,16 @@ impl Approver {
         };
         let group = self.group_of(disk, path, volume_id, volumes_on_unit);
         let ids: Vec<String> = group.iter().map(|volume| volume.volume_id.clone()).collect();
+        {
+            // Every volume the ask can see, recorded while it's still mounted: once its disk is
+            // gone, nothing can look up what was on it.
+            let mut state = self.state.lock_ignore_poison();
+            for volume in &group {
+                state
+                    .causes
+                    .saw_volume(&volume.bsd_name, volume.whole_unit, &volume.volume_id);
+            }
+        }
 
         let now = self.gate.now();
         let (generation, deadline) = {
@@ -151,6 +174,13 @@ impl Approver {
                 self.is_busy(&ids),
             ),
         };
+        // This ask's OWN runtime: past DiskArbitration's window, the approvals after it on this disk
+        // may have been skipped, which is what makes a later disappearance's cause unknowable.
+        self.state.lock_ignore_poison().causes.asked(
+            &disk.bsd_name,
+            disk.whole_unit,
+            self.gate.now().saturating_duration_since(now),
+        );
         log::info!(
             target: "unmount_approver",
             "{} of {:?} is about to unmount: {answer:?} after letting go of {ids:?} ({:?} of the chain's budget left)",
@@ -159,6 +189,64 @@ impl Approver {
             deadline.saturating_duration_since(self.gate.now()),
         );
         answer
+    }
+
+    /// DiskArbitration asks before an eject too, and the approver answers at once: the drive was let
+    /// go of at the unmount approval that precedes it, so there's nothing left to wait for. The ask
+    /// matters because it's what later tells a disappearance that the disk was ejected, not pulled.
+    pub(crate) fn on_eject_approved(&self, whole_unit: u32) {
+        self.state.lock_ignore_poison().causes.eject_approved(whole_unit);
+    }
+
+    /// Let go of every volume whose drive left without Cmdr being asked to let go of it first.
+    ///
+    /// ❗ On a thread of its own: `release` blocks on the gate's condvar, and the one wait a
+    /// DiskArbitration queue may make is an ASK's, bounded by that ask's deadline.
+    fn let_go_of_what_vanished(&self, vanished: Vec<Vanished>) {
+        let owed: Vec<Vanished> = vanished
+            .into_iter()
+            .filter(|volume| volume.cause.needs_a_stop())
+            .collect();
+        if owed.is_empty() {
+            return;
+        }
+        for volume in &owed {
+            log::warn!(
+                target: "unmount_approver",
+                "{} ({}) left the mount table with nobody asking Cmdr to let go of it first ({:?}); stopping its index now",
+                volume.volume_id,
+                volume.bsd_name,
+                volume.cause
+            );
+        }
+        let gate = self.gate.clone();
+        let host = Arc::clone(&self.host);
+        let spawned = std::thread::Builder::new()
+            .name("unmount-approver-vanish".to_string())
+            .spawn(move || {
+                let ids: Vec<String> = owed.into_iter().map(|volume| volume.volume_id).collect();
+                // ❌ No resume: a drive that vanished is owed nothing back. Its index is marked for a
+                // rebuild by the crate's own stop when deletes were in flight.
+                gate.release(
+                    &ids,
+                    gate.now() + VANISH_STOP_WAIT,
+                    move |volume_id| host.stop_after_vanish(volume_id),
+                    |late| {
+                        log::info!(
+                            target: "unmount_approver",
+                            "{} answered its vanish stop late: {:?}",
+                            late.volume_id,
+                            late.outcome
+                        );
+                    },
+                );
+            });
+        if let Err(e) = spawned {
+            crate::log_error!(
+                target: "unmount_approver",
+                "Couldn't start the stop for a drive that vanished: {e}; its index keeps reading a drive that isn't there"
+            );
+        }
     }
 
     /// Every registered volume mounted on the asked disk's whole unit, the asked one first.
@@ -248,22 +336,55 @@ impl Approver {
         self.host.note_resume(batch);
     }
 
-    /// A whole disk appeared: whatever was remembered about an earlier disk with its unit is void,
-    /// since DiskArbitration hands a freed unit to the next disk at once.
-    pub(crate) fn on_appeared(&self, whole_unit: u32) {
-        self.state.lock_ignore_poison().records.appeared(whole_unit);
+    /// A disk appeared. A WHOLE disk's facts start over, since DiskArbitration hands a freed unit to
+    /// the next disk at once; any disk carrying a Cmdr volume is recorded, because a pull has no
+    /// other way to learn what was mounted on the disk it takes away.
+    pub(crate) fn on_appeared(&self, disk: &AskedDisk, is_whole: bool) {
+        if is_whole {
+            let mut state = self.state.lock_ignore_poison();
+            state.records.appeared(disk.whole_unit);
+            state.causes.appeared(disk.whole_unit);
+        }
+        // Asked without the approver's own lock held: `volume_at_active_root` takes the volume
+        // manager's, and ❌ nothing here may hold two locks at once.
+        let Some(volume_id) = disk
+            .path
+            .as_deref()
+            .and_then(|path| self.host.volume_at_active_root(path))
+        else {
+            return;
+        };
+        self.state
+            .lock_ignore_poison()
+            .causes
+            .saw_volume(&disk.bsd_name, disk.whole_unit, &volume_id);
     }
 
-    /// A whole disk disappeared: nothing on it can be resumed, and its volumes' pending flags go.
+    /// A whole disk disappeared: nothing on it can be resumed, its volumes' pending flags go, and
+    /// any volume that hadn't already reported its own unmount went away with the disk.
     pub(crate) fn on_disappeared(&self, whole_unit: u32) {
-        let cleared = self.state.lock_ignore_poison().records.disappeared(whole_unit);
+        let (cleared, vanished) = {
+            let mut state = self.state.lock_ignore_poison();
+            (
+                state.records.disappeared(whole_unit),
+                state.causes.disappeared(whole_unit),
+            )
+        };
         self.gate.clear_unmount_pending(&cleared);
+        self.let_go_of_what_vanished(vanished);
     }
 
     /// A volume's path cleared, so its unmount happened, whether Cmdr was asked or not.
     pub(crate) fn on_volume_path_cleared(&self, bsd_name: &str) {
-        let cleared = self.state.lock_ignore_poison().records.volume_path_cleared(bsd_name);
+        let (cleared, vanished) = {
+            let mut state = self.state.lock_ignore_poison();
+            (
+                state.records.volume_path_cleared(bsd_name),
+                state.causes.volume_path_cleared(bsd_name),
+            )
+        };
         self.gate.clear_unmount_pending(&Vec::from_iter(cleared));
+        self.let_go_of_what_vanished(Vec::from_iter(vanished));
     }
 }
 
@@ -404,6 +525,72 @@ mod tests {
             fx.index.started(),
             ["vol-a"],
             "the record was spent by the first resume"
+        );
+    }
+
+    #[test]
+    fn a_raw_umount_stops_the_index_nobody_asked_the_approver_to_stop() {
+        let fx = fixture();
+        let a = path("A");
+        fx.indexed_volume("vol-a", "disk7s2", &a);
+        // The volume was there when the session came up; no ask ever came for it.
+        fx.approver.on_appeared(&asked("disk7s2", UNIT, &a), false);
+
+        // `/sbin/umount` bypasses DiskArbitration entirely: the only thing that arrives is the
+        // description change saying the volume path is gone.
+        fx.approver.on_volume_path_cleared("disk7s2");
+
+        wait_until(PATIENCE, "the vanish stop to let go of the drive", || {
+            fx.host.vanish_stops() == ["vol-a"]
+        });
+        assert!(
+            fx.host.stops.asked().is_empty(),
+            "nothing was asked, so no pre-unmount stop ran"
+        );
+        assert!(
+            fx.index.started().is_empty(),
+            "a drive that vanished is owed nothing back"
+        );
+    }
+
+    #[test]
+    fn a_pulled_disk_stops_every_volume_that_was_still_mounted_on_it() {
+        let fx = fixture();
+        let (a, b) = (path("A"), path("B"));
+        fx.indexed_volume("vol-a", "disk7s2", &a);
+        fx.indexed_volume("vol-b", "disk7s3", &b);
+        fx.approver.on_appeared(&asked("disk7s2", UNIT, &a), false);
+        fx.approver.on_appeared(&asked("disk7s3", UNIT, &b), false);
+
+        // The cable was pulled: DiskArbitration sends no eject approval and no description change,
+        // only the disappearance.
+        fx.approver.on_disappeared(UNIT);
+
+        wait_until(PATIENCE, "both volumes to be stopped", || {
+            let mut stopped = fx.host.vanish_stops();
+            stopped.sort();
+            stopped == ["vol-a", "vol-b"]
+        });
+    }
+
+    #[test]
+    fn an_ejected_disk_is_never_stopped_after_the_fact() {
+        let fx = fixture();
+        let a = path("A");
+        fx.indexed_volume("vol-a", "disk7s2", &a);
+
+        // The whole sequence of an ordinary eject: the ask lets go of the drive, the path clears,
+        // the eject is approved, the disk goes.
+        fx.approver
+            .on_unmount_ask(&asked("disk7s2", UNIT, &a), |_| vec![mounted("disk7s2", UNIT, &a)]);
+        fx.approver.on_volume_path_cleared("disk7s2");
+        fx.approver.on_eject_approved(UNIT);
+        fx.approver.on_disappeared(UNIT);
+
+        assert_eq!(fx.host.stops.asked(), ["vol-a"], "the ask is what let go of the drive");
+        assert!(
+            fx.host.vanish_stops().is_empty(),
+            "the ask already stopped it, so nothing is owed a second stop"
         );
     }
 
