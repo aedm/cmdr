@@ -65,11 +65,13 @@ drive-safety decisions below.
 - **M10, transfers on a vanished drive (done)**: `613adf0c0` (the typed sides on the operation's state, classification
   by the mount table, Phase 4's destination-listed gate, the sweep's four presence checks, `MoveNotConfirmed` for M0's
   flush failure, `progress_at_stop` on `WriteErrorEvent`, and the English copy), `666048eb9` (the real-detach lane test
-  on a live HFS+ image, the `cfg(test)` chunk park, and the docs). Its eight new keys are English-only, so
-  `desktop-i18n-coverage` is red for them in all ten translated catalogs until the translations land.
+  on a live HFS+ image, the `cfg(test)` chunk park, and the docs), `147270a43` (the transfer `CLAUDE.md` trims those
+  docs needed).
 - **Belonging to no milestone**: `56eca71f4` and `6f2eb84ed` (the two toasts translated into every shipped catalog),
   `654a2d075` (the disk-image harness reclaims an attachment a killed test stranded), `1c7057a09` (rustls to 0.23.45 for
-  RUSTSEC-2026-0285), `0122d4c43` and `6ebf9fe0b` (the two lanes' starvation notes).
+  RUSTSEC-2026-0285), `0122d4c43` and `6ebf9fe0b` (the two lanes' starvation notes), `9ac333e9a` and `72f0c924b` (what
+  the first CI run on `main` caught: the notices file stale after the rustls bump, the plan unformatted, and the gate's
+  macOS-only re-exports breaking the Linux build).
 - **Next, M11**: temps, asides, and staging dirs.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
