@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use super::test_fixtures::{self, MockChild, MockTree, dir, file, setup_writer};
 use super::*;
 use crate::indexing::IndexPathSpace;
+use crate::indexing::host::volumes::MountIdentity;
 use crate::indexing::read::coverage::{CoverageDimension, coverage_for_scope};
 use crate::indexing::store::{EXCLUSION_POLICY_KEY, IndexStore, UnreadableCause};
 
@@ -280,6 +281,90 @@ fn a_folder_the_walk_cannot_read_stops_re_entering_the_frontier() {
 /// (`insert_visitor.rs`'s `Pending`, then `send_unreadable_marks` after
 /// `visitor.finish()`), and the condemned ids are only ever the ones a read failed
 /// on — never "whatever is still unlisted".
+/// The filesystem the drive in the vanish tests below is.
+const VANISH_DRIVE: MountIdentity = MountIdentity::from_raw(0x0100_0099);
+
+/// Where that drive is mounted while it's there.
+const VANISH_MOUNT: &str = "/Volumes/ConvergenceVanish";
+
+/// Walk a tree holding one directory the reader can't list, with the drive either
+/// still mounted or already gone. Reports what the walk answered and what the
+/// index made of the unreadable directory.
+fn walk_a_wedged_dir_while(drive_is_there: bool) -> (Result<ScanSummary, ScanError>, Option<UnreadableCause>) {
+    let _serialized = crate::indexing::handle::test_lock();
+    let provider = crate::indexing::host::volumes::FakeVolumeProvider::shared();
+    provider.mount(VANISH_MOUNT, VANISH_DRIVE);
+    let _installed = crate::indexing::host::volumes::install_for_test(Arc::clone(&provider) as _);
+
+    let (writer, db_path, _db_dir) = setup_writer();
+    let root = PathBuf::from(TREE_ROOT);
+    let a = root.join("A");
+    let wedged = a.join("wedged");
+    seed_chain(&db_path, &a, &writer);
+
+    let work = VolumeWork::for_test_on("convergence-vanish", VANISH_DRIVE);
+    let cancel = work.cancel.clone();
+    let reader = MockTree::new()
+        .dir_at(a.clone(), {
+            let mut children = level(None);
+            children.push(dir("wedged"));
+            children
+        })
+        .reader(&cancel);
+
+    if !drive_is_there {
+        // The drive leaves before the walk's presence read, which is the only
+        // moment the gate looks: what it decides is the same whether the drive
+        // left during the walk or a moment before it ended.
+        provider.mark_unmounted(VANISH_MOUNT);
+    }
+    let result = cover_subtree_with_reader(&a, &IndexPathSpace::root(), &writer, None, &work, reader, None);
+    writer.flush_blocking().expect("flush");
+    writer.shutdown();
+
+    let conn = IndexStore::open_read_connection(&db_path).expect("read connection");
+    let cause = crate::indexing::store::resolve_path(&conn, &wedged.to_string_lossy())
+        .expect("resolve")
+        .and_then(|id| IndexStore::get_unreadable_cause_by_id(&conn, id).expect("cause"))
+        .flatten();
+    (result, cause)
+}
+
+/// The control: on a drive that's still there, an unreadable directory is
+/// condemned exactly as it always was, and the walk answers normally.
+#[test]
+fn a_wedged_dir_on_a_drive_that_stays_is_still_condemned() {
+    let (result, cause) = walk_a_wedged_dir_while(true);
+
+    assert!(result.is_ok(), "the walk ran to the end: {result:?}");
+    assert_eq!(
+        cause,
+        Some(UnreadableCause::Abandoned),
+        "a read that failed on a mounted drive is the walk's own verdict"
+    );
+}
+
+/// ❗ The gate: a drive that left makes EVERY read fail, so the marks a walk is
+/// about to write say nothing about the ground they condemn.
+///
+/// Persisted, they take that ground out of the coverage frontier, so no later walk
+/// offers it and the volume can stamp itself complete over a tree nobody read. The
+/// walk reports the vanish instead, which is what stops the completion claim
+/// downstream (`lifecycle/scan_completion.rs`).
+#[test]
+fn a_walk_whose_drive_left_condemns_nothing_and_reports_the_vanish() {
+    let (result, cause) = walk_a_wedged_dir_while(false);
+
+    assert!(
+        matches!(result, Err(ScanError::RootUnlistable)),
+        "a walk that ended with its drive unlisted is a vanish, not a finished walk: {result:?}"
+    );
+    assert_eq!(
+        cause, None,
+        "❌ never condemn ground on the word of reads that failed because the drive went away"
+    );
+}
+
 #[test]
 fn marking_abandoned_ground_costs_no_coverage() {
     let (writer, db_path, _db_dir) = setup_writer();

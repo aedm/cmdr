@@ -67,6 +67,9 @@ impl Pending {
 /// on the walker's worker threads, so shared state is behind mutexes / atomics.
 pub(super) struct InsertVisitor {
     writer: IndexWriter,
+    /// The volume being walked, for the delete generation a `Rebuild`'s own delete
+    /// counts toward (see [`rebuild_root_id`](Self::rebuild_root_id)).
+    volume_id: String,
     /// Shared id counter from `IndexWriter` (the single allocation source).
     next_id: Arc<AtomicI64>,
     /// What this walk refuses to descend into: the structural exclusion policy
@@ -132,6 +135,7 @@ impl InsertVisitor {
     )]
     pub(super) fn new(
         writer: IndexWriter,
+        volume_id: String,
         policy: WalkPolicy,
         inodes_trustworthy: bool,
         batch_size: usize,
@@ -145,6 +149,7 @@ impl InsertVisitor {
         Self {
             rebuild_root_id,
             writer,
+            volume_id,
             next_id,
             policy,
             inodes_trustworthy,
@@ -278,10 +283,14 @@ impl DirVisitor for InsertVisitor {
         // ❌ Never move it back ahead of the walk: a root that can't be read then
         // empties its subtree and leaves it empty, which is what
         // `tests::a_rebuild_whose_root_read_fails_keeps_the_subtree` pins.
-        if self.rebuild_root_id == Some(dir.id)
-            && let Err(e) = self.writer.send(WriteMessage::DeleteDescendantsById(dir.id))
-        {
-            log::warn!("Scanner: failed to send DeleteDescendantsById for the rebuild root: {e}");
+        if self.rebuild_root_id == Some(dir.id) {
+            match self.writer.send(WriteMessage::DeleteDescendantsById(dir.id)) {
+                // It is a delete like any other, so it counts toward the delete
+                // generation: if this drive then reads gone, the rows this walk was
+                // going to replace are exactly what the rebuild marker is for.
+                Ok(()) => crate::indexing::deletes::batch_sent(&self.volume_id),
+                Err(e) => log::warn!("Scanner: failed to send DeleteDescendantsById for the rebuild root: {e}"),
+            }
         }
 
         // This directory's read succeeded → mark it listed, with the next flush.

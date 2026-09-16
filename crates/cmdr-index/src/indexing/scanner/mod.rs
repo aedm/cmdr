@@ -23,6 +23,7 @@ use std::time::{Duration, Instant};
 use tokio_util::sync::CancellationToken;
 
 use crate::indexing::IndexPathSpace;
+use crate::indexing::deletes;
 use crate::indexing::hold::{HoldKind, VolumeWork};
 use crate::indexing::store::{IndexStore, UnreadableCause, resolve_scan_root};
 use crate::indexing::writer::{AggSource, IndexWriter, WriteMessage};
@@ -436,14 +437,25 @@ struct ScanOutcome {
     summary: ScanSummary,
     /// True when the scan's token fired before the walk ended.
     cancelled: bool,
+    /// True when the drive was no longer in the host's mount table by the end of
+    /// the walk, so nothing this walk read or failed to read says anything about
+    /// what is on it.
+    drive_left: bool,
     root_id: i64,
 }
 
 impl ScanOutcome {
     /// The caller-facing answer: totals for a finished walk, the typed
-    /// cancellation for a stopped one.
+    /// cancellation for a stopped one, and the vanish ahead of both.
+    ///
+    /// ⚠️ **A drive that left outranks a cancel.** Both stop the walk short, but a
+    /// cancelled walk's rows are real and a vanished one's reads are not, and only
+    /// the vanish must stop every completion claim downstream
+    /// (`lifecycle/scan_completion.rs`).
     fn into_result(self) -> Result<ScanSummary, ScanError> {
-        if self.cancelled {
+        if self.drive_left {
+            Err(ScanError::RootUnlistable)
+        } else if self.cancelled {
             Err(ScanError::Cancelled(self.summary))
         } else {
             Ok(self.summary)
@@ -473,8 +485,9 @@ pub enum ScanError {
     /// aborted scan — it writes NO `scan_completed_at` and emits `index-scan-aborted`
     /// so the frontend clears the stuck "scanning" row — mirroring the network path's
     /// disconnect arm. Surfaced by the fresh guarded-walker scan (`run_scan`, when the root is
-    /// the only dir and never read) and the LOCAL reconcile walk (`local_reconcile`,
-    /// when its root read returns `None`).
+    /// the only dir and never read, or when the drive left the host's mount table by
+    /// the end of the walk) and the LOCAL reconcile walk (`local_reconcile`, when its
+    /// root read returns `None` or its drive left).
     RootUnlistable,
     /// The walk stopped because its cancellation token fired, carrying the
     /// partial totals it had reached. A distinct variant rather than a flag on
@@ -601,8 +614,11 @@ pub fn scan_volume(
             // instead of being thrown away. What's left here is the CLEAN
             // finish's aggregate, plus a WAL checkpoint that trims the GB-scale
             // post-scan spike now instead of waiting for the ticker.
+            // ❌ Not for a drive that left either: an aggregate is a claim about
+            // what the walk covered, and the checkpoint is work on behalf of one.
             if let Ok(outcome) = &result
                 && !outcome.cancelled
+                && !outcome.drive_left
             {
                 if let Err(e) = writer.send(WriteMessage::ComputeAllAggregates {
                     source: AggSource::Maps,
@@ -839,6 +855,7 @@ fn run_scan(
     let emitting = emit.is_some();
     let visitor = Arc::new(InsertVisitor::new(
         writer.clone(),
+        work.volume_id().to_string(),
         policy,
         space.inodes_trustworthy(),
         batch_size,
@@ -904,6 +921,16 @@ fn run_scan(
 
     let was_cancelled = work.cancel.is_cancelled();
 
+    // ⚠️ **The presence read comes AFTER the walk, ❌ never before.** A drive that
+    // left makes every read fail, and those failures are indistinguishable from
+    // ground that is genuinely unreadable. One read per walk, which is what decides
+    // both the marks below and whether this walk claims anything at all.
+    let drive_left = !work.drive_is_listed();
+    if !drive_left {
+        // A `Some(true)` is also the presence half of the delete generation's reset.
+        deletes::drive_seen(work.volume_id());
+    }
+
     // A volume-root scan whose ROOT never listed (`dirs_read == 0`) means the mount
     // itself couldn't be read — it vanished or went unreadable mid-scan (a yanked
     // external drive). This is distinct from an empty-but-readable root, which reads
@@ -922,7 +949,22 @@ fn run_scan(
     // and then succeeded on a retry within the same walk ends up listed rather than
     // pinned unreadable — and `mark_dirs_listed` clears the cause anyway, whichever
     // order they land in.
-    send_unreadable_marks(&visitor.take_unreadable_ids(), writer);
+    //
+    // ❌ **Never on a drive that left.** A mark takes its directory out of the
+    // coverage frontier, so no later walk offers it and the volume can read as
+    // covered over ground nobody ever listed — earned by reads that failed only
+    // because the drive went away. The walk reports the vanish instead, and the
+    // ground stays frontier for the drive's next life.
+    let condemned = visitor.take_unreadable_ids();
+    if drive_left {
+        log::info!(
+            "Scanner: '{}' stopped being listed, so {} went uncondemned rather than being marked on the word of reads that failed with the drive",
+            work.volume_id(),
+            pluralize((condemned.denied.len() + condemned.abandoned.len()) as u64, "dir"),
+        );
+    } else {
+        send_unreadable_marks(&condemned, writer);
+    }
 
     let snap = progress.snapshot();
 
@@ -941,6 +983,7 @@ fn run_scan(
             duration_ms: start.elapsed().as_millis() as u64,
         },
         cancelled: was_cancelled,
+        drive_left,
         root_id,
     })
 }
