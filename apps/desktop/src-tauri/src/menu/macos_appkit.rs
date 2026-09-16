@@ -440,10 +440,21 @@ pub(super) fn detach_from_supermenu(menu: &NSMenu) -> Option<Retained<NSMenuItem
 }
 
 /// The item in `menu` with this title. Separators carry an empty title, so they never match.
+///
+/// ❗ Matches up to the first TAB. `setAttributedTitle:` also rewrites `title`, so an item
+/// `display_accelerators.rs` has drawn a glyph on reads back as `"Invert selection\t⇧8"`, and a
+/// whole-string match would find nothing — which is how those three rows silently lost their SF
+/// Symbols on the first menu-bar swap. No label of ours holds a tab for any other reason.
 pub(super) fn find_ns_item(menu: &NSMenu, title: &str) -> Option<Retained<NSMenuItemAppKit>> {
     (0..menu.numberOfItems())
         .filter_map(|index| menu.itemAtIndex(index))
-        .find(|item| !item.isSeparatorItem() && item.title().to_string() == title)
+        .find(|item| !item.isSeparatorItem() && plain_title(&item.title().to_string()) == title)
+}
+
+/// A menu item's title without the display-accelerator run `display_accelerators.rs` may have
+/// appended to it.
+fn plain_title(title: &str) -> &str {
+    title.split('\t').next().unwrap_or(title)
 }
 
 /// The `NSMenu` an `NSMenuDidBeginTrackingNotification` is about, or `None` when the

@@ -20,7 +20,7 @@ use objc2::rc::Retained;
 use objc2::runtime::AnyObject;
 use objc2::{AnyThread as _, MainThreadMarker};
 use objc2_app_kit::{
-    NSApplication, NSColor, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSMenu,
+    NSApplication, NSColor, NSEventModifierFlags, NSFont, NSFontAttributeName, NSForegroundColorAttributeName, NSMenu,
     NSMenuItem as NSMenuItemAppKit, NSMutableParagraphStyle, NSParagraphStyleAttributeName, NSStringDrawing as _,
     NSTextTab, NSTextTabType,
 };
@@ -34,11 +34,14 @@ use super::macos_appkit::{find_ns_item, find_ns_submenu, menu_item_text, submenu
 use super::menu_bar::MENU_BAR;
 use super::menu_spec::{EntryKind, ItemSpec, Platform, SubmenuSpec};
 
-/// How far right of the widest label+glyph pair in a menu the display glyphs sit, in points.
+/// The space AppKit leaves between a menu's label column and its key-equivalent column, in points.
 ///
-/// Padding, not a column position: the tab stop is measured off the menu's own labels, so a
-/// long translation pushes the glyphs out rather than colliding with them.
-const DISPLAY_ACCELERATOR_GAP: f64 = 16.0;
+/// The one number in [`tab_stop_for`] that isn't measured, because AppKit exposes no metric for it
+/// and a menu's laid-out width isn't known until it opens. Everything around it IS measured, so
+/// this stays right as labels are translated and shortcuts rebound.
+/// (Measured on macOS 26.0 at the default text size, 2026-09-16: the Select menu's content spans
+/// 190 pt for a 92.5 pt widest label and a 34 pt `⇧⌘A`.)
+const KEY_EQUIVALENT_COLUMN_GAP: f64 = 63.5;
 
 /// Draws the display-only accelerators (`menu_spec::ItemSpec::display_accelerator`) on the
 /// installed menu bar.
@@ -147,9 +150,9 @@ fn apply_display_accelerators<R: Runtime>(
         .collect();
 
     if !rows.is_empty() {
-        let tab_location = tab_stop_for(tauri_menu, &rows);
+        let tab_location = tab_stop_for(&ns_menu, tauri_menu, &rows);
         for (title, shortcut) in &rows {
-            let Some(ns_item) = find_ns_item_by_title(&ns_menu, title, shortcut) else {
+            let Some(ns_item) = find_ns_item(&ns_menu, title) else {
                 log::warn!(target: "menu", "The AppKit menu holds no item titled `{title}`, so its `{shortcut}` display accelerator is missing");
                 continue;
             };
@@ -179,24 +182,17 @@ fn apply_display_accelerators<R: Runtime>(
     }
 }
 
-/// The item titled `title`, or — once we've styled it — titled `"{title}\t{shortcut}"`.
+/// Where to put the right tab stop for one menu, so a drawn glyph lands in the same column as the
+/// real key equivalents beside it.
 ///
-/// ❗ `setAttributedTitle:` also rewrites `title`, so a second pass over a menu nothing rebuilt
-/// (two `app.set_menu()`-free calls in a row) would find nothing by the plain label alone.
-fn find_ns_item_by_title(menu: &NSMenu, title: &str, shortcut: &str) -> Option<Retained<NSMenuItemAppKit>> {
-    find_ns_item(menu, title).or_else(|| find_ns_item(menu, &display_accelerator_title(title, shortcut)))
-}
-
-/// `"{label}\t{glyph}"`: the tab is what the right tab stop aligns the glyph on.
-fn display_accelerator_title(label: &str, shortcut: &str) -> String {
-    format!("{label}\t{shortcut}")
-}
-
-/// Where to put the right tab stop for one menu: past the widest label it holds, plus room for
-/// the widest glyph, plus a gap. Measured rather than guessed, because a translated label can be
-/// half again as long as the English one and a fixed column would either overlap it or float
-/// absurdly far from the short rows.
-fn tab_stop_for<R: Runtime>(tauri_menu: &Submenu<R>, rows: &[(String, String)]) -> f64 {
+/// AppKit lays a menu out as `widest label + gap + widest key equivalent`, right-aligning the key
+/// equivalents against the content's right edge. Reproducing that means measuring all three:
+/// nothing here can be a fixed column, because a translated label can be half again as long as the
+/// English one and a shortcut the user rebound can be any width.
+///
+/// The one number that can't be measured is AppKit's gap, which isn't exposed anywhere. See
+/// [`KEY_EQUIVALENT_COLUMN_GAP`].
+fn tab_stop_for<R: Runtime>(ns_menu: &NSMenu, tauri_menu: &Submenu<R>, rows: &[(String, String)]) -> f64 {
     let font = NSFont::menuFontOfSize(0.0);
     // SAFETY: AppKit's own attribute-name constant, an immortal static read through the
     // bindings' declared type.
@@ -216,11 +212,39 @@ fn tab_stop_for<R: Runtime>(tauri_menu: &Submenu<R>, rows: &[(String, String)]) 
         .filter_map(menu_item_text)
         .map(|text| width(&text))
         .fold(0.0, f64::max);
-    let widest_shortcut = rows
-        .iter()
-        .map(|(_, shortcut)| width(shortcut))
+    // The right column holds both kinds at once: AppKit's own key equivalents and ours.
+    let widest_key_equivalent = (0..ns_menu.numberOfItems())
+        .filter_map(|index| ns_menu.itemAtIndex(index))
+        .filter_map(|item| key_equivalent_display(&item))
+        .chain(rows.iter().map(|(_, shortcut)| shortcut.clone()))
+        .map(|text| width(&text))
         .fold(0.0, f64::max);
-    widest_label + widest_shortcut + DISPLAY_ACCELERATOR_GAP
+    widest_label + KEY_EQUIVALENT_COLUMN_GAP + widest_key_equivalent
+}
+
+/// What AppKit would DRAW for an item's own key equivalent, or `None` for an item with none.
+///
+/// Only its width is ever used, so the modifier order is Apple's display order and nothing else
+/// about the string needs to be exact.
+fn key_equivalent_display(item: &NSMenuItemAppKit) -> Option<String> {
+    let key = item.keyEquivalent().to_string();
+    if key.is_empty() {
+        return None;
+    }
+    let modifiers = item.keyEquivalentModifierMask();
+    let mut shown = String::new();
+    for (flag, glyph) in [
+        (NSEventModifierFlags::Control, '⌃'),
+        (NSEventModifierFlags::Option, '⌥'),
+        (NSEventModifierFlags::Shift, '⇧'),
+        (NSEventModifierFlags::Command, '⌘'),
+    ] {
+        if modifiers.contains(flag) {
+            shown.push(glyph);
+        }
+    }
+    shown.push_str(&key.to_uppercase());
+    Some(shown)
 }
 
 /// Draws `shortcut` right-aligned and dimmed at the end of the item's title.
