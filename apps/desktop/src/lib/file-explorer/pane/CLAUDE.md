@@ -5,55 +5,36 @@ Per-pane orchestrator: cursor, focus, tabs, selection, type-to-jump, dialogs, dr
 
 ## Module map
 
-- `DualPaneExplorer.svelte`: the root, owning both panes, key/command dispatch, the dialog manager, the MCP surface.
-  Split out for length: `pane-accessors.svelte.ts` (per-pane `$derived` state + the accessors every other factory here
-  builds on), `move-cursor.ts` and `volume-context-action.ts` (pure logic, each with its own test file).
-- `FilePane.svelte`: one pane (lifecycle `$state`, the `FilePaneAPI` exports, the alt-view `{#if}` chain); its
-  controllers and helpers are siblings (`DETAILS.md` § File map).
-- `navigate.ts`: the `navigate()` transaction. Split out for length: `navigate-commit.ts` (the intent/deps/result
-  contract, the single `commit`, token minting), `navigate-refusals.ts` (byte-pinned refusals), `navigate-return.ts`
-  (the `{ returnTo }` arm over the pure `return-point.ts`).
+`DualPaneExplorer.svelte` (root: both panes, key/command dispatch, dialogs, the MCP surface), `FilePane.svelte` (one
+pane), and `navigate.ts` (the `navigate()` transaction, the single pane-nav entry). All three are split for length;
+their helper siblings are listed in `DETAILS.md` § File map.
 
 ## Must-knows
 
-- **Only `setFocusedPane` mutates the focused pane**, and startup must call `updateFocusedPane` or Rust's left default
+- **Only `setFocusedPane` mutates the focused pane**, and startup must call `updateFocusedPane`, or Rust's left default
   misdirects Ask Cmdr and MCP.
-- **Guard logic branches on `VolumeCapabilities`, ❌ never volume-id strings** and ❌ never a backend-sourced KIND: an
-  un-upgraded SMB share is served by a local one.
-- **The two ROUTED panes are KIND-FROM-PATH: gate via `capabilitiesForPane(volumeId, path)`**, since an archive or
-  `.git`-portal pane keeps the parent DRIVE's `volumeId`.
-- **Two archive path predicates, ❌ not swappable**: `pathCrossesArchiveBoundary` (at-or-inside) asks about a PANE path,
-  `pathInsideArchive` (strictly inside) about a site acting ON one.
-- **The snapshot pane (`volumeId === 'search-results'`) couples six points**, and skipping one silently breaks
-  selection, the path, delete, the MCP mirror, sort, or the footer's counts (`DETAILS.md` § Conventions).
-- **A `search-results://` path must NEVER reach disk**: saving writes the tab's newest real folder instead, and loading
-  swaps out any already stored (`DETAILS.md` § "A snapshot never comes back"). The live `path` stays a snapshot. Only
-  the `{ snapshot }` arm may OPEN one either; a `{ goTo }` carrying that prefix is refused.
-- **BIRTH CONTEXT and an ADOPTED operation are separate slots in separate MODULES**: flow modules get a read-only
-  `hasBirthContext()`, ❌ never a writer.
+- **Guard on `capabilitiesForPane(volumeId, path)`, ❌ never a volume-id string or a backend-sourced KIND**: an
+  un-upgraded SMB share is served by a local one, and the two ROUTED panes (archive, `.git` portal) keep the parent
+  DRIVE's `volumeId`. Its archive predicates are ❌ not swappable: `pathCrossesArchiveBoundary` (at-or-inside) asks
+  about a PANE path, `pathInsideArchive` (strictly inside) about a site acting ON one.
+- **The snapshot pane (`volumeId === 'search-results'`) couples six points**; skip one and selection, the path, delete,
+  the MCP mirror, sort, or the footer's counts silently break. Its path must ❌ never reach disk, and only the
+  `{ snapshot }` arm may open one.
 - **Every dialog renders inside ONE `<svelte:boundary>` in `DialogManager.svelte`**: `show*` flips first and suppresses
   pane keys, so a mid-render throw wedges the keyboard behind a blank screen.
 - **Nav-state persistence fires from ONE subscriber** (`persistence-subscriber.svelte.ts`): mutate the store and let it
   react, ❌ never a scattered `saveAppStatus`.
-- **Each first-run-layout guardrail looks like a tidy-up. ❌ Never "simplify" one away** (`DETAILS.md` § First-run pane
-  layout).
-- **`navigate(intent, deps)` is the single pane-nav entry**: `{ goTo }` self-routes by volume, `{ selectVolume }` always
-  switches.
-- **Escape during a load returns the pane to what it last SHOWED** (its return point, else the loader's `lastShown`), ❌
-  never a guess from history, which walked Back one step too far (`DETAILS.md` § Escape during a load).
 - **The `network` pane is the SERVERS HUB** (`NetworkMountView`): it owns its MCP push, so `pane-mcp-sync` skips it, and
   ❗ its NAME is spelled in four places (`../network/DETAILS.md` § Gotchas).
-- **ONE typed state renders every remote wait** (`remote-connect-state.ts` + `RemoteConnectView`): `place-connect` gates
-  on CONNECTION STATE, `device-connect` on `deviceReadiness`, both in FRONT of the kind chain. ❌ No second renderer, no
-  inert affordance. ❗ `device-connect` is a phone's ONE dialer and HOLDS the listing (`holdsListing`): an undialed
-  phone's listing can only refuse. An eject (row loses `capabilities`) re-dials.
-- **Select-same-kind (`⌥⇧=`) adds via `selection.applyIndices` over the whole-listing SNAPSHOT**, ❌ never
-  `FilePane.applyIndices` (yanks the cursor) nor the rendered cache (off-screen matches vanish). ONE store feeds every
-  live label. `DETAILS.md` § Select all of the same kind.
-- **`⌃⏎` adds only an ANCHOR to `pane-pointer.ts::handleContextMenu`**, so one rule decides selection-vs-row. ❌ Never
-  scroll; scope `#file-<index>` to the pane. `DETAILS.md` § Keyboard context menu.
+- **ONE typed state renders every remote wait** (`remote-connect-state.ts` + `RemoteConnectView`), gating in FRONT of
+  the kind chain. ❌ No second renderer, no inert affordance. ❗ `device-connect` is a phone's ONE dialer and HOLDS the
+  listing.
 - **`DualPaneExplorer.svelte` / `FilePane.svelte` are at their size cap**: cross-cutting state → a `*.svelte.ts`
   factory, pure logic → a `*.ts` helper, ❌ never a child component.
+- **Five behaviors each carry a guardrail that reads like a tidy-up, so read the `DETAILS.md` section before touching
+  one**: birth context (a read-only `hasBirthContext()` for flow modules, ❌ never a writer), first-run pane layout,
+  Escape during a load (return to what the pane last SHOWED, ❌ never a guess from history), select-same-kind (`⌥⇧=`,
+  over the whole-listing snapshot), and the `⌃⏎` keyboard context menu (anchor only, ❌ never a scroll).
 
 Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
 reorganizing, or advising.
