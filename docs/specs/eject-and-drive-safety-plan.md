@@ -1796,6 +1796,14 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     couldn't name is dropped rather than carried blank. So `{app}` always has something to say.
   - Two or more holders of DIFFERENT kinds in one refusal is ordinary (a `System` beside an `App`), which is what the
     precedence is for; the `mixed` case in the test plan is the one that pins it.
+  - ❗ **The `Cmdr` warn fires on PRESENCE, not on winning the precedence.** An `App` beside a `Cmdr` holder words the
+    app, and that's right for the person — but Cmdr holding a drive it's trying to let go of is a bug worth seeing
+    whichever sentence won, so the `warn` is keyed on a `Cmdr` holder being in `named` at all. The backend already logs
+    the whole `HolderScan` at `info` in `name_the_holders`; this is the extra line.
+  - **One copy-quality gap, for David rather than for M15 to solve**: a refusal whose holders are all `Unclassified`
+    words identically to one that named nobody, because both fall through to `errors.eject.unmountRefused`. The names
+    ARE on the wire, so a "Cmdr couldn't tell which app, but N processes hold it" sentence is possible; the approved
+    copy set has no key for it, and inventing one is a product decision. ❌ Don't invent it inside M15.
 - **Test plan**: `eject-error-messages.test.ts` (one, two, three, four, and six apps; `DiskImage`; `Cmdr`; `System`;
   mixed; empty; only `Unclassified`); a list-formatter test with a pinned locale; `pnpm check svelte` plus
   `desktop-i18n-icu`, `desktop-i18n-parity`, `desktop-i18n-coverage`, `desktop-i18n-term-consistency`,
