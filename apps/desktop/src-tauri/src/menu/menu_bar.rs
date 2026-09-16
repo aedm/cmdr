@@ -71,7 +71,7 @@ pub(crate) const SHOW_IN_FILE_MANAGER_ACCELERATOR: Accelerator = split("Alt+Cmd+
 
 /// The display-only shortcut `MENU_BAR` gives `menu_id` on this platform, if any.
 ///
-/// The spec is the fallback answer, so it's what [`MenuState::set_item_label`] composes a rewritten
+/// The spec is the fallback answer, so it's what [`super::MenuState::set_item_label`] composes a rewritten
 /// label with while the user hasn't rebound the command. `MenuState.display_accelerators` overrides
 /// it once they have; ❗ read that FIRST, or a rebind's glyph reverts on the next label change.
 pub(crate) fn spec_display_accelerator(menu_id: &str) -> Option<&'static str> {
