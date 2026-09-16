@@ -183,7 +183,11 @@ No user impact, log truth only. About 60 lines, 100 with the rider.
   other, but around 80 engine tests write to the store without ever taking it. Nextest hides it completely, because
   per-process isolation removes the shared store, so `pnpm check` and CI have never been exposed (134/134, repeatedly).
   The hazard predates the eject work; M11 surfaced it by roughly tripling the write volume, since `track` now fires for
-  a temp, an aside, and a staging dir where only `register` fired before. Tightening assertions is not the fix: six
-  cells were tightened (`2c9870162`) and the engine test still failed. The fix is per-test isolation of the store
-  instead of a singleton plus a partial mutex, which is a fixture redesign, and ❌ it can't be validated by a lane
-  that's already green. Start from the ledger's test fixture and `SINGLE_FILE` (M).
+  a temp, an aside, and a staging dir where only `register` fired before. ❗ Tightening assertions is NOT the fix, and
+  the six cells already tightened in `2c9870162` must not be read as one: `a_partial_with_no_named_path_space_...`,
+  `a_local_record_stays_a_bare_path_on_disk`, both `the_sweep_refuses_a_..._that_isnt_one_of_our_scratch_files`,
+  `a_leftover_on_a_removable_drive_...`, and `a_leftover_on_the_mac_stays_local_homed`. Those only stopped each cell
+  asserting about the whole ledger; the engine test still failed afterwards, because its temp is deleted out from under
+  it. The fix is per-test isolation of the store instead of a singleton plus a partial mutex, which is a fixture
+  redesign, and ❌ it can't be validated by a lane that's already green. Start from the ledger's test fixture and
+  `SINGLE_FILE` (M).
