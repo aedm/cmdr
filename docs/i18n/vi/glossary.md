@@ -241,9 +241,12 @@ below:
 - **endpoint (URL): `điểm cuối`** · descriptive; "Endpoint URL" → `URL điểm cuối`. `tentative`.
 - **API key: `khóa API`** · "API" verbatim, "key" → `khóa`. `high`.
 - **model (AI/LLM): `mô hình`** · MS ("model" Noun sense). LLM kept verbatim. `high`.
-- **full disk access: `truy cập toàn bộ đĩa`** · descriptive (no macOS TCC-pane string in the pile). Privacy & Security
-  pane → `Quyền riêng tư & Bảo mật` (macOS SystemSettings verbatim). `tentative` (FDA phrase); `high` (Privacy &
-  Security).
+- **full disk access: the pane NAME is `Quyền truy cập đầy đủ vào ổ đĩa`**; running prose in the catalog still says
+  `truy cập toàn bộ đĩa` · the pane name is Apple's own, from the live bundle
+  (`/System/Library/ExtensionKit/Extensions/SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable`, key
+  `ALL_FILES`, macOS 27.0 build 26A428, verified 2026-09-16) · `high` (supersedes the earlier `tentative` descriptive
+  form as the NAME). Privacy & Security pane → `Quyền riêng tư & Bảo mật` (macOS SystemSettings verbatim) · `high`.
+  Boundary: § The title-bar full-disk-access badge.
 - **review and apply / at will: `xem lại rồi áp dụng` / `tùy ý`** · the with/without-AI table's recurring phrasing.
   `tentative`.
 
@@ -256,8 +259,9 @@ below:
 macOS proper-name labels referenced in onboarding instructions (Vietnamese macOS wording where the pile has it, else
 best-effort + `tentative`): Quit & Reopen → `Thoát & Mở lại` (macOS "Reopen" → `Mở lại`); Applications → `Ứng dụng`;
 Documents → `Tài liệu`; Downloads → `Tải về`; Desktop → `Màn hình nền` (all macOS Finder); Full Disk Access →
-`Truy cập toàn bộ đĩa`, Local network access → `Truy cập mạng cục bộ`, Accepting incoming connections →
-`Chấp nhận kết nối đến` (no pile string; best-effort, `tentative`).
+`Quyền truy cập đầy đủ vào ổ đĩa` (Apple's own pane name, see the full-disk-access entry above, `high`), Local network
+access → `Truy cập mạng cục bộ`, Accepting incoming connections → `Chấp nhận kết nối đến` (those two: no pile string;
+best-effort, `tentative`).
 
 File-operation toggle/action names (keep consistent across files): Trash/Delete toggle → `Thùng rác` / `Xóa`; Copy/Move
 toggle → `Sao chép` / `Di chuyển`; conflict actions — Skip → `Bỏ qua`, Overwrite → `Ghi đè`, Rename → `Đổi tên`,
@@ -3302,3 +3306,53 @@ dấu hai chấm của `Không thể tháo {volumeName}: …`, nên chỉ nêu l
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+Huy hiệu cảnh báo trên thanh tiêu đề cùng tooltip của nó, hiện ra khi Cmdr chưa có quyền truy cập đầy đủ vào ổ đĩa; bấm
+vào thì phần thiết lập ban đầu mở lại ở bước 1.
+
+- **`onboarding.fdaBadge.label` → `Không có quyền truy cập đầy đủ vào ổ đĩa`** · Apple's own Cài đặt Hệ thống row (see
+  the full-disk-access entry above for the live-bundle evidence) · high. Long for a pill, but the badge's whole job is
+  to be findable in System Settings, and that is the row's actual wording. ❌ Not `Chưa có …`: this is a flat present
+  state, not an unfulfilled expectation (same ruling as "no drive is indexed").
+- **`onboarding.stepAi.bannerTitle.denied` carries the SAME English string** ("No full disk access"), so `i18n-terms`
+  holds the two identical. It was moved from `Không có quyền truy cập toàn bộ đĩa` onto the pane name in the same pass.
+  ❌ Reword neither alone.
+- **`onboarding.fdaBadge.ariaLabel` opens with the label verbatim**
+  (`Không có quyền truy cập đầy đủ vào ổ đĩa. Mở bước quyền truy cập đầy đủ vào ổ đĩa trong phần thiết lập ban đầu.`),
+  which is what satisfies `i18n-aria` (WCAG 2.5.3). ❌ Re-wording the label alone breaks it.
+- **Tooltip terms**: drive → `ổ đĩa` (settled), cloud folders → `thư mục đám mây`, file → `tệp` (settled), "files macOS
+  keeps to itself" → `những tệp mà macOS giữ riêng cho mình` (plain, ❌ never a macOS feature name), "Click to …" →
+  `Bấm để …` (`bấm`, ❌ never `nhấp`; as in `fileExplorer.breadcrumb.navigateTooltip`), onboarding → `thiết lập ban đầu`
+  (settled).
+- **Name vs prose, the boundary**: `quyền truy cập đầy đủ vào ổ đĩa` where a string NAMES the setting. The FDA step's
+  running prose (`onboarding.stepFda.revoked.noAccess` and its siblings) still says `truy cập toàn bộ đĩa`. Open
+  decision: whether a later pass sweeps the prose onto the pane name too.
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. Vietnamese has no
+  number agreement at all, so `{count} trong số các mục bạn đã chọn` just works.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails`
+  (`Chi tiết kỹ thuật`), because it points at that very control.
+
+- **locked → `bị khóa`** · macOS Finder (`AXNODE1` `Đã khóa`) and the settled catalog term · high.
+- **"delete them permanently" → `xóa vĩnh viễn`** · matches `commands.fileDeletePermanently.label`, so the suggestion
+  names the command the user will run · high.
+- **badge (the title-bar pill) → `huy hiệu`** · tentative; descriptive, no pile term for this shape. title bar →
+  `thanh tiêu đề` · high.
+- The quoted badge text is `onboarding.fdaBadge.label` verbatim, in the catalog's `“…”` quotes.
+- **trash stays lowercase `thùng rác` here**, matching the four sibling titles this key is locked to; the older
+  `errors.mutation.trashRefused` capitalizes it. Worth unifying in a later pass.
+- "somewhere macOS keeps to itself" → `nơi mà macOS giữ riêng cho mình`, reusing the wording settled for
+  `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.

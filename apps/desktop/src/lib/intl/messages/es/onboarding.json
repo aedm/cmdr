@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "Sin acceso total al disco",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "No hace falta que lo concedas, pero Cmdr funciona mucho mejor con ello: buscar en toda tu unidad, leer carpetas en la nube y cambiar archivos que macOS se reserva. Haz clic para volver a ver la decisión.",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "Sin acceso total al disco. Abrir el paso de acceso total al disco de la introducción.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Introducción a Cmdr",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"
@@ -163,7 +175,7 @@
   "@onboarding.stepAi.bannerBody.granted": {
     "sourceHash": "236f3f5"
   },
-  "onboarding.stepAi.bannerTitle.denied": "Sin acceso a todo el disco",
+  "onboarding.stepAi.bannerTitle.denied": "Sin acceso total al disco",
   "@onboarding.stepAi.bannerTitle.denied": {
     "sourceHash": "0aa10cf"
   },

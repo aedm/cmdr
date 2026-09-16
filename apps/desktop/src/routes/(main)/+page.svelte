@@ -3,6 +3,9 @@
     import DualPaneExplorer from '$lib/file-explorer/pane/DualPaneExplorer.svelte'
     import FunctionKeyBar from '$lib/file-explorer/pane/FunctionKeyBar.svelte'
     import OnboardingWizard from '$lib/onboarding/OnboardingWizard.svelte'
+    import FdaBadge from '$lib/onboarding/FdaBadge.svelte'
+    import { refreshFdaStatus } from '$lib/onboarding/fda-status.svelte'
+    import { getOnboardingState } from '$lib/onboarding/onboarding-state.svelte'
     import AlertDialog from '$lib/ui/AlertDialog.svelte'
     import ExpirationModal from '$lib/licensing/ExpirationModal.svelte'
     import CommercialReminderModal from '$lib/licensing/CommercialReminderModal.svelte'
@@ -306,6 +309,11 @@
         // Fetch platform-specific path limits (non-blocking, macOS defaults until resolved)
         void initPathLimits()
 
+        // Answer the Full Disk Access question for the title-bar badge and for the extra
+        // paragraph error messages add when a refusal is the kind FDA explains. Quiet probe,
+        // so it never raises a TCC popup of its own.
+        void refreshFdaStatus()
+
         // Register known dialog types with backend (for MCP "available dialogs" resource,
         // and for the gate that refuses an MCP file operation while a dialog is up)
         void registerKnownDialogs(SOFT_DIALOG_REGISTRY)
@@ -430,6 +438,9 @@
      */
     function handleWizardComplete() {
         setOnboardingVisible(false)
+        // The wizard is where someone goes to grant FDA, so re-probe on the way out: the badge
+        // must disappear the moment it's earned, without waiting for a relaunch.
+        void refreshFdaStatus()
         void notifyOnboardingComplete()
         // Re-attempt the "What's new" check now that onboarding is closed: a popup that
         // `wait`ed on the wizard can show on this pass (matches the update-toast re-attempt).
@@ -669,6 +680,12 @@
                 <!-- eslint-disable-next-line cmdr/no-raw-user-facing-string -- dev/E2E-only title-bar markers (incl. the worktree label), not shipped user copy; they only render under non-default app modes. -->
                 {decorateMainWindowTitle(windowTitle, appMode)}
             </span>
+            <!-- Deliberately NOT a drag region: it's a button. Hidden while the wizard sits on
+                 step 1, which is this badge's own destination. -->
+            <FdaBadge
+                onboardingOnFdaStep={showOnboarding && getOnboardingState().currentStep === 1}
+                onOpenOnboarding={() => void openOnboardingFromMenuOrPalette(startupGatesCtx, 'menu')}
+            />
         </header>
     {/if}
 

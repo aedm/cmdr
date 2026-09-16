@@ -568,11 +568,49 @@ pub enum WriteOperationError {
         cause: Box<WriteOperationError>,
         recovered: Vec<RecoveredOriginal>,
     },
+    /// The OS refused to move items to the Trash.
+    ///
+    /// Separate from [`IoError`](Self::IoError) because the REASON decides what the
+    /// dialog can offer, and a reason has to survive the trip as a value. As an
+    /// `IoError` it arrived as one sentence macOS had written, which left the dialog
+    /// with nothing to say beyond "try again" — useless advice for a refusal that
+    /// retrying cannot change.
+    TrashRefused {
+        /// How many top-level items it refused, so the message can be plural-correct
+        /// without counting the sentences in `message`.
+        item_count: usize,
+        /// Why, classified at the OS boundary.
+        reason: TrashRefusalKind,
+        /// The OS's own words, for the technical-details disclosure ONLY.
+        message: String,
+    },
     /// Catch-all for genuinely unexpected IO errors.
     IoError {
         path: String,
         message: String,
     },
+}
+
+/// Why the OS wouldn't take something to the Trash.
+///
+/// ❗ Classified from the `NSError` domain and code at the boundary, ❌ never from
+/// its words: the wording is localized and reformats between macOS releases, and
+/// `error-string-match` forbids it. `delete/trash.rs::classify_trash_refusal` is the
+/// one place that decides.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum TrashRefusalKind {
+    /// macOS said we may not touch the item at all (`NSFileWriteNoPermissionError`,
+    /// `NSFileReadNoPermissionError`, or a POSIX `EPERM`/`EACCES`).
+    NotPermitted,
+    /// macOS couldn't find a Trash for the item's volume
+    /// (`NSFeatureUnsupportedError`). It reads as "this volume doesn't have one",
+    /// and that is what it says for a File Provider folder the app can't reach,
+    /// which is why the UI treats it as permission-adjacent rather than as a fact
+    /// about the disk.
+    NoTrashForVolume,
+    /// Anything else, including every non-macOS refusal.
+    Other,
 }
 
 /// One file a failed copy kept under a new name, because a folder that was

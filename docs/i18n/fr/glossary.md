@@ -77,8 +77,10 @@ Settled during the `settings` pass (2026-06-21):
 - provider (AI) → fournisseur · MS terminology FRA · high
 - toast / transient notification → notification · no separate FR UI term; rendered plainly, kept calm · high
 - chip / badge (status pill) → pastille · descriptive FR · tentative (no exact reference-pile hit)
-- Full Disk Access → Accès complet au disque · standard Apple French TCC name; NOT in the bundled reference pile (lacks
-  privacy-pane TCC strings) · tentative — flag for review
+- Full Disk Access → Accès complet au disque · Apple's own pane name, confirmed against the live macOS bundle
+  (`/System/Library/ExtensionKit/Extensions/SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable`, key
+  `ALL_FILES`, macOS 27.0 build 26A428, verified 2026-09-16); the bundled reference pile lacks the privacy-pane TCC
+  strings, which is why this used to read `tentative` · high
 - Local Network (permission) → Réseau local · standard Apple French TCC name; same caveat; injected via `{localNetwork}`
   at runtime anyway · tentative
 - System Settings → Réglages Système (capital S) · the macOS app''s own `CFBundleName` is "Réglages Système", and the
@@ -258,9 +260,8 @@ match this doc's convention:
 
 Onboarding-specific phrasing:
 
-- full disk access → accès complet au disque · descriptive FR; NOT the bundled reference pile (lacks the TCC pane
-  string) but the standard Apple French rendering — same caveat as the `errors`/`settings` pass on TCC names · tentative
-  — flag for review
+- full disk access → accès complet au disque · Apple's own pane name; the bundled reference pile lacks the TCC pane
+  string, so this was confirmed against the live macOS bundle instead (see the `Full Disk Access` entry above) · high
 - "Quit & Reopen" (macOS relaunch button) → "Quitter et rouvrir" · macOS shows this button itself; standard French label
   · tentative — verify exact macOS wording
 - onboarding (the flow, as a noun) → `prise en main`, partout · `high`. Le point de menu, la commande, la portée des
@@ -3699,3 +3700,51 @@ vers ce menu.
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+La pastille d'avertissement de la barre de titre et son infobulle, affichées tant que Cmdr n'a pas l'accès complet au
+disque ; un clic rouvre la prise en main à l'étape 1.
+
+- **`onboarding.fdaBadge.label` → `Pas d''accès complet au disque`** · Apple's own Réglages Système row (see the
+  `Full Disk Access` entry above) · high. ICU key, so the apostrophe is doubled. `Aucun accès complet au disque` reads
+  as a verdict; the `Pas de` form is the calm status the badge wants.
+- **`onboarding.stepAi.bannerTitle.denied` already carried this exact string**, and `i18n-terms` holds the two identical
+  because they share one English source. ❌ Reword neither alone.
+- **`onboarding.fdaBadge.ariaLabel` opens with the label verbatim**
+  (`Pas d''accès complet au disque. Ouvrir l''étape Accès complet au disque de la prise en main.`), which is what
+  satisfies `i18n-aria` (WCAG 2.5.3). ❌ Re-wording the label alone breaks it.
+- **Gender**: the natural `Vous n'êtes pas obligé(e) de l'accorder` would expose an agreeing participle, so the tooltip
+  opens `Ce n''est pas obligatoire, mais …` instead. Neutral restructuring, no typographic glyph.
+- **Tooltip terms**: the benefit list is nominal after the colon
+  (`la recherche dans tout votre disque, la lecture des dossiers cloud et la modification des fichiers que macOS garde pour lui`),
+  which reads better in French than three infinitives; drive → `disque` (settled), cloud folders → `dossiers cloud`,
+  "Click to …" → `Cliquez pour …` (as in `fileExplorer.breadcrumb.navigateTooltip`), onboarding → `prise en main`
+  (settled). Keep the space before the colon.
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. French solves it
+  with `{count} des éléments que vous avez choisis`, which takes any numeral without agreement.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails`
+  (`Détails techniques`), because it points at that very control.
+
+- **locked → `verrouillé`** · macOS (`AXNODE1` `Verrouillé`) and the settled catalog term · high.
+- **"delete them permanently" → `supprimer définitivement`** · matches `commands.fileDeletePermanently.label`, so the
+  suggestion names the command the user will run · high.
+- **badge (the title-bar pill) → `la pastille`** · reuses the settled `chip / badge (status pill) → pastille` · high.
+  title bar → `barre de titre` · high.
+- The quoted badge text is `onboarding.fdaBadge.label` verbatim, in `« … »` with the usual spaces. ❗ It is the ICU key
+  that doubles its apostrophe (`Pas d''accès`); here, in the RAW `errors.*` family, the SAME text is written with a
+  single `'` (`Pas d'accès`). `i18n-terms` normalizes that difference away, `i18n-icu` fails the other way round.
+- "somewhere macOS keeps to itself" → `à un endroit que macOS garde pour lui`, reusing the wording settled for
+  `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.

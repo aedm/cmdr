@@ -12,6 +12,7 @@
 //! whole `VolumeError`, so a backend that grows a variant reaches the frontend
 //! without a second vocabulary to keep in step.
 
+use super::types::TrashRefusalKind;
 use cmdr_fs::volume::VolumeError;
 use serde::{Deserialize, Serialize};
 
@@ -79,6 +80,11 @@ pub enum MutationError {
     TrashNotSupported,
     /// The OS refused the move to the Trash.
     TrashRefused {
+        /// Why, classified from the `NSError` domain and code at the boundary. It
+        /// decides whether a surface may offer Full Disk Access as the next step,
+        /// which is a question `detail` can't answer without string-matching
+        /// localized prose.
+        reason: TrashRefusalKind,
         /// What `NSFileManager` (or the Linux `trash` crate) reported, for the
         /// technical-details disclosure.
         detail: String,
@@ -123,7 +129,7 @@ impl std::fmt::Display for MutationError {
             Self::ArchiveEditCouldntStart { detail } => write!(f, "archive edit didn't start: {detail}"),
             Self::AlreadyExists { name } => write!(f, "already exists: {name}"),
             Self::TrashNotSupported => f.write_str("this platform has no Trash"),
-            Self::TrashRefused { detail } => write!(f, "the Trash refused it: {detail}"),
+            Self::TrashRefused { reason, detail } => write!(f, "the Trash refused it ({reason:?}): {detail}"),
             Self::Volume { error } => write!(f, "volume: {error}"),
             Self::TimedOut => f.write_str("timed out"),
             Self::Unexpected { detail } => write!(f, "unexpected: {detail}"),

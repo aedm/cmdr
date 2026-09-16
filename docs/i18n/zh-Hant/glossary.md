@@ -1990,3 +1990,48 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+標題列上的警告小標籤和它的滑鼠提示，在 Cmdr 還沒拿到「完全取用磁碟」權限時顯示；按一下會把入門引導重新開到第 1 步。
+
+- **`onboarding.fdaBadge.label` → `沒有「完全取用磁碟」權限`** · Apple 自己的「系統設定」項目名，在
+  `SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable` 的 `ALL_FILES` 鍵上再次核對過（macOS 27.0
+  build 26A428，2026-09-16 驗證）· `high`。TW 說 `完全取用磁碟`、HK 說 `完整磁碟取用`，依台灣預設。沿用目錄既有的 `「」`
+  引號寫法，讓使用者一眼認出那是「系統設定」裡的項目名。
+- **`onboarding.stepAi.bannerTitle.denied` 的英文和它完全相同**，`i18n-terms`
+  會要求兩者一字不差；那一條本來就是這個寫法。❌ 兩條不能單獨改詞。
+- **`onboarding.fdaBadge.ariaLabel`
+  以標籤原文開頭**（`沒有「完全取用磁碟」權限。開啟入門引導的「完全取用磁碟」步驟。`），這正是 `i18n-aria`（WCAG
+  2.5.3）要的包含關係。`i18n-aria` 比對時會把 `「」` 和 `。`
+  都去掉，所以引號不影響包含判定，但 ❌ 單獨改標籤還是會把它弄壞。
+- **提示裡的其他詞**：drive → `磁碟機`（已定），cloud folders → `雲端資料夾`，file → `檔案`，"files macOS keeps to
+  itself" → `macOS 自己留著的檔案`（說人話，❌ 不要點名某個 macOS 功能），"Click to …" →
+  `按一下就能…`（已定寫法），onboarding → `入門引導`（已定）。
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. Chinese has no
+  number agreement, so all three messages lead with `你選的項目裡有 {count} 個，…`, which reads the same at 1 as at 7.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails` (`技術詳細資訊`),
+  because it points at that very control.
+
+- **locked → `已鎖定`** · macOS Finder（`AXNODE1` `已鎖定`）與目錄既有寫法 · `high`。
+- **"delete them permanently" → `永久刪除`** · 與 `commands.fileDeletePermanently.label`
+  一致，讓建議裡的說法就是使用者要按的那個指令 · `high`。
+- **badge（標題列上的那個小藥丸）→ `警告標記`** · `tentative`；描述性說法。❌ 不要用 `標籤`，本目錄把 `標籤`
+  留給 tag。title bar → `標題列` · `high`。
+- **❗ 引號不能巢狀，所以這句話改寫過。** 徽章文字本身已經帶 `「完全取用磁碟」`，再包一層外引號就會變成 `『…』`
+  巢狀，而本指南§ Punctuation 說 `『…』` 在語料裡完全沒出現、要改寫而不是巢狀。做法是用冒號把徽章文字原樣帶出來：
+  `標題列上的警告標記寫著：沒有「完全取用磁碟」權限。` 這樣既逐字對上 `onboarding.fdaBadge.label`，又沒有巢狀引號。
+- "somewhere macOS keeps to itself" → `macOS 自己留著的地方`，沿用 `onboarding.fdaBadge.tooltip`
+  已定的說法。說人話，❌ 不要點名某個 macOS 功能。

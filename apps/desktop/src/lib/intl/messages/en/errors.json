@@ -1952,6 +1952,49 @@
     "description": "Recovery suggestion when the destination can't store the file's name. Plain text. \"Some destinations\" covers disks, phones, and servers alike. CON, NUL, and LPT1 are reserved Windows device names; keep them as-is, do NOT translate them.",
     "screenshot": "transfer-error-invalid_name.png"
   },
+  "errors.write.trashRefused.title": "Couldn't move to trash",
+  "errors.write.trashRefused.message.notPermitted": "macOS wouldn't let Cmdr touch {count} of the items you picked.",
+  "errors.write.trashRefused.message.noTrashForVolume": "macOS couldn't find a trash for {count} of the items you picked.",
+  "errors.write.trashRefused.message.other": "macOS wouldn't move {count} of the items you picked to the trash.",
+  "errors.write.trashRefused.suggestion.notPermitted": "The items may be locked, or they may sit somewhere macOS keeps to itself. You can still delete them permanently with Shift+F8.",
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "Some places have no trash of their own, including cloud folders and most network drives. You can still delete the items permanently with Shift+F8.",
+  "errors.write.trashRefused.suggestion.other": "Check the technical details below for what macOS reported.",
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "Cmdr also doesn't have full disk access on this Mac, which is a common cause. The \"No full disk access\" badge in the title bar takes you to that choice.",
+  "@errors.write.trashRefused.title": {
+    "description": "Title of the error dialog when macOS refused to move items to the Trash. Plain text, raw errors.* string (no ICU). Uses a contraction (\"Couldn't\"). Word the trash destination the way your locale's macOS names it.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position."
+  },
+  "@errors.write.trashRefused.message.notPermitted": {
+    "description": "Explanation when macOS refused with a permission code. Plain text, raw errors.* string (no ICU), so there is no plural machinery: phrase it so it reads correctly for any count, including 1. \"macOS\" is Apple's product name and stays as-is.",
+    "placeholders": {
+      "count": "how many top-level items were refused, already formatted for the locale (for example 7)"
+    }
+  },
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "description": "Explanation when macOS said it couldn't find a trash for the items' location. Plain text, raw errors.* string (no ICU), so phrase it to read correctly for any count, including 1. \"macOS\" stays as-is.",
+    "placeholders": {
+      "count": "how many top-level items were refused, already formatted for the locale (for example 7)"
+    }
+  },
+  "@errors.write.trashRefused.message.other": {
+    "description": "Explanation when macOS refused for a reason Cmdr doesn't classify. Plain text, raw errors.* string (no ICU), so phrase it to read correctly for any count, including 1. \"macOS\" stays as-is.",
+    "placeholders": {
+      "count": "how many top-level items were refused, already formatted for the locale (for example 7)"
+    }
+  },
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "description": "Recovery suggestion for a permission-shaped trash refusal. Plain text. Deliberately does NOT say \"try again\": retrying cannot change a permission refusal. \"somewhere macOS keeps to itself\" means a location behind the operating system's own privacy protection; keep it plain rather than naming a macOS feature. Shift+F8 is a keyboard shortcut and stays as-is."
+  },
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "description": "Recovery suggestion when the items' location has no Trash. Plain text. Names the two common cases so the user recognizes their own. Shift+F8 is a keyboard shortcut and stays as-is."
+  },
+  "@errors.write.trashRefused.suggestion.other": {
+    "description": "Recovery suggestion for an unclassified trash refusal, where Cmdr has nothing specific to offer and points at what the OS said. Plain text. \"Technical details\" is the label on the collapsed disclosure in this same dialog: match the translation you used for that label."
+  },
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "description": "An EXTRA sentence appended after one of the suggestions above, only when this Mac hasn't granted Cmdr Full Disk Access AND the refusal was permission-shaped. Additive, never a replacement, because the same codes also come back for a genuinely locked item. \"Full disk access\" is Apple's own macOS permission name: use Apple's wording for this locale. The quoted \"No full disk access\" must match the onboarding.fdaBadge.label string you chose, since it names a badge the user can see."
+  },
   "errors.write.ioError.title.copy": "Couldn't copy",
   "errors.write.ioError.title.move": "Couldn't move",
   "errors.write.ioError.title.delete": "Couldn't delete",

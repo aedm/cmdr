@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "Sem acesso total ao disco",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "Você não precisa conceder isso, mas o Cmdr funciona bem melhor com ele: buscar em todo o seu disco, ler pastas na nuvem e alterar arquivos que o macOS guarda para si. Clique para rever a escolha.",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "Sem acesso total ao disco. Abrir a etapa de acesso total ao disco da introdução.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Introdução ao Cmdr",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"

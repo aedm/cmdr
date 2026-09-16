@@ -1353,6 +1353,38 @@
   "@errors.write.invalidName.suggestion": {
     "sourceHash": "3721c3d"
   },
+  "errors.write.trashRefused.title": "Nem sikerült a Kukába helyezés",
+  "@errors.write.trashRefused.title": {
+    "sourceHash": "c2d75cc"
+  },
+  "errors.write.trashRefused.message.notPermitted": "A macOS a kiválasztott elemek közül {count} darabhoz nem engedte hozzá a Cmdrt.",
+  "@errors.write.trashRefused.message.notPermitted": {
+    "sourceHash": "e11fc50"
+  },
+  "errors.write.trashRefused.message.noTrashForVolume": "A macOS a kiválasztott elemek közül {count} darabhoz nem talált Kukát.",
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "sourceHash": "d86a66d"
+  },
+  "errors.write.trashRefused.message.other": "A macOS a kiválasztott elemek közül {count} darabot nem helyezett a Kukába.",
+  "@errors.write.trashRefused.message.other": {
+    "sourceHash": "5c73490"
+  },
+  "errors.write.trashRefused.suggestion.notPermitted": "Az elemek zárolva lehetnek, vagy olyan helyen vannak, amit a macOS magának tart. A Shift+F8 billentyűparanccsal viszont véglegesen törölheted őket.",
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "sourceHash": "ff40f4b"
+  },
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "Néhány helyen nincs saját Kuka, például a felhős mappákban és a legtöbb hálózati meghajtón. A Shift+F8 billentyűparanccsal viszont véglegesen törölheted az elemeket.",
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "sourceHash": "b6d08fa"
+  },
+  "errors.write.trashRefused.suggestion.other": "Nézd meg lent a technikai részleteket, hogy mit jelzett a macOS.",
+  "@errors.write.trashRefused.suggestion.other": {
+    "sourceHash": "b61b3c1"
+  },
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "A Cmdrnek ezen a Macen ráadásul nincs teljes hozzáférése a lemezhez, ami gyakori ok. A címsorban lévő „Nincs teljes hozzáférés a lemezhez” jelvény elvisz ehhez a döntéshez.",
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "sourceHash": "ab20ec5"
+  },
   "errors.write.ioError.title.copy": "Nem sikerült a másolás",
   "@errors.write.ioError.title.copy": {
     "sourceHash": "53b17a4"

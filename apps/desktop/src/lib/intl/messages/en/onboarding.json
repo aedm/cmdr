@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "No full disk access",
+  "@onboarding.fdaBadge.label": {
+    "description": "Text on a small warning badge in the macOS title bar, shown when the user hasn't granted Cmdr Full Disk Access. \"Full disk access\" is Apple's own macOS permission name: use the wording Apple ships in System Settings for this locale."
+  },
+  "onboarding.fdaBadge.tooltip": "You don't have to grant this, but Cmdr works much better with it: searching your whole drive, reading cloud folders, and changing files macOS keeps to itself. Click to look at the choice again.",
+  "@onboarding.fdaBadge.tooltip": {
+    "description": "Hover tooltip on the \"No full disk access\" title-bar badge. Deliberately low-pressure: granting the permission is optional, so the tone offers rather than nags. Lists what improves, then says what clicking does. \"files macOS keeps to itself\" means files behind the operating system's own privacy protection; keep it plain and non-technical rather than naming a macOS feature."
+  },
+  "onboarding.fdaBadge.ariaLabel": "No full disk access. Open the full disk access step of onboarding.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "description": "Screen-reader label for the title-bar badge button. States the condition, then what activating the button does."
+  },
   "onboarding.wizard.title": "Cmdr onboarding",
   "@onboarding.wizard.title": {
     "description": "Screen-reader-only heading for the whole first-launch onboarding sheet. Not shown visually; announced to assistive tech as the dialog's name. \"Cmdr\" is the product name and stays untranslated.",

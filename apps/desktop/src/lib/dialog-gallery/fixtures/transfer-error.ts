@@ -246,6 +246,20 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
       ],
     },
   },
+  // The shape a real report arrived as: several screenshots in a cloud folder that
+  // macOS refused on a permission code. The Full Disk Access line only joins the
+  // suggestion when this Mac is actually missing the grant, so the gallery shows the
+  // base wording.
+  trash_refused: {
+    operationType: 'trash',
+    error: {
+      type: 'trash_refused',
+      itemCount: 7,
+      reason: 'notPermitted',
+      message:
+        '$HOME/Library/CloudStorage/Dropbox/Shots/Screenshot.jpeg: “Screenshot.jpeg” couldn’t be moved to the trash because you don’t have permission to access it.',
+    },
+  },
   io_error: {
     operationType: 'copy',
     error: {

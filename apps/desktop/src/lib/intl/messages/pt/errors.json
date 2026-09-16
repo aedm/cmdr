@@ -1353,6 +1353,38 @@
   "@errors.write.invalidName.suggestion": {
     "sourceHash": "3721c3d"
   },
+  "errors.write.trashRefused.title": "Não foi possível mover para o Lixo",
+  "@errors.write.trashRefused.title": {
+    "sourceHash": "c2d75cc"
+  },
+  "errors.write.trashRefused.message.notPermitted": "O macOS não deixou o Cmdr mexer em {count} dos itens que você escolheu.",
+  "@errors.write.trashRefused.message.notPermitted": {
+    "sourceHash": "e11fc50"
+  },
+  "errors.write.trashRefused.message.noTrashForVolume": "O macOS não encontrou um Lixo para {count} dos itens que você escolheu.",
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "sourceHash": "d86a66d"
+  },
+  "errors.write.trashRefused.message.other": "O macOS não moveu para o Lixo {count} dos itens que você escolheu.",
+  "@errors.write.trashRefused.message.other": {
+    "sourceHash": "5c73490"
+  },
+  "errors.write.trashRefused.suggestion.notPermitted": "Os itens podem estar bloqueados, ou podem estar em um lugar que o macOS guarda para si. Você ainda pode apagá-los permanentemente com Shift+F8.",
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "sourceHash": "ff40f4b"
+  },
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "Alguns lugares não têm um Lixo próprio, entre eles as pastas na nuvem e a maioria dos discos de rede. Você ainda pode apagar os itens permanentemente com Shift+F8.",
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "sourceHash": "b6d08fa"
+  },
+  "errors.write.trashRefused.suggestion.other": "Veja os detalhes técnicos abaixo para saber o que o macOS informou.",
+  "@errors.write.trashRefused.suggestion.other": {
+    "sourceHash": "b61b3c1"
+  },
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "O Cmdr também não tem acesso total ao disco neste Mac, o que é uma causa comum. O selo “Sem acesso total ao disco” na barra de título leva você a essa escolha.",
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "sourceHash": "ab20ec5"
+  },
   "errors.write.ioError.title.copy": "Não foi possível copiar",
   "@errors.write.ioError.title.copy": {
     "sourceHash": "53b17a4"

@@ -1353,6 +1353,38 @@
   "@errors.write.invalidName.suggestion": {
     "sourceHash": "3721c3d"
   },
+  "errors.write.trashRefused.title": "Không thể chuyển vào thùng rác",
+  "@errors.write.trashRefused.title": {
+    "sourceHash": "c2d75cc"
+  },
+  "errors.write.trashRefused.message.notPermitted": "macOS không cho Cmdr động vào {count} trong số các mục bạn đã chọn.",
+  "@errors.write.trashRefused.message.notPermitted": {
+    "sourceHash": "e11fc50"
+  },
+  "errors.write.trashRefused.message.noTrashForVolume": "macOS không tìm được thùng rác cho {count} trong số các mục bạn đã chọn.",
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "sourceHash": "d86a66d"
+  },
+  "errors.write.trashRefused.message.other": "macOS không chuyển {count} trong số các mục bạn đã chọn vào thùng rác.",
+  "@errors.write.trashRefused.message.other": {
+    "sourceHash": "5c73490"
+  },
+  "errors.write.trashRefused.suggestion.notPermitted": "Các mục có thể đang bị khóa, hoặc nằm ở nơi mà macOS giữ riêng cho mình. Bạn vẫn có thể xóa vĩnh viễn chúng bằng Shift+F8.",
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "sourceHash": "ff40f4b"
+  },
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "Một số nơi không có thùng rác riêng, chẳng hạn thư mục đám mây và phần lớn ổ đĩa mạng. Bạn vẫn có thể xóa vĩnh viễn các mục bằng Shift+F8.",
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "sourceHash": "b6d08fa"
+  },
+  "errors.write.trashRefused.suggestion.other": "Hãy xem chi tiết kỹ thuật bên dưới để biết macOS báo gì.",
+  "@errors.write.trashRefused.suggestion.other": {
+    "sourceHash": "b61b3c1"
+  },
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "Cmdr cũng không có quyền truy cập đầy đủ vào ổ đĩa trên máy Mac này, đây là một nguyên nhân thường gặp. Huy hiệu “Không có quyền truy cập đầy đủ vào ổ đĩa” trên thanh tiêu đề sẽ đưa bạn tới lựa chọn đó.",
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "sourceHash": "ab20ec5"
+  },
   "errors.write.ioError.title.copy": "Không thể sao chép",
   "@errors.write.ioError.title.copy": {
     "sourceHash": "53b17a4"

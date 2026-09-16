@@ -1353,6 +1353,38 @@
   "@errors.write.invalidName.suggestion": {
     "sourceHash": "3721c3d"
   },
+  "errors.write.trashRefused.title": "Mise à la corbeille impossible",
+  "@errors.write.trashRefused.title": {
+    "sourceHash": "c2d75cc"
+  },
+  "errors.write.trashRefused.message.notPermitted": "macOS n'a pas laissé Cmdr toucher à {count} des éléments que vous avez choisis.",
+  "@errors.write.trashRefused.message.notPermitted": {
+    "sourceHash": "e11fc50"
+  },
+  "errors.write.trashRefused.message.noTrashForVolume": "macOS n'a pas trouvé de corbeille pour {count} des éléments que vous avez choisis.",
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "sourceHash": "d86a66d"
+  },
+  "errors.write.trashRefused.message.other": "macOS n'a pas voulu placer {count} des éléments que vous avez choisis dans la corbeille.",
+  "@errors.write.trashRefused.message.other": {
+    "sourceHash": "5c73490"
+  },
+  "errors.write.trashRefused.suggestion.notPermitted": "Les éléments sont peut-être verrouillés, ou ils se trouvent à un endroit que macOS garde pour lui. Vous pouvez quand même les supprimer définitivement avec Shift+F8.",
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "sourceHash": "ff40f4b"
+  },
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "Certains emplacements n'ont pas de corbeille propre, notamment les dossiers cloud et la plupart des disques réseau. Vous pouvez quand même supprimer définitivement les éléments avec Shift+F8.",
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "sourceHash": "b6d08fa"
+  },
+  "errors.write.trashRefused.suggestion.other": "Consultez les détails techniques ci-dessous pour voir ce que macOS a signalé.",
+  "@errors.write.trashRefused.suggestion.other": {
+    "sourceHash": "b61b3c1"
+  },
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "Cmdr n'a pas non plus l'accès complet au disque sur ce Mac, ce qui est une cause fréquente. La pastille « Pas d'accès complet au disque » dans la barre de titre vous emmène à ce choix.",
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "sourceHash": "ab20ec5"
+  },
   "errors.write.ioError.title.copy": "Copie impossible",
   "@errors.write.ioError.title.copy": {
     "sourceHash": "53b17a4"

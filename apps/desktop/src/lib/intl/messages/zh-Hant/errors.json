@@ -1353,6 +1353,38 @@
   "@errors.write.invalidName.suggestion": {
     "sourceHash": "3721c3d"
   },
+  "errors.write.trashRefused.title": "無法移至垃圾桶",
+  "@errors.write.trashRefused.title": {
+    "sourceHash": "c2d75cc"
+  },
+  "errors.write.trashRefused.message.notPermitted": "你選的項目裡有 {count} 個，macOS 不讓 Cmdr 碰。",
+  "@errors.write.trashRefused.message.notPermitted": {
+    "sourceHash": "e11fc50"
+  },
+  "errors.write.trashRefused.message.noTrashForVolume": "你選的項目裡有 {count} 個，macOS 找不到對應的垃圾桶。",
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "sourceHash": "d86a66d"
+  },
+  "errors.write.trashRefused.message.other": "你選的項目裡有 {count} 個，macOS 沒有移至垃圾桶。",
+  "@errors.write.trashRefused.message.other": {
+    "sourceHash": "5c73490"
+  },
+  "errors.write.trashRefused.suggestion.notPermitted": "這些項目可能已鎖定，也可能放在 macOS 自己留著的地方。你還是可以用 Shift+F8 把它們永久刪除。",
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "sourceHash": "ff40f4b"
+  },
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "有些位置沒有自己的垃圾桶，像是雲端資料夾和大多數網路磁碟機。你還是可以用 Shift+F8 把這些項目永久刪除。",
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "sourceHash": "b6d08fa"
+  },
+  "errors.write.trashRefused.suggestion.other": "看看下方的技術詳細資訊，裡面有 macOS 回報的內容。",
+  "@errors.write.trashRefused.suggestion.other": {
+    "sourceHash": "b61b3c1"
+  },
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "Cmdr 在這台 Mac 上也沒有「完全取用磁碟」權限，這是很常見的原因。標題列上的警告標記寫著：沒有「完全取用磁碟」權限。按一下就會帶你回到這個選擇。",
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "sourceHash": "ab20ec5"
+  },
   "errors.write.ioError.title.copy": "無法複製",
   "@errors.write.ioError.title.copy": {
     "sourceHash": "53b17a4"

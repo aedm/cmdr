@@ -12,8 +12,8 @@ use super::super::event_sinks::OperationEventSink;
 use super::super::mutation_error::MutationError;
 use super::super::state::{WriteOperationState, update_operation_status};
 use super::super::types::{
-    CancelRollback, SourceItemOutcome, WriteCancelledEvent, WriteCompleteEvent, WriteErrorEvent, WriteOperationError,
-    WriteOperationPhase, WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
+    CancelRollback, SourceItemOutcome, TrashRefusalKind, WriteCancelledEvent, WriteCompleteEvent, WriteErrorEvent,
+    WriteOperationError, WriteOperationPhase, WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
 };
 
 // ============================================================================
@@ -60,10 +60,49 @@ pub fn move_to_trash_sync(path: &Path) -> Result<Option<PathBuf>, MutationError>
         let mut resulting: Option<Retained<NSURL>> = None;
         file_manager
             .trashItemAtURL_resultingItemURL_error(&url, Some(&mut resulting))
-            .map_err(|e| MutationError::TrashRefused { detail: e.to_string() })?;
+            .map_err(|e| MutationError::TrashRefused {
+                reason: classify_trash_refusal(&e),
+                detail: e.to_string(),
+            })?;
         let in_trash = resulting.and_then(|u| u.path()).map(|p| PathBuf::from(p.to_string()));
         Ok(in_trash)
     })
+}
+
+/// Read an `NSError` from `trashItemAtURL` as a [`TrashRefusalKind`].
+///
+/// ❗ Domain plus code, ❌ never the message. `localizedDescription` is written for
+/// the user, ships in the user's language, and Apple rewords it between releases;
+/// classifying on it means the dialog silently stops offering the right next step
+/// for everyone who isn't running English. `error-string-match` enforces this.
+///
+/// The codes are Foundation's `NSCocoaErrorDomain` constants (`NSFileReadNoPermissionError`
+/// 257, `NSFileWriteNoPermissionError` 513, `NSFeatureUnsupportedError` 3328), which
+/// are ABI-stable and documented; objc2 doesn't re-export them, so they're spelled
+/// here with their names. (Verified against Foundation's `FoundationErrors.h` on
+/// macOS 27.0, 2026-09-16.)
+#[cfg(target_os = "macos")]
+fn classify_trash_refusal(error: &objc2_foundation::NSError) -> TrashRefusalKind {
+    const NS_FILE_READ_NO_PERMISSION: isize = 257;
+    const NS_FILE_WRITE_NO_PERMISSION: isize = 513;
+    const NS_FEATURE_UNSUPPORTED: isize = 3328;
+    const EPERM: isize = 1;
+    const EACCES: isize = 13;
+
+    let domain = error.domain().to_string();
+    let code = error.code();
+    match domain.as_str() {
+        "NSCocoaErrorDomain" => match code {
+            NS_FILE_READ_NO_PERMISSION | NS_FILE_WRITE_NO_PERMISSION => TrashRefusalKind::NotPermitted,
+            NS_FEATURE_UNSUPPORTED => TrashRefusalKind::NoTrashForVolume,
+            _ => TrashRefusalKind::Other,
+        },
+        "NSPOSIXErrorDomain" => match code {
+            EPERM | EACCES => TrashRefusalKind::NotPermitted,
+            _ => TrashRefusalKind::Other,
+        },
+        _ => TrashRefusalKind::Other,
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -74,7 +113,12 @@ pub fn move_to_trash_sync(path: &Path) -> Result<Option<PathBuf>, MutationError>
         });
     }
 
-    trash::delete(path).map_err(|e| MutationError::TrashRefused { detail: e.to_string() })?;
+    // Linux has no NSError to classify, and the `trash` crate's own error kinds don't
+    // map onto the macOS permission question the UI asks. `Other` keeps the offer off.
+    trash::delete(path).map_err(|e| MutationError::TrashRefused {
+        reason: TrashRefusalKind::Other,
+        detail: e.to_string(),
+    })?;
     // The `trash` crate doesn't surface the in-trash location, so no restore
     // location is recorded (trash rollback is then unavailable on Linux).
     Ok(None)
@@ -226,6 +270,10 @@ pub fn trash_dir_for_path(_path: &Path) -> Option<PathBuf> {
 pub struct TrashItemError {
     pub path: PathBuf,
     pub message: String,
+    /// Why the OS refused this one, kept as a value so the batch's terminal error can
+    /// carry it. Without it the whole batch collapses to one sentence and the dialog
+    /// has nothing to offer but "try again".
+    pub reason: TrashRefusalKind,
 }
 
 /// Moves files to trash with progress reporting, cancellation, and partial failure.
@@ -283,6 +331,9 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
                 errors.push(TrashItemError {
                     path: source.clone(),
                     message: format!("'{}' no longer exists", source.display()),
+                    // A vanished source is not a permission problem; offering a grant
+                    // as the fix would send the user somewhere useless.
+                    reason: TrashRefusalKind::Other,
                 });
                 emit_item_failed(
                     events,
@@ -375,6 +426,10 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
             Err(e) => {
                 errors.push(TrashItemError {
                     path: source.clone(),
+                    reason: match &e {
+                        MutationError::TrashRefused { reason, .. } => *reason,
+                        _ => TrashRefusalKind::Other,
+                    },
                     // The batch path reports through `WriteOperationError`, whose
                     // own typed variant carries the words; this string is the
                     // technical detail beside it, so `Display` is right here.
@@ -429,25 +484,21 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
             .map(|e| format!("{}: {}", e.path.display(), e.message))
             .collect::<Vec<_>>()
             .join("; ");
+        // One reason for the batch: the strongest one any item reported. A batch where
+        // even one item was refused for permission is a batch the FDA hint can help with,
+        // and `Other` would silently withhold it.
+        let reason = strongest_refusal(&errors);
+        let failure = WriteOperationError::TrashRefused {
+            item_count: errors.len(),
+            reason,
+            message: error_summary,
+        };
         events.emit_error(WriteErrorEvent::new(
             operation_id.to_string(),
             WriteOperationType::Trash,
-            WriteOperationError::IoError {
-                path: String::new(),
-                message: error_summary,
-            },
+            failure.clone(),
         ));
-        return Err(WriteOperationError::IoError {
-            path: String::new(),
-            message: format!(
-                "Couldn't move {} to trash",
-                if errors.len() == 1 {
-                    format!("'{}'", errors[0].path.display())
-                } else {
-                    format!("{} items", errors.len())
-                }
-            ),
-        });
+        return Err(failure);
     }
 
     // Emit completion (may include partial errors)
@@ -480,6 +531,21 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
 // ============================================================================
 // Tests
 // ============================================================================
+
+/// The reason a whole failed batch reports, from its items' reasons.
+///
+/// Takes the one that opens the most doors for the user rather than the most common:
+/// a batch of nine items where one was refused for permission is still a batch where
+/// granting a permission might help, and the majority answer would hide that.
+fn strongest_refusal(errors: &[TrashItemError]) -> TrashRefusalKind {
+    if errors.iter().any(|e| e.reason == TrashRefusalKind::NotPermitted) {
+        return TrashRefusalKind::NotPermitted;
+    }
+    if errors.iter().any(|e| e.reason == TrashRefusalKind::NoTrashForVolume) {
+        return TrashRefusalKind::NoTrashForVolume;
+    }
+    TrashRefusalKind::Other
+}
 
 /// One top-level item this trash could not take.
 ///
@@ -702,7 +768,16 @@ mod tests {
             PathBuf::from("/nonexistent_trash_test_bbb/y.txt"),
         ];
         let result = trash_files_with_progress(&*events, "op-trash-all-missing", &state, &sources, None);
-        assert!(matches!(result, Err(WriteOperationError::IoError { .. })));
+        // Vanished sources, so `Other`: the dialog must not offer a permission grant
+        // as the way through something that isn't a permission problem.
+        assert!(matches!(
+            result,
+            Err(WriteOperationError::TrashRefused {
+                item_count: 2,
+                reason: TrashRefusalKind::Other,
+                ..
+            })
+        ));
 
         let errors = events.errors.lock().unwrap();
         assert_eq!(errors.len(), 1);
@@ -726,7 +801,14 @@ mod tests {
             std::slice::from_ref(&missing),
             None,
         );
-        assert!(matches!(result, Err(WriteOperationError::IoError { .. })));
+        assert!(matches!(
+            result,
+            Err(WriteOperationError::TrashRefused {
+                item_count: 1,
+                reason: TrashRefusalKind::Other,
+                ..
+            })
+        ));
 
         let items = events.source_items_done.lock().unwrap();
         assert_eq!(items.len(), 1, "the item that couldn't be taken speaks for itself");
@@ -743,9 +825,41 @@ mod tests {
         let error = TrashItemError {
             path: PathBuf::from("/some/file.txt"),
             message: "Permission denied".to_string(),
+            reason: TrashRefusalKind::NotPermitted,
         };
         assert_eq!(error.path.display().to_string(), "/some/file.txt");
         assert_eq!(error.message, "Permission denied");
+        assert_eq!(error.reason, TrashRefusalKind::NotPermitted);
+    }
+
+    /// A batch reports the reason that opens the most doors, not the most common one:
+    /// eight vanished files beside one permission refusal is still a batch where a
+    /// permission grant might be the answer.
+    #[test]
+    fn a_batch_reports_the_reason_that_offers_the_user_the_most() {
+        let item = |reason| TrashItemError {
+            path: PathBuf::from("/some/file.txt"),
+            message: String::new(),
+            reason,
+        };
+
+        assert_eq!(strongest_refusal(&[]), TrashRefusalKind::Other);
+        assert_eq!(
+            strongest_refusal(&[item(TrashRefusalKind::Other), item(TrashRefusalKind::Other)]),
+            TrashRefusalKind::Other
+        );
+        assert_eq!(
+            strongest_refusal(&[item(TrashRefusalKind::Other), item(TrashRefusalKind::NoTrashForVolume)]),
+            TrashRefusalKind::NoTrashForVolume
+        );
+        assert_eq!(
+            strongest_refusal(&[
+                item(TrashRefusalKind::Other),
+                item(TrashRefusalKind::NoTrashForVolume),
+                item(TrashRefusalKind::NotPermitted),
+            ]),
+            TrashRefusalKind::NotPermitted
+        );
     }
 
     #[test]

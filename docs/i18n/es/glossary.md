@@ -189,8 +189,11 @@ AppKit + SystemSettings, 2026-06-21).
   existing" in es UI · tentative (Nautilus says "Mezclar")
 - rollback → revertir / reversión (noun) · composed; no macOS source. "Revertir" for the button, "la reversión" for the
   noun · tentative
-- full disk access → acceso a todo el disco · composed from macOS permission naming; matches the FDA pane sense ·
-  tentative
+- full disk access → **acceso total al disco** · Apple's own pane name, from the live bundle
+  (`/System/Library/ExtensionKit/Extensions/SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable`, key
+  `ALL_FILES` = "Acceso total al disco", macOS 27.0 build 26A428, verified 2026-09-16) · high. Supersedes the earlier
+  composed "acceso a todo el disco", which named no pane the user can find. `es-419` would say "Acceso completo al
+  disco" if that variant is ever added. See § The title-bar full-disk-access badge.
 - onboarding (the flow) → introducción · composed; "Introducción a Cmdr" / "progreso de la introducción" reads natural;
   no macOS source · tentative
 - under cursor → bajo el cursor · standard · high
@@ -3388,3 +3391,51 @@ ahora Cmdr **nombra** lo que retiene el disco. Toda la familia hereda de ahí el
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+La píldora de aviso de la barra de título más su tooltip, visible mientras Cmdr no tiene acceso total al disco; al hacer
+clic se reabre la introducción en el paso 1.
+
+- **`onboarding.fdaBadge.label` → `Sin acceso total al disco`** · Apple's own Ajustes del Sistema row (see the
+  full-disk-access entry above for the live-bundle evidence) · high. The badge exists so the user can match the pill to
+  that row, and it sits in a fixed-height title bar, so the shortest accurate form wins.
+- **`onboarding.stepAi.bannerTitle.denied` carries the SAME English string** ("No full disk access"), so `i18n-terms`
+  holds the two identical. It was moved from `Sin acceso a todo el disco` onto the pane name in the same pass. ❌ Reword
+  neither alone.
+- **`onboarding.fdaBadge.ariaLabel` opens with the label verbatim**
+  (`Sin acceso total al disco. Abrir el paso de acceso total al disco de la introducción.`), which is what satisfies
+  `i18n-aria` (WCAG 2.5.3). ❌ Re-wording the label alone breaks it.
+- **Tooltip terms**: drive → `unidad` (the settled term, as in `onboarding.stepOptional.indexing.benefit1`), cloud
+  folders → `carpetas en la nube`, "files macOS keeps to itself" → `archivos que macOS se reserva` (plain, ❌ never a
+  macOS feature name), "Click to …" → `Haz clic para …` (as in `fileExplorer.breadcrumb.navigateTooltip`), onboarding →
+  `introducción` (settled).
+- **Name vs prose, the boundary**: `acceso total al disco` where a string NAMES the setting. The FDA step's running
+  prose (`onboarding.stepFda.revoked.noAccess` and its siblings) still says `acceso a todo el disco`. Open decision:
+  whether a later pass sweeps the prose onto the pane name too.
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. Spanish solves it
+  with `{count} de los elementos que elegiste`, which takes any numeral without agreement.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails`
+  (`Detalles técnicos`), because it points at that very control.
+
+- **locked → `bloqueado`** · macOS Finder (`AXNODE1` `Bloqueado`) and the settled catalog term · high.
+- **"delete them permanently" → `eliminar permanentemente`** · matches `commands.fileDeletePermanently.label`, so the
+  suggestion names the command the user will run · high.
+- **badge (the title-bar pill) → `el aviso`** · tentative; no sourced Spanish term for this shape, and `aviso` is
+  already the catalog's word for a small notice. title bar → `barra de título` · high.
+- The quoted badge text is `onboarding.fdaBadge.label` verbatim, in the catalog's `“…”` quotes. ❌ Re-word one without
+  the other and the sentence points at a badge that reads differently.
+- "somewhere macOS keeps to itself" → `un sitio que macOS se reserva`, reusing the wording settled for
+  `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.

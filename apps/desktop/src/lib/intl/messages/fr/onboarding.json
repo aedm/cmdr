@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "Pas d''accès complet au disque",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "Ce n''est pas obligatoire, mais Cmdr fonctionne bien mieux avec : la recherche dans tout votre disque, la lecture des dossiers cloud et la modification des fichiers que macOS garde pour lui. Cliquez pour revoir ce choix.",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "Pas d''accès complet au disque. Ouvrir l''étape Accès complet au disque de la prise en main.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Prise en main de Cmdr",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"

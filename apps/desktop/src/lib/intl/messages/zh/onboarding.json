@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "没有完全磁盘访问权限",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "这个权限不是必须给的，但 Cmdr 有了它会好用得多：搜索整个驱动器、读取云端文件夹，以及修改 macOS 自己留着的文件。点按就能再看一次这个选择。",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "没有完全磁盘访问权限。打开入门引导的完全磁盘访问权限步骤。",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Cmdr 入门引导",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"
