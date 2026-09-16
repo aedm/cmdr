@@ -10,12 +10,17 @@ use super::MENU_BAR;
 use crate::menu::ViewMode;
 use crate::menu::menu_items::APP_MENU_TITLE;
 use crate::menu::menu_spec::{
-    CheckRole, EntryKind, Label, Pane, Platform, Predefined, SubmenuRole, SubmenuSpec, Tracking,
+    CheckRole, EntryKind, ItemSpec, Label, Pane, Platform, Predefined, SubmenuRole, SubmenuSpec, Tracking,
+    display_accelerator_label,
 };
 
 const PLATFORMS: [Platform; 2] = [Platform::MacOs, Platform::Linux];
 
 /// `position kind id label [accelerator] state`, nested submenus indented under their row.
+///
+/// ❗ The Select menu's last three rows read differently here than in `LINUX_MENU_BAR`, and
+/// that's the point: a display-only shortcut rides on the macOS item's attributed title
+/// (`[display ⇧8]`) and inside the Linux item's own label (`(⇧8)`). See `item_accelerator`.
 const MACOS_MENU_BAR: &str = "\
 menu Cmdr id=menu_app
   0 item about menu.app.about untracked
@@ -70,10 +75,10 @@ menu menu.bar.edit id=menu_edit
 menu menu.bar.select id=menu_select
   0 item select_all_files menu.select.all [Cmd+A] tracked
   1 item deselect_all menu.select.deselectAll [Cmd+Shift+A] tracked
-  2 item invert_selection menu.select.invert tracked
+  2 item invert_selection menu.select.invert [display ⇧8] tracked
   3 separator
-  4 item select_files menu.select.files tracked
-  5 item deselect_files menu.select.deselectFiles tracked
+  4 item select_files menu.select.files [display +] tracked
+  5 item deselect_files menu.select.deselectFiles [display -] tracked
 menu menu.bar.view id=menu_view
   0 submenu menu.view.leftPane pane:left
       0 check view_mode_full_left menu.view.fullView [Cmd+1] view-mode:left:full
@@ -183,10 +188,10 @@ menu menu.bar.edit
 menu menu.bar.select
   0 item select_all_files menu.select.all [Cmd+A] tracked
   1 item deselect_all menu.select.deselectAll [Cmd+Shift+A] tracked
-  2 item invert_selection menu.select.invert tracked
+  2 item invert_selection menu.select.invert (⇧8) tracked
   3 separator
-  4 item select_files menu.select.files tracked
-  5 item deselect_files menu.select.deselectFiles tracked
+  4 item select_files menu.select.files (+) tracked
+  5 item deselect_files menu.select.deselectFiles (-) tracked
 menu menu.bar.view
   0 submenu menu.view.leftPane pane:left
       0 check view_mode_full_left menu.view.fullView [Cmd+1] view-mode:left:full
@@ -394,8 +399,8 @@ fn render_entries(spec: &SubmenuSpec, platform: Platform, indent: &str, out: &mu
                 format!(
                     "item {} {}{}{disabled} {tracking}",
                     item.id,
-                    label(item.label, platform),
-                    accelerator(item.accelerator.on(platform)),
+                    item_label(item, platform),
+                    item_accelerator(item, platform),
                 )
             }
             EntryKind::Check(check) => format!(
@@ -460,6 +465,30 @@ fn id(spec: &SubmenuSpec, platform: Platform) -> String {
 
 fn accelerator(accelerator: Option<&str>) -> String {
     accelerator.map_or_else(String::new, |accelerator| format!(" [{accelerator}]"))
+}
+
+/// An item's label as the platform builds it, so a Linux row shows the display shortcut
+/// spelled into the label (`display_accelerator_label`) and a macOS one doesn't.
+fn item_label(item: &ItemSpec, platform: Platform) -> String {
+    let base = label(item.label, platform);
+    match item.display_accelerator {
+        Some(shortcut) => display_accelerator_label(&base, shortcut, platform),
+        None => base,
+    }
+}
+
+/// `[Cmd+A]` for an accelerator the platform registers, `[display ⇧8]` for one it only
+/// draws on the item's attributed title (macOS), and nothing at all on Linux, where the
+/// shortcut is already inside the label above.
+///
+/// ❗ The two blocks below diverge for the Select menu because of this, and that is
+/// correct: the same spec really does reach the user two different ways.
+fn item_accelerator(item: &ItemSpec, platform: Platform) -> String {
+    match (item.accelerator.on(platform), item.display_accelerator, platform) {
+        (Some(registered), _, _) => accelerator(Some(registered)),
+        (None, Some(shortcut), Platform::MacOs) => format!(" [display {shortcut}]"),
+        (None, _, _) => String::new(),
+    }
 }
 
 fn check_role(role: CheckRole) -> String {

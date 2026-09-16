@@ -12,7 +12,10 @@ use crate::intl::menu_t;
 
 use super::menu_bar::MENU_BAR;
 use super::menu_items::APP_MENU_TITLE;
-use super::menu_spec::{CheckRole, EntryKind, Label, Pane, Platform, Predefined, SubmenuRole, SubmenuSpec, Tracking};
+use super::menu_spec::{
+    CheckRole, EntryKind, Label, Pane, Platform, Predefined, SubmenuRole, SubmenuSpec, Tracking,
+    display_accelerator_label,
+};
 use super::mnemonics::Mnemonics;
 use super::{MenuItemEntry, MenuItems, ViewMode};
 
@@ -97,7 +100,13 @@ impl<R: Runtime> Builder<'_, R> {
         for (position, entry) in spec.entries_on(platform).enumerate() {
             let child = match entry {
                 EntryKind::Item(item) => {
+                    // The mnemonic is assigned on the bare label, then the display shortcut goes
+                    // on the end: GTK would otherwise happily underline a letter inside `(⇧8)`.
                     let label = self.label(item.label, &mut mnemonics);
+                    let label = match item.display_accelerator {
+                        Some(shortcut) => display_accelerator_label(&label, shortcut, platform),
+                        None => label,
+                    };
                     let built = MenuItem::with_id(app, item.id, label, item.enabled, item.accelerator.on(platform))?;
                     match item.tracking {
                         Tracking::Tracked => tracked.push((item.id, position, built.clone())),

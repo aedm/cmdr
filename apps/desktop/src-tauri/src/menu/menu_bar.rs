@@ -25,7 +25,8 @@
 
 use super::menu_spec::{
     Accelerator, BarMenu, CheckRole, Entry, Label, NONE, Pane, PerPlatform, Predefined, SEPARATOR, SubmenuRole, both,
-    check, item, labeled_item, linux_only, macos, macos_menu, macos_only, menu, predefined, split, submenu,
+    check, displayed_item, item, labeled_item, linux_only, macos, macos_menu, macos_only, menu, predefined, split,
+    submenu,
 };
 use super::{
     ABOUT_ID, ACKNOWLEDGEMENTS_ID, APP_MENU_ID, ASK_CMDR_ID, CHANGELOG_ID, CHECK_FOR_UPDATES_ID, CLOSE_OTHER_TABS_ID,
@@ -175,20 +176,21 @@ pub(crate) const MENU_BAR: &[BarMenu] = &[
             linux_only(CHANGELOG),
         ],
     ),
-    // Between Edit and View. The two dialog openers carry no accelerator: a macOS menu accelerator
-    // always carries a modifier, so FilePane's keydown handler binds their bare `+` / `-`.
+    // Between Edit and View. The last three rows carry DISPLAY-only shortcuts: their keys have no
+    // ⌘ / ⌃ / ⌥, so a real accelerator would fire app-wide and eat `*`, `+`, and `-` in every text
+    // field. FilePane's keydown handler binds them; the menu only says what they are.
     menu(
         SELECT_MENU_ID,
         "menu.bar.select",
         &[
             item(SELECT_ALL_ID, "menu.select.all", both("Cmd+A")),
             item(DESELECT_ALL_ID, "menu.select.deselectAll", both("Cmd+Shift+A")),
-            // No accelerator: `⇧8` carries no Cmd, and a bare one would swallow `*` in every text
-            // field. FilePane's keydown handler binds it.
-            item(INVERT_SELECTION_ID, "menu.select.invert", NONE),
+            // `⇧8`, the main-row spelling, not `*`: it's honest on every layout, and it's the
+            // first of the command's two shortcuts (`sources/file-list.ts`).
+            displayed_item(INVERT_SELECTION_ID, "menu.select.invert", "⇧8"),
             SEPARATOR,
-            item(SELECT_FILES_ID, "menu.select.files", NONE),
-            item(DESELECT_FILES_ID, "menu.select.deselectFiles", NONE),
+            displayed_item(SELECT_FILES_ID, "menu.select.files", "+"),
+            displayed_item(DESELECT_FILES_ID, "menu.select.deselectFiles", "-"),
         ],
     ),
     menu(

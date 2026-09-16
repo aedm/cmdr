@@ -77,6 +77,20 @@ pub(crate) const fn split(on_macos: &'static str, on_linux: &'static str) -> Acc
     }
 }
 
+/// How a display-only shortcut reaches the user, which is the one place the two platforms
+/// disagree about [`ItemSpec::display_accelerator`].
+///
+/// macOS gets it from `macos_appkit::set_display_accelerators`, as a right-aligned, dimmed
+/// run on the item's attributed title, so it reads exactly like a real key equivalent. GTK
+/// offers no such hook, so Linux spells it into the label itself. Both callers (the builder
+/// and `menu_bar_test.rs`) go through here, so the snapshot pins what the bar really says.
+pub(crate) fn display_accelerator_label(label: &str, shortcut: &str, platform: Platform) -> String {
+    match platform {
+        Platform::MacOs => label.to_string(),
+        Platform::Linux => format!("{label} ({shortcut})"),
+    }
+}
+
 /// What a menu or an item says, before translation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Label {
@@ -164,6 +178,15 @@ pub(crate) struct ItemSpec {
     pub(crate) id: &'static str,
     pub(crate) label: Label,
     pub(crate) accelerator: Accelerator,
+    /// A shortcut the menu only SHOWS, in the frontend's display spelling (`⇧8`, `+`).
+    ///
+    /// The key carries no ⌘ / ⌃ / ⌥, so registering it would swallow the character
+    /// app-wide (`accelerators.rs`'s modifier floor); the file pane's keydown handler
+    /// owns it instead, and this is how the menu still tells the user about it. One
+    /// glyph for both platforms: they differ in how it's DRAWN, not in what it says
+    /// ([`display_accelerator_label`]). Set only by [`displayed_item`], which pairs it
+    /// with [`NONE`] so an item can't claim both.
+    pub(crate) display_accelerator: Option<&'static str>,
     pub(crate) enabled: bool,
     pub(crate) tracking: Tracking,
 }
@@ -267,6 +290,24 @@ pub(crate) const fn labeled_item(id: &'static str, label: Label, accelerator: Ac
         id,
         label,
         accelerator,
+        display_accelerator: None,
+        enabled: true,
+        tracking: Tracking::Tracked,
+    }))
+}
+
+/// A command item whose shortcut the menu can only SHOW, [`Tracking::Tracked`].
+///
+/// `shortcut` is the frontend's display spelling (`⇧8`, `+`, `⌥⇧=`). ❗ It is never
+/// registered: the accelerator is [`NONE`] on both platforms, by construction, because a
+/// combo with no ⌘ / ⌃ / ⌥ would fire app-wide and eat that character in every text
+/// field. The file pane's keydown handler is what actually runs the command.
+pub(crate) const fn displayed_item(id: &'static str, key: &'static str, shortcut: &'static str) -> Entry {
+    both_platforms(EntryKind::Item(ItemSpec {
+        id,
+        label: Label::Key(key),
+        accelerator: NONE,
+        display_accelerator: Some(shortcut),
         enabled: true,
         tracking: Tracking::Tracked,
     }))
