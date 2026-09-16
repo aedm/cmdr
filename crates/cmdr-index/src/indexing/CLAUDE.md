@@ -58,7 +58,10 @@ Four loose shared leaves sit beside the areas, all because homing them in any on
 - `hold.rs`: `VolumeHold`, a start's stake in its volume, and the wait a removable stop answers from. A leaf so the
   workers that read a drive can carry a share without importing `lifecycle::state`.
 - `deletes.rs`: the delete generation — how many batches of index deletes have gone out since the drive was last proved
-  to be there. A leaf for the same reason: scanner, reconcile, watch, and verifier all send deletes.
+  to be there — and the rebuild marker it decides. A gate that finds the drive gone with batches outstanding persists
+  `index_needs_rebuild` (through the writer, or a short-lived connection after a stop's drain) and announces it once;
+  the next start throws that index away. A leaf for the same reason: scanner, reconcile, watch, and verifier all send
+  deletes.
 - `volume.rs`: a volume's identity — `VolumeId`, `ROOT_VOLUME_ID`, and `IndexVolumeKind` with its pure capability
   predicates. ❌ Don't put these back in `lifecycle/state.rs`: identity is what everything needs, the registry is what
   only `lifecycle` needs, and merging them welds the whole subsystem into one cycle. Nothing below `lifecycle` should

@@ -206,6 +206,14 @@ backoff offering it again later. ❌ Don't replace this with "the frontier didn'
 compare sets rather than counts, never terminates on a drive somebody is writing to, and re-pays a full walk on every
 launch.
 
+⚠️ **A stamp is a claim about a DRIVE, so `take_stock` asks whether it is still there.** The frontier empties either
+because every root was covered or because the drive went away and the walks over it stopped finding anything to add, and
+from inside a coverage query those two are identical — the second would stamp the volume complete over ground nobody
+could read, and a completion marker is exactly what makes the next launch skip the heal. So one
+`VolumeWork::drive_is_listed()` read decides, taken only when `stamp_home` or the completion sequence would actually
+run: a pass that owes nothing pays nothing for it. A pass whose drive left stamps neither marker and marks the index for
+a rebuild if its walks had deletes outstanding (`../DETAILS.md` § "Completion gates" and § "The rebuild marker").
+
 ⚠️ The machine takes stock once more after its phase loop, with nothing left to walk. A phase whose frontier is ALREADY
 empty walks nothing and drains nothing, so a run that only had to CONFIRM what a previous session covered would
 otherwise never reach a stock-take — and a volume killed between its last walk and its stamp would stay unmarked

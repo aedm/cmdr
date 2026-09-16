@@ -930,6 +930,48 @@ to a rescan on remount. `scan_failure_is_vanished_volume` is the pure distinguis
 NOT abort. (The wedge-safe unmount/eject ORDERING that stops the index before the FS goes away lives in
 `../transports/CLAUDE.md`.)
 
+## Completion gates: a stamp is a claim about a DRIVE
+
+An unlistable root is the easy case. The hard one is a walk that ran to the END and whose drive was gone by the time
+anything was written: the walk answers for the reads it made, and something else has to answer for the claims those
+reads would support. **Every claim rides one `VolumeWork::drive_is_listed()` read, taken AFTER the observation it
+guards** (`../hold.rs` for the two "don't knows" it answers). On a local-scanner volume:
+
+- **the walk** (`../scanner/mod.rs`): one read after the walk decides both its `MarkDirsUnreadable` marks and whether it
+  claims anything. A walk whose drive left condemns NOTHING — a mark takes its directory out of the coverage frontier,
+  so marks earned by reads that failed with the drive would let the volume read as covered over a tree nobody listed —
+  and answers `RootUnlistable`. `ScanOutcome::drive_left` outranks `cancelled`: a cancelled walk's rows are real, a
+  vanished one's reads are not. `scan_volume` then sends no `ComputeAllAggregates` and no `WalCheckpoint`.
+- **the post-scan task** (`scan_completion.rs`): the stamp, its calibration and sweep keys, `volume_path`, the freshness
+  flip, the phase, and the live-loop spawn. A failed gate is a vanish (`ScanAborted` + `ScanFailed`, no stamp), and it
+  gates the CANCELLED outcome too: nothing would ever drain a live loop on a drive that isn't there.
+- **the full local reconcile** (`../reconcile/local_reconcile.rs`): it keeps the marks it earned (a mark is a fact about
+  a read that happened) and claims nothing beyond them — no aggregate, no checkpoint — then answers `RootUnlistable`.
+- **the phase machine's `take_stock`** (`phases/completion.rs`): a frontier empties either because every root was
+  covered or because the drive left and the walks stopped finding anything to add, and from inside a coverage query
+  those are identical. Asked only when a stamp would actually be written, so a pass that owes nothing pays nothing.
+
+## The rebuild marker (`../deletes.rs`, `store::INDEX_NEEDS_REBUILD_KEY`)
+
+A gate can refuse a delete it sees coming. It can't take back one already sent, and those rows are indistinguishable
+from files the user really removed — so the index records that it may be short, and the next start rebuilds.
+
+- **Written when a gate finds the drive gone with a non-zero delete generation.** `take_outstanding` zeroes the count as
+  it reads it, so one vanish writes ONE marker and announces it once, however many gates notice within the same
+  millisecond; a later batch against the same absent drive re-arms it.
+- **Two writers, one meaning.** Through the writer while one is alive, so the marker lands in order behind the deletes
+  it speaks for and rides the shutdown drain; through a short-lived connection in a removable stop's after-drain slot
+  (`state/teardown.rs`, the `set_drive_index_intent` contract), which is the durable half a quit can't lose. A
+  `StillReleasing` stop skips the connection, since a writer may still be alive to carry it.
+- **Announced once** as `IndexEvent::IndexNeedsFreshScan` (no new carried type), which the host turns into the one
+  sentence a person who just pulled a drive reads.
+- **Read FIRST at launch** (`manager/launch_route.rs`), ahead of a completion marker and a replayable journal: an index
+  a vanishing drive deleted from looks finished, so replaying or reconciling over it carries the holes forward. With the
+  phased switch off it routes to `ScanTheVolume`, the same repair by the other path.
+- **Cleared where the index it condemns is replaced**: the phased `RebuildFirst` truncate (in the same writer batch, so
+  a death in between leaves the marker standing) and `start_scan`, beside `scan_completed_at`. ❌ Never `clear_index`,
+  which deletes the database and the per-drive intent markers in it.
+
 ## The neutral lifecycle bus (`lifecycle_bus.rs`) — single source
 
 A minimal in-process pub/sub so a backend subsystem (the importance scheduler; later the media-ML enrichment scheduler)

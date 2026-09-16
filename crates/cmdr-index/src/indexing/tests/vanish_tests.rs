@@ -25,6 +25,7 @@ use cmdr_fs::testing::wait_until_async;
 
 use crate::indexing::events::{ActivityPhase, IndexEvent, IndexEventKind, RecordingSink};
 use crate::indexing::hold::{self, HoldKind, VolumeWork};
+use crate::indexing::host::volumes::{FakeVolumeProvider, MountIdentity, VolumeProvider, install_for_test};
 use crate::indexing::lifecycle::manager::IndexManager;
 use crate::indexing::lifecycle::state::VolumeSignals;
 use crate::indexing::scanner::park::ParkHandle;
@@ -32,6 +33,9 @@ use crate::indexing::store::{IndexStore, UnreadableCause};
 use crate::indexing::volume::IndexVolumeKind;
 
 const VOLUME_ID: &str = "vanish-pin";
+
+/// The filesystem the image is, as far as the host's mount table is concerned.
+const IMAGE_DRIVE: MountIdentity = MountIdentity::from_raw(0x0100_00A1);
 
 /// The tree: the root plus 80 folders of 50 empty files each. Its size doesn't decide
 /// when the drive leaves (the park point does); it only has to leave most folders
@@ -87,6 +91,16 @@ async fn scan_through_the_park(at_the_park: AtThePark) -> Observed {
     let root = image.volumes()[0].mount_point.clone();
     let files_created = populate(&root);
 
+    // The host's mount table, which is what every presence gate asks — ❗ never the
+    // filesystem. The real one lives in the app (`file_system::index_provider`), so
+    // this pin plays that part: the image is listed while it is attached, and taken
+    // out of the table at the moment `hdiutil` really detaches it. Everything else
+    // here is real — the walk, the park, the detach, and the gates' own decisions.
+    let _serialized = crate::indexing::handle::test_lock();
+    let volumes = FakeVolumeProvider::shared();
+    volumes.mount(&root, IMAGE_DRIVE);
+    let _installed = install_for_test(Arc::clone(&volumes) as Arc<dyn VolumeProvider>);
+
     let data = tempfile::tempdir().expect("index data dir");
     let db_path = data.path().join(format!("index-{VOLUME_ID}.db"));
     let events = Arc::new(RecordingSink::new());
@@ -100,7 +114,9 @@ async fn scan_through_the_park(at_the_park: AtThePark) -> Observed {
             Arc::new(std::sync::Mutex::new(None)),
             Arc::clone(&events) as Arc<dyn crate::EventSink>,
         ),
-        VolumeWork::for_test(VOLUME_ID),
+        // The generation carries the image's mount identity, the way a real
+        // `LocalExternal` start's reservation captures it.
+        VolumeWork::for_test_on(VOLUME_ID, IMAGE_DRIVE),
     )
     .expect("build the index manager");
 
@@ -122,6 +138,9 @@ async fn scan_through_the_park(at_the_park: AtThePark) -> Observed {
         image
             .force_detach()
             .expect("force-detach the image while the walk is parked");
+        // The filesystem is gone, so the mount table stops listing it — the one
+        // fact the index gets to learn about a drive that left.
+        volumes.mark_unmounted(&root);
     }
     park.release();
 
@@ -194,25 +213,33 @@ async fn a_walk_released_from_the_park_on_a_drive_that_stays_indexes_every_row()
     assert_eq!(observed.abandoned_marks, 0, "{observed:#?}");
 }
 
-/// ❗ **Today's gap, which M7 and M8 flip.** The walk parks after a few directories,
-/// the image is force-detached, and the walk goes on. The scan doesn't abort: it goes
-/// live, stamps `scan_completed_at` over ground nobody walked, and the index is left
-/// with no rows at all (verified on macOS 26.6.2, hand runs, 2026-09-14).
+/// ❗ The pin this whole milestone exists for. The walk parks after a few
+/// directories, the image is force-detached, and the walk goes on over a drive that
+/// is no longer there.
+///
+/// Before the gates it went LIVE and stamped `scan_completed_at` over ground nobody
+/// walked, leaving an index with no rows that every later launch trusted (verified
+/// on macOS 26.6.2, hand runs, 2026-09-14). Now the reads that fail because the
+/// drive left condemn nothing, the scan reports the vanish, and nothing claims the
+/// volume is done — so the next mount walks it again.
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "attaches a real HFS+ disk image via hdiutil and force-detaches it mid-scan; run with --run-ignored"]
-async fn a_drive_that_vanishes_mid_scan_is_stamped_complete_with_every_row_gone_today() {
+async fn a_drive_that_vanishes_mid_scan_claims_no_completion() {
     let observed = scan_through_the_park(AtThePark::DetachTheImage).await;
 
     assert_the_park_held_the_walk(&observed);
     assert!(
-        observed.reached_live && !observed.aborted,
-        "today a vanish after the root was listed completes rather than aborts: {observed:#?}"
+        observed.aborted && !observed.reached_live,
+        "a vanish is reported as one, rather than going live over a drive that isn't there: {observed:#?}"
     );
     assert!(
-        observed.scan_completed_at.is_some(),
-        "today the completion stamp lands over ground nobody walked: {observed:#?}"
+        observed.scan_completed_at.is_none(),
+        "❌ no completion stamp may land over ground nobody walked: {observed:#?}"
     );
-    assert_eq!(observed.rows, 0, "today every row is gone: {observed:#?}");
+    assert_eq!(
+        observed.abandoned_marks, 0,
+        "and nothing is condemned on the word of reads that failed with the drive: {observed:#?}"
+    );
 }
 
 /// A walker worker parked on a real drive keeps it held after the manager has drained

@@ -302,6 +302,13 @@ itself: the mark takes the directory out of the frontier, so no walk lists it, s
   OPEN window must stay a no-op, or a walk that re-condemns the same ground pins the backoff at its first step.
 - **The whole decision runs here, on the writer thread**, because every input to it is in this database. A caller
   deciding on a read connection would race the writes that move the window and would pay that `entries` scan to ask.
+- **A drive that comes back doesn't wait out the backoff.** A `LocalExternal` start sends `ClearAbandonedIfArmed` before
+  its first walk (`../lifecycle/manager.rs`), which reopens every abandoned directory whatever the window says and
+  disarms. The backoff answers "is a RETRY worth a wedged mount's timeouts?"; a start is not a retry — the walk about to
+  run is going to read this ground anyway, and last session's marks include every read that failed because the drive was
+  on its way out, which is ground that reads perfectly now. It is gated on the window EXISTING, so a volume with nothing
+  marked still never touches `entries`. A walk that condemns the same ground again re-arms at the fast first step, which
+  is the right ladder for a drive that just returned.
 - **Only `Abandoned` is ever cleared.** A refusal is an answer the user has to act on; a declined snapshot tree is
   standing policy. Reopening either re-pays a read that will fail the same way forever.
 - ❌ **Nothing here enqueues a walk.** Reopened ground is walked by the next search over that scope, or by a rescan. A

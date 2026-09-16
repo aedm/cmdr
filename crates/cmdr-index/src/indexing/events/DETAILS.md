@@ -24,11 +24,11 @@ the same idea from the other direction: it now sits in `sink.rs` beside the `Ind
 The index subsystems say what happened; the app decides what a human sees. A subsystem builds an `IndexEvent` and hands
 it to an injected `EventSink`. Nothing here names a wire format, an event name, or a sentence.
 
-`IndexEvent` has 22 variants. Eighteen become frontend events (`ScanStarted`, `CoverageBranchStarted`,
-`CoverageBranchEnded`, `CoveragePhaseStarted`, `ScanProgress`, `ScanComplete`, `ScanAborted`, `DirsUpdated`,
-`ReplayProgress`, `ReplayComplete`, `RescanScheduled`, `AggregationProgress`, `AggregationComplete`, `MemoryWarning`,
-`FreshnessChanged`, `PhaseChanged`, `MediaEnrichProgress`, `MediaEnrichTerminal`). Four reach the host's own machinery
-instead:
+`IndexEvent` has 23 variants. Nineteen become frontend events (`ScanStarted`, `CoverageBranchStarted`,
+`CoverageBranchEnded`, `CoveragePhaseStarted`, `ScanProgress`, `ScanComplete`, `ScanAborted`, `IndexNeedsFreshScan`,
+`DirsUpdated`, `ReplayProgress`, `ReplayComplete`, `RescanScheduled`, `AggregationProgress`, `AggregationComplete`,
+`MemoryWarning`, `FreshnessChanged`, `PhaseChanged`, `MediaEnrichProgress`, `MediaEnrichTerminal`). Four reach the
+host's own machinery instead:
 
 - **`Error { report: IndexErrorReport }`** — a failure worth an error report, described by what broke rather than by the
   sentence someone would write about it: `MemoryWatchdog` (action, footprint, limit, escalation, the breakdown),
@@ -49,6 +49,12 @@ instead:
   decided it. ⚠️ **This is the one variant where a dropped event costs SIGNAL** rather than a UI update. That is
   acceptable (the folder will change again) and it is said at the variant, so the `EventSink` contract doesn't look
   silently violated.
+
+**`IndexNeedsFreshScan { volume_id }`** is the one event that reports a decision the crate has already taken: this
+index may have lost rows to a drive that went away, so it is marked on disk and the next start rebuilds it
+(`../lifecycle/DETAILS.md` § "The rebuild marker"). It fires once per marker write, ❌ never per launch — the marker is
+persisted, and a host that re-announced it every start would keep apologizing for one disconnection. Nothing is asked of
+the person; it exists so the folder sizes about to be recomputed have a reason.
 
 **`CoveragePhaseStarted` carries a typed `CoveragePhase`**, one of the crate's own public values (`payload.rs`), and
 that enum's declaration order IS the schedule the phase queue runs. The order lives there and nowhere else, so a host
