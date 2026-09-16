@@ -36,9 +36,8 @@ Copy, move, delete, trash, and zip edits as managed background ops.
   `downloads::note_pending_write_for_cmdr` BEFORE the syscall (renames: both ends).
 - **Every managed mutation journals by `op_id`**; a VOLUME op passes its REAL volume id. Bulk rename journals each hop
   as it lands: ❌ never batch to the end, nor put a rotation temp in `in_flight_temps` (its sweep DELETES it).
-- **A transfer carries BOTH volumes as typed sides** (`transfer_sides.rs`, on `WriteOperationState`), captured at start
-  because a vanished drive can't be named later. A drive that left is decided by the MOUNT TABLE, ❌ never by an errno,
-  and every terminal error goes through `transfer_stop_event`. DETAILS § "Files (top level)".
+- **A transfer carries both volumes as typed sides** (`transfer_sides.rs`), captured at start: a vanished drive can't be
+  named later. A drive that LEFT is the mount table's answer, ❌ never an errno.
 - **❌ Never `statvfs` for macOS disk space** (it rejects copies APFS purgeable space permits): use
   `volumes::get_volume_space()`. Scans report `total_bytes` (copy/move) and `dedup_bytes` (delete): ❌ never point copy
   at the dedup'd one.
