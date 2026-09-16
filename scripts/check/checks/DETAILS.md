@@ -1128,6 +1128,33 @@ Gotchas:
 - Worst case cost is bounded at roughly 15 × (8 s + 40 s) ≈ 12 minutes, which only happens if 15 tests genuinely hang.
   Measured reality: a 10-failure saturated run resolved in 2m51s total against a 2m0s idle baseline.
 
+### Which `cmdr-index` tests actually starve, measured
+
+Three tests reach the 8 s cap under a loaded `desktop-rust-tests` run and pass alone with an order of magnitude of
+headroom. They are **contention, not defects**, and they are ❌ not owned by whatever branch happens to be checked out
+when they go red:
+
+- `indexing::lifecycle::phases::tests::relaunch::an_automatic_rescan_restarts_the_phases_instead_of_truncating`
+- `indexing::lifecycle::phases::tests::relaunch::the_kill_switch_gives_a_phased_partial_back_to_the_bulk_scan`
+- `indexing::tests::event_stream_tests::two_concurrent_scans_produce_two_independent_streams`
+
+Measured 2026-09-16 on macOS 27.0, bisecting them across an eject-plan milestone (`394e9b2d5` before it, `cb83432dd`
+after) because all three sit in areas that milestone touched:
+
+- **Alone, 3 runs at each commit: 6/6 passed**, 0.36–1.03 s each against the 8 s cap. The durations are the same either
+  side, so the milestone neither slowed them nor made them flaky.
+- **Under the full suite at the PRE-milestone commit** (load 75.1): all three timed out at 8.00 s and all three passed
+  the contention re-run. So they starve with none of that work present.
+- The post-milestone runs starved only two of the three, at lower load — **the starving set tracks machine load, not
+  suite size**, which is also why "a branch added tests and pushed them over" is the wrong reading.
+
+**What this means for triage.** A red here is answered by the re-run's own verdict line, ❌ never by reading the test
+names and guessing at the diff. If the line says "passed alone at the same deadline, so the suite was starving it",
+that is the answer. Only "still failing alone with headroom" is yours. (`cmdr-fs`
+`process_memory::vm_regions::tests::a_big_system_zone_block_becomes_a_malloc_large_region_of_exactly_its_size` is the
+standing example of the latter: it failed identically at both commits with 0.08 s runtimes, a genuine failure that
+belongs to nobody's branch either.)
+
 ### The Docker lane re-runs inside its own container
 
 `desktop-rust-tests-linux` starts its container **detached** (PID 1 is a bounded `sleep`) and execs each phase into it:
