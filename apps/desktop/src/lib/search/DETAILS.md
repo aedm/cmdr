@@ -599,8 +599,16 @@ than the pane is showing, and applying that would take files off a screen the us
 
 `snapshot-store.svelte.ts` holds `SearchSnapshot` records (query, mode, filters, scope, the volume its rows live on,
 capped 10,000 entries, totalCount, createdAt, friendly label, row order) under monotonic `sr-N` ids, plus a per-record
-refcount. Each record keeps TWO arrays: the `entries` the pane renders and the `rankedEntries` the engine produced,
-which are the same array until a sort splits them (§ "The snapshot pane's row order"). The store has no hard cap on its
+refcount.
+
+**The ids are per-SESSION, and a `search-results://` path must never reach disk.** One that does names nothing on the
+next launch, which left the app flickering on a pane with no folder to list. Tab persistence writes the tab's newest
+real folder instead, and anything already stored is swapped at load: `../file-explorer/pane/DETAILS.md` § "A snapshot
+never comes back". Within a session the store is what makes Back into a results pane work, so ❌ never "fix" a stale
+snapshot by clearing it early.
+
+Each record keeps TWO arrays: the `entries` the pane renders and the `rankedEntries` the engine produced, which are the
+same array until a sort splits them (§ "The snapshot pane's row order"). The store has no hard cap on its
 own — **refcount is the only authority**. Refs come from two sources:
 
 - **Pane history entries** whose `path` starts with `search-results://<id>` hold +1 per occurrence. The tab-state
