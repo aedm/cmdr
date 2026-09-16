@@ -1773,7 +1773,7 @@
   },
   "fileExplorer.navigation.groupFavorites": "Favorites",
   "@fileExplorer.navigation.groupFavorites": {
-    "description": "Section heading in the volume switcher dropdown for the user''s pinned favorite folders.",
+    "description": "Section heading at the top of the favorites menu, above the folders the user saved.",
     "screenshot": "pane-volume-chooser.png"
   },
   "fileExplorer.navigation.groupVolumes": "Volumes",
@@ -1834,7 +1834,7 @@
   },
   "fileExplorer.navigation.favoriteTooltip": "{path}\nDrag to reorder, or {reorder}. Right-click to rename or remove.",
   "@fileExplorer.navigation.favoriteTooltip": {
-    "description": "Hover tooltip for a favorite row in the volume switcher. Leads with the folder path so a renamed favorite still reveals where it points, then explains how to reorder, rename, or remove it. The \\n is a real line break. {reorder} is the keyboard reorder shortcut glyphs.",
+    "description": "Hover tooltip for a favorite row in the favorites menu. Leads with the folder path so a renamed favorite still reveals where it points, then explains how to reorder, rename, or remove it. The \\n is a real line break. {reorder} is the keyboard reorder shortcut glyphs.",
     "placeholders": {
       "path": "the file-system path the favorite points to",
       "reorder": "the keyboard reorder shortcut, e.g. ⌥↑ / ⌥↓ on macOS (do not translate; these are key names)"
@@ -1843,7 +1843,7 @@
   },
   "fileExplorer.navigation.renameFavoriteAriaLabel": "Rename favorite",
   "@fileExplorer.navigation.renameFavoriteAriaLabel": {
-    "description": "Accessibility label for the inline text field that appears when renaming a favorite in the volume switcher."
+    "description": "Accessibility label for the inline text field that appears when renaming a favorite in the favorites menu."
   },
   "fileExplorer.navigation.removeFavoriteFailed": "Couldn''t remove that favorite. Try again?",
   "@fileExplorer.navigation.removeFavoriteFailed": {

@@ -146,7 +146,7 @@
   },
   "commands.favoritesAdd.label": "Add to favorites",
   "@commands.favoritesAdd.label": {
-    "description": "Command name that adds the current folder to the Favorites list. Appears in the command palette. \"Favorites\" is the named list of bookmarked folders; match the term used in the volume switcher UI.",
+    "description": "Command name that adds the current folder to the Favorites list. Appears in the command palette. \"Favorites\" is the named list of bookmarked folders; match the heading the favorites menu uses (fileExplorer.navigation.groupFavorites).",
     "screenshot": "settings-keyboard-shortcuts.png"
   },
   "commands.favoritesAdd.description": "Add the focused pane''s current folder to your favorites, so the favorites menu can take you back to it.",
@@ -155,7 +155,7 @@
   },
   "commands.favoritesOpen.label": "Show favorites",
   "@commands.favoritesOpen.label": {
-    "description": "Command name that opens the favorites menu over the focused pane. Appears in the command palette and in the Go menu. \"Favorites\" is the named list of bookmarked folders; match the term used in the volume switcher UI."
+    "description": "Command name that opens the favorites menu over the focused pane. Appears in the command palette and in the Go menu. \"Favorites\" is the named list of bookmarked folders; match the heading the favorites menu uses (fileExplorer.navigation.groupFavorites)."
   },
   "commands.favoritesOpen.description": "Open the favorites menu on the focused pane, and press a number to jump to that favorite.",
   "@commands.favoritesOpen.description": {
