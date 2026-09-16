@@ -92,6 +92,13 @@ Trash's boundary is the ITEM, and that's all it can ever be: `trashItemAtURL` ha
 one call, so there is no seam inside it the way the walkers have one per file. Pinned by `trash_pause_tests.rs`, which
 drives the loop over paths that don't exist so it exercises the boundary without moving anything into the real trash.
 
+## Who emits `write-cancelled` when a scan bails
+
+`scan_volume_recursive` checks cancel at every recursion level, so a helper that emitted the terminal event where it
+bails would fire it once per stacked frame. It returns `Err(Cancelled)` silently instead, and the top-level caller emits
+through `emit_cancelled_if_aborted`. **Any new per-level-cancel scan owes the same split**, whichever operation adds it.
+Pinned by `delete_cancel_during_scan_emits_write_cancelled`.
+
 ## Where a trash is (`trash_dir_for_path`)
 
 macOS keeps ONE trash per volume: `~/.Trash` for the boot volume, `<mount point>/.Trashes/<uid>` for everything else.
@@ -111,3 +118,40 @@ puts a file.
 
 `None` stays the ordinary answer for a volume with no trash (FAT32, SMB) and on non-macOS, so callers say "nowhere to
 go" rather than reporting something went wrong.
+
+## A trash in a cloud-storage folder becomes a delete (`cloud_trash.rs`)
+
+A third-party File Provider may implement no trash at all. `trashItemAtURL` under `~/Library/CloudStorage/<domain>/`
+then fails with `NSCocoaErrorDomain` 3328 (`NSFeatureUnsupportedError`), worded by macOS as «the volume "Macintosh HD"
+doesn't have one» — a sentence about the boot volume, whose trash is fine, for a refusal the provider made. A paying
+user hit it on Dropbox (`ERR-2YGHG`, 0.45.1, macOS 27.0) and could not delete anything from that folder.
+
+**Decision**: when EVERY selected top-level item sits in such a folder, F8 opens the permanent-delete flow instead of
+attempting a trash. The confirmation dialog looks different from the trash one, so the swap is visible, and the
+provider's own server-side retention (Dropbox keeps 30 days) means the file is still recoverable. The frontend asks
+`trash_routing_for_paths` before it opens the dialog; the answer is a typed `TrashRouting`, and the routed case lands in
+the same permanent delete Shift+F8 runs, with the same `WriteOperationType::Delete`.
+
+**What the rule matches**, and why each edge is where it is:
+
+- A path strictly inside `~/Library/CloudStorage/<domain>/`, Apple's documented File Provider location since
+  macOS 12.3. Provider identity itself is `cloud_provider.rs`'s single source; this module only asks it.
+- ❌ NOT iCloud Drive (`~/Library/Mobile Documents/`). Finder trashes from there fine, so it keeps today's behavior. A
+  provider that refuses anyway is already covered by the typed `TrashRefusalKind` path.
+- ❌ NOT the `CloudStorage` container, and ❌ NOT a drive's own root. Deleting a whole cloud root permanently would take
+  the account's entire local copy; that one keeps the OS trash and its refusal.
+- ❌ NOT "any location with no trash". A freshly formatted USB stick answers "no trash" from a volume probe only because
+  nobody has trashed anything on it yet, and routing that to a permanent delete would be a data-loss bug.
+- ❌ NOT a volume question at all. A File Provider folder is not its own volume: `~/Library/CloudStorage/Dropbox` and
+  `~` report the same device on the same `/dev/disk3s5` (verified on macOS 27.0, `stat -f '%d'`, 2026-09-17), so
+  `trash_dir_for_path` answers `~/.Trash` for these paths and can see nothing.
+
+**All or nothing across the selection.** A mixed selection keeps today's behavior, so nobody gets a permanent delete for
+items that would have trashed fine. An empty selection, an unreadable home directory, and a timeout all answer `Trash`
+for the same reason: an unanswerable question means the OS attempt, never a delete.
+
+**Symlinks resolve first, but only above the leaf.** Dropbox links `~/Dropbox` at its `CloudStorage` drive, so a literal
+prefix test would miss half the ways a person reaches the same file. `resolve_through_symlinks` canonicalizes the
+nearest existing ANCESTOR and re-attaches the names below it, which also survives a leaf that's already gone. The leaf
+itself is deliberately left unresolved: trashing a symlink acts on the LINK, so a link in an ordinary folder pointing
+into a cloud drive keeps the ordinary behavior.

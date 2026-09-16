@@ -20,6 +20,14 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "Thư mục này đồng bộ hóa với một dịch vụ đám mây không có thùng rác.",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
+  "fileOperations.delete.cloudNoTrashWarningRest": "Cách duy nhất ở đây là xóa, và dịch vụ vẫn giữ một bản sao riêng để bạn khôi phục từ đó.",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "sourceHash": "1abc686"
+  },
   "fileOperations.delete.archiveWarningStrong": "Không có thùng rác bên trong tệp nén.",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"

@@ -20,6 +20,14 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "Ezt a mappát egy olyan felhőalapú szolgáltatás szinkronizálja, amelynek nincs Kukája.",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
+  "fileOperations.delete.cloudNoTrashWarningRest": "Itt csak a törlés lehetséges, de a szolgáltatás megőrzi a saját másolatát, amelyből visszaállíthatod az elemeket.",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "sourceHash": "1abc686"
+  },
   "fileOperations.delete.archiveWarningStrong": "Egy archívumon belül nincs Kuka.",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"

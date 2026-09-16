@@ -7,7 +7,12 @@ import type { TransferOperationType } from '../types'
 // harness stay free of a `vi.hoisted` block.
 vi.mock('$lib/tauri-commands', async () => {
   const { spies } = await import('./file-operation-commands.test-harness')
-  return { DEFAULT_VOLUME_ID: 'root', getFileAt: spies.getFileAt, getFilesAtIndices: spies.getFilesAtIndices }
+  return {
+    DEFAULT_VOLUME_ID: 'root',
+    getFileAt: spies.getFileAt,
+    getFilesAtIndices: spies.getFilesAtIndices,
+    trashRoutingForPaths: spies.trashRoutingForPaths,
+  }
 })
 
 vi.mock('$lib/ui/toast', async () => ({
@@ -88,6 +93,7 @@ const {
   getInitialFileName: getInitialFileNameSpy,
   buildTransferPropsFromSelection: buildFromSelectionSpy,
   buildTransferPropsFromCursor: buildFromCursorSpy,
+  trashRoutingForPaths: trashRoutingSpy,
 } = spies
 
 function create(access: ReturnType<typeof buildAccess>, dialogs: DialogsStub) {
@@ -96,6 +102,9 @@ function create(access: ReturnType<typeof buildAccess>, dialogs: DialogsStub) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // `clearAllMocks` leaves implementations in place, so the routing answer is
+  // re-stated here: an unset one would leak across tests in file order.
+  trashRoutingSpy.mockResolvedValue('trash')
 })
 
 describe('startRename', () => {
@@ -632,5 +641,85 @@ describe('openDeleteDialog', () => {
     await create(access, dialogs).openDeleteDialog({ permanent: false })
 
     expect(dialogs.showDeleteConfirmation).not.toHaveBeenCalled()
+  })
+})
+
+/** A cloud-storage folder's File Provider implements no trash, so the OS refuses
+ *  the move with a message about the boot volume that reads as nonsense. The
+ *  backend recognizes the location (`cloud_trash.rs`); this is how the answer
+ *  reaches the dialog. */
+describe('openDeleteDialog in a cloud-storage folder', () => {
+  const cloudEntry = (name: string) => fileEntry({ name, path: `/Users/x/Library/CloudStorage/Dropbox/Work/${name}` })
+
+  function cloudAccess() {
+    return buildAccess({
+      paneRefs: { left: buildPaneRef({ listingId: 'lst-1', selectedIndices: [0, 1] }) },
+      volumes: [volume({ supportsTrash: true })],
+      paths: { left: '/Users/x/Library/CloudStorage/Dropbox/Work' },
+    })
+  }
+
+  beforeEach(() => {
+    getFilesAtIndicesSpy.mockResolvedValue([cloudEntry('a.pkg'), cloudEntry('b.pkg')])
+  })
+
+  it('turns F8 into the permanent delete, and says why', async () => {
+    trashRoutingSpy.mockResolvedValue('permanentDeleteCloudStorage')
+    const dialogs = buildDialogs()
+
+    await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: false })
+
+    expect(trashRoutingSpy).toHaveBeenCalledWith([
+      '/Users/x/Library/CloudStorage/Dropbox/Work/a.pkg',
+      '/Users/x/Library/CloudStorage/Dropbox/Work/b.pkg',
+    ])
+    expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
+      isPermanent: true,
+      supportsTrash: false,
+      cloudStorageWithoutTrash: true,
+    })
+  })
+
+  /** Shift+F8 was already permanent, but the in-dialog switch back to trash would
+   *  hit the same refusal, so the trash stays off here too. */
+  it('keeps the trash switch away from a Shift+F8 dialog too', async () => {
+    trashRoutingSpy.mockResolvedValue('permanentDeleteCloudStorage')
+    const dialogs = buildDialogs()
+
+    await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: true })
+
+    expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
+      isPermanent: true,
+      supportsTrash: false,
+      cloudStorageWithoutTrash: true,
+    })
+  })
+
+  /** The all-or-nothing rule lives in the backend, so a mixed selection comes back
+   *  as a plain `trash` and nothing about the dialog changes. */
+  it('leaves everything else on the trash', async () => {
+    trashRoutingSpy.mockResolvedValue('trash')
+    const dialogs = buildDialogs()
+
+    await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: false })
+
+    expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
+      isPermanent: false,
+      supportsTrash: true,
+      cloudStorageWithoutTrash: false,
+    })
+  })
+
+  it('keeps the trash when the question itself fails', async () => {
+    trashRoutingSpy.mockRejectedValue(new Error('IPC gone'))
+    const dialogs = buildDialogs()
+
+    await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: false })
+
+    expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
+      isPermanent: false,
+      supportsTrash: true,
+      cloudStorageWithoutTrash: false,
+    })
   })
 })

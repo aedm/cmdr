@@ -32,6 +32,20 @@
     "screenshot": "delete-confirmation-no-trash-support.png"
   },
 
+  "fileOperations.delete.cloudNoTrashWarningStrong": "This folder syncs to a cloud service that has no trash.",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "description": "Bold lead of a warning banner in the delete dialog, shown when the person pressed the \"move to trash\" key but every selected item lives in a cloud-storage folder (Dropbox, Google Drive, OneDrive, …) whose macOS File Provider refuses to trash anything, so Cmdr opened the permanent-delete dialog instead. Followed by fileOperations.delete.cloudNoTrashWarningRest. \"trash\" here is the macOS Trash the Finder uses.",
+    "screenshot": "delete-confirm.png",
+    "screenshotNote": "The delete confirmation dialog, pictured here. Your string is one of its variants: a different item count, an archive or symlink warning, or the progress line it shows while scanning."
+  },
+
+  "fileOperations.delete.cloudNoTrashWarningRest": "Deleting is the only option here, and the service keeps its own copy you can restore from.",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "description": "Second half of the cloud-storage warning banner, following fileOperations.delete.cloudNoTrashWarningStrong. Reassures the person that the file isn't gone for good: the cloud service (Dropbox, Google Drive, …) keeps deleted files on its own servers for a while, so it can be restored from there.",
+    "screenshot": "delete-confirm.png",
+    "screenshotNote": "The delete confirmation dialog, pictured here. Your string is one of its variants: a different item count, an archive or symlink warning, or the progress line it shows while scanning."
+  },
+
   "fileOperations.delete.archiveWarningStrong": "There''s no trash inside an archive.",
   "@fileOperations.delete.archiveWarningStrong": {
     "description": "Bold lead of a warning banner in the delete dialog, shown when deleting items from inside a zip archive (Cmdr browses zips like folders). Followed by fileOperations.delete.archiveWarningRest in the same sentence. \"archive\" = a zip file.",

@@ -20,6 +20,14 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "Esta pasta é sincronizada com um serviço de nuvem que não tem Lixo.",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
+  "fileOperations.delete.cloudNoTrashWarningRest": "Apagar é a única opção aqui, e o serviço mantém uma cópia própria, de onde você pode recuperar os itens.",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "sourceHash": "1abc686"
+  },
   "fileOperations.delete.archiveWarningStrong": "Não há Lixo dentro de um arquivo compactado.",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"

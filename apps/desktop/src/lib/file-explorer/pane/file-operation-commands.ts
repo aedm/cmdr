@@ -1,4 +1,11 @@
-import { createDirectory, createFile, getFileAt, getFilesAtIndices, type Initiator } from '$lib/tauri-commands'
+import {
+  createDirectory,
+  createFile,
+  getFileAt,
+  getFilesAtIndices,
+  trashRoutingForPaths,
+  type Initiator,
+} from '$lib/tauri-commands'
 import { pluralize } from '$lib/utils/pluralize'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
@@ -31,6 +38,28 @@ import type { createDialogState } from './dialog-state.svelte'
 import type { PaneAccess } from './pane-access'
 
 const log = getAppLogger('fileExplorer')
+
+/**
+ * Whether these items sit in a cloud-storage folder whose File Provider has no
+ * trash, which makes a trash request impossible to honor: macOS refuses it and
+ * words the refusal as if the boot volume had no trash.
+ *
+ * The recognition itself is the backend's (`write_operations/delete/cloud_trash.rs`):
+ * it's all-or-nothing across the selection, it resolves symlinks first, and it's
+ * deliberately narrow. A question that can't be answered (the IPC threw, the
+ * backend timed out on a hung mount) answers `false`, keeping the OS trash and
+ * its typed refusal.
+ */
+async function cloudStorageHasNoTrash(sourcePaths: string[]): Promise<boolean> {
+  try {
+    return (await trashRoutingForPaths(sourcePaths)) === 'permanentDeleteCloudStorage'
+  } catch (error) {
+    log.warn('trashRoutingForPaths threw, keeping the trash. error={error}', {
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return false
+  }
+}
 
 type DialogState = ReturnType<typeof createDialogState>
 
@@ -480,7 +509,12 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
    * reads its trash affordance off the live volume list: a search covers one volume
    * and it need not be the boot drive, so neither can be assumed.
    */
-  function openDeleteFromSearchResults({ permanent, autoConfirm, mcpRequestId, initiator }: OpenDeleteDialogArgs) {
+  async function openDeleteFromSearchResults({
+    permanent,
+    autoConfirm,
+    mcpRequestId,
+    initiator,
+  }: OpenDeleteDialogArgs) {
     const sourcePaneRef = access.getPaneRef(access.getFocusedPane())
     const snapshotId = snapshotIdFromPanePath(sourcePaneRef?.getCurrentPath() ?? '')
     if (snapshotId === null) {
@@ -520,13 +554,17 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
 
     const { sortBy, sortOrder } = access.getPaneSort(access.getFocusedPane())
     const sourceVolume = resolveSnapshotSourceVolume(snapshot.volumeId, access.getVolumes())
+    // A search reaches into cloud-storage folders like anywhere else, and a hit
+    // there can't be trashed either.
+    const cloudStorageWithoutTrash = await cloudStorageHasNoTrash(sourcePaths)
 
     dialogs.showDeleteConfirmation({
       sourceItems,
       sourcePaths,
       sourceFolderPath: getCommonParentPath(sourcePaths),
-      isPermanent: permanent,
-      supportsTrash: sourceVolume.supportsTrash,
+      isPermanent: permanent || cloudStorageWithoutTrash,
+      supportsTrash: cloudStorageWithoutTrash ? false : sourceVolume.supportsTrash,
+      cloudStorageWithoutTrash,
       isFromCursor: !hasSelection,
       sortColumn: sortBy,
       sortOrder,
@@ -554,7 +592,7 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
     // not a `volumeId === 'search-results'` string compare; search-results
     // is the only source-capable `!hasBackendListing` kind to reach here.
     if (!capabilitiesFor(focusedVolId).hasBackendListing) {
-      openDeleteFromSearchResults({ permanent, autoConfirm, mcpRequestId, initiator })
+      await openDeleteFromSearchResults({ permanent, autoConfirm, mcpRequestId, initiator })
       return
     }
 
@@ -644,7 +682,11 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
     // permanent + the archive warning regardless of the parent drive's trash
     // support or the F8/Shift+F8 preselect.
     const sourceIsArchive = pathCrossesArchiveBoundary(sourceFolderPath)
-    const supportsTrash = sourceIsArchive ? false : sourceVolume?.supportsTrash !== false
+    // Asked for both F8 and Shift+F8: the dialog's own switch could send a
+    // Shift+F8 back to the trash, into the same refusal. An archive already has
+    // no trash, so it never needs asking.
+    const cloudStorageWithoutTrash = !sourceIsArchive && (await cloudStorageHasNoTrash(sourcePaths))
+    const supportsTrash = sourceIsArchive || cloudStorageWithoutTrash ? false : sourceVolume?.supportsTrash !== false
 
     const { sortBy, sortOrder } = access.getPaneSort(access.getFocusedPane())
 
@@ -652,9 +694,10 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
       sourceItems,
       sourcePaths,
       sourceFolderPath,
-      isPermanent: permanent || sourceIsArchive,
+      isPermanent: permanent || sourceIsArchive || cloudStorageWithoutTrash,
       supportsTrash,
       isArchive: sourceIsArchive,
+      cloudStorageWithoutTrash,
       isFromCursor: !hasSelection,
       sortColumn: sortBy,
       sortOrder,

@@ -1565,6 +1565,8 @@ export type MessageKey =
   | 'fileOperations.cancelRollback.stoppedMovingBack'
   | 'fileOperations.delete.archiveWarningRest'
   | 'fileOperations.delete.archiveWarningStrong'
+  | 'fileOperations.delete.cloudNoTrashWarningRest'
+  | 'fileOperations.delete.cloudNoTrashWarningStrong'
   | 'fileOperations.delete.confirmDelete'
   | 'fileOperations.delete.confirmMoveToTrash'
   | 'fileOperations.delete.foldersPart'

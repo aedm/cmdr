@@ -20,6 +20,14 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
+  "fileOperations.delete.cloudNoTrashWarningStrong": "Dieser Ordner wird mit einem Cloud-Dienst synchronisiert, der keinen Papierkorb hat.",
+  "@fileOperations.delete.cloudNoTrashWarningStrong": {
+    "sourceHash": "f6a7584"
+  },
+  "fileOperations.delete.cloudNoTrashWarningRest": "Du kannst hier nur löschen, und der Dienst behält eine eigene Kopie, die du wiederherstellen kannst.",
+  "@fileOperations.delete.cloudNoTrashWarningRest": {
+    "sourceHash": "1abc686"
+  },
   "fileOperations.delete.archiveWarningStrong": "In einem Archiv gibt es keinen Papierkorb.",
   "@fileOperations.delete.archiveWarningStrong": {
     "sourceHash": "29efc59"

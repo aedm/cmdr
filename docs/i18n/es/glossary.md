@@ -3439,3 +3439,31 @@ replacement target. Four rules bind this whole group:
   the other and the sentence points at a badge that reads differently.
 - "somewhere macOS keeps to itself" → `un sitio que macOS se reserva`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
+
+## El aviso de borrado en una carpeta de la nube (`fileOperations.delete.cloudNoTrashWarning*`)
+
+Las dos mitades del aviso que sale cuando todo lo seleccionado vive en una carpeta sincronizada (Dropbox, Google Drive,
+OneDrive…) cuyo File Provider se niega a mover nada a la papelera, así que Cmdr abre directamente el diálogo de borrado
+permanente. Familia ICU: apóstrofos dobles (ninguna de las dos los lleva) y sin marcadores.
+
+- **cloud service → `servicio en la nube`** · macOS Finder lo dice literal ("Choose a cloud service" → "Selecciona un
+  servicio en la nube", `es/macOS/Finder/Localizable.json`) y la terminología de Microsoft coincide (`cloud service` →
+  `servicio en la nube`) · high
+- **"syncs to" → `se sincroniza con`** · la preposición es la del Finder ("Sync Desktop & Documents folders with iCloud"
+  → "Sincronizar las carpetas Escritorio y Documentos con iCloud"; "…se están sincronizando con %@") · high. ❌ No
+  `sincroniza a`, que no es la rección del verbo en español.
+- **"has no trash" → `que no tiene papelera`** · calca la fórmula ya asentada para el mismo dato
+  (`fileOperations.trash.*`, "Esta unidad no tiene papelera."), y deja la mitad Strong como un hecho sin veredicto,
+  igual que `noTrashWarningStrong` ("Este volumen no admite la papelera.") · high
+- **"restore from" (sacar algo de la copia que guarda el servicio) → `recuperar`** · Apple usa este verbo justo para
+  este caso, el de un elemento borrado que el servicio conserva un tiempo: Finder `MT43`, "Puedes recuperar o eliminar
+  los ítems de la papelera en un plazo de 30 días" · high. ❌ NO `restaurar`, que este catálogo reserva para deshacer un
+  renombrado (§ `Restaurar` nombra ahora el objeto), aunque Microsoft traduzca así `restore`; y `devolver … a su sitio`
+  es lo de sacar de la papelera del Mac, no de la nube.
+- **"the service keeps its own copy" → `el servicio conserva su propia copia`** · `conservar` es el "keep" de macOS
+  ("Elige las versiones que quieres conservar", AppKit `NSDocumentConflictPanel`); `propia` ancla el `su` al sujeto, que
+  si no podría leerse como la copia de la carpeta · high
+- **El objeto se nombra (`los archivos`) en vez de dejar un clítico** · el inglés puede terminar en "restore from" sin
+  objeto, pero un `recuperarlos` en español no tendría antecedente: la mitad Strong habla de `Esta carpeta`, en femenino
+  singular. `archivos` es además lo que usa la mitad hermana más cercana (`noTrashWarningRest`, "Los archivos se
+  eliminarán permanentemente.") · high

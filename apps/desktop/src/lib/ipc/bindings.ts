@@ -683,6 +683,15 @@ export const commands = {
     typedError<WriteOperationStartResult, WriteOperationError>(
       __TAURI_INVOKE('trash_files', { sources, itemSizes, config, initiator }),
     ),
+  /**
+   *  Answers whether an F8 over `sources` has to run as a permanent delete because
+   *  every item lives in a cloud-storage folder whose File Provider has no trash.
+   *
+   *  Asked before the confirmation dialog opens, so the dialog can say why it's
+   *  asking about a delete. A timeout degrades to `Trash`, which is today's
+   *  behavior: the attempt goes to the OS and a refusal speaks for itself.
+   */
+  trashRoutingForPaths: (sources: string[]) => __TAURI_INVOKE<TrashRouting>('trash_routing_for_paths', { sources }),
   cancelWriteOperation: (operationId: string, rollback: boolean) =>
     __TAURI_INVOKE<void>('cancel_write_operation', { operationId, rollback }),
   cancelAllWriteOperations: () => __TAURI_INVOKE<void>('cancel_all_write_operations'),
@@ -13668,6 +13677,25 @@ export type TrashRefusalKind =
   | 'noTrashForVolume'
   // Anything else, including every non-macOS refusal.
   | 'other'
+
+/**
+ *  What an F8 over a given selection should actually run.
+ *
+ *  Typed rather than a bare `bool` so the frontend's routing reads as a decision
+ *  the backend made, and so a future "this one is trashless for another reason"
+ *  arrives as a variant instead of a second boolean.
+ */
+export type TrashRouting =
+  /**
+   *  Ask the OS trash, and let a refusal answer for itself. The default for
+   *  everything, including an unknown or unreachable path.
+   */
+  | 'trash'
+  /**
+   *  Every selected item sits in a cloud-storage drive with no trash of its own.
+   *  Run the permanent-delete flow, whose dialog says why.
+   */
+  | 'permanentDeleteCloudStorage'
 
 // One approved host key.
 export type TrustedHostKey = {

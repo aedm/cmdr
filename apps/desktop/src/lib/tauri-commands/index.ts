@@ -270,6 +270,7 @@ export {
   moveFiles,
   deleteFiles,
   trashFiles,
+  trashRoutingForPaths,
   cancelWriteOperation,
   resolveWriteConflict,
   onWriteProgress,
