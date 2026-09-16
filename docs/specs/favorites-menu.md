@@ -290,23 +290,32 @@ is provable (`docs/guides/multi-agent-refactors.md`).
    - `volume-breadcrumb-handlers.svelte.ts` now measures 94.3% covered, so its `coverage-allowlist.json` entry looks
      unneeded. Left as a warn on purpose (the file is about to lose most of its contents to the primitive anyway); ❗
      removing the entry needs David's consent.
-2. Render the switcher through `Menu`: sections from `volume-grouping.ts`, `trailing` carrying the filesystem label,
-   status glyphs, dots, badges, and the eject or disconnect button, `below` carrying the disk-space line, `footer`
-   carrying the volume-list timeout warning, and the favorites section as a `reorderable` one with `label` swapped for
-   the rename field while renaming.
-3. Split `VolumeBreadcrumb.svelte` into the chip (`VolumeBreadcrumb.svelte`) and `VolumeChooserMenu.svelte`.
-   `volume-breadcrumb-handlers.svelte.ts` loses its keyboard-mode, submenu, and key handlers (the primitive owns them);
-   `getConnectionTooltip` and `shouldShowCheckmark` move to their own small modules.
-4. `favorites-controller.svelte.ts` keeps the optimistic order, rename, remove, and persistence, and loses the drag
-   mechanics to the primitive.
-5. If M1's focus decision held, switcher keys route through the primitive, and the `handleVolumeChooserKeyDown`
-   pass-through chain through `FilePane.svelte` and `key-dispatch.ts` goes with it. `isVolumeChooserOpen()` stays, since
-   `+page.svelte` and `key-dispatch.ts` still need "is a menu open".
-6. The existing switcher tests are the behavior contract: keep them green with as few edits as possible.
-7. `navigation/DETAILS.md` § Dropdown and submenu UI patterns moves to `lib/ui/DETAILS.md` § Menu, since the primitive
-   now enforces those rules. The `file-length` allowlist shrink-wraps itself on the next local run; commit the rewrite.
+2. ✅ **Done** (steps 2–7, commits `b79a68737` + `2d743c8fd`). `VolumeChooserMenu.svelte` renders the switcher through
+   `Menu` (sections from `volume-grouping.ts`, all four snippets, favorites `reorderable`), `VolumeBreadcrumb.svelte` is
+   the chip alone (1,828 → 422 lines), `volume-breadcrumb-handlers.svelte.ts` keeps only the chip's inline popup,
+   `favorites-controller.svelte.ts` keeps rename / remove / the optimistic order, and the `handleVolumeChooserKeyDown`
+   chain is gone (`key-dispatch.ts` still swallows every key while a switcher is open, for the rename input's
+   keystrokes). § Dropdown and submenu UI patterns moved into `lib/ui/DETAILS.md` § Menu. New colocated pieces both
+   placements share: `ConnectionDot`, `UsbSpeedDot`, `DetachButton`, `detach-volume.ts`, `connect-directly-row.ts`,
+   `drive-badges.svelte.ts`, `connection-tooltips.ts`, `volume-checkmark.ts`.
 
-A large diff, ideally net-negative in lines. **Then David QAs before M3 starts.**
+   **What the port deliberately changed** (everything else is byte-for-byte the same behavior):
+   - **Escape is unified**, as planned above. No pin had to change for it in the end: the DOM-Escape pin had no submenu
+     open, and the routed submenu-Escape pin already expected submenu-first.
+   - **Three pins were re-pointed with their assertion adjusted**, since the primitive's markup says the same thing
+     differently: rows and the empty placeholder carry `tabindex="-1"` (out of the tab order, cursor owned by
+     `aria-activedescendant`) where the old markup had no attribute, and an unopenable device row is `data-disabled`
+     rather than `.is-unavailable`. That last one also means the arrows now SKIP such a row instead of landing on it.
+   - **The submenu arrow sits at the row's far right**, after the eject button, because the primitive renders it last.
+     Before, `.submenu-trigger` sat between the connection dot and the eject button.
+   - **Clicking a control in the CHIP while the list is open now closes the list** (the eject button, an index badge):
+     the primitive's outside-pointerdown check knows the chip, not its siblings.
+   - One primitive bug fell out of the port and is fixed in `429923068`: leaving keyboard mode with the pointer resting
+     over a row left two rows lit.
+
+Net effect: the switcher's own code went from 1,828 + 200 lines to 422 (chip) + 755 (list) + ~330 across the eight
+shared modules, and every menu behavior it used to hand-roll is now the primitive's. **Then David QAs before M3
+starts.**
 
 ### M3. The favorites menu
 
