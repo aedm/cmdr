@@ -20,7 +20,7 @@ pub(super) fn scan_path(path: &std::path::Path) -> super::PathScan {
 }
 
 #[cfg(target_os = "macos")]
-pub(super) use macos::scan_path;
+pub(super) use macos::{executable_path, scan_path};
 #[cfg(all(test, target_os = "macos"))]
 pub(super) use macos::{FILE_FLAGS, pids_holding};
 
@@ -129,8 +129,10 @@ mod macos {
 
     /// What to call the process behind `pid`, `None` once it's gone.
     ///
-    /// M13 names it by its executable and leaves the kind to M14, which is what turns a
-    /// `sleep` into a tool and a WebKit helper into the app responsible for it.
+    /// The executable's own name, which the facts stage replaces with an app's or an
+    /// image's once it knows what kind of holder this is (`holders::facts`). ❗ The name
+    /// is read HERE, during the walk, so a holder the facts budget never reaches is still
+    /// named.
     fn name_of(pid: u32) -> Option<VolumeHolder> {
         let executable = executable_path(pid)?;
         let name = Path::new(&executable).file_name()?.to_string_lossy().into_owned();
@@ -143,7 +145,7 @@ mod macos {
     }
 
     /// The executable behind `pid`, `None` when the process has gone or isn't visible.
-    fn executable_path(pid: u32) -> Option<OsString> {
+    pub(in crate::file_system::volume::eject::holders) fn executable_path(pid: u32) -> Option<OsString> {
         let pid = c_int::try_from(pid).ok()?;
         let mut buffer = vec![0u8; PID_PATH_MAX];
         let size = u32::try_from(buffer.len()).ok()?;

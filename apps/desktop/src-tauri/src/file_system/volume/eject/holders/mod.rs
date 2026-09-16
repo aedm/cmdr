@@ -14,14 +14,22 @@
 //! **A scan that couldn't run names nobody, which is ❌ never "nobody is holding it"**
 //! ([`HolderScan`]) — the same three-answers rule as `disk_target::DiskMounts`.
 //!
-//! M14 fills in [`HolderKind`]; M13 names every holder by its executable and leaves it
-//! [`HolderKind::Unclassified`].
+//! **Two stages, one budget.** The walk names each holder by its executable; then
+//! [`facts`] says what KIND of holder it is, which is what picks the sentence the refusal
+//! reads. Both run on the one abandonable thread, and the facts run SECOND for two
+//! reasons: rule 5 needs the device of every mount of the teardown, not just the one
+//! being walked, and a budget that runs out mid-facts then leaves every holder named and
+//! [`HolderKind::Unclassified`] rather than dropping the ones it never reached.
 
+#[cfg(all(test, target_os = "macos"))]
+pub(super) mod detached_holder;
+mod facts;
 mod scan;
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
@@ -149,6 +157,16 @@ pub(super) enum PathScan {
     Unreadable,
 }
 
+impl PathScan {
+    /// Whoever this path's walk named, which is nobody when it couldn't be walked.
+    fn named(&self) -> &[VolumeHolder] {
+        match self {
+            Self::Named(holders) => holders,
+            Self::Unreadable => &[],
+        }
+    }
+}
+
 /// Who holds `paths`, within `budget`.
 ///
 /// `paths` are the teardown's mounts that are still in the table; an empty list is
@@ -160,12 +178,29 @@ pub(super) async fn scan(paths: Vec<PathBuf>, budget: Duration) -> HolderScan {
         return HolderScan::not_scanned();
     }
     let found = Arc::new(Mutex::new(Vec::with_capacity(expected)));
-    let filled = Arc::clone(&found);
+    let kinds = Arc::new(Mutex::new(HashMap::new()));
+    let (filled, named) = (Arc::clone(&found), Arc::clone(&kinds));
+    // ❗ A plain `Instant`, ❌ not tokio's: this deadline is read on a std thread, which a
+    // paused test clock races straight past.
+    let deadline = Instant::now() + budget;
     let ran = within_budget(budget, move || {
         for path in &paths {
             let one = scan::scan_path(path);
             filled.lock_ignore_poison().push(one);
         }
+        // Held only to copy the pids out: the facts below take their time, and the async
+        // side reads what's landed the moment the budget runs out.
+        let mut holders: Vec<u32> = Vec::new();
+        for holder in filled.lock_ignore_poison().iter().flat_map(PathScan::named) {
+            // One process holding two of a disk's volumes is one holder, and asking
+            // Security about it twice would spend the budget twice over.
+            if !holders.contains(&holder.pid) {
+                holders.push(holder.pid);
+            }
+        }
+        facts::name_the_kinds(&holders, &paths, deadline, |pid, what| {
+            named.lock_ignore_poison().insert(pid, what);
+        });
     })
     .await;
     if !ran {
@@ -176,7 +211,24 @@ pub(super) async fn scan(paths: Vec<PathBuf>, budget: Duration) -> HolderScan {
         );
     }
     let found = found.lock_ignore_poison();
-    merge(&found, expected)
+    let mut scanned = merge(&found, expected);
+    apply_kinds(&mut scanned, &kinds.lock_ignore_poison());
+    scanned
+}
+
+/// Puts what the facts found onto each holder the walk named.
+///
+/// Pure. A pid with no entry keeps its executable name and stays `Unclassified`: the
+/// budget ran out before the facts reached it, and that's ❌ never a reason to drop it.
+fn apply_kinds(scanned: &mut HolderScan, kinds: &HashMap<u32, facts::Classified>) {
+    let named = match scanned {
+        HolderScan::Complete { named } | HolderScan::Incomplete { named } => named,
+    };
+    for holder in named.iter_mut() {
+        if let Some(what) = kinds.get(&holder.pid) {
+            facts::rename(holder, what);
+        }
+    }
 }
 
 /// Runs `work` on ONE std thread the budget can walk away from, answering whether it

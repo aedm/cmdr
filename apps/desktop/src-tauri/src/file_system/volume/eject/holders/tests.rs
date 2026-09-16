@@ -158,6 +158,75 @@ async fn asking_about_no_paths_at_all_answers_at_once_without_a_thread() {
     assert_eq!(started.elapsed(), Duration::ZERO);
 }
 
+// ── What the facts add to what the walk named ─────────────────────
+
+#[test]
+fn what_the_facts_found_lands_on_the_holder_the_walk_named() {
+    let mut scanned = HolderScan::Complete {
+        named: vec![holder(94646, "stable"), holder(983, "lsd")],
+    };
+    let kinds = HashMap::from([
+        (
+            94646,
+            facts::Classified {
+                name: Some("Warp".to_string()),
+                bundle_id: Some("dev.warp.Warp-Stable".to_string()),
+                kind: HolderKind::App,
+            },
+        ),
+        (
+            983,
+            facts::Classified {
+                name: None,
+                bundle_id: None,
+                kind: HolderKind::System,
+            },
+        ),
+    ]);
+
+    apply_kinds(&mut scanned, &kinds);
+
+    assert_eq!(
+        scanned,
+        HolderScan::Complete {
+            named: vec![
+                VolumeHolder {
+                    pid: 94646,
+                    name: "Warp".to_string(),
+                    bundle_id: Some("dev.warp.Warp-Stable".to_string()),
+                    kind: HolderKind::App,
+                },
+                VolumeHolder {
+                    pid: 983,
+                    name: "lsd".to_string(),
+                    bundle_id: None,
+                    kind: HolderKind::System,
+                },
+            ]
+        },
+        "an app renames its holder; a system process keeps the executable name"
+    );
+}
+
+#[test]
+fn a_holder_the_facts_never_reached_keeps_its_name_and_stays_unclassified() {
+    // ❗ What the budget leaves behind. A named pid with no kind still words better than
+    // nothing, and dropping it would be the same collapse as reading "couldn't tell" as
+    // "nobody there".
+    let mut scanned = HolderScan::Incomplete {
+        named: vec![holder(7, "sleep")],
+    };
+
+    apply_kinds(&mut scanned, &HashMap::new());
+
+    assert_eq!(
+        scanned,
+        HolderScan::Incomplete {
+            named: vec![holder(7, "sleep")]
+        }
+    );
+}
+
 // ── The words a log and an MCP reply read ─────────────────────────
 
 #[test]
