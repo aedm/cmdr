@@ -336,7 +336,7 @@ describe('CommandPalette', () => {
     await tick()
 
     const row = target.querySelector('[id="palette-option-view.showHidden"]')
-    expect(row?.querySelector('.command-name')?.textContent?.trim()).toBe('Show hidden files')
+    expect(row?.querySelector('.command-name')?.textContent.trim()).toBe('Show hidden files')
   })
 
   it('renders a status badge on rows whose command carries one, and only on those', async () => {

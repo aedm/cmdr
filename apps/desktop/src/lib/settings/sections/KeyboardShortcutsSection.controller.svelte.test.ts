@@ -28,11 +28,23 @@ const confirmDialog = vi.fn<(payload: { message: string; title: string }) => Pro
   Promise.resolve(false),
 )
 
-/** The two punctuation codes the capture tests below press. */
-const PHYSICAL_PUNCTUATION: Record<string, string> = { Equal: '=', Minus: '-' }
+/**
+ * The two punctuation codes the capture tests below press. Typed as possibly
+ * `undefined` because that's what a lookup of any other code returns — the real
+ * `codeToKey` table names a fixed set, and the `undefined` branch is the one
+ * that keeps letters and F-keys out of the physical-key path.
+ */
+const PHYSICAL_PUNCTUATION: Record<string, string | undefined> = { Equal: '=', Minus: '-' }
+
+/**
+ * Everything the fake formatter reads. Narrower than `KeyboardEvent` on purpose:
+ * the physical-key mock builds one of these from scratch rather than spreading
+ * the event, which would drop the prototype and quietly weaken every test here.
+ */
+type ComboParts = Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'key'>
 
 /** Prefix held modifiers (mac glyphs), then the key. */
-function fakeFormatKeyCombo(e: KeyboardEvent): string {
+function fakeFormatKeyCombo(e: ComboParts): string {
   let s = ''
   if (e.metaKey) s += '⌘'
   if (e.ctrlKey) s += '⌃'
@@ -68,7 +80,15 @@ vi.mock('$lib/shortcuts', () => ({
     const physical = /^Digit(\d)$/.exec(e.code)?.[1] ?? PHYSICAL_PUNCTUATION[e.code]
     if (physical === undefined || physical === e.key) return null
     if (!e.altKey && !e.shiftKey) return null
-    return fakeFormatKeyCombo({ ...e, key: physical })
+    // Named field by field, mirroring the real helper's `eventModifiers`: the
+    // modifiers from the keypress, the key from the physical table.
+    return fakeFormatKeyCombo({
+      metaKey: e.metaKey,
+      ctrlKey: e.ctrlKey,
+      altKey: e.altKey,
+      shiftKey: e.shiftKey,
+      key: physical,
+    })
   },
   findConflictsForShortcut: (shortcut: string, scope: string, excludeCommandId: string) =>
     findConflictsForShortcut({ shortcut, scope, excludeCommandId }),
