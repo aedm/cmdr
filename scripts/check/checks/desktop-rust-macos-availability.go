@@ -217,16 +217,7 @@ func selectorsNewerThanFloor(ctx *CheckContext, floor macOSVersion) (map[string]
 	path := filepath.Join(ctx.RootDir, filepath.Join(runnerChecksDirParts...), macOSAvailabilitySelectorsFile)
 
 	if runtime.GOOS != "darwin" || !CommandExists("xcrun") {
-		stored, err := readSelectorIndex(path)
-		if err != nil {
-			return nil, false, err
-		}
-		if stored.Floor != floor.String() {
-			return nil, false, fmt.Errorf(
-				"%s was built for macOS %s but %s now says %s; re-run this check on a Mac to rebuild it from the SDK",
-				macOSAvailabilitySelectorsFile, stored.Floor, tauriConfRelPath, floor)
-		}
-		versions, err := parseSelectorVersions(stored)
+		versions, err := storedSelectorsForFloor(path, floor)
 		return versions, false, err
 	}
 
@@ -256,33 +247,60 @@ func selectorsNewerThanFloor(ctx *CheckContext, floor macOSVersion) (map[string]
 		fresh.Selectors[name] = version.String()
 	}
 
+	rewritten, err := recordSelectorIndex(ctx, path, sdkVersion, fresh)
+	if err != nil {
+		return nil, false, err
+	}
+	return newer, rewritten, nil
+}
+
+// storedSelectorsForFloor reads the committed list off a machine that can't ask an
+// SDK. A list built for a different floor is an error rather than a silent wrong
+// answer: it names only what was above the floor at the time.
+func storedSelectorsForFloor(path string, floor macOSVersion) (map[string]macOSVersion, error) {
+	stored, err := readSelectorIndex(path)
+	if err != nil {
+		return nil, err
+	}
+	if stored.Floor != floor.String() {
+		return nil, fmt.Errorf(
+			"%s was built for macOS %s but %s now says %s; re-run this check on a Mac to rebuild it from the SDK",
+			macOSAvailabilitySelectorsFile, stored.Floor, tauriConfRelPath, floor)
+	}
+	return parseSelectorVersions(stored)
+}
+
+// recordSelectorIndex settles what the committed list should say now that this Mac's
+// SDK has answered, and reports whether it rewrote the file.
+//
+// ❗ The file records the NEWEST SDK it's been built against, and an older Mac never
+// walks that back. An older SDK knows fewer selectors, and writing those back would
+// loosen every Linux lane for everyone, silently, on someone's first run — after which
+// the file ping-pongs between the two machines forever.
+func recordSelectorIndex(ctx *CheckContext, path string, sdkVersion macOSVersion, fresh macOSSelectorIndex) (bool, error) {
 	stored, readErr := readSelectorIndex(path)
-	// ❗ The file records the NEWEST SDK it's been built against, and an older Mac
-	// never walks that back. An older SDK knows fewer selectors, and writing those
-	// back would loosen every Linux lane for everyone, silently, on someone's first
-	// run — after which the file ping-pongs between the two machines forever.
 	if readErr == nil && olderThanStoredSDK(sdkVersion, stored.SDK) {
 		if sameSelectorIndex(stored, fresh) {
 			// The same answer from an older SDK: nothing to record, nothing to warn about.
-			return newer, false, nil
+			return false, nil
 		}
-		return nil, false, fmt.Errorf(
+		return false, fmt.Errorf(
 			"%s was built on the macOS %s SDK and this machine has %s, which knows a different set of selectors, so the file is left alone. "+
 				"Re-run on the newer SDK, or delete the file and re-run to rebuild it against this one",
 			macOSAvailabilitySelectorsFile, stored.SDK, fresh.SDK)
 	}
 	if readErr == nil && sameSelectorIndex(stored, fresh) && stored.SDK == fresh.SDK {
-		return newer, false, nil
+		return false, nil
 	}
 	if ctx.CI {
-		return nil, false, fmt.Errorf(
+		return false, fmt.Errorf(
 			"%s doesn't match the installed SDK (%s). Run `pnpm check macos-availability` locally and commit the rewrite",
 			macOSAvailabilitySelectorsFile, fresh.SDK)
 	}
 	if err := writeSelectorIndex(path, fresh); err != nil {
-		return nil, false, err
+		return false, err
 	}
-	return newer, true, nil
+	return true, nil
 }
 
 // olderThanStoredSDK answers whether this machine's SDK predates the one the
