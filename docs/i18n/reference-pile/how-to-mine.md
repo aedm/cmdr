@@ -262,15 +262,37 @@ msggrep --msgid -e 'Move to Trash' -i hu/kde-dolphin/dolphin.po                 
 
 ## Total Commander (Tier 3, orthodox file manager): `<tag>/total-commander/WCMD.LNG.utf8`
 
-INI-style `ID="value"` lines (numeric string IDs), already decoded to UTF-8. The IDs aren't self-describing, so mine by
-the translated VALUE rather than by key. `WCMD.INC.utf8` is the menu file (menu labels with `&` accelerators), often the
-cleanest place to see a term in a real menu:
+INI-style `ID="value"` lines (numeric string IDs). The IDs aren't self-describing, so mine by the translated VALUE
+rather than by key. `WCMD.INC.utf8` is the menu file (menu labels with `&` accelerators), often the cleanest place to
+see a term in a real menu:
 
 ```sh
 # Find how a concept is phrased by grepping the target value (TC is the richest source for two-pane terms):
 grep -iE 'panel' hu/total-commander/WCMD.LNG.utf8        # pane → "panel" (e.g. "az aktív panelről")
 grep -iE 'könyvjelz|kedvenc|favorit|hotlist' hu/total-commander/WCMD.INC.utf8   # bookmark/favorites framing
 ```
+
+> [!CAUTION] **The `.utf8` suffix is only true for Western Europe.** Every TC file in the pile was converted as if its
+> bytes were windows-1252, whatever the language's real codepage was. So `de`/`es`/`fr`/`nl`/`pt`/`sv` read correctly
+> and everything else is mojibake or quietly wrong: `zh` reads `Ñ¡ÔñÀ©Õ¹Ãû…`, `vi` reads `Chá»n táº¥t cáº£…`, and `hu`
+> looks fine while saying `nevû` for `nevű`. Reading one of these as-is and calling the term unsourced is the trap.
+> Recover the original bytes by reversing the windows-1252 mapping, then decode with the real codepage:
+>
+> ```js
+> // node: <tag> -> codepage. hu/pl/cs = windows-1250, ru = windows-1251, el = windows-1253, tr = windows-1254,
+> // zh = gbk, zh-TW = big5, ja = shift_jis, ko = euc-kr, vi = utf-8 (it was already UTF-8 before the conversion).
+> const cp = new TextDecoder('windows-1252')
+> const rev = new Map()
+> for (let b = 0; b < 256; b++) rev.set(cp.decode(Uint8Array.of(b)), b)
+> const bytes = Uint8Array.from(Array.from(text).map((c) => rev.get(c) ?? 0x3f))
+> const real = new TextDecoder(codepage).decode(bytes)
+> ```
+>
+> It's **lossy** for the five bytes windows-1252 leaves undefined (`0x81`, `0x8D`, `0x8F`, `0x90`, `0x9D`), so a few
+> characters come back as `?`: `vi` loses the `ọ` in `Chọn`, `ja` loses a kana here and there. Enough survives to read a
+> term; don't quote a `vi` or `ja` TC string verbatim without checking it against another source. (Verified 2026-09-16
+> across `hu`, `vi`, `zh`, `zh-TW`, `ru`, `tr`, `el`, `ja`, `ko`.) Double Commander's `.po` files are genuine UTF-8 and
+> have none of this, so prefer DC where both cover the term.
 
 To pin an English source to a TC ID, cross-reference `TOTALCMD.INC` (the English menu reference in the installer CAB);
 TC ships no English `WCMD.LNG` (English is compiled in), so there's no English-side string file to diff against — value
