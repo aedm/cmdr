@@ -68,7 +68,7 @@ vi.mock('$lib/shortcuts', () => ({
     const physical = /^Digit(\d)$/.exec(e.code)?.[1] ?? PHYSICAL_PUNCTUATION[e.code]
     if (physical === undefined || physical === e.key) return null
     if (!e.altKey && !e.shiftKey) return null
-    return fakeFormatKeyCombo({ ...e, key: physical } as KeyboardEvent)
+    return fakeFormatKeyCombo({ ...e, key: physical })
   },
   findConflictsForShortcut: (shortcut: string, scope: string, excludeCommandId: string) =>
     findConflictsForShortcut({ shortcut, scope, excludeCommandId }),
