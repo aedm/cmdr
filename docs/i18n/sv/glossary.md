@@ -3217,3 +3217,50 @@ Sex nya värden i samma toast som § Utmatning och frånkoppling, alltså fortfa
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+Varningsbrickan i namnlisten och dess tooltip, som visas så länge Cmdr saknar full skivtillgång; ett klick öppnar
+introduktionen på steg 1.
+
+- **`onboarding.fdaBadge.label` → `Ingen full skivtillgång`** · reuses the settled `Full skivtillgång`, re-confirmed on
+  a newer OS (`SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable`, key `ALL_FILES`, macOS 27.0
+  build 26A428, verified 2026-09-16) · high.
+- **`onboarding.stepAi.bannerTitle.denied` already carried this exact string**, and `i18n-terms` holds the two identical
+  because they share one English source. ❌ Reword neither alone.
+- **`onboarding.fdaBadge.ariaLabel` opens with the label verbatim**
+  (`Ingen full skivtillgång. Öppna steget om full skivtillgång i introduktionen.`), which is what satisfies `i18n-aria`
+  (WCAG 2.5.3). The definite-form trap applies here: ❌ never `skivtillgången` in the aria sentence, since the definite
+  form would stop containing the indefinite label. ❌ Re-wording the label alone breaks it too.
+- **Tooltip terms**: drive → `enhet` (settled, as in `onboarding.stepOptional.indexing.benefit1`), search a drive →
+  `söka igenom` (settled), cloud folders → `molnmappar` (the compound, like the settled `molnleverantör`), "files macOS
+  keeps to itself" → `filer som macOS håller för sig själv` (plain, ❌ never a macOS feature name), "Click to …" →
+  `Klicka för att …` (as in `fileExplorer.breadcrumb.navigateTooltip`), onboarding → `introduktionen` (as in
+  `shortcuts.scope.onboarding`).
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. Swedish solves it
+  with `{count} av objekten du valde`, which takes any numeral without agreement.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails`
+  (`Tekniska detaljer`), because it points at that very control.
+
+- **locked → `låst`** · macOS (`AXNODE1` `Låst`) and the settled catalog term · high.
+- **"delete them permanently" → `radera permanent`** · matches `commands.fileDeletePermanently.label`, so the suggestion
+  names the command the user will run · high.
+- **badge (the title-bar pill) → `märket`** · Microsoft sv terminology (`badge` → `märke`) · high. ❌ Not
+  `statussymbol`, which this glossary reserves for the small overlay marker on a file row. title bar → `namnlisten` ·
+  high.
+- The quoted badge text is `onboarding.fdaBadge.label` verbatim, in the Swedish `”…”` quotes the catalog uses throughout
+  (214 of them, zero `“`).
+- "somewhere macOS keeps to itself" → `på ett ställe som macOS håller för sig själv`, reusing the wording settled for
+  `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.

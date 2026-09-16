@@ -1353,6 +1353,38 @@
   "@errors.write.invalidName.suggestion": {
     "sourceHash": "3721c3d"
   },
+  "errors.write.trashRefused.title": "No se pudo mover a la papelera",
+  "@errors.write.trashRefused.title": {
+    "sourceHash": "c2d75cc"
+  },
+  "errors.write.trashRefused.message.notPermitted": "macOS no dejó que Cmdr tocara {count} de los elementos que elegiste.",
+  "@errors.write.trashRefused.message.notPermitted": {
+    "sourceHash": "e11fc50"
+  },
+  "errors.write.trashRefused.message.noTrashForVolume": "macOS no encontró una papelera para {count} de los elementos que elegiste.",
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "sourceHash": "d86a66d"
+  },
+  "errors.write.trashRefused.message.other": "macOS no movió a la papelera {count} de los elementos que elegiste.",
+  "@errors.write.trashRefused.message.other": {
+    "sourceHash": "5c73490"
+  },
+  "errors.write.trashRefused.suggestion.notPermitted": "Puede que los elementos estén bloqueados, o que estén en un sitio que macOS se reserva. Aun así puedes eliminarlos permanentemente con Shift+F8.",
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "sourceHash": "ff40f4b"
+  },
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "Algunos sitios no tienen papelera propia, como las carpetas en la nube y la mayoría de las unidades de red. Aun así puedes eliminar los elementos permanentemente con Shift+F8.",
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "sourceHash": "b6d08fa"
+  },
+  "errors.write.trashRefused.suggestion.other": "Revisa los detalles técnicos de abajo para ver lo que informó macOS.",
+  "@errors.write.trashRefused.suggestion.other": {
+    "sourceHash": "b61b3c1"
+  },
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "Cmdr tampoco tiene acceso total al disco en este Mac, que es una causa habitual. El aviso “Sin acceso total al disco” de la barra de título te lleva a esa decisión.",
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "sourceHash": "ab20ec5"
+  },
   "errors.write.ioError.title.copy": "No se pudo copiar",
   "@errors.write.ioError.title.copy": {
     "sourceHash": "53b17a4"

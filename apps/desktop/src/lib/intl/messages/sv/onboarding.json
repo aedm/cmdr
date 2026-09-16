@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "Ingen full skivtillgång",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "Du måste inte ge det här, men Cmdr fungerar mycket bättre med det: söka igenom hela din enhet, läsa molnmappar och ändra filer som macOS håller för sig själv. Klicka för att titta på valet igen.",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "Ingen full skivtillgång. Öppna steget om full skivtillgång i introduktionen.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Kom igång med Cmdr",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"

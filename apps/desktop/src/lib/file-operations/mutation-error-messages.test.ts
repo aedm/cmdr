@@ -60,7 +60,7 @@ const MUTATION_CASES: MutationError[] = [
   { type: 'archiveEditCouldntStart', detail: 'SinkMissing' },
   { type: 'alreadyExists', name: 'notes.txt' },
   { type: 'trashNotSupported' },
-  { type: 'trashRefused', detail: 'NSFileWriteNoPermissionError' },
+  { type: 'trashRefused', reason: 'notPermitted', detail: 'NSFileWriteNoPermissionError' },
   { type: 'volume', error: { type: 'notFound', data: '/Volumes/share/holiday.raw' } },
   { type: 'timedOut' },
   { type: 'unexpected', detail: "the rename task didn't finish: panicked" },
@@ -140,9 +140,9 @@ describe('technicalDetail', () => {
   })
 
   it("hands back the OS's own words when the Trash refused", () => {
-    expect(technicalDetail({ type: 'trashRefused', detail: 'NSFileWriteNoPermissionError' })).toBe(
-      'NSFileWriteNoPermissionError',
-    )
+    expect(
+      technicalDetail({ type: 'trashRefused', reason: 'notPermitted', detail: 'NSFileWriteNoPermissionError' }),
+    ).toBe('NSFileWriteNoPermissionError')
   })
 
   it('has nothing to add for a refusal that only carries a path', () => {

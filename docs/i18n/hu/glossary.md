@@ -101,8 +101,11 @@ Developer = `Fejlesztői`, MCP server = `MCP-szerver`, Logging = `Naplózás`, U
 - Privacy & Security (macOS pane) → `Adatvédelem és biztonság` · mac · high.
 - Help (menu) → `Súgó` · mac · high.
 - Downloads (folder) → `Letöltések` · mac · high.
-- Full Disk Access → `Teljes lemezhozzáférés` · standard macOS Hungarian wording, no direct pile hit · tentative.
-  FLAGGED.
+- Full Disk Access → `Teljes hozzáférés a lemezhez` · a live macOS bundle, not a guess:
+  `/System/Library/ExtensionKit/Extensions/SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable`, key
+  `ALL_FILES` (macOS 27.0 build 26A428, verified 2026-09-16) · high. Supersedes the earlier `Teljes lemezhozzáférés`,
+  which reads fine but names no row in a Hungarian Rendszerbeállítások. Running prose may keep the compound; see § The
+  title-bar full-disk-access badge.
 - Local Network (permission) → `Helyi hálózat` · standard macOS wording, no direct pile hit · tentative. Mostly an
   OS-injected `{localNetwork}` placeholder; plain-text uses follow this. FLAGGED.
 - toast (transient notification) → `buborék` · descriptive, no pile term · tentative. FLAGGED.
@@ -3638,3 +3641,54 @@ mondatvázat viszik: **`X még használja ezt a meghajtót.` + egy tegező felsz
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+A címsorban ülő figyelmeztető jelvény és a hozzá tartozó tooltip, amíg a Cmdrnek nincs teljes hozzáférése a lemezhez;
+kattintásra a bevezető 1. lépése nyílik meg.
+
+- **`onboarding.fdaBadge.label` → `Nincs teljes hozzáférés a lemezhez`** · Apple's own Rendszerbeállítások row (see the
+  Full Disk Access entry above for the live-bundle evidence) · high. Longer than the compound `teljes lemezhozzáférés`,
+  but the badge's whole job is to be findable in the Rendszerbeállítások, and that is the row's actual wording.
+- **`onboarding.stepAi.bannerTitle.denied` carries the SAME English string** ("No full disk access"), so `i18n-terms`
+  holds the two identical. It was moved from `Nincs teljes lemezhozzáférés` onto the pane name in the same pass. ❌
+  Reword neither alone.
+- **`onboarding.fdaBadge.ariaLabel` opens with the label verbatim**
+  (`Nincs teljes hozzáférés a lemezhez. Megnyitja a bevezető teljes lemezhozzáférésről szóló lépését.`), which is what
+  satisfies `i18n-aria` (WCAG 2.5.3). The second sentence needs a `-ről` suffix on the term, and a suffixed form would
+  NOT contain the bare label, so the containment rides on the opening sentence. ❌ Re-wording the label alone breaks it.
+- **Tooltip terms**: the benefit list is nominal (`az egész meghajtód átkutatása, a felhős mappák olvasása, …`), the
+  Hungarian UI convention; drive → `meghajtó` (settled), cloud folders → `felhős mappák`, "files macOS keeps to itself"
+  → `azok a fájlok, amiket a macOS magának tart` (plain, ❌ never a macOS feature name), "Click to …" →
+  `Kattints ide, …` (as in `fileExplorer.breadcrumb.navigateTooltip`), onboarding → `bevezető` (settled).
+- **Name vs prose, the boundary**: `teljes hozzáférés a lemezhez` where a string NAMES the setting. The FDA step's
+  running prose (`onboarding.stepFda.revoked.noAccess` and its siblings) still says `teljes lemezhozzáférés`, which is
+  idiomatic Hungarian for the concept. Open decision: whether a later pass sweeps the prose onto the pane name too.
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. Hungarian solves it
+  with `a kiválasztott elemek közül {count} darab…`, where the counted noun stays singular whatever the numeral is.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails`
+  (`Technikai részletek`), because it points at that very control.
+
+- **locked → `zárolva`** · macOS Finder (`AXNODE1` `Zárolva`) and the settled catalog term · high.
+- **"delete them permanently" → `véglegesen törölheted`** · the verb form of `commands.fileDeletePermanently.label`
+  (`Végleges törlés`), so the suggestion names the command the user will run · high.
+- **❗ `Shift+F8` takes no case suffix.** The natural Hungarian would be `a Shift+F8-cal`, which welds a suffix onto a
+  shortcut that has to stay verbatim, so both suggestions restructure to `A Shift+F8 billentyűparanccsal viszont …` and
+  leave the token bare. Do the same for any future shortcut mention.
+- **badge (the title-bar pill) → `jelvény`** · the settled term (MS `badge` → `jelvény`, plus the Finder status-badge
+  parallel) · high. title bar → `címsor` · high.
+- The quoted badge text is `onboarding.fdaBadge.label` verbatim, in Hungarian `„…”` quotes.
+- "somewhere macOS keeps to itself" → `olyan helyen vannak, amit a macOS magának tart`, reusing the wording settled for
+  `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.

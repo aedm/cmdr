@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "Kein Festplattenvollzugriff",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "Du musst das nicht erlauben, aber Cmdr arbeitet damit deutlich besser: dein ganzes Laufwerk durchsuchen, Cloud-Ordner lesen und Dateien ändern, die macOS für sich behält. Klicke, um dir die Entscheidung noch einmal anzusehen.",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "Kein Festplattenvollzugriff. Den Schritt zum Festplattenvollzugriff in der Einführung öffnen.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Cmdr-Einführung",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"
@@ -163,7 +175,7 @@
   "@onboarding.stepAi.bannerBody.granted": {
     "sourceHash": "236f3f5"
   },
-  "onboarding.stepAi.bannerTitle.denied": "Kein vollständiger Festplattenzugriff",
+  "onboarding.stepAi.bannerTitle.denied": "Kein Festplattenvollzugriff",
   "@onboarding.stepAi.bannerTitle.denied": {
     "sourceHash": "0aa10cf"
   },

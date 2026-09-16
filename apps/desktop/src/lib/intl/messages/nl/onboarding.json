@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "Geen volledige schijftoegang",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "Je hoeft dit niet te geven, maar Cmdr werkt er een stuk beter mee: je hele schijf doorzoeken, cloudmappen lezen en bestanden wijzigen die macOS voor zichzelf houdt. Klik om de keuze nog eens te bekijken.",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "Geen volledige schijftoegang. Open de stap over volledige schijftoegang in de onboarding.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Cmdr onboarding",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b",

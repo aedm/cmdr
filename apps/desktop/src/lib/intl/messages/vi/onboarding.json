@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "Không có quyền truy cập đầy đủ vào ổ đĩa",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "Bạn không nhất thiết phải cấp quyền này, nhưng Cmdr chạy tốt hơn nhiều khi có nó: tìm kiếm toàn bộ ổ đĩa, đọc các thư mục đám mây, và sửa những tệp mà macOS giữ riêng cho mình. Bấm để xem lại lựa chọn này.",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "Không có quyền truy cập đầy đủ vào ổ đĩa. Mở bước quyền truy cập đầy đủ vào ổ đĩa trong phần thiết lập ban đầu.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Thiết lập ban đầu Cmdr",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"
@@ -163,7 +175,7 @@
   "@onboarding.stepAi.bannerBody.granted": {
     "sourceHash": "236f3f5"
   },
-  "onboarding.stepAi.bannerTitle.denied": "Không có quyền truy cập toàn bộ đĩa",
+  "onboarding.stepAi.bannerTitle.denied": "Không có quyền truy cập đầy đủ vào ổ đĩa",
   "@onboarding.stepAi.bannerTitle.denied": {
     "sourceHash": "0aa10cf"
   },

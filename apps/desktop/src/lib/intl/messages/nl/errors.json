@@ -1353,6 +1353,38 @@
   "@errors.write.invalidName.suggestion": {
     "sourceHash": "3721c3d"
   },
+  "errors.write.trashRefused.title": "Verplaatsen naar prullenmand lukte niet",
+  "@errors.write.trashRefused.title": {
+    "sourceHash": "c2d75cc"
+  },
+  "errors.write.trashRefused.message.notPermitted": "macOS liet Cmdr {count} van de onderdelen die je koos niet aanraken.",
+  "@errors.write.trashRefused.message.notPermitted": {
+    "sourceHash": "e11fc50"
+  },
+  "errors.write.trashRefused.message.noTrashForVolume": "macOS kon voor {count} van de onderdelen die je koos geen prullenmand vinden.",
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "sourceHash": "d86a66d"
+  },
+  "errors.write.trashRefused.message.other": "macOS verplaatste {count} van de onderdelen die je koos niet naar de prullenmand.",
+  "@errors.write.trashRefused.message.other": {
+    "sourceHash": "5c73490"
+  },
+  "errors.write.trashRefused.suggestion.notPermitted": "De onderdelen zijn misschien beveiligd, of ze staan op een plek die macOS voor zichzelf houdt. Je kunt ze wel definitief verwijderen met Shift+F8.",
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "sourceHash": "ff40f4b"
+  },
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "Sommige plekken hebben geen eigen prullenmand, waaronder cloudmappen en de meeste netwerkschijven. Je kunt de onderdelen wel definitief verwijderen met Shift+F8.",
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "sourceHash": "b6d08fa"
+  },
+  "errors.write.trashRefused.suggestion.other": "Bekijk de technische details hieronder voor wat macOS meldde.",
+  "@errors.write.trashRefused.suggestion.other": {
+    "sourceHash": "b61b3c1"
+  },
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "Cmdr heeft op deze Mac ook geen volledige schijftoegang, en dat is een veelvoorkomende oorzaak. De markering ‘Geen volledige schijftoegang’ in de titelbalk brengt je naar die keuze.",
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "sourceHash": "ab20ec5"
+  },
   "errors.write.ioError.title.copy": "Kopiëren lukte niet",
   "@errors.write.ioError.title.copy": {
     "sourceHash": "53b17a4"

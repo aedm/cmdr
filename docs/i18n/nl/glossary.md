@@ -3670,3 +3670,51 @@ REVIEW FLAGS:
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+De waarschuwingspil in de titelbalk plus de tooltip, zichtbaar zolang Cmdr geen volledige schijftoegang heeft; een klik
+heropent de onboarding op stap 1.
+
+- **`onboarding.fdaBadge.label` → `Geen volledige schijftoegang`** · Apple's own Systeeminstellingen row, now confirmed
+  against the live macOS bundle
+  (`/System/Library/ExtensionKit/Extensions/SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable`, key
+  `ALL_FILES`, macOS 27.0 build 26A428, verified 2026-09-16) · high. The two existing glossary entries above already had
+  it right.
+- **`onboarding.stepAi.bannerTitle.denied` already carried this exact string**, and `i18n-terms` holds the two identical
+  because they share one English source. ❌ Reword neither alone.
+- **`onboarding.fdaBadge.ariaLabel` opens with the label verbatim**
+  (`Geen volledige schijftoegang. Open de stap over volledige schijftoegang in de onboarding.`), which is what satisfies
+  `i18n-aria` (WCAG 2.5.3). ❌ Re-wording the label alone breaks it.
+- **Tooltip terms**: drive → `schijf` (settled), scan/search a drive → `doorzoeken` (settled), cloud folders →
+  `cloudmappen` (the compound, like the settled `cloudprovider`), "files macOS keeps to itself" →
+  `bestanden die macOS voor zichzelf houdt` (plain, ❌ never a macOS feature name), "Click to …" → the bare-stem
+  imperative `Klik om …` (as in `fileExplorer.breadcrumb.navigateTooltip`), onboarding → `onboarding` (settled loan).
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. Dutch solves it
+  with `{count} van de onderdelen die je koos`, which takes any numeral without agreement.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails`
+  (`Technische details`), because it points at that very control.
+
+- **locked → `beveiligd`** · Apple's own Dutch word for the state and the checkbox (macOS Finder `AXNODE1` `Beveiligd`),
+  and the direction this glossary already recorded as the recommendation · high. ⚠️ The older siblings in this same
+  dialog (`errors.write.fileLocked.title`, `errors.write.permissionDenied.suggestion.deleteMac`) still say
+  `vergrendeld`; that sweep is still open, and this key is written on the recommended side of it.
+- **"delete them permanently" → `definitief verwijderen`** · matches `commands.fileDeletePermanently.label`
+  (`Verwijder definitief`), so the suggestion names the command the user will run · high.
+- **badge (the title-bar pill) → `de markering`** · reuses the settled `badge / status badge → markering` · high. title
+  bar → `titelbalk` · high.
+- The quoted badge text is `onboarding.fdaBadge.label` verbatim, in the catalog's `‘…’` quotes.
+- "somewhere macOS keeps to itself" → `op een plek die macOS voor zichzelf houdt`, reusing the wording settled for
+  `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.

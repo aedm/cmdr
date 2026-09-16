@@ -16,6 +16,8 @@
  * naturally. See `$lib/intl`'s docs.
  */
 import type { WriteOperationError, TransferOperationType, FriendlyError } from '$lib/file-explorer/types'
+import type { TrashRefusalKind } from '$lib/ipc/bindings'
+import { fdaIsMissing } from '$lib/onboarding/fda-status.svelte'
 import type { ProgressAtStop } from '$lib/tauri-commands'
 import { formatInteger } from '$lib/intl/number-format'
 import { isMacOS } from '$lib/shortcuts/key-capture'
@@ -207,6 +209,10 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   read_error: { category: 'serious', retryHint: true },
   write_error: { category: 'serious', retryHint: true },
   io_error: { category: 'serious', retryHint: true },
+  // No Retry. The two reasons that reach here in practice are permission-shaped, and
+  // the identical request can only be refused the same way; offering Retry is what the
+  // old `io_error` wording did, and it was the useless half of the dialog.
+  trash_refused: { category: 'needs_action', retryHint: false },
   symlink_loop: { category: 'serious', retryHint: false },
   source_not_found: { category: 'needs_action', retryHint: false },
   // No Retry: the folder is missing, so the identical request can only fail
@@ -395,6 +401,61 @@ function deviceDisconnectedMessage(
 }
 
 /**
+ * Whether a missing Full Disk Access grant is a plausible explanation for a refusal,
+ * and so whether a surface may offer that as the next step.
+ *
+ * Plausible, ❗ never proven: both codes also come back for an item that is genuinely
+ * locked down, or on a volume that really has no Trash. So the offer is ADDITIVE, an
+ * extra line under whatever the OS actually said, never a replacement for it.
+ *
+ * Lives here rather than beside the Rust enum because this is the only question anyone
+ * asks of the value; splitting the vocabulary from the judgement keeps one rule in one
+ * place. `trash-refused-messages.test.ts` walks every variant, so a new one can't
+ * silently default into the offer.
+ */
+export function mayBeAPermissionGrantAway(reason: TrashRefusalKind): boolean {
+  return reason === 'notPermitted' || reason === 'noTrashForVolume'
+}
+
+/**
+ * A refused trash, worded from the reason the OS gave rather than from its sentence.
+ *
+ * ❗ It never says "try again" for a permission-shaped refusal. Retrying cannot change
+ * one, and a real report came back describing exactly that advice, under a folded
+ * "Technical details" that held the only useful part.
+ */
+function trashRefusedMessage(error: Extract<WriteOperationError, { type: 'trash_refused' }>): FriendlyErrorMessage {
+  const suggestion = w(`trashRefused.suggestion.${error.reason}`)
+  const offerGrant = isMacOS() && fdaIsMissing() && mayBeAPermissionGrantAway(error.reason)
+  return {
+    title: w('trashRefused.title'),
+    message: w(`trashRefused.message.${error.reason}`, { count: formatInteger(error.itemCount) }),
+    suggestion: offerGrant ? `${suggestion} ${w('trashRefused.suggestion.noFullDiskAccess')}` : suggestion,
+  }
+}
+
+/**
+ * The variants whose words come from the error's OWN fields and not from the operation,
+ * so they need neither `operationType` nor `progressAtStop`.
+ *
+ * Split out of `getUserFriendlyMessage` to keep that switch inside the complexity limit,
+ * and it reads better anyway: these three answer a different question from the rest.
+ * `null` means "not one of mine", never "no message".
+ */
+function fieldDrivenMessage(error: WriteOperationError): FriendlyErrorMessage | null {
+  switch (error.type) {
+    case 'trash_refused':
+      return trashRefusedMessage(error)
+    case 'read_only_device':
+      return readOnlyMessage(error)
+    case 'destination_not_writable':
+      return destinationNotWritableMessage(error)
+    default:
+      return null
+  }
+}
+
+/**
  * Returns a user-friendly message for a transfer operation error.
  * Volume-agnostic: doesn't mention MTP, SMB, etc. directly.
  *
@@ -409,6 +470,9 @@ export function getUserFriendlyMessage(
 ): FriendlyErrorMessage {
   const simpleFactory = simpleMessageFactories[error.type]
   if (simpleFactory) return simpleFactory(operationType)
+
+  const fieldDriven = fieldDrivenMessage(error)
+  if (fieldDriven) return fieldDriven
 
   switch (error.type) {
     case 'device_disconnected':
@@ -432,10 +496,6 @@ export function getUserFriendlyMessage(
         }),
         suggestion: w('insufficientSpace.suggestion'),
       }
-    case 'read_only_device':
-      return readOnlyMessage(error)
-    case 'destination_not_writable':
-      return destinationNotWritableMessage(error)
     case 'duplicate_source_names':
       // Two selected items carry one name, so they'd both want
       // `<destination>/<name>`. Refused before anything is written, and the

@@ -44,6 +44,12 @@ copy + move. Frontend counterpart:
   fact".
 - **Trash has no scan phase.** `trashItemAtURL` is atomic per top-level item, so progress tracks top-level items
   (optional bytes from pre-computed sizes). Partial failure is supported.
+- **A refusal carries a typed `TrashRefusalKind`, read from the `NSError` DOMAIN + CODE.** ❌ Never from its words:
+  they're localized and Apple rewords them, and `error-string-match` forbids it. It decides whether the dialog may
+  offer Full Disk Access as the next step, which is why the batch reports `strongest_refusal` (the reason that opens
+  the most doors) rather than the most common one. A whole batch that fails is `WriteOperationError::TrashRefused`, ❌
+  no longer an `IoError`: as one flattened sentence the dialog could only say "try again", which a permission refusal
+  cannot act on.
 - **Delete and trash don't `fsync` or fire any global `sync(2)`.** A non-durable delete is annoyance-class, not
   data-loss-class. Don't reintroduce a `sync(2)`: it flushed every filesystem on the box, stalling unrelated apps,
   and as fire-and-forget didn't make "complete" mean "durable". Pinned by

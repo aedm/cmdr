@@ -3245,3 +3245,50 @@ mesmo molde `<sujeito> ainda está usando este disco. <ação>, depois ejete-o d
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+A pílula de aviso na barra de título e o seu tooltip, exibidos enquanto o Cmdr não tem acesso total ao disco; um clique
+reabre a introdução no passo 1.
+
+- **`onboarding.fdaBadge.label` → `Sem acesso total ao disco`** · Apple's own Ajustes do Sistema row, confirmed against
+  the live macOS bundle
+  (`/System/Library/ExtensionKit/Extensions/SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable`, key
+  `ALL_FILES` = "Acesso Total ao Disco" in pt-BR, macOS 27.0 build 26A428, verified 2026-09-16) · high. **Capitalization
+  is per-surface**: Apple title-cases the pane row, but the badge's English is lowercase ("No full disk access"), so the
+  badge keeps sentence case. `Acesso Total ao Disco` stays for strings that NAME the pane.
+- **`onboarding.stepAi.bannerTitle.denied` already carried this exact string**, and `i18n-terms` holds the two identical
+  because they share one English source. ❌ Reword neither alone.
+- **`onboarding.fdaBadge.ariaLabel` opens with the label verbatim**
+  (`Sem acesso total ao disco. Abrir a etapa de acesso total ao disco da introdução.`), which is what satisfies
+  `i18n-aria` (WCAG 2.5.3). ❌ Re-wording the label alone breaks it.
+- **Tooltip terms**: drive/disk → `disco` (settled), cloud folders → `pastas na nuvem`, "files macOS keeps to itself" →
+  `arquivos que o macOS guarda para si` (plain, ❌ never a macOS feature name), "Click to …" → `Clique para …` (as in
+  `fileExplorer.breadcrumb.navigateTooltip`), onboarding → `introdução` (settled).
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. Portuguese solves
+  it with `{count} dos itens que você escolheu`, which takes any numeral without agreement.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails`
+  (`Detalhes técnicos`), because it points at that very control.
+
+- **locked → `bloqueado`** · macOS Finder pt-BR (`AXNODE1` `Bloqueado`) and the settled catalog term · high.
+- **"delete them permanently" → `apagar permanentemente`** · matches `commands.fileDeletePermanently.label`, so the
+  suggestion names the command the user will run · high.
+- **badge (the title-bar pill) → `o selo`** · reuses the settled `badge → selo` (MS terminology pt-BR) · high. title bar
+  → `barra de título` · high.
+- The quoted badge text is `onboarding.fdaBadge.label` verbatim, in the catalog's `“…”` quotes. Note the badge label is
+  sentence-cased (`Sem acesso total ao disco`) while the pane NAME stays `Acesso Total ao Disco`; the quote follows the
+  badge, since that is what the user reads on screen.
+- "somewhere macOS keeps to itself" → `um lugar que o macOS guarda para si`, reusing the wording settled for
+  `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.

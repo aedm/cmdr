@@ -1353,6 +1353,38 @@
   "@errors.write.invalidName.suggestion": {
     "sourceHash": "3721c3d"
   },
+  "errors.write.trashRefused.title": "无法移到废纸篓",
+  "@errors.write.trashRefused.title": {
+    "sourceHash": "c2d75cc"
+  },
+  "errors.write.trashRefused.message.notPermitted": "你选中的项目里有 {count} 个，macOS 不让 Cmdr 碰。",
+  "@errors.write.trashRefused.message.notPermitted": {
+    "sourceHash": "e11fc50"
+  },
+  "errors.write.trashRefused.message.noTrashForVolume": "你选中的项目里有 {count} 个，macOS 找不到对应的废纸篓。",
+  "@errors.write.trashRefused.message.noTrashForVolume": {
+    "sourceHash": "d86a66d"
+  },
+  "errors.write.trashRefused.message.other": "你选中的项目里有 {count} 个，macOS 没有移到废纸篓。",
+  "@errors.write.trashRefused.message.other": {
+    "sourceHash": "5c73490"
+  },
+  "errors.write.trashRefused.suggestion.notPermitted": "这些项目可能已锁定，也可能放在 macOS 自己留着的地方。你还是可以用 Shift+F8 把它们彻底删除。",
+  "@errors.write.trashRefused.suggestion.notPermitted": {
+    "sourceHash": "ff40f4b"
+  },
+  "errors.write.trashRefused.suggestion.noTrashForVolume": "有些位置没有自己的废纸篓，比如云端文件夹和大多数网络驱动器。你还是可以用 Shift+F8 把这些项目彻底删除。",
+  "@errors.write.trashRefused.suggestion.noTrashForVolume": {
+    "sourceHash": "b6d08fa"
+  },
+  "errors.write.trashRefused.suggestion.other": "查看下方的技术详情，看看 macOS 报告了什么。",
+  "@errors.write.trashRefused.suggestion.other": {
+    "sourceHash": "b61b3c1"
+  },
+  "errors.write.trashRefused.suggestion.noFullDiskAccess": "Cmdr 在这台 Mac 上也没有完全磁盘访问权限，这是很常见的原因。标题栏里的“没有完全磁盘访问权限”标记会带你回到那个选择。",
+  "@errors.write.trashRefused.suggestion.noFullDiskAccess": {
+    "sourceHash": "ab20ec5"
+  },
   "errors.write.ioError.title.copy": "无法拷贝",
   "@errors.write.ioError.title.copy": {
     "sourceHash": "53b17a4"

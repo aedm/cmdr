@@ -2167,7 +2167,7 @@ export const commands = {
    *  generating. The sidebar keeps the icon-less favorites it got during
    *  onboarding; the next listing-driven flow refreshes them naturally.
    *
-   *  At app launch, indexing is skipped when the FDA choice is `NotAskedYet`
+   *  At app launch, indexing is skipped when the FDA choice is `Unanswered`
    *  AND the OS reports FDA as not granted (see `should_auto_start_indexing`).
    *  The frontend calls this command after the user clicks "Deny" so the
    *  indexer starts within the same session. The "Allow" path needs no call:
@@ -9929,6 +9929,13 @@ export type MutationError =
   | {
       type: 'trashRefused'
       /**
+       *  Why, classified from the `NSError` domain and code at the boundary. It
+       *  decides whether a surface may offer Full Disk Access as the next step,
+       *  which is a question `detail` can't answer without string-matching
+       *  localized prose.
+       */
+      reason: TrashRefusalKind
+      /**
        *  What `NSFileManager` (or the Linux `trash` crate) reported, for the
        *  technical-details disclosure.
        */
@@ -13633,6 +13640,31 @@ export type TranslatedQuery = {
   excludeSystemDirs: boolean | null
 }
 
+/**
+ *  Why the OS wouldn't take something to the Trash.
+ *
+ *  ❗ Classified from the `NSError` domain and code at the boundary, ❌ never from
+ *  its words: the wording is localized and reformats between macOS releases, and
+ *  `error-string-match` forbids it. `delete/trash.rs::classify_trash_refusal` is the
+ *  one place that decides.
+ */
+export type TrashRefusalKind =
+  /**
+   *  macOS said we may not touch the item at all (`NSFileWriteNoPermissionError`,
+   *  `NSFileReadNoPermissionError`, or a POSIX `EPERM`/`EACCES`).
+   */
+  | 'notPermitted'
+  /**
+   *  macOS couldn't find a Trash for the item's volume
+   *  (`NSFeatureUnsupportedError`). It reads as "this volume doesn't have one",
+   *  and that is what it says for a File Provider folder the app can't reach,
+   *  which is why the UI treats it as permission-adjacent rather than as a fact
+   *  about the disk.
+   */
+  | 'noTrashForVolume'
+  // Anything else, including every non-macOS refusal.
+  | 'other'
+
 // One approved host key.
 export type TrustedHostKey = {
   // The server, as the user addressed it.
@@ -15056,6 +15088,27 @@ export type WriteOperationError =
    *  failure into one sentence.
    */
   | { type: 'originals_kept_aside'; cause: WriteOperationError; recovered: RecoveredOriginal[] }
+  /**
+   *  The OS refused to move items to the Trash.
+   *
+   *  Separate from [`IoError`](Self::IoError) because the REASON decides what the
+   *  dialog can offer, and a reason has to survive the trip as a value. As an
+   *  `IoError` it arrived as one sentence macOS had written, which left the dialog
+   *  with nothing to say beyond "try again" — useless advice for a refusal that
+   *  retrying cannot change.
+   */
+  | {
+      type: 'trash_refused'
+      /**
+       *  How many top-level items it refused, so the message can be plural-correct
+       *  without counting the sentences in `message`.
+       */
+      itemCount: number
+      // Why, classified at the OS boundary.
+      reason: TrashRefusalKind
+      // The OS's own words, for the technical-details disclosure ONLY.
+      message: string
+    }
   // Catch-all for genuinely unexpected IO errors.
   | { type: 'io_error'; path: string; message: string }
 

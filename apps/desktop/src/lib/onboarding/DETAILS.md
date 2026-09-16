@@ -157,7 +157,7 @@ macOS only. Linux skips the step entirely (the resume rule lands Linux users on 
 
 The step has three opening copy variants, picked by `step1VariantFor()` in `onboarding-state.svelte.ts`:
 
-- **first-ask** (`fullDiskAccessChoice === 'notAskedYet'`): welcome + a folded "Why?" + how-to + Allow / Deny.
+- **first-ask** (`fullDiskAccessChoice === 'unanswered'`): welcome + a folded "Why?" + how-to + Allow / Deny.
 - **revoked** (`'allow' && !hasFda && isOnboarded`): "Cmdr previously had FDA but you revoked it…" framing.
 - **already-granted** (`hasFda === true`, menu / palette re-entry): single line + a Next footer button.
 
@@ -543,7 +543,7 @@ restart.
 
 | macOS state                              | Resume step | Step 1 variant | Step 2 banner |
 | ---------------------------------------- | ----------- | -------------- | ------------- |
-| `notAskedYet`                            | 1           | first-ask      | (stuck)       |
+| `unanswered`                             | 1           | first-ask      | (stuck)       |
 | `allow` && `!hasFda` && `isOnboarded`    | 1           | revoked        | (stuck)       |
 | `allow` && `hasFda` (and `!isOnboarded`) | 2           | (n/a)          | granted       |
 | `allow` && `!hasFda` && `!isOnboarded`   | 2           | (n/a)          | stuck         |
@@ -577,6 +577,37 @@ opens the right pane on `~/Downloads` only when Cmdr already has Full Disk Acces
 grant, leaves both panes on `~` so no TCC dialog can appear before the user has decided anything. It deliberately does
 NOT read `onboarding.completed`, which flips to `true` in the same boot for a fresh install on an already-granted Mac.
 The rule and its guardrails: `file-explorer/pane/DETAILS.md` § "First-run pane layout".
+
+## Making a missing grant visible (`fda-status.svelte.ts` + `FdaBadge.svelte`)
+
+Before the badge, a missing Full Disk Access grant was invisible everywhere except the wizard. A real field report made
+the cost concrete: someone evaluated Cmdr for days with `fullDiskAccessChoice` still unanswered, then met a string of
+permission refusals on a Dropbox folder whose message said only "Try again", with nothing in the app connecting the two.
+Nothing on screen had ever said the permission was missing.
+
+`fda-status.svelte.ts` holds the one reactive answer, and both surfaces read it, so the badge and an error message can't
+contradict each other. Three rules it exists to enforce:
+
+- **Quiet probe only.** `checkFullDiskAccessQuiet`, never the loud `checkFullDiskAccess`. It runs on mount and whenever
+  the wizard closes; the loud one would stack TCC popups on someone who simply came back from System Settings.
+- **`null` is not `false`.** The answer starts unknown, and only a real `false` shows the badge. Rendering unknown as
+  "no access" flashes the badge on every launch for people who granted it long ago, which teaches them to ignore it.
+- **A failed probe keeps the last answer.** An IPC hiccup must not put a warning in the title bar.
+
+The badge hides while the wizard is on step 1, because that page is where the badge sends people. Everywhere else it
+stays, including behind the other steps: the choice is still unanswered there.
+
+## What an error message may add about it
+
+An error may append one line offering the grant, and only when both halves hold: this Mac is missing it, AND the failure
+is one a grant could plausibly explain (`mayBeAPermissionGrantAway` over the typed `TrashRefusalKind`). The offer is
+ADDITIVE, under whatever the OS actually said, never a replacement — the same codes come back for an item that is
+genuinely locked, or on a volume that really has no Trash, and a wrong confident explanation is worse than none.
+
+❌ Never attach it to every failure while the grant is missing. A full disk, a dropped mount, and an SFTP timeout have
+nothing to do with FDA; stapling the line to all of them teaches people to skip it within a day, and makes Cmdr look
+like it blames one permission for everything. `file-operations/transfer/trash-refused-messages.test.ts` walks every
+reason variant so a new one can't silently default into the offer.
 
 ## Mount + onboarding flag
 
@@ -690,7 +721,7 @@ Don't build it "just in case"; the `CLAUDE.md` bullet is the enforcing line.
 
 ## Key decisions
 
-**Decision**: Three-state setting (`notAskedYet` / `allow` / `deny`) instead of a boolean. **Why**: The app needs to
+**Decision**: Three-state setting (`unanswered` / `allow` / `deny`) instead of a boolean. **Why**: The app needs to
 distinguish "never asked" (show first-ask), "granted but later revoked" (show revoked copy), and "user explicitly
 declined" (don't re-prompt once onboarded). A boolean would conflate "not asked" with "denied".
 

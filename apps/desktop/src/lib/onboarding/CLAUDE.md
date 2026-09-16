@@ -6,7 +6,8 @@ analytics disclosure and the terms (3) → Optional settings (4). Linux starts a
 ## Module map
 
 `OnboardingWizard` (shell) + `OnboardingStepShell` (per-step frame), `StepFda` / `StepAi` / `StepBeta` / `StepOptional`,
-`CloudProviderPicker` / `CloudProviderSetup`, `OnboardingLanguagePicker`, `onboarding-state.svelte.ts` (state machine).
+`CloudProviderPicker` / `CloudProviderSetup`, `OnboardingLanguagePicker`, `onboarding-state.svelte.ts` (state machine),
+`fda-status.svelte.ts` (the reactive "does this Mac grant FDA" fact) + `FdaBadge.svelte` (the title-bar badge).
 
 ## Must-knows
 
@@ -43,6 +44,13 @@ analytics disclosure and the terms (3) → Optional settings (4). Linux starts a
   registration storm per denial. It runs only while Allow/Deny is open, and stops on grant.
 - **Search's coverage note routes INTO step 1** (`coverage-note.ts::offersFullDiskAccess`): ❌ no second FDA prompt, ❌
   never over a snapshot folder.
+- **Ask `fda-status.svelte.ts`, ❌ never probe FDA yourself.** One reactive answer, so the title-bar badge and the extra
+  line an error message adds can't disagree. It probes QUIETLY (a loud probe on every window focus stacks TCC popups),
+  and holds `null` until the first answer: ❌ never render `null` as "no access", or the badge flashes on every launch
+  for people who granted it long ago. A failed probe KEEPS the last answer rather than inventing a missing grant.
+- **The badge hides while the wizard sits on step 1**, which is its own destination. It's the only thing that makes an
+  unanswered FDA choice visible: someone can meet the step on every launch for days without answering, then hit an
+  unexplained refusal with nothing connecting the two.
 
 `DETAILS.md` owns the rest: the language escape hatch, the FDA boot gate and its three-state setting, no Escape handler,
 the step-2 banners, and the `CMDR_FORCE_ONBOARDING` / `CMDR_MOCK_FDA` overrides. Read it first.

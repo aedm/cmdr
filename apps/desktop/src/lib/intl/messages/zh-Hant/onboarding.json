@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "沒有「完全取用磁碟」權限",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "這個權限不給也沒關係，但 Cmdr 有了它會好用很多：搜尋整個磁碟機、讀取雲端資料夾，還有修改 macOS 自己留著的檔案。按一下就能再看一次這個選擇。",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "沒有「完全取用磁碟」權限。開啟入門引導的「完全取用磁碟」步驟。",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Cmdr 入門引導",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"

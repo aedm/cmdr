@@ -2862,3 +2862,45 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+标题栏里的警告小标签和它的悬停提示，在 Cmdr 还没拿到完全磁盘访问权限时显示；点按会把入门引导重新打开到第 1 步。
+
+- **`onboarding.fdaBadge.label` → `没有完全磁盘访问权限`** · Apple 自己的「系统设置」条目名（见上面的 full disk
+  access 条目；在 `SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable` 的 `ALL_FILES`
+  键上再次核对过，macOS 27.0 build 26A428，2026-09-16 验证）· `high`。
+- **`没有…`，不是更短的 `无…`** · `onboarding.stepAi.bannerTitle.denied` 的英文和它完全相同，`i18n-terms`
+  会要求两者一字不差；那一条早就用 `没有`，而且口语化的 `没有` 也更贴本指南的语气。❌ 两条不能单独改词。
+- **`onboarding.fdaBadge.ariaLabel`
+  以标签原文开头**（`没有完全磁盘访问权限。打开入门引导的完全磁盘访问权限步骤。`），这正是 `i18n-aria`（WCAG
+  2.5.3）要的包含关系。❌ 单独改标签会把它弄坏。
+- **提示里的其他词**：drive → `驱动器`（已定），cloud folders → `云端文件夹`，"files macOS keeps to itself" →
+  `macOS 自己留着的文件`（说人话，❌ 不要点名某个 macOS 功能），"Click to …" → `点按…`（同
+  `fileExplorer.breadcrumb.navigateTooltip`），onboarding → `入门引导`（已定）。
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. Chinese has no
+  number agreement, so all three messages lead with `你选中的项目里有 {count} 个，…`, which reads the same at 1 as at 7.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails` (`技术详情`),
+  because it points at that very control.
+
+- **locked → `已锁定`** · macOS Finder（`AXNODE1` `已锁定`）与目录既有写法 · `high`。
+- **"delete them permanently" → `彻底删除`** · 与 `commands.fileDeletePermanently.label`
+  一致，让建议里的说法就是用户要按的那个命令 · `high`。
+- **badge（标题栏上的那个小药丸）→ `标记`** · `tentative`；描述性说法，语料里没有对应词。title bar → `标题栏` · `high`。
+- 引号里的徽章文字逐字取自 `onboarding.fdaBadge.label`，用目录通行的
+  `“…”`。❌ 单独改一边，这句话就会指向一个写着别的字的标记。
+- "somewhere macOS keeps to itself" → `macOS 自己留着的地方`，沿用 `onboarding.fdaBadge.tooltip`
+  已定的说法。说人话，❌ 不要点名某个 macOS 功能。
+- `{count}` 前后留半角空格（`有 {count} 个`），与目录里其他数字占位符一致。

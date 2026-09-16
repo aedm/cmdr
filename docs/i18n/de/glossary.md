@@ -176,9 +176,13 @@ Format, the confidence scale, and the full process: `docs/guides/i18n-translatio
   `settings.fileViewer.suppressBinaryWarning.description`). Der Löschdialog sagte als Einziger "dauerhaft gelöscht"
   direkt neben der Taste "Endgültig löschen".
 - under cursor → unter dem Cursor · standard DE; "Cursor" kept (common DE UI term) · high
-- full disk access (macOS permission) → vollständiger Festplattenzugriff; System Settings pane → "Vollständiger
-  Festplattenzugriff", "Privacy & Security"→"Datenschutz & Sicherheit" · macOS SystemSettings (Festplattenzugriff; de
-  macOS PRIVACY_SECTION="Datenschutz & Sicherheit") · high
+- full disk access (macOS permission) → running prose: vollständiger Festplattenzugriff; the System Settings pane, as a
+  NAME → **Festplattenvollzugriff**; "Privacy & Security"→"Datenschutz & Sicherheit" · macOS SystemSettings (de macOS
+  PRIVACY_SECTION="Datenschutz & Sicherheit"); the pane name is the live bundle's own
+  (`/System/Library/ExtensionKit/Extensions/SecurityPrivacyExtension.appex/Contents/Resources/Localizable.loctable`, key
+  `ALL_FILES`, macOS 27.0 build 26A428, verified 2026-09-16) · high. ❌ Never `Vollständiger Festplattenzugriff` as the
+  pane name: no such row exists in the Systemeinstellungen, so it sends the user hunting. Where the boundary runs: § The
+  title-bar full-disk-access badge.
 - Quit & Reopen (macOS relaunch button) → Beenden & erneut öffnen · macOS relaunch-prompt wording (beenden + erneut
   öffnen) · high
 - macOS folder names: Applications→Programme, Desktop→Schreibtisch, Documents→Dokumente, Downloads→Downloads · macOS
@@ -3175,3 +3179,55 @@ Geschwister `unmountRefused` / `…ByApp` / `…ByApps` müssen als eine Familie
   `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
   so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
   `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
+
+## The title-bar full-disk-access badge
+
+The warning pill in the macOS title bar plus its hover tooltip, shown while Cmdr has no Full Disk Access; a click
+reopens onboarding at step 1.
+
+- **`onboarding.fdaBadge.label` → `Kein Festplattenvollzugriff`** · Apple's own Systemeinstellungen row (see the
+  full-disk-access entry above for the live-bundle evidence) · high. The badge exists so the user can match the pill to
+  that row, and it sits in a fixed-height title bar, so the shortest accurate form wins.
+- **`onboarding.stepAi.bannerTitle.denied` carries the SAME English string** ("No full disk access"), so `i18n-terms`
+  holds the two identical. It was moved from `Kein vollständiger Festplattenzugriff` onto the pane name in the same
+  pass. ❌ Reword neither alone.
+- **`onboarding.fdaBadge.ariaLabel` opens with the label verbatim**
+  (`Kein Festplattenvollzugriff. Den Schritt zum Festplattenvollzugriff in der Einführung öffnen.`), which is what
+  satisfies `i18n-aria` (WCAG 2.5.3). The second half puts the term in a `zum`-dative, which would NOT contain the
+  nominative label, so the containment rides on the opening sentence. ❌ Re-wording the label alone breaks it.
+- **Tooltip terms**: drive → `Laufwerk` (the settled term, as in `onboarding.stepOptional.indexing.benefit1`), cloud
+  folders → `Cloud-Ordner`, "files macOS keeps to itself" → `Dateien …, die macOS für sich behält` (plain, ❌ never a
+  macOS feature name), "Click to …" → the `du`-imperative `Klicke, um …` (as in
+  `fileExplorer.network.browser.tooltip.doubleClickToConnect`), since the tooltip already addresses `du`.
+- **Name vs prose, the boundary**: `Festplattenvollzugriff` where a string NAMES the setting; the FDA step's running
+  prose (`onboarding.stepFda.revoked.noAccess` and its siblings) still says `vollständiger Festplattenzugriff`, which is
+  natural German for the concept the way English's lowercase "full disk access" is. Open decision: whether a later pass
+  sweeps the prose onto the pane name too, the way the sv glossary argues.
+
+## The trash refusal dialog (`errors.write.trashRefused.title` + its `message.*` / `suggestion.*` siblings)
+
+macOS turned down a move to the trash, and Cmdr now words the refusal three ways (permission-shaped, no trash at that
+location, unclassified) instead of one sentence. RAW family, so single apostrophes and `{count}` is a literal
+replacement target. Four rules bind this whole group:
+
+- **The title is NOT a free choice.** `errors.write.fallback.title.trash`, `errors.write.ioError.title.trash`,
+  `errors.write.readError.title.trash`, and `errors.write.writeError.title.trash` carry the same English, so
+  `i18n-terms` holds all five identical. ❌ Reword one and you have to reword all five.
+- **No plural machinery**, so every `message.*` has to read correctly at `{count}` = 1 as well as 7. German solves it
+  with `{count} der ausgewählten Objekte`, which takes any numeral without agreement.
+- **❌ Never "try again" in a suggestion.** Retrying a permission refusal reproduces it exactly; that advice is what the
+  original bug report came back calling useless. Say what the user CAN do instead.
+- **`suggestion.other` must reuse the disclosure label** `fileOperations.errorDialog.technicalDetails`
+  (`Technische Details`, declined to `die technischen Details` in running text), because it points at that very control.
+
+- **locked → `geschützt`** (the settled catalog term, the Get Info checkbox), ❌ not Finder's `AXNODE1` `Gesperrt`:
+  `geschützt` is what every other `errors.write.*` string in this dialog already says · high.
+- **"delete them permanently" → `endgültig löschen`** · matches `commands.fileDeletePermanently.label`
+  (`Endgültig löschen`), so the suggestion names the command the user will run · high.
+- **badge (the title-bar pill) → `der Hinweis`** · tentative. ❌ Not `Statussymbol` (the catalog reserves that for the
+  small overlay marker on a file row) and ❌ not `Abzeichen` (Microsoft's achievement sense, already rejected in this
+  glossary). `Hinweis` reads as a plain notice, which is what the pill is. title bar → `Titelleiste` · high.
+- The quoted badge text is `onboarding.fdaBadge.label` verbatim, in German `„…“` quotes. ❌ Re-word one without the
+  other and the sentence points at a badge that reads differently.
+- "somewhere macOS keeps to itself" → `an einem Ort, den macOS für sich behält`, reusing the wording already settled for
+  `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.

@@ -1,4 +1,4 @@
-import type { CompressedSizeEstimate, DeviceReadiness, GitEntryMeta, TagRef } from '$lib/ipc/bindings'
+import type { CompressedSizeEstimate, DeviceReadiness, GitEntryMeta, TagRef, TrashRefusalKind } from '$lib/ipc/bindings'
 
 export type { DeviceReadiness } from '$lib/ipc/bindings'
 
@@ -708,6 +708,11 @@ export type WriteOperationError =
   // the list is never empty. `cause` is what actually stopped the copy, so its
   // own advice survives.
   | { type: 'originals_kept_aside'; cause: WriteOperationError; recovered: RecoveredOriginal[] }
+  // The OS wouldn't take items to the Trash. Separate from `io_error` because the
+  // REASON decides what the dialog can offer: as an `io_error` it arrived as one
+  // sentence macOS had written, leaving nothing to say but "try again", which a
+  // permission refusal cannot act on. `message` is technical detail only.
+  | { type: 'trash_refused'; itemCount: number; reason: TrashRefusalKind; message: string }
   | { type: 'io_error'; path: string; message: string }
   // Extracting from a password-protected archive. `wrongAttempt` is true when the
   // stored password was rejected. The FE should intercept this before the generic

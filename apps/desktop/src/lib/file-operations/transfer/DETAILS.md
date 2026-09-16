@@ -212,6 +212,13 @@ prompt in § "Archive-password prompt", the `..` helpers in § "Index conversion
    - "Retry" button shows when `category === 'transient'` or the variant's `retryHint` is true.
    - `getErrorDisplayMeta` mirrors the category/retryHint the Rust write-error mapper assigned per variant; keep the two
      in step if a `WriteOperationError` variant is added.
+   - **A refused trash words itself from its typed `TrashRefusalKind`, and never says "try again".** `trash_refused`
+     exists precisely because the flattened `io_error` version said "Try again. If the problem persists, check the
+     technical details below" over a permission refusal that retrying cannot change, with the OS's actual reason folded
+     away behind a disclosure. Each reason gets its own explanation and its own way through (permanent delete for the
+     two that have one). When this Mac is ALSO missing Full Disk Access and the reason is permission-shaped, one extra
+     line offers that — additive, never a replacement, and never on a reason Cmdr couldn't classify. The rule and why
+     it's narrow: `$lib/onboarding/DETAILS.md` § "What an error message may add about it".
 
 ## Archive-password prompt
 

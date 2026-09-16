@@ -1,4 +1,16 @@
 {
+  "onboarding.fdaBadge.label": "Nincs teljes hozzáférés a lemezhez",
+  "@onboarding.fdaBadge.label": {
+    "sourceHash": "0aa10cf"
+  },
+  "onboarding.fdaBadge.tooltip": "Nem kötelező megadnod, de a Cmdr sokkal jobban működik vele: az egész meghajtód átkutatása, a felhős mappák olvasása, és azoknak a fájloknak a módosítása, amiket a macOS magának tart. Kattints ide, ha újra megnéznéd ezt a döntést.",
+  "@onboarding.fdaBadge.tooltip": {
+    "sourceHash": "00f408a"
+  },
+  "onboarding.fdaBadge.ariaLabel": "Nincs teljes hozzáférés a lemezhez. Megnyitja a bevezető teljes lemezhozzáférésről szóló lépését.",
+  "@onboarding.fdaBadge.ariaLabel": {
+    "sourceHash": "60ee833"
+  },
   "onboarding.wizard.title": "Cmdr bevezető",
   "@onboarding.wizard.title": {
     "sourceHash": "3b97a1b"
@@ -163,7 +175,7 @@
   "@onboarding.stepAi.bannerBody.granted": {
     "sourceHash": "236f3f5"
   },
-  "onboarding.stepAi.bannerTitle.denied": "Nincs teljes lemezhozzáférés",
+  "onboarding.stepAi.bannerTitle.denied": "Nincs teljes hozzáférés a lemezhez",
   "@onboarding.stepAi.bannerTitle.denied": {
     "sourceHash": "0aa10cf"
   },
