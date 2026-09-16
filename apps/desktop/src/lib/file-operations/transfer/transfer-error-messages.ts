@@ -16,6 +16,8 @@
  * naturally. See `$lib/intl`'s docs.
  */
 import type { WriteOperationError, TransferOperationType, FriendlyError } from '$lib/file-explorer/types'
+import type { ProgressAtStop } from '$lib/tauri-commands'
+import { formatInteger } from '$lib/intl/number-format'
 import { isMacOS } from '$lib/shortcuts/key-capture'
 import { getEffectiveShortcuts, toDisplayShortcut } from '$lib/shortcuts'
 import { colorizeSizeString } from '$lib/file-explorer/selection/selection-info-utils'
@@ -104,11 +106,6 @@ const simpleMessageFactories: Partial<
     title: w(`cancelled.title.${op}`),
     message: w(`cancelled.message.${op}`),
     suggestion: w('cancelled.suggestion'),
-  }),
-  device_disconnected: (op) => ({
-    title: w('deviceDisconnected.title'),
-    message: w(`deviceDisconnected.message.${op}`),
-    suggestion: w('deviceDisconnected.suggestion'),
   }),
   trash_not_supported: () => {
     // Interpolate the live `file.deletePermanently` binding (platform-formatted)
@@ -204,6 +201,9 @@ const errorDisplayMetaMap: Record<WriteOperationError['type'], ErrorDisplayMeta>
   connection_interrupted: { category: 'transient', retryHint: true },
   delete_pending: { category: 'transient', retryHint: true },
   device_disconnected: { category: 'needs_action', retryHint: true },
+  // Retry: nothing is broken and nothing was lost. The originals are all where
+  // they were, so running the same move again is exactly the way out.
+  move_not_confirmed: { category: 'needs_action', retryHint: true },
   read_error: { category: 'serious', retryHint: true },
   write_error: { category: 'serious', retryHint: true },
   io_error: { category: 'serious', retryHint: true },
@@ -353,17 +353,76 @@ function originalsKeptAsideMessage(
 }
 
 /**
+ * The sentence for a drive that left in the middle of a transfer.
+ *
+ * Three facts, in the order a worried person needs them: which drive went, how
+ * far the transfer got, and where their files are now. The backend names the
+ * side (it captured both volumes when the transfer started, because a volume
+ * that vanishes can't be looked up afterwards), so ❌ nothing here guesses one
+ * from a path.
+ *
+ * Falls back to the volume-agnostic sentence for a backend session that dropped
+ * with no typed side (MTP, SMB), and for a transfer that stopped before the
+ * counts existed: a sentence reading "copied 0 of 0 files" would be worse than
+ * one that doesn't count at all.
+ */
+function deviceDisconnectedMessage(
+  error: Extract<WriteOperationError, { type: 'device_disconnected' }>,
+  operationType: TransferOperationType,
+  progress: ProgressAtStop | null,
+): FriendlyErrorMessage {
+  const title = w('deviceDisconnected.title')
+  const suggestion = w('deviceDisconnected.suggestion')
+  const side = error.side
+  const counted = progress !== null && progress.filesTotal > 0
+  // A move that stops keeps every original, so its destination sentence reports
+  // no partial progress: there isn't any to report.
+  const needsCounts = !(side?.role === 'destination' && operationType === 'move')
+  const sidedOperation = operationType === 'copy' || operationType === 'move'
+  if (side && sidedOperation && (counted || !needsCounts)) {
+    return {
+      title,
+      message: w(`deviceDisconnected.sided.${side.role}.${operationType}`, {
+        volumeName: escapeHtml(side.volumeName),
+        counterpart: escapeHtml(side.counterpartName),
+        done: formatInteger(progress?.filesDone ?? 0),
+        total: formatInteger(progress?.filesTotal ?? 0),
+      }),
+      suggestion,
+    }
+  }
+  return { title, message: w(`deviceDisconnected.message.${operationType}`), suggestion }
+}
+
+/**
  * Returns a user-friendly message for a transfer operation error.
  * Volume-agnostic: doesn't mention MTP, SMB, etc. directly.
+ *
+ * `progressAtStop` rides on the `write-error` event rather than on the error, so
+ * a surface that only kept the error (a retained failure in the queue) passes
+ * nothing and gets the sentence that needs no counts.
  */
 export function getUserFriendlyMessage(
   error: WriteOperationError,
   operationType: TransferOperationType = 'copy',
+  progressAtStop: ProgressAtStop | null = null,
 ): FriendlyErrorMessage {
   const simpleFactory = simpleMessageFactories[error.type]
   if (simpleFactory) return simpleFactory(operationType)
 
   switch (error.type) {
+    case 'device_disconnected':
+      return deviceDisconnectedMessage(error, operationType, progressAtStop)
+    // The move kept every original, which is the whole message. Named when the
+    // destination volume had a name to capture.
+    case 'move_not_confirmed':
+      return {
+        title: w('moveNotConfirmed.title'),
+        message: error.volumeName
+          ? w('moveNotConfirmed.message.named', { volumeName: escapeHtml(error.volumeName) })
+          : w('moveNotConfirmed.message.unnamed'),
+        suggestion: w('moveNotConfirmed.suggestion'),
+      }
     case 'insufficient_space':
       return {
         title: w('insufficientSpace.title'),
@@ -436,7 +495,6 @@ const pathOnlyTypes = new Set<WriteOperationError['type']>([
   'destination_not_connected',
   'destination_exists',
   'symlink_loop',
-  'device_disconnected',
   'file_locked',
   'trash_not_supported',
   'connection_interrupted',
@@ -462,6 +520,21 @@ const pathAndMessageTypes = new Set<WriteOperationError['type']>([
  * union rather than of the function.
  */
 function variantDetailLines(error: WriteOperationError): string[] {
+  // The drive's identity is the thing worth having here: the volume list has
+  // already dropped it, so the details block is the only place its name and id
+  // survive. A backend disconnect with no typed side is the plain path line it
+  // has always been.
+  if (error.type === 'device_disconnected') {
+    return error.side
+      ? [`Path: ${error.path}`, `Volume: ${error.side.volumeName} (${error.side.volumeId})`, `Side: ${error.side.role}`]
+      : [`Path: ${error.path}`]
+  }
+  if (error.type === 'move_not_confirmed') {
+    const lines = [`Path: ${error.path}`]
+    if (error.errno !== null) lines.push(`Errno: ${String(error.errno)}`)
+    if (error.volumeName) lines.push(`Volume: ${error.volumeName}`)
+    return lines
+  }
   if (error.type === 'read_only_device') {
     return error.deviceName ? [`Path: ${error.path}`, `Device: ${error.deviceName}`] : [`Path: ${error.path}`]
   }

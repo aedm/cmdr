@@ -598,7 +598,7 @@ describe('TransferErrorDialog a11y', () => {
       target,
       props: {
         operationType: 'trash',
-        error: { type: 'device_disconnected', path: '/Volumes/External/file.txt' },
+        error: { type: 'device_disconnected', path: '/Volumes/External/file.txt', side: null },
         onClose: () => {},
       },
     })

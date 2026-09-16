@@ -1770,6 +1770,50 @@
     "description": "Recovery suggestion when the device disconnected mid-operation. Plain text.",
     "screenshot": "transfer-error-device_disconnected.png"
   },
+  "errors.write.deviceDisconnected.sided.destination.copy": "{volumeName} was disconnected after Cmdr copied {done} of {total} files to it. Your originals are untouched where they were, so nothing is lost.",
+  "errors.write.deviceDisconnected.sided.destination.move": "{volumeName} was disconnected before Cmdr could finish the move, so all your files are still on {counterpart}.",
+  "errors.write.deviceDisconnected.sided.source.copy": "{volumeName} was disconnected after Cmdr copied {done} of {total} files to {counterpart}. The rest are still on the drive.",
+  "errors.write.deviceDisconnected.sided.source.move": "{volumeName} was disconnected after Cmdr moved {done} of {total} files to {counterpart}. The rest are still on the drive.",
+  "@errors.write.deviceDisconnected.sided.destination.copy": {
+    "description": "Body of the copy error dialog when the drive files were being copied TO was disconnected mid-copy. Plain text. This is a raw errors.* string (no ICU). The literals {volumeName}, {done}, and {total} are do-not-translate placeholders, replaced at runtime with the drive's name and two already-formatted counts (files copied, files in total). The reassurance at the end is the point of the sentence: the user's own files were never touched.",
+    "screenshot": "transfer-error-device_disconnected.png"
+  },
+  "@errors.write.deviceDisconnected.sided.destination.move": {
+    "description": "Body of the move error dialog when the drive files were being moved TO was disconnected before the move finished. Plain text. This is a raw errors.* string (no ICU). The literals {volumeName} (the drive that was disconnected) and {counterpart} (the drive or disk the files came from, where they all still are) are do-not-translate placeholders. No counts here on purpose: a move that stops keeps every original, so there is nothing partial to report.",
+    "screenshot": "transfer-error-device_disconnected.png"
+  },
+  "@errors.write.deviceDisconnected.sided.source.copy": {
+    "description": "Body of the copy error dialog when the drive files were being copied FROM was disconnected mid-copy. Plain text. This is a raw errors.* string (no ICU). The literals {volumeName} (the disconnected drive), {done} and {total} (already-formatted file counts), and {counterpart} (the drive or disk the copies landed on) are do-not-translate placeholders. \"The rest\" means the files that hadn't been copied yet.",
+    "screenshot": "transfer-error-device_disconnected.png"
+  },
+  "@errors.write.deviceDisconnected.sided.source.move": {
+    "description": "Body of the move error dialog when the drive files were being moved FROM was disconnected mid-move. Plain text. This is a raw errors.* string (no ICU). Same placeholders as the copy variant above: {volumeName}, {done}, {total}, {counterpart}, all do-not-translate. \"The rest are still on the drive\" is the reassurance: nothing was deleted that hadn't arrived.",
+    "screenshot": "transfer-error-device_disconnected.png"
+  },
+  "errors.write.moveNotConfirmed.title": "Couldn't confirm the move",
+  "errors.write.moveNotConfirmed.message.named": "Cmdr couldn't confirm the moved files were saved on {volumeName}, so it kept your originals where they were.",
+  "errors.write.moveNotConfirmed.message.unnamed": "Cmdr couldn't confirm the moved files were saved at the destination, so it kept your originals where they were.",
+  "errors.write.moveNotConfirmed.suggestion": "Have a look at the destination, then try the move again. Your originals haven't moved.",
+  "@errors.write.moveNotConfirmed.title": {
+    "description": "Title of the move error dialog when the destination couldn't confirm the copied files were written to disk, so the move kept every original. Plain text. Deliberately not worded as a failure: nothing was lost, the move simply didn't complete.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.moveNotConfirmed.message.named": {
+    "description": "Body of that dialog when the destination drive's name is known. Plain text. This is a raw errors.* string (no ICU). The literal {volumeName} is a do-not-translate placeholder replaced at runtime with the destination drive's name. \"Couldn't confirm\" is literal: the files may well be there, and Cmdr keeps the originals exactly because it can't prove it.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.moveNotConfirmed.message.unnamed": {
+    "description": "The same sentence for a move whose destination drive has no name to show (a plain folder move). Plain text, raw errors.* string, no placeholders.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
+  "@errors.write.moveNotConfirmed.suggestion": {
+    "description": "Recovery suggestion for that dialog. Plain text. Asks the user to check the destination and try again, and repeats that their originals are untouched.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
+  },
   "errors.write.trashNotSupported.title": "Trash not supported",
   "errors.write.trashNotSupported.message": "This volume doesn't support trash.",
   "errors.write.trashNotSupported.suggestion": "Use {deletePermanentlyKey} to delete permanently instead.",

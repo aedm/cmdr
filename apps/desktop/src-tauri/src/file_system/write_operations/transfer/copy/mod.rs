@@ -21,10 +21,11 @@ use super::super::scan_cache::take_cached_scan_result;
 use super::super::scan_dry_run::handle_dry_run;
 use super::super::scan_source_tracker::{FileVerdict, SourceItemTracker, top_level_source_path};
 use super::super::state::{OperationIntent, WriteOperationState, load_intent, update_operation_status};
+use super::super::transfer_sides::transfer_stop_event;
 use super::super::types::{
     CancelRollback, ConflictResolution, SourceItemOutcome, TopLevelSkipped, WriteCancelledEvent, WriteCompleteEvent,
-    WriteErrorEvent, WriteOperationConfig, WriteOperationError, WriteOperationPhase, WriteOperationType,
-    WriteProgressEvent, WriteSourceItemDoneEvent,
+    WriteOperationConfig, WriteOperationError, WriteOperationPhase, WriteOperationType, WriteProgressEvent,
+    WriteSourceItemDoneEvent,
 };
 use super::super::unique_name::{create_unique_dir, next_available_name};
 use super::super::validation::{is_same_file, validate_disk_space, validate_file_sizes_for_filesystem};
@@ -616,11 +617,9 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                 // file in the ledger is complete, and one of them may have
                 // replaced the user's original.
                 let e = fail_keeping_displaced_aside(transaction, operation_id, e);
-                events.emit_error(WriteErrorEvent::new(
-                    operation_id.to_string(),
-                    WriteOperationType::Copy,
-                    e.clone(),
-                ));
+                let event = transfer_stop_event(operation_id, WriteOperationType::Copy, state, e, None);
+                let e = event.error.clone();
+                events.emit_error(event);
                 return Err(e);
             }
 
@@ -742,11 +741,9 @@ pub(in crate::file_system::write_operations) fn copy_files_with_progress_inner(
                 transaction.created_files().len(),
             );
             let e = fail_keeping_displaced_aside(transaction, operation_id, e);
-            events.emit_error(WriteErrorEvent::new(
-                operation_id.to_string(),
-                WriteOperationType::Copy,
-                e.clone(),
-            ));
+            let event = transfer_stop_event(operation_id, WriteOperationType::Copy, state, e, None);
+            let e = event.error.clone();
+            events.emit_error(event);
             Err(e)
         }
     }

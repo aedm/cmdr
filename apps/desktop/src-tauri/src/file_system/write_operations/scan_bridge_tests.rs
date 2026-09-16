@@ -113,6 +113,7 @@ async fn a_transfer_confirmed_mid_scan_is_registered_before_its_preview_settles(
         None,
         Initiator::User,
         None,
+        None,
     )
     .await
     .expect("copy starts");
@@ -179,6 +180,7 @@ async fn an_operation_consumes_its_previews_result_rather_than_re_walking() {
         vec![unique("vol")],
         None,
         Initiator::User,
+        None,
         None,
     )
     .await
@@ -296,6 +298,7 @@ async fn an_unknown_preview_id_falls_back_to_the_operations_own_walk() {
         vec![unique("vol")],
         None,
         Initiator::User,
+        None,
         None,
     )
     .await
@@ -824,6 +827,7 @@ async fn start_copy_awaiting_preview(label: &str) -> (Arc<CollectorEventSink>, S
         vec![unique("vol")],
         None,
         Initiator::User,
+        None,
         None,
     )
     .await

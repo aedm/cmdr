@@ -389,7 +389,7 @@ async fn an_unanswerable_probe_fails_the_item_instead_of_writing() {
         matches!(
             outcome,
             Err(WriteFailure {
-                error: WriteOperationError::DeviceDisconnected { ref path },
+                error: WriteOperationError::DeviceDisconnected { ref path, .. },
             }) if path == "/album/Report.docx"
         ),
         "the item has to fail, naming the child whose destination couldn't be settled; got {outcome:?}"

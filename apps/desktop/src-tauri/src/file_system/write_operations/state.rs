@@ -155,6 +155,16 @@ pub struct WriteOperationState {
     /// own the per-leaf record points don't take the volume ids as params (they're
     /// called from ~80 test sites), mirroring how `op_id` reaches them.
     pub journal_volumes: Option<(String, String)>,
+    /// The two volumes this transfer runs between, captured when it started:
+    /// `None` for an operation with no second side (a delete, a trash) and for
+    /// the engine tests that drive an engine directly.
+    ///
+    /// Carried here — the operation's shared context — because the engines that
+    /// need it (`transfer/move_op/cross_fs.rs`'s Phase 4 gate, its source sweep,
+    /// and every terminal error) are called from ~120 test sites that take the
+    /// state and not the volume ids, exactly like `journal_volumes` above.
+    /// `super::transfer_sides` says why the names can't be looked up later.
+    pub(crate) sides: Option<super::transfer_sides::TransferSides>,
     /// Destination `.cmdr-tmp-*` paths this operation is CURRENTLY streaming
     /// bytes into, so an abandoned transfer's litter can be found and removed.
     ///
@@ -220,6 +230,7 @@ impl WriteOperationState {
             pause_gate: PauseGate::new(Arc::clone(&human_wait)),
             human_wait,
             journal_volumes: None,
+            sides: None,
             in_flight_temps: std::sync::Mutex::new(Vec::new()),
             last_progress: std::sync::Mutex::new(None),
             liveness: std::sync::Mutex::new(Some(Arc::new(()))),
@@ -307,6 +318,14 @@ impl WriteOperationState {
     /// in the volume copy/move bodies journal under the REAL volume ids.
     pub fn with_journal_volumes(mut self, source_volume_id: String, dest_volume_id: String) -> Self {
         self.journal_volumes = Some((source_volume_id, dest_volume_id));
+        self
+    }
+
+    /// Set the transfer's two volumes (see [`sides`](Self::sides)). Chained
+    /// before wrapping the state in an `Arc`, from the one place that resolves
+    /// both of them.
+    pub(crate) fn with_sides(mut self, sides: Option<super::transfer_sides::TransferSides>) -> Self {
+        self.sides = sides;
         self
     }
 

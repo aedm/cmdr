@@ -6272,6 +6272,28 @@ export type DirectorySortMode =
   // Directories always sort by name, regardless of the active sort column.
   | 'alwaysByName'
 
+/**
+ *  The volume that left the mount table while a transfer was running.
+ *
+ *  ❗ Every field is captured when the transfer STARTS. A volume that vanishes is
+ *  gone from the volume list and from the mount table by the time the error is
+ *  worded, so a lookup then would answer nothing and the sentence would have no
+ *  drive to name.
+ */
+export type DisconnectedSide = {
+  // Which half of the transfer this volume was.
+  role: TransferRole
+  // The volume id, so a surface can match it against its own records.
+  volumeId: string
+  // The volume's display name, for the sentence.
+  volumeName: string
+  /**
+   *  The OTHER volume's display name: where the files that made it are, or
+   *  where the ones that didn't still sit.
+   */
+  counterpartName: string
+}
+
 // State of network discovery.
 export type DiscoveryState =
   | 'idle'
@@ -10556,6 +10578,32 @@ export type PrepareResult = {
 }
 
 /**
+ *  What an operation had done at the moment it stopped, so the copy can say how
+ *  far it got rather than only that it stopped.
+ *
+ *  Typed, never a sentence: the FE words this in ten locales, and the counts are
+ *  formatted there.
+ */
+export type ProgressAtStop = {
+  filesDone: number
+  // `0` while the scan hadn't finished counting.
+  filesTotal: number
+  bytesDone: number
+  // `0` while the scan hadn't finished counting.
+  bytesTotal: number
+  /**
+   *  A cross-filesystem move only: originals the source sweep had already
+   *  removed, in top-level items.
+   */
+  sourcesRemoved: number | null
+  /**
+   *  A cross-filesystem move only: originals still standing in the source, in
+   *  top-level items.
+   */
+  sourcesLeft: number | null
+}
+
+/**
  *  One answered proposal group: what was asked, over how much, and what the user did.
  *
  *  ⚠️ **Both a stored shape and a wire shape**, like the rest of this module's vocabulary: it
@@ -13372,6 +13420,18 @@ export type TransferActivity = {
 }
 
 /**
+ *  Which half of a transfer a volume is, for the copy that names it.
+ *
+ *  ❌ Never decided by comparing paths after the fact: the engine is handed both
+ *  sides when the operation starts and says which one it means.
+ */
+export type TransferRole =
+  // The volume the files came FROM.
+  | 'source'
+  // The volume the files were going TO.
+  | 'destination'
+
+/**
  *  What a transfer is waiting on right now, derived from the live in-flight
  *  table in `transfer::transfer_probe`.
  *
@@ -14656,6 +14716,12 @@ export type WriteErrorEvent = {
   operationId: string
   operationType: WriteOperationType
   error: WriteOperationError
+  /**
+   *  How far the operation had got when it stopped, read from its live status
+   *  before it unregisters. `None` when nothing was measured yet, or for a
+   *  refusal that happened before any work started.
+   */
+  progressAtStop: ProgressAtStop | null
 }
 
 // Configuration for write operations.
@@ -14743,8 +14809,25 @@ export type WriteOperationError =
   | { type: 'duplicate_source_names'; name: string; first: string; second: string }
   | { type: 'symlink_loop'; path: string }
   | { type: 'cancelled'; message: string }
-  // Device was disconnected during the operation (USB, MTP, etc.).
-  | { type: 'device_disconnected'; path: string }
+  /**
+   *  Device was disconnected during the operation (USB, MTP, etc.).
+   *
+   *  `side` says WHICH of the transfer's two volumes left, named as it was
+   *  when the operation started: the frontend's volume list drops an unmounted
+   *  volume, so by the time this is worded nothing can look the name up any
+   *  more. `None` for a backend disconnect with no typed sides behind it (MTP,
+   *  SMB), where the copy stays the volume-agnostic one.
+   */
+  | { type: 'device_disconnected'; path: string; side: DisconnectedSide | null }
+  /**
+   *  A move's closing flush couldn't prove the copied files were on disk, so
+   *  the move kept every source where it was.
+   *
+   *  `path` is what the flush was syncing and `errno` the OS's number for why
+   *  it wouldn't; both come from `durability::FlushFailure`. `volume_name` is
+   *  the destination volume as the transfer captured it at start.
+   */
+  | { type: 'move_not_confirmed'; path: string; errno: number | null; volumeName: string | null }
   /**
    *  A device or volume refused a write, and [`ReadOnlySide`] says WHICH half
    *  of the transfer it was.

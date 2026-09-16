@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getUserFriendlyMessage, getTechnicalDetails, getErrorDisplayMeta } from './transfer-error-messages'
-import type { WriteOperationError } from '$lib/file-explorer/types'
+import type { DisconnectedSide, WriteOperationError } from '$lib/file-explorer/types'
+import type { ProgressAtStop } from '$lib/tauri-commands'
+import { formatInteger } from '$lib/intl/number-format'
 
 // Mock navigator to control isMacOS() behavior
 const navigatorSpy = vi.spyOn(globalThis, 'navigator', 'get')
@@ -148,7 +150,7 @@ describe('getUserFriendlyMessage', () => {
     })
 
     it('uses "move" for device disconnection', () => {
-      const error: WriteOperationError = { type: 'device_disconnected', path: '/path' }
+      const error: WriteOperationError = { type: 'device_disconnected', path: '/path', side: null }
       const result = getUserFriendlyMessage(error, 'move')
 
       expect(result.message).toContain('disconnected during the move')
@@ -157,12 +159,131 @@ describe('getUserFriendlyMessage', () => {
 
   describe('structured error variants', () => {
     it('handles device_disconnected', () => {
-      const error: WriteOperationError = { type: 'device_disconnected', path: '/path' }
+      const error: WriteOperationError = { type: 'device_disconnected', path: '/path', side: null }
       const result = getUserFriendlyMessage(error)
 
       expect(result.title).toBe('Device disconnected')
       expect(result.message).toContain('disconnected')
       expect(result.suggestion).toContain('properly connected')
+    })
+
+    // A drive pulled mid-transfer. The backend names which side left (it captured
+    // both volumes at start, because a vanished volume can't be looked up
+    // afterwards) and how far the operation got, and the copy's whole job is to
+    // say where the user's files are now.
+    describe('a drive that left mid-transfer', () => {
+      const stickAsDestination: DisconnectedSide = {
+        role: 'destination',
+        volumeId: 'vol-stick',
+        volumeName: 'Fältkamera',
+        counterpartName: 'Macintosh HD',
+      }
+      const stickAsSource: DisconnectedSide = { ...stickAsDestination, role: 'source' }
+      const progress: ProgressAtStop = {
+        filesDone: 1284,
+        filesTotal: 12900,
+        bytesDone: 4_920_000_000,
+        bytesTotal: 51_000_000_000,
+        sourcesRemoved: null,
+        sourcesLeft: null,
+      }
+
+      it('names the drive the copy was going to, how far it got, and that the originals are safe', () => {
+        const error: WriteOperationError = { type: 'device_disconnected', path: '/p', side: stickAsDestination }
+        const result = getUserFriendlyMessage(error, 'copy', progress)
+
+        expect(result.message).toContain('Fältkamera')
+        expect(result.message).toContain(`${formatInteger(1284)} of ${formatInteger(12900)} files`)
+        expect(result.message).toContain('Your originals are untouched')
+      })
+
+      it('tells a move that lost its destination that every file is still where it was', () => {
+        const error: WriteOperationError = { type: 'device_disconnected', path: '/p', side: stickAsDestination }
+        const result = getUserFriendlyMessage(error, 'move', progress)
+
+        expect(result.message).toContain('all your files are still on Macintosh HD')
+        // A move that stops keeps every original, so it reports no partial count.
+        expect(result.message).not.toContain('of')
+      })
+
+      // No progress: a sentence reading "0 of 0 files" would be worse than the
+      // plain one, so the plain one wins.
+      it('falls back to the plain sentence when a copy stopped before anything was counted', () => {
+        const error: WriteOperationError = { type: 'device_disconnected', path: '/p', side: stickAsDestination }
+        const result = getUserFriendlyMessage(error, 'copy', null)
+
+        expect(result.message).toBe('The device was disconnected during the copy.')
+      })
+
+      it('names the drive a copy was reading from, and where what arrived went', () => {
+        const error: WriteOperationError = { type: 'device_disconnected', path: '/p', side: stickAsSource }
+        const result = getUserFriendlyMessage(error, 'copy', progress)
+
+        expect(result.message).toContain('Fältkamera was disconnected')
+        expect(result.message).toContain('to Macintosh HD')
+        expect(result.message).toContain('The rest are still on the drive')
+      })
+
+      it('says what a move took off the drive before it left', () => {
+        const error: WriteOperationError = { type: 'device_disconnected', path: '/p', side: stickAsSource }
+        const result = getUserFriendlyMessage(error, 'move', progress)
+
+        expect(result.message).toContain(`moved ${formatInteger(1284)} of ${formatInteger(12900)} files`)
+        expect(result.message).toContain('The rest are still on the drive')
+      })
+
+      // A backend session that dropped (MTP, SMB) has no mount table behind it.
+      it('keeps the volume-agnostic sentence when the backend named no side', () => {
+        const error: WriteOperationError = { type: 'device_disconnected', path: '/p', side: null }
+        const result = getUserFriendlyMessage(error, 'copy', progress)
+
+        expect(result.message).toBe('The device was disconnected during the copy.')
+      })
+    })
+
+    // The move kept every original because nothing could prove the copies were on
+    // disk. The sentence is about the originals, never about a failure.
+    describe('a move that could not be confirmed', () => {
+      it('names the destination drive and says the originals stayed', () => {
+        const error: WriteOperationError = {
+          type: 'move_not_confirmed',
+          path: '/Volumes/Fältkamera/DCIM',
+          errno: 5,
+          volumeName: 'Fältkamera',
+        }
+        const result = getUserFriendlyMessage(error, 'move')
+
+        expect(result.title).toBe("Couldn't confirm the move")
+        expect(result.message).toContain('saved on Fältkamera')
+        expect(result.message).toContain('kept your originals')
+      })
+
+      it('says the same thing without a name when there is none', () => {
+        const error: WriteOperationError = {
+          type: 'move_not_confirmed',
+          path: '/dest/folder',
+          errno: null,
+          volumeName: null,
+        }
+        const result = getUserFriendlyMessage(error, 'move')
+
+        expect(result.message).toContain('saved at the destination')
+        expect(result.message).toContain('kept your originals')
+      })
+
+      it('puts the errno and the volume in the technical details', () => {
+        const error: WriteOperationError = {
+          type: 'move_not_confirmed',
+          path: '/Volumes/Fältkamera/DCIM',
+          errno: 5,
+          volumeName: 'Fältkamera',
+        }
+        const result = getTechnicalDetails(error)
+
+        expect(result).toContain('Path: /Volumes/Fältkamera/DCIM')
+        expect(result).toContain('Errno: 5')
+        expect(result).toContain('Volume: Fältkamera')
+      })
     })
 
     it('handles connection_interrupted', () => {
@@ -440,7 +561,7 @@ describe('getTechnicalDetails', () => {
   })
 
   it('includes path for device_disconnected', () => {
-    const error: WriteOperationError = { type: 'device_disconnected', path: '/mtp/device' }
+    const error: WriteOperationError = { type: 'device_disconnected', path: '/mtp/device', side: null }
     const result = getTechnicalDetails(error)
 
     expect(result).toContain('Path: /mtp/device')
@@ -597,7 +718,7 @@ describe('error messages are volume-agnostic', () => {
     const errors: WriteOperationError[] = [
       { type: 'source_not_found', path: '/mtp-device/file.txt' },
       { type: 'permission_denied', path: '/mtp-device/protected', message: 'MTP error' },
-      { type: 'device_disconnected', path: '/mtp-device/file.txt' },
+      { type: 'device_disconnected', path: '/mtp-device/file.txt', side: null },
       { type: 'read_only_device', path: '/mtp-device', deviceName: null, side: 'destination' },
     ]
 
@@ -631,7 +752,12 @@ describe('getErrorDisplayMeta', () => {
     { error: { type: 'destination_exists', path: '/p' }, category: 'needs_action', retryHint: false },
     { error: { type: 'permission_denied', path: '/p', message: 'm' }, category: 'needs_action', retryHint: false },
     { error: { type: 'cancelled', message: 'm' }, category: 'transient', retryHint: true },
-    { error: { type: 'device_disconnected', path: '/p' }, category: 'needs_action', retryHint: true },
+    { error: { type: 'device_disconnected', path: '/p', side: null }, category: 'needs_action', retryHint: true },
+    {
+      error: { type: 'move_not_confirmed', path: '/p', errno: 5, volumeName: null },
+      category: 'needs_action',
+      retryHint: true,
+    },
     { error: { type: 'connection_interrupted', path: '/p' }, category: 'transient', retryHint: true },
     {
       error: { type: 'insufficient_space', required: 1, available: 0, volumeName: null },

@@ -626,6 +626,29 @@ export interface RecoveredOriginal {
 export type ReadOnlySide = 'source' | 'destination'
 
 /**
+ * Which half of a transfer a volume was, for `device_disconnected`.
+ *
+ * The backend is handed both volumes when the transfer starts and says which one
+ * left; ❌ the frontend never works it out from a path.
+ */
+export type TransferRole = 'source' | 'destination'
+
+/**
+ * The volume that left the mount table while a transfer was running.
+ *
+ * ❗ Every field was captured when the transfer STARTED. A volume that vanishes
+ * is gone from the volume list by the time this is rendered, so there is nothing
+ * left to look its name up in. `counterpartName` is the OTHER volume: where the
+ * files that made it are, or where the ones that didn't still sit.
+ */
+export interface DisconnectedSide {
+  role: TransferRole
+  volumeId: string
+  volumeName: string
+  counterpartName: string
+}
+
+/**
  * Why a destination folder takes no writes, for `destination_not_writable`. Only
  * what the backend can tell apart: a backend that can't tell read-only from a
  * missing permission (a phone over ADB) says `unexplained`, and the frontend ❌
@@ -650,7 +673,12 @@ export type WriteOperationError =
   | { type: 'duplicate_source_names'; name: string; first: string; second: string }
   | { type: 'symlink_loop'; path: string }
   | { type: 'cancelled'; message: string }
-  | { type: 'device_disconnected'; path: string }
+  // `side` is null for a backend session that dropped (MTP, SMB), which has no
+  // mount table behind it: the copy stays the volume-agnostic one.
+  | { type: 'device_disconnected'; path: string; side: DisconnectedSide | null }
+  // A move's closing flush couldn't prove the copied files were on disk, so every
+  // original stayed where it was. `errno` is the OS's number, for the details block.
+  | { type: 'move_not_confirmed'; path: string; errno: number | null; volumeName: string | null }
   | { type: 'read_only_device'; path: string; deviceName: string | null; side: ReadOnlySide }
   | { type: 'destination_not_writable'; path: string; reason: UnwritableReason }
   | { type: 'file_locked'; path: string }

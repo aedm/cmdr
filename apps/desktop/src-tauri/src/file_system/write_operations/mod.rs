@@ -56,6 +56,7 @@ mod scratch_dir;
 mod source_binding;
 mod state;
 mod status_cache;
+mod transfer_sides;
 mod transfer;
 mod types;
 mod unique_name;
@@ -279,6 +280,10 @@ async fn start_write_operation<F>(
     // `open`; finalize refines it to the scanned total. Never 0 for a real op, so
     // the alpha dialog never renders "Copy 0 items" (the header-aggregate rider).
     item_count: u64,
+    // The transfer's two volumes, captured here because a drive that vanishes
+    // can't be named afterwards (`transfer_sides.rs`). `None` for an operation
+    // with only one side (a delete, a trash).
+    sides: Option<transfer_sides::TransferSides>,
     handler: F,
 ) -> Result<WriteOperationStartResult, WriteOperationError>
 where
@@ -287,7 +292,7 @@ where
         + 'static,
 {
     let operation_id = crate::operation_log::new_operation_id();
-    let state = Arc::new(WriteOperationState::new(Duration::from_millis(progress_interval_ms)));
+    let state = Arc::new(WriteOperationState::new(Duration::from_millis(progress_interval_ms)).with_sides(sides));
 
     let descriptor = OperationDescriptor {
         operation_id: operation_id.clone(),
@@ -352,6 +357,11 @@ where
 
             let op_id_for_blocking = op_id.clone();
             let events_for_handler = Arc::clone(&events);
+            // Kept out of the handler's move so the safety net below can still
+            // read the operation's captured sides: a transfer that returned an
+            // error without emitting one itself gets the vanished drive named
+            // here, the same way the engines do.
+            let state_for_net = Arc::clone(&state);
             let result =
                 tokio::task::spawn_blocking(move || handler(events_for_handler, op_id_for_blocking, state)).await;
 
@@ -375,7 +385,13 @@ where
                 }
                 Ok(Err(e)) => {
                     // Handler error (validation, I/O, etc.): emit write-error as safety net
-                    events.emit_error(WriteErrorEvent::new(op_id.clone(), operation_type, e));
+                    events.emit_error(transfer_sides::transfer_stop_event(
+                        &op_id,
+                        operation_type,
+                        &state_for_net,
+                        e,
+                        None,
+                    ));
                 }
                 Err(join_error) => {
                     // Panic/abort in spawn_blocking
@@ -467,6 +483,7 @@ pub async fn copy_files_start(
     lanes: Option<Vec<LaneKey>>,
     initiator: Initiator,
     expected_sources: Option<ExpectedSources>,
+    sides: Option<transfer_sides::TransferSides>,
 ) -> Result<WriteOperationStartResult, WriteOperationError> {
     log::info!(
         "copy_files_start: sources={:?}, destination={:?}, dry_run={}",
@@ -487,6 +504,7 @@ pub async fn copy_files_start(
         summary,
         config.preview_id.clone(),
         sources.len() as u64,
+        sides,
         move |events, op_id, state| {
             let Some(sources) = retain_bound_sources(
                 &*events,
@@ -533,6 +551,7 @@ pub async fn move_files_start(
     lanes: Option<Vec<LaneKey>>,
     initiator: Initiator,
     expected_sources: Option<ExpectedSources>,
+    sides: Option<transfer_sides::TransferSides>,
 ) -> Result<WriteOperationStartResult, WriteOperationError> {
     log::info!(
         "move_files_start: sources={:?}, destination={:?}, dry_run={}",
@@ -553,6 +572,7 @@ pub async fn move_files_start(
         summary,
         config.preview_id.clone(),
         sources.len() as u64,
+        sides,
         move |events, op_id, state| {
             let Some(sources) = retain_bound_sources(
                 &*events,
@@ -654,6 +674,8 @@ pub async fn delete_files_start(
             summary,
             config.preview_id.clone(),
             sources.len() as u64,
+            // One side only: a delete has no destination volume.
+            None,
             move |events, op_id, state| {
                 let Some(sources) = retain_bound_sources(
                     &*events,
@@ -716,6 +738,8 @@ pub async fn trash_files_start(
         summary,
         None,
         sources.len() as u64,
+        // One side only: trash always lands in the local macOS Trash.
+        None,
         move |events, op_id, state| {
             let Some((sources, item_sizes)) = retain_bound_sources_with_sizes(
                 &*events,

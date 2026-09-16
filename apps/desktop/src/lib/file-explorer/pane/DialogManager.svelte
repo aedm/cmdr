@@ -21,6 +21,7 @@
         TransferCompletePayload,
     } from './dialog-props'
     import type { FriendlyError, WriteOperationError } from '../types'
+    import type { ProgressAtStop } from '$lib/tauri-commands'
 
     const {
         onDialogRenderError,
@@ -85,14 +86,18 @@
         onTransferCancel: () => void
         onTransferComplete: (payload: TransferCompletePayload) => void
         onTransferCancelled: (filesProcessed: number) => void
-        onTransferError: (error: WriteOperationError, friendly?: FriendlyError) => void
+        onTransferError: (
+            error: WriteOperationError,
+            progressAtStop: ProgressAtStop | null,
+            friendly?: FriendlyError,
+        ) => void
         onTransferQueue: () => void
         /** The four outcomes of a dialog that ADOPTED its operation. Separate
          *  callbacks, not a flag on the started ones: an adopted view has no
          *  birth context, so its tail must not be able to reach the pane work. */
         onAdoptedComplete: (payload: TransferCompletePayload) => void
         onAdoptedCancelled: (filesProcessed: number) => void
-        onAdoptedError: (error: WriteOperationError) => void
+        onAdoptedError: (error: WriteOperationError, progressAtStop: ProgressAtStop | null) => void
         onAdoptedQueue: () => void
         onTransferErrorClose: () => void
         onArchivePasswordSubmit: (password: string) => void
@@ -285,6 +290,7 @@
         <TransferErrorDialog
             operationType={transferErrorProps.operationType}
             error={transferErrorProps.error}
+            progressAtStop={transferErrorProps.progressAtStop}
             onClose={onTransferErrorClose}
         />
     {/if}

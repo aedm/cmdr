@@ -22,6 +22,7 @@ use crate::file_system::write_operations::error_classification::IoResultExt;
 use crate::file_system::write_operations::event_sinks::OperationEventSink;
 use crate::file_system::write_operations::state::ScanResult;
 use crate::file_system::write_operations::state::{WriteOperationState, update_operation_status};
+use crate::file_system::write_operations::transfer_sides::{MoveSourceCounts, TransferSide};
 use crate::file_system::write_operations::types::{
     AppearedDuringMove, CancelRollback, SourceItemOutcome, WriteCancelledEvent, WriteOperationError,
     WriteOperationPhase, WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
@@ -134,6 +135,56 @@ impl SweepLeftovers {
     }
 }
 
+/// Why the sweep stopped, and how many originals it had removed by then.
+///
+/// The counts ride out with the error because nobody upstream can work them out
+/// afterwards: what the user needs to hear is which of their files are still in
+/// the source folder.
+#[derive(Debug)]
+pub(super) struct SweepStopped {
+    pub(super) error: WriteOperationError,
+    /// `None` for a stop that speaks for itself (a cancel, which emits its own
+    /// event with its own tally).
+    pub(super) counts: Option<MoveSourceCounts>,
+}
+
+/// The source volume, asked before the sweep may read a missing file as one it
+/// already carried.
+///
+/// ❗ This is the whole reason the sweep knows about drives: every "already
+/// gone" answer in this file is a `NotFound` or a failed stat, and a drive
+/// that LEFT answers exactly the same way. Without the question, a pulled cable
+/// mid-sweep reads as "the move took all of these" and the remaining originals
+/// are reported deleted while they sit safely on a drive in someone's hand.
+struct SourceDrive<'a> {
+    side: Option<&'a TransferSide>,
+}
+
+impl SourceDrive<'_> {
+    /// The error to stop on when the mount table says the source drive has left,
+    /// `None` while it's still there — and `None` when the table can't be read,
+    /// because a guess is not evidence.
+    fn left(&self, path: &Path) -> Option<WriteOperationError> {
+        self.side
+            .filter(|side| side.has_left())
+            .map(|_| WriteOperationError::DeviceDisconnected {
+                path: path.display().to_string(),
+                side: None,
+            })
+    }
+}
+
+/// The stop, with the source tally as it stands: removed, and everything else.
+fn stop(error: WriteOperationError, originals_removed: usize, sources_total: usize) -> SweepStopped {
+    SweepStopped {
+        error,
+        counts: Some(MoveSourceCounts {
+            removed: originals_removed as u32,
+            left: sources_total.saturating_sub(originals_removed) as u32,
+        }),
+    }
+}
+
 /// Deletes the originals after a successful cross-FS copy+rename, removing only
 /// what the move actually landed at the destination.
 ///
@@ -176,9 +227,15 @@ pub(super) fn delete_sources_after_move(
     sources: &[PathBuf],
     files_done: usize,
     sweep: &SourceSweep,
-) -> Result<SweepLeftovers, WriteOperationError> {
+) -> Result<SweepLeftovers, SweepStopped> {
+    let drive = SourceDrive {
+        side: state.sides.as_ref().map(|sides| &sides.source),
+    };
     let sources_total = sources.len();
     let mut sources_done = 0usize;
+    // Top-level originals this sweep has actually unlinked, counted from what
+    // the disk says afterwards rather than from what the move intended.
+    let mut originals_removed = 0usize;
     // Originals the sweep has walked past and deliberately left where they are.
     // A stop has to count these alongside the ones it never reached: both are
     // still sitting in the user's source folder.
@@ -210,8 +267,11 @@ pub(super) fn delete_sources_after_move(
                 rollback: CancelRollback::none()
                     .with_originals_still_in_place((sources_total - sources_done + originals_spared) as u32),
             });
-            return Err(WriteOperationError::Cancelled {
-                message: "Operation cancelled by user".to_string(),
+            return Err(SweepStopped {
+                error: WriteOperationError::Cancelled {
+                    message: "Operation cancelled by user".to_string(),
+                },
+                counts: None,
             });
         }
 
@@ -235,13 +295,28 @@ pub(super) fn delete_sources_after_move(
             continue;
         }
 
-        if fs::symlink_metadata(source).is_ok() {
-            remove_landed(&sweep.per_source[index])?;
+        // A source that isn't there is ordinarily one this move already carried
+        // (a retry, a sync client). On a drive that LEFT it means nothing of the
+        // kind, so the drive is asked before that reading is acted on.
+        let source_present = fs::symlink_metadata(source).is_ok();
+        if !source_present && let Some(error) = drive.left(source) {
+            return Err(stop(error, originals_removed, sources_total));
+        }
+        if source_present {
+            if let Err(error) = remove_landed(&sweep.per_source[index], &drive) {
+                return Err(stop(error, originals_removed, sources_total));
+            }
 
             // Whatever is still standing here was never carried to the
             // destination. `source_removed` is the vanished-path contract, so it
             // reports what the disk says rather than what the move intended.
             let source_removed = fs::symlink_metadata(source).is_err();
+            if source_removed && let Some(error) = drive.left(source) {
+                return Err(stop(error, originals_removed, sources_total));
+            }
+            if source_removed {
+                originals_removed += 1;
+            }
             if !source_removed {
                 let appeared = count_unscanned_entries(source, &sweep.scanned_paths);
                 if appeared > 0 {
@@ -285,23 +360,28 @@ pub(super) fn delete_sources_after_move(
 /// Removes one top-level source's landed files, then the directories that held
 /// them, deepest first. Nothing here recurses over what is on disk: the lists
 /// were fixed when the copy phase ended.
-fn remove_landed(swept: &SweptSource) -> Result<(), WriteOperationError> {
+fn remove_landed(swept: &SweptSource, drive: &SourceDrive<'_>) -> Result<(), WriteOperationError> {
     for file in &swept.landed_files {
-        remove_landed_file(file)?;
+        remove_landed_file(file, drive)?;
     }
     for dir in &swept.scanned_dirs {
-        remove_swept_dir(dir)?;
+        remove_swept_dir(dir, drive)?;
     }
     Ok(())
 }
 
 /// Unlinks one landed source file. `remove_file` acts on a symlink itself, so a
 /// link goes as a link and whatever it points at is left alone. A file already
-/// gone is a success: something else removed it, and the destination has it.
-fn remove_landed_file(path: &Path) -> Result<(), WriteOperationError> {
+/// gone is a success: something else removed it, and the destination has it —
+/// unless the drive holding it has left, where the same `NotFound` means the
+/// mount is gone and the file is fine.
+fn remove_landed_file(path: &Path, drive: &SourceDrive<'_>) -> Result<(), WriteOperationError> {
     match fs::remove_file(path) {
         Ok(()) => Ok(()),
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => match drive.left(path) {
+            Some(vanished) => Err(vanished),
+            None => Ok(()),
+        },
         Err(e) => Err(e).with_path(path),
     }
 }
@@ -309,26 +389,28 @@ fn remove_landed_file(path: &Path) -> Result<(), WriteOperationError> {
 /// Removes one swept directory, and only if it is empty. A directory still
 /// holding something is the sweep working as intended, not a failure: the
 /// something was never copied to the destination, so it stays where it is.
-fn remove_swept_dir(dir: &Path) -> Result<(), WriteOperationError> {
+fn remove_swept_dir(dir: &Path, drive: &SourceDrive<'_>) -> Result<(), WriteOperationError> {
     let Ok(metadata) = fs::symlink_metadata(dir) else {
-        // Already gone.
-        return Ok(());
+        // Already gone — or the whole mount is, which is not the same thing.
+        return match drive.left(dir) {
+            Some(vanished) => Err(vanished),
+            None => Ok(()),
+        };
     };
     if metadata.file_type().is_symlink() {
         // A link the scan walked through is still a link on disk. Unlink it;
         // `remove_dir` would either refuse (ENOTDIR) or act through the link.
-        return remove_landed_file(dir);
+        return remove_landed_file(dir, drive);
     }
     match fs::remove_dir(dir) {
         Ok(()) => Ok(()),
-        Err(e)
-            if matches!(
-                e.kind(),
-                std::io::ErrorKind::DirectoryNotEmpty | std::io::ErrorKind::NotFound
-            ) =>
-        {
-            Ok(())
-        }
+        // Still holding something the move never carried: the sweep working as
+        // intended, and nothing to do with a drive.
+        Err(e) if e.kind() == std::io::ErrorKind::DirectoryNotEmpty => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => match drive.left(dir) {
+            Some(vanished) => Err(vanished),
+            None => Ok(()),
+        },
         Err(e) => Err(e).with_path(dir),
     }
 }

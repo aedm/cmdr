@@ -35,9 +35,10 @@ use crate::file_system::write_operations::scan::scan_sources;
 use crate::file_system::write_operations::scan_cache::take_cached_scan_result;
 use crate::file_system::write_operations::scan_source_tracker::SourceItemTracker;
 use crate::file_system::write_operations::state::{WriteOperationState, update_operation_status};
+use crate::file_system::write_operations::transfer_sides::transfer_stop_event;
 use crate::file_system::write_operations::types::{
-    WriteCompleteEvent, WriteErrorEvent, WriteOperationConfig, WriteOperationError, WriteOperationPhase,
-    WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
+    WriteCompleteEvent, WriteOperationConfig, WriteOperationError, WriteOperationPhase, WriteOperationType,
+    WriteProgressEvent, WriteSourceItemDoneEvent,
 };
 use crate::file_system::write_operations::validation::{
     is_real_directory, path_exists_or_is_symlink, validate_file_sizes_for_filesystem,
@@ -249,11 +250,9 @@ pub(super) fn move_with_staging(
     if let Err(e) = copy_result {
         // Cleanup staging directory in background (may block on network mounts)
         remove_dir_all_in_background(staging_dir.clone());
-        events.emit_error(WriteErrorEvent::new(
-            operation_id.to_string(),
-            WriteOperationType::Move,
-            e.clone(),
-        ));
+        let event = transfer_stop_event(operation_id, WriteOperationType::Move, state, e, None);
+        let e = event.error.clone();
+        events.emit_error(event);
         return Err(e);
     }
 
@@ -272,11 +271,9 @@ pub(super) fn move_with_staging(
         &dir_remap,
     ) {
         remove_dir_all_in_background(staging_dir.clone());
-        events.emit_error(WriteErrorEvent::new(
-            operation_id.to_string(),
-            WriteOperationType::Move,
-            e.clone(),
-        ));
+        let event = transfer_stop_event(operation_id, WriteOperationType::Move, state, e, None);
+        let e = event.error.clone();
+        events.emit_error(event);
         return Err(e);
     }
 
@@ -420,11 +417,9 @@ pub(super) fn move_with_staging(
     if let Err(e) = rename_result {
         // Cleanup staging directory in background (may block on network mounts)
         remove_dir_all_in_background(staging_dir);
-        events.emit_error(WriteErrorEvent::new(
-            operation_id.to_string(),
-            WriteOperationType::Move,
-            e.clone(),
-        ));
+        let event = transfer_stop_event(operation_id, WriteOperationType::Move, state, e, None);
+        let e = event.error.clone();
+        events.emit_error(event);
         return Err(e);
     }
 
@@ -501,15 +496,41 @@ pub(super) fn move_with_staging(
             "move_with_staging: op={} keeps every source, the destination isn't provably durable ({failure})",
             operation_id
         );
-        let e = WriteOperationError::IoError {
+        // Typed, so the user reads "Cmdr kept your originals" rather than a
+        // generic failure: the errno and the path come straight from the flush,
+        // and the destination's name from the sides captured at start.
+        let e = WriteOperationError::MoveNotConfirmed {
             path: failure.path.display().to_string(),
-            message: format!("The destination isn't confirmed durable, so every source stays: {failure}"),
+            errno: failure.errno,
+            volume_name: state.sides.as_ref().map(|sides| sides.destination.volume_name.clone()),
         };
-        events.emit_error(WriteErrorEvent::new(
-            operation_id.to_string(),
-            WriteOperationType::Move,
-            e.clone(),
-        ));
+        let event = transfer_stop_event(operation_id, WriteOperationType::Move, state, e, None);
+        let e = event.error.clone();
+        events.emit_error(event);
+        return Err(e);
+    }
+
+    // Phase 4 also needs the destination to STILL BE THERE. A flush can answer
+    // `Ok` for writes the kernel accepted moments before the drive left, and a
+    // sweep that ran then would delete the only copies of files that never
+    // reached the disk. So the mount table is asked once more, right here,
+    // between the flush and the first delete. An unreadable table is not
+    // evidence of leaving, so it lets the sweep run.
+    if let Some(sides) = state.sides.as_ref()
+        && sides.destination.has_left()
+    {
+        log::warn!(
+            "move_with_staging: op={} keeps every source, the destination volume '{}' left the mount table",
+            operation_id,
+            sides.destination.volume_name
+        );
+        let e = WriteOperationError::DeviceDisconnected {
+            path: sides.destination.root.display().to_string(),
+            side: None,
+        };
+        let event = transfer_stop_event(operation_id, WriteOperationType::Move, state, e, None);
+        let e = event.error.clone();
+        events.emit_error(event);
         return Err(e);
     }
 
@@ -527,13 +548,32 @@ pub(super) fn move_with_staging(
     );
     let delete_result = delete_sources_after_move(events, operation_id, state, sources, files_done, &sweep);
 
+
     // Phase 5: Remove the staging directory, on EVERY path out of Phase 4. Phase
     // 3 renamed the staged tree away, so this is an empty shell whichever way
     // Phase 4 ended; leaving it behind on a cancel puts a stray
     // `.cmdr-staging-<op>` folder in the user's destination for good. `remove_dir`
     // refuses a non-empty directory, so a surprise leaves the contents alone.
     let _ = fs::remove_dir(&staging_dir);
-    let leftovers = delete_result?;
+    let leftovers = match delete_result {
+        Ok(leftovers) => leftovers,
+        Err(stopped) => {
+            let event = transfer_stop_event(
+                operation_id,
+                WriteOperationType::Move,
+                state,
+                stopped.error,
+                stopped.counts,
+            );
+            let e = event.error.clone();
+            // A cancel has already emitted `write-cancelled`; a second terminal
+            // event for one operation would race the first on the way out.
+            if !matches!(e, WriteOperationError::Cancelled { .. }) {
+                events.emit_error(event);
+            }
+            return Err(e);
+        }
+    };
 
     // Emit completion. The move succeeded; anything the sweep left behind rides
     // along as typed data, so the toast can say what stayed and where.

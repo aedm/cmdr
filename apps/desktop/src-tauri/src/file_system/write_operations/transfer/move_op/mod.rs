@@ -647,6 +647,12 @@ mod move_race_tests;
 #[path = "move_durability_tests.rs"]
 mod move_durability_tests;
 
+// What Phase 4 does when a drive leaves mid-move: the destination-listed gate,
+// and the sweep refusing to read a vanished mount as "already carried".
+#[cfg(test)]
+#[path = "move_vanished_tests.rs"]
+mod move_vanished_tests;
+
 #[cfg(test)]
 #[path = "move_journal_tests.rs"]
 mod journal_tests;

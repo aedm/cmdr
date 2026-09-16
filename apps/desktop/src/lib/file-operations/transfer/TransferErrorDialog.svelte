@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { WriteOperationError, TransferOperationType, FriendlyError } from '$lib/file-explorer/types'
+    import type { ProgressAtStop } from '$lib/tauri-commands'
     import { getUserFriendlyMessage, getTechnicalDetails, getErrorDisplayMeta } from './transfer-error-messages'
     import FallbackErrorContent from './FallbackErrorContent.svelte'
     import ModalDialog from '$lib/ui/ModalDialog.svelte'
@@ -11,16 +12,20 @@
     interface Props {
         operationType: TransferOperationType
         error: WriteOperationError
+        /** How far the operation got when it stopped, from the `write-error`
+         *  event. The copy for a drive that left says so; every other variant
+         *  ignores it. */
+        progressAtStop?: ProgressAtStop | null
         onClose: () => void
         onRetry?: () => void
     }
 
-    const { operationType, error, onClose, onRetry }: Props = $props()
+    const { operationType, error, progressAtStop = null, onClose, onRetry }: Props = $props()
 
     let showDetails = $state(false)
 
     /** Title, explanation, and suggestion all come from the typed error. */
-    const titleText = $derived(getUserFriendlyMessage(error, operationType).title)
+    const titleText = $derived(getUserFriendlyMessage(error, operationType, progressAtStop).title)
 
     /** Category (tint + icon) and Retry visibility derive from the typed error. */
     const displayMeta = $derived(getErrorDisplayMeta(error))
@@ -82,7 +87,7 @@
         </span>
     {/snippet}
 
-    <FallbackErrorContent {error} {operationType} />
+    <FallbackErrorContent {error} {operationType} {progressAtStop} />
 
     <!-- Technical details (collapsible) -->
     <div class="details-section">

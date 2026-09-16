@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount, onDestroy } from 'svelte'
     import { DEFAULT_VOLUME_ID,
-    type Initiator } from '$lib/tauri-commands'
+    type Initiator, type ProgressAtStop } from '$lib/tauri-commands'
     import type {
         TransferOperationType,
         WriteOperationError,
@@ -88,7 +88,7 @@
         initiator?: Initiator
         onComplete: (payload: TransferCompletePayload) => void
         onCancelled: (filesProcessed: number) => void
-        onError: (error: WriteOperationError) => void
+        onError: (error: WriteOperationError, progressAtStop: ProgressAtStop | null) => void
         /** Send this operation to the background: unmount the modal but keep the
          *  op running, managed in the queue window. Fired by the Queue button, the
          *  dialog-scoped F2, and the auto-queue path (an op admitted as Queued).

@@ -282,8 +282,13 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
                 }
             ),
         },
+        // A backend session that dropped (MTP, SMB), which has no mount table
+        // and no captured sides behind it, so the copy stays the
+        // volume-agnostic one. A LOCAL drive that leaves is named at the
+        // operation's boundary instead (`transfer_sides.rs`).
         VolumeError::DeviceDisconnected(_) => WriteOperationError::DeviceDisconnected {
             path: context_path.to_string(),
+            side: None,
         },
         // Names the half that asked, the same way an unregistered volume does
         // before a transfer starts (`unregistered_volume_error`). ❌ Never

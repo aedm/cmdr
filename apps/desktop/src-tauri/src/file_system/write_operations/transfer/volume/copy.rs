@@ -174,6 +174,19 @@ pub async fn copy_between_volumes(
         // Pass the real `Volume::lane_key()`s so the operation manager
         // serializes against the same mount (two copies to one USB disk wait).
         let lanes = vec![source_volume.lane_key(), dest_volume.lane_key()];
+        // Both volumes, captured HERE. A drive that vanishes mid-copy is out of
+        // the volume list and the mount table by the time the error is worded,
+        // so this is the one moment its name can still be read
+        // (`write_operations/transfer_sides.rs`).
+        use crate::file_system::write_operations::transfer_sides::{TransferSide, TransferSides};
+        let sides = TransferSides::new(
+            TransferSide::new(
+                source_volume_id.clone(),
+                source_volume.name().to_string(),
+                src_root.clone(),
+            ),
+            TransferSide::new(dest_volume_id.clone(), dest_volume.name().to_string(), dest_root.clone()),
+        );
         return super::super::super::copy_files_start(
             events,
             absolute_sources,
@@ -183,6 +196,7 @@ pub async fn copy_between_volumes(
             Some(lanes),
             initiator,
             expected_sources,
+            Some(sides),
         )
         .await;
     }

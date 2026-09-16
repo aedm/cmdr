@@ -92,7 +92,16 @@ impl WriteErrorEvent {
             operation_id,
             operation_type,
             error,
+            progress_at_stop: None,
         }
+    }
+
+    /// Attaches how far the operation had got. Built by
+    /// [`super::transfer_sides::transfer_stop_event`], which reads the status
+    /// cache while the operation is still registered.
+    pub(super) fn with_progress_at_stop(mut self, progress: Option<super::types::ProgressAtStop>) -> Self {
+        self.progress_at_stop = progress;
+        self
     }
 }
 

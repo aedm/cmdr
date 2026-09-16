@@ -318,6 +318,39 @@ pub enum ReadOnlySide {
     Destination,
 }
 
+/// Which half of a transfer a volume is, for the copy that names it.
+///
+/// ❌ Never decided by comparing paths after the fact: the engine is handed both
+/// sides when the operation starts and says which one it means.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "snake_case")]
+pub enum TransferRole {
+    /// The volume the files came FROM.
+    Source,
+    /// The volume the files were going TO.
+    Destination,
+}
+
+/// The volume that left the mount table while a transfer was running.
+///
+/// ❗ Every field is captured when the transfer STARTS. A volume that vanishes is
+/// gone from the volume list and from the mount table by the time the error is
+/// worded, so a lookup then would answer nothing and the sentence would have no
+/// drive to name.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DisconnectedSide {
+    /// Which half of the transfer this volume was.
+    pub role: TransferRole,
+    /// The volume id, so a surface can match it against its own records.
+    pub volume_id: String,
+    /// The volume's display name, for the sentence.
+    pub volume_name: String,
+    /// The OTHER volume's display name: where the files that made it are, or
+    /// where the ones that didn't still sit.
+    pub counterpart_name: String,
+}
+
 /// Errors that can occur during write operations.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
@@ -401,8 +434,26 @@ pub enum WriteOperationError {
         message: String,
     },
     /// Device was disconnected during the operation (USB, MTP, etc.).
+    ///
+    /// `side` says WHICH of the transfer's two volumes left, named as it was
+    /// when the operation started: the frontend's volume list drops an unmounted
+    /// volume, so by the time this is worded nothing can look the name up any
+    /// more. `None` for a backend disconnect with no typed sides behind it (MTP,
+    /// SMB), where the copy stays the volume-agnostic one.
     DeviceDisconnected {
         path: String,
+        side: Option<DisconnectedSide>,
+    },
+    /// A move's closing flush couldn't prove the copied files were on disk, so
+    /// the move kept every source where it was.
+    ///
+    /// `path` is what the flush was syncing and `errno` the OS's number for why
+    /// it wouldn't; both come from `durability::FlushFailure`. `volume_name` is
+    /// the destination volume as the transfer captured it at start.
+    MoveNotConfirmed {
+        path: String,
+        errno: Option<i32>,
+        volume_name: Option<String>,
     },
     /// A device or volume refused a write, and [`ReadOnlySide`] says WHICH half
     /// of the transfer it was.

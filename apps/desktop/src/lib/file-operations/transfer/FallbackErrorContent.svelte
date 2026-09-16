@@ -1,5 +1,6 @@
 <script lang="ts">
     import type { WriteOperationError, TransferOperationType } from '$lib/file-explorer/types'
+    import type { ProgressAtStop } from '$lib/tauri-commands'
     import { getUserFriendlyMessage } from './transfer-error-messages'
     import { tString } from '$lib/intl/messages.svelte'
     import { formatInteger } from '$lib/intl/number-format'
@@ -8,10 +9,14 @@
     interface Props {
         error: WriteOperationError
         operationType: TransferOperationType
+        /** How far the operation got, for the variants whose copy says so (a
+         *  disconnected drive). Absent for a failure rendered from a stored
+         *  snapshot, which kept only the error. */
+        progressAtStop?: ProgressAtStop | null
     }
 
-    const { error, operationType }: Props = $props()
-    const friendly = $derived(getUserFriendlyMessage(error, operationType))
+    const { error, operationType, progressAtStop = null }: Props = $props()
+    const friendly = $derived(getUserFriendlyMessage(error, operationType, progressAtStop))
 
     /** The offending files to list, only for the too-large-for-filesystem error. */
     const oversizedFiles = $derived(error.type === 'files_too_large_for_filesystem' ? error.files : [])

@@ -162,6 +162,32 @@ pub struct WriteErrorEvent {
     pub operation_id: String,
     pub operation_type: WriteOperationType,
     pub error: WriteOperationError,
+    /// How far the operation had got when it stopped, read from its live status
+    /// before it unregisters. `None` when nothing was measured yet, or for a
+    /// refusal that happened before any work started.
+    pub progress_at_stop: Option<ProgressAtStop>,
+}
+
+/// What an operation had done at the moment it stopped, so the copy can say how
+/// far it got rather than only that it stopped.
+///
+/// Typed, never a sentence: the FE words this in ten locales, and the counts are
+/// formatted there.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgressAtStop {
+    pub files_done: u32,
+    /// `0` while the scan hadn't finished counting.
+    pub files_total: u32,
+    pub bytes_done: u64,
+    /// `0` while the scan hadn't finished counting.
+    pub bytes_total: u64,
+    /// A cross-filesystem move only: originals the source sweep had already
+    /// removed, in top-level items.
+    pub sources_removed: Option<u32>,
+    /// A cross-filesystem move only: originals still standing in the source, in
+    /// top-level items.
+    pub sources_left: Option<u32>,
 }
 
 /// How one top-level source item ENDED.

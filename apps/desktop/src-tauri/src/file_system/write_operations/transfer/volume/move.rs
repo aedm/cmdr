@@ -100,6 +100,19 @@ pub async fn move_between_volumes(
         // ejectable destination busy while it runs, plus the real
         // `Volume::lane_key()`s so the manager serializes against the mount.
         let lanes = vec![source_volume.lane_key(), dest_volume.lane_key()];
+        // Both volumes, captured HERE. The destination-listed gate that guards
+        // the source delete asks the mount table about `dest_root`, and a drive
+        // that leaves can't be named afterwards
+        // (`write_operations/transfer_sides.rs`).
+        use crate::file_system::write_operations::transfer_sides::{TransferSide, TransferSides};
+        let sides = TransferSides::new(
+            TransferSide::new(
+                source_volume_id.clone(),
+                source_volume.name().to_string(),
+                src_root.clone(),
+            ),
+            TransferSide::new(dest_volume_id.clone(), dest_volume.name().to_string(), dest_root.clone()),
+        );
         return super::super::super::move_files_start(
             events,
             absolute_sources,
@@ -109,6 +122,7 @@ pub async fn move_between_volumes(
             Some(lanes),
             initiator,
             expected_sources,
+            Some(sides),
         )
         .await;
     }

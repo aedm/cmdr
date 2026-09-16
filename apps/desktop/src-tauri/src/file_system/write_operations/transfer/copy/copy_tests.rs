@@ -663,7 +663,7 @@ impl OperationEventSink for StopTheReversalSink {
     fn emit_cancelled(&self, e: WriteCancelledEvent) {
         self.inner.emit_cancelled(e);
     }
-    fn emit_error(&self, e: WriteErrorEvent) {
+    fn emit_error(&self, e: crate::file_system::write_operations::types::WriteErrorEvent) {
         self.inner.emit_error(e);
     }
     fn emit_conflict(&self, e: crate::file_system::write_operations::types::WriteConflictEvent) {

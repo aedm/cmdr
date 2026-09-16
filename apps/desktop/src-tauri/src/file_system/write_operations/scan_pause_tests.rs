@@ -163,6 +163,7 @@ async fn start_copy_with_a_real_scan(label: &str) -> RunningScan {
         None,
         Initiator::User,
         None,
+        None,
     )
     .await
     .expect("copy starts");
@@ -415,6 +416,7 @@ async fn an_operations_own_scan_parks_too() {
         vec![unique("vol")],
         None,
         Initiator::User,
+        None,
         None,
     )
     .await

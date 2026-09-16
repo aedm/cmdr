@@ -66,6 +66,7 @@ import type {
   WriteOperationError,
 } from '$lib/file-explorer/types'
 import type { TransferCompletePayload } from '$lib/file-explorer/pane/dialog-props'
+import type { ProgressAtStop } from '$lib/tauri-commands'
 import { pluralize } from '$lib/utils/pluralize'
 import { getAppLogger } from '$lib/logging/logger'
 import { tString } from '$lib/intl/messages.svelte'
@@ -88,7 +89,9 @@ export interface TransferProgressStateConfig extends TransferDispatchConfig {
   adoptOperationId?: string
   onComplete: (payload: TransferCompletePayload) => void
   onCancelled: (filesProcessed: number) => void
-  onError: (error: WriteOperationError) => void
+  /** `progressAtStop` rides on the `write-error` event, not on the error, so the
+   *  dialog can say how far a transfer got before its drive left. */
+  onError: (error: WriteOperationError, progressAtStop: ProgressAtStop | null) => void
   /** Send this operation to the background: unmount the modal but keep the op running. */
   onQueue?: () => void
   /** The MCP round-trip request id, present only for an auto-confirmed op started
@@ -405,7 +408,7 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
         // No floor: the error dialog takes this dialog's place, so there is
         // nothing that could flash.
         close(() => {
-          config.onError(error)
+          config.onError(error, settled.event.progressAtStop)
         }, false)
         return
       }

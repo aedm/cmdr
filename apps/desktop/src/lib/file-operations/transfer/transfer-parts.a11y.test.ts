@@ -230,7 +230,10 @@ describe('FallbackErrorContent a11y', () => {
   })
 
   it('device_disconnected (trash) has no a11y violations', async () => {
-    const target = mountFallback({ type: 'device_disconnected', path: '/Volumes/External/file.txt' }, 'trash')
+    const target = mountFallback(
+      { type: 'device_disconnected', path: '/Volumes/External/file.txt', side: null },
+      'trash',
+    )
     await tick()
     await expectNoA11yViolations(target)
   })

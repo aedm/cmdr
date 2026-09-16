@@ -54,6 +54,7 @@ import type {
   TransferErrorPropsData,
   TransferProgressPropsData,
 } from './dialog-props'
+import type { ProgressAtStop } from '$lib/tauri-commands'
 import { isAnySoftDialogOpen } from '$lib/ui/open-dialogs.svelte'
 import { announceOperationBlocked } from './operation-start-gate'
 import type { SoftDialogId } from '$lib/ui/dialog-registry'
@@ -154,9 +155,10 @@ export function createDialogState(deps: DialogStateDeps) {
     operationType: TransferOperationType,
     error: WriteOperationError,
     failedOperationId: string | null,
+    progressAtStop: ProgressAtStop | null,
   ): void {
     setForegroundFailureId(failedOperationId)
-    transferErrorProps = { operationType, error }
+    transferErrorProps = { operationType, error, progressAtStop }
     showTransferErrorDialog = true
   }
 
@@ -510,8 +512,8 @@ export function createDialogState(deps: DialogStateDeps) {
       adopted.handleCancelled(filesProcessed)
     },
 
-    handleAdoptedError(error: WriteOperationError) {
-      adopted.handleError(error)
+    handleAdoptedError(error: WriteOperationError, progressAtStop: ProgressAtStop | null) {
+      adopted.handleError(error, progressAtStop)
     },
 
     handleAdoptedQueue() {
@@ -547,7 +549,7 @@ export function createDialogState(deps: DialogStateDeps) {
       deps.onRefocus()
     },
 
-    handleTransferError(error: WriteOperationError) {
+    handleTransferError(error: WriteOperationError, progressAtStop: ProgressAtStop | null) {
       const op = transferProgressProps?.operationType ?? 'copy'
       // Read the foreground slot NOW, while the progress dialog still holds it:
       // it releases the slot as it unmounts, a few lines down, and the backend's
@@ -585,7 +587,7 @@ export function createDialogState(deps: DialogStateDeps) {
       showTransferProgressDialog = false
       transferProgressProps = null
 
-      openTransferError(op, error, failedOperationId)
+      openTransferError(op, error, failedOperationId, progressAtStop)
     },
 
     handleArchivePasswordSubmit(password: string) {

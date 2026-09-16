@@ -158,7 +158,8 @@ fn a_move_fsyncs_every_final_directory_that_gained_an_entry_once_before_deleting
 
 /// A flush that can't prove a directory durable must leave the move undone: every
 /// source stays, everything that landed stays, no source is reported removed, and
-/// the move answers `IoError` naming the directory.
+/// the move answers `MoveNotConfirmed` naming the directory and the errno the
+/// flush actually saw (M10 typed what M0 raised as a generic `IoError`).
 #[test]
 fn a_directory_fsync_failing_with_eio_keeps_every_source_and_what_landed() {
     let fixture = nested_move();
@@ -173,8 +174,14 @@ fn a_directory_fsync_failing_with_eio_keeps_every_source_and_what_landed() {
     );
 
     match &result {
-        Err(WriteOperationError::IoError { path, .. }) => assert_eq!(path, &failing.display().to_string()),
-        other => panic!("expected IoError naming {}, got {other:?}", failing.display()),
+        Err(WriteOperationError::MoveNotConfirmed { path, errno, .. }) => {
+            assert_eq!(path, &failing.display().to_string());
+            assert_eq!(*errno, Some(libc::EIO), "the errno comes from the flush, not re-derived");
+        }
+        other => panic!(
+            "expected MoveNotConfirmed naming {}, got {other:?}",
+            failing.display()
+        ),
     }
     for file in source_files(&fixture.src) {
         assert!(file.exists(), "source {} must survive a failed flush", file.display());

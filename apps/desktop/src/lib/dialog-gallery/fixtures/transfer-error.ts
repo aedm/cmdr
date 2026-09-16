@@ -16,11 +16,14 @@
  */
 
 import type { TransferOperationType, WriteOperationError } from '$lib/file-explorer/types'
+import type { ProgressAtStop } from '$lib/tauri-commands'
 
 /** Props of `TransferErrorDialog.svelte`, minus its callbacks. */
 export interface TransferErrorFixture {
   operationType: TransferOperationType
   error: WriteOperationError
+  /** How far the operation got, for the variants whose copy says so. */
+  progressAtStop?: ProgressAtStop
 }
 
 const LONG_PATH =
@@ -109,9 +112,38 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
     operationType: 'copy',
     error: { type: 'cancelled', message: 'Cancelled after 1,284 of 12,900 files' },
   },
+  // The drive files were being copied TO, with the progress the backend read
+  // before the operation unregistered: this is the sentence someone reads when
+  // they've just pulled a stick mid-copy and want to know what they have.
   device_disconnected: {
     operationType: 'copy',
-    error: { type: 'device_disconnected', path: '/Volumes/Fältkamera/DCIM/104MSDCF' },
+    error: {
+      type: 'device_disconnected',
+      path: '/Volumes/Fältkamera/DCIM/104MSDCF',
+      side: {
+        role: 'destination',
+        volumeId: 'vol-faltkamera',
+        volumeName: 'Fältkamera',
+        counterpartName: 'Macintosh HD',
+      },
+    },
+    progressAtStop: {
+      filesDone: 1284,
+      filesTotal: 12900,
+      bytesDone: 4_920_000_000,
+      bytesTotal: 51_000_000_000,
+      sourcesRemoved: null,
+      sourcesLeft: null,
+    },
+  },
+  move_not_confirmed: {
+    operationType: 'move',
+    error: {
+      type: 'move_not_confirmed',
+      path: '/Volumes/Fältkamera/DCIM',
+      errno: 5,
+      volumeName: 'Fältkamera',
+    },
   },
   read_only_device: {
     operationType: 'move',

@@ -8,7 +8,7 @@
  * other's behavior.
  */
 
-import type { Initiator } from '$lib/tauri-commands'
+import type { Initiator, ProgressAtStop } from '$lib/tauri-commands'
 import type { AppearedDuringMove, TopLevelSkipped, OpKind } from '$lib/ipc/bindings'
 import type { SoftDialogId } from '$lib/ui/dialog-registry'
 import type { DeleteSourceItem } from '$lib/file-operations/delete/delete-dialog-utils'
@@ -176,6 +176,9 @@ export interface AlertDialogPropsData {
 export interface TransferErrorPropsData {
   operationType: TransferOperationType
   error: WriteOperationError
+  /** How far the operation got when it stopped, from the `write-error` event.
+   *  Null for a failure adopted from a snapshot, which carries only the error. */
+  progressAtStop: ProgressAtStop | null
 }
 
 export interface ArchivePasswordPropsData {

@@ -31,6 +31,7 @@ import { getAppLogger } from '$lib/logging/logger'
 import { formatByteSize } from '$lib/units'
 import { transferOpLabel } from './transfer-op-label'
 import type { TransferOperationType, WriteOperationError } from '../types'
+import type { ProgressAtStop } from '$lib/tauri-commands'
 import type { AdoptedOperationData, ForegroundOperationVerdict, TransferCompletePayload } from './dialog-props'
 
 const log = getAppLogger('fileExplorer')
@@ -50,6 +51,7 @@ export interface AdoptedOperationDeps {
     operationType: TransferOperationType,
     error: WriteOperationError,
     failedOperationId: string | null,
+    progressAtStop: ProgressAtStop | null,
   ) => void
   onRefocus: () => void
 }
@@ -162,7 +164,7 @@ export function createAdoptedOperation(deps: AdoptedOperationDeps) {
      *  as it is for an operation this window started; only the pane tail is
      *  missing. The failure handover is the same too, so the corner chip and the
      *  toast stay quiet about what the user is already reading. */
-    handleError(error: WriteOperationError): void {
+    handleError(error: WriteOperationError, progressAtStop: ProgressAtStop | null): void {
       const op = adoptedProps?.operationType ?? 'copy'
       const failedOperationId = getForegroundOperationId()
       // The same technical lines the error dialog shows, ending with the variant.
@@ -174,7 +176,7 @@ export function createAdoptedOperation(deps: AdoptedOperationDeps) {
       })
 
       settle()
-      deps.openTransferError(op, error, failedOperationId)
+      deps.openTransferError(op, error, failedOperationId, progressAtStop)
     },
 
     /** The user sent an adopted operation back to the queue window (Background,

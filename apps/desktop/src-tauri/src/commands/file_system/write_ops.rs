@@ -220,6 +220,9 @@ pub async fn copy_files(
         initiator.unwrap_or(Initiator::User),
         // No source binding: the user picked these in the pane they are looking at.
         None,
+        // No typed sides: this is the same-`root` path, where both ends are the
+        // boot volume and no drive can leave under it.
+        None,
     )
     .await
 }
@@ -249,6 +252,9 @@ pub async fn move_files(
         None,
         initiator.unwrap_or(Initiator::User),
         // No source binding: the user picked these in the pane they are looking at.
+        None,
+        // No typed sides: this is the same-`root` path, where both ends are the
+        // boot volume and no drive can leave under it.
         None,
     )
     .await

@@ -136,6 +136,7 @@ async fn run_copy(seed: impl Fn(&Path, &Path), config: WriteOperationConfig, bin
         None,
         Initiator::User,
         expected,
+        None,
     )
     .await
     .expect("the copy starts");
@@ -268,6 +269,7 @@ async fn an_approved_move_takes_the_source_exactly_as_a_user_started_one_does() 
             None,
             Initiator::User,
             expected,
+            None,
         )
         .await
         .expect("the move starts");
@@ -321,6 +323,7 @@ async fn only_a_source_that_changed_is_treated_differently() {
         None,
         Initiator::User,
         Some(expected),
+        None,
     )
     .await
     .expect("the copy starts");
@@ -370,6 +373,7 @@ async fn an_approved_copy_settles_as_an_ordinary_copy() {
         None,
         Initiator::User,
         Some(bind_all(&sources)),
+        None,
     )
     .await
     .expect("the copy starts");

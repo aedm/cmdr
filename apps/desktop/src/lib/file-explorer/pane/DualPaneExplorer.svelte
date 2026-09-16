@@ -58,7 +58,7 @@
     import { initialize as initMtpStore } from '$lib/mtp'
     import { smbReconnectManager } from '../network/smb-reconnect-manager.svelte'
     import type { TransferOperationType } from '../types'
-    import type { Initiator } from '$lib/tauri-commands'
+    import type { Initiator, ProgressAtStop } from '$lib/tauri-commands'
     import { createDialogState } from './dialog-state.svelte'
     import type {
         AdoptedOperationData,
@@ -1344,14 +1344,14 @@
     onAdoptedCancelled={(files: number) => {
         dialogs.handleAdoptedCancelled(files)
     }}
-    onAdoptedError={(error: WriteOperationError) => {
-        dialogs.handleAdoptedError(error)
+    onAdoptedError={(error: WriteOperationError, progressAtStop: ProgressAtStop | null) => {
+        dialogs.handleAdoptedError(error, progressAtStop)
     }}
     onAdoptedQueue={() => {
         dialogs.handleAdoptedQueue()
     }}
-    onTransferError={(error: WriteOperationError) => {
-        dialogs.handleTransferError(error)
+    onTransferError={(error: WriteOperationError, progressAtStop: ProgressAtStop | null) => {
+        dialogs.handleTransferError(error, progressAtStop)
     }}
     onTransferQueue={() => {
         dialogs.handleTransferQueue()

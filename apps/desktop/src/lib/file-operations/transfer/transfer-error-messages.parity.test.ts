@@ -178,12 +178,51 @@ const cases: Case[] = [
   },
   {
     name: 'device_disconnected (move)',
-    error: { type: 'device_disconnected', path: '/p' },
+    error: { type: 'device_disconnected', path: '/p', side: null },
     op: 'move',
     expected: {
       title: 'Device disconnected',
       message: 'The device was disconnected during the move.',
       suggestion: 'Make sure the device is properly connected and try again.',
+    },
+  },
+  // The three sentences a vanished drive earns that need no counts. The counted
+  // ones (a copy's "1,284 of 12,900 files") are pinned in
+  // `transfer-error-messages.test.ts`, which can pass the progress this net's
+  // `Case` shape deliberately doesn't carry.
+  {
+    name: 'device_disconnected (the move destination left, originals kept)',
+    error: {
+      type: 'device_disconnected',
+      path: '/p',
+      side: { role: 'destination', volumeId: 'v', volumeName: 'Fältkamera', counterpartName: 'Macintosh HD' },
+    },
+    op: 'move',
+    expected: {
+      title: 'Device disconnected',
+      message: 'Fältkamera was disconnected before Cmdr could finish the move, so all your files are still on Macintosh HD.',
+      suggestion: 'Make sure the device is properly connected and try again.',
+    },
+  },
+  {
+    name: 'move_not_confirmed (named destination)',
+    error: { type: 'move_not_confirmed', path: '/p', errno: 5, volumeName: 'Fältkamera' },
+    op: 'move',
+    expected: {
+      title: "Couldn't confirm the move",
+      message: "Cmdr couldn't confirm the moved files were saved on Fältkamera, so it kept your originals where they were.",
+      suggestion: "Have a look at the destination, then try the move again. Your originals haven't moved.",
+    },
+  },
+  {
+    name: 'move_not_confirmed (no name to show)',
+    error: { type: 'move_not_confirmed', path: '/p', errno: null, volumeName: null },
+    op: 'move',
+    expected: {
+      title: "Couldn't confirm the move",
+      message:
+        "Cmdr couldn't confirm the moved files were saved at the destination, so it kept your originals where they were.",
+      suggestion: "Have a look at the destination, then try the move again. Your originals haven't moved.",
     },
   },
   {
@@ -452,7 +491,7 @@ const cases: Case[] = [
   },
   {
     name: 'device_disconnected (copy)',
-    error: { type: 'device_disconnected', path: '/p' },
+    error: { type: 'device_disconnected', path: '/p', side: null },
     op: 'copy',
     expected: {
       title: 'Device disconnected',
@@ -462,7 +501,7 @@ const cases: Case[] = [
   },
   {
     name: 'device_disconnected (delete)',
-    error: { type: 'device_disconnected', path: '/p' },
+    error: { type: 'device_disconnected', path: '/p', side: null },
     op: 'delete',
     expected: {
       title: 'Device disconnected',
@@ -472,7 +511,7 @@ const cases: Case[] = [
   },
   {
     name: 'device_disconnected (trash)',
-    error: { type: 'device_disconnected', path: '/p' },
+    error: { type: 'device_disconnected', path: '/p', side: null },
     op: 'trash',
     expected: {
       title: 'Device disconnected',
