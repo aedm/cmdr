@@ -201,8 +201,10 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   `crate::restricted_paths` for the state machine and the `restricted-paths-changed` event payload.
 - **`file_viewer.rs`**: session lifecycle, regex/literal search with mode flags, word wrap, menu state, encoding pickers
   (`viewer_set_encoding` / `viewer_get_encoding_options`), tail mode (`viewer_set_tail_mode`), `viewer_reload`.
-- **`menu.rs`**: native menus and menu-bar state: the context menus (file / breadcrumb / volume row / parent row /
-  tab / network host), the view-mode + hidden-files + pin-tab + reopen-tab sync commands, and `activate_window_menu`
+- **`menu.rs`**: the context-menu popups (file / breadcrumb / volume row / favorite row / parent row / tab / network
+  host / function key bar), plus `update_menu_context`.
+- **`menu_state.rs`**: the pushes that keep the menu BAR in step with the frontend: the view-mode + hidden-files +
+  pin-tab + reopen-tab + same-kind-label + UI-language sync commands, the greying setters, and `activate_window_menu`
   (per-window focus-gain: swaps the macOS app menu bar between main/viewer, then enables/disables file-scoped items via
   `menu::set_menu_context`, in `menu/item_states.rs`; see `menu/DETAILS.md`).
   - ❗ **`show_file_context_menu` holds a `ServicesLoan` across `popup()`** (macOS): AppKit's one Services menu is

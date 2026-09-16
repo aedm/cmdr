@@ -1,25 +1,19 @@
-//! Native menu commands: context menus (file / breadcrumb / volume row / favorite row / parent
-//! row / tab / network host / function key bar), the macOS app-menu-bar swap on focus change, and
-//! the menu-state sync commands (view mode, hidden files, pin tab, reopen tab, the Select menu's live
-//! "same kind" label).
+//! The context-menu popups: file, breadcrumb, volume row, favorite row, parent row, tab, network
+//! host, and the function key bar.
 //!
-//! Thin IPC layer over the `crate::menu` builders and `MenuState`.
+//! The pushes that keep the menu BAR in step with the frontend (view mode, hidden files, pin tab,
+//! the language, the greying) are the sibling `menu_state.rs`. Both are a thin IPC layer over the
+//! `crate::menu` builders and `MenuState`.
 
 use crate::ignore_poison::IgnorePoison;
 use crate::menu::{
-    ContextMenuPaneFacts, ContextMenuShortcuts, DetachWord, FileContextInfo, MenuState, SELECT_SAME_KIND_ID,
-    SameKindTarget, ServerRowMenu, SettingsChanged, ViewMode, apply_menu_item_states, build_breadcrumb_context_menu,
-    build_context_menu, build_favorite_context_menu, build_function_key_bar_context_menu,
-    build_network_host_context_menu, build_parent_row_context_menu, build_tab_context_menu,
-    build_volume_row_context_menu, rebuild_view_mode_items, same_kind_menu_label, set_menu_context,
-    sync_view_mode_check_states,
+    ContextMenuPaneFacts, ContextMenuShortcuts, DetachWord, FileContextInfo, MenuState, SameKindTarget, ServerRowMenu,
+    build_breadcrumb_context_menu, build_context_menu, build_favorite_context_menu,
+    build_function_key_bar_context_menu, build_network_host_context_menu, build_parent_row_context_menu,
+    build_tab_context_menu, build_volume_row_context_menu,
 };
-#[cfg(target_os = "macos")]
-use crate::menu::{swap_to_main_menu, swap_to_viewer_menu};
-use std::sync::atomic::Ordering;
 use tauri::menu::ContextMenu;
 use tauri::{AppHandle, Manager, Runtime, Window};
-use tauri_specta::Event as _;
 
 #[tauri::command]
 #[specta::specta]
@@ -518,107 +512,6 @@ pub fn show_parent_row_context_menu<R: Runtime>(
     Ok(())
 }
 
-/// Toggle hidden files visibility - updates menu checkbox and emits event.
-///
-/// This is the "external trigger" path: MCP tool calls and any other Rust-side
-/// caller that needs to flip the setting from outside the explorer. It updates
-/// the macOS `CheckMenuItem` and emits `settings-changed` so the explorer
-/// listener picks up the change.
-///
-/// **The keyboard-shortcut / command-palette path does NOT use this.** That
-/// path mutates the explorer's FE state directly (synchronous, no Rust round-
-/// trip) and uses [`sync_menu_show_hidden`] to push the new check state to the
-/// native menu. Routing the FE-driven toggle through here would create an
-/// IPC → event → effect → DOM-update chain that the e2e test against `⌘⇧.`
-/// flaked on (~1/25) when the slow lane was under load.
-#[tauri::command]
-#[specta::specta]
-pub fn toggle_hidden_files<R: Runtime>(app: AppHandle<R>) -> Result<bool, String> {
-    let menu_state = app.state::<MenuState<R>>();
-    let guard = menu_state.show_hidden_files.lock_ignore_poison();
-    let Some(check_item) = guard.as_ref() else {
-        return Err("Menu not initialized".to_string());
-    };
-
-    // Get current state and toggle it
-    let current = check_item.is_checked().unwrap_or(false);
-    let new_state = !current;
-    check_item.set_checked(new_state).map_err(|e| e.to_string())?;
-
-    // Emit event to frontend with the new state
-    SettingsChanged {
-        show_hidden_files: new_state,
-    }
-    .emit(&app)
-    .map_err(|e| e.to_string())?;
-
-    Ok(new_state)
-}
-
-/// One-way sync of the native "Show hidden files" `CheckMenuItem` checked
-/// state from the frontend. Does NOT emit `settings-changed`: the FE is the
-/// caller, it already knows the new state and has already updated its own
-/// view. Idempotent — safe to call with the current state.
-#[tauri::command]
-#[specta::specta]
-pub fn sync_menu_show_hidden<R: Runtime>(app: AppHandle<R>, checked: bool) -> Result<(), String> {
-    let menu_state = app.state::<MenuState<R>>();
-    let guard = menu_state.show_hidden_files.lock_ignore_poison();
-    let Some(check_item) = guard.as_ref() else {
-        // Menu not yet initialized (very early in startup). The next menu
-        // build will pick up the persisted setting, so a no-op here is fine.
-        return Ok(());
-    };
-    check_item.set_checked(checked).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-/// Pushes the full View menu state from the frontend: which pane is active and
-/// the per-pane view modes. The menu's check states are updated for both pane
-/// pairs, and if the active pane changed since the last call the keyboard
-/// accelerators are migrated to the newly-active pair via
-/// `rebuild_view_mode_items`. Called on initial mount, focus change, swap, and
-/// after any view-mode change (palette, MCP, menu click round-trip).
-#[tauri::command]
-#[specta::specta]
-pub fn update_view_mode_menu<R: Runtime>(
-    app: AppHandle<R>,
-    active_pane: String,
-    left_mode: String,
-    right_mode: String,
-) -> Result<(), String> {
-    if active_pane != "left" && active_pane != "right" {
-        return Err(format!("Invalid active_pane: {active_pane}"));
-    }
-    let parse_mode = |s: &str| match s {
-        "full" => Ok(ViewMode::Full),
-        "brief" => Ok(ViewMode::Brief),
-        other => Err(format!("Invalid view mode: {other}")),
-    };
-    let left = parse_mode(&left_mode)?;
-    let right = parse_mode(&right_mode)?;
-
-    let menu_state = app.state::<MenuState<R>>();
-
-    // Stash new state, then decide whether a full rebuild is needed.
-    let active_changed = {
-        let mut guard = menu_state.view_mode_active_pane.lock_ignore_poison();
-        let changed = *guard != active_pane;
-        *guard = active_pane;
-        changed
-    };
-    *menu_state.view_mode_left.lock_ignore_poison() = left;
-    *menu_state.view_mode_right.lock_ignore_poison() = right;
-
-    if active_changed {
-        rebuild_view_mode_items(&app, &menu_state).map_err(|e| e.to_string())?;
-    } else {
-        sync_view_mode_check_states(&menu_state).map_err(|e| e.to_string())?;
-    }
-
-    Ok(())
-}
-
 /// Shows a native context menu for a tab (fire-and-forget).
 /// The selected action is delivered asynchronously via a `tab-context-action` Tauri event
 /// from `on_menu_event`, because `popup()` returns before the event loop processes the
@@ -684,171 +577,5 @@ pub fn show_network_host_context_menu(
     focus_for_context_menu(&window);
     menu.popup(window).map_err(|e| e.to_string())?;
 
-    Ok(())
-}
-
-/// Updates the File menu "Pin tab" / "Unpin tab" label based on the active tab's pin state.
-#[tauri::command]
-#[specta::specta]
-pub fn update_pin_tab_menu<R: Runtime>(app: AppHandle<R>, is_pinned: bool) -> Result<(), String> {
-    let menu_state = app.state::<MenuState<R>>();
-    let guard = menu_state.pin_tab.lock_ignore_poison();
-    let Some(item) = guard.as_ref() else {
-        return Err("Menu not initialized".to_string());
-    };
-    item.set_text(crate::menu::pin_tab_label(is_pinned))
-        .map_err(|e| e.to_string())
-}
-
-/// Rewrites the Select menu's "Select all of the same kind" item to say what it would select right
-/// now: "Select all folders", "Select all with extension *.pdf", or the neutral fallback.
-///
-/// `target` is the focused pane's cursor row, as `pane/same-kind-target.svelte.ts` publishes it —
-/// the same value the command palette labels its row from, so the two can't disagree. `None` is a
-/// row with no kind (`..`, an empty listing), and restores the neutral label.
-///
-/// The frontend debounces this by 200 ms and skips a push that would render the same words, so
-/// holding an arrow key down costs one call. ❗ The COMMAND never reads any of this: it re-reads
-/// the cursor row when it runs, so a label a frame behind can't change what gets selected.
-#[tauri::command]
-#[specta::specta]
-pub fn update_select_same_kind_menu<R: Runtime>(
-    app: AppHandle<R>,
-    target: Option<SameKindTarget>,
-) -> Result<(), String> {
-    let menu_state = app.state::<MenuState<R>>();
-    menu_state.set_item_label(SELECT_SAME_KIND_ID, same_kind_menu_label(target.as_ref()))?;
-    // `set_text` leaves a plain NSMenuItem title behind, so the dimmed `⌥⇧=` has to be redrawn or
-    // it vanishes on the first cursor move.
-    #[cfg(target_os = "macos")]
-    crate::menu::set_display_accelerators_from_command(&app);
-    Ok(())
-}
-
-/// Tells Rust which language the UI speaks, and rebuilds the native menu bar if
-/// that moved it.
-///
-/// `language` is the raw `appearance.language` setting: a catalog tag the user
-/// pinned, or `None` / `"system"` for "follow the OS". The frontend pushes it on
-/// startup and on every change, because the native surfaces (menu bar, window
-/// title, the already-running alert) resolve their own copy and can't read the
-/// webview's.
-///
-/// Rebuilding is skipped when the resolved catalog didn't actually move: going
-/// from `'system'` to the language the OS already reported changes nothing
-/// visible, and a rebuild is a flicker plus a round of frontend re-pushes.
-#[tauri::command]
-#[specta::specta]
-pub fn set_ui_language<R: Runtime>(app: AppHandle<R>, language: Option<String>) -> Result<(), String> {
-    if !crate::intl::set_language_preference(language) {
-        return Ok(());
-    }
-    // Installing a menu is AppKit work, and a command handler runs on a worker
-    // thread. Fire-and-forget past the hop: a failed dispatch leaves the old
-    // language on the bar, never a half-built one.
-    let handle = app.clone();
-    app.run_on_main_thread(move || {
-        if let Err(e) = crate::menu::rebuild_menu_bar(&handle) {
-            log::warn!(target: "menu", "Couldn't rebuild the menu bar in the new language: {e}");
-        }
-    })
-    .map_err(|e| e.to_string())
-}
-
-/// Enables or disables the Tab menu "Reopen closed tab" item based on whether the
-/// focused pane's closed-tab stack has entries.
-#[tauri::command]
-#[specta::specta]
-pub fn set_reopen_closed_tab_enabled<R: Runtime>(app: AppHandle<R>, enabled: bool) -> Result<(), String> {
-    let menu_state = app.state::<MenuState<R>>();
-    menu_state.reopen_closed_tab_enabled.store(enabled, Ordering::Relaxed);
-    apply_menu_item_states(&menu_state);
-    Ok(())
-}
-
-/// Activates the right app menu for the window that just gained focus.
-///
-/// `kind` is one of:
-/// - `"main"`: the main file explorer gained focus. On macOS, swap the app-level menu bar back to
-///   the main menu (if a different menu is installed), then enable all explorer items.
-/// - `"viewer"`: a viewer window gained focus. On macOS, swap to the shared viewer menu. No-op on
-///   Linux (viewer windows carry their own per-window menu).
-/// - `"other"`: Settings or Debug gained focus. On macOS, swap to the main menu, then disable
-///   explorer items (Settings / Debug reuse the main menu with items greyed out).
-///
-/// On macOS the menu bar is app-level (one bar, tauri-apps/tauri#5768), so we swap it via
-/// `app.set_menu()` on focus-gain. `active_menu_kind` tracks the installed menu so we skip redundant
-/// swaps. After every swap we re-run `cleanup_macos_menus` (macOS re-injects Edit items) and, when
-/// swapping back to the main menu, re-apply SF Symbol icons (they don't reliably survive a swap).
-#[tauri::command]
-#[specta::specta]
-pub fn activate_window_menu<R: Runtime>(app: AppHandle<R>, kind: String) -> Result<(), String> {
-    match kind.as_str() {
-        "main" => {
-            #[cfg(target_os = "macos")]
-            swap_to_main_menu(&app);
-            set_menu_context(app, "explorer".to_string())
-        }
-        "viewer" => {
-            #[cfg(target_os = "macos")]
-            swap_to_viewer_menu(&app);
-            #[cfg(not(target_os = "macos"))]
-            let _ = &app;
-            Ok(())
-        }
-        "other" => {
-            #[cfg(target_os = "macos")]
-            swap_to_main_menu(&app);
-            set_menu_context(app, "other".to_string())
-        }
-        other => Err(format!("Unknown window menu kind: {other}")),
-    }
-}
-
-/// Greys out (or restores) the File menu's "Open terminal here", following the
-/// focused pane's volume.
-///
-/// Called by the main window whenever the focused pane, its tab, or that tab's
-/// volume changes. ⚠️ CHROME only: a disabled item's accelerator still fires, so
-/// the real refusals stay in the frontend handler (which words the hint) and in
-/// `open_terminal_here` itself (which answers `not_a_local_path`).
-#[tauri::command]
-#[specta::specta]
-pub fn set_open_terminal_here_enabled<R: Runtime>(app: AppHandle<R>, enabled: bool) -> Result<(), String> {
-    let menu_state = app.state::<MenuState<R>>();
-    menu_state.open_terminal_here_enabled.store(enabled, Ordering::Relaxed);
-    apply_menu_item_states(&menu_state);
-    Ok(())
-}
-
-/// Greys out (or restores) the menu items that would start a file operation.
-///
-/// Called by the main window whenever a dialog opens or closes, or the Ask Cmdr
-/// composer takes or gives up focus. ⚠️ CHROME only: a disabled item's accelerator
-/// still fires, so this stops the app OFFERING what it would refuse; the refusals
-/// themselves live in `mcp/executor/mod.rs` and the two frontend gates.
-#[tauri::command]
-#[specta::specta]
-pub fn set_file_operations_blocked<R: Runtime>(app: AppHandle<R>, blocked: bool) -> Result<(), String> {
-    let menu_state = app.state::<MenuState<R>>();
-    menu_state.file_operations_blocked.store(blocked, Ordering::Relaxed);
-    apply_menu_item_states(&menu_state);
-    Ok(())
-}
-
-/// Greys out the main-menu items whose commands the main window's dialog gate refuses right now:
-/// every `BLOCKED_BY_DIALOGS` command while a dialog, an explorer overlay, or the command palette is
-/// up, and none once it's gone. The only writer is `routes/(main)/menu-dialog-gate.svelte.ts`.
-///
-/// ⚠️ CHROME for the regular items: a disabled item's accelerator still fires, and the dispatch core
-/// refuses those commands itself. The two check items are the exception, because they toggle
-/// themselves before the frontend hears of the click: `handle_menu_event` reverts a refused one
-/// from this same set.
-#[tauri::command]
-#[specta::specta]
-pub fn set_commands_refused_over_dialog<R: Runtime>(app: AppHandle<R>, command_ids: Vec<String>) -> Result<(), String> {
-    let menu_state = app.state::<MenuState<R>>();
-    *menu_state.commands_refused_over_dialog.lock_ignore_poison() = command_ids.into_iter().collect();
-    apply_menu_item_states(&menu_state);
     Ok(())
 }
