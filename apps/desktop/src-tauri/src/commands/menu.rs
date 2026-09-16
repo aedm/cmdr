@@ -6,11 +6,11 @@
 
 use crate::ignore_poison::IgnorePoison;
 use crate::menu::{
-    ContextMenuPaneFacts, DetachWord, FileContextInfo, MenuState, ServerRowMenu, SettingsChanged, ViewMode,
-    apply_menu_item_states, build_breadcrumb_context_menu, build_context_menu, build_favorite_context_menu,
+    ContextMenuPaneFacts, ContextMenuShortcuts, DetachWord, FileContextInfo, MenuState, ServerRowMenu, SettingsChanged,
+    ViewMode, apply_menu_item_states, build_breadcrumb_context_menu, build_context_menu, build_favorite_context_menu,
     build_function_key_bar_context_menu, build_network_host_context_menu, build_parent_row_context_menu,
-    build_tab_context_menu, build_volume_row_context_menu, frontend_shortcut_to_accelerator, rebuild_view_mode_items,
-    set_menu_context, sync_view_mode_check_states,
+    build_tab_context_menu, build_volume_row_context_menu, rebuild_view_mode_items, set_menu_context,
+    sync_view_mode_check_states,
 };
 #[cfg(target_os = "macos")]
 use crate::menu::{swap_to_main_menu, swap_to_viewer_menu};
@@ -79,6 +79,10 @@ pub struct PaneContextMenuFacts {
 }
 
 /// Shows the file context menu.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "IPC payload fields, each named on the wire; `path` / `filename` / `is_directory` / `paths` all describe the right-clicked ROW and belong in one struct, which is a change to the frontend contract rather than to this signature"
+)]
 #[tauri::command]
 #[specta::specta]
 pub fn show_file_context_menu<R: Runtime>(
@@ -89,6 +93,7 @@ pub fn show_file_context_menu<R: Runtime>(
     paths: Vec<String>,
     pane: PaneContextMenuFacts,
     target: crate::menu::ContextMenuTarget,
+    shortcuts: ContextMenuShortcuts,
 ) -> Result<(), String> {
     let app = window.app_handle();
 
@@ -175,6 +180,7 @@ pub fn show_file_context_menu<R: Runtime>(
             count_text: target.count_text.as_deref(),
             size_text: target.size_text.as_deref(),
         },
+        &shortcuts,
     )
     .map_err(|e| e.to_string())?;
 
@@ -299,8 +305,8 @@ fn build_file_context_info(primary_path: &str, all_paths: &[String], is_director
 
 /// Shows a native context menu for the breadcrumb path bar.
 ///
-/// `shortcut` is the user's configured shortcut for "Copy path" in frontend format
-/// (e.g. "⌘⌥C"), or empty string if no shortcut is configured.
+/// `shortcuts` is the live shortcut registry, the same map the file context menu reads
+/// its accelerator labels from (`crate::menu::ContextMenuShortcuts`).
 /// `eject_volume_id` + `eject_volume_name` are set when the breadcrumb represents an
 /// ejectable volume; both must be present (or both absent) — the command stashes the
 /// id in `MenuState.volume_row_context` so `on_menu_event` can dispatch the click.
@@ -308,12 +314,11 @@ fn build_file_context_info(primary_path: &str, all_paths: &[String], is_director
 #[specta::specta]
 pub fn show_breadcrumb_context_menu<R: Runtime>(
     window: Window<R>,
-    shortcut: String,
+    shortcuts: ContextMenuShortcuts,
     eject_volume_id: Option<String>,
     eject_volume_name: Option<String>,
 ) -> Result<(), String> {
     let app = window.app_handle();
-    let accelerator = frontend_shortcut_to_accelerator(&shortcut).unwrap_or_default();
     // Disable the eject item while a write op touches this volume or its eject is
     // still running (the picker's inline eject button is disabled the same way).
     let eject_busy = eject_volume_id
@@ -322,7 +327,7 @@ pub fn show_breadcrumb_context_menu<R: Runtime>(
     let detach_word = eject_volume_id
         .as_deref()
         .map_or(DetachWord::Eject, DetachWord::for_volume_id);
-    let menu = build_breadcrumb_context_menu(app, &accelerator, eject_volume_name.as_deref(), eject_busy, detach_word)
+    let menu = build_breadcrumb_context_menu(app, &shortcuts, eject_volume_name.as_deref(), eject_busy, detach_word)
         .map_err(|e| e.to_string())?;
 
     // Stash eject target so on_menu_event can read it back when the user clicks

@@ -35,6 +35,7 @@
     import { tString } from '$lib/intl/messages.svelte'
     import { snapshotBasename, snapshotContextMenuPaths, snapshotContextMenuRows } from './snapshot-context-menu'
     import { contextMenuCountText, contextMenuSizeBytes, contextMenuSizeText } from '../selection/context-menu-target'
+    import { boundShortcuts } from '$lib/shortcuts'
     import type { SearchResultEntry } from '$lib/ipc/bindings'
     import type { ListViewAPI } from './types'
 
@@ -269,6 +270,7 @@
                     countText: contextMenuCountText(paths.length),
                     sizeText: contextMenuSizeText(contextMenuSizeBytes(targets)),
                 },
+                boundShortcuts(),
             )
         }}
     />

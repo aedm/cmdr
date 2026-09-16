@@ -112,9 +112,10 @@ pub use menu_handlers::{
 pub(crate) use menu_items::DetachWord;
 pub use menu_items::pin_tab_label;
 pub use menu_structure::{
-    ContextMenuPaneFacts, FileContextInfo, ServerRowMenu, build_breadcrumb_context_menu, build_context_menu,
-    build_favorite_context_menu, build_function_key_bar_context_menu, build_network_host_context_menu,
-    build_parent_row_context_menu, build_tab_context_menu, build_viewer_menu, build_volume_row_context_menu,
+    ContextMenuPaneFacts, ContextMenuShortcuts, FileContextInfo, ServerRowMenu, build_breadcrumb_context_menu,
+    build_context_menu, build_favorite_context_menu, build_function_key_bar_context_menu,
+    build_network_host_context_menu, build_parent_row_context_menu, build_tab_context_menu, build_viewer_menu,
+    build_volume_row_context_menu,
 };
 pub use rebuild::rebuild_menu_bar;
 #[cfg(target_os = "macos")]

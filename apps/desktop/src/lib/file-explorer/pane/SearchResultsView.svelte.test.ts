@@ -49,8 +49,12 @@ vi.mock('$lib/text-size.svelte', () => ({
   getEffectiveScale: () => 1,
   onDebouncedScaleChange: () => () => {},
 }))
-/** The Rust menu builder's positional signature, as one rest tuple: `[path, filename, isDirectory, paths, options]`. */
-const showFileContextMenuSpy = vi.fn<(...args: [string, string, boolean, string[], unknown?]) => Promise<void>>()
+/**
+ * The Rust menu builder's positional signature, as one rest tuple:
+ * `[path, filename, isDirectory, paths, pane, target, shortcuts]`.
+ */
+const showFileContextMenuSpy =
+  vi.fn<(...args: [string, string, boolean, string[], unknown?, unknown?, unknown?]) => Promise<void>>()
 
 /** The backend comparator behind a header click; each test says what it answers. */
 const sortSearchResultsSpy = vi.fn<() => Promise<number[]>>()
@@ -58,7 +62,8 @@ const sortSearchResultsSpy = vi.fn<() => Promise<number[]>>()
 vi.mock('$lib/tauri-commands', () => ({
   getDirStatsBatch: () => Promise.resolve([]),
   listen: () => Promise.resolve(() => {}),
-  showFileContextMenu: (...args: [string, string, boolean, string[], unknown?]) => showFileContextMenuSpy(...args),
+  showFileContextMenu: (...args: [string, string, boolean, string[], unknown?, unknown?, unknown?]) =>
+    showFileContextMenuSpy(...args),
   sortSearchResults: () => sortSearchResultsSpy(),
 }))
 vi.mock('$lib/icon-cache', () => ({

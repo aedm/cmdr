@@ -24,6 +24,9 @@ export {
   resyncMenuAccelerators,
 } from './shortcuts-store'
 
+// The whole registry as one map, for the native popup menus' accelerator labels
+export { boundShortcuts } from './bound-shortcuts'
+
 // Conflict detection
 export { findConflictsForShortcut, getConflictCount, getConflictingCommandIds } from './conflict-detector'
 

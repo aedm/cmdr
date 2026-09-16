@@ -32,7 +32,12 @@ commands, and notable non-obvious placements.
   need locale-aware number formatting, which Rust's `menu_t` deliberately lacks; build them with
   `$lib/file-explorer/selection/context-menu-target`, ❌ never by hand. Rust still derives the target COUNT from `paths`
   and uses it to pick the header's shape. Omit `sizeText` for "no honest size"; ❌ never a zero. Full rationale:
-  `$lib/file-explorer/selection/DETAILS.md` § Context-menu header.
+  `$lib/file-explorer/selection/DETAILS.md` § Context-menu header. It also sends a `shortcuts` map the caller never
+  passes: the private `boundShortcuts()` reads every bound combo out of the registry per popup, so the native menu
+  labels its items from what the user has actually bound rather than from literals that go stale on a rebind.
+  `showBreadcrumbContextMenu` rides the same map (its only argument is the eject target now), and both send the
+  CANONICAL spelling — ❌ never `toDisplayShortcut`, whose glyphs Rust's converter turns into garbage.
+  `src-tauri/src/menu/DETAILS.md` § "Where a CONTEXT menu's accelerator comes from".
 - **`favorites.ts`**: user-editable switcher favorites: `addFavorite`, `removeFavorite`, `renameFavorite`,
   `reorderFavorites`, plus `stripFavoritePrefix` (recover the bare id from a `fav-…` switcher id). Listing rides
   `listVolumes` / `volumes-changed`; there's no `listFavorites`.

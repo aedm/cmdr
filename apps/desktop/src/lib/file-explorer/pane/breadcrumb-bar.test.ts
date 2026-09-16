@@ -12,23 +12,23 @@
  */
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 
-const { ipc, shortcuts, eject, mtp, volumeStore } = vi.hoisted<{
+const { ipc, eject, mtp, volumeStore, boundCombos } = vi.hoisted<{
   ipc: { showBreadcrumbContextMenu: Mock }
-  shortcuts: { getEffectiveShortcuts: Mock; toDisplayShortcut: Mock }
   eject: { isVolumeEjectable: Mock }
   mtp: { isMtpVolumeId: Mock; getMtpDisplayPath: Mock }
   volumeStore: { getVolumes: Mock }
+  /** What the registry answers here; the menu's "Copy path" label comes from it. */
+  boundCombos: Record<string, string>
 }>(() => ({
   ipc: { showBreadcrumbContextMenu: vi.fn() },
-  shortcuts: { getEffectiveShortcuts: vi.fn(), toDisplayShortcut: vi.fn() },
   eject: { isVolumeEjectable: vi.fn() },
   mtp: { isMtpVolumeId: vi.fn(), getMtpDisplayPath: vi.fn() },
   volumeStore: { getVolumes: vi.fn() },
+  boundCombos: { 'file.copyCurrentDirectoryPath': '⌘⇧C' },
 }))
 
 vi.mock('$lib/tauri-commands', () => ({ showBreadcrumbContextMenu: ipc.showBreadcrumbContextMenu }))
-vi.mock('$lib/shortcuts/shortcuts-store', () => ({ getEffectiveShortcuts: shortcuts.getEffectiveShortcuts }))
-vi.mock('$lib/shortcuts/key-capture', () => ({ toDisplayShortcut: shortcuts.toDisplayShortcut }))
+vi.mock('$lib/shortcuts', () => ({ boundShortcuts: () => boundCombos }))
 vi.mock('../navigation/eject-predicate', () => ({ isVolumeEjectable: eject.isVolumeEjectable }))
 vi.mock('$lib/mtp', () => ({ isMtpVolumeId: mtp.isMtpVolumeId, getMtpDisplayPath: mtp.getMtpDisplayPath }))
 vi.mock('$lib/stores/volume-store.svelte', () => ({ getVolumes: volumeStore.getVolumes }))
@@ -168,8 +168,6 @@ describe('createBreadcrumbHandlers', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    shortcuts.getEffectiveShortcuts.mockReturnValue(['cmd+shift+c'])
-    shortcuts.toDisplayShortcut.mockReturnValue('⌘⇧C')
     eject.isVolumeEjectable.mockReturnValue(false)
     mtp.isMtpVolumeId.mockReturnValue(false)
     ipc.showBreadcrumbContextMenu.mockResolvedValue(undefined)
@@ -217,13 +215,13 @@ describe('createBreadcrumbHandlers', () => {
     const event = { preventDefault: vi.fn() } as unknown as MouseEvent
     createBreadcrumbHandlers(deps).handleContextMenu(event)
     expect(calls.onRequestFocus).toHaveBeenCalledTimes(1)
-    expect(ipc.showBreadcrumbContextMenu).toHaveBeenCalledWith('⌘⇧C', undefined, undefined)
+    expect(ipc.showBreadcrumbContextMenu).toHaveBeenCalledWith(boundCombos, undefined, undefined)
   })
 
   it('passes the volume id and name for an ejectable volume', () => {
     eject.isVolumeEjectable.mockReturnValue(true)
     createBreadcrumbHandlers(deps).handleContextMenu({ preventDefault: vi.fn() } as unknown as MouseEvent)
-    expect(ipc.showBreadcrumbContextMenu).toHaveBeenCalledWith('⌘⇧C', 'ext', 'External')
+    expect(ipc.showBreadcrumbContextMenu).toHaveBeenCalledWith(boundCombos, 'ext', 'External')
   })
 
   describe('switching volume', () => {

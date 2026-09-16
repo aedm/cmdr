@@ -23,6 +23,9 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
 - **The context menu's first line is a disabled HEADER naming what it acts on** (the selection vs the clicked row). Rust
   picks the shape from `context_paths.len()` and formats NOTHING: ❌ every number arrives pre-rendered from the
   frontend; ❌ no file KIND. `context_menu_header.rs`.
+- **A popup item's accelerator is a LABEL the payload carries, ❌ never a literal**: `context_item()` looks its own
+  menu id up via `frontend_shortcut_to_menu_text`, ❌ not the bar's floored `frontend_shortcut_to_accelerator`.
+  `DETAILS.md`.
 - **Accelerator changes go remove/recreate/reinsert** (Tauri has no `set_accelerator()`), so `MenuState` tracks each
   item's submenu and index: the builder registers a tracked row at its own index. A new item is one row in
   `menu_bar.rs`, plus its line in the `menu_bar_test.rs` snapshot.

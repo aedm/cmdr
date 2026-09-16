@@ -12,6 +12,7 @@
 
 import { getPathsAtIndices, showFileContextMenu, showParentRowContextMenu } from '$lib/tauri-commands'
 import { contextMenuCountText, contextMenuSizeBytes, contextMenuSizeText } from '../selection/context-menu-target'
+import { boundShortcuts } from '$lib/shortcuts'
 import type { FileEntry, SelectPayload } from '../types'
 import { getSetting, setSetting } from '$lib/settings'
 import { addToast } from '$lib/ui/toast'
@@ -136,6 +137,7 @@ export function createPanePointer(deps: PanePointerDeps): PanePointer {
         canFavorite: paneFolderCanBeFavorited(volumeId, entry.path),
       },
       { countText: contextMenuCountText(paths.length), sizeText: contextMenuSizeText(sizeBytes) },
+      boundShortcuts(),
     )
   }
 

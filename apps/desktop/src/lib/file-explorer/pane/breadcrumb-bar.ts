@@ -12,8 +12,7 @@ import { showBreadcrumbContextMenu } from '$lib/tauri-commands'
 import type { VolumeInfo } from '../types'
 import { isMtpVolumeId, getMtpDisplayPath } from '$lib/mtp'
 import { getAdbDisplayPath, isAdbVolumeId } from '$lib/adb/adb-path-utils'
-import { getEffectiveShortcuts } from '$lib/shortcuts/shortcuts-store'
-import { toDisplayShortcut } from '$lib/shortcuts/key-capture'
+import { boundShortcuts } from '$lib/shortcuts'
 import { isVolumeEjectable } from '../navigation/eject-predicate'
 import { getVolumes as getStoreVolumes } from '$lib/stores/volume-store.svelte'
 import type { VolumeChangePayload, VolumeSpaceWatchArgs } from './types'
@@ -98,18 +97,13 @@ export function createBreadcrumbHandlers(deps: BreadcrumbHandlerDeps): Breadcrum
   function handleContextMenu(event: MouseEvent): void {
     event.preventDefault()
     deps.onRequestFocus()
-    const shortcuts = getEffectiveShortcuts('file.copyCurrentDirectoryPath')
     // Pass eject info when the pane's volume is ejectable so the menu can
     // include an "Eject ({name})" item. Same gate as the row/header eject
     // buttons; the volume-context-action listener in DualPaneExplorer
     // dispatches the click to `ejectVolume`.
     const v = deps.getCurrentVolumeInfo()
     const ejectable = v && isVolumeEjectable(v)
-    void showBreadcrumbContextMenu(
-      toDisplayShortcut(shortcuts[0] ?? ''),
-      ejectable ? v.id : undefined,
-      ejectable ? v.name : undefined,
-    )
+    void showBreadcrumbContextMenu(boundShortcuts(), ejectable ? v.id : undefined, ejectable ? v.name : undefined)
   }
 
   function handleVolumeChange(change: VolumeChangePayload): void {

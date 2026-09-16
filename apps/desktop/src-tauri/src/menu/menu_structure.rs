@@ -1,7 +1,6 @@
 //! Context menus (file, breadcrumb, tab, network host, function key bar) and the
 //! viewer-window menu. The main menu bar is `menu_bar.rs`.
 
-#[cfg(target_os = "macos")]
 use std::collections::HashMap;
 #[cfg(target_os = "macos")]
 use std::path::PathBuf;
@@ -28,7 +27,8 @@ use super::context_menu_header::{ContextMenuTargetFacts, append_context_menu_hea
 
 #[cfg(target_os = "macos")]
 use super::OPEN_TERMINAL_HERE_ID;
-use super::menu_bar::{COPY_PATH_ACCELERATOR, SHOW_IN_FILE_MANAGER_ACCELERATOR, SHOW_IN_FILE_MANAGER_KEY};
+use super::menu_bar::SHOW_IN_FILE_MANAGER_KEY;
+use super::{frontend_shortcut_to_menu_text, menu_id_to_command};
 #[cfg(target_os = "macos")]
 use super::menu_items::APP_MENU_TITLE;
 use super::menu_items::{COPY_FILENAME_MAX_CHARS, DetachWord, detach_label, pin_tab_label, truncate_for_menu_label};
@@ -131,10 +131,70 @@ pub struct ContextMenuPaneFacts {
     pub can_favorite: bool,
 }
 
+/// The user's keyboard shortcuts as they stand right now: command-registry id → the
+/// combo in the frontend's canonical spelling (`⌘⇧C`, `F5`, `Space`). The frontend
+/// pushes it with every popup, straight out of the shortcut registry, so a command
+/// nobody has bound is simply absent.
+///
+/// This is how a popup menu's accelerator labels stay true after a rebind. They were
+/// literals once, and a literal starts lying the moment the user changes a key in
+/// Settings > Shortcuts.
+///
+/// ❗ These accelerators never FIRE. A popup's key equivalents are never registered
+/// with the app (only the menu bar's are), so every one of them is display text. That
+/// is why the lookup goes through `frontend_shortcut_to_menu_text` and ❌ never
+/// `frontend_shortcut_to_accelerator`: the menu bar's modifier floor would drop a bare
+/// `Space` or `F5`, which is right there and wrong here.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(transparent)]
+pub struct ContextMenuShortcuts(HashMap<String, String>);
+
+impl ContextMenuShortcuts {
+    /// The accelerator to show beside the item with this MENU id, in Tauri's format.
+    ///
+    /// Menu id in, not command id: `menu_id_to_command` is already the one table
+    /// binding the two vocabularies, and taking the same id the item is built with
+    /// means the label can't end up describing a different command.
+    ///
+    /// `None` when nothing is bound — and also for a menu id that maps to no command
+    /// at all, which is a caller bug rather than a user state, and shows up as a
+    /// missing label rather than a wrong one.
+    pub fn for_menu_item(&self, menu_id: &str) -> Option<String> {
+        let (command_id, _scope) = menu_id_to_command(menu_id)?;
+        frontend_shortcut_to_menu_text(self.0.get(command_id)?)
+    }
+}
+
+/// One context-menu item, labelled with whatever its command is bound to right now.
+///
+/// The menu id is used twice on purpose: as the item's own id, and as the key the
+/// accelerator is looked up by. One argument, so the label can't drift from the item.
+fn context_item<R: Runtime>(
+    app: &AppHandle<R>,
+    shortcuts: &ContextMenuShortcuts,
+    menu_id: &str,
+    label: String,
+    enabled: bool,
+) -> tauri::Result<MenuItem<R>> {
+    MenuItem::with_id(
+        app,
+        menu_id,
+        label,
+        enabled,
+        shortcuts.for_menu_item(menu_id).as_deref(),
+    )
+}
+
 /// Builds a context menu for a specific file.
 ///
 /// `pane` is what the surface the click landed in contributes; see
-/// [`ContextMenuPaneFacts`] for each answer and who gives it.
+/// [`ContextMenuPaneFacts`] for each answer and who gives it. `shortcuts` is the live
+/// shortcut registry every accelerator label in here reads; see
+/// [`ContextMenuShortcuts`].
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each one is a separate question about the right-click; folding the four that describe the ROW (`filename`, `is_directory`, and the two the caller's `path` / `paths` become) into `ContextMenuTargetFacts` is the consolidation this wants, and it reaches across the IPC boundary"
+)]
 pub fn build_context_menu<R: Runtime>(
     app: &AppHandle<R>,
     filename: &str,
@@ -152,6 +212,8 @@ pub fn build_context_menu<R: Runtime>(
     // What the right-clicked ROW(S) are, for the header line at the very top; see
     // `ContextMenuTargetFacts`.
     target: ContextMenuTargetFacts<'_>,
+    // Every accelerator label in this menu, as the registry has them right now.
+    shortcuts: &ContextMenuShortcuts,
 ) -> tauri::Result<ContextMenuResult<R>> {
     let ContextMenuPaneFacts {
         restrict_destination_actions,
@@ -174,8 +236,8 @@ pub fn build_context_menu<R: Runtime>(
     let mut open_with_apps: HashMap<String, PathBuf> = HashMap::new();
     if !is_directory {
         let open_item = MenuItem::with_id(app, OPEN_ID, menu_t("menu.file.open"), true, None::<&str>)?;
-        let view_item = MenuItem::with_id(app, FILE_VIEW_ID, menu_t("menu.file.view"), true, Some("F3"))?;
-        let edit_item = MenuItem::with_id(app, EDIT_ID, menu_t("menu.context.edit"), true, Some("F4"))?;
+        let view_item = context_item(app, shortcuts, FILE_VIEW_ID, menu_t("menu.file.view"), true)?;
+        let edit_item = context_item(app, shortcuts, EDIT_ID, menu_t("menu.context.edit"), true)?;
         menu.append(&open_item)?;
         #[cfg(target_os = "macos")]
         {
@@ -189,17 +251,17 @@ pub fn build_context_menu<R: Runtime>(
         menu.append(&PredefinedMenuItem::separator(app)?)?;
     }
 
-    // Toggle selection (Space). No real accelerator registered — the JS handler in
-    // FilePane.svelte owns the Space keydown; this Some("Space") string is purely
-    // a visual hint for the context menu and never fires globally. Placing it in its
-    // own group makes the Space shortcut discoverable without crowding the activation
-    // (Open / View / Edit) or operations (Copy / Move / Rename) groups.
-    let toggle_selection_item = MenuItem::with_id(
+    // Toggle selection. No real accelerator registered — the JS handler in
+    // FilePane.svelte owns the Space keydown, and the label here is a visual hint that
+    // never fires globally. Placing it in its own group makes the shortcut
+    // discoverable without crowding the activation (Open / View / Edit) or operations
+    // (Copy / Move / Rename) groups.
+    let toggle_selection_item = context_item(
         app,
+        shortcuts,
         TOGGLE_SELECTION_ID,
         menu_t("menu.context.toggleSelection"),
         true,
-        Some("Space"),
     )?;
     menu.append(&toggle_selection_item)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
@@ -215,20 +277,14 @@ pub fn build_context_menu<R: Runtime>(
     // which is confusing, and a duplicate would have to land in each item's own real
     // folder, which one transfer can't express. The user can navigate to the real folder
     // and do either there.
-    let copy_item = MenuItem::with_id(app, FILE_COPY_ID, menu_t("menu.file.copy"), true, Some("F5"))?;
-    let move_item = MenuItem::with_id(app, FILE_MOVE_ID, menu_t("menu.file.move"), true, Some("F6"))?;
+    let copy_item = context_item(app, shortcuts, FILE_COPY_ID, menu_t("menu.file.copy"), true)?;
+    let move_item = context_item(app, shortcuts, FILE_MOVE_ID, menu_t("menu.file.move"), true)?;
     menu.append(&copy_item)?;
     menu.append(&move_item)?;
     if !restrict_destination_actions {
-        let duplicate_item = MenuItem::with_id(
-            app,
-            FILE_DUPLICATE_ID,
-            menu_t("menu.file.duplicate"),
-            true,
-            Some("Cmd+D"),
-        )?;
+        let duplicate_item = context_item(app, shortcuts, FILE_DUPLICATE_ID, menu_t("menu.file.duplicate"), true)?;
         menu.append(&duplicate_item)?;
-        let rename_item = MenuItem::with_id(app, RENAME_ID, menu_t("menu.file.rename"), true, Some("F2"))?;
+        let rename_item = context_item(app, shortcuts, RENAME_ID, menu_t("menu.file.rename"), true)?;
         menu.append(&rename_item)?;
     }
     menu.append(&PredefinedMenuItem::separator(app)?)?;
@@ -236,61 +292,48 @@ pub fn build_context_menu<R: Runtime>(
     // New folder / New file — also omitted on search-results panes (no destination
     // folder to create into; the pane IS the snapshot, not a directory).
     if !restrict_destination_actions {
-        let new_folder_item =
-            MenuItem::with_id(app, FILE_NEW_FOLDER_ID, menu_t("menu.file.newFolder"), true, Some("F7"))?;
-        let new_file_item = MenuItem::with_id(
-            app,
-            FILE_NEW_FILE_ID,
-            menu_t("menu.file.newFile"),
-            true,
-            Some("Shift+F4"),
-        )?;
+        let new_folder_item = context_item(app, shortcuts, FILE_NEW_FOLDER_ID, menu_t("menu.file.newFolder"), true)?;
+        let new_file_item = context_item(app, shortcuts, FILE_NEW_FILE_ID, menu_t("menu.file.newFile"), true)?;
         menu.append(&new_folder_item)?;
         menu.append(&new_file_item)?;
         menu.append(&PredefinedMenuItem::separator(app)?)?;
     }
 
     // Delete
-    let delete_item = MenuItem::with_id(app, FILE_DELETE_ID, menu_t("menu.file.delete"), true, Some("F8"))?;
+    let delete_item = context_item(app, shortcuts, FILE_DELETE_ID, menu_t("menu.file.delete"), true)?;
     menu.append(&delete_item)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
 
     // Utility group: Show in Finder, Copy filename, Copy path
-    let show_in_finder_item = MenuItem::with_id(
+    let show_in_finder_item = context_item(
         app,
+        shortcuts,
         SHOW_IN_FINDER_ID,
         menu_t(SHOW_IN_FILE_MANAGER_KEY.current()),
         true,
-        SHOW_IN_FILE_MANAGER_ACCELERATOR.current(),
     )?;
-    let copy_filename_item = MenuItem::with_id(
+    let copy_filename_item = context_item(
         app,
+        shortcuts,
         COPY_FILENAME_ID,
         menu_t_with(
             "menu.context.copyNamed",
             &[("name", &truncate_for_menu_label(filename, COPY_FILENAME_MAX_CHARS))],
         ),
         true,
-        Some("Cmd+C"),
     )?;
-    let copy_path_item = MenuItem::with_id(
-        app,
-        COPY_PATH_ID,
-        menu_t("menu.edit.copyPath"),
-        true,
-        COPY_PATH_ACCELERATOR.current(),
-    )?;
+    let copy_path_item = context_item(app, shortcuts, COPY_PATH_ID, menu_t("menu.edit.copyPath"), true)?;
     menu.append(&show_in_finder_item)?;
     // "Open terminal here" rides beside Show in Finder, same gesture aimed at a
     // different app. macOS only, like the launch module behind it.
     #[cfg(target_os = "macos")]
     {
-        let open_terminal_here_item = MenuItem::with_id(
+        let open_terminal_here_item = context_item(
             app,
+            shortcuts,
             OPEN_TERMINAL_HERE_ID,
             menu_t("menu.file.openTerminalHere"),
             can_open_terminal_here,
-            Some("Alt+Cmd+T"),
         )?;
         menu.append(&open_terminal_here_item)?;
         // `Share` rides with them for the same reason: all three hand the selection to
@@ -424,7 +467,7 @@ pub fn build_context_menu<R: Runtime>(
     // Quick Look and Get Info are macOS-only
     #[cfg(target_os = "macos")]
     {
-        let get_info_item = MenuItem::with_id(app, GET_INFO_ID, menu_t("menu.file.getInfo"), true, Some("Cmd+I"))?;
+        let get_info_item = context_item(app, shortcuts, GET_INFO_ID, menu_t("menu.file.getInfo"), true)?;
         let quick_look_item = MenuItem::with_id(app, QUICK_LOOK_ID, menu_t("menu.file.quickLook"), true, None::<&str>)?;
         menu.append(&PredefinedMenuItem::separator(app)?)?;
         menu.append(&get_info_item)?;
@@ -508,9 +551,8 @@ pub fn build_function_key_bar_context_menu<R: Runtime>(app: &AppHandle<R>) -> ta
 
 /// Builds a context menu for the breadcrumb path bar.
 ///
-/// `accelerator` is the user's configured shortcut for the "Copy path" command (in
-/// Tauri accelerator format, e.g. "Cmd+Opt+C"), or empty if none is set.
-/// `eject_volume_name`, when present, appends the detach item that lets the user
+/// Its one command's accelerator comes from `shortcuts` like the file menu's do; see
+/// [`ContextMenuShortcuts`]. `eject_volume_name`, when present, appends the detach item that lets the user
 /// leave the volume the breadcrumb represents: `Eject ({name})` for a disk,
 /// `Disconnect` for a phone (`detach_word`). The caller is responsible for
 /// stashing the matching `volume_id` in `MenuState.volume_eject_context` so
@@ -521,23 +563,18 @@ pub fn build_function_key_bar_context_menu<R: Runtime>(app: &AppHandle<R>) -> ta
 /// ejected mid-transfer (mirrors the disabled eject button in the picker).
 pub fn build_breadcrumb_context_menu<R: Runtime>(
     app: &AppHandle<R>,
-    accelerator: &str,
+    shortcuts: &ContextMenuShortcuts,
     eject_volume_name: Option<&str>,
     eject_busy: bool,
     detach_word: DetachWord,
 ) -> tauri::Result<Menu<R>> {
     let menu = Menu::new(app)?;
-    let accel: Option<&str> = if accelerator.is_empty() {
-        None
-    } else {
-        Some(accelerator)
-    };
-    let copy_path_item = MenuItem::with_id(
+    let copy_path_item = context_item(
         app,
+        shortcuts,
         COPY_CURRENT_DIR_PATH_ID,
         menu_t("menu.breadcrumb.copyPath"),
         true,
-        accel,
     )?;
     menu.append(&copy_path_item)?;
     if let Some(name) = eject_volume_name {
@@ -887,4 +924,60 @@ pub fn build_favorite_context_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Res
     menu.append(&remove_item)?;
 
     Ok(menu)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::menu::{FAVORITES_ADD_CONTEXT_ID, FILE_COPY_ID, FILE_VIEW_ID, TOGGLE_SELECTION_ID};
+
+    fn shortcuts(pairs: &[(&str, &str)]) -> ContextMenuShortcuts {
+        ContextMenuShortcuts(
+            pairs
+                .iter()
+                .map(|(id, combo)| ((*id).to_string(), (*combo).to_string()))
+                .collect(),
+        )
+    }
+
+    /// The default binding reaches the item through the registry, not through a
+    /// literal in the builder.
+    #[test]
+    fn a_bound_command_labels_its_menu_item() {
+        let shortcuts = shortcuts(&[("file.copy", "F5")]);
+        assert_eq!(shortcuts.for_menu_item(FILE_COPY_ID), Some("F5".to_string()));
+    }
+
+    /// The whole point of the milestone: rebind Copy in Settings and the right-click
+    /// menu says the new key.
+    #[test]
+    fn a_rebound_command_shows_the_new_key() {
+        let shortcuts = shortcuts(&[("file.copy", "⌘⇧K")]);
+        assert_eq!(shortcuts.for_menu_item(FILE_COPY_ID), Some("Cmd+Shift+K".to_string()));
+    }
+
+    /// A bare key stays a real label here, where the menu bar would refuse one: a
+    /// popup accelerator is never registered, so it can't swallow the key app-wide.
+    /// Space is the only place the toggle-selection shortcut is discoverable.
+    #[test]
+    fn a_bare_key_still_labels_a_popup_item() {
+        let shortcuts = shortcuts(&[("selection.toggle", "Space")]);
+        assert_eq!(shortcuts.for_menu_item(TOGGLE_SELECTION_ID), Some("Space".to_string()));
+    }
+
+    /// A command the user has unbound shows no label, rather than the one it shipped
+    /// with.
+    #[test]
+    fn an_unbound_command_shows_nothing() {
+        let shortcuts = shortcuts(&[("file.copy", "F5")]);
+        assert_eq!(shortcuts.for_menu_item(FILE_VIEW_ID), None);
+    }
+
+    /// An item with no command behind it (this one favorites the right-clicked path
+    /// in `on_menu_event`) can't resolve a shortcut, and says nothing.
+    #[test]
+    fn an_item_outside_the_command_map_shows_nothing() {
+        let shortcuts = shortcuts(&[("favorites.add", "⌘D")]);
+        assert_eq!(shortcuts.for_menu_item(FAVORITES_ADD_CONTEXT_ID), None);
+    }
 }

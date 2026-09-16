@@ -130,6 +130,10 @@ export interface ContextMenuTarget {
  *                pass the full selection so "Open with" launches all files at once.
  * @param pane - What the surface the click landed in contributes. See {@link PaneContextMenuFacts}.
  * @param target - What the right-clicked rows contribute. See {@link ContextMenuTarget}.
+ * @param shortcuts - Every combo bound right now, from `boundShortcuts()` in
+ *                    `$lib/shortcuts`. It's what each item's accelerator LABEL is drawn from, so
+ *                    the menu tells the truth after a rebind. ❌ Never hand-build it, and ❌ never
+ *                    pass display spellings: `boundShortcuts` explains both.
  */
 export async function showFileContextMenu(
   path: string,
@@ -138,6 +142,7 @@ export async function showFileContextMenu(
   paths: string[],
   pane: PaneContextMenuFacts = {},
   target: ContextMenuTarget = {},
+  shortcuts: Record<string, string> = {},
 ): Promise<void> {
   // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- generic <R: Runtime> command, excluded from specta bindings (see the `ipc.rs` manifest)
   await invoke('show_file_context_menu', {
@@ -156,6 +161,7 @@ export async function showFileContextMenu(
       countText: target.countText ?? null,
       sizeText: target.sizeText ?? null,
     },
+    shortcuts,
   })
 }
 
@@ -198,18 +204,19 @@ export async function cloudRemoveDownload(path: string): Promise<void> {
  * a `volume-context-action` event on click (subscribe via `onVolumeContextAction`).
  * Pass both or neither; one without the other is treated as no eject target.
  *
- * @param shortcut - Frontend shortcut string for "Copy path" (e.g. "⌘⌥C"), or empty.
+ * @param shortcuts - The same live map {@link showFileContextMenu} takes; its "Copy path" item
+ *                    reads its accelerator label out of it.
  * @param ejectVolumeId - Volume to eject when the user clicks the eject item.
  * @param ejectVolumeName - Display name for the "Eject ({name})" label.
  */
 export async function showBreadcrumbContextMenu(
-  shortcut: string,
+  shortcuts: Record<string, string>,
   ejectVolumeId?: string,
   ejectVolumeName?: string,
 ): Promise<void> {
   // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- generic <R: Runtime> command, excluded from specta bindings (see the `ipc.rs` manifest)
   await invoke('show_breadcrumb_context_menu', {
-    shortcut,
+    shortcuts,
     ejectVolumeId: ejectVolumeId ?? null,
     ejectVolumeName: ejectVolumeName ?? null,
   })

@@ -19,16 +19,19 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import type { FileEntry } from '../types'
 
-const { ipc, settings, toast, background } = vi.hoisted<{
+const { ipc, settings, toast, background, boundCombos } = vi.hoisted<{
   ipc: { showFileContextMenu: Mock; showParentRowContextMenu: Mock; getPathsAtIndices: Mock }
   settings: { getSetting: Mock; setSetting: Mock }
   toast: { addToast: Mock }
   background: { isFileListBackgroundClick: Mock }
+  /** What the registry answers here; every menu item's accelerator label comes from it. */
+  boundCombos: Record<string, string>
 }>(() => ({
   ipc: { showFileContextMenu: vi.fn(), showParentRowContextMenu: vi.fn(), getPathsAtIndices: vi.fn() },
   settings: { getSetting: vi.fn(), setSetting: vi.fn() },
   toast: { addToast: vi.fn() },
   background: { isFileListBackgroundClick: vi.fn() },
+  boundCombos: { 'file.copy': 'F5' },
 }))
 
 vi.mock('$lib/tauri-commands', () => ({
@@ -36,6 +39,7 @@ vi.mock('$lib/tauri-commands', () => ({
   showParentRowContextMenu: ipc.showParentRowContextMenu,
   getPathsAtIndices: ipc.getPathsAtIndices,
 }))
+vi.mock('$lib/shortcuts', () => ({ boundShortcuts: () => boundCombos }))
 vi.mock('$lib/settings', () => ({ getSetting: settings.getSetting, setSetting: settings.setSetting }))
 vi.mock('$lib/ui/toast', () => ({ addToast: toast.addToast }))
 vi.mock('./pane-background-dblclick', () => ({ isFileListBackgroundClick: background.isFileListBackgroundClick }))
@@ -166,6 +170,7 @@ describe('createPanePointer', () => {
           canFavorite: true,
         },
         { countText: '2 items', sizeText: undefined },
+        boundCombos,
       )
     })
 
@@ -185,6 +190,7 @@ describe('createPanePointer', () => {
           canFavorite: true,
         },
         { countText: undefined, sizeText: undefined },
+        boundCombos,
       )
     })
 
@@ -204,6 +210,7 @@ describe('createPanePointer', () => {
           canFavorite: true,
         },
         { countText: undefined, sizeText: undefined },
+        boundCombos,
       )
     })
 
@@ -223,6 +230,7 @@ describe('createPanePointer', () => {
           canFavorite: false,
         },
         { countText: undefined, sizeText: undefined },
+        boundCombos,
       )
     })
 
@@ -245,6 +253,7 @@ describe('createPanePointer', () => {
           canFavorite: false,
         },
         { countText: undefined, sizeText: undefined },
+        boundCombos,
       )
     })
 
@@ -259,6 +268,7 @@ describe('createPanePointer', () => {
         ['/dir/trip.zip/IMG_0001.jpg'],
         { listingId: 'listing-1', canOpenTerminalHere: true, canShare: false, canFavorite: false },
         { countText: undefined, sizeText: undefined },
+        boundCombos,
       )
     })
 

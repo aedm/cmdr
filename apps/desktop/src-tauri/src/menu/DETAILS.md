@@ -16,9 +16,9 @@ window focus context.
 - `command_map.rs`: the menu item ID constants (all `*_ID`) and the ID mapping functions
   (`menu_id_to_command`, `command_id_to_menu_id`).
 - `menu_bar.rs`: `MENU_BAR`, the menu bar for both platforms as data, one row per item with every platform difference
-  marked on its row, plus the per-platform constants the file context menu shares (`COPY_PATH_ACCELERATOR`,
-  `SHOW_IN_FILE_MANAGER_KEY`, `SHOW_IN_FILE_MANAGER_ACCELERATOR`). `menu_bar_test.rs` pins both bars as text. Why it's
-  data: the menu-bar Decision under "Key decisions".
+  marked on its row, plus `SHOW_IN_FILE_MANAGER_KEY`, the per-platform LABEL key the file context menu shares
+  ("Show in Finder" / "Show in file manager"). `menu_bar_test.rs` pins both bars as text. Why it's data: the menu-bar
+  Decision under "Key decisions".
 - `menu_spec.rs`: the words `MENU_BAR` is written in (`item`, `check`, `submenu`, `macos_only`, `both`, `macos`,
   `split`, …) and `Platform` / `PerPlatform`, where a platform difference resolves. No `cfg`, so both bars exist on
   every host.
@@ -31,7 +31,7 @@ window focus context.
   (`build_context_menu`), breadcrumb / tab / network-host / function-key-bar / volume-selector-row context menus
   (`build_volume_row_context_menu`: a server's Disconnect/Pin/Forget items or the `detach_label` item, and
   `build_favorite_context_menu`: a favorite's Rename / Remove from favorites), the viewer-window menu
-  (`build_viewer_menu`), plus the `FileContextInfo` and `ContextMenuResult` types.
+  (`build_viewer_menu`), plus the `FileContextInfo`, `ContextMenuResult`, and `ContextMenuShortcuts` types.
 - `install.rs`: `at_startup`, the single call `lib.rs` makes in `setup`: pin the UI language, build the bar,
   run the macOS AppKit passes, and place the `MenuState` everything else mutates. Order inside is load-bearing.
 - `item_states.rs`: `apply_menu_item_states` (the one writer of every main-menu item's enabled state, derived from
@@ -263,6 +263,28 @@ The frontend triggers regular-item updates via `invoke('update_menu_accelerator'
 the rows its submenu shows on this platform, nested submenus (Sort by) included. There's no hand-typed
 position anywhere: the index stored IS the item's index in the rows the submenu is built from, so adding,
 moving, or platform-tagging a row can't desync one from the other.
+
+### Where a CONTEXT menu's accelerator comes from
+
+All of that is the menu BAR's problem. A popup menu is rebuilt from scratch on every right-click, so it needs no
+tracking, no remove/reinsert, and no sync: it just reads the registry as it stands at that instant.
+
+The frontend sends it. `showFileContextMenu` / `showBreadcrumbContextMenu` (`lib/tauri-commands/file-actions.ts`) put a
+`shortcuts` map in the payload — every command that has a binding right now, as `commandId → combo`, in the frontend's
+canonical spelling. It arrives as `ContextMenuShortcuts`, and each item asks it by MENU id
+(`ContextMenuShortcuts::for_menu_item`), which resolves through `menu_id_to_command`, so an item's label can't come to
+describe a different command than the item runs. `context_item()` takes that id once and uses it for both.
+
+Two things to keep straight:
+
+- ❌ **Never `frontend_shortcut_to_accelerator` here — `frontend_shortcut_to_menu_text` is the popup's door.** A popup's
+  key equivalents are never registered with the app, so its accelerators are pure display text and a bare `Space` (the
+  only place the toggle-selection key is discoverable) or `F5` is fine. The bar's modifier floor would silently drop
+  nine of the file menu's fifteen labels.
+- ❌ **Never a literal accelerator string on a context-menu item.** A literal starts lying the moment someone rebinds
+  that command, and nothing catches it. An item whose command has nothing bound shows nothing, which is the honest
+  answer; `None::<&str>` stays right for an item with no command behind it at all (`favorites_add_context`, the Drive
+  and cloud items, Quick Look).
 
 ### Per-pane view modes
 

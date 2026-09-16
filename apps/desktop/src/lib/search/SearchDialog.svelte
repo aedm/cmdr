@@ -24,6 +24,7 @@
     import { getSetting, onSpecificSettingChange } from '$lib/settings'
     import { showFileContextMenu, type HistoryEntry, type SearchResultEntry } from '$lib/tauri-commands'
     import { contextMenuSizeBytes, contextMenuSizeText } from '$lib/file-explorer/selection/context-menu-target'
+    import { boundShortcuts } from '$lib/shortcuts'
     import { resolveDefaultScope, defaultScopeLabel } from './searchable-folder'
     import type { ScopePresets } from '$lib/query-ui/query-dialog-config'
     import { tString } from '$lib/intl/messages.svelte'
@@ -222,6 +223,7 @@
             // at, so a folder row here is always favoritable.
             { canFavorite: entry.isDirectory },
             { sizeText: contextMenuSizeText(contextMenuSizeBytes([entry])) },
+            boundShortcuts(),
         ).catch(() => {
             // Silent: a missing menu is preferable to a stuck dialog.
         })
