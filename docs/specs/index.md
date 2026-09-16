@@ -14,6 +14,22 @@ Each of these shipped and its durable intent already lives beside the code; the 
 the work against the plan it came from. Wipe per `DETAILS.md` § "Wiping a shipped spec" once the entry's own condition
 below is met.
 
+- [x] 2026-09-16 `select-same-kind.md` - **Shipped, all nine milestones.** Cmdr could select everything, nothing, the
+      inverse, or a typed glob, but not "the rest of these, the same kind as this one." `⌥⇧=` (plus the numpad `⌥+`)
+      adds every entry of the cursor row's kind — same extension case-insensitively, every extension-less file, or every
+      folder — and the Select menu's row says which of those it would do right now, rendered in Rust from a typed
+      payload the focused pane pushes 200 ms-debounced. Three gaps rode along and all three closed: a combo the menu bar
+      can't register, either for want of a modifier (`⇧8`, `+`, `-`) or because muda can't name its key (`⌘+`, `⌥⇧=`),
+      now shows as a dimmed display-only glyph instead of registering nothing at all in silence; the context menu's 15
+      hardcoded accelerator labels read the live registry, so a rebind stops leaving lies behind; and `⌃⏎` opens the
+      context menu on the cursor row, the first keyboard path to a native popup, with "Toggle selection" grown into a
+      `Selection >` submenu. Durable intent lives beside the code: `apps/desktop/src/lib/file-explorer/pane/DETAILS.md`
+      (§ "Select all of the same kind", § "Keyboard context menu"), `apps/desktop/src-tauri/src/menu/DETAILS.md` (§
+      "Display-only accelerators", § "The one item whose LABEL changes", § "Where a CONTEXT menu's accelerator comes
+      from", § "The `Selection >` submenu"), `apps/desktop/src/lib/commands/DETAILS.md` § "Two labels", and
+      `apps/desktop/src/lib/shortcuts/DETAILS.md` § "Centralized dispatch". **Wipe per `DETAILS.md` § "Wiping a shipped
+      spec"** once David has judged the nine milestones against the plan they came from. That wipe is a one-way door, so
+      it waits for him.
 - [x] 2026-09-05 `viewer-selection-plan.md` - the three reported F3-viewer selection gaps (a double-click drag stuck on
       one word, Shift+Arrow dead, Option+Shift+Arrow dead), plus keyboard extension, horizontal scroll on the bare
       arrows, and the optional `viewer.showTextCursor`. Durable intent lives in
@@ -49,19 +65,6 @@ below is met.
 
 ## In progress
 
-- [ ] 2026-09-16 `select-same-kind.md` - **Cmdr can select everything, nothing, the inverse, or a typed glob, but not
-      "the rest of these, the same kind as this one."** `⌥+` (canonically `⌥⇧=` plus the numpad `⌥+`) adds every entry
-      of the cursor row's kind: same extension case-insensitively, or every extension-less file, or every folder. The
-      Select menu grows an item whose label says what it will do right now, rendered in Rust from a typed payload the
-      frontend pushes 200 ms-debounced. Three gaps ride along: bare-key shortcuts (`⇧8`, `+`, `-`) finally show in the
-      menu bar as display-only glyphs (macOS attributed title with a right-aligned tab stop, Linux label suffix) with a
-      modifier floor in `frontend_shortcut_to_accelerator` so a bare accelerator can never be registered; the context
-      menu's 15 hardcoded accelerator labels start reading the live registry, so they stop lying after a rebind; and
-      `⌃⏎` opens the context menu at the cursor row, Finder-style, the first keyboard path to a native popup. "Toggle
-      selection" becomes a "Selection" submenu. Order: M1 physical-key matching for Option-modified punctuation → M2
-      generic dynamic command names (the `app.licenseKey` special case dies) → M3 the command itself (QA point) → M4
-      display-only accelerators → M5 the menu item and its live label (QA point) → M6 registry-driven context-menu
-      accelerators → M7 the submenu → M8 `⌃⏎` → M9 docs and the 10-locale pass after QA.
 - [ ] 2026-09-16 `favorites-menu.md` - **Opening a favorite takes a click on the volume switcher, and there's no
       shortcut** (GitHub #91). ⌃D opens a favorites menu at the switcher's spot: `1`–`9` open a favorite, `0` adds the
       current folder, drag or ⌥↑/⌥↓ reorders, right-click renames or removes. The switcher's Favorites section becomes

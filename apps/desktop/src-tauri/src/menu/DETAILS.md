@@ -376,10 +376,10 @@ things hang off the label:
 plain one, and the dimmed `⌥⇧=` goes with it. `update_select_same_kind_menu` does exactly that, and the pass is cheap
 enough to re-run per push (it walks the spec, finds only the Select menu wants glyphs, and re-measures one tab stop).
 
-**The frontend debounces, 200 ms, and skips an unchanged render** (`pane/same-kind-target.svelte.ts`). A debounce, not a
-throttle: holding an arrow key is a burst whose only interesting value is the last one. The store is the single source
-for both readers — the palette PULLS `sameKindCommandLabel()` through the registry's `displayName`, the menu bar is
-PUSHED to — so the label and the selection cannot disagree. ❌ Don't add a second publisher.
+**The push is debounced 200 ms and skipped when the words wouldn't change**, since holding an arrow key is a burst whose
+only interesting value is the last one. The store behind it (`pane/same-kind-target.svelte.ts`) is the single source
+every surface's label comes from: who publishes into it, who pulls versus who is pushed to, and why there may be only
+one publisher are all in `src/lib/file-explorer/pane/DETAILS.md` § Select all of the same kind.
 
 A language rebuild throws the item away, so `DualPaneExplorer`'s `menu-bar-rebuilt` handler calls `resyncSameKindMenu()`
 alongside the other frontend-only re-pushes.
@@ -885,15 +885,13 @@ do, rather than one iCloud-shaped block.
 All three Drive items also reach the command palette, re-resolving the links from the path so the palette and the menu
 agree.
 
-The **Select** submenu (between Edit and View) holds the five selection commands: `Select all` (⌘A), `Deselect all`
-(⌘⇧A), `Invert selection` (no menu accelerator: neither of its defaults, `⇧8` and the numpad `*`, carries ⌘, and a
-bare `Shift+8` or `*` accelerator would swallow `*` in every text field, so `FilePane`'s keydown handler binds them,
-`⇧8` matched by physical key via `eventMatchesCommand`), `Select files…` (no menu accelerator), and `Deselect files…`
-(no menu accelerator). The two `…` items open the
-Selection dialog (see `apps/desktop/src/lib/selection-dialog/CLAUDE.md`); their keystrokes (bare `+` / `-`) are bound in
-`FilePane`'s keydown handler because macOS menu accelerators always carry the ⌘ modifier and bare `+` / `-` aren't
-valid accelerator strings. The items are still registered in `MenuState.items` so a user-customized shortcut could flow
-into the menu via the generic update path.
+The **Select** submenu (between Edit and View) holds the six selection commands: `Select all` (⌘A), `Deselect all`
+(⌘⇧A), `Select all of the same kind` (⌥⇧=), `Invert selection` (⇧8), `Select files…` (+), and `Deselect files…` (-).
+Only the first two carry a REGISTERED accelerator; the other four show a dimmed, display-only glyph and are run by
+`FilePane`'s keydown handler, each for a reason set out under "Display-only accelerators" above. The two `…` items open
+the Selection dialog (see `apps/desktop/src/lib/selection-dialog/CLAUDE.md`). All six are registered in
+`MenuState.items`, so a user-customized shortcut flows into the menu through the generic update path — and becomes a
+real accelerator when the rebind clears the modifier floor.
 
 The **Go** submenu holds, in order: `Back` (⌘[), `Forward` (⌘]), separator, `Parent folder` (⌘↑), separator,
 `Go to path…` (⌘G), `Go to latest download` (⌘J). The two jump items are `GO_TO_PATH_ID` (`"go_to_path"`) →
