@@ -7,18 +7,22 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 
 ## Files
 
-- **`licensing.ts`**: routes `/webhook/paddle`, `/activate`, `/validate`, `/admin/generate`.
-- **`license.ts`**: short-code and license-key generation, the `LicenseType` enum, and `generateShortId(prefix, len)`
-  (also used for the `ERR-XXXXX` error-report ids).
-- **`license-issuance.ts`**: the durable fulfillment record behind `/webhook/paddle` (D1 table `license_issuance`):
-  claim, take-over, code storage, delivery marking, and the pure `classifyIssuance`.
+- **`licensing.ts`**: routes `/webhook/paddle`, `/activate`, `/validate`, and the mount for `manual-licenses.ts`.
+- **`manual-licenses.ts`**: `/admin/generate` and `/admin/revoke`, the licenses we hand out rather than sell.
+- **`license.ts`**: short-code and license-key generation, the `LicenseType` enum, `isPaddleTransactionId` /
+  `generateManualTransactionId` (the id namespaces `/validate` dispatches on), and `generateShortId(prefix, len)` (also
+  used for the `ERR-XXXXX` error-report ids).
+- **`license-issuance.ts`**: the D1 ledger (`license_issuance`) behind both kinds of license: claim, take-over, code
+  storage, and delivery marking for a Paddle fulfillment; row writing, lookup, and revocation for a manual one; plus the
+  pure `classifyIssuance` and `classifyManualLicense`.
 - **`paddle.ts`**: HMAC-SHA256 webhook verification and `constantTimeEqual` (the timing-safe compare every bearer-token
   check in the Worker uses).
 - **`paddle-api.ts`**: Paddle REST client (transaction / subscription / customer fetch, `getLicenseTypeFromPriceId`).
 - **`device-tracking.ts`**: device-set helpers — prune stale devices, alert threshold.
-- Tests: `license.test.ts`, `paddle.test.ts`, `license-issuance.test.ts` (the pure `classifyIssuance` rules),
-  `device-tracking.test.ts`, and `webhook-paddle.test.ts` (first delivery, duplicate, retry after a failed email,
-  concurrent delivery, Resend rejection).
+- Tests: `license.test.ts`, `paddle.test.ts`, `license-issuance.test.ts` (the two pure classifiers),
+  `device-tracking.test.ts`, `webhook-paddle.test.ts` (first delivery, duplicate, retry after a failed email, concurrent
+  delivery, Resend rejection), and `production-runtime.test.ts` (the real Worker in workerd: minting, manual validation,
+  and revocation. `../../DETAILS.md` § Test runtimes).
 
 ## Data flow
 
@@ -33,11 +37,14 @@ Paddle webhook → HMAC verify (tries both live + sandbox secrets)
 
 App activation: POST /activate → KV.get(shortCode) → return fullKey
 
-Subscription validation: POST /validate → Paddle API transactions + subscriptions
-  → HTTP 200 + ValidationResponse on success or invalid transaction (Paddle 404)
-  → HTTP 502 + { error: "upstream_error" } if Paddle API unreachable or returns server error
-  → if deviceId present: track device in KV (devices:{seatTransactionId}), log to Analytics Engine
-  → if device count >= 6 and not recently alerted: send alert email to legal@getcmdr.com
+Validation: POST /validate → dispatch on the transaction id's namespace
+  `txn_...` → Paddle API transactions + subscriptions
+    → HTTP 200 + ValidationResponse on success or invalid transaction (Paddle 404)
+    → HTTP 502 + { error: "upstream_error" } if Paddle API unreachable or returns server error
+    → if deviceId present: track device in KV (devices:{seatTransactionId}), log to Analytics Engine
+    → if device count >= 6 and not recently alerted: send alert email to legal@getcmdr.com
+  anything else → D1 license_issuance row where source = 'manual' (see Manual licenses below)
+    → HTTP 200 + ValidationResponse, or HTTP 502 if the ledger read throws
 ```
 
 ## Key formats
@@ -94,6 +101,63 @@ finds `emailed_at` and does nothing). Paddle recommends a five-second window, bu
 is re-signed with a fresh `ts` or replays the original signature, and rejecting legitimate retries would lose a
 delivery, which is worse than the replay. So: log the observed `now - ts` on live deliveries first (including one forced
 retry), then enable rejection with a tolerance the data supports.
+
+## Manual licenses
+
+Licenses we hand out rather than sell: an evaluation for a prospect on a work machine, free seats for partner companies,
+thank-yous for testimonials and bug reports, customer-service recovery. They're issued constantly, so the process is two
+scripts rather than a runbook of `curl` calls.
+
+**The ledger row IS the license.** There's no Paddle transaction to resolve against, so `license_issuance` carries
+everything `/validate` needs: `source = 'manual'`, `license_type`, `organization_name`, `expires_at` (NULL = perpetual),
+`revoked_at`, and `note`. Migration `0017` added those columns; existing rows backfilled to `source = 'paddle'`.
+
+**Dispatch is by id namespace, in `handleValidation`.** Paddle ids start with `txn_` in both environments, so anything
+else is one of ours. A manual id is `manual-` plus 12 unambiguous characters (`generateManualTransactionId`), random
+rather than time-based because the id travels inside the signed payload and is what `/validate` looks up: a guessable
+one invites probing for other people's licenses. Random also keeps it clear of the `-\d+$` seat suffix the Paddle path
+strips.
+
+`classifyManualLicense` (pure, unit-tested) decides: `revoked_at` set → `invalid`, `expires_at` past → `expired`,
+otherwise `active`. A missing row is `invalid`; a ledger read that THROWS is 502 `upstream_error`, the same answer a
+Paddle outage gets, so a D1 blip can't drop a working license to Personal.
+
+**Minting** (`/admin/generate`) writes the ledger row before the KV entry, then emails only if asked:
+
+```bash
+node apps/api-server/scripts/mint-license.js --email sven@mbition.io --org MBition \
+  --note "Sven Kopetzki, MBition, evaluation" --expires 90d --send
+```
+
+`--expires` takes a date (`2027-01-31`, meaning through the end of that day) or a span (`30d`, `6m`, `1y`); omit it for
+a perpetual license. `--dry-run` prints the request. Without `--send` the code is only printed, which is what you want
+when you're pasting it into a reply yourself.
+
+- **A note is required**, in the script and in the route. A free license nobody can explain later is worse than no
+  record, and this table is the only place that explanation can live.
+- **The type follows the expiry**, exactly as it does for a purchase: dated → `commercial_subscription`, undated →
+  `commercial_perpetual`. An explicit `type` is accepted only when it agrees, so "perpetual until March" is
+  unrepresentable.
+- **A rejected email answers 502 with the code in the body.** The license exists and works; only delivery failed, so the
+  script prints the code to hand over rather than inviting a second mint.
+
+**Revoking** (`/admin/revoke`) sets `revoked_at` and deletes the short codes from KV:
+
+```bash
+node apps/api-server/scripts/revoke-license.js --code CMDR-XXXX-XXXX-XXXX
+```
+
+The code stops activating immediately; machines already running on it fall back to Personal at their next revalidation
+(within seven days). Reinstating means minting a new license, there's no un-revoke. It takes `--transaction-id` too, and
+❌ refuses a `txn_` id rather than pretending: `/validate` resolves those against Paddle and never reads `revoked_at`,
+so cancel or refund a real purchase in Paddle instead.
+
+**Both scripts read `ADMIN_API_TOKEN`** from sops (`secret CMDR_ADMIN_API_TOKEN`) or the env var of the same name, never
+from an argument, so the credential stays out of shell history.
+
+**Gotcha: device tracking doesn't run on the manual path.** The fair-use alert resolves the customer through the Paddle
+API, and a manual license has no Paddle customer. A shared hand-issued key is therefore invisible to the 6-device alert;
+revocation is the lever.
 
 ## Webhook verification
 
@@ -160,18 +224,16 @@ ngrok http 8787 --url unsickerly-acclivitous-lala.ngrok-free.dev
 The ngrok domain is stable across restarts, and the Paddle sandbox notification destination already points to
 `https://unsickerly-acclivitous-lala.ngrok-free.dev/webhook/paddle`.
 
-**Generate a test license key.** `/admin/generate` accepts the Paddle sandbox webhook secret as its bearer token:
+**Generate a test license key.** Point the mint script at the local worker:
 
 ```bash
-curl -X POST http://localhost:8787/admin/generate \
-  -H "Authorization: Bearer $(grep PADDLE_WEBHOOK_SECRET_SANDBOX apps/api-server/.dev.vars | cut -d= -f2-)" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","type":"commercial_subscription","organizationName":"Test Corp"}'
+node apps/api-server/scripts/mint-license.js --email test@example.com --org "Test Corp" \
+  --note "local testing" --api http://localhost:8787
 ```
 
-Returns `code` (a short code like `CMDR-ABCD-EFGH-1234`) and `type`; use `commercial_perpetual` for a perpetual license.
-These keys use synthetic transaction ids (`manual-*`), so they won't pass `/validate` (offline crypto + UI testing
-only). For an end-to-end run including `/validate`, use the Paddle sandbox checkout flow described in
+It returns a short code like `CMDR-ABCD-EFGH-1234`. Local `/validate` needs the local D1 to have the table, so run
+`wrangler d1 migrations apply cmdr-telemetry --local` once. These keys validate for real (against the local ledger),
+unlike a Paddle purchase; for an end-to-end run through Paddle itself, use the sandbox checkout flow described in
 [testing Paddle checkout](../../README.md#testing-paddle-checkout).
 
 Frontend counterpart: `apps/desktop/src/lib/licensing/CLAUDE.md`.

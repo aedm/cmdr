@@ -54,6 +54,8 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
   path so neither area imports the other.
 - **`scripts/generate-keys.js`**: Ed25519 key pair generation (run once at setup).
 - **`scripts/setup-cf-infra.sh`**: Cloudflare KV namespace provisioning + the R2 lifecycle rule.
+- **`scripts/mint-license.js`** / **`scripts/revoke-license.js`**: hand out a license, or take one back. They share
+  `scripts/admin-api.js` (token + request). Runbook: `src/licensing/DETAILS.md` § Manual licenses.
 
 ## Routes
 
@@ -63,7 +65,8 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 | POST    | `/webhook/paddle`          | HMAC sig      | Purchase completed → generate & email key(s)                                                       |
 | POST    | `/activate`                | none          | Exchange short code → full cryptographic key                                                       |
 | POST    | `/validate`                | none          | Check subscription status via Paddle API                                                           |
-| POST    | `/admin/generate`          | Bearer token  | Manual key generation (customer service / testing)                                                 |
+| POST    | `/admin/generate`          | Bearer token  | Mint a hand-issued license (evaluation, partner, thank-you, support recovery); writes the ledger   |
+| POST    | `/admin/revoke`            | Bearer token  | Kill a hand-issued license by short code or manual transaction id                                  |
 | GET     | `/admin/stats`             | Bearer token  | Activation count + device count (for analytics dashboard)                                          |
 | GET     | `/admin/downloads`         | Bearer token  | Aggregated downloads by day/version/arch/country/source, with raw `count` + deduped `uniqueCount`  |
 | GET     | `/admin/active-users`      | Bearer token  | Aggregated daily active users by version/arch                                                      |
@@ -254,20 +257,25 @@ back to the OAuth login).
 
 **D1 for telemetry and fulfillment:** crash reports, downloads, update checks, heartbeats, feedback, and the
 `license_issuance` record all live in D1 (binding `TELEMETRY_DB`, database `cmdr-telemetry`). Migrations live in
-`migrations/` (latest: `0016_feedback_notified_at.sql`, the `feedback.notified_at` column the feedback digest reads,
-which also stamps the pre-existing rows so the first tick doesn't mail the backlog; `0015_crash_app_fate.sql` adds the
-nullable `app_fate` column the crash email ranks rows by; `0014_downloads_daily_unique.sql` is the distinct-downloader
-rollup the retention sweep writes; `0013_minimize_stored_identifiers.sql` adds `downloads.ua_family` and erases the
-crash-table IP hashes; `0012_license_issuance.sql` is the fulfillment record; `0011_crash_panic_message.sql` adds the
-nullable `panic_message` column; `0007_feedback.sql` adds the `feedback` table; `0006_crash_diag_email.sql` adds the
-nullable `diag_id` + `email` columns; `0005_heartbeat.sql` adds the `heartbeat` table). Apply with
-`wrangler d1 migrations apply cmdr-telemetry` before deploying changes that add tables or columns.
+`migrations/` (latest: `0017_manual_licenses.sql`, the `source` / `organization_name` / `expires_at` / `revoked_at` /
+`note` columns that turn `license_issuance` into the ledger for hand-issued licenses as well as purchases;
+`0016_feedback_notified_at.sql` is the `feedback.notified_at` column the feedback digest reads, which also stamps the
+pre-existing rows so the first tick doesn't mail the backlog; `0015_crash_app_fate.sql` adds the nullable `app_fate`
+column the crash email ranks rows by; `0014_downloads_daily_unique.sql` is the distinct-downloader rollup the retention
+sweep writes; `0013_minimize_stored_identifiers.sql` adds `downloads.ua_family` and erases the crash-table IP hashes;
+`0012_license_issuance.sql` is the fulfillment record; `0011_crash_panic_message.sql` adds the nullable `panic_message`
+column; `0007_feedback.sql` adds the `feedback` table; `0006_crash_diag_email.sql` adds the nullable `diag_id` + `email`
+columns; `0005_heartbeat.sql` adds the `heartbeat` table). Apply with `wrangler d1 migrations apply cmdr-telemetry`
+before deploying changes that add tables or columns.
 
 `license_issuance` is the one money-critical table in an otherwise telemetry-shaped database: it shares the binding
 because a second D1 buys nothing at a few hundred rows a year, and nothing prunes it (the daily aggregation job only
-touches `update_checks`). The only remaining Analytics Engine dataset is `DEVICE_COUNTS` for fair-use monitoring. All
-other state (license codes, activation counter, device sets, link codes, blog likes) lives in Cloudflare KV. Short codes
-never expire (perpetual licenses last forever); subscription validity is checked live via the Paddle API.
+touches `update_checks`). It records both kinds of license: a Paddle purchase (`source = 'paddle'`, where the row is a
+fulfillment marker and Paddle holds the truth) and a hand-issued one (`source = 'manual'`, where the row IS the license
+and `/validate` answers from it). `src/licensing/DETAILS.md` § Manual licenses. The only remaining Analytics Engine
+dataset is `DEVICE_COUNTS` for fair-use monitoring. All other state (license codes, activation counter, device sets,
+link codes, blog likes) lives in Cloudflare KV. Short codes never expire (perpetual licenses last forever); subscription
+validity is checked live via the Paddle API.
 
 **Workers types:** there's no `@cloudflare/workers-types` dependency. `wrangler types` generates
 `worker-configuration.d.ts` from `wrangler.toml`, and `tsconfig.json` includes it. Two things come out of that file: the
@@ -410,6 +418,10 @@ because its stable `anal_id` IS the identifying data.
   row is kept indefinitely for long-standing stability work. `hashed_ip` is no longer written at all (migration `0013`
   erased the historical values) because nothing ever read it.
 - **`feedback`**: the optional reply-to `email` cleared after two years; the message text stays.
+- **`license_issuance`**: never swept. A fulfillment record with an end date is how a late redelivery mints a second set
+  of licenses, and a manual row IS the license, so deleting it would revoke one by accident. It holds the buyer's or
+  recipient's email and, for a hand-issued license, a free-text `note` naming who it's for; the privacy policy covers
+  both under the license sections.
 - **`heartbeat`**: rows DELETED after two years. Two years covers every window the dashboard computes (DAU, new
   installs, D7 retention) with room to spare.
 - **Error report bundles**: 90-day R2 lifecycle, plus capacity-driven eviction that never touches anything under 60 days
