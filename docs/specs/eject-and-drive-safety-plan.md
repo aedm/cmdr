@@ -49,8 +49,8 @@ drive-safety decisions below.
   `71fc73dfc`, `1e4cd4085`.
 - **M4, every worker carries a share (done)**: `d6c32f603`, `678b249ef`, `44079fe6d`, `ef74beba9`, `07bedf6f4`.
 - **M5, `drive_release`, the gated stop, start, and resume (done)**: `4549ba539`, `7430e9416`.
-- **M6, the unmount approver (done)**: `8f9e3795f` (the gate's resume-cancellation fix M6 needed), `b799c713d`, plus the
-  lane pins and docs commits that follow them.
+- **M6, the unmount approver (done)**: `8f9e3795f` (the gate's resume-cancellation fix M6 needed), `b799c713d`,
+  `8b07495f3`, `26be0b461`, `3cb145804`; plan edits `819074fd5`.
 - **Next, M7**: index delete gates.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
