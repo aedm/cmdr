@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M10 are done, and M11 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M11 are done, and M12 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -72,7 +72,13 @@ drive-safety decisions below.
   RUSTSEC-2026-0285), `0122d4c43` and `6ebf9fe0b` (the two lanes' starvation notes), `9ac333e9a` and `72f0c924b` (what
   the first CI run on `main` caught: the notices file stale after the rustls bump, the plan unformatted, and the gate's
   macOS-only re-exports breaking the Linux build).
-- **Next, M11**: temps, asides, and staging dirs.
+- **M11, temps, asides, and staging dirs (done)**: `ae1c1bee2` (the staging-dir name vocabulary and the listing gate),
+  `2bf38ff1e` (the kinded `A`/`a` records, the per-kind sweep rules, the four aside producers, the `discard_temp` fix,
+  and the three-way module split), `5456a72e7` (the staging dir recorded and retired), `876a57425` (the
+  `move-leftovers-kept` notice, its English copy, and the frontend bridge), `827204516` (the two real-detach lane tests,
+  `DiskImage::reattach`, and `overwrite::aside_park`), `79a6b5581` (the docs, and the `test-sleep` / `jscpd-rust` lanes
+  back to green).
+- **Next, M12**: disk resolution, per-disk flights, and sibling safety.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -840,6 +846,24 @@ Crate-side, whatever the host detects and whenever; every gate below applies to 
    legacy `+` local record is removed only when its name carries `.cmdr-tmp-`: `is_one_of_ours` stops accepting
    `.cmdr-temp-` for a plain removal.
 
+**As landed**, the four places the shape differs from the sketch above:
+
+- **The home is a THREE-way split, not two.** `ItemHome::Local` / `Mount { volume_id }` / `VolumeSpace { volume_id }`. A
+  single "volume" home would have had the sweep guessing which primitives may be pointed at a path, and a direct SMB
+  session roots at `/` in its OWN namespace — so the guess puts `std::fs::remove_file` on the user's Mac. The producer
+  states it: `home_for` answers `Local`/`Mount` from the typed destination side, and `displaced_destination.rs` names
+  `RecordHome::volume_space` outright. Only `Mount` stores its path relative to a root.
+- **A file→folder overwrite sets a DIRECTORY aside**, so even the exact-size arm can meet one. It recovers rather than
+  removing: nothing in the sweep recurses, on any surface.
+- **`staged_write.rs` stays on the legacy `+` records.** The cross-volume engine only ever mints `.cmdr-tmp-` temps, so
+  the tightened plain-removal rule still accepts them and nothing regressed. Migrating it buys nothing today.
+- **A Mac-internal staging folder gets the `warn` alone, no notice.** The copy names a drive, and `ItemHome::Local`
+  names none. The boot disk never goes away, so it meets the same rule at the next launch. ❗ If that ever needs a
+  notice, the honest fix is a second message, ❌ not a looked-up name: by then the operation is long gone.
+
+**Owed**: `fileOperations.leftovers.stagingFolderKept` needs its ten translations (`desktop-i18n-coverage` is red for
+that one key).
+
 ### Cmdr's own eject, per physical disk (M12)
 
 1. **One flight per disk, visible per volume.** A disk flight inserts every sibling id into `IN_FLIGHT` with the disk
@@ -1547,6 +1571,13 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     unit plus its container units to the same function.
   - **The approver records nothing for a volume in the ejecting set**, so once a flight adopts its siblings they're the
     flight's alone to resume; `eject::is_ejecting` and `eject::INDEX_STOP_DEADLINE` are `pub(crate)` now.
+  - **M11 left three seams M12 can use.** `DiskImage::reattach` (the harness plugs an image back in and reads its mount
+    points fresh, for a lane that needs a drive to come and go); `overwrite::aside_park`, the `cfg(test)` park between
+    the two renames of a safe-overwrite; and `in_flight_sweep::init_app_handle`, the pattern for a subsystem with no
+    event sink that still has to say something (stash the `AppHandle` at startup).
+  - **`test-sleep` was already red on `main`** when M11 started: M10's `chunk_park` landed two fixed sleeps without the
+    `allowed-test-sleep` reason. M11 annotated them. ❗ Worth a look at how a red lane reached `main`, since the
+    milestone before it reported green.
   - Verified on macOS 27.0 (2026-09-16, `volumes::unmount_approver::real_image`): `diskutil unmountDisk` of a
     two-partition disk with one partition held asks per volume, unmounts the free one, and exits nonzero, leaving the
     held one mounted. That's exactly the partial-unmount shape step 7's fail-closed `still_mounted` has to classify.
