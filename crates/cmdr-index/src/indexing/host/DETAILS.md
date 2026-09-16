@@ -133,11 +133,11 @@ macOS/Linux fork out of `transports/local_external`.
 filesystem mounted exactly at a root (a `MountIdentity`, opaque to the index), and `is_mounted(identity)` says whether
 any mounted filesystem has it, `None` when the table couldn't be read. Callers name that third answer rather than
 folding it: `VolumeHold::drive_is_listed` is `== Some(true)`, so an unreadable table reads as NOT listed, which is the
-safe direction for every delete and completion gate hanging off it (`../hold.rs`). ❌ Never by root
-path: renaming a mounted volume moves its mount point while the filesystem stays mounted under it and an open handle
-keeps writing (verified on macOS 26.6.2, APFS and HFS+ images, `cmdr_fs::testing::disk_images::real_images` and the
-app's `file_system::index_provider::real_image`, 2026-09-14), so a missing root is not a drive that's gone. The app
-reads `f_fsid` from `getfsstat(MNT_NOWAIT)` on macOS (`volumes::mounts::{mount_identity_at, has_mount_identity}`) and
+safe direction for every delete and completion gate hanging off it (`../hold.rs`). ❌ Never by root path: renaming a
+mounted volume moves its mount point while the filesystem stays mounted under it and an open handle keeps writing
+(verified on macOS 26.6.2, APFS and HFS+ images, `cmdr_fs::testing::disk_images::real_images` and the app's
+`file_system::index_provider::real_image`, 2026-09-14), so a missing root is not a drive that's gone. The app reads
+`f_fsid` from `getfsstat(MNT_NOWAIT)` on macOS (`volumes::mounts::{mount_identity_at, has_mount_identity}`) and
 `major:minor` from `/proc/self/mountinfo` on Linux (`file_system::linux_mounts::{mount_device_at, device_is_mounted}`),
 so a dead drive can't stall either. A local-scanner reservation reads the identity just before its lock and the hold
 generation keeps it (`../hold.rs`). `NoVolumes` names no filesystem (and reads every identity as mounted: nothing can

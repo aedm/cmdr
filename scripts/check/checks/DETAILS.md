@@ -1675,9 +1675,9 @@ Checks by app and tech:
   disk-image lane"), tests-linux (slow)
 
 Four of those scanners share one region tracker, `rustTestModState` / `advanceTestModRegion`
-(`desktop-rust-test-sleep.go`), in opposite polarities: test-sleep and fixed-temp-dir scan ONLY inside an inline test module, derive-default and
-probe-unwrap scan only OUTSIDE one. It arms on both test-gating `cfg` forms (`#[cfg(test)]` and the
-`#[cfg(any(test, feature = "testing"))]` the `cmdr-fs` host stubs need), which `isTestGatedCfg` decides and
+(`desktop-rust-test-sleep.go`), in opposite polarities: test-sleep and fixed-temp-dir scan ONLY inside an inline test
+module, derive-default and probe-unwrap scan only OUTSIDE one. It arms on both test-gating `cfg` forms (`#[cfg(test)]`
+and the `#[cfg(any(test, feature = "testing"))]` the `cmdr-fs` host stubs need), which `isTestGatedCfg` decides and
 `TestTestModRegion_ArmsOnBothTestGatedCfgForms` pins. A tracker that only knew the literal form would read six test
 doubles as production code.
 
