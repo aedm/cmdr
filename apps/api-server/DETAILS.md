@@ -541,8 +541,13 @@ test's realm and silently yields an empty body. Duck-type on `text()`. Requests 
 through this stub, so an unstubbed host can safely fail loudly instead of reaching the internet.
 
 **How the gap shipped**: `bytesToBase64` called `Buffer.from()`, so every license mint threw in production from the
-first deploy, while a node-project test suite stayed green over it. A build failure would have caught a `node:` import;
-only a real-runtime request catches a Node global.
+first deploy, while a node-project test suite stayed green over it.
+
+❌ **Don't count on the build to catch a `node:` import either.** It answers with a WARNING and deploys anyway ("The
+package `node:fs` wasn't found on the file system but is built into node… Your Worker may throw errors at runtime unless
+you enable the `nodejs_compat` compatibility flag"), which scrolls past in CI output like any other warning (verified on
+wrangler 4.107.1 with a `node:fs` import in `src/`, 2026-09-16). The `no-restricted-imports` ban below is what actually
+stops one.
 
 **The lint ban is the cheap half of that defense** (`eslint.config.js`, `no-restricted-globals` +
 `no-restricted-imports` over `src/**/*.ts`). It refuses `Buffer`, `process`, `global`, `__dirname`, `__filename`,
@@ -555,7 +560,21 @@ allowlist to keep in sync, so a new workerd test is banned by default. `scripts/
 never reach the Worker, so they stay out of scope. What lint structurally can't see is a DEPENDENCY reaching for a Node
 global on a path we exercise, which is what the `createTestHarness` lanes above are for.
 
-## Local development
+❌ **Don't add a third layer that scans the built bundle**, and don't re-derive the question from scratch. It sounds
+like the way to reach dependency code no test exercises; measured against the real bundle
+(`wrangler deploy --dry-run --outdir`, 429 KB, 2026-09-16) it reports 14 Node references and not one of them is a bug:
+
+- `Buffer` × 3 — one live call, `resend`'s `forwardWrapped` (forwarding a raw `.eml`), which nothing here calls; the
+  other two are a string literal and a `constructor.name` comparison inside svix's webhook verifier.
+- `process` × 10 — every one inside `resend`'s `typeof process !== 'undefined' && process.env` config lookups, which is
+  the standard way a library reads an optional env and is correct in workerd.
+- `node:*` imports, `__dirname`, `__filename`, `setImmediate`, `require` — zero. The single `global` is in a comment.
+
+To report nothing today it would have to parse JS rather than match text (to skip strings, comments, and property
+names), understand `typeof` guards, and do reachability analysis from the entry point, because "references a Node
+global" is not the claim worth failing on. Short of that it needs an allowlist that re-churns on every `resend` bump,
+and an allowlist of unreachable symbols is exactly the contract that rots into a rubber stamp. The runtime lanes answer
+the same question by executing the paths instead of approximating them.
 
 ```sh
 pnpm dev          # starts wrangler dev server on :8787
