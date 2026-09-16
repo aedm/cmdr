@@ -313,8 +313,20 @@ is provable (`docs/guides/multi-agent-refactors.md`).
      closed the list it was ejecting from (`keepOpenWithin`).
 
 Net effect: the switcher's own code went from 1,828 + 200 lines to 422 (chip) + 755 (list) + ~330 across the eight
-shared modules, and every menu behavior it used to hand-roll is now the primitive's. **Then David QAs before M3
-starts.**
+shared modules, and every menu behavior it used to hand-roll is now the primitive's.
+
+✅ **David QA'd it on 2026-09-16: "it looks and feels as before."** M3 is cleared to start.
+
+Two decisions are still open, neither blocking M3:
+
+- **Where the submenu arrow sits.** It's at the row's far right now (what macOS does); it used to sit between the
+  connection dot and the eject button, since it belongs to that dot. (a) Leave it, free. (b) Render it before
+  `trailing`, a one-line no-API change that lands it in a third spot, right after the label and ahead of the filesystem
+  tag. (c) Restore the old spot exactly: `hasSubmenu` on `MenuRowContext`, a `submenuArrow: 'end' | 'caller'` prop so
+  the primitive suppresses its own, and a small exported arrow component, about 20 lines plus permanent API surface that
+  re-opens the placement question for every later consumer. Recommendation: (a).
+- **The `volume-breadcrumb-handlers.svelte.ts` coverage-allowlist entry** (now 94.3% covered, so it looks unneeded).
+  Removing an allowlist entry needs David's consent, so it stays as a warn until he answers.
 
 ### M3. The favorites menu
 

@@ -917,6 +917,12 @@ switcher's port is what moved them here):
 - **A submenu's cursor is a VALUE too** (`submenuHighlightedValue`), so render against it per row. ❌ Never a boolean:
   that lights every row of a multi-item submenu, which today's one-row "Connect directly" would have hidden until the
   second consumer added a second row.
+- ❗ **The measure-and-focus `$effect` depends on `surfaceEl`, ❌ never on `menu.isOpen` alone.** Ark's `Portal` mounts
+  its children inside a `tick().then(…)` of its own, so an effect keyed on open state alone runs its only pass before
+  the node exists, bails, and never re-runs: the surface keeps the `visibility: hidden` it starts with while the menu
+  holds focus and eats every key. jsdom wins that race and WKWebView loses it, so unit tests stay green and the app
+  shows nothing (three E2E shards red on `[data-menu]` never becoming visible, 2026-09-16). Anything else that measures
+  a portaled node keys off the node, not the flag.
 - **`MenuItem` lives in `menu-types.ts`, NOT the component's module script** (unlike `SelectItem`): non-Svelte
   controllers import it, and a type imported from a `.svelte` file resolves to `any` under the plain-TypeScript lint
   service.
