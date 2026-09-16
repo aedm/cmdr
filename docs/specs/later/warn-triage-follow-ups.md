@@ -191,3 +191,19 @@ No user impact, log truth only. About 60 lines, 100 with the rider.
   it. The fix is per-test isolation of the store instead of a singleton plus a partial mutex, which is a fixture
   redesign, and ❌ it can't be validated by a lane that's already green. Start from the ledger's test fixture and
   `SINGLE_FILE` (M).
+- **The favorites add-gate's two tests fail on this Mac at every load level, and CI can't see it** (medium, invisible to
+  CI). `commands::favorites::add_gate_tests::an_ordinary_local_folder_can_be_favorited` and
+  `an_archive_inner_path_cannot_be_favorited` both trip `assert!(path_can_be_favorited(…).await)` on an ordinary
+  `tempfile::tempdir()`, taking ~5.6 s each to do it. Measured five times on 2026-09-16 across loads from 7 to 68, same
+  outcome every run, so it is ❌ not the starvation the rest of a red `rust-tests` run is; `pnpm check` reports it under
+  "Ordinary assertion or panic". CI never sees it because every runner is ubuntu and the gate is macOS-only. Two
+  candidate mechanisms, neither confirmed: (a) `path_can_be_favorited` (`src-tauri/src/commands/favorites.rs`) reads
+  only `.volume` off `PathVolumeResolution` and DROPS its `timed_out` flag, so a resolve that couldn't answer inside
+  `VOLUME_TIMEOUT` (2 s, `commands/volumes.rs`) is indistinguishable from "no volume contains this path" and the gate
+  refuses — the same "couldn't tell read as a negative" shape the eject work found four times; (b) the tests'
+  `ensure_root_volume` uses `register_if_absent` against the process-wide `VolumeManager`, so a sibling test in the same
+  binary that registered `root` first decides what this one resolves against, which is the ledger hazard above in
+  another costume. ❗ The ~5.6 s doesn't match one 2 s timeout, so measure before believing either. Start by printing
+  `timed_out` and the resolved id in the two tests, under `cargo nextest` with `--test-threads 1` and without, and
+  compare (S to diagnose; the fix is whatever it turns out to be). ❌ Don't "fix" it by relaxing the assertion: a gate
+  that refuses an ordinary local folder is a real refusal a person would meet as "Add to favorites did nothing".
