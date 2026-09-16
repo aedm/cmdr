@@ -24,6 +24,10 @@
 //! IS the wire type, so nothing is flattened on the way out.
 
 mod deadlines;
+#[cfg(target_os = "macos")]
+mod disk_flight;
+#[cfg(target_os = "macos")]
+mod disk_target;
 mod in_flight;
 mod unmount_tool;
 
@@ -187,6 +191,9 @@ pub enum EjectStep {
     /// Asking the OS whether the volume is ejectable (`statfs` + NSURL, or the
     /// Linux mount list).
     EjectabilityCheck,
+    /// Working out which physical disk the volume sits on, and which of its volumes
+    /// the eject takes down with it.
+    DiskResolve,
     /// Stopping the drive's index, which must finish before any unmount runs.
     IndexStop,
 }
@@ -196,6 +203,7 @@ impl std::fmt::Display for EjectStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::EjectabilityCheck => "the ejectability check",
+            Self::DiskResolve => "the disk lookup",
             Self::IndexStop => "the index stop",
         })
     }
@@ -324,39 +332,73 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
         // For disk volumes, stop the index BEFORE the unmount (the wedge-safe point).
         // A device provider tears its index down through its own disconnect hook,
         // so it isn't stopped here.
-        EjectAction::DiskutilUnmount => {
-            let teardown = Teardown::Tool {
-                verb: UnmountVerb::Unmount,
-                mount_path: &mount_path,
-            };
-            stop_index_then_unmount(
-                volume_id,
-                stop_index_blocking(volume_id.to_string(), stop_removable_index),
-                || run_teardown(volume_id, teardown),
-            )
-            .await
-        }
+        EjectAction::DiskutilUnmount => eject_one_volume(volume_id, &mount_path, UnmountVerb::Unmount).await,
+        // A `diskutil eject` takes the whole PHYSICAL disk down, so every volume on it
+        // is gated and stopped first, and success means the whole disk went.
+        #[cfg(target_os = "macos")]
         EjectAction::DiskutilEject => {
-            let teardown = Teardown::Tool {
-                verb: UnmountVerb::Eject,
-                mount_path: &mount_path,
-            };
-            stop_index_then_unmount(
-                volume_id,
-                stop_index_blocking(volume_id.to_string(), stop_removable_index),
-                || run_teardown(volume_id, teardown),
-            )
-            .await
+            let resolved =
+                deadlines::within_deadline(EjectStep::DiskResolve, volume_id, deadlines::DISK_RESOLVE_DEADLINE, {
+                    let mount_path = mount_path.clone();
+                    async move { tokio::task::spawn_blocking(move || disk_target::resolve(&mount_path)).await }
+                })
+                .await?;
+            match resolved {
+                Ok(disk_target::Resolution::Disk(target)) => {
+                    disk_flight::eject_disk(volume_id, &mount_path, target).await
+                }
+                // Its root left the mount table while the eject was getting ready: the
+                // person's goal is met, the same as `is_already_unmounted`.
+                Ok(disk_target::Resolution::Gone) => {
+                    log::info!(target: "eject", "{volume_id} at {mount_path} left the mount table before its eject ran");
+                    Ok(())
+                }
+                // Mounted, but no physical disk backs it (a macFUSE mount): today's
+                // per-volume teardown is the honest answer.
+                Ok(disk_target::Resolution::NoDisk) => {
+                    log::info!(target: "eject", "No physical disk backs {volume_id} at {mount_path}; ejecting the volume alone");
+                    eject_one_volume(volume_id, &mount_path, UnmountVerb::Eject).await
+                }
+                Err(join_err) => Err(EjectError::Unexpected {
+                    detail: format!("{}: {join_err}", EjectStep::DiskResolve),
+                }),
+            }
         }
+        #[cfg(not(target_os = "macos"))]
+        EjectAction::DiskutilEject => eject_one_volume(volume_id, &mount_path, UnmountVerb::Eject).await,
     }
+}
+
+/// Stops one volume's index and tears down that volume alone: an SMB share, a mount
+/// no physical disk backs, and every Linux eject.
+async fn eject_one_volume(volume_id: &str, mount_path: &str, verb: UnmountVerb) -> Result<(), EjectError> {
+    let teardown = Teardown::Tool {
+        verb,
+        mount_path,
+        #[cfg(target_os = "macos")]
+        disk: None,
+    };
+    stop_index_then_unmount(
+        volume_id,
+        stop_index_blocking(volume_id.to_string(), stop_removable_index),
+        || run_teardown(volume_id, teardown),
+    )
+    .await
 }
 
 /// One teardown [`run_teardown`] performs.
 enum Teardown<'a> {
     /// Hand it to the device provider that owns the volume (MTP, ADB).
     Device(Arc<dyn DeviceVolumeProvider>),
-    /// Run `diskutil` / `umount` against the volume's mount root.
-    Tool { verb: UnmountVerb, mount_path: &'a str },
+    /// Run `diskutil` / `umount` against the volume's mount root, or, with `disk` set,
+    /// against a whole physical disk: each attempt aims at one of the disk's mounts
+    /// that's still listed, and success needs every one of them gone.
+    Tool {
+        verb: UnmountVerb,
+        mount_path: &'a str,
+        #[cfg(target_os = "macos")]
+        disk: Option<&'a unmount_tool::DiskTeardown>,
+    },
 }
 
 /// Runs one teardown and reports how it went. A refused unmount is retried first,
@@ -398,12 +440,31 @@ async fn run_teardown(volume_id: &str, teardown: Teardown<'_>) -> Result<(), Eje
             }
             result
         }
-        Teardown::Tool { verb, mount_path } => {
+        Teardown::Tool {
+            verb,
+            mount_path,
+            #[cfg(target_os = "macos")]
+            disk,
+        } => {
             let target = unmount_tool::Target {
                 volume_id,
                 verb,
                 mount_path,
             };
+            #[cfg(target_os = "macos")]
+            if let Some(disk) = disk {
+                return unmount_tool::settle_with_retries(
+                    target,
+                    || {
+                        // ❗ Re-aimed per attempt: a partial unmount leaves the volume the
+                        // person clicked gone, and a retry aimed there proves nothing.
+                        let path = disk.aim(mount_path);
+                        async move { unmount_tool::run_keeping_abandoned(verb, &path, disk.abandoned()).await }
+                    },
+                    || disk.is_still_mounted(),
+                )
+                .await;
+            }
             unmount_tool::settle_with_retries(
                 target,
                 || unmount_tool::run(verb, mount_path),
@@ -456,19 +517,55 @@ fn stop_removable_index(volume_id: &str) -> cmdr_index::RemovableStop {
     crate::index_host::index().stop_removable_volume(volume_id, INDEX_STOP_DEADLINE)
 }
 
+/// How the pre-unmount index stop of a drive's volumes ended.
+enum IndexStopped {
+    /// Every volume let go of the drive.
+    LetGo(super::drive_release::Release),
+    /// At least one didn't, so ❌ nothing unmounts. The release still says which
+    /// volumes DID let go, which is what a disk flight hands back.
+    Refused {
+        release: Option<super::drive_release::Release>,
+        error: EjectError,
+    },
+}
+
 /// Stop `volume_id`'s index through the drive-release gate, awaited so the stop
-/// COMPLETES before the caller unmounts. The gate moves the volume's epoch, waits
-/// for a start in flight (a person's enable still probing the drive) to return,
-/// then runs `stop`, all inside [`deadlines::INDEX_STOP_DEADLINE`]. It blocks for
-/// that long at most, so it runs on the blocking pool.
+/// COMPLETES before the caller unmounts.
+async fn stop_index_blocking(volume_id: String, stop: fn(&str) -> cmdr_index::RemovableStop) -> Result<(), EjectError> {
+    let late_volume_id = volume_id.clone();
+    let stopped = stop_indexes_blocking(vec![volume_id], stop, move |late| {
+        log::info!(
+            target: "eject",
+            "the index for {late_volume_id} answered after the eject stopped waiting: {:?}",
+            late.outcome
+        );
+    })
+    .await;
+    match stopped {
+        IndexStopped::LetGo(_) => Ok(()),
+        IndexStopped::Refused { error, .. } => Err(error),
+    }
+}
+
+/// Stop every volume of the drive through the drive-release gate, all under one
+/// deadline, awaited so the stops COMPLETE before the caller unmounts. Per volume the
+/// gate moves its epoch, waits for a start in flight (a person's enable still probing
+/// the drive) to return, then runs `stop`, all inside
+/// [`deadlines::INDEX_STOP_DEADLINE`]. It blocks for that long at most, so it runs on
+/// the blocking pool.
 ///
 /// Only a `LocalExternal` index is stopped here: it's the one carrying an FSEvents
 /// watcher + open SQLite handles that can wedge a FSKit (`msdos`) unmount, and it's
 /// the kind whose DB stays usable via a later reconcile. SMB/MTP indexes tear down
 /// through their own disconnect paths and stay registered (Stale, offline-browsable)
 /// across an eject, so this must not remove them. No-op for a non-`LocalExternal` or
-/// unindexed volume. `stop` is a parameter so a test can hand in an answer.
-async fn stop_index_blocking(volume_id: String, stop: fn(&str) -> cmdr_index::RemovableStop) -> Result<(), EjectError> {
+/// unindexed volume. `stop` and `record_late` are parameters so a test can hand in an
+/// answer and a flight can hand a late release back to the gate.
+async fn stop_indexes_blocking(
+    volume_ids: Vec<String>,
+    stop: fn(&str) -> cmdr_index::RemovableStop,
+    record_late: impl Fn(super::drive_release::LateRelease) + Send + Sync + 'static,
+) -> IndexStopped {
     use super::drive_release::{self, VolumeRelease};
     use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -484,51 +581,53 @@ async fn stop_index_blocking(volume_id: String, stop: fn(&str) -> cmdr_index::Re
             })
         }
     };
-    let vid = volume_id.clone();
+    let asked = volume_ids.join(", ");
     let released = tokio::task::spawn_blocking(move || {
         let deadline = std::time::Instant::now() + INDEX_STOP_DEADLINE;
-        drive_release::gate().release(std::slice::from_ref(&vid), deadline, guarded_stop, |late| {
-            log::info!(
-                target: "eject",
-                "the index for {} answered after the eject stopped waiting: {:?}",
-                late.volume_id,
-                late.outcome
-            );
-        })
+        drive_release::gate().release(&volume_ids, deadline, guarded_stop, record_late)
     })
     .await;
 
-    match released.map(|release| release.outcome(&volume_id)) {
-        Ok(Some(VolumeRelease::Released { .. } | VolumeRelease::NothingToStop)) => Ok(()),
-        // A start still in flight, or the index still letting go, when the deadline
-        // passed: nothing unmounted, still connected.
-        Ok(Some(VolumeRelease::StillReleasing)) if !panicked.load(Ordering::SeqCst) => {
-            log::warn!(
-                target: "eject",
-                "the index for {volume_id} was still letting go of the drive when its stop ran out of time; leaving it mounted"
-            );
-            Err(EjectError::NotResponding {
-                step: EjectStep::IndexStop,
-            })
-        }
-        // A stop that panicked says nothing about whether the index let go. ❌ Never
-        // read it as done.
-        Ok(outcome) => {
-            log::warn!(
-                target: "eject",
-                "the index stop for {volume_id} ended without an answer ({outcome:?}, panicked: {}); leaving it mounted",
-                panicked.load(Ordering::SeqCst)
-            );
-            Err(EjectError::Unexpected {
-                detail: format!("{}: the stop ended without an answer", EjectStep::IndexStop),
-            })
-        }
+    let release = match released {
+        Ok(release) => release,
         Err(join_err) => {
-            log::warn!(target: "eject", "index-stop task for {volume_id} failed to join: {join_err}; leaving it mounted");
-            Err(EjectError::Unexpected {
-                detail: format!("{}: {join_err}", EjectStep::IndexStop),
-            })
+            log::warn!(target: "eject", "index-stop task for {asked} failed to join: {join_err}; leaving the drive mounted");
+            return IndexStopped::Refused {
+                release: None,
+                error: EjectError::Unexpected {
+                    detail: format!("{}: {join_err}", EjectStep::IndexStop),
+                },
+            };
         }
+    };
+    let stuck: Vec<&str> = release
+        .volumes
+        .iter()
+        .filter(|volume| volume.outcome == VolumeRelease::StillReleasing)
+        .map(|volume| volume.volume_id.as_str())
+        .collect();
+    if stuck.is_empty() {
+        return IndexStopped::LetGo(release);
+    }
+    // A stop that panicked says nothing about whether the index let go. ❌ Never read
+    // either one as done.
+    let error = if panicked.load(Ordering::SeqCst) {
+        log::warn!(target: "eject", "the index stop for {stuck:?} ended without an answer; leaving the drive mounted");
+        EjectError::Unexpected {
+            detail: format!("{}: the stop ended without an answer", EjectStep::IndexStop),
+        }
+    } else {
+        log::warn!(
+            target: "eject",
+            "the index for {stuck:?} was still letting go of the drive when its stop ran out of time; leaving it mounted"
+        );
+        EjectError::NotResponding {
+            step: EjectStep::IndexStop,
+        }
+    };
+    IndexStopped::Refused {
+        release: Some(release),
+        error,
     }
 }
 
@@ -575,6 +674,7 @@ pub async fn disconnect_smb(volume_id: &str) -> Result<(), EjectError> {
         let teardown = Teardown::Tool {
             verb: UnmountVerb::Unmount,
             mount_path: &mount_path,
+            disk: None,
         };
         run_teardown(volume_id, teardown).await?;
         // FSEvents will fire shortly and trigger on_unmount + volume-manager removal.

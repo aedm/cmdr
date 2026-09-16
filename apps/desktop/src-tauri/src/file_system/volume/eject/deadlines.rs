@@ -16,6 +16,13 @@ use super::{EjectError, EjectStep};
 /// above the 2 s read tier.
 pub(super) const EJECTABILITY_CHECK_DEADLINE: Duration = Duration::from_secs(5);
 
+/// How long working out which physical disk the volume sits on gets: the mount
+/// table, an IOKit registry walk, and one DiskArbitration lookup per device-backed
+/// mount. All of it is memory or a MIG call, so it's only a wedged
+/// `diskarbitrationd` this guards against. Same tier as the ejectability check.
+#[cfg(target_os = "macos")]
+pub(super) const DISK_RESOLVE_DEADLINE: Duration = Duration::from_secs(5);
+
 /// How long stopping the drive's index gets. It drains the index writer, which
 /// the index documents as taking seconds.
 pub(crate) const INDEX_STOP_DEADLINE: Duration = Duration::from_secs(15);

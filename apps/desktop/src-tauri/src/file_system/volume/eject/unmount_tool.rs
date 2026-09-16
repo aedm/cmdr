@@ -7,9 +7,13 @@
 //! `run_teardown` calls) runs the tool again after a transient refusal and writes
 //! the tool's log lines.
 
+#[cfg(target_os = "macos")]
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::EjectError;
+#[cfg(target_os = "macos")]
+use crate::ignore_poison::IgnorePoison;
 
 /// How long one run of the tool gets. ❗ Hitting it doesn't cancel the unmount,
 /// which may still land afterwards.
@@ -110,6 +114,137 @@ async fn within_tool_timeout(run: impl Future<Output = ToolOutcome>) -> ToolOutc
     tokio::time::timeout(TOOL_TIMEOUT, run)
         .await
         .unwrap_or(ToolOutcome::TimedOut)
+}
+
+/// Where the run a [`TOOL_TIMEOUT`] gave up on lands, so its caller can still learn
+/// how the unmount ended. Only the per-disk eject waits for one, so it and everything
+/// below are macOS-only, as [`DiskTeardown`] is.
+///
+/// A [`ToolOutcome::TimedOut`] eject answers at once (the spinner can't wait 30 s for
+/// a tool that may never answer), but what it stopped is only safe to hand back once
+/// the tool is really done: an unmount that lands after the answer must not meet an
+/// index starting again. Awaiting this task is that signal. Only the last run can
+/// time out, since a timeout isn't retried, so one slot is enough.
+// DEFAULT-OK: no run has been abandoned before the first attempt.
+#[derive(Default)]
+#[cfg(target_os = "macos")]
+pub(super) struct AbandonedRun(std::sync::Mutex<Option<tokio::task::JoinHandle<ToolOutcome>>>);
+
+#[cfg(target_os = "macos")]
+impl AbandonedRun {
+    /// The abandoned run, if the tool timed out, leaving the slot empty.
+    pub(super) fn take(&self) -> Option<tokio::task::JoinHandle<ToolOutcome>> {
+        self.0.lock_ignore_poison().take()
+    }
+}
+
+/// [`run`], keeping the run a [`TOOL_TIMEOUT`] abandons in `abandoned`.
+#[cfg(target_os = "macos")]
+pub(super) async fn run_keeping_abandoned(
+    verb: UnmountVerb,
+    mount_path: &str,
+    abandoned: &AbandonedRun,
+) -> ToolOutcome {
+    let path = mount_path.to_string();
+    keeping_abandoned(async move { run(verb, &path).await }, abandoned).await
+}
+
+/// Bounds `run` by [`TOOL_TIMEOUT`], leaving the run a timeout abandons in
+/// `abandoned`.
+///
+/// The run gets a task of its own rather than a bare join handle, so dropping the
+/// wait leaves something to await later. `run` is a parameter, so a test drives one
+/// that answers past the timeout without a real `diskutil`.
+#[cfg(target_os = "macos")]
+async fn keeping_abandoned(
+    run: impl Future<Output = ToolOutcome> + Send + 'static,
+    abandoned: &AbandonedRun,
+) -> ToolOutcome {
+    let mut run = tokio::spawn(run);
+    let outcome = within_tool_timeout(async {
+        (&mut run).await.unwrap_or_else(|join_err| ToolOutcome::TaskFailed {
+            detail: join_err.to_string(),
+        })
+    })
+    .await;
+    if outcome == ToolOutcome::TimedOut {
+        *abandoned.0.lock_ignore_poison() = Some(run);
+    }
+    outcome
+}
+
+/// A whole physical disk's teardown: where its volumes were mounted when the flight
+/// captured them, and how to ask whether anything at all is still mounted on it.
+///
+/// ❗ A disk's `diskutil eject` can unmount some volumes and stop at one that's held
+/// (verified on macOS 27.0, `diskutil unmountDisk` of a two-partition image with one
+/// partition held, 2026-09-16), so "this volume's root is gone" would read that
+/// partial unmount as done and leave the disk powered on.
+#[cfg(target_os = "macos")]
+pub(super) struct DiskTeardown {
+    /// Every mounted volume of the disk when the flight captured it, its own first.
+    captured: Vec<PathBuf>,
+    /// Whether any volume the capture didn't name is still mounted on the disk.
+    fresh_look: Box<dyn Fn() -> bool + Send + Sync>,
+    abandoned: AbandonedRun,
+}
+
+#[cfg(target_os = "macos")]
+impl DiskTeardown {
+    pub(super) fn new(captured: Vec<PathBuf>, fresh_look: impl Fn() -> bool + Send + Sync + 'static) -> Self {
+        Self {
+            captured,
+            fresh_look: Box::new(fresh_look),
+            abandoned: AbandonedRun::default(),
+        }
+    }
+
+    /// Which path this attempt runs the tool against, and the slot an abandoned run
+    /// lands in.
+    pub(super) fn aim(&self, fallback: &str) -> String {
+        aim_at(&self.captured, fallback, |path| {
+            is_still_mounted(&path.to_string_lossy())
+        })
+    }
+
+    pub(super) fn abandoned(&self) -> &AbandonedRun {
+        &self.abandoned
+    }
+
+    /// Whether anything of the disk is still mounted.
+    pub(super) fn is_still_mounted(&self) -> bool {
+        disk_is_still_mounted(
+            &self.captured,
+            |path| is_still_mounted(&path.to_string_lossy()),
+            &self.fresh_look,
+        )
+    }
+}
+
+/// Which of a disk's captured mounts the next attempt aims at: the first still
+/// listed, or `fallback` when none is.
+///
+/// ❗ A retry aimed at the volume the person clicked reads a PARTIAL unmount as done,
+/// since that one really did go. Aiming at a mount that's still there is what makes
+/// the retry mean anything; with none left, `fallback` lets `diskutil` answer "no such
+/// disk", which [`settle`] counts as done once the table agrees.
+fn aim_at(captured: &[PathBuf], fallback: &str, listed: impl Fn(&Path) -> bool) -> String {
+    captured
+        .iter()
+        .find(|path| listed(path))
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+/// Whether anything of a disk is still mounted: any captured mount still listed, or a
+/// fresh look finding one the capture didn't name.
+///
+/// ❗ Fail closed. A volume mounted after the capture, or one that was never
+/// registered, keeps the disk alive just as much, and reading the disk as gone would
+/// answer `Ok` for an eject that left it powered on.
+#[cfg(target_os = "macos")]
+fn disk_is_still_mounted(captured: &[PathBuf], listed: impl Fn(&Path) -> bool, fresh_look: impl Fn() -> bool) -> bool {
+    captured.iter().any(|path| listed(path)) || fresh_look()
 }
 
 fn run_blocking(verb: UnmountVerb, mount_path: &str) -> ToolOutcome {
@@ -593,6 +728,88 @@ mod tests {
         );
         assert_eq!(runs.get(), 2, "no attempt may start once the budget is spent");
         assert_eq!(started.elapsed(), Duration::from_millis(29_500));
+    }
+
+    // ── A whole disk: what a retry aims at, and what counts as done ──
+
+    #[cfg(target_os = "macos")]
+    fn captured() -> Vec<PathBuf> {
+        [PathBuf::from("/Volumes/A"), PathBuf::from("/Volumes/B")].to_vec()
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_disk_whose_captured_mounts_are_all_gone_is_done_only_if_nothing_else_is_mounted_on_it() {
+        // `diskutil eject` of a two-partition disk unmounts what it can and exits
+        // nonzero on the held one. Asking only about the volume the person clicked
+        // would call that done and leave the disk powered on.
+        assert!(
+            disk_is_still_mounted(&captured(), |path| path == Path::new("/Volumes/B"), || false),
+            "a sibling that stayed mounted means the disk is still up"
+        );
+        assert!(
+            disk_is_still_mounted(&captured(), |_| false, || true),
+            "and so does a volume the capture never named"
+        );
+        assert!(
+            !disk_is_still_mounted(&captured(), |_| false, || false),
+            "every captured mount gone and nothing else on the disk is the only 'done'"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_retry_aims_at_a_mount_thats_still_there_not_at_the_one_that_already_went() {
+        // Aimed at `/Volumes/A` after a partial unmount, `diskutil` answers "no such
+        // disk" and the retry proves nothing.
+        assert_eq!(
+            aim_at(&captured(), "/Volumes/A", |path| path == Path::new("/Volumes/B")),
+            "/Volumes/B"
+        );
+        assert_eq!(
+            aim_at(&captured(), "/Volumes/A", |_| true),
+            "/Volumes/A",
+            "with everything still mounted it aims at the disk's own volume, which is captured first"
+        );
+        assert_eq!(
+            aim_at(&captured(), "/Volumes/A", |_| false),
+            "/Volumes/A",
+            "with nothing left it falls back, and `settle` reads the tool's refusal as already gone"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[tokio::test(start_paused = true)]
+    async fn a_run_that_timed_out_is_left_awaitable_so_a_flight_learns_how_it_really_ended() {
+        // A `TimedOut` eject answers at once, but what it stopped may only be handed
+        // back once the tool is done: an unmount landing late must not meet a restart.
+        let abandoned = AbandonedRun::default();
+        let outcome = keeping_abandoned(
+            async {
+                // allowed-test-sleep: the delay IS the subject (a tool still running when its caller gave up), on a paused clock
+                tokio::time::sleep(TOOL_TIMEOUT + Duration::from_secs(5)).await;
+                dissented()
+            },
+            &abandoned,
+        )
+        .await;
+
+        assert_eq!(outcome, ToolOutcome::TimedOut);
+        let still_running = abandoned.take().expect("the abandoned run is still awaitable");
+        assert_eq!(
+            still_running.await.expect("the run's own task"),
+            dissented(),
+            "awaiting it is how a flight learns the unmount was refused after all"
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[tokio::test(start_paused = true)]
+    async fn a_run_that_answered_in_time_abandons_nothing() {
+        let abandoned = AbandonedRun::default();
+        let outcome = keeping_abandoned(async { ToolOutcome::Succeeded }, &abandoned).await;
+        assert_eq!(outcome, ToolOutcome::Succeeded);
+        assert!(abandoned.take().is_none());
     }
 
     #[tokio::test(start_paused = true)]

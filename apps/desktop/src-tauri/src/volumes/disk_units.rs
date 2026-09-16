@@ -57,6 +57,15 @@ fn volumes_on(
         .collect()
 }
 
+/// The BSD node mounted exactly at `path`, `None` when nothing is or when what is isn't
+/// device-backed (a share, a macFUSE mount). What an eject reads before it asks IOKit which physical
+/// disk the volume sits on.
+pub(crate) fn bsd_name_at(path: &Path) -> Option<String> {
+    let mounts = mount_sources();
+    let mount = mounts.iter().find(|mount| mount.mount_point == path)?;
+    bsd_name_of(&mount.mount_from).map(ToString::to_string)
+}
+
 /// Whether `bsd_name` is still mounted at `path`, from the non-blocking mount table. What a resume
 /// asks before it starts an index again.
 pub(crate) fn is_volume_mounted_at(bsd_name: &str, path: &Path) -> bool {
@@ -224,5 +233,12 @@ mod tests {
     fn the_boot_volume_is_mounted_at_its_own_root() {
         // The real mount table: `/` is always there, and a made-up node never is.
         assert!(!is_volume_mounted_at("disk-that-cannot-exist", Path::new("/")));
+    }
+
+    #[test]
+    fn a_mounted_path_names_its_bsd_node_and_an_unmounted_one_names_nothing() {
+        let root = bsd_name_at(Path::new("/")).expect("the boot volume is device-backed");
+        assert!(is_volume_mounted_at(&root, Path::new("/")), "and it's the node listed");
+        assert_eq!(bsd_name_at(Path::new("/Volumes/cmdr-test-never-mounted-2c71")), None);
     }
 }

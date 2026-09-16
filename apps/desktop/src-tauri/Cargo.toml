@@ -425,6 +425,11 @@ objc2-disk-arbitration = { version = "0.3.2", default-features = false, features
 # The approver's session runs on its own serial queue at user-initiated QoS, so Cmdr's own indexing
 # load can't stall an ask. Published 2026-02-26; already in the lockfile through the objc2 family.
 dispatch2 = { version = "0.3.1", default-features = false, features = ["std"] }
+# Which PHYSICAL disk a volume sits on (`eject/disk_target.rs`): an APFS volume's whole disk is the
+# synthesized container, so the eject walks IOKit's `IOService` plane up to the hardware and back
+# down for every container on it. Already in the lockfile through the objc2 family, same 0.3 family;
+# `libc` carries the `IOKitLib` surface, and the registry walk needs nothing else.
+objc2-io-kit = { version = "0.3.2", default-features = false, features = ["std", "libc"] }
 
 
 [dev-dependencies]

@@ -297,10 +297,6 @@ impl DriveRelease {
 
     /// The volume's current epoch. An eject flight reads it after its own teardown settles, since
     /// the asks its unmount triggers move it.
-    #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "M12's eject flight reads epochs after its teardown settles")
-    )]
     pub(crate) fn epoch(&self, volume_id: &str) -> u64 {
         self.shared.gates.lock_ignore_poison().gate(volume_id).epoch
     }
