@@ -185,6 +185,14 @@ export function createPaneCommands(access: PaneAccess, dialogs: DialogState) {
   }
 
   /**
+   * Opens the native context menu on the focused pane's cursor row (`⌃⏎`), anchored
+   * there rather than at the pointer. No pane focused, no menu.
+   */
+  async function openContextMenuAtCursor(): Promise<void> {
+    await access.getPaneRef(access.getFocusedPane())?.openContextMenuAtCursor()
+  }
+
+  /**
    * Get the focused pane identifier.
    * Used by MCP context tools.
    */
@@ -546,6 +554,7 @@ export function createPaneCommands(access: PaneAccess, dialogs: DialogState) {
     toggleTagOnFocusedSelection,
     sendKeyToFocusedPane,
     openItemUnderCursor,
+    openContextMenuAtCursor,
     getFocusedPane,
     routePanelKey,
     handleSelectionAction,

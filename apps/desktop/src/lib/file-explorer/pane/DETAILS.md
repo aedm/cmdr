@@ -98,6 +98,8 @@ suite:
 - `snapshot-source-volume.ts`: which real volume a search-results pane's rows live on, for the delete and transfer
   openers. ❌ Never assume `root` there — any volume with a persisted index is searchable, SMB and MTP included.
 - `network-host-state.svelte.ts`: the open Network host and its queued auto-mount share.
+- `context-menu-anchor.ts`: where a keyboard-opened context menu pops (cursor row, else the scroll surface), as a pure
+  rect → point function plus a DOM reader over it. § Keyboard context menu.
 - `rename-flow.svelte.ts`: the whole inline-rename flow (activation, save, the dialogs, the arrow-key chain). It lives
   here because it hangs off the pane, but everything it does is documented next to the rest of rename in
   `../rename/DETAILS.md`, whose `CLAUDE.md` you won't get autoloaded while editing this directory.
@@ -1563,6 +1565,52 @@ and `sameKindIndices(target, entries)` asks a listing snapshot which rows match.
   static name. ❗ The command itself never reads this store, so a label one frame behind can't change what gets
   selected. Rust's native menus don't read it either — they resolve labels through their own `menu_t` catalog
   (`src-tauri/src/menu/DETAILS.md`), a second mechanism on purpose.
+
+## Keyboard context menu
+
+`file.contextMenu` (`⌃⏎`, Finder's combo) opens the native file context menu on the CURSOR row.
+`FilePane.openContextMenuAtCursor` calls the POINTER's `pane-pointer.ts::handleContextMenu`, with an anchor as the only
+extra argument. ❗ Whose rows the menu acts on (cursor inside the selection → the selection; outside → that one row) is
+decided once, in that function, for both input devices — two paths deciding it separately are two paths that drift
+apart, and the disabled header line at the top of the menu would then start lying. The `..` row keeps its own one-item
+menu, anchored the same way.
+
+The cursor row is RE-READ (`refreshCursorEntry`) for the reason "Select all of the same kind" above re-reads it, and the
+anchor is measured AFTER that round trip, so a row that scrolled during it still gets the menu where it now sits.
+
+### Viewport → window coordinates: they are the same space here
+
+`context-menu-anchor.ts` produces a point in VIEWPORT CSS pixels, straight out of `getBoundingClientRect()`, and it
+travels to Rust unchanged. Two things make that correct, both measured in the running app (2026-09-16, dev build on a 2×
+display, geometry logged from `NSView`/`NSWindow` inside the popup call):
+
+- **No decoration offset.** `popup_at` positions inside the NSView Tauri hands muda, which is the window's CONTENT view;
+  `titleBarStyle: "Overlay"` + `hiddenTitle` (`tauri.conf.json`) makes that view full-size, so its frame is
+  `(0, 0, 1080 × 720)` — origin at the window's top-left, title bar included, and its size is exactly
+  `window.innerWidth × window.innerHeight`. The webview fills it. ⚠️ A window with an ordinary title bar would NOT have
+  this property; if `titleBarStyle` ever changes, this is the thing that breaks, and it breaks by a constant y offset.
+- **No `devicePixelRatio` arithmetic.** The anchor goes on the wire as `tauri::LogicalPosition`, and muda's
+  `show_context_menu` does `position.to_logical(window.backingScaleFactor())` — identity for a logical position — before
+  flipping y against the view's height (the content view is not `isFlipped`, so muda's `height - y` is exactly the
+  top-left-origin → AppKit conversion). CSS pixels and AppKit points are the same unit whatever the backing scale is. ❌
+  Sending `Physical` would halve every coordinate on a Retina display.
+
+Verified end to end: cursor on row 32 whose rect was `left 4, bottom 198` produced `anchor = (20, 198)` in Rust
+(`left + 16`, `bottom`), and the menu drew immediately under that row.
+
+### Where it opens, and what it never does
+
+- **On the cursor row**: `left + 16`, `bottom`, off the row's own DOM id. The same inset
+  `enter-menu.ts::enterMenuAnchor` uses, so the two keyboard-opened popups land in the same place.
+- ❗ **The row lookup is scoped to the pane element.** Both list views give rows `id="file-<index>"`, so a two-pane
+  window holds two `file-3` elements; `document.getElementById` would return the LEFT pane's row whichever pane asked.
+- **Row not rendered** (scrolled away with the scrollbar, or a scattered selection in a 10k listing): the pane's scroll
+  surface (`[data-file-list-surface]`, on both views), left edge, vertically centred. ❌ **Never scroll the row back
+  into view.** A keypress that silently moves the user's view is worse than a menu in a slightly odd spot.
+- **Nothing measurable at all**: no anchor is sent, and Rust falls through to plain `popup()` at the pointer. A mounted
+  pane always has a surface, so this is the degenerate case, not a design.
+- **The MOUSE path is untouched**: it passes no anchor, Rust calls `popup()`, macOS uses the pointer. That's why nothing
+  about right-click behavior moved in this work.
 
 ## The context menu's header line
 

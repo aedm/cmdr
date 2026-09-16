@@ -76,6 +76,7 @@
     import { computeHasParent } from './has-parent'
     import { firstSelectedIndex } from './first-selected-index'
     import { sameKindIndices, sameKindTargetFor } from './select-same-kind'
+    import { cursorRowAnchor } from './context-menu-anchor'
     import { publishSameKindTarget } from './same-kind-target.svelte'
     import { capabilitiesForPane, paneFolderIsPolledForDeletion, paneRowsAreOsVisible } from './volume-capabilities'
     import { createEnterMenu } from './enter-menu.svelte'
@@ -884,6 +885,28 @@
         const idxs = sameKindIndices(target, entries)
         if (idxs.length === 0) return
         selection.applyIndices(idxs, 'add', hasParent)
+    }
+
+    /**
+     * Opens the native context menu on the cursor row from the keyboard (`⌃⏎`),
+     * Finder-style.
+     *
+     * It goes through the POINTER's `handleContextMenu`, so "cursor inside the
+     * selection acts on the selection, outside it acts on this row" is decided in one
+     * place for both input devices. The anchor is the only thing the keyboard adds.
+     *
+     * The cursor row is RE-READ for the reason `selectSameKind` re-reads it: the feed's
+     * copy runs a debounce behind, and arrow-down then ⌃⏎ is an ordinary sequence.
+     * Measuring the anchor AFTER that round trip is deliberate too: the row may have
+     * scrolled during it, and the menu should land where the row is now.
+     *
+     * The servers hub has no file rows, so it has no menu to open.
+     */
+    export async function openContextMenuAtCursor(): Promise<void> {
+        if (isNetworkView) return
+        const cursorEntry = isSearchResultsView ? selectionInfo.entry : await refreshCursorEntry()
+        if (!cursorEntry) return
+        await handleContextMenu(cursorEntry, cursorRowAnchor(paneEl ?? null, cursorIndex))
     }
 
     export function toggleSelectionAtCursor(): void {

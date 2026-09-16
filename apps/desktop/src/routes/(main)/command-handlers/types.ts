@@ -42,9 +42,8 @@ export type DispatchExemptId =
   | 'nav.firstInFull'
   | 'nav.lastInFull'
   // Family 3 — Component-scoped. Handled inside the component that owns the modal /
-  // sub-view (CommandPalette, VolumeChooser, ServersHub, PlacesBrowser, the
-  // context menu), via its own keydown handler — not the global dispatch spine.
-  // Registered for the rebinding UI.
+  // sub-view (CommandPalette, VolumeChooser, ServersHub, PlacesBrowser), via its own
+  // keydown handler — not the global dispatch spine. Registered for the rebinding UI.
   | 'palette.up'
   | 'palette.down'
   | 'palette.execute'
@@ -58,7 +57,6 @@ export type DispatchExemptId =
   | 'network.selectHost'
   | 'share.back'
   | 'share.selectShare'
-  | 'file.contextMenu'
   // ErrorPane owns ⌘D through its own CAPTURE-phase document listener, which runs
   // ahead of the dispatch spine on purpose (it must beat any user binding on ⌘D).
   | 'errorPane.toggleTechnicalDetails'

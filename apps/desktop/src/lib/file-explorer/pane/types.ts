@@ -202,6 +202,14 @@ export interface FilePaneAPI {
    * cursor row and the pane's whole-listing snapshot.
    */
   selectSameKind(): Promise<void>
+  /**
+   * Open the native context menu on the CURSOR row (`⌃⏎`), anchored just under it
+   * rather than at the pointer. Acts on the whole selection when the cursor sits
+   * inside it, on that one row otherwise — the same rule a right-click follows,
+   * through the same code. No-op on the servers hub, which has no file rows.
+   * Async: it re-reads the cursor row first.
+   */
+  openContextMenuAtCursor(): Promise<void>
   toggleSelectionAtCursor(): void
   toggleSelectionAndMoveDownAtCursor(): void
   selectRange(startIndex: number, endIndex: number): void

@@ -18,10 +18,10 @@ import type { ExplorerAPI } from './explorer-api'
 
 // --- The exempt-id set (derived; the suite self-checks the count) ----------
 /**
- * The 20 ids registered (for the rebinding UI) but with NO dispatch handler —
+ * The 19 ids registered (for the rebinding UI) but with NO dispatch handler —
  * three families: native-menu-owned (`app.quit`/`hide`/`hideOthers`/`showAll`),
  * per-keystroke P2 (`nav.up`/`down`/`left`/`right`/`firstInFull`/`lastInFull`),
- * and component-scoped (palette/volume/network/share/contextMenu/errorPane). Mirrors the
+ * and component-scoped (palette/volume/network/share/errorPane). Mirrors the
  * production `DispatchExemptId` union (`command-handlers/types.ts`), kept as an
  * independent local copy so this characterization file derives its own dispatchable
  * vs exempt split rather than trusting the code it characterizes.
@@ -48,7 +48,6 @@ export const EXEMPT_IDS = [
   'network.selectHost',
   'share.back',
   'share.selectShare',
-  'file.contextMenu',
   'errorPane.toggleTechnicalDetails',
 ] as const satisfies readonly CommandId[]
 
@@ -101,6 +100,7 @@ export function makeExplorerSpy(): Record<string, ReturnType<typeof vi.fn>> {
     'goHome',
     'getFocusedPane',
     'openItemUnderCursor',
+    'openContextMenuAtCursor',
     'moveCursor',
     'scrollTo',
     'refreshNetworkHosts',
@@ -439,6 +439,13 @@ export const DELEGATE_ROWS: DelegateRow[] = [
     id: 'file.view',
     expect: (e) => {
       expect(e.openViewerForCursor).toHaveBeenCalledOnce()
+    },
+  },
+  {
+    // `⌃⏎`. The pane reads its own cursor row, so the arm hands over nothing.
+    id: 'file.contextMenu',
+    expect: (e) => {
+      expect(e.openContextMenuAtCursor).toHaveBeenCalledOnce()
     },
   },
   {

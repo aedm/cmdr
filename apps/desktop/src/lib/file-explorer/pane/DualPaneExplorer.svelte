@@ -897,6 +897,11 @@
         await paneCommands.openItemUnderCursor()
     }
 
+    // noinspection JSUnusedGlobalSymbols -- Used dynamically by the `file.contextMenu` handler
+    export async function openContextMenuAtCursor(): Promise<void> {
+        await paneCommands.openContextMenuAtCursor()
+    }
+
     /**
      * Set sort column for a specific pane (or focused pane if not specified).
      * Used by command palette.

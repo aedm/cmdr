@@ -386,9 +386,11 @@ export const fileListCommands: CommandSource[] = [
     nameKey: 'commands.fileContextMenu.label',
     scope: 'Main window/File list',
     showInPalette: true,
-    shortcuts: [],
+    // Finder's own combo for the same thing. `⌃` is nearly unused here (only
+    // `⌃Tab` / `⌃⇧Tab`), and `global-contextmenu.ts` listens for the DOM
+    // `contextmenu` event rather than a keydown, so nothing else wants it.
+    shortcuts: ['⌃Enter'],
     whileDialogOpen: BLOCKED_BY_DIALOGS,
-    fixedKey: true,
     descriptionKey: 'commands.fileContextMenu.description',
   },
   {

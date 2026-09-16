@@ -51,6 +51,9 @@ Per-pane orchestrator: cursor, focus, tabs, selection, type-to-jump, dialogs, dr
 - **Select-same-kind (`⌥⇧=`) adds through `selection.applyIndices` over the whole-listing SNAPSHOT**, ❌ never
   `FilePane.applyIndices` (it yanks the cursor) and ❌ never the rendered window's cache (off-screen matches vanish).
   Its kind rule is `getDisplayExtension`, what the Ext column shows (`DETAILS.md` § Select all of the same kind).
+- **`⌃⏎` adds only an ANCHOR to `pane-pointer.ts::handleContextMenu`**: one selection-vs-row rule for both devices. ❌
+  Never scroll to the row; scope its `#file-<index>` lookup to the pane, both carry that id (`DETAILS.md` § Keyboard
+  context menu).
 - **`DualPaneExplorer.svelte` / `FilePane.svelte` are at their size cap**: cross-cutting state → a `*.svelte.ts`
   factory, pure logic → a `*.ts` helper, ❌ never a child component.
 

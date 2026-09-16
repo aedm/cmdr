@@ -258,6 +258,13 @@ export const fileHandlers = {
     await quickLookOpen(entryUnderCursor.path, volumeId)
   },
 
+  'file.contextMenu': async ({ explorerRef }) => {
+    // ❌ Not `withEntryUnderCursor`: that helper treats `..` as "no entry", and `..`
+    // has a context menu of its own. The pane re-reads its own cursor row anyway,
+    // since it needs the pane's DOM for the anchor.
+    await explorerRef?.openContextMenuAtCursor()
+  },
+
   'file.getInfo': (hctx) => withEntryUnderCursor(hctx, (entry) => getInfo(entry.path)),
 
   'cloud.makeOffline': (hctx) =>

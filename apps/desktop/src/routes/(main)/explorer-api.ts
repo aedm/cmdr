@@ -113,6 +113,13 @@ export interface ExplorerAPI {
    */
   routePanelKey: (payload: QuickLookKeyEventPayload) => void
   openItemUnderCursor: () => Promise<void>
+  /**
+   * Opens the focused pane's context menu on its CURSOR row (`⌃⏎`), anchored there
+   * instead of at the pointer. Same menu and the same
+   * "inside the selection → act on the selection" rule as a right-click, which it
+   * shares a code path with.
+   */
+  openContextMenuAtCursor: () => Promise<void>
   setSortColumn: (column: 'name' | 'extension' | 'size' | 'modified' | 'created', pane?: 'left' | 'right') => void
   setSortOrder: (order: 'asc' | 'desc' | 'toggle', pane?: 'left' | 'right') => void
   setSort: (

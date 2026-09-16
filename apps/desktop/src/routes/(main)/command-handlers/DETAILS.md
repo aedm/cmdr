@@ -5,14 +5,14 @@ exemption types. This file adds the family breakdown and the single-source ratio
 
 ## The exempt families (`DispatchExemptId`)
 
-21 ids are registered for the rebinding UI with NO handler, in four families (each documented inline in `types.ts`):
+20 ids are registered for the rebinding UI with NO handler, in four families (each documented inline in `types.ts`):
 
 - **Native-menu-owned** (`app.quit`, `app.hide`, `app.hideOthers`, `app.showAll`): run by macOS PredefinedMenuItems via
   native selectors. A JS handler would double-fire alongside the native one.
 - **Per-keystroke P2** (`nav.up/down/left/right/firstInFull/lastInFull`): ride `handleKeyDown → FilePane`, never the
   bus. Registered only so the rebinding UI can show/edit their shortcuts.
-- **Component-scoped** (palette / volume / network / share / context-menu ids): handled inside each component's own
-  keydown handler, not the global dispatch spine.
+- **Component-scoped** (palette / volume / network / share ids): handled inside each component's own keydown handler,
+  not the global dispatch spine.
 - **Deliberate override** (`errorPane.toggleTechnicalDetails`): ErrorPane claims ⌘D through a CAPTURE-phase document
   listener that runs ahead of the spine, so it beats whatever the user bound ⌘D to.
 
