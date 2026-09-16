@@ -136,44 +136,65 @@ describe('favorites-controller', () => {
       expect(c.draggingFavoriteId).toBe(null)
     })
 
-    // The cue rides the RAW insertion slot (the visual gap), which is what keeps a
-    // downward drag from drawing the line one row too high. Rows are 20px tall from
-    // y=0 here, so the midpoints are 10 / 30 / 50.
+    /**
+     * The drop-line cue, pinned as pure input to output: a row geometry, a pointer Y, and
+     * the gap the line lands in. The cue rides the RAW insertion slot (the visual gap),
+     * which is what keeps a downward drag from drawing the line one row too high. Rows are
+     * 20px tall from y=0 here, so the midpoints are 10 / 30 / 50, and slot `k` means "the
+     * line above row k" (slot `length` means below the last row).
+     *
+     * ❗ In M2 this decision moves INTO the `lib/ui/Menu` primitive, which owns the cue;
+     * the controller keeps the optimistic order, rename, remove, and persistence. The three
+     * tests below are written to travel there unchanged: the only controller-specific
+     * touchpoints are the two helpers right here (how a drag starts, and where the cue is
+     * read), so the move is an import swap plus re-pointing these. ❌ Keep persistence out
+     * of them — that stays behind, and `reorderFavorites` is already pinned by the
+     * same-slot no-op test above.
+     */
+    function grabRow(c: ReturnType<typeof createFavoritesController>, index: number, atY: number) {
+      c.handleMouseDown(favorites[index], new MouseEvent('mousedown', { button: 0, clientY: atY }))
+    }
+    function movePointerTo(y: number) {
+      window.dispatchEvent(new MouseEvent('mousemove', { clientY: y }))
+    }
+    function releasePointerAt(y: number) {
+      window.dispatchEvent(new MouseEvent('mouseup', { clientY: y }))
+    }
+
     it('puts the drop-line cue on the gap under the pointer, dragging DOWN', () => {
       const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      c.handleMouseDown(favorites[0], new MouseEvent('mousedown', { button: 0, clientY: 10 }))
+      grabRow(c, 0, 10)
       // Past row 1's midpoint: the line belongs in the gap above row 2.
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 35 }))
+      movePointerTo(35)
       expect(c.dragOverIndex).toBe(2)
       // Past the last midpoint: the line belongs below the last row.
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 55 }))
+      movePointerTo(55)
       expect(c.dragOverIndex).toBe(3)
-      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 55 }))
+      releasePointerAt(55)
     })
 
     it('puts the drop-line cue on the gap under the pointer, dragging UP', () => {
       const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      c.handleMouseDown(favorites[2], new MouseEvent('mousedown', { button: 0, clientY: 50 }))
+      grabRow(c, 2, 50)
       // Above every midpoint: the line belongs above row 0.
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 5 }))
+      movePointerTo(5)
       expect(c.dragOverIndex).toBe(0)
       // Between the first two midpoints: the line belongs above row 1.
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 20 }))
+      movePointerTo(20)
       expect(c.dragOverIndex).toBe(1)
-      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 20 }))
+      releasePointerAt(20)
     })
 
     it('draws no cue where a drop would leave the row where it already is', () => {
       const c = create([fav('fav-1'), fav('fav-2'), fav('fav-3')])
-      c.handleMouseDown(favorites[1], new MouseEvent('mousedown', { button: 0, clientY: 30 }))
-      // Both gaps touching the grabbed row (slot 1 above it, slot 2 below it) are no-ops,
-      // so neither draws a line, and the drop itself persists nothing.
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 25 }))
+      grabRow(c, 1, 30)
+      // Both gaps touching the grabbed row (slot 1 above it, slot 2 below it) leave it in
+      // place, so neither draws a line.
+      movePointerTo(25)
       expect(c.dragOverIndex).toBe(null)
-      window.dispatchEvent(new MouseEvent('mousemove', { clientY: 35 }))
+      movePointerTo(35)
       expect(c.dragOverIndex).toBe(null)
-      window.dispatchEvent(new MouseEvent('mouseup', { clientY: 35 }))
-      expect(reorderFavorites).not.toHaveBeenCalled()
+      releasePointerAt(35)
     })
 
     it('reverts the optimistic order when the background persist rejects', async () => {
