@@ -22,6 +22,12 @@ import { _setSystemLocalesForTests } from '$lib/intl/os-locales'
 const stubs = vi.hoisted(() => ({
   settingsMap: Object.create(null) as Record<string, unknown>,
   getSetting: null as ((id: string) => unknown) | null,
+  /** Drives `FdaBadge`'s only render condition; nothing else in this file reads it. */
+  fdaMissing: false,
+}))
+
+vi.mock('./fda-status.svelte', () => ({
+  fdaIsMissing: () => stubs.fdaMissing,
 }))
 
 vi.mock('$lib/settings', async (importOriginal) => {
@@ -49,6 +55,7 @@ import CloudProviderPicker from './CloudProviderPicker.svelte'
 import CloudProviderSetup from './CloudProviderSetup.svelte'
 import OnboardingLanguagePicker from './OnboardingLanguagePicker.svelte'
 import OnboardingStepShell from './OnboardingStepShell.svelte'
+import FdaBadge from './FdaBadge.svelte'
 import { cloudProviderPresets } from '$lib/settings'
 
 let mounted: { target: HTMLElement; instance: ReturnType<typeof mount> } | undefined
@@ -179,6 +186,27 @@ describe('OnboardingStepShell a11y', () => {
       render: () => '<p>Test content</p>',
     }))
     const instance = mount(OnboardingStepShell, { target, props: { children } })
+    mounted = { target, instance }
+    await tick()
+    await expectNoA11yViolations(target)
+  })
+})
+
+/**
+ * Tier 3 a11y test for `FdaBadge.svelte`. The badge is a bare button in the title bar, so
+ * its whole a11y story is its accessible name: the visible text is a fragment ("No full
+ * disk access") that says nothing about what activating it does, which is why the button
+ * carries an `aria-label` naming the destination too.
+ */
+describe('FdaBadge a11y', () => {
+  it('has no a11y violations while it is showing', async () => {
+    stubs.fdaMissing = true
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const instance = mount(FdaBadge, {
+      target,
+      props: { onboardingOnFdaStep: false, onOpenOnboarding: () => {} },
+    })
     mounted = { target, instance }
     await tick()
     await expectNoA11yViolations(target)

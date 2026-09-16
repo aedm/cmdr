@@ -16,8 +16,8 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2489 / 3614 keys have a screenshot (69%):** 1375 direct (38%) and 1114 representative (31%). 966 remain
-uncoupled, and 159 are native surfaces a webview capture cannot reach.
+**Total: 2504 / 3642 keys have a screenshot (69%):** 1375 direct (38%) and 1129 representative (31%). 974 remain
+uncoupled, and 164 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
 | -------------- | -----: | -------------: | --------: | -----: | ----: | ----: |
@@ -25,24 +25,24 @@ uncoupled, and 159 are native surfaces a webview capture cannot reach.
 | ai             |      0 |             89 |         0 |      0 |    89 |  100% |
 | askCmdr        |     78 |              2 |       123 |      0 |   203 |   39% |
 | commandPalette |      3 |              2 |         1 |      0 |     6 |   83% |
-| commands       |    148 |              1 |        63 |      0 |   212 |   70% |
+| commands       |    148 |              1 |        67 |      0 |   216 |   69% |
 | common         |      1 |              1 |         4 |      0 |     6 |   33% |
 | crashReporter  |     12 |              7 |         0 |      0 |    19 |  100% |
 | downloads      |     10 |              5 |        21 |      0 |    36 |   42% |
 | errorReporter  |     17 |              0 |        29 |      0 |    46 |   37% |
-| errors         |     84 |            388 |         0 |      0 |   472 |  100% |
+| errors         |     84 |            402 |         0 |      0 |   486 |  100% |
 | feedback       |      7 |              5 |         1 |      0 |    13 |   92% |
-| fileExplorer   |    104 |             69 |       217 |      0 |   390 |   44% |
+| fileExplorer   |    104 |             69 |       218 |      0 |   391 |   44% |
 | fileOperations |    107 |             52 |        68 |      0 |   227 |   70% |
-| goToPath       |      5 |              5 |         2 |      0 |    12 |   83% |
+| goToPath       |      5 |              6 |         2 |      0 |    13 |   85% |
 | indexing       |     33 |             16 |        18 |      0 |    67 |   73% |
 | licensing      |     48 |             35 |        26 |      0 |   109 |   76% |
 | lowDiskSpace   |      0 |              0 |         5 |      0 |     5 |    0% |
 | main           |      7 |              0 |        28 |      2 |    37 |   19% |
-| menu           |      0 |              0 |         0 |    157 |   157 |    0% |
+| menu           |      0 |              0 |         0 |    162 |   162 |    0% |
 | mtp            |     18 |              4 |         0 |      0 |    22 |  100% |
 | notifications  |      0 |              0 |         1 |      0 |     1 |    0% |
-| onboarding     |     95 |             38 |        17 |      0 |   150 |   89% |
+| onboarding     |     95 |             38 |        20 |      0 |   153 |   87% |
 | operationLog   |     26 |             26 |         0 |      0 |    52 |  100% |
 | queryUi        |     44 |            124 |         0 |      0 |   168 |  100% |
 | queue          |     25 |             10 |         1 |      0 |    36 |   97% |
