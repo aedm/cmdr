@@ -28,8 +28,9 @@ post-replay verification COST-BOUNDING (the two teeth) in `../reconcile/DETAILS.
   `process_live_batch` / `run_replay_event_loop` so external callers (`lifecycle/manager.rs`, `scan_completion.rs`, the
   stress tests) keep stable paths.
 - **event_loop/live.rs** — `run_live_event_loop` (real-time processing after scan completes), `process_live_batch`
-  (three-phase; below), and the live-path helpers `mark_pending_and_drain` / `split_parent_and_name`.
-  `detect_renames_by_inode` lives here.
+  (three-phase; below), and the live-path helper `mark_pending_and_drain`.
+- **event_loop/rename_detect.rs** — `detect_renames_by_inode` (the pre-pass `process_live_batch` runs between its
+  dir-creation phase and everything else) and the `split_parent_and_name` helper it needs.
 - **event_loop/replay.rs** — `run_replay_event_loop` (cold-start journal replay, two-phase, boot disk only; hands off to
   live mode and spawns verification), the replay-only bounded-buffer constants (`MAX_AFFECTED_PATHS`,
   `REPLAY_EVENT_COUNT_LIMIT`, `REPLAY_DEDUP_BATCH_SIZE`), and `defer_replay_rescan` / `flush_replay_batch`. Deferred

@@ -8,12 +8,12 @@ event loop that turns its stream into index writes.
 - **watcher.rs** — the drive watcher: macOS FSEvents via `cmdr-fsevent-stream` (event ids + `sinceWhen` replay), Linux
   inotify via `notify`. `supports_event_replay()` is the gate.
 - **branches.rs** — `WatchScope` + `BranchWatch`: how much of a volume its loop answers for, and the buffer keeping a
-  cover walk and a live loop off each other's ground.
-- **event_loop.rs + event_loop/** — three non-calling responsibilities plus shared primitives: `live.rs`
-  (`run_live_event_loop`, `process_live_batch`), `replay.rs` (cold-start replay), `verification.rs` + `verify_guard.rs`
+  cover walk off a live loop's ground.
+- **event_loop.rs + event_loop/** — three non-calling responsibilities plus shared primitives: `live.rs`,
+  `rename_detect.rs` (the inode rename pre-pass), `replay.rs` (cold start), `verification.rs` + `verify_guard.rs`
   (post-replay diff), `storm.rs` (removal storms), `tests/`.
 - **churn_monitor.rs** — off-by-default per-subtree churn rollup (`CMDR_CHURN_SPIKE`).
-- **activity_monitor.rs** — the per-folder activity tap over the CORRECTED stream, plus `BatchObservers`, the pair
+- **activity_monitor.rs** — the per-folder activity tap over the CORRECTED stream, plus the `BatchObservers` pair
   `process_live_batch` takes.
 
 ## Must-knows

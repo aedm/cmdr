@@ -9,7 +9,7 @@ use std::sync::atomic::Ordering;
 use crate::indexing::reconcile::reconciler::EventReconciler;
 use crate::indexing::store::{DirStatsById, ROOT_ID};
 use crate::indexing::watch::activity_monitor;
-use crate::indexing::watch::event_loop::live::detect_renames_by_inode;
+use crate::indexing::watch::event_loop::rename_detect::detect_renames_by_inode;
 use crate::indexing::writer::IndexWriter;
 
 /// Create a temp dir under CARGO_MANIFEST_DIR (Linux's `should_exclude`
