@@ -26,6 +26,7 @@ use crate::indexing::store::{self, IndexStore};
 use cmdr_fs::pluralize::{grouped, pluralize_grouped};
 
 mod live;
+mod rename_detect;
 mod replay;
 mod storm;
 mod verification;
