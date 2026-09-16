@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest'
 import { generateLicenseKey, generateShortCode, isValidShortCode, type LicenseData } from './license'
 import * as ed from '@noble/ed25519'
 
+// This file runs in workerd (see `vitest.workerd.config.ts`), so it has no `Buffer`: hex and
+// base64 go through the web-standard primitives the Worker itself has.
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
+/** Throws on input that isn't base64, which is what the format assertions below check for. */
+function base64ToBytes(base64: string): Uint8Array {
+  return Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
+}
+
+function base64ToUtf8(base64: string): string {
+  return new TextDecoder().decode(base64ToBytes(base64))
+}
+
 describe('generateShortCode', () => {
   it('generates codes in CMDR-XXXX-XXXX-XXXX format', () => {
     const code = generateShortCode()
@@ -56,7 +72,7 @@ describe('generateLicenseKey', () => {
   it('generates a key in payload.signature format', async () => {
     // Generate a test key pair
     const privateKey = ed.utils.randomSecretKey()
-    const privateKeyHex = Buffer.from(privateKey).toString('hex')
+    const privateKeyHex = bytesToHex(privateKey)
 
     const licenseData: LicenseData = {
       email: 'test@example.com',
@@ -72,13 +88,13 @@ describe('generateLicenseKey', () => {
     expect(parts).toHaveLength(2)
 
     // Both parts should be base64 encoded
-    expect(() => Buffer.from(parts[0], 'base64')).not.toThrow()
-    expect(() => Buffer.from(parts[1], 'base64')).not.toThrow()
+    expect(() => base64ToBytes(parts[0])).not.toThrow()
+    expect(() => base64ToBytes(parts[1])).not.toThrow()
   })
 
   it('embeds license data in the payload', async () => {
     const privateKey = ed.utils.randomSecretKey()
-    const privateKeyHex = Buffer.from(privateKey).toString('hex')
+    const privateKeyHex = bytesToHex(privateKey)
 
     const licenseData: LicenseData = {
       email: 'user@domain.com',
@@ -89,7 +105,7 @@ describe('generateLicenseKey', () => {
 
     const key = await generateLicenseKey(licenseData, privateKeyHex)
     const [payloadBase64] = key.split('.')
-    const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf-8')
+    const payloadJson = base64ToUtf8(payloadBase64)
     const decoded = JSON.parse(payloadJson) as LicenseData
 
     expect(decoded.email).toBe(licenseData.email)
@@ -100,7 +116,7 @@ describe('generateLicenseKey', () => {
   it('produces verifiable signatures', async () => {
     const privateKey = ed.utils.randomSecretKey()
     const publicKey = await ed.getPublicKeyAsync(privateKey)
-    const privateKeyHex = Buffer.from(privateKey).toString('hex')
+    const privateKeyHex = bytesToHex(privateKey)
 
     const licenseData: LicenseData = {
       email: 'test@test.com',
@@ -113,8 +129,8 @@ describe('generateLicenseKey', () => {
     const [payloadBase64, signatureBase64] = key.split('.')
 
     // Decode payload and signature
-    const payloadBytes = new Uint8Array(Buffer.from(payloadBase64, 'base64'))
-    const signatureBytes = new Uint8Array(Buffer.from(signatureBase64, 'base64'))
+    const payloadBytes = base64ToBytes(payloadBase64)
+    const signatureBytes = base64ToBytes(signatureBase64)
 
     // Verify signature
     const isValid = await ed.verifyAsync(signatureBytes, payloadBytes, publicKey)
@@ -124,7 +140,7 @@ describe('generateLicenseKey', () => {
   it('rejects tampered payloads', async () => {
     const privateKey = ed.utils.randomSecretKey()
     const publicKey = await ed.getPublicKeyAsync(privateKey)
-    const privateKeyHex = Buffer.from(privateKey).toString('hex')
+    const privateKeyHex = bytesToHex(privateKey)
 
     const licenseData: LicenseData = {
       email: 'original@test.com',
@@ -145,7 +161,7 @@ describe('generateLicenseKey', () => {
     }
     const tamperedPayload = JSON.stringify(tamperedData)
     const tamperedPayloadBytes = new TextEncoder().encode(tamperedPayload)
-    const signatureBytes = new Uint8Array(Buffer.from(signatureBase64, 'base64'))
+    const signatureBytes = base64ToBytes(signatureBase64)
 
     // Signature should NOT verify for tampered payload
     const isValid = await ed.verifyAsync(signatureBytes, tamperedPayloadBytes, publicKey)
@@ -154,7 +170,7 @@ describe('generateLicenseKey', () => {
 
   it('includes organizationName in payload when provided', async () => {
     const privateKey = ed.utils.randomSecretKey()
-    const privateKeyHex = Buffer.from(privateKey).toString('hex')
+    const privateKeyHex = bytesToHex(privateKey)
 
     const licenseData: LicenseData = {
       email: 'corp@example.com',
@@ -166,7 +182,7 @@ describe('generateLicenseKey', () => {
 
     const key = await generateLicenseKey(licenseData, privateKeyHex)
     const [payloadBase64] = key.split('.')
-    const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf-8')
+    const payloadJson = base64ToUtf8(payloadBase64)
     const decoded = JSON.parse(payloadJson) as LicenseData
 
     expect(decoded.organizationName).toBe('Acme Corporation')
@@ -176,7 +192,7 @@ describe('generateLicenseKey', () => {
 
   it('omits organizationName from payload when not provided', async () => {
     const privateKey = ed.utils.randomSecretKey()
-    const privateKeyHex = Buffer.from(privateKey).toString('hex')
+    const privateKeyHex = bytesToHex(privateKey)
 
     const licenseData: LicenseData = {
       email: 'user@example.com',
@@ -188,7 +204,7 @@ describe('generateLicenseKey', () => {
 
     const key = await generateLicenseKey(licenseData, privateKeyHex)
     const [payloadBase64] = key.split('.')
-    const payloadJson = Buffer.from(payloadBase64, 'base64').toString('utf-8')
+    const payloadJson = base64ToUtf8(payloadBase64)
     const decoded = JSON.parse(payloadJson) as LicenseData
 
     expect(decoded.organizationName).toBeUndefined()
@@ -198,7 +214,7 @@ describe('generateLicenseKey', () => {
   it('protects organizationName from tampering', async () => {
     const privateKey = ed.utils.randomSecretKey()
     const publicKey = await ed.getPublicKeyAsync(privateKey)
-    const privateKeyHex = Buffer.from(privateKey).toString('hex')
+    const privateKeyHex = bytesToHex(privateKey)
 
     const licenseData: LicenseData = {
       email: 'corp@example.com',
@@ -218,7 +234,7 @@ describe('generateLicenseKey', () => {
     }
     const tamperedPayload = JSON.stringify(tamperedData)
     const tamperedPayloadBytes = new TextEncoder().encode(tamperedPayload)
-    const signatureBytes = new Uint8Array(Buffer.from(signatureBase64, 'base64'))
+    const signatureBytes = base64ToBytes(signatureBase64)
 
     // Signature should NOT verify for tampered org name
     const isValid = await ed.verifyAsync(signatureBytes, tamperedPayloadBytes, publicKey)
