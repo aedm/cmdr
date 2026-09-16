@@ -2681,12 +2681,21 @@ export const commands = {
   /**
    *  Adds a favorite for `path`, deduping by normalized path. When `name` is omitted, the label
    *  defaults to the path's file name.
+   *
+   *  Refuses a path the switcher couldn't show ([`path_can_be_favorited`]). The frontend greys its
+   *  add affordance out on the same reading, but that's an affordance and this is the enforcement:
+   *  the MCP `favorites` tool and the native folder-row menus never touch that frontend predicate.
    */
   addFavorite: (path: string, name: string | null) =>
-    typedError<null, DeadlineError>(__TAURI_INVOKE('add_favorite', { path, name })),
+    typedError<null, AddFavoriteError>(__TAURI_INVOKE('add_favorite', { path, name })),
   // Removes a favorite by id. No-op when the id isn't present.
   removeFavorite: (id: string) => typedError<null, DeadlineError>(__TAURI_INVOKE('remove_favorite', { id })),
-  // Renames a favorite by id. No-op when the id isn't present.
+  /**
+   *  Renames a favorite by id. No-op when the id isn't present.
+   *
+   *  Takes no path and can't move one, so the add gate doesn't apply: a favorite that passed it
+   *  stays where it was pointed.
+   */
   renameFavorite: (id: string, name: string) =>
     typedError<null, DeadlineError>(__TAURI_INVOKE('rename_favorite', { id, name })),
   /**
@@ -4732,6 +4741,28 @@ export type AdbInstallStatus = {
   // Whether the `host:track-devices` subscription is live.
   tracking: boolean
 }
+
+/**
+ *  Why an add didn't happen.
+ *
+ *  Its own vocabulary rather than [`DeadlineError`], which is for commands whose work can't refuse
+ *  at all: this one can, and a refusal the frontend has to recognize by its wording is a refusal
+ *  that breaks on the next copy edit.
+ */
+export type AddFavoriteError =
+  /**
+   *  `path` isn't one the volume switcher could ever show a row for, so storing it would grow
+   *  `favorites.json` with an entry nobody can see or reach. See [`path_can_be_favorited`].
+   */
+  | { type: 'notAnOsVisiblePath' }
+  // The work didn't finish inside the command's wait. ❗ It was NOT cancelled.
+  | { type: 'timedOut' }
+  // The task panicked, so no answer is coming.
+  | {
+      type: 'unexpected'
+      // What the runtime reported, for the log.
+      detail: string
+    }
 
 // The wire form of [`AgentErrorKind`] — the frontend renders each honestly.
 export type AgentErrorKindView =

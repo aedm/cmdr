@@ -171,9 +171,12 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   busy-volume guard, and the `diskutil`/`umount`/MTP shell-out) lives in `file_system::volume::eject`. `EjectError` IS the wire type, so the command returns it unchanged
   and the frontend words each variant from `errors.eject.*`. `get_busy_volume_ids()` bootstraps the picker's busy set (see
   `write_operations/DETAILS.md` § "Busy-volumes set").
-- **`favorites.rs`**: `add_favorite`, `remove_favorite`, `rename_favorite`, `reorder_favorites`. Thin pass-throughs over
+- **`favorites.rs`**: `add_favorite`, `remove_favorite`, `rename_favorite`, `reorder_favorites`. Pass-throughs over
   `crate::favorites::store`; each persists `favorites.json` (5s write timeout) then re-emits `volumes-changed`. No
-  `list_favorites` (listing rides `list_volumes` / `volumes-changed`). See `favorites/CLAUDE.md`.
+  `list_favorites` (listing rides `list_volumes` / `volumes-changed`). Carries one piece of judgment, the add gate
+  (`path_can_be_favorited`, answering `AddFavoriteError::NotAnOsVisiblePath`): the store stays sync and
+  `AppHandle`-free, so the one reading that needs volume state lives at the command every add surface shares. See
+  `favorites/DETAILS.md` § The add gate.
 - **`font_metrics.rs`**: `store_font_metrics`, `has_font_metrics`.
 - **`logging.rs`**: `batch_fe_logs` (forwards batched frontend log entries into the fern logger) and `set_log_level`.
 - **`icons.rs`**: `get_icons`, `get_custom_folder_icon_ids` (visible-range custom-folder detection),

@@ -265,9 +265,10 @@ All under `apps/desktop/src-tauri/src/`.
 - `intl/`: What the OS says about language and region. Walks the user's ordered macOS language preferences against the
   catalogs we ship (refusing to cross a script boundary), composes the formatting tag WebKit can't see (the `-u-rg-`
   region override), and answers the frontend over `get_os_locales`. See its `CLAUDE.md`
-- `favorites/`: User-editable favorites. Ordered `favorites.json` store (`{ id, path, name }`) backing the volume
-  switcher's "Favorites" section. Seed-once-on-absence, dedup-by-path, pure testable core. Read by `get_favorites()` in
-  both `volumes/` twins; mutated via `commands/favorites.rs` (which re-emits `volumes-changed`)
+- `favorites/`: User-editable favorites. Ordered `favorites.json` store (`{ id, path, name }`) backing the favorites
+  menu. Seed-once-on-absence, dedup-by-path, pure testable core. Read by `get_favorites()` in both `volumes/` twins;
+  mutated via `commands/favorites.rs`, which re-emits `volumes-changed` and owns the add gate (`favorites/DETAILS.md` §
+  The add gate)
 - `volumes/`: macOS location/volume discovery, the `NSWorkspace` mount/unmount watcher, and `unmount_approver/`, the
   DiskArbitration approval session that holds every DA-mediated unmount while the drive's index lets go. Distinct from
   `file_system/volume/`. `get_favorites()` reads the `favorites/` store

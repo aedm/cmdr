@@ -9,9 +9,9 @@ four favorites. Full depth in `DETAILS.md`.
 - `store.rs`: the `favorites.json` store. Pure core (`add`/`remove`/`rename`/`reorder` on a `Vec`,
   unit-tested) plus disk I/O, the in-memory cache, and seed-once. Public API: `list`, `add`,
   `remove`, `rename`, `reorder`, and the `Favorite { id, path, name }` type.
-- IPC lives in `commands/favorites.rs` (not here): thin `add_favorite` / `remove_favorite` /
-  `rename_favorite` / `reorder_favorites` pass-throughs. There's no `list_favorites`; listing rides
-  `list_volumes` / `volumes-changed`.
+- IPC lives in `commands/favorites.rs` (not here): `add_favorite` / `remove_favorite` /
+  `rename_favorite` / `reorder_favorites` pass-throughs, plus THE add gate. There's no
+  `list_favorites`; listing rides `list_volumes` / `volumes-changed`.
 
 ## Must-knows
 
@@ -22,6 +22,11 @@ four favorites. Full depth in `DETAILS.md`.
   `Some(empty)`, NOT `None`, so a stray hand-edit can't silently re-seed over a user who'd cleared
   their list. Don't "simplify" the `Option` to a plain `Vec`: it would erase the absent-vs-empty
   distinction the whole contract rests on.
+- **Every add goes through `commands::favorites::add_favorite`, ❌ never `store::add`.** That's the
+  only place the add gate runs, and the gate isn't optional: `volumes::get_favorites` HIDES a
+  favorite whose path isn't on disk, so an ungated add writes an entry no switcher can ever show.
+  The native folder-row menu calls the command for exactly this reason. What it accepts and why:
+  `DETAILS.md` § The add gate.
 - **`id` is a random UUID minted on add, never derived from `path`.** Paths repeat across renames
   and re-adds, so the id must outlive the path. The switcher's `LocationInfo.id` is `format!("fav-{id}")`.
 - **Data dir is resolved WITHOUT an `AppHandle`** (mirrors `install_id.rs`: `CMDR_DATA_DIR` else the

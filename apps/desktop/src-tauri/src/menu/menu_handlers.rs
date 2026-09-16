@@ -216,8 +216,11 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
     // === Add to favorites (folder-row + parent-row context menus) ===
     // Favorites the right-clicked path stashed in `MenuState.context.path` (the folder for a folder
     // row, the parent dir for `..`). Intercepted here so it never routes through `favorites.add`
-    // (which favorites the focused-pane dir instead). The store write touches the filesystem, so it
-    // runs on the blocking pool, never on this menu thread; the command re-emits `volumes-changed`.
+    // (which favorites the focused-pane dir instead). ❗ It goes through the `add_favorite` COMMAND
+    // rather than `favorites::store::add`, so this surface meets the same add gate as the palette
+    // and the MCP tool; a `store::add` here would let a right-click inside an archive or on a phone
+    // store a favorite nothing can ever show. The command also owns the blocking pool, the timeout,
+    // and the `volumes-changed` re-emit.
     if id == FAVORITES_ADD_CONTEXT_ID {
         let menu_state = app.state::<MenuState<tauri::Wry>>();
         let path = menu_state.context.lock_ignore_poison().path.clone();
@@ -226,12 +229,9 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
             return;
         }
         tauri::async_runtime::spawn(async move {
-            let write = tauri::async_runtime::spawn_blocking(move || crate::favorites::store::add(&path, None)).await;
-            if let Err(e) = write {
-                log::warn!(target: "favorites", "Add to favorites: store write failed: {e}");
-                return;
+            if let Err(e) = crate::commands::favorites::add_favorite(path, None).await {
+                log::warn!(target: "favorites", "Add to favorites: {e}");
             }
-            crate::volume_broadcast::emit_volumes_changed();
         });
         return;
     }

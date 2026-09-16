@@ -105,15 +105,17 @@ store write touches the filesystem. After persisting, each re-emits `volumes-cha
 (subscribe-don't-poll). Listing rides the existing `list_volumes` / `volumes-changed` path, so
 there's no `list_favorites` command.
 
-- `add_favorite(path: String, name: Option<String>) -> Result<(), DeadlineError>`
+- `add_favorite(path: String, name: Option<String>) -> Result<(), AddFavoriteError>`
 - `remove_favorite(id: String) -> Result<(), DeadlineError>`
 - `rename_favorite(id: String, name: String) -> Result<(), DeadlineError>`
 - `reorder_favorites(ordered_ids: Vec<String>) -> Result<(), DeadlineError>`
 
-`DeadlineError` (`deadline/mod.rs`) rather than a vocabulary of their own, because the store
-swallows its own write errors: a favorite that doesn't reach disk still applies in memory, so a
-missed deadline (or a panicked blocking task) is the only thing these four can report. Every other
-command family owns its error type; the map is `docs/guides/error-handling.md`.
+The last three answer in `DeadlineError` (`deadline/mod.rs`) rather than a vocabulary of their own,
+because the store swallows its own write errors: a favorite that doesn't reach disk still applies in
+memory, so a missed deadline (or a panicked blocking task) is the only thing they can report.
+`add_favorite` can also REFUSE (§ The add gate), so it owns `AddFavoriteError`: the same two
+deadline variants plus `NotAnOsVisiblePath`. The error-type map is
+`docs/guides/error-handling.md`.
 
 Registered in the `ipc.rs` manifest, which feeds both runtime dispatch and the specta types.
 
@@ -128,10 +130,55 @@ protected favorite exists). Non-protected paths are still checked (for example `
 absent on slim systems). This now applies to ANY user-added path, not just the old hardcoded three.
 Linux has no TCC, so its twin existence-checks everything and there's no gate.
 
-## Local-filesystem paths only (v1)
+## The add gate
 
-Favorites are local filesystem paths for now. Network and MTP favorites are deferred (mount-state
-complexity). The store doesn't enforce this; the add surfaces in the frontend gate it.
+A favorite points at an OS-visible filesystem path: a local drive, or an SMB share while it's
+mounted. `add_favorite` enforces that, and `commands/favorites.rs::path_can_be_favorited` is the one
+place the rule lives.
+
+**Why it has to exist.** `volumes::get_favorites` (the READ side, in `volumes/mod.rs`) drops any
+favorite whose path isn't on disk. So without a gate an `smb://`, `sftp://`, `webdav://`, `mtp://`,
+`adb://`, `search-results://`, archive-inner, or `.git`-portal path is written to `favorites.json`
+and then shown nowhere at all: no row, no error, and a file that only grows. The gate and that
+existence filter have to agree, and the gate must never be the laxer of the two.
+
+**What it reads**, three typed questions and ❌ not one test on the path string:
+
+- `Path::is_absolute()`. A scheme path with no protocol arm in `resolve_path_volume`
+  (`search-results://` today) reaches the mount table, which walks UP to a parent on a failed
+  `statfs` and so answers with the boot volume. Asking `std::path` whether this is a path at all
+  keeps that generic instead of a list of schemes to remember to extend.
+- `VolumeManager::path_routes_over_its_parent()`. An archive-inner or `.git`-portal path resolves to
+  the parent DRIVE, which IS OS-visible, while the path itself has no file of its own there. Same
+  reading the write-op router and the agent's `WritableDestination` take.
+- `Volume::paths_are_os_visible()` on the volume `resolve_path_volume` names. The same reading Quick
+  Look, the drag commands, and "Open terminal here" take: it admits local drives and direct SMB
+  (whose `/Volumes/…` paths stay OS-openable while the share is mounted) and refuses every
+  protocol-only backend. ❌ Not `supports_local_fs_access()`, which direct SMB answers `false` to.
+  **Gotcha**: an id the registry doesn't hold is a REFUSAL here, the opposite of what `quick_look`
+  and `terminal.rs` assume. A saved-but-offline server and an unplugged phone both resolve to a
+  `VolumeInfo` with no registered volume behind it, and guessing yes there writes the invisible
+  favorite this whole section exists to prevent.
+
+So today it accepts local and SMB-mounted panes, and refuses SFTP, WebDAV, MTP, ADB, the `smb://`
+servers hub, search-results snapshots, archive-inner paths, and `.git`-portal paths.
+
+**Every add surface meets it**, because they all route through the command: the `favorites.add`
+palette / Go-menu handler, the folder-row and `..` context menus (`menu/menu_handlers.rs` calls
+`commands::favorites::add_favorite`, ❌ never `store::add`), and the MCP `favorites` tool, which maps
+the refusal to `invalid_params` rather than an internal problem. `rename_favorite` takes no path and
+can't move one, so it needs no gate.
+
+**The frontend predicate beside it is a different job, ❌ not duplication.** The favorites menu greys
+its "Add current folder to favorites" row out on the pane's own capability reading, which is an
+AFFORDANCE: it tells someone up front that this pane can't be favorited. This one is the
+ENFORCEMENT, and it's authoritative — the MCP tool and the native menus never go near the frontend.
+The frontend's half is `kindCanBeFavorited` / `paneFolderCanBeFavorited` in
+`src/lib/file-explorer/pane/volume-capabilities.ts`, reading the pane's ROUTED kind. The two land on
+the same answer set (local and SMB) from different readings, so a change to one is a prompt to
+check the other.
+
+Broader network and device favorites stay deferred (mount-state complexity).
 
 ## MCP consumer
 

@@ -13,6 +13,7 @@
 use serde_json::{Value, json};
 
 use super::{ToolError, ToolResult, expand_user_path};
+use crate::commands::favorites::AddFavoriteError;
 
 pub async fn execute_favorites(params: &Value) -> ToolResult {
     let action = params
@@ -30,7 +31,17 @@ pub async fn execute_favorites(params: &Value) -> ToolResult {
             let name = params.get("name").and_then(|v| v.as_str()).map(str::to_string);
             crate::commands::favorites::add_favorite(path.clone(), name)
                 .await
-                .map_err(|e| ToolError::internal(format!("Couldn't add favorite: {}", e)))?;
+                .map_err(|e| match e {
+                    // A refusal, ❌ not a fault: the switcher only shows favorites on OS-visible
+                    // filesystem paths, so an archive-inner, `.git`-portal, phone, or server path
+                    // would store a row nothing can ever display. Say so where the caller can act
+                    // on it rather than reporting an internal problem.
+                    AddFavoriteError::NotAnOsVisiblePath => ToolError::invalid_params(format!(
+                        "Can't favorite {path}: favorites point at local or mounted-share folders, \
+                         and this path isn't one of those."
+                    )),
+                    other => ToolError::internal(format!("Couldn't add favorite: {other}")),
+                })?;
             Ok(json!(format!("OK: Added favorite for {path}.")))
         }
         "rename" => {
