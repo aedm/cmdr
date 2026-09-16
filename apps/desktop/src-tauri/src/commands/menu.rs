@@ -1,6 +1,7 @@
 //! Native menu commands: context menus (file / breadcrumb / volume row / favorite row / parent
 //! row / tab / network host / function key bar), the macOS app-menu-bar swap on focus change, and
-//! the menu-state sync commands (view mode, hidden files, pin tab, reopen tab).
+//! the menu-state sync commands (view mode, hidden files, pin tab, reopen tab, the Select menu's live
+//! "same kind" label).
 //!
 //! Thin IPC layer over the `crate::menu` builders and `MenuState`.
 

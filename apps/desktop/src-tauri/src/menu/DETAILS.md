@@ -26,7 +26,8 @@ window focus context.
   registers the tracked items, and hands back `MenuItems`.
 - `display_accelerators.rs` (macOS): `set_display_accelerators`, the pass that draws a shortcut the bar can't register
   as a right-aligned, dimmed run on an item's attributed title. See "Display-only accelerators" below.
-- `menu_items.rs`: small shared pieces: `APP_MENU_TITLE`, `pin_tab_label`, `truncate_for_menu_label`, plus
+- `menu_items.rs`: small shared pieces: `APP_MENU_TITLE`, `pin_tab_label`, `truncate_for_menu_label`, the
+  `SameKindTarget` payload and `same_kind_menu_label` behind "Select all of the same kind"'s live wording, plus
   `DetachWord` / `detach_label`, which decide whether a row's leave-this-volume item reads `Eject ({name})` or
   `Disconnect` (a phone gets the second: `adb` has no per-client detach, so nothing is made safe to unplug).
 - `menu_structure.rs`: the file context menu
@@ -34,6 +35,8 @@ window focus context.
   (`build_volume_row_context_menu`: a server's Disconnect/Pin/Forget items or the `detach_label` item, and
   `build_favorite_context_menu`: a favorite's Rename / Remove from favorites), the viewer-window menu
   (`build_viewer_menu`), plus the `FileContextInfo`, `ContextMenuResult`, and `ContextMenuShortcuts` types.
+- `selection_submenu.rs`: the file context menu's `Selection >` submenu, its rows held as data (`SELECTION_ROWS`) so a
+  unit test can pin their order without building a `muda::Menu`.
 - `install.rs`: `at_startup`, the single call `lib.rs` makes in `setup`: pin the UI language, build the bar,
   run the macOS AppKit passes, and place the `MenuState` everything else mutates. Order inside is load-bearing.
 - `item_states.rs`: `apply_menu_item_states` (the one writer of every main-menu item's enabled state, derived from
@@ -268,10 +271,16 @@ moving, or platform-tagging a row can't desync one from the other.
 
 ### Display-only accelerators
 
-Three Select-menu rows run on `*`, `+`, and `-`, and `⌥+` will join them. None of those keys carries ⌘, ⌃, or ⌥, and a
-menu-bar accelerator with no such modifier is fired by AppKit app-wide, ahead of the webview: registering `⇧8` would
-stop `*` reaching every text field in the app. So the file pane's keydown handler owns the keys and the menu only says
-what they are.
+Three Select-menu rows run on `*`, `+`, and `-`. None of those keys carries ⌘, ⌃, or ⌥, and a menu-bar accelerator with
+no such modifier is fired by AppKit app-wide, ahead of the webview: registering `⇧8` would stop `*` reaching every text
+field in the app. So the file pane's keydown handler owns the keys and the menu only says what they are.
+
+"Select all of the same kind" is a fourth row on the same path for a different reason. `⌥⇧=` WOULD clear the floor, and
+`frontend_shortcut_to_accelerator` really does answer `Some("Alt+Shift+Equal")` for it — but David wants `⌥+` free for
+typing, so the row is built with `displayed_item`, which pairs the glyph with `NONE` by construction. Nothing pushes a
+default binding through `update_menu_accelerator` (only CUSTOM shortcuts are re-pushed, `shortcuts-store.ts`), so the
+default stays display-only; a user who deliberately rebinds the command to a ⌥ combo gets a real accelerator, which is
+what "a rebind stays honest" means below.
 
 **The modifier floor** is where that rule lives. `frontend_shortcut_to_accelerator` answers `None` for any combo
 without one of the three (Shift alone doesn't clear it, since `⇧8` IS `*`), so a bare key can't reach a menu item by
@@ -331,6 +340,39 @@ second `(⇧8)` on the end. The glyph is the frontend's own spelling (`⇧8`), �
 never parsed. A word key shows as `Backspace` where AppKit would draw `⌫`; nobody has hit that yet, and the fix would be
 a display-spelling table Rust doesn't have today.
 
+### The one item whose LABEL changes: "Select all of the same kind"
+
+Two items in the bar say something different depending on state. `Pin tab` flips between two whole catalog keys
+(`Label::License` does the same for the licence row, and both are resolved at BUILD time). "Select all of the same
+kind" is the third and the only one rewritten AFTER the build, from data only the frontend has: what the focused pane's
+cursor row is. It reads "Select all folders", "Select all with extension *.pdf", "Select all files with no extension",
+or the neutral wording when the row implies no kind.
+
+**The words are rendered in Rust**, by `menu_items::same_kind_menu_label` from a typed `SameKindTarget` (wire-identical
+to the frontend's `pane/select-same-kind.ts` type, pinned by a deserialization test). ❌ Never a string the frontend
+composes: the bar speaks the language `crate::intl` resolves, which is not necessarily the webview's.
+
+**`MenuState::set_item_label` is how a tracked item's label moves**, and it is not a bare `set_text`, because two other
+things hang off the label:
+
+- Linux spells the display-only shortcut INTO the label, so the new one has to be recomposed with it. The effective
+  shortcut is `MenuState.display_accelerators` first (what a rebind put there), then `menu_bar::spec_display_accelerator`
+  as the fallback — ❗ in that order, or a rebind's glyph reverts on the next cursor move.
+- `MenuItemEntry::label` is what `update_menu_item_accelerator` rebuilds the item from, so leaving it stale would mean a
+  later rebind silently restored the neutral wording.
+
+❗ **On macOS the caller must follow with `set_display_accelerators`.** `set_text` replaces the attributed title with a
+plain one, and the dimmed `⌥⇧=` goes with it. `update_select_same_kind_menu` does exactly that, and the pass is cheap
+enough to re-run per push (it walks the spec, finds only the Select menu wants glyphs, and re-measures one tab stop).
+
+**The frontend debounces, 200 ms, and skips an unchanged render** (`pane/same-kind-target.svelte.ts`). A debounce, not a
+throttle: holding an arrow key is a burst whose only interesting value is the last one. The store is the single source
+for both readers — the palette PULLS `sameKindCommandLabel()` through the registry's `displayName`, the menu bar is
+PUSHED to — so the label and the selection cannot disagree. ❌ Don't add a second publisher.
+
+A language rebuild throws the item away, so `DualPaneExplorer`'s `menu-bar-rebuilt` handler calls `resyncSameKindMenu()`
+alongside the other frontend-only re-pushes.
+
 ### Where a CONTEXT menu's accelerator comes from
 
 All of that is the menu BAR's problem. A popup menu is rebuilt from scratch on every right-click, so it needs no
@@ -352,6 +394,31 @@ Two things to keep straight:
   that command, and nothing catches it. An item whose command has nothing bound shows nothing, which is the honest
   answer; `None::<&str>` stays right for an item with no command behind it at all (`favorites_add_context`, the Drive
   and cloud items, Quick Look).
+
+⚠️ **Known limitation: a shifted-character combo still draws no key here.** `frontend_shortcut_to_menu_text("⌘+")`
+answers `Cmd++`, which muda can't parse, so `MenuItem::with_id` discards it and the row comes up bare. It costs nothing
+today (the same row drew nothing before the popup read the registry at all), and it only bites a user who rebinds a
+context-menu command to a combo whose key is a shifted character. The real fix is a display-spelling table that renders
+`⌘+` as `⌘+` rather than round-tripping through Tauri's accelerator syntax; ❌ don't reach for
+`frontend_shortcut_to_accelerator`'s `is_codeable_key` refusal here, which would drop the label entirely instead of
+drawing a wrong one.
+
+### The `Selection >` submenu
+
+The file context menu's selection group is a submenu (`selection_submenu.rs`), keyed `menu.context.selection`, holding
+everything the Select menu bar has plus Toggle selection at the head. Order: Toggle selection, Select all, Deselect all,
+Select all of the same kind, Invert selection, separator, Select files…, Deselect files….
+
+The rows are DATA (`SELECTION_ROWS`) rather than a straight-line builder, for one reason: a real `muda::Menu` panics off
+the main thread, so nothing can build this submenu in a unit test and read it back. Keeping the rows as a const means
+their order and their command mapping are both pinned by tests that don't touch AppKit at all.
+
+Its "same kind" row is composed at popup time, from the target the frontend computes for the RIGHT-CLICKED row
+(`pane-pointer.ts`, `sameKindTargetFor(entry)`) and sends in the `show_file_context_menu` payload. ❗ ❌ Never the menu
+bar's debounced value: a right-click (and `⌃⏎`) is exactly the moment a label a frame behind would be read as truth, and
+`⌃⏎` removed the mouse trip that used to hide the staleness. Two callers send no target and get the neutral label: the
+Search DIALOG's row menu (its items act on the pane behind the dialog, so the row's own kind would be a lie) and any
+surface that doesn't answer. The search-results snapshot pane does send one, since it runs the command over those rows.
 
 ### Per-pane view modes
 

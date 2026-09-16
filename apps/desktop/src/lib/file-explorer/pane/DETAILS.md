@@ -1558,13 +1558,23 @@ and `sameKindIndices(target, entries)` asks a listing snapshot which rows match.
   arrow-down then `⌥⇧=` is an ordinary keyboard sequence, and acting on the row the cursor just left would select the
   wrong kind. A snapshot pane has no backend listing to re-read from and would have its feed entry cleared, so it reads
   the live mirrored value instead.
-- **The palette's row label is a separate, best-effort path.** `same-kind-target.svelte.ts` holds a module `$state` the
-  FOCUSED pane publishes its target into (`FilePane`'s effect bails when `isFocused` is false, so a blurred pane can't
-  clobber it), and the registry's `displayName` resolver renders it ("Select all with extension *.pdf"). Only the
-  palette reads `displayName`; Settings > Shortcuts, the help window, the conflict toast, and the MCP bridge keep the
-  static name. ❗ The command itself never reads this store, so a label one frame behind can't change what gets
-  selected. Rust's native menus don't read it either — they resolve labels through their own `menu_t` catalog
-  (`src-tauri/src/menu/DETAILS.md`), a second mechanism on purpose.
+- **Every live label hangs off ONE store**, `same-kind-target.svelte.ts`: a module `$state` the FOCUSED pane publishes
+  its target into (`FilePane`'s effect bails when `isFocused` is false, so a blurred pane can't clobber it). ❌ Don't
+  add a second publisher — the whole point is that a label and the selection cannot disagree. Three surfaces read it,
+  each differently:
+  - **The command palette PULLS**, through the registry's `displayName` resolver ("Select all with extension *.pdf").
+    Only the palette reads `displayName`; Settings > Shortcuts, the help window, the conflict toast, and the MCP bridge
+    keep the static name.
+  - **The Select MENU is pushed to**, because a native item can't read Svelte state. `publishSameKindTarget` debounces
+    that push by 200 ms and skips it when the words wouldn't change, so arrowing through a folder of `.pdf`s costs
+    nothing. Rust renders the words from its own `menu_t` catalog off a typed payload (`src-tauri/src/menu/DETAILS.md` §
+    "The one item whose LABEL changes"); the frontend never composes the string. `resyncSameKindMenu()` re-pushes after
+    a language rebuild, from `DualPaneExplorer`'s `menu-bar-rebuilt` handler.
+  - **The right-click `Selection >` submenu reads NEITHER.** `pane-pointer.ts` computes `sameKindTargetFor(entry)` as it
+    opens the menu and sends it in the payload. ❗ ❌ Never the debounced value: a right-click, and `⌃⏎` even more so,
+    is exactly when a label a frame behind would be read as truth.
+- ❗ **The command itself never reads any of this.** It re-reads the cursor row and the listing snapshot when it runs,
+  so a stale label can't change what gets selected. This is a label, not a decision.
 
 ## Keyboard context menu
 
