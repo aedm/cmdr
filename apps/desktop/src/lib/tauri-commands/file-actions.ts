@@ -121,6 +121,22 @@ export interface ContextMenuTarget {
 }
 
 /**
+ * Where a context menu opens, in VIEWPORT CSS pixels — straight out of
+ * `getBoundingClientRect()`, no `devicePixelRatio` arithmetic.
+ *
+ * Only the keyboard path fills one in. A right-click passes nothing and macOS pops the
+ * menu at the pointer, which is why every mouse path is untouched by it.
+ *
+ * The viewport and the native window share an origin here (the webview fills the whole
+ * window, title bar included), so no offset is applied. Measurement and the caveat that
+ * would change it: `$lib/file-explorer/pane/DETAILS.md` § Keyboard context menu.
+ */
+export interface MenuAnchor {
+  x: number
+  y: number
+}
+
+/**
  * Shows a native context menu for a file.
  * @param path - Absolute path to the right-clicked file (the "primary" file).
  * @param filename - Name of the right-clicked file.
@@ -134,6 +150,8 @@ export interface ContextMenuTarget {
  *                    `$lib/shortcuts`. It's what each item's accelerator LABEL is drawn from, so
  *                    the menu tells the truth after a rebind. ❌ Never hand-build it, and ❌ never
  *                    pass display spellings: `boundShortcuts` explains both.
+ * @param anchor - Where to open it ({@link MenuAnchor}). Omit for a right-click, so macOS
+ *                 uses the pointer.
  */
 export async function showFileContextMenu(
   path: string,
@@ -143,6 +161,7 @@ export async function showFileContextMenu(
   pane: PaneContextMenuFacts = {},
   target: ContextMenuTarget = {},
   shortcuts: Record<string, string> = {},
+  anchor: MenuAnchor | null = null,
 ): Promise<void> {
   // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- generic <R: Runtime> command, excluded from specta bindings (see the `ipc.rs` manifest)
   await invoke('show_file_context_menu', {
@@ -162,6 +181,7 @@ export async function showFileContextMenu(
       sizeText: target.sizeText ?? null,
     },
     shortcuts,
+    anchor,
   })
 }
 
@@ -291,10 +311,13 @@ export type ServerRowMenu = {
  * Shows the minimal `..` parent-row context menu (just "Add to favorites").
  * The full file context menu doesn't fit `..`, so this is its own one-item menu.
  * @param parentPath - The directory the `..` row points at; favorited on click.
+ * @param anchor - Where to open it ({@link MenuAnchor}). Omit for a right-click, so macOS
+ *                 uses the pointer. `..` is a cursor row like any other, so `⌃⏎` on it
+ *                 has to land on the row rather than wherever the mouse was left.
  */
-export async function showParentRowContextMenu(parentPath: string): Promise<void> {
+export async function showParentRowContextMenu(parentPath: string, anchor: MenuAnchor | null = null): Promise<void> {
   // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- generic over <R: Runtime>, not in typed bindings
-  await invoke('show_parent_row_context_menu', { parentPath })
+  await invoke('show_parent_row_context_menu', { parentPath, anchor })
 }
 
 /**

@@ -171,6 +171,7 @@ describe('createPanePointer', () => {
         },
         { countText: '2 items', sizeText: undefined },
         boundCombos,
+        null,
       )
     })
 
@@ -191,6 +192,7 @@ describe('createPanePointer', () => {
         },
         { countText: undefined, sizeText: undefined },
         boundCombos,
+        null,
       )
     })
 
@@ -211,6 +213,7 @@ describe('createPanePointer', () => {
         },
         { countText: undefined, sizeText: undefined },
         boundCombos,
+        null,
       )
     })
 
@@ -231,6 +234,7 @@ describe('createPanePointer', () => {
         },
         { countText: undefined, sizeText: undefined },
         boundCombos,
+        null,
       )
     })
 
@@ -254,6 +258,7 @@ describe('createPanePointer', () => {
         },
         { countText: undefined, sizeText: undefined },
         boundCombos,
+        null,
       )
     })
 
@@ -269,12 +274,13 @@ describe('createPanePointer', () => {
         { listingId: 'listing-1', canOpenTerminalHere: true, canShare: false, canFavorite: false },
         { countText: undefined, sizeText: undefined },
         boundCombos,
+        null,
       )
     })
 
     it('gives the `..` row its own one-item menu', async () => {
       await createPanePointer(deps).handleContextMenu(entryOf({ name: '..', path: '/dir', isDirectory: true }))
-      expect(ipc.showParentRowContextMenu).toHaveBeenCalledWith('/dir')
+      expect(ipc.showParentRowContextMenu).toHaveBeenCalledWith('/dir', null)
       expect(ipc.showFileContextMenu).not.toHaveBeenCalled()
     })
 
@@ -297,6 +303,29 @@ describe('createPanePointer', () => {
     it('cancels an in-flight type-to-jump', async () => {
       await createPanePointer(deps).handleContextMenu(entryOf())
       expect(calls.clearJump).toHaveBeenCalledTimes(1)
+    })
+
+    it('forwards the keyboard path’s anchor, so `⌃⏎` pops at the cursor row', async () => {
+      // Sends nothing but the anchor differently from a right-click: the
+      // selection-vs-row rule below it is the same code for both.
+      state.selected = [1, 2]
+      ipc.getPathsAtIndices.mockResolvedValue(['/dir/a.txt', '/dir/b.txt'])
+      await createPanePointer(deps).handleContextMenu(entryOf(), { x: 116, y: 240 })
+      expect(ipc.showFileContextMenu.mock.calls[0][4]).toEqual({
+        listingId: 'listing-1',
+        canOpenTerminalHere: true,
+        canShare: true,
+      })
+      expect(ipc.showFileContextMenu.mock.calls[0][3]).toEqual(['/dir/a.txt', '/dir/b.txt'])
+      expect(ipc.showFileContextMenu.mock.calls[0][7]).toEqual({ x: 116, y: 240 })
+    })
+
+    it('anchors the `..` row’s one-item menu too', async () => {
+      await createPanePointer(deps).handleContextMenu(entryOf({ name: '..', path: '/dir', isDirectory: true }), {
+        x: 24,
+        y: 80,
+      })
+      expect(ipc.showParentRowContextMenu).toHaveBeenCalledWith('/dir', { x: 24, y: 80 })
     })
   })
 

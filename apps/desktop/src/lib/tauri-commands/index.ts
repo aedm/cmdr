@@ -123,6 +123,7 @@ export type {
   DriveItemLinks,
   EditorOpenOutcome,
   EditorOpenReport,
+  MenuAnchor,
   OpenInEditorError,
   OpenTerminalError,
   OpenTerminalOutcome,

@@ -8,9 +8,12 @@
  * click target that may be inside the inline rename editor) and because a
  * pointer gesture can land on a row, on the background, or on the `..` row,
  * each with its own rule.
+ *
+ * `handleContextMenu` is the one deliberate exception: `⌃⏎` calls it too, passing an
+ * anchor. Which rows the menu acts on is a rule nobody should own twice.
  */
 
-import { getPathsAtIndices, showFileContextMenu, showParentRowContextMenu } from '$lib/tauri-commands'
+import { getPathsAtIndices, showFileContextMenu, showParentRowContextMenu, type MenuAnchor } from '$lib/tauri-commands'
 import { contextMenuCountText, contextMenuSizeBytes, contextMenuSizeText } from '../selection/context-menu-target'
 import { boundShortcuts } from '$lib/shortcuts'
 import type { FileEntry, SelectPayload } from '../types'
@@ -59,8 +62,17 @@ export interface PanePointerDeps {
 }
 
 export interface PanePointer {
+  /**
+   * The context menu for `entry`, acting on the whole selection when `entry` is inside
+   * it and on that one row otherwise.
+   *
+   * ❗ The keyboard (`⌃⏎`) comes through HERE too, with an `anchor`, rather than
+   * re-deriving the selection-vs-row rule: two paths that decide it separately are two
+   * paths that drift apart. `anchor` is the ONLY difference between them — omitted, the
+   * OS uses the pointer, which is what a right-click wants.
+   */
+  handleContextMenu: (entry: FileEntry, anchor?: MenuAnchor | null) => Promise<void>
   handleSelect: (args: SelectPayload) => void
-  handleContextMenu: (entry: FileEntry) => Promise<void>
   handlePaneClick: (event: MouseEvent) => void
   handlePaneBackgroundDblClick: (event: MouseEvent) => void
 }
@@ -83,7 +95,7 @@ export function createPanePointer(deps: PanePointerDeps): PanePointer {
     deps.fetchCursorEntry()
   }
 
-  async function handleContextMenu(entry: FileEntry): Promise<void> {
+  async function handleContextMenu(entry: FileEntry, anchor: MenuAnchor | null = null): Promise<void> {
     if (entry.name === '..') {
       // The `..` row gets its own one-item menu: "Add to favorites" (favorites the
       // parent dir `entry.path`). The full file menu (Copy / Move / Delete) makes no
@@ -92,7 +104,7 @@ export function createPanePointer(deps: PanePointerDeps): PanePointer {
       // menu would hold nothing but an item `add_favorite` refuses, so none pops at all.
       deps.clearJump()
       if (!paneFolderCanBeFavorited(deps.getVolumeId(), entry.path)) return
-      await showParentRowContextMenu(entry.path)
+      await showParentRowContextMenu(entry.path, anchor)
       return
     }
     // Spec: opening a context menu cancels in-flight type-to-jump.
@@ -138,6 +150,7 @@ export function createPanePointer(deps: PanePointerDeps): PanePointer {
       },
       { countText: contextMenuCountText(paths.length), sizeText: contextMenuSizeText(sizeBytes) },
       boundShortcuts(),
+      anchor,
     )
   }
 

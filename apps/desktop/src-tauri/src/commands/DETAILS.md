@@ -209,6 +209,13 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
     borrowed for the life of the menu and pointed at the right-clicked rows. `popup()` runs the whole tracking loop, so
     the binding is `let _services_loan = …` and ❌ never `let _ = …`; see `menu/DETAILS.md` § Services in the
     right-click menu.
+  - ❗ **An anchored popup goes through `popup_context_menu`, and its point is LOGICAL.** `show_file_context_menu` and
+    `show_parent_row_context_menu` take an optional `MenuAnchor` (the keyboard `⌃⏎` path fills it; a right-click leaves
+    it `None` and macOS uses the pointer). It becomes a `tauri::LogicalPosition`, because muda runs
+    `position.to_logical(backingScaleFactor)` and then positions inside the window's CONTENT view — so the frontend's
+    viewport CSS pixels pass straight through, and ❌ a `Physical` position would halve every coordinate on a Retina
+    display. Why viewport and window coordinates coincide for Cmdr's window, with the measurement:
+    `apps/desktop/src/lib/file-explorer/pane/DETAILS.md` § Keyboard context menu.
   - ❗ **`build_file_context_info` enumerates the share services on THIS thread** (macOS), taking its own
     `MainThreadMarker` rather than hopping: `file_system::share` pairs the offer with the click by index through a
     thread-local, and `on_menu_event` reads it back on the main thread. A sync `#[tauri::command]` runs there, which is

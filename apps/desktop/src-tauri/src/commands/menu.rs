@@ -52,6 +52,42 @@ fn focus_for_context_menu<R: Runtime>(window: &Window<R>) {
     }
 }
 
+/// Where a context menu opens, when the caller names a point instead of letting the
+/// OS use the pointer. In the WEBVIEW's own coordinates, in CSS pixels: the same
+/// numbers `getBoundingClientRect()` gave the frontend.
+///
+/// Only the keyboard paths send one. A right-click passes `None` and macOS uses the
+/// mouse, which is why the pointer path is untouched by all of this.
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MenuAnchor {
+    pub x: f64,
+    pub y: f64,
+}
+
+/// Pops `menu` up over `window`, at `anchor` when there is one and at the pointer
+/// when there isn't.
+///
+/// ❗ The anchor goes on the wire as a LOGICAL position, never a physical one.
+/// muda converts whatever it gets with `Position::to_logical(backingScaleFactor)`
+/// and then positions in the target `NSView`'s own coordinates, so logical CSS
+/// pixels pass straight through and a Retina display needs no `devicePixelRatio`
+/// arithmetic on either side. Sending `Physical` would halve every coordinate on a
+/// 2× display. Measurements and the rest of the coordinate story:
+/// `apps/desktop/src/lib/file-explorer/pane/DETAILS.md` § Keyboard context menu.
+fn popup_context_menu<R: Runtime>(
+    menu: &tauri::menu::Menu<R>,
+    window: Window<R>,
+    anchor: Option<MenuAnchor>,
+) -> Result<(), String> {
+    focus_for_context_menu(&window);
+    match anchor {
+        Some(MenuAnchor { x, y }) => menu.popup_at(window, tauri::LogicalPosition::new(x, y)),
+        None => menu.popup(window),
+    }
+    .map_err(|e| e.to_string())
+}
+
 /// What the PANE contributes to a file context menu, as opposed to the file that
 /// was right-clicked. Grouped because they answer one question each about the
 /// surface the click landed in, and because the frontend fills them all from the
@@ -94,6 +130,7 @@ pub fn show_file_context_menu<R: Runtime>(
     pane: PaneContextMenuFacts,
     target: crate::menu::ContextMenuTarget,
     shortcuts: ContextMenuShortcuts,
+    anchor: Option<MenuAnchor>,
 ) -> Result<(), String> {
     let app = window.app_handle();
 
@@ -220,8 +257,7 @@ pub fn show_file_context_menu<R: Runtime>(
     #[cfg(target_os = "macos")]
     let _tag_row_loan = crate::menu::lend_tag_row(&result.menu, &info.applied_tag_colors);
 
-    focus_for_context_menu(&window);
-    result.menu.popup(window).map_err(|e| e.to_string())?;
+    popup_context_menu(&result.menu, window, anchor)?;
 
     Ok(())
 }
@@ -458,7 +494,11 @@ fn popup_volume_row_menu<R: Runtime>(
 /// no sense on `..`, hence this dedicated one-item menu.
 #[tauri::command]
 #[specta::specta]
-pub fn show_parent_row_context_menu<R: Runtime>(window: Window<R>, parent_path: String) -> Result<(), String> {
+pub fn show_parent_row_context_menu<R: Runtime>(
+    window: Window<R>,
+    parent_path: String,
+    anchor: Option<MenuAnchor>,
+) -> Result<(), String> {
     let app = window.app_handle();
     {
         let state = app.state::<MenuState<R>>();
@@ -467,8 +507,7 @@ pub fn show_parent_row_context_menu<R: Runtime>(window: Window<R>, parent_path: 
         context.filename = "..".to_string();
     }
     let menu = build_parent_row_context_menu(app).map_err(|e| e.to_string())?;
-    focus_for_context_menu(&window);
-    menu.popup(window).map_err(|e| e.to_string())?;
+    popup_context_menu(&menu, window, anchor)?;
     Ok(())
 }
 
