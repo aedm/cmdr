@@ -112,6 +112,35 @@ fn a_refused_unmount_hands_the_index_back_once_diskarbitration_goes_quiet() {
 }
 
 #[test]
+#[ignore = "attaches a real HFS+ disk image via hdiutil; run with --run-ignored"]
+fn a_raw_umount_nobody_asked_about_stops_the_index_and_never_hands_it_back() {
+    let session = DiskImageSession::acquire();
+    let image = DiskImage::attach(&session, ImageSpec::Hfs).expect("attach the image");
+    let lane = lane(&image);
+    let mount_point = image.volumes()[0].mount_point.clone();
+
+    // `/sbin/umount` goes straight to the kernel, so DiskArbitration asks nobody. The approver
+    // hears about it only from the description change that follows.
+    image.raw_umount(0).expect("/sbin/umount");
+
+    wait_until(PATIENCE, "the volume to leave the mount table", || {
+        !is_mounted(&mount_point)
+    });
+    assert!(
+        lane.fixture.host.stops.asked().is_empty(),
+        "nothing was asked, so no pre-unmount stop could have run"
+    );
+    wait_until(PATIENCE, "the vanished drive's index to be stopped", || {
+        lane.fixture.host.vanish_stops() == [volume_id(0)]
+    });
+    let_the_resumes_settle(&lane);
+    assert!(
+        lane.fixture.index.started().is_empty(),
+        "a drive that vanished is owed nothing back"
+    );
+}
+
+#[test]
 #[ignore = "attaches a real two-partition HFS+ disk image via hdiutil; run with --run-ignored"]
 fn the_first_ask_of_a_disk_lets_go_of_every_partition_so_the_next_unmount_meets_no_live_index() {
     let session = DiskImageSession::acquire();

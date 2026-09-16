@@ -1,6 +1,6 @@
-//! The guarded runner: the closed list of `hdiutil` and `diskutil` calls the
-//! harness may make, each under a SIGKILL deadline, with every call that changes a
-//! disk gated on an ownership check.
+//! The guarded runner: the closed list of `hdiutil`, `diskutil`, and `umount` calls
+//! the harness may make, each under a SIGKILL deadline, with every call that changes
+//! a disk gated on an ownership check.
 
 use std::io::{self, Read, Seek};
 use std::path::Path;
@@ -80,6 +80,10 @@ pub(super) enum Call<'a> {
     RenameVolume { node: &'a str, name: &'a str },
     /// `diskutil eject` of a mount point.
     Eject { mount_point: &'a Path },
+    /// `/sbin/umount` of a mount point: the raw syscall wrapper, which does NOT go
+    /// through DiskArbitration. The only way to make a volume vanish with no approval
+    /// asked, short of pulling a real cable. Ownership-checked like every other change.
+    RawUmount { mount_point: &'a Path },
 }
 
 impl Call<'_> {
@@ -94,7 +98,7 @@ impl Call<'_> {
                 Some(Target::Node(node))
             }
             Call::UnmountDisk { whole } => Some(Target::Node(whole)),
-            Call::Eject { mount_point } => Some(Target::MountPoint(mount_point)),
+            Call::Eject { mount_point } | Call::RawUmount { mount_point } => Some(Target::MountPoint(mount_point)),
         }
     }
 
@@ -173,6 +177,8 @@ impl Call<'_> {
                 args.push(mount_point.to_string_lossy().into_owned());
                 ("diskutil", args)
             }
+            // The absolute path, so no `PATH` entry can decide what "umount" means.
+            Call::RawUmount { mount_point } => ("/sbin/umount", vec![mount_point.to_string_lossy().into_owned()]),
         }
     }
 

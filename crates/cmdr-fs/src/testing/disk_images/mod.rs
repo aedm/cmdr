@@ -12,8 +12,8 @@
 //!   exclusive `flock` on `$TMPDIR/cmdr-disk-image-tests.lock`, held until the last
 //!   handle drops. Every image needs a session, so no test can forget the lock, and
 //!   two worktrees running the lane can't unmount under each other.
-//! - **Every `hdiutil` and `diskutil` call goes through the runner**, a closed list
-//!   of verbs, each SIGKILLed past [`runner::TOOL_DEADLINE`].
+//! - **Every `hdiutil`, `diskutil`, and `umount` call goes through the runner**, a
+//!   closed list of verbs, each SIGKILLed past [`runner::TOOL_DEADLINE`].
 //! - **Before every call that changes a disk, the target is proven ours**: `diskutil`
 //!   resolves it to its physical whole disk and `hdiutil info` must list both under
 //!   this image's backing file. DiskArbitration reuses a freed BSD unit at once, so
@@ -452,6 +452,19 @@ impl DiskImage {
     pub fn unmount_disk(&self) -> Result<Finished, HarnessError> {
         let whole = self.whole()?;
         self.run(Call::UnmountDisk { whole: &whole })
+    }
+
+    /// `/sbin/umount` of volume `index`, once its mount point is proven this image's.
+    ///
+    /// ❗ The raw syscall wrapper BYPASSES DiskArbitration: no approval is asked and no
+    /// `WillUnmount` is posted, so an approval session learns of it only from the
+    /// description change afterwards. That's the shape of a drive that vanished, and the
+    /// only way to drive it without pulling a real cable.
+    pub fn raw_umount(&self, index: usize) -> Result<Finished, HarnessError> {
+        let mount_point = self.volume(index)?.mount_point.clone();
+        self.run(Call::RawUmount {
+            mount_point: &mount_point,
+        })
     }
 
     /// `diskutil renameVolume` of volume `index` to a fresh unique name, once its node
