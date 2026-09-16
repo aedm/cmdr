@@ -6,6 +6,9 @@
 //! defers, what a producer records) lives in `in_flight_temps_tests.rs`.
 
 use super::*;
+use crate::file_system::volume::backends::LocalPosixVolume;
+use crate::file_system::volume::manager::test_support::TestVolumeRegistration;
+use crate::file_system::write_operations::transfer_sides::test_hook;
 use crate::test_support::TestDir;
 
 /// The aside a safe-overwrite would have left, with the destination it came
@@ -223,6 +226,99 @@ async fn an_empty_staging_folder_is_removed() {
 
     assert_eq!(outcome, Outcome::Swept);
     assert!(!staging.exists());
+}
+
+/// A drive that stood in for a pulled USB stick: a folder holding what a move
+/// staged there, a registered volume rooted at it, and a mount table that says
+/// it's back.
+struct ReturnedDrive {
+    _dir: TestDir,
+    _registration: TestVolumeRegistration,
+    _hook: test_hook::MountTableHook,
+    volume_id: String,
+    staging_name: String,
+    staging: PathBuf,
+}
+
+fn returned_drive(name: &str, volume_id: &str, staged: Option<&[u8]>) -> ReturnedDrive {
+    let dir = TestDir::new(name);
+    let root = dir.join("Volumes").join("Faltkamera");
+    std::fs::create_dir_all(&root).expect("create the drive root");
+    let staging_name = format!(".cmdr-staging-{}", uuid::Uuid::new_v4());
+    let staging = root.join(&staging_name);
+    std::fs::create_dir(&staging).expect("create the staging folder");
+    if let Some(bytes) = staged {
+        std::fs::write(staging.join("footage.mov"), bytes).expect("stage a file");
+    }
+    let volume = Arc::new(LocalPosixVolume::new("Fältkamera", &root)) as Arc<dyn Volume>;
+    ReturnedDrive {
+        _registration: TestVolumeRegistration::install(volume_id, volume),
+        _hook: test_hook::answer_each(vec![(root, Some(true))]),
+        volume_id: volume_id.to_string(),
+        staging_name,
+        staging,
+        _dir: dir,
+    }
+}
+
+fn staging_record(drive: &ReturnedDrive) -> Record {
+    Record::Tracked(TrackedItem {
+        kind: ItemKind::StagingDir,
+        home: ItemHome::Mount {
+            volume_id: drive.volume_id.clone(),
+        },
+        // Relative to the drive's root, the way `RecordHome` stores it.
+        path: PathBuf::from(&drive.staging_name),
+    })
+}
+
+/// The case M10 created and this milestone has to meet: a destination that left
+/// the mount table returns BEFORE Phase 3, so its staging folder holds a whole
+/// staged tree — and the user's originals may already be gone. The drive comes
+/// back, and every byte in there stays exactly where it is.
+#[tokio::test]
+async fn a_staging_folder_on_a_drive_that_comes_back_keeps_what_is_inside_it() {
+    let drive = returned_drive(
+        "sweep-arrival-staging-full",
+        "in-flight-sweep-test-stick-full",
+        Some(b"the whole staged file"),
+    );
+
+    let outcome = settle(&staging_record(&drive)).await;
+
+    assert_eq!(outcome, Outcome::LeftAlone);
+    assert_eq!(
+        std::fs::read(drive.staging.join("footage.mov")).expect("the staged file is still there"),
+        b"the whole staged file"
+    );
+}
+
+/// The same drive, with the shell Phase 3 emptied: that one goes, so a finished
+/// move doesn't leave a stray folder in the destination for good.
+#[tokio::test]
+async fn an_empty_staging_folder_on_a_drive_that_comes_back_is_removed() {
+    let drive = returned_drive("sweep-arrival-staging-empty", "in-flight-sweep-test-stick-empty", None);
+
+    let outcome = settle(&staging_record(&drive)).await;
+
+    assert_eq!(outcome, Outcome::Swept);
+    assert!(!drive.staging.exists());
+}
+
+/// A record whose drive isn't registered decides nothing at all. ❗ It must not
+/// resolve against a mount point that isn't there and read as already gone,
+/// which is how the ledger used to forget a leftover still sitting on the drive.
+#[tokio::test]
+async fn a_record_whose_drive_isnt_here_decides_nothing() {
+    let record = Record::Tracked(TrackedItem {
+        kind: ItemKind::StagingDir,
+        home: ItemHome::Mount {
+            volume_id: "in-flight-sweep-test-stick-absent".to_string(),
+        },
+        path: PathBuf::from(".cmdr-staging-2a6f1f1e-0000-7000-8000-000000000000"),
+    });
+
+    assert_eq!(settle(&record).await, Outcome::Deferred);
 }
 
 /// The name gate, which is the whole defense against a corrupted or hand-edited

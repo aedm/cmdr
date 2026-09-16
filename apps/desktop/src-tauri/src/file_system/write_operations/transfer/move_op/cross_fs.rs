@@ -27,8 +27,10 @@ use super::source_sweep::{SourceSweep, delete_sources_after_move};
 
 use crate::file_system::write_operations::cancellable::remove_dir_all_in_background;
 use crate::file_system::write_operations::conflict::{ApplyToAll, IncomingItem, resolve_conflict};
+use crate::file_system::staging::StagingTemp;
 use crate::file_system::write_operations::durability::flush_created_destinations;
 use crate::file_system::write_operations::event_sinks::OperationEventSink;
+use crate::file_system::write_operations::in_flight_temps::{self, ItemKind};
 use crate::file_system::write_operations::journal;
 use crate::file_system::write_operations::ledger::CopyTransaction;
 use crate::file_system::write_operations::scan::scan_sources;
@@ -105,11 +107,18 @@ pub(super) fn move_with_staging(
     validate_file_sizes_for_filesystem(destination, &scan_result.files)?;
 
     // Create staging directory
-    let staging_dir = destination.join(format!(".cmdr-staging-{}", operation_id));
+    let staging_dir = destination.join(format!("{}{}", cmdr_fs::staging::STAGING_DIR_PREFIX, operation_id));
     fs::create_dir(&staging_dir).map_err(|e| WriteOperationError::IoError {
         path: staging_dir.display().to_string(),
         message: format!("Failed to create staging directory: {}", e),
     })?;
+    // Hidden from the pane while this move owns it, and recorded so an ending
+    // that never reaches Phase 5 leaves something that knows what it is. ❗ It
+    // can hold the whole staged tree: a destination that left the mount table
+    // returns before Phase 3 ever ran, and the sweep's `remove_dir` is what
+    // keeps the user's only copy of those files where it is.
+    let _staging_guard = StagingTemp::adopt(staging_dir.clone(), state.liveness_token());
+    let staging_record = in_flight_temps::track(state, ItemKind::StagingDir, &staging_dir);
 
     // Phase 2: Copy files to staging directory (using scan results, same as copy operation)
     let mut transaction = CopyTransaction::new();
@@ -553,8 +562,20 @@ pub(super) fn move_with_staging(
     // 3 renamed the staged tree away, so this is an empty shell whichever way
     // Phase 4 ended; leaving it behind on a cancel puts a stray
     // `.cmdr-staging-<op>` folder in the user's destination for good. `remove_dir`
-    // refuses a non-empty directory, so a surprise leaves the contents alone.
-    let _ = fs::remove_dir(&staging_dir);
+    // refuses a non-empty directory, so a surprise leaves the contents alone —
+    // and then the record stays, so the sweep meets it at the next launch or the
+    // drive's return rather than nothing ever looking at it again.
+    match fs::remove_dir(&staging_dir) {
+        Ok(()) => in_flight_temps::retire(state, &staging_record),
+        Err(e) => {
+            log::warn!(
+                "move_with_staging: op={} left {} in place: {e}",
+                operation_id,
+                staging_dir.display()
+            );
+            in_flight_temps::keep_for_arrival(state, staging_record);
+        }
+    }
     let leftovers = match delete_result {
         Ok(leftovers) => leftovers,
         Err(stopped) => {
