@@ -90,4 +90,5 @@ and the note has words for it. Why it stays a count rather than a fourth list of
 - **Arrival order, not rank.** Ranking is a whole-result-set operation; the frontend appends and re-ranks once on
   completion (Decision 8).
 - **The cap stops rows, never the walk.** Convergence is the payoff, and a stopped walk would freeze "N so far" at a
-  number that never becomes true. `capped` says the rows stopped; the count keeps rising.
+  number that never becomes true. `capped` says the rows stopped; the count keeps rising. The cap is the query's
+  `effective_limit()`, which the index answer shares: `../DETAILS.md` § The result slice.

@@ -215,6 +215,14 @@ Without the strip, an indexed NAS folder would show bare paths that don't open, 
 the size post-filter, and truncates the engine's dir over-fetch back to the caller's limit. `total_count` is the
 engine's own match total, adjusted by that post-filter.
 
+**The caller's limit has one ceiling, `types::MAX_RESULT_ROWS` (10,000).** `SearchQuery::effective_limit()` is the only
+place it's applied, so the index answer (`engine::search`) and the live walk (`live::ResultStream::new`) can't cap
+differently. It's a ceiling, not a default: `default_limit()` stays 30, and a caller asking for 30 gets 30. The number
+matches the frontend's `SNAPSHOT_ENTRIES_CAP` (`src/lib/search/snapshot-store.svelte.ts`) on purpose, because a
+promoted snapshot consumes a whole result set — "Show all in main window" hands every returned row to a pane, so a
+backend ceiling below the frontend's would silently decide how many hits a person gets to see. `total_count` keeps
+counting past the ceiling either way, which is what lets the UI say "first N of M".
+
 ### Honesty: `uncovered_scopes` and `unresolved_scopes`
 
 Two TYPED sibling fields on `SearchResult` (callers branch on emptiness, never string-match), for the two ways a scoped

@@ -335,7 +335,7 @@ pub(crate) fn search_ranked(
     // Every candidate here already passed every filter, directory sizes included,
     // so the cut is exactly the caller's limit — no over-fetch to absorb a
     // post-ranking correction.
-    let limit = query.limit.min(1000) as usize;
+    let limit = query.effective_limit();
 
     // Order the survivors. Relevance is the default and what `ranking.rs` owns:
     // match-quality band first, then importance-boosted recency within a band

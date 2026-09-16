@@ -271,7 +271,7 @@ pub(crate) struct ResultStream<'a> {
 
 impl<'a> ResultStream<'a> {
     pub(crate) fn new(run: &'a LiveRun, sink: &'a dyn SearchEventSink, query: &SearchQuery) -> Self {
-        let limit = query.limit.min(1000) as usize;
+        let limit = query.effective_limit();
         Self {
             run,
             sink,

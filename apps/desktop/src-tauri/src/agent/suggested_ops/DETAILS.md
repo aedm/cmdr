@@ -23,10 +23,11 @@ matching files, and the approval still runs the original two ops with the resolv
 
 ## Why the drive index and not the search module
 
-`search::execute::run_blocking` looks like the natural resolver and isn't: the engine caps results at 1 000
-(`engine.rs`'s `query.limit.min(1000)`) because it serves a ranked, interactive top-k, and it loads a whole-volume arena
-to do it. A selector needs the EXHAUSTIVE set. So `DriveIndex` reads the volume's index DB directly through
-`Index::read_pool`, resolves the root with `store::resolve_path`, and descends one directory's children at a time,
+`search::execute::run_blocking` looks like the natural resolver and isn't: the engine caps results at
+`search::types::MAX_RESULT_ROWS` (via `SearchQuery::effective_limit()`) because it serves a ranked, interactive top-k,
+and it loads a whole-volume arena to do it. A selector needs the EXHAUSTIVE set. So `DriveIndex` reads the volume's
+index DB directly through `Index::read_pool`, resolves the root with `store::resolve_path`, and descends one
+directory's children at a time,
 carrying each directory's path down rather than reconstructing a path per file.
 
 What it does reuse is the search module's matcher: `CompiledQuery` + `Candidate` decide whether a row satisfies the

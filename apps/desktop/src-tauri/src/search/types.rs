@@ -59,8 +59,30 @@ pub struct SearchQuery {
     pub count_only: bool,
 }
 
+/// The most rows ONE search will ever return: the ceiling a caller's
+/// [`SearchQuery::limit`] is clamped to, whichever path serves it.
+///
+/// It deliberately matches the frontend's `SNAPSHOT_ENTRIES_CAP`
+/// (`src/lib/search/snapshot-store.svelte.ts`), because a promoted snapshot is what
+/// consumes a whole result set: "Show all in main window" hands every row the search
+/// returned to a pane. A backend ceiling below that one would silently decide how many
+/// hits a person gets to see.
+///
+/// It's a CEILING, not a default — [`default_limit`] stays 30, and a caller asking for
+/// 30 still gets 30. `total_count` keeps counting past it either way.
+pub(crate) const MAX_RESULT_ROWS: u32 = 10_000;
+
 pub(crate) fn default_limit() -> u32 {
     30
+}
+
+impl SearchQuery {
+    /// How many rows this query may actually receive: its `limit`, clamped to
+    /// [`MAX_RESULT_ROWS`]. The one place the ceiling is applied, so the index answer
+    /// and the live walk can't cap differently.
+    pub(crate) fn effective_limit(&self) -> usize {
+        self.limit.min(MAX_RESULT_ROWS) as usize
+    }
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, specta::Type)]
@@ -140,6 +162,52 @@ pub struct ParsedScope {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── The row ceiling ──────────────────────────────────────────────
+
+    /// A query with everything defaulted except `limit`.
+    fn query_with_limit(limit: u32) -> SearchQuery {
+        SearchQuery {
+            name_pattern: None,
+            pattern_type: PatternType::Glob,
+            min_size: None,
+            max_size: None,
+            modified_after: None,
+            modified_before: None,
+            is_directory: None,
+            include_paths: None,
+            exclude_dir_names: None,
+            include_path_ids: None,
+            limit,
+            case_sensitive: None,
+            sort_by: None,
+            exclude_system_dirs: None,
+            count_only: false,
+        }
+    }
+
+    #[test]
+    fn limit_below_the_ceiling_is_untouched() {
+        assert_eq!(query_with_limit(default_limit()).effective_limit(), 30);
+        assert_eq!(query_with_limit(1).effective_limit(), 1);
+    }
+
+    #[test]
+    fn limit_above_the_ceiling_gets_the_ceiling() {
+        assert_eq!(
+            query_with_limit(MAX_RESULT_ROWS + 1).effective_limit(),
+            MAX_RESULT_ROWS as usize
+        );
+        assert_eq!(query_with_limit(u32::MAX).effective_limit(), MAX_RESULT_ROWS as usize);
+    }
+
+    #[test]
+    fn the_ceiling_matches_the_frontend_snapshot_cap() {
+        // `SNAPSHOT_ENTRIES_CAP` in `src/lib/search/snapshot-store.svelte.ts`. A promoted
+        // snapshot consumes a whole result set, so a lower backend ceiling would decide
+        // how many hits reach the pane.
+        assert_eq!(MAX_RESULT_ROWS, 10_000);
+    }
 
     // ── Serde round-trip ─────────────────────────────────────────────
 
