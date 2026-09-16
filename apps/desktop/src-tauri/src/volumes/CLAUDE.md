@@ -26,6 +26,15 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
   id. Use `VolumeManager::remove_root(volume_path)` (`handle_volume_unmounted`).
 - **Check cloud-drive prefixes BEFORE `statfs` in `resolve_path_volume_fast()`**: a cloud drive is a folder on the data
   volume, so `statfs` answers `/` and mis-highlights "Macintosh HD".
+- **A mount earns a switcher row by `MNT_DONTBROWSE` (the OS's own sidebar rule), or by sitting inside `$HOME`**
+  (`is_user_facing_mount`), ❌ never by a `/Volumes/` prefix: that hid every drive mounted elsewhere, which is how a
+  cloud client's `~/pCloud Drive` became unreachable. The home clause is for clients that mark their mount unbrowsable
+  and add their own Finder shortcut; `$HOME` itself is excluded.
+- **A cloud provider's own MOUNT is a `CloudDrive` row with `is_cloud_mount: true`** (`is_cloud_provider_mount`, which
+  asks `cmdr_fs::…::friendly_error::Provider::is_cloud_storage`), which groups it under CLOUD and keeps it out of the
+  index affordances. ❗ Set it in BOTH `get_attached_volumes` and `resolve_path_volume_fast`, or the switcher's
+  checkmark and the pane disagree. ❌ Never ask this about a non-mount path: every `~/Library/CloudStorage` folder names
+  a provider too, and those are ordinary directories the index reads at local speed.
 - **Discovery must never block on a hung mount** (a wedged NAS once froze launch): enumerate with
   `getfsstat(MNT_NOWAIT)`, ❌ never NSFileManager; run blocking NSURL / NSWorkspace / DiskArbitration enrichment for
   LOCAL mounts only; never on the main thread.

@@ -58,6 +58,41 @@ pub enum Provider {
     GenericCloudStorage,
 }
 
+impl Provider {
+    /// Whether this provider is CLOUD STORAGE, as opposed to something else that
+    /// happens to present itself as a drive.
+    ///
+    /// The question the volume switcher asks to decide whether a mount belongs
+    /// in its CLOUD group, and whether offering to build a drive index over it
+    /// makes sense. It's a property of the provider, so it lives here with the
+    /// rest of provider identity rather than as a list at the call site.
+    ///
+    /// `MacFuse` is false: it names the FUSE layer, not a service, so the mount
+    /// underneath is as likely to be an sshfs share or an archive. `VeraCrypt`
+    /// is an encrypted container on a local disk, and `MacDroid` is a phone.
+    /// Those three are ordinary drives to a file manager.
+    pub fn is_cloud_storage(&self) -> bool {
+        match self {
+            Self::Dropbox
+            | Self::GoogleDrive
+            | Self::OneDrive
+            | Self::Box
+            | Self::PCloud
+            | Self::PCloudFuse
+            | Self::Nextcloud
+            | Self::SynologyDrive
+            | Self::Tresorit
+            | Self::ProtonDrive
+            | Self::Sync
+            | Self::Egnyte
+            | Self::ICloud
+            | Self::CmVolumes
+            | Self::GenericCloudStorage => true,
+            Self::MacFuse | Self::VeraCrypt | Self::MacDroid => false,
+        }
+    }
+}
+
 /// Detects the cloud/mount provider from the path and SETS the typed `provider`
 /// field. Leaves everything else unchanged. The FE overlays the
 /// provider-specific suggestion when `provider` is present.
@@ -65,6 +100,15 @@ pub fn enrich_with_provider(error: &mut ListingError, path: &Path) {
     if let Some(provider) = detect_provider(path) {
         error.provider = Some(provider);
     }
+}
+
+/// Which provider manages `path`, if any: the same detection the friendly-error
+/// enrichment runs, for callers that want the identity rather than a message.
+///
+/// The volume switcher asks this about a MOUNT ROOT, to tell a cloud drive from
+/// an ordinary disk. Costs one `statfs` for a path no name pattern matches.
+pub fn provider_for_path(path: &Path) -> Option<Provider> {
+    detect_provider(path)
 }
 
 /// Reads the filesystem type for a path via `libc::statfs`.
@@ -231,6 +275,39 @@ mod tests {
                 suffix,
                 expected,
                 detected
+            );
+        }
+    }
+
+    /// What the switcher leans on: a cloud SERVICE is one thing, a layer or a
+    /// container that merely looks like a drive is another. Pinned because
+    /// getting it wrong either hides a user's cloud drive among their disks or
+    /// calls their encrypted volume a cloud drive and stops indexing it.
+    #[test]
+    fn only_the_actual_cloud_services_count_as_cloud_storage() {
+        for provider in [
+            Provider::Dropbox,
+            Provider::GoogleDrive,
+            Provider::OneDrive,
+            Provider::Box,
+            Provider::PCloud,
+            Provider::PCloudFuse,
+            Provider::Nextcloud,
+            Provider::SynologyDrive,
+            Provider::Tresorit,
+            Provider::ProtonDrive,
+            Provider::Sync,
+            Provider::Egnyte,
+            Provider::ICloud,
+            Provider::CmVolumes,
+            Provider::GenericCloudStorage,
+        ] {
+            assert!(provider.is_cloud_storage(), "{provider:?} is a cloud service");
+        }
+        for provider in [Provider::MacFuse, Provider::VeraCrypt, Provider::MacDroid] {
+            assert!(
+                !provider.is_cloud_storage(),
+                "{provider:?} presents as a drive without being cloud storage"
             );
         }
     }

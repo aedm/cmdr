@@ -1,7 +1,8 @@
 //! Attached-volume enumeration: snapshotting the kernel mount table via the
-//! non-blocking `getfsstat`, filtering it to user-facing `/Volumes/*` entries,
-//! and enriching only local mounts (network mounts stay non-blocking so a hung
-//! mount can't stall discovery). See `DETAILS.md` § "Hung mounts".
+//! non-blocking `getfsstat`, filtering it to the mounts a user should see a row
+//! for, and enriching only local mounts (network mounts stay non-blocking so a
+//! hung mount can't stall discovery). See `DETAILS.md` § "Hung mounts" and
+//! § "Which mounts get a row".
 
 use super::{
     LocationCategory, LocationInfo, SmbMountInfo, disk_image, get_bool_resource, get_icon_for_path, get_volume_name,
@@ -27,6 +28,11 @@ struct MountEntry {
     mount_from: String,
     /// Whether the mount carries the `MNT_RDONLY` flag.
     is_read_only: bool,
+    /// Whether the OS says this mount belongs in a file manager's sidebar, i.e.
+    /// it does NOT carry `MNT_DONTBROWSE`. Finder's own rule, and the one that
+    /// separates real drives from the plumbing (`devfs`, `/System/Volumes/*`,
+    /// `/Volumes/Recovery`, autofs triggers) without naming any of them.
+    is_browsable: bool,
     /// The mounted filesystem's identity (`f_fsid`, its two words packed high then
     /// low). Renaming a mounted volume moves the mount point and keeps this.
     fsid: u64,
@@ -75,6 +81,7 @@ fn enumerate_mounts() -> Option<Vec<MountEntry>> {
                 fs_type: cstr_field_to_string(&s.f_fstypename),
                 mount_from: cstr_field_to_string(&s.f_mntfromname),
                 is_read_only: (s.f_flags & libc::MNT_RDONLY as u32) != 0,
+                is_browsable: (s.f_flags & libc::MNT_DONTBROWSE as u32) == 0,
                 fsid: packed_fsid(s),
             })
             .collect(),
@@ -162,26 +169,45 @@ pub(crate) fn has_mount_identity(fsid: u64) -> Option<bool> {
     Some(mounts.iter().any(|m| m.fsid == fsid))
 }
 
-/// Whether a mount point should surface as an attached volume in the switcher.
+/// Whether a mount should surface as a drive in the switcher.
 ///
-/// Mirrors the old NSFileManager filter: only `/Volumes/*`, never the boot
-/// volume, the hidden system volumes, or cloud-storage placeholder mounts. Also
-/// skips dot-prefixed hidden volumes (e.g. `/Volumes/.timemachine`) that
-/// NSFileManager's `SkipHiddenVolumes` used to drop. Pure, so it's unit-testable.
-fn is_attached_volume_path(path: &str) -> bool {
-    if !path.starts_with("/Volumes/") {
-        return false;
-    }
-    if path.starts_with("/System") || path.contains("/Preboot") || path.contains("/Recovery") {
+/// ❗ A DISPLAY question, and the strict one. The volume REGISTRY sweeps the whole
+/// mount table regardless (`file_system::volume::mount_registration`), because
+/// resolution can mint an ID for any row of it; a mount this drops is still
+/// openable, it just doesn't get a row of its own.
+///
+/// Two ways in, and the first is the OS's own answer:
+///
+/// 1. **Browsable**: the mount doesn't carry `MNT_DONTBROWSE`, which is exactly
+///    what keeps `devfs`, `/System/Volumes/*`, `/Volumes/Recovery`, and autofs
+///    triggers out of Finder's sidebar. Reading the flag beats the `/Volumes/`
+///    prefix test it replaces: that one both let `/Volumes/Recovery` through (a
+///    name check caught it) and hid every drive mounted anywhere else.
+/// 2. **Mounted inside the user's home folder**, browsable or not. That's where
+///    cloud clients put their drives (pCloud's `~/pCloud Drive`), some of which
+///    mark the mount unbrowsable and add their own Finder sidebar shortcut
+///    instead. No system mount lives under `$HOME`, so this can't readmit
+///    plumbing. `$HOME` ITSELF is excluded: a network-homed Mac mounts it, and
+///    the home folder is not a drive.
+///
+/// Never the boot volume (it has its own row), never a dot-prefixed mount, and
+/// never a `~/Library/CloudStorage` path, which the cloud-drive arm publishes and
+/// would otherwise appear twice. Pure, so it's unit-testable.
+fn is_user_facing_mount(path: &str, is_browsable: bool, home: &Path) -> bool {
+    let mount = Path::new(path);
+    if mount == Path::new("/") {
         return false;
     }
     if path.contains("/Library/CloudStorage") {
         return false;
     }
-    // Hidden volume (leading dot on the `/Volumes` child), e.g. `/Volumes/.timemachine`.
-    if let Some(name) = Path::new(path).file_name().and_then(|n| n.to_str())
+    // Hidden mount (leading dot on the last component), e.g. `/Volumes/.timemachine`.
+    if let Some(name) = mount.file_name().and_then(|n| n.to_str())
         && name.starts_with('.')
     {
+        return false;
+    }
+    if !is_browsable && !(mount.starts_with(home) && mount != home) {
         return false;
     }
     true
@@ -233,10 +259,11 @@ fn network_name(mount: &MountEntry) -> String {
 /// enrichment behind a closure also keeps the classification unit-testable.
 fn build_attached_location(
     mount: &MountEntry,
+    home: &Path,
     resolve_local: impl FnOnce(&str) -> LocalVolumeMeta,
 ) -> Option<LocationInfo> {
     let path = mount.mount_point.as_str();
-    if !is_attached_volume_path(path) {
+    if !is_user_facing_mount(path, mount.is_browsable, home) {
         return None;
     }
     let fs_type = mount.fs_type.clone();
@@ -263,17 +290,28 @@ fn build_attached_location(
         )
     };
 
+    // A mount a cloud provider serves is grouped with the other cloud drives and
+    // kept out of the index affordances, whether it sits in `/Volumes` or in the
+    // home folder. `is_cloud_mount` travels as its own typed field: ❌ never
+    // re-derive it downstream from the category or the fs type.
+    let is_cloud_mount = super::is_cloud_provider_mount(path);
+    let category = match is_cloud_mount {
+        true => LocationCategory::CloudDrive,
+        false => LocationCategory::AttachedVolume,
+    };
+
     Some(LocationInfo {
         id,
         name,
         path: path.to_string(),
-        category: LocationCategory::AttachedVolume,
+        category,
         icon,
         is_ejectable,
         fs_type: Some(fs_type),
         supports_trash,
         mount_is_read_only: mount.is_read_only,
         is_disk_image,
+        is_cloud_mount,
         connection_state: None,
         pinned: None,
         landing_path: None,
@@ -293,6 +331,8 @@ pub fn get_attached_volumes() -> Vec<LocationInfo> {
     use objc2::rc::autoreleasepool;
     use objc2_foundation::{NSString, NSURL};
 
+    let home = dirs::home_dir().unwrap_or_default();
+
     // Drain autoreleased ObjC objects from the per-local-mount NSURL enrichment.
     // Called from spawn_blocking / helper threads that lack AppKit's pool.
     autoreleasepool(|_| {
@@ -302,7 +342,7 @@ pub fn get_attached_volumes() -> Vec<LocationInfo> {
             .unwrap_or_default()
             .iter()
             .filter_map(|mount| {
-                build_attached_location(mount, |path| {
+                build_attached_location(mount, &home, |path| {
                     let url = NSURL::fileURLWithPath(&NSString::from_str(path));
                     LocalVolumeMeta {
                         name: get_volume_name(&url, path),
@@ -330,14 +370,32 @@ mod tests {
     // Hung-mount guard: getfsstat-based discovery (Bug: dead mount froze launch)
     // ========================================================================
 
+    /// A browsable mount, which is what every drive a user sees is. The
+    /// unbrowsable case has its own helper, since it's the interesting one.
     fn mount(mount_point: &str, fs_type: &str, mount_from: &str, is_read_only: bool) -> MountEntry {
         MountEntry {
             mount_point: mount_point.to_string(),
             fs_type: fs_type.to_string(),
             mount_from: mount_from.to_string(),
             is_read_only,
+            is_browsable: true,
             fsid: 0,
         }
+    }
+
+    /// A mount macOS marks `MNT_DONTBROWSE`: the plumbing, and a cloud client's
+    /// drive that hides itself from Finder's sidebar.
+    fn unbrowsable(mount_point: &str) -> MountEntry {
+        MountEntry {
+            is_browsable: false,
+            ..mount(mount_point, "apfs", "x", false)
+        }
+    }
+
+    /// The home folder these tests reason about. A literal, so the rule is
+    /// pinned rather than re-derived from whoever runs the suite.
+    fn home() -> &'static Path {
+        Path::new("/Users/sven")
     }
 
     /// A `resolve_local` that fails the test if invoked. Used to prove a network
@@ -347,18 +405,42 @@ mod tests {
         panic!("resolve_local must NOT run for a network mount");
     }
 
+    /// The OS's own sidebar rule decides, so the plumbing stays out without this
+    /// module naming a single system path.
     #[test]
-    fn attached_volume_path_filter_matches_switcher_rules() {
-        assert!(is_attached_volume_path("/Volumes/MyDrive"));
-        assert!(is_attached_volume_path("/Volumes/naspi"));
-        // Boot volume, system, cloud, and non-/Volumes paths are excluded.
-        assert!(!is_attached_volume_path("/"));
-        assert!(!is_attached_volume_path("/System/Volumes/Data"));
-        assert!(!is_attached_volume_path("/Volumes/Recovery"));
-        assert!(!is_attached_volume_path("/Users/david"));
-        assert!(!is_attached_volume_path("/Volumes/Foo/Library/CloudStorage/Dropbox"));
-        // Hidden volumes (NSFileManager used to drop these via SkipHiddenVolumes).
-        assert!(!is_attached_volume_path("/Volumes/.timemachine"));
+    fn the_browsable_flag_is_what_separates_drives_from_plumbing() {
+        let browsable = |path: &str| is_user_facing_mount(path, true, home());
+        let hidden = |path: &str| is_user_facing_mount(path, false, home());
+
+        assert!(browsable("/Volumes/MyDrive"));
+        assert!(browsable("/Volumes/naspi"));
+        // Everything macOS marks `MNT_DONTBROWSE`: `/System/Volumes/*`, `devfs`,
+        // the Recovery volume, autofs triggers. The old prefix filter needed a
+        // name check for Recovery and missed the rest.
+        assert!(!hidden("/System/Volumes/Data"));
+        assert!(!hidden("/Volumes/Recovery"));
+        assert!(!hidden("/dev"));
+        // The boot volume has its own row, browsable or not.
+        assert!(!browsable("/"));
+        // A `~/Library/CloudStorage` folder is published by the cloud arm.
+        assert!(!browsable("/Volumes/Foo/Library/CloudStorage/Dropbox"));
+        // Hidden by name (NSFileManager's old SkipHiddenVolumes).
+        assert!(!browsable("/Volumes/.timemachine"));
+    }
+
+    /// The pCloud case: a cloud client mounts its drive into the home folder, and
+    /// some mark it unbrowsable and add their own Finder shortcut instead. It's
+    /// still the user's drive, so the switcher shows it.
+    #[test]
+    fn a_mount_inside_the_home_folder_shows_even_when_unbrowsable() {
+        assert!(is_user_facing_mount("/Users/sven/pCloud Drive", false, home()));
+        assert!(is_user_facing_mount("/Users/sven/vaults/work", false, home()));
+        // The home folder ITSELF is not a drive, and a network-homed Mac mounts it.
+        assert!(!is_user_facing_mount("/Users/sven", false, home()));
+        // Another account's home is not this user's drive either.
+        assert!(!is_user_facing_mount("/Users/dori/pCloud Drive", false, home()));
+        // A name-hidden mount stays hidden wherever it sits.
+        assert!(!is_user_facing_mount("/Users/sven/.hidden-vault", false, home()));
     }
 
     #[test]
@@ -366,7 +448,7 @@ mod tests {
         // A wedged SMB mount must be classified purely from getfsstat data; the
         // blocking resolver must never run, so a dead NAS can't stall discovery.
         let m = mount("/Volumes/naspi", "smbfs", "//david@192.168.1.111/naspi", false);
-        let loc = build_attached_location(&m, forbidden_resolver).expect("SMB mount is an attached volume");
+        let loc = build_attached_location(&m, home(), forbidden_resolver).expect("SMB mount is an attached volume");
 
         assert_eq!(
             loc.id,
@@ -384,7 +466,7 @@ mod tests {
     #[test]
     fn nfs_mount_classifies_without_blocking_enrichment() {
         let m = mount("/Volumes/export", "nfs", "server:/export", true);
-        let loc = build_attached_location(&m, forbidden_resolver).expect("NFS mount is an attached volume");
+        let loc = build_attached_location(&m, home(), forbidden_resolver).expect("NFS mount is an attached volume");
         assert_eq!(loc.id, crate::file_system::volume::path_volume_id("/Volumes/export"));
         assert_eq!(loc.name, "export");
         assert!(loc.mount_is_read_only, "MNT_RDONLY flag propagates from getfsstat");
@@ -408,14 +490,15 @@ mod tests {
                 uuid: Some("A1B2-C3D4".to_string()),
             }
         };
-        let loc = build_attached_location(&m, resolve).expect("local mount is an attached volume");
+        let loc = build_attached_location(&m, home(), resolve).expect("local mount is an attached volume");
 
         assert_eq!(
             loc.id,
             crate::file_system::volume::local_volume_id(Some("A1B2-C3D4"), "/Volumes/USB")
         );
         let remounted = mount("/Volumes/USB 1", "exfat", "/dev/disk4s1", false);
-        let remounted_loc = build_attached_location(&remounted, resolve).expect("local mount is an attached volume");
+        let remounted_loc =
+            build_attached_location(&remounted, home(), resolve).expect("local mount is an attached volume");
         assert_eq!(
             loc.id, remounted_loc.id,
             "the same disk keeps its ID at a new mount point"
@@ -430,10 +513,10 @@ mod tests {
     #[test]
     fn filtered_mount_yields_no_location() {
         // The boot volume and system mounts are dropped before any enrichment.
-        assert!(build_attached_location(&mount("/", "apfs", "/dev/disk3s1", false), forbidden_resolver).is_none());
         assert!(
-            build_attached_location(&mount("/System/Volumes/Data", "apfs", "x", false), forbidden_resolver).is_none()
+            build_attached_location(&mount("/", "apfs", "/dev/disk3s1", false), home(), forbidden_resolver).is_none()
         );
+        assert!(build_attached_location(&unbrowsable("/System/Volumes/Data"), home(), forbidden_resolver).is_none());
     }
 
     // ========================================================================
@@ -453,7 +536,7 @@ mod tests {
         let nfs = mount("/Volumes/export", "nfs", "server:/export", true);
         let locations: Vec<LocationInfo> = [&second, &first, &nfs]
             .iter()
-            .filter_map(|m| build_attached_location(m, forbidden_resolver))
+            .filter_map(|m| build_attached_location(m, home(), forbidden_resolver))
             .collect();
         assert_eq!(locations.len(), 3, "every mount starts out as its own location");
 

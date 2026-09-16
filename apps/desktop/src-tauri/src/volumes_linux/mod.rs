@@ -75,6 +75,11 @@ pub struct LocationInfo {
     /// Whether this volume is a mounted disk image (`.dmg`). Always `false` on Linux;
     /// mirrors the macOS shape so the shared `LocationInfo`/`VolumeInfo` type stays identical.
     pub is_disk_image: bool,
+    /// Twin of the macOS field: whether a cloud provider's own filesystem serves this mount, so
+    /// every entry read costs a round trip to that provider's daemon. Groups the row under CLOUD
+    /// and suppresses the index affordances. Always `false` here today: the Linux cloud clients
+    /// Cmdr recognizes sync into ordinary directories rather than mounting their own filesystem.
+    pub is_cloud_mount: bool,
     /// SMB connection state indicator. Always `None` on Linux (no smb2 session tracking yet).
     pub connection_state: Option<ConnectionState>,
     /// Twin of the macOS field: whether the DEVICE behind this row is reachable.
@@ -202,6 +207,7 @@ fn get_favorites(mounts: &[MountEntry]) -> Vec<LocationInfo> {
                 supports_trash,
                 mount_is_read_only: false,
                 is_disk_image: false,
+                is_cloud_mount: false,
                 connection_state: None,
                 pinned: None,
                 landing_path: None,
@@ -228,6 +234,7 @@ fn get_main_volume(mounts: &[MountEntry]) -> Option<LocationInfo> {
         supports_trash,
         mount_is_read_only: false,
         is_disk_image: false,
+        is_cloud_mount: false,
         connection_state: None,
         pinned: None,
         landing_path: None,
@@ -261,6 +268,7 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
         supports_trash,
         mount_is_read_only: false,
         is_disk_image: false,
+        is_cloud_mount: false,
         connection_state: None,
         pinned: None,
         landing_path: None,

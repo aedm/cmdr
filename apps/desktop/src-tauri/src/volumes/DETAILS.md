@@ -8,8 +8,9 @@ Depth and rationale. `CLAUDE.md` holds the must-knows; the decision detail lives
 
 - **Favorite**: user-editable, from the `favorites/` store.
 - **MainVolume**: root volume at `/`.
-- **AttachedVolume**: `/Volumes/*` (skips System, Preboot, Recovery, CloudStorage).
-- **CloudDrive**: iCloud at `~/Library/Mobile Documents/…`, providers at `~/Library/CloudStorage/`.
+- **AttachedVolume**: a mount with a switcher row that no cloud provider serves (see "Which mounts get a row").
+- **CloudDrive**: iCloud at `~/Library/Mobile Documents/…`, providers at `~/Library/CloudStorage/`, and a mount a cloud
+  provider's own filesystem serves (`is_cloud_mount`).
 - **Network**: SFTP and WebDAV places, from the servers arm below. (The synthetic `Servers` hub row carries it too, but
   that row is minted in `commands/volumes.rs`, not by this module.)
 - **MobileDevice**: MTP and ADB storages, appended by `device_volumes.rs`.
@@ -20,6 +21,27 @@ pCloud, else `Other` carrying the first `-`-segment), and `locate` resolves a pa
 `parse_cloud_provider_name` and `match_cloud_drive_root` here are thin adapters over it, so the switcher and the file
 context menu can't drift on who owns a path. The file context menu needs the same answer plus what each provider can
 DO (`supports_eviction`), which is why the enum sits in `file_system/` rather than in `crate::volumes`.
+
+## Which mounts get a row
+
+**Decision**: `is_user_facing_mount` admits a mount when the OS doesn't mark it `MNT_DONTBROWSE`, or when it sits
+strictly inside `$HOME`. It still drops the boot volume (which has its own row), a dot-prefixed mount, and anything
+under `~/Library/CloudStorage` (the cloud arm publishes those, and a second row would be a duplicate).
+
+**Why the flag**: `MNT_DONTBROWSE` is the same bit Finder reads to decide what belongs in its sidebar, so it separates
+drives from plumbing without this module naming a single system path. Measured on a stock macOS 27 machine: `/dev`,
+`/System/Volumes/{VM,Preboot,Update,xarts,iSCPreboot,Hardware,Data}`, the autofs `home` trigger, and `/Volumes/Recovery`
+all carry it; `/` and a mounted SMB share don't. The `/Volumes/` prefix test it replaces got this wrong in both
+directions: it let `/Volumes/Recovery` through (only a name check saved it) and hid every drive mounted anywhere else.
+
+**Why the home clause**: a cloud client mounts its drive into the home folder (pCloud's `~/pCloud Drive`), and some mark
+that mount unbrowsable while adding their own Finder sidebar shortcut instead, so the flag alone would hide a drive the
+user plainly has. No system mount lives under `$HOME`, so the clause can't readmit plumbing. `$HOME` itself is excluded:
+a network-homed Mac mounts it, and a home folder is not a drive.
+
+**What this does NOT decide**: whether a path can be OPENED. The volume registry sweeps the whole mount table regardless
+(`file_system/volume/DETAILS.md` § "Registration covers the whole mount table"); a mount dropped here is still
+navigable, it just has no row of its own.
 
 ## Location IDs (two cross-file sync points)
 

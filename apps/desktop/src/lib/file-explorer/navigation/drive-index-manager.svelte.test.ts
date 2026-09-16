@@ -71,7 +71,7 @@ function status(volumeId: string, freshness: VolumeIndexStatus['freshness']): Vo
   }
 }
 
-/** Minimal `VolumeInfo` for `isDriveRow`, which reads only `category`, `id`, and `isDiskImage`. */
+/** Minimal `VolumeInfo` for `isDriveRow`, which reads only `category`, `id`, `isDiskImage`, and `isCloudMount`. */
 function vol(over: Partial<VolumeInfo>): VolumeInfo {
   return {
     id: 'vol-1',
@@ -84,6 +84,7 @@ function vol(over: Partial<VolumeInfo>): VolumeInfo {
     supportsTrash: true,
     mountIsReadOnly: false,
     isDiskImage: false,
+    isCloudMount: false,
     connectionState: null,
     usbSpeed: null,
     ...over,
@@ -147,6 +148,19 @@ describe('isDriveRow — index-affordance eligibility', () => {
 
   it('excludes mounted disk images (no index badge, prompt, or status fetch)', () => {
     expect(isDriveRow(vol({ category: 'attached_volume', isDiskImage: true }))).toBe(false)
+  })
+
+  /**
+   * A cloud provider's own mount (pCloud's `pcloudfs`, CloudMounter) reads every
+   * entry over a round trip to that provider's daemon, so a drive index would
+   * spend hours building a picture the next sync from another device invalidates.
+   * ❗ Its `~/Library/CloudStorage` cousin is an ordinary folder on the data
+   * volume and stays indexable, which is why this keys on the typed flag rather
+   * than on the CLOUD category the two share.
+   */
+  it('excludes a cloud provider mount but not a cloud folder on the data volume', () => {
+    expect(isDriveRow(vol({ category: 'cloud_drive', isCloudMount: true }))).toBe(false)
+    expect(isDriveRow(vol({ category: 'cloud_drive', isCloudMount: false }))).toBe(true)
   })
 
   it('still excludes favorites and the synthetic network / search-results rows', () => {

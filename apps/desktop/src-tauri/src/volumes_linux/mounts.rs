@@ -89,6 +89,7 @@ fn get_mounted_volumes_with(mounts: &[MountEntry], volume_id: impl Fn(&str) -> S
             supports_trash,
             mount_is_read_only: false,
             is_disk_image: false,
+            is_cloud_mount: false,
             connection_state: None,
             pinned: None,
             landing_path: None,

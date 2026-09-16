@@ -8863,6 +8863,18 @@ export type LocationInfo = {
    */
   isDiskImage: boolean
   /**
+   *  Whether a cloud provider's own filesystem serves this mount (pCloud's `pcloudfs`,
+   *  CloudMounter, …), so every entry read costs a round trip to that provider's daemon.
+   *  Groups the row under CLOUD and, like `is_disk_image`, suppresses the index affordances:
+   *  a drive index here would walk the provider's whole service to build something another
+   *  device's sync invalidates. Set by `is_cloud_provider_mount` in BOTH `get_attached_volumes`
+   *  and `resolve_path_volume_fast`, or the two drift.
+   *
+   *  ❗ `false` for a `~/Library/CloudStorage` folder, which is an ordinary directory on the
+   *  data volume that the cloud-drive arm publishes and the index reads at local speed.
+   */
+  isCloudMount: boolean
+  /**
    *  How live this volume's SESSION is: the switcher dot, the pane's connect
    *  views, and the reconnect subscription all read it. Set for every volume a
    *  connecting backend serves (SMB, SFTP, WebDAV, ADB) plus a saved-but-not-

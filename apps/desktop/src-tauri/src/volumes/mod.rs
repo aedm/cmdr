@@ -91,6 +91,16 @@ pub struct LocationInfo {
     /// prompt) and both free-space bars for them. Detected via DiskArbitration; see
     /// `disk_image::is_disk_image_mount`. Always `false` off macOS and for non-volume locations.
     pub is_disk_image: bool,
+    /// Whether a cloud provider's own filesystem serves this mount (pCloud's `pcloudfs`,
+    /// CloudMounter, …), so every entry read costs a round trip to that provider's daemon.
+    /// Groups the row under CLOUD and, like `is_disk_image`, suppresses the index affordances:
+    /// a drive index here would walk the provider's whole service to build something another
+    /// device's sync invalidates. Set by `is_cloud_provider_mount` in BOTH `get_attached_volumes`
+    /// and `resolve_path_volume_fast`, or the two drift.
+    ///
+    /// ❗ `false` for a `~/Library/CloudStorage` folder, which is an ordinary directory on the
+    /// data volume that the cloud-drive arm publishes and the index reads at local speed.
+    pub is_cloud_mount: bool,
     /// How live this volume's SESSION is: the switcher dot, the pane's connect
     /// views, and the reconnect subscription all read it. Set for every volume a
     /// connecting backend serves (SMB, SFTP, WebDAV, ADB) plus a saved-but-not-
@@ -149,6 +159,23 @@ impl cmdr_fs::volume::canonical_root::MountRootCandidate for LocationInfo {
     }
 }
 
+/// Whether a MOUNT ROOT is served by a cloud provider's own filesystem, so its
+/// entries cost a round trip to that provider's daemon rather than a disk read.
+///
+/// True for pCloud's `pcloudfs`, CloudMounter's `~/.CMVolumes`, and the rest of
+/// `cmdr_fs::volume::friendly_error::Provider::is_cloud_storage`; false for an
+/// ordinary disk, a `.dmg`, a VeraCrypt container, and a plain macFUSE mount.
+///
+/// ❗ Ask this about a mount root, ❌ never an arbitrary path: every path under
+/// `~/Library/CloudStorage` names a provider too, but those are FOLDERS on the
+/// data volume, which the cloud-drive arm publishes and the drive index reads at
+/// local speed. Conflating the two would stop Cmdr indexing a Dropbox folder it
+/// has always indexed happily.
+pub(crate) fn is_cloud_provider_mount(mount_root: &str) -> bool {
+    cmdr_fs::volume::friendly_error::provider_for_path(Path::new(mount_root))
+        .is_some_and(|provider| provider.is_cloud_storage())
+}
+
 /// Default volume ID for the root filesystem.
 pub const DEFAULT_VOLUME_ID: &str = "root";
 
@@ -180,10 +207,14 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
         let name = get_volume_name(&url, &mount_point);
         let is_ejectable = get_bool_resource(&url, "NSURLVolumeIsEjectableKey").unwrap_or(false);
         let supports_trash = supports_trash_for_fs_type(Some(&fs_type));
-        let category = if mount_point == "/" {
-            LocationCategory::MainVolume
-        } else {
-            LocationCategory::AttachedVolume
+        // Same two answers `get_attached_volumes` gives this mount, from the same
+        // predicate: a switcher whose checkmark lands on a CLOUD row while the pane
+        // calls the volume an attached drive is the drift this pairing prevents.
+        let is_cloud_mount = is_cloud_provider_mount(&mount_point);
+        let category = match (mount_point.as_str(), is_cloud_mount) {
+            ("/", _) => LocationCategory::MainVolume,
+            (_, true) => LocationCategory::CloudDrive,
+            (_, false) => LocationCategory::AttachedVolume,
         };
         let icon = get_icon_for_path(&mount_point);
         let mount_is_read_only = read_only_from_statfs(&mount_point);
@@ -211,6 +242,7 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
             supports_trash,
             mount_is_read_only,
             is_disk_image,
+            is_cloud_mount,
             connection_state: None,
             pinned: None,
             landing_path: None,
@@ -301,6 +333,7 @@ fn get_favorites() -> Vec<LocationInfo> {
                 supports_trash,
                 mount_is_read_only: false,
                 is_disk_image: false,
+                is_cloud_mount: false,
                 connection_state: None,
                 pinned: None,
                 landing_path: None,
@@ -340,6 +373,7 @@ fn get_main_volume() -> Option<LocationInfo> {
             supports_trash,
             mount_is_read_only: false,
             is_disk_image: false,
+            is_cloud_mount: false,
             connection_state: None,
             pinned: None,
             landing_path: None,
