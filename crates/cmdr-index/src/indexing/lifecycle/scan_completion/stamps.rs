@@ -26,20 +26,17 @@ pub(super) fn stamp_a_completed_walk(
     calibration_kind: ScanCalibrationKind,
     writer: &IndexWriter,
 ) {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs().to_string())
-        .unwrap_or_default();
-    let _ = writer.send(WriteMessage::UpdateMeta {
-        key: "scan_completed_at".to_string(),
-        value: now,
-    });
+    stamp_what_every_completed_walk_records(summary, &space.volume_root_string(), calibration_kind, writer);
     // Any completed full walk restarts the shallow-`MustScanSubDirs`
     // sweep window and clears its coalesced count (the drift those
     // skipped signals stood for has now been repaired). Not only a
     // shallow-triggered sweep: the window means "a full walk happened
     // recently", so the user's own "Rescan now" counts too. See
     // `reconcile/reconciler/rescan/route.rs`.
+    //
+    // Local-walk only, which is why it isn't in the shared stamp above: a
+    // trait-scanned volume has no FSEvents stream and so no shallow sweep to
+    // restart.
     let sweep = reconciler::record_sweep_completed(volume_id, reconciler::now_unix());
     if let Some(at) = sweep.last_sweep_unix {
         let _ = writer.send(WriteMessage::UpdateMeta {
@@ -51,10 +48,34 @@ pub(super) fn stamp_a_completed_walk(
         key: reconciler::SHALLOW_COALESCED_KEY.to_string(),
         value: "0".to_string(),
     });
-    // The calibration numbers go into TWO buckets: this walk kind's own
-    // keys (so the next run of the same kind gets an ETA from a
-    // comparable run) and the unsuffixed keys (the last-completed-scan
-    // facts the badge tooltip and the any-kind fallback read).
+}
+
+/// The three facts EVERY completed walk records, local or trait-scanned: when it
+/// finished, its calibration numbers, and the volume root it walked.
+///
+/// Shared between the local completion path above and `network_scan.rs`, so the
+/// two-bucket calibration rule can't drift between them: a walk kind's own keys
+/// (so the next run of the same kind gets an ETA from a comparable run) AND the
+/// unsuffixed keys (the last-completed-scan facts the badge tooltip and the
+/// any-kind fallback read).
+///
+/// ⚠️ **Only on a walk that ran to the end**, for the reason
+/// [`stamp_a_completed_walk`] gives: `scan_completed_at` on a partial index makes
+/// the next startup skip the healing rescan.
+pub(in crate::indexing::lifecycle) fn stamp_what_every_completed_walk_records(
+    summary: &ScanSummary,
+    volume_root: &str,
+    calibration_kind: ScanCalibrationKind,
+    writer: &IndexWriter,
+) {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs().to_string())
+        .unwrap_or_default();
+    let _ = writer.send(WriteMessage::UpdateMeta {
+        key: "scan_completed_at".to_string(),
+        value: now,
+    });
     for (key, value) in [
         ("scan_duration_ms", summary.duration_ms.to_string()),
         ("total_entries", summary.total_entries.to_string()),
@@ -71,6 +92,6 @@ pub(super) fn stamp_a_completed_walk(
     }
     let _ = writer.send(WriteMessage::UpdateMeta {
         key: "volume_path".to_string(),
-        value: space.volume_root_string(),
+        value: volume_root.to_string(),
     });
 }
