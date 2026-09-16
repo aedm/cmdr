@@ -714,6 +714,10 @@ entry needs a real "we can't make this faster" justification, not convenience.
 - **A `Volume` double that misbehaves**: reach for `FaultyVolume`
   (`write_operations/transfer/volume/faulty_volume_test_support.rs`) or one of `InMemoryVolume`'s named lies, ❌ never a
   fresh 40-method forwarder. The fault the test needs should be the whole diff.
+- **A `Volume` double for a seam that decides from CAPABILITY FLAGS alone** (the favorites add gate, drag locality):
+  `crate::test_support::CapabilityStub`, which answers `supports_local_fs_access` / `paths_are_os_visible` and makes
+  every I/O method `unreachable!`. ❌ Never a per-file copy: two drifted into one jscpd pair. Its sibling for a wedged
+  mount is `crate::test_support::WedgedVolume`, where every future parks forever.
 
 ## Hot spots: modules with the strictest testing bar
 

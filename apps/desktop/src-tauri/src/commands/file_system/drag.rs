@@ -224,69 +224,9 @@ pub fn set_self_drag_resolved_op(_operation: String) {}
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
-    use crate::file_system::listing::FileEntry;
-    use crate::file_system::volume::{ListingProgress, Volume, VolumeError};
-    use std::future::Future;
-    use std::path::Path;
-    use std::pin::Pin;
+    use crate::file_system::volume::Volume;
+    use crate::test_support::CapabilityStub;
     use std::sync::Arc;
-
-    /// A volume that answers only the two capability questions the drag path
-    /// asks. Every I/O method is unreachable: `locality_for_volume` decides from
-    /// flags alone, and a stub that could be listed would invite a test that
-    /// asserts something this seam doesn't own.
-    struct CapabilityStub {
-        supports_local_fs_access: bool,
-        paths_are_os_visible: bool,
-    }
-
-    impl Volume for CapabilityStub {
-        fn name(&self) -> &str {
-            "stub"
-        }
-
-        fn root(&self) -> &Path {
-            Path::new("/Volumes/stub")
-        }
-
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn list_directory<'a>(
-            &'a self,
-            _path: &'a Path,
-            _on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
-        ) -> Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
-            unreachable!("the drag locality seam never lists")
-        }
-
-        fn get_metadata<'a>(
-            &'a self,
-            _path: &'a Path,
-        ) -> Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
-            unreachable!("the drag locality seam never stats")
-        }
-
-        fn exists<'a>(&'a self, _path: &'a Path) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
-            unreachable!("the drag locality seam never probes existence")
-        }
-
-        fn is_directory<'a>(
-            &'a self,
-            _path: &'a Path,
-        ) -> Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
-            unreachable!("the drag locality seam never stats")
-        }
-
-        fn supports_local_fs_access(&self) -> bool {
-            self.supports_local_fs_access
-        }
-
-        fn paths_are_os_visible(&self) -> bool {
-            self.paths_are_os_visible
-        }
-    }
 
     /// Registers a stub under a unique id and returns the locality the drag path
     /// derives for it. Ids are per-test so the process-wide manager can't make
