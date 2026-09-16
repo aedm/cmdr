@@ -20,13 +20,11 @@ Centralized command registry and fuzzy search engine for the command palette.
 
 - **Entries hold i18n message KEYS, not English** (`CommandSource.nameKey` / `descriptionKey`); copy lives in
   `messages/en/commands.json`, resolved via getter-backed `name` / `description`. Don't hardcode a label
-  (`cmdr/no-raw-user-facing-string`); IDS stay untouched. The array stays a getter-backed mutable `Command[]`.
-  `DETAILS.md` § i18n.
+  (`cmdr/no-raw-user-facing-string`); IDS stay untouched. `DETAILS.md` § i18n.
 - **`name` is every listing surface's label** (Settings, help window, conflict toast, MCP); **`displayName` is the
-  PALETTE's alone**, falling back to `name`. A live-state label uses a generic hook: a `nameKey` thunk
-  (`app.licenseKey`) or a `displayName` resolver — ❌ never a per-id branch in `resolveCommand`. Rust's native-menu
-  labels (`Label::License`) are a SEPARATE mechanism; generalizing this side fixed nothing there. `DETAILS.md` § "Two
-  labels".
+  PALETTE's alone**, falling back to `name`. A live-state label takes a generic hook — a `nameKey` thunk or a
+  `displayName` resolver — ❌ never a per-id branch in `resolveCommand`. Rust's native-menu labels are a SEPARATE
+  mechanism. `DETAILS.md` § "Two labels".
 - **Two set-equality guards keep tuple and registry in sync.** `Command.id: CommandId` enforces tuple ⊇ registry at
   compile time; `command-registry.test.ts` enforces registry ⊇ tuple. Adding to one without the other fails the build or
   the test.
@@ -39,9 +37,9 @@ Centralized command registry and fuzzy search engine for the command palette.
   `routes/(main)/command-handlers/`), keyed by `Exclude<CommandId, DispatchExemptId>` so every dispatchable id has a
   handler at compile time; handlerless ids go in `DISPATCH_EXEMPT_IDS` and silently no-op.
 - **Native macOS commands (quit, hide, hide others, show all) carry `nativeShortcut: true` and `showInPalette: false`.**
-  AppKit owns both behavior and accelerator via `PredefinedMenuItems`, so JS dispatch would double-execute. The flag
-  sits on exactly `NATIVE_SHORTCUT_COMMAND_IDS` and is the single source of truth for the read-only editor rows, the
-  store mutators' refusal, and `DISPATCH_EXEMPT_IDS`'s native family.
+  AppKit owns behavior AND accelerator via `PredefinedMenuItems`, so JS dispatch would double-execute. The flag sits on
+  exactly `NATIVE_SHORTCUT_COMMAND_IDS`, the one source for the read-only editor rows, the store mutators' refusal, and
+  `DISPATCH_EXEMPT_IDS`'s native family.
 - **`scope` is documentation-only, not runtime-enforced** (keyboard routing is each UI component's job; scope drives
   conflict detection and Settings display). A NEW scope is three places: `DETAILS.md` § "Adding a command".
 - **The uFuzzy instance is a module-level singleton**; `info.ranges` is a flat `[start, end, …]` array (`end`
@@ -60,9 +58,6 @@ Centralized command registry and fuzzy search engine for the command palette.
 
 ## Adding a command
 
-The full step list (ids, registry entry, arg overrides, handler, palette pin, native-menu wiring) is in `DETAILS.md` §
-"Adding a command". The guards above catch most omissions; the four-places gotcha covers the menu-item case.
-
-Full details (the `Command` / `CommandArgs` / `CommandDispatchArgs` types, the two labels `name` and `displayName`, the
-uFuzzy config and ranking, the `searchAllCommands` rationale, the `view.showHidden` local-first path, and decisions):
-`DETAILS.md`.
+Full step list in `DETAILS.md` § "Adding a command", as is everything else: the type definitions, the two labels, the
+uFuzzy config and ranking, `searchAllCommands`, the `view.showHidden` local-first path, decision rationale. The guards
+above catch most omissions; the four-places gotcha covers the menu-item case.

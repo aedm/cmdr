@@ -6,14 +6,13 @@ Per-pane orchestrator: cursor, focus, tabs, selection, type-to-jump, dialogs, dr
 ## Module map
 
 - `DualPaneExplorer.svelte`: the root, owning both panes, key/command dispatch, the dialog manager, the MCP surface.
-  Split out for length: `pane-accessors.svelte.ts` (per-pane `$derived` state + the get/set accessor functions every
-  other factory here is built on), `move-cursor.ts` and `volume-context-action.ts` (pure orchestration logic, each with
-  its own test file).
+  Split out for length: `pane-accessors.svelte.ts` (per-pane `$derived` state + the accessors every other factory here
+  builds on), `move-cursor.ts` and `volume-context-action.ts` (pure logic, each with its own test file).
 - `FilePane.svelte`: one pane (lifecycle `$state`, the `FilePaneAPI` exports, the alt-view `{#if}` chain); its
   controllers and helpers are siblings (`DETAILS.md` § File map).
 - `navigate.ts`: the `navigate()` transaction. Split out for length: `navigate-commit.ts` (the intent/deps/result
-  contract, the single `commit`, token minting), `navigate-refusals.ts` (the byte-pinned refusals), and
-  `navigate-return.ts` (the `{ returnTo }` arm over the pure `return-point.ts`).
+  contract, the single `commit`, token minting), `navigate-refusals.ts` (byte-pinned refusals), `navigate-return.ts`
+  (the `{ returnTo }` arm over the pure `return-point.ts`).
 
 ## Must-knows
 
@@ -48,11 +47,11 @@ Per-pane orchestrator: cursor, focus, tabs, selection, type-to-jump, dialogs, dr
   on CONNECTION STATE, `device-connect` on `deviceReadiness`, both in FRONT of the kind chain. ❌ No second renderer, no
   inert affordance. ❗ `device-connect` is a phone's ONE dialer and HOLDS the listing (`holdsListing`): an undialed
   phone's listing can only refuse. An eject (row loses `capabilities`) re-dials.
-- **Select-same-kind (`⌥⇧=`) adds through `selection.applyIndices` over the whole-listing SNAPSHOT**, ❌ never
-  `FilePane.applyIndices` (it yanks the cursor) and ❌ never the rendered window's cache (off-screen matches vanish).
-  Its kind rule is `getDisplayExtension`, what the Ext column shows (`DETAILS.md` § Select all of the same kind).
-- **`⌃⏎` adds only an ANCHOR to `pane-pointer.ts::handleContextMenu`**: one selection-vs-row rule for both devices. ❌
-  Never scroll; scope the `#file-<index>` lookup to the pane, which both carry (`DETAILS.md` § Keyboard context menu).
+- **Select-same-kind (`⌥⇧=`) adds via `selection.applyIndices` over the whole-listing SNAPSHOT**, ❌ never
+  `FilePane.applyIndices` (yanks the cursor) nor the rendered cache (off-screen matches vanish). ONE store feeds every
+  live label. `DETAILS.md` § Select all of the same kind.
+- **`⌃⏎` adds only an ANCHOR to `pane-pointer.ts::handleContextMenu`**, so one rule decides selection-vs-row. ❌ Never
+  scroll; scope `#file-<index>` to the pane. `DETAILS.md` § Keyboard context menu.
 - **`DualPaneExplorer.svelte` / `FilePane.svelte` are at their size cap**: cross-cutting state → a `*.svelte.ts`
   factory, pure logic → a `*.ts` helper, ❌ never a child component.
 

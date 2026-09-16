@@ -337,6 +337,7 @@ describe('createPanePointer', () => {
         listingId: 'listing-1',
         canOpenTerminalHere: true,
         canShare: true,
+        canFavorite: true,
       })
       expect(ipc.showFileContextMenu.mock.calls[0][3]).toEqual(['/dir/a.txt', '/dir/b.txt'])
       expect(ipc.showFileContextMenu.mock.calls[0][7]).toEqual({ x: 116, y: 240 })
