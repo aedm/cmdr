@@ -570,6 +570,7 @@ mod tests {
         let mut attached = attached();
         attached.images.push(AttachedImage {
             image_path: inner.clone(),
+            hdid_pid: None,
             entities: vec![SystemEntity {
                 dev_entry: "/dev/disk7".to_string(),
                 mount_point: None,
@@ -602,6 +603,7 @@ mod tests {
     fn image_named(path: &str, entities: &[(&str, Option<&str>)]) -> AttachedImage {
         AttachedImage {
             image_path: PathBuf::from(path),
+            hdid_pid: None,
             entities: entities
                 .iter()
                 .map(|(dev_entry, mount_point)| SystemEntity {

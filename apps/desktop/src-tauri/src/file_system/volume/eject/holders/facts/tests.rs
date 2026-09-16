@@ -185,7 +185,10 @@ fn a_holder_an_app_answered_for_takes_the_apps_name_and_bundle_id() {
             ..unknown()
         }),
     );
-    assert_eq!(holder.name, "Warp", "the executable name was `stable`, which names nothing");
+    assert_eq!(
+        holder.name, "Warp",
+        "the executable name was `stable`, which names nothing"
+    );
     assert_eq!(holder.bundle_id.as_deref(), Some("dev.warp.Warp-Stable"));
     assert_eq!(holder.kind, HolderKind::App);
 }

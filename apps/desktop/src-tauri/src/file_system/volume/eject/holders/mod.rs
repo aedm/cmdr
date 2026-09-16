@@ -224,12 +224,9 @@ pub(super) async fn scan(paths: Vec<PathBuf>, budget: Duration) -> HolderScan {
 #[cfg(all(test, target_os = "macos"))]
 pub(super) fn kind_of(pid: u32, paths: &[PathBuf]) -> HolderKind {
     let mut kind = HolderKind::Unclassified;
-    facts::name_the_kinds(
-        &[pid],
-        paths,
-        Instant::now() + Duration::from_secs(20),
-        |_, what| kind = what.kind,
-    );
+    facts::name_the_kinds(&[pid], paths, Instant::now() + Duration::from_secs(20), |_, what| {
+        kind = what.kind
+    });
     kind
 }
 

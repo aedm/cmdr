@@ -19,10 +19,10 @@ pub(super) fn scan_path(path: &std::path::Path) -> super::PathScan {
     super::scan_path_with(|| super::root_device(path), || None, |_| None)
 }
 
-#[cfg(target_os = "macos")]
-pub(super) use macos::{executable_path, scan_path};
 #[cfg(all(test, target_os = "macos"))]
 pub(super) use macos::{FILE_FLAGS, pids_holding};
+#[cfg(target_os = "macos")]
+pub(super) use macos::{executable_path, scan_path};
 
 #[cfg(target_os = "macos")]
 mod macos {

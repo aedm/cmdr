@@ -222,7 +222,11 @@ mod macos {
             assert_eq!(
                 read,
                 [
-                    (Some(12624), "/private/tmp/outer.dmg".to_string(), "CMDRPROBEOUT".to_string()),
+                    (
+                        Some(12624),
+                        "/private/tmp/outer.dmg".to_string(),
+                        "CMDRPROBEOUT".to_string()
+                    ),
                     (
                         Some(12984),
                         "/Volumes/CMDRPROBEOUT/inner.dmg".to_string(),
@@ -300,7 +304,11 @@ mod tests {
     }
 
     fn device_of(path: &Path) -> Option<u64> {
-        Some(if path.starts_with("/Volumes/CMDRPROBEOUT") { 16 } else { 1 })
+        Some(if path.starts_with("/Volumes/CMDRPROBEOUT") {
+            16
+        } else {
+            1
+        })
     }
 
     #[test]

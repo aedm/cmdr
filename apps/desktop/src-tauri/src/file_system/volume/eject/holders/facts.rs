@@ -315,11 +315,7 @@ mod platform {
     // "generic" set, so the default flags are enough to get them.
     #[link(name = "Security", kind = "framework")]
     unsafe extern "C" {
-        fn SecCodeCopySigningInformation(
-            code: *const c_void,
-            flags: u32,
-            information: *mut CFDictionaryRef,
-        ) -> c_int;
+        fn SecCodeCopySigningInformation(code: *const c_void, flags: u32, information: *mut CFDictionaryRef) -> c_int;
 
         /// Present only when the code was signed as part of an OS release, which is what
         /// "this is macOS itself" means. ❗ A platform binary is ❌ NOT the same as "an
@@ -435,11 +431,14 @@ mod platform {
     pub(super) fn signing_display_name(pid: u32) -> Option<String> {
         let information = signing_information(pid)?;
         // SAFETY: the key is Security's own `extern "C"` global, read by value.
-        let plist = value(&information, unsafe { kSecCodeInfoPList })?
-            .downcast::<CFDictionary>()?;
+        let plist = value(&information, unsafe { kSecCodeInfoPList })?.downcast::<CFDictionary>()?;
         ["CFBundleDisplayName", "CFBundleName"].into_iter().find_map(|key| {
             let key = CFString::new(key);
-            Some(value(&plist, key.as_concrete_TypeRef())?.downcast::<CFString>()?.to_string())
+            Some(
+                value(&plist, key.as_concrete_TypeRef())?
+                    .downcast::<CFString>()?
+                    .to_string(),
+            )
         })
     }
 
@@ -466,9 +465,8 @@ mod platform {
         // `SecStaticCodeRef` (`SecCode.h:352`), and `information` is a valid out pointer
         // the call only writes a retained dictionary into. Nothing unwinds across the
         // boundary.
-        let read = unsafe {
-            SecCodeCopySigningInformation(code.as_CFTypeRef(), 0, std::ptr::from_mut(&mut information))
-        };
+        let read =
+            unsafe { SecCodeCopySigningInformation(code.as_CFTypeRef(), 0, std::ptr::from_mut(&mut information)) };
         if read != 0 || information.is_null() {
             return None;
         }

@@ -554,6 +554,8 @@ would drift apart.
   would own it doesn't exist yet.
 - **`FileHolder`** holds a file open from a child `/bin/sleep`, so its volume refuses to unmount. The child descends
   from the test process, so anything classifying holders by ancestry reads it as the test's own: identify it by `pid()`.
+- **`serving_pid()`** is the `hdid` process behind an attached image, which holds that image's backing FILE open for as
+  long as the image stays attached. What a test needs to ask "who holds the volume the `.dmg` sits on".
 - **Tests.** The pure decisions and the runner are default-suite unit tests. `real_images` attaches each spec for real,
   `#[ignore]`d in the `disk-image` nextest group, and runs with every real-image pin built on the harness in the opt-in
   `pnpm check disk-images` lane (`scripts/check/checks/DETAILS.md` § "The disk-image lane").

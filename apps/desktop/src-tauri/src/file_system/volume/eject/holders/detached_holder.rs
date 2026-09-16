@@ -88,7 +88,9 @@ impl DetachedHolder {
 impl Drop for DetachedHolder {
     fn drop(&mut self) {
         // Nobody's child, so there's nothing to reap: launchd does that.
-        let Ok(pid) = libc::pid_t::try_from(self.pid) else { return };
+        let Ok(pid) = libc::pid_t::try_from(self.pid) else {
+            return;
+        };
         // SAFETY: `kill` takes two integers by value and touches no memory of ours. The
         // pid is one this holder started; the worst a reused one costs is a stray signal
         // to a process this test also owns.

@@ -163,7 +163,9 @@ async fn a_disk_image_stored_on_the_drive_is_named_as_one() {
     let session = DiskImageSession::acquire();
     let image = DiskImage::attach(&session, ImageSpec::Hfs).expect("attach the image");
     let backing_file = image.image_path().to_path_buf();
-    let serving = image.serving_pid().expect("hdiutil names the process serving the image");
+    let serving = image
+        .serving_pid()
+        .expect("hdiutil names the process serving the image");
 
     assert_eq!(
         holders::kind_of(serving, &[backing_file]),
