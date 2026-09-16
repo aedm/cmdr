@@ -523,6 +523,17 @@ through this stub, so an unstubbed host can safely fail loudly instead of reachi
 first deploy, while a node-project test suite stayed green over it. A build failure would have caught a `node:` import;
 only a real-runtime request catches a Node global.
 
+**The lint ban is the cheap half of that defense** (`eslint.config.js`, `no-restricted-globals` +
+`no-restricted-imports` over `src/**/*.ts`). It refuses `Buffer`, `process`, `global`, `__dirname`, `__filename`,
+`require`, `module`, `exports`, `setImmediate`, `clearImmediate`, every `node:*` specifier, and the same modules spelled
+bare, each with a message naming the missing `nodejs_compat`. It covers TESTS as well as production code, because both
+test projects hand a test the Node standard library and a test written against it proves nothing about production. A
+file that drives the Worker FROM Node (`production-runtime.test.ts` reading migrations, `synthetic-heartbeats.test.ts`
+opening `node:sqlite`) opts out per line with `eslint-disable-next-line no-restricted-imports -- <reason>`; there is no
+allowlist to keep in sync, so a new workerd test is banned by default. `scripts/` and `test/` are Node programs that
+never reach the Worker, so they stay out of scope. What lint structurally can't see is a DEPENDENCY reaching for a Node
+global on a path we exercise, which is what the `createTestHarness` lanes above are for.
+
 ## Local development
 
 ```sh

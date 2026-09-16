@@ -1,3 +1,4 @@
+/* eslint-disable-next-line no-restricted-imports -- This file is the Node-side DRIVER: it reads the migration files off disk and talks to the Worker over HTTP. Nothing here is bundled into the Worker, which is what makes the runtime under test honest. */
 import { readFile } from 'node:fs/promises'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createTestHarness } from 'wrangler'

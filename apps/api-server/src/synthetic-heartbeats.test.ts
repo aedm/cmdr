@@ -4,6 +4,7 @@
  * real engine can prove the predicate keeps a person's rows and drops a robot's, and that is the
  * whole risk of this sweep. `node:sqlite` ships with Node, so this costs no dependency.
  */
+/* eslint-disable-next-line no-restricted-imports -- The engine lives on the Node side of the test and never reaches the Worker bundle; what's under test is the SQL string, imported from `scheduled.ts`. */
 import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
 import { deleteSyntheticHeartbeatsSql, syntheticHeartbeatGraceDays } from './scheduled'
