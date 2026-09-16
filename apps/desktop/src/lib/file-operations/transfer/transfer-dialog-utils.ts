@@ -6,7 +6,7 @@
 import type { TransferOperationType } from '$lib/file-explorer/types'
 import type { MessageKey } from '$lib/intl/keys.gen'
 import { tString } from '$lib/intl/messages.svelte'
-import { parentOf, toCanonical } from '$lib/path/canonical'
+import { isPathOnVolume, parentOf, toCanonical } from '$lib/path/canonical'
 import { suggestCompressArchiveName } from './transfer-compress-name'
 
 /**
@@ -128,17 +128,30 @@ export function toBackendCursorIndex(frontendIndex: number, hasParent: boolean):
   return hasParent ? frontendIndex - 1 : frontendIndex
 }
 
-/** Strips the volume prefix to get a volume-relative path. Always returns a `/`-prefixed string. */
+/**
+ * Strips the volume prefix to get a volume-relative path. Always returns a
+ * `/`-prefixed string, which is what the destination box's absolute-path check
+ * demands.
+ *
+ * ❗ **Trim the volume root's trailing slash before slicing.** A remote volume is
+ * rooted at `<prefix><server-side root>`, so one rooted at `/` (the DEFAULT for
+ * SFTP, WebDAV, and ADB) really does spell itself `sftp://ada@nas.local:22/`.
+ * Slicing by raw length then eats the separator and yields `home/ada/…`, which
+ * `validateDirectoryPath` rejects and `handleConfirm` refuses to act on, so the
+ * Copy button does nothing at all. A volume rooted at a subfolder has no trailing
+ * slash and never showed the bug, which is how it read as intermittent.
+ *
+ * Membership is `isPathOnVolume`, i.e. by whole components, so a sibling root can't
+ * borrow this one's prefix and hand back `-1/photos`.
+ */
 export function toVolumeRelativePath(fullPath: string, volumePath: string): string {
-  // MTP/non-local volumes: fullPath may already be volume-relative (like "/DCIM")
-  // while volumePath is a URL (like "mtp://device/storage"). Just pass through.
-  if (!fullPath.startsWith(volumePath) && volumePath.includes('://')) {
-    return fullPath || '/'
-  }
   if (volumePath === '/') return fullPath
-  if (fullPath.startsWith(volumePath)) {
-    return fullPath.slice(volumePath.length) || '/'
-  }
+  const root = volumePath.endsWith('/') ? volumePath.slice(0, -1) : volumePath
+  if (isPathOnVolume(fullPath, root)) return fullPath.slice(root.length) || '/'
+  // A non-local volume whose caller already spelled the path volume-relative
+  // ("/DCIM" against "mtp://device/storage"). Another volume's URL is not ours,
+  // and echoing it into the box would just fail the absolute-path check.
+  if (root.includes('://') && fullPath.startsWith('/') && !fullPath.includes('://')) return fullPath
   return '/'
 }
 

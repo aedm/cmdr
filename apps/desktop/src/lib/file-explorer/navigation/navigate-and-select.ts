@@ -20,7 +20,7 @@
 import { getAppLogger } from '$lib/logging/logger'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
-import { isPathOnVolume } from './path-navigation'
+import { isPathOnVolume } from '$lib/path/canonical'
 import { resolveLocation } from './resolve-location'
 import type { ExplorerAPI } from '../../../routes/(main)/explorer-api'
 import type { Location } from '$lib/tauri-commands'

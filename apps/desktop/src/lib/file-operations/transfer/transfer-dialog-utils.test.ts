@@ -272,6 +272,47 @@ describe('toVolumeRelativePath', () => {
   it('returns / when path does not match volume', () => {
     expect(toVolumeRelativePath('/some/path', '/Volumes/USB')).toBe('/')
   })
+
+  // A remote volume's root is `<prefix><server-side root>`, so one rooted at `/`
+  // (the default for SFTP, WebDAV, and ADB) spells itself WITH a trailing slash.
+  // Slicing that off by raw length ate the separator and handed the dialog
+  // `home/ada/…`, which the absolute-path check then rejected: no copy could start.
+  it('keeps the leading slash when a remote volume is rooted at / (trailing-slash root)', () => {
+    expect(toVolumeRelativePath('sftp://ada@nas.local:22/home/ada/Videos', 'sftp://ada@nas.local:22/')).toBe(
+      '/home/ada/Videos',
+    )
+  })
+
+  it('returns / for the root of a remote volume rooted at /', () => {
+    expect(toVolumeRelativePath('sftp://ada@nas.local:22/', 'sftp://ada@nas.local:22/')).toBe('/')
+  })
+
+  it('strips the prefix for a remote volume rooted at a subfolder', () => {
+    expect(toVolumeRelativePath('sftp://ada@nas.local:22/srv/data/photos', 'sftp://ada@nas.local:22/srv/data')).toBe(
+      '/photos',
+    )
+  })
+
+  // Matching is by whole components: a raw string prefix lets a sibling volume
+  // borrow this one's root and yields `-1/photos`, which is neither absolute nor
+  // on the volume the copy would target.
+  it('refuses a sibling whose name merely starts with the volume name', () => {
+    expect(toVolumeRelativePath('/Volumes/USB-1/photos', '/Volumes/USB')).toBe('/')
+  })
+
+  it('refuses a sibling server-side root that merely starts with this one', () => {
+    expect(toVolumeRelativePath('sftp://ada@nas.local:22/srv/data-1/photos', 'sftp://ada@nas.local:22/srv/data')).toBe(
+      '/',
+    )
+  })
+
+  it('passes through a path the caller already spelled volume-relative', () => {
+    expect(toVolumeRelativePath('/DCIM', 'mtp://dev/65537')).toBe('/DCIM')
+  })
+
+  it('returns / for another device URL rather than echoing it into the box', () => {
+    expect(toVolumeRelativePath('mtp://other/1/DCIM', 'mtp://dev/65537')).toBe('/')
+  })
 })
 
 describe('shouldShowHardlinkNote', () => {

@@ -12,7 +12,7 @@ vi.mock('$lib/app-status-store', () => ({
 const { pathExists } = await import('$lib/tauri-commands')
 const { getLastUsedPathForVolume } = await import('$lib/app-status-store')
 
-import { withTimeout, determineNavigationPath, isPathOnVolume } from './path-navigation'
+import { withTimeout, determineNavigationPath } from './path-navigation'
 import type { OtherPaneState } from './path-navigation'
 import { resolveValidPath } from './path-resolution'
 
@@ -329,34 +329,6 @@ describe('determineNavigationPath', () => {
     expect(mockPathExists).toHaveBeenCalledTimes(2)
     // Both calls should have started at the same tick (parallel via Promise.all)
     expect(callTimestamps[0]).toBe(callTimestamps[1])
-  })
-})
-
-describe('isPathOnVolume', () => {
-  it('accepts an exact match', () => {
-    expect(isPathOnVolume('/Volumes/naspi', '/Volumes/naspi')).toBe(true)
-  })
-
-  it('accepts a descendant path', () => {
-    expect(isPathOnVolume('/Volumes/naspi/photos/2024', '/Volumes/naspi')).toBe(true)
-  })
-
-  it('rejects a sibling whose name shares a prefix', () => {
-    expect(isPathOnVolume('/Volumes/naspi-backup', '/Volumes/naspi')).toBe(false)
-  })
-
-  it('rejects a foreign path', () => {
-    expect(isPathOnVolume('/Users/test/project', '/Volumes/naspi')).toBe(false)
-  })
-
-  it('treats root volume `/` as matching any absolute path', () => {
-    expect(isPathOnVolume('/Users/test', '/')).toBe(true)
-    expect(isPathOnVolume('/', '/')).toBe(true)
-  })
-
-  it('handles a volumePath that already ends in `/`', () => {
-    expect(isPathOnVolume('smb://host/share/foo', 'smb://')).toBe(true)
-    expect(isPathOnVolume('/Users/test', 'smb://')).toBe(false)
   })
 })
 

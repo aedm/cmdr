@@ -7,6 +7,7 @@
  */
 
 import { constructAdbPath, parseAdbPath } from '$lib/adb/adb-path-utils'
+import { isPathOnVolume } from '$lib/path/canonical'
 import { pathExists } from '$lib/tauri-commands'
 import { getLastUsedPathForVolume } from '$lib/app-status-store'
 import { DEFAULT_VOLUME_ID } from '$lib/tauri-commands'
@@ -30,18 +31,6 @@ export interface DetermineNavigationPathArgs {
    * `volumePath`: a server place's start folder (`VolumeInfo.landingPath`).
    */
   landingPath?: string | null
-}
-
-/**
- * True when `path` equals `volumePath` or is a descendant of it. Used to drop
- * stale or corrupted paths that don't belong on the given volume — for example
- * a local `/Users/...` path that ended up persisted under an SMB volumeId from
- * a previous bug.
- */
-export function isPathOnVolume(path: string, volumePath: string): boolean {
-  if (path === volumePath) return true
-  const prefix = volumePath.endsWith('/') ? volumePath : volumePath + '/'
-  return path.startsWith(prefix)
 }
 
 /**

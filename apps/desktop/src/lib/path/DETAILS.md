@@ -28,6 +28,25 @@ parent boundary is where a `lastIndexOf('/')` says it is; nothing outside Cmdr c
 one and are not, so the outbound guard is a separate export rather than a stricter brand: paths flow through the app as
 plain strings and only a handful of call sites hand one to an OS API.
 
+## Volume membership is a component match
+
+`isPathOnVolume(path, volumePath)` lives here rather than beside its first caller because three unrelated areas ask the
+same question: pane navigation drops a path that doesn't belong to the volume it's pinned to, reveal-in-pane picks the
+pane that can actually show a file, and the transfer dialog derives its volume-relative destination.
+
+Two shapes make the naive `path.startsWith(volumePath)` wrong, and both reach real users:
+
+- **A sibling root sharing a prefix.** `/Volumes/naspi` would claim `/Volumes/naspi-backup`, and a remote volume rooted
+  at `/srv/data` would claim `/srv/data-1`. Appending the separator before comparing is what makes it a component match.
+  `cmdr-fs`'s `RemoteRoot::to_remote_path` defends the same boundary on the Rust side, for the same reason.
+- **A root that already ends in a slash.** A remote volume is rooted at `<prefix><server-side root>`, so one rooted at
+  `/` spells itself `sftp://ada@nas.local:22/`. That is the DEFAULT for SFTP, WebDAV, and ADB, not an oddity.
+
+The second shape is why `toVolumeRelativePath` trims the root before slicing. It used to slice by raw length, which ate
+the separator and prefilled the copy destination with `home/ada/…`; `validateDirectoryPath` rejected it as relative and
+`handleConfirm` refused to dispatch, so Copy silently did nothing on every SFTP server rooted at `/`. A volume rooted at
+a subfolder carries no trailing slash and worked fine, which made it look intermittent.
+
 `isPlainFilesystemPath` is that guard. It answers false for every virtual-volume URL and for `~`-rooted and relative
 paths, since none of them resolves without a base the OS API lacks. Its live caller is the search-results clipboard
 refusal (`file-explorer/pane/clipboard-operations.ts::snapshotClipboardIsRefused`), where a snapshot row can name a file

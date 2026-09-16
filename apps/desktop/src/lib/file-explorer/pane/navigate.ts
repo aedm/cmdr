@@ -135,8 +135,8 @@ import {
   type NavigationHistory,
   type HistoryEntry,
 } from '../navigation/navigation-history'
-import { isPathOnVolume } from '../navigation/path-navigation'
 import { isSnapshotPath } from '../navigation/real-folder-history'
+import { isPathOnVolume } from '$lib/path/canonical'
 import { tString } from '$lib/intl/messages.svelte'
 import type { Location } from '$lib/tauri-commands'
 import {
