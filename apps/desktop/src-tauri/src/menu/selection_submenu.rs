@@ -1,8 +1,8 @@
 //! The file context menu's `Selection >` submenu: everything the Select menu bar holds, plus
 //! Toggle selection, one right-click away from the row it acts on.
 //!
-//! Its own file rather than another block in `menu_structure.rs` for two reasons: that file is
-//! already over its length allowlist, and the ORDER of these rows is otherwise unprovable. A real
+//! Its own file rather than another block in `file_context_menu.rs` because the ORDER of these rows
+//! is otherwise unprovable. A real
 //! `muda::Menu` panics off the main thread, so no unit test can build one and read it back; keeping
 //! the rows as data ([`SELECTION_ROWS`]) means the test below pins what the user sees.
 

@@ -215,14 +215,14 @@ mod tests {
     /// thread, so the source is what we can check here.
     #[test]
     fn every_icon_names_an_item_the_context_menu_builds() {
-        let source = include_str!("menu_structure.rs");
+        let source = include_str!("file_context_menu.rs");
         let ids: HashSet<&str> = FILE_CONTEXT_ICONS.iter().map(|&(id, _)| id).collect();
         for id in ids {
             // The constant's NAME, since that's what the builder call spells.
             let name = constant_named(id).expect("every context-menu icon id is a `command_map.rs` constant");
             assert!(
                 source.contains(&name),
-                "`menu_structure.rs` builds no item with `{name}`, so its icon never lands"
+                "`file_context_menu.rs` builds no item with `{name}`, so its icon never lands"
             );
         }
     }

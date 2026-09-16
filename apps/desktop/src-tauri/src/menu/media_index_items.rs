@@ -14,7 +14,7 @@
 //! it as the way out. Same for a folder an ancestor entry already covers: adding it would
 //! write a redundant entry and change nothing.
 //!
-//! Pure, so the decision is unit-tested without an `AppHandle`; `menu_structure` renders
+//! Pure, so the decision is unit-tested without an `AppHandle`; `file_context_menu` renders
 //! whatever this returns.
 
 use super::{
@@ -42,7 +42,7 @@ pub struct ImageIndexMenuState {
 /// whether it's clickable.
 ///
 /// The key rather than the text, so this decider stays pure and testable without
-/// a catalog: `menu_structure` resolves it through `menu_t` at build time.
+/// a catalog: `file_context_menu` resolves it through `menu_t` at build time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ImageIndexMenuItem {
     pub id: &'static str,

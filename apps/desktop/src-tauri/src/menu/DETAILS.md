@@ -30,11 +30,15 @@ window focus context.
   `SameKindTarget` payload and `same_kind_menu_label` behind "Select all of the same kind"'s live wording, plus
   `DetachWord` / `detach_label`, which decide whether a row's leave-this-volume item reads `Eject ({name})` or
   `Disconnect` (a phone gets the second: `adb` has no per-client detach, so nothing is made safe to unplug).
-- `menu_structure.rs`: the file context menu
-  (`build_context_menu`), breadcrumb / tab / network-host / function-key-bar / volume-selector-row context menus
-  (`build_volume_row_context_menu`: a server's Disconnect/Pin/Forget items or the `detach_label` item, and
-  `build_favorite_context_menu`: a favorite's Rename / Remove from favorites), the viewer-window menu
-  (`build_viewer_menu`), plus the `FileContextInfo`, `ContextMenuResult`, and `ContextMenuShortcuts` types.
+- `file_context_menu.rs`: the file context menu (`build_context_menu`) and the facts it is built from
+  (`FileContextInfo`, `ContextMenuPaneFacts`, `ContextMenuResult`), plus `append_tag_color_group`. Its own file because
+  it is by far the biggest menu here, and the only one whose shape depends on the row, the pane, the cloud provider,
+  and the OS at once. ❗ `context_menu_icons.rs`'s guard test `include_str!`s THIS file to check every icon names an
+  item the menu actually builds; a builder moving out of it has to take that `include_str!` along.
+- `menu_structure.rs`: the smaller context menus — breadcrumb / parent-row / tab / network-host / function-key-bar /
+  volume-selector-row (`build_volume_row_context_menu`: a server's Disconnect/Pin/Forget items or the `detach_label`
+  item, and `build_favorite_context_menu`: a favorite's Rename / Remove from favorites) — the viewer-window menu
+  (`build_viewer_menu`), and the `ContextMenuShortcuts` / `context_item` vocabulary every popup here shares.
 - `selection_submenu.rs`: the file context menu's `Selection >` submenu, its rows held as data (`SELECTION_ROWS`) so a
   unit test can pin their order without building a `muda::Menu`.
 - `install.rs`: `at_startup`, the single call `lib.rs` makes in `setup`: pin the UI language, build the bar,
@@ -42,7 +46,7 @@ window focus context.
 - `item_states.rs`: `apply_menu_item_states` (the one writer of every main-menu item's enabled state, derived from
   stored inputs through the pure `menu_item_enabled`), `set_menu_context` (records which window's menu the explorer
   items answer to), and the macOS-only `swap_to_main_menu` / `swap_to_viewer_menu` (the app-level menu-bar swap).
-  All three are called from `commands::menu::activate_window_menu` and the other menu-state IPC commands.
+  All three are called from `commands::menu_state::activate_window_menu` and the other menu-state IPC commands.
 - `menu_handlers.rs`: `handle_menu_event`, the `.on_menu_event` dispatcher, plus the macOS
   post-construction wrappers `cleanup_macos_menus` / `set_macos_menu_icons` and
   `send_native_edit_action` (the actual objc2 FFI lives in `macos_appkit.rs`).
@@ -178,7 +182,7 @@ Exceptions that do NOT use `"execute-command"`:
   `MenuState.context.paths`. The "Other…" entry shows an `NSOpenPanel` filtered to `.app`
   bundles and launches the chosen app the same way.
 - **Finder tag colors** (macOS): the file context menu carries seven `IconMenuItem` circles
-  (`menu_structure.rs::append_tag_color_group`, shown for files AND folders), IDs `tag-color:<1..=7>`,
+  (`file_context_menu.rs::append_tag_color_group`, shown for files AND folders), IDs `tag-color:<1..=7>`,
   which `tag_row/` draws as Finder's one row of circles once the menu tracks ("The tag row"). Like "Open with", they're
   prefix-routed
   (`on_menu_event` matches `tag-color:`) — NOT in `menu_id_to_command` — and call
@@ -836,7 +840,7 @@ separator, then the Open / View / Edit group. See "The context menu's header lin
 
 The **File** submenu's transfer group runs `Copy…` (F5), `Move…` (F6), `Duplicate` (⌘D), `Compress…` (⌥F5). `Duplicate`
 carries no ellipsis because it picks nothing: it copies the selection into the folder it already sits in, and the
-backend resolves the self-collision per item. The context menu (`menu_structure.rs`) offers it only when
+backend resolves the self-collision per item. The context menu (`file_context_menu.rs`) offers it only when
 `restrict_destination_actions` is false, so it is absent on the search-results virtual pane alongside `Rename`: each
 selected item would have to land in its own real folder, which one transfer can't express. Its macOS SF Symbol is
 `plus.square.on.square`, the Linux mnemonic is `D&uplicate`. What the command does once dispatched:
