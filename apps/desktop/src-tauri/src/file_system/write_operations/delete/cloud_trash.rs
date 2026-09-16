@@ -17,9 +17,10 @@
 //! A freshly formatted USB stick answers "no trash" from a volume probe purely
 //! because nobody has trashed anything on it yet, and routing that to a permanent
 //! delete would destroy data the OS would happily have kept. The rule is narrow on
-//! purpose: a path strictly inside `~/Library/CloudStorage/<domain>/`, Apple's
-//! documented location for File Provider storage since macOS 12.3. Everything else
-//! keeps attempting the trash and lets the typed `TrashRefusalKind` refusal speak.
+//! purpose: a path strictly inside `~/Library/CloudStorage/<domain>/`, under a
+//! provider Cmdr knows by name, in Apple's documented location for File Provider
+//! storage since macOS 12.3. Everything else keeps attempting the trash and lets
+//! the typed `TrashRefusalKind` refusal speak.
 //!
 //! ❌ Don't gate on the volume either. A File Provider folder is NOT its own
 //! volume: `~/Library/CloudStorage/Dropbox` and `~` report the same device on the
@@ -55,10 +56,15 @@ pub enum TrashRouting {
 /// without a real cloud folder. `path` must already be symlink-resolved; see
 /// [`routing_for`].
 ///
-/// Three deliberate exclusions:
+/// Four deliberate exclusions:
 /// - **iCloud Drive** (`~/Library/Mobile Documents/`): Finder trashes from there
 ///   fine, so it keeps today's behavior. If a provider ever refuses, the typed
 ///   refusal path already catches it.
+/// - **A provider we don't know by name**
+///   ([`CloudProvider::keeps_deleted_items_recoverable`]): a `CloudStorage`
+///   directory isn't always a cloud service. MacDroid publishes an Android phone
+///   as one, and a delete there is final, so it keeps the OS trash and its
+///   refusal instead of a dialog promising a copy that doesn't exist.
 /// - **The `CloudStorage` container itself**, which holds no user data.
 /// - **A drive's own root** (`…/CloudStorage/Dropbox`): deleting a whole cloud
 ///   root permanently would take the account's entire local copy with it, so that
@@ -68,7 +74,9 @@ pub fn is_inside_trashless_cloud_drive(home: &Path, path: &Path) -> bool {
     let Some(found) = locate(home, path) else {
         return false;
     };
-    found.provider != CloudProvider::ICloudDrive && path != found.root
+    found.provider != CloudProvider::ICloudDrive
+        && found.provider.keeps_deleted_items_recoverable()
+        && path != found.root
 }
 
 /// `~/Library/CloudStorage` is macOS's layout, so everywhere else this is simply
@@ -164,8 +172,15 @@ mod tests {
             &home(),
             Path::new("/Users/test/Library/CloudStorage/GoogleDrive-me@gmail.com/My Drive/notes.md")
         ));
-        // An unrecognized provider is still a File Provider drive.
-        assert!(is_inside_trashless_cloud_drive(
+    }
+
+    /// A `CloudStorage` directory isn't proof of a cloud service: MacDroid puts
+    /// an Android phone there, where a delete is final and nothing keeps a copy.
+    /// The dialog this routing opens promises one, so an unrecognized provider
+    /// keeps the OS trash and its refusal.
+    #[test]
+    fn a_provider_we_dont_know_by_name_keeps_the_trash() {
+        assert!(!is_inside_trashless_cloud_drive(
             &home(),
             Path::new("/Users/test/Library/CloudStorage/MacDroid-Pixel/DCIM/a.jpg")
         ));

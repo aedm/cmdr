@@ -3,9 +3,8 @@
 The main window's word on background work: the top-right row (`StatusCorner.svelte`, mounted once by
 `routes/(main)/+page.svelte`) hosting `OperationChip.svelte`, `$lib/ask-cmdr/WakeIndicator.svelte`,
 `$lib/suggested-ops/SuggestedOpsIndicator.svelte`, `$lib/onboarding/FdaBadge.svelte`, and
-`$lib/indexing/IndexingStatusIndicator.svelte` (the hourglass), with any `children` to their left.
-`operation-chip.ts` holds the chip's pure pick-and-measure rules; `operation-failure-watch.svelte.ts` raises the
-failure toast.
+`$lib/indexing/IndexingStatusIndicator.svelte` (the hourglass), with any `children` to their left. `operation-chip.ts`
+holds the chip's pure pick-and-measure rules; `operation-failure-watch.svelte.ts` raises the failure toast.
 
 ## Must-knows
 
@@ -28,12 +27,11 @@ failure toast.
   comes from `$lib/file-operations/reversal-wording.ts` (`snapshot.reverses` set), ❌ never `queue.row.label` (undoing a
   copy runs as a delete, so the corner would say "Deleting" over an undo).
 - **Both gates are pure, in `operation-chip.ts`** (`pickChipOperation`, `pickChipState`): add and test one there, not in
-  the markup. The bar is bytes, falling back to the file count when `bytesTotal` is 0; instant ops are excluded by
-  TYPED `operationType`, ❌ never a substring test.
-- **Scanning gets a SPINNER and "Scanning…", never a bar** (both totals 0); a PAUSED queue KEEPS its bar under the
-  label "Paused", since hiding it re-hides the work the chip exists to surface. Both spoken labels lead with that
-  state, ❌ never the verb and ❌ never the tooltip's string, so every `queue.chip.tooltip` clause carries its own
-  leading `·`.
+  the markup. The bar is bytes, falling back to the file count when `bytesTotal` is 0; instant ops are excluded by TYPED
+  `operationType`, ❌ never a substring test.
+- **Scanning gets a SPINNER and "Scanning…", never a bar** (both totals 0); a PAUSED queue KEEPS its bar under the label
+  "Paused", since hiding it re-hides the work the chip exists to surface. Both spoken labels lead with that state, ❌
+  never the verb and ❌ never the tooltip's string, so every `queue.chip.tooltip` clause carries its own leading `·`.
 - **Render the session's `etaSecondsDisplay`, ❌ never `progress.etaSeconds`**: the raw value once read "8m 12s" in one
   window, "5m 46s" in the other.
 - **The FIRST appearance waits `CHIP_SETTLE_MS`** (blink-long work never flashes the corner, and the beat closes a race
