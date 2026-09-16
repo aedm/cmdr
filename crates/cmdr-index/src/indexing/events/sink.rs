@@ -366,6 +366,20 @@ pub enum IndexEvent {
         /// One rollup per folder the batch touched.
         folders: Vec<FolderChangeRollup>,
     },
+    /// This volume's index may have lost rows to a drive that went away, so it
+    /// has been marked for a rebuild and the next start will walk it from
+    /// scratch.
+    ///
+    /// Fired once per marker write, ❌ never per launch: the marker is
+    /// persisted, and a host that announced it again on every start would keep
+    /// apologizing for one disconnection. Nothing is asked of the host — the
+    /// rebuild is the crate's own and already arranged; this exists so a person
+    /// who just pulled a drive can be told why its folder sizes are about to be
+    /// recomputed.
+    IndexNeedsFreshScan {
+        /// The volume whose index is marked.
+        volume_id: String,
+    },
 }
 
 /// The variants of [`IndexEvent`] without their payloads.
@@ -419,6 +433,8 @@ pub enum IndexEventKind {
     PathAccessDenied,
     /// [`IndexEvent::FolderActivity`].
     FolderActivity,
+    /// [`IndexEvent::IndexNeedsFreshScan`].
+    IndexNeedsFreshScan,
 }
 
 impl IndexEventKind {
@@ -428,7 +444,7 @@ impl IndexEventKind {
     /// exhaustive, so a new variant doesn't compile until it has a slot, and the
     /// slot doesn't compile until this array has room for it. That's what makes
     /// the host's completeness test meaningful.
-    pub const ALL: [Self; 22] = [
+    pub const ALL: [Self; 23] = [
         Self::ScanStarted,
         Self::CoverageBranchStarted,
         Self::CoverageBranchEnded,
@@ -451,6 +467,7 @@ impl IndexEventKind {
         Self::Error,
         Self::PathAccessDenied,
         Self::FolderActivity,
+        Self::IndexNeedsFreshScan,
     ];
 
     /// Where this kind sits in [`ALL`](Self::ALL).
@@ -484,6 +501,7 @@ impl IndexEventKind {
             Self::Error => const { Self::slot(19) },
             Self::PathAccessDenied => const { Self::slot(20) },
             Self::FolderActivity => const { Self::slot(21) },
+            Self::IndexNeedsFreshScan => const { Self::slot(22) },
         }
     }
 
@@ -540,6 +558,7 @@ impl IndexEvent {
             Self::Error { .. } => IndexEventKind::Error,
             Self::PathAccessDenied { .. } => IndexEventKind::PathAccessDenied,
             Self::FolderActivity { .. } => IndexEventKind::FolderActivity,
+            Self::IndexNeedsFreshScan { .. } => IndexEventKind::IndexNeedsFreshScan,
         }
     }
 
@@ -568,7 +587,8 @@ impl IndexEvent {
             | Self::PhaseChanged { volume_id, .. }
             | Self::MediaEnrichProgress { volume_id, .. }
             | Self::MediaEnrichTerminal { volume_id, .. }
-            | Self::FolderActivity { volume_id, .. } => Some(volume_id),
+            | Self::FolderActivity { volume_id, .. }
+            | Self::IndexNeedsFreshScan { volume_id } => Some(volume_id),
             Self::DirsUpdated { .. }
             | Self::MemoryWarning { .. }
             | Self::Error { .. }
@@ -729,6 +749,9 @@ pub fn one_of_every_kind() -> Vec<IndexEvent> {
                 renamed: 2,
                 last_event_at: 1_780_000_027,
             }],
+        },
+        IndexEvent::IndexNeedsFreshScan {
+            volume_id: "root".into(),
         },
     ]
 }

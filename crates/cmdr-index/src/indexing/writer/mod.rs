@@ -366,6 +366,18 @@ pub enum WriteMessage {
     /// mount's stall timeouts on every cycle. Like `MarkDirsListed`, no generation
     /// bump.
     ClearAbandonedIfDue,
+    /// Reopen every [`UnreadableCause::Abandoned`] directory on this volume if any
+    /// are waiting, whatever the retry backoff says.
+    ///
+    /// Sent by a `LocalExternal` start before its first walk. Last session's marks
+    /// include every read that failed because the drive was on its way out, and the
+    /// walk about to run is the cheapest retry of that ground there is; a drive that
+    /// just came back should not wait out a backoff earned by a drive that was
+    /// wedged. Gated on the window EXISTING (a `meta` read), ❌ never an
+    /// unconditional clear: `unreadable_cause` carries no index, so a speculative
+    /// one is a full scan of every row on the volume. Like `MarkDirsListed`, no
+    /// generation bump.
+    ClearAbandonedIfArmed,
     /// Bump the volume's `current_epoch` by one and persist it (a continuity
     /// break: reconnect/rescan, watcher death, overflow, disconnect, or a
     /// launch-loading-Stale). A scan/reconcile only STAMPS `listed_epoch` with
@@ -1494,6 +1506,19 @@ fn process_message(
                 && let Err(e) = abandoned_retry::arm(conn, store::now_unix())
             {
                 signal.note(&e, "arm the abandoned-ground retry");
+            }
+        }
+        WriteMessage::ClearAbandonedIfArmed => {
+            // No MutationTracker::bump(), same reasoning as MarkDirsListed.
+            match abandoned_retry::clear_if_armed(conn) {
+                Ok(Some(cleared)) if cleared > 0 => log::info!(
+                    "Index writer: a fresh start reopened {} an earlier session gave up on, so this walk tries them again",
+                    pluralize(cleared as u64, "dir")
+                ),
+                Ok(_) => {}
+                Err(e) => {
+                    signal.note(&e, "reopen abandoned ground for a fresh start");
+                }
             }
         }
         WriteMessage::ClearAbandonedIfDue => {

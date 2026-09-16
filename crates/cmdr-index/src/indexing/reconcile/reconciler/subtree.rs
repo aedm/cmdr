@@ -319,6 +319,10 @@ pub(in crate::indexing) fn reconcile_subtree(
             // root listing that came after the last batch, it says the drive really
             // was there all along.
             deletes::drive_seen(work.volume_id());
+        } else {
+            // And the batches this walk already sent are the ones nothing can take
+            // back, so the index says so on disk.
+            deletes::note_the_drive_left(work.volume_id(), writer);
         }
         let missing = if listing.complete && drive_listed {
             MissingRows::Delete

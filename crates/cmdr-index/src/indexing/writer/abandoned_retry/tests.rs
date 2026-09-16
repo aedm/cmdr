@@ -53,6 +53,46 @@ fn still_abandoned(conn: &Connection) -> i64 {
     .expect("count")
 }
 
+/// ❗ A drive that came back doesn't wait out a backoff a wedged drive earned.
+///
+/// The window bounds what a RETRY costs: reopening ground means the next walk over
+/// it re-pays a stall timeout per directory, and usually nothing has changed. A
+/// `LocalExternal` start is not that. The walk about to run is going to read this
+/// ground anyway, and last session's marks include every read that failed because
+/// the drive was on its way out — ground that is perfectly readable now.
+#[test]
+fn a_fresh_start_reopens_abandoned_ground_whatever_the_backoff_says() {
+    let (conn, _dir) = abandoned_index(3);
+    arm(&conn, 0).expect("a walk armed the window");
+    assert_eq!(
+        clear_if_due(&conn, 1).expect("due?"),
+        None,
+        "precondition: the backoff is holding a retry off"
+    );
+
+    let cleared = clear_if_armed(&conn).expect("clear").expect("the window was armed");
+
+    assert_eq!(cleared, 3, "every directory the last session gave up on");
+    assert_eq!(
+        still_abandoned(&conn),
+        0,
+        "so it is frontier again for the walk this start is about to run"
+    );
+    assert!(!is_armed(&conn), "and nothing is left waiting on the backoff");
+}
+
+/// A start on a volume with nothing marked touches `entries` at all.
+///
+/// Same cost argument as the maintenance tick's: the column carries no index, so a
+/// speculative clear is a full scan of every row on the drive — and a start is
+/// exactly when the machine is busiest.
+#[test]
+fn a_fresh_start_on_a_volume_with_nothing_marked_does_no_work() {
+    let (conn, _dir) = abandoned_index(0);
+
+    assert_eq!(clear_if_armed(&conn).expect("clear"), None);
+}
+
 /// A volume nothing gave up on does no work at all.
 ///
 /// Load-bearing rather than tidy: `unreadable_cause` carries no index, so a

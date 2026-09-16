@@ -18,6 +18,26 @@ pub(super) fn scan_failure_is_vanished_volume(err: &ScanError) -> bool {
     matches!(err, ScanError::RootUnlistable)
 }
 
+/// Clear the live activity of a volume whose drive went away: the scan it was
+/// running will never finish on its own, so the frontend's "scanning" row has to
+/// come off something other than a completion.
+///
+/// Shared with the completion gate next door (`../scan_completion.rs`), which meets
+/// the same drive one step later: a walk can end `Ok` and its drive still be gone
+/// by the time anything would be stamped. ❌ Freshness is the CALLER's, because the
+/// two callers reach here with it in different states.
+pub(super) fn report_a_vanished_drive(events: &dyn EventSink, volume_id: &str) {
+    set_phase_for(
+        events,
+        volume_id,
+        ActivityPhase::Idle,
+        "local scan aborted (volume vanished)",
+    );
+    events.emit(IndexEvent::ScanAborted {
+        volume_id: volume_id.to_string(),
+    });
+}
+
 /// Report a scan that neither finished nor was cancelled. Both outcomes reset
 /// freshness to Stale, and a vanished root also clears the frontend's stuck
 /// "scanning" row.
@@ -46,15 +66,7 @@ pub(super) fn report_unfinished_scan(
             // abort. No `scan_completed_at` was written (the meta writes live in the
             // clean-completion arm only), so the index heals to a rescan on remount.
             if scan_failure_is_vanished_volume(e) {
-                set_phase_for(
-                    events,
-                    volume_id,
-                    ActivityPhase::Idle,
-                    "local scan aborted (volume vanished)",
-                );
-                events.emit(IndexEvent::ScanAborted {
-                    volume_id: volume_id.to_string(),
-                });
+                report_a_vanished_drive(events, volume_id);
             }
         }
         Err(_) => {

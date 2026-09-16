@@ -625,6 +625,8 @@ fn send_replay_deletes(deletes_to_send: Vec<WriteMessage>, work: &VolumeWork, wr
             work.volume_id(),
             pluralize(deletes_to_send.len() as u64, "gathered delete"),
         );
+        // The batches already sent are the ones nothing can take back.
+        deletes::note_the_drive_left(work.volume_id(), writer);
         return;
     }
     // A `Some(true)` here is also the presence half of the delete generation's reset.

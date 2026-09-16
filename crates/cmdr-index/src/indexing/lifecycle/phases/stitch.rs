@@ -94,6 +94,10 @@ pub(super) fn directory(space: &IndexPathSpace, writer: &IndexWriter, dir: &Path
     if drive_listed {
         // Also the presence half of the delete generation's reset.
         deletes::drive_seen(work.volume_id());
+    } else {
+        // And the batches already sent are the ones nothing can take back, so the
+        // index says so on disk.
+        deletes::note_the_drive_left(work.volume_id(), writer);
     }
     let missing = if listing.complete && drive_listed {
         MissingRows::Delete

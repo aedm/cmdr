@@ -43,11 +43,32 @@ use crate::indexing::writer::WriteMessage;
 pub(crate) const HOME_COVERED_AT_KEY: &str = "home_covered_at";
 
 /// Ask the database what is finished now. Called after every drain.
+///
+/// ⚠️ **A stamp is a claim about a DRIVE, not about a database.** The frontier can
+/// empty because every root was covered, or because a drive went away and the walks
+/// over it stopped finding anything to add. The two look identical from here, so one
+/// presence read separates them — asked only when something would actually be
+/// stamped, so a pass that owes nothing pays nothing for it.
 pub(super) fn take_stock(machine: &Machine) {
-    if home_is_covered_now(machine) {
+    let home_is_covered = home_is_covered_now(machine);
+    let volume_is_covered = volume_is_covered_now(machine);
+    if !home_is_covered && !volume_is_covered {
+        return;
+    }
+    if !machine.work.drive_is_listed() {
+        log::warn!(
+            "Phases: '{}' stopped being listed, so nothing it covered is stamped",
+            machine.volume_id
+        );
+        // Whatever its walks deleted on the way out is what the rebuild marker is for.
+        crate::indexing::deletes::note_the_drive_left(&machine.volume_id, &machine.writer);
+        return;
+    }
+    crate::indexing::deletes::drive_seen(&machine.volume_id);
+    if home_is_covered {
         stamp_home(machine);
     }
-    if volume_is_covered_now(machine) {
+    if volume_is_covered {
         run_the_completion_sequence(machine);
     }
 }

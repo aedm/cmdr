@@ -345,6 +345,10 @@ async fn verify_and_correct(
         // lists the volume ROOT, so on its own it arms nothing — it only completes a
         // reset a walk already armed.
         deletes::drive_seen(work.volume_id());
+    } else {
+        // And the batches already sent are the ones nothing can take back, so the
+        // index says so on disk.
+        deletes::note_the_drive_left(work.volume_id(), writer);
     }
     let may_delete = listing_complete && drive_listed;
     for (key, db_entry) in &db_map {

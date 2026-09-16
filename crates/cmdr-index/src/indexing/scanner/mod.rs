@@ -926,7 +926,11 @@ fn run_scan(
     // ground that is genuinely unreadable. One read per walk, which is what decides
     // both the marks below and whether this walk claims anything at all.
     let drive_left = !work.drive_is_listed();
-    if !drive_left {
+    if drive_left {
+        // A `Rebuild` sends its own delete from inside the root's read, so a walk
+        // that then loses its drive is exactly the case the rebuild marker is for.
+        deletes::note_the_drive_left(work.volume_id(), writer);
+    } else {
         // A `Some(true)` is also the presence half of the delete generation's reset.
         deletes::drive_seen(work.volume_id());
     }

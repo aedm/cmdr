@@ -513,6 +513,17 @@ impl IndexManager {
             log::warn!("Failed to send DeleteMeta(scan_completed_at): {e}");
         }
 
+        // And the rebuild marker, if a vanished drive left one: walking this volume
+        // whole IS the rebuild it asked for, whether this run truncates or
+        // reconciles in place (a reconcile re-lists every directory, so rows a
+        // leaving drive took come back). Cleared where `scan_completed_at` is, so a
+        // run that dies leaves BOTH absent and the next launch walks again.
+        if let Err(e) = self.writer.send(WriteMessage::DeleteMeta(
+            crate::indexing::store::INDEX_NEEDS_REBUILD_KEY.to_string(),
+        )) {
+            log::warn!("Failed to send DeleteMeta(index_needs_rebuild): {e}");
+        }
+
         // Step 0a': Bump `current_epoch` at the scan-start funnel. Every full
         // (re)scan funnels through here regardless of trigger (journal-gap, stale,
         // overflow, force_scan), so bumping once covers them all without

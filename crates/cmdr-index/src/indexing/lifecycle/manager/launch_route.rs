@@ -50,10 +50,20 @@ pub(super) struct IndexOnDisk {
     pub journal_gap_too_wide: bool,
     /// The product's phased-first-index switch. Off restores the bulk-build path.
     pub phased_first_index: bool,
+    /// This index is marked as one a drive that went away may have taken rows
+    /// from (`store::INDEX_NEEDS_REBUILD_KEY`), so nothing else it says about
+    /// itself can be trusted.
+    pub needs_rebuild: bool,
 }
 
 /// Route one launch. The table, top to bottom:
 ///
+/// - an index marked for a rebuild ⇒ throw it away and build it again, ahead of
+///   every other row. It is the one fact that outranks a completion marker: an
+///   index a vanishing drive deleted from looks finished, and replaying a journal
+///   or reconciling in place over it would carry the holes forward. With the
+///   phased switch off there is no machine to rebuild into, so it walks whole,
+///   which is the same repair by the other path;
 /// - a replayable journal with too wide a gap ⇒ walk it whole (today's behavior,
 ///   and reachable only on a volume that already completed a scan);
 /// - a replayable journal ⇒ replay;
@@ -69,6 +79,13 @@ pub(super) struct IndexOnDisk {
 /// - anything else ⇒ cover in phases. That is every never-completed index: a
 ///   fresh install, a phased partial, and a volume a search walked.
 pub(super) fn launch_route(index: &IndexOnDisk) -> LaunchRoute {
+    if index.needs_rebuild {
+        return if index.phased_first_index {
+            LaunchRoute::RebuildThenCoverInPhases
+        } else {
+            LaunchRoute::ScanTheVolume
+        };
+    }
     if index.journal_replayable {
         return if index.journal_gap_too_wide {
             LaunchRoute::ScanTheVolume
@@ -98,6 +115,7 @@ mod tests {
         journal_replayable: false,
         journal_gap_too_wide: false,
         phased_first_index: true,
+        needs_rebuild: false,
     };
 
     /// A volume the phase machine covered part of and never finished: rows, no
@@ -226,6 +244,45 @@ mod tests {
             LaunchRoute::ReplayTheJournal,
             "❌ but it never costs a completed volume its replay: the switch restores the BUILD path, \
              not a rescan of everything already indexed"
+        );
+    }
+
+    /// ❗ The row the rebuild marker exists for. A drive that vanished mid-delete
+    /// leaves an index that looks perfectly finished — completion marker, rows,
+    /// branch set, a replayable journal — and is missing whatever the deletes took.
+    /// Every other row would trust it, so this one is read first.
+    #[test]
+    fn an_index_marked_for_a_rebuild_is_rebuilt_however_finished_it_looks() {
+        let marked = IndexOnDisk {
+            needs_rebuild: true,
+            ..COMPLETED_JOURNALED
+        };
+        assert_eq!(
+            launch_route(&marked),
+            LaunchRoute::RebuildThenCoverInPhases,
+            "a journal replay over an index with holes in it carries the holes forward"
+        );
+        assert_eq!(
+            launch_route(&IndexOnDisk {
+                needs_rebuild: true,
+                ..COMPLETED_UNJOURNALED
+            }),
+            LaunchRoute::RebuildThenCoverInPhases,
+            "and a reconcile in place would keep serving what it can't see is gone"
+        );
+    }
+
+    /// With no phase machine to rebuild into, the marker still gets its rebuild:
+    /// the volume walks whole, which is the same repair by the other path.
+    #[test]
+    fn a_marked_index_is_walked_whole_when_the_phases_are_switched_off() {
+        assert_eq!(
+            launch_route(&IndexOnDisk {
+                needs_rebuild: true,
+                phased_first_index: false,
+                ..COMPLETED_JOURNALED
+            }),
+            LaunchRoute::ScanTheVolume
         );
     }
 }

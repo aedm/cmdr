@@ -134,7 +134,7 @@ pub(crate) fn stop_removable_volume(volume_id: &str, wait_at_most: Duration) -> 
         return RemovableStop::NothingToStop;
     }
     let volumes = crate::indexing::host::volumes::current();
-    hold::flag_vanished(volume_id, |identity| volumes.is_mounted(identity));
+    let drive_left = hold::flag_vanished(volume_id, |identity| volumes.is_mounted(identity));
     let stopped = match kind {
         Some(_) => {
             if let Err(e) = stop_indexing(volume_id) {
@@ -148,7 +148,31 @@ pub(crate) fn stop_removable_volume(volume_id: &str, wait_at_most: Duration) -> 
         None => RemovableStop::NothingToStop,
     };
     hold::zombify_vanished(volume_id);
+    if drive_left {
+        mark_a_vanished_drive_for_a_rebuild(volume_id, stopped);
+    }
     stopped
+}
+
+/// Persist the rebuild marker for a drive that went away while this volume's index
+/// had deletes outstanding, so the next start rebuilds instead of trusting rows a
+/// leaving drive may have taken.
+///
+/// ⚠️ **Only once the stop is done**, which is what makes the short-lived write
+/// connection legal (`store/connection.rs`). A `StillReleasing` stop may have left a
+/// writer thread alive, so it is skipped here: the gates' own in-session write
+/// through that writer is what covers it (`indexing/deletes.rs`). A volume with
+/// nothing outstanding writes nothing either way.
+fn mark_a_vanished_drive_for_a_rebuild(volume_id: &str, stopped: RemovableStop) {
+    if stopped == RemovableStop::StillReleasing {
+        return;
+    }
+    match resolved_index_db_path(volume_id) {
+        // No database, so there is no index to rebuild.
+        Ok(db_path) if !db_path.exists() => {}
+        Ok(db_path) => crate::indexing::deletes::note_the_drive_left_after_the_drain(volume_id, &db_path),
+        Err(e) => log::debug!("'{volume_id}': can't resolve a db path to mark for a rebuild: {e}"),
+    }
 }
 
 /// Wait out what's left of a removable stop's bound for the volume's live

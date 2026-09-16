@@ -2,8 +2,9 @@
 //! status reads. Pure code movement from the former monolithic `store.rs`.
 
 use super::{
-    IndexStatus, IndexStore, IndexStoreError, SCHEMA_VERSION, ScanCalibration, ScanCalibrationKind, ScanCalibrationSet,
-    USER_DISABLED_KEY, USER_ENABLED_KEY, apply_pragmas, create_tables, register_platform_case_collation,
+    INDEX_NEEDS_REBUILD_KEY, IndexStatus, IndexStore, IndexStoreError, SCHEMA_VERSION, ScanCalibration,
+    ScanCalibrationKind, ScanCalibrationSet, USER_DISABLED_KEY, USER_ENABLED_KEY, apply_pragmas, create_tables,
+    register_platform_case_collation,
 };
 use rusqlite::{Connection, params};
 use std::path::Path;
@@ -281,6 +282,22 @@ impl IndexStore {
         Self::update_meta(&conn, set, "1")?;
         conn.execute("DELETE FROM meta WHERE key = ?1", params![cleared])?;
         Ok(())
+    }
+
+    /// Mark this index as one a drive that went away may have taken rows from, so
+    /// the next start rebuilds it.
+    ///
+    /// ⚠️ **Short-lived write connection, so call it only when no writer thread is
+    /// live for this volume** — the after-drain slot a stop ends in, where the same
+    /// contract as [`set_drive_index_intent`](Self::set_drive_index_intent) applies.
+    /// While a writer IS alive, the marker rides the writer instead
+    /// (`indexing/deletes.rs`), which keeps it in order with the deletes it speaks
+    /// for. Builds the tables first for the same reason the intent write does: this
+    /// can be the first thing ever written to a path that holds nothing.
+    pub(crate) fn mark_index_needs_rebuild(db_path: &Path) -> Result<(), IndexStoreError> {
+        let conn = Self::open_write_connection(db_path)?;
+        create_tables(&conn)?;
+        Self::update_meta(&conn, INDEX_NEEDS_REBUILD_KEY, "1")
     }
 
     /// Persist the volume's mount root (`volume_path` meta) on its index DB.

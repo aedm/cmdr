@@ -308,6 +308,8 @@ impl EventReconciler {
                 pluralize(self.pending_deletes.len() as u64, "gathered delete"),
             );
             self.pending_deletes.clear();
+            // The batches already sent are the ones nothing can take back.
+            deletes::note_the_drive_left(self.work.volume_id(), writer);
             return;
         }
         // A `Some(true)` here is also the presence half of the delete generation's reset.

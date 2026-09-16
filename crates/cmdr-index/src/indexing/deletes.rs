@@ -19,11 +19,15 @@
 //! `lifecycle::state`.
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{LazyLock, Mutex};
 
 use cmdr_fs::ignore_poison::IgnorePoison;
 
+use crate::indexing::events::IndexEvent;
+use crate::indexing::store::{INDEX_NEEDS_REBUILD_KEY, IndexStore};
 use crate::indexing::volume::VolumeId;
+use crate::indexing::writer::{IndexWriter, WriteMessage};
 
 /// One volume's outstanding delete batches, and whether its root has been listed
 /// since the last one.
@@ -51,22 +55,82 @@ pub(crate) fn batch_sent(volume_id: &str) {
 }
 
 /// How many delete batches are outstanding for `volume_id`.
-///
-/// The gates only ever ADD to this count; the reader that acts on it is the rebuild
-/// marker, which pairs a non-zero count with a drive that reads gone. Until that
-/// lands, only these tests read it.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "the rebuild marker is the production reader; the gates only record"
-    )
-)]
+#[cfg(test)]
 pub(crate) fn outstanding(volume_id: &str) -> u64 {
     DELETES
         .lock_ignore_poison()
         .get(volume_id)
         .map_or(0, |counts| counts.batches)
+}
+
+/// Take `volume_id`'s outstanding count, leaving none behind.
+///
+/// ⚠️ **Taking, ❌ never reading**, and that is what makes the marker fire ONCE per
+/// vanish. Several gates can notice the same drive leaving within milliseconds of
+/// each other; the first one to ask owns those batches and writes the marker, and
+/// the rest see nothing owed. A later batch re-arms it, which is right: it is a new
+/// delete against the same absent drive.
+fn take_outstanding(volume_id: &str) -> u64 {
+    DELETES
+        .lock_ignore_poison()
+        .get_mut(volume_id)
+        .map_or(0, |counts| std::mem::take(&mut counts.batches))
+}
+
+/// Mark `volume_id`'s index for a rebuild if deletes went out that its drive can no
+/// longer account for, and say so once.
+///
+/// **The one reader of the count**, called by every gate that finds the drive gone
+/// AFTER an observation. A gate refuses the deletes it can still see coming; this is
+/// for the ones already sent, whose rows are indistinguishable from files the user
+/// really removed. A volume with nothing outstanding writes nothing, so the healthy
+/// path costs one map lookup.
+///
+/// Through the WRITER, so the marker lands in order behind the deletes it speaks
+/// for, and so it is on disk before the shutdown that usually follows (the channel
+/// is in order and a drain processes what is queued). A stop that has already
+/// drained its writer uses
+/// [`note_the_drive_left_after_the_drain`] instead.
+pub(crate) fn note_the_drive_left(volume_id: &str, writer: &IndexWriter) {
+    if take_outstanding(volume_id) == 0 {
+        return;
+    }
+    if let Err(e) = writer.send(WriteMessage::UpdateMeta {
+        key: INDEX_NEEDS_REBUILD_KEY.to_string(),
+        value: "1".to_string(),
+    }) {
+        log::warn!("'{volume_id}': couldn't mark the index for a rebuild after its drive left: {e}");
+        return;
+    }
+    announce_the_rebuild(volume_id, writer.events().as_ref());
+}
+
+/// The same, for a stop that has already drained this volume's writer: the marker
+/// goes through a short-lived connection, the way the per-drive intent markers do.
+///
+/// ⚠️ Only once no writer thread is live for the volume (`store/connection.rs`).
+/// This is the durable half of the pair: an in-session write can still be lost to a
+/// kill, while a drive that vanished and was stopped for it ends here, and the
+/// marker is on disk before the app can quit.
+pub(crate) fn note_the_drive_left_after_the_drain(volume_id: &str, db_path: &Path) {
+    if take_outstanding(volume_id) == 0 {
+        return;
+    }
+    if let Err(e) = IndexStore::mark_index_needs_rebuild(db_path) {
+        log::warn!("'{volume_id}': couldn't mark the index for a rebuild after its drive left: {e}");
+        return;
+    }
+    announce_the_rebuild(volume_id, crate::indexing::host::events::current().as_ref());
+}
+
+/// One `warn` for the log and one event for the host, for a marker that just landed.
+fn announce_the_rebuild(volume_id: &str, events: &dyn crate::indexing::events::EventSink) {
+    log::warn!(
+        "'{volume_id}': deletes had gone out when its drive read gone, so its index is marked for a rebuild and the next start walks it from scratch"
+    );
+    events.emit(IndexEvent::IndexNeedsFreshScan {
+        volume_id: volume_id.to_string(),
+    });
 }
 
 /// Record that `volume_id`'s ROOT listed successfully. Arms the reset; the next
@@ -104,7 +168,105 @@ pub(crate) fn forget(volume_id: &str) {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
+    use crate::indexing::events::{IndexEventKind, RecordingSink};
+
+    /// A volume with a real writer over a real database, so the marker can be read
+    /// back from the `meta` table the production path writes it to.
+    fn a_volume_with_a_writer(volume_id: &str) -> (IndexWriter, std::path::PathBuf, tempfile::TempDir, Arc<RecordingSink>) {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let db_path = dir.path().join(format!("{volume_id}.db"));
+        IndexStore::open(&db_path).expect("open the store");
+        let events = Arc::new(RecordingSink::new());
+        let writer =
+            IndexWriter::spawn(&db_path, Arc::clone(&events) as Arc<dyn crate::indexing::events::EventSink>)
+                .expect("spawn the writer");
+        (writer, db_path, dir, events)
+    }
+
+    /// Whether this index carries the rebuild marker.
+    fn is_marked(db_path: &Path) -> bool {
+        let conn = IndexStore::open_read_connection(db_path).expect("read connection");
+        IndexStore::index_needs_rebuild(&conn).expect("read the marker")
+    }
+
+    /// ❗ What the whole count is for: deletes went out, the drive then read gone,
+    /// so the index says on disk that it may be missing rows.
+    ///
+    /// Through the writer, in order behind the deletes it speaks for, and announced
+    /// exactly once — the host turns that into the one sentence a person who just
+    /// pulled a drive reads.
+    #[test]
+    fn a_batch_then_a_drive_that_left_marks_the_index_for_a_rebuild() {
+        let volume_id = "deletes-test-marker";
+        forget(volume_id);
+        let (writer, db_path, _dir, events) = a_volume_with_a_writer(volume_id);
+
+        batch_sent(volume_id);
+        note_the_drive_left(volume_id, &writer);
+        writer.flush_blocking().expect("flush the writer");
+
+        assert!(is_marked(&db_path), "the next start has to rebuild this index");
+        assert_eq!(
+            events.kinds_for(volume_id),
+            vec![IndexEventKind::IndexNeedsFreshScan],
+            "and the host hears about it once"
+        );
+
+        // A second gate noticing the same vanish owes nothing.
+        note_the_drive_left(volume_id, &writer);
+        writer.flush_blocking().expect("flush the writer");
+        assert_eq!(
+            events.kinds_for(volume_id).len(),
+            1,
+            "❌ one disconnection, one announcement, however many gates saw it"
+        );
+        writer.shutdown();
+        forget(volume_id);
+    }
+
+    /// A drive that left with nothing outstanding owes no rebuild: the index lost
+    /// no rows, so marking it would cost a full rescan for nothing.
+    #[test]
+    fn a_drive_that_left_with_no_deletes_outstanding_marks_nothing() {
+        let volume_id = "deletes-test-no-marker";
+        forget(volume_id);
+        let (writer, db_path, _dir, events) = a_volume_with_a_writer(volume_id);
+
+        note_the_drive_left(volume_id, &writer);
+        writer.flush_blocking().expect("flush the writer");
+
+        assert!(!is_marked(&db_path));
+        assert!(events.kinds_for(volume_id).is_empty());
+        writer.shutdown();
+        forget(volume_id);
+    }
+
+    /// The durable half: a stop that has already drained its writer still gets the
+    /// marker down, through a short-lived connection. This is the path a pulled
+    /// drive actually takes, and the one that has to survive the quit that often
+    /// follows.
+    #[test]
+    fn a_stop_that_drained_its_writer_still_marks_the_index() {
+        let _serialized = crate::indexing::handle::test_lock();
+        let volume_id = "deletes-test-marker-after-drain";
+        forget(volume_id);
+        let (writer, db_path, _dir, _events) = a_volume_with_a_writer(volume_id);
+        writer.shutdown();
+
+        let host = Arc::new(RecordingSink::new());
+        let _installed =
+            crate::indexing::host::events::install_for_test(Arc::clone(&host) as Arc<dyn crate::indexing::events::EventSink>);
+
+        batch_sent(volume_id);
+        note_the_drive_left_after_the_drain(volume_id, &db_path);
+
+        assert!(is_marked(&db_path), "the marker outlives the writer that would have carried it");
+        assert_eq!(host.kinds_for(volume_id), vec![IndexEventKind::IndexNeedsFreshScan]);
+        forget(volume_id);
+    }
 
     /// A volume nothing has deleted from owes no rebuild.
     #[test]
@@ -153,6 +315,30 @@ mod tests {
             1,
             "a `Some(true)` with no root listing after the batch resets nothing"
         );
+        forget(volume_id);
+    }
+
+    /// ❗ The marker fires ONCE per vanish, however many gates notice.
+    ///
+    /// A drive leaving trips every gate that touches it within milliseconds: the
+    /// live loop's batch, a walk's directory, the verifier's pass. Each asks what is
+    /// outstanding, and the first to ask owns it — otherwise one disconnection would
+    /// write the marker a dozen times and announce itself a dozen times to the
+    /// person who pulled one drive.
+    #[test]
+    fn only_the_first_asker_owes_the_rebuild() {
+        let volume_id = "deletes-test-one-owner";
+        forget(volume_id);
+        batch_sent(volume_id);
+        batch_sent(volume_id);
+
+        assert_eq!(take_outstanding(volume_id), 2, "the first asker owns both batches");
+        assert_eq!(take_outstanding(volume_id), 0, "and every later one owes nothing");
+
+        // A new batch against the same absent drive is a new debt, so the next
+        // gate to notice marks it again.
+        batch_sent(volume_id);
+        assert_eq!(take_outstanding(volume_id), 1);
         forget(volume_id);
     }
 

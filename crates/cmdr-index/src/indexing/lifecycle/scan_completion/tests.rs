@@ -354,6 +354,53 @@ async fn a_stopped_volume_gets_no_replay_and_no_live_loop() {
     );
 }
 
+/// ❗ The completion gate. A walk can run to the END and its drive still be gone by
+/// the time anything would be stamped: the walk answers for the reads it made, and
+/// this answers for the claims those reads would support.
+///
+/// Everything the task still claims rides on one presence read — the stamp, the
+/// freshness flip, the phase, the live loop — so an index whose drive left comes
+/// back unmarked and heals on the next mount, instead of carrying a completion
+/// marker over rows a leaving drive may have taken.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scan_whose_drive_left_stamps_nothing_and_reports_the_vanish() {
+    let _serialized = crate::indexing::handle::test_lock();
+    let drive = crate::indexing::host::volumes::MountIdentity::from_raw(0x0100_0077);
+    let provider = crate::indexing::host::volumes::FakeVolumeProvider::shared();
+    provider.mount("/Volumes/CompletionVanish", drive);
+    let _installed = crate::indexing::host::volumes::install_for_test(Arc::clone(&provider) as _);
+
+    let volume_id = "done-vanished";
+    let mut fx = Fixture::new(volume_id);
+    let mut params = fx.completion(volume_id, Ok(summary(42)));
+    // The walk's own generation, captured the way a real `LocalExternal` start
+    // captures it — and then the drive goes.
+    params.work = VolumeWork::for_test_on(volume_id, drive);
+    provider.mark_unmounted("/Volumes/CompletionVanish");
+
+    run_scan_completion(params).await;
+
+    assert_eq!(
+        fx.completion_marker().await,
+        None,
+        "a walk whose drive left must leave `scan_completed_at` absent, whatever its totals say"
+    );
+    assert_eq!(
+        fx.freshness_now(),
+        Some(Freshness::Stale),
+        "and say so, rather than claiming the index is authoritative"
+    );
+    let kinds = fx.events.kinds_for(volume_id);
+    assert!(
+        kinds.contains(&IndexEventKind::ScanAborted),
+        "the stuck scanning row comes off something other than a completion: {kinds:?}"
+    );
+    assert!(
+        !kinds.contains(&IndexEventKind::ScanComplete),
+        "❌ and nothing announces a scan that completed over a drive that isn't there: {kinds:?}"
+    );
+}
+
 /// The abort decision fires ONLY for a vanished volume (`RootUnlistable`), so a
 /// yanked drive clears its stuck "scanning" row — but a legitimately empty root
 /// or a walk panic does NOT abort (the prior index stays visible-stale, no

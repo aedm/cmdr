@@ -381,6 +381,17 @@ impl IndexManager {
             return self.resume_or_scan_network();
         }
 
+        // A drive that is here again gets the ground an earlier session gave up on
+        // back, before anything walks. Those marks include every read that failed
+        // because the drive was on its way out, and they are invisible to the
+        // coverage frontier until something reopens them, so a vanish would
+        // otherwise cost this drive that ground until the backoff came round.
+        // Cheap by construction: it does nothing unless something is marked
+        // (`writer/abandoned_retry.rs`).
+        if self.kind == IndexVolumeKind::LocalExternal {
+            let _ = self.writer.send(WriteMessage::ClearAbandonedIfArmed);
+        }
+
         let status = self
             .store
             .get_index_status()
@@ -448,6 +459,9 @@ impl IndexManager {
             journal_replayable,
             journal_gap_too_wide,
             phased_first_index: phases::phased_first_index(),
+            // Read FIRST in the table it feeds, because an index a vanishing drive
+            // deleted from can look perfectly finished.
+            needs_rebuild: IndexStore::index_needs_rebuild(read_conn).unwrap_or(false),
         });
 
         match route {

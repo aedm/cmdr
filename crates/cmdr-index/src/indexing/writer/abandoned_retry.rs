@@ -39,13 +39,21 @@
 //!
 //! ## What a cleared cause actually buys, today
 //!
-//! The ground goes back in the frontier, so the next search over that scope walks
-//! it. ❌ Nothing here enqueues a walk of its own — the component that would (a
-//! phase machine driving coverage on its own schedule) doesn't exist yet, and
-//! adding a walk trigger to a maintenance tick would put background disk work
-//! behind a clock nobody asked. A successful listing anywhere clears the cause
-//! immediately regardless (`mark_dirs_listed`), which is the same contract
-//! `Denied` heals under.
+//! The ground goes back in the frontier, so the next walk over that scope reads
+//! it: a search's, or the phase machine's while it is still covering this volume.
+//! ❌ Nothing here enqueues a walk of its own — putting a walk trigger on a
+//! maintenance tick would start background disk work behind a clock nobody asked
+//! about, and the machine already has a schedule of its own. A successful listing
+//! anywhere clears the cause immediately regardless (`mark_dirs_listed`), which is
+//! the same contract `Denied` heals under.
+//!
+//! ## A drive that comes back doesn't wait out the backoff
+//!
+//! A `LocalExternal` start reopens this volume's abandoned ground before its first
+//! walk ([`clear_if_armed`]), whatever the window says. The backoff answers "is it
+//! worth paying a wedged mount's timeouts again?"; a drive being started anew is a
+//! different question, and last session's marks include every read that failed
+//! because the drive was on its way out.
 
 use std::time::Duration;
 
@@ -153,6 +161,32 @@ pub(super) fn clear_if_due(conn: &Connection, now: u64) -> Result<Option<usize>,
         Some(next) => write_window(conn, next)?,
         None => disarm(conn)?,
     }
+    Ok(Some(cleared))
+}
+
+/// Reopen every `Abandoned` cause if this volume has anything waiting to be
+/// retried, whatever the backoff says, and report how many rows that was (`None`
+/// when nothing was armed).
+///
+/// **What a fresh start is for.** The backoff above answers "is it worth paying a
+/// wedged mount's timeouts again?", and its honest answer is usually "not yet". A
+/// drive that is being started ANEW is a different question: the last session's
+/// marks describe reads that failed then, including every read that failed because
+/// the drive was on its way out, and the walk about to run is the cheapest possible
+/// retry of exactly that ground. So the window's length doesn't gate it; only its
+/// existence does, which is what keeps this off the `entries` table (an unindexed
+/// column, so a speculative clear would scan every row) for a volume with nothing
+/// marked.
+///
+/// Disarms rather than advancing the backoff: nothing is waiting any more, and a
+/// walk that condemns this ground again re-arms at the fast first step, which is
+/// the right ladder for a drive that just came back.
+pub(super) fn clear_if_armed(conn: &Connection) -> Result<Option<usize>, IndexStoreError> {
+    if read_window(conn)?.is_none() {
+        return Ok(None);
+    }
+    let cleared = IndexStore::clear_unreadable_cause(conn, UnreadableCause::Abandoned)?;
+    disarm(conn)?;
     Ok(Some(cleared))
 }
 

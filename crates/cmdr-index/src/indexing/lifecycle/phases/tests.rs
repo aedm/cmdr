@@ -260,8 +260,44 @@ struct Drive {
     tree: tempfile::TempDir,
     index: crate::indexing::handle::Index,
     events: std::sync::Arc<crate::indexing::events::RecordingSink>,
+    /// The host's mount table, so a test can put this drive in it and take it out
+    /// again. Held because a presence gate asks the host, never the filesystem.
+    volumes: std::sync::Arc<crate::indexing::host::volumes::FakeVolumeProvider>,
     volume_id: &'static str,
     _serialized: std::sync::MutexGuard<'static, ()>,
+}
+
+/// A sink that takes the drive out of the host's mount table the first time the
+/// machine announces a phase, then goes on recording.
+///
+/// ⚠️ **From inside an `emit`**, which is the only deterministic moment there is:
+/// the machine runs on its own thread, and a test that unmounted after `start()`
+/// returned would race a small tree's whole run. By the first announcement the
+/// reservation has captured its mount identity, so the generation has something to
+/// lose — and every stamp is still ahead.
+struct TheDriveLeavesMidRun {
+    recorder: std::sync::Arc<crate::indexing::events::RecordingSink>,
+    /// Filled in after the fixture is built, because the host it unmounts from is
+    /// built with it. `None` until then, so an event before that changes nothing.
+    target: std::sync::Mutex<Option<(std::sync::Arc<crate::indexing::host::volumes::FakeVolumeProvider>, PathBuf)>>,
+    already_left: std::sync::atomic::AtomicBool,
+}
+
+impl crate::indexing::events::EventSink for TheDriveLeavesMidRun {
+    fn emit(&self, event: crate::indexing::events::IndexEvent) {
+        use cmdr_fs::ignore_poison::IgnorePoison;
+        let announced_a_phase = matches!(
+            event.kind(),
+            crate::indexing::events::IndexEventKind::CoveragePhaseStarted
+        );
+        self.recorder.emit(event);
+        if !announced_a_phase || self.already_left.swap(true, Ordering::Relaxed) {
+            return;
+        }
+        if let Some((volumes, root)) = self.target.lock_ignore_poison().as_ref() {
+            volumes.mark_unmounted(root);
+        }
+    }
 }
 
 impl Drive {
@@ -348,9 +384,48 @@ impl Drive {
             tree,
             index,
             events,
+            volumes,
             volume_id,
             _serialized: serialized,
         }
+    }
+
+    /// A drive that is in the host's mount table when its index starts and gone by
+    /// the time anything would be stamped.
+    ///
+    /// The identity is captured by the reservation, so the mount has to be there
+    /// BEFORE the start; the sink takes it away on the machine's first phase
+    /// announcement (see [`TheDriveLeavesMidRun`]).
+    fn that_vanishes_mid_run(volume_id: &'static str, build: impl FnOnce(&Path)) -> Self {
+        let recorder = std::sync::Arc::new(crate::indexing::events::RecordingSink::new());
+        let vanishing = std::sync::Arc::new(TheDriveLeavesMidRun {
+            recorder: std::sync::Arc::clone(&recorder),
+            target: std::sync::Mutex::new(None),
+            already_left: std::sync::atomic::AtomicBool::new(false),
+        });
+        let host = crate::indexing::host::policy::FakeHostPolicy::shared();
+        let drive = Self::assembled(
+            volume_id,
+            build,
+            |_, _| {},
+            &[],
+            true,
+            std::sync::Arc::clone(&vanishing) as std::sync::Arc<dyn crate::indexing::events::EventSink>,
+            recorder,
+            host,
+        );
+        // The drive is plugged in, and the sink now knows what to unplug.
+        drive
+            .volumes
+            .mount(drive.tree.path(), crate::indexing::host::volumes::MountIdentity::from_raw(0x0100_0055));
+        {
+            use cmdr_fs::ignore_poison::IgnorePoison;
+            *vanishing.target.lock_ignore_poison() = Some((
+                std::sync::Arc::clone(&drive.volumes),
+                drive.tree.path().to_path_buf(),
+            ));
+        }
+        drive
     }
 
     /// Turn indexing on for the drive, which is what hands it to the machine.

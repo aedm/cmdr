@@ -37,7 +37,7 @@ mod stamps;
 mod unfinished;
 
 use stamps::stamp_a_completed_walk;
-use unfinished::report_unfinished_scan;
+use unfinished::{report_a_vanished_drive, report_unfinished_scan};
 
 /// Everything the post-scan completion task takes ownership of from
 /// `start_scan`. These are exactly the variables the former inline closure
@@ -174,6 +174,31 @@ async fn finish_the_scan(params: ScanCompletion) {
             return;
         }
     };
+
+    // ⚠️ **The completion gate.** ONE presence read decides everything this task
+    // still claims about the volume: the stamp, its calibration and sweep keys,
+    // the freshness flip, the phase, and the live loop it would start. A walk can
+    // end `Ok` and its drive still be gone by the time any of that is written —
+    // the walk's own gate answers for the reads it made, and this answers for the
+    // claims those reads would support.
+    //
+    // ❌ It gates the CANCELLED outcome too: a cancelled walk on a drive that left
+    // is owed no live loop either, because nothing would ever drain one and it
+    // would read a drive that isn't there.
+    if !work.drive_is_listed() {
+        log::warn!("Scan completion: '{volume_id}' stopped being listed, so its scan claims nothing");
+        // Whatever it deleted on the way out is what the rebuild marker is for.
+        crate::indexing::deletes::note_the_drive_left(&volume_id, &writer);
+        super::state::apply_freshness_event_on(
+            &freshness,
+            events.as_ref(),
+            &volume_id,
+            super::freshness::FreshnessEvent::ScanFailed,
+        );
+        report_a_vanished_drive(events.as_ref(), &volume_id);
+        return;
+    }
+    crate::indexing::deletes::drive_seen(work.volume_id());
 
     log::info!(
         "Scan: {} ({} entries, {} dirs, {:.1}s)",

@@ -79,6 +79,23 @@ pub(crate) const SYSTEM_DIR_EXCLUSIONS_KEY: &str = "system_dir_exclusions_built_
 /// covers the NAS list; this one covers the local tiers.
 pub(crate) const EXCLUSION_POLICY_KEY: &str = "exclusion_policy_built_for";
 
+/// Meta key marking that this index may have lost rows to a drive that went away,
+/// so the next start rebuilds it instead of trusting what is there.
+///
+/// Written when deletes had gone out for a volume whose drive then read gone (the
+/// delete generation, `indexing/deletes.rs`). A gate can refuse a delete it can see
+/// coming, but a delete already sent against a leaving drive is only visible after
+/// the fact, and the rows it took are indistinguishable from files the user really
+/// removed. Persisted rather than in-memory, because the whole point is to survive
+/// the quit, crash, or unmount that follows: it outlives the session, and on Linux,
+/// where an unmount stops no index, it is the only thing that does.
+///
+/// Cleared by the rebuild it asks for (`manager/phased.rs`), with the completion
+/// markers that describe the index it replaces. Only presence matters (the value is
+/// a marker). ❌ Never `clear_index` for this: that deletes the database, and the
+/// per-drive intent markers live in it.
+pub(crate) const INDEX_NEEDS_REBUILD_KEY: &str = "index_needs_rebuild";
+
 /// Root entry sentinel ID. All top-level entries have `parent_id = ROOT_ID`.
 pub const ROOT_ID: i64 = 1;
 

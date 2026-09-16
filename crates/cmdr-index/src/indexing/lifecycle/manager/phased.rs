@@ -155,7 +155,10 @@ impl IndexManager {
     ///   phase re-walking the whole scope and never re-stamping.
     ///
     /// The completion markers go with the rows they describe: they are claims about
-    /// an index that no longer exists.
+    /// an index that no longer exists. The rebuild marker goes with them, because
+    /// this IS the rebuild it asked for — dropped in the same writer batch as the
+    /// truncate, so a death in between leaves the marker standing and the next
+    /// launch asks again.
     fn rebuild_if_the_machine_cant_add_to_this_index(&mut self, start: PhasedStart) -> bool {
         let populated = IndexStore::get_entry_count(self.store.read_conn()).is_ok_and(|count| count > 1);
         let why = if !populated {
@@ -172,7 +175,11 @@ impl IndexManager {
         };
         log::info!("Phases: rebuilding '{}': {why}", self.volume_id);
         let _ = self.writer.send(WriteMessage::TruncateData);
-        for key in ["scan_completed_at", phases::HOME_COVERED_AT_KEY] {
+        for key in [
+            "scan_completed_at",
+            phases::HOME_COVERED_AT_KEY,
+            crate::indexing::store::INDEX_NEEDS_REBUILD_KEY,
+        ] {
             let _ = self.writer.send(WriteMessage::DeleteMeta(key.to_string()));
         }
         // The branch set describes ground that is about to stop existing, and it is

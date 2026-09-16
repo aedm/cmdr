@@ -1,7 +1,10 @@
 //! `IndexStore` meta-table and epoch helpers, plus whole-index counts and
 //! `clear_all`. Pure code movement from the former monolithic `store.rs`.
 
-use super::{CURRENT_EPOCH_KEY, IndexStore, IndexStoreError, LEDGER_HEAL_KEY, UnreadableCause, with_savepoint};
+use super::{
+    CURRENT_EPOCH_KEY, INDEX_NEEDS_REBUILD_KEY, IndexStore, IndexStoreError, LEDGER_HEAL_KEY, UnreadableCause,
+    with_savepoint,
+};
 use rusqlite::{Connection, OptionalExtension, params};
 
 #[cfg(test)]
@@ -65,6 +68,16 @@ impl IndexStore {
     /// writer's `MarkLedgerUnpaid` handler.
     pub fn clear_ledger_heal_done(conn: &Connection) -> Result<(), IndexStoreError> {
         Self::delete_meta(conn, LEDGER_HEAL_KEY)
+    }
+
+    /// Whether this index is marked as one that may have lost rows to a drive that
+    /// went away, so the next start rebuilds it rather than trusting it.
+    ///
+    /// Read at launch, ahead of every other routing fact
+    /// (`lifecycle/manager/launch_route.rs`): an index this marks can look perfectly
+    /// healthy, complete marker and all, and that is exactly the case it exists for.
+    pub fn index_needs_rebuild(conn: &Connection) -> Result<bool, IndexStoreError> {
+        Ok(Self::read_meta_value(conn, INDEX_NEEDS_REBUILD_KEY)?.is_some())
     }
 
     /// Read the volume's `current_epoch` from `meta`.

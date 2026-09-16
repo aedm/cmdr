@@ -80,6 +80,7 @@ pub(super) fn role(msg: &WriteMessage) -> BatchRole {
         | WriteMessage::MarkDirsListed { .. }
         | WriteMessage::MarkDirsUnreadable { .. }
         | WriteMessage::ClearAbandonedIfDue
+        | WriteMessage::ClearAbandonedIfArmed
         | WriteMessage::UpdateLastEventId(_)
         | WriteMessage::UpdateMeta { .. }
         | WriteMessage::DeleteMeta(_)

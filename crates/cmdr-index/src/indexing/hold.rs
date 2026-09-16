@@ -425,13 +425,15 @@ pub(crate) fn wait_until_released(volume_id: &str, wait: Duration) -> Release {
 }
 
 /// Flag every live generation of `volume_id` whose filesystem `is_mounted` answers
-/// `Some(false)` for as vanished, so no wait counts it from here on.
+/// `Some(false)` for as vanished, so no wait counts it from here on. Reports whether
+/// it flagged any, which is a stop's evidence that this drive really went away
+/// rather than being let go of.
 ///
 /// Only a generation with a mount identity is asked. ❌ `None`, a mount table that
 /// couldn't be read, never flags anything: "don't know" must not let a stop answer
 /// "released" over a worker still reading a mounted drive. One read per distinct
 /// identity, taken off the lock.
-pub(crate) fn flag_vanished(volume_id: &str, is_mounted: impl Fn(MountIdentity) -> Option<bool>) {
+pub(crate) fn flag_vanished(volume_id: &str, is_mounted: impl Fn(MountIdentity) -> Option<bool>) -> bool {
     let asked: Vec<(Generation, MountIdentity)> = HOLDS
         .table
         .lock_ignore_poison()
@@ -443,7 +445,7 @@ pub(crate) fn flag_vanished(volume_id: &str, is_mounted: impl Fn(MountIdentity) 
         .filter_map(|(generation, holds)| Some((*generation, holds.identity?)))
         .collect();
     if asked.is_empty() {
-        return;
+        return false;
     }
 
     let mut answers: HashMap<MountIdentity, Option<bool>> = HashMap::new();
@@ -453,14 +455,16 @@ pub(crate) fn flag_vanished(volume_id: &str, is_mounted: impl Fn(MountIdentity) 
         .map(|(generation, _)| generation)
         .collect();
     if gone.is_empty() {
-        return;
+        return false;
     }
 
     let mut flagged = Vec::new();
     {
         let mut table = HOLDS.table.lock_ignore_poison();
         let Some(generations) = table.volumes.get_mut(volume_id) else {
-            return;
+            // Every generation we asked about has let go since. Their drive still
+            // went away, which is what the caller acts on.
+            return true;
         };
         for generation in gone {
             // A generation whose last share dropped while we asked is already gone.
@@ -476,6 +480,7 @@ pub(crate) fn flag_vanished(volume_id: &str, is_mounted: impl Fn(MountIdentity) 
         log::info!("'{volume_id}': generation(s) {flagged:?} lost their drive, so no stop waits on them");
         HOLDS.changed.notify_all();
     }
+    true
 }
 
 /// Turn every vanished generation of `volume_id` that's still held into a zombie,

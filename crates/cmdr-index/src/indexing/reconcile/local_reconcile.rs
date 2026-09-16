@@ -572,6 +572,10 @@ fn run_local_reconcile(
         if drive_listed {
             // Also the presence half of the delete generation's reset.
             deletes::drive_seen(work.volume_id());
+        } else {
+            // And the batches this walk already sent are the ones nothing can take
+            // back, so the index says so on disk.
+            deletes::note_the_drive_left(work.volume_id(), writer);
         }
         let missing = if listing.complete && drive_listed {
             MissingRows::Delete
@@ -635,6 +639,23 @@ fn run_local_reconcile(
             }
         }
     }
+
+    // ⚠️ **The completion gate.** A walk whose drive left keeps the coverage it
+    // genuinely earned — every directory in `listed_ids` really was listed, and a
+    // mark is a fact about a read that happened — and claims nothing beyond it: an
+    // aggregate is a claim about what this pass covered, and the checkpoint is work
+    // on behalf of one. The typed vanish is what the completion handler needs to
+    // hear to leave the index unstamped.
+    if !work.drive_is_listed() {
+        reconciler::send_marks(&listed_ids, epoch, writer).map_err(|e| ScanError::WriterSend(e.to_string()))?;
+        deletes::note_the_drive_left(work.volume_id(), writer);
+        log::warn!(
+            "local reconcile: {} stopped being listed, so its pass claims no completion",
+            root.display()
+        );
+        return Err(ScanError::RootUnlistable);
+    }
+    deletes::drive_seen(work.volume_id());
 
     // Clean finish: stamp every re-listed dir (marks before the single aggregate), then ONE `ComputeAllAggregates`
     // (never per-dir propagation), then trim the post-rescan WAL spike.

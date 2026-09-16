@@ -8,6 +8,55 @@
 
 use super::*;
 
+/// ❗ A stamp is a claim about a DRIVE, not about a database.
+///
+/// The frontier empties either way: because every root was covered, or because the
+/// drive went away and the walks over it stopped finding anything to add. From
+/// inside the coverage query the two are identical, so a pass whose drive left
+/// would otherwise stamp the volume complete over ground nobody could read — and a
+/// completion marker is exactly what makes the next launch skip the heal.
+#[test]
+fn a_pass_whose_drive_left_stamps_nothing() {
+    let drive = Drive::that_vanishes_mid_run("phased-drive-left", |root| {
+        std::fs::create_dir_all(root.join("one/two")).expect("dirs");
+        std::fs::write(root.join("one/a.txt"), "a").expect("file");
+    });
+
+    drive.start();
+    drive.wait_for_the_machine();
+
+    assert!(
+        drive.meta("scan_completed_at").is_none(),
+        "a volume whose drive left claims no completion, however empty its frontier reads"
+    );
+    assert!(
+        drive.meta(HOME_COVERED_AT_KEY).is_none(),
+        "and the early home signal is a claim about the same drive"
+    );
+}
+
+/// The control: the same machine over a drive that stays does stamp, so the test
+/// above is pinning the gate rather than a machine that never completes.
+#[test]
+fn a_pass_on_a_drive_that_stays_still_stamps() {
+    let drive = Drive::new(
+        "phased-drive-stays",
+        |root| {
+            std::fs::create_dir_all(root.join("one/two")).expect("dirs");
+            std::fs::write(root.join("one/a.txt"), "a").expect("file");
+        },
+        &[],
+    );
+
+    drive.start();
+    drive.wait_for_the_machine();
+
+    assert!(
+        drive.meta("scan_completed_at").is_some(),
+        "a covered volume on a drive that is there completes as it always did"
+    );
+}
+
 /// The bounded-progress rule, and the reason completion can be a pure function of
 /// the database. A directory a walk gave up on is never marked listed, so on its
 /// own it would sit in the frontier forever and NOTHING hanging off completion

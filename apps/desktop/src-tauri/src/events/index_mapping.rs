@@ -151,6 +151,22 @@ pub struct IndexScanCompleteEvent {
     pub duration_ms: u64,
 }
 
+/// This volume's index may have lost rows to a drive that went away, so it has
+/// been marked for a rebuild and the next start walks it from scratch.
+///
+/// Fires once per marker write, ❌ never per launch: the marker is persisted, and
+/// a window that announced it again on every start would keep apologizing for one
+/// disconnection. Nothing is asked of the person — the rebuild is already
+/// arranged — so this exists to give the folder sizes about to be recomputed a
+/// reason.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
+#[tauri_specta(event_name = "index-needs-fresh-scan")]
+#[serde(rename_all = "camelCase")]
+pub struct IndexNeedsFreshScanEvent {
+    /// The volume whose index is marked for a rebuild.
+    pub volume_id: String,
+}
+
 /// A scan ended WITHOUT completing: a network (SMB/MTP) scan that disconnected,
 /// was canceled, timed out, or otherwise aborted.
 ///
@@ -471,6 +487,7 @@ pub(crate) fn route(event: IndexEvent, app: Option<&AppHandle>) -> Destination {
         }
         IndexEvent::HomeCovered { .. } => Destination::AnalyticsOnly,
         IndexEvent::ScanAborted { volume_id } => to_frontend(app, IndexScanAbortedEvent { volume_id }),
+        IndexEvent::IndexNeedsFreshScan { volume_id } => to_frontend(app, IndexNeedsFreshScanEvent { volume_id }),
         IndexEvent::DirsUpdated { paths } => to_frontend(app, IndexDirUpdatedEvent { paths }),
         IndexEvent::ReplayProgress {
             volume_id,
