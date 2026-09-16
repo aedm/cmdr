@@ -127,10 +127,9 @@ export async function captureMainExplorerSurfaces(
   // the dialog tranche nor the gallery pass reaches it, and it's the only place the
   // sidebar's group headings render.
   //
-  // ❗ It no longer photographs anything FAVORITES: those moved to their own menu
-  // (⌃D, `navigation/FavoritesMenu.svelte`), which needs a surface of its own — with
-  // and without favorites, plus the new "See N favorites" row here. Until it has one,
-  // the favorites copy reaches translators with no picture.
+  // It lists no FAVORITES: those have their own menu (⌃D), captured right after this
+  // one. What it does carry is the "See N favorites" row that hands the header over,
+  // which is this surface's alone.
   await captureSurface('pane-volume-chooser', report, failed, async () => {
     await captureCall(main, 'reset')
     await captureCall(main, 'setSurface', 'pane-volume-chooser')
@@ -145,8 +144,14 @@ export async function captureMainExplorerSurfaces(
     await main.waitForSelector('[data-menu] [data-menu-heading]', 5000)
     return { page: main }
   })
-  // Escape closes the dropdown; the poll keeps a slow close from bleeding into the
-  // next surface's shot.
+  await closeOpenMenu(main)
+  await captureCall(main, 'disable').catch(() => {})
+
+  await captureFavoritesMenuSurfaces(main, report, failed)
+}
+
+/** Escape closes an open menu; the poll keeps a slow close out of the next surface's shot. */
+async function closeOpenMenu(main: TauriPage): Promise<void> {
   await main
     .evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
     .catch(() => {})
@@ -154,7 +159,86 @@ export async function captureMainExplorerSurfaces(
     .poll(async () => main.evaluate<number>(`document.querySelectorAll('[data-menu]').length`), { timeout: 3000 })
     .toBe(0)
     .catch(() => {})
-  await captureCall(main, 'disable').catch(() => {})
+}
+
+/** Opens the favorites menu on the focused pane, the way ⌃D and the Go menu both do. */
+async function openFavoritesMenu(main: TauriPage): Promise<void> {
+  await main.evaluate(`window.__TAURI_INTERNALS__.invoke('plugin:event|emit', {
+      event: 'execute-command',
+      payload: { commandId: 'favorites.open' }
+  })`)
+}
+
+/** Every saved favorite, off `list_volumes` (they ride it as `fav-<id>` locations). */
+async function favoritesSnapshot(main: TauriPage): Promise<{ id: string; name: string; path: string }[]> {
+  return main.evaluate<{ id: string; name: string; path: string }[]>(`(async function(){
+    var res = await window.__TAURI_INTERNALS__.invoke('list_volumes');
+    return res.data
+      .filter(function(v){ return v.category === 'favorite'; })
+      .map(function(v){ return { id: v.id.replace(/^fav-/, ''), name: v.name, path: v.path }; });
+  })()`)
+}
+
+/**
+ * The favorites menu (⌃D), in the two states a translator has to judge: the list with
+ * rows in it, and the empty one that says where favorites will show up.
+ *
+ * ❗ The empty state can only be photographed by EMPTYING the store, so this snapshots the
+ * list first and adds it back afterwards. The capture's own data dir is thrown away after
+ * the run, but a stage-only run shares its app with every other spec on the shard, where a
+ * missing favorite changes every later volume chooser. Restoring by path means the ids are
+ * new, which nothing downstream reads.
+ *
+ * Populated goes FIRST on purpose: the coupler gives a key the first surface it appeared
+ * on, and the heading and the `0` row belong with a list that has something in it.
+ */
+export async function captureFavoritesMenuSurfaces(
+  main: TauriPage,
+  report: Record<string, SurfaceEntry>,
+  failed: string[],
+): Promise<void> {
+  const before = await favoritesSnapshot(main)
+  try {
+    await captureSurface('favorites-menu', report, failed, async () => {
+      await captureCall(main, 'reset')
+      await captureCall(main, 'setSurface', 'favorites-menu')
+      await captureCall<boolean>(main, 'enable')
+      await openFavoritesMenu(main)
+      // The first numbered row: the menu is up AND the favorites are in it.
+      await main.waitForSelector('[data-menu] [data-accelerator="1"]', 5000)
+      return { page: main }
+    })
+    await closeOpenMenu(main)
+    await captureCall(main, 'disable').catch(() => {})
+
+    for (const favorite of before) {
+      await main.evaluate(
+        `window.__TAURI_INTERNALS__.invoke('remove_favorite', { id: ${JSON.stringify(favorite.id)} })`,
+      )
+    }
+
+    await captureSurface('favorites-menu-empty', report, failed, async () => {
+      await captureCall(main, 'reset')
+      await captureCall(main, 'setSurface', 'favorites-menu-empty')
+      await captureCall<boolean>(main, 'enable')
+      await openFavoritesMenu(main)
+      // The placeholder is the surface: waiting on the menu alone would photograph a
+      // list the `volumes-changed` refresh hadn't emptied yet.
+      await main.waitForSelector('[data-menu] [data-menu-empty]', 5000)
+      return { page: main }
+    })
+    await closeOpenMenu(main)
+    await captureCall(main, 'disable').catch(() => {})
+  } finally {
+    for (const favorite of before) {
+      await main
+        .evaluate(`window.__TAURI_INTERNALS__.invoke('add_favorite', {
+          path: ${JSON.stringify(favorite.path)},
+          name: ${JSON.stringify(favorite.name)}
+        })`)
+        .catch(() => {})
+    }
+  }
 }
 
 /**
