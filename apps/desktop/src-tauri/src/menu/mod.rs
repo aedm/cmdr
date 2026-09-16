@@ -77,6 +77,7 @@ mod view_mode_items;
 
 use std::collections::{HashMap, HashSet};
 
+use self::menu_spec::{Platform, display_accelerator_label};
 use crate::ignore_poison::IgnorePoison as _;
 #[cfg(target_os = "macos")]
 use std::path::PathBuf;
@@ -111,7 +112,7 @@ pub use menu_handlers::{
     set_display_accelerators_from_command, set_macos_menu_icons, set_macos_menu_icons_from_command,
 };
 pub(crate) use menu_items::DetachWord;
-pub use menu_items::pin_tab_label;
+pub use menu_items::{SameKindTarget, pin_tab_label, same_kind_menu_label};
 pub use menu_structure::{
     ContextMenuPaneFacts, ContextMenuShortcuts, FileContextInfo, ServerRowMenu, build_breadcrumb_context_menu,
     build_context_menu, build_favorite_context_menu, build_function_key_bar_context_menu,
@@ -442,6 +443,38 @@ impl<R: Runtime> MenuState<R> {
         self.commands_refused_over_dialog
             .lock_ignore_poison()
             .contains(command_id)
+    }
+
+    /// Give a tracked menu-bar item a new label, keeping whatever display-only shortcut it draws.
+    ///
+    /// For an item whose words depend on live state (today only "Select all of the same kind",
+    /// which names what the cursor row would select). Two things have to move together, which is
+    /// why this isn't a bare `set_text`:
+    ///
+    /// - on Linux the display-only shortcut lives INSIDE the label, so it's recomposed here;
+    /// - [`MenuItemEntry::label`] is what `update_menu_item_accelerator` rebuilds the item from, so
+    ///   leaving it stale would revert the label the next time the user rebinds the command.
+    ///
+    /// ❗ On macOS the caller must follow with `set_display_accelerators`: `set_text` replaces the
+    /// `NSMenuItem`'s attributed title with a plain one, and the dimmed glyph goes with it.
+    pub fn set_item_label(&self, menu_id: &str, label: String) -> Result<(), String> {
+        // Read before taking `items`: `set_text` below blocks on the main thread, which may be
+        // inside `set_display_accelerators` holding this very lock.
+        let shortcut = match self.display_accelerators.lock_ignore_poison().get(menu_id) {
+            Some(rebound) => rebound.clone(),
+            None => menu_bar::spec_display_accelerator(menu_id).map(str::to_string),
+        };
+        let mut items = self.items.lock_ignore_poison();
+        let entry = items
+            .get_mut(menu_id)
+            .ok_or_else(|| format!("The menu bar holds no `{menu_id}` item"))?;
+        let built = match shortcut {
+            Some(shortcut) => display_accelerator_label(&label, &shortcut, Platform::current()),
+            None => label.clone(),
+        };
+        entry.item.set_text(built).map_err(|e| e.to_string())?;
+        entry.label = label;
+        Ok(())
     }
 
     /// Store every item reference a freshly built bar hands back, and return the bar itself.

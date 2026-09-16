@@ -6,10 +6,11 @@
 
 use crate::ignore_poison::IgnorePoison;
 use crate::menu::{
-    ContextMenuPaneFacts, ContextMenuShortcuts, DetachWord, FileContextInfo, MenuState, ServerRowMenu, SettingsChanged,
-    ViewMode, apply_menu_item_states, build_breadcrumb_context_menu, build_context_menu, build_favorite_context_menu,
-    build_function_key_bar_context_menu, build_network_host_context_menu, build_parent_row_context_menu,
-    build_tab_context_menu, build_volume_row_context_menu, rebuild_view_mode_items, set_menu_context,
+    ContextMenuPaneFacts, ContextMenuShortcuts, DetachWord, FileContextInfo, MenuState, SELECT_SAME_KIND_ID,
+    SameKindTarget, ServerRowMenu, SettingsChanged, ViewMode, apply_menu_item_states, build_breadcrumb_context_menu,
+    build_context_menu, build_favorite_context_menu, build_function_key_bar_context_menu,
+    build_network_host_context_menu, build_parent_row_context_menu, build_tab_context_menu,
+    build_volume_row_context_menu, rebuild_view_mode_items, same_kind_menu_label, set_menu_context,
     sync_view_mode_check_states,
 };
 #[cfg(target_os = "macos")]
@@ -691,6 +692,31 @@ pub fn update_pin_tab_menu<R: Runtime>(app: AppHandle<R>, is_pinned: bool) -> Re
     };
     item.set_text(crate::menu::pin_tab_label(is_pinned))
         .map_err(|e| e.to_string())
+}
+
+/// Rewrites the Select menu's "Select all of the same kind" item to say what it would select right
+/// now: "Select all folders", "Select all with extension *.pdf", or the neutral fallback.
+///
+/// `target` is the focused pane's cursor row, as `pane/same-kind-target.svelte.ts` publishes it —
+/// the same value the command palette labels its row from, so the two can't disagree. `None` is a
+/// row with no kind (`..`, an empty listing), and restores the neutral label.
+///
+/// The frontend debounces this by 200 ms and skips a push that would render the same words, so
+/// holding an arrow key down costs one call. ❗ The COMMAND never reads any of this: it re-reads
+/// the cursor row when it runs, so a label a frame behind can't change what gets selected.
+#[tauri::command]
+#[specta::specta]
+pub fn update_select_same_kind_menu<R: Runtime>(
+    app: AppHandle<R>,
+    target: Option<SameKindTarget>,
+) -> Result<(), String> {
+    let menu_state = app.state::<MenuState<R>>();
+    menu_state.set_item_label(SELECT_SAME_KIND_ID, same_kind_menu_label(target.as_ref()))?;
+    // `set_text` leaves a plain NSMenuItem title behind, so the dimmed `⌥⇧=` has to be redrawn or
+    // it vanishes on the first cursor move.
+    #[cfg(target_os = "macos")]
+    crate::menu::set_display_accelerators_from_command(&app);
+    Ok(())
 }
 
 /// Tells Rust which language the UI speaks, and rebuilds the native menu bar if

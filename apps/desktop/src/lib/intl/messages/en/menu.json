@@ -249,6 +249,26 @@
     "description": "VERB phrase (imperative). Clears the selection in the active pane, leaving nothing selected (⇧⌘A). The direct opposite of menu.select.all, and it should read as its mirror image."
   },
 
+  "menu.select.sameKind": "Select all of the same kind",
+  "@menu.select.sameKind": {
+    "description": "VERB phrase (imperative). Select menu item that adds every entry of the same kind as the row under the cursor to the selection: every folder, every file with the same extension, or every file with no extension (⌥⇧=, Total Commander's Alt+Num +). This neutral wording only shows while the cursor row implies no kind (the `..` row, an empty pane); the three live variants below replace it as soon as it does. It must read as the general case of all three, and it is the same command as commands.selectionSelectSameKind.label, so keep the two wordings identical."
+  },
+  "menu.select.allFolders": "Select all folders",
+  "@menu.select.allFolders": {
+    "description": "VERB phrase (imperative). The menu.select.sameKind item while the cursor sits on a folder, so the item says what clicking it would do right now. Sits in the Select menu and in the right-click menu's Selection submenu. Same wording as commands.selectionSelectSameKind.allFolders, which is the command palette's row for the same state; keep the two identical."
+  },
+  "menu.select.sameExtension": "Select all with extension *.{extension}",
+  "@menu.select.sameExtension": {
+    "description": "VERB phrase (imperative). The menu.select.sameKind item while the cursor sits on a file that has an extension, so the item says what clicking it would do right now. The asterisk-dot is a filename mask, the same shape the Select files dialog uses. Restructure the sentence around the placeholder freely (several languages inflect around it), and keep the mask readable. Keep the {extension} token exactly as written, braces included; it is replaced literally. Same wording as commands.selectionSelectSameKind.sameExtension; keep the two identical.",
+    "placeholders": {
+      "extension": "the extension with no leading dot, lowercased, e.g. \"pdf\" or \"gz\""
+    }
+  },
+  "menu.select.noExtension": "Select all files with no extension",
+  "@menu.select.noExtension": {
+    "description": "VERB phrase (imperative). The menu.select.sameKind item while the cursor sits on a file with no extension (like \"README\" or \".gitignore\"), so the item says what clicking it would do right now. Same wording as commands.selectionSelectSameKind.noExtension; keep the two identical."
+  },
+
   "menu.select.invert": "Invert selection",
   "@menu.select.invert": {
     "description": "VERB phrase (imperative). Flips the selection in the active pane: every selected file becomes unselected and every unselected one becomes selected (⇧8, the `*` key on a US keyboard). Sits right under menu.select.deselectAll. Total Commander and Double Commander have this exact item; use the wording their localized menus use in your language."

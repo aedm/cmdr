@@ -81,6 +81,10 @@ pub const QUICK_LOOK_ID: &str = "quick_look";
 pub const RENAME_ID: &str = "rename";
 pub const SELECT_ALL_ID: &str = "select_all_files";
 pub const DESELECT_ALL_ID: &str = "deselect_all";
+/// "Select all of the same kind". Its label is rewritten from the focused pane's cursor row
+/// (`menu_items::same_kind_menu_label`), so this is also the id `update_select_same_kind_menu`
+/// looks the tracked item up by.
+pub const SELECT_SAME_KIND_ID: &str = "select_same_kind";
 pub const INVERT_SELECTION_ID: &str = "invert_selection";
 pub const SELECT_FILES_ID: &str = "select_files";
 pub const DESELECT_FILES_ID: &str = "deselect_files";
@@ -382,6 +386,7 @@ pub fn menu_id_to_command(menu_id: &str) -> Option<(&'static str, CommandScope)>
         // execute-command, non-main → native selectAll: so ⌘A still works in text fields there.
         SELECT_ALL_ID => Some(("selection.selectAll", CommandScope::FileScoped)),
         DESELECT_ALL_ID => Some(("selection.deselectAll", CommandScope::FileScoped)),
+        SELECT_SAME_KIND_ID => Some(("selection.selectSameKind", CommandScope::FileScoped)),
         INVERT_SELECTION_ID => Some(("selection.invert", CommandScope::FileScoped)),
         SELECT_FILES_ID => Some(("selection.selectFiles", CommandScope::FileScoped)),
         DESELECT_FILES_ID => Some(("selection.deselectFiles", CommandScope::FileScoped)),
@@ -478,6 +483,7 @@ pub fn command_id_to_menu_id(command_id: &str) -> Option<&'static str> {
         "file.quickLook" => Some(QUICK_LOOK_ID),
         "selection.selectAll" => Some(SELECT_ALL_ID),
         "selection.deselectAll" => Some(DESELECT_ALL_ID),
+        "selection.selectSameKind" => Some(SELECT_SAME_KIND_ID),
         "selection.invert" => Some(INVERT_SELECTION_ID),
         "selection.selectFiles" => Some(SELECT_FILES_ID),
         "selection.deselectFiles" => Some(DESELECT_FILES_ID),
@@ -668,6 +674,7 @@ mod tests {
             "file.quickLook",
             "selection.selectAll",
             "selection.deselectAll",
+            "selection.selectSameKind",
             "selection.invert",
             "selection.selectFiles",
             "selection.deselectFiles",

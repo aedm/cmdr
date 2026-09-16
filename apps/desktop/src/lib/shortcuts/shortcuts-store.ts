@@ -289,6 +289,7 @@ export const menuCommands = [
   // Selection
   'selection.selectAll',
   'selection.deselectAll',
+  'selection.selectSameKind',
   'selection.invert',
   'selection.selectFiles',
   'selection.deselectFiles',

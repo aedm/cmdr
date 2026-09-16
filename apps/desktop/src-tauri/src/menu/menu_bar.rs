@@ -31,9 +31,9 @@
 //! `docs/notes/linux-gaps-2026-08-10.md`.
 
 use super::menu_spec::{
-    Accelerator, BarMenu, CheckRole, Entry, Label, NONE, Pane, PerPlatform, Predefined, SEPARATOR, SubmenuRole, both,
-    check, displayed_item, item, labeled_item, linux_only, macos, macos_menu, macos_only, menu, predefined, split,
-    submenu,
+    Accelerator, BarMenu, CheckRole, Entry, EntryKind, Label, NONE, Pane, PerPlatform, Platform, Predefined, SEPARATOR,
+    SubmenuRole, SubmenuSpec, both, check, displayed_item, item, labeled_item, linux_only, macos, macos_menu,
+    macos_only, menu, predefined, split, submenu,
 };
 use super::{
     ABOUT_ID, ACKNOWLEDGEMENTS_ID, APP_MENU_ID, ASK_CMDR_ID, CHANGELOG_ID, CHECK_FOR_UPDATES_ID, CLOSE_OTHER_TABS_ID,
@@ -45,8 +45,8 @@ use super::{
     HELP_SEND_ERROR_REPORT_ID, HELP_SEND_FEEDBACK_ID, HELP_SHORTCUTS_ID, HELP_WHATS_NEW_ID, INVERT_SELECTION_ID,
     NEW_TAB_ID, NEXT_TAB_ID, OPEN_ID, OPEN_ONBOARDING_ID, OPEN_TERMINAL_HERE_ID, OPERATION_LOG_ID, PIN_TAB_MENU_ID,
     PREV_TAB_ID, QUEUE_SHOW_ID, QUICK_LOOK_ID, RENAME_ID, REOPEN_CLOSED_TAB_ID, SEARCH_FILES_ID, SELECT_ALL_ID,
-    SELECT_FILES_ID, SELECT_MENU_ID, SERVERS_CONNECT_ID, SERVERS_MENU_ID, SERVERS_SHOW_ID, SETTINGS_ID,
-    SHOW_HIDDEN_FILES_ID, SHOW_IN_FINDER_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID,
+    SELECT_FILES_ID, SELECT_MENU_ID, SELECT_SAME_KIND_ID, SERVERS_CONNECT_ID, SERVERS_MENU_ID, SERVERS_SHOW_ID,
+    SETTINGS_ID, SHOW_HIDDEN_FILES_ID, SHOW_IN_FINDER_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID,
     SORT_BY_MENU_ID, SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID, SUGGESTED_OPS_ID,
     SWAP_PANES_ID, SWITCH_PANE_ID, TAB_MENU_ID, VIEW_MENU_ID, VIEW_MODE_BRIEF_LEFT_ID, VIEW_MODE_BRIEF_RIGHT_ID,
     VIEW_MODE_FULL_LEFT_ID, VIEW_MODE_FULL_RIGHT_ID, VIEW_ZOOM_75_ID, VIEW_ZOOM_100_ID, VIEW_ZOOM_125_ID,
@@ -68,6 +68,33 @@ pub(crate) const SHOW_IN_FILE_MANAGER_KEY: PerPlatform<&str> = PerPlatform {
     linux: "menu.file.showInFileManager",
 };
 pub(crate) const SHOW_IN_FILE_MANAGER_ACCELERATOR: Accelerator = split("Alt+Cmd+O", "Alt+Ctrl+O");
+
+/// The display-only shortcut `MENU_BAR` gives `menu_id` on this platform, if any.
+///
+/// The spec is the fallback answer, so it's what [`MenuState::set_item_label`] composes a rewritten
+/// label with while the user hasn't rebound the command. `MenuState.display_accelerators` overrides
+/// it once they have; ❗ read that FIRST, or a rebind's glyph reverts on the next label change.
+pub(crate) fn spec_display_accelerator(menu_id: &str) -> Option<&'static str> {
+    fn in_submenu(spec: &SubmenuSpec, menu_id: &str) -> Option<&'static str> {
+        for entry in spec.entries_on(Platform::current()) {
+            match entry {
+                EntryKind::Item(item) if item.id == menu_id => return item.display_accelerator,
+                EntryKind::Submenu(nested) => {
+                    if let Some(shortcut) = in_submenu(nested, menu_id) {
+                        return Some(shortcut);
+                    }
+                }
+                _ => {}
+            }
+        }
+        None
+    }
+
+    MENU_BAR
+        .iter()
+        .filter(|bar_menu| bar_menu.is_on(Platform::current()))
+        .find_map(|bar_menu| in_submenu(&bar_menu.submenu, menu_id))
+}
 
 // The items the macOS app menu holds, which Linux spreads over Edit and Help.
 const ABOUT: Entry = item(ABOUT_ID, "menu.app.about", NONE);
@@ -192,6 +219,10 @@ pub(crate) const MENU_BAR: &[BarMenu] = &[
         &[
             item(SELECT_ALL_ID, "menu.select.all", both("Cmd+A")),
             item(DESELECT_ALL_ID, "menu.select.deselectAll", both("Cmd+Shift+A")),
+            // Built with the neutral label; the frontend rewrites it to say what the cursor row
+            // would select right now (`update_select_same_kind_menu`). `⌥⇧=` is the physical
+            // spelling, the one honest on a layout where that key isn't `+`.
+            displayed_item(SELECT_SAME_KIND_ID, "menu.select.sameKind", "⌥⇧="),
             // `⇧8`, the main-row spelling, not `*`: it's honest on every layout, and it's the
             // first of the command's two shortcuts (`sources/file-list.ts`).
             displayed_item(INVERT_SELECTION_ID, "menu.select.invert", "⇧8"),

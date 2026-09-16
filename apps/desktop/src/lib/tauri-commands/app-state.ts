@@ -9,6 +9,7 @@ import {
   type SelectedRows,
   type ServicesSelection,
 } from '$lib/ipc/bindings'
+import type { SameKindTarget } from '$lib/file-explorer/pane/select-same-kind'
 import type { OperationGate, SoftDialogId } from '$lib/ui/dialog-registry'
 import { isMacOS } from '$lib/shortcuts/key-capture'
 import { throwIpcError } from './ipc-types'
@@ -59,6 +60,19 @@ export async function updatePaneTabs(pane: string, tabs: McpTabInfo[]): Promise<
 export async function updatePinTabMenu(isPinned: boolean): Promise<void> {
   // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- generic <R: Runtime> command, excluded from specta bindings (see the `ipc.rs` manifest)
   await invoke('update_pin_tab_menu', { isPinned })
+}
+
+/**
+ * Makes the Select menu's "Select all of the same kind" item say what it would select right now.
+ *
+ * `target` is the focused pane's cursor row, from `$lib/file-explorer/pane/same-kind-target.svelte`
+ * (which is also the only caller: it debounces the pushes). `null` is a row with no kind, and
+ * restores the neutral label. Rust renders the words from `menu_t`, so ❌ never pass a composed
+ * string here.
+ */
+export async function updateSelectSameKindMenu(target: SameKindTarget | null): Promise<void> {
+  // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- generic <R: Runtime> command, excluded from specta bindings (see the `ipc.rs` manifest)
+  await invoke('update_select_same_kind_menu', { target })
 }
 
 /**

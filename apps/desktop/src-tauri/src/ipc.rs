@@ -235,7 +235,8 @@ macro_rules! ipc_command_manifest {
                     // These are generic (<R: Runtime>), so specta can't collect them; they stay
                     // in `generate_handler![]` only: `menu::{show_file_context_menu,
                     // show_breadcrumb_context_menu, show_volume_row_context_menu, show_favorite_context_menu,
-                    // show_parent_row_context_menu, update_pin_tab_menu, set_reopen_closed_tab_enabled,
+                    // show_parent_row_context_menu, update_pin_tab_menu, update_select_same_kind_menu,
+                    // set_reopen_closed_tab_enabled,
                     // set_file_operations_blocked, set_commands_refused_over_dialog, set_open_terminal_here_enabled,
                     // update_menu_context, activate_window_menu, toggle_hidden_files,
                     // sync_menu_show_hidden, update_view_mode_menu, set_ui_language}`,
@@ -473,6 +474,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::menu::show_favorite_context_menu,
                     crate::commands::menu::show_parent_row_context_menu,
                     crate::commands::menu::update_pin_tab_menu,
+                    crate::commands::menu::update_select_same_kind_menu,
                     crate::commands::menu::set_reopen_closed_tab_enabled,
                     crate::commands::menu::set_file_operations_blocked,
                     crate::commands::menu::set_commands_refused_over_dialog,

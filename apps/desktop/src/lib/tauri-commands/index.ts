@@ -164,6 +164,7 @@ export {
   showMainWindow,
   orderWindowToBack,
   updatePinTabMenu,
+  updateSelectSameKindMenu,
   setReopenClosedTabEnabled,
   setOpenTerminalHereEnabled,
   getChildWindowRect,

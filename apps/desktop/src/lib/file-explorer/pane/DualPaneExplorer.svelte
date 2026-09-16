@@ -103,6 +103,7 @@
     import { getDirectorySortMode, getShowHiddenFiles } from '$lib/settings/reactive-settings.svelte'
     import { onSettingChange } from '$lib/settings'
     import { onMenuBarRebuilt, activateWindowMenu } from '$lib/tauri-commands'
+    import { resyncSameKindMenu } from './same-kind-target.svelte'
     import { resyncMenuAccelerators } from '$lib/shortcuts'
     import DragOverlay from '../drag/DragOverlay.svelte'
     import { addToastForPane } from '$lib/ui/toast'
@@ -604,11 +605,13 @@
         // The menu bar is thrown away and rebuilt when the UI language changes, so
         // every item is a new object and everything this window had pushed onto the
         // old ones is gone. Rust restores what it knows (checked states, the
-        // view-mode pair); these four are the ones only the frontend knows.
+        // view-mode pair); these five are the ones only the frontend knows.
         unlistenMenuBarRebuilt = await onMenuBarRebuilt(() => {
             resyncMenuAccelerators()
             syncPinTabMenu()
             syncReopenMenuState()
+            // The Select item comes up neutral; only this side knows what the cursor is on.
+            resyncSameKindMenu()
             // Re-applies the file-scoped enable/disable state, including the
             // operation-start gate, which a fresh bar comes up without.
             void activateWindowMenu('main')

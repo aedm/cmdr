@@ -75,10 +75,11 @@ menu menu.bar.edit id=menu_edit
 menu menu.bar.select id=menu_select
   0 item select_all_files menu.select.all [Cmd+A] tracked
   1 item deselect_all menu.select.deselectAll [Cmd+Shift+A] tracked
-  2 item invert_selection menu.select.invert [display ⇧8] tracked
-  3 separator
-  4 item select_files menu.select.files [display +] tracked
-  5 item deselect_files menu.select.deselectFiles [display -] tracked
+  2 item select_same_kind menu.select.sameKind [display ⌥⇧=] tracked
+  3 item invert_selection menu.select.invert [display ⇧8] tracked
+  4 separator
+  5 item select_files menu.select.files [display +] tracked
+  6 item deselect_files menu.select.deselectFiles [display -] tracked
 menu menu.bar.view id=menu_view
   0 submenu menu.view.leftPane pane:left
       0 check view_mode_full_left menu.view.fullView [Cmd+1] view-mode:left:full
@@ -188,10 +189,11 @@ menu menu.bar.edit
 menu menu.bar.select
   0 item select_all_files menu.select.all [Cmd+A] tracked
   1 item deselect_all menu.select.deselectAll [Cmd+Shift+A] tracked
-  2 item invert_selection menu.select.invert (⇧8) tracked
-  3 separator
-  4 item select_files menu.select.files (+) tracked
-  5 item deselect_files menu.select.deselectFiles (-) tracked
+  2 item select_same_kind menu.select.sameKind (⌥⇧=) tracked
+  3 item invert_selection menu.select.invert (⇧8) tracked
+  4 separator
+  5 item select_files menu.select.files (+) tracked
+  6 item deselect_files menu.select.deselectFiles (-) tracked
 menu menu.bar.view
   0 submenu menu.view.leftPane pane:left
       0 check view_mode_full_left menu.view.fullView [Cmd+1] view-mode:left:full

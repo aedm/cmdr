@@ -34,6 +34,42 @@ pub fn pin_tab_label(is_pinned: bool) -> String {
     })
 }
 
+/// What "Select all of the same kind" would select right now, as the focused pane's cursor row
+/// decides it (`pane/select-same-kind.ts`'s `SameKindTarget`, wire-identical).
+///
+/// `None` rather than a fourth variant covers the row that implies no kind at all: the `..` row,
+/// an empty listing, a cursor entry still resolving. The item then falls back to its neutral
+/// label, which is also what the bar is built with.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum SameKindTarget {
+    /// The cursor is on a folder: every folder, whatever its name.
+    AllFolders,
+    /// The cursor is on a file with an extension: every file carrying it. Lowercased, no dot.
+    SameExtension { extension: String },
+    /// The cursor is on an extension-less file: every other one.
+    NoExtension,
+}
+
+/// The "Select all of the same kind" label, which says what the command would do right now.
+///
+/// Shared by the two surfaces that draw it (the menu bar's item, rewritten on cursor moves by
+/// `update_select_same_kind_menu`, and the right-click Selection submenu, which composes it fresh
+/// at popup time), so neither can drift into different words for one command.
+///
+/// ❗ Rendered HERE, from a typed payload, ❌ never as a literal the frontend composes: the menu's
+/// words come from `menu_t` in the language the NATIVE side speaks (`menu/CLAUDE.md`).
+pub fn same_kind_menu_label(target: Option<&SameKindTarget>) -> String {
+    match target {
+        None => menu_t("menu.select.sameKind"),
+        Some(SameKindTarget::AllFolders) => menu_t("menu.select.allFolders"),
+        Some(SameKindTarget::NoExtension) => menu_t("menu.select.noExtension"),
+        Some(SameKindTarget::SameExtension { extension }) => {
+            menu_t_with("menu.select.sameExtension", &[("extension", extension)])
+        }
+    }
+}
+
 /// Which word a volume row's detach control uses.
 ///
 /// ❗ A phone says Disconnect, ❌ never Eject: `adb` has no per-client detach, so

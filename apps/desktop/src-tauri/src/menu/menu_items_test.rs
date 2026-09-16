@@ -18,6 +18,43 @@ fn a_disk_row_says_eject_and_a_phone_row_says_disconnect() {
 }
 
 #[test]
+fn the_same_kind_label_says_what_the_cursor_row_would_select() {
+    assert_eq!(same_kind_menu_label(None), "Select all of the same kind");
+    assert_eq!(
+        same_kind_menu_label(Some(&SameKindTarget::AllFolders)),
+        "Select all folders"
+    );
+    assert_eq!(
+        same_kind_menu_label(Some(&SameKindTarget::NoExtension)),
+        "Select all files with no extension"
+    );
+    assert_eq!(
+        same_kind_menu_label(Some(&SameKindTarget::SameExtension {
+            extension: "pdf".to_string()
+        })),
+        "Select all with extension *.pdf"
+    );
+}
+
+/// The payload is the frontend's `SameKindTarget` on the wire, so a rename on either side has to
+/// break something. This is the only place the two spellings meet.
+#[test]
+fn the_same_kind_payload_deserializes_the_frontend_target() {
+    let folders: SameKindTarget = serde_json::from_str(r#"{"kind":"allFolders"}"#).expect("allFolders");
+    assert_eq!(folders, SameKindTarget::AllFolders);
+    let none: SameKindTarget = serde_json::from_str(r#"{"kind":"noExtension"}"#).expect("noExtension");
+    assert_eq!(none, SameKindTarget::NoExtension);
+    let ext: SameKindTarget =
+        serde_json::from_str(r#"{"kind":"sameExtension","extension":"gz"}"#).expect("sameExtension");
+    assert_eq!(
+        ext,
+        SameKindTarget::SameExtension {
+            extension: "gz".to_string()
+        }
+    );
+}
+
+#[test]
 fn the_detach_word_comes_off_the_volume_id() {
     use cmdr_fs::volume::{adb_volume_id, mtp_device_id, path_volume_id};
 
