@@ -32,9 +32,11 @@ satisfies the live-apply rule below.
   fields. Don't switch to serde auto-derivation.
 - **Direct file reading is intentional.** Multiple backend systems (MCP server, hidden-files filter, indexing, crash
   reporter) need their config before any frontend window loads. Reading the file directly avoids a boot race.
-- **`full_disk_access_choice` gates indexer auto-start.** Consulted at launch by the indexer FDA gate
-  (`indexing::should_auto_start_indexing`) to defer the recursive `/` scan until the user decides about Full Disk Access.
-  See `indexing/CLAUDE.md`.
+- **`full_disk_access_choice` gates every launch-time job that could stack a TCC popup** (the recursive `/` scan, the
+  Downloads watcher, `NSWorkspace` icon calls): `crate::fda_gate::is_fda_pending` holds the gate closed unless the OS
+  grants FDA or the choice is `Deny`. ❌ Don't read the raw key; `read_fda_choice` also reports the
+  present-but-unparseable case, which falls back to `Unanswered` and so defers all of that. See
+  `apps/desktop/src/lib/onboarding/DETAILS.md` § "FDA gate".
 - **`developer.mcpPort = 0` means "kernel picks an ephemeral port"** (the post-instance-isolation default); non-zero
   pins. See `mcp/DETAILS.md` § Server lifecycle and `docs/tooling/instance-isolation.md`.
 

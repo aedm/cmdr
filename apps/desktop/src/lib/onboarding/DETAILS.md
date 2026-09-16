@@ -553,13 +553,25 @@ Linux always resumes at step 2 (no FDA gate).
 
 ## FDA gate
 
-Two things stay gated on the FDA decision at app launch:
+**A closed gate means exactly one thing: the FDA question is on screen.** Everything gated on it is launch-time work
+that would stack native TCC popups over step 1: the drive indexer (a recursive scan from `/` touches iCloud, Photos,
+...), path-based icon fetches in `volumes::list_locations` (NSWorkspace.iconForFile on `/Applications`, `~/Desktop`,
+etc. cascades into adjacent TCC services), the Downloads watcher, the network scan, cloud volume enumeration, and the
+MTP hotplug watcher (it probes the USB bus, tripping MacDroid's File Provider prompt).
 
-1. **Drive indexer** (recursive scan from `/` would touch iCloud, Photos, ...).
-2. **Path-based icon fetches** in `volumes::list_locations` (NSWorkspace.iconForFile on `/Applications`, `~/Desktop`,
-   etc. cascades into adjacent TCC services).
+Two predicates hold that invariant up, one per side, and each is written to fail safe:
 
-Both gates use the same predicate via `crate::fda_gate::is_fda_pending(fda_choice, os_fda_granted)`.
+- **Boot** (`crate::fda_gate::is_fda_pending(fda_choice, os_fda_granted)`): pending whenever the OS says FDA isn't
+  granted and the choice isn't `Deny`. It has to cover more than a fresh install, because the frontend parks people on
+  step 1 for a revoked grant and for "clicked Allow, never finished in System Settings" too. A recorded `Allow` says
+  nothing about whether the grant exists right now, so it can't open the gate on its own.
+- **Frontend** (`routes/(main)/startup-gates.ts::resolveOnboardingMount`): every branch that reaches `ctx.showApp()`
+  without opening the wizard calls `startIndexingAfterFdaDecision()` first, which opens the gate. That's the FDA-granted
+  branch and the denied-and-onboarded branch; the `CMDR_FORCE_ONBOARDING` branch does show the wizard, so it doesn't.
+
+The frontend half is what makes a disagreement between the two survivable in both directions: an over-eager boot
+predicate costs one idempotent IPC call, where a missed one would leave indexing and the watcher deferred for the whole
+session with nothing on screen to explain it. A refusal there is logged, never thrown, so it can't strand launch.
 
 After the user decides:
 
@@ -568,7 +580,14 @@ After the user decides:
 - **Allow**: the user grants FDA in System Settings, then clicks `Restart Cmdr`. On next launch the OS check returns
   true, the gate is open at boot, and both the indexer and icon fetches run normally with no popups.
 
-The Tauri command is idempotent. See `src-tauri/src/fda_gate.rs`, `src-tauri/src/volumes/CLAUDE.md` § "FDA gate", and
+The Tauri command is idempotent: `set_fda_pending` is a plain store, `start_mtp_watcher` no-ops after the first call
+(`WATCHER_STARTED`), and `start_volume` no-ops while indexing is running or initializing.
+
+An unreadable `onboarding.fullDiskAccessChoice` in `settings.json` falls back to `Unanswered`, which leaves the gate
+pending. `settings/loader.rs::read_fda_choice` separates that from an absent key so the loader can warn: the fallback
+is the safe one, but a silently lost `Deny` defers the launch work with no trace anywhere.
+
+See `src-tauri/src/fda_gate.rs`, `src-tauri/src/volumes/CLAUDE.md` § "FDA gate", and
 `crates/cmdr-index/src/indexing/lifecycle/DETAILS.md` § "FDA-deferred root auto-start".
 
 A third thing reads the permission at launch without being part of that gate: the one-shot first-run pane layout, which

@@ -258,6 +258,30 @@ pub fn load_settings<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Settings {
     Settings::default()
 }
 
+/// The stored Full Disk Access choice, plus whether a value was there that we couldn't read.
+///
+/// Reads the registry key, falling back to the pre-migration top-level name. The frontend's
+/// schema-4 migration moves the value, but Rust reads `settings.json` at startup, BEFORE any
+/// frontend code runs: without this fallback the very launch that performs the migration would
+/// read `Unanswered` on someone who already answered Deny, leaving the FDA gate pending and
+/// skipping drive indexing and the Downloads watcher for that launch.
+///
+/// A present-but-unparseable value falls back the same way, and that's the second return
+/// value: it costs the same deferral, and a caller that can't tell it from an absent key has
+/// nothing to say about it. See `loader_tests.rs`.
+fn read_fda_choice(json: &serde_json::Value) -> (FullDiskAccessChoice, bool) {
+    let Some(raw) = json
+        .get("onboarding.fullDiskAccessChoice")
+        .or_else(|| json.get("fullDiskAccessChoice"))
+    else {
+        return (FullDiskAccessChoice::default(), false);
+    };
+    match serde_json::from_value(raw.clone()) {
+        Ok(choice) => (choice, false),
+        Err(_) => (FullDiskAccessChoice::default(), true),
+    }
+}
+
 /// Parse settings.json which uses dot notation for keys (like "developer.mcpEnabled")
 fn parse_settings(contents: &str) -> Result<Settings, serde_json::Error> {
     // tauri-plugin-store uses flat JSON with dot notation keys
@@ -276,16 +300,13 @@ fn parse_settings(contents: &str) -> Result<Settings, serde_json::Error> {
         .filter(|v| *v != "system")
         .map(String::from);
 
-    // The registry key, falling back to the pre-migration top-level name. The frontend's
-    // schema-4 migration moves the value, but Rust reads `settings.json` at startup,
-    // BEFORE any frontend code runs: without this fallback the very launch that performs
-    // the migration would read `Unanswered` and close the FDA gate on someone who already
-    // answered Deny, skipping drive indexing and the Downloads watcher for that launch.
-    let full_disk_access_choice = json
-        .get("onboarding.fullDiskAccessChoice")
-        .or_else(|| json.get("fullDiskAccessChoice"))
-        .and_then(|v| serde_json::from_value(v.clone()).ok())
-        .unwrap_or_default();
+    let (full_disk_access_choice, fda_choice_unreadable) = read_fda_choice(&json);
+    if fda_choice_unreadable {
+        log::warn!(
+            "settings.json holds a full-disk-access choice this build can't read; \
+             treating it as unanswered, which leaves the FDA gate pending for this launch"
+        );
+    }
 
     let developer_mcp_enabled = json.get("developer.mcpEnabled").and_then(|v| v.as_bool());
 
