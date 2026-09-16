@@ -1,161 +1,454 @@
 <script lang="ts" module>
-    // `MenuItem` lives in `./menu-types.ts` (not here) so non-Svelte consumers resolve
-    // it as a real type; re-exported for callers that import it alongside the component.
-    export type { MenuItem } from './menu-types'
+    // The vocabulary lives in `./menu-types` (not here) so non-Svelte consumers resolve it as
+    // real types; re-exported for callers that import it alongside the component.
+    export type { MenuItem, MenuSection, MenuIcon, MenuRowContext } from './menu-types'
+
+    /** Unique per mounted menu, so `aria-activedescendant` points at this menu's own row. */
+    let menuInstanceCount = 0
 </script>
 
-<script lang="ts">
-    import type { MenuItem } from './menu-types'
+<script lang="ts" generics="T">
     /**
-     * A presentational action menu: a small popup rendered at a viewport point, the
-     * house dropdown menu (the keyboard-invoked Enter popup anchors it at the cursor
-     * row). Mounted only while shown — the CALLER controls visibility with an `{#if}`
-     * around this component.
+     * The house menu surface: a portaled, glass, keyboard-first popup built from sections of
+     * rows. It renders nothing while closed, so a consumer writes no `{#if}`.
      *
-     * Deliberately NOT built on Ark/zag's `Menu` machine: that machine is trigger-
-     * driven and doesn't reliably open (mounted-already-open) or close (controlled
-     * `open=false`) when driven programmatically at a point, which this use needs. So
-     * this owns its rendering, positioning, pointer selection, and outside-click
-     * dismissal directly. KEYBOARD navigation is the caller's job (it routes keys via
-     * its own document-capture listener, NOT by holding focus here), reflected here
-     * via the controlled `highlightedValue`; pointer hover reports back through
-     * `onHighlightChange`.
+     * This component owns only the DOM: positioning, scrolling, and the one measurement the
+     * drag needs. Every behavior (open state, the cursor, keys, pointer mode, submenus,
+     * reorder) belongs to the controller in `./menu-controller.svelte.ts`, which a consumer
+     * builds with `createMenu(deps)` and passes in here.
      *
-     * Portaled to `document.body` so `position: fixed` isn't captured by an ancestor
-     * transform, and to escape ancestor `overflow`/`mask`. Frosted-glass surface with
-     * the shared glass tokens (like `Select`); design tokens only; AA contrast on the
-     * highlighted row.
+     * ❗ Deliberately NOT built on Ark/zag's `Menu` machine: that machine is trigger-driven and
+     * doesn't reliably open (mounted-already-open) or close (controlled `open=false`) when
+     * driven programmatically, which every caller here needs.
      */
+    import { tick, type Snippet } from 'svelte'
     import { Portal } from '@ark-ui/svelte/portal'
     import Icon from './Icon.svelte'
+    import { tooltip } from '$lib/tooltip/tooltip'
+    import type { MenuController } from './menu-controller.svelte'
+    import type { MenuItem, MenuRowContext, MenuSection } from './menu-types'
 
     interface Props {
-        items: MenuItem[]
-        /** Fires with the selected item's `value` on POINTER selection. */
-        onSelect: (value: string) => void
-        /** Fires when the menu wants to close (an outside pointer-down). */
-        onClose: () => void
+        menu: MenuController<T>
         ariaLabel: string
-        /** The viewport point to anchor the menu's top-left near. */
-        anchorPoint?: { x: number; y: number } | null
-        /** The controlled highlighted row (the caller owns keyboard nav). */
-        highlightedValue?: string | null
-        /** Fires when the highlight changes (pointer hover), so the caller can sync. */
-        onHighlightChange?: (value: string | null) => void
+        /** The surface's minimum width in px; it grows to fit its rows. */
+        minWidth?: number
+        /** Replaces the row's text (an inline rename field). */
+        label?: Snippet<[MenuRowContext<T>]>
+        /** Fills the right end of the row (badges, dots, an eject button). */
+        trailing?: Snippet<[MenuRowContext<T>]>
+        /** A sub-line under the row (a disk-space bar). */
+        below?: Snippet<[MenuRowContext<T>]>
+        /** Sits under the last section (a list-level warning). */
+        footer?: Snippet
     }
 
-    const {
-        items,
-        onSelect,
-        onClose,
-        ariaLabel,
-        anchorPoint = null,
-        highlightedValue = null,
-        onHighlightChange,
-    }: Props = $props()
+    const { menu, ariaLabel, minWidth = 220, label, trailing, below, footer }: Props = $props()
 
-    // A generous offset keeps the menu clear of the pointer; clamp to the viewport so
-    // it never renders off-screen when anchored near an edge.
-    const MENU_MAX_WIDTH = 260
-    const left = $derived(anchorPoint ? Math.min(anchorPoint.x, window.innerWidth - MENU_MAX_WIDTH - 8) : 0)
-    const top = $derived(anchorPoint ? Math.min(anchorPoint.y, window.innerHeight - items.length * 36 - 16) : 0)
+    menuInstanceCount += 1
+    const instanceId = `menu-${String(menuInstanceCount)}`
+    const rowId = (value: string) => `${instanceId}-row-${value}`
+
+    let surfaceEl: HTMLDivElement | undefined = $state()
+    let position = $state<{ left: number; top: number; maxHeight: number } | null>(null)
+    let submenuPosition = $state<{ top: number; left: number } | null>(null)
+
+    /** Gap between the anchor and the surface, and the margin the surface keeps off the viewport. */
+    const ANCHOR_GAP = 4
+    const VIEWPORT_MARGIN = 8
+
+    /** The rect the menu hangs off, whichever way it was opened. */
+    function anchorRect(): { left: number; bottom: number } | null {
+        const anchor = menu.anchor
+        if (!anchor) return null
+        if (anchor.kind === 'point') return { left: anchor.x, bottom: anchor.y }
+        const rect = anchor.element.getBoundingClientRect()
+        return { left: rect.left, bottom: rect.bottom + ANCHOR_GAP }
+    }
+
+    /**
+     * Pin the surface to the viewport: clamped horizontally, and capped to the room below the
+     * anchor so a long list scrolls inside itself instead of running off screen.
+     */
+    async function fitToViewport(): Promise<void> {
+        await tick()
+        const rect = anchorRect()
+        if (!rect || !surfaceEl) return
+        const width = surfaceEl.offsetWidth || minWidth
+        const left = Math.max(VIEWPORT_MARGIN, Math.min(rect.left, window.innerWidth - width - VIEWPORT_MARGIN))
+        const top = Math.max(VIEWPORT_MARGIN, rect.bottom)
+        position = { left, top, maxHeight: window.innerHeight - top - VIEWPORT_MARGIN }
+    }
+
+    /** Measure and focus on open; the container holds focus so `aria-activedescendant` is announced. */
+    $effect(() => {
+        if (!menu.isOpen) {
+            position = null
+            return
+        }
+        void fitToViewport().then(() => {
+            surfaceEl?.focus()
+        })
+    })
+
+    function handleResize(): void {
+        if (menu.isOpen) void fitToViewport()
+    }
+
+    /** Keep the cursor on screen as the keyboard walks a list taller than the surface. */
+    $effect(() => {
+        const value = menu.highlightedValue
+        if (!menu.isOpen || value === null) return
+        void tick().then(() => {
+            surfaceEl?.querySelector(`[data-menu-value="${CSS.escape(value)}"]`)?.scrollIntoView({ block: 'nearest' })
+        })
+    })
+
+    /** A submenu is fixed-positioned off its parent row's rect: inside the scroller it would clip. */
+    $effect(() => {
+        const parent = menu.openSubmenuValue
+        if (parent === null) {
+            submenuPosition = null
+            return
+        }
+        void tick().then(() => {
+            const row = surfaceEl?.querySelector(`[data-menu-value="${CSS.escape(parent)}"]`)
+            if (!row) return
+            const rect = row.getBoundingClientRect()
+            // A few px of overlap, the way macOS hands a submenu off from its parent row.
+            submenuPosition = { top: rect.top - ANCHOR_GAP, left: rect.right - 5 }
+        })
+    })
+
+    /** A pointer-down outside the menu and its anchor closes it. */
+    function handleDocumentPointerDown(event: PointerEvent): void {
+        if (!menu.isOpen) return
+        const target = event.target as Node | null
+        if (!target) return
+        if (surfaceEl?.contains(target)) return
+        const anchor = menu.anchor
+        if (anchor?.kind === 'element' && anchor.element.contains(target)) return
+        menu.close()
+    }
+
+    /**
+     * A row hosts its own controls (an eject button, a rename field), and those act for
+     * themselves: a click on one never also activates the row, so no call site needs
+     * `stopPropagation`.
+     */
+    function isOwnControl(event: Event): boolean {
+        const target = event.target as HTMLElement | null
+        return target?.closest('button, a, input, select, textarea') != null
+    }
+
+    function rowContext(section: MenuSection<T>, item: MenuItem<T>, index: number): MenuRowContext<T> {
+        return {
+            item,
+            section,
+            index,
+            highlighted: menu.highlightedValue === item.value && !menu.parentHighlightSuppressed,
+            dragging: menu.draggingValue === item.value,
+        }
+    }
+
+    /** The drop-line cue: the gap the grabbed row would land in, as a border on the bordering row. */
+    function dropCue(section: MenuSection<T>, index: number): 'above' | 'below' | null {
+        if (menu.draggingSectionId !== section.id || menu.dropSlot === null) return null
+        if (menu.dropSlot === index) return 'above'
+        if (menu.dropSlot === section.items.length && index === section.items.length - 1) return 'below'
+        return null
+    }
+
+    const submenuItems = $derived(
+        menu.openSubmenuValue === null
+            ? []
+            : (menu.sections
+                  .flatMap((section) => section.items)
+                  .find((item) => item.value === menu.openSubmenuValue)?.submenu ?? []),
+    )
 </script>
 
-<Portal>
-    <!-- Transparent full-viewport catcher: a pointer-down anywhere outside the menu
-         dismisses it. The menu sits above it, so item clicks land on the item. -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-        class="menu-backdrop"
-        onpointerdown={() => {
-            onClose()
-        }}
-    ></div>
-    <div class="menu-content" role="menu" aria-label={ariaLabel} style="left: {left}px; top: {top}px">
-        {#each items as item (item.value)}
-            <button
-                type="button"
-                role="menuitem"
-                class="menu-item"
-                class:is-highlighted={item.value === highlightedValue}
-                disabled={item.disabled}
-                onpointerenter={() => {
-                    onHighlightChange?.(item.value)
-                }}
-                onclick={() => {
-                    onSelect(item.value)
+<svelte:window onresize={handleResize} onpointerdown={handleDocumentPointerDown} />
+
+{#if menu.isOpen}
+    <Portal>
+        <div
+            bind:this={surfaceEl}
+            class="menu-surface"
+            class:keyboard-mode={menu.keyboardMode}
+            role="menu"
+            aria-label={ariaLabel}
+            aria-activedescendant={menu.highlightedValue ? rowId(menu.highlightedValue) : undefined}
+            tabindex="-1"
+            style:left="{position?.left ?? 0}px"
+            style:top="{position?.top ?? 0}px"
+            style:max-height={position ? `${String(position.maxHeight)}px` : undefined}
+            style:min-width="{minWidth}px"
+            style:visibility={position ? 'visible' : 'hidden'}
+            onmousemove={(event: MouseEvent) => {
+                menu.surface.pointerMoved(event)
+            }}
+        >
+            {#each menu.sections as section, sectionIndex (section.id)}
+                {#if sectionIndex > 0}
+                    <div class="menu-separator"></div>
+                {/if}
+                <div role="group" aria-label={section.heading ?? undefined}>
+                    {#if section.heading}
+                        <div class="menu-heading" aria-hidden="true">{section.heading}</div>
+                    {/if}
+                    {#if section.items.length === 0 && section.emptyLabel}
+                        <!-- A real (empty) state, not a missing section: present, said, and unfocusable. -->
+                        <div class="menu-empty" role="menuitem" aria-disabled="true" tabindex="-1">
+                            {section.emptyLabel}
+                        </div>
+                    {/if}
+                    {#each section.items as item, index (item.value)}
+                        {@const context = rowContext(section, item, index)}
+                        {@const cue = dropCue(section, index)}
+                        <!-- svelte-ignore a11y_mouse_events_have_key_events -->
+                        <div
+                            id={rowId(item.value)}
+                            class="menu-row"
+                            class:is-highlighted={context.highlighted}
+                            class:is-disabled={item.disabled}
+                            class:is-dragging={context.dragging}
+                            class:is-drop-above={cue === 'above'}
+                            class:is-drop-below={cue === 'below'}
+                            class:is-reorderable={section.reorderable}
+                            role="menuitem"
+                            tabindex="-1"
+                            aria-disabled={item.disabled ? 'true' : undefined}
+                            aria-haspopup={item.submenu?.length ? 'menu' : undefined}
+                            aria-expanded={item.submenu?.length ? menu.openSubmenuValue === item.value : undefined}
+                            data-menu-value={item.value}
+                            use:tooltip={item.tooltip ?? ''}
+                            onclick={(event: MouseEvent) => {
+                                if (isOwnControl(event)) return
+                                menu.surface.activate(item.value)
+                            }}
+                            oncontextmenu={(event: MouseEvent) => {
+                                event.preventDefault()
+                                menu.surface.contextMenu(item.value, event)
+                            }}
+                            onmousedown={(event: MouseEvent) => {
+                                if (isOwnControl(event)) return
+                                menu.surface.startDrag(item.value, event)
+                            }}
+                            onmouseover={() => {
+                                menu.surface.hover(item.value)
+                                if (item.submenu?.length) {
+                                    menu.surface.openSubmenu(item.value, false)
+                                } else if (menu.openSubmenuValue !== null) {
+                                    menu.surface.closeSubmenu()
+                                }
+                            }}
+                        >
+                            {#if item.checked}
+                                <span class="menu-check"><Icon name="check" size={14} aria-hidden="true" /></span>
+                            {:else}
+                                <span class="menu-check-placeholder"></span>
+                            {/if}
+                            {#if item.icon}
+                                {#if 'lucide' in item.icon}
+                                    <span class="menu-icon"><Icon name={item.icon.lucide} size={16} aria-hidden="true" /></span>
+                                {:else}
+                                    <img class="menu-icon-image" src={item.icon.src} alt="" />
+                                {/if}
+                            {/if}
+                            {#if label}
+                                {@render label(context)}
+                            {:else}
+                                <span class="menu-label">{item.label}</span>
+                            {/if}
+                            {#if trailing}{@render trailing(context)}{/if}
+                            {#if item.submenu?.length}
+                                <span class="menu-submenu-arrow"></span>
+                            {/if}
+                        </div>
+                        {#if below}{@render below(context)}{/if}
+                    {/each}
+                </div>
+            {/each}
+            {#if footer}{@render footer()}{/if}
+        </div>
+
+        {#if menu.openSubmenuValue !== null && submenuPosition}
+            <div
+                class="menu-surface menu-submenu"
+                role="menu"
+                aria-label={ariaLabel}
+                style:top="{submenuPosition.top}px"
+                style:left="{submenuPosition.left}px"
+                onmouseleave={() => {
+                    menu.surface.closeSubmenu()
                 }}
             >
-                {#if item.icon}
-                    <Icon name={item.icon} size={15} aria-hidden="true" />
-                {/if}
-                <span class="menu-item-label">{item.label}</span>
-            </button>
-        {/each}
-    </div>
-</Portal>
+                {#each submenuItems as child (child.value)}
+                    <!-- svelte-ignore a11y_mouse_events_have_key_events -->
+                    <div
+                        class="menu-row"
+                        class:is-highlighted={menu.submenuHighlighted}
+                        role="menuitem"
+                        tabindex="-1"
+                        data-menu-value={child.value}
+                        onmouseover={() => {
+                            menu.surface.setSubmenuHighlighted(true)
+                        }}
+                        onclick={() => {
+                            menu.surface.activate(child.value)
+                        }}
+                    >
+                        <span class="menu-check-placeholder"></span>
+                        <span class="menu-label">{child.label}</span>
+                    </div>
+                {/each}
+            </div>
+        {/if}
+    </Portal>
+{/if}
 
 <style>
-    .menu-backdrop {
+    /* Frosted-glass surface, shared tokens with `Select` / the tooltip so every glass surface
+       reads as one material; the blur drops under reduced transparency (the token flips opaque). */
+    .menu-surface {
         position: fixed;
-        inset: 0;
-        z-index: var(--z-dropdown);
-    }
-
-    /* Frosted-glass surface, shared tokens with `Select` / tooltips so every glass
-       surface reads as one material; the blur drops under reduced transparency
-       (the token flips opaque). */
-    .menu-content {
-        position: fixed;
-        display: flex;
-        flex-direction: column;
-        gap: 1px;
-        min-width: 200px;
-        max-width: 260px;
-        padding: var(--spacing-xs);
+        overflow-y: auto;
+        padding: var(--spacing-xs) 0;
         background: var(--color-bg-glass);
         -webkit-backdrop-filter: saturate(180%) blur(20px);
         backdrop-filter: saturate(180%) blur(20px);
         border: 0.5px solid var(--color-border-glass);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-lg);
-        /* Above the backdrop so item clicks land on the item, not the catcher. */
-        z-index: calc(var(--z-dropdown) + 1);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-md);
+        z-index: var(--z-overlay);
+        outline: none;
     }
 
-    :global(html.reduce-transparency) .menu-content {
+    :global(html.reduce-transparency) .menu-surface {
         -webkit-backdrop-filter: none;
         backdrop-filter: none;
     }
 
-    .menu-item {
+    /* Above the parent surface, which it overlaps by a few px. */
+    .menu-submenu {
+        z-index: calc(var(--z-overlay) + 1);
+        min-width: 220px;
+    }
+
+    .menu-heading {
+        padding: var(--spacing-sm) var(--spacing-md) var(--spacing-xs);
+        font-size: var(--font-size-sm);
+        font-weight: 500;
+        color: var(--color-text-tertiary);
+        text-transform: uppercase;
+        /*noinspection CssNonIntegerLengthInPixels*/
+        letter-spacing: 0.5px;
+    }
+
+    .menu-separator {
+        height: 1px;
+        margin: var(--spacing-xs) var(--spacing-sm);
+        background-color: var(--color-border-strong);
+    }
+
+    .menu-row {
+        position: relative;
         display: flex;
         align-items: center;
         gap: var(--spacing-sm);
-        padding: var(--spacing-xs) var(--spacing-sm);
-        border: none;
-        border-radius: var(--radius-sm);
-        background: transparent;
+        padding: var(--spacing-sm) var(--spacing-md);
+        cursor: default;
         color: var(--color-text-primary);
         font-size: var(--font-size-sm);
-        text-align: left;
-        cursor: default;
-        outline: none;
-        white-space: nowrap;
     }
 
-    /* Highlighted row (keyboard / pointer cursor): accent fill, like macOS. */
-    .menu-item.is-highlighted {
-        background: var(--color-accent);
-        color: var(--color-accent-fg);
+    /* One cursor at a time: hover paints only while the keyboard isn't driving. */
+    /*noinspection CssUnusedSymbol*/
+    .menu-surface:not(.keyboard-mode) .menu-row:not(.is-disabled):hover,
+    .menu-row.is-highlighted {
+        background-color: var(--color-accent-subtle);
     }
 
-    .menu-item:disabled {
+    .menu-row.is-disabled {
         opacity: 0.5;
     }
 
-    .menu-item-label {
+    .menu-row.is-reorderable {
+        cursor: grab;
+    }
+
+    /*noinspection CssUnusedSymbol*/
+    .menu-row.is-dragging {
+        cursor: grabbing;
+        opacity: 0.5;
+    }
+
+    /* Drop-line cue: a border marking the gap the pointer is over. */
+    /*noinspection CssUnusedSymbol*/
+    .menu-row.is-drop-above {
+        box-shadow: inset 0 2px 0 0 var(--color-accent);
+    }
+
+    /*noinspection CssUnusedSymbol*/
+    .menu-row.is-drop-below {
+        box-shadow: inset 0 -2px 0 0 var(--color-accent);
+    }
+
+    .menu-empty {
+        padding: var(--spacing-sm) var(--spacing-md);
+        color: var(--color-text-tertiary);
+        font-style: italic;
+        font-size: var(--font-size-sm);
+        cursor: default;
+        user-select: none;
+    }
+
+    .menu-check {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: calc(14px * var(--font-scale));
+        flex-shrink: 0;
+    }
+
+    .menu-check-placeholder {
+        width: 14px;
+        flex-shrink: 0;
+    }
+
+    .menu-icon,
+    .menu-icon-image {
+        width: var(--spacing-icon-size);
+        height: var(--spacing-icon-size);
+        flex-shrink: 0;
+        object-fit: contain;
+    }
+
+    .menu-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-secondary);
+    }
+
+    .menu-label {
         flex: 1;
         min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* CSS triangle, not a font character: `›` renders at inconsistent sizes across fonts. */
+    .menu-submenu-arrow {
+        display: inline-block;
+        width: 0;
+        height: 0;
+        margin-left: auto;
+        border-top: 4px solid transparent;
+        border-bottom: 4px solid transparent;
+        border-left: 5px solid var(--color-text-tertiary);
+        flex-shrink: 0;
     }
 </style>

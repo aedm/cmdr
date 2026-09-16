@@ -1,27 +1,19 @@
 /**
- * Reactive controller for the Enter-behavior popup (`lib/ui/Menu` shown when an
- * archive/bundle set to Ask is opened). Holds the menu's open/anchor/highlight
- * `$state` and orchestrates a choice — browse, open, or deep-link to Settings —
- * so FilePane only renders `<Menu>` bound to this and calls `openFor` from its
- * navigate fork. Pure decision logic stays in `archive-enter-policy.ts`; item
- * building and anchoring in `enter-menu.ts`.
+ * Reactive controller for the Enter-behavior popup (the house `Menu` shown when an
+ * archive/bundle set to Ask is opened). It holds the pending entry and routes a choice —
+ * browse, open, or deep-link to Settings — so `FilePane` renders `<Menu menu={enterMenu.menu}>`
+ * and calls `openFor` from its navigate fork.
  *
- * Keyboard model: while the popup (`lib/ui/Menu`, portaled to `document.body`) is
- * open, a document-level CAPTURE keydown listener (attached here, live only while
- * open) routes every key to `handleKey` — arrows move the highlight, Enter/Space
- * select, Escape closes — and stops it before it reaches the pane's own nav. The
- * capture listener, not focus, is what makes the keys deterministic: it catches
- * them wherever focus landed (the pane or the portaled menu), so the menu's mount
- * autofocus can't race them. The menu owns rendering, positioning, pointer
- * selection, and outside-click dismissal; `setHighlighted` syncs the highlight on
- * pointer hover.
+ * Everything about the menu itself (open state, anchoring, the cursor, the document-capture
+ * key routing, focus) belongs to `$lib/ui/menu-controller.svelte.ts`. Pure decision logic stays
+ * in `archive-enter-policy.ts`; section building and anchoring in `enter-menu.ts`.
  */
 
 import type { FileEntry } from '$lib/file-explorer/types'
-import type { MenuItem } from '$lib/ui/menu-types'
+import { createMenu, type MenuController } from '$lib/ui/menu-controller.svelte'
 import { openSettingsWindow } from '$lib/settings/settings-window'
 import type { EnterAction } from './archive-enter-policy'
-import { buildEnterMenuItems, enterMenuAnchor, enterMenuHighlight } from './enter-menu'
+import { buildEnterMenuSections, enterMenuAnchor, enterMenuHighlight } from './enter-menu'
 
 export interface EnterMenuDeps {
   /** The pane's root element, for anchoring the menu at the cursor row. */
@@ -35,141 +27,44 @@ export interface EnterMenuDeps {
 }
 
 export interface EnterMenuController {
-  readonly open: boolean
-  readonly anchorPoint: { x: number; y: number } | null
-  readonly highlighted: string | null
-  readonly items: MenuItem[]
+  /** Hand this to `<Menu menu={…}>`; it renders nothing while closed. */
+  readonly menu: MenuController
   /** Open the popup for an entry; `action` (the resolved policy) picks the lead row. */
   openFor: (entry: FileEntry, action: EnterAction) => void
-  onOpenChange: (open: boolean) => void
-  onSelect: (value: string) => void
-  /** Sync the highlight on pointer hover (from Ark). */
-  setHighlighted: (value: string | null) => void
-  /** Route a keydown while the menu is open; returns true when it consumed the key. */
-  handleKey: (event: KeyboardEvent) => boolean
-  /** Detach the document listener (call from the host's teardown). */
+  /** Detach the menu's listeners (call from the host's teardown). */
   dispose: () => void
 }
 
 export function createEnterMenu(deps: EnterMenuDeps): EnterMenuController {
-  let open = $state(false)
-  let anchorPoint = $state<{ x: number; y: number } | null>(null)
-  let highlighted = $state<string | null>(null)
-  // Not reactive: read only inside `select`, never rendered.
+  // Not reactive: read only when a row is picked, never rendered.
   let pendingEntry: FileEntry | null = null
 
-  // A document-level capture listener, live only while the menu is open, catches
-  // keydowns regardless of where focus landed (the pane, or the portaled menu) and
-  // routes them to `handleKey`, which stops them from reaching the pane's own
-  // navigation. This is what makes keyboard nav deterministic — focus timing (the
-  // menu autofocuses on mount) can't race the keys.
-  let keyListenerAttached = false
-  function onDocumentKeydown(event: KeyboardEvent): void {
-    controller.handleKey(event)
-  }
-  function attachKeyListener(): void {
-    if (keyListenerAttached || typeof document === 'undefined') return
-    document.addEventListener('keydown', onDocumentKeydown, true)
-    keyListenerAttached = true
-  }
-  function detachKeyListener(): void {
-    if (!keyListenerAttached || typeof document === 'undefined') return
-    document.removeEventListener('keydown', onDocumentKeydown, true)
-    keyListenerAttached = false
-  }
+  const menu = createMenu({
+    // Rebuilt per read so a live locale switch is reflected (cheap: three rows).
+    getSections: buildEnterMenuSections,
+    onSelect: (item) => {
+      const entry = pendingEntry
+      pendingEntry = null
+      if (item.value === 'configure') {
+        void openSettingsWindow('enter-menu', ['Behavior', 'Archives'])
+        return
+      }
+      if (!entry) return
+      if (item.value === 'browse') deps.browse(entry)
+      else if (item.value === 'open') deps.open(entry)
+    },
+    restoreFocus: deps.restoreFocus,
+  })
 
-  function close(): void {
-    open = false
-    detachKeyListener()
-    deps.restoreFocus()
-  }
-
-  function select(value: string): void {
-    const entry = pendingEntry
-    open = false
-    detachKeyListener()
-    deps.restoreFocus()
-    if (!entry) return
-    if (value === 'browse') deps.browse(entry)
-    else if (value === 'open') deps.open(entry)
-    else if (value === 'configure') void openSettingsWindow('enter-menu', ['Behavior', 'Archives'])
-  }
-
-  const controller: EnterMenuController = {
-    get open() {
-      return open
-    },
-    get anchorPoint() {
-      return anchorPoint
-    },
-    get highlighted() {
-      return highlighted
-    },
-    get items() {
-      // Rebuilt per open so a live locale switch is reflected (cheap: three items).
-      return buildEnterMenuItems()
-    },
+  return {
+    menu,
     openFor(entry, action) {
       pendingEntry = entry
-      anchorPoint = enterMenuAnchor(deps.getPaneElement())
-      highlighted = enterMenuHighlight(action)
-      open = true
-      attachKeyListener()
-    },
-    onOpenChange(next) {
-      const wasOpen = open
-      open = next
-      // Outside-click close: detach and hand focus back to the pane, on the transition.
-      if (wasOpen && !next) {
-        detachKeyListener()
-        deps.restoreFocus()
-      }
-    },
-    onSelect(value) {
-      // Pointer selection. Keyboard selection goes through `handleKey`.
-      select(value)
-    },
-    setHighlighted(value) {
-      if (value !== null) highlighted = value
-    },
-    handleKey(event) {
-      if (!open) return false
-      const values = buildEnterMenuItems().map((item) => item.value)
-      if (values.length === 0) return false
-      const idx = values.indexOf(highlighted ?? '')
-      const clampMove = (next: number) => {
-        event.preventDefault()
-        event.stopPropagation()
-        highlighted = values[Math.max(0, Math.min(values.length - 1, next))]
-        return true
-      }
-      switch (event.key) {
-        case 'ArrowDown':
-          return clampMove(idx < 0 ? 0 : idx + 1)
-        case 'ArrowUp':
-          return clampMove(idx < 0 ? values.length - 1 : idx - 1)
-        case 'Home':
-          return clampMove(0)
-        case 'End':
-          return clampMove(values.length - 1)
-        case 'Enter':
-        case ' ':
-          event.preventDefault()
-          event.stopPropagation()
-          if (highlighted !== null) select(highlighted)
-          return true
-        case 'Escape':
-          event.preventDefault()
-          event.stopPropagation()
-          close()
-          return true
-        default:
-          return false
-      }
+      menu.openAt(enterMenuAnchor(deps.getPaneElement()))
+      menu.highlight(enterMenuHighlight(action))
     },
     dispose() {
-      detachKeyListener()
+      menu.destroy()
     },
   }
-  return controller
 }

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { buildEnterMenuItems, enterMenuAnchor, enterMenuHighlight } from './enter-menu'
+import { buildEnterMenuSections, enterMenuAnchor, enterMenuHighlight } from './enter-menu'
 
-describe('buildEnterMenuItems', () => {
-  it('returns the three rows in order: browse, open, configure', () => {
-    const items = buildEnterMenuItems()
-    expect(items.map((i) => i.value)).toEqual(['browse', 'open', 'configure'])
+describe('buildEnterMenuSections', () => {
+  it('returns one unheaded section with the three rows in order: browse, open, configure', () => {
+    const sections = buildEnterMenuSections()
+    expect(sections).toHaveLength(1)
+    expect(sections[0].heading).toBeUndefined()
+    expect(sections[0].items.map((i) => i.value)).toEqual(['browse', 'open', 'configure'])
     // Labels come from the catalog; assert they're non-empty (English fallback).
-    for (const item of items) expect(item.label.length).toBeGreaterThan(0)
+    for (const item of sections[0].items) expect(item.label.length).toBeGreaterThan(0)
   })
 })
 
@@ -22,8 +24,8 @@ describe('enterMenuHighlight', () => {
 })
 
 describe('enterMenuAnchor', () => {
-  it('returns null when there is no pane element', () => {
-    expect(enterMenuAnchor(null)).toBeNull()
+  it('falls back to the origin when there is no pane element', () => {
+    expect(enterMenuAnchor(null)).toEqual({ x: 0, y: 0 })
   })
 
   it('anchors just below the left edge of the cursor row', () => {

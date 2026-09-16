@@ -1,18 +1,61 @@
 import type { IconName } from './icons/icon-map'
 
 /**
- * One row in a `Menu` (`lib/ui/Menu.svelte`). Lives in a `.ts` (not the component's
- * module script like `SelectItem`) because non-Svelte glue — the archive Enter-menu
- * helpers — consumes it, and a type imported from a `.svelte` file resolves to `any`
- * under the plain-TypeScript lint service.
+ * The vocabulary of the house `Menu` (`lib/ui/Menu.svelte`). Lives in a `.ts` (not the
+ * component's module script like `SelectItem`) because non-Svelte glue — menu controllers
+ * such as `file-explorer/pane/enter-menu.ts` — consumes it, and a type imported from a
+ * `.svelte` file resolves to `any` under the plain-TypeScript lint service.
  *
- * `value` is the stable identity emitted on select; `label` is the visible text;
- * `icon` renders a Lucide glyph before the label; `disabled` greys the row and blocks
- * activation.
+ * `T` is the caller's own payload, carried on `MenuItem.data` and handed back untouched on
+ * select and to every row snippet, so a consumer never has to look its row up again.
  */
-export interface MenuItem {
+
+/** A lucide glyph, or an image the caller already has a URL for (a volume or folder icon). */
+export type MenuIcon = { lucide: IconName } | { src: string }
+
+/** One row. `value` is the stable identity: it's what `onSelect` emits and what the highlight tracks. */
+export interface MenuItem<T = undefined> {
   value: string
   label: string
-  icon?: IconName
+  icon?: MenuIcon
+  /** Renders the leading checkmark. The checkmark column is always reserved, so rows stay aligned. */
+  checked?: boolean
+  /** Greyed, skipped by the keyboard, never activates. */
   disabled?: boolean
+  tooltip?: string
+  /** One level only: a submenu item's own `submenu` is ignored. */
+  submenu?: MenuItem<T>[]
+  data?: T
 }
+
+export interface MenuSection<T = undefined> {
+  id: string
+  heading?: string
+  items: MenuItem<T>[]
+  /** Rows reorder within this section by drag and ⌥↑/⌥↓; the caller persists in `onReorder`. */
+  reorderable?: boolean
+  /** Shown (disabled, unfocusable) when the section is empty, so the section still reads as a real state. */
+  emptyLabel?: string
+}
+
+/** The one argument every row snippet (`label`, `trailing`, `below`) takes. */
+export interface MenuRowContext<T = undefined> {
+  item: MenuItem<T>
+  section: MenuSection<T>
+  /** The row's index WITHIN its section, which is also what a reorder moves. */
+  index: number
+  highlighted: boolean
+  dragging: boolean
+}
+
+/** What `onReorder` receives, once, on drop (or on a ⌥↑/⌥↓ that actually moves something). */
+export interface MenuReorder {
+  sectionId: string
+  /** The section's item values in their new order: hand this straight to a persist call. */
+  orderedValues: string[]
+  from: number
+  to: number
+}
+
+/** Where an open menu pins itself: under an element, or at a viewport point (a context menu). */
+export type MenuAnchor = { kind: 'element'; element: HTMLElement } | { kind: 'point'; x: number; y: number }

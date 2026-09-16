@@ -23,6 +23,14 @@ Pull-tier docs for `lib/ui/`: architecture, component APIs, and decision rationa
 - **`portal-target.ts`**: Where `Select` / `Combobox` menus portal: `document.body`, or the overlay a modal layer
   provides (`providePortalTarget`, called by `ModalDialog` and `OnboardingWizard`). See § Select
 - **`Popover.svelte`**: Generic positioned floater: frosted glass, auto-flip, focus trap, Esc-scoped close
+- **`Menu.svelte`**: The house menu surface: portaled glass, sections of rows, submenu, footer; renders nothing while
+  closed. See § Menu
+- **`menu-controller.svelte.ts`**: `createMenu(deps)`: open state, the cursor, keys, pointer mode, submenus, reorder.
+  ❗ Never named `menu.svelte.ts` (§ Menu says why)
+- **`menu-types.ts`**: `MenuItem` / `MenuSection` / `MenuRowContext` / `MenuIcon`, in a `.ts` so non-Svelte controllers
+  resolve them as real types
+- **`menu-navigation.ts`** / **`menu-reorder.ts`**: the pure halves: which row is next and what a key means; the
+  drag and ⌥↑/⌥↓ index math
 - **`FilterPopover.svelte`**: `Popover` + a labelled section header; the query dialogs' Size / Modified / Search-in
   surface
 - **`Chip.svelte`**: Small pill button: filter chip (popover trigger + × clear) or recent pill (badge + truncate)
@@ -810,23 +818,68 @@ those.
 
 ## Menu
 
-Controlled action menu built on Ark UI's `Menu` (the app's first — context menus are otherwise native/muda). An
-items-driven shell: the caller controls `open`, supplies `items`, and reacts to `onSelect`; Ark owns the keyboard
-contract (arrow nav, Enter/Space select, Escape dismiss, typeahead) and focus management. Frosted-glass surface with the
-shared glass tokens (drops its blur under reduced transparency). The first user is the archive Enter-behavior popup
-(`file-explorer/pane/enter-menu.svelte.ts`).
+The house menu, and the app's only in-app menu primitive (context menus are otherwise native/muda): a portaled, glass,
+keyboard-first popup built from SECTIONS of rows. Data in, callbacks out — the caller hands over sections and gets
+`onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Its consumer today
+is the archive Enter popup (`file-explorer/pane/enter-menu.svelte.ts`); the volume switcher moves onto it next.
 
-Props: `open` + `onOpenChange` (controlled), `items: MenuItem[]`, `onSelect(value)`, `ariaLabel`, `anchorPoint?` (a
-viewport point — the context-menu shape; omit for trigger anchoring), `defaultHighlightedValue?` (the row highlighted on
-open), `portal?` (teleport the open menu to `document.body`).
+❗ **Deliberately NOT Ark-backed.** Ark's `Menu` machine is trigger-driven and doesn't reliably open
+(mounted-already-open) or close (controlled `open=false`) when driven programmatically, which every caller here needs.
 
-- **`MenuItem` lives in `menu-types.ts`, NOT the component's module script** (unlike `SelectItem`): non-Svelte glue (the
-  pane's enter-menu helpers) imports it, and a type imported from a `.svelte` file resolves to `any` under the
-  plain-TypeScript lint service. Inline `onSelect`/`onOpenChange` arrows in a `.svelte` consumer hit the same `any`
-  inference — pass a named, typed handler (like `SettingToggleGroup`) instead.
-- **Point-anchored + no trigger**: opened programmatically via `open` + `anchorPoint`, so there's no trigger element for
-  Ark to restore focus to on close. A keyboard-invoked caller (the Enter popup) should `portal` it out of any host with
-  an `onfocusin` focus guard and restore focus itself on close.
+❗ **The controller is `menu-controller.svelte.ts`, never `menu.svelte.ts`.** macOS filesystems are case-insensitive, so
+the specifier `./menu.svelte` resolves to the sibling `Menu.svelte` COMPONENT locally and to the controller on a
+case-sensitive CI runner: one import, two different modules on the two platforms. (Verified 2026-09-16 on vite 8: the
+import returned the component and `createMenu is not a function`.) No `.svelte.ts` module may case-collide with a
+sibling component.
+
+**Building one**: `createMenu(deps)` takes `getSections` (read live on every access, so the menu tracks the caller's
+state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isEditing`, `onOpenChange`, `restoreFocus`.
+Hand the result to `<Menu {menu} ariaLabel minWidth>`; it renders nothing while closed, so there's no `{#if}`.
+
+**Consumer surface**: `openUnder(el)`, `openAt(point)`, `toggleUnder(el)`, `close()`, `highlight(value)`,
+`handleKey(event)`, `destroy()`, plus the reactive `isOpen` / `highlightedValue`. Everything under `menu.surface.*` is
+`Menu.svelte`'s own wiring (hover, drag, submenu, row measurement); consumers never touch it.
+
+**Snippets decorate, they don't re-implement.** The default row (checkmark column, icon, label) is there; `label`
+replaces the row's text (an inline rename field), `trailing` fills its right end (badges, an eject button), `below` adds
+a sub-line (the disk-space bar), and `footer` sits under the last section. Each takes one
+`MenuRowContext = { item, section, index, highlighted, dragging }`.
+
+**What the primitive owns**:
+
+- **Keyboard**: arrows wrap and skip headings, separators, disabled rows, and empty placeholders; Home/End; Enter and
+  Space activate; Escape closes; ArrowRight opens a submenu and ArrowLeft closes it; ⌥↑/⌥↓ reorder inside a
+  `reorderable` section. A bare cursor key only: ⌘↓ / ⌃↓ / ⌥↓ belong to somebody else and pass through.
+- **Every key while open.** `onKey` gets the first look, then the menu's own handling, and anything left over is
+  swallowed (`stopPropagation`), which is what keeps the panes behind it inert. ❗ A swallowed key is never
+  `preventDefault`ed, so ⌘Q and the menu-bar accelerators still mean what they mean.
+- **`isEditing()` suspends all of it**, untouched and unswallowed, so an inline editor keeps every keystroke.
+- **Focus**: the container takes focus on open (`tabindex="-1"` plus `aria-activedescendant` on the highlighted row) and
+  calls `restoreFocus` on close. Keys route through a document-level CAPTURE listener that lives only while open, the
+  model `enter-menu.svelte.ts` proved deterministic against focus timing.
+- **Pointer**: hover moves the cursor unless keyboard mode is on; a pointer move over 5 px leaves keyboard mode; a
+  click activates; a right-click calls `onContextMenu`; a pointer-down outside closes.
+- **Reorder**: drag past a 4 px threshold, the drop-line cue at the insertion gap, and `onReorder` once, on drop.
+  Because the cursor is a VALUE rather than an index, it rides along with the moved row for free.
+- **Placement**: fixed, clamped into the viewport, `max-height` to the room below the anchor with its own scroll, the
+  cursor scrolled into view, and submenus positioned off the row's rect with a small overlap.
+
+**Gotchas**:
+
+- **A row's own controls act for themselves.** A click on a `<button>` / `<a>` / `<input>` inside a row never activates
+  the row, so no call site needs `stopPropagation`.
+- **A pointer-down outside closes the menu and still reaches what it landed on** (there's no click-catching backdrop).
+  That's what the switcher does today and what M2 has to preserve; it's a deliberate break from the macOS menu, which
+  swallows that click.
+- **The single-cursor rule**: an open submenu takes the parent row's highlight (`parentHighlightSuppressed`), and a
+  submenu opened by hovering its parent row shows no cursor until the pointer or the keyboard reaches into it.
+- **`MenuItem` lives in `menu-types.ts`, NOT the component's module script** (unlike `SelectItem`): non-Svelte
+  controllers import it, and a type imported from a `.svelte` file resolves to `any` under the plain-TypeScript lint
+  service.
+- **One level of submenu**, and no type-ahead, virtualization, or checkbox/radio items: nothing needs them, and each is
+  addable without moving the seams.
+- ⚠️ **`aria-activedescendant` on a portaled container is not yet verified with VoiceOver.** The ARIA wiring is there and
+  axe is clean (`overlays.a11y.test.ts`), but nobody has listened to it; confirm before leaning on it.
 
 ## FilterPopover
 

@@ -1983,24 +1983,10 @@
     {/if}
 </div>
 
-<!-- Enter-behavior popup (archive/bundle set to Ask). Portaled to body. Keyboard
-     nav is driven by the controller's document listener (`enterMenu.handleKey`); Ark
-     owns rendering, positioning, and pointer selection. Mounted only while open (an
-     `{#if}`) so closing UNMOUNTS it — Ark's controlled-open machine doesn't reliably
-     close on `open=false` alone. -->
-{#if enterMenu.open}
-    <Menu
-        items={enterMenu.items}
-        onSelect={enterMenu.onSelect}
-        onClose={() => {
-            enterMenu.onOpenChange(false)
-        }}
-        anchorPoint={enterMenu.anchorPoint}
-        highlightedValue={enterMenu.highlighted}
-        onHighlightChange={enterMenu.setHighlighted}
-        ariaLabel={tString('fileExplorer.archiveEnterMenu.ariaLabel')}
-    />
-{/if}
+<!-- Enter-behavior popup (archive/bundle set to Ask). The house `Menu` portals itself and
+     renders nothing while closed, so this needs no `{#if}`; it owns keys (a document-capture
+     listener), positioning, and pointer selection. -->
+<Menu menu={enterMenu.menu} ariaLabel={tString('fileExplorer.archiveEnterMenu.ariaLabel')} />
 
 {#if renameFlow.extensionDialogState}
     <ExtensionChangeDialog

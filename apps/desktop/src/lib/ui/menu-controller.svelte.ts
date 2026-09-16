@@ -1,0 +1,462 @@
+/**
+ * The controller behind the house `Menu` (`lib/ui/Menu.svelte`): everything that isn't
+ * rendering. It owns open state, the anchor, the highlight, the keyboard contract,
+ * keyboard-vs-pointer mode, submenus, and reorder; `Menu.svelte` owns the DOM and hands
+ * back the one measurement the drag needs.
+ *
+ * ❗ **Not `menu.svelte.ts`.** macOS filesystems are case-insensitive, so the specifier
+ * `./menu.svelte` resolves to the sibling `Menu.svelte` COMPONENT here and to the
+ * controller on a case-sensitive CI runner: the same import would mean two different
+ * modules on the two platforms (measured 2026-09-16, vite 8 resolving `./menu.svelte` to
+ * `Menu.svelte` and yielding `createMenu is not a function`). Any `.svelte.ts` module
+ * needs a name no sibling component can collide with.
+ *
+ * The caller hands over data and gets callbacks back: the controller keeps no copy of the
+ * sections and persists nothing. Keys arrive through a document-level CAPTURE listener that
+ * lives only while the menu is open, which is what makes them deterministic regardless of
+ * where focus landed — the model `file-explorer/pane/enter-menu.svelte.ts` proved.
+ */
+
+import type { MenuAnchor, MenuItem, MenuReorder, MenuSection } from './menu-types'
+import {
+  itemOf,
+  menuKeyAction,
+  navigableValues,
+  nextValue,
+  sectionOf,
+  type MenuAction,
+  type MenuKeyContext,
+} from './menu-navigation'
+import { clampedReorderTarget, moveItem, pointerInsertionSlot, pointerReorderTarget } from './menu-reorder'
+
+/** Below this many pixels of pointer travel, a mouseup is a plain click (activate), not a drag. */
+const DRAG_THRESHOLD_PX = 4
+
+/** Pointer travel that ends keyboard mode, so a resting mouse can't steal the cursor. */
+const KEYBOARD_MODE_EXIT_PX = 5
+
+export interface MenuDeps<T = undefined> {
+  /** Read live on every access, so the menu tracks the caller's state with no syncing. */
+  getSections: () => MenuSection<T>[]
+  onSelect: (item: MenuItem<T>) => void
+  /** Fires once, on drop or on a ⌥↑/⌥↓ that actually moves something. The caller persists. */
+  onReorder?: (reorder: MenuReorder) => void
+  onContextMenu?: (item: MenuItem<T>, event: MouseEvent) => void
+  /** The caller's first look at every key while open. Return true to claim it. */
+  onKey?: (event: KeyboardEvent) => boolean
+  /** While true an inline editor owns every keystroke, and drag is off. */
+  isEditing?: () => boolean
+  onOpenChange?: (open: boolean) => void
+  /** Called on close, so the caller can put focus back where it was. */
+  restoreFocus?: () => void
+}
+
+/** What `Menu.svelte` registers so the controller can do drag math against real rows. */
+export interface MenuSurfaceHooks {
+  /** The vertical midpoint of each row in a section, in display order. */
+  getRowMidpoints: (sectionId: string) => number[]
+}
+
+/** The wiring `Menu.svelte` drives. Consumers never touch this; they use the surface above it. */
+export interface MenuSurface {
+  hover: (value: string) => void
+  pointerMoved: (event: MouseEvent) => void
+  activate: (value: string) => void
+  contextMenu: (value: string, event: MouseEvent) => void
+  startDrag: (value: string, event: MouseEvent) => void
+  openSubmenu: (value: string, fromKeyboard: boolean) => void
+  closeSubmenu: () => void
+  setSubmenuHighlighted: (highlighted: boolean) => void
+  bindSurface: (hooks: MenuSurfaceHooks) => void
+}
+
+export interface MenuController<T = undefined> {
+  readonly isOpen: boolean
+  readonly anchor: MenuAnchor | null
+  readonly sections: MenuSection<T>[]
+  readonly highlightedValue: string | null
+  /** True once a key moved the cursor: the surface suppresses `:hover` so there's one cursor. */
+  readonly keyboardMode: boolean
+  readonly openSubmenuValue: string | null
+  readonly submenuHighlighted: boolean
+  /** The single-cursor rule: an open submenu takes the parent row's highlight. */
+  readonly parentHighlightSuppressed: boolean
+  readonly draggingValue: string | null
+  /** The insertion gap the drop-line cue sits at, or null when a drop would change nothing. */
+  readonly dropSlot: number | null
+  readonly draggingSectionId: string | null
+  readonly surface: MenuSurface
+  openUnder: (element: HTMLElement) => void
+  openAt: (point: { x: number; y: number }) => void
+  toggleUnder: (element: HTMLElement) => void
+  close: () => void
+  /** Move the cursor (open-at-current-item). A disabled or unknown row is refused. */
+  highlight: (value: string | null) => void
+  /** Route one keydown. Returns true when the menu consumed it. */
+  handleKey: (event: KeyboardEvent) => boolean
+  destroy: () => void
+}
+
+export function createMenu<T = undefined>(deps: MenuDeps<T>): MenuController<T> {
+  let open = $state(false)
+  let anchor = $state<MenuAnchor | null>(null)
+  let highlightedValue = $state<string | null>(null)
+  let keyboardMode = $state(false)
+  let openSubmenuValue = $state<string | null>(null)
+  let submenuHighlighted = $state(false)
+  let submenuValue = $state<string | null>(null)
+  let draggingValue = $state<string | null>(null)
+  let draggingSectionId = $state<string | null>(null)
+  let dropSlot = $state<number | null>(null)
+
+  // Not reactive: read by handlers, never rendered.
+  let lastPointerPos: { x: number; y: number } | null = null
+  let hooks: MenuSurfaceHooks | null = null
+  let pendingDrag: { value: string; sectionId: string; startY: number } | null = null
+  let dragActive = false
+  /** A finished drag must not also activate the row when the browser's click lands after mouseup. */
+  let justDragged = false
+
+  const sections = (): MenuSection<T>[] => deps.getSections()
+
+  /** The surface's measurement, or nothing when no surface is mounted (a controller-only test). */
+  function rowMidpoints(sectionId: string): number[] {
+    return hooks ? hooks.getRowMidpoints(sectionId) : []
+  }
+
+  // ── The document capture listener, live only while open ───────────────
+  // It catches keydowns wherever focus landed (the menu, or the host behind it) and stops
+  // them before the app's own dispatch sees them. Focus timing can't race it.
+  let keyListenerAttached = false
+  function onDocumentKeydown(event: KeyboardEvent): void {
+    controller.handleKey(event)
+  }
+  function attachKeyListener(): void {
+    if (keyListenerAttached || typeof document === 'undefined') return
+    document.addEventListener('keydown', onDocumentKeydown, true)
+    keyListenerAttached = true
+  }
+  function detachKeyListener(): void {
+    if (!keyListenerAttached || typeof document === 'undefined') return
+    document.removeEventListener('keydown', onDocumentKeydown, true)
+    keyListenerAttached = false
+  }
+
+  function enterKeyboardMode(): void {
+    keyboardMode = true
+    lastPointerPos = null
+  }
+
+  function isNavigable(value: string): boolean {
+    return navigableValues(sections()).includes(value)
+  }
+
+  function setHighlight(value: string | null): void {
+    if (value === null || isNavigable(value)) highlightedValue = value
+  }
+
+  function doOpen(next: MenuAnchor): void {
+    anchor = next
+    open = true
+    keyboardMode = false
+    lastPointerPos = null
+    justDragged = false
+    highlightedValue = navigableValues(sections())[0] ?? null
+    attachKeyListener()
+    deps.onOpenChange?.(true)
+  }
+
+  function close(): void {
+    if (!open) return
+    open = false
+    anchor = null
+    highlightedValue = null
+    keyboardMode = false
+    closeSubmenu()
+    endDrag()
+    detachKeyListener()
+    deps.onOpenChange?.(false)
+    deps.restoreFocus?.()
+  }
+
+  function closeSubmenu(): void {
+    openSubmenuValue = null
+    submenuValue = null
+    submenuHighlighted = false
+  }
+
+  function openSubmenu(value: string, fromKeyboard: boolean): void {
+    const item = itemOf(sections(), value)
+    const first = item?.submenu?.find((child) => !child.disabled)
+    if (!first) return
+    openSubmenuValue = value
+    submenuValue = first.value
+    // A submenu opened by hovering its parent row shows no cursor until the pointer or the
+    // keyboard reaches INTO it; opened by keyboard, the cursor is already there.
+    submenuHighlighted = fromKeyboard
+  }
+
+  function activate(value: string): void {
+    if (!open) return
+    if (justDragged) {
+      justDragged = false
+      return
+    }
+    const item = itemOf(sections(), value)
+    if (!item || item.disabled) return
+    close()
+    deps.onSelect(item)
+  }
+
+  function activateHighlighted(): void {
+    const value = openSubmenuValue !== null ? submenuValue : highlightedValue
+    if (value !== null) activate(value)
+  }
+
+  function reorderHighlighted(delta: -1 | 1): void {
+    const value = highlightedValue
+    if (value === null) return
+    const found = sectionOf(sections(), value)
+    if (!found?.section.reorderable) return
+    const values = found.section.items.map((item) => item.value)
+    const to = clampedReorderTarget(found.index, delta, values.length)
+    if (to === null) return
+    // The highlight is a VALUE, so it rides along with the moved row for free: a repeated
+    // ⌥↓ keeps walking the same item without the caller re-deriving an index.
+    deps.onReorder?.({
+      sectionId: found.section.id,
+      orderedValues: moveItem(values, found.index, to),
+      from: found.index,
+      to,
+    })
+    enterKeyboardMode()
+  }
+
+  // ── Pointer-drag reorder ──────────────────────────────────────────────
+  // ❗ HTML5 drag-and-drop does NOT fire under Tauri's `dragDropEnabled`: macOS intercepts
+  // drag gestures before the WKWebView sees `dragstart`/`drop`, so a `draggable` reorder
+  // looks wired up and does nothing. Don't reintroduce it. Synthetic MCP/test events bypass
+  // the OS interception, so "it works under MCP" is not proof it works with a real mouse.
+  function onWindowMouseMove(event: MouseEvent): void {
+    const pending = pendingDrag
+    if (!pending) return
+    if (!dragActive) {
+      if (Math.abs(event.clientY - pending.startY) < DRAG_THRESHOLD_PX) return
+      dragActive = true
+      draggingValue = pending.value
+      draggingSectionId = pending.sectionId
+    }
+    const found = sectionOf(sections(), pending.value)
+    if (!found) return
+    // The cue rides the RAW insertion slot (the visual gap), not the move target: dropping at
+    // slot `from` or `from + 1` leaves the row where it is, so the cue hides there. Driving it
+    // off the move target put the line one row too high on downward drags.
+    const slot = pointerInsertionSlot(rowMidpoints(pending.sectionId), event.clientY)
+    dropSlot = slot === found.index || slot === found.index + 1 ? null : slot
+  }
+
+  function onWindowMouseUp(event: MouseEvent): void {
+    const pending = pendingDrag
+    const wasDragging = dragActive
+    const midpoints = pending ? rowMidpoints(pending.sectionId) : []
+    endDrag()
+    if (!pending) return
+    if (!wasDragging) {
+      // Never crossed the threshold: a plain click, so open the row.
+      activate(pending.value)
+      return
+    }
+    justDragged = true
+    const found = sectionOf(sections(), pending.value)
+    if (!found) return
+    const to = pointerReorderTarget(midpoints, event.clientY, found.index)
+    if (to === null) return
+    const values = found.section.items.map((item) => item.value)
+    deps.onReorder?.({
+      sectionId: found.section.id,
+      orderedValues: moveItem(values, found.index, to),
+      from: found.index,
+      to,
+    })
+  }
+
+  function endDrag(): void {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('mousemove', onWindowMouseMove)
+      window.removeEventListener('mouseup', onWindowMouseUp)
+    }
+    draggingValue = null
+    draggingSectionId = null
+    dropSlot = null
+    dragActive = false
+    pendingDrag = null
+  }
+
+  /** What the cursor is sitting on, which decides what a key means. */
+  function currentKeyContext(): MenuKeyContext {
+    const value = highlightedValue
+    const item = value === null ? null : itemOf(sections(), value)
+    const found = value === null ? null : sectionOf(sections(), value)
+    return {
+      hasSubmenu: (item?.submenu?.length ?? 0) > 0,
+      submenuOpen: openSubmenuValue !== null,
+      reorderable: found?.section.reorderable ?? false,
+    }
+  }
+
+  /** Carry out what `menuKeyAction` decided. The event is already claimed by the caller. */
+  function applyAction(action: MenuAction): void {
+    switch (action.kind) {
+      case 'move':
+        setHighlight(nextValue(navigableValues(sections()), highlightedValue, action.delta))
+        enterKeyboardMode()
+        return
+      case 'edge': {
+        const values = navigableValues(sections())
+        // Nothing to land on (every section empty or disabled): leave the cursor alone.
+        if (values.length === 0) return
+        setHighlight(action.edge === 'first' ? values[0] : values[values.length - 1])
+        enterKeyboardMode()
+        return
+      }
+      case 'activate':
+        activateHighlighted()
+        return
+      case 'close':
+        close()
+        return
+      case 'openSubmenu':
+        if (highlightedValue !== null) openSubmenu(highlightedValue, true)
+        enterKeyboardMode()
+        return
+      case 'closeSubmenu':
+        closeSubmenu()
+        enterKeyboardMode()
+        return
+      case 'reorder':
+        reorderHighlighted(action.delta)
+        return
+      case 'absorb':
+      case 'none':
+        return
+    }
+  }
+
+  const surface: MenuSurface = {
+    hover(value) {
+      if (keyboardMode) return
+      setHighlight(value)
+    },
+    pointerMoved(event) {
+      if (!keyboardMode) return
+      if (!lastPointerPos) {
+        lastPointerPos = { x: event.clientX, y: event.clientY }
+        return
+      }
+      const dx = Math.abs(event.clientX - lastPointerPos.x)
+      const dy = Math.abs(event.clientY - lastPointerPos.y)
+      if (dx <= KEYBOARD_MODE_EXIT_PX && dy <= KEYBOARD_MODE_EXIT_PX) return
+      keyboardMode = false
+      lastPointerPos = null
+    },
+    activate,
+    contextMenu(value, event) {
+      const item = itemOf(sections(), value)
+      if (!item) return
+      deps.onContextMenu?.(item, event)
+    },
+    startDrag(value, event) {
+      if (event.button !== 0 || deps.isEditing?.()) return
+      const found = sectionOf(sections(), value)
+      if (!found?.section.reorderable) return
+      pendingDrag = { value, sectionId: found.section.id, startY: event.clientY }
+      dragActive = false
+      if (typeof window === 'undefined') return
+      window.addEventListener('mousemove', onWindowMouseMove)
+      window.addEventListener('mouseup', onWindowMouseUp)
+    },
+    openSubmenu,
+    closeSubmenu,
+    setSubmenuHighlighted(highlighted) {
+      submenuHighlighted = highlighted
+    },
+    bindSurface(next) {
+      hooks = next
+    },
+  }
+
+  const controller: MenuController<T> = {
+    get isOpen() {
+      return open
+    },
+    get anchor() {
+      return anchor
+    },
+    get sections() {
+      return sections()
+    },
+    get highlightedValue() {
+      return highlightedValue
+    },
+    get keyboardMode() {
+      return keyboardMode
+    },
+    get openSubmenuValue() {
+      return openSubmenuValue
+    },
+    get submenuHighlighted() {
+      return submenuHighlighted
+    },
+    get parentHighlightSuppressed() {
+      return openSubmenuValue !== null
+    },
+    get draggingValue() {
+      return draggingValue
+    },
+    get dropSlot() {
+      return dropSlot
+    },
+    get draggingSectionId() {
+      return draggingSectionId
+    },
+    surface,
+    openUnder(element) {
+      doOpen({ kind: 'element', element })
+    },
+    openAt(point) {
+      doOpen({ kind: 'point', x: point.x, y: point.y })
+    },
+    toggleUnder(element) {
+      if (open) close()
+      else doOpen({ kind: 'element', element })
+    },
+    close,
+    highlight: setHighlight,
+    handleKey(event) {
+      if (!open) return false
+      // An inline editor owns every keystroke, untouched: not even swallowed, or the field
+      // would lose the keys it exists to receive.
+      if (deps.isEditing?.()) return false
+      if (deps.onKey?.(event)) return true
+
+      const action = menuKeyAction(event, currentKeyContext())
+      if (action.kind === 'none') {
+        // An open menu owns the keyboard, which is what keeps the panes behind it inert.
+        // Swallowed from the app, but never `preventDefault`ed: ⌘Q and the menu-bar
+        // accelerators still mean what they mean.
+        event.stopPropagation()
+        return true
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      applyAction(action)
+      return true
+    },
+    destroy() {
+      detachKeyListener()
+      endDrag()
+    },
+  }
+
+  return controller
+}

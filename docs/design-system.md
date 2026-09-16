@@ -805,6 +805,30 @@ every other. `useShortenMiddle` routes through this action for the same reason.
 **Accessibility:** Shows on focus (keyboard navigation), hides on blur/Escape. Trigger element gets `aria-describedby`
 pointing to the tooltip's unique `id`. Tooltip has `role="tooltip"`.
 
+### Menu (app)
+
+`Menu.svelte` is the house menu: a portaled, glass, keyboard-first popup built from SECTIONS of rows, and the only
+in-app menu (right-click menus stay native/muda). A consumer builds a controller with `createMenu(deps)`, hands it to
+`<Menu {menu} ariaLabel>`, and never writes a key handler, a highlight index, or a `getBoundingClientRect`.
+
+**Surface:** the shared glass tokens (`--color-bg-glass` / `--color-border-glass`, blur dropped under
+`html.reduce-transparency`), `--radius-md`, `--shadow-md`, `--z-overlay`. Fixed-positioned, clamped into the viewport,
+and capped to the room below its anchor so a long list scrolls inside itself.
+
+**Rows:** `--spacing-sm` / `--spacing-md` padding, then a reserved 14px checkmark column (so labels line up whether or
+not a row is checked), the icon column at `--spacing-icon-size`, the label, and the trailing slot. Section headings are
+uppercase `--font-size-sm` tertiary text; separators are a `--color-border-strong` hairline. An empty section shows its
+own italic tertiary placeholder rather than vanishing.
+
+**One cursor at a time:** the highlight is the `--color-accent-subtle` wash (the volume switcher's, deliberately not a
+solid accent fill), and `:hover` is suppressed while the keyboard is driving, so a resting mouse can't paint a second
+cursor. A submenu takes its parent row's highlight rather than adding one.
+
+**Reorder:** a section marked `reorderable` moves rows by drag or ⌥↑/⌥↓; the drop-line cue is a 2px `--color-accent`
+inset border on the row bordering the gap.
+
+Controller surface, the row snippets, and the gotchas: `apps/desktop/src/lib/ui/DETAILS.md` § Menu.
+
 ### Info glyph (app)
 
 `InfoTip.svelte` is the house "the long version lives behind this ⓘ" control: a 14px `info` glyph in a bare `<button>`,

@@ -29,7 +29,9 @@ vi.mock('$lib/tauri-commands', () => ({
 import AlertDialog from './AlertDialog.svelte'
 import Combobox, { type ComboboxItem } from './Combobox.svelte'
 import FilterPopover from './FilterPopover.svelte'
-import Menu, { type MenuItem } from './Menu.svelte'
+import Menu from './Menu.svelte'
+import { createMenu } from './menu-controller.svelte'
+import type { MenuSection } from './menu-types'
 import ModalDialog from './ModalDialog.svelte'
 import Popover from './Popover.svelte'
 import Select, { type SelectItem } from './Select.svelte'
@@ -382,27 +384,59 @@ describe('FilterPopover a11y', () => {
  * axe the whole body. Color contrast is tier 1's job; focus traps are tier 2's.
  */
 describe('Menu a11y', () => {
-  const items: MenuItem[] = [
-    { value: 'browse', label: 'Browse like a folder' },
-    { value: 'open', label: 'Open with default app' },
-    { value: 'configure', label: 'Configure…' },
+  const flatSections: MenuSection[] = [
+    {
+      id: 'enter',
+      items: [
+        { value: 'browse', label: 'Browse like a folder' },
+        { value: 'open', label: 'Open with default app' },
+        { value: 'configure', label: 'Configure…' },
+      ],
+    },
   ]
 
-  it('open menu has no a11y violations', async () => {
+  /** Headings, a checkmark, a disabled row, a submenu parent, and an empty section. */
+  const richSections: MenuSection[] = [
+    {
+      id: 'favorites',
+      heading: 'Favorites',
+      reorderable: true,
+      items: [{ value: 'projects', label: 'Projects', icon: { lucide: 'folder' } }],
+    },
+    {
+      id: 'volumes',
+      heading: 'Volumes',
+      items: [
+        { value: 'hd', label: 'Macintosh HD', checked: true },
+        { value: 'backup', label: 'Backup', disabled: true },
+        { value: 'share', label: 'Team share', submenu: [{ value: 'connect', label: 'Connect directly' }] },
+      ],
+    },
+    { id: 'empty', heading: 'Nothing here', items: [], emptyLabel: '(This section is empty)' },
+  ]
+
+  /** Opens a menu at a point and mounts the surface; the caller axes `document.body`. */
+  async function mountOpen(sections: MenuSection[]): Promise<() => void> {
     const target = container()
-    mount(Menu, {
-      target,
-      props: {
-        items,
-        onSelect: () => {},
-        onClose: () => {},
-        ariaLabel: 'Open archive or bundle',
-        anchorPoint: { x: 100, y: 100 },
-        highlightedValue: 'browse',
-      },
-    })
+    const menu = createMenu({ getSections: () => sections, onSelect: () => {} })
+    menu.openAt({ x: 100, y: 100 })
+    mount(Menu, { target, props: { menu, ariaLabel: 'Open archive or bundle' } })
     await tick()
+    return () => {
+      menu.destroy()
+    }
+  }
+
+  it('open menu has no a11y violations', async () => {
+    const dispose = await mountOpen(flatSections)
     await expectNoA11yViolations(document.body)
+    dispose()
+  })
+
+  it('sections, a disabled row, and an empty section have no a11y violations', async () => {
+    const dispose = await mountOpen(richSections)
+    await expectNoA11yViolations(document.body)
+    dispose()
   })
 })
 

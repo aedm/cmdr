@@ -26,8 +26,8 @@ import { mcpCall } from '../e2e-shared/mcp-client.js'
 /** Union type for tauriPage (works in both Tauri and browser mode). */
 export type PageLike = TauriPage | BrowserPageAdapter
 
-/** The Enter-behavior popup (Browse | Open | Configure). */
-export const ENTER_MENU = '.menu-content'
+/** The Enter-behavior popup (Browse | Open | Configure), rendered by the house `Menu`. */
+export const ENTER_MENU = '.menu-surface'
 
 /** Navigate a pane to a path via the same `mcp-nav-to-path` event the MCP server uses. */
 export async function navigatePaneTo(tauriPage: PageLike, pane: 'left' | 'right', targetPath: string): Promise<void> {
@@ -107,7 +107,7 @@ export async function enterEntry(tauriPage: PageLike, name: string): Promise<voi
         if (path !== startPath) return true
         if ((await getOpenedPaths(tauriPage)).length > startOpened) return true
         return tauriPage.evaluate<boolean>(`(function() {
-              return !!document.querySelector('.menu-content, .modal-overlay, [role="dialog"], [role="alertdialog"]');
+              return !!document.querySelector('.menu-surface, .modal-overlay, [role="dialog"], [role="alertdialog"]');
           })()`)
       },
       700,

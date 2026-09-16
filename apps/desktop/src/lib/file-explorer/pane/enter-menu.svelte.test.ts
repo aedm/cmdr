@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { createEnterMenu } from './enter-menu.svelte'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { createEnterMenu, type EnterMenuController } from './enter-menu.svelte'
 import type { FileEntry } from '$lib/file-explorer/types'
 
 const { openSettingsWindowMock } = vi.hoisted(() => ({
@@ -23,108 +23,132 @@ function makeDeps() {
   }
 }
 
-/** A minimal keydown-like object the controller reads (`key` + the two stoppers). */
+/** A real keydown: the menu controller calls `preventDefault` / `stopPropagation` on it. */
 function key(name: string): KeyboardEvent {
-  return { key: name, preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as KeyboardEvent
+  return new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true })
 }
 
-describe('createEnterMenu', () => {
-  beforeEach(() => {
-    openSettingsWindowMock.mockClear()
-  })
+let controllers: EnterMenuController[] = []
 
-  it('starts closed', () => {
-    const menu = createEnterMenu(makeDeps())
-    expect(menu.open).toBe(false)
-    expect(menu.items.map((i) => i.value)).toEqual(['browse', 'open', 'configure'])
+function build(deps = makeDeps()): { controller: EnterMenuController; deps: ReturnType<typeof makeDeps> } {
+  const controller = createEnterMenu(deps)
+  controllers.push(controller)
+  return { controller, deps }
+}
+
+beforeEach(() => {
+  openSettingsWindowMock.mockClear()
+  controllers = []
+})
+
+afterEach(() => {
+  for (const controller of controllers) controller.dispose()
+})
+
+describe('createEnterMenu', () => {
+  it('starts closed, with the three rows', () => {
+    const { controller } = build()
+    expect(controller.menu.isOpen).toBe(false)
+    expect(controller.menu.sections[0].items.map((i) => i.value)).toEqual(['browse', 'open', 'configure'])
   })
 
   it('openFor opens the menu and leads with the resolved action', () => {
-    const menu = createEnterMenu(makeDeps())
-    menu.openFor(makeEntry('a.zip'), 'open')
-    expect(menu.open).toBe(true)
-    expect(menu.highlighted).toBe('open')
+    const { controller } = build()
+    controller.openFor(makeEntry('a.zip'), 'open')
+    expect(controller.menu.isOpen).toBe(true)
+    expect(controller.menu.highlightedValue).toBe('open')
 
-    menu.openFor(makeEntry('b.zip'), 'ask')
-    expect(menu.highlighted).toBe('browse')
+    controller.openFor(makeEntry('b.zip'), 'ask')
+    expect(controller.menu.highlightedValue).toBe('browse')
   })
 
-  it('onSelect (pointer) routes browse and open to the deps with the pending entry', () => {
-    const deps = makeDeps()
-    const menu = createEnterMenu(deps)
+  it('a pointer pick routes browse and open to the deps with the pending entry', () => {
+    const { controller, deps } = build()
     const entry = makeEntry('a.zip')
 
-    menu.openFor(entry, 'ask')
-    menu.onSelect('browse')
+    controller.openFor(entry, 'ask')
+    controller.menu.surface.activate('browse')
     expect(deps.browse).toHaveBeenCalledWith(entry)
-    expect(menu.open).toBe(false)
+    expect(controller.menu.isOpen).toBe(false)
     expect(deps.restoreFocus).toHaveBeenCalled()
 
-    menu.openFor(entry, 'ask')
-    menu.onSelect('open')
+    controller.openFor(entry, 'ask')
+    controller.menu.surface.activate('open')
     expect(deps.open).toHaveBeenCalledWith(entry)
   })
 
-  it('onSelect configure deep-links to the Archives settings section', () => {
-    const menu = createEnterMenu(makeDeps())
-    menu.openFor(makeEntry('a.zip'), 'ask')
-    menu.onSelect('configure')
+  it('configure deep-links to the Archives settings section', () => {
+    const { controller } = build()
+    controller.openFor(makeEntry('a.zip'), 'ask')
+    controller.menu.surface.activate('configure')
     expect(openSettingsWindowMock).toHaveBeenCalledWith('enter-menu', ['Behavior', 'Archives'])
   })
 
-  it('onOpenChange(false) restores focus only on a real close transition', () => {
-    const deps = makeDeps()
-    const menu = createEnterMenu(deps)
-    menu.openFor(makeEntry('a.zip'), 'ask')
-    menu.onOpenChange(false)
-    expect(menu.open).toBe(false)
+  it('restores focus once, on a real close', () => {
+    const { controller, deps } = build()
+    controller.openFor(makeEntry('a.zip'), 'ask')
+    controller.menu.close()
+    expect(controller.menu.isOpen).toBe(false)
+    expect(deps.restoreFocus).toHaveBeenCalledTimes(1)
+    controller.menu.close()
     expect(deps.restoreFocus).toHaveBeenCalledTimes(1)
   })
 
-  describe('handleKey', () => {
+  describe('keys', () => {
     it('is a no-op when the menu is closed', () => {
-      const menu = createEnterMenu(makeDeps())
-      expect(menu.handleKey(key('Enter'))).toBe(false)
+      const { controller } = build()
+      expect(controller.menu.handleKey(key('Enter'))).toBe(false)
     })
 
-    it('ArrowDown / ArrowUp move the highlight, clamped at the ends', () => {
-      const menu = createEnterMenu(makeDeps())
-      menu.openFor(makeEntry('a.zip'), 'ask') // highlighted = browse
-      expect(menu.handleKey(key('ArrowDown'))).toBe(true)
-      expect(menu.highlighted).toBe('open')
-      menu.handleKey(key('ArrowDown'))
-      expect(menu.highlighted).toBe('configure')
-      menu.handleKey(key('ArrowDown')) // clamp at the last row
-      expect(menu.highlighted).toBe('configure')
-      menu.handleKey(key('ArrowUp'))
-      expect(menu.highlighted).toBe('open')
+    it('ArrowDown / ArrowUp move the highlight, wrapping at the ends', () => {
+      const { controller } = build()
+      controller.openFor(makeEntry('a.zip'), 'ask') // highlighted = browse
+      expect(controller.menu.handleKey(key('ArrowDown'))).toBe(true)
+      expect(controller.menu.highlightedValue).toBe('open')
+      controller.menu.handleKey(key('ArrowDown'))
+      expect(controller.menu.highlightedValue).toBe('configure')
+      // The house menu wraps, where this popup used to clamp at the last row.
+      controller.menu.handleKey(key('ArrowDown'))
+      expect(controller.menu.highlightedValue).toBe('browse')
+      controller.menu.handleKey(key('ArrowUp'))
+      expect(controller.menu.highlightedValue).toBe('configure')
+    })
+
+    it('Home and End jump to the first and last rows', () => {
+      const { controller } = build()
+      controller.openFor(makeEntry('a.zip'), 'ask')
+      controller.menu.handleKey(key('End'))
+      expect(controller.menu.highlightedValue).toBe('configure')
+      controller.menu.handleKey(key('Home'))
+      expect(controller.menu.highlightedValue).toBe('browse')
     })
 
     it('Enter selects the highlighted row and closes', () => {
-      const deps = makeDeps()
-      const menu = createEnterMenu(deps)
+      const { controller, deps } = build()
       const entry = makeEntry('a.zip')
-      menu.openFor(entry, 'ask') // browse
-      menu.handleKey(key('ArrowDown')) // open
-      expect(menu.handleKey(key('Enter'))).toBe(true)
+      controller.openFor(entry, 'ask') // browse
+      controller.menu.handleKey(key('ArrowDown')) // open
+      expect(controller.menu.handleKey(key('Enter'))).toBe(true)
       expect(deps.open).toHaveBeenCalledWith(entry)
-      expect(menu.open).toBe(false)
+      expect(controller.menu.isOpen).toBe(false)
     })
 
     it('Escape closes without selecting', () => {
-      const deps = makeDeps()
-      const menu = createEnterMenu(deps)
-      menu.openFor(makeEntry('a.zip'), 'ask')
-      expect(menu.handleKey(key('Escape'))).toBe(true)
-      expect(menu.open).toBe(false)
+      const { controller, deps } = build()
+      controller.openFor(makeEntry('a.zip'), 'ask')
+      expect(controller.menu.handleKey(key('Escape'))).toBe(true)
+      expect(controller.menu.isOpen).toBe(false)
       expect(deps.browse).not.toHaveBeenCalled()
       expect(deps.open).not.toHaveBeenCalled()
     })
 
-    it('ignores unrelated keys', () => {
-      const menu = createEnterMenu(makeDeps())
-      menu.openFor(makeEntry('a.zip'), 'ask')
-      expect(menu.handleKey(key('a'))).toBe(false)
+    it('swallows an unrelated key, so the pane behind the popup stays inert', () => {
+      const { controller } = build()
+      controller.openFor(makeEntry('a.zip'), 'ask')
+      const event = key('a')
+      // An open menu owns the keyboard; this popup used to let stray keys through to the pane.
+      expect(controller.menu.handleKey(event)).toBe(true)
+      expect(event.defaultPrevented).toBe(false)
     })
   })
 })

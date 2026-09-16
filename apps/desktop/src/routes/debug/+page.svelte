@@ -47,6 +47,7 @@
         | 'components-number-input'
         | 'components-text-input'
         | 'components-popover'
+        | 'components-menu'
         | 'components-filter-popover'
         | 'components-chip'
         | 'components-dialogs'
@@ -102,6 +103,7 @@
                 { id: 'components-number-input', label: 'Number input' },
                 { id: 'components-text-input', label: 'Text input' },
                 { id: 'components-popover', label: 'Popover' },
+                { id: 'components-menu', label: 'Menu' },
                 { id: 'components-filter-popover', label: 'Filter popover' },
                 { id: 'components-chip', label: 'Chip' },
                 { id: 'components-dialogs', label: 'Dialogs' },
