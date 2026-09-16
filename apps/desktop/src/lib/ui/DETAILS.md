@@ -25,12 +25,12 @@ Pull-tier docs for `lib/ui/`: architecture, component APIs, and decision rationa
 - **`Popover.svelte`**: Generic positioned floater: frosted glass, auto-flip, focus trap, Esc-scoped close
 - **`Menu.svelte`**: The house menu surface: portaled glass, sections of rows, submenu, footer; renders nothing while
   closed. See § Menu
-- **`menu-controller.svelte.ts`**: `createMenu(deps)`: open state, the cursor, keys, pointer mode, submenus, reorder.
-  ❗ Never named `menu.svelte.ts` (§ Menu says why)
+- **`menu-controller.svelte.ts`**: `createMenu(deps)`: open state, the cursor, keys, pointer mode, submenus, reorder. ❗
+  Never named `menu.svelte.ts` (§ Menu says why)
 - **`menu-types.ts`**: `MenuItem` / `MenuSection` / `MenuRowContext` / `MenuIcon`, in a `.ts` so non-Svelte controllers
   resolve them as real types
-- **`menu-navigation.ts`** / **`menu-reorder.ts`**: the pure halves: which row is next and what a key means; the
-  drag and ⌥↑/⌥↓ index math
+- **`menu-navigation.ts`** / **`menu-reorder.ts`**: the pure halves: which row is next and what a key means; the drag
+  and ⌥↑/⌥↓ index math
 - **`FilterPopover.svelte`**: `Popover` + a labelled section header; the query dialogs' Size / Modified / Search-in
   surface
 - **`Chip.svelte`**: Small pill button: filter chip (popover trigger + × clear) or recent pill (badge + truncate)
@@ -849,8 +849,8 @@ a sub-line (the disk-space bar), and `footer` sits under the last section. Each 
 
 - **Keyboard**: arrows wrap and skip headings, separators, disabled rows, and empty placeholders; Home/End; Enter and
   Space activate; ArrowRight opens a submenu and ArrowLeft closes it, and while one is open the arrows walk ITS rows and
-  Enter takes the row they landed on; ⌥↑/⌥↓ reorder inside a `reorderable` section. A bare cursor key only: ⌘↓ / ⌃↓ /
-  ⌥↓ belong to somebody else and pass through.
+  Enter takes the row they landed on; ⌥↑/⌥↓ reorder inside a `reorderable` section. A bare cursor key only: ⌘↓ / ⌃↓ / ⌥↓
+  belong to somebody else and pass through.
 - **Escape closes the open submenu if there is one, otherwise the menu**, down ONE path. The switcher used to disagree
   with itself here: its routed handler closed only the submenu while a second document listener closed the whole
   dropdown, so which happened depended on how the key arrived. The primitive has no second listener, and this matches
@@ -863,8 +863,8 @@ a sub-line (the disk-space bar), and `footer` sits under the last section. Each 
 - **Focus**: the container takes focus on open (`tabindex="-1"` plus `aria-activedescendant` on the highlighted row) and
   calls `restoreFocus` on close. Keys route through a document-level CAPTURE listener that lives only while open, the
   model `enter-menu.svelte.ts` proved deterministic against focus timing.
-- **Pointer**: hover moves the cursor unless keyboard mode is on; a pointer move over 5 px leaves keyboard mode; a
-  click activates; a right-click calls `onContextMenu`; a pointer-down outside closes.
+- **Pointer**: hover moves the cursor unless keyboard mode is on; a pointer move over 5 px leaves keyboard mode; a click
+  activates; a right-click calls `onContextMenu`; a pointer-down outside closes.
 - **Reorder**: drag past a 4 px threshold, the drop-line cue at the insertion gap, and `onReorder` once, on drop.
   Because the cursor is a VALUE rather than an index, it rides along with the moved row for free.
 - **Placement**: fixed, clamped into the viewport, `max-height` to the room below the anchor with its own scroll, the
@@ -899,8 +899,8 @@ gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them 
   service.
 - **One level of submenu**, and no type-ahead, virtualization, or checkbox/radio items: nothing needs them, and each is
   addable without moving the seams.
-- ⚠️ **`aria-activedescendant` on a portaled container is not yet verified with VoiceOver.** The ARIA wiring is there and
-  axe is clean (`overlays.a11y.test.ts`), but nobody has listened to it; confirm before leaning on it.
+- ⚠️ **`aria-activedescendant` on a portaled container is not yet verified with VoiceOver.** The ARIA wiring is there
+  and axe is clean (`overlays.a11y.test.ts`), but nobody has listened to it; confirm before leaning on it.
 
 ## FilterPopover
 

@@ -593,9 +593,9 @@ describe('VolumeBreadcrumb highlight on open', () => {
     const checked = target.querySelector('.volume-item[data-index="3"]')
     expect(checked?.classList.contains('is-under-cursor')).toBe(true)
     expect(checked?.classList.contains('is-focused-and-under-cursor')).toBe(true)
-    expect(target.querySelector('.volume-item[data-index="0"]')?.classList.contains('is-focused-and-under-cursor')).toBe(
-      false,
-    )
+    expect(
+      target.querySelector('.volume-item[data-index="0"]')?.classList.contains('is-focused-and-under-cursor'),
+    ).toBe(false)
   })
 
   it('falls back to row 0 when no row is the containing volume', async () => {
@@ -607,9 +607,9 @@ describe('VolumeBreadcrumb highlight on open', () => {
     ])
 
     expect(target.querySelector('.volume-item.is-under-cursor')).toBeNull()
-    expect(target.querySelector('.volume-item[data-index="0"]')?.classList.contains('is-focused-and-under-cursor')).toBe(
-      true,
-    )
+    expect(
+      target.querySelector('.volume-item[data-index="0"]')?.classList.contains('is-focused-and-under-cursor'),
+    ).toBe(true)
   })
 })
 

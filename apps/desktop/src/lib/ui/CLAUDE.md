@@ -16,14 +16,14 @@ Reusable components; only silent-breakage rules live here. Ark UI backs the comp
 ## Must-knows
 
 - **A missing primitive is the cue to add a wrapper here** (`@ark-ui/svelte` and lucide imports are allowlisted here;
-  see `src/CLAUDE.md`). A new one owes a tier-3 a11y test, a Debug > Components row, and a `design-system.md` entry,
-  all check-enforced. `docs/guides/building-ui.md`.
+  see `src/CLAUDE.md`). A new one owes a tier-3 a11y test, a Debug > Components row, and a `design-system.md` entry, all
+  check-enforced. `docs/guides/building-ui.md`.
 - **Every `role="dialog"` / `role="alertdialog"` element MUST carry `use:trapFocus` on the SAME element**
   (`cmdr/dialog-needs-focus-trap`), else Tab leaks into the shortcut-suppressed background: a keyboard lockout.
   `ModalDialog` owns the directive, so `role`-prop callers don't repeat it.
-- **Adding a dialog** (soft sheets too): register its id in `SOFT_DIALOG_REGISTRY`, pass it as `dialogId`, add a
-  gallery row (`dialog-gallery-coverage`). Its `whileOpen` verdict won't compile until answered: it decides whether a
-  file operation may start behind the dialog. `$lib/file-explorer/pane/DETAILS.md` § "The operation-start gate".
+- **Adding a dialog** (soft sheets too): register its id in `SOFT_DIALOG_REGISTRY`, pass it as `dialogId`, add a gallery
+  row (`dialog-gallery-coverage`). Its `whileOpen` verdict won't compile until answered: it decides whether a file
+  operation may start behind the dialog. `$lib/file-explorer/pane/DETAILS.md` § "The operation-start gate".
 - **`ModalDialog` registers what it renders in `open-dialogs.svelte.ts`**, keeping that set exhaustive;
   `OnboardingWizard` alone hand-registers. ❌ An unpaired close blocks file operations until restart.
 - **`ModalDialog`'s overlay starts at `inset: var(--titlebar-height) 0 0 0`**, keeping the macOS window-drag region

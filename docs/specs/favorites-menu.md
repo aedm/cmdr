@@ -48,8 +48,8 @@ Favorites
     keyboard vs pointer mode (a 5 px move exits keyboard mode), wrap-around arrows, Home/End, a submenu with the
     single-cursor rule and fixed positioning, fit-to-viewport, scroll-into-view, drag and keyboard reorder, inline
     rename. It lives in `VolumeBreadcrumb.svelte` (1,828 lines against a 1,845 allowlist entry) plus
-    `volume-breadcrumb-handlers.svelte.ts`. Its UI rules are written up in `navigation/DETAILS.md` § Dropdown and submenu
-    UI patterns.
+    `volume-breadcrumb-handlers.svelte.ts`. Its UI rules are written up in `navigation/DETAILS.md` § Dropdown and
+    submenu UI patterns.
   - `DriveIndexBadge.svelte`'s popover menu (which its own docs note gets clipped by the dropdown's `overflow-y: auto`).
   - `routes/viewer/ViewerContextMenu.svelte`.
 - **Keys while the switcher is open**: `pane/key-dispatch.ts` routes to an open chooser BEFORE type-to-jump (so digits
@@ -63,8 +63,8 @@ Favorites
 
 1. **"Favorites"** everywhere: UI, command ids, code, events. No "bookmarks" or "hotlist" except as palette keywords.
 2. **⌃D opens it** on the focused pane (David, 2026-09-16). It's what TC and DC bind, and it's free: ⌃Tab and ⌃⇧Tab are
-   the only Control defaults in the registry (verified 2026-09-16). So **Duplicate keeps ⌘D**, and the error screen's
-   ⌘D Technical details is untouched. ❗ macOS reads ⌃D as forward-delete inside a text field; the central typing guard
+   the only Control defaults in the registry (verified 2026-09-16). So **Duplicate keeps ⌘D**, and the error screen's ⌘D
+   Technical details is untouched. ❗ macOS reads ⌃D as forward-delete inside a text field; the central typing guard
    already bails there, so nothing else is needed.
 3. **`0` is a disabled row when the current folder is already a favorite** (David, 2026-09-16), saying so, rather than
    re-adding (which the store would answer by moving that favorite to the end of the list).
@@ -209,8 +209,7 @@ menu.destroy() // from the host's teardown
 It renders nothing while closed, so the consumer writes no `{#if}`. Each snippet takes one
 `MenuRowContext<T> = { item, section, index, highlighted, dragging }` argument. `label` replaces the row's text (the
 inline rename field), `trailing` fills the right end of the row (badges, dots, the eject button), `below` adds a
-sub-line under the row (the disk-space bar), and `footer` sits under the last section (the volume-list timeout
-warning).
+sub-line under the row (the disk-space bar), and `footer` sits under the last section (the volume-list timeout warning).
 
 **What the primitive owns**
 
@@ -237,15 +236,15 @@ warning).
 - **Surface**: portal to `document.body`, glass tokens with the reduced-transparency fallback, `role="menu"`, rows as
   `div role="menuitem"` (a row hosts buttons, so it can't be a `<button>`), sections as labelled groups.
 
-- **Test hooks**, documented in `lib/ui/DETAILS.md` § Menu as a contract other suites rely on, the way `.ui-popover`
-  and the `.select-*` classes already are: `data-*` attributes (❌ not CSS classes, which are styling and get renamed)
+- **Test hooks**, documented in `lib/ui/DETAILS.md` § Menu as a contract other suites rely on, the way `.ui-popover` and
+  the `.select-*` classes already are: `data-*` attributes (❌ not CSS classes, which are styling and get renamed)
   naming the surface, a row by its `value`, the highlighted / checked / disabled states, a section by id, the submenu
   and its highlighted row, and the drag state including the slot the drop-line cue sits in. ❗ Without these, M2's
   characterization pins (which select on switcher markup the port deletes) can only be rewritten by hand, and the proof
-  that the port changed nothing weakens to "the new tests pass".
-  **Shipped in M1**: `data-menu` (+ `data-keyboard-mode`), `data-menu-submenu`, `data-menu-section="<id>"`,
-  `data-menu-empty`, `data-menu-row="<value>"` with `data-highlighted` / `data-checked` / `data-disabled` /
-  `data-dragging`, and `data-drop-cue="above|below"` carrying `data-drop-slot="<n>"`.
+  that the port changed nothing weakens to "the new tests pass". **Shipped in M1**: `data-menu` (+
+  `data-keyboard-mode`), `data-menu-submenu`, `data-menu-section="<id>"`, `data-menu-empty`, `data-menu-row="<value>"`
+  with `data-highlighted` / `data-checked` / `data-disabled` / `data-dragging`, and `data-drop-cue="above|below"`
+  carrying `data-drop-slot="<n>"`.
 
 **What the caller still owns**: the data and its order (including an optimistic override while a reorder persists),
 persistence, navigation, toasts, and any inline editor's state.
@@ -266,8 +265,8 @@ translates its own new copy into all ten languages (English left in a locale, or
    edges, `isEditing` suspension, pointer-mode exit, `onKey` precedence, swallowing), a component test (rendering,
    snippets, a control inside a row not activating it), and the tier-3 a11y test `a11y-coverage` requires.
 4. The rest of the primitive contract: a Debug > Components section
-   (`routes/dev/components/sections/MenuSection.svelte`) showing headings, an empty section, disabled rows, a reorderable
-   section, a submenu, and the three snippets; plus the `docs/design-system.md` § Component patterns entry.
+   (`routes/dev/components/sections/MenuSection.svelte`) showing headings, an empty section, disabled rows, a
+   reorderable section, a submenu, and the three snippets; plus the `docs/design-system.md` § Component patterns entry.
 5. Rewrite `lib/ui/DETAILS.md` § Menu against the real component, which also clears its drift, and give
    `lib/ui/CLAUDE.md` its one-line pointer.
 
@@ -289,8 +288,8 @@ is provable (`docs/guides/multi-agent-refactors.md`).
      submenu if one is open, otherwise the menu. So the pin asserting today's DOM-Escape-closes-everything case gets
      updated with the port, ❌ never quietly deleted.
    - `volume-breadcrumb-handlers.svelte.ts` now measures 94.3% covered, so its `coverage-allowlist.json` entry looks
-     unneeded. Left as a warn on purpose (the file is about to lose most of its contents to the primitive anyway);
-     ❗ removing the entry needs David's consent.
+     unneeded. Left as a warn on purpose (the file is about to lose most of its contents to the primitive anyway); ❗
+     removing the entry needs David's consent.
 2. Render the switcher through `Menu`: sections from `volume-grouping.ts`, `trailing` carrying the filesystem label,
    status glyphs, dots, badges, and the eject or disconnect button, `below` carrying the disk-space line, `footer`
    carrying the volume-list timeout warning, and the favorites section as a `reorderable` one with `label` swapped for
@@ -315,9 +314,9 @@ A large diff, ideally net-negative in lines. **Then David QAs before M3 starts.*
    matched per § Proposed defaults, with its catalog row and tests.
 2. **The command**: `favorites.open` in `COMMAND_IDS`, a registry entry (scope `Main window`, ⌃D, in the palette with
    keywords `bookmark`, `hotlist`, `favorite`), and a handler that toggles the menu on the focused pane. It also goes in
-   the Go menu beside "Add to favorites", with all four places from `lib/commands/CLAUDE.md` § Gotchas:
-   `command_map.rs` both directions, `menu_bar.rs`, and `menuCommands`. Plus the `Main window/Favorites menu` scope and
-   its digit entries.
+   the Go menu beside "Add to favorites", with all four places from `lib/commands/CLAUDE.md` § Gotchas: `command_map.rs`
+   both directions, `menu_bar.rs`, and `menuCommands`. Plus the `Main window/Favorites menu` scope and its digit
+   entries.
 3. **The menu**: `navigation/FavoritesMenu.svelte` plus `navigation/favorites-menu.svelte.ts`, which absorbs
    `favorites-controller.svelte.ts`. `open-favorite.ts` as above. The rename field keeps all four keystroke guards.
 4. **The host**: `VolumeBreadcrumb` holds one `openMenu: 'volumes' | 'favorites' | null`, so the two can't both be open.

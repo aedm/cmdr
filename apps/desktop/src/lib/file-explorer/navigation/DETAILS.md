@@ -383,8 +383,8 @@ the bare id, not the `fav-…` switcher id).
   component keeps the template, the shared `highlightedIndex`, and the `effectiveVolumes` / `favorites` deriveds (which
   read `fav.optimisticFavoriteIds`); it calls `fav.*` for everything below. The deps in are getters/callbacks
   (`getFavorites`, `getVolumes`, `getDropdownRef`, `getRenameInputRef`, `navigate`); the controller imports
-  `reorderFavorites` / `removeFavorite` / `renameFavorite` / `addToast` / the `$lib/ui/menu-reorder.ts` helpers directly.
-  Pinned by `favorites-controller.svelte.test.ts` (the pointer-drag / rename / remove unit tests) plus the
+  `reorderFavorites` / `removeFavorite` / `renameFavorite` / `addToast` / the `$lib/ui/menu-reorder.ts` helpers
+  directly. Pinned by `favorites-controller.svelte.test.ts` (the pointer-drag / rename / remove unit tests) plus the
   component-level `VolumeBreadcrumb.svelte.test.ts`.
 
 - **Remove / Rename** are per-item. Right-clicking a favorite opens the NATIVE row menu (`show_volume_row_context_menu`,
@@ -407,11 +407,12 @@ the bare id, not the `fav-…` switcher id).
     reorder begins only once the pointer moves past a small threshold (`DRAG_THRESHOLD_PX`); below it, a mouseup is a
     plain click that navigates. So favorite rows skip the `onclick` navigate path (it would double-fire with the
     mouseup) and the controller's `navigate` dep (the component's `handleVolumeSelect`) runs from mouseup instead.
-    During the drag, `favoriteRowMidpoints()` feeds two pure helpers from `$lib/ui/menu-reorder.ts`: the CUE uses the raw
-    `pointerInsertionSlot()` (the visual gap, `0..length`) so the drop-line sits at the right gap — `is-drag-over` (top
-    border) for an in-list gap, `is-drag-over-end` (bottom border on the last row) for dropping past the end — while the
-    DROP uses `pointerReorderTarget()` (that slot adjusted for the grabbed item being removed first). Driving the cue
-    off the move-target instead put the line one row too high on downward drags. The grabbed row carries `is-dragging`.
+    During the drag, `favoriteRowMidpoints()` feeds two pure helpers from `$lib/ui/menu-reorder.ts`: the CUE uses the
+    raw `pointerInsertionSlot()` (the visual gap, `0..length`) so the drop-line sits at the right gap — `is-drag-over`
+    (top border) for an in-list gap, `is-drag-over-end` (bottom border on the last row) for dropping past the end —
+    while the DROP uses `pointerReorderTarget()` (that slot adjusted for the grabbed item being removed first). Driving
+    the cue off the move-target instead put the line one row too high on downward drags. The grabbed row carries
+    `is-dragging`.
   - **Local-first / optimistic:** both reorder paths persist through the controller, which sets its
     `optimisticFavoriteIds` override (that the component's `effectiveVolumes` / `favorites` derive from via
     `fav.optimisticFavoriteIds`) SYNCHRONOUSLY, then persists via `reorderFavorites` in the background. The list
@@ -431,9 +432,10 @@ the bare id, not the `fav-…` switcher id).
     returns the favorite's new index (or null at an edge); the component then sets `highlightedIndex` to it so repeated
     Alt+↓ keeps moving the same item. `highlightedIndex` stays in the component (the dropdown's general nav uses it
     too); the controller never touches it.
-  - Both paths compute the new order with the pure `$lib/ui/menu-reorder.ts` helpers (`moveItem`, `clampedReorderTarget`,
-    `pointerReorderTarget`) and persist the FULL order via `reorderFavorites(bareIds)`. The favorite row's tooltip leads
-    with the PATH (then the reorder hint) so a renamed favorite still reveals where it points.
+  - Both paths compute the new order with the pure `$lib/ui/menu-reorder.ts` helpers (`moveItem`,
+    `clampedReorderTarget`, `pointerReorderTarget`) and persist the FULL order via `reorderFavorites(bareIds)`. The
+    favorite row's tooltip leads with the PATH (then the reorder hint) so a renamed favorite still reveals where it
+    points.
 - **Empty state** is a real state (the user can remove every favorite). The `favorite` group in `volume-grouping.ts`
   always renders (unlike every other group, which hides when empty), and the switcher shows a single disabled,
   non-focusable placeholder row: "(Your favorites will show here)".
