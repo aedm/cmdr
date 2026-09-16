@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M7 are done, and M8 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M8 are done, and M9 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -54,7 +54,10 @@ drive-safety decisions below.
 - **M7, index delete gates (done)**: `fbc39db0f` and `f649ed582` (the two prerequisite splits), `acbbdb78c` (the
   presence seam, the typed listing, `MissingRows`, and the delete generation), `f95c1f482` (boot-disk verification),
   `3575d2395` (the reconcile doc), `409fa913a` (`ScanRoot::Rebuild`), `95e79a962` (per-event deletes).
-- **Next, M8**: completion gates, `Abandoned` marks, and the rebuild marker.
+- **M8, completion gates, `Abandoned` marks, and the rebuild marker (done)**: `c18fa649a` (the walk's own gate: no
+  marks and a typed vanish), `60b589fa9` (the completion gates, the marker, the launch route, the start-time reopen),
+  `33015f3d0` (docs, and M1's vanish pin flipped).
+- **Next, M9**: vanish causes and the index notice.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -1379,6 +1382,18 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     `unmount_approver/callbacks.rs`, each already fed in DA's delivery order on the one serial queue. `records.rs`
     already tracks the pending-unmount volumes per BSD node and per whole unit, and already clears the gate's flags on
     `Disappeared` and on a cleared volume path; the cause machine reads the same events.
+  - **M8 landed the marker and its event; M9 only has to word it.** On disk it is the volume index's own `meta` row
+    `index_needs_rebuild = "1"` (`store::INDEX_NEEDS_REBUILD_KEY`), written by `indexing/deletes.rs`: through the
+    writer while one is alive, and through a short-lived connection in a removable stop's after-drain slot otherwise —
+    which `stop_removable_volume` already does whenever a generation was flagged vanished with deletes outstanding, so
+    an owner-`Vanish` stop gets it for free and M9 adds no write of its own. ❌ M9 must not clear it either: the
+    rebuild it asks for clears it (`manager/phased.rs`'s `RebuildFirst`, and `start_scan` beside `scan_completed_at`).
+  - **The notice is `IndexEvent::IndexNeedsFreshScan { volume_id }`**, already routed to the frontend as
+    `index-needs-fresh-scan` (`IndexNeedsFreshScanEvent`, registered in `ipc.rs`'s `collect_events!`). It fires once
+    per marker write, ❌ never per launch, so M9 needs no dedup of its own — it needs the listener and the toast copy.
+  - ❗ **`pnpm bindings:regen` still owes this event a run.** M8 couldn't: `aws-lc-sys@0.42.0`'s build script fails
+    against this machine's Command Line Tools SDK, so every lane that compiles the `cmdr` crate is red for reasons
+    unrelated to this plan (§ "M8 as landed"). Regenerate and run `bindings-fresh` once that is fixed.
   - **The eject-approval callback isn't registered yet.** M9 adds `DARegisterDiskEjectApprovalCallback` beside the
     others in `unmount_approver/mod.rs::install`, answers it at once, and unregisters it in `Approval::drop`, which
     names each callback's function pointer explicitly.

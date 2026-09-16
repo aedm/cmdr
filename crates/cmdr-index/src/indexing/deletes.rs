@@ -175,14 +175,18 @@ mod tests {
 
     /// A volume with a real writer over a real database, so the marker can be read
     /// back from the `meta` table the production path writes it to.
-    fn a_volume_with_a_writer(volume_id: &str) -> (IndexWriter, std::path::PathBuf, tempfile::TempDir, Arc<RecordingSink>) {
+    fn a_volume_with_a_writer(
+        volume_id: &str,
+    ) -> (IndexWriter, std::path::PathBuf, tempfile::TempDir, Arc<RecordingSink>) {
         let dir = tempfile::tempdir().expect("temp dir");
         let db_path = dir.path().join(format!("{volume_id}.db"));
         IndexStore::open(&db_path).expect("open the store");
         let events = Arc::new(RecordingSink::new());
-        let writer =
-            IndexWriter::spawn(&db_path, Arc::clone(&events) as Arc<dyn crate::indexing::events::EventSink>)
-                .expect("spawn the writer");
+        let writer = IndexWriter::spawn(
+            &db_path,
+            Arc::clone(&events) as Arc<dyn crate::indexing::events::EventSink>,
+        )
+        .expect("spawn the writer");
         (writer, db_path, dir, events)
     }
 
@@ -257,13 +261,17 @@ mod tests {
         writer.shutdown();
 
         let host = Arc::new(RecordingSink::new());
-        let _installed =
-            crate::indexing::host::events::install_for_test(Arc::clone(&host) as Arc<dyn crate::indexing::events::EventSink>);
+        let _installed = crate::indexing::host::events::install_for_test(
+            Arc::clone(&host) as Arc<dyn crate::indexing::events::EventSink>
+        );
 
         batch_sent(volume_id);
         note_the_drive_left_after_the_drain(volume_id, &db_path);
 
-        assert!(is_marked(&db_path), "the marker outlives the writer that would have carried it");
+        assert!(
+            is_marked(&db_path),
+            "the marker outlives the writer that would have carried it"
+        );
         assert_eq!(host.kinds_for(volume_id), vec![IndexEventKind::IndexNeedsFreshScan]);
         forget(volume_id);
     }

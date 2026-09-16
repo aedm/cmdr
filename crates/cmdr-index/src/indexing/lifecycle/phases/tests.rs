@@ -279,7 +279,12 @@ struct TheDriveLeavesMidRun {
     recorder: std::sync::Arc<crate::indexing::events::RecordingSink>,
     /// Filled in after the fixture is built, because the host it unmounts from is
     /// built with it. `None` until then, so an event before that changes nothing.
-    target: std::sync::Mutex<Option<(std::sync::Arc<crate::indexing::host::volumes::FakeVolumeProvider>, PathBuf)>>,
+    target: std::sync::Mutex<
+        Option<(
+            std::sync::Arc<crate::indexing::host::volumes::FakeVolumeProvider>,
+            PathBuf,
+        )>,
+    >,
     already_left: std::sync::atomic::AtomicBool,
 }
 
@@ -415,15 +420,14 @@ impl Drive {
             host,
         );
         // The drive is plugged in, and the sink now knows what to unplug.
-        drive
-            .volumes
-            .mount(drive.tree.path(), crate::indexing::host::volumes::MountIdentity::from_raw(0x0100_0055));
+        drive.volumes.mount(
+            drive.tree.path(),
+            crate::indexing::host::volumes::MountIdentity::from_raw(0x0100_0055),
+        );
         {
             use cmdr_fs::ignore_poison::IgnorePoison;
-            *vanishing.target.lock_ignore_poison() = Some((
-                std::sync::Arc::clone(&drive.volumes),
-                drive.tree.path().to_path_buf(),
-            ));
+            *vanishing.target.lock_ignore_poison() =
+                Some((std::sync::Arc::clone(&drive.volumes), drive.tree.path().to_path_buf()));
         }
         drive
     }
