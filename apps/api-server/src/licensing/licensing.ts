@@ -8,6 +8,7 @@ import {
   type StoredLicense,
 } from './license'
 import { manualLicenses } from './manual-licenses'
+import { adminLicenses } from './admin-licenses'
 import { sendLicenseEmail } from '../email/license'
 import { sendDeviceCountAlert } from '../email/ops-alerts'
 import { verifyPaddleWebhookMulti } from './paddle'
@@ -542,8 +543,9 @@ async function mintLicenses(params: {
   return licenseCodes
 }
 
-// Minting and revoking hand-issued licenses is its own feature, and it's mounted here so the
-// licensing area stays one route module from `index.ts`'s point of view.
+// Minting and revoking hand-issued licenses, and listing everything we've ever issued, are their own
+// features, mounted here so the licensing area stays one route module from `index.ts`'s point of view.
 licensing.route('/', manualLicenses)
+licensing.route('/', adminLicenses)
 
 export { licensing }

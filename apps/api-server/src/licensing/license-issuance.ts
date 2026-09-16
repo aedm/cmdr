@@ -278,6 +278,75 @@ export async function revokeManualLicense(db: D1Database, transactionId: string,
   return revoked !== null
 }
 
+/**
+ * One ledger row as `GET /admin/licenses` shows it: every column, whatever the source, with no
+ * judgment applied. `admin-licenses.ts` turns it into a state.
+ */
+export interface LedgerEntry {
+  transactionId: string
+  source: 'paddle' | 'manual'
+  shortCodes: string[]
+  licenseType: LicenseType | null
+  customerEmail: string | null
+  organizationName: string | null
+  note: string | null
+  quantity: number | null
+  claimedAt: string
+  issuedAt: string | null
+  emailedAt: string | null
+  expiresAt: string | null
+  revokedAt: string | null
+}
+
+/**
+ * The whole ledger, newest claim first. Capped: the dashboard renders a list, and a licensing table
+ * that ever reaches four digits deserves a paged endpoint rather than a bigger number here.
+ */
+export const ledgerListLimit = 1000
+
+export async function listLedger(db: D1Database): Promise<LedgerEntry[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT transaction_id, source, short_codes, quantity, license_type, customer_email,
+              organization_name, note, claimed_at, issued_at, emailed_at, expires_at, revoked_at
+       FROM license_issuance
+       ORDER BY claimed_at DESC
+       LIMIT ${String(ledgerListLimit)}`,
+    )
+    .all<{
+      transaction_id: string
+      source: string
+      short_codes: string | null
+      quantity: number | null
+      license_type: string | null
+      customer_email: string | null
+      organization_name: string | null
+      note: string | null
+      claimed_at: string
+      issued_at: string | null
+      emailed_at: string | null
+      expires_at: string | null
+      revoked_at: string | null
+    }>()
+
+  return results.map((row) => ({
+    transactionId: row.transaction_id,
+    // The column is written as one of the two, and a row that somehow isn't manual is a purchase.
+    source: row.source === 'manual' ? 'manual' : 'paddle',
+    shortCodes: parseShortCodes(row.short_codes),
+    licenseType: isLicenseType(row.license_type) ? row.license_type : null,
+    customerEmail: row.customer_email,
+    organizationName: row.organization_name,
+    note: row.note,
+    quantity: row.quantity,
+    claimedAt: row.claimed_at,
+    issuedAt: row.issued_at,
+    emailedAt: row.emailed_at,
+    expiresAt: row.expires_at,
+    revokedAt: row.revoked_at,
+  }))
+}
+
 function isLicenseType(value: string | null): value is LicenseType {
   return value !== null && (licenseTypes as readonly string[]).includes(value)
 }
