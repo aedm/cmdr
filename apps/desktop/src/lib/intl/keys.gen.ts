@@ -1560,6 +1560,7 @@ export type MessageKey =
   | 'fileOperations.errorDialog.technicalDetails'
   | 'fileOperations.errorDialog.technicalDetailsAria'
   | 'fileOperations.errorDialog.tooLargeAndMore'
+  | 'fileOperations.leftovers.stagingFolderKept'
   | 'fileOperations.mkdir.aiSuggestionsAria'
   | 'fileOperations.mkdir.aiSuggestionsHeader'
   | 'fileOperations.mkdir.createIn'

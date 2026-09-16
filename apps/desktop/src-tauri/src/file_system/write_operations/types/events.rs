@@ -381,6 +381,30 @@ impl CancelRollback {
     }
 }
 
+/// A drive came back carrying a staging folder from a move that never finished,
+/// and Cmdr left every file in it exactly where it was.
+///
+/// ❗ Belongs to NO operation, and carries no id: the move that made the folder
+/// ended in an earlier session, or before the drive was unplugged. It's the
+/// leftover sweep speaking (`write_operations/in_flight_sweep.rs`), which is
+/// also why the drive's name rides along rather than being looked up — by the
+/// time anything could look, the operation is long gone.
+///
+/// Nothing is asked of the person and nothing of theirs is at risk; this exists
+/// so files they might be missing from the source have a findable home. Fires
+/// once per folder the sweep meets, never per launch: the record retires the
+/// moment the folder does.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
+#[serde(rename_all = "camelCase")]
+#[tauri_specta(event_name = "move-leftovers-kept")]
+pub struct MoveLeftoversKeptEvent {
+    /// The drive's display name, as the registry has it right now.
+    pub volume_name: String,
+    /// The staging folder's own name (`.cmdr-staging-<op>`), which is what the
+    /// person would look for with hidden files shown.
+    pub folder_name: String,
+}
+
 /// Cancelled event payload.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
 #[serde(rename_all = "camelCase")]

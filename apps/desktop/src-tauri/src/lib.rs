@@ -319,6 +319,7 @@ pub fn run() {
                 // below by design: a partial on a share is held and swept when
                 // that volume arrives, rather than chased from here. See
                 // `file_system/write_operations/in_flight_temps.rs`.
+                file_system::write_operations::init_sweep_app_handle(app.handle().clone());
                 drop(file_system::write_operations::init_and_sweep_in_flight_temps(&data_dir));
             }
 

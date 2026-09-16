@@ -4538,6 +4538,7 @@ export const events = {
   menuBarRebuilt: makeEvent<MenuBarRebuilt>('menu-bar-rebuilt'),
   menuSort: makeEvent<MenuSort>('menu-sort'),
   mouseNav: makeEvent<MouseNav>('mouse-nav'),
+  moveLeftoversKept: makeEvent<MoveLeftoversKeptEvent>('move-leftovers-kept'),
   mtpDeviceConnected: makeEvent<MtpDeviceConnected>('mtp-device-connected'),
   mtpDeviceDisconnected: makeEvent<MtpDeviceDisconnected>('mtp-device-disconnected'),
   mtpExclusiveAccessError: makeEvent<MtpExclusiveAccessError>('mtp-exclusive-access-error'),
@@ -9406,6 +9407,31 @@ export type MouseNav = {
  *  from it, and reading either shape is `mouse_nav.rs`'s job alone.
  */
 export type MouseNavDirection = 'back' | 'forward'
+
+/**
+ *  A drive came back carrying a staging folder from a move that never finished,
+ *  and Cmdr left every file in it exactly where it was.
+ *
+ *  ❗ Belongs to NO operation, and carries no id: the move that made the folder
+ *  ended in an earlier session, or before the drive was unplugged. It's the
+ *  leftover sweep speaking (`write_operations/in_flight_sweep.rs`), which is
+ *  also why the drive's name rides along rather than being looked up — by the
+ *  time anything could look, the operation is long gone.
+ *
+ *  Nothing is asked of the person and nothing of theirs is at risk; this exists
+ *  so files they might be missing from the source have a findable home. Fires
+ *  once per folder the sweep meets, never per launch: the record retires the
+ *  moment the folder does.
+ */
+export type MoveLeftoversKeptEvent = {
+  // The drive's display name, as the registry has it right now.
+  volumeName: string
+  /**
+   *  The staging folder's own name (`.cmdr-staging-<op>`), which is what the
+   *  person would look for with hidden files shown.
+   */
+  folderName: string
+}
 
 /**
  *  Why an MTP operation couldn't happen, in a shape the app can act on.

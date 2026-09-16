@@ -63,7 +63,8 @@ use crate::file_system::listing::streaming::{
 };
 use crate::file_system::volume::eject::VolumesEjectingChanged;
 use crate::file_system::write_operations::{
-    ConflictInfo, DryRunResult, ScanPreviewCancelledEvent, ScanPreviewCompleteEvent, ScanPreviewErrorEvent,
+    ConflictInfo, DryRunResult, MoveLeftoversKeptEvent, ScanPreviewCancelledEvent, ScanPreviewCompleteEvent,
+    ScanPreviewErrorEvent,
     ScanPreviewProgressEvent, ScanProgressEvent, WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent,
     WriteConflictResolvedEvent, WriteErrorEvent, WriteProgressEvent, WriteSettledEvent, WriteSourceItemDoneEvent,
 };
@@ -976,6 +977,9 @@ pub fn builder() -> Builder<tauri::Wry> {
             ConflictInfo, // scan-conflict
             DryRunResult, // dry-run-complete
             WriteSettledEvent,
+            // The leftover sweep, which belongs to no operation
+            // (write_operations/in_flight_sweep.rs).
+            MoveLeftoversKeptEvent, // event_name = "move-leftovers-kept"
             // Operation manager registry snapshot (write_operations/manager.rs).
             OperationsChanged,
             SuggestionsChanged,

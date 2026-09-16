@@ -22,6 +22,7 @@ import type {
   ConflictResolutionOutcome,
   DryRunResult,
   Initiator,
+  MoveLeftoversKeptEvent,
   OperationStatus,
   OperationSummary,
   ProgressAtStop,
@@ -262,6 +263,21 @@ export async function onWriteCancelled(callback: (event: WriteCancelledEvent) =>
  *  terminal outcome event. */
 export async function onWriteSettled(callback: (event: WriteSettledEvent) => void): Promise<UnlistenFn> {
   return events.writeSettled.listen((event) => {
+    callback(event.payload)
+  })
+}
+
+/**
+ * A drive came back carrying a staging folder from a move that never finished,
+ * and Cmdr left every file inside it where it was.
+ *
+ * Belongs to no operation: the move that made the folder ended in an earlier
+ * session, or before the drive was unplugged. See `MoveLeftoversKeptEvent`.
+ */
+export async function onMoveLeftoversKept(
+  callback: (event: MoveLeftoversKeptEvent) => void,
+): Promise<UnlistenFn> {
+  return events.moveLeftoversKept.listen((event) => {
     callback(event.payload)
   })
 }

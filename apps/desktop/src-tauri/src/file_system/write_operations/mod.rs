@@ -105,6 +105,10 @@ pub use in_flight_temps::flush as flush_in_flight_temps;
 /// Points the in-flight transfer-partial ledger at the app data dir and clears
 /// what an earlier run left behind. Startup only, before any copy can start.
 pub use in_flight_temps::init_and_sweep as init_and_sweep_in_flight_temps;
+/// Gives the leftover sweep a way to reach the frontend, so a staging folder it
+/// leaves on a returning drive is something the person hears about rather than
+/// a silent absence at the source. Startup only.
+pub use in_flight_temps::init_sweep_app_handle;
 pub use scan_preview::{cancel_scan_preview, get_scan_preview_totals, start_scan_preview};
 pub use state::{
     VolumesBusyChanged, busy_volume_ids, cancel_all_write_operations, cancel_write_operation, get_operation_status,
@@ -162,7 +166,7 @@ pub(crate) use state::{register_external_volume_op, release_external_volume_op};
 #[allow(unused_imports, reason = "Public API re-exports for consumers of this module")]
 pub use types::{
     ConflictId, ConflictInfo, ConflictResolution, ConflictResolutionOutcome, DryRunResult, LifecycleStatus,
-    OperationStatus, OperationSummary, ReadOnlySide, ScanPreviewCancelledEvent, ScanPreviewCompleteEvent,
+    MoveLeftoversKeptEvent, OperationStatus, OperationSummary, ReadOnlySide, ScanPreviewCancelledEvent, ScanPreviewCompleteEvent,
     ScanPreviewErrorEvent, ScanPreviewProgressEvent, ScanPreviewStartResult, ScanPreviewTotals, ScanProgressEvent,
     SortColumn, SortOrder, SourceItemOutcome, TransferActivity, TransferWaitReason, WriteCancelledEvent,
     WriteCompleteEvent, WriteConflictEvent, WriteConflictResolvedEvent, WriteErrorEvent, WriteOperationConfig,

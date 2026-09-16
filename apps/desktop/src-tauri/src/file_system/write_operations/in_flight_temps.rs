@@ -614,6 +614,7 @@ use records::{ItemHome, home_for};
 
 #[path = "in_flight_sweep.rs"]
 mod sweep;
+pub use sweep::init_app_handle as init_sweep_app_handle;
 
 #[cfg(test)]
 pub(super) mod test_support {

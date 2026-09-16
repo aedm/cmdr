@@ -38,6 +38,7 @@ async fn settle_aside(kind: ItemKind, fixture: &Displaced) -> Outcome {
         &kind,
         &fixture.aside,
         kind.destination().map(|_| fixture.destination.as_path()),
+        None,
     )
     .await
 }
@@ -141,6 +142,7 @@ async fn a_folder_set_aside_for_a_file_is_never_removed_recursively() {
         },
         &aside,
         Some(&destination),
+        None,
     )
     .await;
 
@@ -205,7 +207,7 @@ async fn a_staging_folder_with_files_in_it_is_never_removed() {
     std::fs::create_dir(&staging).expect("create the staging folder");
     std::fs::write(staging.join("footage.mov"), b"a whole staged file").expect("stage a file");
 
-    let outcome = settle_kind(&Surface::Local, &ItemKind::StagingDir, &staging, None).await;
+    let outcome = settle_kind(&Surface::Local, &ItemKind::StagingDir, &staging, None, None).await;
 
     assert_eq!(outcome, Outcome::LeftAlone);
     assert_eq!(
@@ -222,7 +224,7 @@ async fn an_empty_staging_folder_is_removed() {
     let staging = dir.join(format!(".cmdr-staging-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir(&staging).expect("create the staging folder");
 
-    let outcome = settle_kind(&Surface::Local, &ItemKind::StagingDir, &staging, None).await;
+    let outcome = settle_kind(&Surface::Local, &ItemKind::StagingDir, &staging, None, None).await;
 
     assert_eq!(outcome, Outcome::Swept);
     assert!(!staging.exists());

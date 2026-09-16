@@ -32,7 +32,7 @@
 //! points `remove_file` at the user's Mac.
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use super::{
     ItemHome, ItemKind, Record, RecordedTemp, SweepTally, TrackedItem, claim_pending, defer, pending_count,
@@ -41,6 +41,7 @@ use super::{
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::volume::{Volume, VolumeError};
 use crate::file_system::write_operations::overwrite;
+use crate::file_system::write_operations::types::MoveLeftoversKeptEvent;
 use crate::file_system::write_operations::transfer_sides::root_is_listed;
 use crate::file_system::write_operations::unique_name::{NameCandidates, RESCUE_NAME_ATTEMPTS, recovered_sibling};
 
@@ -222,6 +223,7 @@ async fn settle_tracked(item: &TrackedItem) -> Outcome {
         surface,
         path,
         destination,
+        drive_name,
     } = locate(item).await
     else {
         return Outcome::Deferred;
@@ -235,7 +237,7 @@ async fn settle_tracked(item: &TrackedItem) -> Outcome {
         );
         return Outcome::LeftAlone;
     }
-    settle_kind(&surface, &item.kind, &path, destination.as_deref()).await
+    settle_kind(&surface, &item.kind, &path, destination.as_deref(), drive_name.as_deref()).await
 }
 
 /// Where a record's thing is right now, and what may be pointed at it.
@@ -245,6 +247,9 @@ enum Located {
         path: PathBuf,
         /// Where the thing belongs, for the kinds that displaced something.
         destination: Option<PathBuf>,
+        /// The drive's display name, for the one rule that says something out
+        /// loud. `None` for a Mac-internal path, which names no drive.
+        drive_name: Option<String>,
     },
     /// The volume isn't here, so nothing can be decided yet.
     Unreachable,
@@ -258,6 +263,7 @@ async fn locate(item: &TrackedItem) -> Located {
             surface: Surface::Local,
             path: item.path.clone(),
             destination,
+            drive_name: None,
         },
         ItemHome::Mount { volume_id } => {
             let Some(volume) = get_volume_manager().get(volume_id) else {
@@ -277,6 +283,7 @@ async fn locate(item: &TrackedItem) -> Located {
                 surface: Surface::Local,
                 path: root.join(&item.path),
                 destination: destination.map(|d| root.join(d)),
+                drive_name: Some(volume.name().to_string()),
             }
         }
         ItemHome::VolumeSpace { volume_id } => {
@@ -285,10 +292,12 @@ async fn locate(item: &TrackedItem) -> Located {
             let Some(volume) = resolved.volume.filter(|_| !is_routed) else {
                 return Located::Unreachable;
             };
+            let drive_name = Some(volume.name().to_string());
             Located::At {
                 surface: Surface::Volume(volume),
                 path: resolved.path,
                 destination,
+                drive_name,
             }
         }
     }
@@ -314,7 +323,13 @@ fn name_matches_kind(kind: &ItemKind, path: &Path) -> bool {
 }
 
 /// The rules themselves, one arm per kind.
-async fn settle_kind(surface: &Surface, kind: &ItemKind, path: &Path, destination: Option<&Path>) -> Outcome {
+async fn settle_kind(
+    surface: &Surface,
+    kind: &ItemKind,
+    path: &Path,
+    destination: Option<&Path>,
+    drive_name: Option<&str>,
+) -> Outcome {
     match kind {
         ItemKind::Temp => surface.remove_file(path).await.into_outcome(),
         ItemKind::StagingDir => match surface.remove_empty_dir(path).await {
@@ -328,6 +343,7 @@ async fn settle_kind(surface: &Surface, kind: &ItemKind, path: &Path, destinatio
                     "an unfinished move's staging folder still holds files, so it stays where it is: {}",
                     path.display()
                 );
+                announce_leftovers_kept(drive_name, path);
                 Outcome::LeftAlone
             }
         },
@@ -586,6 +602,45 @@ impl Surface {
                 }
             },
         }
+    }
+}
+
+/// The `AppHandle` the staging-folder notice is emitted through, stashed once
+/// from `lib.rs::setup`.
+///
+/// The sweep runs off the launch thread and, later, inside a volume-arrival
+/// task, so it has no operation and no event sink to speak through. `None`
+/// before setup, and in every test, where the notice is simply not emitted.
+static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
+
+/// Gives the leftover sweep a way to reach the frontend. Startup only.
+pub fn init_app_handle(handle: tauri::AppHandle) {
+    let _ = APP_HANDLE.set(handle);
+}
+
+/// Tells the frontend a staging folder is staying where it is, so the files
+/// inside it have a findable home rather than being a silent absence at the
+/// source.
+///
+/// Silent when the record doesn't name a drive: the copy names one, and a
+/// Mac-internal staging folder (a move whose destination is the boot volume)
+/// gets the `warn` alone. Its disk never goes away, so it meets this rule again
+/// at the next launch.
+fn announce_leftovers_kept(drive_name: Option<&str>, path: &Path) {
+    use tauri_specta::Event;
+    let (Some(app), Some(volume_name)) = (APP_HANDLE.get(), drive_name) else {
+        return;
+    };
+    let Some(folder_name) = path.file_name().map(|n| n.to_string_lossy().into_owned()) else {
+        return;
+    };
+    if let Err(e) = (MoveLeftoversKeptEvent {
+        volume_name: volume_name.to_string(),
+        folder_name,
+    })
+    .emit(app)
+    {
+        log::warn!(target: "copy", "couldn't tell the frontend about the kept staging folder: {e}");
     }
 }
 
