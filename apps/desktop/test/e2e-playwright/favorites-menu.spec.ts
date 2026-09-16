@@ -9,11 +9,11 @@
  * `src/lib/file-explorer/navigation/FavoritesMenu.svelte.test.ts` and its controller
  * sibling, which drive the same surfaces far more cheaply.
  *
- * ❗ The test adds its OWN favorite in a fixture directory and parks it at position two,
- * rather than trusting the four platform defaults the store seeds on first launch: those
- * point at the machine's real home folders, so `2` would mean a different place (and a
- * listing of somebody's Desktop) depending on where the suite runs. It's removed again in
- * the `finally`, so the store is left as it was found.
+ * ❗ The test adds its OWN favorite in a fixture directory and presses the digit THAT row
+ * carries, rather than trusting the four platform defaults the store seeds on first launch:
+ * those point at the machine's real home folders, so a fixed digit would mean a different
+ * place (and a listing of somebody's Desktop) depending on where the suite runs. It's
+ * removed again in the `finally`, so the store is left as it was found.
  */
 
 import { test, expect } from './fixtures.js'
@@ -58,7 +58,19 @@ async function readFavorites(): Promise<{ id: string; name: string; path: string
 async function openFavoritesMenu(tauriPage: PageLike): Promise<void> {
   if (CTRL_OR_META === 'Meta') await pressKey(tauriPage, 'Control+d')
   else await dispatchMenuCommand(tauriPage, 'favorites.open')
-  await tauriPage.waitForSelector(`${MENU} [data-accelerator="2"]`, 5000)
+  await tauriPage.waitForSelector(`${MENU} [data-accelerator="1"]`, 5000)
+}
+
+/** The digit the row with this label carries, or null while no such row is listed. */
+async function digitOfFavorite(tauriPage: PageLike, name: string): Promise<string | null> {
+  return tauriPage.evaluate<string | null>(`(function(){
+      var rows = document.querySelectorAll(${JSON.stringify(`${MENU} [data-menu-section="favorites"] [data-menu-row]`)});
+      for (var i = 0; i < rows.length; i++) {
+        var label = rows[i].querySelector('.favorite-label');
+        if (label && label.textContent === ${JSON.stringify(name)}) return rows[i].getAttribute('data-accelerator');
+      }
+      return null;
+  })()`)
 }
 
 test.describe('Favorites menu (⌃D)', () => {
@@ -75,28 +87,25 @@ test.describe('Favorites menu (⌃D)', () => {
 
     try {
       await mcpCall('favorites', { action: 'add', path: target, name: FAVORITE_NAME })
-      const withAdded = await readFavorites()
-      addedId = withAdded.find((favorite) => favorite.name === FAVORITE_NAME)?.id ?? null
+      addedId = (await readFavorites()).find((favorite) => favorite.name === FAVORITE_NAME)?.id ?? null
       expect(addedId, 'the favorite the test adds should be in the store').not.toBeNull()
 
-      // Park it second, so the digit under test names it whatever the seeded defaults are.
-      const others = withAdded.filter((favorite) => favorite.id !== addedId).map((favorite) => favorite.id)
-      await mcpCall('favorites', {
-        action: 'reorder',
-        orderedIds: [others[0], addedId, ...others.slice(1)].filter((id) => id !== null),
-      })
-      await expect.poll(async () => (await readFavorites())[1]?.id, { timeout: 5000 }).toBe(addedId)
-
       await openFavoritesMenu(tauriPage)
-      // The row that claims `2` is the one the keypress must open. Reading the hook back
-      // rather than counting positions is what keeps this honest if the list grows.
-      const labelOfRowTwo = await tauriPage.evaluate<string | null>(
-        `document.querySelector('${MENU} [data-accelerator="2"] .favorite-label')?.textContent ?? null`,
-      )
-      expect(labelOfRowTwo).toBe(FAVORITE_NAME)
+      // Ask the MENU which digit its own row carries, rather than counting positions: the
+      // store seeds four platform defaults, and how many of those survive (the volume list
+      // drops a favorite whose path is gone) differs per machine.
+      //
+      // ❗ Polled, ❌ read once: the favorite being in the store is not the menu showing it.
+      // The frontend volume store rebuilds off the `volumes-changed` the write emits, which
+      // lands a beat later. The menu is reactive, so it catches up while it's open — a
+      // straight read right after opening sees the list from before the add.
+      await expect.poll(async () => digitOfFavorite(tauriPage, FAVORITE_NAME), { timeout: 5000 }).toMatch(/^[1-9]$/)
+      // The poll above already failed the test if there's no such row or no digit on it.
+      const digit = (await digitOfFavorite(tauriPage, FAVORITE_NAME)) ?? ''
 
-      // ❗ With the `code`: the accelerator matcher reads the PHYSICAL key, not `event.key`.
-      await pressKey(tauriPage, '2', 'Digit2')
+      // ❗ With the `code`: the accelerator matcher reads the PHYSICAL key, not `event.key`,
+      // which is what makes the digits work on a layout where they need Shift.
+      await pressKey(tauriPage, digit, `Digit${digit}`)
 
       // A pick closes the menu, and the pane lands in the favorite's folder — on the
       // volume that CONTAINS it, so the listing is a real one.
