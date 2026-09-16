@@ -501,11 +501,22 @@ workerd, so it force-enables `nodejs_compat_v2` on the test worker whatever the 
 exist there (verified with a probe test on `@cloudflare/vitest-pool-workers` 0.22.0, 2026-09-16). It buys real bindings
 and real Worker semantics, ❌ never runtime-parity proof.
 
-**`src/licensing/production-runtime.test.ts` is the lane that proves parity**, and the only one. Wrangler's
-`createTestHarness` builds `src/index.ts` and runs it in workerd under the real `wrangler.toml`, with test-only secrets
-passed in, so a Node API anywhere along an exercised route throws the way it throws in production. It currently mints
-through `/admin/generate`, the shortest route over the whole signing path. Bring another risky path under it by adding a
-request here rather than by widening the pool project. ❌ Never hand the harness its own compatibility settings.
+**Wrangler's `createTestHarness` is the lane that proves parity**, and the only one. It builds `src/index.ts` and runs
+it in workerd under the real `wrangler.toml`, with test-only secrets passed in, so a Node API anywhere along an
+exercised route throws the way it throws in production. Two files use it, and both live in `src/licensing/` because
+that's where a runtime failure costs money: `production-runtime.test.ts` (minting through `/admin/generate`, manual
+validation, revocation) and `webhook-runtime.test.ts` (`/webhook/paddle`, the route the `Buffer` bug actually broke).
+Bring another risky path under it by adding a request rather than by widening the pool project. ❌ Never hand the
+harness its own compatibility settings.
+
+**Stub an upstream at the socket, never in the source.** The harness points the Worker's global `fetch` at this
+process (`outboundService: (request) => globalThis.fetch(request.url, request)`), so replacing `globalThis.fetch` in a
+test intercepts every outbound request the Worker makes with the route, the SDK, and the runtime untouched. That is how
+`webhook-runtime.test.ts` answers for Paddle and Resend; `applyD1Migrations('TELEMETRY_DB')` on the worker handle gives
+it the real schema. Two gotchas (verified on wrangler 4.107.1, 2026-09-16): the intercepted request arrives as the
+INIT argument, not the input, and it's undici's internal `Request` class, so `init instanceof Request` reads false in
+the test's realm and silently yields an empty body. Duck-type on `text()`. Requests the harness itself makes don't pass
+through this stub, so an unstubbed host can safely fail loudly instead of reaching the internet.
 
 **How the gap shipped**: `bytesToBase64` called `Buffer.from()`, so every license mint threw in production from the
 first deploy, while a node-project test suite stayed green over it. A build failure would have caught a `node:` import;

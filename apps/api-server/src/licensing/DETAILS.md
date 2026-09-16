@@ -21,8 +21,9 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - **`device-tracking.ts`**: device-set helpers — prune stale devices, alert threshold.
 - Tests: `license.test.ts`, `paddle.test.ts`, `license-issuance.test.ts` (the two pure classifiers),
   `device-tracking.test.ts`, `webhook-paddle.test.ts` (first delivery, duplicate, retry after a failed email, concurrent
-  delivery, Resend rejection), and `production-runtime.test.ts` (the real Worker in workerd: minting, manual validation,
-  and revocation. `../../DETAILS.md` § Test runtimes).
+  delivery, Resend rejection), and two real-runtime suites that run the built Worker in workerd (`../../DETAILS.md` §
+  Test runtimes): `production-runtime.test.ts` (minting, manual validation, revocation) and `webhook-runtime.test.ts`
+  (the purchase path end to end, with Paddle and Resend stubbed at the socket).
 
 ## Data flow
 
