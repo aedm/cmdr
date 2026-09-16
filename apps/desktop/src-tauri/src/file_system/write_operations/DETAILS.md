@@ -68,8 +68,9 @@ The full top-level inventory is here:
   `resolve_write_conflict`), `overwrite.rs` (tests in `overwrite_tests.rs`). Cancellation and durability:
   `cancellable.rs`, `rollback.rs`, `durability.rs`.
   `rollback.rs` wears two hats: the history dialog's reversal, and the executor the operation-log engine injects.
-- Vocabulary and edges: `types.rs` (+ `types/events.rs`, every `#[tauri_specta(event_name)]` payload, re-exported
-  through `types`), `event_sinks.rs`, `error_classification.rs`, `transfer_sides.rs` (the two volumes a transfer runs
+- Vocabulary and edges: `types.rs` (+ `types/events.rs`, every `#[tauri_specta(event_name)]` payload, and
+  `types/errors.rs`, `WriteOperationError` with the typed payloads its variants carry — both re-exported through
+  `types`), `event_sinks.rs`, `error_classification.rs`, `transfer_sides.rs` (the two volumes a transfer runs
   between, the mount-table question, and the one boundary that words a stop; tests in `transfer_sides_tests.rs`),
   `mutation_error.rs` (the typed refusal an instant mutation returns), `validation.rs`, `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. Remote
   archive I/O: `archive_remote_edit.rs`, `scratch_dir.rs`. Entry points: `create/` + `create.rs`, `rename/` +
@@ -99,6 +100,10 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   goes in `events.rs`, and so does an enum whose only carrier is one of them (`SourceItemOutcome`,
   `CancelRollbackOutcome`). A name two homes speak stays in `types.rs`, which is why `TransferActivity` sits there:
   `WriteProgressEvent` carries it AND so does `OperationStatus`, a snapshot nobody emits.
+- **`types/errors.rs` splits the same way**: `WriteOperationError` and the types that exist only as one of its variants'
+  payloads (`ReadOnlySide`, `TransferRole`, `DisconnectedSide`, `TrashRefusalKind`, `RecoveredOriginal`,
+  `OversizedFile`). ❗ `RecoveredOriginal::new` is `pub(in …write_operations)` rather than `pub(super)`: `super` is
+  `types` from down here, and its callers are the transfer engines a level up.
 - **`analytics.rs` is `pub(super)` and reached ONLY from `TauriEventSink::emit_complete`.** Every property is
   categorical (op kind, a count bucket, a bool): no names, no paths ever. Copy/Move → `file_transfer_completed`,
   Delete/Trash → `delete_used`.
@@ -206,8 +211,8 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
 
 `types.rs` is the vocabulary floor: every other module here speaks its enums, event structs, error types, and
 configuration, and it speaks nobody else's. Nothing in it may `use` a sibling (the `CLAUDE.md` rule), and that covers
-`types/events.rs` too: a child of the floor is still the floor, so it imports from `super` and from outside
-`write_operations`, never sideways.
+`types/events.rs` and `types/errors.rs` too: a child of the floor is still the floor, so it imports from `super` and
+from outside `write_operations`, never sideways.
 
 **Why the rule is absolute.** The dependency graph under `write_operations` is a fan-in: 30-odd modules point at
 `types`, and `types` is the sink. A single upward import from the sink closes a circle through everything that fans in
