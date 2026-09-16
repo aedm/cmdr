@@ -7,9 +7,9 @@ GitHub, PostHog, and the API server, organized by acquisition stage across four 
 - **Architecture docs**: `apps/analytics-dashboard/CLAUDE.md`
 
 ❌ **The report below covers the metric pages only, never the license ledger.** Which licenses exist, who holds the
-codes, and which purchases are stuck lives on the `/licenses` page (`apps/analytics-dashboard/DETAILS.md` § The
-licenses list), straight from `GET /admin/licenses`. A report with no license section is not evidence that no licenses
-were issued.
+codes, and which purchases are stuck lives on the `/licenses` page (`apps/analytics-dashboard/DETAILS.md` § The licenses
+list), straight from `GET /admin/licenses`. A report with no license section is not evidence that no licenses were
+issued.
 
 ## Agent-readable report
 

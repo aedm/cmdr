@@ -24,9 +24,9 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - Tests: `license.test.ts`, `paddle.test.ts`, `license-issuance.test.ts` (the two pure classifiers),
   `device-tracking.test.ts`, `webhook-paddle.test.ts` (first delivery, duplicate, retry after a failed email, concurrent
   delivery, Resend rejection), `admin-licenses.test.ts` (the states, the orphan and missing-code reconciliation), and
-  two real-runtime suites that run the built Worker in workerd (`../../DETAILS.md` §
-  Test runtimes): `production-runtime.test.ts` (minting, manual validation, revocation) and `webhook-runtime.test.ts`
-  (the purchase path end to end, with Paddle and Resend stubbed at the socket).
+  two real-runtime suites that run the built Worker in workerd (`../../DETAILS.md` § Test runtimes):
+  `production-runtime.test.ts` (minting, manual validation, revocation) and `webhook-runtime.test.ts` (the purchase path
+  end to end, with Paddle and Resend stubbed at the socket).
 
 ## Data flow
 
@@ -190,9 +190,9 @@ knows the latter, and asking it per row would cost one API call per license on e
 therefore deliberately NOT `/validate`'s (`active` / `expired` / `invalid`); for a manual row the two agree, except that
 `/validate` calls a revoked license `invalid`.
 
-**The orphan check is the point of reading KV at all.** The endpoint scans the `LICENSE_CODES` namespace (paging
-through `list`, keeping only keys that match the short-code format, since device sets and the activation counter share
-the namespace) and reconciles it against the ledger both ways:
+**The orphan check is the point of reading KV at all.** The endpoint scans the `LICENSE_CODES` namespace (paging through
+`list`, keeping only keys that match the short-code format, since device sets and the activation counter share the
+namespace) and reconciles it against the ledger both ways:
 
 - `orphanCodes`: in KV, explained by no row. A license handed out before the ledger existed, or minted by a delivery
   that died before recording it. Someone may be holding one, and nothing in our records says whether it ever worked.
