@@ -12,7 +12,8 @@ for numbers, sizes, dates.
 - `language-analytics.ts`: the language events, shipped catalog tags only; they hang off the PICK, never a subscription
   (`src-tauri/src/analytics/DETAILS.md`).
 - `number-format.ts`: memoized `Intl.NumberFormat` factory (`getNumberFormatter`), `formatInteger`, and
-  `getGroupSeparator` (the byte-triad separator).
+  `getGroupSeparator` (the byte-triad separator). `list-format.ts`: the same over `Intl.ListFormat`
+  (`formatConjunctionList`), on the UI locale.
 - `locale-inheritance.ts`: which catalog a locale may inherit from (same language AND same script), shared with the i18n
   checks and Rust.
 - `messages.svelte.ts`: the runtime: `t()` (catalog + ICU), `getMessage()` (raw), `setLocale()`, `availableLocales()`,
@@ -33,7 +34,7 @@ for numbers, sizes, dates.
   `inheritableAncestors()`; the checks and Rust obey the same rule. Regional fallback (`pt-PT` → `pt`) must keep
   working: `DETAILS.md`.
 - **Picker labels take the WHOLE shipped list**: `zh` reads `简体中文` only because `zh-Hant` ships. ❌ Never decorate
-  unconditionally ("Deutsch (Lateinisch)"); keep rows distinct.
+  unconditionally; keep rows distinct.
 - **Both locale answers come from Rust, ❌ never the webview tag**, which drops the region override. Go through
   `pickUiLocale()`; secondary windows call `initWindowLanguageSync()` (`routes/window-route-coverage.test.ts`).
   `watchSystemLocales()` takes ONE subscriber per window (the first adopts): hang new reactions off it. Depth:
@@ -57,4 +58,4 @@ for numbers, sizes, dates.
   scroll.
 
 Depth (runtime design, the error-pipeline boundary, the ICU split, `'system'`, language vs region, the composed
-formatting tag, the grouping split between byte triads and human sizes): `DETAILS.md`.
+formatting tag, byte-triad vs human-size grouping): `DETAILS.md`.
