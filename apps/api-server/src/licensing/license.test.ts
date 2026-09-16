@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { generateLicenseKey, generateShortCode, isValidShortCode, type LicenseData } from './license'
 import * as ed from '@noble/ed25519'
 
-// This file runs in workerd (see `vitest.workerd.config.ts`), so it has no `Buffer`: hex and
-// base64 go through the web-standard primitives the Worker itself has.
+// This file runs in workerd (see `vitest.workerd.config.ts`), so hex and base64 go through the
+// web-standard primitives the Worker itself has. The pool's runner force-enables `nodejs_compat_v2`,
+// so `Buffer` would actually resolve here; the `no-restricted-globals` ban in `eslint.config.js` is
+// what keeps that from turning into false confidence.
 
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
