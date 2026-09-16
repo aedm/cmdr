@@ -1,9 +1,10 @@
 <!--
-  Shared shell for the whole dashboard: a sticky top bar with the page nav (Acquisition, Product, Link
-  codes) and the range/day picker. The picker drives the shared time selection via `?range=` / `?day=`
-  and stays on the current page when you switch, so Acquisition and Product share selection state. It's
-  hidden on the Link codes page, where a time range is irrelevant. The selection comes from the layout
-  load; `updatedAt` comes from whichever data page is active.
+  Shared shell for the whole dashboard: a sticky top bar with the page nav (Acquisition, Product,
+  Licenses, Link codes) and the range/day picker. The picker drives the shared time selection via
+  `?range=` / `?day=` and stays on the current page when you switch, so Acquisition and Product share
+  selection state. It's hidden on the two ledger pages (Licenses, Link codes), where a time range is
+  irrelevant. The selection comes from the layout load; `updatedAt` comes from whichever data page is
+  active.
 -->
 <script lang="ts">
     import '../app.css'
@@ -17,6 +18,7 @@
     const navItems = [
         { href: resolve('/'), label: 'Acquisition' },
         { href: resolve('/product'), label: 'Product' },
+        { href: resolve('/licenses'), label: 'Licenses' },
         { href: resolve('/links'), label: 'Link codes' },
     ]
 
@@ -26,8 +28,11 @@
     /** The current pathname, used to keep the nav active state and to keep range switches on the same page. */
     const pathname = $derived(page.url.pathname)
 
-    /** Hide the range/day picker where a time window has no meaning (the Link codes page). */
-    const showPicker = $derived(pathname !== '/links')
+    /** Pages that are ledgers rather than time series, so a range/day picker means nothing on them. */
+    const pathsWithoutPicker = ['/licenses', '/links']
+
+    /** Hide the range/day picker where a time window has no meaning. */
+    const showPicker = $derived(!pathsWithoutPicker.includes(pathname))
 
     /** The freshness stamp, set by the active data page's load (absent on Link codes). */
     const updatedAt = $derived(page.data.updatedAt as string | undefined)
