@@ -248,6 +248,38 @@ export function appendSnapshotEntries(id: string, entries: SearchResultEntry[], 
 }
 
 /**
+ * Puts `entries` in place of everything `id` holds, and reports whether that snapshot
+ * is still there.
+ *
+ * [`appendSnapshotEntries`] is for rows arriving over time; this is for the one answer
+ * that SUPERSEDES what the pane opened with: the index asked again with the pane's row
+ * ceiling instead of the dialog's 30 (`snapshot-fill.ts`). Replacing is what keeps a row
+ * the pane already shows from landing a second time, since the two answers overlap by
+ * definition.
+ *
+ * ❗ Same two obligations as the append: the caller decides whether the new set is
+ * actually better (this will happily hand a pane fewer rows than it had), and a SORTED
+ * snapshot needs `resortSnapshotIfSorted` after it, or its rows stay where they were
+ * until something else sorts them.
+ */
+export function replaceSnapshotEntries(id: string, entries: SearchResultEntry[], totalCount: number): boolean {
+  const stored = store.get(id)
+  if (!stored) return false
+  const capped = entries.length > SNAPSHOT_ENTRIES_CAP ? entries.slice(0, SNAPSHOT_ENTRIES_CAP) : entries
+  const grownTotal = Math.max(stored.totalCount, totalCount)
+  // A fresh ENTRY rather than a field write, for the reason on `mutationTick`.
+  store.set(id, {
+    ...stored,
+    rankedEntries: capped,
+    entries: stored.sort === null ? capped : stored.entries,
+    totalCount: grownTotal,
+    label: labelFor(stored.baseLabel, capped.length, grownTotal),
+  })
+  mutationTick += 1
+  return true
+}
+
+/**
  * The engine's ranked rows for `id`, or `undefined` when the snapshot is gone.
  *
  * The sorter reads this to build its request and then compares the SAME array

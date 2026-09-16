@@ -16,6 +16,7 @@ import { searchFiles, parseSearchScope, type SearchQuery, type SearchResultEntry
 import type { LiveRunView, QueryStreamSource } from '$lib/query-ui/query-stream'
 import { coverageNoteFrom, coverageNoteFromRun } from './coverage-note'
 import { createLiveSearchSource } from './live-search-source'
+import { fullRowQuery } from './snapshot-fill'
 import { rankLiveResults } from './live-ranking'
 import { createSearchRunTracker } from './search-run-tracking'
 import {
@@ -78,6 +79,15 @@ export interface SearchRunners {
   runQuery: () => Promise<{ entries: SearchResultEntry[]; totalCount: number }>
   /** The index's half, then a walk over what it can't answer for. QueryDialog's `streamingSource`. */
   streamingSource: QueryStreamSource
+  /**
+   * The current search, asked for as many rows as a PANE can hold rather than the 30 a
+   * dialog list wants. "Open in pane" fills the snapshot with it, and hands the same
+   * query to a handed-off walk so its ending can top the pane up (`snapshot-fill.ts`).
+   *
+   * Built from live state at call time, exactly like a run, so it asks the question the
+   * user is looking at.
+   */
+  buildFullRowQuery: () => Promise<SearchQuery>
 }
 
 export function createSearchRunners(deps: SearchRunnersDeps): SearchRunners {
@@ -118,5 +128,9 @@ export function createSearchRunners(deps: SearchRunnersDeps): SearchRunners {
       }),
   })
 
-  return { runQuery: runSearch, streamingSource }
+  return {
+    runQuery: runSearch,
+    streamingSource,
+    buildFullRowQuery: async () => fullRowQuery(await buildRunQuery(deps.getDefaultScopePath())),
+  }
 }

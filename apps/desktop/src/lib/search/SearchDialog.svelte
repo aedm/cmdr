@@ -184,8 +184,11 @@
      * host, and close. State is preserved (the module-level `$state` survives unmount), so
      * reopening with ⌘F lands the user back on the same results.
      */
-    function showAllInMainWindow(): void {
-        const promotion = promoteResultsToPane(liveRun)
+    async function showAllInMainWindow(): Promise<void> {
+        // Awaits the index's full-row answer (`snapshot-fill.ts`), so the pane opens with
+        // every hit rather than the 30 this list renders. Milliseconds against the
+        // in-memory index, and the dialog stays up meanwhile.
+        const promotion = await promoteResultsToPane(liveRun, runners.buildFullRowQuery)
         if (!promotion) return
         if (promotion.handedOffRunId !== null) handedOffRun = promotion.handedOffRunId
         onShowAllInMainWindow?.(promotion.snapshotId)

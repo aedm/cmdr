@@ -9,8 +9,9 @@
  * routes the pane; everything above the wire stops here.
  */
 
-import { addRecentSearch, type HistoryEntry } from '$lib/tauri-commands'
+import { addRecentSearch, type HistoryEntry, type SearchQuery, type SearchResultEntry } from '$lib/tauri-commands'
 import type { LiveRunView } from '$lib/query-ui/query-stream'
+import { fetchAllRows } from './snapshot-fill'
 import {
   buildHistoryFilters,
   getCaseSensitive,
@@ -76,8 +77,18 @@ export function persistRecentSearch(): void {
   })
 }
 
-/** Builds the stored record from live dialog state, over the volume its rows live on. */
-function buildSnapshot(id: string, label: string, volumeId: string): SearchSnapshot {
+/**
+ * Builds the stored record from live dialog state, over the volume its rows live on.
+ * `entries` / `totalCount` are passed in rather than read here: they may be the fuller
+ * set the index just answered with, not what the dialog is showing.
+ */
+function buildSnapshot(
+  id: string,
+  label: string,
+  volumeId: string,
+  entries: SearchResultEntry[],
+  totalCount: number,
+): SearchSnapshot {
   // `HistoryFilters` (IPC type) uses `number | null` for absent fields; the
   // snapshot store uses `number | undefined`. Coerce so `null` doesn't sneak
   // into the snapshot's runtime shape.
@@ -98,8 +109,8 @@ function buildSnapshot(id: string, label: string, volumeId: string): SearchSnaps
     volumeId,
     caseSensitive: getCaseSensitive(),
     excludeSystemDirs: getExcludeSystemDirs(),
-    entries: getResults(),
-    totalCount: getTotalCount(),
+    entries,
+    totalCount,
     createdAt: Date.now(),
     label,
     // Every snapshot opens in the engine's ranked order; a header click is what
@@ -113,29 +124,51 @@ function buildSnapshot(id: string, label: string, volumeId: string): SearchSnaps
  * `null` when there's nothing to promote (the button is disabled in that state, but a
  * keyboard path can still reach here).
  *
+ * **The pane gets every hit, not the rows the dialog is showing.** The dialog asks for
+ * 30; before minting the snapshot this asks the index the same question with the pane's
+ * ceiling (`snapshot-fill.ts`), so promoting 112 matches opens 112 rows. The rows on
+ * screen are the fallback, for an ask that fails or answers with no more than them.
+ *
  * `liveRun` is the run still walking, if any: the ONE case where a search outlives its
  * dialog, because its rows are about to be on screen in a pane. Everything after the
- * handoff — the toast, the snapshot appends, handing the run back if the dialog reopens —
- * belongs to `walk-handoff.svelte.ts`.
+ * handoff — the toast, the snapshot appends, the top-up when the walk ends, handing the
+ * run back if the dialog reopens — belongs to `walk-handoff.svelte.ts`.
+ *
+ * `buildFullRowQuery` comes from `search-runners.ts`, which owns the query builder.
  */
-export function promoteResultsToPane(liveRun: { runId: string; view: LiveRunView } | null): PanePromotion | null {
+export async function promoteResultsToPane(
+  liveRun: { runId: string; view: LiveRunView } | null,
+  buildFullRowQuery: () => Promise<SearchQuery>,
+): Promise<PanePromotion | null> {
   const volumeId = getResultsVolumeId()
   // Rows and the volume they live on arrive in the same answer (the one-shot result, or
   // a live batch), so rows with no volume shouldn't exist. If they ever do, refusing
   // beats guessing `root` and pointing every action on them at the wrong drive.
   if (getResults().length === 0 || volumeId === null) return null
-  const id = nextSnapshotId()
   const label = buildSnapshotLabel({
     mode: getMode(),
     query: getQuery(),
     aiPrompt: getLastAiPrompt(),
     aiLabel: getLastAiLabel(),
   })
-  createSnapshot(id, buildSnapshot(id, label, volumeId))
+
+  // Read BEFORE the awaits below: the dialog stays open across them, and an auto-apply
+  // landing meanwhile would otherwise promote rows the user never saw.
+  const shownRows = getResults()
+  const shownTotal = getTotalCount()
+  const fullQuery = await buildFullRowQuery().catch(() => null)
+  const full = fullQuery && shownRows.length < shownTotal && liveRun === null ? await fetchAllRows(fullQuery) : null
+  // A live run's rows are still arriving, so the index can't answer for the whole scope
+  // yet; that pane is topped up when its walk ends. Either way, never take rows away
+  // from what the user is looking at.
+  const rows = full && full.entries.length > shownRows.length ? full : { entries: shownRows, totalCount: shownTotal }
+
+  const id = nextSnapshotId()
+  createSnapshot(id, buildSnapshot(id, label, volumeId, rows.entries, rows.totalCount))
   setLastAttemptId(id)
 
   const handedOffRunId = liveRun
-    ? handOffWalk({ runId: liveRun.runId, snapshotId: id, label, view: liveRun.view })
+    ? handOffWalk({ runId: liveRun.runId, snapshotId: id, label, view: liveRun.view, refillQuery: fullQuery })
     : null
 
   persistRecentSearch()

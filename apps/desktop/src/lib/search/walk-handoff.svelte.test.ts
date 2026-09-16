@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import type { SearchResultEntry, SearchRunCoverage } from '$lib/tauri-commands'
+import type { SearchQuery, SearchResultEntry, SearchRunCoverage } from '$lib/tauri-commands'
 import { clearAllToasts, getToasts } from '$lib/ui/toast/toast-store.svelte'
 import type { LiveRunView } from '$lib/query-ui/query-stream'
 import type { LiveRunHandlers } from './live-run-events'
@@ -22,7 +22,13 @@ import {
   resumeHandedOffWalk,
   supersedeHandedOffWalk,
 } from './walk-handoff.svelte'
-import { _resetForTesting as resetSnapshots, getOrCreate, getSnapshot, incrementRef } from './snapshot-store.svelte'
+import {
+  _resetForTesting as resetSnapshots,
+  getOrCreate,
+  getSnapshot,
+  incrementRef,
+  SNAPSHOT_ENTRIES_CAP,
+} from './snapshot-store.svelte'
 
 /** The run the module is listening to, captured so a test can drive it. */
 let observed: { runId: string; handlers: LiveRunHandlers } | null = null
@@ -37,12 +43,25 @@ vi.mock('./live-run-events', () => ({
   },
 }))
 
+/** What the index answers the post-walk top-up with (`snapshot-fill.ts`). */
+let indexAnswer: { entries: SearchResultEntry[]; totalCount: number; targetVolumeId?: string } = {
+  entries: [],
+  totalCount: 0,
+}
+const indexAsks: unknown[] = []
+
 vi.mock('$lib/tauri-commands', () => ({
   cancelSearch: (runId: string) => {
     cancelled.push(runId)
     return Promise.resolve(true)
   },
+  searchFiles: (query: unknown) => {
+    indexAsks.push(query)
+    return Promise.resolve(indexAnswer)
+  },
 }))
+
+vi.mock('./snapshot-sort.svelte', () => ({ resortSnapshotIfSorted: () => Promise.resolve() }))
 
 function entry(name: string): SearchResultEntry {
   return {
@@ -105,10 +124,19 @@ function openSnapshot(id = 'sr-1'): void {
   incrementRef(id)
 }
 
-/** Hand off a running walk into an open snapshot, and wait for the subscription. */
+/**
+ * Hand off a running walk into an open snapshot, and wait for the subscription.
+ * `refillQuery` is the run's own query, which the ending uses to top the pane up.
+ */
 async function handOff(runId = 'run-1', snapshotId = 'sr-1'): Promise<void> {
   openSnapshot(snapshotId)
-  handOffWalk({ runId, snapshotId, label: 'report', view: view() })
+  handOffWalk({
+    runId,
+    snapshotId,
+    label: 'report',
+    view: view(),
+    refillQuery: { namePattern: 'report', patternType: 'glob', limit: 30 } as unknown as SearchQuery,
+  })
   await Promise.resolve()
 }
 
@@ -128,6 +156,8 @@ beforeEach(() => {
   clearAllToasts()
   observed = null
   cancelled.length = 0
+  indexAnswer = { entries: [], totalCount: 0 }
+  indexAsks.length = 0
 })
 
 describe('the running state', () => {
@@ -159,6 +189,35 @@ describe('the running state', () => {
 })
 
 describe('the way it ends', () => {
+  it('tops the pane up from the index, since the walk streamed at the dialog row limit', async () => {
+    await handOff()
+    // What the walk wrote goes into the index as it goes, so the finished run is the
+    // moment the pane can have everything rather than the rows the stream stopped at.
+    indexAnswer = {
+      entries: [entry('first.pdf'), entry('second.pdf'), entry('third.pdf')],
+      totalCount: 3,
+      targetVolumeId: 'root',
+    }
+    observed?.handlers.onSettled(3, coverage())
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect((indexAsks[0] as { limit: number }).limit).toBe(SNAPSHOT_ENTRIES_CAP)
+    expect(getSnapshot('sr-1')?.entries.map((e) => e.name)).toEqual(['first.pdf', 'second.pdf', 'third.pdf'])
+  })
+
+  it('leaves the pane alone when the index answers with no more than it already shows', async () => {
+    await handOff()
+    // An index that hasn't caught up with the walk must never take rows off a pane the
+    // user is looking at and acting on.
+    indexAnswer = { entries: [], totalCount: 0 }
+    observed?.handlers.onSettled(1, coverage())
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(getSnapshot('sr-1')?.entries.map((e) => e.name)).toEqual(['first.pdf'])
+  })
+
   it('swaps to an auto-hiding toast when the walk covered everything', async () => {
     await handOff()
     observed?.handlers.onSettled(9, coverage())

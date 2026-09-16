@@ -93,6 +93,9 @@ Everything Search-specific sits in a module beside it, one per job, each unit-te
 - **`snapshot-promotion.ts`** — "Show all in main window" (⌥⏎): builds the `SearchSnapshot`, mints an id, pins via
   `setLastAttemptId`, hands a still-running walk to `walk-handoff.svelte.ts`, and persists the recent-search entry. It
   and "Go to file" are the only two call sites that add to recent searches.
+- **`snapshot-fill.ts`** — the index asked for as many rows as a PANE holds rather than the 30 a dialog list wants. Both
+  fillers go through it: the promotion before it mints the snapshot, and a handed-off walk's ending. It never shrinks a
+  pane and never blocks an open.
 - **`recent-search-adapter.ts`** — the row adapter + key (the only seam where Search-specific fields like `scope` /
   `excludeSystemDirs` leak into the chip's tooltip), plus pick (LOADS, never runs) and remove.
 
@@ -514,7 +517,10 @@ Both buttons are hidden (not just disabled) on empty/idle state. Empty + idle in
 Click on the footer's "Open in pane" button promotes the current result set into a real pane view via the
 `search-results://<id>` virtual volume. `snapshot-promotion.ts::promoteResultsToPane`:
 
-1. Builds a `SearchSnapshot` from live state (`getResults()` / `getMode()` / `getQuery()` / filters / scope / flags).
+1. Asks the index the run's own question again with the pane's row ceiling (`snapshot-fill.ts`), and builds the
+   `SearchSnapshot` from THAT answer plus live state (`getMode()` / `getQuery()` / filters / scope / flags). The rows on
+   screen are the fallback: a failed ask, an answer no bigger than them, or a live walk still filling them in. ❌ Never
+   promote `getResults()` alone — it holds the 30 the dialog renders, and the pane holds 10,000.
 2. Mints a fresh id via `nextSnapshotId()` and stores via `getOrCreate(id, snapshot)`.
 3. Pins the snapshot via `setLastAttemptId(id)` so refcount stays ≥1 even before history pushes.
 4. Calls `addRecentSearch(historyEntry)`. **This is the one and only call site that adds to recent searches** (per plan
@@ -573,12 +579,15 @@ while nobody was listening, or the dialog would show a count the list can't acco
 **Appends need the mutation tick.** `appendSnapshotEntries` bumps it; snapshots aren't `$state`, so without it the rows
 land in the store and never reach the screen.
 
-⚠️ **The toast counts far past what the pane can hold, and nothing says so.** The dialog asks for `limit: 30`;
-`ResultStream` stops emitting rows at that cap while `match_count` keeps climbing, and `labelFor` only annotates "(first
-N of M)" once M passes 10,000. So a handed-off walk can report "35,287 matches so far" over 30 rows. Nothing is lost and
-both numbers are true (a stopped walk would freeze the count at a number that never becomes true), but the two disagree
-by orders of magnitude in silence. Whether the handoff raises its limit, labels the gap sooner, or says "showing the
-first 30" is a product call for David, so ❌ don't pick one on your own.
+**The ending is what fills the pane, because a walk can't be widened mid-flight.** `ResultStream` takes its row cap
+from the query it STARTED with (the dialog's `limit: 30`) while `match_count` keeps climbing, so a handed-off walk
+streams 30 rows under a toast counting thousands. Everything the walk reads lands in the index on the way, so
+`takeSettled` asks the index for the whole set and replaces the snapshot's rows (`snapshot-fill.ts`). Until it ends, the
+pane and the toast disagree by however much the walk has found; both numbers are true, and the gap closes at the end.
+
+❗ **The top-up only ever ADDS.** An index that hasn't caught up with the walk it just finished answers with fewer rows
+than the pane is showing, and applying that would take files off a screen the user is selecting from. `fillSnapshotFromIndex`
+drops any answer no bigger than what's there.
 
 ## Snapshot store
 

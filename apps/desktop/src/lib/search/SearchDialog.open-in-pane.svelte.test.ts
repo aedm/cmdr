@@ -19,11 +19,13 @@ import {
   addRecentSearchMock,
   mountDialog,
   resetSearchDialogTest,
+  searchFilesMock,
   seedResults,
   testSettings,
   unmountAllDialogs,
   useSearchDialog,
 } from './test-search-dialog-harness'
+import { SNAPSHOT_ENTRIES_CAP } from './snapshot-store.svelte'
 
 vi.mock('$lib/tauri-commands', async () => (await import('./test-search-dialog-harness')).tauriCommandsMock())
 vi.mock('../../routes/viewer/media-view', async () => (await import('./test-search-dialog-harness')).mediaViewMock())
@@ -77,6 +79,53 @@ describe('SearchDialog "Open in pane"', () => {
     expect(entry.mode).toBe('filename')
     expect(entry.query).toBe('*.pdf')
     expect(entry.resultCount).toBe(1)
+
+    cleanup()
+  })
+
+  it('fills the pane with every hit, not the handful of rows the dialog lists', async () => {
+    // The dialog asks for 30 rows, which is all it can usefully render. The pane holds
+    // thousands, so the promotion asks the index again with the row ceiling raised.
+    // Without this the user who searched 112 JPGs to delete them got 30 of them.
+    let openedId: string | null = null
+    const { cleanup } = await mountDialog({
+      onShowAllInMainWindow: (id) => {
+        openedId = id
+      },
+    })
+    setQuery('*.jpg')
+    setMode('filename')
+    await seedResults()
+    // The dialog is showing one row out of 112 found.
+    const { setTotalCount } = await import('./search-state.svelte')
+    setTotalCount(112)
+    await tick()
+
+    const everyHit = Array.from({ length: 112 }, (_, i) => ({
+      name: `light-${String(i)}.jpg`,
+      path: `/Users/test/Lights/light-${String(i)}.jpg`,
+      parentPath: '/Users/test/Lights',
+      isDirectory: false,
+      size: 2048,
+      modifiedAt: 1_700_000_000,
+      iconId: 'ext:jpg',
+    }))
+    searchFilesMock.mockResolvedValueOnce({ entries: everyHit, totalCount: 112 })
+
+    const btn = document.body.querySelector('button[aria-label="Show all in main window"]') as HTMLButtonElement
+    btn.click()
+    await tick()
+    await Promise.resolve()
+    await tick()
+
+    const askedFor = searchFilesMock.mock.calls.at(-1)?.[0] as { limit: number } | undefined
+    expect(askedFor?.limit).toBe(SNAPSHOT_ENTRIES_CAP)
+
+    const { getSnapshot } = await import('./snapshot-store.svelte')
+    expect(openedId).not.toBeNull()
+    const snap = getSnapshot(openedId as unknown as string)
+    expect(snap?.entries.length).toBe(112)
+    expect(snap?.totalCount).toBe(112)
 
     cleanup()
   })

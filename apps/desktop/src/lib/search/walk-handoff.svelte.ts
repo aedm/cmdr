@@ -28,10 +28,11 @@
 import { tString } from '$lib/intl/messages.svelte'
 import { formatInteger } from '$lib/intl/number-format'
 import type { LiveRunView, QueryStreamResumption } from '$lib/query-ui/query-stream'
-import type { SearchResultEntry, SearchRunCoverage } from '$lib/tauri-commands'
+import type { SearchQuery, SearchResultEntry, SearchRunCoverage } from '$lib/tauri-commands'
 import { addToast, dismissToast } from '$lib/ui/toast/toast-store.svelte'
 import { observeSearchRun, type LiveRunHandlers, type LiveRunProgress } from './live-run-events'
 import { appendSnapshotEntries } from './snapshot-store.svelte'
+import { fillSnapshotFromIndex } from './snapshot-fill'
 import { resortSnapshotIfSorted } from './snapshot-sort.svelte'
 import {
   WALK_HANDOFF_TOAST_ID,
@@ -57,6 +58,17 @@ let missedEntries: SearchResultEntry[] = []
 let resumedInto: LiveRunHandlers | null = null
 
 /**
+ * The query the handed-off run is answering, so the pane can be topped up from the index
+ * when the walk ends (`snapshot-fill.ts`).
+ *
+ * A walk streams at the limit it STARTED with (the dialog's 30) and can't be widened
+ * mid-flight, so without this a pane fed by a walk would keep 30 rows under a toast
+ * counting thousands. Held as a value rather than fetched at settle time: by then the
+ * dialog that could build one is long gone.
+ */
+let refillQuery: SearchQuery | null = null
+
+/**
  * Starts feeding `snapshotId` from the still-running `runId`, and says so.
  *
  * Called by `SearchDialog` from "Open in pane" when the run is live. `view` is where
@@ -70,10 +82,18 @@ let resumedInto: LiveRunHandlers | null = null
  * still saying "still searching" over it. A value the caller holds can't be defeated by
  * module resolution or by teardown ordering.
  */
-export function handOffWalk(params: { runId: string; snapshotId: string; label: string; view: LiveRunView }): string {
+export function handOffWalk(params: {
+  runId: string
+  snapshotId: string
+  label: string
+  view: LiveRunView
+  /** The run's query, for the index top-up when the walk ends. `null` skips it. */
+  refillQuery: SearchQuery | null
+}): string {
   // One at a time: a second "Open in pane" supersedes the first run backend side
   // anyway, so the earlier handoff has nothing left to hear.
   settle(null)
+  refillQuery = params.refillQuery
   setWalkHandoff({
     runId: params.runId,
     snapshotId: params.snapshotId,
@@ -151,6 +171,12 @@ function takeSettled(matchCount: number, coverage: SearchRunCoverage): void {
   const current = getWalkHandoff()
   if (!current) return
   appendSnapshotEntries(current.snapshotId, [], matchCount)
+  // The walk streamed at the dialog's row limit; everything it read went into the index
+  // on the way, so now is when the pane can have the rest of it. Any ending qualifies:
+  // an interrupted walk's rows are a lower bound either way, and this only ever adds.
+  // Fire-and-forget, and captured before `settle` clears the field below.
+  const query = refillQuery
+  if (query) void fillSnapshotFromIndex(current.snapshotId, query)
   resumedInto?.onSettled(matchCount, coverage)
   const finishedWhole = coverage.walk === 'completed' || coverage.walk === 'nothingToWalk'
   settle(
@@ -236,6 +262,7 @@ function settle(last: { message: string; level: 'success' | 'warn' | 'default' }
   setWalkHandoff(null)
   missedEntries = []
   resumedInto = null
+  refillQuery = null
   dismissToast(WALK_HANDOFF_TOAST_ID)
   if (last) addToast(last.message, { level: last.level, dismissal: 'transient' })
 }
@@ -262,5 +289,6 @@ export function _resetWalkHandoffForTesting(): void {
   setWalkHandoff(null)
   missedEntries = []
   resumedInto = null
+  refillQuery = null
   setSearchReopener(null)
 }

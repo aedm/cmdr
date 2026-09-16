@@ -6,8 +6,9 @@ backend in `src-tauri/src/search/`.
 `SearchDialog.svelte` only wires a `QueryDialogConfig` for `lib/query-ui/QueryDialog.svelte`; the Search-only glue is
 one module per job: `search-lifecycle.svelte.ts` (index prepare/release + readiness gate), `search-runners.ts` (one-shot
 and live paths + their query builder), `ai-translate.ts` (the AI's filter writes), `coverage-cta.svelte.ts` (what may be
-offered over a gap), `snapshot-promotion.ts` ("Open in pane" + recent-search writes), `search-run-tracking.ts` (the
-analytics clock), `snapshot-store.svelte.ts` + `snapshot-sort.svelte.ts` (snapshots and their row order).
+offered over a gap), `snapshot-promotion.ts` ("Open in pane" + recent-search writes), `snapshot-fill.ts` (the full row
+set a pane opens with), `search-run-tracking.ts` (the analytics clock), `snapshot-store.svelte.ts` +
+`snapshot-sort.svelte.ts` (snapshots and their row order).
 `search-state.svelte.ts` is the façade over those plus `searchable-folder`, `search-target-volume`, and
 `SearchResultsView.svelte`.
 
@@ -24,6 +25,10 @@ analytics clock), `snapshot-store.svelte.ts` + `snapshot-sort.svelte.ts` (snapsh
   lifetime authority; a tab close transfers ref ownership to the `ClosedTab` so a reopen can't double-count. Destination
   write ops are blocked there (F5/F6 too, when the OPPOSITE pane is one); source ops run, and ❌ never re-derive their
   rows: `resolveSnapshotEntries` decides (selection first, cursor as fallback).
+- **The DIALOG lists 30 rows; a PANE gets every hit.** Both fills go through `snapshot-fill.ts`, which re-asks the
+  index with `SNAPSHOT_ENTRIES_CAP` as the limit: the promotion before it mints the snapshot, and a handed-off walk
+  when it ends (a walk streams at the limit it started with and can't be widened). ❌ Never promote `getResults()` as
+  the pane's rows, and ❌ never let a top-up shrink a pane.
 - **"Open in pane" during a live walk KEEPS the walk** (`walk-handoff.svelte.ts`), so the close must NAME it
   (`releaseSearchIndex(handedOffRunId())`) or the walk dies silently as the pane appears. A reopen ADOPTS through
   `source.resume`, ❌ never re-runs.
