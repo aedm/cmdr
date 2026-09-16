@@ -866,24 +866,15 @@
     }
 
     /**
-     * Adds every row of the same kind as the one under the cursor (Total
-     * Commander's `Alt+Num +`). The kind rule and the matcher are pure, in
-     * `select-same-kind.ts`.
+     * Adds every row of the same kind as the one under the cursor (Total Commander's
+     * `Alt+Num +`). The kind rule and the matcher are pure, in `select-same-kind.ts`.
      *
-     * Three deliberate choices:
-     * - ❗ It goes through `selection.applyIndices`, ❌ NOT this component's
-     *   `applyIndices`, which moves the cursor to the first newly-selected row.
-     *   That is right for the Select files… dialog and wrong here: it would yank
-     *   the cursor off the file the user is standing on.
-     * - ❗ It matches against `getEntriesSnapshot()`, the WHOLE listing. The
-     *   rendered window's cache knows nothing off-screen, so matches would
-     *   silently vanish. Snapshot indices are frontend indices already
-     *   (the `..` row sits at 0 when `hasParent`), so nothing needs offsetting.
-     * - The cursor row is RE-READ rather than taken from the feed, which runs a
-     *   debounce behind: arrow-down then ⌥⇧= is an ordinary keyboard sequence,
-     *   and acting on the row the cursor just left would select the wrong kind.
-     *   A snapshot pane has no backend listing to re-read from; its feed mirrors
-     *   the snapshot synchronously, so the live value is already current there.
+     * Three choices the three lines below encode, each argued in `DETAILS.md` §
+     * Select all of the same kind: ❗ `selection.applyIndices`, ❌ never this
+     * component's `applyIndices` (it yanks the cursor); ❗ the WHOLE-listing
+     * snapshot, ❌ never the rendered window's cache (off-screen matches vanish);
+     * and the cursor row RE-READ, since the feed's copy runs a debounce behind.
+     * A snapshot pane has no listing to re-read and mirrors its rows synchronously.
      */
     export async function selectSameKind(): Promise<void> {
         const cursorEntry = isSearchResultsView ? selectionInfo.entry : await refreshCursorEntry()
