@@ -1532,6 +1532,15 @@ How it decides:
   file from the installed SDK and every run scans against it. A stale file under `--ci` is an error, and a file built
   against a different floor is too, since it only lists what was above the floor at the time. Not hand-edited: run
   `pnpm check macos-availability` on a Mac and commit the rewrite.
+- ❗ **The file follows the SDK it was last written on, so two Macs on different SDKs rewrite it back and forth.**
+  `sameSelectorIndex` compares the FLOOR and the selector set, never the SDK, and the stored `sdk` is
+  `filepath.Base(sdkPath)` of the unversioned symlink (`MacOSX.sdk` on every machine), so it can't tell the two apart. A
+  newer SDK adds selectors; an older one silently drops them again on its next run, which is why a first run on a
+  different Mac can hand you a dirty tree you didn't ask for. Harmless in one direction and not in the other: a superset
+  makes the Linux lanes STRICTER, and reverting makes them looser, so keep the newest-SDK version. Linux never rewrites
+  (it reads the file and only errors when the floor moved). To make a downgrade loud instead of silent, store the
+  resolved SDK VERSION (`xcrun --show-sdk-version`) and compare it. Measured 2026-09-16 on macOS 27.0: 43 selectors
+  appeared against a file last written on an earlier SDK, floor unchanged at 10.15.
 - **Two deliberate blind spots.** A grep can't resolve a Rust receiver's class, so (a) the OLDEST declaration of a name
   wins, and a name some class has carried since 10.x is never flagged, and (b) a selector has to carry an uppercase
   letter to count, because `bytes`, `close`, and `title` are selectors AND ordinary Rust method names. Both trade recall
