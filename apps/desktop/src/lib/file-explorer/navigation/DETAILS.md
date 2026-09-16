@@ -387,11 +387,38 @@ through `wordEjectRefusal(e)` in `eject-error-messages.ts`, which:
 compiling until it has words for it. Backend classification and the variant list:
 `src-tauri/src/file_system/volume/DETAILS.md`; the whole error-path map is `docs/guides/error-handling.md`.
 
-`unmountRefused` also carries `holders`, the processes the backend found holding the drive. Every refusal still reads
-the one `errors.eject.unmountRefused` line today; M15 is what words the named cases
-(`docs/specs/eject-and-drive-safety-plan.md` § "Copy drafts"). ❗ When it does, only `holders.type === 'complete'` with
-an empty `named` may read as "nothing is using this drive": `incomplete` means the scan couldn't cover every mount of
-the drive, and wording that as free would be a lie about a drive something is plainly holding.
+#### A refused unmount names who held the drive
+
+`unmountRefused` carries `holders`, a `HolderScan` of the processes the backend found holding the drive
+(`src-tauri/src/file_system/volume/DETAILS.md` § "A refusal names who held the drive" is the canonical description of
+how they're found and classified). `wordUnmountRefusal(holders)` turns that into the one sentence, by a precedence that
+runs most-actionable first over `holders.named`:
+
+1. **`App` or `Tool` holders**, deduped BY NAME and kept in scan order: one name reads
+   `errors.eject.unmountRefusedByApp` (`{app}`), two or more `errors.eject.unmountRefusedByApps` (`{apps}`). The two
+   kinds word the same on purpose: what the person acts on is the name, and both carry one they'd recognize (an app's
+   display name, a tool's executable name). `{apps}` spells out at most three names and puts `errors.eject.otherApps`
+   last from the fourth, joined by `formatConjunctionList` (`$lib/intl/list-format.ts`, `Intl.ListFormat` on the UI
+   locale), so the toast stays one line and reads in the reader's own language.
+2. **`DiskImage`** → eject that image first; the drive can't go before it does. Its `name` (the image's mounted volume
+   name) is deliberately unused: the approved copy names no image.
+3. **`Cmdr`** → we own it and invite a report.
+4. **`System`** → nothing to close, so the advice is to wait.
+5. Otherwise the unnamed `errors.eject.unmountRefused` line.
+
+❗ **`Unclassified` has no sentence of its own** and falls through to that last fallback, exactly like an empty list. It
+means "named, but nothing said what kind" (the budget ran out, or a signature wouldn't read), so wording it as an app or
+a tool would be a guess about what a person should go and close.
+
+❗ **The two `HolderScan` arms word the SAME**, and neither ever says the drive is free. `Incomplete` means the scan
+couldn't cover every mount, so its names are worth saying while its emptiness says nothing; only `complete` with an
+empty `named` would license "nothing is using this drive", and no copy says that today. A refusal whose holders are all
+`Unclassified` therefore reads identically to one that named nobody, which is a known copy-quality gap awaiting a
+product decision (`docs/specs/eject-and-drive-safety-plan.md` § "M15").
+
+`wordEjectRefusal` adds one `warn` line whenever a `Cmdr` holder is in `named` AT ALL, ❌ not only when it wins the
+precedence: an app beside it rightly gets the sentence, but Cmdr holding a drive it's trying to let go of is a bug worth
+seeing either way. The backend already logs the whole scan at `info`.
 
 ### The favorites menu (⌃D)
 

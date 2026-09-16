@@ -112,7 +112,9 @@ The rule that replaced it:
 - **Eject and disconnect refusals**: the enum is `apps/desktop/src-tauri/src/file_system/volume/eject/mod.rs`; the words
   are `apps/desktop/src/lib/file-explorer/navigation/eject-error-messages.ts`, and
   `apps/desktop/src/lib/file-explorer/navigation/eject-error.ts` carries the value across the throw. The three toasts
-  that word an eject share `wordEjectRefusal`, which also routes the technical detail to the log.
+  that word an eject share `wordEjectRefusal`, which also routes the technical detail to the log. `unmountRefused` is
+  the one variant whose sentence depends on its payload: `wordUnmountRefusal` picks it from the `HolderScan`
+  (`apps/desktop/src/lib/file-explorer/navigation/DETAILS.md` § "A refused unmount names who held the drive").
 - **Mount refusals**: the enum is `apps/desktop/src-tauri/src/network/mount.rs` (the Linux twin is `mount_linux.rs`, and
   why its variants are cut the way they are is `apps/desktop/src-tauri/src/network/DETAILS.md`); the words are
   `apps/desktop/src/lib/file-explorer/network/mount-error-messages.ts`, and `mount-error.ts` beside it carries the value

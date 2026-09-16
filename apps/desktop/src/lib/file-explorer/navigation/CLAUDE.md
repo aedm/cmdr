@@ -36,6 +36,8 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the two men
 - **A SERVER row says Disconnect, never Eject**, and is claimed by VOLUME ID (`isServerPlaceRow`), ❌ never by
   `category === 'network'`: a mounted SMB share is one, and `disconnectPlace` can't speak its OS mount.
 - **`wordEjectRefusal(e)` words every eject refusal** from `errors.eject.*`; ❌ never `String(e)` or `diskutil` stderr.
+  A refusal names its holders through `wordUnmountRefusal`; ❗ `Unclassified` and BOTH empty `HolderScan` arms take the
+  unnamed fallback, ❌ never "nothing is using this drive".
 - **The Network group's rows are the LISTING's**, filtered by `belongsInSwitcher`, plus the hub this dir synthesizes. ❗
   No `listSavedServers()` fetch in `volume-grouping.ts`; the row already carries `pinned`.
 - **Favorites live in their OWN menu (⌃D), ❌ never in the switcher.** `volume-grouping.ts` groups the `favorite`
