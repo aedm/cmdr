@@ -45,6 +45,10 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
     difference for a false symmetry.
   - There is no barrel file: importers name the module they need (`./email/crash`, `../email/ops-alerts`), so an import
     says which family of mail a route touches.
+  - **Every sender has a real-runtime lane.** `email-runtime.test.ts` drives seven of them through the actual Worker and
+    asserts the Resend payload off the wire; `src/licensing/webhook-runtime.test.ts` does the eighth
+    (`sendLicenseEmail`). Adding a sender means adding it there too, or it ships untested against the runtime it deploys
+    to. § Test runtimes.
 - **`discord.ts`**: Discord webhook client (single retry on 429, drop-on-failure). Carries the cron failure alert as
   well as the error-report, feedback, beta-signup, and eviction notifications.
 - **`cron-health.ts`**: `pingCronHealth`, the healthchecks.io dead-man's switch for the cron tick. § Cron alarms.
@@ -504,11 +508,28 @@ and real Worker semantics, ❌ never runtime-parity proof.
 
 **Wrangler's `createTestHarness` is the lane that proves parity**, and the only one. It builds `src/index.ts` and runs
 it in workerd under the real `wrangler.toml`, with test-only secrets passed in, so a Node API anywhere along an
-exercised route throws the way it throws in production. Two files use it, and both live in `src/licensing/` because
-that's where a runtime failure costs money: `production-runtime.test.ts` (minting through `/admin/generate`, manual
-validation, revocation) and `webhook-runtime.test.ts` (`/webhook/paddle`, the route the `Buffer` bug actually broke).
+exercised route throws the way it throws in production. Three files use it, and they cover every path that leaves the
+Worker for a third party:
+
+- `src/licensing/production-runtime.test.ts` — minting through `/admin/generate`, manual validation, revocation.
+- `src/licensing/webhook-runtime.test.ts` — `/webhook/paddle` including `sendLicenseEmail`, the route the `Buffer` bug
+  actually broke.
+- `src/email/email-runtime.test.ts` — the other seven senders in `email/`: the error report, its amendment, and the
+  suppression notice (over `/error-report` and `/error-report/:id/amend`), the crash and feedback digests and the daily
+  path probe (over a cron tick), the device count alert (over `/validate`), and the DB size alert.
+
 Bring another risky path under it by adding a request rather than by widening the pool project. ❌ Never hand the
 harness its own compatibility settings.
+
+**A cron job is reachable**: `server.getWorker().scheduled({ scheduledTime, cron })` dispatches a real scheduled event,
+and `scheduledTime` decides which jobs run (the daily ones are gated on UTC hour 0). `runCronJob` swallows a job's
+failure, so the tick still reports `outcome: 'ok'` — assert on what reached the wire, and carry `server.getLogs()` into
+the failure message, or a job that threw looks like a job that had nothing to do.
+
+**The DB size alert costs a 100 MB database.** Its only trigger is `meta.size_after` past the threshold, which the
+harness's D1 reports truthfully, so the test writes real ballast (~3 s, in the harness's temp directory, gone at
+`server.close()`) and runs last because the weight stays for the rest of the file. Production code doesn't get a
+threshold seam just to make that cheaper.
 
 **Stub an upstream at the socket, never in the source.** The harness points the Worker's global `fetch` at this process
 (`outboundService: (request) => globalThis.fetch(request.url, request)`), so replacing `globalThis.fetch` in a test
