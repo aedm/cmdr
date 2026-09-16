@@ -85,6 +85,10 @@ fn populate(root: &Path) -> usize {
 /// Scans a fresh tree on an HFS+ image through the park point, does `at_the_park`
 /// while the walk is held, and reads back what the index wrote once the scan went
 /// live (or aborted) and the manager shut down.
+#[allow(
+    clippy::await_holding_lock,
+    reason = "the lock serializes the process-wide volume-provider slot for the whole run, and the scan reads that slot while we await its outcome: holding it across the await IS the point"
+)]
 async fn scan_through_the_park(at_the_park: AtThePark) -> Observed {
     let session = DiskImageSession::acquire();
     let image = DiskImage::attach(&session, ImageSpec::Hfs).expect("attach the image");

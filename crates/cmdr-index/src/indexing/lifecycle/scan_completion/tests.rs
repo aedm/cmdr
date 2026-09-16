@@ -363,6 +363,10 @@ async fn a_stopped_volume_gets_no_replay_and_no_live_loop() {
 /// back unmarked and heals on the next mount, instead of carrying a completion
 /// marker over rows a leaving drive may have taken.
 #[tokio::test(flavor = "multi_thread")]
+#[allow(
+    clippy::await_holding_lock,
+    reason = "the lock serializes the process-wide volume-provider slot, and the completion task reads that slot from inside the await: holding it across one IS the point"
+)]
 async fn a_scan_whose_drive_left_stamps_nothing_and_reports_the_vanish() {
     let _serialized = crate::indexing::handle::test_lock();
     let drive = crate::indexing::host::volumes::MountIdentity::from_raw(0x0100_0077);

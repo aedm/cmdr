@@ -27,6 +27,34 @@ launched in, so running it from the main repo root serves **main's** frontend wi
 and Dock label: your worktree edits never load and the app looks unfixed (you QA the wrong code). The flag isolates the
 instance, not the source.
 
+### An Xcode older than the OS breaks every Rust build
+
+**Symptom.** Any cargo build, check, or test lane that compiles the `cmdr` crate dies inside a DEPENDENCY's build
+script, so the error names a crate you never touched (`aws-lc-sys` is usually first to link):
+
+```
+error: failed to run custom build command for `aws-lc-sys v0.42.0`
+  ERROR: ld: tapi error: malformed file
+  /Library/Developer/CommandLineTools/SDKs/MacOSX27.0.sdk/usr/lib/libSystem.B.tbd:4:20: error: unknown architecture
+                     arm64e.x1-macos, arm64e.x1-maccatalyst ]
+```
+
+`pnpm check clippy` reports it as "clippy found unfixable issues", which is misleading: there is no lint in it.
+
+**Cause.** Xcode is older than the OS, and the two halves disagree. The active developer directory is Xcode, whose
+newest SDK is `MacOSX26.5`, while the Command Line Tools are `27.0`; `xcrun --show-sdk-path` resolves into the CLT SDKs,
+so Xcode's linker reads a 27.0 `libSystem.B.tbd` that declares an `arm64e.x1-macos` target it can't parse. Corroborating
+signal: `xcrun --show-sdk-version` fails on the same path with "SDK cannot be located". It bites only when a crate
+rebuilds, so a machine can go on working off cached artifacts until a fingerprint changes and then look suddenly broken.
+
+**Workaround** (no password): prefix the command with `DEVELOPER_DIR=/Library/Developer/CommandLineTools`, which points
+the toolchain at the same place as the SDK. Use it for every Rust lane.
+
+**The real fix**: `sudo xcode-select -s /Library/Developer/CommandLineTools`, or update Xcode so its SDK matches the OS.
+
+(Verified on macOS 27.0, Xcode toolchain Apple clang 21.0.0 / clang-2100.1.1.101, CLT `MacOSX27.0.sdk`, `aws-lc-sys`
+0.42.0, 2026-09-16.)
+
 ### A second launch on one data dir looks exactly like a crash
 
 `instance_lock` refuses a launch when another process already owns the data dir (two processes on one index corrupt it),

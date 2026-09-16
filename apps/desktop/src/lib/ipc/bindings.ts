@@ -4514,6 +4514,7 @@ export const events = {
   indexDirUpdated: makeEvent<IndexDirUpdatedEvent>('index-dir-updated'),
   indexFreshnessChanged: makeEvent<IndexFreshnessChangedEvent>('index-freshness-changed'),
   indexMemoryWarning: makeEvent<IndexMemoryWarningEvent>('index-memory-warning'),
+  indexNeedsFreshScan: makeEvent<IndexNeedsFreshScanEvent>('index-needs-fresh-scan'),
   indexPhaseChanged: makeEvent<IndexPhaseChangedEvent>('index-phase-changed'),
   indexReplayComplete: makeEvent<IndexReplayCompleteEvent>('index-replay-complete'),
   indexReplayProgress: makeEvent<IndexReplayProgressEvent>('index-replay-progress'),
@@ -7659,6 +7660,21 @@ export type IndexMemoryWarningEvent = {
   untrackedBytes: number
   // What the watchdog did.
   action: MemoryWatchdogAction
+}
+
+/**
+ *  This volume's index may have lost rows to a drive that went away, so it has
+ *  been marked for a rebuild and the next start walks it from scratch.
+ *
+ *  Fires once per marker write, ❌ never per launch: the marker is persisted, and
+ *  a window that announced it again on every start would keep apologizing for one
+ *  disconnection. Nothing is asked of the person — the rebuild is already
+ *  arranged — so this exists to give the folder sizes about to be recomputed a
+ *  reason.
+ */
+export type IndexNeedsFreshScanEvent = {
+  // The volume whose index is marked for a rebuild.
+  volumeId: string
 }
 
 /**

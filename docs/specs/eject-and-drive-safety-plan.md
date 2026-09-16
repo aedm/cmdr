@@ -1391,9 +1391,11 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
   - **The notice is `IndexEvent::IndexNeedsFreshScan { volume_id }`**, already routed to the frontend as
     `index-needs-fresh-scan` (`IndexNeedsFreshScanEvent`, registered in `ipc.rs`'s `collect_events!`). It fires once
     per marker write, ❌ never per launch, so M9 needs no dedup of its own — it needs the listener and the toast copy.
-  - ❗ **`pnpm bindings:regen` still owes this event a run.** M8 couldn't: `aws-lc-sys@0.42.0`'s build script fails
-    against this machine's Command Line Tools SDK, so every lane that compiles the `cmdr` crate is red for reasons
-    unrelated to this plan (§ "M8 as landed"). Regenerate and run `bindings-fresh` once that is fixed.
+  - **The bindings are generated and `bindings-fresh` is green**, so M9 inherits the wire type rather than owing it a
+    run. ⚠️ On a Mac whose Xcode is older than the OS, every Rust lane needs
+    `DEVELOPER_DIR=/Library/Developer/CommandLineTools` in front of it or it dies in a dependency's build script with a
+    `tapi error: malformed file`; symptom, cause, and the real fix are in `apps/desktop/DETAILS.md` § "An Xcode older
+    than the OS breaks every Rust build".
   - **The eject-approval callback isn't registered yet.** M9 adds `DARegisterDiskEjectApprovalCallback` beside the
     others in `unmount_approver/mod.rs::install`, answers it at once, and unregisters it in `Approval::drop`, which
     names each callback's function pointer explicitly.
