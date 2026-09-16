@@ -567,6 +567,13 @@ fn stop_removable_index(volume_id: &str) -> cmdr_index::RemovableStop {
 }
 
 /// How the pre-unmount index stop of a drive's volumes ended.
+///
+/// The release rides along for the per-disk flight, which hands back what DID let go;
+/// only macOS has one, so off it nothing reads the release.
+#[cfg_attr(
+    not(target_os = "macos"),
+    expect(dead_code, reason = "only the macOS disk flight hands a partial release back")
+)]
 enum IndexStopped {
     /// Every volume let go of the drive.
     LetGo(super::drive_release::Release),

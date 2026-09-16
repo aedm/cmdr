@@ -11,11 +11,12 @@
 //! Anywhere else the answer is `Unreadable`, which reads as "couldn't tell", ❌ never as
 //! "nobody is holding it".
 
-/// Linux has no holder scan, so every refusal there is "couldn't tell".
+/// Linux has no walk to run, so every refusal there is "couldn't tell". It still goes
+/// through `scan_path_with`, so the answer has ONE shape whatever the platform, and the
+/// `Unreadable` comes from a walk that couldn't run rather than from a second code path.
 #[cfg(not(target_os = "macos"))]
 pub(super) fn scan_path(path: &std::path::Path) -> super::PathScan {
-    let _ = path;
-    super::PathScan::Unreadable
+    super::scan_path_with(|| super::root_device(path), || None, |_| None)
 }
 
 #[cfg(target_os = "macos")]

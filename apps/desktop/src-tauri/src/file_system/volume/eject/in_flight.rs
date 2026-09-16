@@ -46,6 +46,10 @@ struct InFlight {
 #[derive(Default)]
 struct InFlightSet {
     volumes: HashMap<String, InFlight>,
+    #[cfg_attr(
+        all(not(test), not(target_os = "macos")),
+        expect(dead_code, reason = "only macOS ejects per physical disk")
+    )]
     disks: HashMap<DiskKey, InFlight>,
 }
 
@@ -89,6 +93,10 @@ pub(crate) fn is_ejecting(volume_id: &str) -> bool {
 /// A disk flight asks this before it hands a sibling's index back: its own adopted
 /// ids read as ejecting until it lands, so a plain [`is_ejecting`] would have the
 /// flight refuse its own resume.
+#[cfg_attr(
+    all(not(test), not(target_os = "macos")),
+    expect(dead_code, reason = "only macOS ejects per physical disk")
+)]
 pub(super) fn is_ejecting_by_another(volume_id: &str, flight_id: u64) -> bool {
     IN_FLIGHT
         .lock_ignore_poison()
@@ -150,6 +158,10 @@ where
 }
 
 /// What a flight found when it asked to own its physical disk.
+#[cfg_attr(
+    all(not(test), not(target_os = "macos")),
+    expect(dead_code, reason = "only macOS ejects per physical disk")
+)]
 pub(super) enum DiskFlight {
     /// This flight owns the disk: it took every sibling into the ejecting set and
     /// runs the one teardown. Dropping the ownership hands the adopted ids back.
@@ -160,6 +172,10 @@ pub(super) enum DiskFlight {
 }
 
 /// A flight's claim on one physical disk, plus the siblings it adopted.
+#[cfg_attr(
+    all(not(test), not(target_os = "macos")),
+    expect(dead_code, reason = "only macOS ejects per physical disk")
+)]
 pub(super) struct DiskOwnership {
     key: DiskKey,
     flight_id: u64,
@@ -167,6 +183,10 @@ pub(super) struct DiskOwnership {
     landings: Vec<Landing>,
 }
 
+#[cfg_attr(
+    all(not(test), not(target_os = "macos")),
+    expect(dead_code, reason = "only macOS ejects per physical disk")
+)]
 impl DiskOwnership {
     /// The owning flight's ID, which tells this flight's hold on a volume apart from
     /// a later flight's ([`is_ejecting_by_another`]).
@@ -202,6 +222,10 @@ impl Drop for DiskOwnership {
 /// so two volumes of one disk can't each start a teardown. A sibling that already
 /// has a flight of its own keeps it: that flight resolves to this same key and joins
 /// here in turn.
+#[cfg_attr(
+    all(not(test), not(target_os = "macos")),
+    expect(dead_code, reason = "only macOS ejects per physical disk")
+)]
 pub(super) fn join_or_own_disk(key: DiskKey, volume_id: &str, sibling_ids: &[String]) -> DiskFlight {
     let mut in_flight = IN_FLIGHT.lock_ignore_poison();
     let Some(mine) = in_flight.volumes.get(volume_id).cloned() else {

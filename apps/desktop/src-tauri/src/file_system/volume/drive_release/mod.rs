@@ -33,18 +33,13 @@ use cmdr_index::{IndexVolumeKind, ROOT_VOLUME_ID};
 use crate::ignore_poison::IgnorePoison;
 
 pub(crate) use release::VolumeRelease;
-#[cfg_attr(
-    all(not(test), not(target_os = "macos")),
-    expect(
-        unused_imports,
-        reason = "only the macOS unmount approver reads a release's own answer"
-    )
-)]
 pub(crate) use release::{LateRelease, Release};
-#[cfg(test)]
+// Resuming is macOS-only work (the unmount approver and the per-disk eject flight), and
+// so are the tests that drive it, so the gates carry no `test` arm.
+#[cfg(all(test, target_os = "macos"))]
 pub(crate) use resume::RESUME_SETTLE;
 #[cfg_attr(
-    all(not(test), not(target_os = "macos")),
+    not(target_os = "macos"),
     expect(unused_imports, reason = "only the macOS unmount approver resumes through the gate")
 )]
 pub(crate) use resume::{ResumeBatch, ResumeCandidate, ResumeOwner};
@@ -330,7 +325,12 @@ impl DriveRelease {
     }
 
     /// A gate on the real clock over an injected index, for a test that drives real unmounts.
+    /// Only the macOS real-image lane has one.
     #[cfg(test)]
+    #[cfg_attr(
+        not(target_os = "macos"),
+        expect(dead_code, reason = "only the macOS real-image lane drives real unmounts")
+    )]
     pub(crate) fn with_door(door: Arc<dyn IndexDoor>) -> Self {
         Self::new(door, Clock::Real)
     }

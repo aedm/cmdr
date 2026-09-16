@@ -110,6 +110,13 @@ pub fn chunked_copy_with_metadata(
 /// wedge the suite.
 #[cfg(test)]
 pub(crate) mod chunk_park {
+    // Only the macOS real-detach lane arms the park; elsewhere the copy's own hook is all
+    // that's read, and `-D unused` is fatal on the Linux build.
+    #![cfg_attr(
+        not(target_os = "macos"),
+        expect(dead_code, reason = "only the macOS real-detach lane arms the park")
+    )]
+
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::time::{Duration, Instant};
 

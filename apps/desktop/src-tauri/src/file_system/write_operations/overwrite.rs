@@ -672,6 +672,13 @@ fn settle_aside_record(
 /// test that dies can't wedge the suite.
 #[cfg(test)]
 pub(crate) mod aside_park {
+    // Only the macOS real-detach lane arms the park; elsewhere the engine's own hook is
+    // all that's read, and `-D unused` is fatal on the Linux build.
+    #![cfg_attr(
+        not(target_os = "macos"),
+        expect(dead_code, reason = "only the macOS real-detach lane arms the park")
+    )]
+
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::{Duration, Instant};
 

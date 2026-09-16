@@ -50,8 +50,10 @@ pub(crate) mod liveness_test_support;
 mod move_integration_test;
 #[cfg(test)]
 mod self_collision_tests;
-// The real-detach pins (macOS, `#[ignore]`d, run by `pnpm check disk-images`).
-#[cfg(test)]
+// The real-detach pins (macOS, `#[ignore]`d, run by `pnpm check disk-images`). ❗ The
+// `macos` gate is load-bearing: the harness it uses (`cmdr_fs::testing::disk_images`)
+// is macOS-only, so without it the Linux test build doesn't compile.
+#[cfg(all(test, target_os = "macos"))]
 mod real_image;
 #[cfg(test)]
 mod transaction_integration_test;
