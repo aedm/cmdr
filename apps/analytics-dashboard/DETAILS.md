@@ -5,7 +5,7 @@ always-loaded summary; this is the depth.
 
 ## Multi-page structure
 
-The dashboard is three routes under one shared layout. Each section is its own component; the route files just compose
+The dashboard is four routes under one shared layout. Each section is its own component; the route files just compose
 sections and pass their loaded data down.
 
 ### Routes and sections
@@ -20,14 +20,16 @@ sections and pass their loaded data down.
     Feedback & errors (`FeedbackErrorsSection.svelte`).
 - `/links` — Link codes (`routes/links/+page.{svelte,server.ts}`): CRUD for the `?r=` short codes. See § "Link codes
   CRUD" below. The layout hides the range/day picker here.
+- `/licenses` — Licenses (`routes/licenses/+page.{svelte,server.ts}`): one row per license we've issued. See § "The
+  licenses list" below. The layout hides the range/day picker here too.
 
 ### Shared layout
 
-`routes/+layout.svelte` is the only shell: a sticky header with the brand, the page nav (Acquisition / Product / Link
-codes, active page marked with `aria-current="page"` and the accent background), and the range/day picker. The picker
-writes `?range=` / `?day=` and keeps the current pathname (`${pathname}?range=...`), so switching range on `/product`
-stays on `/product`. It's hidden on `/links`. The "Updated HH:MM" stamp reads `page.data.updatedAt` (set by whichever
-data page is active; absent on `/links`).
+`routes/+layout.svelte` is the only shell: a sticky header with the brand, the page nav (Acquisition / Product /
+Licenses / Link codes, active page marked with `aria-current="page"` and the accent background), and the range/day
+picker. The picker writes `?range=` / `?day=` and keeps the current pathname (`${pathname}?range=...`), so switching
+range on `/product` stays on `/product`. It's hidden on the two ledger pages, listed in `pathsWithoutPicker`. The
+"Updated HH:MM" stamp reads `page.data.updatedAt` (set by whichever data page is active; absent on both ledger pages).
 
 `rangeButtons` (the picker's `today/24h/7d/30d` button list) lives as a local const in the layout, NOT in
 `$lib/server/types.ts` — see the boundary gotcha below.
@@ -46,7 +48,9 @@ data page is active; absent on `/links`).
    section at once. Unchanged contract.
 
 The funnel is always 30 days (`fetchFunnelData` ignores the selection); it's still gated on the worker admin token, with
-Umami and Paddle degrading to dashes inside. Each source returns `SourceResult<T>` (ok+data, or an error string the UI
+Umami and Paddle degrading to dashes inside. It needs no env vars of its own, reusing the worker admin token, the Umami
+credentials, and the Paddle key already present (Listmonk signups arrive via the api-server, so no Listmonk secret
+reaches the dashboard). Each source returns `SourceResult<T>` (ok+data, or an error string the UI
 shows as "Couldn't load this data").
 
 `AcquisitionData` also carries `umamiSiteUrls`, which is **config, not a source**: the per-site Umami dashboard deep
@@ -87,6 +91,35 @@ front end for the api-server's `link-codes.ts` (`/admin/r-codes` CRUD over the `
   per-row Delete; inline validation/proxy errors via `fail(...)`; a live example-link preview. All `use:enhance` with
   `reset: false` so a failed save repopulates.
 
+## The licenses list
+
+`/licenses` renders the api-server's license ledger: one row per license, bought or handed out, newest claim first. It
+exists because nothing else can answer "which codes exist and who holds them"; Paddle knows about money, and the app
+knows only about the one license in front of it. The api-server owns the contract
+(`apps/api-server/src/licensing/DETAILS.md` § The licenses listing): the fields, and what each `state` decides.
+
+- **Two modules, by boundary**, as on `/links`. `$lib/licenses.ts` is client-safe: the response types (mirroring the
+  api-server's by hand, since the two apps ship separately), the badge labels, `filterBySource`, and
+  `summarizeLicenses`. `$lib/server/sources/licenses.ts` is server-only: one `fetchLicenses` over the shared
+  `fetchWorkerEndpoint`, with the bearer token attached. The page never holds the token.
+- ❌ **No label may imply a Paddle subscription is still running.** `active` on a `paddle` row means we fulfilled the
+  purchase, nothing more, so the badge reads "Issued" and the section caveat says to check Paddle before treating it as
+  still paying. A unit test asserts no state label contains "active" or "subscription". Same reason an empty expiry
+  reads "Never" only for a hand-issued license: a purchase's end date lives in Paddle and we don't hold it, so it gets
+  a dash.
+- **The attention panel leads the page**, above the table, whenever `summarizeLicenses` reports an `undelivered` row
+  (minted, never emailed: someone paid and is waiting), an `unfinished` one (claimed, never minted, which is the shape
+  a died delivery leaves), an orphan code, or a missing one. Otherwise it collapses to one quiet line, so an all-clear
+  reads as deliberate rather than as a page that failed to load. A failed load renders the error and nothing else: "no
+  licenses" and "couldn't ask" are opposite answers, and the second must never pass for an all-clear.
+- **No caching**, for the `/links` reason: the page is opened mid-delivery or right after handing a license out, and a
+  five-minute-stale "not emailed" would send David chasing a problem that's already fixed. One D1 read plus a KV scan.
+- **Hand-issued rows carry an accent badge and their own filter**, since evaluation and thank-you licenses are a group
+  David tracks on purpose, separately from purchases.
+- **Read-only by design.** Minting and revoking stay behind `/admin/generate` and `/admin/revoke` with their own
+  guardrails (a mint refuses without a note). ❌ Don't grow this page into a repair tool: an orphan code needs a human
+  to decide whether to honor, ledger, or ignore it.
+
 ## Selection state
 
 The shared `DashboardSelection` (`{ range, day }`) is resolved from `?range=` / `?day=` in `+layout.server.ts` (for the
@@ -123,6 +156,7 @@ runtime values live outside `$lib/server`: `$lib/funnel.ts`, `$lib/feedback-and-
 - `src/routes/+page.{svelte,server.ts}`: Acquisition page (funnel/Umami/Cloudflare/GitHub/PostHog subset).
   `src/routes/product/+page.{svelte,server.ts}`: Product page (Cloudflare/Paddle/license/feedback subset).
   `src/routes/links/+page.{svelte,server.ts}`: Link codes CRUD (`load` lists, `save`/`delete` form actions proxy).
+  `src/routes/licenses/+page.{svelte,server.ts}`: the license ledger (`load` lists; read-only).
 - `src/routes/api/report/+server.ts`: the agent-readable plain-text report endpoint. It only fetches (via
   `fetchDashboardData`) and responds; all the formatting is in `src/routes/api/report/format-report.ts`, which imports
   no SvelteKit-only modules so a plain unit test can reach it. `format-report.test.ts` pins the whole output as golden
@@ -138,6 +172,8 @@ runtime values live outside `$lib/server`: `$lib/funnel.ts`, `$lib/feedback-and-
 - `src/lib/{format,colors,chart-helpers}.ts`: client-safe formatters, color tokens, chart data-shaping helpers.
 - `src/lib/link-codes.ts`: client-safe `?r=` helpers (validation mirroring the api-server, row flattening, example
   link), shared by the `/links` page, its server action, and tests.
+- `src/lib/licenses.ts`: client-safe license-ledger helpers (response types, badge labels, source filter, the
+  `summarizeLicenses` roll-up), shared by the `/licenses` page and tests.
 - `StackedBarChart.svelte`: discrete per-day stacked bars (plain elements, not uPlot) with an exact-numbers hover/focus
   tooltip; used for by-source new-installs and by-version update charts.
 - `svelte.config.js` (adapter-cloudflare), `vitest.config.ts`.
@@ -156,6 +192,9 @@ Each source under `src/lib/server/sources/` exports a typed fetch returning `Sou
   mtp-rs.
 - `posthog.ts` (Bearer personal API key): pageview trends via the HogQL query API (EU endpoint).
 - `license.ts` (Bearer admin token): activation count + active devices from `/admin/stats`.
+- `licenses.ts` (Bearer admin token): the whole license ledger plus the orphan and missing codes, from
+  `/admin/licenses`, for the `/licenses` page. Uncached and not part of any page composer: the page's `load` calls it
+  directly. See § "The licenses list".
 - `feedback-and-errors.ts` (Bearer via `LICENSE_SERVER_ADMIN_TOKEN`): in-app feedback + error-report bundle metadata
   from `/admin/feedback` and `/admin/error-reports`. Pure helpers + row types in client-safe
   `$lib/feedback-and-errors.ts`.

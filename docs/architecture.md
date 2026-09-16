@@ -441,7 +441,7 @@ on. The two dev CLIs and the vendored fork are ordinary members.
 ## Other apps
 
 - `apps/analytics-dashboard/`: Private SvelteKit dashboard on CF Pages. Aggregates Umami, CF Analytics Engine, Paddle,
-  PostHog, GitHub metrics
+  PostHog, GitHub metrics, and carries the `/licenses` ledger view and the `?r=` code editor
 - `apps/api-server/`: Cloudflare Worker + Hono, split into four documented areas — `src/licensing/` (Paddle, keys),
   `src/telemetry/` (crash/heartbeat/download/update-check, error reports, feedback), `src/website/` (beta signup, blog
   likes, `?r=` codes), and `src/admin/` (the dashboard's aggregations)
