@@ -128,25 +128,21 @@
   "@commands.favoritesAdd.label": {
     "sourceHash": "7f3c078"
   },
-  "commands.favoritesAdd.description": "A fókuszált panel aktuális mappáját hozzáadja a váltó Kedvencek listájához.",
+  "commands.favoritesAdd.description": "A fókuszált panel aktuális mappáját hozzáadja a kedvencekhez, hogy a kedvencek menüjéből bármikor visszatérhess oda.",
   "@commands.favoritesAdd.description": {
-    "sourceHash": "84dcbf8"
+    "sourceHash": "b09b35e"
   },
   "commands.favoritesOpen.label": "Kedvencek megjelenítése",
   "@commands.favoritesOpen.label": {
     "sourceHash": "f4dfe9b"
   },
-  "commands.favoritesOpen.description": "Megnyitja a kedvencek menüjét a fókuszált panelen, ahol egy szám megnyomásával odaugorhatsz.",
+  "commands.favoritesOpen.description": "Megnyitja a kedvencek menüjét a fókuszált panelen, ahol egy szám megnyomásával az adott kedvencre ugorhatsz.",
   "@commands.favoritesOpen.description": {
-    "sourceHash": "289478e"
+    "sourceHash": "d188872"
   },
   "commands.favoritesOpenByNumber.label": "Az adott számú kedvenc megnyitása",
   "@commands.favoritesOpenByNumber.label": {
     "sourceHash": "e74b98f"
-  },
-  "commands.favoritesAddFromMenu.label": "Az aktuális mappa hozzáadása a kedvencekhez",
-  "@commands.favoritesAddFromMenu.label": {
-    "sourceHash": "2593d8a"
   },
   "commands.downloadsGoToLatest.label": "Ugrás a legutóbbi letöltéshez",
   "@commands.downloadsGoToLatest.label": {

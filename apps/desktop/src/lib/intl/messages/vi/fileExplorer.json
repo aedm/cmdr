@@ -1240,9 +1240,9 @@
   "@fileExplorer.navigation.favoritesAlreadyAdded": {
     "sourceHash": "731a929"
   },
-  "fileExplorer.navigation.favoritesCantAddHere": "Mục ưa thích chỉ có thể trỏ tới thư mục nằm trên ổ đĩa hoặc mục chia sẻ đã gắn kết",
+  "fileExplorer.navigation.favoritesCantAddHere": "Thư mục này không thể là mục ưa thích: mục ưa thích chỉ hoạt động trên ổ đĩa và mục chia sẻ đã gắn kết",
   "@fileExplorer.navigation.favoritesCantAddHere": {
-    "sourceHash": "07c0e12"
+    "sourceHash": "10c98b3"
   },
   "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {Xem mục ưa thích} other {Xem {count} mục ưa thích}}",
   "@fileExplorer.navigation.seeFavorites": {

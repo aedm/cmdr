@@ -3056,7 +3056,7 @@ pasta, e ❌ nunca as palavras `erro` ou `falha`. Atenção à distinção com a
   valor não leva apóstrofo nem aspas, então não há `''` a dobrar mesmo sendo família ICU. Nenhum
   `sameAsSourceJustification`: o valor difere do inglês.
 
-## O menu de favoritos (`commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent` / `favoritesAlreadyAdded` / `favoritesCantAddHere` / `seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
+## O menu de favoritos (`commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAdd.description`, `fileExplorer.navigation.favoritesAddCurrent` / `favoritesAlreadyAdded` / `favoritesCantAddHere` / `seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
 
 ⌃D abre a lista de pastas marcadas como um MENU sobre o painel em foco: as nove primeiras linhas trazem as teclas 1–9,
 que levam direto à pasta, e a última linha é o `0`, que adiciona a pasta atual do painel. O seletor de volumes não tem
@@ -3114,15 +3114,14 @@ menu.
   (`commands.appLicenseKey.seeDetails.label`, `menu.app.licenseDetails`), `Ver por quê`
   (`askCmdr.wakeToast.openThread`), `Veja o que mudou…` (`commands.helpWhatsNew.description`) · high.
 
-### As duas chaves que ficaram idênticas, de propósito
+### A linha `0` tem UMA chave só
 
-`fileExplorer.navigation.favoritesAddCurrent` ("Add current folder to favorites") e
-`commands.favoritesAddFromMenu.label` ("Add the current folder to favorites") saem as duas como
-**`Adicionar a pasta atual aos favoritos`**. O inglês separa as duas só pelo artigo `the`, e o português é obrigado a
-escrever o artigo (`a pasta atual`), então a diferença não tem como ser carregada. Os ingleses DIFEREM, então o
-`desktop-i18n-term-consistency` (que pareia por valor inglês) não olha para esse par; e a distinção que a
-`@key.description` pede de verdade — não confundir com o comando real `commands.favoritesAdd.label`
-(`Adicionar aos favoritos`) — continua de pé, porque as duas chaves acrescentam `a pasta atual`.
+`fileExplorer.navigation.favoritesAddCurrent` = **`Adicionar a pasta atual aos favoritos`**, a última linha do menu. A
+lista de atalhos CITA essa linha para explicar a tecla `0` em vez de redescrevê-la, então lê o mesmo valor. As duas
+chaves que existiam antes saíam idênticas em português de qualquer forma: o inglês as separava só pelo artigo `the`, e o
+português é obrigado a escrever `a pasta atual`. ❌ Não invente uma segunda redação para a lista de atalhos. A distinção
+que a `@key.description` pede de verdade — não confundir com o comando real `commands.favoritesAdd.label`
+(`Adicionar aos favoritos`) — continua de pé, porque esta chave acrescenta `a pasta atual`.
 
 ### `favoritesAlreadyAdded`: reestruturado para `já está nos favoritos`
 
@@ -3131,13 +3130,28 @@ concordando com `pasta` (feminino), que soa torto; `estar nos favoritos` espelha
 pessoa acabou de ler na mesma linha do menu. Continua sendo uma constatação calma, sem `erro` nem `falha`, como a
 `@key.description` pede.
 
-### `favoritesOpen.description`: o "to go" ganhou destino
+### `favoritesOpen.description`: o destino agora está no inglês também
 
-`Abra o menu de favoritos no painel em foco e pressione um número para ir até a pasta.` O inglês termina em "press a
-number to go", e `ir` sozinho não fecha frase em português: pede destino. `a pasta` é o destino concreto (todo favorito
-é uma pasta) e evita repetir `favorito` na mesma frase. `ir até` em vez de `ir para` para não emendar dois `para`
-seguidos; o molde `ir até` já está no catálogo (`downloads.empty.message`: "Ir até lá mesmo assim?";
-`errors.listing.notFound.suggestion`: "Vá até a pasta principal") · high.
+`Abra o menu de favoritos no painel em foco e pressione um número para ir até esse favorito.` `ir` sozinho não fecha
+frase em português: pede destino. O inglês antes parava em "press a number to go" e esta tradução inventava o destino
+(`a pasta`); agora o inglês diz "jump to that favorite", então o português nomeia o mesmo alvo, com `o favorito`
+contável, o mesmo substantivo de `commands.favoritesOpenByNumber.label` · high. `ir até` em vez de `ir para` para não
+emendar dois `para` seguidos; o molde `ir até` já está no catálogo (`downloads.empty.message`: "Ir até lá mesmo assim?";
+`errors.listing.notFound.suggestion`: "Vá até a pasta principal").
+
+### `favoritesCantAddHere`: um fato sobre ESTA pasta, com o motivo depois dos dois-pontos
+
+`Esta pasta não pode ficar nos favoritos: favoritos só funcionam em discos e compartilhamentos montados` · high. Começa
+com o mesmo sujeito da irmã `favoritesAlreadyAdded` (`Esta pasta já está nos favoritos`), então as duas linhas cinzas se
+leem como um par, e reaproveita `estar nos favoritos`, que desvia da concordância de gênero (`ser um favorito` bateria
+com `pasta`). ❌ `apontar para` saiu daqui: obrigava a reger um complemento para o destino e deixava a linha 45–90% mais
+longa que o inglês; `funcionar em` é um locativo simples. Sem ponto final (é um tooltip) e sem `erro` nem `falha`.
+
+### `favoritesAdd.description`: a seção do seletor não existe mais
+
+`Adicione a pasta atual do painel em foco aos favoritos, para voltar até ela pelo menu de favoritos.` · high. O valor
+anterior mandava a pasta para "os Favoritos do alternador", uma seção que o M3 removeu, então descrevia uma superfície
+que já não existe. Imperativo de 2ª pessoa, como toda `commands.*.description`.
 
 ### Varredura final
 

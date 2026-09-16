@@ -43,7 +43,8 @@ const EXPECTED_NAMES: Record<string, string> = {
   'favorites.add': 'Add to favorites',
   'favorites.open': 'Show favorites',
   'favorites.openByNumber': 'Open the favorite with that number',
-  'favorites.addFromMenu': 'Add the current folder to favorites',
+  // Shares the favorites menu's own `0`-row string, so this pin and the menu's can't drift.
+  'favorites.addFromMenu': 'Add current folder to favorites',
   'downloads.goToLatest': 'Go to latest download',
   'view.showHidden': 'Toggle hidden files',
   'view.briefMode': 'Switch to Brief view',
@@ -183,8 +184,9 @@ const EXPECTED_DESCRIPTIONS: Record<string, string | undefined> = {
   'file.openTerminalHere': "Open your terminal app in the folder you're looking at",
   'nav.goToPath': 'Jump the focused pane to a typed, pasted, or recent path.',
   'file.goToTrash': "Open the trash of the drive you're browsing",
-  'favorites.add': "Add the focused pane's current folder to the switcher's Favorites.",
-  'favorites.open': 'Open the favorites menu on the focused pane, and press a number to go.',
+  'favorites.add':
+    "Add the focused pane's current folder to your favorites, so the favorites menu can take you back to it.",
+  'favorites.open': 'Open the favorites menu on the focused pane, and press a number to jump to that favorite.',
   'downloads.goToLatest': 'Open ~/Downloads and select the most recent file.',
   'pane.copyPathLeftToRight':
     'Open the left pane’s location on the right. When the left pane is focused and the cursor is on a folder, that folder opens on the right instead.',

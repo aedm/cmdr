@@ -3230,7 +3230,7 @@ localizable. ❌ Nunca insinuar que se pueden borrar.
 - El valor no lleva apóstrofo, así que no hay duplicación ICU (`''`), y difiere del inglés, así que no hace falta
   `sameAsSourceJustification`.
 
-## El menú de favoritos: ⌃D, las teclas 1–9 y la fila que lo abre desde el selector (`commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.{favoritesAddCurrent,favoritesAlreadyAdded,favoritesCantAddHere,seeFavorites}`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`, 2026-09-16)
+## El menú de favoritos: ⌃D, las teclas 1–9 y la fila que lo abre desde el selector (`commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAdd.description`, `fileExplorer.navigation.{favoritesAddCurrent,favoritesAlreadyAdded,favoritesCantAddHere,seeFavorites}`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`, 2026-09-16)
 
 ⌃D abre la lista de carpetas guardadas como un menú sobre el panel activo: las nueve primeras filas llevan una tecla de
 número que salta directamente ahí, y la última, marcada con el `0`, añade la carpeta que el panel está mostrando. El
@@ -3270,12 +3270,11 @@ selector de volúmenes ya no trae una SECCIÓN de favoritos; en su lugar tiene u
   (`Mostrar la ubicación de la carpeta actual`) · high. Es la carpeta que el panel está mostrando, no la que está bajo
   el cursor. Aquí el artículo se queda: la regla `Añadir X` sin artículo de `style.md` es para lo que se crea de nuevo
   (`Añadir servidor…`), y esta carpeta ya existe y es una concreta.
-- **Add (the) current folder to favorites → `Añadir la carpeta actual a favoritos`**, en las dos claves
-  (`fileExplorer.navigation.favoritesAddCurrent`, la última fila del menú; `commands.favoritesAddFromMenu.label`, la
-  fila de la tecla `0` en la lista de atajos) · high. El inglés solo se diferencia por el artículo, y en español las dos
-  caen en la misma frase; lo que sí se mantiene es la distancia con el comando de verdad `commands.favoritesAdd.label`
-  (`Añadir a favoritos`), que es la que el inglés marca a propósito. Infinitivo, porque son etiquetas (§ Formality
-  mechanics de `style.md`).
+- **Add current folder to favorites → `Añadir la carpeta actual a favoritos`**, una sola clave:
+  `fileExplorer.navigation.favoritesAddCurrent` · high. Es la última fila del menú, y la lista de atajos CITA esa misma
+  fila para explicar la tecla `0`, así que lee el mismo valor. ❌ No inventar una segunda redacción para los atajos: la
+  distancia que importa sigue siendo con el comando de verdad `commands.favoritesAdd.label` (`Añadir a favoritos`), que
+  es la que el inglés marca a propósito. Infinitivo, porque son etiquetas (§ Formality mechanics de `style.md`).
 - **Open the favorite with that number → `Abrir el favorito de ese número`** · infinitivo, como cualquier fila de la
   lista de atajos, y `el favorito` como sustantivo contable ya está en el catálogo
   (`fileExplorer.navigation.removeFavoriteFailed`, «No se pudo quitar ese favorito»; `renameFavoriteAriaLabel` =
@@ -3291,11 +3290,20 @@ selector de volúmenes ya no trae una SECCIÓN de favoritos; en su lugar tiene u
   `settings.network.permissionWithout` = `recursos compartidos que ya estén montados`) · high. Es la carpeta de red que
   monta el propio Mac y que se comporta como un disco local. ❌ Sin jerga de protocolos: el inglés evita a propósito
   nombrar SMB/MTP/ADB en esta línea, y el español tampoco los nombra.
-- **point at → `apuntar a`** · el catálogo (`errors.listing.symlinkLoopErrno.explanation`, «accesos directos que apuntan
-  a otros accesos directos») · high.
-  `Los favoritos solo pueden apuntar a una carpeta de un disco o de un recurso compartido montado`: se mantiene el
-  sujeto en plural del inglés y la idea de que el favorito es un puntero, en vez de reformularlo como «solo se pueden
-  añadir…», que cambiaría el foco de la línea.
+- **`favoritesCantAddHere` habla de ESTA carpeta, y la razón va detrás de los dos puntos** ·
+  `Esta carpeta no puede estar en favoritos: los favoritos solo funcionan en discos y en recursos compartidos montados`
+  · high. Arranca igual que su hermana `favoritesAlreadyAdded` (`Esta carpeta ya está en favoritos`), así que las dos
+  filas grises se leen como una pareja, y reutiliza el mismo `estar en favoritos` que esquiva la concordancia de género
+  (`no puede ser un favorito` chocaría con `carpeta`). ❌ Ya no se usa `apuntar a` aquí: obligaba a elegir caso o
+  preposición para el destino y hacía la línea mucho más larga que el inglés; `funcionar en` es un locativo llano. Sin
+  punto final (es un tooltip), sin `error` ni `no se ha podido`.
+- **`commands.favoritesAdd.description` ya no nombra la sección del selector**, que M3 eliminó, sino adónde va la
+  carpeta de verdad:
+  `Añade la carpeta actual del panel activo a favoritos, para volver ahí después desde el menú de favoritos.` · high.
+- **`commands.favoritesOpen.description` nombra el destino del salto** · `…y pulsa un número para ir a ese favorito.` El
+  inglés decía solo «press a number to go», y la versión anterior inventaba `esa carpeta`; ahora el inglés dice «jump to
+  that favorite» y el español lo sigue con `el favorito` contable, el mismo sustantivo de
+  `commands.favoritesOpenByNumber.label` · high.
 - **focused pane → `el panel activo`** · ya en el catálogo (`commands.navGoToPath.description`,
   `commands.favoritesAdd.description`) · high.
 - **press a number → `pulsa un número`** · `pulsar` es el verbo del catálogo para una TECLA (`search.runHint` =

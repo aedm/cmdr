@@ -3007,7 +3007,7 @@ Abgrenzung zu `### cancelRollback.stagedLeftover.*`: dort sind es Cmdrs EIGENE A
 - Kein `sameAsSourceJustification` nötig: der Wert unterscheidet sich vom Englischen. Keine Apostrophe im Wert, also
   nichts zu verdoppeln (die Datei ist ein ICU-Katalog).
 
-## Das Favoritenmenü (`menu.go.showFavorites`, `commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`, `shortcuts.scope.favoritesMenu`)
+## Das Favoritenmenü (`menu.go.showFavorites`, `commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAdd.description`, `fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`, `shortcuts.scope.favoritesMenu`)
 
 ⌃D klappt die gemerkten Ordner als Menü über dem fokussierten Bereich auf; die ersten neun Zeilen tragen die Ziffern
 1–9, die letzte die `0` und legt den aktuellen Ordner dazu. Die Favoriten-Rubrik in der Volume-Auswahl ist dafür
@@ -3055,16 +3055,28 @@ weggefallen und durch eine einzelne Zeile ersetzt, die das Menü öffnet.
   Nachbarpaar `Volume switcher` → `Volume-Auswahl` (`shortcuts.scope.volumeChooser`) und `Kontextmenü` im Katalog
   (`commands.fileContextMenu.label`) · `high`. Abgrenzung zur Style-Guide-Notiz „Ein Menü im Fließtext heißt
   `das Menü „Hilfe“`“: die gilt für einen benannten Menüleisten-Eintrag, hier benennt das Kompositum eine Fläche.
-- **Label vs. Verhaltensbeschreibung: der Artikel macht den Unterschied.** `fileExplorer.navigation.favoritesAddCurrent`
-  ist die Menüzeile selbst und bleibt artikellos-knapp (`Aktuellen Ordner zu Favoriten hinzufügen`, Wortfamilie von
-  `Zu Favoriten hinzufügen`); `commands.favoritesAddFromMenu.label` beschreibt in der Kurzbefehl-Liste nur, was die `0`
-  TUT, und nimmt die bestimmten Artikel (`Den aktuellen Ordner zu den Favoriten hinzufügen`), genau wie
-  `commands.favoritesOpenByNumber.label` (`Den Favoriten mit dieser Nummer öffnen`). Das spiegelt die Absicht des
-  Englischen, das dieselben zwei Zeilen über „current folder“ vs. „the current folder“ trennt. `Favorit` ist schwach
-  dekliniert, im Akkusativ also `den Favoriten`.
+- **Die `0`-Zeile hat GENAU EINEN Schlüssel: `fileExplorer.navigation.favoritesAddCurrent`**
+  (`Aktuellen Ordner zu Favoriten hinzufügen`, artikellos-knapp, Wortfamilie von `Zu Favoriten hinzufügen`). Die
+  Kurzbefehl-Liste zitiert dieselbe Zeile, statt sie zu beschreiben, also liest sie denselben Wert · `high`. ❌ Keine
+  zweite Fassung mit bestimmten Artikeln dafür erfinden. Die Abgrenzung, die bleibt, ist die zum echten Befehl
+  `commands.favoritesAdd.label` (`Zu Favoriten hinzufügen`, ohne Objekt). `Favorit` ist schwach dekliniert, im Akkusativ
+  also `den Favoriten` (`commands.favoritesOpenByNumber.label`: `Den Favoriten mit dieser Nummer öffnen`).
 - **„press a number“ → `mit einer Zifferntaste`** · `tentative`: weder macOS (`de/macOS/`, Wertsuche über alle Bundles)
   noch die Microsoft-Terminologie kennt `Zifferntaste`/`Zahlentaste`; das Wort ist Standarddeutsch (Duden) und sagt
-  klarer als „eine Zahl drücken“, dass eine Taste gemeint ist. Die Ziffern selbst bleiben unübersetzt.
-- Kein `sameAsSourceJustification` nötig: alle zehn Werte unterscheiden sich vom Englischen. `menu.go.showFavorites`
-  gehört zur RAW-Familie, trägt aber ohnehin keinen Apostroph; in den ICU-Dateien ebenso wenig, also nichts zu
-  verdoppeln.
+  klarer als „eine Zahl drücken“, dass eine Taste gemeint ist. Die Ziffern selbst bleiben unübersetzt. Das Englische
+  nennt inzwischen das Ziel („jump to that favorite“), also nennt es das Deutsche auch:
+  `commands.favoritesOpen.description` endet auf `direkt zum jeweiligen Favoriten springen` · `high`.
+- **`commands.favoritesAdd.description` sagt jetzt, WOHIN der Ordner geht, nicht mehr „in die Favoriten des
+  Umschalters“** · die Rubrik in der Volume-Auswahl gibt es nicht mehr, und ein Katalogwert darf keine Fläche
+  beschreiben, die weg ist. Gelieferte Fassung:
+  `Den aktuellen Ordner des fokussierten Bereichs zu den Favoriten hinzufügen, damit das Favoritenmenü jederzeit wieder dorthin führt.`
+  · `high`. Der zweite Teil bleibt unpersönlich (kein `du`), wie die Nachbardescriptions.
+- **`fileExplorer.navigation.favoritesCantAddHere` ist eine Tatsache über DIESEN Ordner, nicht eine Regel über
+  Favoriten** ·
+  `Dieser Ordner kann kein Favorit sein: Favoriten funktionieren nur auf Laufwerken und eingebundenen Freigaben` ·
+  `high`. Das Subjekt `Dieser Ordner` spiegelt die Schwesterzeile `fileExplorer.navigation.favoritesAlreadyAdded`
+  (`Dieser Ordner ist bereits ein Favorit`), sodass beide Absagen gleich anfangen. Der Doppelpunkt trägt die Begründung
+  (Style-Guide: `:` erklärt). ❌ Nicht mehr `verweisen auf`: das zwang einen Kasus auf das Ziel;
+  `auf Laufwerken … funktionieren` ist ein schlichter Lokativ. Kein Punkt am Ende (Tooltip).
+- Kein `sameAsSourceJustification` nötig: alle Werte unterscheiden sich vom Englischen. `menu.go.showFavorites` gehört
+  zur RAW-Familie, trägt aber ohnehin keinen Apostroph; in den ICU-Dateien ebenso wenig, also nichts zu verdoppeln.

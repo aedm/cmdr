@@ -155,7 +155,12 @@ export const browsersCommands: CommandSource[] = [
   },
   {
     id: 'favorites.addFromMenu',
-    nameKey: 'commands.favoritesAddFromMenu.label',
+    // The one `nameKey` outside `commands.*`, and deliberately so: this row doesn't name a
+    // command, it quotes the menu's `0` row back to the reader. The row owns the wording
+    // (`favorites-menu.svelte.ts` draws it from the same key), so a second copy under
+    // `commands.*` was one English edit away from the two disagreeing, and five locales
+    // already rendered them byte-identical.
+    nameKey: 'fileExplorer.navigation.favoritesAddCurrent',
     scope: 'Main window/Favorites menu',
     showInPalette: false,
     shortcuts: ['0'],

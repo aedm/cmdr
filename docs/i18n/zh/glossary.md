@@ -2721,7 +2721,7 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   会读成后加的状语（像是 Cmdr 把文件搬了进去）。`也就是在…` 明确它就是「原处」本身，事情的经过没变 · `high`。
 - 值与英文不同，无需 `sameAsSourceJustification`。中文侧没有撇号，ICU 的 `''` 规则用不上。
 
-## 个人收藏菜单（`commands.favoritesOpen.label`/`.description`、`commands.favoritesOpenByNumber.label`、`commands.favoritesAddFromMenu.label`、`fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`、`menu.go.showFavorites`、`shortcuts.scope.favoritesMenu`）
+## 个人收藏菜单（`commands.favoritesOpen.label`/`.description`、`commands.favoritesOpenByNumber.label`、`commands.favoritesAdd.description`、`fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`、`menu.go.showFavorites`、`shortcuts.scope.favoritesMenu`）
 
 ⌃D 在焦点窗格上拉出一个菜单，列出用户收藏的文件夹，前九行各带一个数字键 1–9，最后一行是 `0`
 「把当前文件夹加入个人收藏」。宗卷选择器里原来的「个人收藏」分区没有了，换成顶部一行「查看 N 项个人收藏」，点它就切到这个菜单。
@@ -2754,34 +2754,36 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   在目录里已经管抽象条目（`queue.row.reversalInFolder`
   一族的「{countText} 项操作」、`fileExplorer.git.size.stashEntries` 的「{countText} 项贮藏」）· `high`。`{count}`
   是拉丁数字，按 `style.md` § Numerals, punctuation, and spacing 两侧加空格。
-- **current folder → `当前文件夹`** · 目录里已经定下，同
-  `commands.favoritesAdd.description`（`把焦点窗格的当前文件夹加入切换器的个人收藏。`）·
+- **current folder → `当前文件夹`** · 目录里已经定下，同 `commands.favoritesAdd.description` ·
   `confirmed`。指的是窗格此刻所在的文件夹，不是光标所在的那个（那是 `光标所在的`，见上文术语表）。
-- **Add (the) current folder to favorites → `把当前文件夹加入个人收藏`** · 动词 `加入` 取自
+- **Add current folder to favorites → `把当前文件夹加入个人收藏`，只此一个键** · 动词 `加入` 取自
   `commands.favoritesAdd.label`、`menu.go.addToFavorites`、`menu.context.addToFavorites`（均为 `加入个人收藏`）·
-  `confirmed`。`fileExplorer.navigation.favoritesAddCurrent` 和 `commands.favoritesAddFromMenu.label`
-  **中文完全相同**：英文两条只差一个冠词 the，中文没有冠词，硬造差别只会变成假漂移。两条英文不同，
-  `desktop-i18n-term-consistency` 不会要求也不会拦。真正要守住的分界是它们与
-  `commands.favoritesAdd.label`（`加入个人收藏`，不带宾语）之间的那条：英文刻意让真命令短、让这两条描述性的行长，中文靠带不带
-  `把当前文件夹` 表达同一件事。
+  `confirmed`。这一行只有 `fileExplorer.navigation.favoritesAddCurrent` 一个键：键盘快捷键列表是**引用**这一行来说明 `0`
+  键，不是另写一句，所以读的是同一个值。以前那两个键中文本来就完全相同（英文只差一个冠词 the，中文没有冠词）。❌ 别再为快捷键列表另造一句。真正要守住的分界是它与
+  `commands.favoritesAdd.label`（`加入个人收藏`，不带宾语）之间的那条。
 - **Open the favorite with that number → `打开数字键对应的个人收藏`** · 键盘快捷键列表里的只读行，写法参照同为只读行的
   `commands.volumeSelectByName.label`（`按名称选择窗格宗卷`）· `high`。没用 `该数字`：`style.md` § Voice and
   tone要求口语的 `这个`/`这项` 而不是书面的 `此`/`该`，而「that number」在中文里本来也不需要指示词，说 `数字键`
   就够了（列表左边那一列正好显示 1–9）。
-- **press a number to go → `按数字键前往对应的文件夹`** · `前往` 是目录里 go 的既定动词，但**中文的 `前往`
-  必须带宾语**： `commands.navGoToPath.label`（`前往路径…`）、`commands.navParent.label`（`前往上层文件夹`）、
-  `commands.fileGoToTrash.label`（`前往废纸篓`）无一例外，光写「按数字键前往。」会断在半空 ·
-  `high`。所以中文补出了英文省略的落点（`对应的文件夹`）。这也是给英文提的意见，见下面一条。
+- **press a number to jump to that favorite → `按数字键前往对应的文件夹`** · `前往` 是目录里 go 的既定动词，但**中文的
+  `前往` 必须带宾语**： `commands.navGoToPath.label`（`前往路径…`）、`commands.navParent.label`（`前往上层文件夹`）、
+  `commands.fileGoToTrash.label`（`前往废纸篓`）无一例外，光写「按数字键前往。」会断在半空 · `high`。英文原先停在 "to
+  go"，中文自己补出了落点；这条意见英文已经采纳，现在英文自己写出 "that favorite" 了。中文仍写 `对应的文件夹` 而不是
+  `对应的个人收藏`：每一项个人收藏本来就是一个文件夹，意思完全一样，而这句开头已经有 `个人收藏菜单`，再重复一次会拖沓。
 - **a mounted share → `已装载的共享`** · `装载` 有 Tier 1 佐证（macOS
   Finder：`Mount the volume and try opening the document again.` →
   `装载此宗卷并再次尝试打开该文稿。`），目录里也已定型：`fileExplorer.network.browser.noMountedShares` =
   `{hostName} 没有已装载的共享`、`settings.network.enabled.description`（`仍可在已装载的共享上读写文件`）·
   `confirmed`。❗ 别改成错误文案那一族的
   `挂载`（见上文术语表的分工），也别写出协议名：英文特意避开了 SMB/MTP/ADB，中文照办。
-- **整句 `Favorites can only point at a folder on a disk or a mounted share` →
-  `个人收藏只能指向磁盘或已装载的共享上的文件夹`** · `指向` 同
-  `errors.listing.notAFolder.suggestion`（`确认它指向的是文件夹`）；`磁盘` 见术语表 · `high`。「A 上的 B」连着两个 `的`
-  是中文正常的多层定语，读得通；拆成两句反而比英文这条一行提示更啰嗦。
+- **`favoritesCantAddHere` 说的是「这个文件夹」，理由放在冒号后面** ·
+  `这个文件夹不能加入个人收藏：个人收藏只能用在磁盘和已装载的共享上` · `high`。开头跟姐妹行
+  `fileExplorer.navigation.favoritesAlreadyAdded`（`这个文件夹已经在个人收藏里了`）一致，两条灰行读起来成对。❌不再用
+  `指向`：那个动词逼着每种有格变化的语言为宾语选一个格，而且原来那句 `磁盘或已装载的共享上的文件夹` 连着两层
+  `的`，换成「用在…上」这种处所说法干脆得多。用全角冒号，句末不加句号（悬停提示）。
+- **`commands.favoritesAdd.description` 不再提「切换器的个人收藏」**
+  · 那个分区 M3 已经删掉了，目录里的值不能描述一个不存在的界面。现在写
+  `把焦点窗格的当前文件夹加入个人收藏，以后从个人收藏菜单就能回到这里。` · `high`。
 - **This folder is already a favorite → `这个文件夹已经在个人收藏里了`** · 句式取自
   `main.dockPinNudge.added`（`Cmdr 已经在程序坞里了。`）、`fileOperations.transferDialog.pathErrorAlreadyThere`（`“{name}”已经在这个位置了`）·
   `high`。英文没有句号，中文也不加（悬停提示里的短句）。语气是陈述不是报错，所以没有 `无法`/`不能` 开头。

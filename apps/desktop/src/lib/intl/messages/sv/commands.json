@@ -128,25 +128,21 @@
   "@commands.favoritesAdd.label": {
     "sourceHash": "7f3c078"
   },
-  "commands.favoritesAdd.description": "Lägg till den fokuserade panelens aktuella mapp i växlarens favoriter.",
+  "commands.favoritesAdd.description": "Lägg till den fokuserade panelens aktuella mapp i favoriter, så tar favoritmenyn dig tillbaka dit när som helst.",
   "@commands.favoritesAdd.description": {
-    "sourceHash": "84dcbf8"
+    "sourceHash": "b09b35e"
   },
   "commands.favoritesOpen.label": "Visa favoriter",
   "@commands.favoritesOpen.label": {
     "sourceHash": "f4dfe9b"
   },
-  "commands.favoritesOpen.description": "Öppna favoritmenyn på den fokuserade panelen och tryck på en siffra för att gå dit.",
+  "commands.favoritesOpen.description": "Öppna favoritmenyn på den fokuserade panelen och tryck på en siffra för att gå till den favoriten.",
   "@commands.favoritesOpen.description": {
-    "sourceHash": "289478e"
+    "sourceHash": "d188872"
   },
   "commands.favoritesOpenByNumber.label": "Öppna favoriten med den siffran",
   "@commands.favoritesOpenByNumber.label": {
     "sourceHash": "e74b98f"
-  },
-  "commands.favoritesAddFromMenu.label": "Lägg till den aktuella mappen i favoriter",
-  "@commands.favoritesAddFromMenu.label": {
-    "sourceHash": "2593d8a"
   },
   "commands.downloadsGoToLatest.label": "Gå till senaste hämtning",
   "@commands.downloadsGoToLatest.label": {

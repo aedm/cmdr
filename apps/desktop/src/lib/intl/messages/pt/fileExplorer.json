@@ -1246,9 +1246,9 @@
   "@fileExplorer.navigation.favoritesAlreadyAdded": {
     "sourceHash": "731a929"
   },
-  "fileExplorer.navigation.favoritesCantAddHere": "Os favoritos só podem apontar para uma pasta em um disco ou em um compartilhamento montado",
+  "fileExplorer.navigation.favoritesCantAddHere": "Esta pasta não pode ficar nos favoritos: favoritos só funcionam em discos e compartilhamentos montados",
   "@fileExplorer.navigation.favoritesCantAddHere": {
-    "sourceHash": "07c0e12"
+    "sourceHash": "10c98b3"
   },
   "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {Ver favoritos} one {Ver {count} favorito} many {Ver {count} favoritos} other {Ver {count} favoritos}}",
   "@fileExplorer.navigation.seeFavorites": {

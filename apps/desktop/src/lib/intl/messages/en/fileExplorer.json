@@ -1815,15 +1815,15 @@
   },
   "fileExplorer.navigation.favoritesAddCurrent": "Add current folder to favorites",
   "@fileExplorer.navigation.favoritesAddCurrent": {
-    "description": "VERB phrase (imperative). The last row of the favorites menu, marked with the number key 0: it adds the folder the focused pane is showing to the favorites list. \"Current folder\" is the one the pane is in right now, not the one under the cursor."
+    "description": "VERB phrase (imperative). The last row of the favorites menu, marked with the number key 0: it adds the folder the focused pane is showing to the favorites list. \"Current folder\" is the one the pane is in right now, not the one under the cursor. The Keyboard shortcuts list reuses this same string to say what the 0 key does, so it has to read as both a menu row and a description of that key."
   },
   "fileExplorer.navigation.favoritesAlreadyAdded": "This folder is already a favorite",
   "@fileExplorer.navigation.favoritesAlreadyAdded": {
     "description": "Hover tooltip on the greyed-out \"Add current folder to favorites\" row, explaining why it can't be picked: the pane's folder is already in the list. A statement, not an error."
   },
-  "fileExplorer.navigation.favoritesCantAddHere": "Favorites can only point at a folder on a disk or a mounted share",
+  "fileExplorer.navigation.favoritesCantAddHere": "This folder can''t be a favorite: favorites only work on disks and mounted shares",
   "@fileExplorer.navigation.favoritesCantAddHere": {
-    "description": "Hover tooltip on the greyed-out \"Add current folder to favorites\" row when the pane is somewhere a favorite could never point back to: inside an archive, in the .git history browser, on a phone, or on a server Cmdr connects to itself. \"Mounted share\" is a network folder the Mac itself mounts, which behaves like a local disk."
+    "description": "Hover tooltip on the greyed-out \"Add current folder to favorites\" row when the pane is somewhere a favorite could never point back to: inside an archive, in the .git history browser, on a phone, or on a server Cmdr connects to itself. Says a fact about THIS folder first, then the reason after the colon; pair it with its sibling fileExplorer.navigation.favoritesAlreadyAdded, which opens the same way. \"Mounted share\" is a network folder the Mac itself mounts, which behaves like a local disk; keep it plain and don't name protocols (SMB, MTP). No length limit: it's a tooltip, so read naturally rather than trimming."
   },
   "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {See favorites} one {See {count} favorite} other {See {count} favorites}}",
   "@fileExplorer.navigation.seeFavorites": {

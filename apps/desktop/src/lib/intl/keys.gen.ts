@@ -366,7 +366,6 @@ export type MessageKey =
   | 'commands.errorPaneToggleTechnicalDetails.label'
   | 'commands.favoritesAdd.description'
   | 'commands.favoritesAdd.label'
-  | 'commands.favoritesAddFromMenu.label'
   | 'commands.favoritesOpen.description'
   | 'commands.favoritesOpen.label'
   | 'commands.favoritesOpenByNumber.label'

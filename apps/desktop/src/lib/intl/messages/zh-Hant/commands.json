@@ -128,9 +128,9 @@
   "@commands.favoritesAdd.label": {
     "sourceHash": "7f3c078"
   },
-  "commands.favoritesAdd.description": "把焦點窗格目前的資料夾加入切換器的「喜好項目」。",
+  "commands.favoritesAdd.description": "把焦點窗格目前的資料夾加入喜好項目，以後從喜好項目選單就能回到這裡。",
   "@commands.favoritesAdd.description": {
-    "sourceHash": "84dcbf8"
+    "sourceHash": "b09b35e"
   },
   "commands.favoritesOpen.label": "顯示喜好項目",
   "@commands.favoritesOpen.label": {
@@ -138,15 +138,11 @@
   },
   "commands.favoritesOpen.description": "在焦點窗格上開啟喜好項目選單，按數字鍵就能跳到對應的資料夾。",
   "@commands.favoritesOpen.description": {
-    "sourceHash": "289478e"
+    "sourceHash": "d188872"
   },
   "commands.favoritesOpenByNumber.label": "開啟數字對應的喜好項目",
   "@commands.favoritesOpenByNumber.label": {
     "sourceHash": "e74b98f"
-  },
-  "commands.favoritesAddFromMenu.label": "把目前的資料夾加入喜好項目",
-  "@commands.favoritesAddFromMenu.label": {
-    "sourceHash": "2593d8a"
   },
   "commands.downloadsGoToLatest.label": "前往最新下載項目",
   "@commands.downloadsGoToLatest.label": {

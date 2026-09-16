@@ -129,9 +129,9 @@
   "@commands.favoritesAdd.label": {
     "sourceHash": "7f3c078"
   },
-  "commands.favoritesAdd.description": "Voeg de huidige map van het actieve paneel toe aan de favorieten van de wisselaar.",
+  "commands.favoritesAdd.description": "Voeg de huidige map van het actieve paneel toe aan je favorieten, zodat je er via het favorietenmenu weer terugkomt.",
   "@commands.favoritesAdd.description": {
-    "sourceHash": "84dcbf8"
+    "sourceHash": "b09b35e"
   },
   "commands.favoritesOpen.label": "Toon favorieten",
   "@commands.favoritesOpen.label": {
@@ -139,15 +139,11 @@
   },
   "commands.favoritesOpen.description": "Open het favorietenmenu op het actieve paneel en druk op een cijfer om naar die favoriet te springen.",
   "@commands.favoritesOpen.description": {
-    "sourceHash": "289478e"
+    "sourceHash": "d188872"
   },
   "commands.favoritesOpenByNumber.label": "Open de favoriet met dat nummer",
   "@commands.favoritesOpenByNumber.label": {
     "sourceHash": "e74b98f"
-  },
-  "commands.favoritesAddFromMenu.label": "Voeg de huidige map aan favorieten toe",
-  "@commands.favoritesAddFromMenu.label": {
-    "sourceHash": "2593d8a"
   },
   "commands.downloadsGoToLatest.label": "Ga naar laatste download",
   "@commands.downloadsGoToLatest.label": {

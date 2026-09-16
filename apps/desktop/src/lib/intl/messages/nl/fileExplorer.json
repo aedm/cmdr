@@ -1249,9 +1249,9 @@
   "@fileExplorer.navigation.favoritesAlreadyAdded": {
     "sourceHash": "731a929"
   },
-  "fileExplorer.navigation.favoritesCantAddHere": "Favorieten kunnen alleen wijzen naar een map op een schijf of een gekoppelde netwerkshare",
+  "fileExplorer.navigation.favoritesCantAddHere": "Deze map kan geen favoriet worden: favorieten werken alleen op schijven en gekoppelde netwerkshares",
   "@fileExplorer.navigation.favoritesCantAddHere": {
-    "sourceHash": "07c0e12"
+    "sourceHash": "10c98b3"
   },
   "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {Bekijk favorieten} one {Bekijk {count} favoriet} other {Bekijk {count} favorieten}}",
   "@fileExplorer.navigation.seeFavorites": {

@@ -3574,13 +3574,12 @@ vers ce menu.
   le `fr` : un entier simple ne sélectionne jamais `many`, mais la parité et le check de pluriel veulent la branche.
   Vérifié en exécutant les cinq cas (0, 1, 2, 5, 1 000 000) dans `intl-messageformat` avec la locale `fr`.
 - **current folder (celui que le panneau AFFICHE, pas celui sous le curseur) → `le dossier actuel`** · le catalogue le
-  pose déjà dans `commands.favoritesAdd.description` (« Ajouter le dossier actuel du panneau actif aux favoris du
-  sélecteur ») · `high`. ❌ Pas `dossier courant`, l'anglicisme habituel, ni `répertoire`, réservé au sens technique. Le
-  libellé de la dernière ligne du menu (`fileExplorer.navigation.favoritesAddCurrent`) et la ligne descriptive de la
-  liste des raccourcis (`commands.favoritesAddFromMenu.label`) sortent donc identiques : « Ajouter le dossier actuel aux
-  favoris ». L'anglais ne les sépare que par l'article (`Add current folder…` / `Add the current folder…`), que le
-  français doit écrire dans les deux cas ; forcer une différence serait artificiel. La distinction qui compte, elle,
-  tient : `commands.favoritesAdd.label` reste « Ajouter aux favoris », court et sans complément.
+  pose déjà dans `commands.favoritesAdd.description` · `high`. ❌ Pas `dossier courant`, l'anglicisme habituel, ni
+  `répertoire`, réservé au sens technique. La dernière ligne du menu n'a plus qu'une clé,
+  `fileExplorer.navigation.favoritesAddCurrent` (« Ajouter le dossier actuel aux favoris ») : la liste des raccourcis la
+  CITE pour expliquer la touche `0` au lieu de la redécrire, donc elle lit la même valeur. ❌ Ne pas réinventer une
+  seconde formulation pour cette liste. La distinction qui compte, elle, tient : `commands.favoritesAdd.label` reste «
+  Ajouter aux favoris », court et sans complément.
 - **mounted share → `un partage monté`** · le catalogue le dit déjà mot pour mot
   (`fileExplorer.network.browser.noMountedShares` « Aucun partage monté depuis {hostName} »,
   `settings.network.enabled.description` « … sur les partages déjà montés »), et les deux moitiés viennent du tas :
@@ -3588,12 +3587,14 @@ vers ce menu.
   être monté. ») · `high`. ❌ Ne jamais remonter à un nom de protocole (`SMB`, `MTP`, `ADB`) dans cette phrase :
   l'anglais évite le jargon exprès, parce que la personne visée est justement celle qui ne sait pas sur quoi elle se
   trouve.
-- **`Favorites can only point at …` → `Un favori ne peut mener qu'à …`** · le moule restrictif vient du Finder, qui
-  formule exactement cette contrainte : « Vous ne pouvez créer un alias que dans un dossier ou disque. » (macOS Finder,
-  relevé dans le tas 2026-09-16) · `high` pour la structure, `tentative` pour le verbe. `mener à` est le verbe le plus
-  plat disponible ; `pointer vers` (le calque direct) n'a aucune attestation dans le tas, ni chez Apple, ni chez
-  Microsoft, ni chez les cinq gestionnaires. Le singulier `Un favori` vaut règle générale et évite le pluriel
-  administratif. Valeur livrée : `fileExplorer.navigation.favoritesCantAddHere`.
+- **`favoritesCantAddHere` parle de CE dossier, la raison vient après les deux-points** ·
+  `Ce dossier ne peut pas rejoindre vos favoris : les favoris ne fonctionnent que sur un disque ou un partage monté` ·
+  `high`. Le sujet reprend celui de sa jumelle `fileExplorer.navigation.favoritesAlreadyAdded` (« Ce dossier est déjà
+  dans vos favoris »), et le possessif reste celui de `favoritesEmpty`, donc les deux lignes grisées se lisent en paire.
+  Le moule restrictif `ne … que` vient du Finder, qui formule la même contrainte : « Vous ne pouvez créer un alias que
+  dans un dossier ou disque. » (macOS Finder, relevé dans le tas 2026-09-16). ❌ Plus de verbe de pointage ici
+  (`mener à`, `pointer vers`) : il imposait un complément régi au dossier cible ; `fonctionner sur` est un locatif plat.
+  Espace avant les deux-points, pas de point final (info-bulle).
 - **already a favorite → `est déjà dans vos favoris`** · l'info-bulle de la ligne grisée
   (`fileExplorer.navigation.favoritesAlreadyAdded`) nomme l'appartenance à la LISTE, pas une qualité du dossier ; le
   possessif reprend celui de `fileExplorer.navigation.favoritesEmpty` (« Vos favoris s'afficheront ici ») · `high`.
@@ -3604,7 +3605,14 @@ vers ce menu.
   volume », `commands.volumeClose.label` « Fermer le sélecteur de volume ») · `high`. `numéro` (le rang attribué au
   favori), pas `chiffre` (la touche) : c'est le favori qui porte le numéro. Les chiffres 0–9 et les glyphes ⌘ ⌥ ⌃ ⇧ ne
   se traduisent jamais.
-- **`…, and press a number to go` → `…, puis appuyer sur un chiffre pour y aller`** · deuxième ligne de la palette
-  (`commands.favoritesOpen.description`), au moule des descriptions voisines : infinitif, `panneau actif`, et la
-  brièveté de l'anglais gardée. Ici c'est bien `chiffre` (la touche qu'on presse) et non `numéro`, l'inverse de la clé
-  du dessus.
+- **`…, and press a number to jump to that favorite` →
+  `…, puis appuyer sur un chiffre pour aller au favori correspondant`** · deuxième ligne de la palette
+  (`commands.favoritesOpen.description`), au moule des descriptions voisines : infinitif, `panneau actif`. Ici c'est
+  bien `chiffre` (la touche qu'on presse) et non `numéro`, l'inverse de la clé du dessus · `high`. L'anglais disait « to
+  go », sans destination, ce qui laissait « pour y aller » suspendu sur un `y` sans antécédent ; il nomme désormais le
+  favori, et le français le nomme aussi. `correspondant` reprend l'idée de la colonne de touches, comme
+  `commands.favoritesOpenByNumber.label` (« le favori portant ce numéro »). ❌ Pas « ouvrir … pour ouvrir » : `aller à`
+  évite la répétition du verbe de tête.
+- **`commands.favoritesAdd.description` ne nomme plus la section du sélecteur**, supprimée par M3, mais la vraie
+  destination :
+  `Ajouter le dossier actuel du panneau actif aux favoris, pour y revenir ensuite depuis le menu des favoris.` · `high`.

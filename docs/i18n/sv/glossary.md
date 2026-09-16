@@ -3115,25 +3115,35 @@ favoritavdelning är borta och ersatt av en enda topprad som byter ut växlaren 
 - **current folder: `aktuell mapp` i etikett, `den aktuella mappen` i löptext** · `queryUi.scope.currentFolder` är redan
   `Aktuell mapp` och `queryUi.scope.useCurrentFolder` är `Använd aktuell mapp`, medan `commands.editPaste.description`
   skriver ut `i den aktuella mappen`. Total Commander `sv` har samma artikellösa etikettform (`Lägg till aktuell mapp`).
-  `high`. **Det är också så artikelskillnaden i engelskan bärs:** `fileExplorer.navigation.favoritesAddCurrent`
-  (menyraden, etikett) blir `Lägg till aktuell mapp i favoriter` och `commands.favoritesAddFromMenu.label` (raden i
-  genvägslistan, beskrivande) blir `Lägg till den aktuella mappen i favoriter`. Båda skiljer sig dessutom tydligt från
-  det riktiga kommandot `commands.favoritesAdd.label` (`Lägg till i favoriter`), vilket engelskan avser.
+  `high`. **`0`-raden har numera EN enda nyckel**, `fileExplorer.navigation.favoritesAddCurrent`
+  (`Lägg till aktuell mapp i favoriter`, etikettformen utan artikel). Genvägslistan CITERAR den raden för att förklara
+  tangenten `0` i stället för att beskriva om den, så den läser samma värde · `high`. ❌ Hitta inte på en andra, bestämd
+  formulering för listan. Skillnaden som består är mot det riktiga kommandot `commands.favoritesAdd.label`
+  (`Lägg till i favoriter`), vilket engelskan avser.
 - **mounted share: `monterad delad mapp`** · `fileExplorer.network.browser.noMountedShares` är redan
   `Inga monterade delade mappar från {hostName}`, och `settings.network.permissionWithout` säger
   `delade mappar som redan är monterade`. `delad mapp` är den satta termen för share (`style.md` § Terminology). `high`.
   Inga protokollnamn i `fileExplorer.navigation.favoritesCantAddHere`, precis som engelskan undviker dem.
 - **a disk: `en disk`** · katalogen skiljer redan på `disk` (engelskans `disk`: ”en intern disk”, ”en extern disk”, ”På
   disk”) och `enhet` (engelskans `drive`). `skiva` är reserverat för när Finders egen ordalydelse speglas (`style.md` §
-  Terminology). `high`. Prepositionerna delas inte: `på en disk` men `i en monterad delad mapp`, så meningen blir
-  `Favoriter kan bara peka på mappar på en disk eller i en monterad delad mapp`. `peka på` är katalogens verb för vad en
-  sökväg eller genväg refererar till (`errors.listing.notAFolder.suggestion`).
+  Terminology). `high`.
+- **`favoritesCantAddHere` är ett påstående om DEN HÄR mappen, med skälet efter kolonet** ·
+  `Den här mappen kan inte bli en favorit: favoriter fungerar bara på diskar och monterade delade mappar` · `high`.
+  Samma subjekt som systerraden `fileExplorer.navigation.favoritesAlreadyAdded` (`Den här mappen är redan en favorit`),
+  så de två gråade raderna läses som ett par. ❌ Inte längre `peka på`: det tvingade fram ett rektionsval för målet och
+  gjorde raden klart längre än engelskan. `fungera på` är en platt lokativ och slipper dessutom den delade prepositionen
+  (`på en disk` mot `i en delad mapp`), så plural i båda leden räcker. Ingen punkt på slutet (verktygstips).
+- **`commands.favoritesAdd.description` nämner inte längre växlarens favoritavdelning**, som M3 tog bort, utan vart
+  mappen faktiskt hamnar:
+  `Lägg till den fokuserade panelens aktuella mapp i favoriter, så tar favoritmenyn dig tillbaka dit när som helst.` ·
+  `high`.
 - **siffertangenterna 1–9: `siffra`, inte `nummer`** · tangenterna är bokstavligen siffror, och `nummer` är i katalogen
   ett löpnummer på något (`viewer.statusBar.badge.indexedTooltip`: `radnumren`). Därav `Öppna favoriten med den siffran`
   (`commands.favoritesOpenByNumber.label`) och `tryck på en siffra` i `commands.favoritesOpen.description`. `tentative`:
   ingen källa i referenssamlingen namnger just den här ytan, men risken är låg och båda nycklarna använder samma ord.
-- **`press a number to go` behöver ett mål på svenska** · engelskans `go` står utan destination; ett naket `att gå` går
-  inte i svenskan, så meningen avslutas `för att gå dit`. Samma reflex som katalogens
+- **`press a number to jump to that favorite` får sitt mål utskrivet** · ett naket `för att gå` går inte i svenskan, och
+  engelskan stannade förut vid `to go`, så den här översättningen fyllde själv i ett vagt `dit`. Nu namnger engelskan
+  målet, och svenskan gör detsamma: `…tryck på en siffra för att gå till den favoriten.` Samma reflex som katalogens
   `errors.listing.notAFolder.suggestion`-familj, där ”Gå hit igen” alltid får ut sitt mål. `high`.
 - Inget komma före `och` i `commands.favoritesOpen.description`: två korta huvudsatser, enligt `style.md` § Notes and
   decisions. Engelskan har kommat, svenskan inte.

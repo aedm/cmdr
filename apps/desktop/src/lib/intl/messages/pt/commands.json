@@ -128,25 +128,21 @@
   "@commands.favoritesAdd.label": {
     "sourceHash": "7f3c078"
   },
-  "commands.favoritesAdd.description": "Adicione a pasta atual do painel em foco aos Favoritos do alternador.",
+  "commands.favoritesAdd.description": "Adicione a pasta atual do painel em foco aos favoritos, para voltar até ela pelo menu de favoritos.",
   "@commands.favoritesAdd.description": {
-    "sourceHash": "84dcbf8"
+    "sourceHash": "b09b35e"
   },
   "commands.favoritesOpen.label": "Mostrar favoritos",
   "@commands.favoritesOpen.label": {
     "sourceHash": "f4dfe9b"
   },
-  "commands.favoritesOpen.description": "Abra o menu de favoritos no painel em foco e pressione um número para ir até a pasta.",
+  "commands.favoritesOpen.description": "Abra o menu de favoritos no painel em foco e pressione um número para ir até esse favorito.",
   "@commands.favoritesOpen.description": {
-    "sourceHash": "289478e"
+    "sourceHash": "d188872"
   },
   "commands.favoritesOpenByNumber.label": "Abrir o favorito com esse número",
   "@commands.favoritesOpenByNumber.label": {
     "sourceHash": "e74b98f"
-  },
-  "commands.favoritesAddFromMenu.label": "Adicionar a pasta atual aos favoritos",
-  "@commands.favoritesAddFromMenu.label": {
-    "sourceHash": "2593d8a"
   },
   "commands.downloadsGoToLatest.label": "Ir para o último download",
   "@commands.downloadsGoToLatest.label": {

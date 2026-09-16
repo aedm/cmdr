@@ -1239,9 +1239,9 @@
   "@fileExplorer.navigation.favoritesAlreadyAdded": {
     "sourceHash": "731a929"
   },
-  "fileExplorer.navigation.favoritesCantAddHere": "Favoriter kan bara peka på mappar på en disk eller i en monterad delad mapp",
+  "fileExplorer.navigation.favoritesCantAddHere": "Den här mappen kan inte bli en favorit: favoriter fungerar bara på diskar och monterade delade mappar",
   "@fileExplorer.navigation.favoritesCantAddHere": {
-    "sourceHash": "07c0e12"
+    "sourceHash": "10c98b3"
   },
   "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {Visa favoriter} one {Visa {count} favorit} other {Visa {count} favoriter}}",
   "@fileExplorer.navigation.seeFavorites": {

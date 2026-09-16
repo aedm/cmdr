@@ -107,8 +107,13 @@ shortcuts list, and the menus all stay unchanged and reactive; the per-key base-
 `command-registry.parity.test.ts`. Key shape is `commands.<idish>.label` / `.description` (the command id flattened to a
 lowerCamel leaf, e.g. `view.zoom.set75` → `commands.viewZoomSet75.label`); the command IDS themselves never change.
 
-Two special cases:
+Three special cases:
 
+- **`favorites.addFromMenu` points at `fileExplorer.navigation.favoritesAddCurrent`**, the only `nameKey` outside
+  `commands.*`. The entry is `showInPalette: false` + `fixedKey: true`: it exists so Settings > Keyboard shortcuts can
+  say the open favorites menu answers `0`, and what it says is the menu's own `0`-row label. Giving it a `commands.*`
+  twin meant one string in two places, which five locales had already collapsed into byte-identical values and one
+  English edit would have split. A row that QUOTES a surface should read that surface's key.
 - **The three `isMacOS()` commands** (`file.showInFinder` / `file.getInfo` / `file.quickLook`) pick one of two keys at
   module load (`.mac.label` vs `.other.label`), so each platform's wording is a distinct, separately-translatable key.
 - **`app.licenseKey`** has no fixed label: its `name` getter reads the module-level `hasExistingLicense` flag and

@@ -128,25 +128,21 @@
   "@commands.favoritesAdd.label": {
     "sourceHash": "7f3c078"
   },
-  "commands.favoritesAdd.description": "Ajouter le dossier actuel du panneau actif aux favoris du sélecteur.",
+  "commands.favoritesAdd.description": "Ajouter le dossier actuel du panneau actif aux favoris, pour y revenir ensuite depuis le menu des favoris.",
   "@commands.favoritesAdd.description": {
-    "sourceHash": "84dcbf8"
+    "sourceHash": "b09b35e"
   },
   "commands.favoritesOpen.label": "Afficher les favoris",
   "@commands.favoritesOpen.label": {
     "sourceHash": "f4dfe9b"
   },
-  "commands.favoritesOpen.description": "Ouvrir le menu des favoris sur le panneau actif, puis appuyer sur un chiffre pour y aller.",
+  "commands.favoritesOpen.description": "Ouvrir le menu des favoris sur le panneau actif, puis appuyer sur un chiffre pour aller au favori correspondant.",
   "@commands.favoritesOpen.description": {
-    "sourceHash": "289478e"
+    "sourceHash": "d188872"
   },
   "commands.favoritesOpenByNumber.label": "Ouvrir le favori portant ce numéro",
   "@commands.favoritesOpenByNumber.label": {
     "sourceHash": "e74b98f"
-  },
-  "commands.favoritesAddFromMenu.label": "Ajouter le dossier actuel aux favoris",
-  "@commands.favoritesAddFromMenu.label": {
-    "sourceHash": "2593d8a"
   },
   "commands.downloadsGoToLatest.label": "Aller au dernier téléchargement",
   "@commands.downloadsGoToLatest.label": {

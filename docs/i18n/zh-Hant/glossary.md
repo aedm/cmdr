@@ -1863,7 +1863,7 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
   這種很長的拉丁字串，包進直角引號當名字看，引號與內文之間不空格，依 `style.md` § Punctuation · `high`。
 - 值裡沒有撇號，所以 ICU 的雙寫撇號規則在這條用不到；標點全形，語序與英文相同（先說找到什麼，再說放在哪裡）。
 
-## 喜好項目選單（`commands.favoritesOpen.*`、`commands.favoritesOpenByNumber.label`、`commands.favoritesAddFromMenu.label`、`fileExplorer.navigation.favoritesAddCurrent`／`.favoritesAlreadyAdded`／`.favoritesCantAddHere`／`.seeFavorites`、`menu.go.showFavorites`、`shortcuts.scope.favoritesMenu`）
+## 喜好項目選單（`commands.favoritesOpen.*`、`commands.favoritesOpenByNumber.label`、`commands.favoritesAdd.description`、`fileExplorer.navigation.favoritesAddCurrent`／`.favoritesAlreadyAdded`／`.favoritesCantAddHere`／`.seeFavorites`、`menu.go.showFavorites`、`shortcuts.scope.favoritesMenu`）
 
 ⌃D 會在焦點窗格上打開一張選單，列出使用者收藏的資料夾，前九列各帶一個數字鍵，最後一列是
 `0`：把窗格目前的資料夾加進清單。原本卷宗切換器裡的「喜好項目」區塊沒有了，改成切換器最上面一列，按下去就換成這張選單。
@@ -1886,20 +1886,27 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
   `commands.fileContextMenu.description`）。
 - **mounted share → `已裝載的共享資料夾`** · 目錄既有寫法（`fileExplorer.network.browser.noMountedShares`：
   `{hostName} 沒有已裝載的共享資料夾`；`errors.mount.shareNotFound` 也用 `共享資料夾`）· `high`。❗
-  **不要換成通訊協定名稱**：英文刻意不提 SMB／MTP／ADB，中文也一樣，因為使用者要判斷的是「這個地方像不像一顆磁碟」，不是它走什麼協定。`fileExplorer.navigation.favoritesCantAddHere`
-  因此寫成 `喜好項目只能指向磁碟或已裝載的共享資料夾上的資料夾`：句尾連著兩個 `資料夾` 看起來重複，但目錄自己就有同形的
-  `起始資料夾只能是根資料夾，或是它裡面的資料夾`（`servers.refusal.startFolderOutsideRoot`），比硬換成 `位置` 精確。
-- **press a number to go → 補出目的地** · `按數字鍵就能跳到對應的資料夾` · 英文的 "go" 沒有受詞，中文的 `跳到`／`前往`
-  一定要帶地方，不然讀起來是斷句 · `high`。受詞取 `對應的資料夾`，跟 `commands.favoritesOpenByNumber.label` 的
-  `開啟數字對應的喜好項目` 用同一個「數字↔項目對應」的說法。動詞 `跳` 沿用
-  `commands.navGoToPath.description`（`讓焦點窗格跳至…`）。
+  **不要換成通訊協定名稱**：英文刻意不提 SMB／MTP／ADB，中文也一樣，因為使用者要判斷的是「這個地方像不像一顆磁碟」，不是它走什麼協定。
+- **`fileExplorer.navigation.favoritesCantAddHere` 講的是「這個資料夾」，理由放在冒號後面** ·
+  `這個資料夾不能加入喜好項目：喜好項目只能用在磁碟和已裝載的共享資料夾上` · `high`。開頭跟姊妹列
+  `fileExplorer.navigation.favoritesAlreadyAdded`（`這個資料夾已經在喜好項目裡了`）一致，兩條灰列讀起來成對。❌不再用
+  `指向`：那個動詞逼著每種有格變化的語言替受詞挑一個格；換成「用在…上」的處所說法後，原本句尾連著兩個 `資料夾`
+  的疊字也一併消失了。用全形冒號，句末不加句號（懸停提示）。
+- **press a number to jump to that favorite → 受詞寫出來** · `按數字鍵就能跳到對應的資料夾` · 中文的 `跳到`／`前往`
+  一定要帶地方，不然讀起來是斷句 · `high`。英文本來停在 "go"，是中文自己補的受詞；英文現在也寫出 "that
+  favorite" 了。中文仍取 `對應的資料夾` 而不是
+  `對應的喜好項目`：每一項喜好項目本來就是一個資料夾，意思一樣，而這句開頭已經有
+  `喜好項目選單`，再疊一次會拖沓。這個「數字↔項目對應」的說法跟 `commands.favoritesOpenByNumber.label` 的
+  `開啟數字對應的喜好項目` 是同一套。動詞 `跳` 沿用 `commands.navGoToPath.description`（`讓焦點窗格跳至…`）。
 - **數字鍵、`0`–`9`、⌃D 等鍵名一律不譯** · `數字鍵` 只是泛稱，鍵面上的字元保持原樣 · `confirmed`（`style.md` §
   "Punctuation"：數字一律用阿拉伯數字）。
-- **`fileExplorer.navigation.favoritesAddCurrent` 與 `commands.favoritesAddFromMenu.label` 中文完全一樣，這是對的**
-  ·兩條都寫 `把目前的資料夾加入喜好項目` · `high`。英文只差一個冠詞（"Add current folder…" ／ "Add the current
-  folder…"），中文沒有冠詞可差，而兩條的意思真的一樣（一條是選單那一列，一條是快速鍵清單裡對 `0`
-  的說明），分處兩個介面、不會並排出現。❌ 不要為了讓它們看起來不同而硬改一個。真正要保持區別的是
+- **`0` 那一列只有一個鍵：`fileExplorer.navigation.favoritesAddCurrent`** · `把目前的資料夾加入喜好項目` ·
+  `high`。快速鍵清單是**引用**這一列來說明 `0`
+  鍵，不是另寫一句，所以讀的是同一個值。從前那兩個鍵中文本來就完全一樣（英文只差一個冠詞，中文沒有冠詞可差）。❌不要為了讓快速鍵清單看起來不同而另造一句。真正要保持區別的是
   `commands.favoritesAdd.label`（`加入喜好項目`，那是指令本身的名字，不帶受詞），這個區別中文有守住。
+- **`commands.favoritesAdd.description` 不再提「切換器的喜好項目」**
+  · 那個區塊 M3 已經拿掉，目錄值不能描述一個不存在的介面。現在寫
+  `把焦點窗格目前的資料夾加入喜好項目，以後從喜好項目選單就能回到這裡。` · `high`。
 - **`.seeFavorites` 的複數形狀：只有 `=0` 和 `other`** ·
   `{count, plural, =0 {查看喜好項目} other {查看 {count} 個喜好項目}}` · `confirmed`（CLDR 中文只有 `other`
   一個複數類別，見 `style.md`；目錄裡每一條 ICU 複數都是這個形狀）。❗ **下一位譯者不要「補回」`one`

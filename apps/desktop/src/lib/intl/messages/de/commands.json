@@ -128,25 +128,21 @@
   "@commands.favoritesAdd.label": {
     "sourceHash": "7f3c078"
   },
-  "commands.favoritesAdd.description": "Den aktuellen Ordner des fokussierten Bereichs zu den Favoriten des Umschalters hinzufügen.",
+  "commands.favoritesAdd.description": "Den aktuellen Ordner des fokussierten Bereichs zu den Favoriten hinzufügen, damit das Favoritenmenü jederzeit wieder dorthin führt.",
   "@commands.favoritesAdd.description": {
-    "sourceHash": "84dcbf8"
+    "sourceHash": "b09b35e"
   },
   "commands.favoritesOpen.label": "Favoriten anzeigen",
   "@commands.favoritesOpen.label": {
     "sourceHash": "f4dfe9b"
   },
-  "commands.favoritesOpen.description": "Das Favoritenmenü im fokussierten Bereich öffnen und mit einer Zifferntaste direkt dorthin springen.",
+  "commands.favoritesOpen.description": "Das Favoritenmenü im fokussierten Bereich öffnen und mit einer Zifferntaste direkt zum jeweiligen Favoriten springen.",
   "@commands.favoritesOpen.description": {
-    "sourceHash": "289478e"
+    "sourceHash": "d188872"
   },
   "commands.favoritesOpenByNumber.label": "Den Favoriten mit dieser Nummer öffnen",
   "@commands.favoritesOpenByNumber.label": {
     "sourceHash": "e74b98f"
-  },
-  "commands.favoritesAddFromMenu.label": "Den aktuellen Ordner zu den Favoriten hinzufügen",
-  "@commands.favoritesAddFromMenu.label": {
-    "sourceHash": "2593d8a"
   },
   "commands.downloadsGoToLatest.label": "Zum neuesten Download gehen",
   "@commands.downloadsGoToLatest.label": {

@@ -3160,7 +3160,7 @@ gợi ý bỏ đi thứ gì, nên `dọn dẹp` và `xóa` đều bị cấm tro
 - `{volumeName}` và `{folderName}` giữ nguyên từng byte, đứng trần không có loại từ đi trước (tên ổ đĩa là chuỗi tùy ý,
   theo quy tắc ở `style.md`); giá trị không có dấu nháy đơn nào nên không phát sinh `''` của ICU.
 
-## Menu mục ưa thích (10 khóa: `commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent` / `.favoritesAlreadyAdded` / `.favoritesCantAddHere` / `.seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
+## Menu mục ưa thích (`commands.favoritesOpen.*`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAdd.description`, `fileExplorer.navigation.favoritesAddCurrent` / `.favoritesAlreadyAdded` / `.favoritesCantAddHere` / `.seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
 
 ⌃D mở danh sách thư mục đã đánh dấu thành một menu phủ lên khung đang chọn; chín hàng đầu mang phím số 1–9 để nhảy thẳng
 tới nơi đó, hàng cuối mang phím `0` và thêm thư mục hiện tại của khung vào danh sách. Bộ chọn ổ đĩa không còn mục Mục ưa
@@ -3201,13 +3201,26 @@ thích bên trong nữa, chỉ còn một hàng trên cùng mở menu này.
 - **press (một phím) → `nhấn`, không phải `bấm`** · catalog tách đôi: `nhấn` cho phím (`shortcuts.section.pressKeys`,
   `settings.behavior.fileSystemWatching.globalGoToLatestShortcut.enabled.description`), `bấm` cho chuột · `high`. Các
   phím `0`–`9` và ký hiệu ⌘ ⌥ ⌃ ⇧ giữ nguyên, không dịch.
-- **"press a number to go" → thêm đích đến: `nhấn một con số để đi tới thư mục đó`** · `go` trơ trọi không có đích trong
-  tiếng Anh; tiếng Việt `để đi` cụt nghĩa hẳn, nên câu phải nói rõ đi đâu · `high`. Động từ `đi tới` là của họ menu Go
-  (`menu.bar.go` = `Đi`, `menu.go.goToPath` = `Đi tới đường dẫn…`, macOS Finder `Go To Location` → `Đi tới vị trí`).
-- **`commands.favoritesAddFromMenu.label` và `fileExplorer.navigation.favoritesAddCurrent` trùng nhau từng chữ, và đó là
-  đúng** · cả hai đều là `Thêm thư mục hiện tại vào mục ưa thích`. Tiếng Anh phân biệt chúng bằng mỗi mạo từ "the", thứ
-  tiếng Việt không có · `high`. Điều PHẢI giữ tách là so với lệnh thật `commands.favoritesAdd.label` =
-  `Thêm vào mục ưa thích` (không nhắc thư mục nào), và sự phân biệt đó vẫn còn nguyên.
+- **"press a number to jump to that favorite" → `nhấn một con số để đi tới thư mục đó`** · `để đi` trơ trọi cụt nghĩa
+  hẳn trong tiếng Việt, nên câu phải nói rõ đi đâu · `high`. Trước đây tiếng Anh dừng ở "to go" và bản dịch tự bù đích
+  đến; nay tiếng Anh đã tự nói ra đích đó. Vẫn giữ `thư mục đó` chứ không đổi thành `mục ưa thích đó`: mỗi mục ưa thích
+  chính là một thư mục, nên nghĩa y hệt, mà câu tránh được việc lặp cụm ba âm tiết `mục ưa thích` hai lần trong một câu
+  vốn đã mở đầu bằng `menu mục ưa thích`. Động từ `đi tới` là của họ menu Go (`menu.bar.go` = `Đi`, `menu.go.goToPath` =
+  `Đi tới đường dẫn…`, macOS Finder `Go To Location` → `Đi tới vị trí`).
+- **Hàng `0` chỉ còn MỘT khóa: `fileExplorer.navigation.favoritesAddCurrent`** =
+  `Thêm thư mục hiện tại vào mục ưa thích` · `high`. Danh sách phím tắt TRÍCH lại đúng hàng đó để giải thích phím `0`
+  chứ không mô tả lại, nên đọc cùng một giá trị. Trước kia có hai khóa và tiếng Việt vẫn ra trùng nhau từng chữ, vì
+  tiếng Anh chỉ phân biệt chúng bằng mạo từ "the", thứ tiếng Việt không có. ❌ Đừng nghĩ ra cách diễn đạt thứ hai cho
+  danh sách phím tắt. Điều PHẢI giữ tách là so với lệnh thật `commands.favoritesAdd.label` = `Thêm vào mục ưa thích`
+  (không nhắc thư mục nào).
+- **`fileExplorer.navigation.favoritesCantAddHere` nói về CHÍNH thư mục này, lý do đặt sau dấu hai chấm** ·
+  `Thư mục này không thể là mục ưa thích: mục ưa thích chỉ hoạt động trên ổ đĩa và mục chia sẻ đã gắn kết` · `high`. Mở
+  đầu giống hệt hàng chị em `fileExplorer.navigation.favoritesAlreadyAdded` (`Thư mục này đã là mục ưa thích`), nên hai
+  dòng xám đọc thành một cặp. ❌ Bỏ `chỉ có thể trỏ tới`: động từ trỏ buộc các ngôn ngữ biến cách phải chọn cách cho
+  đích đến, còn `hoạt động trên` chỉ là một trạng ngữ nơi chốn phẳng. Không có dấu chấm cuối (đây là chú giải).
+- **`commands.favoritesAdd.description` không còn nhắc "Mục ưa thích của bộ chọn ổ đĩa"** (M3 đã bỏ mục đó khỏi bộ
+  chọn), mà nói thư mục thật sự đi đâu:
+  `Thêm thư mục hiện tại của khung đang chọn vào mục ưa thích, để sau này quay lại đó từ menu mục ưa thích.` · `high`.
 - **already → `đã`** · macOS AppKit `SavePanel` / `Document` (`already exists` → `đã tồn tại`) · `high`.
   `fileExplorer.navigation.favoritesAlreadyAdded` = `Thư mục này đã là mục ưa thích`: câu kể bình thản, không dấu chấm
   (theo tiếng Anh), không dùng `lỗi` hay `không thể`.

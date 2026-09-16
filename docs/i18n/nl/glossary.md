@@ -3503,7 +3503,7 @@ REVIEW FLAG: `waarvan het verplaatsen niet is voltooid` is correct maar iets sti
 move"; een moedertaalspreker mag kijken of de melding lichter kan zonder `de verplaatsing` terug te halen. De zin loopt
 ook zo'n 40 tekens langer dan het Engels: controleer hem in een smalle melding tegen de pseudolocale.
 
-## Het favorietenmenu (`commands.favoritesOpen.label`/`.description`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAddFromMenu.label`, `fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
+## Het favorietenmenu (`commands.favoritesOpen.label`/`.description`, `commands.favoritesOpenByNumber.label`, `commands.favoritesAdd.description`, `fileExplorer.navigation.favoritesAddCurrent`/`.favoritesAlreadyAdded`/`.favoritesCantAddHere`/`.seeFavorites`, `menu.go.showFavorites`, `shortcuts.scope.favoritesMenu`)
 
 ⌃D opent de favorieten als een menu over het actieve paneel: de eerste negen rijen dragen de cijfers 1–9, de laatste rij
 het cijfer `0` en voegt de huidige map toe. De volumekiezer heeft geen favorietensectie meer, alleen nog één bovenste
@@ -3534,13 +3534,15 @@ rij die naar dit menu springt. De term `favorieten` lag al vast in de catalogus
   vallen hier toevallig samen met de drie armen van het Engels. `=0` houdt de „je hebt er nog geen"-tekst zonder cijfer
   (`Bekijk favorieten`), `one` en `other` dragen allebei `{count}`. Geen werkwoordsval zoals bij `is`/`zijn`: een
   imperatief heeft geen onderwerp dat meetelt · `high`.
-- **„current folder" → `huidige map`, zonder lidwoord in de menurij en mét lidwoord in de gedragsregel** · het Engels
-  maakt precies dat onderscheid (`Add current folder to favorites` op de menurij tegenover
-  `Add the current folder to favorites` in de sneltoetsenlijst), en het Nederlands kan het meemaken: de catalogus laat
-  het lidwoord al weg in korte labels (`commands.fileCopyCurrentDirectoryPath.label` → `Kopieer pad van huidige map`,
-  `queryUi.scope.useCurrentFolder` → `Gebruik huidige map`) en macOS doet hetzelfde („Ga naar map in huidige locatie",
-  „Dupliceert onderdelen op huidige locatie") · `high`. In een hele zin blijft het lidwoord staan, zoals
-  `commands.favoritesAdd.description` al doet.
+- **„current folder" → `huidige map`, zonder lidwoord in de menurij en mét lidwoord in een hele zin** · de catalogus
+  laat het lidwoord al weg in korte labels (`commands.fileCopyCurrentDirectoryPath.label` →
+  `Kopieer pad van huidige map`, `queryUi.scope.useCurrentFolder` → `Gebruik huidige map`) en macOS doet hetzelfde („Ga
+  naar map in huidige locatie", „Dupliceert onderdelen op huidige locatie") · `high`. In een hele zin blijft het
+  lidwoord staan, zoals `commands.favoritesAdd.description` al doet.
+- **De `0`-rij heeft nog maar ÉÉN sleutel: `fileExplorer.navigation.favoritesAddCurrent`**
+  (`Voeg huidige map aan favorieten toe`) · `high`. De sneltoetsenlijst CITEERT die rij om de `0`-toets uit te leggen en
+  leest dus dezelfde waarde. ❌ Geen tweede, lidwoord-dragende formulering meer verzinnen voor die lijst; het verschil
+  dat wél telt, is dat met het echte commando `commands.favoritesAdd.label` (`Voeg aan favorieten toe`).
 - **Het scheidbare partikel gaat naar het eind, ook met een lijdend voorwerp ervoor**:
   `Voeg huidige map aan favorieten toe` · de knopregel van de stijlgids § Formality mechanics, en macOS AppKit zegt het
   net zo („Voeg het lettertype aan de stijl toe") · `high`. Zo blijft de rij in dezelfde familie als
@@ -3564,9 +3566,19 @@ rij die naar dit menu springt. De term `favorieten` lag al vast in de catalogus
   catalogus en zou naast al het bestaande `losgekoppeld`/`aangekoppeld` een tweede term voor één handeling zijn. Het
   bijvoeglijke `gekoppelde` is dragend: het onderscheidt een share die de Mac zelf aankoppelt van een server waarmee
   Cmdr zelf verbindt. ❌ Geen protocolnamen (`SMB`, `MTP`, `ADB`) erbij halen; het Engels vermijdt ze bewust.
-- **„point at" → `wijzen naar`** · de catalogus rendert „points to" al zo (`errors.listing.notAFolder.suggestion`: „zorg
-  dat het naar een map wijst"; `fileExplorer.selectionInfo.symlinkHint`) · `high`. De lange voorzetselgroep komt ná het
-  werkwoord (`kunnen alleen wijzen naar …`), wat in een tooltip natuurlijker loopt dan de werkwoordfinale variant.
+- **`favoritesCantAddHere` gaat over DEZE map, de reden komt na de dubbele punt** ·
+  `Deze map kan geen favoriet worden: favorieten werken alleen op schijven en gekoppelde netwerkshares` · `high`. Zelfde
+  onderwerp als de zusterrij `fileExplorer.navigation.favoritesAlreadyAdded` („Deze map staat al in je favorieten"), dus
+  de twee grijze regels lezen als een paar. ❌ Niet meer `wijzen naar`: dat dwong elke verbuigende taal een naamval voor
+  het doel te kiezen en maakte de regel fors langer dan het Engels; `werken op` is een vlakke plaatsbepaling. Geen punt
+  aan het eind (tooltip), geen `fout` of `mislukt`.
+- **`commands.favoritesAdd.description` noemt niet meer de favorietensectie van de wisselaar** (die M3 heeft
+  weggehaald), maar waar de map echt heen gaat:
+  `Voeg de huidige map van het actieve paneel toe aan je favorieten, zodat je er via het favorietenmenu weer terugkomt.`
+  · `high`.
+- **`commands.favoritesOpen.description` blijft ongewijzigd**: het Engels zei eerst alleen „press a number to go", en
+  deze vertaling vulde de bestemming al aan („om naar die favoriet te springen"). Het Engels noemt die bestemming nu
+  zelf, dus de Nederlandse zin klopte al en alleen de `sourceHash` liep achter · `high`.
 - Geen apostrof in een van de tien waarden, dus niets te verdubbelen voor ICU, en geen enkele waarde is identiek aan het
   Engels, dus geen `sameAsSourceJustification` nodig.
 

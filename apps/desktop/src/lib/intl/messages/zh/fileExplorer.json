@@ -1237,9 +1237,9 @@
   "@fileExplorer.navigation.favoritesAlreadyAdded": {
     "sourceHash": "731a929"
   },
-  "fileExplorer.navigation.favoritesCantAddHere": "个人收藏只能指向磁盘或已装载的共享上的文件夹",
+  "fileExplorer.navigation.favoritesCantAddHere": "这个文件夹不能加入个人收藏：个人收藏只能用在磁盘和已装载的共享上",
   "@fileExplorer.navigation.favoritesCantAddHere": {
-    "sourceHash": "07c0e12"
+    "sourceHash": "10c98b3"
   },
   "fileExplorer.navigation.seeFavorites": "{count, plural, =0 {查看个人收藏} other {查看 {count} 项个人收藏}}",
   "@fileExplorer.navigation.seeFavorites": {
