@@ -109,7 +109,7 @@ const needsPassword: WriteOperationError = {
 function failInForeground(dialogs: ReturnType<typeof makeState>, operationId: string, error = ioError): void {
   dialogs.startTransferProgress(copyProps())
   setForegroundOperationId(operationId)
-  dialogs.handleTransferError(error)
+  dialogs.handleTransferError(error, null)
   clearForegroundOperation(operationId)
 }
 
@@ -136,7 +136,7 @@ describe('foreground failure handover', () => {
     const dialogs = makeState()
     dialogs.startTransferProgress(copyProps())
 
-    dialogs.handleTransferError(ioError)
+    dialogs.handleTransferError(ioError, null)
 
     expect(getForegroundFailureId()).toBeNull()
   })
@@ -157,7 +157,7 @@ describe('foreground failure handover', () => {
     // explicit Dismiss. Closing an unrelated error dialog must not take it.
     const dialogs = makeState()
     dialogs.startTransferProgress(copyProps())
-    dialogs.handleTransferError(ioError)
+    dialogs.handleTransferError(ioError, null)
 
     dialogs.handleTransferErrorClose()
 
@@ -173,7 +173,7 @@ describe('foreground failure handover', () => {
     dialogs.startTransferProgress(copyProps())
     setForegroundOperationId('op-7')
 
-    dialogs.handleTransferError(needsPassword)
+    dialogs.handleTransferError(needsPassword, null)
 
     expect(dialogs.showArchivePasswordDialog).toBe(true)
     expect(getForegroundFailureId()).toBeNull()

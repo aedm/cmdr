@@ -100,6 +100,84 @@ pub fn chunked_copy_with_metadata(
     Ok(bytes)
 }
 
+/// Test seam: parks a chunked copy part-way through a file, so a test can pull
+/// the drive out from under a transfer that is mid-write.
+///
+/// ❗ Process-global, not thread-local like the other seams here: the engine runs
+/// inside `spawn_blocking`, so the copy is on a different thread from the test
+/// that installed the park. One park at a time; the guard resets on drop, and the
+/// parked copy gives up on its own after [`PARK_CAP`] so a test that dies can't
+/// wedge the suite.
+#[cfg(test)]
+pub(crate) mod chunk_park {
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+    use std::time::{Duration, Instant};
+
+    /// How long a parked copy waits for its release before carrying on anyway.
+    const PARK_CAP: Duration = Duration::from_secs(30);
+    const NEVER: u64 = u64::MAX;
+
+    static PARK_AFTER: AtomicU64 = AtomicU64::new(NEVER);
+    static PARKED_AT: AtomicU64 = AtomicU64::new(0);
+    static IS_PARKED: AtomicBool = AtomicBool::new(false);
+    static RELEASED: AtomicBool = AtomicBool::new(false);
+
+    /// Arms the park. Uninstalls it on drop, released or not.
+    pub(crate) struct ChunkPark;
+
+    /// Parks the next chunked copy once it has written at least `bytes`.
+    pub(crate) fn park_after(bytes: u64) -> ChunkPark {
+        PARKED_AT.store(0, Ordering::SeqCst);
+        IS_PARKED.store(false, Ordering::SeqCst);
+        RELEASED.store(false, Ordering::SeqCst);
+        PARK_AFTER.store(bytes, Ordering::SeqCst);
+        ChunkPark
+    }
+
+    impl ChunkPark {
+        /// Blocks until a copy is parked, and answers how many bytes it had
+        /// written. `None` if nothing parked within `timeout`.
+        pub(crate) fn wait_until_parked(&self, timeout: Duration) -> Option<u64> {
+            let deadline = Instant::now() + timeout;
+            while Instant::now() < deadline {
+                if IS_PARKED.load(Ordering::SeqCst) {
+                    return Some(PARKED_AT.load(Ordering::SeqCst));
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            None
+        }
+
+        /// Lets the parked copy carry on.
+        pub(crate) fn release(&self) {
+            RELEASED.store(true, Ordering::SeqCst);
+        }
+    }
+
+    impl Drop for ChunkPark {
+        fn drop(&mut self) {
+            PARK_AFTER.store(NEVER, Ordering::SeqCst);
+            RELEASED.store(true, Ordering::SeqCst);
+            IS_PARKED.store(false, Ordering::SeqCst);
+        }
+    }
+
+    pub(super) fn park_if_due(written: u64) {
+        if written < PARK_AFTER.load(Ordering::SeqCst) {
+            return;
+        }
+        // One park per arming: the copy that got here owns it.
+        PARK_AFTER.store(NEVER, Ordering::SeqCst);
+        PARKED_AT.store(written, Ordering::SeqCst);
+        IS_PARKED.store(true, Ordering::SeqCst);
+        let deadline = Instant::now() + PARK_CAP;
+        while !RELEASED.load(Ordering::SeqCst) && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        IS_PARKED.store(false, Ordering::SeqCst);
+    }
+}
+
 /// Copies file data in chunks, checking cancellation between each chunk.
 fn copy_data_chunked(
     source: &Path,
@@ -135,6 +213,11 @@ fn copy_data_chunked(
                 message: "Operation cancelled by user".to_string(),
             });
         }
+
+        // Test seam: hold the copy open mid-file so a test can take the drive
+        // away under it. No-op in production, which installs no park.
+        #[cfg(test)]
+        chunk_park::park_if_due(total_bytes);
 
         let bytes_read = src_file.read(&mut buffer).map_err(|e| WriteOperationError::ReadError {
             path: source.display().to_string(),

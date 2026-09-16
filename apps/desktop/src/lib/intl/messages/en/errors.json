@@ -1776,19 +1776,23 @@
   "errors.write.deviceDisconnected.sided.source.move": "{volumeName} was disconnected after Cmdr moved {done} of {total} files to {counterpart}. The rest are still on the drive.",
   "@errors.write.deviceDisconnected.sided.destination.copy": {
     "description": "Body of the copy error dialog when the drive files were being copied TO was disconnected mid-copy. Plain text. This is a raw errors.* string (no ICU). The literals {volumeName}, {done}, and {total} are do-not-translate placeholders, replaced at runtime with the drive's name and two already-formatted counts (files copied, files in total). The reassurance at the end is the point of the sentence: the user's own files were never touched.",
-    "screenshot": "transfer-error-device_disconnected.png"
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.write.deviceDisconnected.sided.destination.move": {
     "description": "Body of the move error dialog when the drive files were being moved TO was disconnected before the move finished. Plain text. This is a raw errors.* string (no ICU). The literals {volumeName} (the drive that was disconnected) and {counterpart} (the drive or disk the files came from, where they all still are) are do-not-translate placeholders. No counts here on purpose: a move that stops keeps every original, so there is nothing partial to report.",
-    "screenshot": "transfer-error-device_disconnected.png"
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.write.deviceDisconnected.sided.source.copy": {
     "description": "Body of the copy error dialog when the drive files were being copied FROM was disconnected mid-copy. Plain text. This is a raw errors.* string (no ICU). The literals {volumeName} (the disconnected drive), {done} and {total} (already-formatted file counts), and {counterpart} (the drive or disk the copies landed on) are do-not-translate placeholders. \"The rest\" means the files that hadn't been copied yet.",
-    "screenshot": "transfer-error-device_disconnected.png"
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.write.deviceDisconnected.sided.source.move": {
     "description": "Body of the move error dialog when the drive files were being moved FROM was disconnected mid-move. Plain text. This is a raw errors.* string (no ICU). Same placeholders as the copy variant above: {volumeName}, {done}, {total}, {counterpart}, all do-not-translate. \"The rest are still on the drive\" is the reassurance: nothing was deleted that hadn't arrived.",
-    "screenshot": "transfer-error-device_disconnected.png"
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.write.moveNotConfirmed.title": "Couldn't confirm the move",
   "errors.write.moveNotConfirmed.message.named": "Cmdr couldn't confirm the moved files were saved on {volumeName}, so it kept your originals where they were.",

@@ -68,8 +68,9 @@ The full top-level inventory is here:
   `cancellable.rs`, `rollback.rs`, `durability.rs`.
   `rollback.rs` wears two hats: the history dialog's reversal, and the executor the operation-log engine injects.
 - Vocabulary and edges: `types.rs` (+ `types/events.rs`, every `#[tauri_specta(event_name)]` payload, re-exported
-  through `types`), `event_sinks.rs`, `error_classification.rs`, `mutation_error.rs` (the typed refusal an instant
-  mutation returns), `validation.rs`, `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. Remote
+  through `types`), `event_sinks.rs`, `error_classification.rs`, `transfer_sides.rs` (the two volumes a transfer runs
+  between, the mount-table question, and the one boundary that words a stop; tests in `transfer_sides_tests.rs`),
+  `mutation_error.rs` (the typed refusal an instant mutation returns), `validation.rs`, `analytics.rs`, `eta.rs`. Journaling: `journal.rs`, `journal_search.rs`. Remote
   archive I/O: `archive_remote_edit.rs`, `scratch_dir.rs`. Entry points: `create/` + `create.rs`, `rename/` +
   `rename.rs`, `paste_clipboard.rs`, `routing.rs` (the one routing every cross-volume transfer takes:
   `start_volume_{copy,move,compress}`). `source_binding.rs` is the optional set of sources an op may touch. Fixtures:
@@ -103,6 +104,16 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
 - **`error_classification.rs` classifies from `errno` / `ErrorKind` only, never the message**. The native copy calls
   on both platforms (`macos_copy`, `linux_copy`) share `classify_copy_io_error`, which also picks the path: a refused
   write names the destination, anything else the source. One table, so the platforms can't drift apart again.
+- **A vanished DRIVE is decided by the mount table, not by the errno** (`transfer_sides.rs`). A drive pulled mid-write
+  answers `ENOENT`, `EIO`, `EBADF`, or `ENXIO` depending on which call was in flight, and every one of those would read
+  to the user as a missing file or a broken disk. So each transfer carries `TransferSides` (both volumes' id, name, and
+  root, captured when it STARTS — a volume that vanishes is out of the volume list and the mount table before an error
+  is worded), and one boundary function, `transfer_stop_event`, rewrites what an engine answered into
+  `DeviceDisconnected { path, side }` when that side's root has left, and attaches `progress_at_stop` from the status
+  cache while the operation is still registered. `ENXIO` joins `ENODEV` as typed device evidence. A `Cancelled` is never
+  rewritten (the user stopped it), and an unreadable mount table names nobody. Every engine's terminal emit and the
+  manager's safety net go through it, so the two can't disagree. The test seam answers the mount table per thread
+  (`transfer_sides::test_hook`), which is how a test pulls a drive without one.
 - **`validation.rs`'s `ensure_destination_dir` runs AFTER `validate_destination_not_inside_source`**, so creating a
   missing destination (and its ancestors) can never materialize a folder inside a source. The volume-aware pipelines
   mirror both the behavior and the order with `Volume::create_directory_all(dest)`; see `../volume/DETAILS.md`

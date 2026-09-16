@@ -130,6 +130,17 @@ test-group = 'disk-image'
 slow-timeout = { period = "30s", terminate-after = 1 }
 
 [[profile.default.overrides]]
+# The transfer pins on a real HFS+ image (`file_system::write_operations::transfer::real_image`,
+# macOS-only, `#[ignore]`d): a real local copy and move run on their own thread, park mid-file at
+# the chunk seam, and the image is `detach -force`d under them. Same group and cap as the harness
+# tests above: the park itself is bounded at 30 s by `chunk_park::PARK_CAP`, and the runner SIGKILLs
+# any single `hdiutil` call at 30 s, so a wedged tool is caught there and this cap is the backstop.
+# allowed-unmatched-nextest-filter: macos-only, hdiutil and diskutil have no Linux counterpart
+filter = 'test(file_system::write_operations::transfer::real_image::)'
+test-group = 'disk-image'
+slow-timeout = { period = "60s", terminate-after = 1 }
+
+[[profile.default.overrides]]
 # The unmount approver's pins on real APFS/HFS+ images (`volumes::unmount_approver::real_image`,
 # macOS-only, `#[ignore]`d): a real DiskArbitration approval session answers real `diskutil`
 # unmounts of the test's own image.

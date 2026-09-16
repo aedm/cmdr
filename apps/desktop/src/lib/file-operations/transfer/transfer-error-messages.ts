@@ -520,21 +520,6 @@ const pathAndMessageTypes = new Set<WriteOperationError['type']>([
  * union rather than of the function.
  */
 function variantDetailLines(error: WriteOperationError): string[] {
-  // The drive's identity is the thing worth having here: the volume list has
-  // already dropped it, so the details block is the only place its name and id
-  // survive. A backend disconnect with no typed side is the plain path line it
-  // has always been.
-  if (error.type === 'device_disconnected') {
-    return error.side
-      ? [`Path: ${error.path}`, `Volume: ${error.side.volumeName} (${error.side.volumeId})`, `Side: ${error.side.role}`]
-      : [`Path: ${error.path}`]
-  }
-  if (error.type === 'move_not_confirmed') {
-    const lines = [`Path: ${error.path}`]
-    if (error.errno !== null) lines.push(`Errno: ${String(error.errno)}`)
-    if (error.volumeName) lines.push(`Volume: ${error.volumeName}`)
-    return lines
-  }
   if (error.type === 'read_only_device') {
     return error.deviceName ? [`Path: ${error.path}`, `Device: ${error.deviceName}`] : [`Path: ${error.path}`]
   }
@@ -581,12 +566,40 @@ function variantDetailLines(error: WriteOperationError): string[] {
 }
 
 /**
+ * The details for the two variants a vanished drive raises, or `null` for
+ * everything else.
+ *
+ * The drive's identity is the thing worth having here: the volume list has
+ * already dropped it, so this block is the only place its name and id survive a
+ * bug report. A backend disconnect with no typed side (MTP, SMB) keeps the plain
+ * path line it has always had. Split out so `variantDetailLines` stays within
+ * its complexity ceiling.
+ */
+function driveDetailLines(error: WriteOperationError): string[] | null {
+  if (error.type === 'device_disconnected') {
+    return error.side
+      ? [`Path: ${error.path}`, `Volume: ${error.side.volumeName} (${error.side.volumeId})`, `Side: ${error.side.role}`]
+      : [`Path: ${error.path}`]
+  }
+  if (error.type === 'move_not_confirmed') {
+    const lines = [`Path: ${error.path}`]
+    if (error.errno !== null) lines.push(`Errno: ${String(error.errno)}`)
+    if (error.volumeName) lines.push(`Volume: ${error.volumeName}`)
+    return lines
+  }
+  return null
+}
+
+/**
  * Returns the technical details for an error (path, raw error message, etc.)
  */
 export function getTechnicalDetails(error: WriteOperationError): string {
   const lines: string[] = []
+  const drive = driveDetailLines(error)
 
-  if (pathOnlyTypes.has(error.type)) {
+  if (drive) {
+    lines.push(...drive)
+  } else if (pathOnlyTypes.has(error.type)) {
     lines.push(`Path: ${(error as { path: string }).path}`)
   } else if (pathAndMessageTypes.has(error.type)) {
     lines.push(`Path: ${(error as { path: string }).path}`)

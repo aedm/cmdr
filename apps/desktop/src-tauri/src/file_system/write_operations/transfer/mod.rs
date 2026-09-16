@@ -50,6 +50,9 @@ pub(crate) mod liveness_test_support;
 mod move_integration_test;
 #[cfg(test)]
 mod self_collision_tests;
+// The real-detach pins (macOS, `#[ignore]`d, run by `pnpm check disk-images`).
+#[cfg(test)]
+mod real_image;
 #[cfg(test)]
 mod transaction_integration_test;
 #[cfg(test)]

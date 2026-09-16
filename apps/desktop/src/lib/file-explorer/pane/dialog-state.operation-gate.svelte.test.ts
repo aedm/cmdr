@@ -148,11 +148,14 @@ describe('a second operation while the progress dialog is up', () => {
     // "transfer-progress is open" here would try to close a dialog that isn't up.
     const { dialogs } = makeState()
     dialogs.startTransferProgress(copyProps({ sourcePaths: ['/Users/me/secret.zip/inner/report.pdf'] }))
-    dialogs.handleTransferError({
-      type: 'archive_needs_password',
-      path: '/Users/me/secret.zip/inner/report.pdf',
-      wrongAttempt: false,
-    })
+    dialogs.handleTransferError(
+      {
+        type: 'archive_needs_password',
+        path: '/Users/me/secret.zip/inner/report.pdf',
+        wrongAttempt: false,
+      },
+      null,
+    )
     expect(dialogs.showTransferProgressDialog).toBe(false)
 
     const verdict = dialogs.startTransferProgress(copyProps())

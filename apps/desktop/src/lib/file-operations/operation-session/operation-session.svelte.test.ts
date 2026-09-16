@@ -276,7 +276,12 @@ describe('derived read state', () => {
 
     fanout._testEmit({
       kind: 'error',
-      event: { operationId: 'a', operationType: 'copy', error: { type: 'source_not_found', path: '/src' } },
+      event: {
+        operationId: 'a',
+        operationType: 'copy',
+        error: { type: 'source_not_found', path: '/src' },
+        progressAtStop: null,
+      },
     })
     expect(session.settled).toBe(true)
     expect(session.outcome?.kind).toBe('error')

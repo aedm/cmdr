@@ -647,6 +647,29 @@ arbitrated at write time. An unknown check contributes no names, so nothing is p
 render for it — leaving the default `stop`, which prompts per clash. ❌ Don't "helpfully" default an unknown check to a
 non-prompting policy: that would turn "nobody looked" into a silent overwrite.
 
+## What the error dialog says when a drive was pulled
+
+`device_disconnected` is the one write error whose copy is about WHERE THE USER'S FILES ARE, not about what went wrong,
+because it's read by someone who has just pulled a stick mid-transfer and is worried. Three facts in order: which drive
+went, how far the transfer got, and what's where now.
+
+The backend supplies both: `error.side` (`DisconnectedSide`: role, volume id, the volume's name, and the counterpart
+volume's name) and `WriteErrorEvent.progressAtStop` (files and bytes done, plus a move's `sourcesRemoved` /
+`sourcesLeft`). ❗ Every one of those is captured when the transfer STARTS — the volume list has already dropped an
+unmounted volume by the time this renders, so ❌ nothing here looks a name up or infers a side from a path.
+
+`progressAtStop` rides on the EVENT, not on the error, so it travels as its own argument:
+`transfer-progress-state` → `onError(error, progressAtStop)` → `dialog-state.openTransferError` → `TransferErrorPropsData`
+→ `TransferErrorDialog` → `FallbackErrorContent` → `getUserFriendlyMessage(error, op, progressAtStop)`. A surface that
+kept only the error (a retained failure in the queue, `queue/failure-reason.ts`) passes nothing and gets the sentence
+that needs no counts, which is why the sided keys fall back rather than rendering "0 of 0 files".
+
+Four sided sentences (`errors.write.deviceDisconnected.sided.<role>.<copy|move>`) plus the plain per-op ones for a
+backend session that dropped with no typed side (MTP, SMB). The move-to-the-drive sentence carries no counts on
+purpose: a move that stops keeps every original, so there is no partial state to report. `move_not_confirmed` is its
+neighbour: the move's closing flush couldn't prove the copies were on disk, so every original stayed put, and the copy
+says exactly that.
+
 ## Gotchas
 
 - **Always use batch IPC for selection lookups.** `get_paths_at_indices` (paths only) and `get_files_at_indices` (full

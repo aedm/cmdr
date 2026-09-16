@@ -718,7 +718,8 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
               message: `Failed to start ${config.operationType}: ${String(err)}`,
             }
       close(() => {
-        config.onError(error)
+        // The operation never started, so there is no progress to report.
+        config.onError(error, null)
       }, false)
     }
   }

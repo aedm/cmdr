@@ -107,7 +107,7 @@ describe('archive-password interception', () => {
     const { dialogs } = makeState()
     dialogs.startTransferProgress(copyProps())
 
-    dialogs.handleTransferError(needsPassword(false))
+    dialogs.handleTransferError(needsPassword(false), null)
 
     expect(dialogs.showArchivePasswordDialog).toBe(true)
     expect(dialogs.showTransferErrorDialog).toBe(false)
@@ -129,7 +129,7 @@ describe('archive-password interception', () => {
     const { dialogs } = makeState()
     dialogs.startTransferProgress(copyProps())
 
-    dialogs.handleTransferError(needsPassword(true))
+    dialogs.handleTransferError(needsPassword(true), null)
 
     expect(dialogs.archivePasswordProps?.wrongAttempt).toBe(true)
   })
@@ -139,7 +139,7 @@ describe('archive-password interception', () => {
     dialogs.startTransferProgress(copyProps())
 
     const ioError: WriteOperationError = { type: 'io_error', path: '/x', message: 'boom' }
-    dialogs.handleTransferError(ioError)
+    dialogs.handleTransferError(ioError, null)
 
     expect(dialogs.showArchivePasswordDialog).toBe(false)
     expect(dialogs.showTransferErrorDialog).toBe(true)
@@ -151,7 +151,7 @@ describe('archive-password submit → re-dispatch', () => {
   it('stores the password and re-dispatches the same op with a fresh scan', async () => {
     const { dialogs } = makeState()
     dialogs.startTransferProgress(copyProps())
-    dialogs.handleTransferError(needsPassword(false))
+    dialogs.handleTransferError(needsPassword(false), null)
 
     dialogs.handleArchivePasswordSubmit('hunter2')
 
@@ -172,7 +172,7 @@ describe('archive-password cancel → settle', () => {
   it('forgets the password and settles like a dismissed transfer (nothing stuck)', () => {
     const { dialogs, rightPane } = makeState()
     dialogs.startTransferProgress(copyProps())
-    dialogs.handleTransferError(needsPassword(false))
+    dialogs.handleTransferError(needsPassword(false), null)
 
     dialogs.handleArchivePasswordCancel()
 
@@ -262,7 +262,7 @@ describe('archive-password mirror for cmdr://state', () => {
     const { dialogs } = makeState()
     dialogs.startTransferProgress(copyProps())
 
-    dialogs.handleTransferError(needsPassword(true))
+    dialogs.handleTransferError(needsPassword(true), null)
 
     expect(notifyArchivePasswordPrompt).toHaveBeenCalledWith({
       archiveName: 'secret.zip',
@@ -291,7 +291,7 @@ describe('archive-password mirror for cmdr://state', () => {
   it('clears the mirror on cancel, so nothing advertises a question that is gone', () => {
     const { dialogs } = makeState()
     dialogs.startTransferProgress(copyProps())
-    dialogs.handleTransferError(needsPassword(false))
+    dialogs.handleTransferError(needsPassword(false), null)
 
     dialogs.handleArchivePasswordCancel()
 
@@ -305,7 +305,7 @@ describe('archive-password supplied over MCP', () => {
   it('settles a transfer instead of re-dispatching it, so no write starts', () => {
     const { dialogs, rightPane } = makeState()
     dialogs.startTransferProgress(copyProps())
-    dialogs.handleTransferError(needsPassword(false))
+    dialogs.handleTransferError(needsPassword(false), null)
 
     dialogs.confirmOpenDialog('archive-password')
 
@@ -325,7 +325,7 @@ describe('archive-password supplied over MCP', () => {
     // and clearing here would make the follow-up copy prompt all over again.
     const { dialogs } = makeState()
     dialogs.startTransferProgress(copyProps())
-    dialogs.handleTransferError(needsPassword(false))
+    dialogs.handleTransferError(needsPassword(false), null)
 
     dialogs.confirmOpenDialog('archive-password')
 

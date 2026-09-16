@@ -145,10 +145,10 @@ describe('createTransferProgressState: progress + complete', () => {
     const { state, config } = await startedState()
     if (!listeners.error) throw new Error('error subscriber never registered')
     const error: WriteOperationError = { type: 'io_error', path: '/src/file.txt', message: 'boom' }
-    listeners.error({ operationId: 'op-1', operationType: 'copy', error })
+    listeners.error({ operationId: 'op-1', operationType: 'copy', error, progressAtStop: null })
     expect(state.operationSettled).toBe(true)
     flushSync()
-    expect(config.onError).toHaveBeenCalledWith(error)
+    expect(config.onError).toHaveBeenCalledWith(error, null)
   })
 
   it('ignores events for a different operation id', async () => {
@@ -247,7 +247,7 @@ describe('createTransferProgressState: birth', () => {
     const state = makeState(config)
     state.start()
     await settle()
-    expect(config.onError).toHaveBeenCalledWith(expect.objectContaining({ type: 'permission_denied' }))
+    expect(config.onError).toHaveBeenCalledWith(expect.objectContaining({ type: 'permission_denied' }), null)
   })
 
   it('wraps a non-structured dispatch failure as an io_error', async () => {
@@ -256,7 +256,7 @@ describe('createTransferProgressState: birth', () => {
     const state = makeState(config)
     state.start()
     await settle()
-    expect(config.onError).toHaveBeenCalledWith(expect.objectContaining({ type: 'io_error' }))
+    expect(config.onError).toHaveBeenCalledWith(expect.objectContaining({ type: 'io_error' }), null)
   })
 })
 

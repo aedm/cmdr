@@ -166,11 +166,14 @@ describe('adopting an operation into the progress dialog', () => {
     // prompt, and `transferProgressProps` is what the submit re-dispatches.
     const { dialogs } = makeState()
     dialogs.startTransferProgress(archiveCopyProps())
-    dialogs.handleTransferError({
-      type: 'archive_needs_password',
-      path: '/Users/me/secret.zip/inner/report.pdf',
-      wrongAttempt: false,
-    })
+    dialogs.handleTransferError(
+      {
+        type: 'archive_needs_password',
+        path: '/Users/me/secret.zip/inner/report.pdf',
+        wrongAttempt: false,
+      },
+      null,
+    )
     expect(dialogs.showTransferProgressDialog).toBe(false)
     expect(dialogs.transferProgressProps).not.toBeNull()
 
@@ -185,11 +188,14 @@ describe('adopting an operation into the progress dialog', () => {
     // must still copy the ARCHIVE's file to the archive copy's destination.
     const { dialogs } = makeState()
     dialogs.startTransferProgress(archiveCopyProps())
-    dialogs.handleTransferError({
-      type: 'archive_needs_password',
-      path: '/Users/me/secret.zip/inner/report.pdf',
-      wrongAttempt: false,
-    })
+    dialogs.handleTransferError(
+      {
+        type: 'archive_needs_password',
+        path: '/Users/me/secret.zip/inner/report.pdf',
+        wrongAttempt: false,
+      },
+      null,
+    )
     dialogs.foregroundOperation(adopted())
 
     dialogs.handleArchivePasswordSubmit('hunter2')
@@ -327,10 +333,10 @@ describe("an adopted view's outcomes touch no pane", () => {
     dialogs.foregroundOperation(adopted())
     const error: WriteOperationError = { type: 'io_error', path: '/x', message: 'boom' }
 
-    dialogs.handleAdoptedError(error)
+    dialogs.handleAdoptedError(error, null)
 
     expect(dialogs.showTransferErrorDialog).toBe(true)
-    expect(dialogs.transferErrorProps).toEqual({ operationType: 'copy', error })
+    expect(dialogs.transferErrorProps).toEqual({ operationType: 'copy', error, progressAtStop: null })
     expect(rightPane.spies.clearSelection).not.toHaveBeenCalled()
     expect(refreshListing).not.toHaveBeenCalled()
   })

@@ -136,6 +136,7 @@ describe('createTransferProgressState: foreground-operation ownership', () => {
       operationId: 'op-1',
       operationType: 'copy',
       error: { type: 'io_error', path: '/src/file.txt', message: 'boom' },
+      progressAtStop: null,
     })
     flushSync()
     state.destroy()
