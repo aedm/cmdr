@@ -38,7 +38,7 @@ vanishes, and can't say what holds a drive it couldn't eject.
   sibling that stays mounted is a refusal, and a refusal or timeout resumes what was stopped.
 - A refusal names its holders: an app, several apps, a disk image, Cmdr itself, or macOS.
 
-**Status.** M0–M8 are done, and M9 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
+**Status.** M0–M9 are done, and M10 is next. Planned 2026-09-14, with adversarial review rounds 1 and 2 folded in the
 same day. It combines the earlier DiskArbitration eject plan (review rounds 1–3 and the approval-hook spike) with the
 drive-safety decisions below.
 
@@ -54,10 +54,14 @@ drive-safety decisions below.
 - **M7, index delete gates (done)**: `fbc39db0f` and `f649ed582` (the two prerequisite splits), `acbbdb78c` (the
   presence seam, the typed listing, `MissingRows`, and the delete generation), `f95c1f482` (boot-disk verification),
   `3575d2395` (the reconcile doc), `409fa913a` (`ScanRoot::Rebuild`), `95e79a962` (per-event deletes).
-- **M8, completion gates, `Abandoned` marks, and the rebuild marker (done)**: `c18fa649a` (the walk's own gate: no
-  marks and a typed vanish), `60b589fa9` (the completion gates, the marker, the launch route, the start-time reopen),
+- **M8, completion gates, `Abandoned` marks, and the rebuild marker (done)**: `c18fa649a` (the walk's own gate: no marks
+  and a typed vanish), `60b589fa9` (the completion gates, the marker, the launch route, the start-time reopen),
   `33015f3d0` (docs, and M1's vanish pin flipped).
-- **Next, M9**: vanish causes and the index notice.
+- **M9, vanish causes and the index notice (done)**: `9a5aeac90` (the pure cause machine), `f8d1e471e` (the callbacks,
+  the eject-approval registration, the `Vanish` stop off the queue, and the `DidUnmount` hook standing down),
+  `4c1017339` (the guarded `/sbin/umount` verb and the real-image pin), `48d114b40` (the toast, its key, and the
+  frontend docs), `fa7c7803c` (the backend docs).
+- **Next, M10**: transfers on a vanished drive.
 - **Landed prerequisites**: the refusal retry (`unmount_tool::settle_with_retries`), the `NotEjectable` preflight, the
   eject deadlines, `TOOL_TIMEOUT` at 30 s, and the index-stop wait (`Index::stop_removable_volume` answers
   `RemovableStop`, waiting on `VolumeHold`).
@@ -944,8 +948,9 @@ locale).
 
 **Drafts for David's later review** (they don't block; key families follow each surface's existing family):
 
-- Index notice (M9), an info toast: "{volumeName} was disconnected while Cmdr was updating its index. The next scan of
-  this drive starts from scratch, so its folder sizes are right again."
+- Index notice (M9, LANDED as `indexing.needsFreshScan.afterDisconnect`, whose token is `{name}`), an info toast:
+  "{name} was disconnected while Cmdr was updating its index. The next scan of this drive starts from scratch, so its
+  folder sizes are right again." Still owed its ten translations, so `desktop-i18n-coverage` is red for this one key.
 - Transfer, copy to the drive (M10): "{volumeName} was disconnected after Cmdr copied {done} of {total} files to it.
   Your originals are still on your Mac. Connect the drive and copy the rest again; Cmdr removes the unfinished file it
   left there."
@@ -1326,12 +1331,13 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     `outstanding` carries a `cfg_attr(not(test), expect(dead_code))` naming the rebuild marker as its production reader
     — M8 removes that attribute when it reads the count.
   - Every gate calls `drive_seen` on a `Some(true)`, so M8 only has to ADD the marker write, never re-plumb presence.
-- **❗ M1's vanish pin did NOT flip in M7, and the plan expected it to.** `a_drive_that_vanishes_mid_scan_is_stamped_
-  complete_with_every_row_gone_today` still passes unchanged (`pnpm check disk-images --include-slow`, green). That pin
-  drives a FRESH `ScanRoot::Volume` scan, so its rows were never written rather than deleted by a gated path: the walk
-  parks after five directories, the image detaches, and the walk reads nothing more. No M7 gate is on that route.
-  **Both halves of that pin are M8's**: the completion gate is what stops the stamp, and the rebuild marker is what
-  makes the re-attach heal. Expect to flip it with the completion work, not before.
+- **❗ M1's vanish pin did NOT flip in M7, and the plan expected it to.**
+  `a_drive_that_vanishes_mid_scan_is_stamped_ complete_with_every_row_gone_today` still passes unchanged
+  (`pnpm check disk-images --include-slow`, green). That pin drives a FRESH `ScanRoot::Volume` scan, so its rows were
+  never written rather than deleted by a gated path: the walk parks after five directories, the image detaches, and the
+  walk reads nothing more. No M7 gate is on that route. **Both halves of that pin are M8's**: the completion gate is
+  what stops the stamp, and the rebuild marker is what makes the re-attach heal. Expect to flip it with the completion
+  work, not before.
 - **Landmines**:
   - ❌ `clear_index` for invalidation.
   - ❌ An unconditional `clear_unreadable_cause` or a `COUNT` over `unreadable_cause` at start: both scan the whole
@@ -1374,23 +1380,25 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
 - **Landmines**:
   - A raw `umount` racing Cmdr's own eject: the flight's resume must find the volume unlisted and do nothing.
   - The toast fires once per marker write, not per launch.
-  - The `DidUnmount` hook's stop already releases through the gate with `INDEX_RELEASE_WAIT`
-    (`volumes/watcher.rs::stop_local_external_index`); the vanish path replaces it with owner `Vanish` and
-    `VANISH_STOP_WAIT`, and its `volume_kind` pre-check goes with it.
+  - **As landed, the `DidUnmount` hook's stop stands down only when the approver is INSTALLED**
+    (`unmount_approver::is_installed`), rather than being replaced outright. It keeps `INDEX_RELEASE_WAIT` and its
+    `volume_kind` pre-check, and stays the whole post-unmount cleanup on a Mac where the approver couldn't install —
+    which is also the only place the `WillUnmount` fallback runs. Removing it unconditionally would leave that Mac with
+    no post-unmount stop at all, and the cause machine can only stop a volume a `saw_volume` feed recorded.
   - **M6 landed the callbacks `causes.rs` feeds off**:
     `Approver::{on_unmount_ask, on_appeared, on_disappeared, on_volume_path_cleared}` in
     `unmount_approver/callbacks.rs`, each already fed in DA's delivery order on the one serial queue. `records.rs`
     already tracks the pending-unmount volumes per BSD node and per whole unit, and already clears the gate's flags on
     `Disappeared` and on a cleared volume path; the cause machine reads the same events.
   - **M8 landed the marker and its event; M9 only has to word it.** On disk it is the volume index's own `meta` row
-    `index_needs_rebuild = "1"` (`store::INDEX_NEEDS_REBUILD_KEY`), written by `indexing/deletes.rs`: through the
-    writer while one is alive, and through a short-lived connection in a removable stop's after-drain slot otherwise —
-    which `stop_removable_volume` already does whenever a generation was flagged vanished with deletes outstanding, so
-    an owner-`Vanish` stop gets it for free and M9 adds no write of its own. ❌ M9 must not clear it either: the
-    rebuild it asks for clears it (`manager/phased.rs`'s `RebuildFirst`, and `start_scan` beside `scan_completed_at`).
+    `index_needs_rebuild = "1"` (`store::INDEX_NEEDS_REBUILD_KEY`), written by `indexing/deletes.rs`: through the writer
+    while one is alive, and through a short-lived connection in a removable stop's after-drain slot otherwise — which
+    `stop_removable_volume` already does whenever a generation was flagged vanished with deletes outstanding, so an
+    owner-`Vanish` stop gets it for free and M9 adds no write of its own. ❌ M9 must not clear it either: the rebuild it
+    asks for clears it (`manager/phased.rs`'s `RebuildFirst`, and `start_scan` beside `scan_completed_at`).
   - **The notice is `IndexEvent::IndexNeedsFreshScan { volume_id }`**, already routed to the frontend as
-    `index-needs-fresh-scan` (`IndexNeedsFreshScanEvent`, registered in `ipc.rs`'s `collect_events!`). It fires once
-    per marker write, ❌ never per launch, so M9 needs no dedup of its own — it needs the listener and the toast copy.
+    `index-needs-fresh-scan` (`IndexNeedsFreshScanEvent`, registered in `ipc.rs`'s `collect_events!`). It fires once per
+    marker write, ❌ never per launch, so M9 needs no dedup of its own — it needs the listener and the toast copy.
   - **The bindings are generated and `bindings-fresh` is green**, so M9 inherits the wire type rather than owing it a
     run. ⚠️ On a Mac whose Xcode is older than the OS, every Rust lane needs
     `DEVELOPER_DIR=/Library/Developer/CommandLineTools` in front of it or it dies in a dependency's build script with a
@@ -1403,6 +1411,18 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     whole disks through `kDADiskDescriptionMediaWholeKey`.
   - The vanish stop's seam is the `Host` trait (`callbacks.rs`), which `test_seams.rs` already fakes: add a method there
     rather than reaching for the index from a callback.
+  - **As landed, `/sbin/umount` is a guarded runner verb** (`Call::RawUmount`, `DiskImage::raw_umount`),
+    ownership-checked through the same `Target::MountPoint` gate `diskutil eject` uses, under the same SIGKILL deadline.
+    It's the one verb in the harness that isn't a disk tool, which is the point: it bypasses DiskArbitration, so nothing
+    is asked. The loud rule names `hdiutil` and `diskutil`; what it's held to here is that rule's intent — prove the
+    target is ours before touching it.
+  - **As landed, a pull stops only what `causes.rs` recorded while the drive was still mounted**, since a disk that's
+    gone can't be looked up in the mount table. `saw_volume` is fed from a disk appearing and from each ask's own group,
+    and an `Appeared` voids a disk's DECISIONS, never its volume map. Two residuals: a drive mounted before the session
+    installs is known only from DA's appeared burst at registration, which races volume discovery (`lib.rs` starts
+    discovery at `:326` and installs the approver at `:409`); and the overrun that makes a cause `Unknown` is measured
+    as the ask's OWN runtime, so an ask that answered inside 10 s can still have overrun a DA timer that started when DA
+    queued it.
 - **Test plan**: pure `causes.rs` (asked unmount, raw `umount`, eject then disappear, disappear with no eject, an
   overlong ask making it `Unknown`, re-appear); lane: `/sbin/umount` of an indexed image's volume → `Unasked`, index
   stopped, no resume; the toast's copy test; `pnpm check`, `pnpm check disk-images`, the i18n checks from M15's list.
@@ -1421,6 +1441,9 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
 - **Landmines**:
   - A `NotFound` from a gone mount isn't a gone file: every "already gone" decision in `source_sweep.rs` asks the mount
     table.
+  - **M9's vanish stop runs while a transfer is still unwinding** (owner `Vanish`, off the DA queue), and it unregisters
+    nothing itself: the volume manager's own unmount handling is what drops the registration. That's why the
+    destination's name is captured at START rather than looked up when the error is worded.
   - `WriteErrorEvent` is wire: `pnpm bindings:regen`; the transfer copy's key family decides whether counts are ICU
     plurals.
   - M0's `FlushFailure { path, errno }` (`write_operations/durability.rs`) is ready to become the typed transfer variant
