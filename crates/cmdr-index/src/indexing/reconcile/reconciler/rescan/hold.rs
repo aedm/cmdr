@@ -51,7 +51,9 @@ use std::time::Instant;
 
 // Used only by `tests` below, via `use super::*`.
 #[cfg(test)]
-use super::super::{EventReconciler, IndexPathSpace, IndexStore};
+use super::super::{EventReconciler, IndexPathSpace};
+#[cfg(test)]
+use crate::indexing::store::IndexStore;
 #[cfg(test)]
 use std::time::Duration;
 

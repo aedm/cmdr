@@ -5,7 +5,13 @@
 
 use super::rescan::cardinality::HIGH_CARDINALITY_ANCHORS;
 use super::*;
-use crate::indexing::store::{IndexStore, ROOT_ID};
+// The themes below reach these through their own `use super::*`. They're named
+// here rather than inherited from `reconciler.rs`, which no longer imports what
+// its submodules took with them.
+use super::escalation::resolve_escalation_anchor;
+use crate::indexing::metadata::extract_metadata;
+use crate::indexing::store::{self, IndexStore, ROOT_ID};
+use crate::indexing::writer::AggSource;
 use crate::indexing::stress_test_helpers::{TestInstanceGuard, check_db_consistency};
 use crate::indexing::volume::IndexVolumeKind;
 use crate::indexing::watch::watcher::FsEventFlags;

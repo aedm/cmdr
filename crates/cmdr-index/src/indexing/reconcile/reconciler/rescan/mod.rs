@@ -33,11 +33,10 @@ use self::hold::{
 };
 use self::route::{RescanRoute, SHALLOW_COALESCED_KEY, SHALLOW_SWEEP_AT_KEY, SweepReason, now_unix};
 use self::throttle::RescanThrottle;
-use super::{
-    DEBUG_STATS, EventReconciler, IndexStore, IndexWriter, ReconcileSummary, RescanDrain, ScanTrigger, WriteMessage,
-    reconcile_subtree,
-};
+use super::{EventReconciler, IndexWriter, ReconcileSummary, RescanDrain, ScanTrigger, WriteMessage, reconcile_subtree};
+use crate::indexing::DEBUG_STATS;
 use crate::indexing::hold::HoldKind;
+use crate::indexing::store::IndexStore;
 use crate::indexing::lifecycle::manager;
 use crate::indexing::paths::path_prefix;
 use cmdr_fs::ignore_poison::IgnorePoison;
