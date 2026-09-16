@@ -3400,8 +3400,8 @@ apostrofs en geen ICU; geen van de vier waarden bevat er een.
 
 - **was disconnected → `werd losgekoppeld`** · overgenomen van `indexing.needsFreshScan.afterDisconnect` hierboven, de
   al vastgelegde verleden tijd voor een schijf die al weg is · `high`. Bewust NIET de lopende vorm „wordt losgekoppeld”
-  van `fileExplorer.navigation.driveIndex.driveLeaving`: die gaat over uitwerpen of ontkoppelen dat nog bezig is, terwijl
-  deze vier over een schijf gaan die er zomaar uit is getrokken.
+  van `fileExplorer.navigation.driveIndex.driveLeaving`: die gaat over uitwerpen of ontkoppelen dat nog bezig is,
+  terwijl deze vier over een schijf gaan die er zomaar uit is getrokken.
 - **„{done} of {total} files” → `{done} van {total} bestanden`, zonder lidwoord** · de telformule van de catalogus
   (`indexing.enrich.progress`, `fileExplorer.imageIndex.folder.someIndexed`, `viewer.pull.progress`) en macOS AppKit
   („Page %ld of %ld” → „Pagina %1$ld van %2$ld”); Thunar `nl` zegt „%s van %s” · `high`. ❌ Geen `van de`: nergens in de
@@ -3411,8 +3411,8 @@ apostrofs en geen ICU; geen van de vier waarden bevat er een.
   en `errors.write.notConnected.message.destination`; `fileOperations.transferProgress.titleRemovingOriginals` gebruikt
   hetzelfde woord voor deze fase van een verplaatsing · `high`.
 - **„where they were” → `waar ze stonden`** · `fileOperations.cancelRollback.moveAlreadyLanded` vertaalt precies deze
-  Engelse staart („are still where they were” → „staan nog op hun oude plek”) · `high` op de betekenis. Hier `waar ze
-  stonden` en niet `op hun oude plek`, want er is geen nieuwe plek: deze bestanden zijn nooit vertrokken.
+  Engelse staart („are still where they were” → „staan nog op hun oude plek”) · `high` op de betekenis. Hier
+  `waar ze stonden` en niet `op hun oude plek`, want er is geen nieuwe plek: deze bestanden zijn nooit vertrokken.
 - **„so nothing is lost” → `dus er is niets verloren gegaan`** · `verloren gaan` is Apples eigen werkwoord hiervoor
   (macOS Finder `FF45`/`FF46` „gaan ze verloren”, AppKit „Je wijzigingen gaan verloren als je ze niet bewaart”) ·
   `high`. De voltooide tijd omdat het hier al gebeurd is, niet dreigt.
@@ -3429,9 +3429,9 @@ apostrofs en geen ICU; geen van de vier waarden bevat er een.
   `{counterpart}` dragen willekeurige schijfnamen, dus geen `de`/`het` ervoor en geen voornaamwoord dat een geslacht
   kiest: `nadat Cmdr er {done} van {total} bestanden naartoe had gekopieerd` · `high`.
 - **Woordvolgorde: de geruststelling staat in een hoofdzin.** Het Engels hangt „so nothing is lost” achter een
-  `nadat`-bijzin; in het Nederlands duwt die bijzin het werkwoord naar achteren en begraaft ze de geruststelling.
-  Daarom twee zinnen, waarvan de tweede met het onderwerp begint en het werkwoord op plaats twee houdt („Je originelen
-  zijn onaangeroerd …”, „De rest staat nog op de schijf.”).
+  `nadat`-bijzin; in het Nederlands duwt die bijzin het werkwoord naar achteren en begraaft ze de geruststelling. Daarom
+  twee zinnen, waarvan de tweede met het onderwerp begint en het werkwoord op plaats twee houdt („Je originelen zijn
+  onaangeroerd …”, „De rest staat nog op de schijf.”).
 
 ## A move that could not be confirmed (`errors.write.moveNotConfirmed.title`)
 
@@ -3451,10 +3451,11 @@ staan. Nergens mag de tekst zeggen dat het verplaatsen is misgegaan.
   `bewaren`, niet `opslaan`) · `high`. `weggeschreven` uit `errors.write.newDataKeptAt.message` viel af: dat is
   technischer dan het Engelse „saved” en trekt de zin naar de schijfkant in plaats van naar de gebruiker.
 - **„it kept your originals where they were” → `dus heeft het je originelen laten staan waar ze stonden`** ·
-  `laten staan` is de vastgelegde vorm voor iets wat Cmdr bewust niet verplaatst (glossaryregel `left where it is →
-  laten staan`), en `het` als voornaamwoord voor Cmdr staat al in `fileOperations.cancelRollback.moveAlreadyLanded`
-  („alles wat het heeft verplaatst”) · `high`. De handelende vorm blijft staan: dát Cmdr de originelen bewust heeft
-  laten staan, is de geruststelling zelf. Een lijdende vorm („zijn blijven staan”) zou verbergen wie ze beschermde.
+  `laten staan` is de vastgelegde vorm voor iets wat Cmdr bewust niet verplaatst (glossaryregel
+  `left where it is → laten staan`), en `het` als voornaamwoord voor Cmdr staat al in
+  `fileOperations.cancelRollback.moveAlreadyLanded` („alles wat het heeft verplaatst”) · `high`. De handelende vorm
+  blijft staan: dát Cmdr de originelen bewust heeft laten staan, is de geruststelling zelf. Een lijdende vorm („zijn
+  blijven staan”) zou verbergen wie ze beschermde.
 - **„Have a look at …” → `Kijk even op …`** · `onboarding.stepBeta.signup.rejected` („Kijk even of er een typefout in
   zit”) en `adb.connect.unauthorized` („Kijk op je telefoon”) · `high`. Het `even` draagt de lichte toon van „have a
   look”; `Controleer` zou hier als een opdracht klinken.

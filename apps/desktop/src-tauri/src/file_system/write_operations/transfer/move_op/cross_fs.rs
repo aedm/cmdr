@@ -25,9 +25,9 @@ use super::move_resolved_into_place;
 use super::rename_onto_free_name;
 use super::source_sweep::{SourceSweep, delete_sources_after_move};
 
+use crate::file_system::staging::StagingTemp;
 use crate::file_system::write_operations::cancellable::remove_dir_all_in_background;
 use crate::file_system::write_operations::conflict::{ApplyToAll, IncomingItem, resolve_conflict};
-use crate::file_system::staging::StagingTemp;
 use crate::file_system::write_operations::durability::flush_created_destinations;
 use crate::file_system::write_operations::event_sinks::OperationEventSink;
 use crate::file_system::write_operations::in_flight_temps::{self, ItemKind};
@@ -556,7 +556,6 @@ pub(super) fn move_with_staging(
         skipped_source_paths,
     );
     let delete_result = delete_sources_after_move(events, operation_id, state, sources, files_done, &sweep);
-
 
     // Phase 5: Remove the staging directory, on EVERY path out of Phase 4. Phase
     // 3 renamed the staged tree away, so this is an empty shell whichever way

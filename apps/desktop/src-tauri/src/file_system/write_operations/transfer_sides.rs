@@ -179,7 +179,9 @@ pub(in crate::file_system::write_operations) fn name_the_vanished_drive(
         .vanished_side(path)
         // A typed disconnect (`ENODEV`/`ENXIO`) still deserves a named side even
         // when the mount table hasn't caught up with it yet.
-        .or_else(|| matches!(error, WriteOperationError::DeviceDisconnected { .. }).then(|| sides.role_of_path(path))?)
+        .or_else(|| {
+            matches!(error, WriteOperationError::DeviceDisconnected { .. }).then(|| sides.role_of_path(path))?
+        })
     else {
         return error;
     };
@@ -305,12 +307,7 @@ pub(in crate::file_system::write_operations) mod test_hook {
     /// Answers for a whole set of roots at once. A tempdir is not a mount point,
     /// so a test whose sides must look PRESENT says so here.
     pub(in crate::file_system::write_operations) fn answer_each(roots: Vec<(PathBuf, Option<bool>)>) -> MountTableHook {
-        answer(move |asked| {
-            roots
-                .iter()
-                .find(|(root, _)| root == asked)
-                .map(|(_, listed)| *listed)
-        })
+        answer(move |asked| roots.iter().find(|(root, _)| root == asked).map(|(_, listed)| *listed))
     }
 
     pub(super) fn intercept(root: &Path) -> Option<Option<bool>> {

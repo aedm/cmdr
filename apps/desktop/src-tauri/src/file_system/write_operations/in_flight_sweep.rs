@@ -41,8 +41,8 @@ use super::{
 use crate::file_system::volume::manager::get_volume_manager;
 use crate::file_system::volume::{Volume, VolumeError};
 use crate::file_system::write_operations::overwrite;
-use crate::file_system::write_operations::types::MoveLeftoversKeptEvent;
 use crate::file_system::write_operations::transfer_sides::root_is_listed;
+use crate::file_system::write_operations::types::MoveLeftoversKeptEvent;
 use crate::file_system::write_operations::unique_name::{NameCandidates, RESCUE_NAME_ATTEMPTS, recovered_sibling};
 
 /// Settles the records an earlier run left that the local filesystem can answer
@@ -237,7 +237,14 @@ async fn settle_tracked(item: &TrackedItem) -> Outcome {
         );
         return Outcome::LeftAlone;
     }
-    settle_kind(&surface, &item.kind, &path, destination.as_deref(), drive_name.as_deref()).await
+    settle_kind(
+        &surface,
+        &item.kind,
+        &path,
+        destination.as_deref(),
+        drive_name.as_deref(),
+    )
+    .await
 }
 
 /// Where a record's thing is right now, and what may be pointed at it.
@@ -464,7 +471,9 @@ enum Surface {
 enum Standing {
     Missing,
     /// A regular file, and how big it is.
-    File { size: u64 },
+    File {
+        size: u64,
+    },
     /// A directory, a symlink, or anything else that isn't a plain file.
     Other,
     /// The question couldn't be answered.

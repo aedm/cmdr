@@ -1492,12 +1492,12 @@ Order: **M0 → M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 → M9 → M
     swap, so after a conflict Rename or Skip they name `destination/name/...` rather than the real `name (N)` landing.
     ❌ Never trust them for a conflicted move.
   - A failed M0 flush skips Phase 5 and leaves an EMPTY `.cmdr-staging-<op>`; a merge-child Skip leaves a NON-EMPTY one.
-    The staging-dir sweep meets both. M10 added a THIRD producer: a destination that left the mount table returns
-    before Phase 5, and its staging dir can hold a whole staged tree (Phase 3 may never have run), on a drive that
-    comes back later. That's the case the arrival sweep is for, and it must still only ever `remove_dir`.
+    The staging-dir sweep meets both. M10 added a THIRD producer: a destination that left the mount table returns before
+    Phase 5, and its staging dir can hold a whole staged tree (Phase 3 may never have run), on a drive that comes back
+    later. That's the case the arrival sweep is for, and it must still only ever `remove_dir`.
   - **M10 left three seams M11 builds on**: the typed destination side for item 2's `volume_id` and relative path
-    (`state.sides.destination`, `write_operations/transfer_sides.rs`); the one mount-table question for item 3's "is
-    the temp's root still listed" (`TransferSide::has_left`, which reads an unreadable table as "still there"); and the
+    (`state.sides.destination`, `write_operations/transfer_sides.rs`); the one mount-table question for item 3's "is the
+    temp's root still listed" (`TransferSide::has_left`, which reads an unreadable table as "still there"); and the
     `cfg(test)` chunk park (`transfer::chunked_copy::chunk_park`, process-global because the engine runs in
     `spawn_blocking`) that M11's lane test uses to stop a copy mid-file before detaching. The real-detach rig is
     `write_operations/transfer/real_image.rs`.

@@ -110,8 +110,14 @@ async fn an_aside_whose_replacement_is_short_is_kept_under_a_recovered_name() {
     assert_eq!(outcome, Outcome::Recovered);
     assert!(!fixture.aside.exists(), "the bytes moved to a real name");
     assert_eq!(
-        std::fs::read(fixture.destination.parent().expect("parent").join("notes (recovered).txt"))
-            .expect("the original is kept beside the short replacement"),
+        std::fs::read(
+            fixture
+                .destination
+                .parent()
+                .expect("parent")
+                .join("notes (recovered).txt")
+        )
+        .expect("the original is kept beside the short replacement"),
         b"the user's notes"
     );
     assert_eq!(
@@ -171,8 +177,14 @@ async fn a_file_displaced_by_a_folder_is_always_kept() {
 
     assert_eq!(outcome, Outcome::Recovered);
     assert_eq!(
-        std::fs::read(fixture.destination.parent().expect("parent").join("notes (recovered).txt"))
-            .expect("the displaced file is kept beside the folder"),
+        std::fs::read(
+            fixture
+                .destination
+                .parent()
+                .expect("parent")
+                .join("notes (recovered).txt")
+        )
+        .expect("the displaced file is kept beside the folder"),
         b"the user's notes"
     );
     assert!(fixture.destination.is_dir(), "and the folder stays");
@@ -339,7 +351,10 @@ fn a_record_whose_name_isnt_its_kinds_shape_is_refused() {
         !name_matches_kind(&ItemKind::Temp, Path::new("/dir/notes.txt.cmdr-temp-x")),
         "a temp record must no longer reach an ASIDE: that's the user's own file"
     );
-    assert!(name_matches_kind(&ItemKind::Temp, Path::new("/dir/notes.txt.cmdr-tmp-x")));
+    assert!(name_matches_kind(
+        &ItemKind::Temp,
+        Path::new("/dir/notes.txt.cmdr-tmp-x")
+    ));
     assert!(name_matches_kind(&aside, Path::new("/dir/notes.txt.cmdr-temp-x")));
     assert!(!name_matches_kind(&aside, Path::new("/dir/notes.txt")));
     assert!(!name_matches_kind(

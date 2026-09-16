@@ -1775,61 +1775,61 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
 
 ## A drive pulled mid-transfer (`errors.write.deviceDisconnected.sided.destination.copy`)
 
-四個 `sided` 值是同一個對話框的內文，上面掛的標題就是 `errors.write.deviceDisconnected.title`（`裝置已中斷連線`），
-所以整組跟著既有的那幾條非 sided 內文走，不另立句型。
+四個 `sided` 值是同一個對話框的內文，上面掛的標題就是
+`errors.write.deviceDisconnected.title`（`裝置已中斷連線`），所以整組跟著既有的那幾條非 sided 內文走，不另立句型。
 
 - **was disconnected（傳輸途中被拔掉）→ `斷線了`** · 逐字沿用同一個對話框的
   `errors.write.deviceDisconnected.message.copy`（`複製到一半時，裝置斷線了。`）與
   `errors.volume.deviceDisconnected`（`更動還沒完成，裝置就斷線了。`）· `high`。❗ 標題用已定的 `中斷連線`，內文用
-  `斷線了`：這是這個家族既有的分工，不是漂移。這裡也不用 `indexing.needsFreshScan.afterDisconnect` 的 `中斷了連線`，
-  那是另一個檔案的句型。
-- **兩側都不寫「來源 / 目標」字樣** · 英文也沒寫：`{volumeName}` 永遠是走掉的那台，`{counterpart}` 是另一台，
-  差別由哪個名字出現在哪個位置帶出來 · `high`。❗ 別好心加上 `來源磁碟機` / `目標磁碟機`：讀者看到的是自己磁碟機的名字，
-  多一層標籤反而讓句子變成說明文。
+  `斷線了`：這是這個家族既有的分工，不是漂移。這裡也不用 `indexing.needsFreshScan.afterDisconnect` 的
+  `中斷了連線`，那是另一個檔案的句型。
+- **兩側都不寫「來源 / 目標」字樣** · 英文也沒寫：`{volumeName}` 永遠是走掉的那台，`{counterpart}`
+  是另一台，差別由哪個名字出現在哪個位置帶出來 · `high`。❗ 別好心加上 `來源磁碟機` /
+  `目標磁碟機`：讀者看到的是自己磁碟機的名字，多一層標籤反而讓句子變成說明文。
 - **copied {done} of {total} files → `把 {total} 個檔案中的 {done} 個複製…`** · 目錄的 `X of Y` 既有形狀是
-  `（共 N 個）`（`indexing.enrich.progress`、`search.imageResults.countCapped`），但那是純計數；這裡數字要接在動詞上，
-  所以取 `A 中的 B` · `high`。兩個佔位符前後都留空格，`{done}`、`{total}` 進來就已經是格式化好的字串，不包 ICU。
+  `（共 N 個）`（`indexing.enrich.progress`、`search.imageResults.countCapped`），但那是純計數；這裡數字要接在動詞上，所以取
+  `A 中的 B` · `high`。兩個佔位符前後都留空格，`{done}`、`{total}` 進來就已經是格式化好的字串，不包 ICU。
 - **the rest → `其餘的`，而且一定要指名地方（`還在磁碟機上`）** · 已定條目見上面
-  `fileOperations.cancelRollback.stoppedMovingBack` 那一條；Apple Finder zh-TW 幾乎同一句
-  （`無法拷貝一個或多個項目。是否要略過並拷貝其餘的項目？`）· `high`。英文的 "on the drive" 本身就是地方，
-  所以這裡不會踩到 `原處` 那個歧義；`磁碟機` 是已定的 drive。
-- **your originals → `你原本的檔案`** · 沿用 `errors.write.destinationNotFound.message.copy`
-  （英文同樣是 "The originals are untouched."）· `high`。目錄另有 `原始檔案`
-  （`errors.write.readOnlyDevice.source.suggestion`），兩個都已出貨；這裡取 `原本的`，因為緊接著的那句
-  「完全沒有被動過」就是從同一條抄來的，兩半要對得上。
+  `fileOperations.cancelRollback.stoppedMovingBack` 那一條；Apple Finder
+  zh-TW 幾乎同一句（`無法拷貝一個或多個項目。是否要略過並拷貝其餘的項目？`）· `high`。英文的 "on the
+  drive" 本身就是地方，所以這裡不會踩到 `原處` 那個歧義；`磁碟機` 是已定的 drive。
+- **your originals → `你原本的檔案`** · 沿用 `errors.write.destinationNotFound.message.copy` （英文同樣是 "The originals
+  are untouched."）· `high`。目錄另有 `原始檔案`
+  （`errors.write.readOnlyDevice.source.suggestion`），兩個都已出貨；這裡取
+  `原本的`，因為緊接著的那句「完全沒有被動過」就是從同一條抄來的，兩半要對得上。
 - **untouched where they were → `都還在原處，完全沒有被動過`** · `完全沒有被動過` 逐字取自
-  `errors.write.destinationNotFound.message.copy` 與 `errors.write.notConnected.message.destination` · `high`。
-  英文的 "where they were" 另外用 `都還在原處` 補上：這裡 `原處` 是對的，因為那些檔案本來就沒動過。
-- **so nothing is lost → `什麼都沒被丟掉`** · 逐字沿用 `errors.write.originalsKeptAside.message.one`
-  （"Nothing was thrown away."）· `high`。英文是 "lost"、目錄既有的是 "thrown away"，語意略有差；
-  取既有說法，讓同一個對話框家族只有一種安撫句尾。
+  `errors.write.destinationNotFound.message.copy` 與 `errors.write.notConnected.message.destination` ·
+  `high`。英文的 "where they were" 另外用 `都還在原處` 補上：這裡 `原處` 是對的，因為那些檔案本來就沒動過。
+- **so nothing is lost → `什麼都沒被丟掉`** · 逐字沿用 `errors.write.originalsKeptAside.message.one` （"Nothing was
+  thrown away."）· `high`。英文是 "lost"、目錄既有的是 "thrown
+  away"，語意略有差；取既有說法，讓同一個對話框家族只有一種安撫句尾。
 - **all your files are still on {counterpart} → `你的檔案全都還在 {counterpart} 上`** · `全都` 把英文的 "all" 接住 ·
   `high`。這一條刻意沒有數字：移動只要停下來，原檔案就一個都沒少，沒有「做到一半」可報。
 
 ## A move that could not be confirmed (`errors.write.moveNotConfirmed.title`)
 
-❗ 這一組**不是**失敗文案。Cmdr 留著原檔案，正是因為它沒辦法證明複本已經落地，所以 `couldn't confirm` 照字面翻，
-❌ 不准升級成 `移動失敗` 或 `移動沒成功`。
+❗ 這一組**不是**失敗文案。Cmdr 留著原檔案，正是因為它沒辦法證明複本已經落地，所以 `couldn't confirm`
+照字面翻，❌ 不准升級成 `移動失敗` 或 `移動沒成功`。
 
-- **Couldn't confirm → `無法確認`** · Apple Finder zh-TW 幾乎同一句（`無法確認是否可刪除資料夾「^1」。`），
-  目錄也已在用（`suggestedOps.destinationUnknown` = `Cmdr 無法確認目標資料夾`）· `high`。同時正好是 `style.md`
-  § Voice and tone 要的 `無法` + 動詞形狀。
+- **Couldn't confirm → `無法確認`** · Apple Finder
+  zh-TW 幾乎同一句（`無法確認是否可刪除資料夾「^1」。`），目錄也已在用（`suggestedOps.destinationUnknown` =
+  `Cmdr 無法確認目標資料夾`）· `high`。同時正好是 `style.md` § Voice and tone 要的 `無法` + 動詞形狀。
 - **the move（標題裡的那次移動）→ `這次移動`** · `style.md` § Voice and tone 要口語的 `這次`，不要書面的 `此` ·
   `high`。標題整句 `無法確認這次移動`。
-- **the moved files → `移動過去的檔案`** · 沿用 `fileOperations.cancelRollback.stoppedMovingBack` 的 `移動過去的地方`
-  · `high`。
+- **the moved files → `移動過去的檔案`** · 沿用 `fileOperations.cancelRollback.stoppedMovingBack` 的 `移動過去的地方` ·
+  `high`。
 - **were saved on {volumeName} → `已經儲存到 {volumeName} 上`** · `儲存` 是已定術語（見上面 save 條，`confirmed`）·
   `high`。
-- **at the destination → `目標位置`** · 已定術語（見上面 destination 條）· `high`。`.unnamed` 沒有佔位符，
-  就用這個詞把 `.named` 的 `{volumeName}` 換掉，其餘一字不動，兩條讀起來才是同一句話的兩個版本。
-- **it kept your originals where they were → `把你原本的檔案留在原處沒有動`** · `原處` 在這裡是對的
-  （檔案真的沒離開過），`沒有動` 收尾把「刻意保留」講明 · `high`。❗ 不要縮成 `原本的檔案還在`：
-  英文的主詞是 Cmdr，這是它做的決定，不是碰巧的結果。
+- **at the destination → `目標位置`** · 已定術語（見上面 destination 條）· `high`。`.unnamed` 沒有佔位符，就用這個詞把
+  `.named` 的 `{volumeName}` 換掉，其餘一字不動，兩條讀起來才是同一句話的兩個版本。
+- **it kept your originals where they were → `把你原本的檔案留在原處沒有動`** · `原處`
+  在這裡是對的（檔案真的沒離開過），`沒有動` 收尾把「刻意保留」講明 · `high`。❗ 不要縮成
+  `原本的檔案還在`：英文的主詞是 Cmdr，這是它做的決定，不是碰巧的結果。
 - **Have a look at the destination, then … → `打開目標位置看一下，然後再移動一次`** · 句形逐字取自
-  `errors.write.newDataKeptAt.suggestion`（`打開 {keptAt} 看一下，然後幫它改名。`）· `high`。
-  `再移動一次` 跟著 `errors.write.deviceDisconnected.suggestion` 的 `再試一次` 走。
-- **Your originals haven't moved → `你原本的檔案都還在原處`** · 與內文那句 `留在原處` 對齊 · `high`。
-  建議句尾再講一次原檔案在哪，是英文刻意的重複，照留。
+  `errors.write.newDataKeptAt.suggestion`（`打開 {keptAt} 看一下，然後幫它改名。`）· `high`。 `再移動一次` 跟著
+  `errors.write.deviceDisconnected.suggestion` 的 `再試一次` 走。
+- **Your originals haven't moved → `你原本的檔案都還在原處`** · 與內文那句 `留在原處` 對齊 ·
+  `high`。建議句尾再講一次原檔案在哪，是英文刻意的重複，照留。
 
-兩組共 8 個值都與英文不同，都不需要 `sameAsSourceJustification`。這一族屬於 RAW 家族，不經過 ICU，
-所有標點取全形；中文本來就不需要撇號，真要用也一律維持單引號。
+兩組共 8 個值都與英文不同，都不需要
+`sameAsSourceJustification`。這一族屬於 RAW 家族，不經過 ICU，所有標點取全形；中文本來就不需要撇號，真要用也一律維持單引號。

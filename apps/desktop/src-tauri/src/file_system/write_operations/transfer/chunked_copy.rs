@@ -143,6 +143,9 @@ pub(crate) mod chunk_park {
                 if IS_PARKED.load(Ordering::SeqCst) {
                     return Some(PARKED_AT.load(Ordering::SeqCst));
                 }
+                // allowed-test-sleep: polling a flag another THREAD sets is the
+                // subject. The park is what this caller is waiting to observe, so
+                // there's no condition `wait_until` could ask about instead.
                 std::thread::sleep(Duration::from_millis(10));
             }
             None
@@ -172,6 +175,9 @@ pub(crate) mod chunk_park {
         IS_PARKED.store(true, Ordering::SeqCst);
         let deadline = Instant::now() + PARK_CAP;
         while !RELEASED.load(Ordering::SeqCst) && Instant::now() < deadline {
+            // allowed-test-sleep: this IS the park. Holding the copy still
+            // mid-file is the whole point, and `PARK_CAP` above keeps a dead
+            // test from wedging the suite.
             std::thread::sleep(Duration::from_millis(10));
         }
         IS_PARKED.store(false, Ordering::SeqCst);

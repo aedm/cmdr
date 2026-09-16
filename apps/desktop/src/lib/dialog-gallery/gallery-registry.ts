@@ -194,7 +194,7 @@ export const DIALOG_GALLERY_ENTRIES: DialogGalleryEntry[] = [
       { id: 'symlink_loop', label: 'Symlink loop' },
       { id: 'cancelled', label: 'Cancelled' },
       { id: 'device_disconnected', label: 'Device disconnected' },
-      { id: 'move_not_confirmed', label: "Move not confirmed, originals kept" },
+      { id: 'move_not_confirmed', label: 'Move not confirmed, originals kept' },
       { id: 'read_only_device', label: 'Read-only device' },
       { id: 'destination_not_writable', label: 'Destination folder takes no writes' },
       { id: 'file_locked', label: 'File locked' },

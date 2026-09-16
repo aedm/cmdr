@@ -2639,30 +2639,34 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
 
 ## A drive pulled mid-transfer (`errors.write.deviceDisconnected.sided.destination.copy`)
 
-四条句子的骨架都取自 `indexing.needsFreshScan.afterDisconnect` 的「{name} 在 Cmdr …时断开了连接」，把驱动器留在句首，
-和英文一致。
+四条句子的骨架都取自 `indexing.needsFreshScan.afterDisconnect` 的「{name} 在 Cmdr
+…时断开了连接」，把驱动器留在句首，和英文一致。
 
-- **was disconnected → `断开了连接`** · 沿用 `indexing.needsFreshScan.afterDisconnect` 的完成态（英文是已发生的事，驱动器
-  已经不在了）· `confirmed`。不用 `fileExplorer.navigation.driveIndex.driveLeaving` 的进行态「正在断开连接」。
-- **drive → `驱动器`；copy → `拷贝`；move → `移动`** · glossary 已定的词，同 `errors.write.deviceDisconnected.message.copy`
-  与 `errors.write.deviceDisconnected.message.move` · `confirmed`。
-- **{done} of {total} files → `{done} 个文件（共 {total} 个）`** · macOS Finder zh-CN 的「^0项（共^1项）」（`PW35`、`SB18`）
-  就是这个形状；本目录 `onboarding.wizard.stepProgress`（`共 {total} 步`）、`viewer.search.matchPosition` 用同一句式 ·
+- **was disconnected → `断开了连接`** · 沿用 `indexing.needsFreshScan.afterDisconnect`
+  的完成态（英文是已发生的事，驱动器已经不在了）· `confirmed`。不用 `fileExplorer.navigation.driveIndex.driveLeaving`
+  的进行态「正在断开连接」。
+- **drive → `驱动器`；copy → `拷贝`；move → `移动`** · glossary 已定的词，同
+  `errors.write.deviceDisconnected.message.copy` 与 `errors.write.deviceDisconnected.message.move` · `confirmed`。
+- **{done} of {total} files → `{done} 个文件（共 {total} 个）`** · macOS Finder
+  zh-CN 的「^0项（共^1项）」（`PW35`、`SB18`）就是这个形状；本目录
+  `onboarding.wizard.stepProgress`（`共 {total} 步`）、`viewer.search.matchPosition` 用同一句式 ·
   `high`。两个占位符都是已格式化好的字符串，不套 ICU number。
-- **the source/destination distinction（哪台驱动器掉线）** · 中文不重复「源/目标」这组词，靠介词区分：掉线的是目标盘时写
-  「Cmdr 往它拷贝了…」，掉线的是源盘时写「Cmdr 往 {counterpart} 拷贝了…」· `high`。目录里 `来源`/`目标位置`
-  （`fileOperations.transferDialog.sourceGroupTitle`、`errors.write.destinationExists.message`）是界面标签用词，
-  这里塞进句子会变生硬，所以不用。Microsoft TBX 的 `source drive → 源驱动器` 备查，未采用。
+- **the source/destination distinction（哪台驱动器掉线）**
+  · 中文不重复「源/目标」这组词，靠介词区分：掉线的是目标盘时写「Cmdr 往它拷贝了…」，掉线的是源盘时写「Cmdr 往 {counterpart} 拷贝了…」·
+  `high`。目录里 `来源`/`目标位置`
+  （`fileOperations.transferDialog.sourceGroupTitle`、`errors.write.destinationExists.message`）是界面标签用词，这里塞进句子会变生硬，所以不用。Microsoft
+  TBX 的 `source drive → 源驱动器` 备查，未采用。
 - **your originals are untouched where they were → `你的原文件都还在原处，没有被动过`** · `原文件` 同
   `errors.write.destinationNotFound.message.copy`、`fileOperations.transferProgress.titleRemovingOriginals`；
   `没有被动过` 同 `errors.write.destinationNotFound.message.copy`；`还在原处` 同
   `errors.write.readOnlyDevice.source.suggestion`（「原文件会留在原处」）· `confirmed`。macOS Finder 写 `原始项目`
   （`PE117`），是 Apple 的「item」用词，本目录统一说 `文件`，故不采用。
-- **so nothing is lost → `所以什么都没丢失`** · `丢失` 取自 macOS AppKit zh-CN 的 `…将会丢失`；本目录此前没有这句安慰话，
-  加 `什么都` 让它读起来是口语的宽心话，而不是一句状态播报 · `high`。这半句是整条消息的重点，中文再短也不能省。
+- **so nothing is lost → `所以什么都没丢失`** · `丢失` 取自 macOS AppKit zh-CN 的
+  `…将会丢失`；本目录此前没有这句安慰话，加 `什么都` 让它读起来是口语的宽心话，而不是一句状态播报 ·
+  `high`。这半句是整条消息的重点，中文再短也不能省。
 - **the rest are still on the drive → `其余的都还在这个驱动器上`** · `其余` 同
-  `operationLog.rollback.partiallyRolledBackNotice`、`indexing.phase.wholeDrive`；`都` 是补上去的，中文光说「其余的还在」
-  容易读成随口一提，`都` 才把「一个没少」说满 · `high`。
+  `operationLog.rollback.partiallyRolledBackNotice`、`indexing.phase.wholeDrive`；`都`
+  是补上去的，中文光说「其余的还在」容易读成随口一提，`都` 才把「一个没少」说满 · `high`。
 - **all your files are still on {counterpart} → `你的文件都还在 {counterpart} 上`** · 同上，`都` 承担英文 `all` 的分量 ·
   `high`。这条按英文的设计不带计数：移动没做完就等于原件全在。
 
@@ -2675,13 +2679,13 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   `无法…` 开头的标题；`这次` 取本目录偏口语的指示词（style.md 的 `这个`/`这次` 一条），同
   `fileOperations.transferProgress.rollbackAlreadyLandedTooltip`（「这次移动」）· `high`。
 - **the moved files were saved on X → `移过去的文件是否已经保存到 X 上`** · 句式同
-  `fileExplorer.pane.trashUnconfirmedToast`（「无法确认文件是否已移到废纸篓」）；`保存到` 取自 macOS AppKit zh-CN
-  （`它将被保存到“%@”文件夹中`）· `high`。没用 `写入`，那是设备层面的技术说法，这条是说给用户听的。
+  `fileExplorer.pane.trashUnconfirmedToast`（「无法确认文件是否已移到废纸篓」）；`保存到` 取自 macOS AppKit
+  zh-CN（`它将被保存到“%@”文件夹中`）· `high`。没用 `写入`，那是设备层面的技术说法，这条是说给用户听的。
 - **it kept your originals where they were → `把你的原文件留在了原处`** · `原文件` + `留在…原处` 同
   `errors.write.readOnlyDevice.source.suggestion`、`fileOperations.cancelRollback.moveAlreadyLanded` · `confirmed`。
 - **Have a look at the destination → `去目标位置看一下`** · `看一下` 同 `errors.write.newDataKeptAt.suggestion`、
   `errors.write.originalsKeptAside.suggestion.one`；`目标位置` 是 destination 的既定译法，同
   `errors.write.destinationFull.title` · `confirmed`。
 - **Your originals haven't moved → `你的原文件还在原来的位置`** · `原来的位置` 同
-  `fileOperations.rollbackConfirm.bodyUndoByMovingBack` · `high`。直译「没有移动过」偏否定式，改成正面说它们在哪儿，
-  和这一族「告诉你文件在哪」的语气一致。
+  `fileOperations.rollbackConfirm.bodyUndoByMovingBack` ·
+  `high`。直译「没有移动过」偏否定式，改成正面说它们在哪儿，和这一族「告诉你文件在哪」的语气一致。

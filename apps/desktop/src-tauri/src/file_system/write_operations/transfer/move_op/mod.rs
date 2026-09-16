@@ -555,7 +555,14 @@ fn merge_move_directory(
                     // halves of the rename; no-ops outside ~/Downloads.
                     crate::downloads::note_pending_write_for_cmdr(&source_child);
                     crate::downloads::note_pending_write_for_cmdr(&resolved.path);
-                    move_resolved_into_place(state, &source_child, &dest_child, &resolved, child_stat.as_ref(), move_tx)?;
+                    move_resolved_into_place(
+                        state,
+                        &source_child,
+                        &dest_child,
+                        &resolved,
+                        child_stat.as_ref(),
+                        move_tx,
+                    )?;
                 }
                 None => {
                     // Skip: source file stays in place. Record it so a cross-FS

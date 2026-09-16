@@ -272,12 +272,7 @@ pub(super) fn track(state: &WriteOperationState, kind: ItemKind, absolute: &Path
 ///
 /// For the cross-volume engine, whose paths are already in the destination
 /// volume's own namespace ([`RecordHome::volume_space`]).
-pub(super) fn track_in(
-    state: &WriteOperationState,
-    home: RecordHome,
-    kind: ItemKind,
-    path: &Path,
-) -> TrackedRecord {
+pub(super) fn track_in(state: &WriteOperationState, home: RecordHome, kind: ItemKind, path: &Path) -> TrackedRecord {
     record(state, home, kind, path)
 }
 
@@ -609,8 +604,10 @@ fn compact_if_large(store: &mut Store) {
 
 #[path = "in_flight_records.rs"]
 mod records;
-pub(super) use records::{ItemKind, RecordHome, Record, RecordedTemp, TempHome, TrackedItem, TrackedRecord, VolumeTemp};
 use records::{ItemHome, home_for};
+pub(super) use records::{
+    ItemKind, Record, RecordHome, RecordedTemp, TempHome, TrackedItem, TrackedRecord, VolumeTemp,
+};
 
 #[path = "in_flight_sweep.rs"]
 mod sweep;
@@ -619,8 +616,8 @@ pub use sweep::init_app_handle as init_sweep_app_handle;
 #[cfg(test)]
 pub(super) mod test_support {
     use super::{File, Path, Record, STORE};
-    use std::path::PathBuf;
     use crate::ignore_poison::IgnorePoison;
+    use std::path::PathBuf;
     use std::sync::{Mutex, MutexGuard};
 
     /// Serializes every test that installs its own ledger into [`STORE`].

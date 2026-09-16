@@ -185,7 +185,11 @@ pub async fn copy_between_volumes(
                 source_volume.name().to_string(),
                 src_root.clone(),
             ),
-            TransferSide::new(dest_volume_id.clone(), dest_volume.name().to_string(), dest_root.clone()),
+            TransferSide::new(
+                dest_volume_id.clone(),
+                dest_volume.name().to_string(),
+                dest_root.clone(),
+            ),
         );
         return super::super::super::copy_files_start(
             events,

@@ -31,9 +31,9 @@ Copy, move, delete, trash, and zip edits as managed background ops.
   word (`IncomingItem`).
 - **Emit through `OperationEventSink`, ❌ never `AppHandle`**; `write-settled` fires once, AFTER the terminal event. A
   cross-FS move speaks TWICE per source on `write-source-item-done`, so the LAST wins.
-- **EVERY local write lands via `overwrite::stage_and_land_file`** (temp+rename, rename-aside when replacing); temps
-  register in `in_flight_temps` with a `TempHome`, ❌ never a bare path. Register a destination via
-  `downloads::note_pending_write_for_cmdr` BEFORE the syscall (renames: both ends).
+- **EVERY local write lands via `overwrite::stage_and_land_file`** (temp+rename, rename-aside when replacing); register
+  a destination via `downloads::note_pending_write_for_cmdr` BEFORE the syscall (renames: both ends). What it leaves
+  carries a KIND: ❌ only a `temp` is removable on sight. DETAILS § "What the sweep does with each kind".
 - **Every managed mutation journals by `op_id`**; a VOLUME op passes its REAL volume id. Bulk rename journals each hop
   as it lands: ❌ never batch to the end, nor put a rotation temp in `in_flight_temps` (its sweep DELETES it).
 - **A transfer carries both volumes as typed sides** (`transfer_sides.rs`), captured at start: a vanished drive can't be

@@ -3068,26 +3068,26 @@ tệp → `tệp`.
   2026-09-16), nhưng đó là bộ đếm trong thanh tiến trình; trong câu văn xuôi thì `trên` mới đọc được. ❌ Đừng bọc
   `{done}`/`{total}` vào cú pháp số ICU: chúng đã được định dạng sẵn thành chuỗi, và `errors.*` là họ khóa RAW.
 - **originals → `các bản gốc`** · macOS Finder Tier 1 (`PE113` "Keep Original" → `Giữ lại bản gốc`, `N163` "Show
-  Original" → `Hiển thị bản gốc`), và danh mục đã dùng (`fileOperations.transferProgress.titleRemovingOriginals`
-  "Đang xóa các bản gốc...") · `high`.
+  Original" → `Hiển thị bản gốc`), và danh mục đã dùng (`fileOperations.transferProgress.titleRemovingOriginals` "Đang
+  xóa các bản gốc...") · `high`.
 - **untouched / are still on the drive → `vẫn nguyên vẹn`** · `errors.write.destinationNotFound.message.copy` viết đúng
-  lời trấn an này trong cùng hộp thoại ("Các bản gốc vẫn nguyên vẹn."), và `errors.write.notConnected.message.destination`
-  cũng vậy · `high`. `nguyên vẹn` nói cả "còn đó" lẫn "không bị đụng vào", nên nó gánh được lời trấn an mà tiếng Anh
-  chia làm hai vế.
+  lời trấn an này trong cùng hộp thoại ("Các bản gốc vẫn nguyên vẹn."), và
+  `errors.write.notConnected.message.destination` cũng vậy · `high`. `nguyên vẹn` nói cả "còn đó" lẫn "không bị đụng
+  vào", nên nó gánh được lời trấn an mà tiếng Anh chia làm hai vế.
 - **where they were → `ở chỗ cũ`** · `errors.write.readOnlyDevice.source.suggestion` ("Các tệp gốc vẫn ở nguyên chỗ
   cũ."), `fileOperations.cancelRollback.moveAlreadyLanded` ("{countText} bản gốc vẫn nằm ở chỗ cũ.") · `high`.
 - **the rest → `các tệp còn lại`** · `fileOperations.cancelRollback.stoppedDeleting` ("Các mục còn lại vẫn nằm ở đó."),
   `settings.askCmdr.memory.notAllForgotten` ("hãy xóa phần còn lại") · `high`. Ở đây là tệp chứ không phải mục, nên dùng
   `tệp` cho khớp với `{total} tệp` ngay câu trước.
-- **so nothing is lost → `nên không mất gì cả`** · `fileOperations.cancelRollback.stagedLeftover.named`
-  ("Bạn có thể xóa nó mà không mất gì") · `high`. Thêm `cả` để vế trấn an đứng cuối câu không bị trôi đi.
-- **all your files → `mọi tệp của bạn`** · `fileOperations.transferProgress.rollbackAlreadyLandedTooltip`
-  ("Mọi tệp đều đã ở đích") · `high`. ❌ Đừng dùng `toàn bộ tệp`: `askCmdr.consent.contentsRule` đã dành cụm đó cho nghĩa
-  "nguyên cả tệp" (whole file), nên ở đây nó sẽ đọc nhầm nghĩa.
+- **so nothing is lost → `nên không mất gì cả`** · `fileOperations.cancelRollback.stagedLeftover.named` ("Bạn có thể xóa
+  nó mà không mất gì") · `high`. Thêm `cả` để vế trấn an đứng cuối câu không bị trôi đi.
+- **all your files → `mọi tệp của bạn`** · `fileOperations.transferProgress.rollbackAlreadyLandedTooltip` ("Mọi tệp đều
+  đã ở đích") · `high`. ❌ Đừng dùng `toàn bộ tệp`: `askCmdr.consent.contentsRule` đã dành cụm đó cho nghĩa "nguyên cả
+  tệp" (whole file), nên ở đây nó sẽ đọc nhầm nghĩa.
 - **on {counterpart} → `trên {counterpart}`; to it → `tới đó`** · `nằm trên ổ đĩa` theo
-  `errors.listing.crossDeviceOperation.explanation`; `tới đó` theo `errors.write.destinationNotFound.message.copy`
-  ("Thư mục bạn đang sao chép tới") và `fileOperations.cancelRollback.stagedLeftover.named` ("một lần truyền sau tới
-  đó") · `high`. Cả `{volumeName}` lẫn `{counterpart}` đứng trần, không loại từ đứng trước, như
+  `errors.listing.crossDeviceOperation.explanation`; `tới đó` theo `errors.write.destinationNotFound.message.copy` ("Thư
+  mục bạn đang sao chép tới") và `fileOperations.cancelRollback.stagedLeftover.named` ("một lần truyền sau tới đó") ·
+  `high`. Cả `{volumeName}` lẫn `{counterpart}` đứng trần, không loại từ đứng trước, như
   `errors.write.readOnlyDevice.source.message` ("{deviceName} chỉ đọc") và `indexing.staleDialog.body`: tên ổ đĩa là
   chuỗi tùy ý, gắn `ổ đĩa` phía trước sẽ sai khi tên đã tự chứa từ đó.
 - Hai khóa `sided.source.*` chỉ khác nhau đúng một động từ (`sao chép` / `di chuyển`); phần đuôi trấn an giữ nguyên từng
@@ -3102,19 +3102,19 @@ thành một lần hỏng việc: không có gì mất cả, Cmdr giữ lại c�
 - **couldn't confirm → `chưa xác nhận được`** · `fileExplorer.rename.unconfirmed` ("Chưa xác nhận được việc đổi tên
   \"{name}\"."), `fileOperations.mkdir.timeoutMessage` ("Chưa xác nhận được thư mục đã được tạo.") · `high`. Thuật ngữ
   Microsoft chốt confirm → `xác nhận` (VNM, Verb). Chọn `chưa … được` chứ không phải `không thể xác nhận` của
-  `fileExplorer.pane.trashUnconfirmedToast`: `chưa` nói "chưa chứng minh xong", còn `không thể` nghe như một lời từ
-  chối dứt khoát, đúng cái sắc thái hỏng việc mà khóa này cố tình tránh.
+  `fileExplorer.pane.trashUnconfirmedToast`: `chưa` nói "chưa chứng minh xong", còn `không thể` nghe như một lời từ chối
+  dứt khoát, đúng cái sắc thái hỏng việc mà khóa này cố tình tránh.
 - **the move (danh từ hóa thao tác) → `việc di chuyển`** · khuôn `việc + động từ` của `fileExplorer.rename.unconfirmed`
   ("việc đổi tên") · `high`. Tiêu đề viết hoa kiểu câu, không dấu chấm cuối, như các tiêu đề `errors.write.*` khác.
 - **were saved → `đã được lưu`** · `fileExplorer.pane.trashUnconfirmedToast` dùng cùng dạng bị động `đã được` cho một
-  thao tác chưa xác nhận · `high`. `các tệp vừa di chuyển` (vừa = just now) tránh chồng hai chữ `đã` liền nhau mà
-  "các tệp đã di chuyển đã được lưu" sẽ tạo ra.
+  thao tác chưa xác nhận · `high`. `các tệp vừa di chuyển` (vừa = just now) tránh chồng hai chữ `đã` liền nhau mà "các
+  tệp đã di chuyển đã được lưu" sẽ tạo ra.
 - **it kept your originals → `nó giữ nguyên các bản gốc của bạn`** · `nó` thay cho Cmdr theo
-  `fileOperations.transferProgress.rollbackAlreadyLandedTooltip` ("trước khi nó xóa những bản gốc còn lại"); `giữ
-  nguyên` theo `askCmdr.renameReview.nameKeptTooltip` · `high`.
-- **Have a look at the destination → `Hãy kiểm tra đích`** · `kiểm tra` theo
-  `fileExplorer.pane.trashUnconfirmedToast` ("Hãy kiểm tra Thùng rác để chắc chắn."); `đích` trần làm tân ngữ theo
-  `errors.write.destinationNotFound.suggestion` ("Hãy chọn đích khác") · `high`.
+  `fileOperations.transferProgress.rollbackAlreadyLandedTooltip` ("trước khi nó xóa những bản gốc còn lại");
+  `giữ nguyên` theo `askCmdr.renameReview.nameKeptTooltip` · `high`.
+- **Have a look at the destination → `Hãy kiểm tra đích`** · `kiểm tra` theo `fileExplorer.pane.trashUnconfirmedToast`
+  ("Hãy kiểm tra Thùng rác để chắc chắn."); `đích` trần làm tân ngữ theo `errors.write.destinationNotFound.suggestion`
+  ("Hãy chọn đích khác") · `high`.
 - **try the move again → `thử lại việc di chuyển`** · `rồi thử lại` là khuôn của cả họ `errors.write.*`
   (`errors.write.deviceDisconnected.suggestion`, `errors.write.notConnected.suggestion`) · `high`. Giữ `việc di chuyển`
   để câu gợi ý nhắc lại đúng thao tác, thay vì một lời "thử lại" chung chung.

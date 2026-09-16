@@ -28,7 +28,10 @@ pub(in crate::file_system::write_operations) enum TempHome<'a> {
     /// same door the old builds did.
     #[cfg_attr(
         not(test),
-        allow(dead_code, reason = "the shape a replayed `+` line speaks; only the replay tests mint one")
+        allow(
+            dead_code,
+            reason = "the shape a replayed `+` line speaks; only the replay tests mint one"
+        )
     )]
     LocalFs,
     /// One volume's own path space, keyed by the volume ID — the identity that
@@ -317,9 +320,9 @@ pub(in crate::file_system::write_operations) fn home_for(state: &WriteOperationS
 /// how it ended.
 ///
 /// ❗ Not a `Drop` guard. What happens to an aside when its operation stops is a
-/// data-safety decision with three different answers ([`retire`],
-/// [`keep_for_arrival`], or leaving it recorded for the next launch), and a
-/// guard would silently pick one of them on every early return.
+/// data-safety decision with three different answers (`in_flight_temps::retire`,
+/// `in_flight_temps::keep_for_arrival`, or leaving it recorded for the next
+/// launch), and a guard would silently pick one of them on every early return.
 #[derive(Clone, Debug)]
 pub(in crate::file_system::write_operations) struct TrackedRecord {
     pub(in crate::file_system::write_operations) record: Record,

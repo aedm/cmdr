@@ -481,12 +481,22 @@ force-quit — and assert nothing sits at a final name, for a fresh copy, an ove
 
 A staged temp is a sibling of the destination file, so it lives wherever the destination does: on the local filesystem
 for a local copy, and inside an SMB / SFTP / WebDAV / MTP volume's own namespace for a transfer to one. A path can't
-tell those apart, so every persisted record carries an `in_flight_temps::TempHome` (`LocalFs`, or a volume ID), and
-the sweep deletes through the volume that wrote it. `staged_write.rs` reads the volume from
-`WriteOperationState::dest_volume_id()` (the destination half of `journal_volumes`, which every volume copy/move
-deferred sets); `overwrite.rs` names `LocalFs` outright. An operation that names neither has its partial kept in the
-operation's own in-memory ledger and NOT persisted: that ledger's sweep holds the volume handle already, while a
-persisted path with no path space is one the next launch could resolve against the local filesystem and act on there.
+tell those apart, so every persisted record carries its path space, and the sweep reaches it through the right one.
+An operation that names neither has its partial kept in the operation's own in-memory ledger and NOT persisted: that
+ledger's sweep holds the volume handle already, while a persisted path with no path space is one the next launch could
+resolve against the local filesystem and act on there.
+
+Two vocabularies, because the ledger carries both shapes. The cross-volume `staged_write.rs` still writes the plain
+`+` record, naming its volume from `WriteOperationState::dest_volume_id()` (the destination half of
+`journal_volumes`). The local `overwrite.rs` and `move_op/cross_fs.rs` write KINDED records, whose home comes from
+`in_flight_temps::home_for` — the operation's typed destination side (`transfer_sides.rs`), ❌ never a prefix match
+against the mount table. The three homes and why the local-mount / volume-namespace split can't be derived:
+`write_operations/DETAILS.md` § "What the sweep does with each kind".
+
+**A path on a removable drive is NOT local-homed**, even though it's an ordinary local path. A drive can be unplugged
+at the next launch, and a record resolved against its mount point then reads as already gone, so the ledger forgets the
+only trace of a leftover still sitting on the drive. Homed to the volume, it waits for the drive instead — and stores
+its path relative to the root, since a returning drive can mount somewhere else.
 
 **Decision: the record keys on the volume ID, not the mount root.** The ledger's whole point is surviving a restart, and
 a root doesn't: macOS remounts the same share at `/Volumes/naspi-1` after a wedge. A volume ID is identity by

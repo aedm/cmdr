@@ -22,8 +22,16 @@ use crate::test_support::TestDir;
 fn state_between(source_root: &Path, dest_root: &Path) -> Arc<WriteOperationState> {
     Arc::new(
         WriteOperationState::new(std::time::Duration::from_millis(200)).with_sides(Some(TransferSides::new(
-            TransferSide::new("vol-mac".to_string(), "Macintosh HD".to_string(), source_root.to_path_buf()),
-            TransferSide::new("vol-stick".to_string(), "Fältkamera".to_string(), dest_root.to_path_buf()),
+            TransferSide::new(
+                "vol-mac".to_string(),
+                "Macintosh HD".to_string(),
+                source_root.to_path_buf(),
+            ),
+            TransferSide::new(
+                "vol-stick".to_string(),
+                "Fältkamera".to_string(),
+                dest_root.to_path_buf(),
+            ),
         ))),
     )
 }
@@ -178,6 +186,5 @@ fn a_missing_source_on_a_mounted_drive_is_still_counted_done() {
     let state = state_between(&src, &dir.join("dst"));
     let _hook = test_hook::answer_each(vec![(src.clone(), Some(true))]);
 
-    delete_sources_after_move(&*events, "op-sweep-mounted", &state, &sources, 1, &sweep)
-        .expect("the sweep finishes");
+    delete_sources_after_move(&*events, "op-sweep-mounted", &state, &sources, 1, &sweep).expect("the sweep finishes");
 }

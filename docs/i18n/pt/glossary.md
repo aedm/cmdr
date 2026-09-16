@@ -2942,8 +2942,8 @@ não o gerúndio de `fileExplorer.navigation.driveIndex.driveLeaving`.
   para “untouched” (`errors.write.destinationNotFound.message.copy` “Os originais estão intactos.”,
   `errors.write.notConnected.message.destination` “Seus arquivos estão intactos.”) · high. O **continuam** entra no
   lugar de “estão” porque o inglês acrescenta “where they were”, e é o verbo que a próxima linha fixa.
-- **where they were · `onde estavam`** · `fileOperations.cancelRollback.moveAlreadyLanded` já publica
-  “originais continuam onde estavam” para um “are still where they were” · confirmed.
+- **where they were · `onde estavam`** · `fileOperations.cancelRollback.moveAlreadyLanded` já publica “originais
+  continuam onde estavam” para um “are still where they were” · confirmed.
 - **so nothing is lost · `então nada se perdeu`** · a passiva-reflexiva mantém a tranquilização em voz ativa e no fim da
   frase, que é onde o inglês a põe; o pile só tem a forma perifrástica (“serão perdidas se você não as salvar”, macOS
   pt-BR) · tentative. ❌ Não “nada foi perdido” (passiva sem agente, mais fria) nem “nada se perde” (genérico demais
@@ -2967,8 +2967,8 @@ não o gerúndio de `fileExplorer.navigation.driveIndex.driveLeaving`.
   confirmed.
 - **after Cmdr copied/moved · `depois que o Cmdr copiou` / `moveu`** · molde já publicado em
   `fileOperations.cancelRollback.reason.drift.named` (“depois que o Cmdr colocou lá”) · high. O sintagma
-  `{done} de {total} arquivos` fica na ordem do inglês; os dois números chegam já formatados, então nada de ICU em
-  volta deles.
+  `{done} de {total} arquivos` fica na ordem do inglês; os dois números chegam já formatados, então nada de ICU em volta
+  deles.
 - Varredura pt-PT dos quatro valores (ficheiro, `estar a` + infinitivo, consoante, próclise antes de infinitivo, Rever,
   alterar o nome, guardar, você omitido em frase de resultado), mais U+2019, apóstrofo duplo e espaço duplo: zero
   ocorrências. Nenhum `sameAsSourceJustification`: os quatro diferem do inglês.
@@ -2981,11 +2981,11 @@ quatro linhas (`errors.write.moveNotConfirmed.title`, `errors.write.moveNotConfi
 movimentação deu errado”, pela mesma regra das linhas de desfecho da § O convite para fixar o Cmdr no Dock.
 
 - **Couldn''t confirm the move · `Não foi possível confirmar a movimentação`** · a abertura de “couldn''t” fixada na §
-  Error-copy phrasings, e a mesma da irmã `fileExplorer.rename.unconfirmed` (“Não foi possível confirmar a renomeação
-  de …”) · confirmed. Título em caixa de frase e sem ponto final, como `errors.write.destinationNotFound.title`.
+  Error-copy phrasings, e a mesma da irmã `fileExplorer.rename.unconfirmed` (“Não foi possível confirmar a renomeação de
+  …”) · confirmed. Título em caixa de frase e sem ponto final, como `errors.write.destinationNotFound.title`.
 - **Cmdr couldn''t confirm · `O Cmdr não conseguiu confirmar`** · no CORPO o inglês nomeia o sujeito, então o português
-  também: `O Cmdr não conseguiu {infinitivo}` é o molde já publicado em `errors.eject.unexpected` (“o Cmdr não
-  conseguiu identificar o quê”) · high. O impessoal fica só para o TÍTULO, onde não há espaço para sujeito.
+  também: `O Cmdr não conseguiu {infinitivo}` é o molde já publicado em `errors.eject.unexpected` (“o Cmdr não conseguiu
+  identificar o quê”) · high. O impessoal fica só para o TÍTULO, onde não há espaço para sujeito.
 - **the moved files were saved · `os arquivos movidos foram salvos`** · **salvar** é o verbo travado do glossário (❌
   nunca `guardar`, indício pt-PT); a passiva é do inglês e o sujeito é `os arquivos`, então a frase não fica sem sujeito
   · high. `servers.refusal.saveUnconfirmed` usa a mesma passiva pelo mesmo motivo (“nada foi salvo”).

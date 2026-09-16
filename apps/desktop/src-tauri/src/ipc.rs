@@ -64,9 +64,9 @@ use crate::file_system::listing::streaming::{
 use crate::file_system::volume::eject::VolumesEjectingChanged;
 use crate::file_system::write_operations::{
     ConflictInfo, DryRunResult, MoveLeftoversKeptEvent, ScanPreviewCancelledEvent, ScanPreviewCompleteEvent,
-    ScanPreviewErrorEvent,
-    ScanPreviewProgressEvent, ScanProgressEvent, WriteCancelledEvent, WriteCompleteEvent, WriteConflictEvent,
-    WriteConflictResolvedEvent, WriteErrorEvent, WriteProgressEvent, WriteSettledEvent, WriteSourceItemDoneEvent,
+    ScanPreviewErrorEvent, ScanPreviewProgressEvent, ScanProgressEvent, WriteCancelledEvent, WriteCompleteEvent,
+    WriteConflictEvent, WriteConflictResolvedEvent, WriteErrorEvent, WriteProgressEvent, WriteSettledEvent,
+    WriteSourceItemDoneEvent,
 };
 use crate::file_system::write_operations::{OperationsChanged, VolumesBusyChanged};
 use crate::file_viewer::ViewerPullProgress;

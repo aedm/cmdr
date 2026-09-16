@@ -3416,15 +3416,15 @@ que la personne lit.
   macOS Finder Tier 1 du geste (`FR2`/`FR3` : « Déplacer vers » / « Copier vers »).
 - **{done} of {total} files → `{done} des {total} fichiers`** · `high`. Le partitif est la seule forme juste quand
   `{done}` vaut 1 (« 1 des 5 fichiers ») ; « {done} fichiers sur {total} », pourtant plus proche du moule macOS
-  (`LocalizableMerged.json` `PW8` « ^0 sur ^1 copiés », `PW35` « Éléments à mettre à jour : ^0 sur ^1 »), écrirait
-  « 1 fichiers », et la famille est brute : aucun pluriel ICU n'est disponible pour rattraper. macOS atteste la
-  contraction devant un compteur (`N169.21_V2` : « Supprimer toutes les sauvegardes des ^0 éléments. »).
+  (`LocalizableMerged.json` `PW8` « ^0 sur ^1 copiés », `PW35` « Éléments à mettre à jour : ^0 sur ^1 »), écrirait « 1
+  fichiers », et la famille est brute : aucun pluriel ICU n'est disponible pour rattraper. macOS atteste la contraction
+  devant un compteur (`N169.21_V2` : « Supprimer toutes les sauvegardes des ^0 éléments. »).
 - **Your originals are untouched → `Vos originaux sont intacts`** · paire minimale déjà dans le catalogue :
   `errors.write.destinationNotFound.message.copy` rend « The originals are untouched. » par « Les originaux sont
   intacts. », et `errors.write.notConnected.message.destination` rend « Your files are untouched. » par « Vos fichiers
   sont intacts. » · `high`. Le possessif suit donc l'anglais clé par clé : `vos` quand il dit « your ».
-- **so nothing is lost → `rien n'est donc perdu`** · le `donc` postposé du catalogue (`errors.mutation.volumeGone` :
-  « …, rien n'a donc été modifié. ») ; « perdu » est le mot macOS `fr` pour « lost » (`FF45`, `FF46`) · `high`.
+- **so nothing is lost → `rien n'est donc perdu`** · le `donc` postposé du catalogue (`errors.mutation.volumeGone` : «
+  …, rien n'a donc été modifié. ») ; « perdu » est le mot macOS `fr` pour « lost » (`FF45`, `FF46`) · `high`.
 - **The rest are still on the drive → `Les autres fichiers sont toujours sur ce disque.`** · `high` pour les mots,
   `tentative` pour le choix de tournure. « Le reste » est pourtant attesté en Tier 1 (`PE30` : « …les ignorer et copier
   le reste ? ») et dans le catalogue (`fileOperations.transferProgress.rollbackAlreadyLandedTooltip` : « le reste des
@@ -3445,9 +3445,9 @@ prouver que les copies sont arrivées. La valeur ne doit jamais laisser entendre
 
 - **Couldn't confirm the move → `Impossible de confirmer le déplacement`** · moule figé du catalogue pour exactement
   cette situation (`fileOperations.mkdir.timeoutMessage`, `fileExplorer.rename.unconfirmed`,
-  `fileExplorer.pane.trashUnconfirmedToast` : « Impossible de confirmer … ») · `high`. ❌ Pas « Déplacement impossible »,
-  qui est déjà le titre d'un vrai refus de lecture (`errors.write.readError.title.move`) et qui dirait que rien n'a eu
-  lieu. Titre sans point final, comme les autres titres de la famille.
+  `fileExplorer.pane.trashUnconfirmedToast` : « Impossible de confirmer … ») · `high`. ❌ Pas « Déplacement impossible
+  », qui est déjà le titre d'un vrai refus de lecture (`errors.write.readError.title.move`) et qui dirait que rien n'a
+  eu lieu. Titre sans point final, comme les autres titres de la famille.
 - **Cmdr couldn't confirm → `Cmdr n'a pas pu confirmer`** · voix active avec Cmdr sujet, comme le demande `style.md` ;
   `confirm → confirmer` est la terminologie Microsoft FRA (ids 1475887, 37786) et le verbe des trois toasts ci-dessus ·
   `high`.
@@ -3458,15 +3458,15 @@ prouver que les copies sont arrivées. La valeur ne doit jamais laisser entendre
   « est déjà arrivé à destination ») · `high`.
 - **it kept your originals where they were → `et a donc laissé vos originaux là où ils étaient`** · `high`. Sujet
   coordonné, ❌ PAS le pronom `il` : l'antécédent masculin le plus proche est `{volumeName}`, et la phrase dirait que
-  c'est le disque qui a gardé les originaux. Même discipline que « Renommage non confirmé » plus haut. Ne pas
-  « corriger » vers `il a donc laissé`.
+  c'est le disque qui a gardé les originaux. Même discipline que « Renommage non confirmé » plus haut. Ne pas « corriger
+  » vers `il a donc laissé`.
 - **Your originals haven't moved → `Vos originaux restent où ils sont.`** · phrase déjà expédiée par
   `errors.write.readOnlyDevice.source.suggestion` (« The originals stay where they are. » → « Les originaux restent où
   ils sont. »), avec le possessif que l'anglais porte ici · `high`. ❌ Pas « n'ont pas bougé » (idiomatique, mais absent
   du pile), ❌ pas « ne se sont pas déplacés », qui répéterait `déplacement` de la phrase précédente.
-- **Have a look at the destination → `Jetez un œil à la destination`** · `settings.askCmdr.memory.description`
-  (« Jetez-y un œil, ou repartez de zéro. ») · `high`. La ligature `œ` est celle du catalogue et de macOS (« Coup
-  d'œil ») ; seules les apostrophes restent ASCII.
+- **Have a look at the destination → `Jetez un œil à la destination`** · `settings.askCmdr.memory.description` («
+  Jetez-y un œil, ou repartez de zéro. ») · `high`. La ligature `œ` est celle du catalogue et de macOS (« Coup d'œil »)
+  ; seules les apostrophes restent ASCII.
 - **try the move again → `réessayez le déplacement`** · `réessayez` est le verbe de reprise de la famille
   (`errors.write.deviceDisconnected.suggestion` : « …et réessayez. », `errors.eject.notResponding` : « Réessayez dans un
   instant. ») · `high`.

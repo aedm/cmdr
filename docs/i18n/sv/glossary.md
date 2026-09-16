@@ -2990,9 +2990,10 @@ De fyra sidobestämda varianterna (`errors.write.deviceDisconnected.sided.destin
 - **so nothing is lost → `så ingenting har gått förlorat`** · macOS AppKit `Document` (”Ändringarna går förlorade om du
   inte sparar dem”) och Thunar `sv` (”så går den förlorad permanent”) · `high`. Perfekt, inte presens: enheten är redan
   ute, och `har gått förlorat` säger att läget står fast i stället för att varna för något som kan hända.
-- **the rest → `resten`, still on the drive → `ligger kvar på enheten`** · `fileOperations.cancelRollback.stoppedDeleting`
-  säger ordagrant ”Resten ligger kvar.”, och `ligger kvar` är katalogens ord för det som blev stående
-  (`fileExplorer.navigation.forgetServerConfirm`) · `high`. `enhet` är glossaryns satta ord för drive.
+- **the rest → `resten`, still on the drive → `ligger kvar på enheten`** ·
+  `fileOperations.cancelRollback.stoppedDeleting` säger ordagrant ”Resten ligger kvar.”, och `ligger kvar` är katalogens
+  ord för det som blev stående (`fileExplorer.navigation.forgetServerConfirm`) · `high`. `enhet` är glossaryns satta ord
+  för drive.
 - **{done} of {total} files → `{done} av {total} filer`** · `av` genomgående i katalogen (`viewer.pull.progress`,
   `fileExplorer.imageIndex.folder.someIndexed`) och i macOS Finders AirDrop-förlopp (”64,0 MB av 1,33 GB”) · `high`.
   Båda är färdigformaterade strängar: ingen ICU-siffersyntax runt dem.
@@ -3022,14 +3023,14 @@ Ingenting gick sönder, och ingen variant får läsas som att flytten gick fel.
   bokstavligt, filerna kan mycket väl ligga där.
 - **the move (substantiv) → `flytten`** · `errors.write.deviceDisconnected.message.move` (”Enheten kopplades från under
   flytten”) · `high`.
-- **were saved on {volumeName} → `hade sparats på {volumeName}`** · pluskvamperfekt för det som skulle ha hunnit ske före
-  bekräftelsen; `spara` är katalogens verb för att lägga undan data (`settings.advanced.logLlmCalls.description`) ·
+- **were saved on {volumeName} → `hade sparats på {volumeName}`** · pluskvamperfekt för det som skulle ha hunnit ske
+  före bekräftelsen; `spara` är katalogens verb för att lägga undan data (`settings.advanced.logLlmCalls.description`) ·
   `high`. ❌ Inte `skrevs till`: `skriva` bär i katalogen själva överföringen som pågår
   (`fileOperations.transferProgress.rollbackTooltip`, `errors.write.writeError.message`), och poängen här är att filerna
   ska ha landat.
 - **at the destination → `på målet`, men `målmappen` när man ska titta in i den** · `målet` är katalogens satta ord
-  (`errors.write.destinationExists.message`, `errors.write.writeError.message`), och `errors.write.destinationNotFound.title`
-  har `målmappen` om samma yta · `high`. `Titta i målet` går inte att läsa, så
+  (`errors.write.destinationExists.message`, `errors.write.writeError.message`), och
+  `errors.write.destinationNotFound.title` har `målmappen` om samma yta · `high`. `Titta i målet` går inte att läsa, så
   `errors.write.moveNotConfirmed.suggestion` tar mappformen.
 - **it kept your originals where they were → `så dina original ligger kvar där de låg`** · omskrivet till presens ·
   `high`. `så Cmdr lät originalen ligga kvar` hade krävt ett andra `Cmdr` i meningen (se § Utmatning och frånkoppling:
@@ -3041,7 +3042,7 @@ Ingenting gick sönder, och ingen variant får läsas som att flytten gick fel.
   engelskan gör · `high`.
 - **Have a look at the destination, then try … again → `Titta i målmappen och försök sedan flytta igen`** · `titta` är
   katalogens verb (`errors.write.newDataKeptAt.suggestion` ”Öppna {keptAt} och titta på den”), och `sedan` markerar
-  ordningen utan komma mellan de två leden, som i § Utmatning och frånkoppling · `high`. Bara ett `igen`: `igen … på
-  nytt`-formeln behövs först när engelskan upprepar ”again”.
+  ordningen utan komma mellan de två leden, som i § Utmatning och frånkoppling · `high`. Bara ett `igen`:
+  `igen … på nytt`-formeln behövs först när engelskan upprepar ”again”.
 - Inga `sameAsSourceJustification`: alla fyra värdena skiljer sig från engelskan. RAW-familj, alltså inga ICU-strukturer
   och vanliga apostrofer (inga används här).

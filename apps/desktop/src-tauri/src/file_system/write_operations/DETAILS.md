@@ -39,11 +39,12 @@ The full top-level inventory is here:
   an operation currently has at the destination, plus the `Drop` panic net) and `reversal.rs` (the policy over it: the
   recheck before each destructive act, and `ReversalTally`). That recheck shares `verify_snapshot` + `SkipReason` with
   the operation-log history engine — ❌ never a batch or a fork of either, so one reversal can't quietly grow a laxer
-  rule than the other; only the `Drop` net is unconditional. `in_flight_temps.rs` registers every `.cmdr-` temp WITH
-  the path space it lives in (local filesystem, or a volume ID) so a startup sweep can find one an abandoned run left
-  behind and delete it through the right backend; `transfer/DETAILS.md` § "Which path space a recorded partial lives
-  in" holds the decisions, and § "Testing the in-flight temp ledger" below the rules its process-wide singleton imposes
-  on tests.
+  rule than the other; only the `Drop` net is unconditional. The persisted leftover ledger is three files:
+  `in_flight_records.rs` (what a record IS: its kind, its path space, and what that kind needs),
+  `in_flight_temps.rs` (the log and the store), and `in_flight_sweep.rs` (what a launch and a returning drive DO with
+  one). § "What the sweep does with each kind" below holds the rules; `transfer/DETAILS.md` § "Which path space a
+  recorded partial lives in" holds the path-space decisions, and § "Testing the in-flight temp ledger" below the rules
+  its process-wide singleton imposes on tests.
 - **`tests.rs` is the SHARED-vocabulary suite only**: the intent machine, the config the frontend sends, the
   `io::Error` conversion, and `no_global_sync_or_spawn_async_sync_in_write_operations` — a whole-tree scanner that
   excludes itself by the filename `tests.rs`, so ❗ moving it to another file silently makes it fail on its own prose.
@@ -1175,6 +1176,48 @@ reach undo: `read_rollback_units_page` binds `ItemOutcome::Done`, which is why `
 defensive rather than reachable. Pinned by
 `a_skipped_row_is_logged_but_never_offered_to_undo_as_a_rollback_unit`.
 
+## What the sweep does with each kind
+
+The persisted ledger records three shapes of thing, and exactly one of them is disposable. The rules run from two
+places — `init_and_sweep` at launch, and the volume registry's arrival announcement — and ❗ they must stay ONE set: a
+leftover on a USB stick meets whichever happens first, so rules that drifted apart would make its fate depend on
+whether the drive was plugged in at launch.
+
+- **A temp** (`.cmdr-tmp-*`) holds bytes on their way in. Nothing else has them, so a leftover is garbage and goes.
+- **An aside** (`.cmdr-temp-*`) holds bytes that were ALREADY the user's, renamed out of the way so a replacement
+  could take their name. It goes back to its own name when that name is free; it is removed ONLY when the replacement
+  is provably complete, which for `FileAside` means a regular file of exactly the recorded size; in every other case
+  its bytes keep a ` (recovered)` name beside where they belong (the same convention
+  `DisplacedEntry::keep_as_recovered_sibling` and the volume engine's rescue use).
+- **A staging directory** (`.cmdr-staging-<op>`) is a cross-filesystem move's half-built tree. ❌ Only ever
+  `remove_dir`, never recursively: a destination that left the mount table returns before Phase 5, and if it left
+  before Phase 3 that folder holds the whole staged tree on a drive that comes back later, with the originals possibly
+  already gone. A non-empty one stays, warns, and raises `move-leftovers-kept`.
+
+❌ **Nothing removes something it hasn't looked at.** Every removal is gated on a presence read, and a read that FAILS
+is never treated as "nothing there" (`Standing::Unknown` defers). Same rule one level up: `discard_temp` retires a
+record on a `NotFound` only while the destination is still listed, because on a pulled drive "not found" is the mount
+being gone and the partial is still on the drive.
+
+**A file→folder overwrite sets a whole DIRECTORY aside.** Even with the replacement provably complete it gets a real
+name rather than a recursive delete; the person decides what to do with the folder.
+
+**Four homes' worth of one distinction.** `ItemHome::Local` is a path that's always there (the boot volume), swept with
+`std::fs` before the volume registry even exists. `Mount` is a local mount that can go away: the path is stored
+RELATIVE to the mount root, so a remount at `/Volumes/Backups 1` still finds it, and the sweep uses `std::fs` once the
+registry has the volume. `VolumeSpace` is a volume's OWN namespace, swept through `Volume`. ❗ The `Mount` /
+`VolumeSpace` split is stated by the producer and ❌ never re-derived: a direct SMB session roots at `/` in its own
+namespace, so guessing from the path would point `std::fs::remove_file` at the user's Mac.
+
+**Why the kinded records got their own op bytes** (`A`/`a`) rather than widening the `+` line: a build without them
+skips an op byte it doesn't know and truncates the log at launch, so a rollback FORGETS these records. A widened `+`
+would have been read by that build as a temp, and a temp is the one kind it removes on sight — which is exactly the
+aside it must never touch. `is_one_of_ours` stopped accepting `.cmdr-temp-` for a plain removal for the same reason.
+
+**The notice.** A kept staging folder raises `move-leftovers-kept` (drive name + folder name) through an `AppHandle`
+stashed at startup; the sweep belongs to no operation and has no event sink. A Mac-internal one gets the `warn` alone —
+the copy names a drive, and the boot disk never goes away, so it meets the rule again next launch.
+
 ## Testing the in-flight temp ledger
 
 `in_flight_temps.rs` keeps ONE process-wide `STORE` for the whole test binary, and three rules follow from that. Ignore
@@ -1200,5 +1243,12 @@ which also answers a `SweepTally`: assert on that rather than on a log line. Joi
 `TestDir` it is walking. The volume-arrival half runs on a task instead, so a cell waits for it with
 `wait_until_async`.
 
-The cells live in `in_flight_temps_tests.rs`, included as `in_flight_temps`'s own `tests` module so they reach its
-private record types.
+The cells live in `in_flight_temps_tests.rs` (what replays, what defers, what a producer records) and
+`in_flight_sweep_tests.rs` (one cell per rule, driving `settle_kind` against a `TestDir`), each included as its
+module's own `tests` so they reach the private record types. The real-detach half is
+`transfer/real_image.rs`: a drive pulled and plugged back in, on a live HFS+ image.
+
+**A `Mount`-homed cell needs the mount table answered.** `transfer_sides::test_hook` is THREAD-LOCAL, and the launch
+sweep runs on its own thread, so a cell that wants a fixture directory to read as a mounted drive calls `settle` (or
+`settle_kind`) on its own thread rather than going through `init_and_sweep`. `TestVolumeRegistration::install` stands
+in for the arrival: `force_register` announces, which is what wakes the ledger's listener.

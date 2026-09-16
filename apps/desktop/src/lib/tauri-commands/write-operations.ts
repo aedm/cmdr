@@ -274,9 +274,7 @@ export async function onWriteSettled(callback: (event: WriteSettledEvent) => voi
  * Belongs to no operation: the move that made the folder ended in an earlier
  * session, or before the drive was unplugged. See `MoveLeftoversKeptEvent`.
  */
-export async function onMoveLeftoversKept(
-  callback: (event: MoveLeftoversKeptEvent) => void,
-): Promise<UnlistenFn> {
+export async function onMoveLeftoversKept(callback: (event: MoveLeftoversKeptEvent) => void): Promise<UnlistenFn> {
   return events.moveLeftoversKept.listen((event) => {
     callback(event.payload)
   })

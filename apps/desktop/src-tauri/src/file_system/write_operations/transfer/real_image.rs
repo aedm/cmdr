@@ -13,7 +13,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, ImageSpec};
+use cmdr_fs::testing::disk_images::{DiskImage, DiskImageSession, ImageSpec, MountedVolume};
 
 use cmdr_fs::testing::wait_until_async;
 
@@ -90,6 +90,31 @@ fn detach_mid_transfer(
     worker.join().expect("the engine thread finishes")
 }
 
+/// Copies `source` onto the image's volume, parks mid-file, pulls the drive, and
+/// answers what the engine ended with: the opening move of every copy cell here.
+fn copy_until_the_drive_is_pulled(
+    image: &DiskImage,
+    volume: &MountedVolume,
+    op_id: &'static str,
+    source: &std::path::Path,
+    events: &Arc<CollectorEventSink>,
+) -> Result<(), WriteOperationError> {
+    let state = state_onto(&volume.mount_point, &volume.name, std::path::Path::new("/"));
+    register_operation_status(op_id, WriteOperationType::Copy, Vec::new());
+    let sources = vec![source.to_path_buf()];
+    let destination = volume.mount_point.clone();
+    detach_mid_transfer(image, Arc::clone(events), state, move |events, state| {
+        copy_files_with_progress_inner(
+            &*events,
+            op_id,
+            &state,
+            &sources,
+            &destination,
+            &WriteOperationConfig::default(),
+        )
+    })
+}
+
 /// The whole point of M10: a real detach mid-copy is reported as the drive
 /// leaving, named, with how far it got — and the Mac original is untouched.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -101,22 +126,8 @@ async fn a_copy_onto_a_drive_that_is_pulled_mid_file_names_the_drive_and_keeps_t
     let (mac_dir, source) = mac_source("real-image-copy");
 
     let events = Arc::new(CollectorEventSink::new());
-    let state = state_onto(&volume.mount_point, &volume.name, std::path::Path::new("/"));
     let op_id = "op-real-image-copy";
-    register_operation_status(op_id, WriteOperationType::Copy, Vec::new());
-
-    let sources = vec![source.clone()];
-    let destination = volume.mount_point.clone();
-    let result = detach_mid_transfer(&image, Arc::clone(&events), Arc::clone(&state), move |events, state| {
-        copy_files_with_progress_inner(
-            &*events,
-            op_id,
-            &state,
-            &sources,
-            &destination,
-            &WriteOperationConfig::default(),
-        )
-    });
+    let result = copy_until_the_drive_is_pulled(&image, &volume, op_id, &source, &events);
 
     match &result {
         Err(WriteOperationError::DeviceDisconnected { side, .. }) => {
@@ -160,7 +171,7 @@ fn scratch_in(dir: &std::path::Path) -> Vec<String> {
 /// Stands in for the drive coming back: the volume registry takes the image's
 /// new mount point under the id the transfer was started with, which is what
 /// announces the arrival the ledger has been waiting on.
-fn drive_is_back(volume: &cmdr_fs::testing::disk_images::MountedVolume) -> TestVolumeRegistration {
+fn drive_is_back(volume: &MountedVolume) -> TestVolumeRegistration {
     TestVolumeRegistration::install(
         "vol-image",
         Arc::new(LocalPosixVolume::new(volume.name.clone(), &volume.mount_point)) as Arc<dyn Volume>,
@@ -186,22 +197,8 @@ async fn a_partial_left_on_a_pulled_drive_is_settled_when_that_drive_comes_back(
     let store = in_flight_temps_test_support::use_store_in(&ledger_dir);
 
     let events = Arc::new(CollectorEventSink::new());
-    let state = state_onto(&volume.mount_point, &volume.name, std::path::Path::new("/"));
     let op_id = "op-real-image-arrival";
-    register_operation_status(op_id, WriteOperationType::Copy, Vec::new());
-
-    let sources = vec![source.clone()];
-    let destination = volume.mount_point.clone();
-    let result = detach_mid_transfer(&image, Arc::clone(&events), Arc::clone(&state), move |events, state| {
-        copy_files_with_progress_inner(
-            &*events,
-            op_id,
-            &state,
-            &sources,
-            &destination,
-            &WriteOperationConfig::default(),
-        )
-    });
+    let result = copy_until_the_drive_is_pulled(&image, &volume, op_id, &source, &events);
     assert!(result.is_err(), "a copy onto a pulled drive can't succeed");
 
     // The engine has unwound. Its partial could not be removed — the drive was
@@ -218,9 +215,11 @@ async fn a_partial_left_on_a_pulled_drive_is_settled_when_that_drive_comes_back(
     let back = image.volumes()[0].clone();
     let _registration = drive_is_back(&back);
 
-    wait_until_async(Duration::from_secs(20), "the returned drive's scratch to be settled", || {
-        scratch_in(&back.mount_point).is_empty()
-    })
+    wait_until_async(
+        Duration::from_secs(20),
+        "the returned drive's scratch to be settled",
+        || scratch_in(&back.mount_point).is_empty(),
+    )
     .await;
 
     assert_eq!(
@@ -290,9 +289,11 @@ async fn an_original_set_aside_when_the_drive_was_pulled_is_still_there_when_it_
     let back = image.volumes()[0].clone();
     let _registration = drive_is_back(&back);
 
-    wait_until_async(Duration::from_secs(20), "the returned drive's scratch to be settled", || {
-        scratch_in(&back.mount_point).is_empty()
-    })
+    wait_until_async(
+        Duration::from_secs(20),
+        "the returned drive's scratch to be settled",
+        || scratch_in(&back.mount_point).is_empty(),
+    )
     .await;
 
     // The bytes are the point, not the name: the sweep puts them back at

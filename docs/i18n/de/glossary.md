@@ -2896,17 +2896,17 @@ genau diese Fälle für „Mit Server verbinden“ und fehlt im Stapel.
 
 ## A drive pulled mid-transfer (`errors.write.deviceDisconnected.sided.destination.copy`)
 
-Vier Sätze für den Moment, in dem jemandem mitten im Kopieren oder Bewegen das Laufwerk herausgezogen wurde.
-Rohfamilie: kein ICU, einfache Apostrophe, und `{volumeName}`, `{counterpart}`, `{done}`, `{total}` bleiben
-zeichengleich. Die Arbeit macht jeweils der ZWEITE Satz: er sagt, wo die Dateien jetzt liegen. Er darf nie zu einer
-bloßen Sachmeldung schrumpfen, und er steht am Satzende, weil das Deutsche dort seine Betonung trägt.
+Vier Sätze für den Moment, in dem jemandem mitten im Kopieren oder Bewegen das Laufwerk herausgezogen wurde. Rohfamilie:
+kein ICU, einfache Apostrophe, und `{volumeName}`, `{counterpart}`, `{done}`, `{total}` bleiben zeichengleich. Die
+Arbeit macht jeweils der ZWEITE Satz: er sagt, wo die Dateien jetzt liegen. Er darf nie zu einer bloßen Sachmeldung
+schrumpfen, und er steht am Satzende, weil das Deutsche dort seine Betonung trägt.
 
 - **„was disconnected“ (das Laufwerk ist schon weg) → `wurde getrennt`** · dieselbe Vergangenheitsform wie in § A drive
   unplugged mid-index und in `errors.volume.deviceDisconnected` („Das Gerät wurde getrennt, bevor die Änderung
   abgeschlossen war.“) · `high`. Bewusst NICHT die Verlaufsform „wird gerade getrennt“ aus
   `fileExplorer.navigation.driveIndex.driveLeaving`, und bewusst nichts aus der `auswerfen`-Wortfamilie (§ Auswerfen und
-  Trennen): hier wurde gezogen, nicht ausgeworfen. Der Dialogtitel daneben bleibt `errors.write.deviceDisconnected.title`
-  („Gerät getrennt“), der Satz widerspricht ihm also nicht.
+  Trennen): hier wurde gezogen, nicht ausgeworfen. Der Dialogtitel daneben bleibt
+  `errors.write.deviceDisconnected.title` („Gerät getrennt“), der Satz widerspricht ihm also nicht.
 - **„the drive“ (das gezogene Laufwerk) → `das Laufwerk`** · gesetzt in § Auswerfen und Trennen; `Volume` bleibt dem
   technischen Sinn vorbehalten · `high`.
 - **Quell- und Ziellaufwerk bekommen KEIN eigenes Wort** · `{volumeName}` ist immer das getrennte Laufwerk,
@@ -2936,8 +2936,8 @@ bloßen Sachmeldung schrumpfen, und er steht am Satzende, weil das Deutsche dort
 
 ## A move that could not be confirmed (`errors.write.moveNotConfirmed.title`)
 
-Der Dialog nach einem Bewegen, dessen Ankunft das Ziel nicht quittiert hat. Bewusst KEINE Misserfolgsmeldung: nichts
-ist verloren, und Cmdr hat die Originale gerade DESHALB behalten, weil es den Schreibvorgang nicht nachweisen konnte.
+Der Dialog nach einem Bewegen, dessen Ankunft das Ziel nicht quittiert hat. Bewusst KEINE Misserfolgsmeldung: nichts ist
+verloren, und Cmdr hat die Originale gerade DESHALB behalten, weil es den Schreibvorgang nicht nachweisen konnte.
 `couldn't confirm` bleibt wörtlich und darf nicht zu „ist schiefgegangen“ aufgewertet werden.
 
 - **„Couldn't confirm the move“ → `Die Bewegung ließ sich nicht bestätigen`** · `ließ sich nicht …` ist das gesetzte
@@ -2964,9 +2964,8 @@ ist verloren, und Cmdr hat die Originale gerade DESHALB behalten, weil es den Sc
   `deshalb` als Hauptsatz-Anschluss wie in `errors.write.originalsKeptAside.message.many`, das Versprechen selbst wie in
   `errors.write.readOnlyDevice.source.suggestion` („Die Originale bleiben, wo sie sind.“) · `high`. Der Nebensatz steht
   am ENDE, damit der Satz auf der Entwarnung endet und nicht auf dem Problem.
-- **„Have a look at the destination“ → `Sieh am Ziel nach`** · `nachsehen` ist die Katalogwendung für dieses
-  freundliche „have a look“ (`fileExplorer.pane.trashUnconfirmedToast` „Sieh zur Sicherheit im Papierkorb nach.“) ·
-  `high`.
+- **„Have a look at the destination“ → `Sieh am Ziel nach`** · `nachsehen` ist die Katalogwendung für dieses freundliche
+  „have a look“ (`fileExplorer.pane.trashUnconfirmedToast` „Sieh zur Sicherheit im Papierkorb nach.“) · `high`.
 - **„then try the move again“ → `und versuche es dann noch einmal`** · `es` zeigt auf die im Titel benannte Bewegung
   zurück, wie `errors.write.deviceDisconnected.suggestion` („und versuche es erneut“) · `high`. Eine zweite Nennung der
   `Bewegung` im selben kurzen Absatz liest sich gestelzt.

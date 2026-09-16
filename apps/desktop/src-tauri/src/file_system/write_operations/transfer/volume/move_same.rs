@@ -511,9 +511,7 @@ pub(crate) async fn move_within_same_volume_with_progress(
                                     // that replaces it is a separate call the
                                     // backend can refuse, and a delete makes that
                                     // refusal fatal to the user's file.
-                                    if let Some(displaced) =
-                                        displace_destination(&state, &volume, &orig).await?
-                                    {
+                                    if let Some(displaced) = displace_destination(&state, &volume, &orig).await? {
                                         displaced_dests
                                             .lock_ignore_poison()
                                             .insert(source_path_owned.clone(), displaced);

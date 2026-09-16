@@ -3139,23 +3139,23 @@ las lee está asustado por sus archivos, así que la frase existe para decir **d
 - **your originals are untouched → `tus originales siguen intactos`** · `intactos` es lo que ya dicen dos hermanas de
   `errors.write.*` para esta misma tranquilización: `errors.write.destinationNotFound.message.copy` («Los originales
   están intactos.») y `errors.write.notConnected.message.destination` («Tus archivos están intactos.») · high. Se
-  mantiene el posesivo `tus` del inglés, como en la segunda; `siguen` en vez de `están` porque el inglés añade
-  «where they were» y `siguen … donde estaban` lo carga sin repetir el verbo.
+  mantiene el posesivo `tus` del inglés, como en la segunda; `siguen` en vez de `están` porque el inglés añade «where
+  they were» y `siguen … donde estaban` lo carga sin repetir el verbo.
 - **where they were → `donde estaban`** · el catálogo ya lo tiene en `fileOperations.cancelRollback.moveAlreadyLanded`
   («Quedan {countText} originales donde estaban.») y en presente en `errors.write.readOnlyDevice.source.suggestion`
   («Los originales se quedan donde están.») · high
 - **so nothing is lost → `así que no has perdido nada`**, no el impersonal `así que no se pierde nada` · high (el giro),
   tentative (que la segunda persona sea preferible al impersonal). El impersonal esconde de quién son los archivos, que
-  es justo lo que la frase tiene que decir; macOS `es` también se dirige a quien lee cuando habla de pérdida
-  («Si seleccionas Bloqueo, perderás los datos no guardados», AppKit `es`, minado 2026-09-16). El participio con
-  `haber` es invariable, así que no expone el género de quien lee.
+  es justo lo que la frase tiene que decir; macOS `es` también se dirige a quien lee cuando habla de pérdida («Si
+  seleccionas Bloqueo, perderás los datos no guardados», AppKit `es`, minado 2026-09-16). El participio con `haber` es
+  invariable, así que no expone el género de quien lee.
 - **the rest are still on the drive → `el resto sigue en la unidad`** · `el resto` ya es del catálogo
   (`operationLog.rollback.partiallyRolledBackNotice` «dejó el resto como estaba»,
   `fileOperations.transferProgress.rollbackAlreadyLandedTooltip` «el resto de los originales») · high. Singular
   (`sigue`), y sin nombrar `archivos`: el inglés tampoco los nombra y la frase ya viene de una que los cuenta.
 - **to it (el disco al que se copiaba) → `ahí`** · adverbio de lugar, sin género ni artículo, que es la salida ya
-  documentada en `style.md` para no concordar con un `{name}` desconocido («terminara de escribir ahí») · high. `en ella`
-  concordaría con `unidad`, pero `{volumeName}` puede ser cualquier cosa.
+  documentada en `style.md` para no concordar con un `{name}` desconocido («terminara de escribir ahí») · high.
+  `en ella` concordaría con `unidad`, pero `{volumeName}` puede ser cualquier cosa.
 - **after Cmdr copied … → `después de que Cmdr copiara …`** · subjuntivo tras `después de que` / `antes de que`, con
   Cmdr de sujeto, como el ejemplo de `style.md` · high. Mantiene la marca `Cmdr` que exige
   `desktop-i18n-dont-translate`.
@@ -3175,9 +3175,10 @@ cuatro claves no pueden insinuar que el movimiento saliera mal ni que los archiv
 - **the moved files were saved → `que los archivos movidos se guardaran`** · subjuntivo tras `confirmar` negado, calcado
   de `fileOperations.mkdir.timeoutMessage` («No se pudo confirmar que la carpeta se creara») · high
 - **it kept your originals → `conservó tus originales`**, no `dejó tus originales` · `conservar` es el verbo de macOS
-  `es` para guardar a salvo algo a propósito (`Conservar original`, `Conservar copia parcial`, `Conservar cambios en el
-  documento original`; Finder + AppKit, minado 2026-09-16) · high. `dejar` se leería como descuido («se los dejó ahí»),
-  cuando el inglés nombra un acto deliberado de protección, que es el porqué de todo el diálogo.
+  `es` para guardar a salvo algo a propósito (`Conservar original`, `Conservar copia parcial`,
+  `Conservar cambios en el documento original`; Finder + AppKit, minado 2026-09-16) · high. `dejar` se leería como
+  descuido («se los dejó ahí»), cuando el inglés nombra un acto deliberado de protección, que es el porqué de todo el
+  diálogo.
 - **at the destination → `en el destino`** · terminología de Microsoft (`destination` → `destino`, ids 653190 y 683503,
   con etiqueta panregional ESP + MEX + ARG + 419 + …), macOS `es` («la carpeta de destino», «el volumen de destino») y
   el catálogo entero (`errors.write.destinationNotFound.title`, `errors.write.insufficientSpace.suggestion`) · high
@@ -3185,10 +3186,10 @@ cuatro claves no pueden insinuar que el movimiento saliera mal ni que los archiv
   después de una operación sin confirmar (`fileExplorer.pane.trashUnconfirmedToast`, «Revisa la Papelera para
   asegurarte») · high. `Echa un vistazo` traduciría mejor el registro informal del inglés, pero el catálogo ya eligió
   `revisar` para la situación idéntica.
-- **Your originals haven't moved. → `Tus originales siguen donde estaban.`** · high (el giro), tentative (apartarse de la
-  negación del inglés). La traducción literal obliga a elegir entre `no se han movido` (perfecto compuesto, peninsular,
-  contra la regla del pretérito de `style.md`) y `no se movieron` (pretérito, que suena a crónica, no a garantía). La
-  afirmación positiva dice lo mismo, esquiva las dos y repite el `donde estaban` de la clave hermana
+- **Your originals haven't moved. → `Tus originales siguen donde estaban.`** · high (el giro), tentative (apartarse de
+  la negación del inglés). La traducción literal obliga a elegir entre `no se han movido` (perfecto compuesto,
+  peninsular, contra la regla del pretérito de `style.md`) y `no se movieron` (pretérito, que suena a crónica, no a
+  garantía). La afirmación positiva dice lo mismo, esquiva las dos y repite el `donde estaban` de la clave hermana
   `errors.write.moveNotConfirmed.message.named`, que es lo que refuerza la tranquilización.
 - Ningún valor lleva apóstrofo ni marcador aparte de `{volumeName}`; los cuatro difieren del inglés, así que no hace
   falta `sameAsSourceJustification`.

@@ -35,7 +35,10 @@ use crate::ignore_poison::IgnorePoison;
 pub(crate) use release::VolumeRelease;
 #[cfg_attr(
     all(not(test), not(target_os = "macos")),
-    expect(unused_imports, reason = "only the macOS unmount approver reads a release's own answer")
+    expect(
+        unused_imports,
+        reason = "only the macOS unmount approver reads a release's own answer"
+    )
 )]
 pub(crate) use release::{LateRelease, Release};
 #[cfg_attr(

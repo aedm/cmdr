@@ -200,7 +200,8 @@ const cases: Case[] = [
     op: 'move',
     expected: {
       title: 'Device disconnected',
-      message: 'Fältkamera was disconnected before Cmdr could finish the move, so all your files are still on Macintosh HD.',
+      message:
+        'Fältkamera was disconnected before Cmdr could finish the move, so all your files are still on Macintosh HD.',
       suggestion: 'Make sure the device is properly connected and try again.',
     },
   },
@@ -210,7 +211,8 @@ const cases: Case[] = [
     op: 'move',
     expected: {
       title: "Couldn't confirm the move",
-      message: "Cmdr couldn't confirm the moved files were saved on Fältkamera, so it kept your originals where they were.",
+      message:
+        "Cmdr couldn't confirm the moved files were saved on Fältkamera, so it kept your originals where they were.",
       suggestion: "Have a look at the destination, then try the move again. Your originals haven't moved.",
     },
   },

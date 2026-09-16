@@ -11,7 +11,11 @@ use crate::file_system::write_operations::error_classification::classify_io_erro
 fn sides() -> TransferSides {
     TransferSides::new(
         TransferSide::new("vol-mac".to_string(), "Macintosh HD".to_string(), "/".into()),
-        TransferSide::new("vol-stick".to_string(), "Fältkamera".to_string(), "/Volumes/Stick".into()),
+        TransferSide::new(
+            "vol-stick".to_string(),
+            "Fältkamera".to_string(),
+            "/Volumes/Stick".into(),
+        ),
     )
 }
 

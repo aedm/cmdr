@@ -176,12 +176,13 @@ fn a_directory_fsync_failing_with_eio_keeps_every_source_and_what_landed() {
     match &result {
         Err(WriteOperationError::MoveNotConfirmed { path, errno, .. }) => {
             assert_eq!(path, &failing.display().to_string());
-            assert_eq!(*errno, Some(libc::EIO), "the errno comes from the flush, not re-derived");
+            assert_eq!(
+                *errno,
+                Some(libc::EIO),
+                "the errno comes from the flush, not re-derived"
+            );
         }
-        other => panic!(
-            "expected MoveNotConfirmed naming {}, got {other:?}",
-            failing.display()
-        ),
+        other => panic!("expected MoveNotConfirmed naming {}, got {other:?}", failing.display()),
     }
     for file in source_files(&fixture.src) {
         assert!(file.exists(), "source {} must survive a failed flush", file.display());
