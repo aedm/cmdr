@@ -39,14 +39,14 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the two men
 - **The Network group's rows are the LISTING's**, filtered by `belongsInSwitcher`, plus the hub this dir synthesizes. ❗
   No `listSavedServers()` fetch in `volume-grouping.ts`; the row already carries `pinned`.
 - **Favorites live in their OWN menu (⌃D), ❌ never in the switcher.** `volume-grouping.ts` groups the `favorite`
-  category NOWHERE; the switcher's one "See N favorites" row swaps the menus in place. Mutate ONLY through the
-  `$lib/tauri-commands/favorites.ts` wrappers, stripping the `fav-` prefix.
+  category NOWHERE; the switcher's "See N favorites" row swaps the menus in place. Mutate ONLY through the
+  `$lib/tauri-commands/favorites.ts` wrappers (strip the `fav-` prefix).
 - **❗ The chip holds ONE `openMenu`**, so the two can't both be up: each reports through `onOpenChange`, and
   `isHeaderMenuOpen()` is the single answer the panes suppress their keys on. ❌ No second source of truth.
-- **The favorite-rename `<input>` must not leak keystrokes to the panes**: four guards hold that line, and removing any
-  one reopens it.
-- **❗ BOTH menus are the house `Menu`** (`$lib/ui/DETAILS.md` § Menu), which owns keys, the cursor, pointer mode, the
-  submenu, drag reorder, the digit accelerators, placement, and focus. ❌ Never add a key handler, a highlight index, or
-  a `getBoundingClientRect` back here; a menu's `onKey` claims only the keys that SWAP the two.
+- **The favorite-rename `<input>` holds four guards against leaking keystrokes to the panes**; drop any one and it leaks
+  again.
+- **❗ BOTH menus are the house `Menu`** (`$lib/ui/DETAILS.md` § Menu), which owns keys, cursor, pointer mode, submenu,
+  drag reorder, digit accelerators, placement, and focus. ❌ Never add a key handler, a highlight index, or a
+  `getBoundingClientRect` here; a menu's `onKey` claims only the keys that SWAP the two.
 
 Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here.
