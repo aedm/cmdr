@@ -36,6 +36,9 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
     `#333` over the client's default ground. `bodyStyle` takes the color and width rather than hiding the difference,
     because converging them changes what lands in a human inbox and so belongs to a copy-and-design pass, not a
     refactor.
+  - `license.ts` exports its two copy builders (`getLicenseDescription`, `getIntroText`) so the three validity sentences
+    and the two openers are pinned by `license.test.ts` rather than reviewed by eye. `src/licensing/DETAILS.md` § Manual
+    licenses says why a dated license must never read as renewing.
   - **Decision: `license.ts` shares only `escapeHtml`.** It is the one email a customer receives, the one with a
     plain-text alternative (it carries a key the reader has to copy, so it must survive an HTML-refusing client), and
     the one styled by a `<head>` `<style>` block with class names. Forcing it onto the ops chrome would trade a real
