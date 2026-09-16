@@ -61,17 +61,16 @@ If the webhook doesn't arrive, check the Paddle sandbox
 2. Open Settings (or About) and enter the license key or short code from the email
 3. The app verifies the Ed25519 signature locally, then validates with the API server
 
-For quicker activation testing without the full purchase flow, generate a test key directly:
+For quicker activation testing without the full purchase flow, mint a key directly:
 
 ```bash
-curl -X POST http://localhost:8787/admin/generate \
-  -H "Authorization: Bearer $(grep PADDLE_WEBHOOK_SECRET_SANDBOX apps/api-server/.dev.vars | cut -d= -f2-)" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","type":"commercial_subscription","organizationName":"Test Corp"}'
+node apps/api-server/scripts/mint-license.js --email test@example.com --org "Test Corp" \
+  --note "local testing" --api http://localhost:8787
 ```
 
-Note: keys from `/admin/generate` use synthetic transaction IDs and won't pass server validation via `/validate`. They
-work for offline crypto and UI testing only.
+These keys pass `/validate` too, resolved from the local `license_issuance` ledger rather than from Paddle, so run
+`wrangler d1 migrations apply cmdr-telemetry --local` once first. Flags, revocation, and the production runbook:
+`apps/api-server/src/licensing/DETAILS.md` § Manual licenses.
 
 ## Detailed docs
 

@@ -8,7 +8,8 @@ holds `/admin/funnel`, the one-call per-UTC-day acquisition funnel.
 ## Must-knows
 
 - **Bearer tokens compare with `constantTimeEqual` (`../licensing/paddle.ts`), ❌ never `===`.** `verifyAdminAuth`
-  (`../types.ts`) is the one gate; `/admin/generate` is the odd one out and lives in `../licensing/`.
+  (`../types.ts`) is the one gate, including for `/admin/generate` and `/admin/revoke`, which take the same token but
+  live in `../licensing/` because they're licensing operations.
 - **In every response, `null` means "unknown" and `0` means a real zero.** The dashboard renders `null` as a dash, so
   collapsing the two invents data: an unreachable Listmonk, or a D7 cohort younger than eight days, is NOT zero.
 - **An aggregate wins over the live query, and both are unioned.** `/admin/downloads` prefers the

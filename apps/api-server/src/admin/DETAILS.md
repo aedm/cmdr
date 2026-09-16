@@ -24,8 +24,8 @@ Consumer: the private SvelteKit dashboard in `apps/analytics-dashboard/`.
 ## Auth
 
 Every route here takes `Authorization: Bearer <ADMIN_API_TOKEN>` through `verifyAdminAuth` (`../types.ts`), which
-compares with the timing-safe `constantTimeEqual`. `/admin/generate` is deliberately NOT here: it's a licensing
-operation and takes the Paddle webhook secret instead (`../licensing/`).
+compares with the timing-safe `constantTimeEqual`. `/admin/generate` and `/admin/revoke` take the same token but live in
+`../licensing/`: they mint and kill licenses rather than aggregate telemetry, so they belong with the money code.
 
 **Gotcha:** `verifyAdminAuth` uses a manual type annotation for `c` instead of Hono's `Context`. Using
 `Context<{ Bindings: Bindings }>` would mean importing Hono's internal generic types and threading them through; the
