@@ -363,14 +363,10 @@ native modifier form (`⌘⇧P` vs `Ctrl+Shift+P`); `toPlatformShortcut` convert
 Linux. The KEY NAMES are platform-neutral words, and the macOS glyphs are a render-time concern — see § Key capture for
 why that separation is load-bearing.
 
-❗ **`toPlatformShortcut` is NOT injective off macOS**: `macModifierToLinux` maps BOTH `⌘` and `⌃` onto `Ctrl`, because
-Linux has no separate Command key. So two distinct macOS defaults can arrive as one Linux combo, and
-`shortcut-dispatch`'s one-winner-per-combo rule then picks between them by scope specificity. The live case is `⌃D`
-(`favorites.open`) against `⌘D` (`file.duplicate`, and the error screen's deliberate shadow of it): on Linux, Ctrl+D
-duplicates and never opens the favorites menu. `conflict-detector-registry.test.ts` names that one pair and refuses to
-grow; a second one means fixing the mapping (a lone `⌃` → `Super`, the way the function already remaps `⌃` → `Shift`
-when both appear together) rather than adding a line there. ❗ The native menu bar doesn't share the collapse: muda maps
-`"CMD"` to Super on GTK, so Linux's Duplicate accelerator is Super+D (`menu/menu_bar.rs`'s header has the full story).
+❗ **`toPlatformShortcut` is NOT injective off macOS**: it maps BOTH `⌘` and `⌃` onto `Ctrl`, so `⌘D` (`file.duplicate`)
+and `⌃D` (`favorites.open`) arrive as one combo there. Cmdr ships on macOS, where they stay distinct, so this is parked
+rather than solved: `conflict-detector-registry.test.ts` subtracts that one pair. ❌ Don't grow the set to quiet a new
+conflict — a second entry means the mapping itself needs fixing.
 
 ### Why delta-only persistence?
 
