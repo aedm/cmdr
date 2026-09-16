@@ -40,6 +40,18 @@ export function isAnySoftDialogOpen(): boolean {
 }
 
 /**
+ * Whether one named soft dialog is on screen in this window. Reactive.
+ *
+ * The answer comes from the same paired mount/destroy announcement every dialog makes, so
+ * it can't drift from what's rendered: an ambient affordance that has to step aside for a
+ * dialog (the FDA badge, while onboarding's own FDA step is up) asks here instead of
+ * threading the hosting component's visibility flag down to itself.
+ */
+export function isDialogOpen(id: SoftDialogId): boolean {
+  return openDialogs.has(id)
+}
+
+/**
  * The dialog standing in the way of starting a file operation, or `null` when
  * nothing is. Reactive.
  *

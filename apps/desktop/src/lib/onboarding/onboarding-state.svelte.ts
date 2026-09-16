@@ -19,6 +19,7 @@
  */
 
 import { isMacOS } from '$lib/shortcuts/key-capture'
+import { isDialogOpen } from '$lib/ui/open-dialogs.svelte'
 import type { FullDiskAccessChoice } from '$lib/settings'
 
 /** Where the wizard was opened from. */
@@ -341,6 +342,18 @@ export function isAtFirstStep(): boolean {
 /** True when on the last step (Next should read "Finish" / submit instead). */
 export function isAtLastStep(): boolean {
   return state.currentStep === ONBOARDING_STEP_COUNT
+}
+
+/**
+ * True while the wizard is ON SCREEN showing step 1, its own Full Disk Access page.
+ * Reactive, and the one answer anything pointing AT that page should ask (the FDA badge
+ * hides behind it).
+ *
+ * ❗ `currentStep` alone can't say this. The wizard closes by being unmounted, which leaves
+ * the step cursor at whatever it last was, so the dialog inventory is what says "on screen".
+ */
+export function isWizardOnFdaStep(): boolean {
+  return isDialogOpen('onboarding') && state.currentStep === 1
 }
 
 /** Flip step 1's footer mode to `'restart'`. Called by `StepFda.svelte` after Allow. */

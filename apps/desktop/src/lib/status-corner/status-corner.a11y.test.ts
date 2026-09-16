@@ -284,7 +284,7 @@ describe('StatusCorner a11y', () => {
     activeVolumes = []
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(StatusCorner, { target, props: {} })
+    mount(StatusCorner, { target, props: { onOpenOnboarding: () => {} } })
     await tick()
     await expectNoA11yViolations(target)
   })
@@ -293,7 +293,7 @@ describe('StatusCorner a11y', () => {
     activeVolumes = [scanActivity('root')]
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(StatusCorner, { target, props: {} })
+    mount(StatusCorner, { target, props: { onOpenOnboarding: () => {} } })
     await tick()
     expect(target.querySelector('.indexing-status')).not.toBeNull()
     await expectNoA11yViolations(target)
@@ -309,6 +309,7 @@ describe('StatusCorner a11y', () => {
         children: createRawSnippet(() => ({
           render: () => '<button class="fake-chip" type="button">Copying</button>',
         })),
+        onOpenOnboarding: () => {},
       },
     })
     await tick()

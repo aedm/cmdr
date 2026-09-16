@@ -17,23 +17,33 @@ vi.mock('$lib/shortcuts/key-capture', () => ({
   isMacOS: () => isMacOS(),
 }))
 
+import { markDialogOpen, markDialogClosed, _resetOpenDialogsForTesting } from '$lib/ui/open-dialogs.svelte'
 import { refreshFdaStatus, _resetFdaStatusForTests } from './fda-status.svelte'
+import { resetForTesting, setCurrentStep } from './onboarding-state.svelte'
 import FdaBadge from './FdaBadge.svelte'
 
 let mounted: { target: HTMLElement; instance: Record<string, unknown> } | undefined
 
-async function renderBadge(onboardingOnFdaStep = false): Promise<HTMLElement> {
+async function renderBadge(): Promise<HTMLElement> {
   const target = document.createElement('div')
   document.body.appendChild(target)
-  const instance = mount(FdaBadge, { target, props: { onboardingOnFdaStep, onOpenOnboarding: () => {} } })
+  const instance = mount(FdaBadge, { target, props: { onOpenOnboarding: () => {} } })
   mounted = { target, instance }
   await tick()
   return target
 }
 
+/** Puts the wizard on screen at the given step, the way the real wizard announces itself. */
+function showWizardAt(step: 1 | 2): void {
+  setCurrentStep(step)
+  markDialogOpen('onboarding')
+}
+
 describe('FdaBadge', () => {
   beforeEach(() => {
     _resetFdaStatusForTests()
+    _resetOpenDialogsForTesting()
+    resetForTesting()
     isMacOS.mockReturnValue(true)
     checkFullDiskAccessQuiet.mockResolvedValue(false)
   })
@@ -75,8 +85,26 @@ describe('FdaBadge', () => {
 
   it('stays hidden while the wizard is already on the FDA step', async () => {
     await refreshFdaStatus()
-    const target = await renderBadge(true)
+    showWizardAt(1)
+    const target = await renderBadge()
     expect(target.querySelector('.fda-badge')).toBeNull()
+  })
+
+  it('shows behind the wizard on a later step, which is not where it points', async () => {
+    await refreshFdaStatus()
+    showWizardAt(2)
+    const target = await renderBadge()
+    expect(target.querySelector('.fda-badge')).not.toBeNull()
+  })
+
+  it('shows again once the wizard closes on step 1, whose cursor outlives the sheet', async () => {
+    // The wizard closes by being unmounted, so `currentStep` stays at 1 afterwards. Reading
+    // the step alone would leave the badge hidden for the rest of the session.
+    await refreshFdaStatus()
+    showWizardAt(1)
+    markDialogClosed('onboarding')
+    const target = await renderBadge()
+    expect(target.querySelector('.fda-badge')).not.toBeNull()
   })
 
   it('keeps the last answer when the probe throws, rather than inventing a missing grant', async () => {

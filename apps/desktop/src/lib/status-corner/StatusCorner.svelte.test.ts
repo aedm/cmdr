@@ -61,6 +61,13 @@ vi.mock('$lib/media-index/enabled-volumes', () => ({
   getEnabledMediaIndexVolumeIds: () => [],
 }))
 
+// The FDA badge is a corner member too, and its one render condition is this fact.
+let fdaMissing = false
+
+vi.mock('$lib/onboarding/fda-status.svelte', () => ({
+  fdaIsMissing: () => fdaMissing,
+}))
+
 // The corner mounts the operation chip itself, so the chip's inputs are stubbed
 // here too: a plain row list the test sets, and no foreground modal.
 let operationRows: OperationRow[] = []
@@ -98,7 +105,8 @@ function runningCopy(): OperationRow {
 function mountCorner(children?: ReturnType<typeof createRawSnippet>): HTMLElement {
   const target = document.createElement('div')
   document.body.appendChild(target)
-  mount(StatusCorner, { target, props: children ? { children } : {} })
+  const onOpenOnboarding = () => {}
+  mount(StatusCorner, { target, props: children ? { children, onOpenOnboarding } : { onOpenOnboarding } })
   return target
 }
 
@@ -145,6 +153,24 @@ describe('StatusCorner', () => {
     } finally {
       operationRows = []
       vi.useRealTimers()
+    }
+  })
+
+  it('puts the FDA badge immediately left of the hourglass, never on top of it', async () => {
+    // The badge used to place itself in the title bar, which is the same strip the corner
+    // claims, so the two drew over each other. Being a corner member is what fixes that,
+    // and the slot right before the hourglass is what keeps the row's order readable.
+    activeVolumes = [scanActivity('root')]
+    fdaMissing = true
+    try {
+      const target = mountCorner()
+      await tick()
+      const badge = target.querySelector('.fda-badge')
+      const hourglass = target.querySelector('.indexing-status')
+      if (!badge || !hourglass) throw new Error('expected both the badge and the hourglass in the corner')
+      expect(badge.nextElementSibling).toBe(hourglass)
+    } finally {
+      fdaMissing = false
     }
   })
 
