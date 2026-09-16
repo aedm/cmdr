@@ -12,7 +12,8 @@ differs from the field name.
   `DEFAULT_SHOW_HIDDEN_FILES` const, so they can't drift. The frontend registry
   (`src/lib/settings/definitions/appearance.ts`) carries the matching default; nothing checks the two sides
   mechanically, so tests on each side stand in for a parity check.
-- `full_disk_access_choice`: consulted at launch by the indexer FDA gate.
+- `full_disk_access_choice`: consulted at launch by the FDA gate, via `read_fda_choice` (registry key, falling back to
+  the pre-migration top-level name, and reporting a value it can't parse).
 - `developer_mcp_enabled: Option<bool>`. Absent (the common case) → `None` → `mcp/config.rs` uses its
   env → setting → debug-build-on fallback. The FE settings store persists sparsely now (only keys an actor explicitly
   set), so it no longer writes the registry-default `false` here as if it were a user choice. A pre-fix data dir may

@@ -18,6 +18,7 @@ import {
   getLaunchDayCount,
   getDockPinState,
   getRevealHandlerState,
+  startIndexingAfterFdaDecision,
 } from '$lib/tauri-commands'
 import { openWizard as openOnboardingWizard } from '$lib/onboarding/onboarding-state.svelte'
 import { runWhatsNewStartupTrigger } from '$lib/whats-new/whats-new-trigger.svelte'
@@ -80,6 +81,32 @@ async function probeFullDiskAccess(fallback: boolean): Promise<boolean> {
 }
 
 /**
+ * Opens the backend FDA gate, for a launch that lands in the explorer without ever showing
+ * the FDA question.
+ *
+ * A closed gate defers drive indexing, the network scan, the Downloads watcher, cloud volume
+ * enumeration, and every launch-time `NSWorkspace` call, so that it means exactly one thing:
+ * step 1 is on screen asking. The boot predicate (`src-tauri/src/fda_gate.rs::is_fda_pending`)
+ * aims at the same rule from the other side, and this call is what keeps a disagreement
+ * between the two from deferring all of it indefinitely with nothing on screen to explain it.
+ *
+ * The command is idempotent (a no-op once indexing is running, and the MTP watcher starts at
+ * most once), so the ordinary launch, whose gate was already open at boot, pays one cheap
+ * round trip.
+ *
+ * A refusal is logged, never thrown: whatever broke, launch carries on.
+ */
+async function openFdaGateForLaunch(): Promise<void> {
+  try {
+    await startIndexingAfterFdaDecision()
+  } catch (error) {
+    log.warn('Could not open the FDA gate at launch; indexing may stay deferred this session: {error}', {
+      error: String(error),
+    })
+  }
+}
+
+/**
  * Reads `CMDR_FORCE_ONBOARDING`, settings, and the FDA probe, then flips the right
  * top-level state. See `apps/desktop/src/lib/onboarding/CLAUDE.md` § "Mount + onboarding
  * flag" for the truth table this implements.
@@ -115,6 +142,7 @@ export async function resolveOnboardingMount(ctx: StartupGatesContext): Promise<
     }
     ctx.showApp()
     maybeFireUpgradeNudge()
+    await openFdaGateForLaunch()
     return
   }
 
@@ -122,6 +150,7 @@ export async function resolveOnboardingMount(ctx: StartupGatesContext): Promise<
     // User explicitly denied and already finished onboarding. Don't re-prompt.
     ctx.showApp()
     maybeFireUpgradeNudge()
+    await openFdaGateForLaunch()
     return
   }
 

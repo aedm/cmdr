@@ -246,15 +246,17 @@ export async function setImageIndexEnabled(enabled: boolean): Promise<void> {
 }
 
 /**
- * Starts the drive indexer after the user makes their Full Disk Access decision.
+ * Opens the backend FDA gate: clears the pending flag, starts the MTP watcher, and starts
+ * the drive indexer.
  *
- * At launch, the backend skips auto-starting the indexer when the FDA choice is
- * `unanswered` and the OS reports FDA as not granted. Otherwise, recursively
- * scanning from `/` triggers macOS native permission popups (iCloud, Photos, etc.)
- * that stack on top of the in-app FDA modal.
+ * At launch the backend defers all of that whenever the OS reports Full Disk Access as not
+ * granted and the user hasn't answered Deny. Otherwise, recursively scanning from `/` triggers
+ * macOS native permission popups (iCloud, Photos, etc.) that stack on top of the in-app FDA
+ * modal.
  *
- * Call this after the user clicks "Deny" so indexing starts within the same
- * session. The "Allow" path needs no call: the user restarts the app, and the
+ * Two callers: step 1's Deny button, so indexing starts within the same session, and
+ * `routes/(main)/startup-gates.ts` on a launch that reaches the explorer without showing the
+ * FDA question at all. The "Allow" path needs neither: the user restarts the app, and the
  * launch-time gate passes via the OS check.
  *
  * Idempotent: a no-op when indexing is already running or initializing.

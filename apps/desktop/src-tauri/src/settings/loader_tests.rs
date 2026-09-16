@@ -38,6 +38,33 @@ fn fda_choice_defaults_to_not_asked_yet_when_absent() {
     );
 }
 
+/// An absent key and a garbled one both land on `Unanswered`, but they mean opposite
+/// things: the first is a fresh install, the second is a user whose recorded answer we
+/// just lost. `Unanswered` leaves the FDA gate pending, so a lost `Deny` defers drive
+/// indexing and the Downloads watcher for the launch. Only the flag makes that sayable.
+#[test]
+fn an_unreadable_fda_choice_is_reported_rather_than_read_as_a_fresh_install() {
+    let readable = serde_json::json!({ "onboarding.fullDiskAccessChoice": "deny" });
+    assert_eq!(read_fda_choice(&readable), (FullDiskAccessChoice::Deny, false));
+
+    let absent = serde_json::json!({});
+    assert_eq!(read_fda_choice(&absent), (FullDiskAccessChoice::Unanswered, false));
+
+    for garbled in [
+        serde_json::json!({ "onboarding.fullDiskAccessChoice": "Allow" }),
+        serde_json::json!({ "onboarding.fullDiskAccessChoice": true }),
+        serde_json::json!({ "onboarding.fullDiskAccessChoice": serde_json::Value::Null }),
+        // The pre-migration key is read the same way, so it reports the same way.
+        serde_json::json!({ "fullDiskAccessChoice": 3 }),
+    ] {
+        assert_eq!(
+            read_fda_choice(&garbled),
+            (FullDiskAccessChoice::Unanswered, true),
+            "{garbled}"
+        );
+    }
+}
+
 /// Dotfiles stay out of the way until someone asks for them. Three defaults have to
 /// agree or the app contradicts itself between a fresh install, an existing
 /// `settings.json`, and the native View menu built from whatever this returns.

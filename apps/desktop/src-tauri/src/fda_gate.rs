@@ -10,10 +10,15 @@
 //! top of our in-app modal. That's exactly the onboarding-flood UX we want to
 //! avoid.
 //!
+//! **A closed gate means exactly one thing: the FDA question is on screen.** The frontend holds
+//! up its end (`routes/(main)/startup-gates.ts`): every launch that reaches the explorer without
+//! the wizard opens the gate itself via `start_indexing_after_fda_decision`, so a gate that stays
+//! shut can never leave launch-time work deferred with nothing on screen to explain it.
+//!
 //! The gate has two pieces:
 //!
 //! 1. `is_fda_pending(fda_choice, os_fda_granted)`: pure decision used at startup and by tests.
-//!    Pending iff the user hasn't decided AND the OS reports FDA isn't granted.
+//!    Pending whenever the OS reports FDA isn't granted and the user hasn't answered `Deny`.
 //! 2. A process-global `AtomicBool` set once at startup (and cleared when the user denies FDA
 //!    in-session). Read by code that runs after startup via `is_fda_pending_runtime()`.
 //!
@@ -30,12 +35,20 @@ static FDA_PENDING: OnceLock<AtomicBool> = OnceLock::new();
 
 /// Pure decision: is the FDA decision still pending at this moment?
 ///
-/// Returns `true` only when the user hasn't decided AND the OS confirms FDA
-/// isn't currently granted. If the OS check returns `true` we know the
-/// per-folder TCC services are subsumed by FDA, so it's safe to access
-/// protected paths even if no in-app choice has been recorded yet.
+/// Pending whenever the OS says FDA isn't granted and the user hasn't actively
+/// declined. That's deliberately conservative, and it has to be: the frontend
+/// parks people on step 1 for a revoked grant and for "clicked Allow, never
+/// finished in System Settings" just as much as for a fresh install, and a
+/// recorded `Allow` says nothing about whether the grant exists right now.
+///
+/// The two open cases:
+///
+/// - `os_fda_granted` is true: the per-folder TCC services are subsumed by FDA,
+///   so protected paths are safe even with no in-app choice recorded.
+/// - `Deny`: the per-folder prompts are exactly what the user signed up for, and
+///   the wizard is behind them either way.
 pub fn is_fda_pending(fda_choice: FullDiskAccessChoice, os_fda_granted: bool) -> bool {
-    fda_choice == FullDiskAccessChoice::Unanswered && !os_fda_granted
+    !os_fda_granted && fda_choice != FullDiskAccessChoice::Deny
 }
 
 /// Set the runtime gate. Call once at startup with the result of
@@ -59,12 +72,21 @@ pub fn is_fda_pending_runtime() -> bool {
 mod tests {
     use super::*;
 
+    /// All six (choice × grant) rows, because each one decides whether a launch
+    /// stacks native TCC popups over step 1 or defers work nobody will resume.
     #[test]
-    fn pending_only_when_not_asked_and_os_denies() {
+    fn pending_whenever_the_os_denies_and_the_user_has_not() {
+        // Fresh install: the question is on screen, nothing may touch a protected path.
         assert!(is_fda_pending(FullDiskAccessChoice::Unanswered, false));
+        // Granted before we ever asked (a reinstall, or a grant made by hand). FDA subsumes
+        // the per-folder TCC services, so there's nothing left to pop up.
         assert!(!is_fda_pending(FullDiskAccessChoice::Unanswered, true));
-        assert!(!is_fda_pending(FullDiskAccessChoice::Allow, false));
+        // Revoked-after-allow and first-time-stuck: the wizard parks both on step 1, so the
+        // gate has to hold even though the recorded choice is `Allow`.
+        assert!(is_fda_pending(FullDiskAccessChoice::Allow, false));
+        // The settled happy path.
         assert!(!is_fda_pending(FullDiskAccessChoice::Allow, true));
+        // Declined: the per-folder prompts are what the user signed up for, so work runs.
         assert!(!is_fda_pending(FullDiskAccessChoice::Deny, false));
         assert!(!is_fda_pending(FullDiskAccessChoice::Deny, true));
     }

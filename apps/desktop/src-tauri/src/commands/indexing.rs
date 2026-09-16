@@ -218,14 +218,18 @@ pub async fn set_indexing_enabled(app: AppHandle, enabled: bool) -> Result<(), S
 /// generating. The sidebar keeps the icon-less favorites it got during
 /// onboarding; the next listing-driven flow refreshes them naturally.
 ///
-/// At app launch, indexing is skipped when the FDA choice is `Unanswered`
-/// AND the OS reports FDA as not granted (see `should_auto_start_indexing`).
-/// The frontend calls this command after the user clicks "Deny" so the
-/// indexer starts within the same session. The "Allow" path needs no call:
-/// the user restarts the app, and the launch-time gate passes via the OS
-/// check.
+/// At app launch the gate is closed whenever the OS reports FDA as not granted and the
+/// user hasn't answered Deny (`crate::fda_gate::is_fda_pending`), which skips indexing
+/// (see `should_auto_start_indexing`) among the rest.
 ///
-/// Idempotent: a no-op when indexing is already running or initializing.
+/// Two frontend callers, both meaning "nobody is being asked about FDA right now":
+/// step 1's Deny button, so the indexer starts within the same session, and
+/// `routes/(main)/startup-gates.ts` on a launch that reaches the explorer without
+/// showing the wizard at all. The "Allow" path needs neither: the user restarts the
+/// app, and the launch-time gate passes via the OS check.
+///
+/// Idempotent: a no-op when indexing is already running or initializing, and the MTP
+/// watcher starts at most once per process.
 #[tauri::command]
 #[specta::specta]
 pub async fn start_indexing_after_fda_decision(app: AppHandle) -> Result<(), String> {

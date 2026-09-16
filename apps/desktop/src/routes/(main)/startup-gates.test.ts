@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   getRevealHandlerState: vi.fn(),
   offerDockPin: vi.fn(),
   offerRevealHandler: vi.fn(),
+  startIndexingAfterFdaDecision: vi.fn(),
 }))
 
 vi.mock('$lib/tauri-commands', () => ({
@@ -41,6 +42,7 @@ vi.mock('$lib/tauri-commands', () => ({
   getLaunchDayCount: mocks.getLaunchDayCount,
   getDockPinState: mocks.getDockPinState,
   getRevealHandlerState: mocks.getRevealHandlerState,
+  startIndexingAfterFdaDecision: mocks.startIndexingAfterFdaDecision,
 }))
 vi.mock('$lib/dock/dock-nudge', () => ({ offerDockPin: mocks.offerDockPin }))
 vi.mock('$lib/reveal/reveal-nudge', () => ({ offerRevealHandler: mocks.offerRevealHandler }))
@@ -137,6 +139,7 @@ beforeEach(() => {
   mocks.getDockPinState.mockResolvedValue({ kind: 'offerable' })
   mocks.getRevealHandlerState.mockResolvedValue({ state: { kind: 'notRegistered' }, blockedBy: null })
   mocks.forceSave.mockResolvedValue(true)
+  mocks.startIndexingAfterFdaDecision.mockResolvedValue(undefined)
   mocks.notifyOnboardingComplete.mockResolvedValue(undefined)
   mocks.runWhatsNewStartupTrigger.mockResolvedValue(undefined)
   mocks.getAppMode.mockReturnValue('prod')
@@ -268,6 +271,65 @@ describe('resolveOnboardingMount', () => {
     })
     expect(onboardingVisible).toBe(true)
     expect(appShown).toBe(true)
+  })
+
+  /**
+   * The backend gate defers drive indexing, the network scan, the Downloads watcher, and
+   * every launch-time `NSWorkspace` call, so a launch that never shows the FDA question has
+   * to open it. Without this the two predicates have to agree forever, and a disagreement
+   * in this direction defers all of that indefinitely with nothing on screen to explain it.
+   */
+  describe('the FDA gate opens on every branch that skips the wizard', () => {
+    it('opens it when the OS already grants full disk access', async () => {
+      mocks.checkFullDiskAccess.mockResolvedValue(true)
+      settings('allow', true)
+
+      await resolveOnboardingMount(ctx)
+
+      expect(mocks.startIndexingAfterFdaDecision).toHaveBeenCalledOnce()
+    })
+
+    it('opens it for someone who denied and finished onboarding', async () => {
+      settings('deny', true)
+
+      await resolveOnboardingMount(ctx)
+
+      expect(mocks.startIndexingAfterFdaDecision).toHaveBeenCalledOnce()
+    })
+
+    it.each([
+      ['unanswered', false],
+      ['allow', false],
+      ['allow', true],
+      ['deny', false],
+    ] as const)('leaves it shut behind the wizard for %s / isOnboarded=%s', async (choice, onboarded) => {
+      settings(choice, onboarded)
+
+      await resolveOnboardingMount(ctx)
+
+      expect(mocks.startIndexingAfterFdaDecision).not.toHaveBeenCalled()
+    })
+
+    it('leaves it shut when CMDR_FORCE_ONBOARDING puts the question back on screen', async () => {
+      mocks.isForceOnboarding.mockResolvedValue(true)
+      mocks.checkFullDiskAccess.mockResolvedValue(true)
+      settings('allow', true)
+
+      await resolveOnboardingMount(ctx)
+
+      expect(mocks.startIndexingAfterFdaDecision).not.toHaveBeenCalled()
+    })
+
+    it('logs a refusal instead of throwing, so it can never strand launch', async () => {
+      mocks.checkFullDiskAccess.mockResolvedValue(true)
+      mocks.startIndexingAfterFdaDecision.mockRejectedValue(new Error('IPC bridge gone'))
+      settings('allow', true)
+
+      await resolveOnboardingMount(ctx)
+
+      expect(mocks.warn).toHaveBeenCalledOnce()
+      expect(appShown).toBe(true)
+    })
   })
 
   it('reveals the app shell on every branch, so no launch can strand the user on a blank window', async () => {
