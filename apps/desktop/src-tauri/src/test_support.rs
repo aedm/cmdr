@@ -1,5 +1,8 @@
 //! Shared test-only helpers for the whole crate.
 //!
+//! A volume that never answers: [`WedgedVolume`]. A volume that answers capability flags and
+//! refuses every read: [`CapabilityStub`].
+//!
 //! A scratch directory to write into: [`TestDir`]. Waiting for background work to land:
 //! [`wait_until`] serves sync `#[test]`s, [`wait_until_async`] serves `#[tokio::test]`s. All three
 //! live in `cmdr_fs::testing` (every crate in the workspace gets a scratch dir and waits the same
@@ -161,6 +164,73 @@ impl Volume for WedgedVolume {
         _dest: &'a Path,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<ScanConflict>, VolumeError>> + Send + 'a>> {
         never_answers!()
+    }
+}
+
+/// A volume that answers the two capability questions and nothing else.
+///
+/// The fixture for a seam that decides from flags alone: the favorites add gate
+/// (`commands/favorites.rs`), the drag-locality seam (`commands/file_system/drag.rs`). Every I/O
+/// method is `unreachable!`, which is the point: a stub that could be listed would invite a test
+/// asserting something the seam under test doesn't own, and a seam that starts reading the disk
+/// fails loudly here instead of quietly passing.
+pub(crate) struct CapabilityStub {
+    pub(crate) supports_local_fs_access: bool,
+    pub(crate) paths_are_os_visible: bool,
+}
+
+/// Every stubbed method body: this seam doesn't get to ask.
+macro_rules! never_asked {
+    () => {
+        unreachable!("a capability stub answers flags, never I/O")
+    };
+}
+
+impl Volume for CapabilityStub {
+    fn name(&self) -> &str {
+        "stub"
+    }
+
+    fn root(&self) -> &Path {
+        Path::new("/Volumes/stub")
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn list_directory<'a>(
+        &'a self,
+        _path: &'a Path,
+        _on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
+        never_asked!()
+    }
+
+    fn get_metadata<'a>(
+        &'a self,
+        _path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
+        never_asked!()
+    }
+
+    fn exists<'a>(&'a self, _path: &'a Path) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        never_asked!()
+    }
+
+    fn is_directory<'a>(
+        &'a self,
+        _path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
+        never_asked!()
+    }
+
+    fn supports_local_fs_access(&self) -> bool {
+        self.supports_local_fs_access
+    }
+
+    fn paths_are_os_visible(&self) -> bool {
+        self.paths_are_os_visible
     }
 }
 

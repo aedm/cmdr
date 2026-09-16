@@ -215,11 +215,9 @@ async fn persist(f: impl FnOnce() -> Result<(), DeadlineError> + Send + 'static)
 #[cfg(test)]
 mod add_gate_tests {
     use super::*;
-    use crate::file_system::listing::FileEntry;
     use crate::file_system::volume::manager::get_volume_manager;
-    use crate::file_system::volume::{ListingProgress, LocalPosixVolume, Volume, VolumeError};
-    use std::future::Future;
-    use std::pin::Pin;
+    use crate::file_system::volume::{LocalPosixVolume, Volume};
+    use crate::test_support::CapabilityStub;
     use std::sync::Arc;
 
     /// The boot volume, so an ordinary local path has something OS-visible behind it.
@@ -279,61 +277,18 @@ mod add_gate_tests {
         assert!(matches!(refusal, Err(AddFavoriteError::NotAnOsVisiblePath)));
     }
 
-    /// A volume that answers only the capability question the gate asks. Every I/O method is
-    /// unreachable: the gate decides from the flag alone.
-    struct CapabilityStub {
-        paths_are_os_visible: bool,
-    }
-
-    impl Volume for CapabilityStub {
-        fn name(&self) -> &str {
-            "stub"
-        }
-
-        fn root(&self) -> &Path {
-            Path::new("/Volumes/stub")
-        }
-
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-
-        fn list_directory<'a>(
-            &'a self,
-            _path: &'a Path,
-            _on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
-        ) -> Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
-            unreachable!("the add gate never lists")
-        }
-
-        fn get_metadata<'a>(
-            &'a self,
-            _path: &'a Path,
-        ) -> Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
-            unreachable!("the add gate never stats")
-        }
-
-        fn exists<'a>(&'a self, _path: &'a Path) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
-            unreachable!("the add gate never probes existence")
-        }
-
-        fn is_directory<'a>(
-            &'a self,
-            _path: &'a Path,
-        ) -> Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
-            unreachable!("the add gate never stats")
-        }
-
-        fn paths_are_os_visible(&self) -> bool {
-            self.paths_are_os_visible
-        }
-    }
-
     /// Registers a stub under a unique id (the registry is process-wide) and returns the gate's
-    /// reading of it.
+    /// reading of it. The gate asks `paths_are_os_visible` alone, so the other flag is pinned
+    /// `false`: a stub that answered `true` there would let a wrong gate pass.
     fn os_visibility_of(id: &str, paths_are_os_visible: bool) -> bool {
         let manager = get_volume_manager();
-        manager.register(id, Arc::new(CapabilityStub { paths_are_os_visible }) as Arc<dyn Volume>);
+        manager.register(
+            id,
+            Arc::new(CapabilityStub {
+                supports_local_fs_access: false,
+                paths_are_os_visible,
+            }) as Arc<dyn Volume>,
+        );
         let answer = volume_paths_are_os_visible(id);
         manager.unregister(id);
         answer
