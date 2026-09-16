@@ -232,6 +232,13 @@ warning).
 - **Surface**: portal to `document.body`, glass tokens with the reduced-transparency fallback, `role="menu"`, rows as
   `div role="menuitem"` (a row hosts buttons, so it can't be a `<button>`), sections as labelled groups.
 
+- **Test hooks**, documented in `lib/ui/DETAILS.md` § Menu as a contract other suites rely on, the way `.ui-popover`
+  and the `.select-*` classes already are: `data-*` attributes (❌ not CSS classes, which are styling and get renamed)
+  naming the surface, a row by its `value`, the highlighted / checked / disabled states, a section by id, the submenu
+  and its highlighted row, and the drag state including the slot the drop-line cue sits in. ❗ Without these, M2's
+  characterization pins (which select on switcher markup the port deletes) can only be rewritten by hand, and the proof
+  that the port changed nothing weakens to "the new tests pass".
+
 **What the caller still owns**: the data and its order (including an optimistic override while a reorder persists),
 persistence, navigation, toasts, and any inline editor's state.
 
