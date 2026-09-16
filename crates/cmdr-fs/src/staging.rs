@@ -13,7 +13,13 @@
 //!   safe-overwrite renamed out of the way, so it survives until the replacement
 //!   is complete (`write_operations/overwrite.rs`).
 //!
-//! Both are infixes, not prefixes: the temp for `photo.jpg` is
+//! Plus one directory shape, [`STAGING_DIR_PREFIX`] (`.cmdr-staging-<op>`): the
+//! folder a cross-filesystem move stages a whole tree in before renaming it into
+//! place. It registers through the same mint, so it hides by the same ownership
+//! rule, but a sweep only ever `remove_dir`s it — the tree inside can be the
+//! user's only copy.
+//!
+//! The two markers are infixes, not prefixes: the temp for `photo.jpg` is
 //! `photo.jpg.cmdr-tmp-<uuid>`, keeping the original name legible in a crash
 //! leftover. A leading dot would have hidden them from the dotfile filter for
 //! free, but it would also hide them from everyone browsing with hidden files
@@ -66,6 +72,13 @@ pub const STAGING_TEMP_MARKER: &str = ".cmdr-tmp-";
 /// replacement is fully written.
 pub const STAGING_ASIDE_MARKER: &str = ".cmdr-temp-";
 
+/// Names the DIRECTORY a cross-filesystem move stages a whole tree in, before
+/// renaming it into place (`write_operations/transfer/move_op/cross_fs.rs`).
+///
+/// A prefix, not an infix like the two markers above: the folder carries no
+/// user-chosen name to keep legible, only the operation's own id.
+pub const STAGING_DIR_PREFIX: &str = ".cmdr-staging-";
+
 /// Whether `name` is one of Cmdr's scratch files.
 ///
 /// Matches on the file NAME, so pass `path.file_name()`, never a whole path: a
@@ -78,6 +91,33 @@ pub const STAGING_ASIDE_MARKER: &str = ".cmdr-temp-";
 /// (`write_operations::is_staging_temp_in_flight`), not the name.
 pub fn is_staging_temp_name(name: &str) -> bool {
     name.contains(STAGING_TEMP_MARKER) || name.contains(STAGING_ASIDE_MARKER)
+}
+
+/// Whether `name` is a cross-filesystem move's staging DIRECTORY.
+///
+/// A strict parse, unlike [`is_staging_temp_name`]'s substring test, and
+/// deliberately so: a sweep acts on one of these, and the only thing standing
+/// between a folder somebody named `.cmdr-staging-notes` by hand and that sweep
+/// is this function. So the whole name has to be the prefix plus exactly the
+/// hyphenated UUID `operation_log::new_operation_id` mints — nothing before it,
+/// nothing after it.
+pub fn is_staging_dir_name(name: &str) -> bool {
+    name.strip_prefix(STAGING_DIR_PREFIX)
+        .is_some_and(|id| id.len() == UUID_TEXT_LEN && uuid::Uuid::parse_str(id).is_ok())
+}
+
+/// The length of a hyphenated UUID, which is what `Uuid::to_string` writes and
+/// the only form [`is_staging_dir_name`] accepts.
+const UUID_TEXT_LEN: usize = 36;
+
+/// Whether `name` is scratch Cmdr itself left there, of any shape: a staged
+/// write, a safe-overwrite aside, or a move's staging directory.
+///
+/// The question the listing layer asks. ❌ Never the question a SWEEP asks: a
+/// sweep acts per kind, under that kind's own rules, and needs the strict test
+/// for the kind it holds a record for (`write_operations::in_flight_sweep`).
+pub fn is_cmdr_scratch_name(name: &str) -> bool {
+    is_staging_temp_name(name) || is_staging_dir_name(name)
 }
 
 /// Who a registration belongs to: `Some` weak handle to the minting operation's
@@ -188,7 +228,8 @@ impl Drop for StagingTemp {
     }
 }
 
-/// Whether `name` is a scratch file a LIVE operation currently owns.
+/// Whether `name` is scratch a LIVE operation currently owns, of any of the
+/// three shapes.
 ///
 /// `false` for a leftover nobody owns: that's a real file the user should see
 /// and be able to delete. An ownerless claim (`None`) counts as live; see the
@@ -196,7 +237,7 @@ impl Drop for StagingTemp {
 pub fn is_staging_temp_in_flight(name: &str) -> bool {
     // Ordered cheapest-first: almost every filename fails the name test and
     // never reaches the lock.
-    is_staging_temp_name(name)
+    is_cmdr_scratch_name(name)
         && ACTIVE_TEMPS
             .lock_ignore_poison()
             .get(name)
@@ -342,5 +383,49 @@ mod tests {
         // Close, but not ours: no trailing separator before the uuid.
         assert!(!is_staging_temp_name("notes.cmdr-tmp"));
         assert!(!is_staging_temp_name("cmdr-tmp-notes"));
+    }
+
+    /// The name a cross-filesystem move really writes, built the way the move
+    /// builds it, so the test can't drift from the producer.
+    fn staging_dir_name(operation_id: &uuid::Uuid) -> String {
+        format!("{STAGING_DIR_PREFIX}{operation_id}")
+    }
+
+    #[test]
+    fn a_moves_staging_directory_is_recognized_from_its_operation_id() {
+        let name = staging_dir_name(&uuid::Uuid::new_v4());
+        assert!(is_staging_dir_name(&name), "got {name}");
+        assert!(is_cmdr_scratch_name(&name), "got {name}");
+    }
+
+    /// The strict parse is the whole safety story: a sweep removes one of these,
+    /// so a folder a person named to look like ours must not be one.
+    #[test]
+    fn a_look_alike_staging_name_is_not_one_of_ours() {
+        let real = uuid::Uuid::new_v4().to_string();
+        for impostor in [
+            ".cmdr-staging-".to_string(),
+            ".cmdr-staging-notes".to_string(),
+            // A real id with something appended, or prepended.
+            format!(".cmdr-staging-{real}-backup"),
+            format!("old.cmdr-staging-{real}"),
+            // The unhyphenated form `Uuid::parse_str` would otherwise take.
+            format!(".cmdr-staging-{}", real.replace('-', "")),
+            // A directory that merely CONTAINS the prefix, the way the temp
+            // markers are allowed to.
+            format!("photos.cmdr-staging-{real}"),
+        ] {
+            assert!(!is_staging_dir_name(&impostor), "got {impostor}");
+        }
+    }
+
+    /// The two shapes stay separate questions: a staging directory is not a
+    /// staged write, and neither is the other.
+    #[test]
+    fn a_staging_directory_and_a_staged_write_dont_answer_for_each_other() {
+        let dir = staging_dir_name(&uuid::Uuid::new_v4());
+        assert!(!is_staging_temp_name(&dir), "got {dir}");
+        assert!(!is_staging_dir_name("photo.jpg.cmdr-tmp-3f2a"));
+        assert!(!is_cmdr_scratch_name("photo.jpg"));
     }
 }

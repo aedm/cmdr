@@ -16,7 +16,7 @@
 //!
 //! ## Two categories, two rules, and why they differ
 //!
-//! **Cmdr's own** (`.cmdr-tmp-*`, `.cmdr-temp-*`) hides by OWNERSHIP. One a
+//! **Cmdr's own** (`.cmdr-tmp-*`, `.cmdr-temp-*`, `.cmdr-staging-*`) hides by OWNERSHIP. One a
 //! running operation put there is noise that'll be gone in moments; one nobody
 //! owns is a LEFTOVER from an interrupted transfer, and hiding that would be
 //! lying about what's on disk — and about a Cmdr bug worth seeing. So:
@@ -117,7 +117,7 @@ pub fn is_hidden_from_listings(name: &str) -> bool {
 /// only true by inspection of three other functions, and a row map built on it
 /// would start handing panes the wrong file.
 pub fn could_be_hidden_from_listings(name: &str) -> bool {
-    cmdr_fs::staging::is_staging_temp_name(name) || is_safe_save_name(name)
+    cmdr_fs::staging::is_cmdr_scratch_name(name) || is_safe_save_name(name)
 }
 
 /// Serializes tests whose expectations depend on either visibility setting, and
@@ -243,6 +243,25 @@ mod tests {
             "a leftover nobody is running for must be visible"
         );
         drop(temp);
+    }
+
+    /// A cross-filesystem move's staging folder is Cmdr's scratch too, and it
+    /// sits in the destination the user is watching for the whole move. It hides
+    /// by the same ownership rule, so one left behind by an interrupted move
+    /// shows up rather than lurking.
+    #[test]
+    fn a_moves_staging_directory_hides_while_the_move_owns_it() {
+        let _show = ShowTempsGuard::set(false);
+        let op = running_operation();
+        let name = format!(".cmdr-staging-{}", uuid::Uuid::new_v4());
+        let guard = StagingTemp::adopt(Path::new("/dest").join(&name), Some(Arc::downgrade(&op)));
+
+        assert!(is_hidden_from_listings(&name), "hidden while the move runs");
+        drop(guard);
+        assert!(
+            !is_hidden_from_listings(&name),
+            "a staging folder nobody owns is a leftover the user must see"
+        );
     }
 
     /// Ordinary files are never touched.

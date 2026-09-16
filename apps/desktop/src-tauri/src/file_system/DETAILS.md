@@ -68,6 +68,14 @@ interrupted transfer, and hiding that misreports what's on disk. The mint, the i
 guard needs a liveness token behind it all live in `crates/cmdr-fs/src/staging.rs`, so a backend crate can stage a write
 without reaching into the app; `staging.rs` re-exports them and adds only the two visibility settings.
 
+**Three shapes, one rule.** Cmdr's scratch is the two file markers (`.cmdr-tmp-`, `.cmdr-temp-`) plus a
+cross-filesystem move's staging DIRECTORY (`.cmdr-staging-<op>`), which sits in the destination the user is watching for
+the length of the move. `cmdr_fs::staging::is_cmdr_scratch_name` is the union the gate asks, and the directory
+registers through the same `StagingTemp` mint, so it hides and un-hides by ownership like everything else. ❗ The
+union is the LISTING's question only: the sweep that removes one asks the strict per-kind test instead
+(`write_operations/DETAILS.md` § "What the sweep does with each kind"), because a staging directory can hold the user's
+only copy and a look-alike name must never reach a `remove_dir`.
+
 **Which token the app hands it.** An operation's temps carry a `Weak` to `WriteOperationState`'s liveness token, dropped
 by `end_liveness` wherever the operation leaves `WRITE_OPERATION_STATE`. ❌ Not `Arc<WriteOperationState>` reachability —
 a task the driver abandoned holds one of those too, and the whole point is that its leftovers stop being hidden. A temp

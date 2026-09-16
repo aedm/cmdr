@@ -67,7 +67,10 @@ through a local helper, a fully-qualified call inline in an expression, a `use` 
   DBs live in `cmdr-index`, while the agent's and the operation log's stay app-side. Putting it in `cmdr-index` would
   make `agent/` and `operation_log/` depend on the index for connection plumbing, and there is only one
   `SQLITE_CONFIG_PAGECACHE` slab per process, so it genuinely has to be one instance both sides see.
-- **`staging`.** The markers, the `StagingTemp` mint, and the in-flight registry. A mutating backend has to be able to
+- **`staging`.** The two file markers, the `.cmdr-staging-<op>` directory prefix, the `StagingTemp` mint, and the
+  in-flight registry. `is_staging_dir_name` is a STRICT parse (the prefix plus exactly a hyphenated UUID, nothing
+  around it) because a sweep acts on its answer, where `is_staging_temp_name` is a substring test on a name whose
+  answer only hides a row; `is_cmdr_scratch_name` is the union the listing gate asks. A mutating backend has to be able to
   stage a write, and the archive mutator already does; leaving the mint in the app would mean the first backend crate
   either reaches upward for it or grows a seam for something with no per-backend variation. The mint's only tie to
   write-op state is an `Option<Weak<()>>` liveness token the CALLER hands over, which names no app type. The two
