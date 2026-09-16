@@ -3680,3 +3680,22 @@ vers ce menu.
 - **`commands.favoritesAdd.description` ne nomme plus la section du sélecteur**, supprimée par M3, mais la vraie
   destination :
   `Ajouter le dossier actuel du panneau actif aux favoris, pour y revenir ensuite depuis le menu des favoris.` · `high`.
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `Type`** · macOS Finder `fr`
+  `ArrangeByMenu` `119.title`/`338.title`, the Kind sort criterion · `high`.
+- **"Select all with extension `*.{extension}`" → `Sélectionner tous les fichiers d'extension *.{extension}`** · Double
+  Commander (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" →
+  `Sélectionner tous les fichiers de même extension`) and Total Commander (`WCMD.INC` `527` →
+  `Sélectionner les fichiers d'extension choisie`) name this exact command, and the mask replaces their "same extension"
+  because Cmdr shows the concrete one · `high`. Le masque suit `d'extension`, donc rien ne s'accorde avec `{extension}`.
+  L'apostrophe est simple dans `menu.*` (famille RAW) et doublée dans `commands.*` (ICU).
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `Sélection`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description` (« ajouter … à la sélection ») et le menu
+  `Mark` de Double Commander `fr`, qui dit lui aussi `Sélection` · `high`. Its siblings in that menu are verbs; this one
+  names what the submenu holds. ❌ Not the verb `Sélectionner`, which is `menu.bar.select`.
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.

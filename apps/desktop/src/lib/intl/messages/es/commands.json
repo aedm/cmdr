@@ -640,23 +640,23 @@
   "@commands.selectionInvert.description": {
     "sourceHash": "b63ce32"
   },
-  "commands.selectionSelectSameKind.label": "Select all of the same kind",
+  "commands.selectionSelectSameKind.label": "Seleccionar todo de la misma clase",
   "@commands.selectionSelectSameKind.label": {
     "sourceHash": "9933028"
   },
-  "commands.selectionSelectSameKind.description": "Adds every entry like the one under the cursor to the selection, without clearing it",
+  "commands.selectionSelectSameKind.description": "Añade a la selección todos los elementos de la misma clase que el que está bajo el cursor, sin vaciar la selección actual",
   "@commands.selectionSelectSameKind.description": {
     "sourceHash": "9a95212"
   },
-  "commands.selectionSelectSameKind.allFolders": "Select all folders",
+  "commands.selectionSelectSameKind.allFolders": "Seleccionar todas las carpetas",
   "@commands.selectionSelectSameKind.allFolders": {
     "sourceHash": "5351f8b"
   },
-  "commands.selectionSelectSameKind.sameExtension": "Select all with extension *.{extension}",
+  "commands.selectionSelectSameKind.sameExtension": "Seleccionar todo con la extensión *.{extension}",
   "@commands.selectionSelectSameKind.sameExtension": {
     "sourceHash": "7809a58"
   },
-  "commands.selectionSelectSameKind.noExtension": "Select all files with no extension",
+  "commands.selectionSelectSameKind.noExtension": "Seleccionar todos los archivos sin extensión",
   "@commands.selectionSelectSameKind.noExtension": {
     "sourceHash": "d04751e"
   },

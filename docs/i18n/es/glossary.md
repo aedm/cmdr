@@ -3369,3 +3369,22 @@ ahora Cmdr **nombra** lo que retiene el disco. Toda la familia hereda de ahí el
   (`errorReporter.amend.unavailable`, «envía un informe nuevo desde el menú Ayuda») · high.
 - Familia RAW: ningún valor lleva apóstrofo (nada de `''`), `{app}` y `{apps}` son sustituciones literales, y los seis
   difieren del inglés, así que no hace falta `sameAsSourceJustification`.
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `Clase`** · macOS Finder `es`
+  `ArrangeByMenu` `119.title`/`338.title`, the Kind sort criterion · `high`.
+- **"Select all with extension `*.{extension}`" → `Seleccionar todo con la extensión *.{extension}`** · Double Commander
+  (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" →
+  `Seleccionar todos con la misma extensión`) and Total Commander (`WCMD.INC` `527` →
+  `Seleccionar ficheros con la misma extensión`) name this exact command, and the mask replaces their "same extension"
+  because Cmdr shows the concrete one · `high`. La máscara va tras `con la extensión`, así que nada concuerda con
+  `{extension}`.
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `Selección`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description` («añadir a la selección…») · `high`. Its
+  siblings in that menu are verbs; this one names what the submenu holds. ❌ Not the verb `Seleccionar`, which is
+  `menu.bar.select`.
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.

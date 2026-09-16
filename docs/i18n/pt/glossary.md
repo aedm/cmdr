@@ -3225,3 +3225,23 @@ mesmo molde `<sujeito> ainda está usando este disco. <ação>, depois ejete-o d
 - Varredura pt-PT dos seis valores (`ficheiro`, `estar a` + infinitivo, `consoante`, próclise antes de infinitivo,
   `Rever`, `alterar o nome`, `guardar`, `você` omitido em frase de resultado), mais U+2019, apóstrofo duplo e espaço
   duplo: zero ocorrências. Nenhum `sameAsSourceJustification`: os seis diferem do inglês.
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `Tipo`** · macOS Finder `ArrangeByMenu`
+  `119.title`/`338.title`, the Kind sort criterion. Every source in this section comes from the reference pile's
+  `pt-BR/` folder, per the `_see-also.txt` ruling that `pt` ships Brazilian · `high`.
+- **"Select all with extension `*.{extension}`" → `Selecionar tudo com a extensão *.{extension}`** · Double Commander
+  (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" →
+  `Selecionar todos com a mesma extensão.`) and Total Commander (`WCMD.INC` `527` →
+  `Selecionar todos os arquivos com a mesma ext.`) name this exact command, and the mask replaces their "same extension"
+  because Cmdr shows the concrete one · `high`. A máscara vem depois de `com a extensão`, então nada concorda com
+  `{extension}`.
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `Seleção`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description` («adicionar … à seleção») · `high`. Its
+  siblings in that menu are verbs; this one names what the submenu holds. ❌ Not the verb `Selecionar`, which is
+  `menu.bar.select`.
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
