@@ -205,11 +205,13 @@ fn a_cancelled_repair_is_reported_as_cancelled_not_covered() {
     std::fs::create_dir_all(root.join("F/G")).expect("dirs");
     f.seed_chain(&root.join("F/G"));
 
-    let cancel = CancellationToken::new();
-    cancel.cancel();
     let (sender, _batches) = sync_channel(1);
     let heartbeat = WalkHeartbeat::new();
-    let (summary, verdict) = repair_non_virgin(&f.context(), &root.join("F"), &sender, &cancel, &heartbeat);
+    // The repair stops on the walk's OWN work, so cancelling that is what a yield or
+    // a stopped search does to it.
+    let context = f.context();
+    context.work.cancel.cancel();
+    let (summary, verdict) = repair_non_virgin(&context, &root.join("F"), &sender, &heartbeat);
     assert_eq!(
         verdict,
         RootOutcome::Cancelled,

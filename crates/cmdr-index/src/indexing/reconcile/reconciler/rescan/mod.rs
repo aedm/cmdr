@@ -531,9 +531,9 @@ pub(super) fn start_next_rescan(drain: RescanDrain, writer: &IndexWriter) {
             // A test's gate (`gate.rs`): the share is taken, and nothing is read yet.
             #[cfg(test)]
             gate::pass(&path);
-            let walk_cancel = &drain_for_next.work.cancel;
+            let walk_work = &drain_for_next.work;
             let (escalation, walk_cost) =
-                match reconcile_subtree(&path, &space_for_task, &conn, &writer, walk_cancel, None) {
+                match reconcile_subtree(&path, &space_for_task, &conn, &writer, walk_work, None) {
                     Ok(summary) => {
                         let (level, message) = reconcile_report(&path, &summary);
                         log::log!(level, "{message}");

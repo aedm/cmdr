@@ -214,6 +214,34 @@ impl VolumeHold {
             kind,
         }
     }
+
+    /// Whether this generation's filesystem is still in the host's mount table.
+    ///
+    /// The question every delete gate asks AFTER its observation, ❌ never before: an
+    /// unmounted `/Volumes/X` whose mount-point folder survives lists as empty and
+    /// complete, so a read taken first would let every top-level child be deleted.
+    ///
+    /// **Two different "don't knows", answered differently.** A generation whose start
+    /// couldn't name a filesystem (no host, a root that isn't a mount point, an
+    /// unreadable table then) is never asked and reads PRESENT, so hostless tools and
+    /// tests delete exactly as they do today. A generation that HAS an identity but
+    /// whose table can't be read now reads GONE: a delete needs `Some(true)`, and
+    /// "don't know" must never authorize one.
+    pub(crate) fn drive_is_listed(&self) -> bool {
+        // Read the identity out and drop the table lock before asking the host:
+        // ❌ nothing blocks under this lock (see [`Holds`]).
+        let identity = HOLDS
+            .table
+            .lock_ignore_poison()
+            .volumes
+            .get(&self.volume_id)
+            .and_then(|generations| generations.get(&self.generation))
+            .and_then(|generation| generation.identity);
+        let Some(identity) = identity else {
+            return true;
+        };
+        crate::indexing::host::volumes::current().is_mounted(identity) == Some(true)
+    }
 }
 
 impl Clone for VolumeHold {
@@ -325,6 +353,28 @@ impl VolumeWork {
     #[cfg(test)]
     pub(crate) fn for_test(volume_id: &str) -> Self {
         Self::take(volume_id, None)
+    }
+
+    /// Root work for a test that needs the delete gate to actually ask the host: a
+    /// generation that captured `identity`, the way a real `LocalExternal` start
+    /// does. ⚠️ Pair it with a provider that has `identity` mounted — [`for_test`]
+    /// captures none, so every gate reads the drive as present and a gate test
+    /// built on it would pass vacuously.
+    #[cfg(test)]
+    pub(crate) fn for_test_on(volume_id: &str, identity: MountIdentity) -> Self {
+        Self::take(volume_id, Some(identity))
+    }
+
+    /// The volume this work reads, for the gates that record a delete batch against
+    /// it.
+    pub(crate) fn volume_id(&self) -> &str {
+        &self.hold.volume_id
+    }
+
+    /// Whether this work's generation still has its drive; see
+    /// [`VolumeHold::drive_is_listed`] for the two kinds of "don't know".
+    pub(crate) fn drive_is_listed(&self) -> bool {
+        self.hold.drive_is_listed()
     }
 }
 
@@ -457,6 +507,7 @@ mod tests {
     use std::time::Instant;
 
     use super::*;
+    use crate::indexing::host::volumes::{FakeVolumeProvider, VolumeProvider, install_for_test};
 
     /// The filesystem the drive in these tests is.
     const DRIVE: MountIdentity = MountIdentity::from_raw(0x0100_0012);
@@ -736,5 +787,70 @@ mod tests {
             .await
             .expect("the volume's stop reaches the walk");
         assert!(!other_search.is_cancelled(), "without stopping the search");
+    }
+
+    /// Install `provider` as the host for one test, serialized on the handle lock
+    /// because the provider slot is process-wide.
+    fn install(provider: &Arc<FakeVolumeProvider>) -> crate::indexing::host::volumes::TestProviderGuard {
+        install_for_test(Arc::clone(provider) as Arc<dyn VolumeProvider>)
+    }
+
+    /// The one answer that authorizes a delete: the generation's filesystem is still
+    /// in the host's table.
+    #[test]
+    fn a_generation_whose_drive_is_listed_reads_as_present() {
+        let _serialized = crate::indexing::handle::test_lock();
+        let provider = FakeVolumeProvider::shared();
+        provider.mount("/Volumes/Stick", DRIVE);
+        let _installed = install(&provider);
+
+        let hold = take("hold-test-gate-listed");
+        assert!(hold.drive_is_listed());
+    }
+
+    /// The case every delete gate exists for: the drive left, so a listing that came
+    /// back short proves nothing and no row may be deleted against it.
+    #[test]
+    fn a_generation_whose_drive_left_reads_as_gone() {
+        let _serialized = crate::indexing::handle::test_lock();
+        let provider = FakeVolumeProvider::shared();
+        provider.mount("/Volumes/Stick", DRIVE);
+        let _installed = install(&provider);
+        let hold = take("hold-test-gate-left");
+        assert!(hold.drive_is_listed(), "precondition: it starts mounted");
+
+        provider.mark_unmounted("/Volumes/Stick");
+        assert!(!hold.drive_is_listed(), "a drive that left authorizes nothing");
+    }
+
+    /// "The table wouldn't read" is not permission to delete.
+    ///
+    /// ⚠️ The opposite disposition to [`flag_vanished`], which never FLAGS on `None`.
+    /// Both refuse to act on a don't-know; for a stop the safe act is to keep waiting,
+    /// for a delete it's to keep the row.
+    #[test]
+    fn an_unreadable_mount_table_never_authorizes_a_delete() {
+        let _serialized = crate::indexing::handle::test_lock();
+        let provider = FakeVolumeProvider::shared();
+        provider.mount("/Volumes/Stick", DRIVE).mark_table_unreadable();
+        let _installed = install(&provider);
+
+        let hold = take("hold-test-gate-unreadable");
+        assert!(!hold.drive_is_listed());
+    }
+
+    /// A generation whose start couldn't name a filesystem is never asked, so hostless
+    /// tools and every test that builds work with `for_test` delete exactly as today.
+    #[test]
+    fn a_generation_with_no_identity_reads_as_present() {
+        let _serialized = crate::indexing::handle::test_lock();
+        let provider = FakeVolumeProvider::shared();
+        let _installed = install(&provider);
+
+        let unnamed = VolumeHold::take("hold-test-gate-unnamed", None);
+        assert!(
+            unnamed.drive_is_listed(),
+            "never asked, so never a reason to withhold a delete"
+        );
     }
 }

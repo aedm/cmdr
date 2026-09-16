@@ -64,7 +64,7 @@ fn frontier_excludes_covered_ground_after_a_stitch() {
     t.cover(&t.path("covered"));
 
     // The later phase stitches the tree root before asking what is left.
-    stitch::directory(&t.space, &t.writer, t.root());
+    stitch::directory(&t.space, &t.writer, t.root(), &t.work());
 
     assert_eq!(
         t.frontier(&root),
@@ -93,7 +93,7 @@ fn a_stitched_directory_lists_its_files_not_only_its_subdirectories() {
     let t = Tree::new();
     t.make(&["sub"], &["one.txt", "two.txt"]);
 
-    stitch::directory(&t.space, &t.writer, t.root());
+    stitch::directory(&t.space, &t.writer, t.root(), &t.work());
 
     assert_eq!(
         t.indexed_children(&t.root().to_string_lossy()),

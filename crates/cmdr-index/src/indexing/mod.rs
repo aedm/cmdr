@@ -17,6 +17,7 @@
 // (`indexing::lifecycle::state::…`, `indexing::paths::routing::…`); `mod.rs` re-exports only
 // the curated public item surface below, never a module alias that would hide where code lives.
 pub(crate) mod aggregator;
+mod deletes;
 pub(crate) mod events;
 pub mod handle;
 mod hold;

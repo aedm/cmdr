@@ -61,8 +61,8 @@ fn must_scan_sub_dirs_preserves_existing_children() {
     }
 
     // Run reconcile_subtree (what MustScanSubDirs triggers)
-    let cancelled = CancellationToken::new();
-    let result = reconcile_subtree(&sub_dir, &IndexPathSpace::root(), &conn, &writer, &cancelled, None);
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
+    let result = reconcile_subtree(&sub_dir, &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
     assert_eq!(summary.added, 0, "no new entries expected");
@@ -96,13 +96,13 @@ fn reconcile_new_file() {
 
     ensure_path_in_db(&db_path, &test_dir.path().to_string_lossy(), &writer);
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     let result = reconcile_subtree(
         test_dir.path(),
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     );
     assert!(result.is_ok());
@@ -149,13 +149,13 @@ fn reconcile_deleted_file() {
         .unwrap();
     }
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     let result = reconcile_subtree(
         test_dir.path(),
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     );
     assert!(result.is_ok());
@@ -206,13 +206,13 @@ fn reconcile_unchanged() {
         .unwrap();
     }
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     let result = reconcile_subtree(
         test_dir.path(),
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     );
     assert!(result.is_ok());
@@ -254,13 +254,13 @@ fn reconcile_modified_file() {
         .unwrap();
     }
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     let result = reconcile_subtree(
         test_dir.path(),
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     );
     assert!(result.is_ok());
@@ -302,8 +302,8 @@ fn reconcile_subtree_new_nested_dir_with_child() {
     // DB only knows about /parent/; new_dir and child.txt are unknown
     ensure_path_in_db(&db_path, &parent.to_string_lossy(), &writer);
 
-    let cancelled = CancellationToken::new();
-    let result = reconcile_subtree(&parent, &IndexPathSpace::root(), &conn, &writer, &cancelled, None);
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
+    let result = reconcile_subtree(&parent, &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
     assert_eq!(summary.added, 2, "new_dir and child.txt should both be added");
@@ -371,8 +371,8 @@ fn reconcile_subtree_dir_replaced_by_file() {
         .unwrap();
     }
 
-    let cancelled = CancellationToken::new();
-    let result = reconcile_subtree(&parent, &IndexPathSpace::root(), &conn, &writer, &cancelled, None);
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
+    let result = reconcile_subtree(&parent, &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
 
@@ -424,8 +424,8 @@ fn reconcile_subtree_deep_nested_dirs() {
     // DB only knows about /root_dir/; everything inside is new
     ensure_path_in_db(&db_path, &root_dir.to_string_lossy(), &writer);
 
-    let cancelled = CancellationToken::new();
-    let result = reconcile_subtree(&root_dir, &IndexPathSpace::root(), &conn, &writer, &cancelled, None);
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
+    let result = reconcile_subtree(&root_dir, &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
     assert_eq!(summary.added, 4, "dirs a, b, c and file.txt should all be added");
@@ -493,8 +493,8 @@ fn reconcile_subtree_indexes_new_directory_not_in_db() {
     // for a newly copied/created directory.
     ensure_path_in_db(&db_path, &test_dir.path().to_string_lossy(), &writer);
 
-    let cancelled = CancellationToken::new();
-    let result = reconcile_subtree(&new_dir, &IndexPathSpace::root(), &conn, &writer, &cancelled, None);
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
+    let result = reconcile_subtree(&new_dir, &IndexPathSpace::root(), &conn, &writer, &work, None);
     assert!(result.is_ok());
     let summary = result.unwrap();
 
@@ -544,8 +544,8 @@ fn reconcile_subtree_marks_listed_dirs_at_current_epoch() {
     // Only the parent of `tree` is in the DB (mimics must_scan_sub_dirs).
     ensure_path_in_db(&db_path, &test_dir.path().to_string_lossy(), &writer);
 
-    let cancelled = CancellationToken::new();
-    reconcile_subtree(&new_dir, &IndexPathSpace::root(), &conn, &writer, &cancelled, None).unwrap();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
+    reconcile_subtree(&new_dir, &IndexPathSpace::root(), &conn, &writer, &work, None).unwrap();
     writer.flush_blocking().unwrap();
     writer.shutdown();
 

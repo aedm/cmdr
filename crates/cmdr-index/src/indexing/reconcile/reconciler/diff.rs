@@ -20,6 +20,21 @@ pub(crate) struct LiveChild {
     pub snap: MetadataSnapshot,
 }
 
+/// Whether this diff may delete the DB rows its live listing didn't mention.
+///
+/// A missing row only means "gone" when the observation behind it was whole: the
+/// listing saw everything, AND the drive was still listed after the read. Either one
+/// failing makes a missing row prove nothing at all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MissingRows {
+    /// The listing was complete and its drive still listed after it, so a row the
+    /// listing lacks is really gone.
+    Delete,
+    /// The listing came back short, or the drive stopped being listed. The diff
+    /// upserts everything it DID see and deletes nothing.
+    Keep,
+}
+
 /// Outcome of diffing ONE directory's live children against its DB rows.
 pub(crate) struct DirDiff<'a> {
     pub added: u64,
@@ -73,6 +88,7 @@ pub(crate) fn diff_dir_against_db<'a>(
     dir_id: i64,
     live_children: &'a [LiveChild],
     db_children: &[store::EntryRow],
+    missing: MissingRows,
     writer: &IndexWriter,
 ) -> DirDiff<'a> {
     let mut added: u64 = 0;
@@ -175,15 +191,20 @@ pub(crate) fn diff_dir_against_db<'a>(
         }
     }
 
-    for row in db_children {
-        let norm_name = store::normalize_for_comparison(&row.name);
-        if !matched_db_keys.contains(&norm_name) {
-            if row.is_directory {
-                let _ = writer.send(WriteMessage::DeleteSubtreeById(row.id));
-            } else {
-                let _ = writer.send(WriteMessage::DeleteEntryById(row.id));
+    // Everything above this line is an ADD or an UPDATE, driven by something the
+    // listing actually saw, so it runs whatever `missing` says. Only the reaping of
+    // rows the listing DIDN'T mention depends on the observation having been whole.
+    if missing == MissingRows::Delete {
+        for row in db_children {
+            let norm_name = store::normalize_for_comparison(&row.name);
+            if !matched_db_keys.contains(&norm_name) {
+                if row.is_directory {
+                    let _ = writer.send(WriteMessage::DeleteSubtreeById(row.id));
+                } else {
+                    let _ = writer.send(WriteMessage::DeleteEntryById(row.id));
+                }
+                removed += 1;
             }
-            removed += 1;
         }
     }
 

@@ -132,7 +132,7 @@ impl Ground {
                 ) {
                     Ok(summary) => (Some(summary), RootOutcome::Covered),
                     Err(ScanError::Cancelled(summary)) => (Some(summary), RootOutcome::Cancelled),
-                    Err(ScanError::NotVirgin) => repair_non_virgin(context, root, sender, cancel, heartbeat),
+                    Err(ScanError::NotVirgin) => repair_non_virgin(context, root, sender, heartbeat),
                     Err(e) => {
                         // One unwalkable root doesn't stop the others: it simply stays
                         // frontier, and the next search asks for it again.
@@ -195,11 +195,13 @@ impl Ground {
 /// walk's rows, and the covered half can only hold rows the index ALREADY had. The
 /// rows a repair creates are nobody else's to report, and `foldersFound` is read
 /// off the pulse rather than off them. `DETAILS.md` § "The repair path REPORTS".
+/// It stops on the walk's OWN work (`context.work`), which is both its stop signal
+/// and what answers the reconcile's delete gate: a repair may only reap rows its
+/// listing didn't mention while that generation's drive is still listed.
 pub(super) fn repair_non_virgin(
     context: &CoverContext,
     root: &Path,
     sender: &SyncSender<Vec<CoveredEntry>>,
-    cancel: &CancellationToken,
     heartbeat: &WalkHeartbeat,
 ) -> (Option<ScanSummary>, RootOutcome) {
     let started = std::time::Instant::now();
@@ -216,7 +218,7 @@ pub(super) fn repair_non_virgin(
         &context.space,
         &conn,
         &context.writer,
-        cancel,
+        &context.work,
         Some(LiveWalk {
             emit: sender,
             heartbeat,

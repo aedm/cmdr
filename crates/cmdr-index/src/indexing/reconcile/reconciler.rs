@@ -36,10 +36,6 @@ use std::time::Instant;
 // Only the test-only `new_with_throttle_window` names it here.
 #[cfg(test)]
 use std::time::Duration;
-// Same story as `Ordering`: the walk that takes a token lives in `subtree`, and the
-// `tests/` files name this type through their `use super::*`.
-#[cfg(test)]
-use tokio_util::sync::CancellationToken;
 
 use rusqlite::Connection;
 
@@ -64,8 +60,8 @@ mod rescan;
 mod subtree;
 mod throttle;
 
-pub(crate) use diff::{LiveChild, diff_dir_against_db};
-pub(crate) use dir_read::{FsChild, read_fs_children};
+pub(crate) use diff::{LiveChild, MissingRows, diff_dir_against_db};
+pub(crate) use dir_read::{FsChild, Listing, child_is_absent, read_fs_children};
 pub(crate) use events::process_fs_event;
 pub(crate) use finish::{BulkReconcileGuard, finish_reconcile, send_marks};
 pub(in crate::indexing) use subtree::{ReconcileSummary, reconcile_subtree};

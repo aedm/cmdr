@@ -57,8 +57,10 @@ fn the_reconcile_read_matches_a_per_entry_stat() {
     );
 
     let space = IndexPathSpace::root();
-    let bulk = read_fs_children(root, &space).expect("the directory lists");
-    let stated = read_fs_children_via_read_dir(root, &space).expect("the directory lists");
+    let bulk = read_fs_children(root, &space).expect("the directory lists").children;
+    let stated = read_fs_children_via_read_dir(root, &space)
+        .expect("the directory lists")
+        .children;
 
     let by_name = |children: Vec<FsChild>| -> std::collections::BTreeMap<String, FsChild> {
         children.into_iter().map(|c| (c.name.clone(), c)).collect()
@@ -136,6 +138,7 @@ fn an_empty_directory_reads_as_an_empty_listing() {
     let empty = dir.path().join("empty");
     std::fs::create_dir(&empty).unwrap();
     let space = IndexPathSpace::root();
-    let children = read_fs_children(&empty, &space).expect("an empty dir still lists");
-    assert!(children.is_empty());
+    let listing = read_fs_children(&empty, &space).expect("an empty dir still lists");
+    assert!(listing.children.is_empty());
+    assert!(listing.complete, "an empty dir was read whole, so it may be diffed");
 }

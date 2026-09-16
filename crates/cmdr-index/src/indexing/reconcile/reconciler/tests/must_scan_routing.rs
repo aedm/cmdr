@@ -4,7 +4,6 @@
 
 use super::*;
 use crate::indexing::hold::{self, HoldKind};
-use tokio_util::sync::CancellationToken;
 
 #[tokio::test]
 async fn must_scan_sub_dirs_queued() {
@@ -250,10 +249,10 @@ fn reconcile_subtree_missing_chain_escalates() {
     let base_abs = space.absolute(&base.path().to_string_lossy());
     ensure_path_in_db(&db_path, &base_abs, &writer);
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     let leaf_abs = space.absolute(&deep.to_string_lossy());
     let summary =
-        reconcile_subtree(Path::new(&leaf_abs), &space, &conn, &writer, &cancelled, None).expect("reconcile ok");
+        reconcile_subtree(Path::new(&leaf_abs), &space, &conn, &writer, &work, None).expect("reconcile ok");
     assert_eq!(
         summary.escalation,
         Some(PathBuf::from(format!("{base_abs}/mid"))),

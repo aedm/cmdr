@@ -437,7 +437,7 @@ impl Machine {
             &format!("covering {}", phase.path.display()),
         );
         self.announce_the_phase(phase);
-        stitch::down_to(&self.space, &self.writer, &phase.path);
+        stitch::down_to(&self.space, &self.writer, &phase.path, &self.work);
 
         for pass in 0..MAX_PASSES_PER_PHASE {
             let frontier = self.frontier_under(&phase.path);

@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use tokio_util::sync::CancellationToken;
 
 use rusqlite::Connection;
 
@@ -244,9 +243,9 @@ fn run_reconcile_in(
     cancel: bool,
 ) -> Result<ScanSummary, ScanError> {
     let progress = ScanProgress::new();
-    let flag = CancellationToken::new();
+    let flag = VolumeWork::for_test("local-reconcile-test");
     if cancel {
-        flag.cancel();
+        flag.cancel.cancel();
     }
     let result = run_local_reconcile(root, &space, &h.writer, &progress, &flag, tools);
     h.writer.flush_blocking().unwrap();
@@ -834,8 +833,8 @@ fn a_reconcile_cancelled_after_discovering_a_dir_leaves_no_exact_size_lies() {
     // and be cancelled before the queue reaches it.
     std::fs::create_dir(rp.join("sub/fresh")).unwrap();
 
-    let cancel = CancellationToken::new();
-    let trip = cancel.clone();
+    let cancel = VolumeWork::for_test("local-reconcile-test");
+    let trip = cancel.cancel.clone();
     let space = IndexPathSpace::root();
     let reader = GuardedReader::with_read_fn(
         Duration::from_secs(5),

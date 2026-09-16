@@ -179,7 +179,12 @@ fn cover_the_wide_directory_child_by_child(width: usize) -> Duration {
     build_wide(&fixture.root().join("big"), width, Shape::Subdirs);
     // Exactly what a stopped walk leaves: the wide directory listed, every child
     // of it a row nothing has walked.
-    stitch::down_to(&fixture.space, &fixture.writer, Path::new(&fixture.path("big")));
+    stitch::down_to(
+        &fixture.space,
+        &fixture.writer,
+        Path::new(&fixture.path("big")),
+        &fixture.work(),
+    );
     let roots = fixture.frontier(&fixture.path("big"));
     assert_eq!(roots.len(), width, "the stitch leaves every child on the frontier");
 

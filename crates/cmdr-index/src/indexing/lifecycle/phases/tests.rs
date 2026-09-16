@@ -82,6 +82,13 @@ impl Tree {
         self.tree.path()
     }
 
+    /// Work for a stitch or a walk on this fixture's volume. `for_test` names no
+    /// mount identity, so every delete gate reads the drive as present and the
+    /// stitch diffs exactly as it does on a healthy drive.
+    fn work(&self) -> VolumeWork {
+        VolumeWork::for_test(&self.volume_id)
+    }
+
     fn path(&self, relative: &str) -> String {
         self.tree.path().join(relative).to_string_lossy().to_string()
     }

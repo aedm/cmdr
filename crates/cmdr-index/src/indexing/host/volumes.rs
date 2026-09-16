@@ -309,6 +309,8 @@ pub struct FakeVolumeProvider {
     network_mounts: RwLock<std::collections::HashSet<PathBuf>>,
     untrusted_inode_mounts: RwLock<std::collections::HashSet<PathBuf>>,
     mounts: RwLock<std::collections::HashMap<PathBuf, MountIdentity>>,
+    /// Inverted so `Default` means a table that reads fine.
+    table_unreadable: RwLock<bool>,
 }
 
 #[cfg(any(test, feature = "testing"))]
@@ -360,6 +362,14 @@ impl FakeVolumeProvider {
         self.mounts.write_ignore_poison().remove(root.as_ref());
         self
     }
+
+    /// Make `is_mounted` answer `None`, the way a mount table that couldn't be read
+    /// does. Distinct from an unmounted drive: "don't know" must never authorize a
+    /// delete, and must never flag a generation vanished.
+    pub fn mark_table_unreadable(&self) -> &Self {
+        *self.table_unreadable.write_ignore_poison() = true;
+        self
+    }
 }
 
 #[cfg(any(test, feature = "testing"))]
@@ -398,6 +408,9 @@ impl VolumeProvider for FakeVolumeProvider {
     }
 
     fn is_mounted(&self, identity: MountIdentity) -> Option<bool> {
+        if *self.table_unreadable.read_ignore_poison() {
+            return None;
+        }
         Some(
             self.mounts
                 .read_ignore_poison()

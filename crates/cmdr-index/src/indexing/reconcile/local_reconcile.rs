@@ -51,7 +51,6 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::time::{Duration, Instant};
-use tokio_util::sync::CancellationToken;
 
 mod cost_budget;
 mod latency_probe;
@@ -61,15 +60,17 @@ use latency_probe::LatencyProbe;
 
 use crate::indexing::DEBUG_STATS;
 use crate::indexing::IndexPathSpace;
+use crate::indexing::deletes;
 use crate::indexing::hold::{HoldKind, VolumeWork};
-use crate::indexing::reconcile::reconciler::{self, FsChild, LiveChild};
+use crate::indexing::reconcile::reconciler::{self, FsChild, Listing, LiveChild, MissingRows};
 use crate::indexing::scanner::{LOCAL_LIST_TIMEOUT, ScanError, ScanHandle, ScanProgress, ScanSummary};
 use crate::indexing::store::IndexStore;
 use crate::indexing::writer::{IndexWriter, WriteMessage};
 
 /// One directory's normalized filesystem children, or `None` when the directory
-/// can't be listed.
-type FsChildrenResult = Option<Vec<FsChild>>;
+/// can't be listed. The [`Listing`] also says whether the read saw everything, which
+/// is what decides if this pass may delete the rows it didn't mention.
+type FsChildrenResult = Option<Listing>;
 
 /// The read closure a [`GuardedReader`] runs on its worker thread.
 type ReadFn = Arc<dyn Fn(&Path) -> FsChildrenResult + Send + Sync>;
@@ -279,7 +280,7 @@ fn start_local_reconcile_with(
             // than a raw thread panic that surfaces as the handler's opaque
             // `Err(_)` "thread panicked" arm.
             let tools = tools(&work, &space);
-            run_catching_panics(|| run_local_reconcile(&root, &space, &writer, &progress, &work.cancel, tools))
+            run_catching_panics(|| run_local_reconcile(&root, &space, &writer, &progress, &work, tools))
         })
         .map_err(ScanError::Io)?;
 
@@ -401,7 +402,7 @@ fn run_local_reconcile(
     space: &IndexPathSpace,
     writer: &IndexWriter,
     progress: &ScanProgress,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
     tools: WalkTools,
 ) -> Result<ScanSummary, ScanError> {
     let WalkTools {
@@ -467,7 +468,7 @@ fn run_local_reconcile(
     let _bulk_guard = reconciler::BulkReconcileGuard::begin(writer);
 
     while let Some((dir_path, dir_id, anchorage)) = queue.pop_front() {
-        if cancel.is_cancelled() {
+        if work.cancel.is_cancelled() {
             // Cancel: leave the prior index intact (no truncate ran) and send NO
             // marks/aggregate. Entries already diffed this pass got no ancestor
             // `dir_stats` propagation (the walk runs under `BulkReconcileGuard`,
@@ -501,13 +502,13 @@ fn run_local_reconcile(
             continue;
         }
 
-        let (fs_children, read_duration) = reader.read(&dir_path);
+        let (listing, read_duration) = reader.read(&dir_path);
         // The entry count is half the cost signal: it's what tells a slow
         // filesystem apart from a big directory. An unlistable read returned
         // nothing, and is measured against the fixed allowance alone.
         let read_cost = ReadCost {
             duration: read_duration,
-            entries: fs_children.as_ref().map_or(0, Vec::len),
+            entries: listing.as_ref().map_or(0, |listing| listing.children.len()),
         };
         if let Some(tripped) = cost_budget.charge(&anchorage, read_cost) {
             budget_subtrees += 1;
@@ -521,8 +522,8 @@ fn run_local_reconcile(
                 tripped.slow_spent.as_secs_f64(),
             );
         }
-        let fs_children = match fs_children {
-            Some(c) => c,
+        let listing = match listing {
+            Some(listing) => listing,
             None => {
                 if dir_path == *root {
                     // The ROOT itself is unlistable (its read errored or timed out):
@@ -547,7 +548,7 @@ fn run_local_reconcile(
         // already-populated index, so an empty root is a transient half-dead `/`,
         // not a real "everything deleted". A non-root dir that lists empty is a
         // genuine empty subdir and reconciles normally (its stale children are swept).
-        if dir_path == *root && fs_children.is_empty() {
+        if dir_path == *root && listing.children.is_empty() {
             log::warn!(
                 "local reconcile: root listed empty for {} — treating as a failed rescan, keeping prior index",
                 dir_path.display()
@@ -557,11 +558,31 @@ fn run_local_reconcile(
 
         // This dir's listing succeeded (incl. empty) — stamp it after the walk.
         listed_ids.push(dir_id);
+        if dir_path == *root {
+            // The volume ROOT listed, which is half of what clears the delete
+            // generation; the presence read below is the other half.
+            deletes::root_listed(work.volume_id());
+        }
+
+        // ⚠️ **Presence AFTER the read, ❌ never before.** An unmounted `/Volumes/X`
+        // whose mount-point folder survives lists as EMPTY and complete; the
+        // empty-ROOT guard above catches that for the root, and this catches it for
+        // every directory below. One read per directory, ❌ never per entry.
+        let drive_listed = work.drive_is_listed();
+        if drive_listed {
+            // Also the presence half of the delete generation's reset.
+            deletes::drive_seen(work.volume_id());
+        }
+        let missing = if listing.complete && drive_listed {
+            MissingRows::Delete
+        } else {
+            MissingRows::Keep
+        };
 
         let db_children =
             IndexStore::list_children_on(dir_id, &conn).map_err(|e| ScanError::WriterSend(e.to_string()))?;
         let live_children = build_live_children(
-            fs_children,
+            listing.children,
             space,
             &mut seen_inodes,
             &mut total_entries,
@@ -570,7 +591,10 @@ fn run_local_reconcile(
             progress,
         );
 
-        let diff = reconciler::diff_dir_against_db(dir_id, &live_children, &db_children, writer);
+        let diff = reconciler::diff_dir_against_db(dir_id, &live_children, &db_children, missing, writer);
+        if diff.removed > 0 {
+            deletes::batch_sent(work.volume_id());
+        }
         added += diff.added;
         removed += diff.removed;
         updated += diff.updated;

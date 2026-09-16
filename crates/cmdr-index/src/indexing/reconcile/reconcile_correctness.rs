@@ -23,10 +23,10 @@ mod tests {
     use std::collections::HashSet;
     use std::path::{Path, PathBuf};
     use std::sync::atomic::Ordering;
-    use tokio_util::sync::CancellationToken;
 
     use rusqlite::Connection;
 
+    use crate::indexing::hold::VolumeWork;
     use crate::indexing::reconcile::reconciler::reconcile_subtree;
     use crate::indexing::store::{self, IndexStore, ROOT_ID};
     use crate::indexing::writer::{IndexWriter, WriteMessage};
@@ -133,13 +133,13 @@ mod tests {
 
     /// Run a full (uninterrupted) reconcile and flush.
     fn reconcile_full(h: &Harness, root: &Path) {
-        let cancelled = CancellationToken::new();
+        let work = VolumeWork::for_test("reconcile-correctness");
         reconcile_subtree(
             root,
             &crate::indexing::IndexPathSpace::root(),
             &h.conn,
             &h.writer,
-            &cancelled,
+            &work,
             None,
         )
         .expect("reconcile");
@@ -320,8 +320,8 @@ mod tests {
             // (c) Interrupted reconcile: cancel pre-tripped so it stops right after listing the root
             //     (children pushed, but none of them visited). This is the worst case: the deleted
             //     subtree's rows are NOT swept by this pass.
-            let pretripped = CancellationToken::new();
-            pretripped.cancel();
+            let pretripped = VolumeWork::for_test("reconcile-correctness");
+            pretripped.cancel.cancel();
             let _ = reconcile_subtree(
                 root_path,
                 &crate::indexing::IndexPathSpace::root(),
@@ -432,8 +432,8 @@ mod tests {
         std::fs::remove_dir_all(root_path.join("beta")).unwrap();
         bump_epoch(&h);
 
-        let pretripped = CancellationToken::new();
-        pretripped.cancel();
+        let pretripped = VolumeWork::for_test("reconcile-correctness");
+        pretripped.cancel.cancel();
         let _ = reconcile_subtree(
             root_path,
             &crate::indexing::IndexPathSpace::root(),

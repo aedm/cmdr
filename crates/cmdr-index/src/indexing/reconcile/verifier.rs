@@ -10,7 +10,9 @@ use std::time::Instant;
 
 use cmdr_fs::ignore_poison::IgnorePoison;
 
+use super::reconciler;
 use crate::indexing::IndexPathSpace;
+use crate::indexing::deletes;
 use crate::indexing::events::emit_dir_updated;
 use crate::indexing::hold::VolumeWork;
 use crate::indexing::lifecycle::lifecycle_bus;
@@ -240,7 +242,7 @@ async fn verify_and_correct(
     // the host runtime seam's `spawn`, not `spawn_blocking`), so a slow/hung disk
     // here would otherwise stall an async executor thread. The diff that follows
     // is pure CPU and stays on the async path.
-    let disk_map: HashMap<String, DiskEntry> = {
+    let (disk_map, listing_complete): (HashMap<String, DiskEntry>, bool) = {
         let scan_path = normalized.clone();
         // Snapshots cross into the DB through here, so this is where a FAT/exFAT
         // volume's derived inode is dropped: an unstable inode reaching the index
@@ -257,11 +259,27 @@ async fn verify_and_correct(
             let _read_share = read_share;
             let disk_entries = std::fs::read_dir(&scan_path).ok()?;
             let mut disk_map: HashMap<String, DiskEntry> = HashMap::new();
-            for dir_entry in disk_entries.flatten() {
+            // Whether this read saw every child. A stat answering "gone" is a real
+            // removal and leaves the listing whole; anything else means we never got
+            // to look, and the stale sweep below must not read that as "deleted".
+            let mut complete = true;
+            for entry in disk_entries {
+                let dir_entry = match entry {
+                    Ok(e) => e,
+                    Err(_) => {
+                        complete = false;
+                        continue;
+                    }
+                };
                 let name = dir_entry.file_name().to_string_lossy().to_string();
                 let metadata = match std::fs::symlink_metadata(dir_entry.path()) {
                     Ok(m) => m,
-                    Err(_) => continue,
+                    Err(e) => {
+                        if !reconciler::child_is_absent(&e) {
+                            complete = false;
+                        }
+                        continue;
+                    }
                 };
 
                 let is_dir = metadata.is_dir();
@@ -283,11 +301,11 @@ async fn verify_and_correct(
                     },
                 );
             }
-            Some(disk_map)
+            Some((disk_map, complete))
         })
         .await;
         match joined {
-            Ok(Some(map)) => map,
+            Ok(Some(pair)) => pair,
             Ok(None) => return Vec::new(),
             Err(e) => {
                 log::warn!("Verifier: disk-scan task failed: {e}");
@@ -316,9 +334,24 @@ async fn verify_and_correct(
         normalized.clone()
     };
 
-    // Stale entries (in DB but not on disk)
+    // Stale entries (in DB but not on disk).
+    //
+    // ⚠️ **Presence AFTER the read, ❌ never before.** An unmounted `/Volumes/X` whose
+    // mount-point folder survives lists as EMPTY and complete, so a read taken first
+    // would let every row under it be swept. One read per pass, ❌ never per entry.
+    let drive_listed = work.drive_is_listed();
+    if drive_listed {
+        // Also the presence half of the delete generation's reset. This pass never
+        // lists the volume ROOT, so on its own it arms nothing — it only completes a
+        // reset a walk already armed.
+        deletes::drive_seen(work.volume_id());
+    }
+    let may_delete = listing_complete && drive_listed;
     for (key, db_entry) in &db_map {
         if !disk_map.contains_key(key) {
+            if !may_delete {
+                continue;
+            }
             if db_entry.is_directory {
                 let _ = writer.send(WriteMessage::DeleteSubtreeById(db_entry.id));
             } else {
@@ -329,6 +362,9 @@ async fn verify_and_correct(
                 samples.push(format!("-{}", db_entry.name));
             }
         }
+    }
+    if stale_count > 0 {
+        deletes::batch_sent(work.volume_id());
     }
 
     // New and modified entries (on disk but not in DB, or changed)

@@ -10,9 +10,10 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use rusqlite::Connection;
-use tokio_util::sync::CancellationToken;
 
 use crate::indexing::IndexPathSpace;
+use crate::indexing::deletes;
+use crate::indexing::hold::VolumeWork;
 use crate::indexing::metadata::extract_metadata;
 use crate::indexing::paths::path_prefix::compute_parent_path;
 use crate::indexing::scanner::{self, LiveWalk};
@@ -20,7 +21,7 @@ use crate::indexing::store::IndexStore;
 use crate::indexing::writer::{IndexWriter, WriteMessage};
 
 use super::dir_read::read_fs_children;
-use super::diff::{LiveChild, diff_dir_against_db};
+use super::diff::{LiveChild, MissingRows, diff_dir_against_db};
 use super::escalation::resolve_escalation_anchor;
 
 /// Summary of a subtree reconciliation.
@@ -98,12 +99,16 @@ fn writer_wait() -> Duration {
 /// leaves that search short while its walk still ends `Completed` — a wrong answer
 /// calling itself exhaustive. ⚠️ Only the created rows: a row the index already
 /// held is the covered half's to report, and sending it too would double it.
+/// `work` is the walk's own: its stop signal, and the share of the volume's hold it
+/// reads under. It also answers the delete gate below — whether this generation's
+/// drive is still listed — which is why the walk takes the whole value and ❌ never a
+/// bare token.
 pub(in crate::indexing) fn reconcile_subtree(
     root: &Path,
     space: &IndexPathSpace,
     conn: &Connection,
     writer: &IndexWriter,
-    cancel: &CancellationToken,
+    work: &VolumeWork,
     live: Option<LiveWalk<'_>>,
 ) -> Result<ReconcileSummary, String> {
     // Split so the two halves can end at different times: a consumer that goes
@@ -164,7 +169,7 @@ pub(in crate::indexing) fn reconcile_subtree(
                             duration: start.elapsed(),
                             writer_wait: writer_wait(),
                             escalation: resolve_escalation_anchor(space, conn, &root_str),
-                            cancelled: cancel.is_cancelled(),
+                            cancelled: work.cancel.is_cancelled(),
                         });
                     }
                 }
@@ -184,7 +189,7 @@ pub(in crate::indexing) fn reconcile_subtree(
                         duration: start.elapsed(),
                         writer_wait: writer_wait(),
                         escalation: resolve_escalation_anchor(space, conn, &root_str),
-                        cancelled: cancel.is_cancelled(),
+                        cancelled: work.cancel.is_cancelled(),
                     });
                 }
                 Err(e) => return Err(format!("resolve_path for parent: {e}")),
@@ -207,7 +212,7 @@ pub(in crate::indexing) fn reconcile_subtree(
                         duration: start.elapsed(),
                         writer_wait: writer_wait(),
                         escalation: None,
-                        cancelled: cancel.is_cancelled(),
+                        cancelled: work.cancel.is_cancelled(),
                     });
                 }
             };
@@ -259,7 +264,7 @@ pub(in crate::indexing) fn reconcile_subtree(
                         duration: start.elapsed(),
                         writer_wait: writer_wait(),
                         escalation: None,
-                        cancelled: cancel.is_cancelled(),
+                        cancelled: work.cancel.is_cancelled(),
                     });
                 }
                 Err(e) => return Err(format!("resolve_path for root after upsert: {e}")),
@@ -279,7 +284,7 @@ pub(in crate::indexing) fn reconcile_subtree(
     let mut unreadable_dirs: u64 = 0;
 
     while let Some((dir_path, dir_id)) = queue.pop_front() {
-        if cancel.is_cancelled() {
+        if work.cancel.is_cancelled() {
             break;
         }
 
@@ -288,8 +293,8 @@ pub(in crate::indexing) fn reconcile_subtree(
         if let Some(heartbeat) = heartbeat {
             heartbeat.entering(&dir_path);
         }
-        let fs_children = match read_fs_children(&dir_path, space) {
-            Some(c) => c,
+        let listing = match read_fs_children(&dir_path, space) {
+            Some(listing) => listing,
             None => {
                 unreadable_dirs += 1;
                 continue;
@@ -298,13 +303,36 @@ pub(in crate::indexing) fn reconcile_subtree(
         // We successfully listed this dir's direct contents (an empty listing
         // still counts). Stamp it at the current epoch after the walk.
         listed_dir_ids.push(dir_id);
+        if space.absolute(&dir_path.to_string_lossy()) == space.volume_root_string() {
+            // The volume ROOT listed, which is half of what clears the delete
+            // generation; the presence read below is the other half.
+            deletes::root_listed(work.volume_id());
+        }
+
+        // ⚠️ **Presence AFTER the read, ❌ never before.** An unmounted `/Volumes/X`
+        // whose mount-point folder survives lists as EMPTY and complete, so a read
+        // taken first would pass the gate and let every top-level child be deleted.
+        // One read per directory, ❌ never per entry.
+        let drive_listed = work.drive_is_listed();
+        if drive_listed {
+            // Also the presence half of the delete generation's reset: paired with a
+            // root listing that came after the last batch, it says the drive really
+            // was there all along.
+            deletes::drive_seen(work.volume_id());
+        }
+        let missing = if listing.complete && drive_listed {
+            MissingRows::Delete
+        } else {
+            MissingRows::Keep
+        };
 
         let db_children =
             IndexStore::list_children_on(dir_id, conn).map_err(|e| format!("list_children_on({dir_id}): {e}"))?;
 
         // Normalize the local listing into source-agnostic `LiveChild`s and run
         // the shared per-dir diff (same logic the network walk uses).
-        let live_children: Vec<LiveChild> = fs_children
+        let live_children: Vec<LiveChild> = listing
+            .children
             .into_iter()
             .map(|child| {
                 let mut snap = child.snap;
@@ -320,7 +348,10 @@ pub(in crate::indexing) fn reconcile_subtree(
             })
             .collect();
 
-        let diff = diff_dir_against_db(dir_id, &live_children, &db_children, writer);
+        let diff = diff_dir_against_db(dir_id, &live_children, &db_children, missing, writer);
+        if diff.removed > 0 {
+            deletes::batch_sent(work.volume_id());
+        }
         added += diff.added;
         added_dirs += diff.added_children.iter().filter(|child| child.is_directory).count() as u64;
         removed += diff.removed;
@@ -380,7 +411,7 @@ pub(in crate::indexing) fn reconcile_subtree(
         duration: start.elapsed(),
         writer_wait: writer_wait(),
         escalation: None,
-        cancelled: cancel.is_cancelled(),
+        cancelled: work.cancel.is_cancelled(),
     })
 }
 

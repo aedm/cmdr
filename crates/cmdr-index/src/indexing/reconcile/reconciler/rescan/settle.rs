@@ -38,8 +38,6 @@ use std::time::{Duration, Instant, SystemTime};
 // Used only by `tests` below, via `use super::*`.
 #[cfg(test)]
 use super::super::{IndexPathSpace, reconcile_subtree};
-#[cfg(test)]
-use tokio_util::sync::CancellationToken;
 
 /// How long a directory must have existed before its subtree is worth walking.
 /// Long enough to outlive an updater unpacking and deleting a bundle, short
@@ -159,9 +157,9 @@ mod tests {
         // ...and the updater deletes it while the anchor is still settling.
         std::fs::remove_dir_all(&anchor).expect("the updater cleans up");
 
-        let cancelled = CancellationToken::new();
+        let work = crate::indexing::hold::VolumeWork::for_test("settle-test");
         let summary =
-            reconcile_subtree(&anchor, &IndexPathSpace::root(), &conn, &writer, &cancelled, None).expect("walks");
+            reconcile_subtree(&anchor, &IndexPathSpace::root(), &conn, &writer, &work, None).expect("walks");
 
         assert_eq!(
             (summary.added, summary.removed, summary.updated),

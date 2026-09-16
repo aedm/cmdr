@@ -41,7 +41,9 @@ use std::path::Path;
 use rusqlite::Connection;
 
 use crate::indexing::IndexPathSpace;
-use crate::indexing::reconcile::reconciler::{self, LiveChild};
+use crate::indexing::deletes;
+use crate::indexing::hold::VolumeWork;
+use crate::indexing::reconcile::reconciler::{self, LiveChild, MissingRows};
 use crate::indexing::store::{IndexStore, ROOT_ID, resolve_path};
 use crate::indexing::writer::{IndexWriter, WriteMessage};
 
@@ -50,18 +52,18 @@ use crate::indexing::writer::{IndexWriter, WriteMessage};
 /// Top-down on purpose: each directory's row is created by the stitch of its
 /// parent, so the chain resolves as it goes and nothing needs bootstrapping.
 /// Reports the id of `path` when it ends up stitched (or already listed).
-pub(super) fn down_to(space: &IndexPathSpace, writer: &IndexWriter, path: &Path) -> Option<i64> {
+pub(super) fn down_to(space: &IndexPathSpace, writer: &IndexWriter, path: &Path, work: &VolumeWork) -> Option<i64> {
     let mut chain: Vec<&Path> = path.ancestors().skip(1).collect();
     chain.reverse();
     for ancestor in chain {
-        directory(space, writer, ancestor);
+        directory(space, writer, ancestor, work);
     }
-    directory(space, writer, path)
+    directory(space, writer, path, work)
 }
 
 /// Read one directory, upsert everything in it, and mark that directory alone
 /// listed. Reports its id, or `None` when the index has no row to stitch onto.
-pub(super) fn directory(space: &IndexPathSpace, writer: &IndexWriter, dir: &Path) -> Option<i64> {
+pub(super) fn directory(space: &IndexPathSpace, writer: &IndexWriter, dir: &Path, work: &VolumeWork) -> Option<i64> {
     let db_path = writer.db_path();
     let conn = IndexStore::open_read_connection(&db_path)
         .inspect_err(|e| log::warn!("Phases: can't read the index to stitch {}: {e}", dir.display()))
@@ -82,11 +84,24 @@ pub(super) fn directory(space: &IndexPathSpace, writer: &IndexWriter, dir: &Path
     let db_children = IndexStore::list_children_on(id, &conn).unwrap_or_default();
     drop(conn);
 
-    let Some(children) = reconciler::read_fs_children(Path::new(&absolute), space) else {
+    let Some(listing) = reconciler::read_fs_children(Path::new(&absolute), space) else {
         log::debug!("Phases: couldn't read {absolute} while stitching, so it stays unlisted");
         return Some(id);
     };
-    let live: Vec<LiveChild> = children
+    // ⚠️ Presence AFTER the read, ❌ never before: an unmounted `/Volumes/X` whose
+    // mount-point folder survives lists as empty and complete.
+    let drive_listed = work.drive_is_listed();
+    if drive_listed {
+        // Also the presence half of the delete generation's reset.
+        deletes::drive_seen(work.volume_id());
+    }
+    let missing = if listing.complete && drive_listed {
+        MissingRows::Delete
+    } else {
+        MissingRows::Keep
+    };
+    let live: Vec<LiveChild> = listing
+        .children
         .into_iter()
         .map(|child| LiveChild {
             name: child.name,
@@ -100,7 +115,10 @@ pub(super) fn directory(space: &IndexPathSpace, writer: &IndexWriter, dir: &Path
             },
         })
         .collect();
-    reconciler::diff_dir_against_db(id, &live, &db_children, writer);
+    let diff = reconciler::diff_dir_against_db(id, &live, &db_children, missing, writer);
+    if diff.removed > 0 {
+        deletes::batch_sent(work.volume_id());
+    }
 
     // Mandatory, not an optimization: see the module docs.
     if let Err(e) = writer.flush_blocking() {

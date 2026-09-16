@@ -19,6 +19,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::time::Duration;
 
 mod bulk_window;
+mod delete_gates;
 mod directory_read;
 mod hardlinks;
 mod live_events;

@@ -284,7 +284,15 @@ pub(crate) async fn reconcile_volume_via_trait(
         let db_children =
             IndexStore::list_children_on(dir_id, &conn).map_err(|e| VolumeScanError::Context(e.to_string()))?;
 
-        let diff = reconciler::diff_dir_against_db(dir_id, &live_children, &db_children, &writer);
+        // A trait-scanned volume keeps today's behavior: SMB and MTP deletes come
+        // from their own protocols, and this walk's listing is whole or it errored.
+        let diff = reconciler::diff_dir_against_db(
+            dir_id,
+            &live_children,
+            &db_children,
+            reconciler::MissingRows::Delete,
+            &writer,
+        );
         added += diff.added;
         removed += diff.removed;
         updated += diff.updated;

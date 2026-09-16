@@ -49,13 +49,13 @@ fn reconcile_deduped_hardlink_writes_nothing_on_a_repeat_pass() {
     write_hardlinked_file(test_dir.path(), "payload.bin", "shared bytes", 2);
     ensure_path_in_db(&db_path, &parent, &writer);
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     let first = reconcile_subtree(
         test_dir.path(),
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     )
     .unwrap();
@@ -76,7 +76,7 @@ fn reconcile_deduped_hardlink_writes_nothing_on_a_repeat_pass() {
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     )
     .unwrap();
@@ -92,7 +92,7 @@ fn reconcile_deduped_hardlink_writes_nothing_on_a_repeat_pass() {
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     )
     .unwrap();
@@ -119,13 +119,13 @@ fn reconcile_deduped_hardlink_with_a_new_mtime_is_written() {
     write_hardlinked_file(test_dir.path(), "payload.bin", "shared bytes", 2);
     ensure_path_in_db(&db_path, &parent, &writer);
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     reconcile_subtree(
         test_dir.path(),
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     )
     .unwrap();
@@ -149,7 +149,7 @@ fn reconcile_deduped_hardlink_with_a_new_mtime_is_written() {
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     )
     .unwrap();
@@ -181,13 +181,13 @@ fn reconcile_restores_the_size_when_a_hardlink_drops_to_one_link() {
     write_hardlinked_file(test_dir.path(), "payload.bin", "shared bytes", 2);
     ensure_path_in_db(&db_path, &parent, &writer);
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     reconcile_subtree(
         test_dir.path(),
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     )
     .unwrap();
@@ -205,7 +205,7 @@ fn reconcile_restores_the_size_when_a_hardlink_drops_to_one_link() {
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     )
     .unwrap();
@@ -267,13 +267,13 @@ fn reconcile_sized_hardlink_still_compares_on_size() {
         writer.next_id().fetch_max(db_next_id, Ordering::Relaxed);
     }
 
-    let cancelled = CancellationToken::new();
+    let work = VolumeWork::for_test(ROOT_VOLUME_ID);
     let summary = reconcile_subtree(
         test_dir.path(),
         &IndexPathSpace::root(),
         &conn,
         &writer,
-        &cancelled,
+        &work,
         None,
     )
     .unwrap();

@@ -22,6 +22,32 @@ pub(crate) struct FsChild {
     pub snap: MetadataSnapshot,
 }
 
+/// One directory's children, and whether the read saw all of them.
+///
+/// The distinction is load-bearing for deletes: `diff_dir_against_db` reaps every DB
+/// row the live listing lacks, so a listing that silently came back SHORT would reap
+/// rows for children that are really there. ❌ Never delete against an incomplete
+/// listing; still upsert what it did see.
+pub(crate) struct Listing {
+    pub children: Vec<FsChild>,
+    /// False when an entry-iteration or a child stat failed for any reason other
+    /// than the child being gone, so this is a SUBSET of what the directory holds.
+    pub complete: bool,
+}
+
+/// Whether a failed child stat means the child is genuinely ABSENT — removed between
+/// `readdir` and `stat` — rather than simply unobserved.
+///
+/// Typed on the errno, ❌ never on the message. A race with a delete is the common,
+/// harmless case and keeps the listing complete; anything else (a permission wall, an
+/// I/O error, a drive that went away mid-listing) means we didn't get to look.
+pub(crate) fn child_is_absent(err: &std::io::Error) -> bool {
+    matches!(
+        err.kind(),
+        std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory
+    )
+}
+
 /// Does this child survive the exclusion gates? Both reads run it, so the two
 /// share one definition of what belongs in the listing.
 ///
@@ -58,7 +84,7 @@ fn child_is_indexable(dir_path: &Path, name: &str, space: &IndexPathSpace) -> bo
 /// a boot disk, `readdir` cost 106.3 s against 238.4 s for the `lstat`s, ~36 µs per
 /// entry and 69% of the read time, at ~10% CPU (verified on macOS 15 with a
 /// standalone single-threaded walk mimicking this function, 2026-07-27).
-pub(crate) fn read_fs_children(dir_path: &Path, space: &IndexPathSpace) -> Option<Vec<FsChild>> {
+pub(crate) fn read_fs_children(dir_path: &Path, space: &IndexPathSpace) -> Option<Listing> {
     #[cfg(target_os = "macos")]
     {
         match scanner::bulk_read_dir_unwatched(dir_path) {
@@ -92,8 +118,9 @@ pub(crate) fn read_fs_children(dir_path: &Path, space: &IndexPathSpace) -> Optio
 /// entry that vanished between the read and its fallback stat is dropped, exactly
 /// as `read_dir`'s own stat-failure branch drops it.
 #[cfg(target_os = "macos")]
-fn bulk_children(dir_path: &Path, space: &IndexPathSpace, read: scanner::BulkDirRead) -> Vec<FsChild> {
+fn bulk_children(dir_path: &Path, space: &IndexPathSpace, read: scanner::BulkDirRead) -> Listing {
     let mut children = Vec::with_capacity(read.entries.len());
+    let mut complete = true;
     for entry in read.entries {
         // Name it exactly as the `read_dir` path does — lossily, from the path — so
         // the two reads agree on a non-UTF-8 name instead of one of them indexing a
@@ -132,7 +159,15 @@ fn bulk_children(dir_path: &Path, space: &IndexPathSpace, read: scanner::BulkDir
                     let (is_dir, is_symlink) = (meta.is_dir(), meta.is_symlink());
                     (is_dir, is_symlink, extract_metadata(&meta, is_dir, is_symlink))
                 }
-                Err(_) => continue,
+                Err(e) => {
+                    // Gone between the bulk read and this stat: genuinely absent, so
+                    // the listing is still whole. Anything else means we never saw
+                    // this child, and a delete pass must not treat that as "gone".
+                    if !child_is_absent(&e) {
+                        complete = false;
+                    }
+                    continue;
+                }
             },
         };
         children.push(FsChild {
@@ -142,12 +177,12 @@ fn bulk_children(dir_path: &Path, space: &IndexPathSpace, read: scanner::BulkDir
             snap,
         });
     }
-    children
+    Listing { children, complete }
 }
 
 /// The portable read: `read_dir` plus a `symlink_metadata` per child. The macOS
 /// path uses it only to re-read a directory whose bulk read lost a record.
-pub(super) fn read_fs_children_via_read_dir(dir_path: &Path, space: &IndexPathSpace) -> Option<Vec<FsChild>> {
+pub(super) fn read_fs_children_via_read_dir(dir_path: &Path, space: &IndexPathSpace) -> Option<Listing> {
     let read_dir = match std::fs::read_dir(dir_path) {
         Ok(rd) => rd,
         Err(e) => {
@@ -158,24 +193,36 @@ pub(super) fn read_fs_children_via_read_dir(dir_path: &Path, space: &IndexPathSp
     };
 
     let mut children = Vec::new();
+    let mut complete = true;
     for entry in read_dir {
         let entry = match entry {
             Ok(e) => e,
-            Err(_) => continue,
+            // The iteration itself faltered, so this listing is a subset.
+            Err(_) => {
+                complete = false;
+                continue;
+            }
         };
         let name = entry.file_name().to_string_lossy().to_string();
         if !child_is_indexable(dir_path, &name, space) {
             continue;
         }
-        if let Ok(meta) = std::fs::symlink_metadata(dir_path.join(&name)) {
-            let (is_dir, is_symlink) = (meta.is_dir(), meta.is_symlink());
-            children.push(FsChild {
-                name,
-                is_dir,
-                is_symlink,
-                snap: extract_metadata(&meta, is_dir, is_symlink),
-            });
+        match std::fs::symlink_metadata(dir_path.join(&name)) {
+            Ok(meta) => {
+                let (is_dir, is_symlink) = (meta.is_dir(), meta.is_symlink());
+                children.push(FsChild {
+                    name,
+                    is_dir,
+                    is_symlink,
+                    snap: extract_metadata(&meta, is_dir, is_symlink),
+                });
+            }
+            Err(e) => {
+                if !child_is_absent(&e) {
+                    complete = false;
+                }
+            }
         }
     }
-    Some(children)
+    Some(Listing { children, complete })
 }

@@ -5,7 +5,10 @@ use super::*;
 
 #[test]
 fn guarded_reader_returns_a_quick_result() {
-    let read_fn: ReadFn = Arc::new(|_p| Some(vec![]));
+    let read_fn: ReadFn = Arc::new(|_p| Some(Listing {
+            children: vec![],
+            complete: true,
+        }));
     let mut reader = GuardedReader::with_read_fn(
         Duration::from_secs(5),
         read_fn,
@@ -32,7 +35,10 @@ fn guarded_reader_abandons_a_hung_read_and_recovers() {
                 // abandons it near the 50 ms timeout instead of waiting it out
                 std::thread::sleep(Duration::from_secs(2));
             }
-            Some(vec![])
+            Some(Listing {
+            children: vec![],
+            complete: true,
+        })
         })
     };
     let mut reader = GuardedReader::with_read_fn(
@@ -66,7 +72,10 @@ fn an_abandoned_reader_holds_its_volume_until_its_read_returns() {
         if p == Path::new("/hang") {
             let _ = released.lock().unwrap_or_else(|e| e.into_inner()).recv();
         }
-        Some(vec![])
+        Some(Listing {
+            children: vec![],
+            complete: true,
+        })
     });
     let volume = VolumeWork::for_test(volume_id);
     let mut reader = GuardedReader::with_read_fn(
