@@ -1980,8 +1980,8 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
 - **"Select all with extension `*.{extension}`" → `選取所有副檔名為 *.{extension} 的檔案`** · Double Commander
   (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" → `選擇所有相同副檔名`) and Total
   Commander (`WCMD.INC` `527` → `全選: 副檔名相同的項目`) name this exact command, and the mask replaces their "same
-  extension" because Cmdr shows the concrete one · `high`. 遮罩是一段拉丁文字，依 `style.md`
-  § 間距 兩側各空一格：`副檔名為 *.{extension} 的檔案`。
+  extension" because Cmdr shows the concrete one · `high`. 遮罩是一段拉丁文字，依 `style.md` § "Spacing: put a space
+  between Chinese and Latin" 的規定，兩側各空一格：`副檔名為 *.{extension} 的檔案`。
 - **`menu.context.selection` (a NOUN: the right-click submenu's title) → `選取範圍`** · the catalog's settled noun for
   the SET of selected files, from `commands.selectionSelectFiles.description`（`加入選取範圍`） · `high`. Its siblings
   in that menu are verbs; this one names what the submenu holds. ❌ 不用動詞 `選取`（那是 `menu.bar.select`），也不用
