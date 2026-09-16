@@ -19,7 +19,7 @@
 import { commands } from '$lib/commands/command-registry'
 import type { CommandId } from '$lib/commands'
 import { getEffectiveShortcuts, onShortcutChange } from './shortcuts-store'
-import { formatKeyCombo } from './key-capture'
+import { formatKeyCombo, physicalKeyCombo } from './key-capture'
 import { getActiveScopes } from './scope-hierarchy'
 
 // Command IDs that have showInPalette: false but still need central dispatch
@@ -88,26 +88,11 @@ export function lookupCommand(shortcutString: string): CommandId | undefined {
  */
 export function eventMatchesCommand(event: KeyboardEvent, commandId: CommandId, options?: MatchOptions): boolean {
   if (comboMatchesCommand(formatKeyCombo(event), commandId, options)) return true
-  const physical = physicalDigitCombo(event)
+  // A modifier can change what the layout types (`⇧8` is `*` on US and `(` on
+  // Hungarian; `⌥⇧=` is `±`), so those combos need the physical key to match at
+  // all. `physicalKeyCombo` returns null whenever `event.key` was already right.
+  const physical = physicalKeyCombo(event)
   return physical !== null && comboMatchesCommand(physical, commandId, options)
-}
-
-/**
- * The combo a Shift+digit press would format as if the layout had typed the digit
- * itself. `⇧8` is `*` on US QWERTY and `(` on Hungarian, so `formatKeyCombo` never
- * yields `⇧8` on any layout; matching the physical `Digit8` key makes a `⇧<digit>`
- * default bindable at all, and layout-independent. Only Shift+digit gets this
- * treatment: for every other key `event.key` is the right identity.
- */
-function physicalDigitCombo(event: KeyboardEvent): string | null {
-  if (!event.shiftKey) return null
-  const digit = /^Digit(\d)$/.exec(event.code)?.[1]
-  if (digit === undefined || digit === event.key) return null
-  return formatKeyCombo({ ...eventModifiers(event), key: digit, code: event.code } as KeyboardEvent)
-}
-
-function eventModifiers(event: KeyboardEvent): Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'> {
-  return { metaKey: event.metaKey, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey }
 }
 
 /** Options shared by the two matchers. */

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   formatKeyCombo,
+  physicalKeyCombo,
   toPlatformShortcut,
   isTypingKeyCombo,
   toDisplayShortcut,
@@ -148,6 +149,48 @@ describe('formatKeyCombo', () => {
     setMacOS(true)
     const result = formatKeyCombo(makeKeyEvent({ metaKey: true, altKey: true, key: 'Dead', code: 'KeyE' }))
     expect(result).toBe('⌘⌥E')
+  })
+})
+
+describe('physicalKeyCombo', () => {
+  it('names the physical key when ⌥⇧ changed what the layout typed', () => {
+    setMacOS(true)
+    // macOS US QWERTY types `±` for ⌥⇧=, so `event.key` spells nothing bindable.
+    const usPlusMinus = makeKeyEvent({ key: '±', code: 'Equal', altKey: true, shiftKey: true })
+    expect(physicalKeyCombo(usPlusMinus)).toBe('⌥⇧=')
+  })
+
+  it('names the same physical key on a layout that types something else entirely', () => {
+    setMacOS(true)
+    const otherLayout = makeKeyEvent({ key: 'ő', code: 'Equal', altKey: true, shiftKey: true })
+    expect(physicalKeyCombo(otherLayout)).toBe('⌥⇧=')
+  })
+
+  it('keeps the Shift+digit case it grew out of', () => {
+    setMacOS(true)
+    expect(physicalKeyCombo(makeKeyEvent({ key: '*', code: 'Digit8', shiftKey: true }))).toBe('⇧8')
+    expect(physicalKeyCombo(makeKeyEvent({ key: '(', code: 'Digit8', shiftKey: true }))).toBe('⇧8')
+  })
+
+  it('returns null when event.key already IS the physical character', () => {
+    setMacOS(true)
+    expect(physicalKeyCombo(makeKeyEvent({ key: '=', code: 'Equal', shiftKey: true }))).toBeNull()
+    expect(physicalKeyCombo(makeKeyEvent({ key: '8', code: 'Digit8', altKey: true }))).toBeNull()
+  })
+
+  it('returns null with no character-altering modifier held', () => {
+    setMacOS(true)
+    expect(physicalKeyCombo(makeKeyEvent({ key: '=', code: 'Equal' }))).toBeNull()
+    expect(physicalKeyCombo(makeKeyEvent({ key: '=', code: 'Equal', metaKey: true }))).toBeNull()
+  })
+
+  it('returns null for a code it cannot name (letters, numpad, function keys)', () => {
+    setMacOS(true)
+    // ⌥A types `å` on US, but letters are out of scope: `normalizeKeyName`'s Dead
+    // branch covers the layouts that matter and nothing binds a bare ⌥<letter>.
+    expect(physicalKeyCombo(makeKeyEvent({ key: 'å', code: 'KeyA', altKey: true }))).toBeNull()
+    expect(physicalKeyCombo(makeKeyEvent({ key: '+', code: 'NumpadAdd', altKey: true }))).toBeNull()
+    expect(physicalKeyCombo(makeKeyEvent({ key: 'F1', code: 'F1', shiftKey: true }))).toBeNull()
   })
 })
 

@@ -75,7 +75,11 @@ const displayToCanonicalKeyNames: Record<string, string> = {
   PgDn: 'PageDown',
 }
 
-/** Maps event.code to a display character for physical keys (used when event.key is "Dead") */
+/**
+ * `event.code` → the character that physical key types unmodified. Read twice: by
+ * `normalizeKeyName` when macOS reports `Dead`, and by `physicalKeyCombo` when a
+ * modifier made the layout type something else entirely.
+ */
 const codeToKey: Record<string, string> = {
   Minus: '-',
   Equal: '=',
@@ -183,6 +187,44 @@ export function formatKeyCombo(event: KeyboardEvent): string {
   }
 
   return isMacOS() ? parts.join('') : parts.join('+')
+}
+
+/**
+ * The character a physical key types with nothing held, for the codes we can name:
+ * the digit row and the punctuation in `codeToKey`. `undefined` for everything else
+ * (letters, numpad, F-keys), where `event.key` is already the right identity.
+ */
+function physicalKeyCharacter(code: string): string | undefined {
+  const digit = /^Digit(\d)$/.exec(code)?.[1]
+  if (digit !== undefined) return digit
+  return code in codeToKey ? codeToKey[code] : undefined
+}
+
+/** The subset of a `KeyboardEvent` `formatKeyCombo` reads for its modifier prefix. */
+function eventModifiers(event: KeyboardEvent): Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'> {
+  return { metaKey: event.metaKey, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey }
+}
+
+/**
+ * The combo this keypress would format as if the layout had typed the key's own
+ * character, or `null` when `event.key` already IS that character.
+ *
+ * Shift and Option change what a key types, and what it types varies by layout:
+ * `⇧8` is `*` on US QWERTY and `(` on Hungarian, and `⌥⇧=` is `±` on US. So
+ * `formatKeyCombo` can never yield those combos from a real keypress, and a
+ * default (or a rebind) spelled that way would be dead on the keyboard. Matching
+ * the physical key is what makes them bindable at all, and layout-independent.
+ *
+ * Deliberately narrow: only the digit row and the punctuation `codeToKey` names,
+ * and only while Shift or Option is held. Everywhere else `event.key` is the
+ * right identity, and the `Dead` branch of `normalizeKeyName` already covers the
+ * ⌥+letter layouts.
+ */
+export function physicalKeyCombo(event: KeyboardEvent): string | null {
+  if (!event.altKey && !event.shiftKey) return null
+  const physical = physicalKeyCharacter(event.code)
+  if (physical === undefined || physical === event.key) return null
+  return formatKeyCombo({ ...eventModifiers(event), key: physical, code: event.code } as KeyboardEvent)
 }
 
 /** Modifier symbols used in macOS shortcut format */

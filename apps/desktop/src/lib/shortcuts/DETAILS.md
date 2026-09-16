@@ -187,6 +187,12 @@ consumers are the reactive readers (`reactive-shortcuts.svelte.ts` returns displ
 renders to a user), `ShortcutChip`, `ShortcutsList`, the Settings editor's pills and conflict banner, the F-key bar, and
 the shortcut-carrying toasts. Anything that COMPARES or DISPATCHES a combo reads `getEffectiveShortcuts` instead.
 
+`physicalKeyCombo(event)` is the layout escape hatch beside it: the combo the keypress WOULD have formatted as if the
+layout had typed the key's own character, or `null` when `event.key` already is that character. It exists because Shift
+and Option retype a key (`⇧8` → `*`, `⌥⇧=` → `±`), which would otherwise make those combos unbindable. Both the
+matchers and the Settings capture field read it; the rules and the deliberate narrowness are under "Centralized
+dispatch" below.
+
 `toCanonicalShortcut(combo)` is the inverse, and only three places call it: `initializeShortcuts` (healing a
 `shortcuts.json` written before the vocabulary was unified) and `setShortcut` / `addShortcut` (canonicalizing at the
 store boundary, so MCP writes land in the same vocabulary as a Settings capture).
@@ -252,14 +258,22 @@ So local handlers don't test raw key flags; they ask the registry:
   — handing the caller a false "no match", the exact silent-mismatch class the option exists to prevent. Unanchored
   removal is safe because no key NAME contains `⇧` or `Shift+`. Pinned by the `comboMatchesCommand` cases in
   `shortcut-dispatch.test.ts`.
-- A `⇧<digit>` binding is ALSO matched by physical key. No layout types a bare digit with Shift held (`⇧8` is `*` on US
-  and `(` on Hungarian), so `formatKeyCombo` can never yield `⇧8` from a real keypress and the combo would be
-  unreachable. `eventMatchesCommand` therefore retries with the digit `event.code` names (`Digit8` → `8`), which makes
-  the default layout-independent. The retry is narrow on purpose: Shift must be held, the code must be `Digit<n>`, and
-  every other modifier still has to match, so `⌘8` and `⇧7` stay misses. `selection.invert` (`⇧8`, Total Commander's
-  `*`) is the only user today. It carries a bare `*` as a SECOND default for the numpad key, which the retry can't
-  reach: `NumpadMultiply` is not a `Digit<n>` code, and it reports `*` with no Shift on every layout. Pinned by the
-  `eventMatchesCommand` cases in `shortcut-dispatch.test.ts`.
+- A binding whose key a modifier RETYPES is ALSO matched by physical key, via `physicalKeyCombo` (in `key-capture.ts`).
+  No layout types a bare digit with Shift held (`⇧8` is `*` on US and `(` on Hungarian), and macOS types `±` for `⌥⇧=`,
+  so `formatKeyCombo` can never yield `⇧8` or `⌥⇧=` from a real keypress and those combos would be unreachable.
+  `eventMatchesCommand` therefore retries with the character `event.code` names (`Digit8` → `8`, `Equal` → `=`), which
+  makes the default layout-independent. The retry is narrow on purpose: Shift or Option must be held, the code must be
+  a `Digit<n>` or one of the punctuation codes in `codeToKey`, and every other modifier still has to match, so `⌘8`,
+  `⇧7`, and `⌘⌥⇧=` stay misses. Letters are deliberately out of scope — the `Dead` branch of `normalizeKeyName` already
+  covers the layouts that matter there, and nothing binds a bare `⌥<letter>`. `selection.invert` (`⇧8`, Total
+  Commander's `*`) is the user today. Such a binding pairs with a numpad spelling as a SECOND default (`*` for `⇧8`,
+  `⌥+` for `⌥⇧=`) which the retry can't reach and doesn't need: `NumpadMultiply` / `NumpadAdd` are not codes `codeToKey`
+  names, and they report `*` / `+` unchanged on every layout, so `formatKeyCombo` matches them directly. Pinned by the
+  `eventMatchesCommand` cases in `shortcut-dispatch.test.ts` and the `physicalKeyCombo` cases in `key-capture.test.ts`.
+- **The Settings capture field and key-filter box run the same helper** (`physicalKeyCombo(event) ?? formatKeyCombo(event)`
+  in `KeyboardShortcutsSection.controller.svelte.ts`), so a rebind persists `⌥⇧=` rather than the `⌥⇧±` macOS reports,
+  and pressing the combo in the filter box finds the binding stored under it. ❌ `resolveGlobalKeyAction` stays out of
+  this: keeping the fallback off the global path is what stops `⇧8` firing outside the file pane.
 
 Callers today: `../file-explorer/pane/selection-keys.ts` (`Space` / `Insert` / `⌘A` / `⌘⇧A` / `⇧8` / `*`),
 `FilePane.handleOpenOrParentKey` (`nav.open` / `nav.parent` — and `⌘Backspace` falls through to `file.delete` for free,

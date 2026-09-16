@@ -265,6 +265,38 @@ describe('shortcut-dispatch', () => {
       expect(eventMatchesCommand(shiftSeven, 'selection.invert')).toBe(false)
       expect(eventMatchesCommand(cmdShiftEight, 'selection.invert')).toBe(false)
     })
+
+    // The ⌥-modified punctuation family, one physical key over from ⇧8: macOS
+    // reports `±` for ⌥⇧=, and other layouts report their own character, so the
+    // canonical `⌥⇧=` is only reachable through the physical-key fallback.
+    // `['⌥⇧=', '⌥+']` is the select-same-kind spelling: main row plus numpad.
+    it('matches an ⌥-modified punctuation default by the physical key, whatever the layout types', () => {
+      customOverrides.set('selection.invert', ['⌥⇧=', '⌥+'])
+      const usPlusMinus = new KeyboardEvent('keydown', { key: '±', code: 'Equal', altKey: true, shiftKey: true })
+      const otherLayout = new KeyboardEvent('keydown', { key: 'ő', code: 'Equal', altKey: true, shiftKey: true })
+      expect(eventMatchesCommand(usPlusMinus, 'selection.invert')).toBe(true)
+      expect(eventMatchesCommand(otherLayout, 'selection.invert')).toBe(true)
+    })
+
+    it('matches the numpad + spelling straight from event.key, no fallback needed', () => {
+      customOverrides.set('selection.invert', ['⌥⇧=', '⌥+'])
+      const numpadPlus = new KeyboardEvent('keydown', { key: '+', code: 'NumpadAdd', altKey: true })
+      expect(eventMatchesCommand(numpadPlus, 'selection.invert')).toBe(true)
+    })
+
+    it('keeps the punctuation fallback exact: a bare = or an extra ⌘ is not ⌥⇧=', () => {
+      customOverrides.set('selection.invert', ['⌥⇧=', '⌥+'])
+      const bareEquals = new KeyboardEvent('keydown', { key: '=', code: 'Equal' })
+      const withCommand = new KeyboardEvent('keydown', {
+        key: '±',
+        code: 'Equal',
+        altKey: true,
+        shiftKey: true,
+        metaKey: true,
+      })
+      expect(eventMatchesCommand(bareEquals, 'selection.invert')).toBe(false)
+      expect(eventMatchesCommand(withCommand, 'selection.invert')).toBe(false)
+    })
   })
 
   describe('initShortcutDispatch', () => {

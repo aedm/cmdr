@@ -31,6 +31,7 @@ import {
   resetShortcut,
   resetAllShortcuts,
   formatKeyCombo,
+  physicalKeyCombo,
   isModifierKey,
   isMacOS,
   findConflictsForShortcut,
@@ -169,8 +170,10 @@ export function createKeyboardShortcutsController(getSearchQuery: () => string) 
     // Ignore pure modifier key presses
     if (isModifierKey(event.key)) return
 
-    // Format the key combo
-    const combo = formatKeyCombo(event)
+    // Format the key combo. `physicalKeyCombo` wins where a modifier changed what
+    // the layout typed, so a rebind persists `⌥⇧=` rather than the `⌥⇧±` macOS
+    // reports — which would be dead on every keyboard including this one.
+    const combo = physicalKeyCombo(event) ?? formatKeyCombo(event)
     pendingKey = combo
 
     // Clear any existing timeout
@@ -397,8 +400,9 @@ export function createKeyboardShortcutsController(getSearchQuery: () => string) 
       return
     }
 
-    // It's a complete combo - format and keep it
-    keySearchQuery = formatKeyCombo(event)
+    // It's a complete combo - format and keep it. Same physical-key rule as
+    // capture, so pressing ⌥⇧= finds the binding stored under that spelling.
+    keySearchQuery = physicalKeyCombo(event) ?? formatKeyCombo(event)
   }
 
   function handleKeyFilterKeyUp(event: KeyboardEvent) {

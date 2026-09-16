@@ -28,6 +28,19 @@ const confirmDialog = vi.fn<(payload: { message: string; title: string }) => Pro
   Promise.resolve(false),
 )
 
+/** The two punctuation codes the capture tests below press. */
+const PHYSICAL_PUNCTUATION: Record<string, string> = { Equal: '=', Minus: '-' }
+
+/** Prefix held modifiers (mac glyphs), then the key. */
+function fakeFormatKeyCombo(e: KeyboardEvent): string {
+  let s = ''
+  if (e.metaKey) s += '⌘'
+  if (e.ctrlKey) s += '⌃'
+  if (e.altKey) s += '⌥'
+  if (e.shiftKey) s += '⇧'
+  return s + e.key
+}
+
 vi.mock('$lib/shortcuts', () => ({
   getEffectiveShortcuts: (id: string) => effectiveShortcuts.get(id) ?? [],
   isShortcutModified: (id: string) => modifiedIds.has(id),
@@ -47,13 +60,15 @@ vi.mock('$lib/shortcuts', () => ({
   isMacOS: () => macOS,
   isModifierKey: (key: string) => ['Meta', 'Control', 'Alt', 'Shift'].includes(key),
   // Minimal deterministic combo formatter: prefix held modifiers (mac glyphs), then the key.
-  formatKeyCombo: (e: KeyboardEvent) => {
-    let s = ''
-    if (e.metaKey) s += '⌘'
-    if (e.ctrlKey) s += '⌃'
-    if (e.altKey) s += '⌥'
-    if (e.shiftKey) s += '⇧'
-    return s + e.key
+  formatKeyCombo: fakeFormatKeyCombo,
+  // Mirrors the real helper's contract on the codes these tests exercise: with a
+  // character-altering modifier held, name the physical key rather than whatever
+  // the layout typed (⌥⇧= reports `±`).
+  physicalKeyCombo: (e: KeyboardEvent) => {
+    const physical = /^Digit(\d)$/.exec(e.code)?.[1] ?? PHYSICAL_PUNCTUATION[e.code]
+    if (physical === undefined || physical === e.key) return null
+    if (!e.altKey && !e.shiftKey) return null
+    return fakeFormatKeyCombo({ ...e, key: physical } as KeyboardEvent)
   },
   findConflictsForShortcut: (shortcut: string, scope: string, excludeCommandId: string) =>
     findConflictsForShortcut({ shortcut, scope, excludeCommandId }),
@@ -139,6 +154,12 @@ describe('key-filter field (macOS)', () => {
     // Modifier released (none still held): the modifiers-only value clears.
     c.handleKeyFilterKeyUp(keyEvent({ key: 'Meta', metaKey: false }))
     expect(c.keySearchQuery).toBe('')
+  })
+
+  it('filters by the physical key, so a stored ⌥⇧= is findable by pressing it', () => {
+    const c = create()
+    c.handleKeyFilterKeyDown(keyEvent({ key: '±', code: 'Equal', altKey: true, shiftKey: true }))
+    expect(c.keySearchQuery).toBe('⌥⇧=')
   })
 
   it('lets Tab through without capturing', () => {
@@ -246,6 +267,19 @@ describe('capture + conflict engine', () => {
     expect(c.pendingKey).toBe('⌘X')
     vi.advanceTimersByTime(500)
     expect(setShortcut).toHaveBeenCalledWith({ commandId: 'file.copy', index: 0, shortcut: '⌘X' })
+    vi.useRealTimers()
+  })
+
+  it('persists the physical key for an ⌥-modified punctuation combo, not what the layout typed', () => {
+    vi.useFakeTimers()
+    effectiveShortcuts.set('file.copy', ['F5'])
+    const c = create()
+    c.startEditingShortcut('file.copy', 0)
+    // macOS US reports `±` for ⌥⇧=; storing that would be dead on any keyboard.
+    c.handleKeyDown(keyEvent({ key: '±', code: 'Equal', altKey: true, shiftKey: true }))
+    expect(c.pendingKey).toBe('⌥⇧=')
+    vi.advanceTimersByTime(500)
+    expect(setShortcut).toHaveBeenCalledWith({ commandId: 'file.copy', index: 0, shortcut: '⌥⇧=' })
     vi.useRealTimers()
   })
 

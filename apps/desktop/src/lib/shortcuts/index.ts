@@ -4,7 +4,7 @@
  */
 
 // Key capture
-export { formatKeyCombo, isModifierKey, isMacOS, toDisplayShortcut } from './key-capture'
+export { formatKeyCombo, physicalKeyCombo, isModifierKey, isMacOS, toDisplayShortcut } from './key-capture'
 
 // Shortcuts store
 export {
