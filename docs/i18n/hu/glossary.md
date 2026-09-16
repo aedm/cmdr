@@ -3618,3 +3618,23 @@ mondatvázat viszik: **`X még használja ezt a meghajtót.` + egy tegező felsz
   - A `Várj egy percet` (rendszer) és a `Várj egy pillanatot` (Cmdr) különbsége szándékos, az angolt követi („a minute”
     vs. „a moment”): a Spotlight-indexelés tovább tart, mint egy Cmdr-beli leíró elengedése.
 - Egyik kulcsnál sem kell `sameAsSourceJustification`: mind a hat érték eltér az angoltól.
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `Fajta`** · macOS Finder `hu`
+  `ArrangeByMenu` `119.title`/`338.title`, the Kind sort criterion · `high`.
+- **"Select all with extension `*.{extension}`" → `Összes *.{extension} fájl kijelölése`** · Double Commander
+  (`tfrmmain.actmarkcurrentextension.caption`, "Select All with the Same Extension" →
+  `Mind kijelölése azonos kiterjesztéssel`) and Total Commander (`WCMD.INC` `527` →
+  `Minden fájl kijelölése ugyanilyen kiterjesztéssel`) name this exact command, and the mask replaces their "same
+  extension" because Cmdr shows the concrete one · `high`. A maszk JELZŐKÉNT áll a `fájl` előtt, így semmilyen
+  toldaléknak nem kell illeszkednie a `{extension}` hangalakjához. Ez a kulcs a példa arra, amit a `i18n-translation.md`
+  § „Write placeholder strings to be restructurable” kér.
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `Kijelölés`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description` („… kijelöléséhez”) · `high`. Its siblings
+  in that menu are verbs; this one names what the submenu holds. A `menu.bar.select` magyarul eleve névszói
+  (`Kijelölés`), így a kettő azonos — ez rendben van, a magyar menücímek amúgy is névszóiak.
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.

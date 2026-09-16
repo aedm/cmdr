@@ -200,19 +200,19 @@
   "@menu.select.deselectAll": {
     "sourceHash": "9675494"
   },
-  "menu.select.sameKind": "Select all of the same kind",
+  "menu.select.sameKind": "Chọn tất cả mục cùng loại",
   "@menu.select.sameKind": {
     "sourceHash": "9933028"
   },
-  "menu.select.allFolders": "Select all folders",
+  "menu.select.allFolders": "Chọn tất cả thư mục",
   "@menu.select.allFolders": {
     "sourceHash": "5351f8b"
   },
-  "menu.select.sameExtension": "Select all with extension *.{extension}",
+  "menu.select.sameExtension": "Chọn tất cả tệp có đuôi *.{extension}",
   "@menu.select.sameExtension": {
     "sourceHash": "7809a58"
   },
-  "menu.select.noExtension": "Select all files with no extension",
+  "menu.select.noExtension": "Chọn tất cả tệp không có đuôi",
   "@menu.select.noExtension": {
     "sourceHash": "d04751e"
   },
@@ -441,7 +441,7 @@
   "@menu.context.edit": {
     "sourceHash": "464c4ff"
   },
-  "menu.context.selection": "Selection",
+  "menu.context.selection": "Lựa chọn",
   "@menu.context.selection": {
     "sourceHash": "ca40670"
   },

@@ -3285,3 +3285,20 @@ dấu hai chấm của `Không thể tháo {volumeName}: …`, nên chỉ nêu l
   `Nếu vẫn cứ vậy` của `errors.listing.resourceBusy.suggestion` cũng đúng nhưng suồng sã hơn.
 - `errors.*` là họ RAW: `{app}` / `{apps}` là chỗ thay chuỗi thuần, không phải cú pháp ICU, và không giá trị nào trong
   sáu khóa có dấu nháy đơn nên không có `''` nào cả.
+
+## Select all of the same kind (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension`, `commands.selectionSelectSameKind.*`, `menu.context.selection`)
+
+- **kind (a row's file kind; the umbrella the three live labels generalize) → `Loại`** · macOS Finder `vi`
+  `ArrangeByMenu` `119.title`/`338.title`, the Kind sort criterion · `high`.
+- **"Select all with extension `*.{extension}`" → `Chọn tất cả tệp có đuôi *.{extension}`** · Total Commander
+  (`WCMD.INC` `527` → `Chọn tất cả các tập tin với cùng phần mở rộng`) name this exact command, and the mask replaces
+  their "same extension" because Cmdr shows the concrete one · `high`. Mặt nạ đứng sau `có đuôi`, tiếng Việt không biến
+  hình nên không có gì phải hợp với `{extension}`. TC `vi` dùng `phần mở rộng`, nhưng thuật ngữ đã chốt của catalog là
+  `đuôi tệp`.
+- **`menu.context.selection` (a NOUN: the right-click submenu's title) → `Lựa chọn`** · the catalog's settled noun for
+  the SET of selected files, from `commands.selectionSelectFiles.description` („… vào lựa chọn”) · `high`. Its siblings
+  in that menu are verbs; this one names what the submenu holds. ❌ Not the verb `Chọn`, which is `menu.bar.select`.
+- The four label twins (`menu.select.sameKind`/`.allFolders`/`.sameExtension`/`.noExtension` against
+  `commands.selectionSelectSameKind.label`/`.allFolders`/`.sameExtension`/`.noExtension`) each share ONE English string,
+  so `i18n-terms` holds each pair identical. Reword neither alone. The only legitimate difference is the apostrophe:
+  `menu.*` is a RAW family (single `'`), `commands.*` is ICU (doubled `''`), and the check normalizes that away.
