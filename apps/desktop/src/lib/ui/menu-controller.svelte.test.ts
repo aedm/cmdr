@@ -174,7 +174,7 @@ describe('keyboard navigation', () => {
     menu.openUnder(anchorEl())
     menu.highlight('vol-1')
     expect(menu.handleKey(keydown('Enter'))).toBe(true)
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'vol-1' }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'vol-1' }), 'keyboard')
     expect(menu.isOpen).toBe(false)
   })
 
@@ -273,7 +273,7 @@ describe('accelerators', () => {
     const menu = build({ onSelect })
     menu.openUnder(anchorEl())
     expect(menu.handleKey(digit('Digit2', '2'))).toBe(true)
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-b', accelerator: '2' }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-b', accelerator: '2' }), 'accelerator')
     expect(menu.isOpen).toBe(false)
   })
 
@@ -282,7 +282,7 @@ describe('accelerators', () => {
     const menu = build({ onSelect })
     menu.openUnder(anchorEl())
     menu.handleKey(digit('Numpad3', '3'))
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-c' }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-c' }), 'accelerator')
   })
 
   // ❗ The row must not activate, and the key must not fall through to the pane behind either:
@@ -420,7 +420,7 @@ describe('submenus', () => {
     menu.highlight('vol-3')
     menu.handleKey(keydown('ArrowRight'))
     menu.handleKey(keydown('Enter'))
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'connect' }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'connect' }), 'keyboard')
   })
 
   it('shows one cursor: an open submenu takes the parent row’s highlight', () => {
@@ -463,7 +463,7 @@ describe('submenus', () => {
     menu.handleKey(keydown('ArrowRight'))
     menu.handleKey(keydown('ArrowDown'))
     menu.handleKey(keydown('Enter'))
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'forget' }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'forget' }), 'keyboard')
   })
 
   it('shows no submenu cursor when the pointer opened it, until the pointer reaches in', () => {
@@ -483,7 +483,7 @@ describe('submenus', () => {
     menu.highlight('vol-3')
     menu.surface.openSubmenu('vol-3', false)
     menu.handleKey(keydown('Enter'))
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'connect' }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'connect' }), 'keyboard')
   })
 })
 
@@ -583,7 +583,8 @@ describe('pointer drag reorder', () => {
     menu.surface.startDrag('fav-a', mouse('mousedown', 10))
     window.dispatchEvent(mouse('mouseup', 11))
     expect(onReorder).not.toHaveBeenCalled()
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-a' }))
+    // A press that never travelled is a click, and the provenance says so.
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-a' }), 'pointer')
   })
 
   it('shows the drop cue at the gap the pointer is over, then reorders on drop', () => {
@@ -710,7 +711,7 @@ describe('pointer selection', () => {
     const menu = build({ onSelect })
     menu.openUnder(anchorEl())
     menu.surface.activate('vol-1')
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'vol-1' }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'vol-1' }), 'pointer')
     expect(menu.isOpen).toBe(false)
   })
 

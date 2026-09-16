@@ -68,3 +68,20 @@ export interface MenuReorder {
 
 /** Where an open menu pins itself: under an element, or at a viewport point (a context menu). */
 export type MenuAnchor = { kind: 'element'; element: HTMLElement } | { kind: 'point'; x: number; y: number }
+
+/**
+ * How a row got activated, handed to `onSelect` beside the item.
+ *
+ * The primitive is the only thing that knows: by the time a consumer sees the pick, the
+ * click, the Enter, and the digit have all collapsed into the same call. A consumer that
+ * cares (the favorites menu, whose analytics ask whether the number column earns its place)
+ * would otherwise have to sniff `onKey` and rebuild the answer, which drifts the moment the
+ * keyboard contract grows a case.
+ */
+export type MenuActivationSource =
+  /** A click, or a drag that never crossed the threshold. */
+  | 'pointer'
+  /** Enter or Space on the highlighted row. */
+  | 'keyboard'
+  /** The row's `accelerator` character was typed. */
+  | 'accelerator'

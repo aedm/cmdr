@@ -182,7 +182,7 @@ describe('pointer selection', () => {
     const onSelect = vi.fn()
     await open({}, { onSelect })
     row('hd')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'hd' }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'hd' }), 'pointer')
   })
 
   it('never activates a row from a click on a control inside it', async () => {

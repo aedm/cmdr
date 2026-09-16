@@ -17,7 +17,7 @@
  * where focus landed — the model `file-explorer/pane/enter-menu.svelte.ts` proved.
  */
 
-import type { MenuAnchor, MenuItem, MenuReorder, MenuSection } from './menu-types'
+import type { MenuActivationSource, MenuAnchor, MenuItem, MenuReorder, MenuSection } from './menu-types'
 import {
   itemByAccelerator,
   itemOf,
@@ -39,7 +39,8 @@ const KEYBOARD_MODE_EXIT_PX = 5
 export interface MenuDeps<T = unknown> {
   /** Read live on every access, so the menu tracks the caller's state with no syncing. */
   getSections: () => MenuSection<T>[]
-  onSelect: (item: MenuItem<T>) => void
+  /** `source` says whether a click, Enter, or an accelerator did it; ignore it unless you care. */
+  onSelect: (item: MenuItem<T>, source: MenuActivationSource) => void
   /** Fires once, on drop or on a ⌥↑/⌥↓ that actually moves something. The caller persists. */
   onReorder?: (reorder: MenuReorder) => void
   onContextMenu?: (item: MenuItem<T>, event: MouseEvent) => void
@@ -228,7 +229,7 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     enterKeyboardMode()
   }
 
-  function activate(value: string): void {
+  function activate(value: string, source: MenuActivationSource): void {
     if (!open) return
     if (justDragged) {
       justDragged = false
@@ -237,21 +238,21 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     const item = itemOf(sections(), value)
     if (!item || item.disabled) return
     close()
-    deps.onSelect(item)
+    deps.onSelect(item, source)
   }
 
   function activateHighlighted(): void {
     if (openSubmenuValue === null) {
-      if (highlightedValue !== null) activate(highlightedValue)
+      if (highlightedValue !== null) activate(highlightedValue, 'keyboard')
       return
     }
     if (submenuHighlightedValue !== null) {
-      activate(submenuHighlightedValue)
+      activate(submenuHighlightedValue, 'keyboard')
       return
     }
     // A hover-opened submenu shows no cursor yet; Enter still means its first row.
     const values = submenuValues()
-    if (values.length > 0) activate(values[0])
+    if (values.length > 0) activate(values[0], 'keyboard')
   }
 
   /**
@@ -260,7 +261,7 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
    */
   function activateAccelerator(char: string): void {
     const item = itemByAccelerator(sections(), char)
-    if (item) activate(item.value)
+    if (item) activate(item.value, 'accelerator')
   }
 
   function reorderHighlighted(delta: -1 | 1): void {
@@ -313,7 +314,7 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     if (!pending) return
     if (!wasDragging) {
       // Never crossed the threshold: a plain click, so open the row.
-      activate(pending.value)
+      activate(pending.value, 'pointer')
       return
     }
     justDragged = true
@@ -441,7 +442,11 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
       // `mouseover` is coming for a row the pointer never left.
       if (valueUnderPointer !== null) setHighlight(valueUnderPointer)
     },
-    activate,
+    // Everything that reaches the surface's `activate` is a click: the keyboard paths
+    // go through `handleKey` and never come back out here.
+    activate(value) {
+      activate(value, 'pointer')
+    },
     contextMenu(value, event) {
       const item = itemOf(sections(), value)
       if (!item) return
