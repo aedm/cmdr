@@ -3,7 +3,7 @@
 Frontend bridge to the Rust drive indexer: reactive scan state, Tauri event listeners, and the drive-indexing status
 indicator. Rust counterpart: `crates/cmdr-index/src/indexing/`.
 
-`index-state.svelte.ts` is the reactive core (per-volume `SvelteMap`s fed by the eleven index events);
+`index-state.svelte.ts` is the reactive core (per-volume `SvelteMap`s fed by the thirteen index events);
 `media-enrich-state.svelte.ts` is the second publisher. Pure helpers: `eta.ts`, `indexing-steps.ts`, `elapsed.ts`,
 `media-enrich-queued.ts`, `walked-ground.ts`. The status surface is `IndexingStatusIndicator` → `IndexingDriveRow` →
 presentational `IndexingStatusBody` + `IndexingDriveSummary`, placed by `$lib/status-corner/`. Public API barrel:
@@ -40,5 +40,5 @@ presentational `IndexingStatusBody` + `IndexingDriveSummary`, placed by `$lib/st
   (`getWalkedGround` + `isPathAffectedByWalk`), ❌ never "the volume is scanning", tested BOTH ways since the roll-up
   repairs ancestors. Every run announces its own ground, so nothing here seeds that map or branches on the kind of run.
 
-Full public API, the ten-event table, the step model, tooltip content, ETA blending, honest-size rendering, and tests:
+Full public API, the thirteen-event table, the step model, tooltip content, ETA blending, honest-size rendering, and tests:
 `DETAILS.md`. Read it before any non-trivial work here: editing, planning, reorganizing, or advising.

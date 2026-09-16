@@ -99,7 +99,7 @@ emits would otherwise auto-walk the ancestor `dir_stats` chain — O(entries × 
 delta (a 270k→6M partial-completion) that wedged the writer for hours: the channel stays full, so the walk thread parks
 on `send` and the app can't drain. It's also pure waste, because the FINISH's one `ComputeAllAggregates` recomputes
 every dir's `dir_stats` from the entries table anyway. So both full-reconcile walkers
-(`local_reconcile::run_local_reconcile`, `volume_scanner::reconcile_volume_via_trait`) bracket their BFS with
+(`local_reconcile::run_local_reconcile`, `network_scanner::reconcile_volume_via_trait`) bracket their BFS with
 `reconciler::BulkReconcileGuard` — it sends `SetDeltaPropagation(false)` before the walk and restores `true` on EVERY
 exit (clean finish, cancel, empty-root, disconnect, error, panic) via `Drop`. The writer keeps everything else under
 suppression (entry insert/update/delete, hardlink dedup, the new-directory zero-valued `dir_stats` row init) — ONLY the
@@ -185,7 +185,7 @@ list under "0 folders scanned", and a run waiting on that ground reads the unmov
 cover walk's repair path needs; see `../lifecycle/cover/DETAILS.md` § "The repair path REPORTS". THREE walk sources feed
 the diff source-agnostic `LiveChild`s: the local live small-scope reconcile (`reconcile_subtree`), the local full-tree
 rescan (`local_reconcile::run_local_reconcile`, a BFS), and the network full rescan
-(`volume_scanner::reconcile_volume_via_trait`, `Volume::list_directory` BFS). It keeps `next_id` from the shared
+(`network_scanner::reconcile_volume_via_trait`, `Volume::list_directory` BFS). It keeps `next_id` from the shared
 `Arc<AtomicI64>` (never `MAX(id)`). The shared FINISH (stamp listed dirs → ONE `ComputeAllAggregates`) lives once in
 `reconciler::finish_reconcile`/`send_marks`, called by both full-rescan walkers so they can't drift on the
 marks-before-aggregate ordering.
@@ -305,7 +305,7 @@ same empty root and re-"complete" again. The real-hardware symptom was an SMB in
   walker).
 - **A genuinely empty volume** is the accepted false-negative: it reads "not indexed" and self-heals the instant any
   file appears. The safe rule — never auto-complete an empty root — wins over indexing a real but empty volume.
-- Regression-locked by `volume_scanner::tests::empty_root_fresh_scan_does_not_complete`,
+- Regression-locked by `network_scanner::tests::empty_root_fresh_scan_does_not_complete`,
   `failed_root_listing_does_not_complete`, `reconcile_empty_root_does_not_complete`, and
   `local_reconcile::tests::reconcile_empty_root_keeps_prior_index_and_signals_empty_root`.
 

@@ -172,9 +172,10 @@ panes off ejected volumes.
 ## The unmount approver
 
 `unmount_approver/` answers DiskArbitration's unmount approval, so a drive is let go BEFORE any DA-mediated unmount,
-whoever started it: Finder, `diskutil`, `hdiutil`, `NSWorkspace`, another app, or Cmdr's own eject. It replaces the
-`NSWorkspaceWillUnmountNotification` handler as the pre-unmount hook, which was racy by construction (it spawned a
-thread and returned, so the unmount ran alongside the stop) and left a refused unmount's index stopped for good.
+whoever started it: Finder, `diskutil`, `hdiutil`, `NSWorkspace`, another app, or Cmdr's own eject. It takes over from
+the `NSWorkspaceWillUnmountNotification` handler, which stays only as the fallback for a Mac where the approver can't
+install: that handler is racy by construction (it spawns a thread and returns, so the unmount runs alongside the stop)
+and leaves a refused unmount's index stopped for good.
 
 **The session.** One `DASession` on its own serial queue at user-initiated QoS (a lower one lets Cmdr's own indexing
 load stall an ask), carrying unmount-approval, appeared, disappeared, description-changed (watching

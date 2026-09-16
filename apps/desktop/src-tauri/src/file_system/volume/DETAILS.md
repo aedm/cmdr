@@ -505,8 +505,8 @@ answer rides on `EjectError::UnmountRefused`, and the MCP `eject` tool repeats i
 - ❗ **`HolderScan` has TWO answers, ❌ never one list**, the same rule `DiskMounts` carries. Only `Complete` with an
   empty list may read as "nobody is holding it". A scan with nothing to ask about (every captured mount left the table),
   one the budget walked away from, or one whose mount changed device under it is `Incomplete`, and it still carries
-  whatever it did name. Collapsing the two would word a plainly-held drive as free, which is the exact shape of the two
-  defects M11 and M12 found.
+  whatever it did name. Collapsing the two would word a plainly-held drive as free, which is the exact shape of defects
+  this area has shipped before.
 - **The device is read on BOTH sides of each walk** (`stat().st_dev`; ❌ not `f_fsid`, which on the boot volume names the
   sealed system snapshot). DiskArbitration reuses mount points and BSD units at once, so a volume that went away and a
   different one that took its place mid-scan would have the scan name somebody else's drive's holders, which is worse
@@ -605,8 +605,8 @@ that still names which volumes DID let go, so the flight below can hand those ba
 
 **Cmdr's own eject, per physical disk.** `diskutil eject` works per DISK, so an eject aimed at one volume takes the
 whole disk down: a sibling partition or APFS volume Cmdr indexes would meet that unmount with a live FSEvents watcher on
-it, and an eject that unmounted the volume clicked while a held sibling kept the disk up used to answer `Ok`, leaving
-the drive powered on. `disk_target.rs` and `disk_flight.rs` (macOS; Linux and SMB keep the per-volume path) make the
+it, and an eject that unmounts the volume clicked while a held sibling keeps the disk up must never answer `Ok` with the
+drive still powered on. `disk_target.rs` and `disk_flight.rs` (macOS; Linux and SMB keep the per-volume path) make the
 flight match the tool:
 
 1. **Resolve** (`disk_target::resolve`, under `DISK_RESOLVE_DEADLINE`): the non-blocking mount table names the volume's
@@ -696,8 +696,8 @@ hook is only cleanup (the volume's already gone), not wedge-prevention. See `cra
 `drive_release/` is the one door for every app-side index stop of a removable drive Cmdr decides on, and every app-side
 start of a non-root index. Stops: the eject's pre-stop (`stop_index_blocking`), the DiskArbitration unmount approver's
 ask (`volumes/unmount_approver/`, which also sets the unmount-pending flag and resumes what it stopped), and the
-`WillUnmount` / `DidUnmount` hooks (`volumes/watcher.rs`; `WillUnmount` only stands in for an approver that couldn't
-install). Starts: `enable_drive_index` and `rescan_drive_index` (IPC and MCP), the master switch's
+`WillUnmount` / `DidUnmount` hooks (`volumes/watcher.rs`; BOTH stand down while the approver is installed, and stand in
+only for one that couldn't). Starts: `enable_drive_index` and `rescan_drive_index` (IPC and MCP), the master switch's
 resume loop in `set_indexing_enabled`, and a search's `Index::cover` (`search/execute/live_run.rs`). The user's
 `disable_drive_index` goes through it too. The boot disk's launch and FDA starts stay outside, and the gate passes `root`
 straight through: it never unmounts.
@@ -736,8 +736,10 @@ release's `LateStop`), a pending-resume flag, and an unmount-pending flag.
   on an ask). Then, per candidate: no ticket, no unmount pending, an unchanged epoch, the `ResumeOwner`'s checks (it still
   owns the record, the volume is listed, no other owner is ejecting it), and intent. The record is consumed either way, so
   a later idle never re-runs a start (a stopped first scan would get `force_scan`). The start runs on the Tauri runtime
-  holding the ticket. No owner calls `resume` yet, nor `set_unmount_pending` / `clear_unmount_pending`, so `resume.rs`
-  carries a `dead_code` expectation outside tests.
+  holding the ticket. The macOS unmount approver is the one owner that resumes through the gate and the one caller of
+  `set_unmount_pending` / `clear_unmount_pending` (`volumes/unmount_approver/callbacks.rs`), which is why `resume.rs`
+  carries a `dead_code` expectation naming that platform. The eject's own flight resumes through `FlightResume`
+  (`eject/disk_flight.rs`).
 
 **Lock order.** The gate reads `eject::is_ejecting` under its own lock, and an eject flight's `Landing` wakes the gate
 only after dropping `IN_FLIGHT`. ❌ Never take the gate's lock while holding `IN_FLIGHT`.

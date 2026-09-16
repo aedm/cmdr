@@ -483,9 +483,13 @@ pub(in crate::file_system::write_operations) enum TreeRemoval {
     /// Overwrite: the destination's type is wrong, so it goes before the source
     /// materializes. `conflict.rs::apply_volume_conflict_resolution`.
     UserChoseOverwriteAcrossTypes,
-    /// A cross-volume move sweeping its source, after
-    /// `flush_created_destinations` established that the destination landed.
-    /// Carries the merge's skipped children in `preserve`. `move.rs`.
+    /// A cross-volume move sweeping its source, once the destination is
+    /// established as landed: on the same-host cross-filesystem path by
+    /// `flush_created_destinations` returning `Ok` plus a destination still in
+    /// the mount table (`move_op/cross_fs.rs`), and on the cross-BACKEND path by
+    /// the stream copy and any safe-replace finalize having completed, there
+    /// being no local directory to fsync (`move_cross.rs`).
+    /// Carries the merge's skipped children in `preserve`.
     MoveSourceAfterDestinationLanded,
     /// An into-archive move removing the remote originals it pulled, after the
     /// rewrite durably commits. `archive_edit/copy_into.rs`.

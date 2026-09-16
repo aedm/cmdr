@@ -178,8 +178,10 @@ by the caller remembering it, and a long walk's coverage becomes queryable as it
 ## Ground the walk couldn't read
 
 Every directory whose contents this walk didn't get is recorded with a cause, so the coverage frontier stops offering it
-on every later search. The causes themselves and why there are three are `../store/DETAILS.md` § "What coverage needs";
-what this module owns is which one each failure earns and when the message goes out.
+on every later search — unless the DRIVE left mid-walk, in which case the whole batch goes uncondemned and the ground
+stays frontier for the drive's next life (`mod.rs`, the `drive_left` arm). The causes themselves and why there are three
+are `../store/DETAILS.md` § "What coverage needs"; what this module owns is which one each failure earns and when the
+message goes out.
 
 `InsertVisitor` accumulates ids into `UnreadableIds`, split two ways:
 

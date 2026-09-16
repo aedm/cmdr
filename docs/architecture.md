@@ -167,6 +167,10 @@ All under `apps/desktop/src-tauri/src/`.
   from `crates/cmdr-fs/`. Checklist + capability matrix for new backends. `drive_release/` is the one gate for every
   index stop of a removable drive and every non-root index start (`file_system/volume/DETAILS.md` § "One release, one
   start")
+- `file_system/volume/eject/`: Cmdr's own eject, per PHYSICAL disk: disk resolution (`disk_target.rs`), the per-disk
+  flight that gates, stops, and resumes every sibling (`disk_flight.rs`), the guarded unmount tool, and `holders/`, the
+  bounded scan and classification behind "which app is still using this drive" (`file_system/volume/DETAILS.md` §
+  "Eject")
 - `file_system/volume/backends/`: the one `Volume` impl that still lives in the app, `LocalPosixVolume`. Every crate
   backend (`cmdr-archive`, `cmdr-smb`, `cmdr-sftp`, `cmdr-webdav`, `cmdr-adb`, `cmdr-mtp`, `cmdr-git`) is imported by
   crate name at its call sites, and each one's app-side tests sit beside the app code they assert on. What stays

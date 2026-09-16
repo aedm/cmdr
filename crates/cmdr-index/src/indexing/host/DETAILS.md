@@ -131,7 +131,9 @@ macOS/Linux fork out of `transports/local_external`.
 
 **Presence is by filesystem identity, and it reads the mount table, never the mount.** `mount_identity(root)` names the
 filesystem mounted exactly at a root (a `MountIdentity`, opaque to the index), and `is_mounted(identity)` says whether
-any mounted filesystem has it, `None` when the table couldn't be read; no caller reads `None` as gone. ❌ Never by root
+any mounted filesystem has it, `None` when the table couldn't be read. Callers name that third answer rather than
+folding it: `VolumeHold::drive_is_listed` is `== Some(true)`, so an unreadable table reads as NOT listed, which is the
+safe direction for every delete and completion gate hanging off it (`../hold.rs`). ❌ Never by root
 path: renaming a mounted volume moves its mount point while the filesystem stays mounted under it and an open handle
 keeps writing (verified on macOS 26.6.2, APFS and HFS+ images, `cmdr_fs::testing::disk_images::real_images` and the
 app's `file_system::index_provider::real_image`, 2026-09-14), so a missing root is not a drive that's gone. The app
@@ -140,8 +142,9 @@ reads `f_fsid` from `getfsstat(MNT_NOWAIT)` on macOS (`volumes::mounts::{mount_i
 so a dead drive can't stall either. A local-scanner reservation reads the identity just before its lock and the hold
 generation keeps it (`../hold.rs`). `NoVolumes` names no filesystem (and reads every identity as mounted: nothing can
 unmount under it), so a start without a host captures nothing to ask about. `FakeVolumeProvider` mounts, renames, and
-unmounts roots with `mount`, `rename_mount`, and `mark_unmounted`. The caller today is `stop_removable_volume`
-(`../lifecycle/DETAILS.md` § "When a volume has been let go").
+unmounts roots with `mount`, `rename_mount`, and `mark_unmounted`. `stop_removable_volume` asks
+(`../lifecycle/DETAILS.md` § "When a volume has been let go"), and so does every delete and completion gate, through
+`VolumeHold::drive_is_listed` (`../reconcile/DETAILS.md` § "The delete gates").
 
 **Why the provider slot is an `RwLock`, unlike the runtime and the policy.** Tests swap it. Three tests used to register
 real `LocalPosixVolume`s into the process-wide `VolumeManager`, which is exactly the coupling the extraction removes;

@@ -1424,7 +1424,7 @@ ahead of its cells.
 `desktop-rust-disk-images` (nickname `disk-images`, `desktop-rust-disk-images.go`) runs the `#[ignore]`d tests that
 attach real synthetic APFS and HFS+ images through `cmdr_fs::testing::disk_images` (`crates/cmdr-fs/DETAILS.md` §
 "`testing::disk_images`"): the harness's own `real_images` tests, the eject pins, the index's presence and vanish pins,
-and the unmount approver's pins.
+the transfer's real-detach pins, and the unmount approver's pins.
 
 - **How to run it**: `pnpm check disk-images`, or any `pnpm check --include-slow` on a Mac. It's `IsSlow` because every
   test attaches and detaches disk images, which no default run should do. 11 tests took 48 s (macOS 26.6.2, 2026-09-14);
@@ -1674,8 +1674,8 @@ Checks by app and tech:
   disk-images (slow, macOS only, not in CI; the real-image tests on synthetic APFS and HFS+ disk images, see § "The
   disk-image lane"), tests-linux (slow)
 
-The last three share one region tracker, `rustTestModState` / `advanceTestModRegion` (`desktop-rust-test-sleep.go`), in
-opposite polarities: test-sleep and fixed-temp-dir scan ONLY inside an inline test module, derive-default and
+Four of those scanners share one region tracker, `rustTestModState` / `advanceTestModRegion`
+(`desktop-rust-test-sleep.go`), in opposite polarities: test-sleep and fixed-temp-dir scan ONLY inside an inline test module, derive-default and
 probe-unwrap scan only OUTSIDE one. It arms on both test-gating `cfg` forms (`#[cfg(test)]` and the
 `#[cfg(any(test, feature = "testing"))]` the `cmdr-fs` host stubs need), which `isTestGatedCfg` decides and
 `TestTestModRegion_ArmsOnBothTestGatedCfgForms` pins. A tracker that only knew the literal form would read six test

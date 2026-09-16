@@ -70,7 +70,7 @@ with a path-prefix comparison, which relies on trailing-slash normalization.
 
 ## Scan-state events (`index-state.svelte.ts`)
 
-Eleven Tauri events drive the state. All of them carry a `volumeId`: scan and replay key the live-`activity` map,
+Thirteen Tauri events drive the state. All of them carry a `volumeId`: scan and replay key the live-`activity` map,
 aggregation keys its own `aggregation` map, and the phase event keys its own `phase` map.
 
 - **`index-scan-started`** (`{ volumeId, scanRunKind, priorTotalEntries, priorScanDurationMs, volumeUsedBytes }`):

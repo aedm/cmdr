@@ -122,9 +122,8 @@ Two `#[ignore]`d macOS tests on a real HFS+ image from the harness (`DiskImage::
 and holds the walk on the walker's test-only park point after five directories, where no directory handle is open on the
 image (`scanner/walker/DETAILS.md` § "The test-only park point").
 
-- **The pin** force-detaches the image while the walk is parked, then releases it. Today the scan doesn't abort: it goes
-  live, stamps `scan_completed_at` over ground nobody walked, and leaves the index with zero rows (verified on macOS
-  26.6.2, three hand runs, 2026-09-14). That's the gap the index-side vanish work flips, on this same seam.
+- **The pin** force-detaches the image while the walk is parked, then releases it, and asserts the gates hold: the walk
+  aborts, no `scan_completed_at` is stamped over ground nobody walked, and no `Abandoned` mark is written.
 - **The control** releases the same park without a detach, and must index every folder and file with no `Abandoned`
   marks, so the pin's outcome is the vanish's doing, not the park's.
 - **Why a park, and not a detach at the first `ScanProgress`.** The walk reads an image's tree about 60× faster than a

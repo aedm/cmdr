@@ -98,6 +98,9 @@ unit tests beside it ARE the table.
 An SMB share and an MTP phone never reach it: `resume_or_scan` routes `is_trait_scanned()` to `resume_or_scan_network`
 first. For everything the local guarded walker reads, in the order the function asks:
 
+- **`index_needs_rebuild` set** ⇒ `RebuildThenCoverInPhases`, or `ScanTheVolume` with the phased first index switched
+  off. Asked FIRST, ahead of every other cell: an index that may have lost rows to a leaving drive looks healthy to all
+  of them, so anything else here would replay or reconcile in place over holes. § "The rebuild marker".
 - **journal replayable, gap too wide** ⇒ `start_scan("stale index: journal gap too large")`. Unchanged, and reachable
   ONLY on a volume that completed a scan, since replaying at all requires one, so NO volume being covered in phases can
   take it. Its phased counterpart is `ensure_branch_watch`'s conditional epoch bump: a resume that can't replay the gap
