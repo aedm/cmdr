@@ -294,7 +294,7 @@ write either: the enumeration is 10.8+. Nimble Commander, whose submenu this mat
 
 **Why it stopped being a popover.** A picker can't say whether it has anything to offer before it's on screen, so a
 selection macOS offers nothing for came up as a sheet holding only `Edit Extensions…`. An enumeration answers first, and
-an empty answer leaves the whole `Share` item out (`menu_structure.rs`). ⚠️ That empty case is real and reachable: a
+an empty answer leaves the whole `Share` item out (`file_context_menu.rs`). ⚠️ That empty case is real and reachable: a
 broken symlink and a path that has since vanished both enumerate to zero, while an unreadable file, a FIFO, a device
 node, and a directory all still offer services (verified on macOS 26.6.2 across those shapes, 2026-09-09).
 

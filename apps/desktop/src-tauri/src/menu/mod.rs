@@ -11,8 +11,11 @@
 //!   (`build_menu`), and `mnemonics.rs` allocates the Linux underline letters.
 //! - `menu_items.rs`: small shared pieces: `APP_MENU_TITLE`, `pin_tab_label`, `detach_label`, and
 //!   `truncate_for_menu_label`.
-//! - `menu_structure.rs`: context menus (file, breadcrumb, tab, network host), the viewer menu, plus
+//! - `file_context_menu.rs`: the file context menu (the one a right-click on a row opens), plus
 //!   `FileContextInfo` / `ContextMenuPaneFacts` / `ContextMenuResult`.
+//! - `menu_structure.rs`: the smaller context menus (breadcrumb, parent row, function key bar, tab,
+//!   network host, server row, volume row, favorite), the viewer menu, and the
+//!   `ContextMenuShortcuts` / `context_item` vocabulary they all share with the file one.
 //! - `item_states.rs`: `apply_menu_item_states` (the single writer of every main-menu item's
 //!   enabled state), `set_menu_context`, and the macOS app-menu-bar swap between main and viewer.
 //! - `menu_handlers.rs`: `handle_menu_event`, the `.on_menu_event` dispatcher wired into the Tauri
@@ -44,6 +47,7 @@ mod context_menu_header;
 mod context_menu_icons;
 #[cfg(target_os = "macos")]
 mod display_accelerators;
+mod file_context_menu;
 #[cfg(target_os = "macos")]
 mod file_provider_items;
 pub mod install;
@@ -101,6 +105,7 @@ pub use context_menu_header::lend_context_menu_header;
 pub use context_menu_header::{ContextMenuTarget, ContextMenuTargetFacts};
 #[cfg(target_os = "macos")]
 pub use context_menu_icons::lend_context_menu_icons;
+pub use file_context_menu::{ContextMenuPaneFacts, FileContextInfo, build_context_menu};
 pub(crate) use item_states::{apply_menu_item_states, set_menu_context};
 #[cfg(target_os = "macos")]
 pub(crate) use item_states::{swap_to_main_menu, swap_to_viewer_menu};
@@ -115,10 +120,9 @@ pub use menu_handlers::{
 pub(crate) use menu_items::DetachWord;
 pub use menu_items::{SameKindTarget, pin_tab_label, same_kind_menu_label};
 pub use menu_structure::{
-    ContextMenuPaneFacts, ContextMenuShortcuts, FileContextInfo, ServerRowMenu, build_breadcrumb_context_menu,
-    build_context_menu, build_favorite_context_menu, build_function_key_bar_context_menu,
-    build_network_host_context_menu, build_parent_row_context_menu, build_tab_context_menu, build_viewer_menu,
-    build_volume_row_context_menu,
+    ContextMenuShortcuts, ServerRowMenu, build_breadcrumb_context_menu, build_favorite_context_menu,
+    build_function_key_bar_context_menu, build_network_host_context_menu, build_parent_row_context_menu,
+    build_tab_context_menu, build_viewer_menu, build_volume_row_context_menu,
 };
 pub use rebuild::rebuild_menu_bar;
 #[cfg(target_os = "macos")]

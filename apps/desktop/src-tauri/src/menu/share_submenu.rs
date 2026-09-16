@@ -55,7 +55,7 @@ pub fn share_service_index(id: &str) -> Option<usize> {
 /// Builds the `Share` submenu over `services`, in the order macOS gave them.
 ///
 /// ❗ Call it only for a non-empty `services`: an empty submenu is the symptom this
-/// replaced, and the caller (`menu_structure.rs`) leaves the whole item out instead.
+/// replaced, and the caller (`file_context_menu.rs`) leaves the whole item out instead.
 pub fn build_share_submenu<R: Runtime>(app: &AppHandle<R>, services: &[ShareService]) -> tauri::Result<Submenu<R>> {
     let submenu = Submenu::new(app, share_label(), true)?;
     for (index, service) in services.iter().enumerate() {

@@ -4,9 +4,9 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
 
 ## Module map
 
-`menu_bar.rs` holds both bars as data (vocabulary: `menu_spec.rs`; builder: `menu_bar_builder.rs`), `menu_structure.rs`
-the context and viewer menus, `macos_appkit.rs` the objc2 boundary every right-click extra crosses. One line per file:
-DETAILS § File layout.
+`menu_bar.rs` holds both bars as data (vocabulary: `menu_spec.rs`; builder: `menu_bar_builder.rs`),
+`file_context_menu.rs` the file right-click menu, `menu_structure.rs` the smaller context menus plus the viewer menu,
+`macos_appkit.rs` the objc2 boundary every right-click extra crosses. One line per file: DETAILS § File layout.
 
 ## Must-knows
 
