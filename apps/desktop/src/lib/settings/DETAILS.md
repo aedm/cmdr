@@ -665,9 +665,20 @@ the sparse save can't prune on its own; v5 unpacks the `behavior.archiveEnterBeh
 (`{ zip: 'ask', bundle: 'open' }`) into one `behavior.archiveEnter.<format>` key per archive format and deletes the
 blob, writing nothing for a format the blob never named (so an untouched format stays on its registry default) and
 nothing at all for a blob it can't read (every format then falls to its default, the same answer the resolver already
-gave for an unreadable blob). A migration that changes a BACKEND-read setting also needs the same rule applied Rust-side
-(v3: `media_index::gate::scope_from_settings`), because the backend reads `settings.json` at startup and would otherwise
-see the raw default on the launch before the migration writes the key.
+gave for an unreadable blob); v6 renames `onboarding.fullDiskAccessChoice`'s open state from `notAskedYet` to
+`unanswered`.
+
+A migration that changes a BACKEND-read setting also needs the same rule applied Rust-side (v3:
+`media_index::gate::scope_from_settings`), because the backend reads `settings.json` at startup and would otherwise see
+the raw default on the launch before the migration writes the key. v6 does it with a `#[serde(alias = "notAskedYet")]`
+on the Rust variant instead, which is the cheaper shape for a pure rename: an alias costs nothing and never expires,
+where a fallback lookup has to be remembered and eventually removed.
+
+Why v6 exists at all, given the value's behavior didn't change: `notAskedYet` asserted something false. The wizard opens
+on the FDA step at EVERY launch while the value holds, so it means "the question is open", not "we never asked". A field
+report reading `FDA choice: NotAskedYet` was taken to mean onboarding had never run for a user who had in fact met that
+step daily for a week, and the wrong reading sent the triage looking in the wrong place. A name that lies is worth a
+schema bump.
 
 ### Settings cache is write-through
 

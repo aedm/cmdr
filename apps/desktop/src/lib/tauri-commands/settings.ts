@@ -249,7 +249,7 @@ export async function setImageIndexEnabled(enabled: boolean): Promise<void> {
  * Starts the drive indexer after the user makes their Full Disk Access decision.
  *
  * At launch, the backend skips auto-starting the indexer when the FDA choice is
- * `notAskedYet` and the OS reports FDA as not granted. Otherwise, recursively
+ * `unanswered` and the OS reports FDA as not granted. Otherwise, recursively
  * scanning from `/` triggers macOS native permission popups (iCloud, Photos, etc.)
  * that stack on top of the in-app FDA modal.
  *

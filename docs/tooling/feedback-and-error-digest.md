@@ -140,5 +140,13 @@ Each zip holds `manifest.json` plus `logs/cmdr.log` (and any rotated logs), all 
 `at`, `message`, `ctx`) that's the best triage trail. For field semantics and the redaction rules, read
 `apps/desktop/src-tauri/src/error_reporter/CLAUDE.md` and its `DETAILS.md`.
 
+**Check `activeSettings.fullDiskAccessChoice` and `.osFullDiskAccess` early on any macOS permission-shaped report.** A
+missing grant changes what a whole class of failures means, and the two fields answer different questions: the choice is
+what the USER clicked (`allow` / `deny` / `unanswered`), the boolean is what the OS says right now. `allow` with
+`osFullDiskAccess: false` is someone who clicked Allow and never finished in System Settings. ❗ `unanswered` means the
+question is still open, NOT that onboarding never ran: the wizard opens on that step every launch until it's answered,
+so a long-time user can sit there. Reports from before these fields exist need the old route: grep `fda_probe` and
+`FDA choice:` in `logs/cmdr.log`.
+
 A useful clustering signal: bundles that arrived in pairs minutes apart with overlapping log timestamps are usually the
 same incident; compare `breadcrumbs` and the `logs/cmdr.log` ERROR/WARN lines across bundles to group them.

@@ -442,7 +442,7 @@ export const advancedSettings: SettingDefinitionSource[] = [
     // nothing ever renders these. `FullDiskAccessChoice` keeps the three tokens
     // type-safe at every call site.
     type: 'string',
-    default: 'notAskedYet',
+    default: 'unanswered',
     component: 'text-input',
     hidden: true,
   },

@@ -194,7 +194,7 @@ export interface ResumeContext {
  * See plan § "Step persistence resume, edge cases" for the truth table:
  *
  * macOS:
- *   - `notAskedYet`                            → step 1 (first-ask)
+ *   - `unanswered`                            → step 1 (first-ask)
  *   - `allow` && !hasFda && isOnboarded        → step 1 (revoked-later)
  *   - `allow` && hasFda                        → step 2 (already-granted banner)
  *   - `allow` && !hasFda && !isOnboarded       → step 2 (first-time stuck banner)
@@ -205,7 +205,7 @@ export interface ResumeContext {
 export function resumeStepFor(ctx: ResumeContext): OnboardingStep {
   const isMac = ctx.isMac ?? isMacOS()
   if (!isMac) return 2
-  if (ctx.fullDiskAccessChoice === 'notAskedYet') return 1
+  if (ctx.fullDiskAccessChoice === 'unanswered') return 1
   if (ctx.fullDiskAccessChoice === 'allow' && !ctx.hasFda && ctx.isOnboarded) return 1
   return 2
 }

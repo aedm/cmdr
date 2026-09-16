@@ -35,7 +35,7 @@ static FDA_PENDING: OnceLock<AtomicBool> = OnceLock::new();
 /// per-folder TCC services are subsumed by FDA, so it's safe to access
 /// protected paths even if no in-app choice has been recorded yet.
 pub fn is_fda_pending(fda_choice: FullDiskAccessChoice, os_fda_granted: bool) -> bool {
-    fda_choice == FullDiskAccessChoice::NotAskedYet && !os_fda_granted
+    fda_choice == FullDiskAccessChoice::Unanswered && !os_fda_granted
 }
 
 /// Set the runtime gate. Call once at startup with the result of
@@ -61,8 +61,8 @@ mod tests {
 
     #[test]
     fn pending_only_when_not_asked_and_os_denies() {
-        assert!(is_fda_pending(FullDiskAccessChoice::NotAskedYet, false));
-        assert!(!is_fda_pending(FullDiskAccessChoice::NotAskedYet, true));
+        assert!(is_fda_pending(FullDiskAccessChoice::Unanswered, false));
+        assert!(!is_fda_pending(FullDiskAccessChoice::Unanswered, true));
         assert!(!is_fda_pending(FullDiskAccessChoice::Allow, false));
         assert!(!is_fda_pending(FullDiskAccessChoice::Allow, true));
         assert!(!is_fda_pending(FullDiskAccessChoice::Deny, false));

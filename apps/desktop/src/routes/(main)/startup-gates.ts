@@ -125,7 +125,7 @@ export async function resolveOnboardingMount(ctx: StartupGatesContext): Promise<
     return
   }
 
-  // Everything else routes through the wizard: first-launch (notAskedYet),
+  // Everything else routes through the wizard: first-launch (unanswered),
   // revoke-after-allow, first-time-stuck (Allow but didn't grant), or
   // Deny-but-not-onboarded.
   openOnboardingWizard('first-launch', wizardCtx)

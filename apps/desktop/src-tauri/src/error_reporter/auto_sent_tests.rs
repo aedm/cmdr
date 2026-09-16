@@ -52,6 +52,8 @@ fn manifest(id: &str) -> BundleManifest {
             max_log_storage_mb: 100,
             error_reports_enabled: true,
             crash_reports_enabled: true,
+            full_disk_access_choice: "allow".to_string(),
+            os_full_disk_access: true,
         },
         log_levels: LogLevelSnapshot {
             stdout_default: "info".to_string(),

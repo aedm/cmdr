@@ -35,7 +35,7 @@ import {
 } from './onboarding-state.svelte'
 
 const ctxMac = (overrides: Partial<ResumeContext>): ResumeContext => ({
-  fullDiskAccessChoice: 'notAskedYet',
+  fullDiskAccessChoice: 'unanswered',
   isOnboarded: false,
   hasFda: false,
   isMac: true,
@@ -43,8 +43,8 @@ const ctxMac = (overrides: Partial<ResumeContext>): ResumeContext => ({
 })
 
 describe('resumeStepFor', () => {
-  it('macOS: notAskedYet → step 1', () => {
-    expect(resumeStepFor(ctxMac({ fullDiskAccessChoice: 'notAskedYet' }))).toBe(1)
+  it('macOS: unanswered → step 1', () => {
+    expect(resumeStepFor(ctxMac({ fullDiskAccessChoice: 'unanswered' }))).toBe(1)
   })
 
   it('macOS: allow + !hasFda + isOnboarded (revoked-later) → step 1', () => {
@@ -82,7 +82,7 @@ describe('step1VariantFor', () => {
     )
   })
 
-  it('notAskedYet + first-launch → first-ask', () => {
+  it('unanswered + first-launch → first-ask', () => {
     expect(step1VariantFor(ctxMac({}), 'first-launch')).toBe('first-ask')
   })
 
@@ -171,7 +171,7 @@ describe('four-step flow (FDA → AI → Beta → Optional)', () => {
   })
 
   it('forward navigation walks 1 → 2 → 3 → 4 and stops at the last step', () => {
-    openWizard('first-launch', ctxMac({})) // notAskedYet → step 1
+    openWizard('first-launch', ctxMac({})) // unanswered → step 1
     expect(getOnboardingState().currentStep).toBe(1)
     nextStep()
     expect(getOnboardingState().currentStep).toBe(2)
@@ -197,7 +197,7 @@ describe('four-step flow (FDA → AI → Beta → Optional)', () => {
   it('resume rule is unaffected by the Beta insertion (FDA/AI resume cases still resolve)', () => {
     // The resume rule only ever lands the user on step 1 or 2; inserting Beta at step 3
     // must not change those outcomes.
-    expect(resumeStepFor(ctxMac({ fullDiskAccessChoice: 'notAskedYet' }))).toBe(1)
+    expect(resumeStepFor(ctxMac({ fullDiskAccessChoice: 'unanswered' }))).toBe(1)
     expect(resumeStepFor(ctxMac({ fullDiskAccessChoice: 'allow', isOnboarded: true, hasFda: false }))).toBe(1)
     expect(resumeStepFor(ctxMac({ fullDiskAccessChoice: 'allow', hasFda: true }))).toBe(2)
     expect(resumeStepFor(ctxMac({ fullDiskAccessChoice: 'deny' }))).toBe(2)
@@ -228,7 +228,7 @@ describe('menu / palette re-entry always opens step 1 on macOS', () => {
   })
 
   it('Linux menu re-entry lands on step 2 (no step 1 to render)', () => {
-    openWizard('menu', { fullDiskAccessChoice: 'notAskedYet', isOnboarded: true, hasFda: false, isMac: false })
+    openWizard('menu', { fullDiskAccessChoice: 'unanswered', isOnboarded: true, hasFda: false, isMac: false })
     expect(getOnboardingState().currentStep).toBe(2)
   })
 

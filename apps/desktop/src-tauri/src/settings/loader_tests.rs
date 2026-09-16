@@ -34,7 +34,7 @@ fn fda_choice_prefers_the_registry_key_once_the_migration_has_run() {
 fn fda_choice_defaults_to_not_asked_yet_when_absent() {
     assert_eq!(
         parse_settings("{}").unwrap().full_disk_access_choice,
-        FullDiskAccessChoice::NotAskedYet
+        FullDiskAccessChoice::Unanswered
     );
 }
 
