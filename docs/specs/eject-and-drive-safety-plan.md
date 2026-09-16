@@ -83,15 +83,16 @@ drive-safety decisions below.
   three more, and `DiskTeardown` moved to `disk_flight.rs`), `dee0eef40` (the docs), `590e76e4b` (`EjectStep` carries
   the disk lookup), `6673a2e19` (one test fake for both the pure tests and the real-image pin), `0a534e1b7` (the typed
   `DiskMounts`: a silent DiskArbitration is its own answer, never an empty disk).
-- **M13, the holder scan and the wire type (done)**: `b4d73b596` (`eject/holders/`, `HolderScan` on `UnmountRefused`,
-  the MCP `data`, the bindings, and the two lane pins asserting the holder's pid), `fc146e06c` (the docs).
+- **M13, the holder scan and the wire type (done)**: `a30c59fc1` (`eject/holders/`, `HolderScan` on `UnmountRefused`,
+  the MCP `data`, the bindings, and the two lane pins asserting the holder's pid), `f531922ed` (the docs), `c347d870f`
+  and `89f81ed05` (the plan, and the two default-off lanes it records).
 - **Next, M14**: holder facts and classification.
 - **Belonging to no milestone, since M11 merged**: `b3ea68362` (the parked hazard names the six cells that aren't its
   fix), `df09b3023` (a lane test's panic message exempted from `pluralize-noun`), `7a9961fe6`, `1bf9f6c99`, and
   `95b98813f` (the availability selector list refreshed from the macOS 27.0 SDK, the ping-pong documented, then made
-  impossible: the stored SDK is a resolved version now and only moves forward), `d616f47cd` (a menu doc's forbidden
-  specifier unbackticked, so `dead-links` stops reading it as a reference), `26240abab` (the Linux build, red since M12
-  across three hidden layers), `a790f9241` (`gocyclo`, red since the SDK ping-pong guard landed).
+  impossible: the stored SDK is a resolved version now and only moves forward), `9ca163dcc` (a menu doc's forbidden
+  specifier unbackticked, so `dead-links` stops reading it as a reference), `419e1cccf` (the Linux build, red since M12
+  across three hidden layers), `fda780fea` (`gocyclo`, red since the SDK ping-pong guard landed).
 - ❗ **Two default-off lanes had been red for milestones without anyone noticing**: `rust-tests-linux` since M12 and
   `gocyclo` since `95b98813f`. Both are fixed above. Run `pnpm check rust-tests-linux --include-slow` and
   `pnpm check gocyclo` at least once per milestone from here: a macOS-only subsystem grows dead code on Linux with every
