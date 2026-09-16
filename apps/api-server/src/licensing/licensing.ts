@@ -4,12 +4,13 @@ import {
   generateShortCode,
   isPaddleTransactionId,
   isValidShortCode,
-  licenseTypes,
   type LicenseType,
+  type StoredLicense,
 } from './license'
+import { manualLicenses } from './manual-licenses'
 import { sendLicenseEmail } from '../email/license'
 import { sendDeviceCountAlert } from '../email/ops-alerts'
-import { constantTimeEqual, verifyPaddleWebhookMulti } from './paddle'
+import { verifyPaddleWebhookMulti } from './paddle'
 import {
   getSubscriptionStatus,
   getLicenseTypeFromPriceId,
@@ -35,19 +36,11 @@ import {
   maxOrganizationNameLength,
   activationCountKey,
   maxTransactionIdLength,
-  isValidEmail,
-  isValidLicenseType,
   redactEmail,
   getPaddleConfig,
 } from '../types'
 
 const licensing = new Hono<{ Bindings: Bindings }>()
-
-/** Stored license data in KV */
-interface StoredLicense {
-  fullKey: string
-  organizationName?: string
-}
 
 // Activate license - exchange short code for full cryptographic key
 licensing.post('/activate', async (c) => {
@@ -549,57 +542,8 @@ async function mintLicenses(params: {
   return licenseCodes
 }
 
-// Manual license generation (for testing or customer service)
-// Protected by bearer token matching either live or sandbox webhook secret
-licensing.post('/admin/generate', async (c) => {
-  const authHeader = c.req.header('Authorization')
-  const validSecrets = [c.env.PADDLE_WEBHOOK_SECRET_LIVE, c.env.PADDLE_WEBHOOK_SECRET_SANDBOX].filter(
-    (s): s is string => !!s,
-  )
-  const isAuthorized = validSecrets.some((secret) => constantTimeEqual(authHeader ?? '', `Bearer ${secret}`))
-  if (!isAuthorized) {
-    return c.json({ error: 'Unauthorized' }, 401)
-  }
-
-  const {
-    email,
-    type = 'commercial_subscription',
-    organizationName,
-  } = await c.req.json<{ email: string; type?: string; organizationName?: string }>()
-
-  if (!email || typeof email !== 'string' || !isValidEmail(email)) {
-    return c.json({ error: 'Invalid email format' }, 400)
-  }
-  if (!isValidLicenseType(type)) {
-    return c.json({ error: `Invalid license type. Must be one of: ${licenseTypes.join(', ')}` }, 400)
-  }
-  if (
-    organizationName !== undefined &&
-    (typeof organizationName !== 'string' || organizationName.length > maxOrganizationNameLength)
-  ) {
-    return c.json(
-      { error: `Organization name must be a string of at most ${String(maxOrganizationNameLength)} characters` },
-      400,
-    )
-  }
-
-  // Generate the short code first so it can be embedded in the signed payload
-  const shortCode = generateShortCode()
-
-  const licenseData = {
-    email,
-    transactionId: `manual-${String(Date.now())}`,
-    issuedAt: new Date().toISOString(),
-    type,
-    organizationName,
-    shortCode,
-  }
-
-  const fullKey = await generateLicenseKey(licenseData, c.env.ED25519_PRIVATE_KEY)
-  const stored: StoredLicense = { fullKey, organizationName }
-  await c.env.LICENSE_CODES.put(shortCode, JSON.stringify(stored))
-
-  return c.json({ code: shortCode, type, organizationName: organizationName ?? null })
-})
+// Minting and revoking hand-issued licenses is its own feature, and it's mounted here so the
+// licensing area stays one route module from `index.ts`'s point of view.
+licensing.route('/', manualLicenses)
 
 export { licensing }

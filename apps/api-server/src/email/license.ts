@@ -22,11 +22,23 @@ interface EmailParams {
   resendApiKey: string
   organizationName?: string
   licenseType?: LicenseType
+  /**
+   * ISO 8601, and only set for a hand-issued license with a fixed end date. A Paddle subscription
+   * auto-renews, so it says so instead; promising that to someone whose free evaluation license
+   * simply stops would be a lie.
+   */
+  expiresAt?: string
 }
 
-function getLicenseDescription(type: LicenseType | undefined, orgName?: string): string {
+function getLicenseDescription(type: LicenseType | undefined, orgName?: string, expiresAt?: string): string {
   switch (type) {
     case 'commercial_subscription':
+      if (expiresAt) {
+        const until = expiresAt.slice(0, 10)
+        return orgName
+          ? `Your commercial license for ${orgName} is valid until ${until}.`
+          : `Your commercial license is valid until ${until}.`
+      }
       return orgName
         ? `Your commercial license for ${orgName} is valid for one year and will auto-renew.`
         : 'Your commercial license is valid for one year and will auto-renew.'
@@ -43,8 +55,8 @@ export async function sendLicenseEmail(params: EmailParams): Promise<void> {
   const resend = new Resend(params.resendApiKey)
   const escapedCustomerName = escapeHtml(params.customerName)
   const escapedOrgName = params.organizationName ? escapeHtml(params.organizationName) : undefined
-  const licenseDescriptionHtml = getLicenseDescription(params.licenseType, escapedOrgName)
-  const licenseDescriptionText = getLicenseDescription(params.licenseType, params.organizationName)
+  const licenseDescriptionHtml = getLicenseDescription(params.licenseType, escapedOrgName, params.expiresAt)
+  const licenseDescriptionText = getLicenseDescription(params.licenseType, params.organizationName, params.expiresAt)
   const orgLine = escapedOrgName ? `<p><strong>Licensed to:</strong> ${escapedOrgName}</p>` : ''
   const orgLineText = params.organizationName ? `Licensed to: ${params.organizationName}\n` : ''
 
