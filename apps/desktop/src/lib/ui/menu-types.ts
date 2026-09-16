@@ -23,6 +23,12 @@ export interface MenuItem<T = unknown> {
   icon?: MenuIcon
   /** Renders the leading checkmark. The checkmark column is always reserved, so rows stay aligned. */
   checked?: boolean
+  /**
+   * A single character shown in the leftmost column, which also activates the row when typed
+   * (digits only today). The column appears only in a menu where at least one row declares one,
+   * and the rows that don't get a blank placeholder so every label still lines up.
+   */
+  accelerator?: string
   /** Greyed, skipped by the keyboard, never activates. */
   disabled?: boolean
   tooltip?: string

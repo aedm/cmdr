@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { menuKeyAction, navigableValues, nextValue, sectionOf } from './menu-navigation'
+import { acceleratorChar, itemByAccelerator, menuKeyAction, navigableValues, nextValue, sectionOf } from './menu-navigation'
 import type { MenuSection } from './menu-types'
 
 /** Three sections: a reorderable one, a plain one holding a disabled row, and an empty one. */
@@ -9,16 +9,17 @@ const sections: MenuSection[] = [
     heading: 'Favorites',
     reorderable: true,
     items: [
-      { value: 'fav-a', label: 'A' },
-      { value: 'fav-b', label: 'B' },
+      { value: 'fav-a', label: 'A', accelerator: '1' },
+      { value: 'fav-b', label: 'B', accelerator: '2' },
     ],
   },
   {
     id: 'volumes',
     heading: 'Volumes',
     items: [
-      { value: 'vol-1', label: 'Macintosh HD' },
-      { value: 'vol-2', label: 'Backup', disabled: true },
+      // In the SECOND section, so an accelerator is proven to reach across sections.
+      { value: 'vol-1', label: 'Macintosh HD', accelerator: '4' },
+      { value: 'vol-2', label: 'Backup', disabled: true, accelerator: '3' },
       { value: 'vol-3', label: 'Share', submenu: [{ value: 'connect', label: 'Connect directly' }] },
     ],
   },
@@ -29,6 +30,27 @@ const sections: MenuSection[] = [
 function key(name: string, modifiers: Partial<Record<'altKey' | 'metaKey' | 'ctrlKey' | 'shiftKey', boolean>> = {}) {
   return {
     key: name,
+    code: '',
+    altKey: false,
+    metaKey: false,
+    ctrlKey: false,
+    shiftKey: false,
+    ...modifiers,
+  } as unknown as KeyboardEvent
+}
+
+/**
+ * A physical key by `code`, the way an accelerator is matched. `key` carries whatever the layout
+ * would print, which is deliberately NOT what decides the match.
+ */
+function physical(
+  code: string,
+  printed = '',
+  modifiers: Partial<Record<'altKey' | 'metaKey' | 'ctrlKey' | 'shiftKey', boolean>> = {},
+) {
+  return {
+    key: printed,
+    code,
     altKey: false,
     metaKey: false,
     ctrlKey: false,
@@ -135,5 +157,59 @@ describe('menuKeyAction', () => {
   it('returns none for a key the menu has no use for', () => {
     expect(menuKeyAction(key('a'), plain)).toEqual({ kind: 'none' })
     expect(menuKeyAction(key('Tab'), plain)).toEqual({ kind: 'none' })
+  })
+
+  it('reads a digit as an accelerator, on both the number row and the numpad', () => {
+    expect(menuKeyAction(physical('Digit1', '1'), plain)).toEqual({ kind: 'accelerator', char: '1' })
+    expect(menuKeyAction(physical('Digit0', '0'), plain)).toEqual({ kind: 'accelerator', char: '0' })
+    expect(menuKeyAction(physical('Numpad7', '7'), plain)).toEqual({ kind: 'accelerator', char: '7' })
+  })
+
+  // AZERTY prints a digit only with Shift held, so ⇧ has to stay allowed or those layouts lose
+  // the feature entirely. The physical key is what decides, whatever the layout printed.
+  it('still reads a digit when Shift made it one', () => {
+    expect(menuKeyAction(physical('Digit2', '@', { shiftKey: true }), plain)).toEqual({
+      kind: 'accelerator',
+      char: '2',
+    })
+  })
+
+  it('never reads a digit carrying ⌘, ⌃, or ⌥: those are somebody else’s combos', () => {
+    expect(menuKeyAction(physical('Digit1', '1', { metaKey: true }), plain)).toEqual({ kind: 'none' })
+    expect(menuKeyAction(physical('Digit1', '1', { ctrlKey: true }), plain)).toEqual({ kind: 'none' })
+    expect(menuKeyAction(physical('Digit1', '1', { altKey: true }), plain)).toEqual({ kind: 'none' })
+  })
+
+  it('reads a digit as an accelerator even with a submenu open', () => {
+    const open = { hasSubmenu: true, submenuOpen: true, reorderable: false }
+    expect(menuKeyAction(physical('Digit1', '1'), open)).toEqual({ kind: 'accelerator', char: '1' })
+  })
+})
+
+describe('acceleratorChar', () => {
+  it('maps a digit key to its character and everything else to null', () => {
+    expect(acceleratorChar(physical('Digit5', '5'))).toBe('5')
+    expect(acceleratorChar(physical('Numpad5', '5'))).toBe('5')
+    expect(acceleratorChar(physical('KeyA', 'a'))).toBeNull()
+    expect(acceleratorChar(physical('NumpadAdd', '+'))).toBeNull()
+    expect(acceleratorChar(physical('ArrowDown'))).toBeNull()
+  })
+})
+
+describe('itemByAccelerator', () => {
+  it('finds the claiming row in any section', () => {
+    expect(itemByAccelerator(sections, '1')?.value).toBe('fav-a')
+    // Second section: an accelerator matches across every one of them.
+    expect(itemByAccelerator(sections, '4')?.value).toBe('vol-1')
+  })
+
+  it('lets a disabled row claim nothing, so its accelerator can never activate it', () => {
+    // `vol-2` declares '3' and is disabled: the key matches no row, and the controller does
+    // nothing with it — but an open menu still swallows it.
+    expect(itemByAccelerator(sections, '3')).toBeNull()
+  })
+
+  it('returns null for a character no row declares', () => {
+    expect(itemByAccelerator(sections, '9')).toBeNull()
   })
 })

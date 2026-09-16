@@ -844,7 +844,8 @@ state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isE
 `handleKey(event)`, `destroy()`, plus the reactive `isOpen` / `highlightedValue`. Everything under `menu.surface.*` is
 `Menu.svelte`'s own wiring (hover, drag, submenu, row measurement); consumers never touch it.
 
-**Snippets decorate, they don't re-implement.** The default row (checkmark column, icon, label) is there; `label`
+**Snippets decorate, they don't re-implement.** The default row (accelerator column, checkmark column, icon, label) is
+there; `label`
 replaces the row's text (an inline rename field), `trailing` fills its right end (badges, an eject button), `below` adds
 a sub-line (the disk-space bar), and `footer` sits under the last section. Each takes one
 `MenuRowContext = { item, section, index, highlighted, dragging }`.
@@ -855,6 +856,13 @@ a sub-line (the disk-space bar), and `footer` sits under the last section. Each 
   Space activate; ArrowRight opens a submenu and ArrowLeft closes it, and while one is open the arrows walk ITS rows and
   Enter takes the row they landed on; ⌥↑/⌥↓ reorder inside a `reorderable` section. A bare cursor key only: ⌘↓ / ⌃↓ / ⌥↓
   belong to somebody else and pass through.
+- **Accelerators**: a row carrying `accelerator: '1'` opens when that digit is typed, from anywhere in the open menu
+  (with a submenu up too), matched across every section. `acceleratorChar` reads `event.code` (`Digit0`–`Digit9` /
+  `Numpad0`–`Numpad9`), so the PHYSICAL key decides and an AZERTY layout, where a digit needs Shift, still works: Shift
+  is allowed, ⌘/⌃/⌥ are not. It's a class-of-key matcher, which `cmdr/no-raw-key-match` accepts. ❗ A DISABLED row
+  claims nothing (`itemByAccelerator` skips it), so its digit activates nothing — and is still swallowed, because an
+  open menu owns the keyboard. Order of business: `onKey` first, then the accelerator, then the arrows and Home/End;
+  `isEditing()` suspends all of it.
 - **Escape closes the open submenu if there is one, otherwise the menu**, down ONE path. The switcher used to disagree
   with itself here: its routed handler closed only the submenu while a second document listener closed the whole
   dropdown, so which happened depended on how the key arrived. The primitive has no second listener, and this matches
@@ -886,6 +894,8 @@ gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them 
   it), `data-menu-empty` on an empty section's placeholder.
 - `data-menu-row="<value>"` on every row (submenu rows too), plus `data-highlighted`, `data-checked`, `data-disabled`,
   and `data-dragging` as bare present-or-absent marks.
+- `data-accelerator="<char>"` on a row that declares one, so a spec presses a digit and asserts against the row that
+  claimed it rather than counting positions. The row also carries `aria-keyshortcuts`.
 - `data-drop-cue="above" | "below"` on the row bordering the drop gap, carrying `data-drop-slot="<n>"`, the insertion
   slot the drop would use.
 
@@ -913,6 +923,9 @@ switcher's port is what moved them here):
   element alone is exempt by default, which is wrong for a chip whose other controls sit BESIDE it: the switcher's
   header eject button closed the list out from under itself, and ejecting is meant to LEAVE the list open so several
   drives can go in a row.
+- **The accelerator column is all-or-nothing per menu.** It renders only where at least one row declares one, and then
+  EVERY row reserves it (a blank `menu-accelerator-placeholder` for the ones without), the way the checkmark column
+  already works: without the placeholder, an unnumbered row's label would sit one column left of its neighbors.
 - **The single-cursor rule**: an open submenu takes the parent row's highlight (`parentHighlightSuppressed`), and a
   submenu opened by hovering its parent row shows no cursor until the pointer or the keyboard reaches into it.
 - **A submenu's cursor is a VALUE too** (`submenuHighlightedValue`), so render against it per row. ❌ Never a boolean:

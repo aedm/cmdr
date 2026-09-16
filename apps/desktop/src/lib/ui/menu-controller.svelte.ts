@@ -19,6 +19,7 @@
 
 import type { MenuAnchor, MenuItem, MenuReorder, MenuSection } from './menu-types'
 import {
+  itemByAccelerator,
   itemOf,
   menuKeyAction,
   navigableValues,
@@ -379,6 +380,13 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
       case 'reorder':
         reorderHighlighted(action.delta)
         return
+      case 'accelerator': {
+        // No row claims it (or the one that would is disabled): nothing happens, and the digit
+        // still goes no further, because an open menu owns the keyboard.
+        const item = itemByAccelerator(sections(), action.char)
+        if (item) activate(item.value)
+        return
+      }
       case 'absorb':
       case 'none':
         return

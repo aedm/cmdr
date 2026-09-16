@@ -18,6 +18,8 @@
     let renameDraft = $state('')
 
     let anchorEl = $state<HTMLButtonElement>()
+    let acceleratorAnchorEl = $state<HTMLButtonElement>()
+    let lastAccelerated = $state<string | null>(null)
 
     const sections = $derived<MenuSection[]>([
         {
@@ -70,6 +72,38 @@
         renaming = value
         renameDraft = label
     }
+
+    /** A second menu, for the accelerator column alone: digits activate, a mixed row shows alignment. */
+    const acceleratorSections: MenuSection[] = [
+        {
+            id: 'numbered',
+            heading: 'Type a digit',
+            items: [
+                { value: 'first', label: 'First place', accelerator: '1', icon: { lucide: 'folder' } },
+                { value: 'second', label: 'Second place', accelerator: '2', icon: { lucide: 'folder' } },
+                {
+                    value: 'unavailable',
+                    label: 'Third place (disabled, 3 does nothing)',
+                    accelerator: '3',
+                    disabled: true,
+                    icon: { lucide: 'folder' },
+                },
+                { value: 'unnumbered', label: 'Past the digits, no number', icon: { lucide: 'folder' } },
+            ],
+        },
+        {
+            id: 'add',
+            items: [{ value: 'add', label: 'Add something here', accelerator: '0', icon: { lucide: 'plus' } }],
+        },
+    ]
+
+    const acceleratorMenu = createMenu({
+        getSections: () => acceleratorSections,
+        onSelect: (item) => {
+            lastAccelerated = item.label
+        },
+        restoreFocus: () => acceleratorAnchorEl?.focus(),
+    })
 </script>
 
 <SectionCard id="components-menu" label="Menu">
@@ -136,6 +170,24 @@
                 <div class="menu-footer">Some volumes may still be loading.</div>
             {/snippet}
         </Menu>
+    </div>
+
+    <div class="cell">
+        <p class="caption">
+            The accelerator column. A row with <code>accelerator</code> shows its digit in a leading column and opens
+            when that digit is typed (number row or numpad, Shift allowed, no ⌘/⌃/⌥). The column appears only where
+            something uses it, and rows without one reserve a blank so the labels stay aligned. A disabled row's digit
+            does nothing, and the menu still swallows it.
+        </p>
+        <DemoAnchor
+            bind:el={acceleratorAnchorEl}
+            onclick={() => {
+                if (acceleratorAnchorEl) acceleratorMenu.toggleUnder(acceleratorAnchorEl)
+            }}>Open numbered menu</DemoAnchor
+        >
+        {#if lastAccelerated}<p class="caption">Last choice: {lastAccelerated}</p>{/if}
+
+        <Menu menu={acceleratorMenu} ariaLabel="Numbered demo menu" minWidth={260} />
     </div>
 </SectionCard>
 

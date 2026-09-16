@@ -260,6 +260,57 @@ describe('test hooks', () => {
   })
 })
 
+/**
+ * The accelerator column: leftmost, present only where something uses it, and reserved on every
+ * row of such a menu so the labels stay in one line.
+ */
+describe('the accelerator column', () => {
+  /** Mixed on purpose: two rows carry a digit and one doesn't, which is what alignment is about. */
+  function accelerated(): MenuSection[] {
+    return [
+      {
+        id: 'favorites',
+        heading: 'Favorites',
+        items: [
+          { value: 'projects', label: 'Projects', accelerator: '1' },
+          { value: 'downloads', label: 'Downloads', accelerator: '2' },
+          { value: 'elsewhere', label: 'Somewhere else' },
+        ],
+      },
+    ]
+  }
+
+  it('renders no column at all in a menu where nothing declares an accelerator', async () => {
+    await open()
+    expect(document.querySelector('.menu-accelerator')).toBeNull()
+    expect(document.querySelector('.menu-accelerator-placeholder')).toBeNull()
+  })
+
+  it('shows the digit first, before the checkmark column', async () => {
+    await open({}, { getSections: accelerated })
+    const first = row('projects')?.firstElementChild
+    expect(first?.classList.contains('menu-accelerator')).toBe(true)
+    expect(first?.textContent).toBe('1')
+  })
+
+  it('reserves a blank column on the rows without one, so every label lines up', async () => {
+    await open({}, { getSections: accelerated })
+    // Every row leads with a 14px column, digit or not; without the placeholder this row's
+    // label would sit one column left of the other two.
+    expect(row('elsewhere')?.firstElementChild?.classList.contains('menu-accelerator-placeholder')).toBe(true)
+    expect(document.querySelectorAll('.menu-accelerator, .menu-accelerator-placeholder')).toHaveLength(3)
+  })
+
+  it('carries data-accelerator on the row, and says the shortcut to assistive tech', async () => {
+    await open({}, { getSections: accelerated })
+    expect(row('downloads')?.getAttribute('data-accelerator')).toBe('2')
+    expect(row('downloads')?.getAttribute('aria-keyshortcuts')).toBe('2')
+    expect(row('elsewhere')?.hasAttribute('data-accelerator')).toBe(false)
+    // The glyph is decoration: `aria-keyshortcuts` is what a screen reader reads.
+    expect(row('downloads')?.querySelector('.menu-accelerator')?.getAttribute('aria-hidden')).toBe('true')
+  })
+})
+
 describe('snippets', () => {
   it('label replaces the row text', async () => {
     const label = createRawSnippet<[MenuRowContext]>((context) => ({

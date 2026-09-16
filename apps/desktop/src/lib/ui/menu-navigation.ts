@@ -20,6 +20,12 @@ export type MenuAction =
   /** Consumed on purpose so it can't reach the parent menu (ArrowRight inside a submenu). */
   | { kind: 'absorb' }
   | { kind: 'reorder'; delta: -1 | 1 }
+  /**
+   * A digit was typed. `char` is the character it stands for; `itemByAccelerator` says which row
+   * (if any) claims it. Unclaimed is still an accelerator, not a `none`: an open menu owns the
+   * keyboard, so the digit is swallowed either way.
+   */
+  | { kind: 'accelerator'; char: string }
   | { kind: 'none' }
 
 export interface MenuKeyContext {
@@ -79,6 +85,34 @@ export function itemOf<T>(sections: readonly MenuSection<T>[], value: string): M
     }
   }
   return null
+}
+
+/**
+ * The enabled row that claims an accelerator character, across every section. A DISABLED row
+ * claims nothing: its accelerator must not activate it, and nothing else may steal the key
+ * either, so the answer is simply "no row" and the controller does nothing with it.
+ */
+export function itemByAccelerator<T>(sections: readonly MenuSection<T>[], char: string): MenuItem<T> | null {
+  for (const section of sections) {
+    for (const item of section.items) {
+      if (item.accelerator === char && !item.disabled) return item
+    }
+  }
+  return null
+}
+
+/**
+ * The character a digit key stands for, or null for anything else. It matches on `event.code`
+ * so the physical key decides: a layout where the digits need Shift (AZERTY) still types `1`,
+ * and the numpad counts as the same key.
+ *
+ * ❗ This is a CLASS-OF-KEY matcher (any digit key, no required modifier), which is exactly what
+ * `cmdr/no-raw-key-match` exists to allow through: there's no modifier left unconstrained, and
+ * the rule's target — a hand-rolled single combo that should have been `eventMatchesCommand` —
+ * has no accelerator equivalent, since the caller's data decides which digits exist.
+ */
+export function acceleratorChar(event: KeyboardEvent): string | null {
+  return /^(?:Digit|Numpad)(\d)$/.exec(event.code)?.[1] ?? null
 }
 
 /**
@@ -147,5 +181,9 @@ export function menuKeyAction(event: KeyboardEvent, context: MenuKeyContext): Me
     if (event.key === 'ArrowDown') return { kind: 'reorder', delta: 1 }
   }
   if (hasCommandModifier(event)) return { kind: 'none' }
+  // Ahead of the list's own keys, and across every section: no arrow, Home/End, or submenu key
+  // is a digit, so nothing competes, and an accelerator works with a submenu open too.
+  const char = acceleratorChar(event)
+  if (char !== null) return { kind: 'accelerator', char }
   return context.submenuOpen ? submenuKeyAction(event.key) : rowKeyAction(event.key, context.hasSubmenu)
 }

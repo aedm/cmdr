@@ -177,6 +177,15 @@
         return null
     }
 
+    /**
+     * The accelerator column exists only where something uses it, so a menu without accelerators
+     * keeps today's row. Once it's there, every row reserves it — including the ones with no
+     * accelerator — so the labels stay in one line, the way the checkmark column already works.
+     */
+    const hasAccelerators = $derived(
+        menu.sections.some((section) => section.items.some((item) => item.accelerator != null)),
+    )
+
     const submenuItems = $derived(
         menu.openSubmenuValue === null
             ? []
@@ -242,7 +251,9 @@
                             aria-disabled={item.disabled ? 'true' : undefined}
                             aria-haspopup={item.submenu?.length ? 'menu' : undefined}
                             aria-expanded={item.submenu?.length ? menu.openSubmenuValue === item.value : undefined}
+                            aria-keyshortcuts={item.accelerator}
                             data-menu-row={item.value}
+                            data-accelerator={item.accelerator}
                             data-highlighted={context.highlighted ? '' : undefined}
                             data-checked={item.checked ? '' : undefined}
                             data-disabled={item.disabled ? '' : undefined}
@@ -271,6 +282,14 @@
                                 }
                             }}
                         >
+                            {#if hasAccelerators}
+                                <!-- `aria-keyshortcuts` on the row already says it, so the glyph is decoration. -->
+                                {#if item.accelerator}
+                                    <span class="menu-accelerator" aria-hidden="true">{item.accelerator}</span>
+                                {:else}
+                                    <span class="menu-accelerator-placeholder"></span>
+                                {/if}
+                            {/if}
                             {#if item.checked}
                                 <span class="menu-check"><Icon name="check" size={14} aria-hidden="true" /></span>
                             {:else}
@@ -442,6 +461,22 @@
     }
 
     .menu-check-placeholder {
+        width: 14px;
+        flex-shrink: 0;
+    }
+
+    /* A plain tertiary digit, same 14px column as the checkmark beside it, so the two leading
+       columns read as one gutter and a `1` and a `0` sit on the same axis. */
+    .menu-accelerator {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: calc(14px * var(--font-scale));
+        flex-shrink: 0;
+        color: var(--color-text-tertiary);
+    }
+
+    .menu-accelerator-placeholder {
         width: 14px;
         flex-shrink: 0;
     }

@@ -18,9 +18,9 @@ function makeSections(): MenuSection[] {
       heading: 'Favorites',
       reorderable: true,
       items: [
-        { value: 'fav-a', label: 'A' },
-        { value: 'fav-b', label: 'B' },
-        { value: 'fav-c', label: 'C' },
+        { value: 'fav-a', label: 'A', accelerator: '1' },
+        { value: 'fav-b', label: 'B', accelerator: '2' },
+        { value: 'fav-c', label: 'C', accelerator: '3' },
       ],
     },
     {
@@ -28,7 +28,8 @@ function makeSections(): MenuSection[] {
       heading: 'Volumes',
       items: [
         { value: 'vol-1', label: 'Macintosh HD' },
-        { value: 'vol-2', label: 'Backup', disabled: true },
+        // Declares an accelerator AND is disabled: the key must reach nothing.
+        { value: 'vol-2', label: 'Backup', disabled: true, accelerator: '4' },
         {
           value: 'vol-3',
           label: 'Share',
@@ -253,6 +254,95 @@ describe('the open menu owns the keyboard', () => {
     expect(menu.handleKey(event)).toBe(false)
     expect(stop).not.toHaveBeenCalled()
     expect(menu.highlightedValue).toBe('fav-a')
+  })
+})
+
+/**
+ * Accelerators: a row that declares one activates when its digit is typed, from anywhere in the
+ * open menu. The pure matching is pinned in `menu-navigation.test.ts`; this is where it sits in
+ * the controller's order of business.
+ */
+describe('accelerators', () => {
+  /** A digit as the keyboard actually sends it: the physical key, plus what the layout printed. */
+  function digit(code: string, printed: string, modifiers: KeyboardEventInit = {}): KeyboardEvent {
+    return keydown(printed, { code, ...modifiers })
+  }
+
+  it('activates the row that claims the digit, and closes', () => {
+    const onSelect = vi.fn()
+    const menu = build({ onSelect })
+    menu.openUnder(anchorEl())
+    expect(menu.handleKey(digit('Digit2', '2'))).toBe(true)
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-b', accelerator: '2' }))
+    expect(menu.isOpen).toBe(false)
+  })
+
+  it('takes the numpad digit too', () => {
+    const onSelect = vi.fn()
+    const menu = build({ onSelect })
+    menu.openUnder(anchorEl())
+    menu.handleKey(digit('Numpad3', '3'))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-c' }))
+  })
+
+  // ❗ The row must not activate, and the key must not fall through to the pane behind either:
+  // an open menu owns the keyboard whether or not a row wanted this one.
+  it('swallows the digit of a disabled row without activating it', () => {
+    const onSelect = vi.fn()
+    const menu = build({ onSelect })
+    menu.openUnder(anchorEl())
+    const event = digit('Digit4', '4')
+    const stop = vi.spyOn(event, 'stopPropagation')
+    expect(menu.handleKey(event)).toBe(true)
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(stop).toHaveBeenCalled()
+    expect(menu.isOpen).toBe(true)
+  })
+
+  it('swallows a digit no row claims, leaving the menu open', () => {
+    const onSelect = vi.fn()
+    const menu = build({ onSelect })
+    menu.openUnder(anchorEl())
+    expect(menu.handleKey(digit('Digit9', '9'))).toBe(true)
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(menu.isOpen).toBe(true)
+  })
+
+  it('gives onKey the first look, ahead of the accelerator', () => {
+    const onSelect = vi.fn()
+    const onKey = vi.fn(() => true)
+    const menu = build({ onSelect, onKey })
+    menu.openUnder(anchorEl())
+    expect(menu.handleKey(digit('Digit2', '2'))).toBe(true)
+    expect(onKey).toHaveBeenCalled()
+    // The caller claimed the key, so no row opened.
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(menu.isOpen).toBe(true)
+  })
+
+  it('hands the digit to an inline editor while isEditing', () => {
+    const onSelect = vi.fn()
+    let editing = false
+    const menu = build({ onSelect, isEditing: () => editing })
+    menu.openUnder(anchorEl())
+    editing = true
+    const event = digit('Digit2', '2')
+    const stop = vi.spyOn(event, 'stopPropagation')
+    // Untouched and unswallowed: a rename field typing "2" gets its "2".
+    expect(menu.handleKey(event)).toBe(false)
+    expect(stop).not.toHaveBeenCalled()
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('leaves ⌘1 / ⌃1 / ⌥1 alone', () => {
+    for (const modifier of ['metaKey', 'ctrlKey', 'altKey'] as const) {
+      const onSelect = vi.fn()
+      const menu = build({ onSelect })
+      menu.openUnder(anchorEl())
+      menu.handleKey(digit('Digit1', '1', { [modifier]: true }))
+      expect(onSelect).not.toHaveBeenCalled()
+      menu.close()
+    }
   })
 })
 
