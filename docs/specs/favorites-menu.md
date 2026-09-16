@@ -341,11 +341,26 @@ the `volume-breadcrumb-handlers.svelte.ts` **coverage-allowlist entry is removed
    leaves `show_volume_row_context_menu`. Picks keep riding `volume-context-action`'s `rename-favorite` /
    `remove-favorite`.
 7. **The add gate** and **analytics** per § Proposed defaults, with `src-tauri/src/analytics/DETAILS.md` updated.
-8. **Tests**: the favorites cases move from the switcher suites to `FavoritesMenu` tests, plus digits, the `0` row's
-   three states, favorites past nine, the swap keys both ways, and the switcher row. An E2E spec: ⌃D, press 2, the pane
-   lands.
-9. **Screenshots for translators**: `test/e2e-playwright/i18n-capture-surfaces-main.ts` captures the switcher's
-   favorites empty state today; it moves to the favorites menu (with and without favorites) plus the new switcher row.
+8. ✅ **Done.** Tests: the favorites cases moved out of the switcher suite whole into
+   `navigation/FavoritesMenu.svelte.test.ts` (the chip mounted, real keydowns, clicks, and drags) and
+   `navigation/favorites-menu.svelte.test.ts` (the controller, no DOM), plus the digits, the `0` row's three states with
+   the two refusals saying different things, favorites past nine, both swap keys, the switcher row's three count forms,
+   and `via` end to end. `test/e2e-playwright/favorites-menu.spec.ts` is the acceptance spec: ⌃D, a digit, the pane
+   lands. ❗ It presses the digit ITS OWN row carries rather than a fixed `2` — the seeded defaults differ per machine —
+   and ⌃D itself is pressed on macOS only, since off macOS `toPlatformShortcut` folds ⌃ onto `Ctrl` and Duplicate wins
+   the combo.
+
+   **A real defect fell out of it** (fixed in `f2a3ad98e`): `Menu.svelte` never registered `getRowMidpoints`, so pointer
+   drag-to-reorder has done NOTHING since M1 — the controller read an empty midpoint list and every drop put the row
+   back. Every existing drag test hand-called `bindSurface`, which is why two milestones missed it. The new anchor in
+   `Menu.svelte.test.ts` deliberately doesn't.
+
+9. ✅ **Done.** Screenshots for translators: `test/e2e-playwright/i18n-capture-surfaces-main.ts` gained `favorites-menu`
+   (populated) and `favorites-menu-empty`, and `pane-volume-chooser` keeps the "See N favorites" row. The empty one
+   snapshots the favorites and restores them in a `finally`, since emptying the store is the only way to photograph it.
+   ❗ `@key.screenshot` is machine-owned (`scripts/couple-screenshots.ts` owns `screenshot` and `screenshotNote`
+   outright), so `groupFavorites` re-couples to the new image on the next `pnpm i18n:shots`, ❌ never by hand — a
+   hand-written value naming an image the capture report doesn't have fails `message-screenshots-fresh`.
 10. **Docs**: `navigation/CLAUDE.md` and `DETAILS.md` (§ Editable favorites becomes § Favorites menu),
     `src-tauri/src/favorites/CLAUDE.md` and `DETAILS.md` (they say the store backs the switcher's section),
     `docs/architecture.md` if it names the switcher's favorites.

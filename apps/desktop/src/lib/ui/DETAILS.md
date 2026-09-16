@@ -887,7 +887,12 @@ button), `below` adds a sub-line (the disk-space bar), and `footer` sits under t
   keyboard mode drops, and no `mouseover` is coming for a row the pointer never left); a click activates; a right-click
   calls `onContextMenu`; a pointer-down outside closes.
 - **Reorder**: drag past a 4 px threshold, the drop-line cue at the insertion gap, and `onReorder` once, on drop.
-  Because the cursor is a VALUE rather than an index, it rides along with the moved row for free.
+  Because the cursor is a VALUE rather than an index, it rides along with the moved row for free. ❗ A drag's drop
+  target is decided against the rows' MIDPOINTS, which only the DOM knows, so `Menu.svelte` registers `getRowMidpoints`
+  through `menu.surface.bindSurface`. Without that registration the controller reads an empty list,
+  `pointerReorderTarget` answers "no target" for every row, and a drop silently puts the row back where it started —
+  which is what shipped for two milestones, because every drag TEST called `bindSurface` itself. The regression anchor
+  in `Menu.svelte.test.ts` deliberately doesn't.
 - **Placement**: fixed, clamped into the viewport, `max-height` to the room below the anchor with its own scroll, the
   cursor scrolled into view, and submenus positioned off the row's rect with a small overlap.
 
