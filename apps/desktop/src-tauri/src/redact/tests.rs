@@ -149,6 +149,63 @@ fn mount_label_stops_at_lowercase_prose() {
     }
 }
 
+/// A filename whose own words are lowercase must be redacted WHOLE.
+///
+/// Real incident: a trash failure logged `.../Screenshot 2026-09-04 at 01.13.03 PM-2.jpeg: …`
+/// and the capture stopped dead at ` at`, so ` 01.13.03 PM-2.jpeg` shipped verbatim in an
+/// uploaded bundle. Any filename with two or more words leaked its tail the same way, and
+/// `Invoice for Acme Corp.pdf` is the shape that actually hurts.
+#[test]
+fn multi_word_filenames_are_redacted_whole() {
+    let cases = [
+        // The reported line. The `: ` is the `{path}: {message}` seam, so the message survives.
+        (
+            "/Users/kajotac/Pics/Screenshot 2026-09-04 at 01.13.03 PM-2.jpeg: the Trash refused it",
+            "$HOME/<dir>/<file>.jpeg: the Trash refused it",
+        ),
+        // A lowercase word mid-filename, nothing after it.
+        ("/Users/jo/Docs/my secret notes.txt", "$HOME/<dir>/<file>.txt"),
+        // The shape with real exposure in it.
+        ("/Users/jo/Work/Invoice for Acme Corp.pdf", "$HOME/<dir>/<file>.pdf"),
+        // Prose after an extension still survives: the trailing run has no extension to hold it.
+        (
+            "/Users/jo/Documents/notes.md failed to open",
+            "$HOME/Documents/<file>.md failed to open",
+        ),
+        // A digit-led "extension" inside a timestamp must NOT end the name early. This is
+        // the exact shape that leaked: cutting at `01.13.03` ships ` PM-2.jpeg`.
+        (
+            "/Users/jo/Shots/Screenshot 2026-09-15 at 11.10.35 AM-2.jpeg",
+            "$HOME/<dir>/<file>.jpeg",
+        ),
+    ];
+    for (input, expected) in cases {
+        assert_eq!(r(input), expected, "input: {input:?}");
+    }
+}
+
+/// The reported line, end to end.
+///
+/// ⚠️ Known gap, deliberately pinned here: macOS repeats the filename inside its own error
+/// prose, in curly quotes and with no path around it. No path pattern claims a bare name, so
+/// that copy still ships. Closing it needs a separate pass that redacts verbatim repeats of a
+/// segment already recognized on the same line; the path itself is what this test covers.
+#[test]
+fn trash_refusal_line_redacts_its_path() {
+    let input = "op 01a0 (Trash) failed: /Users/kajotac/Library/CloudStorage/Dropbox/Shots/\
+                 Screenshot 2026-09-04 at 01.13.03 PM-2.jpeg: the Trash refused it";
+    let out = r(input);
+    assert!(
+        out.starts_with("op 01a0 (Trash) failed: $HOME/<dir>/<dir>/<dir>/<dir>/<file>.jpeg"),
+        "path not fully redacted: {out}"
+    );
+    assert!(
+        !out.contains("01.13.03") && !out.contains("PM-2"),
+        "filename fragments survived: {out}"
+    );
+    assert!(out.ends_with(": the Trash refused it"), "message lost: {out}");
+}
+
 #[test]
 fn smb_uris() {
     let cases = [

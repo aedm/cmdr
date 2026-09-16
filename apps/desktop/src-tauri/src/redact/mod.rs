@@ -63,7 +63,7 @@ const SAFE_PARENT_DIR_NAMES: &[&str] = &[
 /// Bare `<dir>` / `<file>` tokens. For salted mode (correlatable hashes within a
 /// bundle), use [`redact_line_salted`].
 pub fn redact_line(line: &str) -> Cow<'_, str> {
-    redactor_regex().replace_all(line, |caps: &Captures<'_>| dispatch(caps, None))
+    redact_with(line, None)
 }
 
 /// Salted variant of [`redact_line`]. Path segments that would collapse to `<dir>`
@@ -75,7 +75,61 @@ pub fn redact_line(line: &str) -> Cow<'_, str> {
 /// shorter is accepted (the hash still correlates) but cross-bundle resistance suffers
 /// proportionally.
 pub fn redact_line_salted<'a>(line: &'a str, salt: &[u8]) -> Cow<'a, str> {
-    redactor_regex().replace_all(line, |caps: &Captures<'_>| dispatch(caps, Some(salt)))
+    redact_with(line, Some(salt))
+}
+
+/// One left-to-right pass, resuming at whatever the rewriter actually consumed.
+///
+/// ❗ **Not `replace_all`, and the difference is load-bearing.** The path branches
+/// deliberately over-match and hand a tail back (`split_trailing_noise`), but `replace_all`
+/// resumes after the WHOLE match, so every handed-back byte was skipped by the scanner and
+/// could never match another pattern. `/Volumes/d/f.txt and smb://host/share/x.txt` ate the
+/// `smb:` into the volume match, gave it back as text, and left `//host/share/x.txt` with no
+/// pattern willing to claim it: the share and the filename shipped verbatim. Resuming at
+/// `match.start() + consumed` puts the tail back in front of the scanner, where it belongs.
+fn redact_with<'a>(line: &'a str, salt: Option<&[u8]>) -> Cow<'a, str> {
+    let re = redactor_regex();
+    let mut out: Option<String> = None;
+    let mut pos = 0usize;
+
+    while pos <= line.len() {
+        // `captures_at` keeps the whole line as context, so `^` in `bare_lead` still means
+        // "start of line" rather than "start of the remaining slice".
+        let Some(caps) = re.captures_at(line, pos) else { break };
+        let Some(whole) = caps.get(0) else { break };
+        let (replacement, consumed) = dispatch(&caps, salt);
+
+        let buf = out.get_or_insert_with(|| String::with_capacity(line.len()));
+        buf.push_str(&line[pos..whole.start()]);
+        buf.push_str(&replacement);
+
+        // A rewriter that consumed nothing would spin forever on the same offset; fall
+        // back to the full match, then to one byte, so the scan always advances.
+        let next = whole.start() + consumed;
+        pos = if next > pos {
+            next
+        } else {
+            whole.end().max(next_char_boundary(line, pos))
+        };
+    }
+
+    match out {
+        Some(mut buf) => {
+            buf.push_str(&line[pos.min(line.len())..]);
+            Cow::Owned(buf)
+        }
+        None => Cow::Borrowed(line),
+    }
+}
+
+/// The next char boundary strictly after `pos`, so the no-progress fallback can't split a
+/// multi-byte character.
+fn next_char_boundary(line: &str, pos: usize) -> usize {
+    let mut i = pos + 1;
+    while i < line.len() && !line.is_char_boundary(i) {
+        i += 1;
+    }
+    i.min(line.len())
 }
 
 /// Redact a multi-line text blob. Splits on `\n` and redacts each line independently
@@ -100,15 +154,18 @@ fn redactor_regex() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
         // Path tail: consecutive path chars, optionally interrupted by single spaces (for
-        // labels like "My Backup Drive"). Stops at whitespace-runs, quotes, brackets,
-        // and sentence-ending punctuation that's clearly not path content.
+        // labels like "My Backup Drive" and filenames like "Invoice for Acme Corp.pdf").
+        // Stops at whitespace-runs, quotes, brackets, and sentence-ending punctuation
+        // that's clearly not path content.
         //
-        // A continued word after a space MUST start `[A-Z0-9]`, in every branch. That is
-        // what separates a multi-word label from the prose after the path: `/Volumes/My
-        // Backup Drive` keeps matching, while `/Volumes/naspi and ...` stops at `naspi`.
-        // ❌ Never drop that character class from a branch. `split_trailing_noise` only
-        // trims ONE trailing lowercase word, so a branch without the anchor swallows a
-        // whole sentence and the redacted line loses everything after the path.
+        // A continued word after a space may be ANY shape, lowercase included. Match
+        // greedily here and give the boundary back in `split_trailing_noise`, which is the
+        // only place that can tell a filename's own words from the prose after it.
+        // ❗ The two have to stay in step. Anchoring continuation words to `[A-Z0-9]` here
+        // instead looks tidier and silently ships PII: it stopped
+        // `Screenshot 2026-09-04 at 01.13.03 PM-2.jpeg` dead at ` at`, and the rest of the
+        // name rode out in an uploaded bundle verbatim. Every multi-word filename leaked
+        // its tail that way.
         //
         // Tail chars: anything that isn't whitespace, quotes, backticks, angle brackets,
         // or the pipe character. Single spaces between tail chunks are allowed.
@@ -117,23 +174,23 @@ fn redactor_regex() -> &'static Regex {
         Regex::new(
             r#"(?x)
             (?P<win_home>         [A-Za-z] : \\ Users \\ [^\\/\s"'<>|`]+
-                                  (?: \\ [^\\\s"'<>|`]+ (?: \x20 [A-Z0-9][^\\\s"'<>|`]* )* )*
+                                  (?: \\ [^\\\s"'<>|`]+ (?: \x20 [^\\\s"'<>|`]+ )* )*
             )
             | (?P<unix_home>      / (?: Users | home ) / [^/\s"'<>|`]+
-                                  (?: / [^/\s"'<>|`]+ (?: \x20 [A-Z0-9][^/\s"'<>|`]* )* )*
+                                  (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )* )*
             )
             | (?P<unix_system>    / (?: tmp | var | private | opt ) /
                                   [^/\s"'<>|`]+
-                                  (?: / [^/\s"'<>|`]+ (?: \x20 [A-Z0-9][^/\s"'<>|`]* )* )*
+                                  (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )* )*
             )
-            | (?P<volumes>        / Volumes / [^/\s"'<>|`]+ (?: \x20 [A-Z0-9][^/\s"'<>|`]* )*
-                                  (?: / [^/\s"'<>|`]+ (?: \x20 [A-Z0-9][^/\s"'<>|`]* )* )*
+            | (?P<volumes>        / Volumes / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )*
+                                  (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )* )*
             )
-            | (?P<media>          / media / [^/\s"'<>|`]+ (?: \x20 [A-Z0-9][^/\s"'<>|`]* )*
-                                  (?: / [^/\s"'<>|`]+ (?: \x20 [A-Z0-9][^/\s"'<>|`]* )* )*
+            | (?P<media>          / media / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )*
+                                  (?: / [^/\s"'<>|`]+ (?: \x20 [^/\s"'<>|`]+ )* )*
             )
             | (?P<smb_uri>        smb:// [^\s"'<>|`]+ )
-            | (?P<unc>            \\\\ [A-Za-z0-9_.-]+ (?: \\ [^\\\s"'<>|`]+ (?: \x20 [A-Z0-9][^\\\s"'<>|`]* )* )* )
+            | (?P<unc>            \\\\ [A-Za-z0-9_.-]+ (?: \\ [^\\\s"'<>|`]+ (?: \x20 [^\\\s"'<>|`]+ )* )* )
             | (?P<url_userinfo>   (?P<scheme>[a-zA-Z][a-zA-Z0-9+.-]*) ://
                                   (?P<userinfo>[^\s@/:"'<>|`]+ (?: : [^\s@/"'<>|`]* )? )
                                   @
@@ -215,73 +272,89 @@ fn redactor_regex() -> &'static Regex {
     })
 }
 
-fn dispatch(caps: &Captures<'_>, salt: Option<&[u8]>) -> String {
+/// Rewrite one match into (replacement, bytes consumed).
+///
+/// A path branch consumes only the path, NOT the trailing noise it split off: the noise goes
+/// back to the scanner in [`redact_with`], which is what lets a pattern that begins inside
+/// the over-match still be recognized. Every other branch consumes its whole match.
+fn dispatch(caps: &Captures<'_>, salt: Option<&[u8]>) -> (String, usize) {
     if let Some(m) = caps.name("win_home") {
-        let (path, tail) = split_trailing_noise(m.as_str());
-        return format!("{}{tail}", redact_windows_home(path, salt));
+        let (path, _) = split_trailing_noise(m.as_str());
+        return (redact_windows_home(path, salt), path.len());
     }
     if let Some(m) = caps.name("unix_home") {
-        let (path, tail) = split_trailing_noise(m.as_str());
-        return format!("{}{tail}", redact_unix_home(path, salt));
+        let (path, _) = split_trailing_noise(m.as_str());
+        return (redact_unix_home(path, salt), path.len());
     }
     if let Some(m) = caps.name("unix_system") {
-        let (path, tail) = split_trailing_noise(m.as_str());
-        return format!("{}{tail}", redact_unix_system(path, salt));
+        let (path, _) = split_trailing_noise(m.as_str());
+        return (redact_unix_system(path, salt), path.len());
     }
     if let Some(m) = caps.name("volumes") {
-        let (path, tail) = split_trailing_noise(m.as_str());
-        return format!("{}{tail}", redact_volumes(path, salt));
+        let (path, _) = split_trailing_noise(m.as_str());
+        return (redact_volumes(path, salt), path.len());
     }
     if let Some(m) = caps.name("media") {
-        let (path, tail) = split_trailing_noise(m.as_str());
-        return format!("{}{tail}", redact_media(path, salt));
+        let (path, _) = split_trailing_noise(m.as_str());
+        return (redact_media(path, salt), path.len());
     }
     if let Some(m) = caps.name("smb_uri") {
-        let (path, tail) = split_trailing_noise(m.as_str());
-        return format!("{}{tail}", redact_smb_uri(path, salt));
+        let (path, _) = split_trailing_noise(m.as_str());
+        return (redact_smb_uri(path, salt), path.len());
     }
     if let Some(m) = caps.name("unc") {
-        let (path, tail) = split_trailing_noise(m.as_str());
-        return format!("{}{tail}", redact_unc(path, salt));
+        let (path, _) = split_trailing_noise(m.as_str());
+        return (redact_unc(path, salt), path.len());
     }
     if caps.name("url_userinfo").is_some() {
         // Preserve scheme and everything after the `@`, redact the userinfo.
         let scheme = caps.name("scheme").map(|m| m.as_str()).unwrap_or("");
         let host_rest = caps.name("host_rest").map(|m| m.as_str()).unwrap_or("");
-        return format!("{scheme}://<userinfo>@{host_rest}");
+        return (format!("{scheme}://<userinfo>@{host_rest}"), whole_len(caps));
     }
     if caps.name("bare_userinfo").is_some() {
         // Scheme-less `//user:pass@host`: drop the userinfo, keep the leading delimiter
         // and everything after the `@`.
         let lead = caps.name("bare_lead").map(|m| m.as_str()).unwrap_or("");
         let host_rest = caps.name("bare_host_rest").map(|m| m.as_str()).unwrap_or("");
-        return format!("{lead}//<userinfo>@{host_rest}");
+        return (format!("{lead}//<userinfo>@{host_rest}"), whole_len(caps));
     }
     if caps.name("email").is_some() {
-        return "<email>".to_string();
+        return ("<email>".to_string(), whole_len(caps));
     }
     if let Some(m) = caps.name("account") {
-        return redact_account(
-            caps.name("account_key").map(|k| k.as_str()).unwrap_or("user"),
-            caps.name("account_sep").map(|s| s.as_str()).unwrap_or("="),
-            caps.name("account_value").map(|v| v.as_str()).unwrap_or(""),
-            m.as_str(),
+        return (
+            redact_account(
+                caps.name("account_key").map(|k| k.as_str()).unwrap_or("user"),
+                caps.name("account_sep").map(|s| s.as_str()).unwrap_or("="),
+                caps.name("account_value").map(|v| v.as_str()).unwrap_or(""),
+                m.as_str(),
+            ),
+            whole_len(caps),
         );
     }
     if caps.name("mdns").is_some() {
-        return "<host>.local".to_string();
+        return ("<host>.local".to_string(), whole_len(caps));
     }
     if caps.name("ipv6").is_some() {
-        return "<ipv6>".to_string();
+        return ("<ipv6>".to_string(), whole_len(caps));
     }
     if caps.name("ipv4").is_some() {
-        return "<ipv4>".to_string();
+        return ("<ipv4>".to_string(), whole_len(caps));
     }
     if let Some(m) = caps.name("mtp_owner") {
-        return redact_mtp_owner(m.as_str());
+        return (redact_mtp_owner(m.as_str()), whole_len(caps));
     }
     // Shouldn't happen: regex matched but no named group. Return verbatim to be safe.
-    caps.get(0).map(|m| m.as_str().to_string()).unwrap_or_default()
+    (
+        caps.get(0).map(|m| m.as_str().to_string()).unwrap_or_default(),
+        whole_len(caps),
+    )
+}
+
+/// Byte length of the whole match, for the branches that consume all of it.
+fn whole_len(caps: &Captures<'_>) -> usize {
+    caps.get(0).map_or(0, |m| m.len())
 }
 
 /// Replace an account name with `<user>`, keeping the field's shape so the line still reads.
@@ -319,18 +392,54 @@ fn redact_mtp_owner(s: &str) -> String {
     }
 }
 
-/// Split a greedy path capture into (path, trailing_noise). The regex allows single spaces
-/// inside paths so labels like `/Volumes/My Backup Drive/...` match; that also sweeps up
-/// trailing English text like `... .png now` or `... .rs:42:5`. We pull back the tail here
-/// before the rewriter runs, then re-emit the tail verbatim in the dispatch output.
+/// Split a greedy path capture into (path, trailing_noise). The regex matches spaces inside
+/// paths so both multi-word labels (`/Volumes/My Backup Drive/...`) and multi-word filenames
+/// (`Invoice for Acme Corp.pdf`) land whole; that also sweeps up trailing English text like
+/// `... .png now` or `... .rs:42:5`. We pull back the tail here before the rewriter runs,
+/// then re-emit the tail verbatim in the dispatch output.
 ///
-/// Trimmed:
+/// ❗ **This is the only thing standing between a filename and an uploaded bundle.** The
+/// regex deliberately over-matches, so a boundary rule that gives back too much doesn't
+/// merely lose prose, it publishes the part of the name it handed back. Both directions have
+/// bitten: an over-eager capture once truncated 98 reports at `/Volumes/<volume>`, and an
+/// over-cautious one shipped ` at 01.13.03 PM-2.jpeg` verbatim.
+///
+/// Trimmed, in order:
+/// - everything from the first `": "`, the `{path}: {message}` seam nearly every caller
+///   formats with. macOS forbids `:` in a filename, so this can't cut a real name short.
+/// - everything after the first token that ENDS the path: one carrying a letter-led
+///   extension (`report.pdf`, `PM-2.jpeg`) or ending a sentence (`naspi-1)`, `state.`).
+/// - trailing sentence-ending punctuation (`,`, `;`, `!`, `?`, `)`, `]`, `}`)
 /// - trailing `:<digits>` groups (line/column markers like `:42:5`)
-/// - trailing runs of `\s+<lowercase word>` (sentence continuation like ` now`, ` failed`)
-/// - trailing sentence-ending punctuation (`,`, `;`, `.`, `!`, `?`, `)`, `]`, `}`)
+/// - a trailing RUN of space-separated words that are lowercase-initial AND carry no
+///   extension (` failed to open`). The run never eats into the first segment after the
+///   last `/`, which is what keeps `/Volumes/naspi and then it failed` down to `naspi`.
 fn split_trailing_noise(s: &str) -> (&str, &str) {
     let bytes = s.as_bytes();
     let mut end = bytes.len();
+
+    // The `{path}: {message}` seam. Everything from it belongs to the message.
+    if let Some(seam) = s.find(": ") {
+        end = seam;
+    }
+
+    // Left to right: the first token that ends a filename or ends a sentence is the last
+    // thing that can belong to the path. Scanning forwards is what separates
+    // `report.pdf for alice@example.com` (cut after `report.pdf`) from
+    // `Screenshot 2026-09-04 at 01.13.03 PM-2.jpeg` (no letter-led extension until the very
+    // end, so the whole name stays). A backwards scan can't tell those apart: the email's
+    // `.com` looks exactly like a filename extension from the right.
+    {
+        let mut offset = 0usize;
+        for token in s[..end].split(' ') {
+            let token_end = offset + token.len();
+            if !token.is_empty() && (ends_filename(token) || ends_sentence(token)) {
+                end = token_end;
+                break;
+            }
+            offset = token_end + 1; // step over the space
+        }
+    }
 
     // First: trim sentence-ending punctuation, one at a time.
     while end > 0 {
@@ -356,24 +465,32 @@ fn split_trailing_noise(s: &str) -> (&str, &str) {
         }
     }
 
-    // Trim a trailing `\s+<lowercase word>` (a sentence continuation).
-    // Walk back over word chars, then require at least one whitespace before them.
+    // Trim a RUN of trailing lowercase, extension-less words (a sentence continuation).
+    //
+    // The floor is the first word after the last `/`: that word is a real path segment
+    // however lowercase it looks, so `/Volumes/naspi and then it failed` keeps `naspi`.
+    // An extension ends the run on the spot, because a word carrying one is part of the
+    // filename, not prose — that is what holds `my secret notes.txt` together.
     {
-        let mut i = end;
-        while i > 0 && is_word_char(bytes[i - 1]) {
-            i -= 1;
-        }
-        if i < end && i > 0 && bytes[i - 1] == b' ' {
-            // Check the word starts with a lowercase letter; capital words are
-            // often real path components (`/Volumes/My Backup Drive`).
-            if let Some(&first) = bytes.get(i)
-                && first.is_ascii_lowercase()
-            {
-                // Trim the leading space(s) too.
-                end = i - 1;
-                while end > 0 && bytes[end - 1] == b' ' {
-                    end -= 1;
-                }
+        let floor = s[..end].rfind('/').map_or(0, |i| i + 1);
+        loop {
+            let mut i = end;
+            while i > floor && bytes[i - 1] != b' ' {
+                i -= 1;
+            }
+            // `i` is the start of the last word; require a space before it, and stay
+            // above the floor so we never eat the segment itself.
+            if i <= floor || i == end || bytes[i - 1] != b' ' {
+                break;
+            }
+            let word = &s[i..end];
+            let starts_lower = word.chars().next().is_some_and(|c| c.is_ascii_lowercase());
+            if !starts_lower || has_extension_like_suffix(word) {
+                break;
+            }
+            end = i - 1;
+            while end > floor && bytes[end - 1] == b' ' {
+                end -= 1;
             }
         }
     }
@@ -390,10 +507,6 @@ fn split_trailing_noise(s: &str) -> (&str, &str) {
 
     // SAFETY: we only advance `end` on ASCII byte boundaries.
     (&s[..end], &s[end..])
-}
-
-fn is_word_char(b: u8) -> bool {
-    b.is_ascii_alphanumeric() || b == b'_'
 }
 
 // --- Path rewriters ---
@@ -635,6 +748,33 @@ fn is_safe_parent_dir(name: &str) -> bool {
 /// True if `seg` looks like a filename with an extension (e.g., `foo.pdf`).
 /// False for `Documents`, `.ssh`, `config`, `v0.13.0` (leading digits in ext is fine but
 /// we require the dot to be in a reasonable position).
+/// Whether this space-separated token looks like the END of a filename: an extension whose
+/// first character is a LETTER.
+///
+/// Stricter than [`has_extension_like_suffix`] on purpose, and the extra letter is doing
+/// real work: `01.13.03` in a screenshot timestamp has an "extension" of `03`, so the looser
+/// test would cut the name in half and ship ` PM-2.jpeg` verbatim. The cost is that a
+/// digit-led extension (`.7z`, `.3gp`) doesn't end the scan, which only means the path may
+/// keep a word or two of prose — an over-redaction, never a leak.
+fn ends_filename(token: &str) -> bool {
+    let Some(dot) = token.rfind('.') else { return false };
+    let ext = &token[dot + 1..];
+    dot > 0
+        && !ext.is_empty()
+        && ext.len() <= 8
+        && ext.chars().all(|c| c.is_ascii_alphanumeric())
+        && ext.starts_with(|c: char| c.is_ascii_alphabetic())
+}
+
+/// Whether this token ends a sentence, and with it the path. `/Volumes/naspi-1) claim …`
+/// is the shape: the label ends at the `)`, and everything after is prose.
+fn ends_sentence(token: &str) -> bool {
+    matches!(
+        token.as_bytes().last(),
+        Some(b')' | b';' | b',' | b'.' | b'!' | b'?' | b']' | b'}')
+    )
+}
+
 fn has_extension_like_suffix(seg: &str) -> bool {
     if let Some(dot) = seg.rfind('.') {
         let ext = &seg[dot + 1..];
