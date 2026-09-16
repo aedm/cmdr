@@ -125,7 +125,12 @@ export async function captureMainExplorerSurfaces(
   // The dropdown behind a pane's volume breadcrumb. It's a pane-owned overlay, not
   // a registered soft dialog (`UNREGISTERED_OVERLAY_ENTRIES` says so), so neither
   // the dialog tranche nor the gallery pass reaches it, and it's the only place the
-  // sidebar's group headings and the favorites empty-state render.
+  // sidebar's group headings render.
+  //
+  // ❗ It no longer photographs anything FAVORITES: those moved to their own menu
+  // (⌃D, `navigation/FavoritesMenu.svelte`), which needs a surface of its own — with
+  // and without favorites, plus the new "See N favorites" row here. Until it has one,
+  // the favorites copy reaches translators with no picture.
   await captureSurface('pane-volume-chooser', report, failed, async () => {
     await captureCall(main, 'reset')
     await captureCall(main, 'setSurface', 'pane-volume-chooser')
