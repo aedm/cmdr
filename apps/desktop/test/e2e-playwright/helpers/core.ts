@@ -185,13 +185,19 @@ export async function triggerSelfFileDrop(
 /**
  * Dispatches a keyboard event with the correct DOM key value.
  * Use this instead of tauriPage.keyboard.press() for keys that need mapping.
+ *
+ * ❗ `code` carries the PHYSICAL key, and a handler that matches on it sees nothing
+ * without it. The house `Menu`'s digit accelerators are the case: `acceleratorChar` reads
+ * `event.code` so an AZERTY layout (where a digit needs Shift) still types the digit, so a
+ * digit press aimed at a menu needs `pressKey(page, '2', 'Digit2')`.
  */
-export async function pressKey(tauriPage: PageLike, key: string): Promise<void> {
+export async function pressKey(tauriPage: PageLike, key: string, code?: string): Promise<void> {
   const mapped = mapKey(key)
   const parts = mapped.split('+')
   const mainKey = parts[parts.length - 1]
   const modifiers = parts.slice(0, -1)
   const k = JSON.stringify(mainKey)
+  const c = JSON.stringify(code ?? '')
   const ctrl = modifiers.includes('Control') || false
   const shift = modifiers.includes('Shift') || false
   const alt = modifiers.includes('Alt') || false
@@ -199,7 +205,7 @@ export async function pressKey(tauriPage: PageLike, key: string): Promise<void> 
 
   await tauriPage.evaluate(`(function(){
         var el=document.activeElement||document.body;
-        var o={key:${k},bubbles:true,ctrlKey:${String(ctrl)},shiftKey:${String(shift)},altKey:${String(alt)},metaKey:${String(meta)}};
+        var o={key:${k},code:${c},bubbles:true,ctrlKey:${String(ctrl)},shiftKey:${String(shift)},altKey:${String(alt)},metaKey:${String(meta)}};
         el.dispatchEvent(new KeyboardEvent('keydown',o));
         el.dispatchEvent(new KeyboardEvent('keypress',o));
         el.dispatchEvent(new KeyboardEvent('keyup',o));
