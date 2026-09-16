@@ -61,6 +61,26 @@
     const ANCHOR_GAP = 4
     const VIEWPORT_MARGIN = 8
 
+    /**
+     * The one measurement the controller can't make for itself: where a reorderable
+     * section's rows sit on screen, which is what a drag's drop target is decided against.
+     *
+     * ❗ Without this registration a pointer drag reads an EMPTY midpoint list, so
+     * `pointerReorderTarget` answers "no target" for every row and the drop silently puts
+     * the row back where it started — the reorder looks wired up and does nothing. Rows
+     * come back in document order, which is the section's own item order, so a midpoint
+     * index lines up with the index the controller drags by.
+     */
+    menu.surface.bindSurface({
+        getRowMidpoints: (sectionId: string) =>
+            [
+                ...(surfaceEl?.querySelectorAll(`[data-menu-section="${CSS.escape(sectionId)}"] [data-menu-row]`) ?? []),
+            ].map((row) => {
+                const rect = row.getBoundingClientRect()
+                return rect.top + rect.height / 2
+            }),
+    })
+
     /** The rect the menu hangs off, whichever way it was opened. */
     function anchorRect(): { left: number; bottom: number } | null {
         const anchor = menu.anchor

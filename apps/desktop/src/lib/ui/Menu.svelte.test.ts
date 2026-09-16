@@ -258,6 +258,41 @@ describe('test hooks', () => {
     expect(cueRow?.getAttribute('data-drop-slot')).toBe('2')
     window.dispatchEvent(new MouseEvent('mouseup', { clientY: 45 }))
   })
+
+  /**
+   * ❗ The regression anchor for the surface REGISTERING its row measurement. Every other
+   * drag test here hands `getRowMidpoints` in by calling `bindSurface` itself, which is
+   * exactly how the component going without it stayed invisible: with no measurement the
+   * controller reads an empty midpoint list, `pointerReorderTarget` answers "no target"
+   * for every row, and a drop puts the row back where it started. ❌ Don't add
+   * `bindSurface` to this one.
+   */
+  it('reorders a real drag with NO hand-registered measurement: the surface measures its own rows', async () => {
+    const onReorder = vi.fn()
+    await open({}, { onReorder })
+    // The test DOM has no layout engine, so the rows get 20px rects by hand: midpoints
+    // 10 and 30.
+    ;['projects', 'downloads'].forEach((value, index) => {
+      const top = index * 20
+      const el = row(value)
+      if (el) {
+        el.getBoundingClientRect = () =>
+          ({ top, bottom: top + 20, height: 20, left: 0, right: 200, width: 200, x: 0, y: top }) as DOMRect
+      }
+    })
+
+    row('projects')?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, clientY: 10 }))
+    window.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientY: 45 }))
+    window.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientY: 45 }))
+    await tick()
+
+    expect(onReorder).toHaveBeenCalledWith({
+      sectionId: 'favorites',
+      orderedValues: ['downloads', 'projects'],
+      from: 0,
+      to: 1,
+    })
+  })
 })
 
 /**
