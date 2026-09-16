@@ -108,9 +108,11 @@ mod macos {
     /// ❌ never read presence from it: that comes from the mount table.
     pub(crate) fn description(disk: &DADisk) -> Option<Description> {
         // SAFETY: `disk` is live for the call, and `DADiskCopyDescription` answers under the Create
-        // rule, which `CFRetained` balances. The description's keys are `CFString` and its values
-        // are CoreFoundation objects, which is what the cast narrows it to.
+        // rule, which `CFRetained` balances.
         let description = unsafe { disk.description() }?;
+        // SAFETY: a disk description is a `CFDictionary` whose keys are the `CFString` constants
+        // DiskArbitration publishes and whose values are CoreFoundation objects, which is what this
+        // narrows the untyped dictionary to. Each read below re-checks the value's own type.
         Some(unsafe { CFRetained::cast_unchecked(description) })
     }
 
