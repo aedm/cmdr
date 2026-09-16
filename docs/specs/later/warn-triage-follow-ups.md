@@ -170,3 +170,9 @@ No user impact, log truth only. About 60 lines, 100 with the rider.
   `DirTree::path_at_into` yields index-relative paths, so the Spotlight lookup asks about a Mac path instead of the
   mount's, and that signal is noise there. Start from `crates/cmdr-index/src/importance/scheduler/walk.rs`, where the
   sampled paths are built.
+- **Two catalogs use a term their own glossary retired** (low, cosmetic). In `zh`, `indexing.staleDialog.body`,
+  `staleDialog.bodyPhone`, and `firstConnect.body` say `目录大小` where the rest of `indexing.json` says `文件夹大小`,
+  which is the form the `zh` glossary settles on. In `pt`, `indexing.rescan.incompletePreviousScan` says `análise`,
+  which that glossary reserves for a transfer's pre-count, where a drive scan is `varredura`. Both found while
+  translating `indexing.needsFreshScan.afterDisconnect` on 2026-09-16, and left alone to keep that commit to one key.
+  Fix: one consistency pass per language, catalog and glossary together (S).
