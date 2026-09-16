@@ -50,15 +50,15 @@ below is met.
 ## In progress
 
 - [ ] 2026-09-16 `favorites-menu.md` - **Opening a favorite takes a click on the volume switcher, and there's no
-      shortcut** (GitHub #91). ⌘D opens a favorites menu at the switcher's spot: `1`–`9` open a favorite, `0` adds the
+      shortcut** (GitHub #91). ⌃D opens a favorites menu at the switcher's spot: `1`–`9` open a favorite, `0` adds the
       current folder, drag or ⌥↑/⌥↓ reorders, right-click renames or removes. The switcher's Favorites section becomes
-      one "See 12 favorites ⌘D" row that teaches the key. No store or IPC change: the data and interaction layers exist.
-      Along the way the four hand-rolled menus become one house `Menu` (`lib/ui/Menu.svelte` grown, its stale docs
-      rewritten). ⌘D is taken twice today (Duplicate, and the error screen's Technical details), so M2 frees it. Three
-      open questions wait for David: Duplicate's new key (⇧F5 recommended), Technical details' new key (⌘I recommended),
-      and what `0` does on a folder that's already a favorite. Order: M1 primitive → M2 free ⌘D → M3 the menu (ship
-      point) → M4 the switcher on `Menu` and `VolumeBreadcrumb.svelte` split → M5 the last two menus (separable); about
-      four to five agent-days.
+      one "See 12 favorites ⌃D" row that teaches the key. No store or IPC change: the data and interaction layers exist.
+      ⌃D is what TC and DC bind and the only free one of the three candidates, so Duplicate keeps ⌘D and the error
+      screen's Technical details is untouched. The four hand-rolled menus converge on one house `Menu`
+      (`lib/ui/Menu.svelte` grown to everything the volume switcher does plus per-section drag reorder; its stale docs
+      rewritten). Order: M1 the primitive → M2 the switcher ported onto it and `VolumeBreadcrumb.svelte` split, both a
+      pure refactor David QAs before anything else → M3 the favorites menu itself (ship point) → M4 the last two menus
+      (separable); about five agent-days.
 - [ ] 2026-09-14 `eject-and-drive-safety-plan.md` - **Cmdr lets go of a drive before any unmount, survives one that
       vanishes, and names what holds one it can't eject.** M0–M4 landed: moves keep their sources until every
       destination directory is fsynced, real APFS and HFS+ disk images run in the `disk-images` lane, and a removable
