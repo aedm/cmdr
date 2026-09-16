@@ -92,6 +92,27 @@ describe('generateLicenseKey', () => {
     expect(() => base64ToBytes(parts[1])).not.toThrow()
   })
 
+  it('encodes a payload longer than one base64 chunk', async () => {
+    const privateKey = ed.utils.randomSecretKey()
+    const privateKeyHex = bytesToHex(privateKey)
+
+    // Several times the encoder's chunk size, so a wrong chunk boundary corrupts the payload.
+    const organizationName = 'Ácme Corporation '.repeat(3000)
+    const licenseData: LicenseData = {
+      email: 'corp@example.com',
+      transactionId: 'txn_long',
+      issuedAt: '2026-01-08T12:00:00Z',
+      type: 'commercial_subscription',
+      organizationName,
+    }
+
+    const key = await generateLicenseKey(licenseData, privateKeyHex)
+    const [payloadBase64] = key.split('.')
+    const decoded = JSON.parse(base64ToUtf8(payloadBase64)) as LicenseData
+
+    expect(decoded.organizationName).toBe(organizationName)
+  })
+
   it('embeds license data in the payload', async () => {
     const privateKey = ed.utils.randomSecretKey()
     const privateKeyHex = bytesToHex(privateKey)

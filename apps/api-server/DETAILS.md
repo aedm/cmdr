@@ -469,11 +469,38 @@ numbers settle sooner.
 The predicate is proved against a real SQLite (`node:sqlite`, no dependency) in `src/synthetic-heartbeats.test.ts`; the
 statement-shape mock in `src/scheduled.test.ts` can only prove which statements ran.
 
+## Test runtimes
+
+The deployed Worker runs on workerd with `compatibility_date = "2025-01-01"` and NO `compatibility_flags`, so there is
+no `nodejs_compat`: `Buffer`, `process`, and every `node:` module are absent in production. `vitest.config.ts` therefore
+defines two projects, and a test's runtime is a choice:
+
+- **`node`** (default, `environment: 'node'`) runs everything not listed below. Fast, and it has the whole Node standard
+  library, which is exactly why it can't prove anything about production's runtime.
+- **`workerd`** (`vitest.workerd.config.ts`, `@cloudflare/vitest-pool-workers`) runs the files in its exported
+  `workerdTests` list inside workerd, under this Worker's own `wrangler.toml`. Add a file to that list to move it
+  across; `vitest.config.ts` excludes it from the node project automatically.
+
+**The `workerd` project can't catch a Node-only global either.** The pool needs Node APIs to run Vitest itself inside
+workerd, so it force-enables `nodejs_compat_v2` on the test worker whatever the config says: `Buffer` and `process`
+exist there (verified with a probe test on `@cloudflare/vitest-pool-workers` 0.22.0, 2026-09-16). It buys real bindings
+and real Worker semantics, ❌ never runtime-parity proof.
+
+**`src/licensing/production-runtime.test.ts` is the lane that proves parity**, and the only one. Wrangler's
+`createTestHarness` builds `src/index.ts` and runs it in workerd under the real `wrangler.toml`, with test-only secrets
+passed in, so a Node API anywhere along an exercised route throws the way it throws in production. It currently mints
+through `/admin/generate`, the shortest route over the whole signing path. Bring another risky path under it by adding a
+request here rather than by widening the pool project. ❌ Never hand the harness its own compatibility settings.
+
+**How the gap shipped**: `bytesToBase64` called `Buffer.from()`, so every license mint threw in production from the
+first deploy, while a node-project test suite stayed green over it. A build failure would have caught a `node:` import;
+only a real-runtime request catches a Node global.
+
 ## Local development
 
 ```sh
 pnpm dev          # starts wrangler dev server on :8787
-pnpm test         # vitest unit tests
+pnpm test         # vitest unit tests, node + workerd projects
 ```
 
 **Run wrangler from anywhere in the repo.** `wrangler` is a local devDependency, not global. From inside

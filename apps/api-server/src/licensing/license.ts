@@ -87,6 +87,16 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes
 }
 
+/**
+ * ❌ No `Buffer` here: it's a Node global, and the Worker runs without `nodejs_compat`, so it
+ * doesn't exist in production. `btoa` takes one character per byte, in chunks small enough that a
+ * long payload can't blow the argument limit of `String.fromCharCode`.
+ */
 function bytesToBase64(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64')
+  const chunkSize = 8192
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
 }
