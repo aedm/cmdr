@@ -30,6 +30,8 @@ fn sample_manifest() -> BundleManifest {
             max_log_storage_mb: 200,
             error_reports_enabled: false,
             crash_reports_enabled: false,
+            full_disk_access_choice: "unanswered".to_string(),
+            os_full_disk_access: false,
         },
         log_levels: LogLevelSnapshot {
             stdout_default: "info".to_string(),

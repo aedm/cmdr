@@ -283,7 +283,7 @@ describe('migration 5: the archive Enter blob unpacks into one setting per forma
     // Never in the blob (the format wasn't configurable), so it takes its registry default.
     expect(store.getSetting('behavior.archiveEnter.ooxml')).toBe('open')
     expect(disk.has('behavior.archiveEnterBehavior')).toBe(false)
-    expect(disk.get('_schemaVersion')).toBe(5)
+    expect(disk.get('_schemaVersion')).toBe(6)
   })
 
   it('leaves a format the blob never mentioned on its default, with nothing on disk', async () => {
@@ -396,7 +396,7 @@ describe('migration 4: the onboarding keys move into the registry', () => {
     }
     // A run stamps the CURRENT schema version, not the one whose migration did the
     // work, so this number moves with every bump.
-    expect(disk.get('_schemaVersion')).toBe(5)
+    expect(disk.get('_schemaVersion')).toBe(6)
   })
 
   it('survives a re-run: the second launch finds nothing to move and changes nothing', async () => {
@@ -431,5 +431,43 @@ describe('migration 4: the onboarding keys move into the registry', () => {
 
     expect([...disk.keys()]).toEqual([])
     expect(store.getSetting('onboarding.completed')).toBe(false)
+  })
+})
+
+/**
+ * Migration 6 renames the Full Disk Access choice's open state. The old token claimed
+ * nobody had been asked; the wizard actually opens on that step at every launch while it
+ * holds, so the value means the question is open. The name misled a real triage into
+ * reading "onboarding never ran" off a report from someone who had seen the step for days.
+ */
+describe('migration 6: the open FDA state renames to `unanswered`', () => {
+  it('rewrites the old token', async () => {
+    disk.set('onboarding.fullDiskAccessChoice', 'notAskedYet')
+    disk.set('_schemaVersion', 5)
+
+    const store = await loadStore()
+    await store.initializeSettings()
+
+    expect(store.getSetting('onboarding.fullDiskAccessChoice')).toBe('unanswered')
+    expect(disk.get('_schemaVersion')).toBe(6)
+  })
+
+  it('leaves a real answer alone', async () => {
+    disk.set('onboarding.fullDiskAccessChoice', 'deny')
+    disk.set('_schemaVersion', 5)
+
+    const store = await loadStore()
+    await store.initializeSettings()
+
+    expect(store.getSetting('onboarding.fullDiskAccessChoice')).toBe('deny')
+  })
+
+  // Sparse persistence: a fresh install has no file, and a rename must not create one.
+  it('writes nothing on a fresh install', async () => {
+    const store = await loadStore()
+    await store.initializeSettings()
+
+    expect([...disk.keys()]).toEqual([])
+    expect(store.getSetting('onboarding.fullDiskAccessChoice')).toBe('unanswered')
   })
 })

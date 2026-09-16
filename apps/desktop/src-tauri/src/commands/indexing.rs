@@ -218,7 +218,7 @@ pub async fn set_indexing_enabled(app: AppHandle, enabled: bool) -> Result<(), S
 /// generating. The sidebar keeps the icon-less favorites it got during
 /// onboarding; the next listing-driven flow refreshes them naturally.
 ///
-/// At app launch, indexing is skipped when the FDA choice is `NotAskedYet`
+/// At app launch, indexing is skipped when the FDA choice is `Unanswered`
 /// AND the OS reports FDA as not granted (see `should_auto_start_indexing`).
 /// The frontend calls this command after the user clicks "Deny" so the
 /// indexer starts within the same session. The "Allow" path needs no call:

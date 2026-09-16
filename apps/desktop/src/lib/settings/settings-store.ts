@@ -42,7 +42,7 @@ interface SettingChangedPayload {
 // Store Configuration
 // ============================================================================
 
-const SCHEMA_VERSION = 5
+const SCHEMA_VERSION = 6
 
 let storeInstance: Store | null = null
 let saveTimeout: ReturnType<typeof setTimeout> | null = null
@@ -454,6 +454,20 @@ async function migrateSettings(store: Store, fromVersion: number): Promise<void>
 
   if (fromVersion < 5 && (await migrateArchiveEnterBlobIntoPerFormatKeys(store))) {
     changed = true
+  }
+
+  if (fromVersion < 6) {
+    // `onboarding.fullDiskAccessChoice` renamed its open state from `notAskedYet` to
+    // `unanswered`. The old name claimed nobody had been asked, when the wizard opens on
+    // that step at EVERY launch while it holds: the value really means the question is
+    // open. Rust reads the same file at startup and keeps a serde alias for the old
+    // token, so a launch that hasn't run this migration yet still gates correctly.
+    // Idempotent: only rewrites the exact old value.
+    const fdaChoice = await store.get<string>('onboarding.fullDiskAccessChoice')
+    if (fdaChoice === 'notAskedYet') {
+      await store.set('onboarding.fullDiskAccessChoice', 'unanswered')
+      changed = true
+    }
   }
 
   // Persist the version stamp only when this launch has something to write: a

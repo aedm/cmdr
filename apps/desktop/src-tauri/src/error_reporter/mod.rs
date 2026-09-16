@@ -231,6 +231,19 @@ pub struct ResolvedSettings {
     pub max_log_storage_mb: u64,
     pub error_reports_enabled: bool,
     pub crash_reports_enabled: bool,
+    /// The user's answer to the Full Disk Access question: `allow`, `deny`, or
+    /// `unanswered`.
+    ///
+    /// Here because a missing grant changes what a whole class of failures MEANS, and
+    /// reading it used to require grepping `fda_probe` lines out of `logs/cmdr.log` —
+    /// which is exactly what a real triage did, one report at a time. ❗ It's the
+    /// user's ANSWER, not the OS's: `allow` says they clicked Allow, never that macOS
+    /// granted it. `os_full_disk_access` is the other half.
+    pub full_disk_access_choice: String,
+    /// What the OS actually answers right now, which is the half that decides behavior.
+    /// Together with the choice above it separates "never answered" from "said yes and
+    /// never finished in System Settings" from "granted, look elsewhere".
+    pub os_full_disk_access: bool,
 }
 
 impl ResolvedSettings {
@@ -276,12 +289,21 @@ impl ResolvedSettings {
                 .crash_reports_enabled
                 .or_else(|| settings_defaults::lookup_bool("updates.crashReports"))
                 .unwrap_or(false),
+            full_disk_access_choice: match s.full_disk_access_choice {
+                crate::settings::loader::FullDiskAccessChoice::Allow => "allow".to_string(),
+                crate::settings::loader::FullDiskAccessChoice::Deny => "deny".to_string(),
+                crate::settings::loader::FullDiskAccessChoice::Unanswered => "unanswered".to_string(),
+            },
+            // The QUIET probe: a report bundle must never be the thing that raises a TCC
+            // popup at someone already dealing with a problem.
+            os_full_disk_access: crate::permissions::check_full_disk_access_quiet(),
         }
     }
 }
 
 /// Metadata written into `manifest.json` at the root of the bundle.
-/// Mirrors the shape expected by `apps/api-server/src/error-report.ts`'s `ErrorReportMeta`.
+/// Mirrors the shape expected by `apps/api-server/src/telemetry/error-report.ts`'s
+/// `ErrorReportMeta`.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BundleManifest {

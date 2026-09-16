@@ -125,7 +125,7 @@ beforeEach(() => {
   mocks.isForceOnboarding.mockResolvedValue(false)
   mocks.checkFullDiskAccess.mockResolvedValue(false)
   stored = {
-    choice: 'notAskedYet',
+    choice: 'unanswered',
     onboarded: false,
     nudgeShown: false,
     oldMacosNoticeShown: false,
@@ -252,7 +252,7 @@ describe('resolveOnboardingMount', () => {
   })
 
   it.each([
-    ['notAskedYet', false],
+    ['unanswered', false],
     ['allow', false],
     ['allow', true],
     ['deny', false],
@@ -271,7 +271,7 @@ describe('resolveOnboardingMount', () => {
   })
 
   it('reveals the app shell on every branch, so no launch can strand the user on a blank window', async () => {
-    for (const choice of ['notAskedYet', 'allow', 'deny'] as const) {
+    for (const choice of ['unanswered', 'allow', 'deny'] as const) {
       for (const onboarded of [false, true]) {
         for (const hasFda of [false, true]) {
           appShown = false

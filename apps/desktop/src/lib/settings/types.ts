@@ -245,11 +245,18 @@ export type NetworkTimeoutMode = 'normal' | 'slow' | 'custom'
 export type ThemeMode = 'light' | 'dark' | 'system'
 /**
  * The user's answer to the Full Disk Access step: `allow` if they clicked "Open System
- * Settings" (presumably granted), `deny` if they declined, `notAskedYet` before the prompt
- * has been shown. Rust reads the persisted value at startup (`settings/loader.rs`), so the
- * three tokens are a wire contract, not just a frontend enum.
+ * Settings" (presumably granted), `deny` if they declined, `unanswered` while the question
+ * is still open.
+ *
+ * ❗ `unanswered` does NOT mean "we haven't asked". The wizard opens on the FDA step at
+ * every launch while it holds, so someone can meet the question daily for a week and still
+ * be here. It was called `notAskedYet`, and that name cost real triage time.
+ *
+ * Rust reads the persisted value at startup (`settings/loader.rs`), so the three tokens are
+ * a wire contract, not just a frontend enum. Schema migration 6 renames the old token on
+ * disk; the Rust side keeps a serde alias for it, since it reads the file first.
  */
-export type FullDiskAccessChoice = 'allow' | 'deny' | 'notAskedYet'
+export type FullDiskAccessChoice = 'allow' | 'deny' | 'unanswered'
 export type ExtensionChangePolicy = 'yes' | 'no' | 'ask'
 /** What ⌘V does in a pane when the clipboard holds no file URLs but has pasteable content (text, image, PDF). */
 export type PasteClipboardAsFileMode = 'doNothing' | 'createFile' | 'createFileAndRename'

@@ -17,9 +17,20 @@ pub enum FullDiskAccessChoice {
     Allow,
     /// User clicked "Deny" - don't ask again
     Deny,
-    /// First launch, haven't shown prompt yet
+    /// The question is open: nobody has clicked Allow or Deny.
+    ///
+    /// ❗ It does NOT mean "we haven't asked". The wizard opens on step 1 at every
+    /// launch while this is the value, so someone can meet the question daily for a
+    /// week and still be here. It was called `NotAskedYet`, and that name cost real
+    /// triage time: a field report reading "FDA choice: NotAskedYet" was taken to mean
+    /// onboarding had never run, when the user had seen and left the step many times.
+    ///
+    /// `alias` keeps reading the old token: it is the persisted value in every
+    /// `settings.json` written before the rename, and Rust reads that file at startup,
+    /// before the frontend migration can run.
     #[default]
-    NotAskedYet,
+    #[serde(alias = "notAskedYet")]
+    Unanswered,
 }
 
 /// User settings structure, matching the frontend settings-store.ts
@@ -191,7 +202,7 @@ impl Default for Settings {
         Self {
             show_hidden_files: DEFAULT_SHOW_HIDDEN_FILES,
             appearance_language: None,
-            full_disk_access_choice: FullDiskAccessChoice::NotAskedYet,
+            full_disk_access_choice: FullDiskAccessChoice::Unanswered,
             developer_mcp_enabled: None,
             developer_mcp_port: None,
             indexing_enabled: None,
@@ -268,7 +279,7 @@ fn parse_settings(contents: &str) -> Result<Settings, serde_json::Error> {
     // The registry key, falling back to the pre-migration top-level name. The frontend's
     // schema-4 migration moves the value, but Rust reads `settings.json` at startup,
     // BEFORE any frontend code runs: without this fallback the very launch that performs
-    // the migration would read `NotAskedYet` and close the FDA gate on someone who already
+    // the migration would read `Unanswered` and close the FDA gate on someone who already
     // answered Deny, skipping drive indexing and the Downloads watcher for that launch.
     let full_disk_access_choice = json
         .get("onboarding.fullDiskAccessChoice")
