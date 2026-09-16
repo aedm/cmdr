@@ -820,9 +820,9 @@ not a row is checked), the icon column at `--spacing-icon-size`, the label, and 
 uppercase `--font-size-sm` tertiary text; separators are a `--color-border-strong` hairline. An empty section shows its
 own italic tertiary placeholder rather than vanishing.
 
-**Accelerators:** a row may carry a single character that both shows and activates it (`1`–`9` for a numbered list,
-`0` for its action row). It sits in its own 14px column LEFT of the checkmark, a plain `--color-text-tertiary` digit at
-the row's own size, with no keycap frame: it's a hint on a row the user is already reading, not a control. The column
+**Accelerators:** a row may carry a single character that both shows and activates it (`1`–`9` for a numbered list, `0`
+for its action row). It sits in its own 14px column LEFT of the checkmark, a plain `--color-text-tertiary` digit at the
+row's own size, with no keycap frame: it's a hint on a row the user is already reading, not a control. The column
 appears only in a menu that uses it, and every row there reserves it, so the labels stay in one line.
 
 **One cursor at a time:** the highlight is the `--color-accent-subtle` wash (the volume switcher's, deliberately not a

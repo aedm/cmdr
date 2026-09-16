@@ -845,9 +845,8 @@ state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isE
 `Menu.svelte`'s own wiring (hover, drag, submenu, row measurement); consumers never touch it.
 
 **Snippets decorate, they don't re-implement.** The default row (accelerator column, checkmark column, icon, label) is
-there; `label`
-replaces the row's text (an inline rename field), `trailing` fills its right end (badges, an eject button), `below` adds
-a sub-line (the disk-space bar), and `footer` sits under the last section. Each takes one
+there; `label` replaces the row's text (an inline rename field), `trailing` fills its right end (badges, an eject
+button), `below` adds a sub-line (the disk-space bar), and `footer` sits under the last section. Each takes one
 `MenuRowContext = { item, section, index, highlighted, dragging }`.
 
 **What the primitive owns**:

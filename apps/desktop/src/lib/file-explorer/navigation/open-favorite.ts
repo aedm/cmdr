@@ -49,7 +49,11 @@ export interface OpenFavoriteArgs<T> {
   go: (target: VolumeChangePayload) => T
 }
 
-export async function openFavorite<T>({ favoritePath, picked, go }: OpenFavoriteArgs<T>): Promise<OpenFavoriteResult<T>> {
+export async function openFavorite<T>({
+  favoritePath,
+  picked,
+  go,
+}: OpenFavoriteArgs<T>): Promise<OpenFavoriteResult<T>> {
   const { volume: containingVolume, timedOut } = await resolvePathVolume(favoritePath)
   if (!containingVolume) {
     log.warn('Favorite points at a path no volume claims, so the pane stays put: {path} (timedOut: {timedOut})', {

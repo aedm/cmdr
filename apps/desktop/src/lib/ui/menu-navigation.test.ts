@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { acceleratorChar, itemByAccelerator, menuKeyAction, navigableValues, nextValue, sectionOf } from './menu-navigation'
+import {
+  acceleratorChar,
+  itemByAccelerator,
+  menuKeyAction,
+  navigableValues,
+  nextValue,
+  sectionOf,
+} from './menu-navigation'
 import type { MenuSection } from './menu-types'
 
 /** Three sections: a reorderable one, a plain one holding a disabled row, and an empty one. */
