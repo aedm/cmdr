@@ -78,7 +78,7 @@ function bindings(params: { rows?: LedgerRow[]; kvPages?: string[][]; token?: st
 async function listLicenses(params: Parameters<typeof bindings>[0] = {}): Promise<LicenseListing> {
   const response = await app.request('/admin/licenses', { headers: authHeaders }, bindings(params))
   expect(response.status).toBe(200)
-  return (await response.json())
+  return await response.json()
 }
 
 describe('GET /admin/licenses', () => {

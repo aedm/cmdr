@@ -68,10 +68,7 @@ adminLicenses.get('/admin/licenses', async (c) => {
   const unauthorized = verifyAdminAuth(c)
   if (unauthorized) return unauthorized
 
-  const [ledger, codesInKv] = await Promise.all([
-    listLedger(c.env.TELEMETRY_DB),
-    listShortCodes(c.env.LICENSE_CODES),
-  ])
+  const [ledger, codesInKv] = await Promise.all([listLedger(c.env.TELEMETRY_DB), listShortCodes(c.env.LICENSE_CODES)])
 
   const now = Date.now()
   const licenses = ledger.map((entry) => ({ ...entry, state: classifyLedgerEntry(entry, now) }))

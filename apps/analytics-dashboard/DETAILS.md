@@ -50,8 +50,8 @@ range on `/product` stays on `/product`. It's hidden on the two ledger pages, li
 The funnel is always 30 days (`fetchFunnelData` ignores the selection); it's still gated on the worker admin token, with
 Umami and Paddle degrading to dashes inside. It needs no env vars of its own, reusing the worker admin token, the Umami
 credentials, and the Paddle key already present (Listmonk signups arrive via the api-server, so no Listmonk secret
-reaches the dashboard). Each source returns `SourceResult<T>` (ok+data, or an error string the UI
-shows as "Couldn't load this data").
+reaches the dashboard). Each source returns `SourceResult<T>` (ok+data, or an error string the UI shows as "Couldn't
+load this data").
 
 `AcquisitionData` also carries `umamiSiteUrls`, which is **config, not a source**: the per-site Umami dashboard deep
 links, built from the `UMAMI_*_WEBSITE_ID` env vars so the IDs live in exactly one place instead of being hardcoded in a
@@ -105,11 +105,11 @@ knows only about the one license in front of it. The api-server owns the contrac
 - ❌ **No label may imply a Paddle subscription is still running.** `active` on a `paddle` row means we fulfilled the
   purchase, nothing more, so the badge reads "Issued" and the section caveat says to check Paddle before treating it as
   still paying. A unit test asserts no state label contains "active" or "subscription". Same reason an empty expiry
-  reads "Never" only for a hand-issued license: a purchase's end date lives in Paddle and we don't hold it, so it gets
-  a dash.
+  reads "Never" only for a hand-issued license: a purchase's end date lives in Paddle and we don't hold it, so it gets a
+  dash.
 - **The attention panel leads the page**, above the table, whenever `summarizeLicenses` reports an `undelivered` row
-  (minted, never emailed: someone paid and is waiting), an `unfinished` one (claimed, never minted, which is the shape
-  a died delivery leaves), an orphan code, or a missing one. Otherwise it collapses to one quiet line, so an all-clear
+  (minted, never emailed: someone paid and is waiting), an `unfinished` one (claimed, never minted, which is the shape a
+  died delivery leaves), an orphan code, or a missing one. Otherwise it collapses to one quiet line, so an all-clear
   reads as deliberate rather than as a page that failed to load. A failed load renders the error and nothing else: "no
   licenses" and "couldn't ask" are opposite answers, and the second must never pass for an all-clear.
 - **No caching**, for the `/links` reason: the page is opened mid-delivery or right after handing a license out, and a

@@ -510,13 +510,13 @@ validation, revocation) and `webhook-runtime.test.ts` (`/webhook/paddle`, the ro
 Bring another risky path under it by adding a request rather than by widening the pool project. ❌ Never hand the
 harness its own compatibility settings.
 
-**Stub an upstream at the socket, never in the source.** The harness points the Worker's global `fetch` at this
-process (`outboundService: (request) => globalThis.fetch(request.url, request)`), so replacing `globalThis.fetch` in a
-test intercepts every outbound request the Worker makes with the route, the SDK, and the runtime untouched. That is how
+**Stub an upstream at the socket, never in the source.** The harness points the Worker's global `fetch` at this process
+(`outboundService: (request) => globalThis.fetch(request.url, request)`), so replacing `globalThis.fetch` in a test
+intercepts every outbound request the Worker makes with the route, the SDK, and the runtime untouched. That is how
 `webhook-runtime.test.ts` answers for Paddle and Resend; `applyD1Migrations('TELEMETRY_DB')` on the worker handle gives
-it the real schema. Two gotchas (verified on wrangler 4.107.1, 2026-09-16): the intercepted request arrives as the
-INIT argument, not the input, and it's undici's internal `Request` class, so `init instanceof Request` reads false in
-the test's realm and silently yields an empty body. Duck-type on `text()`. Requests the harness itself makes don't pass
+it the real schema. Two gotchas (verified on wrangler 4.107.1, 2026-09-16): the intercepted request arrives as the INIT
+argument, not the input, and it's undici's internal `Request` class, so `init instanceof Request` reads false in the
+test's realm and silently yields an empty body. Duck-type on `text()`. Requests the harness itself makes don't pass
 through this stub, so an unstubbed host can safely fail loudly instead of reaching the internet.
 
 **How the gap shipped**: `bytesToBase64` called `Buffer.from()`, so every license mint threw in production from the
