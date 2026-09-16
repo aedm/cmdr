@@ -6576,6 +6576,11 @@ export type EjectStep =
    *  Linux mount list).
    */
   | 'ejectabilityCheck'
+  /**
+   *  Working out which physical disk the volume sits on, and which of its volumes
+   *  the eject takes down with it.
+   */
+  | 'diskResolve'
   // Stopping the drive's index, which must finish before any unmount runs.
   | 'indexStop'
 
