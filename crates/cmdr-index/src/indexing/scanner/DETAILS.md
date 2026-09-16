@@ -65,9 +65,20 @@ children, and ancestors (critical for Docker E2E performance).
 
 - **`Volume`** — the whole volume. The root maps to `ROOT_ID` whatever its path is, `seed_current_epoch` runs on a WRITE
   connection, and the per-child exclusion gate applies.
-- **`Rebuild`** — a subtree the index already holds, rebuilt from scratch. Sends `DeleteDescendantsById(root_id)` first,
-  then re-inserts every child under fresh ids. What `scan_subtree` is, and what the verifier and FSEvents verification
-  want: they've just decided the index's picture of that subtree is wrong.
+- **`Rebuild`** — a subtree the index already holds, rebuilt from scratch: `DeleteDescendantsById(root_id)` clears the
+  ground, then every child is re-inserted under fresh ids. What `scan_subtree` is, and what the verifier and FSEvents
+  verification want: they've just decided the index's picture of that subtree is wrong.
+
+  ⚠️ **The visitor sends that delete from inside the ROOT's own `visit_dir`, ❌ never ahead of the walk.** It is earned by
+  reading the root — it makes room for the rows the walk is about to write — so a walk that writes nothing destroys
+  nothing: a root that can't be read reaches `visit_read_error`, which sends no delete, and the subtree it was going to
+  replace survives. Sent from the scan driver instead, a failed root read emptied the subtree and then left it empty for
+  good. It goes out before the root's first row and from the same thread, so the writer's in-order channel carries it
+  ahead of every batch the walk then sends; a delete sent after the walk started would interleave with the visitor's
+  insert batches and reap rows the walk had just written. Pinned by
+  `tests::a_rebuild_whose_root_read_fails_keeps_the_subtree`, its control
+  `tests::a_rebuild_of_a_readable_root_still_drops_what_is_gone`, and
+  `tests::a_subtree_scan_cancelled_before_it_reads_destroys_nothing`.
 - **`Virgin`** — a coverage frontier node, walked by `cover_subtree` for a search. ❌ Deletes NOTHING.
 
 This walker covers a frontier node only when the volume's ground is a local filesystem. Everything the index reaches

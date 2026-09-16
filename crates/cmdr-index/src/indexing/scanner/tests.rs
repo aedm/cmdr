@@ -8,6 +8,105 @@ use crate::indexing::store::{self, IndexStore, ROOT_ID, ScanContext};
 use cmdr_fs::firmlinks;
 use std::fs;
 
+// ── A rebuild only deletes what it is about to replace ───────────────
+
+/// The names the index holds under `path`.
+fn indexed_children_of(db_path: &Path, path: &str) -> Vec<String> {
+    let conn = IndexStore::open_read_connection(db_path).expect("read connection");
+    let Some(id) = store::resolve_path(&conn, path).expect("resolve") else {
+        return Vec::new();
+    };
+    let mut names: Vec<String> = IndexStore::list_children_on(id, &conn)
+        .expect("list children")
+        .into_iter()
+        .map(|row| row.name)
+        .collect();
+    names.sort();
+    names
+}
+
+/// Index `sub`'s two files, then hand the caller a rebuild of a root that is no
+/// longer readable. Reports what the index still holds under it.
+fn rebuild_a_root_that_went_away() -> Vec<String> {
+    let dir = scan_test_tempdir();
+    let sub = dir.path().join("subdir");
+    fs::create_dir_all(&sub).unwrap();
+    fs::write(sub.join("one.txt"), "one").unwrap();
+    fs::write(sub.join("two.txt"), "two").unwrap();
+
+    let (writer, db_path, _db_dir) = setup_writer();
+    ensure_path_in_db(&db_path, &sub, &writer);
+    let space = IndexPathSpace::root();
+    let work = VolumeWork::for_test("rebuild-gate-test");
+    let sub_str = sub.to_string_lossy().to_string();
+
+    scan_subtree(&sub, &space, &writer, &work).expect("the first rebuild walks");
+    writer.flush_blocking().unwrap();
+    assert_eq!(
+        indexed_children_of(&db_path, &sub_str),
+        vec!["one.txt".to_string(), "two.txt".to_string()],
+        "precondition: both files are indexed"
+    );
+
+    // The root stops being readable. Its row stays in the index, so the scan still
+    // resolves it and still means to rebuild it — it just can't read a thing.
+    fs::remove_dir_all(&sub).unwrap();
+    let _ = scan_subtree(&sub, &space, &writer, &work);
+    writer.flush_blocking().unwrap();
+    let names = indexed_children_of(&db_path, &sub_str);
+    writer.shutdown();
+    names
+}
+
+/// A rebuild whose ROOT read fails keeps the subtree it was going to replace.
+///
+/// `DeleteDescendantsById` is the one destructive thing a `Rebuild` walk does, and
+/// it is only earned by actually reading the root: the delete exists to make room
+/// for the rows the walk is about to write, so a walk that writes nothing must
+/// destroy nothing. Sent ahead of the walk instead, it empties the subtree and the
+/// failed read then leaves it empty for good.
+#[test]
+fn a_rebuild_whose_root_read_fails_keeps_the_subtree() {
+    assert_eq!(
+        rebuild_a_root_that_went_away(),
+        vec!["one.txt".to_string(), "two.txt".to_string()],
+        "the walk read nothing, so it may replace nothing"
+    );
+}
+
+/// The control: on a root it CAN read, a rebuild still replaces what it finds, so
+/// a file that really went away is really gone. Without this, never deleting at all
+/// would satisfy the test above.
+#[test]
+fn a_rebuild_of_a_readable_root_still_drops_what_is_gone() {
+    let dir = scan_test_tempdir();
+    let sub = dir.path().join("subdir");
+    fs::create_dir_all(&sub).unwrap();
+    fs::write(sub.join("kept.txt"), "kept").unwrap();
+    fs::write(sub.join("removed.txt"), "removed").unwrap();
+
+    let (writer, db_path, _db_dir) = setup_writer();
+    ensure_path_in_db(&db_path, &sub, &writer);
+    let space = IndexPathSpace::root();
+    let work = VolumeWork::for_test("rebuild-gate-test");
+    let sub_str = sub.to_string_lossy().to_string();
+
+    scan_subtree(&sub, &space, &writer, &work).expect("the first rebuild walks");
+    writer.flush_blocking().unwrap();
+
+    fs::remove_file(sub.join("removed.txt")).unwrap();
+    scan_subtree(&sub, &space, &writer, &work).expect("the second rebuild walks");
+    writer.flush_blocking().unwrap();
+
+    let names = indexed_children_of(&db_path, &sub_str);
+    writer.shutdown();
+    assert_eq!(
+        names,
+        vec!["kept.txt".to_string()],
+        "a readable rebuild still replaces the subtree, so the removed file is gone"
+    );
+}
+
 #[test]
 #[cfg(target_os = "macos")]
 fn should_exclude_system_volumes() {
@@ -360,12 +459,20 @@ fn scan_subtree_only() {
     assert_eq!(children.len(), 2, "subdir should have 2 children: nested.txt, deep");
 }
 
-/// Data safety on the cancel path: `scan_subtree` deletes the subtree's existing
-/// descendants BEFORE walking, so bailing out on a cancel without the aggregate
-/// would leave the ancestors claiming sizes for rows that no longer exist. The
-/// typed `Cancelled` must therefore arrive AFTER the repair, not instead of it.
+/// Data safety on the cancel path: a subtree rebuild stopped before it read its
+/// root destroys nothing.
+///
+/// The rebuild's `DeleteDescendantsById` is sent from inside the ROOT's own
+/// `visit_dir`, so a walk cancelled before that read never sends it: the subtree it
+/// was going to replace is still there, and its ancestors' sizes are still honest.
+///
+/// ⚠️ A walk that DID read its root has sent that delete, and for that case the
+/// post-walk `ComputeSubtreeAggregates` in `walk_subtree` still runs on the cancel
+/// path — bailing straight to the typed `Cancelled` would leave the ancestors
+/// claiming sizes for rows that no longer exist. Reaching that case from a test
+/// needs the walker's park point, so what is pinned here is the pre-read half.
 #[test]
-fn a_cancelled_subtree_scan_still_repairs_its_ancestors() {
+fn a_subtree_scan_cancelled_before_it_reads_destroys_nothing() {
     let scan_root = scan_test_tempdir();
     create_test_tree(scan_root.path());
 
@@ -416,14 +523,14 @@ fn a_cancelled_subtree_scan_still_repairs_its_ancestors() {
     let store = IndexStore::open(&db_path).unwrap();
     let conn = store.read_conn();
     assert!(
-        store.list_children(subtree_id).unwrap().is_empty(),
-        "the pre-walk delete ran, so the subtree is empty"
+        !store.list_children(subtree_id).unwrap().is_empty(),
+        "the walk never read the root, so it may not have replaced the subtree"
     );
     let stats = IndexStore::get_dir_stats_by_id(conn, subtree_id).expect("read dir_stats");
     assert_eq!(
         stats.map(|s| s.recursive_file_count),
-        Some(0),
-        "the aggregate must run on the cancel path too, or the ancestors keep sizes for deleted rows"
+        Some(2),
+        "and the ancestors' sizes still describe rows that are really there"
     );
 }
 

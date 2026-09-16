@@ -695,8 +695,9 @@ pub(in crate::indexing) fn cover_subtree(
 /// what the walk learned and repair the ancestors it changed.
 ///
 /// ❌ The post-walk sequence runs on the CANCEL path too, which is why the
-/// outcome only becomes a `Result` afterwards. A `Rebuild` has already sent the
-/// destructive `DeleteDescendantsById`, so bailing early would strand a
+/// outcome only becomes a `Result` afterwards. A `Rebuild` that got as far as
+/// reading its root has sent the destructive `DeleteDescendantsById` from inside
+/// that read, so bailing early would strand a
 /// half-rebuilt subtree with stale ancestors; a `Virgin` walk has partial
 /// coverage worth keeping, and an aggregate is what turns it into the honest
 /// "≥" sizes a listing shows.
@@ -817,14 +818,18 @@ fn run_scan(
         (root_id, epoch)
     };
 
-    // A REBUILD deletes existing descendants first (it re-inserts fresh children);
-    // the subtree root entry itself is preserved. ❌ A `Virgin` walk deletes
-    // nothing — see [`ScanRoot::Virgin`], it may only add.
-    if mode == ScanRoot::Rebuild {
-        writer
-            .send(WriteMessage::DeleteDescendantsById(root_id))
-            .map_err(|e| ScanError::WriterSend(e.to_string()))?;
-    }
+    // A REBUILD deletes existing descendants because it re-inserts fresh children;
+    // the subtree root entry itself is preserved. ❌ A `Virgin` walk deletes nothing
+    // — see [`ScanRoot::Virgin`], it may only add.
+    //
+    // ⚠️ **The visitor sends it, from inside the root's own `visit_dir`, ❌ never
+    // from here.** The delete is earned by actually reading the root: it makes room
+    // for rows the walk is about to write, so a walk that writes nothing must destroy
+    // nothing. Sent ahead of the walk, a root that couldn't be read emptied the
+    // subtree and then left it empty for good
+    // (`tests::a_rebuild_whose_root_read_fails_keeps_the_subtree`). A failed root read
+    // reaches `visit_read_error` instead, which sends no delete.
+    let rebuild_root_id = (mode == ScanRoot::Rebuild).then_some(root_id);
 
     // A CHILD of the scan's work: cancelling the parent stops the walk, and the
     // visitor can stop the walk on a writer-send failure WITHOUT that reading as
@@ -841,6 +846,7 @@ fn run_scan(
         walk_work.cancel.clone(),
         epoch,
         emit,
+        rebuild_root_id,
     ));
 
     // Watchdog ticks faster than the timeout (production 15s → 1s; a short test

@@ -100,6 +100,12 @@ pub(super) struct InsertVisitor {
     /// Directories this walk couldn't read, by cause, so the frontier stops
     /// offering them on every later search.
     unreadable_ids: Mutex<UnreadableIds>,
+    /// The id of a `Rebuild` walk's root, or `None` on every other walk.
+    ///
+    /// Its descendants are deleted from inside that root's own `visit_dir`, so the
+    /// delete is earned by reading the root rather than assumed before the walk. See
+    /// the field's use below.
+    rebuild_root_id: Option<i64>,
 }
 
 /// The ids one walk condemned, split by the sentence they turn into.
@@ -133,9 +139,11 @@ impl InsertVisitor {
         walk_cancel: CancellationToken,
         epoch: u64,
         emit: Option<EntrySender>,
+        rebuild_root_id: Option<i64>,
     ) -> Self {
         let next_id = Arc::clone(writer.next_id());
         Self {
+            rebuild_root_id,
             writer,
             next_id,
             policy,
@@ -259,6 +267,23 @@ impl InsertVisitor {
 
 impl DirVisitor for InsertVisitor {
     fn visit_dir(&self, dir: &DirTask, children: Vec<RawDirEntry>) -> Vec<DirTask> {
+        // A REBUILD clears the ground it is about to re-insert, and it does that HERE
+        // — the root's read has just succeeded, and nothing of this walk's has been
+        // pushed yet.
+        //
+        // ⚠️ **Before the first row, and from this thread**, so the writer's in-order
+        // channel carries the delete ahead of every batch the walk goes on to send.
+        // A delete sent from the scan driver after the walk started would interleave
+        // with the visitor's inserts and reap rows this walk had just written.
+        // ❌ Never move it back ahead of the walk: a root that can't be read then
+        // empties its subtree and leaves it empty, which is what
+        // `tests::a_rebuild_whose_root_read_fails_keeps_the_subtree` pins.
+        if self.rebuild_root_id == Some(dir.id)
+            && let Err(e) = self.writer.send(WriteMessage::DeleteDescendantsById(dir.id))
+        {
+            log::warn!("Scanner: failed to send DeleteDescendantsById for the rebuild root: {e}");
+        }
+
         // This directory's read succeeded → mark it listed, with the next flush.
         // Its own row was written by its PARENT's `visit_dir`, so it is already in
         // `rows` or in a batch the writer has: appending here can never overtake

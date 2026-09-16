@@ -414,8 +414,8 @@ fn a_frontier_node_can_hold_a_listed_descendant() {
 /// The data-safety anchor: covering a frontier node must never remove a row it
 /// did not write.
 ///
-/// `scan_subtree` opens with `DeleteDescendantsById(root)` because it rebuilds a
-/// subtree it already indexed. A search-driven walk is the opposite case — it is
+/// `scan_subtree` deletes the root's descendants as it reads that root, because it
+/// rebuilds a subtree it already indexed. A search-driven walk is the opposite case — it is
 /// handed ground the index has no claim on — so the same delete would throw away
 /// whatever a verification pass or an earlier interrupted walk had already
 /// learned, and leave the index worse than it found it.
