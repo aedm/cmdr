@@ -2506,9 +2506,6 @@ Nguồn: kho tham chiếu KHÔNG có trên máy này (hộp M1). Mọi dẫn ch�
   `fileExplorer.navigation.networkVolume` = `Máy chủ`. Dấu nháy quanh `{command}` là nháy kép cong “…” theo `style.md`,
   không phải `"` thẳng của bản tiếng Anh. Câu cuối viết rõ chủ ngữ `Máy chủ` thay vì "It" trần, vì một `Nó vẫn nằm…` có
   thể đọc thành cái nhóm chứ không phải máy chủ vừa bỏ ghim.
-- **`servers.pinHint.favorites` → `Mục ưa thích cũng làm tương tự.`** · `Mục ưa thích` lấy đúng tên nhóm trong bộ chọn
-  (`fileExplorer.navigation.groupFavorites`). `làm tương tự` giữ đúng nghĩa "cùng một cách làm" mà không phải nhắc lại
-  cả thao tác.
 - **`settings.behavior.serversPinHintSeen.*` đi theo khuôn của cặp chị em đã ship**
   (`settings.behavior.openTerminalHereToastSeen.label` = `Đã hiện gợi ý về “Mở terminal tại đây”` / `.description` =
   `Gợi ý một lần về việc chọn ứng dụng terminal đã hiện hay chưa.`), nên nhãn là `Đã hiện gợi ý về nhóm Mạng dài` và mô

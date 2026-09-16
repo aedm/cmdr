@@ -392,10 +392,11 @@ quit with the toast still up.
 
 A pure `should-show-*.ts` decision function with unit tests, plus a `*ToastContent.svelte`:
 
-- `apps/desktop/src/lib/file-explorer/navigation/should-show-pin-hint.ts` + `.test.ts` — exports the thresholds as named
-  consts, an inputs interface, an output interface, and one total function returning `null` for silence.
-- `apps/desktop/src/lib/file-explorer/navigation/ServersPinHintToastContent.svelte` — title / body / optional extra line
-  / a "Got it" `Button size="mini" variant="primary"` that calls `dismissToast(toastId)`.
+- `apps/desktop/src/lib/file-explorer/navigation/should-show-pin-hint.ts` + `.test.ts` — exports the threshold as a
+  named const, an inputs interface, and one total function. Where a hint has something to SAY beyond yes/no, return an
+  output interface with `null` for silence instead.
+- `apps/desktop/src/lib/file-explorer/navigation/ServersPinHintToastContent.svelte` — title / body / a "Got it"
+  `Button size="mini" variant="primary"` that calls `dismissToast(toastId)`.
 - `apps/desktop/src/lib/open-terminal/OpenTerminalHintToastContent.svelte` — the sibling in a module that also owns a
   `CLAUDE.md` + `DETAILS.md` pair, plus an `open-terminal-toasts.a11y.test.ts`. **Every toast-content component in this
   repo has an `.a11y.test.ts`** — write one (`desktop-svelte-a11y-coverage` has an allowlist and you should not touch

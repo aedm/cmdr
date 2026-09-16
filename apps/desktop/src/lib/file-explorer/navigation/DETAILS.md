@@ -701,12 +701,13 @@ how the two drift.
 
 Pins are the user's own cap on how long the Network group gets, so the app says once, at five, that the cap is theirs to
 move: a persistent INFO toast (`ServersPinHintToastContent.svelte`) naming the row's Unpin item and the palette's "Pin /
-unpin server", promising the server stays in the Servers list, plus one line about favorites when the user has three or
-more of those. "Got it" dismisses it; `behavior.serversPinHintSeen` (hidden, FE-owned) is what makes it once-ever.
+unpin server", and promising the server stays in the Servers list. "Got it" dismisses it; `behavior.serversPinHintSeen`
+(hidden, FE-owned) is what makes it once-ever. It speaks about SERVERS only: favorites live in their own menu (⌃D) and
+are removed from there, so the switcher's unpin has nothing to say about them.
 
-- **The decision is pure** (`should-show-pin-hint.ts`: at least five pins, the seen flag, three favorites adds the
-  line). ❗ "At least five", ❌ not "the fifth just landed": nothing records last launch's count, and a person whose
-  list was already long is exactly who the hint is for. The flag is what keeps it from nagging.
+- **The decision is pure** (`should-show-pin-hint.ts`: at least five pins, and the seen flag). ❗ "At least five", ❌
+  not "the fifth just landed": nothing records last launch's count, and a person whose list was already long is exactly
+  who the hint is for. The flag is what keeps it from nagging.
 - **It is raised from `$lib/stores/volume-store`**, where the published list lands, because that is the ONE place every
   pin reaches whatever moved it: the hub, the row menu, the palette, or a first connect (which auto-pins). ❌ Not from a
   component: the group is rendered by two breadcrumbs, and a hint tied to one of them would fire twice or not at all.

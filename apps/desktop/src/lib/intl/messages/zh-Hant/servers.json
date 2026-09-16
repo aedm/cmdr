@@ -11,10 +11,6 @@
   "@servers.pinHint.body": {
     "sourceHash": "0663b02"
   },
-  "servers.pinHint.favorites": "「喜好項目」也是同樣的做法。",
-  "@servers.pinHint.favorites": {
-    "sourceHash": "932faeb"
-  },
   "servers.pinHint.gotIt": "知道了",
   "@servers.pinHint.gotIt": {
     "sourceHash": "5ad3dbd"

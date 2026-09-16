@@ -15,10 +15,6 @@
       "command": "the name of the command palette entry that pins or unpins a server, already translated"
     }
   },
-  "servers.pinHint.favorites": "Favorites work the same way.",
-  "@servers.pinHint.favorites": {
-    "description": "One extra line in that notification, added only when the user also has three or more favorites: favorites can be taken out of the switcher the same way servers can. \"Favorites\" is the switcher group holding folders the user saved."
-  },
   "servers.pinHint.gotIt": "Got it",
   "@servers.pinHint.gotIt": {
     "description": "VERB phrase (imperative), the button that dismisses the notification. Casual acknowledgement, the way a person says \"understood\" and moves on. Two or three words at most."

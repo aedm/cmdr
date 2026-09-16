@@ -328,23 +328,12 @@ describe('VolumeBreadcrumb a11y', () => {
   })
 })
 
-/**
- * Tier 3 a11y for `ServersPinHintToastContent.svelte`, in both shapes: the
- * favorites line is an extra paragraph, so it is its own mount.
- */
+/** Tier 3 a11y for `ServersPinHintToastContent.svelte`. */
 describe('ServersPinHintToastContent a11y', () => {
   it('has no a11y violations', async () => {
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(ServersPinHintToastContent, { target, props: { toastId: 'pin-hint', mentionFavorites: false } })
-    await tick()
-    await expectNoA11yViolations(target)
-  })
-
-  it('has no a11y violations with the favorites line', async () => {
-    const target = document.createElement('div')
-    document.body.appendChild(target)
-    mount(ServersPinHintToastContent, { target, props: { toastId: 'pin-hint', mentionFavorites: true } })
+    mount(ServersPinHintToastContent, { target, props: { toastId: 'pin-hint' } })
     await tick()
     await expectNoA11yViolations(target)
   })
