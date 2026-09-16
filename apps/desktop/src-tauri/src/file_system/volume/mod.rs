@@ -26,6 +26,11 @@ pub(crate) mod drive_release;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 pub mod eject;
 pub(crate) mod manager;
+// The one way a mount becomes a registered volume, shared by the startup sweep,
+// the mount watcher, and the listing's last-chance adoption. macOS and Linux
+// only: both reach their platform mount table through it.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+pub(crate) mod mount_registration;
 pub mod reconnect_error;
 
 pub use backends::LocalPosixVolume;

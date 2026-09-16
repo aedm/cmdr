@@ -183,9 +183,21 @@ pub fn init_volume_manager() {
 /// the `VolumeManager`. Runs on the `volume-init` helper thread so its blocking
 /// metadata syscalls never touch the main thread. See `init_volume_manager`.
 fn register_discovered_volumes() {
+    // Every mount in the kernel's table, because that's exactly the set path
+    // resolution can mint an ID for. Registering only the switcher's rows left
+    // a mount anywhere else (a cloud client's `~/pCloud Drive`, a hand-mounted
+    // share, a disk image attached with `-mountpoint`) resolving to an ID
+    // nothing served, so the pane died on "Volume not found".
+    // `file_system::volume::mount_registration` carries the full why.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    volume::mount_registration::register_every_mount();
+
     // Register attached volumes and cloud drives (macOS)
     #[cfg(target_os = "macos")]
     {
+        // The switcher's rows go in with their PRETTY names and their
+        // discovery-derived IDs, over the sweep's path-derived names. Same IDs
+        // (one funnel), so this replaces nothing: it renames.
         let attached = crate::volumes::get_attached_volumes();
         log::debug!("Registering {} attached volume(s)", attached.len());
         for location in attached {

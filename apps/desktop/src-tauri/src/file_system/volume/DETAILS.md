@@ -864,6 +864,39 @@ their own path) and would need re-pointing if a `LocalExternal` disk ever showed
 **Decision**: `register` replaces only at the SAME root; an identity conflict keeps the incumbent
 **Why**: replacing the volume at one root is routine (that's the SMB upgrade: an OS-mounted `LocalPosixVolume` becomes a direct `SmbVolume` at `/Volumes/naspi`, and a live transfer holding an `Arc` keeps working through it). Two DIFFERENT roots claiming one ID is not routine, and letting the last writer win made registration ORDER decide where the volume was rooted. A share mounted at both `/Volumes/naspi` and `/Volumes/naspi-1` derives one ID from both mounts, so the registry ended up rooted at `/Volumes/naspi-1` and a pane restoring a saved `/Volumes/naspi/…` path failed its listing. Keeping the incumbent makes the outcome deterministic without pretending the ambiguity is resolved: `report_identity_conflict` still logs it, because the honest answers (a cloned volume, a double mount) both deserve a human's attention. Discovery collapses double mounts before they reach here (`volumes/DETAILS.md` § "One volume ID publishes one mount root"); this is defense in depth, not the only guard. `is_identity_conflict` (root inequality) is what tells the two cases apart. Restoring a remembered registration in a test goes through `force_register`, which skips the guard, since putting back the previous value has to be unconditional.
 
+### Registration covers the whole mount table
+
+**Decision**: `mount_registration::register_every_mount` registers EVERY row of the kernel's mount table at startup,
+unfiltered, and it is the only way a mount becomes a registered volume (the mount watcher and the listing's adoption
+path go through the same module). What the volume SWITCHER publishes stays a separate, stricter question that
+`volumes/mounts.rs` answers.
+
+**Why**: path resolution and volume registration were two different answers to "which volumes exist", and resolution's
+was bigger. `resolve_path_volume_fast` reads `statfs`, so it mints an ID for any mount; registration took
+`get_attached_volumes()`, which required a `/Volumes/` prefix. Every mount elsewhere therefore resolved to an ID nothing
+served, and the listing ended in `VolumeError::NotFound("Volume not found: vol-…")` with the pane on a dead end. Users
+hit it through cloud clients that mount into the home folder (pCloud's `~/pCloud Drive` is `pcloudfs`, a real mount, and
+a favorite pointing at it failed every time), and it was reproducible with any `mount -t hfs` outside `/Volumes`.
+
+The asymmetry is what makes the rule one-directional: registering a mount nothing resolves to costs a HashMap entry,
+while skipping one that resolution can name costs the user their folder. So the sweep never filters. It's cheap because
+registration is an insert plus the arrival listeners, and `register_if_absent` keeps every incumbent, so it can't
+downgrade an upgraded `smb2` session or rename a switcher row (discovery re-registers those with their pretty names
+right after).
+
+**Adoption**, the net under the sweep: a listing whose ID nothing serves asks whether the mount under its path derives
+exactly that ID, and registers it if so (`adopt_mount_serving`). It covers the two gaps a startup sweep can't: a
+filesystem mounted while Cmdr runs that posts no `NSWorkspace` notification (FUSE and NFS-backed cloud drives don't, so
+the watcher never hears), and a tab restored before the sweep finishes (discovery runs off the main thread deliberately,
+so a resolve can beat it).
+
+❗ The ID equality check is the whole safety argument, and adoption may never be loosened past it. Asking the SAME
+funnel what the live mount is called, and requiring the answer to equal the requested ID, means adoption can only ever
+confirm what the caller already believed: it can't invent a volume, can't answer for a disconnected phone or a saved
+server (those IDs derive from no mount, so they never match and keep their `NotConnected` answer), and can't bind a
+path to a drive it isn't on. For the same reason the registration then uses the ID the probe proved rather than
+re-deriving it, which would reopen a window for a mount change to bind the path elsewhere.
+
 ### Replacing a root in place
 
 **Decision**: `VolumeManager::replace_root_in_place(id, expected, volume)` (`manager/root_replace.rs`) swaps the volume

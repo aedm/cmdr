@@ -16,6 +16,9 @@ macOS volume and location discovery, plus live mount/unmount watching via `NSWor
 - **❌ Never derive or parse a volume ID yourself; call `ids::volume_id_for`** (or `volume_id_for_mount` given only a
   path). An ID keys the index DB, `lastUsedPaths`, tabs, and routing, so a lossy one sends reads and deletes to the
   wrong disk. Only the scheme prefix means anything: ❌ never match the slug or rebuild one from parts.
+- **What this module publishes is the SWITCHER's list, ❌ never the registry's**: `mount_roots` hands the whole mount
+  table to `file_system::volume::mount_registration`, which registers all of it, because resolution can mint an ID for
+  any of it. A row being filtered out of discovery must never mean a path can't be opened.
 - **One volume ID publishes ONE location at ONE canonical root**: mounts sharing an ID collapse to the shortest path
   via `cmdr_fs::volume::canonical_root::collapse_by_volume_id` (shared with `volumes_linux/`: ❌ never re-copy it),
   and `list_locations` dedupes on ID, ❌ never on path alone.

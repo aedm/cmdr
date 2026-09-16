@@ -165,7 +165,9 @@ pub(crate) fn volume_path_from_notification(notification: &NSNotification) -> Op
 pub(crate) fn handle_volume_mounted(volume_path: &str) {
     debug!("Volume mounted: {}", volume_path);
 
-    register_volume_with_manager(volume_path);
+    // Same funnel the startup sweep uses, so a drive that arrives now and one
+    // that was already there land under the same ID with the same backend.
+    crate::file_system::volume::mount_registration::register_mount_root(volume_path);
 
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     try_upgrade_smb_mount(volume_path);
@@ -366,36 +368,6 @@ fn stop_local_external_index_off_main(volume_id: String) {
             debug!("Index stop for unmounting volume {volume_id}: {outcome:?}");
         }
     });
-}
-
-/// Register a mounted volume with the `VolumeManager`.
-///
-/// Uses `register_if_absent` so a pre-registered `SmbVolume` (from the mount
-/// flow) is not replaced by a `LocalPosixVolume`.
-fn register_volume_with_manager(volume_path: &str) {
-    use crate::file_system::volume::LocalPosixVolume;
-    use crate::file_system::volume::manager::get_volume_manager;
-    use std::path::Path;
-    use std::sync::Arc;
-
-    let volume_id = super::volume_id_for_mount(volume_path);
-
-    let name = Path::new(volume_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("Unknown")
-        .to_string();
-
-    let volume = Arc::new(LocalPosixVolume::new(&name, volume_path));
-    let was_registered = get_volume_manager().register_if_absent(&volume_id, volume);
-    if was_registered {
-        debug!("Registered mounted volume: {} -> {}", volume_id, volume_path);
-    } else {
-        debug!(
-            "Skipped registration for {} (already registered, likely SmbVolume)",
-            volume_id
-        );
-    }
 }
 
 /// Unregister a volume no registration claimed by root, by deriving its ID from
