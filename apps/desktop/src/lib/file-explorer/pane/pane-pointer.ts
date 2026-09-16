@@ -22,6 +22,7 @@ import { addToast } from '$lib/ui/toast'
 import { capabilitiesFor, paneFolderCanBeFavorited, rowIsOsVisible } from './volume-capabilities'
 import { canOpenTerminalIn } from '$lib/open-terminal/terminal-target'
 import { isFileListBackgroundClick } from './pane-background-dblclick'
+import { sameKindTargetFor } from './select-same-kind'
 import DoubleClickPaneHintToastContent from './DoubleClickPaneHintToastContent.svelte'
 
 /** Shift+click args: extend the range from the cursor to the clicked row. */
@@ -151,6 +152,11 @@ export function createPanePointer(deps: PanePointerDeps): PanePointer {
       { countText: contextMenuCountText(paths.length), sizeText: contextMenuSizeText(sizeBytes) },
       boundShortcuts(),
       anchor,
+      // The `Selection >` submenu's live label, read off the row the menu is opening over.
+      // Both paths here put the cursor on that row first (the view's `oncontextmenu` selects it,
+      // `⌃⏎` passes the cursor row), so this is what `selectSameKind` would act on. ❗ Computed
+      // fresh, ❌ never the menu bar's 200 ms-debounced value.
+      sameKindTargetFor(entry),
     )
   }
 

@@ -227,6 +227,7 @@ pub(crate) const NATIVE_STRINGS: &[LocaleStrings] = &[
             ("menu.context.openWithDefault", "{app} (default)"),
             ("menu.context.openWithOther", "Other…"),
             ("menu.context.removeDownload", "Remove download"),
+            ("menu.context.selection", "Selection"),
             ("menu.context.share", "Share"),
             ("menu.context.toggleSelection", "Toggle selection"),
             ("menu.dock.connectToServer", "Connect to server…"),

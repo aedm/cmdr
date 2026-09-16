@@ -132,6 +132,10 @@ pub fn show_file_context_menu<R: Runtime>(
     target: crate::menu::ContextMenuTarget,
     shortcuts: ContextMenuShortcuts,
     anchor: Option<MenuAnchor>,
+    // What the `Selection >` submenu's "Select all of the same kind" row would select, for the
+    // row this menu is opening over. Computed live by the caller, ❗ never the menu bar's
+    // debounced value: a right-click is the one moment a stale label would be read as truth.
+    same_kind: Option<SameKindTarget>,
 ) -> Result<(), String> {
     let app = window.app_handle();
 
@@ -219,6 +223,7 @@ pub fn show_file_context_menu<R: Runtime>(
             size_text: target.size_text.as_deref(),
         },
         &shortcuts,
+        same_kind.as_ref(),
     )
     .map_err(|e| e.to_string())?;
 

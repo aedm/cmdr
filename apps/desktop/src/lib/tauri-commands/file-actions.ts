@@ -14,6 +14,7 @@ import {
   type TimedOut,
 } from '$lib/ipc/bindings'
 import { TypedFailure } from '$lib/ipc/typed-failure'
+import type { SameKindTarget } from '$lib/file-explorer/pane/select-same-kind'
 import { throwIpcError } from './ipc-types'
 
 export type {
@@ -152,6 +153,9 @@ export interface MenuAnchor {
  *                    pass display spellings: `boundShortcuts` explains both.
  * @param anchor - Where to open it ({@link MenuAnchor}). Omit for a right-click, so macOS
  *                 uses the pointer.
+ * @param sameKind - What the `Selection >` submenu's "Select all of the same kind" row would
+ *                   select from this row, from `sameKindTargetFor(entry)`. ❗ Compute it as you
+ *                   call: ❌ never read the menu bar's debounced value, which is a frame behind.
  */
 export async function showFileContextMenu(
   path: string,
@@ -162,6 +166,7 @@ export async function showFileContextMenu(
   target: ContextMenuTarget = {},
   shortcuts: Record<string, string> = {},
   anchor: MenuAnchor | null = null,
+  sameKind: SameKindTarget | null = null,
 ): Promise<void> {
   // eslint-disable-next-line cmdr/no-raw-tauri-invoke -- generic <R: Runtime> command, excluded from specta bindings (see the `ipc.rs` manifest)
   await invoke('show_file_context_menu', {
@@ -182,6 +187,7 @@ export async function showFileContextMenu(
     },
     shortcuts,
     anchor,
+    sameKind,
   })
 }
 

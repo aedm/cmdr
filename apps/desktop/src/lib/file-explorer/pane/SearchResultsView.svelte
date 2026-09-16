@@ -34,6 +34,7 @@
     import { showFileContextMenu } from '$lib/tauri-commands'
     import { tString } from '$lib/intl/messages.svelte'
     import { snapshotBasename, snapshotContextMenuPaths, snapshotContextMenuRows } from './snapshot-context-menu'
+    import { sameKindTargetFor } from './select-same-kind'
     import { contextMenuCountText, contextMenuSizeBytes, contextMenuSizeText } from '../selection/context-menu-target'
     import { boundShortcuts } from '$lib/shortcuts'
     import type { SearchResultEntry } from '$lib/ipc/bindings'
@@ -271,6 +272,10 @@
                     sizeText: contextMenuSizeText(contextMenuSizeBytes(targets)),
                 },
                 boundShortcuts(),
+                null,
+                // The Selection submenu's live label. The snapshot pane runs `selectSameKind`
+                // over these same adapted rows, so it reads `entry.name` here too.
+                sameKindTargetFor(entry),
             )
         }}
     />

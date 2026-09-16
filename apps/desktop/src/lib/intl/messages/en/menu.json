@@ -542,6 +542,10 @@
     "description": "VERB (imperative). A file's right-click menu, third item: opens the file in the user's external text editor so it can be changed. The menu-bar version spells this out as \"Edit in editor\" (menu.file.edit) because it sits next to an Edit MENU; here there's room for the short verb, but it must still read as a command, not as the name of a menu."
   },
 
+  "menu.context.selection": "Selection",
+  "@menu.context.selection": {
+    "description": "NOUN. Title of the submenu in a file's right-click menu holding everything that changes which files are selected: Toggle selection, Select all, Deselect all, Select all of the same kind, Invert selection, Select files…, Deselect files…. It names what the submenu is about, so it's a noun, not a verb, and it means selected FILES, never selected text. Same noun as menu.bar.select would be if that were a noun; keep it to one short word. ❌ No trailing …: it opens a submenu, not a dialog."
+  },
   "menu.context.toggleSelection": "Toggle selection",
   "@menu.context.toggleSelection": {
     "description": "VERB phrase (imperative). A file's right-click menu: selects the file under the cursor if it isn't selected, unselects it if it is (Space). \"Toggle\" is the flip-either-way sense. It sits in its own group so the Space shortcut is discoverable."

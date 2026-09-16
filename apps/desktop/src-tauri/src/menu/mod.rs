@@ -66,6 +66,7 @@ pub mod open_with;
 #[cfg(target_os = "macos")]
 mod provider_logos;
 mod rebuild;
+mod selection_submenu;
 #[cfg(target_os = "macos")]
 mod services_context;
 #[cfg(target_os = "macos")]

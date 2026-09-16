@@ -30,7 +30,10 @@ use super::OPEN_TERMINAL_HERE_ID;
 use super::menu_bar::SHOW_IN_FILE_MANAGER_KEY;
 #[cfg(target_os = "macos")]
 use super::menu_items::APP_MENU_TITLE;
-use super::menu_items::{COPY_FILENAME_MAX_CHARS, DetachWord, detach_label, pin_tab_label, truncate_for_menu_label};
+use super::menu_items::{
+    COPY_FILENAME_MAX_CHARS, DetachWord, SameKindTarget, detach_label, pin_tab_label, truncate_for_menu_label,
+};
+use super::selection_submenu::build_selection_submenu;
 #[cfg(target_os = "macos")]
 use super::{
     CLOUD_MAKE_OFFLINE_ID, CLOUD_REMOVE_DOWNLOAD_ID, DRIVE_ASK_GEMINI_ID, DRIVE_COPY_LINK_ID, DRIVE_OPEN_ID,
@@ -42,8 +45,8 @@ use super::{
     FILE_MOVE_ID, FILE_NEW_FILE_ID, FILE_NEW_FOLDER_ID, FILE_VIEW_ID, FUNCTION_KEY_BAR_HIDE_ID, ImageIndexMenuState,
     NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_FORGET_SECRET_ID, NETWORK_HOST_FORGET_SERVER_ID, OPEN_ID, RENAME_ID,
     SERVER_DISCONNECT_ID, SERVER_EDIT_ID, SERVER_FORGET_ID, SERVER_FORGET_SECRET_ID, SERVER_OPEN_ID, SERVER_PIN_ID,
-    SERVER_UNPIN_ID, SHOW_IN_FINDER_ID, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, TOGGLE_SELECTION_ID,
-    VIEWER_WORD_WRAP_ID, ViewerMenuItems, image_index_menu_items,
+    SERVER_UNPIN_ID, SHOW_IN_FINDER_ID, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEWER_WORD_WRAP_ID,
+    ViewerMenuItems, image_index_menu_items,
 };
 use super::{frontend_shortcut_to_menu_text, menu_id_to_command};
 
@@ -169,7 +172,7 @@ impl ContextMenuShortcuts {
 ///
 /// The menu id is used twice on purpose: as the item's own id, and as the key the
 /// accelerator is looked up by. One argument, so the label can't drift from the item.
-fn context_item<R: Runtime>(
+pub(super) fn context_item<R: Runtime>(
     app: &AppHandle<R>,
     shortcuts: &ContextMenuShortcuts,
     menu_id: &str,
@@ -214,6 +217,9 @@ pub fn build_context_menu<R: Runtime>(
     target: ContextMenuTargetFacts<'_>,
     // Every accelerator label in this menu, as the registry has them right now.
     shortcuts: &ContextMenuShortcuts,
+    // What "Select all of the same kind" would select from the right-clicked row, computed by
+    // the frontend as this menu opens. ❗ Live, ❌ never the menu bar's debounced value.
+    same_kind: Option<&SameKindTarget>,
 ) -> tauri::Result<ContextMenuResult<R>> {
     let ContextMenuPaneFacts {
         restrict_destination_actions,
@@ -251,19 +257,11 @@ pub fn build_context_menu<R: Runtime>(
         menu.append(&PredefinedMenuItem::separator(app)?)?;
     }
 
-    // Toggle selection. No real accelerator registered — the JS handler in
-    // FilePane.svelte owns the Space keydown, and the label here is a visual hint that
-    // never fires globally. Placing it in its own group makes the shortcut
-    // discoverable without crowding the activation (Open / View / Edit) or operations
-    // (Copy / Move / Rename) groups.
-    let toggle_selection_item = context_item(
-        app,
-        shortcuts,
-        TOGGLE_SELECTION_ID,
-        menu_t("menu.context.toggleSelection"),
-        true,
-    )?;
-    menu.append(&toggle_selection_item)?;
+    // Everything that changes WHAT is selected, in its own group between activation
+    // (Open / View / Edit) and the operations (Copy / Move / Rename) that act on it.
+    // Toggle selection leads it, which is the only place Space is discoverable.
+    // `super::selection_submenu` owns the rows.
+    menu.append(&build_selection_submenu(app, shortcuts, same_kind)?)?;
     menu.append(&PredefinedMenuItem::separator(app)?)?;
 
     // Finder tag colors (macOS): seven circles that toggle the system color tags on the

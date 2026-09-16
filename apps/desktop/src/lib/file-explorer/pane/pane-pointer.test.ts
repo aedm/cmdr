@@ -9,6 +9,7 @@
  *   part company in both directions (the snapshot pane shares but opens no
  *   terminal; an archive's insides do the reverse),
  * - the `..` row gets its own one-item menu, and none at all on a snapshot pane,
+ * - the Selection submenu's live label is computed from the right-clicked row,
  * - opening any context menu cancels an in-flight type-to-jump,
  * - a click inside the inline rename editor does NOT steal focus (that would
  *   blur the input and end the rename mid-edit),
@@ -61,6 +62,13 @@ function entryOf(over: Partial<FileEntry> = {}): FileEntry {
     ...over,
   }
 }
+
+/**
+ * What the `Selection >` submenu's "Select all of the same kind" row says for `entryOf()`, which is
+ * a `.txt` file. Computed at popup time from the right-clicked row, ❌ never from the menu bar's
+ * debounced value — a right-click is exactly when a stale label would be read as truth.
+ */
+const sameKindOfEntry = { kind: 'sameExtension', extension: 'txt' }
 
 describe('createPanePointer', () => {
   let deps: PanePointerDeps
@@ -172,6 +180,7 @@ describe('createPanePointer', () => {
         { countText: '2 items', sizeText: undefined },
         boundCombos,
         null,
+        sameKindOfEntry,
       )
     })
 
@@ -193,6 +202,7 @@ describe('createPanePointer', () => {
         { countText: undefined, sizeText: undefined },
         boundCombos,
         null,
+        sameKindOfEntry,
       )
     })
 
@@ -214,6 +224,7 @@ describe('createPanePointer', () => {
         { countText: undefined, sizeText: undefined },
         boundCombos,
         null,
+        sameKindOfEntry,
       )
     })
 
@@ -235,6 +246,7 @@ describe('createPanePointer', () => {
         { countText: undefined, sizeText: undefined },
         boundCombos,
         null,
+        sameKindOfEntry,
       )
     })
 
@@ -259,6 +271,7 @@ describe('createPanePointer', () => {
         { countText: undefined, sizeText: undefined },
         boundCombos,
         null,
+        sameKindOfEntry,
       )
     })
 
@@ -275,7 +288,16 @@ describe('createPanePointer', () => {
         { countText: undefined, sizeText: undefined },
         boundCombos,
         null,
+        sameKindOfEntry,
       )
+    })
+
+    it('labels the Selection submenu from the ROW the menu opens over, not the pane-wide state', async () => {
+      await createPanePointer(deps).handleContextMenu(entryOf({ name: 'Photos', isDirectory: true }))
+      expect(ipc.showFileContextMenu.mock.calls[0].at(-1)).toEqual({ kind: 'allFolders' })
+
+      await createPanePointer(deps).handleContextMenu(entryOf({ name: 'README' }))
+      expect(ipc.showFileContextMenu.mock.calls[1].at(-1)).toEqual({ kind: 'noExtension' })
     })
 
     it('gives the `..` row its own one-item menu', async () => {
