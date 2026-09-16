@@ -1,6 +1,6 @@
 /**
- * Tier 3 a11y tests for the navigation strip: both drive badges and the volume
- * breadcrumb.
+ * Tier 3 a11y tests for the navigation strip: both drive badges, the volume breadcrumb, and
+ * the two menus that hang off it.
  *
  * One file per component would cost about three times as much: `svelte-tests`
  * charges per test FILE, not per test (`docs/testing.md` § "What a test actually
@@ -81,10 +81,15 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   onVolumeContextAction: vi.fn(() => Promise.resolve(() => {})),
   // The switcher fetches disk space on open; nothing to show keeps the rows plain.
   getVolumeSpace: vi.fn(() => Promise.resolve(null)),
+  addFavorite: vi.fn(() => Promise.resolve()),
+  trackEvent: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('$lib/stores/volume-store.svelte', () => ({
   getVolumes: () => [
+    // Two favorites, so the menu renders its number column and its reorderable section.
+    { id: 'fav-1', name: 'Documents', path: '/Users/test/Documents', category: 'favorite', isEjectable: false },
+    { id: 'fav-2', name: 'Downloads', path: '/Users/test/Downloads', category: 'favorite', isEjectable: false },
     { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
     { id: 'ext', name: 'External', path: '/Volumes/External', category: 'attached_volume', isEjectable: true },
   ],
@@ -117,6 +122,7 @@ import DetachButton from './DetachButton.svelte'
 import DriveIndexBadge from './DriveIndexBadge.svelte'
 import ImageIndexDriveBadge from './ImageIndexDriveBadge.svelte'
 import UsbSpeedDot from './UsbSpeedDot.svelte'
+import FavoritesMenu from './FavoritesMenu.svelte'
 import VolumeBreadcrumb from './VolumeBreadcrumb.svelte'
 import VolumeChooserMenu from './VolumeChooserMenu.svelte'
 import type { DriveBadges } from './drive-badges.svelte'
@@ -441,6 +447,44 @@ describe('VolumeChooserMenu a11y', () => {
     await vi.waitFor(() => {
       expect(document.querySelector('[data-menu-row="root"]')).not.toBeNull()
     })
+    await expectNoA11yViolations(document.body)
+  })
+})
+
+/**
+ * Tier 3 a11y for `FavoritesMenu.svelte`, OPEN. Its rows carry a leading number column the
+ * switcher's don't, announced through `aria-keyshortcuts`, and the last row is deliberately
+ * DISABLED here (the pane's folder is already a favorite), which is the state most likely to
+ * announce as an unlabelled dead end. It portals out of its container, so the audit looks at
+ * the whole document.
+ */
+describe('FavoritesMenu a11y', () => {
+  it('the open menu has no a11y violations, disabled add row included', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const anchor = document.createElement('span')
+    document.body.appendChild(anchor)
+    const instance = mount(FavoritesMenu, {
+      target,
+      props: {
+        paneId: 'left' as const,
+        volumeId: 'root',
+        // The store's first favorite points here, so the `0` row renders disabled with its
+        // reason as the tooltip.
+        currentPath: '/Users/test/Documents',
+        getAnchor: () => anchor,
+        getChipCluster: () => anchor,
+        onShowVolumes: () => {},
+        onOpenChange: () => {},
+      },
+    }) as unknown as { open: (trigger: 'command') => void }
+    flushSync()
+    instance.open('command')
+    // The surface portals itself into `document.body`, which lands a beat after the open.
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-menu-row="favorites:add"]')).not.toBeNull()
+    })
+    expect(document.querySelector('[data-menu-row="favorites:add"][data-disabled]')).not.toBeNull()
     await expectNoA11yViolations(document.body)
   })
 })

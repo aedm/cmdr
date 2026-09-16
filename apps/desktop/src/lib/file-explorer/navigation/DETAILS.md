@@ -3,8 +3,8 @@
 Pull-tier docs for `apps/desktop/src/lib/file-explorer/navigation/`: architecture, flows, and decision rationale.
 Must-know invariants and gotchas live in `CLAUDE.md`.
 
-Browser-style back/forward history, path resolution, paged keyboard shortcuts, and the volume chip with the two menus
-it hosts.
+Browser-style back/forward history, path resolution, paged keyboard shortcuts, and the volume chip with the two menus it
+hosts.
 
 ## Key files
 
@@ -343,9 +343,9 @@ same detach item alongside "Copy path" when the pane's volume is ejectable. All 
 `disconnect`, `pin`, `unpin`, `edit`, `forget-secret`, `forget-server`, `rename-favorite`, `remove-favorite`), ❌ never
 a free string: `eject` is handled in `DualPaneExplorer.svelte` (calls `ejectVolume`); `rename-favorite` /
 `remove-favorite` land in `FavoritesMenu.handleVolumeContextAction`, which only acts when its own menu `isOpen` (every
-pane's menu receives the global event, but only the open one owns the menu it spawned). Going native means
-the webview is frozen while the menu tracks, so the switcher's cursor can't drift onto another row under the pointer or
-arrow keys — the menu always acts on the right-clicked row.
+pane's menu receives the global event, but only the open one owns the menu it spawned). Going native means the webview
+is frozen while the menu tracks, so the switcher's cursor can't drift onto another row under the pointer or arrow keys —
+the menu always acts on the right-clicked row.
 
 **Busy gating.** While a copy / move / delete reads from or writes to a volume, ejecting it is blocked so a disconnect
 can't truncate an in-flight file. `$lib/stores/volume-busy-store.svelte`'s `isVolumeBusy(id)` (fed by the backend
@@ -429,12 +429,12 @@ shortcut, handler in `routes/(main)/command-handlers/misc-handlers.ts`) favorite
 `0` row does the same for the pane its menu belongs to; and the folder-row / `..` context menus favorite a SPECIFIC
 path. That last pair is handled entirely in Rust (`menu/menu_handlers.rs` intercepts `FAVORITES_ADD_CONTEXT_ID` and
 favorites `MenuState.context.path`), so it never routes through `favorites.add`, which would favorite the wrong dir.
-Both native items are gated on `can_favorite`, the caller's `paneFolderCanBeFavorited` reading of the row: `add_favorite`
-refuses an archive-inner or protocol path, and offering an item that silently does nothing is worse than offering none.
-The `..` menu holds nothing else, so where the parent can't be favorited no menu pops at all.
+Both native items are gated on `can_favorite`, the caller's `paneFolderCanBeFavorited` reading of the row:
+`add_favorite` refuses an archive-inner or protocol path, and offering an item that silently does nothing is worse than
+offering none. The `..` menu holds nothing else, so where the parent can't be favorited no menu pops at all.
 
-**Remove / Rename** are per-item. Right-clicking a favorite opens the NATIVE row menu (`show_favorite_context_menu`,
-its own command rather than a flag on the volume-row one: different surface, no shared item); picking `Rename` /
+**Remove / Rename** are per-item. Right-clicking a favorite opens the NATIVE row menu (`show_favorite_context_menu`, its
+own command rather than a flag on the volume-row one: different surface, no shared item); picking `Rename` /
 `Remove from favorites` routes back over `volume-context-action` to `FavoritesMenu.handleVolumeContextAction`. ❗ Every
 pane's menu hears that global event, so the handler self-gates on ITS menu being open — favorites are global, and the id
 alone can't tell the panes apart. Rename swaps the label for an inline `<input>` in the `label` snippet (Enter commits,

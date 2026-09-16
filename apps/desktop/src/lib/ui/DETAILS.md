@@ -841,9 +841,9 @@ state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isE
 `keepOpenWithin`. Hand the result to `<Menu {menu} ariaLabel minWidth>`; it renders nothing while closed, so there's no
 `{#if}`.
 
-**A pick says how it was made.** `onSelect(item, source)`'s second argument is a `MenuActivationSource`:
-`'pointer'` (a click, or a drag that never crossed the threshold), `'keyboard'` (Enter or Space on the highlighted row),
-or `'accelerator'` (the row's digit was typed). The primitive is the only thing that knows — by the time a consumer sees
+**A pick says how it was made.** `onSelect(item, source)`'s second argument is a `MenuActivationSource`: `'pointer'` (a
+click, or a drag that never crossed the threshold), `'keyboard'` (Enter or Space on the highlighted row), or
+`'accelerator'` (the row's digit was typed). The primitive is the only thing that knows — by the time a consumer sees
 the pick, all three have collapsed into one call — and the favorites menu's `favorite_opened.via` is what asks. A
 consumer that doesn't care declares one parameter and ignores it. ❌ Don't rebuild the answer by sniffing `onKey`: it
 drifts the moment the keyboard contract grows a case.

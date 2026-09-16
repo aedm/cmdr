@@ -155,8 +155,7 @@
   },
   "commands.favoritesOpen.label": "Show favorites",
   "@commands.favoritesOpen.label": {
-    "description": "Command name that opens the favorites menu over the focused pane. Appears in the command palette and in the Go menu. \"Favorites\" is the named list of bookmarked folders; match the term used in the volume switcher UI.",
-    "screenshot": "settings-keyboard-shortcuts.png"
+    "description": "Command name that opens the favorites menu over the focused pane. Appears in the command palette and in the Go menu. \"Favorites\" is the named list of bookmarked folders; match the term used in the volume switcher UI."
   },
   "commands.favoritesOpen.description": "Open the favorites menu on the focused pane, and press a number to go.",
   "@commands.favoritesOpen.description": {
@@ -164,13 +163,11 @@
   },
   "commands.favoritesOpenByNumber.label": "Open the favorite with that number",
   "@commands.favoritesOpenByNumber.label": {
-    "description": "Row in the Keyboard shortcuts list, describing what the number keys 1-9 do while the favorites menu is open: each one jumps straight to the favorite shown beside it. Read-only (the keys can't be rebound), so this is a description of the behavior rather than a command name.",
-    "screenshot": "settings-keyboard-shortcuts.png"
+    "description": "Row in the Keyboard shortcuts list, describing what the number keys 1-9 do while the favorites menu is open: each one jumps straight to the favorite shown beside it. Read-only (the keys can't be rebound), so this is a description of the behavior rather than a command name."
   },
   "commands.favoritesAddFromMenu.label": "Add the current folder to favorites",
   "@commands.favoritesAddFromMenu.label": {
-    "description": "Row in the Keyboard shortcuts list, describing what the 0 key does while the favorites menu is open: it runs the menu's last row, which adds the focused pane's folder to the list. Read-only (the key can't be rebound).",
-    "screenshot": "settings-keyboard-shortcuts.png"
+    "description": "Row in the Keyboard shortcuts list, describing what the 0 key does while the favorites menu is open: it runs the menu's last row, which adds the focused pane's folder to the list. Read-only (the key can't be rebound)."
   },
   "commands.downloadsGoToLatest.label": "Go to latest download",
   "@commands.downloadsGoToLatest.label": {

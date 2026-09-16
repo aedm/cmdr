@@ -36,8 +36,8 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the two men
 - **A SERVER row says Disconnect, never Eject**, and is claimed by VOLUME ID (`isServerPlaceRow`), ❌ never by
   `category === 'network'`: a mounted SMB share is one, and `disconnectPlace` can't speak its OS mount.
 - **`wordEjectRefusal(e)` words every eject refusal** from `errors.eject.*`; ❌ never `String(e)` or `diskutil` stderr.
-- **The Network group's rows are the LISTING's**, filtered by `belongsInSwitcher`, plus the hub this dir synthesizes.
-  ❗ No `listSavedServers()` fetch in `volume-grouping.ts`; the row already carries `pinned`.
+- **The Network group's rows are the LISTING's**, filtered by `belongsInSwitcher`, plus the hub this dir synthesizes. ❗
+  No `listSavedServers()` fetch in `volume-grouping.ts`; the row already carries `pinned`.
 - **Favorites live in their OWN menu (⌃D), ❌ never in the switcher.** `volume-grouping.ts` groups the `favorite`
   category NOWHERE; the switcher's one "See N favorites" row swaps the menus in place. Mutate ONLY through the
   `$lib/tauri-commands/favorites.ts` wrappers, stripping the `fav-` prefix.
@@ -46,7 +46,7 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the two men
 - **The favorite-rename `<input>` must not leak keystrokes to the panes**: four guards hold that line, and removing any
   one reopens it.
 - **❗ BOTH menus are the house `Menu`** (`$lib/ui/DETAILS.md` § Menu), which owns keys, the cursor, pointer mode, the
-  submenu, drag reorder, the digit accelerators, placement, and focus. ❌ Never add a key handler, a highlight index,
-  or a `getBoundingClientRect` back here; a menu's `onKey` claims only the keys that SWAP the two.
+  submenu, drag reorder, the digit accelerators, placement, and focus. ❌ Never add a key handler, a highlight index, or
+  a `getBoundingClientRect` back here; a menu's `onKey` claims only the keys that SWAP the two.
 
 Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here.

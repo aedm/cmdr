@@ -149,6 +149,9 @@ vi.mock('$lib/tauri-commands', () => ({
   showFavoriteContextMenu: vi.fn().mockResolvedValue(undefined),
   addFavorite: vi.fn().mockResolvedValue(undefined),
   trackEvent: vi.fn().mockResolvedValue(undefined),
+  // Opening a DRIVE row runs the first-connect indexing prompt, which asks this before
+  // deciding whether to offer anything. Answering "timed out" offers nothing.
+  getVolumeIndexStatusById: vi.fn().mockResolvedValue({ status: 'timedOut' }),
   onVolumeContextAction: vi.fn(() => Promise.resolve(() => {})),
 }))
 
