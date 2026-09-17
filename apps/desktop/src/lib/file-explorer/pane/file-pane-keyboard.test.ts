@@ -58,6 +58,8 @@ vi.mock('$lib/tauri-commands', () => ({
   showFileContextMenu: vi.fn().mockResolvedValue(undefined),
   updateMenuContext: vi.fn().mockResolvedValue(undefined),
   updateServicesSelection: vi.fn().mockResolvedValue(undefined),
+  // `same-kind-target.svelte.ts` calls this whenever the cursor moves, so a pane mount reaches it.
+  updateSelectSameKindMenu: vi.fn().mockResolvedValue(undefined),
   listVolumes: vi.fn().mockResolvedValue({
     data: [
       { id: 'root', name: 'Macintosh HD', path: '/', category: 'main_volume', isEjectable: false },
