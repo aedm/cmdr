@@ -298,8 +298,8 @@ Only the layout facts that none of those carry live here:
 
 Some modules here carry `*.test.ts` unit tests that run in the Vitest lane, not under Playwright: the pure helpers
 (`helpers/click-button-by-text.test.ts` and its siblings, which execute the real `evaluate` payload against happy-dom),
-plus `i18n-capture-stage-only.test.ts`, `app-death.test.ts`, and the marketing-shot geometry tests. They import the
-REAL helper modules on purpose — paraphrasing a helper in the test would anchor a different program than the suite runs.
+plus `i18n-capture-stage-only.test.ts`, `app-death.test.ts`, and the marketing-shot geometry tests. They import the REAL
+helper modules on purpose — paraphrasing a helper in the test would anchor a different program than the suite runs.
 
 That pulls the Playwright runner in behind them, because the helpers import `expect` from `@playwright/test` and the
 i18n modules take the extended one from `fixtures.ts` (`createTauriTest`, out of `@srsholmes/tauri-playwright`). Loading
@@ -311,10 +311,10 @@ six-line file importing nothing but `expect`, and the target port follows `envir
 what pins the page origin as where it aims (vitest 4.1.10, happy-dom 20.11.1, @playwright/test 1.62.1,
 @srsholmes/tauri-playwright 0.4.1, 2026-09-17).
 
-So `vitest.config.ts` aliases BOTH packages to `test/e2e-playwright/vitest-playwright-shim.ts`, which hands back Vitest's own `expect`
-(same `expect(...)` and `expect.poll(fn, { timeout })` surface) and a test-shaped proxy that `fixtures.ts` can build on
-at module scope but that throws by name if a Playwright test is ever RUN under Vitest. Playwright's own runner resolves
-the real packages and never sees the alias.
+So `vitest.config.ts` aliases BOTH packages to `test/e2e-playwright/vitest-playwright-shim.ts`, which hands back
+Vitest's own `expect` (same `expect(...)` and `expect.poll(fn, { timeout })` surface) and a test-shaped proxy that
+`fixtures.ts` can build on at module scope but that throws by name if a Playwright test is ever RUN under Vitest.
+Playwright's own runner resolves the real packages and never sees the alias.
 
 Consequences worth knowing:
 

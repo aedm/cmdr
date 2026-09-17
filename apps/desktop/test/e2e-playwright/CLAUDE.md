@@ -35,9 +35,10 @@ Linux (Docker), so a modifier key comes from `CTRL_OR_META`, ❌ never a hardcod
   prove a walk (`search-walk-ground.ts`). DETAILS § "Synthetic backend events".
 - **`marketing-shots.spec.ts` shoots real folders with NO fixture tree**: ❌ never set `CMDR_E2E_START_PATH` for it (the
   guard deletes anything outside the manifest), and it needs the machine left alone; say both first.
-- **A `*.test.ts` here runs under VITEST, where both Playwright packages are aliased to `test/e2e-playwright/vitest-playwright-shim.ts`**
-  (importing the real runner into a happy-dom worker kills the process). `expect` is Vitest's; the Tauri matchers
-  (`toBeVisible` and friends) aren't there, so a helper that needs one needs a seam instead. DETAILS § "The Vitest shim".
+- **A `*.test.ts` here runs under VITEST, where both Playwright packages are aliased to
+  `test/e2e-playwright/vitest-playwright-shim.ts`** (importing the real runner into a happy-dom worker kills the
+  process). `expect` is Vitest's; the Tauri matchers (`toBeVisible` and friends) aren't there, so a helper that needs
+  one needs a seam instead. DETAILS § "The Vitest shim".
 
 Run recipes, architecture, sharding, app modes, contracts, and decisions: `DETAILS.md`. Read it before any non-trivial
 work here: editing, planning, reorganizing, or advising.

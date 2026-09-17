@@ -935,8 +935,8 @@ Reports, logs, and recordings deliberately OUTLIVE their run (they're what a pos
 instead: `sweepStaleCheckArtifacts` runs at the start of both E2E lanes and of `svelte-tests`, and removes run-scoped
 leftovers older than a week. The patterns are narrow on purpose — `tmp-sweep.go` must never match
 `cmdr-e2e-fixtures-cache` or a hand-made `cmdr-e2e-data-<name>`, and `TestE2EArtifactIsSweepable` pins both directions.
-It covers the Vitest lanes' saved transcripts (`cmdr-vitest-<pid>-<random>.log`) too, which is why the name says
-"check" rather than "E2E".
+It covers the Vitest lanes' saved transcripts (`cmdr-vitest-<pid>-<random>.log`) too, which is why the name says "check"
+rather than "E2E".
 
 `TestPlanShardsSharesNothingBetweenConcurrentRuns` pins the whole rule against two plans from different pids that share
 a timestamp.
@@ -1102,8 +1102,7 @@ Gotchas for anyone touching this:
 `vitest-failure-diagnostics.go` renders the red-run error for all three Vitest lanes (`svelte-tests`,
 `api-server-tests`, `dashboard-tests`). Before it, each lane pasted the entire captured transcript: on the desktop suite
 that's ~1,300 lines (920 passing spec-file lines, every test's console output, ~400 Svelte `derived_inert` warnings) to
-say that one test went red, which is what pushes a reader into truncating output the project tells them not to
-truncate.
+say that one test went red, which is what pushes a reader into truncating output the project tells them not to truncate.
 
 **What's kept:** everything from the transcript's first `⎯⎯ … ⎯⎯` banner to the end. That's the reporter's own tail, and
 it already IS the failure account: `Failed Tests`, `Unhandled Errors`, `Startup Error`, whichever the run produced.

@@ -299,4 +299,3 @@ func applyCoverageShrinkwrap(ctx *CheckContext, desktopDir string, allowlist *Co
 	}
 	return notes, madeChanges, nil
 }
-

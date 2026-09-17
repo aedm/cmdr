@@ -20,9 +20,9 @@ One Go file per check, registered in `registry.go`'s `AllChecks`. Runner: `../CL
 - **A Go TEST that reads the real repo widens `goTestsInputs`**: declare what it reads in `realTreeReadingTests`, or it
   goes green from cache on the very edit it exists to catch. `TestGoTestsInputsCoverTheRealTreeItsTestsRead` enforces
   it. DETAILS § "The Go lanes split three ways".
-- **Your check's own source is fingerprinted** (`runner-sources.go` follows `Run` through the package). It can't
-  see a DATA file (name a new allowlist JSON via `runnerDataInputs`) or an `init()` that registers rather than assigns
-  (which drops every check back to the whole tree). `../DETAILS.md` § "The runner's own source".
+- **Your check's own source is fingerprinted** (`runner-sources.go` follows `Run` through the package). It can't see a
+  DATA file (name a new allowlist JSON via `runnerDataInputs`) or an `init()` that registers rather than assigns (which
+  drops every check back to the whole tree). `../DETAILS.md` § "The runner's own source".
 - **Wire every check into CI** (`ci.yml` / `slow-checks.yml`, or a `NotInCI` reason); `ci-coverage` enforces both ways.
 - **Length-based truncation is forbidden**: if 200 tests fail, all 200 panic bodies pass through. Filter by structure,
   ❌ never by line count.
