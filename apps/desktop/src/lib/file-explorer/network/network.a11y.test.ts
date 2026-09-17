@@ -208,7 +208,7 @@ describe('SmbOsMountFallbackToastContent a11y', () => {
     document.body.appendChild(target)
     mount(SmbOsMountFallbackToastContent, {
       target,
-      props: { toastId: 'smb-os-mount:smb-archive', volumeId: 'smb-archive', share: 'archive' },
+      props: { toastId: 'smb-os-mount:smb-archive', volumeId: 'smb-archive', share: 'archive', retryable: true },
     })
     await tick()
     await expectNoA11yViolations(target)

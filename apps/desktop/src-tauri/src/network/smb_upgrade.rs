@@ -407,8 +407,14 @@ pub(crate) async fn register_smb_volume(
             log_direct_connect_failure(server, share, &e, DirectConnectOutcome::StaysOnKernelMount, username);
             // And tell the person, once per server: this is the only path that leaves
             // someone on the slow connection with nothing but a small yellow dot to
-            // notice it by. The frontend's notice carries a retry button.
-            crate::network::os_mount_notice::announce_os_mount_fallback(server, &volume_id, share);
+            // notice it by. The reason rides along so the notice can drop its retry
+            // button for the one failure repeating it cannot fix.
+            crate::network::os_mount_notice::announce_os_mount_fallback(
+                server,
+                &volume_id,
+                share,
+                UpgradeFailure::from_smb_error(&e),
+            );
         }
     }
 }

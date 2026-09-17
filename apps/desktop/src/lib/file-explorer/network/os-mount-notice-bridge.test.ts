@@ -69,16 +69,39 @@ beforeEach(async () => {
 
 describe('the OS-mount fallback notice', () => {
   it('names the share and hands the volume to the retry button', () => {
-    emitFallback({ volumeId: 'smb-archive', share: 'archive' })
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
 
     expect(addToast).toHaveBeenCalledTimes(1)
     const [content, options] = addToast.mock.calls[0]
     expect(content).toBe(SmbOsMountFallbackToastContent)
-    expect(options.props).toEqual({ volumeId: 'smb-archive', share: 'archive' })
+    expect(options.props).toEqual({ volumeId: 'smb-archive', share: 'archive', retryable: true })
+  })
+
+  // The server answered that it has no such share. The same identity asking it
+  // again gets the same answer, so the notice explains and offers nothing. Before
+  // ERR-HYPZG this arrived as `unexpected` and put a button on screen that could
+  // only ever fail.
+  it('offers no retry when the server says it has no such share', () => {
+    emitFallback({ volumeId: 'smb-gone', share: 'gone', reason: 'shareNotOnServer' })
+
+    const [, options] = addToast.mock.calls[0]
+    expect(options.props).toEqual({ volumeId: 'smb-gone', share: 'gone', retryable: false })
+  })
+
+  // Every other reason is a condition that can pass on its own, including a DFS
+  // namespace whose targets are all down (`unreachable`), so the button stays.
+  it('keeps the retry for every reason that can change on its own', () => {
+    for (const reason of ['unreachable', 'tooSlow', 'unexpected'] as const) {
+      addToast.mockClear()
+      emitFallback({ volumeId: `smb-${reason}`, share: 'archive', reason })
+
+      const [, options] = addToast.mock.calls[0]
+      expect(options.props, reason).toMatchObject({ retryable: true })
+    }
   })
 
   it('stays up until the user acts on it, because the share is slow the whole time', () => {
-    emitFallback({ volumeId: 'smb-archive', share: 'archive' })
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
 
     const [, options] = addToast.mock.calls[0]
     expect(options.dismissal).toBe('persistent')
@@ -86,14 +109,14 @@ describe('the OS-mount fallback notice', () => {
   })
 
   it('dedups per volume, so a repeat replaces the notice instead of stacking one', () => {
-    emitFallback({ volumeId: 'smb-archive', share: 'archive' })
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
 
     const [, options] = addToast.mock.calls[0]
     expect(options.id).toBe(osMountNoticeToastId('smb-archive'))
   })
 
   it('retires itself once the share reports a direct connection', () => {
-    emitFallback({ volumeId: 'smb-archive', share: 'archive' })
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
 
     emitVolumes({ data: [volume('smb-archive', 'direct')], timedOut: false })
 
@@ -101,7 +124,7 @@ describe('the OS-mount fallback notice', () => {
   })
 
   it('leaves the notice up while the share is still on the OS mount', () => {
-    emitFallback({ volumeId: 'smb-archive', share: 'archive' })
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
 
     emitVolumes({ data: [volume('smb-archive', 'os_mount')], timedOut: false })
 
@@ -109,8 +132,8 @@ describe('the OS-mount fallback notice', () => {
   })
 
   it('retires only the share that went direct, not every notice on screen', () => {
-    emitFallback({ volumeId: 'smb-archive', share: 'archive' })
-    emitFallback({ volumeId: 'smb-photos', share: 'photos' })
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
+    emitFallback({ volumeId: 'smb-photos', share: 'photos', reason: 'unexpected' })
 
     emitVolumes({
       data: [volume('smb-archive', 'direct'), volume('smb-photos', 'os_mount')],
@@ -123,8 +146,8 @@ describe('the OS-mount fallback notice', () => {
   it('retires the notice once its share leaves the volume list, since there is nothing left to retry', () => {
     // An unmount, an eject, or a network drop: ERR-SHUSC's button kept offering
     // a retry on a volume that no longer existed.
-    emitFallback({ volumeId: 'smb-archive', share: 'archive' })
-    emitFallback({ volumeId: 'smb-photos', share: 'photos' })
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
+    emitFallback({ volumeId: 'smb-photos', share: 'photos', reason: 'unexpected' })
 
     emitVolumes({ data: [volume('smb-photos', 'os_mount')], timedOut: false })
 
@@ -132,7 +155,7 @@ describe('the OS-mount fallback notice', () => {
   })
 
   it('keeps the notice through a timed-out listing, which may have missed a share that is still there', () => {
-    emitFallback({ volumeId: 'smb-archive', share: 'archive' })
+    emitFallback({ volumeId: 'smb-archive', share: 'archive', reason: 'unexpected' })
 
     emitVolumes({ data: [], timedOut: true })
 

@@ -120,14 +120,24 @@ impl Refusal {
 /// Word-free by design: the frontend renders the copy from the message catalog
 /// (`$lib/error-messages/` convention — classification in Rust, words on the frontend).
 /// A raw `No route to host (os error 65)` has no business reaching a person.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum UpgradeFailure {
     /// Nothing answered on the SMB port: the server is off, asleep, or not on
-    /// this network right now.
+    /// this network right now. A DFS namespace whose every target refused lands
+    /// here too: the namespace is real, its storage isn't reachable, and both
+    /// are worth another attempt once the network or the server changes.
     Unreachable,
     /// It answered, but the handshake ran out of time.
     TooSlow,
+    /// The server has no share by that name, and no DFS namespace behind it
+    /// either.
+    ///
+    /// The one failure here that **repeating cannot fix**: the same identity
+    /// asking the same server for the same share gets the same answer, so a
+    /// retry is not worth offering. Everything else in this enum is a condition
+    /// that can change on its own.
+    ShareNotOnServer,
     /// It answered and then something we can't act on went wrong.
     Unexpected,
 }
@@ -145,6 +155,28 @@ impl UpgradeFailure {
                 Io::TimedOut => Self::TooSlow,
                 _ => Self::Unexpected,
             };
+        }
+        // ❌ Read the kind AND the command, like `RefusedAt::of` above: the same
+        // kind at another command is another thing entirely. At TreeConnect,
+        // `NotFound` is `STATUS_BAD_NETWORK_NAME`, the server saying it has no
+        // such share.
+        //
+        // Two look-alikes deliberately do NOT arrive here, both because smb2
+        // gives them their own variants: a scale-out cluster's redirect reuses
+        // the same status (`Error::ShareRedirected`), and a DFS namespace whose
+        // targets are all down is `Error::DfsNoReachableTarget`, which
+        // classifies as `ConnectionLost` and so falls through to `Unreachable`
+        // below. Both would otherwise be read as "no such share", which is the
+        // one thing neither of them means.
+        if matches!(
+            err,
+            smb2::Error::Protocol {
+                command: Command::TreeConnect,
+                ..
+            }
+        ) && err.kind() == ErrorKind::NotFound
+        {
+            return Self::ShareNotOnServer;
         }
         match err.kind() {
             ErrorKind::TimedOut => Self::TooSlow,

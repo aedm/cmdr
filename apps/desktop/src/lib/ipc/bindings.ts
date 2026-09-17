@@ -13005,6 +13005,14 @@ export type SmbFellBackToOsMount = {
   volumeId: string
   // The share's name, which is what the notice names (`archive`, not `//nas/archive`).
   share: string
+  /**
+   *  Why the direct connection didn't happen, so the notice can tell a
+   *  condition that may pass from one that won't. Only
+   *  `ShareNotOnServer` can't be fixed by pressing the button again, and the
+   *  notice drops the button for it rather than offering a retry that is
+   *  certain to land on the same answer.
+   */
+  reason: UpgradeFailure
 }
 
 /**
@@ -13885,11 +13893,23 @@ export type UpdateInfo = {
 export type UpgradeFailure =
   /**
    *  Nothing answered on the SMB port: the server is off, asleep, or not on
-   *  this network right now.
+   *  this network right now. A DFS namespace whose every target refused lands
+   *  here too: the namespace is real, its storage isn't reachable, and both
+   *  are worth another attempt once the network or the server changes.
    */
   | 'unreachable'
   // It answered, but the handshake ran out of time.
   | 'tooSlow'
+  /**
+   *  The server has no share by that name, and no DFS namespace behind it
+   *  either.
+   *
+   *  The one failure here that **repeating cannot fix**: the same identity
+   *  asking the same server for the same share gets the same answer, so a
+   *  retry is not worth offering. Everything else in this enum is a condition
+   *  that can change on its own.
+   */
+  | 'shareNotOnServer'
   // It answered and then something we can't act on went wrong.
   | 'unexpected'
 

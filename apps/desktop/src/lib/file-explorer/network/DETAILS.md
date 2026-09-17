@@ -286,10 +286,18 @@ control, announced by nothing louder than a yellow dot the user has no reason to
 an evening of debugging a "slow" transfer. The manual "Connect directly" path is deliberately NOT a source here: it
 already reports its own failure to the person who clicked it.
 
-**The flow.** The backend emits `smb-fell-back-to-os-mount { volumeId, share }` at most once per SERVER per app run (the
-ledger and its rationale: `src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount fallback").
-`os-mount-notice-bridge.ts`, mounted from `routes/(main)/+page.svelte` beside the other event bridges, turns it into a
-persistent INFO toast rendering `SmbOsMountFallbackToastContent.svelte`, dedup id `smb-os-mount:<volumeId>`.
+**The flow.** The backend emits `smb-fell-back-to-os-mount { volumeId, share, reason }` at most once per SERVER per app
+run (the ledger and its rationale: `src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount
+fallback"). `os-mount-notice-bridge.ts`, mounted from `routes/(main)/+page.svelte` beside the other event bridges, turns
+it into a persistent INFO toast rendering `SmbOsMountFallbackToastContent.svelte`, dedup id `smb-os-mount:<volumeId>`.
+
+**A notice that can't offer a retry doesn't.** The bridge turns `reason` into one `retryable` prop, false only for
+`shareNotOnServer`, and the toast then renders `osMountFallback.shareNotOnServer` with no button instead of
+`osMountFallback.message` with one. The server has said it has no share by that name, so the same ask gets the same
+answer and a button could only fail; the copy sends the reader to the server instead. ❌ Don't pass the raw `reason` to
+the toast: the component's question is "is there anything to offer", and every other variant answers it the same way.
+Which reasons are which, and the two look-alikes that never arrive as this one: `src-tauri/src/network/DETAILS.md` §
+"Telling the user about a kernel-mount fallback".
 
 **Dismissal watches the volume list, not the button.** A share can reach a direct session four ways: this notice's
 button, the yellow dot, the breadcrumb submenu, and the pane's credential form after a working password. All four end in
