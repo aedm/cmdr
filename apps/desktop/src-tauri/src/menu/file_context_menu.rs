@@ -8,6 +8,9 @@
 //! which also owns the `ContextMenuShortcuts` / `context_item` vocabulary all of
 //! them share.
 
+// Both the map and its values are the macOS-only "Open with" list, so the imports
+// carry the same gate the fields do; ungated, Linux fails `-D unused-imports`.
+#[cfg(target_os = "macos")]
 use std::collections::HashMap;
 #[cfg(target_os = "macos")]
 use std::path::PathBuf;
