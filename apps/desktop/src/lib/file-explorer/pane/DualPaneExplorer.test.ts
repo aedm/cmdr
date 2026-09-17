@@ -70,6 +70,8 @@ vi.mock('$lib/tauri-commands', () => ({
   showFileContextMenu: vi.fn(() => Promise.resolve()),
   updateMenuContext: vi.fn(() => Promise.resolve()),
   updateServicesSelection: vi.fn(() => Promise.resolve()),
+  // `same-kind-target.svelte.ts` calls this whenever the cursor moves, so a pane mount reaches it.
+  updateSelectSameKindMenu: vi.fn(() => Promise.resolve()),
   getRestrictedPaths: vi.fn().mockResolvedValue([]),
   checkFullDiskAccessQuiet: vi.fn().mockResolvedValue(true),
   hasFontMetrics: vi.fn().mockResolvedValue(true),
