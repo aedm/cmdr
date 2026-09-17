@@ -25,10 +25,12 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
 - **Four families skip `"execute-command"`**: CheckMenuItems auto-toggle (it would double-toggle) and send
   `"settings-changed"` / `"view-mode-changed"`; sort sends `"menu-sort"`; Cut / Copy / Paste / Move here / Select all
   are Custom (❌ not Predefined) items forwarding the native selector via `send_native_edit_action()` outside the main
-  window, or ⌘A and the clipboard die there; the VIEWER bar's own Copy / Select all are Custom too, on their own
-  `VIEWER_*` ids, and emit `ViewerEditAction` to the viewer in front (a native selector would grab its status bar).
+  window, or ⌘A and the clipboard die there; all four of the VIEWER bar's are Custom too, on their own `VIEWER_*` ids —
+  Copy / Select all emit `ViewerEditAction` to the viewer in front (a native selector would grab its status bar), while
+  Cut / Paste forward the selector to its search box, ❗ Predefined off macOS or ⌘X / ⌘V die there.
 - **Enabled state has ONE writer, `apply_menu_item_states`**: store a new input and add it to `menu_item_enabled`, ❌
-  never a direct `set_enabled`. Greying is chrome — the real guard is `main_window.is_focused()` in `on_menu_event`;
+  never a direct `set_enabled`. The viewer bar's Cut / Paste are in there too, following its search box
+  (`viewer_search_focus`). Greying is chrome — the real guard is `main_window.is_focused()` in `on_menu_event`;
   accelerators fire even when items look off.
 - **macOS swaps ONE app-level bar on focus-gain (`activate_window_menu`)**; Linux uses per-window menus, and
   `window.set_menu()` is a macOS no-op. ❗ `cleanup_macos_menus`, `set_macos_menu_icons`, and `set_display_accelerators`

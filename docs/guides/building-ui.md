@@ -60,14 +60,16 @@ Two menu systems: the OS's, through muda (`apps/desktop/src-tauri/src/menu/`), a
    failure shape there is, because the item looks right and does nothing. Anything else → house `Menu`.
 
    The viewer is the case to remember, because its Edit menu splits down this exact line (`build_viewer_menu` in
-   `apps/desktop/src-tauri/src/menu/menu_structure.rs`). **Cut and Paste are Predefined and work**: the selectors land
-   on the search box, a real text field, which is the only thing in that window they could act on. **Copy and Select all
-   are Custom items routed to the frontend**, because what they act on is the viewer's own offset-based selection:
-   `.file-content` is `user-select: none`, so the only DOM selection a selector can find is the `.status-bar` footer,
-   and native `selectAll:` highlights the footer while native `copy:` copies it. That's the failure shape this question
-   exists to catch, and it's worse than a no-op, since the item looks right and does the wrong thing. Its CONTENT
-   (right-click) menu is hand-rolled for the same reason plus more: Copy there is a three-band size flow over file
-   offsets with its own IPC and dialogs, and Select all takes the whole file by offset including an `EOF_LINE` sentinel.
+   `apps/desktop/src-tauri/src/menu/menu_structure.rs`). **Cut and Paste forward the native selectors and work**: they
+   land on the search box, a real text field, which is the only thing in that window they could act on. (They're Custom
+   items that re-send the selector rather than Predefined ones, so their enabled state can follow that box's focus; the
+   selector is what matters here, not who sends it.) **Copy and Select all are Custom items routed to the frontend**,
+   because what they act on is the viewer's own offset-based selection: `.file-content` is `user-select: none`, so the
+   only DOM selection a selector can find is the `.status-bar` footer, and native `selectAll:` highlights the footer
+   while native `copy:` copies it. That's the failure shape this question exists to catch, and it's worse than a no-op,
+   since the item looks right and does the wrong thing. Its CONTENT (right-click) menu is hand-rolled for the same
+   reason plus more: Copy there is a three-band size flow over file offsets with its own IPC and dialogs, and Select all
+   takes the whole file by offset including an `EOF_LINE` sentinel.
 
 3. **Tiebreaker: what opened it?** A right-click is an OS convention and people expect the OS's menu. A menu hanging off
    a chip or a button in our own chrome should look like ours.

@@ -91,7 +91,15 @@ fn install<R: Runtime>(
     let viewer_menu_items = super::build_viewer_menu(app)?;
     let viewer_menu = viewer_menu_items.menu.clone();
     *menu_state.viewer_word_wrap.lock_ignore_poison() = Some(viewer_menu_items.word_wrap);
+    *menu_state.viewer_edit_cut.lock_ignore_poison() = Some(viewer_menu_items.edit_cut);
+    *menu_state.viewer_edit_paste.lock_ignore_poison() = Some(viewer_menu_items.edit_paste);
     *menu_state.viewer_menu.lock_ignore_poison() = Some(viewer_menu_items.menu);
+
+    // A fresh bar comes up with fresh items, so every stored verdict has to be put back on them.
+    // For most items the frontend re-pushes after `MenuBarRebuilt`, but the viewer's Cut / Paste
+    // follow a search box that the language change didn't touch, and their input already lives
+    // here.
+    super::apply_menu_item_states(menu_state);
 
     let active = *menu_state.active_menu_kind.lock_ignore_poison();
     app.set_menu(match active {

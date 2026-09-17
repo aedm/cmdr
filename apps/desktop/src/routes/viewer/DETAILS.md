@@ -607,8 +607,10 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
     native `selectAll:` / `copy:` acts on the DOM selection, and with `.file-content` opted out the only selectable text
     left in the window is the `.status-bar` footer: Select all highlights the footer and Copy then copies it. Rust emits
     a typed `ViewerEditAction` to the focused viewer instead (`src-tauri/src/menu/DETAILS.md` § "Per-window menu
-    activation"), and `viewer-menu-actions.ts` runs the same two functions ⌘A / ⌘C run. ❗ Cut and Paste stay
-    Predefined: they're the search box's, and trimming them once left ⌘X / ⌘V dead there.
+    activation"), and `viewer-menu-actions.ts` runs the same two functions ⌘A / ⌘C run. ❗ Cut and Paste are their
+    neighbours in the same submenu but a different story: they belong to the search box, the only editable field in the
+    window, and trimming them once left ⌘X / ⌘V dead there. Rust hands their click straight back to the native responder
+    chain.
 - **Selection offsets are UTF-16 code units, not bytes or grapheme clusters.** When you add features that compute
   offsets from a click position (caret math in `viewer-pointer.ts`) or accept them across the IPC boundary
   (`viewer_read_range`), preserve the UTF-16 convention. The backend handles the conversion to UTF-8 bytes, clamping
@@ -623,6 +625,19 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
   `viewer-keyboard.ts`, shared with the Edit menu's dispatcher). Both halves are pinned:
   `viewer-pointer-drag.svelte.test.ts`, `viewer-keyboard.test.ts`, and the "⌘C copies the dragged selection while the
   search bar is open" case in `viewer.spec.ts`.
+- **The viewer tells Rust when its search box has focus**, through `pushSearchInputFocused` in `+page.svelte` →
+  `viewerSetSearchInputFocused`. That's what greys the menu bar's Edit > Cut / Paste, which act on the search box and on
+  nothing else in the window. Three call sites, each covering a case the others miss:
+  - the input's `onfocus` / `onblur`, the ordinary path;
+  - the `$effect` on `search.searchVisible` — ❗ removing a focused input from the DOM fires no `blur`, so closing the
+    search bar has to push `false` itself;
+  - the window's focus-gain, beside the word-wrap re-sync: one bar is shared by every viewer, so a switch would
+    otherwise leave another viewer's answer on it. It pushes `isSearchInputFocused()`, the same helper ⌘C / ⌘A branch
+    on, so there's one notion of "typing in the search box".
+
+  Chrome only: ⌘X / ⌘V reach the search box whether the items look live or not, and why they can't do otherwise is in
+  `apps/desktop/src-tauri/src/menu/DETAILS.md` § "Dialog refusals, and the one writer of an item's enabled state".
+
 - **Drag autoscroll uses `setPointerCapture` + window `blur` fallback** because the Tauri webview can lose `pointerup`
   events to other macOS windows. Without capture, dragging past the webview's edge leaves the RAF loop running forever
   with no way to stop. Capture is wrapped in try/catch because some webviews refuse it on non-focusable targets; the

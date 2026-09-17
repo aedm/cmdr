@@ -113,3 +113,35 @@ fn the_gate_leaves_the_commands_that_steer_a_running_operation_alone() {
     // selector in other windows. See the const's comment.
     assert!(!OPERATION_START_ITEM_IDS.contains(&EDIT_PASTE_ID));
 }
+
+#[test]
+fn the_viewers_cut_and_paste_are_live_only_while_its_search_box_has_focus() {
+    assert!(!viewer_text_edit_enabled(None));
+    assert!(viewer_text_edit_enabled(Some("viewer-1")));
+}
+
+#[test]
+fn a_viewers_search_box_taking_focus_claims_the_menu_and_giving_it_up_releases_it() {
+    let mut holder = None;
+    note_viewer_search_focus(&mut holder, "viewer-1", true);
+    assert_eq!(holder.as_deref(), Some("viewer-1"));
+    note_viewer_search_focus(&mut holder, "viewer-1", false);
+    assert_eq!(holder, None);
+}
+
+/// Clicking from one viewer to another crosses two pushes in flight: the old viewer's input
+/// blurs, and the new viewer re-pushes its own state on focus-gain. Whichever order they land
+/// in, the answer has to be the viewer in front — otherwise a late blur from a window the user
+/// already left greys out the search box they're typing in.
+#[test]
+fn a_blur_from_the_viewer_left_behind_cannot_take_the_menu_from_the_one_in_front() {
+    let mut blur_last = Some("viewer-1".to_string());
+    note_viewer_search_focus(&mut blur_last, "viewer-2", true);
+    note_viewer_search_focus(&mut blur_last, "viewer-1", false);
+    assert_eq!(blur_last.as_deref(), Some("viewer-2"));
+
+    let mut blur_first = Some("viewer-1".to_string());
+    note_viewer_search_focus(&mut blur_first, "viewer-1", false);
+    note_viewer_search_focus(&mut blur_first, "viewer-2", true);
+    assert_eq!(blur_first.as_deref(), Some("viewer-2"));
+}

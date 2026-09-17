@@ -79,14 +79,18 @@ pub fn at_startup(app: &tauri::App, settings: &Settings) -> tauri::Result<()> {
     #[cfg(target_os = "macos")]
     file_system::open_with::start_invalidation_observer();
 
-    // On macOS, build the shared viewer menu once and store it (plus the main-menu clone and
-    // the viewer word-wrap ref). `activate_window_menu` swaps the app-level menu bar between
-    // these on window focus-gain; `viewer_set_word_wrap` flips the stored CheckMenuItem.
+    // On macOS, build the shared viewer menu once and store it (plus the main-menu clone and the
+    // viewer's own item refs). `activate_window_menu` swaps the app-level menu bar between these on
+    // window focus-gain; `viewer_set_word_wrap` flips the stored CheckMenuItem, and
+    // `apply_menu_item_states` greys Cut / Paste with the viewer's search box. Those two come out
+    // of the builder disabled, matching the fresh `MenuState` that says no search box has focus.
     #[cfg(target_os = "macos")]
     {
         *menu_state.main_menu.lock_ignore_poison() = Some(main_menu_clone);
         let viewer_menu_items = super::build_viewer_menu(app.handle())?;
         *menu_state.viewer_word_wrap.lock_ignore_poison() = Some(viewer_menu_items.word_wrap);
+        *menu_state.viewer_edit_cut.lock_ignore_poison() = Some(viewer_menu_items.edit_cut);
+        *menu_state.viewer_edit_paste.lock_ignore_poison() = Some(viewer_menu_items.edit_paste);
         *menu_state.viewer_menu.lock_ignore_poison() = Some(viewer_menu_items.menu);
     }
 

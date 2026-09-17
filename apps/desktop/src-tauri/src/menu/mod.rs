@@ -108,7 +108,7 @@ pub use context_menu_icons::lend_context_menu_icons;
 pub use file_context_menu::{ContextMenuPaneFacts, FileContextInfo, build_context_menu};
 pub(crate) use item_states::{apply_menu_item_states, set_menu_context};
 #[cfg(target_os = "macos")]
-pub(crate) use item_states::{swap_to_main_menu, swap_to_viewer_menu};
+pub(crate) use item_states::{note_viewer_search_focus, swap_to_main_menu, swap_to_viewer_menu};
 pub use media_index_items::{ImageIndexMenuState, image_index_menu_items};
 pub use menu_bar_builder::build_menu;
 pub use menu_handlers::handle_menu_event;
@@ -222,11 +222,11 @@ pub enum ActiveMenuKind {
     Viewer,
 }
 
-/// The viewer menu plus the `Word wrap` CheckMenuItem ref captured at build time.
+/// The viewer menu plus the item refs captured at build time.
 ///
 /// On macOS the viewer menu is built once at startup and shared across all viewer windows. Holding
-/// the `word_wrap` ref lets `viewer_set_word_wrap` update the checkbox in O(1) instead of walking
-/// the menu tree.
+/// the refs lets `viewer_set_word_wrap` update the checkbox, and `apply_menu_item_states` grey the
+/// two Edit items, in O(1) instead of walking the menu tree.
 pub struct ViewerMenuItems<R: Runtime> {
     pub menu: Menu<R>,
     /// Only read on macOS: the viewer app-menu swap is macOS-only, and `lib.rs` captures this ref
@@ -240,6 +240,12 @@ pub struct ViewerMenuItems<R: Runtime> {
         )
     )]
     pub word_wrap: CheckMenuItem<R>,
+    /// The Edit submenu's Cut and Paste, which are Custom items on macOS alone (elsewhere they
+    /// stay Predefined, because forwarding the native selector needs the responder chain).
+    #[cfg(target_os = "macos")]
+    pub edit_cut: MenuItem<R>,
+    #[cfg(target_os = "macos")]
+    pub edit_paste: MenuItem<R>,
 }
 
 /// Context for the current menu selection.
@@ -400,6 +406,22 @@ pub struct MenuState<R: Runtime> {
     /// updates it in O(1) without a tree walk.
     #[cfg(target_os = "macos")]
     pub viewer_word_wrap: Mutex<Option<CheckMenuItem<R>>>,
+    /// The viewer menu's Edit > Cut and Edit > Paste, captured at build time for the same reason.
+    /// Their enabled state follows `viewer_search_focus`, through `apply_menu_item_states`.
+    #[cfg(target_os = "macos")]
+    pub viewer_edit_cut: Mutex<Option<MenuItem<R>>>,
+    #[cfg(target_os = "macos")]
+    pub viewer_edit_paste: Mutex<Option<MenuItem<R>>>,
+    /// The label of the viewer whose SEARCH BOX holds keyboard focus, or `None` when none does.
+    /// It's the only editable field in a viewer window, so it's what decides whether the two items
+    /// above are live. Pushed by each viewer (`viewer_set_search_input_focused`) on the input's
+    /// focus and blur, on the search bar closing, and on the window's focus-gain, which is what
+    /// makes a window switch converge (`note_viewer_search_focus`).
+    ///
+    /// ⚠️ Greying is CHROME here as everywhere else, and ⌘X / ⌘V reach the search box whatever
+    /// this says: see `viewer_text_edit_enabled`.
+    #[cfg(target_os = "macos")]
+    pub viewer_search_focus: Mutex<Option<String>>,
 }
 
 impl<R: Runtime> Default for MenuState<R> {
@@ -438,6 +460,12 @@ impl<R: Runtime> Default for MenuState<R> {
             active_menu_kind: Mutex::new(ActiveMenuKind::default()),
             #[cfg(target_os = "macos")]
             viewer_word_wrap: Mutex::new(None),
+            #[cfg(target_os = "macos")]
+            viewer_edit_cut: Mutex::new(None),
+            #[cfg(target_os = "macos")]
+            viewer_edit_paste: Mutex::new(None),
+            #[cfg(target_os = "macos")]
+            viewer_search_focus: Mutex::new(None),
         }
     }
 }

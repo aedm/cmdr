@@ -320,6 +320,9 @@ that the scan opener finds a line exactly with no index).
 - `viewer_close(session_id)` → frees resources (also signals every in-flight read to cancel)
 - `viewer_setup_menu(label)`: builds viewer menu with word wrap item
 - `viewer_set_word_wrap(label, checked)`: syncs menu state
+- `viewer_set_search_input_focused(label, focused)`: whether this viewer's search box holds keyboard focus, which is
+  what greys the viewer bar's Edit > Cut / Paste (they act on that box and nothing else). macOS only;
+  `../menu/DETAILS.md` § "Dialog refusals, and the one writer of an item's enabled state"
 - `viewer_get_encoding_options(session_id)` → `EncodingOptions`: current selection, detected encoding, and the full list
   of selectable encodings with their labels and groups. The FE renders the dropdown straight from this; no encoding list
   lives on the FE.

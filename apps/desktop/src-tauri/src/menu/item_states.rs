@@ -137,6 +137,48 @@ fn menu_item_enabled(id: &str, inputs: &MenuItemInputs) -> bool {
     in_scope && own_verdict && !refused
 }
 
+/// Records that the search box of viewer `label` took (`focused`) or gave up keyboard focus,
+/// in `holder`: the viewer whose search box has it, if any.
+///
+/// ❗ A `false` only counts from the viewer that last claimed focus. Every viewer pushes its own
+/// answer, and clicking from viewer A to viewer B crosses two of them in flight (A's input blurs,
+/// B gains window focus and re-pushes); without this, whichever arrived last would win and B could
+/// end up with A's answer. Both orderings land on B here.
+#[cfg_attr(
+    not(target_os = "macos"),
+    allow(
+        dead_code,
+        reason = "the viewer's own menu bar is macOS-only; the decision is still pinned by tests everywhere"
+    )
+)]
+pub(crate) fn note_viewer_search_focus(holder: &mut Option<String>, label: &str, focused: bool) {
+    if focused {
+        *holder = Some(label.to_string());
+    } else if holder.as_deref() == Some(label) {
+        *holder = None;
+    }
+}
+
+/// Whether the viewer bar's Edit > Cut and Edit > Paste are live, given which viewer's search
+/// box holds focus.
+///
+/// The search box is the only editable field in a viewer window, so anywhere else those two would
+/// act on nothing, and looking live is what read as broken.
+///
+/// ⚠️ Chrome, like every other verdict here: a disabled item's key equivalent either still fires
+/// (and forwards `cut:` to a first responder with nothing to cut) or falls through to the webview,
+/// so greying can't take ⌘X / ⌘V away from the search box either way.
+#[cfg_attr(
+    not(target_os = "macos"),
+    allow(
+        dead_code,
+        reason = "the viewer's own menu bar is macOS-only; the decision is still pinned by tests everywhere"
+    )
+)]
+pub(crate) fn viewer_text_edit_enabled(holder: Option<&str>) -> bool {
+    holder.is_some()
+}
+
 /// Recomputes every main-menu item's enabled state from the stored inputs.
 ///
 /// Every writer of an input stores it and calls this, ❌ never `set_enabled` on an item directly:
@@ -193,6 +235,22 @@ pub(crate) fn apply_menu_item_states<R: Runtime>(menu_state: &MenuState<R>) {
     // The sort items themselves are in `items`, each greyed by its own command.
     if let Some(ref submenu) = *menu_state.sort_submenu.lock_ignore_poison() {
         let _ = submenu.set_enabled(inputs.explorer_menu_active);
+    }
+
+    // The VIEWER bar's Edit > Cut / Paste, which answer to a different question than everything
+    // above: not the explorer's focus or its dialog gate, but whether the viewer in front has its
+    // search box focused. They're here because the rule stands — one writer of `set_enabled`.
+    #[cfg(target_os = "macos")]
+    {
+        let enabled = {
+            let holder = menu_state.viewer_search_focus.lock_ignore_poison();
+            viewer_text_edit_enabled(holder.as_deref())
+        };
+        for item in [&menu_state.viewer_edit_cut, &menu_state.viewer_edit_paste] {
+            if let Some(ref item) = *item.lock_ignore_poison() {
+                let _ = item.set_enabled(enabled);
+            }
+        }
     }
 }
 

@@ -199,8 +199,9 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   Cmdr's rename undo has to report a tally. Both refuse with the typed `RollbackRefusal`, never a sentence.
 - **`restricted_paths.rs`**: `get_restricted_paths`: read-only snapshot for the frontend store bootstrap. See
   `crate::restricted_paths` for the state machine and the `restricted-paths-changed` event payload.
-- **`file_viewer.rs`**: session lifecycle, regex/literal search with mode flags, word wrap, menu state, encoding pickers
-  (`viewer_set_encoding` / `viewer_get_encoding_options`), tail mode (`viewer_set_tail_mode`), `viewer_reload`.
+- **`file_viewer.rs`**: session lifecycle, regex/literal search with mode flags, word wrap, menu state (including
+  `viewer_set_search_input_focused`, which greys the viewer bar's Edit > Cut / Paste with its search box), encoding
+  pickers (`viewer_set_encoding` / `viewer_get_encoding_options`), tail mode (`viewer_set_tail_mode`), `viewer_reload`.
 - **`menu.rs`**: the context-menu popups (file / breadcrumb / volume row / favorite row / parent row / tab / network
   host / function key bar), plus `update_menu_context`.
 - **`menu_state.rs`**: the pushes that keep the menu BAR in step with the frontend: the view-mode + hidden-files +

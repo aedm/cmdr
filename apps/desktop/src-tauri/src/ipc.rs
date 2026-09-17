@@ -223,6 +223,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::file_viewer::viewer_write_range_to_file,
                     crate::commands::file_viewer::viewer_setup_menu,
                     crate::commands::file_viewer::viewer_set_word_wrap,
+                    crate::commands::file_viewer::viewer_set_search_input_focused,
                     crate::commands::file_viewer::viewer_get_encoding_options,
                     crate::commands::file_viewer::viewer_set_encoding,
                     crate::commands::file_viewer::viewer_set_tail_mode,

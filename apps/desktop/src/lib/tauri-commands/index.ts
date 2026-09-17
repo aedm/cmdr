@@ -65,6 +65,7 @@ export {
   viewerClose,
   viewerSetupMenu,
   viewerSetWordWrap,
+  viewerSetSearchInputFocused,
   viewerReadRange,
   viewerCancelRead,
   viewerWriteRangeToFile,
