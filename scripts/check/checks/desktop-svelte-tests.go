@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // CoverageThreshold is the minimum line coverage percentage required.
@@ -129,6 +130,10 @@ func newCoverageRun(desktopDir string) (*coverageRun, error) {
 func RunSvelteTests(ctx *CheckContext) (CheckResult, error) {
 	desktopDir := filepath.Join(ctx.RootDir, "apps", "desktop")
 
+	// A red run saves its transcript to /tmp for the failure message to point at;
+	// this is what collects the old ones.
+	sweepStaleCheckArtifacts(time.Now())
+
 	// Run tests with coverage using pnpm, into a private per-invocation dir.
 	run, err := newCoverageRun(desktopDir)
 	if err != nil {
@@ -140,7 +145,7 @@ func RunSvelteTests(ctx *CheckContext) (CheckResult, error) {
 	// check's own error is the whole vitest transcript, which no query can rank.
 	recordVitestTests(ctx, run.jsonReport, desktopDir)
 	if err != nil {
-		return CheckResult{}, fmt.Errorf("svelte tests failed\n%s", indentOutput(output))
+		return CheckResult{}, fmt.Errorf("svelte tests failed: %s", diagnoseVitestFailure(run.jsonReport, desktopDir, output))
 	}
 
 	// Extract test count from output. Strip ANSI first: vitest colorizes its
@@ -295,21 +300,3 @@ func applyCoverageShrinkwrap(ctx *CheckContext, desktopDir string, allowlist *Co
 	return notes, madeChanges, nil
 }
 
-// vitestRunDiagnostics pulls the lines that reveal whether a vitest run was
-// complete: the `Test Files` / `Tests` tallies (a skip count above the usual
-// handful means files didn't run, so coverage is unreliable) plus any
-// worker-death / heap-limit errors. Returned indented for the failure message.
-// `cleanOutput` must already have ANSI stripped.
-func vitestRunDiagnostics(cleanOutput string) string {
-	var out []string
-	for line := range strings.SplitSeq(cleanOutput, "\n") {
-		t := strings.TrimSpace(line)
-		if strings.HasPrefix(t, "Test Files ") || strings.HasPrefix(t, "Tests ") ||
-			strings.Contains(t, "Worker terminated") || strings.Contains(t, "Channel closed") ||
-			strings.Contains(t, "reached heap limit") || strings.Contains(t, "FATAL ERROR") ||
-			strings.Contains(t, "closed unexpectedly") || strings.Contains(t, "worker exited") {
-			out = append(out, "      "+t)
-		}
-	}
-	return strings.Join(out, "\n")
-}

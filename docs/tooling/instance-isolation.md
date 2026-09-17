@@ -322,8 +322,8 @@ fixed at the same time).
 | `/tmp/cmdr-e2e-results-<shard>-<pid>/`                   | Playwright   | swept after a week                                 | the run's recordings and error contexts                                         |
 | `/tmp/cmdr-e2e-playwright-<shard>-<ts>-<pid>.log`        | Go checker   | swept after a week                                 | the run's per-shard app + test log                                              |
 
-The last three deliberately outlive their run: they're what a post-mortem reads. `sweepStaleE2EArtifacts`
-(`scripts/check/checks/e2e-tmp-sweep.go`) collects them at the start of the next E2E lane once they're a week old, which
+The last three deliberately outlive their run: they're what a post-mortem reads. `sweepStaleCheckArtifacts`
+(`scripts/check/checks/tmp-sweep.go`) collects them at the start of the next E2E lane once they're a week old, which
 is also why the patterns there never match `cmdr-e2e-fixtures-cache` or a hand-made `cmdr-e2e-data-<name>`.
 
 ## Precedence rules

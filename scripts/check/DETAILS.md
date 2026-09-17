@@ -353,8 +353,9 @@ So: absence of a test means "fast, or never ran", never "passed". A slow-test ra
 threshold isn't one of the slow ones.
 
 **Covered lanes:** `rust-tests`, `rust-integration-tests`, `rust-tests-linux` (parsed from nextest's captured status
-lines, `checks/rust-test-diagnostics.go`), `svelte-tests` (Vitest's `json` reporter, `checks/vitest-test-log.go`), and
-both E2E lanes (Playwright's JSON report, `checks/e2e-test-log.go`). Every other check writes nothing.
+lines, `checks/rust-test-diagnostics.go`), all three Vitest lanes — `svelte-tests`, `api-server-tests`,
+`dashboard-tests` (Vitest's `json` reporter, `checks/vitest-test-log.go`) — and both E2E lanes (Playwright's JSON
+report, `checks/e2e-test-log.go`). Every other check writes nothing.
 
 **One mechanism, not six.** A lane's verdict travels as a `CheckResult` on the green path and an `error` on the red one,
 so neither can carry per-test detail. `checks/test-log.go` is the side-channel: the runner hands each check its own

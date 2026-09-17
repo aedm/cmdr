@@ -21,14 +21,28 @@ import (
 // spec's ABSOLUTE path, and each `assertionResults[]` carries `ancestorTitles`,
 // `title`, `status`, and a millisecond `duration`.
 
-// Subset of Vitest's json reporter output; unknown fields are ignored.
+// Subset of Vitest's json reporter output; unknown fields are ignored. This is
+// the one place the report's shape is described: the per-test log reads the
+// outcomes and durations, `vitest-failure-diagnostics.go` reads the tallies and
+// the failure messages.
 type vitestJSONReport struct {
-	TestResults []vitestJSONFile `json:"testResults"`
+	NumTotalTests   int              `json:"numTotalTests"`
+	NumPassedTests  int              `json:"numPassedTests"`
+	NumFailedTests  int              `json:"numFailedTests"`
+	NumPendingTests int              `json:"numPendingTests"`
+	NumTodoTests    int              `json:"numTodoTests"`
+	TestResults     []vitestJSONFile `json:"testResults"`
 }
 
 type vitestJSONFile struct {
 	Name             string                `json:"name"`
 	AssertionResults []vitestJSONAssertion `json:"assertionResults"`
+	// "passed" or "failed" for the spec as a whole.
+	Status string `json:"status"`
+	// The spec's own first error, which is the ONLY account of a file that failed
+	// to collect (a bad import, a throw at module scope): such a file reports no
+	// assertions at all, so without this its failure would read as an empty run.
+	Message string `json:"message"`
 }
 
 type vitestJSONAssertion struct {
@@ -38,6 +52,8 @@ type vitestJSONAssertion struct {
 	Status string `json:"status"`
 	// Milliseconds. Absent (0) for a test that never ran.
 	Duration float64 `json:"duration"`
+	// Each error's stack (or its message when there is no stack), verbatim.
+	FailureMessages []string `json:"failureMessages"`
 }
 
 // vitestOutcome maps Vitest's per-test status. Everything that didn't run reads
@@ -51,16 +67,26 @@ var vitestOutcome = map[string]TestOutcome{
 	"skipped": TestSkipped,
 }
 
-// parseVitestRecords reads one Vitest json report into per-test records. IDs are
-// `<spec path relative to desktopDir>::<describe chain>::<title>`, the same shape
-// the Playwright lanes use, so one query can rank tests across every lane.
-func parseVitestRecords(path, desktopDir string) ([]TestRecord, error) {
+// readVitestReport parses one Vitest json report off disk. Both readers of the
+// report go through it, so the shape above is the only description of it.
+func readVitestReport(path string) (*vitestJSONReport, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 	var report vitestJSONReport
 	if err := json.Unmarshal(data, &report); err != nil {
+		return nil, err
+	}
+	return &report, nil
+}
+
+// parseVitestRecords reads one Vitest json report into per-test records. IDs are
+// `<spec path relative to desktopDir>::<describe chain>::<title>`, the same shape
+// the Playwright lanes use, so one query can rank tests across every lane.
+func parseVitestRecords(path, desktopDir string) ([]TestRecord, error) {
+	report, err := readVitestReport(path)
+	if err != nil {
 		return nil, err
 	}
 

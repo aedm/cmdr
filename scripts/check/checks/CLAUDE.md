@@ -17,38 +17,39 @@ One Go file per check, registered in `registry.go`'s `AllChecks`. Runner: `../CL
 - **Every check MUST declare `Inputs`** (the path globs it reads), or `TestEveryCheckDeclaresInputs` fails. Reuse a set
   from `inputs.go`; too-wide costs cache speed, too-narrow costs correctness. Code lanes inherit `agentDocExclusions`,
   so a check READING a `CLAUDE.md` / `DETAILS.md` needs `wholeRepoInputs`.
-- **A Go TEST that reads the real repo widens `goTestsInputs`.** A guard that only re-runs when its own source changes
-  goes green from cache on the edit it exists to catch. Declare what it reads in `realTreeReadingTests`;
-  `TestGoTestsInputsCoverTheRealTreeItsTestsRead` fails otherwise. DETAILS § "The Go lanes split three ways".
-- **Your check's own source is fingerprinted for you** (`runner-sources.go` follows `Run` through the package). It can't
+- **A Go TEST that reads the real repo widens `goTestsInputs`**: declare what it reads in `realTreeReadingTests`, or it
+  goes green from cache on the very edit it exists to catch. `TestGoTestsInputsCoverTheRealTreeItsTestsRead` enforces
+  it. DETAILS § "The Go lanes split three ways".
+- **Your check's own source is fingerprinted** (`runner-sources.go` follows `Run` through the package). It can't
   see a DATA file (name a new allowlist JSON via `runnerDataInputs`) or an `init()` that registers rather than assigns
   (which drops every check back to the whole tree). `../DETAILS.md` § "The runner's own source".
 - **Wire every check into CI** (`ci.yml` / `slow-checks.yml`, or a `NotInCI` reason); `ci-coverage` enforces both ways.
-- **Length-based truncation is forbidden.** If 200 tests fail, all 200 panic bodies pass through. Filter by structure,
+- **Length-based truncation is forbidden**: if 200 tests fail, all 200 panic bodies pass through. Filter by structure,
   ❌ never by line count.
 - **A test lane calls `ctx.RecordTests(...)` BEFORE its pass/fail branch** (`test-log.go`), or a red run never says
   WHICH test failed.
 - **Pin every tool install** (❌ never `@latest`), or a compromised tool repo reaches every fresh checkout;
   `EnsureGoTool` enforces the pin. Versions, sha256s, and the dated nightly: DETAILS § "Key decisions".
-- **Need a Go version? Call `MiseGoVersion(rootDir)`** — ❌ never a literal. `go-version-single-source` enforces it.
-- **A Rust check never hardcodes a source path, its own features, its `Inputs`, or a `cmd.Dir`.** Cargo lanes take both
-  from `HostCargoLaneArgs` + `rustCompileInputs`; scanners take `ScannerRoots` / `ScannerMemberKinds` +
-  `rustScanInputs(<same kinds>)`. ❌ No `tools/**`. Asking something else makes the others rebuild `cmdr` (20-100 s);
-  `workspace-member-coverage` fails on an unclassified check or unreached member.
+- **Need a Go version? `MiseGoVersion(rootDir)`**, ❌ never a literal; `go-version-single-source` enforces it.
+- **A Rust check never hardcodes a source path, its own features, its `Inputs`, or a `cmd.Dir`.** Cargo lanes take them
+  from `HostCargoLaneArgs` + `rustCompileInputs`; scanners from `ScannerRoots` / `ScannerMemberKinds` +
+  `rustScanInputs(<same kinds>)`. ❌ No `tools/**`; anything else rebuilds `cmdr` for the others (20-100 s).
+  `workspace-member-coverage` enforces it. DETAILS § "Workspace geometry".
 - **A new cargo check that COMPILES declares `Exclusive: ResourceCargoBuildDir`** (`common.go`), or it blocks on cargo's
   build-directory lock while holding CPU weight.
 - **Wire allowlist staleness from day one**: reuse `directiveTracker` / `writeJSONAllowlist`, name the file via
-  `runnerDataInputs`, and give every entry a mandatory `reason`. Who adds one: `.claude/rules/file-length-allowlist.md`.
+  `runnerDataInputs`, and give every entry a mandatory `reason`.
 - **Error output goes through `indentOutput()`**; success messages carry stats ("12 tests passed"), not "OK". Return
   `Skipped(reason)` when it can't run, `SuccessWithChanges` when it fixed something.
-- **`svelte-tests` coverage needs a per-invocation temp `reportsDirectory`** (`VITEST_COVERAGE_DIR`): a fixed path lets
-  concurrent runs clobber each other's v8 files.
+- **Vitest lanes:** coverage needs a per-invocation `reportsDirectory` (`VITEST_COVERAGE_DIR`), or concurrent runs
+  clobber each other's v8 files; a red run renders through `diagnoseVitestFailure`, and ❌ a timeout's real message is
+  never in the json report. DETAILS § "Vitest failure output".
 - **The Playwright lane's release build is NOT incremental** (172 s for a no-op), so `e2e-build.go` stamps the binary
-  with what built it and skips when that matches. Any uncertainty rebuilds.
+  with what built it and skips on a match; any uncertainty rebuilds.
 - **A red Rust lane goes through `resolveRustFailure`**, which re-runs failures alone before believing them; the Docker
-  lane execs into its live container, so ❌ never a `docker run`.
+  lane execs into its live container, ❌ never a `docker run`.
 - After authoring, run `pnpm check go-vet staticcheck` and update DETAILS § "Apps and check counts". `--fast` membership
   is `IsFast`, hand-curated.
 
 The authoring walkthrough, output-filtering recipes, the nightly bump, workspace geometry, the Rust input blocks, and
-decision detail: `DETAILS.md`. Read it before any non-trivial work here.
+decision detail: `DETAILS.md`. Read it before non-trivial work here.
