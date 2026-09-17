@@ -9,9 +9,9 @@ mod validation_client;
 mod verification;
 
 pub use app_status::{
-    AppStatus, LicenseType, get_app_status, get_window_title, has_been_validated, mark_commercial_reminder_dismissed,
-    mark_expiration_modal_shown, needs_validation, reset_license, update_cached_status, validate_license_async,
-    write_cached_status_without_validation,
+    AppStatus, LicenseType, get_app_status, has_been_validated, mark_commercial_reminder_dismissed,
+    mark_expiration_modal_shown, needs_validation, refresh_window_title, reset_license, update_cached_status,
+    validate_license_async, write_cached_status_without_validation,
 };
 pub use verification::{
     LicenseActivationError, LicenseInfo, VerifyResult, activate_license, activate_license_async, commit_license,

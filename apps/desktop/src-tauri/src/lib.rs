@@ -635,12 +635,10 @@ pub fn run() {
 
             menu::install::at_startup(app, &saved_settings)?;
 
-            // Set window title based on license status
-            let license_status = licensing::get_app_status(app.handle());
-            let title = licensing::get_window_title(&license_status);
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_title(&title);
-            }
+            // Set the window title from the licence status. The same call runs again on every
+            // status change, so activating a licence mid-session clears "Personal use only"
+            // from the Dock's window list without a relaunch.
+            licensing::refresh_window_title(app.handle());
 
             // titleBarStyle is "Overlay" in JSON for macOS (needed so trafficLightPosition
             // is applied at window creation time. Setting it at runtime resets the position.

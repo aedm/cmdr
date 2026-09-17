@@ -11,6 +11,7 @@ use crate::licensing::verification::{LicenseInfo, get_license_info};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use tauri::Manager;
 use tauri_plugin_store::StoreExt;
 
 /// How often to re-validate license (7 days in seconds).
@@ -416,6 +417,8 @@ pub fn write_cached_status_without_validation(
             store.delete(STORE_KEY_EXPIRATION_SHOWN);
         }
     }
+
+    refresh_window_title(app);
 }
 
 /// Update cached license status from server response.
@@ -442,6 +445,8 @@ pub fn update_cached_status(
             store.delete(STORE_KEY_EXPIRATION_SHOWN);
         }
     }
+
+    refresh_window_title(app);
 }
 
 /// The main window's OS-level title, from the licence status. This is the one
@@ -462,6 +467,25 @@ pub fn get_window_title(status: &AppStatus) -> String {
     }
 }
 
+/// Re-reads the licence status and re-applies the main window's OS-level title.
+///
+/// The in-app title bar is reactive and follows the status by itself; the OS-level one is a
+/// `set_title` call and stays wherever it was last put. Every write to the cached status calls
+/// this, so the two can't drift apart within a session. Without it, someone activating a licence
+/// kept "Cmdr – Personal use only" in the Dock's window list, Mission Control, and the Window
+/// menu until the next launch.
+///
+/// A no-op before the main window exists, so `setup` can call it on the way past.
+pub fn refresh_window_title(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let title = get_window_title(&get_app_status(app));
+    if let Err(e) = window.set_title(&title) {
+        log::warn!("Couldn't update the main window title: {}", e);
+    }
+}
+
 /// Reset license data, returning the app to unlicensed (Personal) state.
 pub fn reset_license(app: &tauri::AppHandle) {
     crate::licensing::verification::clear_license_cache();
@@ -473,6 +497,8 @@ pub fn reset_license(app: &tauri::AppHandle) {
         store.delete(STORE_KEY_EXPIRATION_SHOWN);
         store.delete(STORE_KEY_REMINDER_LAST_DISMISSED);
     }
+
+    refresh_window_title(app);
 }
 
 fn current_timestamp() -> u64 {

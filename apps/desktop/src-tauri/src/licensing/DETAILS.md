@@ -145,6 +145,14 @@ Neither ships, so the variable can't unlock a user's install.
 real outage would. **Why**: an E2E build is a release build, so its `LICENSE_SERVER_URL` is production, and a spec that
 typed a code or carried a stored key would send test traffic there.
 
+**Decision**: `refresh_window_title` lives inside the three functions that write the cached status
+(`write_cached_status_without_validation`, `update_cached_status`, `reset_license`), rather than at the call sites that
+change a licence. **Why**: the OS-level title is a `set_title` call and stays wherever it was last put, while the in-app
+title bar is reactive and follows the status by itself. Setting it only during `setup` left the Dock's window list,
+Mission Control, and the Window menu saying "Personal use only" for the rest of the session after someone activated a
+licence (reported by a beta user, 2026-09-17). Sitting in the writers means a new activation or expiry path can't
+forget it; `setup` calls the same function, so there's one way to set this title.
+
 ## Gotchas
 
 **Gotcha**: `should_show_commercial_reminder` initializes the timer on first call rather than showing immediately.
