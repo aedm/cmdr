@@ -31,8 +31,10 @@ recipe for adding one is § "Adding a new check". Only the layout rules live her
   Tauri process, socket wait, teardown), and `e2e-output.go` turns a raw transcript into a printable summary. That last
   one is shared with the Linux Docker lane and the build, which is why it lives under the neutral `e2e-` prefix rather
   than the check's own name. `e2e-stale-selector-parse.go` is the TypeScript lexer and CSS selector parser behind
-  `desktop-svelte-e2e-stale-selector`, kept apart so the check file holds only its wiring, vocabulary, and scan. None
-  appears in `AllChecks`.
+  `desktop-svelte-e2e-stale-selector`, kept apart so the check file holds only its wiring, vocabulary, and scan.
+  `tracked-files.go` is the shared "what does git know about, and how do you read one" vocabulary (`repoFiles`,
+  `gitTrackedFiles`, `readTrackedFile`) that every whole-tree scanner enumerates and reads through. None appears in
+  `AllChecks`.
 - **`changelog-commit-links.go` resolves every commit hash in `CHANGELOG.md` through ONE `git cat-file --batch-check`
   process**, not a process per reference. The recognition rule is § "CHANGELOG commit refs" below.
 
@@ -151,6 +153,10 @@ is broken — verify against the main clone first, where the answer is not clone
    `Inputs`** (the paths it reads) — reuse a shared set from `inputs.go`; the suite fails if you forget. See the
    `Inputs` field semantics above.
 3. Return `Success("message")` on pass, `fmt.Errorf(...)` on fail, `Skipped("reason")` to skip.
+   - **A scanner enumerating files from git reads them with `readTrackedFile`, never `os.ReadFile`**
+     (`tracked-files.go`). Git lists a tracked file until its deletion is STAGED, so a bare read turns the lane red with
+     `open <path>: no such file or directory` on someone else's pending `rm`. Count only the files it hands back, so a
+     skipped one can't inflate the success message's total.
 4. Add a test file if the check has non-trivial logic (`{app}-{name}_test.go`).
 5. If the check grows an allowlist or an opt-out comment, wire staleness detection from day one (see § Allowlist
    shrink-wrap): dead entries must auto-remove or fail, and orphaned opt-out comments must fail. Reuse

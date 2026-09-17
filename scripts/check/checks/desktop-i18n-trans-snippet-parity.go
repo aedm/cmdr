@@ -195,9 +195,12 @@ func RunI18nTransSnippetParity(ctx *CheckContext) (CheckResult, error) {
 	checked, dynamicTotal, unknownTotal := 0, 0, 0
 
 	for _, rel := range files {
-		source, err := os.ReadFile(filepath.Join(ctx.RootDir, rel))
+		source, present, err := readTrackedFile(ctx.RootDir, rel)
 		if err != nil {
-			return CheckResult{}, fmt.Errorf("couldn't read %s: %w", rel, err)
+			return CheckResult{}, err
+		}
+		if !present {
+			continue
 		}
 		usages, dynamic := parseTransUsages(string(source))
 		dynamicTotal += dynamic

@@ -69,25 +69,28 @@ func RunGoVersionSingleSource(ctx *CheckContext) (CheckResult, error) {
 		scanned    int
 	)
 	for _, rel := range files {
-		abs := filepath.Join(ctx.RootDir, filepath.FromSlash(rel))
-		if filepath.Base(rel) == "go.mod" {
-			floor, ok, err := readGoModFloor(abs, rel)
-			if err != nil {
-				return CheckResult{}, err
-			}
-			if ok {
+		isGoMod := filepath.Base(rel) == "go.mod"
+		if !isGoMod && !goVersionScannable(rel) {
+			continue
+		}
+		// Read through `readTrackedFile` (never `os.ReadFile`): the file list is
+		// git's, so it still names files an unstaged deletion has already taken
+		// off disk. Those are skipped, not scanned and not counted.
+		data, present, err := readTrackedFile(ctx.RootDir, rel)
+		if err != nil {
+			return CheckResult{}, err
+		}
+		if !present {
+			continue
+		}
+		if isGoMod {
+			if floor, ok := readGoModFloor(data, rel); ok {
 				modFiles = append(modFiles, floor)
 			}
 			continue
 		}
-		if !goVersionScannable(rel) {
-			continue
-		}
 		scanned++
-		v, o, err := scanForGoVersionPins(abs, rel)
-		if err != nil {
-			return CheckResult{}, err
-		}
+		v, o := scanForGoVersionPins(data, rel)
 		violations = append(violations, v...)
 		orphans = append(orphans, o...)
 	}
@@ -194,13 +197,9 @@ func goVersionScannable(rel string) bool {
 	return goVersionScanExtensions[filepath.Ext(rel)]
 }
 
-// scanForGoVersionPins reports every line naming a Go toolchain version.
-func scanForGoVersionPins(abs, rel string) ([]string, []orphanDirective, error) {
-	data, err := os.ReadFile(abs)
-	if err != nil {
-		return nil, nil, fmt.Errorf("open %s: %w", rel, err)
-	}
-
+// scanForGoVersionPins reports every line of data naming a Go toolchain version.
+// rel names the file in the report.
+func scanForGoVersionPins(data []byte, rel string) ([]string, []orphanDirective) {
 	var violations []string
 	tracker := newDirectiveTracker("# allowed-go-version-pin:", "#")
 	for i, line := range strings.Split(string(data), "\n") {
@@ -226,7 +225,7 @@ func scanForGoVersionPins(abs, rel string) ([]string, []orphanDirective, error) 
 			"%s:%d: %s\n    read the version from `MiseGoVersion(rootDir)`, OR add `# allowed-go-version-pin: <reason>`",
 			rel, lineNo, strings.TrimSpace(line)))
 	}
-	return violations, tracker.orphans(rel), nil
+	return violations, tracker.orphans(rel)
 }
 
 // goModFloor is one module's declared language floor.
@@ -239,18 +238,15 @@ type goModFloor struct {
 // directive is a different statement and doesn't match.
 var goModDirectiveRE = regexp.MustCompile(`(?m)^go\s+(\d+\.\d+(?:\.\d+)?)\s*$`)
 
-// readGoModFloor extracts the `go` directive. A module without one is not an
-// error (the directive is optional), it just doesn't take part in the compare.
-func readGoModFloor(abs, rel string) (goModFloor, bool, error) {
-	data, err := os.ReadFile(abs)
-	if err != nil {
-		return goModFloor{}, false, fmt.Errorf("open %s: %w", rel, err)
-	}
+// readGoModFloor extracts the `go` directive from one go.mod's content. A module
+// without one is not an error (the directive is optional), it just doesn't take
+// part in the compare.
+func readGoModFloor(data []byte, rel string) (goModFloor, bool) {
 	m := goModDirectiveRE.FindSubmatch(data)
 	if m == nil {
-		return goModFloor{}, false, nil
+		return goModFloor{}, false
 	}
-	return goModFloor{relPath: rel, version: string(m[1])}, true, nil
+	return goModFloor{relPath: rel, version: string(m[1])}, true
 }
 
 // checkGoModFloors enforces invariants (2) and (3): every module declares the
