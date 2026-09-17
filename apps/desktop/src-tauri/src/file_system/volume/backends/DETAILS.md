@@ -200,8 +200,10 @@ filesystem lacking the kernel flag, so the pane's own renames failed on every mo
 the same folder succeeded (ERR-8RFN4, app 0.45.1).
 
 **The kernel flag is not universal.** `renamex_np(RENAME_EXCL)` and `renameat2(RENAME_NOREPLACE)` are APFS, HFS+, and
-ext4; macOS's smbfs answers `ENOTSUP` (errno 45, verified against a Synology SMB mount on macOS 26.6.2, from the
-ERR-8RFN4 bundle's log, 2026-09-17), and other non-native mounts answer `EINVAL` or `ENOSYS`. Those three degrade to a
+ext4; macOS's smbfs answers `ENOTSUP` (errno 45 — verified twice against Synology SMB mounts: macOS 26.6.2 from the
+ERR-8RFN4 bundle's log, and macOS 27.0 by a direct `renamex_np` probe where APFS took the flag, the mount returned
+errno 45, and the check-then-rename fallback landed, 2026-09-17), and other non-native mounts answer `EINVAL` or
+`ENOSYS`. Those three degrade to a
 `symlink_metadata` check then a plain `rename(2)`; ❌ every other errno reaches the caller unchanged, or a refusal the
 filesystem meant becomes a second, quieter way to fail. The degradation is racy and deliberately so: a lost race
 refuses, where a bare `rename(2)` would clobber silently and unrecoverably.
