@@ -16,7 +16,8 @@ import { getAppLogger } from '$lib/logging/logger'
 import { toBackendCursorIndex, toBackendIndices } from '$lib/file-operations/transfer/transfer-dialog-utils'
 import { getInitialFolderName } from '$lib/file-operations/mkdir/new-folder-operations'
 import { getInitialFileName } from '$lib/file-operations/mkfile/new-file-operations'
-import type { DeleteSourceItem } from '$lib/file-operations/delete/delete-dialog-utils'
+import type { CloudOnlineOnlyExtent, DeleteSourceItem } from '$lib/file-operations/delete/delete-dialog-utils'
+import type { TrashRouting } from '$lib/ipc/bindings'
 import {
   type TransferContext,
   buildTransferPropsFromSelection,
@@ -56,22 +57,33 @@ const log = getAppLogger('fileExplorer')
  * hung mount) keeps the OS trash and its typed refusal.
  */
 async function cloudOnlineOnlyRouting(sourcePaths: string[]): Promise<{
-  routesToDelete: boolean
+  onlineOnly: CloudOnlineOnlyExtent | null
   folderMayHoldOnlineOnly: boolean
 }> {
   try {
     const answer = await trashRoutingForPaths(sourcePaths)
     return {
-      routesToDelete: answer.routing === 'permanentDeleteCloudStorage',
+      onlineOnly: ONLINE_ONLY_EXTENT_BY_ROUTING[answer.routing],
       folderMayHoldOnlineOnly: answer.folderMayHoldOnlineOnly,
     }
   } catch (error) {
     log.warn('trashRoutingForPaths threw, keeping the trash. error={error}', {
       error: error instanceof Error ? error.message : String(error),
     })
-    return { routesToDelete: false, folderMayHoldOnlineOnly: false }
+    return NO_ONLINE_ONLY
   }
 }
+
+/** Exhaustive by construction: a new routing variant is a compile error here
+ *  rather than a banner that silently stops appearing. */
+const ONLINE_ONLY_EXTENT_BY_ROUTING: Record<TrashRouting, CloudOnlineOnlyExtent | null> = {
+  trash: null,
+  permanentDeleteAllOnlineOnly: 'all',
+  permanentDeleteMixedOnlineOnly: 'mixed',
+}
+
+/** What every "we couldn't ask" path answers: today's behavior, the OS trash. */
+const NO_ONLINE_ONLY = { onlineOnly: null, folderMayHoldOnlineOnly: false } as const
 
 type DialogState = ReturnType<typeof createDialogState>
 
@@ -574,9 +586,9 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
       sourceItems,
       sourcePaths,
       sourceFolderPath: getCommonParentPath(sourcePaths),
-      isPermanent: permanent || cloud.routesToDelete,
-      supportsTrash: cloud.routesToDelete ? false : sourceVolume.supportsTrash,
-      cloudStorageOnlineOnly: cloud.routesToDelete,
+      isPermanent: permanent || cloud.onlineOnly !== null,
+      supportsTrash: cloud.onlineOnly === null ? sourceVolume.supportsTrash : false,
+      cloudOnlineOnly: cloud.onlineOnly,
       cloudFolderMayHoldOnlineOnly: cloud.folderMayHoldOnlineOnly,
       isFromCursor: !hasSelection,
       sortColumn: sortBy,
@@ -698,10 +710,8 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
     // Asked for both F8 and Shift+F8: the dialog's own switch could send a
     // Shift+F8 back to the trash, into the download this routing exists to
     // avoid. An archive already has no trash, so it never needs asking.
-    const cloud = sourceIsArchive
-      ? { routesToDelete: false, folderMayHoldOnlineOnly: false }
-      : await cloudOnlineOnlyRouting(sourcePaths)
-    const supportsTrash = sourceIsArchive || cloud.routesToDelete ? false : sourceVolume?.supportsTrash !== false
+    const cloud = sourceIsArchive ? NO_ONLINE_ONLY : await cloudOnlineOnlyRouting(sourcePaths)
+    const supportsTrash = sourceIsArchive || cloud.onlineOnly !== null ? false : sourceVolume?.supportsTrash !== false
 
     const { sortBy, sortOrder } = access.getPaneSort(access.getFocusedPane())
 
@@ -709,10 +719,10 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
       sourceItems,
       sourcePaths,
       sourceFolderPath,
-      isPermanent: permanent || sourceIsArchive || cloud.routesToDelete,
+      isPermanent: permanent || sourceIsArchive || cloud.onlineOnly !== null,
       supportsTrash,
       isArchive: sourceIsArchive,
-      cloudStorageOnlineOnly: cloud.routesToDelete,
+      cloudOnlineOnly: cloud.onlineOnly,
       cloudFolderMayHoldOnlineOnly: cloud.folderMayHoldOnlineOnly,
       isFromCursor: !hasSelection,
       sortColumn: sortBy,

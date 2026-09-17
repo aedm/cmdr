@@ -20,13 +20,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Dieser Inhalt ist nur online verfügbar.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "Ein Teil deiner Auswahl ist nur online verfügbar. Diese in den Papierkorb zu bewegen würde sie <strong>zuerst herunterladen</strong>. Deshalb bietet Cmdr hier nur an, die gesamte Auswahl zu <strong>löschen</strong>. Im Papierkorb landet keine Kopie, aber Cloud-Dienste bewahren Gelöschtes meist etwa 30 Tage in ihrem eigenen Papierkorb auf. Klicke auf „Löschen“, wenn das in Ordnung ist. Sonst brich diesen Dialog ab und mache entweder alle Dateien zuerst offline verfügbar oder wähle alle nur online verfügbaren Dateien ab.",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Ihn in den Papierkorb zu legen würde ihn erst vom Cloud-Dienst herunterladen, also löscht Cmdr ihn stattdessen. Im Papierkorb landet keine Kopie, aber der Dienst führt einen eigenen Verlauf, aus dem du wiederherstellen kannst.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Alles, was du ausgewählt hast, ist nur online verfügbar. Es in den Papierkorb zu bewegen würde es <strong>zuerst herunterladen</strong>. Deshalb bietet Cmdr hier nur an, die gesamte Auswahl zu <strong>löschen</strong>. Im Papierkorb landet keine Kopie, aber Cloud-Dienste bewahren Gelöschtes meist etwa 30 Tage in ihrem eigenen Papierkorb auf. Klicke auf „Löschen“, wenn das in Ordnung ist. Sonst brich diesen Dialog ab und mache diese Dateien zuerst offline verfügbar.",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Deine Auswahl enthält doch nur online verfügbare Inhalte, deshalb bietet der Knopf unten jetzt „Löschen“ an. Lies den Hinweis oben und drücke ihn dann erneut, wenn das in Ordnung ist.",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "In einem Archiv gibt es keinen Papierkorb.",
   "@fileOperations.delete.archiveWarningStrong": {

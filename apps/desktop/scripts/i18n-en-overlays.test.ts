@@ -1,7 +1,7 @@
 /**
  * Drift guard for the two English overlays, `en-GB` and `en-AU`.
  *
- * These two catalogs are written BY HAND and agree on 149 of the 160 keys either
+ * These two catalogs are written BY HAND and agree on 149 of the 161 keys either
  * one forks,
  * because `en-AU` inherits from `en` and never from `en-GB` (`inheritableAncestors`
  * walks a tag's own ancestors, and `en-GB` is not one of `en-AU`'s). So a shared
@@ -69,6 +69,11 @@ const AU_DIVERGES_FROM_GB: readonly string[] = [
   // `en-GB` forks the adverb to "go forwards"; `en-AU` keeps the American form, so
   // this key is absent from `en-AU` entirely and inherits base `en`.
   'commands.navForward.label',
+  // The online-only delete banner names deselecting as one of its two ways out, so
+  // it carries the same Unselect/Deselect split as the menu items above. Only the
+  // mixed-selection wording says it: the all-online-only one can't offer that
+  // remedy at all, so it stays identical to `en-GB`.
+  'fileOperations.delete.cloudOnlineOnlyMixedWarning',
 ]
 
 /**

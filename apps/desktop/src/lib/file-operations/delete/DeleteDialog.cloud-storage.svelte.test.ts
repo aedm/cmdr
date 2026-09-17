@@ -51,7 +51,11 @@ vi.mock('$lib/settings/reactive-settings.svelte', () => ({
 }))
 
 const FOLDER = '/Users/me/Library/CloudStorage/Dropbox/Work'
-const ONLINE_ONLY_BANNER = 'This is online-only content.'
+/** The two banners' opening sentences: the only place they differ in what they claim. */
+const ALL_ONLINE_ONLY = 'Everything you selected is online-only.'
+const SOME_ONLINE_ONLY = 'Some of your selection is online-only.'
+/** The remedy only the mixed wording can offer; with everything evicted it would leave nothing selected. */
+const DESELECT_REMEDY = 'deselect all online-only files'
 
 function mountDialog(overrides: Record<string, unknown>): {
   target: HTMLElement
@@ -91,6 +95,11 @@ function bannerText(target: HTMLElement): string {
   return target.querySelector('#delete-warning-text')?.textContent ?? ''
 }
 
+/** The line that says a press was declined, or `null` while no press has been. */
+function handedBackText(target: HTMLElement): string | null {
+  return target.querySelector('[data-test="delete-handed-back"]')?.textContent ?? null
+}
+
 function confirmButton(target: HTMLElement): HTMLButtonElement {
   const buttons = [...target.querySelectorAll('button')]
   const button = buttons.at(-1)
@@ -112,13 +121,27 @@ function completion(onlineOnlyFound: boolean): ScanPreviewCompleteEvent {
 
 describe('DeleteDialog over online-only cloud content', () => {
   it('explains the swap, and offers no way back to the trash', async () => {
-    const { target } = mountDialog({ cloudStorageOnlineOnly: true })
+    const { target } = mountDialog({ cloudOnlineOnly: 'all' })
     await tick()
 
-    expect(bannerText(target)).toContain(ONLINE_ONLY_BANNER)
-    expect(bannerText(target)).toContain("There'll be no copy in the Trash")
-    expect(bannerText(target)).toContain('the service keeps its own history you can restore from')
+    expect(bannerText(target)).toContain(ALL_ONLINE_ONLY)
+    expect(bannerText(target)).toContain("There'll be no copies in the Trash")
+    expect(bannerText(target)).toContain('cloud services usually keep their own trash for about 30 days')
     expect(target.querySelector('[role="switch"]')).toBeNull()
+  })
+
+  /** The one remedy that stops working when everything is evicted: deselecting the
+   *  online-only items would leave nothing selected, so only the mixed copy says it. */
+  it('offers deselecting only when part of the selection is still ordinary', async () => {
+    const mixed = mountDialog({ cloudOnlineOnly: 'mixed' })
+    await tick()
+    expect(bannerText(mixed.target)).toContain(SOME_ONLINE_ONLY)
+    expect(bannerText(mixed.target)).toContain(DESELECT_REMEDY)
+
+    const all = mountDialog({ cloudOnlineOnly: 'all' })
+    await tick()
+    expect(bannerText(all.target)).not.toContain(DESELECT_REMEDY)
+    expect(bannerText(all.target)).toContain('make these files available offline first')
   })
 
   /** The generic banner is about a volume with no trash (FAT32, SMB); a cloud
@@ -150,7 +173,11 @@ describe('DeleteDialog over online-only cloud content', () => {
     for (const handler of listeners.complete) handler(completion(true))
     await tick()
 
-    expect(bannerText(target)).toContain(ONLINE_ONLY_BANNER)
+    // The walk reports one boolean for the whole folder, so all it can honestly
+    // support is the mixed wording: the folder almost certainly holds ordinary
+    // files beside the evicted one it just tripped over.
+    expect(bannerText(target)).toContain(SOME_ONLINE_ONLY)
+    expect(bannerText(target)).not.toContain(ALL_ONLINE_ONLY)
     expect(target.querySelector('[role="switch"]')).toBeNull()
   })
 
@@ -189,6 +216,7 @@ describe('DeleteDialog over online-only cloud content', () => {
     confirmButton(target).click()
     await settle()
     expect(onConfirm).not.toHaveBeenCalled()
+    expect(handedBackText(target), 'nothing to explain yet: the press is still waiting').toBeNull()
 
     // One hit is the whole answer, so a progress tick releases the wait: a folder
     // holding 50 GB of evicted content needn't finish counting first.
@@ -208,11 +236,16 @@ describe('DeleteDialog over online-only cloud content', () => {
     await settle()
 
     expect(onConfirm).not.toHaveBeenCalled()
-    expect(bannerText(target)).toContain(ONLINE_ONLY_BANNER)
+    expect(bannerText(target)).toContain(SOME_ONLINE_ONLY)
+
+    // The dialog stays open and the button's label changed under the person's
+    // finger, so without this line nothing tells them their press didn't take.
+    expect(handedBackText(target)).toContain('so the button below now offers Delete')
 
     // And the second press, now over a dialog that says what it will do, goes.
     confirmButton(target).click()
     await settle()
     expect(onConfirm).toHaveBeenCalledWith('preview-1', true)
+    expect(handedBackText(target), 'the explanation goes with the press it explained').toBeNull()
   })
 })

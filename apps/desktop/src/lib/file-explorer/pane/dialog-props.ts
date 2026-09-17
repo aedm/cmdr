@@ -11,7 +11,7 @@
 import type { Initiator, ProgressAtStop } from '$lib/tauri-commands'
 import type { AppearedDuringMove, TopLevelSkipped, TrashRefusedItems, OpKind } from '$lib/ipc/bindings'
 import type { SoftDialogId } from '$lib/ui/dialog-registry'
-import type { DeleteSourceItem } from '$lib/file-operations/delete/delete-dialog-utils'
+import type { CloudOnlineOnlyExtent, DeleteSourceItem } from '$lib/file-operations/delete/delete-dialog-utils'
 import type { TransferOperationType, SortColumn, SortOrder, ConflictResolution, WriteOperationError } from '../types'
 import type { DuplicateFollowUp } from './duplicate-rename'
 import type { FilePaneAPI } from './types'
@@ -225,10 +225,11 @@ export interface DeleteDialogPropsData {
   /**
    * A selected item in a cloud-storage folder (`~/Library/CloudStorage/<provider>/…`)
    * is online-only, so trashing it would download it first. The dialog forces
-   * permanent mode and explains that the service keeps its own copy. Decided in
-   * Rust: `write_operations/delete/cloud_trash.rs`.
+   * permanent mode and explains that the service keeps its own copy, in wording
+   * that depends on whether the WHOLE selection is online-only. `null` when none
+   * of it is. Decided in Rust: `write_operations/delete/cloud_trash.rs`.
    */
-  cloudStorageOnlineOnly?: boolean
+  cloudOnlineOnly?: CloudOnlineOnlyExtent | null
   /**
    * A selected FOLDER sits in such a drive and the top-level check found nothing:
    * only the dialog's own scan walk can say whether something inside is

@@ -3293,17 +3293,25 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `um lugar que o macOS guarda para si`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## O aviso de conteúdo somente online (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
+## O aviso de conteúdo somente online (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
-Se um item selecionado numa pasta da nuvem está somente online, o Lixo teria que baixá-lo primeiro. Por isso o Cmdr abre
-a caixa de diálogo de apagar de vez e explica isso na tarja. Duas chaves, negrito e resto, lidas como UM aviso só.
+Se um item selecionado numa pasta de nuvem está somente online, o Lixo teria que baixá-lo primeiro. Por isso o Cmdr abre
+a janela de apagar em definitivo e explica isso no aviso. Duas variantes do aviso: uma para uma seleção mista e outra
+para quando tudo está somente online. Elas só diferem na primeira frase e nas saídas que conseguem oferecer. A terceira
+chave é a linha que aparece quando o Cmdr devolve um clique.
 
-- **`.cloudOnlineOnlyWarningStrong` → `Este conteúdo está somente online.`** · `somente online` é a fórmula do Finder
-  para um arquivo despejado · medium.
-- **`.cloudOnlineOnlyWarningRest` →
-  `Mover para o Lixo baixaria o arquivo do serviço de nuvem primeiro, então o Cmdr apaga em vez disso. Não vai ficar nenhuma cópia no Lixo, mas o serviço mantém um histórico próprio de onde você pode recuperar.`**
-  · `Lixo` com maiúscula, como nas outras chaves (§ Terms) · medium.
-- **Os dois fatos são obrigatórios**: (1) o Lixo baixaria o arquivo, (2) depois NÃO há cópia no Lixo, embora o serviço
-  guarde a dele. ❌ Não suavizar a segunda metade.
-- Não precisa de `sameAsSourceJustification`: os dois valores diferem do inglês.
+- **`.cloudOnlineOnlyMixedWarning`** · `somente online` é a fórmula do Finder para um arquivo despejado; `Lixo` e
+  `serviço de nuvem` vêm de § Terms · medium.
+- **`.cloudOnlineOnlyAllWarning`** · mesmo texto, com “Tudo o que você selecionou” no lugar de “Parte da sua seleção”, e
+  sem a saída de desmarcar: se tudo está somente online, não sobraria nada selecionado · medium.
+- **`.cloudOnlineOnlyHandedBack`** · a linha acima do botão depois de um clique que o Cmdr não executou de propósito.
+  Tom direto, sem pedir desculpa · medium.
+- **Os quatro fatos são obrigatórios**: (1) o Lixo baixaria os arquivos, (2) por isso o Cmdr só oferece apagar a seleção
+  INTEIRA, (3) depois NÃO fica cópia no Lixo, mas o serviço guarda a dele (❌ não suavizar), (4) as saídas que o aviso
+  nomeia.
+- **Os dois trechos `<strong>` ficam**, em “download deles primeiro” e no verbo “apagar”. E “Apagar” entre aspas é o
+  rótulo do botão: sempre igual a `fileOperations.delete.confirmDelete`.
+- Não precisa de `sameAsSourceJustification`: todos os valores diferem do inglês.
+- Conferir na passagem de overflow: o aviso é longo e fica numa faixa estreita acima da lista de arquivos.
 - ⚠️ Rascunho, ainda sem revisão humana.
+

@@ -20,13 +20,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Det här innehållet finns endast online.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "En del av ditt urval finns endast online. Att flytta dem till papperskorgen skulle <strong>hämta dem först</strong>. Därför erbjuder Cmdr här bara att <strong>radera</strong> hela urvalet. Ingen kopia hamnar i papperskorgen, men molntjänster brukar behålla sin egen papperskorg i ungefär 30 dagar. Klicka på ”Radera” om det är okej att radera, annars avbryt den här dialogen och gör antingen alla filer tillgängliga offline först, eller avmarkera alla filer som finns endast online.",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Att lägga det i papperskorgen skulle först ladda ner det från molntjänsten, så Cmdr raderar det i stället. Ingen kopia hamnar i papperskorgen, men tjänsten har en egen historik som du kan återskapa från.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Allt du har markerat finns endast online. Att flytta det till papperskorgen skulle <strong>hämta det först</strong>. Därför erbjuder Cmdr här bara att <strong>radera</strong> hela urvalet. Ingen kopia hamnar i papperskorgen, men molntjänster brukar behålla sin egen papperskorg i ungefär 30 dagar. Klicka på ”Radera” om det är okej att radera, annars avbryt den här dialogen och gör de här filerna tillgängliga offline först.",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Ditt urval visade sig innehålla material som finns endast online, så knappen nedanför erbjuder nu ”Radera”. Läs noteringen ovanför och tryck på den igen om det är okej.",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "Det finns ingen papperskorg i ett arkiv.",
   "@fileOperations.delete.archiveWarningStrong": {

@@ -3243,21 +3243,26 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `an einem Ort, den macOS für sich behält`, reusing the wording already settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## Der Online-Warnhinweis im Löschdialog (`fileOperations.delete.cloudOnlineOnlyWarningStrong`/`fileOperations.delete.cloudOnlineOnlyWarningRest`)
+## Der Online-Warnhinweis im Löschdialog (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
 Ist ein ausgewähltes Objekt in einem Cloud-Ordner nur online verfügbar, würde der Papierkorb es erst herunterladen. Cmdr
-öffnet deshalb den Dialog zum endgültigen Löschen und erklärt das im Banner oben. Zwei Schlüssel, fett und normal, die
-als EIN Hinweis gelesen werden.
+öffnet deshalb den Dialog zum endgültigen Löschen und erklärt das im Banner oben. Zwei Banner-Varianten: eine für eine
+gemischte Auswahl, eine für eine Auswahl, die komplett nur online verfügbar ist. Sie unterscheiden sich nur im ersten
+Satz und darin, welche Auswege sie anbieten können. Der dritte Schlüssel ist die Zeile, die erscheint, wenn Cmdr einen
+Klick zurückgibt.
 
-- **`.cloudOnlineOnlyWarningStrong` → `Dieser Inhalt ist nur online verfügbar.`** · `nur online verfügbar` ist die
-  Wendung, die der Finder für eine ausgelagerte Datei benutzt · medium.
-- **`.cloudOnlineOnlyWarningRest` →
-  `Ihn in den Papierkorb zu legen würde ihn erst vom Cloud-Dienst herunterladen, also löscht Cmdr ihn stattdessen. Im Papierkorb landet keine Kopie, aber der Dienst führt einen eigenen Verlauf, aus dem du wiederherstellen kannst.`**
-  · `Cloud-Dienst` und `Papierkorb` aus § Terms (beide macOS Finder); `behält/führt … Kopie` folgt macOS AppKit
-  `Document` · medium.
-- **Beide Tatsachen müssen stehen bleiben**: (1) der Papierkorb würde die Datei herunterladen, (2) im Papierkorb liegt
-  danach KEINE Kopie, der Dienst hat aber eine eigene. ❌ Den zweiten Teil nicht zu „ist ja trotzdem im Papierkorb“
-  abschwächen: das stimmt nicht.
-- Kein `sameAsSourceJustification` nötig: beide Werte unterscheiden sich vom Englischen.
-- Beim Overflow-Check ansehen: der normale Teil ist lang und steht in einem schmalen Banner über der Dateiliste.
-- ⚠️ Entwurf, noch nicht von einem Menschen gegengelesen.
+- **`.cloudOnlineOnlyMixedWarning`** · `nur online verfügbar` ist die Wendung, die der Finder für eine ausgelagerte Datei
+  benutzt; `Cloud-Dienst` und `Papierkorb` aus § Terms (beide macOS Finder) · medium.
+- **`.cloudOnlineOnlyAllWarning`** · gleicher Text, nur „Alles, was du ausgewählt hast“ statt „Ein Teil deiner Auswahl“,
+  und ohne den Ausweg „abwählen“: bei komplett ausgelagerter Auswahl bliebe nichts übrig · medium.
+- **`.cloudOnlineOnlyHandedBack`** · die Zeile über dem Knopf, nachdem ein Klick bewusst nicht ausgeführt wurde. Sachlich,
+  ohne Entschuldigung · medium.
+- **Vier Tatsachen müssen stehen bleiben**: (1) der Papierkorb würde die Dateien herunterladen, (2) Cmdr bietet deshalb
+  nur das Löschen der GESAMTEN Auswahl an, (3) im Papierkorb liegt danach KEINE Kopie, der Dienst hat aber eine eigene
+  (❌ nicht zu „ist ja trotzdem im Papierkorb“ abschwächen), (4) die Auswege, die das Banner nennt.
+- **Die beiden `<strong>`-Spannen bleiben**, auf „zuerst herunterladen“ und auf dem Verb „löschen“. Und `„Löschen“` in
+  Anführungszeichen ist die Beschriftung des Knopfs: immer derselbe Wortlaut wie
+  `fileOperations.delete.confirmDelete`.
+- Kein `sameAsSourceJustification` nötig: alle Werte unterscheiden sich vom Englischen.
+- Beim Overflow-Check ansehen: das Banner ist lang und steht in einem schmalen Streifen über der Dateiliste.
+

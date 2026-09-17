@@ -3693,18 +3693,25 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `olyan helyen vannak, amit a macOS magának tart`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## A csak online tartalom figyelmeztetése (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
+## A csak online tartalom figyelmeztetése (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
-Ha egy kiválasztott elem a felhőmappában csak online érhető el, a Kuka előbb letöltené. Ezért a Cmdr a végleges törlés
-párbeszédpaneljét nyitja meg, és a sávban elmondja, miért. Két kulcs, félkövér és folytatás, EGY figyelmeztetésként
-olvasva.
+Ha egy felhőmappában kijelölt elem csak online érhető el, a Kuka előbb letöltené. Ezért a Cmdr a végleges törlés
+ablakát nyitja meg, és a felső sávban elmagyarázza. Két sávváltozat: az egyik vegyes kijelölésre, a másik arra, amikor
+minden csak online érhető el. Csak az első mondatban és a felkínált kiutakban térnek el. A harmadik kulcs az a sor,
+amely akkor jelenik meg, amikor a Cmdr visszaadja a gombnyomást.
 
-- **`.cloudOnlineOnlyWarningStrong` → `Ez a tartalom csak online érhető el.`** · a `csak online` a Finder kifejezése a
-  kilakoltatott fájlra · medium.
-- **`.cloudOnlineOnlyWarningRest` →
-  `Ha a Kukába kerülne, előbb le kellene tölteni a felhőszolgáltatásból, ezért a Cmdr inkább törli. A Kukában nem marad másolat, de a szolgáltatás saját előzményeiből visszaállíthatod.`**
-  · a `Kuka` nagy kezdőbetűvel, ahogy a többi kulcsban (§ Terms) · medium.
-- **Mindkét tény kell**: (1) a Kuka letöltené a fájlt, (2) utána a Kukában NINCS másolat, a szolgáltatásnál viszont van.
-  ❌ A második felét ne tompítsd.
-- `sameAsSourceJustification` nem kell: mindkét érték eltér az angoltól.
-- ⚠️ Piszkozat, embertől még nem kapott lektorálást.
+- **`.cloudOnlineOnlyMixedWarning`** · a `csak online érhető el` a Finder fordulata a kiürített fájlra; a `Kuka` és a
+  `felhőszolgáltatás` a § Terms részből · medium.
+- **`.cloudOnlineOnlyAllWarning`** · ugyanaz a szöveg, „Minden, amit kijelöltél” kezdettel, és a „kijelölés
+  megszüntetése” kiút nélkül: ha minden csak online van, nem maradna kijelölve semmi · medium.
+- **`.cloudOnlineOnlyHandedBack`** · a gomb feletti sor, miután a Cmdr szándékosan nem hajtotta végre a gombnyomást.
+  Tárgyilagos, mentegetőzés nélkül · medium.
+- **Mind a négy tény maradjon benne**: (1) a Kuka letöltené a fájlokat, (2) ezért a Cmdr csak a TELJES kijelölés
+  törlését ajánlja fel, (3) a Kukában utána NEM marad másolat, a szolgáltatásnál viszont igen (❌ ne legyen belőle „úgyis
+  a Kukába kerül”), (4) a sávban megnevezett kiutak.
+- **A két `<strong>` szakasz marad**, a „le kellene tölteni” részen és a „törlését” szón. A „Törlés” idézőjelben a gomb
+  felirata: mindig ugyanaz, mint a `fileOperations.delete.confirmDelete`.
+- Nem kell `sameAsSourceJustification`: minden érték eltér az angoltól.
+- Az overflow-ellenőrzésnél nézd meg: a sáv hosszú, és keskeny csíkban ül a fájllista fölött.
+- ⚠️ Vázlat, emberi ellenőrzés még nem történt.
+

@@ -3440,18 +3440,25 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `un sitio que macOS se reserva`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## El aviso de contenido solo en línea (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
+## El aviso de contenido solo en línea (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
 Si un elemento seleccionado de una carpeta en la nube está solo en línea, la papelera tendría que descargarlo primero.
-Por eso Cmdr abre el diálogo de eliminación permanente y lo explica en el banner. Dos claves, negrita y resto, que se
-leen como UN solo aviso.
+Por eso Cmdr abre el diálogo de eliminación permanente y lo explica en el banner. Dos variantes del banner: una para una
+selección mixta y otra para cuando todo está solo en línea. Solo se diferencian en la primera frase y en las salidas que
+pueden ofrecer. La tercera clave es la línea que aparece cuando Cmdr devuelve una pulsación.
 
-- **`.cloudOnlineOnlyWarningStrong` → `Este contenido está solo en línea.`** · `solo en línea` es la fórmula que usa el
-  Finder para un archivo desalojado · medium.
-- **`.cloudOnlineOnlyWarningRest` →
-  `Moverlo a la papelera lo descargaría primero del servicio en la nube, así que Cmdr lo elimina en su lugar. No quedará ninguna copia en la papelera, pero el servicio guarda su propio historial desde el que puedes recuperarlo.`**
-  · `papelera` y `servicio en la nube` vienen de § Terms · medium.
-- **Los dos hechos son obligatorios**: (1) la papelera descargaría el archivo, (2) después NO hay copia en la papelera,
-  aunque el servicio sí guarde la suya. ❌ No suavizar la segunda mitad.
-- No hace falta `sameAsSourceJustification`: ambos valores difieren del inglés.
+- **`.cloudOnlineOnlyMixedWarning`** · `solo en línea` es la fórmula que usa el Finder para un archivo desalojado;
+  `papelera` y `servicio en la nube` vienen de § Terms · medium.
+- **`.cloudOnlineOnlyAllWarning`** · mismo texto, con «Todo lo que seleccionaste» en lugar de «Parte de tu selección», y
+  sin la salida de deseleccionar: si todo está solo en línea no quedaría nada seleccionado · medium.
+- **`.cloudOnlineOnlyHandedBack`** · la línea sobre el botón después de una pulsación que Cmdr no ejecutó a propósito.
+  Tono neutro, sin disculpas · medium.
+- **Los cuatro hechos son obligatorios**: (1) la papelera descargaría los archivos, (2) por eso Cmdr solo ofrece eliminar
+  la selección ENTERA, (3) después NO hay copia en la papelera, aunque el servicio sí guarde la suya (❌ no suavizarlo),
+  (4) las salidas que nombra el banner.
+- **Las dos zonas `<strong>` se mantienen**, sobre «descargaría primero» y sobre el verbo «eliminar». Y «Eliminar» entre
+  comillas es la etiqueta del botón: siempre igual que `fileOperations.delete.confirmDelete`.
+- No hace falta `sameAsSourceJustification`: todos los valores difieren del inglés.
+- Revisar en el paso de overflow: el banner es largo y ocupa una franja estrecha sobre la lista de archivos.
 - ⚠️ Borrador, todavía sin revisión humana.
+

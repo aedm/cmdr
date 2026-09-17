@@ -20,13 +20,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Deze inhoud is alleen online beschikbaar.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "Een deel van je selectie is alleen online beschikbaar. Die naar de prullenmand verplaatsen zou ze <strong>eerst downloaden</strong>. Daarom biedt Cmdr hier alleen aan om de hele selectie te <strong>verwijderen</strong>. Er blijft geen kopie in de prullenmand achter, maar cloudservices bewaren verwijderde bestanden meestal zo''n 30 dagen in hun eigen prullenmand. Klik op ‘Verwijder’ als verwijderen goed is, of annuleer dit venster en maak eerst alle bestanden offline beschikbaar, of deselecteer alle bestanden die alleen online beschikbaar zijn.",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Naar de prullenmand verplaatsen zou het eerst downloaden van de cloudservice, dus verwijdert Cmdr het in plaats daarvan. Er blijft geen kopie in de prullenmand achter, maar de service bewaart een eigen geschiedenis waaruit je het kunt terugzetten.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Alles wat je hebt geselecteerd is alleen online beschikbaar. Het naar de prullenmand verplaatsen zou het <strong>eerst downloaden</strong>. Daarom biedt Cmdr hier alleen aan om de hele selectie te <strong>verwijderen</strong>. Er blijft geen kopie in de prullenmand achter, maar cloudservices bewaren verwijderde bestanden meestal zo''n 30 dagen in hun eigen prullenmand. Klik op ‘Verwijder’ als verwijderen goed is, of annuleer dit venster en maak deze bestanden eerst offline beschikbaar.",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Je selectie blijkt toch inhoud te bevatten die alleen online beschikbaar is, dus de knop hieronder biedt nu ‘Verwijder’ aan. Lees de opmerking hierboven en druk daarna nog een keer als dat goed is.",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "Er is geen prullenmand in een archief.",
   "@fileOperations.delete.archiveWarningStrong": {

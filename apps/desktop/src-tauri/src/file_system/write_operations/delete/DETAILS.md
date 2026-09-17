@@ -223,6 +223,21 @@ keystroke into "these go to the Trash, those get deleted permanently" is two men
 readable copy comes out of it. An empty selection, an item we can't stat, an unreadable home directory, and a timeout
 all answer `Trash`: an unanswerable question means the OS attempt, never a delete.
 
+**The routing also says HOW MUCH of the selection is evicted**, because that's the one thing the confirmation's two
+wordings differ on: the mixed banner offers "deselect all online-only files" as a way out, and the all-online-only one
+can't, since that would leave nothing selected. So `TrashRouting` has two delete variants,
+`PermanentDeleteAllOnlineOnly` and `PermanentDeleteMixedOnlineOnly`, rather than one variant plus a field nothing forces
+you to set. Both run the same permanent delete.
+
+- **`All` is a claim, so it's only made about items positively read as evicted.** Anything that didn't resolve or
+  couldn't be stat'ed counts toward the ordinary side and lands on `Mixed`. That copy says less and its remedies still
+  work, so guessing wrong costs nothing; the other direction would tell someone every file they picked is online-only
+  when one of them was merely unreadable.
+- **A FOLDER's walk can only ever produce `Mixed`.** It reports one boolean for the whole subtree
+  (`online_only_found`), so a hit says "something in here is evicted" and nothing about the rest, and a folder holding
+  one evicted file beside a hundred ordinary ones is the ordinary case. The frontend maps that hit to the mixed
+  wording (`DeleteDialog.svelte`'s `onlineOnlyFoundByWalk`).
+
 **A refusal that IS online-only suppresses the Full Disk Access offer.** `trash_files_with_progress` stats each refused
 item (`trashItemAtURL` is atomic, so a refusal left it exactly where it was) and sets `online_only` on
 `WriteOperationError::TrashRefused`. Per the two-codes finding above, a 513 refusal of an evicted file is

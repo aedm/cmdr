@@ -50,7 +50,7 @@ const HEARTBEAT: Duration = Duration::from_secs(5);
 pub(super) const LOG_TARGET: &str = "scan_preview";
 
 /// How much a walk has counted: the numbers every scan-preview log line carries.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct ScanTally {
     pub(super) files: usize,
     pub(super) dirs: usize,

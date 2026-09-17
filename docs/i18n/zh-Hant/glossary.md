@@ -196,7 +196,7 @@ Rationale, counts, and the "don't revert this" warning: `style.md` § The Apple-
 - **cloud** · `雲端` · AP-TW = AP-HK (`Cloud Storage` → 雲端儲存空間), MS · `confirmed`
 - **cloud service** · `雲端服務` · AP-TW Finder (`Choose a cloud service` → `選擇雲端服務`), MS (`cloud service`,
   flagged `HKG, TWN`) · `high`. The catalog also carries `雲端服務供應商` for the PROVIDER (the company) in
-  `errors.provider.genericCloudStorage.*`; keep the two apart, since `fileOperations.delete.cloudOnlineOnlyWarningRest`
+  `errors.provider.genericCloudStorage.*`; keep the two apart, since `fileOperations.delete.cloudOnlineOnlyMixedWarning`
   talks about the service that holds the files, not the company behind it.
 - **sync (verb)** · `同步` · AP-TW (`Synced with iCloud` → `與iCloud同步`,
   `Your Desktop & Documents folders are being synced with %@` → `「桌面與文件」檔案夾正與%@同步`), MS (verb) · `high`.
@@ -311,7 +311,7 @@ reference pile is absent on the agent box, so these were verified against the LI
   `以回復的卷宗來取代`; `a folder for the restored volume's items` → `為回復的卷宗項目選擇一個檔案夾`) · `high`. ❗
   Deliberately NOT `還原` (spent on _undo_) and NOT `復原` (spent on _rollback_), so Cmdr's three "get it back" concepts
   stay three words. MS says `還原` and Nautilus and Dolphin say `從垃圾桶還原`; both lose to Apple here, because the
-  collision inside our own catalog is the bigger cost. Live in `fileOperations.delete.cloudOnlineOnlyWarningRest`
+  collision inside our own catalog is the bigger cost. Live in `fileOperations.delete.cloudOnlineOnlyMixedWarning`
   (`你可以從那裡回復`).
 - **copy (the noun: one more instance of a file)** · `副本` · AP-TW Finder (`keep a resumable copy` →
   `保留可恢復的副本`) · `high`. The verb stays `複製`, and `製作副本` remains the _duplicate_ COMMAND; a bare `副本` as
@@ -2056,14 +2056,16 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `macOS 自己留著的地方`，沿用 `onboarding.fdaBadge.tooltip`
   已定的說法。說人話，❌ 不要點名某個 macOS 功能。
 
-## 僅存雲端內容的刪除警告列（`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`）
+## 僅存雲端內容的刪除警告列（`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`）
 
-雲端資料夾裡被選取的項目如果只存在雲端，放進垃圾桶得先把它下載回來。所以 Cmdr 改開從彼刪除的對話方塊，並在警告列裡說清楚。兩個鍵，粗體加余下部分，當成一句話讀。
+雲端資料夾裡被選取的項目如果只存在雲端，放進垃圾桶得先把它下載回來。所以 Cmdr 改開永久刪除的對話方塊，並在警告列裡說清楚。警告列有兩個版本：一個用於混合選取，一個用於全部僅存在雲端的選取。兩者只在第一句和能提供的出路上不同。第三個鍵是 Cmdr 把一次按鍵交還給使用者時顯示的那行字。
 
-- **`.cloudOnlineOnlyWarningStrong` → `這些內容僅存在雲端。`** · 「僅存在雲端」對應 Finder 的「僅限線上」說法 · medium。
-- **`.cloudOnlineOnlyWarningRest` →
-  `放進垃圾桶得先從雲端服務把它們下載回來，所以 Cmdr 直接刪除。垃圾桶裡不會留副本，不過雲端服務自己有刪除紀錄，你可以從那裡回復。`**
-  · 「垃圾桶」、「雲端服務」、「副本」、「回復」取自 § Terms · medium。
-- **兩個事實都得保留**：（1）垃圾桶會先下載檔案，（2）之後垃圾桶裡沒有副本，但雲端服務自己有。❌ 不要把後半句寫成「反正還在垃圾桶裡」。
-- 不需要 `sameAsSourceJustification`：兩個值都與英文不同。
+- **`.cloudOnlineOnlyMixedWarning`** · 「僅存在雲端」對應 Finder 的「僅限線上」說法；「垃圾桶」「雲端服務」「副本」取自 § Terms · medium。
+- **`.cloudOnlineOnlyAllWarning`** · 同一段文字，只把「你選取的內容中有一部分」換成「你選取的內容全都」，並拿掉「取消選取」這條出路：全部僅存在雲端時，取消選取就什麼都不剩了 · medium。
+- **`.cloudOnlineOnlyHandedBack`** · 按鈕上方的那行字，出現在 Cmdr 刻意沒有執行的一次按鍵之後。語氣平實，不必道歉 · medium。
+- **四個事實都得保留**：（1）垃圾桶會先下載檔案，（2）所以 Cmdr 只提供刪除整個選取範圍，（3）之後垃圾桶裡沒有副本，但雲端服務自己有（❌ 不要寫成「反正還在垃圾桶裡」），（4）警告列裡點出的出路。
+- **兩處 `<strong>` 必須保留**，分別在「先下載回來」和動詞「刪除」上。引號裡的「刪除」是按鈕的文字：始終與 `fileOperations.delete.confirmDelete` 一致。
+- 不需要 `sameAsSourceJustification`：所有值都與英文不同。
+- 做溢位檢查時看一下：警告列很長，且位於檔案列表上方的窄條裡。
 - ⚠️ 草稿，尚未經人工審閱。
+

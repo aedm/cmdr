@@ -19,6 +19,7 @@
         abbreviatePath,
         getSymlinkNotice,
         MAX_VISIBLE_ITEMS,
+        type CloudOnlineOnlyExtent,
         type DeleteSourceItem,
     } from './delete-dialog-utils'
     import { formatNumber } from '$lib/file-explorer/selection/selection-info-utils'
@@ -46,8 +47,9 @@
         isArchive?: boolean
         /** A selected item in a cloud-storage folder is online-only, so the trash was
          *  routed here as a permanent delete rather than downloading it. Swaps the
-         *  no-trash banner for one that says so. */
-        cloudStorageOnlineOnly?: boolean
+         *  no-trash banner for one that says so, worded for how much of the selection
+         *  is online-only. `null` when none of it is. */
+        cloudOnlineOnly?: CloudOnlineOnlyExtent | null
         /** A selected FOLDER sits in a cloud drive, so the scan walk below may still
          *  turn up an online-only file and flip this dialog. Confirm waits for that
          *  answer; see `onlineOnlyAnswer`. */
@@ -75,7 +77,7 @@
         isPermanent: initialIsPermanent,
         supportsTrash,
         isArchive = false,
-        cloudStorageOnlineOnly = false,
+        cloudOnlineOnly = null,
         cloudFolderMayHoldOnlineOnly = false,
         isFromCursor,
         sortColumn,
@@ -88,10 +90,19 @@
 
     /** The scan walk met an online-only file inside a selected folder. Flips the
      *  dialog live: the banner appears, the trash switch goes, and the confirm
-     *  button becomes the permanent delete, all before anything is pressed. */
-    let onlineOnlyFound = $state(false)
+     *  button becomes the permanent delete, all before anything is pressed.
+     *
+     *  ❗ Always `'mixed'`, never `'all'`. The walk reports one boolean for the
+     *  whole folder, so a hit says "something in here is online-only" and says
+     *  nothing about the rest — and the folder holding one evicted file beside a
+     *  hundred ordinary ones is the ordinary case. The mixed wording is true
+     *  either way; the other one would tell someone every file they picked is
+     *  online-only on the strength of a single hit. */
+    let onlineOnlyFoundByWalk = $state<CloudOnlineOnlyExtent | null>(null)
+    /** How much of the selection is online-only, however we learned it. */
+    const onlineOnlyExtent = $derived(cloudOnlineOnly ?? onlineOnlyFoundByWalk)
     /** Online-only content is in play, however we learned it. */
-    const routedForOnlineOnly = $derived(cloudStorageOnlineOnly || onlineOnlyFound)
+    const routedForOnlineOnly = $derived(onlineOnlyExtent !== null)
     /** The trash is only on the table while nothing evicted is in the selection. */
     const trashAvailable = $derived(supportsTrash && !routedForOnlineOnly)
 
@@ -142,6 +153,11 @@
     /** True while a confirm is waiting on the online-only answer below. Shows the
      *  spinner in the confirm button and swallows a second press. */
     let confirming = $state(false)
+    /** The walk answered while a press was in flight and turned this dialog from a
+     *  trash into a permanent delete, so the press was handed back. Without the
+     *  line this renders, the dialog just sits there and nothing says the press
+     *  didn't take. Cleared by the next press. */
+    let handedBackForOnlineOnly = $state(false)
     /** Resolves once the walk has said whether anything in the selection is
      *  online-only: on the first progress tick reporting one (a hit is the whole
      *  answer, so a huge folder needn't finish counting), on the completion that
@@ -209,7 +225,7 @@
                 bytesFound = event.bytesFound
                 currentDir = event.currentDir ?? null
                 if (event.onlineOnlyFound) {
-                    onlineOnlyFound = true
+                    onlineOnlyFoundByWalk = 'mixed'
                     settleOnlineOnlyAnswer()
                 }
                 const r = throughput.push({
@@ -227,7 +243,7 @@
                 filesFound = event.filesTotal
                 dirsFound = event.dirsTotal
                 bytesFound = event.bytesTotal
-                if (event.onlineOnlyFound) onlineOnlyFound = true
+                if (event.onlineOnlyFound) onlineOnlyFoundByWalk = 'mixed'
                 isScanning = false
                 scanComplete = true
                 // A finished walk is the definitive answer either way.
@@ -337,6 +353,7 @@
     async function handleConfirm() {
         if (confirming) return
         confirming = true
+        handedBackForOnlineOnly = false
         log.info('Delete confirmed: isPermanent={isPermanent}, items={count}', {
             isPermanent,
             count: sourceItems.length,
@@ -351,13 +368,15 @@
             // it by luck. Everywhere else this block never runs.
             await withTimeout(onlineOnlyAnswer, ONLINE_ONLY_ANSWER_TIMEOUT_MS, undefined)
             if (destroyed) return
-            if (onlineOnlyFound && !autoConfirm) {
+            if (onlineOnlyFoundByWalk !== null && !autoConfirm) {
                 // The answer just turned this button from "Move to trash" into a
                 // permanent delete, and the banner beside it changed too. Hand the
                 // dialog back rather than run the one operation nothing can undo
-                // off a press that meant something else. An MCP auto-confirm asked
-                // for the delete outright, so it goes through.
+                // off a press that meant something else, and say so: the dialog
+                // stays open either way, so silence reads as a dead button. An MCP
+                // auto-confirm asked for the delete outright, so it goes through.
                 confirming = false
+                handedBackForOnlineOnly = true
                 return
             }
         }
@@ -425,14 +444,20 @@
                     {tString('fileOperations.delete.archiveWarningRest')}
                 </p>
             </div>
-        {:else if routedForOnlineOnly}
+        {:else if onlineOnlyExtent !== null}
             <div class="warning-banner" role="alert">
                 <span class="warning-icon" aria-hidden="true">
                     <Icon name="triangle-alert" size={18} />
                 </span>
                 <p id="delete-warning-text">
-                    <strong>{tString('fileOperations.delete.cloudOnlineOnlyWarningStrong')}</strong>
-                    {tString('fileOperations.delete.cloudOnlineOnlyWarningRest')}
+                    <!-- Two whole sentences, not a shared stem plus a fork: they differ
+                         mid-paragraph and in which remedies they can offer, and only one
+                         of them can say "deselect the online-only files". -->
+                    {#if onlineOnlyExtent === 'all'}
+                        <Trans key="fileOperations.delete.cloudOnlineOnlyAllWarning" snippets={{ strong }} />
+                    {:else}
+                        <Trans key="fileOperations.delete.cloudOnlineOnlyMixedWarning" snippets={{ strong }} />
+                    {/if}
                 </p>
             </div>
         {:else if !supportsTrash}
@@ -548,6 +573,14 @@
             <div class="scan-current-dir" use:useShortenMiddle={{ text: currentDir, preferBreakAt: '/' }}></div>
         {/if}
 
+        <!-- The press that didn't take. Sits last in the body so it's the line
+             directly above the button whose meaning just changed under the
+             person's finger; `role="status"` announces it without stealing focus. -->
+        {#if handedBackForOnlineOnly}
+            <p class="handed-back" role="status" data-test="delete-handed-back">
+                {tString('fileOperations.delete.cloudOnlineOnlyHandedBack')}
+            </p>
+        {/if}
     </div>
 
     <!-- Trash (on, the safe default) vs. permanent delete (off). Rides the footer
@@ -570,6 +603,7 @@
 </ModalDialog>
 
 {#snippet size(children: import('svelte').Snippet)}<Size bytes={bytesPerSec ?? 0} />{@render children()}{/snippet}
+{#snippet strong(children: import('svelte').Snippet)}<strong>{@render children()}</strong>{/snippet}
 
 <style>
     /* Uniform vertical rhythm: every section is a flex-column child, so a single
@@ -711,6 +745,14 @@
     .scan-status {
         display: inline-flex;
         align-items: center;
+    }
+
+    /* Says a press was handed back, right above the button that changed meaning.
+       Warning-colored, since it's the same news the banner above carries. */
+    .handed-back {
+        margin: 0;
+        font-size: var(--font-size-sm);
+        color: var(--color-warning);
     }
 
     /* Rides inside the confirm button while a cloud folder's walk is still

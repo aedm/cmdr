@@ -20,6 +20,17 @@ export interface DeleteSourceItem {
 }
 
 /**
+ * How much of a selection is online-only cloud content, which is the only thing
+ * the two warning banners differ on: `'mixed'` can suggest deselecting the
+ * online-only items, `'all'` can't, because that would leave nothing selected.
+ *
+ * `null` means no online-only content is in play, and nothing about it is said.
+ * Decided in Rust (`write_operations/delete/cloud_trash.rs`'s `TrashRouting`);
+ * ❌ don't re-derive it here.
+ */
+export type CloudOnlineOnlyExtent = 'all' | 'mixed'
+
+/**
  * Generates the dialog title based on the selection source and item counts.
  *
  * Selected items:  "Delete 3 selected files and 1 folder"

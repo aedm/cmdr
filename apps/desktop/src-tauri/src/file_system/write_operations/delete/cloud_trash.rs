@@ -89,15 +89,26 @@ pub struct ItemFacts {
 /// Typed rather than a bare `bool` so the frontend's routing reads as a decision
 /// the backend made, and so a future "this one is trashless for another reason"
 /// arrives as a variant instead of a second boolean.
+///
+/// The two delete variants differ only in what the confirmation can honestly
+/// SAY. Both run the same permanent delete, and the copy for a wholly online-only
+/// selection can't offer "deselect the online-only files" as a remedy, because
+/// that would leave nothing selected. Carried in the variant rather than beside
+/// it, so there's no "which half of the selection" answer to forget when the
+/// routing is `Trash`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum TrashRouting {
     /// Ask the OS trash, and let a refusal answer for itself. The default for
     /// everything, including an unknown or unreachable path.
     Trash,
-    /// The selection holds online-only content in a cloud-storage drive. Run the
+    /// Every selected item is online-only in a cloud-storage drive. Run the
     /// permanent-delete flow, whose dialog says why.
-    PermanentDeleteCloudStorage,
+    PermanentDeleteAllOnlineOnly,
+    /// Part of the selection is online-only in a cloud-storage drive, and the
+    /// rest isn't. Same permanent delete; the dialog can also suggest dropping
+    /// the online-only items from the selection.
+    PermanentDeleteMixedOnlineOnly,
 }
 
 /// The backend's full answer about a selection: what to run, and whether that
@@ -211,29 +222,43 @@ fn item_facts(path: &Path) -> Option<ItemFacts> {
 /// one gesture into "these go to the Trash, those get deleted permanently" is two
 /// mental models in one confirmation, and no readable copy comes out of it. An
 /// empty selection is [`TrashRouting::Trash`].
+///
+/// **"All online-only" is a claim, so it's only made about items positively read
+/// as evicted.** Anything that couldn't be resolved or stat'ed counts as ordinary
+/// here, which lands on the mixed wording. That copy says less and offers a
+/// remedy that still works, so a wrong guess costs nothing; the other direction
+/// would tell someone every file they picked is online-only when one of them was
+/// merely unreadable.
 pub fn routing_with(
     home: &Path,
     paths: &[PathBuf],
     facts_for: &dyn Fn(&Path) -> Option<ItemFacts>,
 ) -> TrashRoutingAnswer {
-    let mut answer = TrashRoutingAnswer::TRASH;
+    let mut online_only = 0usize;
+    let mut rest = 0usize;
+    let mut folder_may_hold_online_only = false;
     for path in paths {
-        let Some(resolved) = resolve_through_symlinks(path) else {
-            continue;
-        };
-        if !is_inside_known_cloud_drive(home, &resolved) {
-            continue;
-        }
-        let Some(facts) = facts_for(&resolved) else {
-            continue;
-        };
-        if facts.online_only {
-            answer.routing = TrashRouting::PermanentDeleteCloudStorage;
-        } else if facts.is_directory {
-            answer.folder_may_hold_online_only = true;
+        let facts = resolve_through_symlinks(path)
+            .filter(|resolved| is_inside_known_cloud_drive(home, resolved))
+            .and_then(|resolved| facts_for(&resolved));
+        match facts {
+            Some(facts) if facts.online_only => online_only += 1,
+            Some(facts) => {
+                rest += 1;
+                folder_may_hold_online_only |= facts.is_directory;
+            }
+            None => rest += 1,
         }
     }
-    answer
+    let routing = match (online_only, rest) {
+        (0, _) => TrashRouting::Trash,
+        (_, 0) => TrashRouting::PermanentDeleteAllOnlineOnly,
+        _ => TrashRouting::PermanentDeleteMixedOnlineOnly,
+    };
+    TrashRoutingAnswer {
+        routing,
+        folder_may_hold_online_only,
+    }
 }
 
 /// [`routing_with`] against the real filesystem.
@@ -351,8 +376,50 @@ mod tests {
         let path = "/Users/test/Library/CloudStorage/Dropbox/Work/emclient.pkg";
         assert_eq!(
             routing(&[path], &[(path, ONLINE_ONLY_FILE)]).routing,
-            TrashRouting::PermanentDeleteCloudStorage
+            TrashRouting::PermanentDeleteAllOnlineOnly,
+            "one item, and it's evicted: nothing in the selection is ordinary"
         );
+    }
+
+    /// The dialog's copy differs between the two: the wholly-online-only wording
+    /// can't suggest deselecting the online-only items, because that would leave
+    /// nothing selected.
+    #[test]
+    fn a_selection_that_is_entirely_online_only_is_told_apart_from_a_mixed_one() {
+        let a = "/Users/test/Library/CloudStorage/Dropbox/a.pdf";
+        let b = "/Users/test/Library/CloudStorage/Dropbox/b.pdf";
+        let here = "/Users/test/Library/CloudStorage/Dropbox/here.pdf";
+        let ordinary = "/Users/test/Documents/c.pdf";
+
+        assert_eq!(
+            routing(&[a, b], &[(a, ONLINE_ONLY_FILE), (b, ONLINE_ONLY_FILE)]).routing,
+            TrashRouting::PermanentDeleteAllOnlineOnly
+        );
+        assert_eq!(
+            routing(&[a, here], &[(a, ONLINE_ONLY_FILE)]).routing,
+            TrashRouting::PermanentDeleteMixedOnlineOnly,
+            "a materialized sibling in the same drive makes it mixed"
+        );
+        assert_eq!(
+            routing(&[a, ordinary], &[(a, ONLINE_ONLY_FILE)]).routing,
+            TrashRouting::PermanentDeleteMixedOnlineOnly,
+            "so does an item outside every cloud drive"
+        );
+    }
+
+    /// "All online-only" is a claim, so it's only made about items we positively
+    /// read as evicted. An item that vanished, or one we can't resolve, is not
+    /// known to be online-only, and the copy that would promise otherwise has a
+    /// remedy ("deselect all online-only files") that wouldn't help.
+    #[test]
+    fn an_item_we_couldnt_read_keeps_the_selection_mixed() {
+        let evicted = "/Users/test/Library/CloudStorage/Dropbox/a.pdf";
+        let vanished = "/Users/test/Library/CloudStorage/Dropbox/gone.pdf";
+        let table: HashMap<PathBuf, ItemFacts> = [(PathBuf::from(evicted), ONLINE_ONLY_FILE)].into_iter().collect();
+        let answer = routing_with(&home(), &[PathBuf::from(evicted), PathBuf::from(vanished)], &|path| {
+            table.get(path).copied()
+        });
+        assert_eq!(answer.routing, TrashRouting::PermanentDeleteMixedOnlineOnly);
     }
 
     /// The regression this whole rule exists to prevent: an ordinary Dropbox file
@@ -399,11 +466,11 @@ mod tests {
 
         assert_eq!(
             routing(&[here, evicted], &[(evicted, ONLINE_ONLY_FILE)]).routing,
-            TrashRouting::PermanentDeleteCloudStorage
+            TrashRouting::PermanentDeleteMixedOnlineOnly
         );
         assert_eq!(
             routing(&[ordinary, evicted], &[(evicted, ONLINE_ONLY_FILE)]).routing,
-            TrashRouting::PermanentDeleteCloudStorage
+            TrashRouting::PermanentDeleteMixedOnlineOnly
         );
         assert_eq!(routing(&[here, ordinary], &[]).routing, TrashRouting::Trash);
         assert_eq!(routing(&[], &[]), TrashRoutingAnswer::TRASH, "nothing selected");
@@ -447,7 +514,7 @@ mod tests {
         };
         assert_eq!(
             routing_with(&home, &[home.join("Dropbox/Work/report.pdf")], &all_evicted).routing,
-            TrashRouting::PermanentDeleteCloudStorage
+            TrashRouting::PermanentDeleteAllOnlineOnly
         );
     }
 

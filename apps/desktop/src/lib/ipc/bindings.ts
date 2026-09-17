@@ -685,11 +685,14 @@ export const commands = {
     ),
   /**
    *  Answers whether an F8 over `sources` has to run as a permanent delete because
-   *  every item lives in a cloud-storage folder whose File Provider has no trash.
+   *  the selection holds online-only content in a cloud-storage folder, which a
+   *  trash would download before it could move.
    *
    *  Asked before the confirmation dialog opens, so the dialog can say why it's
    *  asking about a delete. A timeout degrades to `Trash`, which is today's
-   *  behavior: the attempt goes to the OS and a refusal speaks for itself.
+   *  behavior: the attempt goes to the OS and a refusal speaks for itself. The
+   *  answer's `folder_may_hold_online_only` says the dialog's own scan walk still
+   *  has to finish the question; see `delete/cloud_trash.rs`.
    */
   trashRoutingForPaths: (sources: string[]) =>
     __TAURI_INVOKE<TrashRoutingAnswer>('trash_routing_for_paths', { sources }),
@@ -13736,6 +13739,13 @@ export type TrashRefusedItems = {
  *  Typed rather than a bare `bool` so the frontend's routing reads as a decision
  *  the backend made, and so a future "this one is trashless for another reason"
  *  arrives as a variant instead of a second boolean.
+ *
+ *  The two delete variants differ only in what the confirmation can honestly
+ *  SAY. Both run the same permanent delete, and the copy for a wholly online-only
+ *  selection can't offer "deselect the online-only files" as a remedy, because
+ *  that would leave nothing selected. Carried in the variant rather than beside
+ *  it, so there's no "which half of the selection" answer to forget when the
+ *  routing is `Trash`.
  */
 export type TrashRouting =
   /**
@@ -13744,10 +13754,16 @@ export type TrashRouting =
    */
   | 'trash'
   /**
-   *  The selection holds online-only content in a cloud-storage drive. Run the
+   *  Every selected item is online-only in a cloud-storage drive. Run the
    *  permanent-delete flow, whose dialog says why.
    */
-  | 'permanentDeleteCloudStorage'
+  | 'permanentDeleteAllOnlineOnly'
+  /**
+   *  Part of the selection is online-only in a cloud-storage drive, and the
+   *  rest isn't. Same permanent delete; the dialog can also suggest dropping
+   *  the online-only items from the selection.
+   */
+  | 'permanentDeleteMixedOnlineOnly'
 
 /**
  *  The backend's full answer about a selection: what to run, and whether that

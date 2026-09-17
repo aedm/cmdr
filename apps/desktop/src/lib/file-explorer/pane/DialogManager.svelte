@@ -240,7 +240,7 @@
                 isPermanent={deleteDialogProps.isPermanent}
                 supportsTrash={deleteDialogProps.supportsTrash}
                 isArchive={deleteDialogProps.isArchive}
-                cloudStorageOnlineOnly={deleteDialogProps.cloudStorageOnlineOnly}
+                cloudOnlineOnly={deleteDialogProps.cloudOnlineOnly}
                 cloudFolderMayHoldOnlineOnly={deleteDialogProps.cloudFolderMayHoldOnlineOnly}
                 isFromCursor={deleteDialogProps.isFromCursor}
                 sortColumn={deleteDialogProps.sortColumn}
