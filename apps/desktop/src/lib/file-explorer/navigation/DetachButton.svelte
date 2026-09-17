@@ -4,15 +4,15 @@
      * server place. One button for all three placements (the breadcrumb chip, a switcher
      * row's eject, a server row's disconnect), so the states can't drift apart.
      *
-     * The WORDS, the glyph, and the three states are decided elsewhere and handed in:
-     * `detach-control.ts` for eject / phone-disconnect, the caller for a server place.
+     * The WORDS, the glyph, the three states, and what pressing it runs are all decided in
+     * `detach-control.ts`; this renders the look half of that answer.
      */
     import Icon from '$lib/ui/Icon.svelte'
     import Spinner from '$lib/ui/Spinner.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
-    import type { DetachControl } from './detach-control'
+    import type { DetachButtonLook } from './detach-control'
 
-    interface Props extends DetachControl {
+    interface Props extends DetachButtonLook {
         /** Chip placement: a small left margin so it sits beside the badges, not against them. */
         breadcrumb?: boolean
         onclick: (event: MouseEvent) => void

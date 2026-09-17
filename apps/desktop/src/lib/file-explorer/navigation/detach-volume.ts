@@ -3,7 +3,24 @@ import { isVolumeBusy, isVolumeEjecting } from '$lib/stores/volume-busy-store.sv
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
 import { wordEjectRefusal } from './eject-error-messages'
+import { disconnectServerPlace } from './server-row-actions'
+import type { DetachAction } from './detach-control'
 import type { VolumeInfo } from '../types'
+
+/**
+ * Runs the action `detachControlFor` chose for this volume.
+ *
+ * ❗ Both surfaces go through here, so the button that says Disconnect can't send an
+ * eject: the words and the action come from one answer and are spent in one place.
+ */
+export async function runDetach(volume: VolumeInfo, action: DetachAction): Promise<void> {
+  if (action === 'disconnect-place') {
+    if (isVolumeBusy(volume.id)) return
+    await disconnectServerPlace(volume.id, volume.name)
+    return
+  }
+  await detachVolume(volume)
+}
 
 /**
  * Press the eject-or-disconnect control: the chip's and every switcher row's run this.

@@ -315,14 +315,26 @@ ArrowLeft / Escape closes, Enter activates) and the single-cursor rule.
 
 Ejectable volumes (USB, SD, DMG, MTP, SMB — see `eject-predicate.ts`) show a small `⏏`-shaped icon button on the right
 of each switcher row and on the right of the closed/header chip — one `DetachButton.svelte` for all three placements
-(the third is a server row's Disconnect), so their states can't drift. Pressing it runs `detach-volume.ts`, which calls
-`ejectVolume(id)`; the backend dispatches: SMB → `diskutil unmount`, MTP → connection manager disconnect, physical / DMG
-→ `diskutil eject`. A click on it does NOT close the menu (it's a control inside a row, which the primitive never lets
-activate its row), so the user can eject several drives in a row; each ejected volume vanishes from the list via the
-existing `volume-unmounted` / `mtp-device-disconnected` flow — no extra success toast. ❗ `volume-unmounted` carries an
-optional `volumeId`, and the consumer reads THAT first: a "Forget server" takes the row out of the store, so a path
-lookup would find nothing if the `volumes-changed` refresh won the race. The mount watchers leave it null and the path
-lookup is their fallback.
+(the third is a server row's Disconnect), so their states can't drift.
+
+**`detachControlFor(volume, activity)` decides the whole control**, in `detach-control.ts`: whether there is one at all,
+its word and glyph, and which action pressing it runs (`'eject'` or `'disconnect-place'`). Both surfaces render that one
+answer and spend it through `runDetach`, so the button that says Disconnect cannot send an eject. It asks the server
+question FIRST, since `isVolumeEjectable` says yes to a live remote session too.
+
+❗ That single answer exists because the two surfaces had drifted: the switcher row asked the server question and the
+chip never did, so an open SFTP place offered Disconnect in the list and Eject on the chip. The chip's button could only
+ever be refused — `decide_eject_action` has no branch for a remote volume, so it answers `NotEjectable` — which is how a
+user came to report that Cmdr wouldn't eject a server it had just told him to eject (`ERR-P7F5Q`).
+
+An eject runs `detach-volume.ts`, which calls `ejectVolume(id)`; the backend dispatches: SMB → `diskutil unmount`, MTP →
+connection manager disconnect, physical / DMG → `diskutil eject`. A `'disconnect-place'` goes to `disconnectServerPlace`
+instead, which drops the session and leaves the row `saved`. A click on it does NOT close the menu (it's a control
+inside a row, which the primitive never lets activate its row), so the user can eject several drives in a row; each
+ejected volume vanishes from the list via the existing `volume-unmounted` / `mtp-device-disconnected` flow — no extra
+success toast. ❗ `volume-unmounted` carries an optional `volumeId`, and the consumer reads THAT first: a "Forget
+server" takes the row out of the store, so a path lookup would find nothing if the `volumes-changed` refresh won the
+race. The mount watchers leave it null and the path lookup is their fallback.
 
 Right-clicking a dropdown row opens a NATIVE (muda) context menu via `show_volume_row_context_menu`: a favorite row gets
 `Rename` + `Remove`, an ejectable volume row gets its detach item (`Eject ({name})` for a disk, `Disconnect` for a

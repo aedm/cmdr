@@ -42,14 +42,13 @@
     import ImageIndexDriveBadge from './ImageIndexDriveBadge.svelte'
     import UsbSpeedDot from './UsbSpeedDot.svelte'
     import { connectDirectlyToRow } from './connect-directly-row'
-    import { showsDisconnect } from './connection-state'
-    import { detachControl } from './detach-control'
-    import { detachVolume } from './detach-volume'
+    import { detachControlFor } from './detach-control'
+    import { runDetach } from './detach-volume'
     import { isDriveRow } from './drive-index-manager.svelte'
     import { isVolumeEjectable } from './eject-predicate'
     import { filesystemLabel } from './filesystem-label'
     import { pathForPickedVolume } from './picked-volume-path'
-    import { disconnectServerPlace, isServerPlaceRow, openServerRowMenu } from './server-row-actions'
+    import { isServerPlaceRow, openServerRowMenu } from './server-row-actions'
     import { shouldShowCheckmark } from './volume-checkmark'
     import { groupByCategory } from './volume-grouping'
     import { createVolumeSpaceManager } from './volume-space-manager.svelte'
@@ -87,8 +86,6 @@
        above is the tooltip the whole volume row carries. */
     const RESTRICTED_FOLDER_LABEL = $derived(tString('fileExplorer.restrictedFolder.label'))
     const READ_ONLY_TOOLTIP = $derived(tString('fileExplorer.navigation.readOnlyTooltip'))
-    /** A server row's Disconnect control, disabled while a transfer touches the volume. */
-    const DISCONNECT_BUSY_TOOLTIP = $derived(tString('fileExplorer.navigation.disconnectBusyTooltip'))
 
     const spaceManager = createVolumeSpaceManager()
     const {
@@ -286,12 +283,6 @@
         void showVolumeRowContextMenu(volume.id, volume.name, ejectable)
     }
 
-    /** The row's Disconnect control. Guarded like Eject: never mid-transfer. */
-    function handleDisconnectClick(volume: VolumeInfo): void {
-        if (isVolumeBusy(volume.id)) return
-        void disconnectServerPlace(volume.id, volume.name)
-    }
-
     // Clear cached space info when the volume list changes (mount/unmount/MTP connect) and
     // re-fetch if the menu is open.
     let prevVolumeIds = ''
@@ -335,6 +326,12 @@
             <ShortcutChip commandId="favorites.open" clickable={false} />
         {:else if volume}
             {@const fsLabel = filesystemLabel(volume)}
+            <!-- Declared up here because `{@const}` has to be an immediate child of a block;
+                 it's spent at the end of the row, in `.row-trailing`. -->
+            {@const detach = detachControlFor(volume, {
+                busy: isVolumeBusy(volume.id),
+                ejecting: isVolumeEjecting(volume.id),
+            })}
             {#if fsLabel}
                 <!-- Filesystem name tag, sitting just right of the volume name. Quiet
                      secondary text so it reads as metadata, not a second title. -->
@@ -373,31 +370,11 @@
                         <ImageIndexDriveBadge volumeId={volume.id} volumeState={imageState} />
                     {/if}
                 {/if}
-                {#if isServerPlaceRow(volume) && showsDisconnect(volume.connectionState)}
-                    <!-- A server has nothing to unplug, so its slot says Disconnect (D6). The
-                         place stays saved; only the session goes. -->
-                    {@const busy = isVolumeBusy(volume.id)}
-                    <DetachButton
-                        label={busy
-                            ? DISCONNECT_BUSY_TOOLTIP
-                            : tString('fileExplorer.navigation.disconnectPlaceAriaLabel', { name: volume.name })}
-                        icon="unplug"
-                        disabled={busy}
-                        ejecting={false}
-                        onclick={() => { handleDisconnectClick(volume) }}
-                    />
-                {:else if isVolumeEjectable(volume)}
-                    <!-- ❗ Gated on `isVolumeEjectable`, which for a phone reads its READINESS:
-                         a device row carries `isEjectable: true` unconditionally and no
-                         `connectionState` at all, so without the gate a greyed `unavailable`
-                         row nobody can open still offered a live Disconnect. -->
-                    <DetachButton
-                        {...detachControl(volume, {
-                            busy: isVolumeBusy(volume.id),
-                            ejecting: isVolumeEjecting(volume.id),
-                        })}
-                        onclick={() => { void detachVolume(volume) }}
-                    />
+                <!-- ❗ The words AND the action come from one answer: a server says
+                     Disconnect and drops its session (the place stays saved), a phone says
+                     Disconnect and ejects, a `saved` row gets nothing. `detach-control.ts`. -->
+                {#if detach}
+                    <DetachButton {...detach.button} onclick={() => { void runDetach(volume, detach.action) }} />
                 {/if}
             </span>
         {/if}
