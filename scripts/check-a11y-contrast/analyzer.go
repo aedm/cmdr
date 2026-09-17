@@ -37,6 +37,10 @@ type Analyzer struct {
 	Warnings []string
 	// Total rules evaluated (for reporter summary).
 	RulesEvaluated int
+	// Which per-element opacity exemptions matched a real dim, accumulated
+	// across every file this analyzer saw. Read back by
+	// `StaleOpacityExemptions` after a full walk (opacity_check.go).
+	opacityExemptionsUsed map[string]bool
 }
 
 // NewAnalyzer creates an Analyzer bound to a variable table.

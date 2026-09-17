@@ -30,7 +30,8 @@ go run ./scripts/check-a11y-contrast -- --verbose
 
 Exit code 0 on clean, 1 on any violation (a WCAG pair below threshold OR an APCA pair below the Lc-45 floor). Unmodeled
 `opacity` dimming (see "Opacity (detect, don't compute)" below) is a third, advisory category: always printed, never
-part of the exit code.
+part of the exit code. A stale entry in its per-element exemption lists does fail the run, though, and it's the one
+thing here you can fix without looking at a single color.
 
 ## What it checks
 
@@ -125,6 +126,26 @@ entry — so they stay visible until someone looks and either converts the rule 
 `scripts/check/checks/desktop-svelte-a11y-contrast.go` for how the check runner surfaces this as a `warn` (yellow, not
 red; doesn't fail `pnpm check`) via a `CMDR_A11Y_OPACITY_STATUS_FILE` side channel — `go run` collapses any non-zero
 exit to 1, so the exit code alone can't tell "clean" apart from "clean of hard failures, but opacity findings remain."
+
+**A stale exemption entry IS a hard failure.** The two per-element lists (`opacityDecorativeAllowlist` and
+`opacityModeledElsewhere`) match on `(file-suffix, selector)`, so extracting a component, renaming a class, or dropping
+the `opacity` unhooks an entry, and nothing about that is visible: the element comes back as a plain finding with
+nothing pointing at the hand-verified reason that used to cover it. That happened to four entries at once when
+`ConnectionDot.svelte`, `UsbSpeedDot.svelte`, and `VolumeChooserMenu.svelte` were extracted out of
+`VolumeBreadcrumb.svelte`, and it read as four new a11y regressions. So the run tracks which entries actually excused a
+dimmed rule and fails on any that excused nothing, printing each one's `why` text (`StaleOpacityExemptions` +
+`ReportStaleOpacityExemptions`). Unlike the findings, this needs no browser to be sure of.
+
+Two details that keep the failure trustworthy:
+
+- An entry whose element also picked up a `:disabled` or `.is-dragging` marker counts as **used**, not stale: the use is
+  recorded before those earlier skips. It's redundant today and load-bearing again the moment the other marker goes
+  away, so calling it stale would walk someone into deleting a real exemption.
+- A rule that no longer dims (no `opacity`, or `opacity: 1` / `opacity: 0`) is **not** a use, even when its selector
+  still exists. There's nothing left to excuse.
+
+Fixing one means finding where the element went and repointing the entry, or deleting it. Re-read the markup first: the
+`why` text says what was true when someone last looked, and it isn't proof the element is still decorative.
 
 Only literal numeric `opacity` values resolve (`parseOpacity` in `parser.go`); `var(...)`, `calc(...)`, and other
 non-literal values are left unparsed rather than guessed (none exist in the codebase today).
@@ -226,8 +247,10 @@ opacity_check.go     Detects (doesn't compute) a static `opacity: N < 1` the
                      rule walker can't fold into its color/background
                      pairing. Exempts disabled/inactive components, a
                      hand-verified non-text allowlist, and anything already
-                     hand-modeled; reports everything else. See "Opacity
-                     (detect, don't compute)" above.
+                     hand-modeled; reports everything else. Also tracks which
+                     per-element exemptions excused a real dim, and fails the
+                     run on any that excused nothing. See "Opacity (detect,
+                     don't compute)" above.
 ```
 
 Tests:
@@ -241,7 +264,9 @@ Tests:
   ladder.
 - `opacity_check_test.go`: disabled/inactive exemption, decorative allowlist exemption, `opacity: 0` and `opacity: 1`
   are non-findings, a plain-text opacity dim is reported, a re-declared selector (for example a `prefers-reduced-motion`
-  override) dedupes to one finding, and `parseOpacity`'s literal-only contract.
+  override) dedupes to one finding, and `parseOpacity`'s literal-only contract. Plus the staleness guard: an entry that
+  excused nothing is reported, one shadowed by an earlier exemption counts as used, and a selector that no longer dims
+  doesn't keep its entry alive.
 
 Diagnostic helpers (skipped by default; gated on env vars):
 
@@ -317,6 +342,10 @@ When `AnalyzeOpacity` (`opacity_check.go`) reports a rule that's genuinely out o
 Never widen an exemption just to make a survivor go quiet. A real informational-text case that opacity-dims without
 being disabled or decorative is a finding: either convert it to a color token (see `--color-text-quiet`) or hand-model
 it in a synthesizer.
+
+The two per-element lists are checked back the other way too: an entry that excuses nothing fails the run, so moving a
+component or renaming a class means repointing (or deleting) its entry in the same change. See "A stale exemption entry
+IS a hard failure" above.
 
 ## Known trade-offs
 

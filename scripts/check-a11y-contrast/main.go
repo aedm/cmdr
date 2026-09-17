@@ -6,14 +6,19 @@
 // ratio in both modes. Flags pairs below 4.5:1 (3:1 for large text).
 //
 // Run: go run ./scripts/check-a11y-contrast
-// Exit: 0 on clean of WCAG + the APCA floor, 1 on either violating.
+// Exit: 0 on clean of WCAG + the APCA floor + the opacity exemption lists, 1
+// on any of the three.
 //
 // A third category, unmodeled `opacity` dimming (opacity_check.go), is
 // advisory: it never fails the exit code (for any caller, direct or via the
 // check runner), since the tool can't verify a dimmed text color's real
 // contrast without a browser — a reported case might be a real bug or might
 // be fine. It's always printed, though, so the findings stay visible until
-// each is triaged. `go run` collapses any non-zero exit to 1 (a documented
+// each is triaged. Its own per-element exemption lists are held to a harder
+// standard: an entry that matched nothing during the walk fails the run (see
+// `StaleOpacityExemption`), because that's a fact this tool can prove, and
+// it's the one part of the opacity pass that rots silently.
+// `go run` collapses any non-zero exit to 1 (a documented
 // Go limitation, not something we control), so opacity findings can't ride
 // the exit code as a THIRD state anyway; when `CMDR_A11Y_OPACITY_STATUS_FILE`
 // is set, this tool also writes the finding count there as a side channel —
@@ -138,6 +143,15 @@ func main() {
 	// findings stay visible every run until each is triaged.
 	opacityFound := ReportOpacity(opacityFindings, rootDir)
 
+	// The exemption lists that quiet the pass above, checked against what the
+	// walk actually saw. A hard failure, unlike the findings themselves: this
+	// one the tool can prove without a browser, and it's the only part of the
+	// opacity pass that rots invisibly (see `StaleOpacityExemption`). Must run
+	// after the full walk AND after app.css's own rules feed AnalyzeOpacity
+	// above, or entries only app.css matches would look stale.
+	staleExemptions := analyzer.StaleOpacityExemptions()
+	ReportStaleOpacityExemptions(staleExemptions)
+
 	// Side channel for the check-runner wrapper (see the package doc comment):
 	// `go run` collapses any non-zero exit to 1, so opacity-only findings
 	// can't signal a distinct exit code. Written whenever there are findings,
@@ -145,7 +159,12 @@ func main() {
 	writeOpacityStatusFile(len(opacityFindings))
 
 	summary := Summary(fileCount, analyzer.RulesEvaluated, len(allFindings), len(violations))
-	if hasViolations || apcaFloorFail {
+	if hasViolations || apcaFloorFail || len(staleExemptions) > 0 {
+		if n := len(staleExemptions); n > 0 {
+			// The violation count alone can read as 0 on a stale-only
+			// failure, which would look like a checker bug.
+			summary += fmt.Sprintf(", %d stale opacity %s", n, plural(n, "exemption", "exemptions"))
+		}
 		fmt.Printf("%s❌ %s%s\n", colorRed, summary, colorReset)
 		os.Exit(1)
 	}
