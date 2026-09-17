@@ -67,10 +67,12 @@ coverage and the watch that earned it are dropped together, and a stale claim ca
 
 ## Decision: remote archives have NO live watch — freshness is "as of last read"
 
-The content watch is a LOCAL `notify` watch on the backing `.zip`'s parent directory. A REMOTE parent (direct SMB / MTP)
-has no local path for `notify` to watch, so `start_watch` returns `None` and a remote `ArchiveVolume`'s
-`listing_watch_coverage` is permanently `None`. Two consequences, both correct-by-construction rather than a gap to
-close:
+The content watch is a LOCAL `notify` watch on the backing `.zip`'s parent directory. A REMOTE parent (direct SMB / MTP
+/ SFTP / WebDAV) has no local path for `notify` to watch, so `start_content_watch` returns before arming one and a
+remote `ArchiveVolume`'s `listing_watch_coverage` is permanently `None`. The early return is what keeps the log honest:
+handed an `sftp://…` directory `notify` refuses it and `start_watch` warns, so every remote archive registration used to
+leave a `failed to watch` line that reads like a broken watch in an error report. Two consequences, both
+correct-by-construction rather than a gap to close:
 
 - **The write-op fresh-listing oracle never serves a remote archive listing from cache.**
   `listing_watch_coverage == None` means every pre-flight scan of a remote archive re-reads it honestly (and

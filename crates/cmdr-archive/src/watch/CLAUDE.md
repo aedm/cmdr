@@ -17,5 +17,6 @@ planning, reorganizing, or advising.
   an archive-inner path (not a real FS path) to `directory_changed` would run a meaningless drive-index sync.
 - **Off the executor**: the debouncer callback runs on notify-rs's own thread (no Tokio runtime), so it spawns through
   `host.runtime()`, never `tokio::spawn` (which inherits an ambient runtime and would panic).
-- **Local only**: a REMOTE parent has no local path for `notify`, so `start_watch` returns `None` and
-  `listing_watch_coverage` stays `None` — freshness is "as of last read". See `DETAILS.md`.
+- **Local only**: a REMOTE parent has no local path for `notify`, so `start_content_watch` returns before arming one and
+  `listing_watch_coverage` stays `None` — freshness is "as of last read". ❌ Don't drop that early return to "let
+  `notify` decide": it refuses an `sftp://…` directory with a warning, one per archive registration. See `DETAILS.md`.
