@@ -9,10 +9,18 @@
      * badge next to the dropdown trigger, and a per-row badge inside the
      * dropdown. The parent owns the IPC actions (so it can route an SMB
      * `credentials_needed` refusal into its login flow); this component owns the
-     * dot, the tooltip, and the menu shell. The state→color/copy mapping is the
-     * pure `drive-index-status.ts` (unit-tested).
+     * dot, the tooltip, and what the menu says. The state→color/copy mapping is
+     * the pure `drive-index-status.ts` (unit-tested).
+     *
+     * The menu is the house `Menu` (`$lib/ui/DETAILS.md` § Menu), which owns keys,
+     * cursor, placement, focus, and closing. In the dropdown placement it's a menu
+     * opened from inside another one, a case the primitive handles for both.
      */
+    import { onDestroy } from 'svelte'
     import type { VolumeIndexStatus } from '$lib/ipc/bindings'
+    import Menu from '$lib/ui/Menu.svelte'
+    import { createMenu } from '$lib/ui/menu-controller.svelte'
+    import type { MenuSection } from '$lib/ui/menu-types'
     import { tooltip } from '$lib/tooltip/tooltip'
     import { tString } from '$lib/intl/messages.svelte'
     import { formatInteger } from '$lib/intl/number-format'
@@ -174,42 +182,48 @@
     const menuActions = $derived(driveIndexMenuActions(badgeState, masterEnabled))
     const showFooter = $derived(hasLastScanFacts(status))
 
-    let menuOpen = $state(false)
+    // One section of plain action rows, or none at all while the master switch is
+    // off — the footer snippet then carries the explanation instead.
+    const sections = $derived<MenuSection<DriveIndexMenuAction>[]>(
+        menuActions.length === 0
+            ? []
+            : [
+                  {
+                      id: 'actions',
+                      items: menuActions.map((action) => ({
+                          value: action,
+                          label: tString(driveIndexMenuLabelKey(action)),
+                          data: action,
+                      })),
+                  },
+              ],
+    )
+
     let badgeRef: HTMLButtonElement | undefined = $state()
-    let menuRef: HTMLDivElement | undefined = $state()
+    /** Whatever held focus when the menu opened, so closing it doesn't move focus anywhere new. */
+    let focusBeforeOpen: HTMLElement | null = null
 
-    function toggleMenu(e: MouseEvent) {
-        e.stopPropagation()
-        menuOpen = !menuOpen
+    const menu = createMenu<DriveIndexMenuAction>({
+        getSections: () => sections,
+        onSelect: (item) => {
+            if (item.data) onAction(volumeId, item.data)
+        },
+        restoreFocus: () => {
+            // ❗ Back to whatever held focus, ❌ not to the badge: in a switcher row that's the
+            // switcher's own surface, which owns the keyboard the moment this menu lets go of it.
+            focusBeforeOpen?.focus()
+            focusBeforeOpen = null
+        },
+    })
+
+    function toggleMenu(): void {
+        if (!badgeRef) return
+        if (!menu.isOpen) focusBeforeOpen = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        menu.toggleUnder(badgeRef)
     }
 
-    function pickAction(action: DriveIndexMenuAction, e: MouseEvent) {
-        e.stopPropagation()
-        menuOpen = false
-        onAction(volumeId, action)
-    }
-
-    function handleClickOutside(event: MouseEvent) {
-        const target = event.target as Node
-        if (badgeRef?.contains(target) || menuRef?.contains(target)) return
-        menuOpen = false
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-        if (event.key === 'Escape' && menuOpen) {
-            menuOpen = false
-            badgeRef?.focus()
-        }
-    }
-
-    $effect(() => {
-        if (!menuOpen) return
-        document.addEventListener('click', handleClickOutside, true)
-        document.addEventListener('keydown', handleKeyDown)
-        return () => {
-            document.removeEventListener('click', handleClickOutside, true)
-            document.removeEventListener('keydown', handleKeyDown)
-        }
+    onDestroy(() => {
+        menu.destroy()
     })
 </script>
 
@@ -220,8 +234,8 @@
     class:breadcrumb-drive-index-badge={breadcrumb}
     aria-label={`${tString('fileExplorer.navigation.driveIndex.ariaLabel')}: ${tooltipText}`}
     aria-haspopup="menu"
-    aria-expanded={menuOpen}
-    use:tooltip={menuOpen ? '' : tooltipParam}
+    aria-expanded={menu.isOpen}
+    use:tooltip={menu.isOpen ? '' : tooltipParam}
     onclick={toggleMenu}
 ></button>
 
@@ -237,18 +251,17 @@
     </div>
 {/if}
 
-{#if menuOpen}
-    <div class="drive-index-menu" bind:this={menuRef} role="menu" onclick={(e: MouseEvent) => { e.stopPropagation() }}>
+<Menu {menu} ariaLabel={tString('fileExplorer.navigation.driveIndex.ariaLabel')}>
+    <!-- Both things under the last row. Neither is a ROW (one wraps to several lines, the
+         other is a quiet caption), which is what keeps this menu off the OS's
+         (`docs/guides/building-ui.md` § Building a menu). There's always something above the
+         separator: the actions, or the note that replaces them. -->
+    {#snippet footer()}
         {#if !masterEnabled}
             <!-- Master switch off: no actions, one line saying why and where to
                  change it, plus the reassurance that this drive's own choice is kept. -->
             <p class="drive-index-menu-note">{tString('fileExplorer.navigation.driveIndex.menuIndexingOffNote')}</p>
         {/if}
-        {#each menuActions as action (action)}
-            <button type="button" class="drive-index-menu-item" role="menuitem" onclick={(e: MouseEvent) => { pickAction(action, e) }}>
-                {tString(driveIndexMenuLabelKey(action))}
-            </button>
-        {/each}
         {#if showFooter}
             <div class="drive-index-menu-separator"></div>
             <div class="drive-index-menu-footer">
@@ -258,8 +271,8 @@
                 })}
             </div>
         {/if}
-    </div>
-{/if}
+    {/snippet}
+</Menu>
 
 <style>
     /* Stable width for the scanning tooltip's shared body, so it doesn't jitter
@@ -344,43 +357,10 @@
         margin-left: var(--spacing-xs);
     }
 
-    .drive-index-menu {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        margin-top: var(--spacing-xs);
-        min-width: 220px;
-        /* Same frosted glass as the breadcrumb popup and the house menu. */
-        background: var(--color-bg-glass);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
-        backdrop-filter: saturate(180%) blur(20px);
-        border: 0.5px solid var(--color-border-glass);
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-md);
-        z-index: var(--z-overlay);
-        padding: var(--spacing-xs) 0;
-    }
+    /* The surface, the rows, and their hover belong to the house `Menu`; what's left here is
+       the two things under the last row that aren't rows.
 
-    .drive-index-menu-item {
-        display: block;
-        width: 100%;
-        text-align: left;
-        padding: var(--spacing-sm) var(--spacing-md);
-        background: none;
-        border: none;
-        color: var(--color-text-primary);
-        font: inherit;
-        cursor: default;
-        white-space: nowrap;
-    }
-
-    .drive-index-menu-item:hover,
-    .drive-index-menu-item:focus-visible {
-        background-color: var(--color-accent-subtle);
-        outline: none;
-    }
-
-    /* The master-switch-off explanation. Wraps (unlike the nowrap action rows), so
+       The master-switch-off explanation. Wraps (unlike the nowrap action rows), so
        the sentence stays readable inside the menu's width. */
     .drive-index-menu-note {
         margin: 0;
@@ -402,11 +382,5 @@
         color: var(--color-text-tertiary);
         font-size: var(--font-size-xs);
         white-space: nowrap;
-    }
-
-    /* Reduced transparency: drop the blur (the glass token flips opaque in app.css). */
-    :global(html.reduce-transparency) .drive-index-menu {
-        -webkit-backdrop-filter: none;
-        backdrop-filter: none;
     }
 </style>
