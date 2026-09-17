@@ -46,6 +46,6 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
 - **❗ EVERY menu here is the house `Menu`** (`$lib/ui/DETAILS.md` § Menu): the chip's two, and the drive badge's, which
   opens INSIDE the switcher and leaves it open. It owns keys, cursor, pointer mode, submenus, reorder, accelerators,
   placement, and focus. ❌ Never a key handler, a highlight index, or a `getBoundingClientRect` here; a chip menu's
-  `onKey` claims only the keys that SWAP the two.
+  `onKey` claims only the SWAP keys.
 
 Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here.
