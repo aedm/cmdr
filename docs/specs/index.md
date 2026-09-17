@@ -65,16 +65,6 @@ below is met.
 
 ## In progress
 
-- [ ] 2026-09-17 `detach-any-volume.md` - **An agent can open a remote session and has no way to close one, because the
-      decision that picks a teardown is a ladder of predicates about the volume rather than a question put to it.** MCP
-      `eject` answers `NotEjectable` for SFTP and WebDAV, and every refusal but `unmountRefused` reaches the agent as
-      prose it can't classify. The frontend half of the same defect was `ERR-P7F5Q` and is fixed, which leaves the
-      backend as the visible one. The fix generalizes the provider registry that MTP and ADB already answer through
-      (`device_volumes.rs`), ❌ not the `Volume` trait, which lives in a crate that carries no `tauri` while the SFTP
-      and WebDAV teardowns are app-side wiring. M1 types every refusal (30 min, useful alone) → M2 one detach registry
-      and a two-case decision → M3 SFTP and WebDAV register, and MCP inherits it → M4 a fake-provider test proving the
-      next backend (S3) needs no edit in `eject/`. The disk flight, the busy gate, the in-flight join, and
-      `run_teardown` stay exactly where they are. About half an agent-day.
 - [ ] 2026-09-16 `favorites-menu.md` - **Opening a favorite takes a click on the volume switcher, and there's no
       shortcut** (GitHub #91). ⌃D opens a favorites menu at the switcher's spot: `1`–`9` open a favorite, `0` adds the
       current folder, drag or ⌥↑/⌥↓ reorders, right-click renames or removes. The switcher's Favorites section becomes
