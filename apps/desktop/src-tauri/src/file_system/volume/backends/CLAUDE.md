@@ -30,6 +30,10 @@ MTP is `crates/cmdr-mtp` now; the two below are what a caller reaching it from t
   ❌ never quiet one to `_on_progress`. They drive the pane's only "Loaded N files…" readout and the transfer dialog's
   only climbing counter, and the scan one is the watchdog's proof the device is answering: a silent backend gets cut
   off as unresponsive.
+- **`rename_local_exclusive` is the ONE no-replace rename**, and it degrades on a filesystem with no kernel flag
+  (smbfs answers `ENOTSUP`). ❌ Never write a second `renamex_np` call: while `overwrite::rename_no_replace` was a
+  separate copy, only it degraded, and every rename on a mounted SMB share failed (ERR-8RFN4). DETAILS § "Local renames
+  are atomic-exclusive".
 - **`LocalPosixVolume::write_from_stream` `sync_data`s each file** (+ best-effort parent-dir fsync) before returning:
   every cross-volume copy landing on local disk flows through it, and `flush()` alone loses data on eject.
 - **`FileEntry::is_hidden` folds in `UF_HIDDEN` and root-only `/.hidden` on top of the dot check**, both read from data
