@@ -829,11 +829,13 @@ those.
 
 The house menu, and the app's only in-app menu primitive (context menus are otherwise native/muda): a portaled, glass,
 keyboard-first popup built from SECTIONS of rows. Data in, callbacks out — the caller hands over sections and gets
-`onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Three consumers:
+`onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Four consumers:
 the volume switcher (`file-explorer/navigation/VolumeChooserMenu.svelte`, the rich one — grouped sections, a submenu,
 and all four snippets), the favorites menu (`file-explorer/navigation/FavoritesMenu.svelte` — a reorderable section, the
-digit accelerators, and an inline rename field in the `label` snippet), and the archive Enter popup
-(`file-explorer/pane/enter-menu.svelte.ts`, three flat rows).
+digit accelerators, and an inline rename field in the `label` snippet), the archive Enter popup
+(`file-explorer/pane/enter-menu.svelte.ts`, three flat rows), and the drive-index badge
+(`file-explorer/navigation/DriveIndexBadge.svelte` — plain rows plus a `footer`, and the one that opens from INSIDE
+another menu).
 
 Whether a NEW menu belongs to muda or to this one is decided in `docs/guides/building-ui.md` § Building a menu.
 

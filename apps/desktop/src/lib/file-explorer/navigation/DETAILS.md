@@ -589,8 +589,8 @@ yellow tooltip branches on `liveWatch`: a phone over ADB, which nothing watches,
   stays open while the badge menu is up and after a pick (`$lib/ui/DETAILS.md` § Menu, "A menu inside a menu"), and only
   the badge's menu takes keys while it's open. ❗ The `restoreFocus` goes back to whatever held focus, ❌ not to the
   badge: in a row that's the switcher's surface, which needs it back to keep owning the keyboard.
-- **The keyboard reaches the menu now**, which it didn't when the menu was hand-rolled: arrows walk the actions, Enter
-  picks, Escape closes, and every other key is swallowed so the pane behind stays inert while it's open.
+- **The keyboard works the menu**: arrows walk the actions, Enter picks, Escape closes, and every other key is swallowed
+  while it's open, so the pane behind stays inert without anything here saying so.
 - **A finished index says when it couldn't read everything** (`driveIndexUnreadableNote`, pure + unit-tested). A
   completed walk can hold no rows for folders it was refused, ones Cmdr declines to read at all, and ones that stopped
   answering, so "Indexed 2026-08-15" alone can be quietly untrue. A third tooltip paragraph names the count. Without it
