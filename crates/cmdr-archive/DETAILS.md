@@ -273,6 +273,18 @@ An `ArchiveVolume` is never constructed here directly in production — it's min
     recursive scan walkers. That oracle guards a REMOTE archive-inner path itself (a non-local parent's volume-level
     `listing_watch_coverage` would falsely claim freshness for an archive whose content watch is local-only and never
     established), declining the cache so the pre-op scan reruns honestly.
+- **The split SLICES the archive path out of its input; it never rebuilds it from components.** A remote volume
+  addresses its files as `<scheme>://<authority>/…` (`crates/cmdr-fs/src/volume/remote_paths.rs`), and `Path` reads that
+  as RELATIVE — `sftp:` is an ordinary component — so pushing the components into a fresh `PathBuf` collapses the `//`
+  into `sftp:/…`. Every inner entry's path joins under the archive path (`node_to_entry`), so that one lost slash
+  reaches the pane, where `toCanonical` (`apps/desktop/src/lib/path/canonical.ts`) rejects it: the pane's canonical path
+  goes `null`, Backspace inside the archive silently no-ops, and the synthetic `..` row falls back to the empty path,
+  which the backend lists as the VOLUME ROOT. That's ERR-J2U6A, on an SFTP share; SMB, WebDAV, MTP, and ADB all spell
+  their paths the same way.
+  - Reads survived it because every consumer downstream compares paths by COMPONENT (`Path`'s own `Eq`,
+    `strip_prefix`, `RemoteRoot::to_remote_path`), and `sftp:/a` and `sftp://a` have identical components. Only the
+    frontend, which does string arithmetic on the path, could see the difference. ❗ That also means a `PathBuf`
+    assertion can't defend the spelling — a regression test has to compare `to_str()`.
 - **`SUPPORTED_ARCHIVE_EXTENSIONS` is the one source of truth** shared by `is_archive` and boundary detection; confirm's
   magic check carries a sibling signature per format.
 - **Write-routing reuses the same parent-aware confirm.** The write seams (delete / rename / create / copy-out-source)

@@ -34,6 +34,9 @@ browses, extracts, and **writes**; tar (every codec), 7z, and OOXML are **read-o
   second detector; the host shares this one.
 - **This backend is headless: it never registers itself.** The host mints an `ArchiveVolume` on demand, routes
   archive-crossing paths to it, and LRU-caps it. Every read site re-resolves, so eviction is safe.
+- **`archive_boundary_candidate` SLICES the archive path out of its input, ❌ never rebuilds it from components**: a
+  rebuild collapses a remote path's `sftp://` to `sftp:/`, which breaks parent navigation in the pane. `Path`'s `Eq` is
+  a component compare, so assert on `to_str()`. DETAILS § Routing.
 - **Only `ArchiveFormat::Zip` is WRITABLE** — the host refuses every other format, typed and untouched, before the
   [mutator](src/mutation/CLAUDE.md) sees it. `Ooxml` (`.docx`/`.jar`/…) exists to ride that refusal: those ARE zips, so
   sharing `Zip` would let the mutator rewrite a user's document. ❌ Never fold it in. DETAILS § "document container".
