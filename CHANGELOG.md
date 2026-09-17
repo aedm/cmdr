@@ -104,6 +104,9 @@ The format is based on [keep a changelog](https://keepachangelog.com/en/1.1.0/),
 - Fix one refused event subscription leaking the other seven listeners of the operation fan-out (618cbc46c, 92d4723b0,
   5206207a9)
 - Fix the Homebrew one-liner stopping at `brew tap` on Homebrew 7.0.0 and 7.0.1 (4a18b93f4)
+- Fix Backspace and `..` not walking up one level inside an archive on a remote share (dff3813ae)
+- Fix a remote-backed archive logging a "failed to watch" warning on every registration (c0231ae5f)
+- Fix a pane whose path can't be canonicalized jumping to the volume root instead of staying on `..` (834e71747)
 
 ### Security
 
