@@ -8,8 +8,17 @@
  * separately). The api-server owns the contract: what the fields mean and what each state decides.
  */
 
+import { formatNumber } from './format.js'
+
 /** Where the license came from: a purchase through Paddle, or one we handed out. */
 export type LicenseSource = 'paddle' | 'manual'
+
+/**
+ * The note's ceiling, mirroring `maxLicenseNoteLength` in the api-server (the two apps ship
+ * separately, so the constant is duplicated by hand; the api-server owns it). Checked here only to
+ * answer before a round-trip.
+ */
+export const maxNoteLength = 2000
 
 /** The api-server's computed state per row. Meanings: `admin-licenses.ts` and its `DETAILS.md`. */
 export type LicenseState = 'active' | 'expired' | 'revoked' | 'undelivered' | 'unfinished'
@@ -41,6 +50,26 @@ export interface LicenseListing {
   orphanCodes: string[]
   /** Codes a row claims we issued that are gone from the key store, so they can't be activated. */
   missingCodes: string[]
+}
+
+/**
+ * What the edit dialog is allowed to send. Only the two things this side can know: a row was named,
+ * and the note fits. Whether a blank note is allowed depends on the source, and the api-server
+ * decides that, so a rejection there is shown verbatim rather than guessed at here.
+ */
+export function validateNote(raw: {
+  transactionId: string
+  note: string
+}): { ok: true; transactionId: string; note: string } | { ok: false; error: string } {
+  const transactionId = raw.transactionId.trim()
+  if (transactionId.length === 0) return { ok: false, error: 'No license was named.' }
+  if (raw.note.length > maxNoteLength) {
+    return {
+      ok: false,
+      error: `That note is ${formatNumber(raw.note.length)} characters, and the limit is ${formatNumber(maxNoteLength)}.`,
+    }
+  }
+  return { ok: true, transactionId, note: raw.note }
 }
 
 /** How loud a state should read in the table. */

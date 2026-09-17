@@ -1,7 +1,8 @@
-import type { PageServerLoad } from './$types'
+import type { PageServerLoad, Actions } from './$types'
+import { fail } from '@sveltejs/kit'
 import { resolveEnv } from '$lib/server/fetch-all.js'
-import { fetchLicenses } from '$lib/server/sources/licenses.js'
-import type { LicenseListing } from '$lib/licenses.js'
+import { fetchLicenses, updateLicenseNote } from '$lib/server/sources/licenses.js'
+import { validateNote, type LicenseListing } from '$lib/licenses.js'
 
 const emptyListing: LicenseListing = { licenses: [], orphanCodes: [], missingCodes: [] }
 
@@ -20,4 +21,31 @@ export const load: PageServerLoad = async ({ platform }) => {
     listing: result.ok ? result.data : emptyListing,
     loadError: result.ok ? null : result.error,
   }
+}
+
+/** Reads one text field off a submitted form, treating a non-string entry (a file) as absent. */
+function textField(form: FormData, name: string): string {
+  const value = form.get(name)
+  return typeof value === 'string' ? value : ''
+}
+
+/**
+ * The note editor. It proxies to the api-server with the server-only bearer token, then lets the
+ * page reload so the table shows what actually landed rather than what was typed. A rejection comes
+ * back with the submitted note, so the dialog can reopen holding the person's words.
+ */
+export const actions: Actions = {
+  saveNote: async ({ request, platform }) => {
+    const form = await request.formData()
+    const raw = { transactionId: textField(form, 'transactionId'), note: textField(form, 'note') }
+
+    const validated = validateNote(raw)
+    if (!validated.ok) return fail(400, { ...raw, error: validated.error })
+
+    const env = await resolveEnv(platform)
+    const result = await updateLicenseNote(env, { transactionId: validated.transactionId, note: validated.note })
+    if (!result.ok) return fail(502, { ...raw, error: result.error })
+
+    return { transactionId: validated.transactionId, saved: true }
+  },
 }

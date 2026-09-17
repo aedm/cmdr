@@ -10,7 +10,7 @@ Four routes share `routes/+layout.svelte` (sticky header: brand, page nav, range
 
 - `/` (Acquisition, `routes/+page.svelte`): daily funnel + channels, awareness, interest, download.
 - `/product` (`routes/product/`): active use, settings adoption, payment, retention, feedback & errors.
-- `/licenses` (`routes/licenses/`): every license we've issued, from the api-server's `/admin/licenses`.
+- `/licenses` (`routes/licenses/`): every license we've issued, from `/admin/licenses`, with an editable note each.
 - `/links` (`routes/links/`): CRUD for the `?r=` short codes, proxied to the api-server admin endpoints.
 
 Each section is a component under `src/lib/components/sections/`; shared bits in `src/lib/components/`. Data sources
@@ -40,11 +40,11 @@ settings-defaults, `svelte-kit sync`). Don't judge a change by raw `pnpm lint`: 
   type-only imports are fine. It trips `vite-plugin-sveltekit-guard` at BUILD time and **`svelte-check` does NOT catch
   it**, so run `pnpm build` after touching imports across the boundary. `DETAILS.md` lists the client-shared values.
 - **Every data source must go behind the 20s `withTimeout` cap in `fetch-all.ts`.** Workers `fetch` has no timeout, so
-  one hung upstream otherwise stalls the whole `Promise.all` until Cloudflare's 524 at 100s. Sources run in parallel,
-  return `SourceResult<T>`, and cache via `cache.ts`. Details: `DETAILS.md`.
+  one hung upstream stalls the whole `Promise.all` until Cloudflare's 524 at 100s. Sources run in parallel, return
+  `SourceResult<T>`, and cache via `cache.ts`. Details: `DETAILS.md`.
 - **The admin token (`LICENSE_SERVER_ADMIN_TOKEN`) stays server-side.** `/licenses`, `/links`, and the worker-backed
-  sources resolve it in `+page.server.ts` only; the browser bundle gets only rows and a load-error string. `pnpm build`
-  confirms nothing token-bearing leaks past the boundary.
+  sources resolve it in `+page.server.ts` only; the browser gets rows and a load-error string. `pnpm build` confirms
+  nothing token-bearing leaks past the boundary.
 - **❌ Nothing on `/licenses` may say a Paddle subscription is live.** `active` on a `paddle` row means we fulfilled
   that purchase; only `/validate` knows whether it still runs. Labels live in `$lib/licenses.ts`; the vocabulary is
   owned by `apps/api-server/src/licensing/DETAILS.md` § The licenses listing.

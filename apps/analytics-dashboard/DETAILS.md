@@ -100,8 +100,9 @@ knows only about the one license in front of it. The api-server owns the contrac
 
 - **Two modules, by boundary**, as on `/links`. `$lib/licenses.ts` is client-safe: the response types (mirroring the
   api-server's by hand, since the two apps ship separately), the badge labels, `filterBySource`, and
-  `summarizeLicenses`. `$lib/server/sources/licenses.ts` is server-only: one `fetchLicenses` over the shared
-  `fetchWorkerEndpoint`, with the bearer token attached. The page never holds the token.
+  `summarizeLicenses`, plus `validateNote` (length and "a row was named", the only two things this side can judge).
+  `$lib/server/sources/licenses.ts` is server-only: `fetchLicenses` over the shared `fetchWorkerEndpoint`, and
+  `updateLicenseNote`, each attaching the bearer token. The page never holds the token.
 - ❌ **No label may imply a Paddle subscription is still running.** `active` on a `paddle` row means we fulfilled the
   purchase, nothing more, so the badge reads "Issued" and the section caveat says to check Paddle before treating it as
   still paying. A unit test asserts no state label contains "active" or "subscription". Same reason an empty expiry
@@ -116,7 +117,19 @@ knows only about the one license in front of it. The api-server owns the contrac
   five-minute-stale "not emailed" would send David chasing a problem that's already fixed. One D1 read plus a KV scan.
 - **Hand-issued rows carry an accent badge and their own filter**, since evaluation and thank-you licenses are a group
   David tracks on purpose, separately from purchases.
-- **Read-only by design.** Minting and revoking stay behind `/admin/generate` and `/admin/revoke` with their own
+- **The note is the one thing this page writes.** An inline "Edit" opens a native `<dialog>` (Esc and the focus trap
+  come from the platform) holding the current note, so editing is an append in practice and the whole text is what
+  saves. The `saveNote` form action proxies to `PUT /admin/licenses/:transactionId/note` with the server-only token,
+  then the page reloads so the table shows what landed rather than what was typed. A rejection reopens nothing: the
+  dialog never closed, and the api-server's own message is shown verbatim (it owns the rules, including that a
+  hand-issued license can't be left without a note).
+  - **What belongs in it**: facts about the LICENSE. Why it exists, what's happened since, what to do next. Facts about
+    the PERSON live in David's vault (`Cmdr customers and prospects.md`), and keeping that line is what stops the two
+    becoming half-complete copies with no rule for which to trust.
+  - The textarea has no `autofocus`: `showModal()` focuses the first focusable descendant, and the hidden
+    `transactionId` input isn't one, so the caret lands in the textarea anyway. Adding the attribute trips
+    `a11y_autofocus` in `svelte-check` (which `eslint` does NOT catch, so the two lanes disagree about it).
+- **Nothing else here writes.** Minting and revoking stay behind `/admin/generate` and `/admin/revoke` with their own
   guardrails (a mint refuses without a note). ❌ Don't grow this page into a repair tool: an orphan code needs a human
   to decide whether to honor, ledger, or ignore it.
 
@@ -156,7 +169,7 @@ runtime values live outside `$lib/server`: `$lib/funnel.ts`, `$lib/feedback-and-
 - `src/routes/+page.{svelte,server.ts}`: Acquisition page (funnel/Umami/Cloudflare/GitHub/PostHog subset).
   `src/routes/product/+page.{svelte,server.ts}`: Product page (Cloudflare/Paddle/license/feedback subset).
   `src/routes/links/+page.{svelte,server.ts}`: Link codes CRUD (`load` lists, `save`/`delete` form actions proxy).
-  `src/routes/licenses/+page.{svelte,server.ts}`: the license ledger (`load` lists; read-only).
+  `src/routes/licenses/+page.{svelte,server.ts}`: the license ledger (`load` lists, `saveNote` edits a note).
 - `src/routes/api/report/+server.ts`: the agent-readable plain-text report endpoint. It only fetches (via
   `fetchDashboardData`) and responds; all the formatting is in `src/routes/api/report/format-report.ts`, which imports
   no SvelteKit-only modules so a plain unit test can reach it. `format-report.test.ts` pins the whole output as golden
@@ -173,7 +186,7 @@ runtime values live outside `$lib/server`: `$lib/funnel.ts`, `$lib/feedback-and-
 - `src/lib/link-codes.ts`: client-safe `?r=` helpers (validation mirroring the api-server, row flattening, example
   link), shared by the `/links` page, its server action, and tests.
 - `src/lib/licenses.ts`: client-safe license-ledger helpers (response types, badge labels, source filter, the
-  `summarizeLicenses` roll-up), shared by the `/licenses` page and tests.
+  `summarizeLicenses` roll-up, and `validateNote`), shared by the `/licenses` page and tests.
 - `StackedBarChart.svelte`: discrete per-day stacked bars (plain elements, not uPlot) with an exact-numbers hover/focus
   tooltip; used for by-source new-installs and by-version update charts.
 - `svelte.config.js` (adapter-cloudflare), `vitest.config.ts`.
@@ -193,8 +206,8 @@ Each source under `src/lib/server/sources/` exports a typed fetch returning `Sou
 - `posthog.ts` (Bearer personal API key): pageview trends via the HogQL query API (EU endpoint).
 - `license.ts` (Bearer admin token): activation count + active devices from `/admin/stats`.
 - `licenses.ts` (Bearer admin token): the whole license ledger plus the orphan and missing codes, from
-  `/admin/licenses`, for the `/licenses` page. Uncached and not part of any page composer: the page's `load` calls it
-  directly. See § "The licenses list".
+  `/admin/licenses`, for the `/licenses` page, and `updateLicenseNote` over `PUT /admin/licenses/:transactionId/note`.
+  Uncached and not part of any page composer: the page's `load` calls it directly. See § "The licenses list".
 - `feedback-and-errors.ts` (Bearer via `LICENSE_SERVER_ADMIN_TOKEN`): in-app feedback + error-report bundle metadata
   from `/admin/feedback` and `/admin/error-reports`. Pure helpers + row types in client-safe
   `$lib/feedback-and-errors.ts`.

@@ -35,6 +35,7 @@ import {
   type Bindings,
   isValidEmail,
   isValidLicenseType,
+  maxLicenseNoteLength,
   maxOrganizationNameLength,
   redactEmail,
   verifyAdminAuth,
@@ -42,7 +43,6 @@ import {
 
 const manualLicenses = new Hono<{ Bindings: Bindings }>()
 
-const maxNoteLength = 500
 const maxCustomerNameLength = 200
 
 interface MintRequest {
@@ -218,8 +218,8 @@ function parseMintRequest(body: MintBody): { ok: true; request: MintRequest } | 
   if (typeof note !== 'string' || note.trim().length === 0) {
     return { ok: false, message: 'A note is required: say who this license is for and why' }
   }
-  if (note.length > maxNoteLength) {
-    return { ok: false, message: `Note must be at most ${String(maxNoteLength)} characters` }
+  if (note.length > maxLicenseNoteLength) {
+    return { ok: false, message: `Note must be at most ${String(maxLicenseNoteLength)} characters` }
   }
 
   const optional = parseOptionalFields(body)

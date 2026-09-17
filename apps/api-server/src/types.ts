@@ -127,6 +127,13 @@ export interface PaddleWebhookPayload {
 
 export const maxOrganizationNameLength = 500
 
+/**
+ * A ledger note's ceiling. Generous because the note is a running record of one license, not a
+ * label: why it exists, what happened since, what to do next. Minting and editing share the limit,
+ * so a note written at mint time can always be edited back to its own length.
+ */
+export const maxLicenseNoteLength = 2000
+
 // KV key for the activation counter, read by /admin/stats.
 // Starts from zero on deploy. Initialize via the CF API if you need historical count.
 export const activationCountKey = '_meta:activation_count'

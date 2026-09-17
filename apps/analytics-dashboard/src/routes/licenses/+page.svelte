@@ -6,25 +6,53 @@
 
   The two states that mean someone is waiting (`undelivered`, `unfinished`) and the two code
   mismatches lead the page in an attention panel, because those are what the page exists to catch.
+
+  The note is editable, through a dialog that opens holding what's already there. It's the running
+  record of one license: why it exists, what happened since. Facts about the PERSON belong in the
+  vault note instead, or the two drift into half-complete copies of each other.
 -->
 <script lang="ts">
     import type { PageProps } from './$types'
+    import { enhance } from '$app/forms'
     import SectionDescription from '$lib/components/SectionDescription.svelte'
     import { formatNumber, formatUtcDateTime } from '$lib/format.js'
     import {
         expiryPlaceholder,
         filterBySource,
         licenseTypeLabel,
+        maxNoteLength,
         sourceLabel,
         stateExplanation,
         stateLabel,
         stateTone,
         summarizeLicenses,
+        type LicenseRow,
         type SourceFilter,
         type StateTone,
     } from '$lib/licenses.js'
 
-    const { data }: PageProps = $props()
+    const { data, form }: PageProps = $props()
+
+    let noteDialog = $state<HTMLDialogElement | null>(null)
+    /** The row being edited, or null when the dialog is closed. Also titles the dialog. */
+    let editing = $state<LicenseRow | null>(null)
+    let noteDraft = $state('')
+
+    function startEditNote(row: LicenseRow) {
+        editing = row
+        noteDraft = row.note ?? ''
+        noteDialog?.showModal()
+    }
+
+    function closeNoteDialog() {
+        noteDialog?.close()
+    }
+
+    /** Who the note is about, for the dialog title. Falls back to the code, then the transaction. */
+    function noteSubject(row: LicenseRow): string {
+        if (row.customerEmail) return row.customerEmail
+        return row.shortCodes.length > 0 ? row.shortCodes[0] : row.transactionId
+    }
 
     const summary = $derived(summarizeLicenses(data.listing))
 
@@ -231,7 +259,17 @@
                                             ? formatUtcDateTime(row.expiresAt)
                                             : expiryPlaceholder(row.source)}
                                     </td>
-                                    <td class="max-w-64 py-2 pr-4 text-xs text-text-tertiary">{row.note ?? '–'}</td>
+                                    <td class="max-w-64 py-2 pr-4 text-xs text-text-tertiary">
+                                        <span class="whitespace-pre-line">{row.note ?? '–'}</span>
+                                        <button
+                                            type="button"
+                                            onclick={() => { startEditNote(row); }}
+                                            class="ml-1 cursor-pointer text-accent underline decoration-dotted
+                                                underline-offset-2 transition-colors hover:text-accent-hover"
+                                        >
+                                            Edit
+                                        </button>
+                                    </td>
                                     <td class="py-2 text-xs break-all text-text-tertiary">{row.transactionId}</td>
                                 </tr>
                             {/each}
@@ -242,3 +280,81 @@
         {/if}
     {/if}
 </section>
+
+<!--
+  Note editor. A native <dialog> so Esc and the focus trap come from the platform. It opens holding
+  the current note, so editing is an append rather than an overwrite, and the whole text is what
+  gets saved.
+-->
+<dialog
+    bind:this={noteDialog}
+    onclose={() => { editing = null; }}
+    class="m-auto w-[min(40rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-0
+        text-text-primary backdrop:bg-black/60"
+>
+    {#if editing}
+        <form
+            method="POST"
+            action="?/saveNote"
+            use:enhance={() =>
+                ({ update }) =>
+                    update({ reset: false }).then(() => {
+                        if (form && 'saved' in form && form.saved) closeNoteDialog()
+                    })}
+            class="flex flex-col gap-3 p-5"
+        >
+            <div>
+                <h3 class="text-sm font-semibold text-text-primary">Note on {noteSubject(editing)}</h3>
+                <p class="mt-1 text-xs text-text-tertiary">
+                    Why this license exists and what's happened since. Facts about the person belong in the vault
+                    note, so the two don't become half-complete copies of each other.
+                </p>
+            </div>
+
+            <input type="hidden" name="transactionId" value={editing.transactionId} />
+            <!--
+              No autofocus attribute: `showModal()` focuses the first focusable descendant, and the
+              hidden input above isn't one, so the textarea gets the caret without asking for it.
+            -->
+            <textarea
+                name="note"
+                bind:value={noteDraft}
+                rows="8"
+                maxlength={maxNoteLength}
+                placeholder="First purchase ever!!"
+                class="w-full resize-y rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm
+                    text-text-primary placeholder:text-text-tertiary focus:border-accent focus:outline-none"
+            ></textarea>
+
+            <div class="flex items-center justify-between gap-3">
+                <p class="text-xs text-text-tertiary">
+                    {formatNumber(noteDraft.length)} / {formatNumber(maxNoteLength)}
+                    {#if editing.source === 'manual'}
+                        <span class="block">A hand-issued license has to keep a note, so this one can't be emptied.</span>
+                    {/if}
+                </p>
+                <div class="flex gap-2">
+                    <button
+                        type="button"
+                        onclick={closeNoteDialog}
+                        class="cursor-pointer rounded-md border border-border px-3 py-1.5 text-sm text-text-secondary
+                            transition-colors hover:text-text-primary"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        class="cursor-pointer rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-accent-contrast
+                            transition-colors hover:bg-accent-hover"
+                    >
+                        Save note
+                    </button>
+                </div>
+            </div>
+
+            {#if form && 'error' in form && form.error}
+                <p class="text-sm text-danger">{form.error}</p>
+            {/if}
+        </form>
+    {/if}
+</dialog>
