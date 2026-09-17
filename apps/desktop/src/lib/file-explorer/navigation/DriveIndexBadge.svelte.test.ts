@@ -6,8 +6,8 @@
  * mapping is covered in `drive-index-status.test.ts`; this verifies the component
  * honors it.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushSync } from 'svelte'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, unmount, flushSync } from 'svelte'
 import type { ActivityPhase, VolumeIndexStatus } from '$lib/ipc/bindings'
 import type { VolumeIndexActivity } from '$lib/indexing'
 
@@ -87,15 +87,70 @@ function makeStatus(overrides: Partial<VolumeIndexStatus> = {}): VolumeIndexStat
   }
 }
 
-function render(status: VolumeIndexStatus, onAction = vi.fn()) {
+/** Torn down after each test: a portaled menu outlives the target it was mounted into. */
+let mounted: (() => void)[] = []
+
+function render(status: VolumeIndexStatus, onAction = vi.fn(), host?: HTMLElement) {
   const target = document.createElement('div')
-  document.body.appendChild(target)
-  mount(DriveIndexBadge, {
+  ;(host ?? document.body).appendChild(target)
+  const component = mount(DriveIndexBadge, {
     target,
     props: { volumeId: status.volumeId, status, driveName: 'Backups', onAction },
   })
+  mounted.push(() => void unmount(component))
   flushSync()
   return { target, onAction }
+}
+
+// ── The menu's selectors, in ONE place ────────────────────────────────────
+// Every query starts from the document rather than the mount target, so a portaled
+// surface is found the same way an inline one is. Only these helpers know the menu's
+// shape; every assertion below is written against behavior.
+
+function badge(target: HTMLElement): HTMLButtonElement {
+  return must(target, '.drive-index-badge') as HTMLButtonElement
+}
+
+function openMenu(target: HTMLElement): void {
+  badge(target).click()
+  flushSync()
+}
+
+function menuEl(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.drive-index-menu')
+}
+
+function menuLabels(): string[] {
+  return [...document.querySelectorAll<HTMLElement>('.drive-index-menu-item')].map((el) => el.textContent.trim())
+}
+
+/** One action row, by the label a reader would click. */
+function menuRow(label: string): HTMLElement {
+  const row = [...document.querySelectorAll<HTMLElement>('.drive-index-menu-item')].find(
+    (el) => el.textContent.trim() === label,
+  )
+  if (!row) throw new Error(`no menu row labelled ${label}`)
+  return row
+}
+
+function noteEl(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.drive-index-menu-note')
+}
+
+function footerEl(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('.drive-index-menu-footer')
+}
+
+/** A real click somewhere else: the pointer-down decides, and the click follows it. */
+function clickOutside(): void {
+  document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+  document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  flushSync()
+}
+
+function pressKey(key: string): void {
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+  flushSync()
 }
 
 /** The badge's aria-label embeds the resolved tooltip text (`ariaLabel: tooltip`). */
@@ -107,6 +162,12 @@ beforeEach(() => {
   badgeActivity = undefined
   badgePhase = undefined
   masterIndexingEnabled = true
+})
+
+afterEach(() => {
+  for (const dispose of mounted) dispose()
+  mounted = []
+  document.body.innerHTML = ''
 })
 
 describe('DriveIndexBadge color class', () => {
@@ -143,49 +204,50 @@ describe('DriveIndexBadge color class', () => {
 })
 
 describe('DriveIndexBadge menu', () => {
-  function openMenu(target: HTMLElement) {
-    must(target, '.drive-index-badge').click()
-    flushSync()
-  }
-
-  function menuLabels(target: HTMLElement): string[] {
-    return [...target.querySelectorAll<HTMLElement>('.drive-index-menu-item')].map((el) => el.textContent.trim())
-  }
-
   it('a disabled drive offers only "Turn on indexing for this drive"', () => {
     const { target } = render(makeStatus({ enabled: false, freshness: null }))
     openMenu(target)
-    expect(menuLabels(target)).toEqual(['Turn on indexing for this drive'])
+    expect(menuLabels()).toEqual(['Turn on indexing for this drive'])
   })
 
   it('a scanning drive offers stop + forget', () => {
     const { target } = render(makeStatus({ freshness: 'scanning' }))
     openMenu(target)
-    expect(menuLabels(target)).toEqual(['Stop indexing', "Forget this drive's index"])
+    expect(menuLabels()).toEqual(['Stop indexing', "Forget this drive's index"])
   })
 
   it('a fresh/stale drive offers rescan + turn off + forget', () => {
     const { target } = render(makeStatus({ freshness: 'stale' }))
     openMenu(target)
-    expect(menuLabels(target)).toEqual(['Rescan now', 'Turn off indexing for this drive', "Forget this drive's index"])
+    expect(menuLabels()).toEqual(['Rescan now', 'Turn off indexing for this drive', "Forget this drive's index"])
   })
 
-  it('shows the last-indexed footer only when scan facts exist', () => {
-    const withFacts = render(makeStatus({ freshness: 'fresh' }))
-    openMenu(withFacts.target)
-    expect(withFacts.target.querySelector('.drive-index-menu-footer')).not.toBeNull()
+  it('shows the last-indexed footer when scan facts exist', () => {
+    const { target } = render(makeStatus({ freshness: 'fresh' }))
+    openMenu(target)
+    expect(footerEl()).not.toBeNull()
+  })
 
-    const noFacts = render(makeStatus({ freshness: 'fresh', scanCompletedAt: null, scanDurationMs: null }))
-    openMenu(noFacts.target)
-    expect(noFacts.target.querySelector('.drive-index-menu-footer')).toBeNull()
+  it('shows no footer for a drive that has never been scanned', () => {
+    const { target } = render(makeStatus({ freshness: 'fresh', scanCompletedAt: null, scanDurationMs: null }))
+    openMenu(target)
+    expect(footerEl()).toBeNull()
   })
 
   it('calls onAction with the volume id and picked action', () => {
     const { target, onAction } = render(makeStatus({ freshness: 'stale' }))
     openMenu(target)
-    must(target, '.drive-index-menu-item').click()
+    menuRow('Rescan now').click()
     flushSync()
     expect(onAction).toHaveBeenCalledWith('smb-test', 'rescan')
+  })
+
+  it('closes on a pick', () => {
+    const { target } = render(makeStatus({ freshness: 'stale' }))
+    openMenu(target)
+    menuRow('Rescan now').click()
+    flushSync()
+    expect(menuEl()).toBeNull()
   })
 
   it('swaps every action for one explanation while drive indexing is off in Settings', () => {
@@ -195,14 +257,64 @@ describe('DriveIndexBadge menu', () => {
     masterIndexingEnabled = false
     const { target } = render(makeStatus({ freshness: 'fresh' }))
     openMenu(target)
-    expect(menuLabels(target)).toEqual([])
-    expect(must(target, '.drive-index-menu-note').textContent).toContain('Drive indexing is off in Settings')
+    expect(menuLabels()).toEqual([])
+    expect(noteEl()?.textContent).toContain('Drive indexing is off in Settings')
   })
 
   it('says the master switch is off in the tooltip, not "off for this drive"', () => {
     masterIndexingEnabled = false
     const { target } = render(makeStatus({ enabled: false, freshness: null }))
     expect(ariaLabel(target)).toContain('Drive indexing is off in Settings')
+  })
+})
+
+/**
+ * The menu SHELL: opening, closing, and who holds focus afterwards. Pinned before the menu
+ * moved onto the house `Menu` primitive, so "the port changed nothing here" is provable
+ * rather than asserted. Each one is written against behavior, so the port had to move only
+ * the selector helpers above.
+ */
+describe('DriveIndexBadge menu shell', () => {
+  it('opens on a click, and says so for assistive tech', () => {
+    const { target } = render(makeStatus({ freshness: 'stale' }))
+    expect(badge(target).getAttribute('aria-expanded')).toBe('false')
+    openMenu(target)
+    expect(menuEl()).not.toBeNull()
+    expect(badge(target).getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('closes again on a second click on the badge', () => {
+    const { target } = render(makeStatus({ freshness: 'stale' }))
+    openMenu(target)
+    openMenu(target)
+    expect(menuEl()).toBeNull()
+    expect(badge(target).getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('closes on Escape and hands focus back', () => {
+    const { target } = render(makeStatus({ freshness: 'stale' }))
+    badge(target).focus()
+    openMenu(target)
+    pressKey('Escape')
+    expect(menuEl()).toBeNull()
+    expect(document.activeElement).toBe(badge(target))
+  })
+
+  it('closes on a click somewhere else', () => {
+    const { target } = render(makeStatus({ freshness: 'stale' }))
+    openMenu(target)
+    clickOutside()
+    expect(menuEl()).toBeNull()
+  })
+
+  it('stays open for a click on the menu itself', () => {
+    const { target } = render(makeStatus({ freshness: 'stale' }))
+    openMenu(target)
+    const menu = menuEl()
+    menu?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    menu?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    flushSync()
+    expect(menuEl()).not.toBeNull()
   })
 })
 
