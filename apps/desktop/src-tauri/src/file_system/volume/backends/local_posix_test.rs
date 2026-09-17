@@ -878,7 +878,10 @@ fn an_exclusive_rename_lands_on_a_filesystem_without_the_flag() {
         .expect("a filesystem without the flag still renames");
 
     assert!(!source.exists());
-    assert_eq!(std::fs::read(&destination).expect("reading the destination"), b"content");
+    assert_eq!(
+        std::fs::read(&destination).expect("reading the destination"),
+        b"content"
+    );
 }
 
 /// ❗ The degradation is racy, never permissive: losing the flag must not turn a
@@ -896,10 +899,7 @@ fn an_exclusive_rename_without_the_flag_still_refuses_an_occupied_destination() 
 
     assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists);
     assert_eq!(std::fs::read(&source).expect("reading the source"), b"source");
-    assert_eq!(
-        std::fs::read(&destination).expect("reading the destination"),
-        b"target"
-    );
+    assert_eq!(std::fs::read(&destination).expect("reading the destination"), b"target");
 }
 
 /// ❗ Only the flag's absence degrades. A refusal the filesystem meant lands on
