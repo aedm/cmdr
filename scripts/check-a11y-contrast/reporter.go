@@ -107,6 +107,39 @@ func ReportOpacity(findings []OpacityFinding, rootDir string) bool {
 	return true
 }
 
+// ReportStaleOpacityExemptions prints every per-element opacity exemption that
+// excused nothing this run. It returns nothing (unlike its siblings above,
+// which report their own count): the caller holds the slice and decides the
+// exit code from it. Unlike the opacity findings above this IS a hard failure:
+// a stale entry is something the tool can prove on its own, and left alone it
+// fails silently — the element the
+// entry covered reappears as a plain finding with nothing pointing at the
+// hand-verified reason it used to carry (see `StaleOpacityExemption`). The
+// `why` text is printed with each one, since that's the piece that would
+// otherwise be lost, and it's usually enough to recognize where the element
+// moved to.
+func ReportStaleOpacityExemptions(stale []StaleOpacityExemption) {
+	if len(stale) == 0 {
+		return
+	}
+
+	fmt.Printf("%s=== Stale opacity exemptions (matched nothing) ===%s\n", colorRed, colorReset)
+	for _, s := range stale {
+		fmt.Printf(
+			"  %s%s%s  %s%s%s  in %s%s%s\n",
+			colorRed, s.Entry.fileSuffix, colorReset,
+			colorDim, s.Entry.selector, colorReset,
+			colorDim, s.List, colorReset,
+		)
+		fmt.Printf("    %swas exempt because: %s%s\n", colorDim, s.Entry.why, colorReset)
+	}
+	fmt.Printf(
+		"  %sfix: the element moved, was renamed, or dropped its opacity. Find where it went and repoint the entry (re-read the markup first, the reason above is not proof it's still decorative), or delete the entry.%s\n",
+		colorDim, colorReset,
+	)
+	fmt.Println()
+}
+
 // Summary returns a one-line summary for the final status line.
 func Summary(fileCount, ruleCount, findingCount, violationCount int) string {
 	return fmt.Sprintf(

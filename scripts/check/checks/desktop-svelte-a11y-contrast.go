@@ -18,7 +18,11 @@ import (
 // tool), is advisory (ResultWarning) rather than a hard gate: the tool can't
 // verify a dimmed text color's real contrast without a browser, so a
 // reported case might be a real bug or might be fine — it's surfaced for
-// triage (a color-token conversion or a synthesizer), not blocked on. The
+// triage (a color-token conversion or a synthesizer), not blocked on. Its
+// per-element exemption lists going stale IS a hard failure, though, and
+// arrives on the same exit code as a contrast violation: that one the tool
+// proves on its own, and it rots invisibly otherwise. See
+// `StaleOpacityExemption` in the tool's opacity_check.go. The
 // tool itself always exits 0 for opacity-only findings (for any caller, not
 // just this one), so we can't tell "clean" apart from "clean of hard
 // failures, but opacity findings remain" from the exit code alone — and
@@ -43,7 +47,7 @@ func RunA11yContrast(ctx *CheckContext) (CheckResult, error) {
 	cmd.Env = append(os.Environ(), "CMDR_A11Y_OPACITY_STATUS_FILE="+statusFile)
 	output, err := RunCommand(cmd, true)
 	if err != nil {
-		return CheckResult{}, fmt.Errorf("contrast violations found\n%s", indentOutput(output))
+		return CheckResult{}, fmt.Errorf("contrast violations or stale opacity exemptions found\n%s", indentOutput(output))
 	}
 
 	if count, ok := readOpacityFindingCount(statusFile); ok {

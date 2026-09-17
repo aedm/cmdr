@@ -173,6 +173,89 @@ func TestAnalyzeOpacity_DedupesRepeatedSelector(t *testing.T) {
 	}
 }
 
+// TestStaleOpacityExemptions_UnusedEntryReported is the core staleness case:
+// after a run, every exemption entry that excused nothing is reported, and the
+// one entry a real dimmed rule matched is not. A component extraction that
+// moves a dot into its own file (the 2026-09 `VolumeBreadcrumb.svelte` split)
+// silently unhooks its entries otherwise: the element comes back as a fresh
+// finding with no hint that a hand-verified exemption used to cover it.
+func TestStaleOpacityExemptions_UnusedEntryReported(t *testing.T) {
+	a := NewAnalyzer(NewVarTable())
+	a.AnalyzeOpacity(&ParsedFile{
+		Path: "apps/desktop/src/lib/ui/StatusGlyph.svelte",
+		Rules: []Rule{{
+			File: "apps/desktop/src/lib/ui/StatusGlyph.svelte", Line: 45,
+			Selector: ".status-glyph", Classes: []string{"status-glyph"},
+			Opacity: 0.7, HasOpacity: true,
+		}},
+	})
+
+	stale := a.StaleOpacityExemptions()
+	if hasStaleExemption(stale, "StatusGlyph.svelte", ".status-glyph") {
+		t.Errorf("the entry that excused a real dimmed rule was reported stale: %+v", stale)
+	}
+	if !hasStaleExemption(stale, "TabBar.svelte", ".pin-icon") {
+		t.Errorf("an entry that matched nothing was not reported stale: %+v", stale)
+	}
+	want := len(opacityDecorativeAllowlist) + len(opacityModeledElsewhere) - 1
+	if len(stale) != want {
+		t.Errorf("expected %d stale entries (every one but `.status-glyph`), got %d", want, len(stale))
+	}
+}
+
+// TestStaleOpacityExemptions_ShadowedEntryCountsAsUsed pins the ordering that
+// keeps this a hard failure worth trusting: an entry whose element ALSO picked
+// up a disabled/inactive or drag-feedback marker is redundant but not stale, so
+// the use is recorded before those earlier skips. A false "stale" verdict would
+// walk someone into deleting a hand-verified exemption that's still load-bearing
+// the moment the other marker goes away.
+func TestStaleOpacityExemptions_ShadowedEntryCountsAsUsed(t *testing.T) {
+	a := NewAnalyzer(NewVarTable())
+	a.AnalyzeOpacity(&ParsedFile{
+		Path: "apps/desktop/src/lib/ui/StatusGlyph.svelte",
+		Rules: []Rule{{
+			File: "apps/desktop/src/lib/ui/StatusGlyph.svelte", Line: 45,
+			Selector: ".status-glyph", Classes: []string{"status-glyph", "disabled"},
+			Opacity: 0.7, HasOpacity: true,
+		}},
+	})
+
+	if hasStaleExemption(a.StaleOpacityExemptions(), "StatusGlyph.svelte", ".status-glyph") {
+		t.Error("an entry shadowed by the inactive-component exemption was reported stale")
+	}
+}
+
+// TestStaleOpacityExemptions_UndimmedRuleIsNotUse covers the other way an entry
+// dies: the class keeps its name but drops the `opacity` (converted to a color
+// token, or set to `1`/`0`). Nothing needs excusing anymore, so the entry is
+// stale even though its selector still exists.
+func TestStaleOpacityExemptions_UndimmedRuleIsNotUse(t *testing.T) {
+	cases := []struct {
+		rule    Rule
+		comment string
+	}{
+		{Rule{File: "x/TabBar.svelte", Line: 1, Selector: ".pin-icon", Classes: []string{"pin-icon"}}, "no opacity declared"},
+		{Rule{File: "x/TabBar.svelte", Line: 1, Selector: ".pin-icon", Classes: []string{"pin-icon"}, Opacity: 1, HasOpacity: true}, "opacity: 1"},
+		{Rule{File: "x/TabBar.svelte", Line: 1, Selector: ".pin-icon", Classes: []string{"pin-icon"}, Opacity: 0, HasOpacity: true}, "opacity: 0"},
+	}
+	for _, c := range cases {
+		a := NewAnalyzer(NewVarTable())
+		a.AnalyzeOpacity(&ParsedFile{Path: c.rule.File, Rules: []Rule{c.rule}})
+		if !hasStaleExemption(a.StaleOpacityExemptions(), "TabBar.svelte", ".pin-icon") {
+			t.Errorf("%s: expected the entry to stay stale, it counted as used", c.comment)
+		}
+	}
+}
+
+func hasStaleExemption(stale []StaleOpacityExemption, fileSuffix, selector string) bool {
+	for _, s := range stale {
+		if s.Entry.fileSuffix == fileSuffix && s.Entry.selector == selector {
+			return true
+		}
+	}
+	return false
+}
+
 // TestParseOpacity covers the literal-only parsing contract: numeric values
 // resolve, `var()`/`calc()`/keywords are left unresolved rather than guessed.
 func TestParseOpacity(t *testing.T) {

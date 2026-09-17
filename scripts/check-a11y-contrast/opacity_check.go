@@ -104,6 +104,17 @@ type opacityDecorativeEntry struct {
 	why        string
 }
 
+func (e opacityDecorativeEntry) matches(rule Rule) bool {
+	return strings.HasSuffix(rule.File, e.fileSuffix) && rule.Selector == e.selector
+}
+
+// key identifies one entry in the `used` set. The `why` text is deliberately
+// out: an entry reworded (or a second entry added for the same element under a
+// clearer reason) is the same exemption.
+func (e opacityDecorativeEntry) key() string {
+	return e.fileSuffix + "|" + e.selector
+}
+
 var opacityDecorativeAllowlist = []opacityDecorativeEntry{
 	{"StatusGlyph.svelte", ".status-glyph", "wraps an <Icon>, renders no text glyph"},
 	{"VolumeBreadcrumb.svelte", ".read-only-indicator", `wraps <Icon name="lock">`},
@@ -128,7 +139,7 @@ var opacityDecorativeAllowlist = []opacityDecorativeEntry{
 
 func opacityDecorativeReason(rule Rule) (string, bool) {
 	for _, e := range opacityDecorativeAllowlist {
-		if strings.HasSuffix(rule.File, e.fileSuffix) && rule.Selector == e.selector {
+		if e.matches(rule) {
 			return e.why, true
 		}
 	}
@@ -148,11 +159,95 @@ var opacityModeledElsewhere []opacityDecorativeEntry
 
 func opacityIsModeledElsewhere(rule Rule) bool {
 	for _, e := range opacityModeledElsewhere {
-		if strings.HasSuffix(rule.File, e.fileSuffix) && rule.Selector == e.selector {
+		if e.matches(rule) {
 			return true
 		}
 	}
 	return false
+}
+
+// opacityExemptionList names which of the two per-element lists an entry came
+// from, for the stale report's message. Both are hand-maintained Go literals
+// with the same (file-suffix, selector) shape, but they're removed for
+// different reasons: a decorative entry goes when the element stops being
+// decorative or stops existing; a modeled one goes when its synthesizer drops
+// the term.
+type opacityExemptionList int
+
+const (
+	decorativeExemptions opacityExemptionList = iota
+	modeledExemptions
+)
+
+func (l opacityExemptionList) String() string {
+	if l == modeledExemptions {
+		return "opacityModeledElsewhere"
+	}
+	return "opacityDecorativeAllowlist"
+}
+
+// StaleOpacityExemption is an entry that excused nothing during a full run:
+// nowhere under `apps/desktop/src` is there a rule with its (file-suffix,
+// selector) that dims via `opacity`. Either the component was renamed or
+// extracted, the class was renamed, or the dimming is gone.
+//
+// This is a hard failure rather than an advisory line, unlike the opacity
+// findings themselves. A stale entry is a fact the tool can prove on its own
+// (the `why` text describes an element the run never saw), and it fails SILENTLY
+// otherwise: the entry just stops matching, and the element it covered comes
+// back as a plain finding with nothing pointing at the hand-verified reason it
+// used to carry. That happened to four entries at once when `ConnectionDot`,
+// `UsbSpeedDot`, and `VolumeChooserMenu` were extracted out of
+// `VolumeBreadcrumb.svelte`, and it read as four new a11y regressions.
+type StaleOpacityExemption struct {
+	List  opacityExemptionList
+	Entry opacityDecorativeEntry
+}
+
+// noteOpacityExemptionUse marks every entry matching this rule as still doing
+// work. Called for each rule that actually dims (0 < opacity < 1) and BEFORE
+// the inactive/dragging skips, so an element that also picked up a `:disabled`
+// or `.is-dragging` marker keeps its entry alive: that entry is redundant
+// today, and load-bearing again the moment the other marker goes away, so
+// calling it stale would walk someone into deleting a real exemption. A rule
+// that no longer dims is not a use — the entry has nothing left to excuse.
+func (a *Analyzer) noteOpacityExemptionUse(rule Rule) {
+	if a.opacityExemptionsUsed == nil {
+		a.opacityExemptionsUsed = make(map[string]bool)
+	}
+	for _, e := range opacityDecorativeAllowlist {
+		if e.matches(rule) {
+			a.opacityExemptionsUsed[e.key()] = true
+		}
+	}
+	for _, e := range opacityModeledElsewhere {
+		if e.matches(rule) {
+			a.opacityExemptionsUsed[e.key()] = true
+		}
+	}
+}
+
+// StaleOpacityExemptions returns the entries no dimmed rule matched, in list
+// then declaration order. Only meaningful after a full walk of
+// `apps/desktop/src` (see main()): one file's worth of rules matches at most a
+// couple of entries, so a partial run would call almost everything stale.
+func (a *Analyzer) StaleOpacityExemptions() []StaleOpacityExemption {
+	var stale []StaleOpacityExemption
+	lists := []struct {
+		kind    opacityExemptionList
+		entries []opacityDecorativeEntry
+	}{
+		{decorativeExemptions, opacityDecorativeAllowlist},
+		{modeledExemptions, opacityModeledElsewhere},
+	}
+	for _, l := range lists {
+		for _, e := range l.entries {
+			if !a.opacityExemptionsUsed[e.key()] {
+				stale = append(stale, StaleOpacityExemption{List: l.kind, Entry: e})
+			}
+		}
+	}
+	return stale
 }
 
 // AnalyzeOpacity walks every parsed rule for a static `opacity: N < 1` that
@@ -181,6 +276,10 @@ func (a *Analyzer) AnalyzeOpacity(pf *ParsedFile) []OpacityFinding {
 		if rule.Opacity == 0 {
 			continue
 		}
+		// Before any skip below: an entry that matches a real dim is doing
+		// work even when another exemption would have caught the rule first.
+		// See `noteOpacityExemptionUse`.
+		a.noteOpacityExemptionUse(rule)
 		if opacityInactiveSelector(rule) {
 			continue
 		}
