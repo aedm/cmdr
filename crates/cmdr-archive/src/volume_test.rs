@@ -688,6 +688,53 @@ async fn remote_backed_archive_browses_and_extracts_through_read_range() {
 }
 
 #[tokio::test]
+async fn entry_paths_keep_a_url_rooted_archive_path_spelled_exactly() {
+    // A remote volume addresses its files as `<scheme>://<authority>/…`, and every
+    // inner entry's path joins under the archive path, so the archive path has to
+    // reach here spelled the way the app spells it. Collapse the `//` and the pane
+    // holds `sftp:/…`, which the frontend can't take a parent of: Backspace inside
+    // the archive goes dead and `..` lands on the volume root (ERR-J2U6A).
+    //
+    // Built the way the host builds it, from the boundary split of a pane path,
+    // so this covers the whole seam rather than just the join at the end.
+    let pane_path = Path::new("sftp://ada@nas.local:22/srv/data/archive.zip");
+    let (archive_path, inner) = crate::archive_boundary_candidate(pane_path).expect("boundary");
+    assert!(inner.as_os_str().is_empty(), "the pane sits at the archive root");
+
+    let parent = Arc::new(InMemoryVolume::new("remote"));
+    parent
+        .create_file(&archive_path, &build_zip(&[stored("a.txt", "x"), deflated("dir/b.txt", "y")]))
+        .await
+        .expect("load remote zip into parent store");
+    let volume = ArchiveVolume::new(
+        Arc::clone(&parent) as Arc<dyn Volume>,
+        archive_path.clone(),
+        ArchiveFormat::Zip,
+        VolumeHost::detached(),
+    );
+
+    let root = volume.list_directory(pane_path, None).await.unwrap();
+    let paths: Vec<&str> = root.iter().map(|e| e.path.as_str()).collect();
+    assert_eq!(
+        paths,
+        vec![
+            "sftp://ada@nas.local:22/srv/data/archive.zip/dir",
+            "sftp://ada@nas.local:22/srv/data/archive.zip/a.txt"
+        ]
+    );
+
+    // And one level in, reached by the path the pane just got handed.
+    let inner = volume
+        .list_directory(Path::new("sftp://ada@nas.local:22/srv/data/archive.zip/dir"), None)
+        .await
+        .unwrap();
+    assert_eq!(
+        inner.iter().map(|e| e.path.as_str()).collect::<Vec<_>>(),
+        vec!["sftp://ada@nas.local:22/srv/data/archive.zip/dir/b.txt"]
+    );
+}
+
+#[tokio::test]
 async fn remote_central_directory_parse_is_a_single_tail_read() {
     // A small archive's whole central directory fits in the tail window, so
     // parsing it (browsing the root) costs ONE ranged read of the backend — the

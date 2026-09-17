@@ -19,7 +19,8 @@
 //!   first bytes are a zip signature (a mislabeled file isn't routed). This runs
 //!   once per navigation, only when a component carries an archive extension.
 
-use std::path::{Component, Path, PathBuf};
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 
 use super::read::{ArchiveFormat, TarCodec, format_for_name, format_for_path};
 
@@ -68,21 +69,47 @@ pub fn bytes_match_archive_magic(format: ArchiveFormat, header: &[u8]) -> bool {
 ///
 /// This only looks at the path string; it does NOT confirm the component is a
 /// real archive file. Use [`confirm_archive_boundary`] at navigation time.
+///
+/// ❗ **The archive path is SLICED out of the input, never rebuilt from its
+/// components**, so it comes back spelled exactly as the caller wrote it. A
+/// remote volume addresses its files as `<scheme>://<authority>/…`, which is a
+/// RELATIVE path in `Path`'s terms (`sftp:` is just a component), so pushing the
+/// components into a fresh `PathBuf` collapses the `//` into `sftp:/…`. Every
+/// inner entry's path joins under this one, so that one lost slash reaches the
+/// frontend, where it stops being a path parent arithmetic can run on: Backspace
+/// inside a remote archive went dead and `..` landed on the volume root
+/// (ERR-J2U6A). `Path`'s `Eq` is a component compare and reads the two spellings
+/// as equal, so ❌ a `PathBuf` assertion can't defend this; compare strings.
 pub fn archive_boundary_candidate(path: &Path) -> Option<(PathBuf, PathBuf)> {
-    let mut archive_path = PathBuf::new();
-    let mut components = path.components();
-    while let Some(component) = components.next() {
-        archive_path.push(component.as_os_str());
-        if let Component::Normal(name) = component
-            && let Some(name) = name.to_str()
-            && has_supported_archive_extension(name)
+    // Byte-wise, because a path component is only required to be UTF-8 where the
+    // extension check reads it: `to_str()` on the whole path would decline a
+    // valid archive under a non-UTF-8 ancestor directory.
+    use std::os::unix::ffi::OsStrExt;
+
+    let bytes = path.as_os_str().as_bytes();
+    let mut start = 0;
+    loop {
+        let end = bytes[start..]
+            .iter()
+            .position(|byte| *byte == b'/')
+            .map_or(bytes.len(), |offset| start + offset);
+        if std::str::from_utf8(&bytes[start..end])
+            .ok()
+            .is_some_and(has_supported_archive_extension)
         {
-            // `components` has already advanced past the matched component, so
-            // its remaining path is exactly the inner path.
-            return Some((archive_path, components.as_path().to_path_buf()));
+            // Everything past the separator is the inner path, empty when the
+            // archive component is the last one.
+            let inner_start = bytes.len().min(end + 1);
+            return Some((
+                PathBuf::from(OsStr::from_bytes(&bytes[..end])),
+                PathBuf::from(OsStr::from_bytes(&bytes[inner_start..])),
+            ));
         }
+        if end == bytes.len() {
+            return None;
+        }
+        start = end + 1;
     }
-    None
 }
 
 /// The I/O-backed boundary check used at navigation / resolve time.
@@ -205,6 +232,27 @@ mod tests {
         let (zip, inner) = archive_boundary_candidate(Path::new("/a/foo.zip")).expect("boundary");
         assert_eq!(zip, PathBuf::from("/a/foo.zip"));
         assert_eq!(inner, PathBuf::from(""));
+    }
+
+    #[test]
+    fn candidate_keeps_a_remote_volume_prefix_spelled_with_two_slashes() {
+        // A remote volume spells its paths `<scheme>://<authority>/…`, which is
+        // RELATIVE in `Path`'s terms, so a components rebuild collapses the `//`
+        // into `sftp:/…`. That spelling is no longer a path the frontend can do
+        // parent arithmetic on, which is how Backspace inside a remote archive
+        // went dead and `..` landed on the volume root (ERR-J2U6A).
+        //
+        // Asserted on the STRING, never on `PathBuf` equality: `Path`'s `Eq` is a
+        // component compare, so `sftp:/a` and `sftp://a` compare equal and a
+        // `assert_eq!(zip, PathBuf::from(…))` passes on the collapsed spelling.
+        let (zip, inner) =
+            archive_boundary_candidate(Path::new("sftp://ada@nas.local:22/srv/data/foo.zip/inner/b.txt"))
+                .expect("boundary");
+        assert_eq!(
+            zip.to_str().expect("utf-8"),
+            "sftp://ada@nas.local:22/srv/data/foo.zip"
+        );
+        assert_eq!(inner, PathBuf::from("inner/b.txt"));
     }
 
     #[test]
