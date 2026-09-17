@@ -19,6 +19,7 @@ import {
   handleDbSizeCheck,
   handleDailyEvictionSweep,
   handleRetentionSweep,
+  handlePersonalCommentSweep,
   handleSyntheticHeartbeatSweep,
 } from './scheduled'
 import { postCronFailureNotification } from './discord'
@@ -90,6 +91,7 @@ export default {
       await run('DB size check', () => handleDbSizeCheck(env))
       await run('Daily eviction sweep', () => handleDailyEvictionSweep(env))
       await run('Retention sweep', () => handleRetentionSweep(env))
+      await run('Personal comment sweep', () => handlePersonalCommentSweep(env))
       await run('Synthetic heartbeat sweep', () => handleSyntheticHeartbeatSweep(env))
       await run('Email path probe', () => handleEmailPathProbe(env))
     }
@@ -111,5 +113,6 @@ export {
   handleDbSizeCheck,
   handleDailyEvictionSweep,
   handleRetentionSweep,
+  handlePersonalCommentSweep,
   handleSyntheticHeartbeatSweep,
 }
