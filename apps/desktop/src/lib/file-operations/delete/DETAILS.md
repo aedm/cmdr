@@ -150,23 +150,40 @@ there; both degrade to their fallbacks rather than being gated on the platform.
 
 ## Cloud storage: when a trash opens the delete dialog
 
-`~/Library/CloudStorage/<provider>/` is Apple's location for third-party File Provider drives, and a provider there may
-implement no trash at all. `trashItemAtURL` then fails with `NSFeatureUnsupportedError`, which macOS words as if the
-BOOT volume had no trash. The user-visible symptom is "I can't delete anything from my Dropbox folder", and the message
-sends them looking in the wrong place (`ERR-2YGHG`).
+`~/Library/CloudStorage/<provider>/` is Apple's location for third-party File Provider drives, and a provider there
+evicts files it has uploaded, leaving a placeholder macOS marks `SF_DATALESS` (Finder: "online-only"). The Trash is a
+folder on the boot volume, so trashing one of those DOWNLOADS it first. That download is the whole reason this routing
+exists, ❌ not the refusals macOS sometimes gives instead: a 111 kB file cost half a second, a folder holding 50 GB of
+evicted content would cost the lot, to fill a folder the person is about to empty. Rationale and evidence:
+`write_operations/delete/cloud_trash.rs`.
 
 So `openDeleteDialog` (and its search-results twin) asks `trashRoutingForPaths(sourcePaths)` before it opens anything.
-On `permanentDeleteCloudStorage` it passes `cloudStorageWithoutTrash: true`, forces `isPermanent`, and drops
-`supportsTrash`, which is what hides the in-dialog switch. `DeleteDialog` then renders the cloud banner in place of the
-generic no-trash one, so a person who pressed Trash reads why they're being asked about a delete, and confirm dispatches
-the same permanent delete Shift+F8 would have.
+The answer has two fields:
 
-Three things that belong to the backend and must not be re-derived here (`write_operations/delete/cloud_trash.rs`,
-DETAILS § "A trash in a cloud-storage folder becomes a delete"): which locations count, the all-or-nothing rule across a
-mixed selection, and symlink resolution (`~/Dropbox` is a link into the same drive). The frontend contributes one rule
-of its own: a question that can't be answered keeps today's behavior. A thrown IPC or a backend timeout logs a warning
-and leaves the dialog on the trash, because attempting a trash and getting the typed refusal is always recoverable,
-while a permanent delete isn't.
+- `routing === 'permanentDeleteCloudStorage'` → `cloudStorageOnlineOnly: true`, `isPermanent` forced, `supportsTrash`
+  dropped (which is what hides the in-dialog switch). `DeleteDialog` renders the online-only banner in place of the
+  generic no-trash one, so a person who pressed Trash reads why they're being asked about a delete, and confirm
+  dispatches the same permanent delete Shift+F8 would have.
+- `folderMayHoldOnlineOnly` → the answer isn't final. `SF_DATALESS` lives on files, so a selected FOLDER can only be
+  judged by walking it, and the dialog's scan preview is that walk (`scan_walker.rs`'s `OnlineOnlyWatch`). Its
+  `scan-preview-progress` / `-complete` events carry `onlineOnlyFound`, and the dialog flips itself the moment one
+  reports a hit: banner in, switch out, confirm button becomes the delete. ❌ Never a second walk for this.
+
+**Confirm waits, but only here.** With `cloudFolderMayHoldOnlineOnly`, `handleConfirm` holds on `onlineOnlyAnswer` (a
+spinner rides inside the confirm button meanwhile) so a press landing mid-walk can't settle the question by luck. One
+hit is the whole answer, so a progress tick releases it and a 50 GB folder needn't finish counting. If the answer says
+online-only, the confirm is HANDED BACK rather than run: the button said "Move to trash" and now means a permanent
+delete, and nothing undoes that one. An MCP `autoConfirm` goes through, having asked for the delete outright. Everywhere
+else confirm stays exactly as instant as before.
+
+❗ **An answer that never arrives means the TRASH.** A thrown IPC, a backend timeout, a scan that errored or was
+cancelled, and `ONLINE_ONLY_ANSWER_TIMEOUT_MS` all leave the dialog on today's behavior, because attempting a trash and
+getting the typed refusal is recoverable while a permanent delete isn't. The timeout is generous on purpose: a real walk
+of a big tree legitimately takes a while, and giving up early runs the download this avoids.
+
+Three things belong to the backend and must not be re-derived here (`write_operations/delete/cloud_trash.rs`, DETAILS §
+"A trash of online-only cloud content becomes a delete"): which locations count, the all-or-nothing rule across a mixed
+selection, and symlink resolution (`~/Dropbox` is a link into the same drive).
 
 The question is asked for Shift+F8 too, not only F8: the dialog's own switch could otherwise flip a permanent delete
-back to a trash and walk straight into the refusal.
+back to a trash and walk straight into that download.

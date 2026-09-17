@@ -3,9 +3,9 @@
   "@fileOperations.delete.noTrashWarningStrong": {
     "sourceHash": "ef122e2"
   },
-  "fileOperations.delete.cloudNoTrashWarningStrong": "This folder syncs to a cloud service that has no Bin.",
-  "@fileOperations.delete.cloudNoTrashWarningStrong": {
-    "sourceHash": "f6a7584"
+  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Moving it to the Bin would download it from the cloud service first, so Cmdr deletes it instead. There''ll be no copy in the Bin, but the service keeps its own history you can restore from.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
+    "sourceHash": "1d218e5"
   },
   "fileOperations.delete.archiveWarningStrong": "There''s no Bin inside an archive.",
   "@fileOperations.delete.archiveWarningStrong": {

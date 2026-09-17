@@ -60,6 +60,12 @@ The full top-level inventory is here:
   nothing. They're flat siblings rather than a `scan/` directory, matching `scan_preview.rs` / `scan_cache.rs` /
   `scan_bridge.rs` / `scan_watchdog.rs` — and because `pub(super)` here means "visible to `write_operations`", which a
   directory would silently narrow.
+
+  The one thing the walk carries for a caller that isn't a write operation: `WalkContext::online_only`, an
+  `OnlineOnlyWatch` the delete confirmation's preview arms when its sources reach into a cloud drive. It answers whether
+  trashing a selected folder would pull evicted files back down from the provider, and publishes
+  `online_only_found` on the scan events. Armed nowhere else, so every ordinary walk is unchanged; the rule and its
+  rationale live in `delete/DETAILS.md` § "A trash of online-only cloud content becomes a delete".
 - Scan and preview: `scan.rs`, `scan_preview.rs`, `scan_cache.rs`, `scan_bridge.rs` (the scan-progress seam the drivers
   feed, and `ScanPause`, the park that lets a walk honor its owner's Pause), `scan_watchdog.rs` (the inactivity bound on
   a preview), `compress_estimate.rs`. Conflicts and overwrite:

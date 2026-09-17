@@ -3243,28 +3243,21 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `an einem Ort, den macOS für sich behält`, reusing the wording already settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## Der Cloud-Warnhinweis im Löschdialog (`fileOperations.delete.cloudNoTrashWarningStrong`/`.cloudNoTrashWarningRest`, 2026-09-17)
+## Der Online-Warnhinweis im Löschdialog (`fileOperations.delete.cloudOnlineOnlyWarningStrong`/`fileOperations.delete.cloudOnlineOnlyWarningRest`)
 
-Liegt jedes ausgewählte Objekt in einem Cloud-Ordner, dessen File Provider nichts in den Papierkorb legt, öffnet Cmdr
-statt des Papierkorb-Wegs den Dialog zum endgültigen Löschen und erklärt das im Banner oben. Zwei Schlüssel, fett und
-normal, die als EIN Hinweis gelesen werden.
+Ist ein ausgewähltes Objekt in einem Cloud-Ordner nur online verfügbar, würde der Papierkorb es erst herunterladen. Cmdr
+öffnet deshalb den Dialog zum endgültigen Löschen und erklärt das im Banner oben. Zwei Schlüssel, fett und normal, die
+als EIN Hinweis gelesen werden.
 
-- **`.cloudNoTrashWarningStrong` →
-  `Dieser Ordner wird mit einem Cloud-Dienst synchronisiert, der keinen Papierkorb hat.`** ·
-  `cloud service → Cloud-Dienst` und das Sync-Passiv aus § Terms (beide macOS Finder); `der keinen Papierkorb hat`
-  übernimmt den Satzbau des Geschwisters `fileOperations.trash.noTrashHere` („Dieses Laufwerk hat keinen Papierkorb.“) ·
-  high. Der Relativsatz stellt die Tatsache ans Satzende, wo das Englische sie auch hat; die kürzere Attributform („mit
-  einem Cloud-Dienst ohne Papierkorb“) vergräbt sie in der Mitte.
-- **`.cloudNoTrashWarningRest` →
-  `Du kannst hier nur löschen, und der Dienst behält eine eigene Kopie, die du wiederherstellen kannst.`** ·
-  `hier nur … löschen` steht schon in `errors.mutation.trashNotSupported` („… deshalb kannst du hier nur endgültig
-  löschen.“), also trägt der Katalog den Rahmen; `behält … Kopie` folgt macOS AppKit `Document` („Möchtest du diese neue
-  Kopie „%@“ behalten?“), `die du wiederherstellen kannst` dem dortigen „Eine Kopie wiederherstellen“ · high.
-- **❌ Kein `endgültig` in diesem Wert.** Die englische Quelle sagt hier bloß „Deleting“, und der Hinweis beruhigt
-  gerade: der Dienst hat noch eine Kopie. Das Adverb gehört in den Nachbarn `noTrashWarningRest`, wo wirklich nichts
-  zurückbleibt.
-- **Der Rückverweis heißt `der Dienst`**, nicht `er` oder noch einmal `der Cloud-Dienst`: dasselbe Kürzen wie im
-  Englischen („the service“), und ein Pronomen wäre über die Satzgrenze hinweg schwer zu greifen.
+- **`.cloudOnlineOnlyWarningStrong` → `Dieser Inhalt ist nur online verfügbar.`** · `nur online verfügbar` ist die
+  Wendung, die der Finder für eine ausgelagerte Datei benutzt · medium.
+- **`.cloudOnlineOnlyWarningRest` →
+  `Ihn in den Papierkorb zu legen würde ihn erst vom Cloud-Dienst herunterladen, also löscht Cmdr ihn stattdessen. Im Papierkorb landet keine Kopie, aber der Dienst führt einen eigenen Verlauf, aus dem du wiederherstellen kannst.`**
+  · `Cloud-Dienst` und `Papierkorb` aus § Terms (beide macOS Finder); `behält/führt … Kopie` folgt macOS AppKit
+  `Document` · medium.
+- **Beide Tatsachen müssen stehen bleiben**: (1) der Papierkorb würde die Datei herunterladen, (2) im Papierkorb liegt
+  danach KEINE Kopie, der Dienst hat aber eine eigene. ❌ Den zweiten Teil nicht zu „ist ja trotzdem im Papierkorb“
+  abschwächen: das stimmt nicht.
 - Kein `sameAsSourceJustification` nötig: beide Werte unterscheiden sich vom Englischen.
-- Zu prüfen beim Overflow-Check: der fette Teil läuft mit 83 Zeichen gegenüber 55 im Englischen rund 50 % länger und
-  steht in einem schmalen Banner über der Dateiliste des Dialogs.
+- Beim Overflow-Check ansehen: der normale Teil ist lang und steht in einem schmalen Banner über der Dateiliste.
+- ⚠️ Entwurf, noch nicht von einem Menschen gegengelesen.

@@ -196,12 +196,14 @@ Rationale, counts, and the "don't revert this" warning: `style.md` § The Apple-
 - **cloud** · `雲端` · AP-TW = AP-HK (`Cloud Storage` → 雲端儲存空間), MS · `confirmed`
 - **cloud service** · `雲端服務` · AP-TW Finder (`Choose a cloud service` → `選擇雲端服務`), MS (`cloud service`,
   flagged `HKG, TWN`) · `high`. The catalog also carries `雲端服務供應商` for the PROVIDER (the company) in
-  `errors.provider.genericCloudStorage.*`; keep the two apart, since `fileOperations.delete.cloudNoTrashWarning*` talks
-  about the service that holds the files, not the company behind it.
+  `errors.provider.genericCloudStorage.*`; keep the two apart, since `fileOperations.delete.cloudOnlineOnlyWarningRest`
+  talks about the service that holds the files, not the company behind it.
 - **sync (verb)** · `同步` · AP-TW (`Synced with iCloud` → `與iCloud同步`,
   `Your Desktop & Documents folders are being synced with %@` → `「桌面與文件」檔案夾正與%@同步`), MS (verb) · `high`.
-  Apple's attested frame is `與 X 同步`, which is why `cloudNoTrashWarningStrong` says `會與…雲端服務同步` rather than
-  the unattested `同步到`.
+  Apple's attested frame is `與 X 同步`, so any value that syncs something says `與…同步` rather than the unattested
+  `同步到`. No shipped value needs the frame today; the nearest live uses are the bare noun/verb in
+  `errors.provider.genericCloudStorage.transient` (`確認同步 App 正在執行`) and
+  `commands.helpOpenShortcuts.description`.
 - **iCloud Drive** · `iCloud 雲碟` · AP-TW = AP-HK (both render it `iCloud雲碟`, 49 occurrences each; AP-CN says
   `iCloud云盘`) · `high`. Apple localizes the descriptor, so this is NOT a kept-English brand like the sibling
   `errors.provider.*` names. **Spaced**, against Apple's tight rendering: a brand + Han descriptor is a Latin run like
@@ -309,7 +311,7 @@ reference pile is absent on the agent box, so these were verified against the LI
   `以回復的卷宗來取代`; `a folder for the restored volume's items` → `為回復的卷宗項目選擇一個檔案夾`) · `high`. ❗
   Deliberately NOT `還原` (spent on _undo_) and NOT `復原` (spent on _rollback_), so Cmdr's three "get it back" concepts
   stay three words. MS says `還原` and Nautilus and Dolphin say `從垃圾桶還原`; both lose to Apple here, because the
-  collision inside our own catalog is the bigger cost. Live in `fileOperations.delete.cloudNoTrashWarningRest`
+  collision inside our own catalog is the bigger cost. Live in `fileOperations.delete.cloudOnlineOnlyWarningRest`
   (`你可以從那裡回復`).
 - **copy (the noun: one more instance of a file)** · `副本` · AP-TW Finder (`keep a resumable copy` →
   `保留可恢復的副本`) · `high`. The verb stays `複製`, and `製作副本` remains the _duplicate_ COMMAND; a bare `副本` as
@@ -2053,3 +2055,15 @@ replacement target. Four rules bind this whole group:
   `標題列上的警告標記寫著：沒有「完全取用磁碟」權限。` 這樣既逐字對上 `onboarding.fdaBadge.label`，又沒有巢狀引號。
 - "somewhere macOS keeps to itself" → `macOS 自己留著的地方`，沿用 `onboarding.fdaBadge.tooltip`
   已定的說法。說人話，❌ 不要點名某個 macOS 功能。
+
+## 僅存雲端內容的刪除警告列（`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`）
+
+雲端資料夾裡被選取的項目如果只存在雲端，放進垃圾桶得先把它下載回來。所以 Cmdr 改開從彼刪除的對話方塊，並在警告列裡說清楚。兩個鍵，粗體加余下部分，當成一句話讀。
+
+- **`.cloudOnlineOnlyWarningStrong` → `這些內容僅存在雲端。`** · 「僅存在雲端」對應 Finder 的「僅限線上」說法 · medium。
+- **`.cloudOnlineOnlyWarningRest` →
+  `放進垃圾桶得先從雲端服務把它們下載回來，所以 Cmdr 直接刪除。垃圾桶裡不會留副本，不過雲端服務自己有刪除紀錄，你可以從那裡回復。`**
+  · 「垃圾桶」、「雲端服務」、「副本」、「回復」取自 § Terms · medium。
+- **兩個事實都得保留**：（1）垃圾桶會先下載檔案，（2）之後垃圾桶裡沒有副本，但雲端服務自己有。❌ 不要把後半句寫成「反正還在垃圾桶裡」。
+- 不需要 `sameAsSourceJustification`：兩個值都與英文不同。
+- ⚠️ 草稿，尚未經人工審閱。

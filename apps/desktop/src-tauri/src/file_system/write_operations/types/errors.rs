@@ -296,6 +296,17 @@ pub enum WriteOperationError {
         reason: TrashRefusalKind,
         /// The OS's own words, for the technical-details disclosure ONLY.
         message: String,
+        /// At least one refused item is online-only (`SF_DATALESS`): its contents
+        /// live on the provider's servers, which is the actual reason the trash
+        /// wouldn't take it.
+        ///
+        /// ❗ It suppresses the "grant Full Disk Access" paragraph. An evicted
+        /// file refuses as `NSError` 513 as readily as 3328 (`delete/cloud_trash.rs`),
+        /// so the reason alone can't tell the two apart, and sending someone to
+        /// System Settings for a permission that would change nothing is a wrong
+        /// answer. Read at refusal time, when the item is still there to stat.
+        #[serde(default)]
+        online_only: bool,
     },
     /// Catch-all for genuinely unexpected IO errors.
     IoError {

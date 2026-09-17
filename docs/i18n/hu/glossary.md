@@ -3693,41 +3693,18 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `olyan helyen vannak, amit a macOS magának tart`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## A felhős mappa törlési figyelmeztetése (`fileOperations.delete.cloudNoTrashWarning*`)
+## A csak online tartalom figyelmeztetése (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
 
-A Kukába helyezés billentyűjére a Cmdr a végleges törlés párbeszédét nyitja meg, mert minden kijelölt elem olyan
-felhőmappában van, amelynek a macOS File Providere semmit nem hajlandó a Kukába tenni. A sáv két kulcsa egy szöveg:
-`…Strong` a félkövér nyitómondat, `…Rest` a megnyugtató folytatás.
+Ha egy kiválasztott elem a felhőmappában csak online érhető el, a Kuka előbb letöltené. Ezért a Cmdr a végleges törlés
+párbeszédpaneljét nyitja meg, és a sávban elmondja, miért. Két kulcs, félkövér és folytatás, EGY figyelmeztetésként
+olvasva.
 
-- **cloud service → `felhőalapú szolgáltatás`** · mac Tier 1 (Finder `Localizable`: „Choose a cloud service” =
-  „Felhőalapú szolgáltatás kiválasztása”), katalógus (`ai.cloud.serviceAria` = `Felhőalapú AI-szolgáltatás`) · high. A
-  Microsoft terminológia `felhőszolgáltatás`-t ad (`cloud service`, HUN), de ez valódi macOS–Microsoft eltérés, és a
-  `style.md` szerint ilyenkor a macOS alakja nyer.
-  - ❗ **Nem mossuk össze a `felhőszolgáltató`-val**: az a `provider` szava, és a szállított
-    `errors.provider.genericCloudStorage.*` viseli (`Ezt a mappát egy felhőszolgáltató kezeli.`). Az angol is két külön
-    szót mond (`cloud provider` vs `cloud service`), tehát a magyar kettősség szándékos; a
-    `desktop-i18n-term-consistency` sem köti össze őket, mert az angoljuk nem betű szerint azonos.
-- **syncs to (a mappa és a szolgáltatás viszonya) → `szinkronizálja`** · mac Tier 1 a tőre („Sync Desktop & Documents
-  folders with iCloud” = „Íróasztal és Dokumentumok mappa szinkronizálása az iClouddal”, „…a következővel vannak
-  szinkronizálva: %@”) · high. A macOS állapotszerkezete (`van szinkronizálva`) helyett a CSELEKVŐ alak megy, és a
-  mondatkeret a szállított testvéré (`Ezt a mappát egy … kezeli.`), hogy a két párbeszéd egy hangon szóljon.
-- **has no trash → `nincs Kukája`** · a `nincs Kuka` házi idióma (`fileOperations.delete.archiveWarningStrong`,
-  `fileOperations.trash.noTrashHere`) · high. ❌ NEM `nem támogatja a Kukát`: az a hibaregiszter
-  (`errors.write.trashNotSupported.message`), ez pedig tényközlés — ugyanaz a döntés, mint a § A Kuka-értesítés két
-  gombja `Ezen a meghajtón nincs Kuka.` sorában. Birtokos alak kell a helyhatározós helyett, mert a szolgáltatás
-  szereplő, nem hely.
-- **Az `olyan …, amelynek` korrelátum nem díszítés**: nélküle a vonatkozó mellékmondat a `mappá`-ra is húzható lenne („a
-  mappának nincs Kukája”), és épp a sáv állítása veszne el. Szállított minta ugyanerre:
-  `errors.listing.emptyRootICloud.explanation` (`az olyan appok elől, amelyeknek nincs … jogosultsága`).
-- **"Deleting is the only option here" → `Itt csak a törlés lehetséges`** · a szállított `… itt nem lehetséges` család
-  állító párja (`fileExplorer.readOnly.deleteMessage` = `Fájlok törlése itt nem lehetséges.`) · high.
-- **restore (a szolgáltatás saját másolatából) → `visszaállít`** · mac („Másolat visszaállítása”, „Hiba történt a
-  verziók Time Machine biztonsági mentésből történő visszaállítása során”), ms (`restore` → `visszaállítás`) · high. Ez
-  a „Put back” hármas NEGYEDIK, önálló jelentése: a Kukából való visszatétel marad `visszahelyezés`, a RÉGI NÉV
-  visszaadása `visszaállítás` (`askCmdr.renameUndo.*`), a futó visszagörgetés `visszavitel` — a mentett másolatból való
-  visszaállításra viszont mindkét forrás ugyanezt a szót adja, és nincs jobb (`helyreállítás` a `recovery`).
-- **keeps its own copy → `megőrzi a saját másolatát`** · mac („megőrizhet egy folytatható másolatot”, „Részleges másolat
-  megőrzése”) · high.
-- **A `visszaállíthatod` KIÍRT tárgyat kap (`az elemeket`)** · a szállított `archiveWarningRest` (`Ezek az elemek…`) és
-  a settled `elem` item-szó · high. Az angol elhagyja a tárgyat (`you can restore from`), magyarul viszont a határozott
-  ragozás tárgy nélkül lógna a mondat végén.
+- **`.cloudOnlineOnlyWarningStrong` → `Ez a tartalom csak online érhető el.`** · a `csak online` a Finder kifejezése a
+  kilakoltatott fájlra · medium.
+- **`.cloudOnlineOnlyWarningRest` →
+  `Ha a Kukába kerülne, előbb le kellene tölteni a felhőszolgáltatásból, ezért a Cmdr inkább törli. A Kukában nem marad másolat, de a szolgáltatás saját előzményeiből visszaállíthatod.`**
+  · a `Kuka` nagy kezdőbetűvel, ahogy a többi kulcsban (§ Terms) · medium.
+- **Mindkét tény kell**: (1) a Kuka letöltené a fájlt, (2) utána a Kukában NINCS másolat, a szolgáltatásnál viszont van.
+  ❌ A második felét ne tompítsd.
+- `sameAsSourceJustification` nem kell: mindkét érték eltér az angoltól.
+- ⚠️ Piszkozat, embertől még nem kapott lektorálást.

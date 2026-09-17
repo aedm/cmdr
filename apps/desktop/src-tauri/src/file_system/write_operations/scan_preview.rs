@@ -45,7 +45,7 @@ use super::scan_cache::{
     settle_preview,
 };
 use super::scan_source_tracker::sort_files;
-use super::scan_walker::{WalkContext, walk_sources_with_per_path};
+use super::scan_walker::{OnlineOnlyWatch, WalkContext, walk_sources_with_per_path};
 use super::scan_watchdog::{SCAN_INACTIVITY_LIMIT, ScanWatchdog, scan_target_label};
 use super::state::{CachedScanResult, FileInfo, ScanPreviewState};
 use super::types::{
@@ -227,6 +227,15 @@ pub(super) fn run_scan_preview(
     // when any source isn't covered by the index.
     let expected = crate::index_host::index().expected_totals(&sources);
 
+    // Online-only tally, armed only when the sources reach into a cloud drive we
+    // know by name. A selected FOLDER can't carry `SF_DATALESS` itself, so this
+    // walk is what tells the delete confirmation whether a trash there would pull
+    // the whole subtree back down from the provider. Everywhere else it stays
+    // `None` and the walk is byte-for-byte what it was.
+    // See `delete/cloud_trash.rs` for why the download, not the refusal, is the reason.
+    let online_only_seen = AtomicBool::new(false);
+    let watch_online_only = super::delete::cloud_trash::selection_touches_known_cloud_drive(&sources);
+
     // Compress-size estimator: a budget-capped worker samples file heads OFF the walk
     // thread so the sampling CPU never lands on the scan's critical path. The
     // per-file hook below pushes `(path, size)` into the channel; the worker
@@ -272,6 +281,16 @@ pub(super) fn run_scan_preview(
                 let _ = tx.send((path.to_path_buf(), size));
             }
         };
+        // Given the walk's own `lstat` the flag is free; a cached entry from the
+        // oracle has no metadata, so that one costs a stat of its own.
+        let online_only_probe = |path: &Path, metadata: Option<&std::fs::Metadata>| match metadata {
+            Some(metadata) => super::delete::cloud_trash::metadata_is_online_only(metadata),
+            None => super::delete::cloud_trash::is_online_only(path),
+        };
+        let online_only_watch = OnlineOnlyWatch {
+            probe: &online_only_probe,
+            seen: &online_only_seen,
+        };
         let ctx = WalkContext {
             progress_interval: state.progress_interval,
             is_cancelled: &|| state.cancelled.load(Ordering::Relaxed),
@@ -295,6 +314,10 @@ pub(super) fn run_scan_preview(
                     current_dir: current_dir.clone(),
                     expected_files_total: expected.map(|e| e.files),
                     expected_bytes_total: expected.map(|e| e.bytes),
+                    // Read per tick, not per entry: one hit is the whole answer,
+                    // so the dialog can flip to the permanent delete long before
+                    // a big tree finishes counting.
+                    online_only_found: online_only_seen.load(Ordering::Relaxed),
                 });
                 // Same counts under the owning operation's id, so a confirmed
                 // transfer's queue row, chip, and dialog stay live through the
@@ -313,6 +336,7 @@ pub(super) fn run_scan_preview(
                 );
             },
             on_file: sample_for_estimate.then_some(&send_sample as &dyn Fn(&Path, u64)),
+            online_only: watch_online_only.then_some(&online_only_watch),
         };
         // Local FS scan preview uses the "root" volume ID. The oracle short-circuits
         // any subtree currently open in a pane with a live FSEvents watcher.
@@ -385,6 +409,7 @@ pub(super) fn run_scan_preview(
                 bytes_total: total_bytes,
                 dedup_bytes_total: dedup_bytes,
                 estimated_compressed_bytes: estimate,
+                online_only_found: online_only_seen.load(Ordering::Relaxed),
             });
         }
         Err(message) => {
@@ -472,6 +497,8 @@ pub(super) async fn run_volume_scan_preview(
             current_dir: None,
             expected_files_total: None,
             expected_bytes_total: None,
+            // See the matching note on this walk's complete event.
+            online_only_found: false,
         });
         // Same counts under the owning operation's id; see the local walk's
         // matching forward.
@@ -561,6 +588,9 @@ pub(super) async fn run_volume_scan_preview(
                 dedup_bytes_total: dedup_bytes,
                 // Remote sources never sample: the estimate is suppressed.
                 estimated_compressed_bytes: None,
+                // `~/Library/CloudStorage` is local; a volume scan is MTP, SMB,
+                // or an archive, where nothing is evicted to a File Provider.
+                online_only_found: false,
             });
         }
         Err(message) => {

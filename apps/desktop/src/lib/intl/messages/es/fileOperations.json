@@ -19,13 +19,13 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudNoTrashWarningStrong": "Esta carpeta se sincroniza con un servicio en la nube que no tiene papelera.",
-  "@fileOperations.delete.cloudNoTrashWarningStrong": {
-    "sourceHash": "f6a7584"
+  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Este contenido está solo en línea.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
+    "sourceHash": "f1553ed"
   },
-  "fileOperations.delete.cloudNoTrashWarningRest": "Aquí la única opción es eliminar, y el servicio conserva su propia copia desde la que puedes recuperar los archivos.",
-  "@fileOperations.delete.cloudNoTrashWarningRest": {
-    "sourceHash": "1abc686"
+  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Moverlo a la papelera lo descargaría primero del servicio en la nube, así que Cmdr lo elimina en su lugar. No quedará ninguna copia en la papelera, pero el servicio guarda su propio historial desde el que puedes recuperarlo.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
+    "sourceHash": "1d218e5"
   },
   "fileOperations.delete.archiveWarningStrong": "Dentro de un archivo comprimido no hay papelera.",
   "@fileOperations.delete.archiveWarningStrong": {

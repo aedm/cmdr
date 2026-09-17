@@ -3293,34 +3293,17 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `um lugar que o macOS guarda para si`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## O aviso da pasta na nuvem sem Lixo (`fileOperations.delete.cloudNoTrashWarningStrong` / `WarningRest`)
+## O aviso de conteúdo somente online (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
 
-O macOS recusa mandar para o Lixo o que está numa pasta de nuvem (Dropbox, Google Drive, OneDrive…), então o Cmdr abre o
-diálogo de apagar permanentemente com esta faixa de aviso. As duas chaves formam uma frase só, na ordem `Strong` +
-`Rest`.
+Se um item selecionado numa pasta da nuvem está somente online, o Lixo teria que baixá-lo primeiro. Por isso o Cmdr abre
+a caixa de diálogo de apagar de vez e explica isso na tarja. Duas chaves, negrito e resto, lidas como UM aviso só.
 
-- **cloud service · `serviço de nuvem`** · macOS pt-BR Finder (`Choose a cloud service` → `Escolha um serviço de nuvem`,
-  em `_ignored/i18n/pt-BR/macOS/Finder/Localizable.json`) e terminologia Microsoft pt-BR (`cloud service` →
-  `serviço de nuvem`) · confirmed. Na segunda chave ele volta só como `o serviço`, como no inglês. ❌ Não use
-  `provedor de nuvem`: esse é o `cloud provider` de `errors.provider.genericCloudStorage.displayName`, outra palavra em
-  inglês.
-- **"syncs to" · `é sincronizada com`** · macOS pt-BR Finder
-  (`Your Desktop & Documents folders are being synced with %@` →
-  `As pastas Mesa e Documentos estão sendo sincronizadas com o %@`; `Synced with iCloud` → `Sincronizado com o iCloud`)
-  · confirmed. A preposição é `com`, nunca `para`, e o sujeito inanimado pede a passiva com `ser`; `a pasta sincroniza`
-  é forma solta de fala.
-- **"has no trash" · `não tem Lixo`** · é o que o catálogo já publica para o mesmo inglês em
-  `fileOperations.trash.noTrashHere` ("This drive doesn''t keep a trash." → `Este disco não tem Lixo.`) · confirmed. As
-  manchetes irmãs do mesmo diálogo ficam cada uma com a sua forma (`não oferece suporte ao Lixo` para o volume,
-  `Não há Lixo dentro de…` para o zip), porque os ingleses são diferentes.
-- **"restore from" · `recuperar`** · terminologia Microsoft pt-BR (`recover` → `recuperar`) e macOS pt-BR
-  (`ferramentas de recuperação`, `você não poderá recuperar nenhum dado`) · high. ❌ Não `restaurar`: a § da família
-  "colocar de volta" já reparte três verbos em `pt` (`colocar de volta` tira do Lixo, `restaurar` devolve o NOME
-  anterior, `levar de volta` é a reversão), e um quarto sentido achataria a fronteira. Aqui quem devolve o arquivo é o
-  SERVIÇO, não o Cmdr.
-- **"keeps its own copy" · `mantém uma cópia própria`** · `manter` é o `keep` do macOS pt-BR
-  (`Whether to keep or overwrite existing items…` → `…devem ser mantidos ou sobrescritos…`) · high. `guardar` serve para
-  o que o macOS esconde de si (`onboarding.fdaBadge.tooltip`), mas a § Variant do `style.md` lista `guardar` como
-  indício pt-PT quando o sentido é "salvar"; `manter` não tem essa ambiguidade.
-- **O objeto é `os itens`, nunca `os arquivos`**: o diálogo apaga arquivos E pastas, e a lista logo abaixo mistura os
-  dois.
+- **`.cloudOnlineOnlyWarningStrong` → `Este conteúdo está somente online.`** · `somente online` é a fórmula do Finder
+  para um arquivo despejado · medium.
+- **`.cloudOnlineOnlyWarningRest` →
+  `Mover para o Lixo baixaria o arquivo do serviço de nuvem primeiro, então o Cmdr apaga em vez disso. Não vai ficar nenhuma cópia no Lixo, mas o serviço mantém um histórico próprio de onde você pode recuperar.`**
+  · `Lixo` com maiúscula, como nas outras chaves (§ Terms) · medium.
+- **Os dois fatos são obrigatórios**: (1) o Lixo baixaria o arquivo, (2) depois NÃO há cópia no Lixo, embora o serviço
+  guarde a dele. ❌ Não suavizar a segunda metade.
+- Não precisa de `sameAsSourceJustification`: os dois valores diferem do inglês.
+- ⚠️ Rascunho, ainda sem revisão humana.

@@ -333,6 +333,7 @@ fn test_trash_item_error_captures_path_and_message() {
         path: PathBuf::from("/some/file.txt"),
         message: "Permission denied".to_string(),
         reason: TrashRefusalKind::NotPermitted,
+        online_only: false,
     };
     assert_eq!(error.path.display().to_string(), "/some/file.txt");
     assert_eq!(error.message, "Permission denied");
@@ -348,6 +349,7 @@ fn a_batch_reports_the_reason_that_offers_the_user_the_most() {
         path: PathBuf::from("/some/file.txt"),
         message: String::new(),
         reason,
+        online_only: false,
     };
 
     assert_eq!(strongest_refusal(&[]), TrashRefusalKind::Other);

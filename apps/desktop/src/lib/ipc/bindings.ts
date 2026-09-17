@@ -691,7 +691,8 @@ export const commands = {
    *  asking about a delete. A timeout degrades to `Trash`, which is today's
    *  behavior: the attempt goes to the OS and a refusal speaks for itself.
    */
-  trashRoutingForPaths: (sources: string[]) => __TAURI_INVOKE<TrashRouting>('trash_routing_for_paths', { sources }),
+  trashRoutingForPaths: (sources: string[]) =>
+    __TAURI_INVOKE<TrashRoutingAnswer>('trash_routing_for_paths', { sources }),
   cancelWriteOperation: (operationId: string, rollback: boolean) =>
     __TAURI_INVOKE<void>('cancel_write_operation', { operationId, rollback }),
   cancelAllWriteOperations: () => __TAURI_INVOKE<void>('cancel_all_write_operations'),
@@ -11696,6 +11697,13 @@ export type ScanPreviewCompleteEvent = {
    *  only; while scanning the dialog shows a loading affordance.
    */
   estimatedCompressedBytes?: CompressedSizeEstimate | null
+  /**
+   *  The finished walk's online-only verdict, the same flag
+   *  `ScanPreviewProgressEvent::online_only_found` carries. `false` here is the
+   *  definitive "nothing evicted in this tree", which is what releases a delete
+   *  confirmation waiting to know whether it's a trash or a delete.
+   */
+  onlineOnlyFound?: boolean
 }
 
 // Error event for scan preview.
@@ -11734,6 +11742,15 @@ export type ScanPreviewProgressEvent = {
   expectedFilesTotal?: number | null
   // Pairs with `expected_files_total`.
   expectedBytesTotal?: number | null
+  /**
+   *  The walk has met a file the cloud provider has evicted ("online-only"),
+   *  so trashing this selection would download it just to fill a folder the
+   *  person is about to empty. The delete confirmation reads it live and flips
+   *  itself to the permanent delete. Always `false` for a scan whose sources
+   *  aren't in a cloud drive: the tally is only armed there.
+   *  See `delete/cloud_trash.rs`.
+   */
+  onlineOnlyFound?: boolean
 }
 
 // Result of starting a scan preview.
@@ -13727,10 +13744,28 @@ export type TrashRouting =
    */
   | 'trash'
   /**
-   *  Every selected item sits in a cloud-storage drive with no trash of its own.
-   *  Run the permanent-delete flow, whose dialog says why.
+   *  The selection holds online-only content in a cloud-storage drive. Run the
+   *  permanent-delete flow, whose dialog says why.
    */
   | 'permanentDeleteCloudStorage'
+
+/**
+ *  The backend's full answer about a selection: what to run, and whether that
+ *  answer is final.
+ */
+export type TrashRoutingAnswer = {
+  routing: TrashRouting
+  /**
+   *  A selected FOLDER sits in a known cloud drive, so `routing` is only what
+   *  the top-level items say: an online-only file deeper inside would flip it.
+   *  The confirmation dialog already walks that folder for its scan preview,
+   *  and that walk is what answers (`scan_walker.rs`'s `online_only_seen`).
+   *
+   *  ❗ False for a selection of plain files, where the per-item `lstat` above
+   *  IS the whole answer, so the dialog never waits for a walk it doesn't need.
+   */
+  folderMayHoldOnlineOnly: boolean
+}
 
 // One approved host key.
 export type TrustedHostKey = {
@@ -15181,6 +15216,18 @@ export type WriteOperationError =
       reason: TrashRefusalKind
       // The OS's own words, for the technical-details disclosure ONLY.
       message: string
+      /**
+       *  At least one refused item is online-only (`SF_DATALESS`): its contents
+       *  live on the provider's servers, which is the actual reason the trash
+       *  wouldn't take it.
+       *
+       *  ❗ It suppresses the "grant Full Disk Access" paragraph. An evicted
+       *  file refuses as `NSError` 513 as readily as 3328 (`delete/cloud_trash.rs`),
+       *  so the reason alone can't tell the two apart, and sending someone to
+       *  System Settings for a permission that would change nothing is a wrong
+       *  answer. Read at refusal time, when the item is still there to stat.
+       */
+      onlineOnly?: boolean
     }
   // Catch-all for genuinely unexpected IO errors.
   | { type: 'io_error'; path: string; message: string }

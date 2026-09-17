@@ -150,21 +150,49 @@ puts a file.
 `None` stays the ordinary answer for a volume with no trash (FAT32, SMB) and on non-macOS, so callers say "nowhere to
 go" rather than reporting something went wrong.
 
-## A trash in a cloud-storage folder becomes a delete (`cloud_trash.rs`)
+## A trash of online-only cloud content becomes a delete (`cloud_trash.rs`)
 
-A third-party File Provider may implement no trash at all. `trashItemAtURL` under `~/Library/CloudStorage/<domain>/`
-then fails with `NSCocoaErrorDomain` 3328 (`NSFeatureUnsupportedError`), worded by macOS as «the volume "Macintosh HD"
-doesn't have one» — a sentence about the boot volume, whose trash is fine, for a refusal the provider made. A paying
-user hit it on Dropbox (`ERR-2YGHG`, 0.45.1, macOS 27.0) and could not delete anything from that folder.
+A third-party File Provider under `~/Library/CloudStorage/<domain>/` evicts files it has uploaded, leaving a placeholder
+macOS marks `SF_DATALESS` (Finder calls these "online-only").
 
-**Decision**: when EVERY selected top-level item sits in such a folder, F8 opens the permanent-delete flow instead of
-attempting a trash. The confirmation dialog looks different from the trash one, so the swap is visible, and the
-provider's own server-side retention (Dropbox keeps 30 days) means the file is still recoverable. The frontend asks
-`trash_routing_for_paths` before it opens the dialog; the answer is a typed `TrashRouting`, and the routed case lands in
-the same permanent delete Shift+F8 runs, with the same `WriteOperationType::Delete`.
+**The reason for the whole feature is the DOWNLOAD, ❌ not the refusal.** The Trash is a folder on the boot volume, so
+putting an evicted file there means pulling its bytes back from the provider first, and macOS does exactly that: an
+online-only Dropbox file trashed in ~500 ms and landed in `~/.Trash` at its full 111 kB (verified on macOS 27.0, prod
+build, 2026-09-17). Three small PNGs is half a second; a folder holding 50 GB of online-only content is 50 GB over
+someone's connection, to fill a folder they are about to empty, for files they just said they don't want. That is why
+the routing fires even in the cases where the trash WOULD have succeeded, and why ❌ nobody should "simplify" this into
+reacting to an error.
+
+Reacting to the error wouldn't work anyway, on two counts:
+
+- **It isn't deterministic.** The same file trashed at 08:45, was refused at 09:06:00, refused again at 09:06:36, and a
+  sibling went through at 09:06:20 (same log). "Try it and see" is not a design.
+- **One condition, two `NSError` codes.** 513 (`NSFileWriteNoPermissionError`, «you don't have permission to access
+  it») and 3328 (`NSFeatureUnsupportedError`, «the volume "Macintosh HD" doesn't have one») both come back for it, and
+  they land in two different `TrashRefusalKind` buckets. The item's own flag is the reliable signal, and it answers
+  before a byte moves.
+
+**`SF_DATALESS` is `0x40000000`**, from `/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/sys/stat.h:359`
+("file is dataless object"), verified on macOS 27.0 / Command Line Tools, 2026-09-17, against a real evicted Dropbox
+file whose `stat -f "%Sf"` reads `compressed,dataless`. ❗ The `libc` crate does NOT export it (its `SF_*` set stops at
+`SF_SETTABLE` / `SF_ARCHIVED` / `SF_IMMUTABLE` / `SF_APPEND`), which is why the constant is declared in `cloud_trash.rs`
+with that citation.
+
+**Decision**: F8 opens the permanent-delete flow when a selected item is inside such a drive AND carries `SF_DATALESS`.
+The confirmation dialog looks different from the trash one, so the swap is visible, and the provider's own server-side
+retention (Dropbox keeps 30 days) means the file is still recoverable. The frontend asks `trash_routing_for_paths`
+before it opens the dialog; the answer is a typed `TrashRoutingAnswer`, and the routed case lands in the same permanent
+delete Shift+F8 runs, with the same `WriteOperationType::Delete`.
+
+**Reading the flag never materializes anything.** `symlink_metadata` + `st_flags` is metadata only; ❌ never open or
+read a file to find out, which would be the very download this exists to avoid. `symlink_metadata` also keeps the LEAF
+symlink unfollowed, matching the rule below.
 
 **What the rule matches**, and why each edge is where it is:
 
+- The item carries `SF_DATALESS`. ❌ NOT "it's in a cloud folder": an ordinary, materialized Dropbox file trashes
+  perfectly well, and routing it to a permanent delete turns a working trash into data loss. Being in the drive only
+  makes the flag meaningful.
 - A path strictly inside `~/Library/CloudStorage/<domain>/`, Apple's documented File Provider location since
   macOS 12.3. Provider identity itself is `cloud_provider.rs`'s single source; this module only asks it.
 - ❌ NOT iCloud Drive (`~/Library/Mobile Documents/`). Finder trashes from there fine, so it keeps today's behavior. A
@@ -181,12 +209,34 @@ the same permanent delete Shift+F8 runs, with the same `WriteOperationType::Dele
   `~` report the same device on the same `/dev/disk3s5` (verified on macOS 27.0, `stat -f '%d'`, 2026-09-17), so
   `trash_dir_for_path` answers `~/.Trash` for these paths and can see nothing.
 
-**All or nothing across the selection.** A mixed selection keeps today's behavior, so nobody gets a permanent delete for
-items that would have trashed fine. An empty selection, an unreadable home directory, and a timeout all answer `Trash`
-for the same reason: an unanswerable question means the OS attempt, never a delete.
+**A selected FOLDER is answered by the walk the dialog already runs.** `SF_DATALESS` lives on files, so a folder never
+carries it. `routing_for` reports `folder_may_hold_online_only` instead, and the confirmation's scan preview tallies
+evicted entries as it descends (`scan_walker.rs`'s `OnlineOnlyWatch`, armed by
+`selection_touches_known_cloud_drive`), publishing `online_only_found` on `scan-preview-progress` and
+`-complete`. ❌ Never a second walk, and ❌ never a walk for a plain-file selection: one `symlink_metadata` per selected
+item is the whole cost there. The arming gate is what keeps every ordinary scan byte-for-byte what it was, including the
+extra `lstat` the oracle-served (cached-listing) path needs, since a cached `FileEntry` carries no `st_flags`. One hit
+ends the probing.
+
+**All or nothing across the selection.** One online-only item routes the whole gesture. ❌ Not per item: splitting one
+keystroke into "these go to the Trash, those get deleted permanently" is two mental models in one confirmation, and no
+readable copy comes out of it. An empty selection, an item we can't stat, an unreadable home directory, and a timeout
+all answer `Trash`: an unanswerable question means the OS attempt, never a delete.
+
+**A refusal that IS online-only suppresses the Full Disk Access offer.** `trash_files_with_progress` stats each refused
+item (`trashItemAtURL` is atomic, so a refusal left it exactly where it was) and sets `online_only` on
+`WriteOperationError::TrashRefused`. Per the two-codes finding above, a 513 refusal of an evicted file is
+indistinguishable by reason from a real permission problem, and telling someone to go grant Full Disk Access when their
+file simply lives on Dropbox's servers is a wrong answer they would act on. The frontend gates the paragraph on it
+(`transfer-error-messages.ts`).
 
 **Symlinks resolve first, but only above the leaf.** Dropbox links `~/Dropbox` at its `CloudStorage` drive, so a literal
 prefix test would miss half the ways a person reaches the same file. `resolve_through_symlinks` canonicalizes the
 nearest existing ANCESTOR and re-attaches the names below it, which also survives a leaf that's already gone. The leaf
 itself is deliberately left unresolved: trashing a symlink acts on the LINK, so a link in an ordinary folder pointing
 into a cloud drive keeps the ordinary behavior.
+
+**What the tests can't prove.** Only a File Provider can set `SF_DATALESS`, so no test creates a really-evicted file.
+`routing_with` takes an injected `ItemFacts` reader and `OnlineOnlyWatch` an injected probe; the suites pin the RULE and
+the WIRING, while the flag read itself (`st_flags & SF_DATALESS`) rests on the header citation and David's
+`stat -f "%Sf"` check above.

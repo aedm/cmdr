@@ -32,16 +32,16 @@
     "screenshot": "delete-confirmation-no-trash-support.png"
   },
 
-  "fileOperations.delete.cloudNoTrashWarningStrong": "This folder syncs to a cloud service that has no trash.",
-  "@fileOperations.delete.cloudNoTrashWarningStrong": {
-    "description": "Bold lead of a warning banner in the delete dialog, shown when the person pressed the \"move to trash\" key but every selected item lives in a cloud-storage folder (Dropbox, Google Drive, OneDrive, …) whose macOS File Provider refuses to trash anything, so Cmdr opened the permanent-delete dialog instead. Followed by fileOperations.delete.cloudNoTrashWarningRest. \"trash\" here is the macOS Trash the Finder uses.",
+  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "This is online-only content.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
+    "description": "Bold lead of a warning banner in the delete dialog, shown when the person pressed the \"move to trash\" key over content that is online-only: it lives in a cloud-storage folder (Dropbox, Google Drive, OneDrive, …) and the provider has evicted its contents to its own servers, leaving a placeholder on the Mac. Cmdr opened the permanent-delete dialog instead. Followed by fileOperations.delete.cloudOnlineOnlyWarningRest. \"Online-only\" is the term Apple's Finder uses for such a file; prefer your platform's own existing wording for it.",
     "screenshot": "delete-confirm.png",
     "screenshotNote": "The delete confirmation dialog, pictured here. Your string is one of its variants: a different item count, an archive or symlink warning, or the progress line it shows while scanning."
   },
 
-  "fileOperations.delete.cloudNoTrashWarningRest": "Deleting is the only option here, and the service keeps its own copy you can restore from.",
-  "@fileOperations.delete.cloudNoTrashWarningRest": {
-    "description": "Second half of the cloud-storage warning banner, following fileOperations.delete.cloudNoTrashWarningStrong. Reassures the person that the file isn't gone for good: the cloud service (Dropbox, Google Drive, …) keeps deleted files on its own servers for a while, so it can be restored from there.",
+  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Moving it to the Trash would download it from the cloud service first, so Cmdr deletes it instead. There''ll be no copy in the Trash, but the service keeps its own history you can restore from.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
+    "description": "Second half of the online-only warning banner, following fileOperations.delete.cloudOnlineOnlyWarningStrong. Two facts, and both matter: (1) the Trash lives on the Mac, so putting an online-only file there means downloading it from the cloud service first, which is why Cmdr deletes it rather than trashing it; (2) there will be NO copy in the macOS Trash afterwards, but the cloud service keeps its own deleted-files history (Dropbox keeps 30 days) that the person can restore from. Don't soften the second half into \"it goes to the trash anyway\": it does not. \"Trash\" here is the macOS Trash the Finder uses.",
     "screenshot": "delete-confirm.png",
     "screenshotNote": "The delete confirmation dialog, pictured here. Your string is one of its variants: a different item count, an archive or symlink warning, or the progress line it shows while scanning."
   },

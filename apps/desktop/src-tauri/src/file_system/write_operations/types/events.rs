@@ -622,6 +622,14 @@ pub struct ScanPreviewProgressEvent {
     /// Pairs with `expected_files_total`.
     #[serde(default)]
     pub expected_bytes_total: Option<u64>,
+    /// The walk has met a file the cloud provider has evicted ("online-only"),
+    /// so trashing this selection would download it just to fill a folder the
+    /// person is about to empty. The delete confirmation reads it live and flips
+    /// itself to the permanent delete. Always `false` for a scan whose sources
+    /// aren't in a cloud drive: the tally is only armed there.
+    /// See `delete/cloud_trash.rs`.
+    #[serde(default)]
+    pub online_only_found: bool,
 }
 
 /// Estimated compressed output size for a Compress operation, split by
@@ -664,6 +672,12 @@ pub struct ScanPreviewCompleteEvent {
     /// only; while scanning the dialog shows a loading affordance.
     #[serde(default)]
     pub estimated_compressed_bytes: Option<CompressedSizeEstimate>,
+    /// The finished walk's online-only verdict, the same flag
+    /// `ScanPreviewProgressEvent::online_only_found` carries. `false` here is the
+    /// definitive "nothing evicted in this tree", which is what releases a delete
+    /// confirmation waiting to know whether it's a trash or a delete.
+    #[serde(default)]
+    pub online_only_found: bool,
 }
 
 /// Error event for scan preview.

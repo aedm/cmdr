@@ -223,12 +223,19 @@ export interface DeleteDialogPropsData {
    */
   isArchive?: boolean
   /**
-   * Every source sits in a cloud-storage folder whose File Provider implements no
-   * trash (`~/Library/CloudStorage/<provider>/…`), so the OS refuses a trash there.
-   * The dialog forces permanent mode and explains that the service keeps its own
-   * copy. Decided in Rust: `write_operations/delete/cloud_trash.rs`.
+   * A selected item in a cloud-storage folder (`~/Library/CloudStorage/<provider>/…`)
+   * is online-only, so trashing it would download it first. The dialog forces
+   * permanent mode and explains that the service keeps its own copy. Decided in
+   * Rust: `write_operations/delete/cloud_trash.rs`.
    */
-  cloudStorageWithoutTrash?: boolean
+  cloudStorageOnlineOnly?: boolean
+  /**
+   * A selected FOLDER sits in such a drive and the top-level check found nothing:
+   * only the dialog's own scan walk can say whether something inside is
+   * online-only. The dialog flips itself when the walk reports one, and holds a
+   * confirm until it knows.
+   */
+  cloudFolderMayHoldOnlineOnly?: boolean
   /** When true, dialog auto-confirms without user interaction (MCP auto-confirm). */
   autoConfirm?: boolean
   /** MCP round-trip id, present only for an auto-confirmed MCP delete/trash.

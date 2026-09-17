@@ -28,8 +28,8 @@ import { getUserFriendlyMessage, mayBeAPermissionGrantAway } from './transfer-er
 
 const ALL_REASONS: TrashRefusalKind[] = ['notPermitted', 'noTrashForVolume', 'other']
 
-function refused(reason: TrashRefusalKind, itemCount = 7) {
-  return getUserFriendlyMessage({ type: 'trash_refused', itemCount, reason, message: 'os words' }, 'trash')
+function refused(reason: TrashRefusalKind, itemCount = 7, onlineOnly = false) {
+  return getUserFriendlyMessage({ type: 'trash_refused', itemCount, reason, message: 'os words', onlineOnly }, 'trash')
 }
 
 describe('a refused trash', () => {
@@ -97,6 +97,16 @@ describe('a refused trash', () => {
     // Walks every variant, so a reason added later can't silently default into the offer.
     it('is decided per reason, with the unclassified one opted out', () => {
       expect(ALL_REASONS.filter(mayBeAPermissionGrantAway)).toEqual(['notPermitted', 'noTrashForVolume'])
+    })
+
+    // An evicted cloud file refuses as 513 (`notPermitted`) as readily as 3328, so the
+    // reason alone can't tell the two apart. Sending someone to System Settings when
+    // their real problem is a file that lives on Dropbox's servers is a wrong answer
+    // they would act on. The backend flags the refusal; see `delete/cloud_trash.rs`.
+    it('stays away from an online-only refusal, whichever reason the OS gave it', () => {
+      fdaIsMissing.mockReturnValue(true)
+      expect(refused('notPermitted', 7, true).suggestion).not.toContain('full disk access')
+      expect(refused('noTrashForVolume', 7, true).suggestion).not.toContain('full disk access')
     })
   })
 })
