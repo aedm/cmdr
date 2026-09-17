@@ -187,6 +187,16 @@ jobs:
         with:
           projectPath: ./apps/desktop
           args: --target ${{ matrix.target }}
+          # GitHub's asset-upload API fails often enough to cost a release: v0.46.0 lost two runs
+          # to it, first `Cmdr_0.46.0_aarch64.dmg` (an HTML 5xx page in place of a response), then
+          # `Cmdr_0.46.0_aarch64.app.tar.gz` (`Error saving asset` after an 8m30s hang), while the
+          # x86_64 and universal jobs uploaded the same shapes fine. The action's own `retry()`
+          # wraps each `uploadReleaseAsset` call with a 1-10 s random backoff, and `inputs.ts`
+          # defaults this to `0` (`attempts = additionalAttempts + 1`, so a single try), which is
+          # why neither failure was ever retried.
+          # ❗ This retries the BUILD too, not just uploads, so a genuinely broken build burns up
+          # to 4 attempts before it fails. Worth it: the build is the reliable half here.
+          retryAttempts: 3
           tagName: ${{ github.ref_name }}
           releaseName: 'Cmdr ${{ github.ref_name }}'
           releaseBody: 'See CHANGELOG.md for details.'
