@@ -326,6 +326,26 @@ Consequences worth knowing:
 - **`environmentOptions.happyDOM.url` is a private-range port on purpose.** happy-dom defaults the page origin to
   `http://localhost:3000`, where a real dev server often listens; a test resolving a relative URL would then get a real
   ANSWER rather than a refusal, which is the worse failure of the two.
+- ❗ **A `setTimeout` a test leaves pending turns the whole lane red and names no failing test.** Vitest tears the
+  file's happy-dom environment down once its last test returns, so a timer firing after that hits a world with no
+  `document` and is reported as an unhandled `ReferenceError: document is not defined`, which counts as a failed run
+  while every test still passes. Hold each handle and `clearTimeout` it in `afterEach`
+  (`helpers/click-entry-in-pane.test.ts`'s `scheduleRender` is the pattern). A timer the helper under test genuinely
+  waits out, like `click-button-by-text.test.ts`'s disabled window, can't leak, but the guard costs nothing.
+
+## The helpers' unit tests
+
+`helpers/*.test.ts` run the helper's real `evaluate` payload against happy-dom through a `PageLike` stub, so the program
+under test is the one the suite ships. Two rules they exist to defend, each learned from a flake:
+
+- **A helper's existence check and its action belong in ONE payload.** `clickEntryInPane` reads the row and clicks it in
+  a single `evaluate`, because a listing landing between two round trips leaves the click aimed at a row that has been
+  replaced (measured in the lane, 2026-09-12: every row of both panes was removed ~25 ms before the click on an idle
+  machine). `click-entry-in-pane.test.ts` counts the payloads and fails at two, which is the only thing guarding it: a
+  test that merely stages a re-render passes against a split helper too, since `pollUntil` just waits the re-render out
+  and clicks on a later tick.
+- **A helper can return normally having done nothing**, so each test asserts the observable effect (the row's click
+  handler ran) rather than the helper's own return.
 
 ## The i18n capture's staging in the lane
 
