@@ -67,8 +67,8 @@ Cmdr asks rather than enforces. What ships today, and the whole of it:
   app behaves as Personal. Nobody loses access to their files because a card expired.
 
 ❌ **Nothing here inspects what the user's files are.** The reminder is on a timer and knows nothing about the person
-seeing it. Don't add a nag that reads the index, or describe one as shipping, without David deciding it deliberately:
-it trades a privacy promise the product currently keeps for compliance.
+seeing it. Don't add a nag that reads the index, or describe one as shipping, without David deciding it deliberately: it
+trades a privacy promise the product currently keeps for compliance.
 
 ## Where the words live
 
