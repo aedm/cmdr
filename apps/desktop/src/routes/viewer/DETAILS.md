@@ -21,6 +21,9 @@ Per-file inventory for the route. Locate symbols via `codegraph_search`; this is
   succeed, shared by the three open sites. See § "A read that didn't come back".
 - **`viewer-keyboard.ts`**: pure key helpers + `createViewerKeyboard`, the keydown router (modifiers, Escape ladder, ⌘A,
   bare-key dispatch, and the twelve selection-extension chords).
+- **`viewer-menu-actions.ts`**: `runViewerEditAction`, the dispatcher behind the viewer menu bar's Edit > Copy and
+  Edit > Select all. Branches on search-input focus through the same `isSearchInputFocused` / `inputHasSelection` the
+  keydown router uses, so the menu path and the ⌘-chord path end in the same two functions. See § Gotchas.
 - Selection: **`selection.svelte.ts`** (model), **`line-segments.ts`** (pure segmenter), **`viewer-caret-geometry.ts`**
   (pure point → offset search, surrogate-safe), **`viewer-pointer.ts`** (its DOM adapter and the ONE place line text is
   measured: row hit-test, character rects, `caretRectFor`, `measureColumnWidth`), **`viewer-pointer-drag.svelte.ts`**
@@ -600,6 +603,12 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
   - The browser's caret-from-point APIs are wrong on `user-select: none` text in some WebKit builds, so we don't use
     them at all (§ "Pointer → caret"). ❌ Don't reintroduce one as a "fast path": the wrong answer looks exactly like a
     right one.
+  - **It's also why the viewer bar's Edit > Copy and Edit > Select all are Custom menu items, not Predefined ones.** A
+    native `selectAll:` / `copy:` acts on the DOM selection, and with `.file-content` opted out the only selectable text
+    left in the window is the `.status-bar` footer: Select all highlights the footer and Copy then copies it. Rust emits
+    a typed `ViewerEditAction` to the focused viewer instead (`src-tauri/src/menu/DETAILS.md` § "Per-window menu
+    activation"), and `viewer-menu-actions.ts` runs the same two functions ⌘A / ⌘C run. ❗ Cut and Paste stay
+    Predefined: they're the search box's, and trimming them once left ⌘X / ⌘V dead there.
 - **Selection offsets are UTF-16 code units, not bytes or grapheme clusters.** When you add features that compute
   offsets from a click position (caret math in `viewer-pointer.ts`) or accept them across the IPC boundary
   (`viewer_read_range`), preserve the UTF-16 convention. The backend handles the conversion to UTF-8 bytes, clamping
@@ -610,9 +619,10 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
   the handler calls the `takeFocus` dep first, which the page wires to `scroll.containerRef.focus()` — the same element
   it focuses after a session opens, so the viewer has one focus home. The keyboard router has the matching second half:
   with the search input focused it hands ⌘A and ⌘C to the input's native handler, EXCEPT when the input holds a bare
-  caret, where nothing in it can be copied and the gesture belongs to the file selection (`searchInputHasSelection()` in
-  `viewer-keyboard.ts`). Both halves are pinned: `viewer-pointer-drag.svelte.test.ts`, `viewer-keyboard.test.ts`, and
-  the "⌘C copies the dragged selection while the search bar is open" case in `viewer.spec.ts`.
+  caret, where nothing in it can be copied and the gesture belongs to the file selection (`inputHasSelection()` in
+  `viewer-keyboard.ts`, shared with the Edit menu's dispatcher). Both halves are pinned:
+  `viewer-pointer-drag.svelte.test.ts`, `viewer-keyboard.test.ts`, and the "⌘C copies the dragged selection while the
+  search bar is open" case in `viewer.spec.ts`.
 - **Drag autoscroll uses `setPointerCapture` + window `blur` fallback** because the Tauri webview can lose `pointerup`
   events to other macOS windows. Without capture, dragging past the webview's edge leaves the RAF loop running forever
   with no way to stop. Capture is wrapped in try/catch because some webviews refuse it on non-focusable targets; the

@@ -15,6 +15,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::ignore_poison::IgnorePoison;
 use crate::volume_broadcast::VolumeContextActionKind;
+use crate::window_events::ViewerEditActionKind;
 
 use super::{
     CLOSE_TAB_ID, CommandScope, EDIT_COPY_ID, EDIT_CUT_ID, EDIT_PASTE_ID, EJECT_VOLUME_ID, FAVORITE_REMOVE_ID,
@@ -26,7 +27,8 @@ use super::{
     SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID, SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID,
     SORT_DESCENDING_ID, SettingsChanged, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID,
     VIEW_MODE_BRIEF_RIGHT_ID, VIEW_MODE_FULL_LEFT_ID, VIEW_MODE_FULL_RIGHT_ID, VIEW_SET_MODE_COMMAND_ID,
-    VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_WORD_WRAP_ID, ViewMode, ViewModeChanged, menu_id_to_command,
+    VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_EDIT_COPY_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode,
+    ViewModeChanged, menu_id_to_command,
 };
 
 /// Removes macOS system-injected items from the Edit menu and registers the Help menu.
@@ -140,6 +142,27 @@ fn send_native_edit_action(menu_id: &str) {
             to: std::ptr::null::<objc2::runtime::AnyObject>(),
             from: std::ptr::null::<objc2::runtime::AnyObject>(),
         ];
+    }
+}
+
+/// The label of the viewer window that currently has focus, if one does.
+///
+/// The viewer bar is app-level on macOS and shared by every open viewer, so an item in it names
+/// no window of its own: the focused one is the only honest answer. Viewer windows are labeled
+/// `viewer-<n>` (`commands/file_viewer.rs`, `capabilities/viewer.json`).
+fn focused_viewer_label(app: &AppHandle<tauri::Wry>) -> Option<String> {
+    app.webview_windows()
+        .into_iter()
+        .find(|(label, window)| label.starts_with("viewer-") && window.is_focused().unwrap_or(false))
+        .map(|(label, _)| label)
+}
+
+/// The viewer Edit-menu action a clicked item id names, or `None` when the id isn't one of them.
+fn viewer_edit_action_for(menu_id: &str) -> Option<ViewerEditActionKind> {
+    match menu_id {
+        VIEWER_EDIT_COPY_ID => Some(ViewerEditActionKind::Copy),
+        VIEWER_SELECT_ALL_ID => Some(ViewerEditActionKind::SelectAll),
+        _ => None,
     }
 }
 
@@ -306,13 +329,23 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
 
     // === Viewer word wrap: emit to the focused viewer window ===
     if id == VIEWER_WORD_WRAP_ID {
-        for (label, window) in app.webview_windows() {
-            if label.starts_with("viewer-") && window.is_focused().unwrap_or(false) {
-                use tauri_specta::Event as _;
-                let _ = crate::window_events::ViewerWordWrapToggled.emit_to(app, &label);
-                break;
-            }
+        if let Some(label) = focused_viewer_label(app) {
+            use tauri_specta::Event as _;
+            let _ = crate::window_events::ViewerWordWrapToggled.emit_to(app, &label);
         }
+        return;
+    }
+
+    // === Viewer Edit > Copy / Select all: emit to the focused viewer window ===
+    // The viewer runs both itself, over its own offset-based selection; see
+    // `window_events::ViewerEditAction` for why these can't be native selectors.
+    if let Some(action) = viewer_edit_action_for(id) {
+        let Some(label) = focused_viewer_label(app) else {
+            log::warn!(target: "menu", "Viewer Edit item {id} clicked with no viewer focused, ignoring");
+            return;
+        };
+        use tauri_specta::Event as _;
+        let _ = crate::window_events::ViewerEditAction { action }.emit_to(app, &label);
         return;
     }
 
@@ -686,5 +719,34 @@ mod volume_row_action_tests {
         assert_eq!(volume_row_action(NETWORK_HOST_FORGET_SERVER_ID), None);
         assert_eq!(volume_row_action(NETWORK_HOST_FORGET_SECRET_ID), None);
         assert_eq!(volume_row_action("tab_close"), None);
+    }
+}
+
+#[cfg(test)]
+mod viewer_edit_action_tests {
+    use super::*;
+    use crate::menu::{EDIT_COPY_ID, SELECT_ALL_ID};
+
+    #[test]
+    fn the_viewer_bars_edit_items_name_their_action() {
+        assert_eq!(
+            viewer_edit_action_for(VIEWER_EDIT_COPY_ID),
+            Some(ViewerEditActionKind::Copy)
+        );
+        assert_eq!(
+            viewer_edit_action_for(VIEWER_SELECT_ALL_ID),
+            Some(ViewerEditActionKind::SelectAll)
+        );
+    }
+
+    /// ❗ Both bars share `EDIT_MENU_ID`, and the main bar's Copy / Select all route
+    /// somewhere else entirely (the main window, or the native responder chain). A main-bar
+    /// id falling into this branch would copy the wrong thing from the wrong window.
+    #[test]
+    fn a_main_bar_edit_id_is_not_a_viewer_edit_action() {
+        assert_eq!(viewer_edit_action_for(EDIT_COPY_ID), None);
+        assert_eq!(viewer_edit_action_for(SELECT_ALL_ID), None);
+        assert_eq!(viewer_edit_action_for(VIEWER_WORD_WRAP_ID), None);
+        assert_eq!(viewer_edit_action_for("unknown_id"), None);
     }
 }

@@ -22,10 +22,11 @@ Native menu bars for macOS and Linux, built from scratch in the user's language.
   also rewrites `title`, so `find_ns_item` matches only to the first TAB.
 - **Accelerator changes go remove/recreate/reinsert**, so `MenuState` tracks each item's submenu and index; a live
   label moves through `MenuState::set_item_label`, ❌ never a bare `set_text`.
-- **Three families skip `"execute-command"`**: CheckMenuItems auto-toggle (it would double-toggle) and send
+- **Four families skip `"execute-command"`**: CheckMenuItems auto-toggle (it would double-toggle) and send
   `"settings-changed"` / `"view-mode-changed"`; sort sends `"menu-sort"`; Cut / Copy / Paste / Move here / Select all
   are Custom (❌ not Predefined) items forwarding the native selector via `send_native_edit_action()` outside the main
-  window, or ⌘A and the clipboard die there.
+  window, or ⌘A and the clipboard die there; the VIEWER bar's own Copy / Select all are Custom too, on their own
+  `VIEWER_*` ids, and emit `ViewerEditAction` to the viewer in front (a native selector would grab its status bar).
 - **Enabled state has ONE writer, `apply_menu_item_states`**: store a new input and add it to `menu_item_enabled`, ❌
   never a direct `set_enabled`. Greying is chrome — the real guard is `main_window.is_focused()` in `on_menu_event`;
   accelerators fire even when items look off.

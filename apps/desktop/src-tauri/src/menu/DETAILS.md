@@ -49,7 +49,8 @@ window focus context.
   All three are called from `commands::menu_state::activate_window_menu` and the other menu-state IPC commands.
 - `menu_handlers.rs`: `handle_menu_event`, the `.on_menu_event` dispatcher, plus the macOS
   post-construction wrappers `cleanup_macos_menus` / `set_macos_menu_icons` and
-  `send_native_edit_action` (the actual objc2 FFI lives in `macos_appkit.rs`).
+  `send_native_edit_action` (the actual objc2 FFI lives in `macos_appkit.rs`) and `focused_viewer_label` /
+  `viewer_edit_action_for`, which route the viewer bar's own items to the viewer in front.
 - `accelerators.rs`: `frontend_shortcut_to_accelerator` (frontend glyphs to Tauri accelerator
   strings) and `update_menu_item_accelerator` (swapping one on a live item).
 - `view_mode_items.rs`: `rebuild_view_mode_items` (full remove/recreate/reinsert when the active pane
@@ -464,11 +465,23 @@ menu is swapped wholesale via `app.set_menu()`:
   item refs stored in `MenuState` keep mutating the live menu after a swap-back.
 - The **viewer menu** is built once at startup (`build_viewer_menu`) and stored in
   `MenuState.viewer_menu`, with its `Word wrap` CheckMenuItem ref in `MenuState.viewer_word_wrap`.
-  - Its **Edit** submenu carries the full predefined Cut/Copy/Paste/Select all, not Copy-only: predefined items route
-    the native `cut:`/`copy:`/`paste:`/`selectAll:` selectors to the focused text field (the search box) through the
-    responder chain, so don't trim it back — that's what left ⌘X/⌘V dead in the viewer search field. Predefined is fine
-    here (unlike the main menu's custom Edit items above) because the viewer menu is a separate menu, never installed
-    alongside the main one, so there's no item to conflict with.
+  - Its **Edit** submenu is a deliberate mix, because the two halves act on different things.
+    - **Cut and Paste stay Predefined**, which routes the native `cut:` / `paste:` selectors to the focused text field
+      (the viewer's search box) through the responder chain. ❌ Don't trim them: that's what left ⌘X / ⌘V dead in the
+      viewer search field. Predefined is fine here, unlike the main bar's Edit items, because the viewer bar is a
+      separate menu never installed alongside the main one, so there's no item to conflict with.
+    - **Copy and Select all are Custom items** (`VIEWER_EDIT_COPY_ID` / `VIEWER_SELECT_ALL_ID`) routed to the focused
+      viewer's FRONTEND as a typed `ViewerEditAction`. **Decision/Why:** their native selectors act on the DOM
+      selection, and the viewed file isn't in its reach — `.file-content` is `user-select: none` because the viewer
+      owns an offset-based selection model, and `.status-bar` deliberately opts back in (`user-select: text`, so people
+      can copy the filename). The footer is therefore the only thing a native `selectAll:` can land on, and a Copy after
+      it copies the footer. The frontend runs the same two functions ⌘A / ⌘C already run
+      (`apps/desktop/src/routes/viewer/viewer-menu-actions.ts`), so it doesn't matter whether a ⌘-chord reaches the webview before the
+      menu's key equivalent.
+    - ❗ Those two ids are viewer-specific, NOT the main bar's `EDIT_COPY_ID` / `SELECT_ALL_ID`. Both bars share
+      `EDIT_MENU_ID`, and `handle_menu_event` tells the two lanes apart by item id alone; reusing them would make one
+      click mean two things. The viewer's items had no ids at all while they were Predefined, which is why the
+      collision never existed before.
 - `MenuState.active_menu_kind` tracks which menu is installed, so a same-kind focus event (viewer →
   viewer, main → main) skips the swap entirely.
 - `"main"` and `"other"` install the main menu; `"viewer"` installs the viewer menu. After any swap
@@ -1010,12 +1023,14 @@ fallback circles).
   PredefinedMenuItems) for Cut, Copy, Paste, and Move here; the Select menu does the same for
   Select all. In `handle_menu_event`, these are handled specially: if the main window is focused,
   they route through `execute-command` so the frontend can decide between file and text semantics
-  (via `document.activeElement` check). If a non-main window is focused (viewer, settings),
+  (via `document.activeElement` check). If a non-main window is focused,
   `send_native_edit_action()` in `menu_handlers.rs` sends the native
   `copy:`/`cut:`/`paste:`/`selectAll:` selector through the responder chain via
   `NSApplication.sendAction:to:from:`, replicating what PredefinedMenuItems do internally. This
   ensures text clipboard and text select-all work natively in all windows. Undo and Redo remain
-  PredefinedMenuItems since they only apply to text fields.
+  PredefinedMenuItems since they only apply to text fields. ❗ In practice the native branch serves Settings and the
+  other main-bar windows: a focused VIEWER has swapped the viewer bar in, and its Copy / Select all carry their own ids
+  and their own lane (§ "Per-window menu activation").
 - **⌘A dual routing**: "Select all" uses ⌘A as a native menu accelerator (so it's visible in the
   Select menu — see § "Decision: Select all and Deselect all live in the new Select top-level menu"
   above). Since macOS intercepts it before the webview, the keystroke must be re-routed per focus:

@@ -14,6 +14,7 @@
         viewerSetWordWrap,
         onViewerPullProgress,
         onViewerWordWrapToggled,
+        onViewerEditAction,
         activateWindowMenu,
     } from '$lib/tauri-commands'
     import { createViewerPull } from './viewer-pull.svelte'
@@ -35,6 +36,7 @@
     import { createIndexingPoll } from './viewer-indexing-poll'
     import { handleOpenFailure } from './viewer-open-failure'
     import { createViewerKeyboard } from './viewer-keyboard'
+    import { runViewerEditAction } from './viewer-menu-actions'
     import { createViewerTail } from './viewer-tail.svelte'
     import {
         createViewerSelection,
@@ -247,6 +249,7 @@
     let unlistenMcpClose: UnlistenFn | undefined
     let unlistenMcpFocus: UnlistenFn | undefined
     let unlistenWordWrap: UnlistenFn | undefined
+    let unlistenEditAction: UnlistenFn | undefined
     let unlistenWindowFocus: UnlistenFn | undefined
 
     const textWidthTracker = createTextWidthTracker({
@@ -547,6 +550,30 @@
     })
 
     /**
+     * What the viewer's Edit menu acts on. The same two functions ⌘A / ⌘C reach, so the
+     * menu path and the keyboard path can't drift apart.
+     */
+    const viewerEditActionDeps = {
+        search: {
+            get searchVisible() {
+                return search.searchVisible
+            },
+            get searchInputRef() {
+                return search.searchInputRef
+            },
+        },
+        selectAllContent: keyboard.handleSelectAllShortcut,
+        copyContent: () => {
+            void copyFlow.handleCopy()
+        },
+        writeClipboardText: (text: string) => {
+            navigator.clipboard.writeText(text).catch((e: unknown) => {
+                log.warn('Copying the search query to the clipboard failed: {error}', { error: String(e) })
+            })
+        },
+    }
+
+    /**
      * Window-level keydown router. In text mode it delegates to the full viewer
      * keyboard (search, selection, copy, navigation). In media mode the text
      * shortcuts don't apply (there are no lines to search / select / copy), so only
@@ -707,6 +734,14 @@
             toggleWordWrap(true)
         })
 
+        // Edit > Copy / Select all from the viewer's own menu bar. Custom items rather than
+        // native ones, because the native selectors would act on the status bar; see
+        // `viewer-menu-actions.ts`. Media sessions have no text to select or copy.
+        unlistenEditAction = await onViewerEditAction(({ action }) => {
+            if (isMedia) return
+            runViewerEditAction(action, viewerEditActionDeps)
+        })
+
         // On macOS the app-level menu bar is shared across windows, so each window swaps in its
         // own menu when it gains focus. A freshly-opened viewer window is already focused, so
         // `onFocusChanged` won't fire for this initial focus — activate the viewer menu explicitly
@@ -749,6 +784,7 @@
         unlistenMcpClose?.()
         unlistenMcpFocus?.()
         unlistenWordWrap?.()
+        unlistenEditAction?.()
         unlistenWindowFocus?.()
     }
 

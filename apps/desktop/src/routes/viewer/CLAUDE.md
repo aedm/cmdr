@@ -1,8 +1,7 @@
 # Viewer
 
 The file viewer opens files in their own Tauri window, with virtual scrolling and text search. Backend:
-`apps/desktop/src-tauri/src/file_viewer/CLAUDE.md`; reusable FE primitives:
-`apps/desktop/src/lib/file-viewer/CLAUDE.md`.
+`apps/desktop/src-tauri/src/file_viewer/CLAUDE.md`; FE primitives: `apps/desktop/src/lib/file-viewer/CLAUDE.md`.
 
 ## Module map
 
@@ -11,7 +10,7 @@ The file viewer opens files in their own Tauri window, with virtual scrolling an
 
 ## Must-knows
 
-Each is a break-if-ignored invariant; the named `DETAILS.md` section has the why.
+Each is break-if-ignored; the named `DETAILS.md` section has the why.
 
 - **Composables take callback-based deps (getters), never raw `$state`** (passing `$state` loses reactivity). Effects
   live on the page and delegate to `run*Effect()`. (§ Architecture)
@@ -20,8 +19,8 @@ Each is a break-if-ignored invariant; the named `DETAILS.md` section has the why
   reopening, with `reset()` PRESERVING `lastMediaKind`. (§ "Media rendering")
 - **`cmdr-media://` URLs come ONLY from `mediaUrl(token)`**, and the scheme must stay in `tauri.conf.json`'s `img-src` +
   `object-src` CSP. `viewer-media.spec.ts` guards both. (§ "Media rendering")
-- **`user-select: none` on `.file-content` is deliberate**: the native selection loses its anchor on scroll-out. (§
-  Gotchas)
+- **`user-select: none` on `.file-content` is deliberate** (native selection loses its anchor on scroll-out), so Edit >
+  Copy / Select all arrive as events (`viewer-menu-actions.ts`). (§ Gotchas)
 - **Point → caret is geometric and presses are counted off `pointerdown`**: ❌ never the browser caret API (silently
   wrong under `user-select: none`) or a click's `detail`. (§ "Pointer → caret", § "Click cycle")
 - **A content pointer gesture claims DOM focus** (`takeFocus`); without it ⌘C copies the search query. (§ Gotchas)

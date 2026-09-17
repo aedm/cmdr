@@ -22,8 +22,8 @@ use super::{
     COPY_CURRENT_DIR_PATH_ID, EDIT_MENU_ID, EJECT_VOLUME_ID, FAVORITE_REMOVE_ID, FAVORITE_RENAME_ID,
     FAVORITES_ADD_CONTEXT_ID, FUNCTION_KEY_BAR_HIDE_ID, NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_FORGET_SECRET_ID,
     NETWORK_HOST_FORGET_SERVER_ID, SERVER_DISCONNECT_ID, SERVER_EDIT_ID, SERVER_FORGET_ID, SERVER_FORGET_SECRET_ID,
-    SERVER_OPEN_ID, SERVER_PIN_ID, SERVER_UNPIN_ID, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEWER_WORD_WRAP_ID,
-    ViewerMenuItems,
+    SERVER_OPEN_ID, SERVER_PIN_ID, SERVER_UNPIN_ID, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEWER_EDIT_COPY_ID,
+    VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewerMenuItems,
 };
 use super::{frontend_shortcut_to_menu_text, menu_id_to_command};
 
@@ -249,6 +249,21 @@ fn append_server_row_items<R: Runtime>(
     Ok(())
 }
 
+/// The viewer Edit menu's two custom accelerators, in Tauri's accelerator syntax.
+///
+/// They replace what the Predefined items used to carry, so the printed chords don't move: ⌘C /
+/// ⌘A on macOS, Ctrl+C / Ctrl+A on Linux. ❗ `Cmd` binds to SUPER on GTK (muda maps it to META),
+/// which is why this splits per platform rather than sharing one string; `menu_bar.rs`'s header
+/// has the full story.
+#[cfg(target_os = "macos")]
+const VIEWER_COPY_ACCELERATOR: &str = "Cmd+C";
+#[cfg(not(target_os = "macos"))]
+const VIEWER_COPY_ACCELERATOR: &str = "Ctrl+C";
+#[cfg(target_os = "macos")]
+const VIEWER_SELECT_ALL_ACCELERATOR: &str = "Cmd+A";
+#[cfg(not(target_os = "macos"))]
+const VIEWER_SELECT_ALL_ACCELERATOR: &str = "Ctrl+A";
+
 /// Builds a menu for viewer windows (built from scratch on all platforms).
 ///
 /// Returns the menu plus the `Word wrap` CheckMenuItem ref so the caller can flip its checked state
@@ -288,13 +303,25 @@ pub fn build_viewer_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Viewer
     menu.append(&file_menu)?;
 
     // --- Edit menu ---
-    // Predefined items carry the native cut:/copy:/paste:/selectAll: selectors, which
-    // macOS routes to the focused text field (the search box) through the responder
-    // chain. All four are needed: without Cut/Paste, ⌘X/⌘V are dead in the viewer's
-    // search input (the viewer menu is the active app menu while a viewer is focused).
-    // Carries the same ID as the main bar's Edit menu: `cleanup_macos_menus` runs against whichever
-    // bar is installed, and AppKit injects its Writing Tools / AutoFill / Dictation items into this
-    // one too. Only one of the two bars is ever installed at a time, so the shared ID never collides.
+    // A deliberate mix, because the two halves act on different things:
+    //
+    // - Cut and Paste stay Predefined. They carry the native `cut:` / `paste:` selectors, which
+    //   macOS routes down the responder chain to the focused text field — the viewer's search
+    //   box, the only place in the window where they mean anything. Trimming them is what left
+    //   ⌘X / ⌘V dead there once; don't.
+    // - Copy and Select all are Custom items routed to the focused viewer's FRONTEND
+    //   (`ViewerEditAction`). Their native selectors reach the DOM, and the viewed file isn't
+    //   there: `.file-content` is `user-select: none` because the viewer owns an offset-based
+    //   selection model, so `selectAll:` would highlight the status bar and `copy:` would copy
+    //   it. The frontend runs the same two functions ⌘A / ⌘C already run.
+    //
+    // ❗ Their ids are VIEWER-specific, not the main bar's `EDIT_COPY_ID` / `SELECT_ALL_ID`: the
+    // two bars share `EDIT_MENU_ID` and `handle_menu_event` tells the lanes apart by item id.
+    //
+    // The submenu carries the same ID as the main bar's Edit menu: `cleanup_macos_menus` runs
+    // against whichever bar is installed, and AppKit injects its Writing Tools / AutoFill /
+    // Dictation items into this one too. Only one of the two bars is ever installed at a time, so
+    // the shared ID never collides.
     let edit_menu = Submenu::with_id_and_items(
         app,
         EDIT_MENU_ID,
@@ -302,10 +329,22 @@ pub fn build_viewer_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Viewer
         true,
         &[
             &PredefinedMenuItem::cut(app, Some(&menu_t("menu.edit.cut")))?,
-            &PredefinedMenuItem::copy(app, Some(&menu_t("menu.edit.copy")))?,
+            &MenuItem::with_id(
+                app,
+                VIEWER_EDIT_COPY_ID,
+                menu_t("menu.edit.copy"),
+                true,
+                Some(VIEWER_COPY_ACCELERATOR),
+            )?,
             &PredefinedMenuItem::paste(app, Some(&menu_t("menu.edit.paste")))?,
             &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::select_all(app, Some(&menu_t("menu.select.all")))?,
+            &MenuItem::with_id(
+                app,
+                VIEWER_SELECT_ALL_ID,
+                menu_t("menu.select.all"),
+                true,
+                Some(VIEWER_SELECT_ALL_ACCELERATOR),
+            )?,
         ],
     )?;
     menu.append(&edit_menu)?;

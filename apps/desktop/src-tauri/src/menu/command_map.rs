@@ -205,6 +205,17 @@ pub const SORT_DESCENDING_ID: &str = "sort_descending";
 /// Menu item ID for viewer word wrap toggle.
 pub const VIEWER_WORD_WRAP_ID: &str = "viewer_word_wrap";
 
+/// Menu item IDs for the VIEWER menu bar's Edit > Copy and Edit > Select all.
+///
+/// ❗ Deliberately distinct from the main bar's `EDIT_COPY_ID` / `SELECT_ALL_ID`, even though
+/// both bars share `EDIT_MENU_ID`: these route to the focused viewer window
+/// (`ViewerEditAction`), while the main bar's pair routes to the main window or the native
+/// responder chain. Reusing the ids would make one click mean two things. Unmapped in
+/// `menu_id_to_command`: the viewer window has no command registry, so the action travels as a
+/// typed `ViewerEditActionKind` instead.
+pub const VIEWER_EDIT_COPY_ID: &str = "viewer_edit_copy";
+pub const VIEWER_SELECT_ALL_ID: &str = "viewer_select_all";
+
 /// Menu item IDs for tab actions (app menu).
 pub const NEW_TAB_ID: &str = "new_tab";
 pub const PIN_TAB_MENU_ID: &str = "pin_tab_menu";
