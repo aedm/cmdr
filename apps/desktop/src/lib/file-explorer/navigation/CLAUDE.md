@@ -6,9 +6,9 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
 
 - Paths and history: `navigation-history.ts` (immutable stack), `real-folder-history.ts` (the newest non-snapshot entry
   in one), `path-navigation.ts`, `path-resolution.ts`, `keyboard-shortcuts.ts`.
-- `VolumeBreadcrumb.svelte` is the CHIP, hosting `VolumeChooserMenu.svelte` (the switcher) and
-  `FavoritesMenu.svelte` + `favorites-menu.svelte.ts` (⌃D). Plus a helper per concern (grouping, disk space, connection
-  state, eject, labels, badges) and the shared dots (`ConnectionDot`, `UsbSpeedDot`, `DetachButton`).
+- `VolumeBreadcrumb.svelte` is the CHIP, hosting `VolumeChooserMenu.svelte` (the switcher) and `FavoritesMenu.svelte` +
+  `favorites-menu.svelte.ts` (⌃D). Plus a helper per concern (grouping, disk space, connection state, eject, labels,
+  badges) and the shared dots (`ConnectionDot`, `UsbSpeedDot`, `DetachButton`).
 - `server-row-actions.ts` holds a SERVER row's menu, shared with the hub and the palette.
 
 ## Must-knows
@@ -44,8 +44,8 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
 - **The favorite-rename `<input>` holds four guards against leaking keystrokes to the panes**; drop any one and it leaks
   once more.
 - **❗ EVERY menu here is the house `Menu`** (`$lib/ui/DETAILS.md` § Menu): the chip's two, and the drive badge's, which
-  opens INSIDE the switcher and leaves it open. It owns keys, cursor, pointer mode, submenus, reorder,
-  accelerators, placement, and focus. ❌ Never a key handler, a highlight index, or a `getBoundingClientRect` here; a
-  chip menu's `onKey` claims only the keys that SWAP the two.
+  opens INSIDE the switcher and leaves it open. It owns keys, cursor, pointer mode, submenus, reorder, accelerators,
+  placement, and focus. ❌ Never a key handler, a highlight index, or a `getBoundingClientRect` here; a chip menu's
+  `onKey` claims only the keys that SWAP the two.
 
 Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here.
