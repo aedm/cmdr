@@ -58,7 +58,9 @@ describe('ViewerContextMenu outside press', () => {
     // move so drag-select works, and that suppresses the compatibility `mousedown` for
     // the whole gesture. A menu listening for `mousedown` never hears a press on the
     // text and stays open forever.
-    surface.addEventListener('pointerdown', (e) => { e.preventDefault(); })
+    surface.addEventListener('pointerdown', (e) => {
+      e.preventDefault()
+    })
     return surface
   }
 
@@ -90,7 +92,9 @@ describe('ViewerContextMenu outside press', () => {
     // ever moves to opening on `pointerdown`, this catches the menu blinking shut again.
     const onClose = vi.fn()
     const surface = cancelingSurface()
-    surface.addEventListener('contextmenu', () => { mountInto(surface, { onClose }); })
+    surface.addEventListener('contextmenu', () => {
+      mountInto(surface, { onClose })
+    })
 
     surface.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 2 }))
     surface.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
