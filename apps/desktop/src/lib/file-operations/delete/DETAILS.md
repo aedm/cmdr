@@ -76,8 +76,14 @@ read as "already deleting" while the scan was still counting.
   suggesting unlocking via Finder.
 - **No-trash volumes**: detected proactively via `supportsTrash`. The dialog forces permanent mode and shows a warning.
   If `trashItemAtURL` unexpectedly fails on a "supports trash" volume, the per-item error suggests Shift+F8.
-- **Partial failures**: the operation continues; successful items stay deleted/trashed. Errors are reported via
-  `TransferErrorDialog` after completion.
+- **Partial failures**: the operation continues; successful items stay deleted/trashed, and a batch trash whose items
+  were ALL refused ends as a `write-error` the `TransferErrorDialog` renders. A batch that took some and was refused the
+  rest ends as a completion carrying `refused` (`{ itemCount, reason }`, the backend's `strongest_refusal`), and the
+  frontend says both halves: the completion toast drops from success to `warn` and keeps its Undo, and a second `warn`
+  toast beside it names how many items stayed and why. That sentence is `errors.write.trashRefused.message.<reason>`,
+  the error dialog's own wording (`composeTrashRefusedToast` in `transfer-complete-toast.ts`), so the partial ending
+  can't drift from the total one. It rides a toast of its own because the completion sentences carry no terminal
+  punctuation to append to, and no locale would agree on which mark to add.
 
 ## Undo and go-to-trash (the trash completion toast)
 

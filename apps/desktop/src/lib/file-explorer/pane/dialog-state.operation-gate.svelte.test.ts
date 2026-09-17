@@ -256,6 +256,7 @@ describe('steering the operation that IS running', () => {
       bytesProcessed: 2048,
       appearedDuringMove: null,
       topLevelSkipped: null,
+      refused: null,
     })
 
     expect(dialogs.startTransferProgress(copyProps())).toBe('started')

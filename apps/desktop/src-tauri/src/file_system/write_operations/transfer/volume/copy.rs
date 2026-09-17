@@ -1142,6 +1142,7 @@ pub(crate) async fn copy_volumes_with_progress(
             bytes_processed: bytes_done,
             appeared_during_move: None,
             top_level_skipped: None,
+            refused: None,
         });
 
         return Ok(());

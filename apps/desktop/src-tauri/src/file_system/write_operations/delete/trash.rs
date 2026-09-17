@@ -12,8 +12,9 @@ use super::super::event_sinks::OperationEventSink;
 use super::super::mutation_error::MutationError;
 use super::super::state::{WriteOperationState, update_operation_status};
 use super::super::types::{
-    CancelRollback, SourceItemOutcome, TrashRefusalKind, WriteCancelledEvent, WriteCompleteEvent, WriteErrorEvent,
-    WriteOperationError, WriteOperationPhase, WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
+    CancelRollback, SourceItemOutcome, TrashRefusalKind, TrashRefusedItems, WriteCancelledEvent, WriteCompleteEvent,
+    WriteErrorEvent, WriteOperationError, WriteOperationPhase, WriteOperationType, WriteProgressEvent,
+    WriteSourceItemDoneEvent,
 };
 
 // ============================================================================
@@ -501,6 +502,17 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
         return Err(failure);
     }
 
+    // A batch that took some items and was refused others is neither a success
+    // nor a failure. Reporting it as a plain success left the refused items
+    // sitting in the pane with nothing said about them, so the completion carries
+    // them: the count the FE names, and the same `strongest_refusal` the
+    // all-refused error reports, so the wording can offer the same way through.
+    // ❌ Not `files_skipped`, which means a deliberate skip.
+    let refused = (!errors.is_empty()).then(|| TrashRefusedItems {
+        item_count: errors.len() as u32,
+        reason: strongest_refusal(&errors),
+    });
+
     // Emit completion (may include partial errors)
     events.emit_complete(WriteCompleteEvent {
         operation_id: operation_id.to_string(),
@@ -510,6 +522,7 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
         bytes_processed: bytes_done,
         appeared_during_move: None,
         top_level_skipped: None,
+        refused,
     });
 
     // Log partial failures

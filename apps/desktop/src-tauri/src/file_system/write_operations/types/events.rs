@@ -17,7 +17,9 @@ use tauri_specta::Event;
 
 use crate::operation_log::rollback::SkipBreakdown;
 
-use super::{ConflictId, TransferActivity, WriteOperationError, WriteOperationPhase, WriteOperationType};
+use super::{
+    ConflictId, TransferActivity, TrashRefusalKind, WriteOperationError, WriteOperationPhase, WriteOperationType,
+};
 
 // ============================================================================
 // Progress and terminal events
@@ -106,6 +108,32 @@ pub struct WriteCompleteEvent {
     /// summary from `files_skipped` alone. See [`TopLevelSkipped`].
     #[serde(default)]
     pub top_level_skipped: Option<TopLevelSkipped>,
+    /// What a batch trash had to leave where it was. `None` (the ordinary case)
+    /// means every item the operation touched went, and the FE says nothing
+    /// about it. See [`TrashRefusedItems`].
+    #[serde(default)]
+    pub refused: Option<TrashRefusedItems>,
+}
+
+/// The top-level items a batch trash could not take, when the rest of the batch
+/// went through.
+///
+/// ❗ Not a skip, and ❌ never folded into `files_skipped`: a skip is something
+/// the user or a policy CHOSE, while this is the OS turning an item down and the
+/// item still sitting in the pane afterwards. A batch where EVERY item was
+/// refused is a `WriteOperationError::TrashRefused` instead and never reaches a
+/// completion event; this variant exists for the mixed ending, which would
+/// otherwise read as a clean success and say nothing about what stayed.
+///
+/// Typed, never a sentence: the FE words this in ten locales.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct TrashRefusedItems {
+    /// How many top-level items stayed exactly where they were.
+    pub item_count: u32,
+    /// The reason that opens the most doors for the user, picked by the same
+    /// `strongest_refusal` the all-refused error reports.
+    pub reason: TrashRefusalKind,
 }
 
 /// The top-level items an operation landed nothing for, split the way the

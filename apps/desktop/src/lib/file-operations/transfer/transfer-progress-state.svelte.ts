@@ -362,12 +362,16 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
     switch (settled.kind) {
       case 'complete': {
         const event = settled.event
-        log.info('{op} complete: {filesProcessed} {filesNoun}, {bytesProcessed} {bytesNoun}', {
+        // The refused count rides along: a batch trash that left items behind
+        // still ends as a completion, and a log line that only counted what went
+        // reads as a clean run for an operation that wasn't one.
+        log.info('{op} complete: {filesProcessed} {filesNoun}, {bytesProcessed} {bytesNoun}, {refused} refused', {
           op: operationLabel,
           filesProcessed: event.filesProcessed,
           filesNoun: pluralize(event.filesProcessed, 'file'),
           bytesProcessed: event.bytesProcessed,
           bytesNoun: pluralize(event.bytesProcessed, 'byte'),
+          refused: event.refused?.itemCount ?? 0,
         })
         close(() => {
           config.onComplete({
@@ -376,6 +380,7 @@ export function createTransferProgressState(config: TransferProgressStateConfig)
             bytesProcessed: event.bytesProcessed,
             appearedDuringMove: event.appearedDuringMove ?? null,
             topLevelSkipped: event.topLevelSkipped ?? null,
+            refused: event.refused ?? null,
           })
         })
         return

@@ -99,6 +99,37 @@ bails would fire it once per stacked frame. It returns `Err(Cancelled)` silently
 through `emit_cancelled_if_aborted`. **Any new per-level-cancel scan owes the same split**, whichever operation adds it.
 Pinned by `delete_cancel_during_scan_emits_write_cancelled`.
 
+## What a batch trash reports (`trash_files_with_progress`)
+
+`trashItemAtURL` is atomic per top-level item, so a batch has three endings, not two, and each one has to be readable
+from the terminal event alone.
+
+- **Every item taken** → `write-complete` with `refused: None`. A plain success.
+- **Every item refused** → `write-error` carrying `WriteOperationError::TrashRefused { item_count, reason, message }`,
+  where `reason` is `strongest_refusal` over the per-item reasons: the one that opens the most doors, ❌ not the most
+  common one, since a batch with a single permission refusal among vanished files is still a batch a permission grant
+  might unblock. The error dialog renders it.
+- **Some taken, some refused** → `write-complete` with `refused: Some(TrashRefusedItems { item_count, reason })`, the
+  same `strongest_refusal`, so the mixed ending explains itself exactly as the total one does.
+
+**Why `refused` exists as its own field.** The mixed ending used to emit a bare completion with `files_skipped: 0` and
+nothing else: two items in, one trashed, and the terminal event said "1 file, 0 skipped" while the refused one sat
+untouched in the pane (a Dropbox online-only file beside an ordinary one, 2026-09-17). ❌ It can't ride `files_skipped`:
+a skip is something the user or a policy CHOSE, and the frontend words the two differently. ❌ And it can't become a
+whole-batch error: the items that DID go are in the trash, the journal holds exactly those, and the undo has to reverse
+what happened rather than what was asked for.
+
+**The journal is per item, which is what keeps the accounting honest.** `record_local_leaf` and the buffered
+`search_only` leaves are persisted only on a successful `move_to_trash_sync`, so a refused item leaves no row: a
+rollback restores what really moved, and a search snapshot never reports a trash that never happened. `items_done`
+likewise counts successes alone, so `files_processed` and `bytes_processed` describe what landed. Beyond the summary,
+every refused item also emits its own `Failed` `write-source-item-done` event, since the terminal event speaks for the
+batch and not for any one source. Pinned by `a_partly_refused_batch_reports_what_it_left_behind` and
+`a_batch_the_os_took_in_full_reports_nothing_left_behind` in `trash_tests.rs`.
+
+Frontend counterpart (which toast, at which level):
+`apps/desktop/src/lib/file-operations/delete/DETAILS.md` § Edge cases.
+
 ## Where a trash is (`trash_dir_for_path`)
 
 macOS keeps ONE trash per volume: `~/.Trash` for the boot volume, `<mount point>/.Trashes/<uid>` for everything else.

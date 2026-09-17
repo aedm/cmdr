@@ -172,6 +172,7 @@ pub(super) fn emit_archive_terminal(
             bytes_processed: final_progress.bytes_total,
             appeared_during_move: None,
             top_level_skipped: None,
+            refused: None,
         }),
         Err(PlanError::Cancelled) => events.emit_cancelled(WriteCancelledEvent {
             operation_id: op_id.to_string(),

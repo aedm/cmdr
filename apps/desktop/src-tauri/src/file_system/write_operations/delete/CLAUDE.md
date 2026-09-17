@@ -13,16 +13,15 @@ oracle-aware), and OS-native trash.
   `volume_id`. The volume walker asks `try_get_authoritative_listing` before every `list_directory`, so a subtree open
   in another pane is cache-fed. DETAILS § "Volume-delete internals".
 - **`trash.rs`**: `move_to_trash_sync()` (macOS `trashItemAtURL`; Linux `trash` crate; reused by
-  `commands/rename.rs`), `trash_files_with_progress()` (batch, per-item progress, cancel, partial failure), and
+  `commands/rename.rs`), `trash_files_with_progress()` (batch, per-item progress, cancel), and
   `trash_dir_for_path()` (❌ keep its ancestor walk, DETAILS § Where a trash is). Refusals are a typed `MutationError`,
   ❌ never a sentence; every item it can't take emits its own `Failed` source-item event. Existence checks use
   `symlink_metadata()`.
 - **`cloud_trash.rs`**: `routing_for_selection()` behind the `trash_routing_for_paths` command, answering whether F8
-  must run as a permanent delete. DETAILS § "A trash in a cloud-storage folder becomes a delete".
-- **`volume_start.rs`**: a volume delete's managed lifecycle, here rather than `../mod.rs` because its body is `async`.
+  runs as a permanent delete. DETAILS § "A trash in a cloud-storage folder becomes a delete".
+- **`volume_start.rs`**: a volume delete's managed lifecycle (here, not `../mod.rs`, because its body is `async`).
   DETAILS § "The volume delete's own lifecycle".
-- Test siblings: `delete_integration_test.rs`, `delete_volume_reuse_tests.rs`, `preview_binding_tests.rs`,
-  `volume_cancel_tests.rs`, `delete_cancel_tests.rs`, `trash_tests.rs`.
+- Test siblings: the `*_tests.rs` / `*_test.rs` files beside the code.
 
 ## Must-knows
 
@@ -39,21 +38,20 @@ oracle-aware), and OS-native trash.
 - **❌ Never resolve a top-level source's type with `.unwrap_or(false)`.** Hand the `Option` to
   `scan_volume_recursive`, which propagates a failed probe: a guessed "file" books zero bytes for a whole tree.
 - **Trash has no scan phase**: `trashItemAtURL` is atomic per top-level item, so progress tracks items (bytes from
-  pre-computed sizes), and partial failure is supported.
+  pre-computed sizes). A PARTLY refused batch still COMPLETES, and its event carries `refused` (count +
+  `strongest_refusal`): ❌ never `None`, or the ending reads as a clean success.
 - **A trash inside `~/Library/CloudStorage/<domain>/` runs as a permanent delete**, but ONLY under a provider we know
   by name: the dialog promises the service kept a copy, and `MacDroid-<device>` there is an Android phone. ❌ Never
   widen it to "any location with no trash" either: a fresh USB stick answers the same and would lose data.
   All-or-nothing across the selection; ❌ not a volume question. DETAILS.
 - **A refusal carries a typed `TrashRefusalKind`, read from the `NSError` DOMAIN + CODE**, ❌ never its localized words
   (`error-string-match` forbids it). A failed batch is `WriteOperationError::TrashRefused`, ❌ not an `IoError` (one
-  flattened sentence leaves the dialog only "try again"), reporting `strongest_refusal`, the reason that opens the most
-  doors, ❌ not the most common one.
+  flattened sentence leaves the dialog only "try again"), reporting `strongest_refusal`, ❌ not the most common one.
 - **Delete and trash don't `fsync`, and ❌ never a global `sync(2)`**: a non-durable delete is annoyance-class, and that
-  `sync` stalled every app on the box without making "complete" mean "durable". Pinned by
+  `sync` stalled every app on the box without making "complete" durable. Pinned by
   `tests.rs::no_global_sync_or_spawn_async_sync_in_write_operations`.
 - **A recursive scan that bails with `Err(Cancelled)` must NOT emit `write-cancelled`; its top-level caller does**, via
   `emit_cancelled_if_aborted`. `scan_volume_recursive` checks cancel per level, so emitting at the bail site fires the
   terminal event once per stacked frame. Pinned by `delete_cancel_during_scan_emits_write_cancelled`.
 
-Full details (scan-preview reuse + its data-safety contract, the no-`fsync` rationale, the cloud-storage routing):
-`DETAILS.md`.
+Depth: `DETAILS.md`.

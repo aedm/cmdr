@@ -24,9 +24,12 @@ import {
   getForegroundOperationId,
   setForegroundFailureId,
 } from '$lib/file-operations/foreground-operation.svelte'
-import { addToast } from '$lib/ui/toast'
+import { addToast, type ToastLevel } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
-import { composeTransferCompleteToast } from '$lib/file-operations/transfer/transfer-complete-toast'
+import {
+  composeTransferCompleteToast,
+  composeTrashRefusedToast,
+} from '$lib/file-operations/transfer/transfer-complete-toast'
 import { getTechnicalDetails } from '$lib/file-operations/transfer/transfer-error-messages'
 import TrashCompleteToastContent from '$lib/file-operations/delete/TrashCompleteToastContent.svelte'
 import { getAppLogger } from '$lib/logging/logger'
@@ -147,6 +150,52 @@ export function createDialogState(deps: DialogStateDeps) {
   function refuseOperationStart(blockedBy: SoftDialogId, mcpRequestId: string | undefined): OperationStartVerdict {
     announceOperationBlocked(blockedBy, mcpRequestId)
     return { blockedBy }
+  }
+
+  /**
+   * What a finished operation leaves on screen.
+   *
+   * The completion sentence always, and — for a batch trash the OS refused part
+   * of — a second, `warn`-level toast naming what stayed behind. Two toasts
+   * rather than one clause, because the completion carries Undo and this one
+   * carries a warning, and they're read (and dismissed) separately.
+   *
+   * A trash gets the Undo / "Go to trash" toast and a longer beat to reach them
+   * (hovering pauses the timer, so the number is only the window in which the
+   * pointer has to arrive). Both actions need the journaled operation, so a trash
+   * that somehow has no id falls back to the plain toast rather than offering
+   * buttons that would do nothing. 7s elsewhere: the default 4s reads as a
+   * flicker for anyone still parsing a mixed sentence's second clause.
+   */
+  function raiseCompletionToasts(
+    op: TransferOperationType,
+    settledOperationId: string | null,
+    message: string,
+    level: ToastLevel,
+    refusedMessage: string | null,
+  ): void {
+    if (op === 'trash' && settledOperationId) {
+      addToast(TrashCompleteToastContent, {
+        level,
+        timeoutMs: 10000,
+        props: {
+          message,
+          operationId: settledOperationId,
+          // Only used when the journal recorded no in-trash location, to pick
+          // WHICH volume's trash to open. The focused pane is the honest
+          // stand-in for a birth context that went missing: it's the pane the
+          // trash was started from.
+          sourceFolderPath: transferProgressProps?.sourceFolderPath ?? deps.getFocusedPaneRef()?.getCurrentPath() ?? '',
+          explorer: deps.getExplorer(),
+        },
+      })
+    } else {
+      addToast(message, { level, timeoutMs: 7000 })
+    }
+    // Last, so it lands newest. 10s to match the trash toast it stands beside.
+    if (refusedMessage !== null) {
+      addToast(refusedMessage, { level: 'warn', timeoutMs: 10000 })
+    }
   }
 
   /** Opens the error dialog, claiming the failure so the corner chip and the
@@ -419,6 +468,7 @@ export function createDialogState(deps: DialogStateDeps) {
       bytesProcessed,
       appearedDuringMove,
       topLevelSkipped,
+      refused,
     }: TransferCompletePayload) {
       const props = transferProgressProps
       const op = props?.operationType ?? 'copy'
@@ -435,7 +485,7 @@ export function createDialogState(deps: DialogStateDeps) {
       // started. `$lib/search/snapshot-purge.ts` reads the per-path outcome
       // stream instead, for every window and every ending.
       log.info(
-        `${opLabel} complete: ${String(filesProcessed)} files (${String(filesSkipped)} skipped, ${formatByteSize(bytesProcessed)})`,
+        `${opLabel} complete: ${String(filesProcessed)} files (${String(filesSkipped)} skipped, ${String(refused?.itemCount ?? 0)} refused, ${formatByteSize(bytesProcessed)})`,
       )
       // Top-level counts for the per-type split ("Moved 1 file and 3 folders").
       // F5/F6, drag-and-drop, and clipboard paste all supply these now; absent
@@ -449,39 +499,18 @@ export function createDialogState(deps: DialogStateDeps) {
         appearedDuringMove,
         topLevelSkipped,
       })
+      // A trash the OS refused part of still ends as a completion, so without
+      // this it said "Moved 1 file to trash" in success green and the item still
+      // in the pane went unmentioned. It takes the level down with it: nothing
+      // about a partly refused batch may read as a clean success.
+      //
       // `info` for the all-skipped case (nothing actually moved/copied — neutral
       // outcome, not a success). `success` everywhere else, including mixed: the
       // user's intent landed at the target.
+      const refusedMessage = composeTrashRefusedToast(refused)
       const allSkipped = filesSkipped > 0 && filesSkipped === filesProcessed
-      // Bump the timeout for the long mixed/all-skipped sentences (default 4s reads as
-      // a flicker for users still parsing the second clause). 7s comfortably covers the
-      // longest variant without staying around long enough to nag.
-      //
-      // A trash gets the same sentence with Undo and "Go to trash" beside it, and a
-      // longer beat to reach them (hovering pauses the timer, so this is only the
-      // window in which the pointer has to arrive). Both actions need the journaled
-      // operation, so a trash that somehow has no id falls back to the plain toast
-      // rather than offering buttons that would do nothing.
-      if (op === 'trash' && settledOperationId) {
-        addToast(TrashCompleteToastContent, {
-          // Same honesty as the plain toast below: nothing actually moved is a
-          // neutral outcome, not a success, whatever the buttons beside it offer.
-          level: allSkipped ? 'info' : 'success',
-          timeoutMs: 10000,
-          props: {
-            message: toastMessage,
-            operationId: settledOperationId,
-            // Only used when the journal recorded no in-trash location, to pick
-            // WHICH volume's trash to open. The focused pane is the honest
-            // stand-in for a birth context that went missing: it's the pane the
-            // trash was started from.
-            sourceFolderPath: props?.sourceFolderPath ?? deps.getFocusedPaneRef()?.getCurrentPath() ?? '',
-            explorer: deps.getExplorer(),
-          },
-        })
-      } else {
-        addToast(toastMessage, { level: allSkipped ? 'info' : 'success', timeoutMs: 7000 })
-      }
+      const completeLevel: ToastLevel = refusedMessage !== null ? 'warn' : allSkipped ? 'info' : 'success'
+      raiseCompletionToasts(op, settledOperationId, toastMessage, completeLevel, refusedMessage)
 
       paneEffects.refreshPanesAfterTransfer()
       paneEffects.clearSourcePaneAfterTransfer()
