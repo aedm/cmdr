@@ -28,6 +28,9 @@ let clicks: string[] = []
 /** Render timers still pending, cleared in `afterEach` so none outlives the DOM. */
 let timers: ReturnType<typeof setTimeout>[] = []
 
+/** Every `evaluate` payload the helper sent, so its round trips can be counted. */
+let payloads: string[] = []
+
 /** Replaces pane 0's rows with fresh elements, the way a landed listing re-renders them. */
 function renderRows(): void {
   const list = document.querySelector('.file-pane .rows')
@@ -52,6 +55,7 @@ function scheduleRender(delayMs: number): void {
 /** A `PageLike` running each payload against happy-dom, the way the webview would. */
 const page = {
   evaluate: (js: string): Promise<unknown> => {
+    payloads.push(js)
     // eslint-disable-next-line @typescript-eslint/no-implied-eval -- the evaluate payload IS the code under test; the whole point is to run it verbatim.
     const run = new Function(`return ${js}`) as () => unknown
     return Promise.resolve(run())
@@ -62,6 +66,7 @@ describe('clickEntryInPane', () => {
   beforeEach(() => {
     clicks = []
     timers = []
+    payloads = []
     document.body.innerHTML = '<div class="file-pane"><div class="rows"></div></div>'
   })
 
@@ -75,6 +80,18 @@ describe('clickEntryInPane', () => {
 
     await clickEntryInPane(page, 0)
 
+    expect(clicks).toEqual(['..'])
+  })
+
+  it('finds the row and clicks it in one round trip, so a re-render cannot land between the two', async () => {
+    // The bug this forbids: checking the row exists, then clicking it in a SECOND
+    // `evaluate`. A listing landing in the gap leaves the click aimed at a row that
+    // has been replaced, which flaked the i18n staging spec on a loaded run.
+    renderRows()
+
+    await clickEntryInPane(page, 0)
+
+    expect(payloads).toHaveLength(1)
     expect(clicks).toEqual(['..'])
   })
 
