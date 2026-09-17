@@ -9,7 +9,7 @@ One Go file per check, registered in `registry.go`'s `AllChecks`. Runner: `../CL
   (the `NeedsContainers` vocabulary), `allowlist.go` / `directives.go` (shrink-wrap and opt-out tracking).
 - One `{app}-{name}.go` per check. `test-log.go` and its parsers hold the per-test record vocabulary; `e2e-build.go`
   produces the Playwright lane's binary.
-- Warn-only scanners keep a sibling `<check>-allowlist.json`; not every file here is a registry check. Inventory and
+- Ratcheting scanners keep a sibling `<check>-allowlist.json`; not every file here is a registry check. Inventory and
   layout rules: DETAILS § "Key files".
 
 ## Must-knows
@@ -38,7 +38,8 @@ One Go file per check, registered in `registry.go`'s `AllChecks`. Runner: `../CL
 - **A new cargo check that COMPILES declares `Exclusive: ResourceCargoBuildDir`** (`common.go`), or it blocks on cargo's
   build-directory lock while holding CPU weight.
 - **Wire allowlist staleness from day one**: reuse `directiveTracker` / `writeJSONAllowlist`, name the file via
-  `runnerDataInputs`, and get David's OK before adding or raising an entry (`.claude/rules/file-length-allowlist.md`).
+  `runnerDataInputs`, and give every entry a mandatory `reason`. Who adds one:
+  `.claude/rules/file-length-allowlist.md`.
 - **Error output goes through `indentOutput()`**; success messages carry stats ("12 tests passed"), not "OK". Return
   `Skipped(reason)` when it can't run, `SuccessWithChanges` when it fixed something.
 - **`svelte-tests` coverage needs a per-invocation temp `reportsDirectory`** (`VITEST_COVERAGE_DIR`): a fixed path lets

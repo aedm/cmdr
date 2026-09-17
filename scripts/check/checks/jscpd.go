@@ -18,8 +18,9 @@ import (
 // has — nobody refactors a percentage — so the percentage rides along in the
 // headline while the list carries the value.
 //
-// Warn-only, with a per-lane allowlist that turns the standing inventory (a wall
-// nobody reads) into a delta (a handful of pairs somebody can act on today).
+// Fails on a new or grown pair, with a per-lane allowlist that turns the
+// standing inventory (a wall nobody reads) into a delta (a handful of pairs
+// somebody can act on today).
 
 // jscpdVersion pins the jscpd CLI. It MUST stay pinned (repo policy:
 // checks/CLAUDE.md § "every tool install pins --version"). An unpinned `npx
@@ -126,7 +127,7 @@ type jscpdReport struct {
 // duplication belongs to the generator's output shape rather than to anybody's
 // copy-paste. A number there would be a lie twice over — nobody can act on it,
 // and it would have to be re-approved every time the generator's input grows. So
-// exempt pairs never warn and never carry a count, and each needs a reason.
+// exempt pairs never fail and never carry a count, and each needs a reason.
 type jscpdAllowlist struct {
 	Comment string                    `json:"$comment,omitempty"`
 	Exempt  map[string]string         `json:"exempt,omitempty"`
@@ -134,16 +135,15 @@ type jscpdAllowlist struct {
 }
 
 // jscpdPairLimit is one `pairs` entry: the duplicated line count the pair may
-// carry, plus an optional reason for why that duplication stays.
+// carry, plus the reason it carries it. The reason is mandatory (the lane fails
+// on an empty one), and a `TODO: ` prefix says the duplication should be
+// extracted rather than kept, with the reason saying how. Same contract as
+// `fileLengthLimit` in file-length.go.
 //
-// **It reads and writes two JSON shapes**, and which one it writes depends only
-// on whether there's a reason: a bare number (`"a.rs ↔ b.rs": 14`) for the
-// ordinary pair, whose duplication is a standing debt waiting for somebody to
-// extract it, and an object (`{"lines": 62, "reason": "…"}`) for the pair
-// somebody looked at and deliberately accepted. Most entries want no reason
-// (the number IS the whole story), so the bare form stays the default and the
-// file keeps its one-line-per-pair shape; paying an object for every entry to
-// make a handful of them explainable is how a legible file turns into a wall.
+// **It reads two JSON shapes and writes one.** A bare number (`"a.rs ↔ b.rs":
+// 14`) is the legacy form, taken so the lane can name the entry that needs a
+// reason instead of failing to parse the whole file; everything it writes is an
+// object.
 //
 // The reason rides on the entry rather than in a parallel map so the two can't
 // drift: shrink-wrap ratchets and drops entries, and a second map would need the
@@ -157,13 +157,10 @@ type jscpdPairLimit struct {
 // jscpdPairLimit's own marshaller from recursing into itself.
 type jscpdPairLimitObject struct {
 	Lines  int    `json:"lines"`
-	Reason string `json:"reason,omitempty"`
+	Reason string `json:"reason"`
 }
 
 func (l jscpdPairLimit) MarshalJSON() ([]byte, error) {
-	if l.Reason == "" {
-		return json.Marshal(l.Lines)
-	}
 	return json.Marshal(jscpdPairLimitObject(l))
 }
 
@@ -533,9 +530,17 @@ func runJscpd(ctx *CheckContext, lane jscpdLane) ([]jscpdClone, jscpdTotals, err
 	return parseJscpdReport(data)
 }
 
-// runJscpdLane is the whole check body, shared by both lanes: measure, shrink-wrap
-// the allowlist, and either report the delta (warn) or the standing inventory
-// (pass).
+// runJscpdLane is the whole check body, shared by both lanes: measure,
+// shrink-wrap the allowlist, and either fail on the delta or report the standing
+// inventory.
+//
+// FAILS on a pair over its allowed line count, and on an allowlist entry with no
+// reason. Duplication is the fuzziest of the three length-ish gates (a token
+// threshold, so a cosmetic edit can push a pair over with no new copy-paste), so
+// expect more reasoned entries here than splits; the point is that the call gets
+// made and recorded by whoever caused it, rather than surviving as a warn.
+//
+// The shrink-wrap path stays advisory, same as file-length.
 func runJscpdLane(ctx *CheckContext, lane jscpdLane) (CheckResult, error) {
 	clones, totals, err := runJscpd(ctx, lane)
 	if err != nil {
@@ -546,13 +551,18 @@ func runJscpdLane(ctx *CheckContext, lane jscpdLane) (CheckResult, error) {
 
 	allowlist := loadJscpdAllowlist(ctx.RootDir, lane.allowlistName)
 	staleChanges := shrinkwrapJscpdAllowlist(ctx.RootDir, &allowlist, report)
-	madeChanges := false
 	if len(staleChanges) > 0 && !ctx.CI {
 		if err := writeJSONAllowlist(jscpdAllowlistPath(ctx.RootDir, lane.allowlistName), allowlist); err != nil {
 			return CheckResult{}, err
 		}
 		reformatWithOxfmt(ctx.RootDir, jscpdAllowlistRelPath(lane.allowlistName))
-		madeChanges = true
+	}
+
+	if missing := reasonlessJscpdPairs(allowlist); len(missing) > 0 {
+		return CheckResult{}, fmt.Errorf(
+			"%d allowlist %s no reason:\n  - %s\nevery `pairs` entry is {\"lines\": N, \"reason\": \"…\"}: say why this duplication stays, or `TODO: <what to extract, and where>`",
+			len(missing), Pluralize(len(missing), "entry has", "entries have"), strings.Join(missing, "\n  - "),
+		)
 	}
 
 	var staleMsg string
@@ -568,6 +578,9 @@ func runJscpdLane(ctx *CheckContext, lane jscpdLane) (CheckResult, error) {
 
 	if len(regressions) == 0 {
 		inventory := formatJscpdInventory(report, lane.what)
+		if todos := countTodoJscpdPairs(allowlist); todos > 0 {
+			inventory += fmt.Sprintf("\n  %d %s marked TODO", todos, Pluralize(todos, "pair", "pairs"))
+		}
 		if staleMsg != "" {
 			msg := inventory + "\n" + staleMsg
 			if ctx.CI {
@@ -582,12 +595,27 @@ func runJscpdLane(ctx *CheckContext, lane jscpdLane) (CheckResult, error) {
 	if staleMsg != "" {
 		msg += "\n" + staleMsg
 	}
-	return CheckResult{
-		Code:        ResultWarning,
-		Message:     msg,
-		MadeChanges: madeChanges,
-		Total:       totals.clones,
-		Issues:      len(regressions),
-		Changes:     -1,
-	}, nil
+	return CheckResult{}, fmt.Errorf("%s", msg)
+}
+
+// reasonlessJscpdPairs and countTodoJscpdPairs mirror their file-length
+// counterparts. See `reasonlessAllowlistEntries`.
+func reasonlessJscpdPairs(list jscpdAllowlist) []string {
+	var missing []string
+	for _, pair := range sortedKeys(list.Pairs) {
+		if strings.TrimSpace(list.Pairs[pair].Reason) == "" {
+			missing = append(missing, pair)
+		}
+	}
+	return missing
+}
+
+func countTodoJscpdPairs(list jscpdAllowlist) int {
+	n := 0
+	for _, limit := range list.Pairs {
+		if strings.HasPrefix(strings.TrimSpace(limit.Reason), fileLengthTodoPrefix) {
+			n++
+		}
+	}
+	return n
 }

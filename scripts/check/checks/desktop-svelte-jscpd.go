@@ -43,8 +43,8 @@ var frontendJscpdLane = jscpdLane{
 }
 
 // RunJscpdFrontend reports copy-paste between frontend files: which two files say
-// the same thing, at which lines. Warn-only, gated by
-// `jscpd-frontend-allowlist.json`.
+// the same thing, at which lines. Fails on what `jscpd-frontend-allowlist.json`
+// does not already cover.
 func RunJscpdFrontend(ctx *CheckContext) (CheckResult, error) {
 	return runJscpdLane(ctx, frontendJscpdLane)
 }

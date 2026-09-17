@@ -1,7 +1,6 @@
 package checks
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -107,21 +106,19 @@ func TestRunFileLength_DetectsLongFiles(t *testing.T) {
 	}
 
 	ctx := &CheckContext{RootDir: tmp}
-	result, err := RunFileLength(ctx)
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunFileLength(ctx)
+	if err == nil {
+		t.Fatal("expected a failure for the over-threshold file")
 	}
-	if result.Code != ResultWarning {
-		t.Errorf("expected warning, got code %d", result.Code)
+	msg := err.Error()
+	if !strings.Contains(msg, "long.go") {
+		t.Errorf("expected message to contain 'long.go', got: %s", msg)
 	}
-	if !strings.Contains(result.Message, "long.go") {
-		t.Errorf("expected message to contain 'long.go', got: %s", result.Message)
+	if strings.Contains(msg, "short.go") {
+		t.Errorf("expected message to NOT contain 'short.go', got: %s", msg)
 	}
-	if strings.Contains(result.Message, "short.go") {
-		t.Errorf("expected message to NOT contain 'short.go', got: %s", result.Message)
-	}
-	if strings.Contains(result.Message, "long.txt") {
-		t.Errorf("expected message to NOT contain 'long.txt' (non-source), got: %s", result.Message)
+	if strings.Contains(msg, "long.txt") {
+		t.Errorf("expected message to NOT contain 'long.txt' (non-source), got: %s", msg)
 	}
 }
 
@@ -155,18 +152,16 @@ func TestRunFileLength_SkipsGitignoredFiles(t *testing.T) {
 	// Only tracked.go gets added to the index; the generated tree stays ignored.
 	gitRun(t, tmp, "add", ".gitignore", "tracked.go")
 
-	result, err := RunFileLength(&CheckContext{RootDir: tmp})
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunFileLength(&CheckContext{RootDir: tmp})
+	if err == nil {
+		t.Fatal("expected a failure for the tracked long file")
 	}
-	if result.Code != ResultWarning {
-		t.Fatalf("expected warning for the tracked long file, got code %d: %s", result.Code, result.Message)
+	msg := err.Error()
+	if !strings.Contains(msg, "tracked.go") {
+		t.Errorf("expected tracked.go in message, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, "tracked.go") {
-		t.Errorf("expected tracked.go in message, got: %s", result.Message)
-	}
-	if strings.Contains(result.Message, "build.html") {
-		t.Errorf("expected gitignored build.html to be excluded, got: %s", result.Message)
+	if strings.Contains(msg, "build.html") {
+		t.Errorf("expected gitignored build.html to be excluded, got: %s", msg)
 	}
 }
 
@@ -209,16 +204,16 @@ func TestRunFileLength_ColorsYellowAndRed(t *testing.T) {
 	}
 
 	ctx := &CheckContext{RootDir: tmp}
-	result, err := RunFileLength(ctx)
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunFileLength(ctx)
+	if err == nil {
+		t.Fatal("expected a failure for the over-threshold files")
 	}
-
-	if !strings.Contains(result.Message, ansiYellow+"(900 lines") {
-		t.Errorf("expected yellow color for 900-line file, got: %s", result.Message)
+	msg := err.Error()
+	if !strings.Contains(msg, ansiYellow+"(900 lines") {
+		t.Errorf("expected yellow color for 900-line file, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, ansiRed+"(1300 lines") {
-		t.Errorf("expected red color for 1300-line file, got: %s", result.Message)
+	if !strings.Contains(msg, ansiRed+"(1300 lines") {
+		t.Errorf("expected red color for 1300-line file, got: %s", msg)
 	}
 }
 
@@ -233,17 +228,18 @@ func TestRunFileLength_SortedAlphabetically(t *testing.T) {
 	}
 
 	ctx := &CheckContext{RootDir: tmp}
-	result, err := RunFileLength(ctx)
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunFileLength(ctx)
+	if err == nil {
+		t.Fatal("expected a failure for the over-threshold files")
 	}
+	msg := err.Error()
 
-	aIdx := strings.Index(result.Message, "a.go")
-	bIdx := strings.Index(result.Message, "b.go")
-	cIdx := strings.Index(result.Message, "c.go")
+	aIdx := strings.Index(msg, "a.go")
+	bIdx := strings.Index(msg, "b.go")
+	cIdx := strings.Index(msg, "c.go")
 
 	if aIdx == -1 || bIdx == -1 || cIdx == -1 {
-		t.Fatalf("expected all files in message, got: %s", result.Message)
+		t.Fatalf("expected all files in message, got: %s", msg)
 	}
 	if !(aIdx < bIdx && bIdx < cIdx) {
 		t.Errorf("expected alphabetical order (a < b < c), got a=%d, b=%d, c=%d", aIdx, bIdx, cIdx)
@@ -262,23 +258,24 @@ func TestRunFileLength_MessageFormat(t *testing.T) {
 	}
 
 	ctx := &CheckContext{RootDir: tmp}
-	result, err := RunFileLength(ctx)
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunFileLength(ctx)
+	if err == nil {
+		t.Fatal("expected a failure for the over-threshold file")
 	}
+	msg := err.Error()
 
 	// 4250 bytes → 4 kB (4250/1000), ~1k tokens (4250/4=1062, 1062/1000=1k)
-	if !strings.Contains(result.Message, "850 lines") {
-		t.Errorf("expected '850 lines' in message, got: %s", result.Message)
+	if !strings.Contains(msg, "850 lines") {
+		t.Errorf("expected '850 lines' in message, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, "4 kB") {
-		t.Errorf("expected '4 kB' in message, got: %s", result.Message)
+	if !strings.Contains(msg, "4 kB") {
+		t.Errorf("expected '4 kB' in message, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, "~1k tokens") {
-		t.Errorf("expected '~1k tokens' in message, got: %s", result.Message)
+	if !strings.Contains(msg, "~1k tokens") {
+		t.Errorf("expected '~1k tokens' in message, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, "1 new file over the length limit (800 lines, 1,200 for tests)") {
-		t.Errorf("expected the length-limit summary line, got: %s", result.Message)
+	if !strings.Contains(msg, "1 new file over the length limit (800 lines, 1,200 for tests)") {
+		t.Errorf("expected the length-limit summary line, got: %s", msg)
 	}
 }
 
@@ -355,15 +352,16 @@ func TestRunFileLength_TestFileHasAYellowPhase(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := RunFileLength(&CheckContext{RootDir: tmp})
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunFileLength(&CheckContext{RootDir: tmp})
+	if err == nil {
+		t.Fatal("expected a failure for the over-threshold test files")
 	}
-	if !strings.Contains(result.Message, ansiYellow+"(1300 lines") {
-		t.Errorf("expected yellow for a 1,300-line test file (over warn, under critical), got: %s", result.Message)
+	msg := err.Error()
+	if !strings.Contains(msg, ansiYellow+"(1300 lines") {
+		t.Errorf("expected yellow for a 1,300-line test file (over warn, under critical), got: %s", msg)
 	}
-	if !strings.Contains(result.Message, ansiRed+"(1900 lines") {
-		t.Errorf("expected red for a 1,900-line test file (over its critical threshold), got: %s", result.Message)
+	if !strings.Contains(msg, ansiRed+"(1900 lines") {
+		t.Errorf("expected red for a 1,900-line test file (over its critical threshold), got: %s", msg)
 	}
 }
 
@@ -383,18 +381,16 @@ func TestRunFileLength_TestFileGetsHigherThreshold(t *testing.T) {
 	}
 
 	ctx := &CheckContext{RootDir: tmp}
-	result, err := RunFileLength(ctx)
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunFileLength(ctx)
+	if err == nil {
+		t.Fatal("expected a failure for the over-threshold source file")
 	}
-	if result.Code != ResultWarning {
-		t.Fatalf("expected warning for the over-threshold source file, got code %d: %s", result.Code, result.Message)
+	msg := err.Error()
+	if strings.Contains(msg, "big_test.go") {
+		t.Errorf("expected big_test.go (1000 lines, under the 1,200 test threshold) to be excluded, got: %s", msg)
 	}
-	if strings.Contains(result.Message, "big_test.go") {
-		t.Errorf("expected big_test.go (1000 lines, under the 1,200 test threshold) to be excluded, got: %s", result.Message)
-	}
-	if !strings.Contains(result.Message, "big.go") {
-		t.Errorf("expected big.go (1000 lines, over the 800 source threshold) in message, got: %s", result.Message)
+	if !strings.Contains(msg, "big.go") {
+		t.Errorf("expected big.go (1000 lines, over the 800 source threshold) in message, got: %s", msg)
 	}
 }
 
@@ -422,25 +418,29 @@ func TestRunFileLength_ShrinkwrapUsesTestThreshold(t *testing.T) {
 	}
 }
 
+// writeAllowlist writes an allowlist whose entries all carry a placeholder
+// reason, for the tests that care about line counts rather than reasons. The
+// tests about the reason itself use writeAllowlistWithReasons.
 func writeAllowlist(t *testing.T, dir string, files map[string]int) {
+	t.Helper()
+	withReasons := make(map[string]fileLengthLimit, len(files))
+	for path, lines := range files {
+		withReasons[path] = fileLengthLimit{Lines: lines, Reason: "test fixture"}
+	}
+	writeAllowlistWithReasons(t, dir, withReasons)
+}
+
+// writeAllowlistWithReasons writes the `files` section verbatim, including an
+// entry with an empty reason (the legacy bare-number form, which the check
+// reports rather than accepts).
+func writeAllowlistWithReasons(t *testing.T, dir string, files map[string]fileLengthLimit) {
 	t.Helper()
 	checksDir := filepath.Join(dir, "scripts", "check", "checks")
 	if err := os.MkdirAll(checksDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	// Build JSON manually to keep it simple
-	var sb strings.Builder
-	sb.WriteString(`{"files":{`)
-	first := true
-	for path, lines := range files {
-		if !first {
-			sb.WriteString(",")
-		}
-		sb.WriteString(fmt.Sprintf(`"%s":%d`, path, lines))
-		first = false
-	}
-	sb.WriteString("}}")
-	if err := os.WriteFile(filepath.Join(checksDir, "file-length-allowlist.json"), []byte(sb.String()), 0644); err != nil {
+	list := fileLengthAllowlist{Files: files}
+	if err := writeJSONAllowlist(filepath.Join(checksDir, "file-length-allowlist.json"), list); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -501,21 +501,19 @@ func TestRunFileLength_AllowlistExceeded(t *testing.T) {
 	writeAllowlist(t, tmp, map[string]int{"grew.go": 900})
 
 	ctx := &CheckContext{RootDir: tmp}
-	result, err := RunFileLength(ctx)
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunFileLength(ctx)
+	if err == nil {
+		t.Fatal("expected a failure: the file outgrew its allowlisted count plus the buffer")
 	}
-	if result.Code != ResultWarning {
-		t.Errorf("expected warning (file exceeded allowlist + buffer), got code %d", result.Code)
+	msg := err.Error()
+	if !strings.Contains(msg, "grew.go") {
+		t.Errorf("expected 'grew.go' in message, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, "grew.go") {
-		t.Errorf("expected 'grew.go' in message, got: %s", result.Message)
+	if !strings.Contains(msg, "allowlist: 900") {
+		t.Errorf("expected 'allowlist: 900' in message, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, "allowlist: 900") {
-		t.Errorf("expected 'allowlist: 900' in message, got: %s", result.Message)
-	}
-	if !strings.Contains(result.Message, "+15% growth") {
-		t.Errorf("expected '+15%% growth' in message, got: %s", result.Message)
+	if !strings.Contains(msg, "+15% growth") {
+		t.Errorf("expected '+15%% growth' in message, got: %s", msg)
 	}
 }
 
@@ -532,15 +530,107 @@ func TestRunFileLength_NewFileNotInAllowlist(t *testing.T) {
 	writeAllowlist(t, tmp, map[string]int{})
 
 	ctx := &CheckContext{RootDir: tmp}
-	result, err := RunFileLength(ctx)
+	_, err := RunFileLength(ctx)
+	if err == nil {
+		t.Fatal("expected a failure: a long file nobody allowlisted is the agent's to handle, not a warn to leave behind")
+	}
+	if !strings.Contains(err.Error(), "new.go") {
+		t.Errorf("expected 'new.go' in message, got: %s", err.Error())
+	}
+}
+
+// TestRunFileLength_ReasonlessEntryFails covers the mandatory reason: an entry
+// written as a bare number (the legacy form, or a hand-add that skipped the
+// field) parses, so the check can name it, and then fails rather than accepting
+// a limit nobody explained.
+func TestRunFileLength_ReasonlessEntryFails(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "big.go"), []byte(strings.Repeat("line\n", 900)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	writeAllowlistWithReasons(t, tmp, map[string]fileLengthLimit{"big.go": {Lines: 900}})
+
+	_, err := RunFileLength(&CheckContext{RootDir: tmp})
+	if err == nil {
+		t.Fatal("expected a failure for an allowlist entry with no reason")
+	}
+	if !strings.Contains(err.Error(), "big.go") || !strings.Contains(err.Error(), "reason") {
+		t.Errorf("expected the message to name the entry and ask for a reason, got: %s", err.Error())
+	}
+}
+
+// TestLoadFileLengthAllowlist_AcceptsBareNumber pins the legacy form parsing to
+// a reasonless entry rather than a parse error. A whole-file parse failure would
+// empty the allowlist and report every long file in the repo at once, burying
+// the one entry that actually needs a reason.
+func TestLoadFileLengthAllowlist_AcceptsBareNumber(t *testing.T) {
+	tmp := t.TempDir()
+	checksDir := filepath.Join(tmp, "scripts", "check", "checks")
+	if err := os.MkdirAll(checksDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	raw := `{"files":{"bare.go":903,"full.go":{"lines":904,"reason":"because"}}}`
+	if err := os.WriteFile(filepath.Join(checksDir, "file-length-allowlist.json"), []byte(raw), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	list := loadFileLengthAllowlist(tmp)
+	if got := list.Files["bare.go"]; got.Lines != 903 || got.Reason != "" {
+		t.Errorf("bare number should parse to a reasonless entry, got %+v", got)
+	}
+	if got := list.Files["full.go"]; got.Lines != 904 || got.Reason != "because" {
+		t.Errorf("object form should carry both fields, got %+v", got)
+	}
+	if missing := reasonlessAllowlistEntries(list); len(missing) != 1 || missing[0] != "bare.go" {
+		t.Errorf("expected exactly bare.go reported as reasonless, got %v", missing)
+	}
+}
+
+// TestRunFileLength_TodoEntriesCounted covers the visible backlog: a reason that
+// admits the file should be split is counted on the green line, so the entries
+// nobody has gotten to stay distinguishable from settled decisions.
+func TestRunFileLength_TodoEntriesCounted(t *testing.T) {
+	tmp := t.TempDir()
+	for _, name := range []string{"keep.go", "split.go"} {
+		if err := os.WriteFile(filepath.Join(tmp, name), []byte(strings.Repeat("line\n", 900)), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeAllowlistWithReasons(t, tmp, map[string]fileLengthLimit{
+		"keep.go":  {Lines: 900, Reason: "one state machine whose steps share locals"},
+		"split.go": {Lines: 900, Reason: "TODO: the bottom 400 lines are an unrelated parser, move them to parser.go"},
+	})
+
+	result, err := RunFileLength(&CheckContext{RootDir: tmp})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Code != ResultWarning {
-		t.Errorf("expected warning (new file not allowlisted), got code %d", result.Code)
+	if !strings.Contains(result.Message, "2 allowlisted, 1 marked TODO") {
+		t.Errorf("expected the TODO count on the green line, got: %s", result.Message)
 	}
-	if !strings.Contains(result.Message, "new.go") {
-		t.Errorf("expected 'new.go' in message, got: %s", result.Message)
+}
+
+// TestRunFileLength_ShrinkwrapKeepsReason: ratcheting a number down rewrites the
+// count and leaves the reason alone. Losing it would make every shrink a silent
+// downgrade to a reasonless entry, and the next run would fail on it.
+func TestRunFileLength_ShrinkwrapKeepsReason(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "slack.go"), []byte(strings.Repeat("line\n", 900)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	writeAllowlistWithReasons(t, tmp, map[string]fileLengthLimit{
+		"slack.go": {Lines: 1200, Reason: "one state machine whose steps share locals"},
+	})
+
+	if _, err := RunFileLength(&CheckContext{RootDir: tmp}); err != nil {
+		t.Fatal(err)
+	}
+	reloaded := loadFileLengthAllowlist(tmp).Files["slack.go"]
+	if reloaded.Lines != 900 {
+		t.Errorf("expected the count ratcheted to 900, got %d", reloaded.Lines)
+	}
+	if reloaded.Reason != "one state machine whose steps share locals" {
+		t.Errorf("expected the reason preserved through the ratchet, got %q", reloaded.Reason)
 	}
 }
 
@@ -560,7 +650,11 @@ func writeAllowlistFull(t *testing.T, dir string, exempt map[string]string, file
 	if err := os.MkdirAll(checksDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	list := fileLengthAllowlist{Comment: "test allowlist", Exempt: exempt, Files: files}
+	withReasons := make(map[string]fileLengthLimit, len(files))
+	for path, lines := range files {
+		withReasons[path] = fileLengthLimit{Lines: lines, Reason: "test fixture"}
+	}
+	list := fileLengthAllowlist{Comment: "test allowlist", Exempt: exempt, Files: withReasons}
 	path := filepath.Join(checksDir, "file-length-allowlist.json")
 	if err := writeJSONAllowlist(path, list); err != nil {
 		t.Fatal(err)
@@ -646,8 +740,8 @@ func TestRunFileLength_RatchetsSlackEntryLocally(t *testing.T) {
 		t.Errorf("expected MadeChanges after ratchet, got: %+v", result)
 	}
 	reloaded := loadFileLengthAllowlist(tmp)
-	if got := reloaded.Files["slack.go"]; got != 900 {
-		t.Errorf("expected slack.go ratcheted to 900, got %d", got)
+	if got := reloaded.Files["slack.go"]; got.Lines != 900 {
+		t.Errorf("expected slack.go ratcheted to 900, got %d", got.Lines)
 	}
 }
 
@@ -668,8 +762,8 @@ func TestRunFileLength_LeavesSmallSlackAlone(t *testing.T) {
 		t.Errorf("expected no rewrite for small slack, got changes: %s", result.Message)
 	}
 	reloaded := loadFileLengthAllowlist(tmp)
-	if got := reloaded.Files["stable.go"]; got != 900 {
-		t.Errorf("expected stable.go untouched at 900, got %d", got)
+	if got := reloaded.Files["stable.go"]; got.Lines != 900 {
+		t.Errorf("expected stable.go untouched at 900, got %d", got.Lines)
 	}
 }
 

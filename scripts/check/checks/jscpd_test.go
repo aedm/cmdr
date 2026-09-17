@@ -326,7 +326,10 @@ func TestLoadJscpdAllowlistReadsBothPairValueShapes(t *testing.T) {
 	}
 }
 
-func TestJscpdAllowlistWritesABareNumberUnlessThePairCarriesAReason(t *testing.T) {
+// TestJscpdAllowlistAlwaysWritesTheObjectForm: the bare number is a read-only
+// legacy shape now. Writing one back would hide an entry whose reason nobody has
+// supplied yet, and the reason is what makes the entry worth keeping.
+func TestJscpdAllowlistAlwaysWritesTheObjectForm(t *testing.T) {
 	rootDir := t.TempDir()
 	seedJscpdAllowlistFile(t, rootDir, "{}")
 	list := jscpdAllowlist{Pairs: map[string]jscpdPairLimit{
@@ -343,11 +346,29 @@ func TestJscpdAllowlistWritesABareNumberUnlessThePairCarriesAReason(t *testing.T
 		t.Fatalf("read allowlist: %v", err)
 	}
 	written := string(data)
-	if !strings.Contains(written, `"a.rs ↔ b.rs": 14`) {
-		t.Fatalf("a reasonless entry must stay a bare number, got:\n%s", written)
+	if strings.Contains(written, `"a.rs ↔ b.rs": 14`) {
+		t.Fatalf("a reasonless entry must still write as an object, with the empty reason visible, got:\n%s", written)
+	}
+	if !strings.Contains(written, `"lines": 14`) || !strings.Contains(written, `"reason": ""`) {
+		t.Fatalf("expected the reasonless entry written as an object, got:\n%s", written)
 	}
 	if !strings.Contains(written, `"lines": 62`) || !strings.Contains(written, `"reason": "trait-method signatures"`) {
 		t.Fatalf("an entry with a reason must write as an object, got:\n%s", written)
+	}
+}
+
+// TestReasonlessJscpdPairsReportsEveryEntryMissingOne pins what the lane fails
+// on: the bare-number legacy form parses, and then gets named.
+func TestReasonlessJscpdPairsReportsEveryEntryMissingOne(t *testing.T) {
+	list := jscpdAllowlist{Pairs: map[string]jscpdPairLimit{
+		"a.rs ↔ b.rs": {Lines: 14},
+		"c.rs ↔ d.rs": {Lines: 62, Reason: "trait-method signatures"},
+		"e.rs ↔ f.rs": {Lines: 9, Reason: "   "},
+	}}
+
+	missing := reasonlessJscpdPairs(list)
+	if len(missing) != 2 || missing[0] != "a.rs ↔ b.rs" || missing[1] != "e.rs ↔ f.rs" {
+		t.Errorf("expected the bare and whitespace-only entries reported, got %v", missing)
 	}
 }
 

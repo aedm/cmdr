@@ -21,8 +21,19 @@ func writeClaudeMd(t *testing.T, dir, relPath string, words int) {
 	}
 }
 
-// writeClaudeMdLengthAllowlist writes a complete allowlist JSON and returns its path.
+// writeClaudeMdLengthAllowlist writes a complete allowlist JSON, giving every
+// entry a placeholder reason, and returns its path. The tests about the reason
+// itself write the `files` map directly.
 func writeClaudeMdLengthAllowlist(t *testing.T, dir string, files map[string]int) string {
+	t.Helper()
+	withReasons := make(map[string]claudeMdWordLimit, len(files))
+	for path, words := range files {
+		withReasons[path] = claudeMdWordLimit{Words: words, Reason: "test fixture"}
+	}
+	return writeClaudeMdLengthAllowlistWithReasons(t, dir, withReasons)
+}
+
+func writeClaudeMdLengthAllowlistWithReasons(t *testing.T, dir string, files map[string]claudeMdWordLimit) string {
 	t.Helper()
 	checksDir := filepath.Join(dir, "scripts", "check", "checks")
 	if err := os.MkdirAll(checksDir, 0755); err != nil {
@@ -85,24 +96,22 @@ func TestRunClaudeMdLength_DetectsLongFile(t *testing.T) {
 	writeClaudeMd(t, tmp, "long/CLAUDE.md", 700)
 	writeClaudeMd(t, tmp, "short/CLAUDE.md", 100)
 
-	result, err := RunClaudeMdLength(&CheckContext{RootDir: tmp})
-	if err != nil {
-		t.Fatal(err)
+	_, err := RunClaudeMdLength(&CheckContext{RootDir: tmp})
+	if err == nil {
+		t.Fatal("expected a failure for the over-budget CLAUDE.md")
 	}
-	if result.Code != ResultWarning {
-		t.Errorf("expected warning, got code %d", result.Code)
+	msg := err.Error()
+	if !strings.Contains(msg, filepath.Join("long", "CLAUDE.md")) {
+		t.Errorf("expected long/CLAUDE.md in message, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, filepath.Join("long", "CLAUDE.md")) {
-		t.Errorf("expected long/CLAUDE.md in message, got: %s", result.Message)
+	if strings.Contains(msg, filepath.Join("short", "CLAUDE.md")) {
+		t.Errorf("did not expect short/CLAUDE.md in message, got: %s", msg)
 	}
-	if strings.Contains(result.Message, filepath.Join("short", "CLAUDE.md")) {
-		t.Errorf("did not expect short/CLAUDE.md in message, got: %s", result.Message)
+	if !strings.Contains(msg, "700 words") {
+		t.Errorf("expected '700 words' in message, got: %s", msg)
 	}
-	if !strings.Contains(result.Message, "700 words") {
-		t.Errorf("expected '700 words' in message, got: %s", result.Message)
-	}
-	if !strings.Contains(result.Message, "over 600 words") {
-		t.Errorf("expected 'over 600 words' summary, got: %s", result.Message)
+	if !strings.Contains(msg, "over 600 words") {
+		t.Errorf("expected 'over 600 words' summary, got: %s", msg)
 	}
 }
 
@@ -161,18 +170,51 @@ func TestRunClaudeMdLength_AllowlistExceeded(t *testing.T) {
 	writeClaudeMd(t, tmp, rel, 1035)
 	writeClaudeMdLengthAllowlist(t, tmp, map[string]int{rel: 900})
 
+	_, err := RunClaudeMdLength(&CheckContext{RootDir: tmp})
+	if err == nil {
+		t.Fatal("expected a failure: the doc outgrew its allowlisted count plus the buffer")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "allowlist: 900") {
+		t.Errorf("expected 'allowlist: 900' in message, got: %s", msg)
+	}
+	if !strings.Contains(msg, "+15% growth") {
+		t.Errorf("expected '+15%% growth' in message, got: %s", msg)
+	}
+}
+
+// TestRunClaudeMdLength_ReasonlessEntryFails: same contract as file-length, an
+// allowlisted doc has to carry the thinking that put it there.
+func TestRunClaudeMdLength_ReasonlessEntryFails(t *testing.T) {
+	tmp := t.TempDir()
+	rel := filepath.Join("big", "CLAUDE.md")
+	writeClaudeMd(t, tmp, rel, 900)
+	writeClaudeMdLengthAllowlistWithReasons(t, tmp, map[string]claudeMdWordLimit{rel: {Words: 900}})
+
+	_, err := RunClaudeMdLength(&CheckContext{RootDir: tmp})
+	if err == nil {
+		t.Fatal("expected a failure for an allowlist entry with no reason")
+	}
+	if !strings.Contains(err.Error(), "reason") {
+		t.Errorf("expected the message to ask for a reason, got: %s", err.Error())
+	}
+}
+
+// TestRunClaudeMdLength_TodoEntriesCounted: the green line carries the backlog.
+func TestRunClaudeMdLength_TodoEntriesCounted(t *testing.T) {
+	tmp := t.TempDir()
+	rel := filepath.Join("big", "CLAUDE.md")
+	writeClaudeMd(t, tmp, rel, 900)
+	writeClaudeMdLengthAllowlistWithReasons(t, tmp, map[string]claudeMdWordLimit{
+		rel: {Words: 900, Reason: "TODO: the four flow walkthroughs belong in DETAILS.md"},
+	})
+
 	result, err := RunClaudeMdLength(&CheckContext{RootDir: tmp})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Code != ResultWarning {
-		t.Errorf("expected warning, got code %d", result.Code)
-	}
-	if !strings.Contains(result.Message, "allowlist: 900") {
-		t.Errorf("expected 'allowlist: 900' in message, got: %s", result.Message)
-	}
-	if !strings.Contains(result.Message, "+15% growth") {
-		t.Errorf("expected '+15%% growth' in message, got: %s", result.Message)
+	if !strings.Contains(result.Message, "1 allowlisted, 1 marked TODO") {
+		t.Errorf("expected the TODO count on the green line, got: %s", result.Message)
 	}
 }
 
@@ -191,14 +233,10 @@ func TestRunClaudeMdLength_PerFileBudgetOverride(t *testing.T) {
 		t.Errorf("expected success (under the 1000 override), got code %d: %s", result.Code, result.Message)
 	}
 
-	// 1100 words: over its own 1000 budget → warns.
+	// 1100 words: over its own 1000 budget → fails.
 	writeClaudeMd(t, tmp, rel, 1100)
-	result, err = RunClaudeMdLength(&CheckContext{RootDir: tmp})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Code != ResultWarning {
-		t.Errorf("expected warning (over the 1000 override), got code %d: %s", result.Code, result.Message)
+	if _, err := RunClaudeMdLength(&CheckContext{RootDir: tmp}); err == nil {
+		t.Error("expected a failure over the 1000 override")
 	}
 }
 
@@ -265,8 +303,11 @@ func TestRunClaudeMdLength_RatchetsSlackEntryLocally(t *testing.T) {
 		t.Errorf("expected MadeChanges after ratchet, got: %+v", result)
 	}
 	reloaded := loadClaudeMdLengthAllowlist(tmp)
-	if got := reloaded.Files[rel]; got != 700 {
-		t.Errorf("expected ratchet to 700, got %d", got)
+	if got := reloaded.Files[rel]; got.Words != 700 {
+		t.Errorf("expected ratchet to 700, got %d", got.Words)
+	}
+	if got := reloaded.Files[rel]; got.Reason != "test fixture" {
+		t.Errorf("expected the reason preserved through the ratchet, got %q", got.Reason)
 	}
 }
 
@@ -285,8 +326,8 @@ func TestRunClaudeMdLength_LeavesSmallSlackAlone(t *testing.T) {
 		t.Errorf("expected no rewrite for small slack, got: %s", result.Message)
 	}
 	reloaded := loadClaudeMdLengthAllowlist(tmp)
-	if got := reloaded.Files[rel]; got != 900 {
-		t.Errorf("expected stable entry untouched at 900, got %d", got)
+	if got := reloaded.Files[rel]; got.Words != 900 {
+		t.Errorf("expected stable entry untouched at 900, got %d", got.Words)
 	}
 }
 
