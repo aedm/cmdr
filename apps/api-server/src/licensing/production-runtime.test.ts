@@ -153,6 +153,45 @@ function parseMinted(text: string): MintedLicense {
   }
 }
 
+/** Insert a Paddle fulfillment row, so a note can be written on a purchase rather than a gift. */
+async function insertPaddleLicense(transactionId: string): Promise<void> {
+  const env = await server.getWorker<HarnessEnv>().getEnv()
+  await env.TELEMETRY_DB.prepare(
+    `INSERT INTO license_issuance
+       (transaction_id, source, short_codes, quantity, license_type, customer_email, claimed_at,
+        issued_at, emailed_at)
+     VALUES (?, 'paddle', '["CMDR-3456-789A-BCDE"]', 1, 'commercial_subscription',
+             'buyer@example.com', ?, ?, ?)`,
+  )
+    .bind(transactionId, new Date().toISOString(), new Date().toISOString(), new Date().toISOString())
+    .run()
+}
+
+async function setNote(
+  transactionId: string,
+  note: unknown,
+  token = adminToken,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const response = await server.fetch(
+    `http://api.getcmdr.com/admin/licenses/${encodeURIComponent(transactionId)}/note`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note }),
+    },
+  )
+  return { status: response.status, body: JSON.parse(await response.text()) as Record<string, unknown> }
+}
+
+/** The ledger row for one transaction, read back from D1 rather than from the listing endpoint. */
+async function readNote(transactionId: string): Promise<string | null> {
+  const env = await server.getWorker<HarnessEnv>().getEnv()
+  const row = await env.TELEMETRY_DB.prepare(`SELECT note FROM license_issuance WHERE transaction_id = ?`)
+    .bind(transactionId)
+    .first<{ note: string | null }>()
+  return row?.note ?? null
+}
+
 async function revoke(body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
   const response = await server.fetch('http://api.getcmdr.com/admin/revoke', {
     method: 'POST',
@@ -359,5 +398,73 @@ describe('validating a manual license', () => {
 
     expect(status).toBe(502)
     expect(body).toEqual({ error: 'upstream_error' })
+  })
+})
+
+/**
+ * The note is the ledger's running record of one license: why it exists, what happened since, what
+ * to do next. It's editable from the dashboard, which is the only reason a purchase ever gets one.
+ */
+describe('editing a license note', () => {
+  it('writes a note onto a purchase, which starts without one', async () => {
+    await insertPaddleLicense('txn_note_first_sale')
+
+    const { status, body } = await setNote('txn_note_first_sale', 'First purchase ever!!')
+
+    expect(status).toBe(200)
+    expect(body.note).toBe('First purchase ever!!')
+    expect(await readNote('txn_note_first_sale')).toBe('First purchase ever!!')
+  })
+
+  it('replaces the whole note, so the dialog can open pre-filled and save what it holds', async () => {
+    await insertManualLicense({ transactionId: 'manual-NOTEEDIT' })
+
+    await setNote('manual-NOTEEDIT', 'a friend of the project\n2026-09-17: asked about SFTP')
+
+    expect(await readNote('manual-NOTEEDIT')).toBe('a friend of the project\n2026-09-17: asked about SFTP')
+  })
+
+  it('clears a purchase note when the text is blank', async () => {
+    await insertPaddleLicense('txn_note_clearable')
+    await setNote('txn_note_clearable', 'written by mistake')
+
+    const { status, body } = await setNote('txn_note_clearable', '   ')
+
+    expect(status).toBe(200)
+    expect(body.note).toBeNull()
+    expect(await readNote('txn_note_clearable')).toBeNull()
+  })
+
+  it('refuses to blank a hand-issued license, which must stay explainable', async () => {
+    await insertManualLicense({ transactionId: 'manual-KEEPNOTE' })
+
+    const { status } = await setNote('manual-KEEPNOTE', '')
+
+    expect(status).toBe(400)
+    expect(await readNote('manual-KEEPNOTE')).toBe('a friend of the project')
+  })
+
+  it('refuses a note past the length cap', async () => {
+    await insertPaddleLicense('txn_note_too_long')
+
+    const { status } = await setNote('txn_note_too_long', 'x'.repeat(2001))
+
+    expect(status).toBe(400)
+    expect(await readNote('txn_note_too_long')).toBeNull()
+  })
+
+  it('reports an unknown transaction id as not found', async () => {
+    const { status } = await setNote('txn_note_nosuchid', 'nobody is listening')
+
+    expect(status).toBe(404)
+  })
+
+  it('refuses a caller without the admin token', async () => {
+    await insertPaddleLicense('txn_note_unauthorized')
+
+    const { status } = await setNote('txn_note_unauthorized', 'should not land', 'wrong-token')
+
+    expect(status).toBe(401)
+    expect(await readNote('txn_note_unauthorized')).toBeNull()
   })
 })

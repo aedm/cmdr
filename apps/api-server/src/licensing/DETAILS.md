@@ -9,16 +9,16 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 
 - **`licensing.ts`**: routes `/webhook/paddle`, `/activate`, `/validate`, and the mount for `manual-licenses.ts`.
 - **`manual-licenses.ts`**: `/admin/generate` and `/admin/revoke`, the licenses we hand out rather than sell.
-- **`admin-licenses.ts`**: `GET /admin/licenses`, the dashboard's view of every license we've issued, plus the pure
-  `classifyLedgerEntry`. § The licenses listing.
+- **`admin-licenses.ts`**: `GET /admin/licenses` and `PUT /admin/licenses/:transactionId/note`, the dashboard's view of
+  every license we've issued and the one write on it, plus the pure `classifyLedgerEntry`. § The licenses listing.
 - **`license-backup.ts`**: the daily R2 snapshot of the ledger and the key store. § License backups.
 - **`license.ts`**: short-code and license-key generation, the `LicenseType` enum, `isPaddleTransactionId` /
   `generateManualTransactionId` (the id namespaces `/validate` dispatches on), and `generateShortId(prefix, len)` (also
   used for the `ERR-XXXXX` error-report ids).
 - **`license-issuance.ts`**: the D1 ledger (`license_issuance`) behind both kinds of license: claim, take-over, code
-  storage, and delivery marking for a Paddle fulfillment; row writing, lookup, and revocation for a manual one; the two
-  reads (`listLedger`, capped, for the dashboard; `readWholeLedger`, uncapped, for the backup); plus the pure
-  `classifyIssuance` and `classifyManualLicense`.
+  storage, and delivery marking for a Paddle fulfillment; row writing, lookup, and revocation for a manual one; note
+  editing and the two reads (`listLedger`, capped, for the dashboard; `readWholeLedger`, uncapped, for the backup); plus
+  the pure `classifyIssuance` and `classifyManualLicense`.
 - **`paddle.ts`**: HMAC-SHA256 webhook verification and `constantTimeEqual` (the timing-safe compare every bearer-token
   check in the Worker uses).
 - **`paddle-api.ts`**: Paddle REST client (transaction / subscription / customer fetch, `getLicenseTypeFromPriceId`).
@@ -203,6 +203,25 @@ namespace) and reconciles it against the ledger both ways:
 
 Both are read-only observations. ❌ Don't make this endpoint repair what it finds: an orphan needs a human to decide
 whether to honor, ledger, or ignore it.
+
+### Editing a note (`PUT /admin/licenses/:transactionId/note`)
+
+The dashboard's edit dialog, and the only write on the listing side. It takes the WHOLE note rather than appending: the
+dialog opens holding what's already there, so the person edits in place and saves the result.
+
+Any row, either source. A purchase starts with no note at all, and this is the only way one gets there, which matters
+because a fact about a sale ("first purchase ever", "asked about SFTP on 2026-09-16") has nowhere else to live beside
+the license it's about. Paddle holds the money and knows nothing else.
+
+- A blank or whitespace-only note clears a `paddle` row's note, so the dialog needs no separate clear control.
+- The same blank on a `manual` row is refused (`manual_needs_note`). Minting refuses without a note for a reason, and an
+  edit that could blank it would walk straight around that guardrail.
+- The cap is `maxLicenseNoteLength` (`types.ts`), shared with minting so a note written at mint time can always be
+  edited back to its own length.
+
+**The dashboard's copy of the note belongs to the LICENSE, not the person.** Who someone is, what they said, and what
+they're worth commercially live in David's vault; a second home for the same material gives two half-complete records
+and no rule for which one to trust.
 
 ## License backups
 

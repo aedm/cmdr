@@ -6,6 +6,7 @@ import {
   sourceLabel,
   stateLabel,
   stateTone,
+  validateNote,
   summarizeLicenses,
   type LicenseRow,
   type LicenseState,
@@ -152,5 +153,35 @@ describe('summarizeLicenses', () => {
       unfinished: 0,
       needsAttention: false,
     })
+  })
+})
+
+describe('validateNote', () => {
+  it('passes a note through untouched, newlines and all', () => {
+    const result = validateNote({ transactionId: 'txn_01', note: 'First sale ever!!\n2026-09-17: fixed his SFTP bug' })
+
+    expect(result).toEqual({
+      ok: true,
+      transactionId: 'txn_01',
+      note: 'First sale ever!!\n2026-09-17: fixed his SFTP bug',
+    })
+  })
+
+  it('accepts an empty note, because whether that is allowed depends on the source', () => {
+    expect(validateNote({ transactionId: 'txn_01', note: '' })).toEqual({ ok: true, transactionId: 'txn_01', note: '' })
+  })
+
+  it('refuses a submission that names no license', () => {
+    const result = validateNote({ transactionId: '  ', note: 'orphaned' })
+
+    expect(result.ok).toBe(false)
+  })
+
+  it('refuses a note past the length cap, saying how long it actually is', () => {
+    const result = validateNote({ transactionId: 'txn_01', note: 'x'.repeat(2001) })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toContain('2,001')
   })
 })

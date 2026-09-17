@@ -31,3 +31,40 @@ export async function fetchLicenses(env: LicensesEnv): Promise<SourceResult<Lice
     return { ok: false, error: `Licenses: ${e instanceof Error ? e.message : String(e)}` }
   }
 }
+
+/**
+ * Rewrite one license's note (`PUT /admin/licenses/:transactionId/note`). The api-server owns the
+ * rules: a hand-issued license can't be left without one, and an empty note clears a purchase's.
+ * Its message comes back verbatim so the page shows what the server actually objected to.
+ */
+export async function updateLicenseNote(
+  env: LicensesEnv,
+  input: { transactionId: string; note: string },
+): Promise<SourceResult<string | null>> {
+  const baseUrl = env.WORKER_BASE_URL || 'https://api.getcmdr.com'
+  try {
+    const response = await fetch(`${baseUrl}/admin/licenses/${encodeURIComponent(input.transactionId)}/note`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${env.LICENSE_SERVER_ADMIN_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ note: input.note }),
+    })
+    const text = await response.text()
+    if (!response.ok) throw new Error(errorMessage(text) ?? `returned ${String(response.status)}`)
+    return { ok: true, data: (JSON.parse(text) as { note: string | null }).note }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/** The worker's `{ error }` string, or null when the body isn't the shape we expect. */
+function errorMessage(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { error?: unknown }
+    return typeof parsed.error === 'string' ? parsed.error : null
+  } catch {
+    return null
+  }
+}

@@ -75,6 +75,7 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 | POST    | `/admin/generate`          | Bearer token  | Mint a hand-issued license (evaluation, partner, thank-you, support recovery); writes the ledger   |
 | POST    | `/admin/revoke`            | Bearer token  | Kill a hand-issued license by short code or manual transaction id                                  |
 | GET     | `/admin/licenses`          | Bearer token  | Every license in the ledger with a computed state, plus KV codes no row explains (and the reverse) |
+| PUT     | `/admin/licenses/:id/note` | Bearer token  | Rewrite one row's note, either source. A hand-issued license can't be left without one             |
 | GET     | `/admin/stats`             | Bearer token  | Activation count + device count (for analytics dashboard)                                          |
 | GET     | `/admin/downloads`         | Bearer token  | Aggregated downloads by day/version/arch/country/source, with raw `count` + deduped `uniqueCount`  |
 | GET     | `/admin/active-users`      | Bearer token  | Aggregated daily active users by version/arch                                                      |

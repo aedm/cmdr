@@ -279,6 +279,38 @@ export async function revokeManualLicense(db: D1Database, transactionId: string,
 }
 
 /**
+ * What happened to a note edit.
+ *
+ * - `updated`: the row now carries the new note.
+ * - `not_found`: no ledger row has that transaction id.
+ * - `manual_needs_note`: the edit would have left a hand-issued license with no note. Minting
+ *   refuses without one for a reason (a free license nobody can explain later is worse than no
+ *   record), and an edit that can blank it would walk straight around that.
+ */
+export type NoteUpdate = 'updated' | 'not_found' | 'manual_needs_note'
+
+/**
+ * Rewrite one row's note, whatever its source. A purchase starts with no note at all, so this is
+ * the only way one gets there: it's where "first sale ever" or "asked about SFTP on 2026-09-16"
+ * lives, beside the license it's about.
+ */
+export async function updateLedgerNote(
+  db: D1Database,
+  transactionId: string,
+  note: string | null,
+): Promise<NoteUpdate> {
+  const row = await db
+    .prepare(`SELECT source FROM license_issuance WHERE transaction_id = ?`)
+    .bind(transactionId)
+    .first<{ source: string }>()
+  if (!row) return 'not_found'
+  if (note === null && row.source === 'manual') return 'manual_needs_note'
+
+  await db.prepare(`UPDATE license_issuance SET note = ? WHERE transaction_id = ?`).bind(note, transactionId).run()
+  return 'updated'
+}
+
+/**
  * One ledger row as `GET /admin/licenses` shows it: every column, whatever the source, with no
  * judgment applied. `admin-licenses.ts` turns it into a state.
  */

@@ -9,8 +9,8 @@
 
 import { Hono } from 'hono'
 import { isValidShortCode } from './license'
-import { listLedger, type LedgerEntry } from './license-issuance'
-import { type Bindings, verifyAdminAuth } from '../types'
+import { listLedger, updateLedgerNote, type LedgerEntry } from './license-issuance'
+import { type Bindings, maxLicenseNoteLength, maxTransactionIdLength, verifyAdminAuth } from '../types'
 
 const adminLicenses = new Hono<{ Bindings: Bindings }>()
 
@@ -83,6 +83,49 @@ adminLicenses.get('/admin/licenses', async (c) => {
     .sort()
 
   return c.json<LicenseListing>({ licenses, orphanCodes, missingCodes })
+})
+
+interface NoteBody {
+  note?: unknown
+}
+
+/**
+ * `PUT /admin/licenses/:transactionId/note`: rewrite one row's note, from the dashboard's edit
+ * dialog. It takes the whole note rather than appending, because the dialog opens pre-filled with
+ * what's already there and the person edits it in place.
+ *
+ * Any row, either source. A purchase's note is the only place a fact ABOUT that sale lives: Paddle
+ * holds the money and knows nothing else.
+ */
+adminLicenses.put('/admin/licenses/:transactionId/note', async (c) => {
+  const unauthorized = verifyAdminAuth(c)
+  if (unauthorized) return unauthorized
+
+  const transactionId = c.req.param('transactionId')
+  if (transactionId.length === 0 || transactionId.length > maxTransactionIdLength) {
+    return c.json({ error: 'Invalid transaction id' }, 400)
+  }
+
+  const { note } = await c.req.json<NoteBody>()
+  if (note !== null && typeof note !== 'string') {
+    return c.json({ error: 'Note must be a string, or null to clear it' }, 400)
+  }
+  if (typeof note === 'string' && note.length > maxLicenseNoteLength) {
+    return c.json({ error: `Note must be at most ${String(maxLicenseNoteLength)} characters` }, 400)
+  }
+
+  // Whitespace-only reads as clearing, so the dialog needs no separate "clear" control.
+  const trimmed = typeof note === 'string' ? note.trim() : ''
+  const outcome = await updateLedgerNote(c.env.TELEMETRY_DB, transactionId, trimmed.length > 0 ? trimmed : null)
+
+  switch (outcome) {
+    case 'not_found':
+      return c.json({ error: 'No license has that transaction id' }, 404)
+    case 'manual_needs_note':
+      return c.json({ error: "A hand-issued license needs a note saying who it's for and why" }, 400)
+    case 'updated':
+      return c.json({ transactionId, note: trimmed.length > 0 ? trimmed : null })
+  }
 })
 
 /**
