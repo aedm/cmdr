@@ -2,8 +2,9 @@
 //!
 //! Pass-throughs over the `favorites::store` module. Each mutation persists `favorites.json`
 //! (a filesystem write, so it runs on the blocking pool with a timeout) and then re-emits
-//! `volumes-changed` so both panes' switchers refresh live (subscribe-don't-poll). Listing rides
-//! the existing `list_volumes` / `volumes-changed` path, so there's no `list_favorites` command.
+//! `volumes-changed` so every surface listing favorites refreshes live (subscribe-don't-poll).
+//! Listing rides the existing `list_volumes` / `volumes-changed` path, so there's no
+//! `list_favorites` command.
 //!
 //! [`add_favorite`] carries one piece of judgment: THE add gate, the single place that decides
 //! whether a path is somewhere a favorite can point. Every add surface goes through it (the
@@ -38,8 +39,8 @@ const PERSIST_TIMEOUT: Duration = Duration::from_secs(5);
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum AddFavoriteError {
-    /// `path` isn't one the volume switcher could ever show a row for, so storing it would grow
-    /// `favorites.json` with an entry nobody can see or reach. See [`path_can_be_favorited`].
+    /// `path` isn't one `volumes::get_favorites` would ever hand back, so storing it would grow
+    /// `favorites.json` with an entry no pane can list or reach. See [`path_can_be_favorited`].
     NotAnOsVisiblePath,
     /// The work didn't finish inside the command's wait. ❗ It was NOT cancelled.
     TimedOut,
@@ -63,7 +64,7 @@ impl std::fmt::Display for AddFavoriteError {
     /// ❗ For logs and debugging only.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NotAnOsVisiblePath => f.write_str("not a path the switcher can show"),
+            Self::NotAnOsVisiblePath => f.write_str("not a path a favorite can point at"),
             Self::TimedOut => f.write_str("timed out"),
             Self::Unexpected { detail } => write!(f, "unexpected: {detail}"),
         }
@@ -75,14 +76,14 @@ impl std::error::Error for AddFavoriteError {}
 /// Adds a favorite for `path`, deduping by normalized path. When `name` is omitted, the label
 /// defaults to the path's file name.
 ///
-/// Refuses a path the switcher couldn't show ([`path_can_be_favorited`]). The frontend greys its
+/// Refuses a path a favorite can't point at ([`path_can_be_favorited`]). The frontend greys its
 /// add affordance out on the same reading, but that's an affordance and this is the enforcement:
 /// the MCP `favorites` tool and the native folder-row menus never touch that frontend predicate.
 #[tauri::command]
 #[specta::specta]
 pub async fn add_favorite(path: String, name: Option<String>) -> Result<(), AddFavoriteError> {
     if !path_can_be_favorited(&path).await {
-        log::info!(target: "favorites", "refused to favorite {path:?}: the switcher couldn't show it");
+        log::info!(target: "favorites", "refused to favorite {path:?}: get_favorites would filter it out");
         return Err(AddFavoriteError::NotAnOsVisiblePath);
     }
     persist(move || {
@@ -94,13 +95,14 @@ pub async fn add_favorite(path: String, name: Option<String>) -> Result<(), AddF
     Ok(())
 }
 
-/// Whether a favorite pointing at `path` would actually appear in the volume switcher.
+/// Whether a favorite pointing at `path` would survive the read side's existence filter.
 ///
-/// The switcher builds its favorite rows in `volumes::get_favorites`, which drops any favorite
+/// `volumes::get_favorites` builds the favorites list every surface renders, and drops any favorite
 /// whose path isn't there on disk. So an `smb://`, `sftp://`, `webdav://`, `mtp://`, `adb://`, or
-/// `search-results://` path stored today is written to `favorites.json` and then shown NOWHERE:
-/// no row, no error, a file that only grows. This is the gate that stops that, and it has to agree
-/// with what the switcher will do, ❌ never be laxer.
+/// `search-results://` path stored today is written to `favorites.json` and then listed nowhere in
+/// the app: no row, no error, a file that only grows. This is the gate that stops that, and it has
+/// to agree with that filter, ❌ never be laxer. Naming the FILTER rather than any one surface is
+/// deliberate: a third surface wouldn't change the rule.
 ///
 /// Three typed readings, ❌ none of them a test on the path string:
 ///
@@ -118,7 +120,7 @@ pub async fn add_favorite(path: String, name: Option<String>) -> Result<(), AddF
 /// - [`path_routes_over_its_parent`](crate::file_system::volume::manager::path_routes_over_its_parent):
 ///   an archive-inner or `.git`-portal path resolves to the parent DRIVE, which is OS-visible, yet
 ///   the path itself has no file of its own there. Without this clause both would pass the first
-///   reading and then vanish from the switcher exactly like a protocol path.
+///   reading and then be filtered out exactly like a protocol path.
 ///
 /// `path` is the pane's own path, so this costs one mount-table read on the add path and nothing
 /// anywhere else.
@@ -142,8 +144,8 @@ async fn path_can_be_favorited(path: &str) -> bool {
 ///
 /// ❗ Conservative where `quick_look` and "Open terminal here" are permissive: an id the registry
 /// doesn't hold is a REFUSAL here. Those two would silence a working feature by refusing a live
-/// path; this one would instead write a favorite that `volumes::get_favorites` filters out of every
-/// switcher forever. A saved-but-not-connected server and an unplugged phone both resolve to a
+/// path; this one would instead write a favorite that `volumes::get_favorites` filters out of the
+/// list forever. A saved-but-not-connected server and an unplugged phone both resolve to a
 /// `VolumeInfo` with no registered volume behind it, which is precisely the case to refuse.
 fn volume_paths_are_os_visible(volume_id: &str) -> bool {
     match crate::file_system::volume::manager::get_volume_manager().get(volume_id) {
@@ -295,7 +297,7 @@ mod add_gate_tests {
     }
 
     /// The direct-SMB shape: Cmdr's own I/O rides smb2, but the share stays OS-mounted, so the
-    /// `/Volumes/…` paths it hands out are ones the switcher can show. ❌ Not
+    /// `/Volumes/…` paths it hands out are ones the existence filter keeps. ❌ Not
     /// `supports_local_fs_access()`, which this volume answers `false` to.
     #[test]
     fn an_os_visible_volume_passes_even_without_local_fs_access() {
@@ -310,7 +312,7 @@ mod add_gate_tests {
 
     /// ❗ Opposite default to `quick_look` and "Open terminal here", which assume yes on an
     /// unknown id rather than silence a working feature. Here the cost of guessing yes is a stored
-    /// favorite the switcher then hides forever, so an unknown id is a refusal. A saved-but-offline
+    /// favorite the read filter then hides forever, so an unknown id is a refusal. A saved-but-offline
     /// server and an unplugged phone both land here.
     #[test]
     fn an_unregistered_volume_is_refused() {

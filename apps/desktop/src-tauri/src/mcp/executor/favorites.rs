@@ -3,7 +3,7 @@
 //!
 //! Thin adapter over the typed `commands::favorites` pass-throughs (smart backend
 //! / thin frontend). Each mutation persists `favorites.json` and re-emits
-//! `volumes-changed` itself, so both panes' switchers refresh live — the handler
+//! `volumes-changed` itself, so every surface listing favorites refreshes live. The handler
 //! invents no ack and returns the backend result directly (the `indexing` /
 //! `queue` precedent, so there is no FE action to ack). Gate `Always`: persistent app-config mutation
 //! with no confirmation dialog to piggyback on.
@@ -32,10 +32,10 @@ pub async fn execute_favorites(params: &Value) -> ToolResult {
             crate::commands::favorites::add_favorite(path.clone(), name)
                 .await
                 .map_err(|e| match e {
-                    // A refusal, ❌ not a fault: the switcher only shows favorites on OS-visible
-                    // filesystem paths, so an archive-inner, `.git`-portal, phone, or server path
-                    // would store a row nothing can ever display. Say so where the caller can act
-                    // on it rather than reporting an internal problem.
+                    // A refusal, ❌ not a fault: `volumes::get_favorites` only hands back favorites
+                    // on OS-visible filesystem paths, so an archive-inner, `.git`-portal, phone, or
+                    // server path would store a row nothing can ever display. Say so where the
+                    // caller can act on it rather than reporting an internal problem.
                     AddFavoriteError::NotAnOsVisiblePath => ToolError::invalid_params(format!(
                         "Can't favorite {path}: favorites point at local or mounted-share folders, \
                          and this path isn't one of those."
