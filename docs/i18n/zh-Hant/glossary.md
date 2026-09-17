@@ -2060,12 +2060,16 @@ replacement target. Four rules bind this whole group:
 
 雲端資料夾裡被選取的項目如果只存在雲端，放進垃圾桶得先把它下載回來。所以 Cmdr 改開永久刪除的對話方塊，並在警告列裡說清楚。警告列有兩個版本：一個用於混合選取，一個用於全部僅存在雲端的選取。兩者只在第一句和能提供的出路上不同。第三個鍵是 Cmdr 把一次按鍵交還給使用者時顯示的那行字。
 
-- **`.cloudOnlineOnlyMixedWarning`** · 「僅存在雲端」對應 Finder 的「僅限線上」說法；「垃圾桶」「雲端服務」「副本」取自 § Terms · medium。
-- **`.cloudOnlineOnlyAllWarning`** · 同一段文字，只把「你選取的內容中有一部分」換成「你選取的內容全都」，並拿掉「取消選取」這條出路：全部僅存在雲端時，取消選取就什麼都不剩了 · medium。
-- **`.cloudOnlineOnlyHandedBack`** · 按鈕上方的那行字，出現在 Cmdr 刻意沒有執行的一次按鍵之後。語氣平實，不必道歉 · medium。
+- **`.cloudOnlineOnlyMixedWarning`**
+  · 「僅存在雲端」對應 Finder 的「僅限線上」說法；「垃圾桶」「雲端服務」「副本」取自 § Terms · medium。
+- **`.cloudOnlineOnlyAllWarning`**
+  · 同一段文字，只把「你選取的內容中有一部分」換成「你選取的內容全都」，並拿掉「取消選取」這條出路：全部僅存在雲端時，取消選取就什麼都不剩了 ·
+  medium。
+- **`.cloudOnlineOnlyHandedBack`** · 按鈕上方的那行字，出現在 Cmdr 刻意沒有執行的一次按鍵之後。語氣平實，不必道歉 ·
+  medium。
 - **四個事實都得保留**：（1）垃圾桶會先下載檔案，（2）所以 Cmdr 只提供刪除整個選取範圍，（3）之後垃圾桶裡沒有副本，但雲端服務自己有（❌ 不要寫成「反正還在垃圾桶裡」），（4）警告列裡點出的出路。
-- **兩處 `<strong>` 必須保留**，分別在「先下載回來」和動詞「刪除」上。引號裡的「刪除」是按鈕的文字：始終與 `fileOperations.delete.confirmDelete` 一致。
+- **兩處 `<strong>` 必須保留**，分別在「先下載回來」和動詞「刪除」上。引號裡的「刪除」是按鈕的文字：始終與
+  `fileOperations.delete.confirmDelete` 一致。
 - 不需要 `sameAsSourceJustification`：所有值都與英文不同。
 - 做溢位檢查時看一下：警告列很長，且位於檔案列表上方的窄條裡。
 - ⚠️ 草稿，尚未經人工審閱。
-

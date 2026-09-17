@@ -3741,4 +3741,3 @@ uitwegen die ze kunnen noemen. De derde sleutel is de regel die verschijnt als C
 - Geen `sameAsSourceJustification` nodig: alle waarden verschillen van het Engels.
 - Bekijken bij de overflow-controle: de banner is lang en staat in een smalle strook boven de bestandenlijst.
 - ⚠️ Concept, nog niet door een mens nagelezen.
-

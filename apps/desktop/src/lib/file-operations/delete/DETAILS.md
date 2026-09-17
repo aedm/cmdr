@@ -160,10 +160,10 @@ evicted content would cost the lot, to fill a folder the person is about to empt
 So `openDeleteDialog` (and its search-results twin) asks `trashRoutingForPaths(sourcePaths)` before it opens anything.
 The answer has two fields:
 
-- Either delete variant of `routing` → `cloudOnlineOnly: 'all' | 'mixed'`, `isPermanent` forced, `supportsTrash`
-  dropped (which is what hides the in-dialog switch). `DeleteDialog` renders the online-only banner in place of the
-  generic no-trash one, so a person who pressed Trash reads why they're being asked about a delete, and confirm
-  dispatches the same permanent delete Shift+F8 would have. The extent picks between two whole messages
+- Either delete variant of `routing` → `cloudOnlineOnly: 'all' | 'mixed'`, `isPermanent` forced, `supportsTrash` dropped
+  (which is what hides the in-dialog switch). `DeleteDialog` renders the online-only banner in place of the generic
+  no-trash one, so a person who pressed Trash reads why they're being asked about a delete, and confirm dispatches the
+  same permanent delete Shift+F8 would have. The extent picks between two whole messages
   (`fileOperations.delete.cloudOnlineOnly{Mixed,All}Warning`): they differ in their opening sentence and in the ways out
   they can name, since "deselect all online-only files" would leave nothing selected once everything is evicted.
   `ONLINE_ONLY_EXTENT_BY_ROUTING` in `file-operation-commands.ts` is the one mapping, keyed by `TrashRouting` so a new
@@ -171,9 +171,9 @@ The answer has two fields:
 - `folderMayHoldOnlineOnly` → the answer isn't final. `SF_DATALESS` lives on files, so a selected FOLDER can only be
   judged by walking it, and the dialog's scan preview is that walk (`scan_walker.rs`'s `OnlineOnlyWatch`). Its
   `scan-preview-progress` / `-complete` events carry `onlineOnlyFound`, and the dialog flips itself the moment one
-  reports a hit: banner in, switch out, confirm button becomes the delete. ❌ Never a second walk for this. ❗ A walk hit
-  always renders the MIXED banner: the event is one boolean for the whole subtree, so it says nothing about the files
-  beside the evicted one, and a folder with one evicted file among ordinary ones is the ordinary case.
+  reports a hit: banner in, switch out, confirm button becomes the delete. ❌ Never a second walk for this. ❗ A walk
+  hit always renders the MIXED banner: the event is one boolean for the whole subtree, so it says nothing about the
+  files beside the evicted one, and a folder with one evicted file among ordinary ones is the ordinary case.
 
 **Confirm waits, but only here.** With `cloudFolderMayHoldOnlineOnly`, `handleConfirm` holds on `onlineOnlyAnswer` (a
 spinner rides inside the confirm button meanwhile) so a press landing mid-walk can't settle the question by luck. One

@@ -3286,4 +3286,3 @@ erbjuda. Den tredje nyckeln är raden som visas när Cmdr lämnar tillbaka en tr
 - Inget `sameAsSourceJustification` behövs: alla värden skiljer sig från engelskan.
 - Titta på den vid overflow-kontrollen: rutan är lång och sitter i en smal remsa ovanför fillistan.
 - ⚠️ Utkast, ännu inte granskat av en människa.
-
