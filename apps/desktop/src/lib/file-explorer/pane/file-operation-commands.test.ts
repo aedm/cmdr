@@ -663,7 +663,7 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
   })
 
   it('turns F8 into the permanent delete, and says why', async () => {
-    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteCloudStorage', folderMayHoldOnlineOnly: false })
+    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteAllOnlineOnly', folderMayHoldOnlineOnly: false })
     const dialogs = buildDialogs()
 
     await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: false })
@@ -675,14 +675,14 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: true,
       supportsTrash: false,
-      cloudStorageOnlineOnly: true,
+      cloudOnlineOnly: 'all',
     })
   })
 
   /** Shift+F8 was already permanent, but the in-dialog switch back to trash would
    *  hit the same refusal, so the trash stays off here too. */
   it('keeps the trash switch away from a Shift+F8 dialog too', async () => {
-    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteCloudStorage', folderMayHoldOnlineOnly: false })
+    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteAllOnlineOnly', folderMayHoldOnlineOnly: false })
     const dialogs = buildDialogs()
 
     await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: true })
@@ -690,12 +690,27 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: true,
       supportsTrash: false,
-      cloudStorageOnlineOnly: true,
+      cloudOnlineOnly: 'all',
     })
   })
 
-  /** The all-or-nothing rule lives in the backend, so a mixed selection comes back
-   *  as a plain `trash` and nothing about the dialog changes. */
+  /** The banner's two wordings differ in what they can offer as a way out, so the
+   *  routing variant has to reach the dialog rather than collapsing to a boolean. */
+  it('tells the dialog when only part of the selection is online-only', async () => {
+    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteMixedOnlineOnly', folderMayHoldOnlineOnly: false })
+    const dialogs = buildDialogs()
+
+    await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: false })
+
+    expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
+      isPermanent: true,
+      supportsTrash: false,
+      cloudOnlineOnly: 'mixed',
+    })
+  })
+
+  /** Nothing evicted anywhere in the selection: the backend says `trash` and
+   *  nothing about the dialog changes. */
   it('leaves everything else on the trash', async () => {
     trashRoutingSpy.mockResolvedValue({ routing: 'trash', folderMayHoldOnlineOnly: false })
     const dialogs = buildDialogs()
@@ -705,7 +720,7 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: false,
       supportsTrash: true,
-      cloudStorageOnlineOnly: false,
+      cloudOnlineOnly: null,
     })
   })
 
@@ -721,7 +736,7 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: false,
       supportsTrash: true,
-      cloudStorageOnlineOnly: false,
+      cloudOnlineOnly: null,
       cloudFolderMayHoldOnlineOnly: true,
     })
   })
@@ -735,7 +750,7 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: false,
       supportsTrash: true,
-      cloudStorageOnlineOnly: false,
+      cloudOnlineOnly: null,
     })
   })
 })

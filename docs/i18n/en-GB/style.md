@@ -12,7 +12,7 @@ call, no register to establish, no plural categories to rework. What this file o
 `en-GB` inherits from `en` only. There is no `en-AU` → `en-GB` chain: `inheritableAncestors`
 (`apps/desktop/src/lib/intl/locale-inheritance.ts`) walks a tag's own ancestors by dropping subtags, and `en-GB` is not
 an ancestor of `en-AU`. **So every shared British form has to be written into BOTH catalogs.** `en-AU` is not a thin
-patch on this one; it's a sibling that happens to agree with it on 149 of the 160 keys either one forks.
+patch on this one; it's a sibling that happens to agree with it on 149 of the 161 keys either one forks.
 
 Keep the two in step by hand when you edit either. `docs/i18n/en-AU/style.md` records only where AU diverges.
 
@@ -49,6 +49,12 @@ Two things a mechanical `Trash` → `Bin` replace gets wrong:
 `en-GB`. That's AppKit's generic destructive-action button, not the location. Cmdr is a file manager, so the Finder
 register is the right one: **`Bin` for the place, and Cmdr's separate `menu.file.delete` stays `Delete`.** Don't let a
 naive value-grep across the pile talk you into renaming the Bin to `Delete`.
+
+**A trash that isn't Apple's doesn't become a `bin` at all.** Base `en`'s online-only delete banner
+(`fileOperations.delete.cloudOnlineOnlyMixedWarning` and its `…AllWarning` sibling) says "cloud services usually keep
+their own trash", lowercase, to mark that as the SERVICE's, not the Mac's. The overlays say "their own deleted files"
+instead: a lowercase `bin` there would read as Apple's Bin in the middle of a sentence that has just named it twice, and
+capitalising it would say the cloud service has one. Same fact, no collision.
 
 Base `en` is inconsistent about capitalising `Trash` (`errors.mutation.trashNotSupported` says `Trash`,
 `errors.write.trashNotSupported.message` says `trash`, for the same concept). The overlay does NOT mirror that

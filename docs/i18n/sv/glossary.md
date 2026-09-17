@@ -3265,18 +3265,25 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `på ett ställe som macOS håller för sig själv`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## Varningen om innehåll som bara finns online (`fileOperations.delete.cloudOnlineOnlyWarningStrong`/`fileOperations.delete.cloudOnlineOnlyWarningRest`)
+## Varningen om innehåll som bara finns online (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
-Om ett markerat objekt i en molnmapp bara finns online skulle papperskorgen först behöva ladda ner det. Därför öppnar
-Cmdr dialogrutan för permanent radering och förklarar det i banderollen. Två nycklar, fet och forsättning, som läses som
-EN varning.
+Om ett markerat objekt i en molnmapp bara finns online skulle papperskorgen hämta hem det först. Därför öppnar Cmdr
+dialogen för att radera permanent och förklarar det i varningsrutan. Två varianter av rutan: en för ett blandat urval,
+en för ett urval som helt och hållet bara finns online. De skiljer sig bara i första meningen och i vilka utvägar de kan
+erbjuda. Den tredje nyckeln är raden som visas när Cmdr lämnar tillbaka en tryckning.
 
-- **`.cloudOnlineOnlyWarningStrong` → `Det här innehållet finns endast online.`** · `endast online` är Finders
-  formulering för en utrymd fil · medium.
-- **`.cloudOnlineOnlyWarningRest` →
-  `Att lägga det i papperskorgen skulle först ladda ner det från molntjänsten, så Cmdr raderar det i stället. Ingen kopia hamnar i papperskorgen, men tjänsten har en egen historik som du kan återskapa från.`**
-  · `papperskorgen` och `molntjänsten` kommer från § Terms · medium.
-- **Båda fakta måste stå kvar**: (1) papperskorgen skulle ladda ner filen, (2) efteråt finns INGEN kopia i
-  papperskorgen, men tjänsten har sin egen. ❌ Mjuka inte upp andra halvan.
-- Inget `sameAsSourceJustification` behövs: båda värdena skiljer sig från engelskan.
-- ⚠️ Utkast, ännu inte genomläst av en människa.
+- **`.cloudOnlineOnlyMixedWarning`** · `finns endast online` är Finders formulering för en utrensad fil; `papperskorgen`
+  och `molntjänst` kommer från § Terms · medium.
+- **`.cloudOnlineOnlyAllWarning`** · samma text, med ”Allt du har markerat” i stället för ”En del av ditt urval”, och
+  utan utvägen att avmarkera: om allt bara finns online skulle ingenting bli kvar markerat · medium.
+- **`.cloudOnlineOnlyHandedBack`** · raden ovanför knappen efter en tryckning som Cmdr medvetet inte utförde. Saklig,
+  utan ursäkter · medium.
+- **Alla fyra fakta måste stå kvar**: (1) papperskorgen skulle hämta filerna, (2) därför erbjuder Cmdr bara att radera
+  HELA urvalet, (3) efteråt finns INGEN kopia i papperskorgen, men tjänsten har en egen (❌ tona inte ner det), (4) de
+  utvägar rutan nämner.
+- **De två `<strong>`-partierna står kvar**, på ”hämta dem först” och på verbet ”radera”. Och ”Radera” inom citattecken
+  är knappens etikett: alltid samma ord som `fileOperations.delete.confirmDelete`.
+- Inget `sameAsSourceJustification` behövs: alla värden skiljer sig från engelskan.
+- Titta på den vid overflow-kontrollen: rutan är lång och sitter i en smal remsa ovanför fillistan.
+- ⚠️ Utkast, ännu inte granskat av en människa.
+

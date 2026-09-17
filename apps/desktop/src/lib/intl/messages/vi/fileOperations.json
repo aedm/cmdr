@@ -20,13 +20,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Nội dung này chỉ có trực tuyến.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "Một phần lựa chọn của bạn chỉ có trực tuyến. Chuyển chúng vào thùng rác sẽ <strong>tải chúng về trước</strong>. Vì vậy ở đây Cmdr chỉ đề nghị <strong>xóa</strong> toàn bộ lựa chọn. Sẽ không có bản sao nào trong thùng rác, nhưng các dịch vụ đám mây thường giữ thùng rác riêng của họ khoảng 30 ngày. Hãy nhấp “Xóa” nếu bạn đồng ý xóa, nếu không hãy hủy hộp thoại này rồi tải sẵn tất cả tệp về máy trước, hoặc bỏ chọn tất cả tệp chỉ có trực tuyến.",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Chuyển vào thùng rác sẽ phải tải nó về từ dịch vụ đám mây trước, nên Cmdr xóa luôn. Sẽ không có bản sao nào trong thùng rác, nhưng dịch vụ vẫn giữ lịch sử riêng để bạn khôi phục.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Mọi thứ bạn đã chọn đều chỉ có trực tuyến. Chuyển nó vào thùng rác sẽ <strong>tải nó về trước</strong>. Vì vậy ở đây Cmdr chỉ đề nghị <strong>xóa</strong> toàn bộ lựa chọn. Sẽ không có bản sao nào trong thùng rác, nhưng các dịch vụ đám mây thường giữ thùng rác riêng của họ khoảng 30 ngày. Hãy nhấp “Xóa” nếu bạn đồng ý xóa, nếu không hãy hủy hộp thoại này rồi tải sẵn các tệp này về máy trước.",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Lựa chọn của bạn hóa ra có nội dung chỉ có trực tuyến, nên nút bên dưới giờ đề nghị “Xóa”. Hãy đọc ghi chú ở trên rồi nhấn lại nếu bạn đồng ý.",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "Không có thùng rác bên trong tệp nén.",
   "@fileOperations.delete.archiveWarningStrong": {

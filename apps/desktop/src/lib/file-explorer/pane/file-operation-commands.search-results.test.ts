@@ -296,7 +296,7 @@ describe('openDeleteDialog on a search-results pane', () => {
   /** A search reaches into cloud-storage folders too, and a hit there can't be
    *  trashed, so the same routing applies to a result row. */
   it('routes a hit in a cloud-storage folder to the permanent delete', async () => {
-    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteCloudStorage', folderMayHoldOnlineOnly: false })
+    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteAllOnlineOnly', folderMayHoldOnlineOnly: false })
     getSnapshotSpy.mockReturnValue(
       snapshot([
         snapshotEntry({
@@ -319,7 +319,7 @@ describe('openDeleteDialog on a search-results pane', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: true,
       supportsTrash: false,
-      cloudStorageOnlineOnly: true,
+      cloudOnlineOnly: 'all',
     })
   })
 

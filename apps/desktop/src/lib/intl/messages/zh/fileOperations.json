@@ -19,13 +19,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "这些内容仅存在云端。",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "你选中的内容里有一部分仅存在云端。把它们放进废纸篓得<strong>先下载回来</strong>。所以 Cmdr 在这里只提供<strong>删除</strong>整个选择。废纸篓里不会留副本，不过云服务通常会在自己的回收站里保留约 30 天。如果可以删除，请点按“删除”；否则请取消此对话框，先把所有文件设为可离线使用，或者取消选择所有仅存在云端的文件。",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "放进废纸篓得先从云服务把它们下载回来，所以 Cmdr 直接删除。废纸篓里不会留副本，不过云服务自己有删除记录，你可以从那里恢复。",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "你选中的内容全都仅存在云端。把它放进废纸篓得<strong>先下载回来</strong>。所以 Cmdr 在这里只提供<strong>删除</strong>整个选择。废纸篓里不会留副本，不过云服务通常会在自己的回收站里保留约 30 天。如果可以删除，请点按“删除”；否则请取消此对话框，先把这些文件设为可离线使用。",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "你选中的内容里包含仅存在云端的文件，所以下面的按钮现在提供“删除”。请看一下上面的说明，确认无误后再按一次。",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "压缩文件里没有废纸篓。",
   "@fileOperations.delete.archiveWarningStrong": {

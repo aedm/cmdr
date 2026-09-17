@@ -2905,14 +2905,16 @@ replacement target. Four rules bind this whole group:
   已定的说法。说人话，❌ 不要点名某个 macOS 功能。
 - `{count}` 前后留半角空格（`有 {count} 个`），与目录里其他数字占位符一致。
 
-## 仅存云端内容的删除警告条（`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`）
+## 仅存云端内容的删除警告条（`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`）
 
-云文件夹里被选中的条目如果只存在云端，放进废纸篓得先把它下载回来。所以 Cmdr 改开彻底删除的对话框，并在警告条里说清楚。两个键，粗体加余下部分，当成一句话读。
+云文件夹里被选中的项目如果仅存在云端，放进废纸篓得先把它下载回来。所以 Cmdr 改开永久删除的对话框，并在警告条里说清楚。警告条有两个版本：一个用于混合选择，一个用于全部仅存在云端的选择。两者只在第一句和能给出的出路上不同。第三个键是 Cmdr 把一次按键交还给用户时显示的那行字。
 
-- **`.cloudOnlineOnlyWarningStrong` → `这些内容仅存在云端。`** · “仅存在云端” 对应 Finder 的“仅在线”说法 · medium。
-- **`.cloudOnlineOnlyWarningRest` →
-  `放进废纸篓得先从云服务把它们下载回来，所以 Cmdr 直接删除。废纸篓里不会留副本，不过云服务自己有删除记录，你可以从那里恢复。`**
-  · “废纸篓”、“云服务” 取自 § Terms · medium。
-- **两个事实都得保留**：（1）废纸篓会先下载文件，（2）之后废纸篓里没有副本，但云服务自己有。❌ 不要把后半句写成“反正还在废纸篓里”。
-- 不需要 `sameAsSourceJustification`：两个值都与英文不同。
+- **`.cloudOnlineOnlyMixedWarning`** · 「仅存在云端」对应 Finder 对被清出本地的文件的说法；「废纸篓」「云服务」取自 § Terms · medium。
+- **`.cloudOnlineOnlyAllWarning`** · 同一段文字，只把「你选中的内容里有一部分」换成「你选中的内容全都」，并去掉「取消选择」这条出路：全部仅存在云端时，取消选择就什么都不剩了 · medium。
+- **`.cloudOnlineOnlyHandedBack`** · 按钮上方的那行字，出现在 Cmdr 有意没有执行的一次按键之后。语气平实，不必道歉 · medium。
+- **四个事实都得保留**：（1）废纸篓会先下载文件，（2）所以 Cmdr 只提供删除整个选择，（3）之后废纸篓里没有副本，但云服务自己有（❌ 不要写成「反正还在废纸篓里」），（4）警告条里点出的出路。
+- **两处 `<strong>` 必须保留**，分别在「先下载回来」和动词「删除」上。引号里的「删除」是按钮的文字：始终与 `fileOperations.delete.confirmDelete` 一致。
+- 不需要 `sameAsSourceJustification`：所有值都与英文不同。
+- 做溢出检查时看一下：警告条很长，且位于文件列表上方的窄条里。
 - ⚠️ 草稿，尚未经人工审阅。
+

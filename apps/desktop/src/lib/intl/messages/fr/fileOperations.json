@@ -20,13 +20,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Ce contenu est disponible en ligne uniquement.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "Une partie de votre sélection est disponible en ligne uniquement. Les placer dans la corbeille les <strong>téléchargerait d''abord</strong>. Dans ce cas, Cmdr propose seulement de <strong>supprimer</strong> toute la sélection. Aucune copie ne restera dans la corbeille, mais les services cloud gardent en général leur propre corbeille pendant environ 30 jours. Cliquez sur « Supprimer » si la suppression vous convient, sinon annulez cette fenêtre et rendez d''abord tous les fichiers disponibles hors ligne, ou désélectionnez tous les fichiers disponibles en ligne uniquement.",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Le mettre à la corbeille le téléchargerait d''abord depuis le service cloud, donc Cmdr le supprime à la place. Aucune copie ne restera dans la corbeille, mais le service conserve son propre historique depuis lequel vous pouvez le récupérer.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Tout ce que vous avez sélectionné est disponible en ligne uniquement. Le placer dans la corbeille le <strong>téléchargerait d''abord</strong>. Dans ce cas, Cmdr propose seulement de <strong>supprimer</strong> toute la sélection. Aucune copie ne restera dans la corbeille, mais les services cloud gardent en général leur propre corbeille pendant environ 30 jours. Cliquez sur « Supprimer » si la suppression vous convient, sinon annulez cette fenêtre et rendez d''abord ces fichiers disponibles hors ligne.",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Votre sélection contient finalement du contenu disponible en ligne uniquement : le bouton ci-dessous propose maintenant « Supprimer ». Lisez la note ci-dessus, puis appuyez à nouveau si cela vous convient.",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "Il n''y a pas de corbeille dans une archive.",
   "@fileOperations.delete.archiveWarningStrong": {

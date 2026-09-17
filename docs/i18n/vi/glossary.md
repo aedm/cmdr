@@ -3354,17 +3354,25 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `nơi mà macOS giữ riêng cho mình`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## Cảnh báo nội dung chỉ có trực tuyến (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
+## Cảnh báo nội dung chỉ có trực tuyến (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
 Nếu một mục được chọn trong thư mục đám mây chỉ có trực tuyến, thùng rác sẽ phải tải nó về trước. Vì vậy Cmdr mở hộp
-thoại xóa vĩnh viễn và giải thích điều đó trên dải băng. Hai khóa, in đậm và phần còn lại, đọc như MỘT cảnh báo.
+thoại xóa vĩnh viễn và giải thích điều đó trong dải cảnh báo. Hai biến thể của dải cảnh báo: một cho lựa chọn hỗn hợp,
+một cho lựa chọn mà mọi thứ đều chỉ có trực tuyến. Chúng chỉ khác nhau ở câu đầu và ở các lối thoát mà chúng có thể đề
+nghị. Khóa thứ ba là dòng hiện ra khi Cmdr trả lại một lần nhấn.
 
-- **`.cloudOnlineOnlyWarningStrong` → `Nội dung này chỉ có trực tuyến.`** · `chỉ có trực tuyến` là cách Finder gọi một
-  tệp đã được đẩy lên mây · medium.
-- **`.cloudOnlineOnlyWarningRest` →
-  `Chuyển vào thùng rác sẽ phải tải nó về từ dịch vụ đám mây trước, nên Cmdr xóa luôn. Sẽ không có bản sao nào trong thùng rác, nhưng dịch vụ vẫn giữ lịch sử riêng để bạn khôi phục.`**
-  · `thùng rác` và `dịch vụ đám mây` lấy từ § Terms · medium.
-- **Cả hai sự thật đều phải có**: (1) thùng rác sẽ tải tệp về, (2) sau đó KHÔNG có bản sao trong thùng rác, nhưng dịch
-  vụ vẫn giữ bản của nó. ❌ Đừng làm nhẹ nửa sau.
-- Không cần `sameAsSourceJustification`: cả hai giá trị đều khác tiếng Anh.
-- ⚠️ Bản nháp, chưa có người đọc soát.
+- **`.cloudOnlineOnlyMixedWarning`** · `chỉ có trực tuyến` là cách Finder gọi một tệp đã được dọn khỏi máy; `thùng rác`
+  và `dịch vụ đám mây` lấy từ § Terms · medium.
+- **`.cloudOnlineOnlyAllWarning`** · cùng một đoạn, chỉ đổi “Mọi thứ bạn đã chọn” thay cho “Một phần lựa chọn của bạn”,
+  và bỏ lối thoát bỏ chọn: nếu mọi thứ đều chỉ có trực tuyến thì sẽ không còn gì được chọn · medium.
+- **`.cloudOnlineOnlyHandedBack`** · dòng phía trên nút, sau một lần nhấn mà Cmdr cố ý không thực hiện. Giọng điềm đạm,
+  không xin lỗi · medium.
+- **Cả bốn sự thật đều phải giữ**: (1) thùng rác sẽ tải các tệp về, (2) vì vậy Cmdr chỉ đề nghị xóa TOÀN BỘ lựa chọn,
+  (3) sau đó KHÔNG có bản sao nào trong thùng rác, nhưng dịch vụ vẫn giữ bản của họ (❌ đừng làm nhẹ đi), (4) các lối
+  thoát mà dải cảnh báo nêu ra.
+- **Hai đoạn `<strong>` phải giữ nguyên**, ở “tải chúng về trước” và ở động từ “xóa”. Và “Xóa” trong ngoặc kép là nhãn
+  của nút: luôn trùng với `fileOperations.delete.confirmDelete`.
+- Không cần `sameAsSourceJustification`: mọi giá trị đều khác tiếng Anh.
+- Xem lại khi kiểm tra tràn chữ: dải cảnh báo dài và nằm trong một băng hẹp phía trên danh sách tệp.
+- ⚠️ Bản nháp, chưa có người rà soát.
+

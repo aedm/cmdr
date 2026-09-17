@@ -3749,19 +3749,28 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `à un endroit que macOS garde pour lui`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## L'avertissement « contenu en ligne uniquement » (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
+## L'avertissement « contenu en ligne uniquement » (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
 Si un élément sélectionné d'un dossier cloud est disponible en ligne uniquement, la corbeille devrait d'abord le
-télécharger. Cmdr ouvre donc la boîte de dialogue de suppression définitive et l'explique dans le bandeau. Deux clés,
-gras et suite, lues comme UN seul avertissement.
+télécharger. Cmdr ouvre donc la boîte de dialogue de suppression définitive et l'explique dans le bandeau. Deux variantes
+du bandeau : une pour une sélection mixte, une pour une sélection entièrement en ligne. Elles ne diffèrent que par la
+première phrase et par les issues qu'elles peuvent proposer. La troisième clé est la ligne affichée quand Cmdr rend la
+main après un appui.
 
-- **`.cloudOnlineOnlyWarningStrong` → `Ce contenu est disponible en ligne uniquement.`** · `en ligne uniquement` est la
-  formule du Finder pour un fichier évincé · medium.
-- **`.cloudOnlineOnlyWarningRest` →
-  `Le mettre à la corbeille le téléchargerait d''abord depuis le service cloud, donc Cmdr le supprime à la place. Aucune copie ne restera dans la corbeille, mais le service conserve son propre historique depuis lequel vous pouvez le récupérer.`**
-  · `corbeille` et `service cloud` viennent de § Terms · medium.
-- **Les deux faits sont obligatoires** : (1) la corbeille téléchargerait le fichier, (2) ensuite il n'y a AUCUNE copie
-  dans la corbeille, même si le service garde la sienne. ❌ Ne pas adoucir la seconde moitié.
+- **`.cloudOnlineOnlyMixedWarning`** · `en ligne uniquement` est la formule du Finder pour un fichier évincé ;
+  `corbeille` et `service cloud` viennent de § Terms · medium.
+- **`.cloudOnlineOnlyAllWarning`** · même texte, avec « Tout ce que vous avez sélectionné » au lieu de « Une partie de
+  votre sélection », et sans l'issue « désélectionner » : si tout est évincé, il ne resterait rien de sélectionné ·
+  medium.
+- **`.cloudOnlineOnlyHandedBack`** · la ligne au-dessus du bouton après un appui que Cmdr n'a délibérément pas exécuté.
+  Ton factuel, sans excuses · medium.
+- **Les quatre faits sont obligatoires** : (1) la corbeille téléchargerait les fichiers, (2) Cmdr ne propose donc que de
+  supprimer TOUTE la sélection, (3) ensuite il n'y a AUCUNE copie dans la corbeille, même si le service garde la sienne
+  (❌ ne pas adoucir), (4) les issues que le bandeau nomme.
+- **Les deux zones `<strong>` restent**, sur « téléchargerait d'abord » et sur le verbe « supprimer ». Et « Supprimer »
+  entre guillemets est le libellé du bouton : toujours le même mot que `fileOperations.delete.confirmDelete`.
 - ⚠️ L'apostrophe ICU se double (`d''abord`).
-- Pas de `sameAsSourceJustification` : les deux valeurs diffèrent de l'anglais.
+- Pas de `sameAsSourceJustification` : toutes les valeurs diffèrent de l'anglais.
+- À vérifier au passage overflow : le bandeau est long et tient dans une bande étroite au-dessus de la liste.
 - ⚠️ Brouillon, pas encore relu par un humain.
+

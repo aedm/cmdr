@@ -20,13 +20,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Este conteúdo está somente online.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "Parte da sua seleção está somente online. Movê-los para o Lixo faria o <strong>download deles primeiro</strong>. Por isso aqui o Cmdr só oferece <strong>apagar</strong> a seleção inteira. Não vai ficar nenhuma cópia no Lixo, mas os serviços de nuvem costumam guardar o próprio lixo por uns 30 dias. Clique em “Apagar” se apagar estiver tudo bem; senão, cancele esta janela e deixe todos os arquivos disponíveis offline primeiro, ou desmarque todos os arquivos que estão somente online.",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Mover para o Lixo baixaria o arquivo do serviço de nuvem primeiro, então o Cmdr apaga em vez disso. Não vai ficar nenhuma cópia no Lixo, mas o serviço mantém um histórico próprio de onde você pode recuperar.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Tudo o que você selecionou está somente online. Movê-lo para o Lixo faria o <strong>download dele primeiro</strong>. Por isso aqui o Cmdr só oferece <strong>apagar</strong> a seleção inteira. Não vai ficar nenhuma cópia no Lixo, mas os serviços de nuvem costumam guardar o próprio lixo por uns 30 dias. Clique em “Apagar” se apagar estiver tudo bem; senão, cancele esta janela e deixe estes arquivos disponíveis offline primeiro.",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Sua seleção tem conteúdo somente online, então o botão abaixo agora oferece “Apagar”. Leia a observação acima e aperte de novo se estiver tudo certo.",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "Não há Lixo dentro de um arquivo compactado.",
   "@fileOperations.delete.archiveWarningStrong": {

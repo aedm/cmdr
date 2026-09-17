@@ -20,13 +20,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Ez a tartalom csak online érhető el.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "A kijelölésed egy része csak online érhető el. Ha ezek a Kukába kerülnének, előbb <strong>le kellene tölteni őket</strong>. Ezért a Cmdr itt csak a teljes kijelölés <strong>törlését</strong> ajánlja fel. A Kukában nem marad másolat, de a felhőszolgáltatások a sajátjukban általában 30 napig őrzik a törölt fájlokat. Kattints a „Törlés” gombra, ha ez így rendben van, különben zárd be ezt az ablakot, és vagy tedd offline is elérhetővé az összes fájlt, vagy szüntesd meg a csak online elérhető fájlok kijelölését.",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Ha a Kukába kerülne, előbb le kellene tölteni a felhőszolgáltatásból, ezért a Cmdr inkább törli. A Kukában nem marad másolat, de a szolgáltatás saját előzményeiből visszaállíthatod.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Minden, amit kijelöltél, csak online érhető el. Ha a Kukába kerülne, előbb <strong>le kellene tölteni</strong>. Ezért a Cmdr itt csak a teljes kijelölés <strong>törlését</strong> ajánlja fel. A Kukában nem marad másolat, de a felhőszolgáltatások a sajátjukban általában 30 napig őrzik a törölt fájlokat. Kattints a „Törlés” gombra, ha ez így rendben van, különben zárd be ezt az ablakot, és előbb tedd offline is elérhetővé ezeket a fájlokat.",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "A kijelölés mégis tartalmaz csak online elérhető tartalmat, ezért a lenti gomb most a „Törlés” műveletet ajánlja fel. Olvasd el a fenti megjegyzést, majd nyomd meg újra, ha ez így rendben van.",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "Egy archívumon belül nincs Kuka.",
   "@fileOperations.delete.archiveWarningStrong": {

@@ -3719,18 +3719,26 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `op een plek die macOS voor zichzelf houdt`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## De waarschuwing voor alleen-online inhoud (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
+## De waarschuwing voor alleen-online inhoud (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
-Staat een geselecteerd item in een cloudmap alleen online, dan zou de prullenmand het eerst downloaden. Daarom opent
-Cmdr het dialoogvenster voor definitief verwijderen en legt dat uit in de banner. Twee sleutels, vet en vervolg, die als
-ÉÉN waarschuwing gelezen worden.
+Is een geselecteerd item in een cloudmap alleen online beschikbaar, dan zou de prullenmand het eerst downloaden. Daarom
+opent Cmdr het venster voor definitief verwijderen en legt dat uit in de banner. Twee bannervarianten: één voor een
+gemengde selectie, één voor een selectie die volledig alleen online is. Ze verschillen alleen in de eerste zin en in de
+uitwegen die ze kunnen noemen. De derde sleutel is de regel die verschijnt als Cmdr een druk teruggeeft.
 
-- **`.cloudOnlineOnlyWarningStrong` → `Deze inhoud is alleen online beschikbaar.`** · `alleen online` is de formulering
-  die de Finder voor een uitgeladen bestand gebruikt · medium.
-- **`.cloudOnlineOnlyWarningRest` →
-  `Naar de prullenmand verplaatsen zou het eerst downloaden van de cloudservice, dus verwijdert Cmdr het in plaats daarvan. Er blijft geen kopie in de prullenmand achter, maar de service bewaart een eigen geschiedenis waaruit je het kunt terugzetten.`**
-  · `prullenmand` en `cloudservice` komen uit § Terms · medium.
-- **Beide feiten moeten blijven staan**: (1) de prullenmand zou het bestand downloaden, (2) daarna staat er GÉÉN kopie
-  in de prullenmand, de service houdt wel een eigen geschiedenis. ❌ Verzacht de tweede helft niet.
-- Geen `sameAsSourceJustification` nodig: beide waarden wijken af van het Engels.
+- **`.cloudOnlineOnlyMixedWarning`** · `alleen online beschikbaar` is de formulering van de Finder voor een uitgeladen
+  bestand; `prullenmand` en `cloudservice` komen uit § Terms · medium.
+- **`.cloudOnlineOnlyAllWarning`** · dezelfde tekst, met «Alles wat je hebt geselecteerd» in plaats van «Een deel van je
+  selectie», en zonder de uitweg deselecteren: als alles alleen online is, blijft er niets geselecteerd · medium.
+- **`.cloudOnlineOnlyHandedBack`** · de regel boven de knop na een druk die Cmdr bewust niet heeft uitgevoerd. Zakelijk,
+  zonder excuses · medium.
+- **Alle vier de feiten blijven staan**: (1) de prullenmand zou de bestanden downloaden, (2) daarom biedt Cmdr alleen de
+  HELE selectie verwijderen aan, (3) daarna blijft er GEEN kopie in de prullenmand, de service houdt wel een eigen kopie
+  (❌ niet afzwakken), (4) de uitwegen die de banner noemt.
+- **De twee `<strong>`-stukken blijven**, op «eerst downloaden» en op het werkwoord «verwijderen». En ‘Verwijder’ tussen
+  aanhalingstekens is het label van de knop: altijd hetzelfde als `fileOperations.delete.confirmDelete`.
+- ⚠️ De ICU-apostrof wordt verdubbeld (`zo''n`).
+- Geen `sameAsSourceJustification` nodig: alle waarden verschillen van het Engels.
+- Bekijken bij de overflow-controle: de banner is lang en staat in een smalle strook boven de bestandenlijst.
 - ⚠️ Concept, nog niet door een mens nagelezen.
+

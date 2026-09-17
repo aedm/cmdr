@@ -19,13 +19,17 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Este contenido está solo en línea.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
-    "sourceHash": "f1553ed"
+  "fileOperations.delete.cloudOnlineOnlyMixedWarning": "Parte de tu selección está solo en línea. Moverlos a la papelera los <strong>descargaría primero</strong>. Por eso aquí Cmdr solo ofrece <strong>eliminar</strong> la selección entera. No quedará ninguna copia en la papelera, pero los servicios en la nube suelen guardar su propia papelera durante unos 30 días. Haz clic en «Eliminar» si te parece bien eliminarlos; si no, cancela este diálogo y haz que todos los archivos estén disponibles sin conexión, o deselecciona todos los archivos que están solo en línea.",
+  "@fileOperations.delete.cloudOnlineOnlyMixedWarning": {
+    "sourceHash": "2a49037"
   },
-  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Moverlo a la papelera lo descargaría primero del servicio en la nube, así que Cmdr lo elimina en su lugar. No quedará ninguna copia en la papelera, pero el servicio guarda su propio historial desde el que puedes recuperarlo.",
-  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
-    "sourceHash": "1d218e5"
+  "fileOperations.delete.cloudOnlineOnlyAllWarning": "Todo lo que seleccionaste está solo en línea. Moverlo a la papelera lo <strong>descargaría primero</strong>. Por eso aquí Cmdr solo ofrece <strong>eliminar</strong> la selección entera. No quedará ninguna copia en la papelera, pero los servicios en la nube suelen guardar su propia papelera durante unos 30 días. Haz clic en «Eliminar» si te parece bien eliminarlos; si no, cancela este diálogo y haz que estos archivos estén disponibles sin conexión.",
+  "@fileOperations.delete.cloudOnlineOnlyAllWarning": {
+    "sourceHash": "0e52a2b"
+  },
+  "fileOperations.delete.cloudOnlineOnlyHandedBack": "Tu selección resultó tener contenido solo en línea, así que el botón de abajo ahora ofrece «Eliminar». Lee la nota de arriba y vuelve a pulsarlo si te parece bien.",
+  "@fileOperations.delete.cloudOnlineOnlyHandedBack": {
+    "sourceHash": "623e7e0"
   },
   "fileOperations.delete.archiveWarningStrong": "Dentro de un archivo comprimido no hay papelera.",
   "@fileOperations.delete.archiveWarningStrong": {

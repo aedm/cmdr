@@ -160,14 +160,20 @@ evicted content would cost the lot, to fill a folder the person is about to empt
 So `openDeleteDialog` (and its search-results twin) asks `trashRoutingForPaths(sourcePaths)` before it opens anything.
 The answer has two fields:
 
-- `routing === 'permanentDeleteCloudStorage'` → `cloudStorageOnlineOnly: true`, `isPermanent` forced, `supportsTrash`
+- Either delete variant of `routing` → `cloudOnlineOnly: 'all' | 'mixed'`, `isPermanent` forced, `supportsTrash`
   dropped (which is what hides the in-dialog switch). `DeleteDialog` renders the online-only banner in place of the
   generic no-trash one, so a person who pressed Trash reads why they're being asked about a delete, and confirm
-  dispatches the same permanent delete Shift+F8 would have.
+  dispatches the same permanent delete Shift+F8 would have. The extent picks between two whole messages
+  (`fileOperations.delete.cloudOnlineOnly{Mixed,All}Warning`): they differ in their opening sentence and in the ways out
+  they can name, since "deselect all online-only files" would leave nothing selected once everything is evicted.
+  `ONLINE_ONLY_EXTENT_BY_ROUTING` in `file-operation-commands.ts` is the one mapping, keyed by `TrashRouting` so a new
+  variant is a compile error rather than a banner that quietly stops appearing.
 - `folderMayHoldOnlineOnly` → the answer isn't final. `SF_DATALESS` lives on files, so a selected FOLDER can only be
   judged by walking it, and the dialog's scan preview is that walk (`scan_walker.rs`'s `OnlineOnlyWatch`). Its
   `scan-preview-progress` / `-complete` events carry `onlineOnlyFound`, and the dialog flips itself the moment one
-  reports a hit: banner in, switch out, confirm button becomes the delete. ❌ Never a second walk for this.
+  reports a hit: banner in, switch out, confirm button becomes the delete. ❌ Never a second walk for this. ❗ A walk hit
+  always renders the MIXED banner: the event is one boolean for the whole subtree, so it says nothing about the files
+  beside the evicted one, and a folder with one evicted file among ordinary ones is the ordinary case.
 
 **Confirm waits, but only here.** With `cloudFolderMayHoldOnlineOnly`, `handleConfirm` holds on `onlineOnlyAnswer` (a
 spinner rides inside the confirm button meanwhile) so a press landing mid-walk can't settle the question by luck. One
@@ -175,6 +181,13 @@ hit is the whole answer, so a progress tick releases it and a 50 GB folder needn
 online-only, the confirm is HANDED BACK rather than run: the button said "Move to trash" and now means a permanent
 delete, and nothing undoes that one. An MCP `autoConfirm` goes through, having asked for the delete outright. Everywhere
 else confirm stays exactly as instant as before.
+
+**A handed-back press says so** (`handedBackForOnlineOnly` → `fileOperations.delete.cloudOnlineOnlyHandedBack`). The
+dialog stays open and changes shape under the person's finger, so without a line saying what happened the press reads as
+a dead button. It renders last in the body, directly above the button whose meaning changed, as a `role="status"` region
+that announces without stealing focus, and the next press clears it. ❌ Not the `blockedReason` shape onboarding step 3
+uses: that's a tooltip on a control the person isn't hovering, and it explains a press BEFORE it happens, while this one
+explains a press that already landed.
 
 ❗ **An answer that never arrives means the TRASH.** A thrown IPC, a backend timeout, a scan that errored or was
 cancelled, and `ONLINE_ONLY_ANSWER_TIMEOUT_MS` all leave the dialog on today's behavior, because attempting a trash and
