@@ -2699,7 +2699,7 @@ export const commands = {
    *  Adds a favorite for `path`, deduping by normalized path. When `name` is omitted, the label
    *  defaults to the path's file name.
    *
-   *  Refuses a path the switcher couldn't show ([`path_can_be_favorited`]). The frontend greys its
+   *  Refuses a path a favorite can't point at ([`path_can_be_favorited`]). The frontend greys its
    *  add affordance out on the same reading, but that's an affordance and this is the enforcement:
    *  the MCP `favorites` tool and the native folder-row menus never touch that frontend predicate.
    */
@@ -4768,8 +4768,8 @@ export type AdbInstallStatus = {
  */
 export type AddFavoriteError =
   /**
-   *  `path` isn't one the volume switcher could ever show a row for, so storing it would grow
-   *  `favorites.json` with an entry nobody can see or reach. See [`path_can_be_favorited`].
+   *  `path` isn't one `volumes::get_favorites` would ever hand back, so storing it would grow
+   *  `favorites.json` with an entry no pane can list or reach. See [`path_can_be_favorited`].
    */
   | { type: 'notAnOsVisiblePath' }
   // The work didn't finish inside the command's wait. ❗ It was NOT cancelled.
