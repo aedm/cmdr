@@ -36,8 +36,8 @@ backend gap is now the visible one: the UI knows a server disconnects, and the b
 ## Why the one-line branch is not the fix
 
 Adding a `RemoteDisconnect` arm to the ladder would make SFTP and WebDAV work in about two hours. It would also be the
-fourth ad-hoc arm, leave the agent's answer prose, and leave S3 to be a fifth. The point of this spec is that the
-ladder itself is the defect.
+fourth ad-hoc arm, leave the agent's answer prose, and leave S3 to be a fifth. The point of this spec is that the ladder
+itself is the defect.
 
 ## The shape
 
@@ -99,8 +99,8 @@ that says whether the refactor actually bought anything.
 ## Tests
 
 - The pure decision's truth table, per volume shape, as it already is — smaller after M2.
-- One wiring test per registering backend (`sftp_volume_wiring_test.rs` and its WebDAV twin already have the
-  disconnect half; they gain the route through the registry).
+- One wiring test per registering backend (`sftp_volume_wiring_test.rs` and its WebDAV twin already have the disconnect
+  half; they gain the route through the registry).
 - The fake-provider test from M4.
 - MCP: a refusal's `data.outcome` per variant, which is M1's regression net.
 
@@ -118,6 +118,6 @@ that says whether the refactor actually bought anything.
 
 ## Risk
 
-The one real widening is that an automated caller could drop a live connection. It is bounded by the busy gate (a
-volume a transfer is touching refuses), it matches what the button already does, and nothing here touches the disk
-flight, which is the part with the panic risk.
+The one real widening is that an automated caller could drop a live connection. It is bounded by the busy gate (a volume
+a transfer is touching refuses), it matches what the button already does, and nothing here touches the disk flight,
+which is the part with the panic risk.
