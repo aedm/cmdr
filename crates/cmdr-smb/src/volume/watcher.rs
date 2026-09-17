@@ -266,8 +266,12 @@ pub(super) async fn run_smb_watcher(
         domain: String::new(),
         auto_reconnect: false,
         compression: true,
-        dfs_enabled: false,
+        // Matches `session::build_session`: the watcher opens the same share,
+        // so it has to be able to reach a DFS namespace root too, or a
+        // namespace-backed volume would index but never notice a change.
+        dfs_enabled: true,
         dfs_target_overrides: Default::default(),
+        ..Default::default()
     };
     // A watcher that can't even establish its session can't keep the index
     // Fresh, so each setup-failure return flips a Fresh index Stale. Cheap
