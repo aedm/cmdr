@@ -149,7 +149,9 @@ Set the following (get values from the relevant dashboards):
 
 - **`PUBLIC_PADDLE_CLIENT_TOKEN`**: Paddle > Developer tools > Authentication > Client-side tokens (a `live_…` token,
   NOT the API key). Live: [vendors.paddle.com](https://vendors.paddle.com)
-- **`PUBLIC_PADDLE_PRICE_ID_*`**: Paddle > Catalog > Prices (live IDs, distinct from sandbox)
+- **`PUBLIC_PADDLE_PRICE_ID_COMMERCIAL`**: the live $59 one-time price, `pri_01m2qzb5frfcey74rz1vr4ryx9`. One var, not
+  one per tier: the old `_SUBSCRIPTION` and `_PERPETUAL` vars are gone, and leaving the new one unset renders the buy
+  button disabled rather than charging the wrong amount. Every price ID is in `docs/business/pricing.md`.
 - **`PUBLIC_PADDLE_ENVIRONMENT`**: `live` in production (`sandbox` only for a staging build)
 - **`PUBLIC_LISTMONK_LIST_UUID`**: Listmonk admin > Lists > your list > Settings
 - **`PUBLIC_UMAMI_HOST`**: `/u` (proxied through Caddy to avoid adblockers)

@@ -183,8 +183,17 @@ LISTMONK_NEWSLETTER_LIST_ID = 3
 #                                   `openssl rand -hex 32`. Safe to rotate: costs one day of
 #                                   same-day download dedup, re-anonymizes every older row.)
 # - RESEND_API_KEY                 (from resend.com)
-# - PRICE_ID_COMMERCIAL_SUBSCRIPTION (Price ID for $59/yr subscription)
-# - PRICE_ID_COMMERCIAL_PERPETUAL  (Price ID for $199 perpetual)
+# - PRICE_ID_COMMERCIAL_PERPETUAL  (Price ID for the $59 one-time Commercial license. The name still
+#                                   says "perpetual" because that's the license TYPE the webhook
+#                                   issues for it; the retired $199 tier used to hold this slot.
+#                                   ❌ Leaving it unset makes the webhook fall back to
+#                                   commercial_subscription, so every buyer gets a license typed as a
+#                                   subscription and an email promising annual renewal.)
+# - PRICE_ID_COMMERCIAL_SUBSCRIPTION (Price ID of the retired $59/yr subscription. ❌ Keep it SET
+#                                   even though the tier is retired: one subscription was sold and
+#                                   runs to 2028-09-16, and a price ID that stops resolving takes
+#                                   every license bought under it with it. Archive the price in
+#                                   Paddle rather than deleting it.)
 # - ADMIN_API_TOKEN                (dedicated token for /admin/stats)
 # - CRASH_NOTIFICATION_EMAIL      (recipient for crash alert emails)
 # - FEEDBACK_NOTIFICATION_EMAIL    (optional: recipient for the in-app feedback digest; the cron job

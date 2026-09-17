@@ -32,30 +32,39 @@ if (paddleToken) {
     }
 }
 
+// `commercial` is deliberately a NEW env var rather than a reuse of the old subscription or
+// perpetual ones: those hold price IDs for retired products ($59/yr recurring, $199 one-time), and
+// pointing the one-time $59 button at either would silently charge the wrong thing (the same
+// number, billed annually, in the subscription case). An unset var leaves the button disabled,
+// which is the safe failure.
 const paddleConfig = {
     clientToken: paddleToken,
     environment: paddleEnvironment,
     priceIds: {
-        commercialSubscription: import.meta.env.PUBLIC_PADDLE_PRICE_ID_COMMERCIAL_SUBSCRIPTION ?? '',
-        commercialPerpetual: import.meta.env.PUBLIC_PADDLE_PRICE_ID_COMMERCIAL_PERPETUAL ?? '',
+        commercial: import.meta.env.PUBLIC_PADDLE_PRICE_ID_COMMERCIAL ?? '',
     },
 }
 const isPaddleConfigured = paddleConfig.clientToken !== ''
+const canBuyCommercial = isPaddleConfigured && paddleConfig.priceIds.commercial !== ''
 
 // FAQ data: single source of truth for both visible cards and ld+json structured data.
 // `answer` is plain text (used in ld+json). `answerHtml` is optional rich HTML for the visible card.
 const faq = [
     {
         question: 'What counts as "commercial use"?',
-        answer: "Well, you know. If you're making money (getting a salary, having contracts, etc.) in relation to what you use those files for, that's commercial use. Can be employment, freelancing, consulting. These cases need a Commercial license at $59/year. Organizing your family photos, copying files for your hobby projects, doing your open source work or volunteering, these are Personal use and Cmdr is 100% free for these things.",
+        answer: "Well, you know. If you're making money (getting a salary, having contracts, etc.) in relation to what you use those files for, that's commercial use. Can be employment, freelancing, consulting. These cases need a Commercial license, which is $59, paid once. Organizing your family photos, copying files for your hobby projects, doing your open source work or volunteering, these are Personal use and Cmdr is 100% free for these things.",
     },
     {
         question: 'Can I use it on multiple machines?',
         answer: "Yes! Use Cmdr on as many machines as you like with a single Commercial license, as long as you're the only person using it. You can install it on your laptop, desktop, remote debugging VM thing, whatever you like. The license is per person, not per machine.",
     },
     {
-        question: "What's the Commercial vs. Perpetual license?",
-        answer: "The perpetual license is a bigger initial commitment, but it's better for budgeting at some companies. Then they are the same for the first year: you get all updates, etc. After that, the perpetual license allows you to keep it forever.",
+        question: 'What happens after my year of updates runs out?',
+        answer: "Nothing breaks. The last version you were entitled to keeps working, for as long as you like, on as many of your machines as you like. If you want to carry on getting new versions, updates are $39 a year. Skip a year and come back later, that's fine too.",
+    },
+    {
+        question: 'Do I pay extra for Cmdr AI?',
+        answer: "Not during the beta: Cmdr AI is free for everyone right now. It runs on an API key you bring from a provider you pick, or fully on-device with a local model. Later, Cmdr AI moves to a Pro plan that includes hosted models, so you won't need an API key at all. The file manager itself stays free for personal use, and a Commercial license bought today keeps Cmdr AI with your own key or the on-device model for as long as your updates run.",
     },
     {
         question: 'Can I see the source code?',
@@ -68,19 +77,19 @@ const faq = [
         answerHtml: '<a href="/refund" class="text-accent-text underline underline-offset-2 hover:text-accent-hover">30-day, no-questions-asked refund</a>. Send an email and you\'ll get your money back.',
     },
     {
-        question: 'Do you offer team licenses?',
-        answer: 'Each person needs their own license. For teams of 10+ people, email legal@getcmdr.com for volume pricing.',
-        answerHtml: 'Each person needs their own license. For teams of 10+ people, email <a href="mailto:legal@getcmdr.com" class="text-accent-text underline underline-offset-2 hover:text-accent-hover">legal@getcmdr.com</a> for volume pricing.',
+        question: 'Do you offer team and enterprise licenses?',
+        answer: 'Yes. For a handful of people, buying Commercial licenses one by one is the quickest route, and each person can use theirs on all of their machines. Once your IT department has to deploy Cmdr, your security team has to sign off on it, or finance wants one invoice against a PO, that\'s an enterprise deal: email sales@getcmdr.com with your headcount and what you need, and you\'ll get a quote back.',
+        answerHtml: 'Yes. For a handful of people, buying Commercial licenses one by one is the quickest route, and each person can use theirs on all of their machines. Once your IT department has to deploy Cmdr, your security team has to sign off on it, or finance wants one invoice against a PO, that\'s an enterprise deal: email <a href="mailto:sales@getcmdr.com" class="text-accent-text underline underline-offset-2 hover:text-accent-hover">sales@getcmdr.com</a> with your headcount and what you need, and you\'ll get a quote back.',
     },
 ]
 ---
 
-<Layout title="Pricing - Cmdr" description="Cmdr is free for personal use. Commercial licenses from $59/year.">
+<Layout title="Pricing - Cmdr" description="Cmdr is free for personal use. A commercial license is $59, bought once.">
     <Header />
     <main class="mx-auto max-w-5xl px-6 pt-32 pb-24">
         <!-- Hero -->
         <PageHeader title="Free for personal use" class="mb-10">
-            Use Cmdr at home without paying a cent. Less than a coffee a month for work.
+            Use Cmdr at home without paying a cent. For work, one payment of $59 and it's yours.
         </PageHeader>
 
         <!-- Download Button -->
@@ -92,7 +101,7 @@ const faq = [
         <!-- Pricing Cards -->
         <!-- `data-visual` is the anchor for the committed visual baseline (e2e/visual.spec.ts); the
              tier grid is shot on its own so copy changes elsewhere on the page don't churn it. -->
-        <div data-visual="pricing-tiers" class="mb-16 grid gap-6 md:grid-cols-3">
+        <div data-visual="pricing-tiers" class="mb-8 grid gap-6 md:grid-cols-3">
             <!-- Personal (Free) -->
             <div class="flex flex-col rounded-2xl border border-border bg-surface p-6">
                 <div class="mb-4">
@@ -101,12 +110,15 @@ const faq = [
                 </div>
                 <div class="mb-6">
                     <span class="text-3xl font-bold text-text-primary">Free</span>
-                    <span class="text-text-tertiary"> forever</span>
                 </div>
                 <ul class="mb-6 space-y-2 text-sm text-text-secondary">
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
-                        All features
+                        The whole file manager
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-accent-text">✓</span>
+                        Cmdr AI, free during the beta
                     </li>
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
@@ -121,32 +133,24 @@ const faq = [
                         <span class="text-text-tertiary">Commercial use</span>
                     </li>
                 </ul>
-                <div class="mt-auto py-2 text-center text-sm text-text-tertiary">Just download and use it</div>
+                <div class="mt-auto py-2 text-center text-sm text-text-tertiary">Download and use it</div>
             </div>
 
-            <!-- Commercial Subscription -->
-            <div
-                class="relative mt-4 flex flex-col rounded-2xl border-2 border-accent bg-surface p-6 shadow-lg md:mt-0"
-            >
-                <div
-                    class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-contrast"
-                >
-                    Most popular
-                </div>
+            <!-- Commercial -->
+            <div class="flex flex-col rounded-2xl border-2 border-accent bg-surface p-6 shadow-lg">
                 <div class="mb-4">
                     <h2 class="text-lg font-semibold text-text-primary">Commercial</h2>
                     <p class="text-sm text-text-tertiary">For work use</p>
                 </div>
                 <div class="mb-6">
-                    <span class="text-lg text-text-tertiary line-through">$79</span>
-                    <span class="text-3xl font-bold text-text-primary"> $59</span>
-                    <span class="text-text-tertiary">/year</span>
-                    <div class="mt-1 text-xs text-accent-text">First 1,000 licenses</div>
+                    <span class="text-3xl font-bold text-text-primary">$59</span>
+                    <span class="text-text-tertiary"> once</span>
+                    <div class="mt-1 text-xs text-text-tertiary">Then $39/year to keep getting updates</div>
                 </div>
                 <ul class="mb-6 space-y-2 text-sm text-text-secondary">
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
-                        All features
+                        All features, Cmdr AI included
                     </li>
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
@@ -158,57 +162,79 @@ const faq = [
                     </li>
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
-                        Auto-renews annually
+                        One year of updates included
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="text-accent-text">✓</span>
+                        Your last version stays yours, forever
                     </li>
                 </ul>
+                <p class="mb-6 rounded-lg border border-border-subtle bg-background p-3 text-xs text-text-secondary">
+                    Passes a security review: every line is readable on <a
+                        href="https://github.com/vdavid/cmdr"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-accent-text underline underline-offset-2 hover:text-accent-hover">GitHub</a
+                    >, and the BSL 1.1 license turns into AGPL-3.0 after three years, so a one-person project can't
+                    strand your team.
+                </p>
                 <button
                     type="button"
-                    data-paddle-price="commercialSubscription"
-                    disabled={!isPaddleConfigured}
+                    data-paddle-price="commercial"
+                    disabled={!canBuyCommercial}
                     class="mt-auto block w-full cursor-pointer rounded-lg bg-accent py-2 text-center text-sm font-medium text-accent-contrast transition-all duration-200 hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     Buy commercial license
                 </button>
             </div>
 
-            <!-- Commercial Perpetual -->
+            <!-- Enterprise: a tier with no number, on purpose. ❌ Don't add a price, a seat
+                 threshold, or a list of what a deal includes: each one is something a buyer
+                 negotiates down from, and with one deal ever closed there is nothing to anchor
+                 them against. The bullets below describe who this is FOR (a buyer recognizing
+                 their own situation), never what they get. The word "Enterprise" is load-bearing:
+                 it's what a procurement reader and a site search both scan for. -->
             <div class="flex flex-col rounded-2xl border border-border bg-surface p-6">
                 <div class="mb-4">
-                    <h2 class="text-lg font-semibold text-text-primary">Perpetual</h2>
-                    <p class="text-sm text-text-tertiary">Buy once, use forever</p>
+                    <h2 class="text-lg font-semibold text-text-primary">Enterprise</h2>
+                    <p class="text-sm text-text-tertiary">For larger teams and organizations</p>
                 </div>
                 <div class="mb-6">
-                    <span class="text-3xl font-bold text-text-primary">$199</span>
-                    <span class="text-text-tertiary"> one-time</span>
+                    <span class="text-3xl font-bold text-text-primary">Let's talk</span>
                 </div>
                 <ul class="mb-6 space-y-2 text-sm text-text-secondary">
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
-                        All features
+                        Everything in Commercial
                     </li>
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
-                        <strong class="text-text-primary">Commercial use</strong>
+                        Your IT department deploys it
                     </li>
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
-                        Per user, your own devices
+                        Your security team reviews it
                     </li>
                     <li class="flex items-start gap-2">
                         <span class="text-accent-text">✓</span>
-                        1 year of updates
+                        One contract, one invoice, your PO
                     </li>
                 </ul>
-                <button
-                    type="button"
-                    data-paddle-price="commercialPerpetual"
-                    disabled={!isPaddleConfigured}
-                    class="mt-auto block w-full cursor-pointer rounded-lg border border-border py-2 text-center text-sm font-medium text-text-primary transition-colors hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+                <a
+                    href="mailto:sales@getcmdr.com?subject=Cmdr%20for%20our%20team"
+                    class="mt-auto block w-full rounded-lg border border-border py-2 text-center text-sm font-medium text-text-primary transition-colors hover:bg-surface-elevated focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                    Buy perpetual license
-                </button>
+                    Email sales@getcmdr.com
+                </a>
             </div>
         </div>
+
+        <!-- The beta note is the promise that lets Cmdr AI move to a Pro plan later without
+             anyone feeling rug-pulled: say it here, on the page people screenshot. -->
+        <p class="mx-auto mb-16 max-w-3xl text-center text-sm text-text-tertiary">
+            Cmdr AI is free for everyone while Cmdr is in beta. Later it moves to a Pro plan with hosted models included,
+            so you won't need an API key. The file manager itself stays free for personal use.
+        </p>
 
         <!-- FAQ Section: ld+json and visible cards both render from the `faq` array in frontmatter -->
         <script type="application/ld+json" set:html={JSON.stringify({

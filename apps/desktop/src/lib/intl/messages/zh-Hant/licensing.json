@@ -128,9 +128,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "商業授權每人每年 $59，也支持 Cmdr 持續開發下去。",
+  "licensing.commercialReminder.priceInfo": "商業授權一次性 $59，也支持 Cmdr 持續開發下去。",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.declinePersonal": "我只把 Cmdr<break></break>用於個人用途",
   "@licensing.commercialReminder.declinePersonal": {

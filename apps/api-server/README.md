@@ -33,9 +33,12 @@ in [CLAUDE.md](CLAUDE.md).
 4. **Resend**: Create API key at https://resend.com/api-keys. Add `getcmdr.com` domain at https://resend.com/domains
    (adds DNS records to Cloudflare automatically).
 5. **Paddle**: Create accounts at https://paddle.com (live) and https://sandbox-vendors.paddle.com (sandbox).
-6. **Paddle (both environments)**: Create product "Cmdr" (standard tax category), then two prices:
-   - Commercial subscription: $59/year
-   - Commercial perpetual: $199, one-time
+6. **Paddle (both environments)**: Create product "Cmdr" (standard tax category), then one price:
+   - Commercial license: $59, one-time, `tax_mode: external` so VAT is added on top. Point both
+     `PRICE_ID_COMMERCIAL_PERPETUAL` (here) and `PUBLIC_PADDLE_PRICE_ID_COMMERCIAL` (the website) at it. The server-side
+     name still says "perpetual" because that's the license type the webhook issues; an unmapped price ID falls back to
+     `commercial_subscription`, which would hand the buyer a license that expires. The ids that exist today, and which
+     retired prices stay mapped, are listed in `docs/business/pricing.md`.
 7. **Paddle (both environments)**: Create notification destination → webhook URL, subscribe to `transaction.completed`.
    - Sandbox: `https://unsickerly-acclivitous-lala.ngrok-free.dev/webhook/paddle` (for local dev via ngrok)
    - Live: `https://api.getcmdr.com/webhook/paddle`
@@ -49,8 +52,8 @@ in [CLAUDE.md](CLAUDE.md).
    npx wrangler secret put ED25519_PRIVATE_KEY
    npx wrangler secret put RESEND_API_KEY
    npx wrangler secret put PADDLE_ENVIRONMENT              # "live"
-   npx wrangler secret put PRICE_ID_COMMERCIAL_SUBSCRIPTION # live price ID
-   npx wrangler secret put PRICE_ID_COMMERCIAL_PERPETUAL   # live price ID
+   npx wrangler secret put PRICE_ID_COMMERCIAL_PERPETUAL   # live price ID of the $59 one-time price
+   npx wrangler secret put PRICE_ID_COMMERCIAL_SUBSCRIPTION # retired $59/year price; stays mapped, one live customer
    npx wrangler secret put HEALTHCHECKS_PING_URL           # optional: cron dead-man's switch
    ```
 10. **`.dev.vars`** (local dev, sandbox values): see [CLAUDE.md](CLAUDE.md#configuration) for the full table.

@@ -129,9 +129,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "Commerciële licenties kosten $59 per jaar per gebruiker en steunen de verdere ontwikkeling.",
+  "licensing.commercialReminder.priceInfo": "Een commerciële licentie kost eenmalig $59 en steunt de verdere ontwikkeling.",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.declinePersonal": "Ik gebruik Cmdr<break></break>alleen persoonlijk",
   "@licensing.commercialReminder.declinePersonal": {

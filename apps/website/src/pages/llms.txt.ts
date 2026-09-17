@@ -23,7 +23,7 @@ Current version: ${version}
 
 - [Download (Apple Silicon)](${dmgUrls.aarch64}): DMG installer for Apple Silicon Macs
 - [Download (Intel)](${dmgUrls.x86_64}): DMG installer for Intel Macs
-- [Pricing](${site}/pricing/): Free for personal use, commercial from $59/year
+- [Pricing](${site}/pricing/): Free for personal use, $59 once for commercial use
 - [Blog](${site}/blog/): Updates and news
 - [Changelog](${site}/changelog/): Release notes
 - [Roadmap](${site}/roadmap/): What's coming next
@@ -41,9 +41,9 @@ Current version: ${version}
 
 ## Pricing
 
-- **Personal**: Free. All features, your own devices, automatic updates. No commercial use.
-- **Commercial**: $59/year (discounted from $79 for first 1,000 licenses). All features, commercial use, per user, your own devices.
-- **Perpetual**: $199 one-time. All features, commercial use, per user, your own devices, one year of updates.
+- **Personal**: Free. The whole file manager, your own devices, automatic updates. Cmdr AI is free during the beta and later moves to a Pro plan with hosted models included. No commercial use.
+- **Commercial**: $59, paid once. All features including Cmdr AI, commercial use, per user, your own devices. One year of updates included, then $39/year to keep receiving them. The last version you were entitled to stays yours forever.
+- **Enterprise**: for larger teams and organizations, where IT deploys Cmdr, security reviews it, and finance wants one invoice against a PO. Quoted by hand, no published price. Email sales@getcmdr.com.
 
 ## System requirements
 

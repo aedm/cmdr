@@ -18,18 +18,21 @@ values via IPC.
 ## License types
 
 - **Personal**: free. "Personal use only" in title bar. Commercial reminder every 30 days.
-- **Commercial subscription**: $59/year. Server validation every 7 days, 30-day offline grace on network failure.
-- **Commercial perpetual**: $199 one-time. No periodic validation. 3 years of updates.
+- **Commercial perpetual**: what's sold today. No periodic validation, no expiry.
+- **Commercial subscription**: **retired, but live.** ❌ Don't delete the type or its paths (7-day revalidation, 30-day
+  offline grace) while the one license on it runs, to 2028-09-16.
 - **Expired**: reverts to Personal behavior (not locked out). Shows the modal once, then behaves as Personal.
+
+❌ **An unmapped Paddle price ID mints `commercial_subscription`**, so a misconfigured price sells an expiring license
+against the page's "yours forever" promise. Prices, wiring, and what each type grants: `docs/business/pricing.md`.
 
 ## Must-knows
 
 - **All user-facing copy here lives in `messages/en/licensing.json`, resolved via `t`/`tString`/`<Trans>`**
-  (`$lib/intl`), not hardcoded. `cmdr/no-raw-user-facing-string` is enforced on `lib/licensing/` (and on
-  `LicenseSection.svelte`). Apostrophes in catalog values are doubled (`''`); inline-component sentences (the
-  GitHub/email links, the `<strong>` org/date emphasis, the dismiss-button line break) go through `<Trans>` with a tag
-  snippet. Dates stay locale-formatted at the call site and are passed to messages as preformatted `{date}` STRING
-  params. Parity net: `licensing-i18n-parity.test.ts`.
+  (`$lib/intl`), never hardcoded; `cmdr/no-raw-user-facing-string` covers `lib/licensing/` and `LicenseSection.svelte`.
+  Dates are locale-formatted at the call site and passed in as preformatted `{date}` STRING params. Catalog conventions
+  (doubled apostrophes, `<Trans>` tag snippets): `$lib/intl/messages/CLAUDE.md`. Parity net:
+  `licensing-i18n-parity.test.ts`, which pins the reminder's price literal so it can't drift.
 - **Activation uses the verify/commit split.** `handleActivate` calls `verifyLicense()` (nothing stored), then
   `validateLicenseWithServer(transactionId)` (transaction ID passed explicitly because the key isn't stored yet), then
   decides whether to `commitLicense()`. Four outcomes: active → commit + onSuccess; expired → commit + inline expiry
@@ -39,15 +42,14 @@ values via IPC.
 - **`commit_license` writes `cached_license_status` but NOT `last_validation_timestamp`.** So `needs_validation()` stays
   true and the frontend derives `pendingVerification` from `hasLicenseBeenValidated()` until a real server validation
   writes the timestamp. When set, the validity row shows "Not yet verified" (yellow) with a 7-day hint.
-- **`resetForTesting()` must stay in sync with `licenseState`.** Adding a field to `licenseState` means clearing it in
-  `resetForTesting()`. Tests use this instead of `vi.resetModules()` to avoid the module re-parse penalty.
+- **`resetForTesting()` must stay in sync with `licenseState`**: a new field there needs clearing here. Tests use it
+  rather than `vi.resetModules()`, which costs a module re-parse.
 - **Classify activation errors by typed code, never English substrings.** `getFriendlyError` uses
   `parseActivationError(e)` to extract a `LicenseActivationError` with a `code` field (`badSignature`, `networkError`,
   …) and switches on it. The error message (red, `--color-error`) and help text (secondary) are separate `<p>` elements.
-- **License details view uses `LicenseInfo`, not `getCachedStatus()`**, for org name and license type; only
-  `validityText` (expiry dates) comes from `getCachedStatus()` (server-sourced). `isServerInvalid` is a safety net for
-  the rare case where a stored key is later rejected during a 7-day re-validation (`existingLicense !== null` AND cached
-  type `=== 'personal'`).
+- **License details reads org name and type from `LicenseInfo`**, and only `validityText` (expiry) from the
+  server-sourced `getCachedStatus()`. `isServerInvalid` catches a stored key later rejected on a 7-day re-validation
+  (`existingLicense !== null` AND cached type `'personal'`).
 - **Mailto links use `openExternalUrl`** (via `@tauri-apps/plugin-opener`), never raw `<a href="mailto:">` (Tauri blocks
   that navigation). The email is also shown as copyable text with a Copy button.
 - **Ed25519 public key is embedded** in backend `verification.rs` and must match the API server's private key.

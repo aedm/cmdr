@@ -33,7 +33,7 @@ Release date: ${latestRelease.pub_date.split('T')[0]}
 - [Download (Apple Silicon)](${dmgUrls.aarch64}): DMG installer for Apple Silicon Macs
 - [Download (Intel)](${dmgUrls.x86_64}): DMG installer for Intel Macs
 - [Download (Universal)](${dmgUrls.universal}): DMG installer that works on both architectures
-- [Pricing](${site}/pricing/): Free for personal use, commercial from $59/year
+- [Pricing](${site}/pricing/): Free for personal use, $59 once for commercial use
 - [Blog](${site}/blog/): Updates and news
 - [Changelog](${site}/changelog/): Release notes
 - [Roadmap](${site}/roadmap/): What's coming next
@@ -81,27 +81,23 @@ Release date: ${latestRelease.pub_date.split('T')[0]}
 
 ### Personal (free)
 
-- All features included
+- The whole file manager
+- Cmdr AI, free during the beta (later it moves to a Pro plan with hosted models included; the file manager stays free for personal use)
 - Unlimited machines
 - Automatic updates
 - No commercial use
 
-### Commercial ($59/year)
+### Commercial ($59, paid once)
 
-- All features included
+- All features included, Cmdr AI included
 - Commercial use allowed
 - Per user, your own devices
-- Auto-renews annually
-- Discounted from $79 for the first 1,000 licenses
+- One year of updates included
+- After that year, $39/year to keep receiving updates, and the last version you were entitled to stays yours forever
 
-### Perpetual ($199 one-time)
+### Enterprise
 
-- All features included
-- Commercial use allowed
-- Per user, your own devices
-- Three years of updates included
-- Keep using your version forever after updates expire
-- Renew updates at a reduced rate
+For larger teams and organizations: your IT department deploys Cmdr, your security team reviews it, and you get one contract and one invoice against your PO. Quoted by hand, with no published price. Email sales@getcmdr.com.
 
 ## Frequently asked questions
 
@@ -113,9 +109,13 @@ If you're using Cmdr as part of your job (employment, freelancing, consulting), 
 
 Yes! Use Cmdr on as many machines as you like. Laptop, desktop, remote debugging rig, whatever. Your license is per user, not per machine.
 
-### What's the difference between subscription and perpetual?
+### What happens after my year of updates runs out?
 
-Subscription ($59/year) auto-renews annually and always includes the latest updates. Perpetual ($199) is a one-time purchase that includes one year of updates. After that, you can keep using your current version forever or renew updates at a reduced rate.
+Nothing breaks. The last version you were entitled to keeps working, for as long as you like, on as many of your machines as you like. Updates after the first year are $39 a year, and skipping a year and coming back later is fine.
+
+### Do I pay extra for Cmdr AI?
+
+Not during the beta: Cmdr AI is free for everyone right now. It runs on an API key you bring from a provider you pick, or fully on-device with a local model. Later, Cmdr AI moves to a Pro plan that includes hosted models, so no API key is needed. The file manager itself stays free for personal use, and a Commercial license bought today keeps Cmdr AI with your own key or the on-device model for as long as your updates run.
 
 ### Can I see the source code?
 
@@ -125,9 +125,9 @@ Yes! Cmdr is source-available on GitHub at https://github.com/vdavid/cmdr. You c
 
 We offer a 30-day, no-questions-asked refund. Send an email and we'll sort it out.
 
-### Do you offer team licenses?
+### Do you offer team and enterprise licenses?
 
-Each person needs their own license. For teams of five or more, email legal@getcmdr.com for volume pricing.
+Yes. For a handful of people, buying Commercial licenses one by one is the quickest route, and each person can use theirs on all of their machines. Once your IT department has to deploy Cmdr, your security team has to sign off on it, or finance wants one invoice against a PO, that's an enterprise deal: email sales@getcmdr.com with your headcount and what you need, and you'll get a quote back.
 
 ## System requirements
 
