@@ -155,8 +155,14 @@ pub(super) async fn build_session(params: &SmbConnectionParams) -> Result<(SmbCl
         domain: String::new(),
         auto_reconnect: false,
         compression: true,
-        dfs_enabled: false,
+        // A share name that isn't a share on the server may be a DFS namespace
+        // root, which is how an AD domain normally publishes a share
+        // (`\\<domain>\<namespace>`). smb2 only asks for a referral once a
+        // TreeConnect has been refused by a server that advertised DFS, so an
+        // ordinary NAS pays nothing for this being on.
+        dfs_enabled: true,
         dfs_target_overrides: Default::default(),
+        ..Default::default()
     };
     let mut client = SmbClient::connect(config).await?;
     let tree = client.connect_share(&params.share_name).await?;

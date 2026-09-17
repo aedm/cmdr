@@ -44,8 +44,12 @@ pub async fn try_list_shares_as_guest(
         domain: String::new(),
         auto_reconnect: false,
         compression: false,
+        // Share enumeration never leaves `IPC$`, so there is no share name for
+        // a referral to resolve. Off, so a listing can't spend round-trips on
+        // it.
         dfs_enabled: false,
         dfs_target_overrides: Default::default(),
+        ..Default::default()
     };
 
     let mut client = SmbClient::connect(config).await?;
@@ -72,8 +76,10 @@ pub async fn try_list_shares_authenticated(
         domain: String::new(),
         auto_reconnect: false,
         compression: false,
+        // Same as the guest listing above: `IPC$` only, nothing to resolve.
         dfs_enabled: false,
         dfs_target_overrides: Default::default(),
+        ..Default::default()
     };
 
     let mut client = SmbClient::connect(config).await?;
@@ -101,8 +107,14 @@ pub async fn try_open_share(params: &SmbConnectionParams, timeout: Duration) -> 
         domain: String::new(),
         auto_reconnect: false,
         compression: false,
-        dfs_enabled: false,
+        // This probe exists to report what the server really says about the
+        // share, so it has to reach a DFS namespace root the same way
+        // `session::build_session` does. Without it a namespace answers
+        // `STATUS_BAD_NETWORK_NAME` and the probe reports "no such share"
+        // about a share the caller can actually open.
+        dfs_enabled: true,
         dfs_target_overrides: Default::default(),
+        ..Default::default()
     };
 
     let mut client = SmbClient::connect(config).await?;
