@@ -885,8 +885,11 @@ button), `below` adds a sub-line (the disk-space bar), and `footer` sits under t
   macOS. ❗ M2's characterization pin for the old DOM-Escape-closes-everything case is expected to fail, and gets
   updated deliberately then.
 - **Every key while open.** `onKey` gets the first look, then the menu's own handling, and anything left over is
-  swallowed (`stopPropagation`), which is what keeps the panes behind it inert. ❗ A swallowed key is never
-  `preventDefault`ed, so ⌘Q and the menu-bar accelerators still mean what they mean.
+  swallowed (`stopPropagation`), which is what keeps the panes behind it inert. A key `onKey` CLAIMS is swallowed the
+  same way: otherwise it's the one class that reaches the app's central dispatch and fires twice, invisible only while
+  `isHeaderMenuOpen()` happens to know about every menu built on this primitive. ❗ A swallowed key is never
+  `preventDefault`ed, so ⌘Q and the menu-bar accelerators still mean what they mean. The two are different mechanisms:
+  `stopPropagation` ends DOM bubbling, which is the double-fire path, and leaves the key's meaning to the OS.
 - **`isEditing()` suspends all of it**, untouched and unswallowed, so an inline editor keeps every keystroke.
 - **Focus**: the container takes focus on open (`tabindex="-1"` plus `aria-activedescendant` on the highlighted row) and
   calls `restoreFocus` on close. Keys route through a document-level CAPTURE listener that lives only while open, the

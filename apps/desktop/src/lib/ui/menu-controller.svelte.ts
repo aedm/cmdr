@@ -530,7 +530,14 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
       // An inline editor owns every keystroke, untouched: not even swallowed, or the field
       // would lose the keys it exists to receive.
       if (deps.isEditing?.()) return false
-      if (deps.onKey?.(event)) return true
+      if (deps.onKey?.(event)) {
+        // A claimed key ends here like every other key an open menu handles, or it would be
+        // the ONE class that escapes to the app's dispatch and fires twice. `stopPropagation`
+        // only, never `preventDefault`: a consumer key can be a menu-bar accelerator
+        // (`favorites.open` is), and those keep meaning what they mean.
+        event.stopPropagation()
+        return true
+      }
 
       const action = menuKeyAction(event, currentKeyContext())
       if (action.kind === 'none') {
