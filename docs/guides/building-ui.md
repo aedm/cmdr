@@ -35,6 +35,32 @@ For a full-screen commit flow (onboarding, consent, multi-step setup the user ca
 `apps/desktop/src/lib/onboarding/OnboardingWizard.svelte` and the `--sheet-*` tokens. The sheet-vs-dialog decision table
 is in `../design-system.md` § Soft sheets.
 
+## Building a menu
+
+Two menu systems: the OS's, through muda (`apps/desktop/src-tauri/src/menu/`), and the house `Menu`
+(`apps/desktop/src/lib/ui/Menu.svelte` plus `createMenu`). **Native for a right-click on a backend object; the house
+`Menu` when a row is more than text, or when the menu hangs off our own chrome.** Apply in order:
+
+1. **Does any row need to be more than `[icon] label [✓]`?** A disk-space bar, a connection dot, a live badge, an inline
+   rename field, a drag handle, a sub-line. If yes → house `Menu`, stop. muda can't render these, which is why the
+   volume switcher and the favorites menu are ours.
+2. **If every row is a plain action, what does it act on?** Backend state (a path, a volume, a server, a file) → native:
+   the pick becomes an IPC command anyway, so the round-trip is free and the OS behavior comes with it. Frontend or DOM
+   state → ask whether AppKit already has a responder action: `copy:` / `selectAll:` / `cut:` / `paste:` → native at
+   zero IPC, because the responder chain does the work (`build_viewer_menu` in
+   `apps/desktop/src-tauri/src/menu/menu_structure.rs` is the viewer's Edit menu relying on exactly this). Anything else
+   → house `Menu`.
+3. **Tiebreaker: what opened it?** A right-click is an OS convention and people expect the OS's menu. A menu hanging off
+   a chip or a button in our own chrome should look like ours.
+
+The trade, honestly: native gives OS look and feel, `validateMenuItem:` auto-enabling, VoiceOver, responder-chain
+actions, escape from the window bounds, and system appearance, but no rich rows, a round-trip for frontend state, and
+nothing Playwright can reach. The house `Menu` gives arbitrary rows, direct frontend state, our design language, and
+testability, and costs clipping at the window edge plus owning keyboard, focus, placement, and a11y. That last cost is
+now paid once in the primitive rather than per menu, which is what makes it a fair default for its half of the split.
+
+The consumer contract, the row snippets, and what the primitive owns: `apps/desktop/src/lib/ui/DETAILS.md` § Menu.
+
 ## Form controls
 
 Never write a raw `<input>`, `<textarea>`, or `<select>`; the `cmdr/prefer-ui-primitive` ESLint rule rejects them.
