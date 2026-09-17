@@ -155,7 +155,8 @@
   },
   "commands.favoritesOpen.label": "Show favorites",
   "@commands.favoritesOpen.label": {
-    "description": "Command name that opens the favorites menu over the focused pane. Appears in the command palette and in the Go menu. \"Favorites\" is the named list of bookmarked folders; match the heading the favorites menu uses (fileExplorer.navigation.groupFavorites)."
+    "description": "Command name that opens the favorites menu over the focused pane. Appears in the command palette and in the Go menu. \"Favorites\" is the named list of bookmarked folders; match the heading the favorites menu uses (fileExplorer.navigation.groupFavorites).",
+    "screenshot": "settings-keyboard-shortcuts.png"
   },
   "commands.favoritesOpen.description": "Open the favorites menu on the focused pane, and press a number to jump to that favorite.",
   "@commands.favoritesOpen.description": {
@@ -163,7 +164,8 @@
   },
   "commands.favoritesOpenByNumber.label": "Open the favorite with that number",
   "@commands.favoritesOpenByNumber.label": {
-    "description": "Row in the Keyboard shortcuts list, describing what the number keys 1-9 do while the favorites menu is open: each one jumps straight to the favorite shown beside it. Read-only (the keys can't be rebound), so this is a description of the behavior rather than a command name."
+    "description": "Row in the Keyboard shortcuts list, describing what the number keys 1-9 do while the favorites menu is open: each one jumps straight to the favorite shown beside it. Read-only (the keys can't be rebound), so this is a description of the behavior rather than a command name.",
+    "screenshot": "settings-keyboard-shortcuts.png"
   },
   "commands.downloadsGoToLatest.label": "Go to latest download",
   "@commands.downloadsGoToLatest.label": {
@@ -761,7 +763,8 @@
   },
   "commands.selectionSelectSameKind.label": "Select all of the same kind",
   "@commands.selectionSelectSameKind.label": {
-    "description": "Command name that adds every entry of the same kind as the one under the cursor to the selection: every folder, every file with the same extension, or every file with no extension. This static name appears in the keyboard-shortcuts settings and the help window; the command palette shows one of the three live variants below instead."
+    "description": "Command name that adds every entry of the same kind as the one under the cursor to the selection: every folder, every file with the same extension, or every file with no extension. This static name appears in the keyboard-shortcuts settings and the help window; the command palette shows one of the three live variants below instead.",
+    "screenshot": "settings-keyboard-shortcuts.png"
   },
   "commands.selectionSelectSameKind.description": "Adds every entry like the one under the cursor to the selection, without clearing it",
   "@commands.selectionSelectSameKind.description": {
@@ -776,7 +779,8 @@
     "description": "Command palette row for \"Select all of the same kind\" while the cursor sits on a file that has an extension, so the row says what running it would do right now. The asterisk-dot is a filename mask, the same shape the Select files dialog uses; restructure the sentence around the placeholder freely, and keep the mask readable.",
     "placeholders": {
       "extension": "the extension with no leading dot, lowercased, e.g. \"pdf\" or \"gz\""
-    }
+    },
+    "screenshot": "command-palette.png"
   },
   "commands.selectionSelectSameKind.noExtension": "Select all files with no extension",
   "@commands.selectionSelectSameKind.noExtension": {
