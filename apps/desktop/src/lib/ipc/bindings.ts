@@ -3800,12 +3800,14 @@ export const commands = {
   /**
    *  Ejects a volume. Picks the right teardown for the volume's kind.
    *
-   *  Returns `Ok(())` once the unmount or disconnect is initiated. The frontend
-   *  shouldn't wait for the volume to fully disappear — `volume-unmounted` (for
-   *  disk volumes) or `mtp-device-disconnected` (for MTP) will fire shortly
-   *  after and panes rooted at the volume redirect to root.
+   *  Answers which teardown ran once the unmount or disconnect is initiated. The
+   *  frontend shouldn't wait for the volume to fully disappear: `volume-unmounted`
+   *  (for disk volumes) or `mtp-device-disconnected` (for MTP) will fire shortly
+   *  after and panes rooted at the volume redirect to root. It reads the outcome
+   *  for nothing today, and passing it through rather than dropping it is what
+   *  keeps the MCP tool's typed answer honest.
    */
-  ejectVolume: (volumeId: string) => typedError<null, EjectError>(__TAURI_INVOKE('eject_volume', { volumeId })),
+  ejectVolume: (volumeId: string) => typedError<EjectOutcome, EjectError>(__TAURI_INVOKE('eject_volume', { volumeId })),
   /**
    *  Returns the IDs of volumes whose eject is still running. The volume picker
    *  bootstraps its ejecting set from this once on startup, then keeps it live via
@@ -6588,6 +6590,16 @@ export type EjectError =
       volumeId: string
     }
   /**
+   *  A remote server (SFTP, WebDAV) had no live session left to close. ❗ The
+   *  ONE way a remote disconnect comes back unhappy: dropping the session IS
+   *  the teardown and it can't refuse, so there's nothing else to report.
+   */
+  | {
+      type: 'remoteNotConnected'
+      // The volume asked about.
+      volumeId: string
+    }
+  /**
    *  The device provider wouldn't retire the volume (MTP: the device wouldn't
    *  close its session).
    */
@@ -6638,6 +6650,26 @@ export type EjectError =
       // What the layer below reported, for the log and the details line.
       detail: string
     }
+
+/**
+ *  What a teardown actually did, once it went through.
+ *
+ *  ❗ The answer an automated caller reads: the MCP `eject` tool returns this as
+ *  a typed tag rather than a sentence, so an agent learns which teardown ran
+ *  (`mcp/executor/eject.rs`). The frontend ignores it; its feedback is the
+ *  volume leaving the switcher.
+ */
+export type EjectOutcome =
+  // A device provider (MTP, ADB) retired the volume.
+  | 'deviceDisconnected'
+  // A remote session (SFTP, WebDAV) was dropped and the volume unregistered.
+  | 'remoteDisconnected'
+  // One volume left the mount table, an SMB share and a macFUSE mount included.
+  | 'unmounted'
+  // A whole physical disk was ejected, every volume on it included.
+  | 'diskEjected'
+  // Nothing was left to do: the volume had already gone before the teardown ran.
+  | 'alreadyGone'
 
 // Which pre-unmount step stalled, for [`EjectError::NotResponding`].
 export type EjectStep =

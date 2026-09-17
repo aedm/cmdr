@@ -158,6 +158,25 @@ impl BackendKind {
             Self::Sftp | Self::Webdav | Self::Archive | Self::GitPortal => false,
         }
     }
+
+    /// Whether a volume this backend serves is taken away by dropping its own
+    /// SESSION, rather than by an unmount or a device provider's eject.
+    ///
+    /// ❗ Says nothing about whether a volume CAN be detached, only about which
+    /// teardown does it: an SMB share also holds a session, and it goes through
+    /// `diskutil unmount` because the OS mount is what the person sees. A phone
+    /// answers `false` here because its provider retires it
+    /// (`device_volumes::DeviceVolumeProvider`), which runs before this question
+    /// is asked at all.
+    ///
+    /// Exhaustive on purpose: a new backend doesn't compile until it answers.
+    #[must_use]
+    pub fn detaches_by_session_drop(self) -> bool {
+        match self {
+            Self::Sftp | Self::Webdav => true,
+            Self::Local | Self::Smb | Self::Mtp | Self::Adb | Self::Archive | Self::GitPortal => false,
+        }
+    }
 }
 
 /// What a "Sign in" affordance on a volume asks a person for: the FORM the sheet

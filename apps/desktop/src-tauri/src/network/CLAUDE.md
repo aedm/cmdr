@@ -29,6 +29,9 @@ shared seams (`connect_wiring.rs`, `server_list_file.rs`, `saved_server_fields.r
 - **Re-register via `register_replacing_predecessor` (SMB) or `install_retiring_incumbent`**, which retire through
   `on_superseded`; ❌ never a bare overwrite or `on_unmount`, which cuts in-flight transfers. An EDIT to a connected
   SFTP/WebDAV place shares its session instead: `live_server_edit.rs` (`DETAILS.md` § "Editing a connected place").
+- **Drop a place's session through `commands::servers::disconnect_place_inner`, ❌ never a wiring's own `disconnect`**:
+  it emits the `VolumeUnmounted` that sends a pane standing on the place home. Eject routes here too, so a server
+  detaches from the chip, the switcher, and MCP the same way.
 - **Decide at ACT time**: re-check `is_already_direct` under `lock_volume_upgrade`, right before connecting.
 - **A mount's volume ID and anchor come off ONE `statfs` row** (`identity_from_statfs`), ❌ never derived apart. Every
   mount read on an async path is bounded (`MOUNT_READ_LIMIT`).

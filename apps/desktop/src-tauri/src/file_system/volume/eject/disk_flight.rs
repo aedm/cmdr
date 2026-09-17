@@ -20,7 +20,9 @@ use std::sync::Arc;
 use super::disk_target::{self, DiskMounts, DiskTarget};
 use super::in_flight::{self, DiskFlight, DiskOwnership};
 use super::unmount_tool::{AbandonedRun, UnmountVerb};
-use super::{EjectError, EjectStep, IndexStopped, Teardown, deadlines, run_teardown, stop_indexes_blocking};
+use super::{
+    EjectError, EjectOutcome, EjectStep, IndexStopped, Teardown, deadlines, run_teardown, stop_indexes_blocking,
+};
 use crate::file_system::volume::drive_release::{
     self, DriveRelease, LateRelease, Release, ResumeCandidate, ResumeOwner, VolumeRelease,
 };
@@ -36,7 +38,11 @@ pub(super) struct Sibling {
 }
 
 /// Ejects the physical disk under `volume_id`, which is mounted at `mount_path`.
-pub(super) async fn eject_disk(volume_id: &str, mount_path: &str, target: DiskTarget) -> Result<(), EjectError> {
+pub(super) async fn eject_disk(
+    volume_id: &str,
+    mount_path: &str,
+    target: DiskTarget,
+) -> Result<EjectOutcome, EjectError> {
     // ❗ Fail closed: without the disk's volumes nobody knows which siblings the
     // teardown would take down, so stopping only the volume that was clicked and
     // unmounting anyway is exactly the live-watcher unmount the pre-stop exists to
@@ -85,7 +91,10 @@ pub(super) async fn eject_disk(volume_id: &str, mount_path: &str, target: DiskTa
         &siblings,
         ownership,
     )
-    .await
+    .await?;
+    // Success here means the whole disk went, siblings included, which is what
+    // separates this outcome from a one-volume `Unmounted`.
+    Ok(EjectOutcome::DiskEjected)
 }
 
 /// Stop every sibling, tear the disk down, and hand back what stayed.

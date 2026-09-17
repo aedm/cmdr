@@ -330,11 +330,20 @@ pub fn cancel_server_connect(attempt_id: String) -> bool {
 #[tauri::command]
 #[specta::specta]
 pub async fn disconnect_place(volume_id: String) -> bool {
-    let root = crate::server_volumes::place_root(&volume_id);
-    let dropped =
-        sftp_volume_wiring::disconnect(&volume_id).await || webdav_volume_wiring::disconnect(&volume_id).await;
+    disconnect_place_inner(&volume_id).await
+}
+
+/// The body of [`disconnect_place`], so the eject path can drop a place's
+/// session without going through IPC.
+///
+/// ❗ The ONE way a place's session is dropped. Calling either wiring's
+/// `disconnect` directly skips the `VolumeUnmounted` event above, which is what
+/// sends a pane standing on the place home.
+pub(crate) async fn disconnect_place_inner(volume_id: &str) -> bool {
+    let root = crate::server_volumes::place_root(volume_id);
+    let dropped = sftp_volume_wiring::disconnect(volume_id).await || webdav_volume_wiring::disconnect(volume_id).await;
     if dropped {
-        crate::volume_broadcast::emit_volume_gone(&volume_id, root.as_deref().unwrap_or_default());
+        crate::volume_broadcast::emit_volume_gone(volume_id, root.as_deref().unwrap_or_default());
     }
     dropped
 }

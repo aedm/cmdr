@@ -47,7 +47,7 @@ pub fn eject_schema() -> Value {
         "properties": {
             "volumeId": {
                 "type": "string",
-                "description": "Volume ID to eject (for example 'smb-…' or 'mtp-…:1'). See cmdr://state volumes."
+                "description": "Volume ID to detach (for example 'vol-…', 'smb-…', 'mtp-…:1', or 'sftp-…'). See cmdr://state volumes."
             }
         },
         "required": ["volumeId"]

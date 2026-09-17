@@ -1,4 +1,5 @@
-//! Volume eject: unmounts ejectable volumes (USB, SD, DMG, SMB, MTP, ADB).
+//! Volume eject: takes a volume away, whichever kind it is (USB, SD, DMG, SMB,
+//! MTP, ADB, SFTP, WebDAV).
 //!
 //! Dispatches by volume kind:
 //! - **Device volume** (a `device_volumes::DeviceVolumeProvider` owns the id):
@@ -6,6 +7,11 @@
 //!   `mtp-device-disconnected` event removes its storages from the picker; ADB
 //!   has nothing to detach (`adb` has no per-client detach), so it retires the
 //!   volume and hides the device until it re-enumerates.
+//! - **Remote session** (`BackendKind::detaches_by_session_drop`: SFTP, WebDAV):
+//!   drops the session through `commands::servers::disconnect_place_inner`. The
+//!   server stays SAVED; forgetting it is `forget_server`, a different act. ❗
+//!   Asked BEFORE the mount questions, since `is_ejectable` is a question about a
+//!   mount and a dialed server has no mount-table row to answer it.
 //! - **SMB volume** (registered `SmbVolume` in `VolumeManager`): runs `diskutil
 //!   unmount`. FSEvents fires `NSWorkspaceDidUnmount`, which calls
 //!   `Volume::on_unmount` (drops the smb2 session, stops the watcher) and the
@@ -15,14 +21,18 @@
 //!   safe to unplug; on DMG-mounted disk images, `eject` is the verb that
 //!   detaches the image (`unmount` would leave it attached).
 //!
-//! Non-ejectable volumes return an error.
+//! Volumes that can't be detached at all return an error.
 //!
-//! Every teardown that reaches a device provider or the unmount tool (`unmount_tool`)
-//! runs through [`run_teardown`], the one place a refusal is logged.
+//! Every teardown that reaches a device provider, a remote session, or the
+//! unmount tool (`unmount_tool`) runs through [`run_teardown`], the one place a
+//! refusal is logged.
 //!
-//! The `commands::eject` IPC layer is a thin delegate over [`eject`]: [`EjectError`]
-//! IS the wire type, so nothing is flattened on the way out.
+//! Both answers are typed, because an agent reaches this through the MCP `eject`
+//! tool and may not branch on a sentence: [`EjectOutcome`] says which teardown
+//! ran, [`EjectError`] says why one didn't. The `commands::eject` IPC layer is a
+//! thin delegate over [`eject`], so nothing is flattened on the way out.
 
+mod answers;
 mod deadlines;
 #[cfg(target_os = "macos")]
 mod disk_flight;
@@ -36,215 +46,19 @@ mod unmount_tool;
 #[cfg(all(test, target_os = "macos"))]
 mod real_image;
 
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::device_volumes::DeviceVolumeProvider;
 use unmount_tool::UnmountVerb;
 
+// The whole vocabulary, so a caller reaches `eject::EjectError` rather than
+// knowing which file inside the module holds it.
+pub use answers::*;
 pub(crate) use deadlines::INDEX_STOP_DEADLINE;
-use holders::HolderScan;
 pub(crate) use in_flight::is_ejecting;
 pub use in_flight::{VolumesEjectingChanged, ejecting_volume_ids, init_ejecting_volume_emitter};
 pub(in crate::file_system::volume) use unmount_tool::is_still_mounted;
-
-/// Action the eject pipeline takes for a given volume.
-#[derive(Debug, PartialEq, Eq)]
-pub enum EjectAction {
-    /// Run `diskutil eject <mount_path>`. Powers down USB devices, detaches DMGs.
-    DiskutilEject,
-    /// Run `diskutil unmount <mount_path>`. SMB: FSEvents handles smb2 teardown.
-    DiskutilUnmount,
-    /// Hand the eject to the device provider that owns the volume.
-    DeviceDisconnect { provider: &'static str, volume_id: String },
-}
-
-/// Reasons `decide_eject_action` can't pick an action. Kept as a typed enum so
-/// callers and tests classify the failure by variant instead of substring-
-/// matching a free-form message.
-#[derive(Debug, PartialEq, Eq)]
-pub enum EjectDecisionError {
-    /// Volume can't be ejected (not SMB, not a device, and NSURL/`/sys/block`
-    /// reports `is_ejectable = false`). Typical for the boot volume or other
-    /// internal disks.
-    NotEjectable { volume_id: String },
-}
-
-impl std::fmt::Display for EjectDecisionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::NotEjectable { volume_id } => {
-                write!(f, "Volume {} isn't ejectable", volume_id)
-            }
-        }
-    }
-}
-
-impl std::error::Error for EjectDecisionError {}
-
-/// Inputs the decision needs. Kept as primitives so the decision is a pure
-/// function that can be tested without touching `VolumeManager` or the FS.
-#[derive(Debug)]
-pub struct EjectContext<'a> {
-    pub volume_id: &'a str,
-    /// NSURL-derived ejectability for physical/DMG volumes. Always `false` for
-    /// SMB and device volumes (those route via their own branches).
-    pub is_ejectable: bool,
-    /// True if this is an SMB volume (any state: Direct, OsMount, Disconnected).
-    pub is_smb: bool,
-    /// The device provider (`"mtp"`, `"adb"`) that owns this volume, if one does.
-    pub device_provider: Option<&'static str>,
-}
-
-/// Decides what to do for a given volume. Pure function; the impure parts
-/// (looking up the volume, running `diskutil`, calling the provider's eject)
-/// live in [`eject`].
-pub fn decide_eject_action(ctx: &EjectContext) -> Result<EjectAction, EjectDecisionError> {
-    if let Some(provider) = ctx.device_provider {
-        return Ok(EjectAction::DeviceDisconnect {
-            provider,
-            volume_id: ctx.volume_id.to_string(),
-        });
-    }
-    if ctx.is_smb {
-        return Ok(EjectAction::DiskutilUnmount);
-    }
-    if ctx.is_ejectable {
-        return Ok(EjectAction::DiskutilEject);
-    }
-    Err(EjectDecisionError::NotEjectable {
-        volume_id: ctx.volume_id.to_string(),
-    })
-}
-
-/// Why an eject or an SMB disconnect didn't happen, as a value rather than a
-/// sentence.
-///
-/// ❌ **Nothing in this enum is prose a user reads.** It IS the wire type: the
-/// frontend renders every word from the typed variant through the
-/// `errors.eject.*` catalog in nine locales
-/// (`src/lib/file-explorer/eject-error-messages.ts`). The `detail` fields carry
-/// `diskutil`'s own stderr, which says useful non-enumerable things ("in use by
-/// process 1234 (mds)"); they render as technical detail beside the message,
-/// ❌ never as the message. Same split as `MutationError` on the write path;
-/// `docs/guides/error-handling.md` is the map.
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum EjectError {
-    /// A write op is reading from or writing to this volume; refuse to tear it
-    /// down mid-transfer. The picker disables Eject for busy volumes, so
-    /// reaching here means a race (or an MCP / automation caller).
-    Busy,
-    /// `volume_id` isn't registered in `VolumeManager` (a race: unmounted mid-op).
-    VolumeNotFound {
-        /// The id that no longer resolves.
-        volume_id: String,
-    },
-    /// The volume can't be ejected at all: not SMB, not a device, and the OS reports
-    /// it as fixed. Typical for the boot volume and other internal disks.
-    NotEjectable {
-        /// The volume asked about.
-        volume_id: String,
-    },
-    /// Disconnect was asked of a volume that isn't a network share. The UI only
-    /// offers Disconnect for SMB volumes, so this is a race or an automation
-    /// caller.
-    NotAnSmbVolume {
-        /// The volume asked about.
-        volume_id: String,
-    },
-    /// The device provider wouldn't retire the volume (MTP: the device wouldn't
-    /// close its session).
-    DeviceDisconnectRefused {
-        /// Which provider refused (`"mtp"`, `"adb"`).
-        provider: String,
-        /// What the provider reported, for the log and the details line.
-        detail: String,
-    },
-    /// `diskutil` / `umount` turned the unmount down. The overwhelmingly common
-    /// case is an open file somewhere.
-    UnmountRefused {
-        /// Who held the drive when the last attempt was refused. ❗ Two answers:
-        /// a scan that couldn't run names nobody, which is ❌ never "nobody is
-        /// holding it".
-        holders: HolderScan,
-        /// The tool's own stderr, for the log and the details line.
-        detail: String,
-    },
-    /// The `diskutil` / `umount` subprocess (or a device provider's eject) didn't
-    /// finish within the timeout. ❗ The unmount was NOT cancelled; it may still land.
-    TimedOut,
-    /// A step that runs BEFORE any unmount didn't finish within its deadline, so
-    /// nothing was unmounted and nothing may still land. A disk image whose backing
-    /// file sits on a hung share can block these for good. ❌ Never word it as
-    /// [`Self::TimedOut`], whose copy promises the eject may still happen.
-    NotResponding {
-        /// The step that stalled.
-        step: EjectStep,
-    },
-    /// The one honest fallback, for a failure nothing above classifies (a
-    /// panicked task). ❌ `detail` is never the message.
-    Unexpected {
-        /// What the layer below reported, for the log and the details line.
-        detail: String,
-    },
-}
-
-/// Which pre-unmount step stalled, for [`EjectError::NotResponding`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub enum EjectStep {
-    /// Asking the OS whether the volume is ejectable (`statfs` + NSURL, or the
-    /// Linux mount list).
-    EjectabilityCheck,
-    /// Working out which physical disk the volume sits on, and which of its volumes
-    /// the eject takes down with it.
-    DiskResolve,
-    /// Stopping the drive's index, which must finish before any unmount runs.
-    IndexStop,
-}
-
-impl std::fmt::Display for EjectStep {
-    /// For logs and MCP replies only.
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::EjectabilityCheck => "the ejectability check",
-            Self::DiskResolve => "the disk lookup",
-            Self::IndexStop => "the index stop",
-        })
-    }
-}
-
-impl std::fmt::Display for EjectError {
-    /// ❗ For logs, MCP replies, and debugging only; every user-facing word
-    /// comes from the typed variant.
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Busy => f.write_str("operations are in progress on this device"),
-            Self::VolumeNotFound { volume_id } => write!(f, "volume not found: {volume_id}"),
-            Self::NotEjectable { volume_id } => write!(f, "volume {volume_id} isn't ejectable"),
-            Self::NotAnSmbVolume { volume_id } => write!(f, "volume {volume_id} isn't an SMB volume"),
-            Self::DeviceDisconnectRefused { provider, detail } => {
-                write!(f, "{provider} disconnect refused: {detail}")
-            }
-            Self::UnmountRefused { holders, detail } => write!(f, "unmount refused ({holders}): {detail}"),
-            Self::TimedOut => f.write_str("timed out"),
-            Self::NotResponding { step } => write!(f, "{step} didn't finish in time, so nothing was unmounted"),
-            Self::Unexpected { detail } => write!(f, "unexpected: {detail}"),
-        }
-    }
-}
-
-impl std::error::Error for EjectError {}
-
-impl From<EjectDecisionError> for EjectError {
-    fn from(error: EjectDecisionError) -> Self {
-        match error {
-            EjectDecisionError::NotEjectable { volume_id } => Self::NotEjectable { volume_id },
-        }
-    }
-}
 
 /// Ejects a volume. Picks the right teardown for the volume's kind.
 ///
@@ -252,17 +66,17 @@ impl From<EjectDecisionError> for EjectError {
 /// running joins it and gets the same answer (`in_flight`), so a repeat click,
 /// the native menu, and MCP never start a second teardown.
 ///
-/// Returns `Ok(())` once the unmount or disconnect is initiated. The frontend
-/// shouldn't wait for the volume to fully disappear — `volume-unmounted` (for
-/// disk volumes) or `mtp-device-disconnected` (for MTP) will fire shortly
-/// after and panes rooted at the volume redirect to root.
-pub async fn eject(volume_id: &str) -> Result<(), EjectError> {
+/// Answers which teardown ran ([`EjectOutcome`]) once the unmount or disconnect
+/// is initiated. The frontend shouldn't wait for the volume to fully disappear:
+/// `volume-unmounted` (for disk volumes) or `mtp-device-disconnected` (for MTP)
+/// will fire shortly after and panes rooted at the volume redirect to root.
+pub async fn eject(volume_id: &str) -> Result<EjectOutcome, EjectError> {
     let owned_id = volume_id.to_string();
     in_flight::join_or_start(volume_id, move || eject_now(owned_id)).await
 }
 
 /// The eject itself. [`eject`] runs at most one of these per volume at a time.
-async fn eject_now(volume_id: String) -> Result<(), EjectError> {
+async fn eject_now(volume_id: String) -> Result<EjectOutcome, EjectError> {
     use crate::file_system::volume::manager::get_volume_manager;
 
     let volume_id = volume_id.as_str();
@@ -281,14 +95,12 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
     // first: MTP storages aren't registered under a mount path at all.
     let provider = crate::device_volumes::provider_for_volume_id(volume_id).await;
 
-    let (mount_path, is_smb) = if provider.is_some() {
-        (String::new(), false)
+    let (mount_path, is_smb, is_remote_session) = if provider.is_some() {
+        (String::new(), false, false)
     } else {
         let volume = get_volume_manager()
             .get(volume_id)
-            .ok_or_else(|| EjectError::VolumeNotFound {
-                volume_id: volume_id.to_string(),
-            })?;
+            .ok_or_else(|| nothing_registered_under(volume_id))?;
         let mount_path = volume.root().to_string_lossy().to_string();
         // A drive whose eject just landed lingers in the switcher until
         // `volumes-changed` arrives, and a click there would read "not ejectable"
@@ -298,10 +110,10 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
                 target: "eject",
                 "{volume_id} at {mount_path} is no longer mounted, so there's nothing left to eject"
             );
-            return Ok(());
+            return Ok(EjectOutcome::AlreadyGone);
         }
         let is_smb = volume.backend_kind() == cmdr_fs::volume::BackendKind::Smb;
-        (mount_path, is_smb)
+        (mount_path, is_smb, volume.backend_kind().detaches_by_session_drop())
     };
 
     // For physical volumes, ejectability comes from NSURL (macOS) /
@@ -309,7 +121,7 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
     // resolver instead of enumerating all volumes. Under a deadline: a disk image
     // backed by a file on a hung share can block this for good, and a stalled
     // check answers `NotResponding`, ❌ never a guessed "not ejectable".
-    let is_ejectable = if provider.is_some() || is_smb {
+    let is_ejectable = if provider.is_some() || is_smb || is_remote_session {
         false
     } else {
         deadlines::within_deadline(
@@ -325,6 +137,7 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
         volume_id,
         is_ejectable,
         is_smb,
+        is_remote_session,
         device_provider: provider.as_ref().map(|p| p.id()),
     })
     .map_err(EjectError::from)?;
@@ -334,12 +147,22 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
             let provider = provider.ok_or_else(|| EjectError::VolumeNotFound {
                 volume_id: volume_id.clone(),
             })?;
-            run_teardown(&volume_id, Teardown::Device(provider)).await
+            run_teardown(&volume_id, Teardown::Device(provider)).await?;
+            Ok(EjectOutcome::DeviceDisconnected)
+        }
+        // No index to stop first: a server's scheme root is nothing the index has a
+        // transport for (`BackendKind::can_be_indexed`).
+        EjectAction::RemoteDisconnect { volume_id } => {
+            run_teardown(&volume_id, Teardown::Remote).await?;
+            Ok(EjectOutcome::RemoteDisconnected)
         }
         // For disk volumes, stop the index BEFORE the unmount (the wedge-safe point).
         // A device provider tears its index down through its own disconnect hook,
         // so it isn't stopped here.
-        EjectAction::DiskutilUnmount => eject_one_volume(volume_id, &mount_path, UnmountVerb::Unmount).await,
+        EjectAction::DiskutilUnmount => {
+            eject_one_volume(volume_id, &mount_path, UnmountVerb::Unmount).await?;
+            Ok(EjectOutcome::Unmounted)
+        }
         // A `diskutil eject` takes the whole PHYSICAL disk down, so every volume on it
         // is gated and stopped first, and success means the whole disk went.
         #[cfg(target_os = "macos")]
@@ -358,13 +181,16 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
                 // person's goal is met, the same as `is_already_unmounted`.
                 Ok(disk_target::Resolution::Gone) => {
                     log::info!(target: "eject", "{volume_id} at {mount_path} left the mount table before its eject ran");
-                    Ok(())
+                    Ok(EjectOutcome::AlreadyGone)
                 }
                 // Mounted, but no physical disk backs it (a macFUSE mount): today's
                 // per-volume teardown is the honest answer.
                 Ok(disk_target::Resolution::NoDisk) => {
                     log::info!(target: "eject", "No physical disk backs {volume_id} at {mount_path}; ejecting the volume alone");
-                    eject_one_volume(volume_id, &mount_path, UnmountVerb::Eject).await
+                    eject_one_volume(volume_id, &mount_path, UnmountVerb::Eject).await?;
+                    // The volume alone left the mount table: no physical disk powered down,
+                    // so ❌ never `DiskEjected`.
+                    Ok(EjectOutcome::Unmounted)
                 }
                 Err(join_err) => Err(EjectError::Unexpected {
                     detail: format!("{}: {join_err}", EjectStep::DiskResolve),
@@ -372,8 +198,43 @@ async fn eject_now(volume_id: String) -> Result<(), EjectError> {
             }
         }
         #[cfg(not(target_os = "macos"))]
-        EjectAction::DiskutilEject => eject_one_volume(volume_id, &mount_path, UnmountVerb::Eject).await,
+        EjectAction::DiskutilEject => {
+            eject_one_volume(volume_id, &mount_path, UnmountVerb::Eject).await?;
+            Ok(EjectOutcome::Unmounted)
+        }
     }
+}
+
+/// Why nothing is registered under `volume_id`: a saved server nobody is
+/// connected to, or an id the app doesn't know at all.
+///
+/// ❗ Asked of the places store, ❌ never of the id's SHAPE. A saved place is the
+/// common way to meet this (a pinned server sits in the switcher disconnected),
+/// and it deserves words about a server rather than about a drive.
+fn nothing_registered_under(volume_id: &str) -> EjectError {
+    if crate::server_volumes::place_root(volume_id).is_some() {
+        return EjectError::RemoteNotConnected {
+            volume_id: volume_id.to_string(),
+        };
+    }
+    EjectError::VolumeNotFound {
+        volume_id: volume_id.to_string(),
+    }
+}
+
+/// Drops the session behind a remote place (SFTP, WebDAV).
+///
+/// ❗ Dropping the session IS the clean shutdown and it can't refuse, so the one
+/// unhappy answer is that there was no live session left to close. Goes through
+/// `disconnect_place_inner`, which also emits the event that sends a pane
+/// standing on the place home.
+async fn disconnect_remote_session(volume_id: &str) -> Result<(), EjectError> {
+    if crate::commands::servers::disconnect_place_inner(volume_id).await {
+        return Ok(());
+    }
+    Err(EjectError::RemoteNotConnected {
+        volume_id: volume_id.to_string(),
+    })
 }
 
 /// Stops one volume's index and tears down that volume alone: an SMB share, a mount
@@ -397,6 +258,9 @@ async fn eject_one_volume(volume_id: &str, mount_path: &str, verb: UnmountVerb) 
 enum Teardown<'a> {
     /// Hand it to the device provider that owns the volume (MTP, ADB).
     Device(Arc<dyn DeviceVolumeProvider>),
+    /// Drop a remote server's session (SFTP, WebDAV). The wiring unregisters the
+    /// volume and retires it, so its watcher and reconnect loop stand down.
+    Remote,
     /// Run `diskutil` / `umount` against the volume's mount root, or, with `disk` set,
     /// against a whole physical disk: each attempt aims at one of the disk's mounts
     /// that's still listed, and success needs every one of them gone.
@@ -444,6 +308,13 @@ async fn run_teardown(volume_id: &str, teardown: Teardown<'_>) -> Result<(), Eje
                     "{} disconnect of {volume_id} didn't go through: {error}",
                     provider.id()
                 );
+            }
+            result
+        }
+        Teardown::Remote => {
+            let result = disconnect_remote_session(volume_id).await;
+            if let Err(error) = &result {
+                log::warn!(target: "eject", "The disconnect of {volume_id} didn't go through: {error}");
             }
             result
         }

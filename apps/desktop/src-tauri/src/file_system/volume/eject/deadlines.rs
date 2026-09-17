@@ -132,6 +132,7 @@ mod tests {
                 },
             )
             .await
+            .map(|()| crate::file_system::volume::eject::EjectOutcome::Unmounted)
         })
         .await;
 

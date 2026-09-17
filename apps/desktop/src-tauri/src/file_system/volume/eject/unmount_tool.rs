@@ -231,7 +231,7 @@ pub(super) fn settle(outcome: &ToolOutcome, verb: UnmountVerb, still_mounted: im
         // ❗ Nobody has scanned yet, which is `Incomplete`, ❌ never an empty
         // "nobody is holding it". `run_teardown` runs the one scan after the retries.
         ToolOutcome::Exited { code: Some(_), stderr } => EjectError::UnmountRefused {
-            holders: super::HolderScan::not_scanned(),
+            holders: super::holders::HolderScan::not_scanned(),
             detail: format!("{verb}: {stderr}"),
         },
         ToolOutcome::TimedOut => EjectError::TimedOut,

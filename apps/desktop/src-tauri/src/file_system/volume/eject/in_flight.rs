@@ -22,11 +22,13 @@ use std::sync::{LazyLock, Mutex, OnceLock};
 use futures_util::FutureExt;
 use futures_util::future::{BoxFuture, Shared};
 
-use super::EjectError;
+use super::{EjectError, EjectOutcome};
 use crate::ignore_poison::IgnorePoison;
 
-/// An eject in flight, awaitable by every caller that joined it.
-pub(super) type Flight = Shared<BoxFuture<'static, Result<(), EjectError>>>;
+/// An eject in flight, awaitable by every caller that joined it. A joiner reads
+/// the same [`EjectOutcome`] the flight's own caller does: one teardown ran, so
+/// there is one answer for what it did.
+pub(super) type Flight = Shared<BoxFuture<'static, Result<EjectOutcome, EjectError>>>;
 
 /// One physical disk, by the registry entry ID of its whole media
 /// (`IORegistryEntryGetRegistryEntryID`). Unique while the disk is attached, so two
@@ -116,7 +118,7 @@ pub(super) fn is_ejecting_by_another(volume_id: &str, flight_id: u64) -> bool {
 pub(super) fn join_or_start<F, Fut>(volume_id: &str, start: F) -> Flight
 where
     F: FnOnce() -> Fut,
-    Fut: Future<Output = Result<(), EjectError>> + Send + 'static,
+    Fut: Future<Output = Result<EjectOutcome, EjectError>> + Send + 'static,
 {
     let mut in_flight = IN_FLIGHT.lock_ignore_poison();
     if let Some(running) = in_flight.volumes.get(volume_id) {
@@ -325,7 +327,7 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
 
-    fn explode() -> Result<(), EjectError> {
+    fn explode() -> Result<EjectOutcome, EjectError> {
         panic!("teardown blew up")
     }
 
@@ -341,7 +343,7 @@ mod tests {
                 runs.fetch_add(1, Ordering::SeqCst);
                 let _ = held.await;
                 Err(EjectError::UnmountRefused {
-                    holders: super::super::HolderScan::not_scanned(),
+                    holders: super::super::holders::HolderScan::not_scanned(),
                     detail: "held by sleep".to_string(),
                 })
             }
@@ -360,7 +362,7 @@ mod tests {
             let runs = Arc::clone(&runs);
             move || async move {
                 runs.fetch_add(1, Ordering::SeqCst);
-                Ok(())
+                Ok(EjectOutcome::Unmounted)
             }
         });
 
@@ -391,7 +393,7 @@ mod tests {
         let first = join_or_start(vid, || async { Err(EjectError::TimedOut) }).await;
         assert!(matches!(first, Err(EjectError::TimedOut)), "got {first:?}");
 
-        let second = join_or_start(vid, || async { Ok(()) }).await;
+        let second = join_or_start(vid, || async { Ok(EjectOutcome::Unmounted) }).await;
         assert!(second.is_ok(), "got {second:?}");
     }
 
@@ -402,7 +404,7 @@ mod tests {
     fn as_a_flight<F, Fut>(volume_id: &str, body: F) -> Flight
     where
         F: FnOnce() -> Fut,
-        Fut: Future<Output = Result<(), EjectError>> + Send + 'static,
+        Fut: Future<Output = Result<EjectOutcome, EjectError>> + Send + 'static,
     {
         join_or_start(volume_id, body)
     }
@@ -433,7 +435,7 @@ mod tests {
                 let _ = held.await;
                 drop(ownership);
                 Err(EjectError::UnmountRefused {
-                    holders: super::super::HolderScan::not_scanned(),
+                    holders: super::super::holders::HolderScan::not_scanned(),
                     detail: "held by sleep".to_string(),
                 })
             }
@@ -448,7 +450,7 @@ mod tests {
             let ran_alone = Arc::clone(&ran_alone);
             move || async move {
                 ran_alone.fetch_add(1, Ordering::SeqCst);
-                Ok(())
+                Ok(EjectOutcome::Unmounted)
             }
         });
 
@@ -531,7 +533,7 @@ mod tests {
             let _ = done.send(());
             let _ = held.await;
             drop(ownership);
-            Ok(())
+            Ok(EjectOutcome::Unmounted)
         });
         let _ = is_done.await;
         let _ = release.send(());

@@ -1014,11 +1014,11 @@
       "name": "upgrade_smb_to_direct"
     },
     {
-      "description": "Eject an ejectable volume by id (disk or MTP). Refuses honestly while an operation is reading from or writing to the volume, and for non-ejectable volumes. See cmdr://state volumes for ids.",
+      "description": "Detach a volume by id: eject a disk or disk image, unmount an SMB share, disconnect a phone, or close a connection to an SFTP or WebDAV server. The server stays saved. Answers which teardown ran, and refuses honestly (with a typed outcome in the error data) while an operation is reading from or writing to the volume, and for a volume that can't be detached at all. See cmdr://state volumes for ids.",
       "inputSchema": {
         "properties": {
           "volumeId": {
-            "description": "Volume ID to eject (for example 'smb-…' or 'mtp-…:1'). See cmdr://state volumes.",
+            "description": "Volume ID to detach (for example 'vol-…', 'smb-…', 'mtp-…:1', or 'sftp-…'). See cmdr://state volumes.",
             "type": "string"
           }
         },

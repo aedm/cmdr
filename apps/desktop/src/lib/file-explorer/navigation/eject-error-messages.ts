@@ -102,6 +102,7 @@ const EJECT_MESSAGE: { [K in EjectError['type']]: (error: Extract<EjectError, { 
   volumeNotFound: () => raw('errors.eject.volumeNotFound'),
   notEjectable: () => raw('errors.eject.notEjectable'),
   notAnSmbVolume: () => raw('errors.eject.notAnSmbVolume'),
+  remoteNotConnected: () => raw('errors.eject.remoteNotConnected'),
   deviceDisconnectRefused: () => raw('errors.eject.deviceDisconnectRefused'),
   unmountRefused: (e) => wordUnmountRefusal(e.holders),
   timedOut: () => raw('errors.eject.timedOut'),
