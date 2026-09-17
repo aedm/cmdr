@@ -576,10 +576,21 @@ yellow tooltip branches on `liveWatch`: a phone over ADB, which nothing watches,
   `scanning` and that tick there's no activity — the badge then shows a static "Scanning your drive…" text tooltip
   (`indexing.scan.label`), never an empty one. Non-scanning states (disabled/fresh/stale) keep their text tooltips.
 - **The badge is a focusable `<button>`** with an `aria-label` (state ariaLabel + the tooltip text) and
-  `aria-haspopup="menu"`; clicking opens a small themed popover menu (NOT a native menu) anchored to the badge. Menu
-  actions (`enable`/`rescan`/`disable`/`stop`) call back to `VolumeBreadcrumb`'s `handleDriveIndexAction`, which runs
+  `aria-haspopup="menu"`; clicking opens the house `Menu` anchored to the badge. Menu actions
+  (`enable`/`rescan`/`disable`/`stop`/`forget`) call back to `VolumeBreadcrumb`'s `handleDriveIndexAction`, which runs
   the per-drive IPC. ❌ Don't put `role="img"` on the button (axe rejects it; the button role + label already convey
   it).
+- **The menu is the house `Menu`, ❌ not the OS's**, although every action row is plain text: what decides it is the two
+  things that AREN'T rows. The master-switch note wraps to several lines and the last-indexed line is a quiet caption,
+  neither of which muda can render (`docs/guides/building-ui.md` § Building a menu). Both ride the `footer` snippet, in
+  that order, so the note sits above the separator exactly where it used to. The actions are one section, or NO section
+  at all when the master switch is off — the note is then the menu's whole content.
+- **In a switcher row it's a menu opened from INSIDE a menu**, which the primitive handles end to end: the switcher
+  stays open while the badge menu is up and after a pick (`$lib/ui/DETAILS.md` § Menu, "A menu inside a menu"), and only
+  the badge's menu takes keys while it's open. ❗ The `restoreFocus` goes back to whatever held focus, ❌ not to the
+  badge: in a row that's the switcher's surface, which needs it back to keep owning the keyboard.
+- **The keyboard reaches the menu now**, which it didn't when the menu was hand-rolled: arrows walk the actions, Enter
+  picks, Escape closes, and every other key is swallowed so the pane behind stays inert while it's open.
 - **A finished index says when it couldn't read everything** (`driveIndexUnreadableNote`, pure + unit-tested). A
   completed walk can hold no rows for folders it was refused, ones Cmdr declines to read at all, and ones that stopped
   answering, so "Indexed 2026-08-15" alone can be quietly untrue. A third tooltip paragraph names the count. Without it
@@ -640,9 +651,9 @@ yellow tooltip branches on `liveWatch`: a phone over ADB, which nothing watches,
   - **`status: 'error'` → the generic toast.** ⚠️ It arrives as a VALUE, not a throw: `typedError` rethrows only real
     `Error` instances, and a Rust `Err(String)` isn't one, so a `catch` never sees it. An unhandled arm here is a click
     that does nothing and says nothing.
-- **The dropdown-row menu can be clipped by the dropdown's `overflow-y: auto`** (unlike the breadcrumb placement). The
-  breadcrumb badge is the primary surface (D3) and isn't clipped; the row menu is a convenience. If this becomes a
-  problem, switch the row menu to `position: fixed` from `getBoundingClientRect()` like the connection submenu.
+- **Neither placement's menu clips.** The primitive portals its surface to the body and positions it fixed, off the
+  badge's rect, so the switcher's `overflow-y: auto` has nothing to cut off; a menu near the bottom of the window gets
+  its own scroll rather than running past the edge.
 
 ### Image-index drive dot
 

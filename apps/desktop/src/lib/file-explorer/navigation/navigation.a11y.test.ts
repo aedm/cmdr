@@ -212,14 +212,19 @@ describe('DriveIndexBadge a11y', () => {
     await expectNoA11yViolations(target)
   })
 
+  // The menu is the house `Menu`, which portals its surface to the body, so axe is pointed at
+  // the document rather than the mount target: scanning the target alone would find the dot
+  // and miss the whole menu.
   it('the open menu has no violations', async () => {
     const target = await mountBadge(makeStatus('stale'))
     const badge = target.querySelector<HTMLButtonElement>('.drive-index-badge')
     expect(badge).not.toBeNull()
     badge?.click()
     flushSync()
-    expect(target.querySelector('.drive-index-menu')).not.toBeNull()
-    await expectNoA11yViolations(target)
+    await tick()
+    await tick()
+    expect(document.querySelector('[data-menu]')).not.toBeNull()
+    await expectNoA11yViolations(document.body)
   })
 })
 

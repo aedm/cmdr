@@ -1,12 +1,12 @@
 # Navigation
 
-Back/forward history, path resolution, paged keyboard shortcuts, and the two menus on the pane's volume chip.
+Back/forward history, path resolution, paged keyboard shortcuts, and the pane's volume chip.
 
 ## Module map
 
 - Paths and history: `navigation-history.ts` (immutable stack), `real-folder-history.ts` (the newest non-snapshot entry
   in one), `path-navigation.ts`, `path-resolution.ts`, `keyboard-shortcuts.ts`.
-- `VolumeBreadcrumb.svelte` is the CHIP, hosting both menus: `VolumeChooserMenu.svelte` (the switcher) and
+- `VolumeBreadcrumb.svelte` is the CHIP, hosting `VolumeChooserMenu.svelte` (the switcher) and
   `FavoritesMenu.svelte` + `favorites-menu.svelte.ts` (⌃D). Plus a helper per concern (grouping, disk space, connection
   state, eject, labels, badges) and the shared dots (`ConnectionDot`, `UsbSpeedDot`, `DetachButton`).
 - `server-row-actions.ts` holds a SERVER row's menu, shared with the hub and the palette.
@@ -16,9 +16,8 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the two men
 - **History pushes on listing success AND failure.** Drop the `listing-error` branch and a TCC-restricted folder stays
   out, so `Cmd+[` jumps back two.
 - **Callers holding per-entry resources need `push()`**: only it returns `droppedEntries` to release dropped refs.
-
 - **`resolveValidPath` stops at a scheme path's floor and RETURNS it**, never `~`, `/`, or `null`: a remote path can
-  answer no probe, so a plain walk lands the pane on the boot disk. It lives in `path-resolution.ts`, a cycle-breaker.
+  answer no probe, so a plain walk lands the pane on the boot disk (`path-resolution.ts`, a cycle-breaker).
 - **❗ Pass `volumeId` wherever the walk should stay on the pane's volume**: without it every probe asks the boot disk,
   which says "gone" for a phone's folders. Who passes it: `DETAILS.md` § `path-resolution.ts`.
 - **A volume-switch correction has two gates**: ONE global `correctionGen` (❌ not one per pane), plus its pane's token
@@ -38,14 +37,15 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the two men
 - **The Network group's rows are the LISTING's**, filtered by `belongsInSwitcher`, plus the hub this dir synthesizes. ❗
   No `listSavedServers()` fetch in `volume-grouping.ts`; the row carries `pinned` already.
 - **Favorites live in their OWN menu (⌃D), ❌ never in the switcher.** `volume-grouping.ts` groups the `favorite`
-  category NOWHERE; the switcher's "See N favorites" row swaps the menus in place. Mutate ONLY through the
+  category NOWHERE; the switcher's "See N favorites" row swaps the menus. Mutate ONLY through the
   `$lib/tauri-commands/favorites.ts` wrappers (they strip `fav-`).
-- **❗ The chip holds ONE `openMenu`**, so the two can't both be up: each reports through `onOpenChange`, and
-  `isHeaderMenuOpen()` is the single answer the panes suppress their keys on. ❌ No second source of truth.
+- **❗ The chip holds ONE `openMenu`**, so its two can't both be up: each reports through `onOpenChange`, and
+  `isHeaderMenuOpen()` is the single answer the panes suppress keys on. ❌ No second source of truth.
 - **The favorite-rename `<input>` holds four guards against leaking keystrokes to the panes**; drop any one and it leaks
   once more.
-- **❗ BOTH menus are the house `Menu`** (`$lib/ui/DETAILS.md` § Menu), which owns keys, cursor, pointer mode, submenu,
-  drag reorder, digit accelerators, placement, and focus. ❌ Never a key handler, a highlight index, or a
-  `getBoundingClientRect` here; a menu's `onKey` claims only the keys that SWAP the two.
+- **❗ EVERY menu here is the house `Menu`** (`$lib/ui/DETAILS.md` § Menu): the chip's two, and the drive badge's, which
+  opens INSIDE the switcher and leaves it open. It owns keys, cursor, pointer mode, submenus, reorder,
+  accelerators, placement, and focus. ❌ Never a key handler, a highlight index, or a `getBoundingClientRect` here; a
+  chip menu's `onKey` claims only the keys that SWAP the two.
 
 Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here.

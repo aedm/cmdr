@@ -151,6 +151,15 @@ function menuSurface(): HTMLElement | null {
   return document.querySelector('[data-menu]')
 }
 
+/**
+ * The switcher's own surface, by name. A drive-index badge in a row opens a menu of its own,
+ * which is a `[data-menu]` too, so ❌ `menuSurface()` can't answer "is the switcher still up"
+ * once one is open: it would happily return the badge's menu instead.
+ */
+function switcherSurface(): HTMLElement | null {
+  return document.querySelector('[data-menu][aria-label="Volume switcher"]')
+}
+
 /** The main list's rows. The submenu is its own surface, so its row never lands here. */
 function menuRows(): NodeListOf<HTMLElement> {
   return document.querySelectorAll('[data-menu] [data-menu-row]')
@@ -936,10 +945,20 @@ describe('VolumeBreadcrumb row controls do not activate their row', () => {
     })
     document.querySelector<HTMLButtonElement>('[data-menu-row] .drive-index-badge')?.click()
     await tick()
+    await tick()
     flushSync()
 
-    expect(document.querySelector('.drive-index-menu')).toBeTruthy()
+    const badgeMenu = document.querySelector('[data-menu][aria-label="Drive index status"]')
+    expect(badgeMenu).toBeTruthy()
     expect(onVolumeChange).not.toHaveBeenCalled()
-    expect(menuSurface()).toBeTruthy()
+    expect(switcherSurface()).toBeTruthy()
+
+    // ❗ And it STAYS up while the badge's menu is used. The badge's menu portals to the body,
+    // so without the house `Menu`'s nested-menu rule a pointer-down in it reads as "outside"
+    // and closes the list the badge was sitting in ($lib/ui/DETAILS.md § Menu).
+    badgeMenu?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    await tick()
+    flushSync()
+    expect(switcherSurface()).toBeTruthy()
   })
 })

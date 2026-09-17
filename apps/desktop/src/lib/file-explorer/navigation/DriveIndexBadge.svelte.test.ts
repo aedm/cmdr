@@ -7,7 +7,7 @@
  * honors it.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, unmount, flushSync } from 'svelte'
+import { mount, unmount, flushSync, tick } from 'svelte'
 import type { ActivityPhase, VolumeIndexStatus } from '$lib/ipc/bindings'
 import type { VolumeIndexActivity } from '$lib/indexing'
 
@@ -111,22 +111,33 @@ function badge(target: HTMLElement): HTMLButtonElement {
   return must(target, '.drive-index-badge') as HTMLButtonElement
 }
 
-function openMenu(target: HTMLElement): void {
+/**
+ * Clicks the badge and waits for the surface to exist. ❗ Two ticks, ❌ not `flushSync`: the
+ * menu portals to the body through Ark's `Portal`, which mounts its children inside a
+ * `tick().then(…)` of its own, so the surface isn't there on the synchronous pass.
+ */
+async function openMenu(target: HTMLElement): Promise<void> {
   badge(target).click()
+  await settle()
+}
+
+async function settle(): Promise<void> {
   flushSync()
+  await tick()
+  await tick()
 }
 
 function menuEl(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('.drive-index-menu')
+  return document.querySelector<HTMLElement>('[data-menu]')
 }
 
 function menuLabels(): string[] {
-  return [...document.querySelectorAll<HTMLElement>('.drive-index-menu-item')].map((el) => el.textContent.trim())
+  return [...document.querySelectorAll<HTMLElement>('[data-menu] [data-menu-row]')].map((el) => el.textContent.trim())
 }
 
 /** One action row, by the label a reader would click. */
 function menuRow(label: string): HTMLElement {
-  const row = [...document.querySelectorAll<HTMLElement>('.drive-index-menu-item')].find(
+  const row = [...document.querySelectorAll<HTMLElement>('[data-menu] [data-menu-row]')].find(
     (el) => el.textContent.trim() === label,
   )
   if (!row) throw new Error(`no menu row labelled ${label}`)
@@ -142,15 +153,15 @@ function footerEl(): HTMLElement | null {
 }
 
 /** A real click somewhere else: the pointer-down decides, and the click follows it. */
-function clickOutside(): void {
+async function clickOutside(): Promise<void> {
   document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
   document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-  flushSync()
+  await settle()
 }
 
-function pressKey(key: string): void {
+async function pressKey(key: string): Promise<void> {
   document.body.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
-  flushSync()
+  await settle()
 }
 
 /** The badge's aria-label embeds the resolved tooltip text (`ariaLabel: tooltip`). */
@@ -204,59 +215,59 @@ describe('DriveIndexBadge color class', () => {
 })
 
 describe('DriveIndexBadge menu', () => {
-  it('a disabled drive offers only "Turn on indexing for this drive"', () => {
+  it('a disabled drive offers only "Turn on indexing for this drive"', async () => {
     const { target } = render(makeStatus({ enabled: false, freshness: null }))
-    openMenu(target)
+    await openMenu(target)
     expect(menuLabels()).toEqual(['Turn on indexing for this drive'])
   })
 
-  it('a scanning drive offers stop + forget', () => {
+  it('a scanning drive offers stop + forget', async () => {
     const { target } = render(makeStatus({ freshness: 'scanning' }))
-    openMenu(target)
+    await openMenu(target)
     expect(menuLabels()).toEqual(['Stop indexing', "Forget this drive's index"])
   })
 
-  it('a fresh/stale drive offers rescan + turn off + forget', () => {
+  it('a fresh/stale drive offers rescan + turn off + forget', async () => {
     const { target } = render(makeStatus({ freshness: 'stale' }))
-    openMenu(target)
+    await openMenu(target)
     expect(menuLabels()).toEqual(['Rescan now', 'Turn off indexing for this drive', "Forget this drive's index"])
   })
 
-  it('shows the last-indexed footer when scan facts exist', () => {
+  it('shows the last-indexed footer when scan facts exist', async () => {
     const { target } = render(makeStatus({ freshness: 'fresh' }))
-    openMenu(target)
+    await openMenu(target)
     expect(footerEl()).not.toBeNull()
   })
 
-  it('shows no footer for a drive that has never been scanned', () => {
+  it('shows no footer for a drive that has never been scanned', async () => {
     const { target } = render(makeStatus({ freshness: 'fresh', scanCompletedAt: null, scanDurationMs: null }))
-    openMenu(target)
+    await openMenu(target)
     expect(footerEl()).toBeNull()
   })
 
-  it('calls onAction with the volume id and picked action', () => {
+  it('calls onAction with the volume id and picked action', async () => {
     const { target, onAction } = render(makeStatus({ freshness: 'stale' }))
-    openMenu(target)
+    await openMenu(target)
     menuRow('Rescan now').click()
     flushSync()
     expect(onAction).toHaveBeenCalledWith('smb-test', 'rescan')
   })
 
-  it('closes on a pick', () => {
+  it('closes on a pick', async () => {
     const { target } = render(makeStatus({ freshness: 'stale' }))
-    openMenu(target)
+    await openMenu(target)
     menuRow('Rescan now').click()
     flushSync()
     expect(menuEl()).toBeNull()
   })
 
-  it('swaps every action for one explanation while drive indexing is off in Settings', () => {
+  it('swaps every action for one explanation while drive indexing is off in Settings', async () => {
     // A drive whose own choice is "indexed and fresh" still can't act while the
     // master switch is off, so the menu says why instead of offering buttons the
     // backend would refuse.
     masterIndexingEnabled = false
     const { target } = render(makeStatus({ freshness: 'fresh' }))
-    openMenu(target)
+    await openMenu(target)
     expect(menuLabels()).toEqual([])
     expect(noteEl()?.textContent).toContain('Drive indexing is off in Settings')
   })
@@ -275,41 +286,66 @@ describe('DriveIndexBadge menu', () => {
  * the selector helpers above.
  */
 describe('DriveIndexBadge menu shell', () => {
-  it('opens on a click, and says so for assistive tech', () => {
+  it('opens on a click, and says so for assistive tech', async () => {
     const { target } = render(makeStatus({ freshness: 'stale' }))
     expect(badge(target).getAttribute('aria-expanded')).toBe('false')
-    openMenu(target)
+    await openMenu(target)
     expect(menuEl()).not.toBeNull()
     expect(badge(target).getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('closes again on a second click on the badge', () => {
+  it('closes again on a second click on the badge', async () => {
     const { target } = render(makeStatus({ freshness: 'stale' }))
-    openMenu(target)
-    openMenu(target)
+    await openMenu(target)
+    await openMenu(target)
     expect(menuEl()).toBeNull()
     expect(badge(target).getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('closes on Escape and hands focus back', () => {
+  it('closes on Escape and hands focus back', async () => {
     const { target } = render(makeStatus({ freshness: 'stale' }))
     badge(target).focus()
-    openMenu(target)
-    pressKey('Escape')
+    await openMenu(target)
+    await pressKey('Escape')
     expect(menuEl()).toBeNull()
     expect(document.activeElement).toBe(badge(target))
   })
 
-  it('closes on a click somewhere else', () => {
+  it('closes on a click somewhere else', async () => {
     const { target } = render(makeStatus({ freshness: 'stale' }))
-    openMenu(target)
-    clickOutside()
+    await openMenu(target)
+    await clickOutside()
     expect(menuEl()).toBeNull()
   })
 
-  it('stays open for a click on the menu itself', () => {
+  /**
+   * In a switcher row the badge opens a menu from inside one. The house `Menu` keeps the
+   * outer one open for it, off the host it names here (`$lib/ui/DETAILS.md` § Menu); the
+   * primitive's own suite pins the outer half. Before the port this held because the menu
+   * was a CHILD of the row, which is also what the switcher's scroller clipped.
+   */
+  it('names the menu it was opened from inside of', async () => {
+    const switcherSurface = document.createElement('div')
+    switcherSurface.setAttribute('data-menu', '')
+    switcherSurface.setAttribute('data-menu-instance', 'menu-switcher')
+    document.body.appendChild(switcherSurface)
+
+    const { target } = render(makeStatus({ freshness: 'stale' }), vi.fn(), switcherSurface)
+    await openMenu(target)
+    // By name, not `menuEl()`: the stand-in switcher above is a `[data-menu]` too.
+    const own = document.querySelector('[data-menu][aria-label="Drive index status"]')
+    expect(own?.getAttribute('data-menu-nested-in')).toBe('menu-switcher')
+  })
+
+  it('names no host in the breadcrumb, where it hangs off the chip', async () => {
     const { target } = render(makeStatus({ freshness: 'stale' }))
-    openMenu(target)
+    await openMenu(target)
+    expect(menuEl()?.hasAttribute('data-menu-nested-in')).toBe(false)
+  })
+
+  it('stays open for a click on the menu itself', async () => {
+    const { target } = render(makeStatus({ freshness: 'stale' }))
+    await openMenu(target)
     const menu = menuEl()
     menu?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     menu?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
