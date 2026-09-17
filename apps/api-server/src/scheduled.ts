@@ -10,6 +10,7 @@ import {
   EVICTION_LOW_WATERMARK,
 } from './telemetry/error-report-eviction'
 import { isIntakePaused, resumeIntake } from './telemetry/error-report-intake'
+import { backupLicenseLedger } from './licensing/license-backup'
 import { postEvictionBlockedNotification, postEvictionNotification } from './discord'
 
 const dbSizeThresholdBytes = 100 * 1024 * 1024 // 100 MB
@@ -96,6 +97,18 @@ async function handleCrashNotifications(env: Bindings): Promise<void> {
 async function handleEmailPathProbe(env: Bindings): Promise<void> {
   if (!env.RESEND_API_KEY) return
   await sendEmailPathProbe({ resendApiKey: env.RESEND_API_KEY })
+}
+
+/**
+ * Snapshot every license into R2, once a day. The ledger is the only record of who holds a license
+ * and why, and the signed keys beside it live in KV, which has no point-in-time recovery at all.
+ *
+ * Append-only on purpose: nothing prunes these, and nothing should until there are enough of them
+ * to be worth a rule. Each day's object is a few kilobytes. `licensing/license-backup.ts`.
+ */
+async function handleLicenseBackup(env: Bindings): Promise<void> {
+  const backup = await backupLicenseLedger(env, new Date())
+  console.log('License backup written:', backup.licenses.length, 'licenses,', Object.keys(backup.keys).length, 'keys')
 }
 
 /**
@@ -405,6 +418,7 @@ export {
   handleCrashNotifications,
   handleEmailPathProbe,
   handleFeedbackNotifications,
+  handleLicenseBackup,
   handleDailyAggregation,
   handleDbSizeCheck,
   handleDailyEvictionSweep,

@@ -2,9 +2,10 @@
 
 Everything money touches: the Paddle webhook that fulfills a purchase, `/activate`, `/validate`, and the hand-issued
 licenses behind `/admin/generate` and `/admin/revoke`. `licensing.ts` holds the routes and mounts `manual-licenses.ts`
-plus `admin-licenses.ts` (`GET /admin/licenses`, the dashboard's list of every license we've issued); `license.ts`
-(short codes, key signing, id namespaces), `license-issuance.ts` (the D1 ledger), `paddle.ts` (HMAC verify,
-`constantTimeEqual`), `paddle-api.ts` (Paddle REST), and `device-tracking.ts` (fair-use device sets) are its leaves.
+plus `admin-licenses.ts` (the dashboard's list); `license.ts` (short codes, key signing, id
+namespaces), `license-issuance.ts` (the D1 ledger), `license-backup.ts` (the daily R2 snapshot), `paddle.ts` (HMAC
+verify, `constantTimeEqual`), `paddle-api.ts` (Paddle REST), and `device-tracking.ts` (fair-use device sets) are its
+leaves.
 
 ## Must-knows
 

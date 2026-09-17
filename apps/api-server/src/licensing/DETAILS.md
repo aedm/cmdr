@@ -11,12 +11,14 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - **`manual-licenses.ts`**: `/admin/generate` and `/admin/revoke`, the licenses we hand out rather than sell.
 - **`admin-licenses.ts`**: `GET /admin/licenses`, the dashboard's view of every license we've issued, plus the pure
   `classifyLedgerEntry`. § The licenses listing.
+- **`license-backup.ts`**: the daily R2 snapshot of the ledger and the key store. § License backups.
 - **`license.ts`**: short-code and license-key generation, the `LicenseType` enum, `isPaddleTransactionId` /
   `generateManualTransactionId` (the id namespaces `/validate` dispatches on), and `generateShortId(prefix, len)` (also
   used for the `ERR-XXXXX` error-report ids).
 - **`license-issuance.ts`**: the D1 ledger (`license_issuance`) behind both kinds of license: claim, take-over, code
-  storage, and delivery marking for a Paddle fulfillment; row writing, lookup, and revocation for a manual one; plus the
-  pure `classifyIssuance` and `classifyManualLicense`.
+  storage, and delivery marking for a Paddle fulfillment; row writing, lookup, and revocation for a manual one; the two
+  reads (`listLedger`, capped, for the dashboard; `readWholeLedger`, uncapped, for the backup); plus the pure
+  `classifyIssuance` and `classifyManualLicense`.
 - **`paddle.ts`**: HMAC-SHA256 webhook verification and `constantTimeEqual` (the timing-safe compare every bearer-token
   check in the Worker uses).
 - **`paddle-api.ts`**: Paddle REST client (transaction / subscription / customer fetch, `getLicenseTypeFromPriceId`).
@@ -201,6 +203,33 @@ namespace) and reconciles it against the ledger both ways:
 
 Both are read-only observations. ❌ Don't make this endpoint repair what it finds: an orphan needs a human to decide
 whether to honor, ledger, or ignore it.
+
+## License backups
+
+`handleLicenseBackup` (cron, 00:00 UTC, first in the daily block) writes one R2 object per day under
+`backups/licenses/YYYY-MM-DD.json`. `license-backup.ts` owns it.
+
+**Why it exists is the asymmetry between the two stores.** D1 carries 30 days of Time Travel, so the ledger survives a
+mistake on its own. KV carries no point-in-time recovery at all, so losing `LICENSE_CODES` loses every signed key while
+the rows describing them stay. Reconstructing a key from a row is not reliable either: the signed payload carries the
+mint-time `issuedAt`, and the row's `issued_at` is written a moment later, so a regenerated key would differ. The
+snapshot therefore holds BOTH halves and is restorable on its own, with no signing key and nothing re-minted:
+
+- `licenses`: every ledger row, oldest first, through `readWholeLedger` (uncapped, unlike `listLedger`: a listing that
+  truncates costs a scroll, a backup that truncates loses a license).
+- `keys`: every short code in KV with the record stored under it, **including codes no ledger row explains**. Those are
+  the ones nothing else could restore.
+
+A restore writes each `keys` entry back under its code and each `licenses` row back into `license_issuance`. There is no
+restore script: doing it by hand from a known-good day is the point, and a script would be the more dangerous half.
+
+- **The prefix is load-bearing.** `backups/` sits outside `error-reports/`, which the eviction sweep and both size
+  watermarks list exclusively, so nothing here is swept or counted against them.
+- **Append-only, deliberately.** Nothing prunes these; each day is a few kilobytes. Add a rule when there are enough
+  objects for one to be worth writing.
+- A second run on the same day overwrites that day's object, so a retried tick can't leave two versions of one day.
+- A key that vanishes between the KV list and the read is left out rather than stored as null: the snapshot says what
+  existed, and a null would read as a license with no key.
 
 ## Webhook verification
 

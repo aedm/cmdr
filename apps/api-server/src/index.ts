@@ -14,6 +14,7 @@ import {
   handleCrashNotifications,
   handleEmailPathProbe,
   handleFeedbackNotifications,
+  handleLicenseBackup,
   handleDailyAggregation,
   handleDbSizeCheck,
   handleDailyEvictionSweep,
@@ -84,6 +85,7 @@ export default {
 
     // Daily jobs: only run on the 00:00 UTC invocation
     if (new Date(event.scheduledTime).getUTCHours() === 0) {
+      await run('License backup', () => handleLicenseBackup(env))
       await run('Daily aggregation', () => handleDailyAggregation(env))
       await run('DB size check', () => handleDbSizeCheck(env))
       await run('Daily eviction sweep', () => handleDailyEvictionSweep(env))
