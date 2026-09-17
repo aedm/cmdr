@@ -112,6 +112,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} cho biết nó không có mục chia sẻ này, nên mục này vẫn dùng kết nối hệ thống.",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "Hiện không thiết lập được kết nối trực tiếp, nên mục chia sẻ này vẫn dùng kết nối hệ thống.",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -316,6 +320,10 @@
   "fileExplorer.network.osMountFallback.message": "Không thể kết nối trực tiếp tới <shareName>{share}</shareName>. Bạn vẫn đang kết nối, nhưng chỉ qua kết nối mạng SMB tích hợp sẵn của macOS, vốn chậm hơn 4 lần so với kết nối trực tiếp của Cmdr ở hầu hết các kết nối (đôi khi là 100 lần). Hãy bấm nút bên dưới để thử lại.",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "Không thể kết nối trực tiếp tới <shareName>{share}</shareName>, vì máy chủ cho biết nó không có mục chia sẻ nào tên như vậy. Bạn vẫn đang kết nối, nhưng qua kết nối mạng SMB tích hợp sẵn của macOS, vốn chậm hơn nhiều. Tình huống này sẽ không tự thay đổi: có thể mục chia sẻ đã được đổi tên hoặc xóa trên máy chủ, nên hãy kiểm tra lại ở đó.",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "Thử kết nối trực tiếp",
   "@fileExplorer.network.osMountFallback.retry": {

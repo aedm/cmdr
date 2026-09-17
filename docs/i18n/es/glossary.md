@@ -3461,3 +3461,27 @@ pueden ofrecer. La tercera clave es la línea que aparece cuando Cmdr devuelve u
 - No hace falta `sameAsSourceJustification`: todos los valores difieren del inglés.
 - Revisar en el paso de overflow: el banner es largo y ocupa una franja estrecha sobre la lista de archivos.
 - ⚠️ Borrador, todavía sin revisión humana.
+
+## Cuando el servidor dice que ese recurso compartido no existe (`fileExplorer.network.osMountFallback.shareNotOnServer`, `fileExplorer.pane.directConnectionShareNotOnServerToast`, 2026-09-17)
+
+El único caso de esta familia en el que reintentar no sirve: el servidor responde con claridad que no tiene ningún
+recurso compartido con ese nombre. Por eso este aviso no lleva botón, y el tono no puede sugerir nada temporal (nada de
+`ahora mismo` ni de `vuelve a intentarlo`), a diferencia de sus hermanos.
+
+- **"the server says it has no share by that name" →
+  `porque el servidor dice que no tiene ningún recurso compartido con ese nombre`** · el catálogo
+  (`errors.mount.shareNotFound`) y NetAuthAgent `EINFO_NO_SHARE` (bundle VIVO, macOS 26.6.2, 25G83, 2026-09-17) ·
+  `high`. ⚠️ El `es` de Apple dice ahí `El volumen "%@" no existe en el servidor`; se mantiene `recurso compartido`,
+  como ya fijó la sección de `errors.mount.*`.
+- **"You are still connected" → `Sigues teniendo acceso`** · sigue la reestructuración ya fijada en
+  `fileExplorer.network.osMountFallback.message` (`Tienes acceso`), que evita el participio con género · `high`.
+- **"This one won't sort itself out" → `Esto no se va a arreglar solo`** · sin fuente en la pila; es la forma corriente
+  en español y dice justo lo que separa este aviso de los demás: esperar no cambia nada · `high`.
+- **"may have been renamed or removed" → `puede que … se haya renombrado o eliminado`** · literal de
+  `errors.write.destinationNotFound.suggestion` · `high`.
+- **"so it's worth checking there" → `así que vale la pena echar un vistazo allí`** · `vale la pena` en lugar del
+  peninsular `merece la pena`, siguiendo la base neutra del `style.md` · `high`.
+- **"a lot slower" → `mucho más lenta`** · aquí el inglés no da cifras, al revés que el hermano con `4 veces` · `high`.
+- El aviso corto cierra con `así que sigue usando la conexión del sistema`, el mismo final que
+  `fileExplorer.pane.directConnectionUnreachableToast` y sus dos hermanos.
+- Ningún valor necesita `sameAsSourceJustification`: los dos difieren del inglés.

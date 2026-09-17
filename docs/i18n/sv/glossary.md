@@ -3286,3 +3286,29 @@ erbjuda. Den tredje nyckeln är raden som visas när Cmdr lämnar tillbaka en tr
 - Inget `sameAsSourceJustification` behövs: alla värden skiljer sig från engelskan.
 - Titta på den vid overflow-kontrollen: rutan är lång och sitter i en smal remsa ovanför fillistan.
 - ⚠️ Utkast, ännu inte granskat av en människa.
+
+## När servern svarar att den delade mappen inte finns (`fileExplorer.network.osMountFallback.shareNotOnServer`, `fileExplorer.pane.directConnectionShareNotOnServerToast`, 2026-09-17)
+
+Det enda fallet i familjen där ett nytt försök inte hjälper: servern svarar tydligt att den inte har någon delad mapp
+med det namnet. Därför står ingen knapp bredvid den här aviseringen, och tonen får inte antyda något tillfälligt (inget
+`just nu`, inget `försök igen`) till skillnad från systrarna.
+
+- **"the server says it has no share by that name" →
+  `eftersom servern säger att den inte har någon delad mapp med det namnet`** · katalogen (`errors.mount.shareNotFound`)
+  och NetAuthAgent `EINFO_NO_SHARE` (LEVANDE paket, macOS 26.6.2, 25G83, 2026-09-17) · `high`. ⚠️ Apple säger där
+  `Delningspunkten ”%@”`; katalogen håller fast vid `delad mapp`, som `style.md` satte.
+- **`eftersom`, inte `för`** · macOS `sv` skriver bisatsen så (`eftersom den inte hittades på nätverket`, `PE76`), och
+  `för` drar ner i talspråk mitt i en förklarande mening · `high`.
+- **"This one won't sort itself out" → `Det här löser sig inte av sig självt`** · ingen källa i högen; det är den
+  vanliga svenska vändningen och bär precis det som skiljer aviseringen från de andra: att vänta hjälper inte · `high`.
+- **"may have been renamed or removed" → `kan ha döpts om eller tagits bort`** · ordagrant från
+  `errors.write.destinationNotFound.suggestion` · `high`.
+- **"so it's worth checking there" → `så det är värt att kolla där`** · `kolla` håller den lediga tonen som `style.md`
+  vill ha; `där` pekar tillbaka på servern utan att upprepa ordet · `high`.
+- **"a lot slower" → `mycket långsammare`** · här ger engelskan ingen multiplikator, till skillnad från systern med
+  `fyra gånger` · `high`.
+- **Den korta aviseringen säger `säger sig inte ha`** i stället för `säger att den inte har` · annars står två `den`
+  bredvid varandra och läsaren måste gissa vilket som är servern och vilket som är mappen; `säga sig` + infinitiv är
+  dessutom den vanliga svenska formen för ett påstående som någon annan står för · `high`. Slutet
+  `så den ligger kvar på systemanslutningen` är systrarnas (`fileExplorer.pane.directConnectionUnreachableToast` …).
+- **Inga `sameAsSourceJustification`** · båda värdena skiljer sig från engelskan.

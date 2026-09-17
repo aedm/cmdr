@@ -111,6 +111,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} 說它沒有這個共享資料夾，所以會繼續使用系統連線。",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "現在無法建立直接連線，所以這個共享資料夾會繼續使用系統連線。",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -314,6 +318,10 @@
   "fileExplorer.network.osMountFallback.message": "無法直接連線到 <shareName>{share}</shareName>。你已經連上了，但用的是 macOS 內建的 SMB 網路連線，大多數情況下比 Cmdr 的直接連線慢 4 倍（有時候慢 100 倍）。請按下方的按鈕再試一次。",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "無法直接連線到 <shareName>{share}</shareName>，因為伺服器說它沒有這個名字的共享資料夾。你仍然連著，但用的是 macOS 內建的 SMB 網路連線，慢上許多。這種情況等下去也不會好：這個共享資料夾可能在伺服器上被重新命名或移除了，值得去那邊看看。",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "試試直接連線",
   "@fileExplorer.network.osMountFallback.retry": {

@@ -3264,3 +3264,28 @@ Klick zurückgibt.
   Anführungszeichen ist die Beschriftung des Knopfs: immer derselbe Wortlaut wie `fileOperations.delete.confirmDelete`.
 - Kein `sameAsSourceJustification` nötig: alle Werte unterscheiden sich vom Englischen.
 - Beim Overflow-Check ansehen: das Banner ist lang und steht in einem schmalen Streifen über der Dateiliste.
+
+## Wenn der Server die Freigabe gar nicht kennt (`fileExplorer.network.osMountFallback.shareNotOnServer`, `fileExplorer.pane.directConnectionShareNotOnServerToast`, 2026-09-17)
+
+Der eine Fall, in dem ein neuer Versuch nichts bringt: Der Server antwortet klar, dass es keine Freigabe dieses Namens
+gibt. Deshalb steht neben diesem Hinweis keine Taste, und der Ton darf nichts Vorübergehendes andeuten (kein „gerade“,
+kein „noch einmal versuchen“) — genau darin unterscheidet er sich von seinen Geschwistern.
+
+- **„the server says it has no share by that name“ →
+  `weil der Server sagt, dass es dort keine Freigabe mit diesem Namen gibt`** · NetAuthAgent `EINFO_NO_SHARE` („Die
+  Freigabe „%@“ existiert nicht auf dem Server.“, LIVE-Bundle, macOS 26.6.2, 25G83, 2026-09-17) und der Katalog
+  (`errors.mount.shareNotFound`) · `high`. Der Satzrahmen bleibt `Die direkte Verbindung zu X kam nicht zustande` aus
+  dem Nachbarn `fileExplorer.network.osMountFallback.message`.
+- **„This one won't sort itself out“ → `Das erledigt sich nicht von selbst`** · kein Beleg in der Sammlung, aber die
+  gängige deutsche Wendung dafür · `high`. Sie trägt genau das, was diesen Hinweis von den anderen trennt: Warten hilft
+  nicht.
+- **„may have been renamed or removed“ → `wurde vielleicht umbenannt oder … entfernt`** · wortgleich mit
+  `errors.write.destinationNotFound.suggestion` · `high`.
+- **„a lot slower“ → `deutlich langsamer`** · der Nachbar nennt die Faktoren (`4-mal`, `100-mal`); hier sagt das
+  Englische nur „viel“, also bleibt auch das Deutsche unbeziffert · `high`.
+- **Im Toast verweist `sie` auf die Freigabe, nie auf `{server}`** · der Server bekommt in dieser Familie nie ein
+  Pronomen (§ Warum eine Freigabe nicht eingebunden wird) · `high`. Deshalb steht dort die bestimmte Form
+  `diese Freigabe` (sie trägt den Bezug für das `sie`) statt der verneinten `keine Freigabe mit diesem Namen`, die im
+  längeren Hinweis steht, wo kein Pronomen folgt. Das Satzende `daher bleibt sie bei der Systemverbindung` folgt
+  `fileExplorer.pane.directConnectionUnreachableToast` und seinen zwei Geschwistern.
+- Kein `sameAsSourceJustification` nötig: beide Werte unterscheiden sich vom Englischen.

@@ -3773,3 +3773,30 @@ rend la main après un appui.
 - Pas de `sameAsSourceJustification` : toutes les valeurs diffèrent de l'anglais.
 - À vérifier au passage overflow : le bandeau est long et tient dans une bande étroite au-dessus de la liste.
 - ⚠️ Brouillon, pas encore relu par un humain.
+
+## Quand le serveur répond qu'il n'a pas ce partage (`fileExplorer.network.osMountFallback.shareNotOnServer`, `fileExplorer.pane.directConnectionShareNotOnServerToast`, 2026-09-17)
+
+Le seul cas de la famille où réessayer ne sert à rien : le serveur répond clairement qu'aucun partage ne porte ce nom.
+La notification n'a donc pas de bouton, et le ton ne doit rien suggérer de temporaire (ni « pour le moment », ni «
+réessayez »), contrairement à ses sœurs.
+
+- **« the server says it has no share by that name » → `car le serveur indique qu''il n''a aucun partage de ce nom`** ·
+  NetAuthAgent `EINFO_NO_SHARE` (« Le partage « %@ » n'existe pas sur le serveur. », paquet installé, macOS 26.6.2,
+  25G83, 2026-09-17) et le catalogue (`errors.mount.shareNotFound`) · high. Le cadre reste
+  `La connexion directe à X n''a pas pu être établie`, repris de `fileExplorer.network.osMountFallback.message`.
+- **`indique`, pas `dit`** · le serveur donne une réponse nette ; `indiquer` est le verbe de la terminologie Microsoft
+  pour un système qui rapporte un état, et il évite la personnification familière · high.
+- **« You are still connected » → `Vous y avez toujours accès`** · reprend la restructuration déjà fixée dans
+  `fileExplorer.network.osMountFallback.message` (`Vous y avez bien accès`), qui nomme l'accès et non la personne ·
+  high.
+- **« This one won't sort itself out » → `Cette situation ne se réglera pas d''elle-même`** · aucune source dans le tas
+  ; c'est la tournure française courante, et elle porte exactement ce qui distingue cette notification : attendre ne
+  changera rien · high. Espace avant le `:` qui suit, comme partout dans le catalogue `fr`.
+- **« may have been renamed or removed » → `a peut-être été renommé ou supprimé`** · littéralement
+  `errors.write.destinationNotFound.suggestion` · high.
+- **« so it's worth checking there » → `il vaut donc la peine d''y jeter un œil`** · registre familier et chaleureux du
+  guide de style ; `y` évite de répéter `serveur` · high.
+- **Dans la notification courte, `qui` rattache la relative à `ce partage`** · `il` serait ambigu, `{server}` étant
+  masculin lui aussi · high. La fin `reste donc sur la connexion système` est celle des trois sœurs
+  (`fileExplorer.pane.directConnectionUnreachableToast`…).
+- Aucun `sameAsSourceJustification` : les deux valeurs diffèrent de l'anglais.

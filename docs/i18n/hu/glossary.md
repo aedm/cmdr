@@ -3714,3 +3714,31 @@ jelenik meg, amikor a Cmdr visszaadja a gombnyomást.
 - Nem kell `sameAsSourceJustification`: minden érték eltér az angoltól.
 - Az overflow-ellenőrzésnél nézd meg: a sáv hosszú, és keskeny csíkban ül a fájllista fölött.
 - ⚠️ Vázlat, emberi ellenőrzés még nem történt.
+
+## Amikor a szerver szerint nincs is ilyen megosztás (`fileExplorer.network.osMountFallback.shareNotOnServer`, `fileExplorer.pane.directConnectionShareNotOnServerToast`, 2026-09-17)
+
+A család egyetlen olyan esete, ahol az újrapróbálkozás nem segít: a szerver egyértelmű választ ad, hogy nincs ilyen nevű
+megosztása. Ezért a buborék mellett nincs gomb, és a szöveg nem sugallhat semmi átmenetit (se `most`, se
+`próbáld újra`), szemben a testvéreivel.
+
+- **„the server says it has no share by that name” → `A szerver szerint ugyanis nincs ilyen nevű megosztás.`** ·
+  NetAuthAgent `EINFO_NO_SHARE` („A(z) „%@” megosztás nem létezik a szerveren.”, élő bundle, macOS 26.6.2, 25G83,
+  2026-09-17) és a katalógus `errors.mount.shareNotFound` · high. A NetAuthAgent önöz, a mi mondatunk tegez; a SZÓ az
+  Apple-é, a MONDAT a miénk.
+- **KÜLÖN mondatba kerül, nem a `mert` kötőszóval** · a settled nyitány
+  (`Nem sikerült közvetlenül csatlakozni ehhez: {share}`, lásd § Rendszerkapcsolatra visszaeső SMB-buborék) a kettőspont
+  miatt a NÉVVEL ér véget, tehát mellékmondat nem kapcsolható utána. Az `ugyanis` viszi az angol `because` szerepét ·
+  high.
+- **„This one won''t sort itself out” → `Ez magától nem fog megoldódni`** · nincs forrás a kupacban; ez a bevett magyar
+  fordulat, és pontosan azt mondja, ami ezt a buborékot elválasztja a többitől: a várakozás nem segít · high.
+- **„may have been renamed or removed” → `lehet, hogy a megosztást átnevezték vagy eltávolították`** · szó szerint az
+  `errors.write.destinationNotFound.suggestion` · high. Általános alany (`átnevezték`), ahogy ott is: nem tudjuk, ki
+  tette.
+- **„so it''s worth checking there” → `úgyhogy érdemes ott körülnézni`** · a katalógus baráti regisztere; az `ott` a
+  szerverre mutat vissza, így nem kell megismételni a szót · high.
+- **„a lot slower” → `sokkal lassabb`** · itt az angol nem ad szorzószámot, a testvérrel (`négyszer`, `százszor`)
+  ellentétben, tehát a magyar sem ad · high.
+- **A rövid buborékban a `{server} szerint` névutós alak áll** · a `szerint` külön szó, tehát a `{server}` ismeretlen
+  értéke nem kap toldalékot (`style.md` § Agglutination) · high. A záró `ezért a rendszerkapcsolaton marad` a három
+  testvér-buborék (`fileExplorer.pane.directConnectionUnreachableToast`…) végződése.
+- `sameAsSourceJustification` egyik kulcsnál sem kell: mindkét érték eltér az angoltól.

@@ -112,6 +112,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} säger sig inte ha den här delade mappen, så den ligger kvar på systemanslutningen.",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "Det gick inte att upprätta en direktanslutning just nu, så den här delade mappen ligger kvar på systemanslutningen.",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -316,6 +320,10 @@
   "fileExplorer.network.osMountFallback.message": "Det gick inte att ansluta direkt till <shareName>{share}</shareName>. Du är ansluten, men bara via macOS inbyggda SMB-anslutning, som för de flesta anslutningar är fyra gånger långsammare än Cmdrs direktanslutning (ibland 100 gånger). Klicka på knappen nedan för att försöka igen.",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "Det gick inte att ansluta direkt till <shareName>{share}</shareName>, eftersom servern säger att den inte har någon delad mapp med det namnet. Du är fortfarande ansluten, men via macOS inbyggda SMB-anslutning, som är mycket långsammare. Det här löser sig inte av sig självt: den delade mappen kan ha döpts om eller tagits bort på servern, så det är värt att kolla där.",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "Försök ansluta direkt",
   "@fileExplorer.network.osMountFallback.retry": {

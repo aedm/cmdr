@@ -2073,3 +2073,23 @@ replacement target. Four rules bind this whole group:
 - 不需要 `sameAsSourceJustification`：所有值都與英文不同。
 - 做溢位檢查時看一下：警告列很長，且位於檔案列表上方的窄條裡。
 - ⚠️ 草稿，尚未經人工審閱。
+
+## 伺服器明講沒有這個共享資料夾（`fileExplorer.network.osMountFallback.shareNotOnServer`、`fileExplorer.pane.directConnectionShareNotOnServerToast`，2026-09-17）
+
+這一族裡唯一「再試也沒用」的情況：伺服器給了明確答案，上面沒有這個名字的共享資料夾。所以這則通知沒有按鈕，語氣也不能帶任何「暫時」的意味（不寫
+`現在`，不寫 `再試一次`），這正是它跟兄弟鍵不一樣的地方。
+
+- **"the server says it has no share by that name" → `因為伺服器說它沒有這個名字的共享資料夾`**
+  ·目錄（`errors.mount.shareNotFound`）與 NetAuthAgent
+  `EINFO_NO_SHARE`（系統裡裝著的 bundle，TW 與 HK 同字：`共享「%@」不存在於伺服器上。`，macOS
+  26.6.2，25G83，2026-09-17）· `high`。Apple 寫 `共享`，這個目錄的名詞一律帶 `資料夾`（§ 共享資料夾裝載不了）。開頭沿用
+  `fileExplorer.network.osMountFallback.message` 的 `無法直接連線到 X`。
+- **"This one won't sort itself out" → `這種情況等下去也不會好`**
+  ·語料裡沒有對應說法；這是最自然的口語講法，也點出這則通知跟其他幾則的差別：等不到結果 · `high`。
+- **"may have been renamed or removed" → `可能……被重新命名或移除了`** · 逐字沿用
+  `errors.write.destinationNotFound.suggestion` · `high`。
+- **"so it's worth checking there" → `值得去那邊看看`** · `那邊` 回指伺服器，省掉重複 · `high`。
+- **"a lot slower" → `慢上許多`** · 這裡英文沒給倍數，和給了 `4 倍` 的兄弟鍵不同 · `high`。
+- **短提示省略主語（`所以會繼續使用系統連線`）** · 前半句已經把話題定在共享資料夾上，再寫一次就囉嗦；結尾
+  `會繼續使用系統連線` 與 `fileExplorer.pane.directConnectionUnreachableToast` 等三則一致 · `high`。
+- 兩條值都跟英文不同，不需要 `sameAsSourceJustification`；`{server}`、`macOS`、`SMB` 前後留空格。

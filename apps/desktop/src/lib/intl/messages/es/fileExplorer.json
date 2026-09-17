@@ -112,6 +112,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} dice que no tiene este recurso compartido, así que sigue usando la conexión del sistema.",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "No se pudo establecer una conexión directa ahora mismo, así que este recurso compartido sigue usando la conexión del sistema.",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -316,6 +320,10 @@
   "fileExplorer.network.osMountFallback.message": "No se pudo conectar directamente a <shareName>{share}</shareName>. Tienes acceso, pero solo a través de la conexión de red SMB nativa de macOS, que en la mayoría de las conexiones es 4 veces más lenta que la conexión directa de Cmdr (a veces, 100 veces). Haz clic en el botón de abajo para volver a intentarlo.",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "No se pudo conectar directamente a <shareName>{share}</shareName>, porque el servidor dice que no tiene ningún recurso compartido con ese nombre. Sigues teniendo acceso, pero a través de la conexión de red SMB nativa de macOS, que es mucho más lenta. Esto no se va a arreglar solo: puede que el recurso compartido se haya renombrado o eliminado en el servidor, así que vale la pena echar un vistazo allí.",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "Intentar conectar directamente",
   "@fileExplorer.network.osMountFallback.retry": {
