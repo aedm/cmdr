@@ -189,9 +189,25 @@ Resolving the id instead would answer with the SUCCESSOR after a swap and mark a
 
 ## Local renames are atomic-exclusive
 
-`LocalPosixVolume` routes every non-forced rename through the shared atomic-exclusive primitive. This applies equally
-to `/`, attached disks, Dropbox, iCloud, and other local POSIX roots registered with non-root volume IDs. Forced
-renames retain normal POSIX replacement semantics because the caller explicitly authorized replacement.
+`LocalPosixVolume` routes every non-forced rename through the shared atomic-exclusive primitive,
+`rename_local_exclusive`. This applies equally to `/`, attached disks, Dropbox, iCloud, and other local POSIX roots
+registered with non-root volume IDs. Forced renames retain normal POSIX replacement semantics because the caller
+explicitly authorized replacement.
+
+**There is exactly one implementation of it**, and `write_operations::overwrite::rename_no_replace` is a one-line
+delegation to it. Both names have to stay one function: while they were two, only the copy side degraded on a
+filesystem lacking the kernel flag, so the pane's own renames failed on every mounted SMB share while a copy landing in
+the same folder succeeded (ERR-8RFN4, app 0.45.1).
+
+**The kernel flag is not universal.** `renamex_np(RENAME_EXCL)` and `renameat2(RENAME_NOREPLACE)` are APFS, HFS+, and
+ext4; macOS's smbfs answers `ENOTSUP` (errno 45, verified against a Synology SMB mount on macOS 26.6.2, from the
+ERR-8RFN4 bundle's log, 2026-09-17), and other non-native mounts answer `EINVAL` or `ENOSYS`. Those three degrade to a
+`symlink_metadata` check then a plain `rename(2)`; ❌ every other errno reaches the caller unchanged, or a refusal the
+filesystem meant becomes a second, quieter way to fail. The degradation is racy and deliberately so: a lost race
+refuses, where a bare `rename(2)` would clobber silently and unrecoverably.
+
+The `ENOTSUP` path can't be reached on a filesystem a test can mount, and `testing::disk_images` is not for minting a
+FAT image, so `rename_exclusive_with` takes the attempt as a parameter and `local_posix_test.rs` injects the errno.
 
 ## Where the shared conformance assertions live
 

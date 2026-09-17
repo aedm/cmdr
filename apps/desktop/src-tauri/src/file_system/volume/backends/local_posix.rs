@@ -48,9 +48,21 @@ pub(crate) fn rename_volume_error(err: &io::Error, from: &Path, to: &Path) -> Vo
     }
 }
 
-/// Atomically renames a local path only when `destination` is unoccupied.
-#[cfg(target_os = "macos")]
+/// Renames a local path only when `destination` is unoccupied.
+///
+/// **The one no-replace rename primitive in the app**: every rename that isn't
+/// meant to overwrite comes through here, from the pane's F2 to a copy landing
+/// its temp on a name the conflict check found free. A plain POSIX `rename(2)`
+/// replaces silently, and both callers have a window between the check and the
+/// rename in which a file can appear, so destroying it would be silent and
+/// unrecoverable.
 pub(crate) fn rename_local_exclusive(source: &Path, destination: &Path) -> io::Result<()> {
+    rename_exclusive_with(source, destination, rename_exclusive_syscall)
+}
+
+/// The kernel's atomic no-replace rename: `RENAME_EXCL` on macOS,
+/// `RENAME_NOREPLACE` on Linux.
+fn rename_exclusive_syscall(source: &Path, destination: &Path) -> io::Result<()> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
 
@@ -60,25 +72,11 @@ pub(crate) fn rename_local_exclusive(source: &Path, destination: &Path) -> io::R
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "destination path contains a null byte"))?;
     // SAFETY: Both live C strings remain valid for the call. RENAME_EXCL makes
     // destination absence and the rename one kernel operation.
+    #[cfg(target_os = "macos")]
     let result = unsafe { libc::renamex_np(source.as_ptr(), destination.as_ptr(), libc::RENAME_EXCL) };
-    if result == 0 {
-        Ok(())
-    } else {
-        Err(io::Error::last_os_error())
-    }
-}
-
-#[cfg(target_os = "linux")]
-pub(crate) fn rename_local_exclusive(source: &Path, destination: &Path) -> io::Result<()> {
-    use std::ffi::CString;
-    use std::os::unix::ffi::OsStrExt;
-
-    let source = CString::new(source.as_os_str().as_bytes())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "source path contains a null byte"))?;
-    let destination = CString::new(destination.as_os_str().as_bytes())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "destination path contains a null byte"))?;
-    // SAFETY: Both live C strings remain valid for the call. RENAME_NOREPLACE
-    // is Linux's atomic no-overwrite contract.
+    // SAFETY: as above; `AT_FDCWD` makes both paths cwd-relative, matching the
+    // absolute paths we pass. RENAME_NOREPLACE is Linux's no-overwrite contract.
+    #[cfg(target_os = "linux")]
     let result = unsafe {
         libc::renameat2(
             libc::AT_FDCWD,
@@ -93,6 +91,45 @@ pub(crate) fn rename_local_exclusive(source: &Path, destination: &Path) -> io::R
     } else {
         Err(io::Error::last_os_error())
     }
+}
+
+/// [`rename_local_exclusive`] over an injectable `attempt`, which is how the
+/// no-flag degradation is testable on a filesystem that has the flag.
+///
+/// ❗ **The flag is not universal, and a filesystem without it must still be
+/// renameable.** APFS, HFS+, and ext4 take it; macOS's smbfs answers `ENOTSUP`,
+/// and other non-native mounts answer `EINVAL` or `ENOSYS`. Only those three
+/// degrade, to a check-then-rename that is racy but still strictly better than
+/// the unconditional clobber a bare `rename(2)` performs. Every other errno is
+/// the filesystem's own answer and reaches the caller unchanged.
+pub(super) fn rename_exclusive_with(
+    source: &Path,
+    destination: &Path,
+    attempt: impl Fn(&Path, &Path) -> io::Result<()>,
+) -> io::Result<()> {
+    let Err(err) = attempt(source, destination) else {
+        return Ok(());
+    };
+    let no_such_flag = matches!(
+        err.raw_os_error(),
+        Some(libc::ENOTSUP) | Some(libc::EINVAL) | Some(libc::ENOSYS)
+    );
+    if !no_such_flag {
+        return Err(err);
+    }
+    log::debug!(
+        target: "volume",
+        "rename_local_exclusive: {} doesn't support an atomic no-replace rename ({err}); checking first instead",
+        destination.display()
+    );
+
+    if std::fs::symlink_metadata(destination).is_ok() {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "destination already exists",
+        ));
+    }
+    std::fs::rename(source, destination)
 }
 
 /// A volume backed by the local POSIX file system.

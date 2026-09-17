@@ -273,68 +273,17 @@ fn land_temp(temp: &Path, dest: &Path, replacing: bool) -> std::io::Result<()> {
 
 /// `rename(2)` that fails with `AlreadyExists` instead of clobbering `dest`.
 ///
-/// A plain POSIX rename replaces silently, so every rename that isn't meant to
-/// overwrite comes through here: a copy landing its temp on a name the conflict
-/// check found free, and a cancelled move renaming an item back to its original
-/// source. Both have a window between the check and the rename in which a file
-/// can appear, and destroying it would be silent and unrecoverable. Uses the
-/// kernel's atomic flag where there is one (`RENAME_EXCL` on macOS,
-/// `RENAME_NOREPLACE` on Linux) and degrades to a check-then-rename on a
-/// filesystem that doesn't support it, which is racy but still strictly better
-/// than an unconditional clobber.
+/// A copy landing its temp on a name the conflict check found free, and a
+/// cancelled move renaming an item back to its original source. Both have a
+/// window between the check and the rename in which a file can appear, and
+/// destroying it would be silent and unrecoverable.
+///
+/// ❗ One line, by design: the pane's own renames go through the same primitive
+/// (`volume::rename_local_exclusive`), and while the two were separate
+/// implementations only this one degraded on a filesystem without the kernel's
+/// no-replace flag. That cost every rename on a mounted SMB share (ERR-8RFN4).
 pub(super) fn rename_no_replace(temp: &Path, dest: &Path) -> std::io::Result<()> {
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    {
-        use std::ffi::CString;
-        use std::os::unix::ffi::OsStrExt;
-
-        if let (Ok(from), Ok(to)) = (
-            CString::new(temp.as_os_str().as_bytes()),
-            CString::new(dest.as_os_str().as_bytes()),
-        ) {
-            // SAFETY: both pointers are live, NUL-terminated C strings held across
-            // the call, and the flag is the documented no-replace constant for the
-            // platform. The call touches no memory of ours.
-            #[cfg(target_os = "macos")]
-            let rc = unsafe { libc::renamex_np(from.as_ptr(), to.as_ptr(), libc::RENAME_EXCL) };
-            // SAFETY: as above; `AT_FDCWD` makes both paths cwd-relative, matching
-            // the absolute paths we pass.
-            #[cfg(target_os = "linux")]
-            let rc = unsafe {
-                libc::renameat2(
-                    libc::AT_FDCWD,
-                    from.as_ptr(),
-                    libc::AT_FDCWD,
-                    to.as_ptr(),
-                    libc::RENAME_NOREPLACE,
-                )
-            };
-            if rc == 0 {
-                return Ok(());
-            }
-            let err = std::io::Error::last_os_error();
-            let unsupported = matches!(
-                err.raw_os_error(),
-                Some(libc::ENOTSUP) | Some(libc::EINVAL) | Some(libc::ENOSYS)
-            );
-            if !unsupported {
-                return Err(err);
-            }
-            log::debug!(
-                target: "copy",
-                "rename_no_replace: {} doesn't support an atomic no-replace rename ({err}); checking first instead",
-                dest.display()
-            );
-        }
-    }
-
-    if fs::symlink_metadata(dest).is_ok() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::AlreadyExists,
-            "destination already exists",
-        ));
-    }
-    fs::rename(temp, dest)
+    crate::file_system::volume::rename_local_exclusive(temp, dest)
 }
 
 /// An entry this operation renamed out of the way, still on disk under its

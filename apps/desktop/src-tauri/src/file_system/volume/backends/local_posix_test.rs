@@ -848,3 +848,73 @@ async fn a_stream_onto_a_read_only_filesystem_is_read_only() {
 
     assert!(matches!(err, VolumeError::ReadOnly(_)), "got {err:?}");
 }
+
+// ── Exclusive rename where the kernel has no atomic no-replace flag ──────────
+//
+// `renamex_np` / `renameat2` exist on APFS and ext4 and nowhere near every
+// filesystem a Mac mounts. macOS's smbfs answers `ENOTSUP` (errno 45), so a
+// primitive that takes the flag's failure at face value can't rename anything on
+// a mounted SMB share. ERR-8RFN4 is a user who could rename a file through
+// `/Volumes/…` under Macintosh HD and never through the same share's own volume
+// entry, which is the route that reaches `LocalPosixVolume::rename`.
+//
+// The attempt is injected because no filesystem these tests can mount refuses
+// the flag, and `testing::disk_images` is explicitly not for minting a FAT image.
+
+/// An exclusive-rename attempt that always fails, so the degradation is
+/// reachable on the APFS scratch dir a test really runs on.
+fn always_failing_attempt(errno: i32) -> impl Fn(&Path, &Path) -> std::io::Result<()> {
+    move |_, _| Err(std::io::Error::from_raw_os_error(errno))
+}
+
+#[test]
+fn an_exclusive_rename_lands_on_a_filesystem_without_the_flag() {
+    let test_dir = TestDir::new("rename_exclusive_unsupported");
+    let source = test_dir.join("old.txt");
+    let destination = test_dir.join("new.txt");
+    std::fs::write(&source, b"content").expect("seeding the source");
+
+    local_posix::rename_exclusive_with(&source, &destination, always_failing_attempt(libc::ENOTSUP))
+        .expect("a filesystem without the flag still renames");
+
+    assert!(!source.exists());
+    assert_eq!(std::fs::read(&destination).expect("reading the destination"), b"content");
+}
+
+/// ❗ The degradation is racy, never permissive: losing the flag must not turn a
+/// rename into the silent clobber a plain POSIX `rename(2)` would perform.
+#[test]
+fn an_exclusive_rename_without_the_flag_still_refuses_an_occupied_destination() {
+    let test_dir = TestDir::new("rename_exclusive_unsupported_occupied");
+    let source = test_dir.join("source.txt");
+    let destination = test_dir.join("target.txt");
+    std::fs::write(&source, b"source").expect("seeding the source");
+    std::fs::write(&destination, b"target").expect("seeding the destination");
+
+    let err = local_posix::rename_exclusive_with(&source, &destination, always_failing_attempt(libc::ENOTSUP))
+        .expect_err("an occupied destination is still a refusal");
+
+    assert_eq!(err.kind(), std::io::ErrorKind::AlreadyExists);
+    assert_eq!(std::fs::read(&source).expect("reading the source"), b"source");
+    assert_eq!(
+        std::fs::read(&destination).expect("reading the destination"),
+        b"target"
+    );
+}
+
+/// ❗ Only the flag's absence degrades. A refusal the filesystem meant lands on
+/// the caller as itself, or the retry becomes a second, quieter way to fail.
+#[test]
+fn an_exclusive_rename_propagates_a_failure_that_is_not_about_the_flag() {
+    let test_dir = TestDir::new("rename_exclusive_other_errno");
+    let source = test_dir.join("source.txt");
+    let destination = test_dir.join("target.txt");
+    std::fs::write(&source, b"source").expect("seeding the source");
+
+    let err = local_posix::rename_exclusive_with(&source, &destination, always_failing_attempt(libc::EACCES))
+        .expect_err("a permission refusal is the filesystem's own answer");
+
+    assert_eq!(err.kind(), std::io::ErrorKind::PermissionDenied);
+    assert!(source.exists(), "nothing moved");
+    assert!(!destination.exists());
+}
