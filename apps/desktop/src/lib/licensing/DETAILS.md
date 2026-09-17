@@ -34,9 +34,9 @@ behavior-preserving move: en output is byte-identical, pinned by `licensing-i18n
 
 - **The About window keeps David's first-person voice** (the beta note "Tell me on GitHub. I read every report!").
   Translators are told to preserve that warmth via the `@key` description, not a positional flag.
-- **Prices and proper names stay literal in the base string.** `$59, paid once`, `Falcon-H1R-7B`, `TII`, brand names, and
-  the `CMDR-XXXX-XXXX-XXXX` format example are flagged do-not-translate in their `@key` descriptions; there is no price
-  param (the amount is copy, not data).
+- **Prices and proper names stay literal in the base string.** `$59, paid once`, `Falcon-H1R-7B`, `TII`, brand names,
+  and the `CMDR-XXXX-XXXX-XXXX` format example are flagged do-not-translate in their `@key` descriptions; there is no
+  price param (the amount is copy, not data).
 - **Dates are formatted at the call site, then passed in as preformatted `{date}` STRING params** (the same
   single-source rule as `$lib/intl`), never via ICU `{date, date}`. Each component keeps its local `formatDate` helper.
 - **Inline-component sentences use `<Trans>` with a tag snippet whose name differs from any param** to avoid the

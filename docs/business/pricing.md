@@ -18,17 +18,17 @@ Two tiers, one of them paid.
   keeps new versions coming, and the last version the buyer was entitled to stays theirs forever whether or not they
   renew.
 - **Organizations**: quoted by hand. ❌ **Nothing is published**: no price, no seat threshold, no list of inclusions.
-  The page carries a "Buying for an organization?" block with one line pointing at `sales@getcmdr.com`, and the FAQ
-  says a handful of people should just buy Commercial licenses one by one. Every number or promise on that block is
-  something a buyer negotiates down from. The internal volume ladder and the deal floors live in David's vault
-  (`Cmdr pricing.md` there); ❌ they don't belong in this repo, which is public.
+  The page carries a "Buying for an organization?" block with one line pointing at `sales@getcmdr.com`, and the FAQ says
+  a handful of people should just buy Commercial licenses one by one. Every number or promise on that block is something
+  a buyer negotiates down from. The internal volume ladder and the deal floors live in David's vault (`Cmdr pricing.md`
+  there); ❌ they don't belong in this repo, which is public.
 
 No recurring commercial plan is sold. No separate perpetual tier: Commercial _is_ the perpetual one.
 
-**Cmdr AI** is named as a distinct component in the pricing copy. It's bring-your-own-key today
-(`product-facts.md`), so unlimited AI on a one-time license costs nothing to serve. The page and FAQ promise that a
-Commercial license bought now keeps Cmdr AI on the buyer's own key or the on-device model for the length of their
-update window, ❌ so the license server has to keep honoring that however the plans change later.
+**Cmdr AI** is named as a distinct component in the pricing copy. It's bring-your-own-key today (`product-facts.md`), so
+unlimited AI on a one-time license costs nothing to serve. The page and FAQ promise that a Commercial license bought now
+keeps Cmdr AI on the buyer's own key or the on-device model for the length of their update window, ❌ so the license
+server has to keep honoring that however the plans change later.
 
 A **Pro plan** for hosted AI models is announced on the page without a price or a date. Its design and pricing live in
 David's vault (`Cmdr pricing.md` there) and ❌ don't belong in this repo until it ships; here, only the copy constraint
@@ -43,10 +43,12 @@ above matters.
 price rather than deleting it. A price ID that stops resolving takes every license bought under it with it.
 `PRICE_ID_COMMERCIAL_SUBSCRIPTION` stays set for exactly this reason.
 
-❌ **$59 now means two different things, and this is the trap in this file.** The retired subscription was $59 per
-year; the current Commercial license is $59 paid once. A grep for `59` cannot tell them apart, and neither can a
+❌ **$59 now means two different things, and this is the trap in this file.** The retired subscription was $59 per year;
+the current Commercial license is
+$59 paid once. A grep for `59` cannot tell them apart, and neither can a
 reader skimming. The distinguishing token is `/year` or `/yr` next to the number, which is why the pricing page's E2E
-test asserts on `$59/year` being absent rather than on `$59`. When writing about either, always say which.
+test asserts on `$59/year`being absent rather than on`$59`.
+When writing about either, always say which.
 
 ## Every place a price or plan is hardcoded
 
@@ -82,8 +84,8 @@ test asserts on `$59/year` being absent rather than on `$59`. When writing about
 - ❌ **An unmapped price ID falls back to `commercial_subscription`** (`getLicenseTypeFromPriceId` in `paddle-api.ts`
   returns `null`, and `licensing.ts:343-345` substitutes the subscription type). So a Paddle price nobody wires into
   `PRICE_ID_COMMERCIAL_PERPETUAL` silently sells a license that expires, with a fulfillment email promising annual
-  renewal. This is the single most expensive thing to get wrong here. Whether to fail loudly instead is an open
-  decision in David's vault, so ❌ don't change the fallback without checking there first.
+  renewal. This is the single most expensive thing to get wrong here. Whether to fail loudly instead is an open decision
+  in David's vault, so ❌ don't change the fallback without checking there first.
 - Sandbox and live never share price IDs (`apps/api-server/src/licensing/CLAUDE.md`).
 
 **The live price IDs** (not secret: they ship in the built site's client-side JS, and Paddle authorizes by API key):
@@ -94,16 +96,17 @@ test asserts on `$59/year` being absent rather than on `$59`. When writing about
   `pri_01kjz6psgfsp1fan7j462ved55`. ❌ **Left ACTIVE on purpose**: a live subscription renews against it. Paddle does
   keep billing an existing subscription on an archived price, but there's no upside to testing that on real recurring
   revenue.
-- Perpetual, the retired $199: `pri_01kf7649f72fyfvweeg7b5qwgg` sandbox (**archived**),
-  `pri_01kjz6psnyp383dz9nbb7ba0zv` live (**still active, archive it after this change deploys**). Nothing was ever sold
-  on it, so archiving strands no license.
+- Perpetual, the retired $199: `pri_01kf7649f72fyfvweeg7b5qwgg` sandbox (**archived**), `pri_01kjz6psnyp383dz9nbb7ba0zv`
+  live (**still active, archive it after this change deploys**). Nothing was ever sold on it, so archiving strands no
+  license.
 
 ❌ **Archive a price only after the page that links to it stops being served.** Archiving is not a soft retirement:
-Paddle refuses the id outright, so a live page still carrying that button gets a checkout that can't open. Archiving
-the live $199 on 2026-09-17 broke the then-current pricing page's perpetual button until it was set back to active
-(caught by quoting the id against `POST /pricing-preview`, which is read-only and the cheap way to test this). The
-website's `.env` on the VPS is baked in at build time, so the button survives until the next deploy, which means the
-safe order is: deploy the new page first, then archive.
+Paddle refuses the id outright, so a live page still carrying that button gets a checkout that can't open. Archiving the
+live $199 on 2026-09-17 broke the then-current pricing page's perpetual button until it was set back to active (caught
+by quoting the id against `POST /pricing-preview`, which is read-only and the cheap way to test this). The website's
+`.env` on the VPS is baked in at build time, so the button survives until the next deploy, which means the safe order
+is: deploy the new page first, then archive.
+
 - No $39 renewal price exists yet: `/renew` is a `mailto:`, so there's nothing to attach one to. Create it with the
   renewal delivery path, ❌ as a one-time price and never a subscription (see the license-type note above).
 
@@ -121,8 +124,8 @@ safe order is: deploy the new page first, then archive.
   so it is never a one-line edit.
 - `apps/desktop/src/lib/licensing/CLAUDE.md` and `apps/desktop/src-tauri/src/licensing/CLAUDE.md`: the license-type list
   documents prices and update windows.
-- `apps/desktop/src/lib/licensing/DETAILS.md`: cites the reminder's price as the example of a literal that stays out
-  of interpolation.
+- `apps/desktop/src/lib/licensing/DETAILS.md`: cites the reminder's price as the example of a literal that stays out of
+  interpolation.
 - `apps/desktop/src/lib/licensing/licensing-i18n-parity.test.ts` pins the `en` reminder string exactly, so the price
   can't drift without a failing test.
 
