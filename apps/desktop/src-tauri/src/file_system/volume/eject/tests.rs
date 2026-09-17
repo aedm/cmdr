@@ -1,4 +1,4 @@
-use super::holders::{HolderKind, VolumeHolder};
+use super::holders::{HolderKind, HolderScan, VolumeHolder};
 use super::*;
 
 #[test]
@@ -10,6 +10,7 @@ fn device_volume_routes_to_its_provider() {
         volume_id: "mtp-AA:BB:CC:65537",
         is_ejectable: false,
         is_smb: false,
+        is_remote_session: false,
         device_provider: Some("mtp"),
     };
     assert_eq!(
@@ -27,6 +28,7 @@ fn device_provider_wins_over_every_other_flag() {
         volume_id: "adb-serial",
         is_ejectable: true,
         is_smb: true,
+        is_remote_session: false,
         device_provider: Some("adb"),
     };
     assert!(matches!(
@@ -41,6 +43,7 @@ fn smb_volume_routes_to_unmount() {
         volume_id: "smb-naspolya-445-public",
         is_ejectable: false,
         is_smb: true,
+        is_remote_session: false,
         device_provider: None,
     };
     assert_eq!(decide_eject_action(&ctx).unwrap(), EjectAction::DiskutilUnmount);
@@ -52,9 +55,118 @@ fn ejectable_disk_routes_to_eject() {
         volume_id: "volumes-usb-drive",
         is_ejectable: true,
         is_smb: false,
+        is_remote_session: false,
         device_provider: None,
     };
     assert_eq!(decide_eject_action(&ctx).unwrap(), EjectAction::DiskutilEject);
+}
+
+/// A saved SFTP place nobody is connected to, the way an unpinned-but-remembered
+/// server sits in the switcher. Registers nothing: that IS the state under test.
+async fn with_a_saved_server<F, Fut, T>(host: &str, body: F) -> T
+where
+    F: FnOnce(String) -> Fut,
+    Fut: Future<Output = T>,
+{
+    use crate::network::sftp_known_servers::{self, KnownSftpServer};
+
+    let (port, username) = (22, "david");
+    sftp_known_servers::remember(KnownSftpServer {
+        host: host.to_string(),
+        port,
+        username: username.to_string(),
+        display_name: String::new(),
+        remote_root: "/".to_string(),
+        start_folder: None,
+        key_file: None,
+        use_agent: false,
+        auto_reconnect: false,
+        pinned: true,
+        last_connected_at: "2026-09-17T00:00:00Z".to_string(),
+    });
+    let answer = body(cmdr_fs::volume::sftp_volume_id(host, port, username)).await;
+    // The store is process-global, so this cell cleans up after itself.
+    sftp_known_servers::forget(host, port, username);
+    answer
+}
+
+#[tokio::test]
+async fn a_saved_server_nobody_is_connected_to_is_told_so_in_words_about_a_server() {
+    // Pre-fix this answered `VolumeNotFound`, whose copy is about a DRIVE that
+    // isn't connected any more: the wrong noun and the wrong verb in front of
+    // someone asking about a server.
+    let result = with_a_saved_server("eject-cell-saved.invalid", |volume_id| async move {
+        eject(&volume_id).await
+    })
+    .await;
+    assert!(
+        matches!(result, Err(EjectError::RemoteNotConnected { .. })),
+        "got {result:?}"
+    );
+}
+
+#[tokio::test]
+async fn an_id_the_app_knows_nothing_about_is_still_a_missing_volume() {
+    // The other half of the same branch: `RemoteNotConnected` is earned by being a
+    // KNOWN place, ❌ never by the id's shape.
+    let result = eject("sftp-nothing-has-ever-been-saved-here").await;
+    assert!(
+        matches!(result, Err(EjectError::VolumeNotFound { .. })),
+        "got {result:?}"
+    );
+}
+
+#[test]
+fn remote_session_routes_to_a_disconnect() {
+    // Pre-fix this answered `NotEjectable`, which is how an open SFTP place came to
+    // be offered an Eject that could only turn it down (`ERR-P7F5Q`).
+    let ctx = EjectContext {
+        volume_id: "sftp-naspolya-22-david",
+        is_ejectable: false,
+        is_smb: false,
+        is_remote_session: true,
+        device_provider: None,
+    };
+    assert_eq!(
+        decide_eject_action(&ctx).unwrap(),
+        EjectAction::RemoteDisconnect {
+            volume_id: "sftp-naspolya-22-david".to_string(),
+        }
+    );
+}
+
+#[test]
+fn a_remote_session_that_the_os_calls_ejectable_still_disconnects() {
+    // A server is asked about BEFORE the mount questions: `is_ejectable` is an
+    // answer about a mount, and wording a session drop as an eject is the bug this
+    // ordering exists to prevent.
+    let ctx = EjectContext {
+        volume_id: "webdav-example-443-david",
+        is_ejectable: true,
+        is_smb: true,
+        is_remote_session: true,
+        device_provider: None,
+    };
+    assert!(matches!(
+        decide_eject_action(&ctx).unwrap(),
+        EjectAction::RemoteDisconnect { .. }
+    ));
+}
+
+#[test]
+fn a_device_provider_still_wins_over_a_remote_session() {
+    // The provider lookup is live state, so an id it claims is authoritative.
+    let ctx = EjectContext {
+        volume_id: "mtp-phone",
+        is_ejectable: false,
+        is_smb: false,
+        is_remote_session: true,
+        device_provider: Some("mtp"),
+    };
+    assert!(matches!(
+        decide_eject_action(&ctx).unwrap(),
+        EjectAction::DeviceDisconnect { provider: "mtp", .. }
+    ));
 }
 
 #[test]
@@ -63,6 +175,7 @@ fn non_ejectable_local_volume_errors() {
         volume_id: "root",
         is_ejectable: false,
         is_smb: false,
+        is_remote_session: false,
         device_provider: None,
     };
     assert_eq!(
@@ -189,6 +302,7 @@ fn smb_wins_over_ejectable_flag() {
         volume_id: "smb-foo",
         is_ejectable: true,
         is_smb: true,
+        is_remote_session: false,
         device_provider: None,
     };
     assert_eq!(decide_eject_action(&ctx).unwrap(), EjectAction::DiskutilUnmount);

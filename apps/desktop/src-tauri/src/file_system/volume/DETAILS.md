@@ -422,13 +422,32 @@ names a refusal's holders.
    a transfer can't be truncated. The picker already disables Eject for busy volumes; this defends against a race or an
    MCP/automation caller.
 2. **Classify**: a device volume (a `device_volumes::DeviceVolumeProvider` answers `owns_volume_id` from live state;
-   MTP, ADB) → that provider's `eject`; a registered `SmbVolume` (`backend_kind() == Smb`) → `diskutil unmount` (FSEvents drives smb2
+   MTP, ADB) → that provider's `eject`; a remote session (`BackendKind::detaches_by_session_drop`: SFTP, WebDAV) → drop
+   that session; a registered `SmbVolume` (`backend_kind() == Smb`) → `diskutil unmount` (FSEvents drives smb2
    teardown via `on_unmount`); otherwise NSURL/`/sys/block` ejectability → `diskutil eject` (powers down USB, detaches
-   DMGs). The pure `decide_eject_action` makes this choice and is unit-tested without touching the FS.
+   DMGs). The pure `decide_eject_action` makes this choice and is unit-tested without touching the FS. ❗ A remote
+   session is asked about BEFORE the mount questions: `is_ejectable` is a question about a mount, and a server Cmdr
+   dialed has no mount-table row to answer it, so asking first offered an Eject on an open SFTP place that could only
+   turn itself down (`ERR-P7F5Q`).
 3. **Execute**, always through `run_teardown`: the provider's eject (MTP closes the session; ADB only retires the
-   volume, since `adb` has no per-client detach), or a `diskutil`/`umount` subprocess under a 30 s timeout (why:
-   "A slow refusal is still a refusal" below). A `diskutil eject` on macOS goes the per-disk way below; SMB, a mount no
-   physical disk backs, and every Linux teardown stay per volume.
+   volume, since `adb` has no per-client detach), a remote session drop, or a `diskutil`/`umount` subprocess under a
+   30 s timeout (why: "A slow refusal is still a refusal" below). A `diskutil eject` on macOS goes the per-disk way
+   below; SMB, a mount no physical disk backs, and every Linux teardown stay per volume.
+
+**Both answers are typed, because an agent reads them.** The MCP `eject` tool reaches this same pipeline, and
+`no-error-string-match` applies to an agent parsing us too, so success answers `EjectOutcome` (which teardown ran) and
+every refusal carries its variant's tag in the tool's `data.outcome` (`mcp/executor/eject.rs`). The two vocabularies are
+pinned to each other by a test rather than by discipline: the tool's tag for a variant must equal that variant's own
+serde name.
+
+**A remote place detaches by dropping its session, and stays saved.** SFTP and WebDAV go through
+`commands::servers::disconnect_place_inner`, the ONE way a place's session is dropped: calling either wiring's
+`disconnect` directly skips the `VolumeUnmounted` event that sends a pane standing on the place home. Dropping the
+session IS the clean shutdown and can't refuse (there is no `Sftp::close()`; it hangs forever over a `russh` channel),
+so the one unhappy answer is `RemoteNotConnected`: nothing was registered under that id, and the id names a place the
+app has saved. That last question goes to the places store, ❌ never to the id's shape, and it exists so a saved but
+disconnected server hears words about a server rather than `VolumeNotFound`'s words about a drive. Forgetting the
+server is `forget_server`, a separate act.
 
 **Every refusal is logged once, in Rust.** `run_teardown` is the choke point every eject and SMB disconnect passes
 through, and it writes one `warn` on target `eject` naming the volume ID, the command (`diskutil eject`, `umount`) or

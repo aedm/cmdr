@@ -1817,6 +1817,10 @@
   "@errors.eject.notAnSmbVolume": {
     "sourceHash": "d49623e"
   },
+  "errors.eject.remoteNotConnected": "這個伺服器已經不再連線，沒有東西需要關閉。",
+  "@errors.eject.remoteNotConnected": {
+    "sourceHash": "a0ed630"
+  },
   "errors.eject.deviceDisconnectRefused": "裝置沒有把連線關掉。等它閒下來再拔線。",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "d49861f"

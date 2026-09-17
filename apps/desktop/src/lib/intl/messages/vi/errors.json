@@ -1817,6 +1817,10 @@
   "@errors.eject.notAnSmbVolume": {
     "sourceHash": "d49623e"
   },
+  "errors.eject.remoteNotConnected": "Máy chủ này không còn kết nối nữa, nên không còn gì để đóng.",
+  "@errors.eject.remoteNotConnected": {
+    "sourceHash": "a0ed630"
+  },
   "errors.eject.deviceDisconnectRefused": "Thiết bị đã từ chối đóng kết nối. Hãy rút nó ra khi không còn bận.",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "d49861f"

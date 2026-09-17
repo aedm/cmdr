@@ -650,6 +650,7 @@ export type MessageKey =
   | 'errors.eject.notEjectable'
   | 'errors.eject.notResponding'
   | 'errors.eject.otherApps'
+  | 'errors.eject.remoteNotConnected'
   | 'errors.eject.timedOut'
   | 'errors.eject.unexpected'
   | 'errors.eject.unmountRefused'

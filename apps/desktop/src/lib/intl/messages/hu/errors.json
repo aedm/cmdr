@@ -1817,6 +1817,10 @@
   "@errors.eject.notAnSmbVolume": {
     "sourceHash": "d49623e"
   },
+  "errors.eject.remoteNotConnected": "Ez a szerver már nincs csatlakoztatva, így nincs mit lezárni.",
+  "@errors.eject.remoteNotConnected": {
+    "sourceHash": "a0ed630"
+  },
   "errors.eject.deviceDisconnectRefused": "Az eszköz nem zárta le a kapcsolatot. Húzd ki, amikor már nincs használatban.",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "d49861f"

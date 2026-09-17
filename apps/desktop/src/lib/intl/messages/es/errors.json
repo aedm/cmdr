@@ -1817,6 +1817,10 @@
   "@errors.eject.notAnSmbVolume": {
     "sourceHash": "d49623e"
   },
+  "errors.eject.remoteNotConnected": "Este servidor ya no está conectado, así que no hay nada que cerrar.",
+  "@errors.eject.remoteNotConnected": {
+    "sourceHash": "a0ed630"
+  },
   "errors.eject.deviceDisconnectRefused": "El dispositivo no cerró su conexión. Desconecta el cable cuando esté inactivo.",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "d49861f"

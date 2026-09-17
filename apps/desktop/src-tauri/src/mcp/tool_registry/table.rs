@@ -376,9 +376,11 @@ mcp_tools! {
         run: app_params async_tools::execute_upgrade_smb_to_direct
     },
     "eject" => {
-        desc: "Eject an ejectable volume by id (disk or MTP). Refuses honestly while an operation \
-               is reading from or writing to the volume, and for non-ejectable volumes. See \
-               cmdr://state volumes for ids.",
+        desc: "Detach a volume by id: eject a disk or disk image, unmount an SMB share, disconnect \
+               a phone, or close a connection to an SFTP or WebDAV server. The server stays saved. \
+               Answers which teardown ran, and refuses honestly (with a typed outcome in the error \
+               data) while an operation is reading from or writing to the volume, and for a volume \
+               that can't be detached at all. See cmdr://state volumes for ids.",
         schema: schemas::eject_schema(),
         gate: TokenGate::Open,
         consumers: &[Consumer::AiClient],

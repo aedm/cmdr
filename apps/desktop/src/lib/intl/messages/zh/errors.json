@@ -1817,6 +1817,10 @@
   "@errors.eject.notAnSmbVolume": {
     "sourceHash": "d49623e"
   },
+  "errors.eject.remoteNotConnected": "这台服务器已经断开了，所以没有连接需要关闭。",
+  "@errors.eject.remoteNotConnected": {
+    "sourceHash": "a0ed630"
+  },
   "errors.eject.deviceDisconnectRefused": "设备没有关闭连接。等它空闲下来再拔下线缆。",
   "@errors.eject.deviceDisconnectRefused": {
     "sourceHash": "d49861f"
