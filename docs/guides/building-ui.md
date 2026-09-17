@@ -45,19 +45,35 @@ Two menu systems: the OS's, through muda (`apps/desktop/src-tauri/src/menu/`), a
    rename field, a drag handle, a sub-line. If yes → house `Menu`, stop. muda can't render these, which is why the
    volume switcher and the favorites menu are ours.
 2. **If every row is a plain action, what does it act on?** Backend state (a path, a volume, a server, a file) → native:
-   the pick becomes an IPC command anyway, so the round-trip is free and the OS behavior comes with it. Frontend or DOM
-   state → ask whether AppKit already has a responder action: `copy:` / `selectAll:` / `cut:` / `paste:` → native at
-   zero IPC, because the responder chain does the work (`build_viewer_menu` in
-   `apps/desktop/src-tauri/src/menu/menu_structure.rs` is the viewer's Edit menu relying on exactly this). Anything else
-   → house `Menu`.
+   the pick becomes an IPC command anyway, so the round-trip is free and the OS behavior comes with it. Frontend state →
+   native only if BOTH are true: AppKit has a responder action for it (`copy:` / `selectAll:` / `cut:` / `paste:`), AND
+   the state that action reads lives in the DOM. A selector lands on a DOM selection or a focused text field and nowhere
+   else; pointed at a model the app maintains itself it routes into WebKit and quietly no-ops, which is the worst
+   failure shape there is, because the item looks right and does nothing. Anything else → house `Menu`.
+
+   The viewer answers this both ways, which is why it's the case to remember. Its Edit menu is native and works: the
+   selectors land on the search box, a real text field (`build_viewer_menu` in
+   `apps/desktop/src-tauri/src/menu/menu_structure.rs`). Its CONTENT menu is hand-rolled and has to stay that way: Copy
+   there is a three-band size flow over file offsets with its own IPC and dialogs, and Select all takes the whole file
+   by offset including an `EOF_LINE` sentinel, while the DOM holds only the visible rows under `user-select: none`.
+   `selectAll:` has nowhere to land.
+
 3. **Tiebreaker: what opened it?** A right-click is an OS convention and people expect the OS's menu. A menu hanging off
    a chip or a button in our own chrome should look like ours.
 
-The trade, honestly: native gives OS look and feel, `validateMenuItem:` auto-enabling, VoiceOver, responder-chain
-actions, escape from the window bounds, and system appearance, but no rich rows, a round-trip for frontend state, and
-nothing Playwright can reach. The house `Menu` gives arbitrary rows, direct frontend state, our design language, and
-testability, and costs clipping at the window edge plus owning keyboard, focus, placement, and a11y. That last cost is
-now paid once in the primitive rather than per menu, which is what makes it a fair default for its half of the split.
+The trade, honestly: native gives OS look and feel, VoiceOver, responder-chain actions, escape from the window bounds,
+and system appearance, but no rich rows, a round-trip for frontend state, and nothing Playwright can reach. The house
+`Menu` gives arbitrary rows, direct frontend state, our design language, and testability, and costs clipping at the
+window edge plus owning keyboard, focus, placement, and a11y. That last cost is now paid once in the primitive rather
+than per menu, which is what makes it a fair default for its half of the split.
+
+❗ **Native does NOT get you auto-enabling.** muda calls `setAutoenablesItems(false)` on every `NSMenu` it builds, so
+`validateMenuItem:` / `validateUserInterfaceItem:` never runs for a muda item, in the menu bar or in a popup, and an
+item's enabled state comes from muda's own flag alone. We compute it per item
+(`apps/desktop/src-tauri/src/menu/item_states.rs`); don't ship a native item assuming the OS will grey it out. (Verified
+on muda 0.19.3, in its macOS "platform_impl/macos/mod.rs" — quoted, since it's a crate-internal path this repo has no
+file for — at lines 134, 338, and 791, 2026-09-17. The same finding is recorded at
+`apps/desktop/src-tauri/src/dock/menu/native.rs`.)
 
 The consumer contract, the row snippets, and what the primitive owns: `apps/desktop/src/lib/ui/DETAILS.md` § Menu.
 
