@@ -214,6 +214,23 @@ describe('the open menu owns the keyboard', () => {
     expect(menu.highlightedValue).toBe('fav-a')
   })
 
+  // ❗ A key the CONSUMER claims is swallowed exactly like one the menu handles itself. It used
+  // to be the one class that escaped, which the central dispatch hid only while
+  // `isHeaderMenuOpen()` happened to know about every menu on this primitive.
+  it('stops a key onKey claimed from reaching a listener further along', () => {
+    const target = anchorEl()
+    const downstream = vi.fn()
+    target.addEventListener('keydown', downstream)
+    const menu = build({ onKey: () => true })
+    menu.openUnder(target)
+    const event = keydown('ArrowDown')
+    const prevent = vi.spyOn(event, 'preventDefault')
+    target.dispatchEvent(event)
+    expect(downstream).not.toHaveBeenCalled()
+    // Swallowed, but never defaulted away: a consumer key can be a menu-bar accelerator.
+    expect(prevent).not.toHaveBeenCalled()
+  })
+
   it('falls through to its own handling when onKey passes', () => {
     const onKey = vi.fn(() => false)
     const menu = build({ onKey })
