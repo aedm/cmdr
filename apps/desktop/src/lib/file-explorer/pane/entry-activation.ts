@@ -61,6 +61,13 @@ export function createEntryActivation(deps: EntryActivationDeps): EntryActivatio
   async function browseIntoEntry(entry: FileEntry): Promise<void> {
     const isGoingUp = entry.name === '..'
     const canonical = deps.getCanonicalPath()
+    // The `..` row carries the PARENT of the current path, which `FilePane` can
+    // only work out once the pane's path canonicalizes. Until it does the row
+    // falls back to the empty path, and the empty path is how the backend spells
+    // "this volume's root" — so navigating it would silently leap the whole way
+    // up instead of one level. Going nowhere is the honest answer, and it matches
+    // what Backspace does in the same state (`listing-loader.ts`).
+    if (isGoingUp && !entry.path) return
     const currentFolderName = isGoingUp && canonical ? basenameOf(canonical) : undefined
     deps.setCurrentPath(entry.path)
     // Note: onPathChange is called in the listing-complete handler after a successful load.

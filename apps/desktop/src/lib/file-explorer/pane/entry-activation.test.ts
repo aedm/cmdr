@@ -199,6 +199,16 @@ describe('createEntryActivation', () => {
       expect(calls.loadDirectory).toHaveBeenCalledWith({ path: '/dir', selectName: 'sub' })
     })
 
+    it('stays put when the `..` row has no path to go to', async () => {
+      // `FilePane` falls the row back to the empty path while the pane's own path
+      // doesn't canonicalize, and the empty path means "this volume's root" to the
+      // backend — so navigating it would leap past every level in between.
+      paneState.currentPath = '/dir/sub'
+      await createEntryActivation(deps).handleNavigate(entryOf({ name: '..', path: '', isDirectory: true }))
+      expect(calls.loadDirectory).not.toHaveBeenCalled()
+      expect(calls.setCurrentPath).not.toHaveBeenCalled()
+    })
+
     it('routes a file inside an archive to the viewer with the pane drive volume', async () => {
       policy.pathInsideArchive.mockImplementation((p: string) => p.startsWith('/dir/a.zip/'))
       await createEntryActivation(deps).handleNavigate(entryOf({ name: 'inner.txt', path: '/dir/a.zip/inner.txt' }))
