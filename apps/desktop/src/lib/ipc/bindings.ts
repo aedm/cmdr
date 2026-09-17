@@ -13691,6 +13691,29 @@ export type TrashRefusalKind =
   | 'other'
 
 /**
+ *  The top-level items a batch trash could not take, when the rest of the batch
+ *  went through.
+ *
+ *  ❗ Not a skip, and ❌ never folded into `files_skipped`: a skip is something
+ *  the user or a policy CHOSE, while this is the OS turning an item down and the
+ *  item still sitting in the pane afterwards. A batch where EVERY item was
+ *  refused is a `WriteOperationError::TrashRefused` instead and never reaches a
+ *  completion event; this variant exists for the mixed ending, which would
+ *  otherwise read as a clean success and say nothing about what stayed.
+ *
+ *  Typed, never a sentence: the FE words this in ten locales.
+ */
+export type TrashRefusedItems = {
+  // How many top-level items stayed exactly where they were.
+  itemCount: number
+  /**
+   *  The reason that opens the most doors for the user, picked by the same
+   *  `strongest_refusal` the all-refused error reports.
+   */
+  reason: TrashRefusalKind
+}
+
+/**
  *  What an F8 over a given selection should actually run.
  *
  *  Typed rather than a bare `bool` so the frontend's routing reads as a decision
@@ -14829,6 +14852,12 @@ export type WriteCompleteEvent = {
    *  summary from `files_skipped` alone. See [`TopLevelSkipped`].
    */
   topLevelSkipped?: TopLevelSkipped | null
+  /**
+   *  What a batch trash had to leave where it was. `None` (the ordinary case)
+   *  means every item the operation touched went, and the FE says nothing
+   *  about it. See [`TrashRefusedItems`].
+   */
+  refused?: TrashRefusedItems | null
 }
 
 // Conflict event payload (emitted when Stop mode encounters a conflict).

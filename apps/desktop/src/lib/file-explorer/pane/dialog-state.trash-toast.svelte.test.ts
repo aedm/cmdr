@@ -16,7 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createDialogState } from './dialog-state.svelte'
 import { setForegroundOperationId } from '$lib/file-operations/foreground-operation.svelte'
 import TrashCompleteToastContent from '$lib/file-operations/delete/TrashCompleteToastContent.svelte'
-import type { TransferProgressPropsData } from './dialog-props'
+import type { TransferCompletePayload, TransferProgressPropsData } from './dialog-props'
 import type { FilePaneAPI } from './types'
 import type { PaneRevealAPI } from '../navigation/navigate-and-select'
 import type { ToastContent, ToastOptions } from '$lib/ui/toast/toast-store.svelte'
@@ -91,13 +91,20 @@ function props(operationType: TransferProgressPropsData['operationType']): Trans
   }
 }
 
-/** The completion payload for one file, nothing skipped. */
-const ONE_FILE = {
+/** The completion payload for one file, nothing skipped and nothing refused. */
+const ONE_FILE: TransferCompletePayload = {
   filesProcessed: 1,
   filesSkipped: 0,
   bytesProcessed: 10,
   appearedDuringMove: null,
   topLevelSkipped: null,
+  refused: null,
+}
+
+/** One file went, one the OS turned down and left in the pane. */
+const ONE_FILE_ONE_REFUSED: TransferCompletePayload = {
+  ...ONE_FILE,
+  refused: { itemCount: 1, reason: 'notPermitted' },
 }
 
 beforeEach(() => {
@@ -153,6 +160,59 @@ describe('a completed trash', () => {
     dialogs.handleTransferComplete(ONE_FILE)
 
     expect(addToast).toHaveBeenCalledWith('Moved 1 file to trash', expect.objectContaining({ level: 'success' }))
+  })
+})
+
+describe('a trash the OS refused part of', () => {
+  // The bug this covers: two items in, one trashed, and the completion said
+  // "Moved 1 file to trash" in success green with nothing at all about the one
+  // still sitting in the pane (David's 2026-09-17 log).
+  it('says how many items stayed behind, and why', () => {
+    const dialogs = makeState()
+    dialogs.startTransferProgress(props('trash'))
+    setForegroundOperationId('op-1')
+
+    dialogs.handleTransferComplete(ONE_FILE_ONE_REFUSED)
+
+    expect(addToast).toHaveBeenCalledWith(
+      "macOS wouldn't let Cmdr touch 1 of the items you picked.",
+      expect.objectContaining({ level: 'warn' }),
+    )
+  })
+
+  it('stops the completion itself reading as a clean success', () => {
+    const dialogs = makeState()
+    dialogs.startTransferProgress(props('trash'))
+    setForegroundOperationId('op-1')
+
+    dialogs.handleTransferComplete(ONE_FILE_ONE_REFUSED)
+
+    expect(raisedToast().options.level).toBe('warn')
+  })
+
+  it('still reports what really did go, with Undo, so the batch is not swallowed whole', () => {
+    // ❌ The refusal must not turn a partial trash into a failure: one file IS in
+    // the trash, and the undo has to be there to take it back out.
+    const dialogs = makeState()
+    dialogs.startTransferProgress(props('trash'))
+    setForegroundOperationId('op-1')
+
+    dialogs.handleTransferComplete(ONE_FILE_ONE_REFUSED)
+
+    const { content, options } = raisedToast()
+    expect(content).toBe(TrashCompleteToastContent)
+    expect(options.props).toMatchObject({ message: 'Moved 1 file to trash', operationId: 'op-1' })
+  })
+
+  it('says nothing extra when the OS took every item', () => {
+    const dialogs = makeState()
+    dialogs.startTransferProgress(props('trash'))
+    setForegroundOperationId('op-1')
+
+    dialogs.handleTransferComplete(ONE_FILE)
+
+    expect(addToast).toHaveBeenCalledTimes(1)
+    expect(raisedToast().options.level).toBe('success')
   })
 })
 

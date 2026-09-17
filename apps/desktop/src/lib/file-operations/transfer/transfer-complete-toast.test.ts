@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { composeTransferCompleteToast } from './transfer-complete-toast'
+import { composeTransferCompleteToast, composeTrashRefusedToast } from './transfer-complete-toast'
 import { _setLocaleForTests } from '$lib/intl/locale'
 
 // The composer resolves its wording through `t()` (catalog + ICU), which reads
@@ -457,5 +457,27 @@ describe('composeTransferCompleteToast', () => {
         }),
       ).toBe('Moved 1 folder.')
     })
+  })
+})
+
+describe('composeTrashRefusedToast', () => {
+  // The sentence is the error dialog's own, so a partial trash and a fully
+  // refused one explain themselves identically.
+  it('names how many items stayed behind, worded by the reason', () => {
+    expect(composeTrashRefusedToast({ itemCount: 1, reason: 'notPermitted' })).toBe(
+      "macOS wouldn't let Cmdr touch 1 of the items you picked.",
+    )
+    expect(composeTrashRefusedToast({ itemCount: 3, reason: 'noTrashForVolume' })).toBe(
+      "macOS couldn't find a trash for 3 of the items you picked.",
+    )
+    expect(composeTrashRefusedToast({ itemCount: 2, reason: 'other' })).toBe(
+      "macOS wouldn't move 2 of the items you picked to the trash.",
+    )
+  })
+
+  it('says nothing when the trash took everything', () => {
+    expect(composeTrashRefusedToast(null)).toBeNull()
+    expect(composeTrashRefusedToast(undefined)).toBeNull()
+    expect(composeTrashRefusedToast({ itemCount: 0, reason: 'other' })).toBeNull()
   })
 })

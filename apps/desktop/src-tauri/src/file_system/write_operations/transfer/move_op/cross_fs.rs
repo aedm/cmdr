@@ -608,6 +608,7 @@ pub(super) fn move_with_staging(
         // A source phase 3 later declines to rename into place re-reports
         // itself on `write-source-item-done`; this summary is written once.
         top_level_skipped: Some(staging_skipped),
+        refused: None,
     });
 
     Ok(())

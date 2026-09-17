@@ -25,7 +25,10 @@
 import { getForegroundOperationId } from '$lib/file-operations/foreground-operation.svelte'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
-import { composeTransferCompleteToast } from '$lib/file-operations/transfer/transfer-complete-toast'
+import {
+  composeTransferCompleteToast,
+  composeTrashRefusedToast,
+} from '$lib/file-operations/transfer/transfer-complete-toast'
 import { getTechnicalDetails } from '$lib/file-operations/transfer/transfer-error-messages'
 import { getAppLogger } from '$lib/logging/logger'
 import { formatByteSize } from '$lib/units'
@@ -132,10 +135,11 @@ export function createAdoptedOperation(deps: AdoptedOperationDeps) {
       filesSkipped,
       bytesProcessed,
       appearedDuringMove,
+      refused,
     }: TransferCompletePayload): void {
       const op = adoptedProps?.operationType ?? 'copy'
       log.info(
-        `${transferOpLabel(op)} complete (adopted): ${String(filesProcessed)} files (${String(filesSkipped)} skipped, ${formatByteSize(bytesProcessed)})`,
+        `${transferOpLabel(op)} complete (adopted): ${String(filesProcessed)} files (${String(filesSkipped)} skipped, ${String(refused?.itemCount ?? 0)} refused, ${formatByteSize(bytesProcessed)})`,
       )
       const toastMessage = composeTransferCompleteToast({
         operationType: op,
@@ -144,7 +148,17 @@ export function createAdoptedOperation(deps: AdoptedOperationDeps) {
         appearedDuringMove,
       })
       const allSkipped = filesSkipped > 0 && filesSkipped === filesProcessed
-      addToast(toastMessage, { level: allSkipped ? 'info' : 'success', timeoutMs: 7000 })
+      // A trash the OS refused part of says so here too, for the same reason it
+      // does in the window that started it: the items are still in the pane, so
+      // the completion can't be the only thing the user hears about.
+      const refusedMessage = composeTrashRefusedToast(refused)
+      addToast(toastMessage, {
+        level: refusedMessage !== null ? 'warn' : allSkipped ? 'info' : 'success',
+        timeoutMs: 7000,
+      })
+      if (refusedMessage !== null) {
+        addToast(refusedMessage, { level: 'warn', timeoutMs: 10000 })
+      }
 
       settle()
       deps.onRefocus()

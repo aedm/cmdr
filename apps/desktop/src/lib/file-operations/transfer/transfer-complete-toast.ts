@@ -28,8 +28,9 @@
 
 import { formatNumber } from '$lib/file-explorer/selection/selection-info-utils'
 import { tString } from '$lib/intl/messages.svelte'
-import type { AppearedDuringMove, TopLevelSkipped } from '$lib/ipc/bindings'
+import type { AppearedDuringMove, TopLevelSkipped, TrashRefusedItems } from '$lib/ipc/bindings'
 import type { TransferOperationType } from '$lib/file-explorer/types'
+import { trashRefusedCountSentence } from './transfer-error-messages'
 
 export interface TransferCompleteToastInput {
   operationType: TransferOperationType
@@ -56,6 +57,23 @@ export interface TransferCompleteToastInput {
 /** Composes the copy/move/trash/delete completion toast from catalog keys. */
 export function composeTransferCompleteToast(input: TransferCompleteToastInput): string {
   return withLeftBehind(composeOutcome(input), input.appearedDuringMove)
+}
+
+/**
+ * The warning beside a trash that took some items and was refused the rest.
+ * `null` when nothing was refused, which is the ordinary ending.
+ *
+ * It rides in a toast of its own rather than as a clause on the completion
+ * sentence: the two carry different weight (one offers Undo, this one is a
+ * warning), and the completion sentences carry no terminal punctuation to
+ * append to, which no locale would agree on anyway.
+ *
+ * A batch where EVERY item was refused never reaches here — that one fails
+ * outright and the error dialog says so.
+ */
+export function composeTrashRefusedToast(refused: TrashRefusedItems | null | undefined): string | null {
+  if (!refused || refused.itemCount <= 0) return null
+  return trashRefusedCountSentence(refused.reason, refused.itemCount)
 }
 
 /** Appends what the move left in the source, when it left anything. */

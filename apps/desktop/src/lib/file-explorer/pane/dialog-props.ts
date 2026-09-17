@@ -9,7 +9,7 @@
  */
 
 import type { Initiator, ProgressAtStop } from '$lib/tauri-commands'
-import type { AppearedDuringMove, TopLevelSkipped, OpKind } from '$lib/ipc/bindings'
+import type { AppearedDuringMove, TopLevelSkipped, TrashRefusedItems, OpKind } from '$lib/ipc/bindings'
 import type { SoftDialogId } from '$lib/ui/dialog-registry'
 import type { DeleteSourceItem } from '$lib/file-operations/delete/delete-dialog-utils'
 import type { TransferOperationType, SortColumn, SortOrder, ConflictResolution, WriteOperationError } from '../types'
@@ -51,6 +51,10 @@ export interface TransferCompletePayload {
    *  engine that doesn't track it. Needed because `filesSkipped` counts leaves, so it can't say
    *  what happened to the selection. */
   topLevelSkipped: TopLevelSkipped | null
+  /** What a batch trash had to leave where it was, and why. `null` on every other ending and on
+   *  a trash the OS took in full, which is the ordinary case. A refusal here is NOT a skip: the
+   *  items are still in the pane, so the completion can't read as a clean success. */
+  refused: TrashRefusedItems | null
 }
 
 /**

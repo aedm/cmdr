@@ -338,6 +338,7 @@ pub(super) fn move_with_rename(
         bytes_processed: 0, // Rename doesn't track bytes
         appeared_during_move: None,
         top_level_skipped: Some(top_level_skipped),
+        refused: None,
     });
 
     Ok(())

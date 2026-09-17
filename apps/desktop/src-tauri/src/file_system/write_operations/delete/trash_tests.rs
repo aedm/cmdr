@@ -5,6 +5,8 @@
 
 use super::*;
 use crate::file_system::write_operations::types::CancelRollbackOutcome;
+#[cfg(target_os = "macos")]
+use crate::file_system::write_operations::types::TrashRefusedItems;
 // Only the macOS-gated cases below build a real directory.
 #[cfg(target_os = "macos")]
 use crate::test_support::TestDir;
@@ -257,6 +259,72 @@ fn a_source_trash_could_not_take_reports_itself_as_failed() {
         items[0].source_removed,
         "a NotFound source really is gone, so a stale search snapshot may drop it"
     );
+}
+
+/// The mixed ending, which is the one that used to lie. Two items in, one taken,
+/// one refused: the terminal event reported a plain success with `files_skipped: 0`
+/// and said nothing at all about the item still sitting in the pane (David's
+/// 2026-09-17 log, a Dropbox online-only file beside an ordinary one). So the
+/// completion carries what stayed behind, with its typed reason.
+#[cfg(target_os = "macos")]
+#[test]
+fn a_partly_refused_batch_reports_what_it_left_behind() {
+    let events = Arc::new(CollectorEventSink::new());
+    let state = Arc::new(WriteOperationState::new(Duration::from_millis(0)));
+    let tmp = create_test_dir("trash_partial");
+    let taken = tmp.join("taken.txt");
+    fs::write(&taken, "content").unwrap();
+    let refused = tmp.join("no-such-file.txt");
+
+    let sources = [taken.clone(), refused.clone()];
+    let result = trash_files_with_progress(&*events, "op-trash-partial", &state, &sources, None);
+    assert!(result.is_ok(), "the item that DID go must not be reported as a failure");
+
+    let complete = events.complete.lock().unwrap();
+    assert_eq!(complete.len(), 1);
+    assert_eq!(
+        complete[0].files_processed, 1,
+        "only the item that actually went counts"
+    );
+    assert_eq!(
+        complete[0].refused,
+        Some(TrashRefusedItems {
+            item_count: 1,
+            reason: TrashRefusalKind::Other,
+        }),
+        "a completion that says nothing here reads as a clean success"
+    );
+
+    // The pane's accounting stays right: one item gone, one exactly where it was.
+    let items = events.source_items_done.lock().unwrap();
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0].source_path, taken.display().to_string());
+    assert_eq!(items[0].outcome, SourceItemOutcome::Done);
+    assert_eq!(items[1].source_path, refused.display().to_string());
+    assert_eq!(items[1].outcome, SourceItemOutcome::Failed);
+}
+
+/// The other half of the contract: a batch the OS took in full still reports a
+/// plain success, so the FE has nothing extra to say about it.
+#[cfg(target_os = "macos")]
+#[test]
+fn a_batch_the_os_took_in_full_reports_nothing_left_behind() {
+    let events = Arc::new(CollectorEventSink::new());
+    let state = Arc::new(WriteOperationState::new(Duration::from_millis(0)));
+    let tmp = create_test_dir("trash_all_taken");
+    let first = tmp.join("first.txt");
+    let second = tmp.join("second.txt");
+    fs::write(&first, "content").unwrap();
+    fs::write(&second, "content").unwrap();
+
+    let sources = [first, second];
+    let result = trash_files_with_progress(&*events, "op-trash-all-taken", &state, &sources, None);
+    assert!(result.is_ok());
+
+    let complete = events.complete.lock().unwrap();
+    assert_eq!(complete.len(), 1);
+    assert_eq!(complete[0].files_processed, 2);
+    assert_eq!(complete[0].refused, None);
 }
 
 #[test]

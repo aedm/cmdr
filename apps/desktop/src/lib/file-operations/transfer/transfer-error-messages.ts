@@ -424,12 +424,24 @@ export function mayBeAPermissionGrantAway(reason: TrashRefusalKind): boolean {
  * one, and a real report came back describing exactly that advice, under a folded
  * "Technical details" that held the only useful part.
  */
+/**
+ * The sentence naming how many items the OS turned down, and why.
+ *
+ * Two surfaces share it: the error dialog for a batch where NOTHING went, and
+ * the toast beside a batch that took some items and had to leave the rest
+ * (`composeTrashRefusedToast`). One wording for one fact, so the partial ending
+ * can't drift from the total one.
+ */
+export function trashRefusedCountSentence(reason: TrashRefusalKind, itemCount: number): string {
+  return w(`trashRefused.message.${reason}`, { count: formatInteger(itemCount) })
+}
+
 function trashRefusedMessage(error: Extract<WriteOperationError, { type: 'trash_refused' }>): FriendlyErrorMessage {
   const suggestion = w(`trashRefused.suggestion.${error.reason}`)
   const offerGrant = isMacOS() && fdaIsMissing() && mayBeAPermissionGrantAway(error.reason)
   return {
     title: w('trashRefused.title'),
-    message: w(`trashRefused.message.${error.reason}`, { count: formatInteger(error.itemCount) }),
+    message: trashRefusedCountSentence(error.reason, error.itemCount),
     suggestion: offerGrant ? `${suggestion} ${w('trashRefused.suggestion.noFullDiskAccess')}` : suggestion,
   }
 }

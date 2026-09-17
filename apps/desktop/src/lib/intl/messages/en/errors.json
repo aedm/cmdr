@@ -1966,7 +1966,7 @@
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.write.trashRefused.message.notPermitted": {
-    "description": "Explanation when macOS refused with a permission code. Plain text, raw errors.* string (no ICU), so there is no plural machinery: phrase it so it reads correctly for any count, including 1. \"macOS\" is Apple's product name and stays as-is.",
+    "description": "Explanation when macOS refused with a permission code. Two surfaces share it: the error panel below, when nothing at all could go to the trash, and a brief warning toast when some items went and these ones stayed behind. So it has to stand alone as one sentence. Plain text, raw errors.* string (no ICU), so there is no plural machinery: phrase it so it reads correctly for any count, including 1. \"macOS\" is Apple's product name and stays as-is.",
     "placeholders": {
       "count": "how many top-level items were refused, already formatted for the locale (for example 7)"
     },
@@ -1974,7 +1974,7 @@
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.write.trashRefused.message.noTrashForVolume": {
-    "description": "Explanation when macOS said it couldn't find a trash for the items' location. Plain text, raw errors.* string (no ICU), so phrase it to read correctly for any count, including 1. \"macOS\" stays as-is.",
+    "description": "Explanation when macOS said it couldn't find a trash for the items' location. Two surfaces share it: the error panel below, when nothing at all could go to the trash, and a brief warning toast when some items went and these ones stayed behind. So it has to stand alone as one sentence. Plain text, raw errors.* string (no ICU), so phrase it to read correctly for any count, including 1. \"macOS\" stays as-is.",
     "placeholders": {
       "count": "how many top-level items were refused, already formatted for the locale (for example 7)"
     },
@@ -1982,7 +1982,7 @@
     "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.write.trashRefused.message.other": {
-    "description": "Explanation when macOS refused for a reason Cmdr doesn't classify. Plain text, raw errors.* string (no ICU), so phrase it to read correctly for any count, including 1. \"macOS\" stays as-is.",
+    "description": "Explanation when macOS refused for a reason Cmdr doesn't classify. Two surfaces share it: the error panel below, when nothing at all could go to the trash, and a brief warning toast when some items went and these ones stayed behind. So it has to stand alone as one sentence. Plain text, raw errors.* string (no ICU), so phrase it to read correctly for any count, including 1. \"macOS\" stays as-is.",
     "placeholders": {
       "count": "how many top-level items were refused, already formatted for the locale (for example 7)"
     },
