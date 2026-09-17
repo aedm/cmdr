@@ -634,6 +634,12 @@ export const roadmapSections: RoadmapSection[] = [
             description: 'Dropbox and Google Drive actions like "Copy Dropbox link" and "Share".',
             done: true,
           },
+          {
+            date: '(Sep 16)',
+            title: 'Favorites menu',
+            description: 'A dedicated menu for favorites.',
+            done: true,
+          },
         ],
       },
     ],

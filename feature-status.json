@@ -47,7 +47,7 @@
       "id": "network-drives",
       "name": "Network drives (SMB)",
       "status": "beta",
-      "note": "Browsing and fast direct transfers work on common NAS setups, names with characters SMB forbids copy through, a server that goes quiet recovers, and a share reachable through two mount points keeps working when one dies; unusual server configs can still cause surprises."
+      "note": "Browsing and fast direct transfers work on common NAS setups, a share published as a DFS namespace root connects directly, names with characters SMB forbids copy through, a server that goes quiet recovers, and a share reachable through two mount points keeps working when one dies; unusual server configs can still cause surprises."
     },
     {
       "id": "android-devices",
@@ -107,7 +107,7 @@
       "id": "file-operations",
       "name": "File operations",
       "status": "stable",
-      "note": "Copy, move, delete, rename, and new folders with progress, conflict handling, rollback, backgrounding, and parallel processing when possible. The most-tested code in the app."
+      "note": "Copy, move, delete, rename, and new folders with progress, conflict handling, rollback, backgrounding, and parallel processing when possible. A drive pulled mid-transfer keeps every original. The most-tested code in the app."
     },
     {
       "id": "file-viewer",
@@ -137,7 +137,7 @@
       "id": "full-disk-index",
       "name": "Full-disk index",
       "status": "stable",
-      "note": "Covers your drive folder by folder, starting with the folders you use most, then stays current through file system events. Powers search and folder sizes."
+      "note": "Covers your drive folder by folder, starting with the folders you use most, then stays current through file system events. A drive unplugged mid-scan marks its index for a fresh pass instead of quietly going short. Powers search and folder sizes."
     },
     {
       "id": "drag-and-drop",
