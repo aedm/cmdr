@@ -128,9 +128,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "商业版许可证为每位用户每年 $59，可支持持续开发。",
+  "licensing.commercialReminder.priceInfo": "商业版许可证一次性 $59，可支持持续开发。",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.declinePersonal": "我仅将 Cmdr<break></break>用于个人用途",
   "@licensing.commercialReminder.declinePersonal": {

@@ -70,7 +70,7 @@ was overall basic; [Double Commander](https://github.com/doublecmd/doublecmd), w
 | Command palette                       | :no: No                                              | :yes: Yes                                                  |
 | Live folder sizes (full-disk index)   | :no: No                                              | :yes: Yes                                                  |
 | Natural-language search and selection | :no: No                                              | :yes: Yes (alpha)                                          |
-| Free for personal use                 | :no: No ([~$50](https://www.ghisler.com/order.htm))  | :yes: [Yes!](/pricing) ($59/y for work)                    |
+| Free for personal use                 | :no: No ([~$50](https://www.ghisler.com/order.htm))  | :yes: [Yes!](/pricing) ($59 once for work)                 |
 | FTP/SFTP                              | :yes: Yes                                            | :soon: [Coming soon](/roadmap#very-soon)                   |
 | Archives (zip, tar, etc.)             | :yes: Yes                                            | :soon: [Coming soon](/roadmap#very-soon)                   |
 | Batch rename                          | :yes: Yes                                            | :soon: [Coming soon](/roadmap#very-soon)                   |

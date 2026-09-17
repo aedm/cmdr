@@ -128,9 +128,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "Kommersiella licenser kostar $59/år/användare och stöder fortsatt utveckling.",
+  "licensing.commercialReminder.priceInfo": "En kommersiell licens kostar $59 en gång och stöder fortsatt utveckling.",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.declinePersonal": "Jag använder bara Cmdr<break></break>för personligt bruk",
   "@licensing.commercialReminder.declinePersonal": {

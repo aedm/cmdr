@@ -128,9 +128,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "A kereskedelmi licenc 59 $/év/felhasználó, és a folyamatos fejlesztést támogatja.",
+  "licensing.commercialReminder.priceInfo": "A kereskedelmi licenc egyszeri 59 $, és a folyamatos fejlesztést támogatja.",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.declinePersonal": "Csak személyes célra<break></break>használom a Cmdr-t",
   "@licensing.commercialReminder.declinePersonal": {

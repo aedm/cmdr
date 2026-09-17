@@ -66,8 +66,10 @@ describe('Commercial reminder modal copy (en)', () => {
     expect(tString('licensing.commercialReminder.askCommercial')).toBe(
       "If you're using Cmdr at work, please get a Commercial license to stay compliant.",
     )
+    // Pins the billing period, not just the number: the retired subscription was $59 PER YEAR and the
+    // license sold now is $59 PAID ONCE, so a stale string here reads as correct at a glance.
     expect(tString('licensing.commercialReminder.priceInfo')).toBe(
-      'Commercial licenses are $59/year/user and support continued development.',
+      'A commercial license is $59, paid once, and supports continued development.',
     )
     expect(tString('licensing.commercialReminder.getCommercial')).toBe('Get commercial license')
   })

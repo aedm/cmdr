@@ -128,9 +128,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "Les licences commerciales coûtent 59 $/an/utilisateur et soutiennent le développement continu.",
+  "licensing.commercialReminder.priceInfo": "Une licence commerciale coûte 59 $, en une seule fois, et soutient le développement continu.",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.declinePersonal": "J''utilise Cmdr uniquement<break></break>à des fins personnelles",
   "@licensing.commercialReminder.declinePersonal": {

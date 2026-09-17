@@ -175,9 +175,9 @@
     "description": "Body of the commercial-reminder modal politely asking work users to buy a commercial license. 'Cmdr' is the product name; 'Commercial' is a license tier name.",
     "screenshot": "commercial-reminder.png"
   },
-  "licensing.commercialReminder.priceInfo": "Commercial licenses are $59/year/user and support continued development.",
+  "licensing.commercialReminder.priceInfo": "A commercial license is $59, paid once, and supports continued development.",
   "@licensing.commercialReminder.priceInfo": {
-    "description": "Supporting line in the commercial-reminder modal giving the price and framing it as support for development. Keep the price '$59/year/user' literal (currency and amount must not change).",
+    "description": "Supporting line in the commercial-reminder modal giving the price and framing it as support for development. Keep the price '$59' literal (currency and amount must not change), and keep it clear that this is a ONE-TIME purchase, not a yearly fee.",
     "screenshot": "commercial-reminder.png"
   },
   "licensing.commercialReminder.declinePersonal": "I only use Cmdr<break></break>for personal purposes",

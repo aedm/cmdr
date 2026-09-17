@@ -10,13 +10,12 @@ test.describe('Pricing page', () => {
     await expect(heading).toContainText(/free for personal use/i)
   })
 
-  test('displays all three pricing tiers', async ({ page }) => {
+  test('displays both pricing tiers', async ({ page }) => {
     await page.goto('/pricing')
 
     // Check for all tier names (use exact match to avoid matching h1)
     await expect(page.getByRole('heading', { name: 'Personal', exact: true })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Commercial', exact: true })).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Perpetual', exact: true })).toBeVisible()
   })
 
   test('shows correct prices', async ({ page }) => {
@@ -25,7 +24,12 @@ test.describe('Pricing page', () => {
     const content = await page.textContent('body')
     expect(content).toContain('Free')
     expect(content).toContain('$59')
-    expect(content).toContain('$199')
+    expect(content).toContain('$39')
+    // The retired tiers must not creep back in through a half-finished copy edit. $59 is
+    // deliberately absent from this list: it's the new one-time price, and the retired
+    // subscription happened to carry the same number, so only "/year" next to it is wrong.
+    expect(content).not.toContain('$59/year')
+    expect(content).not.toContain('$199')
   })
 
   test('has download button', async ({ page }) => {
@@ -37,19 +41,16 @@ test.describe('Pricing page', () => {
     await expect(downloadButton).toHaveAttribute('href', /\.dmg$/)
   })
 
-  test('buy buttons are present and clickable', async ({ page }) => {
+  test('buy button is present and clickable', async ({ page }) => {
     await page.goto('/pricing')
 
-    // Find buy buttons by their text content
+    // Find the buy button by its text content
     const commercialButton = page.getByRole('button', { name: /buy commercial/i })
-    const perpetualButton = page.getByRole('button', { name: /buy perpetual/i })
 
     await expect(commercialButton).toBeVisible()
-    await expect(perpetualButton).toBeVisible()
 
-    // Verify buttons have the correct data attributes for Paddle
-    await expect(commercialButton).toHaveAttribute('data-paddle-price', 'commercialSubscription')
-    await expect(perpetualButton).toHaveAttribute('data-paddle-price', 'commercialPerpetual')
+    // Verify the button has the correct data attribute for Paddle
+    await expect(commercialButton).toHaveAttribute('data-paddle-price', 'commercial')
   })
 
   test('clicking buy button opens org name modal (when Paddle configured)', async ({ page }) => {
@@ -75,7 +76,7 @@ test.describe('Pricing page', () => {
     } else {
       // In CI without Paddle credentials, buttons are disabled - that's expected
       // Just verify the button structure is correct
-      await expect(commercialButton).toHaveAttribute('data-paddle-price', 'commercialSubscription')
+      await expect(commercialButton).toHaveAttribute('data-paddle-price', 'commercial')
     }
   })
 

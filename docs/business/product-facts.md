@@ -22,12 +22,10 @@ Cmdr is free for personal use and requires a license for commercial use. That is
 
 - **"Personal use only" is always in the main window title.** Awkward to screen-share in a work meeting, and visible to
   an IT department.
-- **A monthly reminder shows for all unlicensed users.**
-- The app indexes the user's files, so it can escalate the reminder when it recognises likely work-use patterns. **Not
-  implemented yet**, and it is the largest remaining lever on compliance. Agentic feature usage would make that signal
-  stronger still.
+- **A monthly reminder shows for all unlicensed users**, on a timer, knowing nothing about who's seeing it.
 
-Model compliance meaningfully above the rate an unenforced honour system would get.
+So model compliance above the rate an unenforced honour system would get, and ❌ never as if the app detected anything
+about the user. What that rate is assumed to be, and what could move it, is in David's vault.
 
 ## Onboarding exists and is decent
 

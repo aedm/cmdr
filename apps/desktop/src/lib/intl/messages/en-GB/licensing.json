@@ -35,9 +35,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "Commercial licences are $59/year/user and support continued development.",
+  "licensing.commercialReminder.priceInfo": "A commercial licence is $59, paid once, and supports continued development.",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.getCommercial": "Get commercial licence",
   "@licensing.commercialReminder.getCommercial": {

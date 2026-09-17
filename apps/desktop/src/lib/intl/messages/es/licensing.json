@@ -128,9 +128,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "Las licencias comerciales cuestan $59/año/usuario y financian el desarrollo continuo.",
+  "licensing.commercialReminder.priceInfo": "Una licencia comercial cuesta $59, en un pago único, y financia el desarrollo continuo.",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.declinePersonal": "Solo uso Cmdr<break></break>con fines personales",
   "@licensing.commercialReminder.declinePersonal": {

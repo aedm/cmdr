@@ -129,9 +129,9 @@
   "@licensing.commercialReminder.askCommercial": {
     "sourceHash": "6bf4031"
   },
-  "licensing.commercialReminder.priceInfo": "Giấy phép thương mại có giá $59/năm/người dùng và giúp duy trì việc phát triển.",
+  "licensing.commercialReminder.priceInfo": "Giấy phép thương mại có giá $59, trả một lần, và giúp duy trì việc phát triển.",
   "@licensing.commercialReminder.priceInfo": {
-    "sourceHash": "a7099b3"
+    "sourceHash": "55bd2ed"
   },
   "licensing.commercialReminder.declinePersonal": "Tôi chỉ dùng Cmdr<break></break>cho mục đích cá nhân",
   "@licensing.commercialReminder.declinePersonal": {

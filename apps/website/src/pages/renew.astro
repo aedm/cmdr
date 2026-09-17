@@ -4,35 +4,36 @@ import Header from '../components/Header.astro'
 import Footer from '../components/Footer.astro'
 ---
 
-<Layout title="Renew your license | Cmdr" description="Renew your Cmdr commercial license subscription.">
+<Layout title="Renew your license | Cmdr" description="Keep receiving Cmdr updates for $39 a year.">
     <Header />
     <main class="mx-auto max-w-2xl px-6 pt-32 pb-24">
         <header class="mb-12 text-center">
-            <h1 class="mb-4 text-4xl font-bold tracking-tight text-text-primary">Renew your license</h1>
+            <h1 class="mb-4 text-4xl font-bold tracking-tight text-text-primary">Renew your updates</h1>
             <p class="text-lg text-text-secondary">
-                Keep using Cmdr at work with a renewed commercial license.
+                Your license doesn't expire. Renewing keeps the new versions coming.
             </p>
         </header>
 
         <div class="rounded-2xl border border-border bg-surface p-8">
-            <h2 class="mb-4 text-xl font-semibold text-text-primary">Commercial subscription</h2>
+            <h2 class="mb-4 text-xl font-semibold text-text-primary">Another year of updates</h2>
             <p class="mb-6 text-text-secondary">
-                Your subscription auto-renews annually. If your subscription has lapsed or you'd like to renew early,
-                use the button below.
+                A commercial license includes one year of updates. After that year, the version you already have keeps
+                working for as long as you like, and $39 buys another year of new ones. Skipping a year and coming back
+                later works fine.
             </p>
 
             <div class="mb-6 rounded-lg border border-border-subtle bg-background p-4">
                 <div class="flex items-baseline justify-between">
-                    <span class="text-text-secondary">Annual renewal</span>
-                    <span class="text-2xl font-bold text-text-primary">$59/year</span>
+                    <span class="text-text-secondary">One more year of updates</span>
+                    <span class="text-2xl font-bold text-text-primary">$39</span>
                 </div>
             </div>
 
             <a
-                href="#"
+                href="mailto:legal@getcmdr.com?subject=Renew%20my%20Cmdr%20updates"
                 class="mb-4 block w-full rounded-lg bg-accent py-3 text-center font-medium text-accent-contrast transition-all duration-200 hover:bg-accent-hover"
             >
-                Renew subscription
+                Email to renew
             </a>
 
             <p class="text-center text-sm text-text-tertiary">
@@ -41,13 +42,11 @@ import Footer from '../components/Footer.astro'
         </div>
 
         <div class="mt-8 text-center">
-            <h3 class="mb-2 font-semibold text-text-primary">Prefer a perpetual license?</h3>
-            <p class="mb-4 text-text-secondary">Pay once ($199) and never worry about renewals again.</p>
             <a
                 href="/pricing"
                 class="text-accent-text underline underline-offset-2 hover:text-accent-hover"
             >
-                View all pricing options →
+                View pricing →
             </a>
         </div>
 
