@@ -10,7 +10,7 @@ only checks subscription expiry. Frontend counterpart: `src/lib/licensing/CLAUDE
   Verify/commit split: `verify_license_async` (read-only check + short-code exchange) and `commit_license` (persist +
   update caches). `get_license_info` (lazy, cached). `VerifyResult` = `LicenseInfo` + `full_key` + `short_code`.
 - **`app_status.rs`**: `AppStatus` enum, server re-validation and offline-grace logic, commercial-use reminder timer,
-  `CMDR_MOCK_LICENSE` override.
+  `CMDR_MOCK_LICENSE` override, and `refresh_window_title` — ❗ every cached-status write calls it, keep it that way.
 - **`validation_client.rs`**: HTTP client (`POST /validate`, `POST /activate`); debug → `localhost:8787`, release →
   `api.getcmdr.com`, E2E builds → no request at all. Returns the `ValidationOutcome` enum (Success/UpstreamError/NetworkError).
 - **`device_id.rs`**: stable hashed device id for fair-use tracking (`IOPlatformUUID` via IOKit, salted + SHA-256,
