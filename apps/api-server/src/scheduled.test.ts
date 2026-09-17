@@ -4,6 +4,7 @@ import {
   handleDbSizeCheck,
   handleDailyEvictionSweep,
   handleRetentionSweep,
+  handlePersonalCommentSweep,
   handleSyntheticHeartbeatSweep,
 } from './index'
 import { syntheticHeartbeatGraceDays } from './scheduled'
@@ -165,6 +166,53 @@ describe('handleRetentionSweep', () => {
     for (const bound of bindings.flat()) {
       expect(bound).toMatch(/^\d{4}-\d{2}-\d{2} 00:00:00$/)
     }
+  })
+})
+
+describe('handlePersonalCommentSweep', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  const configured = { GITHUB_ISSUES_TOKEN: 'ghp_x', GITHUB_ISSUES_REPO: 'vdavid/cmdr-reports' }
+
+  it('does nothing when the reports repo is not configured', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await handlePersonalCommentSweep(createBaseEnv({}) as never)
+
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('deletes every comment that is due and leaves the rest alone', async () => {
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+    const nextYear = new Date(Date.now() + 365 * 86_400_000).toISOString().slice(0, 10)
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') return Promise.resolve(new Response(null, { status: 204 }))
+      return Promise.resolve(
+        new Response(
+          JSON.stringify([
+            { id: 1, body: `<!-- cmdr:personal-data expires=${yesterday} -->\nold`, issue_url: 'https://x/issues/11' },
+            { id: 2, body: `<!-- cmdr:personal-data expires=${nextYear} -->\nfresh`, issue_url: 'https://x/issues/12' },
+          ]),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await handlePersonalCommentSweep(createBaseEnv(configured) as never)
+
+    const deletes = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')
+    expect(deletes).toHaveLength(1)
+    expect(deletes[0]?.[0]).toContain('/issues/comments/1')
+  })
+
+  it('throws so the cron alarm fires when GitHub will not answer', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })))
+
+    await expect(handlePersonalCommentSweep(createBaseEnv(configured) as never)).rejects.toThrow('503')
   })
 })
 

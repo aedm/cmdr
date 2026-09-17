@@ -5,6 +5,25 @@ stores. This is the data behind the `#feedback` and `#error-reports` Discord cha
 Discord: those channels are private and denied to the community bot (see `discord.md`), and the presigned bundle links
 Discord posts expire after 7 days while the bundles themselves live 90 days in R2.
 
+## The triage board comes first
+
+Hand-written error reports and every feedback message are filed as issues in the **private** `vdavid/cmdr-reports` repo,
+which is the board David prioritizes on. Reach for it before the stores below when the question is "what's waiting on
+me" rather than "what exactly happened in this bundle":
+
+```bash
+gh issue list --repo vdavid/cmdr-reports --label needs-reply
+gh issue view <n> --repo vdavid/cmdr-reports --comments
+```
+
+Each issue's BODY is technical only (report id, versions, R2 key). The note, the reply-to address, and the bundle link
+are in a comment that is **deleted after 90 days** (two years for a feedback reply-to). So a card older than that still
+names its `ERR-XXXXX` and R2 key, and the recipes below are how you get the rest, for as long as the bundle itself
+lives. Auto-sent reports never become issues; they are Discord-and-R2 only, so the walk below is the only way to them.
+
+How the filing works, and the invariants that keep private data off the public repo: `apps/api-server/DETAILS.md` § The
+reports repo.
+
 The `/feedback-and-error-digest-from-app` command (`.claude/commands/`) drives the whole flow; this doc is the access
 recipe it points to. Read-only: never write or delete here without explicit approval (`no-external-actions`).
 

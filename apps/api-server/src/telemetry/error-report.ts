@@ -27,6 +27,7 @@ import {
   type IntakeRejection,
 } from './error-report-intake'
 import { hashAmendKey, mintAmendKey, writeReportIndex } from './error-report-amend'
+import { fileErrorReportIssue } from '../github-issues'
 import { humanReportRecipient } from '../email/send'
 import { sendErrorReportNotificationEmail, sendErrorReportsSuppressedEmail } from '../email/error-report'
 import {
@@ -317,6 +318,29 @@ async function postUploadWork(env: Bindings, args: UploadedReport): Promise<void
       await mailUserErrorReport(env, args, presignedUrl)
     } catch (e) {
       console.error('Error report: notification email failed', e)
+    }
+
+    // The triage card. Its own try/catch for the same reason as every side effect here, and its own
+    // decision about what may be written: `fileErrorReportIssue` refuses unless the target repo is
+    // private, and splits the note and reply-to into a comment that expires on time.
+    try {
+      await fileErrorReportIssue(env, {
+        id: args.id,
+        kind: args.meta.kind,
+        buildMode: args.meta.buildMode ?? 'release',
+        appVersion: args.meta.appVersion,
+        osVersion: args.meta.osVersion,
+        arch: args.meta.arch,
+        sizeBytes: args.sizeBytes,
+        r2Key: args.key,
+        uploadedUnixSeconds: args.uploadedUnixSeconds,
+        userNote: args.meta.userNote,
+        email: args.meta.email,
+        downloadUrl: await presignedUrl(),
+        linkTtlDays: PRESIGN_TTL_DAYS,
+      })
+    } catch (e) {
+      console.error('Error report: filing the GitHub issue failed', e)
     }
   }
 }

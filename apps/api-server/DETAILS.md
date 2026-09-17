@@ -458,6 +458,43 @@ Two invariants the sweep must keep, both pinned by tests in `src/scheduled.test.
 
 Every statement is idempotent: each `WHERE` excludes what it already cleared, so re-running after an outage is free.
 
+## The reports repo
+
+`github-issues.ts` files each in-app error report and feedback message as an issue in the PRIVATE repo named by
+`GITHUB_ISSUES_REPO` (`vdavid/cmdr-reports`), so triage happens on one board instead of split across Discord and an
+inbox. The token is the `GITHUB_ISSUES_TOKEN` secret: a fine-grained PAT scoped to that ONE repo with Issues read+write.
+With either unset the integration is off and nothing is filed.
+
+**What earns a card.** Hand-written error reports (`kind: 'user'`) and every feedback message, both only from `release`
+builds. Auto-sent reports stay Discord-only for the reason the notification email already skips them: one bad install
+makes dozens. Debug builds are our own E2E traffic. Each source gets 20 issues per UTC day (`gh_issue_count:` keys in
+`ERROR_REPORT_META`), because `kind` and `buildMode` come from the client's manifest and a mislabelling build must cost
+a bounded amount. Nothing is lost when a cap trips: Discord, R2, and D1 all still have the report.
+
+**The two invariants.**
+
+1. **The repo's privacy is re-checked before every write.** `isRepoPrivate` asks GitHub and `fileIssue` refuses unless
+   the answer is an explicit `private: true`. It fails CLOSED: a network error, a non-200, or a missing field all mean
+   "don't write". That is what makes a wrong `GITHUB_ISSUES_REPO` a disabled integration rather than a disclosure.
+   Verified against the live public `vdavid/cmdr` during development: the probe refused and nothing was posted.
+2. **Personal data lives only in a comment that expires.** The issue BODY carries technical facts that name nobody and
+   is kept as long as the bug is. Anything a person wrote or attached goes in one comment prefixed
+   `<!-- cmdr:personal-data expires=YYYY-MM-DD -->`, and `handlePersonalCommentSweep` deletes whatever is due.
+   **Deleting the comment rather than editing the body is the whole point**: an edit leaves the original text in
+   GitHub's revision history, so it would not be a deletion.
+
+The stamp travels with the comment, so one mechanism serves both promises: an error report's note and reply-to carry 90
+days, a feedback reply-to carries two years. Feedback's MESSAGE is the exception that proves the split, and it lives in
+the issue body, because the policy keeps feedback text so it can be acted on; only the address expires.
+
+**Untrusted text is always fenced** (`fencedBlock`, with a fence longer than any backtick run inside it), so a note
+cannot become a heading, an `@mention` that would notify a stranger, or a cross-repo reference. Notes are truncated well
+under GitHub's 65,536-character ceiling; the full text is in the bundle manifest or the D1 row either way.
+
+A failure anywhere here is logged and dropped, never propagated: the report is already durable in R2 or D1 before any of
+this runs. The sweep is the exception and THROWS, so `runCronJob` raises the Discord alarm. A sweep that quietly stopped
+would leave personal data past its promise, which is exactly the failure that has to be loud.
+
 ## Synthetic heartbeats
 
 `handleSyntheticHeartbeatSweep` deletes every beat belonging to an install that has NEVER persisted a setting and has

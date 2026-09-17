@@ -171,6 +171,15 @@ LISTMONK_BETA_LIST_ID = 4
 # `typeof === 'number'`, so a string would drop this list from the count).
 LISTMONK_NEWSLETTER_LIST_ID = 3
 
+# The PRIVATE GitHub repo that in-app error reports and feedback are filed into as issues, so triage
+# happens on one board instead of across Discord and an inbox. `owner/name`.
+#
+# ❗ This repo MUST stay private. `github-issues.ts` asks GitHub whether it is private before every
+# single write and writes nothing if the answer is anything but yes, so flipping it public disables
+# filing rather than publishing anyone's note. Keep the var here (version-controlled) rather than as
+# a same-named secret, which a later `wrangler deploy` would silently clobber back to this value.
+GITHUB_ISSUES_REPO = "vdavid/cmdr-reports"
+
 # Secrets (set via `wrangler secret put <NAME>`):
 # - PADDLE_WEBHOOK_SECRET_LIVE     (from Paddle live dashboard)
 # - PADDLE_WEBHOOK_SECRET_SANDBOX  (from Paddle sandbox dashboard)
@@ -213,6 +222,11 @@ LISTMONK_NEWSLETTER_LIST_ID = 3
 # - R2_ACCOUNT_ID                  (for minting presigned R2 GET URLs)
 # - R2_ACCESS_KEY_ID               (R2 S3-compatible access key; read-only suffices)
 # - R2_SECRET_ACCESS_KEY           (paired secret for R2_ACCESS_KEY_ID)
+# - GITHUB_ISSUES_TOKEN            (fine-grained PAT, scoped to the ONE repo in GITHUB_ISSUES_REPO,
+#                                   with Issues: read and write plus the mandatory Metadata: read.
+#                                   ❌ Never a classic PAT: `repo` scope would make this Worker's env
+#                                   a write credential for every repo David owns. Unset simply turns
+#                                   issue filing off; nothing else changes.)
 # - LISTMONK_API_TOKEN             (paired API token; sent as `token <user>:<token>`)
 #   (LISTMONK_API_URL / LISTMONK_API_USER / LISTMONK_BETA_LIST_ID are non-secret [vars] above.)
 #   For local dev, mirror these in .dev.vars (gitignored), for example:

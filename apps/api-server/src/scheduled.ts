@@ -12,6 +12,7 @@ import {
 import { isIntakePaused, resumeIntake } from './telemetry/error-report-intake'
 import { backupLicenseLedger } from './licensing/license-backup'
 import { postEvictionBlockedNotification, postEvictionNotification } from './discord'
+import { deleteComment, listExpiredPersonalComments, resolveIssueTarget } from './github-issues'
 
 const dbSizeThresholdBytes = 100 * 1024 * 1024 // 100 MB
 
@@ -322,6 +323,36 @@ async function handleRetentionSweep(env: Bindings): Promise<void> {
 }
 
 /**
+ * The half of the retention promise that lives outside D1: the personal-data comments on the
+ * triage issues in the private reports repo (`github-issues.ts`).
+ *
+ * Each such comment carries its own `expires=YYYY-MM-DD` stamp, so this job needs no knowledge of
+ * which promise produced it: it deletes whatever is due today. That's why a report's note (90 days)
+ * and a feedback reply-to address (two years) can share one mechanism.
+ *
+ * Deleting the COMMENT rather than editing the issue body is the point. An edit leaves the original
+ * text in GitHub's revision history, so it would not be a deletion at all.
+ *
+ * A no-op when the integration is unconfigured. Failures throw, so `runCronJob` turns them into the
+ * Discord alarm: a sweep that quietly stopped running would leave personal data past its promise,
+ * which is exactly the failure that has to be loud.
+ */
+async function handlePersonalCommentSweep(env: Bindings): Promise<void> {
+  const target = resolveIssueTarget(env)
+  if (!target) return
+
+  const today = new Date().toISOString().slice(0, 10)
+  const due = await listExpiredPersonalComments(target, today)
+
+  for (const comment of due) {
+    await deleteComment(target, comment.commentId)
+    console.log(
+      `Personal comment sweep: deleted comment ${String(comment.commentId)} on issue #${String(comment.issueNumber)} (due ${comment.expiresOn})`,
+    )
+  }
+}
+
+/**
  * Daily integrity sweep: removes the beats of installs that were never a person.
  *
  * A fresh data dir mints a fresh `anal_` id, so any instance the app's own tooling launches
@@ -423,6 +454,7 @@ export {
   handleDbSizeCheck,
   handleDailyEvictionSweep,
   handleRetentionSweep,
+  handlePersonalCommentSweep,
   handleSyntheticHeartbeatSweep,
   deleteSyntheticHeartbeatsSql,
   syntheticHeartbeatGraceDays,

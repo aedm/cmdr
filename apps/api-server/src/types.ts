@@ -82,6 +82,13 @@ export type Bindings = {
   // POST /beta-signup falls back to DISCORD_WEBHOOK_URL (so pings land in #error-reports until
   // the #beta-signups channel and its webhook exist).
   DISCORD_BETA_SIGNUP_WEBHOOK_URL?: string
+  // The PRIVATE GitHub repo error reports and feedback are filed into, as `owner/name`, plus its
+  // fine-grained token (Issues: read and write on that one repo). Both optional: with either unset
+  // the integration is off and nothing is filed. `github-issues.ts` re-checks on EVERY write that
+  // the repo is private and writes nothing if it can't confirm that, so a wrong value here cannot
+  // publish a user's note. The var lives in wrangler.toml; the token is a secret.
+  GITHUB_ISSUES_REPO?: string
+  GITHUB_ISSUES_TOKEN?: string
   // R2 S3-compatible credentials, used to mint long-TTL presigned download URLs
   // for the Discord embed. Bindings can't presign on their own, but the S3 API can.
   R2_ACCOUNT_ID?: string

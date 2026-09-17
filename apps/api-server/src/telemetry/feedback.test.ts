@@ -8,7 +8,9 @@ function createRecordingD1(): { db: D1Database; calls: { sql: string; args: unkn
     prepare: (sql: string) => ({
       bind: (...args: unknown[]) => {
         calls.push({ sql, args })
-        return { run: () => Promise.resolve({ success: true }) }
+        // `meta.last_row_id` is part of every real D1 write result, and the route reads it to name
+        // the row on the triage card. A stub without it wouldn't be a D1.
+        return { run: () => Promise.resolve({ success: true, meta: { last_row_id: 1 } }) }
       },
     }),
   } as unknown as D1Database

@@ -26,6 +26,9 @@ Everything the app sends home: `telemetry.ts` (`/crash-report`, `/heartbeat`, `/
 - **Only hand-written error reports (`kind: 'user'`) are emailed**, straight from `postUploadWork`; auto-sends stay
   Discord-only, because one bad install can produce dozens a day. `kind` is client-supplied, so the mail path carries
   its own daily cap on its own KV key. DETAILS § Notification email.
+- **Those same reports, and every feedback message, are also filed as issues** in the private reports repo
+  (`../github-issues.ts`), release builds only. ❌ Never pass a note, reply-to, or bundle link into an issue title or
+  body; personal data belongs only in the `expires=`-stamped comment. `apps/api-server/DETAILS.md` § The reports repo.
 - **The `report:{id}` KV index write is AWAITED before the 200**, alone among this route's side effects: the same
   response hands out the amend credential, so an index written later opens nothing. ❌ Never move it to
   `postUploadWork`; a failed put answers 200 with `amendKey: null`.
