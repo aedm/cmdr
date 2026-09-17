@@ -39,11 +39,19 @@ is in `../design-system.md` § Soft sheets.
 
 Two menu systems: the OS's, through muda (`apps/desktop/src-tauri/src/menu/`), and the house `Menu`
 (`apps/desktop/src/lib/ui/Menu.svelte` plus `createMenu`). **Native for a right-click on a backend object; the house
-`Menu` when a row is more than text, or when the menu hangs off our own chrome.** Apply in order:
+`Menu` when the content is more than plain rows, or when the menu hangs off our own chrome.** Apply in order:
 
-1. **Does any row need to be more than `[icon] label [✓]`?** A disk-space bar, a connection dot, a live badge, an inline
-   rename field, a drag handle, a sub-line. If yes → house `Menu`, stop. muda can't render these, which is why the
-   volume switcher and the favorites menu are ours.
+1. **Is any of the CONTENT more than `[icon] label [✓]` rows?** Look in two places, and either one settles it. Inside a
+   row: a disk-space bar, a connection dot, a live badge, an inline rename field, a drag handle, a sub-line (the
+   primitive's `below` snippet). Around the rows: a heading note, a wrapping explanation, a footer, a quiet caption (its
+   `footer` snippet). If yes → house `Menu`, stop, because muda renders none of it.
+
+   ❗ Ask it about the content, never about the rows alone: that's the way to get this one wrong. The drive index
+   badge's rows are all plain labels and it's still ours, because a master-switch note wrapping over several lines and a
+   "last indexed" caption ride the `footer` snippet
+   (`apps/desktop/src/lib/file-explorer/navigation/DriveIndexBadge.svelte`). The volume switcher and the favorites menu
+   are ours on the in-row half of the test.
+
 2. **If every row is a plain action, what does it act on?** Backend state (a path, a volume, a server, a file) → native:
    the pick becomes an IPC command anyway, so the round-trip is free and the OS behavior comes with it. Frontend state →
    native only if BOTH are true: AppKit has a responder action for it (`copy:` / `selectAll:` / `cut:` / `paste:`), AND
@@ -61,6 +69,10 @@ Two menu systems: the OS's, through muda (`apps/desktop/src-tauri/src/menu/`), a
 3. **Tiebreaker: what opened it?** A right-click is an OS convention and people expect the OS's menu. A menu hanging off
    a chip or a button in our own chrome should look like ours.
 
+Two of the three pointing the same way is the comfortable case, and worth noticing when it happens: the drive index
+badge is settled at question 1 by its footer content, and question 3 agrees on its own, since the menu hangs off a dot
+in our chrome. One question carrying the answer alone is the one to think twice about.
+
 The trade, honestly: native gives OS look and feel, VoiceOver, responder-chain actions, escape from the window bounds,
 and system appearance, but no rich rows, a round-trip for frontend state, and nothing Playwright can reach. The house
 `Menu` gives arbitrary rows, direct frontend state, our design language, and testability, and costs clipping at the
@@ -71,9 +83,9 @@ than per menu, which is what makes it a fair default for its half of the split.
 `validateMenuItem:` / `validateUserInterfaceItem:` never runs for a muda item, in the menu bar or in a popup, and an
 item's enabled state comes from muda's own flag alone. We compute it per item
 (`apps/desktop/src-tauri/src/menu/item_states.rs`); don't ship a native item assuming the OS will grey it out. (Verified
-on muda 0.19.3, in its macOS "platform_impl/macos/mod.rs" — quoted, since it's a crate-internal path this repo has no
-file for — at lines 134, 338, and 791, 2026-09-17. The same finding is recorded at
-`apps/desktop/src-tauri/src/dock/menu/native.rs`.)
+on muda 0.19.3, at lines 134, 338, and 791 of its macOS "platform_impl/macos/mod.rs", 2026-09-17. That one stays quoted
+rather than backticked: it's a crate-internal path this repo holds no file for, and `dead-links` reads a backticked path
+as a reference. The same finding is recorded at `apps/desktop/src-tauri/src/dock/menu/native.rs`.)
 
 The consumer contract, the row snippets, and what the primitive owns: `apps/desktop/src/lib/ui/DETAILS.md` § Menu.
 
