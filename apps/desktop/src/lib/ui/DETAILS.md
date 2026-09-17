@@ -835,6 +835,8 @@ and all four snippets), the favorites menu (`file-explorer/navigation/FavoritesM
 digit accelerators, and an inline rename field in the `label` snippet), and the archive Enter popup
 (`file-explorer/pane/enter-menu.svelte.ts`, three flat rows).
 
+Whether a NEW menu belongs to muda or to this one is decided in `docs/guides/building-ui.md` § Building a menu.
+
 ❗ **Deliberately NOT Ark-backed.** Ark's `Menu` machine is trigger-driven and doesn't reliably open
 (mounted-already-open) or close (controlled `open=false`) when driven programmatically, which every caller here needs.
 
