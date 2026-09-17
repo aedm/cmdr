@@ -3375,3 +3375,27 @@ nghị. Khóa thứ ba là dòng hiện ra khi Cmdr trả lại một lần nh�
 - Không cần `sameAsSourceJustification`: mọi giá trị đều khác tiếng Anh.
 - Xem lại khi kiểm tra tràn chữ: dải cảnh báo dài và nằm trong một băng hẹp phía trên danh sách tệp.
 - ⚠️ Bản nháp, chưa có người rà soát.
+
+## Khi máy chủ nói là không có mục chia sẻ đó (`fileExplorer.network.osMountFallback.shareNotOnServer`, `fileExplorer.pane.directConnectionShareNotOnServerToast`, 2026-09-17)
+
+Trường hợp duy nhất trong nhóm này mà thử lại cũng vô ích: máy chủ trả lời rõ ràng rằng nó không có mục chia sẻ nào tên
+như vậy. Vì thế thông báo này không có nút, và giọng văn không được gợi ý điều gì tạm thời (không `hiện`, không
+`thử lại`), khác hẳn các thông báo anh em.
+
+- **"the server says it has no share by that name" → `vì máy chủ cho biết nó không có mục chia sẻ nào tên như vậy`** ·
+  catalog (`errors.mount.shareNotFound`) và NetAuthAgent `EINFO_NO_SHARE` (bundle SỐNG trong máy: "Chia sẻ “%@” không
+  tồn tại trên máy chủ.", macOS 26.6.2, 25G83, 2026-09-17) · `high`. Apple viết `chia sẻ` trần; catalog giữ
+  `mục chia sẻ` như `style.md` đã chốt.
+- **`cho biết`, không phải `nói`** · máy chủ đưa ra câu trả lời dứt khoát, và `cho biết` là cách tiếng Việt diễn đạt một
+  hệ thống báo lại trạng thái mà không nhân cách hóa · `high`.
+- **"This one won't sort itself out" → `Tình huống này sẽ không tự thay đổi`** · không có nguồn trong pile; đây là cách
+  nói thông dụng và mang đúng điều tách thông báo này khỏi các thông báo khác: chờ cũng không hết · `high`.
+- **"may have been renamed or removed" → `có thể … đã được đổi tên hoặc xóa`** · nguyên văn từ
+  `errors.write.destinationNotFound.suggestion` · `high`. Dùng `xóa` (từ đã chốt cho _delete_), không phải `gỡ bỏ`.
+- **"so it's worth checking there" → `nên hãy kiểm tra lại ở đó`** · `ở đó` trỏ về máy chủ nên không phải lặp từ ·
+  `high`.
+- **"a lot slower" → `chậm hơn nhiều`** · ở đây tiếng Anh không nêu bội số, khác với thông báo anh em (`4 lần`) ·
+  `high`.
+- **Thông báo ngắn gọi lại mục chia sẻ là `mục này`** để khỏi lặp `mục chia sẻ` hai lần trong một câu · `high`. Phần
+  đuôi `vẫn dùng kết nối hệ thống` là của ba thông báo anh em (`fileExplorer.pane.directConnectionUnreachableToast`…).
+- Both values differ from English, so neither needs a `sameAsSourceJustification`.

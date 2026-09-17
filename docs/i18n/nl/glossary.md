@@ -3741,3 +3741,26 @@ uitwegen die ze kunnen noemen. De derde sleutel is de regel die verschijnt als C
 - Geen `sameAsSourceJustification` nodig: alle waarden verschillen van het Engels.
 - Bekijken bij de overflow-controle: de banner is lang en staat in een smalle strook boven de bestandenlijst.
 - ⚠️ Concept, nog niet door een mens nagelezen.
+
+## Als de server zegt dat die gedeelde map er niet is (`fileExplorer.network.osMountFallback.shareNotOnServer`, `fileExplorer.pane.directConnectionShareNotOnServerToast`, 2026-09-17)
+
+Het enige geval in deze familie waarin opnieuw proberen niets oplost: de server antwoordt duidelijk dat hij geen
+gedeelde map met die naam heeft. Daarom staat er geen knop bij deze melding, en mag de toon niets tijdelijks suggereren
+(geen `nu`, geen `probeer het opnieuw`), anders dan bij de zusjes.
+
+- **"the server says it has no share by that name" →
+  `want de server zegt dat hij geen gedeelde map met die naam heeft`** · de catalogus (`errors.mount.shareNotFound`) en
+  NetAuthAgent `EINFO_NO_SHARE` (LIVE-bundel, macOS 26.6.2, 25G83, 2026-09-17) · high. ⚠️ Apple zegt daar
+  `De share '%@' bestaat niet op de server`; de catalogus houdt `gedeelde map` aan, zoals de sectie over
+  `errors.mount.*` al vastlegde.
+- **"This one won't sort itself out" → `Dit lost zichzelf niet op`** · geen bron in de stapel; het is de gewone
+  Nederlandse wending en draagt precies wat deze melding van de rest onderscheidt: wachten helpt niet · high.
+- **"may have been renamed or removed" → `is misschien hernoemd of verwijderd`** · letterlijk uit
+  `errors.write.destinationNotFound.suggestion` · high.
+- **"so it's worth checking there" → `dus daar kun je het beste even kijken`** · `je`-register van `style.md`; `daar`
+  verwijst naar de server, zodat het woord niet nog eens hoeft · high.
+- **"a lot slower" → `een stuk langzamer`** · het Engels geeft hier geen factor, anders dan het zusje met `4x` · high.
+- **In de korte melding verwijst `die` naar `deze gedeelde map`**, niet naar `{server}` · `hij` zou tussen twee
+  de-woorden blijven zweven · high. Het slot `blijft op de systeemverbinding` is dat van de drie zusjes
+  (`fileExplorer.pane.directConnectionUnreachableToast`…).
+- Geen `sameAsSourceJustification` nodig: beide waarden wijken af van het Engels.

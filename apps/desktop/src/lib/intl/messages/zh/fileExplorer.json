@@ -111,6 +111,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} 说它没有这个共享，所以继续使用系统连接。",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "暂时无法建立直接连接，此共享继续使用系统连接。",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -314,6 +318,10 @@
   "fileExplorer.network.osMountFallback.message": "无法直接连接到 <shareName>{share}</shareName>。你已经连上了，但用的是 macOS 内建的 SMB 网络连接，大多数情况下它比 Cmdr 的直接连接慢 4 倍（有时能慢 100 倍）。点按下方的按钮再试一次。",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "无法直接连接到 <shareName>{share}</shareName>，因为服务器说它没有这个名字的共享。你仍然连着，但用的是 macOS 内建的 SMB 网络连接，慢得多。这种情况等下去也不会好：这个共享可能在服务器上被重命名或删除了，值得去那边看看。",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "试试直接连接",
   "@fileExplorer.network.osMountFallback.retry": {

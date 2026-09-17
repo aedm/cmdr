@@ -112,6 +112,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} indique ne pas avoir ce partage, qui reste donc sur la connexion système.",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "La connexion directe n''a pas pu être établie pour le moment, ce partage reste donc sur la connexion système.",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -316,6 +320,10 @@
   "fileExplorer.network.osMountFallback.message": "La connexion directe à <shareName>{share}</shareName> n''a pas pu être établie. Vous y avez bien accès, mais uniquement via la connexion réseau SMB native de macOS, qui est 4 fois plus lente que la connexion directe de Cmdr dans la plupart des cas (parfois 100 fois). Cliquez sur le bouton ci-dessous pour réessayer.",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "La connexion directe à <shareName>{share}</shareName> n''a pas pu être établie, car le serveur indique qu''il n''a aucun partage de ce nom. Vous y avez toujours accès, mais via la connexion réseau SMB native de macOS, qui est bien plus lente. Cette situation ne se réglera pas d''elle-même : le partage a peut-être été renommé ou supprimé sur le serveur, il vaut donc la peine d''y jeter un œil.",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "Essayer de se connecter directement",
   "@fileExplorer.network.osMountFallback.retry": {

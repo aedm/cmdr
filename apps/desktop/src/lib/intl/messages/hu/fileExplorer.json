@@ -112,6 +112,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} szerint nincs nála ez a megosztás, ezért a rendszerkapcsolaton marad.",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "Most nem jött létre közvetlen kapcsolat, ezért ez a megosztás a rendszerkapcsolaton marad.",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -316,6 +320,10 @@
   "fileExplorer.network.osMountFallback.message": "Nem sikerült közvetlenül csatlakozni ehhez: <shareName>{share}</shareName>. Csatlakozva vagy, de csak a macOS natív SMB-hálózati kapcsolatán keresztül, ami a legtöbb esetben négyszer (néha százszor is) lassabb a Cmdr közvetlen kapcsolatánál. Az újrapróbálkozáshoz kattints az alábbi gombra.",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "Nem sikerült közvetlenül csatlakozni ehhez: <shareName>{share}</shareName>. A szerver szerint ugyanis nincs ilyen nevű megosztás. Továbbra is csatlakozva vagy, de csak a macOS natív SMB-hálózati kapcsolatán keresztül, ami sokkal lassabb. Ez magától nem fog megoldódni: lehet, hogy a megosztást átnevezték vagy eltávolították a szerveren, úgyhogy érdemes ott körülnézni.",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "Próbálkozás közvetlen kapcsolattal",
   "@fileExplorer.network.osMountFallback.retry": {

@@ -2922,3 +2922,23 @@ replacement target. Four rules bind this whole group:
 - 不需要 `sameAsSourceJustification`：所有值都与英文不同。
 - 做溢出检查时看一下：警告条很长，且位于文件列表上方的窄条里。
 - ⚠️ 草稿，尚未经人工审阅。
+
+## 服务器明确说没有这个共享（`fileExplorer.network.osMountFallback.shareNotOnServer`、`fileExplorer.pane.directConnectionShareNotOnServerToast`，2026-09-17）
+
+这一族里唯一「再试也没用」的情况：服务器给出明确答复，上面没有这个名字的共享。所以这条通知不带按钮，语气里也不能有任何「暂时」的暗示（不写
+`暂时`，不写 `再试一次`），这正是它和兄弟键的区别。
+
+- **"the server says it has no share by that name" → `因为服务器说它没有这个名字的共享`**
+  ·目录（`errors.mount.shareNotFound`）与 NetAuthAgent
+  `EINFO_NO_SHARE`（系统里装着的 bundle：`服务器上不存在共享“%@”。`，macOS 26.6.2，25G83，2026-09-17）·
+  `high`。开头沿用兄弟键 `fileExplorer.network.osMountFallback.message` 的 `无法直接连接到 X`。
+- **"This one won't sort itself out" → `这种情况等下去也不会好`**
+  · 语料里没有对应说法；这是中文口语里最自然的讲法，也正好点出这条通知和别的不一样：等不来结果 · `high`。❌ 不写
+  `不会自动恢复`，那读起来像系统故障播报。
+- **"may have been renamed or removed" → `可能……被重命名或删除了`** · 逐字沿用
+  `errors.write.destinationNotFound.suggestion` · `high`。
+- **"so it's worth checking there" → `值得去那边看看`** · `那边` 回指服务器，省掉重复 · `high`。
+- **"a lot slower" → `慢得多`** · 这里英文没给倍数，和给了 `4 倍` 的兄弟键不同 · `high`。
+- **短提示省略主语（`所以继续使用系统连接`）** · 前半句已经把话题定在共享上，中文再写一次 `此共享` 就啰嗦了；结尾
+  `继续使用系统连接` 与 `fileExplorer.pane.directConnectionUnreachableToast` 等三条一致 · `high`。
+- 两条值都与英文不同，无需 `sameAsSourceJustification`；`{server}`、`macOS`、`SMB` 前后留空格。

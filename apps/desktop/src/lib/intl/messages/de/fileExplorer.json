@@ -112,6 +112,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} sagt, dass es diese Freigabe dort nicht gibt, daher bleibt sie bei der Systemverbindung.",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "Die direkte Verbindung kam gerade nicht zustande, daher bleibt diese Freigabe bei der Systemverbindung.",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -316,6 +320,10 @@
   "fileExplorer.network.osMountFallback.message": "Die direkte Verbindung zu <shareName>{share}</shareName> kam nicht zustande. Du bist verbunden, aber nur über die eigene SMB-Netzwerkverbindung von macOS, die bei den meisten Verbindungen 4-mal langsamer ist als die direkte Verbindung von Cmdr, manchmal sogar 100-mal. Klicke unten auf die Taste, um es noch einmal zu versuchen.",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "Die direkte Verbindung zu <shareName>{share}</shareName> kam nicht zustande, weil der Server sagt, dass es dort keine Freigabe mit diesem Namen gibt. Du bist weiterhin über die eigene SMB-Netzwerkverbindung von macOS verbunden, die deutlich langsamer ist. Das erledigt sich nicht von selbst: Die Freigabe wurde vielleicht umbenannt oder auf dem Server entfernt, deshalb lohnt sich ein Blick dorthin.",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "Direkte Verbindung versuchen",
   "@fileExplorer.network.osMountFallback.retry": {

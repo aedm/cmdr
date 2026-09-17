@@ -3314,3 +3314,29 @@ chave é a linha que aparece quando o Cmdr devolve um clique.
 - Não precisa de `sameAsSourceJustification`: todos os valores diferem do inglês.
 - Conferir na passagem de overflow: o aviso é longo e fica numa faixa estreita acima da lista de arquivos.
 - ⚠️ Rascunho, ainda sem revisão humana.
+
+## Quando o servidor diz que aquele compartilhamento não existe (`fileExplorer.network.osMountFallback.shareNotOnServer`, `fileExplorer.pane.directConnectionShareNotOnServerToast`, 2026-09-17)
+
+O único caso desta família em que tentar de novo não adianta: o servidor responde com clareza que não tem nenhum
+compartilhamento com aquele nome. Por isso este aviso não traz botão, e o tom não pode sugerir nada temporário (nada de
+`agora` nem de `tente novamente`), ao contrário dos irmãos.
+
+- **"the server says it has no share by that name" →
+  `porque o servidor diz que não tem nenhum compartilhamento com esse nome`** · o catálogo
+  (`errors.mount.shareNotFound`) e NetAuthAgent `EINFO_NO_SHARE` (pt_BR: "O compartilhamento “%@” não existe no
+  servidor.", pacote VIVO, macOS 26.6.2, 25G83, 2026-09-17) · `high`. A abertura continua sendo
+  `Não foi possível conectar diretamente a X`, de `fileExplorer.network.osMountFallback.message`.
+- **"You are still connected" → `Você continua conectado`** · segue o `Você está conectado` já fixado no irmão, que a
+  própria Apple pt-BR usa; masculino não marcado autorizado pelo `style.md` · `high`.
+- **"This one won't sort itself out" → `Isso não vai se resolver sozinho`** · sem fonte na pilha; é a forma corrente em
+  pt-BR e diz exatamente o que separa este aviso dos outros: esperar não muda nada · `high`.
+- **"may have been renamed or removed" → `pode ter sido renomeado ou removido`** · literal de
+  `errors.write.destinationNotFound.suggestion` · `high`.
+- **"so it's worth checking there" → `então vale a pena dar uma olhada por lá`** · registro caloroso do `style.md`;
+  `por lá` evita repetir `servidor` · `high`.
+- **"a lot slower" → `bem mais lenta`** · aqui o inglês não dá multiplicador, diferente do irmão com `4x` · `high`.
+- O aviso curto fecha com `então ele continua na conexão do sistema`, o mesmo fecho dos três irmãos
+  (`fileExplorer.pane.directConnectionUnreachableToast`…).
+- Marcadores brasileiros conferidos: `compartilhamento` (nunca "partilha"), `conectado`, `renomeado`. Varredura pt-PT
+  (ficheiro, `estar a` + infinitivo, próclise): zero ocorrências.
+- Nenhum valor precisa de `sameAsSourceJustification`: os dois diferem do inglês.

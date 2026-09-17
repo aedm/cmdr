@@ -112,6 +112,10 @@
   "@fileExplorer.pane.directConnectionUnexpectedToast": {
     "sourceHash": "cce5742"
   },
+  "fileExplorer.pane.directConnectionShareNotOnServerToast": "{server} zegt deze gedeelde map niet te hebben, dus die blijft op de systeemverbinding.",
+  "@fileExplorer.pane.directConnectionShareNotOnServerToast": {
+    "sourceHash": "a746d6c"
+  },
   "fileExplorer.pane.directConnectionUnavailableToast": "Een directe verbinding kwam nu niet tot stand, dus deze gedeelde map blijft op de systeemverbinding.",
   "@fileExplorer.pane.directConnectionUnavailableToast": {
     "sourceHash": "0440df9"
@@ -317,6 +321,10 @@
   "fileExplorer.network.osMountFallback.message": "Direct verbinden met <shareName>{share}</shareName> lukte niet. Je bent verbonden, maar alleen via de systeemeigen SMB-netwerkverbinding van macOS, die voor de meeste verbindingen 4x zo langzaam is als de directe verbinding van Cmdr (soms 100x). Klik op de knop hieronder om het opnieuw te proberen.",
   "@fileExplorer.network.osMountFallback.message": {
     "sourceHash": "368f523"
+  },
+  "fileExplorer.network.osMountFallback.shareNotOnServer": "Direct verbinden met <shareName>{share}</shareName> lukte niet, want de server zegt dat hij geen gedeelde map met die naam heeft. Je bent nog steeds verbonden, maar via de systeemeigen SMB-netwerkverbinding van macOS, die een stuk langzamer is. Dit lost zichzelf niet op: de gedeelde map is misschien hernoemd of verwijderd op de server, dus daar kun je het beste even kijken.",
+  "@fileExplorer.network.osMountFallback.shareNotOnServer": {
+    "sourceHash": "e26082d"
   },
   "fileExplorer.network.osMountFallback.retry": "Probeer direct te verbinden",
   "@fileExplorer.network.osMountFallback.retry": {
