@@ -248,10 +248,7 @@ mod tests {
         let (zip, inner) =
             archive_boundary_candidate(Path::new("sftp://ada@nas.local:22/srv/data/foo.zip/inner/b.txt"))
                 .expect("boundary");
-        assert_eq!(
-            zip.to_str().expect("utf-8"),
-            "sftp://ada@nas.local:22/srv/data/foo.zip"
-        );
+        assert_eq!(zip.to_str().expect("utf-8"), "sftp://ada@nas.local:22/srv/data/foo.zip");
         assert_eq!(inner, PathBuf::from("inner/b.txt"));
     }
 
