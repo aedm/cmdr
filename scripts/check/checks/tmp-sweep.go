@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-// Housekeeping for the run-scoped artifacts the E2E lanes leave in /tmp.
+// Housekeeping for the run-scoped artifacts the test lanes leave in /tmp: the E2E
+// lanes' reports, logs, and fixture trees, and the Vitest lanes' saved transcripts.
 //
 // Reports, logs, and Playwright's recordings deliberately OUTLIVE their run: they're
 // what a post-mortem reads, and a lane that deleted them on the way out would be
@@ -16,22 +17,24 @@ import (
 // this sweep existed), so age is what collects them instead.
 //
 // The rule is deliberately narrow: a name must match one of the run-scoped shapes AND
-// be older than [e2eArtifactMaxAge]. Both halves matter. Matching alone would delete a
+// be older than [checkArtifactMaxAge]. Both halves matter. Matching alone would delete a
 // concurrent suite's live report; age alone would delete `cmdr-e2e-fixtures-cache`,
 // which is shared on purpose, rebuilt only when the fixture shape changes, and older
 // than any cutoff worth having.
 
-// e2eArtifactMaxAge is how long a run's leftovers stay readable. A week covers "the
-// nightly went red on Friday and I'm looking on Monday", and no E2E run comes close to
+// checkArtifactMaxAge is how long a run's leftovers stay readable. A week covers "the
+// nightly went red on Friday and I'm looking on Monday", and no run comes close to
 // living that long, so nothing in flight can be caught by it.
-const e2eArtifactMaxAge = 7 * 24 * time.Hour
+const checkArtifactMaxAge = 7 * 24 * time.Hour
 
-// e2eRunScopedArtifacts matches the /tmp entries an E2E run creates and names after
+// checkRunScopedArtifacts matches the /tmp entries a run creates and names after
 // itself. Each pattern is anchored and ends in the run's own number (a pid, or the
 // launch timestamp for the Linux lane's), which is exactly what distinguishes a
 // leftover from a hand-made path like `cmdr-e2e-data` that no run owns and no sweep
 // should touch.
-var e2eRunScopedArtifacts = []*regexp.Regexp{
+var checkRunScopedArtifacts = []*regexp.Regexp{
+	// Saved Vitest transcripts: cmdr-vitest-<pid>-<random>.log
+	regexp.MustCompile(`^cmdr-vitest-\d+-\d+\.log$`),
 	// Playwright JSON reports: cmdr-e2e-report-<shard>-<pid>.json
 	regexp.MustCompile(`^cmdr-e2e-report-[a-z0-9]+-\d+\.json$`),
 	// Shard and build logs: cmdr-e2e-playwright-<name>-<ts>-<pid>.log
@@ -52,10 +55,10 @@ var e2eRunScopedArtifacts = []*regexp.Regexp{
 	regexp.MustCompile(`^cmdr-e2e-\d+$`),
 }
 
-// e2eArtifactIsSweepable reports whether a bare /tmp entry name is a run-scoped E2E
+// checkArtifactIsSweepable reports whether a bare /tmp entry name is a run-scoped test-lane
 // artifact. Name only: age is the caller's half of the decision.
-func e2eArtifactIsSweepable(name string) bool {
-	for _, re := range e2eRunScopedArtifacts {
+func checkArtifactIsSweepable(name string) bool {
+	for _, re := range checkRunScopedArtifacts {
 		if re.MatchString(name) {
 			return true
 		}
@@ -63,25 +66,25 @@ func e2eArtifactIsSweepable(name string) bool {
 	return false
 }
 
-// sweepStaleE2EArtifacts collects the E2E leftovers in /tmp that are older than
-// [e2eArtifactMaxAge]. Called at the start of a lane, where a failure to tidy up is
+// sweepStaleCheckArtifacts collects the leftovers in /tmp that are older than
+// [checkArtifactMaxAge]. Called at the start of a lane, where a failure to tidy up is
 // never worth reporting: every error is swallowed, exactly as the per-test
 // instrumentation swallows its own.
-func sweepStaleE2EArtifacts(now time.Time) int {
-	return sweepStaleE2EArtifactsIn(os.TempDir(), now)
+func sweepStaleCheckArtifacts(now time.Time) int {
+	return sweepStaleCheckArtifactsIn(os.TempDir(), now)
 }
 
-// sweepStaleE2EArtifactsIn is [sweepStaleE2EArtifacts] against a named directory, so a
+// sweepStaleCheckArtifactsIn is [sweepStaleCheckArtifacts] against a named directory, so a
 // test can age real files without writing into the machine's /tmp.
-func sweepStaleE2EArtifactsIn(dir string, now time.Time) int {
+func sweepStaleCheckArtifactsIn(dir string, now time.Time) int {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return 0
 	}
-	cutoff := now.Add(-e2eArtifactMaxAge)
+	cutoff := now.Add(-checkArtifactMaxAge)
 	removed := 0
 	for _, entry := range entries {
-		if !e2eArtifactIsSweepable(entry.Name()) {
+		if !checkArtifactIsSweepable(entry.Name()) {
 			continue
 		}
 		info, err := entry.Info()

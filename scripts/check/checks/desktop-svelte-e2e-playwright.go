@@ -92,10 +92,10 @@ func RunDesktopE2EPlaywright(ctx *CheckContext) (CheckResult, error) {
 	// Deferred first, so it runs LAST: the apps have to be stopped before their
 	// backing dir goes. The data dirs and fixture trees clean themselves up the
 	// same way; the reports and logs deliberately survive for post-mortems and are
-	// aged out by sweepStaleE2EArtifacts instead.
+	// aged out by sweepStaleCheckArtifacts instead.
 	defer os.RemoveAll(shards[0].mtpFixtureRoot)
 
-	sweepStaleE2EArtifacts(time.Now())
+	sweepStaleCheckArtifacts(time.Now())
 
 	cleanupFixtures, err := allocateShardFixtures(desktopDir, shards)
 	if err != nil {

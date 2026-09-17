@@ -31,8 +31,8 @@ func TestE2EArtifactIsSweepable(t *testing.T) {
 		"cmdr-e2e-1700000000000",
 	}
 	for _, name := range sweepable {
-		if !e2eArtifactIsSweepable(name) {
-			t.Errorf("e2eArtifactIsSweepable(%q) = false, want true", name)
+		if !checkArtifactIsSweepable(name) {
+			t.Errorf("checkArtifactIsSweepable(%q) = false, want true", name)
 		}
 	}
 
@@ -58,8 +58,8 @@ func TestE2EArtifactIsSweepable(t *testing.T) {
 		"cmdr-xattr-bench",
 	}
 	for _, name := range keep {
-		if e2eArtifactIsSweepable(name) {
-			t.Errorf("e2eArtifactIsSweepable(%q) = true, want false", name)
+		if checkArtifactIsSweepable(name) {
+			t.Errorf("checkArtifactIsSweepable(%q) = true, want false", name)
 		}
 	}
 }
@@ -87,7 +87,7 @@ func TestSweepStaleE2EArtifactsKeepsTheYoungAndTheUnmatched(t *testing.T) {
 	young := write("cmdr-e2e-report-mtp-4343.json", 2*time.Hour)
 	cache := write("cmdr-e2e-fixtures-cache", 400*24*time.Hour)
 
-	removed := sweepStaleE2EArtifactsIn(tmp, now)
+	removed := sweepStaleCheckArtifactsIn(tmp, now)
 
 	if removed != 1 {
 		t.Errorf("sweep removed %d entries, want 1", removed)
@@ -107,7 +107,7 @@ func TestSweepStaleE2EArtifactsKeepsTheYoungAndTheUnmatched(t *testing.T) {
 func TestSweepStaleE2EArtifactsToleratesAMissingDir(t *testing.T) {
 	t.Parallel()
 
-	if removed := sweepStaleE2EArtifactsIn(filepath.Join(t.TempDir(), "nope"), time.Now()); removed != 0 {
+	if removed := sweepStaleCheckArtifactsIn(filepath.Join(t.TempDir(), "nope"), time.Now()); removed != 0 {
 		t.Errorf("sweep of a missing dir removed %d entries, want 0", removed)
 	}
 }

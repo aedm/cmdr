@@ -2,6 +2,7 @@ package checks
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -12,11 +13,19 @@ import (
 func RunDashboardTests(ctx *CheckContext) (CheckResult, error) {
 	dir := filepath.Join(ctx.RootDir, "apps", "analytics-dashboard")
 
+	report, cleanup, reportErr := newVitestReportPath("dashboard")
+	defer cleanup()
+
 	cmd := exec.Command("pnpm", "test")
 	cmd.Dir = dir
+	if reportErr == nil {
+		cmd.Env = append(os.Environ(), "VITEST_JSON_REPORT="+report)
+	}
 	output, err := RunCommand(cmd, true)
+	// Before the verdict branch, so a red run records WHICH tests went red.
+	recordVitestTests(ctx, report, dir)
 	if err != nil {
-		return CheckResult{}, fmt.Errorf("tests failed\n%s", indentOutput(output))
+		return CheckResult{}, fmt.Errorf("tests failed: %s", diagnoseVitestFailure(report, dir, output))
 	}
 
 	re := regexp.MustCompile(`Tests\s+(\d+) passed`)

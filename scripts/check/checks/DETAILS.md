@@ -932,9 +932,11 @@ built by tmp-dir + atomic rename, so sharing is the point and a torn read is str
 copies would cost 170 MB each and buy nothing. Each `stacklease` lease dir is machine-wide for the same kind of reason.
 
 Reports, logs, and recordings deliberately OUTLIVE their run (they're what a post-mortem reads), so age collects them
-instead: `sweepStaleE2EArtifacts` runs at the start of both E2E lanes and removes run-scoped leftovers older than a
-week. The patterns are narrow on purpose — `e2e-tmp-sweep.go` must never match `cmdr-e2e-fixtures-cache` or a hand-made
-`cmdr-e2e-data-<name>`, and `TestE2EArtifactIsSweepable` pins both directions.
+instead: `sweepStaleCheckArtifacts` runs at the start of both E2E lanes and of `svelte-tests`, and removes run-scoped
+leftovers older than a week. The patterns are narrow on purpose — `tmp-sweep.go` must never match
+`cmdr-e2e-fixtures-cache` or a hand-made `cmdr-e2e-data-<name>`, and `TestE2EArtifactIsSweepable` pins both directions.
+It covers the Vitest lanes' saved transcripts (`cmdr-vitest-<pid>-<random>.log`) too, which is why the name says
+"check" rather than "E2E".
 
 `TestPlanShardsSharesNothingBetweenConcurrentRuns` pins the whole rule against two plans from different pids that share
 a timestamp.
@@ -1094,6 +1096,41 @@ Gotchas for anyone touching this:
   contention re-run (verified against a real container run, 2026-08-02). The small-total fixtures can't catch this on
   their own; `TestClassifyRustFailures_PaddedProgressCounter` and `TestTrimRustTestProgress_PaddedProgressCounter` carry
   the padded form.
+
+## Vitest failure output: the reporter's own section, not the whole transcript
+
+`vitest-failure-diagnostics.go` renders the red-run error for all three Vitest lanes (`svelte-tests`,
+`api-server-tests`, `dashboard-tests`). Before it, each lane pasted the entire captured transcript: on the desktop suite
+that's ~1,300 lines (920 passing spec-file lines, every test's console output, ~400 Svelte `derived_inert` warnings) to
+say that one test went red, which is what pushes a reader into truncating output the project tells them not to
+truncate.
+
+**What's kept:** everything from the transcript's first `⎯⎯ … ⎯⎯` banner to the end. That's the reporter's own tail, and
+it already IS the failure account: `Failed Tests`, `Unhandled Errors`, `Startup Error`, whichever the run produced.
+Above it, the header line (`N tests failed of M`, plus where the full transcript was saved) and the run context from
+`vitestRunDiagnostics`. Nothing is cut by length: 200 failures print 200 bodies.
+
+**❗ Why the transcript and not the json report.** The obvious design reads `failureMessages` out of the report the lane
+already writes for the per-test log. It doesn't work: the reporter serializes `error.stack || error.message`, and for a
+TIMEOUT Vitest's stack is a synthesized `Error: STACK_TRACE_ERROR` placeholder. "Test timed out in 20000ms", the code
+frame, and the repo-relative paths exist only in the reporter's text (verified against vitest 4.1.10 by shrinking
+`licensing.a11y.test.ts`'s budget until it failed for real, 2026-09-17). So the report is what COUNTS the failures and
+the transcript is what DESCRIBES them.
+
+**Three fallbacks, all of them fail-open**, because a filter that can hide a failure is worse than a verbose one:
+
+- No failure section but a report naming failures (a crash between the two) → the report's stacks, second best.
+- Neither → the whole transcript, with a line saying why.
+- An unreadable report is never a verdict change; the renderer just loses its count.
+
+**The transcript is saved, not discarded**: `/tmp/cmdr-vitest-<pid>-<random>.log`, named in the error, aged out by
+`sweepStaleCheckArtifacts`. Per-test `console.log` output is the one thing the filter drops, and that file is where it
+went. Same bargain the Playwright lane strikes with its shard logs.
+
+**`vitestRunDiagnostics` counts dead workers.** Its markers include Node's own death banner (`Unhandled 'error' event`,
+`throw er;`), not just Vitest's wording for a worker it lost. A worker killed by an unhandled socket error used to read
+as total silence, because Vitest still prints a healthy-looking tally for the tests that did report. Repeated identical
+lines collapse to one with a `(×N)` count, which is the part worth reading.
 
 ## The contention re-run (`rust-test-contention.go`)
 

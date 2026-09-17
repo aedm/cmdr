@@ -40,7 +40,7 @@ func RunDesktopE2ELinux(ctx *CheckContext) (CheckResult, error) {
 	// before running; OrbStack will remount it automatically when next needed.
 	unmountOrbStackNFS()
 
-	sweepStaleE2EArtifacts(time.Now())
+	sweepStaleCheckArtifacts(time.Now())
 
 	timestamp := time.Now().Unix()
 	logFile := fmt.Sprintf("/tmp/cmdr-e2e-linux-%d.log", timestamp)
