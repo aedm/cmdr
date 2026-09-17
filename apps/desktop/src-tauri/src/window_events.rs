@@ -103,6 +103,33 @@ pub struct McpSettingsClose;
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
 pub struct ViewerWordWrapToggled;
 
+/// Which item of the viewer menu bar's Edit submenu was picked. A typed variant rather
+/// than the menu id as a string: the viewer frontend dispatches on it, and an id is a
+/// backend detail nothing across IPC should be matching on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ViewerEditActionKind {
+    /// Edit > Copy (⌘C).
+    Copy,
+    /// Edit > Select all (⌘A).
+    SelectAll,
+}
+
+/// `viewer-edit-action`: Edit > Copy or Edit > Select all was picked while a viewer window
+/// had focus. Emitted to that viewer's label.
+///
+/// ⚠️ These two are Custom items rather than the Predefined ones their Cut / Paste neighbours
+/// still are, because AppKit's `copy:` / `selectAll:` selectors reach the DOM and the viewer's
+/// text isn't there: `.file-content` is `user-select: none` (the viewer owns an offset-based
+/// selection model of its own), so the only selectable text left in the window is the status
+/// bar, and a native Select all would highlight the footer. Cut and Paste stay Predefined so
+/// ⌘X / ⌘V keep working in the viewer's search box.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewerEditAction {
+    pub action: ViewerEditActionKind,
+}
+
 /// `function-key-bar-hide-requested`: the function key bar's right-click context
 /// menu's "Hide function key bar" item was clicked. No payload: the frontend
 /// owns both the setting write and the confirmation toast. Emitted to the main

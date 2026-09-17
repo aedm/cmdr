@@ -2,8 +2,8 @@
 // the `tauri-specta` `events.*` helpers for the `emit_to`-targeted window
 // lifecycle events: the MCP `dialog` tool's open/focus/close round-trips, the
 // unified `execute-command` menu/cross-window relay, the tab context menu, the
-// settings-window self-close, the viewer word-wrap toggle, and the viewer's
-// restricted-settings forward.
+// settings-window self-close, the viewer's word-wrap toggle and Edit-menu actions,
+// and the viewer's restricted-settings forward.
 //
 // Payloadless events (unit structs → `type X = null`) wrap a `() => void`
 // callback; the rest hand the typed payload through.
@@ -20,6 +20,7 @@ import {
   type OpenSettings,
   type PersistRestrictedSetting,
   type RevealPath,
+  type ViewerEditAction,
 } from '$lib/ipc/bindings'
 
 /**
@@ -155,6 +156,18 @@ export function onMcpSettingsClose(handler: () => void): Promise<UnlistenFn> {
 export function onViewerWordWrapToggled(handler: () => void): Promise<UnlistenFn> {
   return events.viewerWordWrapToggled.listen(() => {
     handler()
+  })
+}
+
+/**
+ * The viewer bar's Edit > Copy or Edit > Select all was picked while a viewer window
+ * had focus. Emitted to that viewer's label; the viewer runs both itself, because its
+ * selection model isn't in the DOM the native selectors reach
+ * (`routes/viewer/viewer-menu-actions.ts`).
+ */
+export function onViewerEditAction(handler: (payload: ViewerEditAction) => void): Promise<UnlistenFn> {
+  return events.viewerEditAction.listen((event) => {
+    handler(event.payload)
   })
 }
 

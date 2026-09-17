@@ -86,7 +86,8 @@ use crate::volume_broadcast::{VolumeContextAction, VolumeMounted, VolumeRootChan
 use crate::window_events::{
     CloseAbout, CloseAllFileViewers, CloseConfirmation, CloseFileViewer, ExecuteCommand, FocusAbout, FocusConfirmation,
     FocusFileViewer, FocusSettings, ForegroundOperation, FunctionKeyBarHideRequested, McpSettingsClose, MouseNav,
-    OpenFileViewer, OpenSettings, PersistRestrictedSetting, RevealPath, TabContextAction, ViewerWordWrapToggled,
+    OpenFileViewer, OpenSettings, PersistRestrictedSetting, RevealPath, TabContextAction, ViewerEditAction,
+    ViewerWordWrapToggled,
 };
 // AI + system/misc events.
 use crate::ai::{
@@ -1149,6 +1150,9 @@ pub fn builder() -> Builder<tauri::Wry> {
             CloseConfirmation,
             McpSettingsClose,
             ViewerWordWrapToggled,
+            // emit_to(viewer label): the viewer bar's Edit > Copy / Select all, which the viewer
+            // has to run itself (its selection model isn't in the DOM the responder chain sees).
+            ViewerEditAction,
             // emit_to(viewer label): how far a viewer's pull into its preview temp got.
             ViewerPullProgress,
             TabContextAction,

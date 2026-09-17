@@ -4607,6 +4607,7 @@ export const events = {
   systemTextSizeChanged: makeEvent<SystemTextSizeChanged>('system-text-size-changed'),
   tabContextAction: makeEvent<TabContextAction>('tab-context-action'),
   viewModeChanged: makeEvent<ViewModeChanged>('view-mode-changed'),
+  viewerEditAction: makeEvent<ViewerEditAction>('viewer-edit-action'),
   viewerPullProgress: makeEvent<ViewerPullProgress>('viewer-pull-progress'),
   viewerWordWrapToggled: makeEvent<ViewerWordWrapToggled>('viewer-word-wrap-toggled'),
   volumeConnectionChanged: makeEvent<VolumeConnectionChanged>('volume-connection-changed'),
@@ -14031,6 +14032,32 @@ export type ViewModeChanged = {
  *  this enum); users never see it. Future kinds (Markdown, Html) slot in here.
  */
 export type ViewerContentKind = 'text' | 'image' | 'pdf'
+
+/**
+ *  `viewer-edit-action`: Edit > Copy or Edit > Select all was picked while a viewer window
+ *  had focus. Emitted to that viewer's label.
+ *
+ *  ⚠️ These two are Custom items rather than the Predefined ones their Cut / Paste neighbours
+ *  still are, because AppKit's `copy:` / `selectAll:` selectors reach the DOM and the viewer's
+ *  text isn't there: `.file-content` is `user-select: none` (the viewer owns an offset-based
+ *  selection model of its own), so the only selectable text left in the window is the status
+ *  bar, and a native Select all would highlight the footer. Cut and Paste stay Predefined so
+ *  ⌘X / ⌘V keep working in the viewer's search box.
+ */
+export type ViewerEditAction = {
+  action: ViewerEditActionKind
+}
+
+/**
+ *  Which item of the viewer menu bar's Edit submenu was picked. A typed variant rather
+ *  than the menu id as a string: the viewer frontend dispatches on it, and an id is a
+ *  backend detail nothing across IPC should be matching on.
+ */
+export type ViewerEditActionKind =
+  // Edit > Copy (⌘C).
+  | 'copy'
+  // Edit > Select all (⌘A).
+  | 'selectAll'
 
 /**
  *  Errors from the viewer backends.

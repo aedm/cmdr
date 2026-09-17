@@ -543,6 +543,7 @@ export {
   onCloseConfirmation,
   onMcpSettingsClose,
   onViewerWordWrapToggled,
+  onViewerEditAction,
   onPersistRestrictedSetting,
   requestRevealPath,
   onRevealPath,

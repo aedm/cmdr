@@ -162,6 +162,32 @@ export function handleSearchToggleKey(e: KeyboardEvent, actions: SearchToggleAct
   return false
 }
 
+/** What "is the search input the thing being typed into?" needs to know. */
+export interface SearchFocusState {
+  searchVisible: boolean
+  searchInputRef: HTMLInputElement | null | undefined
+}
+
+/**
+ * Whether the search bar is up AND its input holds keyboard focus. The viewer's single
+ * notion of "the user is typing in the search box"; ⌘C / ⌘A and the Edit menu's Copy /
+ * Select all all branch on it, and they have to agree.
+ */
+export function isSearchInputFocused(search: SearchFocusState): boolean {
+  return search.searchVisible && document.activeElement === search.searchInputRef
+}
+
+/**
+ * Whether `input` has a range of its own text selected. Only then does Copy mean "copy the
+ * query"; with a bare caret there's nothing in the input to copy, so the gesture belongs to
+ * the file selection instead.
+ */
+export function inputHasSelection(input: HTMLInputElement | null | undefined): boolean {
+  if (!input) return false
+  const { selectionStart, selectionEnd } = input
+  return selectionStart !== null && selectionEnd !== null && selectionStart !== selectionEnd
+}
+
 interface KeyboardDeps {
   /** Total line count, or `null` in ByteSeek-no-index mode before an index exists. */
   getTotalLines: () => number | null
@@ -369,18 +395,6 @@ export function createViewerKeyboard(deps: KeyboardDeps) {
   }
 
   /**
-   * Whether the focused search input has a range of its own text selected. Only then
-   * does ⌘C mean "copy the query"; with a bare caret there's nothing in the input to
-   * copy, so the gesture belongs to the file selection instead.
-   */
-  function searchInputHasSelection(): boolean {
-    const input = deps.search.searchInputRef
-    if (!input) return false
-    const { selectionStart, selectionEnd } = input
-    return selectionStart !== null && selectionEnd !== null && selectionStart !== selectionEnd
-  }
-
-  /**
    * Handles ⌘/Ctrl-prefixed shortcuts inside the viewer. Returns `true` if the key
    * was consumed; the caller falls through to other handlers when it returns `false`.
    * Defers to the browser's native ⌘A / ⌘C when the search input is focused.
@@ -394,7 +408,7 @@ export function createViewerKeyboard(deps: KeyboardDeps) {
         deps.search.openSearch()
         return true
       }
-      if (e.key === 'c' && !searchInputHasSelection()) {
+      if (e.key === 'c' && !inputHasSelection(deps.search.searchInputRef)) {
         e.preventDefault()
         deps.runCopy()
         return true
@@ -468,7 +482,7 @@ export function createViewerKeyboard(deps: KeyboardDeps) {
 
   function handleKeyDown(e: KeyboardEvent): void {
     const { search } = deps
-    const searchInputFocused = search.searchVisible && document.activeElement === search.searchInputRef
+    const searchInputFocused = isSearchInputFocused(search)
 
     if (e.metaKey || e.ctrlKey || e.altKey) {
       handleModifiedKey(e, searchInputFocused)
