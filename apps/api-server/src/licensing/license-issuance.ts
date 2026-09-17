@@ -304,32 +304,27 @@ export interface LedgerEntry {
  */
 export const ledgerListLimit = 1000
 
-export async function listLedger(db: D1Database): Promise<LedgerEntry[]> {
-  const { results } = await db
-    .prepare(
-      `SELECT transaction_id, source, short_codes, quantity, license_type, customer_email,
-              organization_name, note, claimed_at, issued_at, emailed_at, expires_at, revoked_at
-       FROM license_issuance
-       ORDER BY claimed_at DESC
-       LIMIT ${String(ledgerListLimit)}`,
-    )
-    .all<{
-      transaction_id: string
-      source: string
-      short_codes: string | null
-      quantity: number | null
-      license_type: string | null
-      customer_email: string | null
-      organization_name: string | null
-      note: string | null
-      claimed_at: string
-      issued_at: string | null
-      emailed_at: string | null
-      expires_at: string | null
-      revoked_at: string | null
-    }>()
+const ledgerColumns = `transaction_id, source, short_codes, quantity, license_type, customer_email,
+                       organization_name, note, claimed_at, issued_at, emailed_at, expires_at, revoked_at`
 
-  return results.map((row) => ({
+interface LedgerRow {
+  transaction_id: string
+  source: string
+  short_codes: string | null
+  quantity: number | null
+  license_type: string | null
+  customer_email: string | null
+  organization_name: string | null
+  note: string | null
+  claimed_at: string
+  issued_at: string | null
+  emailed_at: string | null
+  expires_at: string | null
+  revoked_at: string | null
+}
+
+function toLedgerEntry(row: LedgerRow): LedgerEntry {
+  return {
     transactionId: row.transaction_id,
     // The column is written as one of the two, and a row that somehow isn't manual is a purchase.
     source: row.source === 'manual' ? 'manual' : 'paddle',
@@ -344,7 +339,32 @@ export async function listLedger(db: D1Database): Promise<LedgerEntry[]> {
     emailedAt: row.emailed_at,
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
-  }))
+  }
+}
+
+export async function listLedger(db: D1Database): Promise<LedgerEntry[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT ${ledgerColumns}
+       FROM license_issuance
+       ORDER BY claimed_at DESC
+       LIMIT ${String(ledgerListLimit)}`,
+    )
+    .all<LedgerRow>()
+
+  return results.map(toLedgerEntry)
+}
+
+/**
+ * Every row, oldest first, with no cap. The backup is the one reader that must not silently drop
+ * anything: a listing that truncates costs a scroll, a backup that truncates loses a license.
+ */
+export async function readWholeLedger(db: D1Database): Promise<LedgerEntry[]> {
+  const { results } = await db
+    .prepare(`SELECT ${ledgerColumns} FROM license_issuance ORDER BY claimed_at ASC`)
+    .all<LedgerRow>()
+
+  return results.map(toLedgerEntry)
 }
 
 function isLicenseType(value: string | null): value is LicenseType {

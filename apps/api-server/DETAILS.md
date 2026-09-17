@@ -24,7 +24,7 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
   - **`send.ts`**: the only door out. `sendViaResend` (every sender goes through it), `humanReportRecipient` (the one
     place the `FEEDBACK_NOTIFICATION_EMAIL ?? CRASH_NOTIFICATION_EMAIL` rule lives, shared by the feedback digest and
     error-report mail so neither needs a new secret), and `sendEmailPathProbe` (the daily liveness check, § Cron handler
-    job 8).
+    job 9).
   - **`layout.ts`**: the HTML vocabulary. `escapeHtml`, `documentShell` (the `<!DOCTYPE>`…`<body>` wrapper),
     `bodyStyle`, the card constants, `notificationPage`, `replyToLine`, `envChip`, and the table cell styles
     (`CELL_STYLE`, `headCellStyle`, `TABLE_STYLE`). Everything is inline style with explicit hex: mail clients strip
@@ -52,11 +52,11 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - **`discord.ts`**: Discord webhook client (single retry on 429, drop-on-failure). Carries the cron failure alert as
   well as the error-report, feedback, beta-signup, and eviction notifications.
 - **`cron-health.ts`**: `pingCronHealth`, the healthchecks.io dead-man's switch for the cron tick. § Cron alarms.
-- **`scheduled.ts`**: the cron jobs (crash notifications, feedback digest, daily aggregation, DB size, retention sweep,
-  eviction sweep). Tests split by axis: `crash-notification-email.test.ts` and `feedback-notification-email.test.ts`
-  cover the two jobs whose output is a document (query → row → rendered HTML and subject), `scheduled.test.ts` the
-  DB-writing jobs, `cron-alarm.test.ts` the handler's alarm wiring, and `email-path-probe.test.ts` the daily liveness
-  check, with the D1/env fakes in `cron-test-helpers.ts`.
+- **`scheduled.ts`**: the cron jobs (crash notifications, feedback digest, license backup, daily aggregation, DB size,
+  retention sweep, eviction sweep). Tests split by axis: `crash-notification-email.test.ts` and
+  `feedback-notification-email.test.ts` cover the two jobs whose output is a document (query → row → rendered HTML and
+  subject), `scheduled.test.ts` the DB-writing jobs, `cron-alarm.test.ts` the handler's alarm wiring, and
+  `email-path-probe.test.ts` the daily liveness check, with the D1/env fakes in `cron-test-helpers.ts`.
 - **`user-agent.ts`**: `classifyUaFamily` / `resolveUaFamily`, shared by the download write path and the funnel read
   path so neither area imports the other.
 - **`scripts/generate-keys.js`**: Ed25519 key pair generation (run once at setup).
@@ -332,9 +332,12 @@ job's failure from the rest and raises the alarm for it (§ Cron alarms):
      `mailto:` links carry it.
    - `0016_feedback_notified_at.sql` stamps the pre-existing rows as notified, so the first tick after the migration
      doesn't mail the whole backlog.
-3. **Daily aggregation** (00:00 UTC only): aggregates yesterday's `update_checks` into `daily_active_users` via
+3. **License backup** (00:00 UTC only, and FIRST in the daily block, so a snapshot precedes anything that mutates):
+   `handleLicenseBackup` writes every license and every stored key into one R2 object. What's in it and how a restore
+   would read it: `src/licensing/DETAILS.md` § License backups.
+4. **Daily aggregation** (00:00 UTC only): aggregates yesterday's `update_checks` into `daily_active_users` via
    `INSERT OR IGNORE ... GROUP BY`, then prunes raw update checks older than 7 days. Idempotent via existence check.
-4. **DB size check** (00:00 UTC only): alerts by email over 100 MB, with the per-table row counts that say where the
+5. **DB size check** (00:00 UTC only): alerts by email over 100 MB, with the per-table row counts that say where the
    size went. The size is `meta.size_after`, which D1 stamps on the result of every statement, so a throwaway `SELECT 1`
    reads it and the under-threshold path costs one query; the row counts only run past the threshold.
    - ❌ **Never read the size from `pragma_page_count` / `pragma_page_size`.** They're SQLite's obvious answer and D1
@@ -342,14 +345,14 @@ job's failure from the rest and raises the alarm for it (§ Cron alarms):
      2026-09-04). This job shipped that way on 2026-03-24 and threw every day until the cron alarms surfaced it on
      2026-09-03, while its tests passed throughout: a mocked D1 answers whatever it's told, so no test here can see a
      dialect rejection. `scheduled.test.ts` asserts no statement names a pragma, which is the closest anchor available.
-5. **Retention sweep** (00:00 UTC only): `handleRetentionSweep` enforces the per-table retention promises below.
-6. **Synthetic heartbeat sweep** (00:00 UTC only): `handleSyntheticHeartbeatSweep` deletes the beats of installs that
+6. **Retention sweep** (00:00 UTC only): `handleRetentionSweep` enforces the per-table retention promises below.
+7. **Synthetic heartbeat sweep** (00:00 UTC only): `handleSyntheticHeartbeatSweep` deletes the beats of installs that
    were never a person. See § Synthetic heartbeats below.
-7. **Daily eviction sweep** (00:00 UTC only): `handleDailyEvictionSweep` recomputes `total_bytes` from R2 ground truth
+8. **Daily eviction sweep** (00:00 UTC only): `handleDailyEvictionSweep` recomputes `total_bytes` from R2 ground truth
    (the per-upload KV counter is racy and drifts), clears `intake_paused` if the bucket is back under the LOW watermark,
    then triggers `tryEvict` if still over 8 GB. Idempotent, and it catches drift from concurrent uploads or a Worker
    dying mid-eviction.
-8. **Email path probe** (00:00 UTC only): `handleEmailPathProbe` sends one throwaway email through Resend so a dead
+9. **Email path probe** (00:00 UTC only): `handleEmailPathProbe` sends one throwaway email through Resend so a dead
    `RESEND_API_KEY` surfaces within a day instead of at the moment a crash alert, a feedback digest, or a buyer's
    license key needs it. Recipient is `delivered@resend.dev`, Resend's simulator address, so nobody receives it.
    - **It has to be a real send.** The key is scoped to sending only, so `GET /domains`, `/api-keys`, and `/emails` all
