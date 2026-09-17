@@ -49,6 +49,14 @@ const HEARTBEAT: Duration = Duration::from_secs(5);
 /// end.
 pub(super) const LOG_TARGET: &str = "scan_preview";
 
+/// How much a walk has counted: the numbers every scan-preview log line carries.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) struct ScanTally {
+    pub(super) files: usize,
+    pub(super) dirs: usize,
+    pub(super) bytes: u64,
+}
+
 /// One preview's clock: what it's walking, how much it has counted, and when it
 /// last counted anything.
 pub(super) struct ScanWatchdog {
@@ -151,17 +159,50 @@ impl ScanWatchdog {
             .is_ok()
     }
 
-    /// Logs how a claimed preview ended. `how` is a fixed word from the call site
-    /// (`complete` / `cancelled` / `stopped`), never a message.
+    /// What the walk has counted so far, as the watchdog saw it.
+    pub(super) fn walked(&self) -> ScanTally {
+        ScanTally {
+            files: self.files.load(Ordering::Relaxed),
+            dirs: self.dirs.load(Ordering::Relaxed),
+            bytes: self.bytes.load(Ordering::Relaxed),
+        }
+    }
+
+    /// Logs a finished walk with the totals it really produced, and adopts them
+    /// as the watchdog's own counters.
+    ///
+    /// The counters the watchdog keeps come from the progress tick, which only
+    /// fires on the `fileOperations.progressUpdateInterval` timer. A scan that
+    /// finishes inside one interval never ticks, so reporting those counters
+    /// here would log `0 files, 0 dirs, 0 bytes` over a tree that was fully
+    /// walked — and this line is the first thing anyone reads when triaging a
+    /// scan.
+    pub(super) fn note_completed(&self, tally: ScanTally) {
+        self.files.store(tally.files, Ordering::Relaxed);
+        self.dirs.store(tally.dirs, Ordering::Relaxed);
+        self.bytes.store(tally.bytes, Ordering::Relaxed);
+        self.log_settled("complete", tally);
+    }
+
+    /// Logs how a claimed preview ended short, reporting how far the walk got
+    /// before it stopped. `how` is a fixed word from the call site (`cancelled` /
+    /// `stopped`), never a message.
+    ///
+    /// Deliberately the watchdog's own counters: a cancelled or abandoned walk
+    /// has no totals, and "how far we got" is the number worth having.
     pub(super) fn note_settled(&self, how: &str) {
+        self.log_settled(how, self.walked());
+    }
+
+    fn log_settled(&self, how: &str, tally: ScanTally) {
         log::info!(
             target: LOG_TARGET,
             "scan preview {} {}: {} files, {} dirs, {} bytes in {:.1}s ({})",
             self.preview_id,
             how,
-            self.files.load(Ordering::Relaxed),
-            self.dirs.load(Ordering::Relaxed),
-            self.bytes.load(Ordering::Relaxed),
+            tally.files,
+            tally.dirs,
+            tally.bytes,
             self.started.elapsed().as_secs_f64(),
             self.target
         );

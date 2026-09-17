@@ -14,11 +14,12 @@ use uuid::Uuid;
 
 use super::event_sinks::{CollectorScanPreviewSink, ScanPreviewEventSink};
 use super::scan_cache::{ScanOutcome, ScanPreviewState, poll_claim, register_preview, release_preview};
-use super::scan_preview::run_volume_scan_preview;
-use super::scan_watchdog::{ScanWatchdog, scan_target_label};
+use super::scan_preview::{run_scan_preview, run_volume_scan_preview};
+use super::scan_watchdog::{ScanTally, ScanWatchdog, scan_target_label};
+use crate::file_system::listing::{SortColumn, SortOrder};
 use crate::file_system::volume::Volume;
 use crate::ignore_poison::IgnorePoison;
-use crate::test_support::{WedgedVolume, wait_until_async};
+use crate::test_support::{TestDir, WedgedVolume, wait_until_async};
 
 /// How long a test waits for the watchdog to publish. Generous against the
 /// 200 ms limits below: these run on a loaded box.
@@ -193,5 +194,79 @@ async fn a_worker_that_claims_first_keeps_the_watchdog_quiet() {
         "and the claim is one-shot, so nothing else can publish either"
     );
 
+    release_preview(&preview_id);
+}
+
+/// The settle line is the first thing anyone reads when triaging a scan, and it
+/// reports the totals the walk really produced.
+///
+/// The watchdog's own counters come from the walk's progress tick, which only
+/// fires on the `fileOperations.progressUpdateInterval` timer. A scan finishing
+/// inside one interval never ticks, so reporting those counters at completion
+/// said `0 files, 0 dirs, 0 bytes` over a fully walked tree — which is what
+/// every scan preview in production logged, three-file folders included.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_preview_that_finishes_before_its_first_tick_still_reports_what_it_walked() {
+    let dir = TestDir::new("watchdog_settle_counts");
+    let tree = dir.join("tree");
+    std::fs::create_dir(&tree).expect("the scratch tree");
+    for (name, bytes) in [("a.txt", 11usize), ("b.txt", 22), ("c.txt", 33)] {
+        std::fs::write(tree.join(name), vec![b'x'; bytes]).expect("a scratch file");
+    }
+
+    let preview_id = format!("watchdog-{}", Uuid::new_v4());
+    let state = Arc::new(ScanPreviewState {
+        cancelled: AtomicBool::new(false),
+        // Far longer than the walk, so no progress tick can fire: the production
+        // shape this covers.
+        progress_interval: Duration::from_secs(600),
+    });
+    register_preview(preview_id.clone(), Arc::clone(&state));
+
+    let sources = vec![tree.clone()];
+    let events = Arc::new(CollectorScanPreviewSink::new());
+    let watchdog = ScanWatchdog::start(
+        preview_id.clone(),
+        scan_target_label(&sources, "root"),
+        // Generous: this walk is meant to complete, not to be given up on.
+        Duration::from_secs(600),
+        Arc::clone(&state),
+        Arc::clone(&events) as Arc<dyn ScanPreviewEventSink>,
+    );
+
+    let walk_watchdog = Arc::clone(&watchdog);
+    let walk_events: Arc<dyn ScanPreviewEventSink> = Arc::clone(&events) as Arc<dyn ScanPreviewEventSink>;
+    let walk_id = preview_id.clone();
+    tokio::task::spawn_blocking(move || {
+        run_scan_preview(
+            walk_events,
+            walk_id,
+            sources,
+            SortColumn::Name,
+            SortOrder::Ascending,
+            state,
+            false,
+            walk_watchdog,
+        );
+    })
+    .await
+    .expect("the walk thread");
+
+    let complete = events.complete.lock_ignore_poison();
+    let [completed] = complete.as_slice() else {
+        panic!("expected exactly one complete event, got {}", complete.len());
+    };
+    assert_eq!(completed.files_total, 3, "the walk really did count the tree");
+    assert_eq!(
+        watchdog.walked(),
+        ScanTally {
+            files: completed.files_total,
+            dirs: completed.dirs_total,
+            bytes: completed.bytes_total,
+        },
+        "the settle line reports what the dialog was told, not an untouched tick counter"
+    );
+
+    drop(complete);
     release_preview(&preview_id);
 }
