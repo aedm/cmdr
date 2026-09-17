@@ -16,6 +16,7 @@
 use crate::ignore_poison::IgnorePoison;
 use crate::network::NetworkHost;
 use crate::network::server_identity::same_server;
+use crate::network::smb_connect_failure::UpgradeFailure;
 use std::sync::{LazyLock, Mutex, OnceLock};
 use tauri::AppHandle;
 
@@ -37,12 +38,13 @@ fn app_handle() -> Option<AppHandle> {
 
 /// Tells the frontend a share is staying on the macOS kernel mount, so it can
 /// offer a retry instead of leaving someone on the slow path with no explanation.
-fn emit_fell_back_to_os_mount(volume_id: &str, share: &str) {
+fn emit_fell_back_to_os_mount(volume_id: &str, share: &str, reason: UpgradeFailure) {
     use tauri_specta::Event;
     if let Some(app) = app_handle()
         && let Err(e) = (crate::network::SmbFellBackToOsMount {
             volume_id: volume_id.to_string(),
             share: share.to_string(),
+            reason,
         })
         .emit(&app)
     {
@@ -105,13 +107,13 @@ static OS_MOUNT_NOTICES: LazyLock<Mutex<OsMountNotices>> = LazyLock::new(Mutex::
 /// Only the auto-upgrade paths call this. The manual "Connect directly" flow
 /// surfaces its own failure to the person who clicked it, so a notice there would
 /// say the same thing twice.
-pub(crate) fn announce_os_mount_fallback(server: &str, volume_id: &str, share: &str) {
+pub(crate) fn announce_os_mount_fallback(server: &str, volume_id: &str, share: &str, reason: UpgradeFailure) {
     let hosts = crate::network::get_discovered_hosts();
     if !OS_MOUNT_NOTICES.lock_ignore_poison().claim(server, volume_id, &hosts) {
         return;
     }
     log::debug!("Telling the frontend about the kernel-mount fallback on {server}/{share}");
-    emit_fell_back_to_os_mount(volume_id, share);
+    emit_fell_back_to_os_mount(volume_id, share, reason);
 }
 
 /// Forgets `server` once a direct session lands on it.

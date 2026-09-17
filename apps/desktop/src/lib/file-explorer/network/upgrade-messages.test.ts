@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { UpgradeFailure } from '$lib/ipc/bindings'
 import { directConnectionUnavailableMessage, mountNotRespondingMessage } from './upgrade-messages'
 
-const ALL_REASONS: UpgradeFailure[] = ['unreachable', 'tooSlow', 'unexpected']
+const ALL_REASONS: UpgradeFailure[] = ['unreachable', 'tooSlow', 'shareNotOnServer', 'unexpected']
 
 describe('directConnectionUnavailableMessage', () => {
   it('names the server so the user knows which one to check', () => {

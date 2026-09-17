@@ -25,9 +25,15 @@
         volumeId: string
         /** The share's name, which is what the sentence names. */
         share: string
+        /**
+         * Whether pressing the button again could ever work. False when the
+         * server says it has no such share: the same ask gets the same answer,
+         * so the notice explains instead of offering a retry.
+         */
+        retryable: boolean
     }
 
-    const { toastId, volumeId, share }: Props = $props()
+    const { toastId, volumeId, share, retryable }: Props = $props()
 
     let connecting = $state(false)
 
@@ -49,13 +55,23 @@
 
 <div class="content">
     <span class="message">
-        <Trans key="fileExplorer.network.osMountFallback.message" snippets={{ shareName }} params={{ share }} />
+        {#if retryable}
+            <Trans key="fileExplorer.network.osMountFallback.message" snippets={{ shareName }} params={{ share }} />
+        {:else}
+            <Trans
+                key="fileExplorer.network.osMountFallback.shareNotOnServer"
+                snippets={{ shareName }}
+                params={{ share }}
+            />
+        {/if}
     </span>
-    <div class="actions">
-        <Button variant="primary" size="mini" disabled={connecting} onclick={() => void retry()}>
-            {tString('fileExplorer.network.osMountFallback.retry')}
-        </Button>
-    </div>
+    {#if retryable}
+        <div class="actions">
+            <Button variant="primary" size="mini" disabled={connecting} onclick={() => void retry()}>
+                {tString('fileExplorer.network.osMountFallback.retry')}
+            </Button>
+        </div>
+    {/if}
 </div>
 
 <style>

@@ -213,3 +213,53 @@ fn every_refusal_gets_advice_that_fits_who_was_turned_away_and_where() {
         "the password worked, so the advice mustn't send anyone to fix it: {account_at_share}"
     );
 }
+
+/// `STATUS_BAD_NETWORK_NAME` at TreeConnect is the one direct-connect failure
+/// repeating cannot fix, so it gets its own reason and the notice drops its
+/// retry button for it.
+///
+/// Reading it as `Unexpected` is what ERR-HYPZG looked like from the outside: a
+/// share the server genuinely doesn't have, and a share published as a DFS
+/// namespace root, both produced the same "something went wrong" notice with a
+/// button that could never work. smb2 0.22 resolves the namespace, so what still
+/// reaches here really is a missing share.
+#[test]
+fn a_missing_share_is_read_as_such_and_its_look_alikes_are_not() {
+    let cases: Vec<(&str, smb2::Error, UpgradeFailure)> = vec![
+        (
+            "the server has no share by that name",
+            protocol(NtStatus::BAD_NETWORK_NAME, Command::TreeConnect),
+            UpgradeFailure::ShareNotOnServer,
+        ),
+        (
+            "the same status one step earlier is not about a share at all",
+            protocol(NtStatus::BAD_NETWORK_NAME, Command::SessionSetup),
+            UpgradeFailure::Unexpected,
+        ),
+        (
+            // The namespace is real and its storage may come back, so this is a
+            // condition that can pass: `Unreachable`, never `ShareNotOnServer`.
+            "a DFS namespace whose every target refused",
+            smb2::Error::DfsNoReachableTarget {
+                namespace: r"\\lgs-net.com\aleu".to_string(),
+                target_count: 2,
+                source: Box::new(smb2::Error::Timeout),
+            },
+            UpgradeFailure::Unreachable,
+        ),
+        (
+            // A scale-out cluster redirect carries `STATUS_BAD_NETWORK_NAME` on
+            // the wire too; smb2 gives it its own variant so it can't be misread
+            // here as a missing share.
+            "a cluster redirect, which shares the status and means something else",
+            smb2::Error::ShareRedirected {
+                share: "archive".to_string(),
+            },
+            UpgradeFailure::Unexpected,
+        ),
+        ("timed out", smb2::Error::Timeout, UpgradeFailure::TooSlow),
+    ];
+    for (what, error, expected) in &cases {
+        assert_eq!(UpgradeFailure::from_smb_error(error), *expected, "{what}");
+    }
+}

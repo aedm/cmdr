@@ -385,6 +385,29 @@ redundant upgrade attempt short-circuits on `is_already_direct` rather than open
 anchor is read off the mount: `apps/desktop/src-tauri/src/network/DETAILS.md`. How a mount source is parsed into share
 plus subpath, on both platform twins: `apps/desktop/src-tauri/src/volumes/DETAILS.md`.
 
+## A share that is a DFS namespace root
+
+An Active Directory domain normally publishes a share as `\\<domain>\<namespace>`, which is MS-DFSC § 2.2.1.4's
+preferred form and is **not a share on the server answering that name**: `TREE_CONNECT` on it is refused with
+`STATUS_BAD_NETWORK_NAME`, and the share enumeration that would have found it comes back with zero disk shares. macOS
+mounts it happily (`smbutil statshares -a` shows `DFS_SHARE TRUE` with `SERVER_NAME` still the domain), so the volume
+exists and works, and before smb2 0.22 every direct-connect attempt on it failed and left it on the kernel mount at a
+fraction of the speed. Reported as ERR-HYPZG, on a real corporate domain.
+
+smb2 resolves it: on that refusal, from a server that advertised `SMB2_GLOBAL_CAP_DFS`, it asks for a root referral and
+connects whichever target comes back, on whatever server that turns out to be.
+
+**`dfs_enabled` is on wherever we open a share, and off where we only enumerate.** `volume::session::build_session`,
+`volume::watcher`, and `connection::try_open_share` all open one and all have it on; the watcher especially, or a
+namespace-backed volume would list fine and never notice a change. The two `try_list_shares_*` paths never leave `IPC$`,
+so there is no share name for a referral to resolve and it stays off. It costs nothing where it's on: the referral only
+goes out after a TreeConnect has already been refused.
+
+**This composes with the anchor above rather than competing with it.** A root referral answers with the namespace root's
+own targets, so the tree lands where the namespace root is, and walking into a link underneath it earns
+`STATUS_PATH_NOT_COVERED`, which smb2's older reactive path resolves. The share stays ONE path segment either way, which
+is the invariant the anchor is built on.
+
 ## Re-rooting a share
 
 macOS mounts one share at several roots (`/Volumes/naspi` AND `/Volumes/naspi-1`) and they all derive one volume ID, so

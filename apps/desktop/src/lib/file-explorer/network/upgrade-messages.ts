@@ -27,6 +27,8 @@ export function directConnectionUnavailableMessage(reason: UpgradeFailure, serve
       return tString('fileExplorer.pane.directConnectionUnreachableToast', { server })
     case 'tooSlow':
       return tString('fileExplorer.pane.directConnectionTooSlowToast', { server })
+    case 'shareNotOnServer':
+      return tString('fileExplorer.pane.directConnectionShareNotOnServerToast', { server })
     case 'unexpected':
       return tString('fileExplorer.pane.directConnectionUnexpectedToast', { server })
   }

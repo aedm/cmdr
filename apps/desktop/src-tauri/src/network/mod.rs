@@ -373,6 +373,12 @@ pub struct SmbFellBackToOsMount {
     pub volume_id: String,
     /// The share's name, which is what the notice names (`archive`, not `//nas/archive`).
     pub share: String,
+    /// Why the direct connection didn't happen, so the notice can tell a
+    /// condition that may pass from one that won't. Only
+    /// `ShareNotOnServer` can't be fixed by pressing the button again, and the
+    /// notice drops the button for it rather than offering a retry that is
+    /// certain to land on the same answer.
+    pub reason: smb_connect_failure::UpgradeFailure,
 }
 
 /// Current network discovery state, accessible globally.

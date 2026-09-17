@@ -52,15 +52,22 @@ export async function startOsMountNoticeBridge(): Promise<UnlistenFn> {
 }
 
 function raiseNotice(payload: SmbFellBackToOsMount): void {
-  log.info('Offering a direct-connection retry for the share stuck on the kernel mount: {share}', {
-    share: payload.share,
-  })
+  // `shareNotOnServer` is the server saying it has no such share. The same
+  // identity asking again gets the same answer, so the notice explains and
+  // offers nothing, instead of a button that is certain to fail.
+  const retryable = payload.reason !== 'shareNotOnServer'
+  log.info(
+    retryable
+      ? 'Offering a direct-connection retry for the share stuck on the kernel mount: {share}'
+      : 'The share stuck on the kernel mount is one the server says it does not have, so no retry is offered: {share}',
+    { share: payload.share },
+  )
   addToast(SmbOsMountFallbackToastContent, {
     level: 'info',
     dismissal: 'persistent',
     id: osMountNoticeToastId(payload.volumeId),
     closeTooltip: tString('fileExplorer.network.osMountFallback.closeTooltip'),
-    props: { volumeId: payload.volumeId, share: payload.share },
+    props: { volumeId: payload.volumeId, share: payload.share, retryable },
   })
 }
 

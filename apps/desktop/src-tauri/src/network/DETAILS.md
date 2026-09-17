@@ -510,9 +510,21 @@ silently stays on the kernel mount is a WARN even for a refusal (nobody will be 
 ## Telling the user about a kernel-mount fallback
 
 The log above answers "why is this share slow" for whoever reads logs. `os_mount_notice.rs` answers it for the person
-using the app: `announce_os_mount_fallback` emits `SmbFellBackToOsMount { volume_id, share }`, and the frontend raises
-a notice with a "Try connecting directly" button (`src/lib/file-explorer/network/DETAILS.md` § "The OS-mount fallback
-notice").
+using the app: `announce_os_mount_fallback` emits `SmbFellBackToOsMount { volume_id, share, reason }`, and the frontend
+raises a notice with a "Try connecting directly" button (`src/lib/file-explorer/network/DETAILS.md` § "The OS-mount
+fallback notice").
+
+**The reason rides along so the notice can drop that button.** `UpgradeFailure::ShareNotOnServer` (the server answering
+`STATUS_BAD_NETWORK_NAME` at TreeConnect) is the one failure here that repeating cannot fix: the same identity asking
+the same server for the same share gets the same answer. Every other variant is a condition that can pass on its own,
+including a DFS namespace whose targets are all down, which smb2 reports as `DfsNoReachableTarget` and which classifies
+as `Unreachable` precisely because the storage may come back. ❌ Don't fold `ShareNotOnServer` back into `Unexpected`:
+that is what put a button on screen that could only ever fail (ERR-HYPZG), and it read as "something went wrong" about
+a server that had given a perfectly clear answer.
+
+Two look-alikes carry the same status on the wire and deliberately never reach that arm, because smb2 gives each its
+own variant: a scale-out cluster redirect (`Error::ShareRedirected`, MS-SMB2 § 2.2.2.2.2) and the namespace case above.
+Pinned by `smb_connect_failure_test.rs::a_missing_share_is_read_as_such_and_its_look_alikes_are_not`.
 
 **The module holds the `AppHandle` for it**, stashed from `lib.rs::setup`. It's the only `AppHandle` this corner of the
 app needs: a share's session-state transitions go out through the volume host's event seam instead, so the SMB backend
