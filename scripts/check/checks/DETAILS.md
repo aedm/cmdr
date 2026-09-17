@@ -231,8 +231,8 @@ below for the section-aware patterns to follow.
   reported with current and allowed counts plus growth percentage.
 - Every `files` entry is `{"lines": N, "reason": "…"}` and the reason is MANDATORY: a bare number (the legacy form)
   parses, then fails the check by name, so the fix is to write the reason rather than to re-derive it later. A reason
-  starting with `TODO: ` says the file should be split instead, and says how; those are counted on the green line
-  ("54 allowlisted, 39 marked TODO") so the backlog stays in view. Mechanics mirror `jscpdPairLimit` in `jscpd.go`.
+  starting with `TODO: ` says the file should be split instead, and says how; those are counted on the green line ("54
+  allowlisted, 39 marked TODO") so the backlog stays in view. Mechanics mirror `jscpdPairLimit` in `jscpd.go`.
 - `exempt` entries never fail (tracked generated files whose length is not actionable); each needs a reason.
 - New files not in either section are reported normally.
 - If the allowlist file is missing, all long files are reported (backwards-compatible).
@@ -376,12 +376,12 @@ lane that keeps only the aggregate can't name a target, which is what a duplicat
 
 **Decision**: two checks, each owning one lane. **Why**: they carry different `Inputs` (a TypeScript edit shouldn't
 invalidate the Rust lane's cache), different `Tech` (the runner groups its output by it), different sensitivity floors,
-and separate CI steps, so one lane's failure doesn't hide the other's. They share every line of logic through `jscpd.go`;
-each `{app}-{name}.go` file is a `jscpdLane` value plus a one-line entry point.
+and separate CI steps, so one lane's failure doesn't hide the other's. They share every line of logic through
+`jscpd.go`; each `{app}-{name}.go` file is a `jscpdLane` value plus a one-line entry point.
 
 **Decision**: in the default local lane, not `--fast` and not CI-only. **Why**: a copy-paste is cheapest to undo at the
-milestone where somebody wrote it; the same finding three weeks later in CI is archaeology. The cost is ~11 s (Rust) and ~5
-s (frontend), both cheap enough for a per-milestone run and too slow for the pre-commit lane.
+milestone where somebody wrote it; the same finding three weeks later in CI is archaeology. The cost is ~11 s (Rust) and
+~5 s (frontend), both cheap enough for a per-milestone run and too slow for the pre-commit lane.
 
 ### Thresholds
 
@@ -1638,17 +1638,17 @@ Checks by app and tech:
 - **Desktop / Rust**: rustfmt, clippy, rustdoc (`cargo doc --all-features --document-private-items` over every
   first-party member, with every doc lint in `rustdocDeniedLints` denied and any leftover warning failing the check too;
   the vendored fork is skipped because `--all-features` turns on two mutually exclusive arms there), cargo-audit,
-  cargo-deny, cargo-machete, cargo-udeps (CI-only), jscpd (the clone list, on a per-file-pair ratchet),
-  log-error-macro, macos-availability (no call to a selector newer than the bundle's `minimumSystemVersion`; § "macOS
-  availability"), macos-framework-floor (no framework in the BUILT binary's load commands newer than that same floor,
-  which is the half no runtime gate can save; § "macOS framework floor"), sqlite-open-direct (every SQLite connection
-  opens through `crate::sqlite_util`, so the process-wide shared page cache is always installed before SQLite
-  initializes), error-string-match, write-ops-isolation (the write engine may not name the `agent` module: an approved
-  operation is an ordinary operation, and an engine that can see the agent grows a second execution path; per-source
-  outcomes reach a caller through the injected `OperationEventSink` instead), lock-poison (two lanes: an error-level one
-  for an acquisition that records no poison-handling choice, and a warn-only one for a failure that's silently
-  discarded, on a per-file ratchet), test-sleep (flags a fixed `thread::sleep` / `tokio::time::sleep` in test code,
-  where a condition-based `wait_until` belongs; opt out a genuine sleep-is-the-subject site with
+  cargo-deny, cargo-machete, cargo-udeps (CI-only), jscpd (the clone list, on a per-file-pair ratchet), log-error-macro,
+  macos-availability (no call to a selector newer than the bundle's `minimumSystemVersion`; § "macOS availability"),
+  macos-framework-floor (no framework in the BUILT binary's load commands newer than that same floor, which is the half
+  no runtime gate can save; § "macOS framework floor"), sqlite-open-direct (every SQLite connection opens through
+  `crate::sqlite_util`, so the process-wide shared page cache is always installed before SQLite initializes),
+  error-string-match, write-ops-isolation (the write engine may not name the `agent` module: an approved operation is an
+  ordinary operation, and an engine that can see the agent grows a second execution path; per-source outcomes reach a
+  caller through the injected `OperationEventSink` instead), lock-poison (two lanes: an error-level one for an
+  acquisition that records no poison-handling choice, and a warn-only one for a failure that's silently discarded, on a
+  per-file ratchet), test-sleep (flags a fixed `thread::sleep` / `tokio::time::sleep` in test code, where a
+  condition-based `wait_until` belongs; opt out a genuine sleep-is-the-subject site with
   `// allowed-test-sleep: <reason>`), fixed-temp-dir (flags a test fixture built on `std::env::temp_dir()`, where every
   process on the machine shares the path and two suite runs delete each other's live fixtures; the sanctioned fixture is
   `crate::test_support::TestDir`, and a site where the temp root is load bearing opts out with
@@ -1782,15 +1782,15 @@ doubles as production code.
   desktop's accent matrix and light/dark token pairs; the dashboard is dark-only), no type-drift (no Rust), and no
   bare-poll (no Playwright helpers).
 - **Scripts / Go**: gofmt, go-vet, staticcheck, ineffassign, misspell, gocyclo, nilaway, deadcode, go-tests, govulncheck
-- **Other / Metrics**: file-length, CLAUDE.md-reminder (warn-only), claude-md-length,
-  invariant-density (warn-only and MOTHBALLED, run by name only; `❌` rules per subsystem, absolute and per 1,000 source
-  lines, on a strict ratchet), resident-doc-budget (warn-only; caps the always-resident root-CLAUDE.md + @-imports +
-  rules bundle), docs-reachable (errors when a CLAUDE.md/DETAILS.md/docs file isn't reachable from the root CLAUDE.md),
-  docs-dead-links (errors on a doc link, or a bare backtick path naming a doc, whose local target doesn't exist),
-  docs-link-text (errors on a Markdown link whose text is its own target path), claude-md-details-sibling (errors when a
-  non-root CLAUDE.md lacks/doesn't reference a sibling DETAILS.md), analytics-event-catalog (errors when an emitted
-  PostHog event has no catalog bullet, or a bullet has no emitter), docs-table-hygiene (errors on any 2-column table or
-  any table column wider than 100 chars in agent-facing docs), changelog-commit-links, workflows-rustup (forbids
+- **Other / Metrics**: file-length, CLAUDE.md-reminder (warn-only), claude-md-length, invariant-density (warn-only and
+  MOTHBALLED, run by name only; `❌` rules per subsystem, absolute and per 1,000 source lines, on a strict ratchet),
+  resident-doc-budget (warn-only; caps the always-resident root-CLAUDE.md + @-imports + rules bundle), docs-reachable
+  (errors when a CLAUDE.md/DETAILS.md/docs file isn't reachable from the root CLAUDE.md), docs-dead-links (errors on a
+  doc link, or a bare backtick path naming a doc, whose local target doesn't exist), docs-link-text (errors on a
+  Markdown link whose text is its own target path), claude-md-details-sibling (errors when a non-root CLAUDE.md
+  lacks/doesn't reference a sibling DETAILS.md), analytics-event-catalog (errors when an emitted PostHog event has no
+  catalog bullet, or a bullet has no emitter), docs-table-hygiene (errors on any 2-column table or any table column
+  wider than 100 chars in agent-facing docs), changelog-commit-links, workflows-rustup (forbids
   `rustup target/component add` in workflows), ci-coverage (registry-to-workflows contract)
 - **Other / Go**: go-version-single-source (errors when anything but `.mise.toml` names a Go toolchain version, when the
   `go.mod` floors disagree with each other, or when a floor exceeds the pinned toolchain)

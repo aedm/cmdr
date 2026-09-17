@@ -38,8 +38,7 @@ One Go file per check, registered in `registry.go`'s `AllChecks`. Runner: `../CL
 - **A new cargo check that COMPILES declares `Exclusive: ResourceCargoBuildDir`** (`common.go`), or it blocks on cargo's
   build-directory lock while holding CPU weight.
 - **Wire allowlist staleness from day one**: reuse `directiveTracker` / `writeJSONAllowlist`, name the file via
-  `runnerDataInputs`, and give every entry a mandatory `reason`. Who adds one:
-  `.claude/rules/file-length-allowlist.md`.
+  `runnerDataInputs`, and give every entry a mandatory `reason`. Who adds one: `.claude/rules/file-length-allowlist.md`.
 - **Error output goes through `indentOutput()`**; success messages carry stats ("12 tests passed"), not "OK". Return
   `Skipped(reason)` when it can't run, `SuccessWithChanges` when it fixed something.
 - **`svelte-tests` coverage needs a per-invocation temp `reportsDirectory`** (`VITEST_COVERAGE_DIR`): a fixed path lets
