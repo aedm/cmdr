@@ -910,12 +910,30 @@ button), `below` adds a sub-line (the disk-space bar), and `footer` sits under t
 - **Placement**: fixed, clamped into the viewport, `max-height` to the room below the anchor with its own scroll, the
   cursor scrolled into view, and submenus positioned off the row's rect with a small overlap.
 
+**A menu inside a menu** (the drive-index badge sits in a volume-switcher row and opens its own; it's not a submenu —
+a separate consumer owns it). The primitive handles the pair, so neither consumer wires anything:
+
+- **The one that opened last owns the keyboard**, through a module-level stack of open menus in
+  `menu-controller.svelte.ts`. Both hold a document-level capture listener, and `stopPropagation` never stops a listener
+  on the same node, so without the stack one Enter would activate a row in EACH menu and one Escape would close the
+  pair. The menu underneath reports every key unhandled until it's on top again, and gets the keyboard back when the
+  inner one closes or is destroyed.
+- **The inner menu's surface is not "outside" the outer one.** It portals to the body, so containment can't see it,
+  and it never left the outer menu: it names its host in `data-menu-nested-in` and the outer's pointer-down handler
+  reads that back. The switcher stays up while a row's badge menu is used and after a pick, which is the same rule its
+  eject button follows (`keepOpenWithin`) — several drives can be acted on in a row.
+- Everything else already worked: the inner menu's anchor is a `<button>` in a row, so `isOwnControl` keeps the click
+  off the row, and a pointer-down anywhere else in the outer list closes the inner one the ordinary way.
+
 **Test hooks are a contract**, like `.ui-popover` and the `.select-*` classes: other suites select on these, so ❌ don't
 rename one without updating them. They're `data-*` attributes rather than CSS classes, because a class is styling and
 gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them rots into decoration.
 
 - `data-menu` on the surface, `data-keyboard-mode` on it while the keyboard is driving, `data-menu-submenu` on the
   submenu surface.
+- `data-menu-instance="<id>"` on every surface, and `data-menu-nested-in="<id>"` on one whose ANCHOR sits inside another
+  menu's surface, naming that menu. It's the link a nested menu is recognized by (below); a top-level menu carries no
+  `data-menu-nested-in` at all.
 - `data-menu-section="<id>"` on a section, `data-menu-heading` on its heading (an E2E spec reads the group names from
   it), `data-menu-empty` on an empty section's placeholder.
 - `data-menu-row="<value>"` on every row (submenu rows too), plus `data-highlighted`, `data-checked`, `data-disabled`,
@@ -945,6 +963,10 @@ switcher's port is what moved them here):
   the row, so no call site needs `stopPropagation`.
 - **A pointer-down outside closes the menu and still reaches what it landed on** (there's no click-catching backdrop).
   It's a deliberate break from the macOS menu, which swallows that click.
+- ❗ **"Outside" excludes this menu's own SUBMENU**, which is a sibling of the surface in the portal rather than a child,
+  so `surfaceEl.contains` says no. It gets its own `submenuEl.contains` exemption. Without it a pointer-down on a
+  submenu row closed the menu and the click behind it then reached a closed controller and picked nothing — the row
+  looked live and did nothing at all.
 - ❗ **"Outside" excludes the anchor's whole control cluster, when the caller names one** (`keepOpenWithin`). The anchor
   element alone is exempt by default, which is wrong for a chip whose other controls sit BESIDE it: the switcher's
   header eject button closed the list out from under itself, and ejecting is meant to LEAVE the list open so several

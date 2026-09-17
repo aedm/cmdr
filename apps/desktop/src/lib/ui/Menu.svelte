@@ -54,8 +54,20 @@
     const rowId = (value: string) => `${instanceId}-row-${value}`
 
     let surfaceEl: HTMLDivElement | undefined = $state()
+    let submenuEl: HTMLDivElement | undefined = $state()
     let position = $state<{ left: number; top: number; maxHeight: number } | null>(null)
     let submenuPosition = $state<{ top: number; left: number } | null>(null)
+
+    /**
+     * The surface this menu hangs off, when its anchor lives inside ANOTHER menu — the
+     * drive-index badge in a volume-switcher row opens its own menu from there. The outer
+     * menu reads it back to tell this popup from a pointer-down that really left it.
+     */
+    const nestedIn = $derived.by(() => {
+        const anchor = menu.anchor
+        if (anchor?.kind !== 'element') return undefined
+        return anchor.element.closest('[data-menu]')?.getAttribute('data-menu-instance') ?? undefined
+    })
 
     /** Gap between the anchor and the surface, and the margin the surface keeps off the viewport. */
     const ANCHOR_GAP = 4
@@ -161,12 +173,26 @@
         const target = event.target as Node | null
         if (!target) return
         if (surfaceEl?.contains(target)) return
+        // ❗ The submenu is a SIBLING in the portal, not a child of the surface, so it needs
+        // saying: without this, pressing a submenu row closed the menu on pointer-down and the
+        // click behind it then activated nothing.
+        if (submenuEl?.contains(target)) return
         const anchor = menu.anchor
         if (anchor?.kind === 'element' && anchor.element.contains(target)) return
         // The controls BESIDE the anchor belong to the menu too: pressing one (the switcher
         // chip's eject button) must act without the menu closing out from under it.
         if (menu.keepOpenWithin?.contains(target)) return
+        // A menu opened from inside THIS one portals its surface to the body, so containment
+        // can't see it, and it never left this menu. It names its host, which is how a
+        // badge's menu in a switcher row stops closing the switcher.
+        if (hostsPopupAt(target)) return
         menu.close()
+    }
+
+    /** Is the pointer-down inside a menu that hangs off a row of this one? */
+    function hostsPopupAt(target: Node): boolean {
+        const el = target instanceof Element ? target : target.parentElement
+        return el?.closest('[data-menu]')?.getAttribute('data-menu-nested-in') === instanceId
     }
 
     /**
@@ -224,6 +250,8 @@
             class="menu-surface"
             class:keyboard-mode={menu.keyboardMode}
             data-menu=""
+            data-menu-instance={instanceId}
+            data-menu-nested-in={nestedIn}
             data-keyboard-mode={menu.keyboardMode ? '' : undefined}
             role="menu"
             aria-label={ariaLabel}
@@ -341,6 +369,7 @@
 
         {#if menu.openSubmenuValue !== null && submenuPosition}
             <div
+                bind:this={submenuEl}
                 class="menu-surface menu-submenu"
                 data-menu-submenu=""
                 role="menu"
