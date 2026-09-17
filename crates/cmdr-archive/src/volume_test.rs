@@ -703,7 +703,10 @@ async fn entry_paths_keep_a_url_rooted_archive_path_spelled_exactly() {
 
     let parent = Arc::new(InMemoryVolume::new("remote"));
     parent
-        .create_file(&archive_path, &build_zip(&[stored("a.txt", "x"), deflated("dir/b.txt", "y")]))
+        .create_file(
+            &archive_path,
+            &build_zip(&[stored("a.txt", "x"), deflated("dir/b.txt", "y")]),
+        )
         .await
         .expect("load remote zip into parent store");
     let volume = ArchiveVolume::new(
