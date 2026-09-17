@@ -34,8 +34,8 @@ description that names the dialog, and the dialog itself (`selection.dialog.titl
 `menu.select.deselectFiles` reach the real macOS menu bar through `native_strings.gen.rs`, so this is the visible proof
 the overlay hits native surfaces.
 
-It reaches prose outside the selection surface too: `fileOperations.delete.cloudOnlineOnlyMixedWarning` offers
-"unselect all online-only files" as one of the two ways out of an online-only delete. Its all-online-only sibling
+It reaches prose outside the selection surface too: `fileOperations.delete.cloudOnlineOnlyMixedWarning` offers "unselect
+all online-only files" as one of the two ways out of an online-only delete. Its all-online-only sibling
 (`fileOperations.delete.cloudOnlineOnlyAllWarning`) can't offer that remedy at all, so it stays identical to `en-GB`.
 
 **The dialog three are why the fork has to be complete.** The menu item and the dialog it opens are the same sentence to

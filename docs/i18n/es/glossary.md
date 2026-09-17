@@ -3453,12 +3453,11 @@ pueden ofrecer. La tercera clave es la línea que aparece cuando Cmdr devuelve u
   sin la salida de deseleccionar: si todo está solo en línea no quedaría nada seleccionado · medium.
 - **`.cloudOnlineOnlyHandedBack`** · la línea sobre el botón después de una pulsación que Cmdr no ejecutó a propósito.
   Tono neutro, sin disculpas · medium.
-- **Los cuatro hechos son obligatorios**: (1) la papelera descargaría los archivos, (2) por eso Cmdr solo ofrece eliminar
-  la selección ENTERA, (3) después NO hay copia en la papelera, aunque el servicio sí guarde la suya (❌ no suavizarlo),
-  (4) las salidas que nombra el banner.
+- **Los cuatro hechos son obligatorios**: (1) la papelera descargaría los archivos, (2) por eso Cmdr solo ofrece
+  eliminar la selección ENTERA, (3) después NO hay copia en la papelera, aunque el servicio sí guarde la suya (❌ no
+  suavizarlo), (4) las salidas que nombra el banner.
 - **Las dos zonas `<strong>` se mantienen**, sobre «descargaría primero» y sobre el verbo «eliminar». Y «Eliminar» entre
   comillas es la etiqueta del botón: siempre igual que `fileOperations.delete.confirmDelete`.
 - No hace falta `sameAsSourceJustification`: todos los valores difieren del inglés.
 - Revisar en el paso de overflow: el banner es largo y ocupa una franja estrecha sobre la lista de archivos.
 - ⚠️ Borrador, todavía sin revisión humana.
-

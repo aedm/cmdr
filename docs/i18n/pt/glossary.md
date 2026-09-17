@@ -3314,4 +3314,3 @@ chave é a linha que aparece quando o Cmdr devolve um clique.
 - Não precisa de `sameAsSourceJustification`: todos os valores diferem do inglês.
 - Conferir na passagem de overflow: o aviso é longo e fica numa faixa estreita acima da lista de arquivos.
 - ⚠️ Rascunho, ainda sem revisão humana.
-

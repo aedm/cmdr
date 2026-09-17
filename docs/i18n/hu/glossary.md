@@ -3695,10 +3695,10 @@ replacement target. Four rules bind this whole group:
 
 ## A csak online tartalom figyelmeztetése (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
-Ha egy felhőmappában kijelölt elem csak online érhető el, a Kuka előbb letöltené. Ezért a Cmdr a végleges törlés
-ablakát nyitja meg, és a felső sávban elmagyarázza. Két sávváltozat: az egyik vegyes kijelölésre, a másik arra, amikor
-minden csak online érhető el. Csak az első mondatban és a felkínált kiutakban térnek el. A harmadik kulcs az a sor,
-amely akkor jelenik meg, amikor a Cmdr visszaadja a gombnyomást.
+Ha egy felhőmappában kijelölt elem csak online érhető el, a Kuka előbb letöltené. Ezért a Cmdr a végleges törlés ablakát
+nyitja meg, és a felső sávban elmagyarázza. Két sávváltozat: az egyik vegyes kijelölésre, a másik arra, amikor minden
+csak online érhető el. Csak az első mondatban és a felkínált kiutakban térnek el. A harmadik kulcs az a sor, amely akkor
+jelenik meg, amikor a Cmdr visszaadja a gombnyomást.
 
 - **`.cloudOnlineOnlyMixedWarning`** · a `csak online érhető el` a Finder fordulata a kiürített fájlra; a `Kuka` és a
   `felhőszolgáltatás` a § Terms részből · medium.
@@ -3707,11 +3707,10 @@ amely akkor jelenik meg, amikor a Cmdr visszaadja a gombnyomást.
 - **`.cloudOnlineOnlyHandedBack`** · a gomb feletti sor, miután a Cmdr szándékosan nem hajtotta végre a gombnyomást.
   Tárgyilagos, mentegetőzés nélkül · medium.
 - **Mind a négy tény maradjon benne**: (1) a Kuka letöltené a fájlokat, (2) ezért a Cmdr csak a TELJES kijelölés
-  törlését ajánlja fel, (3) a Kukában utána NEM marad másolat, a szolgáltatásnál viszont igen (❌ ne legyen belőle „úgyis
-  a Kukába kerül”), (4) a sávban megnevezett kiutak.
+  törlését ajánlja fel, (3) a Kukában utána NEM marad másolat, a szolgáltatásnál viszont igen (❌ ne legyen belőle
+  „úgyis a Kukába kerül”), (4) a sávban megnevezett kiutak.
 - **A két `<strong>` szakasz marad**, a „le kellene tölteni” részen és a „törlését” szón. A „Törlés” idézőjelben a gomb
   felirata: mindig ugyanaz, mint a `fileOperations.delete.confirmDelete`.
 - Nem kell `sameAsSourceJustification`: minden érték eltér az angoltól.
 - Az overflow-ellenőrzésnél nézd meg: a sáv hosszú, és keskeny csíkban ül a fájllista fölött.
 - ⚠️ Vázlat, emberi ellenőrzés még nem történt.
-

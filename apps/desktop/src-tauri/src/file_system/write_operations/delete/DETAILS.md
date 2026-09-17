@@ -102,7 +102,8 @@ Pinned by `delete_cancel_during_scan_emits_write_cancelled`.
 ## What a batch trash reports (`trash_files_with_progress`)
 
 `trashItemAtURL` is atomic per top-level item, so a batch has three endings, not two, and each one has to be readable
-from the terminal event alone.
+from the terminal event alone. Progress counts items rather than bytes for the same reason; the byte figure, when there
+is one, comes from sizes computed before the batch started, never from the trash calls themselves.
 
 - **Every item taken** → `write-complete` with `refused: None`. A plain success.
 - **Every item refused** → `write-error` carrying `WriteOperationError::TrashRefused { item_count, reason, message }`,

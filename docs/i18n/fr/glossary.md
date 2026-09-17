@@ -3752,10 +3752,10 @@ replacement target. Four rules bind this whole group:
 ## L'avertissement « contenu en ligne uniquement » (`fileOperations.delete.cloudOnlineOnlyMixedWarning` / `fileOperations.delete.cloudOnlineOnlyAllWarning` / `fileOperations.delete.cloudOnlineOnlyHandedBack`)
 
 Si un élément sélectionné d'un dossier cloud est disponible en ligne uniquement, la corbeille devrait d'abord le
-télécharger. Cmdr ouvre donc la boîte de dialogue de suppression définitive et l'explique dans le bandeau. Deux variantes
-du bandeau : une pour une sélection mixte, une pour une sélection entièrement en ligne. Elles ne diffèrent que par la
-première phrase et par les issues qu'elles peuvent proposer. La troisième clé est la ligne affichée quand Cmdr rend la
-main après un appui.
+télécharger. Cmdr ouvre donc la boîte de dialogue de suppression définitive et l'explique dans le bandeau. Deux
+variantes du bandeau : une pour une sélection mixte, une pour une sélection entièrement en ligne. Elles ne diffèrent que
+par la première phrase et par les issues qu'elles peuvent proposer. La troisième clé est la ligne affichée quand Cmdr
+rend la main après un appui.
 
 - **`.cloudOnlineOnlyMixedWarning`** · `en ligne uniquement` est la formule du Finder pour un fichier évincé ;
   `corbeille` et `service cloud` viennent de § Terms · medium.
@@ -3773,4 +3773,3 @@ main après un appui.
 - Pas de `sameAsSourceJustification` : toutes les valeurs diffèrent de l'anglais.
 - À vérifier au passage overflow : le bandeau est long et tient dans une bande étroite au-dessus de la liste.
 - ⚠️ Brouillon, pas encore relu par un humain.
-

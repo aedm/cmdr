@@ -1,7 +1,6 @@
 # Delete + trash
 
-A local-FS walker (`walkdir` + `fs::remove_file`), a volume-aware walker (MTP, SMB, over the `Volume` trait,
-oracle-aware), and OS-native trash.
+A local-FS walker (`walkdir` + `fs::remove_file`), a volume-aware walker (MTP, SMB, oracle-aware), and OS-native trash.
 
 `../CLAUDE.md` holds the shared `WriteOperationState`, `OperationIntent`, cancel, ETA, and settle contracts;
 `../transfer/CLAUDE.md` is the copy + move parallel. Frontend counterpart:
@@ -21,7 +20,6 @@ oracle-aware), and OS-native trash.
   (the one `SF_DATALESS` read). DETAILS § "A trash of online-only cloud content becomes a delete".
 - **`volume_start.rs`**: a volume delete's managed lifecycle (here, not `../mod.rs`, because its body is `async`).
   DETAILS § "The volume delete's own lifecycle".
-- Test siblings: the `*_tests.rs` / `*_test.rs` files beside the code.
 
 ## Must-knows
 
@@ -30,15 +28,14 @@ oracle-aware), and OS-native trash.
 - **Delete is not rollbackable.** Cancel stops further deletes; it can't restore what's gone.
 - **MTP/non-local volumes can't use `walkdir` or `fs::remove_*`**, hence the parallel path. Both emit identical events.
 - **Both delete paths reuse the scan-preview cache via `config.preview_id`**: on a hit the `ScanResult` is consumed
-  directly and an initial `phase: Deleting` event fires, so the FE keeps the right denominator. The volume path is
-  oracle-aware without a preview too.
+  directly and an initial `phase: Deleting` event fires, so the FE keeps the right denominator.
 - **A `preview_id` alone doesn't authorize acting on a path set.** The LOCAL walker iterates `scan_result.files` and
   never re-reads its `sources`, so an unbound cache deletes the PREVIEWED tree, with no rollback. Bind with
   `take_cached_scan_result`; ❌ never skip it.
 - **❌ Never resolve a top-level source's type with `.unwrap_or(false)`.** Hand the `Option` to
   `scan_volume_recursive`, which propagates a failed probe: a guessed "file" books zero bytes for a whole tree.
-- **Trash has no scan phase**: `trashItemAtURL` is atomic per top-level item, so progress tracks items (bytes from
-  pre-computed sizes). A PARTLY refused batch still COMPLETES, and its event carries `refused` (count +
+- **Trash has no scan phase**: `trashItemAtURL` is atomic per top-level item, so progress tracks items. A PARTLY
+  refused batch still COMPLETES, and its event carries `refused` (count +
   `strongest_refusal`): ❌ never `None`, or the ending reads as a clean success.
 - **ONLINE-ONLY content (`SF_DATALESS`) in `~/Library/CloudStorage/<domain>/` trashes as a permanent delete**: trashing
   an evicted file DOWNLOADS it first. ❌ Never route on the folder alone (an ordinary Dropbox file trashes fine; routing
@@ -50,7 +47,7 @@ oracle-aware), and OS-native trash.
   (`error-string-match` forbids it). A failed batch is `WriteOperationError::TrashRefused`, ❌ not an `IoError` (one
   flattened sentence leaves the dialog only "try again"), reporting `strongest_refusal`, ❌ not the most common one.
 - **Delete and trash don't `fsync`, and ❌ never a global `sync(2)`**: a non-durable delete is annoyance-class, and that
-  `sync` stalled every app on the box without making "complete" durable. Pinned by
+  `sync` stalled every other app without making "complete" durable. Pinned by
   `tests.rs::no_global_sync_or_spawn_async_sync_in_write_operations`.
 - **A recursive scan that bails with `Err(Cancelled)` must NOT emit `write-cancelled`; its top-level caller does**, via
   `emit_cancelled_if_aborted`. `scan_volume_recursive` checks cancel per level, so emitting at the bail site fires the
