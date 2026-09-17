@@ -170,7 +170,17 @@ impl ArchiveVolume {
     /// clients), and one on local disk earns [`WatchCoverage::EveryWriter`].
     /// The mount probe is per-platform and lives app-side, which is why this
     /// crate takes the answer rather than computing it.
+    ///
+    /// A REMOTE parent has no local path for `notify` to watch, so this returns
+    /// without arming one and `listing_watch_coverage` stays
+    /// [`WatchCoverage::None`]. Asked anyway, `notify` would refuse an
+    /// `sftp://…` / `smb://…` directory and log a warning per archive
+    /// registration, which reads like a broken watch in an error report rather
+    /// than the expected answer.
     pub fn start_content_watch(&self, parent_volume_id: &str, coverage: WatchCoverage) {
+        if !self.parent_is_local() {
+            return;
+        }
         let mut watch = self.watch.lock_ignore_poison();
         if watch.is_some() {
             return;

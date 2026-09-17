@@ -179,9 +179,10 @@ impl VolumeManager {
         // watch only refreshes frontend listings, so there's nothing to watch
         // before the frontend exists — and this keeps headless unit tests from
         // starting real OS watches (production sets the handle at startup, before
-        // any archive is browsed). A non-local parent's watch never establishes
-        // (notify can't watch an `smb://` / `mtp://` path), so a remote archive's
-        // `listing_watch_coverage` stays `None` — pre-op rescans stay honest.
+        // any archive is browsed). A non-local parent gets no watch at all
+        // (notify can't watch an `smb://` / `sftp://` path, and asking warns per
+        // registration), so a remote archive's `listing_watch_coverage` stays
+        // `None` — pre-op rescans stay honest.
         //
         // The coverage ceiling is resolved HERE because the mount probe is
         // per-platform and app-side: the watch is an FSEvents watch on the
