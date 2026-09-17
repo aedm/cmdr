@@ -1,7 +1,7 @@
 <!--
   Minimal context menu for the viewer's `.file-content`. Floats at the right-click
-  position; offers Copy when there's a selection, and Select all otherwise. Closes on
-  outside click, Escape, blur, or after an action runs.
+  position; offers Copy when there's a selection, and Select all otherwise. Closes on an
+  outside press, Escape, blur, or after an action runs.
 
   Why an in-app HTML menu instead of the OS-native one (`showContextMenu`): the OS
   menu would interrupt the gesture (it pops up over the webview), and tying a single
@@ -69,7 +69,15 @@
         }
     }
 
-    function handleOutsideClick(e: MouseEvent): void {
+    /**
+     * Gotcha/Why this listens for `pointerdown`: `.file-content` cancels its own
+     * `pointerdown` to keep drag-select working, and a canceled `pointerdown` suppresses
+     * the compatibility `mousedown` for that whole gesture. A `mousedown` listener then
+     * never hears a press on the text, so the menu hangs open over it while a press on the
+     * footer or toolbar dismisses it fine. Canceling doesn't stop propagation, so the
+     * window still sees the `pointerdown`. The house `Menu` primitive makes the same call.
+     */
+    function handleOutsidePress(e: PointerEvent): void {
         if (menuRef && e.target instanceof Node && !menuRef.contains(e.target)) {
             onClose()
         }
@@ -86,7 +94,7 @@
     }
 </script>
 
-<svelte:window onmousedown={handleOutsideClick} onblur={onClose} onkeydown={handleKey} />
+<svelte:window onpointerdown={handleOutsidePress} onblur={onClose} onkeydown={handleKey} />
 
 <div
     bind:this={menuRef}
