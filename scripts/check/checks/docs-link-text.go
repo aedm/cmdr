@@ -2,8 +2,6 @@ package checks
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -151,17 +149,22 @@ func RunDocsLinkText(ctx *CheckContext) (CheckResult, error) {
 	}
 
 	var hits []linkTextHit
+	scanned := 0
 	for _, rel := range files {
-		data, readErr := os.ReadFile(filepath.Join(ctx.RootDir, filepath.FromSlash(rel)))
+		data, present, readErr := readTrackedFile(ctx.RootDir, rel)
 		if readErr != nil {
-			return CheckResult{}, fmt.Errorf("failed to read %s: %w", rel, readErr)
+			return CheckResult{}, readErr
 		}
+		if !present {
+			continue
+		}
+		scanned++
 		hits = append(hits, scanLinkText(rel, string(data))...)
 	}
 
 	if len(hits) == 0 {
 		return Success(fmt.Sprintf("%d agent-facing %s scanned, no path-shaped link text",
-			len(files), Pluralize(len(files), "doc", "docs"))), nil
+			scanned, Pluralize(scanned, "doc", "docs"))), nil
 	}
 
 	var sb strings.Builder

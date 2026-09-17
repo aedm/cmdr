@@ -98,9 +98,12 @@ func collectCatalogImports(rootDir string) (map[string]bool, error) {
 		if !strings.HasSuffix(rel, ".svelte") {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(rootDir, rel))
+		data, present, err := readTrackedFile(rootDir, rel)
 		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", rel, err)
+			return nil, err
+		}
+		if !present {
+			continue
 		}
 		for _, m := range uiPrimitiveImportPattern.FindAllStringSubmatch(string(data), -1) {
 			imported[m[1]] = true

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -275,37 +274,6 @@ func scanFileLengths(rootDir string, allowlist fileLengthAllowlist) (fileLengthS
 		result.longFiles = append(result.longFiles, longFile{relPath: relPath, lines: lineCount, sizeBytes: info.Size()})
 	}
 	return result, nil
-}
-
-// repoFiles enumerates every first-party file as a repo-relative, forward-slashed
-// path: the git-tracked set when rootDir is a work tree (so gitignored and
-// untracked generated output is excluded for free), else a filesystem walk. Both
-// whole-tree scanners (`file-length`, `invariant-density`) take their file list
-// from here so they agree on what "in the repo" means.
-func repoFiles(rootDir string) ([]string, error) {
-	if relPaths, ok := gitTrackedFiles(rootDir); ok {
-		return relPaths, nil
-	}
-	return walkSourceFiles(rootDir)
-}
-
-// gitTrackedFiles returns every tracked file as a repo-relative, forward-slashed
-// path. Returns (nil, false) when rootDir isn't a git work tree, so the caller
-// can fall back to a filesystem walk. Tracked-only (no `--others`) is the whole
-// point: gitignored and untracked generated output never reaches the scanner.
-func gitTrackedFiles(rootDir string) ([]string, bool) {
-	cmd := exec.Command("git", "-C", rootDir, "ls-files", "-z")
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, false
-	}
-	var files []string
-	for rel := range strings.SplitSeq(string(out), "\x00") {
-		if rel != "" {
-			files = append(files, rel)
-		}
-	}
-	return files, true
 }
 
 // walkSourceFiles is the non-git fallback: a filesystem walk returning every

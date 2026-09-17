@@ -92,16 +92,21 @@ func RunDocsTableHygiene(ctx *CheckContext) (CheckResult, error) {
 	}
 
 	var hits []tableHygieneHit
+	scanned := 0
 	for _, rel := range files {
-		data, readErr := os.ReadFile(filepath.Join(ctx.RootDir, filepath.FromSlash(rel)))
+		data, present, readErr := readTrackedFile(ctx.RootDir, rel)
 		if readErr != nil {
-			return CheckResult{}, fmt.Errorf("failed to read %s: %w", rel, readErr)
+			return CheckResult{}, readErr
 		}
+		if !present {
+			continue
+		}
+		scanned++
 		hits = append(hits, scanTableHygiene(rel, string(data))...)
 	}
 
 	if len(hits) == 0 {
-		return Success(fmt.Sprintf("%d markdown files scanned, all tables clean", len(files))), nil
+		return Success(fmt.Sprintf("%d markdown files scanned, all tables clean", scanned)), nil
 	}
 
 	var narrow, wide []tableHygieneHit
