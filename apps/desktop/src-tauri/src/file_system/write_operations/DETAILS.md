@@ -738,6 +738,14 @@ module had two `debug!` calls, neither at scan start. Every preview now logs one
 DEBUG heartbeat with counts and time since the last one, and an INFO (or WARN, on a timeout) at the end, all under the
 `scan_preview` target, so the next hang answers "did it start, did it progress, how did it end" without guessing.
 
+**A completed preview logs the WALK's totals, not the watchdog's counters** (`note_completed`, which takes a
+`ScanTally`). The counters only move on the progress tick, and that tick is on the
+`fileOperations.progressUpdateInterval` timer, so a scan finishing inside one interval never feeds them: the settle line
+read `0 files, 0 dirs, 0 bytes` over a fully walked tree, which is what every preview in a production log said,
+three-file folders included, and it sends whoever reads it chasing a phantom scan bug. ❗ The cancelled and gave-up arms
+keep reading the watchdog's own counters on purpose (`note_settled`): there are no totals, and "how far we got before
+stopping" is the number worth having.
+
 **Testability.** `ScanPreviewEventSink` (mirroring `OperationEventSink`) keeps both workers off `tauri::AppHandle`, so
 `scan_watchdog_tests.rs` can point a real walk at `test_support::WedgedVolume` — every future parks forever — and watch
 the preview settle anyway. A network drop isn't repeatable; a volume that never answers is exactly repeatable and

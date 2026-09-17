@@ -46,7 +46,7 @@ use super::scan_cache::{
 };
 use super::scan_source_tracker::sort_files;
 use super::scan_walker::{OnlineOnlyWatch, WalkContext, walk_sources_with_per_path};
-use super::scan_watchdog::{SCAN_INACTIVITY_LIMIT, ScanWatchdog, scan_target_label};
+use super::scan_watchdog::{SCAN_INACTIVITY_LIMIT, ScanTally, ScanWatchdog, scan_target_label};
 use super::state::{CachedScanResult, FileInfo, ScanPreviewState};
 use super::types::{
     ScanPreviewCancelledEvent, ScanPreviewCompleteEvent, ScanPreviewErrorEvent, ScanPreviewProgressEvent,
@@ -386,7 +386,13 @@ pub(super) fn run_scan_preview(
 
             let file_count = files.len();
             let dirs_count = dirs.len();
-            watchdog.note_settled("complete");
+            // The walk's own totals, not the watchdog's tick counters: a preview
+            // that finishes inside one progress interval never fed those.
+            watchdog.note_completed(ScanTally {
+                files: file_count,
+                dirs: dirs_count,
+                bytes: total_bytes,
+            });
             settle_preview(
                 &preview_id,
                 ScanOutcome::Complete,
@@ -564,7 +570,13 @@ pub(super) async fn run_volume_scan_preview(
             events.emit_cancelled(ScanPreviewCancelledEvent { preview_id });
         }
         Ok(batch) => {
-            watchdog.note_settled("complete");
+            // See the local walk's matching call: the batch's own totals, since a
+            // backend that answers in one round trip never ticks progress.
+            watchdog.note_completed(ScanTally {
+                files: total_files,
+                dirs: total_dirs,
+                bytes: total_bytes,
+            });
             // Cache results: volume scans don't produce per-file FileInfo, but
             // the cache stores aggregate stats AND per-path scan results so
             // copy_between_volumes can reuse both without re-statting.
