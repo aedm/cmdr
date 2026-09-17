@@ -175,6 +175,72 @@ describe('closing on an outside pointer-down', () => {
     anchor.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     expect(menu.isOpen).toBe(true)
   })
+
+  // ❗ A submenu is a SIBLING of the surface in the portal, not a child, so it isn't caught by
+  // the `surfaceEl.contains` test. Without its own exemption, pressing a submenu row closed
+  // the menu on pointer-down and the click that followed activated nothing at all.
+  it('stays open for a pointer-down in its own submenu', async () => {
+    const { menu } = await open()
+    menu.surface.openSubmenu('share', true)
+    await tick()
+    await tick()
+    const submenu = document.querySelector('[data-menu-submenu]')
+    expect(submenu).not.toBeNull()
+    submenu?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(menu.isOpen).toBe(true)
+  })
+})
+
+/**
+ * A menu opened from INSIDE another one: the drive-index badge sits in a volume-switcher row
+ * and opens its own menu. The inner menu portals to the body, so a pointer-down in it is not
+ * inside the outer surface — and yet it never left the outer menu. Without this rule, clicking
+ * the badge's menu closed the switcher out from under it.
+ */
+describe('a menu opened from inside another', () => {
+  /** Mounts a second menu anchored to an element, and returns its controller. */
+  async function openNested(anchor: HTMLElement, ariaLabel: string): Promise<MenuController> {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const menu = createMenu({ getSections: sections, onSelect: () => {} })
+    menu.openUnder(anchor)
+    const component = mount(Menu, { target, props: { menu, ariaLabel } })
+    await tick()
+    await tick()
+    mounted.push(() => {
+      menu.destroy()
+      void unmount(component)
+    })
+    return menu
+  }
+
+  /** A trailing control in every row, the shape a switcher row's drive-index badge has. */
+  const badge = createRawSnippet<[MenuRowContext]>(() => ({
+    render: () => '<button type="button" class="badge">•</button>',
+  }))
+
+  it('leaves the outer menu open when its own surface is used', async () => {
+    const { menu: outer } = await open({ trailing: badge })
+    const anchor = document.querySelector<HTMLElement>('.badge')
+    if (!anchor) throw new Error('expected a trailing badge to anchor from')
+    const inner = await openNested(anchor, 'Drive index')
+
+    const innerSurface = document.querySelector('[data-menu][aria-label="Drive index"]')
+    expect(innerSurface).not.toBeNull()
+    innerSurface?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(inner.isOpen).toBe(true)
+    expect(outer.isOpen).toBe(true)
+  })
+
+  it('still closes the outer menu for a pointer-down that really left it', async () => {
+    const { menu: outer } = await open({ trailing: badge })
+    const anchor = document.querySelector<HTMLElement>('.badge')
+    if (!anchor) throw new Error('expected a trailing badge to anchor from')
+    await openNested(anchor, 'Drive index')
+
+    document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    expect(outer.isOpen).toBe(false)
+  })
 })
 
 describe('pointer selection', () => {
@@ -183,6 +249,21 @@ describe('pointer selection', () => {
     await open({}, { onSelect })
     row('hd')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'hd' }), 'pointer')
+  })
+
+  // The whole point of the submenu exemption above: a real click is a pointer-down and then a
+  // click, and while the pointer-down closed the menu, the click that followed reached an
+  // already-closed controller and picked nothing.
+  it('activates a submenu row that was clicked', async () => {
+    const onSelect = vi.fn()
+    const { menu } = await open({}, { onSelect })
+    menu.surface.openSubmenu('share', true)
+    await tick()
+    await tick()
+    const child = document.querySelector('[data-menu-submenu] [data-menu-row="connect"]')
+    child?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    child?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'connect' }), 'pointer')
   })
 
   it('never activates a row from a click on a control inside it', async () => {
@@ -216,6 +297,32 @@ describe('test hooks', () => {
     expect(document.querySelector('[data-menu-section="volumes"]')).not.toBeNull()
     expect(document.querySelector('[data-menu-section="volumes"] [data-menu-heading]')?.textContent).toBe('Volumes')
     expect(document.querySelector('[data-menu-empty]')).not.toBeNull()
+  })
+
+  it('gives every surface an instance name, and names the host of a nested one', async () => {
+    const trailing = createRawSnippet<[MenuRowContext]>(() => ({
+      render: () => '<button type="button" class="badge">•</button>',
+    }))
+    await open({ trailing })
+    const outerId = surface()?.getAttribute('data-menu-instance')
+    expect(outerId).toBeTruthy()
+    // A menu anchored to a row's own control names the surface it came from; a top-level one
+    // (the outer menu here, opened at a point) names nothing.
+    expect(surface()?.hasAttribute('data-menu-nested-in')).toBe(false)
+
+    const anchor = document.querySelector<HTMLElement>('.badge')
+    if (!anchor) throw new Error('expected a trailing badge to anchor from')
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const inner = createMenu({ getSections: sections, onSelect: () => {} })
+    inner.openUnder(anchor)
+    const component = mount(Menu, { target, props: { menu: inner, ariaLabel: 'Drive index' } })
+    await tick()
+    mounted.push(() => {
+      inner.destroy()
+      void unmount(component)
+    })
+    expect(document.querySelector('[aria-label="Drive index"]')?.getAttribute('data-menu-nested-in')).toBe(outerId)
   })
 
   it('moves data-highlighted with the cursor, and marks keyboard mode', async () => {

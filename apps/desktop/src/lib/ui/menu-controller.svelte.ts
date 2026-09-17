@@ -33,6 +33,31 @@ import { clampedReorderTarget, moveItem, pointerInsertionSlot, pointerReorderTar
 /** Below this many pixels of pointer travel, a mouseup is a plain click (activate), not a drag. */
 const DRAG_THRESHOLD_PX = 4
 
+/**
+ * Every open menu, in the order they opened, so the one on top owns the keyboard.
+ *
+ * ❗ A menu can be opened from INSIDE another (the drive-index badge sits in a volume-switcher
+ * row and opens its own). Both hold a document-level CAPTURE listener, and `stopPropagation`
+ * never stops a listener on the same node, so without this stack one Enter would activate a
+ * row in each menu and one Escape would close the pair. The topmost is also the only one that
+ * should be swallowing keys; the one underneath is inert until it's on top again.
+ */
+const openMenus: object[] = []
+
+function pushOpen(menu: object): void {
+  dropOpen(menu)
+  openMenus.push(menu)
+}
+
+function dropOpen(menu: object): void {
+  const at = openMenus.indexOf(menu)
+  if (at !== -1) openMenus.splice(at, 1)
+}
+
+function isTopmost(menu: object): boolean {
+  return openMenus[openMenus.length - 1] === menu
+}
+
 /** Pointer travel that ends keyboard mode, so a resting mouse can't steal the cursor. */
 const KEYBOARD_MODE_EXIT_PX = 5
 
@@ -183,6 +208,7 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     justDragged = false
     highlightedValue = navigableValues(sections())[0] ?? null
     attachKeyListener()
+    pushOpen(controller)
     deps.onOpenChange?.(true)
   }
 
@@ -195,6 +221,7 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     closeSubmenu()
     endDrag()
     detachKeyListener()
+    dropOpen(controller)
     deps.onOpenChange?.(false)
     deps.restoreFocus?.()
   }
@@ -527,6 +554,9 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     highlight: setHighlight,
     handleKey(event) {
       if (!open) return false
+      // A menu opened from inside this one owns the keyboard until it closes. Both listen on
+      // the document, so without this the key would be handled twice over.
+      if (!isTopmost(controller)) return false
       // An inline editor owns every keystroke, untouched: not even swallowed, or the field
       // would lose the keys it exists to receive.
       if (deps.isEditing?.()) return false
@@ -555,6 +585,9 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     destroy() {
       detachKeyListener()
       endDrag()
+      // A menu torn down while open would otherwise sit on top of the stack forever, leaving
+      // the menu underneath it inert.
+      dropOpen(controller)
     },
   }
 

@@ -275,6 +275,57 @@ describe('the open menu owns the keyboard', () => {
 })
 
 /**
+ * A menu opened from INSIDE another one (a drive-index badge in a volume-switcher row).
+ * Both hold a document-level capture listener, and `stopPropagation` doesn't stop a
+ * listener on the same node, so without a rule every key would reach both: one Enter
+ * would activate a row in each menu, and one Escape would close the pair.
+ */
+describe('two open menus', () => {
+  it('leaves every key to the one that opened last', () => {
+    const outer = build()
+    const inner = build()
+    outer.openUnder(anchorEl())
+    inner.openUnder(anchorEl())
+
+    document.dispatchEvent(keydown('ArrowDown'))
+    expect(inner.highlightedValue).toBe('fav-b')
+    expect(outer.highlightedValue).toBe('fav-a')
+  })
+
+  it('reports the key as unhandled for the menu underneath', () => {
+    const outer = build()
+    const inner = build()
+    outer.openUnder(anchorEl())
+    inner.openUnder(anchorEl())
+    expect(outer.handleKey(keydown('ArrowDown'))).toBe(false)
+  })
+
+  it('closes only the inner menu on Escape, and hands the keys back', () => {
+    const outer = build()
+    const inner = build()
+    outer.openUnder(anchorEl())
+    inner.openUnder(anchorEl())
+
+    document.dispatchEvent(keydown('Escape'))
+    expect(inner.isOpen).toBe(false)
+    expect(outer.isOpen).toBe(true)
+
+    document.dispatchEvent(keydown('ArrowDown'))
+    expect(outer.highlightedValue).toBe('fav-b')
+  })
+
+  it('hands the keys back when the inner menu is destroyed rather than closed', () => {
+    const outer = build()
+    const inner = build()
+    outer.openUnder(anchorEl())
+    inner.openUnder(anchorEl())
+    inner.destroy()
+    document.dispatchEvent(keydown('ArrowDown'))
+    expect(outer.highlightedValue).toBe('fav-b')
+  })
+})
+
+/**
  * Accelerators: a row that declares one activates when its digit is typed, from anywhere in the
  * open menu. The pure matching is pinned in `menu-navigation.test.ts`; this is where it sits in
  * the controller's order of business.
