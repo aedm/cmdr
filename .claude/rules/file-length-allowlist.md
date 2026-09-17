@@ -1,19 +1,20 @@
 # Allowlist consent
 
-Warn-only scanners keep JSON allowlists of current sizes (`file-length`, `claude-md-length`, `module-cycles`,
-`jscpd-rust` / `jscpd-frontend`, the coverage allowlist), plus the error-level `docs-reachable` and
-`desktop-i18n-doc-citations`. They shrink-wrap themselves on local runs, so ❌ don't hand-edit the `files` /
-`subsystems` / `pairs` / `tangles` sections: run the check and commit the rewrite.
+Scanners keep JSON allowlists of current sizes and shrink-wrap themselves on local runs, so ❌ never hand-edit a number:
+run the check, commit the rewrite. The `reason` beside it is yours to write.
 
-✅ **Tightening never needs asking**: remove an entry a check now says is unneeded, lower a number, drop an `exempt`.
-Refreshing a bundle-size baseline (`desktop-bundle-size`, `website-bundle-size`) is free too: delete the file, re-run,
-and report the growth.
+✅ **Tightening never needs asking**: drop an entry a check calls unneeded, lower a number, drop an `exempt`. A
+bundle-size baseline (`desktop-bundle-size`, `website-bundle-size`) refreshes free too: delete it, re-run, report the
+growth.
 
-❌ **Loosening always needs David's explicit consent**: a new entry, a raised number, a new `exempt`. Bumping one as a
-side effect hides growth that trimming or splitting should fix (a `CLAUDE.md` moves depth into its `DETAILS.md`; a jscpd
-pair extracts the shared code). A warn is safe to leave, so surface it rather than silence it. `docs-reachable` and
-`desktop-i18n-doc-citations` are errors: connect the orphan, or repoint the citation.
+✅ **`file-length`, `claude-md-length`, and `jscpd-rust` / `jscpd-frontend` FAIL, and the call is yours**: always split
+in case of a genuine architectural win, bump otherwise. Every entry carries a `reason` for that call, or
+`TODO: <why it should be split, and how>` when you bumped one that shouldn't stay; say which in the commit.
 
-Two carve-outs: `invariant-density` is mothballed (no lane runs it, and its allowlist is hand-bumpable), and an
-`index-crate-isolation` ceiling rises when the wider surface is genuinely better, said in its `handle/DETAILS.md` and
+❌ **Every other allowlist needs David's explicit consent to loosen**: a new entry, a raised number, a new `exempt`.
+That covers `module-cycles`, the coverage allowlist, and the error-level `docs-reachable` /
+`desktop-i18n-doc-citations` (connect the orphan, or repoint the citation).
+
+Two carve-outs: `invariant-density` is mothballed (no lane runs it, its allowlist is hand-bumpable), and an
+`index-crate-isolation` ceiling rises when the wider surface is genuinely better, said in `handle/DETAILS.md` and
 the commit, ❌ never merely to pass. Mechanics: `scripts/check/checks/DETAILS.md`.

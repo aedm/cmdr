@@ -35,7 +35,7 @@ var rustJscpdLane = jscpdLane{
 }
 
 // RunJscpdRust reports copy-paste between Rust files: which two files say the same
-// thing, at which lines. Warn-only, gated by `jscpd-rust-allowlist.json`.
+// thing, at which lines. Fails on what `jscpd-rust-allowlist.json` does not already cover.
 func RunJscpdRust(ctx *CheckContext) (CheckResult, error) {
 	return runJscpdLane(ctx, rustJscpdLane)
 }

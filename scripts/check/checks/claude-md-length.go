@@ -56,10 +56,46 @@ type longClaudeMd struct {
 
 // claudeMdLengthAllowlist is the on-disk shape of claude-md-length-allowlist.json.
 // `Files` maps relative paths to accepted word counts (the contract a CLAUDE.md
-// may not silently grow past).
+// may not silently grow past) plus the reason each one is accepted.
 type claudeMdLengthAllowlist struct {
-	Comment string         `json:"$comment,omitempty"`
-	Files   map[string]int `json:"files"`
+	Comment string                       `json:"$comment,omitempty"`
+	Files   map[string]claudeMdWordLimit `json:"files"`
+}
+
+// claudeMdWordLimit is one `files` entry: the accepted word count, and why this
+// doc gets to be that long. Same contract as `fileLengthLimit` in file-length.go
+// (mandatory reason, `TODO:` prefix when the doc should be trimmed instead), in
+// words rather than lines. A CLAUDE.md is auto-injected into every agent's
+// context, so an entry here is a standing tax on every session, which is exactly
+// the kind of decision that needs its thinking written down.
+type claudeMdWordLimit struct {
+	Words  int
+	Reason string
+}
+
+type claudeMdWordLimitJSON struct {
+	Words  int    `json:"words"`
+	Reason string `json:"reason"`
+}
+
+func (l claudeMdWordLimit) MarshalJSON() ([]byte, error) {
+	return json.Marshal(claudeMdWordLimitJSON(l))
+}
+
+// UnmarshalJSON also accepts a bare number, which parses to a reasonless entry
+// the check then reports by name. See `fileLengthLimit.UnmarshalJSON`.
+func (l *claudeMdWordLimit) UnmarshalJSON(data []byte) error {
+	var words int
+	if err := json.Unmarshal(data, &words); err == nil {
+		*l = claudeMdWordLimit{Words: words}
+		return nil
+	}
+	var obj claudeMdWordLimitJSON
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return fmt.Errorf("a `files` value is a word count or {\"words\": N, \"reason\": \"…\"}: %w", err)
+	}
+	*l = claudeMdWordLimit(obj)
+	return nil
 }
 
 // claudeMdLengthAllowlistPath returns the allowlist location (next to the check
@@ -109,9 +145,10 @@ func shrinkwrapClaudeMdLengthAllowlist(rootDir string, list *claudeMdLengthAllow
 		case wordCount <= claudeMdBudgetFor(path):
 			delete(list.Files, path)
 			changes = append(changes, fmt.Sprintf("removed %s (now %d words, under the %d threshold)", path, wordCount, claudeMdBudgetFor(path)))
-		case wordCount <= allowed*(100-claudeMdAllowlistBufferPct)/100:
-			list.Files[path] = wordCount
-			changes = append(changes, fmt.Sprintf("ratcheted %s: %d → %d words", path, allowed, wordCount))
+		case wordCount <= allowed.Words*(100-claudeMdAllowlistBufferPct)/100:
+			// The number ratchets, the reason rides along (see file-length.go).
+			list.Files[path] = claudeMdWordLimit{Words: wordCount, Reason: allowed.Reason}
+			changes = append(changes, fmt.Sprintf("ratcheted %s: %d → %d words", path, allowed.Words, wordCount))
 		}
 	}
 	return changes
@@ -138,7 +175,7 @@ func scanClaudeMdLengths(rootDir string, allowlist claudeMdLengthAllowlist) (cla
 		if err != nil || wordCount <= claudeMdBudgetFor(relPath) {
 			continue
 		}
-		if allowedWords, ok := allowlist.Files[relPath]; ok && wordCount <= allowedWords*(100+claudeMdAllowlistBufferPct)/100 {
+		if allowed, ok := allowlist.Files[relPath]; ok && wordCount <= allowed.Words*(100+claudeMdAllowlistBufferPct)/100 {
 			result.allowlistedCount++
 			continue
 		}
@@ -154,9 +191,9 @@ func formatLongClaudeMd(files []longClaudeMd, allowlist claudeMdLengthAllowlist,
 	var sb strings.Builder
 	for _, f := range files {
 		detail := fmt.Sprintf("(%d words)", f.words)
-		if allowedWords, ok := allowlist.Files[f.relPath]; ok {
-			growthPct := (f.words - allowedWords) * 100 / allowedWords
-			detail = fmt.Sprintf("(%d words, allowlist: %d, +%d%% growth)", f.words, allowedWords, growthPct)
+		if allowed, ok := allowlist.Files[f.relPath]; ok {
+			growthPct := (f.words - allowed.Words) * 100 / allowed.Words
+			detail = fmt.Sprintf("(%d words, allowlist: %d, +%d%% growth)", f.words, allowed.Words, growthPct)
 		}
 		sb.WriteString(fmt.Sprintf("  - %s %s%s%s\n", f.relPath, ansiYellow, detail, ansiReset))
 	}
@@ -175,18 +212,21 @@ func formatLongClaudeMd(files []longClaudeMd, allowlist claudeMdLengthAllowlist,
 // is deliberately unlimited and not scanned. Allowlisted files are suppressed up
 // to their recorded count plus a 10% buffer. Stale allowlist entries are
 // shrink-wrapped: outside CI the check removes dead/satisfied entries and ratchets
-// slack ones down; in CI it only reports them. Always succeeds (warn-only).
+// slack ones down; in CI it only reports them.
+//
+// FAILS on a doc over the threshold that isn't allowlisted, and on an allowlist
+// entry with no reason: trimming a CLAUDE.md is work its own author can do (move
+// depth to the sibling DETAILS.md), and every word here rides in every agent's
+// context forever. The shrink-wrap path stays advisory, same as file-length.
 func RunClaudeMdLength(ctx *CheckContext) (CheckResult, error) {
 	allowlist := loadClaudeMdLengthAllowlist(ctx.RootDir)
 
 	staleChanges := shrinkwrapClaudeMdLengthAllowlist(ctx.RootDir, &allowlist)
-	madeChanges := false
 	if len(staleChanges) > 0 && !ctx.CI {
 		if err := writeJSONAllowlist(claudeMdLengthAllowlistPath(ctx.RootDir), allowlist); err != nil {
 			return CheckResult{}, err
 		}
 		reformatWithOxfmt(ctx.RootDir, "scripts/check/checks/claude-md-length-allowlist.json")
-		madeChanges = true
 	}
 
 	result, err := scanClaudeMdLengths(ctx.RootDir, allowlist)
@@ -203,10 +243,21 @@ func RunClaudeMdLength(ctx *CheckContext) (CheckResult, error) {
 		staleMsg = fmt.Sprintf("%s:\n  - %s", verb, strings.Join(staleChanges, "\n  - "))
 	}
 
+	if missing := reasonlessClaudeMdEntries(allowlist); len(missing) > 0 {
+		return CheckResult{}, fmt.Errorf(
+			"%d allowlist %s no reason:\n  - %s\nevery `files` entry is {\"words\": N, \"reason\": \"…\"}: say why this doc gets to be long, or `TODO: <what moves to DETAILS.md>`",
+			len(missing), Pluralize(len(missing), "entry has", "entries have"), strings.Join(missing, "\n  - "),
+		)
+	}
+
 	if len(result.longFiles) == 0 {
 		okMsg := "All CLAUDE.md files under threshold"
 		if result.allowlistedCount > 0 {
-			okMsg = fmt.Sprintf("No new long CLAUDE.md files (%d allowlisted)", result.allowlistedCount)
+			okMsg = fmt.Sprintf("No new long CLAUDE.md files (%d allowlisted", result.allowlistedCount)
+			if todos := countTodoClaudeMdEntries(allowlist); todos > 0 {
+				okMsg += fmt.Sprintf(", %d marked TODO", todos)
+			}
+			okMsg += ")"
 		}
 		if staleMsg != "" {
 			if ctx.CI {
@@ -221,5 +272,27 @@ func RunClaudeMdLength(ctx *CheckContext) (CheckResult, error) {
 	if staleMsg != "" {
 		msg += "\n" + staleMsg
 	}
-	return CheckResult{Code: ResultWarning, Message: msg, MadeChanges: madeChanges, Total: -1, Issues: -1, Changes: -1}, nil
+	return CheckResult{}, fmt.Errorf("%s", msg)
+}
+
+// reasonlessClaudeMdEntries and countTodoClaudeMdEntries mirror their
+// file-length counterparts. See `reasonlessAllowlistEntries`.
+func reasonlessClaudeMdEntries(list claudeMdLengthAllowlist) []string {
+	var missing []string
+	for _, relPath := range sortedKeys(list.Files) {
+		if strings.TrimSpace(list.Files[relPath].Reason) == "" {
+			missing = append(missing, relPath)
+		}
+	}
+	return missing
+}
+
+func countTodoClaudeMdEntries(list claudeMdLengthAllowlist) int {
+	n := 0
+	for _, limit := range list.Files {
+		if strings.HasPrefix(strings.TrimSpace(limit.Reason), fileLengthTodoPrefix) {
+			n++
+		}
+	}
+	return n
 }

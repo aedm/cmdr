@@ -1448,13 +1448,12 @@ var AllChecks = []CheckDefinition{
 		Run:    RunGoVersionSingleSource,
 	},
 
-	// Monorepo-wide metrics (informational, never fails)
+	// Monorepo-wide metrics. The two length gates below fail; the rest inform.
 	{
 		ID:          "file-length",
 		DisplayName: "file length",
 		App:         AppOther,
 		Tech:        "📏 Metrics",
-		NotInCI:     "warn-only metric; it can never fail, so a CI step would be noise",
 		DependsOn:   nil,
 		IsFast:      true,
 		Inputs:      wholeRepoInputs,
@@ -1476,7 +1475,6 @@ var AllChecks = []CheckDefinition{
 		DisplayName: "CLAUDE.md length",
 		App:         AppOther,
 		Tech:        "📏 Metrics",
-		NotInCI:     "warn-only metric; it can never fail, so a CI step would be noise",
 		DependsOn:   nil,
 		IsFast:      true,
 		Inputs:      wholeRepoInputs,

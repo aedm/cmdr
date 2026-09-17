@@ -120,13 +120,63 @@ func fileLengthCriticalThreshold(relPath string) int {
 
 // fileLengthAllowlist is the on-disk shape of file-length-allowlist.json.
 // `Files` maps relative paths to accepted line counts (the contract a file may
-// not silently grow past). `Exempt` maps relative paths to a reason for files
-// whose length is not actionable at all (generated files): they never warn and
-// never get ratcheted.
+// not silently grow past) plus the reason each one is accepted. `Exempt` maps
+// relative paths to a reason for files whose length is not actionable at all
+// (generated files): they never fail and never get ratcheted.
 type fileLengthAllowlist struct {
-	Comment string            `json:"$comment,omitempty"`
-	Exempt  map[string]string `json:"exempt,omitempty"`
-	Files   map[string]int    `json:"files"`
+	Comment string                     `json:"$comment,omitempty"`
+	Exempt  map[string]string          `json:"exempt,omitempty"`
+	Files   map[string]fileLengthLimit `json:"files"`
+}
+
+// fileLengthLimit is one `files` entry: the accepted line count, and why this
+// file gets to be that long. The reason is mandatory (`RunFileLength` fails on
+// an empty one) so an allowlisted file carries the thinking that put it there
+// and nobody has to re-derive it; a reason starting with `fileLengthTodoPrefix`
+// means the opposite, that the file SHOULD be split and here's how.
+//
+// The shrink-wrap rewrites the number and leaves the reason alone, which is why
+// the two ride on one entry rather than in a parallel map: a parallel map drifts
+// the moment an entry is removed from one side only.
+type fileLengthLimit struct {
+	Lines  int
+	Reason string
+}
+
+// fileLengthTodoPrefix marks a reason that admits the file should be split.
+// These are counted on the green line so the backlog stays visible instead of
+// reading like an accepted decision.
+const fileLengthTodoPrefix = "TODO:"
+
+// fileLengthLimitJSON is the serialized form: always an object, so a hand-added
+// entry that a reason is missing from reads as obviously incomplete rather than
+// as a number somebody chose.
+type fileLengthLimitJSON struct {
+	Lines  int    `json:"lines"`
+	Reason string `json:"reason"`
+}
+
+func (l fileLengthLimit) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fileLengthLimitJSON(l))
+}
+
+// UnmarshalJSON also accepts a bare number (`"path/to/x.rs": 903`). That form
+// carries no reason, so the check reports it as incomplete rather than silently
+// accepting it; taking it here means the error says which entry needs a reason,
+// instead of the whole allowlist failing to parse and every long file in the
+// repo lighting up at once.
+func (l *fileLengthLimit) UnmarshalJSON(data []byte) error {
+	var lines int
+	if err := json.Unmarshal(data, &lines); err == nil {
+		*l = fileLengthLimit{Lines: lines}
+		return nil
+	}
+	var obj fileLengthLimitJSON
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return fmt.Errorf("a `files` value is a line count or {\"lines\": N, \"reason\": \"…\"}: %w", err)
+	}
+	*l = fileLengthLimit(obj)
+	return nil
 }
 
 // fileLengthAllowlistPath returns the allowlist location (next to the check
@@ -168,9 +218,11 @@ func shrinkwrapFileLengthAllowlist(rootDir string, list *fileLengthAllowlist) []
 		case lineCount < threshold:
 			delete(list.Files, relPath)
 			changes = append(changes, fmt.Sprintf("removed %s (now %d lines, under the %d threshold)", relPath, lineCount, threshold))
-		case lineCount <= allowed*(100-fileLengthAllowlistBufferPct)/100:
-			list.Files[relPath] = lineCount
-			changes = append(changes, fmt.Sprintf("ratcheted %s: %d → %d lines", relPath, allowed, lineCount))
+		case lineCount <= allowed.Lines*(100-fileLengthAllowlistBufferPct)/100:
+			// The number ratchets, the reason rides along: it explains the
+			// file's shape, which shrinking by a few lines doesn't change.
+			list.Files[relPath] = fileLengthLimit{Lines: lineCount, Reason: allowed.Reason}
+			changes = append(changes, fmt.Sprintf("ratcheted %s: %d → %d lines", relPath, allowed.Lines, lineCount))
 		}
 	}
 	for _, path := range sortedKeys(list.Exempt) {
@@ -212,7 +264,7 @@ func scanFileLengths(rootDir string, allowlist fileLengthAllowlist) (fileLengthS
 			result.allowlistedCount++
 			continue
 		}
-		if allowedLines, ok := allowlist.Files[relPath]; ok && lineCount <= allowedLines*(100+fileLengthAllowlistBufferPct)/100 {
+		if allowed, ok := allowlist.Files[relPath]; ok && lineCount <= allowed.Lines*(100+fileLengthAllowlistBufferPct)/100 {
 			result.allowlistedCount++
 			continue
 		}
@@ -292,9 +344,9 @@ func formatLongFiles(files []longFile, allowlist fileLengthAllowlist, allowliste
 		sizeKB := f.sizeBytes / 1000
 		tokenStr := formatTokenCount(f.sizeBytes / 4)
 		detail := fmt.Sprintf("(%d lines, %d kB, ~%s tokens)", f.lines, sizeKB, tokenStr)
-		if allowedLines, ok := allowlist.Files[f.relPath]; ok {
-			growthPct := (f.lines - allowedLines) * 100 / allowedLines
-			detail = fmt.Sprintf("(%d lines, allowlist: %d, %d kB, ~%s tokens, +%d%% growth)", f.lines, allowedLines, sizeKB, tokenStr, growthPct)
+		if allowed, ok := allowlist.Files[f.relPath]; ok {
+			growthPct := (f.lines - allowed.Lines) * 100 / allowed.Lines
+			detail = fmt.Sprintf("(%d lines, allowlist: %d, %d kB, ~%s tokens, +%d%% growth)", f.lines, allowed.Lines, sizeKB, tokenStr, growthPct)
 		}
 		color := ansiYellow
 		if f.lines >= fileLengthCriticalThreshold(f.relPath) {
@@ -307,10 +359,39 @@ func formatLongFiles(files []longFile, allowlist fileLengthAllowlist, allowliste
 	if allowlistedCount > 0 {
 		suffix = fmt.Sprintf(" (%d allowlisted)", allowlistedCount)
 	}
-	return fmt.Sprintf("%d new %s over the length limit (%s lines, %s for tests)%s:\n%s",
+	return fmt.Sprintf("%d new %s over the length limit (%s lines, %s for tests)%s:\n%s\nsplit it if that's a genuine architectural win, otherwise add it to scripts/check/checks/file-length-allowlist.json WITH a reason",
 		len(files), Pluralize(len(files), "file", "files"),
 		formatThousands(fileLengthWarnLines), formatThousands(fileLengthTestWarnLines),
 		suffix, strings.TrimRight(sb.String(), "\n"))
+}
+
+// reasonlessAllowlistEntries returns the `files` entries with no reason, which
+// is what a bare-number entry (hand-added, or written before reasons were
+// required) unmarshals to. Reported as a failure: an allowlist entry whose
+// thinking wasn't written down has to be re-derived by whoever next wonders
+// about that file, which is the cost this field exists to remove.
+func reasonlessAllowlistEntries(list fileLengthAllowlist) []string {
+	var missing []string
+	for _, relPath := range sortedKeys(list.Files) {
+		if strings.TrimSpace(list.Files[relPath].Reason) == "" {
+			missing = append(missing, relPath)
+		}
+	}
+	return missing
+}
+
+// countTodoAllowlistEntries counts the entries whose reason admits the file
+// should be split. Printed on the green line so the number stays in view: these
+// are a backlog, not settled decisions, and nothing else would ever surface
+// them.
+func countTodoAllowlistEntries(list fileLengthAllowlist) int {
+	n := 0
+	for _, limit := range list.Files {
+		if strings.HasPrefix(strings.TrimSpace(limit.Reason), fileLengthTodoPrefix) {
+			n++
+		}
+	}
+	return n
 }
 
 // RunFileLength scans the repo for source files exceeding the line count threshold.
@@ -318,18 +399,25 @@ func formatLongFiles(files []longFile, allowlist fileLengthAllowlist, allowliste
 // files in the exempt section are always suppressed. Stale allowlist entries are
 // shrink-wrapped: outside CI the check removes dead/satisfied entries and ratchets
 // slack ones down to the current count; in CI it only reports them.
-// Always succeeds: reports long files (and CI-mode staleness) as a warning, never fails.
+//
+// FAILS on a file over the limit that isn't allowlisted, and on an allowlist
+// entry with no reason. A warn had no owner: it survived the run that caused it
+// and landed on David later as a separate triage pass, which is the work this
+// check exists to keep off his desk. The agent whose run goes red splits the
+// file, or allowlists it with a reason and says so in the commit.
+//
+// The shrink-wrap path stays advisory (a local auto-fix, a CI warn): that's
+// bookkeeping the check does to itself, and turning it red would be new noise
+// rather than someone's unfinished work.
 func RunFileLength(ctx *CheckContext) (CheckResult, error) {
 	allowlist := loadFileLengthAllowlist(ctx.RootDir)
 
 	staleChanges := shrinkwrapFileLengthAllowlist(ctx.RootDir, &allowlist)
-	madeChanges := false
 	if len(staleChanges) > 0 && !ctx.CI {
 		if err := writeJSONAllowlist(fileLengthAllowlistPath(ctx.RootDir), allowlist); err != nil {
 			return CheckResult{}, err
 		}
 		reformatWithOxfmt(ctx.RootDir, "scripts/check/checks/file-length-allowlist.json")
-		madeChanges = true
 	}
 
 	result, err := scanFileLengths(ctx.RootDir, allowlist)
@@ -346,10 +434,21 @@ func RunFileLength(ctx *CheckContext) (CheckResult, error) {
 		staleMsg = fmt.Sprintf("%s:\n  - %s", verb, strings.Join(staleChanges, "\n  - "))
 	}
 
+	if missing := reasonlessAllowlistEntries(allowlist); len(missing) > 0 {
+		return CheckResult{}, fmt.Errorf(
+			"%d allowlist %s no reason:\n  - %s\nevery `files` entry is {\"lines\": N, \"reason\": \"…\"}: say why this file gets to be long, or `TODO: <why it should be split, and how>`",
+			len(missing), Pluralize(len(missing), "entry has", "entries have"), strings.Join(missing, "\n  - "),
+		)
+	}
+
 	if len(result.longFiles) == 0 {
 		okMsg := "All files under threshold"
 		if result.allowlistedCount > 0 {
-			okMsg = fmt.Sprintf("No new long files (%d allowlisted)", result.allowlistedCount)
+			okMsg = fmt.Sprintf("No new long files (%d allowlisted", result.allowlistedCount)
+			if todos := countTodoAllowlistEntries(allowlist); todos > 0 {
+				okMsg += fmt.Sprintf(", %d marked TODO", todos)
+			}
+			okMsg += ")"
 		}
 		if staleMsg != "" {
 			if ctx.CI {
@@ -365,7 +464,9 @@ func RunFileLength(ctx *CheckContext) (CheckResult, error) {
 	if staleMsg != "" {
 		msg += "\n" + staleMsg
 	}
-	return CheckResult{Code: ResultWarning, Message: msg, MadeChanges: madeChanges, Total: -1, Issues: -1, Changes: -1}, nil
+	// The shrink-wrap's own rewrite rides along in `msg`: an error result carries
+	// no MadeChanges flag, and a failing check prints its message either way.
+	return CheckResult{}, fmt.Errorf("%s", msg)
 }
 
 // countLines returns the file's line count, counting a final unterminated line.
