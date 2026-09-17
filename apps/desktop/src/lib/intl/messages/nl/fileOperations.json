@@ -20,13 +20,13 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudNoTrashWarningStrong": "Deze map wordt gesynchroniseerd met een cloudservice die geen prullenmand heeft.",
-  "@fileOperations.delete.cloudNoTrashWarningStrong": {
-    "sourceHash": "f6a7584"
+  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Deze inhoud is alleen online beschikbaar.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
+    "sourceHash": "f1553ed"
   },
-  "fileOperations.delete.cloudNoTrashWarningRest": "Verwijderen is hier de enige optie, en de service bewaart een eigen kopie die je kunt terugzetten.",
-  "@fileOperations.delete.cloudNoTrashWarningRest": {
-    "sourceHash": "1abc686"
+  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Naar de prullenmand verplaatsen zou het eerst downloaden van de cloudservice, dus verwijdert Cmdr het in plaats daarvan. Er blijft geen kopie in de prullenmand achter, maar de service bewaart een eigen geschiedenis waaruit je het kunt terugzetten.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
+    "sourceHash": "1d218e5"
   },
   "fileOperations.delete.archiveWarningStrong": "Er is geen prullenmand in een archief.",
   "@fileOperations.delete.archiveWarningStrong": {

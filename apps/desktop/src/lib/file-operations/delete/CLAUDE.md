@@ -29,10 +29,12 @@ Delete files permanently or move them to macOS Trash, with a confirmation dialog
   local-FS walker, hits path-not-found, and leaves the dialog stuck at "0 files".
 - **`supportsTrash` drives the mode.** Each volume exposes it from `fsType` (statfs): APFS/HFS+ yes; FAT32, exFAT,
   smbfs, nfs, afpfs, webdav no. When false, the dialog forces permanent with a banner.
-- **A selection entirely inside a cloud-storage folder opens the PERMANENT delete, with its own banner**
-  (`cloudStorageWithoutTrash`): the provider implements no trash, so `openDeleteDialog` asks `trashRoutingForPaths`
-  first and drops `supportsTrash`. ❌ Don't re-derive that rule here, it's Rust's (`delete/cloud_trash.rs`); a thrown or
-  timed-out answer keeps the trash. DETAILS § Cloud storage.
+- **Online-only cloud content opens the PERMANENT delete, with its own banner** (`cloudStorageOnlineOnly`): trashing an
+  evicted file would download it first, so `openDeleteDialog` asks `trashRoutingForPaths` and drops `supportsTrash`. ❌
+  Don't re-derive that rule, it's Rust's (`delete/cloud_trash.rs`); an answer that never lands keeps the trash. A
+  FOLDER's verdict arrives MID-SCAN (`cloudFolderMayHoldOnlineOnly` → `onlineOnlyFound`): the dialog flips live, and a
+  confirm pressed first WAITS, then hands the dialog back rather than run the trash the answer just ruled out. DETAILS §
+  Cloud storage.
 - **Confirm AWAITS the `startScanPreview` IPC**, so `onConfirm` never dispatches a null `previewId`: that leaves an
   ownerless concurrent walk nothing can cancel. `TransferDialog` awaits `scanStarted` likewise.
 - **A permanent delete waits for the WALK in the BACKEND** (`scan_bridge::await_claimed_preview`), consuming the cached

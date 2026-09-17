@@ -3354,36 +3354,17 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `nơi mà macOS giữ riêng cho mình`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## The cloud-storage delete warning (`fileOperations.delete.cloudNoTrashWarningStrong` / `.cloudNoTrashWarningRest`)
+## Cảnh báo nội dung chỉ có trực tuyến (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
 
-Two-sentence banner at the top of the delete dialog, shown when every selected item sits in a cloud-storage folder whose
-macOS File Provider refuses to trash anything, so Cmdr opened the permanent-delete dialog instead. ICU family, but
-neither value carries a placeholder, a tag, or an apostrophe. Reuses settled terms: `thư mục`, `thùng rác`, `xóa`,
-`dịch vụ`, `bản sao`.
+Nếu một mục được chọn trong thư mục đám mây chỉ có trực tuyến, thùng rác sẽ phải tải nó về trước. Vì vậy Cmdr mở hộp
+thoại xóa vĩnh viễn và giải thích điều đó trên dải băng. Hai khóa, in đậm và phần còn lại, đọc như MỘT cảnh báo.
 
-- **"cloud service" → `dịch vụ đám mây`** · macOS Finder Tier 1: `Localizable.json` key `Choose a cloud service` →
-  `Chọn một dịch vụ đám mây` (verified in the pile, 2026-09-17) · `high`. ❌ Not `nhà cung cấp đám mây`, which the
-  catalog reserves for "cloud provider" as a party you sign in to (`errors.provider.genericCloudStorage.displayName`);
-  this sentence names the service the folder syncs with.
-- **"syncs to X" → `đồng bộ hóa với X`** · macOS Finder `Sync Desktop & Documents folders with iCloud` →
-  `Đồng bộ hóa các thư mục Màn hình nền & Tài liệu với iCloud`, plus the subject-first shape `^0 đang đồng bộ hóa`
-  (`LocalizableMerged`) and System Settings `CloudSync.json` `CLOUD_SYNC` = `Đồng bộ hóa đám mây` (verified 2026-09-17)
-  · `high`. The verb keeps `hóa`; the bare `đồng bộ` in the catalog is attributive only (`ứng dụng đồng bộ` = sync app).
-  The preposition is `với`, ❌ never `tới` / `sang`.
-- **"that has no trash" → `không có thùng rác`** · the settled frame from `fileOperations.trash.*`
-  (`Ổ đĩa này không có thùng rác.`) · `high`. Attributive, so no relative pronoun. ❌ Not `không hỗ trợ` here: that
-  belongs to the sibling `delete.noTrashWarningStrong`, whose English really does say "doesn't support trash". Lowercase
-  `thùng rác`, matching both siblings; the English is lowercase and the sentence doesn't name the Trash location.
-- **"Deleting is the only option here" → `Cách duy nhất ở đây là xóa`** · reuses the catalog's own
-  `errors.mutation.trashNotSupported` (`… nên cách duy nhất là xóa vĩnh viễn.`) so the two no-trash explanations read as
-  one family · `high`. ❌ Don't add `vĩnh viễn`: the English deliberately drops it here (the Strong sentence already
-  established there's no trash), and the cloud copy survives, so "permanently" would overstate it.
-- **"the service keeps its own copy" → `dịch vụ vẫn giữ một bản sao riêng`** · `bản sao` is macOS's word for a copy
-  (Finder `Bản sao %@`, `giữ lại bản sao`) · `high`. `vẫn` carries the concessive reassurance, which is why the
-  connective can stay the source's plain `và` rather than becoming `nhưng`.
-- **"you can restore from" → `để bạn khôi phục từ đó`** · `khôi phục` is Apple's verb for Restore, including the closest
-  model sentence, Finder `LocalizableMerged` `MT43`
-  (`Bạn có thể khôi phục hoặc xóa khỏi Thùng rác trong vòng 30 ngày.`), verified 2026-09-17 · `high`. The `đưa trở lại`
-  ruling from the trash-toast pass does NOT apply: that one is Finder's "Put Back" command (move back to the original
-  spot), while this is the broader Restore, which is exactly what `khôi phục` names.
-- Both values differ from English, so neither needs a `sameAsSourceJustification`.
+- **`.cloudOnlineOnlyWarningStrong` → `Nội dung này chỉ có trực tuyến.`** · `chỉ có trực tuyến` là cách Finder gọi một
+  tệp đã được đẩy lên mây · medium.
+- **`.cloudOnlineOnlyWarningRest` →
+  `Chuyển vào thùng rác sẽ phải tải nó về từ dịch vụ đám mây trước, nên Cmdr xóa luôn. Sẽ không có bản sao nào trong thùng rác, nhưng dịch vụ vẫn giữ lịch sử riêng để bạn khôi phục.`**
+  · `thùng rác` và `dịch vụ đám mây` lấy từ § Terms · medium.
+- **Cả hai sự thật đều phải có**: (1) thùng rác sẽ tải tệp về, (2) sau đó KHÔNG có bản sao trong thùng rác, nhưng dịch
+  vụ vẫn giữ bản của nó. ❌ Đừng làm nhẹ nửa sau.
+- Không cần `sameAsSourceJustification`: cả hai giá trị đều khác tiếng Anh.
+- ⚠️ Bản nháp, chưa có người đọc soát.

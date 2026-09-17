@@ -40,24 +40,36 @@ import type { PaneAccess } from './pane-access'
 const log = getAppLogger('fileExplorer')
 
 /**
- * Whether these items sit in a cloud-storage folder whose File Provider has no
- * trash, which makes a trash request impossible to honor: macOS refuses it and
- * words the refusal as if the boot volume had no trash.
+ * Whether these items hold online-only content in a cloud-storage folder, which
+ * makes a trash the wrong thing to run: macOS would download every evicted file
+ * just to put it in a folder the person is about to empty.
  *
  * The recognition itself is the backend's (`write_operations/delete/cloud_trash.rs`):
  * it's all-or-nothing across the selection, it resolves symlinks first, and it's
- * deliberately narrow. A question that can't be answered (the IPC threw, the
- * backend timed out on a hung mount) answers `false`, keeping the OS trash and
- * its typed refusal.
+ * deliberately narrow. ❌ Don't re-derive any of it here.
+ *
+ * `folderMayHoldOnlineOnly` says the answer isn't final: a selected FOLDER can't
+ * carry the flag itself, so only the confirmation dialog's own scan walk can find
+ * one inside. The dialog waits on that walk before it confirms.
+ *
+ * A question that can't be answered (the IPC threw, the backend timed out on a
+ * hung mount) keeps the OS trash and its typed refusal.
  */
-async function cloudStorageHasNoTrash(sourcePaths: string[]): Promise<boolean> {
+async function cloudOnlineOnlyRouting(sourcePaths: string[]): Promise<{
+  routesToDelete: boolean
+  folderMayHoldOnlineOnly: boolean
+}> {
   try {
-    return (await trashRoutingForPaths(sourcePaths)) === 'permanentDeleteCloudStorage'
+    const answer = await trashRoutingForPaths(sourcePaths)
+    return {
+      routesToDelete: answer.routing === 'permanentDeleteCloudStorage',
+      folderMayHoldOnlineOnly: answer.folderMayHoldOnlineOnly,
+    }
   } catch (error) {
     log.warn('trashRoutingForPaths threw, keeping the trash. error={error}', {
       error: error instanceof Error ? error.message : String(error),
     })
-    return false
+    return { routesToDelete: false, folderMayHoldOnlineOnly: false }
   }
 }
 
@@ -555,16 +567,17 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
     const { sortBy, sortOrder } = access.getPaneSort(access.getFocusedPane())
     const sourceVolume = resolveSnapshotSourceVolume(snapshot.volumeId, access.getVolumes())
     // A search reaches into cloud-storage folders like anywhere else, and a hit
-    // there can't be trashed either.
-    const cloudStorageWithoutTrash = await cloudStorageHasNoTrash(sourcePaths)
+    // there can be online-only just the same.
+    const cloud = await cloudOnlineOnlyRouting(sourcePaths)
 
     dialogs.showDeleteConfirmation({
       sourceItems,
       sourcePaths,
       sourceFolderPath: getCommonParentPath(sourcePaths),
-      isPermanent: permanent || cloudStorageWithoutTrash,
-      supportsTrash: cloudStorageWithoutTrash ? false : sourceVolume.supportsTrash,
-      cloudStorageWithoutTrash,
+      isPermanent: permanent || cloud.routesToDelete,
+      supportsTrash: cloud.routesToDelete ? false : sourceVolume.supportsTrash,
+      cloudStorageOnlineOnly: cloud.routesToDelete,
+      cloudFolderMayHoldOnlineOnly: cloud.folderMayHoldOnlineOnly,
       isFromCursor: !hasSelection,
       sortColumn: sortBy,
       sortOrder,
@@ -683,10 +696,12 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
     // support or the F8/Shift+F8 preselect.
     const sourceIsArchive = pathCrossesArchiveBoundary(sourceFolderPath)
     // Asked for both F8 and Shift+F8: the dialog's own switch could send a
-    // Shift+F8 back to the trash, into the same refusal. An archive already has
-    // no trash, so it never needs asking.
-    const cloudStorageWithoutTrash = !sourceIsArchive && (await cloudStorageHasNoTrash(sourcePaths))
-    const supportsTrash = sourceIsArchive || cloudStorageWithoutTrash ? false : sourceVolume?.supportsTrash !== false
+    // Shift+F8 back to the trash, into the download this routing exists to
+    // avoid. An archive already has no trash, so it never needs asking.
+    const cloud = sourceIsArchive
+      ? { routesToDelete: false, folderMayHoldOnlineOnly: false }
+      : await cloudOnlineOnlyRouting(sourcePaths)
+    const supportsTrash = sourceIsArchive || cloud.routesToDelete ? false : sourceVolume?.supportsTrash !== false
 
     const { sortBy, sortOrder } = access.getPaneSort(access.getFocusedPane())
 
@@ -694,10 +709,11 @@ export function createFileOperationCommands(access: PaneAccess, dialogs: DialogS
       sourceItems,
       sourcePaths,
       sourceFolderPath,
-      isPermanent: permanent || sourceIsArchive || cloudStorageWithoutTrash,
+      isPermanent: permanent || sourceIsArchive || cloud.routesToDelete,
       supportsTrash,
       isArchive: sourceIsArchive,
-      cloudStorageWithoutTrash,
+      cloudStorageOnlineOnly: cloud.routesToDelete,
+      cloudFolderMayHoldOnlineOnly: cloud.folderMayHoldOnlineOnly,
       isFromCursor: !hasSelection,
       sortColumn: sortBy,
       sortOrder,

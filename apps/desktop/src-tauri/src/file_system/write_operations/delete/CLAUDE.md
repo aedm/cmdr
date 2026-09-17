@@ -17,8 +17,8 @@ oracle-aware), and OS-native trash.
   `trash_dir_for_path()` (❌ keep its ancestor walk, DETAILS § Where a trash is). Refusals are a typed `MutationError`,
   ❌ never a sentence; every item it can't take emits its own `Failed` source-item event. Existence checks use
   `symlink_metadata()`.
-- **`cloud_trash.rs`**: `routing_for_selection()` behind the `trash_routing_for_paths` command, answering whether F8
-  runs as a permanent delete. DETAILS § "A trash in a cloud-storage folder becomes a delete".
+- **`cloud_trash.rs`**: `routing_for_selection()` behind the `trash_routing_for_paths` command, plus `is_online_only`
+  (the one `SF_DATALESS` read). DETAILS § "A trash of online-only cloud content becomes a delete".
 - **`volume_start.rs`**: a volume delete's managed lifecycle (here, not `../mod.rs`, because its body is `async`).
   DETAILS § "The volume delete's own lifecycle".
 - Test siblings: the `*_tests.rs` / `*_test.rs` files beside the code.
@@ -40,10 +40,12 @@ oracle-aware), and OS-native trash.
 - **Trash has no scan phase**: `trashItemAtURL` is atomic per top-level item, so progress tracks items (bytes from
   pre-computed sizes). A PARTLY refused batch still COMPLETES, and its event carries `refused` (count +
   `strongest_refusal`): ❌ never `None`, or the ending reads as a clean success.
-- **A trash inside `~/Library/CloudStorage/<domain>/` runs as a permanent delete**, but ONLY under a provider we know
-  by name: the dialog promises the service kept a copy, and `MacDroid-<device>` there is an Android phone. ❌ Never
-  widen it to "any location with no trash" either: a fresh USB stick answers the same and would lose data.
-  All-or-nothing across the selection; ❌ not a volume question. DETAILS.
+- **ONLINE-ONLY content (`SF_DATALESS`) in `~/Library/CloudStorage/<domain>/` trashes as a permanent delete**: trashing
+  an evicted file DOWNLOADS it first. ❌ Never route on the folder alone (an ordinary Dropbox file trashes fine; routing
+  it is data loss), ❌ never on the refusal (two `NSError` codes, non-deterministic), ❌ never on "no trash here", ❌ not
+  a volume question; only a provider we know by name, all-or-nothing. A FOLDER is answered by the scan preview's walk
+  (`OnlineOnlyWatch`): ❌ no second walk, none for a plain-file selection. `TrashRefused.online_only` keeps the Full
+  Disk Access advice off an evicted file. DETAILS.
 - **A refusal carries a typed `TrashRefusalKind`, read from the `NSError` DOMAIN + CODE**, ❌ never its localized words
   (`error-string-match` forbids it). A failed batch is `WriteOperationError::TrashRefused`, ❌ not an `IoError` (one
   flattened sentence leaves the dialog only "try again"), reporting `strongest_refusal`, ❌ not the most common one.

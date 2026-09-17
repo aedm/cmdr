@@ -2905,25 +2905,14 @@ replacement target. Four rules bind this whole group:
   已定的说法。说人话，❌ 不要点名某个 macOS 功能。
 - `{count}` 前后留半角空格（`有 {count} 个`），与目录里其他数字占位符一致。
 
-## 云端文件夹的删除警告条（`fileOperations.delete.cloudNoTrashWarning*`，2026-09-17）
+## 仅存云端内容的删除警告条（`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`）
 
-用户按了「移到废纸篓」，但选中的项目全都在 Dropbox / Google Drive /
-OneDrive 这类云盘文件夹里，macOS 的文件提供程序根本不接受移到废纸篓，于是 Cmdr 直接打开了彻底删除的对话框。两条键合起来是同一个警告条。
+云文件夹里被选中的条目如果只存在云端，放进废纸篓得先把它下载回来。所以 Cmdr 改开彻底删除的对话框，并在警告条里说清楚。两个键，粗体加余下部分，当成一句话读。
 
-- **cloud service（英文这里说的是「服务」本身）→ `云服务`** · macOS `zh-CN` Tier 1：Finder `Choose a cloud service`
-  → 「选取云服务」（`Finder/Localizable.json`，2026-09-17 在 pile 中核对）· `high`。界线：英文
-  `cloud provider`（服务商）在目录里已经是 `云服务商` （`errors.provider.genericCloudStorage.displayName`
-  「你的云服务商」），`cloud folder` 是 `云端文件夹`
-  （`onboarding.fdaBadge.tooltip`、`errors.write.trashRefused.suggestion.noTrashForVolume`）。三者各司其职，❌ 别合并。
-- **sync → `同步`** · macOS `zh-CN` Tier 1（`Sync Desktop & Documents folders with iCloud`
-  →「通过iCloud同步“桌面与文稿”文件夹」）· `high`。
-- **restore（把删掉的文件从云服务那边取回来）→ `恢复`** · macOS `zh-CN` Tier 1：`Restore` → 「恢复」、`Restore a Copy`
-  → 「恢复副本」、时间机器的 `BU35_V1` 「将“^1”恢复到…」· `high`。❌ 不用 Microsoft 的 `还原`（TBX 里 `restore`
-  多数义项都写 `还原`）：macOS 是 Tier 1。与 `放回原处`（从废纸篓放回原位，Finder
-  `Put Back`）分工不同：这里文件不在废纸篓里，取回的是云服务自己服务器上的那份留底。
-- **copy（云服务留的那一份）→ `副本`** · 目录既有写法（`commands.cloudRemoveDownload.description`
-  「本地副本」）与macOS 「保留可恢复的副本」（`NE111.1`）· `high`。
-- **句式跟姐妹键走。** `Strong` 与 `noTrashWarningStrong`（「这个宗卷不支持废纸篓。」）、`archiveWarningStrong`
-  （「压缩文件里没有废纸篓。」）同一句式，主语后直接落到「…没有废纸篓。」；`Rest` 用 `彻底删除`，与
-  `noTrashWarningRest`（「文件将被彻底删除。」）和 `commands.fileDeletePermanently.label` 一致。
-- 两条值都与英文不同，无需 `sameAsSourceJustification`；中文侧没有撇号。
+- **`.cloudOnlineOnlyWarningStrong` → `这些内容仅存在云端。`** · “仅存在云端” 对应 Finder 的“仅在线”说法 · medium。
+- **`.cloudOnlineOnlyWarningRest` →
+  `放进废纸篓得先从云服务把它们下载回来，所以 Cmdr 直接删除。废纸篓里不会留副本，不过云服务自己有删除记录，你可以从那里恢复。`**
+  · “废纸篓”、“云服务” 取自 § Terms · medium。
+- **两个事实都得保留**：（1）废纸篓会先下载文件，（2）之后废纸篓里没有副本，但云服务自己有。❌ 不要把后半句写成“反正还在废纸篓里”。
+- 不需要 `sameAsSourceJustification`：两个值都与英文不同。
+- ⚠️ 草稿，尚未经人工审阅。

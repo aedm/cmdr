@@ -438,7 +438,13 @@ export function trashRefusedCountSentence(reason: TrashRefusalKind, itemCount: n
 
 function trashRefusedMessage(error: Extract<WriteOperationError, { type: 'trash_refused' }>): FriendlyErrorMessage {
   const suggestion = w(`trashRefused.suggestion.${error.reason}`)
-  const offerGrant = isMacOS() && fdaIsMissing() && mayBeAPermissionGrantAway(error.reason)
+  // ❗ `onlineOnly` overrides the reason. An evicted cloud file refuses as 513
+  // (`notPermitted`) as readily as 3328 (`noTrashForVolume`), so the reason can't
+  // tell the two apart, and sending someone to System Settings to grant Full Disk
+  // Access when their real problem is a file that lives on Dropbox's servers is a
+  // wrong answer they'd act on. The backend reads the flag at the refusal
+  // (`delete/cloud_trash.rs`).
+  const offerGrant = isMacOS() && fdaIsMissing() && !error.onlineOnly && mayBeAPermissionGrantAway(error.reason)
   return {
     title: w('trashRefused.title'),
     message: trashRefusedCountSentence(error.reason, error.itemCount),

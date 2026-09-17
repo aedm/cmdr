@@ -20,13 +20,13 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudNoTrashWarningStrong": "Den här mappen synkroniseras med en molntjänst som saknar papperskorg.",
-  "@fileOperations.delete.cloudNoTrashWarningStrong": {
-    "sourceHash": "f6a7584"
+  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Det här innehållet finns endast online.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
+    "sourceHash": "f1553ed"
   },
-  "fileOperations.delete.cloudNoTrashWarningRest": "Här går det bara att radera, och tjänsten behåller en egen kopia som du kan återskapa filerna från.",
-  "@fileOperations.delete.cloudNoTrashWarningRest": {
-    "sourceHash": "1abc686"
+  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Att lägga det i papperskorgen skulle först ladda ner det från molntjänsten, så Cmdr raderar det i stället. Ingen kopia hamnar i papperskorgen, men tjänsten har en egen historik som du kan återskapa från.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
+    "sourceHash": "1d218e5"
   },
   "fileOperations.delete.archiveWarningStrong": "Det finns ingen papperskorg i ett arkiv.",
   "@fileOperations.delete.archiveWarningStrong": {

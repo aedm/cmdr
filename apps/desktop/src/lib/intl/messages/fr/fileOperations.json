@@ -20,13 +20,13 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudNoTrashWarningStrong": "Ce dossier est synchronisé avec un service cloud qui n''a pas de corbeille.",
-  "@fileOperations.delete.cloudNoTrashWarningStrong": {
-    "sourceHash": "f6a7584"
+  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Ce contenu est disponible en ligne uniquement.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
+    "sourceHash": "f1553ed"
   },
-  "fileOperations.delete.cloudNoTrashWarningRest": "Ici, la seule option est de supprimer, et le service conserve sa propre copie, que vous pouvez récupérer.",
-  "@fileOperations.delete.cloudNoTrashWarningRest": {
-    "sourceHash": "1abc686"
+  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Le mettre à la corbeille le téléchargerait d''abord depuis le service cloud, donc Cmdr le supprime à la place. Aucune copie ne restera dans la corbeille, mais le service conserve son propre historique depuis lequel vous pouvez le récupérer.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
+    "sourceHash": "1d218e5"
   },
   "fileOperations.delete.archiveWarningStrong": "Il n''y a pas de corbeille dans une archive.",
   "@fileOperations.delete.archiveWarningStrong": {

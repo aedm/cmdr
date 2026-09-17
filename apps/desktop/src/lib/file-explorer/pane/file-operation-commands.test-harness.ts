@@ -4,7 +4,7 @@ import type { FilePaneAPI } from './types'
 import type { SearchSnapshot } from '$lib/search/snapshot-store.svelte'
 import type { FileEntry, VolumeInfo } from '../types'
 import type { ToastContent, ToastOptions } from '$lib/ui/toast/toast-store.svelte'
-import type { TrashRouting } from '$lib/ipc/bindings'
+import type { TrashRoutingAnswer } from '$lib/ipc/bindings'
 
 /**
  * Shared stubs and fixtures for the `file-operation-commands` specs
@@ -19,7 +19,7 @@ import type { TrashRouting } from '$lib/ipc/bindings'
 export const spies = {
   getFileAt: vi.fn<() => Promise<FileEntry | null>>(),
   getFilesAtIndices: vi.fn<() => Promise<FileEntry[]>>(),
-  trashRoutingForPaths: vi.fn<(sources: string[]) => Promise<TrashRouting>>(),
+  trashRoutingForPaths: vi.fn<(sources: string[]) => Promise<TrashRoutingAnswer>>(),
   addToast: vi.fn<(content: ToastContent, options?: ToastOptions) => string>(),
   getSnapshot: vi.fn<() => SearchSnapshot | undefined>(),
   openFileViewer: vi.fn<() => Promise<void>>(),

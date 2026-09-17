@@ -31,7 +31,7 @@ import type {
   ScanPreviewErrorEvent,
   ScanPreviewProgressEvent,
   ScanProgressEvent,
-  TrashRouting,
+  TrashRoutingAnswer,
   TransferActivity,
   TransferWaitReason,
   WriteCancelledEvent,
@@ -197,9 +197,10 @@ export async function trashFiles(
 }
 
 /** What an F8 over these paths should actually run: the OS trash, or the permanent
- *  delete a cloud-storage folder with no trash of its own forces. The backend
- *  decides; see `write_operations/delete/cloud_trash.rs`. */
-export async function trashRoutingForPaths(sources: string[]): Promise<TrashRouting> {
+ *  delete that online-only content in a cloud-storage folder forces. Also says
+ *  whether a selected folder could still change that answer once its walk runs.
+ *  The backend decides; see `write_operations/delete/cloud_trash.rs`. */
+export async function trashRoutingForPaths(sources: string[]): Promise<TrashRoutingAnswer> {
   return await commands.trashRoutingForPaths(sources)
 }
 

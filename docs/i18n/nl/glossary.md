@@ -3719,37 +3719,18 @@ replacement target. Four rules bind this whole group:
 - "somewhere macOS keeps to itself" → `op een plek die macOS voor zichzelf houdt`, reusing the wording settled for
   `onboarding.fdaBadge.tooltip`. Plain, ❌ never a macOS feature name.
 
-## De cloudwaarschuwing in het verwijderdialoogvenster (`fileOperations.delete.cloudNoTrash*`)
+## De waarschuwing voor alleen-online inhoud (`fileOperations.delete.cloudOnlineOnlyWarningStrong` / `fileOperations.delete.cloudOnlineOnlyWarningRest`)
 
-Eén banner van twee sleutels: de vetgedrukte aanhef plus de rest, getoond wanneer alles wat je koos in een cloudmap
-staat waarvan de macOS File Provider weigert iets naar de prullenmand te verplaatsen, zodat Cmdr het venster voor
-definitief verwijderen opent. ICU-familie, dus apostroffen zouden verdubbeld moeten worden; geen van beide waarden
-draagt er een.
+Staat een geselecteerd item in een cloudmap alleen online, dan zou de prullenmand het eerst downloaden. Daarom opent
+Cmdr het dialoogvenster voor definitief verwijderen en legt dat uit in de banner. Twee sleutels, vet en vervolg, die als
+ÉÉN waarschuwing gelezen worden.
 
-- **cloud service → `cloudservice`** · Microsoft-terminologie (`DUTCH.tbx`, `cloud service` → `cloudservice`, in beide
-  betekenissen), plus de al vastgelegde rij `service (AI/cloud) → service` en de `sameAsSourceJustification` die
-  `ai.cloud.serviceAria` al draagt (`'Service' is a genuine Dutch word`) · high.
-  - ❌ NIET Apples `cloudvoorziening` (Finder `Localizable`, `Choose a cloud service` → `Kies een cloudvoorziening`),
-    hoewel dat Tier 1 is: `voorziening` is in het Nederlandse macOS het woord voor het **Voorzieningen**-menu
-    (Services), dat Cmdrs eigen menubalk ook draagt (zie `style.md` § Native menu's). Eén woord voor twee dingen in
-    dezelfde app is hier de duurdere fout dan afwijken van Tier 1.
-  - De tweede zin kort af tot `de service`, net als het Engels: het antecedent staat één zin eerder, dus er is geen
-    verwarring met klantenservice.
-- **"This folder syncs to X" → `Deze map wordt gesynchroniseerd met X`** · Finder `Localizable`
-  (`Your Desktop & Documents folders are being synced with %@` →
-  `Je mappen 'Bureaublad' en 'Documenten' worden gesynchroniseerd met %@`) · high. De lijdende vorm met `wordt … met` is
-  Apples vaste constructie voor een map die naar een dienst synchroniseert; het actieve `Deze map synchroniseert met …`
-  bestaat ook (`iCloud synchroniseert niet`), maar daar is de dienst het onderwerp, niet de map.
-- **"that has no trash" → `die geen prullenmand heeft`** · sluit aan op de al vastgelegde
-  `Dit volume heeft geen prullenmand` (§ De twee prullenmandweigeringen) · high.
-- **"the only option" → `de enige optie`** · `optie` uit de catalogus zelf (`Dit zijn allemaal opties`, `Volume-opties`)
-  · high. ❌ Niet `de enige manier`: die vorm is bezet door `errors.mutation.trashNotSupported`
-  (`… dus definitief verwijderen is de enige manier.`), dat het Engelse `the only way` vertaalt. Twee verschillende
-  Engelse woorden blijven twee verschillende Nederlandse woorden.
-- **"keeps its own copy" → `bewaart een eigen kopie`** · `bewaren` is het vastgelegde werkwoord voor _store/keep_ (macOS
-  `Store … in iCloud` → `Bewaar … in iCloud`), en de catalogus zegt het al bijna zo
-  (`Cmdr bewaart geen kopieën van wat het vervangt`) · high.
-- **"you can restore from" → `die je kunt terugzetten`** · `terugzetten` is Apples werkwoord voor _restore_ (macOS
-  `Choose the volume you would like to restore to '%@'.` → `Kies het volume dat je wilt terugzetten op '%@'.`, plus de
-  hele `Zet terug`-familie) · high. Het Nederlands geeft de kopie de lijdende rol van het terugzetten in plaats van het
-  Engelse `restore from`; dat leest natuurlijker en betekent hetzelfde.
+- **`.cloudOnlineOnlyWarningStrong` → `Deze inhoud is alleen online beschikbaar.`** · `alleen online` is de formulering
+  die de Finder voor een uitgeladen bestand gebruikt · medium.
+- **`.cloudOnlineOnlyWarningRest` →
+  `Naar de prullenmand verplaatsen zou het eerst downloaden van de cloudservice, dus verwijdert Cmdr het in plaats daarvan. Er blijft geen kopie in de prullenmand achter, maar de service bewaart een eigen geschiedenis waaruit je het kunt terugzetten.`**
+  · `prullenmand` en `cloudservice` komen uit § Terms · medium.
+- **Beide feiten moeten blijven staan**: (1) de prullenmand zou het bestand downloaden, (2) daarna staat er GÉÉN kopie
+  in de prullenmand, de service houdt wel een eigen geschiedenis. ❌ Verzacht de tweede helft niet.
+- Geen `sameAsSourceJustification` nodig: beide waarden wijken af van het Engels.
+- ⚠️ Concept, nog niet door een mens nagelezen.

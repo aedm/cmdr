@@ -333,6 +333,9 @@ fn scan_sources_internal(
         },
         // The real copy/move/delete scan never samples for a compress estimate.
         on_file: None,
+        // The online-only tally belongs to the confirmation dialog's PREVIEW: by
+        // the time this walk runs the routing is already decided.
+        online_only: None,
     };
 
     // Local FS scan goes through `LocalPosixVolume`, which is always registered as

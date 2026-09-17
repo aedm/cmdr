@@ -11,6 +11,7 @@
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use super::state::FileInfo;
@@ -20,6 +21,39 @@ use crate::file_system::listing::caching::try_get_authoritative_listing;
 use crate::file_system::volume::CopyScanResult;
 /// Per-regular-file hook fired by the walk, receiving the file path and size (the `WalkContext::on_file` field).
 type OnFileHook<'a> = &'a dyn Fn(&Path, u64);
+
+/// Watches a walk for a file macOS has evicted to its cloud provider
+/// (`SF_DATALESS`, what Finder calls "online-only").
+///
+/// A selected FOLDER never carries the flag itself, so walking it is the only way
+/// to learn whether trashing it would drag gigabytes back down from the provider.
+/// The delete confirmation already runs this walk for its scan preview, which is
+/// why the tally rides here instead of in a second pass.
+///
+/// Armed only when the scan's sources reach into a cloud drive
+/// (`scan_preview.rs`), which keeps both the probe and the cached-listing path's
+/// extra `lstat` off every ordinary walk. One hit is the whole answer (the
+/// routing is all-or-nothing across the selection), so probing stops after it.
+pub(super) struct OnlineOnlyWatch<'a> {
+    /// Reads the flag off one entry, given its metadata when the walk already
+    /// has it and `None` when the oracle handed over a cached entry instead.
+    /// Injected because only a File Provider can really set `SF_DATALESS`, so no
+    /// test can produce a file that carries it.
+    pub(super) probe: &'a dyn Fn(&Path, Option<&fs::Metadata>) -> bool,
+    /// Set by the first hit and never cleared.
+    pub(super) seen: &'a AtomicBool,
+}
+
+impl OnlineOnlyWatch<'_> {
+    fn note(&self, path: &Path, metadata: Option<&fs::Metadata>) {
+        if self.seen.load(Ordering::Relaxed) {
+            return;
+        }
+        if (self.probe)(path, metadata) {
+            self.seen.store(true, Ordering::Relaxed);
+        }
+    }
+}
 
 /// Callbacks for customizing `walk_dir_recursive` behavior per caller.
 ///
@@ -47,6 +81,9 @@ pub(super) struct WalkContext<'a, E> {
     /// other callers pass `None`. Must stay cheap (a channel push) so it never
     /// lands on the walk's critical path.
     pub(super) on_file: Option<OnFileHook<'a>>,
+    /// Tallies online-only files as the walk meets them. `None` for every scan
+    /// whose sources don't reach into a cloud drive. See [`OnlineOnlyWatch`].
+    pub(super) online_only: Option<&'a OnlineOnlyWatch<'a>>,
 }
 
 /// Walks every top-level source in turn, accumulating the shared tallies AND
@@ -201,6 +238,12 @@ pub(super) fn walk_dir_recursive<E>(
         if let Some(on_file) = ctx.on_file {
             on_file(path, size);
         }
+        // The flags ride on the `lstat` above, so an armed walk pays nothing
+        // extra here. Files only: a symlink's own flags say nothing about the
+        // cloud file it points at, and trashing one moves the link anyway.
+        if let Some(watch) = ctx.online_only {
+            watch.note(path, Some(&metadata));
+        }
     } else if metadata.is_dir() {
         if is_symlink_loop(path, visited) {
             return Err((ctx.on_symlink_loop)(path));
@@ -341,6 +384,15 @@ fn walk_cached_entries<E>(
                 && !entry.is_symlink
             {
                 on_file(&child_path, size);
+            }
+            // A cached entry carries no `st_flags` (the listing doesn't read
+            // them), so the probe has to stat this one itself. That's the price
+            // of asking the question at all in an oracle-served directory, and
+            // only a cloud-drive scan ever pays it.
+            if let Some(watch) = ctx.online_only
+                && !entry.is_symlink
+            {
+                watch.note(&child_path, None);
             }
             files.push(FileInfo {
                 path: child_path,

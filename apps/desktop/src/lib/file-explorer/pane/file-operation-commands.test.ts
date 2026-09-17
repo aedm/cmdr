@@ -104,7 +104,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   // `clearAllMocks` leaves implementations in place, so the routing answer is
   // re-stated here: an unset one would leak across tests in file order.
-  trashRoutingSpy.mockResolvedValue('trash')
+  trashRoutingSpy.mockResolvedValue({ routing: 'trash', folderMayHoldOnlineOnly: false })
 })
 
 describe('startRename', () => {
@@ -644,10 +644,9 @@ describe('openDeleteDialog', () => {
   })
 })
 
-/** A cloud-storage folder's File Provider implements no trash, so the OS refuses
- *  the move with a message about the boot volume that reads as nonsense. The
- *  backend recognizes the location (`cloud_trash.rs`); this is how the answer
- *  reaches the dialog. */
+/** Online-only content in a cloud-storage folder can't reach the Trash without
+ *  being downloaded first, so F8 there runs the permanent delete instead. The
+ *  backend decides (`cloud_trash.rs`); this is how the answer reaches the dialog. */
 describe('openDeleteDialog in a cloud-storage folder', () => {
   const cloudEntry = (name: string) => fileEntry({ name, path: `/Users/x/Library/CloudStorage/Dropbox/Work/${name}` })
 
@@ -664,7 +663,7 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
   })
 
   it('turns F8 into the permanent delete, and says why', async () => {
-    trashRoutingSpy.mockResolvedValue('permanentDeleteCloudStorage')
+    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteCloudStorage', folderMayHoldOnlineOnly: false })
     const dialogs = buildDialogs()
 
     await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: false })
@@ -676,14 +675,14 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: true,
       supportsTrash: false,
-      cloudStorageWithoutTrash: true,
+      cloudStorageOnlineOnly: true,
     })
   })
 
   /** Shift+F8 was already permanent, but the in-dialog switch back to trash would
    *  hit the same refusal, so the trash stays off here too. */
   it('keeps the trash switch away from a Shift+F8 dialog too', async () => {
-    trashRoutingSpy.mockResolvedValue('permanentDeleteCloudStorage')
+    trashRoutingSpy.mockResolvedValue({ routing: 'permanentDeleteCloudStorage', folderMayHoldOnlineOnly: false })
     const dialogs = buildDialogs()
 
     await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: true })
@@ -691,14 +690,14 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: true,
       supportsTrash: false,
-      cloudStorageWithoutTrash: true,
+      cloudStorageOnlineOnly: true,
     })
   })
 
   /** The all-or-nothing rule lives in the backend, so a mixed selection comes back
    *  as a plain `trash` and nothing about the dialog changes. */
   it('leaves everything else on the trash', async () => {
-    trashRoutingSpy.mockResolvedValue('trash')
+    trashRoutingSpy.mockResolvedValue({ routing: 'trash', folderMayHoldOnlineOnly: false })
     const dialogs = buildDialogs()
 
     await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: false })
@@ -706,7 +705,24 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: false,
       supportsTrash: true,
-      cloudStorageWithoutTrash: false,
+      cloudStorageOnlineOnly: false,
+    })
+  })
+
+  /** A selected FOLDER can't carry the flag itself, so the backend says "not yet"
+   *  and the dialog's own scan walk finishes the answer. The dialog needs to know
+   *  to wait, so the flag has to reach it. */
+  it('forwards the unfinished answer for a folder, so the dialog waits on its walk', async () => {
+    trashRoutingSpy.mockResolvedValue({ routing: 'trash', folderMayHoldOnlineOnly: true })
+    const dialogs = buildDialogs()
+
+    await create(cloudAccess(), dialogs).openDeleteDialog({ permanent: false })
+
+    expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
+      isPermanent: false,
+      supportsTrash: true,
+      cloudStorageOnlineOnly: false,
+      cloudFolderMayHoldOnlineOnly: true,
     })
   })
 
@@ -719,7 +735,7 @@ describe('openDeleteDialog in a cloud-storage folder', () => {
     expect(dialogs.showDeleteConfirmation.mock.calls[0][0]).toMatchObject({
       isPermanent: false,
       supportsTrash: true,
-      cloudStorageWithoutTrash: false,
+      cloudStorageOnlineOnly: false,
     })
   })
 })

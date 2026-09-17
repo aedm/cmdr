@@ -30,6 +30,7 @@
     import { getAppLogger } from '$lib/logging/logger'
     import { ScanThroughput } from '../scan-throughput'
     import { useShortenMiddle } from '$lib/utils/shorten-middle-action'
+    import { withTimeout } from '$lib/utils/timing'
     import Trans from '$lib/intl/Trans.svelte'
     import { t, tString } from '$lib/intl/messages.svelte'
 
@@ -43,10 +44,14 @@
         supportsTrash: boolean
         /** Source is inside a zip: deletes are permanent (no Trash inside an archive). */
         isArchive?: boolean
-        /** Every source is in a cloud-storage folder whose provider has no trash, so
-         *  the trash was routed here as a permanent delete. Swaps the no-trash banner
-         *  for one that says the service keeps its own copy. */
-        cloudStorageWithoutTrash?: boolean
+        /** A selected item in a cloud-storage folder is online-only, so the trash was
+         *  routed here as a permanent delete rather than downloading it. Swaps the
+         *  no-trash banner for one that says so. */
+        cloudStorageOnlineOnly?: boolean
+        /** A selected FOLDER sits in a cloud drive, so the scan walk below may still
+         *  turn up an online-only file and flip this dialog. Confirm waits for that
+         *  answer; see `onlineOnlyAnswer`. */
+        cloudFolderMayHoldOnlineOnly?: boolean
         isFromCursor: boolean
         /** Current sort column on source pane (for scan preview ordering) */
         sortColumn: SortColumn
@@ -70,7 +75,8 @@
         isPermanent: initialIsPermanent,
         supportsTrash,
         isArchive = false,
-        cloudStorageWithoutTrash = false,
+        cloudStorageOnlineOnly = false,
+        cloudFolderMayHoldOnlineOnly = false,
         isFromCursor,
         sortColumn,
         sortOrder,
@@ -79,6 +85,15 @@
         onConfirm,
         onCancel,
     }: Props = $props()
+
+    /** The scan walk met an online-only file inside a selected folder. Flips the
+     *  dialog live: the banner appears, the trash switch goes, and the confirm
+     *  button becomes the permanent delete, all before anything is pressed. */
+    let onlineOnlyFound = $state(false)
+    /** Online-only content is in play, however we learned it. */
+    const routedForOnlineOnly = $derived(cloudStorageOnlineOnly || onlineOnlyFound)
+    /** The trash is only on the table while nothing evicted is in the selection. */
+    const trashAvailable = $derived(supportsTrash && !routedForOnlineOnly)
 
     // The switch's own position. Forced to permanent on volumes that don't support trash.
     let switchIsPermanent = $state(initialIsPermanent || !supportsTrash)
@@ -90,7 +105,7 @@
      *  deliberately asked for. Snapshot at open; neither input changes for the dialog's lifetime. */
     const shiftUpgradesToPermanent = !initialIsPermanent && supportsTrash
     // Shift only ever upgrades: a hold can't demote a permanent delete back to a trash.
-    const isPermanent = $derived(switchIsPermanent || (shiftUpgradesToPermanent && shiftHeld))
+    const isPermanent = $derived(switchIsPermanent || routedForOnlineOnly || (shiftUpgradesToPermanent && shiftHeld))
 
     const dialogTitle = $derived(generateDeleteTitle(sourceItems, isFromCursor))
     const abbreviatedPath = $derived(abbreviatePath(sourceFolderPath))
@@ -108,7 +123,7 @@
     const dialogRole = $derived<'dialog' | 'alertdialog'>(isPermanent ? 'alertdialog' : 'dialog')
     // `delete-warning-text` only exists while a banner renders, so point
     // `aria-describedby` at the banner's condition, not at `isPermanent`.
-    const hasWarningBanner = $derived(isArchive || cloudStorageWithoutTrash || !supportsTrash)
+    const hasWarningBanner = $derived(isArchive || routedForOnlineOnly || !supportsTrash)
 
     // Scan preview state
     let previewId = $state<string | null>(null)
@@ -124,6 +139,24 @@
     // progress dialog) takes over the same scan and consumes the cached result,
     // so teardown must NOT free it then.
     let confirmed = false
+    /** True while a confirm is waiting on the online-only answer below. Shows the
+     *  spinner in the confirm button and swallows a second press. */
+    let confirming = $state(false)
+    /** Resolves once the walk has said whether anything in the selection is
+     *  online-only: on the first progress tick reporting one (a hit is the whole
+     *  answer, so a huge folder needn't finish counting), on the completion that
+     *  reports none, or on any terminal scan event. Awaited ONLY when
+     *  `cloudFolderMayHoldOnlineOnly`; everywhere else confirm stays instant. */
+    let settleOnlineOnlyAnswer: () => void = () => {}
+    const onlineOnlyAnswer = new Promise<void>((resolve) => {
+        settleOnlineOnlyAnswer = resolve
+    })
+    /** ❗ The safe default when no answer ever lands is the TRASH, which is
+     *  today's behavior. The scan watchdog already bounds the walk by inactivity,
+     *  so this only covers a scan whose events never reach us at all; it's
+     *  generous because a real walk of a big tree legitimately takes a while, and
+     *  giving up early would run exactly the download we're trying to avoid. */
+    const ONLINE_ONLY_ANSWER_TIMEOUT_MS = 90_000
     let filesFound = $state(0)
     let dirsFound = $state(0)
     let bytesFound = $state(0)
@@ -175,6 +208,10 @@
                 dirsFound = event.dirsFound
                 bytesFound = event.bytesFound
                 currentDir = event.currentDir ?? null
+                if (event.onlineOnlyFound) {
+                    onlineOnlyFound = true
+                    settleOnlineOnlyAnswer()
+                }
                 const r = throughput.push({
                     timestampMs: Date.now(),
                     files: event.filesFound,
@@ -190,21 +227,27 @@
                 filesFound = event.filesTotal
                 dirsFound = event.dirsTotal
                 bytesFound = event.bytesTotal
+                if (event.onlineOnlyFound) onlineOnlyFound = true
                 isScanning = false
                 scanComplete = true
+                // A finished walk is the definitive answer either way.
+                settleOnlineOnlyAnswer()
             }),
         )
         keepListener(
             await onScanPreviewError((event) => {
                 if (!isOurScanEvent(event.previewId)) return
                 isScanning = false
-                // Keep showing whatever stats we have
+                // Keep showing whatever stats we have. A walk that stopped can't
+                // answer, so confirm falls back to the trash.
+                settleOnlineOnlyAnswer()
             }),
         )
         keepListener(
             await onScanPreviewCancelled((event) => {
                 if (!isOurScanEvent(event.previewId)) return
                 isScanning = false
+                settleOnlineOnlyAnswer()
             }),
         )
 
@@ -279,6 +322,8 @@
 
     onDestroy(() => {
         destroyed = true
+        // Nothing may await an answer that can no longer arrive.
+        settleOnlineOnlyAnswer()
         // Free the scan preview unless the user confirmed (the op then consumes
         // the cached result). Regardless of `isScanning`: `cancelScanPreview`
         // also evicts the cached `CachedScanResult`, so a dismiss AFTER the scan
@@ -290,7 +335,8 @@
     })
 
     async function handleConfirm() {
-        confirmed = true
+        if (confirming) return
+        confirming = true
         log.info('Delete confirmed: isPermanent={isPermanent}, items={count}', {
             isPermanent,
             count: sourceItems.length,
@@ -298,6 +344,25 @@
         // The scan-preview IPC only mints an id and spawns the walk, so it
         // answers promptly even on a wedged share. See `scanStarted`.
         await scanStarted
+
+        if (cloudFolderMayHoldOnlineOnly && !routedForOnlineOnly) {
+            // A selected folder in a cloud drive: the walk decides whether this is
+            // a trash or a delete, and pressing before it answers must not settle
+            // it by luck. Everywhere else this block never runs.
+            await withTimeout(onlineOnlyAnswer, ONLINE_ONLY_ANSWER_TIMEOUT_MS, undefined)
+            if (destroyed) return
+            if (onlineOnlyFound && !autoConfirm) {
+                // The answer just turned this button from "Move to trash" into a
+                // permanent delete, and the banner beside it changed too. Hand the
+                // dialog back rather than run the one operation nothing can undo
+                // off a press that meant something else. An MCP auto-confirm asked
+                // for the delete outright, so it goes through.
+                confirming = false
+                return
+            }
+        }
+
+        confirmed = true
         onConfirm(previewId, isPermanent)
     }
 
@@ -347,7 +412,7 @@
 
     <div class="dialog-body">
         <!-- Warning banner: archive deletes are permanent (no Trash inside a zip);
-             a cloud folder whose provider has no trash says so in its own words,
+             a selection holding online-only cloud content says so in its own words,
              since the person pressed Trash and got a delete; other no-trash volumes
              get the generic banner. -->
         {#if isArchive}
@@ -360,14 +425,14 @@
                     {tString('fileOperations.delete.archiveWarningRest')}
                 </p>
             </div>
-        {:else if cloudStorageWithoutTrash}
+        {:else if routedForOnlineOnly}
             <div class="warning-banner" role="alert">
                 <span class="warning-icon" aria-hidden="true">
                     <Icon name="triangle-alert" size={18} />
                 </span>
                 <p id="delete-warning-text">
-                    <strong>{tString('fileOperations.delete.cloudNoTrashWarningStrong')}</strong>
-                    {tString('fileOperations.delete.cloudNoTrashWarningRest')}
+                    <strong>{tString('fileOperations.delete.cloudOnlineOnlyWarningStrong')}</strong>
+                    {tString('fileOperations.delete.cloudOnlineOnlyWarningRest')}
                 </p>
             </div>
         {:else if !supportsTrash}
@@ -489,7 +554,7 @@
          row so it reads as a modifier on the confirm button beside it. Holding Shift
          flips it too, for as long as the key is down. -->
     {#snippet footerLeading()}
-        {#if supportsTrash}
+        {#if trashAvailable}
             <Switch checked={!isPermanent} onCheckedChange={(toTrash) => (switchIsPermanent = !toTrash)}
                 >{tString('fileOperations.delete.trashSwitch')}</Switch
             >
@@ -498,7 +563,9 @@
 
     {#snippet footer()}
         <Button variant="secondary" onclick={handleCancel}>{tString('fileOperations.button.cancel')}</Button>
-        <Button variant={confirmVariant} onclick={handleConfirm}>{confirmLabel}</Button>
+        <Button variant={confirmVariant} onclick={handleConfirm}>
+            {#if confirming}<span class="confirm-spinner"><Spinner size="sm" /></span>{/if}{confirmLabel}
+        </Button>
     {/snippet}
 </ModalDialog>
 
@@ -644,6 +711,15 @@
     .scan-status {
         display: inline-flex;
         align-items: center;
+    }
+
+    /* Rides inside the confirm button while a cloud folder's walk is still
+       deciding between a trash and a delete. */
+    .confirm-spinner {
+        display: inline-flex;
+        align-items: center;
+        margin-right: var(--spacing-xs);
+        vertical-align: text-bottom;
     }
 
     .scan-throughput {

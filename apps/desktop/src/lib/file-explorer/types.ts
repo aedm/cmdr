@@ -719,7 +719,11 @@ export type WriteOperationError =
   // REASON decides what the dialog can offer: as an `io_error` it arrived as one
   // sentence macOS had written, leaving nothing to say but "try again", which a
   // permission refusal cannot act on. `message` is technical detail only.
-  | { type: 'trash_refused'; itemCount: number; reason: TrashRefusalKind; message: string }
+  // `onlineOnly` overrides the reason: an evicted cloud file refuses as 513
+  // (`notPermitted`) as readily as 3328, so the reason can't tell the two apart,
+  // and the Full Disk Access offer must not attach to one. See
+  // `write_operations/delete/cloud_trash.rs`.
+  | { type: 'trash_refused'; itemCount: number; reason: TrashRefusalKind; message: string; onlineOnly?: boolean }
   | { type: 'io_error'; path: string; message: string }
   // Extracting from a password-protected archive. `wrongAttempt` is true when the
   // stored password was rejected. The FE should intercept this before the generic

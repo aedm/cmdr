@@ -20,13 +20,13 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudNoTrashWarningStrong": "Ezt a mappát egy olyan felhőalapú szolgáltatás szinkronizálja, amelynek nincs Kukája.",
-  "@fileOperations.delete.cloudNoTrashWarningStrong": {
-    "sourceHash": "f6a7584"
+  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "Ez a tartalom csak online érhető el.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
+    "sourceHash": "f1553ed"
   },
-  "fileOperations.delete.cloudNoTrashWarningRest": "Itt csak a törlés lehetséges, de a szolgáltatás megőrzi a saját másolatát, amelyből visszaállíthatod az elemeket.",
-  "@fileOperations.delete.cloudNoTrashWarningRest": {
-    "sourceHash": "1abc686"
+  "fileOperations.delete.cloudOnlineOnlyWarningRest": "Ha a Kukába kerülne, előbb le kellene tölteni a felhőszolgáltatásból, ezért a Cmdr inkább törli. A Kukában nem marad másolat, de a szolgáltatás saját előzményeiből visszaállíthatod.",
+  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
+    "sourceHash": "1d218e5"
   },
   "fileOperations.delete.archiveWarningStrong": "Egy archívumon belül nincs Kuka.",
   "@fileOperations.delete.archiveWarningStrong": {

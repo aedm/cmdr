@@ -19,13 +19,13 @@
   "@fileOperations.delete.noTrashWarningRest": {
     "sourceHash": "0d73f99"
   },
-  "fileOperations.delete.cloudNoTrashWarningStrong": "这个文件夹同步到的云服务没有废纸篓。",
-  "@fileOperations.delete.cloudNoTrashWarningStrong": {
-    "sourceHash": "f6a7584"
+  "fileOperations.delete.cloudOnlineOnlyWarningStrong": "这些内容仅存在云端。",
+  "@fileOperations.delete.cloudOnlineOnlyWarningStrong": {
+    "sourceHash": "f1553ed"
   },
-  "fileOperations.delete.cloudNoTrashWarningRest": "这里只能彻底删除，不过云服务自己会留一份副本，你可以从那里把文件恢复回来。",
-  "@fileOperations.delete.cloudNoTrashWarningRest": {
-    "sourceHash": "1abc686"
+  "fileOperations.delete.cloudOnlineOnlyWarningRest": "放进废纸篓得先从云服务把它们下载回来，所以 Cmdr 直接删除。废纸篓里不会留副本，不过云服务自己有删除记录，你可以从那里恢复。",
+  "@fileOperations.delete.cloudOnlineOnlyWarningRest": {
+    "sourceHash": "1d218e5"
   },
   "fileOperations.delete.archiveWarningStrong": "压缩文件里没有废纸篓。",
   "@fileOperations.delete.archiveWarningStrong": {

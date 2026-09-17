@@ -38,6 +38,7 @@ fn plain_walk_context<'a>() -> WalkContext<'a, String> {
         on_symlink_loop: &|path| format!("Symlink loop detected: {}", path.display()),
         on_progress: &|_, _, _, _, _| {},
         on_file: None,
+        online_only: None,
     }
 }
 
@@ -202,6 +203,7 @@ fn run_walker_with_sources(sources: &[PathBuf]) -> WalkOutcome {
             captured.borrow_mut().push((cur_file, cur_dir));
         },
         on_file: None,
+        online_only: None,
     };
     for source in sources {
         let source_root = source.parent().unwrap_or(source);
@@ -452,4 +454,97 @@ fn a_dry_run_of_a_copy_onto_a_different_file_still_reports_the_conflict() {
     .expect("the dry run completes");
 
     assert_eq!(result.conflicts.len(), 1, "a real clash still reaches the caller");
+}
+
+/// The online-only tally (`OnlineOnlyWatch`), which is how a selected FOLDER in a
+/// cloud drive gets answered: `SF_DATALESS` lives on files, so only the walk the
+/// delete confirmation already runs can see one.
+///
+/// ❗ The probe is injected in all three. Only a File Provider can set that flag,
+/// so no test can build a tree that really carries it; these pin the WIRING
+/// (which entries get asked, and that one hit sticks) rather than the flag read.
+mod online_only_tally {
+    use super::super::super::scan_walker::OnlineOnlyWatch;
+    use super::*;
+    use crate::test_support::TestDir;
+    use std::sync::atomic::{AtomicBool, Ordering};
+
+    /// Walks `sources` with the tally armed, treating every entry named `evicted`
+    /// as online-only, and answers what the walk concluded.
+    fn walk_finds_online_only(sources: &[PathBuf], evicted: &str) -> bool {
+        let seen = AtomicBool::new(false);
+        let probe = |path: &Path, _: Option<&fs::Metadata>| path.file_name().is_some_and(|name| name == evicted);
+        let watch = OnlineOnlyWatch {
+            probe: &probe,
+            seen: &seen,
+        };
+        let ctx = WalkContext {
+            online_only: Some(&watch),
+            ..plain_walk_context()
+        };
+
+        let mut files = Vec::new();
+        let mut dirs = Vec::new();
+        let mut total_bytes = 0u64;
+        let mut dedup_bytes = 0u64;
+        let mut last_progress_time = Instant::now();
+        let mut visited = HashSet::new();
+        let mut seen_inodes = HashSet::new();
+        walk_sources_with_per_path(
+            sources,
+            &mut files,
+            &mut dirs,
+            &mut total_bytes,
+            &mut dedup_bytes,
+            &mut last_progress_time,
+            &mut visited,
+            &mut seen_inodes,
+            None,
+            &ctx,
+        )
+        .expect("the fixture tree walks cleanly");
+        seen.load(Ordering::Relaxed)
+    }
+
+    /// One evicted file taints the whole folder: trashing it would pull that file
+    /// back down from the provider first.
+    #[test]
+    fn a_folder_holding_one_online_only_file_is_tainted() {
+        let scratch = TestDir::new("walk_online_only_hit");
+        let folder = scratch.join("Work");
+        fs::create_dir_all(folder.join("deep")).expect("fixture tree");
+        fs::write(folder.join("here.txt"), b"local").expect("a materialized file");
+        fs::write(folder.join("deep/evicted.txt"), b"stub").expect("the evicted one");
+
+        assert!(walk_finds_online_only(&[folder], "evicted.txt"));
+    }
+
+    /// A fully materialized folder trashes exactly as it does today: nothing gets
+    /// downloaded, so nothing is routed.
+    #[test]
+    fn a_fully_materialized_folder_is_not_tainted() {
+        let scratch = TestDir::new("walk_online_only_miss");
+        let folder = scratch.join("Work");
+        fs::create_dir_all(folder.join("deep")).expect("fixture tree");
+        fs::write(folder.join("here.txt"), b"local").expect("a materialized file");
+        fs::write(folder.join("deep/also-here.txt"), b"local").expect("another");
+
+        assert!(!walk_finds_online_only(&[folder], "evicted.txt"));
+    }
+
+    /// A symlink's own flags say nothing about the file it points at, and trashing
+    /// a link moves the link, so the walk never asks about one.
+    #[test]
+    fn a_symlink_in_the_tree_is_never_asked_about() {
+        let scratch = TestDir::new("walk_online_only_symlink");
+        let folder = scratch.join("Work");
+        fs::create_dir_all(&folder).expect("fixture tree");
+        fs::write(folder.join("real.txt"), b"local").expect("the target");
+        std::os::unix::fs::symlink(folder.join("real.txt"), folder.join("evicted.txt")).expect("the link");
+
+        assert!(
+            !walk_finds_online_only(&[folder], "evicted.txt"),
+            "the link is named like the evicted file, and must still not taint the walk"
+        );
+    }
 }

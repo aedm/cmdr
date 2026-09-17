@@ -1,6 +1,6 @@
 //! Tauri commands for write operations (create, copy, move, delete, trash) and scan preview.
 
-use crate::file_system::write_operations::TrashRouting;
+use crate::file_system::write_operations::TrashRoutingAnswer;
 use crate::file_system::write_operations::{
     ConflictId, ConflictResolution, ConflictResolutionOutcome, MutationError, ScanPreviewStartResult,
     cancel_scan_preview as ops_cancel_scan_preview, create_directory_managed as ops_create_directory_managed,
@@ -327,21 +327,24 @@ pub async fn trash_files(
 }
 
 /// Paths come from the pane the user is looking at, so this is a read-tier
-/// question. The work is a handful of `canonicalize` calls; the timeout only
-/// bites when one of them sits on a hung mount.
+/// question. The work is a `canonicalize` plus an `lstat` per selected item; the
+/// timeout only bites when one of them sits on a hung mount.
 const TRASH_ROUTING_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Answers whether an F8 over `sources` has to run as a permanent delete because
-/// every item lives in a cloud-storage folder whose File Provider has no trash.
+/// the selection holds online-only content in a cloud-storage folder, which a
+/// trash would download before it could move.
 ///
 /// Asked before the confirmation dialog opens, so the dialog can say why it's
 /// asking about a delete. A timeout degrades to `Trash`, which is today's
-/// behavior: the attempt goes to the OS and a refusal speaks for itself.
+/// behavior: the attempt goes to the OS and a refusal speaks for itself. The
+/// answer's `folder_may_hold_online_only` says the dialog's own scan walk still
+/// has to finish the question; see `delete/cloud_trash.rs`.
 #[tauri::command]
 #[specta::specta]
-pub async fn trash_routing_for_paths(sources: Vec<String>) -> TrashRouting {
+pub async fn trash_routing_for_paths(sources: Vec<String>) -> TrashRoutingAnswer {
     let sources: Vec<PathBuf> = sources.iter().map(|s| PathBuf::from(expand_tilde(s))).collect();
-    blocking_with_timeout(TRASH_ROUTING_TIMEOUT, TrashRouting::Trash, move || {
+    blocking_with_timeout(TRASH_ROUTING_TIMEOUT, TrashRoutingAnswer::TRASH, move || {
         ops_trash_routing_for_selection(&sources)
     })
     .await

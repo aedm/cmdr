@@ -275,6 +275,10 @@ pub struct TrashItemError {
     /// carry it. Without it the whole batch collapses to one sentence and the dialog
     /// has nothing to offer but "try again".
     pub reason: TrashRefusalKind,
+    /// This item's contents were only on the provider's servers, which is what
+    /// the refusal was really about. Stat'ed at the refusal, while the item is
+    /// still there to ask. See `cloud_trash.rs`.
+    pub online_only: bool,
 }
 
 /// Moves files to trash with progress reporting, cancellation, and partial failure.
@@ -335,6 +339,8 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
                     // A vanished source is not a permission problem; offering a grant
                     // as the fix would send the user somewhere useless.
                     reason: TrashRefusalKind::Other,
+                    // We couldn't stat it at all, so there are no flags to read.
+                    online_only: false,
                 });
                 emit_item_failed(
                     events,
@@ -435,6 +441,9 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
                     // own typed variant carries the words; this string is the
                     // technical detail beside it, so `Display` is right here.
                     message: e.to_string(),
+                    // `trashItemAtURL` is atomic, so a refusal left the item
+                    // exactly where it was and its flags are still readable.
+                    online_only: super::cloud_trash::is_online_only(source),
                 });
                 // `trashItemAtURL` is atomic per item, so a failure left this one
                 // exactly where it was.
@@ -493,6 +502,9 @@ pub(in crate::file_system::write_operations) fn trash_files_with_progress(
             item_count: errors.len(),
             reason,
             message: error_summary,
+            // One evicted item is enough to make the FDA advice wrong for this
+            // batch, the same all-or-nothing stance the routing takes.
+            online_only: errors.iter().any(|e| e.online_only),
         };
         events.emit_error(WriteErrorEvent::new(
             operation_id.to_string(),
