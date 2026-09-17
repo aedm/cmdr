@@ -314,6 +314,82 @@ describe('VolumeBreadcrumb server rows', () => {
 })
 
 /**
+ * The CHIP's own control, which is the same decision as a switcher row's and has to
+ * stay that way: a user reported pressing the chip's button on an open SFTP place and
+ * being told the drive isn't removable, while the row for the same volume, one click
+ * deeper in the switcher, disconnected it (`ERR-P7F5Q`).
+ */
+describe('VolumeBreadcrumb chip control', () => {
+  const place = {
+    id: 'sftp-nas-local-22-ada',
+    name: 'Naspolya',
+    path: 'sftp://ada@nas.local:22/srv/data',
+    category: 'network',
+    fsType: 'sftp',
+    isEjectable: false,
+    connectionState: 'direct',
+  }
+
+  /** Mounts the chip ON a volume, which is what makes it `currentVolume`. */
+  async function mountOn(volume: Record<string, unknown>) {
+    stubs.volumes = [volume]
+    stubs.containingVolumeId = volume.id as string
+    mountBreadcrumb({ volumeId: volume.id as string, currentPath: '/srv/data' })
+    // `resolvePathVolume` is a round trip, and `containingVolumeId` lands after it.
+    await tick()
+    await tick()
+    flushSync()
+  }
+
+  /** The chip's own detach control, or null when it offers none. */
+  function chipControl(): HTMLButtonElement | null {
+    return document.querySelector<HTMLButtonElement>('.breadcrumb-eject-button')
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    ejectVolume.mockClear()
+    disconnectPlace.mockClear()
+  })
+
+  afterEach(() => {
+    stubs.volumes = null
+    stubs.containingVolumeId = 'root'
+  })
+
+  it('says Disconnect on a server, and closes the session rather than asking for an eject', async () => {
+    await mountOn(place)
+
+    const button = chipControl()
+    expect(button).toBeTruthy()
+    expect(button?.getAttribute('aria-label')).toBe('Disconnect Naspolya')
+
+    button?.click()
+    await tick()
+    expect(disconnectPlace).toHaveBeenCalledWith(place.id)
+    // Pre-fix this asked the backend to eject, which can only answer `NotEjectable`.
+    expect(ejectVolume).not.toHaveBeenCalled()
+  })
+
+  it('still ejects a removable drive from the chip', async () => {
+    await mountOn({ id: 'disk4', name: 'Backup', path: '/Volumes/Backup', category: 'volume', isEjectable: true })
+
+    const button = chipControl()
+    expect(button?.getAttribute('aria-label')).toBe('Eject Backup')
+
+    button?.click()
+    await tick()
+    expect(ejectVolume).toHaveBeenCalled()
+    expect(disconnectPlace).not.toHaveBeenCalled()
+  })
+
+  it('offers nothing on a saved place, which has no session to close', async () => {
+    await mountOn({ ...place, connectionState: 'saved' })
+    expect(chipControl()).toBeNull()
+  })
+})
+
+/**
  * An eject that's still running. One took 10.5 s with no sign of life in a user's
  * log, which invites another click; the backend joins that click to the running
  * eject anyway, and the control shows the eject is underway so nobody has to try.

@@ -34,11 +34,10 @@
     import VolumeChooserMenu from './VolumeChooserMenu.svelte'
     import type { FavoritesMenuOpenTrigger } from './favorites-analytics'
     import { connectDirectlyToRow } from './connect-directly-row'
-    import { detachControl } from './detach-control'
-    import { detachVolume } from './detach-volume'
+    import { detachControlFor } from './detach-control'
+    import { runDetach } from './detach-volume'
     import { createDriveBadges } from './drive-badges.svelte'
     import { isDriveRow } from './drive-index-manager.svelte'
-    import { isVolumeEjectable } from './eject-predicate'
     import { filesystemLabel } from './filesystem-label'
     import { getIconForVolume } from './volume-grouping'
     import { createBreadcrumbPopupController } from './volume-breadcrumb-handlers.svelte'
@@ -291,18 +290,23 @@
             <ImageIndexDriveBadge volumeId={currentVolume.id} volumeState={activeImageState} breadcrumb />
         {/if}
     {/if}
-    {#if currentVolume && isVolumeEjectable(currentVolume)}
-        <DetachButton
-            {...detachControl(currentVolume, {
-                busy: isVolumeBusy(currentVolume.id),
-                ejecting: isVolumeEjecting(currentVolume.id),
-            })}
-            breadcrumb
-            onclick={() => {
-                breadcrumbPopup.close()
-                void detachVolume(currentVolume)
-            }}
-        />
+    {#if currentVolume}
+        <!-- ❗ The same answer the switcher rows render, so the chip can't offer an Eject
+             for a server the backend can only refuse. `detach-control.ts` has the story. -->
+        {@const detach = detachControlFor(currentVolume, {
+            busy: isVolumeBusy(currentVolume.id),
+            ejecting: isVolumeEjecting(currentVolume.id),
+        })}
+        {#if detach}
+            <DetachButton
+                {...detach.button}
+                breadcrumb
+                onclick={() => {
+                    breadcrumbPopup.close()
+                    void runDetach(currentVolume, detach.action)
+                }}
+            />
+        {/if}
     {/if}
 
     <VolumeChooserMenu

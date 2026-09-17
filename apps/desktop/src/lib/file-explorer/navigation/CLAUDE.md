@@ -26,13 +26,12 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the two men
 - **`containingVolumeId` comes from `resolvePathVolume(currentPath)`, ❌ not the `volumeId` prop** (a favorite's is
   virtual), so the checkmark tracks the real one.
 - **Read `connectionState` through `connection-state.ts`'s predicates, ❌ never `!= null`**: four backends carry one,
-  plus a `saved` row, so "has a value" answers nothing. `showsDisconnect` is "a volume is REGISTERED under this id", so
-  both sign-in states are IN; only `saved` isn't.
-- **❗ A PHONE's detach control is decided by `deviceReadiness`, ❌ never by `isEjectable` or `connectionState`**, which
-  a device row carries unconditionally and not at all: `isVolumeEjectable` reads readiness for one, the two session
-  predicates for the rest. Otherwise a greyed `unavailable` phone offers a live Disconnect.
-- **A SERVER row says Disconnect, never Eject**, and is claimed by VOLUME ID (`isServerPlaceRow`), ❌ never by
-  `category === 'network'`: a mounted SMB share is one, and `disconnectPlace` can't speak its OS mount.
+  plus a `saved` row. `showsDisconnect` means REGISTERED, so both sign-in states are IN and only `saved` isn't.
+- **`detachControlFor` decides EVERY detach control**: whether there is one, its word, its glyph, and the action it runs
+  via `runDetach`. ❌ Never re-decide in a component: the chip once offered an Eject the backend can only refuse, on a
+  server the switcher was disconnecting fine. It reads a SERVER by volume ID (`isServerPlaceRow`, ❌ never
+  `category === 'network'`: a mounted SMB share is one) and a PHONE by `deviceReadiness`, ❌ never `isEjectable` or
+  `connectionState`, carried unconditionally and not at all, else a greyed `unavailable` phone offers a live Disconnect.
 - **`wordEjectRefusal(e)` words every eject refusal** from `errors.eject.*`; ❌ never `String(e)` or `diskutil` stderr.
   `wordUnmountRefusal` names the holders; ❗ `Unclassified` and BOTH empty `HolderScan` arms take the unnamed fallback,
   ❌ never "nothing is using this drive". Precedence: `DETAILS.md`.
