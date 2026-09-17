@@ -240,6 +240,17 @@ export async function viewerSetWordWrap(label: string, checked: boolean): Promis
 }
 
 /**
+ * Tells the viewer menu bar whether this viewer's search box holds keyboard focus, which is what
+ * decides whether its Edit > Cut and Edit > Paste look live: that box is the only editable field
+ * in the window. Push it on the input's focus and blur, when the search bar closes, and on the
+ * window's focus-gain, so a switch between two viewers can't leave the shared bar stale.
+ */
+export async function viewerSetSearchInputFocused(label: string, focused: boolean): Promise<void> {
+  const res = await commands.viewerSetSearchInputFocused(label, focused)
+  if (res.status === 'error') throwIpcError(res.error)
+}
+
+/**
  * Reads a logical `(line, offset)` range of the file as a single UTF-8 string.
  *
  * Returns a typed result so the caller can match on the `ViewerError` variant tag

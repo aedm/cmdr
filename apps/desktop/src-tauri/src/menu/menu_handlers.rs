@@ -27,8 +27,8 @@ use super::{
     SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID, SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID,
     SORT_DESCENDING_ID, SettingsChanged, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID,
     VIEW_MODE_BRIEF_RIGHT_ID, VIEW_MODE_FULL_LEFT_ID, VIEW_MODE_FULL_RIGHT_ID, VIEW_SET_MODE_COMMAND_ID,
-    VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_EDIT_COPY_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode,
-    ViewModeChanged, menu_id_to_command,
+    VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_EDIT_COPY_ID, VIEWER_EDIT_CUT_ID, VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID,
+    VIEWER_WORD_WRAP_ID, ViewMode, ViewModeChanged, menu_id_to_command,
 };
 
 /// Removes macOS system-injected items from the Edit menu and registers the Help menu.
@@ -108,6 +108,42 @@ pub fn set_display_accelerators_from_command<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// A native text-editing selector a Custom menu item forwards to the first responder.
+///
+/// A typed variant rather than the selector's name as a string, so the id → selector decision
+/// can be tested on every platform while `sel!` stays macOS-only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NativeEditSelector {
+    Cut,
+    Copy,
+    Paste,
+    SelectAll,
+}
+
+/// The native selector menu item `menu_id` forwards, or `None` when it forwards none.
+///
+/// Both bars are in here. The main bar's Edit / Select items take this lane only outside the
+/// main window (`handle_menu_event`), while the viewer bar's Cut and Paste always do: the
+/// viewer's search box is the only editable field in that window. ❗ The viewer bar's Copy and
+/// Select all are deliberately absent — they act on the viewer's own offset-based selection,
+/// which no native selector can reach (`viewer_edit_action_for`).
+#[cfg_attr(
+    not(target_os = "macos"),
+    allow(
+        dead_code,
+        reason = "the responder chain is macOS-only; the mapping is still pinned by tests everywhere"
+    )
+)]
+pub(crate) fn native_edit_selector_for(menu_id: &str) -> Option<NativeEditSelector> {
+    match menu_id {
+        EDIT_CUT_ID | VIEWER_EDIT_CUT_ID => Some(NativeEditSelector::Cut),
+        EDIT_COPY_ID => Some(NativeEditSelector::Copy),
+        EDIT_PASTE_ID | VIEWER_EDIT_PASTE_ID => Some(NativeEditSelector::Paste),
+        SELECT_ALL_ID => Some(NativeEditSelector::SelectAll),
+        _ => None,
+    }
+}
+
 /// Sends a native edit action (copy:/cut:/paste:/selectAll:) through the responder chain.
 ///
 /// Used when a non-main window is focused: the custom Edit/Select menu items can't use the
@@ -118,12 +154,12 @@ fn send_native_edit_action(menu_id: &str) {
     use objc2::sel;
     use objc2_app_kit::NSApplication;
 
-    let selector = match menu_id {
-        EDIT_CUT_ID => sel!(cut:),
-        EDIT_COPY_ID => sel!(copy:),
-        EDIT_PASTE_ID => sel!(paste:),
-        SELECT_ALL_ID => sel!(selectAll:),
-        _ => return,
+    let selector = match native_edit_selector_for(menu_id) {
+        Some(NativeEditSelector::Cut) => sel!(cut:),
+        Some(NativeEditSelector::Copy) => sel!(copy:),
+        Some(NativeEditSelector::Paste) => sel!(paste:),
+        Some(NativeEditSelector::SelectAll) => sel!(selectAll:),
+        None => return,
     };
 
     let mtm = objc2::MainThreadMarker::new().expect("send_native_edit_action must be called from the main thread");
@@ -346,6 +382,17 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
         };
         use tauri_specta::Event as _;
         let _ = crate::window_events::ViewerEditAction { action }.emit_to(app, &label);
+        return;
+    }
+
+    // === Viewer Edit > Cut / Paste: forward the native selector to the focused text field ===
+    // The viewer's search box, the only editable thing in that window, which is also why
+    // `apply_menu_item_states` greys these two out while it doesn't have focus. ❗ Never the
+    // main bar's lane below: that one asks whether the MAIN window is focused, and a viewer
+    // click would answer no and land in the same place by accident rather than by rule.
+    if id == VIEWER_EDIT_CUT_ID || id == VIEWER_EDIT_PASTE_ID {
+        #[cfg(target_os = "macos")]
+        send_native_edit_action(id);
         return;
     }
 
@@ -748,5 +795,47 @@ mod viewer_edit_action_tests {
         assert_eq!(viewer_edit_action_for(SELECT_ALL_ID), None);
         assert_eq!(viewer_edit_action_for(VIEWER_WORD_WRAP_ID), None);
         assert_eq!(viewer_edit_action_for("unknown_id"), None);
+    }
+}
+
+#[cfg(test)]
+mod native_edit_selector_tests {
+    use super::*;
+
+    /// The guarantee the viewer's Cut and Paste exist for: whatever else changes about them,
+    /// the click still ends as `cut:` / `paste:` on the first responder, which is the search
+    /// box. Trimming these two once left ⌘X / ⌘V dead in the viewer's search field.
+    #[test]
+    fn the_viewer_bars_cut_and_paste_forward_the_native_selector() {
+        assert_eq!(
+            native_edit_selector_for(VIEWER_EDIT_CUT_ID),
+            Some(NativeEditSelector::Cut)
+        );
+        assert_eq!(
+            native_edit_selector_for(VIEWER_EDIT_PASTE_ID),
+            Some(NativeEditSelector::Paste)
+        );
+    }
+
+    #[test]
+    fn the_main_bars_four_edit_items_keep_their_selectors() {
+        assert_eq!(native_edit_selector_for(EDIT_CUT_ID), Some(NativeEditSelector::Cut));
+        assert_eq!(native_edit_selector_for(EDIT_COPY_ID), Some(NativeEditSelector::Copy));
+        assert_eq!(native_edit_selector_for(EDIT_PASTE_ID), Some(NativeEditSelector::Paste));
+        assert_eq!(
+            native_edit_selector_for(SELECT_ALL_ID),
+            Some(NativeEditSelector::SelectAll)
+        );
+    }
+
+    /// ❗ The viewer's Copy and Select all act on its own offset-based selection, which lives
+    /// outside the DOM the responder chain reaches. A native selector would land on the status
+    /// bar instead, which is the bug `viewer_edit_action_for` exists to avoid.
+    #[test]
+    fn the_viewer_bars_copy_and_select_all_forward_nothing() {
+        assert_eq!(native_edit_selector_for(VIEWER_EDIT_COPY_ID), None);
+        assert_eq!(native_edit_selector_for(VIEWER_SELECT_ALL_ID), None);
+        assert_eq!(native_edit_selector_for(VIEWER_WORD_WRAP_ID), None);
+        assert_eq!(native_edit_selector_for("unknown_id"), None);
     }
 }

@@ -12,6 +12,7 @@
         viewerClose,
         viewerSetupMenu,
         viewerSetWordWrap,
+        viewerSetSearchInputFocused,
         onViewerPullProgress,
         onViewerWordWrapToggled,
         onViewerEditAction,
@@ -35,7 +36,7 @@
     import { createTextWidthTracker } from './viewer-text-width.svelte'
     import { createIndexingPoll } from './viewer-indexing-poll'
     import { handleOpenFailure } from './viewer-open-failure'
-    import { createViewerKeyboard } from './viewer-keyboard'
+    import { createViewerKeyboard, isSearchInputFocused } from './viewer-keyboard'
     import { runViewerEditAction } from './viewer-menu-actions'
     import { createViewerTail } from './viewer-tail.svelte'
     import {
@@ -574,6 +575,24 @@
     }
 
     /**
+     * Tells the viewer's menu bar whether the search box holds focus, which is what decides
+     * whether its Edit > Cut / Paste look live: that box is the only editable field in this
+     * window. Chrome only — ⌘X / ⌘V reach the box whatever the items look like.
+     */
+    function pushSearchInputFocused(focused: boolean) {
+        viewerSetSearchInputFocused(getCurrentWindow().label, focused).catch(() => {})
+    }
+
+    /**
+     * The search bar closing has to push too: removing a focused input from the DOM fires no
+     * `blur`, so without this the two items would stay live over a viewer with no search box at
+     * all. Also covers the initial render, where nothing is focused yet.
+     */
+    $effect(() => {
+        if (!search.searchVisible) pushSearchInputFocused(false)
+    })
+
+    /**
      * Window-level keydown router. In text mode it delegates to the full viewer
      * keyboard (search, selection, copy, navigation). In media mode the text
      * shortcuts don't apply (there are no lines to search / select / copy), so only
@@ -748,13 +767,17 @@
         // here, then sync the shared word-wrap checkbox to this viewer's own state.
         void activateWindowMenu('viewer')
         viewerSetWordWrap(windowLabel, scroll.wordWrap).catch(() => {})
+        pushSearchInputFocused(isSearchInputFocused(viewerEditActionDeps.search))
 
         // The listener covers subsequent focus regains (clicking back to this viewer), re-syncing
-        // the shared checkbox since multiple viewers can have different word-wrap states.
+        // the shared checkbox since multiple viewers can have different word-wrap states — and the
+        // same for the search box's claim on Edit > Cut / Paste, which is what settles a switch
+        // between two viewers whose blur and focus pushes cross in flight.
         unlistenWindowFocus = await getCurrentWindow().onFocusChanged(({ payload: focused }: { payload: boolean }) => {
             if (focused) {
                 void activateWindowMenu('viewer')
                 viewerSetWordWrap(windowLabel, scroll.wordWrap).catch(() => {})
+                pushSearchInputFocused(isSearchInputFocused(viewerEditActionDeps.search))
             }
         })
 
@@ -1020,6 +1043,8 @@
                 autocomplete="off"
                 autocapitalize="off"
                 spellcheck={false}
+                onfocus={() => { pushSearchInputFocused(true); }}
+                onblur={() => { pushSearchInputFocused(false); }}
             />
             <button
                 type="button"

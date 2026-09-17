@@ -216,6 +216,16 @@ pub const VIEWER_WORD_WRAP_ID: &str = "viewer_word_wrap";
 pub const VIEWER_EDIT_COPY_ID: &str = "viewer_edit_copy";
 pub const VIEWER_SELECT_ALL_ID: &str = "viewer_select_all";
 
+/// Menu item IDs for the VIEWER menu bar's Edit > Cut and Edit > Paste (macOS).
+///
+/// The other half of the pair above, and they go the opposite way: these forward the native
+/// `cut:` / `paste:` selectors to the focused text field, because the viewer's search box is
+/// the only editable thing in that window. Custom rather than Predefined so
+/// `apply_menu_item_states` can grey them out while that box doesn't have focus. Unmapped in
+/// `menu_id_to_command`, like the pair above.
+pub const VIEWER_EDIT_CUT_ID: &str = "viewer_edit_cut";
+pub const VIEWER_EDIT_PASTE_ID: &str = "viewer_edit_paste";
+
 /// Menu item IDs for tab actions (app menu).
 pub const NEW_TAB_ID: &str = "new_tab";
 pub const PIN_TAB_MENU_ID: &str = "pin_tab_menu";

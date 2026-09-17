@@ -434,6 +434,44 @@ pub fn viewer_setup_menu(app_handle: tauri::AppHandle, label: String) -> Result<
     }
 }
 
+/// Tells the viewer menu bar whether this viewer's search box holds keyboard focus, which is what
+/// decides whether its Edit > Cut and Edit > Paste look live.
+///
+/// They're the search box's items: it's the only editable field in a viewer window, and while it
+/// doesn't have focus the two act on nothing. The viewer pushes `true` when the input takes focus
+/// and `false` when it gives it up, when the search bar closes (removing a focused input fires no
+/// `blur`), and its current answer again on the window's focus-gain, which is what keeps a switch
+/// between two viewers from leaving a stale verdict on the shared bar.
+///
+/// macOS only, where the viewer bar is app-level and those two items are Custom. Elsewhere they're
+/// Predefined and nothing can grey them, so this is a no-op.
+#[tauri::command]
+#[specta::specta]
+pub fn viewer_set_search_input_focused(
+    app_handle: tauri::AppHandle,
+    label: String,
+    focused: bool,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        use crate::ignore_poison::IgnorePoison;
+        let menu_state = app_handle.state::<crate::menu::MenuState<tauri::Wry>>();
+        {
+            let mut holder = menu_state.viewer_search_focus.lock_ignore_poison();
+            crate::menu::note_viewer_search_focus(&mut holder, &label, focused);
+        }
+        // Dropped the lock first: `apply_menu_item_states` takes it again.
+        crate::menu::apply_menu_item_states(&menu_state);
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (&app_handle, &label, focused);
+        Ok(())
+    }
+}
+
 /// Syncs the viewer menu "Word wrap" check state (called when toggled via keyboard).
 ///
 /// On macOS the viewer menu is shared app-level (one menu bar), so we flip the single stored

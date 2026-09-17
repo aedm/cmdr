@@ -43,14 +43,15 @@ window focus context.
   unit test can pin their order without building a `muda::Menu`.
 - `install.rs`: `at_startup`, the single call `lib.rs` makes in `setup`: pin the UI language, build the bar,
   run the macOS AppKit passes, and place the `MenuState` everything else mutates. Order inside is load-bearing.
-- `item_states.rs`: `apply_menu_item_states` (the one writer of every main-menu item's enabled state, derived from
-  stored inputs through the pure `menu_item_enabled`), `set_menu_context` (records which window's menu the explorer
-  items answer to), and the macOS-only `swap_to_main_menu` / `swap_to_viewer_menu` (the app-level menu-bar swap).
-  All three are called from `commands::menu_state::activate_window_menu` and the other menu-state IPC commands.
+- `item_states.rs`: `apply_menu_item_states` (the one writer of every menu item's enabled state, derived from stored
+  inputs through the pure `menu_item_enabled` plus `viewer_text_edit_enabled` for the viewer bar's Cut / Paste),
+  `note_viewer_search_focus` (which viewer's search box holds focus), `set_menu_context` (records which window's menu
+  the explorer items answer to), and the macOS-only `swap_to_main_menu` / `swap_to_viewer_menu` (the app-level menu-bar
+  swap). They're called from `commands::menu_state::activate_window_menu` and the other menu-state IPC commands.
 - `menu_handlers.rs`: `handle_menu_event`, the `.on_menu_event` dispatcher, plus the macOS
   post-construction wrappers `cleanup_macos_menus` / `set_macos_menu_icons` and
-  `send_native_edit_action` (the actual objc2 FFI lives in `macos_appkit.rs`) and `focused_viewer_label` /
-  `viewer_edit_action_for`, which route the viewer bar's own items to the viewer in front.
+  `send_native_edit_action` over the pure `native_edit_selector_for` (the actual objc2 FFI lives in `macos_appkit.rs`)
+  and `focused_viewer_label` / `viewer_edit_action_for`, which route the viewer bar's own items to the viewer in front.
 - `accelerators.rs`: `frontend_shortcut_to_accelerator` (frontend glyphs to Tauri accelerator
   strings) and `update_menu_item_accelerator` (swapping one on a live item).
 - `view_mode_items.rs`: `rebuild_view_mode_items` (full remove/recreate/reinsert when the active pane
@@ -464,12 +465,22 @@ menu is swapped wholesale via `app.set_menu()`:
   The clone shares the same underlying items (Tauri's `Menu` is a reference-counted handle), so the
   item refs stored in `MenuState` keep mutating the live menu after a swap-back.
 - The **viewer menu** is built once at startup (`build_viewer_menu`) and stored in
-  `MenuState.viewer_menu`, with its `Word wrap` CheckMenuItem ref in `MenuState.viewer_word_wrap`.
+  `MenuState.viewer_menu`, with its `Word wrap` CheckMenuItem ref in `MenuState.viewer_word_wrap` and its Edit >
+  Cut / Paste refs in `MenuState.viewer_edit_cut` / `viewer_edit_paste`.
   - Its **Edit** submenu is a deliberate mix, because the two halves act on different things.
-    - **Cut and Paste stay Predefined**, which routes the native `cut:` / `paste:` selectors to the focused text field
-      (the viewer's search box) through the responder chain. ❌ Don't trim them: that's what left ⌘X / ⌘V dead in the
-      viewer search field. Predefined is fine here, unlike the main bar's Edit items, because the viewer bar is a
-      separate menu never installed alongside the main one, so there's no item to conflict with.
+    - **Cut and Paste belong to the search box**, the only editable field in a viewer window. On macOS they're Custom
+      items (`VIEWER_EDIT_CUT_ID` / `VIEWER_EDIT_PASTE_ID`) that forward the native `cut:` / `paste:` selectors down
+      the responder chain themselves, through the same `send_native_edit_action` the main bar's Edit items use outside
+      the main window. ❗ Everywhere else they stay `PredefinedMenuItem`s: the responder chain is macOS-only, so a
+      Custom item off macOS would leave ⌘X / ⌘V dead in the viewer's search field, which is exactly what trimming them
+      did once. ❌ Whatever else changes about these two, don't break that: `native_edit_selector_for` pins the
+      mapping.
+    - **Decision/Why they're Custom at all:** so `apply_menu_item_states` can grey them out while the search box
+      doesn't have focus (§ "Dialog refusals, and the one writer of an item's enabled state"). Always-live items that
+      do nothing in the content area read as broken. The greying is chrome and can't cost the search box its chords:
+      a disabled item's key equivalent either still fires (and `cut:` reaches a first responder with nothing to cut) or
+      falls through to the webview, whose own handling does the same job, and while the box HAS focus the items are
+      enabled anyway.
     - **Copy and Select all are Custom items** (`VIEWER_EDIT_COPY_ID` / `VIEWER_SELECT_ALL_ID`) routed to the focused
       viewer's FRONTEND as a typed `ViewerEditAction`. **Decision/Why:** their native selectors act on the DOM
       selection, and the viewed file isn't in its reach — `.file-content` is `user-select: none` because the viewer
@@ -478,10 +489,10 @@ menu is swapped wholesale via `app.set_menu()`:
       it copies the footer. The frontend runs the same two functions ⌘A / ⌘C already run
       (`apps/desktop/src/routes/viewer/viewer-menu-actions.ts`), so it doesn't matter whether a ⌘-chord reaches the webview before the
       menu's key equivalent.
-    - ❗ Those two ids are viewer-specific, NOT the main bar's `EDIT_COPY_ID` / `SELECT_ALL_ID`. Both bars share
-      `EDIT_MENU_ID`, and `handle_menu_event` tells the two lanes apart by item id alone; reusing them would make one
-      click mean two things. The viewer's items had no ids at all while they were Predefined, which is why the
-      collision never existed before.
+    - ❗ All four ids are viewer-specific, NOT the main bar's `EDIT_CUT_ID` / `EDIT_COPY_ID` / `EDIT_PASTE_ID` /
+      `SELECT_ALL_ID`. Both bars share `EDIT_MENU_ID`, and `handle_menu_event` tells the two lanes apart by item id
+      alone; reusing them would make one click mean two things. The viewer's items had no ids at all while they were
+      Predefined, which is why the collision never existed before.
 - `MenuState.active_menu_kind` tracks which menu is installed, so a same-kind focus event (viewer →
   viewer, main → main) skips the swap entirely.
 - `"main"` and `"other"` install the main menu; `"viewer"` installs the viewer menu. After any swap
@@ -519,7 +530,21 @@ exception: it greys out only while the main window is in front, because anywhere
   `MenuState::refuses_over_dialog` and puts the check back. Their commands are named by the `*_COMMAND_ID` consts in
   `command_map.rs`, pinned by `rust-command-id-drift.test.ts`.
 - **Lock order:** the recompute copies the refused set before taking any item lock, because `handle_menu_event` holds a
-  check item's lock while it reads the set.
+  check item's lock while it reads the set. The viewer block reads `viewer_search_focus` and drops that lock before
+  taking the two item locks, for the same reason.
+
+The one verdict here that isn't the main bar's is the **viewer bar's Edit > Cut / Paste**, live only while a viewer's
+search box holds keyboard focus (`viewer_text_edit_enabled`). It's here because the rule is the rule: one writer of
+`set_enabled`. Its input is `MenuState.viewer_search_focus`, the LABEL of the viewer whose search box has focus, which
+each viewer pushes through `viewer_set_search_input_focused` on the input's focus and blur, on the search bar closing
+(removing a focused input from the DOM fires no `blur`), and on its window's focus-gain.
+
+- **Decision/Why a label rather than a bool:** the viewer bar is shared, and clicking from viewer A to viewer B crosses
+  two pushes in flight (A's input blurs, B re-pushes on focus-gain). `note_viewer_search_focus` only lets a `false`
+  from the viewer that last claimed focus clear it, so both orderings land on B. A last-writer-wins bool could leave B
+  greyed while the user types in it.
+- A language rebuild builds fresh items, so `install` in `rebuild.rs` re-runs the recompute: this verdict's input lives
+  in Rust, and unlike the frontend-owned ones nobody re-pushes it after `MenuBarRebuilt`.
 
 **Gotcha: `onFocusChanged` doesn't fire for a window's initial focus.** A window opens already
 focused, so its frontend focus listener (registered in `onMount`) misses the first focus and only
@@ -1029,8 +1054,11 @@ fallback circles).
   `NSApplication.sendAction:to:from:`, replicating what PredefinedMenuItems do internally. This
   ensures text clipboard and text select-all work natively in all windows. Undo and Redo remain
   PredefinedMenuItems since they only apply to text fields. ❗ In practice the native branch serves Settings and the
-  other main-bar windows: a focused VIEWER has swapped the viewer bar in, and its Copy / Select all carry their own ids
-  and their own lane (§ "Per-window menu activation").
+  other main-bar windows: a focused VIEWER has swapped the viewer bar in, and all four of its items carry their own ids
+  and their own lanes (§ "Per-window menu activation"). The viewer's Cut / Paste land in the same
+  `send_native_edit_action`, off their own branch and unconditionally: `native_edit_selector_for` maps both bars' ids,
+  and the main-bar branch asks a question ("is the MAIN window focused?") that a viewer click would answer right by
+  accident rather than by rule.
 - **⌘A dual routing**: "Select all" uses ⌘A as a native menu accelerator (so it's visible in the
   Select menu — see § "Decision: Select all and Deselect all live in the new Select top-level menu"
   above). Since macOS intercepts it before the webview, the keystroke must be re-routed per focus:

@@ -1313,6 +1313,21 @@ export const commands = {
   viewerSetWordWrap: (label: string, checked: boolean) =>
     typedError<null, string>(__TAURI_INVOKE('viewer_set_word_wrap', { label, checked })),
   /**
+   *  Tells the viewer menu bar whether this viewer's search box holds keyboard focus, which is what
+   *  decides whether its Edit > Cut and Edit > Paste look live.
+   *
+   *  They're the search box's items: it's the only editable field in a viewer window, and while it
+   *  doesn't have focus the two act on nothing. The viewer pushes `true` when the input takes focus
+   *  and `false` when it gives it up, when the search bar closes (removing a focused input fires no
+   *  `blur`), and its current answer again on the window's focus-gain, which is what keeps a switch
+   *  between two viewers from leaving a stale verdict on the shared bar.
+   *
+   *  macOS only, where the viewer bar is app-level and those two items are Custom. Elsewhere they're
+   *  Predefined and nothing can grey them, so this is a no-op.
+   */
+  viewerSetSearchInputFocused: (label: string, focused: boolean) =>
+    typedError<null, string>(__TAURI_INVOKE('viewer_set_search_input_focused', { label, focused })),
+  /**
    *  Returns the encoding dropdown payload: current selection, detected encoding, and the
    *  full list of selectable encodings (with their labels and groups). The FE renders the
    *  dropdown directly from this payload — no encoding list lives on the FE.

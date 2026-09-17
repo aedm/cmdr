@@ -13,8 +13,8 @@ commands, and notable non-obvious placements.
   `createDirectory`, `createFile`, sync status, font metrics, `getBriefColumnTextWidths` (Brief-view column
   measurement).
 - **`file-viewer.ts`**: viewer session only: open, seek, search (with `useRegex` / `caseSensitive` modes), close, word
-  wrap menu, encoding pickers (`viewerSetEncoding` / `viewerGetEncodingOptions`), tail mode (`viewerSetTailMode`),
-  `viewerReload`.
+  wrap menu, `viewerSetSearchInputFocused` (the search box's claim on the viewer bar's Edit > Cut / Paste), encoding
+  pickers (`viewerSetEncoding` / `viewerGetEncodingOptions`), tail mode (`viewerSetTailMode`), `viewerReload`.
 - **`file-actions.ts`**: open file/URL, Finder reveal, Quick Look, Get Info, context menu (file / breadcrumb /
   volume-selector-row / parent-row), clipboard, the text editor pair, cloud actions (`cloudMakeAvailableOffline` /
   `cloudRemoveDownload`, iCloud Drive only), `googleDriveLinks` (a Drive item's `viewUrl` plus its `geminiUrl`, or
