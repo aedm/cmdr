@@ -75,12 +75,46 @@ pub(crate) async fn rename_managed(
     volume_id: String,
     initiator: Initiator,
 ) -> Result<(), MutationError> {
+    // Kept for the refusal line below: `rename_managed_inner` consumes both, and a
+    // refusal nobody can place is a refusal nobody can diagnose.
+    let attempted = from.clone();
+    let attempted_volume = volume_id.clone();
+
     // The emit wraps the whole driver rather than sitting at its ends: the archive
     // route is an early return, so a per-branch emit would count the filesystem
     // renames and quietly miss every in-zip one.
     let (result, target) = rename_managed_inner(from, to, force, volume_id, initiator).await;
+    if let Err(error) = &result {
+        log_rename_refusal(&attempted, &attempted_volume, error);
+    }
     super::analytics::emit_rename_analytics(initiator, target, &result);
     result
+}
+
+/// Writes the one line that says why a rename didn't happen.
+///
+/// ❗ **A typed refusal is not a silent one.** Every word the user sees is
+/// rendered on the frontend from the variant alone, and the inline editor shows
+/// no technical-details disclosure, so without this the errno inside a
+/// `Volume` refusal reached nobody: ERR-8RFN4 arrived as the sentence "The
+/// volume couldn't finish that" over a log with nothing in it.
+///
+/// A name that's taken or empty is an ordinary answer to an ordinary typo, so it
+/// stays at debug; the rest mean something went wrong and carry the detail
+/// (errno included) that says what.
+fn log_rename_refusal(from: &Path, volume_id: &str, error: &MutationError) {
+    let expected = matches!(
+        error,
+        MutationError::AlreadyExists { .. }
+            | MutationError::NameEmpty
+            | MutationError::NameHasDisallowedCharacter
+            | MutationError::CantRenameVolumeRoot
+    );
+    if expected {
+        log::debug!(target: "volume", "rename refused on '{volume_id}': {error} ({})", from.display());
+    } else {
+        log::warn!(target: "volume", "rename refused on '{volume_id}': {error} ({})", from.display());
+    }
 }
 
 /// The rename itself. Returns where it landed alongside its result so the wrapper
