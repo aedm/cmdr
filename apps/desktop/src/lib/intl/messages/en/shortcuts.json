@@ -52,14 +52,13 @@
   "shortcuts.scope.volumeChooser": "Volume switcher",
   "@shortcuts.scope.volumeChooser": {
     "description": "Group heading in the Keyboard shortcuts list for commands in the volume switcher (the picker for disks and mounted locations). A short section title.",
-    "screenshot": "settings-keyboard-shortcuts.png"
+    "screenshot": "pane-volume-chooser.png"
   },
 
   "shortcuts.scope.favoritesMenu": "Favorites menu",
   "@shortcuts.scope.favoritesMenu": {
     "description": "Group heading in the Keyboard shortcuts list for keys that work inside the favorites menu (the list of bookmarked folders that opens over a pane). A short section title.",
-    "screenshot": "settings-keyboard-shortcuts.png",
-    "screenshotNote": "Keyboard-shortcut UI. This shows the Settings > Keyboard shortcuts list, which uses the same row/scope/conflict layout as the standalone Shortcuts window. macOS modifier glyphs (⌘ ⌥ ⌃ ⇧) and key names are not translated."
+    "screenshot": "favorites-menu.png"
   },
 
   "shortcuts.scope.servers": "Servers",
