@@ -49,7 +49,7 @@ Two colocated tiers per code area, enforced by checks:
 - We often call `CLAUDE.md` and `DETAILS.md` `C.md` and `D.md`, `C+D.md` together.
 - **`C.md`** Auto-injected by the CC harness whenever a (sub)agent touches a dir, every session and wt. ONLY must-knows:
   gotchas, guardrails, a 2–3 line module map, and pointer to `DETAILS.md`. **Aim for 300–400 words.** `claude-md-length`
-  warns past 600, but that's the alarm, not the target.
+  fails past 600, but that's the alarm, not the target.
 - **`D.md`** the rest. Read on demand. Architecture, data flows, decision rationale, edge-case catalogs. No length
   limit, but stay concise to stay token-efficient. When writing, default to `D.md`; promote to `C.md`.
 - `claude-md-details-sibling` enforces all `C.md` and `D.md` to exist in pairs. Never `@`-import `D.md` from a `C.md`!
