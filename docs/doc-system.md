@@ -27,7 +27,7 @@ cut. Keep in `CLAUDE.md`: invariants, gotchas, "don't do X because Y" guardrails
 `DETAILS.md` pointer. Everything else (architecture narrative, data flows, decision rationale, history, edge-case
 catalogs, benchmarks) is depth.
 
-- **Aim for 300-400 words; 600 is the alarm, not the goal.** `claude-md-length` warns past 600, so a file that lands at
+- **Aim for 300-400 words; 600 is the alarm, not the goal.** `claude-md-length` fails past 600, so a file that lands at
   599 reads as fine and isn't: it's roughly double what a must-know list needs, paid every session in every worktree by
   every agent that touches the directory. Treat a file over ~400 as one to condense, and a file that can't reach ~400
   after condensing and moving depth as a module worth splitting.
@@ -73,8 +73,8 @@ checks (they mutate shared allowlists mid-run), and review every diff yourself. 
 - **Evidence-anchor volatile claims**: OS, version, and empirical claims carry `(verified on <env>, <method>, <date>)`.
 - **Agent-facing style** (`style-guide.md` § Agent-facing docs): no two-column tables and no column wider than 100 chars
   (bullet lists instead), sentence case, en-dash not em-dash, Oxford comma. Docs are a token stream, not a 2D layout.
-- **Never bump an allowlist without David's OK** (`.claude/rules/file-length-allowlist.md`): trim or split instead;
-  leaving a warn is safe.
+- **Trim or split before you bump an allowlist** (`.claude/rules/file-length-allowlist.md`): a bump is a real second
+  answer, and the entry then has to say why in its `reason` field.
 
 ## The rule budget
 
@@ -99,9 +99,9 @@ Convention rots; checks don't. Each invariant is a check (sources in `scripts/ch
 
 - **`resident-doc-budget`** (warn): caps the always-resident bundle (root `CLAUDE.md` + its `@`-imports +
   `.claude/rules/`); the cap ratchets DOWN only. Guards against silent regrowth of the per-session cost.
-- **`claude-md-length`** (warn): warns past 600 words per `CLAUDE.md`; shrink-wraps its allowlist. The authored target
-  is 300-400 (see § C vs D), so the warn catches files that drifted well past where they should sit, not files that are
-  merely at their limit.
+- **`claude-md-length`** (fails): fails past 600 words per `CLAUDE.md`; shrink-wraps its allowlist, and every entry
+  needs a `reason`. The authored target is 300-400 (see § C vs D), so it catches files that drifted well past where they
+  should sit, not files that are merely at their limit.
 - **`invariant-density`** (warn, MOTHBALLED): counts the `❌` rules each subsystem's docs carry, absolute and per 1,000
   source lines; a strict ratchet, so the number can only go down. No lane runs it; `pnpm check invariant-density` does.
   See § The rule budget.
