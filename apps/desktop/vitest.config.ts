@@ -36,6 +36,11 @@ export default defineConfig({
     // jsdom's APIs — if a future test fails on a missing DOM API, switch that
     // file back with `// @vitest-environment jsdom` (jsdom stays installed).
     environment: 'happy-dom',
+    // happy-dom's default page origin is `http://localhost:3000`, a port plenty of
+    // dev servers sit on. A test that resolves a relative URL would then reach a
+    // REAL server and get a real answer, which is far worse than a refusal. This
+    // port is in the private range and picked to belong to nothing.
+    environmentOptions: { happyDOM: { url: 'http://localhost:19317/' } },
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
     execArgv: ['--localstorage-file=.vitest-localstorage'],
@@ -63,6 +68,12 @@ export default defineConfig({
     conditions: ['browser'],
     alias: {
       $lib: path.resolve('./src/lib'),
+      // ❗ Keeps the Playwright runner out of the happy-dom workers, where merely
+      // importing it kills a Node process per spec file. Playwright's own runner
+      // never sees these aliases. Why, and what the shim may export:
+      // `test/e2e-playwright/vitest-playwright-shim.ts`.
+      '@playwright/test': path.resolve('./test/e2e-playwright/vitest-playwright-shim.ts'),
+      '@srsholmes/tauri-playwright': path.resolve('./test/e2e-playwright/vitest-playwright-shim.ts'),
     },
   },
 })

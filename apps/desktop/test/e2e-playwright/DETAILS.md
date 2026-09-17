@@ -294,6 +294,39 @@ Only the layout facts that none of those carry live here:
   space), and `viewer-media.spec.ts` (a wrong CSP token surfaces as a `cmdr-media` / `img-src` / `object-src` violation
   with the media silently not rendering).
 
+## The Vitest shim
+
+Some modules here carry `*.test.ts` unit tests that run in the Vitest lane, not under Playwright: the pure helpers
+(`helpers/click-button-by-text.test.ts` and its siblings, which execute the real `evaluate` payload against happy-dom),
+plus `i18n-capture-stage-only.test.ts`, `app-death.test.ts`, and the marketing-shot geometry tests. They import the
+REAL helper modules on purpose — paraphrasing a helper in the test would anchor a different program than the suite runs.
+
+That pulls the Playwright runner in behind them, because the helpers import `expect` from `@playwright/test` and the
+i18n modules take the extended one from `fixtures.ts` (`createTauriTest`, out of `@srsholmes/tauri-playwright`). Loading
+either package inside a happy-dom worker kills a whole Node process: it fires an HTTP request at the page's own origin
+and dies on an unhandled `'error'` event, printing a `node:events:505 throw er` dump while the tests around it still
+report green. Five processes per full run, and until `vitestRunDiagnostics` learned Node's death banner
+(`scripts/check/checks/DETAILS.md` § "Vitest failure output"), nothing in the lane said so. Reproduced down to a
+six-line file importing nothing but `expect`, and the target port follows `environmentOptions.happyDOM.url`, which is
+what pins the page origin as where it aims (vitest 4.1.10, happy-dom 20.11.1, @playwright/test 1.62.1,
+@srsholmes/tauri-playwright 0.4.1, 2026-09-17).
+
+So `vitest.config.ts` aliases BOTH packages to `test/e2e-playwright/vitest-playwright-shim.ts`, which hands back Vitest's own `expect`
+(same `expect(...)` and `expect.poll(fn, { timeout })` surface) and a test-shaped proxy that `fixtures.ts` can build on
+at module scope but that throws by name if a Playwright test is ever RUN under Vitest. Playwright's own runner resolves
+the real packages and never sees the alias.
+
+Consequences worth knowing:
+
+- **The Tauri matchers are not there.** `createTauriTest` extends `expect` with `toBeVisible` / `toBeHidden` /
+  `toBeEnabled` and friends, which poll a live `TauriPage`. A helper reached by a `*.test.ts` can't use one; give it a
+  seam the unit test can drive instead. ❌ Widening the shim into a re-export puts the crash straight back.
+- **The shim's export surface is deliberately two names.** Anything else a Vitest-loaded module needs fails the build
+  naming the shim, which is the review prompt.
+- **`environmentOptions.happyDOM.url` is a private-range port on purpose.** happy-dom defaults the page origin to
+  `http://localhost:3000`, where a real dev server often listens; a test resolving a relative URL would then get a real
+  ANSWER rather than a refusal, which is the worse failure of the two.
+
 ## The i18n capture's staging in the lane
 
 `i18n-capture-staging.spec.ts` runs the i18n capture's own staging code in the non-MTP lanes, in stage-only mode
