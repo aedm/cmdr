@@ -1,9 +1,135 @@
 # Changelog
 
-All notable changes to Cmdr will be documented in this file.
+This file holds all notable changes to Cmdr over time.
 
 The format is based on [keep a changelog](https://keepachangelog.com/en/1.1.0/), and we use
 [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+50+ fixes, a few smaller features, and a few internal redesigns. The highlights:
+
+- Tons of fixes around drive ejection, data safety improvements around unexpectedly disconnected drives, many fixes
+  around SMB and SFTP connections, plus many more various fixes based on user reports.
+- Pressing `⌥⇧=` on a PDF selects all PDFs, `⌃⏎` opens the context menu.
+- Completely (re)designed Favorites (try pressing `⌃D`!)
+
+### Added
+
+- Add a favorites menu on ⌃D: press 1–9 to jump to a favorite, 0 to add the folder you're in, drag to reorder
+  (28f05cc03, 22795cc47, 4a879b3e0, b56333601, 86a91ae1b, 9b83e49ff, 0e45a9d51)
+- Add `Select all of the same kind` on ⌥⇧=, in the Select menu and in a new `Selection` submenu on right-click, labelled
+  with what it would pick right now (0bb09471d, 8cef01e9c, ab61c7499, 5c89392e8, ed428ed5e, db38c3aa5)
+- Show Finder's tag colors as one row of circles in the file right-click menu, with add and remove captions in every
+  language (d45954315, 3d5cc4270, e7a2fa546, 51f456098)
+- Open the file right-click menu from the keyboard with ⌃⏎ (158df554e, 5ece8c46b)
+- Name the app holding a drive when an eject is refused, instead of saying "something is" (17e78ee40, a30c59fc1,
+  5a2739f7e, 503706817, d80392eaf)
+- Count a search's hits in the pane footer, and open search results in a tab of their own (7d9500130, 41005d461)
+- Add a "No full disk access" badge in the title bar that opens onboarding, and explain a refused trash with a way
+  through (5ca6a7ca0, efa641361, 5e0e272bc)
+- Say why a drive's folder sizes get recomputed after you unplug it mid-index (548d66d6e, 6f2eb84ed)
+- Say where your files are when a drive comes back holding an unfinished move (876a57425, 5456a72e7)
+- Show ⇧8, + and - beside their menu items, which looked like they had no shortcut at all (3bdc9502d, 4bd903b19)
+- Let an agent close an SFTP or WebDAV connection over MCP (b78df410b)
+
+### Changed
+
+- Cmdr is $59 bought once, with a year of updates and an Enterprise tier; the yearly subscription is retired (9465ca05d)
+- Eject takes the drive's whole physical disk down, or says why it couldn't, instead of reporting success over a
+  partition that's still mounted (1a6e2fcc6)
+- Every unmount, whoever started it (Finder, `diskutil`, another app), now waits while Cmdr's index lets the drive go
+  (2fbd81ff6, dd4e07f0a, 4b6683e18)
+- A drive pulled from its port stops its index instead of leaving one reading a filesystem that isn't there (43f09f3bd,
+  5c6309198)
+- A cloud drive mounted in your home folder, like pCloud's, gets its own row in the volume switcher beside Dropbox
+  (f9e0a727e)
+
+### Fixed
+
+- Fix a drive pulled mid-transfer losing originals it had already copied: every source is kept, and the message names
+  the drive and how far it got (613adf0c0, 784f9e91d)
+- Fix a move to a USB drive deleting the sources before the destination folders reached the disk (e8e9069d2)
+- Fix a move onto a network or FUSE mount failing outright and leaving both copies (0dd3eb1cb)
+- Fix a crash or force-quit mid-overwrite losing the file being replaced (2bf38ff1e, ae1c1bee2)
+- Fix a drive that leaves mid-scan blanking its own index, and mark an index that may have lost rows for a rebuild
+  (34104e35b, 970ebeb55, dbf0654e4, f4e0f37a1, d3c33beb3, 3dd6c43cb, 10bf35ff5)
+- Fix an eject unmounting a drive Cmdr was still reading (d6c32f603, 678b249ef, 44079fe6d, 46888a7df, 308e3583c,
+  1e4cd4085, 10fe89023, 0a534e1b7, b02bb51dd)
+- Fix renaming anything on a mounted SMB share failing every time (c554210cc)
+- Fix copying and moving doing nothing on an SFTP, WebDAV, or ADB server rooted at `/` (904da0ba4)
+- Fix a share published as a DFS namespace root crawling on the slow macOS mount instead of connecting directly
+  (54bf40814, e89f6c9eb, d780ec510, 692cecea6)
+- Fix F8 in a Dropbox or Google Drive folder failing with a message about the wrong disk (13dd5f6cd, d988cdf13,
+  89d4aa85e, a6677962a)
+- Fix a batch trash that left items behind reporting a clean success (ea0bbcd85)
+- Fix a drive mounted outside `/Volumes`, like pCloud's, dead-ending on "Volume not found" (6df5c5821)
+- Fix photos in a folder you excluded still showing up in photo search, find similar, and Ask Cmdr (4b2f9eaa5,
+  b3cc3c142, cb72a94f4)
+- Fix excluding a folder giving up on purging its indexed text, and reclaiming space claiming bytes it never freed
+  (43814d8da, 1483ff682)
+- Fix a search handing back at most 1,000 rows, and "Show all in main window" opening with only 30 (abf932953,
+  598dd00fa)
+- Fix Cmdr flickering at startup after being quit on a search-results pane (c47d193a0, 0ccca522e)
+- Fix the right-click menu showing the default keys after you rebind a command (5046a304d)
+- Fix ⌥ shortcuts and Zoom in silently having no menu key at all (b03dc28d8, 213d3fe4b, 6849f1084, 42d60ce7d)
+- Fix the viewer's Edit menu acting on the status bar instead of the file, and its right-click menu not closing
+  (e67edbd9e, df65649dc, 7eef00067)
+- Fix the path bar offering an eject on an SFTP or WebDAV place that could only be refused (5e0b755ce)
+- Fix "Add to favorites" writing a favorite nobody could see, on phones, archives, and protocol-only servers (59c4fe438,
+  febc4f761)
+- Fix the drive-index badge's menu being clipped by the drive list, and answering no keys (3b3de8303)
+- Fix activating a license leaving "Personal use only" in the Dock until a relaunch (ff55ea5c7)
+- Fix a purchase never delivering its license key (3423935b1)
+- Fix stacked macOS permission popups over onboarding when Full Disk Access was revoked or half-granted (848c70877)
+- Fix Allow in onboarding flipping to "Restart Cmdr" when System Settings never opened (66921785c)
+- Fix an offline update check showing raw request text, and an offline laptop logging a warning every hour (2cafe8eb7)
+- Fix a crash report that didn't go out closing as if it had been sent (9a0bce9fe)
+- Fix an error report or note that didn't go out showing raw server text instead of a reason (1d97a3227)
+- Fix turning Ask Cmdr off not sticking when the database refused the write (b761a8d59, 14e21903a, 619d76707)
+- Fix "Forget everything" staying silent when some Ask Cmdr notes couldn't be deleted (de6cf32c6)
+- Fix picking Local, then Off, then Local again leaving the model not downloading (5933358d2, fe258ad72)
+- Fix an Ask Cmdr send that broke inside Cmdr blaming the AI provider (683bc1338)
+- Fix one failing startup step skipping every step after it (62a0bbda9)
+- Fix a settings save that tripped partway through reporting success for keys that never landed (26276e3e4)
+- Fix saved SFTP and WebDAV places with an email address as the username failing to open or sign in (4d8c6b1e4)
+- Fix the sign-in sheet going silent or sticking on busy when the Keychain refused a password (0baee720e)
+- Fix a saved place another pane had just connected saying Cmdr couldn't reach it (81b9aca7b, 6227169d1)
+- Fix Retry in the volume list spinning forever when the request never reached the backend (d2bf66cad)
+- Fix the Suggested ops dialog looking like nothing happened after a failed load, approval, or rejection (f2082fc26,
+  5e3303921)
+- Fix Load more vanishing in the operation log after a failed read, and an expanded row never reloading (9d16cd82b)
+- Fix "Go to trash" on the trash toast sending an error report when the drive was slow (22de5ee18)
+- Fix an undo shown from the queue never closing its progress dialog, and Cancel on it hanging for 20 s (d100ad3aa)
+- Fix one refused event subscription leaking the other seven listeners of the operation fan-out (618cbc46c, 92d4723b0,
+  5206207a9)
+- Fix the Homebrew one-liner stopping at `brew tap` on Homebrew 7.0.0 and 7.0.1 (4a18b93f4)
+
+### Security
+
+- Stop an AI client changing your consent answers, like a "no" to Ask Cmdr or to crash reports, over MCP (f358206f6)
+- Stop a multi-word filename leaking its tail into an uploaded error report (7cba74422)
+- Stop a password typed into an SMB address or a server path reaching the log file (f94bef828)
+- Update rustls to 0.23.45, closing a TLS 1.3 handshake that could smuggle messages across encryption level boundaries
+  (1c7057a09)
+
+### Non-app
+
+- Build every menu in the app on one house `Menu` primitive, so keyboard, pointer, submenus, and drag reorder are
+  written once (244c73ef9, 187bc0c4c, c4579345d, fca42eb7b, c67a66b14, 8bad2b7f0, 811b466bf, 02e61e1ca, c170882ab,
+  c1227a695, 39cdb853e)
+- Test eject and drive-vanish paths against real APFS and HFS+ disk images through a guarded runner (08c871372,
+  654a2d075, 20103dac4, c6900f4a7, 71fc73dfc)
+- Fail the run on a long file, an oversized `CLAUDE.md`, or new duplication, with every allowlist entry carrying its
+  reason (03ae9dba5, 4904b0000, 7628069ab, dce4ad0ef)
+- Add a Licenses page to the private dashboard, per-license notes, and a daily backup of every license to R2 (1be09e16e,
+  e015953a7, 5a3332a20, a37bfc472, 585b18f24)
+- Mint and revoke a license with one command, and ban Node globals in the Worker so a missing runtime can't break a
+  purchase again (45d972dc6, b67c32192, 80966617d, 837125638, b3f8f45bd)
+- Cut a red Vitest lane's output from 1,300 lines to 40, and stop the unit suite killing five Node processes per run
+  (98f8195d5, 360500780)
+- Let frontend warns reach the log file and error-report bundles, each line exactly once (c6b692ed8, f0ffb1668,
+  09591db90)
 
 ## [0.45.1] - 2026-09-13
 
