@@ -487,6 +487,19 @@ The stamp travels with the comment, so one mechanism serves both promises: an er
 days, a feedback reply-to carries two years. Feedback's MESSAGE is the exception that proves the split, and it lives in
 the issue body, because the policy keeps feedback text so it can be acted on; only the address expires.
 
+**Amendments land on the card they amend.** A successful file writes `gh_issue:{ERR-XXXXX}` → the issue number
+(`rememberIssueNumber`), and `/error-report/:id/amend` reads it back to comment on that issue. It is its OWN KV key
+rather than a field on the `report:{id}` index, because that entry is written before the 200 and carries the amend
+credential's hash: adding to it would be a read-modify-write against an eventually-consistent store with the credential
+as the thing at risk. A miss simply means no comment, which is the right answer for an auto-send, a debug build, a
+capped day, or a report that predates this feature.
+
+❗ **An amendment's comment carries the ORIGINAL report's expiry, never its own 90 days** (`reportExpiryDate`, from the
+index entry's upload date). A report amended on day 80 would otherwise keep a note on the board until day 170, outliving
+both its bundle and the policy's "anything you added to the report afterwards". `commentOnReportIssue` also re-runs the
+privacy probe rather than trusting that the repo was private when the issue was filed: months can pass between an upload
+and its amendment, and the answer is allowed to have changed.
+
 **Untrusted text is always fenced** (`fencedBlock`, with a fence longer than any backtick run inside it), so a note
 cannot become a heading, an `@mention` that would notify a stranger, or a cross-repo reference. Notes are truncated well
 under GitHub's 65,536-character ceiling; the full text is in the bundle manifest or the D1 row either way.

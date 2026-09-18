@@ -127,6 +127,12 @@ export interface PersonalCommentInput {
   downloadUrl?: string | null
   linkTtlDays?: number
   retentionDays?: number
+  /**
+   * An absolute `YYYY-MM-DD` deletion date, overriding `retentionDays`. An amendment uses this to
+   * expire with the report it amends rather than 90 days from when it was written, which would
+   * outlive the bundle it belongs to.
+   */
+  expiresOn?: string
 }
 
 /**
@@ -141,9 +147,10 @@ export function buildPersonalComment(input: PersonalCommentInput): string | null
   if (!note && !email && !hasLink) return null
 
   const retentionDays = input.retentionDays ?? DEFAULT_PERSONAL_RETENTION_DAYS
+  const expiresOn = input.expiresOn ?? expiryDate(retentionDays)
   const sections: string[] = [
-    `${PERSONAL_COMMENT_MARKER} expires=${expiryDate(retentionDays)} -->`,
-    `_Deleted automatically after ${String(retentionDays)} days, per the privacy policy. The issue above stays._`,
+    `${PERSONAL_COMMENT_MARKER} expires=${expiresOn} -->`,
+    `_Deleted automatically on ${expiresOn}, per the privacy policy. The issue above stays._`,
   ]
 
   if (note) {
@@ -402,7 +409,7 @@ export async function fileErrorReportIssue(
   }
 
   const content = buildErrorReportIssue(input)
-  return fileIssue(target, {
+  const issueNumber = await fileIssue(target, {
     ...content,
     personalComment: buildPersonalComment({
       userNote: input.userNote,
@@ -412,6 +419,18 @@ export async function fileErrorReportIssue(
       retentionDays: ERROR_REPORT_RETENTION_DAYS,
     }),
   })
+
+  // Remembered so a later amendment lands on this same card. A failure here costs the amendment its
+  // comment, never the issue, so it's logged rather than propagated.
+  if (issueNumber !== null) {
+    try {
+      await rememberIssueNumber(env.ERROR_REPORT_META, input.id, issueNumber)
+    } catch (e) {
+      console.error('GitHub issues: remembering the issue number failed; amendments will not find it', e)
+    }
+  }
+
+  return issueNumber
 }
 
 /**
@@ -436,6 +455,107 @@ export async function fileFeedbackIssue(env: Bindings, input: FeedbackIssueInput
       retentionDays: FEEDBACK_EMAIL_RETENTION_DAYS,
     }),
   })
+}
+
+/**
+ * KV key remembering which issue one report got, so an amendment months later can find its card.
+ *
+ * Its OWN key rather than a field on the `report:{id}` index: that entry is written before the 200
+ * and carries the amend credential's hash, so adding to it would mean a read-modify-write against
+ * an eventually-consistent store, with the credential as the thing at risk. A separate key is
+ * written once and read once, and a miss simply means no comment.
+ */
+function issueNumberKey(id: string): string {
+  return `gh_issue:${id}`
+}
+
+/**
+ * Remember an issue number for {@link recallIssueNumber}. TTL matches the report index and the R2
+ * lifecycle, so the pointer never outlives the report it points at.
+ */
+export async function rememberIssueNumber(kv: KVNamespace, id: string, issueNumber: number): Promise<void> {
+  await kv.put(issueNumberKey(id), String(issueNumber), { expirationTtl: REPORT_RETENTION_SECONDS })
+}
+
+/** The issue one report got, or null when it never got one (auto-send, debug build, cap, outage). */
+export async function recallIssueNumber(kv: KVNamespace, id: string): Promise<number | null> {
+  const raw = await kv.get(issueNumberKey(id))
+  if (raw === null) return null
+  const parsed = Number(raw)
+  return Number.isInteger(parsed) ? parsed : null
+}
+
+/** 90 days, the window a report and everything pointing at it share. */
+const REPORT_RETENTION_SECONDS = 90 * 24 * 60 * 60
+
+/** One amendment, as it goes onto the card. */
+export interface AmendmentCommentInput {
+  note?: string | null
+  email?: string | null
+  amendmentCount: number
+  /** The ORIGINAL report's deletion date, so an amendment can't outlive the bundle it belongs to. */
+  expiresOn: string
+}
+
+/**
+ * The comment one amendment adds to its report's card.
+ *
+ * Always personal data by definition (an amendment is a note, an address, or both), so it is always
+ * stamped and always swept. It carries the original report's date rather than its own: a report
+ * amended on day 80 still has to disappear on day 90.
+ */
+export function buildAmendmentComment(input: AmendmentCommentInput): string {
+  const ordinal = `Amendment #${String(input.amendmentCount)}`
+  const comment = buildPersonalComment({
+    userNote: input.note,
+    email: input.email,
+    expiresOn: input.expiresOn,
+  })
+  // `buildPersonalComment` returns null only when there is nothing personal, and the amend route
+  // rejects a body carrying neither a note nor an address, so this cannot be empty in practice.
+  const parts = comment ?? `${PERSONAL_COMMENT_MARKER} expires=${input.expiresOn} -->`
+  return parts.replace('\n\n', `\n\n**${ordinal}**, added by the reporter after sending.\n\n`)
+}
+
+/**
+ * Add a comment to the issue one report got. Returns whether anything was posted.
+ *
+ * Runs the privacy probe again through {@link fileIssue}'s own gate rather than trusting that the
+ * repo was private when the issue was filed: months can pass between an upload and its amendment,
+ * and the answer is allowed to have changed.
+ */
+export async function commentOnReportIssue(env: Bindings, id: string, body: string): Promise<boolean> {
+  const target = resolveIssueTarget(env)
+  if (!target) return false
+
+  const issueNumber = await recallIssueNumber(env.ERROR_REPORT_META, id)
+  if (issueNumber === null) return false
+
+  if (!(await isRepoPrivate(target))) {
+    console.error(`GitHub issues: ${target.owner}/${target.repo} is not private; the amendment was not posted`)
+    return false
+  }
+
+  try {
+    const response = await fetch(
+      `${GITHUB_API}/repos/${target.owner}/${target.repo}/issues/${String(issueNumber)}/comments`,
+      {
+        method: 'POST',
+        headers: { ...githubHeaders(target.token), 'content-type': 'application/json' },
+        body: JSON.stringify({ body }),
+      },
+    )
+    if (!response.ok) {
+      console.error(
+        `GitHub issues: amendment comment failed with ${String(response.status)} on #${String(issueNumber)}`,
+      )
+      return false
+    }
+    return true
+  } catch (e) {
+    console.error(`GitHub issues: amendment comment threw on #${String(issueNumber)}`, e)
+    return false
+  }
 }
 
 /**
