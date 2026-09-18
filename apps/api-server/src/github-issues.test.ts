@@ -378,6 +378,56 @@ describe('commentOnReportIssue', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it('adds needs-reply when the amendment brought a reply-to address', async () => {
+    const sharedEnv = configuredEnv()
+    await rememberIssueNumber(sharedEnv.ERROR_REPORT_META, 'ERR-A2345', 12)
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ private: true }))
+      .mockResolvedValueOnce(jsonResponse({ id: 5 }, 201))
+      .mockResolvedValueOnce(jsonResponse([{ name: 'needs-reply' }], 200))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'note', { addLabels: ['needs-reply'] })).resolves.toBe(
+      true,
+    )
+
+    expect(requestUrl(fetchMock.mock.calls[2])).toBe(
+      'https://api.github.com/repos/vdavid/cmdr-reports/issues/12/labels',
+    )
+    expect(requestBody(fetchMock.mock.calls[2])).toContain('needs-reply')
+  })
+
+  it('does not touch labels when the amendment brought no address', async () => {
+    const sharedEnv = configuredEnv()
+    await rememberIssueNumber(sharedEnv.ERROR_REPORT_META, 'ERR-A2345', 12)
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ private: true }))
+      .mockResolvedValueOnce(jsonResponse({ id: 5 }, 201))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'note')).resolves.toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the comment when only the label call fails', async () => {
+    const sharedEnv = configuredEnv()
+    await rememberIssueNumber(sharedEnv.ERROR_REPORT_META, 'ERR-A2345', 12)
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ private: true }))
+        .mockResolvedValueOnce(jsonResponse({ id: 5 }, 201))
+        .mockResolvedValueOnce(jsonResponse({ message: 'boom' }, 500)),
+    )
+
+    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'note', { addLabels: ['needs-reply'] })).resolves.toBe(
+      true,
+    )
+  })
+
   it('posts to the remembered issue when the repo is private', async () => {
     const sharedEnv = configuredEnv()
     await rememberIssueNumber(sharedEnv.ERROR_REPORT_META, 'ERR-A2345', 12)

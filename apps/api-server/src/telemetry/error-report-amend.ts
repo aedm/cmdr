@@ -380,6 +380,10 @@ errorReportAmend.post('/error-report/:id/amend', async (c) => {
           // amendment can't outlive the bundle it belongs to.
           expiresOn: reportExpiryDate(entry.date),
         }),
+        // An amendment is often exactly how someone supplies the reply-to they left out, and the
+        // card's `needs-reply` is the only thing that says somebody is waiting. Without this the
+        // board keeps reading "nobody to answer" while an address is sitting in the comment.
+        { addLabels: amendment.email ? ['needs-reply'] : [] },
       )
     } catch (e) {
       console.error('Error report amend: the GitHub issue comment failed', e)

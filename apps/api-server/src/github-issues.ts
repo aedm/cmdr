@@ -524,7 +524,12 @@ export function buildAmendmentComment(input: AmendmentCommentInput): string {
  * repo was private when the issue was filed: months can pass between an upload and its amendment,
  * and the answer is allowed to have changed.
  */
-export async function commentOnReportIssue(env: Bindings, id: string, body: string): Promise<boolean> {
+export async function commentOnReportIssue(
+  env: Bindings,
+  id: string,
+  body: string,
+  options: { addLabels?: string[] } = {},
+): Promise<boolean> {
   const target = resolveIssueTarget(env)
   if (!target) return false
 
@@ -551,10 +556,39 @@ export async function commentOnReportIssue(env: Bindings, id: string, body: stri
       )
       return false
     }
-    return true
   } catch (e) {
     console.error(`GitHub issues: amendment comment threw on #${String(issueNumber)}`, e)
     return false
+  }
+
+  if (options.addLabels?.length) {
+    await addIssueLabels(target, issueNumber, options.addLabels)
+  }
+  return true
+}
+
+/**
+ * Add labels to an issue, leaving the ones already on it alone: GitHub's add endpoint is additive
+ * and idempotent, so re-adding one is a no-op rather than an error.
+ *
+ * Failure is logged and swallowed. The comment it accompanies is already posted, and losing a label
+ * must not read to the caller as losing the amendment.
+ */
+async function addIssueLabels(target: IssueTarget, issueNumber: number, labels: string[]): Promise<void> {
+  try {
+    const response = await fetch(
+      `${GITHUB_API}/repos/${target.owner}/${target.repo}/issues/${String(issueNumber)}/labels`,
+      {
+        method: 'POST',
+        headers: { ...githubHeaders(target.token), 'content-type': 'application/json' },
+        body: JSON.stringify({ labels }),
+      },
+    )
+    if (!response.ok) {
+      console.error(`GitHub issues: labelling #${String(issueNumber)} returned ${String(response.status)}`)
+    }
+  } catch (e) {
+    console.error(`GitHub issues: labelling #${String(issueNumber)} threw`, e)
   }
 }
 
