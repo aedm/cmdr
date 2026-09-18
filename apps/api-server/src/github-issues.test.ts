@@ -1,7 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
+  buildAmendmentComment,
+  commentOnReportIssue,
   fileErrorReportIssue,
   fileFeedbackIssue,
+  recallIssueNumber,
+  rememberIssueNumber,
   PERSONAL_COMMENT_MARKER,
   buildErrorReportIssue,
   buildFeedbackIssue,
@@ -286,6 +290,108 @@ describe('fileFeedbackIssue', () => {
 
     const commentPayload = JSON.parse(requestBody(fetchMock.mock.calls[2])) as { body: string }
     expect(daysUntilExpiry(commentPayload.body)).toBeGreaterThan(725)
+  })
+})
+
+describe('remembering which issue a report got', () => {
+  it('round-trips an issue number through KV', async () => {
+    const kv = fakeKv()
+    await expect(recallIssueNumber(kv, 'ERR-A2345')).resolves.toBeNull()
+    await rememberIssueNumber(kv, 'ERR-A2345', 12)
+    await expect(recallIssueNumber(kv, 'ERR-A2345')).resolves.toBe(12)
+  })
+
+  it('is null for a report that never got an issue, and for a corrupted value', async () => {
+    const kv = fakeKv()
+    await expect(recallIssueNumber(kv, 'ERR-NONE1')).resolves.toBeNull()
+    await kv.put('gh_issue:ERR-BAD11', 'not a number')
+    await expect(recallIssueNumber(kv, 'ERR-BAD11')).resolves.toBeNull()
+  })
+
+  it('remembers the number after filing, so an amendment can find it later', async () => {
+    const sharedEnv = configuredEnv()
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ private: true }))
+        .mockResolvedValueOnce(jsonResponse({ number: 77 }, 201)),
+    )
+
+    await expect(fileErrorReportIssue(sharedEnv, errorReport)).resolves.toBe(77)
+    await expect(recallIssueNumber(sharedEnv.ERROR_REPORT_META, errorReport.id)).resolves.toBe(77)
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('buildAmendmentComment', () => {
+  it('carries the note and the reply-to, both fenced', () => {
+    const comment = buildAmendmentComment({
+      note: 'forgot to say: it only happens on the NAS ```x```',
+      email: 'later@example.com',
+      amendmentCount: 2,
+      expiresOn: '2026-12-01',
+    })
+    expect(comment).toContain('forgot to say')
+    expect(comment).toContain('later@example.com')
+    expect(comment).toContain('````')
+    expect(personalCommentExpiry(comment)).toBe('2026-12-01')
+  })
+
+  it('expires with the original report rather than 90 days from the amendment', () => {
+    // A report amended on day 80 must still disappear on day 90, not day 170.
+    const comment = buildAmendmentComment({ note: 'late note', amendmentCount: 1, expiresOn: '2026-10-01' })
+    expect(personalCommentExpiry(comment)).toBe('2026-10-01')
+  })
+
+  it('says which amendment this is, so several read in order', () => {
+    expect(buildAmendmentComment({ note: 'x', amendmentCount: 3, expiresOn: '2026-12-01' })).toContain('3')
+  })
+})
+
+describe('commentOnReportIssue', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('does nothing when the report never got an issue', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(commentOnReportIssue(configuredEnv(), 'ERR-A2345', 'hi')).resolves.toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('re-checks that the repo is private before commenting', async () => {
+    const sharedEnv = configuredEnv()
+    await rememberIssueNumber(sharedEnv.ERROR_REPORT_META, 'ERR-A2345', 12)
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ private: false, visibility: 'public' }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'secret note')).resolves.toBe(false)
+    // Only the privacy probe. The note was never posted.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('posts to the remembered issue when the repo is private', async () => {
+    const sharedEnv = configuredEnv()
+    await rememberIssueNumber(sharedEnv.ERROR_REPORT_META, 'ERR-A2345', 12)
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ private: true }))
+      .mockResolvedValueOnce(jsonResponse({ id: 5 }, 201))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'the amendment')).resolves.toBe(true)
+    expect(requestUrl(fetchMock.mock.calls[1])).toBe(
+      'https://api.github.com/repos/vdavid/cmdr-reports/issues/12/comments',
+    )
+    expect(requestBody(fetchMock.mock.calls[1])).toContain('the amendment')
   })
 })
 

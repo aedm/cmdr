@@ -8,7 +8,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { app } from '../index'
 import { buildMultipart, createBindings, createKv, createR2, todayUtc, validMeta } from './error-report-test-helpers'
 import { amendSidecarKey } from './error-report-eviction'
-import { reportIndexKey, type ReportIndexEntry } from './error-report-amend'
+import { reportExpiryDate, reportIndexKey, type ReportIndexEntry } from './error-report-amend'
 import { dailyBytesKey } from './error-report-intake'
 
 /** One amendment as the sidecar records it. */
@@ -107,6 +107,20 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('reportExpiryDate', () => {
+  it('counts 90 days from the UPLOAD, so a late amendment cannot outlive the bundle', () => {
+    // Amended on day 80, the comment must still go on day 90 of the REPORT.
+    expect(reportExpiryDate('2026-01-01')).toBe('2026-04-01')
+  })
+
+  it('falls back to 90 days from now rather than throwing on an unparseable date', () => {
+    const fallback = reportExpiryDate('not-a-date')
+    const daysOut = (new Date(fallback).getTime() - Date.now()) / 86_400_000
+    expect(daysOut).toBeGreaterThan(88)
+    expect(daysOut).toBeLessThan(91)
+  })
 })
 
 describe('POST /error-report indexing', () => {

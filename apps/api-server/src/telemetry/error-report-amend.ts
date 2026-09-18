@@ -29,6 +29,7 @@ import { amendSidecarKey } from './error-report-eviction'
 import { claimErrorReportEmailSlot, DAILY_ERROR_REPORT_EMAIL_CAP } from './error-report-intake'
 import { humanReportRecipient } from '../email/send'
 import { sendErrorReportAmendmentEmail, sendErrorReportsSuppressedEmail } from '../email/error-report'
+import { buildAmendmentComment, commentOnReportIssue } from '../github-issues'
 
 const errorReportAmend = new Hono<{ Bindings: Bindings }>()
 
@@ -51,6 +52,20 @@ export function reportIndexKey(id: string): string {
  * outlives the bundle it points at and never points at one that's already gone.
  */
 export const REPORT_INDEX_TTL_SECONDS = 90 * 24 * 60 * 60
+
+/**
+ * When everything about a report uploaded on `uploadDate` (`yyyy-mm-dd`) is promised to be gone:
+ * the R2 lifecycle's 90 days, counted from the upload rather than from now.
+ *
+ * An amendment's card comment carries this rather than its own 90 days. A report amended on day 80
+ * would otherwise keep a note on the board until day 170, outliving the bundle by months and the
+ * privacy policy's "anything you added to the report afterwards" with it.
+ */
+export function reportExpiryDate(uploadDate: string): string {
+  const uploaded = Date.parse(`${uploadDate}T00:00:00Z`)
+  const base = Number.isNaN(uploaded) ? Date.now() : uploaded
+  return new Date(base + REPORT_INDEX_TTL_SECONDS * 1000).toISOString().slice(0, 10)
+}
 
 /** What the index knows about one uploaded report. */
 export interface ReportIndexEntry {
@@ -343,16 +358,33 @@ errorReportAmend.post('/error-report/:id/amend', async (c) => {
 
   const sidecar = await appendAmendment(c.env.ERROR_REPORTS_BUCKET, entry.key, id, amendment)
 
-  // The sidecar is stored, so the amendment is safe; the mail rides behind the 200 like the upload
-  // route's does, and a mail problem is ours rather than the reporter's. The daily byte budget is
-  // deliberately NOT charged: a note is bytes-tiny.
-  const notify = mailAmendment(c.env, {
-    id,
-    amendment,
-    amendmentCount: sidecar.amendments.length,
-  }).catch((e: unknown) => {
-    console.error('Error report amend: notification email failed', e)
-  })
+  // The sidecar is stored, so the amendment is safe; the mail and the card comment ride behind the
+  // 200 like the upload route's do, and a failure in either is ours rather than the reporter's. The
+  // daily byte budget is deliberately NOT charged: a note is bytes-tiny.
+  const notify = (async () => {
+    try {
+      await mailAmendment(c.env, { id, amendment, amendmentCount: sidecar.amendments.length })
+    } catch (e) {
+      console.error('Error report amend: notification email failed', e)
+    }
+
+    try {
+      await commentOnReportIssue(
+        c.env,
+        id,
+        buildAmendmentComment({
+          note: amendment.note,
+          email: amendment.email,
+          amendmentCount: sidecar.amendments.length,
+          // The ORIGINAL report's deletion date, from the index entry's upload date, so an
+          // amendment can't outlive the bundle it belongs to.
+          expiresOn: reportExpiryDate(entry.date),
+        }),
+      )
+    } catch (e) {
+      console.error('Error report amend: the GitHub issue comment failed', e)
+    }
+  })()
   await scheduleBackground(c, notify)
 
   return c.json({ id, amendments: sidecar.amendments.length })
