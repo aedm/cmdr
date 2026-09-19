@@ -8,17 +8,24 @@
 - ❌ **Never add `com.apple.security.cs.disable-library-validation` back.** It lets a library signed by anyone load into
   Cmdr's process, which is the standard way to inject code into a signed app. Nothing needs it: the only `dlopen` in the
   codebase is Apple's own `FileProvider.framework`
-  (`apps/desktop/src-tauri/src/file_system/file_provider_actions/objc.rs`), which library validation permits, and the
-  bundle carries no frameworks or sidecar binaries.
+  (`apps/desktop/src-tauri/src/file_system/file_provider_actions/objc.rs`), which library validation permits.
+- ❗ **The llama.cpp dylibs under `Resources/resources/ai/` look like a counterexample and aren't.** `ai/extract.rs`
+  copies them to the AI data dir and `llama-server` runs as a CHILD PROCESS, so they load into its address space, never
+  into ours, and Cmdr's library validation has no say over them. They also carry our own Team ID, which library
+  validation permits regardless. Check this again before bundling anything that would load INTO Cmdr.
 - ❌ **Never add `…allow-unsigned-executable-memory`, `…allow-jit`, `…allow-dyld-environment-variables`, or
   `…get-task-allow`.** The first two are for a process that JITs, and WKWebView's JavaScript runs in Apple's
   out-of-process `com.apple.WebKit.WebContent`, never in ours.
 - **A dev build exercises none of this** (it's unsigned), so an entitlement change is only ever proved on a signed
   build: `codesign -d --entitlements -` on the bundle, then launch it and confirm the panes list files and a dialog
-  renders.
+  renders. Proving NOTARIZATION locally needs one more step, because a local `pnpm build` leaves the AI binaries ad-hoc
+  signed: `docs/guides/apple-signing-and-notarization.md` § "Notarizing a local build".
 
 This is load-bearing for `docs/specs/elevated-file-operations.md`, whose root helper trusts whatever runs inside Cmdr
 (its decision 8). With library validation off, that trust had nothing behind it.
+
+Verified end to end on 2026-09-19 against the empty plist: submission `94b2817d`, `Accepted`, stapled, and
+`spctl -a -vvv -t install` reports `source=Notarized Developer ID`.
 
 ## withGlobalTauri
 

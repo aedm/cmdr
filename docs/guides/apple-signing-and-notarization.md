@@ -259,3 +259,44 @@ Add this right after the certificate import step:
   git tag -d v0.5.0-signing-test && git push origin :v0.5.0-signing-test
   ```
   Then delete the GitHub release from the UI
+
+## Notarizing a local build
+
+Proving a signing or entitlements change without cutting a release. The whole point is that a dev build is unsigned, so
+it exercises none of this, and `pnpm check` can't tell you either.
+
+❗ **A local `pnpm build` leaves the AI binaries ad-hoc signed, and notarization refuses the bundle over them.**
+`download-llama-server.go` only codesigns when `APPLE_SIGNING_IDENTITY` is set, which is a CI-release thing, and the
+script is idempotent, so re-running the build won't go back and sign them. Apple rejects with "The binary is not signed
+with a valid Developer ID certificate" plus "The signature does not include a secure timestamp", once per dylib
+(`libggml-*`, `libllama`, `libmtmd`, `llama-server`). ❌ That failure says nothing about your change; sign them and
+resubmit before reading anything into it.
+
+```sh
+# 1. Sign the AI binaries the way CI's beforeBuildCommand does. Real files only, not the symlinks.
+cd apps/desktop/src-tauri/resources/ai
+for f in $(find . -type f ! -name ".version"); do
+  codesign --force --options runtime --timestamp \
+    --sign "Developer ID Application: Rymdskottkarra AB (83H6YAQMNP)" "$f"
+done
+
+# 2. Rebuild, so the bundler copies the signed binaries in and re-signs the app around them.
+cd - && pnpm build
+
+# 3. Submit. The key is already on this machine; the issuer id is the `APPLE_API_ISSUER` GitHub secret.
+cd target/universal-apple-darwin/release/bundle/macos
+ditto -c -k --keepParent Cmdr.app /tmp/Cmdr-notarize.zip
+xcrun notarytool submit /tmp/Cmdr-notarize.zip \
+  --key ~/private_keys/AuthKey_C9VUN857DD.p8 --key-id C9VUN857DD \
+  --issuer "$APPLE_API_ISSUER" --wait
+
+# 4. Staple and prove Gatekeeper takes it.
+xcrun stapler staple Cmdr.app
+spctl -a -vvv -t install Cmdr.app   # want: accepted, source=Notarized Developer ID
+```
+
+An `Invalid` result names every offending path: `xcrun notarytool log <submission-id> --key … --key-id … --issuer …`.
+
+Two things this does NOT need: a tag, and a release. It also doesn't need `TAURI_SIGNING_PRIVATE_KEY`; `pnpm build`
+fails at the very end without it, but that's the updater tarball's signature, produced after the `.app` is built and
+signed.

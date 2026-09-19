@@ -11,9 +11,12 @@
 
   - `com.apple.security.cs.disable-library-validation` would let any library, signed
     by anyone, load into Cmdr. That is the standard way to inject code into a signed
-    app, and Cmdr loads nothing that needs it: the only `dlopen` is Apple's own
+    app, and nothing Cmdr loads needs it. The only `dlopen` is Apple's own
     `FileProvider.framework` (`file_system/file_provider_actions/objc.rs`), which
-    library validation permits, and the bundle ships no frameworks or sidecar binaries.
+    library validation permits. The llama.cpp dylibs under `Resources/resources/ai/`
+    are NOT a counterexample: `ai/extract.rs` copies them out and `llama-server` runs
+    as a CHILD PROCESS, so they load into its address space and never into ours (and
+    they carry our own Team ID anyway, which library validation permits).
   - `com.apple.security.cs.allow-unsigned-executable-memory` and `…allow-jit` are for
     a process that JITs. WKWebView's JavaScript runs in Apple's own out-of-process
     `com.apple.WebKit.WebContent`, not here.

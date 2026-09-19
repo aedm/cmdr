@@ -27,9 +27,9 @@ these.
   keys-dir agreement to guard. Credentials are generated inside the container at start.
 - **One named Docker volume**, `webdav-fixture-nextcloud-html`, and only for Nextcloud. The image carries
   `VOLUME /var/www/html`, so without a name Docker mints a fresh ANONYMOUS volume on every container recreation and
-  nothing ever reaps one: 44 of them, 41 GB, accumulated in two weeks before anyone noticed (2026-09-19). Naming it
-  also keeps the ~25 s `occ maintenance:install` from re-running after a rebuild. The three httpd fixtures keep their
-  export in the image layer, so they have nothing to persist. What it costs, and how the cells pay it, is below.
+  nothing ever reaps one: 44 of them, 41 GB, accumulated in two weeks before anyone noticed (2026-09-19). Naming it also
+  keeps the ~25 s `occ maintenance:install` from re-running after a rebuild. The three httpd fixtures keep their export
+  in the image layer, so they have nothing to persist. What it costs, and how the cells pay it, is below.
 
 ## The servers
 
@@ -182,12 +182,12 @@ persists across container recreations now that its storage is a named volume. Tw
 - **`scratch_dir` names each cell's directory `cmdr-test-<run token>-<counter>`.** ❗ The run token is RANDOM, minted
   once per process, and it is deliberately NOT the process id. A suite may be running inside a Docker container
   (`apps/desktop/scripts/e2e-linux.sh`) with a PID namespace of its own, so two containerised runs routinely see the
-  same small pids. A pid-named scratch dir is then a collision: one run's cleanup deletes another run's files
-  mid-cell, and the failure surfaces somewhere else entirely.
+  same small pids. A pid-named scratch dir is then a collision: one run's cleanup deletes another run's files mid-cell,
+  and the failure surfaces somewhere else entirely.
 - **`sweep_stale_scratch_dirs` collects what a crashed run abandoned**, once per process, before the first scratch dir
   is made. Cells clean up after themselves, so this only ever sees leftovers from a `SIGKILL` or a cancelled CI job —
-  which, with a persistent account, would otherwise live forever instead of vanishing with the next anonymous volume.
-  ❗ It is age-gated (6 hours) and skips this process's own directories, because suites run concurrently: deleting by
+  which, with a persistent account, would otherwise live forever instead of vanishing with the next anonymous volume. ❗
+  It is age-gated (6 hours) and skips this process's own directories, because suites run concurrently: deleting by
   prefix alone would let one run collect a sibling's live scratch. An entry whose `modified_at` the server doesn't
   report is KEPT, so a server that omits the property costs a little disk rather than someone else's run.
 

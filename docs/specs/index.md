@@ -24,8 +24,8 @@ below is met.
       administrator rights could help at all. ERR-4TEMD's user was told to check a destination that was fine. Durable
       intent lives beside the code: `docs/security.md` § Entitlements, and
       `apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Naming the folder that refused a write".
-      **Wipe once David has reviewed the new `errors.write.permissionDenied.*` copy** (drafted, not yet reviewed) and
-      the next release has proved notarization still passes with no entitlements.
+      Notarization is proved (2026-09-19, `Accepted` and stapled, `source=Notarized Developer ID`). **Wipe whenever
+      David is done judging the work against the plan**; the copy he already signed off.
 - [x] 2026-09-16 `select-same-kind.md` - **Shipped, all nine milestones.** Cmdr could select everything, nothing, the
       inverse, or a typed glob, but not "the rest of these, the same kind as this one." `⌥⇧=` (plus the numpad `⌥+`)
       adds every entry of the cursor row's kind — same extension case-insensitively, every extension-less file, or every

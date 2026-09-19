@@ -41,7 +41,8 @@ rights could change the answer, plus a bundle nothing can inject into.
 - [x] **M1: the entitlements.** Both dropped; the plist is empty. Verified on a signed universal build (hardened runtime
       `flags=0x10000`, Developer ID, `codesign --verify --deep --strict` clean, `codesign -d --entitlements` prints an
       empty dict): the app launches, both panes list files, and Svelte renders its dialogs, so the WebView needs neither
-      entitlement.
+      entitlement. Notarization proved too (2026-09-19, submission `94b2817d`): `Accepted`, stapled, and
+      `spctl -a -vvv -t install` reports `source=Notarized Developer ID`.
 - [x] **M2: the typed refusal.** `PermissionDenied` carries `errno`, the derived `PermissionRefusal`, and
       `refused_folder`, all through one constructor. The probe (`validation::refusing_folder`) sits inside
       `classify_io_error`, so every local-FS refusal gets it with no new call sites: the rename engines, the delete
@@ -54,7 +55,9 @@ rights could change the answer, plus a bundle nothing can inject into.
 
 ## Notes
 
-- Notarization can only be verified by the release pipeline, so M1 ships verified-as-signed and the notarization proof
-  arrives with the next release.
+- Notarizing a local build turned out to be possible, and the recipe is now
+  `docs/guides/apple-signing-and-notarization.md` § "Notarizing a local build". The trap it documents: a local
+  `pnpm build` leaves the AI binaries ad-hoc signed, and Apple's first `Invalid` was about those, not about the
+  entitlements.
 - Sticky-bit and TCC refusals (open questions 3 and 4 in `elevated-file-operations.md`) become observable once the errno
   travels, so M2 may hand the helper's M1 spike free evidence.
