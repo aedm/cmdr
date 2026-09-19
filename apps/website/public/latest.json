@@ -1,23 +1,23 @@
 {
   "version": "0.46.1",
   "dmgSizes": {
-    "aarch64": 45907367,
-    "x86_64": 49099601,
-    "universal": 82715673
+    "aarch64": 45907051,
+    "x86_64": 49099301,
+    "universal": 82715545
   },
   "notes": "Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, search UI improvements.\n\n### Added\n\n- Name the folder a search covered when it finds nothing, with a `Search this volume instead` button (216163ce6)\n- Offer to attach that session's log to a crash report, with file and folder names anonymized first (c53da5236,\n  131b04bb5, 40b063d48)\n- Publish SHA-256 checksums for every release, linked from the download card on getcmdr.com (4f5f97d30, 9ad5ff69e)\n\n### Fixed\n\n- Fix Cmdr aborting at launch on macOS Catalina and Big Sur (86c381c32)\n- Fix `F2` refusing to rename on SFTP, WebDAV, and Android before the rename was ever attempted (e147d6f7b)\n- Fix a rename conflict doing nothing on a volume with no trash, like SFTP, WebDAV, phones, and archives (cf8118efd)\n- Fix closing Settings or the file viewer crashing the app (ff015c58a)\n- Fix the `Search in` chip drawing itself as unset, making a folder-scoped search look unscoped (c76f6f908)\n\n### Non-app\n\n- Land in-app error reports, feedback, and public GitHub issues on one private triage board, with personal data in a\n  comment that expires (106fa1d1e, 797f689c1, 19f1acd7a, 488fd88c1)\n- Attach macOS's own symbolicated stack and exception verdict to a native crash report, and store the load base that\n  makes raw addresses resolvable (e9136993c, 2b3644115)\n- Fail the build on any symbol newer than the macOS floor, the gap that shipped the Catalina launch abort (a4b5faa35)\n- Log the scope a search ran against, not just its query (a61ed2d77)\n",
-  "pub_date": "2026-09-19T06:22:43Z",
+  "pub_date": "2026-09-19T19:55:15Z",
   "platforms": {
     "darwin-universal": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRS2pCYTdOaDlnb2lwaUdSbFlYWGNXMHRlenRzdmlmcDNSMlBpUk9hTDdIM3JxUmo3aWZjc0pid3ZibmV1MmxXeHlKRWRobHBWYWNMUVU5VDBHeXBQajEveFRBNEo3N1FFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5Nzk4OTI4CWZpbGU6Q21kci5hcHAudGFyLmd6ClJhNlR5blJtR1NTK204VXNIWlFOWmpZM0tKTXNtNGUrcUk3T2gzb0FzM2xsczFsS3hyMWErU1NjL0JsaVVXc1dyb1RmRW5QT0NyQ1dKcnZRZFBMT0J3PT0K",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRS2pCYTdOaDlnb3Nmb3dockV5S3NPU3JvaVVETnN2MS9zS0UzUytRQ3dDcDVaTzJtVlBTOVE5VDdQcHZrRTJMQU9MV3JHMFlpdC8wbVJtN1FLTEx3bmVMRGhnK1N4U1F3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5ODQ3Njc0CWZpbGU6Q21kci5hcHAudGFyLmd6CkVZYzBaWWpiS2cyVjF3UXhxRUM3VlhBV0ZTZ2RYVktHa3Y0UHdLMnU3RHk2OXF1OHJYNFpqVjNZOENldG9Ic1NSYzJYVnRXRHdVNm1Wc1A5Y2QwR0RBPT0K",
       "url": "https://github.com/vdavid/cmdr/releases/download/v0.46.1/Cmdr_0.46.1_universal.app.tar.gz"
     },
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRS2pCYTdOaDlnb2l3RVFVVGxYcDBaWHR1bVZTdFNyamQwcnRiUlhQNXRLQVcxNUxJNkIvQ1gwMUwvVzNwdFIxbUFERU1PNmc0eWxLV3BrVTVubXUvQ2RueFI2ZklrMlFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5Nzk4MzE0CWZpbGU6Q21kci5hcHAudGFyLmd6CkxNc3BXS3VPVEVsbEJnR2U4WTY3dlZFL1FSZmo3YWpTbXBkSUFodmhQOGVLZG5UOXV0RHp0YUkzeWlNRFRLSmZCazhVdkVkTkN1OE1xeDZCSENUWkN3PT0K",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRS2pCYTdOaDlnb3VLRUtPVmo3dHJicWlpOHFHaDhrdFEyRWxFRzdsWjRDWDZvS21JS3hPN044SjV0dkp1dS9UcStMS3EzOGlGMWY4aURObkR1VXN2YzlVZ1BmZFlubnc0PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5ODQ3MjI5CWZpbGU6Q21kci5hcHAudGFyLmd6CmFZNWViSUx3UzdGVmRUMzhLTFZNWXBpdk96dXI4YVZiYUR0dFp5bHFXd2NlL2J6Z2s0Tkh1RFdERktNcjNhRGY0VG8vUlZ6ZytyRGdvUzh1T1JNUERnPT0K",
       "url": "https://github.com/vdavid/cmdr/releases/download/v0.46.1/Cmdr_0.46.1_aarch64.app.tar.gz"
     },
     "darwin-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRS2pCYTdOaDlnb2lnRWRzeXFmakhlRnozYkxSVEZneTBocFI0VkVxczFoV3Nsbjg1a3FGRTloWk9qckliUTV0dWxmQmdROE1malpvcEViS0JHekQzaXh5NkJzS05LMmd3PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5Nzk4MjI4CWZpbGU6Q21kci5hcHAudGFyLmd6CkF0ZGhzZnVUTncvZHJIN3BNM0pwbHQxNGloMXhWaWU0NXFoSXFxZG96Y1pxOUJHTjNVNE0wcjJ1OUY3YWdtOTREMjNtTk5hN2g5UWtUcjVkMnZKQkNnPT0K",
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRS2pCYTdOaDlnb3RBTFZQNzUvNmJ4UVFlRklXcm9xSmE4ZUMxOFZXNXdvdVJtWG5iMHJVd2NYTis0ZWV0elgzL2I2M3BKK2EvUlBTY1QxNnlMUGVjOVJhSytPcFVJL2dzPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzg5ODQ3MTQxCWZpbGU6Q21kci5hcHAudGFyLmd6ClF2SnU3c3NHeHAvdHV4SzFmbGdJcXZQME82cUYybTYxSWo4dWpRREhCeGVTK1FneVB1alIrSlpCa3UvVm15S3R0SWZXRVB5a3dwNEpwb1NZZXlWN0JBPT0K",
       "url": "https://github.com/vdavid/cmdr/releases/download/v0.46.1/Cmdr_0.46.1_x64.app.tar.gz"
     }
   }
