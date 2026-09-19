@@ -33,6 +33,11 @@ const FIXTURE: &str = "webdav-servers/start.sh nextcloud (webdav-fixture-nextclo
 /// The sabre/dav server, plus a scratch directory of this cell's own.
 async fn nextcloud_with_scratch() -> (WebdavVolume, PathBuf) {
     let volume = connect_fixture("NEXTCLOUD", 13482).await;
+    // ❗ This account persists now: its storage is a NAMED volume, so it is no
+    // longer wiped by the container being recreated. Cells clean up after
+    // themselves, so this only collects what a crashed run abandoned, and only
+    // once per process.
+    sweep_stale_scratch_dirs(&volume).await;
     let dir = scratch_dir(&volume).await;
     (volume, dir)
 }
@@ -51,17 +56,7 @@ fn server_relative(volume: &WebdavVolume, dir: &Path) -> String {
 
 /// Removes everything a cell built, deepest first, and the scratch dir itself.
 async fn clean(volume: &WebdavVolume, dir: &Path) {
-    fn remove<'a>(volume: &'a WebdavVolume, path: &'a Path) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
-        Box::pin(async move {
-            if let Ok(entries) = volume.list_directory(path, None).await {
-                for entry in entries {
-                    remove(volume, &path.join(&entry.name)).await;
-                }
-            }
-            let _ = volume.delete(path).await;
-        })
-    }
-    remove(volume, dir).await;
+    remove_recursively(volume, dir).await;
 }
 
 /// A request straight at the server, past this backend.
@@ -299,7 +294,7 @@ async fn quota_reports_the_accounts_own_numbers_not_the_servers_disk() {
         total_bytes,
         "`total` is built from the two RFC 4331 numbers, so it can't disagree with them"
     );
-    assert!(used_bytes > 0, "a freshly installed account holds its skeleton files");
+    assert!(used_bytes > 0, "an account always holds at least its skeleton files");
     assert!(available_bytes < total_bytes);
 }
 
@@ -325,7 +320,7 @@ async fn an_account_with_no_quota_reports_what_it_holds_and_no_ceiling() {
     };
     assert!(
         used_bytes > 0,
-        "a freshly installed account holds its skeleton files, and that figure is the one thing worth showing"
+        "an account always holds at least its skeleton files, and that figure is the one thing worth showing"
     );
     assert_eq!(
         space.available_bytes(),

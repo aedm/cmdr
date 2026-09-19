@@ -106,3 +106,21 @@ services:
       NEXTCLOUD_ADMIN_PASSWORD: openthedoor
       NEXTCLOUD_TRUSTED_DOMAINS: '127.0.0.1 localhost'
     ports: ['${WEBDAV_BIND_ADDR:-127.0.0.1}:${WEBDAV_FIXTURE_NEXTCLOUD_PORT:-13482}:80']
+    # ❗ NAMED, and that is the whole point. The image carries `VOLUME /var/www/html`, so without
+    # this line Docker mints a fresh ANONYMOUS volume every time the container is recreated, and
+    # nothing ever reaps one: 44 of them at ~985 MB each, 41 GB, accumulated in two weeks before
+    # anyone noticed (2026-09-19). A named volume is reused instead, so the stack costs ~1 GB total
+    # however many times it is rebuilt.
+    #
+    # It also makes bring-up cheap on every run after the first: `occ maintenance:install` is the
+    # ~25 s that happens BEFORE the port binds, and it now survives a recreation.
+    #
+    # What it costs: the account is no longer pristine at the start of a run. Cells must not assume
+    # an empty root. They don't — `scratch_dir` gives each cell a directory of its own, named with a
+    # per-process random token, and `sweep_stale_scratch_dirs` collects what a crashed run left.
+    volumes: ['webdav-fixture-nextcloud-html:/var/www/html']
+
+# Only Nextcloud needs one. The httpd fixtures keep their export inside the image layer, so they
+# have nothing to persist and nothing to leak.
+volumes:
+  webdav-fixture-nextcloud-html:

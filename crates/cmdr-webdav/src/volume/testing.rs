@@ -9,8 +9,11 @@
 //! that costs and which cells opt out: the fixture README's "Against a server
 //! of your own".
 
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::future::Future;
+use std::path::{Path, PathBuf};
+use std::pin::Pin;
+use std::sync::{Arc, OnceLock};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use cmdr_fs::volume::Volume;
 use cmdr_fs::volume::host::VolumeHost;
@@ -299,8 +302,26 @@ pub async fn connect_fixture_as(service: &str, fallback_port: u16, username: &st
     }
 }
 
+/// The prefix every scratch directory carries, and the only thing
+/// [`sweep_stale_scratch_dirs`] will delete.
+const SCRATCH_PREFIX: &str = "cmdr-test-";
+
+/// A token unique to this process, minted once.
+///
+/// ❗ Random, NOT the process id, and that distinction is load-bearing. The
+/// Nextcloud fixture is deliberately one machine-wide container that several
+/// suites hit at once, and a suite may be running inside a Docker container
+/// (`e2e-linux.sh`) with a PID namespace of its own. Two containerised runs
+/// routinely see the same small pids, so a pid-named scratch dir is a collision
+/// waiting to happen: one run's `clean` deletes the other run's files mid-cell,
+/// and the failure surfaces somewhere else entirely.
+fn run_token() -> &'static str {
+    static TOKEN: OnceLock<String> = OnceLock::new();
+    TOKEN.get_or_init(|| uuid::Uuid::new_v4().simple().to_string()[..12].to_string())
+}
+
 /// Creates a uniquely named directory under the root and returns its volume
-/// path. The process id keeps two `cargo` runs apart, the counter two cells.
+/// path. The run token keeps two suites apart, the counter two cells.
 pub async fn scratch_dir(volume: &WebdavVolume) -> PathBuf {
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -308,8 +329,8 @@ pub async fn scratch_dir(volume: &WebdavVolume) -> PathBuf {
     // holds and what every app site hands the volume. A bare `/cmdr-test-…` is
     // refused now, on purpose (`cmdr_fs::volume::remote_paths`).
     let path = volume.root().join(format!(
-        "cmdr-test-{}-{}",
-        std::process::id(),
+        "{SCRATCH_PREFIX}{}-{}",
+        run_token(),
         NEXT.fetch_add(1, Ordering::Relaxed)
     ));
     volume
@@ -317,4 +338,73 @@ pub async fn scratch_dir(volume: &WebdavVolume) -> PathBuf {
         .await
         .unwrap_or_else(|e| panic!("creating the scratch dir {}: {e:?}", path.display()));
     path
+}
+
+/// How long a scratch directory has to sit untouched before a later run may
+/// collect it. Comfortably longer than any suite, so a live run's directories
+/// are never in scope however slow the host is.
+const STALE_SCRATCH_AFTER: Duration = Duration::from_secs(6 * 60 * 60);
+
+/// Deletes scratch directories a previous run abandoned, once per process.
+///
+/// Cells clean up after themselves, so this only ever sees what a crash, a
+/// `SIGKILL`, or a cancelled CI job left behind. It exists because the Nextcloud
+/// fixture's storage is a NAMED volume now: the account persists across
+/// recreations, so a leftover directory would otherwise live forever rather than
+/// vanishing with the next anonymous volume.
+///
+/// ❗ Age-gated, because suites run concurrently. Deleting by prefix alone would
+/// let one run collect a sibling's live scratch dirs. An entry whose
+/// `modified_at` we can't read is KEPT: a server that doesn't report the
+/// property should cost us a little disk, never someone else's run.
+pub async fn sweep_stale_scratch_dirs(volume: &WebdavVolume) {
+    static SWEPT: OnceLock<()> = OnceLock::new();
+    if SWEPT.set(()).is_err() {
+        return;
+    }
+
+    let Ok(entries) = volume.list_directory(volume.root(), None).await else {
+        return;
+    };
+    let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+        return;
+    };
+    let cutoff = now.saturating_sub(STALE_SCRATCH_AFTER).as_secs();
+    let ours = format!("{SCRATCH_PREFIX}{}", run_token());
+
+    for entry in entries {
+        if !entry.is_directory || !entry.name.starts_with(SCRATCH_PREFIX) {
+            continue;
+        }
+        // From this process: `scratch_dir` may already have run.
+        if entry.name.starts_with(&ours) {
+            continue;
+        }
+        match entry.modified_at {
+            Some(modified) if modified < cutoff => {}
+            _ => continue,
+        }
+        remove_recursively(volume, &volume.root().join(&entry.name)).await;
+    }
+}
+
+/// Deletes a tree deepest-first, ignoring every failure.
+///
+/// ❗ `Volume::delete` refuses a directory that still holds something, on
+/// purpose (`delete_refuses_a_directory_that_still_holds_something`), so a
+/// scratch dir with anything in it needs this rather than one call. Failures are
+/// swallowed because every caller is tearing down: a cell that already failed
+/// should report its own reason, not a cleanup error on top.
+pub fn remove_recursively<'a>(
+    volume: &'a WebdavVolume,
+    path: &'a Path,
+) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
+    Box::pin(async move {
+        if let Ok(entries) = volume.list_directory(path, None).await {
+            for entry in entries {
+                remove_recursively(volume, &path.join(&entry.name)).await;
+            }
+        }
+        let _ = volume.delete(path).await;
+    })
 }

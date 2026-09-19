@@ -19,7 +19,7 @@ workspace = true
 # the fixtures are built on `InMemoryCredentials` and `RecordingVolumeEvents`.
 #
 # Never enable in a production build.
-testing = ["cmdr-fs/testing"]
+testing = ["cmdr-fs/testing", "dep:uuid"]
 
 [dependencies]
 # The `Volume` trait, every type it exchanges, and the host seams this backend
@@ -51,6 +51,11 @@ tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 # the same shape `cmdr-fs` pins, so no second copy enters the graph.
 tokio-util = { version = "0.7.18", default-features = false }
 log = "0.4"
+# `testing` only: the per-process token that keeps two concurrent suites' scratch
+# directories apart on the one machine-wide Nextcloud fixture. Optional, so a
+# shipped build never links it. Same version `cmdr-fs` already pins, so no second
+# copy enters the graph.
+uuid = { version = "1.19.0", features = ["v4"], optional = true }
 
 [dev-dependencies]
 # Depending on ourselves turns the `testing` feature on for every DEV target and
