@@ -47,11 +47,11 @@ pub struct SmbMountInfo {
     /// TreeConnect, so it can never carry a separator.
     pub share: String,
     /// Where inside the share this mount is anchored, `/`-separated and without
-    /// leading or trailing separators (for example, "lgs-net.com"). `None` for the
+    /// leading or trailing separators (for example, "example.com"). `None` for the
     /// ordinary mount, which sits at the share root.
     ///
     /// macOS follows a DFS referral by making a SECOND mount underneath the
-    /// namespace root (`/Volumes/SYSVOL/lgs-net.com` beside `/Volumes/SYSVOL`),
+    /// namespace root (`/Volumes/SYSVOL/example.com` beside `/Volumes/SYSVOL`),
     /// and a subdirectory mount looks the same. Both are the same SHARE, so both
     /// derive the same volume ID and ride one session; the anchor is what a path
     /// on this mount has to be joined onto before it goes on the wire, and it
@@ -264,11 +264,11 @@ mod mount_source_tests {
     /// ERR-48RZX.
     #[test]
     fn a_subdirectory_mount_keeps_only_the_first_segment_as_the_share() {
-        let info = parse_smb_mount_source("//andrew@lgs-net.com/SYSVOL/lgs-net.com").expect("a well-formed source");
-        assert_eq!(info.server, "lgs-net.com");
+        let info = parse_smb_mount_source("//dana@example.com/SYSVOL/example.com").expect("a well-formed source");
+        assert_eq!(info.server, "example.com");
         assert_eq!(info.share, "SYSVOL");
-        assert_eq!(info.subpath.as_deref(), Some("lgs-net.com"));
-        assert_eq!(info.username.as_deref(), Some("andrew"));
+        assert_eq!(info.subpath.as_deref(), Some("example.com"));
+        assert_eq!(info.username.as_deref(), Some("dana"));
     }
 
     /// A plain share mount anchors at the share root, so there's no subpath to

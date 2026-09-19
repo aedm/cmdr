@@ -131,9 +131,9 @@ mod tests {
                 None
             ),
             volume_id_for(
-                "/Volumes/SYSVOL/lgs-net.com",
+                "/Volumes/SYSVOL/example.com",
                 Some("smbfs"),
-                Some(&smb_info_at("dc", 445, "SYSVOL", "lgs-net.com")),
+                Some(&smb_info_at("dc", 445, "SYSVOL", "example.com")),
                 None
             ),
         );

@@ -350,14 +350,14 @@ filesystem in it; what a refresh DOES to the cache is
 ## A mount anchored inside the share
 
 A mount is not always the share ROOT. macOS follows a DFS referral by making a SECOND mount underneath the namespace
-root: `smb://lgs-net.com/SYSVOL` leaves `/Volumes/SYSVOL/lgs-net.com` beside `/Volumes/SYSVOL`, carrying
-`//user@lgs-net.com/SYSVOL/lgs-net.com` in its `f_mntfromname`. A subdirectory mount (`mount_smbfs //server/share/sub`,
+root: `smb://example.com/SYSVOL` leaves `/Volumes/SYSVOL/example.com` beside `/Volumes/SYSVOL`, carrying
+`//user@example.com/SYSVOL/example.com` in its `f_mntfromname`. A subdirectory mount (`mount_smbfs //server/share/sub`,
 or `mount -t cifs` on Linux) makes the identical shape on purpose. Both address a DIRECTORY inside the share.
 
 **A share is ONE path segment, and the anchor is everything below it.** `MountAnchor` (`volume/mod.rs`) pairs a mount
 path with the `share_root` that mount sits at inside the share: `/`-separated, no leading or trailing separator, empty
 for the ordinary mount. The two travel as one value because a caller holding one always holds the other, and splitting
-them is what lets a mount be keyed as one place and addressed as another. Reported as ERR-48RZX: `SYSVOL/lgs-net.com`
+them is what lets a mount be keyed as one place and addressed as another. Reported as ERR-48RZX: `SYSVOL/example.com`
 reached TreeConnect as a share name, the server answered `STATUS_BAD_NETWORK_NAME`, so the share stayed on the slow
 kernel mount, picked up a second volume ID, and warned the user about a share already connected directly one level up.
 `MountAnchor::new` NFC-folds the anchor in one place, for the reason `SmbConnectionParams::new` folds the share name.
@@ -425,7 +425,7 @@ interior-mutable to reroot in place would either change that signature across th
 change under the caller. A new instance moves the root without either.
 
 **A promotion looks the anchor up per root.** Two roots of one share need not sit at the same depth inside it
-(`/Volumes/SYSVOL` is the share root while `/Volumes/SYSVOL/lgs-net.com` is a directory in; § "A mount anchored inside
+(`/Volumes/SYSVOL` is the share root while `/Volumes/SYSVOL/example.com` is a directory in; § "A mount anchored inside
 the share"), and nothing about a path reveals its anchor. So `SmbVolumeInner::share_root_by_mount` records where each
 known root sits, the app fills it in as it registers each root (`SmbVolume::note_mount_root`), and `rerooted` reads the
 answer there:

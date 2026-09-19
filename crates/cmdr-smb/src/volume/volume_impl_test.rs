@@ -346,7 +346,7 @@ fn a_share_opened_with_credentials_offers_no_guest_option() {
 /// happens to hold: two mounts of one share need not sit at the same place in it.
 #[test]
 fn a_promotion_uses_the_anchor_recorded_for_the_target_root() {
-    let vol = make_test_volume_anchored("lgs-net.com", "/Volumes/SYSVOL/lgs-net.com");
+    let vol = make_test_volume_anchored("example.com", "/Volumes/SYSVOL/example.com");
     vol.note_mount_root(MountAnchor::at_share_root("/Volumes/SYSVOL"));
 
     let promoted = vol.rerooted(Path::new("/Volumes/SYSVOL")).expect("a recorded root");
@@ -358,10 +358,10 @@ fn a_promotion_uses_the_anchor_recorded_for_the_target_root() {
     assert_eq!(promoted.share_root, "", "the target root sits at the share root");
     assert_eq!(
         promoted
-            .to_smb_path(Path::new("/Volumes/SYSVOL/lgs-net.com/Policies"))
+            .to_smb_path(Path::new("/Volumes/SYSVOL/example.com/Policies"))
             .expect("a path inside the new mount"),
-        "lgs-net.com/Policies",
-        "carrying the old anchor over would have asked for lgs-net.com/lgs-net.com/Policies"
+        "example.com/Policies",
+        "carrying the old anchor over would have asked for example.com/example.com/Policies"
     );
 }
 
@@ -370,7 +370,7 @@ fn a_promotion_uses_the_anchor_recorded_for_the_target_root() {
 /// share nobody asked for. The registry reads `None` as "can't re-root".
 #[test]
 fn an_anchored_share_refuses_to_promote_to_an_unrecorded_root() {
-    let vol = make_test_volume_anchored("lgs-net.com", "/Volumes/SYSVOL/lgs-net.com");
+    let vol = make_test_volume_anchored("example.com", "/Volumes/SYSVOL/example.com");
     assert!(vol.rerooted(Path::new("/Volumes/SomewhereElse")).is_none());
 }
 
@@ -398,10 +398,10 @@ fn an_unanchored_share_still_promotes_to_an_unrecorded_root() {
 /// promotion its predecessor would have allowed.
 #[test]
 fn a_successor_inherits_the_mount_roots_its_predecessor_knew() {
-    let predecessor = make_test_volume_anchored("lgs-net.com", "/Volumes/SYSVOL/lgs-net.com");
+    let predecessor = make_test_volume_anchored("example.com", "/Volumes/SYSVOL/example.com");
     predecessor.note_mount_root(MountAnchor::at_share_root("/Volumes/SYSVOL"));
 
-    let successor = make_test_volume_anchored("lgs-net.com", "/Volumes/SYSVOL/lgs-net.com");
+    let successor = make_test_volume_anchored("example.com", "/Volumes/SYSVOL/example.com");
     assert!(
         successor.rerooted(Path::new("/Volumes/SYSVOL")).is_none(),
         "nothing told the successor about that root yet"
@@ -425,17 +425,17 @@ fn a_successor_inherits_the_mount_roots_its_predecessor_knew() {
 /// surviving volume unable to promote to a mount that is right there.
 #[test]
 fn the_incumbent_learns_where_the_newcomer_sits_inside_the_share() {
-    let incumbent = make_test_volume_anchored("lgs-net.com", "/Volumes/SYSVOL/lgs-net.com");
-    let newcomer = make_test_volume_anchored("lgs-net.com", "/Volumes/SYSVOL-1/lgs-net.com");
+    let incumbent = make_test_volume_anchored("example.com", "/Volumes/SYSVOL/example.com");
+    let newcomer = make_test_volume_anchored("example.com", "/Volumes/SYSVOL-1/example.com");
     assert!(
-        incumbent.rerooted(Path::new("/Volumes/SYSVOL-1/lgs-net.com")).is_none(),
+        incumbent.rerooted(Path::new("/Volumes/SYSVOL-1/example.com")).is_none(),
         "nothing told the incumbent about the second mount yet"
     );
 
     newcomer.exchange_mount_roots_with(&incumbent);
 
     let promoted = incumbent
-        .rerooted(Path::new("/Volumes/SYSVOL-1/lgs-net.com"))
+        .rerooted(Path::new("/Volumes/SYSVOL-1/example.com"))
         .expect("the newcomer's own root reached the incumbent");
     assert_eq!(
         promoted
@@ -443,7 +443,7 @@ fn the_incumbent_learns_where_the_newcomer_sits_inside_the_share() {
             .downcast_ref::<SmbVolume>()
             .expect("still an SmbVolume")
             .share_root,
-        "lgs-net.com",
+        "example.com",
         "and it arrived with the anchor the newcomer proved, not an assumed one"
     );
 }

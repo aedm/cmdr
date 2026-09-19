@@ -438,16 +438,16 @@ The escaping half lives with the mount: `network/mount.rs::build_smb_mount_url`.
 ## A mount can sit inside its share
 
 A share name is ONE path segment: it's what goes to TreeConnect, so it can never carry a separator. A mount source with
-more segments than that (`//andrew@lgs-net.com/SYSVOL/lgs-net.com`) names a DIRECTORY inside the share, and
+more segments than that (`//dana@example.com/SYSVOL/example.com`) names a DIRECTORY inside the share, and
 `parse_smb_mount_source` splits it accordingly into `share` plus `SmbMountInfo::subpath` (`None` at the share root,
 never `Some("")`, which would make the downstream join prepend a `/`).
 
 macOS produces this shape on its own: it follows a DFS referral by making a SECOND mount underneath the namespace root,
-so `smb://lgs-net.com/SYSVOL` leaves `/Volumes/SYSVOL/lgs-net.com` live beside `/Volumes/SYSVOL`. A subdirectory mount
+so `smb://example.com/SYSVOL` leaves `/Volumes/SYSVOL/example.com` live beside `/Volumes/SYSVOL`. A subdirectory mount
 (`mount_smbfs //server/share/sub`) is the same shape asked for deliberately, and Linux's `mount -t cifs` records it the
 same way, which is why `volumes_linux/smb.rs` parses identically.
 
-Swallowing the whole tail into `share` sent `SYSVOL/lgs-net.com` to TreeConnect, which no server has a share for:
+Swallowing the whole tail into `share` sent `SYSVOL/example.com` to TreeConnect, which no server has a share for:
 `STATUS_BAD_NETWORK_NAME`, so the share stayed on the slow kernel mount and the user was warned about a share already
 connected directly one level up (reported as ERR-48RZX).
 

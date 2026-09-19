@@ -241,7 +241,7 @@ fn a_missing_share_is_read_as_such_and_its_look_alikes_are_not() {
             // condition that can pass: `Unreachable`, never `ShareNotOnServer`.
             "a DFS namespace whose every target refused",
             smb2::Error::DfsNoReachableTarget {
-                namespace: r"\\lgs-net.com\aleu".to_string(),
+                namespace: r"\\example.com\dana".to_string(),
                 target_count: 2,
                 source: Box::new(smb2::Error::Timeout),
             },

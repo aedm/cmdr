@@ -126,7 +126,7 @@ pub struct SmbConnectionParams {
 /// keyed as one place and addressed as another (ERR-48RZX).
 #[derive(Debug, Clone)]
 pub struct MountAnchor {
-    /// The OS mount point (for example, `/Volumes/SYSVOL/lgs-net.com`).
+    /// The OS mount point (for example, `/Volumes/SYSVOL/example.com`).
     pub mount_path: PathBuf,
     /// Where that mount point sits inside the share: `/`-separated, no leading or
     /// trailing separator, empty for the ordinary mount at the share root, which is
