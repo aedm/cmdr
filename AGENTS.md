@@ -154,6 +154,7 @@ inventory). Desktop-specific test, MCP, and E2E mechanics live in `apps/desktop/
 - ❌ **No callback type with 2+ confusable positional params** (same type, or a bare generic): an implementation may
   declare fewer params than its type, silently binding the wrong slot. Use one object payload; opt out per-line with a
   reason. Enforced by `cmdr/no-confusable-callback-params`.
+- ❌ Never put real customer/user PII in this public (!) repo.
 - Tool versions are mise-managed (`.mise.toml`; if `go` / `node` isn't found, check that `~/.local/share/mise/shims` is
   on `$PATH`),
 - Icons come from `unplugin-icons` + `@iconify-json/lucide` (see `docs/guides/icons.md`).
