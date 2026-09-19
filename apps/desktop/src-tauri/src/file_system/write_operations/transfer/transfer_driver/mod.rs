@@ -42,8 +42,8 @@
 //!   `PostLoopIntent`, `DriverConfig`, `ConflictDecisionInput`, `ConflictDecision`), the three
 //!   closure future shapes (`FetchFut`, `ResolveFut`, `TransferFut`) the async driver's `where`
 //!   clause is written in, plus the `build_pre_skip_set` / `emit_progress_and_status` helpers.
-//! - [`progress`]: the per-file progress callback builders (`SerialLeafProgress`,
-//!   `make_concurrent_per_file_progress`).
+//! - [`progress`]: the leaf-granular progress accounting (`LeafProgressLedger`,
+//!   `SourceProgress`, `LeafProgress`).
 //! - [`sync_driver`]: [`drive_transfer_serial_sync`] for local-FS copy/move.
 //! - [`async_driver`]: [`drive_transfer_serial_async`] for the volume ops.
 //!
@@ -129,9 +129,9 @@ mod progress;
 mod sync_driver;
 
 pub(in crate::file_system::write_operations::transfer) use async_driver::drive_transfer_serial_async;
-pub(in crate::file_system::write_operations::transfer) use progress::{
-    SerialLeafProgress, make_concurrent_per_file_progress,
-};
+pub(in crate::file_system::write_operations::transfer) use progress::{LeafProgressLedger, SourceProgress};
+#[cfg(test)]
+pub(in crate::file_system::write_operations::transfer) use progress::ObservedProgress;
 pub(in crate::file_system::write_operations::transfer) use sync_driver::drive_transfer_serial_sync;
 
 // ============================================================================

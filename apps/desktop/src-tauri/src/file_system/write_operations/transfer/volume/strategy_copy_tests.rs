@@ -3,12 +3,15 @@
 //! multi-chunk with progress, mid-file cancel, empty file, missing source,
 //! streaming-route selection, and recursive directory copy).
 
-use super::test_support::make_state;
+use super::test_support::{SLOW_CHUNK_COUNT, SlowSource, make_state};
+use crate::file_system::write_operations::transfer::transfer_driver::{LeafProgressLedger, ObservedProgress};
 use super::*;
-use crate::file_system::write_operations::state::OperationIntent;
+use crate::file_system::write_operations::state::{OperationIntent, cancel_write_operation};
+use crate::file_system::write_operations::test_support::TestOperationGuard;
+use crate::test_support::wait_until_async;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use crate::file_system::volume::{InMemoryVolume, LocalPosixVolume, Volume, VolumeError};
@@ -37,8 +40,7 @@ async fn test_copy_single_path_local_to_local() {
         Path::new("dest.txt"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -73,8 +75,7 @@ async fn test_copy_single_path_cancelled() {
         Path::new("dest.txt"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -107,8 +108,7 @@ async fn test_streaming_copy_single_file() {
         Path::new("/photo.jpg"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -130,9 +130,8 @@ async fn test_streaming_copy_large_file_with_progress() {
     source.create_file(Path::new("/big.bin"), &data).await.unwrap();
 
     let state = make_state();
-    let progress_calls = Arc::new(AtomicUsize::new(0));
-    let total_bytes_reported = Arc::new(AtomicU64::new(0));
-    let file_complete_calls = Arc::new(AtomicUsize::new(0));
+    // What the copy REPORTS, read off the progress events the dialog reads.
+    let progress = ObservedProgress::new(&state, "large-file-progress");
 
     let bytes = copy_single_path(
         &source,
@@ -143,15 +142,7 @@ async fn test_streaming_copy_large_file_with_progress() {
         Path::new("/big.bin"),
         &state,
         &CreatedPaths::default(),
-        &|bytes_done, total| {
-            progress_calls.fetch_add(1, Ordering::Relaxed);
-            total_bytes_reported.store(bytes_done, Ordering::Relaxed);
-            assert_eq!(total, 200_000);
-            ControlFlow::Continue(())
-        },
-        &|_| {
-            file_complete_calls.fetch_add(1, Ordering::Relaxed);
-        },
+        &progress.source,
         None,
         WriteStaging::Stage,
     )
@@ -160,11 +151,19 @@ async fn test_streaming_copy_large_file_with_progress() {
 
     assert_eq!(bytes, 200_000);
     assert!(
-        progress_calls.load(Ordering::Relaxed) >= 2,
-        "expected progress calls for multi-chunk file"
+        progress.emits.load(Ordering::Relaxed) >= 2,
+        "a multi-chunk file must report progress as it streams, not once at the end"
     );
-    assert_eq!(total_bytes_reported.load(Ordering::Relaxed), 200_000);
-    assert_eq!(file_complete_calls.load(Ordering::Relaxed), 1);
+    assert_eq!(
+        progress.bytes.load(Ordering::Relaxed),
+        200_000,
+        "the last thing the user is told must be the whole file"
+    );
+    assert_eq!(
+        progress.files.load(Ordering::Relaxed),
+        1,
+        "and the File bar must have crossed exactly one leaf"
+    );
 
     // Verify content integrity
     let mut stream = dest.open_read_stream(Path::new("/big.bin")).await.unwrap();
@@ -177,15 +176,23 @@ async fn test_streaming_copy_large_file_with_progress() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_streaming_copy_cancel_mid_file() {
-    let source: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("Source"));
+    // A GATED source, so the copy is provably mid-file when the cancel lands.
+    // Racing a cancel against an in-memory copy loses: the file is over before
+    // the canceller wakes, and the test then asserts nothing.
+    let gate = Arc::new(tokio::sync::Semaphore::new(0));
+    let source: Arc<dyn Volume> = Arc::new(SlowSource {
+        gate: Arc::clone(&gate),
+    });
     let dest: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("Dest"));
-    let data = vec![0xAB; 200_000];
-    source.create_file(Path::new("/big.bin"), &data).await.unwrap();
 
-    let state = make_state();
-    let call_count = Arc::new(AtomicUsize::new(0));
+    // Tier 1 travels through the engine's own per-chunk progress callback, which
+    // is what carries the stop down to the backend so it drops its own partial.
+    let op = TestOperationGuard::register_state("copy-cancel-mid-file", make_state());
+    let state = Arc::clone(op.state());
+    let progress = ObservedProgress::new(&state, op.id());
 
-    let result = copy_single_path(
+    let created = CreatedPaths::default();
+    let copy = copy_single_path(
         &source,
         Path::new("/big.bin"),
         Some(false),
@@ -193,23 +200,29 @@ async fn test_streaming_copy_cancel_mid_file() {
         &dest,
         Path::new("/big.bin"),
         &state,
-        &CreatedPaths::default(),
-        &|_, _| {
-            let n = call_count.fetch_add(1, Ordering::Relaxed);
-            if n >= 1 {
-                ControlFlow::Break(()) // Cancel after second chunk
-            } else {
-                ControlFlow::Continue(())
-            }
-        },
-        &|_| {},
+        &created,
+        &progress.source,
         None,
         WriteStaging::Stage,
-    )
-    .await;
+    );
+    tokio::pin!(copy);
 
-    assert!(result.is_err());
-    // File should not exist at dest (cancelled before completion)
+    // One chunk through, then the copy blocks waiting for the next permit.
+    gate.add_permits(1);
+    tokio::select! {
+        r = &mut copy => panic!("a {SLOW_CHUNK_COUNT}-chunk copy can't be done after one permit: {r:?}"),
+        () = wait_until_async(Duration::from_secs(10), "the first chunk to land", || {
+            progress.bytes.load(Ordering::Relaxed) > 0
+        }) => {}
+    }
+
+    cancel_write_operation(op.id(), false);
+    gate.add_permits(SLOW_CHUNK_COUNT);
+    let result = copy.await;
+
+    assert!(result.is_err(), "a cancelled copy must not report success");
+    // Nothing lands at the destination: the backend dropped its own partial when
+    // the progress callback broke, and the staged temp never took the real name.
     assert!(!dest.exists(Path::new("/big.bin")).await);
 }
 
@@ -229,8 +242,7 @@ async fn test_streaming_copy_empty_file() {
         Path::new("/empty.txt"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -256,8 +268,7 @@ async fn test_streaming_copy_nonexistent_source_fails() {
         Path::new("/nope.txt"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -284,7 +295,7 @@ async fn test_streaming_copy_uses_streaming_for_non_local_volumes() {
         .unwrap();
 
     let state = make_state();
-    let file_complete = Arc::new(AtomicUsize::new(0));
+    let progress = ObservedProgress::new(&state, "routing-leaf-count");
     let bytes = copy_single_path(
         &source,
         Path::new("/test.txt"),
@@ -294,10 +305,7 @@ async fn test_streaming_copy_uses_streaming_for_non_local_volumes() {
         Path::new("/test.txt"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {
-            file_complete.fetch_add(1, Ordering::Relaxed);
-        },
+        &progress.source,
         None,
         WriteStaging::Stage,
     )
@@ -305,7 +313,7 @@ async fn test_streaming_copy_uses_streaming_for_non_local_volumes() {
     .unwrap();
 
     assert_eq!(bytes, 16);
-    assert_eq!(file_complete.load(Ordering::Relaxed), 1, "on_file_complete should fire");
+    assert_eq!(progress.files.load(Ordering::Relaxed), 1, "on_file_complete should fire");
 
     let mut stream = dest.open_read_stream(Path::new("/test.txt")).await.unwrap();
     let chunk = stream.next_chunk().await.unwrap().unwrap();
@@ -328,7 +336,7 @@ async fn test_streaming_copy_directory_recursive() {
         .unwrap();
 
     let state = make_state();
-    let file_complete = Arc::new(AtomicUsize::new(0));
+    let progress = ObservedProgress::new(&state, "routing-leaf-count");
     let bytes = copy_single_path(
         &source,
         Path::new("/docs"),
@@ -338,10 +346,7 @@ async fn test_streaming_copy_directory_recursive() {
         Path::new("/docs"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {
-            file_complete.fetch_add(1, Ordering::Relaxed);
-        },
+        &progress.source,
         None,
         WriteStaging::Stage,
     )
@@ -349,7 +354,7 @@ async fn test_streaming_copy_directory_recursive() {
     .unwrap();
 
     assert_eq!(bytes, 17); // 7 + 10
-    assert_eq!(file_complete.load(Ordering::Relaxed), 2);
+    assert_eq!(progress.files.load(Ordering::Relaxed), 2);
 
     assert!(dest.exists(Path::new("/docs/readme.txt")).await);
     assert!(dest.exists(Path::new("/docs/notes.txt")).await);

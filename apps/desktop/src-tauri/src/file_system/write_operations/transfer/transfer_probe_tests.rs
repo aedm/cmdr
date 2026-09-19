@@ -8,7 +8,7 @@
 
 use std::sync::atomic::AtomicUsize;
 
-use super::super::transfer_driver::SerialLeafProgress;
+use super::super::transfer_driver::LeafProgressLedger;
 use super::*;
 use crate::file_system::volume::Volume;
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
@@ -304,11 +304,10 @@ fn a_wedged_transfer_keeps_telling_the_ui_it_is_wedged() {
 /// THE FALSE POSITIVE, and the reason the watchdog reads the operation's own
 /// published byte total rather than a counter of its own.
 ///
-/// A directory copy on the serial path streams leaf after leaf through ONE
-/// `SerialLeafProgress`, and every leaf restarts its own byte count at zero. The
-/// number the watchdog judges has to be the operation-wide one the dialog is
-/// showing, so a copy whose bar is visibly climbing is never called stalled —
-/// however many file boundaries it crosses.
+/// A directory copy streams leaf after leaf through ONE ledger, and every leaf
+/// restarts its own byte count at zero. The number the watchdog judges has to be
+/// the operation-wide one the dialog is showing, so a copy whose bar is visibly
+/// climbing is never called stalled — however many file boundaries it crosses.
 ///
 /// ❌ Don't relax this to "the probe was told about some bytes". Any counter a
 /// single driver has to remember to feed is one a second driver forgets, which
@@ -322,30 +321,26 @@ fn a_transfer_publishing_progress_across_file_boundaries_is_never_called_still()
     let probe = probe_for(guard.id(), state);
     probe.set_sink(Arc::clone(&sink) as Arc<dyn OperationEventSink>);
 
-    // One operation-wide leaf counter and one throttle cell, shared across every
-    // leaf, exactly as the serial copy driver wires them.
-    let leaf_files_done = Arc::new(AtomicUsize::new(0));
-    let last_emit = Arc::new(Mutex::new(Instant::now() - Duration::from_secs(1)));
+    // One operation-wide ledger and one throttle cell, shared across every leaf,
+    // exactly as the copy drivers wire them.
+    let ledger = LeafProgressLedger::new(
+        Arc::clone(&sink) as Arc<dyn OperationEventSink>,
+        Arc::clone(state),
+        guard.id().to_owned(),
+        WriteOperationType::Copy,
+        Arc::new(AtomicUsize::new(0)),
+        119_204,
+        333_000_000_000,
+        // No throttle: every chunk has to be observable.
+        Duration::ZERO,
+    );
+    let source = ledger.for_source(None, Arc::new(Mutex::new(Instant::now() - Duration::from_secs(1))));
     let leaf_bytes = 2_800_000_u64;
 
     let mut watchdog = WatchdogState::new();
     let mut tick = 0_u64;
-    let mut base = 0_u64;
     for _leaf in 0..3 {
-        let leaf = SerialLeafProgress::new(
-            Arc::clone(&sink) as Arc<dyn OperationEventSink>,
-            Arc::clone(state),
-            guard.id().to_owned(),
-            WriteOperationType::Copy,
-            None,
-            base,
-            Arc::clone(&leaf_files_done),
-            119_204,
-            333_000_000_000,
-            Arc::clone(&last_emit),
-            // No throttle: every chunk has to be observable.
-            Duration::ZERO,
-        );
+        let leaf = source.begin_leaf();
         for chunk in [leaf_bytes / 2, leaf_bytes] {
             let _ = leaf.on_chunk(chunk);
             tick += 1;
@@ -356,8 +351,7 @@ fn a_transfer_publishing_progress_across_file_boundaries_is_never_called_still()
                 "a transfer that just reported {chunk} more bytes is moving, not still"
             );
         }
-        leaf.on_leaf_complete(leaf_bytes);
-        base += leaf_bytes;
+        leaf.complete(leaf_bytes);
     }
 
     assert_eq!(

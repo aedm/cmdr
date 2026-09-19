@@ -23,8 +23,8 @@ async fn concurrent_per_file_callback_is_cancel_only_not_pause_aware() {
     // a future change to gate the concurrent path is a deliberate decision, not
     // an accident. See transfer/DETAILS.md § "Pause and the concurrent copy
     // path".
-    use super::make_concurrent_per_file_progress;
-    use std::sync::atomic::{AtomicU64, AtomicUsize};
+    use super::LeafProgressLedger;
+    use std::sync::atomic::AtomicUsize;
 
     let op_id = unique_op_id("concurrent-pause-noop");
     let state = make_state();
@@ -32,26 +32,25 @@ async fn concurrent_per_file_callback_is_cancel_only_not_pause_aware() {
     register_operation_status(&op_id, WriteOperationType::Copy, vec![]);
     let sink: Arc<dyn super::super::super::event_sinks::OperationEventSink> = Arc::new(CollectorEventSink::new());
 
-    let cb = make_concurrent_per_file_progress(
+    let ledger = LeafProgressLedger::new(
         Arc::clone(&sink),
         Arc::clone(&state),
         op_id.clone(),
         WriteOperationType::Copy,
-        Some("f".to_string()),
-        Arc::new(AtomicU64::new(0)),
-        Arc::new(AtomicU64::new(0)),
         Arc::new(AtomicUsize::new(0)),
         1,
         100,
-        Arc::new(Mutex::new(std::time::Instant::now())),
         Duration::from_millis(0),
     );
+    let leaf = ledger
+        .for_source(Some("f".to_string()), Arc::new(Mutex::new(std::time::Instant::now())))
+        .begin_leaf();
 
     // Paused, not cancelled: the chunk callback must still Continue (pause is a
     // no-op on the concurrent per-file path in v1).
     state.pause_gate.pause();
     assert_eq!(
-        cb(10, 100),
+        leaf.on_chunk(10),
         std::ops::ControlFlow::Continue(()),
         "concurrent per-file callback must ignore pause (cancel-only in v1)"
     );
@@ -59,7 +58,7 @@ async fn concurrent_per_file_callback_is_cancel_only_not_pause_aware() {
     // Cancelled: it must Break, exactly as before.
     super::super::super::state::cancel_write_operation(&op_id, false);
     assert_eq!(
-        cb(20, 100),
+        leaf.on_chunk(20),
         std::ops::ControlFlow::Break(()),
         "concurrent per-file callback must still break on cancel"
     );

@@ -10,11 +10,11 @@
 //! extract" for the full mechanism.
 
 use std::collections::HashMap;
-use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use super::super::super::state::WriteOperationState;
+use super::super::transfer_driver::SourceProgress;
 use super::super::staged_write::StagedWrite;
 use super::merge::copy_directory_streaming;
 use super::strategy::{CreatedPaths, LandingName, MergeCtx, note_pending_for_local_dest, resolve_staging, staging_for};
@@ -87,7 +87,7 @@ impl ExtractPlan {
 /// the partial-cleanup, safe-replace, and rollback contracts all carry over.
 #[allow(
     clippy::too_many_arguments,
-    reason = "Mirrors copy_single_path's argument list; the sequential path needs the same source/dest volumes, paths, state, rollback ledger, progress callbacks, and merge context."
+    reason = "Mirrors copy_single_path's argument list; the sequential path needs the same source/dest volumes, paths, state, rollback ledger, progress accounting, and merge context."
 )]
 pub(super) async fn extract_sequential_subtree(
     source_volume: &Arc<dyn Volume>,
@@ -96,8 +96,7 @@ pub(super) async fn extract_sequential_subtree(
     dest_path: &Path,
     state: &Arc<WriteOperationState>,
     created: &CreatedPaths,
-    on_file_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
-    on_file_complete: &(dyn Fn(u64) + Sync),
+    progress: &Arc<SourceProgress>,
     merge: Option<&MergeCtx<'_>>,
 ) -> Result<u64, PathedVolumeError> {
     // Phase 1: build the directory structure + resolve conflicts, recording each
@@ -110,8 +109,7 @@ pub(super) async fn extract_sequential_subtree(
         dest_path,
         state,
         created,
-        on_file_progress,
-        on_file_complete,
+        progress,
         merge,
         Some(&plan),
     ))
@@ -151,10 +149,15 @@ pub(super) async fn extract_sequential_subtree(
         note_pending_for_local_dest(dest_volume, &planned.dest_path);
         note_pending_for_local_dest(dest_volume, staged.target());
         let stream = extractor.current_stream();
-        let bytes = match dest_volume
-            .write_from_stream(staged.target(), file.size, stream, on_file_progress)
-            .await
-        {
+        // One decode pass means one member at a time, but this member still
+        // takes a leaf handle of its own: it is what carries its bytes on the
+        // bar while it writes, and what takes them back off if the write fails.
+        let leaf = progress.begin_leaf();
+        let on_chunk = |file_bytes_done: u64, _file_bytes_total: u64| leaf.on_chunk(file_bytes_done);
+        let written = dest_volume
+            .write_from_stream(staged.target(), file.size, stream, &on_chunk)
+            .await;
+        let bytes = match written {
             Ok(bytes) => bytes,
             Err(e) => {
                 staged.abandon(dest_volume).await;
@@ -190,7 +193,7 @@ pub(super) async fn extract_sequential_subtree(
         };
         created.record_file(recorded, bytes);
         total_bytes += bytes;
-        on_file_complete(bytes);
+        leaf.complete(bytes);
     }
 
     Ok(total_bytes)

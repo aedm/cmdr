@@ -21,6 +21,7 @@ use super::test_support::{
     REL_CHUNK, REL_TOTAL, RelLog, ReleasingSource, SLOW_CHUNK_COUNT, SLOW_CHUNK_SIZE, SlowSource, make_state,
     park_holds_at, rel_expected_bytes,
 };
+use crate::file_system::write_operations::transfer::transfer_driver::{LeafProgressLedger, ObservedProgress};
 use super::*;
 use crate::file_system::write_operations::state::{OperationIntent, cancel_write_operation, load_intent};
 use crate::file_system::write_operations::test_support::TestOperationGuard;
@@ -54,14 +55,16 @@ async fn streaming_copy_parks_mid_file_while_paused_then_resumes() {
     let total = (SLOW_CHUNK_COUNT * SLOW_CHUNK_SIZE) as u64;
 
     let state = make_state();
-    let bytes_seen = Arc::new(AtomicU64::new(0));
+    // Watches the bytes the copy REPORTS, which is the number the transfer
+    // dialog shows: the engine owns the per-chunk callback now.
+    let progress = ObservedProgress::new(&state, "observed-copy");
+    let bytes_seen = Arc::clone(&progress.bytes);
 
     let source_drv = Arc::clone(&source);
     let dest_drv = Arc::clone(&dest);
     let state_drv = Arc::clone(&state);
-    let bytes_seen_drv = Arc::clone(&bytes_seen);
+    let progress_drv = Arc::clone(&progress.source);
     let op = tokio::spawn(async move {
-        let bytes_ref = &bytes_seen_drv;
         copy_single_path(
             &source_drv,
             Path::new("/big.bin"),
@@ -71,11 +74,7 @@ async fn streaming_copy_parks_mid_file_while_paused_then_resumes() {
             Path::new("/big.bin"),
             &state_drv,
             &CreatedPaths::default(),
-            &|bytes_done, _total| {
-                bytes_ref.store(bytes_done, Ordering::SeqCst);
-                ControlFlow::Continue(())
-            },
-            &|_| {},
+            &progress_drv,
             None,
             WriteStaging::Stage,
         )
@@ -140,13 +139,15 @@ async fn streaming_copy_cancel_while_paused_mid_file_unblocks() {
     let op_id = op.id().to_string();
     let state = Arc::clone(op.state());
 
-    let bytes_seen = Arc::new(AtomicU64::new(0));
+    // Watches the bytes the copy REPORTS, which is the number the transfer
+    // dialog shows: the engine owns the per-chunk callback now.
+    let progress = ObservedProgress::new(&state, "observed-copy");
+    let bytes_seen = Arc::clone(&progress.bytes);
     let source_drv = Arc::clone(&source);
     let dest_drv = Arc::clone(&dest);
     let state_drv = Arc::clone(&state);
-    let bytes_seen_drv = Arc::clone(&bytes_seen);
+    let progress_drv = Arc::clone(&progress.source);
     let op = tokio::spawn(async move {
-        let bytes_ref = &bytes_seen_drv;
         let state_ref = &state_drv;
         copy_single_path(
             &source_drv,
@@ -157,17 +158,7 @@ async fn streaming_copy_cancel_while_paused_mid_file_unblocks() {
             Path::new("big.bin"),
             state_ref,
             &CreatedPaths::default(),
-            // Mirror the production per-file callback (`SerialLeafProgress::on_chunk`):
-            // break on cancel so the backend's chunk loop tears down the partial.
-            &|bytes_done, _total| {
-                bytes_ref.store(bytes_done, Ordering::SeqCst);
-                if crate::file_system::write_operations::state::is_cancelled(&state_ref.intent) {
-                    ControlFlow::Break(())
-                } else {
-                    ControlFlow::Continue(())
-                }
-            },
-            &|_| {},
+            &progress_drv,
             None,
             WriteStaging::Stage,
         )
@@ -235,14 +226,16 @@ async fn paused_mtp_copy_parks_in_place_then_resumes_byte_exact() {
     let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", dst_dir.to_str().unwrap()));
 
     let state = make_state();
-    let bytes_seen = Arc::new(AtomicU64::new(0));
+    // Watches the bytes the copy REPORTS, which is the number the transfer
+    // dialog shows: the engine owns the per-chunk callback now.
+    let progress = ObservedProgress::new(&state, "observed-copy");
+    let bytes_seen = Arc::clone(&progress.bytes);
 
     let source_drv = Arc::clone(&source);
     let dest_drv = Arc::clone(&dest);
     let state_drv = Arc::clone(&state);
-    let bytes_seen_drv = Arc::clone(&bytes_seen);
+    let progress_drv = Arc::clone(&progress.source);
     let op = tokio::spawn(async move {
-        let bytes_ref = &bytes_seen_drv;
         copy_single_path(
             &source_drv,
             Path::new("/movie.bin"),
@@ -252,11 +245,7 @@ async fn paused_mtp_copy_parks_in_place_then_resumes_byte_exact() {
             Path::new("movie.bin"),
             &state_drv,
             &CreatedPaths::default(),
-            &|bytes_done, _total| {
-                bytes_ref.store(bytes_done, Ordering::SeqCst);
-                ControlFlow::Continue(())
-            },
-            &|_| {},
+            &progress_drv,
             None,
             WriteStaging::Stage,
         )
@@ -339,14 +328,16 @@ async fn paused_mtp_copy_cancel_while_paused_keeps_no_partial() {
     let op_id = op.id().to_string();
     let state = Arc::clone(op.state());
 
-    let bytes_seen = Arc::new(AtomicU64::new(0));
+    // Watches the bytes the copy REPORTS, which is the number the transfer
+    // dialog shows: the engine owns the per-chunk callback now.
+    let progress = ObservedProgress::new(&state, "observed-copy");
+    let bytes_seen = Arc::clone(&progress.bytes);
     let source_drv = Arc::clone(&source);
     let dest_drv = Arc::clone(&dest);
     let state_drv = Arc::clone(&state);
-    let bytes_seen_drv = Arc::clone(&bytes_seen);
+    let progress_drv = Arc::clone(&progress.source);
     let op = tokio::spawn(async move {
         let state_ref = &state_drv;
-        let bytes_ref = &bytes_seen_drv;
         copy_single_path(
             &source_drv,
             Path::new("/movie.bin"),
@@ -356,17 +347,7 @@ async fn paused_mtp_copy_cancel_while_paused_keeps_no_partial() {
             Path::new("movie.bin"),
             state_ref,
             &CreatedPaths::default(),
-            // Mirror the production per-file callback: break on cancel so the
-            // backend's chunk loop tears down the partial.
-            &|bytes_done, _total| {
-                bytes_ref.store(bytes_done, Ordering::SeqCst);
-                if crate::file_system::write_operations::state::is_cancelled(&state_ref.intent) {
-                    ControlFlow::Break(())
-                } else {
-                    ControlFlow::Continue(())
-                }
-            },
-            &|_| {},
+            &progress_drv,
             None,
             WriteStaging::Stage,
         )
@@ -442,8 +423,7 @@ async fn unpaused_mtp_copy_streams_straight_through() {
         Path::new("movie.bin"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )

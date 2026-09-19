@@ -37,7 +37,7 @@ use super::super::super::types::{
     WriteProgressEvent,
 };
 use super::super::dest_name_index::DestNameIndex;
-use super::super::transfer_driver::build_pre_skip_set;
+use super::super::transfer_driver::{LeafProgressLedger, build_pre_skip_set};
 use super::preflight::scan_volume_sources;
 use crate::file_system::volume::{DirectoryCreation, SourceItemInfo, SpaceInfo, Volume, VolumeError};
 use crate::ignore_poison::IgnorePoison;
@@ -789,7 +789,6 @@ pub(crate) async fn copy_volumes_with_progress(
     // The `*_skipped` atomics are a subset, counting only bulk-skip + per-iter
     // Skip resolutions; we use them to annotate the completion log.
     let files_done_atomic = Arc::new(AtomicUsize::new(0));
-    let atomic_bytes_done = Arc::new(AtomicU64::new(0));
     let files_skipped_atomic = Arc::new(AtomicUsize::new(0));
     let bytes_skipped_atomic = Arc::new(AtomicU64::new(0));
     let last_progress_mutex = Arc::new(std::sync::Mutex::new(Instant::now()));
@@ -798,6 +797,20 @@ pub(crate) async fn copy_volumes_with_progress(
     let mut files_skipped;
     let mut bytes_skipped;
     let progress_interval = Duration::from_millis(config.progress_interval_ms);
+    // The concurrent path's byte ledger: every task mints its leaves from it,
+    // so several sources streaming at once each hold their own share of the
+    // in-flight total and `finished_bytes()` is what actually landed. The
+    // serial path builds its own inside `copy_serial.rs`.
+    let leaf_ledger = LeafProgressLedger::new(
+        Arc::clone(&events),
+        Arc::clone(state),
+        operation_id.to_string(),
+        WriteOperationType::Copy,
+        Arc::clone(&files_done_atomic),
+        total_files,
+        total_bytes,
+        progress_interval,
+    );
 
     // The concurrency window and the sequential fallback (F7, for 1-2 file
     // batches where spawning tasks isn't worth it, and backends that return 1
@@ -898,7 +911,8 @@ pub(crate) async fn copy_volumes_with_progress(
     // own prelude using `bulk_skip_files` / `bulk_skip_bytes`).
     if use_concurrent_path && bulk_skip_files > 0 {
         let new_files = files_done_atomic.fetch_add(bulk_skip_files, Ordering::Relaxed) + bulk_skip_files;
-        let new_bytes = atomic_bytes_done.fetch_add(bulk_skip_bytes, Ordering::Relaxed) + bulk_skip_bytes;
+        leaf_ledger.credit_finished(bulk_skip_bytes);
+        let new_bytes = leaf_ledger.finished_bytes();
         files_skipped_atomic.fetch_add(bulk_skip_files, Ordering::Relaxed);
         bytes_skipped_atomic.fetch_add(bulk_skip_bytes, Ordering::Relaxed);
         log::info!(
@@ -1018,7 +1032,7 @@ pub(crate) async fn copy_volumes_with_progress(
             journal_volumes: &journal_volumes,
             op_probe: &op_probe,
             files_done_atomic: Arc::clone(&files_done_atomic),
-            atomic_bytes_done: Arc::clone(&atomic_bytes_done),
+            leaf_ledger: Arc::clone(&leaf_ledger),
             files_skipped_atomic: Arc::clone(&files_skipped_atomic),
             bytes_skipped_atomic: Arc::clone(&bytes_skipped_atomic),
             last_progress_mutex: Arc::clone(&last_progress_mutex),
@@ -1034,7 +1048,7 @@ pub(crate) async fn copy_volumes_with_progress(
         copy_error = outcome.copy_error;
         // Sync counters for post-loop reporting.
         files_done = files_done_atomic.load(Ordering::Relaxed);
-        bytes_done = atomic_bytes_done.load(Ordering::Relaxed);
+        bytes_done = leaf_ledger.finished_bytes();
         files_skipped = files_skipped_atomic.load(Ordering::Relaxed);
         bytes_skipped = bytes_skipped_atomic.load(Ordering::Relaxed);
     } else {

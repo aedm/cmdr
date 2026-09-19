@@ -10,6 +10,7 @@
 //! stages. ❌ The condition must never become "the file is small".
 
 use super::test_support::make_state;
+use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
 use super::*;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
@@ -151,8 +152,7 @@ async fn copy_one(
         dest_path,
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         staging,
     )

@@ -31,7 +31,8 @@ use super::*;
 use crate::file_system::volume::{InMemoryVolume, VolumeError, VolumeReadStream};
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 use crate::file_system::write_operations::ledger::{WrittenFile, WrittenIdentity};
-use crate::file_system::write_operations::types::ConflictResolution;
+use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
+use crate::file_system::write_operations::types::{ConflictResolution, WriteOperationType};
 use cmdr_fs::staging::STAGING_TEMP_MARKER;
 use std::collections::HashSet;
 
@@ -137,7 +138,7 @@ struct Harness {
     journal_volumes: Option<(String, String)>,
     op_probe: Option<Arc<OperationProbe>>,
     files_done: Arc<AtomicUsize>,
-    bytes_done: Arc<AtomicU64>,
+    leaf_ledger: Arc<LeafProgressLedger>,
     files_skipped: Arc<AtomicUsize>,
     bytes_skipped: Arc<AtomicU64>,
     last_progress: Arc<std::sync::Mutex<Instant>>,
@@ -149,9 +150,12 @@ struct Harness {
 
 impl Harness {
     fn new(source_paths: &[PathBuf]) -> Self {
+        let state = Arc::new(WriteOperationState::new(Duration::from_millis(50)));
+        let events: Arc<dyn OperationEventSink> = Arc::new(CollectorEventSink::new());
+        let files_done = Arc::new(AtomicUsize::new(0));
         Self {
-            state: Arc::new(WriteOperationState::new(Duration::from_millis(50))),
-            events: Arc::new(CollectorEventSink::new()),
+            state: Arc::clone(&state),
+            events: Arc::clone(&events),
             config: merge_config(),
             source_paths: source_paths.to_vec(),
             pre_skip_paths: HashSet::new(),
@@ -159,8 +163,17 @@ impl Harness {
             dest_index: None,
             journal_volumes: None,
             op_probe: None,
-            files_done: Arc::new(AtomicUsize::new(0)),
-            bytes_done: Arc::new(AtomicU64::new(0)),
+            files_done: Arc::clone(&files_done),
+            leaf_ledger: LeafProgressLedger::new(
+                Arc::clone(&events),
+                Arc::clone(&state),
+                "concurrent-driver-harness".to_owned(),
+                WriteOperationType::Copy,
+                files_done,
+                source_paths.len(),
+                0,
+                Duration::from_millis(0),
+            ),
             files_skipped: Arc::new(AtomicUsize::new(0)),
             bytes_skipped: Arc::new(AtomicU64::new(0)),
             last_progress: Arc::new(std::sync::Mutex::new(Instant::now())),
@@ -193,7 +206,7 @@ impl Harness {
             journal_volumes: &self.journal_volumes,
             op_probe: &self.op_probe,
             files_done_atomic: Arc::clone(&self.files_done),
-            atomic_bytes_done: Arc::clone(&self.bytes_done),
+            leaf_ledger: Arc::clone(&self.leaf_ledger),
             files_skipped_atomic: Arc::clone(&self.files_skipped),
             bytes_skipped_atomic: Arc::clone(&self.bytes_skipped),
             last_progress_mutex: Arc::clone(&self.last_progress),
@@ -243,7 +256,7 @@ impl Harness {
     fn counters(&self) -> (usize, u64, usize, u64) {
         (
             self.files_done.load(Ordering::Relaxed),
-            self.bytes_done.load(Ordering::Relaxed),
+            self.leaf_ledger.finished_bytes(),
             self.files_skipped.load(Ordering::Relaxed),
             self.bytes_skipped.load(Ordering::Relaxed),
         )

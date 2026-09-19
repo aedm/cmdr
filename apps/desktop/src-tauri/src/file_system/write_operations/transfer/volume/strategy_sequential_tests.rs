@@ -9,7 +9,12 @@
 
 use super::super::transfer_error::PathedVolumeError;
 use super::test_support::make_state;
+use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
+use super::super::faulty_volume::forward_volume_methods;
 use super::*;
+use std::future::Future;
+use std::ops::ControlFlow;
+use std::pin::Pin;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -157,6 +162,7 @@ async fn a_sequential_extract_carries_the_executable_bit() {
         dest_dir.to_str().expect("dest path"),
     ));
 
+    let state = make_state();
     copy_single_path(
         &source,
         &fixture.inner("bin"),
@@ -164,10 +170,9 @@ async fn a_sequential_extract_carries_the_executable_bit() {
         SourceFileFacts::default(),
         &dest,
         Path::new("out"),
-        &make_state(),
+        &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -217,8 +222,7 @@ async fn sequential_extract_materializes_a_nested_subtree() {
         Path::new("/out"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -288,8 +292,7 @@ async fn sequential_extract_lands_empty_dirs_and_symlinks() {
         Path::new("/out"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -309,6 +312,49 @@ async fn sequential_extract_lands_empty_dirs_and_symlinks() {
     );
 }
 
+
+/// A destination that trips a switch the first time a member lands.
+///
+/// The one-pass extractor's stop checks sit BETWEEN members, so a test has to
+/// act at exactly the moment one finishes writing. It used to do that with a
+/// completion callback of its own; the engine owns leaf completion now, so the
+/// trigger moves to where the bytes actually land — which is also the more
+/// honest place, since it is a real write finishing rather than a test hook.
+struct StopAfterFirstWrite {
+    inner: Arc<InMemoryVolume>,
+    writes: Arc<AtomicUsize>,
+    on_first: Arc<dyn Fn() + Send + Sync>,
+}
+
+impl Volume for StopAfterFirstWrite {
+    forward_volume_methods!(inner =>
+        name, root, list_directory, get_metadata, exists, is_directory, create_file, create_directory,
+        create_directory_all, delete, rename, get_space_info, supports_streaming, supports_export,
+        operations_are_local, max_concurrent_ops, scan_for_copy, open_read_stream, write_is_single_shot,
+        create_directory_errors_on_existing_dir,
+    );
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn write_from_stream<'a>(
+        &'a self,
+        dest: &'a Path,
+        size: u64,
+        stream: Box<dyn VolumeReadStream>,
+        on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+    ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
+        Box::pin(async move {
+            let written = self.inner.write_from_stream(dest, size, stream, on_progress).await?;
+            if self.writes.fetch_add(1, Ordering::SeqCst) == 0 {
+                (self.on_first)();
+            }
+            Ok(written)
+        })
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn sequential_extract_cancels_between_members() {
     let fixture = TarGzFixture::new(&[
@@ -317,21 +363,22 @@ async fn sequential_extract_cancels_between_members() {
         ("docs/c.txt", b"charlie"),
     ]);
     let source = fixture.volume();
-    let dest: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("dest"));
     let state = make_state();
 
-    // Cancel right after the FIRST file completes: the data pass's between-member
+    // Cancel right after the FIRST file lands: the data pass's between-member
     // `is_cancelled` check must then stop before writing the second file.
     let completed = Arc::new(AtomicUsize::new(0));
-    let on_complete = {
-        let completed = Arc::clone(&completed);
-        let state = Arc::clone(&state);
-        move |_bytes: u64| {
-            if completed.fetch_add(1, Ordering::SeqCst) == 0 {
+    let inner_dest = Arc::new(InMemoryVolume::new("dest"));
+    let dest: Arc<dyn Volume> = Arc::new(StopAfterFirstWrite {
+        inner: Arc::clone(&inner_dest),
+        writes: Arc::clone(&completed),
+        on_first: {
+            let state = Arc::clone(&state);
+            Arc::new(move || {
                 state.intent.store(OperationIntent::Stopped as u8, Ordering::Relaxed);
-            }
-        }
-    };
+            })
+        },
+    });
 
     let result = copy_single_path(
         &source,
@@ -342,8 +389,7 @@ async fn sequential_extract_cancels_between_members() {
         Path::new("/out"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &on_complete,
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -383,23 +429,24 @@ async fn sequential_extract_pauses_between_members_and_resumes() {
         ("docs/c.txt", b"charlie"),
     ]);
     let source = fixture.volume();
-    let dest: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("dest"));
     let state = make_state();
 
     // Pause right after the FIRST member lands, so the pause is tied to the
     // extract's own progress rather than a wall clock.
     let completed = Arc::new(AtomicUsize::new(0));
+    let dest: Arc<dyn Volume> = Arc::new(StopAfterFirstWrite {
+        inner: Arc::new(InMemoryVolume::new("dest")),
+        writes: Arc::clone(&completed),
+        on_first: {
+            let state = Arc::clone(&state);
+            Arc::new(move || state.pause_gate.pause())
+        },
+    });
     let source_root = fixture.inner("docs");
     let dest_for_extract = Arc::clone(&dest);
     let state_for_extract = Arc::clone(&state);
-    let completed_for_extract = Arc::clone(&completed);
-    let state_for_hook = Arc::clone(&state);
+    let progress_for_extract = LeafProgressLedger::silent_source(Arc::clone(&state));
     let extractor = tokio::spawn(async move {
-        let on_complete = move |_bytes: u64| {
-            if completed_for_extract.fetch_add(1, Ordering::SeqCst) == 0 {
-                state_for_hook.pause_gate.pause();
-            }
-        };
         copy_single_path(
             &source,
             &source_root,
@@ -409,8 +456,7 @@ async fn sequential_extract_pauses_between_members_and_resumes() {
             Path::new("/out"),
             &state_for_extract,
             &CreatedPaths::default(),
-            &|_, _| ControlFlow::Continue(()),
-            &on_complete,
+            &progress_for_extract,
             None,
             WriteStaging::Stage,
         )

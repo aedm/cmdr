@@ -22,12 +22,13 @@ use super::test_support::{
     AutoYieldTuningGuard, NeverPendingYieldSource, PARK_WINDOW, REL_CHUNK, REL_TOTAL, RelLog, ReleasingSource,
     YieldingSource, make_state, park_holds_at, rel_expected_bytes,
 };
+use crate::file_system::write_operations::transfer::transfer_driver::{LeafProgressLedger, ObservedProgress};
 use super::*;
 use crate::file_system::write_operations::state::{OperationIntent, cancel_write_operation, load_intent};
 use crate::file_system::write_operations::test_support::TestOperationGuard;
 use crate::test_support::wait_until_async;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
 use std::time::Duration;
 
@@ -53,7 +54,10 @@ async fn auto_yield_parks_before_next_window_then_resumes_byte_exact() {
     let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", dst_dir.to_str().unwrap()));
 
     let state = make_state();
-    let bytes_seen = Arc::new(AtomicU64::new(0));
+    // Watches the bytes the copy REPORTS, which is the number the transfer
+    // dialog shows: the engine owns the per-chunk callback now.
+    let progress = ObservedProgress::new(&state, "observed-copy");
+    let bytes_seen = Arc::clone(&progress.bytes);
 
     // A `LocalSet` so the copy runs on THIS thread (sharing the thread-local
     // tuning override) while the controller below drives `foreground`.
@@ -63,9 +67,8 @@ async fn auto_yield_parks_before_next_window_then_resumes_byte_exact() {
             let source_drv = Arc::clone(&source);
             let dest_drv = Arc::clone(&dest);
             let state_drv = Arc::clone(&state);
-            let bytes_seen_drv = Arc::clone(&bytes_seen);
+            let progress_drv = Arc::clone(&progress.source);
             let op = tokio::task::spawn_local(async move {
-                let bytes_ref = &bytes_seen_drv;
                 copy_single_path(
                     &source_drv,
                     Path::new("/movie.bin"),
@@ -75,11 +78,7 @@ async fn auto_yield_parks_before_next_window_then_resumes_byte_exact() {
                     Path::new("movie.bin"),
                     &state_drv,
                     &CreatedPaths::default(),
-                    &|bytes_done, _total| {
-                        bytes_ref.store(bytes_done, Ordering::SeqCst);
-                        ControlFlow::Continue(())
-                    },
-                    &|_| {},
+                    &progress_drv,
                     None,
                     WriteStaging::Stage,
                 )
@@ -168,16 +167,18 @@ async fn auto_yield_debounces_a_burst_into_one_park() {
     let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", dst_dir.to_str().unwrap()));
 
     let state = make_state();
-    let bytes_seen = Arc::new(AtomicU64::new(0));
+    // Watches the bytes the copy REPORTS, which is the number the transfer
+    // dialog shows: the engine owns the per-chunk callback now.
+    let progress = ObservedProgress::new(&state, "observed-copy");
+    let bytes_seen = Arc::clone(&progress.bytes);
     let local = tokio::task::LocalSet::new();
     local
         .run_until(async {
             let source_drv = Arc::clone(&source);
             let dest_drv = Arc::clone(&dest);
             let state_drv = Arc::clone(&state);
-            let bytes_seen_drv = Arc::clone(&bytes_seen);
+            let progress_drv = Arc::clone(&progress.source);
             let op = tokio::task::spawn_local(async move {
-                let bytes_ref = &bytes_seen_drv;
                 copy_single_path(
                     &source_drv,
                     Path::new("/movie.bin"),
@@ -187,11 +188,7 @@ async fn auto_yield_debounces_a_burst_into_one_park() {
                     Path::new("movie.bin"),
                     &state_drv,
                     &CreatedPaths::default(),
-                    &|bytes_done, _total| {
-                        bytes_ref.store(bytes_done, Ordering::SeqCst);
-                        ControlFlow::Continue(())
-                    },
-                    &|_| {},
+                    &progress_drv,
                     None,
                                     WriteStaging::Stage,
                 )
@@ -273,16 +270,18 @@ async fn auto_yield_min_progress_floor_prevents_starvation() {
     let dest: Arc<dyn Volume> = Arc::new(LocalPosixVolume::new("Dest", dst_dir.to_str().unwrap()));
 
     let state = make_state();
-    let bytes_seen = Arc::new(AtomicU64::new(0));
+    // Watches the bytes the copy REPORTS, which is the number the transfer
+    // dialog shows: the engine owns the per-chunk callback now.
+    let progress = ObservedProgress::new(&state, "observed-copy");
+    let bytes_seen = Arc::clone(&progress.bytes);
     let local = tokio::task::LocalSet::new();
     local
         .run_until(async {
             let source_drv = Arc::clone(&source);
             let dest_drv = Arc::clone(&dest);
             let state_drv = Arc::clone(&state);
-            let bytes_seen_drv = Arc::clone(&bytes_seen);
+            let progress_drv = Arc::clone(&progress.source);
             let op = tokio::task::spawn_local(async move {
-                let bytes_ref = &bytes_seen_drv;
                 copy_single_path(
                     &source_drv,
                     Path::new("/movie.bin"),
@@ -292,11 +291,7 @@ async fn auto_yield_min_progress_floor_prevents_starvation() {
                     Path::new("movie.bin"),
                     &state_drv,
                     &CreatedPaths::default(),
-                    &|bytes_done, _total| {
-                        bytes_ref.store(bytes_done, Ordering::SeqCst);
-                        ControlFlow::Continue(())
-                    },
-                    &|_| {},
+                    &progress_drv,
                     None,
                                     WriteStaging::Stage,
                 )
@@ -364,7 +359,10 @@ async fn auto_yield_cancel_while_yielding_keeps_no_partial() {
     let op = TestOperationGuard::register_state("test-autoyield-cancel", make_state());
     let op_id = op.id().to_string();
     let state = Arc::clone(op.state());
-    let bytes_seen = Arc::new(AtomicU64::new(0));
+    // Watches the bytes the copy REPORTS, which is the number the transfer
+    // dialog shows: the engine owns the per-chunk callback now.
+    let progress = ObservedProgress::new(&state, "observed-copy");
+    let bytes_seen = Arc::clone(&progress.bytes);
 
     let local = tokio::task::LocalSet::new();
     local
@@ -372,10 +370,9 @@ async fn auto_yield_cancel_while_yielding_keeps_no_partial() {
             let source_drv = Arc::clone(&source);
             let dest_drv = Arc::clone(&dest);
             let state_drv = Arc::clone(&state);
-            let bytes_seen_drv = Arc::clone(&bytes_seen);
+            let progress_drv = Arc::clone(&progress.source);
             let op = tokio::task::spawn_local(async move {
                 let state_ref = &state_drv;
-                let bytes_ref = &bytes_seen_drv;
                 copy_single_path(
                     &source_drv,
                     Path::new("/movie.bin"),
@@ -385,15 +382,7 @@ async fn auto_yield_cancel_while_yielding_keeps_no_partial() {
                     Path::new("movie.bin"),
                     state_ref,
                     &CreatedPaths::default(),
-                    &|bytes_done, _total| {
-                        bytes_ref.store(bytes_done, Ordering::SeqCst);
-                        if crate::file_system::write_operations::state::is_cancelled(&state_ref.intent) {
-                            ControlFlow::Break(())
-                        } else {
-                            ControlFlow::Continue(())
-                        }
-                    },
-                    &|_| {},
+                    &progress_drv,
                     None,
                                     WriteStaging::Stage,
                 )
@@ -475,8 +464,7 @@ async fn non_mtp_source_never_auto_yields_for_foreground() {
         Path::new("movie.bin"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )
@@ -528,8 +516,7 @@ async fn yield_capable_source_with_no_foreground_pending_never_self_yields() {
                     Path::new("movie.bin"),
                     &state_drv,
                     &CreatedPaths::default(),
-                    &|_, _| ControlFlow::Continue(()),
-                    &|_| {},
+                    &LeafProgressLedger::silent_source(Arc::clone(&state)),
                     None,
                     WriteStaging::Stage,
                 )

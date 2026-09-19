@@ -20,6 +20,7 @@
 //! smb2 crate's business.
 
 use super::test_support::{FlakyDest, make_state};
+use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
 use super::*;
 use std::path::Path;
 use std::sync::Arc;
@@ -58,8 +59,7 @@ async fn copy_one(
         Path::new(dest_path),
         state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         staging,
     )
@@ -311,8 +311,7 @@ async fn a_retried_child_is_recorded_in_the_rollback_ledger_exactly_once() {
         Path::new("/tree"),
         guard.state(),
         &created,
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(guard.state())),
         None,
         WriteStaging::Stage,
     )

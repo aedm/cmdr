@@ -207,12 +207,8 @@ impl ConcurrentCopy<'_> {
                 source_row,
             }),
             task_probe,
-            files_done: Arc::clone(&self.files_done_atomic),
-            bytes_done: Arc::clone(&self.atomic_bytes_done),
+            leaf_ledger: Arc::clone(&self.leaf_ledger),
             last_progress: Arc::clone(&self.last_progress_mutex),
-            progress_interval: self.progress_interval,
-            total_files: self.total_files,
-            total_bytes: self.total_bytes,
         }))
     }
 
@@ -365,7 +361,8 @@ impl ConcurrentCopy<'_> {
             .map(|h| if h.is_directory { 0 } else { h.size })
             .unwrap_or(0);
         let new_files = self.files_done_atomic.fetch_add(1, Ordering::Relaxed) + 1;
-        let new_bytes = self.atomic_bytes_done.fetch_add(hint_size, Ordering::Relaxed) + hint_size;
+        self.leaf_ledger.credit_finished(hint_size);
+        let new_bytes = self.leaf_ledger.finished_bytes();
         self.files_skipped_atomic.fetch_add(1, Ordering::Relaxed);
         self.bytes_skipped_atomic.fetch_add(hint_size, Ordering::Relaxed);
 

@@ -8,6 +8,7 @@
 //! the second, pinning that the engine calls `write_from_stream` exactly twice.
 
 use super::test_support::FailOnceStaleDest;
+use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
 use super::*;
 use std::path::Path;
 use std::sync::Arc;
@@ -40,8 +41,7 @@ async fn stream_pipe_file_retries_once_on_stale_destination_handle() {
         Path::new("a.txt"),
         &state,
         &CreatedPaths::default(),
-        &|_, _| ControlFlow::Continue(()),
-        &|_| {},
+        &LeafProgressLedger::silent_source(Arc::clone(&state)),
         None,
         WriteStaging::Stage,
     )

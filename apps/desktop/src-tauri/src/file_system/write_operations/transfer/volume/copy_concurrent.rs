@@ -43,6 +43,7 @@ use super::super::super::ledger::WrittenFile;
 use super::super::super::state::{WriteOperationState, is_cancelled, load_intent, update_operation_status};
 use super::super::super::types::{VolumeCopyConfig, WriteOperationPhase, WriteOperationType, WriteProgressEvent};
 use super::super::dest_name_index::DestNameIndex;
+use super::super::transfer_driver::LeafProgressLedger;
 use super::super::transfer_probe::OperationProbe;
 use super::copy::drain_deadline as drain_deadline_for;
 use super::copy_concurrent_task::{CopyTaskFailure, CopyTaskSuccess, run_copy_task};
@@ -91,7 +92,7 @@ pub(super) struct ConcurrentCopy<'a> {
     pub(super) journal_volumes: &'a Option<(String, String)>,
     pub(super) op_probe: &'a Option<Arc<OperationProbe>>,
     pub(super) files_done_atomic: Arc<AtomicUsize>,
-    pub(super) atomic_bytes_done: Arc<AtomicU64>,
+    pub(super) leaf_ledger: Arc<LeafProgressLedger>,
     pub(super) files_skipped_atomic: Arc<AtomicUsize>,
     pub(super) bytes_skipped_atomic: Arc<AtomicU64>,
     pub(super) last_progress_mutex: Arc<std::sync::Mutex<Instant>>,
@@ -406,7 +407,7 @@ impl<'a> ConcurrentDriver<'a> {
         // path's milestone in `transfer_driver.rs::drive_transfer_serial_async`.
         *ctx.last_progress_mutex.lock_ignore_poison() = Instant::now();
         let current_files = ctx.files_done_atomic.load(Ordering::Relaxed);
-        let current_bytes = ctx.atomic_bytes_done.load(Ordering::Relaxed);
+        let current_bytes = ctx.leaf_ledger.finished_bytes();
         ctx.state.emit_progress_via_sink(
             &*ctx.events,
             WriteProgressEvent::new(

@@ -25,11 +25,14 @@ use super::test_support::{SlowSource, TierOneWitnessDest, WedgedOpenSource, Wedg
 use super::*;
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use crate::file_system::volume::{InMemoryVolume, Volume, VolumeError};
-use crate::file_system::write_operations::state::{abort_write_operation, cancel_write_operation, is_cancelled};
+use crate::file_system::write_operations::state::{abort_write_operation, cancel_write_operation};
+use crate::file_system::write_operations::transfer::transfer_driver::{
+    LeafProgressLedger, ObservedProgress, SourceProgress,
+};
 use crate::file_system::write_operations::test_support::TestOperationGuard;
 use crate::ignore_poison::IgnorePoison;
 use crate::test_support::wait_until_async;
@@ -59,7 +62,7 @@ async fn copy_one(
     source_path: &str,
     dest: &Arc<dyn Volume>,
     state: &Arc<WriteOperationState>,
-    on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+    progress: &Arc<SourceProgress>,
 ) -> Result<u64, VolumeError> {
     copy_single_path(
         source,
@@ -70,8 +73,7 @@ async fn copy_one(
         Path::new("/a.txt"),
         state,
         &CreatedPaths::default(),
-        on_progress,
-        &|_| {},
+        progress,
         None,
         WriteStaging::Stage,
     )
@@ -98,7 +100,8 @@ async fn a_hard_abort_ends_a_wedged_write_instead_of_waiting_for_the_backend() {
     let dest: Arc<dyn Volume> = Arc::clone(&wedged) as Arc<dyn Volume>;
     let is_wedged = Arc::clone(&wedged.wedged);
 
-    let copy = copy_one(&source, "/a.txt", &dest, op.state(), &|_, _| ControlFlow::Continue(()));
+    let progress = LeafProgressLedger::silent_source(Arc::clone(op.state()));
+    let copy = copy_one(&source, "/a.txt", &dest, op.state(), &progress);
     tokio::pin!(copy);
 
     // Each wait rides its own `select!` arm alongside the copy: the copy only
@@ -143,7 +146,8 @@ async fn a_hard_abort_ends_a_wedged_source_open() {
     });
     let dest: Arc<dyn Volume> = Arc::new(InMemoryVolume::new("dest").with_space_info(10_000_000, 10_000_000));
 
-    let copy = copy_one(&source, "/a.txt", &dest, op.state(), &|_, _| ControlFlow::Continue(()));
+    let progress = LeafProgressLedger::silent_source(Arc::clone(op.state()));
+    let copy = copy_one(&source, "/a.txt", &dest, op.state(), &progress);
     tokio::pin!(copy);
 
     tokio::select! {
@@ -172,7 +176,8 @@ async fn a_hard_abort_leaves_the_partial_for_the_sweep_rather_than_deleting_it_t
     let dest: Arc<dyn Volume> = Arc::clone(&wedged) as Arc<dyn Volume>;
     let is_wedged = Arc::clone(&wedged.wedged);
 
-    let copy = copy_one(&source, "/a.txt", &dest, op.state(), &|_, _| ControlFlow::Continue(()));
+    let progress = LeafProgressLedger::silent_source(Arc::clone(op.state()));
+    let copy = copy_one(&source, "/a.txt", &dest, op.state(), &progress);
     tokio::pin!(copy);
     tokio::select! {
         r = &mut copy => panic!("the write must still be wedged: {r:?}"),
@@ -221,21 +226,13 @@ async fn an_ordinary_cancel_still_routes_through_tier_one_and_the_backend_delete
     let dest: Arc<dyn Volume> = Arc::clone(&witness) as Arc<dyn Volume>;
     let written = Arc::clone(&witness.written);
 
-    let bytes_seen = Arc::new(AtomicU64::new(0));
-    let seen = Arc::clone(&bytes_seen);
-    // Tier 1 IS this callback: production's per-chunk progress closure is what
-    // carries the cancel to the backend (see `strategy::pull_path_to_local`), so a
-    // test that hard-codes `Continue` would be measuring nothing.
-    let cancel_state = Arc::clone(op.state());
-    let on_progress = move |done: u64, _total: u64| {
-        seen.store(done, Ordering::SeqCst);
-        if is_cancelled(&cancel_state.intent) {
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
-        }
-    };
-    let copy = copy_one(&source, "/big.bin", &dest, op.state(), &on_progress);
+    // Tier 1 IS the engine's per-chunk progress callback: it is what carries the
+    // cancel down to the backend so the backend tears down its own partial. The
+    // test watches the bytes that callback reports rather than standing in for
+    // it, so what it drives is production's path and not a copy of it.
+    let progress = ObservedProgress::new(op.state(), op.id());
+    let bytes_seen = Arc::clone(&progress.bytes);
+    let copy = copy_one(&source, "/big.bin", &dest, op.state(), &progress.source);
     tokio::pin!(copy);
 
     // One chunk through: the write is provably mid-file, with a partial on the

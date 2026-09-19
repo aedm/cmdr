@@ -26,6 +26,7 @@ use super::super::staged_write::StagedWrite;
 use super::super::recovered_name::FinalizeFailure;
 use super::super::retry;
 pub(super) use super::super::staged_write::{LandingName, WriteStaging};
+use super::super::transfer_driver::{LeafProgressLedger, SourceProgress};
 use super::super::transfer_probe::{
     OperationProbe, TaskPhase, TaskRow, arm_current_task_stall_abort, note_task_retry, set_task_bytes, set_task_phase,
 };
@@ -198,15 +199,6 @@ pub(super) struct MergeCtx<'a> {
     /// The operation-wide file-copy window, shared by every walker. See
     /// [`FileWindow`] for why there is exactly one of these per operation.
     pub window: FileWindow,
-    /// Credits ONE child the merge declined to the operation's progress
-    /// counters: `on_file_skipped(bytes)`.
-    ///
-    /// A skipped child is done, so both bars count it; the implementation also
-    /// tells the rate estimator to leave those bytes out (nothing moved for
-    /// them). Lives on `MergeCtx` rather than beside `on_file_complete` in the
-    /// walker's argument list because a deep skip can only happen when there IS
-    /// a merge context — `merge: None` overwrites blindly and never declines.
-    pub on_file_skipped: &'a (dyn Fn(u64) + Sync),
     /// The operation's live in-flight table plus the row of the source whose
     /// subtree this walk is, so each leaf a walker overlaps gets its OWN row
     /// (and its own stall-abort token), numbered under that source. `None` in
@@ -362,7 +354,7 @@ pub(super) async fn resolve_source_is_directory(
 /// [`resolve_source_is_directory`] for why that must not collapse to `false`.
 #[allow(
     clippy::too_many_arguments,
-    reason = "Cross-volume copy needs source/dest volumes, paths, the source type hint, the size hint, shared state, the rollback ledger, and two progress callbacks. Bundling into a struct adds ceremony without cleaning anything up."
+    reason = "Cross-volume copy needs source/dest volumes, paths, the source type hint, the size hint, shared state, the rollback ledger, and the source's progress accounting. Bundling into a struct adds ceremony without cleaning anything up."
 )]
 pub(super) async fn copy_single_path(
     source_volume: &Arc<dyn Volume>,
@@ -373,8 +365,10 @@ pub(super) async fn copy_single_path(
     dest_path: &Path,
     state: &Arc<WriteOperationState>,
     created: &CreatedPaths,
-    on_file_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
-    on_file_complete: &(dyn Fn(u64) + Sync),
+    // This source's view of the operation's leaf accounting. Every file that
+    // streams below mints its own [`LeafProgress`] from it, so leaves that
+    // overlap each other each hold their own share of the in-flight total.
+    progress: &Arc<SourceProgress>,
     // `Some` ⇒ deep clashes inside a merged directory honor the user's file
     // policy (Stop-wait, latch, conditional reduce, type mismatches). `None` ⇒
     // no per-child conflict resolution (the cross-volume move's copy phase,
@@ -412,8 +406,7 @@ pub(super) async fn copy_single_path(
                 dest_path,
                 state,
                 created,
-                on_file_progress,
-                on_file_complete,
+                progress,
                 merge,
             ))
             .await;
@@ -425,8 +418,7 @@ pub(super) async fn copy_single_path(
             dest_path,
             state,
             created,
-            on_file_progress,
-            on_file_complete,
+            progress,
             merge,
             None,
         ))
@@ -440,6 +432,11 @@ pub(super) async fn copy_single_path(
         // recursive copy below is the only place that knows which files and
         // newly-created subdirs landed inside a (possibly pre-existing) dest
         // directory.
+        // A top-level FILE source is a leaf like any other: it holds its own
+        // share of the in-flight total while it streams, so a sibling task's
+        // file finishing can't take this one's progress off the bar.
+        let leaf = progress.begin_leaf();
+        let on_chunk = |file_bytes_done: u64, _file_bytes_total: u64| leaf.on_chunk(file_bytes_done);
         let bytes = stream_pipe_file(
             source_volume,
             source_path,
@@ -447,12 +444,12 @@ pub(super) async fn copy_single_path(
             dest_volume,
             dest_path,
             state,
-            on_file_progress,
+            &on_chunk,
             staging,
         )
         .await
         .map_err(|f| PathedVolumeError::at_source_or_rescued_dest(f, source_path, dest_path))?;
-        on_file_complete(bytes);
+        leaf.complete(bytes);
         Ok(bytes)
     }
 }
@@ -528,14 +525,9 @@ pub(in crate::file_system::write_operations) async fn pull_path_to_local(
     // A throwaway rollback ledger: on any failure the caller discards the whole
     // scratch dir, so per-file rollback bookkeeping is moot.
     let created = CreatedPaths::default();
-    let on_progress = |_written: u64, _total: u64| {
-        if super::super::super::state::is_cancelled(&state.intent) {
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
-        }
-    };
-    let on_complete = |_bytes: u64| {};
+    // Nobody is watching this pull, so the accounting reports to no one; what it
+    // still does is stop the stream the moment the op is cancelled.
+    let progress = LeafProgressLedger::silent_source(Arc::clone(state));
     copy_single_path(
         source_volume,
         source_path,
@@ -550,8 +542,7 @@ pub(in crate::file_system::write_operations) async fn pull_path_to_local(
         dest_path,
         state,
         &created,
-        &on_progress,
-        &on_complete,
+        &progress,
         None,
         // Fresh scratch destination, no conflicts: nothing is pre-staged.
         WriteStaging::Stage,

@@ -17,15 +17,14 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use super::super::super::conflict::ApplyToAll;
 use super::super::super::event_sinks::OperationEventSink;
 use super::super::super::ledger::WrittenFile;
 use super::super::super::state::WriteOperationState;
-use super::super::super::types::{VolumeCopyConfig, WriteOperationType};
-use super::super::transfer_driver::make_concurrent_per_file_progress;
+use super::super::super::types::VolumeCopyConfig;
+use super::super::transfer_driver::LeafProgressLedger;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskProbeHandle};
 use super::preflight::{SourceFileFacts, SourceHint};
 use super::strategy::{CreatedPaths, FileWindow, LandingName, MergeCtx, MergeProbe, copy_single_path, staging_for};
@@ -149,12 +148,11 @@ pub(super) struct CopyTask {
     pub(super) merge_probe: Option<MergeProbe>,
     /// This task's in-flight-table row, held for the task's whole life.
     pub(super) task_probe: Option<TaskProbeHandle>,
-    pub(super) files_done: Arc<AtomicUsize>,
-    pub(super) bytes_done: Arc<AtomicU64>,
+    /// The operation's byte ledger. This task mints its own source view from
+    /// it, so its leaves and every sibling task's add up instead of competing
+    /// for one shared high-water slot.
+    pub(super) leaf_ledger: Arc<LeafProgressLedger>,
     pub(super) last_progress: Arc<std::sync::Mutex<Instant>>,
-    pub(super) progress_interval: Duration,
-    pub(super) total_files: usize,
-    pub(super) total_bytes: u64,
 }
 
 /// Streams one top-level source item end to end.
@@ -182,40 +180,24 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
         // Held for the task's whole life; dropping it (completion, abort, panic)
         // removes the row from the in-flight table.
         task_probe,
-        files_done,
-        bytes_done,
+        leaf_ledger,
         last_progress,
-        progress_interval,
-        total_files,
-        total_bytes,
     } = task;
 
     let probe_handle = task_probe.as_ref().map(TaskProbeHandle::probe);
-    // Per-task `last_file_bytes` tracks bytes reported for the file this task is
-    // copying; deltas roll up into the shared `bytes_done` so the throttle emits
-    // an aggregate. Owned by the task; the helper closure carries its own Arc
-    // clone, the post-call compensation reads the same counter to detect "volume
-    // never invoked on_progress."
-    let last_file_bytes = Arc::new(AtomicU64::new(0));
+    // This task's view of the operation's byte ledger. Every file it streams —
+    // the top-level one, or each leaf of a directory source's subtree — mints
+    // its own handle from this, so the bar shows the SUM of what is moving
+    // rather than whichever file happens to be furthest along. The throttle
+    // clock is the operation's, shared with every sibling task, so the event
+    // rate the user sees is the operation's and not each task's.
+    let source_progress = leaf_ledger.for_source(file_name, Arc::clone(&last_progress));
     // Per-source rollback ledger: the files this task streams and the dirs it
     // newly creates inside a directory source.
     let created = CreatedPaths::default();
     // Deep merge children are never top-level sources, so the resolver never
     // keys into per-source hints for them — an empty map is correct.
     let merge_hints: HashMap<PathBuf, SourceHint> = HashMap::new();
-    // A skipped child reports no chunks, so unlike a copied one its bytes never
-    // reach `bytes_done` through the progress callback: credit both axes here.
-    // `note_skipped` is what keeps them off the rate.
-    let on_file_skipped = {
-        let bytes_done = Arc::clone(&bytes_done);
-        let files_done = Arc::clone(&files_done);
-        let state = Arc::clone(&state);
-        move |leaf_bytes: u64| {
-            bytes_done.fetch_add(leaf_bytes, Ordering::Relaxed);
-            files_done.fetch_add(1, Ordering::Relaxed);
-            state.note_skipped(1, leaf_bytes);
-        }
-    };
     let merge_ctx = MergeCtx {
         events: &*events,
         operation_id: &operation_id,
@@ -223,29 +205,8 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
         state: &state,
         apply_to_all: &apply_to_all,
         source_hints: &merge_hints,
-        on_file_skipped: &on_file_skipped,
         window: window.clone(),
         probe: merge_probe,
-    };
-    let on_file_progress = make_concurrent_per_file_progress(
-        Arc::clone(&events),
-        Arc::clone(&state),
-        operation_id.clone(),
-        WriteOperationType::Copy,
-        file_name,
-        Arc::clone(&last_file_bytes),
-        Arc::clone(&bytes_done),
-        Arc::clone(&files_done),
-        total_files,
-        total_bytes,
-        Arc::clone(&last_progress),
-        progress_interval,
-    );
-    // The byte count is rolled into the aggregate by the progress callback's
-    // per-chunk delta (and the post-task compensation), so this only advances the
-    // leaf-file axis.
-    let on_file_complete = |_leaf_bytes: u64| {
-        files_done.fetch_add(1, Ordering::Relaxed);
     };
     // A top-level FILE source IS a leaf, so it takes its slot from the same
     // op-wide window a directory's children take theirs from. Otherwise a batch
@@ -265,8 +226,7 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
         &dest_path,
         &state,
         &created,
-        &on_file_progress,
-        &on_file_complete,
+        &source_progress,
         Some(&merge_ctx),
         staging_for(
             &replace_after_write,
@@ -297,12 +257,6 @@ pub(super) async fn run_copy_task(task: CopyTask) -> Result<CopyTaskSuccess, Cop
     let task_overwrote = replace_after_write.is_some() || created.any_overwrote();
     match result {
         Ok(bytes) => {
-            // If the volume didn't call the progress callback, add bytes_copied
-            // to the aggregate so the total is right. Same compensation the
-            // sequential path does.
-            if last_file_bytes.load(Ordering::Relaxed) == 0 && bytes > 0 {
-                bytes_done.fetch_add(bytes, Ordering::Relaxed);
-            }
             // Safe-replace finalize: the temp now holds the complete new data;
             // delete the original and rename the temp into place. On finalize
             // error, surface it as this file's failure with `cleanup_temp =

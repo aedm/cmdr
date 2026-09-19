@@ -24,7 +24,6 @@
 
 use std::ffi::OsStr;
 use std::future::Future;
-use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -35,6 +34,7 @@ use futures_util::stream::FuturesUnordered;
 use super::super::super::state::WriteOperationState;
 use super::super::super::types::WriteOperationError;
 use super::super::dest_name_index::{DestLookup, DestNameIndex};
+use super::super::transfer_driver::SourceProgress;
 use super::super::transfer_probe::{CURRENT_TASK_PROBE, TaskPhase, TaskProbeHandle, TaskRole, set_task_phase};
 use super::conflict::{ResolvedConflict, resolve_volume_conflict};
 use super::naming::take_back_reservation;
@@ -219,7 +219,7 @@ impl<'a> LeafPool<'a> {
 /// window as a unit of work.
 #[allow(
     clippy::too_many_arguments,
-    reason = "One leaf's whole context: both volumes, both paths, what the listing knows about the source, the safe-replace original, how the write is staged, shared state, the ledger, and two progress callbacks."
+    reason = "One leaf's whole context: both volumes, both paths, what the listing knows about the source, the safe-replace original, how the write is staged, shared state, the ledger, and the source's progress accounting."
 )]
 async fn copy_leaf<'a>(
     source_volume: &'a Arc<dyn Volume>,
@@ -232,9 +232,14 @@ async fn copy_leaf<'a>(
     staging: WriteStaging,
     state: &'a Arc<WriteOperationState>,
     created: &'a CreatedPaths,
-    on_file_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
-    on_file_complete: &'a (dyn Fn(u64) + Sync),
+    progress: &'a Arc<SourceProgress>,
 ) -> LeafResult {
+    // This leaf's own share of the operation's in-flight byte total, held for
+    // its whole life. Siblings streaming beside it hold their own, so neither
+    // this one finishing nor a sibling's can take the other's bytes off the bar.
+    // A leaf that never lands withdraws its share when this handle drops.
+    let leaf = progress.begin_leaf();
+    let on_chunk = |file_bytes_done: u64, _file_bytes_total: u64| leaf.on_chunk(file_bytes_done);
     // ❗ `.at(&child_source)` is the whole point: this is the deepest frame that
     // knows WHICH file failed. Report it one level up and the user gets the name
     // of the folder they selected instead of the file that broke.
@@ -245,7 +250,7 @@ async fn copy_leaf<'a>(
         dest_volume,
         &write_dest,
         state,
-        on_file_progress,
+        &on_chunk,
         staging,
     )
     .await;
@@ -274,7 +279,7 @@ async fn copy_leaf<'a>(
         None => write_dest,
     };
     created.record_file(recorded, bytes);
-    on_file_complete(bytes);
+    leaf.complete(bytes);
     Ok(bytes)
 }
 
@@ -333,8 +338,7 @@ pub(super) async fn copy_directory_streaming(
     dest_path: &Path,
     state: &Arc<WriteOperationState>,
     created: &CreatedPaths,
-    on_file_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
-    on_file_complete: &(dyn Fn(u64) + Sync),
+    progress: &Arc<SourceProgress>,
     merge: Option<&MergeCtx<'_>>,
     // `Some` ⇒ PLAN MODE for the one-pass sequential extractor: create the
     // destination directory structure and resolve every file's conflict as usual,
@@ -356,8 +360,7 @@ pub(super) async fn copy_directory_streaming(
         dest_path,
         state,
         created,
-        on_file_progress,
-        on_file_complete,
+        progress,
         merge,
         plan,
         &mut pool,
@@ -391,8 +394,7 @@ async fn merge_level<'a>(
     dest_path: &Path,
     state: &'a Arc<WriteOperationState>,
     created: &'a CreatedPaths,
-    on_file_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
-    on_file_complete: &'a (dyn Fn(u64) + Sync),
+    progress: &'a Arc<SourceProgress>,
     merge: Option<&MergeCtx<'_>>,
     plan: Option<&super::sequential_extract::ExtractPlan>,
     pool: &mut LeafPool<'a>,
@@ -522,8 +524,7 @@ async fn merge_level<'a>(
                     &child_dest,
                     state,
                     created,
-                    on_file_progress,
-                    on_file_complete,
+                    progress,
                     merge,
                     plan,
                     pool,
@@ -560,7 +561,7 @@ async fn merge_level<'a>(
                     created.record_skip(child_source.clone(), skipped_bytes);
                     // ...and credit it to the bars. Without this a merge whose
                     // children all clash reports nothing at all until it ends.
-                    (ctx.on_file_skipped)(skipped_bytes);
+                    progress.skip_leaf(skipped_bytes);
                     continue;
                 }
                 MergeChildDecision::Proceed {
@@ -590,8 +591,7 @@ async fn merge_level<'a>(
                 &write_dest,
                 state,
                 created,
-                on_file_progress,
-                on_file_complete,
+                progress,
                 merge,
                 plan,
                 pool,
@@ -645,8 +645,7 @@ async fn merge_level<'a>(
                 staging,
                 state,
                 created,
-                on_file_progress,
-                on_file_complete,
+                progress,
             ),
         )
         .await?;

@@ -28,7 +28,7 @@ use super::super::super::types::{
     WriteOperationPhase, WriteOperationType,
 };
 use super::super::transfer_driver::{
-    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, PostLoopIntent, ResolveFut, SerialLeafProgress,
+    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, LeafProgressLedger, PostLoopIntent, ResolveFut,
     TransferContext, TransferFut, TransferOutcome, build_pre_skip_set, drive_transfer_serial_async,
 };
 use super::cleanup::{TreeRemoval, remove_tree};
@@ -138,7 +138,7 @@ pub(crate) async fn move_volumes_with_progress(
         phase: WriteOperationPhase::Copying,
         conflict_resolution: config.conflict_resolution,
         pre_known_conflicts: config.pre_known_conflicts.clone(),
-        // Streaming path: `SerialLeafProgress` owns leaf-granular milestones.
+        // Streaming path: the leaf ledger owns leaf-granular milestones.
         emit_per_source_milestone: false,
     };
 
@@ -159,7 +159,7 @@ pub(crate) async fn move_volumes_with_progress(
     // Operation-wide leaf-file counter for the File progress bar. The driver's
     // own `files_done` counts TOP-LEVEL sources (one folder = 1), but the bar's
     // denominator is the preflight LEAF count, so the bar reads from this shared
-    // counter, which `SerialLeafProgress::on_leaf_complete` bumps once per inner
+    // counter, which `LeafProgress::complete` bumps once per inner
     // file. Seeded with the bulk-skipped leaves the driver credits up front.
     let leaf_files_done = Arc::new(AtomicUsize::new(bulk_skip_files));
 
@@ -335,7 +335,22 @@ pub(crate) async fn move_volumes_with_progress(
             // copy driver's, and the same number the in-flight table declares.
             let file_window = super::strategy::FileWindow::new(concurrency);
             let last_progress_time: Arc<std::sync::Mutex<Instant>> = Arc::new(std::sync::Mutex::new(Instant::now()));
-            let leaf_files_done = Arc::clone(&leaf_files_done);
+            // ONE ledger for the whole move, so the leaves a folder streams at
+            // once each hold their own share of the in-flight byte total.
+            // Sources run one at a time here, and the driver keeps its own
+            // running `bytes_done` across them (it counts the skipped ones the
+            // leaves never see), so each iteration reseeds the settled half
+            // below rather than letting the ledger accumulate across sources.
+            let leaf_ledger = LeafProgressLedger::new(
+                Arc::clone(&events),
+                Arc::clone(&state),
+                operation_id.clone(),
+                WriteOperationType::Move,
+                Arc::clone(&leaf_files_done),
+                total_files,
+                total_bytes,
+                progress_interval,
+            );
             let deep_skipped_files = Arc::clone(&deep_skipped_files);
             let journal_volumes = journal_volumes.clone();
             // The move keeps an in-flight table like the copy driver's, so a
@@ -358,8 +373,8 @@ pub(crate) async fn move_volumes_with_progress(
                 let config_for_merge = config_for_merge.clone();
                 let merge_apply_to_all = Arc::clone(&merge_apply_to_all);
                 let file_window = file_window.clone();
+                let leaf_ledger = Arc::clone(&leaf_ledger);
                 let last_progress_time = Arc::clone(&last_progress_time);
-                let leaf_files_done = Arc::clone(&leaf_files_done);
                 let deep_skipped_files = Arc::clone(&deep_skipped_files);
                 let journal_volumes = journal_volumes.clone();
                 let source_path = ctx.source_path.to_path_buf();
@@ -399,31 +414,10 @@ pub(crate) async fn move_volumes_with_progress(
                         SourceFileFacts::from_size_hint(hint.and_then(|h| (!h.is_directory).then_some(h.size)));
 
                     let file_name = source_path.file_name().map(|n| n.to_string_lossy().to_string());
-                    let leaf_progress = SerialLeafProgress::new(
-                        Arc::clone(&events),
-                        Arc::clone(&state),
-                        operation_id.clone(),
-                        WriteOperationType::Move,
-                        file_name.clone(),
-                        bytes_done_so_far,
-                        Arc::clone(&leaf_files_done),
-                        total_files,
-                        total_bytes,
-                        Arc::clone(&last_progress_time),
-                        progress_interval,
-                    );
-                    let on_file_progress = {
-                        let leaf_progress = Arc::clone(&leaf_progress);
-                        move |file_bytes_done: u64, _file_bytes_total: u64| leaf_progress.on_chunk(file_bytes_done)
-                    };
-                    let on_file_complete = {
-                        let leaf_progress = Arc::clone(&leaf_progress);
-                        move |leaf_bytes: u64| leaf_progress.on_leaf_complete(leaf_bytes)
-                    };
-                    let on_file_skipped = {
-                        let leaf_progress = Arc::clone(&leaf_progress);
-                        move |leaf_bytes: u64| leaf_progress.on_leaf_skipped(leaf_bytes)
-                    };
+                    // The driver's tally of every PRIOR source, which the leaves
+                    // below add their own bytes on top of.
+                    leaf_ledger.reseed_finished(bytes_done_so_far);
+                    let leaf_progress = leaf_ledger.for_source(file_name.clone(), last_progress_time);
                     // The copy phase's per-file ledger. Cross-volume move's own
                     // rollback reverses renames / cleans staging separately, but
                     // the operation-log capture harvests it below for the per-leaf
@@ -447,7 +441,6 @@ pub(crate) async fn move_volumes_with_progress(
                         state: &state,
                         apply_to_all: &merge_apply_to_all,
                         source_hints: &source_hints,
-                        on_file_skipped: &on_file_skipped,
                         window: file_window,
                         // ❗ Every leaf the window holds opens a row of its OWN
                         // through this, numbered under `source_row`, and that is
@@ -498,8 +491,7 @@ pub(crate) async fn move_volumes_with_progress(
                         &dest_item_path,
                         &state,
                         &created,
-                        &on_file_progress,
-                        &on_file_complete,
+                        &leaf_progress,
                         Some(&merge_ctx),
                         super::strategy::staging_for(&replace_after_write, landing),
                     );

@@ -29,7 +29,7 @@ use super::super::super::ledger::WrittenFile;
 use super::super::super::state::WriteOperationState;
 use super::super::super::types::{VolumeCopyConfig, WriteOperationPhase, WriteOperationType};
 use super::super::transfer_driver::{
-    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, PostLoopIntent, ResolveFut, SerialLeafProgress,
+    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, LeafProgressLedger, PostLoopIntent, ResolveFut,
     TransferContext, TransferFut, TransferOutcome, drive_transfer_serial_async,
 };
 use super::super::transfer_probe::{DriverPhase, OperationProbe, TaskRole, TaskRow};
@@ -128,7 +128,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
         phase: WriteOperationPhase::Copying,
         conflict_resolution: config.conflict_resolution,
         pre_known_conflicts: config.pre_known_conflicts.clone(),
-        // Streaming path: `SerialLeafProgress` owns leaf-granular milestones.
+        // Streaming path: the leaf ledger owns leaf-granular milestones.
         emit_per_source_milestone: false,
     };
     // The driver bounds its closures as
@@ -155,7 +155,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
     // Operation-wide leaf-file counter for the File progress bar (see the
     // matching note in `volume::r#move`): the driver's `files_done` counts
     // top-level sources, but the bar's denominator is the preflight LEAF
-    // count, so `SerialLeafProgress` bumps this once per inner file.
+    // count, so `LeafProgress::complete` bumps this once per inner file.
     let leaf_files_done = Arc::new(AtomicUsize::new(bulk_skip_files));
 
     let outcome = drive_transfer_serial_async(
@@ -300,7 +300,21 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
             let operation_id = operation_id_owned.clone();
             let config_for_merge = config_owned.clone();
             let merge_apply_to_all = Arc::clone(&apply_to_all_cell);
-            let leaf_files_done = Arc::clone(&leaf_files_done);
+            // ONE ledger for the whole copy, so the leaves a folder streams at
+            // once each hold their own share of the in-flight byte total. The
+            // driver keeps its own running `bytes_done` across sources (it
+            // counts the skipped ones the leaves never see), so each iteration
+            // reseeds the settled half below.
+            let leaf_ledger = LeafProgressLedger::new(
+                Arc::clone(&events),
+                Arc::clone(&state),
+                operation_id.clone(),
+                WriteOperationType::Copy,
+                Arc::clone(&leaf_files_done),
+                total_files,
+                total_bytes,
+                progress_interval,
+            );
             let deep_skipped_files = Arc::clone(&deep_skipped_files);
             let deep_skipped_bytes = Arc::clone(&deep_skipped_bytes);
             let journal_volumes = journal_volumes.clone();
@@ -326,7 +340,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                 let operation_id = operation_id.clone();
                 let config_for_merge = config_for_merge.clone();
                 let merge_apply_to_all = Arc::clone(&merge_apply_to_all);
-                let leaf_files_done = Arc::clone(&leaf_files_done);
+                let leaf_ledger = Arc::clone(&leaf_ledger);
                 let deep_skipped_files = Arc::clone(&deep_skipped_files);
                 let deep_skipped_bytes = Arc::clone(&deep_skipped_bytes);
                 let journal_volumes = journal_volumes.clone();
@@ -389,31 +403,10 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                     // a single iteration but the previous file's last-
                     // emit instant doesn't carry meaning across files).
                     let last_emit = Arc::new(std::sync::Mutex::new(Instant::now()));
-                    let leaf_progress = SerialLeafProgress::new(
-                        Arc::clone(&events),
-                        Arc::clone(&state),
-                        operation_id.clone(),
-                        WriteOperationType::Copy,
-                        file_name.clone(),
-                        bytes_done_so_far,
-                        Arc::clone(&leaf_files_done),
-                        total_files,
-                        total_bytes,
-                        last_emit,
-                        progress_interval,
-                    );
-                    let on_file_progress = {
-                        let leaf_progress = Arc::clone(&leaf_progress);
-                        move |file_bytes_done: u64, _file_bytes_total: u64| leaf_progress.on_chunk(file_bytes_done)
-                    };
-                    let on_file_complete = {
-                        let leaf_progress = Arc::clone(&leaf_progress);
-                        move |leaf_bytes: u64| leaf_progress.on_leaf_complete(leaf_bytes)
-                    };
-                    let on_file_skipped = {
-                        let leaf_progress = Arc::clone(&leaf_progress);
-                        move |leaf_bytes: u64| leaf_progress.on_leaf_skipped(leaf_bytes)
-                    };
+                    // The driver's tally of every PRIOR source, which the leaves
+                    // below add their own bytes on top of.
+                    leaf_ledger.reseed_finished(bytes_done_so_far);
+                    let leaf_progress = leaf_ledger.for_source(file_name.clone(), last_emit);
 
                     // Per-source rollback ledger: the files this transfer
                     // streams and the dirs it newly creates inside a
@@ -435,7 +428,6 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                         state: &state,
                         apply_to_all: &merge_apply_to_all,
                         source_hints: &source_hints,
-                        on_file_skipped: &on_file_skipped,
                         // A DIRECTORY source streams its subtree through the
                         // op-wide window even here, where the driver itself runs
                         // one source at a time. That is the whole point: one
@@ -493,8 +485,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
                         &dest_item_path,
                         &state,
                         &created,
-                        &on_file_progress,
-                        &on_file_complete,
+                        &leaf_progress,
                         Some(&merge_ctx),
                         super::strategy::staging_for(&replace_after_write, landing),
                     );
