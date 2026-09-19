@@ -1,5 +1,25 @@
 # Security
 
+## Entitlements: the bundle ships none
+
+`apps/desktop/src-tauri/Entitlements.plist` is a deliberately empty dict. Release builds keep the hardened runtime
+(`codesign` reports `flags=0x10000(runtime)`) and give it no holes.
+
+- ❌ **Never add `com.apple.security.cs.disable-library-validation` back.** It lets a library signed by anyone load into
+  Cmdr's process, which is the standard way to inject code into a signed app. Nothing needs it: the only `dlopen` in the
+  codebase is Apple's own `FileProvider.framework`
+  (`apps/desktop/src-tauri/src/file_system/file_provider_actions/objc.rs`), which library validation permits, and the
+  bundle carries no frameworks or sidecar binaries.
+- ❌ **Never add `…allow-unsigned-executable-memory`, `…allow-jit`, `…allow-dyld-environment-variables`, or
+  `…get-task-allow`.** The first two are for a process that JITs, and WKWebView's JavaScript runs in Apple's
+  out-of-process `com.apple.WebKit.WebContent`, never in ours.
+- **A dev build exercises none of this** (it's unsigned), so an entitlement change is only ever proved on a signed
+  build: `codesign -d --entitlements -` on the bundle, then launch it and confirm the panes list files and a dialog
+  renders.
+
+This is load-bearing for `docs/specs/elevated-file-operations.md`, whose root helper trusts whatever runs inside Cmdr
+(its decision 8). With library validation off, that trust had nothing behind it.
+
 ## withGlobalTauri
 
 The app uses [MCP Server Tauri](https://github.com/hypothesi/mcp-server-tauri) to let AI assistants (Claude Code,

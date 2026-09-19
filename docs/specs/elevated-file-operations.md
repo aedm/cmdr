@@ -20,12 +20,11 @@ spike before M2 starts.
   `apps/desktop/src-tauri/src/file_system/write_operations/transfer/move_op/same_fs.rs` renames with `?`, so a refusal
   aborts the operation with no fallback. The pre-flight in
   `apps/desktop/src-tauri/src/file_system/write_operations/validation.rs` checks only that the DESTINATION is writable.
-- **The errno is lost**: `apps/desktop/src-tauri/src/file_system/write_operations/error_classification.rs` maps
-  `ErrorKind::PermissionDenied` to `WriteOperationError::PermissionDenied`, and Rust folds both `EACCES` (Unix
-  permissions, where root helps) and `EPERM` (SIP, TCC, immutable flags, where it doesn't) into that kind.
-- **What the user sees**: `apps/desktop/src/lib/file-operations/transfer/transfer-error-messages.ts` picks the
-  `permission_denied` hint by operation only, so a refused move always says "Check that you have write access to the
-  destination folder", even when the source folder refused.
+- **The errno already travels, typed**: `WriteOperationError::PermissionDenied` carries `errno`, a `PermissionRefusal`
+  derived from it (`FolderPermissions` for `EACCES`, where root helps; `SystemProtected` for `EPERM`, where it doesn't),
+  and a `refused_folder` proved with `access(W_OK)` at the refusal. Built only through
+  `WriteOperationError::permission_denied`. See `write_operations/DETAILS.md` § "Naming the folder that refused a
+  write"; decision 12 below is what branches on it.
 - **Elevation today**: only the updater, which runs `rsync` through `do shell script ... with administrator privileges`
   (`apps/desktop/src-tauri/src/updater/installer.rs`).
 - **An out-of-process native alert**: `apps/desktop/src-tauri/src/instance_lock.rs` (`show_already_running_alert`) uses
@@ -38,9 +37,9 @@ spike before M2 starts.
   `<data_dir>/mcp.token`, and `dialog` with `action: "confirm"`, apply an operation with no human click
   (`apps/desktop/src-tauri/src/mcp/auth.rs`, `apps/desktop/src-tauri/src/mcp/executor/file_ops.rs`). Six Playwright
   specs use `autoConfirm` (34 call sites) and two more use `dialog confirm`. The in-app agent can only propose.
-- **Signing**: `apps/desktop/src-tauri/Entitlements.plist` sets `com.apple.security.cs.disable-library-validation` and
-  `com.apple.security.cs.allow-unsigned-executable-memory`. Both arrived in one "add entitlements for notarization"
-  commit with no stated reason.
+- **Signing**: `apps/desktop/src-tauri/Entitlements.plist` is an empty dict, so the hardened runtime has no holes and
+  nothing can inject code into Cmdr. That's what makes decision 8's "trust whatever runs inside Cmdr" sound.
+  `docs/security.md` § Entitlements holds the invariant.
 - **Platform floor**: `apps/desktop/src-tauri/tauri.conf.json` says 10.15; the supported floor is macOS 12, with 10.15
   and 11 best effort (`apps/website/src/pages/llms.txt.ts`).
 
@@ -102,10 +101,9 @@ spike before M2 starts.
 8. **Only Cmdr can connect.** The helper's listener sets `setConnectionCodeSigningRequirement` (macOS 13+) to our Team
    ID plus `com.veszelovszki.cmdr`. It's audit-token based, so PID reuse doesn't fool it, and non-matching callers are
    dropped before the helper sees them. Cmdr pins the helper's signature the same way (`setCodeSigningRequirement`).
-9. **Nothing can inject code into Cmdr.** Decision 8 trusts whatever runs inside Cmdr, so M0 drops
-   `disable-library-validation`. Release builds keep the hardened runtime and never gain
-   `allow-dyld-environment-variables` or `get-task-allow`. If Tauri really needs library validation off, the XPC client
-   and the alert move into a tiny separate signed binary that keeps it on.
+9. **Nothing can inject code into Cmdr.** Decision 8 trusts whatever runs inside Cmdr, and the bundle now ships no
+   entitlements at all, so that trust has something behind it (`docs/security.md` § Entitlements). Should Tauri ever
+   need library validation off, the XPC client and the alert move into a tiny separate signed binary that keeps it on.
 10. **The helper touches only the folder the user can't change; Cmdr does everything else as the user.** Its XPC API is
     a handful of primitives, all through directory file descriptors with `O_NOFOLLOW`, ❌ never a path string resolved
     as root:
@@ -121,11 +119,12 @@ spike before M2 starts.
     user; a request to view root-only files in the viewer gets a no. Why this matters even though MCP can't write: MCP
     reads, the agent, the index, and any user-level process would all see whatever lands in a readable place, and a
     confirmed alert only guards the moment of the click; it can't control what happens to the data afterwards.
-12. **Detect by refusal, typed by errno.** The engine runs as the user and elevates only when a syscall returns
-    `EACCES`, carried as a typed errno in `PermissionDenied`. `EPERM` doesn't elevate (SIP, TCC, and immutable flags
-    stop root too). Detection is free, since it's the refusal the engine already gets. As a hint, the scan preview may
-    call `access(W_OK)` once per distinct source parent and destination so the transfer dialog can warn "needs
-    administrator rights" before starting; the refusal stays the only trigger.
+12. **Detect by refusal, typed by errno.** The engine runs as the user and elevates only on
+    `PermissionRefusal::FolderPermissions` (`EACCES`), which `PermissionDenied` already carries. `SystemProtected`
+    (`EPERM`) doesn't elevate (SIP, TCC, and immutable flags stop root too). Detection is free, since it's the refusal
+    the engine already gets. As a hint, the scan preview may call `access(W_OK)` once per distinct source parent and
+    destination so the transfer dialog can warn "needs administrator rights" before starting; the refusal stays the only
+    trigger.
 13. **MCP and the agent can see the wait but never answer it.** `cmdr://state` shows the parked operation as waiting for
     administrator approval, and no tool answers the alert. `autoConfirm` and `dialog confirm` stay: they reach only the
     normal confirmation. This is a deliberate exception to `apps/desktop/src-tauri/src/mcp/CLAUDE.md`'s "whatever a user
@@ -186,9 +185,9 @@ For David's review; not final.
 
 ## Milestones
 
-- [ ] **M0: harden Cmdr and fix today's copy** (no helper).
-  - Drop `disable-library-validation`; verify the WebView, a signed build, and notarization.
-  - Carry the errno in the typed `PermissionDenied`, and point the hint at the folder that actually refused.
+The groundwork that needed no helper shipped separately as `permission-refusal-clarity.md`: the empty entitlements
+plist, and the typed errno plus proved folder that decision 12 branches on.
+
 - [ ] **M1: spike on macOS 13 and 26** (throwaway code). Answers every open question below, plus: daemon on-demand start
       and idle exit, descriptor passing with `renameatx_np`, and a `CFUserNotification` with three buttons and a
       checkbox from a worker thread.
