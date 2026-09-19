@@ -5,13 +5,23 @@
   Entitlements for Cmdr production builds (hardened runtime).
   Used during Apple code signing (codesign -\-entitlements).
   Required for notarization.
+
+  Deliberately EMPTY. Every entitlement here is a hole in the hardened runtime, and
+  none of the usual Tauri ones are load-bearing for us:
+
+  - `com.apple.security.cs.disable-library-validation` would let any library, signed
+    by anyone, load into Cmdr. That is the standard way to inject code into a signed
+    app, and Cmdr loads nothing that needs it: the only `dlopen` is Apple's own
+    `FileProvider.framework` (`file_system/file_provider_actions/objc.rs`), which
+    library validation permits, and the bundle ships no frameworks or sidecar binaries.
+  - `com.apple.security.cs.allow-unsigned-executable-memory` and `…allow-jit` are for
+    a process that JITs. WKWebView's JavaScript runs in Apple's own out-of-process
+    `com.apple.WebKit.WebContent`, not here.
+
+  ❌ Don't add one back without proving the app needs it on a SIGNED build: an
+  unsigned dev build exercises none of this. If Cmdr ever does need library validation
+  off, see `docs/specs/elevated-file-operations.md` decision 9 for what that costs.
 -->
 <dict>
-    <!-- WebView (WKWebView) needs unsigned executable memory for JIT -->
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
-    <!-- Allow loading Tauri's WebView framework without Apple-signed validation -->
-    <key>com.apple.security.cs.disable-library-validation</key>
-    <true/>
 </dict>
 </plist>
