@@ -150,8 +150,14 @@ where
         // name, and its RECORD survives with it, so the next launch (or the
         // drive's return) puts it back rather than leaving it for someone to
         // find by hand (AGENTS.md principle 1: protect the user's data).
+        //
+        // Through the no-replace primitive, so putting the original back can't
+        // itself destroy something that took the name while this write was in
+        // flight. That refusal lands in the `Err` arm below, which is already
+        // the right answer: the original keeps its record and the sweep gives
+        // it a real name.
         if let Some(aside) = &aside {
-            match fs::rename(aside.path(), dest) {
+            match rename_no_replace(aside.path(), dest) {
                 Ok(()) => {
                     if let Some(record) = &aside_record {
                         in_flight_temps::retire(state, record);
