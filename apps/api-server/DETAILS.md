@@ -501,9 +501,10 @@ With either unset the integration is off and nothing is filed.
 **What earns a card.** Hand-written error reports (`kind: 'user'`) and every feedback message, both only from `release`
 builds. Auto-sent reports stay Discord-only at upload for the reason the notification email already skips them: one bad
 install makes dozens. They earn a card the moment someone amends one with a note or an address (§ Amendments below),
-which is a person writing, not a machine repeating. Debug builds are our own E2E traffic. Each source gets 20 issues per UTC day (`gh_issue_count:` keys in
-`ERROR_REPORT_META`), because `kind` and `buildMode` come from the client's manifest and a mislabelling build must cost
-a bounded amount. Nothing is lost when a cap trips: Discord, R2, and D1 all still have the report.
+which is a person writing, not a machine repeating. Debug builds are our own E2E traffic. Each source gets 20 issues per
+UTC day (`gh_issue_count:` keys in `ERROR_REPORT_META`), because `kind` and `buildMode` come from the client's manifest
+and a mislabelling build must cost a bounded amount. Nothing is lost when a cap trips: Discord, R2, and D1 all still
+have the report.
 
 **The two invariants.**
 
@@ -531,8 +532,8 @@ A miss is where the interesting half is. An auto-send has no card, so before thi
 auto-sent toast reached the inbox and Discord and nothing else, which is the opposite of what the auto-send suppression
 is for: it exists to keep MACHINE volume off the board, and a typed sentence is the highest-signal thing that arrives
 here. So a miss FILES the card, carrying the amendment as its personal comment, and remembers the number so the next
-amendment comments on it. The same path covers a capped day, an outage, and a report that predates the feature. The
-card says `amended auto report` in the title and `auto-sent, with a note the reporter added afterwards` in the body
+amendment comments on it. The same path covers a capped day, an outage, and a report that predates the feature. The card
+says `amended auto report` in the title and `auto-sent, with a note the reporter added afterwards` in the body
 (`filedFromAmendment`), so nobody has to wonder why an auto-send has one.
 
 Its technical facts come from the bundle's own `customMetadata`, read with one `head` (`readReportFacts` in

@@ -14,18 +14,6 @@ Each of these shipped and its durable intent already lives beside the code; the 
 the work against the plan it came from. Wipe per `DETAILS.md` § "Wiping a shipped spec" once the entry's own condition
 below is met.
 
-- [x] 2026-09-19 `permission-refusal-clarity.md` - **Shipped, all three milestones.** Split out of
-      `elevated-file-operations.md` because neither half needed the root helper. `Entitlements.plist` is now an empty
-      dict: `disable-library-validation` let any library signed by anyone load into Cmdr, which is the standard way to
-      inject code into a signed app, and `allow-unsigned-executable-memory` was for a JIT that runs in Apple's own
-      WebContent process. Verified on a signed universal build that launches and renders. And a refused write now names
-      the folder that actually refused, proved with `access(W_OK)` on the refusal path rather than inferred from the
-      operation's shape, with the errno riding along typed as `PermissionRefusal` so the advice splits on whether
-      administrator rights could help at all. ERR-4TEMD's user was told to check a destination that was fine. Durable
-      intent lives beside the code: `docs/security.md` § Entitlements, and
-      `apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Naming the folder that refused a write".
-      Notarization is proved (2026-09-19, `Accepted` and stapled, `source=Notarized Developer ID`). **Wipe whenever
-      David is done judging the work against the plan**; the copy he already signed off.
 - [x] 2026-09-16 `select-same-kind.md` - **Shipped, all nine milestones.** Cmdr could select everything, nothing, the
       inverse, or a typed glob, but not "the rest of these, the same kind as this one." `⌥⇧=` (plus the numpad `⌥+`)
       adds every entry of the cursor row's kind — same extension case-insensitively, every extension-less file, or every
@@ -92,8 +80,9 @@ below is met.
       out-of-process native alert (`[Cancel] [Skip] [Allow]`), unlocks a Cmdr-specific admin right for 24 hours (revoked
       on lock, sleep, and quit), and routes only the refused steps through a tiny on-demand `SMAppService` root helper,
       so progress, cancel, and rollback stay in the engine. macOS 13+. Reads never escalate, and MCP can see the wait
-      but never answer it. The groundwork that needed no helper already shipped as `permission-refusal-clarity.md`; M1
-      is a spike that answers seven open questions, TCC for a root daemon first.
+      but never answer it. The groundwork that needed no helper already shipped (an empty entitlements plist, and a
+      refusal that carries its errno and names the folder that refused); M1 is a spike that answers seven open
+      questions, TCC for a root daemon first.
 - [ ] 2026-09-15 `error-report-triage-plan.md` - **Auto-sent error reports arrive one by one, and nothing says whether
       one is fixed, known, or new.** Plan only, awaiting David's review. Every error gets a stable signature (a hash of
       its log target and code template), a D1 registry tracks each one as new, regressed, open, fixed, or ignored, and

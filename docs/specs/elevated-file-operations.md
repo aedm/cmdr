@@ -185,12 +185,15 @@ For David's review; not final.
 
 ## Milestones
 
-The groundwork that needed no helper shipped separately as `permission-refusal-clarity.md`: the empty entitlements
-plist, and the typed errno plus proved folder that decision 12 branches on.
+The groundwork that needed no helper already shipped: the empty entitlements plist (`docs/security.md` § Entitlements)
+and the typed errno plus proved folder that decision 12 branches on (`write_operations/DETAILS.md` § "Naming the folder
+that refused a write").
 
 - [ ] **M1: spike on macOS 13 and 26** (throwaway code). Answers every open question below, plus: daemon on-demand start
       and idle exit, descriptor passing with `renameatx_np`, and a `CFUserNotification` with three buttons and a
-      checkbox from a worker thread.
+      checkbox from a worker thread. Questions 3 and 4 have a free head start: `PermissionDenied` already carries the
+      errno, so a sticky-bit or TCC refusal can be read off a real report or a hand-made case before the spike builds
+      anything.
 - [ ] **M2: the helper.** Binary and plist in the bundle; signing (same Team ID, hardened runtime, no weakening
       entitlements); the XPC protocol with decision 10's primitives; the caller requirement, proof check, descriptor
       checks, denylist, idle exit, and version handshake. Unit tests for everything that runs unprivileged in temp dirs.
