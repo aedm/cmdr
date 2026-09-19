@@ -706,7 +706,7 @@ func showUsage() {
 	fmt.Println("    --fast                   Run only the curated fast pre-commit check set")
 	fmt.Println("    --fresh                  Bypass the input-fingerprint cache: run everything selected, then refresh it")
 	fmt.Println("    --fail-fast              Stop on first failure")
-	fmt.Println("    --no-log                 Disable CSV stats logging (~/cmdr-check-log.csv)")
+	fmt.Println("    --no-log                 Disable CSV stats logging (~/.local/share/check-runner/cmdr/)")
 	fmt.Println("    --graph                  Render the check dependency graph (weights + lanes) and exit")
 	fmt.Println("    --graph-format FORMAT    Graph output format: tree (default) | mermaid | dot")
 	fmt.Println("    --docs-graph             Render the doc-discoverability tree (rooted at AGENTS.md) and exit")

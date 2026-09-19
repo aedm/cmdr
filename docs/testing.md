@@ -41,8 +41,8 @@ Consequences for anyone tuning a lane:
   the lane's parallelism. A hundred of them is under a second of wall clock. "Replace 100 cheap tests with 1" is not a
   speed lever here.
 - **The levers that do move a lane** are: fewer test FILES (frontend), and the handful of tests that wait on real time.
-  Rank the latter with `~/cmdr-test-log.csv`; a test that appears there on nearly every run is consistently slow, one
-  that appears a few times only goes slow under load.
+  Rank the latter with `~/.local/share/check-runner/cmdr/test-log.csv`; a test that appears there on nearly every run is
+  consistently slow, one that appears a few times only goes slow under load.
 - **A slow test that waits out a production constant is not waste.** `busy_db_is_retried_not_deleted` (5.5 s) waits out
   SQLite's real 5 s `busy_timeout` and `a_slow_first_attempt_spends_the_retry_budget` (2.1 s) waits out the real
   `CONNECT_RETRY_BUDGET`; the duration IS the assertion. Only a sleep the TEST invented (a fake slow closure) is fair
@@ -437,10 +437,10 @@ it. Darwin has no `pipe2(O_CLOEXEC)`, so Rust's std sets `FD_CLOEXEC` in a secon
 `posix_spawn` can inherit the write end in between. The label therefore lands on whichever process EXITS FIRST, which
 makes it a duration signal, not a resource one.
 
-Evidence (`~/cmdr-test-log.csv`, 2026-08-12 to 2026-08-30): the tests it marks average 0.25-1.2 s when leaky and 1.7-2.4
-s when not; the long `smb_transfer_semantics_*` / `smb_stress_*` tests took zero leaks in 496 runs; and the Linux lane,
-which has `pipe2`, records 0.008 leaks per run against macOS's 0.30 across both macOS lanes. `leak-timeout` is set to 1
-s with `result = "pass"` (`.config/nextest.toml`), which suppresses most of it.
+Evidence (`~/.local/share/check-runner/cmdr/test-log.csv`, 2026-08-12 to 2026-08-30): the tests it marks average
+0.25-1.2 s when leaky and 1.7-2.4 s when not; the long `smb_transfer_semantics_*` / `smb_stress_*` tests took zero leaks
+in 496 runs; and the Linux lane, which has `pipe2`, records 0.008 leaks per run against macOS's 0.30 across both macOS
+lanes. `leak-timeout` is set to 1 s with `result = "pass"` (`.config/nextest.toml`), which suppresses most of it.
 
 ❌ Don't chase a leaky test as a resource leak without first checking it isn't simply the shortest process in its lane.
 One investigation lost a morning to "an SMB fixture leaks" before the duration inversion showed up.
@@ -497,16 +497,17 @@ and isn't double-counted. Mechanics: `scripts/check/checks/e2e-flaky.go`.
 ### Every red or slow test lands in a log you can rank
 
 Both verdicts above are per-run: they tell you this run went red, not which tests go red most weeks.
-`~/cmdr-test-log.csv` answers that. All three Rust lanes, `svelte-tests`, and both E2E lanes append one row per
-individual test, on the red path as well as the green one, carrying its status (including `flaky` and `timeout`),
-duration, and attempt. Fast clean passes are dropped so the file stays small, so absence means "fast, or never ran",
-never "passed". Schema, covered lanes, and ready-made ranking queries: `scripts/check/DETAILS.md` § "The per-test log".
+`~/.local/share/check-runner/cmdr/test-log.csv` answers that. All three Rust lanes, `svelte-tests`, and both E2E lanes
+append one row per individual test, on the red path as well as the green one, carrying its status (including `flaky` and
+`timeout`), duration, and attempt. Fast clean passes are dropped so the file stays small, so absence means "fast, or
+never ran", never "passed". Schema, covered lanes, and ready-made ranking queries: `scripts/check/DETAILS.md` § "The
+per-test log".
 
 ❗ Two ways a naive ranking over those logs lies, both of which have produced a wrong analysis: a FAIL RATE over
-`~/cmdr-test-log.csv` is conditioned on the test also being slow (every non-pass is kept, only passes over 1.0 s are),
-so compare failure COUNTS; and the verdict message in `~/cmdr-check-log.csv` carries a test's path AS IT WAS, so a
-module move splits one test's history across two names and a test in an integration-test binary carries no `::` at all.
-Worked example, plus what the numbers turned out to mean: `docs/notes/rust-test-flake-analysis-2026-08-23.md`.
+`test-log.csv` is conditioned on the test also being slow (every non-pass is kept, only passes over 1.0 s are), so
+compare failure COUNTS; and the verdict message in `check-log.csv` carries a test's path AS IT WAS, so a module move
+splits one test's history across two names and a test in an integration-test binary carries no `::` at all. Worked
+example, plus what the numbers turned out to mean: `docs/notes/rust-test-flake-analysis-2026-08-23.md`.
 
 ### Caps are not runtimes
 

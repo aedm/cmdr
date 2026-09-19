@@ -40,9 +40,10 @@ Authoring a check: `checks/CLAUDE.md`.
   filterset. An unmatched `test(prefix)` is fine.
 - **An auto-fixer rewriting a COMMITTED file is a green local run and a red CI one.** The run's last line names them;
   commit them.
-- **Three CSV logs, never merged**: `~/cmdr-check-log.csv` per run, `~/cmdr-test-log.csv` per test,
-  `~/cmdr-unknown-check-log.csv` per rejected selector (a missed name says a check is named wrong; the rows feed a
-  naming review, so keep writing them). ❌ Never add a column: it breaks every reader of a log now past 200,000 rows.
+- **Three CSV logs, never merged**, under `~/.local/share/check-runner/cmdr/` (outside the repo, so a worktree teardown
+  can't take years of history with it): `check-log.csv` per run, `test-log.csv` per test, `unknown-check-log.csv` per
+  rejected selector (a missed name says a check is named wrong; the rows feed a naming review, so keep writing them). ❌
+  Never add a column: it breaks every reader of a log now past 200,000 rows.
 - **`--only-slow` needs a ~20 min command timeout** (1,200,000 ms); `--fast` errors out with `--include-slow` /
   `--only-slow`. Named checks bypass both.
 

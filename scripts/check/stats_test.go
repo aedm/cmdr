@@ -9,11 +9,57 @@ import (
 	"cmdr/scripts/check/checks"
 )
 
-// readTestLog returns the rows of ~/cmdr-test-log.csv under a redirected HOME,
+// redirectHome points the log writers at a throwaway home for one test. It
+// clears $XDG_DATA_HOME too: that variable outranks HOME in `logPath`, so
+// leaving it to the ambient environment would let a machine that sets it write
+// real rows into the developer's actual log.
+func redirectHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", "")
+	return home
+}
+
+// wantLogPath spells out the location contract the logs are expected to honor,
+// literally rather than through `logPath`, so a change to the resolver moves
+// these tests to red instead of silently following it.
+func wantLogPath(home, fileName string) string {
+	return filepath.Join(home, ".local", "share", "check-runner", "cmdr", fileName)
+}
+
+func TestLogPathPutsEveryLogUnderTheSharedCheckRunnerDir(t *testing.T) {
+	home := redirectHome(t)
+
+	for _, name := range []string{csvFileName, testCSVFileName, unknownSelectorCSVFileName} {
+		got, err := logPath(name)
+		if err != nil {
+			t.Fatalf("logPath(%q): %v", name, err)
+		}
+		if want := wantLogPath(home, name); got != want {
+			t.Errorf("logPath(%q) = %q, want %q", name, got, want)
+		}
+	}
+}
+
+func TestLogPathPrefersXDGDataHome(t *testing.T) {
+	redirectHome(t)
+	t.Setenv("XDG_DATA_HOME", "/tmp/xdg")
+
+	got, err := logPath(csvFileName)
+	if err != nil {
+		t.Fatalf("logPath: %v", err)
+	}
+	if want := filepath.Join("/tmp/xdg", "check-runner", "cmdr", csvFileName); got != want {
+		t.Errorf("logPath = %q, want %q", got, want)
+	}
+}
+
+// readTestLog returns the rows of the per-test log under a redirected HOME,
 // header included. A missing file yields no rows.
 func readTestLog(t *testing.T, home string) [][]string {
 	t.Helper()
-	f, err := os.Open(filepath.Join(home, testCSVFileName))
+	f, err := os.Open(wantLogPath(home, testCSVFileName))
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -39,8 +85,7 @@ func stateWithTests(name string, records ...checks.TestRecord) *CheckState {
 }
 
 func TestLogTestStatsWritesOneRowPerInterestingTest(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := redirectHome(t)
 
 	logTestStats(stateWithTests("rust-tests",
 		checks.TestRecord{ID: "cmdr_lib::a::fails", Outcome: checks.TestFailed, Seconds: 0.02, Attempt: 1},
@@ -78,8 +123,7 @@ func TestLogTestStatsWritesOneRowPerInterestingTest(t *testing.T) {
 }
 
 func TestLogTestStatsKeepsAnUnknownDurationDistinctFromZero(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := redirectHome(t)
 
 	logTestStats(stateWithTests("rust-tests",
 		checks.TestRecord{ID: "cmdr_lib::a::no_timing", Outcome: checks.TestFailed, Seconds: -1, Attempt: 1},
@@ -95,8 +139,7 @@ func TestLogTestStatsKeepsAnUnknownDurationDistinctFromZero(t *testing.T) {
 }
 
 func TestLogTestStatsAppendsWithoutRepeatingTheHeader(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := redirectHome(t)
 
 	logTestStats(stateWithTests("rust-tests",
 		checks.TestRecord{ID: "cmdr_lib::a::fails", Outcome: checks.TestFailed, Seconds: 0.02, Attempt: 1}))
@@ -113,8 +156,7 @@ func TestLogTestStatsAppendsWithoutRepeatingTheHeader(t *testing.T) {
 }
 
 func TestLogTestStatsWritesNothingForANonTestCheck(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := redirectHome(t)
 
 	logTestStats(stateWithTests("clippy"))
 

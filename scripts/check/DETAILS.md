@@ -68,10 +68,10 @@ naming review (§ "The unrecognized-name log").
 
 `--graph` honors the same selectors (positional or flag form), so `pnpm check rust --graph` graphs only the Rust checks.
 It renders before the slow/fast/CI filters, so every lane shows with its size badge. Each node also shows
-`~<median wall-time>` from the recent (last 20) passing runs in `~/cmdr-check-log.csv`, so the graph doubles as a perf
-dashboard — pairing the CPU-weight (how heavy) with the typical duration (how long) for spotting the next optimization
-target. Missing log (CI / `--no-log` / fresh machine) just omits the times. `mermaid` output pastes into a Markdown
-```mermaid block or https://mermaid.live; `dot` pipes to Graphviz
+`~<median wall-time>` from the recent (last 20) passing runs in the stats log, so the graph doubles as a perf dashboard
+— pairing the CPU-weight (how heavy) with the typical duration (how long) for spotting the next optimization target.
+Missing log (CI / `--no-log` / fresh machine) just omits the times. `mermaid` output pastes into a Markdown ```mermaid
+block or https://mermaid.live; `dot` pipes to Graphviz
 (`pnpm check --graph --graph-format dot | dot -Tpng -o checks.png`).
 
 ### `--docs-graph` and its usage enrichment
@@ -159,11 +159,12 @@ pnpm check [flags]
 - **`runner.go`**: Parallel executor: CPU-weighted admission gate, dependency graph, fail-fast, live TTY status line
 - **`graph.go`**: `--graph` renderer: dependency forest with CPU weights, size lanes, and median wall-time from the
   stats CSV (tree / mermaid / dot)
-- **`stats.go`**: CSV stats logging: one row per check to `~/cmdr-check-log.csv` (`logCheckStats`), plus one row per
-  individual test to `~/cmdr-test-log.csv` (`logTestStats`, § "The per-test log")
+- **`stats.go`**: CSV stats logging: one row per check to `check-log.csv` (`logCheckStats`), plus one row per individual
+  test to `test-log.csv` (`logTestStats`, § "The per-test log"); `logPath` resolves all three logs (§ "Where the logs
+  live")
 - **`unknown_selector_log.go`**: the third CSV, one row per selector the runner didn't recognize
-  (`~/cmdr-unknown-check-log.csv`), plus the nearest-name guess it shares with the error message (§ "The
-  unrecognized-name log")
+  (`unknown-check-log.csv`), plus the nearest-name guess it shares with the error message (§ "The unrecognized-name
+  log")
 - **`checks/test-log.go`**: the per-test vocabulary (`TestRecord`, `TestOutcome`, `TestRecorder`) every test lane
   records through
 - **`plan.go`**: Input-fingerprint cache planning: splits selected checks into cache hits and misses BEFORE pnpm/SMB;
@@ -316,20 +317,25 @@ a per-platform allowlist. See `checks/DETAILS.md` § "E2E test duration flagger"
 
 **TTY detection:** `golang.org/x/term.IsTerminal` gates the live status line; CI logs stay clean.
 
-**CSV stats logging:** Each check run appends a row to `~/cmdr-check-log.csv` with timestamp, app, check name, duration,
-result (pass/fail/skip/blocked/cached), and optional counts (total, issues, changes). `CheckResult` has `Total`,
-`Issues`, `Changes` fields (`-1` = N/A, rendered as `N/A` in CSV). Disabled by `--no-log` or `--ci`. Implementation in
-`stats.go`. A cache hit logs as `cached` (not `pass`) so `--graph`'s median, which counts only `pass` rows, isn't
-dragged down by ~0s hits.
+**Where the logs live:** all three sit in `~/.local/share/check-runner/cmdr/` (`logPath` in `stats.go`, honoring
+`$XDG_DATA_HOME`), so the rest of this file names them by bare filename. They're deliberately outside the repo: the
+history spans years and every worktree, and a worktree teardown must not take it along. The `check-runner/` parent is
+shared with the copies of this runner living in other repos, each under its own project subdirectory, which is why
+`projectLogDirName` is the only token those copies have to change.
+
+**CSV stats logging:** Each check run appends a row to `check-log.csv` with timestamp, app, check name, duration, result
+(pass/fail/skip/blocked/cached), and optional counts (total, issues, changes). `CheckResult` has `Total`, `Issues`,
+`Changes` fields (`-1` = N/A, rendered as `N/A` in CSV). Disabled by `--no-log` or `--ci`. Implementation in `stats.go`.
+A cache hit logs as `cached` (not `pass`) so `--graph`'s median, which counts only `pass` rows, isn't dragged down by
+~0s hits.
 
 ## The per-test log
 
-`~/cmdr-test-log.csv` records INDIVIDUAL tests, one row each, so "which 15 tests cause most of my red runs, and which
-are slowest" is a query rather than an archaeology dig. It's the companion to `~/cmdr-check-log.csv`, which stays
-lane-level: a red lane logs the message `rust tests failed` there and names no test, which is exactly the gap this
-closes.
+`test-log.csv` records INDIVIDUAL tests, one row each, so "which 15 tests cause most of my red runs, and which are
+slowest" is a query rather than an archaeology dig. It's the companion to `check-log.csv`, which stays lane-level: a red
+lane logs the message `rust tests failed` there and names no test, which is exactly the gap this closes.
 
-**Two files, never one.** `~/cmdr-check-log.csv` has ~98 000 rows against a nine-column header, and every reader of it
+**Two files, never one.** `check-log.csv` is past 270 000 rows against a nine-column header, and every reader of it
 (Go's `csv.Reader`, Python's `csv` / pandas) hard-errors on a field-count mismatch, so widening that schema would
 destroy the history in place. One row per test is also the better data model. Don't merge them.
 
@@ -379,7 +385,7 @@ second. `check` is a keyword, so it needs the double quotes.
 Which tests cost the most red runs:
 
 ```sh
-sqlite3 -column -header :memory: '.import --csv ~/cmdr-test-log.csv t' \
+sqlite3 -column -header :memory: '.import --csv ~/.local/share/check-runner/cmdr/test-log.csv t' \
   "select test_id, count(*) as red_runs from t
    where status in ('fail','timeout','leak','flaky') group by 1 order by 2 desc limit 15"
 ```
@@ -387,7 +393,7 @@ sqlite3 -column -header :memory: '.import --csv ~/cmdr-test-log.csv t' \
 Which are slowest (worst single attempt ever seen, and how often it ran):
 
 ```sh
-sqlite3 -column -header :memory: '.import --csv ~/cmdr-test-log.csv t' \
+sqlite3 -column -header :memory: '.import --csv ~/.local/share/check-runner/cmdr/test-log.csv t' \
   "select \"check\", test_id, round(max(cast(duration_s as real)),1) as worst_s, count(*) as runs
    from t where duration_s <> 'N/A' group by 1,2 order by 3 desc limit 15"
 ```
@@ -403,7 +409,7 @@ Example queries (the log is plain CSV; `duration_s` can be `N/A`, so cast defens
 # Which tests fail most often, worst first
 python3 -c "
 import csv, collections
-rows = [r for r in csv.DictReader(open('$HOME/cmdr-test-log.csv')) if r['status'] in ('fail', 'timeout')]
+rows = [r for r in csv.DictReader(open('$HOME/.local/share/check-runner/cmdr/test-log.csv')) if r['status'] in ('fail', 'timeout')]
 for (check, test), n in collections.Counter((r['check'], r['test_id']) for r in rows).most_common(15):
     print(f'{n:4}  {check:24}  {test}')
 "
@@ -412,7 +418,7 @@ for (check, test), n in collections.Counter((r['check'], r['test_id']) for r in 
 python3 -c "
 import csv, collections
 worst = collections.defaultdict(float)
-for r in csv.DictReader(open('$HOME/cmdr-test-log.csv')):
+for r in csv.DictReader(open('$HOME/.local/share/check-runner/cmdr/test-log.csv')):
     if r['duration_s'] != 'N/A':
         key = (r['check'], r['test_id'])
         worst[key] = max(worst[key], float(r['duration_s']))
@@ -422,14 +428,14 @@ for (check, test), s in sorted(worst.items(), key=lambda kv: -kv[1])[:15]:
 ```
 
 A failure RATE needs the run count as its denominator, which lives in the other log: count the rows for that check in
-`~/cmdr-check-log.csv` over the same window. Before quoting an E2E rate, read
-`docs/notes/e2e-flake-remeasured-2026-08-14.md`: it's the worked version of exactly that query, and it names the three
-traps (a run-level rate is dominated by the suite's width rather than by any test, the macOS lane's zero-retry config
-makes its rate incomparable to Linux's, and a few days of runs can't distinguish 41% from 59%).
+`check-log.csv` over the same window. Before quoting an E2E rate, read `docs/notes/e2e-flake-remeasured-2026-08-14.md`:
+it's the worked version of exactly that query, and it names the three traps (a run-level rate is dominated by the
+suite's width rather than by any test, the macOS lane's zero-retry config makes its rate incomparable to Linux's, and a
+few days of runs can't distinguish 41% from 59%).
 
 ## The unrecognized-name log
 
-`~/cmdr-unknown-check-log.csv` records every invocation the runner rejected with `unknown check or group`, one row per
+`unknown-check-log.csv` records every invocation the runner rejected with `unknown check or group`, one row per
 unrecognized name. The rows are evidence for a NAMING review: a name someone reached for and didn't get is the cheapest
 available signal that a check is called something other than what people call it. Collect for about a month, look for
 patterns, then rename or regroup whatever keeps getting missed. The run itself behaves as it always has, printing the
@@ -463,7 +469,7 @@ free of side effects and keeping `go test` out of the real log. A write failure 
 Which names people reach for and don't get:
 
 ```sh
-sqlite3 -column -header :memory: '.import --csv ~/cmdr-unknown-check-log.csv u' \
+sqlite3 -column -header :memory: '.import --csv ~/.local/share/check-runner/cmdr/unknown-check-log.csv u' \
   "select unknown, did_you_mean, count(*) as misses from u group by 1,2 order by 3 desc"
 ```
 

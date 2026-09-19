@@ -160,4 +160,5 @@ CI keeps the shared directory: its steps are sequential, so there's no lock to d
 cache-tight (it has hit "No space left on device" before). See `desktop-rust-rustdoc.go`.
 
 Render the graph with weights + lanes + median wall-time: `pnpm check --graph` (also `--graph-format mermaid|dot`). The
-wall-time comes from recent passing runs in `~/cmdr-check-log.csv`, so the graph doubles as a perf dashboard.
+wall-time comes from recent passing runs in `~/.local/share/check-runner/cmdr/check-log.csv`, so the graph doubles as a
+perf dashboard.

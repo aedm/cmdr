@@ -8,7 +8,7 @@ import "sync"
 // on the red one, so neither can carry "which test went red". This is the ONE
 // side-channel that can: a lane parses its runner's own machine-readable report,
 // hands back one [TestRecord] per test, and the runner drains them into
-// ~/cmdr-test-log.csv (`scripts/check/DETAILS.md` § "The per-test log"). Recording
+// ~/.local/share/check-runner/cmdr/test-log.csv (`scripts/check/DETAILS.md` § "The per-test log"). Recording
 // happens before the pass/fail branch, so a red run says exactly as much as a
 // green one.
 //

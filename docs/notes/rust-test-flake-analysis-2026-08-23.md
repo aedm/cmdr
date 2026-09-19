@@ -1,14 +1,16 @@
 # What actually makes the Rust lanes go red (2026-08-23)
 
-Measured on David's M3 Max (12 P + 4 E), against `~/cmdr-check-log.csv` (382 runs since 2026-08-01 whose verdict named a
-starved test) and `~/cmdr-test-log.csv`. Read `docs/testing.md` for the rules; this note is the evidence behind them.
+Measured on David's M3 Max (12 P + 4 E), against `~/.local/share/check-runner/cmdr/check-log.csv` (382 runs since
+2026-08-01 whose verdict named a starved test) and `~/.local/share/check-runner/cmdr/test-log.csv`. Read
+`docs/testing.md` for the rules; this note is the evidence behind them.
 
-**Read the two logs correctly, or the ranking lies.** `~/cmdr-test-log.csv` keeps every non-pass but only passes over
-`testLogSlowSeconds` (1.0 s, `scripts/check/stats.go`), so a "fail rate" over its rows is conditioned on the test also
-being slow. FAILURE COUNTS are unconditional and comparable; rates are not. And `~/cmdr-check-log.csv`'s verdict message
-carries a test's full path at the time it ran, so a module move splits one test's history across two names, and a test
-in an integration-test binary has no `::` in its name at all — a `::`-requiring extraction drops it silently. That is
-how the suite's single most persistent flake stayed invisible in a top-offenders list.
+**Read the two logs correctly, or the ranking lies.** `~/.local/share/check-runner/cmdr/test-log.csv` keeps every
+non-pass but only passes over `testLogSlowSeconds` (1.0 s, `scripts/check/stats.go`), so a "fail rate" over its rows is
+conditioned on the test also being slow. FAILURE COUNTS are unconditional and comparable; rates are not. And
+`~/.local/share/check-runner/cmdr/check-log.csv`'s verdict message carries a test's full path at the time it ran, so a
+module move splits one test's history across two names, and a test in an integration-test binary has no `::` in its name
+at all — a `::`-requiring extraction drops it silently. That is how the suite's single most persistent flake stayed
+invisible in a top-offenders list.
 
 ## The four causes found, in order of what they cost
 

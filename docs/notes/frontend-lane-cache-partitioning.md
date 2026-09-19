@@ -1,7 +1,8 @@
 # Partitioning the frontend lane's cache inputs
 
-Measured 2026-08-12 on the 24-day window 2026-07-19..2026-08-12 (1,439 commits, 99,763 rows of `~/cmdr-check-log.csv`),
-plus direct Vitest runs on an isolated 16-core macOS machine (Node 26.4.0, Vitest 4.1.10).
+Measured 2026-08-12 on the 24-day window 2026-07-19..2026-08-12 (1,439 commits, 99,763 rows of
+`~/.local/share/check-runner/cmdr/check-log.csv`), plus direct Vitest runs on an isolated 16-core macOS machine (Node
+26.4.0, Vitest 4.1.10).
 
 The question: 21 frontend checks share one `Inputs` set (`svelteInputs`), so any edit under `apps/desktop/src/**` or
 `apps/desktop/test/**` re-runs all of them, including the ~8,600-test Vitest suite. Is a narrower or partitioned input
@@ -103,5 +104,6 @@ to the check runner's own source are correct by design (the runner's behavior ch
 
 The commit-touch measurement replays `git log --since=<date> --name-only` through the same glob semantics `matchesAny`
 uses, so a variant is a candidate `Inputs` list and the output is the share of commits that would invalidate it. The
-cost side comes from `~/cmdr-check-log.csv` grouped by `check`, summing `duration_s` for non-`cached` rows. Both are
-short scripts; neither is checked in, because the inputs (the log and the log's window) move.
+cost side comes from `~/.local/share/check-runner/cmdr/check-log.csv` grouped by `check`, summing `duration_s` for
+non-`cached` rows. Both are short scripts; neither is checked in, because the inputs (the log and the log's window)
+move.

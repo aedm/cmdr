@@ -12,15 +12,20 @@ import (
 	"cmdr/scripts/check/checks"
 )
 
-const csvFileName = "cmdr-check-log.csv"
+// projectLogDirName is this repo's subdirectory under the shared check-runner
+// data dir, and the ONE token a copy of this runner in another repo has to
+// change: the filenames and the resolver below are identical everywhere.
+const projectLogDirName = "cmdr"
+
+const csvFileName = "check-log.csv"
 
 // testCSVFileName is the SECOND log, one row per individual test rather than per
-// check run. It's a separate file on purpose: ~/cmdr-check-log.csv holds nearly a
+// check run. It's a separate file on purpose: `check-log.csv` holds nearly three
 // hundred thousand rows against a nine-column header, and every reader of it
 // (Go's csv.Reader, Python's csv/pandas) hard-errors on a field-count mismatch, so
 // widening that schema would destroy the history in place. Schema, retention, and
 // example queries: `scripts/check/DETAILS.md` § "The per-test log".
-const testCSVFileName = "cmdr-test-log.csv"
+const testCSVFileName = "test-log.csv"
 
 var (
 	csvHeader = []string{"timestamp", "app", "check", "duration_s", "result", "total", "issues", "changes", "message"}
@@ -39,21 +44,39 @@ var (
 // the slow ones.
 const testLogSlowSeconds = 1.0
 
-// appendCSVRows appends rows to ~/<fileName>, writing `header` first when the
-// file is new. Every failure is silent: these logs are instrumentation, and a
-// full disk or a read-only home must not colour a run's verdict.
+// logPath resolves one log to ~/.local/share/check-runner/<project>/<fileName>,
+// honoring $XDG_DATA_HOME the way `scripts/mcp-call.sh` does. The logs live
+// outside the repo on purpose: they're a measurement history spanning years and
+// worktrees, and a worktree teardown must never take them with it.
+func logPath(fileName string) (string, error) {
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if dataHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dataHome = filepath.Join(home, ".local", "share")
+	}
+	return filepath.Join(dataHome, "check-runner", projectLogDirName, fileName), nil
+}
+
+// appendCSVRows appends rows to one of the logs, creating its directory and
+// writing `header` first when the file is new. Every failure is silent: these
+// logs are instrumentation, and a full disk or a read-only home must not colour
+// a run's verdict.
 func appendCSVRows(mu *sync.Mutex, fileName string, header []string, rows [][]string) {
 	if len(rows) == 0 {
 		return
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	home, err := os.UserHomeDir()
+	csvPath, err := logPath(fileName)
 	if err != nil {
 		return
 	}
-
-	csvPath := filepath.Join(home, fileName)
+	if err := os.MkdirAll(filepath.Dir(csvPath), 0o755); err != nil {
+		return
+	}
 
 	_, statErr := os.Stat(csvPath)
 	isNew := os.IsNotExist(statErr)
@@ -75,7 +98,7 @@ func appendCSVRows(mu *sync.Mutex, fileName string, header []string, rows [][]st
 	}
 }
 
-// logCheckStats appends one CSV row to ~/cmdr-check-log.csv with the check result.
+// logCheckStats appends one CSV row to the per-run log with the check result.
 func logCheckStats(state *CheckState) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 	app := string(state.Definition.App)
@@ -114,7 +137,7 @@ func logCheckStats(state *CheckState) {
 		[][]string{{timestamp, app, check, durationS, result, total, issues, changes, message}})
 }
 
-// logTestStats appends one row per individual test to ~/cmdr-test-log.csv, for
+// logTestStats appends one row per individual test to the per-test log, for
 // the test lanes that recorded any. Fast clean passes are dropped
 // (`testLogSlowSeconds`); everything that failed, flaked, timed out, or leaked is
 // always kept, so a red run leaves behind WHICH test went red rather than only

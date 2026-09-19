@@ -36,7 +36,8 @@ Evidence, four independent agreements:
 - Non-floored dirs under `/`: 160,818. Log weight loads: 160,719 (drift over half a day).
 - The last full-walk fallback in the log is **22:42:27**. The last modification to `~/.claude.json` is **22:42:19**.
   Eight seconds apart, and the treadmill never fires again.
-- Written by Claude Code (`~/.claude.json`, constant), plus `~/.zsh_history`, `~/cmdr-check-log.csv`, `~/.zcompdump`.
+- Written by Claude Code (`~/.claude.json`, constant), plus `~/.zsh_history`,
+  `~/.local/share/check-runner/cmdr/check-log.csv`, `~/.zcompdump`.
 
 **The machine is never idle**: the log's live-event counter moves 5,220,000 → 5,350,000 between 23:01 and 23:40, about
 **55 FSEvents/sec** with nobody touching the app. So `sanitize_incremental_batch` always finds something; the question

@@ -1078,10 +1078,11 @@ Gotchas for anyone touching this:
 - **❗ Captured nextest output is NOT plain text.** nextest colours whenever `FORCE_COLOR` / `CLICOLOR_FORCE` is set,
   which the Claude Code harness does, so "we piped it into a buffer, so there's no TTY" is not a reason to skip
   normalising. Every pattern here is line-anchored, so a colourised buffer matches NOTHING and the lane degrades in
-  total silence: no deadline diagnosis, no contention re-run, no rows in `~/cmdr-test-log.csv`, no retry-pass warn, and
-  a 1.2 MB raw dump because the progress trimmer misses too (verified against a real agent-session capture, 2026-08-21).
-  `StripANSI` runs at each lane's capture boundary AND inside every parser; it is idempotent, so the double application
-  is deliberate cheapness rather than an oversight, and a new lane can't forget it.
+  total silence: no deadline diagnosis, no contention re-run, no rows in
+  `~/.local/share/check-runner/cmdr/test-log.csv`, no retry-pass warn, and a 1.2 MB raw dump because the progress
+  trimmer misses too (verified against a real agent-session capture, 2026-08-21). `StripANSI` runs at each lane's
+  capture boundary AND inside every parser; it is idempotent, so the double application is deliberate cheapness rather
+  than an oversight, and a new lane can't forget it.
 - **The parsers are pinned to real nextest 0.9.136 output**, captured from a probe crate rather than written from
   memory. The fixtures in `rust-test-diagnostics_test.go` are verbatim, including the `(2/4)` progress counter and the
   `(───)` placeholder. Keep them verbatim when the pinned nextest version moves.
@@ -2172,13 +2173,13 @@ or build.rs codegen; opt those out via `[package.metadata.cargo-machete] ignored
 Local dev gets instant feedback from machete; CI runs udeps for the long-tail check.
 
 **Decision**: `jscpd-rust` and the `<provider>-smoke` lanes are CI-only. **Why**: Cost per catch. Measured over 24 days
-of `~/cmdr-check-log.csv`, jscpd burned 20 122 CPU-seconds across 837 local runs for one real finding, by a wide margin
-the worst ratio in the suite; copy-paste detection is a periodic sweep, and a duplicate that lands on Monday is just as
-findable on Friday. groq-smoke burned 9 211 CPU-seconds across 106 runs (70 s median) for four, and what a smoke
-validates is a third-party provider's live contract rather than our code, so it can only ever go red on that provider's
-schedule. All keep their CI steps, so none stops being enforced. The smokes keep `IsSlow` alongside `CIOnly`: that's
-what holds them out of CI's default lane, leaving their dedicated steps in the nightly slow-checks workflow as the only
-place they run.
+of `~/.local/share/check-runner/cmdr/check-log.csv`, jscpd burned 20 122 CPU-seconds across 837 local runs for one real
+finding, by a wide margin the worst ratio in the suite; copy-paste detection is a periodic sweep, and a duplicate that
+lands on Monday is just as findable on Friday. groq-smoke burned 9 211 CPU-seconds across 106 runs (70 s median) for
+four, and what a smoke validates is a third-party provider's live contract rather than our code, so it can only ever go
+red on that provider's schedule. All keep their CI steps, so none stops being enforced. The smokes keep `IsSlow`
+alongside `CIOnly`: that's what holds them out of CI's default lane, leaving their dedicated steps in the nightly
+slow-checks workflow as the only place they run.
 
 **Decision**: one smoke lane per provider whose key we hold, not one for the cheapest. **Why**: a single-provider lane
 only ever notices that provider's schedule. Groq retired `llama-3.1-8b-instant` on 2026-08-16 and `groq-smoke` caught

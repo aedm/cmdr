@@ -9,8 +9,9 @@ change re-merges the blocks or reaches for per-package `-p` lanes, these are the
 macOS 15, M-series, rustc 1.97.1, warm 96 GB `target/`, worktree `.claude/worktrees/sftp-follow-ups` at `5524a066f`.
 Cargo rows are one command each, timed end to end, `Compiling <crate>` lines counted from output, no source changed
 between rows. Check rows are `pnpm check` (default lane) with a one-line comment appended to one file, the cache settled
-with two no-edit runs between cases; the lanes that ran come from `~/cmdr-check-log.csv` rather than from the terminal.
-Commit statistics are the 3,704 commits of 2026-06-01..2026-08-23, 1,889 of which touch a Rust input.
+with two no-edit runs between cases; the lanes that ran come from `~/.local/share/check-runner/cmdr/check-log.csv`
+rather than from the terminal. Commit statistics are the 3,704 commits of 2026-06-01..2026-08-23, 1,889 of which touch a
+Rust input.
 
 `desktop-rust-integration-tests` failed in every check row for an unrelated reason (a sibling worktree held the SFTP
 fixture lease with a different config, so the runner adopted a foreign stack). It is a constant ~12 s in every row.
@@ -129,9 +130,9 @@ residue turned out to sit next door, in edits to the NON-Go files under `scripts
 
 Same worktree, warm `target/`, cache settled with a no-edit run between every row (a settled run is 3 ms). A row is one
 comment line appended to one file, `pnpm check` timed end to end, then the file reverted and the cache re-settled. The
-lanes that ran come from `~/cmdr-check-log.csv` (rows whose `result` is not `cached`), not from the terminal. "Before"
-rows are the same procedure with `checks/inputs.go`, `registry.go`, and `inputs_test.go` checked out from the parent
-commit. Commit statistics are the 5,584 commits of 2026-02-21..2026-08-24.
+lanes that ran come from `~/.local/share/check-runner/cmdr/check-log.csv` (rows whose `result` is not `cached`), not
+from the terminal. "Before" rows are the same procedure with `checks/inputs.go`, `registry.go`, and `inputs_test.go`
+checked out from the parent commit. Commit statistics are the 5,584 commits of 2026-02-21..2026-08-24.
 
 Lane counts alone are cheap to get without running anything, which is how the search was steered. Drop this into
 `scripts/check/checks/` as `zz_measure_test.go`, run

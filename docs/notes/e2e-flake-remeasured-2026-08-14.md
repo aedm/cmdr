@@ -37,8 +37,8 @@ worktree's OWN `scripts/check/`, so a worktree branched before a fix keeps runni
 
 ## Run-level rates
 
-From `~/cmdr-check-log.csv` (one row per lane run; `timestamp` is when the check FINISHED and `duration_s` is its wall
-clock, so a run occupies `[timestamp − duration_s, timestamp]`).
+From `~/.local/share/check-runner/cmdr/check-log.csv` (one row per lane run; `timestamp` is when the check FINISHED and
+`duration_s` is its wall clock, so a run occupies `[timestamp − duration_s, timestamp]`).
 
 - **2026-07-19..2026-08-12** (the folklore window): playwright 110 red of 186 = **59.1%**; linux 38 of 113 = **33.6%**.
 - **Since 2026-08-12 18:07** (stale-report fix): playwright 12 of 29 = **41.4%**; linux 2 of 18 = **11.1%**.
@@ -83,7 +83,8 @@ are not why this lane goes red.
 
 ## What actually fails: breadth, not offenders
 
-`~/cmdr-test-log.csv` covers E2E from 2026-08-12 18:09 (29 playwright runs, 18 Linux). Per-test, at last.
+`~/.local/share/check-runner/cmdr/test-log.csv` covers E2E from 2026-08-12 18:09 (29 playwright runs, 18 Linux).
+Per-test, at last.
 
 Twelve red playwright runs, of two very different shapes:
 
@@ -106,9 +107,10 @@ against an observed ordinary red rate of 10 of 29 = 34.5%. The model fits. **A s
 per-test rate into a terrible run-level one**, and that's the dominant term. Halving the per-test rate would take the
 run rate from ~38% to ~21%; quarantining the worst spec takes it from ~38% to ~36%, and there isn't a worst spec.
 
-⚠️ Read `~/cmdr-test-log.csv` with its threshold in mind: a passing test earns a row only at or over 1.0 s, so absence
-means "fast, or never ran", never "passed". Failure counts are exact; pass counts are not, which is why the denominator
-above comes from the check log's "281 tests passed across 3 shards" message rather than from row counts.
+⚠️ Read `~/.local/share/check-runner/cmdr/test-log.csv` with its threshold in mind: a passing test earns a row only at
+or over 1.0 s, so absence means "fast, or never ran", never "passed". Failure counts are exact; pass counts are not,
+which is why the denominator above comes from the check log's "281 tests passed across 3 shards" message rather than
+from row counts.
 
 ## Retry-passes: only the Linux lane can have them
 
@@ -145,14 +147,14 @@ already gives ±0.1pp where the run rate after two days gives ±17pp.
 ```sh
 # Per-test failures, the metric that converges. A run with >10 of them is one
 # dead app, not per-test flake: check the shape before averaging.
-sqlite3 -column -header :memory: '.import --csv ~/cmdr-test-log.csv t' \
+sqlite3 -column -header :memory: '.import --csv ~/.local/share/check-runner/cmdr/test-log.csv t' \
   "select \"check\", timestamp, count(*) as failures, count(distinct test_id) as distinct_tests
    from t where \"check\" like 'desktop-e2e%' and status in ('fail','timeout','leak')
      and timestamp >= '2026-08-14'
    group by 1,2 order by 2"
 
 # The run-level rate, once there are enough runs to bother.
-sqlite3 -column -header :memory: '.import --csv ~/cmdr-check-log.csv c' \
+sqlite3 -column -header :memory: '.import --csv ~/.local/share/check-runner/cmdr/check-log.csv c' \
   "select \"check\", count(*) as runs, sum(result='fail') as red,
           round(100.0*sum(result='fail')/count(*),1) as pct
    from c where \"check\" in ('desktop-e2e-playwright','desktop-e2e-linux')

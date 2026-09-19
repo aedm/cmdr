@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -36,19 +35,20 @@ func renderGraph(defs []checks.CheckDefinition, format string, isTTY bool) error
 	return nil
 }
 
-// loadCheckDurations reads the stats CSV (`~/cmdr-check-log.csv`) and returns,
-// per check (keyed by CLIName — the same key the log writes and the graph
-// nodes use), the median wall-time of its most recent passing runs. Best-effort:
-// a missing/unreadable log (CI, --no-log, fresh machine) yields an empty map and
-// the graph simply omits times. Uses only `pass` rows (warns log as pass too);
-// skips fail/skip/blocked, whose durations aren't representative of a real run.
+// loadCheckDurations reads the per-run stats CSV (`logPath(csvFileName)`) and
+// returns, per check (keyed by CLIName — the same key the log writes and the
+// graph nodes use), the median wall-time of its most recent passing runs.
+// Best-effort: a missing/unreadable log (CI, --no-log, fresh machine) yields an
+// empty map and the graph simply omits times. Uses only `pass` rows (warns log
+// as pass too); skips fail/skip/blocked, whose durations aren't representative
+// of a real run.
 func loadCheckDurations() map[string]float64 {
 	out := map[string]float64{}
-	home, err := os.UserHomeDir()
+	csvPath, err := logPath(csvFileName)
 	if err != nil {
 		return out
 	}
-	f, err := os.Open(filepath.Join(home, csvFileName))
+	f, err := os.Open(csvPath)
 	if err != nil {
 		return out
 	}

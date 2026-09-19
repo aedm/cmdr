@@ -10,8 +10,8 @@ import (
 	"cmdr/scripts/check/checks"
 )
 
-// unknownSelectorCSVFileName is the THIRD log beside ~/cmdr-check-log.csv and
-// ~/cmdr-test-log.csv, and it's a separate file for the same reason those two
+// unknownSelectorCSVFileName is the THIRD log beside `check-log.csv` and
+// `test-log.csv`, and it's a separate file for the same reason those two
 // are separate from each other: every CSV reader hard-errors on a field-count
 // mismatch, so one schema per question is the only shape that keeps a long
 // history readable.
@@ -23,7 +23,7 @@ import (
 // itself behaves as it always has: it prints the error and exits 1, and a
 // failure to write a row stays silent. Schema and example queries: `DETAILS.md`
 // § "The unrecognized-name log".
-const unknownSelectorCSVFileName = "cmdr-unknown-check-log.csv"
+const unknownSelectorCSVFileName = "unknown-check-log.csv"
 
 var (
 	unknownSelectorCSVHeader = []string{"timestamp", "unknown", "args", "did_you_mean"}
@@ -94,7 +94,7 @@ func joinOr(items []string) string {
 }
 
 // logUnknownSelectors appends one row per unrecognized name to
-// ~/cmdr-unknown-check-log.csv. Best-effort like the other two logs: it's
+// `unknown-check-log.csv`. Best-effort like the other two logs: it's
 // instrumentation, and a full disk or a read-only home must never color a run's
 // verdict or print noise.
 func logUnknownSelectors(e *unknownSelectorError) {

@@ -137,11 +137,11 @@ specificity the rest of the corpus should be driven to.
 - **Three whole-suite collapses excluded** from the counts (`cmdr-e2e-linux-1785826042` 240 specs, `nonmtp1-1785971362`
   32, `nonmtp2-1786017110` 50). A run where most of the shard fails is one broken build or one dead app, not per-test
   flake, and folding it in would swamp the ranking.
-- **`~/cmdr-check-log.csv`, 2026-07-19 to 2026-08-08, 81 105 rows.** Lane-level only: its `message` column carries a
-  summary ("rust tests failed"), never test names, so it gives red-lane FREQUENCY and nothing per-test. Useful as a base
-  rate: `rust-tests` 274 fail rows, `svelte-tests` 157, `rust-integration-tests` 80 (some "docker not running"),
-  `desktop-e2e-playwright` 78 (several are `tauri build failed`, not test failures), `rust-tests-linux` 64,
-  `desktop-e2e-linux` 33, `rustdoc` 17, `website-e2e` 11, `go-tests` 8, `test-sleep` 9.
+- **`~/.local/share/check-runner/cmdr/check-log.csv`, 2026-07-19 to 2026-08-08, 81 105 rows.** Lane-level only: its
+  `message` column carries a summary ("rust tests failed"), never test names, so it gives red-lane FREQUENCY and nothing
+  per-test. Useful as a base rate: `rust-tests` 274 fail rows, `svelte-tests` 157, `rust-integration-tests` 80 (some
+  "docker not running"), `desktop-e2e-playwright` 78 (several are `tauri build failed`, not test failures),
+  `rust-tests-linux` 64, `desktop-e2e-linux` 33, `rustdoc` 17, `website-e2e` 11, `go-tests` 8, `test-sleep` 9.
 - **`rust-test-contention`'s own re-run-alone verdicts**, captured in this night's ten check runs. This is the highest-
   quality Rust evidence in the repo: it re-runs each failing test ALONE at the unchanged deadline, so "contention" is
   measured, not assumed.

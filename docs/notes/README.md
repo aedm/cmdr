@@ -27,7 +27,8 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   duration signal at all. That is a flake predictor, not the speed bar: the standing standard is two seconds on a
   saturated machine (`docs/testing.md` § "A Rust test gets two seconds on a saturated machine"), and no margin ratchet
   is planned. Read this note before anyone seeds a duration allowlist, and read the first section regardless: it carries
-  the two ways `~/cmdr-test-log.csv` and `~/cmdr-check-log.csv` mislead a naive top-offenders query.
+  the two ways `~/.local/share/check-runner/cmdr/test-log.csv` and `~/.local/share/check-runner/cmdr/check-log.csv`
+  mislead a naive top-offenders query.
 - `sftp-crate-evaluation-2026-08-22.md`: which Rust crate the SFTP backend gets built on, with each candidate's source
   read rather than its README. **The recommendation is `russh` + `openssh-sftp-client`**, and the reasoning is written
   out so it can be argued with. Read it before anyone proposes `russh-sftp` (the popular default) or a libssh2 binding:

@@ -4,17 +4,16 @@ import (
 	"encoding/csv"
 	"errors"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
 
-// readUnknownLog returns the rows of ~/cmdr-unknown-check-log.csv under a
+// readUnknownLog returns the rows of the unrecognized-name log under a
 // redirected HOME, header included. A missing file yields no rows.
 func readUnknownLog(t *testing.T, home string) [][]string {
 	t.Helper()
-	f, err := os.Open(filepath.Join(home, unknownSelectorCSVFileName))
+	f, err := os.Open(wantLogPath(home, unknownSelectorCSVFileName))
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -30,8 +29,7 @@ func readUnknownLog(t *testing.T, home string) [][]string {
 }
 
 func TestLogUnknownSelectorsRecordsTheNameTheArgsAndTheGuess(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := redirectHome(t)
 
 	logUnknownSelectors(newUnknownSelectorError(
 		[]string{"clipy"}, []string{"clipy", "--fast", "website"}, false))
@@ -58,8 +56,7 @@ func TestLogUnknownSelectorsRecordsTheNameTheArgsAndTheGuess(t *testing.T) {
 }
 
 func TestLogUnknownSelectorsWritesOneRowPerUnknownName(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := redirectHome(t)
 
 	logUnknownSelectors(newUnknownSelectorError(
 		[]string{"clipy", "rustfmtt"}, []string{"clipy,rustfmtt"}, false))
@@ -74,8 +71,7 @@ func TestLogUnknownSelectorsWritesOneRowPerUnknownName(t *testing.T) {
 }
 
 func TestLogUnknownSelectorsHonorsNoLog(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
+	home := redirectHome(t)
 
 	logUnknownSelectors(newUnknownSelectorError([]string{"clipy"}, []string{"clipy"}, true))
 
