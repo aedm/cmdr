@@ -12,29 +12,29 @@ Related guides for the signing and distribution steps: `apple-signing-and-notari
 
 ## Which runner builds the release
 
-Two runners can build Cmdr, and the choice is one line in `release.yml` (`build.runs-on`).
+**GitHub-hosted (`macos-latest`) builds every release**, set in one line in `release.yml` (`build.runs-on`). This repo
+is public, so hosted macOS minutes are free. No self-hosted runner is registered, and nothing needs one.
 
-**GitHub-hosted (`macos-latest`) is what runs today.** The self-hosted Mac is registered and can be re-enabled, but its
-service is stopped.
-
-- **Why hosted won**: `bundle_dmg.sh` drives Finder over AppleScript, which on the self-hosted Mac needs a TCC
-  Automation grant for the runner's bundled `node`. That path changes on every runner auto-update, so the grant lapses
-  silently, and once a prompt times out unattended the entry sticks at denied with no supported way to clear it short of
-  a machine-wide `tccutil reset AppleEvents`. That failure took all three matrix jobs on the 0.37.0 release; the
-  troubleshooting section below has the full anatomy. Hosted images have no such gate.
+- **Why hosted, and why going back is unappealing**: `bundle_dmg.sh` drives Finder over AppleScript, which on a
+  self-hosted Mac needs a TCC Automation grant for the runner's bundled `node`. That path changes on every runner
+  auto-update, so the grant lapses silently, and once a prompt times out unattended the entry sticks at denied with no
+  supported way to clear it short of a machine-wide `tccutil reset AppleEvents`. That failure took all three matrix jobs
+  on the 0.37.0 release; the troubleshooting section below has the full anatomy. Hosted images have no such gate. A
+  self-hosted Mac also has to stay awake for the whole build, or every in-flight job dies with
+  `The self-hosted runner lost communication with the server`.
 - **What hosted costs**: every job is ephemeral, so each pays a cold ~1000-crate Tauri compile instead of reusing a warm
-  cargo cache, and GitHub bills macOS minutes at a 10x multiplier. Partly offset by the three arch jobs running in
-  parallel rather than queueing on one machine, so wall-clock is roughly one cold build.
-- **What hosted needs that self-hosted didn't**: `brew install create-dmg` as a step (the Mac had it installed by hand),
-  and mise's action cache left on (there's no local tool dir to persist).
+  cargo cache. Partly offset by the three arch jobs running in parallel rather than queueing on one machine, so
+  wall-clock is roughly one cold build.
+- **What hosted needs that self-hosted didn't**: `brew install create-dmg` as a step, and mise's action cache left on
+  (there's no local tool dir to persist).
 
-**To switch back**: set `runs-on: [self-hosted, macOS, ARM64]`, restart the service with
-`cd ~/actions-runner && ./svc.sh start`, and fix the Finder Automation grant first, or the DMG step hangs ~2 minutes and
-fails every job. Check the runner version too: `tauri-action` v1 declares `runs.using: node24`, which needs
-`actions-runner` 2.327.0 or newer (added in that release, 2025-07-22); an older runner rejects the step outright. Worth
-doing if hosted minutes get expensive or cold builds get painful; the whole workflow still carries the
-self-hosted-specific guards (the stale-`/Volumes/Cmdr` detach, the keychain search-list restore), so nothing else has to
-change.
+**If a self-hosted runner ever earns its keep again**, it's a from-scratch setup: register one with a token from
+`gh api -X POST repos/vdavid/cmdr/actions/runners/registration-token`, run `./config.sh` and `./svc.sh install`, then
+set `runs-on: [self-hosted, macOS, ARM64]`. Fix the Finder Automation grant before the first run, or the DMG step hangs
+~2 minutes and fails every job. Mind the runner version too: `tauri-action` v1 declares `runs.using: node24`, which
+needs `actions-runner` 2.327.0 or newer (added in that release, 2025-07-22); an older runner rejects the step outright.
+The workflow still carries its self-hosted-specific guards (the stale-`/Volumes/Cmdr` detach, the keychain search-list
+restore), so nothing else has to change.
 
 Re-enabling the persistent cargo target dir belongs with that switch, not before it: the old `CARGO_TARGET_DIR`
 (`~/.cache/cmdr-release-target`, outside the workspace `actions/checkout` wipes) was safe ONLY because the jobs ran
@@ -124,11 +124,11 @@ screen LOOKS, which no test can judge.
 
 ## Keep the Mac awake during the build (self-hosted only)
 
-**Not needed while `runs-on` is `macos-latest`**: the build happens on GitHub's hardware, so this Mac can sleep, and the
-laptop can close, with no effect on the release. Everything below applies the moment the runner switches back to
-self-hosted.
+**Not needed today**: `runs-on` is `macos-latest`, so the build happens on GitHub's hardware, this Mac can sleep, and
+the laptop can close with no effect on the release. Everything below applies only if a self-hosted runner is ever set up
+again.
 
-The self-hosted runner lives on this Mac. If the machine sleeps (even briefly, or just the display), GitHub Actions
+A self-hosted runner would live on this Mac. If the machine sleeps (even briefly, or just the display), GitHub Actions
 drops the runner connection and every in-flight matrix job fails with
 `The self-hosted runner lost communication with the server.` This bit us on the 0.13.0 release: all three jobs failed at
 exactly 11m1s each.
