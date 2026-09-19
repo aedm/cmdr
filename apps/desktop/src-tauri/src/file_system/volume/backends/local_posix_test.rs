@@ -918,3 +918,60 @@ fn an_exclusive_rename_propagates_a_failure_that_is_not_about_the_flag() {
     assert!(source.exists(), "nothing moved");
     assert!(!destination.exists());
 }
+
+// ── What a stat of the destination proves ───────────────────────────────────
+//
+// The degraded path asks the filesystem whether the name is taken, and the
+// answer has THREE states. A stat that couldn't answer proves nothing, and the
+// two tests below are the ones that stop it being read as "the name is free".
+//
+// A stat that fails while the rename beside it succeeds can't be staged on a
+// real filesystem: both resolve the same path through the same permissions, so
+// whatever stops one stops the other. Only a TRANSIENT failure (a share
+// reconnecting, a marginal stick) separates them, which is why the verdict is
+// handed in rather than provoked.
+
+#[test]
+fn a_stat_that_answered_tells_the_rename_which_way_to_go() {
+    let test_dir = TestDir::new("name_state_answers");
+    let occupied = test_dir.join("occupied.txt");
+    std::fs::write(&occupied, b"here").expect("seeding the occupied name");
+
+    assert!(matches!(
+        local_posix::name_state(std::fs::symlink_metadata(&occupied)),
+        local_posix::NameState::Occupied
+    ));
+    assert!(matches!(
+        local_posix::name_state(std::fs::symlink_metadata(test_dir.join("nothing.txt"))),
+        local_posix::NameState::Free
+    ));
+}
+
+/// ❗ The clobber this whole primitive exists to prevent. A stat that came back
+/// with anything other than "it isn't there" has told us nothing about the
+/// name, so the rename must refuse rather than assume it's free and destroy
+/// whatever is actually sitting there.
+#[test]
+fn a_destination_we_could_not_stat_is_never_treated_as_a_free_name() {
+    let test_dir = TestDir::new("name_state_unknown");
+    let source = test_dir.join("source.txt");
+    let destination = test_dir.join("target.txt");
+    std::fs::write(&source, b"source").expect("seeding the source");
+    std::fs::write(&destination, b"the user's file").expect("seeding the destination");
+
+    let unreadable = local_posix::NameState::Unknown(std::io::Error::from_raw_os_error(libc::EIO));
+    let err = local_posix::rename_if_free(&source, &destination, unreadable)
+        .expect_err("a stat that couldn't answer is never a free name");
+
+    assert_eq!(
+        err.raw_os_error(),
+        Some(libc::EIO),
+        "the filesystem's own reason rides out"
+    );
+    assert_eq!(
+        std::fs::read(&destination).expect("reading the destination"),
+        b"the user's file",
+        "the file that was there survived"
+    );
+    assert!(source.exists(), "nothing moved");
+}

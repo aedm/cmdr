@@ -123,13 +123,52 @@ pub(super) fn rename_exclusive_with(
         destination.display()
     );
 
-    if std::fs::symlink_metadata(destination).is_ok() {
-        return Err(io::Error::new(
+    rename_if_free(source, destination, name_state(std::fs::symlink_metadata(destination)))
+}
+
+/// What a stat of a rename destination proved about the name.
+///
+/// ❗ **Three answers, never two.** A stat that failed for any reason other than
+/// the name being free has proved nothing, and folding that into [`Self::Free`]
+/// is how a check-then-rename destroys the file it exists to protect. The
+/// exposed filesystems are the ones most likely to answer with something else:
+/// a reconnecting share, a marginal stick, a mount on its way out.
+pub(super) enum NameState {
+    /// Something is there, so an exclusive rename has to refuse.
+    Occupied,
+    /// Nothing is there, so the rename may go ahead.
+    Free,
+    /// The filesystem wouldn't say, carrying the reason it gave instead.
+    Unknown(io::Error),
+}
+
+/// Reads a destination stat as the answer it actually carries.
+///
+/// Takes the result rather than the path so the three-way fold stays pure, and
+/// so [`rename_if_free`] can be handed an `Unknown` a real filesystem only
+/// produces transiently.
+pub(super) fn name_state(stat: io::Result<std::fs::Metadata>) -> NameState {
+    match stat {
+        Ok(_) => NameState::Occupied,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => NameState::Free,
+        Err(err) => NameState::Unknown(err),
+    }
+}
+
+/// Renames onto a name a stat has just reported on, refusing unless it is free.
+///
+/// Still racy, irreducibly: the name can be taken in the gap between the stat
+/// and the rename, and without the kernel flag there is no way to close that.
+/// What it does guarantee is that the gap is the ONLY way through.
+pub(super) fn rename_if_free(source: &Path, destination: &Path, state: NameState) -> io::Result<()> {
+    match state {
+        NameState::Occupied => Err(io::Error::new(
             io::ErrorKind::AlreadyExists,
             "destination already exists",
-        ));
+        )),
+        NameState::Unknown(err) => Err(err),
+        NameState::Free => std::fs::rename(source, destination),
     }
-    std::fs::rename(source, destination)
 }
 
 /// A volume backed by the local POSIX file system.

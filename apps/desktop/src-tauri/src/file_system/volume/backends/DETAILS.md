@@ -208,8 +208,23 @@ errno 45, and the check-then-rename fallback landed, 2026-09-17), and other non-
 filesystem meant becomes a second, quieter way to fail. The degradation is racy and deliberately so: a lost race
 refuses, where a bare `rename(2)` would clobber silently and unrecoverably.
 
+**FAT32 and exFAT are NOT on the degraded path**, which is worth knowing before sizing any work that calls itself
+"the USB-stick case": both take the flag and answer `EEXIST` (verified on macOS 27.0 by a direct `renamex_np` probe
+against freshly created FAT32 and exFAT disk images alongside HFS+ and APFS controls, all four identical, 2026-09-19).
+What actually reaches the fallback is macOS-mounted SMB and FUSE mounts.
+
+**The check is three-valued, and ❗ that is the whole point.** `name_state` folds the `symlink_metadata` result into
+`Occupied` / `Free` / `Unknown(err)`, and `rename_if_free` renames on `Free` alone. A stat that failed for any reason
+other than the name being free has proved nothing about the name, so `Unknown` refuses and carries the filesystem's
+own errno out. Collapsing it into "free" (which `.is_ok()` did) turns every transient stat failure into a silent,
+unrecoverable clobber, on exactly the flaky mounts that reach this path in the first place. The enum exists so the
+fold can't be written as a bool again.
+
 The `ENOTSUP` path can't be reached on a filesystem a test can mount, and `testing::disk_images` is not for minting a
 FAT image, so `rename_exclusive_with` takes the attempt as a parameter and `local_posix_test.rs` injects the errno.
+The `Unknown` arm needs no seam at all: a stat and the rename beside it resolve the same path through the same
+permissions, so nothing a test can set up fails one without failing the other, and only a transient failure separates
+them. `local_posix_test.rs` hands `rename_if_free` the verdict directly instead.
 
 ## Where the shared conformance assertions live
 
