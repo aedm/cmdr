@@ -2,9 +2,9 @@
 
 **The quest**: A user (ERR-4TEMD, v0.44.0, macOS 26.6.2) tried to move two `root:admin` files out of
 `/Applications/PixInsight/src/scripts/Toolbox/` into a folder under `~/Downloads`. Both attempts stopped within 2 ms
-with `Permission denied (os error 13)`: both folders sit on one volume, so the move is a rename, and a rename needs write
-access to the folder the files leave. Copying worked because the files are world-readable, so the user copied in Cmdr,
-deleted the originals with `sudo` in Terminal, and asked for Cmdr to ask for the admin password instead.
+with `Permission denied (os error 13)`: both folders sit on one volume, so the move is a rename, and a rename needs
+write access to the folder the files leave. Copying worked because the files are world-readable, so the user copied in
+Cmdr, deleted the originals with `sudo` in Terminal, and asked for Cmdr to ask for the admin password instead.
 
 **What we're building**: when an operation hits a folder the macOS user can't change, Cmdr asks, gets the admin password
 at most once a day, and finishes the operation with its normal progress, cancel, conflict handling, and rollback. A tiny
@@ -15,8 +15,8 @@ spike before M2 starts.
 
 ## What already exists
 
-- **Where the move stops**: `apps/desktop/src-tauri/src/file_system/write_operations/transfer/move_op/mod.rs` picks
-  the same-volume engine by `st_dev`, and
+- **Where the move stops**: `apps/desktop/src-tauri/src/file_system/write_operations/transfer/move_op/mod.rs` picks the
+  same-volume engine by `st_dev`, and
   `apps/desktop/src-tauri/src/file_system/write_operations/transfer/move_op/same_fs.rs` renames with `?`, so a refusal
   aborts the operation with no fallback. The pre-flight in
   `apps/desktop/src-tauri/src/file_system/write_operations/validation.rs` checks only that the DESTINATION is writable.
@@ -94,18 +94,18 @@ spike before M2 starts.
    user switching, and Cmdr quit. It's an Authorization Services right (for example
    `com.veszelovszki.cmdr.elevated-file-operations`) defined with `shared: false` and `timeout: 86400`. Cmdr holds the
    `AuthorizationRef` and sends its external form with each request; the helper verifies it with
-   `AuthorizationCopyRights`, no interaction allowed. Revoking means Cmdr destroys the rights. (Rights carry `shared` and
-   `timeout` attributes: `security authorizationdb read system.privilege.admin` shows `shared false`, `timeout 300` on
-   macOS 26, 2026-09-15.)
+   `AuthorizationCopyRights`, no interaction allowed. Revoking means Cmdr destroys the rights. (Rights carry `shared`
+   and `timeout` attributes: `security authorizationdb read system.privilege.admin` shows `shared false`, `timeout 300`
+   on macOS 26, 2026-09-15.)
 7. **A registered helper does nothing without a valid proof.** That makes the persisted approval harmless: registration
    is a door, and the password is its key.
-8. **Only Cmdr can connect.** The helper's listener sets `setConnectionCodeSigningRequirement` (macOS 13+) to our Team ID
-   plus `com.veszelovszki.cmdr`. It's audit-token based, so PID reuse doesn't fool it, and non-matching callers are
+8. **Only Cmdr can connect.** The helper's listener sets `setConnectionCodeSigningRequirement` (macOS 13+) to our Team
+   ID plus `com.veszelovszki.cmdr`. It's audit-token based, so PID reuse doesn't fool it, and non-matching callers are
    dropped before the helper sees them. Cmdr pins the helper's signature the same way (`setCodeSigningRequirement`).
 9. **Nothing can inject code into Cmdr.** Decision 8 trusts whatever runs inside Cmdr, so M0 drops
-   `disable-library-validation`. Release builds keep the hardened runtime and never gain `allow-dyld-environment-variables`
-   or `get-task-allow`. If Tauri really needs library validation off, the XPC client and the alert move into a tiny
-   separate signed binary that keeps it on.
+   `disable-library-validation`. Release builds keep the hardened runtime and never gain
+   `allow-dyld-environment-variables` or `get-task-allow`. If Tauri really needs library validation off, the XPC client
+   and the alert move into a tiny separate signed binary that keeps it on.
 10. **The helper touches only the folder the user can't change; Cmdr does everything else as the user.** Its XPC API is
     a handful of primitives, all through directory file descriptors with `O_NOFOLLOW`, ❌ never a path string resolved
     as root:
@@ -132,8 +132,8 @@ spike before M2 starts.
     can reach, an agent must reach, answer, and observe", to be written there in M4.
 14. **A denylist as a backstop.** The helper refuses writes under `/Library/LaunchDaemons`, `/Library/LaunchAgents`,
     `/Library/PrivilegedHelperTools`, `/private/etc`, and `/var/root`, checked on the resolved descriptor
-    (`fcntl(F_GETPATH)`), ❌ never on a caller's string. It can't list every root-run file, so it only backs up decisions
-    4–11.
+    (`fcntl(F_GETPATH)`), ❌ never on a caller's string. It can't list every root-run file, so it only backs up
+    decisions 4–11.
 15. **The setting**: Settings > Behavior > Navigation & file ops > "Allow administrator actions". The toggle reads the
     live `SMAppService` status, because users can switch the helper off in System Settings. Off: `unregister()` and
     destroy the proof. On: register, which may send the user to System Settings.
@@ -149,7 +149,8 @@ spike before M2 starts.
 1. An operation hits `EACCES`, parks, and shows the first-use alert. The user clicks `[Allow]`.
 2. Cmdr registers the daemon. Its status becomes "requires approval", and macOS shows its "Background Items Added"
    notification.
-3. Cmdr opens System Settings > General > Login Items & Extensions. The user turns Cmdr on and authenticates as an admin.
+3. Cmdr opens System Settings > General > Login Items & Extensions. The user turns Cmdr on and authenticates as an
+   admin.
 4. Cmdr re-reads the status when it becomes the active app again (an activation event, no polling). If it's still not
    enabled, the operation stays parked, the queue says why, and Cancel works.
 5. Cmdr requests the right, and macOS shows its password dialog.
@@ -180,8 +181,8 @@ For David's review; not final.
 - **Buttons**: "Allow", "Skip", "Cancel". **Checkbox**: "Skip every item like this in this operation".
 - **Queue status**: "Waiting for administrator approval".
 - **Setting**: "Allow administrator actions". **Description**: "Cmdr asks before each operation, then moves, copies, or
-  deletes files your macOS user can't change. A small helper with administrator rights runs in the background while
-  Cmdr uses it."
+  deletes files your macOS user can't change. A small helper with administrator rights runs in the background while Cmdr
+  uses it."
 
 ## Milestones
 
@@ -205,8 +206,8 @@ For David's review; not final.
 
 ## Open questions
 
-1. **Re-registering**: after `unregister()`, does `register()` skip approval? One researcher reports no re-authentication;
-   Apple hasn't confirmed. Either answer is fine for the UX, since the user toggled it.
+1. **Re-registering**: after `unregister()`, does `register()` skip approval? One researcher reports no
+   re-authentication; Apple hasn't confirmed. Either answer is fine for the UX, since the user toggled it.
 2. **The 24-hour right**: does `AuthorizationCopyRights` honor `timeout: 86400` on a custom right, and does destroying
    the rights in Cmdr make the helper's check fail right away?
 3. **TCC and the helper**: is a root launchd daemon refused when it writes into `~/Downloads` or `~/Documents`, even
@@ -225,15 +226,15 @@ For David's review; not final.
 
 Checked 2026-09-15.
 
-- [TN2065](https://developer.apple.com/library/archive/technotes/tn2065/_index.html): `do shell script ... with
-  administrator privileges` caches authentication for five minutes, per script.
+- [TN2065](https://developer.apple.com/library/archive/technotes/tn2065/_index.html):
+  `do shell script ... with administrator privileges` caches authentication for five minutes, per script.
 - [SMAppService quick notes (theevilbit)](https://theevilbit.github.io/posts/smappservice/): daemon approval needs admin
   authentication; re-registering after approval doesn't ask again.
-- [Apple forum 707482](https://developer.apple.com/forums/thread/707482): the approval state persists across reboots
-  and app removal "to preserve user intent".
+- [Apple forum 707482](https://developer.apple.com/forums/thread/707482): the approval state persists across reboots and
+  app removal "to preserve user intent".
 - [Apple forum 768592](https://developer.apple.com/forums/thread/768592): a running daemon keeps its old binary after an
   app upgrade until it's unregistered and registered again.
-- [setConnectionCodeSigningRequirement](https://developer.apple.com/documentation/foundation/nsxpclistener/setconnectioncodesigningrequirement(_:)):
+- [setConnectionCodeSigningRequirement](<https://developer.apple.com/documentation/foundation/nsxpclistener/setconnectioncodesigningrequirement(_:)>):
   macOS 13+.
 - [CFUserNotification](https://developer.apple.com/documentation/corefoundation/cfusernotification): up to three
   buttons, plus checkboxes.
