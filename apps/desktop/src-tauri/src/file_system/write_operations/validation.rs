@@ -515,6 +515,24 @@ mod refusing_folder_tests {
     use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
 
+    /// Whether this process can be refused by a folder's permission bits at all.
+    ///
+    /// Root isn't: it bypasses the write bit, so the `0o555` folder below still
+    /// takes writes and `refusing_folder` correctly finds nothing to name. Every
+    /// test here that needs a folder to REALLY refuse therefore returns early
+    /// under root, mirroring the guard `validation_integration_test.rs` uses.
+    ///
+    /// ❗ The Linux lane runs as root in Docker, so on that lane these four tests
+    /// prove nothing and pass. That's the honest answer — the alternative is a
+    /// red lane asserting something the environment can't express — but it does
+    /// mean macOS is where this behavior is actually covered. Don't "simplify"
+    /// the guard away to make the tests look universal.
+    fn a_folder_can_refuse_us() -> bool {
+        // SAFETY: (test) `geteuid` takes no arguments, shares no memory, and can't fail — it
+        // just returns the caller's effective uid. We compare the returned integer to 0.
+        unsafe { libc::geteuid() != 0 }
+    }
+
     /// A folder nobody can write into, and the file sitting in it.
     fn locked_folder_with_file(temp: &TempDir) -> (PathBuf, PathBuf) {
         let folder = temp.path().join("locked");
@@ -529,6 +547,9 @@ mod refusing_folder_tests {
     /// lives in is what refuses.
     #[test]
     fn the_folder_an_entry_lives_in_is_named() {
+        if !a_folder_can_refuse_us() {
+            return;
+        }
         let temp = TempDir::new().expect("tempdir");
         let (folder, file) = locked_folder_with_file(&temp);
 
@@ -552,6 +573,9 @@ mod refusing_folder_tests {
     /// that folder and not its (writable) parent.
     #[test]
     fn a_folder_that_takes_no_writes_itself_is_named() {
+        if !a_folder_can_refuse_us() {
+            return;
+        }
         let temp = TempDir::new().expect("tempdir");
         let (folder, _file) = locked_folder_with_file(&temp);
 
@@ -564,6 +588,9 @@ mod refusing_folder_tests {
     /// folder it couldn't create, so the walk skips the ones that aren't there yet.
     #[test]
     fn a_folder_that_cannot_be_created_names_the_deepest_ancestor_that_exists() {
+        if !a_folder_can_refuse_us() {
+            return;
+        }
         let temp = TempDir::new().expect("tempdir");
         let (folder, _file) = locked_folder_with_file(&temp);
         let wanted = folder.join("new").join("deeper");
@@ -577,6 +604,9 @@ mod refusing_folder_tests {
     /// reaches the typed variant through it.
     #[test]
     fn a_classified_refusal_carries_the_errno_and_the_folder() {
+        if !a_folder_can_refuse_us() {
+            return;
+        }
         let temp = TempDir::new().expect("tempdir");
         let (folder, file) = locked_folder_with_file(&temp);
 
