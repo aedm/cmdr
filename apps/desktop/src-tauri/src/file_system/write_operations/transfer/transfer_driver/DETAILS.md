@@ -18,23 +18,34 @@ The async driver resolves the top-level conflict itself and never invokes the cl
 that to the closure, which is why point 2 of the data-safety contract is async-only. ❌ Don't unify the two by moving
 resolution into the sync driver without moving the closure's `&mut` state with it.
 
-### Progress stays honest across a retry
+### Progress stays honest across a retry, and across leaves that overlap
 
-An attempt restarts at byte zero, so a file's own counter legitimately goes backwards. What the user sees must not, and
-the operation's total must not double-count. Both paths therefore report a file's HIGH-WATER mark:
+Three types, one per scope (`progress.rs`): `LeafProgressLedger` holds the operation's totals, `SourceProgress` is one
+top-level source's view of it (carrying the name the events are labeled with, and the throttle clock), and
+`LeafProgress` is one file's handle. The reported number is `finished + sum(in-flight leaves)`, read under ONE lock.
 
-- **Concurrent** (`make_concurrent_per_file_progress`): `last_file_bytes.fetch_max(...)`, ❌ never `swap`. A `swap`
-  lowers the watermark on a restart and then credits the whole re-streamed prefix a second time — a silent over-count
+Two things that number must survive:
+
+- **A retry.** An attempt restarts at byte zero, so a file's own counter legitimately goes backwards. `LeafProgress`
+  holds its HIGH-WATER mark, so the bar doesn't, and `complete` adds the leaf's exact size once however many attempts
+  it took. ❌ Never lower the mark on a restart: the re-streamed prefix would be credited twice, a silent over-count
   and a Size bar that reaches 100% before the copy does.
-- **Serial** (`SerialLeafProgress`): a `leaf_high_water` for the in-flight leaf, reset in `on_leaf_complete` so the
-  next (possibly much smaller) leaf measures from its own first byte. `on_leaf_complete` still adds the leaf's exact
-  size once, so the end number is exact whatever the attempt count.
+- **Leaves that overlap.** A directory source streams many files at once through `volume/strategy.rs::FileWindow`, all
+  reporting into the same ledger. ❌ Never give them one shared high-water slot: the bar then shows whichever leaf is
+  furthest along, and the next leaf to finish — any leaf, however small — resets the slot and takes the big one's
+  progress off the bar. On a 664 MB folder whose largest file was 259 MB that read as the Size bar falling from
+  ~300 MB back to ~80 MB, once per completed file, while the bytes were moving fine.
 
-The file counter needs nothing: `on_file_complete` fires only after `stream_pipe_file` returns `Ok`.
+`complete` swaps the leaf's in-flight share for its exact byte count under one lock, so the total can't be read
+half-applied; a leaf that never lands withdraws its share on `Drop`, so a failed or cancelled file stops being reported
+as delivered. Reading `finished` and `in_flight` from two separate atomics reintroduces the sawtooth in miniature, so
+❌ don't split them.
+
+The file counter needs nothing: `complete` fires only after `stream_pipe_file` returns `Ok`.
 
 ### The file counter counts COMPLETED files, and the gap that opens is real
 
-`on_file_complete` fires after the write returns, so with a window of `W` the destination can legitimately hold up to
+`LeafProgress::complete` fires after the write returns, so with a window of `W` the destination can legitimately hold up to
 `W - 1` more files than the counter shows. On 2026-07-31 that read as "5 of 764" against 10 files already on the NAS,
 and the counter was right both times: five tasks had returned, the rest had bytes on the share but had not.
 

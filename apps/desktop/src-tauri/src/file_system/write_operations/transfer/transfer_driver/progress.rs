@@ -302,7 +302,8 @@ impl LeafProgress {
             totals.reported()
         };
         let files_done = ledger.files_done.load(Ordering::Relaxed);
-        // allowed-discarded-outcome: a throttled chunk needs no follow-up; the counters are already credited.
+        // Whether the throttle let this tick through changes nothing: the
+        // counters are credited above either way.
         try_emit_throttled(&self.source, files_done, reported);
         ControlFlow::Continue(())
     }
@@ -372,9 +373,7 @@ fn try_emit_throttled(source: &SourceProgress, files_done: usize, bytes_done: u6
     }
     *last = Instant::now();
     drop(last);
-    source
-        .ledger
-        .emit(source.file_name.clone(), files_done, bytes_done);
+    source.ledger.emit(source.file_name.clone(), files_done, bytes_done);
     true
 }
 

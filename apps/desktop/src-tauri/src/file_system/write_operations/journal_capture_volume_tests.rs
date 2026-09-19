@@ -353,11 +353,23 @@ impl VolumeLoop {
     /// [`Self::copy`], stopped once `after_bytes` have moved — a directory source
     /// interrupted with some children already fully written and one in flight.
     async fn copy_stopping_after_bytes(&self, sources: &[&str], after_bytes: u64) {
+        self.stop_after(sources, after_bytes, 0).await;
+    }
+
+    /// Stops once `after_files` children have LANDED, which is what a test
+    /// asserting on the survivors needs: see `StopAfterBytesSink::after_files`
+    /// for why a byte threshold alone no longer implies a finished child.
+    async fn copy_stopping_after_children(&self, sources: &[&str], after_files: usize) {
+        self.stop_after(sources, 0, after_files).await;
+    }
+
+    async fn stop_after(&self, sources: &[&str], after_bytes: u64, after_files: usize) {
         self.run_copy(sources, |intent| {
             Arc::new(StopAfterBytesSink {
                 inner: CollectorEventSink::new(),
                 intent,
                 after_bytes,
+                after_files,
             })
         })
         .await;
@@ -472,12 +484,23 @@ struct StopAfterBytesSink {
     inner: CollectorEventSink,
     intent: Arc<std::sync::atomic::AtomicU8>,
     after_bytes: u64,
+    /// How many CHILDREN must have landed before the stop fires, on top of the
+    /// byte threshold.
+    ///
+    /// ❗ Bytes alone can't express "at least one child is on disk". The
+    /// reported byte total includes what the in-flight leaves have streamed
+    /// (`transfer_driver/progress.rs`), so a subtree copying several files at
+    /// once crosses any byte threshold with every one of them still unfinished,
+    /// and a test asserting on survivors then finds none. `files_done` counts
+    /// COMPLETED leaves, which is the thing those tests actually need.
+    after_files: usize,
 }
 
 impl OperationEventSink for StopAfterBytesSink {
     fn emit_progress(&self, event: crate::file_system::write_operations::types::WriteProgressEvent) {
         if event.phase == crate::file_system::write_operations::types::WriteOperationPhase::Copying
             && event.bytes_done >= self.after_bytes
+            && event.files_done >= self.after_files
         {
             // `OperationIntent::Stopped` = 2: keep what's copied, clean the partial.
             self.intent.store(2, std::sync::atomic::Ordering::Relaxed);
@@ -599,7 +622,7 @@ async fn an_interrupted_concurrent_volume_copy_journals_every_child_it_finished(
         }
     }
 
-    fixture.copy_stopping_after_bytes(&["/a", "/b", "/c"], 200_000).await;
+    fixture.copy_stopping_after_children(&["/a", "/b", "/c"], 1).await;
 
     let survivors = fixture.dest_files_under("/").await;
     assert!(
@@ -629,7 +652,7 @@ async fn an_interrupted_volume_folder_copy_journals_every_child_it_finished() {
         fixture.put(&format!("/album/f{i}.bin"), &vec![b'x'; 200_000]).await;
     }
 
-    fixture.copy_stopping_after_bytes(&["/album"], 250_000).await;
+    fixture.copy_stopping_after_children(&["/album"], 1).await;
 
     let survivors = fixture.dest_files_under("/album").await;
     assert!(

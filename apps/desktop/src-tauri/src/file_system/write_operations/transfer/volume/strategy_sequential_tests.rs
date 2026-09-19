@@ -7,16 +7,16 @@
 //! tar is sequential-access, so it takes the one-pass path); the destination is
 //! an `InMemoryVolume`, so the write lands through the normal `write_from_stream`.
 
+use super::super::faulty_volume::forward_volume_methods;
 use super::super::transfer_error::PathedVolumeError;
 use super::test_support::make_state;
-use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
-use super::super::faulty_volume::forward_volume_methods;
 use super::*;
+use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
 use std::future::Future;
-use std::ops::ControlFlow;
-use std::pin::Pin;
 use std::io::Write;
+use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -311,7 +311,6 @@ async fn sequential_extract_lands_empty_dirs_and_symlinks() {
         "a symlink member extracts to a benign empty file"
     );
 }
-
 
 /// A destination that trips a switch the first time a member lands.
 ///

@@ -13,13 +13,16 @@ callbacks. The transfers themselves: `../CLAUDE.md`.
   is signaled. ❌ Never move a destructive call above those gates. The `transfer_driver_*_tests.rs` suites pin all
   three, so a violation is caught here rather than by inspecting four functions.
 - **The cancellation check sits BEFORE any destructive call**, ❌ not after the closure returns.
-- **Progress is HIGH-WATER per file**, because an attempt restarts at byte zero: concurrent uses
-  `last_file_bytes.fetch_max`, ❌ never `swap` (a `swap` lowers the mark on a restart, then credits the re-streamed
-  prefix again). Serial keeps a `leaf_high_water` reset in `on_leaf_complete`, which still adds each leaf's exact size
-  once.
-- **A directory expands to many leaves through ONE `on_file_progress` / `on_file_complete` pair**, and the bars are
-  leaf-granular against preflight LEAF totals, so ❌ never reset the tally per inner file.
-- **Every skip credits the bars AND calls `state.note_skipped`**, ❌ never one without the other. The bars must reach
+- **EVERY leaf holds its OWN share of the in-flight total** (`progress.rs`: `LeafProgressLedger` per operation,
+  `SourceProgress` per top-level source, `LeafProgress` per file). A directory streams many leaves AT ONCE through
+  `volume/strategy.rs::FileWindow`, so ❌ never a shared high-water slot: the next leaf to finish wipes it and the bar
+  drops by everything the big one had streamed. Reported = `finished + sum(in-flight)`, under ONE lock.
+- **A leaf's mark is its HIGH-WATER**, because an attempt restarts at byte zero; ❌ never lower it on a restart (the
+  prefix gets credited twice). `complete` swaps that share for the leaf's exact size; `Drop` withdraws it if the leaf
+  never landed.
+- **The bars are leaf-granular against preflight LEAF totals**, so ❌ never reset the tally per inner file.
+- **Every skip credits the bars AND calls `state.note_skipped`** (`SourceProgress::skip_leaf` does both), ❌ never one
+  without the other. The bars must reach
   their totals; the rate must not see bytes nothing moved, or one big skipped file spikes the reported speed.
   `../DETAILS.md` § "Skipped work moves the bars, and stays out of the rate".
 - **The three closure future shapes (`FetchFut` / `ResolveFut` / `TransferFut`) live HERE**, with the driver whose

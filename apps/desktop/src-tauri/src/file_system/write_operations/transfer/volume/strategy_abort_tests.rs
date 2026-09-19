@@ -30,10 +30,10 @@ use std::time::Duration;
 
 use crate::file_system::volume::{InMemoryVolume, Volume, VolumeError};
 use crate::file_system::write_operations::state::{abort_write_operation, cancel_write_operation};
+use crate::file_system::write_operations::test_support::TestOperationGuard;
 use crate::file_system::write_operations::transfer::transfer_driver::{
     LeafProgressLedger, ObservedProgress, SourceProgress,
 };
-use crate::file_system::write_operations::test_support::TestOperationGuard;
 use crate::ignore_poison::IgnorePoison;
 use crate::test_support::wait_until_async;
 

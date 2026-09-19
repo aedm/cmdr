@@ -20,8 +20,8 @@
 //! smb2 crate's business.
 
 use super::test_support::{FlakyDest, make_state};
-use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
 use super::*;
+use crate::file_system::write_operations::transfer::transfer_driver::LeafProgressLedger;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
@@ -59,7 +59,7 @@ async fn copy_one(
         Path::new(dest_path),
         state,
         &CreatedPaths::default(),
-        &LeafProgressLedger::silent_source(Arc::clone(&state)),
+        &LeafProgressLedger::silent_source(Arc::clone(state)),
         None,
         staging,
     )

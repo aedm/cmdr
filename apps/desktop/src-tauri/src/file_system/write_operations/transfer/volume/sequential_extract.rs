@@ -14,8 +14,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use super::super::super::state::WriteOperationState;
-use super::super::transfer_driver::SourceProgress;
 use super::super::staged_write::StagedWrite;
+use super::super::transfer_driver::SourceProgress;
 use super::merge::copy_directory_streaming;
 use super::strategy::{CreatedPaths, LandingName, MergeCtx, note_pending_for_local_dest, resolve_staging, staging_for};
 use super::transfer_error::{AtPath, PathedVolumeError};

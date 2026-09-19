@@ -292,8 +292,8 @@ there, so they have to honor the same rule themselves.
 directories are created in. That is what keeps the serial-discovery guarantee below (§ "One window for the whole
 operation", "What did NOT change") true while the two reads overlap.
 
-**A skipped child credits both bars immediately.** `MergeChildDecision::Skip` calls `MergeCtx.on_file_skipped(bytes)`
-beside `created.record_skip(...)`: `record_skip` is for the move sweep's preserve set, and `on_file_skipped` is what
+**A skipped child credits both bars immediately.** `MergeChildDecision::Skip` calls `SourceProgress::skip_leaf(bytes)`
+beside `created.record_skip(...)`: `record_skip` is for the move sweep's preserve set, and `skip_leaf` is what
 moves the progress bars and keeps the skip out of the rate sample. A merge whose children all clash moves no bytes at
 all, so without it both bars sit at `0 of N` for the whole run. The netting rule and the throttling behind it:
 `../DETAILS.md` § "Skipped work moves the bars, and stays out of the rate".
@@ -388,20 +388,13 @@ uninstrumented serial path leaves that entire class of stall unreadable: two rea
 `driver=starting()` at 113 s and at 33 s. `PreparingNext` and `ResolvingConflict` go in BEFORE their awaits, for the
 same reason the concurrent driver does it: the call they name is exactly the one that may never return.
 
-**The live progress bar under-reports transiently, by design.** Both per-file progress callbacks were written for one
-in-flight leaf: `SerialLeafProgress`'s `leaf_high_water` and `make_concurrent_per_file_progress`'s `last_file_bytes` are
-each one watermark shared by every file in a subtree. With `W` leaves reporting into one watermark the bar lags by up to
-`(W-1)` files' worth mid-flight. It never over-reports (both use `fetch_max`, so a lower report contributes nothing),
-and on the SERIAL driver — the one a single-folder copy takes — it is exact at every completion boundary, because
-`on_leaf_complete` adds each finished leaf's exact size to `byte_base`. ❌ Reshaping `progress.rs` for this is not worth
-it; the bound is the contract.
-
-**Known, pre-existing, and NOT caused by this**: the CONCURRENT driver's `make_concurrent_per_file_progress` never
-resets `last_file_bytes` between the files of one subtree (`on_file_complete` there only bumps the file counter), so a
-multi-file directory copied through that driver credits roughly `max(file sizes)` rather than their sum — its final byte
-total is under-reported, not just its live bar. `SerialLeafProgress` does it correctly. Out of scope by David's decision
-(2026-08-13); fixing it means resetting the watermark per leaf and compensating on completion, the way the serial type
-already does.
+**Every leaf the window holds owns its own share of the reported byte total.** `transfer_driver/progress.rs` keeps one
+`LeafProgressLedger` per operation, and each file minted from it holds a `LeafProgress` for its whole life; what the
+user sees is `finished + sum(in-flight leaves)`. ❌ Never collapse those shares back into one watermark: a single
+shared slot shows whichever leaf is furthest along, and then the next leaf to finish — any leaf, however small — wipes
+it and drops the reported total by everything the big one had streamed. That was visible as a Size bar sawtoothing
+between ~300 MB and ~80 MB, once per completed file, on a 664 MB folder whose largest member was 259 MB
+(`transfer_driver/DETAILS.md` § "Progress stays honest").
 
 ### Answering the pre-check from one listing
 
@@ -502,8 +495,8 @@ sources**.
    ONCE; mechanism in `crates/cmdr-archive/src/read/DETAILS.md` § "One-pass subtree
    extract") and walks the files in ARCHIVE order. Each file the plan kept is streamed through the destination's
    `write_from_stream` (same safe-overwrite temp+rename, downloads-watcher registration, fsync, and
-   `finalize_safe_replace` safe-replace as `stream_pipe_file`), recorded in `created`, and reported via `on_file_complete`
-   / `on_file_progress`. A file the plan SKIPPED (conflict resolution said skip) is drained and dropped.
+   `finalize_safe_replace` safe-replace as `stream_pipe_file`), recorded in `created`, and reported through a
+   `LeafProgress` of its own. A file the plan SKIPPED (conflict resolution said skip) is drained and dropped.
 
 Why split plan from data: the merge decisions are naturally TREE-ordered (list each dest level once) while the one-pass
 decode is ARCHIVE-ordered; precomputing the plan lets the data pass be a simple archive-order lookup-and-write, and reuses
@@ -699,7 +692,7 @@ Each test wires its pause to the operation's own progress (the first rename land
 
 The serial drivers (`drive_transfer_serial_{sync,async}`) ask `stop_or_park_{sync,async}` at each per-source loop top, so local copy/move, the cross-volume *serial* path, and delete all honor pause between files; the cross-volume serial path additionally parks between chunks (see above).
 
-**The concurrent copy path is deliberately NOT gated for mid-batch pause.** `copy_volumes_with_progress`'s `FuturesUnordered` path (several files in flight at once) has no single "between files" boundary to park at, so it does **not** honor mid-batch pause: its per-file progress callback (`make_concurrent_per_file_progress`) stays **cancel-only** (it breaks on `is_cancelled`, ignores `paused`), like the serial per-file callback. A pause on a concurrent-path op takes effect once the in-flight batch drains to the next admission point. (Threading the `CheckpointStream` checkpoint into the concurrent path too is possible — each in-flight file already streams through `stream_pipe_file` — but isn't wired yet; the admission-point framing is the current contract.) Pinned by `transfer_driver::tests::concurrent_per_file_callback_is_cancel_only_not_pause_aware`.
+**The concurrent copy path is deliberately NOT gated for mid-batch pause.** `copy_volumes_with_progress`'s `FuturesUnordered` path (several files in flight at once) has no single "between files" boundary to park at, so it does **not** honor mid-batch pause: its per-chunk progress callback (`LeafProgress::on_chunk`) stays **cancel-only** (it breaks on `is_cancelled`, ignores `paused`). A pause on a concurrent-path op takes effect once the in-flight batch drains to the next admission point. (Threading the `CheckpointStream` checkpoint into the concurrent path too is possible — each in-flight file already streams through `stream_pipe_file` — but isn't wired yet; the admission-point framing is the current contract.) Pinned by `transfer_driver::tests::concurrent_per_file_callback_is_cancel_only_not_pause_aware`.
 
 ## Overwrite isn't reversible
 

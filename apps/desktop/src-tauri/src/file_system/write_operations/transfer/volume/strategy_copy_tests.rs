@@ -4,10 +4,10 @@
 //! streaming-route selection, and recursive directory copy).
 
 use super::test_support::{SLOW_CHUNK_COUNT, SlowSource, make_state};
-use crate::file_system::write_operations::transfer::transfer_driver::{LeafProgressLedger, ObservedProgress};
 use super::*;
 use crate::file_system::write_operations::state::{OperationIntent, cancel_write_operation};
 use crate::file_system::write_operations::test_support::TestOperationGuard;
+use crate::file_system::write_operations::transfer::transfer_driver::{LeafProgressLedger, ObservedProgress};
 use crate::test_support::wait_until_async;
 use std::path::Path;
 use std::sync::Arc;
@@ -313,7 +313,11 @@ async fn test_streaming_copy_uses_streaming_for_non_local_volumes() {
     .unwrap();
 
     assert_eq!(bytes, 16);
-    assert_eq!(progress.files.load(Ordering::Relaxed), 1, "on_file_complete should fire");
+    assert_eq!(
+        progress.files.load(Ordering::Relaxed),
+        1,
+        "on_file_complete should fire"
+    );
 
     let mut stream = dest.open_read_stream(Path::new("/test.txt")).await.unwrap();
     let chunk = stream.next_chunk().await.unwrap().unwrap();

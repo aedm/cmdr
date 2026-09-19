@@ -129,9 +129,9 @@ mod progress;
 mod sync_driver;
 
 pub(in crate::file_system::write_operations::transfer) use async_driver::drive_transfer_serial_async;
-pub(in crate::file_system::write_operations::transfer) use progress::{LeafProgressLedger, SourceProgress};
 #[cfg(test)]
 pub(in crate::file_system::write_operations::transfer) use progress::ObservedProgress;
+pub(in crate::file_system::write_operations::transfer) use progress::{LeafProgressLedger, SourceProgress};
 pub(in crate::file_system::write_operations::transfer) use sync_driver::drive_transfer_serial_sync;
 
 // ============================================================================
