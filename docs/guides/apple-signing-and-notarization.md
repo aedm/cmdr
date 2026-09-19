@@ -283,12 +283,16 @@ done
 # 2. Rebuild, so the bundler copies the signed binaries in and re-signs the app around them.
 cd - && pnpm build
 
-# 3. Submit. The key is already on this machine; the issuer id is the `APPLE_API_ISSUER` GitHub secret.
+# 3. Submit. The key lives in the infra sops store, so decrypt it to a temp file for the submission
+#    and shred it afterwards. `secret` is ~/projects-git/vdavid/scripts/shell/secret.
+KEY=$(mktemp -t AuthKey_C9VUN857DD)
+trap 'rm -f "$KEY"' EXIT
+secret APPLE_API_KEY_BASE64 | base64 -d > "$KEY"
 cd target/universal-apple-darwin/release/bundle/macos
 ditto -c -k --keepParent Cmdr.app /tmp/Cmdr-notarize.zip
 xcrun notarytool submit /tmp/Cmdr-notarize.zip \
-  --key ~/private_keys/AuthKey_C9VUN857DD.p8 --key-id C9VUN857DD \
-  --issuer "$APPLE_API_ISSUER" --wait
+  --key "$KEY" --key-id C9VUN857DD \
+  --issuer "$(secret APPLE_API_ISSUER)" --wait
 
 # 4. Staple and prove Gatekeeper takes it.
 xcrun stapler staple Cmdr.app
@@ -296,6 +300,10 @@ spctl -a -vvv -t install Cmdr.app   # want: accepted, source=Notarized Developer
 ```
 
 An `Invalid` result names every offending path: `xcrun notarytool log <submission-id> --key … --key-id … --issuer …`.
+
+Both credentials come from the sops store and hold the same values CI's secrets of those names hold:
+`APPLE_API_KEY_BASE64` (the base64 `.p8`) and `APPLE_API_ISSUER` (the issuer UUID). Nothing needs to be on disk
+beforehand, which is why there's no longer a `~/private_keys/` to keep in sync.
 
 Two things this does NOT need: a tag, and a release. It also doesn't need `TAURI_SIGNING_PRIVATE_KEY`; `pnpm build`
 fails at the very end without it, but that's the updater tarball's signature, produced after the `.app` is built and

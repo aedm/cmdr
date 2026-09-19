@@ -286,11 +286,17 @@ the publish job won't run, with no broken state.
 To check notarization status manually:
 
 ```bash
+KEY=$(mktemp -t AuthKey_C9VUN857DD)
+trap 'rm -f "$KEY"' EXIT
+secret APPLE_API_KEY_BASE64 | base64 -d > "$KEY"
 xcrun notarytool info <SUBMISSION_ID> \
-  --key ./_ignored/AuthKey_Apple_Cmdr.p8 \
+  --key "$KEY" \
   --key-id C9VUN857DD \
-  --issuer 2c362f71-0680-4ec7-a74f-c62be656eeb7
+  --issuer "$(secret APPLE_API_ISSUER)"
 ```
+
+The credentials live in the infra sops store, so nothing needs to sit unencrypted on disk. See
+`docs/guides/apple-signing-and-notarization.md` for the full manual submit-and-staple path.
 
 The submission ID is logged in the build output before the timeout. Once the status shows `Accepted`, re-run the failed
 job(s) in GitHub Actions; tauri-action will re-submit, Apple will return `Accepted` immediately (same binary hash), and
