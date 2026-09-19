@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "Votre utilisateur macOS ne peut pas modifier {folder}.",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "Cela demande des droits d'administrateur. Pour donner l'accès à votre propre compte, sélectionnez le dossier dans Finder, choisissez Lire les informations, puis vérifiez la section Partage et permissions.",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "Cela demande des droits d'administrateur. Pour donner l'accès à votre propre compte, modifiez les permissions du dossier (par exemple via chmod) et réessayez.",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "macOS protège lui-même cet élément, les droits d'administrateur n'y changeront rien. Il est peut-être verrouillé : sélectionnez-le dans Finder, choisissez Lire les informations et décochez Verrouillé.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "Le système protège lui-même cet élément, les droits d'administrateur n'y changeront rien. Il porte peut-être un indicateur de protection qu'il faut d'abord retirer.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "Espace insuffisant",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"

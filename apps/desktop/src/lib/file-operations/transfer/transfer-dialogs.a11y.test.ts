@@ -545,7 +545,14 @@ describe('TransferErrorDialog a11y', () => {
       target,
       props: {
         operationType: 'copy',
-        error: { type: 'permission_denied', path: '/Users/test/protected.txt', message: 'EACCES' },
+        error: {
+          type: 'permission_denied',
+          path: '/Users/test/protected.txt',
+          message: 'EACCES',
+          errno: null,
+          refusal: 'unclassified',
+          refusedFolder: null,
+        },
         onClose: () => {},
       },
     })

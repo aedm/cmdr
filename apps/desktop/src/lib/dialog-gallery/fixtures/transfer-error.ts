@@ -71,6 +71,9 @@ const perVariant: Record<WriteOperationError['type'], TransferErrorFixture> = {
       // Multi-line raw detail: the details block either scrolls it or blows out
       // the dialog, and a one-liner would never show which.
       message: 'os error 1: Operation not permitted\nsandbox: deny(1) file-write-unlink /Library/Application Support',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
     },
   },
   insufficient_space: {

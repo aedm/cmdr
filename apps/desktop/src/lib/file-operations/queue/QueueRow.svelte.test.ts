@@ -327,7 +327,17 @@ describe('QueueRow', () => {
 
     if (instance) void unmount(instance)
     render({
-      row: buildFailedRow({ type: 'permission_denied', path: '/protected', message: 'nope' }, 'delete'),
+      row: buildFailedRow(
+        {
+          type: 'permission_denied',
+          path: '/protected',
+          message: 'nope',
+          errno: null,
+          refusal: 'unclassified',
+          refusedFolder: null,
+        },
+        'delete',
+      ),
     })
     reason = target.querySelector('.reason-cell')?.textContent ?? ''
     expect(reason).toContain("You don't have permission to delete files here.")

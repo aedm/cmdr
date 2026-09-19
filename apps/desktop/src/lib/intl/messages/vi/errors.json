@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "Người dùng macOS của bạn không thể thay đổi {folder}.",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "Việc này cần quyền quản trị. Để cấp quyền cho chính tài khoản của bạn, hãy chọn thư mục trong Finder, chọn Lấy thông tin, rồi xem phần Chia sẻ & quyền.",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "Việc này cần quyền quản trị. Để cấp quyền cho chính tài khoản của bạn, hãy đổi quyền của thư mục (ví dụ qua chmod) rồi thử lại.",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "Chính macOS bảo vệ mục này, nên quyền quản trị cũng không thay đổi được. Mục này có thể đang bị khóa: chọn nó trong Finder, chọn Lấy thông tin, rồi bỏ chọn “Đã khóa”.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "Chính hệ thống bảo vệ mục này, nên quyền quản trị cũng không thay đổi được. Mục này có thể mang một cờ bảo vệ cần được gỡ trước.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "Không đủ dung lượng",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"

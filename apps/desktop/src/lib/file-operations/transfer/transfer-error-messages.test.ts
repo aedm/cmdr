@@ -40,6 +40,9 @@ describe('getUserFriendlyMessage', () => {
         type: 'permission_denied',
         path: '/protected/dir',
         message: 'Operation not permitted',
+        errno: null,
+        refusal: 'unclassified',
+        refusedFolder: null,
       }
       const result = getUserFriendlyMessage(error)
 
@@ -109,6 +112,9 @@ describe('getUserFriendlyMessage', () => {
         type: 'permission_denied',
         path: '/protected',
         message: 'denied',
+        errno: null,
+        refusal: 'unclassified',
+        refusedFolder: null,
       }
       const result = getUserFriendlyMessage(error, 'move')
 
@@ -489,16 +495,38 @@ describe('getTechnicalDetails', () => {
     expect(result).toContain('Error type: source_not_found')
   })
 
+  // The errno is what a bug report needs and the prose deliberately never states:
+  // 13 is a folder an administrator could write to, 1 is macOS refusing outright.
+  it('includes the errno and the proved folder for a permission_denied error', () => {
+    const error: WriteOperationError = {
+      type: 'permission_denied',
+      path: '/Applications/Thing/Toolbox/a.js',
+      message: 'Permission denied (os error 13)',
+      errno: 13,
+      refusal: 'folderPermissions',
+      refusedFolder: '/Applications/Thing/Toolbox',
+    }
+    const result = getTechnicalDetails(error)
+
+    expect(result).toContain('Refused by: /Applications/Thing/Toolbox')
+    expect(result).toContain('Errno: 13 (folderPermissions)')
+  })
+
   it('includes path and message for permission_denied error', () => {
     const error: WriteOperationError = {
       type: 'permission_denied',
       path: '/protected/dir',
       message: 'Operation not permitted',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
     }
     const result = getTechnicalDetails(error)
 
     expect(result).toContain('Path: /protected/dir')
     expect(result).toContain('Details: Operation not permitted')
+    expect(result).not.toContain('Errno:')
+    expect(result).not.toContain('Refused by:')
   })
 
   it('shows the real file and the named NTSTATUS for invalid_name', () => {
@@ -616,6 +644,9 @@ describe('getUserFriendlyMessage: delete operation', () => {
       type: 'permission_denied',
       path: '/protected',
       message: 'denied',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
     }
     const result = getUserFriendlyMessage(error, 'delete')
 
@@ -629,6 +660,9 @@ describe('getUserFriendlyMessage: delete operation', () => {
       type: 'permission_denied',
       path: '/protected',
       message: 'denied',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
     }
     const result = getUserFriendlyMessage(error, 'delete')
 
@@ -677,6 +711,9 @@ describe('getUserFriendlyMessage: trash operation', () => {
       type: 'permission_denied',
       path: '/protected',
       message: 'denied',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
     }
     const result = getUserFriendlyMessage(error, 'trash')
 
@@ -690,6 +727,9 @@ describe('getUserFriendlyMessage: trash operation', () => {
       type: 'permission_denied',
       path: '/protected',
       message: 'denied',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
     }
     const result = getUserFriendlyMessage(error, 'trash')
 
@@ -717,7 +757,14 @@ describe('error messages are volume-agnostic', () => {
   it('does not mention MTP in any error message', () => {
     const errors: WriteOperationError[] = [
       { type: 'source_not_found', path: '/mtp-device/file.txt' },
-      { type: 'permission_denied', path: '/mtp-device/protected', message: 'MTP error' },
+      {
+        type: 'permission_denied',
+        path: '/mtp-device/protected',
+        message: 'MTP error',
+        errno: null,
+        refusal: 'unclassified',
+        refusedFolder: null,
+      },
       { type: 'device_disconnected', path: '/mtp-device/file.txt', side: null },
       { type: 'read_only_device', path: '/mtp-device', deviceName: null, side: 'destination' },
     ]
@@ -732,7 +779,14 @@ describe('error messages are volume-agnostic', () => {
   it('does not mention SMB in any error message', () => {
     const errors: WriteOperationError[] = [
       { type: 'source_not_found', path: '//server/share/file.txt' },
-      { type: 'permission_denied', path: '//server/share', message: 'SMB error' },
+      {
+        type: 'permission_denied',
+        path: '//server/share',
+        message: 'SMB error',
+        errno: null,
+        refusal: 'unclassified',
+        refusedFolder: null,
+      },
       { type: 'connection_interrupted', path: '//server/share/file.txt' },
     ]
 
@@ -750,7 +804,18 @@ describe('getErrorDisplayMeta', () => {
   const cases: Array<{ error: WriteOperationError; category: string; retryHint: boolean }> = [
     { error: { type: 'source_not_found', path: '/p' }, category: 'needs_action', retryHint: false },
     { error: { type: 'destination_exists', path: '/p' }, category: 'needs_action', retryHint: false },
-    { error: { type: 'permission_denied', path: '/p', message: 'm' }, category: 'needs_action', retryHint: false },
+    {
+      error: {
+        type: 'permission_denied',
+        path: '/p',
+        message: 'm',
+        errno: null,
+        refusal: 'unclassified',
+        refusedFolder: null,
+      },
+      category: 'needs_action',
+      retryHint: false,
+    },
     { error: { type: 'cancelled', message: 'm' }, category: 'transient', retryHint: true },
     { error: { type: 'device_disconnected', path: '/p', side: null }, category: 'needs_action', retryHint: true },
     {

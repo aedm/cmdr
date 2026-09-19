@@ -22,7 +22,14 @@ function mountFallback(error: WriteOperationError, operationType: 'copy' | 'move
 
 describe('FallbackErrorContent', () => {
   it('renders message and suggestion for a non-oversized variant, with no file list', async () => {
-    const target = mountFallback({ type: 'permission_denied', path: '/Users/test/protected.txt', message: 'EACCES' })
+    const target = mountFallback({
+      type: 'permission_denied',
+      path: '/Users/test/protected.txt',
+      message: 'EACCES',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+    })
     await tick()
 
     expect(target.querySelector('#error-dialog-message')?.textContent).toBeTruthy()

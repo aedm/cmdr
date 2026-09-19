@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "你的 macOS 用户无法更改 {folder}。",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "这需要管理员权限。要给你自己的账户授权，请在 Finder 里选中这个文件夹，选取“显示简介”，然后查看“共享与权限”部分。",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "这需要管理员权限。要给你自己的账户授权，请更改文件夹的权限（比如通过 chmod），然后重试。",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "这是 macOS 自己保护的，管理员权限也改不了。它可能被锁定了：在 Finder 里选中它，选取“显示简介”，然后取消勾选“已锁定”。",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "这是系统自己保护的，管理员权限也改不了。它可能带着一个需要先清除的保护标记。",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "空间不足",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"

@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "Seu usuário do macOS não pode alterar {folder}.",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "Para isso são necessárias permissões de administrador. Para dar acesso à sua própria conta, selecione a pasta no Finder, escolha Obter Informações e veja a seção Compartilhamento e Permissões.",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "Para isso são necessárias permissões de administrador. Para dar acesso à sua própria conta, altere as permissões da pasta (por exemplo, via chmod) e tente de novo.",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "O próprio macOS protege este item, então permissões de administrador não mudam nada. Ele pode estar bloqueado: selecione-o no Finder, escolha Obter Informações e desmarque Bloqueado.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "O próprio sistema protege este item, então permissões de administrador não mudam nada. Ele pode ter uma marca de proteção que precisa ser removida primeiro.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "Espaço insuficiente",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"

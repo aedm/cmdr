@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "你的 macOS 使用者無法更改 {folder}。",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "這需要管理者權限。要讓你自己的帳號有權限，請在 Finder 裡選取這個資料夾，選擇「取得資訊」，然後查看「共享與權限」部分。",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "這需要管理者權限。要讓你自己的帳號有權限，請更改資料夾的權限（例如用 chmod），然後再試一次。",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "這是 macOS 自己保護的，管理者權限也改不了。它可能被鎖定了：在 Finder 裡選取它，選擇「取得資訊」，然後取消勾選「已鎖定」。",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "這是系統自己保護的，管理者權限也改不了。它可能帶著一個必須先清除的保護標記。",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "空間不夠",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"

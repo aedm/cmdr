@@ -242,6 +242,9 @@ describe('createTransferProgressState: birth', () => {
       type: 'permission_denied',
       path: '/src/file.txt',
       message: 'nope',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
     } satisfies WriteOperationError)
     vi.mocked(copyBetweenVolumes).mockImplementationOnce(() => Promise.reject(structured))
     const config = makeConfig()

@@ -161,19 +161,6 @@ const simpleMessageFactories: Partial<
     message: w(`ioError.message.${op}`),
     suggestion: w('ioError.suggestion'),
   }),
-  // The advice splits on the OPERATION and the platform, never on `error.path`:
-  // a refused delete sends a macOS user to Full Disk Access, everyone else to
-  // permissions, and a refused copy to the destination.
-  permission_denied: (op) => ({
-    title: w('permissionDenied.title'),
-    message: w(`permissionDenied.message.${op}`),
-    suggestion:
-      op === 'delete' || op === 'trash'
-        ? isMacOS()
-          ? w('permissionDenied.suggestion.deleteMac')
-          : w('permissionDenied.suggestion.deleteOther')
-        : w('permissionDenied.suggestion.default'),
-  }),
   file_locked: () => ({
     title: w('fileLocked.title'),
     message: w('fileLocked.message'),
@@ -309,6 +296,50 @@ function readOnlyMessage(error: Extract<WriteOperationError, { type: 'read_only_
       deviceName: escapeHtml(error.deviceName ?? w(`readOnlyDevice.${side}.fallbackName`)),
     }),
     suggestion: w(`readOnlyDevice.${side}.suggestion`),
+  }
+}
+
+/**
+ * A refused write, worded for the folder that actually refused and the kind of
+ * refusal it was.
+ *
+ * Two facts the backend proves and ❌ nothing here guesses. `refusedFolder` is a
+ * folder it asked the OS about with `access(W_OK)` at the moment of the refusal;
+ * when it's absent nothing could be proved, and the message falls back to the
+ * per-operation sentence. `refusal` comes from the errno: `folderPermissions` is a
+ * folder an administrator could write to, `systemProtected` is macOS itself saying
+ * no, where administrator rights change nothing, and sending someone chasing
+ * permissions for that is a wrong answer they'd act on.
+ *
+ * The `unclassified` arm keeps the older split, which is per-operation and
+ * platform: a refused delete sends a macOS user to a locked file, everyone else to
+ * permissions, and a refused copy to the destination.
+ */
+function permissionDeniedMessage(
+  error: Extract<WriteOperationError, { type: 'permission_denied' }>,
+  op: TransferOperationType,
+): FriendlyErrorMessage {
+  const mac = isMacOS()
+  const suggestionKey =
+    error.refusal === 'folderPermissions'
+      ? mac
+        ? 'needsAdminMac'
+        : 'needsAdminOther'
+      : error.refusal === 'systemProtected'
+        ? mac
+          ? 'systemProtectedMac'
+          : 'systemProtectedOther'
+        : op === 'delete' || op === 'trash'
+          ? mac
+            ? 'deleteMac'
+            : 'deleteOther'
+          : 'default'
+  return {
+    title: w('permissionDenied.title'),
+    message: error.refusedFolder
+      ? w('permissionDenied.message.named', { folder: escapeHtml(error.refusedFolder) })
+      : w(`permissionDenied.message.${op}`),
+    suggestion: w(`permissionDenied.suggestion.${suggestionKey}`),
   }
 }
 
@@ -493,6 +524,8 @@ export function getUserFriendlyMessage(
   if (fieldDriven) return fieldDriven
 
   switch (error.type) {
+    case 'permission_denied':
+      return permissionDeniedMessage(error, operationType)
     case 'device_disconnected':
       return deviceDisconnectedMessage(error, operationType, progressAtStop)
     // The move kept every original, which is the whole message. Named when the
@@ -591,6 +624,23 @@ const pathAndMessageTypes = new Set<WriteOperationError['type']>([
 ])
 
 /**
+ * The technical lines for a refused write.
+ *
+ * The errno is what a bug report needs and the prose deliberately never states:
+ * `EACCES` is a folder an administrator could write to, `EPERM` is macOS refusing
+ * outright. `Refused by` is the folder the backend PROVED with `access(W_OK)`, so
+ * a report says which end of a move said no. Split out to keep
+ * `variantDetailLines` under the complexity ceiling.
+ */
+function permissionDeniedDetailLines(error: Extract<WriteOperationError, { type: 'permission_denied' }>): string[] {
+  const lines = [`Path: ${error.path}`]
+  if (error.refusedFolder) lines.push(`Refused by: ${error.refusedFolder}`)
+  if (error.errno !== null) lines.push(`Errno: ${String(error.errno)} (${error.refusal})`)
+  if (error.message) lines.push(`Details: ${error.message}`)
+  return lines
+}
+
+/**
  * The technical lines for the variants the two sets above don't cover.
  *
  * Split out of `getTechnicalDetails` so that stays a three-way dispatcher: this
@@ -602,7 +652,7 @@ function variantDetailLines(error: WriteOperationError): string[] {
     return error.deviceName ? [`Path: ${error.path}`, `Device: ${error.deviceName}`] : [`Path: ${error.path}`]
   }
   if (error.type === 'permission_denied') {
-    return error.message ? [`Path: ${error.path}`, `Details: ${error.message}`] : [`Path: ${error.path}`]
+    return permissionDeniedDetailLines(error)
   }
   if (error.type === 'insufficient_space') {
     const lines = [`Required: ${formatByteSize(error.required)}`, `Available: ${formatByteSize(error.available)}`]

@@ -29,7 +29,14 @@ describe('failureReasonFor', () => {
   })
 
   it('picks the per-operation wording from the operation type', () => {
-    const error: WriteOperationError = { type: 'permission_denied', path: '/protected', message: 'nope' }
+    const error: WriteOperationError = {
+      type: 'permission_denied',
+      path: '/protected',
+      message: 'nope',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+    }
 
     const copying = failureReasonFor(snapshot(error))
     const deleting = failureReasonFor(snapshot(error, { operationType: 'delete' }))

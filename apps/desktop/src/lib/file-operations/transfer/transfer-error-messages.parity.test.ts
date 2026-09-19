@@ -311,7 +311,14 @@ const cases: Case[] = [
   },
   {
     name: 'permission_denied (copy → default suggestion)',
-    error: { type: 'permission_denied', path: '/p', message: 'm' },
+    error: {
+      type: 'permission_denied',
+      path: '/p',
+      message: 'm',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+    },
     expected: {
       title: "Couldn't access this location",
       message: "You don't have permission to copy files here.",
@@ -321,7 +328,14 @@ const cases: Case[] = [
   },
   {
     name: 'permission_denied (delete, macOS)',
-    error: { type: 'permission_denied', path: '/p', message: 'm' },
+    error: {
+      type: 'permission_denied',
+      path: '/p',
+      message: 'm',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+    },
     op: 'delete',
     mac: true,
     expected: {
@@ -333,7 +347,14 @@ const cases: Case[] = [
   },
   {
     name: 'permission_denied (delete, Linux)',
-    error: { type: 'permission_denied', path: '/p', message: 'm' },
+    error: {
+      type: 'permission_denied',
+      path: '/p',
+      message: 'm',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+    },
     op: 'delete',
     mac: false,
     expected: {
@@ -341,6 +362,87 @@ const cases: Case[] = [
       message: "You don't have permission to delete files here.",
       suggestion:
         'Check that you have write access to the parent folder. The file may be protected. Check its permissions (e.g. via chmod or your file manager) and try again.',
+    },
+  },
+  // ERR-4TEMD's own shape: the SOURCE folder refused a same-volume move, and the
+  // backend proved which folder that was. The sentence names it instead of sending
+  // the user to check a destination that was never the problem.
+  {
+    name: 'permission_denied (move, the refusing folder is named)',
+    error: {
+      type: 'permission_denied',
+      path: '/Applications/PixInsight/src/scripts/Toolbox/Colors.js',
+      message: 'm',
+      errno: 13,
+      refusal: 'folderPermissions',
+      refusedFolder: '/Applications/PixInsight/src/scripts/Toolbox',
+    },
+    op: 'move',
+    mac: true,
+    expected: {
+      title: "Couldn't access this location",
+      message: "Your macOS user can't change /Applications/PixInsight/src/scripts/Toolbox.",
+      suggestion:
+        'Changing it needs administrator rights. To give your own account access, select the folder in Finder, choose Get Info, and look under Sharing & Permissions.',
+    },
+  },
+  {
+    name: 'permission_denied (folder permissions, Linux)',
+    error: {
+      type: 'permission_denied',
+      path: '/srv/locked/a.txt',
+      message: 'm',
+      errno: 13,
+      refusal: 'folderPermissions',
+      refusedFolder: '/srv/locked',
+    },
+    op: 'copy',
+    mac: false,
+    expected: {
+      title: "Couldn't access this location",
+      message: "Your macOS user can't change /srv/locked.",
+      suggestion:
+        "Changing it needs administrator rights. To give your own account access, adjust the folder's permissions (for example with chmod) and try again.",
+    },
+  },
+  // `EPERM`: the OS itself. Administrator rights change nothing, so the advice must
+  // NOT be the one above, whatever the operation was.
+  {
+    name: 'permission_denied (system protected, macOS)',
+    error: {
+      type: 'permission_denied',
+      path: '/System/Library/CoreServices/a',
+      message: 'm',
+      errno: 1,
+      refusal: 'systemProtected',
+      refusedFolder: null,
+    },
+    op: 'delete',
+    mac: true,
+    expected: {
+      title: "Couldn't access this location",
+      message: "You don't have permission to delete files here.",
+      suggestion:
+        "macOS protects this one itself, so administrator rights won't change it. The item may be locked: select it in Finder, choose Get Info, and uncheck Locked.",
+    },
+  },
+  {
+    name: 'permission_denied (system protected, Linux)',
+    error: {
+      type: 'permission_denied',
+      path: '/proc/1/x',
+      message: 'm',
+      errno: 1,
+      refusal: 'systemProtected',
+      refusedFolder: null,
+    },
+    op: 'delete',
+    mac: false,
+    expected: {
+      title: "Couldn't access this location",
+      message: "You don't have permission to delete files here.",
+      suggestion:
+        "The system protects this one itself, so administrator rights won't change it. The item may carry a protection flag that has to be cleared first.",
     },
   },
   {
@@ -573,7 +675,14 @@ const cases: Case[] = [
   },
   {
     name: 'permission_denied (move → default suggestion)',
-    error: { type: 'permission_denied', path: '/p', message: 'm' },
+    error: {
+      type: 'permission_denied',
+      path: '/p',
+      message: 'm',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+    },
     op: 'move',
     expected: {
       title: "Couldn't access this location",
@@ -584,7 +693,14 @@ const cases: Case[] = [
   },
   {
     name: 'permission_denied (trash, macOS)',
-    error: { type: 'permission_denied', path: '/p', message: 'm' },
+    error: {
+      type: 'permission_denied',
+      path: '/p',
+      message: 'm',
+      errno: null,
+      refusal: 'unclassified',
+      refusedFolder: null,
+    },
     op: 'trash',
     mac: true,
     expected: {

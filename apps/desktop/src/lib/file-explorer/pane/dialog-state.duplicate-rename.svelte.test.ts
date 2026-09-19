@@ -227,7 +227,17 @@ describe('a completed duplicate the trigger asked to name', () => {
     dialogs.startTransferProgress(pasteDuplicateProps())
     setForegroundOperationId('op-1')
 
-    dialogs.handleTransferError({ type: 'permission_denied', path: `${FOLDER}/photo.jpg`, message: 'nope' }, null)
+    dialogs.handleTransferError(
+      {
+        type: 'permission_denied',
+        path: `${FOLDER}/photo.jpg`,
+        message: 'nope',
+        errno: null,
+        refusal: 'unclassified',
+        refusedFolder: null,
+      },
+      null,
+    )
     emitSettled({ operationId: 'op-1', operationType: 'copy' })
     await drain()
 

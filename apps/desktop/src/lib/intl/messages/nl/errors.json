@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "Je macOS-gebruiker kan {folder} niet wijzigen.",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "Daarvoor heb je beheerdersrechten nodig. Om je eigen account toegang te geven, selecteer je de map in Finder, kies je ‘Toon info’ en kijk je bij ‘Delen en bevoegdheden’.",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "Daarvoor heb je beheerdersrechten nodig. Om je eigen account toegang te geven, pas je de bevoegdheden van de map aan (bijvoorbeeld via chmod) en probeer je het opnieuw.",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "macOS beschermt dit onderdeel zelf, dus beheerdersrechten veranderen daar niets aan. Het is misschien beveiligd: selecteer het in Finder, kies ‘Toon info’ en deselecteer ‘Beveiligd’.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "Het systeem beschermt dit onderdeel zelf, dus beheerdersrechten veranderen daar niets aan. Er staat misschien een beschermingsvlag op die er eerst af moet.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "Onvoldoende ruimte",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"

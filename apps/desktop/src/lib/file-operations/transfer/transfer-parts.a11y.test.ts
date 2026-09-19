@@ -199,7 +199,14 @@ describe('FallbackErrorContent a11y', () => {
 
   it('permission_denied (copy) has no a11y violations', async () => {
     const target = mountFallback(
-      { type: 'permission_denied', path: '/Users/test/protected.txt', message: 'EACCES' },
+      {
+        type: 'permission_denied',
+        path: '/Users/test/protected.txt',
+        message: 'EACCES',
+        errno: null,
+        refusal: 'unclassified',
+        refusedFolder: null,
+      },
       'copy',
     )
     await tick()

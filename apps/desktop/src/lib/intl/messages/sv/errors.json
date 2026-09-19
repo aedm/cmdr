@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "Din macOS-användare kan inte ändra {folder}.",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "Det kräver administratörsbehörighet. Om du vill ge ditt eget konto åtkomst markerar du mappen i Finder, går till Visa info och tittar under Delning och behörigheter.",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "Det kräver administratörsbehörighet. Om du vill ge ditt eget konto åtkomst ändrar du mappens behörigheter (t.ex. via chmod) och försöker igen.",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "macOS skyddar det här objektet självt, så administratörsbehörighet ändrar ingenting. Det kan vara låst: markera det i Finder, gå till Visa info och avmarkera Låst.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "Systemet skyddar det här objektet självt, så administratörsbehörighet ändrar ingenting. Det kan ha en skyddsflagga som måste tas bort först.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "Inte tillräckligt med utrymme",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"

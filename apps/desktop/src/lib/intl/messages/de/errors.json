@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "Dein macOS-Benutzer kann {folder} nicht ändern.",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "Dafür brauchst du Administratorrechte. Um deinem eigenen Benutzer Zugriff zu geben, wähle den Ordner im Finder aus, öffne „Informationen“ und sieh unter „Teilen & Zugriffsrechte“ nach.",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "Dafür brauchst du Administratorrechte. Um deinem eigenen Benutzer Zugriff zu geben, ändere die Zugriffsrechte des Ordners (z. B. per chmod) und versuche es erneut.",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "macOS selbst schützt dieses Objekt, daran ändern auch Administratorrechte nichts. Vielleicht ist es geschützt: Wähle es im Finder aus, öffne „Informationen“ und entferne das Häkchen bei „Geschützt“.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "Das System selbst schützt dieses Objekt, daran ändern auch Administratorrechte nichts. Vielleicht trägt es ein Schutz-Flag, das zuerst entfernt werden muss.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "Nicht genügend Speicher",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"

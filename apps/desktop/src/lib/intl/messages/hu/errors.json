@@ -1453,6 +1453,26 @@
   "@errors.write.permissionDenied.suggestion.default": {
     "sourceHash": "ec02093"
   },
+  "errors.write.permissionDenied.message.named": "A macOS-felhasználód nem módosíthatja ezt a mappát: {folder}.",
+  "@errors.write.permissionDenied.message.named": {
+    "sourceHash": "74994f9"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminMac": "Ehhez rendszergazdai jogosultság kell. Ha a saját fiókodnak akarsz hozzáférést adni, jelöld ki a mappát a Finderben, válaszd az Infó megjelenítése parancsot, és nézd meg a Megosztás és jogok részt.",
+  "@errors.write.permissionDenied.suggestion.needsAdminMac": {
+    "sourceHash": "674192a"
+  },
+  "errors.write.permissionDenied.suggestion.needsAdminOther": "Ehhez rendszergazdai jogosultság kell. Ha a saját fiókodnak akarsz hozzáférést adni, módosítsd a mappa engedélyeit (például chmod paranccsal), majd próbáld újra.",
+  "@errors.write.permissionDenied.suggestion.needsAdminOther": {
+    "sourceHash": "804027d"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedMac": "Ezt maga a macOS védi, úgyhogy a rendszergazdai jogosultság sem segít. Lehet, hogy zárolva van: jelöld ki a Finderben, válaszd az Infó megjelenítése parancsot, és vedd ki a „Zárolt” pipát.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedMac": {
+    "sourceHash": "ad5e0de"
+  },
+  "errors.write.permissionDenied.suggestion.systemProtectedOther": "Ezt maga a rendszer védi, úgyhogy a rendszergazdai jogosultság sem segít. Lehet, hogy védelmi jelölés van rajta, amit előbb el kell távolítani.",
+  "@errors.write.permissionDenied.suggestion.systemProtectedOther": {
+    "sourceHash": "bbf6bdb"
+  },
   "errors.write.insufficientSpace.title": "Nincs elég hely",
   "@errors.write.insufficientSpace.title": {
     "sourceHash": "c5f8c45"
