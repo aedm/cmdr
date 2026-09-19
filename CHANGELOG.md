@@ -11,27 +11,27 @@ Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, 
 
 ### Added
 
-- Name the folder a search covered when it finds nothing, with a `Search this volume instead` button (216163ce6)
-- Offer to attach that session's log to a crash report, with file and folder names anonymized first (c53da5236,
-  131b04bb5, 40b063d48)
-- Publish SHA-256 checksums for every release, linked from the download card on getcmdr.com (4f5f97d30, 9ad5ff69e)
+- Name the folder a search covered when it finds nothing, with a `Search this volume instead` button (071bd8c8a)
+- Offer to attach that session's log to a crash report, with file and folder names anonymized first (e6f0ffc5d,
+  8b60260ae, 0109d8172)
+- Publish SHA-256 checksums for every release, linked from the download card on getcmdr.com (4c4d70097, 8c4976bb1)
 
 ### Fixed
 
-- Fix Cmdr aborting at launch on macOS Catalina and Big Sur (86c381c32)
-- Fix `F2` refusing to rename on SFTP, WebDAV, and Android before the rename was ever attempted (e147d6f7b)
-- Fix a rename conflict doing nothing on a volume with no trash, like SFTP, WebDAV, phones, and archives (cf8118efd)
-- Fix closing Settings or the file viewer crashing the app (ff015c58a)
-- Fix the `Search in` chip drawing itself as unset, making a folder-scoped search look unscoped (c76f6f908)
+- Fix Cmdr aborting at launch on macOS Catalina and Big Sur (dde2b2d85)
+- Fix `F2` refusing to rename on SFTP, WebDAV, and Android before the rename was ever attempted (42e75dc0e)
+- Fix a rename conflict doing nothing on a volume with no trash, like SFTP, WebDAV, phones, and archives (eb1b07884)
+- Fix closing Settings or the file viewer crashing the app (1e9edad72)
+- Fix the `Search in` chip drawing itself as unset, making a folder-scoped search look unscoped (9c591aa33)
 
 ### Non-app
 
 - Land in-app error reports, feedback, and public GitHub issues on one private triage board, with personal data in a
-  comment that expires (106fa1d1e, 797f689c1, 19f1acd7a, 488fd88c1)
+  comment that expires (ddd70931f, dd3cf0e03, cdf8d4b10, 09bdb6e22)
 - Attach macOS's own symbolicated stack and exception verdict to a native crash report, and store the load base that
-  makes raw addresses resolvable (e9136993c, 2b3644115)
-- Fail the build on any symbol newer than the macOS floor, the gap that shipped the Catalina launch abort (a4b5faa35)
-- Log the scope a search ran against, not just its query (a61ed2d77)
+  makes raw addresses resolvable (01eb84234, 7540c9860)
+- Fail the build on any symbol newer than the macOS floor, the gap that shipped the Catalina launch abort (d05bb4e78)
+- Log the scope a search ran against, not just its query (d508a1c28)
 
 ## [0.46.0] - 2026-09-17
 
@@ -55,15 +55,15 @@ Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, 
   5a2739f7e, 503706817, d80392eaf)
 - Count a search's hits in the pane footer, and open search results in a tab of their own (7d9500130, 41005d461)
 - Add a "No full disk access" badge in the title bar that opens onboarding, and explain a refused trash with a way
-  through (5ca6a7ca0, efa641361, 5e0e272bc)
+  through (eabc4e055, 1f720f774, 87340526d)
 - Say why a drive's folder sizes get recomputed after you unplug it mid-index (548d66d6e, 6f2eb84ed)
 - Say where your files are when a drive comes back holding an unfinished move (876a57425, 5456a72e7)
 - Show ⇧8, + and - beside their menu items, which looked like they had no shortcut at all (3bdc9502d, 4bd903b19)
-- Let an agent close an SFTP or WebDAV connection over MCP (b78df410b)
+- Let an agent close an SFTP or WebDAV connection over MCP (2e5e60c4e)
 
 ### Changed
 
-- Cmdr is $59 bought once, with a year of updates and an Enterprise tier; the yearly subscription is retired (9465ca05d)
+- Cmdr is $59 bought once, with a year of updates and an Enterprise tier; the yearly subscription is retired (57289fd66)
 - Eject takes the drive's whole physical disk down, or says why it couldn't, instead of reporting success over a
   partition that's still mounted (1a6e2fcc6)
 - Every unmount, whoever started it (Finder, `diskutil`, another app), now waits while Cmdr's index lets the drive go
@@ -71,7 +71,7 @@ Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, 
 - A drive pulled from its port stops its index instead of leaving one reading a filesystem that isn't there (43f09f3bd,
   5c6309198)
 - A cloud drive mounted in your home folder, like pCloud's, gets its own row in the volume switcher beside Dropbox
-  (f9e0a727e)
+  (31804b18d)
 
 ### Fixed
 
@@ -84,14 +84,14 @@ Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, 
   (34104e35b, 970ebeb55, dbf0654e4, f4e0f37a1, d3c33beb3, 3dd6c43cb, 10bf35ff5)
 - Fix an eject unmounting a drive Cmdr was still reading (d6c32f603, 678b249ef, 44079fe6d, 46888a7df, 308e3583c,
   1e4cd4085, 10fe89023, 0a534e1b7, b02bb51dd)
-- Fix renaming anything on a mounted SMB share failing every time (c554210cc)
-- Fix copying and moving doing nothing on an SFTP, WebDAV, or ADB server rooted at `/` (904da0ba4)
+- Fix renaming anything on a mounted SMB share failing every time (a610831ad)
+- Fix copying and moving doing nothing on an SFTP, WebDAV, or ADB server rooted at `/` (6dfcaebc5)
 - Fix a share published as a DFS namespace root crawling on the slow macOS mount instead of connecting directly
-  (54bf40814, e89f6c9eb, d780ec510, 692cecea6)
-- Fix F8 in a Dropbox or Google Drive folder failing with a message about the wrong disk (13dd5f6cd, d988cdf13,
-  89d4aa85e, a6677962a)
-- Fix a batch trash that left items behind reporting a clean success (ea0bbcd85)
-- Fix a drive mounted outside `/Volumes`, like pCloud's, dead-ending on "Volume not found" (6df5c5821)
+  (99200ab98, 0ecbe176e, 60c4eef9d, c69e0f7f4)
+- Fix F8 in a Dropbox or Google Drive folder failing with a message about the wrong disk (e5f6ea73c, a40e87b2f,
+  2d69bdd38, bfed6eebe)
+- Fix a batch trash that left items behind reporting a clean success (507e7df39)
+- Fix a drive mounted outside `/Volumes`, like pCloud's, dead-ending on "Volume not found" (617a1bbbd)
 - Fix photos in a folder you excluded still showing up in photo search, find similar, and Ask Cmdr (4b2f9eaa5,
   b3cc3c142, cb72a94f4)
 - Fix excluding a folder giving up on purging its indexed text, and reclaiming space claiming bytes it never freed
@@ -102,14 +102,14 @@ Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, 
 - Fix the right-click menu showing the default keys after you rebind a command (5046a304d)
 - Fix ⌥ shortcuts and Zoom in silently having no menu key at all (b03dc28d8, 213d3fe4b, 6849f1084, 42d60ce7d)
 - Fix the viewer's Edit menu acting on the status bar instead of the file, and its right-click menu not closing
-  (e67edbd9e, df65649dc, 7eef00067)
-- Fix the path bar offering an eject on an SFTP or WebDAV place that could only be refused (5e0b755ce)
+  (859be00d3, a6e493c06, f29a93ae3)
+- Fix the path bar offering an eject on an SFTP or WebDAV place that could only be refused (2cdb94fd4)
 - Fix "Add to favorites" writing a favorite nobody could see, on phones, archives, and protocol-only servers (59c4fe438,
   febc4f761)
-- Fix the drive-index badge's menu being clipped by the drive list, and answering no keys (3b3de8303)
-- Fix activating a license leaving "Personal use only" in the Dock until a relaunch (ff55ea5c7)
+- Fix the drive-index badge's menu being clipped by the drive list, and answering no keys (c01c00d07)
+- Fix activating a license leaving "Personal use only" in the Dock until a relaunch (877f96c39)
 - Fix a purchase never delivering its license key (3423935b1)
-- Fix stacked macOS permission popups over onboarding when Full Disk Access was revoked or half-granted (848c70877)
+- Fix stacked macOS permission popups over onboarding when Full Disk Access was revoked or half-granted (2dfec5dcb)
 - Fix Allow in onboarding flipping to "Restart Cmdr" when System Settings never opened (66921785c)
 - Fix an offline update check showing raw request text, and an offline laptop logging a warning every hour (2cafe8eb7)
 - Fix a crash report that didn't go out closing as if it had been sent (9a0bce9fe)
@@ -132,14 +132,14 @@ Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, 
 - Fix one refused event subscription leaking the other seven listeners of the operation fan-out (618cbc46c, 92d4723b0,
   5206207a9)
 - Fix the Homebrew one-liner stopping at `brew tap` on Homebrew 7.0.0 and 7.0.1 (4a18b93f4)
-- Fix Backspace and `..` not walking up one level inside an archive on a remote share (dff3813ae)
-- Fix a remote-backed archive logging a "failed to watch" warning on every registration (c0231ae5f)
-- Fix a pane whose path can't be canonicalized jumping to the volume root instead of staying on `..` (834e71747)
+- Fix Backspace and `..` not walking up one level inside an archive on a remote share (a86e506e6)
+- Fix a remote-backed archive logging a "failed to watch" warning on every registration (1f09d8380)
+- Fix a pane whose path can't be canonicalized jumping to the volume root instead of staying on `..` (f2b955cd9)
 
 ### Security
 
 - Stop an AI client changing your consent answers, like a "no" to Ask Cmdr or to crash reports, over MCP (f358206f6)
-- Stop a multi-word filename leaking its tail into an uploaded error report (7cba74422)
+- Stop a multi-word filename leaking its tail into an uploaded error report (c7aafcae8)
 - Stop a password typed into an SMB address or a server path reaching the log file (f94bef828)
 - Update rustls to 0.23.45, closing a TLS 1.3 handshake that could smuggle messages across encryption level boundaries
   (1c7057a09)
@@ -147,18 +147,18 @@ Small fixes: renames on SFTP, WebDAV, and Android phones; better crash reports, 
 ### Non-app
 
 - Build every menu in the app on one house `Menu` primitive, so keyboard, pointer, submenus, and drag reorder are
-  written once (244c73ef9, 187bc0c4c, c4579345d, fca42eb7b, c67a66b14, 8bad2b7f0, 811b466bf, 02e61e1ca, c170882ab,
-  c1227a695, 39cdb853e)
+  written once (244c73ef9, 187bc0c4c, c4579345d, fca42eb7b, c67a66b14, 8bad2b7f0, 811b466bf, 02e61e1ca, a68c2cca3,
+  270e71640, 39cdb853e)
 - Test eject and drive-vanish paths against real APFS and HFS+ disk images through a guarded runner (08c871372,
   654a2d075, 20103dac4, c6900f4a7, 71fc73dfc)
 - Fail the run on a long file, an oversized `CLAUDE.md`, or new duplication, with every allowlist entry carrying its
-  reason (03ae9dba5, 4904b0000, 7628069ab, dce4ad0ef)
-- Add a Licenses page to the private dashboard, per-license notes, and a daily backup of every license to R2 (1be09e16e,
-  e015953a7, 5a3332a20, a37bfc472, 585b18f24)
+  reason (b7330d9ae, 39ea368ee, b41886bb0, 028ff642d)
+- Add a Licenses page to the private dashboard, per-license notes, and a daily backup of every license to R2 (54f9b7f8b,
+  434a35517, 0b0b52b6c, 9bbeb9e7a, 32c6cae7a)
 - Mint and revoke a license with one command, and ban Node globals in the Worker so a missing runtime can't break a
-  purchase again (45d972dc6, b67c32192, 80966617d, 837125638, b3f8f45bd)
+  purchase again (cad02c0ad, e57d9d584, abb758566, 63c59c09f, 1a7611cd9)
 - Cut a red Vitest lane's output from 1,300 lines to 40, and stop the unit suite killing five Node processes per run
-  (98f8195d5, 360500780)
+  (78d0be259, e60b79e9e)
 - Let frontend warns reach the log file and error-report bundles, each line exactly once (c6b692ed8, f0ffb1668,
   09591db90)
 
