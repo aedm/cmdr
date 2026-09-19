@@ -499,8 +499,9 @@ inbox. The token is the `GITHUB_ISSUES_TOKEN` secret: a fine-grained PAT scoped 
 With either unset the integration is off and nothing is filed.
 
 **What earns a card.** Hand-written error reports (`kind: 'user'`) and every feedback message, both only from `release`
-builds. Auto-sent reports stay Discord-only for the reason the notification email already skips them: one bad install
-makes dozens. Debug builds are our own E2E traffic. Each source gets 20 issues per UTC day (`gh_issue_count:` keys in
+builds. Auto-sent reports stay Discord-only at upload for the reason the notification email already skips them: one bad
+install makes dozens. They earn a card the moment someone amends one with a note or an address (§ Amendments below),
+which is a person writing, not a machine repeating. Debug builds are our own E2E traffic. Each source gets 20 issues per UTC day (`gh_issue_count:` keys in
 `ERROR_REPORT_META`), because `kind` and `buildMode` come from the client's manifest and a mislabelling build must cost
 a bounded amount. Nothing is lost when a cap trips: Discord, R2, and D1 all still have the report.
 
@@ -520,18 +521,32 @@ The stamp travels with the comment, so one mechanism serves both promises: an er
 days, a feedback reply-to carries two years. Feedback's MESSAGE is the exception that proves the split, and it lives in
 the issue body, because the policy keeps feedback text so it can be acted on; only the address expires.
 
-**Amendments land on the card they amend.** A successful file writes `gh_issue:{ERR-XXXXX}` → the issue number
-(`rememberIssueNumber`), and `/error-report/:id/amend` reads it back to comment on that issue. It is its OWN KV key
-rather than a field on the `report:{id}` index, because that entry is written before the 200 and carries the amend
-credential's hash: adding to it would be a read-modify-write against an eventually-consistent store with the credential
-as the thing at risk. A miss simply means no comment, which is the right answer for an auto-send, a debug build, a
-capped day, or a report that predates this feature.
+**Amendments land on the card they amend, or earn one.** A successful file writes `gh_issue:{ERR-XXXXX}` → the issue
+number (`rememberIssueNumber`), and `/error-report/:id/amend` reads it back through `recordAmendmentOnBoard` to comment
+on that issue. It is its OWN KV key rather than a field on the `report:{id}` index, because that entry is written before
+the 200 and carries the amend credential's hash: adding to it would be a read-modify-write against an
+eventually-consistent store with the credential as the thing at risk.
+
+A miss is where the interesting half is. An auto-send has no card, so before this the note a person typed into the
+auto-sent toast reached the inbox and Discord and nothing else, which is the opposite of what the auto-send suppression
+is for: it exists to keep MACHINE volume off the board, and a typed sentence is the highest-signal thing that arrives
+here. So a miss FILES the card, carrying the amendment as its personal comment, and remembers the number so the next
+amendment comments on it. The same path covers a capped day, an outage, and a report that predates the feature. The
+card says `amended auto report` in the title and `auto-sent, with a note the reporter added afterwards` in the body
+(`filedFromAmendment`), so nobody has to wonder why an auto-send has one.
+
+Its technical facts come from the bundle's own `customMetadata`, read with one `head` (`readReportFacts` in
+`error-report-amend.ts`), because the index entry knows only the key, the date, and the credential hash. `buildMode`
+comes from the key's `prod`/`dev` segment, which the upload route derives from exactly that field, so debug builds stay
+out here too. No bundle, no card: one that can't say what report it is about helps nobody. Filing spends the same
+`gh_issue_count:error-report:{date}` allowance as the upload path, for the same reason (`kind` comes from the client's
+manifest).
 
 ❗ **An amendment's comment carries the ORIGINAL report's expiry, never its own 90 days** (`reportExpiryDate`, from the
 index entry's upload date). A report amended on day 80 would otherwise keep a note on the board until day 170, outliving
-both its bundle and the policy's "anything you added to the report afterwards". `commentOnReportIssue` also re-runs the
-privacy probe rather than trusting that the repo was private when the issue was filed: months can pass between an upload
-and its amendment, and the answer is allowed to have changed.
+both its bundle and the policy's "anything you added to the report afterwards". `recordAmendmentOnBoard` also re-runs
+the privacy probe on both paths rather than trusting that the repo was private when the issue was filed: months can pass
+between an upload and its amendment, and the answer is allowed to have changed.
 
 **Untrusted text is always fenced** (`fencedBlock`, with a fence longer than any backtick run inside it), so a note
 cannot become a heading, an `@mention` that would notify a stranger, or a cross-repo reference. Notes are truncated well

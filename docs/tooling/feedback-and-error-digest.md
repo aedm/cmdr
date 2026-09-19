@@ -19,7 +19,8 @@ gh issue view <n> --repo vdavid/cmdr-reports --comments
 Each issue's BODY is technical only (report id, versions, R2 key). The note, the reply-to address, and the bundle link
 are in a comment that is **deleted after 90 days** (two years for a feedback reply-to). So a card older than that still
 names its `ERR-XXXXX` and R2 key, and the recipes below are how you get the rest, for as long as the bundle itself
-lives. Auto-sent reports never become issues; they are Discord-and-R2 only, so the walk below is the only way to them.
+lives. An auto-sent report becomes an issue only once someone amends it with a note or an address, titled
+`amended auto report`; the ones nobody wrote on are Discord-and-R2 only, so the walk below is the only way to them.
 
 How the filing works, and the invariants that keep private data off the public repo: `apps/api-server/DETAILS.md` § The
 reports repo.

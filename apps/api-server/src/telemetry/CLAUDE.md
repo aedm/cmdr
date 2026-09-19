@@ -1,7 +1,7 @@
 # Telemetry
 
 Everything the app sends home: `telemetry.ts` (`/crash-report`, `/heartbeat`, `/download`, `/update-check`), the
-`error-report*` quartet (`error-report.ts` routes, `-amend.ts` the `report:{id}` index and the amend route, `-intake.ts`
+`error-report*` quartet (`error-report.ts` routes, `-amend.ts` the `report:{id}` index and amendments, `-intake.ts`
 admission control, `-eviction.ts` capacity), and `feedback.ts`.
 
 ## Must-knows
@@ -10,7 +10,7 @@ admission control, `-eviction.ts` capacity), and `feedback.ts`.
   `diag_` id only (an `anal_`-shaped `diagId` is a 400), and feedback carries neither. That's what keeps the analytics
   stream unjoinable to an identity.
 - **Optional fields from the Rust client arrive as `null` OR `undefined`** (serde `Option::None` → JSON `null`): a
-  `!== undefined`-only validator silently drops exactly the upgrade-window reports we want. Pattern:
+  `!== undefined`-only validator silently drops the upgrade-window reports we want. Pattern:
   `value !== undefined && value !== null && <shape check>` (`validateCrashReportShape` is the canonical form).
 - **`top_function` is the only crash-grouping key and must skip the panic machinery** (`extractTopFunction`), else every
   panic groups under `install_panic_hook` and the nightly email can't tell unrelated bugs apart.
@@ -22,13 +22,13 @@ admission control, `-eviction.ts` capacity), and `feedback.ts`.
 - **Both error-report routes read bodies through `readCappedBody` (`../types.ts`), ❌ never `c.req.parseBody()` or
   `c.req.text()`**: `content-length` is advisory, so those buffer up to 100 MB inside a 128 MB isolate before any cap
   can look. A header pre-check is a fast-fail, never the cap.
-- **Only hand-written error reports (`kind: 'user'`) are emailed**, from `postUploadWork`; auto-sends stay Discord-only,
-  because one bad install makes dozens a day. `kind` is client-supplied, so the mail path carries its own daily cap.
-  DETAILS § Notification email.
+- **Only hand-written error reports (`kind: 'user'`) are emailed**, from `postUploadWork`: one bad install makes dozens
+  of auto-sends a day. `kind` is client-supplied, so the mail path caps itself daily. DETAILS § Notification email.
 - **Those reports and every feedback message also become issues** in the private reports repo (`../github-issues.ts`),
-  release builds only; an amendment comments on its card, found via `gh_issue:{id}`. ❌ Never pass a note, reply-to, or
-  bundle link into an issue title or body, and ❌ stamp an amendment `reportExpiryDate(entry.date)`, never a fresh 90
-  days. `apps/api-server/DETAILS.md` § The reports repo.
+  release builds only; an amendment comments on its card (`gh_issue:{id}`) and FILES one when there is none, as
+  auto-sends are: a typed note is a person, not machine volume. ❌ Never pass a note, reply-to, or bundle link into an
+  issue title or body, and ❌ stamp an amendment `reportExpiryDate(entry.date)`, never a fresh 90 days.
+  `apps/api-server/DETAILS.md` § The reports repo.
 - **The `report:{id}` KV index write is AWAITED before the 200**, alone among this route's side effects: that same
   response hands out the amend credential, so a later index opens nothing. ❌ Never move it to `postUploadWork`; a
   failed put answers 200 with `amendKey: null`.
@@ -42,7 +42,7 @@ admission control, `-eviction.ts` capacity), and `feedback.ts`.
 - **`/download` never stores a guessed version.** `latest` resolves through `latest.json` (GitHub as fallback); when
   neither answers it 302s and writes NO row, because a guess corrupts the per-version breakdown.
 - **`sanitizeRef` (`[a-z0-9._:-]`) is a cross-repo contract** with the website's normalizer, and `sanitizeRefererHost`
-  keeps the HOST only, so a referring page's query string can't leak in.
+  keeps the HOST only, so a referring page's query string can't leak.
 
 Per-route payloads and columns, the R2 key shape, eviction and intake admission, the notification email, and the
 UA-family model: `DETAILS.md`. Read it before any non-trivial work here.

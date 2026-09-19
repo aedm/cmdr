@@ -22,7 +22,18 @@ export function createR2(): R2Bucket & { _store: Map<string, StoredObj> } {
   const store = new Map<string, StoredObj>()
   return {
     _store: store,
-    head: (key: string) => Promise.resolve(store.has(key) ? ({ key } as unknown as R2Object) : null),
+    // Carries what a real `head` carries: the amend route builds a card out of exactly these
+    // fields, so a bare `{ key }` would pass a test that production cannot.
+    head: (key: string) => {
+      const stored = store.get(key)
+      if (!stored) return Promise.resolve(null)
+      return Promise.resolve({
+        key,
+        size: stored.size,
+        uploaded: stored.uploaded,
+        customMetadata: stored.customMetadata,
+      } as unknown as R2Object)
+    },
     put: async (
       key: string,
       value: ReadableStream | ArrayBuffer | Uint8Array | string,

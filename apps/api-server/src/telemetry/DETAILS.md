@@ -273,7 +273,10 @@ digest could drive, and a table for roughly four rows per two months earns nothi
 each already carries a presigned link, so `postUploadWork` sends directly.
 
 **Why auto-sends stay Discord-only:** one misbehaving install produced 50+ auto bundles in three days. Discord absorbs
-that volume; an inbox does not, and the hand-written report that needs an answer would be buried in it.
+that volume; an inbox does not, and the hand-written report that needs an answer would be buried in it. Amending one is
+the exception on both channels: `mailAmendment` mails every amendment whatever the report's kind, and the amendment
+earns the report a triage card (`apps/api-server/DETAILS.md` § The reports repo). A note somebody typed is not the
+volume this rule defends against.
 
 **The cap** (`DAILY_ERROR_REPORT_EMAIL_CAP`, 10/UTC day, its own `error_email_count:{date}` KV key): `kind` is
 client-supplied, so a build that mislabels its auto-sends can aim the inbox at itself. Ten is ~150x the observed

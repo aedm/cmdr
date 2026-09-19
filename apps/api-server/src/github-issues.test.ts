@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
   buildAmendmentComment,
-  commentOnReportIssue,
+  recordAmendmentOnBoard,
   fileErrorReportIssue,
   fileFeedbackIssue,
   recallIssueNumber,
@@ -362,7 +362,15 @@ describe('buildAmendmentComment', () => {
   })
 })
 
-describe('commentOnReportIssue', () => {
+describe('recordAmendmentOnBoard', () => {
+  /** The facts an auto-sent report's bundle carries, as the amend route reads them back off R2. */
+  const autoFacts: ErrorReportIssueInput = { ...errorReport, kind: 'auto' }
+
+  /** A reader that hands back `facts`, and records whether it was asked at all. */
+  function factsReader(facts: ErrorReportIssueInput | null) {
+    return vi.fn(() => Promise.resolve(facts))
+  }
+
   beforeEach(() => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
   })
@@ -372,21 +380,19 @@ describe('commentOnReportIssue', () => {
     vi.restoreAllMocks()
   })
 
-  it('does nothing when the report never got an issue', async () => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(commentOnReportIssue(configuredEnv(), 'ERR-A2345', 'hi')).resolves.toBe(false)
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
   it('re-checks that the repo is private before commenting', async () => {
     const sharedEnv = configuredEnv()
     await rememberIssueNumber(sharedEnv.ERROR_REPORT_META, 'ERR-A2345', 12)
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ private: false, visibility: 'public' }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'secret note')).resolves.toBe(false)
+    await expect(
+      recordAmendmentOnBoard(sharedEnv, {
+        id: 'ERR-A2345',
+        comment: 'secret note',
+        readReportFacts: factsReader(autoFacts),
+      }),
+    ).resolves.toBe('skipped')
     // Only the privacy probe. The note was never posted.
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
@@ -401,9 +407,14 @@ describe('commentOnReportIssue', () => {
       .mockResolvedValueOnce(jsonResponse([{ name: 'needs-reply' }], 200))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'note', { addLabels: ['needs-reply'] })).resolves.toBe(
-      true,
-    )
+    await expect(
+      recordAmendmentOnBoard(sharedEnv, {
+        id: 'ERR-A2345',
+        comment: 'note',
+        addLabels: ['needs-reply'],
+        readReportFacts: factsReader(autoFacts),
+      }),
+    ).resolves.toBe('commented')
 
     expect(requestUrl(fetchMock.mock.calls[2])).toBe(
       'https://api.github.com/repos/vdavid/cmdr-reports/issues/12/labels',
@@ -420,7 +431,9 @@ describe('commentOnReportIssue', () => {
       .mockResolvedValueOnce(jsonResponse({ id: 5 }, 201))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'note')).resolves.toBe(true)
+    await expect(
+      recordAmendmentOnBoard(sharedEnv, { id: 'ERR-A2345', comment: 'note', readReportFacts: factsReader(autoFacts) }),
+    ).resolves.toBe('commented')
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -436,9 +449,14 @@ describe('commentOnReportIssue', () => {
         .mockResolvedValueOnce(jsonResponse({ message: 'boom' }, 500)),
     )
 
-    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'note', { addLabels: ['needs-reply'] })).resolves.toBe(
-      true,
-    )
+    await expect(
+      recordAmendmentOnBoard(sharedEnv, {
+        id: 'ERR-A2345',
+        comment: 'note',
+        addLabels: ['needs-reply'],
+        readReportFacts: factsReader(autoFacts),
+      }),
+    ).resolves.toBe('commented')
   })
 
   it('posts to the remembered issue when the repo is private', async () => {
@@ -449,12 +467,149 @@ describe('commentOnReportIssue', () => {
       .mockResolvedValueOnce(jsonResponse({ private: true }))
       .mockResolvedValueOnce(jsonResponse({ id: 5 }, 201))
     vi.stubGlobal('fetch', fetchMock)
+    const readFacts = factsReader(autoFacts)
 
-    await expect(commentOnReportIssue(sharedEnv, 'ERR-A2345', 'the amendment')).resolves.toBe(true)
+    await expect(
+      recordAmendmentOnBoard(sharedEnv, { id: 'ERR-A2345', comment: 'the amendment', readReportFacts: readFacts }),
+    ).resolves.toBe('commented')
     expect(requestUrl(fetchMock.mock.calls[1])).toBe(
       'https://api.github.com/repos/vdavid/cmdr-reports/issues/12/comments',
     )
     expect(requestBody(fetchMock.mock.calls[1])).toContain('the amendment')
+    // The card exists, so nothing reads the bundle to describe it.
+    expect(readFacts).not.toHaveBeenCalled()
+  })
+
+  it('files a card for an auto-sent report, because a person typed the note', async () => {
+    const sharedEnv = configuredEnv()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ private: true }))
+      .mockResolvedValueOnce(jsonResponse({ number: 31 }, 201))
+      .mockResolvedValueOnce(jsonResponse({ id: 7 }, 201))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      recordAmendmentOnBoard(sharedEnv, {
+        id: 'ERR-A2345',
+        comment: 'the note they added afterwards',
+        readReportFacts: factsReader(autoFacts),
+      }),
+    ).resolves.toBe('filed')
+
+    const created = JSON.parse(requestBody(fetchMock.mock.calls[1])) as { title: string; body: string }
+    expect(created.title).toContain('ERR-A2345')
+    // The card says the report was auto-sent and that someone added to it afterwards, so triage
+    // knows why an auto-send has a card at all.
+    expect(created.body).toContain('auto-sent')
+    expect(created.body).toContain('added')
+    // The note stays out of the body, which outlives the 90-day comment.
+    expect(created.body).not.toContain('the note they added afterwards')
+    expect(requestBody(fetchMock.mock.calls[2])).toContain('the note they added afterwards')
+  })
+
+  it('remembers the card it filed, so a second amendment comments instead of filing again', async () => {
+    const sharedEnv = configuredEnv()
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ private: true }))
+        .mockResolvedValueOnce(jsonResponse({ number: 31 }, 201))
+        .mockResolvedValueOnce(jsonResponse({ id: 7 }, 201)),
+    )
+
+    await recordAmendmentOnBoard(sharedEnv, {
+      id: 'ERR-A2345',
+      comment: 'first note',
+      readReportFacts: factsReader(autoFacts),
+    })
+    await expect(recallIssueNumber(sharedEnv.ERROR_REPORT_META, 'ERR-A2345')).resolves.toBe(31)
+  })
+
+  it('labels a filed card needs-reply when the amendment carried an address', async () => {
+    const sharedEnv = configuredEnv()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ private: true }))
+      .mockResolvedValueOnce(jsonResponse({ number: 31 }, 201))
+      .mockResolvedValueOnce(jsonResponse({ id: 7 }, 201))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      recordAmendmentOnBoard(sharedEnv, {
+        id: 'ERR-A2345',
+        comment: 'note plus address',
+        addLabels: ['needs-reply'],
+        readReportFacts: factsReader({ ...autoFacts, email: 'later@example.com' }),
+      }),
+    ).resolves.toBe('filed')
+
+    const created = JSON.parse(requestBody(fetchMock.mock.calls[1])) as { labels: string[] }
+    expect(created.labels).toContain('needs-reply')
+    // The address itself belongs in the expiring comment, never on the card.
+    expect(requestBody(fetchMock.mock.calls[1])).not.toContain('later@example.com')
+  })
+
+  it('files nothing for a debug build, which is our own E2E traffic', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      recordAmendmentOnBoard(configuredEnv(), {
+        id: 'ERR-A2345',
+        comment: 'note',
+        readReportFacts: factsReader({ ...autoFacts, buildMode: 'debug' }),
+      }),
+    ).resolves.toBe('skipped')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('files nothing when the bundle can no longer describe itself', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      recordAmendmentOnBoard(configuredEnv(), {
+        id: 'ERR-A2345',
+        comment: 'note',
+        readReportFacts: factsReader(null),
+      }),
+    ).resolves.toBe('skipped')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('respects the daily cap, the same allowance the upload path spends', async () => {
+    const sharedEnv = configuredEnv()
+    const today = new Date().toISOString().slice(0, 10)
+    await sharedEnv.ERROR_REPORT_META.put(`gh_issue_count:error-report:${today}`, '20')
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      recordAmendmentOnBoard(sharedEnv, {
+        id: 'ERR-A2345',
+        comment: 'note',
+        readReportFacts: factsReader(autoFacts),
+      }),
+    ).resolves.toBe('skipped')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('does nothing at all when the integration is unconfigured', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const readFacts = factsReader(autoFacts)
+
+    await expect(
+      recordAmendmentOnBoard(env({ ERROR_REPORT_META: fakeKv() }), {
+        id: 'ERR-A2345',
+        comment: 'note',
+        readReportFacts: readFacts,
+      }),
+    ).resolves.toBe('skipped')
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(readFacts).not.toHaveBeenCalled()
   })
 })
 

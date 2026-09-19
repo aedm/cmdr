@@ -199,6 +199,11 @@ export interface ErrorReportIssueInput {
   uploadedUnixSeconds: number
   userNote?: string | null
   email?: string | null
+  /**
+   * Whether an amendment is what earned this card, rather than the upload. Says so on the card,
+   * because an auto-sent report with a card is otherwise a puzzle for whoever triages it.
+   */
+  filedFromAmendment?: boolean
 }
 
 /**
@@ -207,11 +212,13 @@ export interface ErrorReportIssueInput {
  */
 export function buildErrorReportIssue(input: ErrorReportIssueInput): IssueContent {
   const kindWord = input.kind === 'user' ? 'user' : 'auto'
+  const titlePrefix = input.filedFromAmendment ? 'amended ' : ''
+  const kindLine = input.kind === 'user' ? 'hand-written' : 'auto-sent'
   const uploadedAt = new Date(input.uploadedUnixSeconds * 1000).toISOString().replace('T', ' ').slice(0, 16)
 
   const body = [
     `**Report id**: \`${input.id}\``,
-    `**Kind**: ${input.kind === 'user' ? 'hand-written' : 'auto-sent'}`,
+    `**Kind**: ${kindLine}${input.filedFromAmendment ? ', with a note the reporter added afterwards' : ''}`,
     `**App version**: ${input.appVersion}`,
     `**OS**: ${macOsLabel(input.osVersion)} · **Arch**: ${input.arch}`,
     `**Bundle**: ${formatBytes(input.sizeBytes)}, uploaded ${uploadedAt} UTC`,
@@ -226,7 +233,7 @@ export function buildErrorReportIssue(input: ErrorReportIssueInput): IssueConten
   if (input.email?.trim()) labels.push('needs-reply')
 
   return {
-    title: `${input.id}: ${kindWord} report on ${input.appVersion} (${macOsLabel(input.osVersion)})`,
+    title: `${input.id}: ${titlePrefix}${kindWord} report on ${input.appVersion} (${macOsLabel(input.osVersion)})`,
     body,
     labels,
   }
@@ -528,25 +535,90 @@ export function buildAmendmentComment(input: AmendmentCommentInput): string {
   return parts.replace('\n\n', `\n\n**${ordinal}**, added by the reporter after sending.\n\n`)
 }
 
+/** What one amendment needs to reach the board, and how to describe its report if it has no card. */
+export interface AmendmentOnBoardInput {
+  id: string
+  /** The built amendment comment, already stamped with the original report's expiry date. */
+  comment: string
+  /** Labels the comment path adds. A filed card gets its labels from the report facts instead. */
+  addLabels?: string[]
+  /**
+   * The report's technical facts, read only when a card has to be created. Null when they can't be
+   * read any more, which means no card: a card that can't say what it is about helps nobody.
+   */
+  readReportFacts: () => Promise<ErrorReportIssueInput | null>
+}
+
+/** What happened to one amendment on the board. Every failure is a `skipped`. */
+export type AmendmentOnBoardResult = 'commented' | 'filed' | 'skipped'
+
 /**
- * Add a comment to the issue one report got. Returns whether anything was posted.
+ * Put one amendment on the board.
+ *
+ * Usually the report already has a card and the amendment is a comment on it. When it has none —
+ * an auto-send, a day that hit the cap, an outage — the amendment IS the card: a person typed a
+ * sentence about their own report, and that is the one signal the auto-send suppression was never
+ * meant to filter. Before this, those notes reached the inbox and Discord and nothing else.
  *
  * Runs the privacy probe again through {@link fileIssue}'s own gate rather than trusting that the
  * repo was private when the issue was filed: months can pass between an upload and its amendment,
  * and the answer is allowed to have changed.
  */
-export async function commentOnReportIssue(
+export async function recordAmendmentOnBoard(
   env: Bindings,
-  id: string,
-  body: string,
-  options: { addLabels?: string[] } = {},
-): Promise<boolean> {
+  input: AmendmentOnBoardInput,
+): Promise<AmendmentOnBoardResult> {
   const target = resolveIssueTarget(env)
-  if (!target) return false
+  if (!target) return 'skipped'
 
-  const issueNumber = await recallIssueNumber(env.ERROR_REPORT_META, id)
+  const issueNumber = await recallIssueNumber(env.ERROR_REPORT_META, input.id)
+  if (issueNumber === null) {
+    return (await fileCardForAmendment(env, target, input)) ? 'filed' : 'skipped'
+  }
+  return (await commentOnIssue(target, issueNumber, input.comment, input.addLabels ?? [])) ? 'commented' : 'skipped'
+}
+
+/**
+ * File the card an amended report never got, carrying the amendment as its personal comment.
+ *
+ * Spends the same daily allowance as the upload path, for the same reason: `kind` and `buildMode`
+ * come from the client's manifest. Debug builds stay out, they are our own E2E traffic.
+ */
+async function fileCardForAmendment(
+  env: Bindings,
+  target: IssueTarget,
+  input: AmendmentOnBoardInput,
+): Promise<boolean> {
+  const facts = await input.readReportFacts()
+  if (!facts) return false
+  if (facts.buildMode === 'debug') return false
+  if (!(await claimIssueSlot(env.ERROR_REPORT_META, 'error-report', todayUtc()))) {
+    console.error('GitHub issues: daily error-report cap reached; the amendment did not get a card')
+    return false
+  }
+
+  const issueNumber = await fileIssue(target, {
+    ...buildErrorReportIssue({ ...facts, filedFromAmendment: true }),
+    personalComment: input.comment,
+  })
   if (issueNumber === null) return false
 
+  // Remembered so the NEXT amendment comments on this card instead of filing a second one.
+  try {
+    await rememberIssueNumber(env.ERROR_REPORT_META, input.id, issueNumber)
+  } catch (e) {
+    console.error('GitHub issues: remembering the issue number failed; a later amendment will file its own card', e)
+  }
+  return true
+}
+
+/** Post one comment on an existing card, then add any labels. False when nothing was posted. */
+async function commentOnIssue(
+  target: IssueTarget,
+  issueNumber: number,
+  body: string,
+  addLabels: string[],
+): Promise<boolean> {
   if (!(await isRepoPrivate(target))) {
     console.error(`GitHub issues: ${target.owner}/${target.repo} is not private; the amendment was not posted`)
     return false
@@ -572,8 +644,8 @@ export async function commentOnReportIssue(
     return false
   }
 
-  if (options.addLabels?.length) {
-    await addIssueLabels(target, issueNumber, options.addLabels)
+  if (addLabels.length) {
+    await addIssueLabels(target, issueNumber, addLabels)
   }
   return true
 }

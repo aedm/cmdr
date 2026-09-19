@@ -29,7 +29,7 @@ import { amendSidecarKey } from './error-report-eviction'
 import { claimErrorReportEmailSlot, DAILY_ERROR_REPORT_EMAIL_CAP } from './error-report-intake'
 import { humanReportRecipient } from '../email/send'
 import { sendErrorReportAmendmentEmail, sendErrorReportsSuppressedEmail } from '../email/error-report'
-import { buildAmendmentComment, commentOnReportIssue } from '../github-issues'
+import { buildAmendmentComment, recordAmendmentOnBoard, type ErrorReportIssueInput } from '../github-issues'
 
 const errorReportAmend = new Hono<{ Bindings: Bindings }>()
 
@@ -320,6 +320,41 @@ async function mailAmendment(
   })
 }
 
+/**
+ * The report's technical facts, read back off the bundle, for the card an amendment has to create.
+ * Null when R2 no longer holds the object, which means no card: one that can't say what report it
+ * is about helps nobody.
+ *
+ * The bundle's own `customMetadata` is where these live; the index entry carries only the key, the
+ * date, and the credential hash. `buildMode` comes from the key's env segment, which the upload
+ * route derives from exactly that field.
+ */
+async function readReportFacts(
+  bucket: R2Bucket,
+  entry: ReportIndexEntry,
+  args: { id: string; amendment: Amendment },
+): Promise<ErrorReportIssueInput | null> {
+  const object = await bucket.head(entry.key)
+  if (!object) return null
+
+  const meta: Record<string, string | undefined> = object.customMetadata ?? {}
+  return {
+    id: args.id,
+    // A bundle stored without the field reads as an auto-send, the commoner case by far, and the
+    // word only labels the card.
+    kind: meta.kind === 'user' ? 'user' : 'auto',
+    buildMode: entry.env === 'dev' ? 'debug' : 'release',
+    appVersion: meta.appVersion ?? 'unknown',
+    osVersion: meta.osVersion ?? 'unknown',
+    arch: meta.arch ?? 'unknown',
+    sizeBytes: object.size,
+    r2Key: entry.key,
+    uploadedUnixSeconds: Math.floor(object.uploaded.getTime() / 1000),
+    // Drives the card's `needs-reply` label only. The address itself goes in the expiring comment.
+    email: args.amendment.email,
+  }
+}
+
 errorReportAmend.post('/error-report/:id/amend', async (c) => {
   // Rate-limit before anything else, on the amend route's own binding. Looser than the upload
   // limiter (this stores a note, not a bundle) and separate from it, so a reporter who just used
@@ -369,10 +404,9 @@ errorReportAmend.post('/error-report/:id/amend', async (c) => {
     }
 
     try {
-      await commentOnReportIssue(
-        c.env,
+      await recordAmendmentOnBoard(c.env, {
         id,
-        buildAmendmentComment({
+        comment: buildAmendmentComment({
           note: amendment.note,
           email: amendment.email,
           amendmentCount: sidecar.amendments.length,
@@ -383,8 +417,11 @@ errorReportAmend.post('/error-report/:id/amend', async (c) => {
         // An amendment is often exactly how someone supplies the reply-to they left out, and the
         // card's `needs-reply` is the only thing that says somebody is waiting. Without this the
         // board keeps reading "nobody to answer" while an address is sitting in the comment.
-        { addLabels: amendment.email ? ['needs-reply'] : [] },
-      )
+        addLabels: amendment.email ? ['needs-reply'] : [],
+        // Only called when the report never got a card, which is every auto-send: then the
+        // amendment is what earns it one, and these facts are what the card is built from.
+        readReportFacts: () => readReportFacts(c.env.ERROR_REPORTS_BUCKET, entry, { id, amendment }),
+      })
     } catch (e) {
       console.error('Error report amend: the GitHub issue comment failed', e)
     }
