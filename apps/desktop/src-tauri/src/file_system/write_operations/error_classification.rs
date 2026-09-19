@@ -52,10 +52,13 @@ pub(super) fn classify_io_error(e: &std::io::Error, path: String) -> WriteOperat
 
     match e.kind() {
         std::io::ErrorKind::NotFound => WriteOperationError::SourceNotFound { path },
-        std::io::ErrorKind::PermissionDenied => WriteOperationError::PermissionDenied {
-            path,
-            message: e.to_string(),
-        },
+        // The errno rides along (Rust folds `EACCES` and `EPERM` into one kind, and
+        // they're opposite advice), and the probe asks the OS which folder actually
+        // said no rather than letting the copy guess from the operation's shape.
+        std::io::ErrorKind::PermissionDenied => {
+            let refused_folder = super::validation::refusing_folder(Path::new(&path));
+            WriteOperationError::permission_denied(path, e.to_string(), e.raw_os_error(), refused_folder)
+        }
         std::io::ErrorKind::AlreadyExists => WriteOperationError::DestinationExists { path },
         _ => WriteOperationError::IoError {
             path,
@@ -164,10 +167,7 @@ mod tests {
                 message: "boom".to_string(),
             },
             WriteOperationError::SourceNotFound { path: "/x".to_string() },
-            WriteOperationError::PermissionDenied {
-                path: "/x".to_string(),
-                message: "denied".to_string(),
-            },
+            WriteOperationError::permission_denied("/x".to_string(), "denied".to_string(), None, None),
         ];
         for err in failures {
             assert!(

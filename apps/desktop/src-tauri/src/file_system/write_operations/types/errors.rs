@@ -64,6 +64,38 @@ pub struct DisconnectedSide {
     pub counterpart_name: String,
 }
 
+/// What a permission refusal's errno says about whether administrator rights
+/// could change the answer, for [`WriteOperationError::PermissionDenied`].
+///
+/// Rust folds `EACCES` and `EPERM` into one `ErrorKind::PermissionDenied`, and the
+/// two are opposite advice: one is a folder an administrator could write to, the
+/// other is macOS itself refusing, where administrator rights change nothing.
+/// Derived from the errno by [`WriteOperationError::permission_denied`], the only
+/// thing that builds the variant, so the two can't disagree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum PermissionRefusal {
+    /// `EACCES`: the folder's own permissions say no. An administrator could.
+    FolderPermissions,
+    /// `EPERM`: the OS itself says no (System Integrity Protection, an immutable
+    /// flag, a privacy protection). Administrator rights change nothing.
+    SystemProtected,
+    /// No errno to classify: a backend that words its own refusals (MTP, SMB), or
+    /// an errno outside the two above.
+    Unclassified,
+}
+
+impl PermissionRefusal {
+    /// Reads a raw errno as one of the three answers above.
+    pub fn from_errno(errno: Option<i32>) -> Self {
+        match errno {
+            Some(libc::EACCES) => Self::FolderPermissions,
+            Some(libc::EPERM) => Self::SystemProtected,
+            _ => Self::Unclassified,
+        }
+    }
+}
+
 /// Errors that can occur during write operations.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "type", rename_all = "snake_case", rename_all_fields = "camelCase")]
@@ -103,9 +135,34 @@ pub enum WriteOperationError {
     DestinationExists {
         path: String,
     },
+    /// A write the OS refused on permission grounds.
+    ///
+    /// ❗ Build it with [`WriteOperationError::permission_denied`], ❌ never as a
+    /// literal. `refusal` is `errno` read as advice and the two must agree; a
+    /// hand-written pair ships a sentence that contradicts the number under it,
+    /// and later stops the elevated-operations engine from recognizing a refusal
+    /// root could fix. All four construction sites go through the constructor.
+    /// Full rationale: `write_operations/DETAILS.md` § "Naming the folder that
+    /// refused a write".
     PermissionDenied {
+        /// What was being written when the refusal came back.
         path: String,
+        /// The OS's own sentence, for the technical-details block ONLY.
         message: String,
+        /// The OS's number for the refusal, so a bug report keeps it. `None` for a
+        /// backend that raises its own refusal with no errno behind it.
+        errno: Option<i32>,
+        /// What that errno says about administrator rights, derived from it.
+        refusal: PermissionRefusal,
+        /// The folder that refuses writes, PROVED with `access(W_OK)` at the
+        /// refusal (`error_classification::refusing_folder`).
+        ///
+        /// ❗ `None` when nothing could be proved, and the message then stays the
+        /// generic one. ❌ Never fill it in from the operation's shape: a
+        /// `rename(2)` needs both parents and its errno says nothing about which
+        /// one refused, which is how a refused move came to tell a user to check
+        /// the destination when it was the source folder that said no.
+        refused_folder: Option<String>,
     },
     /// The destination has no room for the transfer, MEASURED before anything was
     /// written, so both numbers are real.
@@ -313,6 +370,27 @@ pub enum WriteOperationError {
         path: String,
         message: String,
     },
+}
+
+impl WriteOperationError {
+    /// The one way to build [`PermissionDenied`](Self::PermissionDenied).
+    ///
+    /// It derives `refusal` from `errno`, so no caller can ship a variant whose
+    /// advice contradicts the errno it was built from.
+    pub fn permission_denied(
+        path: String,
+        message: String,
+        errno: Option<i32>,
+        refused_folder: Option<String>,
+    ) -> Self {
+        Self::PermissionDenied {
+            path,
+            message,
+            errno,
+            refusal: PermissionRefusal::from_errno(errno),
+            refused_folder,
+        }
+    }
 }
 
 /// Why the OS wouldn't take something to the Trash.

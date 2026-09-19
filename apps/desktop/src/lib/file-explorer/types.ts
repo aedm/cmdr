@@ -663,6 +663,18 @@ export interface DisconnectedSide {
  */
 export type UnwritableReason = 'readOnlyFilesystem' | 'noPermission' | 'unexplained'
 
+/**
+ * What a permission refusal's errno says about whether administrator rights could
+ * change the answer, for `permission_denied`.
+ *
+ * `folderPermissions` (`EACCES`) is a folder an administrator could write to;
+ * `systemProtected` (`EPERM`) is the OS itself refusing, where administrator
+ * rights change nothing, so the advice has to be different. `unclassified` is a
+ * backend that words its own refusals (MTP, SMB) or an errno outside the two. The
+ * backend derives it from the errno and the frontend ❌ never re-derives one.
+ */
+export type PermissionRefusal = 'folderPermissions' | 'systemProtected' | 'unclassified'
+
 /** Error types for write operations (discriminated union). */
 export type WriteOperationError =
   | { type: 'source_not_found'; path: string }
@@ -670,7 +682,18 @@ export type WriteOperationError =
   | { type: 'source_not_connected'; path: string }
   | { type: 'destination_not_connected'; path: string }
   | { type: 'destination_exists'; path: string }
-  | { type: 'permission_denied'; path: string; message: string }
+  // `refusedFolder` is the folder the BACKEND proved refuses writes (it asked the
+  // OS with `access(W_OK)` at the refusal); `null` means nothing could be proved,
+  // and the copy falls back to its per-operation sentence. ❌ Never infer one from
+  // `path`: a `rename(2)` needs both parents and the errno names neither.
+  | {
+      type: 'permission_denied'
+      path: string
+      message: string
+      errno: number | null
+      refusal: PermissionRefusal
+      refusedFolder: string | null
+    }
   // Measured before anything was written, so both sizes are real.
   | { type: 'insufficient_space'; required: number; available: number; volumeName: string | null }
   // The destination refused a write for lack of room or quota. Nothing was

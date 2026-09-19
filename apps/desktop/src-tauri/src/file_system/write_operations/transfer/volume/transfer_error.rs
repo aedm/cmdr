@@ -261,10 +261,12 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
             PathRole::Source => WriteOperationError::SourceNotFound { path },
             PathRole::Destination => WriteOperationError::DestinationNotFound { path },
         },
-        VolumeError::PermissionDenied(msg) => WriteOperationError::PermissionDenied {
-            path: context_path.to_string(),
-            message: msg,
-        },
+        // No errno and no folder: a backend words its own refusals, and ❌ naming a
+        // folder we didn't prove with `access(W_OK)` is what the local path exists to
+        // avoid. The user gets the generic sentence, which is the honest one here.
+        VolumeError::PermissionDenied(msg) => {
+            WriteOperationError::permission_denied(context_path.to_string(), msg, None, None)
+        }
         VolumeError::AlreadyExists(path) => WriteOperationError::DestinationExists { path },
         // ❗ Name the ROLE. The bare wording said only "this volume type", so a
         // transfer that died here left a reader unable to tell which of the two

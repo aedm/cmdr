@@ -70,10 +70,14 @@ pub(crate) fn ensure_destination_dir(destination: &Path) -> Result<(), WriteOper
         }),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             fs::create_dir_all(destination).map_err(|e| match e.kind() {
-                std::io::ErrorKind::PermissionDenied => WriteOperationError::PermissionDenied {
-                    path: destination.display().to_string(),
-                    message: "Couldn't create the destination folder. Check folder permissions in Finder.".to_string(),
-                },
+                // The folder that refused is an ANCESTOR (the deepest one that exists),
+                // never the one we failed to create, so the probe walks up to find it.
+                std::io::ErrorKind::PermissionDenied => WriteOperationError::permission_denied(
+                    destination.display().to_string(),
+                    "Couldn't create the destination folder. Check folder permissions in Finder.".to_string(),
+                    e.raw_os_error(),
+                    refusing_folder(destination),
+                ),
                 _ => WriteOperationError::IoError {
                     path: destination.display().to_string(),
                     message: format!("Couldn't create the destination folder: {e}"),
@@ -163,26 +167,84 @@ fn canonicalize_or_nearest_ancestor(path: &Path) -> std::io::Result<PathBuf> {
     }
 }
 
-/// Checks whether the destination directory is writable using access(W_OK).
+/// Asks the OS whether `folder` takes writes from us, answering with the errno when
+/// it doesn't and `None` when it does.
+///
+/// `access(W_OK)` evaluates ACLs as well as the mode bits on macOS, so it's the honest
+/// question rather than a mode-bit guess. The one place that asks it: the destination
+/// pre-flight below, and `error_classification::refusing_folder` on the refusal path.
+///
+/// ❗ It's a syscall, so on a hung network mount it blocks like every other one
+/// (`file_system/CLAUDE.md`). `None` also for a path the OS can't be handed at all (an
+/// interior NUL, which no path the OS produced has); the write itself then refuses it.
 #[cfg(unix)]
-pub(crate) fn validate_destination_writable(destination: &Path) -> Result<(), WriteOperationError> {
+pub(crate) fn folder_write_refusal(folder: &Path) -> Option<i32> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
 
-    let c_path = CString::new(destination.as_os_str().as_bytes()).map_err(|_| WriteOperationError::IoError {
-        path: destination.display().to_string(),
-        message: "Invalid path".to_string(),
-    })?;
+    let c_path = CString::new(folder.as_os_str().as_bytes()).ok()?;
+    // SAFETY: `c_path` is a valid NUL-terminated C string that outlives the call.
+    let refused = unsafe { libc::access(c_path.as_ptr(), libc::W_OK) } != 0;
+    refused.then(|| std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EACCES))
+}
 
-    // SAFETY: c_path is a valid null-terminated C string
-    let result = unsafe { libc::access(c_path.as_ptr(), libc::W_OK) };
-    if result != 0 {
-        return Err(WriteOperationError::PermissionDenied {
-            path: destination.display().to_string(),
-            message: "Destination folder is not writable. Check folder permissions in Finder.".to_string(),
-        });
+/// The folder whose permissions refuse a write, for a refusal that happened at `path`.
+///
+/// A `rename(2)` needs write access to BOTH parent folders, a `unlink(2)` to the one it
+/// removes from, and a `create_dir_all` to the deepest ancestor that exists; no errno
+/// says which of them refused. So instead of inferring one from the operation's shape,
+/// we ask the OS. In order: the folder the entry lives in, since its write bit is what
+/// governs creating, removing, and renaming an entry, walking up past ancestors that
+/// don't exist yet; then the entry itself when it's a folder, since writing INTO one
+/// needs its own write bit.
+///
+/// ❗ `None` when every candidate answers "writable": an ACL the probe and the write
+/// read differently, a race, or a read refusal rather than a write one. The message
+/// then stays the generic one. ❌ Never name a folder this couldn't prove — a refused
+/// move telling the user to check the destination when the SOURCE folder said no is
+/// exactly the report (ERR-4TEMD) this exists for.
+///
+/// On the REFUSAL path only, so the happy path pays nothing: at most two `access(2)`
+/// calls plus the walk's stats, on a path the failing syscall just answered for.
+#[cfg(unix)]
+pub(crate) fn refusing_folder(path: &Path) -> Option<String> {
+    let mut candidate = path.parent();
+    while let Some(dir) = candidate {
+        if dir.as_os_str().is_empty() {
+            break;
+        }
+        if dir.exists() {
+            if folder_write_refusal(dir).is_some() {
+                return Some(dir.display().to_string());
+            }
+            break;
+        }
+        candidate = dir.parent();
     }
-    Ok(())
+    if path.is_dir() && folder_write_refusal(path).is_some() {
+        return Some(path.display().to_string());
+    }
+    None
+}
+
+#[cfg(not(unix))]
+pub(crate) fn refusing_folder(_path: &Path) -> Option<String> {
+    None
+}
+
+/// Checks whether the destination directory is writable using access(W_OK).
+#[cfg(unix)]
+pub(crate) fn validate_destination_writable(destination: &Path) -> Result<(), WriteOperationError> {
+    let Some(errno) = folder_write_refusal(destination) else {
+        return Ok(());
+    };
+    // The probe IS the proof here, so the folder is named with no second guess.
+    Err(WriteOperationError::permission_denied(
+        destination.display().to_string(),
+        "Destination folder is not writable. Check folder permissions in Finder.".to_string(),
+        Some(errno),
+        Some(destination.display().to_string()),
+    ))
 }
 
 #[cfg(not(unix))]
@@ -436,6 +498,126 @@ pub(crate) fn is_same_filesystem(source: &Path, destination: &Path) -> std::io::
 pub(crate) fn is_same_filesystem(_source: &Path, _destination: &Path) -> std::io::Result<bool> {
     // On non-Unix, assume different filesystem to be safe (will use copy+delete)
     Ok(false)
+}
+
+#[cfg(all(test, unix))]
+mod refusing_folder_tests {
+    //! What ERR-4TEMD needed and didn't get: a refusal that names the folder that
+    //! actually said no.
+    //!
+    //! The user moved two `root:admin` files out of a folder their macOS user can't
+    //! change. Both ends of the `rename(2)` are candidates and the errno names
+    //! neither, so Cmdr's copy blamed the destination, which was fine, and the user
+    //! finished the job with `sudo`. Every case here is about proving the folder
+    //! rather than inferring it.
+    use super::*;
+    use crate::file_system::write_operations::types::PermissionRefusal;
+    use std::os::unix::fs::PermissionsExt;
+    use tempfile::TempDir;
+
+    /// A folder nobody can write into, and the file sitting in it.
+    fn locked_folder_with_file(temp: &TempDir) -> (PathBuf, PathBuf) {
+        let folder = temp.path().join("locked");
+        fs::create_dir(&folder).expect("create the folder");
+        let file = folder.join("script.js");
+        fs::write(&file, b"contents").expect("write the file");
+        fs::set_permissions(&folder, fs::Permissions::from_mode(0o555)).expect("lock the folder");
+        (folder, file)
+    }
+
+    /// The report's own shape: the refusal happened on the FILE, and the folder it
+    /// lives in is what refuses.
+    #[test]
+    fn the_folder_an_entry_lives_in_is_named() {
+        let temp = TempDir::new().expect("tempdir");
+        let (folder, file) = locked_folder_with_file(&temp);
+
+        let named = refusing_folder(&file);
+
+        assert_eq!(named.as_deref(), Some(folder.display().to_string().as_str()));
+    }
+
+    /// A folder that takes writes is never named, so a refusal we can't explain keeps
+    /// the generic sentence instead of pointing at an innocent folder.
+    #[test]
+    fn a_writable_folder_is_never_named() {
+        let temp = TempDir::new().expect("tempdir");
+        let file = temp.path().join("ordinary.txt");
+        fs::write(&file, b"contents").expect("write the file");
+
+        assert_eq!(refusing_folder(&file), None);
+    }
+
+    /// Writing INTO a folder needs its own write bit, so a refusal ON a folder names
+    /// that folder and not its (writable) parent.
+    #[test]
+    fn a_folder_that_takes_no_writes_itself_is_named() {
+        let temp = TempDir::new().expect("tempdir");
+        let (folder, _file) = locked_folder_with_file(&temp);
+
+        let named = refusing_folder(&folder);
+
+        assert_eq!(named.as_deref(), Some(folder.display().to_string().as_str()));
+    }
+
+    /// A refused `create_dir_all` is about the deepest ancestor that EXISTS, never the
+    /// folder it couldn't create, so the walk skips the ones that aren't there yet.
+    #[test]
+    fn a_folder_that_cannot_be_created_names_the_deepest_ancestor_that_exists() {
+        let temp = TempDir::new().expect("tempdir");
+        let (folder, _file) = locked_folder_with_file(&temp);
+        let wanted = folder.join("new").join("deeper");
+
+        let named = refusing_folder(&wanted);
+
+        assert_eq!(named.as_deref(), Some(folder.display().to_string().as_str()));
+    }
+
+    /// `classify_io_error` is where the probe has to fire: every local-FS refusal
+    /// reaches the typed variant through it.
+    #[test]
+    fn a_classified_refusal_carries_the_errno_and_the_folder() {
+        let temp = TempDir::new().expect("tempdir");
+        let (folder, file) = locked_folder_with_file(&temp);
+
+        let err = super::super::error_classification::classify_io_error(
+            &std::io::Error::from_raw_os_error(libc::EACCES),
+            file.display().to_string(),
+        );
+
+        let WriteOperationError::PermissionDenied {
+            errno,
+            refusal,
+            refused_folder,
+            ..
+        } = err
+        else {
+            panic!("expected a permission refusal, got {err:?}");
+        };
+        assert_eq!(errno, Some(libc::EACCES));
+        assert_eq!(refusal, PermissionRefusal::FolderPermissions);
+        assert_eq!(refused_folder.as_deref(), Some(folder.display().to_string().as_str()));
+    }
+
+    /// `EACCES` and `EPERM` are opposite advice, and Rust folds both into one
+    /// `ErrorKind`: an administrator can write into a folder whose permissions refuse,
+    /// and can't touch what the OS itself protects.
+    #[test]
+    fn the_errno_decides_whether_administrator_rights_would_help() {
+        assert_eq!(
+            PermissionRefusal::from_errno(Some(libc::EACCES)),
+            PermissionRefusal::FolderPermissions
+        );
+        assert_eq!(
+            PermissionRefusal::from_errno(Some(libc::EPERM)),
+            PermissionRefusal::SystemProtected
+        );
+        assert_eq!(PermissionRefusal::from_errno(None), PermissionRefusal::Unclassified);
+        assert_eq!(
+            PermissionRefusal::from_errno(Some(libc::EROFS)),
+            PermissionRefusal::Unclassified
+        );
+    }
 }
 
 #[cfg(all(test, unix))]

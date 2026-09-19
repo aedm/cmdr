@@ -10823,6 +10823,30 @@ export type PauseOutcome =
   | 'not_applicable'
 
 /**
+ *  What a permission refusal's errno says about whether administrator rights
+ *  could change the answer, for [`WriteOperationError::PermissionDenied`].
+ *
+ *  Rust folds `EACCES` and `EPERM` into one `ErrorKind::PermissionDenied`, and the
+ *  two are opposite advice: one is a folder an administrator could write to, the
+ *  other is macOS itself refusing, where administrator rights change nothing.
+ *  Derived from the errno by [`WriteOperationError::permission_denied`], the only
+ *  thing that builds the variant, so the two can't disagree.
+ */
+export type PermissionRefusal =
+  // `EACCES`: the folder's own permissions say no. An administrator could.
+  | 'folderPermissions'
+  /**
+   *  `EPERM`: the OS itself says no (System Integrity Protection, an immutable
+   *  flag, a privacy protection). Administrator rights change nothing.
+   */
+  | 'systemProtected'
+  /**
+   *  No errno to classify: a backend that words its own refusals (MTP, SMB), or
+   *  an errno outside the two above.
+   */
+  | 'unclassified'
+
+/**
  *  `persist-restricted-setting`: the viewer (a restricted-capability window with
  *  no store access) forwards an allowlisted setting write to the main window,
  *  which persists it through the normal store pipeline. Emitted to the main
@@ -15246,7 +15270,42 @@ export type WriteOperationError =
   | { type: 'destination_not_connected'; path: string }
   // Overwrite not enabled.
   | { type: 'destination_exists'; path: string }
-  | { type: 'permission_denied'; path: string; message: string }
+  /**
+   *  A write the OS refused on permission grounds.
+   *
+   *  ❗ Build it with [`WriteOperationError::permission_denied`], ❌ never as a
+   *  literal. `refusal` is `errno` read as advice and the two must agree; a
+   *  hand-written pair ships a sentence that contradicts the number under it,
+   *  and later stops the elevated-operations engine from recognizing a refusal
+   *  root could fix. All four construction sites go through the constructor.
+   *  Full rationale: `write_operations/DETAILS.md` § "Naming the folder that
+   *  refused a write".
+   */
+  | {
+      type: 'permission_denied'
+      // What was being written when the refusal came back.
+      path: string
+      // The OS's own sentence, for the technical-details block ONLY.
+      message: string
+      /**
+       *  The OS's number for the refusal, so a bug report keeps it. `None` for a
+       *  backend that raises its own refusal with no errno behind it.
+       */
+      errno: number | null
+      // What that errno says about administrator rights, derived from it.
+      refusal: PermissionRefusal
+      /**
+       *  The folder that refuses writes, PROVED with `access(W_OK)` at the
+       *  refusal (`error_classification::refusing_folder`).
+       *
+       *  ❗ `None` when nothing could be proved, and the message then stays the
+       *  generic one. ❌ Never fill it in from the operation's shape: a
+       *  `rename(2)` needs both parents and its errno says nothing about which
+       *  one refused, which is how a refused move came to tell a user to check
+       *  the destination when it was the source folder that said no.
+       */
+      refusedFolder: string | null
+    }
   /**
    *  The destination has no room for the transfer, MEASURED before anything was
    *  written, so both numbers are real.

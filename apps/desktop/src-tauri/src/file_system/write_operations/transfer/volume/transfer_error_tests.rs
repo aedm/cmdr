@@ -13,6 +13,7 @@
 //! lives with the copy engine in `copy_tests/destination.rs`.
 
 use super::*;
+use crate::file_system::write_operations::types::PermissionRefusal;
 
 #[test]
 fn test_map_volume_error_not_found() {
@@ -81,7 +82,7 @@ fn test_map_volume_error_permission_denied() {
         VolumeError::PermissionDenied("Access denied".to_string()),
     );
     assert!(
-        matches!(err, WriteOperationError::PermissionDenied { path, message } if message == "Access denied" && path == "/ctx")
+        matches!(err, WriteOperationError::PermissionDenied { path, message, errno: None, refusal: PermissionRefusal::Unclassified, refused_folder: None } if message == "Access denied" && path == "/ctx")
     );
 }
 

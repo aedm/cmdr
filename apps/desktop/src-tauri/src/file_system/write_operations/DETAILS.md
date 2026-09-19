@@ -453,6 +453,33 @@ stage a reader can't tell which half answered, and without the line at all a ref
 over an empty log: that was ERR-8RFN4, and the pre-flight kept that blind spot for one release after the rename closed
 it. Only the file log chain is `Debug` unconditionally, so both levels land in the bundle.
 
+## Naming the folder that refused a write
+
+`PermissionDenied` carries three things beyond its path and the OS's sentence: the raw `errno`, a `refusal` derived
+from it, and `refused_folder`. `WriteOperationError::permission_denied` is the only thing that builds the variant, so
+`refusal` can't contradict the errno it came from.
+
+**Why the errno has to travel.** Rust folds `EACCES` and `EPERM` into one `ErrorKind::PermissionDenied`, and they are
+opposite advice: `EACCES` is a folder's own permissions, which an administrator could change, and `EPERM` is macOS
+itself (SIP, an immutable flag, a privacy protection), where administrator rights change nothing. Sending someone to
+chase permissions for the second is a wrong answer they'd act on. `PermissionRefusal` is that distinction as a value,
+and it's what `docs/specs/elevated-file-operations.md` decision 12 branches on when the root helper lands.
+
+**Why the folder is PROVED, never inferred.** A `rename(2)` needs write access to both parent folders, a `unlink(2)` to
+the one it removes from, and a `create_dir_all` to the deepest ancestor that exists; no errno says which refused. So
+`validation::refusing_folder` asks the OS on the refusal path: the entry's parent first (its write bit is what governs
+creating, removing, and renaming an entry), walking up past ancestors that don't exist yet, then the entry itself when
+it's a folder. `access(W_OK)` evaluates ACLs as well as the mode bits on macOS, so it's the honest question.
+
+❗ `None` when every candidate answers "writable" (an ACL the probe and the write read differently, a race, a read
+refusal rather than a write one), and the copy then falls back to its per-operation sentence. ❌ Never fill it in from
+the operation's shape: ERR-4TEMD was a same-volume move out of a folder the user's macOS account can't change, and the
+copy told them to check the destination, which was fine. They finished the job with `sudo` in Terminal.
+
+The probe runs on the REFUSAL path only, so the happy path pays nothing: at most two `access(2)` calls plus the walk's
+stats, on a path the failing syscall just answered for. Backends that word their own refusals (MTP, SMB) carry no
+errno and no folder, since nothing there proved one.
+
 ## Cmdr-own-write hook (downloads watcher)
 
 Every write-op driver MUST register its destination with the downloads watcher's ignore set BEFORE issuing the syscall. This is what makes the watcher silently suppress events Cmdr itself caused, so the user doesn't see a "Downloaded foo.bin" toast when they just used Cmdr to copy 100 files into `~/Downloads`.
