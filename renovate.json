@@ -32,10 +32,12 @@
       "automerge": true
     },
     {
-      "description": "Desktop app deps, Rust and JS together (a specta bump regenerates bindings.ts, so they have to land as one).",
+      "description": "Desktop app deps, Rust and JS together (a specta bump regenerates bindings.ts, so they have to land as one). Dashboard-only, because a desktop PR can never go green on its own: every lockfile touch leaves `THIRD-PARTY-NOTICES.md` stale, and the check only REGENERATES on a local run (`docs/guides/update-dependencies.md`). Renovate can't run that regeneration, since `postUpgradeTasks` needs a self-hosted `allowedCommands`. On top of that, semver-minor Rust crates break compilation for real (russh 0.63 changed the `check_server_key` signature and broke `cmdr-sftp`), which no bot fixes. Both attempted PRs failed: #41 closed, #97 red for five days. So Renovate keeps discovering versions and lists them on the Dependency Dashboard; a human ticks the box, or the weekly `/weekly-upgrades` pass does the whole batch in a worktree.",
       "matchFileNames": ["apps/desktop/**", "crates/**", "rust-toolchain.toml"],
       "matchUpdateTypes": ["patch", "minor", "pin", "digest"],
-      "groupName": "desktop non-major updates"
+      "groupName": "desktop non-major updates",
+      "dependencyDashboardApproval": true,
+      "automerge": false
     },
     {
       "description": "Website deps.",
@@ -64,11 +66,12 @@
       "groupName": "linters and formatters"
     },
     {
-      "description": "Group all major updates into one monthly PR",
+      "description": "Majors, dashboard-only for the same reason as the desktop group: a major needs code changes, so an unattended PR just sits red and mails about it (#61, TypeScript v7, sat red for ten days). Renovate still tracks what's available; `/weekly-upgrades` decides which ones to take.",
       "groupName": "all major updates",
       "matchUpdateTypes": ["major"],
       "schedule": ["before 6am on the first day of the month"],
-      "automerge": false
+      "automerge": false,
+      "dependencyDashboardApproval": true
     },
     {
       "description": "Security patches get immediate PRs, auto-merge",
