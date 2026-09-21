@@ -150,6 +150,42 @@ Each of these is a way to ship something that passes tests and is still wrong.
    while `first_line_number` is the *target* line, and the code comment says so out loud ("approximate"). Anything that
    seeks onward from that offset lands short. Return the target row's real offset.
 
+### What bounded rows break on the frontend
+
+A per-fetch budget and 20 KB rows are not free on the other side of the IPC. Three of these are new breakage that this
+change introduces, so they are part of it, not follow-ups.
+
+- **A short chunk makes the fetch loop spin.** `viewer-scroll.svelte.ts:201` asks for ~267 rows; a 2 MiB budget answers
+  with ~104 rows of 20 000 bytes. Row `to - 1` is then never cached, `needsFetch` at `:150` stays true, and a refetch
+  fires every `FETCH_DEBOUNCE_MS` forever. **Drive the next fetch from the last row actually cached**, not from the
+  requested range. This one is caused by `CHUNK_BUDGET_BYTES`, so it ships with it or not at all.
+- **`lineCache` is never evicted.** It is a plain `SvelteMap` (`viewer-scroll.svelte.ts:40`) cleared only on open,
+  reload, and encoding change (`+page.svelte:145,235,690`). At up to 40 KB per row that is fine today and parks
+  hundreds of megabytes in the renderer once rows are long: scrolling through 1% of a 50 GB file is ~500 MB. Evict by
+  distance from the viewport.
+- **The height model does not survive wrapped 20 KB rows.** `avgWrappedLineHeight` (`viewer-scroll.svelte.ts:437`)
+  would measure rows ~3 600 px tall while `linesOffset` spaces them at ~12 px, and the DOM height map is FullLoad-only
+  (`+page.svelte:274`, `MAX_LINES` 50 000) so it never engages on the files that need it. **Size the render window by
+  height, not by row count.**
+- **`SeekTarget::Line(n)` estimates `n * 80` bytes** (`byte_seek.rs:251`), which is 250x wrong once `n` counts rows,
+  and `range_read.rs:158` seeds its first chunk with it. ByteSeek should report `total_rows` and estimate from
+  `SEGMENT_BYTES`, and the fraction path at `viewer-scroll.svelte.ts:237` must stop discarding
+  `chunk.firstLineNumber` and caching at `fetchFrom` instead.
+- **Checkpoints count lines, every 256 of them** (`mod.rs:75`, `line_index.rs:136`). A newline-free file therefore has
+  exactly ONE checkpoint, and `read_lines_from_checkpoint` scans from byte 0 on every single fetch. The interval has to
+  count ROWS, or the LineIndex backend violates I1 on precisely the file this work exists for. (And LineIndex IS
+  reached on the 300 MB file: its scan finishes well inside `INDEXING_TIMEOUT_SECS`.)
+
+### Milestone ordering
+
+Findings that milestones 3-5 leave the app incoherent in between are correct but not a problem here: everything lands
+on `worktree-viewer-row-wrap` and reaches `main` as one fast-forward, so `main` never sees a half-renamed coordinate.
+Land 3, 4, and 5 as a series without stopping to make each independently shippable.
+
+Milestone 6 is NOT as independent as this spec first claimed: save-as reaches the file through the same
+`read_range` (`session.rs:975`). One streaming implementation, not two. The save-as work refactors `read_range` into a
+form that can emit into a sink, and `write_range_to_file` drives it; the row changes then land in that one place.
+
 ### Pre-existing bugs in the blast radius
 
 These are broken on `main` today, independent of this change, and every one of them sits in code this work has to
