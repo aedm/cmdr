@@ -236,9 +236,11 @@ describe('volumeRowMenu: an SMB share’s direct connection', () => {
 })
 
 describe('favoriteRowMenu', () => {
-  it('offers Rename and Remove, both keeping the menu up (the rename happens in the row)', () => {
+  it('offers Rename, Set shortcut, and Remove, all keeping the menu up', () => {
     const menu = favoriteRowMenu()
-    expect(shape(menu)).toEqual({ actions: ['rename-favorite', 'remove-favorite'] })
+    expect(shape(menu)).toEqual({
+      actions: ['rename-favorite', 'edit-favorite-shortcut', 'remove-favorite'],
+    })
     expect(allEntries(menu).every((e) => e.type === 'action' && e.keepsMenuOpen)).toBe(true)
   })
 })

@@ -1907,6 +1907,19 @@
   "@fileExplorer.navigation.renameFavoriteAriaLabel": {
     "description": "Accessibility label for the inline text field that appears when renaming a favorite in the favorites menu."
   },
+  "fileExplorer.navigation.favoriteShortcutPrompt": "A–Z or Delete",
+  "@fileExplorer.navigation.favoriteShortcutPrompt": {
+    "description": "Prompt in the inline one-key capture field on a favorite row. A–Z assigns a letter; Delete removes the existing shortcut."
+  },
+  "fileExplorer.navigation.favoriteShortcutAriaLabel": "Shortcut for {name}. Press A–Z, or Delete to clear.",
+  "@fileExplorer.navigation.favoriteShortcutAriaLabel": {
+    "description": "Accessibility label for the inline favorite shortcut capture field.",
+    "placeholders": { "name": "the favorite's display name" }
+  },
+  "fileExplorer.navigation.favoriteShortcutSaveFailed": "Couldn''t save that shortcut. Try again?",
+  "@fileExplorer.navigation.favoriteShortcutSaveFailed": {
+    "description": "Toast when a favorite's letter shortcut could not be saved."
+  },
   "fileExplorer.navigation.removeFavoriteFailed": "Couldn''t remove that favorite. Try again?",
   "@fileExplorer.navigation.removeFavoriteFailed": {
     "description": "Error toast when removing a favorite from the list did not work, inviting the user to retry."

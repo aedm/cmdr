@@ -260,6 +260,8 @@ export interface VolumeInfo {
   path: string
   /** Category of this location */
   category: LocationCategory
+  /** Unmodified A–Z key that opens this favorite while the favorites menu is visible. */
+  favoriteShortcut?: string | null
   /** Base64-encoded icon (WebP format), optional */
   icon?: string
   /** Whether this can be ejected */

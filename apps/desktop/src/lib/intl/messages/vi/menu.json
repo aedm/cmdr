@@ -577,6 +577,10 @@
   "@menu.volume.renameFavorite": {
     "sourceHash": "3064d79"
   },
+  "menu.volume.editFavoriteShortcut": "Đặt phím tắt…",
+  "@menu.volume.editFavoriteShortcut": {
+    "sourceHash": "be52b50"
+  },
   "menu.volume.removeFavorite": "Gỡ bỏ",
   "@menu.volume.removeFavorite": {
     "sourceHash": "c3812fc"

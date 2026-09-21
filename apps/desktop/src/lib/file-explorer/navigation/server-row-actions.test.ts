@@ -180,7 +180,7 @@ describe('runServerRowAction', () => {
   })
 
   it('leaves eject and the favorite actions to their owners', async () => {
-    for (const action of ['eject', 'rename-favorite', 'remove-favorite']) {
+    for (const action of ['eject', 'rename-favorite', 'edit-favorite-shortcut', 'remove-favorite']) {
       await runServerRowAction(payload(action))
     }
     expect(disconnectPlace).not.toHaveBeenCalled()

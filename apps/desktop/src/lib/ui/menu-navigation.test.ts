@@ -173,7 +173,7 @@ describe('menuKeyAction', () => {
   })
 
   it('returns none for a key the menu has no use for', () => {
-    expect(menuKeyAction(key('a'), plain)).toEqual({ kind: 'none' })
+    expect(menuKeyAction(key('Tab'), plain)).toEqual({ kind: 'none' })
     expect(menuKeyAction(key('Tab'), plain)).toEqual({ kind: 'none' })
   })
 
@@ -181,6 +181,16 @@ describe('menuKeyAction', () => {
     expect(menuKeyAction(physical('Digit1', '1'), plain)).toEqual({ kind: 'accelerator', char: '1' })
     expect(menuKeyAction(physical('Digit0', '0'), plain)).toEqual({ kind: 'accelerator', char: '0' })
     expect(menuKeyAction(physical('Numpad7', '7'), plain)).toEqual({ kind: 'accelerator', char: '7' })
+  })
+
+  it('reads an unmodified letter by what the layout types, regardless of case', () => {
+    expect(menuKeyAction(key('a'), plain)).toEqual({ kind: 'accelerator', char: 'A' })
+    expect(menuKeyAction(key('A', { shiftKey: true }), plain)).toEqual({ kind: 'accelerator', char: 'A' })
+    expect(menuKeyAction(key('a', { metaKey: true }), plain)).toEqual({ kind: 'none' })
+    const letterSections: MenuSection[] = [
+      { id: 'letters', items: [{ value: 'favorite', label: 'Favorite', shortcut: 'A' }] },
+    ]
+    expect(itemByAccelerator(letterSections, 'A')?.value).toBe('favorite')
   })
 
   // AZERTY prints a digit only with Shift held, so ⇧ has to stay allowed or those layouts lose
@@ -205,10 +215,11 @@ describe('menuKeyAction', () => {
 })
 
 describe('acceleratorChar', () => {
-  it('maps a digit key to its character and everything else to null', () => {
+  it('uses physical digits and layout-aware letters', () => {
     expect(acceleratorChar(physical('Digit5', '5'))).toBe('5')
     expect(acceleratorChar(physical('Numpad5', '5'))).toBe('5')
-    expect(acceleratorChar(physical('KeyA', 'a'))).toBeNull()
+    expect(acceleratorChar(physical('KeyA', 'a'))).toBe('A')
+    expect(acceleratorChar(physical('KeyQ', 'a'))).toBe('A')
     expect(acceleratorChar(physical('NumpadAdd', '+'))).toBeNull()
     expect(acceleratorChar(physical('ArrowDown'))).toBeNull()
   })

@@ -44,6 +44,7 @@
     const { paneId, volumeId, currentPath, getAnchor, getChipCluster, onVolumeChange, onShowVolumes, onOpenChange }: Props = $props()
 
     let renameInputRef: HTMLInputElement | undefined = $state()
+    let shortcutInputRef: HTMLInputElement | undefined = $state()
 
     // Generic macOS folder icon, standing in for a favorite whose own icon isn't fetched
     // yet (FDA-gated paths aren't asked about, to avoid TCC popups). Reading
@@ -59,6 +60,7 @@
         getPaneCurrentPath: () => currentPath,
         getDirIconFallback: () => dirIconFallback,
         getRenameInputRef: () => renameInputRef,
+        getShortcutInputRef: () => shortcutInputRef,
         go: (target) => { onVolumeChange?.(target) },
     })
 
@@ -92,8 +94,8 @@
         onReorder: ({ sectionId, orderedValues }) => {
             if (sectionId === FAVORITES_SECTION_ID) favorites.applyReorder(orderedValues)
         },
-        // While a favorite is being renamed inline, the `<input>` owns every keystroke:
-        // arrows and Home/End move the text cursor, not the menu's.
+        // While either inline editor is focused, its `<input>` owns every keystroke:
+        // arrows and Home/End must not move the menu cursor.
         isEditing: favorites.isEditing,
         onKey: handleKey,
         onOpenChange,
@@ -155,6 +157,22 @@
             <span class="favorite-label">{ctx.item.label}</span>
         {/if}
     {/snippet}
+    {#snippet trailing(ctx: MenuRowContext<FavoritesRow>)}
+        {@const row = ctx.item.data}
+        {#if row?.kind === 'favorite' && favorites.editingShortcutId === row.volume.id}
+            <!-- eslint-disable-next-line cmdr/prefer-ui-primitive -- This read-only, one-key capture sits inside a menu row, not a framed text field. -->
+            <input
+                class="favorite-shortcut-input"
+                bind:this={shortcutInputRef}
+                readonly
+                value={row.volume.favoriteShortcut ?? ''}
+                placeholder={tString('fileExplorer.navigation.favoriteShortcutPrompt')}
+                aria-label={tString('fileExplorer.navigation.favoriteShortcutAriaLabel', { name: row.volume.name })}
+                onkeydown={(event: KeyboardEvent) => { favorites.handleShortcutKeyDown(event, row.volume) }}
+                onblur={favorites.cancelShortcutEdit}
+            />
+        {/if}
+    {/snippet}
 </Menu>
 
 <style>
@@ -177,6 +195,22 @@
     }
 
     .favorite-rename-input:focus {
+        outline: none;
+    }
+
+    .favorite-shortcut-input {
+        width: 112px;
+        margin-left: auto;
+        font: inherit;
+        text-align: right;
+        color: var(--color-text-primary);
+        background-color: var(--color-bg-primary);
+        border: 1px solid var(--color-accent);
+        border-radius: var(--radius-sm);
+        padding: 0 var(--spacing-xxs);
+    }
+
+    .favorite-shortcut-input:focus {
         outline: none;
     }
 </style>

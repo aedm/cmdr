@@ -1281,6 +1281,18 @@
   "@fileExplorer.navigation.renameFavoriteAriaLabel": {
     "sourceHash": "5f4fcbb"
   },
+  "fileExplorer.navigation.favoriteShortcutPrompt": "A–Z 或 Delete",
+  "@fileExplorer.navigation.favoriteShortcutPrompt": {
+    "sourceHash": "51f3d7d"
+  },
+  "fileExplorer.navigation.favoriteShortcutAriaLabel": "{name} 的快捷键。按 A–Z 设置，或按 Delete 清除。",
+  "@fileExplorer.navigation.favoriteShortcutAriaLabel": {
+    "sourceHash": "31515c1"
+  },
+  "fileExplorer.navigation.favoriteShortcutSaveFailed": "无法保存此快捷键。请重试。",
+  "@fileExplorer.navigation.favoriteShortcutSaveFailed": {
+    "sourceHash": "dc8e408"
+  },
   "fileExplorer.navigation.removeFavoriteFailed": "无法移除该个人收藏。要重试吗？",
   "@fileExplorer.navigation.removeFavoriteFailed": {
     "sourceHash": "181bf36"

@@ -186,6 +186,43 @@ pub async fn rename_favorite(id: String, name: String) -> Result<(), DeadlineErr
     Ok(())
 }
 
+/// Assigns or clears the letter that opens a favorite from its menu. Reusing a letter transfers it.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_favorite_shortcut(id: String, shortcut: Option<String>) -> Result<(), SetFavoriteShortcutError> {
+    if shortcut
+        .as_ref()
+        .is_some_and(|letter| letter.len() != 1 || !letter.as_bytes()[0].is_ascii_alphabetic())
+    {
+        return Err(SetFavoriteShortcutError::InvalidLetter);
+    }
+    persist(move || {
+        store::set_shortcut(&id, shortcut.as_deref());
+        Ok(())
+    })
+    .await?;
+    crate::volume_broadcast::emit_volumes_changed();
+    Ok(())
+}
+
+/// A shortcut must be one ASCII letter; deadline variants match the other favorite edits.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum SetFavoriteShortcutError {
+    InvalidLetter,
+    TimedOut,
+    Unexpected { detail: String },
+}
+
+impl From<DeadlineError> for SetFavoriteShortcutError {
+    fn from(error: DeadlineError) -> Self {
+        match error {
+            DeadlineError::TimedOut => Self::TimedOut,
+            DeadlineError::Unexpected { detail } => Self::Unexpected { detail },
+        }
+    }
+}
+
 /// Reorders the favorites to match `ordered_ids`. Unknown ids are ignored; favorites missing from
 /// the list are appended in their current order, so a stale order never drops an entry.
 #[tauri::command]

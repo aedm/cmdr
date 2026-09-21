@@ -109,6 +109,8 @@ pub struct LocationInfo {
     /// per-kind defaults. Filled by `enrich_from_volume_registry`, never by a
     /// discovery constructor.
     pub capabilities: Option<cmdr_fs::volume::VolumeCapabilities>,
+    /// Single-letter menu shortcut, present only on favorite rows.
+    pub favorite_shortcut: Option<String>,
 }
 
 /// Lets discovery collapse a filesystem mounted at several paths down to one
@@ -214,6 +216,7 @@ fn get_favorites(mounts: &[MountEntry]) -> Vec<LocationInfo> {
                 device_readiness: None,
                 usb_speed: None,
                 capabilities: None,
+                favorite_shortcut: favorite.shortcut,
             }
         })
         .collect()
@@ -241,6 +244,7 @@ fn get_main_volume(mounts: &[MountEntry]) -> Option<LocationInfo> {
         device_readiness: None,
         usb_speed: None,
         capabilities: None,
+        favorite_shortcut: None,
     })
 }
 

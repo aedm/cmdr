@@ -576,6 +576,10 @@
   "@menu.volume.renameFavorite": {
     "sourceHash": "3064d79"
   },
+  "menu.volume.editFavoriteShortcut": "Billentyűparancs beállítása…",
+  "@menu.volume.editFavoriteShortcut": {
+    "sourceHash": "be52b50"
+  },
   "menu.volume.removeFavorite": "Eltávolítás",
   "@menu.volume.removeFavorite": {
     "sourceHash": "c3812fc"

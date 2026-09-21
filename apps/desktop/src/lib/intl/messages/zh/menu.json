@@ -576,6 +576,10 @@
   "@menu.volume.renameFavorite": {
     "sourceHash": "3064d79"
   },
+  "menu.volume.editFavoriteShortcut": "设置快捷键…",
+  "@menu.volume.editFavoriteShortcut": {
+    "sourceHash": "be52b50"
+  },
   "menu.volume.removeFavorite": "移除",
   "@menu.volume.removeFavorite": {
     "sourceHash": "c3812fc"

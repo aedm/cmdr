@@ -78,6 +78,7 @@ fn cloud_volume_info(id: String, name: String, root: &Path) -> LocationInfo {
         device_readiness: None,
         usb_speed: None,
         capabilities: None,
+        favorite_shortcut: None,
     }
 }
 

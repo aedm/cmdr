@@ -172,6 +172,7 @@ pub(super) fn get_network_mounts() -> Vec<LocationInfo> {
                 device_readiness: None,
                 usb_speed: None,
                 capabilities: None,
+                favorite_shortcut: None,
             });
         }
     }
@@ -220,6 +221,7 @@ mod enrichment_tests {
             device_readiness: None,
             usb_speed: None,
             capabilities: None,
+            favorite_shortcut: None,
         }];
         enrich_from_volume_registry(&mut locations);
 

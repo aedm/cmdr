@@ -390,7 +390,7 @@ list can't disagree on where the rule goes.
   (`$lib/servers/DETAILS.md`, the "Reconnect automatically" paragraph); an unsaved one-shot connection has nothing to
   persist, so no checkbox. "Saved" and the switch's value come from `listSavedPlaces()`, read when the switcher opens
   (the hub has its saved list already, and re-reads it on the `volumes-changed` a flip emits).
-- **A favorite**: `Rename`, `Remove from favorites` (§ "The favorites menu").
+- **A favorite**: `Rename`, `Set shortcut…`, `Remove from favorites` (§ "The favorites menu").
 
 **Both doors, one list.** → (or a hover) opens the submenu, and a right-click on the row opens the same one: the
 primitive does it (`$lib/ui/DETAILS.md` § Menu), so none of these rows raises a native popup. Picks carry the typed
@@ -401,9 +401,9 @@ is the surface's own navigation, so the switcher moves ITS pane (the same `openV
 hub moves its. A fix pick goes to `runRowFix` on every surface.
 
 **Which picks keep the menu up** (`MenuItem.keepsMenuOpen`): Eject and Disconnect, like the inline button, so several go
-in a row; the pin pair; and both favorite actions (a rename happens in the row). Open, Edit, the two Forgets, and every
-fix close it, since they navigate or open a dialog or sheet. The direct-connection checkbox closes it too, since
-checking it on an OS-mounted share runs "Connect directly" with its sign-in sheet, and so does "Reconnect
+in a row; the pin pair; and all three favorite actions (the two editors happen in the row). Open, Edit, the two Forgets,
+and every fix close it, since they navigate or open a dialog or sheet. The direct-connection checkbox closes it too,
+since checking it on an OS-mounted share runs "Connect directly" with its sign-in sheet, and so does "Reconnect
 automatically", so every switch behaves alike: the next open shows the new state, re-read from Rust.
 
 A switch writes through a NARROW command that moves its one field (`set_place_auto_reconnect`, like `set_place_pinned`),
@@ -498,7 +498,7 @@ three edits a favorite takes). Favorites arrive from `volume-store` as `VolumeIn
 `src-tauri/src/favorites/CLAUDE.md`). Every mutation goes through the typed `commands.*` wrappers in
 `$lib/tauri-commands/favorites.ts`, each of which re-emits `volumes-changed`, so the menu re-renders live with no manual
 refresh. `stripFavoritePrefix(locationId)` recovers the bare favorite id (remove / rename / reorder take the bare id,
-never the `fav-…` switcher id).
+never the `fav-…` switcher id). The optional `favoriteShortcut` arrives on the same volume row.
 
 **Why ⌃D** (David, 2026-09-16): it's what Total Commander and Double Commander bind for their favorites list ("Directory
 hotlist"), and it was free, so Duplicate keeps ⌘D and the error screen's ⌘D (Technical details) stays untouched. macOS
@@ -513,13 +513,14 @@ type-to-filter inside the menu.
 **Two sections, and the primitive draws the separator between them**: the favorites (`reorderable`, with an `emptyLabel`
 so an emptied list still reads as a real state) and a one-row `add` section. The first nine favorites carry
 `accelerator: '1'`…`'9'`; past nine there's no single digit left to give, so those are listed with a blank number column
-and reached by arrow or pointer. The add row carries `'0'`.
+and reached by arrow or pointer. The add row carries `'0'`. A favorite can also carry an assigned uppercase letter in
+the right-aligned `shortcut` slot, independent of its positional digit.
 
 **Opening a favorite** is `open-favorite.ts`'s, the one way it happens anywhere: resolve the containing volume, emit
 `favorite_opened`, then switch the pane onto that volume with the favorite's path. `via` comes from the primitive's
-`MenuActivationSource` (`accelerator` → `digit`, `keyboard`, `pointer`), which is the only honest source: by the time a
-consumer sees the pick, the digit, the Enter, and the click have collapsed into one call. ❌ Don't rebuild it by
-sniffing `onKey`.
+`MenuActivationSource` (`accelerator` → `digit`, `shortcut` → `letter`, `keyboard`, `pointer`), which is the only honest
+source: by the time a consumer sees the pick, the key, the Enter, and the click have collapsed into one call. ❌ Don't
+rebuild it by sniffing `onKey`.
 
 **The `0` row's three states.** Enabled; disabled saying "This folder is already a favorite"; disabled saying this
 folder can't be a favorite because favorites only work on disks and mounted shares. Both refusals open with the same
@@ -540,17 +541,23 @@ Both native items are gated on `can_favorite`, the caller's `paneFolderCanBeFavo
 `add_favorite` refuses an archive-inner or protocol path, and offering an item that silently does nothing is worse than
 offering none. The `..` menu holds nothing else, so where the parent can't be favorited no menu pops at all.
 
-**Remove / Rename** are per-item, in each favorite's → submenu (right-click opens the same one; the list is
-`row-menu.ts`'s `favoriteRowMenu`). A pick reaches `favorites.handleContextAction` through `select`, in the menu that
-owns the row, so no global event has to be told apart per pane. Both keep the menu up: Remove so a list can be tidied in
-a row, Rename because it happens in the row. Rename swaps the label for an inline `<input>` in the `label` snippet
-(Enter commits, Escape/blur cancels). `handleRenameKeyDown` calls `e.stopPropagation()` on EVERY key: the focused input
-owns its keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered by the dispatch-level
-guard, so a leaked Space would select the file under the cursor while the user types. While a rename is active the
-menu's `isEditing()` is true, so the primitive handles nothing at all — not even swallowing — and the box keeps every
-keystroke. The broader guard is one level up: while ANY header menu is open, `pane/key-dispatch.ts` swallows the key
-from the pane behind it, and `+page.svelte`'s `isExplorerOverlayOpen()` reads `explorerRef.isHeaderMenuOpen()` to
-suppress centralized dispatch.
+**Remove / Rename / Set shortcut** are per-item, in each favorite's → submenu (right-click opens the same one; the list
+is `row-menu.ts`'s `favoriteRowMenu`). A pick reaches `favorites.handleContextAction` through `select`, in the menu that
+owns the row, so no global event has to be told apart per pane. All three keep the menu up: Remove so a list can be
+tidied in a row, and the other two because editing happens in the row. Rename swaps the label for an inline `<input>` in
+the `label` snippet (Enter commits, Escape/blur cancels). `handleRenameKeyDown` calls `e.stopPropagation()` on EVERY
+key: the focused input owns its keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered
+by the dispatch-level guard, so a leaked Space would select the file under the cursor while the user types. While a
+rename is active the menu's `isEditing()` is true, so the primitive handles nothing at all — not even swallowing — and
+the box keeps every keystroke. The broader guard is one level up: while ANY header menu is open, `pane/key-dispatch.ts`
+swallows the key from the pane behind it, and `+page.svelte`'s `isExplorerOverlayOpen()` reads
+`explorerRef.isHeaderMenuOpen()` to suppress centralized dispatch.
+
+Set shortcut focuses a read-only inline capture at the right of the row. An unmodified letter assigns it,
+Delete/Backspace clears it, and Escape cancels; the editor stops DOM propagation so typing cannot activate the menu or
+the pane behind it. The menu shows the new letter optimistically until `volumes-changed` catches up and drops the
+override on a rejected save. Assigning an occupied letter transfers it from the former favorite; the override hides that
+old letter during the save.
 
 **Reorder** is pointer-drag within the section AND keyboard (⌥↑ / ⌥↓, since the app is keyboard-first; the row tooltip
 reads `⌥↑ / ⌥↓` on macOS, `Alt+↑ / Alt+↓` elsewhere, built by the pure `favorite-tooltip.ts`, which leads with the PATH

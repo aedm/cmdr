@@ -140,7 +140,14 @@ export type {
 } from './file-actions'
 
 // Favorites (user-editable switcher favorites)
-export { addFavorite, removeFavorite, renameFavorite, reorderFavorites, stripFavoritePrefix } from './favorites'
+export {
+  addFavorite,
+  removeFavorite,
+  renameFavorite,
+  reorderFavorites,
+  setFavoriteShortcut,
+  stripFavoritePrefix,
+} from './favorites'
 
 // Icons (fetching and cache management)
 export {

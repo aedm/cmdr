@@ -247,6 +247,8 @@ pub enum VolumeContextActionKind {
     ForgetServer,
     /// Rename a favorite row.
     RenameFavorite,
+    /// Assign or change a favorite's single-letter menu shortcut.
+    EditFavoriteShortcut,
     /// Remove a favorite row.
     RemoveFavorite,
 }

@@ -16,6 +16,7 @@ import type { MenuActivationSource, MenuItem } from '$lib/ui/menu-types'
 const addFavorite = vi.fn(() => Promise.resolve())
 const removeFavorite = vi.fn(() => Promise.resolve())
 const renameFavorite = vi.fn(() => Promise.resolve())
+const setFavoriteShortcut = vi.fn(() => Promise.resolve())
 const reorderFavorites = vi.fn<(ids: string[]) => Promise<void>>(() => Promise.resolve())
 const resolvePathVolume = vi.fn<(path: string) => Promise<{ volume: VolumeInfo | null; timedOut: boolean }>>()
 const trackEvent = vi.fn()
@@ -31,6 +32,7 @@ vi.mock('$lib/tauri-commands', () => ({
   addFavorite: (...args: unknown[]) => addFavorite(...(args as [])),
   removeFavorite: (...args: unknown[]) => removeFavorite(...(args as [])),
   renameFavorite: (...args: unknown[]) => renameFavorite(...(args as [])),
+  setFavoriteShortcut: (...args: unknown[]) => setFavoriteShortcut(...(args as [])),
   reorderFavorites: (ids: string[]) => reorderFavorites(ids),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
   resolvePathVolume: (path: string) => resolvePathVolume(path),
@@ -94,6 +96,7 @@ function harness(paneCurrentPath = '/Users/test/elsewhere', paneVolumeId = 'root
       getPaneCurrentPath: () => paneCurrentPath,
       getDirIconFallback: () => '/icons/dir.png',
       getRenameInputRef: () => renameInput,
+      getShortcutInputRef: () => renameInput,
       go: (target) => {
         went.push(target)
       },
@@ -120,6 +123,7 @@ beforeEach(() => {
   addFavorite.mockClear()
   removeFavorite.mockClear()
   renameFavorite.mockClear()
+  setFavoriteShortcut.mockClear()
   reorderFavorites.mockClear()
   reorderFavorites.mockImplementation(() => Promise.resolve())
   trackEvent.mockClear()
@@ -134,6 +138,11 @@ afterEach(() => {
 })
 
 describe('the number column', () => {
+  it('keeps a letter shortcut separate from the numbered accelerator', () => {
+    stubs.volumes = [{ ...THREE_FAVORITES[0], favoriteShortcut: 'P' }, ...THREE_FAVORITES.slice(1), DISK]
+    const { menu } = harness()
+    expect(favoriteRows(menu)[0]).toMatchObject({ accelerator: '1', shortcut: 'P' })
+  })
   it('numbers the favorites 1-9 in display order, and gives the add row 0', () => {
     const { menu } = harness()
     expect(favoriteRows(menu).map((item) => item.accelerator)).toEqual(['1', '2', '3'])

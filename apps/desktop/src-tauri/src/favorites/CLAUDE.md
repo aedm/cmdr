@@ -6,11 +6,11 @@ favorites. Full depth in `DETAILS.md`.
 
 ## Module map
 
-- `store.rs`: the `favorites.json` store. Pure core (`add`/`remove`/`rename`/`reorder` on a `Vec`,
-  unit-tested) plus disk I/O, the in-memory cache, and seed-once. Public API: `list`, `add`,
-  `remove`, `rename`, `reorder`, and the `Favorite { id, path, name }` type.
+- `store.rs`: the `favorites.json` store. Pure mutations on a `Vec` (tested in `store_tests.rs`),
+  disk I/O, the in-memory cache, and seed-once. Public API: `list`, `add`, `remove`, `rename`,
+  `reorder`, `set_shortcut`, and `Favorite { id, path, name, shortcut }`.
 - IPC lives in `commands/favorites.rs` (not here): `add_favorite` / `remove_favorite` /
-  `rename_favorite` / `reorder_favorites` pass-throughs, plus THE add gate. There's no
+  `rename_favorite` / `reorder_favorites` / `set_favorite_shortcut` pass-throughs, plus THE add gate. There's no
   `list_favorites`; listing rides `list_volumes` / `volumes-changed`.
 
 ## Must-knows

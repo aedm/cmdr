@@ -100,24 +100,26 @@ export function itemOf<T>(sections: readonly MenuSection<T>[], value: string): M
 export function itemByAccelerator<T>(sections: readonly MenuSection<T>[], char: string): MenuItem<T> | null {
   for (const section of sections) {
     for (const item of section.items) {
-      if (item.accelerator === char && !item.disabled) return item
+      if ((item.accelerator === char || item.shortcut === char) && !item.disabled) return item
     }
   }
   return null
 }
 
 /**
- * The character a digit key stands for, or null for anything else. It matches on `event.code`
- * so the physical key decides: a layout where the digits need Shift (AZERTY) still types `1`,
- * and the numpad counts as the same key.
+ * The menu key's digit or letter, or null for anything else. Digits match on `event.code` so
+ * the physical key decides: a layout where digits need Shift (AZERTY) still types `1`, and the
+ * numpad counts as the same key. Letters follow `event.key` to match the user's layout.
  *
  * ❗ This is a CLASS-OF-KEY matcher (any digit key, no required modifier), which is exactly what
  * `cmdr/no-raw-key-match` exists to allow through: there's no modifier left unconstrained, and
  * the rule's target — a hand-rolled single combo that should have been `eventMatchesCommand` —
- * has no accelerator equivalent, since the caller's data decides which digits exist.
+ * has no accelerator equivalent, since the caller's data decides which digits and letters exist.
  */
 export function acceleratorChar(event: KeyboardEvent): string | null {
-  return /^(?:Digit|Numpad)(\d)$/.exec(event.code)?.[1] ?? null
+  const digit = /^(?:Digit|Numpad)(\d)$/.exec(event.code)?.[1]
+  if (digit) return digit
+  return /^[a-z]$/i.test(event.key) ? event.key.toUpperCase() : null
 }
 
 /**

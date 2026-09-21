@@ -50,6 +50,8 @@ export interface MenuItem<T = unknown> {
    * rows only: a submenu row's is ignored.
    */
   accelerator?: string
+  /** Optional letter shortcut, rendered at the right edge and activated without modifiers. */
+  shortcut?: string
   /** Greyed, skipped by the keyboard and the pointer's cursor, never activates. Submenu rows too. */
   disabled?: boolean
   tooltip?: string
@@ -116,3 +118,5 @@ export type MenuActivationSource =
   | 'keyboard'
   /** The row's `accelerator` character was typed. */
   | 'accelerator'
+  /** The row's right-aligned letter shortcut was typed. */
+  | 'shortcut'

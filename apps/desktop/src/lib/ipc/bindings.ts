@@ -2867,6 +2867,9 @@ export const commands = {
    */
   renameFavorite: (id: string, name: string) =>
     typedError<null, DeadlineError>(__TAURI_INVOKE('rename_favorite', { id, name })),
+  // Assigns or clears the letter that opens a favorite from its menu. Reusing a letter transfers it.
+  setFavoriteShortcut: (id: string, shortcut: string | null) =>
+    typedError<null, SetFavoriteShortcutError>(__TAURI_INVOKE('set_favorite_shortcut', { id, shortcut })),
   /**
    *  Reorders the favorites to match `ordered_ids`. Unknown ids are ignored; favorites missing from
    *  the list are appended in their current order, so a stale order never drops an entry.
@@ -9318,6 +9321,8 @@ export type LocationInfo = {
    *  discovery constructor.
    */
   capabilities: VolumeCapabilities | null
+  // Single-letter menu shortcut, present only on favorite rows.
+  favoriteShortcut: string | null
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'warning' | 'error'
@@ -13134,6 +13139,12 @@ export type SessionStartedEvent = {
   totalItems: number
 }
 
+// A shortcut must be one ASCII letter; deadline variants match the other favorite edits.
+export type SetFavoriteShortcutError =
+  | { type: 'invalidLetter' }
+  | { type: 'timedOut' }
+  | { type: 'unexpected'; detail: string }
+
 /**
  *  Settings registry default values pushed from FE. The wire format matches JSON
  *  primitives via `#[serde(untagged)]`; TS sees `boolean | number | string`.
@@ -14849,6 +14860,8 @@ export type VolumeContextActionKind =
   | 'forget-server'
   // Rename a favorite row.
   | 'rename-favorite'
+  // Assign or change a favorite's single-letter menu shortcut.
+  | 'edit-favorite-shortcut'
   // Remove a favorite row.
   | 'remove-favorite'
 

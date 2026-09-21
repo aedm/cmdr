@@ -24,6 +24,7 @@
     import { tick, type Snippet } from 'svelte'
     import { Portal } from '@ark-ui/svelte/portal'
     import Icon from './Icon.svelte'
+    import ShortcutChip from './ShortcutChip.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
     import type { MenuController } from './menu-controller.svelte'
     import type { MenuItem, MenuRowContext, MenuSection } from './menu-types'
@@ -360,7 +361,7 @@
                             aria-disabled={item.disabled ? 'true' : undefined}
                             aria-haspopup={item.submenu?.length ? 'menu' : undefined}
                             aria-expanded={item.submenu?.length ? menu.openSubmenuValue === item.value : undefined}
-                            aria-keyshortcuts={item.accelerator}
+                            aria-keyshortcuts={[item.accelerator, item.shortcut].filter(Boolean).join(' ') || undefined}
                             data-menu-row={item.value}
                             data-accelerator={item.accelerator}
                             data-highlighted={context.highlighted ? '' : undefined}
@@ -394,6 +395,11 @@
                                 <span class="menu-label">{item.label}</span>
                             {/if}
                             {#if trailing}{@render trailing(context)}{/if}
+                            {#if item.shortcut}
+                                <span class="menu-shortcut" aria-hidden="true">
+                                    <ShortcutChip key={item.shortcut} size="sm" />
+                                </span>
+                            {/if}
                             {#if item.submenu?.length}
                                 <span class="menu-submenu-arrow"></span>
                             {/if}
@@ -582,6 +588,12 @@
 
     .menu-accelerator-placeholder {
         width: 14px;
+        flex-shrink: 0;
+    }
+
+    .menu-shortcut {
+        margin-left: auto;
+        padding-left: var(--spacing-sm);
         flex-shrink: 0;
     }
 

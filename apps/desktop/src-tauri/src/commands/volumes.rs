@@ -161,6 +161,7 @@ async fn resolve_path_to_volume(path: String, fs_timeout: Duration) -> (Option<V
                 device_readiness: None,
                 usb_speed: None,
                 capabilities: None,
+                favorite_shortcut: None,
             }),
             false,
         );

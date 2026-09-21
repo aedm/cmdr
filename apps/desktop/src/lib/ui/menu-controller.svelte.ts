@@ -290,13 +290,10 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     if (values.length > 0) activate(values[0], 'keyboard')
   }
 
-  /**
-   * A typed digit. No row claims it (or the one that would is disabled): nothing happens, and
-   * the digit still goes no further, because an open menu owns the keyboard.
-   */
+  /** A typed digit or assigned letter. The open menu absorbs keys with no matching row. */
   function activateAccelerator(char: string): void {
     const item = itemByAccelerator(sections(), char)
-    if (item) activate(item.value, 'accelerator')
+    if (item) activate(item.value, /^[A-Z]$/.test(char) ? 'shortcut' : 'accelerator')
   }
 
   function reorderHighlighted(delta: -1 | 1): void {
@@ -589,7 +586,10 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
       }
 
       const action = menuKeyAction(event, currentKeyContext())
-      if (action.kind === 'none') {
+      if (
+        action.kind === 'none' ||
+        (action.kind === 'accelerator' && /^[A-Z]$/.test(action.char) && !itemByAccelerator(sections(), action.char))
+      ) {
         // An open menu owns the keyboard, which is what keeps the panes behind it inert.
         // Swallowed from the app, but never `preventDefault`ed: ⌘Q and the menu-bar
         // accelerators still mean what they mean.
