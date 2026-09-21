@@ -4536,14 +4536,8 @@
       "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/estree"
     },
     {
-      "name": "@types/trusted-types",
-      "version": "2.0.7",
-      "license": "MIT",
-      "url": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/trusted-types"
-    },
-    {
       "name": "@typescript-eslint/types",
-      "version": "8.69.0",
+      "version": "8.70.0",
       "license": "MIT",
       "url": "https://typescript-eslint.io"
     },
@@ -5095,7 +5089,7 @@
     },
     {
       "name": "svelte",
-      "version": "5.56.8",
+      "version": "5.57.0",
       "license": "MIT",
       "url": "https://svelte.dev"
     },
