@@ -872,6 +872,42 @@ fn a_multi_chunk_range_stops_where_it_was_told_on_every_backend() {
     assert!(at_row_start, "ByteSeek: the range must start on a row boundary");
 }
 
+/// Search progress counts SOURCE bytes, the same units `total_bytes` is in, on every
+/// backend.
+///
+/// The frontend shows progress as a fraction of the file. `FullLoadBackend` summed
+/// decoded UTF-8 lengths, which on a UTF-16 file are about half the source, so the bar
+/// stalled near 50%; and it added a byte for the final empty row's delimiter, pushing
+/// the total PAST the file size on a newline-terminated one.
+#[test]
+fn search_progress_is_measured_in_source_bytes_in_every_backend() {
+    let dir = TestDir::new("viewer_rows_search_progress");
+    let text = "alpha\nbeta gamma\ndelta\n";
+
+    for (name, bytes) in [
+        ("utf8", text.as_bytes().to_vec()),
+        ("utf16", utf16_le_with_bom(text)),
+    ] {
+        let file = fixture(&dir, &format!("progress_{name}.txt"), &bytes);
+        for which in ALL_BACKENDS {
+            let backend = open_backend(which, &file);
+            let cancel = AtomicBool::new(false);
+            let results: Mutex<Vec<SearchMatch>> = Mutex::new(Vec::new());
+            let progress = Mutex::new(0u64);
+            let scanned = backend
+                .search(&literal_matcher("gamma"), &cancel, &results, &progress)
+                .expect("search must succeed");
+            let reported = *progress.lock().expect("progress must not be poisoned");
+            assert_eq!(scanned, reported, "{which:?} {name}: return value and progress agree");
+            assert_eq!(
+                scanned,
+                backend.total_bytes(),
+                "{which:?} {name}: a whole-file search scans the whole file"
+            );
+        }
+    }
+}
+
 /// Invariant I1 on the LineIndex backend, deep into a newline-free file.
 ///
 /// Its checkpoints used to count LINES, so a file with one line got exactly one

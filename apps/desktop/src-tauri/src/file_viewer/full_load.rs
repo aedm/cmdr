@@ -216,7 +216,15 @@ impl FileViewerBackend for FullLoadBackend {
                 LineScan::Cancelled => break,
                 LineScan::Done => {}
             }
-            scanned += row.text.len() as u64 + u64::from(!row.continues);
+            // ❗ Progress in SOURCE bytes, the units `total_bytes` is in, taken from the
+            // NEXT row's offset rather than from this row's decoded length. Decoded
+            // UTF-8 is about half the source on a UTF-16 file, so summing it stalled the
+            // frontend's progress bar near 50%; and adding a byte per delimiter counted
+            // one for the final empty row, pushing the total past the file's size.
+            scanned = self
+                .rows
+                .get(row_idx + 1)
+                .map_or(self.end_byte_offset, |next| next.byte_offset);
         }
 
         *progress.lock_ignore_poison() = scanned;
