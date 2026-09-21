@@ -317,3 +317,18 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
 - [ ] Decide the marker's glyph and colour with David, and the tooltip copy. He reviews every human-facing string.
 - [ ] Ask David the open question in § The marker: whether a soft wrap break should be marked too, which would mean
       Cmdr wrapping instead of CSS.
+
+### Handed over from the frontend milestone
+
+- [ ] **`cacheChunk` infers "continue or stop" from the row count.** The backend's new `ChunkEnd` says explicitly
+      which it is, and forbids that inference. Switch to it when the rename reaches the frontend.
+- [ ] **The fraction path still caches at `fetchFrom`**, discarding `chunk.firstLineNumber`
+      (`viewer-scroll.svelte.ts:~340`), so a ByteSeek-no-index continuation can cache rows at the wrong indexes. Goes
+      with the ByteSeek estimate work.
+- [ ] **`isWholeFileSelection` still over-reports.** It hands the copy band `totalBytes` for any selection that starts
+      at (0, 0) and reaches the last row, even one stopping partway into it. The toast is honest now; the band that
+      decides confirm-versus-refuse is not, which is an I3 gap.
+- [ ] **`bindings.ts` is regenerated but uncommitted** in the shared worktree. It has to land with the rename, and any
+      `chunk.lines` read still in the frontend breaks when it does.
+- Known consequence, not a bug: cache eviction makes the size estimator answer "unknown" more often on a huge
+      selection, so the user sees the "size unknown" confirm more than before. Worth watching, not worth blocking.
