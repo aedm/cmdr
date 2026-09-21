@@ -41,6 +41,7 @@
  * which drives every write method on the local volume directly.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
@@ -126,11 +127,21 @@ async function navigateLeftPaneTo(tauriPage: PageLike, target: string): Promise<
   })()`)
 }
 
-async function paneHasFile(tauriPage: PageLike, paneIndex: number, name: string, timeout = 5000): Promise<boolean> {
+async function paneHasFile(
+  tauriPage: PageLike,
+  paneIndex: number,
+  name: string,
+  timeout = waitBudget(5000),
+): Promise<boolean> {
   return pollUntil(tauriPage, async () => fileExistsInPane(tauriPage, name, paneIndex), timeout)
 }
 
-async function paneLacksFile(tauriPage: PageLike, paneIndex: number, name: string, timeout = 5000): Promise<boolean> {
+async function paneLacksFile(
+  tauriPage: PageLike,
+  paneIndex: number,
+  name: string,
+  timeout = waitBudget(5000),
+): Promise<boolean> {
   return pollUntil(tauriPage, async () => !(await fileExistsInPane(tauriPage, name, paneIndex)), timeout)
 }
 
@@ -224,7 +235,7 @@ test.describe('Git portal', () => {
     // unmounts the other. 10 s rather than the helper's 3 s default: the unmount
     // has been seen lagging several seconds under Docker-lane load, and it is
     // still well inside the 15 s per-test timeout.
-    await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: 10000 })
+    await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: waitBudget(10000) })
   })
 
   test('turning the portal off with a .git pane open drops the virtual rows and keeps the real ones', async ({
@@ -278,7 +289,9 @@ test.describe('Git portal', () => {
     expect(landed).toContain('OK')
 
     // Byte-for-byte, both the top-level file and the folder's contents.
-    await expect.poll(() => fs.existsSync(path.join(outDir, 'scripts', 'run.sh')), { timeout: 20000 }).toBe(true)
+    await expect
+      .poll(() => fs.existsSync(path.join(outDir, 'scripts', 'run.sh')), { timeout: waitBudget(20000) })
+      .toBe(true)
     expect(fs.readFileSync(path.join(outDir, 'readme.txt'))).toEqual(
       fs.readFileSync(path.join(repoPath(), 'readme.txt')),
     )
@@ -288,7 +301,7 @@ test.describe('Git portal', () => {
 
     // The copy's own completion toast, for the reason the delete cell spells out:
     // the bytes land well before the progress dialog's anti-flicker floor expires.
-    await expectAndDismissToast(tauriPage, 'Copied 1 file and 1 folder.', { timeout: 10000 })
+    await expectAndDismissToast(tauriPage, 'Copied 1 file and 1 folder.', { timeout: waitBudget(10000) })
     fs.rmSync(outDir, { recursive: true, force: true })
   })
 
@@ -318,7 +331,7 @@ test.describe('Git portal', () => {
             if (b.length < 7) return 'only ' + b.length + ' buttons';
             return 'rename=' + b[0].disabled + ' newFolder=' + b[5].disabled + ' copy=' + b[3].disabled;
           })()`),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       // Copy stays live: a snapshot's rows are real content the transfer reads out.
       .toBe('rename=true newFolder=true copy=false')
@@ -326,7 +339,9 @@ test.describe('Git portal', () => {
     // A keystroke bypasses the bar, so the alert stays the last line: F7 surfaces
     // the read-only-portal alert up front, NOT the mkdir dialog.
     await tauriPage.keyboard.press('F7')
-    await expect.poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(await tauriPage.isVisible(MKDIR_DIALOG)).toBe(false)
     const alertText = await tauriPage.evaluate<string>(`(function() {
             var msg = document.querySelector('[data-dialog-id="alert"] .message, [data-dialog-id="alert"] #alert-dialog-message');
@@ -337,7 +352,9 @@ test.describe('Git portal', () => {
 
     // F2 is refused the same way: no inline rename opens on a snapshot row.
     await tauriPage.keyboard.press('F2')
-    await expect.poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(await tauriPage.isVisible('.rename-input')).toBe(false)
     await dismissOverlay(tauriPage)
 
@@ -387,7 +404,7 @@ test.describe('Git portal', () => {
           }
           return false;
         })()`),
-      5000,
+      waitBudget(5000),
     )
     expect(found).toBe(true)
   })

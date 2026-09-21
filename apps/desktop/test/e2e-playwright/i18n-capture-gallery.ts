@@ -38,6 +38,7 @@
  * can't tell those apart tells you nothing.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { expect } from './fixtures.js'
 import { ensureAppReady, dismissOverlay, closeOnboardingWizardIfOpen } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -137,7 +138,7 @@ async function closePreview(main: TauriPage, dialogId: string): Promise<void> {
   }
   await dismissOverlay(main).catch(() => {})
   const closed = await expect
-    .poll(async () => !(await main.isVisible(selector).catch(() => false)), { timeout: 3000 })
+    .poll(async () => !(await main.isVisible(selector).catch(() => false)), { timeout: waitBudget(3000) })
     .toBeTruthy()
     .then(() => true)
     .catch(() => false)

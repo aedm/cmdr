@@ -24,6 +24,7 @@
  * FAILS, because a silent skip there reads as coverage that isn't happening.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, dismissOverlay } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -83,7 +84,7 @@ function expandEveryRelease(page: TauriPage): Promise<void> {
 }
 
 test.describe("What's new inline markup", () => {
-  test.describe.configure({ timeout: 60000 })
+  test.describe.configure({ timeout: waitBudget(60000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
@@ -112,7 +113,9 @@ test.describe("What's new inline markup", () => {
     await expandEveryRelease(page)
     // The disclosure animates a 0fr → 1fr grid row, so the entries reach their real
     // size a frame or two after the click.
-    await expect.poll(async () => (await measureInlineMarkup(page)).length, { timeout: 3000 }).toBeGreaterThan(0)
+    await expect
+      .poll(async () => (await measureInlineMarkup(page)).length, { timeout: waitBudget(3000) })
+      .toBeGreaterThan(0)
     const boxes = await measureInlineMarkup(page)
 
     // The fixture's own count: two `code` spans and one `strong` among the Fixed
@@ -128,6 +131,8 @@ test.describe("What's new inline markup", () => {
     ).toEqual([])
 
     await dismissOverlay(page)
-    await expect.poll(() => page.isVisible('#whats-new-body').catch(() => false), { timeout: 3000 }).toBeFalsy()
+    await expect
+      .poll(() => page.isVisible('#whats-new-body').catch(() => false), { timeout: waitBudget(3000) })
+      .toBeFalsy()
   })
 })

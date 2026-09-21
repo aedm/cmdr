@@ -17,6 +17,7 @@
  * test in its default state).
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -107,7 +108,7 @@ test.describe('Viewer word-wrap persistence', () => {
   // on in the isolated settings.json, so Session 1's "default off" assertion
   // fails (and a retry alone can't recover persisted state). The afterEach below
   // always resets the key so a failed run can't poison the next.
-  test.describe.configure({ timeout: 60000, retries: 1 })
+  test.describe.configure({ timeout: waitBudget(60000), retries: 1 })
 
   // Guarantee the default-off baseline BEFORE each attempt. The afterEach below
   // only self-heals a run that died mid-test; the very FIRST attempt has no prior
@@ -134,8 +135,8 @@ test.describe('Viewer word-wrap persistence', () => {
     expect(await wrapBadgeVisible(viewer1)).toBe(false)
 
     await pressWrapToggle(viewer1)
-    await expect.poll(() => wrapBadgeVisible(viewer1), { timeout: 3000 }).toBe(true)
-    await expect.poll(() => wordWrapOnDisk(), { timeout: 5000 }).toBe(true)
+    await expect.poll(() => wrapBadgeVisible(viewer1), { timeout: waitBudget(3000) }).toBe(true)
+    await expect.poll(() => wordWrapOnDisk(), { timeout: waitBudget(5000) }).toBe(true)
     await closeScopedWindow(mainPage, viewer1, label1)
 
     // Session 2: the regression assertion — wrap must come back on.
@@ -148,8 +149,8 @@ test.describe('Viewer word-wrap persistence', () => {
     // is written to disk (not deleted) — the assertion is just "no longer on".
     // The `afterEach` `clearWordWrapSetting()` restores the pre-test baseline.
     await pressWrapToggle(viewer2)
-    await expect.poll(() => wrapBadgeVisible(viewer2), { timeout: 3000 }).toBe(false)
-    await expect.poll(() => wordWrapOnDisk(), { timeout: 5000 }).not.toBe(true)
+    await expect.poll(() => wrapBadgeVisible(viewer2), { timeout: waitBudget(3000) }).toBe(false)
+    await expect.poll(() => wordWrapOnDisk(), { timeout: waitBudget(5000) }).not.toBe(true)
     await closeScopedWindow(mainPage, viewer2, label2)
 
     // Session 3: verify the off state round-trips too.

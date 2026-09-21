@@ -17,6 +17,7 @@
  * size).
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -114,7 +115,7 @@ function wrapBadgeVisible(viewer: TauriPage): Promise<boolean> {
 async function setWordWrap(viewer: TauriPage, on: boolean): Promise<void> {
   if ((await wrapBadgeVisible(viewer)) === on) return
   await pressWrapToggle(viewer)
-  await expect.poll(() => wrapBadgeVisible(viewer), { timeout: 3000 }).toBe(on)
+  await expect.poll(() => wrapBadgeVisible(viewer), { timeout: waitBudget(3000) }).toBe(on)
 }
 
 /** Scrolls the viewer to the very bottom, then reports whether the last line of
@@ -154,7 +155,9 @@ test.describe('Viewer word-wrap scrolling', () => {
       await setWordWrap(viewer, true)
 
       // Reach the bottom (covers the averaged-height phase and the map flip).
-      await expect.poll(() => scrollToBottomAndCheckLastLineVisible(viewer), { timeout: 10000 }).toBe('visible')
+      await expect
+        .poll(() => scrollToBottomAndCheckLastLineVisible(viewer), { timeout: waitBudget(10000) })
+        .toBe('visible')
 
       // Paranoia window: the height map readies asynchronously; the end of the
       // file must STAY reachable after it kicks in, not just during the
@@ -194,12 +197,16 @@ test.describe('Viewer word-wrap scrolling', () => {
       // Mid-file, content must fill the viewport (a drifting height map leaves a
       // blank band below the last placed line). Poll so the height map's async
       // measure pass has flipped ready and the virtualizer has settled.
-      await expect.poll(() => scrollToFractionAndCheckFilled(viewer, 0.5), { timeout: 10000 }).toBe('filled')
+      await expect
+        .poll(() => scrollToFractionAndCheckFilled(viewer, 0.5), { timeout: waitBudget(10000) })
+        .toBe('filled')
 
       // And the end of the file stays reachable (a wrong total height puts the
       // last line off-screen). Sample across the ready flip.
       await expect
-        .poll(() => scrollToBottomAndCheckLastLineVisible(viewer, binaryLastLineSelector), { timeout: 10000 })
+        .poll(() => scrollToBottomAndCheckLastLineVisible(viewer, binaryLastLineSelector), {
+          timeout: waitBudget(10000),
+        })
         .toBe('visible')
       for (let i = 0; i < 5; i++) {
         // eslint-disable-next-line cmdr/no-arbitrary-sleep-in-e2e -- sampling interval of a stability assertion, not a readiness wait

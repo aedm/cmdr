@@ -274,20 +274,38 @@ expect(await tauriPage.isVisible('[data-dialog-id="transfer-confirmation"]')).to
 
 // ✅ Do:
 await tauriPage.keyboard.press('F5')
-await tauriPage.waitForSelector('[data-dialog-id="transfer-confirmation"]', 5000)
+await tauriPage.waitForSelector('[data-dialog-id="transfer-confirmation"]', waitBudget(5000))
 ```
 
 For "wait until X is true" where X isn't a selector, use Playwright's `expect.poll`:
 
 ```ts
 await expect
-  .poll(async () => tauriPage.evaluate<number>(`document.querySelector(…)?.offsetHeight ?? 0`), { timeout: 5000 })
+  .poll(async () => tauriPage.evaluate<number>(`document.querySelector(…)?.offsetHeight ?? 0`), {
+    timeout: waitBudget(5000),
+  })
   .toBeGreaterThan(0)
 ```
 
 The `cmdr/no-arbitrary-sleep-in-e2e` ESLint rule flags `await sleep(N)`. Opt out per-line with
 `// eslint-disable-next-line cmdr/no-arbitrary-sleep-in-e2e -- <reason>` only when there's a genuine fixed-duration wait
 (e.g., watcher debounce settling), and even then, prefer a poll if any state changes.
+
+### ❌ A raw number as a wait budget in E2E specs
+
+A condition to poll fixes the "too loose" half of a `sleep`. The other half stays: `{ timeout: 5000 }` is a bet on how
+much CPU is going spare, and the E2E lane runs on a machine somebody is working on. Every wait budget in
+`test/e2e-playwright/` therefore goes through `waitBudget(N)` (`wait-budget.ts`), which multiplies by
+`CMDR_E2E_WAIT_SCALE` — 1 to 4, set once per lane by the check runner from the ambient load it measured before the apps
+launched, capped at 10 minutes, and 1 (so, unchanged) when unset. A busy machine makes the suite slower, never redder.
+
+Both halves scale or neither does: a per-call wait stretched past the per-test ceiling just dies at the ceiling instead,
+so `playwright.config.ts`'s `timeout` and every `test.setTimeout` go through the same factor. ❌ Never pin one half.
+
+`cmdr/no-raw-wait-budget` fails a bare number in a `timeout:` property, a `setTimeout` ceiling, `pollUntil`'s timeout
+argument, or a `timeout`-ish named constant. Poll INTERVALS aren't budgets and stay raw. Opt out per-line with
+`// eslint-disable-next-line cmdr/no-raw-wait-budget -- <reason>`. Full contract, clamp reasoning, and the
+deliberately-unscaled list: `apps/desktop/test/e2e-playwright/DETAILS.md` § "The load-scaled wait budget".
 
 The per-test wall-clock budget is 2 s, defended automatically: after every E2E run (`desktop-e2e-playwright` and
 `desktop-e2e-linux`), the check runner flags any test over it (warn-only, per platform) against

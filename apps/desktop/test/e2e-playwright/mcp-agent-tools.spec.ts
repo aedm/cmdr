@@ -17,6 +17,7 @@
  * → Tauri event → adapter → command bus → pane → state store → reply).
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -40,7 +41,7 @@ test.describe('MCP agent tools', () => {
   test('select by names → copy → await → delete → await not_has_item', async ({ tauriPage }) => {
     // Chains five round-trips including two awaits (up to 15 s each); the suite
     // default of 15 s can't cover the worst case.
-    test.setTimeout(60_000)
+    test.setTimeout(waitBudget(60_000))
     await ensureAppReady(tauriPage)
     await ensureMcpClient(tauriPage)
     const fixtureRoot = getFixtureRoot()
@@ -112,7 +113,7 @@ test.describe('MCP agent tools', () => {
     // focused pane) creates in LEFT, not the previously-focused RIGHT. Before the
     // fix, FE focus stayed on right while `cmdr://state` reported left, and the
     // folder landed in the wrong pane.
-    test.setTimeout(30_000)
+    test.setTimeout(waitBudget(30_000))
     await ensureAppReady(tauriPage)
     await ensureMcpClient(tauriPage)
     const fixtureRoot = getFixtureRoot()
@@ -142,7 +143,7 @@ test.describe('MCP agent tools', () => {
   test('mkdir with an explicit pane targets that pane regardless of focus', async ({ tauriPage }) => {
     // The pane param is the belt-and-suspenders guard: even with focus on LEFT,
     // `mkdir pane:right` creates in RIGHT, so creation never depends on focus timing.
-    test.setTimeout(30_000)
+    test.setTimeout(waitBudget(30_000))
     await ensureAppReady(tauriPage)
     await ensureMcpClient(tauriPage)
     const fixtureRoot = getFixtureRoot()
@@ -171,11 +172,13 @@ test.describe('MCP agent tools', () => {
 
     const openResult = await mcpCall('open_search_dialog', { autoRun: false })
     expect(openResult).toContain('OK')
-    await expect.poll(async () => tauriPage.isVisible('.search-overlay'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('.search-overlay'), { timeout: waitBudget(5000) }).toBeTruthy()
 
     const closeResult = await mcpCall('dialog', { action: 'close', type: 'search' })
     expect(closeResult).toContain('OK')
-    await expect.poll(async () => !(await tauriPage.isVisible('.search-overlay')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.search-overlay')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('refresh forces a backend re-read; transfers section exists', async ({ tauriPage }) => {

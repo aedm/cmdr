@@ -2,6 +2,7 @@ package checks
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"regexp"
@@ -60,6 +61,25 @@ const playwrightBaseTimeoutMs = 15000
 // e2eHeadroomFactor is how much extra wall-clock stage 2 grants. 4x (60 s) is far past
 // any legitimate spec: the suite's own budget flags anything over 2 s.
 const e2eHeadroomFactor = 4
+
+// e2eWaitScale turns the load somebody ELSE is putting on the machine into the
+// multiplier the suite stretches its waits by (`CMDR_E2E_WAIT_SCALE`, consumed by
+// `apps/desktop/test/e2e-playwright/wait-budget.ts`).
+//
+// The reading is taken BEFORE the shard apps launch, so it measures ambient load only:
+// the suite's own three instances are already priced into the budgets the specs ship
+// with. Hence `1 + ambient` rather than `ambient` — a quiet box keeps today's numbers
+// exactly, and every runnable thread per core that somebody else is running buys the
+// suite one extra multiple of patience.
+//
+// The clamp is `e2eHeadroomFactor` on purpose, the same 4x stage 2 grants: past it,
+// waiting is no longer cheaper than re-running the spec alone, which is what the
+// isolation re-run is for.
+func e2eWaitScale(ambientLoadPerCore float64) float64 {
+	scale := 1 + max(ambientLoadPerCore, 0)
+	scale = min(scale, e2eHeadroomFactor)
+	return math.Round(scale*10) / 10
+}
 
 // e2eFailingFile is one spec file that went red, with the tests in it that failed and
 // the shard they ran on.
@@ -382,12 +402,6 @@ func E2EContentionSummary(results []E2ESpecResult, history map[string]TestHistor
 		inconclusive)
 	section(fmt.Sprintf("Still failing alone with %dx the timeout: a genuine failure, YOUR problem", e2eHeadroomFactor), real)
 
-	if len(real) > 0 || len(tooSlow) > 0 {
-		// `test.setTimeout` is set at runtime and beats the CLI flag, so the headroom
-		// stage cannot widen a spec that sets its own budget. Saying so stops a reader
-		// concluding "4x wasn't enough" when 4x was never applied.
-		b.WriteString("    A spec calling `test.setTimeout` keeps its own budget, which the headroom stage can't widen.\n")
-	}
 	b.WriteString("  " + testHistoryCaveat + "\n")
 	return b.String()
 }
@@ -408,7 +422,7 @@ func E2ERerunSkippedNote(failingFiles int) string {
 // overwrite the original run's report, recordings, or error contexts: that evidence is
 // the only picture of what the failure looked like, and someone is usually reading it.
 // Same reasoning as `planShards`.
-func playwrightRerunner(desktopDir string, pid int) E2ERerunner {
+func playwrightRerunner(desktopDir string, pid int, baseWaitScale float64) E2ERerunner {
 	attempt := 0
 	return func(target e2eFailingFile, timeoutMs int) (map[string]bool, error) {
 		attempt++
@@ -430,13 +444,24 @@ func playwrightRerunner(desktopDir string, pid int) E2ERerunner {
 		// an anchored, escaped file name selects exactly this spec.
 		args = append(args, regexp.QuoteMeta(target.file)+"$")
 
+		// Stage 1 reproduces the original run's budgets exactly, or a pass would mean
+		// "given more time" instead of "starved". Stage 2 is the headroom stage, and
+		// `--timeout` alone can't deliver it: Playwright's runtime `test.setTimeout`
+		// BEATS the CLI flag, so a spec that sets its own ceiling would sit at its
+		// original budget and be called real. Handing the scale through the env widens
+		// those specs too, because `wait-budget.ts` wraps every `setTimeout` call.
+		waitScale := baseWaitScale
+		if timeoutMs > 0 {
+			waitScale = e2eHeadroomFactor
+		}
+
 		cmd := niceCommand("pnpm", args...)
 		cmd.Dir = desktopDir
 		// The one run whose video is worth its CPU. `fixtures.ts` stops the recorder for
 		// every ordinary test (three shards filming at 15 fps on a machine somebody is
 		// using, for footage of passing tests that nobody watches); a re-run is alone on
 		// the machine and is the attempt somebody will actually look at.
-		cmd.Env = append(shardPlaywrightEnv(target.shard, report, outputDir), "CMDR_E2E_KEEP_RECORDING=1")
+		cmd.Env = append(shardPlaywrightEnv(target.shard, report, outputDir, waitScale), "CMDR_E2E_KEEP_RECORDING=1")
 		output, _ := RunCommand(cmd, true)
 
 		// A non-zero exit is EXPECTED here: failing specs are the whole point. The report

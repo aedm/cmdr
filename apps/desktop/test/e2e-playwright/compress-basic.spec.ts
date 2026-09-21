@@ -27,6 +27,7 @@
  * `file-a.txt`, `file-b.txt`, `sub-dir/`, etc.; `right/` is empty.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { randomBytes } from 'crypto'
 import fs from 'fs'
 import path from 'path'
@@ -117,7 +118,7 @@ test.describe('Compress (⌥F5)', () => {
           tauriPage.evaluate<string>(
             `(document.querySelector('${TRANSFER_DIALOG} .tg-root .tg-item[data-state="on"]')?.textContent || '').trim()`,
           ),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBe('Compress')
     // ...and the editable path field defaults to a `.zip` in the OTHER pane's folder.
@@ -134,25 +135,29 @@ test.describe('Compress (⌥F5)', () => {
           tauriPage.evaluate<string>(
             `(document.querySelector('${TRANSFER_DIALOG} .estimate-value')?.textContent || '').trim()`,
           ),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toContain('~')
 
     // Confirm.
     await tauriPage.waitForSelector(`${TRANSFER_DIALOG} .btn-primary`, 3000)
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(15000) })
+      .toBeTruthy()
     // The completion toast is part of the contract; asserting it also clears it so
     // the afterEach leak guard doesn't fail on a lingering transient toast.
     await expectAndDismissToast(tauriPage, 'Compressed')
 
     // The zip landed on disk in the other pane's folder and is a valid archive.
-    await expect.poll(() => fs.existsSync(destZip), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(() => fs.existsSync(destZip), { timeout: waitBudget(5000) }).toBeTruthy()
     expect(fs.readFileSync(destZip).subarray(0, 2).toString('latin1')).toBe('PK')
 
     // Browsing INTO the produced zip (archive-as-folder) shows the source inside.
     await navigatePaneTo(tauriPage, 'left', destZip)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'file-a.txt'), { timeout: 10000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'file-a.txt'), { timeout: waitBudget(10000) })
+      .toBeTruthy()
   })
 
   test('cancelling a compress leaves at worst a valid empty archive, never a torn file', async ({ tauriPage }) => {
@@ -193,7 +198,9 @@ test.describe('Compress (⌥F5)', () => {
         var cancel = btns.find(function(b){ return /cancel/i.test((b.textContent||'')); });
         if (cancel) cancel.click();
     })()`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 20000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(20000) })
+      .toBeTruthy()
     // The cancel may or may not have caught the write, so the completion-toast
     // wording is timing-dependent: dismiss whatever's there so the leak guard passes.
     await tauriPage.evaluate(`(function(){
@@ -202,7 +209,7 @@ test.describe('Compress (⌥F5)', () => {
     })()`)
     await expect
       .poll(async () => tauriPage.evaluate<boolean>(`document.querySelectorAll('.toast').length === 0`), {
-        timeout: 3000,
+        timeout: waitBudget(3000),
       })
       .toBeTruthy()
 
@@ -281,10 +288,12 @@ test.describe('Compress (⌥F5)', () => {
       await tauriPage.waitForSelector(TRANSFER_DIALOG, 5000)
       await tauriPage.waitForSelector(`${TRANSFER_DIALOG} .btn-primary`, 3000)
       await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
-      await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 15000 }).toBeTruthy()
+      await expect
+        .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(15000) })
+        .toBeTruthy()
       await expectAndDismissToast(tauriPage, 'Compressed')
 
-      await expect.poll(() => fs.existsSync(destZip), { timeout: 5000 }).toBeTruthy()
+      await expect.poll(() => fs.existsSync(destZip), { timeout: waitBudget(5000) }).toBeTruthy()
       const size = fs.statSync(destZip).size
       fs.rmSync(destZip)
       return size

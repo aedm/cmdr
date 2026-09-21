@@ -9,17 +9,20 @@ Linux (Docker), so a modifier key comes from `CTRL_OR_META`, ❌ never a hardcod
   lifecycle. A hand launch records its pid and chains `; kill "$(cat /tmp/cmdr-e2e-app.pid)"`. ❌ Never
   `pkill -f 'target.*Cmdr'`: every Cmdr shares that argv, so it SIGTERMs a concurrent suite. DETAILS § "Running on
   macOS".
-- **Iterate on one spec**, keeping `--project=tauri` in the `=` form (a space swallows the path). Scattered failures
-  that differ every run mean saturation, not a regression.
+- **Iterate on one spec**, keeping `--project=tauri` in the `=` form (a space swallows the path). A red lane re-runs
+  each failure alone and labels it: `contention` is the lane starving itself, ❌ not yours; `real` is yours.
 - **❌ Never `keyboard.press('Escape')` to close an overlay**: under Xvfb it can vanish as an opaque timeout. Use
   `dismissOverlay`, `expectAndDismissToast`, or `escapeOverlayUntilGone`.
 - **A helper can return normally having done nothing.** Assert a poll with `expect.poll(...).toBeTruthy()`, never a bare
   `pollUntil`. Press buttons with `clickButtonByText` (a disabled `.click()` dispatches nothing) and Ark widgets with
   `pointerClick`.
-- **A wait helper names the boundary it waits on; pick the one your assertion lands on.**
-  `waitForBackendOperationsToSettle` proves only that `list_operations` emptied, and the UI re-renders after it (650 ms
-  under load), so a frontend assertion (dialog gone, rename editor, next gesture) wants `waitForTransferUiToSettle`.
-  Then end with `expectAndDismissToast`. DETAILS § "Waiting for a write to settle".
+- **A wait helper names the boundary it waits on.** `waitForBackendOperationsToSettle` proves only that
+  `list_operations` emptied; the UI re-renders up to 650 ms later, so a frontend assertion (dialog gone, rename editor,
+  next gesture) wants `waitForTransferUiToSettle`, then `expectAndDismissToast`. DETAILS § "Waiting for a write to
+  settle".
+- **Every wait budget goes through `waitBudget(N)`** (`wait-budget.ts`), scaled by `CMDR_E2E_WAIT_SCALE` from the check
+  runner's load reading (1–4, unset means 1, capped at 10 min). The per-test ceiling scales with the waits under it, so
+  ❌ never pin one half. `no-raw-wait-budget` fails a bare number. DETAILS § "The load-scaled wait budget".
 - **Close the onboarding wizard from a `finally`** (`closeOnboardingWizardIfOpen`): left open, it refuses every MCP call
   and fails every later test on the shard. Match its rows by `data-checklist-item`, ❌ never by label.
 - **Drive viewer and settings through the real multi-window flow** (`openViewerWindow`, `openSettingsWindowViaProd`,
@@ -38,9 +41,9 @@ Linux (Docker), so a modifier key comes from `CTRL_OR_META`, ❌ never a hardcod
   prove a walk (`search-walk-ground.ts`). DETAILS § "Synthetic backend events".
 - **`marketing-shots.spec.ts` shoots real folders with NO fixture tree**: ❌ never set `CMDR_E2E_START_PATH` for it (the
   guard deletes anything outside the manifest), and it needs the machine left alone; say both first.
-- **A `*.test.ts` here runs under VITEST**, with both Playwright packages aliased to `vitest-playwright-shim.ts`
-  (importing the real runner into a happy-dom worker kills the process). `expect` is Vitest's and the Tauri matchers
-  aren't there, so a helper needing one needs a seam. DETAILS § "The Vitest shim".
+- **A `*.test.ts` here runs under VITEST**, with both Playwright packages aliased to `vitest-playwright-shim.ts` (the
+  real runner kills a happy-dom worker). `expect` is Vitest's and the Tauri matchers aren't, so a helper needing one
+  needs a seam. DETAILS § "The Vitest shim".
 
 Run recipes, architecture, sharding, app modes, contracts, and decisions: `DETAILS.md`. Read it before any non-trivial
 work here: editing, planning, reorganizing, or advising.

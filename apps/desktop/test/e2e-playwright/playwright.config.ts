@@ -1,3 +1,4 @@
+import { waitBudget } from './wait-budget.js'
 import { defineConfig } from '@playwright/test'
 
 // Shard kind switches which specs this Playwright process runs:
@@ -90,7 +91,12 @@ export default defineConfig({
   // protocol overhead, SMB+Docker latency, drive-index convergence) still call
   // `test.setTimeout` with a reason in the comment. Anything without a justified
   // override should fit comfortably in 15 s.
-  timeout: 15000,
+  //
+  // ❗ This ceiling scales with the per-call waits underneath it, through the same
+  // `waitBudget`. Pin it while they stretch and a loaded run dies here instead of at
+  // the wait it was really on, which costs the diagnostic and saves nothing.
+  // `wait-budget.ts`.
+  timeout: waitBudget(15000),
 
   globalSetup: './global-setup.ts',
   globalTeardown: './global-teardown.ts',

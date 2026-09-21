@@ -17,6 +17,7 @@
  * Requires `--features playwright-e2e`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -34,7 +35,7 @@ const FILE_COUNT = 3
  *  two polls of `cmdr://state`. */
 const THROTTLE_MS = 150
 
-test.setTimeout(90_000)
+test.setTimeout(waitBudget(90_000))
 
 /** One clash's worth of `pendingConflict:` YAML, parsed out of `cmdr://state`. */
 interface PendingClash {
@@ -165,7 +166,7 @@ async function waitForPendingClash(after?: number): Promise<PendingClash> {
         seen.push(clash)
         return true
       },
-      { timeout: 20_000 },
+      { timeout: waitBudget(20_000) },
     )
     .toBeTruthy()
   const captured = seen.at(-1)

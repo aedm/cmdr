@@ -24,6 +24,7 @@
  * Requires `--features playwright-e2e`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -60,7 +61,7 @@ const SOURCE_B = 'queue-src-b'
 /** Deliberately never created: a copy from here fails validation. */
 const MISSING_SOURCE = 'queue-src-gone'
 
-test.setTimeout(90_000)
+test.setTimeout(waitBudget(90_000))
 
 /** Creates `left/<name>/` with `FILES_PER_SOURCE` tiny files. Node-side (real
  *  disk), mirroring conflict-edge-cases.spec.ts's own-fixture pattern. */
@@ -138,7 +139,7 @@ async function openQueueWindow(main: TauriPage): Promise<TauriPage> {
       event: 'execute-command', payload: { commandId: 'queue.show' }
     });
   })()`)
-  return main.waitForWindow((w) => w.label === QUEUE_LABEL, { timeout: 10000 })
+  return main.waitForWindow((w) => w.label === QUEUE_LABEL, { timeout: waitBudget(10000) })
 }
 
 async function clickRowButton(queuePage: TauriPage, operationId: string, ariaLabel: string): Promise<void> {
@@ -235,7 +236,7 @@ test.describe('Operation queue window', () => {
           const statuses = rows.map((r) => r.status).sort()
           return JSON.stringify(statuses)
         },
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe(JSON.stringify(['queued', 'running']))
 
@@ -252,7 +253,7 @@ test.describe('Operation queue window', () => {
           const rows = await readRows(queuePage)
           return rows.length
         },
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe(1)
 
@@ -268,7 +269,7 @@ test.describe('Operation queue window', () => {
           const rows = await readRows(queuePage)
           return rows.find((r) => r.id === runningId)?.status
         },
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe('paused')
 
@@ -281,7 +282,7 @@ test.describe('Operation queue window', () => {
           const rows = await readRows(queuePage)
           return rows.find((r) => r.id === runningId)?.status
         },
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe('running')
   })
@@ -312,21 +313,21 @@ test.describe('Operation queue window', () => {
     // Click it → the modal unmounts and the queue window opens, the op still
     // running in the background.
     await main.click(BACKGROUND_BUTTON)
-    await expect.poll(async () => !(await main.isVisible(PROGRESS_DIALOG)), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => !(await main.isVisible(PROGRESS_DIALOG)), { timeout: waitBudget(5000) }).toBeTruthy()
 
     // Sending to the background fires a confirmation toast (the wording is the
     // contract). Assert and dismiss it so the global afterEach leak guard stays
     // clean.
     await expectAndDismissToast(main, 'Still running in the background')
 
-    const queuePage = await main.waitForWindow((w) => w.label === QUEUE_LABEL, { timeout: 10000 })
+    const queuePage = await main.waitForWindow((w) => w.label === QUEUE_LABEL, { timeout: waitBudget(10000) })
     await expect
       .poll(
         async () => {
           const rows = await readRows(queuePage)
           return rows.length === 1 && rows[0].status === 'running' ? 'running' : JSON.stringify(rows)
         },
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe('running')
 
@@ -344,7 +345,7 @@ test.describe('Operation queue window', () => {
             .sort()
             .join(',')
         },
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe('queued,running')
 
@@ -370,7 +371,7 @@ test.describe('Operation queue window', () => {
     // Open the window: the failure is waiting there, with the real reason.
     let queuePage = await openQueueWindow(main)
     await expect
-      .poll(async () => (await readRows(queuePage)).map((r) => r.status).join(','), { timeout: 15000 })
+      .poll(async () => (await readRows(queuePage)).map((r) => r.status).join(','), { timeout: waitBudget(15000) })
       .toBe('failed')
     expect(await readFailureReason(queuePage)).toContain('no longer exists')
 
@@ -380,7 +381,7 @@ test.describe('Operation queue window', () => {
     // Reopen: the row survived the window, because the backend held it.
     queuePage = await openQueueWindow(main)
     await expect
-      .poll(async () => (await readRows(queuePage)).map((r) => r.status).join(','), { timeout: 15000 })
+      .poll(async () => (await readRows(queuePage)).map((r) => r.status).join(','), { timeout: waitBudget(15000) })
       .toBe('failed')
     expect(await readFailureReason(queuePage)).toContain('no longer exists')
 
@@ -390,7 +391,7 @@ test.describe('Operation queue window', () => {
     expect(failedId, 'a failed row exists').toBeTruthy()
     if (!failedId) throw new Error('no failed row')
     await clickRowButton(queuePage, failedId, 'Dismiss this operation')
-    await expect.poll(async () => (await readRows(queuePage)).length, { timeout: 10000 }).toBe(0)
+    await expect.poll(async () => (await readRows(queuePage)).length, { timeout: waitBudget(10000) }).toBe(0)
   })
 
   // The payoff of the whole queue: work you sent away can come back, and can be
@@ -412,7 +413,7 @@ test.describe('Operation queue window', () => {
     const queuePage = await openQueueWindow(main)
 
     await expect
-      .poll(async () => (await readRows(queuePage)).map((r) => r.status).join(','), { timeout: 15000 })
+      .poll(async () => (await readRows(queuePage)).map((r) => r.status).join(','), { timeout: waitBudget(15000) })
       .toBe('running')
     const runningId = (await readRows(queuePage)).find((r) => r.status === 'running')?.id
     expect(runningId, 'a running row exists').toBeTruthy()
@@ -430,7 +431,7 @@ test.describe('Operation queue window', () => {
             if (!dialog) return 'no dialog';
             return dialog.querySelector('.progress-readout') ? 'readout' : 'no readout';
           })()`),
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe('readout')
 
@@ -443,7 +444,7 @@ test.describe('Operation queue window', () => {
 
     await expect
       .poll(async () => await main.evaluate(`!!document.querySelector('[data-dialog-id="transfer-progress"]')`), {
-        timeout: 10000,
+        timeout: waitBudget(10000),
       })
       .toBe(false)
 

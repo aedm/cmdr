@@ -14,6 +14,7 @@
  * `walk-handoff.svelte.test.ts` mocks one of those three away by construction.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, pollUntil, LOCAL_VOLUME_NAME, getFixtureRoot } from './helpers.js'
 import { ensureMcpClient, mcpNavToPath } from '../e2e-shared/mcp-client.js'
@@ -61,7 +62,7 @@ async function dismissEveryToast(tauriPage: PageLike): Promise<void> {
         var closes = document.querySelectorAll('.toast .toast-close');
         for (var i = 0; i < closes.length; i++) closes[i].click();
     })()`)
-  await expect.poll(async () => tauriPage.count(TOASTS), { timeout: 5000 }).toBe(0)
+  await expect.poll(async () => tauriPage.count(TOASTS), { timeout: waitBudget(5000) }).toBe(0)
 }
 
 /** All toast text on screen, whitespace collapsed. */
@@ -113,7 +114,7 @@ async function startWalkingSearch(tauriPage: PageLike): Promise<void> {
 test.describe('Search dialog: a walk that outlives its dialog', () => {
   // The walk is deliberately throttled (`CMDR_E2E_WALK_THROTTLE_MS`) so the handoff
   // happens mid-walk, and the first test waits for that walk to finish on its own.
-  test.describe.configure({ timeout: 90_000 })
+  test.describe.configure({ timeout: waitBudget(90_000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
@@ -129,7 +130,7 @@ test.describe('Search dialog: a walk that outlives its dialog', () => {
     // restore was killed mid-rebuild and the shared app carried a half-built
     // index into every later spec in the shard: CI run 33909203247 lost nine
     // specs downstream of exactly that, all reported as their own failures.
-    test.setTimeout(90_000)
+    test.setTimeout(waitBudget(90_000))
     removeWalkGround()
     await restoreLocalVolumeIndex()
   })
@@ -138,11 +139,13 @@ test.describe('Search dialog: a walk that outlives its dialog', () => {
     await startWalkingSearch(tauriPage)
 
     await tauriPage.click(OPEN_IN_PANE_BUTTON)
-    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(SEARCH_OVERLAY)) === 0, 10000)).toBe(true)
+    expect(
+      await pollUntil(tauriPage, async () => (await tauriPage.count(SEARCH_OVERLAY)) === 0, waitBudget(10000)),
+    ).toBe(true)
 
     // The toast is the ONLY thing on screen saying the search is still running, so
     // it's the whole interface for that state.
-    await expect.poll(async () => toastText(tauriPage), { timeout: 10000 }).toContain('Still searching')
+    await expect.poll(async () => toastText(tauriPage), { timeout: waitBudget(10000) }).toContain('Still searching')
 
     const rowsAtHandoff = await tauriPage.count(SNAPSHOT_ROWS)
     expect(rowsAtHandoff).toBeGreaterThan(0)
@@ -150,13 +153,13 @@ test.describe('Search dialog: a walk that outlives its dialog', () => {
     // The point of the milestone: the pane grows with the dialog gone. Snapshots
     // aren't reactive, so this also proves the `mutationTick` bump — without it the
     // rows would land in the store and never reach the screen.
-    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(SNAPSHOT_ROWS)) > rowsAtHandoff, 30000)).toBe(
-      true,
-    )
+    expect(
+      await pollUntil(tauriPage, async () => (await tauriPage.count(SNAPSHOT_ROWS)) > rowsAtHandoff, waitBudget(30000)),
+    ).toBe(true)
 
     // And it settles on its own: the running toast gives way, and what replaces it is
     // transient, so nothing is left holding the screen.
-    await expect.poll(async () => toastText(tauriPage), { timeout: 60000 }).not.toContain('Still searching')
+    await expect.poll(async () => toastText(tauriPage), { timeout: waitBudget(60000) }).not.toContain('Still searching')
     await dismissEveryToast(tauriPage)
   })
 
@@ -164,21 +167,27 @@ test.describe('Search dialog: a walk that outlives its dialog', () => {
     await startWalkingSearch(tauriPage)
 
     await tauriPage.click(OPEN_IN_PANE_BUTTON)
-    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(SEARCH_OVERLAY)) === 0, 10000)).toBe(true)
-    await expect.poll(async () => toastText(tauriPage), { timeout: 10000 }).toContain('Still searching')
+    expect(
+      await pollUntil(tauriPage, async () => (await tauriPage.count(SEARCH_OVERLAY)) === 0, waitBudget(10000)),
+    ).toBe(true)
+    await expect.poll(async () => toastText(tauriPage), { timeout: waitBudget(10000) }).toContain('Still searching')
 
     // Reopening adopts the run instead of starting a fresh one. A fresh one would
     // SUPERSEDE the live walk and the pane would quietly stop growing, so the Stop
     // button being here is the proof that the dialog is looking at the same search.
     await openSearchDialog(tauriPage)
-    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(STOP_BUTTON)) === 1, 10000)).toBe(true)
+    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(STOP_BUTTON)) === 1, waitBudget(10000))).toBe(
+      true,
+    )
 
     // Escape's first press stops the walk, the second closes the dialog.
     await tauriPage.evaluate(`(function(){
         var overlay = document.querySelector(${JSON.stringify(SEARCH_OVERLAY)});
         if (overlay) overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     })()`)
-    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(STOP_BUTTON)) === 0, 10000)).toBe(true)
+    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(STOP_BUTTON)) === 0, waitBudget(10000))).toBe(
+      true,
+    )
     await closeSearchDialog(tauriPage)
     await dismissEveryToast(tauriPage)
 

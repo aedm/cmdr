@@ -18,6 +18,7 @@
  * menu command, so no gallery-carrying build is needed.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, dismissOverlay, dismissAllToasts, dispatchMenuCommand } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -115,7 +116,7 @@ function bandDirections(page: TauriPage, dialogId: string): Promise<string[]> {
 }
 
 test.describe('Dialog edge resizing', () => {
-  test.describe.configure({ timeout: 30000 })
+  test.describe.configure({ timeout: waitBudget(30000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)

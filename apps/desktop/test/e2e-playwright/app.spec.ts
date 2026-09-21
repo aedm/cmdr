@@ -6,6 +6,7 @@
  * the real Tauri webview via Unix socket. No WebDriver, no quirks.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { restoreFixtureTree } from '../e2e-shared/fixture-manifest.js'
 import {
@@ -107,7 +108,7 @@ test.describe('Keyboard navigation', () => {
                 })()`)
           return newIndex >= 0 && newIndex !== initialCursorIndex
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -146,7 +147,7 @@ test.describe('Keyboard navigation', () => {
           )
           return cls.includes('is-focused')
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -172,7 +173,7 @@ test.describe('Keyboard navigation', () => {
           )
           return cls.includes('is-focused')
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -202,7 +203,7 @@ test.describe('Keyboard navigation', () => {
           const cls = await tauriPage.getAttribute('.file-entry.is-under-cursor', 'class')
           return cls?.includes('is-selected') ?? false
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -218,7 +219,7 @@ test.describe('Keyboard navigation', () => {
           const cls = await tauriPage.getAttribute('.file-entry.is-under-cursor', 'class')
           return !(cls?.includes('is-selected') ?? false)
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -288,7 +289,7 @@ test.describe('Mouse interactions', () => {
                     return entries[${String(targetIndex)}]?.classList.contains('is-under-cursor') || false;
                 })()`)
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -317,7 +318,7 @@ test.describe('Mouse interactions', () => {
           )
           return cls.includes('is-focused')
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -337,7 +338,7 @@ test.describe('Mouse interactions', () => {
           )
           return cls.includes('is-focused')
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -407,7 +408,7 @@ test.describe('Navigation', () => {
             var cursor = pane.querySelector('.file-entry.is-under-cursor .col-name');
             return cursor !== null && cursor.textContent === 'sub-dir';
           })()`),
-        { timeout: 2000 },
+        { timeout: waitBudget(2000) },
       )
       .toBeTruthy()
     await tauriPage.keyboard.press('Enter')
@@ -425,7 +426,7 @@ test.describe('Navigation', () => {
                     }
                     return false;
                 })()`),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
   })
@@ -475,7 +476,7 @@ test.describe('Navigation', () => {
                             return (e.querySelector('.col-name') || {}).textContent === 'nested-file.txt';
                         });
                     })()`),
-          { timeout: 2000 },
+          { timeout: waitBudget(2000) },
         )
         .toBeTruthy()
       log('inside sub-dir')
@@ -499,7 +500,7 @@ test.describe('Navigation', () => {
                     });
                     return names.indexOf('sub-dir') >= 0 || names.indexOf('left') >= 0;
                 })()`),
-        { timeout: 2000 },
+        { timeout: waitBudget(2000) },
       )
       .toBeTruthy()
     log('parent listing settled')
@@ -545,7 +546,9 @@ test.describe('New folder dialog', () => {
     await tauriPage.waitForSelector(`${MKDIR_DIALOG} input.text-field-control`, 3000)
     await tauriPage.fill(`${MKDIR_DIALOG} input.text-field-control`, folderName)
     // Wait for the OK button to enable in response to the typed name
-    await expect.poll(async () => tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`), { timeout: 2000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`), { timeout: waitBudget(2000) })
+      .toBeTruthy()
 
     // Verify OK button is enabled
     expect(await tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`)).toBe(true)
@@ -554,7 +557,9 @@ test.describe('New folder dialog', () => {
     await tauriPage.click(`${MKDIR_DIALOG} .btn-primary`)
 
     // Wait for dialog to close
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 })
 
@@ -619,7 +624,9 @@ test.describe('Transfer dialogs', () => {
     // Cancel is always enabled; click directly. No fixed wait needed.
     await tauriPage.click(`${MKDIR_DIALOG} .btn-secondary`)
 
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(3000) })
+      .toBeTruthy()
     expect(await tauriPage.isVisible('.modal-overlay')).toBe(false)
 
     // Cancel must not create the folder. Assert the specific name is absent

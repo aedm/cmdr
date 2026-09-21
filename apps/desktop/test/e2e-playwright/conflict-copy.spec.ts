@@ -5,6 +5,7 @@
  * across two fixture layouts (A: nested conflicts, B: multi-item merge).
  */
 
+import { waitBudget } from './wait-budget.js'
 import path from 'path'
 import { test, expect } from './fixtures.js'
 import { restoreFixtureTree } from '../e2e-shared/fixture-manifest.js'
@@ -245,7 +246,7 @@ test.describe('Per-file conflict decisions (Layout A)', () => {
     // conflict state outright. Assert THAT, before waiting on the modal: this is
     // the step that fails when an answer never reaches the backend, and it says
     // so, instead of surfacing 12 s later as a dialog that would not close.
-    await expect.poll(async () => readCurrentConflict(tauriPage), { timeout: 10000 }).toBe(null)
+    await expect.poll(async () => readCurrentConflict(tauriPage), { timeout: waitBudget(10000) }).toBe(null)
 
     await waitForDialogsToClose(tauriPage)
     // The copy fires a transient selection-split toast. Layout A's selection is
@@ -301,7 +302,11 @@ test.describe('Rename conflict resolution', () => {
 
     // Wait for progress dialog with conflict
     await tauriPage.waitForSelector('[data-dialog-id="transfer-progress"]', 3000)
-    const conflictAppeared = await pollUntil(tauriPage, async () => tauriPage.isVisible('.conflict-section'), 3000)
+    const conflictAppeared = await pollUntil(
+      tauriPage,
+      async () => tauriPage.isVisible('.conflict-section'),
+      waitBudget(3000),
+    )
     expect(conflictAppeared).toBe(true)
 
     // Click "Rename": keeps both files, incoming gets " (1)" suffix
@@ -334,7 +339,11 @@ test.describe('Rename conflict resolution', () => {
     await clickTransferStart(tauriPage)
     await tauriPage.waitForSelector('[data-dialog-id="transfer-progress"]', 3000)
 
-    const conflictAppeared = await pollUntil(tauriPage, async () => tauriPage.isVisible('.conflict-section'), 3000)
+    const conflictAppeared = await pollUntil(
+      tauriPage,
+      async () => tauriPage.isVisible('.conflict-section'),
+      waitBudget(3000),
+    )
     expect(conflictAppeared).toBe(true)
 
     await resolveConflict(tauriPage, 'Rename all')

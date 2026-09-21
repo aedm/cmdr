@@ -13,6 +13,7 @@
  * - evaluate() takes a string expression, not a function
  */
 
+import { waitBudget } from '../wait-budget.js'
 import { expect } from '@playwright/test'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
 
@@ -286,7 +287,7 @@ export async function clickEntryInPane(tauriPage: PageLike, paneIndex: number, r
         entry.click();
         return true;
     })()`),
-    5000,
+    waitBudget(5000),
   )
   if (!clicked) {
     throw new Error(
@@ -665,7 +666,7 @@ export async function setRenameInput(tauriPage: PageLike, value: string): Promis
         `\`remove\` for the edited path closes it (suite DETAILS § "Fixture-churn readiness").`,
     )
   }
-  await expect.poll(async () => renameEditorValue(tauriPage), { timeout: 3000 }).toBe(value)
+  await expect.poll(async () => renameEditorValue(tauriPage), { timeout: waitBudget(3000) }).toBe(value)
 }
 
 /**

@@ -16,6 +16,7 @@
  * payload grows a field.
  */
 
+import { waitBudget } from './wait-budget.js'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
 import { expect } from './fixtures.js'
 import { emitBackendEvent } from './helpers.js'
@@ -62,7 +63,9 @@ export async function publishSyntheticVolumes(tauriPage: PageLike, rows: Synthet
  */
 export async function restoreRealVolumes(tauriPage: PageLike, goneName: string): Promise<void> {
   await tauriPage.evaluate(`window.__TAURI_INTERNALS__.invoke('refresh_volumes')`)
-  await expect.poll(async () => !(await switcherNames(tauriPage)).includes(goneName), { timeout: 5000 }).toBeTruthy()
+  await expect
+    .poll(async () => !(await switcherNames(tauriPage)).includes(goneName), { timeout: waitBudget(5000) })
+    .toBeTruthy()
 }
 
 const PICKER_TRIGGER = '.volume-name'

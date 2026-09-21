@@ -10,6 +10,7 @@
  * /tmp/cmdr-mtp-e2e-fixtures-<pid>/ when the checker launches the suite).
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -107,14 +108,14 @@ async function setRenameInputValue(page: PageLike, value: string): Promise<void>
   await expect
     .poll(
       async () => page.evaluate<boolean>(`document.querySelector('.rename-input')?.value === ${JSON.stringify(value)}`),
-      { timeout: 3000 },
+      { timeout: waitBudget(3000) },
     )
     .toBeTruthy()
 }
 
 // MTP operations go through the virtual device which adds protocol overhead.
 // 30s default is too tight for multi-step MTP test chains.
-test.setTimeout(120_000)
+test.setTimeout(waitBudget(120_000))
 
 test.beforeEach(async ({ tauriPage }) => {
   recreateFixtures(getFixtureRoot()) // Local fixtures for cross-storage tests
@@ -147,7 +148,7 @@ test.beforeEach(async ({ tauriPage }) => {
     // since the DOM read is sub-ms; the wait then exits ~one frame after the
     // panes flip, instead of 50–100 ms of poll latency.
     await expect
-      .poll(async () => bothPanesOnLocalVolume(tauriPage), { timeout: 5000, intervals: [10, 25, 50, 100] })
+      .poll(async () => bothPanesOnLocalVolume(tauriPage), { timeout: waitBudget(5000), intervals: [10, 25, 50, 100] })
       .toBeTruthy()
 
     // Previously: double-Escape + best-effort modal-overlay poll to clean up
@@ -180,7 +181,7 @@ test.describe('MTP device discovery', () => {
         })()`)
 
     // Wait for the dropdown to appear
-    await expect.poll(async () => tauriPage.isVisible('[data-menu]'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('[data-menu]'), { timeout: waitBudget(5000) }).toBeTruthy()
 
     // Wait for "Mobile" category label to appear (MTP volumes load reactively)
     await expect
@@ -193,7 +194,7 @@ test.describe('MTP device discovery', () => {
             }
             return false;
         })()`),
-        { timeout: 10000 },
+        { timeout: waitBudget(10000) },
       )
       .toBeTruthy()
 
@@ -269,7 +270,9 @@ test.describe('MTP navigation', () => {
     // Leave the phone, then pick the storage again with no path of our own: the pane
     // asks the phone whether `Documents` still exists and goes back there.
     await mcpSelectVolume('left', LOCAL_VOLUME_NAME)
-    await expect.poll(async () => isStateClean(tauriPage, LOCAL_VOLUME_NAME), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => isStateClean(tauriPage, LOCAL_VOLUME_NAME), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     await mcpSelectVolume('left', INTERNAL_STORAGE)
     await mcpAwaitItem('left', 'report.txt')
     expect(await fileExistsInPane(tauriPage, 'notes.txt', 0)).toBe(true)
@@ -287,7 +290,7 @@ test.describe('MTP navigation', () => {
             var breadcrumb = document.querySelector('.volume-breadcrumb .volume-name');
             if (breadcrumb) breadcrumb.click();
         })()`)
-    await expect.poll(async () => tauriPage.isVisible('[data-menu]'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('[data-menu]'), { timeout: waitBudget(5000) }).toBeTruthy()
 
     // Poll for space info: MTP space data may load asynchronously after dropdown opens
     await expect
@@ -308,7 +311,7 @@ test.describe('MTP navigation', () => {
             }
             return false;
         })()`),
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBeTruthy()
 
@@ -344,7 +347,7 @@ test.describe('MTP file operations', () => {
     // copy already succeeded and the file is on disk. Tests 11 (local→MTP) and
     // 27 (50 MB MTP→local) already use this pattern; this brings test 10 inline.
     const destPath = path.join(fixtureRoot, 'right', 'report.txt')
-    await expect.poll(() => fs.existsSync(destPath), { timeout: 30000 }).toBeTruthy()
+    await expect.poll(() => fs.existsSync(destPath), { timeout: waitBudget(30000) }).toBeTruthy()
 
     // Force the pane to re-list so the await reads a fresh PaneStateStore.
     await mcpCall('refresh', {})
@@ -356,7 +359,7 @@ test.describe('MTP file operations', () => {
 
     // Transfer fires a "Copied 1 file." toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Copied 1 file.', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Copied 1 file.', { timeout: waitBudget(30000) })
   })
 
   test('copies file from local to MTP', async ({ tauriPage }) => {
@@ -374,7 +377,7 @@ test.describe('MTP file operations', () => {
     // MTP transfer is fire-and-forget. Poll the backing dir until the file
     // lands, then force a refresh so the pane re-lists.
     await expect
-      .poll(() => fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'file-a.txt')), { timeout: 30000 })
+      .poll(() => fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'file-a.txt')), { timeout: waitBudget(30000) })
       .toBeTruthy()
     await mcpCall('refresh', {})
 
@@ -386,7 +389,7 @@ test.describe('MTP file operations', () => {
 
     // Transfer fires a "Copied 1 file." toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Copied 1 file.', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Copied 1 file.', { timeout: waitBudget(30000) })
   })
 
   test('moves file between MTP directories', async ({ tauriPage }) => {
@@ -420,13 +423,15 @@ test.describe('MTP file operations', () => {
         () =>
           !fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'notes.txt')) &&
           fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Music', 'notes.txt')),
-        { timeout: 30000 },
+        { timeout: waitBudget(30000) },
       )
       .toBeTruthy()
     await mcpCall('refresh', {})
 
     // Wait for notes.txt to disappear from Documents (left pane)
-    await expect.poll(async () => !(await fileExistsInPane(tauriPage, 'notes.txt', 0)), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await fileExistsInPane(tauriPage, 'notes.txt', 0)), { timeout: waitBudget(15000) })
+      .toBeTruthy()
 
     // Wait for notes.txt to appear in Music (right pane)
     await mcpAwaitItem('right', 'notes.txt', 30)
@@ -437,7 +442,7 @@ test.describe('MTP file operations', () => {
 
     // Transfer fires a "Moved 1 file." toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Moved 1 file.', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Moved 1 file.', { timeout: waitBudget(30000) })
   })
 
   test('deletes file on MTP with the permanent-delete dialog', async ({ tauriPage }) => {
@@ -485,20 +490,22 @@ test.describe('MTP file operations', () => {
 
     // Wait for dialog to close
     await expect
-      .poll(async () => !(await tauriPage.isVisible('[data-dialog-id="delete-confirmation"]')), { timeout: 10000 })
+      .poll(async () => !(await tauriPage.isVisible('[data-dialog-id="delete-confirmation"]')), {
+        timeout: waitBudget(10000),
+      })
       .toBeTruthy()
 
     // MTP delete is fire-and-forget. Poll the backing dir until the file is gone.
     await expect
       .poll(() => !fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'report.txt')), {
-        timeout: 30000,
+        timeout: waitBudget(30000),
       })
       .toBeTruthy()
     await mcpCall('refresh', {})
 
     // Wait for report.txt to disappear from the UI listing
     await expect
-      .poll(async () => !(await fileExistsInPane(tauriPage, 'report.txt', 0)), { timeout: 15000 })
+      .poll(async () => !(await fileExistsInPane(tauriPage, 'report.txt', 0)), { timeout: waitBudget(15000) })
       .toBeTruthy()
 
     // Verify on backing dir
@@ -506,7 +513,7 @@ test.describe('MTP file operations', () => {
 
     // Transfer fires a "Delete complete" toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: waitBudget(30000) })
   })
 
   test('deletes multiple selected files on MTP', async ({ tauriPage }) => {
@@ -529,7 +536,7 @@ test.describe('MTP file operations', () => {
           tauriPage.evaluate<boolean>(
             `!!document.querySelector('.file-pane.is-focused .file-entry[data-filename="report.txt"].is-selected')`,
           ),
-        { timeout: 2000 },
+        { timeout: waitBudget(2000) },
       )
       .toBeTruthy()
     await moveCursorToFile(tauriPage, 'notes.txt')
@@ -540,7 +547,7 @@ test.describe('MTP file operations', () => {
           tauriPage.evaluate<boolean>(
             `!!document.querySelector('.file-pane.is-focused .file-entry[data-filename="notes.txt"].is-selected')`,
           ),
-        { timeout: 2000 },
+        { timeout: waitBudget(2000) },
       )
       .toBeTruthy()
 
@@ -560,16 +567,18 @@ test.describe('MTP file operations', () => {
         () =>
           !fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'report.txt')) &&
           !fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'notes.txt')),
-        { timeout: 30000 },
+        { timeout: waitBudget(30000) },
       )
       .toBeTruthy()
     await mcpCall('refresh', {})
 
     // Wait for both files to disappear
     await expect
-      .poll(async () => !(await fileExistsInPane(tauriPage, 'report.txt', 0)), { timeout: 15000 })
+      .poll(async () => !(await fileExistsInPane(tauriPage, 'report.txt', 0)), { timeout: waitBudget(15000) })
       .toBeTruthy()
-    await expect.poll(async () => !(await fileExistsInPane(tauriPage, 'notes.txt', 0)), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await fileExistsInPane(tauriPage, 'notes.txt', 0)), { timeout: waitBudget(15000) })
+      .toBeTruthy()
 
     // Verify on backing dir
     expect(fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'report.txt'))).toBe(false)
@@ -577,7 +586,7 @@ test.describe('MTP file operations', () => {
 
     // Transfer fires a "Delete complete" toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: waitBudget(30000) })
   })
 
   test('deletes folder with nested files recursively on MTP', async ({ tauriPage }) => {
@@ -597,19 +606,21 @@ test.describe('MTP file operations', () => {
 
     // MTP recursive delete is fire-and-forget. Poll the backing dir.
     await expect
-      .poll(() => !fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'DCIM')), { timeout: 45000 })
+      .poll(() => !fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'DCIM')), { timeout: waitBudget(45000) })
       .toBeTruthy()
     await mcpCall('refresh', {})
 
     // Wait for DCIM to disappear from listing
-    await expect.poll(async () => !(await fileExistsInPane(tauriPage, 'DCIM', 0)), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await fileExistsInPane(tauriPage, 'DCIM', 0)), { timeout: waitBudget(15000) })
+      .toBeTruthy()
 
     // Verify entire tree gone from backing dir
     expect(fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'DCIM'))).toBe(false)
 
     // Transfer fires a "Delete complete" toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: waitBudget(30000) })
   })
 
   test('creates folder on MTP', async ({ tauriPage }) => {
@@ -625,15 +636,19 @@ test.describe('MTP file operations', () => {
     await tauriPage.waitForSelector(`${MKDIR_DIALOG} input.text-field-control`, 3000)
     await tauriPage.fill(`${MKDIR_DIALOG} input.text-field-control`, 'NewFolder')
     // Wait for the OK button to enable in response to the typed name.
-    await expect.poll(async () => tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`), { timeout: 2000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`), { timeout: waitBudget(2000) })
+      .toBeTruthy()
     await tauriPage.click(`${MKDIR_DIALOG} .btn-primary`)
 
     // Wait for dialog to close
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // MTP mkdir is fire-and-forget. Poll the backing dir for the folder.
     await expect
-      .poll(() => fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'NewFolder')), { timeout: 15000 })
+      .poll(() => fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'NewFolder')), { timeout: waitBudget(15000) })
       .toBeTruthy()
     await mcpCall('refresh', {})
 
@@ -673,11 +688,17 @@ test.describe('MTP rename', () => {
     await tauriPage.press('.rename-input', 'Enter')
 
     // Wait for rename input to disappear
-    await expect.poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: 10000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: waitBudget(10000) })
+      .toBeTruthy()
 
     // Verify new name appears, old name gone
-    await expect.poll(async () => fileExistsInPane(tauriPage, 'renamed-report.txt', 0), { timeout: 10000 }).toBeTruthy()
-    await expect.poll(async () => !(await fileExistsInPane(tauriPage, 'report.txt', 0)), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInPane(tauriPage, 'renamed-report.txt', 0), { timeout: waitBudget(10000) })
+      .toBeTruthy()
+    await expect
+      .poll(async () => !(await fileExistsInPane(tauriPage, 'report.txt', 0)), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // Verify on backing dir
     expect(fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'renamed-report.txt'))).toBe(true)
@@ -716,14 +737,18 @@ test.describe('MTP rename', () => {
     await tauriPage.waitForSelector('.rename-input', 10000)
     await setRenameInputValue(tauriPage, 'entered-renamed.txt')
     await tauriPage.press('.rename-input', 'Enter')
-    await expect.poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: 10000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: waitBudget(10000) })
+      .toBeTruthy()
 
     // No `refresh` here on purpose: an explicit re-read would hide exactly the
     // miss this pins.
     await expect
-      .poll(async () => fileExistsInPane(tauriPage, 'entered-renamed.txt', 0), { timeout: 10000 })
+      .poll(async () => fileExistsInPane(tauriPage, 'entered-renamed.txt', 0), { timeout: waitBudget(10000) })
       .toBeTruthy()
-    await expect.poll(async () => !(await fileExistsInPane(tauriPage, 'report.txt', 0)), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await fileExistsInPane(tauriPage, 'report.txt', 0)), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     expect(fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'entered-renamed.txt'))).toBe(true)
   })
@@ -769,7 +794,9 @@ test.describe('MTP rename', () => {
         btn.click();
       })()`,
     )
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(3000) })
+      .toBeTruthy()
 
     expect(fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'report.txt'))).toBe(true)
     expect(fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'notes.txt'))).toBe(true)
@@ -796,7 +823,7 @@ test.describe('MTP cross-storage move', () => {
     // Wait for the move to land on the local destination, then refresh the
     // pane so mcpAwaitItem sees the file.
     await expect
-      .poll(() => fs.existsSync(path.join(fixtureRoot, 'right', 'report.txt')), { timeout: 30000 })
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'right', 'report.txt')), { timeout: waitBudget(30000) })
       .toBeTruthy()
     await mcpCall('refresh', {})
     await mcpAwaitItem('right', 'report.txt', 30)
@@ -808,13 +835,13 @@ test.describe('MTP cross-storage move', () => {
     // MTP move = copy + delete, so source should be gone
     await expect
       .poll(() => !fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'Documents', 'report.txt')), {
-        timeout: 15000,
+        timeout: waitBudget(15000),
       })
       .toBeTruthy()
 
     // Transfer fires a "Moved 1 file." toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Moved 1 file.', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Moved 1 file.', { timeout: waitBudget(30000) })
   })
 
   test('moves file from local to MTP', async ({ tauriPage }) => {
@@ -833,7 +860,7 @@ test.describe('MTP cross-storage move', () => {
     // Wait for the move to land on the MTP backing dir, then refresh so the
     // pane re-lists.
     await expect
-      .poll(() => fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'file-a.txt')), { timeout: 30000 })
+      .poll(() => fs.existsSync(path.join(MTP_FIXTURE_ROOT, 'internal', 'file-a.txt')), { timeout: waitBudget(30000) })
       .toBeTruthy()
     await mcpCall('refresh', {})
 
@@ -845,12 +872,12 @@ test.describe('MTP cross-storage move', () => {
 
     // Verify source removed from local disk
     await expect
-      .poll(() => !fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt')), { timeout: 15000 })
+      .poll(() => !fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt')), { timeout: waitBudget(15000) })
       .toBeTruthy()
 
     // Transfer fires a "Moved 1 file." toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Moved 1 file.', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Moved 1 file.', { timeout: waitBudget(30000) })
   })
 })
 
@@ -870,7 +897,7 @@ test.describe('MTP clipboard rejection', () => {
           tauriPage.evaluate<boolean>(
             `document.querySelector('.file-pane.is-focused .file-entry.is-under-cursor')?.getAttribute('data-filename') === 'Documents'`,
           ),
-        { timeout: 2000 },
+        { timeout: waitBudget(2000) },
       )
       .toBeTruthy()
 
@@ -878,7 +905,7 @@ test.describe('MTP clipboard rejection', () => {
     // helper polls for the message and dismisses it after asserting.
     await pressKey(tauriPage, `${CTRL_OR_META}+c`)
     await expectAndDismissToast(tauriPage, "The clipboard can't carry files from this device. Use F5 to copy them.", {
-      timeout: 5000,
+      timeout: waitBudget(5000),
     })
   })
 
@@ -897,7 +924,7 @@ test.describe('MTP clipboard rejection', () => {
           tauriPage.evaluate<boolean>(
             `document.querySelector('.file-pane.is-focused .file-entry.is-under-cursor')?.getAttribute('data-filename') === 'Documents'`,
           ),
-        { timeout: 2000 },
+        { timeout: waitBudget(2000) },
       )
       .toBeTruthy()
 
@@ -905,7 +932,7 @@ test.describe('MTP clipboard rejection', () => {
     // helper polls for the message and dismisses it after asserting.
     await pressKey(tauriPage, `${CTRL_OR_META}+x`)
     await expectAndDismissToast(tauriPage, "The clipboard can't carry files from this device. Use F6 to move them.", {
-      timeout: 5000,
+      timeout: waitBudget(5000),
     })
   })
 
@@ -926,7 +953,7 @@ test.describe('MTP clipboard rejection', () => {
           tauriPage.evaluate<boolean>(
             `document.querySelectorAll('.file-pane')[1]?.classList.contains('is-focused') === true`,
           ),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -942,7 +969,7 @@ test.describe('MTP clipboard rejection', () => {
     await tauriPage.keyboard.down(CTRL_OR_META)
     await tauriPage.keyboard.press('v')
     await tauriPage.keyboard.up(CTRL_OR_META)
-    await expectAndDismissToast(tauriPage, 'Use F5 to copy files onto this device.', { timeout: 5000 })
+    await expectAndDismissToast(tauriPage, 'Use F5 to copy files onto this device.', { timeout: waitBudget(5000) })
   })
 })
 
@@ -969,7 +996,7 @@ test.describe('MTP read-only enforcement', () => {
       .poll(
         async () =>
           (await tauriPage.isVisible('[data-dialog-id="alert"]')) || (await tauriPage.isVisible(MKDIR_DIALOG)),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -991,12 +1018,16 @@ test.describe('MTP read-only enforcement', () => {
                 var btn = document.querySelector('[data-dialog-id="alert"] button');
                 if (btn) btn.click();
             })()`)
-      await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+      await expect
+        .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+        .toBeTruthy()
     } else if (hasMkdir) {
       // Dialog opened. Type a name and confirm, expect backend error.
       await tauriPage.waitForSelector(`${MKDIR_DIALOG} input.text-field-control`, 3000)
       await tauriPage.fill(`${MKDIR_DIALOG} input.text-field-control`, 'TestFolder')
-      await expect.poll(async () => tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`), { timeout: 2000 }).toBeTruthy()
+      await expect
+        .poll(async () => tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`), { timeout: waitBudget(2000) })
+        .toBeTruthy()
       await tauriPage.click(`${MKDIR_DIALOG} .btn-primary`)
 
       // Wait for an error message to appear in the dialog
@@ -1008,7 +1039,7 @@ test.describe('MTP read-only enforcement', () => {
             )
             return hasError
           },
-          { timeout: 10000 },
+          { timeout: waitBudget(10000) },
         )
         .toBeTruthy()
 
@@ -1026,7 +1057,9 @@ test.describe('MTP read-only enforcement', () => {
     await moveCursorToFile(tauriPage, 'sunset.jpg')
     await tauriPage.keyboard.press('F2')
     // Wait for the read-only alert dialog to appear.
-    await expect.poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // Rename should be blocked with an alert (DualPaneExplorer.startRename checks mountIsReadOnly)
     const hasRenameAlert = await tauriPage.isVisible('[data-dialog-id="alert"]')
@@ -1043,7 +1076,9 @@ test.describe('MTP read-only enforcement', () => {
             var btn = document.querySelector('[data-dialog-id="alert"] button');
             if (btn) btn.click();
         })()`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 })
 
@@ -1114,7 +1149,7 @@ test.describe('MTP large file transfer', () => {
     // Poll until the destination file reaches the expected size (50 MB).
     const expectedSize = 50 * 1024 * 1024
     const destPath = path.join(MTP_FIXTURE_ROOT, 'internal', 'large-test.dat')
-    await expect.poll(() => safeFileSize(destPath) === expectedSize, { timeout: 30000 }).toBeTruthy()
+    await expect.poll(() => safeFileSize(destPath) === expectedSize, { timeout: waitBudget(30000) }).toBeTruthy()
     await mcpCall('refresh', {})
     await mcpAwaitItem('right', 'large-test.dat', 60)
 
@@ -1124,7 +1159,7 @@ test.describe('MTP large file transfer', () => {
 
     // Transfer fires a "Copied 1 file." toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Copied 1 file.', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Copied 1 file.', { timeout: waitBudget(30000) })
   })
 
   test('copies 50 MB file from MTP to local', async ({ tauriPage }) => {
@@ -1153,7 +1188,7 @@ test.describe('MTP large file transfer', () => {
     // Poll until the destination file reaches the expected size (50 MB).
     const expectedSize = 50 * 1024 * 1024
     const destPath = path.join(fixtureRoot, 'right', 'large-mtp.dat')
-    await expect.poll(() => safeFileSize(destPath) === expectedSize, { timeout: 30000 }).toBeTruthy()
+    await expect.poll(() => safeFileSize(destPath) === expectedSize, { timeout: waitBudget(30000) }).toBeTruthy()
     await mcpCall('refresh', {})
     await mcpAwaitItem('right', 'large-mtp.dat', 60)
 
@@ -1163,6 +1198,6 @@ test.describe('MTP large file transfer', () => {
 
     // Transfer fires a "Copied 1 file." toast on success; assert + dismiss
     // pins the user-facing confirmation and clears the leak guard.
-    await expectAndDismissToast(tauriPage, 'Copied 1 file.', { timeout: 30000 })
+    await expectAndDismissToast(tauriPage, 'Copied 1 file.', { timeout: waitBudget(30000) })
   })
 })

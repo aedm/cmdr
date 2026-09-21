@@ -22,6 +22,7 @@
  * All use the shared engines in `i18n-capture-helpers.ts`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { expect } from './fixtures.js'
 import { ensureAppReady, dismissOverlay, dispatchMenuCommand, getFixtureRoot } from './helpers.js'
 import { recreateFixtures } from '../e2e-shared/fixtures.js'
@@ -329,7 +330,7 @@ export async function captureFdaOnboardingPass(
         })()`)
       .catch(() => {})
     await expect
-      .poll(async () => !(await main.isVisible(WIZARD).catch(() => false)), { timeout: 1500 })
+      .poll(async () => !(await main.isVisible(WIZARD).catch(() => false)), { timeout: waitBudget(1500) })
       .toBeTruthy()
       .catch(() => {})
   }

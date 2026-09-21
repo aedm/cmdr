@@ -8,6 +8,7 @@
  * The injected error is cleared after one use, so retries succeed naturally.
  */
 
+import { waitBudget } from './wait-budget.js'
 import os from 'os'
 import { test, expect } from './fixtures.js'
 import { recreateFixtures } from '../e2e-shared/fixtures.js'
@@ -64,7 +65,9 @@ async function injectAndNavigateIntoSubDir(tauriPage: PageLike, errorCode: numbe
   // pane renders in <100 ms on the happy path; longer budgets just hid
   // failures behind the 8 s outer test timeout.
   await expect
-    .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), { timeout: 3000 })
+    .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), {
+      timeout: waitBudget(3000),
+    })
     .toBeTruthy()
 }
 
@@ -98,7 +101,7 @@ async function navigateBackToLeft(tauriPage: PageLike): Promise<void> {
         tauriPage.evaluate<boolean>(
           `!document.querySelector('.error-pane') && document.querySelectorAll('.file-pane.is-focused .file-entry').length > 0`,
         ),
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBeTruthy()
 }
@@ -113,7 +116,9 @@ test.describe('Error pane: Transient errors (ETIMEDOUT)', () => {
 
     // Wait for the error pane to appear
     await expect
-      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), { timeout: 3000 })
+      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), {
+        timeout: waitBudget(3000),
+      })
       .toBeTruthy()
 
     // Verify the title says "Connection timed out"
@@ -156,7 +161,9 @@ test.describe('Error pane: Transient errors (ETIMEDOUT)', () => {
 
     // Wait for error pane
     await expect
-      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), { timeout: 3000 })
+      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), {
+        timeout: waitBudget(3000),
+      })
       .toBeTruthy()
 
     // Click "Try again": the injected error was cleared after first use,
@@ -176,7 +183,7 @@ test.describe('Error pane: Transient errors (ETIMEDOUT)', () => {
           }
           return false;
         })()`),
-        { timeout: 2000 },
+        { timeout: waitBudget(2000) },
       )
       .toBeTruthy()
 
@@ -190,7 +197,7 @@ test.describe('Error pane: Transient errors (ETIMEDOUT)', () => {
           )
           return !hasErrorPane && hasEntries
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -208,7 +215,9 @@ test.describe('Error pane: NeedsAction errors (EACCES)', () => {
 
     // Wait for the error pane to appear
     await expect
-      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), { timeout: 3000 })
+      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), {
+        timeout: waitBudget(3000),
+      })
       .toBeTruthy()
 
     // Verify the title says "No permission"
@@ -254,7 +263,9 @@ test.describe('Error pane: Accessibility', () => {
     await injectAndNavigateIntoSubDir(tauriPage, 60)
 
     await expect
-      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), { timeout: 3000 })
+      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), {
+        timeout: waitBudget(3000),
+      })
       .toBeTruthy()
 
     // Verify role="alert" on the error pane
@@ -283,7 +294,9 @@ test.describe('Error pane: UI affordances', () => {
     await injectAndNavigateIntoSubDir(tauriPage, 60)
 
     await expect
-      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), { timeout: 3000 })
+      .poll(async () => tauriPage.evaluate<boolean>(`!!document.querySelector('.error-pane')`), {
+        timeout: waitBudget(3000),
+      })
       .toBeTruthy()
 
     // The displayed folder path must end with the path we navigated into.
@@ -309,7 +322,7 @@ test.describe('Error pane: UI affordances', () => {
           tauriPage.evaluate<boolean>(
             `document.querySelector('.error-pane .technical-details')?.hasAttribute('open') || false`,
           ),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 

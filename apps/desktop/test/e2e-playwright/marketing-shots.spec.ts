@@ -13,6 +13,7 @@
  * `apps/desktop/test/e2e-playwright/DETAILS.md` § "Key decisions" before changing how it is wired.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -62,7 +63,7 @@ const RIGHT_PANE_PATH = join(REPO, 'apps', 'desktop', 'src-tauri', 'src')
 // 15 s default would cut the first one off. Generous on purpose: on timeout Playwright
 // destroys the plugin socket, so every later shot fails with `Not connected`, which
 // reads like a crash and buries the real message.
-test.setTimeout(1_200_000)
+test.setTimeout(waitBudget(1_200_000))
 
 test.describe('marketing masters', () => {
   test.skip(process.platform !== 'darwin', 'The masters are macOS window shots: traffic lights and a system shadow.')
@@ -188,7 +189,7 @@ async function stageMainWindow(page: TauriPage): Promise<Awaited<ReturnType<type
   // ~570 px, and the hero cutouts would be measured from a window nobody ships.
   await setWindowSize(page, 'main', MAIN_WINDOW.width, MAIN_WINDOW.height)
   await expect
-    .poll(async () => (await windowMetrics(page, 'main')).logical.width, { timeout: 5000 })
+    .poll(async () => (await windowMetrics(page, 'main')).logical.width, { timeout: waitBudget(5000) })
     .toBe(MAIN_WINDOW.width)
 
   await waitForIndexedSizes(page)
@@ -239,7 +240,7 @@ async function waitForIndexedSizes(page: TauriPage): Promise<void> {
         // Long enough for a full reconcile of a ~6 M entry drive (measured 284 s for the
         // scan plus aggregation), with room for a loaded machine. ❌ Don't trim this to
         // "make the suite faster": the alternative to waiting is shipping hourglasses.
-        timeout: 900_000,
+        timeout: waitBudget(900_000),
         intervals: [1000],
         message: 'the drive index never settled, so every folder size would photograph as an hourglass',
       },
@@ -359,7 +360,7 @@ async function setTheme(page: TauriPage, mode: 'dark' | 'light'): Promise<void> 
   // is the media query the stylesheet itself keys off, not a class we could set.
   await expect
     .poll(async () => page.evaluate<boolean>(`window.matchMedia('(prefers-color-scheme: dark)').matches`), {
-      timeout: 10000,
+      timeout: waitBudget(10000),
     })
     .toBe(mode === 'dark')
 }
@@ -447,7 +448,7 @@ async function openRail(page: TauriPage): Promise<void> {
         await dispatchMenuCommand(page, 'askCmdr.toggle')
         return railOpen(page)
       },
-      { timeout: 10000 },
+      { timeout: waitBudget(10000) },
     )
     .toBe(true)
 }
@@ -460,7 +461,7 @@ async function closeRail(page: TauriPage): Promise<void> {
         await dispatchMenuCommand(page, 'askCmdr.toggle')
         return !(await railOpen(page))
       },
-      { timeout: 10000 },
+      { timeout: waitBudget(10000) },
     )
     .toBe(true)
 }

@@ -16,6 +16,7 @@
  * Requires `--features playwright-e2e`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -31,7 +32,7 @@ const THROTTLE_MS = 250
 const FILES_PER_SOURCE = 24
 const SOURCE = 'mcp-queue-src'
 
-test.setTimeout(90_000)
+test.setTimeout(waitBudget(90_000))
 
 /** Creates `left/<name>/` with `FILES_PER_SOURCE` tiny files (Node-side, real disk). */
 function makeSourceDir(fixtureRoot: string, name: string): void {
@@ -112,7 +113,7 @@ test.describe('MCP operation queue', () => {
     // The op is discoverable in `cmdr://state operations` while it runs.
     await expect
       .poll(async () => (await mcpReadResource('cmdr://state?include=operations')).includes(operationId), {
-        timeout: 15000,
+        timeout: waitBudget(15000),
       })
       .toBeTruthy()
 
@@ -124,7 +125,7 @@ test.describe('MCP operation queue', () => {
           const state = await mcpReadResource('cmdr://state?include=operations')
           return operationsStatusFor(state, operationId)
         },
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe('paused')
 
@@ -136,7 +137,7 @@ test.describe('MCP operation queue', () => {
           const state = await mcpReadResource('cmdr://state?include=operations')
           return operationsStatusFor(state, operationId)
         },
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe('running')
 

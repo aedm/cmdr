@@ -16,6 +16,7 @@
  * of its own.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { expect } from './fixtures.js'
 import { ensureAppReady, getFixtureRoot } from './helpers.js'
 import { recreateFixtures } from '../e2e-shared/fixtures.js'
@@ -50,7 +51,9 @@ async function clearSelection(main: TauriPage): Promise<void> {
     })()`)
     .catch(() => {})
   await expect
-    .poll(async () => main.evaluate<number>(`document.querySelectorAll('.is-selected').length`), { timeout: 2000 })
+    .poll(async () => main.evaluate<number>(`document.querySelectorAll('.is-selected').length`), {
+      timeout: waitBudget(2000),
+    })
     .toBe(0)
 }
 
@@ -156,7 +159,9 @@ async function closeOpenMenu(main: TauriPage): Promise<void> {
     .evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`)
     .catch(() => {})
   await expect
-    .poll(async () => main.evaluate<number>(`document.querySelectorAll('[data-menu]').length`), { timeout: 3000 })
+    .poll(async () => main.evaluate<number>(`document.querySelectorAll('[data-menu]').length`), {
+      timeout: waitBudget(3000),
+    })
     .toBe(0)
     .catch(() => {})
 }

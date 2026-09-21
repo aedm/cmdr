@@ -47,6 +47,7 @@
  * Requires `--features playwright-e2e`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -159,7 +160,7 @@ async function stageTransfer(
         opId = fresh.opId
         return true
       },
-      { timeout: 10000 },
+      { timeout: waitBudget(10000) },
     )
     .toBe(true)
   return opId
@@ -200,7 +201,7 @@ async function rollbackStateOf(page: TauriPage, opId: string): Promise<string> {
 async function settledRollbackState(page: TauriPage, opId: string): Promise<string> {
   await expect
     .poll(async () => ['rolledBack', 'partiallyRolledBack'].includes(await rollbackStateOf(page, opId)), {
-      timeout: 20000,
+      timeout: waitBudget(20000),
     })
     .toBe(true)
   return rollbackStateOf(page, opId)
@@ -264,7 +265,7 @@ async function openOperationLog(page: TauriPage): Promise<void> {
         page.evaluate<boolean>(
           `document.querySelector('#operation-log-body .op-list, #operation-log-body .notice') !== null`,
         ),
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBe(true)
 }
@@ -364,7 +365,7 @@ async function pressRowControl(page: TauriPage, opId: string, label: string): Pr
  */
 async function pressRollBack(page: TauriPage, opId: string, label = 'Roll back'): Promise<void> {
   await clickButtonByText(page, rollBackButtonFor(opId), label)
-  await expect.poll(() => page.count(CONFIRM_DIALOG), { timeout: 5000 }).toBe(1)
+  await expect.poll(() => page.count(CONFIRM_DIALOG), { timeout: waitBudget(5000) }).toBe(1)
 }
 
 /** The confirmation's body sentence — the wording that has to match the inverse. */
@@ -377,7 +378,7 @@ function confirmBody(page: TauriPage): Promise<string> {
 /** Answers the confirmation with its confirming button, and waits for it to close. */
 async function confirmRollBack(page: TauriPage, label = 'Roll back'): Promise<void> {
   await clickButtonByText(page, `${CONFIRM_DIALOG} button`, label)
-  await expect.poll(() => page.count(CONFIRM_DIALOG), { timeout: 5000 }).toBe(0)
+  await expect.poll(() => page.count(CONFIRM_DIALOG), { timeout: waitBudget(5000) }).toBe(0)
 }
 
 /** The confirmation's title — the sentence that frames what the press will do. */
@@ -390,7 +391,7 @@ function confirmTitle(page: TauriPage): Promise<string> {
 /** Answers the confirmation with the safe choice, leaving the operation alone. */
 async function declineRollBack(page: TauriPage): Promise<void> {
   await clickButtonByText(page, `${CONFIRM_DIALOG} button`, 'Leave it as is')
-  await expect.poll(() => page.count(CONFIRM_DIALOG), { timeout: 5000 }).toBe(0)
+  await expect.poll(() => page.count(CONFIRM_DIALOG), { timeout: waitBudget(5000) }).toBe(0)
 }
 
 /** Closes the history dialog and opens it again, which is what re-reads page one.
@@ -414,7 +415,7 @@ test.describe('Rolling an operation back from the history dialog', () => {
   // Every test stages a transfer, reverses it, and waits the reversal out. The
   // default 15 s budget covers the un-throttled tests but not the ones that pace
   // six items on purpose, and a per-test override would drift out of step.
-  test.describe.configure({ timeout: 45000 })
+  test.describe.configure({ timeout: waitBudget(45000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     recreateFixtures(getFixtureRoot())
@@ -474,7 +475,7 @@ test.describe('Rolling an operation back from the history dialog', () => {
 
     // The badge flips under the cursor that pressed it, off the journal's own
     // synchronous write rather than optimism in the component.
-    await expect.poll(() => rowRollbackBadge(page, opId), { timeout: 5000 }).toBe('Rolling back')
+    await expect.poll(() => rowRollbackBadge(page, opId), { timeout: waitBudget(5000) }).toBe('Rolling back')
 
     expect(await settledRollbackState(page, opId)).toBe('rolledBack')
     expect(goneCount(fixtureRoot, 'rb-copy', 3)).toBe(3)
@@ -593,7 +594,7 @@ test.describe('Rolling an operation back from the history dialog', () => {
     // Wait on state, never on a clock: the moment one destination is gone the
     // reversal is demonstrably underway, and the next item is a throttle away.
     await expect
-      .poll(() => goneCount(fixtureRoot, 'rb-cancel', count), { timeout: 15000, intervals: [25] })
+      .poll(() => goneCount(fixtureRoot, 'rb-cancel', count), { timeout: waitBudget(15000), intervals: [25] })
       .toBeGreaterThanOrEqual(1)
 
     // Cancel it with the command the queue window's Cancel button calls. That
@@ -666,14 +667,14 @@ test.describe('Rolling an operation back from the history dialog', () => {
     expect(await settledRollbackState(page, opId)).toBe('rolledBack')
 
     await clickButtonByText(page, rollBackButtonFor(opId), 'Roll back')
-    await expect.poll(() => page.count(CONFIRM_DIALOG), { timeout: 5000 }).toBe(1)
+    await expect.poll(() => page.count(CONFIRM_DIALOG), { timeout: waitBudget(5000) }).toBe(1)
     await confirmRollBack(page)
 
     // Typed all the way: the backend answered `alreadyRolledBack`, and the row
     // words that reason specifically rather than showing a generic apology or,
     // worse, letting the press look like it did nothing.
     await expect
-      .poll(() => rowRefusalNotice(page, opId), { timeout: 5000 })
+      .poll(() => rowRefusalNotice(page, opId), { timeout: waitBudget(5000) })
       .toBe('This one is already back the way it was.')
     // The button stays: every refusal here is a race the user can respond to.
     expect(await rowHasRollBackButton(page, opId)).toBe(true)
@@ -723,7 +724,7 @@ test.describe('Rolling an operation back from the history dialog', () => {
           deleteId = fresh.opId
           return true
         },
-        { timeout: 10000 },
+        { timeout: waitBudget(10000) },
       )
       .toBe(true)
     expect((await dispatchRollback(page, deleteId)).refusal).toBe('notRollbackable')
@@ -740,7 +741,7 @@ test.describe('Rolling an operation back from the history dialog', () => {
     expect(deleteRow?.notRollbackableReason).toBe('permanentDelete')
     await openOperationLog(page)
     await expect
-      .poll(() => rowReasonNotice(page, deleteId), { timeout: 5000 })
+      .poll(() => rowReasonNotice(page, deleteId), { timeout: waitBudget(5000) })
       .toBe('A permanent delete leaves nothing to put back.')
   })
 
@@ -824,7 +825,7 @@ test.describe('Rolling an operation back from the history dialog', () => {
     await confirmRollBack(page)
 
     await expect
-      .poll(() => goneCount(fixtureRoot, 'rb-pause', count), { timeout: 15000, intervals: [25] })
+      .poll(() => goneCount(fixtureRoot, 'rb-pause', count), { timeout: waitBudget(15000), intervals: [25] })
       .toBeGreaterThanOrEqual(1)
 
     // The reversal is live and named on the wire as one. Every surface that shows
@@ -853,7 +854,7 @@ test.describe('Rolling an operation back from the history dialog', () => {
     // ❌ A parked reversal must not read as a finished one: the row says so, and
     // the button has turned into its own undo.
     expect(await rowControlLabels(page, opId)).toContain('Resume')
-    await expect.poll(() => rowStatusText(page, opId), { timeout: 5000 }).toContain('Paused')
+    await expect.poll(() => rowStatusText(page, opId), { timeout: waitBudget(5000) }).toContain('Paused')
 
     await pressRowControl(page, opId, 'Resume')
 
@@ -889,9 +890,11 @@ test.describe('Rolling an operation back from the history dialog', () => {
     await confirmRollBack(page)
 
     // Cancel while the single file is still travelling back.
-    await expect.poll(() => fs.existsSync(big), { timeout: 15000, intervals: [25] }).toBe(true)
+    await expect.poll(() => fs.existsSync(big), { timeout: waitBudget(15000), intervals: [25] }).toBe(true)
     await cancelEverything(page)
-    await expect.poll(async () => (await rollbackStateOf(page, opId)) !== 'rollingBack', { timeout: 20000 }).toBe(true)
+    await expect
+      .poll(async () => (await rollbackStateOf(page, opId)) !== 'rollingBack', { timeout: waitBudget(20000) })
+      .toBe(true)
 
     // Whichever side holds the file, it holds ALL of it, and no half-written copy
     // survives on the other. A truncated file at either end is the failure.

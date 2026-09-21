@@ -9,6 +9,7 @@
  * exercises that math via the real Tauri webview.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -204,7 +205,7 @@ async function expectCursorInView(tauriPage: Parameters<typeof ensureAppReady>[0
       prevHolder.sample = nextSample
       return false
     },
-    3000,
+    waitBudget(3000),
     16,
   )
   expect(settled, `${context}: cursor/container rects did not settle`).toBe(true)
@@ -257,7 +258,7 @@ async function pressAndWaitCursorChange(tauriPage: Parameters<typeof ensureAppRe
   // entry at that row, or PageUp at the top). That's a valid state, the next `expectCursorInView`
   // assertion will still verify the cursor is in view. A longer wait here just inflates the test.
   // allowed-bare-poll: best-effort; a no-op press (edge column/row) is valid; expectCursorInView below is the real assertion
-  await pollUntil(tauriPage, async () => (await getCursorName(tauriPage)) !== before, 100)
+  await pollUntil(tauriPage, async () => (await getCursorName(tauriPage)) !== before, waitBudget(100))
 }
 
 /**
@@ -303,19 +304,21 @@ test.describe('Brief view cursor visibility', () => {
       .poll(
         async () =>
           tauriPage.evaluate<boolean>(`!!document.querySelector('.file-pane.is-focused [data-filename="a-00.txt"]')`),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
     // Switch to Brief view via the command palette (same path file-operations.spec.ts uses).
     await executeViaCommandPalette(tauriPage, 'Brief view')
     await expect
-      .poll(async () => tauriPage.isVisible('.file-pane.is-focused .brief-list-container'), { timeout: 5000 })
+      .poll(async () => tauriPage.isVisible('.file-pane.is-focused .brief-list-container'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     // Make sure cursor starts at column 0: press Home and confirm.
     await tauriPage.keyboard.press('Home')
-    await expect.poll(async () => (await getCursorName(tauriPage)) !== '', { timeout: 3000 }).toBeTruthy()
+    await expect.poll(async () => (await getCursorName(tauriPage)) !== '', { timeout: waitBudget(3000) }).toBeTruthy()
     await expectCursorInView(tauriPage, 'after Home (start)')
 
     // ── Arrow Right × 10 ─────────────────────────────────────────────────────
@@ -335,7 +338,7 @@ test.describe('Brief view cursor visibility', () => {
           const name = await getCursorName(tauriPage)
           return name.length > 0
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
     // Settle the scroll position before measuring. `expectCursorInView` itself does a two-sample
@@ -354,7 +357,7 @@ test.describe('Brief view cursor visibility', () => {
           // After Home, cursor is either at ".." or the first real entry.
           return name === '..' || name === 'a-00.txt'
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
     await expectCursorInView(tauriPage, 'after Home')
@@ -387,7 +390,7 @@ test.describe('Brief view cursor visibility', () => {
     for (let i = 0; i < 25; i++) {
       await tauriPage.keyboard.press('ArrowRight')
     }
-    await expect.poll(async () => (await getCursorName(tauriPage)) !== '', { timeout: 3000 }).toBeTruthy()
+    await expect.poll(async () => (await getCursorName(tauriPage)) !== '', { timeout: waitBudget(3000) }).toBeTruthy()
     await expectCursorInView(tauriPage, 'mid-list before resize')
 
     // Drive the resizer programmatically. PaneResizer.svelte (lines 12–41)
@@ -417,7 +420,7 @@ test.describe('Brief view cursor visibility', () => {
         const rect = await getRect(tauriPage, BRIEF_LIST_SCROLL)
         return rect !== null && rect.width > 0
       },
-      3000,
+      waitBudget(3000),
     )
     expect(shrank, 'brief-list rect should be readable after resize').toBe(true)
 
@@ -435,7 +438,9 @@ test.describe('Brief view cursor visibility', () => {
 
     await executeViaCommandPalette(tauriPage, 'Brief view')
     await expect
-      .poll(async () => tauriPage.isVisible('.file-pane.is-focused .brief-list-container'), { timeout: 5000 })
+      .poll(async () => tauriPage.isVisible('.file-pane.is-focused .brief-list-container'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     await failBriefColumnWidths(tauriPage, 10)
@@ -449,7 +454,7 @@ test.describe('Brief view cursor visibility', () => {
         .poll(
           async () =>
             tauriPage.evaluate<boolean>(`!!document.querySelector('.file-pane.is-focused [data-filename="a-00.txt"]')`),
-          { timeout: 5000 },
+          { timeout: waitBudget(5000) },
         )
         .toBeTruthy()
 
@@ -457,7 +462,7 @@ test.describe('Brief view cursor visibility', () => {
 
       // 1. The cursor is drawn. Pre-fix it was suppressed until widths arrived, so with
       //    no widths ever arriving the user had no idea where they were.
-      await expect.poll(async () => getCursorName(tauriPage), { timeout: 3000 }).not.toBe('')
+      await expect.poll(async () => getCursorName(tauriPage), { timeout: waitBudget(3000) }).not.toBe('')
       await expectCursorInView(tauriPage, 'with column measurement failing')
 
       // 2. Columns are provisional-width, not pane-wide. Pre-fix each unmeasured column

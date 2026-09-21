@@ -6,6 +6,7 @@
  * conflict-edge-cases.spec.ts.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
@@ -239,7 +240,7 @@ export async function selectItemsByName(tauriPage: PageLike, names: string[]): P
     const listed = await pollUntil(
       tauriPage,
       async () => !('missing' in (await findIndicesInFocusedPane(tauriPage, names))),
-      5000,
+      waitBudget(5000),
     )
     // Re-read rather than capture inside the poll: a `let` assigned from a
     // callback defeats control-flow narrowing, and the re-read costs one extra
@@ -262,7 +263,7 @@ export async function selectItemsByName(tauriPage: PageLike, names: string[]): P
     const settled = await pollUntil(
       tauriPage,
       async () => matchesWanted(await selectedNamesInFocusedPane(tauriPage)),
-      2000,
+      waitBudget(2000),
     )
     if (settled) return
     lastFailure = `selection landed on [${(await selectedNamesInFocusedPane(tauriPage)).join(', ')}] instead of [${wanted.join(', ')}]`
@@ -279,7 +280,9 @@ export async function selectAll(tauriPage: PageLike): Promise<void> {
   // Wait for the selection to actually register rather than a fixed settle:
   // selected rows carry `.is-selected`, so polling for one is the real signal.
   await expect
-    .poll(async () => tauriPage.evaluate<number>(`document.querySelectorAll('.is-selected').length`), { timeout: 2000 })
+    .poll(async () => tauriPage.evaluate<number>(`document.querySelectorAll('.is-selected').length`), {
+      timeout: waitBudget(2000),
+    })
     .toBeGreaterThan(0)
 }
 
@@ -290,7 +293,11 @@ export async function waitForConflictPolicy(tauriPage: PageLike): Promise<void> 
   // `selectAll` sweeping in the ~170 MB `bulk/` tree. 6 s is a modest margin for
   // Docker-lane jitter that keeps fast failure signal; it briefly ran at 12 s to
   // absorb the bulk/ scan before the scoping landed.
-  const found = await pollUntil(tauriPage, async () => tauriPage.isVisible(`${TRANSFER_DIALOG} .conflict-policy`), 6000)
+  const found = await pollUntil(
+    tauriPage,
+    async () => tauriPage.isVisible(`${TRANSFER_DIALOG} .conflict-policy`),
+    waitBudget(6000),
+  )
   if (!found) throw new Error('waitForConflictPolicy: .conflict-policy radio buttons did not appear within 6s')
 }
 
@@ -307,7 +314,7 @@ export async function waitForConflictCheck(tauriPage: PageLike): Promise<void> {
   const settled = await pollUntil(
     tauriPage,
     async () => tauriPage.isVisible(`${TRANSFER_DIALOG} .dialog-body[data-conflict-state="done"]`),
-    6000,
+    waitBudget(6000),
   )
   if (!settled) throw new Error('waitForConflictCheck: the conflict check did not settle within 6s')
 }
@@ -328,7 +335,7 @@ export async function selectConflictPolicy(
           `!!document.querySelector(${radioSel}) && document.querySelector(${radioSel}).checked`,
         ),
       {
-        timeout: 2000,
+        timeout: waitBudget(2000),
       },
     )
     .toBeTruthy()
@@ -341,7 +348,7 @@ export async function clickTransferStart(tauriPage: PageLike): Promise<void> {
 }
 
 /** Waits for all modal dialogs to close after an operation completes. */
-export async function waitForDialogsToClose(tauriPage: PageLike, timeout = 12000): Promise<void> {
+export async function waitForDialogsToClose(tauriPage: PageLike, timeout = waitBudget(12000)): Promise<void> {
   // 12 s default: the op closes the dialog in <1 s normally (the conflict specs
   // now select only their own small fixtures, not `selectAll`'s ~170 MB `bulk/`
   // tree), but the dialog UNMOUNT has rarely lagged several seconds under
@@ -366,7 +373,7 @@ export async function waitForDialogsToClose(tauriPage: PageLike, timeout = 12000
  * (`src/lib/file-operations/DETAILS.md` § "Rollback asks first"). A spec that
  * clicks Rollback and waits for the dialogs to close hangs without this.
  */
-export async function confirmRollback(tauriPage: PageLike, timeout = 5000): Promise<void> {
+export async function confirmRollback(tauriPage: PageLike, timeout = waitBudget(5000)): Promise<void> {
   await clickButtonByText(tauriPage, '[data-dialog-id="rollback-confirmation"] button', 'Roll back', timeout)
 }
 
@@ -396,7 +403,7 @@ export async function readCurrentConflict(tauriPage: PageLike): Promise<Conflict
 }
 
 /** Waits for a conflict dialog to appear and returns its snapshot. */
-export async function waitForConflict(tauriPage: PageLike, timeout = 5000): Promise<ConflictSnapshot> {
+export async function waitForConflict(tauriPage: PageLike, timeout = waitBudget(5000)): Promise<ConflictSnapshot> {
   const found = await pollUntil(tauriPage, async () => (await readCurrentConflict(tauriPage)) !== null, timeout)
   const snapshot = found ? await readCurrentConflict(tauriPage) : null
   if (snapshot === null) {
@@ -422,7 +429,7 @@ export async function waitForConflict(tauriPage: PageLike, timeout = 5000): Prom
 export async function waitForNextConflictOrDone(
   tauriPage: PageLike,
   previous: ConflictSnapshot,
-  timeout = 5000,
+  timeout = waitBudget(5000),
 ): Promise<ConflictSnapshot | null> {
   const progressDialogSel = '[data-dialog-id="transfer-progress"]'
   const settled = await pollUntil(

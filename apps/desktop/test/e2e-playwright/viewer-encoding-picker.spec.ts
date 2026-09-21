@@ -9,6 +9,7 @@
  * is covered by vitest and Rust unit tests.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -105,7 +106,9 @@ test.describe('File viewer encoding picker', () => {
       })()
     `
 
-    await expect.poll(async () => viewer.evaluate<string | null>(selectedValue), { timeout: 8000 }).toBe('utf16Le')
+    await expect
+      .poll(async () => viewer.evaluate<string | null>(selectedValue), { timeout: waitBudget(8000) })
+      .toBe('utf16Le')
 
     // Verify the detected suffix shows on the UTF-16 LE row.
     const detectedLabel = await viewer.evaluate<string | null>(`
@@ -138,7 +141,7 @@ test.describe('File viewer encoding picker', () => {
               return !!trig && !trig.disabled && trig.getAttribute('data-disabled') === null
             })()
           `),
-        { timeout: 20000 },
+        { timeout: waitBudget(20000) },
       )
       .toBe(true)
 
@@ -157,14 +160,16 @@ test.describe('File viewer encoding picker', () => {
               return enc ? enc.getAttribute('data-state') : null
             })()
           `),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBe('open')
 
     // Pick UTF-8.
     expect(await pointerClick(viewer, inEncodingPicker('[data-part="item"][data-value="utf8"]'))).toBe('clicked')
 
-    await expect.poll(async () => viewer.evaluate<string | null>(selectedValue), { timeout: 3000 }).toBe('utf8')
+    await expect
+      .poll(async () => viewer.evaluate<string | null>(selectedValue), { timeout: waitBudget(3000) })
+      .toBe('utf8')
 
     // The viewport must stay interactive during the rebuild: setting scrollTop
     // must take. Re-apply the gesture on every poll iteration rather than once
@@ -185,7 +190,7 @@ test.describe('File viewer encoding picker', () => {
             })()
           `)
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeGreaterThan(0)
 
@@ -202,7 +207,7 @@ test.describe('File viewer encoding picker', () => {
             })()
           `)
         },
-        { timeout: 20000 },
+        { timeout: waitBudget(20000) },
       )
       .toBe(true)
   })

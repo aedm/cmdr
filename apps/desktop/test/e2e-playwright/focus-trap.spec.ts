@@ -12,6 +12,7 @@
  * moves focus itself), the focusin leak guard, and the Escape fallback.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, dismissOverlay, CTRL_OR_META, MKDIR_DIALOG, type PageLike } from './helpers.js'
 
@@ -53,7 +54,7 @@ test.describe('Dialog focus trapping', () => {
     // The palette focuses its input on mount.
     await expect
       .poll(() => tauriPage.evaluate(`document.activeElement === document.querySelector('${PALETTE_INPUT}')`), {
-        timeout: 3000,
+        timeout: waitBudget(3000),
       })
       .toBeTruthy()
 
@@ -76,7 +77,7 @@ test.describe('Dialog focus trapping', () => {
     await openCommandPalette(tauriPage)
     await expect
       .poll(() => tauriPage.evaluate(`document.activeElement === document.querySelector('${PALETTE_INPUT}')`), {
-        timeout: 3000,
+        timeout: waitBudget(3000),
       })
       .toBeTruthy()
 
@@ -89,7 +90,7 @@ test.describe('Dialog focus trapping', () => {
           tauriPage.evaluate(
             `document.activeElement !== null && document.activeElement.closest('${PALETTE}') !== null`,
           ),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -100,7 +101,7 @@ test.describe('Dialog focus trapping', () => {
     await openCommandPalette(tauriPage)
     await expect
       .poll(() => tauriPage.evaluate(`document.activeElement === document.querySelector('${PALETTE_INPUT}')`), {
-        timeout: 3000,
+        timeout: waitBudget(3000),
       })
       .toBeTruthy()
 
@@ -115,7 +116,7 @@ test.describe('Dialog focus trapping', () => {
     })()`)
 
     await expect
-      .poll(() => tauriPage.evaluate(`document.querySelector('${PALETTE}') === null`), { timeout: 3000 })
+      .poll(() => tauriPage.evaluate(`document.querySelector('${PALETTE}') === null`), { timeout: waitBudget(3000) })
       .toBeTruthy()
 
     // Closing must land keyboard focus back in the explorer (Escape-return-focus).
@@ -125,7 +126,7 @@ test.describe('Dialog focus trapping', () => {
           tauriPage.evaluate(
             `document.activeElement !== null && document.activeElement.closest('.dual-pane-explorer') !== null`,
           ),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
   })

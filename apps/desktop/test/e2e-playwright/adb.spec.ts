@@ -26,6 +26,7 @@
  * `docs/specs/later/adb-backend-follow-ups.md` § 1.
  */
 
+import { waitBudget } from './wait-budget.js'
 import os from 'node:os'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
 import { test, expect } from './fixtures.js'
@@ -74,7 +75,9 @@ async function publishPhone(tauriPage: PageLike, readiness: Readiness): Promise<
       deviceReadiness: readiness,
     },
   ])
-  await expect.poll(async () => (await switcherNames(tauriPage)).includes(PHONE_NAME), { timeout: 5000 }).toBeTruthy()
+  await expect
+    .poll(async () => (await switcherNames(tauriPage)).includes(PHONE_NAME), { timeout: waitBudget(5000) })
+    .toBeTruthy()
 }
 
 async function closeVolumePicker(tauriPage: PageLike): Promise<void> {
@@ -148,14 +151,18 @@ test.describe('A phone in the volume switcher', () => {
 
     // The pane says what is happening rather than showing an empty folder or a
     // listing that refused.
-    await expect.poll(async () => paneConnectText(tauriPage), { timeout: 15000 }).toContain(WAITING_SENTENCE)
+    await expect
+      .poll(async () => paneConnectText(tauriPage), { timeout: waitBudget(15000) })
+      .toContain(WAITING_SENTENCE)
   })
 
   test('walks in by itself when the phone turns ready, with nothing pressed', async ({ tauriPage }) => {
     await publishPhone(tauriPage, { kind: 'waiting_for_authorization' })
     await closeVolumePicker(tauriPage)
     await openPhone(tauriPage)
-    await expect.poll(async () => paneConnectText(tauriPage), { timeout: 15000 }).toContain(WAITING_SENTENCE)
+    await expect
+      .poll(async () => paneConnectText(tauriPage), { timeout: waitBudget(15000) })
+      .toContain(WAITING_SENTENCE)
 
     // What the ADB tracker's `unauthorized` → `device` push does to the store.
     await publishPhone(tauriPage, { kind: 'ready' })
@@ -166,7 +173,7 @@ test.describe('A phone in the volume switcher', () => {
     // serial no device answers to, so it stops with something else to say —
     // which is exactly what makes "it moved" observable here.
     await expect
-      .poll(async () => !(await paneConnectText(tauriPage)).includes(WAITING_SENTENCE), { timeout: 20000 })
+      .poll(async () => !(await paneConnectText(tauriPage)).includes(WAITING_SENTENCE), { timeout: waitBudget(20000) })
       .toBeTruthy()
   })
 })

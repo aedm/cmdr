@@ -17,6 +17,7 @@
  * Requires `--features playwright-e2e,virtual-mtp`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -46,7 +47,7 @@ import {
 
 const INTERNAL_STORAGE = 'Virtual Pixel 9 - Internal Storage'
 
-test.setTimeout(90_000)
+test.setTimeout(waitBudget(90_000))
 
 async function bothPanesOnLocalVolume(): Promise<boolean> {
   const state = await mcpReadResource('cmdr://state')
@@ -86,7 +87,7 @@ test.beforeEach(async ({ tauriPage }) => {
         invoke('plugin:event|emit', { event: 'mcp-volume-select', payload: { pane: 'left', name: ${JSON.stringify(LOCAL_VOLUME_NAME)} } });
         invoke('plugin:event|emit', { event: 'mcp-volume-select', payload: { pane: 'right', name: ${JSON.stringify(LOCAL_VOLUME_NAME)} } });
     })()`)
-    await expect.poll(() => bothPanesOnLocalVolume(), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(() => bothPanesOnLocalVolume(), { timeout: waitBudget(5000) }).toBeTruthy()
     // Previously: double-Escape + best-effort modal-overlay poll to clean up
     // dialogs leaked from prior tests. The global afterEach safety net in
     // fixtures.ts now catches and auto-cleans any leaks at the point of leak,
@@ -158,7 +159,7 @@ test.describe('MTP cancel: settle gate keeps "Canceling…" until BE quiets down
               tauriPage.evaluate<boolean>(
                 `!!document.querySelector('.file-pane.is-focused .file-entry[data-filename=' + ${JSON.stringify(JSON.stringify(name))} + '].is-selected')`,
               ),
-            { timeout: 2000 },
+            { timeout: waitBudget(2000) },
           )
           .toBeTruthy()
       }
@@ -192,7 +193,9 @@ test.describe('MTP cancel: settle gate keeps "Canceling…" until BE quiets down
       // (MIN_DISPLAY_MS).
       const cancelClickedAt = Date.now()
       await expect
-        .poll(async () => tauriPage.evaluate<boolean>(`(window.__settledEvents || []).length > 0`), { timeout: 2_000 })
+        .poll(async () => tauriPage.evaluate<boolean>(`(window.__settledEvents || []).length > 0`), {
+          timeout: waitBudget(2_000),
+        })
         .toBeTruthy()
       const settleArrivedAt = Date.now()
       const settleDuration = settleArrivedAt - cancelClickedAt
@@ -211,7 +214,7 @@ test.describe('MTP cancel: settle gate keeps "Canceling…" until BE quiets down
       const closed = await pollUntil(
         tauriPage,
         async () => !(await tauriPage.isVisible('[data-dialog-id="transfer-progress"]')),
-        3_000,
+        waitBudget(3_000),
       )
       expect(closed, 'transfer-progress dialog must close within 3 s after settle').toBe(true)
 

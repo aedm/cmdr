@@ -22,6 +22,7 @@
  *   right/                  <- empty
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -79,10 +80,14 @@ test.describe('Archive browsing', () => {
 
     // The pane is now INSIDE the archive; the path is the transparent zip path
     // (no scheme prefix), and the parent drive is still the tab's volume.
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(zipPath)
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(zipPath)
     // The inner entries are listed like a folder.
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'nested'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'nested'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('navigating into a nested archive dir and back out exits the archive', async ({ tauriPage }) => {
@@ -92,21 +97,25 @@ test.describe('Archive browsing', () => {
     const zipPath = `${leftDir}/sample.zip`
 
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(zipPath)
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(zipPath)
 
     // Into the nested dir inside the archive.
     await enterEntry(tauriPage, 'nested')
     await settleFocusedPaneOnLeft(tauriPage, `${zipPath}/nested`)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'deep.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'deep.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // Backspace bubbles up to the archive root...
     await tauriPage.keyboard.press('Backspace')
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(zipPath)
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(zipPath)
 
     // ...and again out of the archive entirely, to its containing folder.
     await tauriPage.keyboard.press('Backspace')
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(leftDir)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'sample.zip'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(leftDir)
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'sample.zip'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('a real directory named like a zip enters as a plain folder', async ({ tauriPage }) => {
@@ -118,8 +127,10 @@ test.describe('Archive browsing', () => {
 
     // The boundary check must lose to normal directory navigation: `decoy.zip` is
     // a real directory, so we enter it as a plain folder and see its real contents.
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(decoyPath)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'marker.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(decoyPath)
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'marker.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('previewing a text file inside the archive shows its content', async ({ tauriPage }) => {
@@ -148,7 +159,9 @@ test.describe('Archive browsing', () => {
     const main = tauriPage as TauriPage
 
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // Enter on a non-archive file inside the zip routes to the VIEWER (temp-extract).
     // The OS default-app open would be a silent no-op on the inner path, so a new
@@ -159,7 +172,7 @@ test.describe('Archive browsing', () => {
     await tauriPage.keyboard.press('Enter')
 
     const viewer = await main.waitForWindow((w) => w.label.startsWith('viewer-') && !before.has(w.label), {
-      timeout: 10000,
+      timeout: waitBudget(10000),
     })
     const viewerLabel = viewer.targetWindow
     if (!viewerLabel) throw new Error('Scoped viewer page has no targetWindow label')
@@ -181,7 +194,9 @@ test.describe('Archive browsing', () => {
     const fixtureRoot = getFixtureRoot()
 
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // F5 copies the cursored entry from the archive (source) to the right pane.
     const found = await moveCursorToFile(tauriPage, 'inner.txt')
@@ -190,10 +205,14 @@ test.describe('Archive browsing', () => {
     await tauriPage.waitForSelector(TRANSFER_DIALOG, 5000)
     await tauriPage.waitForSelector(`${TRANSFER_DIALOG} .btn-primary`, 3000)
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // The extracted file lands on disk in the right pane's folder.
-    await expect.poll(() => fs.existsSync(path.join(fixtureRoot, 'right', 'inner.txt')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'right', 'inner.txt')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(fs.readFileSync(path.join(fixtureRoot, 'right', 'inner.txt'), 'utf8')).toContain(
       'hello from inside the archive',
     )
@@ -216,11 +235,13 @@ test.describe('Archive browsing', () => {
     await tauriPage.waitForSelector(TRANSFER_DIALOG, 5000)
     await tauriPage.waitForSelector(`${TRANSFER_DIALOG} .btn-primary`, 3000)
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // The whole zip lands in the right pane, byte-identical to the source file.
     const dest = path.join(fixtureRoot, 'right', 'sample.zip')
-    await expect.poll(() => fs.existsSync(dest), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(() => fs.existsSync(dest), { timeout: waitBudget(5000) }).toBeTruthy()
     const srcBytes = fs.readFileSync(path.join(fixtureRoot, 'left', 'sample.zip'))
     expect(fs.readFileSync(dest).equals(srcBytes)).toBe(true)
 
@@ -253,9 +274,11 @@ test.describe('Archive Enter-behavior menu', () => {
 
     // Browse is highlighted on open, so Enter picks it and steps inside.
     await tauriPage.keyboard.press('Enter')
-    await expect.poll(async () => !(await tauriPage.isVisible(ENTER_MENU)), { timeout: 3000 }).toBeTruthy()
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(zipPath)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => !(await tauriPage.isVisible(ENTER_MENU)), { timeout: waitBudget(3000) }).toBeTruthy()
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(zipPath)
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('Enter then Down then Enter picks Open, launching the zip in the default app', async ({ tauriPage }) => {
@@ -274,15 +297,15 @@ test.describe('Archive Enter-behavior menu', () => {
           tauriPage.evaluate<boolean>(
             `(function(){ var el = document.querySelector('[data-menu-row][data-highlighted]'); return !!el && (el.textContent || '').indexOf('Open') !== -1; })()`,
           ),
-        { timeout: 2000 },
+        { timeout: waitBudget(2000) },
       )
       .toBeTruthy()
     await tauriPage.keyboard.press('Enter')
-    await expect.poll(async () => !(await tauriPage.isVisible(ENTER_MENU)), { timeout: 3000 }).toBeTruthy()
+    await expect.poll(async () => !(await tauriPage.isVisible(ENTER_MENU)), { timeout: waitBudget(3000) }).toBeTruthy()
 
     // Open hands the `.zip` file itself to LaunchServices (mocked in E2E), and
     // does NOT browse into it — the pane stays put.
-    await expect.poll(async () => getOpenedPaths(tauriPage), { timeout: 5000 }).toContain(zipPath)
+    await expect.poll(async () => getOpenedPaths(tauriPage), { timeout: waitBudget(5000) }).toContain(zipPath)
     expect(await getFocusedPaneActiveTabPath()).toBe(`${getFixtureRoot()}/left`)
   })
 
@@ -293,9 +316,11 @@ test.describe('Archive Enter-behavior menu', () => {
     await enterEntry(tauriPage, 'sample.zip')
 
     // No popup: it steps straight inside.
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(zipPath)
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(zipPath)
     expect(await tauriPage.isVisible(ENTER_MENU)).toBe(false)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('a .docx defaults to Open with no menu', async ({ tauriPage }) => {
@@ -304,7 +329,7 @@ test.describe('Archive Enter-behavior menu', () => {
     await enterEntry(tauriPage, 'report.docx')
 
     // Document packages default to Open, so there's no popup — it opens directly.
-    await expect.poll(async () => getOpenedPaths(tauriPage), { timeout: 5000 }).toContain(docxPath)
+    await expect.poll(async () => getOpenedPaths(tauriPage), { timeout: waitBudget(5000) }).toContain(docxPath)
     expect(await tauriPage.isVisible(ENTER_MENU)).toBe(false)
   })
 
@@ -319,7 +344,7 @@ test.describe('Archive Enter-behavior menu', () => {
     await tauriPage.keyboard.press('Enter')
 
     // The settings window (label `settings`) opens, deep-linked to Behavior > Archives.
-    const settings = await main.waitForWindow((w) => w.label === 'settings', { timeout: 10000 })
+    const settings = await main.waitForWindow((w) => w.label === 'settings', { timeout: waitBudget(10000) })
     const settingsLabel = settings.targetWindow
     if (!settingsLabel) throw new Error('Scoped settings page has no targetWindow label')
     try {
@@ -353,11 +378,13 @@ test.describe('Archive browsing — read-only OOXML documents', () => {
     await enterEntry(tauriPage, 'sample.docx')
 
     // Transparent path, exactly like a zip: the tab keeps the parent drive's id.
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(docxPath)
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(docxPath)
     // The parts a Word file is actually made of.
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'word'), { timeout: 5000 }).toBeTruthy()
     await expect
-      .poll(async () => fileExistsInFocusedPane(tauriPage, '[Content_Types].xml'), { timeout: 5000 })
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'word'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, '[Content_Types].xml'), { timeout: waitBudget(5000) })
       .toBeTruthy()
   })
 
@@ -366,13 +393,17 @@ test.describe('Archive browsing — read-only OOXML documents', () => {
     await ensureMcpClient(tauriPage)
 
     await enterEntry(tauriPage, 'sample.docx')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'word'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'word'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // The read-only alert up front, never the mkdir dialog. The pane's capability
     // row refuses here, and `ensure_zip_writable` refuses in the backend too, so
     // this holds for an MCP or IPC caller that never sees a dialog at all.
     await tauriPage.keyboard.press('F7')
-    await expect.poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(await tauriPage.isVisible(MKDIR_DIALOG)).toBe(false)
 
     await dismissOverlay(tauriPage)
@@ -387,7 +418,7 @@ test.describe('Archive browsing — read-only OOXML documents', () => {
 
     await enterEntry(tauriPage, 'sample.docx')
     await expect
-      .poll(async () => fileExistsInFocusedPane(tauriPage, '[Content_Types].xml'), { timeout: 5000 })
+      .poll(async () => fileExistsInFocusedPane(tauriPage, '[Content_Types].xml'), { timeout: waitBudget(5000) })
       .toBeTruthy()
 
     const found = await moveCursorToFile(tauriPage, '[Content_Types].xml')
@@ -397,7 +428,9 @@ test.describe('Archive browsing — read-only OOXML documents', () => {
     // The refusal is LOUD, not a silent no-op: the read-only alert comes up and
     // no rename editor opens, so the user is told why rather than left pressing
     // a dead key.
-    await expect.poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(await tauriPage.isVisible('.rename-input')).toBe(false)
 
     await dismissOverlay(tauriPage)
@@ -427,9 +460,13 @@ test.describe('Archive browsing — read-only tar.gz', () => {
 
     await enterEntry(tauriPage, 'sample.tar.gz')
 
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(archivePath)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'nested'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(archivePath)
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'nested'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('copying a file out of the tar.gz extracts it to the other pane', async ({ tauriPage }) => {
@@ -438,7 +475,9 @@ test.describe('Archive browsing — read-only tar.gz', () => {
     const fixtureRoot = getFixtureRoot()
 
     await enterEntry(tauriPage, 'sample.tar.gz')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     const found = await moveCursorToFile(tauriPage, 'inner.txt')
     expect(found).toBe(true)
@@ -446,9 +485,13 @@ test.describe('Archive browsing — read-only tar.gz', () => {
     await tauriPage.waitForSelector(TRANSFER_DIALOG, 5000)
     await tauriPage.waitForSelector(`${TRANSFER_DIALOG} .btn-primary`, 3000)
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
-    await expect.poll(() => fs.existsSync(path.join(fixtureRoot, 'right', 'inner.txt')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'right', 'inner.txt')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(fs.readFileSync(path.join(fixtureRoot, 'right', 'inner.txt'), 'utf8')).toContain(
       'hello from inside the archive',
     )
@@ -460,12 +503,16 @@ test.describe('Archive browsing — read-only tar.gz', () => {
     await ensureMcpClient(tauriPage)
 
     await enterEntry(tauriPage, 'sample.tar.gz')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // F7 must surface the read-only-archive alert up front, NOT the mkdir dialog:
     // tar/7z can't be edited (only zip is writable).
     await tauriPage.keyboard.press('F7')
-    await expect.poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('[data-dialog-id="alert"]'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(await tauriPage.isVisible(MKDIR_DIALOG)).toBe(false)
 
     const alertText = await tauriPage.evaluate<string>(`(function() {

@@ -5,6 +5,7 @@
  * symlink conflicts, and type mismatch conflicts (file vs directory).
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -120,7 +121,7 @@ test.describe('Cancel and rollback', () => {
             tauriPage.evaluate<boolean>(
               `(window.__cancelCopyTestEvents ?? []).some(p => p.phase === 'copying' && p.filesDone >= 1 && p.filesDone < p.filesTotal)`,
             ),
-          { timeout: 10000, intervals: [25] },
+          { timeout: waitBudget(10000), intervals: [25] },
         )
         .toBeTruthy()
 
@@ -132,7 +133,9 @@ test.describe('Cancel and rollback', () => {
       await confirmRollback(tauriPage)
 
       // Wait for rollback to finish and dialogs to close.
-      await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+      await expect
+        .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+        .toBeTruthy()
 
       // Rollback must remove the partial files and the directory we created
       // for them. Either right/partial/ doesn't exist, or it's empty.
@@ -209,7 +212,7 @@ test.describe('Cancel and rollback', () => {
             (await tauriPage.evaluate<boolean>(
               `(window.__driftCopyTestEvents ?? []).some(p => p.phase === 'copying' && p.filesDone >= 1 && p.filesDone < p.filesTotal)`,
             )) && fs.existsSync(firstDest),
-          { timeout: 10000, intervals: [25] },
+          { timeout: waitBudget(10000), intervals: [25] },
         )
         .toBeTruthy()
 
@@ -219,7 +222,9 @@ test.describe('Cancel and rollback', () => {
 
       await clickButtonByText(tauriPage, '[data-dialog-id="transfer-progress"] button', 'Rollback')
       await confirmRollback(tauriPage)
-      await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+      await expect
+        .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+        .toBeTruthy()
 
       // The drifted file survives, with the edit intact: deleting it would have
       // taken away work Cmdr never wrote.
@@ -229,7 +234,7 @@ test.describe('Cancel and rollback', () => {
       // the reversal.
       expect(fs.existsSync(path.join(fixtureRoot, 'right', 'drifted', 'file-7.txt'))).toBe(false)
       // And the user is told, by name.
-      await expectAndDismissToast(tauriPage, 'file-0.txt', { timeout: 8000 })
+      await expectAndDismissToast(tauriPage, 'file-0.txt', { timeout: waitBudget(8000) })
     } finally {
       await tauriPage.evaluate(`(async function() {
         const id = window.__driftCopyTestEventId;
@@ -441,7 +446,7 @@ test.describe('Type mismatch conflicts', () => {
           return !!pane.querySelector('[data-filename="config"]');
         })()`)
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 

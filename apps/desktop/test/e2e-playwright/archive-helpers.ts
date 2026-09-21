@@ -9,6 +9,7 @@
  * settle-and-enter primitives live here instead of drifting apart in two files.
  */
 
+import { waitBudget } from './wait-budget.js'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
 import { expect } from './fixtures.js'
 import {
@@ -60,7 +61,9 @@ export async function settleOnFixtureLeft(tauriPage: PageLike, expectedEntry: st
   await navigatePaneTo(tauriPage, 'left', leftDir)
   await settleFocusedPaneOnLeft(tauriPage, leftDir)
   await flushFileWatcher(tauriPage)
-  await expect.poll(async () => fileExistsInFocusedPane(tauriPage, expectedEntry), { timeout: 5000 }).toBeTruthy()
+  await expect
+    .poll(async () => fileExistsInFocusedPane(tauriPage, expectedEntry), { timeout: waitBudget(5000) })
+    .toBeTruthy()
 }
 
 /**
@@ -110,7 +113,7 @@ export async function enterEntry(tauriPage: PageLike, name: string): Promise<voi
               return !!document.querySelector('.menu-surface, .modal-overlay, [role="dialog"], [role="alertdialog"]');
           })()`)
       },
-      700,
+      waitBudget(700),
     )
     if (hadEffect) return
   }

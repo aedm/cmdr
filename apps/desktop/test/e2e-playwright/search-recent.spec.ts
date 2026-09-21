@@ -18,6 +18,7 @@
  * the persistence.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, getFixtureRoot, pollUntil } from './helpers.js'
 import { ensureLocalIndexAnswers } from './search-walk-ground.js'
@@ -36,7 +37,7 @@ test.describe('Search dialog: recent searches', () => {
     // has to REBUILD an index a previous spec left empty, which waits on a full rescan
     // (30 s) plus a probe (20 s) and cannot fit in a tight budget. ❗ A 15 s cap turned
     // that branch into a guaranteed red instead of a slow pass.
-    test.setTimeout(45000)
+    test.setTimeout(waitBudget(45000))
     // Defensive `.search-overlay` cleanup. The global afterEach safety net in
     // fixtures.ts auto-cleans leaked overlays after each test, BUT this spec's
     // beforeEach drives the search dialog into a specific prefill state via
@@ -94,7 +95,7 @@ test.describe('Search dialog: recent searches', () => {
               return 'live-phase=' + (bar ? bar.getAttribute('data-live-phase') : 'no status bar');
           })()`)
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBe('enabled')
 
@@ -115,7 +116,7 @@ test.describe('Search dialog: recent searches', () => {
         })()`)
         return queries.includes(seededQuery)
       },
-      3000,
+      waitBudget(3000),
     )
     expect(found).toBe(true)
   })

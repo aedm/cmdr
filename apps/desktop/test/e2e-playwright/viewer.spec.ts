@@ -11,6 +11,7 @@
  * Test file: a 1 KB text file from the shared E2E fixtures (`left/file-a.txt`).
  */
 
+import { waitBudget } from './wait-budget.js'
 import path from 'path'
 import { test, expect } from './fixtures.js'
 import { closeScopedWindow, openViewerWindow, pollUntil } from './helpers.js'
@@ -162,7 +163,7 @@ test.describe('File viewer search', () => {
           const text = await viewer.textContent('.match-count')
           return text?.includes('of') ?? false
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -179,7 +180,7 @@ test.describe('File viewer search', () => {
 
     await viewer.keyboard.press('Escape')
 
-    await expect.poll(async () => !(await viewer.isVisible('.search-bar')), { timeout: 3000 }).toBeTruthy()
+    await expect.poll(async () => !(await viewer.isVisible('.search-bar')), { timeout: waitBudget(3000) }).toBeTruthy()
     expect(await viewer.isVisible('.search-bar')).toBe(false)
   })
 
@@ -199,7 +200,7 @@ test.describe('File viewer search', () => {
           const text = (await viewer.textContent('.match-count')) ?? ''
           return text.includes('No matches')
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -243,7 +244,7 @@ test.describe('File viewer selection and copy', () => {
           const text = (await viewer.textContent('.toast')) ?? ''
           return text.includes('on your clipboard')
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -300,7 +301,7 @@ test.describe('File viewer selection and copy', () => {
           const text = (await viewer.textContent('.toast')) ?? ''
           return text.includes('on your clipboard')
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -381,7 +382,7 @@ test.describe('File viewer selection and copy', () => {
           const text = (await viewer.textContent('.toast')) ?? ''
           return text.includes('on your clipboard')
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -407,7 +408,7 @@ test.describe('File viewer selection and copy', () => {
           await viewer.evaluate<boolean>(
             `document.activeElement === document.querySelector('.search-bar input.text-field-control')`,
           ),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -448,7 +449,7 @@ test.describe('File viewer selection and copy', () => {
           const text = (await viewer.textContent('.toast')) ?? ''
           return text.includes('on your clipboard')
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -499,7 +500,7 @@ test.describe('File viewer keyboard binding', () => {
         const labels = (await main.listWindows()).map((w) => w.label)
         return !labels.includes(label)
       },
-      3000,
+      waitBudget(3000),
     )
     if (!gone) {
       throw new Error(`Escape did not close viewer window '${label}' within 3s`)
@@ -534,7 +535,9 @@ test.describe('File viewer error handling', () => {
             },
         });
     })()`)
-    const viewer = await main.waitForWindow((w) => w.label === label && !before.has(w.label), { timeout: 10000 })
+    const viewer = await main.waitForWindow((w) => w.label === label && !before.has(w.label), {
+      timeout: waitBudget(10000),
+    })
 
     try {
       // 3 s budget per wait: the viewer route mounts and the missing-path branch
@@ -551,7 +554,7 @@ test.describe('File viewer error handling', () => {
             const t = await viewer.textContent('.status-message')
             return t !== null && t.includes('No file path')
           },
-          { timeout: 3000 },
+          { timeout: waitBudget(3000) },
         )
         .toBeTruthy()
     } finally {

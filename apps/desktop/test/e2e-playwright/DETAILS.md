@@ -216,6 +216,55 @@ recordings and error contexts (`/tmp/cmdr-e2e-results-<shard>-<pid>/`), the JSON
 trusting a frame. The one shared path left is the fixture hardlink cache (`/tmp/cmdr-e2e-fixtures-cache/`), which is
 content-addressed and atomically built, so sharing it is the point.
 
+## The load-scaled wait budget
+
+Every numeric wait in this suite goes through `waitBudget(N)` (`wait-budget.ts`), and nothing writes a bare number.
+`waitBudget` multiplies by a factor read once at module load from `CMDR_E2E_WAIT_SCALE`, so a busy machine buys the
+suite patience instead of failures.
+
+**The contract.** `CMDR_E2E_WAIT_SCALE` is a decimal multiplier, clamped to `[1, 4]`; unset, empty, or unparseable reads
+as `1`. The Go check runner exports it once per lane from the machine's measured load. Nothing else writes it and
+nothing has to: unset means `1`, so a hand `npx playwright test` and the Linux Docker lane behave exactly as they did
+before it existed. Setting it by hand is the way to reproduce a loaded run's timing:
+`CMDR_E2E_WAIT_SCALE=3 npx playwright test --project=tauri`. `global-setup.ts` prints the factor whenever it isn't 1, so
+a stretched run says so in its own log.
+
+**4x is the ceiling because the isolation re-run already escalates to 4x** (§ "Saturation under concurrent builds").
+Past that, more patience stops being cheaper than re-running the spec alone, and a wedged app would sit there for
+minutes before anyone learned anything.
+
+**Both halves scale, or neither does.** A per-call wait that stretches to 60 s under a per-test ceiling pinned at 15 s
+just dies at the ceiling instead of at the wait, with a worse message and nothing gained. So `playwright.config.ts`'s
+`timeout`, every `test.describe.configure({ timeout })`, and every `test.setTimeout(...)` go through `waitBudget` too. A
+spec that raises its own ceiling and forgets this is the one way to make the whole mechanism a no-op.
+
+**The absolute cap is 10 minutes**, and it never SHRINKS a budget: anything already at or above it passes through
+untouched. A budget already in the minutes is not a CPU-availability bet; it covers work that is genuinely long (the
+marketing capture's 15-minute shot wait, the 3-minute dialog-inset sweep), where quadrupling buys nothing but a longer
+wait before the same diagnosis. So `120_000` scales fully to `480_000`, `180_000` stops at `600_000`, and `900_000`
+stays `900_000`.
+
+**Deliberately unscaled:**
+
+- `DEAD_APP_TEST_BUDGET_MS` (`app-death.ts`), the 1 s budget a test gets once the app is known dead. It is a fail-fast
+  bound, not a wait for anything, and stretching it multiplies across every doomed test on the shard.
+- `sleep(N)` and the global `setTimeout(fn, ms)`. Those are fixed sleeps, governed by `no-arbitrary-sleep-in-e2e`, and a
+  fixed sleep that scales is just a slower fixed sleep.
+- `pollUntil`'s fourth argument, the poll INTERVAL. A tighter interval costs a few more cheap checks, never a failure.
+- `timeoutMs: 30000` inside an `evaluate()` template (`smb.spec.ts`). That is the SMB backend's own connect timeout,
+  written in webview JS, where `waitBudget` doesn't exist.
+
+**`no-raw-wait-budget` (`eslint-plugins/`) keeps it from coming back**, across the whole directory: `timeout:`
+properties, `test.setTimeout` / `testInfo.setTimeout` ceilings, `pollUntil`'s third argument, and any `timeout`-ish name
+or parameter default initialized to a number. Opt out per line with
+`// eslint-disable-next-line cmdr/no-raw-wait-budget -- <reason>` when the number itself is what a test proves.
+
+**The rule can't see a budget whose name avoids the word, so those are a judgment call.** Two scale today and say why at
+their declaration: `APP_PROBE_DEADLINE_MS` (`app-death.ts`), because a loaded box is exactly where a healthy app looks
+dead and a wrong verdict abandons a shard; and `SCAN_COMPLETE_BOUND_MS` (`mtp-copy-preflight-uses-cache.spec.ts`),
+because the cold-cache regime it discriminates against stretches under load too. Adding a `*_MS` bound? Ask which it is,
+and write the answer next to it.
+
 ## Running on Linux (Docker)
 
 ```bash

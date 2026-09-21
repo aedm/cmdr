@@ -13,6 +13,7 @@
  * with content `'A'.repeat(1024)` = 1024 bytes.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
@@ -60,7 +61,11 @@ async function getDirStats(tauriPage: PageLike, dirPath: string): Promise<DirSta
  * that never happens: the `expect.poll` throws on timeout, so everything after
  * the call has real stats. Never returns null.
  */
-async function waitForIndexData(tauriPage: PageLike, dirPath: string, timeoutMs = 500_000): Promise<DirStats> {
+async function waitForIndexData(
+  tauriPage: PageLike,
+  dirPath: string,
+  timeoutMs = waitBudget(500_000),
+): Promise<DirStats> {
   const result: { stats: DirStats | null } = { stats: null }
   await expect
     .poll(
@@ -87,7 +92,7 @@ async function waitForExactSize(
   tauriPage: PageLike,
   dirPath: string,
   expectedSize: number,
-  timeoutMs = 30_000,
+  timeoutMs = waitBudget(30_000),
 ): Promise<DirStats> {
   const result: { stats: DirStats | null } = { stats: null }
   await expect
@@ -112,12 +117,18 @@ async function ensureFullView(tauriPage: PageLike): Promise<void> {
   const isFullView = await tauriPage.isVisible('.full-list-container')
   if (!isFullView) {
     await executeViaCommandPalette(tauriPage, 'Full view')
-    await expect.poll(async () => tauriPage.isVisible('.full-list-container'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('.full-list-container'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   }
 }
 
 /** Waits until a directory's size column shows a numeric value (not the "<dir>" placeholder). */
-async function waitForNumericSize(tauriPage: PageLike, entryName: string, timeoutMs = 15000): Promise<string> {
+async function waitForNumericSize(
+  tauriPage: PageLike,
+  entryName: string,
+  timeoutMs = waitBudget(15000),
+): Promise<string> {
   await expect
     .poll(
       async () => {
@@ -180,7 +191,7 @@ test.describe('Drive indexing', () => {
   })
 
   test('shows correct directory size from the index', async ({ tauriPage }, testInfo) => {
-    testInfo.setTimeout(120_000)
+    testInfo.setTimeout(waitBudget(120_000))
     await ensureAppReady(tauriPage)
     const fixtureRoot = getFixtureRoot()
     const subDirPath = path.join(fixtureRoot, 'left', 'sub-dir')
@@ -202,7 +213,7 @@ test.describe('Drive indexing', () => {
   })
 
   test('increases directory size by exact byte count after file creation', async ({ tauriPage }, testInfo) => {
-    testInfo.setTimeout(150_000)
+    testInfo.setTimeout(waitBudget(150_000))
     await ensureAppReady(tauriPage)
     const fixtureRoot = getFixtureRoot()
     const subDirPath = path.join(fixtureRoot, 'left', 'sub-dir')
@@ -230,7 +241,7 @@ test.describe('Drive indexing', () => {
 
   test('decreases directory size by exact byte count after file deletion', async ({ tauriPage }, testInfo) => {
     // Docker indexing can be slower, allow enough time for both convergence phases
-    testInfo.setTimeout(240_000)
+    testInfo.setTimeout(waitBudget(240_000))
     await ensureAppReady(tauriPage)
     const fixtureRoot = getFixtureRoot()
     const subDirPath = path.join(fixtureRoot, 'left', 'sub-dir')

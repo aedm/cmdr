@@ -17,6 +17,7 @@
  * leaves the feature off, so the shared instance ends the test popup-free.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -88,7 +89,7 @@ function restoreSettingsOnDisk(): void {
 }
 
 test.describe("What's new popup", () => {
-  test.describe.configure({ timeout: 30000 })
+  test.describe.configure({ timeout: waitBudget(30000) })
 
   test.afterEach(() => {
     restoreSettingsOnDisk()
@@ -107,19 +108,19 @@ test.describe("What's new popup", () => {
     })`)
 
     // The popup auto-appears with at least one and at most five version blocks.
-    await expect.poll(() => popupOpen(page), { timeout: 5000 }).toBe(true)
+    await expect.poll(() => popupOpen(page), { timeout: waitBudget(5000) }).toBe(true)
     const blocks = await releaseBlockCount(page)
     expect(blocks).toBeGreaterThanOrEqual(1)
     expect(blocks).toBeLessThanOrEqual(5)
 
     // The auto-show path stamps the running version even before the user acts.
-    await expect.poll(() => settingOnDisk('whatsNew.lastSeenVersion'), { timeout: 5000 }).toBe(version)
+    await expect.poll(() => settingOnDisk('whatsNew.lastSeenVersion'), { timeout: waitBudget(5000) }).toBe(version)
 
     // Opt out: the dialog closes, the feature flips off, and a toast confirms it.
     await clickOptOut(page)
-    await expect.poll(() => popupOpen(page), { timeout: 5000 }).toBe(false)
+    await expect.poll(() => popupOpen(page), { timeout: waitBudget(5000) }).toBe(false)
     await expectAndDismissToast(page, 'no more update notes')
-    await expect.poll(() => settingOnDisk('whatsNew.showOnUpdate'), { timeout: 5000 }).toBe(false)
+    await expect.poll(() => settingOnDisk('whatsNew.showOnUpdate'), { timeout: waitBudget(5000) }).toBe(false)
 
     // Relaunch would show nothing: lastSeen now equals the running version, so
     // the version-unchanged rule fires (and the feature is off anyway).

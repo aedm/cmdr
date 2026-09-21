@@ -16,6 +16,7 @@
  * removed again in the `finally`, so the store is left as it was found.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import {
   CTRL_OR_META,
@@ -99,7 +100,9 @@ test.describe('Favorites menu (⌃D)', () => {
       // The frontend volume store rebuilds off the `volumes-changed` the write emits, which
       // lands a beat later. The menu is reactive, so it catches up while it's open — a
       // straight read right after opening sees the list from before the add.
-      await expect.poll(async () => digitOfFavorite(tauriPage, FAVORITE_NAME), { timeout: 5000 }).toMatch(/^[1-9]$/)
+      await expect
+        .poll(async () => digitOfFavorite(tauriPage, FAVORITE_NAME), { timeout: waitBudget(5000) })
+        .toMatch(/^[1-9]$/)
       // The poll above already failed the test if there's no such row or no digit on it.
       const digit = (await digitOfFavorite(tauriPage, FAVORITE_NAME)) ?? ''
 
@@ -109,8 +112,8 @@ test.describe('Favorites menu (⌃D)', () => {
 
       // A pick closes the menu, and the pane lands in the favorite's folder — on the
       // volume that CONTAINS it, so the listing is a real one.
-      await expect.poll(async () => tauriPage.count(MENU), { timeout: 3000 }).toBe(0)
-      await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 5000 }).toBe(target)
+      await expect.poll(async () => tauriPage.count(MENU), { timeout: waitBudget(3000) }).toBe(0)
+      await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(5000) }).toBe(target)
     } finally {
       // Leave the store and the panes as they were found: an overlay or a moved pane
       // fails the global leak guard, and a stray favorite would renumber the next run.

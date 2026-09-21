@@ -21,6 +21,7 @@
  * Requires the app to be built with `--features playwright-e2e,virtual-mtp`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -55,7 +56,7 @@ interface CapturedProgress {
   bytesDone: number
 }
 
-test.setTimeout(60_000)
+test.setTimeout(waitBudget(60_000))
 
 async function bothPanesOnLocalVolume(): Promise<boolean> {
   const state = await mcpReadResource('cmdr://state')
@@ -89,7 +90,7 @@ test.beforeEach(async ({ tauriPage }) => {
         invoke('plugin:event|emit', { event: 'mcp-volume-select', payload: { pane: 'left', name: ${JSON.stringify(LOCAL_VOLUME_NAME)} } });
         invoke('plugin:event|emit', { event: 'mcp-volume-select', payload: { pane: 'right', name: ${JSON.stringify(LOCAL_VOLUME_NAME)} } });
     })()`)
-    await expect.poll(() => bothPanesOnLocalVolume(), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(() => bothPanesOnLocalVolume(), { timeout: waitBudget(5000) }).toBeTruthy()
     // Previously: double-Escape + best-effort modal-overlay poll to clean up
     // dialogs leaked from prior tests. The global afterEach safety net in
     // fixtures.ts now catches and auto-cleans any leaks at the point of leak,
@@ -152,7 +153,7 @@ test.describe('MTP delete reuses scan preview (no double scan)', () => {
               tauriPage.evaluate<boolean>(
                 `!!document.querySelector('.file-pane.is-focused .file-entry[data-filename=' + ${JSON.stringify(JSON.stringify(name))} + '].is-selected')`,
               ),
-            { timeout: 2000 },
+            { timeout: waitBudget(2000) },
           )
           .toBeTruthy()
       }
@@ -185,7 +186,7 @@ test.describe('MTP delete reuses scan preview (no double scan)', () => {
             }
             return true
           },
-          { timeout: 30000 },
+          { timeout: waitBudget(30000) },
         )
         .toBeTruthy()
       await mcpCall('refresh', {})
@@ -193,7 +194,7 @@ test.describe('MTP delete reuses scan preview (no double scan)', () => {
       // Wait for write-complete (or for the progress dialog to go away).
       await expect
         .poll(async () => tauriPage.evaluate<boolean>(`(window.__deleteCompleteEvents || []).length > 0`), {
-          timeout: 10000,
+          timeout: waitBudget(10000),
         })
         .toBeTruthy()
 
@@ -267,7 +268,7 @@ test.describe('MTP delete reuses scan preview (no double scan)', () => {
       // settles. Waiting for the "Delete complete" toast both asserts the
       // user-facing confirmation and gives the progress dialog time to
       // auto-close before the safety-net check.
-      await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: 30000 })
+      await expectAndDismissToast(tauriPage, 'Delete complete', { timeout: waitBudget(30000) })
     } finally {
       // Tear down listeners and clear test state, in that order so a partial
       // failure can still clean up.

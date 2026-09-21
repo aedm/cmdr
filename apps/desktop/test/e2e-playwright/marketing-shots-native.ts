@@ -12,11 +12,12 @@
  * out and is proven by real runs.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { execFileSync } from 'node:child_process'
 import type { NativeWindow, WindowSize } from './marketing-shots-frame.js'
 
 /** How long any one shell-out gets before we call it wedged. */
-const NATIVE_TIMEOUT_MS = 15000
+const NATIVE_TIMEOUT_MS = waitBudget(15000)
 
 /**
  * `CGWindowListCopyWindowInfo` options, spelled as numbers on purpose:

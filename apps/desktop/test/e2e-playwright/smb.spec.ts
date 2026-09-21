@@ -11,6 +11,7 @@
  * - Guest share pre-mounted (handled by smb-fixtures.ts setup)
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -51,7 +52,7 @@ import { ensureAppReady, getFixtureRoot, pollUntil, isStateClean } from './helpe
 import os from 'os'
 
 // SMB operations involve network + Docker overhead.
-test.setTimeout(120_000)
+test.setTimeout(waitBudget(120_000))
 
 // Linux SMB tests run inside Docker (gvfs-based mounting). mDNS discovery and
 // GVFS mount are environmentally flaky on Docker overlay filesystems; see
@@ -125,7 +126,7 @@ test.beforeEach(async ({ tauriPage }) => {
           )
           return volumeLines.length >= 2 && volumeLines[0] === LOCAL_VOLUME_NAME && volumeLines[1] === LOCAL_VOLUME_NAME
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -185,7 +186,9 @@ describeSmb('SMB host discovery', () => {
     // Wait for virtual hosts to appear (injected by smb-e2e feature).
     // 30s: defensive bound. Hosts typically appear within 1-3 s; longer budget covers
     // mDNS discovery latency variance on Linux Docker.
-    await expect.poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: 30000 }).toBeTruthy()
+    await expect
+      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(30000) })
+      .toBeTruthy()
 
     const hasGuest = await hostExistsInPane(tauriPage, 'SMB Test (Guest)')
     const hasAuth = await hostExistsInPane(tauriPage, 'SMB Test (Auth)')
@@ -205,7 +208,7 @@ describeSmb('SMB host discovery', () => {
           const state = await mcpReadResource('cmdr://state')
           return state.includes('SMB Test (Guest)') && state.includes('shares=1')
         },
-        { timeout: 30000 },
+        { timeout: waitBudget(30000) },
       )
       .toBeTruthy()
   })
@@ -215,7 +218,9 @@ describeSmb('Adding an SMB host through the sign-in sheet', () => {
   test('typing a host opens its shares, and asks for no password on the way', async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
     await mcpSelectVolume('left', 'Servers')
-    await expect.poll(async () => tauriPage.isVisible('.servers-hub .add-row'), { timeout: 30000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('.servers-hub .add-row'), { timeout: waitBudget(30000) })
+      .toBeTruthy()
 
     // A DOUBLE click: the hub's rows follow the file list, where one click moves
     // the cursor and two open the thing.
@@ -223,7 +228,7 @@ describeSmb('Adding an SMB host through the sign-in sheet', () => {
       document.querySelector('.servers-hub .add-row').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
     })()`)
     const sheet = '[data-dialog-id="server-sign-in"]'
-    await expect.poll(async () => tauriPage.isVisible(sheet), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible(sheet), { timeout: waitBudget(5000) }).toBeTruthy()
 
     await tauriPage.evaluate(`(function () {
       var input = document.querySelector('${sheet} #server-address');
@@ -239,9 +244,11 @@ describeSmb('Adding an SMB host through the sign-in sheet', () => {
     await tauriPage.click(`${sheet} .modal-footer button:last-of-type`)
 
     // The sheet hands off and the pane lands in the host's places list.
-    await expect.poll(async () => !(await tauriPage.isVisible(sheet)), { timeout: 30000 }).toBeTruthy()
+    await expect.poll(async () => !(await tauriPage.isVisible(sheet)), { timeout: waitBudget(30000) }).toBeTruthy()
     await expect
-      .poll(async () => (await mcpReadResource('cmdr://state')).includes(SMB_GUEST_SHARE), { timeout: 30000 })
+      .poll(async () => (await mcpReadResource('cmdr://state')).includes(SMB_GUEST_SHARE), {
+        timeout: waitBudget(30000),
+      })
       .toBeTruthy()
   })
 })
@@ -252,14 +259,18 @@ describeSmb('SMB share browsing', () => {
 
     // Switch to Network, wait for hosts
     await mcpSelectVolume('left', 'Servers')
-    await expect.poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
 
     // Move cursor to guest host and open it
     await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Guest)' })
     await mcpCall('open_under_cursor', {})
 
     // Wait for share browser to load (look for .share-row elements)
-    await expect.poll(async () => shareExistsInPane(tauriPage, SMB_GUEST_SHARE), { timeout: 30000 }).toBeTruthy()
+    await expect
+      .poll(async () => shareExistsInPane(tauriPage, SMB_GUEST_SHARE), { timeout: waitBudget(30000) })
+      .toBeTruthy()
 
     const hasPublic = await shareExistsInPane(tauriPage, SMB_GUEST_SHARE)
     expect(hasPublic).toBe(true)
@@ -273,15 +284,21 @@ describeSmb('SMB share browsing', () => {
     await ensureAppReady(tauriPage)
 
     await mcpSelectVolume('left', 'Servers')
-    await expect.poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
     await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Guest)' })
     await mcpCall('open_under_cursor', {})
-    await expect.poll(async () => shareExistsInPane(tauriPage, SMB_GUEST_SHARE), { timeout: 30000 }).toBeTruthy()
+    await expect
+      .poll(async () => shareExistsInPane(tauriPage, SMB_GUEST_SHARE), { timeout: waitBudget(30000) })
+      .toBeTruthy()
 
     // The tool itself polls for the volume name, so a no-op surfaces as a timeout here.
     await mcpSelectVolume('left', 'Servers')
 
-    await expect.poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
     expect(await shareExistsInPane(tauriPage, SMB_GUEST_SHARE)).toBe(false)
   })
 
@@ -292,7 +309,9 @@ describeSmb('SMB share browsing', () => {
     await ensureAppReady(tauriPage)
 
     await mcpSelectVolume('left', 'Servers')
-    await expect.poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
 
     const answer = await mcpCallRaw('nav_to_path', {
       pane: 'left',
@@ -313,11 +332,15 @@ describeSmb('SMB mounting and file browsing', () => {
 
     // Switch to Network → open guest host → select share
     await mcpSelectVolume('left', 'Servers')
-    await expect.poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Guest)'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
 
     await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Guest)' })
     await mcpCall('open_under_cursor', {})
-    await expect.poll(async () => shareExistsInPane(tauriPage, SMB_GUEST_SHARE), { timeout: 30000 }).toBeTruthy()
+    await expect
+      .poll(async () => shareExistsInPane(tauriPage, SMB_GUEST_SHARE), { timeout: waitBudget(30000) })
+      .toBeTruthy()
 
     // Open the share (triggers mount)
     await mcpCall('move_cursor', { pane: 'left', filename: SMB_GUEST_SHARE })
@@ -375,7 +398,7 @@ describeSmb('SMB cross-storage copy', () => {
 
     // Verify on disk (the mount maps to Docker container volume)
     const copied = path.join(SMB_GUEST_MOUNT_SUITE, 'file-a.txt')
-    await expect.poll(() => fs.existsSync(copied), { timeout: 10000 }).toBeTruthy()
+    await expect.poll(() => fs.existsSync(copied), { timeout: waitBudget(10000) }).toBeTruthy()
 
     // Verify source still exists (copy, not move)
     expect(fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt'))).toBe(true)
@@ -446,7 +469,7 @@ describeSmb('SMB authentication', () => {
           const state = await mcpReadResource('cmdr://state')
           return state.includes('SMB Test (Auth)') && state.includes('shares=1')
         },
-        { timeout: 30000 },
+        { timeout: waitBudget(30000) },
       )
       .toBeTruthy()
   })
@@ -514,7 +537,7 @@ describeSmb('SMB 50-share server', () => {
           const state = await mcpReadResource('cmdr://state')
           return state.includes('SMB Test (50 Shares)') && state.includes('shares=50')
         },
-        { timeout: 30000 },
+        { timeout: waitBudget(30000) },
       )
       .toBeTruthy()
   })
@@ -551,7 +574,9 @@ describeSmb('SMB unicode server', () => {
 
     // Switch to Network, open unicode host
     await mcpSelectVolume('left', 'Servers')
-    await expect.poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Unicode)'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => hostExistsInPane(tauriPage, 'SMB Test (Unicode)'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
 
     await mcpCall('move_cursor', { pane: 'left', filename: 'SMB Test (Unicode)' })
     await mcpCall('open_under_cursor', {})
@@ -565,7 +590,7 @@ describeSmb('SMB unicode server', () => {
           return rows.length > 0;
         })()`)
         },
-        { timeout: 30000 },
+        { timeout: waitBudget(30000) },
       )
       .toBeTruthy()
 

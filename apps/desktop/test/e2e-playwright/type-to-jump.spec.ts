@@ -15,6 +15,7 @@
  * with fake timers.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { recreateFixtures } from '../e2e-shared/fixtures.js'
 import { ensureAppReady, getFixtureRoot } from './helpers.js'
@@ -75,7 +76,7 @@ test.describe('Type-to-jump', () => {
   // under parallel load each roundtrip costs noticeably more, putting the
   // wall-clock right at the 8 s default. 15 s gives realistic headroom
   // without masking genuine hangs (a real bug would still blow past 15 s).
-  test.describe.configure({ timeout: 15_000 })
+  test.describe.configure({ timeout: waitBudget(15_000) })
 
   test('typing letters jumps the cursor to the best fuzzy match', async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
@@ -92,7 +93,7 @@ test.describe('Type-to-jump', () => {
           const text = await indicatorText(tauriPage)
           return text.includes('Jump:') && text.includes('file')
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -103,7 +104,7 @@ test.describe('Type-to-jump', () => {
           const name = await cursorName(tauriPage)
           return name.startsWith('file-')
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
   })
@@ -118,7 +119,7 @@ test.describe('Type-to-jump', () => {
     // ESC should clear the buffer + indicator. The dispatcher routes ESC to
     // `clearJumpState()` before falling through to other handlers.
     await tauriPage.keyboard.press('Escape')
-    await expect.poll(async () => !(await tauriPage.isVisible(INDICATOR)), { timeout: 3000 }).toBeTruthy()
+    await expect.poll(async () => !(await tauriPage.isVisible(INDICATOR)), { timeout: waitBudget(3000) }).toBeTruthy()
   })
 
   test('Cmd/Ctrl-modified keys do not feed the buffer', async ({ tauriPage }) => {
@@ -140,7 +141,7 @@ test.describe('Type-to-jump', () => {
     // Give the dispatcher a tick. If the modifier skip worked, the indicator
     // must NOT be in the DOM. Quick poll catches the rare case where the
     // keystroke does fire the indicator before being cleared.
-    await expect.poll(async () => !(await tauriPage.isVisible(INDICATOR)), { timeout: 1000 }).toBeTruthy()
+    await expect.poll(async () => !(await tauriPage.isVisible(INDICATOR)), { timeout: waitBudget(1000) }).toBeTruthy()
     expect(await tauriPage.isVisible(INDICATOR)).toBe(false)
   })
 
@@ -162,7 +163,7 @@ test.describe('Type-to-jump', () => {
           )
           return count === 0
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
   })

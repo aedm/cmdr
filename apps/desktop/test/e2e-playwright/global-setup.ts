@@ -13,8 +13,14 @@ import fs from 'fs'
 import { createFixtures, recreateFixtures } from '../e2e-shared/fixtures.js'
 import { recreateMtpFixtures } from '../e2e-shared/mtp-fixtures.js'
 import { clearAppDeathMarker } from './app-death.js'
+import { WAIT_SCALE } from './wait-budget.js'
 
 export default function globalSetup(): void {
+  // Say it out loud when the budgets aren't the literals. Without this line a run stretched
+  // to 4x looks identical in the log to one that wasn't, and "why did this take 20 minutes"
+  // has no answer in the output. Silent at 1x, which is every hand run.
+  if (WAIT_SCALE !== 1) console.log(`[e2e] wait budgets scaled ${String(WAIT_SCALE)}x (CMDR_E2E_WAIT_SCALE)`)
+
   // Ahead of the shard-kind gate below, because a marker left by a previous run outlives
   // the process that wrote it and would fail every test of this one before it got to touch
   // the app. Every shard kind starts from "the app is alive". See `app-death.ts`.

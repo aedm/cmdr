@@ -88,6 +88,10 @@ func RunDesktopE2EPlaywright(ctx *CheckContext) (CheckResult, error) {
 	}
 	shards := planShards(desktopDir, timestamp, pid, mcpPorts)
 
+	// Sampled HERE, before the apps launch, so it reads the load somebody else has on
+	// the machine rather than the load this lane is about to add. See `e2eWaitScale`.
+	waitScale := e2eWaitScale(LoadPerCore())
+
 	// Deferred first, so it runs LAST: the apps have to be stopped before their
 	// backing dir goes. The data dirs and fixture trees clean themselves up the
 	// same way; the reports and logs deliberately survive for post-mortems and are
@@ -124,7 +128,7 @@ func RunDesktopE2EPlaywright(ctx *CheckContext) (CheckResult, error) {
 	}
 
 	runStart := time.Now()
-	results := runShardsInParallel(desktopDir, shards)
+	results := runShardsInParallel(desktopDir, shards, waitScale)
 
 	// The union of the shards' JSON reports covers the whole suite (MTP shard +
 	// the non-MTP shard split).
@@ -145,7 +149,7 @@ func RunDesktopE2EPlaywright(ctx *CheckContext) (CheckResult, error) {
 		// "has this gone red before?" is answered before it's asked.
 		failing := collectE2EFailures(shards, runStart)
 		history, historyErr := lookupE2ESpecHistory(failing)
-		return resolveE2EFailure(err, failing, playwrightRerunner(desktopDir, pid), LoadPerCore, history, historyErr)
+		return resolveE2EFailure(err, failing, playwrightRerunner(desktopDir, pid, waitScale), LoadPerCore, history, historyErr)
 	}
 
 	// Warn-only duration flagging.
@@ -264,14 +268,14 @@ func planShards(_ string, timestamp int64, pid int, mcpPorts []int) []shardSpec 
 
 // runShardsInParallel launches one Playwright process per shard and waits for
 // all to finish.
-func runShardsInParallel(desktopDir string, shards []shardSpec) []shardResult {
+func runShardsInParallel(desktopDir string, shards []shardSpec, waitScale float64) []shardResult {
 	results := make([]shardResult, len(shards))
 	var wg sync.WaitGroup
 	for i, s := range shards {
 		wg.Add(1)
 		go func(idx int, shard shardSpec) {
 			defer wg.Done()
-			results[idx] = runShard(desktopDir, shard)
+			results[idx] = runShard(desktopDir, shard, waitScale)
 		}(i, s)
 	}
 	wg.Wait()
@@ -279,7 +283,7 @@ func runShardsInParallel(desktopDir string, shards []shardSpec) []shardResult {
 }
 
 // runShard executes one Playwright process for a single shard.
-func runShard(desktopDir string, s shardSpec) shardResult {
+func runShard(desktopDir string, s shardSpec, waitScale float64) shardResult {
 	args := []string{
 		"exec", "playwright", "test",
 		"--config", "test/e2e-playwright/playwright.config.ts",
@@ -292,7 +296,7 @@ func runShard(desktopDir string, s shardSpec) shardResult {
 	// rather than competing for it. See `e2eNiceIncrement`.
 	cmd := niceCommand("pnpm", args...)
 	cmd.Dir = desktopDir
-	cmd.Env = shardPlaywrightEnv(s, s.jsonReport, s.outputDir)
+	cmd.Env = shardPlaywrightEnv(s, s.jsonReport, s.outputDir, waitScale)
 	output, err := RunCommand(cmd, true)
 	passed, failed, skipped := parsePlaywrightTotals(output)
 	return shardResult{
@@ -313,9 +317,15 @@ func runShard(desktopDir string, s shardSpec) shardResult {
 // re-run would answer a different question than the run it is judging: an MTP spec needs
 // its shard's `CMDR_MTP_FIXTURE_ROOT` and virtual device, a non-MTP spec needs the shard
 // that was told to leave that root alone.
-func shardPlaywrightEnv(s shardSpec, jsonReport, outputDir string) []string {
+func shardPlaywrightEnv(s shardSpec, jsonReport, outputDir string, waitScale float64) []string {
 	env := append(os.Environ(),
 		"CMDR_E2E_START_PATH="+s.fixtureDir,
+		// How far the suite stretches every wait for this run, from the load somebody
+		// else had on the machine when the lane started (`e2eWaitScale`). A busy box
+		// makes the suite SLOWER rather than redder; `wait-budget.ts` is the consumer,
+		// and an unset var there means 1, so a hand-run `npx playwright test` and the
+		// Linux Docker lane are unaffected.
+		"CMDR_E2E_WAIT_SCALE="+strconv.FormatFloat(waitScale, 'f', -1, 64),
 		// Ask Cmdr has no real AI provider under E2E; this flag routes its send path
 		// through the deterministic scripted fake LLM (see commands/agent.rs), so
 		// ask-cmdr.spec.ts can assert streamed text. Safe: no other spec sends AI messages.

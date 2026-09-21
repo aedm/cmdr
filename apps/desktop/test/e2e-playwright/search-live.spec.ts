@@ -18,6 +18,7 @@
  * dialog.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, pollUntil } from './helpers.js'
 import { ensureMcpClient, mcpNavToPath } from '../e2e-shared/mcp-client.js'
@@ -56,7 +57,7 @@ async function textOf(tauriPage: Parameters<typeof setSearchInputValue>[0], sele
 test.describe('Search dialog: a live search over unindexed ground', () => {
   // The walk is deliberately throttled (`CMDR_E2E_WALK_THROTTLE_MS`) so the streaming
   // assertions have a window to happen in, and the test waits for it to finish.
-  test.describe.configure({ timeout: 90_000 })
+  test.describe.configure({ timeout: waitBudget(90_000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
@@ -70,7 +71,7 @@ test.describe('Search dialog: a live search over unindexed ground', () => {
     // `restoreLocalVolumeIndex` is allowed up to 50 s by its own waits, so at
     // 15 s the restore was killed mid-rebuild and every later spec in the shard
     // inherited a half-built index. Same reasoning as `search-walk-handoff`.
-    test.setTimeout(90_000)
+    test.setTimeout(waitBudget(90_000))
     removeWalkGround()
     await restoreLocalVolumeIndex()
   })
@@ -107,19 +108,25 @@ test.describe('Search dialog: a live search over unindexed ground', () => {
           const progress = await textOf(tauriPage, STATUS_PROGRESS)
           return rows > 0 && stoppable && status.includes('so far') && progress.includes('scanned')
         },
-        { timeout: 30000 },
+        { timeout: waitBudget(30000) },
       )
       .toBe(true)
 
     // The list GROWS. Every level of the chain holds one match, so more rows arriving
     // means the walk is feeding the list rather than having handed it over at once.
     const rowsWhileWalking = await tauriPage.count(RESULT_ROWS)
-    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(RESULT_ROWS)) > rowsWhileWalking, 30000)).toBe(
-      true,
-    )
+    expect(
+      await pollUntil(
+        tauriPage,
+        async () => (await tauriPage.count(RESULT_ROWS)) > rowsWhileWalking,
+        waitBudget(30000),
+      ),
+    ).toBe(true)
 
     // The run reaches a terminal state: the way to stop it goes away.
-    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(STOP_BUTTON)) === 0, 60000)).toBe(true)
+    expect(await pollUntil(tauriPage, async () => (await tauriPage.count(STOP_BUTTON)) === 0, waitBudget(60000))).toBe(
+      true,
+    )
 
     // Every level's file is found, so the walk covered the whole chain rather than
     // stopping wherever the assertions above happened to catch it.

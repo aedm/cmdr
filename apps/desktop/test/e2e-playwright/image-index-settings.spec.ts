@@ -16,6 +16,7 @@
  * `open-settings` trigger, scope a `TauriPage`, drive the real Ark Switch by its label.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { test, expect } from './fixtures.js'
@@ -126,20 +127,26 @@ test.describe('Image-content indexing toggle', () => {
 
     // Turn it on; the switch reflects it in-window, then the sparse store flushes `true`.
     expect(await settings.evaluate<boolean>(clickSwitchJs())).toBe(true)
-    await expect.poll(async () => settings.evaluate<string>(switchStateJs()), { timeout: 3000 }).toBe('checked')
+    await expect
+      .poll(async () => settings.evaluate<string>(switchStateJs()), { timeout: waitBudget(3000) })
+      .toBe('checked')
     expect(await settings.evaluate<boolean>(flushSettingsJs()), 'E2E flush hook installed').toBe(true)
-    await expect.poll(() => settingOnDisk(SETTING_KEY), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => settingOnDisk(SETTING_KEY), { timeout: waitBudget(3000) }).toBe(true)
 
     // Reopen: a fresh window must re-read the persisted `true`.
     await closeScopedWindow(main, settings, 'settings')
     settings = await openSettings(main)
-    await expect.poll(async () => settings.evaluate<string>(switchStateJs()), { timeout: 3000 }).toBe('checked')
+    await expect
+      .poll(async () => settings.evaluate<string>(switchStateJs()), { timeout: waitBudget(3000) })
+      .toBe('checked')
 
     // Reset to the default off so the persisted state doesn't leak into other specs.
     expect(await settings.evaluate<boolean>(clickSwitchJs())).toBe(true)
-    await expect.poll(async () => settings.evaluate<string>(switchStateJs()), { timeout: 3000 }).toBe('unchecked')
+    await expect
+      .poll(async () => settings.evaluate<string>(switchStateJs()), { timeout: waitBudget(3000) })
+      .toBe('unchecked')
     await settings.evaluate<boolean>(flushSettingsJs())
-    await expect.poll(() => settingOnDisk(SETTING_KEY), { timeout: 3000 }).toBe(false)
+    await expect.poll(() => settingOnDisk(SETTING_KEY), { timeout: waitBudget(3000) }).toBe(false)
 
     await closeScopedWindow(main, settings, 'settings')
   })

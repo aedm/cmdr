@@ -9,6 +9,7 @@
  * So every assertion that matters is made against DISK, by file content.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -59,19 +60,21 @@ test.describe('Chained rename', () => {
     await tauriPage.press('.rename-input', 'ArrowDown')
 
     // The editor reopened on file-b.txt with its own name in it, ready to type over.
-    await expect.poll(async () => renameEditorValue(tauriPage), { timeout: 3000 }).toBe('file-b.txt')
+    await expect.poll(async () => renameEditorValue(tauriPage), { timeout: waitBudget(3000) }).toBe('file-b.txt')
 
     // This one keeps its place in the sort, so the row below is `file-c.txt`
     // whether or not the re-sort has landed yet.
     await setRenameInput(tauriPage, 'file-b-chained.txt')
     await tauriPage.press('.rename-input', 'ArrowDown')
 
-    await expect.poll(async () => renameEditorValue(tauriPage), { timeout: 3000 }).toBe('file-c.txt')
+    await expect.poll(async () => renameEditorValue(tauriPage), { timeout: waitBudget(3000) }).toBe('file-c.txt')
 
     await setRenameInput(tauriPage, 'z-chained-c.txt')
     await tauriPage.press('.rename-input', 'Enter')
 
-    await expect.poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // Each name landed on its own file; no save crossed over.
     await expect
@@ -80,7 +83,7 @@ test.describe('Chained rename', () => {
           fs.existsSync(path.join(fixtureRoot, 'left', 'z-chained-a.txt')) &&
           fs.existsSync(path.join(fixtureRoot, 'left', 'file-b-chained.txt')) &&
           fs.existsSync(path.join(fixtureRoot, 'left', 'z-chained-c.txt')),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
     expect(fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt'))).toBe(false)
@@ -114,13 +117,17 @@ test.describe('Chained rename', () => {
     // behind the disk, which is the state the row-skip lived in. Reading the name
     // back also says the editor landed on the row it was supposed to.
     for (const hop of hops) {
-      await expect.poll(async () => renameEditorValue(tauriPage), { timeout: 3000 }).toBe(`hop-${String(hop)}.txt`)
+      await expect
+        .poll(async () => renameEditorValue(tauriPage), { timeout: waitBudget(3000) })
+        .toBe(`hop-${String(hop)}.txt`)
       await setRenameInput(tauriPage, `zz-hop-${String(hop)}.txt`)
       if (hop === hops.length) await tauriPage.press('.rename-input', 'Enter')
       else await tauriPage.press('.rename-input', 'ArrowDown')
     }
 
-    await expect.poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // On disk, not in the UI: every file got the name typed for IT, and none was
     // flown past.
@@ -131,7 +138,7 @@ test.describe('Chained rename', () => {
             .readdirSync(path.join(fixtureRoot, 'left'))
             .filter((name) => name.includes('hop-'))
             .sort(),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toEqual(hops.map((hop) => `zz-hop-${String(hop)}.txt`))
     for (const hop of hops) {

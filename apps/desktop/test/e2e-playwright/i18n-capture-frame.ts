@@ -28,6 +28,7 @@
  * `selectorList`) are unit-testable without a running app.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { DEFAULT_UI_ZOOM, isOverflowPass } from './i18n-capture-config.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 import type { CropRect } from './i18n-capture-png.js'
@@ -430,7 +431,7 @@ export async function scanForClipping(page: TauriPage, label: string): Promise<v
 }
 
 /** How long a stray toast gets to leave the DOM after its close button is clicked, and how often to look. */
-const STRAY_DISMISS_TIMEOUT_MS = 3000
+const STRAY_DISMISS_TIMEOUT_MS = waitBudget(3000)
 const STRAY_DISMISS_POLL_MS = 25
 
 /** How much of a toast's text identifies it, in the before/after comparison. */

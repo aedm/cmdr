@@ -13,6 +13,7 @@
  * `SearchFilterChips.svelte.test.ts`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { dismissOverlay, ensureAppReady, pollUntil } from './helpers.js'
 import { ensureMcpClient } from '../e2e-shared/mcp-client.js'
@@ -53,7 +54,11 @@ test.describe('Search dialog: filter chips', () => {
     // Pick the "100" preset from the second list column. The chip's configured
     // summary reads back from the same state, so we poll the chip class.
     await tauriPage.click(SIZE_VALUE_100)
-    const configured = await pollUntil(tauriPage, async () => (await tauriPage.count(SIZE_CHIP_CONFIGURED)) === 1, 2000)
+    const configured = await pollUntil(
+      tauriPage,
+      async () => (await tauriPage.count(SIZE_CHIP_CONFIGURED)) === 1,
+      waitBudget(2000),
+    )
     expect(configured).toBe(true)
 
     // Esc closes ONLY the popover (`SearchFilterChips.svelte` capture-phase
@@ -72,7 +77,11 @@ test.describe('Search dialog: filter chips', () => {
         var x = document.querySelector(${JSON.stringify(SIZE_CHIP_CLEAR)});
         if (x) x.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     })()`)
-    const cleared = await pollUntil(tauriPage, async () => (await tauriPage.count(SIZE_CHIP_CONFIGURED)) === 0, 2000)
+    const cleared = await pollUntil(
+      tauriPage,
+      async () => (await tauriPage.count(SIZE_CHIP_CONFIGURED)) === 0,
+      waitBudget(2000),
+    )
     expect(cleared).toBe(true)
 
     await closeSearchDialog(tauriPage)

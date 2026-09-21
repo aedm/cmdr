@@ -15,6 +15,7 @@
  * by `e2e-shared/fixtures.ts`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import path from 'path'
 import { test, expect } from './fixtures.js'
 import {
@@ -91,7 +92,7 @@ test.describe('File viewer media rendering', () => {
             )
             return w
           },
-          { timeout: 5000 },
+          { timeout: waitBudget(5000) },
         )
         .toBeGreaterThan(0)
 
@@ -152,7 +153,7 @@ test.describe('File viewer media rendering', () => {
           async () =>
             viewer.evaluate<string>(`${selectContentExpr(trigger)}.parentElement.style.getPropertyValue('--x')`),
           {
-            timeout: 5000,
+            timeout: waitBudget(5000),
           },
         )
         .not.toBe('')
@@ -160,7 +161,7 @@ test.describe('File viewer media rendering', () => {
       // Poll the hit test itself: the menu settles its overlap shift a few frames after
       // opening, and the user only ever clicks the settled menu.
       await expect
-        .poll(async () => selectRowHits(viewer, trigger, '.media-image-stage'), { timeout: 5000 })
+        .poll(async () => selectRowHits(viewer, trigger, '.media-image-stage'), { timeout: waitBudget(5000) })
         .toEqual({ covered: [], over: ['viewAsText'] })
     } finally {
       await closeScopedWindow(main, viewer, label)

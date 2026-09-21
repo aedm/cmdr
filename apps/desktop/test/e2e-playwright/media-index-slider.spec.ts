@@ -16,6 +16,7 @@
  * Follows the settings-window harness in `image-index-settings.spec.ts`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { test, expect } from './fixtures.js'
@@ -122,7 +123,7 @@ test.describe('Image-index importance slider', () => {
 
     // Enable image indexing so the scope control reveals.
     expect(await settings.evaluate<boolean>(clickMasterJs())).toBe(true)
-    await expect.poll(() => settingOnDisk(MASTER_KEY), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => settingOnDisk(MASTER_KEY), { timeout: waitBudget(3000) }).toBe(true)
     await settings.waitForSelector('.mi-scope', 3000)
 
     // The default scope is "only folders I choose", where the threshold does nothing — so the
@@ -141,14 +142,16 @@ test.describe('Image-index importance slider', () => {
     // Move one bucket toward "most-used only": the typed threshold flushes to 0.2 and the
     // primary label changes live.
     expect(await settings.evaluate<boolean>(pressArrowJs('ArrowLeft'))).toBe(true)
-    await expect.poll(() => settingOnDisk(THRESHOLD_KEY), { timeout: 3000 }).toBe(0.2)
-    await expect.poll(async () => settings.evaluate<string>(bucketLabelJs()), { timeout: 3000 }).not.toBe(initialLabel)
+    await expect.poll(() => settingOnDisk(THRESHOLD_KEY), { timeout: waitBudget(3000) }).toBe(0.2)
+    await expect
+      .poll(async () => settings.evaluate<string>(bucketLabelJs()), { timeout: waitBudget(3000) })
+      .not.toBe(initialLabel)
 
     // Move back to the broadest bucket, then turn indexing off so no state leaks into later specs.
     expect(await settings.evaluate<boolean>(pressArrowJs('ArrowRight'))).toBe(true)
-    await expect.poll(() => settingOnDisk(THRESHOLD_KEY), { timeout: 3000 }).toBe(0)
+    await expect.poll(() => settingOnDisk(THRESHOLD_KEY), { timeout: waitBudget(3000) }).toBe(0)
     expect(await settings.evaluate<boolean>(clickMasterJs())).toBe(true)
-    await expect.poll(() => settingOnDisk(MASTER_KEY), { timeout: 3000 }).toBe(false)
+    await expect.poll(() => settingOnDisk(MASTER_KEY), { timeout: waitBudget(3000) }).toBe(false)
 
     await closeScopedWindow(main, settings, 'settings')
   })

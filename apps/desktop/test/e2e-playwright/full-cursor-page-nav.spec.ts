@@ -11,6 +11,7 @@
  * row 0 goes off the top of the row area — invisible, cursor included.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -139,7 +140,7 @@ async function pressAndWaitCursorChange(
         if (expectedName !== undefined) return name === expectedName
         return name !== before
       },
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBeTruthy()
 }
@@ -161,16 +162,16 @@ test.describe('Full view sticky-header cursor visibility', () => {
           tauriPage.evaluate<boolean>(
             `!!document.querySelector('.file-pane.is-focused [data-filename="file-000.txt"]')`,
           ),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
     // Switch to Full view via command palette.
     await executeViaCommandPalette(tauriPage, 'Full view')
-    await expect.poll(async () => tauriPage.isVisible(FULL_LIST_HEADER), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible(FULL_LIST_HEADER), { timeout: waitBudget(5000) }).toBeTruthy()
 
     // Cursor starts on "..". Confirm before running the repro.
-    await expect.poll(async () => (await getCursorName(tauriPage)) === '..', { timeout: 3000 }).toBeTruthy()
+    await expect.poll(async () => (await getCursorName(tauriPage)) === '..', { timeout: waitBudget(3000) }).toBeTruthy()
 
     // Reclaim keyboard focus before the OS key presses. The preceding
     // `mcp-nav-to-path` and the command-palette open/close drift

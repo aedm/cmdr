@@ -11,6 +11,7 @@
  * frontend can't toggle. All use the shared engines in `i18n-capture-helpers.ts`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect } from './fixtures.js'
@@ -200,7 +201,7 @@ export async function captureQueueWindow(
   try {
     expect(await resetOperationState(main), 'an operation was still in flight before the queue shots').toBe(true)
     await dispatchMenuCommand(main, 'queue.show')
-    queue = await main.waitForWindow((w) => w.label === 'queue', { timeout: 10000 })
+    queue = await main.waitForWindow((w) => w.label === 'queue', { timeout: waitBudget(10000) })
     const q = queue
 
     await captureSurface('queue-empty', report, failed, async () => {
@@ -230,7 +231,7 @@ export async function captureQueueWindow(
               var rows = Array.from(document.querySelectorAll('.queue-row'));
               return rows.map(function(r){ return r.getAttribute('data-status'); }).sort().join(',');
             })()`),
-          { timeout: 20000 },
+          { timeout: waitBudget(20000) },
         )
         .toBe('queued,running')
       return { page: q, focusLabel: 'queue' }
@@ -251,7 +252,7 @@ export async function captureQueueWindow(
       for (const name of QUEUE_DOOMED_SOURCES) await startQueueCopy(main, fixtureRoot, name)
       // Poll on BOTH failed rows: the "Dismiss all" button is conditional on
       // more than one, and it's half of what this surface adds.
-      await expect.poll(async () => countRowsWithStatus(q, 'failed'), { timeout: 20000 }).toBe(2)
+      await expect.poll(async () => countRowsWithStatus(q, 'failed'), { timeout: waitBudget(20000) }).toBe(2)
       return { page: q, focusLabel: 'queue', readySelector: '.queue-row[data-status="failed"]' }
     })
   } catch (err) {
@@ -467,7 +468,7 @@ export async function captureViewerSubsurfaces(
                 var t = ${expr};
                 return !!t && !t.hasAttribute('data-disabled') && !t.disabled;
             })()`),
-        5000,
+        waitBudget(5000),
       )
       if (!ready) {
         const present = await v.evaluate<boolean>(`!!${expr}`)

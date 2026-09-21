@@ -5,6 +5,7 @@
  * Uses Layout B (multi-item merge with partial directory overlaps).
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { restoreFixtureTree } from '../e2e-shared/fixture-manifest.js'
 import { recreateFixtures } from '../e2e-shared/fixtures.js'
@@ -147,7 +148,11 @@ test.describe('Move rollback', () => {
     await tauriPage.waitForSelector('[data-dialog-id="transfer-progress"]', 3000)
 
     // Wait for conflict dialog (bravo/foxtrot/golf.txt conflicts)
-    const conflictAppeared = await pollUntil(tauriPage, async () => tauriPage.isVisible('.conflict-section'), 3000)
+    const conflictAppeared = await pollUntil(
+      tauriPage,
+      async () => tauriPage.isVisible('.conflict-section'),
+      waitBudget(3000),
+    )
     expect(conflictAppeared).toBe(true)
 
     // Verify the Rollback button is shown (not just "Cancel"). Poll briefly,
@@ -163,7 +168,7 @@ test.describe('Move rollback', () => {
           }
           return false;
         })()`),
-      2000,
+      waitBudget(2000),
     )
     expect(hasRollback).toBe(true)
 

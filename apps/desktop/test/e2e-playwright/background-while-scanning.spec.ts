@@ -20,6 +20,7 @@
  * Requires `--features playwright-e2e`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -50,7 +51,7 @@ const SCAN_DELAY_MS = 2_500
 
 const SOURCE = 'scan-bg-src'
 
-test.setTimeout(90_000)
+test.setTimeout(waitBudget(90_000))
 
 /** A small directory to copy. Size is irrelevant here — the delay, not the tree,
  *  is what holds the scan open. */
@@ -119,7 +120,7 @@ test.describe('Backgrounding a transfer that is still counting', () => {
             var ops = await window.__TAURI_INTERNALS__.invoke('list_operations');
             return ops.length;
           })()`),
-        { timeout: 8000 },
+        { timeout: waitBudget(8000) },
       )
       .toBeGreaterThan(0)
 
@@ -148,20 +149,20 @@ test.describe('Backgrounding a transfer that is still counting', () => {
       btn.click();
     })()`)
 
-    const queuePage = await main.waitForWindow((w) => w.label === QUEUE_LABEL, { timeout: 10_000 })
+    const queuePage = await main.waitForWindow((w) => w.label === QUEUE_LABEL, { timeout: waitBudget(10_000) })
 
     // The row is there, and the copy is still alive rather than cancelled with
     // the dialog that started it.
     await expect
       .poll(async () => queuePage.evaluate<number>(`document.querySelectorAll('.queue-row').length`), {
-        timeout: 10_000,
+        timeout: waitBudget(10_000),
       })
       .toBeGreaterThan(0)
 
     // And it finishes on its own once the held preview releases: the operation
     // outlived the dialog that started it, which is the whole point.
     await expect
-      .poll(() => fs.existsSync(path.join(fixtureRoot, 'right', SOURCE, 'file-0.txt')), { timeout: 30_000 })
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'right', SOURCE, 'file-0.txt')), { timeout: waitBudget(30_000) })
       .toBe(true)
 
     // Backgrounding raises its own toast; it outlives this spec's window, so

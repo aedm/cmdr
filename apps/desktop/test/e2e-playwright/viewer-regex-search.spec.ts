@@ -13,6 +13,7 @@
  * not (it would search for a literal backslash-d).
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -91,7 +92,7 @@ test.describe('File viewer regex search', () => {
           const text = (await viewer.textContent('.match-count')) ?? ''
           return /1 of 3\b/.test(text)
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
   })

@@ -11,6 +11,7 @@
  * from the page behind the overlay.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -298,7 +299,7 @@ for (const mode of ['light', 'dark'] as const) {
       // light-mode, ~4 s dark-mode in practice; 15 s gives headroom for slow runs without
       // letting a real regression hide behind the default 8 s budget. The other a11y tests in
       // this file run in <1 s and use the default 8 s.
-      test.setTimeout(15_000)
+      test.setTimeout(waitBudget(15_000))
       await ensureAppReady(tauriPage)
 
       // Open settings via the production trigger and scope this audit to the
@@ -307,7 +308,7 @@ for (const mode of ['light', 'dark'] as const) {
       const settings = await openSettingsWindowViaProd(tauriPage as TauriPage)
       try {
         // This test legitimately overrides the default 8 s budget (see
-        // `test.setTimeout(15_000)` above) because it audits ~15 settings
+        // `test.setTimeout(waitBudget(15_000))` above) because it audits ~15 settings
         // sections sequentially. The waitForSelector budgets here only need
         // to cover the initial settings-window mount, which is <1 s.
         await settings.waitForSelector('.settings-window', 3000)
@@ -392,7 +393,11 @@ for (const mode of ['light', 'dark'] as const) {
 
           // Wait for the section to be visible
           const sectionSelector = `[data-section-id="${section.sectionId}"]`
-          const sectionVisible = await pollUntil(settings, async () => settings.isVisible(sectionSelector), 5000)
+          const sectionVisible = await pollUntil(
+            settings,
+            async () => settings.isVisible(sectionSelector),
+            waitBudget(5000),
+          )
           if (!sectionVisible) {
             console.log(`⚠ Settings section "${section.name}" not visible, skipping`)
             continue
@@ -449,7 +454,7 @@ for (const mode of ['light', 'dark'] as const) {
           var btns = document.querySelectorAll('${WIZARD_SELECTOR} .primary-slot button');
           if (btns.length > 0) btns[btns.length - 1].click();
         })()`)
-        await expect.poll(readActiveStep, { timeout: 3000 }).toBe(target)
+        await expect.poll(readActiveStep, { timeout: waitBudget(3000) }).toBe(target)
       }
 
       await dispatchMenuCommand(tauriPage, 'cmdr.openOnboarding')
@@ -531,7 +536,9 @@ for (const mode of ['light', 'dark'] as const) {
       } finally {
         await closeOnboardingWizardIfOpen(tauriPage)
       }
-      await expect.poll(async () => !(await tauriPage.isVisible(WIZARD_SELECTOR)), { timeout: 3000 }).toBeTruthy()
+      await expect
+        .poll(async () => !(await tauriPage.isVisible(WIZARD_SELECTOR)), { timeout: waitBudget(3000) })
+        .toBeTruthy()
     })
 
     test(`File viewer with text file`, async ({ tauriPage }) => {

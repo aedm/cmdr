@@ -10,6 +10,7 @@
  * `handleGlobalKeyDown` → `lookupCommand('⌘⌥A')` → the `askCmdr.toggle` handler.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { dispatchMenuCommand, ensureAppReady, CTRL_OR_META } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -59,7 +60,7 @@ async function openRailViaMenu(page: TauriPage): Promise<void> {
         await dispatchMenuCommand(page, 'askCmdr.toggle')
         return railOpen(page)
       },
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBe(true)
 }
@@ -68,7 +69,7 @@ async function openRailViaMenu(page: TauriPage): Promise<void> {
 async function closeRailIfOpen(page: TauriPage): Promise<void> {
   if (!(await railOpen(page))) return
   await page.evaluate(`document.querySelector('.ask-cmdr-rail .header-actions button:last-child')?.click()`)
-  await expect.poll(() => railOpen(page), { timeout: 3000 }).toBe(false)
+  await expect.poll(() => railOpen(page), { timeout: waitBudget(3000) }).toBe(false)
 }
 
 /** The opt-in consent screen is showing (the rail is open but not yet unlocked). */
@@ -95,7 +96,7 @@ async function ensureChatReady(page: TauriPage): Promise<void> {
         }
         return composerPresent(page)
       },
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBe(true)
 }
@@ -119,7 +120,7 @@ async function sendComposerMessage(page: TauriPage, text: string): Promise<void>
     ta.dispatchEvent(new Event('input', { bubbles: true }));
     ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
   })()`)
-  await expect.poll(() => assistantReplyCount(page), { timeout: 8000 }).toBeGreaterThan(before)
+  await expect.poll(() => assistantReplyCount(page), { timeout: waitBudget(8000) }).toBeGreaterThan(before)
 }
 
 /** How many thread rows the open sessions panel shows. */
@@ -128,7 +129,7 @@ function sessionRowCount(page: TauriPage): Promise<number> {
 }
 
 test.describe('Ask Cmdr rail', () => {
-  test.describe.configure({ timeout: 30000 })
+  test.describe.configure({ timeout: waitBudget(30000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
@@ -152,27 +153,27 @@ test.describe('Ask Cmdr rail', () => {
     await page.evaluate(`(async function(){ await window.__TAURI_INTERNALS__.invoke('ask_cmdr_revoke_consent'); })()`)
     await openRailViaMenu(page)
     // The gate is shown; the composer is not reachable yet.
-    await expect.poll(() => consentShown(page), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => consentShown(page), { timeout: waitBudget(3000) }).toBe(true)
     expect(await composerPresent(page)).toBe(false)
 
     // "Not now" closes the rail without opting in.
     await page.evaluate(`document.querySelector('.ask-cmdr-rail .consent .consent-decline')?.click()`)
-    await expect.poll(() => railOpen(page), { timeout: 3000 }).toBe(false)
+    await expect.poll(() => railOpen(page), { timeout: waitBudget(3000) }).toBe(false)
 
     // Reopen: consent is still required (decline recorded nothing).
     await openRailViaMenu(page)
-    await expect.poll(() => consentShown(page), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => consentShown(page), { timeout: waitBudget(3000) }).toBe(true)
 
     // Accepting records consent and unlocks the composer.
     await page.evaluate(`document.querySelector('.ask-cmdr-rail .consent .consent-accept')?.click()`)
-    await expect.poll(() => composerPresent(page), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => composerPresent(page), { timeout: waitBudget(3000) }).toBe(true)
     expect(await consentShown(page)).toBe(false)
   })
 
   test('opens from the View menu item with the ALPHA badge', async ({ tauriPage }) => {
     const page = tauriPage as TauriPage
     await dispatchMenuCommand(page, 'askCmdr.toggle')
-    await expect.poll(() => railOpen(page), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => railOpen(page), { timeout: waitBudget(3000) }).toBe(true)
     expect(await alphaBadgeShown(page)).toBe(true)
   })
 
@@ -188,7 +189,7 @@ test.describe('Ask Cmdr rail', () => {
           await pressToggleShortcut(page)
           return railOpen(page)
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBe(true)
   })
@@ -197,13 +198,13 @@ test.describe('Ask Cmdr rail', () => {
     const page = tauriPage as TauriPage
     await openRailViaMenu(page)
     await ensureChatReady(page)
-    await expect.poll(() => composerFocused(page), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => composerFocused(page), { timeout: waitBudget(3000) }).toBe(true)
 
     // Escape on the focused composer returns focus to the active pane.
     await page.evaluate(
       `document.querySelector('.ask-cmdr-rail textarea')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`,
     )
-    await expect.poll(() => paneFocused(page), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => paneFocused(page), { timeout: waitBudget(3000) }).toBe(true)
   })
 
   test('sends a message and streams the fake reply', async ({ tauriPage }) => {
@@ -227,7 +228,7 @@ test.describe('Ask Cmdr rail', () => {
           page.evaluate<boolean>(
             `(document.querySelector('.ask-cmdr-rail')?.textContent || '').includes('test assistant')`,
           ),
-        { timeout: 8000 },
+        { timeout: waitBudget(8000) },
       )
       .toBe(true)
   })
@@ -253,7 +254,7 @@ test.describe('Ask Cmdr rail', () => {
 
     // Open the sessions panel; both threads are listed.
     await page.evaluate(`document.querySelector('.ask-cmdr-rail [aria-label="Chats"]')?.click()`)
-    await expect.poll(() => sessionRowCount(page), { timeout: 3000 }).toBeGreaterThanOrEqual(2)
+    await expect.poll(() => sessionRowCount(page), { timeout: waitBudget(3000) }).toBeGreaterThanOrEqual(2)
 
     // Search for the first thread's distinctive word; only it matches.
     await page.evaluate(`(() => {
@@ -268,7 +269,7 @@ test.describe('Ask Cmdr rail', () => {
           page.evaluate<string>(
             `[...document.querySelectorAll('.ask-cmdr-rail .sessions .row-title')].map(r => r.textContent).join('|')`,
           ),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toContain('budget')
 
@@ -283,14 +284,14 @@ test.describe('Ask Cmdr rail', () => {
     await page.evaluate(`document.querySelector('.ask-cmdr-rail .sessions .row')?.click()`)
     await expect
       .poll(() => page.evaluate<boolean>(`document.querySelector('.ask-cmdr-rail .sessions') === null`), {
-        timeout: 3000,
+        timeout: waitBudget(3000),
       })
       .toBe(true)
     await expect
       .poll(
         () =>
           page.evaluate<boolean>(`(document.querySelector('.ask-cmdr-rail')?.textContent || '').includes('budget')`),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBe(true)
   })

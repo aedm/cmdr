@@ -11,6 +11,7 @@
  * Requires the app to be built with `--features playwright-e2e,virtual-mtp`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -57,7 +58,7 @@ async function bothPanesOnLocalVolume(): Promise<boolean> {
   return volumeLines.length >= 2 && volumeLines[0] === LOCAL_VOLUME_NAME && volumeLines[1] === LOCAL_VOLUME_NAME
 }
 
-test.setTimeout(120_000)
+test.setTimeout(waitBudget(120_000))
 
 test.beforeEach(async ({ tauriPage }) => {
   recreateFixtures(getFixtureRoot())
@@ -84,7 +85,7 @@ test.beforeEach(async ({ tauriPage }) => {
       invoke('plugin:event|emit', { event: 'mcp-volume-select', payload: { pane: 'left', name: '${LOCAL_VOLUME_NAME}' } });
       invoke('plugin:event|emit', { event: 'mcp-volume-select', payload: { pane: 'right', name: '${LOCAL_VOLUME_NAME}' } });
     })()`)
-    await expect.poll(() => bothPanesOnLocalVolume(), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(() => bothPanesOnLocalVolume(), { timeout: waitBudget(5000) }).toBeTruthy()
   }
 })
 
@@ -146,7 +147,7 @@ test('same-volume MTP folder move auto-merges; file clash inside prompts; dest-o
         if (!fs.existsSync(path.join(destAlbum, 'fresh.txt'))) return false
         return fs.readFileSync(path.join(destAlbum, 'clash.txt'), 'utf-8') === 'SRC-clash'
       },
-      { timeout: 20000 },
+      { timeout: waitBudget(20000) },
     )
     .toBeTruthy()
 
@@ -161,5 +162,5 @@ test('same-volume MTP folder move auto-merges; file clash inside prompts; dest-o
 
   await mcpCall('refresh', {})
   // One top-level folder moved (the inner clash was Overwritten, not skipped).
-  await expectAndDismissToast(tauriPage, 'Moved 1 folder.', { timeout: 30000 })
+  await expectAndDismissToast(tauriPage, 'Moved 1 folder.', { timeout: waitBudget(30000) })
 })

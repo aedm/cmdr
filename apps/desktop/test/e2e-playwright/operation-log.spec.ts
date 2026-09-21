@@ -11,6 +11,7 @@
  * covered by the component/unit tests), not that any specific operation shows.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { dispatchMenuCommand, dismissOverlay, ensureAppReady, CTRL_OR_META } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -39,7 +40,7 @@ function pressOperationLogShortcut(page: TauriPage): Promise<void> {
 }
 
 test.describe('Operation log dialog', () => {
-  test.describe.configure({ timeout: 30000 })
+  test.describe.configure({ timeout: waitBudget(30000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
@@ -49,11 +50,11 @@ test.describe('Operation log dialog', () => {
     const page = tauriPage as TauriPage
     await dispatchMenuCommand(page, 'log.operationLog')
 
-    await expect.poll(() => dialogOpen(page), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => dialogOpen(page), { timeout: waitBudget(3000) }).toBe(true)
     expect(await alphaBadgeShown(page)).toBe(true)
 
     await dismissOverlay(page)
-    await expect.poll(() => dialogOpen(page), { timeout: 3000 }).toBe(false)
+    await expect.poll(() => dialogOpen(page), { timeout: waitBudget(3000) }).toBe(false)
   })
 
   test('opens from the ⌘⌥L keyboard shortcut with the ALPHA badge', async ({ tauriPage }) => {
@@ -70,12 +71,12 @@ test.describe('Operation log dialog', () => {
           await pressOperationLogShortcut(page)
           return dialogOpen(page)
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBe(true)
     expect(await alphaBadgeShown(page)).toBe(true)
 
     await dismissOverlay(page)
-    await expect.poll(() => dialogOpen(page), { timeout: 3000 }).toBe(false)
+    await expect.poll(() => dialogOpen(page), { timeout: waitBudget(3000) }).toBe(false)
   })
 })

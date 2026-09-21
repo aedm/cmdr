@@ -6,6 +6,7 @@
  * keyboard focus on the explorer after MCP-driven actions (`ensureExplorerFocused`).
  */
 
+import { waitBudget } from '../wait-budget.js'
 import { expect } from '@playwright/test'
 import { ensureMcpClient, mcpCall } from '../../e2e-shared/mcp-client.js'
 import { type PageLike, findFileIndex, pollUntil } from './core.js'
@@ -70,7 +71,7 @@ export async function ensureExplorerFocused(tauriPage: PageLike): Promise<void> 
           }
           return !!(ae && ae.closest && ae.closest('.dual-pane-explorer') !== null);
         })()`),
-      { timeout: 2000 },
+      { timeout: waitBudget(2000) },
     )
     .toBeTruthy()
 }
@@ -110,7 +111,7 @@ export async function focusPane(tauriPage: PageLike, paneIndex: 0 | 1): Promise<
         tauriPage.evaluate<boolean>(
           `document.querySelectorAll('.file-pane')[${String(paneIndex)}]?.classList.contains('is-focused') === true`,
         ),
-      { timeout: 3000 },
+      { timeout: waitBudget(3000) },
     )
     .toBeTruthy()
 }
@@ -143,7 +144,7 @@ export async function moveCursorToFile(tauriPage: PageLike, targetName: string):
       const probe = await findFileIndex(tauriPage, targetName)
       return !('error' in probe) && probe.targetIndex >= 0
     },
-    5000,
+    waitBudget(5000),
   )
   if (!listed) return false
 
@@ -182,6 +183,6 @@ export async function moveCursorToFile(tauriPage: PageLike, targetName: string):
                 return entry.getAttribute('data-filename') === ${JSON.stringify(targetName)};
             })()`)
     },
-    8000,
+    waitBudget(8000),
   )
 }

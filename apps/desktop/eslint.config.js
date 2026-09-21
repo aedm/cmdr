@@ -44,6 +44,7 @@ import dialogNeedsFocusTrap from './eslint-plugins/dialog-needs-focus-trap.js'
 import preferUiPrimitive from './eslint-plugins/prefer-ui-primitive.js'
 import noTitleAttribute from './eslint-plugins/no-title-attribute.js'
 import noArbitrarySleepInE2E from './eslint-plugins/no-arbitrary-sleep-in-e2e.js'
+import noRawWaitBudget from './eslint-plugins/no-raw-wait-budget.js'
 import noUnrenderedLogFields from './eslint-plugins/no-unrendered-log-fields.js'
 
 /* global process */
@@ -365,19 +366,35 @@ export default tseslint.config(
     },
   },
   {
+    // The Playwright suite's two timing rules. Both live in one block because ESLint
+    // refuses to see the `cmdr` namespace defined twice for the same file, and their
+    // scopes overlap; the narrower one is switched on in the block below.
+    //
+    // Every wait budget goes through `waitBudget(N)` so it stretches with the machine's
+    // load: a busy box should make the suite SLOWER, never REDDER. That covers helper
+    // modules (which hold most of the shared budgets) and `playwright.config.ts`, whose
+    // per-test ceiling has to scale with the waits underneath it or a scaled wait just
+    // dies at the ceiling instead. See `test/e2e-playwright/wait-budget.ts`.
+    files: ['test/e2e-playwright/**/*.ts'],
+    plugins: {
+      cmdr: {
+        rules: {
+          'no-arbitrary-sleep-in-e2e': noArbitrarySleepInE2E,
+          'no-raw-wait-budget': noRawWaitBudget,
+        },
+      },
+    },
+    rules: {
+      'cmdr/no-raw-wait-budget': 'error',
+    },
+  },
+  {
     // E2E specs must not use `await sleep(N)`: fixed sleeps are either too
     // tight (flake) or too loose (slow). Use `pollUntil` / `waitForSelector`
     // instead. Helper files (helpers.ts, conflict-helpers.ts, mcp-client.ts)
     // are excluded because `pollUntil` itself calls `sleep(interval)` between
     // iterations. See `docs/testing.md` § "❌ `await sleep(N)` in E2E specs".
     files: ['test/e2e-playwright/**/*.spec.ts'],
-    plugins: {
-      cmdr: {
-        rules: {
-          'no-arbitrary-sleep-in-e2e': noArbitrarySleepInE2E,
-        },
-      },
-    },
     rules: {
       'cmdr/no-arbitrary-sleep-in-e2e': 'error',
     },

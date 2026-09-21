@@ -10,6 +10,7 @@
  * ever needs them.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { pollUntil } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 
@@ -30,7 +31,7 @@ import type { TauriPage } from '@srsholmes/tauri-playwright'
  * while the loop is already spinning retains a fresh failure that a one-shot
  * dismiss ahead of it would miss.
  */
-export async function resetOperationState(main: TauriPage, timeoutMs = 10000): Promise<boolean> {
+export async function resetOperationState(main: TauriPage, timeoutMs = waitBudget(10000)): Promise<boolean> {
   await main
     .evaluate(`(async function(){
       try { await window.__TAURI_INTERNALS__.invoke('set_test_throttle', { ms: null }); } catch (e) {}

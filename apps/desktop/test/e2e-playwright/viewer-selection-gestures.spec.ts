@@ -13,6 +13,7 @@
  * `right/`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -188,20 +189,20 @@ test.describe('File viewer selection gestures', () => {
     const point = await betaPoint()
 
     await pressAt(point, 2)
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).toBe('beta')
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).toBe('beta')
 
     // Wait out the multi-click interval so the next burst starts its own cycle.
     await new Promise((resolve) => setTimeout(resolve, 700))
 
     await pressAt(point, 3)
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).toBe(multiWordLine)
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).toBe(multiWordLine)
 
     // One more press is a plain click either way (a restarted cycle if it lands inside
     // the interval, a fresh one if it doesn't), so the line selection gives way to a
     // caret instead of sticking. The cycle's exact wrap-around is pinned in
     // `viewer-multi-click.test.ts`, where the clock is an argument.
     await pressAt(point, 1)
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).toBe('')
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).toBe('')
   })
 
   test('a drag after a double press keeps selecting whole words', async () => {
@@ -212,17 +213,17 @@ test.describe('File viewer selection gestures', () => {
 
     // Both words in full: the drag runs at the double-press's granularity instead of
     // staying stuck on the first word.
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).toBe('beta gamma')
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).toBe('beta gamma')
   })
 
   test('Shift+Right extends the selection one character at a time, and the copy chord takes it', async () => {
     // Seed a selection the user can see: a double press selects `beta` (offsets 6-10).
     await pressAt(await betaPoint(), 2)
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).toBe('beta')
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).toBe('beta')
 
     // Five characters further right, keeping the anchor: [6, 15) of `alpha beta gamma`.
     await pressKeyTimes('ArrowRight', { shiftKey: true }, 5)
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).toBe('beta gamm')
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).toBe('beta gamm')
 
     // The copy modifier comes from the platform: these specs also run on Linux Docker.
     await pressKeyTimes('c', { metaKey: CTRL_OR_META === 'Meta', ctrlKey: CTRL_OR_META === 'Control' }, 1)
@@ -232,7 +233,7 @@ test.describe('File viewer selection gestures', () => {
           const text = (await viewer.textContent('.toast')) ?? ''
           return text.includes('on your clipboard')
         },
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
 
@@ -255,20 +256,20 @@ test.describe('File viewer selection gestures', () => {
     expect(await scrollLeft()).toBe(0)
 
     await pressKeyTimes('ArrowRight', {}, 10)
-    await expect.poll(scrollLeft, { timeout: 3000 }).toBeGreaterThan(0)
+    await expect.poll(scrollLeft, { timeout: waitBudget(3000) }).toBeGreaterThan(0)
 
     // Back past the left edge: the step clamps at 0 rather than going negative.
     await pressKeyTimes('ArrowLeft', {}, 20)
-    await expect.poll(scrollLeft, { timeout: 3000 }).toBe(0)
+    await expect.poll(scrollLeft, { timeout: waitBudget(3000) }).toBe(0)
   })
 
   test('Option+Shift+Right extends by a whole word', async () => {
     await pressAt(await betaPoint(), 2)
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).toBe('beta')
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).toBe('beta')
 
     // macOS semantics: the focus lands on the END of the next word, so `gamma` joins in
     // full rather than the selection stopping at its start.
     await pressKeyTimes('ArrowRight', { shiftKey: true, altKey: true }, 1)
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).toBe('beta gamma')
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).toBe('beta gamma')
   })
 })

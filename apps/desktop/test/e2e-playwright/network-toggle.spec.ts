@@ -21,6 +21,7 @@
  * driveable from automation). Validated manually.
  */
 
+import { waitBudget } from './wait-budget.js'
 import os from 'node:os'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, escapeOverlayUntilGone, isStateClean, pollUntil } from './helpers.js'
@@ -81,7 +82,7 @@ async function closeVolumePicker(tauriPage: Parameters<typeof pollUntil>[0]): Pr
 async function openHub(tauriPage: Parameters<typeof pollUntil>[0]): Promise<void> {
   await closeVolumePicker(tauriPage)
   await mcpCall('select_volume', { pane: 'left', name: SERVERS_VOLUME_NAME })
-  await expect.poll(async () => tauriPage.isVisible(HUB), { timeout: 15000 }).toBeTruthy()
+  await expect.poll(async () => tauriPage.isVisible(HUB), { timeout: waitBudget(15000) }).toBeTruthy()
 }
 
 test.describe('Local network discovery off', () => {
@@ -112,7 +113,7 @@ test.describe('Local network discovery off', () => {
               volumeLines.length >= 2 && volumeLines[0] === LOCAL_VOLUME_NAME && volumeLines[1] === LOCAL_VOLUME_NAME
             )
           },
-          { timeout: 5000 },
+          { timeout: waitBudget(5000) },
         )
         .toBeTruthy()
     }
@@ -154,7 +155,7 @@ test.describe('Local network discovery off', () => {
     await setSettingViaBridge('network.enabled', false)
     await openHub(tauriPage)
 
-    await expect.poll(async () => tauriPage.isVisible(DISCOVERY_OFF), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible(DISCOVERY_OFF), { timeout: waitBudget(5000) }).toBeTruthy()
     const text = await tauriPage.evaluate<string>(
       `(document.querySelector(${JSON.stringify(DISCOVERY_OFF)})?.textContent ?? '')`,
     )
@@ -169,9 +170,11 @@ test.describe('Local network discovery off', () => {
   test('turning discovery back on takes the line away', async ({ tauriPage }) => {
     await setSettingViaBridge('network.enabled', false)
     await openHub(tauriPage)
-    await expect.poll(async () => tauriPage.isVisible(DISCOVERY_OFF), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible(DISCOVERY_OFF), { timeout: waitBudget(5000) }).toBeTruthy()
 
     await setSettingViaBridge('network.enabled', true)
-    await expect.poll(async () => !(await tauriPage.isVisible(DISCOVERY_OFF)), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible(DISCOVERY_OFF)), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 })

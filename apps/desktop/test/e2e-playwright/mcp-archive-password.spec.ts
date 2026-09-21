@@ -21,6 +21,7 @@
  * Requires `--features playwright-e2e`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -50,7 +51,7 @@ const archiveFixturesDir = path.join(
   'archive-fixtures',
 )
 
-test.setTimeout(90_000)
+test.setTimeout(waitBudget(90_000))
 
 /** The `archive-password` block `cmdr://state` renders under `dialogs:`. */
 interface PasswordPrompt {
@@ -117,7 +118,9 @@ test.describe('MCP archive password', () => {
     const unlocked = await unlockArchive(retry.archivePath, PASSWORD)
     expect(unlocked.outcome).toBe('retrying_listing')
     await expect
-      .poll(async () => (await mcpReadResource('cmdr://state?include=panes')).includes(INNER_FILE), { timeout: 15_000 })
+      .poll(async () => (await mcpReadResource('cmdr://state?include=panes')).includes(INNER_FILE), {
+        timeout: waitBudget(15_000),
+      })
       .toBeTruthy()
   })
 
@@ -174,7 +177,7 @@ test.describe('MCP archive password', () => {
     await mcpCall('select', { pane: 'left', names: [INNER_FILE] })
     await mcpCall('copy', {})
     await mcpCall('dialog', { action: 'confirm', type: 'transfer-confirmation' })
-    await expect.poll(() => fs.existsSync(destination), { timeout: 20_000 }).toBeTruthy()
+    await expect.poll(() => fs.existsSync(destination), { timeout: waitBudget(20_000) }).toBeTruthy()
     expect(fs.readFileSync(destination, 'utf8')).toBe(INNER_CONTENT)
 
     await expectAndDismissToast(main, 'Copied')
@@ -194,7 +197,7 @@ async function waitForPasswordPrompt(options?: { wrongAttempt: boolean }): Promi
         seen.push(prompt)
         return true
       },
-      { timeout: 20_000 },
+      { timeout: waitBudget(20_000) },
     )
     .toBeTruthy()
   const captured = seen.at(-1)

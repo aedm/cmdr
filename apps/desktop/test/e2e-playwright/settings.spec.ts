@@ -8,6 +8,7 @@
  * The scoped page shares the plugin socket with the main page.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { closeScopedWindow, openSettingsWindowViaProd, pollUntil } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -232,7 +233,7 @@ test.describe('Settings page', () => {
           const count = await settings.count('.section-item')
           return count > 0 && count < baselineCount
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -249,7 +250,7 @@ test.describe('Settings page', () => {
           const value = await settings.inputValue('.search-container input.text-field-control')
           return count === baselineCount && value === ''
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
   })
@@ -259,7 +260,9 @@ test.describe('Settings page', () => {
     await settings.fill('.search-container input.text-field-control', 'zzzyyyxxxnomatch')
 
     // Sidebar updates on a 200 ms debounce: wait for all sections to vanish.
-    await expect.poll(async () => (await settings.count('.section-item')) === 0, { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => (await settings.count('.section-item')) === 0, { timeout: waitBudget(3000) })
+      .toBeTruthy()
 
     // The clear button still shows up so the user can recover from a dead-end query.
     expect(await settings.isVisible('.search-clear')).toBe(true)
@@ -269,7 +272,9 @@ test.describe('Settings page', () => {
             var btn = document.querySelector('.search-clear');
             if (btn) btn.click();
         })()`)
-    await expect.poll(async () => (await settings.count('.section-item')) > 0, { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => (await settings.count('.section-item')) > 0, { timeout: waitBudget(3000) })
+      .toBeTruthy()
   })
 
   test('Arrow Down in the search box moves section selection forward', async () => {
@@ -283,7 +288,9 @@ test.describe('Settings page', () => {
             else input.value = '';
             input.dispatchEvent(new Event('input', { bubbles: true }));
         })()`)
-    await expect.poll(async () => (await settings.count('.section-item')) > 2, { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => (await settings.count('.section-item')) > 2, { timeout: waitBudget(3000) })
+      .toBeTruthy()
 
     // Reset the selected section to the first sidebar entry. Prior tests may
     // have landed on the last entry (post-reorg, that's `Advanced`), where
@@ -302,7 +309,7 @@ test.describe('Settings page', () => {
           )
           return cls.includes('selected')
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
 
@@ -331,7 +338,7 @@ test.describe('Settings page', () => {
           )
           return now !== startSelected && now !== ''
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
   })
@@ -382,7 +389,7 @@ test.describe('Settings keyboard-shortcut deep link', () => {
         });
     })()`)
 
-    settings = await main.waitForWindow((w) => w.label === 'settings', { timeout: 10000 })
+    settings = await main.waitForWindow((w) => w.label === 'settings', { timeout: waitBudget(10000) })
     await settings.waitForSelector('.settings-window', 3000)
     // The Keyboard-shortcuts section renders the shortcut table; wait for the
     // target row to exist (the deep link clears any filter that might hide it).
@@ -408,7 +415,7 @@ test.describe('Settings keyboard-shortcut deep link', () => {
               return r.top >= l.top - 1 && r.bottom <= l.bottom + 1;
             })()`,
           ),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
   })
@@ -451,7 +458,7 @@ test.describe('Settings keyboard binding', () => {
         const labels = (await main.listWindows()).map((w) => w.label)
         return !labels.includes('settings')
       },
-      3000,
+      waitBudget(3000),
     )
     if (!gone) {
       throw new Error("Escape did not close settings window 'settings' within 3s")

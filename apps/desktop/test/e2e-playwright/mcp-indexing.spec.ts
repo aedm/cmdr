@@ -19,13 +19,14 @@
  * pins the wiring: resource builder → tool → freshness store → await condition.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady } from './helpers.js'
 import { ensureMcpClient, mcpCall, mcpReadResource } from '../e2e-shared/mcp-client.js'
 
 test.describe('MCP indexing surface', () => {
   test('read per-volume status, rescan root, await index_status fresh', async ({ tauriPage }) => {
-    test.setTimeout(60_000)
+    test.setTimeout(waitBudget(60_000))
     await ensureAppReady(tauriPage)
     await ensureMcpClient(tauriPage)
 

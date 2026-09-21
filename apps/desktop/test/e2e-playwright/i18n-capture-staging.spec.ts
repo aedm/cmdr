@@ -14,6 +14,7 @@
  * own mock env, and a lane shard launches its app once.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { drainOperations, getFixtureRoot } from './helpers.js'
 import { restoreFixtureTree } from '../e2e-shared/fixture-manifest.js'
@@ -48,7 +49,7 @@ test.describe('i18n capture staging', () => {
       // A healthy step takes well under a second. A BROKEN one waits out each failing
       // surface's own readiness budget (5–20 s) before naming it, so the test gets
       // room to report every surface instead of dying on the default 15 s timeout.
-      test.setTimeout(60000)
+      test.setTimeout(waitBudget(60000))
       const ledger: PassLedger = { report: {}, failed: [], skipped: [] }
       await step.run(tauriPage as TauriPage, ledger)
       expect(ledger.failed, `surfaces that no longer stage: ${ledger.failed.join(', ')}`).toEqual([])

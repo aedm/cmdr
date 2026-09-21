@@ -11,6 +11,7 @@
  * them brittle in E2E. See `lib/go-to-path/CLAUDE.md` for the full contract.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import {
   ensureAppReady,
@@ -60,9 +61,11 @@ test.describe('Go to path (⌘G)', () => {
     await pressKey(tauriPage, 'Enter')
 
     // The dialog closes on a successful (non-invalid) jump.
-    await expect.poll(async () => (await tauriPage.count(GO_TO_PATH_DIALOG)) === 0, { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => (await tauriPage.count(GO_TO_PATH_DIALOG)) === 0, { timeout: waitBudget(3000) })
+      .toBeTruthy()
     // The focused pane is now inside the typed directory.
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 3000 }).toBe(targetDir)
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(3000) }).toBe(targetDir)
   })
 
   test('a non-existent path lands on the nearest ancestor and shows an INFO toast', async ({ tauriPage }) => {
@@ -76,9 +79,11 @@ test.describe('Go to path (⌘G)', () => {
     await typeIntoGoToPath(tauriPage, nonExistent)
     await pressKey(tauriPage, 'Enter')
 
-    await expect.poll(async () => (await tauriPage.count(GO_TO_PATH_DIALOG)) === 0, { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => (await tauriPage.count(GO_TO_PATH_DIALOG)) === 0, { timeout: waitBudget(3000) })
+      .toBeTruthy()
     // The pane jumps to the nearest existing ancestor (the fixture's `left/`).
-    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: 3000 }).toBe(ancestor)
+    await expect.poll(async () => getFocusedPaneActiveTabPath(), { timeout: waitBudget(3000) }).toBe(ancestor)
     // The nearest-ancestor INFO toast appears. The wording is the user-facing
     // contract (see `GoToPathAncestorToastContent.svelte`).
     await expectAndDismissToast(tauriPage, 'so we took you to')

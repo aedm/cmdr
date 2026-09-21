@@ -17,6 +17,7 @@
  * only the orchestrator gives them (`runMockPass` in the capture spec).
  */
 
+import { waitBudget } from './wait-budget.js'
 import { closeScopedWindow, dismissOverlay, dispatchMenuCommand, ensureAppReady, MKDIR_DIALOG } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 import { type SurfaceEntry, captureCall, captureSurface, focusWindow, settlePaint } from './i18n-capture-helpers.js'
@@ -383,7 +384,7 @@ export const MAIN_PASS_STEPS: readonly MainPassStep[] = [
       let shortcuts: TauriPage | undefined
       await captureSurface('shortcuts', report, failed, async () => {
         await dispatchMenuCommand(main, 'help.openShortcuts')
-        shortcuts = await main.waitForWindow((w) => w.label === 'shortcuts', { timeout: 10000 })
+        shortcuts = await main.waitForWindow((w) => w.label === 'shortcuts', { timeout: waitBudget(10000) })
         const s = shortcuts
         // `waitForWindow` returns the moment the label exists, which is BEFORE the
         // document loads; an eval landing in the outgoing document is torn down

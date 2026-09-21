@@ -19,6 +19,7 @@
  *   right/                  <- empty
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -69,7 +70,7 @@ async function clearAllToasts(tauriPage: PageLike): Promise<void> {
   })()`)
   await expect
     .poll(async () => tauriPage.evaluate<boolean>(`document.querySelectorAll('.toast').length === 0`), {
-      timeout: 3000,
+      timeout: waitBudget(3000),
     })
     .toBeTruthy()
 }
@@ -90,7 +91,9 @@ test.describe('Archive editing', () => {
     await ensureMcpClient(tauriPage)
 
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // F7 inside a zip runs the real managed archive-edit flow (no refusal).
     const folderName = `zip-folder-${String(Date.now())}`
@@ -98,13 +101,19 @@ test.describe('Archive editing', () => {
     await tauriPage.waitForSelector(MKDIR_DIALOG, 5000)
     await tauriPage.waitForSelector(`${MKDIR_DIALOG} input.text-field-control`, 3000)
     await tauriPage.fill(`${MKDIR_DIALOG} input.text-field-control`, folderName)
-    await expect.poll(async () => tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`), { timeout: 2000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isEnabled(`${MKDIR_DIALOG} .btn-primary`), { timeout: waitBudget(2000) })
+      .toBeTruthy()
     await tauriPage.click(`${MKDIR_DIALOG} .btn-primary`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // The archive rewrite lands async; the live-watch refresh then shows the new
     // folder inside the zip. Probe for it, don't sleep.
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, folderName), { timeout: 10000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, folderName), { timeout: waitBudget(10000) })
+      .toBeTruthy()
   })
 
   test('renaming a file inside the archive works', async ({ tauriPage }) => {
@@ -112,7 +121,9 @@ test.describe('Archive editing', () => {
     await ensureMcpClient(tauriPage)
 
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     const found = await moveCursorToFile(tauriPage, 'inner.txt')
     expect(found).toBe(true)
@@ -129,7 +140,7 @@ test.describe('Archive editing', () => {
         })()`)
     await expect
       .poll(async () => tauriPage.evaluate<boolean>(`document.querySelector('.rename-input')?.value === ''`), {
-        timeout: 2000,
+        timeout: waitBudget(2000),
       })
       .toBeTruthy()
     await tauriPage.type('.rename-input', 'inner-renamed.txt')
@@ -137,18 +148,20 @@ test.describe('Archive editing', () => {
       .poll(
         async () =>
           tauriPage.evaluate<boolean>(`document.querySelector('.rename-input')?.value === 'inner-renamed.txt'`),
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
     await tauriPage.press('.rename-input', 'Enter')
-    await expect.poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // The rewrite lands async; the refresh shows the new name and drops the old.
     await expect
-      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner-renamed.txt'), { timeout: 10000 })
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner-renamed.txt'), { timeout: waitBudget(10000) })
       .toBeTruthy()
     await expect
-      .poll(async () => !(await fileExistsInFocusedPane(tauriPage, 'inner.txt')), { timeout: 10000 })
+      .poll(async () => !(await fileExistsInFocusedPane(tauriPage, 'inner.txt')), { timeout: waitBudget(10000) })
       .toBeTruthy()
   })
 
@@ -157,7 +170,9 @@ test.describe('Archive editing', () => {
     await ensureMcpClient(tauriPage)
 
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     const found = await moveCursorToFile(tauriPage, 'inner.txt')
     expect(found).toBe(true)
@@ -170,15 +185,21 @@ test.describe('Archive editing', () => {
     expect(await tauriPage.isVisible(`${DELETE_DIALOG} .switch-root`)).toBe(false)
 
     // Confirm the permanent delete (danger button) and wait for the rewrite.
-    await expect.poll(async () => tauriPage.isEnabled(`${DELETE_DIALOG} .btn-danger`), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isEnabled(`${DELETE_DIALOG} .btn-danger`), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     await tauriPage.click(`${DELETE_DIALOG} .btn-danger`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 10000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(10000) })
+      .toBeTruthy()
     await expectAndDismissToast(tauriPage, 'Delete complete')
     await expect
-      .poll(async () => !(await fileExistsInFocusedPane(tauriPage, 'inner.txt')), { timeout: 10000 })
+      .poll(async () => !(await fileExistsInFocusedPane(tauriPage, 'inner.txt')), { timeout: waitBudget(10000) })
       .toBeTruthy()
     // A sibling entry survives the edit (an edit never drops an untouched sibling).
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'nested'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'nested'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('pasting a file into the archive lands it inside the zip', async ({ tauriPage }) => {
@@ -189,7 +210,9 @@ test.describe('Archive editing', () => {
     // Right pane inside the zip (the copy destination).
     await navigatePaneTo(tauriPage, 'right', `${fixtureRoot}/left/sample.zip`)
     await expect
-      .poll(async () => (await mcpReadResource('cmdr://state?compact=true')).includes('sample.zip'), { timeout: 5000 })
+      .poll(async () => (await mcpReadResource('cmdr://state?compact=true')).includes('sample.zip'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     // Navigating the right pane focuses it (focus follows the navigated pane), so
@@ -203,15 +226,21 @@ test.describe('Archive editing', () => {
     await tauriPage.waitForSelector(TRANSFER_DIALOG, 5000)
     await tauriPage.waitForSelector(`${TRANSFER_DIALOG} .btn-primary`, 3000)
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(15000) })
+      .toBeTruthy()
     await expectAndDismissToast(tauriPage, 'file')
 
     // Re-read the zip from disk in the LEFT pane (still at `left/`, cursor on
     // `file-a.txt`): entering it lists the inner entries, which now include the
     // pasted file — proof it landed inside the archive.
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'file-a.txt'), { timeout: 10000 }).toBeTruthy()
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'file-a.txt'), { timeout: waitBudget(10000) })
+      .toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('MOVING a file into the archive root lands it inside and removes the original', async ({ tauriPage }) => {
@@ -228,7 +257,9 @@ test.describe('Archive editing', () => {
     // Right pane AT the archive root — where Enter on a zip lands you.
     await navigatePaneTo(tauriPage, 'right', `${fixtureRoot}/left/sample.zip`)
     await expect
-      .poll(async () => (await mcpReadResource('cmdr://state?compact=true')).includes('sample.zip'), { timeout: 5000 })
+      .poll(async () => (await mcpReadResource('cmdr://state?compact=true')).includes('sample.zip'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     await navigatePaneTo(tauriPage, 'left', `${fixtureRoot}/left`)
@@ -240,17 +271,23 @@ test.describe('Archive editing', () => {
     await tauriPage.waitForSelector(TRANSFER_DIALOG, 5000)
     await tauriPage.waitForSelector(`${TRANSFER_DIALOG} .btn-primary`, 3000)
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(15000) })
+      .toBeTruthy()
     await expectAndDismissToast(tauriPage, 'file')
 
     // A move, so the original is gone from disk...
     await expect
-      .poll(() => !fs.existsSync(path.join(fixtureRoot, 'left', 'file-b.txt')), { timeout: 10000 })
+      .poll(() => !fs.existsSync(path.join(fixtureRoot, 'left', 'file-b.txt')), { timeout: waitBudget(10000) })
       .toBeTruthy()
     // ...and the entry is inside the archive.
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'file-b.txt'), { timeout: 10000 }).toBeTruthy()
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'file-b.txt'), { timeout: waitBudget(10000) })
+      .toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('cancelling a paste into the archive leaves the zip contents intact', async ({ tauriPage }) => {
@@ -276,7 +313,9 @@ test.describe('Archive editing', () => {
 
     await navigatePaneTo(tauriPage, 'right', `${fixtureRoot}/left/sample.zip`)
     await expect
-      .poll(async () => (await mcpReadResource('cmdr://state?compact=true')).includes('sample.zip'), { timeout: 5000 })
+      .poll(async () => (await mcpReadResource('cmdr://state?compact=true')).includes('sample.zip'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     // Navigating the right pane focuses it (focus follows the navigated pane), so
@@ -284,7 +323,9 @@ test.describe('Archive editing', () => {
     // cursoring the file for the F5 copy.
     await navigatePaneTo(tauriPage, 'left', `${fixtureRoot}/left`)
     await settleFocusedPaneOnLeft(tauriPage, `${fixtureRoot}/left`)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, pasteName), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, pasteName), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     const found = await moveCursorToFile(tauriPage, pasteName)
     expect(found).toBe(true)
 
@@ -300,7 +341,9 @@ test.describe('Archive editing', () => {
       await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
       await tauriPage.waitForSelector(TRANSFER_PROGRESS, 5000)
       await clickButtonByText(tauriPage, `${TRANSFER_PROGRESS} button`, 'Cancel')
-      await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 20000 }).toBeTruthy()
+      await expect
+        .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(20000) })
+        .toBeTruthy()
       await clearAllToasts(tauriPage)
     } finally {
       await tauriPage.evaluate(`window.__TAURI_INTERNALS__.invoke('set_test_throttle', { ms: null })`)
@@ -315,8 +358,12 @@ test.describe('Archive editing', () => {
     // caught the edit (temp+rename never mutates the original until the final
     // atomic rename): re-enter and assert both original entries survive.
     await navigatePaneTo(tauriPage, 'left', `${fixtureRoot}/left/sample.zip`)
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 10000 }).toBeTruthy()
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'nested'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(10000) })
+      .toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'nested'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
   })
 
   test('moving a file OUT of the archive removes it from the zip and lands it locally', async ({ tauriPage }) => {
@@ -325,7 +372,9 @@ test.describe('Archive editing', () => {
     const fixtureRoot = getFixtureRoot()
 
     await enterEntry(tauriPage, 'sample.zip')
-    await expect.poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInFocusedPane(tauriPage, 'inner.txt'), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     const found = await moveCursorToFile(tauriPage, 'inner.txt')
     expect(found).toBe(true)
@@ -334,17 +383,19 @@ test.describe('Archive editing', () => {
     await tauriPage.waitForSelector(TRANSFER_DIALOG, 5000)
     await tauriPage.waitForSelector(`${TRANSFER_DIALOG} .btn-primary`, 3000)
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(15000) })
+      .toBeTruthy()
     await expectAndDismissToast(tauriPage, 'file')
 
     // Landed on disk in the right pane's folder...
     await expect
-      .poll(() => fs.existsSync(path.join(fixtureRoot, 'right', 'inner.txt')), { timeout: 10000 })
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'right', 'inner.txt')), { timeout: waitBudget(10000) })
       .toBeTruthy()
     // ...and removed from the zip (the focused pane is still inside it; the live
     // watch refreshes the listing).
     await expect
-      .poll(async () => !(await fileExistsInFocusedPane(tauriPage, 'inner.txt')), { timeout: 10000 })
+      .poll(async () => !(await fileExistsInFocusedPane(tauriPage, 'inner.txt')), { timeout: waitBudget(10000) })
       .toBeTruthy()
   })
 
@@ -361,7 +412,9 @@ test.describe('Archive editing', () => {
 
     await navigatePaneTo(tauriPage, 'right', `${fixtureRoot}/left/sample.zip`)
     await expect
-      .poll(async () => (await mcpReadResource('cmdr://state?compact=true')).includes('sample.zip'), { timeout: 5000 })
+      .poll(async () => (await mcpReadResource('cmdr://state?compact=true')).includes('sample.zip'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     // Navigating the right pane focuses it (focus follows the navigated pane), so
@@ -377,7 +430,7 @@ test.describe('Archive editing', () => {
     // Default policy is "Ask for each", so starting surfaces the inline conflict UI.
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
     await tauriPage.waitForSelector(TRANSFER_PROGRESS, 5000)
-    await expect.poll(async () => tauriPage.isVisible('.conflict-section'), { timeout: 8000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('.conflict-section'), { timeout: waitBudget(8000) }).toBeTruthy()
     const conflictName = await tauriPage.textContent('.conflict-section .conflict-filename')
     expect(conflictName).toContain('inner.txt')
 
@@ -388,7 +441,9 @@ test.describe('Archive editing', () => {
         var pick = btns.find(function(b){ return /^overwrite$/i.test((b.textContent||'').trim()); }) || btns[0];
         if (pick) pick.click();
     })()`)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: waitBudget(15000) })
+      .toBeTruthy()
     await clearAllToasts(tauriPage)
   })
 })

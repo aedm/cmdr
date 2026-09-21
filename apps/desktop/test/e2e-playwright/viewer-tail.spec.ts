@@ -12,6 +12,7 @@
  * plus ramp-up), so all waits use `expect.poll` with a generous deadline.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -46,7 +47,7 @@ test.describe('File viewer tail mode', () => {
   // FSEvents debounce (300 ms) plus the BE-side coalescer plus the FE refetch
   // budget pushes this test past the default 8 s in slow-CI conditions. The
   // poll deadline below is 10 s; allow another window for open + setup.
-  test.describe.configure({ timeout: 30000 })
+  test.describe.configure({ timeout: waitBudget(30000) })
 
   test.beforeAll(() => {
     fs.writeFileSync(TAIL_FIXTURE_PATH, INITIAL_CONTENT, 'utf-8')
@@ -106,7 +107,7 @@ test.describe('File viewer tail mode', () => {
             })()
           `)
         },
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBe('true')
 
@@ -127,7 +128,7 @@ test.describe('File viewer tail mode', () => {
     // Before the upgrade finishes the status bar omits the line count span
     // entirely (status-bar template: `{#if totalLines !== null}`); the upgrade
     // for a 1.2 MB file is fast but not synchronous.
-    await expect.poll(async () => await statusLines(), { timeout: 8000 }).not.toBeNull()
+    await expect.poll(async () => await statusLines(), { timeout: waitBudget(8000) }).not.toBeNull()
     const initialLines = await statusLines()
     expect(initialLines).not.toBeNull()
     expect(initialLines).toBeGreaterThan(0)
@@ -154,7 +155,7 @@ test.describe('File viewer tail mode', () => {
         },
         // Generous deadline: FSEvents debounce on macOS is ~300 ms, plus
         // BE-side debouncer + tail extend + FE indexing poll.
-        { timeout: 15000 },
+        { timeout: waitBudget(15000) },
       )
       .toBe(true)
   })

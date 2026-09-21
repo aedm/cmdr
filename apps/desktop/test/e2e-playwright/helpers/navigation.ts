@@ -2,6 +2,7 @@
  * Route and command-palette navigation helpers for the Cmdr Playwright E2E tests.
  */
 
+import { waitBudget } from '../wait-budget.js'
 import { expect } from '@playwright/test'
 import { mcpReadResource } from '../../e2e-shared/mcp-client.js'
 import { type PageLike, CTRL_OR_META, pollUntil } from './core.js'
@@ -47,7 +48,11 @@ export async function executeViaCommandPalette(tauriPage: PageLike, query: strin
         if (item) item.click();
     })()`)
   // Wait for palette to close after executing the command
-  const paletteClosed = await pollUntil(tauriPage, async () => !(await tauriPage.isVisible('.palette-overlay')), 3000)
+  const paletteClosed = await pollUntil(
+    tauriPage,
+    async () => !(await tauriPage.isVisible('.palette-overlay')),
+    waitBudget(3000),
+  )
   if (!paletteClosed) {
     throw new Error('executeViaCommandPalette: palette did not close within 3s after clicking a result')
   }
@@ -101,7 +106,7 @@ export async function settleFocusedPaneOnLeft(tauriPage: PageLike, targetPath: s
         })()`)
         return getFocusedPaneActiveTabPath()
       },
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBe(targetPath)
 }

@@ -27,6 +27,7 @@
  * Requires `--features playwright-e2e`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -99,7 +100,7 @@ test.describe('Quit gate', () => {
     await main.evaluate(`(function() {
       document.querySelectorAll('${QUIT_DIALOG} .modal-footer button')[0].click();
     })()`)
-    await expect.poll(async () => main.isVisible(QUIT_DIALOG), { timeout: 5000 }).toBeFalsy()
+    await expect.poll(async () => main.isVisible(QUIT_DIALOG), { timeout: waitBudget(5000) }).toBeFalsy()
     expect(await main.isVisible(ALERT_DIALOG)).toBe(true)
 
     // Leave nothing open: the post-test leak guard fails whoever does.
@@ -107,6 +108,6 @@ test.describe('Quit gate', () => {
       var overlay = document.querySelector('${ALERT_DIALOG}');
       if (overlay) overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     })()`)
-    await expect.poll(async () => main.isVisible(ALERT_DIALOG), { timeout: 5000 }).toBeFalsy()
+    await expect.poll(async () => main.isVisible(ALERT_DIALOG), { timeout: waitBudget(5000) }).toBeFalsy()
   })
 })

@@ -11,6 +11,7 @@
  * would fail before the fix.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -57,7 +58,7 @@ function wrapBadgeVisible(viewer: TauriPage): Promise<boolean> {
 async function ensureWrap(viewer: TauriPage, on: boolean): Promise<void> {
   if ((await wrapBadgeVisible(viewer)) === on) return
   await viewer.evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true }))`)
-  await expect.poll(() => wrapBadgeVisible(viewer), { timeout: 3000 }).toBe(on)
+  await expect.poll(() => wrapBadgeVisible(viewer), { timeout: waitBudget(3000) }).toBe(on)
 }
 
 test.describe('File viewer horizontal scroll-to-match', () => {
@@ -95,7 +96,9 @@ test.describe('File viewer horizontal scroll-to-match', () => {
 
     await viewer.fill('.search-bar input.text-field-control', TOKEN_LONG)
     await expect
-      .poll(async () => ((await viewer.textContent('.match-count')) ?? '').includes('1 of 1'), { timeout: 5000 })
+      .poll(async () => ((await viewer.textContent('.match-count')) ?? '').includes('1 of 1'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     // Jump to the (only) match. This calls scrollToMatch.
@@ -125,7 +128,7 @@ test.describe('File viewer horizontal scroll-to-match', () => {
               }
             })()
           `),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toEqual({ inView: true, scrolledRight: true })
   })
@@ -141,7 +144,9 @@ test.describe('File viewer horizontal scroll-to-match', () => {
 
     await viewer.fill('.search-bar input.text-field-control', TOKEN_LONG)
     await expect
-      .poll(async () => ((await viewer.textContent('.match-count')) ?? '').includes('1 of 1'), { timeout: 5000 })
+      .poll(async () => ((await viewer.textContent('.match-count')) ?? '').includes('1 of 1'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     await viewer.evaluate(`
@@ -166,7 +171,7 @@ test.describe('File viewer horizontal scroll-to-match', () => {
               return m.top >= c.top - 1 && m.bottom <= c.bottom + 1
             })()
           `),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
   })
@@ -180,7 +185,9 @@ test.describe('File viewer horizontal scroll-to-match', () => {
     await viewer.waitForSelector('.search-bar', 5000)
     await viewer.fill('.search-bar input.text-field-control', TOKEN_LONG)
     await expect
-      .poll(async () => ((await viewer.textContent('.match-count')) ?? '').includes('1 of 1'), { timeout: 5000 })
+      .poll(async () => ((await viewer.textContent('.match-count')) ?? '').includes('1 of 1'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     const clickNext = () => viewer.evaluate(`document.querySelector('button[aria-label="Next match"]').click()`)
@@ -188,7 +195,7 @@ test.describe('File viewer horizontal scroll-to-match', () => {
 
     // First jump brings the match (far down the wrapped line) into view.
     await clickNext()
-    await expect.poll(scrollTop, { timeout: 5000 }).toBeGreaterThan(50)
+    await expect.poll(scrollTop, { timeout: waitBudget(5000) }).toBeGreaterThan(50)
     const settled = await scrollTop()
 
     // Press Next again on the same, now-visible match and capture scrollTop
@@ -219,7 +226,7 @@ test.describe('File viewer horizontal scroll-to-match', () => {
               return m.top >= c.top - 1 && m.bottom <= c.bottom + 1
             })()
           `),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
   })
@@ -235,7 +242,9 @@ test.describe('File viewer horizontal scroll-to-match', () => {
     await viewer.waitForSelector('.search-bar', 5000)
     await viewer.fill('.search-bar input.text-field-control', PREFIX)
     await expect
-      .poll(async () => ((await viewer.textContent('.match-count')) ?? '').includes('1 of 2'), { timeout: 5000 })
+      .poll(async () => ((await viewer.textContent('.match-count')) ?? '').includes('1 of 2'), {
+        timeout: waitBudget(5000),
+      })
       .toBeTruthy()
 
     const clickNext = () => viewer.evaluate(`document.querySelector('button[aria-label="Next match"]').click()`)
@@ -245,7 +254,7 @@ test.describe('File viewer horizontal scroll-to-match', () => {
     await clickNext()
     await expect
       .poll(() => viewer.evaluate<number>(`document.querySelector('.file-content').scrollTop`), {
-        timeout: 5000,
+        timeout: waitBudget(5000),
       })
       .toBeGreaterThan(50)
 
@@ -265,7 +274,7 @@ test.describe('File viewer horizontal scroll-to-match', () => {
               return m.top >= c.top - 1 && m.bottom <= c.bottom + 1
             })()
           `),
-        { timeout: 5000 },
+        { timeout: waitBudget(5000) },
       )
       .toBeTruthy()
   })

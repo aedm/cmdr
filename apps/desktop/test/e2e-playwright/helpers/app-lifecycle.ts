@@ -7,6 +7,7 @@
  * suite's CLAUDE.md § "`ensureAppReady` focus contract".
  */
 
+import { waitBudget } from '../wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { expect } from '@playwright/test'
@@ -119,7 +120,7 @@ export async function ensureAppReady(
         if (overlay) overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     })()`)
   // allowed-bare-poll: modal may or may not be present from a prior test; precautionary dismiss, not a required assertion
-  await pollUntil(tauriPage, async () => !(await tauriPage.isVisible('.modal-overlay')), 3000)
+  await pollUntil(tauriPage, async () => !(await tauriPage.isVisible('.modal-overlay')), waitBudget(3000))
 
   // Reset both panes back to the local volume if a previous test (smb,
   // mtp, mtp-conflicts, network-toggle) left one on Network/MTP/etc.
@@ -151,7 +152,7 @@ export async function ensureAppReady(
           )
           return volumeLines.length >= 2 && volumeLines[0] === LOCAL_VOLUME_NAME && volumeLines[1] === LOCAL_VOLUME_NAME
         },
-        5000,
+        waitBudget(5000),
       )
       if (!volumeReset) {
         throw new Error(`ensureAppReady: both panes did not return to local volume '${LOCAL_VOLUME_NAME}' within 5s`)
@@ -193,7 +194,7 @@ export async function ensureAppReady(
   const filesFound = await pollUntil(
     tauriPage,
     async () => (await missingFromLeftListing(tauriPage, leftExpected))?.length === 0,
-    10000,
+    waitBudget(10000),
   )
   if (!filesFound) {
     const missing = await missingFromLeftListing(tauriPage, leftExpected)
@@ -218,7 +219,7 @@ export async function ensureAppReady(
   const filesStable = await pollUntil(
     tauriPage,
     async () => (await missingFromLeftListing(tauriPage, leftExpected))?.length === 0,
-    5000,
+    waitBudget(5000),
   )
   if (!filesStable) {
     const missing = await missingFromLeftListing(tauriPage, leftExpected)
@@ -306,7 +307,7 @@ export async function ensureAppReady(
                 return focusInExplorer && leftFocused;
             })()`)
     },
-    6000,
+    waitBudget(6000),
   )
   if (!focusOk) {
     const diag = await tauriPage.evaluate<string>(`(function() {
@@ -381,7 +382,7 @@ export async function waitForBackendOperationsToSettle(
   tauriPage: PageLike,
   options: { timeout?: number } = {},
 ): Promise<void> {
-  const timeout = options.timeout ?? 30000
+  const timeout = options.timeout ?? waitBudget(30000)
   await expect
     .poll(
       async () =>
@@ -444,7 +445,9 @@ export async function waitForTransferUiToSettle(
   options: { backendTimeout?: number; uiTimeout?: number } = {},
 ): Promise<void> {
   await waitForBackendOperationsToSettle(tauriPage, { timeout: options.backendTimeout })
-  await expect.poll(async () => openTransferSurfaces(tauriPage), { timeout: options.uiTimeout ?? 10000 }).toEqual([])
+  await expect
+    .poll(async () => openTransferSurfaces(tauriPage), { timeout: options.uiTimeout ?? waitBudget(10000) })
+    .toEqual([])
 }
 
 /**

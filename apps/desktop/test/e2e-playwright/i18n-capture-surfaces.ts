@@ -14,6 +14,7 @@
  * surface it appeared on, so order surfaces narrow-to-broad in the spec.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect } from './fixtures.js'
@@ -432,7 +433,9 @@ export async function captureOnboardingWizard(
       await acceptOnboardingTermsIfPresent(main)
       await clickForward()
       await expect
-        .poll(async () => !(await main.isVisible(WIZARD)) || (await activeStep()) !== before, { timeout: 5000 })
+        .poll(async () => !(await main.isVisible(WIZARD)) || (await activeStep()) !== before, {
+          timeout: waitBudget(5000),
+        })
         .toBeTruthy()
     }
     await captureCall(main, 'disable').catch(() => {})
@@ -486,7 +489,7 @@ export async function captureWhatsNew(
       if (btns.length > 0) btns[btns.length - 1].click();
     })()`)
     .catch(() => {})
-  await expect.poll(async () => (await main.count('#whats-new-body')) === 0, { timeout: 3000 }).toBeTruthy()
+  await expect.poll(async () => (await main.count('#whats-new-body')) === 0, { timeout: waitBudget(3000) }).toBeTruthy()
 }
 
 /**

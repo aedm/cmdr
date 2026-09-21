@@ -21,6 +21,7 @@
  * synthetic drive would sit in the next spec's corner tooltip.
  */
 
+import { waitBudget } from './wait-budget.js'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, emitBackendEvent } from './helpers.js'
@@ -83,11 +84,11 @@ test.describe('Indexing status corner', () => {
 
     await announcePhasedRun(tauriPage)
 
-    await expect.poll(async () => cornerNamesSyntheticDrive(tauriPage), { timeout: 5000 }).toBe(true)
+    await expect.poll(async () => cornerNamesSyntheticDrive(tauriPage), { timeout: waitBudget(5000) }).toBe(true)
     expect(await tauriPage.isVisible(CORNER_HOURGLASS)).toBe(true)
 
     await endRun(tauriPage)
 
-    await expect.poll(async () => cornerNamesSyntheticDrive(tauriPage), { timeout: 5000 }).toBe(false)
+    await expect.poll(async () => cornerNamesSyntheticDrive(tauriPage), { timeout: waitBudget(5000) }).toBe(false)
   })
 })

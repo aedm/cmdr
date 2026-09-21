@@ -6,6 +6,7 @@
  * history. See `lib/search/CLAUDE.md` § "Open in pane" for the contract.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, pollUntil, dispatchMenuCommand, LOCAL_VOLUME_NAME, getFixtureRoot } from './helpers.js'
 import { ensureMcpClient, mcpReadResource } from '../e2e-shared/mcp-client.js'
@@ -95,7 +96,7 @@ async function pollRightPaneVolumeId(
   // rust-tests-linux + SMB containers) that sync stretched past 3 s and flaked this
   // poll. The probe still returns the instant the id matches; this is failure
   // headroom, matching `moveCursorToFile`'s 8 s precedent for the same loaded VM.
-  timeoutMs = 10000,
+  timeoutMs = waitBudget(10000),
 ): Promise<boolean> {
   const matches = (path: string, target: string): boolean => {
     if (target === 'search-results') return path.startsWith('search-results://')
@@ -129,7 +130,7 @@ async function pollRightPaneVolumeId(
 async function expectRightPaneVolumeId(
   tauriPage: PageLike,
   expected: string | { not: string },
-  timeoutMs = 10000,
+  timeoutMs = waitBudget(10000),
 ): Promise<void> {
   if (await pollRightPaneVolumeId(tauriPage, expected, timeoutMs)) return
   const [right, left] = [await getPaneActiveTabPath('right'), await getPaneActiveTabPath('left')]
@@ -144,7 +145,7 @@ async function expectRightPaneVolumeId(
 }
 
 /** Convenience: poll for the search overlay to unmount. */
-async function pollOverlayGone(tauriPage: PageLike, timeoutMs = 10000): Promise<boolean> {
+async function pollOverlayGone(tauriPage: PageLike, timeoutMs = waitBudget(10000)): Promise<boolean> {
   // 10 s for the same loaded-Docker-VM headroom as pollRightPaneVolumeId; the
   // overlay-unmount tick after the Open-in-pane click can stretch under load.
   return pollUntil(tauriPage, async () => (await tauriPage.count(SEARCH_OVERLAY)) === 0, timeoutMs)
@@ -183,7 +184,7 @@ async function focusRightPane(tauriPage: PageLike): Promise<void> {
             if (!right.classList.contains('is-focused')) right.click();
             return right.classList.contains('is-focused');
         })()`),
-    5000,
+    waitBudget(5000),
   )
   if (!focused) {
     const diag = await tauriPage.evaluate<string>(`(function() {
@@ -231,7 +232,7 @@ async function resetRightPaneToLocalIfNeeded(
         const p = await getPaneActiveTabPath('right')
         return p !== null && !p.startsWith('search-results://')
       },
-      { timeout: 3000 },
+      { timeout: waitBudget(3000) },
     )
     .toBeTruthy()
   await tauriPage.evaluate(`(function(){
@@ -247,7 +248,7 @@ async function resetRightPaneToLocalIfNeeded(
         const p = await getPaneActiveTabPath('right')
         return p === fixtureRightPath
       },
-      { timeout: 3000 },
+      { timeout: waitBudget(3000) },
     )
     .toBeTruthy()
 }
@@ -300,7 +301,7 @@ async function typeAndRunSearch(tauriPage: PageLike, query: string): Promise<voi
   await expect
     .poll(
       async () => tauriPage.evaluate<string>(`document.querySelector(${JSON.stringify(SEARCH_INPUT)})?.value ?? ''`),
-      { timeout: 3000 },
+      { timeout: waitBudget(3000) },
     )
     .toBe(query)
 

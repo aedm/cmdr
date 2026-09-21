@@ -8,6 +8,7 @@
  * dialog's scan-tally assertions.
  */
 
+import { waitBudget } from '../wait-budget.js'
 import fs from 'fs'
 import { expect } from '@playwright/test'
 import { type PageLike, TRANSFER_DIALOG, pollUntil } from './core.js'
@@ -48,7 +49,7 @@ export async function dismissAllToasts(tauriPage: PageLike): Promise<void> {
             if (close) close.click();
         }
     })()`)
-  await expect.poll(async () => (await tauriPage.count('.toast')) === 0, { timeout: 3000 }).toBeTruthy()
+  await expect.poll(async () => (await tauriPage.count('.toast')) === 0, { timeout: waitBudget(3000) }).toBeTruthy()
 }
 
 /**
@@ -92,7 +93,7 @@ export async function dismissOverlay(tauriPage: PageLike): Promise<void> {
     )
   }
   await escapeOverlay(tauriPage, selector)
-  await expect.poll(async () => (await tauriPage.count(selector)) === 0, { timeout: 3000 }).toBeTruthy()
+  await expect.poll(async () => (await tauriPage.count(selector)) === 0, { timeout: waitBudget(3000) }).toBeTruthy()
 }
 
 /**
@@ -135,7 +136,11 @@ export async function escapeOverlay(tauriPage: PageLike, selector: string): Prom
  * a dialog that answers Escape by opening a second one (a confirmation), where press two
  * would answer a question press one asked.
  */
-export async function escapeOverlayUntilGone(tauriPage: PageLike, selector: string, timeoutMs = 10000): Promise<void> {
+export async function escapeOverlayUntilGone(
+  tauriPage: PageLike,
+  selector: string,
+  timeoutMs = waitBudget(10000),
+): Promise<void> {
   await expect
     .poll(
       async () => {
@@ -248,11 +253,11 @@ export async function closeOnboardingWizardIfOpen(tauriPage: PageLike): Promise<
     await expect
       .poll(
         async () => !(await onboardingWizardIsOpen(tauriPage)) || (await onboardingActiveStep(tauriPage)) !== before,
-        { timeout: 3000 },
+        { timeout: waitBudget(3000) },
       )
       .toBeTruthy()
   }
-  await expect.poll(async () => !(await onboardingWizardIsOpen(tauriPage)), { timeout: 3000 }).toBeTruthy()
+  await expect.poll(async () => !(await onboardingWizardIsOpen(tauriPage)), { timeout: waitBudget(3000) }).toBeTruthy()
 }
 
 // ── Pressing buttons ─────────────────────────────────────────────────────────
@@ -305,7 +310,7 @@ export async function clickButtonByText(
   tauriPage: PageLike,
   selector: string,
   buttonText: string,
-  timeout = 5000,
+  timeout = waitBudget(5000),
 ): Promise<void> {
   const sel = JSON.stringify(selector)
   const txt = JSON.stringify(buttonText)
@@ -370,7 +375,7 @@ export async function expectAndDismissToast(
   substring: string,
   options: { timeout?: number } = {},
 ): Promise<void> {
-  const timeout = options.timeout ?? 3000
+  const timeout = options.timeout ?? waitBudget(3000)
   const sub = JSON.stringify(substring)
   // Match against the WHOLE toast's textContent, not just `.toast-message`:
   // string-content toasts render their text in a `.toast-message` span, but
@@ -414,7 +419,7 @@ export async function expectAndDismissToast(
             }
             return true;
         })()`),
-      { timeout: 2000 },
+      { timeout: waitBudget(2000) },
     )
     .toBeTruthy()
 }
@@ -506,7 +511,7 @@ export async function expectDialogCounters(
   expected: ExpectedDialogCounters,
   options: { timeout?: number } = {},
 ): Promise<void> {
-  const timeout = options.timeout ?? 10000
+  const timeout = options.timeout ?? waitBudget(10000)
   const terminalStates = expected.allowSkipped ? ['done', 'skipped'] : ['done']
 
   // Wait for the scan to settle to a terminal state before reading counts, so

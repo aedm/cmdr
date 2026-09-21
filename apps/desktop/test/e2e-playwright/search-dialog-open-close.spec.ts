@@ -12,6 +12,7 @@
  * regresses.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { ensureAppReady, pollUntil } from './helpers.js'
 import { ensureMcpClient } from '../e2e-shared/mcp-client.js'
@@ -31,7 +32,11 @@ test.describe('Search dialog: open and close', () => {
     // Reopening after close should work uneventfully (state preservation lives
     // in `search-state.svelte.ts`, but the overlay element itself is fresh).
     await openSearchDialog(tauriPage)
-    const reopened = await pollUntil(tauriPage, async () => (await tauriPage.count(SEARCH_OVERLAY)) === 1, 2000)
+    const reopened = await pollUntil(
+      tauriPage,
+      async () => (await tauriPage.count(SEARCH_OVERLAY)) === 1,
+      waitBudget(2000),
+    )
     expect(reopened).toBe(true)
     await closeSearchDialog(tauriPage)
   })

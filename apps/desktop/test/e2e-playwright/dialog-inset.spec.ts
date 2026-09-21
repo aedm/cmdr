@@ -41,6 +41,7 @@
  * `FULL_BLEED_DIALOGS` with a reason rather than loosening the tolerance.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import {
   ensureAppReady,
@@ -235,7 +236,7 @@ async function closeGallerySurface(page: TauriPage, dialogId: string): Promise<b
         if (btns.length > 0) btns[btns.length - 1].click();
     })()`)
     await expect
-      .poll(isOpen, { timeout: 1000 })
+      .poll(isOpen, { timeout: waitBudget(1000) })
       .toBeFalsy()
       .catch(() => {})
   }
@@ -243,7 +244,7 @@ async function closeGallerySurface(page: TauriPage, dialogId: string): Promise<b
 }
 
 test.describe('Dialog body inset', () => {
-  test.describe.configure({ timeout: 180000 })
+  test.describe.configure({ timeout: waitBudget(180000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     // The fixture tree is shared, and the conflict specs that run just before this one

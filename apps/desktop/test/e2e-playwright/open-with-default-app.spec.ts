@@ -21,6 +21,7 @@
  *     file-a.txt, file-b.txt, sub-dir/, ...
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { recreateFixtures } from '../e2e-shared/fixtures.js'
 import { restoreFixtureTree } from '../e2e-shared/fixture-manifest.js'
@@ -47,7 +48,9 @@ async function openFileWith(tauriPage: PageLike, name: string, combo: string): P
   await tauriPage.keyboard.press(combo)
 
   await expect
-    .poll(async () => (await getOpenedPaths(tauriPage)).some((p) => p.endsWith(`/${name}`)), { timeout: 5000 })
+    .poll(async () => (await getOpenedPaths(tauriPage)).some((p) => p.endsWith(`/${name}`)), {
+      timeout: waitBudget(5000),
+    })
     .toBeTruthy()
 }
 

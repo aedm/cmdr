@@ -22,6 +22,7 @@
  * and the viewer never sees them.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -89,7 +90,7 @@ test.describe('File viewer text cursor', () => {
     // by an earlier attempt would otherwise still be what the first viewer's snapshot
     // reads, and the "off paints nothing" assertions would fail for the wrong reason.
     await setTextCursor(false)
-    await expect.poll(textCursorOnDisk, { timeout: 5000 }).not.toBe(true)
+    await expect.poll(textCursorOnDisk, { timeout: waitBudget(5000) }).not.toBe(true)
   })
 
   // Always close the viewer AND restore the default-off baseline, even on failure: the
@@ -242,7 +243,7 @@ test.describe('File viewer text cursor', () => {
 
     await setTextCursor(true)
 
-    await expect.poll(readCursor, { timeout: 3000 }).not.toBeNull()
+    await expect.poll(readCursor, { timeout: waitBudget(3000) }).not.toBeNull()
     const painted = await readCursor()
     if (painted === null) throw new Error('the text cursor vanished between two reads')
 
@@ -261,22 +262,24 @@ test.describe('File viewer text cursor', () => {
 
     // Shift+Right walks the focus, and the cursor follows it.
     await pressKeyTimes('ArrowRight', { shiftKey: true }, 4)
-    await expect.poll(async () => (await readCursor())?.left ?? -1, { timeout: 3000 }).toBeGreaterThan(painted.left)
+    await expect
+      .poll(async () => (await readCursor())?.left ?? -1, { timeout: waitBudget(3000) })
+      .toBeGreaterThan(painted.left)
 
     // And back off again: the reactive read follows the setting in both directions.
     await setTextCursor(false)
-    await expect.poll(readCursor, { timeout: 3000 }).toBeNull()
+    await expect.poll(readCursor, { timeout: waitBudget(3000) }).toBeNull()
   })
 
   test('is already on in a viewer opened after the setting was saved', async () => {
     // The other half of the plumbing: a viewer that missed the change event entirely and
     // seeds from the `get_restricted_window_settings` snapshot instead.
     await setTextCursor(true)
-    await expect.poll(textCursorOnDisk, { timeout: 5000 }).toBe(true)
+    await expect.poll(textCursorOnDisk, { timeout: waitBudget(5000) }).toBe(true)
 
     await openViewer()
     await clickAt(await midpointOfLineZero(6, 10))
-    await expect.poll(readCursor, { timeout: 3000 }).not.toBeNull()
+    await expect.poll(readCursor, { timeout: waitBudget(3000) }).not.toBeNull()
   })
 
   test('paints nothing while the setting is off', async () => {
@@ -288,7 +291,7 @@ test.describe('File viewer text cursor', () => {
     // viewer saw both events, and therefore that the absent cursor is the setting rather
     // than a press that never landed.
     await pressKeyTimes('ArrowRight', { shiftKey: true }, 3)
-    await expect.poll(selectedTextOnLineZero, { timeout: 3000 }).not.toBe('')
+    await expect.poll(selectedTextOnLineZero, { timeout: waitBudget(3000) }).not.toBe('')
 
     expect(await readCursor()).toBeNull()
   })

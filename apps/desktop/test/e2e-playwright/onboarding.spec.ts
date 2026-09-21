@@ -24,6 +24,7 @@
  *    and asserts the wizard appears with the expected starting step.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import {
   ensureAppReady,
@@ -73,7 +74,7 @@ test.describe('Onboarding wizard re-entry', () => {
     // fast if the step ever changed.
     await dispatchMenuCommand(tauriPage, 'cmdr.openOnboarding')
     await dispatchMenuCommand(tauriPage, 'cmdr.openOnboarding')
-    await expect.poll(async () => activeStep(tauriPage), { timeout: 1000 }).toBe(firstStep)
+    await expect.poll(async () => activeStep(tauriPage), { timeout: waitBudget(1000) }).toBe(firstStep)
     expect(await wizardIsOpen(tauriPage)).toBe(true)
   })
 
@@ -131,14 +132,14 @@ test.describe('Onboarding wizard re-entry', () => {
     await tauriPage.evaluate(pressTab)
 
     await closeWizardIfOpen(tauriPage)
-    await expect.poll(async () => wizardIsOpen(tauriPage), { timeout: 3000 }).toBe(false)
+    await expect.poll(async () => wizardIsOpen(tauriPage), { timeout: waitBudget(3000) }).toBe(false)
     await tauriPage.evaluate(pressTab)
 
-    await expect.poll(() => paneFocused(1), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => paneFocused(1), { timeout: waitBudget(3000) }).toBe(true)
 
     // Hand the next spec the left-focused pane `ensureAppReady` promises.
     await tauriPage.evaluate(pressTab)
-    await expect.poll(() => paneFocused(0), { timeout: 3000 }).toBe(true)
+    await expect.poll(() => paneFocused(0), { timeout: waitBudget(3000) }).toBe(true)
   })
 
   test('Escape does not close the wizard (round-3 #9: must commit to a step)', async ({ tauriPage }) => {
@@ -155,7 +156,7 @@ test.describe('Onboarding wizard re-entry', () => {
     }
     // The wizard MUST still be open after Escape. expect.poll waits up to 1s for
     // a contradiction (`wizardIsOpen()` returning false would fail the test).
-    await expect.poll(async () => wizardIsOpen(tauriPage), { timeout: 1000 }).toBe(true)
+    await expect.poll(async () => wizardIsOpen(tauriPage), { timeout: waitBudget(1000) }).toBe(true)
   })
 
   // dismissOverlay would mark the wizard as a legitimate target, but the wizard
@@ -227,13 +228,13 @@ test.describe('Onboarding wizard language escape hatch', () => {
     await pickLanguage(tauriPage, 'hu')
 
     // No restart, no reload: the open wizard re-renders in Hungarian.
-    await expect.poll(async () => wizardTitle(tauriPage), { timeout: 3000 }).toBe('Cmdr bevezető')
+    await expect.poll(async () => wizardTitle(tauriPage), { timeout: waitBudget(3000) }).toBe('Cmdr bevezető')
     expect(await wizardIsOpen(tauriPage)).toBe(true)
 
     // And the way back is the same control, still recognizable: the `English` row reads
     // "English" whatever the app happens to be speaking.
     await pickLanguage(tauriPage, 'en')
-    await expect.poll(async () => wizardTitle(tauriPage), { timeout: 3000 }).toBe('Cmdr onboarding')
+    await expect.poll(async () => wizardTitle(tauriPage), { timeout: waitBudget(3000) }).toBe('Cmdr onboarding')
   })
 })
 

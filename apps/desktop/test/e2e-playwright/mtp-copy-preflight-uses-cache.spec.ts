@@ -20,6 +20,7 @@
  * Requires the app to be built with `--features playwright-e2e,virtual-mtp`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -57,11 +58,16 @@ const INTERNAL_STORAGE = 'Virtual Pixel 9 - Internal Storage'
  * cold-cache cost for a small folder is hundreds of ms; the cache-hit cost
  * should be ~5 ms plus dialog mount + one scan-preview round-trip. 1500 ms
  * is a ~3× safety margin and well clear of the cold-cache regime.
+ *
+ * It scales with the machine's load like every other budget here: the cold-cache
+ * regime stretches under load too, so a fixed bound turns a busy box into a red
+ * run rather than a slow one, which is the failure this assertion never meant to
+ * catch.
  */
-const SCAN_COMPLETE_BOUND_MS = 1500
+const SCAN_COMPLETE_BOUND_MS = waitBudget(1500)
 
 // MTP operations go through the virtual device and add protocol overhead.
-test.setTimeout(60_000)
+test.setTimeout(waitBudget(60_000))
 
 /** Reads cmdr://state and returns true when both panes show the local volume. */
 async function bothPanesOnLocalVolume(): Promise<boolean> {
@@ -104,7 +110,7 @@ test.beforeEach(async ({ tauriPage }) => {
         invoke('plugin:event|emit', { event: 'mcp-volume-select', payload: { pane: 'left', name: ${JSON.stringify(LOCAL_VOLUME_NAME)} } });
         invoke('plugin:event|emit', { event: 'mcp-volume-select', payload: { pane: 'right', name: ${JSON.stringify(LOCAL_VOLUME_NAME)} } });
     })()`)
-    await expect.poll(() => bothPanesOnLocalVolume(), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(() => bothPanesOnLocalVolume(), { timeout: waitBudget(5000) }).toBeTruthy()
     // Previously: double-Escape + best-effort modal-overlay poll to clean up
     // dialogs leaked from prior tests. The global afterEach safety net in
     // fixtures.ts now catches and auto-cleans any leaks at the point of leak,
@@ -147,7 +153,7 @@ test.describe('MTP copy pre-flight reuses watcher-backed listing', () => {
             tauriPage.evaluate<boolean>(
               `!!document.querySelector('.file-pane.is-focused .file-entry[data-filename=' + ${JSON.stringify(JSON.stringify(name))} + '].is-selected')`,
             ),
-          { timeout: 2000 },
+          { timeout: waitBudget(2000) },
         )
         .toBeTruthy()
     }

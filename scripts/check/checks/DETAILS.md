@@ -1271,9 +1271,10 @@ Gotchas:
 
 - **Stage 1 passes no `--timeout` at all.** Leaving the flag off is what makes a pass there mean "starved" rather than
   "given more time". Stage 2 passes `--timeout=60000` (`e2eHeadroomFactor` × the config's 15 s).
-- **`test.setTimeout` beats the CLI flag**, because it is set at runtime. A spec with its own budget therefore gets no
-  headroom from stage 2 and can read `real` when it was only slow. The summary says so under any `real` or `too-slow`
-  section, so a reader never concludes "4x wasn't enough" when 4x was never applied.
+- **`test.setTimeout` beats the CLI flag**, because it is set at runtime, so `--timeout` alone would leave a spec with
+  its own ceiling at its original budget and call it `real` when it was only slow. Stage 2 therefore ALSO raises
+  `CMDR_E2E_WAIT_SCALE` to `e2eHeadroomFactor`: `wait-budget.ts` wraps every `setTimeout` call site, so those specs
+  widen with everything else. Stage 1 passes the lane's own measured scale, so its budgets match the run it is judging.
 - **A re-run that ran none of its target tests is a runner error, not a pass** (`rerunCoveredTargets`). Same trap the
   integration lane hit with `--run-ignored only`: a filter selecting nothing reports zero failures, which reads as
   "everything passed alone" and would turn every real failure into a contention warn.

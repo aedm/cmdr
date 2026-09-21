@@ -21,6 +21,7 @@
  * the report.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { test, expect, stopVideoRecording } from './fixtures.js'
@@ -213,7 +214,7 @@ test.describe('i18n screenshot capture', () => {
     // message written precisely to explain what happened. A too-tight timeout
     // replaces this run's own diagnostic with noise. The worst-case pass adds
     // per-surface zoom + resize + an extra reflow settle on top.
-    test.setTimeout(isWorstCasePass ? 480000 : 300000)
+    test.setTimeout(waitBudget(isWorstCasePass ? 480000 : 300000))
     const main = tauriPage as TauriPage
     mkdirSync(screenshotsDir, { recursive: true })
 

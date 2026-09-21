@@ -8,6 +8,7 @@
  * dialog-open specs all share the helpers below.
  */
 
+import { waitBudget } from './wait-budget.js'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
 import { dismissOverlay, dispatchMenuCommand, escapeOverlayUntilGone, pollUntil, pressKey } from './helpers.js'
 
@@ -59,7 +60,7 @@ export async function resetSearchDialog(tauriPage: PageLike): Promise<void> {
     async () =>
       (await tauriPage.count(`${SEARCH_OVERLAY} .status-stop`)) === 0 &&
       (await tauriPage.count(`${SEARCH_OVERLAY} .result-row`)) === 0,
-    10000,
+    waitBudget(10000),
   )
   if (!quiet) throw new Error('search dialog still had a run going 10s after ⌘N')
 }
@@ -182,7 +183,7 @@ export async function pressMetaDigit(tauriPage: PageLike, digit: 1 | 2 | 3): Pro
 export async function pollActiveMode(
   tauriPage: PageLike,
   expected: 'ai' | 'filename' | 'regex',
-  timeoutMs = 1500,
+  timeoutMs = waitBudget(1500),
 ): Promise<boolean> {
   return pollUntil(tauriPage, async () => (await getActiveMode(tauriPage)) === expected, timeoutMs)
 }

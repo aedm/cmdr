@@ -7,6 +7,7 @@
  * § "Multi-window testing".
  */
 
+import { waitBudget } from '../wait-budget.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 import { pollUntil } from './core.js'
 
@@ -33,7 +34,7 @@ export async function openViewerWindow(tauriPage: TauriPage, filePath: string): 
     })()`)
   // Wait for a NEW viewer-* window (not one left open from a previous test).
   const viewer = await tauriPage.waitForWindow((w) => w.label.startsWith('viewer-') && !before.has(w.label), {
-    timeout: 10000,
+    timeout: waitBudget(10000),
   })
   return viewer
 }
@@ -49,7 +50,7 @@ export async function openSettingsWindowViaProd(tauriPage: TauriPage): Promise<T
         var invoke = window.__TAURI_INTERNALS__.invoke;
         invoke('plugin:event|emit', { event: 'open-settings' });
     })()`)
-  return tauriPage.waitForWindow((w) => w.label === 'settings', { timeout: 10000 })
+  return tauriPage.waitForWindow((w) => w.label === 'settings', { timeout: waitBudget(10000) })
 }
 
 /**
@@ -87,7 +88,7 @@ export async function closeScopedWindow(mainPage: TauriPage, _scoped: TauriPage,
       const labels = (await mainPage.listWindows()).map((w) => w.label)
       return !labels.includes(label)
     },
-    5000,
+    waitBudget(5000),
   )
   if (!gone) {
     throw new Error(`closeScopedWindow: window '${label}' still present after 5s`)

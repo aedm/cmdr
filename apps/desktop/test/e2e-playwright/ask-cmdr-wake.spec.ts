@@ -17,6 +17,7 @@
  * The rail's opt-in screen is the only way to grant it, so the test opens the rail first.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
 import { dismissAllToasts, dispatchMenuCommand, ensureAppReady, forceAgentWake, stageAgentRollup } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -126,7 +127,9 @@ async function stageInboxNoise(page: TauriPage): Promise<void> {
 
 /** Waits for the wake armed by `watchForWake` to have run and finished. */
 async function awaitWakeFinished(page: TauriPage): Promise<void> {
-  await expect.poll(() => page.evaluate<boolean>(`window.__wakeSeen?.idle === true`), { timeout: 20000 }).toBe(true)
+  await expect
+    .poll(() => page.evaluate<boolean>(`window.__wakeSeen?.idle === true`), { timeout: waitBudget(20000) })
+    .toBe(true)
 }
 
 /** Opens the rail via the View-menu toggle, re-dispatching inside the poll: the cross-source
@@ -140,7 +143,7 @@ async function openRail(page: TauriPage): Promise<void> {
         await dispatchMenuCommand(page, 'askCmdr.toggle')
         return railOpen(page)
       },
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBe(true)
 }
@@ -149,7 +152,7 @@ async function openRail(page: TauriPage): Promise<void> {
 async function closeRailIfOpen(page: TauriPage): Promise<void> {
   if (!(await railOpen(page))) return
   await page.evaluate(`document.querySelector('.ask-cmdr-rail .header-actions button:last-child')?.click()`)
-  await expect.poll(() => railOpen(page), { timeout: 3000 }).toBe(false)
+  await expect.poll(() => railOpen(page), { timeout: waitBudget(3000) }).toBe(false)
 }
 
 /** Grants consent if the gate is showing (it persists in `main.db` for the run), then waits
@@ -165,13 +168,13 @@ async function ensureConsented(page: TauriPage): Promise<void> {
         }
         return composerPresent(page)
       },
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBe(true)
 }
 
 test.describe('Ask Cmdr wakes on its own', () => {
-  test.describe.configure({ timeout: 40000 })
+  test.describe.configure({ timeout: waitBudget(40000) })
 
   test.beforeEach(async ({ tauriPage }) => {
     await ensureAppReady(tauriPage)
@@ -209,7 +212,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
           await reloadSessions(page)
           return sessionTitles(page)
         },
-        { timeout: 20000 },
+        { timeout: waitBudget(20000) },
       )
       .toContain(folderName)
 
@@ -219,7 +222,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
       `[...document.querySelectorAll('.ask-cmdr-rail .sessions .row')]
         .find(r => (r.textContent || '').includes(${JSON.stringify(folderName)}))?.click()`,
     )
-    await expect.poll(() => railText(page), { timeout: 15000 }).toContain(WAKE_REPLY)
+    await expect.poll(() => railText(page), { timeout: waitBudget(15000) }).toContain(WAKE_REPLY)
 
     // ⚠️ The digest opens COLLAPSED and says nothing about which folder until it is expanded:
     // a thread opens on what the agent SAID, not on the tally that prompted it. And every word
@@ -230,7 +233,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
     expect(collapsed).not.toContain(folderName)
 
     await page.evaluate(`document.querySelector('.ask-cmdr-rail .wake-digest .digest-toggle')?.click()`)
-    await expect.poll(() => railText(page), { timeout: 5000 }).toContain(folderName)
+    await expect.poll(() => railText(page), { timeout: waitBudget(5000) }).toContain(folderName)
     const text = await railText(page)
     expect(text).toContain('5 new items')
     // ⚠️ The rail's own scripted reply must not appear: one shared script would make a wake
@@ -269,7 +272,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
           await reloadSessions(page)
           return sessionTitles(page)
         },
-        { timeout: 20000 },
+        { timeout: waitBudget(20000) },
       )
       .toContain(loudFolder)
 
@@ -295,7 +298,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
 
     // The one time the proactive agent interrupts: it proposed something nobody asked for, so
     // it says so, and it offers both ways in.
-    await expect.poll(() => stagedToastText(page), { timeout: 20000 }).toContain('suggestion')
+    await expect.poll(() => stagedToastText(page), { timeout: waitBudget(20000) }).toContain('suggestion')
     const toast = await stagedToastText(page)
     expect(toast).toContain('Review')
     expect(toast).toContain('See why')
@@ -304,7 +307,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
     // and the toast is only a nudge towards it.
     await expect
       .poll(() => page.evaluate<boolean>(`document.querySelector('.status-corner .indicator') !== null`), {
-        timeout: 10000,
+        timeout: waitBudget(10000),
       })
       .toBe(true)
 
@@ -320,7 +323,7 @@ test.describe('Ask Cmdr wakes on its own', () => {
           await reloadSessions(page)
           return sessionTitles(page)
         },
-        { timeout: 20000 },
+        { timeout: waitBudget(20000) },
       )
       .toContain(folderName)
     const marked = await page.evaluate<boolean>(

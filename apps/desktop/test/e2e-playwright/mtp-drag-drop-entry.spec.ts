@@ -18,6 +18,7 @@
  * Lives on the MTP shard (`mtp-*.spec.ts`); requires `playwright-e2e,virtual-mtp`.
  */
 
+import { waitBudget } from './wait-budget.js'
 import os from 'os'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -85,10 +86,10 @@ async function dismissAlert(tauriPage: PageLike): Promise<void> {
       var btn = document.querySelector('${ALERT_DIALOG} button');
       if (btn) btn.click();
   })()`)
-  await expect.poll(async () => !(await tauriPage.isVisible(ALERT_DIALOG)), { timeout: 3000 }).toBeTruthy()
+  await expect.poll(async () => !(await tauriPage.isVisible(ALERT_DIALOG)), { timeout: waitBudget(3000) }).toBeTruthy()
 }
 
-test.setTimeout(120_000)
+test.setTimeout(waitBudget(120_000))
 
 test.beforeEach(async ({ tauriPage }) => {
   recreateFixtures(getFixtureRoot())
@@ -131,7 +132,7 @@ test.describe('Programmatic drop entry (MTP)', () => {
 
     // The shared destination guard refuses with the exact "Read-only device"
     // alert (the E2E-asserted copy contract) — and NO transfer dialog opens.
-    await expect.poll(async () => tauriPage.isVisible(ALERT_DIALOG), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible(ALERT_DIALOG), { timeout: waitBudget(5000) }).toBeTruthy()
     const alert = await readAlert(tauriPage)
     expect(alert.title).toBe('Read-only device')
     expect(alert.message).toBe(`"${SD_CARD}" is read-only. You can copy files from it, but not to it.`)
@@ -170,7 +171,9 @@ test.describe('Programmatic drop entry (MTP)', () => {
         var ov = document.querySelector('${TRANSFER_DIALOG} .modal-overlay') || document.querySelector('.modal-overlay');
         if (ov) ov.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     })()`)
-    await expect.poll(async () => !(await tauriPage.isVisible(TRANSFER_DIALOG)), { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible(TRANSFER_DIALOG)), { timeout: waitBudget(3000) })
+      .toBeTruthy()
   })
 
   test('an EXTERNAL drop of a full mtp:// path onto local resolves the MTP volume (resolver path)', async ({
@@ -196,7 +199,9 @@ test.describe('Programmatic drop entry (MTP)', () => {
         var ov = document.querySelector('${TRANSFER_DIALOG} .modal-overlay') || document.querySelector('.modal-overlay');
         if (ov) ov.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     })()`)
-    await expect.poll(async () => !(await tauriPage.isVisible(TRANSFER_DIALOG)), { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible(TRANSFER_DIALOG)), { timeout: waitBudget(3000) })
+      .toBeTruthy()
   })
 
   test('dropping a local file onto MTP fills the counters from the resolved volume', async ({ tauriPage }) => {
@@ -217,6 +222,8 @@ test.describe('Programmatic drop entry (MTP)', () => {
         var ov = document.querySelector('${TRANSFER_DIALOG} .modal-overlay') || document.querySelector('.modal-overlay');
         if (ov) ov.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     })()`)
-    await expect.poll(async () => !(await tauriPage.isVisible(TRANSFER_DIALOG)), { timeout: 3000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible(TRANSFER_DIALOG)), { timeout: waitBudget(3000) })
+      .toBeTruthy()
   })
 })

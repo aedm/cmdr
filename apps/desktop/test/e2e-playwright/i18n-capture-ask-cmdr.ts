@@ -27,6 +27,7 @@
  * already passed.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { expect } from './fixtures.js'
 import { ensureAppReady, dispatchMenuCommand } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
@@ -53,7 +54,7 @@ async function openRail(main: TauriPage): Promise<void> {
         await dispatchMenuCommand(main, 'askCmdr.toggle')
         return railOpen(main)
       },
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBe(true)
 }
@@ -62,7 +63,7 @@ async function openRail(main: TauriPage): Promise<void> {
 async function closeRail(main: TauriPage): Promise<void> {
   if (!(await railOpen(main))) return
   await main.evaluate(`document.querySelector('${RAIL} .header-actions button:last-child')?.click()`)
-  await expect.poll(() => railOpen(main), { timeout: 3000 }).toBe(false)
+  await expect.poll(() => railOpen(main), { timeout: waitBudget(3000) }).toBe(false)
 }
 
 /** The opt-in consent screen is up (rail open, chat not yet unlocked). */
@@ -97,7 +98,7 @@ async function unlockChat(main: TauriPage): Promise<void> {
         }
         return composerPresent(main)
       },
-      { timeout: 5000 },
+      { timeout: waitBudget(5000) },
     )
     .toBe(true)
 }
@@ -129,7 +130,7 @@ export async function captureAskCmdrSurfaces(
   await captureCall<boolean>(main, 'enable')
   await openRail(main)
   const needsConsent = await expect
-    .poll(async () => consentShown(main), { timeout: 3000 })
+    .poll(async () => consentShown(main), { timeout: waitBudget(3000) })
     .toBe(true)
     .then(() => true)
     .catch(() => false)
@@ -177,7 +178,7 @@ export async function captureAskCmdrSurfaces(
       ta.dispatchEvent(new Event('input', { bubbles: true }));
       ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     })()`)
-    await expect.poll(() => replyCount(main), { timeout: 15000 }).toBeGreaterThan(before)
+    await expect.poll(() => replyCount(main), { timeout: waitBudget(15000) }).toBeGreaterThan(before)
     return { page: main }
   })
   await captureCall(main, 'disable').catch(() => {})

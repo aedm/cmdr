@@ -28,6 +28,7 @@
  * nothing in the first place.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 
@@ -123,7 +124,7 @@ export async function restoreLocalVolumeIndex(): Promise<void> {
   // window gets an auto-applied run with nothing to serve (seen on the Linux lane,
   // where `search-recent` failed once and passed on the retry). Asking for a real
   // answer is what makes the handover complete.
-  await expect.poll(indexAnswers, { timeout: 20_000 }).toBe(true)
+  await expect.poll(indexAnswers, { timeout: waitBudget(20_000) }).toBe(true)
 }
 
 /**

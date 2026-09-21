@@ -12,6 +12,7 @@
  * `file-b.txt`, `sub-dir/`, `bulk/`, `.hidden-file`; `right/` starts empty.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 import { test, expect } from './fixtures.js'
@@ -61,17 +62,19 @@ test.describe('Duplicate in place', () => {
     expect(found).toBe(true)
 
     await pressKey(tauriPage, `${CTRL_OR_META}+c`)
-    await expectAndDismissToast(tauriPage, 'Copied 1 item', { timeout: 5000 })
+    await expectAndDismissToast(tauriPage, 'Copied 1 item', { timeout: waitBudget(5000) })
 
     // Paste into the pane the file is already in. No conflict dialog may appear:
     // an item landing on itself is a request to duplicate it.
     await pressKey(tauriPage, `${CTRL_OR_META}+v`)
 
     await expect
-      .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (1).txt')), { timeout: 8000 })
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (1).txt')), { timeout: waitBudget(8000) })
       .toBeTruthy()
     expect(fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt'))).toBe(true)
-    await expect.poll(async () => fileExistsInPane(tauriPage, 'file-a (1).txt', 0), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInPane(tauriPage, 'file-a (1).txt', 0), { timeout: waitBudget(5000) })
+      .toBeTruthy()
 
     // The progress dialog is up until the operation ends, so both this wait and the
     // toast below are asking about a finished operation. It has to be the UI-side
@@ -85,11 +88,13 @@ test.describe('Duplicate in place', () => {
     // rename editor, seeded with the name the backend generated (read from the
     // operation journal, never recomputed here).
     await tauriPage.waitForSelector('.rename-input', 5000)
-    await expect.poll(async () => renameEditorValue(tauriPage), { timeout: 3000 }).toBe('file-a (1).txt')
+    await expect.poll(async () => renameEditorValue(tauriPage), { timeout: waitBudget(3000) }).toBe('file-a (1).txt')
 
     // Esc keeps the generated name: the copy stays exactly where the paste put it.
     await tauriPage.press('.rename-input', 'Escape')
-    await expect.poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (1).txt'))).toBe(true)
   })
 
@@ -103,10 +108,12 @@ test.describe('Duplicate in place', () => {
     await pressKey(tauriPage, `${CTRL_OR_META}+d`)
 
     await expect
-      .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (1).txt')), { timeout: 8000 })
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (1).txt')), { timeout: waitBudget(8000) })
       .toBeTruthy()
     expect(fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt'))).toBe(true)
-    await expect.poll(async () => fileExistsInPane(tauriPage, 'file-a (1).txt', 0), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => fileExistsInPane(tauriPage, 'file-a (1).txt', 0), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     // Neither wait above says the operation is OVER (the copy is on disk before the
     // closing flush, and the row comes from the pane's watcher), and the toast and
     // the dialog's close are both the completion's doing, on the frontend's turn
@@ -130,7 +137,7 @@ test.describe('Duplicate in place', () => {
     expect(await moveCursorToFile(tauriPage, 'file-a.txt')).toBe(true)
     await pressKey(tauriPage, `${CTRL_OR_META}+d`)
     await expect
-      .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (2).txt')), { timeout: 8000 })
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (2).txt')), { timeout: waitBudget(8000) })
       .toBeTruthy()
     await waitForTransferUiToSettle(tauriPage)
     await expectAndDismissToast(tauriPage, 'Copied 1 file.')
@@ -155,7 +162,7 @@ test.describe('Duplicate in place', () => {
         () =>
           fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (1).txt')) &&
           fs.existsSync(path.join(fixtureRoot, 'left', 'file-b (1).txt')),
-        { timeout: 8000 },
+        { timeout: waitBudget(8000) },
       )
       .toBeTruthy()
     // UI-side: the line below asks about the rename editor, which is frontend state,
@@ -170,7 +177,7 @@ test.describe('Duplicate in place', () => {
     await executeViaCommandPalette(tauriPage, 'Duplicate')
 
     await expect
-      .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-b (2).txt')), { timeout: 8000 })
+      .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-b (2).txt')), { timeout: waitBudget(8000) })
       .toBeTruthy()
     await waitForTransferUiToSettle(tauriPage)
     await expectAndDismissToast(tauriPage, 'Copied 1 file.')
@@ -197,7 +204,9 @@ test.describe('Duplicate in place', () => {
     await tauriPage.waitForSelector(TRANSFER_DIALOG, 5000)
 
     await expect
-      .poll(async () => !(await tauriPage.isVisible(`${TRANSFER_DIALOG} .conflicts-checking`)), { timeout: 10000 })
+      .poll(async () => !(await tauriPage.isVisible(`${TRANSFER_DIALOG} .conflicts-checking`)), {
+        timeout: waitBudget(10000),
+      })
       .toBeTruthy()
     expect(await tauriPage.isVisible(`${TRANSFER_DIALOG} .conflicts-summary`)).toBe(false)
     expect(await tauriPage.isVisible(`${TRANSFER_DIALOG} .conflict-policy`)).toBe(false)
@@ -209,7 +218,9 @@ test.describe('Duplicate in place', () => {
     // continuously from here until the operation ends AND the frontend has closed it.
     // The file lands before the operation ends and proves it started, so the settle
     // wait can't pass vacuously here.
-    await expect.poll(() => fs.existsSync(path.join(leftDir, 'file-b (1).txt')), { timeout: 8000 }).toBeTruthy()
+    await expect
+      .poll(() => fs.existsSync(path.join(leftDir, 'file-b (1).txt')), { timeout: waitBudget(8000) })
+      .toBeTruthy()
     await waitForTransferUiToSettle(tauriPage)
 
     expect(fs.existsSync(path.join(leftDir, 'file-b.txt'))).toBe(true)
@@ -218,10 +229,12 @@ test.describe('Duplicate in place', () => {
     // F5 is the other gesture that opts in, and the editor opens in the pane the
     // user is looking at rather than the one the dialog called the destination.
     await tauriPage.waitForSelector('.rename-input', 5000)
-    await expect.poll(async () => renameEditorValue(tauriPage), { timeout: 3000 }).toBe('file-b (1).txt')
+    await expect.poll(async () => renameEditorValue(tauriPage), { timeout: waitBudget(3000) }).toBe('file-b (1).txt')
 
     await tauriPage.press('.rename-input', 'Escape')
-    await expect.poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => !(await tauriPage.isVisible('.rename-input')), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(fs.existsSync(path.join(leftDir, 'file-b (1).txt'))).toBe(true)
   })
 })

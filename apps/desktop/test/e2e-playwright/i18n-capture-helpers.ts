@@ -17,6 +17,7 @@
  * to hand back is `i18n-capture-operations.ts`, not here.
  */
 
+import { waitBudget } from './wait-budget.js'
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect } from './fixtures.js'
@@ -135,7 +136,7 @@ const SHOT_ATTEMPTS_WORD = 'three'
  * the ceiling is generous because a slow write is normal here while a never-
  * arriving one is a real failure worth reporting.
  */
-const SHOT_FILE_TIMEOUT_MS = 20000
+const SHOT_FILE_TIMEOUT_MS = waitBudget(20000)
 const SHOT_FILE_POLL_MS = 25
 
 /**
@@ -454,7 +455,7 @@ export async function stressLayoutIfWorstCase(page: TauriPage, label: string): P
   // recompute) before resizing, so the clamp targets the max-zoom floor. Polls
   // the live `--font-scale`; falls through on timeout rather than hanging.
   await expect
-    .poll(async () => readFontScale(page), { timeout: 3000 })
+    .poll(async () => readFontScale(page), { timeout: waitBudget(3000) })
     .toBeGreaterThanOrEqual(MAX_UI_ZOOM / 100 - 0.01)
     .catch(() => {})
   try {
@@ -671,7 +672,7 @@ async function waitForToastSettled(page: TauriPage): Promise<void> {
           var parts = m[1].split(',').map(function(n){ return parseFloat(n); });
           return Math.abs(parts[4]) < 0.5;
         })()`),
-      { timeout: 2000 },
+      { timeout: waitBudget(2000) },
     )
     .toBeTruthy()
 }

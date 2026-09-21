@@ -19,6 +19,7 @@
  *   left/  (file-a.txt, file-b.txt, sub-dir/, bulk/) ; right/  (empty)
  */
 
+import { waitBudget } from './wait-budget.js'
 import path from 'path'
 import { test, expect } from './fixtures.js'
 import { restoreFixtureTree } from '../e2e-shared/fixture-manifest.js'
@@ -106,7 +107,9 @@ test.describe('Programmatic drop entry (local)', () => {
     })()`)
 
     // The dialog title flips to Move…
-    await expect.poll(async () => tauriPage.textContent(`${TRANSFER_DIALOG} h2`), { timeout: 3000 }).toContain('Move')
+    await expect
+      .poll(async () => tauriPage.textContent(`${TRANSFER_DIALOG} h2`), { timeout: waitBudget(3000) })
+      .toContain('Move')
 
     // …and the counters survive (state stays `done`/`counting`, never `skipped`,
     // and the file/byte totals are unchanged).

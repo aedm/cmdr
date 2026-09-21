@@ -24,6 +24,7 @@
 
 import fs from 'fs'
 import net from 'net'
+import { waitBudget } from './wait-budget.js'
 
 /**
  * The deadline for a single liveness probe. Generous on purpose: the probe is one
@@ -31,8 +32,11 @@ import net from 'net'
  * thing this number buys is protection against a false positive on a loaded Docker VM,
  * where a wrong verdict would abandon a whole shard. It costs the run 10 s exactly once,
  * on the test that discovers the death; every test after that is instant.
+ *
+ * It scales with the machine's load for the same reason it is generous: a loaded box is
+ * precisely where a healthy app looks dead. Paying that once beats abandoning a shard.
  */
-export const APP_PROBE_DEADLINE_MS = 10_000
+export const APP_PROBE_DEADLINE_MS = waitBudget(10_000)
 
 export type AppDeath = {
   /** Human phrase for when the app went silent, e.g. `during "Archive browsing › …"`. */

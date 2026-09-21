@@ -14,6 +14,7 @@
  * multi-file copy partitions correctly between overwrite and skip.
  */
 
+import { waitBudget } from './wait-budget.js'
 import fs from 'fs'
 import path from 'path'
 
@@ -186,7 +187,7 @@ test.describe('Conditional conflict policies (per-file dialog buttons)', () => {
     // Per-file conflict dialog appears for the first conflict. The button is
     // labelled "Overwrite all older" and sends `applyToAll: true`. After
     // clicking it, the rest of the operation runs without further prompts.
-    await expect.poll(async () => tauriPage.isVisible('.conflict-section'), { timeout: 5000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('.conflict-section'), { timeout: waitBudget(5000) }).toBeTruthy()
     await resolveConflict(tauriPage, 'Overwrite all older')
 
     await waitForDialogsToClose(tauriPage)

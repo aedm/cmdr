@@ -22,6 +22,7 @@
  * refusal path.
  */
 
+import { waitBudget } from './wait-budget.js'
 import os from 'node:os'
 import type { TauriPage, BrowserPageAdapter } from '@srsholmes/tauri-playwright'
 import { test, expect } from './fixtures.js'
@@ -103,7 +104,7 @@ async function activateAddRow(tauriPage: PageLike): Promise<void> {
   await tauriPage.evaluate(`(function () {
     document.querySelector('.servers-hub .add-row').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
   })()`)
-  await expect.poll(async () => tauriPage.isVisible(SHEET), { timeout: 5000 }).toBeTruthy()
+  await expect.poll(async () => tauriPage.isVisible(SHEET), { timeout: waitBudget(5000) }).toBeTruthy()
 }
 
 /** Replaces the sheet's address field, the way a person retyping it would. */
@@ -151,13 +152,15 @@ test.describe('The servers hub', () => {
     // mounts (or pushes a different name) surfaces here as a timeout.
     await mcpCall('select_volume', { pane: 'left', name: SERVERS_VOLUME_NAME })
 
-    await expect.poll(async () => (await leftPaneRows()).includes('+ Add server…'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => (await leftPaneRows()).includes('+ Add server…'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
   })
 
   test('the hub is on screen as a table, not as a file listing', async ({ tauriPage }) => {
     await closeVolumePicker(tauriPage)
     await mcpCall('select_volume', { pane: 'left', name: SERVERS_VOLUME_NAME })
-    await expect.poll(async () => tauriPage.isVisible('.servers-hub'), { timeout: 15000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('.servers-hub'), { timeout: waitBudget(15000) }).toBeTruthy()
     // The add row is keyboard-navigable, which is what makes it a row rather
     // than a button under the list.
     expect(await tauriPage.isVisible('.servers-hub .add-row')).toBe(true)
@@ -177,7 +180,9 @@ test.describe('Adding a server through the sheet', () => {
 
   test("the hub's Add row opens the one sheet, and the address picks the protocol", async ({ tauriPage }) => {
     await mcpCall('select_volume', { pane: 'left', name: SERVERS_VOLUME_NAME })
-    await expect.poll(async () => tauriPage.isVisible('.servers-hub .add-row'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('.servers-hub .add-row'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
 
     await activateAddRow(tauriPage)
 
@@ -188,24 +193,32 @@ test.describe('Adding a server through the sheet', () => {
     // `user@host` names an ACCOUNT, so the toggle flips to SFTP and the account
     // fields appear, prefilled with what the address carried.
     await typeIntoAddress(tauriPage, 'ada@e2e-nothing-here.invalid:22')
-    await expect.poll(async () => tauriPage.isVisible(`${SHEET} #server-secret`), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible(`${SHEET} #server-secret`), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     expect(await tauriPage.evaluate<string>(`document.querySelector('${SHEET} #server-username').value`)).toBe('ada')
   })
 
   test('a server that cannot be reached says so under the address, and the sheet stays open', async ({ tauriPage }) => {
     await mcpCall('select_volume', { pane: 'left', name: SERVERS_VOLUME_NAME })
-    await expect.poll(async () => tauriPage.isVisible('.servers-hub .add-row'), { timeout: 15000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('.servers-hub .add-row'), { timeout: waitBudget(15000) })
+      .toBeTruthy()
     await activateAddRow(tauriPage)
 
     // `.invalid` is reserved by RFC 2606 and never resolves, so the dial is
     // guaranteed to come back with something to say.
     await typeIntoAddress(tauriPage, 'ada@e2e-nothing-here.invalid:22')
-    await expect.poll(async () => tauriPage.isVisible(`${SHEET} #server-secret`), { timeout: 5000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible(`${SHEET} #server-secret`), { timeout: waitBudget(5000) })
+      .toBeTruthy()
     await tauriPage.click(`${SHEET} .modal-footer button:last-of-type`)
 
     // ❗ The refusal lands under the field it is about, and the sheet is still up:
     // a sheet that closed would take what the user typed with it.
-    await expect.poll(async () => tauriPage.isVisible('#server-address-refusal'), { timeout: 45000 }).toBeTruthy()
+    await expect
+      .poll(async () => tauriPage.isVisible('#server-address-refusal'), { timeout: waitBudget(45000) })
+      .toBeTruthy()
     expect(await tauriPage.isVisible(SHEET)).toBe(true)
   })
 })
@@ -226,7 +239,7 @@ test.describe('A saved server in the switcher and the pane', () => {
     await publishSyntheticServer(tauriPage)
 
     await expect
-      .poll(async () => (await switcherNames(tauriPage)).includes(SYNTHETIC_NAME), { timeout: 5000 })
+      .poll(async () => (await switcherNames(tauriPage)).includes(SYNTHETIC_NAME), { timeout: waitBudget(5000) })
       .toBeTruthy()
 
     const html = await switcherRowHtml(tauriPage, SYNTHETIC_NAME)
@@ -241,7 +254,7 @@ test.describe('A saved server in the switcher and the pane', () => {
   test('offers no Disconnect on a place with no session to drop', async ({ tauriPage }) => {
     await publishSyntheticServer(tauriPage)
     await expect
-      .poll(async () => (await switcherNames(tauriPage)).includes(SYNTHETIC_NAME), { timeout: 5000 })
+      .poll(async () => (await switcherNames(tauriPage)).includes(SYNTHETIC_NAME), { timeout: waitBudget(5000) })
       .toBeTruthy()
 
     const html = await switcherRowHtml(tauriPage, SYNTHETIC_NAME)
@@ -251,7 +264,7 @@ test.describe('A saved server in the switcher and the pane', () => {
   test('opening it puts the pane on the connect view, and then on what stopped it', async ({ tauriPage }) => {
     await publishSyntheticServer(tauriPage)
     await expect
-      .poll(async () => (await switcherNames(tauriPage)).includes(SYNTHETIC_NAME), { timeout: 5000 })
+      .poll(async () => (await switcherNames(tauriPage)).includes(SYNTHETIC_NAME), { timeout: waitBudget(5000) })
       .toBeTruthy()
     await closeVolumePicker(tauriPage)
 
@@ -270,7 +283,7 @@ test.describe('A saved server in the switcher and the pane', () => {
     // succeed (nothing is saved under this id, and the host doesn't resolve), so
     // it settles on the refusal — which is the state this spec is really after:
     // a pane that says what happened instead of showing an empty folder.
-    await expect.poll(async () => tauriPage.isVisible('.remote-connect'), { timeout: 15000 }).toBeTruthy()
+    await expect.poll(async () => tauriPage.isVisible('.remote-connect'), { timeout: waitBudget(15000) }).toBeTruthy()
 
     const text = await tauriPage.evaluate<string>(`(document.querySelector('.remote-connect')?.textContent ?? '')`)
     expect(text).toContain(SYNTHETIC_NAME)
