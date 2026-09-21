@@ -32,8 +32,16 @@ use crate::test_support::TestDir;
 /// Only the `red_*` tests use it; everything else predates rows.
 const SEGMENT_BYTES: usize = 20_000;
 
-/// A row's ceiling under the spec's row rule: a newline a byte before a multiple
-/// disqualifies that multiple, so the row runs on to the next one.
+/// A row's ceiling under the row rule, reached by a newline landing EXACTLY on a
+/// multiple: the line then starts one byte past it, the next multiple's window still
+/// holds that newline so clause 3 disqualifies it, and the row runs to the one after,
+/// 39 999 bytes later.
+///
+/// ❗ Not "a newline just BEFORE a multiple" — that puts the line start ON the multiple,
+/// which is already a boundary by clause 2, and the row after it is exactly one segment.
+/// Both cases are pinned in `rows_test`
+/// (`a_newline_exactly_on_a_multiple_makes_the_longest_possible_row` and
+/// `a_newline_one_byte_before_a_multiple_keeps_the_multiple_as_a_row_start`).
 const MAX_ROW_BYTES: usize = 2 * SEGMENT_BYTES;
 
 /// Which backend a file gets depends only on its size in production (under 1 MB →
