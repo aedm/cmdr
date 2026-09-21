@@ -818,6 +818,60 @@ fn a_chunk_ending_on_the_last_row_says_so_instead_of_serving_it_twice() {
     }
 }
 
+/// ❗ A range that spans several fetches must end where it was told to, on every
+/// backend.
+///
+/// `range_read` decides where an explicit-end range stops by comparing a row's index
+/// against `end_line`, and it took those indices from each chunk. ByteSeek reports the
+/// row it was ASKED for on a `Line` target but re-derives the number from
+/// `bytes_per_row` on the byte-offset continuation chunks, so on a file whose rows
+/// aren't uniform the numbering jumps at a chunk seam and the copy stops at the wrong
+/// row. The fixture below is deliberately non-uniform, which is what makes the estimate
+/// drift; with uniform rows the bug hides.
+#[test]
+fn a_multi_chunk_range_stops_where_it_was_told_on_every_backend() {
+    let dir = TestDir::new("viewer_rows_multi_chunk_end");
+    // Rows of varying length, so `bytes_per_row` is a genuine estimate rather than
+    // exact, and more than one `FETCH_CHUNK` of them.
+    let content: String = (0..9000)
+        .map(|i| format!("line {i:05} {}\n", "z".repeat(i % 37)))
+        .collect();
+    let file = fixture(&dir, "varied.txt", content.as_bytes());
+
+    // The byte range rows 100..5000 cover, computed from the fixture rather than from
+    // any backend's opinion of where a row starts.
+    let offsets: Vec<usize> = content
+        .match_indices('\n')
+        .map(|(i, _)| i + 1)
+        .fold(vec![0usize], |mut acc, o| {
+            acc.push(o);
+            acc
+        });
+    let expected = &content[offsets[100]..offsets[5000]];
+
+    // The two indexed backends resolve row 100 exactly, so they must be byte-exact.
+    for which in [Which::FullLoad, Which::LineIndex] {
+        let backend = open_backend(which, &file);
+        let got = read(backend.as_ref(), at(100, 0), at(5000, 0));
+        assert_eq!(got, expected, "{which:?}");
+    }
+
+    // ByteSeek has no index, so WHERE row 100 is remains an estimate; that is its
+    // documented nature and not what this pins. What it owes is a well-formed range:
+    // exactly the 4 900 rows asked for, contiguous, starting on a row boundary. Before
+    // the fix it re-derived the row number from `bytes_per_row` on every continuation
+    // chunk, so the count jumped at each seam and the copy ran to the wrong row.
+    let got = read(open_backend(Which::ByteSeek, &file).as_ref(), at(100, 0), at(5000, 0));
+    assert_eq!(
+        got.matches('\n').count(),
+        4900,
+        "ByteSeek: a 4 900-row range must emit 4 900 rows"
+    );
+    assert!(content.contains(&got), "ByteSeek: the range must be a contiguous slice");
+    let at_row_start = got.starts_with("line ");
+    assert!(at_row_start, "ByteSeek: the range must start on a row boundary");
+}
+
 /// Invariant I1 on the LineIndex backend, deep into a newline-free file.
 ///
 /// Its checkpoints used to count LINES, so a file with one line got exactly one

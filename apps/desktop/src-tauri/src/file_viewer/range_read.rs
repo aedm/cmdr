@@ -257,6 +257,9 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
     const CANCEL_CHECK_BYTES: usize = 64 * 1024;
     let mut next_target = SeekTarget::Line(start_line);
     let mut first_chunk = true;
+    // The row the walk is about to emit, counted forward from the first chunk.
+    let mut row_number = start_line;
+    let mut emitted_none_yet = true;
     let mut lines_since_cancel_check: usize = 0;
     let mut bytes_since_cancel_check: usize = 0;
 
@@ -280,9 +283,19 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
         // keep the `\r` in the row's text and the `\n` inside the row's span.)
         let chunk_end_offset = chunk.end_byte_offset;
 
-        let first_line_idx_in_chunk = chunk.first_row_number;
+        // ❗ The walk counts rows itself from the row it started on, rather than taking
+        // each chunk's `first_row_number`. A backend without an index reports the row it
+        // was ASKED for on a row-target seek but re-derives the number from its
+        // bytes-per-row estimate on the byte-offset continuation chunks, so the
+        // numbering jumps at a chunk seam on any file whose rows aren't uniform. Since
+        // this number is what decides where an explicit-end range STOPS, a jump there
+        // ends the copy on the wrong row. Counting is exact on every backend, because a
+        // chunk's rows are contiguous by construction.
+        if first_chunk {
+            row_number = chunk.first_row_number;
+        }
 
-        for (i, row) in chunk.rows.iter().enumerate() {
+        for row in &chunk.rows {
             let line = &row.text;
             // Check the cancel flag periodically inside the inner loop. Doing it only
             // between chunks meant a single 4096-line chunk of 4 KB/line files (16 MB)
@@ -295,8 +308,10 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
                 bytes_since_cancel_check = 0;
             }
 
-            let line_number = first_line_idx_in_chunk + i;
-            let is_first_overall = first_chunk && i == 0;
+            let line_number = row_number;
+            row_number += 1;
+            let is_first_overall = emitted_none_yet;
+            emitted_none_yet = false;
 
             // For explicit-end ranges, stop past the end line. The newline owed to the
             // last line emitted is part of the range here, so it's paid out.
