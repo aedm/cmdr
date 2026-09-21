@@ -81,6 +81,18 @@ export function isE2eRun(): boolean {
 }
 
 /**
+ * Whether this is a dev build, straight from Vite's compile-time `import.meta.env.DEV`.
+ *
+ * ❗ A `.svelte` SCRIPT calls this instead of writing `import.meta.env.DEV` inline: a bare
+ * `import.meta` there blinds knip to every dynamic import in the file. `{#if}` MARKUP keeps
+ * the literal, which Vite inlines so the dev-only subtree leaves the prod bundle. Both:
+ * `src/DETAILS.md` § Dev gates.
+ */
+export function isDevBuild(): boolean {
+  return import.meta.env.DEV
+}
+
+/**
  * Decorates a child-window native title with the run marker in E2E and capture
  * modes. Dev mode leaves the title untouched: child windows are spawned from the
  * dev main window, whose pink stripe already provides the context.

@@ -10,6 +10,20 @@ Leading. The text surfaces (`.modal-dialog`, `.toast`, the sheet, the secondary 
 `app.css`, which is why a component usually writes no `line-height` at all. The main window and the file lists
 deliberately inherit no ratio: their rows size from the density tiers, and a ratio there would fight them.
 
+## Dev gates
+
+A `.svelte` script gates dev-only behavior on `isDevBuild()` (`$lib/app-mode`), never on an inline
+`import.meta.env.DEV`. knip collects a Svelte file's imports with a regex, and a bare `import.meta` matches its import
+pattern: the match runs on to the next quoted string, the synthetic module knip parses comes out broken, and every
+`await import(...)` in that file disappears from its graph. One `import.meta.env.DEV` in `routes/(main)/+page.svelte`
+was enough to make knip call `lib/debug/debug-window.ts` an unused file while the app was opening the debug window from
+it (knip 6.36.0, `dist/compilers/compilers.js` § `importMatcher`, verified 2026-09-21). A `.ts` file is parsed by
+TypeScript and may write `import.meta.env.DEV` directly.
+
+`{#if}` MARKUP is the exception and keeps the literal (`routes/(main)/+layout.svelte`): Vite replaces
+`import.meta.env.DEV` at build time, so the whole dev-only subtree leaves the prod bundle. A function call survives
+minification, so gating markup on `isDevBuild()` would ship the dialog gallery and the dev pages to users.
+
 ## Reduced transparency
 
 WKWebView never reflects `@media (prefers-reduced-transparency)`, so the app can't key a frosted-glass fallback off it.

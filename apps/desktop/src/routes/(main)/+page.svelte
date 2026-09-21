@@ -77,7 +77,14 @@
         type CommandDispatchContext,
     } from './command-dispatch'
     import { getAppLogger } from '$lib/logging/logger'
-    import { initAppMode, getAppMode, isE2eRun, decorateMainWindowTitle, type AppMode } from '$lib/app-mode'
+    import {
+        initAppMode,
+        getAppMode,
+        isDevBuild,
+        isE2eRun,
+        decorateMainWindowTitle,
+        type AppMode,
+    } from '$lib/app-mode'
     import {
         getCachedStatus,
         hideExpirationModal,
@@ -213,7 +220,7 @@
                 // on without claiming, so the command is about to run twice — silently,
                 // because both ends land in the same place. Dev and E2E runs only; the
                 // check costs one boolean read on the road every keypress takes.
-                if (import.meta.env.DEV || isE2eRun()) {
+                if (isDevBuild() || isE2eRun()) {
                     const warning = unclaimedDispatchWarning(e, action.commandId)
                     if (warning) dispatchLog.warn(warning)
                 }
