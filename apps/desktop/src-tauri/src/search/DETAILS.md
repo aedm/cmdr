@@ -6,14 +6,16 @@ Depth for the search backend. `CLAUDE.md` holds the must-knows; this file holds 
 
 - **In-memory `Vec` + rayon instead of SQLite queries**: the index has ~5M entries. SQLite `LIKE '%query%'` takes 1–3s
   (full table scan). Loading entries into a `Vec` and scanning with rayon gives sub-second results. The index loads
-  lazily on dialog open and drops after idle (5 min timer + 10 min backstop), ~600 MB resident while active.
+  lazily on the dialog opening or its target volume changing, and drops after idle (30 s timer + 10 min backstop),
+  ~320 MB resident while active on a 5.39 M-row boot index.
 - **Structured `SearchQuery` model, not free-text SQL**: safe (no injection), composable (the AI mode fills the same
   struct), and simple to execute (single pass over the in-memory `Vec`). The frontend owns query building; the backend
   is a pure filter engine.
 - **Path reconstruction at search time, not stored**: storing full paths would double memory. Reconstructing by walking
-  the parent chain is O(depth) per result (for 30 results at average depth 8, ~240 HashMap lookups, microseconds).
-- **The load arena is right-sized from the row count, not a fixed worst case**: `load_search_index` runs one
-  `SELECT COUNT(*)` and reserves `Vec::with_capacity(count)` + `String::with_capacity(count * ~20 bytes)`, the arena
+  the parent chain is O(depth) per result (for 30 results at average depth 8, ~240 lookups, microseconds). Each one is
+  a binary search over the id-sorted arena, not a hash map: see § "Finding a row by id".
+- **The load arena is right-sized from the row count, not a fixed worst case**: `load_search_index` reads the scan
+  root's `dir_stats` rollup and reserves `Vec::with_capacity(count)` + `String::with_capacity(count * ~20 bytes)`, the arena
   estimate clamped to a 512 MiB ceiling so a bogus count can't request gigabytes (both still grow if the estimate runs
   low, so correctness is unchanged). A small index no longer pays the old fixed ~100 MB / 5M-slot allocation on every
   load.
@@ -136,10 +138,51 @@ retention cap's problem, not search's) and wins straight back the moment it's th
 (keying the index on a stable server identity instead of `host:port`) was deliberately NOT attempted: see "Why the index
 isn't keyed on a stable server identity" below.
 
+### Loading in parallel
+
+The arena load is I/O-latency bound, not compute bound. `ERR-S76V3` (2026-09-19, 5.39 M rows, cold 830 MB
+`index-root.db`) measured **31.6 s** with the index writer burning 15 ms of CPU and 16 cores idle: one thread issuing
+~200,000 serial 4 KiB `pread`s never builds enough queue depth to reach what the drive can do (~14-26 MB/s effective
+against a drive that does GB/s).
+
+So `load_search_index` splits `[MIN(id), MAX(id)]` into up to `MAX_LOAD_WORKERS` (8) rowid ranges, reads each on its own
+thread-local connection, and concatenates the segments in range order. Both bounds are O(1) on a rowid table. An index
+under `PARALLEL_LOAD_THRESHOLD` (50,000 rows) stays single-threaded, where splitting costs more than the scan.
+
+**Gotcha**: ranges are by id, not by row count, so a churned index (deletions never reuse rowids) gives uneven segments.
+That costs parallelism and nothing else, because the merge is ordered by range either way. The last range is deliberately
+open-ended, so a row written after `MAX(id)` was read still lands.
+
+⚠️ **The merge is the load's memory peak.** The destination is reserved at full size while the segments still hold the
+same bytes, so a ~320 MB arena transiently costs ~640 MB, falling as each segment drops. Removing it needs the mapped
+arena (GitHub #114), not a different loop shape.
+
+**Decision: the row estimate comes from `dir_stats`, not `COUNT(*)`.** `SELECT COUNT(*)` looks like a cheap b-tree count
+and is one only with a warm page cache: SQLite serves it by fully traversing the smallest index (`idx_inode` here),
+which cold is seconds of I/O spent solely to size a `Vec`. The aggregator has already counted the same rows into
+`dir_stats` for the scan root, so `get_dir_stats_by_id(ROOT_ID)` answers in one indexed row read. `COUNT(*)` stays as the
+fallback for an index whose root rollup hasn't been written yet (a first scan still running). Either way the estimate
+only sizes an allocation, so a wrong one costs a realloc, never a wrong answer.
+
+### Finding a row by id
+
+`entries` is sorted by `id`, ascending, and `SearchIndex::index_of_id` binary-searches it. `id` is the `entries` table's
+`INTEGER PRIMARY KEY`, hence its rowid, so a table scan already yields that order; the loader still says `ORDER BY id`
+so the guarantee is written down rather than inherited, `merge_segments` debug-asserts it, and every test fixture sorts
+the same way.
+
+**Decision: no `id_to_index` map.** A `HashMap<i64, usize>` over the same rows cost ~143 MB on a 5.39 M-row boot index
+(5.39 M entries round up to 8,388,608 hashbrown buckets at 17 bytes apiece) and bought a ~20 ns lookup instead of a
+~23-probe one. The callers are the four parent-chain walks in `engine.rs`, a few hundred probes per search, which is
+microseconds either way against a 100-400 ms scan. ❌ Don't reintroduce it without measuring the ranking phase first.
+
+**Gotcha**: this is why an out-of-order fixture is now a bug rather than a curiosity. `ranking/tests.rs` built rows in
+spec order, which the hash map tolerated and a binary search silently answers wrong on.
+
 ### Waiting for a cold arena
 
-Loading a volume's arena is a multi-second, multi-hundred-MB read (2.4 s warm page cache for a 2.6 M-entry NAS index,
-10.9 s observed cold in prod), and every caller now pays it: there's one target, and answering "nothing found" for the
+Loading a volume's arena is a multi-hundred-MB read, split across up to eight rowid ranges (see § "Loading in
+parallel"), and every caller pays it: there's one target, and answering "nothing found" for the
 one place someone asked about would be a lie, not a fast path. The dialog's phase states voice that wait honestly
 instead of hiding it.
 
