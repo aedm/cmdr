@@ -22,6 +22,9 @@ func TestE2EArtifactIsSweepable(t *testing.T) {
 		"cmdr-e2e-playwright-build-1700000000-4242.log",
 		"cmdr-e2e-linux-1700000000.log",
 		"cmdr-e2e-results-mtp-4242",
+		// The isolation re-run's evidence, one pair per attempt.
+		"cmdr-e2e-rerun-report-4242-1.json",
+		"cmdr-e2e-rerun-results-4242-2",
 		"cmdr-e2e-data-mtp-4242",
 		"cmdr-e2e-data-nonmtp2-4242",
 		"cmdr-e2e-fixtures-e2e-mtp-4242-1700000000",

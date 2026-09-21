@@ -161,7 +161,11 @@ func startTauriApp(binaryPath string, s shardSpec) (*appHandle, error) {
 		fmt.Fprintln(lf, "=== RUST_LOG unset (default warn level) ===")
 	}
 
-	cmd := exec.Command(binaryPath, enUsLocaleArgs()...)
+	// Niced, like the Playwright process that drives it. Three Tauri instances and three
+	// video recorders on a machine somebody is working on is the lane's whole cost; `nice`
+	// only yields when the CPU is contended, so an idle machine loses nothing. The
+	// tradeoff and why it's safe: `e2eNiceIncrement` in `e2e-contention.go`.
+	cmd := niceCommand(binaryPath, enUsLocaleArgs()...)
 	cmd.Env = append(os.Environ(),
 		// CMDR_INSTANCE_ID drives the macOS Keychain SERVICE_NAME suffix
 		// ("Cmdr-<instance>") and the Dock label ("Cmdr (E2E <kind>)") so parallel shards

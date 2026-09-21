@@ -121,7 +121,7 @@ func resolveRustFailure(label string, run ContentionRunner, load LoadSampler, tr
 	}
 
 	summary := ContentionSummary(results, LoadAverage())
-	if WarnOnly(results) {
+	if WarnOnly(RustVerdicts(results)) {
 		return CheckResult{
 			Code:    ResultWarning,
 			Message: contentionWarnMessage(results),

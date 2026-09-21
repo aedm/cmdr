@@ -30,7 +30,10 @@ recipe for adding one is § "Adding a new check". Only the layout rules live her
   (compile, find, sign, freshness stamp), `e2e-playwright-app.go` owns one shard's lifecycle (fixtures, MCP ports, the
   Tauri process, socket wait, teardown), and `e2e-output.go` turns a raw transcript into a printable summary. That last
   one is shared with the Linux Docker lane and the build, which is why it lives under the neutral `e2e-` prefix rather
-  than the check's own name. `e2e-stale-selector-parse.go` is the TypeScript lexer and CSS selector parser behind
+  than the check's own name. `e2e-contention.go` is the fourth stage, reached only on a red run (§ "The Playwright
+  isolation re-run"). `contention-verdict.go` and `test-log-history.go` are lane-neutral libraries: the verdict
+  vocabulary both contention mechanisms share, and the reader that turns the per-test log back into one test's record.
+  `e2e-stale-selector-parse.go` is the TypeScript lexer and CSS selector parser behind
   `desktop-svelte-e2e-stale-selector`, kept apart so the check file holds only its wiring, vocabulary, and scan.
   `tracked-files.go` is the shared "what does git know about, and how do you read one" vocabulary (`repoFiles`,
   `gitTrackedFiles`, `readTrackedFile`) that every whole-tree scanner enumerates and reads through. None appears in
@@ -1141,7 +1144,11 @@ lines collapse to one with a `(×N)` count, which is the part worth reading.
 ## The contention re-run (`rust-test-contention.go`)
 
 No Rust lane believes a red run until it has re-run the failures alone. Rationale, the four verdicts, and the reporting
-contract are in `docs/testing.md`; this section is the mechanics.
+contract are in `docs/testing.md`; this section is the mechanics. The Playwright lane runs the same ladder over spec
+files (§ "The Playwright isolation re-run"), and the two share `contention-verdict.go`: the four verdicts,
+`BusyLoadPerCore`, `LoadPerCore` / `LoadAverage`, and `WarnOnly`. A lane may say WHERE a re-run happens and what "alone"
+means for it, ❌ never what a red run means. Each keeps its own result shape (a Rust test has a binary and a deadline
+class, a spec has a file and a shard) and projects it onto the shared verdicts (`RustVerdicts`, `E2EVerdicts`).
 
 All three lanes funnel a failure through the one `resolveRustFailure` in `desktop-rust-tests.go`, which takes the runner
 and the load sampler as parameters. That injection is the contract: a lane may say WHERE a re-run happens, never what a
@@ -1237,6 +1244,68 @@ making the mechanism unaffordable; execing back into the live container costs se
   change what a verdict means.
 - **`docker exec` failing is a runner error, not evidence.** A dead container or wedged daemon flows through
   `ClassifyContention`'s error paths to `VerdictReal`, so the run stays red.
+
+## The Playwright isolation re-run (`e2e-contention.go`)
+
+The macOS Playwright lane doesn't believe a red run either. `RunDesktopE2EPlaywright` routes a failed
+`aggregateShardResults` through `resolveE2EFailure`, which re-runs the failing spec files alone and classifies them on
+the same four verdicts as the Rust lane. A green run does zero extra work.
+
+**Why the config's `retries: 1` can't cover this.** The retry fires about a second after the failure, inside the same
+shard, with all three Tauri instances and all three 15 fps recorders still competing. It isn't an independent trial, so
+a load-induced failure fails twice and escapes the retry carve-out as a hard red. This stage runs after every shard has
+finished, when the machine is quiet, which the retry structurally cannot do. Both stay: the retry catches a one-second
+hiccup, this catches sustained starvation.
+
+**The unit is the spec FILE, never one test.** `fullyParallel: false` + `workers: 1` + one app instance per shard let a
+test depend on the ones before it in its file (a fixture it created, a pane it focused, a tab it opened). Re-running one
+test alone would fail for ordering reasons and produce a false `real` verdict, which is worse than no verdict.
+
+**A re-run reuses its shard's app and env.** The apps are still alive at that point (`cleanupApps` is deferred), and
+`shardPlaywrightEnv` is the one place either path builds an env, with only the report and output dir parameterised. An
+MTP spec has to go back to the MTP shard, which owns this run's `CMDR_MTP_FIXTURE_ROOT` and virtual device; a non-MTP
+spec to a shard that was told to leave that root alone. Files re-run ONE at a time, since two at once would recreate the
+contention stage 1 exists to remove.
+
+Gotchas:
+
+- **Stage 1 passes no `--timeout` at all.** Leaving the flag off is what makes a pass there mean "starved" rather than
+  "given more time". Stage 2 passes `--timeout=60000` (`e2eHeadroomFactor` × the config's 15 s).
+- **`test.setTimeout` beats the CLI flag**, because it is set at runtime. A spec with its own budget therefore gets no
+  headroom from stage 2 and can read `real` when it was only slow. The summary says so under any `real` or `too-slow`
+  section, so a reader never concludes "4x wasn't enough" when 4x was never applied.
+- **A re-run that ran none of its target tests is a runner error, not a pass** (`rerunCoveredTargets`). Same trap the
+  integration lane hit with `--run-ignored only`: a filter selecting nothing reports zero failures, which reads as
+  "everything passed alone" and would turn every real failure into a contention warn.
+- **The report, not the exit code, is the evidence.** A non-zero exit is expected during a re-run; an unreadable report
+  is what makes one unbelievable. Both error paths fall through to `VerdictReal`, so a re-run can only ever make a red
+  run more explained, never quietly greener.
+- **Only the originally failing tests are judged.** A test the re-run newly breaks belongs to a different run, and the
+  original run already stands as the record of what went red.
+- **Every re-run path is scoped to the run AND the attempt** (`cmdr-e2e-rerun-{report,results}-<pid>-<n>`), so it can
+  never overwrite the evidence someone is reading. Its own prefix, ❌ never a `cmdr-e2e-report-<name>-<pid>.json`:
+  `scripts/e2e-test-timings` takes the newest match of that shape, and a re-run's report holds one spec file.
+  `checkRunScopedArtifacts` sweeps both.
+- **The 5-file cap is disclosed, not silent** (`E2ERerunSkippedNote`). Each file costs its full runtime up to twice, so
+  the bound is minutes where the Rust lane's is seconds; past it, that many red files at once means the machine was too
+  loaded for the run to mean anything.
+
+**The lane nices itself** (`e2eNiceIncrement`, 5). Both the shard apps (`startTauriApp`) and the Playwright processes
+(`runShard`, and the re-runs) launch through `niceCommand`, which degrades to the bare argv when `nice` isn't on PATH
+rather than taking the lane down over a scheduling preference. `nice` execs in place, so the pid the caller waits on and
+kills is unchanged. This deliberately trades suite wall-clock for the responsiveness of the machine somebody is working
+on; the verdict above is what makes it safe, since a spec starved by the trade now gets re-run alone and reported as
+contention. ❌ Never macOS `taskpolicy -b` / background QoS: it also throttles disk I/O, which on a suite built out of
+file operations turns every spec into a timeout.
+
+**Each failing spec carries its own history** (`test-log-history.go`), read out of `test-log.csv` and printed beside the
+verdict: `3 failures logged and 1 flake in 41 rows, last failed 2026-09-16`. It streams the log and accumulates only the
+ids asked for, resolves its columns by header NAME (so an appended column can't silently shift the read), and matches a
+spec across both E2E lanes, since they run the same files. It is instrumentation, so it never colours the verdict: a
+missing or slow log becomes a parenthetical note and nothing else, and a read that blew its budget returns an error
+rather than partial counts, because rows are appended chronologically and a truncated read is missing exactly the recent
+ones. The `Runs` number counts LOGGED ROWS, not runs (clean passes under 1 s are never written), and the summary says so
+under the listing so nobody reads it as a pass rate.
 
 ## Workspace geometry: which members a Rust check reaches
 

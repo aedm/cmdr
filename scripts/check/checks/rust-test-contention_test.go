@@ -262,7 +262,7 @@ func TestWarnOnlyToleratesContentionAndInconclusiveButNothingElse(t *testing.T) 
 		{"empty", nil, false},
 	}
 	for _, c := range cases {
-		if got := WarnOnly(c.results); got != c.want {
+		if got := WarnOnly(RustVerdicts(c.results)); got != c.want {
 			t.Errorf("%s: WarnOnly = %v, want %v", c.name, got, c.want)
 		}
 	}

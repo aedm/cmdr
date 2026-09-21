@@ -396,6 +396,13 @@ Signal preservation is what makes this a carve-out rather than the anti-pattern:
 report and downgrades the run to a **warn** naming every rescued spec (below). The anti-pattern still stands for masking
 a real race in app/IPC code.
 
+❗ **The retry is not an independent trial, and the macOS lane doesn't ask it to be.** It fires about a second after the
+failure, inside the same shard, with all three Tauri instances and all three recorders still competing, so sustained
+starvation fails it twice and escapes the carve-out as a hard red. That's the second stage's job: once every shard has
+finished, the failing spec files re-run alone on a quiet machine and get a verdict (above). The two are complementary:
+the retry absorbs a one-second hiccup, the isolation re-run explains a starved run, and neither may absorb the other's
+case silently.
+
 **Carve-out, Rust: named real-FSEvents tests only.** `.config/nextest.toml` grants `retries` to a filtered set of tests
 that block on a SINGLE real OS watch delivery, where a coalesced or dropped event is unrecoverable within the run (the
 override comment names them and states the exit condition: restructure them to redo the mutation, then drop the
@@ -481,10 +488,14 @@ inside the same container the failing run used, at the same deadlines. It's the 
 cores are a slice of a host that may also be running both E2E lanes and a second container), and the deadlines stay
 identical on purpose: a container-only cap bump would hide the Linux-only slowness the lane exists to catch.
 
-**The E2E suites deliberately get no contention re-run.** Playwright runs `workers: 1` with `fullyParallel: false`, so
-there is no intra-suite parallelism for a serialized probe to remove: the probe stage would be indistinguishable from
-the original run, and every verdict it produced would be noise dressed as a finding. The Rust mechanism works precisely
-because that suite is massively parallel. E2E gets the retry-pass warn below instead.
+**The macOS Playwright lane gets the same ladder, over spec files.** The parallelism to remove isn't inside one
+Playwright process (`workers: 1`, `fullyParallel: false`) — it's the three Tauri instances, three Playwright processes,
+and three 15 fps recorders the lane runs at once on a machine somebody is working on. A red run therefore re-runs each
+failing spec FILE alone once every shard has finished, and reports contention / too-slow / inconclusive / real exactly
+as the Rust lanes do. File granularity, not per-test: a shared app instance lets a test depend on the ones before it in
+its file, so re-running one alone would fail for ordering reasons and invent a `real` verdict. The Linux Docker lane has
+one Playwright process and one app, so it keeps the retry-pass warn alone. Mechanics: `scripts/check/checks/DETAILS.md`
+§ "The Playwright isolation re-run".
 
 ### Playwright retry-passes warn too
 

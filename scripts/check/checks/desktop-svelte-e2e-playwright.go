@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -140,7 +139,13 @@ func RunDesktopE2EPlaywright(ctx *CheckContext) (CheckResult, error) {
 
 	result, err := aggregateShardResults(results, len(shards))
 	if err != nil {
-		return CheckResult{}, err
+		// Never believe a red lane until the failures have been re-run alone, with every
+		// shard's app still up and nothing else competing (`e2e-contention.go`). The
+		// per-test log supplies each failing spec's own record alongside the verdict, so
+		// "has this gone red before?" is answered before it's asked.
+		failing := collectE2EFailures(shards, runStart)
+		history, historyErr := lookupE2ESpecHistory(failing)
+		return resolveE2EFailure(err, failing, playwrightRerunner(desktopDir, pid), LoadPerCore, history, historyErr)
 	}
 
 	// Warn-only duration flagging.
@@ -283,9 +288,33 @@ func runShard(desktopDir string, s shardSpec) shardResult {
 	if s.playwrightShard != "" {
 		args = append(args, "--shard", s.playwrightShard)
 	}
-	cmd := exec.Command("pnpm", args...)
+	// Niced, like the app it drives: the lane yields the machine to whoever is using it
+	// rather than competing for it. See `e2eNiceIncrement`.
+	cmd := niceCommand("pnpm", args...)
 	cmd.Dir = desktopDir
-	cmd.Env = append(os.Environ(),
+	cmd.Env = shardPlaywrightEnv(s, s.jsonReport, s.outputDir)
+	output, err := RunCommand(cmd, true)
+	passed, failed, skipped := parsePlaywrightTotals(output)
+	return shardResult{
+		shard:   s,
+		output:  output,
+		passed:  passed,
+		failed:  failed,
+		skipped: skipped,
+		err:     err,
+	}
+}
+
+// shardPlaywrightEnv builds the environment one Playwright process runs under.
+//
+// The report and output dir are parameters rather than fields off the shard so the
+// isolation re-run (`e2e-contention.go`) can reach the same app through the same env
+// while writing its evidence somewhere else. Everything else has to be identical, or a
+// re-run would answer a different question than the run it is judging: an MTP spec needs
+// its shard's `CMDR_MTP_FIXTURE_ROOT` and virtual device, a non-MTP spec needs the shard
+// that was told to leave that root alone.
+func shardPlaywrightEnv(s shardSpec, jsonReport, outputDir string) []string {
+	env := append(os.Environ(),
 		"CMDR_E2E_START_PATH="+s.fixtureDir,
 		// Ask Cmdr has no real AI provider under E2E; this flag routes its send path
 		// through the deterministic scripted fake LLM (see commands/agent.rs), so
@@ -301,8 +330,8 @@ func runShard(desktopDir string, s shardSpec) shardResult {
 		"CMDR_MCP_PORT="+strconv.Itoa(s.mcpPort),
 		"CMDR_PLAYWRIGHT_SOCKET="+s.socketPath,
 		"CMDR_E2E_SHARD_KIND="+s.kind,
-		"CMDR_E2E_JSON_REPORT="+s.jsonReport,
-		"CMDR_E2E_OUTPUT_DIR="+s.outputDir,
+		"CMDR_E2E_JSON_REPORT="+jsonReport,
+		"CMDR_E2E_OUTPUT_DIR="+outputDir,
 		// The MTP specs assert against the backing dir directly (mtp-fixtures.ts),
 		// so the Playwright process has to agree with the app about where it is.
 		"CMDR_MTP_FIXTURE_ROOT="+s.mtpFixtureRoot,
@@ -311,16 +340,25 @@ func runShard(desktopDir string, s shardSpec) shardResult {
 	// directory in globalSetup. The non-MTP shards must skip it to avoid
 	// stomping on the MTP shard's mid-run state.
 	if s.kind != "mtp" {
-		cmd.Env = append(cmd.Env, "CMDR_E2E_SKIP_MTP_FIXTURES=1")
+		env = append(env, "CMDR_E2E_SKIP_MTP_FIXTURES=1")
 	}
-	output, err := RunCommand(cmd, true)
-	passed, failed, skipped := parsePlaywrightTotals(output)
-	return shardResult{
-		shard:   s,
-		output:  output,
-		passed:  passed,
-		failed:  failed,
-		skipped: skipped,
-		err:     err,
+	return env
+}
+
+// lookupE2ESpecHistory fetches each failing spec's record from the per-test log. It is
+// instrumentation, so it never colours the lane's verdict: a missing or slow log comes
+// back as an error the report mentions in passing and nothing else.
+func lookupE2ESpecHistory(files []e2eFailingFile) (map[string]TestHistory, error) {
+	var ids []string
+	for _, f := range files {
+		ids = append(ids, f.keys...)
 	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	path, err := TestLogPath()
+	if err != nil {
+		return nil, err
+	}
+	return LookupTestHistory(path, ids, testLogHistoryBudget)
 }

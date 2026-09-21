@@ -43,6 +43,11 @@ var checkRunScopedArtifacts = []*regexp.Regexp{
 	regexp.MustCompile(`^cmdr-e2e-linux-\d+\.log$`),
 	// Playwright output dirs: cmdr-e2e-results-<shard>-<pid>
 	regexp.MustCompile(`^cmdr-e2e-results-[a-z0-9-]+-\d+$`),
+	// The isolation re-run's own report and output dir: cmdr-e2e-rerun-{report,results}-<pid>-<attempt>.
+	// Its own prefix, never a `cmdr-e2e-report-<name>-<pid>.json`: `scripts/e2e-test-timings`
+	// takes the newest match of that shape, and a re-run's report holds one spec file.
+	regexp.MustCompile(`^cmdr-e2e-rerun-report-\d+-\d+\.json$`),
+	regexp.MustCompile(`^cmdr-e2e-rerun-results-\d+-\d+$`),
 	// Per-shard data dirs: cmdr-e2e-data-<shard>-<pid>
 	regexp.MustCompile(`^cmdr-e2e-data-(?:mtp|nonmtp\d+)-\d+$`),
 	// Per-shard fixture trees: cmdr-e2e-fixtures-e2e-<shard>-<pid>-<ts>

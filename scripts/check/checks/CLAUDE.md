@@ -9,8 +9,8 @@ One Go file per check, registered in `registry.go`'s `AllChecks`. Runner: `../CL
   (the `NeedsContainers` vocabulary), `allowlist.go` / `directives.go` (shrink-wrap and opt-out tracking).
 - One `{app}-{name}.go` per check. `test-log.go` and its parsers hold the per-test record vocabulary; `e2e-build.go`
   produces the Playwright lane's binary.
-- Ratcheting scanners keep a sibling `<check>-allowlist.json`; not every file here is a registry check. Inventory and
-  layout rules: DETAILS § "Key files".
+- Ratcheting scanners keep a sibling `<check>-allowlist.json`; not every file here is a registry check. Inventory:
+  DETAILS § "Key files".
 
 ## Must-knows
 
@@ -29,7 +29,7 @@ One Go file per check, registered in `registry.go`'s `AllChecks`. Runner: `../CL
 - **A test lane calls `ctx.RecordTests(...)` BEFORE its pass/fail branch** (`test-log.go`), or a red run never says
   WHICH test failed.
 - **Pin every tool install** (❌ never `@latest`), or a compromised tool repo reaches every fresh checkout;
-  `EnsureGoTool` enforces the pin. Versions, sha256s, and the dated nightly: DETAILS § "Key decisions".
+  `EnsureGoTool` enforces it. Versions, sha256s, and the dated nightly: DETAILS § "Key decisions".
 - **Need a Go version? `MiseGoVersion(rootDir)`**, ❌ never a literal; `go-version-single-source` enforces it.
 - **A Rust check never hardcodes a source path, its own features, its `Inputs`, or a `cmd.Dir`.** Cargo lanes take them
   from `HostCargoLaneArgs` + `rustCompileInputs`; scanners from `ScannerRoots` / `ScannerMemberKinds` +
@@ -42,12 +42,13 @@ One Go file per check, registered in `registry.go`'s `AllChecks`. Runner: `../CL
 - **Error output goes through `indentOutput()`**; success messages carry stats ("12 tests passed"), not "OK". Return
   `Skipped(reason)` when it can't run, `SuccessWithChanges` when it fixed something.
 - **Vitest lanes:** coverage needs a per-invocation `reportsDirectory` (`VITEST_COVERAGE_DIR`), or concurrent runs
-  clobber each other's v8 files; a red run renders through `diagnoseVitestFailure`, and ❌ a timeout's real message is
-  never in the json report. DETAILS § "Vitest failure output".
+  clobber each other's v8 files; ❌ a timeout's real message is never in the json report. DETAILS § "Vitest failure
+  output".
 - **The Playwright lane's release build is NOT incremental** (172 s for a no-op), so `e2e-build.go` stamps the binary
   with what built it and skips on a match; any uncertainty rebuilds.
-- **A red Rust lane goes through `resolveRustFailure`**, which re-runs failures alone before believing them; the Docker
-  lane execs into its live container, ❌ never a `docker run`.
+- **A red test lane re-runs its failures ALONE before believing them**; the verdicts are shared
+  (`contention-verdict.go`). Rust: `resolveRustFailure`, the Docker lane execing into its live container, ❌ never a
+  `docker run`. Playwright: `resolveE2EFailure`, by spec FILE.
 - After authoring, run `pnpm check go-vet staticcheck` and update DETAILS § "Apps and check counts". `--fast` membership
   is `IsFast`, hand-curated.
 

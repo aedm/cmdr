@@ -2,14 +2,12 @@ package checks
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"runtime"
-	"strconv"
 	"strings"
 )
 
-// Contention-aware re-run for the Rust suite.
+// Contention-aware re-run for the Rust suite. The verdict vocabulary, the busy/quiet
+// judgement, and the warn rule are shared with the Playwright lane and live in
+// `contention-verdict.go`; this file is the Rust half.
 //
 // The problem: on a saturated machine the global 8 s nextest cap kills CPU-bound tests
 // that would finish in milliseconds on an idle one. Measured 2026-07-29 on an M3 Max
@@ -21,19 +19,7 @@ import (
 //
 // Loosening the cap globally is the wrong fix: it costs every idle run its hang
 // detector, and the cap encodes a real incident (see `.config/nextest.toml`). Instead,
-// a red run re-runs ONLY the failing tests, alone, and lets the outcome classify them:
-//
-//   - Passes alone at the UNCHANGED deadline     → the suite was starving it. Contention.
-//   - Needs headroom, machine quiet              → it genuinely got slower. Not absorbed.
-//   - Needs headroom, machine still busy         → inconclusive; neither claim is made.
-//   - Fails alone even with headroom             → a real failure, whatever the load.
-//
-// Load is NOT the gate. The isolated re-run is. Load enters at exactly one point: the
-// "needed headroom" verdict is the only one whose meaning depends on the machine being
-// quiet, so when the re-run itself ran hot that verdict is demoted to "inconclusive"
-// rather than reported as real slowness. A test that passes alone despite load is still
-// contention, and a test that fails alone with headroom is still broken; neither
-// conclusion needs a threshold.
+// a red run re-runs ONLY the failing tests, alone, and lets the outcome classify them.
 
 // MaxContentionRerun bounds the re-run. Past it the machine was too loaded for the
 // result to mean anything, and re-running hundreds of tests serially is its own problem.
@@ -53,28 +39,6 @@ const (
 	ContentionRetryProfile = "contention-retry"
 )
 
-// ContentionVerdict is what the isolated re-runs concluded about one failing test.
-type ContentionVerdict string
-
-const (
-	// VerdictContention: passed alone at the same deadline. The suite starved it.
-	VerdictContention ContentionVerdict = "contention"
-	// VerdictTooSlow: needed headroom even alone, on a quiet machine. Wants tweaking or
-	// an explicit, documented per-test override, not silent absorption.
-	VerdictTooSlow ContentionVerdict = "too-slow"
-	// VerdictInconclusive: needed headroom, but the re-run itself ran on a busy machine,
-	// so "it got slower" can't be told from "it was starved again". Reported, never
-	// dressed up as either.
-	VerdictInconclusive ContentionVerdict = "inconclusive"
-	// VerdictReal: failed even alone with headroom.
-	VerdictReal ContentionVerdict = "real"
-)
-
-// BusyLoadPerCore is where a machine is considered too busy for the "needed headroom"
-// verdict to mean anything. Normal interactive work sits well under 1 runnable thread
-// per core; the saturated runs this exists for measured ~12 per core.
-const BusyLoadPerCore = 1.5
-
 // ContentionResult is one failing test plus what the re-runs concluded.
 type ContentionResult struct {
 	Binary  string
@@ -86,9 +50,6 @@ type ContentionResult struct {
 // ContentionRunner runs the named tests under one nextest profile and returns the raw
 // output. Injected so the classification logic is testable without a cargo build.
 type ContentionRunner func(profile string, names []string) (string, error)
-
-// LoadSampler reports the current load average per core. Injected for testability.
-type LoadSampler func() float64
 
 // RealFailures drops leaks. nextest counts a leaky test as PASSED (it appears in the
 // "N passed (M leaky)" tally), so re-running one is meaningless and counting one as a
@@ -191,21 +152,16 @@ func failedNames(output string) []string {
 	return names
 }
 
-// WarnOnly decides whether a red run may be softened to a warn. Contention is proven
-// harmless, and inconclusive means the machine was too busy to prove anything, so
-// failing on it would just punish the user for running the suite while busy: exactly the
-// case this whole mechanism exists to stop mislabelling. A too-slow or real verdict
-// keeps the run red.
-func WarnOnly(results []ContentionResult) bool {
-	if len(results) == 0 {
-		return false
-	}
+// RustVerdicts projects the results onto the shared vocabulary, which is what
+// `WarnOnly` judges. Both lanes carry their own result shape (a Rust test has a binary
+// and a deadline class, a spec has a file and a shard) and neither is worth forcing
+// onto the other.
+func RustVerdicts(results []ContentionResult) []ContentionVerdict {
+	verdicts := make([]ContentionVerdict, 0, len(results))
 	for _, r := range results {
-		if r.Verdict != VerdictContention && r.Verdict != VerdictInconclusive {
-			return false
-		}
+		verdicts = append(verdicts, r.Verdict)
 	}
-	return true
+	return verdicts
 }
 
 // ContentionSummary renders the verdicts for a human or agent reading the check output.
@@ -254,40 +210,6 @@ func ContentionSkippedNote(failed int) string {
 			"That many failures at once usually means the machine was too loaded for the run to mean anything; "+
 			"re-run the suite on a quieter machine.",
 		failed, MaxContentionRerun)
-}
-
-// LoadPerCore is the 1-minute load average divided by the core count, the shape the
-// busy/quiet judgement is expressed in.
-func LoadPerCore() float64 {
-	cores := runtime.NumCPU()
-	if cores <= 0 {
-		return 0
-	}
-	return LoadAverage() / float64(cores)
-}
-
-// LoadAverage returns the 1-minute load average, or 0 when it can't be read.
-func LoadAverage() float64 {
-	if raw, err := os.ReadFile("/proc/loadavg"); err == nil { // Linux
-		if fields := strings.Fields(string(raw)); len(fields) > 0 {
-			if v, err := strconv.ParseFloat(fields[0], 64); err == nil {
-				return v
-			}
-		}
-	}
-	out, err := exec.Command("sysctl", "-n", "vm.loadavg").Output() // macOS: "{ 1.83 2.05 2.11 }"
-	if err != nil {
-		return 0
-	}
-	fields := strings.Fields(strings.Trim(strings.TrimSpace(string(out)), "{}"))
-	if len(fields) == 0 {
-		return 0
-	}
-	v, err := strconv.ParseFloat(fields[0], 64)
-	if err != nil {
-		return 0
-	}
-	return v
 }
 
 // NextestFilterExpr builds an exact-match filter for the named tests.
