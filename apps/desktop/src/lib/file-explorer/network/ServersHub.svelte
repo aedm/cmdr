@@ -380,8 +380,12 @@
             return
         }
 
+        // `stopPropagation` for the same reason ⌘R has it: Enter resolves to `nav.open`
+        // centrally, whose handler posts Enter straight back to the focused pane, which
+        // hands the network view every key. Without it, one Enter opened the row twice.
         if (handleArrowAndEnter(e.key)) {
             e.preventDefault()
+            e.stopPropagation()
         }
     }
 

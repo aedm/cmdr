@@ -524,9 +524,13 @@
             return
         }
 
-        // Handle action keys
+        // Handle action keys. `stopPropagation` is the claim this branch makes on the
+        // key: bare Enter resolves centrally to `nav.open`, whose handler posts Enter
+        // back to the focused pane, which hands the network view every key. Without it,
+        // one Enter mounted the share twice.
         if (eventMatchesCommand(e, 'share.selectShare')) {
             e.preventDefault()
+            e.stopPropagation()
             if (cursorIndex >= 0 && cursorIndex < sortedShares.length) {
                 void activateShare(sortedShares[cursorIndex])
             }

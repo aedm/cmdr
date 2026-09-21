@@ -34,9 +34,6 @@
     "file-explorer/network/PlacesBrowser.svelte": {
       "reason": "Network component, needs integration tests (renamed from ShareBrowser.svelte)"
     },
-    "file-explorer/network/ServersHub.svelte": {
-      "reason": "Network component, needs Tauri integration (renamed from NetworkBrowser.svelte)"
-    },
     "file-explorer/network/network-store.svelte.ts": {
       "reason": "Depends on Tauri APIs"
     },

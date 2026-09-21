@@ -17,6 +17,8 @@
 import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import { mount, unmount, tick } from 'svelte'
 import PlacesBrowser from './PlacesBrowser.svelte'
+import { resolveGlobalKeyAction } from '../../../routes/(main)/global-keydown'
+import { initShortcutDispatch, destroyShortcutDispatch } from '$lib/shortcuts/shortcut-dispatch'
 import type { NetworkHost, ShareInfo, ShareListError } from '../types'
 import { renderShareListError } from './share-list-error-messages'
 import { ShareListFailure } from './share-list-error'
@@ -218,6 +220,53 @@ describe('PlacesBrowser credential gate', () => {
     expect(onShareSelect).toHaveBeenCalledWith(expect.objectContaining({ name: 'naspi' }), null)
 
     await unmount(component)
+  })
+})
+
+describe('PlacesBrowser Enter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    document.body.innerHTML = ''
+    h.getSmbCredentials.mockRejectedValue(new Error('not found'))
+    h.openSignInSheet.mockResolvedValue({ kind: 'cancelled' })
+  })
+
+  /**
+   * Enter reaches this browser twice unless its own branch claims the key: the pane's
+   * element-level handler runs first, then the document dispatcher in `+page.svelte`
+   * (bubble-phase, no `defaultPrevented` guard) resolves bare Enter to `nav.open`,
+   * whose handler posts Enter straight back to the focused pane, which hands the
+   * network view every key. Mounting a share twice is the visible half.
+   */
+  it('activates the share under the cursor once, not once per handler on the path', async () => {
+    h.fetchShares.mockResolvedValue({ shares: [naspi], authMode: 'guest_allowed', fromCache: false })
+    const onShareSelect = vi.fn()
+    const { target, component, api } = mountBrowser(onShareSelect)
+    await waitForShareList(target)
+
+    const documentDispatcher = (e: KeyboardEvent) => {
+      const action = resolveGlobalKeyAction(e, { dialogOpen: false, paletteOpen: false })
+      if (action.kind === 'dispatch' && action.commandId === 'nav.open') {
+        api.handleKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))
+      }
+    }
+    const paneHandler = (e: KeyboardEvent) => {
+      api.handleKeyDown(e)
+    }
+    target.addEventListener('keydown', paneHandler)
+    document.addEventListener('keydown', documentDispatcher)
+    initShortcutDispatch()
+    try {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await tick()
+
+      expect(onShareSelect).toHaveBeenCalledOnce()
+    } finally {
+      destroyShortcutDispatch()
+      target.removeEventListener('keydown', paneHandler)
+      document.removeEventListener('keydown', documentDispatcher)
+      await unmount(component)
+    }
   })
 })
 

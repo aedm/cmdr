@@ -1,16 +1,18 @@
 /**
- * Behavior tests for `ServersHub`: the refresh key's double-handler hazard, and
- * what Enter and F8 do to each kind of row.
+ * Behavior tests for `ServersHub`: the double-handler hazard that ⌘R and Enter
+ * share, and what Enter and F8 do to each kind of row.
  *
- * The refresh key (⌘R, `pane.refresh`) has two handlers on its path: the pane's
- * own element-level one, which reaches `ServersHub.handleKeyDown`, and the
- * document-level dispatcher in `+page.svelte`, registered bubble-phase with no
- * `defaultPrevented` guard, which routes `pane.refresh` back into the same
- * component through `refreshNetworkHosts()` → `ServersHub.refresh()`.
+ * Both keys have two handlers on their path: the pane's own element-level one,
+ * which reaches `ServersHub.handleKeyDown`, and the document-level dispatcher in
+ * `+page.svelte`, registered bubble-phase with no `defaultPrevented` guard. It
+ * routes `pane.refresh` back into this component through `refreshNetworkHosts()` →
+ * `ServersHub.refresh()`, and `nav.open` (which bare Enter resolves to) back in
+ * through `sendKeyToFocusedPane('Enter')` → the pane router's network arm.
  *
  * The local handler therefore has to stop propagation, or one keypress re-reads
- * every host's shares twice. These tests wire both handlers the way the app does
- * and count the actual store work, not the handler's return value.
+ * every host's shares twice, or opens the row under the cursor twice. These tests
+ * wire both handlers the way the app does and count the actual work, not the
+ * handler's return value.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
@@ -132,10 +134,12 @@ interface MountedHub {
 }
 
 /**
- * Mounts the hub behind the two handlers ⌘R really passes through: the pane's
- * element-level one (a descendant of `document`, so it runs first) and the
+ * Mounts the hub behind the two handlers ⌘R and Enter really pass through: the
+ * pane's element-level one (a descendant of `document`, so it runs first) and the
  * document-level dispatcher, which turns a `pane.refresh` dispatch back into
- * `refresh()` the way `refreshPane` in `pane-commands.ts` does.
+ * `refresh()` the way `refreshPane` in `pane-commands.ts` does, and a `nav.open`
+ * dispatch back into this handler the way `sendKeyToFocusedPane('Enter')` does
+ * (`nav-handlers.ts` → `pane-key-router` → `handleNetworkKeyDown`).
  */
 function mountBehindBothHandlers(): MountedHub {
   const target = document.createElement('div')
@@ -154,7 +158,11 @@ function mountBehindBothHandlers(): MountedHub {
   }
   const documentDispatcher = (e: KeyboardEvent) => {
     const action = resolveGlobalKeyAction(e, { dialogOpen: false, paletteOpen: false })
-    if (action.kind === 'dispatch' && action.commandId === 'pane.refresh') api.refresh()
+    if (action.kind !== 'dispatch') return
+    if (action.commandId === 'pane.refresh') api.refresh()
+    // `nav.open`'s handler re-sends Enter to the focused pane, which hands the
+    // network view every key: the hub's own handler runs a second time.
+    if (action.commandId === 'nav.open') api.handleKeyDown(new KeyboardEvent('keydown', { key: 'Enter' }))
   }
   target.addEventListener('keydown', paneHandler)
   document.addEventListener('keydown', documentDispatcher)
@@ -225,6 +233,22 @@ describe('ServersHub rows', () => {
     const { api, cleanup } = mountBehindBothHandlers()
     await tick()
     expect(api.getItemCount()).toBe(mockHosts.length + 1)
+    await cleanup()
+  })
+
+  it('opens the row once per Enter, not once per handler on the path', async () => {
+    const { target, api, onHostSelect, cleanup } = mountBehindBothHandlers()
+    await tick()
+    api.setCursorIndex(api.findItemIndex('Naspolya'))
+
+    const listContainer = target.querySelector('.row-list')
+    expect(listContainer).not.toBeNull()
+    listContainer?.dispatchEvent(plainKey('Enter'))
+
+    // Twice means the hub acted, let the key bubble, and the document dispatcher's
+    // `nav.open` posted Enter straight back into it.
+    expect(onHostSelect).toHaveBeenCalledOnce()
+
     await cleanup()
   })
 
