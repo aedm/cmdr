@@ -315,16 +315,19 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
       Its allowlist number was raised instead, with the reason carried forward.
 - [ ] Full `pnpm check --include-slow`, then the fast-forward to `main`, then the push.
 - [ ] Decide the marker's glyph and colour with David, and the tooltip copy. He reviews every human-facing string.
+- [ ] Review the selection announcement copy with David. It now names the PHYSICAL line the gutter draws rather than
+      the row index it used to call a line, and two new keys cover the case where the line can't be resolved from the
+      row cache: `viewer.selection.charsOnly` ("Selected {chars} characters") and `viewer.selection.toEndOfFileNoLine`
+      ("Selected to the end of the file"). Both are drafts, translated into all 10 locales, and a one-line change.
 - [ ] Ask David the open question in § The marker: whether a soft wrap break should be marked too, which would mean
       Cmdr wrapping instead of CSS.
 
 ### Handed over from the frontend milestone
 
-- [ ] **`cacheChunk` infers "continue or stop" from the row count.** The backend's new `ChunkEnd` says explicitly
-      which it is, and forbids that inference. Switch to it when the rename reaches the frontend.
-- [ ] **The fraction path still caches at `fetchFrom`**, discarding `chunk.firstLineNumber`
-      (`viewer-scroll.svelte.ts:~340`), so a ByteSeek-no-index continuation can cache rows at the wrong indexes. Goes
-      with the ByteSeek estimate work.
+- [x] **`cacheChunk` infers "continue or stop" from the row count.** Done: it reads `chunk.end`. It now lives in
+      `viewer-row-fetch.svelte.ts`, which the fetch walk moved to when `viewer-scroll.svelte.ts` was split.
+- [x] **The fraction path still caches at `fetchFrom`**, discarding `chunk.firstLineNumber`. Done: `cacheChunk` caches
+      at `chunk.firstRowNumber` on every path, fraction included (`viewer-row-fetch.svelte.ts`).
 - [ ] **`isWholeFileSelection` still over-reports.** It hands the copy band `totalBytes` for any selection that starts
       at (0, 0) and reaches the last row, even one stopping partway into it. The toast is honest now; the band that
       decides confirm-versus-refuse is not, which is an I3 gap.
