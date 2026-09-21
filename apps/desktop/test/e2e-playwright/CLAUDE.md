@@ -15,8 +15,11 @@ Linux (Docker), so a modifier key comes from `CTRL_OR_META`, ❌ never a hardcod
   `dismissOverlay`, `expectAndDismissToast`, or `escapeOverlayUntilGone`.
 - **A helper can return normally having done nothing.** Assert a poll with `expect.poll(...).toBeTruthy()`, never a bare
   `pollUntil`. Press buttons with `clickButtonByText` (a disabled `.click()` dispatches nothing) and Ark widgets with
-  `pointerClick`. After a write, `waitForOperationsToSettle`, then end with `expectAndDismissToast`. DETAILS § "Waiting
-  for a write to settle".
+  `pointerClick`.
+- **A wait helper names the boundary it waits on; pick the one your assertion lands on.**
+  `waitForBackendOperationsToSettle` proves only that `list_operations` emptied, and the UI re-renders after it (650 ms
+  under load), so a frontend assertion (dialog gone, rename editor, next gesture) wants `waitForTransferUiToSettle`.
+  Then end with `expectAndDismissToast`. DETAILS § "Waiting for a write to settle".
 - **Close the onboarding wizard from a `finally`** (`closeOnboardingWizardIfOpen`): left open, it refuses every MCP call
   and fails every later test on the shard. Match its rows by `data-checklist-item`, ❌ never by label.
 - **Drive viewer and settings through the real multi-window flow** (`openViewerWindow`, `openSettingsWindowViaProd`,
@@ -29,16 +32,15 @@ Linux (Docker), so a modifier key comes from `CTRL_OR_META`, ❌ never a hardcod
   with `restoreFixtureTree`, and when holding an op, `drainOperations()` first in the SAME hook.
 - **"STOPPED ANSWERING" means read up**: an earlier test killed the app. DETAILS § "The dead-app circuit breaker".
 - **The harness walls the app off from your machine**: Downloads and `tauri-plugin-store` are redirected (a new store
-  needs the redirect too, or your local settings leak into runs), the clipboard is a Rust fake, and both locale halves
-  are pinned. DETAILS § "The locale pin".
+  needs the redirect too, or your settings leak into runs), the clipboard is a Rust fake, both locale halves pinned.
+  DETAILS § "The locale pin".
 - **`emitBackendEvent` state is shared**: emit the clearing event in the test AND `afterEach`. Rows appearing doesn't
   prove a walk (`search-walk-ground.ts`). DETAILS § "Synthetic backend events".
 - **`marketing-shots.spec.ts` shoots real folders with NO fixture tree**: ❌ never set `CMDR_E2E_START_PATH` for it (the
   guard deletes anything outside the manifest), and it needs the machine left alone; say both first.
-- **A `*.test.ts` here runs under VITEST, where both Playwright packages are aliased to
-  `test/e2e-playwright/vitest-playwright-shim.ts`** (importing the real runner into a happy-dom worker kills the
-  process). `expect` is Vitest's; the Tauri matchers (`toBeVisible` and friends) aren't there, so a helper that needs
-  one needs a seam instead. DETAILS § "The Vitest shim".
+- **A `*.test.ts` here runs under VITEST**, with both Playwright packages aliased to `vitest-playwright-shim.ts`
+  (importing the real runner into a happy-dom worker kills the process). `expect` is Vitest's and the Tauri matchers
+  aren't there, so a helper needing one needs a seam. DETAILS § "The Vitest shim".
 
 Run recipes, architecture, sharding, app modes, contracts, and decisions: `DETAILS.md`. Read it before any non-trivial
 work here: editing, planning, reorganizing, or advising.

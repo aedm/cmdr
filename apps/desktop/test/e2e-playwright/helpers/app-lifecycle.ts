@@ -14,6 +14,7 @@ import { ensureMcpClient, mcpReadResource } from '../../e2e-shared/mcp-client.js
 import {
   type PageLike,
   LOCAL_VOLUME_NAME,
+  TRANSFER_DIALOG,
   clickEntryInPane,
   flushFileWatcher,
   getFixtureRoot,
@@ -131,7 +132,7 @@ export async function ensureAppReady(
   //
   // Gated on `isStateClean` so the typical case (both panes already local,
   // no modal lingering) skips the volume-select + Escape sequence and pays
-  // ~zero overhead — only ~5 ms for one MCP `cmdr://state` read.
+  // ~zero overhead: one DOM read of the pane breadcrumbs.
   try {
     await ensureMcpClient(tauriPage)
     if (!(await isStateClean(tauriPage, LOCAL_VOLUME_NAME))) {
@@ -155,10 +156,8 @@ export async function ensureAppReady(
       if (!volumeReset) {
         throw new Error(`ensureAppReady: both panes did not return to local volume '${LOCAL_VOLUME_NAME}' within 5s`)
       }
-      // Previously: double-Escape + best-effort modal-overlay poll to clean up
-      // a dialog leaked by the volume-touching spec. The global afterEach
-      // safety net in fixtures.ts now catches and auto-cleans any leaks at
-      // the point of leak, so this defensive cleanup is no longer needed.
+      // No dialog cleanup here: `fixtures.ts`'s post-test leak guard catches and
+      // auto-cleans an overlay at the point of leak, naming the spec that left it.
     }
   } catch {
     // mcp-client may not be available yet (very first test); fall through and
@@ -328,8 +327,16 @@ export async function ensureAppReady(
 }
 
 /**
- * Waits until the backend's operation registry is empty, so every operation the
+ * Waits until the BACKEND's operation registry is empty, so every operation the
  * test started has emitted its terminal event AND settled (its lane released).
+ *
+ * ❗ The name says `Backend` because that is the whole of what it proves. It asks
+ * `list_operations` over IPC and nothing else, so there is no happens-before edge
+ * between this returning and any FRONTEND state: the webview still has to take
+ * `write-complete` off the event bridge, close the progress dialog, and raise the
+ * toast (~0 ms idle, 650 ms measured in a loaded lane). A spec that waits here and
+ * then asserts a dialog is gone is asserting on the other side of the boundary, and
+ * it fails under load only. {@link waitForTransferUiToSettle} is that wait.
  *
  * The non-destructive sibling of {@link drainOperations}, which CANCELS what it
  * finds: this one waits for operations to finish on their own, and is what a
@@ -370,7 +377,7 @@ export async function ensureAppReady(
  * failure, so a failed operation makes it time out and say so rather than
  * quietly tidying the evidence away. `drainOperations` is teardown's.
  */
-export async function waitForOperationsToSettle(
+export async function waitForBackendOperationsToSettle(
   tauriPage: PageLike,
   options: { timeout?: number } = {},
 ): Promise<void> {
@@ -385,6 +392,59 @@ export async function waitForOperationsToSettle(
       { timeout },
     )
     .toBe(0)
+}
+
+/**
+ * Every surface a transfer puts on screen: the setup dialog, the progress dialog it
+ * hands over to, and the per-file conflict prompt the queue window raises.
+ *
+ * The conflict prompt nested INSIDE the progress dialog needs no entry of its own; it
+ * unmounts with its host.
+ */
+const TRANSFER_UI_SELECTORS = [
+  TRANSFER_DIALOG,
+  '[data-dialog-id="transfer-progress"]',
+  '[data-dialog-id="operation-conflict"]',
+]
+
+/** Which transfer surfaces are mounted right now, by `data-dialog-id`. */
+async function openTransferSurfaces(tauriPage: PageLike): Promise<string[]> {
+  const selectorsJson = JSON.stringify(TRANSFER_UI_SELECTORS)
+  return (
+    (await tauriPage.evaluate<string[] | null>(`(function() {
+        return ${selectorsJson}
+            .filter(function(s) { return document.querySelector(s) !== null; })
+            .map(function(s) { return s.replace('[data-dialog-id="', '').replace('"]', ''); });
+    })()`)) ?? []
+  )
+}
+
+/**
+ * Waits until a write is over on BOTH sides: the backend's registry has emptied and
+ * the frontend has taken every transfer surface off the screen.
+ *
+ * ❗ Reach for this whenever the thing being asserted is a FRONTEND consequence of a
+ * write finishing — no dialog on screen, the follow-up rename editor, the next
+ * gesture reaching the app rather than a modal.
+ * {@link waitForBackendOperationsToSettle} cannot stand in for it: the backend
+ * finishing does not mean the UI has re-rendered, and there is no happens-before edge
+ * between the two at all. On a fast machine the difference is invisible; under load
+ * it fails, and it reads as flake rather than as the missing wait it is.
+ *
+ * It waits on the backend FIRST, deliberately. Polling for the dialogs alone would
+ * pass vacuously against a gesture whose dialog hasn't opened yet, and a still-running
+ * operation is a clearer verdict than "a dialog is up".
+ *
+ * ❌ Not a check that the screen is empty: it names the transfer surfaces and ignores
+ * everything else, so a spec ending in the rename editor (what a single-item duplicate
+ * opens) is settled, not leaking.
+ */
+export async function waitForTransferUiToSettle(
+  tauriPage: PageLike,
+  options: { backendTimeout?: number; uiTimeout?: number } = {},
+): Promise<void> {
+  await waitForBackendOperationsToSettle(tauriPage, { timeout: options.backendTimeout })
+  await expect.poll(async () => openTransferSurfaces(tauriPage), { timeout: options.uiTimeout ?? 10000 }).toEqual([])
 }
 
 /**

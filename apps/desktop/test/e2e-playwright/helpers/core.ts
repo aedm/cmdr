@@ -509,16 +509,17 @@ export function getFixtureRoot(): string {
  * still needed when this returns false, and on the first test of each spec
  * (where a prior spec may have left a pane elsewhere).
  *
- * Reads `cmdr://state` over MCP. Caller must have already called
- * `initMcpClient(tauriPage)`. Returns false on any error rather than
- * throwing. When in doubt, the caller should do the full reset.
+ * ❗ Both answers come from the DOM the user is looking at (the pane breadcrumbs
+ * and the overlay element), never from `cmdr://state`, so it needs no MCP client
+ * and it can't disagree with what a DOM assertion after it will see. It's also
+ * ~30–50 ms per call cheaper than the MCP round trip, which used to dominate
+ * every MTP test's `beforeEach`.
+ *
+ * Returns false on any error rather than throwing. When in doubt, the caller
+ * should do the full reset.
  */
 export async function isStateClean(tauriPage: PageLike, localVolumeName: string): Promise<boolean> {
   try {
-    // Combined DOM read: pane volume labels + modal-overlay presence in one
-    // tauri-playwright evaluate. Skips the MCP `cmdr://state` HTTP roundtrip
-    // (~30–50 ms per call), which used to dominate the beforeEach time on
-    // every MTP test even though the DOM already had the answer.
     return await tauriPage.evaluate<boolean>(
       `(function(){
         var els = document.querySelectorAll('.volume-breadcrumb .volume-name');

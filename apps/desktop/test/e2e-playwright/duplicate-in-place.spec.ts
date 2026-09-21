@@ -28,7 +28,7 @@ import {
   moveCursorToFile,
   pressKey,
   renameEditorValue,
-  waitForOperationsToSettle,
+  waitForTransferUiToSettle,
   TRANSFER_DIALOG,
   CTRL_OR_META,
 } from './helpers.js'
@@ -73,14 +73,12 @@ test.describe('Duplicate in place', () => {
     expect(fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt'))).toBe(true)
     await expect.poll(async () => fileExistsInPane(tauriPage, 'file-a (1).txt', 0), { timeout: 5000 }).toBeTruthy()
 
-    // The progress dialog is up until the operation ends, so both the modal check
-    // and the toast below are asking about a finished operation. POLLED, because
-    // `waitForOperationsToSettle` asks the BACKEND (`list_operations`): the frontend
-    // still has to take `write-complete` off the event bridge, close the dialog, and
-    // raise the toast. That lag is ~0 on an idle box and was measured at 650 ms in a
-    // loaded lane, where an instant read caught the dialog on its last frame.
-    await waitForOperationsToSettle(tauriPage)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    // The progress dialog is up until the operation ends, so both this wait and the
+    // toast below are asking about a finished operation. It has to be the UI-side
+    // wait: the backend's registry emptying says nothing about the frontend having
+    // taken `write-complete` off the event bridge and closed the dialog (~0 ms idle,
+    // 650 ms in a loaded lane).
+    await waitForTransferUiToSettle(tauriPage)
     await expectAndDismissToast(tauriPage, 'Copied 1 file.')
 
     // Paste is one of the two gestures that end a single-item duplicate in the
@@ -110,9 +108,10 @@ test.describe('Duplicate in place', () => {
     expect(fs.existsSync(path.join(fixtureRoot, 'left', 'file-a.txt'))).toBe(true)
     await expect.poll(async () => fileExistsInPane(tauriPage, 'file-a (1).txt', 0), { timeout: 5000 }).toBeTruthy()
     // Neither wait above says the operation is OVER (the copy is on disk before the
-    // closing flush, and the row comes from the pane's watcher), and the toast is
-    // raised by the completion. `waitForOperationsToSettle` has the whole argument.
-    await waitForOperationsToSettle(tauriPage)
+    // closing flush, and the row comes from the pane's watcher), and the toast and
+    // the dialog's close are both the completion's doing, on the frontend's turn
+    // rather than the backend's. `waitForTransferUiToSettle` has the whole argument.
+    await waitForTransferUiToSettle(tauriPage)
     // Wait out the completion toast BEFORE asking about the editor: the rename
     // follow-up would open just after it, so asking earlier would pass vacuously.
     await expectAndDismissToast(tauriPage, 'Copied 1 file.')
@@ -120,9 +119,6 @@ test.describe('Duplicate in place', () => {
     // Duplicate asks nothing: no destination to pick, and no name to type. Unlike
     // paste and F5, it must not leave the rename editor open: a second ⌘D has to
     // stamp out another copy rather than land in a text field.
-    // Polled for the same reason as the paste case above: the dialog closes on the
-    // frontend's turn, not the backend's.
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
     // NOT polled: "the editor never opened" is an absence, and a poll for absence
     // passes on its first read anyway.
     expect(await tauriPage.isVisible('.rename-input')).toBe(false)
@@ -136,7 +132,7 @@ test.describe('Duplicate in place', () => {
     await expect
       .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-a (2).txt')), { timeout: 8000 })
       .toBeTruthy()
-    await waitForOperationsToSettle(tauriPage)
+    await waitForTransferUiToSettle(tauriPage)
     await expectAndDismissToast(tauriPage, 'Copied 1 file.')
   })
 
@@ -162,7 +158,9 @@ test.describe('Duplicate in place', () => {
         { timeout: 8000 },
       )
       .toBeTruthy()
-    await waitForOperationsToSettle(tauriPage)
+    // UI-side: the line below asks about the rename editor, which is frontend state,
+    // so the wait before it has to reach the frontend too.
+    await waitForTransferUiToSettle(tauriPage)
     await expectAndDismissToast(tauriPage, 'Copied 2 files.')
     expect(await tauriPage.isVisible('.rename-input')).toBe(false)
 
@@ -174,7 +172,7 @@ test.describe('Duplicate in place', () => {
     await expect
       .poll(() => fs.existsSync(path.join(fixtureRoot, 'left', 'file-b (2).txt')), { timeout: 8000 })
       .toBeTruthy()
-    await waitForOperationsToSettle(tauriPage)
+    await waitForTransferUiToSettle(tauriPage)
     await expectAndDismissToast(tauriPage, 'Copied 1 file.')
   })
 
@@ -207,14 +205,12 @@ test.describe('Duplicate in place', () => {
 
     await tauriPage.click(`${TRANSFER_DIALOG} .btn-primary`)
 
-    // The progress dialog takes the setup dialog's place, so `.modal-overlay` is
-    // continuous from here until the operation ends: asking for it to be gone is
-    // asking for the operation to be over, and it's asked below, once the
-    // operation itself says so. The file lands before the operation ends and
-    // proves it started, so the settle wait can't pass vacuously here.
+    // The progress dialog takes the setup dialog's place, so a transfer surface is up
+    // continuously from here until the operation ends AND the frontend has closed it.
+    // The file lands before the operation ends and proves it started, so the settle
+    // wait can't pass vacuously here.
     await expect.poll(() => fs.existsSync(path.join(leftDir, 'file-b (1).txt')), { timeout: 8000 }).toBeTruthy()
-    await waitForOperationsToSettle(tauriPage)
-    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    await waitForTransferUiToSettle(tauriPage)
 
     expect(fs.existsSync(path.join(leftDir, 'file-b.txt'))).toBe(true)
     await expectAndDismissToast(tauriPage, 'Copied 1 file.')

@@ -12,6 +12,11 @@ import { type PageLike, CTRL_OR_META, pollUntil } from './core.js'
  * Navigate to a SvelteKit route via link-click interception.
  * browser.url() doesn't work in Tauri, so we create a temporary `<a>` element
  * and click it to trigger SvelteKit's client-side routing.
+ *
+ * ❗ It returns once the click is DISPATCHED, not once the route has rendered:
+ * SvelteKit's navigation is async and there is no one readiness condition that
+ * fits every route. So the caller waits for something only the target route
+ * draws (`ensureAppReady` waits for `.file-entry`), never on this returning.
  */
 export async function navigateToRoute(tauriPage: PageLike, path: string): Promise<void> {
   await tauriPage.evaluate(`(function() {
@@ -81,6 +86,10 @@ export async function getFocusedPaneActiveTabPath(): Promise<string | null> {
  * left-pane nav and leave the wrong pane focused — which reads as "the nav went
  * somewhere else". Re-clicking each pass outlasts that late shift, the way
  * `ensureAppReady`'s own focus loop does.
+ *
+ * ❗ The path half comes from `cmdr://state`, which is the BACKEND's view, so this
+ * returning does not mean the pane has DRAWN the listing. A caller that asserts on
+ * rows polls the DOM for them (`expect.poll(fileExistsInFocusedPane…)`).
  */
 export async function settleFocusedPaneOnLeft(tauriPage: PageLike, targetPath: string): Promise<void> {
   await expect
