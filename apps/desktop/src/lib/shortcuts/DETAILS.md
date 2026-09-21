@@ -225,8 +225,16 @@ into `handleCommandExecute()`, the same core the palette, the native menu, and M
 (`routes/(main)/DETAILS.md` § The dialog gate). Rebuilds automatically when custom shortcuts change via
 `onShortcutChange`.
 
-Tier 2 commands (arrows, Space, Enter, Backspace, etc.) are not in the dispatch map. Unmatched keypresses propagate
-normally to component-level handlers in DualPaneExplorer and FilePane.
+Tier 2 commands (the per-keystroke cursor ids: arrows, Home/End, PageUp/PageDown) are not in the dispatch map.
+Unmatched keypresses propagate normally to component-level handlers in DualPaneExplorer and FilePane.
+
+❗ **A BARE key is not automatically Tier 2.** `Enter` (`nav.open`), `Tab` (`pane.switch`), Space, F5, and Insert all
+belong to Tier 1 commands and sit in the map, so the claim rule below governs them exactly as it governs a ⌘ combo.
+Enter is the sharpest case: `nav.open` WINS the combo globally (it beats `share.selectShare` on registry order at equal
+scope depth), and its handler is `sendKeyToFocusedPane('Enter')`, which posts the key straight back into the focused
+pane. A pane branch that only `preventDefault`s therefore opens the entry TWICE. That hid for months because a second
+OS open is invisible for a file whose app reuses its window; a Google Drive file is what surfaced it, opening two
+browser tabs for one Enter.
 
 ### Local handlers resolve through the registry too (`eventMatchesCommand`)
 

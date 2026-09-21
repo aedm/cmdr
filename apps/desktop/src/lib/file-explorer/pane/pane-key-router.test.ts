@@ -6,8 +6,9 @@
  * - Enter / ⌘↓ opens the entry under the cursor, ⌘↓ over nothing is swallowed
  *   rather than falling through to a cursor move or the document dispatcher,
  * - Backspace / ⌘↑ goes to the parent, but only when there is a `..` row,
- * - the ⌘-variants stop propagation so the document dispatcher can't run the
- *   same command a second time (⌘↑ → grandparent, ⌘↓ → double-open),
+ * - a handled open or parent key stops propagation so the document dispatcher
+ *   can't run the same command a second time (⌘↑ → grandparent, Enter / ⌘↓ →
+ *   double-open),
  * - bare `+` / `-` bubble the Selection dialog commands out of the pane,
  * - the six selection keys act and stop propagation, and Space also raises the
  *   one-time Quick Look hint,
@@ -158,14 +159,17 @@ describe('createPaneKeyRouter', () => {
   })
 
   describe('open and parent', () => {
-    it('opens the entry under the cursor on Enter', () => {
+    it('opens the entry under the cursor on Enter, and stops there', () => {
       onlyCommand('nav.open')
       const e = keyEvent()
       router().handleKeyDown(e)
       expect(deps.openEntry).toHaveBeenCalledWith(entry)
       expect(e.preventDefault).toHaveBeenCalled()
-      // Bare Enter isn't in the document dispatch map, so nothing to stop.
-      expect(e.stopPropagation).not.toHaveBeenCalled()
+      // BOTH of `nav.open`'s combos are in the document dispatch map, and bare Enter
+      // WINS the combo globally. Letting it bubble ran `nav.open`'s handler, whose
+      // `sendKeyToFocusedPane('Enter')` opened the entry a second time — two browser
+      // tabs for one Enter on a Google Drive file.
+      expect(e.stopPropagation).toHaveBeenCalled()
     })
 
     it('stops propagation for ⌘↓ so the document dispatcher cannot double-open', () => {

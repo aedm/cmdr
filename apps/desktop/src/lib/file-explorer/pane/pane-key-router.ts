@@ -132,17 +132,21 @@ export function createPaneKeyRouter(deps: PaneKeyRouterDeps): PaneKeyRouter {
    * `file.delete`'s combo, not `nav.parent`'s, so it passes through to the document
    * dispatcher and deletes.
    *
-   * `stopPropagation` is load-bearing for the ⌘-variants: ⌘↓ (`nav.open`) and ⌘↑
-   * (`nav.parent`) are ALSO in the dispatch map, so without stopping here the
-   * document-level dispatcher would run the command a second time (⌘↑ → grandparent,
-   * ⌘↓ → double-open).
+   * `stopPropagation` is load-bearing on EVERY handled combo, bare keys included:
+   * `nav.open` and `nav.parent` are both Tier 1, so all four combos sit in the
+   * document dispatch map and a key that keeps bubbling runs the command a second
+   * time (⌘↑ → grandparent, Enter / ⌘↓ → double-open). Bare Enter is the one that
+   * bites hardest: it WINS the combo globally, and `nav.open`'s handler re-sends
+   * Enter into this pane, so one Enter on a Google Drive file opened two browser
+   * tabs. A second OS open is invisible for a file whose app reuses its window,
+   * which is why this hid for so long.
    */
   function handleOpenOrParentKey(e: KeyboardEvent): boolean {
     if (eventMatchesCommand(e, 'nav.open')) {
       const entry = deps.getEntryUnderCursor()
       if (entry) {
         e.preventDefault()
-        if (e.metaKey) e.stopPropagation()
+        e.stopPropagation()
         deps.openEntry(entry)
         return true
       }
