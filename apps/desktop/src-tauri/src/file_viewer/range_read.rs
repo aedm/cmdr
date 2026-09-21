@@ -307,25 +307,24 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
                 return emit.finish(/*keep_trailing_newline=*/ true);
             }
 
-            let emitted_bytes = if is_first_overall {
+            let text = if is_first_overall {
                 // First line of the whole selection: take from start_offset to end of line.
-                let start_byte = clamp_utf16_offset_to_byte(line, start_offset_utf16);
-                emit.push(&line[start_byte..])?;
-                emit.end_line();
-                line.len() - start_byte + 1
+                &line[clamp_utf16_offset_to_byte(line, start_offset_utf16)..]
             } else if !end_is_eof && line_number == end_line {
-                // Last line of explicit range: take from offset 0 up to end_offset.
+                // Last line of an explicit range: take from offset 0 up to end_offset, and
+                // no trailing delimiter (the range is half-open). Exits the walk here, so
+                // it never reaches the `end_line()` below.
                 let end_byte = clamp_utf16_offset_to_byte(line, end_offset_utf16);
                 emit.push(&line[..end_byte])?;
-                // No trailing newline on the end line of a half-open range.
                 return emit.finish(/*keep_trailing_newline=*/ false);
             } else {
-                emit.push(line)?;
-                emit.end_line();
-                line.len() + 1
+                line.as_str()
             };
+            emit.push(text)?;
+            // The one place the walk decides a line carries its delimiter.
+            emit.end_line();
             lines_since_cancel_check += 1;
-            bytes_since_cancel_check += emitted_bytes;
+            bytes_since_cancel_check += text.len() + 1;
         }
 
         first_chunk = false;
