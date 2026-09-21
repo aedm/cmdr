@@ -45,7 +45,8 @@ Each is break-if-ignored; the named `DETAILS.md` section has the why.
   first, else an open menu's Escape shuts the window. (§ Gotchas)
 - **The render window, its prefetch, and eviction are sized in pixels or distance, ❌ never in rows** (a wrapped row is
   hundreds of pixels tall); eviction skips `fullLoad`, whose height map needs every row. A short answer is normal: walk
-  by `chunk.end` + `endByteOffset`, cache at `chunk.firstRowNumber`. (§ "Virtual scrolling")
+  by `chunk.end` + `endByteOffset`, cache at `chunk.firstRowNumber`. The walk itself is `viewer-row-fetch.svelte.ts`,
+  which `viewer-scroll` creates and reaches through getters; ❌ don't move geometry into it. (§ "Virtual scrolling")
 - **The copy flow may not guess**: ⌘A with an uncached last row takes the `EOF_ROW` path (❌ never a 0 length),
   `rowMetrics` decides each row's delimiter, a from-the-top selection subtracts its leftover, and the toast measures the
   text it wrote. (§ "Selection model")

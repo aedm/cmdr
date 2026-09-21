@@ -15,11 +15,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   CACHE_EVICT_ABOVE,
   createViewerScroll,
-  FETCH_BATCH,
   getLineHeight,
   rowsToEvict,
   renderWindowRows,
 } from './viewer-scroll.svelte'
+import { FETCH_BATCH } from './viewer-row-fetch.svelte'
 import { EOF_ROW } from './selection.svelte'
 import type { LineChunk, ViewerError, ViewerRow } from '$lib/ipc/bindings'
 import { clearIpcMocks, installIpcMock } from '$lib/ipc/test-helpers'

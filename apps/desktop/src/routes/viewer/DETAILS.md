@@ -15,7 +15,8 @@ Per-file inventory for the route. Locate symbols via `codegraph_search`; this is
 - **`+page.svelte`**: top-level component (lifecycle, window management, UI).
 - **`ViewerRow.svelte`**: one rendered ROW: the gutter number (only where a line starts), the text split into
   search-highlight and selection spans, and the continuation marker. See § "Rows, not lines".
-- Composables: **`viewer-scroll`** (virtual scroll), **`viewer-search`** (start/poll/cancel/navigate, regex projection),
+- Composables: **`viewer-scroll`** (virtual scroll: geometry and the row store), **`viewer-row-fetch`** (the fetch
+  walk `viewer-scroll` creates and delegates to), **`viewer-search`** (start/poll/cancel/navigate, regex projection),
   **`viewer-line-heights`** (word-wrap height map via DOM measurement, FullLoad only), **`viewer-text-width`**
   (`ResizeObserver` width tracker), **`viewer-tail`** (`viewer:file-changed:<sid>` → reload toasts).
 - **`viewer-indexing-poll.ts`**: `viewer_get_status` poll during line-index build.
@@ -134,10 +135,17 @@ source for the origin form). `openViewerSession` hands the result to `media.setF
 
 ### Virtual scrolling: the window, the cache, and the fetch loop
 
-`viewer-scroll.svelte.ts` draws a window of rows around the viewport, fills it from `viewer_get_lines`, and holds what
-it fetched in `rowCache` (a `SvelteMap<number, CachedRow>`, each entry carrying the row's text, its `continues` flag,
-and its `lineNumber`). Three policies keep that bounded, and each one is bounded by PIXELS or by distance, never by a
-count of rows. That distinction is the whole point: an ordinary row is about a line tall, but with word wrap on a 20 KB
+`viewer-scroll.svelte.ts` draws a window of rows around the viewport and holds what was fetched in `rowCache` (a
+`SvelteMap<number, CachedRow>`, each entry carrying the row's text, its `continues` flag, and its `lineNumber`).
+`viewer-row-fetch.svelte.ts` fills that window from `viewer_get_lines`: `viewer-scroll` creates it, hands it getters
+for the geometry it needs (`getVisibleFrom` / `getVisibleTo`, `getEstimatedTotalRows`, `getPrefetchRows`) plus the row
+store's one writer, and re-exports `runFetchEffect` / `fetchVisibleNow` so the page's wiring is unchanged. The seam is
+deliberate: a fetch is a chain of ASKS each shaped by what the last answer said, and it stays readable only away from
+the pixel math. `updateTotalRows` stayed on the scroll side, because preserving the scroll FRACTION across a row-count
+change is geometry.
+
+Three policies keep the whole thing bounded, and each one is bounded by PIXELS or by distance, never by a count of
+rows. That distinction is the whole point: an ordinary row is about a line tall, but with word wrap on a 20 KB
 row is ~200 visual lines (~3 600 px), so every "50 rows" constant would silently mean "180 000 px".
 
 - **The window is a viewport of pixels plus `BUFFER_PX` (900) above and below**, clamped to 2-50 rows
@@ -651,7 +659,7 @@ glyphs (the a11y labels and tooltips carry the real copy). The runtime works in 
 
 `viewerGetLines` throws the backend's typed `ViewerError` with its fields copied onto the `Error`, so the deadline is a
 VARIANT (`kind: 'timedOut'`) rather than a flag beside a sentence. Both surfaces read it the same way, through
-`asViewerError(e)?.kind`: `viewer-scroll.svelte.ts` routes `timedOut` to `deps.onTimeoutError()` and logs everything
+`asViewerError(e)?.kind`: `viewer-row-fetch.svelte.ts` routes `timedOut` to `deps.onTimeoutError()` and logs everything
 else by kind, and `viewer-open-failure.ts`'s `handleOpenFailure` (all three open sites) maps `timedOut` /
 `stoppedResponding` / `notFound` / `isDirectory` / `tooLargeToPreview` / `archive` to their own catalog keys and falls
 back to `viewer.error.readFailed` for anything else. `timedOut` and `stoppedResponding` also set `canRetry`, which puts
