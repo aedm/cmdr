@@ -198,13 +198,12 @@ every row comes up grey.
   window builder nothing can reach.
 - **Anything below `Show All Windows`.** macOS owns that half and we don't touch it.
 
-## Still unverified
+## The icons don't show, and that's the Dock
 
-- **The menu has not been seen on a real Dock.** Everything up to the AppKit boundary is
-  tested, and the boundary itself follows the shapes `drag_image_detection.rs` and
-  `macos_appkit.rs` already use in production, but no run has right-clicked the tile.
-  What to look for: the four commands in order, the two groups, icons that follow light
-  and dark, and macOS's own three items still below ours.
-- **Whether `set_sf_symbol` renders on a Dock menu the way it does on the menu bar.**
-  The API is the same `NSMenuItem.setImage:`, and SF Symbols are template images, so it
-  should; a Dock menu is drawn in its own context and that hasn't been checked.
+A right-click on the real tile draws the four commands in order, both groups, and macOS's
+own items below ours, with **no icons on any row** (macOS 27.0, 2026-09-21). Every other
+app's Dock menu looks the same, so this is the Dock's own presentation and not something
+`set_sf_symbol` is failing at: it does the same work here as for the menu bar, opt-in
+included (`menu/DETAILS.md` § SF Symbol icons). ❌ Don't go hunting for the bug, and don't
+strip the `symbol()` calls either: they cost nothing and they're already right for the day
+the Dock starts drawing them.

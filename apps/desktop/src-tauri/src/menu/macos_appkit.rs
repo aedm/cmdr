@@ -14,7 +14,7 @@ use std::panic::AssertUnwindSafe;
 
 use crate::platform::macos_at_least;
 use objc2::rc::Retained;
-use objc2::{ClassType, MainThreadMarker};
+use objc2::{ClassType, MainThreadMarker, msg_send};
 use objc2_app_kit::{
     NSApplication, NSImage, NSMenu, NSMenuDidBeginTrackingNotification, NSMenuItem as NSMenuItemAppKit,
     NSUserInterfaceItemIdentification,
@@ -537,9 +537,42 @@ pub(crate) fn set_sf_symbol(item: &NSMenuItemAppKit, symbol_name: &str) {
     // allowed-newer-selector: guarded by the `macos_at_least(11, 0)` early return above
     if let Some(image) = NSImage::imageWithSystemSymbolName_accessibilityDescription(&name, None) {
         item.setImage(Some(&image));
+        keep_menu_image_visible(item);
     } else {
         log::warn!("SF Symbol not found: {symbol_name}");
     }
+}
+
+/// `NSMenuItemImageVisibilityVisible`, the one value of `NSMenuItemImageVisibility` we ask for.
+const IMAGE_VISIBILITY_VISIBLE: isize = 1;
+
+/// Opts one item out of macOS 27's rule that a menu hides the images it was given.
+///
+/// ❗ Without this, every SF Symbol in the app is invisible on macOS 27 and nothing says so:
+/// `imageWithSystemSymbolName:` still answers a perfectly good image, `setImage:` still takes it,
+/// and `item.image()` still reads back non-nil. `NSMenuItem.preferredImageVisibility` arrived in
+/// macOS 27 defaulting to `Automatic`, under which AppKit hides an item's SYMBOL image; a
+/// non-symbol image (the provider logos) is left alone, which is why those kept showing while all
+/// 56 menu-bar icons and the Drive context items went blank on the same day. Measured on macOS
+/// 27.0 (26A428), `NSMenu.size` offscreen, 2026-09-21: a titled item with a symbol image lays out
+/// at 72 pt, exactly as one with no image, and at 91 pt once this is set. It rides with each image
+/// we set rather than switching the app's menus over wholesale, so whether an item deserves an icon
+/// stays a decision at the table: Apple's guidance is to carry one where an item names an object or
+/// a concept rather than an action.
+///
+/// Set on the LOGOS too, though today they show without it: linking against the macOS 27 SDK
+/// extends the hiding to non-symbol images, and that day is a runner-image bump away.
+///
+/// Through `msg_send!` because `objc2-app-kit` 0.3.2 binds no `preferredImageVisibility` yet.
+pub(super) fn keep_menu_image_visible(item: &NSMenuItemAppKit) {
+    if !macos_at_least(27, 0) {
+        return;
+    }
+    // SAFETY: `setPreferredImageVisibility:` takes one `NSInteger` and returns nothing, which is
+    // the signature written here, and the early return above proves the selector exists: it
+    // arrived in macOS 27 and nothing removes it from a later one. `item` is a live `NSMenuItem`
+    // held by the caller for the length of the call.
+    unsafe { msg_send![item, setPreferredImageVisibility: IMAGE_VISIBILITY_VISIBLE] }
 }
 
 #[cfg(test)]

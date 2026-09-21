@@ -672,6 +672,10 @@ symbol, because the failure is otherwise invisible: the menu builds fine, just w
 `menu_icon_ids_are_built_by_the_menu_bar` (in `macos_appkit.rs`) is the guard: each icon's item has to
 sit directly inside the menu its group names in `MENU_BAR` on macOS, which is where the pass looks.
 
+Every group names a MAIN-bar menu, so the viewer's bar carries no icons at all. That's the table being
+short rather than a pass that fails: the viewer's items have their own `VIEWER_*` ids and no group
+mentions them.
+
 **Gotcha**: an accelerator update replaces the menu item (see "Accelerator sync"), and the fresh
 `NSMenuItem` carries no image, so `update_menu_accelerator` re-applies the icons afterwards.
 
@@ -681,6 +685,31 @@ which is the feature degrading; calling `imageWithSystemSymbolName:accessibility
 would raise an unrecognized-selector exception and abort the process instead. The
 `allowed-newer-selector` marker on the call is what tells `desktop-rust-macos-availability` the gate
 exists, since it reads lines rather than control flow.
+
+**On macOS 27 a menu hides the images it was given, unless each item opts in.** `NSMenuItem` gained
+`preferredImageVisibility` there, defaulting to `Automatic`, under which AppKit hides an item's SYMBOL
+image and leaves a non-symbol one alone. `set_sf_symbol` and `set_logo` both finish by calling
+`keep_menu_image_visible`, which sets `Visible` through `msg_send!` (`objc2-app-kit` 0.3.2 binds no
+such property) above a `macos_at_least(27, 0)` gate.
+
+The failure it prevents is fully silent, which is why the opt-in sits in the two functions that set an
+image rather than at the call sites: `imageWithSystemSymbolName:` answers a valid image,
+`setImage:` takes it, `item.image()` reads back non-nil, and nothing draws. Measured on macOS 27.0
+(26A428), `NSMenu.size` offscreen, 2026-09-21: a titled item carrying a symbol image lays out at
+72 pt, the same as an item with no image at all, and at 91 pt once `Visible` is set. Under the hood an
+`NSSymbolImageRep` reports `size` 15 × 17 but `pixelsWide` × `pixelsHigh` of 0 × 0, while any
+pixel-backed rep measures normally. Apple's guidance is to carry an image where an item names an
+object or a concept rather than an action, so ❗ this stays an opt-in per item; a future icon set worth
+having is worth asking for explicitly.
+
+**Gotcha**: the hiding is keyed to the SDK the binary links against, not only the OS it runs on.
+Cmdr ships at SDK 26.5 (`otool -l | grep -A3 LC_BUILD_VERSION` on the bundle), where only symbol
+images are hidden. Third-party reports have a macOS 27 SDK build hiding non-symbol images too, and
+dropping the old exemption for icon-only items (an image with an empty title); a `swift` probe on the
+27 SDK did NOT reproduce the first half for a titled item (2026-09-21), so treat it as a thing to
+re-measure rather than a fact. Either way the logos opt in too, and nothing here is pinned: the
+release workflow builds on `macos-latest`, so a GitHub runner-image bump moves the SDK with no commit
+of ours.
 
 #### SF Symbols on a CONTEXT menu
 

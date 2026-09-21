@@ -39,7 +39,9 @@ use tauri::Runtime;
 use tauri::menu::Menu;
 
 use super::file_provider_items::file_provider_action_id;
-use super::macos_appkit::{find_ns_item, menu_item_text, observe_menu_tracking, set_sf_symbol, tracking_menu};
+use super::macos_appkit::{
+    find_ns_item, keep_menu_image_visible, menu_item_text, observe_menu_tracking, set_sf_symbol, tracking_menu,
+};
 use super::provider_logos::{ProviderLogo, logo_for_provider};
 use super::{DRIVE_ASK_GEMINI_ID, DRIVE_COPY_LINK_ID, DRIVE_OPEN_ID};
 use crate::file_system::file_provider_actions::ProviderOffer;
@@ -199,6 +201,7 @@ fn set_logo(item: &NSMenuItem, logo: &ProviderLogo) {
     };
     image.setSize(NSSize::new(LOGO_SIDE_POINTS, LOGO_SIDE_POINTS));
     item.setImage(Some(&image));
+    keep_menu_image_visible(item);
 }
 
 #[cfg(test)]
