@@ -537,11 +537,13 @@ fn save_as_writes_exactly_the_range_that_was_asked_for() {
         .session_id;
 
     let dest = dir.join("saved.txt");
-    session::write_range_to_file(&sid, 1, at(2, 5), at(4, 4), &dest).expect("save succeeds");
+    session::write_range_to_file(&sid, 1, at(2, 5), at(4, 4), &dest, &session::SaveProgress::new())
+        .expect("save succeeds");
     assert_eq!(fs::read_to_string(&dest).expect("saved file reads"), &content[45..84]);
 
     let whole = dir.join("whole.txt");
-    session::write_range_to_file(&sid, 2, at(0, 0), RangeEnd::Eof, &whole).expect("save succeeds");
+    session::write_range_to_file(&sid, 2, at(0, 0), RangeEnd::Eof, &whole, &session::SaveProgress::new())
+        .expect("save succeeds");
     assert_eq!(fs::read_to_string(&whole).expect("saved file reads"), content);
 
     session::close_session(&sid).expect("session closes");

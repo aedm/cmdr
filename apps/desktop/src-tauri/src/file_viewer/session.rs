@@ -975,6 +975,46 @@ fn with_registered_read<T>(
     result
 }
 
+/// What a save reports while it runs, so a watcher can tell "slow" from "stopped".
+///
+/// A save has no honest upper bound on how long it may take (it's the way out of the
+/// clipboard's size refusal, and the selection can be any size), so the IPC layer
+/// watches it for silence rather than for elapsed time: it reads `bytes_written` on a
+/// timer, and the count moving is the save's sign of life. See
+/// `commands/file_viewer.rs` § `SAVE_STALL_LIMIT`.
+#[derive(Debug, Default)]
+pub struct SaveProgress {
+    bytes_written: std::sync::atomic::AtomicU64,
+    done: AtomicBool,
+}
+
+impl SaveProgress {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Bytes handed to the destination so far.
+    pub fn bytes_written(&self) -> u64 {
+        self.bytes_written.load(Ordering::Relaxed)
+    }
+
+    /// True once the save has returned, whatever its outcome. A watcher about to give
+    /// up on a silent save checks this first: the last chunk of a big save can take
+    /// longer than the stall limit, and the silence that follows it is the save
+    /// finishing, not stalling.
+    pub fn is_done(&self) -> bool {
+        self.done.load(Ordering::Relaxed)
+    }
+
+    fn note_written(&self, bytes: usize) {
+        self.bytes_written.fetch_add(bytes as u64, Ordering::Relaxed);
+    }
+
+    fn note_done(&self) {
+        self.done.store(true, Ordering::Relaxed);
+    }
+}
+
 /// Streams a range to `dest_path`, decoded to UTF-8 and written atomically. Uses the
 /// same `read_id` cancellation plumbing as `read_range`. Write is temp+rename for
 /// crash-safety: if the process dies mid-write, the user keeps their original file (if
@@ -992,12 +1032,30 @@ fn with_registered_read<T>(
 /// On success, returns `Ok(())`. On `Cancelled`, and on any other error, the partial
 /// temp file is best-effort removed and the typed error is returned, so a stopped save
 /// leaves nothing behind.
+///
+/// Reports each write into `progress`, and marks it done on every exit: that's what
+/// lets the IPC layer watch a save for silence instead of holding it to a total
+/// deadline it has no honest way to meet.
 pub fn write_range_to_file(
     session_id: &str,
     read_id: u64,
     anchor: RangeEnd,
     focus: RangeEnd,
     dest_path: &Path,
+    progress: &SaveProgress,
+) -> Result<(), ViewerError> {
+    let result = write_range_to_file_inner(session_id, read_id, anchor, focus, dest_path, progress);
+    progress.note_done();
+    result
+}
+
+fn write_range_to_file_inner(
+    session_id: &str,
+    read_id: u64,
+    anchor: RangeEnd,
+    focus: RangeEnd,
+    dest_path: &Path,
+    progress: &SaveProgress,
 ) -> Result<(), ViewerError> {
     // Atomic write: write to `<dest>.cmdr-tmp.<read_id>`, then rename. The same-FS
     // rename gives us atomicity on local volumes (and is best-effort elsewhere).
@@ -1016,6 +1074,7 @@ pub fn write_range_to_file(
         let mut file = std::fs::File::create(&tmp_path)?;
         let mut sink = |piece: &str| {
             file.write_all(piece.as_bytes())?;
+            progress.note_written(piece.len());
             Ok(())
         };
         stream_range(backend, anchor, focus, cancel, STREAM_CHUNK_BYTES, &mut sink)

@@ -35,6 +35,26 @@ const PULL_STALL_LIMIT: Duration = Duration::from_secs(45);
 /// cancel flag covers the actually-stuck case via Escape.
 const READ_RANGE_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// How long a save may go without writing a byte before `viewer_write_range_to_file`
+/// gives up on it.
+///
+/// A save has no total budget, unlike the read above: it's what the copy dialog offers
+/// when a selection is too big for the clipboard, so its size is unbounded by
+/// construction and any total deadline would kill exactly the saves the button exists
+/// for. It streams in 1 MiB chunks, so a save that is merely slow still reports
+/// constantly, and Escape stops one the user has given up on. Silence is the only thing
+/// that can't be honest.
+///
+/// 90 s is measured against the two things that can hold up a save's next byte: a read
+/// from the source and a write to the destination, either of which can be a network
+/// mount, where one syscall blocks 30-120 s before the OS answers (`src-tauri/CLAUDE.md`)
+/// and on a hard mount may never answer at all, which is why this guard is real rather
+/// than a formality. 90 s clears the common end of that band, so a merely slow volume
+/// keeps its save, and deliberately stops short of the far end: a mount that needs more
+/// than a minute and a half for one 1 MiB write has no chance of finishing a save the
+/// user is still waiting on.
+const SAVE_STALL_LIMIT: Duration = Duration::from_secs(90);
+
 /// Opens a viewer session for the given file.
 /// Returns session metadata + initial lines from the start of the file.
 ///
@@ -314,9 +334,13 @@ pub fn viewer_cancel_read(session_id: String, read_id: u64) -> Result<(), Viewer
     file_viewer::cancel_read(&session_id, read_id)
 }
 
-/// Reads a logical range and writes it to `dest_path` atomically (temp+rename). Used
+/// Streams a logical range to `dest_path` and writes it atomically (temp+rename). Used
 /// by the "Save as file…" action in the > 100 MB refuse dialog and the 10 to 100 MB
 /// confirm dialog. Cancellation works the same as `viewer_read_range`.
+///
+/// Watched for silence (`SAVE_STALL_LIMIT`) rather than held to a total deadline: this
+/// is the way out of the clipboard's size refusal, so it has to be allowed to take as
+/// long as the selection honestly takes.
 #[tauri::command]
 #[specta::specta]
 pub async fn viewer_write_range_to_file(
@@ -338,19 +362,84 @@ pub async fn viewer_write_range_to_file(
     )) {
         return Err(ViewerError::DestinationIsReadOnly);
     }
-    match tokio::time::timeout(
-        READ_RANGE_TIMEOUT,
-        tokio::task::spawn_blocking(move || {
-            file_viewer::write_range_to_file(&session_id, read_id, anchor, focus, std::path::Path::new(&dest_path))
-        }),
+    write_range_watched(session_id, read_id, anchor, focus, dest_path, SAVE_STALL_LIMIT).await
+}
+
+/// Runs one save, watched for stalls. `stall_limit` is a parameter so tests drive it.
+async fn write_range_watched(
+    session_id: String,
+    read_id: u64,
+    anchor: RangeEnd,
+    focus: RangeEnd,
+    dest_path: String,
+    stall_limit: Duration,
+) -> Result<(), ViewerError> {
+    let progress = Arc::new(file_viewer::SaveProgress::new());
+    let mut watch = SaveWatch {
+        progress: Arc::clone(&progress),
+        session_id: session_id.clone(),
+        read_id,
+        bytes_seen: 0,
+        last_change: std::time::Instant::now(),
+    };
+    blocking_typed_result_until_stalled(
+        stall_limit,
+        &mut watch,
+        |message| ViewerError::Io { message },
+        move || {
+            file_viewer::write_range_to_file(
+                &session_id,
+                read_id,
+                anchor,
+                focus,
+                std::path::Path::new(&dest_path),
+                &progress,
+            )
+        },
     )
     .await
-    {
-        Ok(Ok(result)) => result,
-        Ok(Err(join_err)) => Err(ViewerError::Io {
-            message: join_err.to_string(),
-        }),
-        Err(_) => Err(ViewerError::TimedOut),
+}
+
+/// Watches one save for [`blocking_typed_result_until_stalled`].
+///
+/// Progress is the written-byte count moving. The watch keeps its own clock so the
+/// save's write path stays a single atomic add, the same division of labour
+/// [`PullWatch`] has with the pull.
+struct SaveWatch {
+    progress: Arc<file_viewer::SaveProgress>,
+    session_id: String,
+    read_id: u64,
+    /// The count at the last poll, so only a change counts as a sign of life.
+    bytes_seen: u64,
+    last_change: std::time::Instant,
+}
+
+impl StallWatch<ViewerError> for SaveWatch {
+    fn idle_for(&self) -> Duration {
+        self.last_change.elapsed()
+    }
+
+    fn on_poll(&mut self) {
+        let written = self.progress.bytes_written();
+        if written != self.bytes_seen {
+            self.bytes_seen = written;
+            self.last_change = std::time::Instant::now();
+        }
+    }
+
+    fn give_up(&mut self) -> Option<ViewerError> {
+        if self.progress.is_done() {
+            // It returned a moment ago; the waiter takes its real result instead.
+            return None;
+        }
+        // The waiter detaches the work rather than dropping it, so the save has to be
+        // told: it sees the flag at its next chunk, removes its temp file, and answers
+        // `Cancelled` to nobody.
+        let _ = file_viewer::cancel_read(&self.session_id, self.read_id);
+        // `TimedOut`, not `StoppedResponding`: that one means "the source stopped
+        // sending the file", which says the wrong thing about a save's destination, and
+        // the FE already words this variant for the save ("that took too long").
+        Some(ViewerError::TimedOut)
     }
 }
 
@@ -629,6 +718,115 @@ mod tests {
             heard.windows(2).all(|pair| pair[0].bytes_done < pair[1].bytes_done),
             "every report is news, got {heard:?}"
         );
+    }
+
+    /// A session over a backend that takes `per_chunk` to answer each fetch, serving
+    /// `chunks` fetches worth of lines. One fetch is exactly 1 MiB of text, so the save
+    /// writes (and so reports progress) once per fetch.
+    ///
+    /// Returns the session id and the bytes the whole range comes to.
+    fn a_session_reading_slowly(chunks: usize, per_chunk: Duration) -> (String, usize) {
+        const FETCH_LINES: usize = 4096;
+        const STRIDE: usize = 256;
+        let line_count = FETCH_LINES * chunks;
+        let backend = file_viewer::session::ScriptedBackend::new(&"s".repeat(STRIDE - 1), line_count, move |_| {
+            // allowed-test-sleep: the slow answer IS the subject. These tests are about
+            // what a save that takes a long time honestly is allowed to do, so the delay
+            // stands in for a slow disk rather than synchronizing anything.
+            std::thread::sleep(per_chunk);
+        });
+        let session_id = file_viewer::session::test_only_install_session(
+            Box::new(backend),
+            std::path::PathBuf::from("/scripted/slow.txt"),
+        );
+        (session_id, line_count * STRIDE - 1)
+    }
+
+    /// The `.cmdr-tmp.<read_id>` file a save writes before its rename, if it's there.
+    fn save_temp_file(dir: &std::path::Path) -> Option<std::path::PathBuf> {
+        std::fs::read_dir(dir)
+            .ok()?
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .find(|p| p.to_string_lossy().contains("cmdr-tmp"))
+    }
+
+    /// A save that keeps writing must run to its end, however long that is. The copy
+    /// dialog refuses a clipboard copy past 100 MiB and offers "Save as" instead, so a
+    /// save is exactly the operation with no honest upper bound on its duration; a total
+    /// deadline would kill the saves the button exists for.
+    #[tokio::test]
+    async fn a_save_that_keeps_writing_runs_past_the_limit() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let dest = dir.path().join("out.txt");
+        // ~1.8 s of work against a 1 s limit, with a write every ~150 ms: three times
+        // the limit in total, a fraction of it between any two signs of life.
+        let (session_id, total_bytes) = a_session_reading_slowly(12, Duration::from_millis(150));
+
+        let result = write_range_watched(
+            session_id.clone(),
+            1,
+            RangeEnd::Line { line: 0, offset: 0 },
+            RangeEnd::Eof,
+            dest.to_string_lossy().into_owned(),
+            Duration::from_secs(1),
+        )
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "a save making progress must not be cut off, got {result:?}"
+        );
+        assert_eq!(
+            std::fs::metadata(&dest).expect("the destination exists").len(),
+            total_bytes as u64
+        );
+        file_viewer::close_session(&session_id).expect("close");
+    }
+
+    /// A save that goes quiet for the limit gives up, and the work it detached stops
+    /// and takes its temp file with it.
+    #[tokio::test]
+    async fn a_save_that_goes_quiet_gives_up_and_leaves_no_temp() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let dest = dir.path().join("out.txt");
+        // One fetch lands (so the temp already holds bytes), then the source goes quiet
+        // for far longer than the limit.
+        let quiet_session = file_viewer::session::test_only_install_session(
+            Box::new(file_viewer::session::ScriptedBackend::new(
+                &"s".repeat(255),
+                4096 * 2,
+                |call| {
+                    if call > 0 {
+                        // allowed-test-sleep: the silence IS the subject; this stands in
+                        // for a read that stopped coming back.
+                        std::thread::sleep(Duration::from_secs(3));
+                    }
+                },
+            )),
+            std::path::PathBuf::from("/scripted/quiet.txt"),
+        );
+
+        let result = write_range_watched(
+            quiet_session.clone(),
+            1,
+            RangeEnd::Line { line: 0, offset: 0 },
+            RangeEnd::Eof,
+            dest.to_string_lossy().into_owned(),
+            Duration::from_millis(500),
+        )
+        .await;
+
+        assert!(
+            matches!(result, Err(ViewerError::TimedOut)),
+            "a save that stopped writing must give up, got {result:?}"
+        );
+        assert!(!dest.exists(), "a save that gave up must not leave a destination");
+        crate::test_support::wait_until_async(Duration::from_secs(10), "the stopped save to clean up", || {
+            save_temp_file(dir.path()).is_none()
+        })
+        .await;
+        file_viewer::close_session(&quiet_session).expect("close");
     }
 
     #[tokio::test]

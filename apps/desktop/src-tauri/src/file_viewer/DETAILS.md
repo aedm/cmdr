@@ -12,8 +12,8 @@ Frontend counterpart: `apps/desktop/src/routes/viewer/CLAUDE.md` for the viewer 
 - `mod.rs`: public API, constants (1MB threshold, 256-line checkpoints, 8KB backward scan limit), `ViewerError` typed
   enum
 - `session.rs`: text-session orchestration, backend switching, search state, per-read cancel registry (`active_reads`),
-  encoding-switch (`set_encoding`), drain-and-swap-under-lock protocol via `pending_grew`, `read_range` and
-  `cancel_read` entry points. Owns the `ViewerSession` type + its `ViewerSession::new(ViewerSessionInit)` constructor and
+  encoding-switch (`set_encoding`), drain-and-swap-under-lock protocol via `pending_grew`, the `read_range`,
+  `write_range_to_file` (with its `SaveProgress` reporter), and `cancel_read` entry points. Owns the `ViewerSession` type + its `ViewerSession::new(ViewerSessionInit)` constructor and
   the `SESSIONS` / `WINDOW_TO_SESSION` maps, shared with the media-open path. `close_session` is the single teardown
   choke point (drops the media token too)
 - `media_session.rs`: the media-open path. `try_open_media` (classify + dispatch, called by `open_session` before it
@@ -312,7 +312,8 @@ that the scan opener finds a line exactly with no index).
 - `viewer_write_range_to_file(session_id, read_id, anchor, focus, dest_path)` → streams a logical range to `dest_path`,
   decoded to UTF-8 and written atomically (temp+rename). Used by "Save as file…" in the copy dialogs. Same cancellation
   plumbing as `viewer_read_range`. Temp suffix includes the `read_id` for crash isolation. Peak memory is one
-  `STREAM_CHUNK_BYTES` buffer whatever the selection's size, and a cancel or any error removes the partial temp.
+  `STREAM_CHUNK_BYTES` buffer whatever the selection's size, and a cancel or any error removes the partial temp. No
+  total deadline: it runs under a stall watch (`SAVE_STALL_LIMIT`), so a save keeps going as long as it keeps writing.
 - `viewer_search_start(session_id, query, mode)` → starts background search. `mode = { useRegex, caseSensitive }`. An
   invalid regex pattern (parse error, exceeds size limits) or a multiline pattern (`(?s)`, literal newline, `\n`
   escape) makes the search status flip to `InvalidQuery { message }` synchronously; the worker isn't spawned. `(?m)`
@@ -608,11 +609,17 @@ timeout shape. Why every family owns its error type: `docs/guides/error-handling
   `write_range_to_file_streams_as_it_reads` (a scripted backend watches the destination temp from inside the read loop,
   so a buffering save is caught by the temp still being empty at chunk two) and
   `range_read::tests::streamed_read_hands_out_bounded_pieces`.
-- **A long save can still hit the 60 s IPC deadline.** `viewer_write_range_to_file` shares `READ_RANGE_TIMEOUT` with
-  `viewer_read_range` (`commands/file_viewer.rs`), so a save slow enough to cross it answers `TimedOut` even though the
-  write is bounded in memory and would have finished. The backend read keeps running until it sees the cancel flag, and
-  the FE shows its "that took too long" copy. The deadline fits a clipboard read (which the 100 MiB cap bounds); it
-  doesn't fit a save of an unbounded selection on a slow disk.
+- **A save is watched for silence, ❌ never held to a total deadline.** A selection's size is unbounded by
+  construction (the save is what the > 100 MiB clipboard refusal offers instead), so a total budget would kill exactly
+  the saves the button exists for: at a realistic 200 MB/s, the old shared `READ_RANGE_TIMEOUT` cut off anything past
+  roughly 12 GB, having written nothing the user got to keep. `viewer_write_range_to_file` runs under
+  `blocking_typed_result_until_stalled` with `SAVE_STALL_LIMIT` (90 s), the same shape as a pulling open. The save
+  reports each chunk it writes into a `SaveProgress`; `SaveWatch` reads that count every 200 ms, and the count moving
+  is the save's sign of life. On give-up it flips the read's cancel flag (the waiter detaches the work rather than
+  dropping it, so the save has to be told), and answers `TimedOut`, which the FE already words for this action.
+  `viewer_read_range` keeps the total deadline: the 100 MiB clipboard ceiling bounds it, so its duration has a
+  ceiling too. Pinned by `a_save_that_keeps_writing_runs_past_the_limit` and
+  `a_save_that_goes_quiet_gives_up_and_leaves_no_temp` in `commands/file_viewer.rs`.
 - **UTF-16 surrogate clamp at the IPC boundary**: `clamp_utf16_offset_to_byte` rounds offsets that land between the
   high and low surrogate of an astral codepoint down to the codepoint start. This guarantees the returned slice is
   always valid UTF-8.

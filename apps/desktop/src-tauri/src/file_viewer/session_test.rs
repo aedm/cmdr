@@ -704,7 +704,7 @@ fn write_range_to_file_writes_atomically() {
         .session_id;
 
     let dest = dir.join("out.txt");
-    session::write_range_to_file(&sid, 1, line(0, 0), line(2, 5), &dest).unwrap();
+    session::write_range_to_file(&sid, 1, line(0, 0), line(2, 5), &dest, &session::SaveProgress::new()).unwrap();
     let written = fs::read_to_string(&dest).unwrap();
     assert_eq!(written, "alpha\nbeta\ngamma");
 
@@ -727,7 +727,8 @@ fn write_range_to_file_propagates_out_of_range_error() {
         .session_id;
 
     let dest = dir.join("out.txt");
-    let err = session::write_range_to_file(&sid, 1, line(99, 0), line(99, 5), &dest).unwrap_err();
+    let err = session::write_range_to_file(&sid, 1, line(99, 0), line(99, 5), &dest, &session::SaveProgress::new())
+        .unwrap_err();
     assert!(matches!(err, ViewerError::OutOfRange));
     assert!(!dest.exists());
 
@@ -782,7 +783,7 @@ fn write_range_to_file_streams_as_it_reads() {
     });
     let sid = session::test_only_install_session(Box::new(backend), dir.join("scripted.txt"));
 
-    session::write_range_to_file(&sid, 1, line(0, 0), RangeEnd::Eof, &dest).unwrap();
+    session::write_range_to_file(&sid, 1, line(0, 0), RangeEnd::Eof, &dest, &session::SaveProgress::new()).unwrap();
 
     let lens = temp_lens.lock_ignore_poison().clone();
     assert!(
@@ -819,7 +820,15 @@ fn write_range_to_file_matches_the_source_across_chunks() {
     // bytes the same whichever backend serves the read.
     let dest = dir.join("out.txt");
     let last_line_len = 92; // "line 029999 " + 80 padding characters
-    session::write_range_to_file(&sid, 1, line(0, 0), line(29_999, last_line_len), &dest).unwrap();
+    session::write_range_to_file(
+        &sid,
+        1,
+        line(0, 0),
+        line(29_999, last_line_len),
+        &dest,
+        &session::SaveProgress::new(),
+    )
+    .unwrap();
 
     let written = fs::read_to_string(&dest).unwrap();
     let expected = content.strip_suffix('\n').unwrap();
@@ -851,7 +860,7 @@ fn write_range_to_file_saves_a_utf16_source_as_utf8() {
         .unwrap()
         .session_id;
     let dest = dir.join("out.txt");
-    session::write_range_to_file(&sid, 1, line(0, 0), line(2, 5), &dest).unwrap();
+    session::write_range_to_file(&sid, 1, line(0, 0), line(2, 5), &dest, &session::SaveProgress::new()).unwrap();
 
     // UTF-8 text, not the source's UTF-16 code units (which would carry NUL bytes).
     assert_eq!(fs::read(&dest).unwrap(), b"alpha\nbeta\ngamma");
@@ -880,7 +889,8 @@ fn write_range_to_file_cancelled_mid_stream_leaves_nothing_behind() {
     let sid = session::test_only_install_session(Box::new(backend), dir.join("scripted.txt"));
     *session_for_probe.lock_ignore_poison() = Some(sid.clone());
 
-    let err = session::write_range_to_file(&sid, 1, line(0, 0), RangeEnd::Eof, &dest).unwrap_err();
+    let err = session::write_range_to_file(&sid, 1, line(0, 0), RangeEnd::Eof, &dest, &session::SaveProgress::new())
+        .unwrap_err();
     assert!(matches!(err, ViewerError::Cancelled));
     assert!(!dest.exists(), "a cancelled save must not create the destination");
     assert!(

@@ -17,8 +17,9 @@ must-knows.
 - **`BlockingBudget`**: a semaphore capping one command family's share of the blocking pool. Callers past the cap wait
   as futures, not threads.
 - **`blocking_typed_result_until_stalled`** + **`StallWatch`**: no total deadline; it gives up once the watch reports
-  the work idle for the stall limit, and detaches like the deadline helpers. Its one caller is the viewer's pulling
-  open (`file_viewer/DETAILS.md` § "Watching a pull").
+  the work idle for the stall limit, and detaches like the deadline helpers. Its callers are the two viewer operations
+  whose honest duration has no ceiling but whose silence does: a pulling open (`file_viewer/DETAILS.md` § "Watching a
+  pull") and a save of a selection (same file, § "Gotchas").
 
 ## Callers
 
