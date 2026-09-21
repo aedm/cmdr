@@ -18,7 +18,7 @@ search of the session). Log timestamps are local:
 
 **34.7 s of waiting for a 50 ms search.** The index writer burned 15 ms of CPU across that window and 16 cores sat idle,
 so this is neither contention nor compute: it is one thread issuing ~200,000 serial 4 KiB `pread`s against a cold
-830 MB `index-root.db`, then decoding 5.39 M rows into a 430 MB heap arena, then reading a second database.
+830 MB `index-root.db`, then decoding 5.39 M rows into a ~466 MB heap arena, then reading a second database.
 
 Four costs stack, all in `search/index.rs::load_search_index` and `search/volumes.rs::load_volume_blocking`:
 
@@ -42,8 +42,9 @@ writer and replayed at dialog open, keeps it fresh.
 David's constraints, and what each one rules out:
 
 - **At most ~5 MB resident while the dialog is down.** This is the binding constraint and it is what kills every
-  "keep the arena warm" variant: the loaded arena is ~430 MB of anonymous heap (215 MB of rows, ~108 MB of names,
-  ~105 MB for `id_to_index`), so respecting the ceiling means dropping it, and dropping it means paying to rebuild it.
+  "keep the arena warm" variant: the loaded arena is ~466 MB of anonymous heap (216 MB of rows, ~108 MB of names,
+  ~143 MB for `id_to_index`, whose 5.39 M entries round up to 8,388,608 hashbrown buckets), so respecting the ceiling
+  means dropping it, and dropping it means paying to rebuild it.
   Clean file-backed pages do not count against macOS `phys_footprint`, which is what Activity Monitor's "Memory"
   column and our own VM-map diagnostic report, so a mapping can be fully resident in the page cache while Cmdr's
   footprint stays at a few MB.
@@ -61,7 +62,7 @@ David's constraints, and what each one rules out:
 - *A covering SQLite index on the six loader columns.* Same disk cost, still page-at-a-time reads, still full decode
   CPU. Strictly worse for the same money.
 - *`PRAGMA mmap_size` plus a 32 KiB page size on the index database itself.* Helps cold I/O with no extra disk, but
-  keeps the decode and the 430 MB heap arena, so it cannot satisfy the memory ceiling.
+  keeps the decode and the ~466 MB heap arena, so it cannot satisfy the memory ceiling.
 - *A `changed_gen` column plus an index on `entries` as the delta source.* Adds a column and an index to a 5.4 M-row
   table, so more disk and more write cost on every mutation, to replace a file we can delete.
 - *Folding the importance weights into the arena file.* Importance recomputes independently of `entries` (the root
@@ -169,7 +170,7 @@ impl SearchIndex {
 
 Indices `0..snapshot_len` address the mapping (or the heap rows); `snapshot_len..len()` address the overlay tail. The
 scan iterates the whole range and skips `is_shadowed`. `index_of_id` checks the overlay map first, then binary-searches
-the mapped `ids` (which is sorted, which is why `id_to_index` disappears and takes ~105 MB with it).
+the mapped `ids` (which is sorted, which is why `id_to_index` disappears and takes ~143 MB with it).
 
 `matcher.rs` currently takes a `&SearchEntry` plus its name slice; it takes `(&SearchIndex, idx)` instead. No matching
 or folding logic changes: ❌ do not re-derive case folding or NFD normalization while you are in there.
