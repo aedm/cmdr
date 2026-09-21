@@ -2891,7 +2891,7 @@
   },
   "settings.logging.openLogFile": "Open log file",
   "@settings.logging.openLogFile": {
-    "description": "Button that opens the app's log file. In Settings > Developer > Logging.",
+    "description": "Button that reveals the folder holding the app's log files. In Settings > Advanced, in the \"Logging and diagnostics\" card.",
     "screenshot": "settings-advanced.png"
   },
   "settings.logging.copied": "Copied!",
