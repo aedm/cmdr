@@ -1293,6 +1293,18 @@
   "@fileExplorer.navigation.renameFavoriteAriaLabel": {
     "sourceHash": "5f4fcbb"
   },
+  "fileExplorer.navigation.favoriteShortcutPrompt": "A–Z of Delete",
+  "@fileExplorer.navigation.favoriteShortcutPrompt": {
+    "sourceHash": "51f3d7d"
+  },
+  "fileExplorer.navigation.favoriteShortcutAriaLabel": "Sneltoets voor {name}. Druk op A–Z of Delete om deze te wissen.",
+  "@fileExplorer.navigation.favoriteShortcutAriaLabel": {
+    "sourceHash": "31515c1"
+  },
+  "fileExplorer.navigation.favoriteShortcutSaveFailed": "Deze sneltoets kon niet worden bewaard. Opnieuw proberen?",
+  "@fileExplorer.navigation.favoriteShortcutSaveFailed": {
+    "sourceHash": "dc8e408"
+  },
   "fileExplorer.navigation.removeFavoriteFailed": "Die favoriet verwijderen lukte niet. Opnieuw proberen?",
   "@fileExplorer.navigation.removeFavoriteFailed": {
     "sourceHash": "181bf36"

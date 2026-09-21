@@ -1283,6 +1283,18 @@
   "@fileExplorer.navigation.renameFavoriteAriaLabel": {
     "sourceHash": "5f4fcbb"
   },
+  "fileExplorer.navigation.favoriteShortcutPrompt": "A–Z eller Delete",
+  "@fileExplorer.navigation.favoriteShortcutPrompt": {
+    "sourceHash": "51f3d7d"
+  },
+  "fileExplorer.navigation.favoriteShortcutAriaLabel": "Genväg för {name}. Tryck på A–Z eller Delete för att ta bort den.",
+  "@fileExplorer.navigation.favoriteShortcutAriaLabel": {
+    "sourceHash": "31515c1"
+  },
+  "fileExplorer.navigation.favoriteShortcutSaveFailed": "Det gick inte att spara genvägen. Försök igen?",
+  "@fileExplorer.navigation.favoriteShortcutSaveFailed": {
+    "sourceHash": "dc8e408"
+  },
   "fileExplorer.navigation.removeFavoriteFailed": "Det gick inte att ta bort den favoriten. Försök igen?",
   "@fileExplorer.navigation.removeFavoriteFailed": {
     "sourceHash": "181bf36"

@@ -413,6 +413,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::favorites::add_favorite,
                     crate::commands::favorites::remove_favorite,
                     crate::commands::favorites::rename_favorite,
+                    crate::commands::favorites::set_favorite_shortcut,
                     crate::commands::favorites::reorder_favorites,
                     crate::commands::whats_new::get_whats_new,
                     crate::commands::whats_new::whats_new_dev_override,

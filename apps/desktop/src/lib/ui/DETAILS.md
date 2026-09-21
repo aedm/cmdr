@@ -832,7 +832,7 @@ keyboard-first popup built from SECTIONS of rows. Data in, callbacks out — the
 `onSelect` / `onReorder` back, holds no highlight index, and writes no key handler. Four consumers: the volume switcher
 (`file-explorer/navigation/VolumeChooserMenu.svelte`, the rich one — grouped sections, a submenu, and all four
 snippets), the favorites menu (`file-explorer/navigation/FavoritesMenu.svelte` — a reorderable section, the digit
-accelerators, and an inline rename field in the `label` snippet), the archive Enter popup
+accelerators, assigned letter shortcuts at the right, and inline editors), the archive Enter popup
 (`file-explorer/pane/enter-menu.svelte.ts`, three flat rows), and the drive-index badge
 (`file-explorer/navigation/DriveIndexBadge.svelte` — plain rows plus a `footer`, and the one that opens from INSIDE
 another menu).
@@ -856,10 +856,10 @@ state), `onSelect`, and the optional `onReorder`, `onKey`, `isEditing`, `onOpenC
 
 **A pick says how it was made.** `onSelect(item, source)`'s second argument is a `MenuActivationSource`: `'pointer'` (a
 click, or a drag that never crossed the threshold), `'keyboard'` (Enter or Space on the highlighted row), or
-`'accelerator'` (the row's digit was typed). The primitive is the only thing that knows — by the time a consumer sees
-the pick, all three have collapsed into one call — and the favorites menu's `favorite_opened.via` is what asks. A
-consumer that doesn't care declares one parameter and ignores it. ❌ Don't rebuild the answer by sniffing `onKey`: it
-drifts the moment the keyboard contract grows a case.
+`'accelerator'` (the row's digit was typed), or `'shortcut'` (the row's letter was typed). The primitive is the only
+thing that knows — by the time a consumer sees the pick, all four have collapsed into one call — and the favorites
+menu's `favorite_opened.via` is what asks. A consumer that doesn't care declares one parameter and ignores it. ❌ Don't
+rebuild the answer by sniffing `onKey`: it drifts the moment the keyboard contract grows a case.
 
 **Consumer surface**: `openUnder(el)`, `openAt(point)`, `toggleUnder(el)`, `close()`, `highlight(value)`,
 `handleKey(event)`, `destroy()`, plus the reactive `isOpen` / `highlightedValue`. Everything under `menu.surface.*` is
@@ -912,8 +912,9 @@ surface (the menu, or the open submenu) has an `icon`, the rows without one get 
   `Numpad0`–`Numpad9`), so the PHYSICAL key decides and an AZERTY layout, where a digit needs Shift, still works: Shift
   is allowed, ⌘/⌃/⌥ are not. It's a class-of-key matcher, which `cmdr/no-raw-key-match` accepts. ❗ A DISABLED row
   claims nothing (`itemByAccelerator` skips it), so its digit activates nothing — and is still swallowed, because an
-  open menu owns the keyboard. Order of business: `onKey` first, then the accelerator, then the arrows and Home/End;
-  `isEditing()` suspends all of it.
+  open menu owns the keyboard. An optional `shortcut` letter uses `event.key` instead, so it follows the user's keyboard
+  layout; its visible label is a small `ShortcutChip` keycap at the right end of the row. Order of business: `onKey`
+  first, then the digit or letter, then the arrows and Home/End; `isEditing()` suspends all of it.
 - **Escape closes the open submenu if there is one, otherwise the menu**, down ONE path. The switcher used to disagree
   with itself here: its routed handler closed only the submenu while a second document listener closed the whole
   dropdown, so which happened depended on how the key arrived. The primitive has no second listener, and this matches

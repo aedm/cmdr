@@ -1,7 +1,7 @@
 /**
  * Everything the favorites menu is, minus its DOM: the rows it offers, the `0` row's
- * three states, what a pick does, and the three edits a favorite takes (rename inline,
- * remove, reorder).
+ * three states, what a pick does, and its per-item edits (rename, remove, reorder,
+ * and assign a letter shortcut).
  *
  * `FavoritesMenu.svelte` builds the house `Menu` around this and renders it. ❗ The
  * reorder MECHANICS (the drag threshold, the drop-line cue, ⌥↑/⌥↓, carrying the cursor
@@ -11,7 +11,13 @@
  */
 
 import { tick } from 'svelte'
-import { removeFavorite, renameFavorite, reorderFavorites, stripFavoritePrefix } from '$lib/tauri-commands'
+import {
+  removeFavorite,
+  renameFavorite,
+  reorderFavorites,
+  setFavoriteShortcut,
+  stripFavoritePrefix,
+} from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
 import { isMacOS } from '$lib/shortcuts/key-capture'
@@ -56,6 +62,7 @@ export interface FavoritesMenuDeps {
   getDirIconFallback: () => string | undefined
   /** The inline rename `<input>`, focused + selected when a rename starts. */
   getRenameInputRef: () => HTMLInputElement | undefined
+  getShortcutInputRef: () => HTMLInputElement | undefined
   /** The last mile of opening a favorite: put the pane on the containing volume. */
   go: (target: VolumeChangePayload) => void
 }
@@ -68,6 +75,7 @@ export interface FavoritesMenuController {
   get renamingFavoriteId(): string | null
   get renameDraft(): string
   set renameDraft(value: string)
+  get editingShortcutId(): string | null
   /** True while the inline editor owns every keystroke, so the primitive handles none. */
   isEditing: () => boolean
   /** Carry out a pick. `source` is the primitive's, and becomes the analytics `via`. */
@@ -79,6 +87,8 @@ export interface FavoritesMenuController {
   cancelRename: () => void
   commitRename: (volume: VolumeInfo) => Promise<void>
   handleRenameKeyDown: (event: KeyboardEvent, volume: VolumeInfo) => void
+  handleShortcutKeyDown: (event: KeyboardEvent, volume: VolumeInfo) => void
+  cancelShortcutEdit: () => void
 }
 
 /** Trailing slashes aside, the same folder. Matches how the store dedupes an add. */
@@ -91,6 +101,8 @@ function viaOf(source: MenuActivationSource): Extract<FavoriteOpenedEvent, { sur
   switch (source) {
     case 'accelerator':
       return 'digit'
+    case 'shortcut':
+      return 'letter'
     case 'keyboard':
       return 'keyboard'
     case 'pointer':
@@ -110,6 +122,8 @@ export function createFavoritesMenu(deps: FavoritesMenuDeps): FavoritesMenuContr
   // ── Inline rename ────────────────────────────────────────────────────
   let renamingFavoriteId = $state<string | null>(null)
   let renameDraft = $state('')
+  let editingShortcutId = $state<string | null>(null)
+  let shortcutOverride = $state<{ id: string; shortcut: string | null } | null>(null)
 
   const storeFavorites = $derived(deps.getVolumes().filter((volume) => volume.category === 'favorite'))
 
@@ -135,6 +149,12 @@ export function createFavoritesMenu(deps: FavoritesMenuDeps): FavoritesMenuContr
     const sameSet = storeFavIds.length === order.length && storeFavIds.every((id) => order.includes(id))
     const sameOrder = sameSet && storeFavIds.every((id, index) => id === order[index])
     if (sameOrder || !sameSet) optimisticFavoriteIds = null
+  })
+
+  $effect(() => {
+    if (!shortcutOverride) return
+    const saved = storeFavorites.find((favorite) => favorite.id === shortcutOverride?.id)
+    if (saved?.favoriteShortcut === shortcutOverride.shortcut) shortcutOverride = null
   })
 
   /**
@@ -168,15 +188,22 @@ export function createFavoritesMenu(deps: FavoritesMenuDeps): FavoritesMenuContr
   }
 
   function favoriteItem(volume: VolumeInfo, index: number): MenuItem<FavoritesRow> {
+    const shortcut =
+      shortcutOverride?.id === volume.id
+        ? shortcutOverride.shortcut
+        : shortcutOverride?.shortcut && volume.favoriteShortcut === shortcutOverride.shortcut
+          ? null
+          : volume.favoriteShortcut
     return {
       value: volume.id,
       label: volume.name,
       icon: favoriteIcon(volume),
       // 1-indexed, and only while a single digit is left to give.
       accelerator: index < NUMBERED_FAVORITES ? String(index + 1) : undefined,
+      shortcut: editingShortcutId === volume.id ? undefined : (shortcut ?? undefined),
       // The PATH leads, so a renamed favorite still reveals where it points.
       tooltip: buildFavoriteTooltip(volume.path, isMacOS()),
-      // Rename and Remove, behind → or a right-click (`row-menu.ts`).
+      // Rename, Set shortcut, and Remove, behind → or a right-click (`row-menu.ts`).
       submenu: rowMenuItems(volume.id, favoriteRowMenu(), (entry) => ({ kind: 'row-entry', volume, entry })),
       data: { kind: 'favorite', volume },
     }
@@ -281,11 +308,48 @@ export function createFavoritesMenu(deps: FavoritesMenuDeps): FavoritesMenuContr
     }
   }
 
+  function startShortcutEdit(volume: VolumeInfo): void {
+    editingShortcutId = volume.id
+    void tick().then(() => deps.getShortcutInputRef()?.focus())
+  }
+
+  function cancelShortcutEdit(): void {
+    editingShortcutId = null
+  }
+
+  function handleShortcutKeyDown(event: KeyboardEvent, volume: VolumeInfo): void {
+    event.stopPropagation()
+    if (event.metaKey || event.ctrlKey || event.altKey) return
+    event.preventDefault()
+    if (event.key === 'Escape') {
+      cancelShortcutEdit()
+      return
+    }
+    const shortcut = /^[a-z]$/i.test(event.key)
+      ? event.key.toUpperCase()
+      : event.key === 'Backspace' || event.key === 'Delete'
+        ? null
+        : undefined
+    if (shortcut === undefined) return
+    cancelShortcutEdit()
+    shortcutOverride = { id: volume.id, shortcut }
+    void setFavoriteShortcut(stripFavoritePrefix(volume.id), shortcut).catch(() => {
+      shortcutOverride = null
+      addToast(tString('fileExplorer.navigation.favoriteShortcutSaveFailed'), { level: 'error' })
+    })
+  }
+
   function handleContextAction(payload: { action: VolumeContextActionKind; volumeId: string }): void {
-    if (payload.action !== 'rename-favorite' && payload.action !== 'remove-favorite') return
+    if (
+      payload.action !== 'rename-favorite' &&
+      payload.action !== 'remove-favorite' &&
+      payload.action !== 'edit-favorite-shortcut'
+    )
+      return
     const volume = favorites.find((favorite) => favorite.id === payload.volumeId)
     if (!volume) return
     if (payload.action === 'rename-favorite') startRename(volume)
+    else if (payload.action === 'edit-favorite-shortcut') startShortcutEdit(volume)
     else void remove(volume)
   }
 
@@ -315,15 +379,20 @@ export function createFavoritesMenu(deps: FavoritesMenuDeps): FavoritesMenuContr
     get renameDraft() {
       return renameDraft
     },
+    get editingShortcutId() {
+      return editingShortcutId
+    },
     set renameDraft(value: string) {
       renameDraft = value
     },
-    isEditing: () => renamingFavoriteId !== null,
+    isEditing: () => renamingFavoriteId !== null || editingShortcutId !== null,
     select,
     applyReorder,
     handleContextAction,
     cancelRename,
     commitRename,
     handleRenameKeyDown,
+    handleShortcutKeyDown,
+    cancelShortcutEdit,
   }
 }

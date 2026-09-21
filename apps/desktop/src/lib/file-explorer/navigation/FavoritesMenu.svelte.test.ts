@@ -20,6 +20,7 @@ import type { VolumeChangePayload } from '../pane/types'
 const addFavorite = vi.fn(() => Promise.resolve())
 const removeFavorite = vi.fn(() => Promise.resolve())
 const renameFavorite = vi.fn(() => Promise.resolve())
+const setFavoriteShortcut = vi.fn(() => Promise.resolve())
 const reorderFavorites = vi.fn(() => Promise.resolve())
 const trackEvent = vi.fn()
 
@@ -40,6 +41,7 @@ vi.mock('$lib/tauri-commands', () => ({
   addFavorite: (...args: unknown[]) => addFavorite(...(args as [])),
   removeFavorite: (...args: unknown[]) => removeFavorite(...(args as [])),
   renameFavorite: (...args: unknown[]) => renameFavorite(...(args as [])),
+  setFavoriteShortcut: (...args: unknown[]) => setFavoriteShortcut(...(args as [])),
   reorderFavorites: (...args: unknown[]) => reorderFavorites(...(args as [])),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
   disconnectPlace: vi.fn(() => Promise.resolve(true)),
@@ -243,6 +245,7 @@ beforeEach(() => {
   addFavorite.mockClear()
   removeFavorite.mockClear()
   renameFavorite.mockClear()
+  setFavoriteShortcut.mockClear()
   reorderFavorites.mockClear()
   trackEvent.mockClear()
 })
@@ -483,6 +486,22 @@ describe('how a favorite was opened', () => {
     pressDigit(1)
     await vi.waitFor(() => {
       expect(trackEvent).toHaveBeenCalledWith('favorite_opened', { surface: 'favorites_menu', via: 'digit' })
+    })
+  })
+
+  it('shows a saved letter at the right and opens its favorite without modifiers', async () => {
+    stubs.volumes = [
+      favorite(1, '/Users/test/Documents', 'Documents'),
+      { ...favorite(2, '/Users/test/Downloads', 'Downloads'), favoriteShortcut: 'P' },
+      DISK,
+    ]
+    await openFavorites()
+    expect(menuRow('fav-2')?.querySelector('.menu-shortcut')?.textContent).toBe('P')
+    expect(menuRow('fav-2')?.querySelector('.menu-shortcut .shortcut-chip')?.tagName).toBe('KBD')
+    expect(menuRow('fav-2')?.getAttribute('aria-keyshortcuts')).toBe('2 P')
+    press('p')
+    await vi.waitFor(() => {
+      expect(trackEvent).toHaveBeenCalledWith('favorite_opened', { surface: 'favorites_menu', via: 'letter' })
     })
   })
 
@@ -746,10 +765,46 @@ describe('renaming a favorite', () => {
 })
 
 /**
- * A favorite's actions (Rename, Remove from favorites) sit in its → submenu, and a
+ * A favorite's actions (Rename, Set shortcut, Remove from favorites) sit in its → submenu, and a
  * right-click opens that same submenu: two doors, one list.
  */
 describe('a favorite’s submenu', () => {
+  it('captures a letter, lets Delete clear it, and leaves Escape as cancel', async () => {
+    await openFavorites()
+    await openFavoriteSubmenu(1)
+    submenuRow('row:fav-2:edit-favorite-shortcut')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await tick()
+    flushSync()
+    const input = document.querySelector<HTMLInputElement>('.favorite-shortcut-input')
+    expect(input).toBeTruthy()
+    input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', metaKey: true, bubbles: true, cancelable: true }))
+    expect(setFavoriteShortcut).not.toHaveBeenCalled()
+    input?.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', bubbles: true, cancelable: true }))
+    await vi.waitFor(() => {
+      expect(setFavoriteShortcut).toHaveBeenCalledWith('2', 'P')
+    })
+    expect(menuRow('fav-2')?.querySelector('.menu-shortcut')?.textContent).toBe('P')
+
+    await openFavoriteSubmenu(1)
+    submenuRow('row:fav-2:edit-favorite-shortcut')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await tick()
+    document
+      .querySelector<HTMLInputElement>('.favorite-shortcut-input')
+      ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    expect(setFavoriteShortcut).toHaveBeenCalledTimes(1)
+    expect(menuSurface()).toBeTruthy()
+
+    await openFavoriteSubmenu(1)
+    submenuRow('row:fav-2:edit-favorite-shortcut')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await tick()
+    document
+      .querySelector<HTMLInputElement>('.favorite-shortcut-input')
+      ?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }))
+    await vi.waitFor(() => {
+      expect(setFavoriteShortcut).toHaveBeenCalledWith('2', null)
+    })
+  })
+
   it('opens the right-clicked row’s submenu, not the one where the keyboard cursor sits', async () => {
     await openFavorites()
 

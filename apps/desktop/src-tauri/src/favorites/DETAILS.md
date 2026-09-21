@@ -1,7 +1,7 @@
 # Favorites (backend) details
 
 User-editable favorites. The frontend's favorites menu (⌃D) is fully user-owned: add, remove,
-rename, reorder. This module owns the ordered `favorites.json` store; the IPC layer
+rename, reorder, and assign letter shortcuts. This module owns the ordered `favorites.json` store; the IPC layer
 (`commands/favorites.rs`) is a thin pass-through. Read `CLAUDE.md` first for the
 must-knows.
 
@@ -21,7 +21,7 @@ the Linux `volumes_linux/mod.rs` twins) reads `favorites::store::list()` and map
 {
   "_schemaVersion": 1,
   "favorites": [
-    { "id": "9f1c…", "path": "/Applications", "name": "Applications" },
+    { "id": "9f1c…", "path": "/Applications", "name": "Applications", "shortcut": "A" },
     { "id": "a83e…", "path": "/Users/me/Desktop", "name": "Desktop" }
   ]
 }
@@ -32,6 +32,8 @@ the Linux `volumes_linux/mod.rs` twins) reads `favorites::store::list()` and map
 - `path`: the absolute filesystem path.
 - `name`: the display label. Defaults to the path's file name on add; the user can override via
   rename.
+- `shortcut`: an optional uppercase ASCII letter. Omitted for unassigned and older entries, so
+  schema v1 remains readable without migration.
 
 Order in the array is the display order.
 
@@ -72,6 +74,9 @@ All in `store.rs`, unit-tested without disk or an `AppHandle`:
 - `reorder(ordered_ids)`: reorders to match the given id list. Unknown ids are ignored; favorites
   whose ids are missing from the list are appended in their current relative order, so a partial or
   stale order from the frontend never drops an entry.
+- `set_shortcut(id, shortcut)`: accepts one ASCII letter or `None` to clear. Letters are stored
+  uppercase. Assigning one already owned by another favorite transfers it, keeping keyboard picks
+  unambiguous. No-op if the id is absent.
 
 `normalize_for_dedup` strips a single trailing `/` (but keeps root `/`). Case-sensitivity is a known
 limitation, same as `go_to_path/history.rs`: on case-insensitive APFS `/Users/x/Foo` and
@@ -109,13 +114,16 @@ there's no `list_favorites` command.
 - `remove_favorite(id: String) -> Result<(), DeadlineError>`
 - `rename_favorite(id: String, name: String) -> Result<(), DeadlineError>`
 - `reorder_favorites(ordered_ids: Vec<String>) -> Result<(), DeadlineError>`
+- `set_favorite_shortcut(id: String, shortcut: Option<String>) -> Result<(), SetFavoriteShortcutError>`
 
-The last three answer in `DeadlineError` (`deadline/mod.rs`) rather than a vocabulary of their own,
+Remove, rename, and reorder answer in `DeadlineError` (`deadline/mod.rs`) rather than a vocabulary of their own,
 because the store swallows its own write errors: a favorite that doesn't reach disk still applies in
 memory, so a missed deadline (or a panicked blocking task) is the only thing they can report.
 `add_favorite` can also REFUSE (§ The add gate), so it owns `AddFavoriteError`: the same two
 deadline variants plus `NotAnOsVisiblePath`. The error-type map is
 `docs/guides/error-handling.md`.
+`set_favorite_shortcut` owns `SetFavoriteShortcutError` because it also rejects anything other than
+one ASCII letter (or `None`), including untrusted IPC callers.
 
 Registered in the `ipc.rs` manifest, which feeds both runtime dispatch and the specta types.
 

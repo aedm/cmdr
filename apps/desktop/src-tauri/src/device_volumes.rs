@@ -137,6 +137,7 @@ fn location_from_entry(entry: DeviceVolumeEntry) -> LocationInfo {
         device_readiness: entry.device_readiness,
         usb_speed: entry.usb_speed,
         capabilities: None,
+        favorite_shortcut: None,
     }
 }
 

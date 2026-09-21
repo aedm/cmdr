@@ -1,4 +1,4 @@
-// User-editable favorites: add, remove, rename, reorder.
+// User-editable favorites: add, remove, rename, reorder, and assign letter shortcuts.
 //
 // These mutate the backend `favorites.json` store. The favorites LIST is not fetched here: it rides
 // the `list_volumes` IPC and `volumes-changed` event as `LocationInfo` entries with
@@ -39,6 +39,12 @@ export async function removeFavorite(id: string): Promise<void> {
 /** Renames a favorite by its bare id. */
 export async function renameFavorite(id: string, name: string): Promise<void> {
   const res = await commands.renameFavorite(id, name)
+  if (res.status === 'error') throwIpcError(res.error)
+}
+
+/** Sets or clears a favorite's unmodified A–Z menu shortcut. */
+export async function setFavoriteShortcut(id: string, shortcut: string | null): Promise<void> {
+  const res = await commands.setFavoriteShortcut(id, shortcut)
   if (res.status === 'error') throwIpcError(res.error)
 }
 

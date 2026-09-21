@@ -578,6 +578,10 @@
   "@menu.volume.renameFavorite": {
     "sourceHash": "3064d79"
   },
+  "menu.volume.editFavoriteShortcut": "Definir atalho…",
+  "@menu.volume.editFavoriteShortcut": {
+    "sourceHash": "be52b50"
+  },
   "menu.volume.removeFavorite": "Remover",
   "@menu.volume.removeFavorite": {
     "sourceHash": "c3812fc"

@@ -1287,6 +1287,18 @@
   "@fileExplorer.navigation.renameFavoriteAriaLabel": {
     "sourceHash": "5f4fcbb"
   },
+  "fileExplorer.navigation.favoriteShortcutPrompt": "A–Z oder Entf",
+  "@fileExplorer.navigation.favoriteShortcutPrompt": {
+    "sourceHash": "51f3d7d"
+  },
+  "fileExplorer.navigation.favoriteShortcutAriaLabel": "Kurzbefehl für {name}. A–Z drücken oder mit Entf entfernen.",
+  "@fileExplorer.navigation.favoriteShortcutAriaLabel": {
+    "sourceHash": "31515c1"
+  },
+  "fileExplorer.navigation.favoriteShortcutSaveFailed": "Dieser Kurzbefehl ließ sich nicht speichern. Erneut versuchen?",
+  "@fileExplorer.navigation.favoriteShortcutSaveFailed": {
+    "sourceHash": "dc8e408"
+  },
   "fileExplorer.navigation.removeFavoriteFailed": "Dieser Favorit ließ sich nicht entfernen. Erneut versuchen?",
   "@fileExplorer.navigation.removeFavoriteFailed": {
     "sourceHash": "181bf36"

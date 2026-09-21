@@ -1286,6 +1286,18 @@
   "@fileExplorer.navigation.renameFavoriteAriaLabel": {
     "sourceHash": "5f4fcbb"
   },
+  "fileExplorer.navigation.favoriteShortcutPrompt": "A–Z o Supr",
+  "@fileExplorer.navigation.favoriteShortcutPrompt": {
+    "sourceHash": "51f3d7d"
+  },
+  "fileExplorer.navigation.favoriteShortcutAriaLabel": "Atajo para {name}. Pulsa A–Z o Supr para borrarlo.",
+  "@fileExplorer.navigation.favoriteShortcutAriaLabel": {
+    "sourceHash": "31515c1"
+  },
+  "fileExplorer.navigation.favoriteShortcutSaveFailed": "No se pudo guardar ese atajo. ¿Volver a intentarlo?",
+  "@fileExplorer.navigation.favoriteShortcutSaveFailed": {
+    "sourceHash": "dc8e408"
+  },
   "fileExplorer.navigation.removeFavoriteFailed": "No se pudo quitar ese favorito. ¿Reintentar?",
   "@fileExplorer.navigation.removeFavoriteFailed": {
     "sourceHash": "181bf36"

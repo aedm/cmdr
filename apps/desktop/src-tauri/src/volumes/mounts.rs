@@ -338,6 +338,7 @@ fn build_attached_location(
         device_readiness: None,
         usb_speed: None,
         capabilities: None,
+        favorite_shortcut: None,
     })
 }
 

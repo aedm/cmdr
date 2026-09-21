@@ -188,6 +188,7 @@ pub(crate) fn location_from_place(place: ServerPlace) -> LocationInfo {
         device_readiness: None,
         usb_speed: None,
         capabilities: None,
+        favorite_shortcut: None,
     }
 }
 

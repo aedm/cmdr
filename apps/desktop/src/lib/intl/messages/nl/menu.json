@@ -582,6 +582,10 @@
   "@menu.volume.renameFavorite": {
     "sourceHash": "3064d79"
   },
+  "menu.volume.editFavoriteShortcut": "Sneltoets instellen…",
+  "@menu.volume.editFavoriteShortcut": {
+    "sourceHash": "be52b50"
+  },
   "menu.volume.removeFavorite": "Verwijder",
   "@menu.volume.removeFavorite": {
     "sourceHash": "c3812fc"

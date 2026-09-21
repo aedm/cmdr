@@ -201,7 +201,7 @@ Backend events fire at success chokepoints; frontend events ride `track_event`.
   fired. macOS-only, like Finder tags themselves. `succeeded` covers the partial-write case, where an earlier file kept
   its new tags and a later one didn't.
 - `favorite_changed` (backend, `favorites/store.rs` `mutate_and_persist`): `action` (`added` / `removed` / `renamed` /
-  `reordered`) + `favorites`, the list's size AFTER the change as an `item_count_bucket`; never a path or a label. It
+  `reordered` / `shortcut_changed`) + `favorites`, the list's size AFTER the change as an `item_count_bucket`; never a path, label, or letter. It
   sits past the no-op guard, so removing an id that isn't there doesn't inflate the count. The `action` is a required
   parameter rather than an inferred one, so a fifth favorites mutation can't be added without deciding what it reports.
 - `viewer_opened` (backend, `file_viewer/analytics.rs`, from `session::open_session_inner`): `content` (`text` /
@@ -272,7 +272,7 @@ Backend events fire at success chokepoints; frontend events ride `track_event`.
   Counted at the drain rather than at the start, because a promise-backed drag (MTP, a NAS) can be abandoned before
   anything fulfills. ❌ The payload's `failures` holds leaf NAMES; only its length crosses.
 - `favorite_opened` (frontend, `file-explorer/navigation/favorites-analytics.ts`): `surface` (`favorites_menu` /
-  `command`) plus `via` (`digit` / `keyboard` / `pointer` / `command`). The payoff half of favorites —
+  `command`) plus `via` (`digit` / `letter` / `keyboard` / `pointer` / `command`). The payoff half of favorites —
   `favorite_changed` counts the list being edited and can't say whether anybody ever goes anywhere with it. `via` is
   what says whether the menu's number keys earn their column. ❗ `surface: command` ALWAYS pairs with `via: command`
   (the command IS the interaction, so there's no row to point at), and the TS payload is one union rather than two

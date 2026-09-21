@@ -26,7 +26,7 @@ import { trackEvent } from '$lib/tauri-commands'
  * number keys earn it, or does everyone arrow down anyway?
  */
 export type FavoriteOpenedEvent =
-  | { surface: 'favorites_menu'; via: 'digit' | 'keyboard' | 'pointer' }
+  | { surface: 'favorites_menu'; via: 'digit' | 'letter' | 'keyboard' | 'pointer' }
   | { surface: 'command'; via: 'command' }
 
 /**

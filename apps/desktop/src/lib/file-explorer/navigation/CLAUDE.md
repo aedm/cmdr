@@ -38,11 +38,11 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
   No `listSavedServers()` fetch in `volume-grouping.ts`; the row carries `pinned` already.
 - **Favorites live in their OWN menu (⌃D), ❌ never in the switcher.** `volume-grouping.ts` groups the `favorite`
   category NOWHERE; the switcher's "See N favorites" row swaps the menus. Mutate ONLY through the
-  `$lib/tauri-commands/favorites.ts` wrappers (they strip `fav-`).
+  `$lib/tauri-commands/favorites.ts` wrappers (pass bare ids using `stripFavoritePrefix`).
 - **❗ The chip holds ONE `openMenu`**, so its two can't both be up: each reports through `onOpenChange`, and
   `isHeaderMenuOpen()` is the single answer the panes suppress keys on. ❌ No second source of truth.
-- **The favorite-rename `<input>` holds four guards against leaking keystrokes to the panes**; drop any one and it leaks
-  once more.
+- **Favorite inline editors own keystrokes**: preserve `isEditing()` and input `stopPropagation()` or pane shortcuts
+  fire. The rename `<input>` holds four guards against leaking keystrokes to the panes; drop any one and it leaks again.
 - **❗ EVERY menu here is the house `Menu`** (`$lib/ui/DETAILS.md` § Menu), row actions included: it owns keys, cursor,
   pointer, submenus, reorder, placement, and focus. ❌ Never a key handler, highlight index, or `getBoundingClientRect`
   here; a chip menu's `onKey` claims only the SWAP keys.

@@ -255,8 +255,8 @@ export function volumeRowMenu(volume: VolumeInfo, facts: VolumeRowFacts): RowMen
 }
 
 /**
- * A favorite's menu: Rename and Remove from favorites. Both keep the menu up: the rename
- * happens in the row itself, and a list being tidied is several removals in a row. Never
+ * A favorite's menu: Rename, Set shortcut, and Remove from favorites. All keep the menu up:
+ * the editors happen in the row itself, and a list being tidied is several removals in a row. Never
  * greyed: a favorite is a stored `{ path, name }` pair nothing can be using.
  */
 export function favoriteRowMenu(): RowMenu {
@@ -264,6 +264,7 @@ export function favoriteRowMenu(): RowMenu {
     ...EMPTY_ROW_MENU,
     actions: [
       action('rename-favorite', 'menu.volume.renameFavorite', 'pencil', { keepsMenuOpen: true }),
+      action('edit-favorite-shortcut', 'menu.volume.editFavoriteShortcut', 'key', { keepsMenuOpen: true }),
       action('remove-favorite', 'menu.volume.removeFavorite', 'star-off', { keepsMenuOpen: true }),
     ],
   }
