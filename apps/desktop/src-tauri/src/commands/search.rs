@@ -58,17 +58,24 @@ pub struct SearchIndexReadyEvent {
 /// will follow. Saying so is what lets a search still run on a machine that declined
 /// indexing: the dialog stops waiting and asks the question, and the answer comes back
 /// with its coverage gap named.
+///
+/// `volume_id` is the volume the dialog is about to search; `None` means the boot
+/// volume. The dialog calls this again whenever the focused pane's volume changes, so
+/// a NAS is warming while the user is still typing rather than being loaded inside the
+/// search that needs it.
 #[tauri::command]
 #[specta::specta]
-pub async fn prepare_search_index(app: tauri::AppHandle) -> Result<PrepareResult, String> {
+pub async fn prepare_search_index(app: tauri::AppHandle, volume_id: Option<String>) -> Result<PrepareResult, String> {
     use cmdr_index::ROOT_VOLUME_ID;
+
+    let volume_id = volume_id.unwrap_or_else(|| ROOT_VOLUME_ID.to_string());
 
     search::touch_activity();
     search::DIALOG_OPEN.store(true, Ordering::Relaxed);
     search::cancel_idle_timer();
 
-    // Fast path: root already warm and fresh.
-    if let Some(v) = search::get_loaded(ROOT_VOLUME_ID) {
+    // Fast path: already warm and fresh.
+    if let Some(v) = search::get_loaded(&volume_id) {
         // A prior session's backstop timer may still be ticking; reset it so it
         // can't fire while the dialog is open.
         search::reset_backstop_timer();
@@ -82,7 +89,7 @@ pub async fn prepare_search_index(app: tauri::AppHandle) -> Result<PrepareResult
     // Nothing to load: indexing declined, or the first scan hasn't produced a
     // searchable index yet. Say so instead of spawning a load whose event never
     // arrives, which would leave the dialog waiting on an index that isn't coming.
-    if !search::has_searchable_index(ROOT_VOLUME_ID) {
+    if !search::has_searchable_index(&volume_id) {
         return Ok(PrepareResult {
             ready: false,
             entry_count: 0,
@@ -90,13 +97,17 @@ pub async fn prepare_search_index(app: tauri::AppHandle) -> Result<PrepareResult
         });
     }
 
-    // Load root in the background so the dialog doesn't block on a multi-second scan.
+    // Load in the background so the dialog doesn't block on a multi-second scan.
     let app_clone = app.clone();
+    let loading_id = volume_id.clone();
     tauri::async_runtime::spawn(async move {
-        match tokio::task::spawn_blocking(|| search::ensure_volume(ROOT_VOLUME_ID)).await {
-            Ok(VolumeLoad::Loaded(v)) => emit_index_ready(&app_clone, ROOT_VOLUME_ID, v.index.entries.len() as u64),
-            Ok(VolumeLoad::NotIndexed) => log::debug!("prepare_search_index: root index not available yet"),
-            Ok(VolumeLoad::Failed(e)) => log::warn!("prepare_search_index: root load failed: {e}"),
+        let for_task = loading_id.clone();
+        match tokio::task::spawn_blocking(move || search::ensure_volume(&for_task)).await {
+            Ok(VolumeLoad::Loaded(v)) => emit_index_ready(&app_clone, &loading_id, v.index.entries.len() as u64),
+            Ok(VolumeLoad::NotIndexed) => {
+                log::debug!("prepare_search_index: '{loading_id}' index not available yet")
+            }
+            Ok(VolumeLoad::Failed(e)) => log::warn!("prepare_search_index: '{loading_id}' load failed: {e}"),
             Err(e) => log::warn!("prepare_search_index: load task panicked: {e}"),
         }
     });

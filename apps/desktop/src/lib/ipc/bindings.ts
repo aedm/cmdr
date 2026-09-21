@@ -2652,8 +2652,14 @@ export const commands = {
    *  will follow. Saying so is what lets a search still run on a machine that declined
    *  indexing: the dialog stops waiting and asks the question, and the answer comes back
    *  with its coverage gap named.
+   *
+   *  `volume_id` is the volume the dialog is about to search; `None` means the boot
+   *  volume. The dialog calls this again whenever the focused pane's volume changes, so
+   *  a NAS is warming while the user is still typing rather than being loaded inside the
+   *  search that needs it.
    */
-  prepareSearchIndex: () => typedError<PrepareResult, string>(__TAURI_INVOKE('prepare_search_index')),
+  prepareSearchIndex: (volumeId: string | null) =>
+    typedError<PrepareResult, string>(__TAURI_INVOKE('prepare_search_index', { volumeId })),
   /**
    *  Search the scope's volume, or the boot volume when the query has no scope.
    *  Returns empty (with an honest coverage gap) when that volume has no index yet.

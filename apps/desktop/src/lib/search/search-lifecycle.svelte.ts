@@ -111,6 +111,46 @@ export function createSearchLifecycle(deps: SearchLifecycleDeps): SearchLifecycl
   const scanning = $derived(isVolumeScanning(ROOT_VOLUME_ID))
   const entriesScanned = $derived(getEntriesScanned())
 
+  /** The last volume a warm was requested for, so a re-render doesn't re-ask. */
+  let warmedVolumeId: string | null = null
+
+  /**
+   * Ask the backend to load `volumeId`'s arena, and record what came back.
+   *
+   * `loading` is the backend's promise that a `search-index-ready` event is coming;
+   * without it a machine with no index for this volume would wait for one that never
+   * arrives and never search at all.
+   */
+  async function warmVolume(volumeId: string): Promise<void> {
+    if (warmedVolumeId === volumeId) return
+    warmedVolumeId = volumeId
+    try {
+      const result = await prepareSearchIndex(volumeId)
+      if (result.ready) {
+        markVolumeIndexReady(volumeId, result.entryCount)
+        setPendingIndexVolumeId(null)
+      } else {
+        setPendingIndexVolumeId(result.loading ? volumeId : null)
+      }
+    } catch {
+      // Index not available: indexing disabled, not started, or backend unavailable.
+      warmedVolumeId = null
+      setPendingIndexVolumeId(null)
+      setIsIndexAvailable(false)
+    }
+  }
+
+  /**
+   * Switching the focused pane to another volume mid-dialog warms THAT volume, so a
+   * NAS loads while the user is still typing rather than inside the search that needs
+   * it. Loads are single-flighted per volume in `volumes.rs`, so a re-entrant call
+   * while one is in flight waits for it instead of reading the database twice.
+   */
+  $effect(() => {
+    const target = targetVolumeId
+    if (target !== null && target !== warmedVolumeId) void warmVolume(target)
+  })
+
   async function setup(): Promise<void> {
     // Listen for a volume's arena landing. The event NAMES its volume, so readiness
     // is recorded per volume and only the search that targets that one un-gates.
@@ -132,22 +172,9 @@ export function createSearchLifecycle(deps: SearchLifecycleDeps): SearchLifecycl
       }
     })
 
-    try {
-      // Root is the one volume that gets pre-loaded when the dialog opens. `loading`
-      // is the backend's promise that an event is coming; without it, a machine with
-      // no root index would wait for one that never arrives and never search at all.
-      const result = await prepareSearchIndex()
-      if (result.ready) {
-        markVolumeIndexReady(ROOT_VOLUME_ID, result.entryCount)
-        setPendingIndexVolumeId(null)
-      } else {
-        setPendingIndexVolumeId(result.loading ? ROOT_VOLUME_ID : null)
-      }
-    } catch {
-      // Index not available: indexing disabled, not started, or backend unavailable.
-      setPendingIndexVolumeId(null)
-      setIsIndexAvailable(false)
-    }
+    // Warm whichever volume this dialog session will actually search, falling back to
+    // root when the scope can't be resolved here (the backend routes those).
+    await warmVolume(targetVolumeId ?? ROOT_VOLUME_ID)
 
     // Persisted recent searches load (idempotent across the session).
     void loadRecentSearches()

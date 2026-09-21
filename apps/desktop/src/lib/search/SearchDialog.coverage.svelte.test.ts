@@ -349,7 +349,14 @@ describe('the readiness gate is per target, not "is root loaded"', () => {
   it('does not wait for root when the search targets another volume', async () => {
     // Root's pre-load says nothing about a NAS. Waiting for it would make a search of
     // the drive the user is standing on hostage to a volume they didn't ask about.
-    prepareSearchIndexMock.mockResolvedValue({ ready: false, entryCount: 0, loading: true })
+    // Root answers "an event is coming"; the NAS the dialog actually targets is warm.
+    prepareSearchIndexMock.mockImplementation((volumeId: string | null) =>
+      Promise.resolve(
+        volumeId === 'smb-naspi'
+          ? { ready: true, entryCount: 7, loading: false }
+          : { ready: false, entryCount: 0, loading: true },
+      ),
+    )
     const { overlay } = await mountDialog({
       searchVolume: { volumeId: 'smb-naspi', mountRoot: '/Volumes/naspi', isNetwork: true },
     })
@@ -358,6 +365,18 @@ describe('the readiness gate is per target, not "is root loaded"', () => {
     await runSearch(overlay)
 
     expect(searchFilesMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('warms the volume the dialog targets, not only root', async () => {
+    // The pre-load follows the focused pane. Before this, only root was ever warmed and
+    // every other volume was loaded inside the search that needed it, which is the
+    // multi-second wait a NAS search used to open with.
+    prepareSearchIndexMock.mockResolvedValue({ ready: true, entryCount: 7, loading: false })
+    await mountDialog({
+      searchVolume: { volumeId: 'smb-naspi', mountRoot: '/Volumes/naspi', isNetwork: true },
+    })
+
+    expect(prepareSearchIndexMock).toHaveBeenCalledWith('smb-naspi')
   })
 
   it('keeps searching after ⌘N, which resets the query and not what the backend reported', async () => {

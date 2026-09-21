@@ -213,16 +213,16 @@ Deferred future work. Unchecked by default; the folder name is the status. Each 
 left, so the durable intent survives the wipe.
 
 - [ ] 2026-09-20 `later/search-arena-snapshot.md` - **Make the search dialog's wait disappear rather than shrink**
-      (GitHub #114). `ERR-S76V3` measured 34.7 s between `search.open` and a 50 ms search on a 5.39 M-entry volume.
-      The cheap half SHIPPED (parallel range-scan loader, `dir_stats` row estimate instead of a second b-tree
-      traversal, weights loaded concurrently, `id_to_index` retired for a binary search, volume-scoped preload, 30 s
-      idle window), which leaves a ~1 s rebuild on every reopen past the window and a few seconds on the first open of
-      a session. Parked here: replacing the heap arena with a columnar, memory-mapped `index-{volume}.arena` (~271 MB,
-      about a third on top of the database) that the engine scans in place, kept fresh by an append-only mutation
-      journal the index writer appends to and search replays at dialog open. ❗ The memory argument does NOT justify
-      it: the arena was always dialog-scoped, so the idle-footprint requirement is already met. What's left to buy is
-      the wait itself, plus the footprint while the dialog is up, against ~3,000-4,500 lines and permanent ownership of
-      a file format with a crash-recovery path. Six remaining workstreams, contracts fixed up front so they merge.
+      (GitHub #114). `ERR-S76V3` measured 34.7 s between `search.open` and a 50 ms search on a 5.39 M-entry volume. The
+      cheap half SHIPPED (parallel range-scan loader, `dir_stats` row estimate instead of a second b-tree traversal,
+      weights loaded concurrently, `id_to_index` retired for a binary search, volume-scoped preload, 30 s idle window),
+      which leaves a ~1 s rebuild on every reopen past the window and a few seconds on the first open of a session.
+      Parked here: replacing the heap arena with a columnar, memory-mapped `index-{volume}.arena` (~271 MB, about a
+      third on top of the database) that the engine scans in place, kept fresh by an append-only mutation journal the
+      index writer appends to and search replays at dialog open. ❗ The memory argument does NOT justify it: the arena
+      was always dialog-scoped, so the idle-footprint requirement is already met. What's left to buy is the wait itself,
+      plus the footprint while the dialog is up, against ~3,000-4,500 lines and permanent ownership of a file format
+      with a crash-recovery path. Six remaining workstreams, contracts fixed up front so they merge.
 
 - [ ] 2026-09-13 `later/warn-triage-follow-ups.md` - **The low-severity half of the frontend warn triage.** Frontend
       warns reach prod logs now, and the triage's high- and medium-severity findings were fixed. Parked here: eight

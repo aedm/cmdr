@@ -20,12 +20,15 @@ import type {
 } from '$lib/ipc/bindings'
 
 /**
- * Starts loading the search index in the background.
+ * Starts loading a volume's search index in the background.
  * Returns immediately with current readiness state.
  * Emits "search-index-ready" when load completes.
+ *
+ * `volumeId` defaults to the boot volume. Call it again when the dialog's target
+ * volume changes, so that volume warms while the user is still typing.
  */
-export async function prepareSearchIndex(): Promise<PrepareResult> {
-  const res = await commands.prepareSearchIndex()
+export async function prepareSearchIndex(volumeId: string | null = null): Promise<PrepareResult> {
+  const res = await commands.prepareSearchIndex(volumeId)
   if (res.status === 'error') throwIpcError(res.error)
   return res.data
 }
