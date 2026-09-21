@@ -65,8 +65,8 @@ long. So:
   the line then starts one byte past it, which disqualifies the next multiple (its window still holds that newline), so
   the row runs to the one after, 39 999 bytes later. A newline just BEFORE a multiple is not the bad case, contrary to
   what an earlier draft of this spec said: it puts the line start on the multiple itself, which is a boundary by clause
-  2, and the next row is exactly one segment. Inside a long line every subsequent row is exactly `SEGMENT_BYTES`. A
-  300 MB line is one row under 40 000 bytes followed by ~15 000 rows of exactly 20 000.
+  2, and the next row is exactly one segment. Inside a long line every subsequent row is exactly `SEGMENT_BYTES`. A 300
+  MB line is one row under 40 000 bytes followed by ~15 000 rows of exactly 20 000.
 - **The character snap goes BACKWARD, and that direction is load-bearing.** It must be decidable from bytes strictly
   below the multiple: snapping forward, or even peeking at the byte AT the multiple, pushes either the read past
   `2 × SEGMENT_BYTES` or the row past `2 × SEGMENT_BYTES`. Cap it too (3 bytes for UTF-8, one code unit for UTF-16), or
@@ -74,11 +74,11 @@ long. So:
 - **A multiple past EOF is not a boundary**, so the last row simply runs to EOF. Without that carve-out a character
   straddling EOF within three bytes of a multiple cannot be resolved inside the read bound.
 - **A line of exactly `SEGMENT_BYTES` does split**, into a full row plus a row holding only its newline. That follows
-  from "shorter than" in the I6 proof and is correct; it is listed here because it looks like a bug when you first
-  see it.
+  from "shorter than" in the I6 proof and is correct; it is listed here because it looks like a bug when you first see
+  it.
 - **Both directions stay O(1)**, bounded by a `2 × SEGMENT_BYTES` backward scan: that window contains every candidate
-  boundary near `offset` AND the newline evidence needed to test clause 3 for each of them. Nothing depends on where
-  the physical line starts or ends, which is I2.
+  boundary near `offset` AND the newline evidence needed to test clause 3 for each of them. Nothing depends on where the
+  physical line starts or ends, which is I2.
 - Boundaries are **absolute file offsets** in every backend, BOM or no BOM. `full_load.rs:70` scans `&bytes[bom_len..]`
   today; applying the rule to those shifted indices would put FullLoad's rows out of step with ByteSeek's across a
   reload or a tail escalation (`session.rs:1283`), which swap backends under a live `lineCache`.
@@ -118,8 +118,8 @@ is mostly a rename plus the gutter and the marker.
 A row with `continues: true` draws a marker at the end of its text, **identically whether word wrap is on or off**. It
 says one thing: this break is Cmdr's, not the file's.
 
-- The glyph is `⏎`, and David decided it against this spec's own argument. The spec reasoned that `⏎` means "there is
-  a line break here", the opposite of the truth. His call: an ellipsis reads as a cutoff, which implies content is
+- The glyph is `⏎`, and David decided it against this spec's own argument. The spec reasoned that `⏎` means "there is a
+  line break here", the opposite of the truth. His call: an ellipsis reads as a cutoff, which implies content is
   missing, and nothing is missing, so that is the worse of the two lies. A break did happen; whose break it is belongs
   to the tooltip and the label. Shipped as `⏎`, with the reasoning beside the rule in `ViewerRow.svelte`.
 - It must not be selectable and must not reach the clipboard. A `::after` with `content` satisfies both, which then
@@ -147,21 +147,21 @@ Each of these is a way to ship something that passes tests and is still wrong.
    which is the 49 s in the report. Rows bound it, but fix the loop too: `get_lines` has callers outside the viewer
    (`agent/tools/read/inspect/`) and the next reader deserves a linear function.
 3. **Select-all must stay honest.** `viewer-keyboard.ts` builds ⌘A from `getLineText(totalLines - 1).length`. Once that
-   is a row it is still correct, but only while `totalRows` and the last row's text agree. `EOF_LINE` →
-   `RangeEnd::Eof` stays the path for "we have no count yet"; do not replace it with arithmetic.
+   is a row it is still correct, but only while `totalRows` and the last row's text agree. `EOF_LINE` → `RangeEnd::Eof`
+   stays the path for "we have no count yet"; do not replace it with arithmetic.
 4. **Save-as does not stream, whatever its comment says.** See the separate milestone below.
-5. **Encoding.** UTF-16 rows must split on code-unit pairs, and a decoded row must never contain a replacement
-   character produced by our own boundary. Both encodings need the round-trip test.
-6. **The LineIndex checkpoint array counts lines.** It has to count rows too (keep both: rows for seeking, lines for
-   the gutter), and the row count has to come out of the same single scan; a second pass over the file breaks I1.
+5. **Encoding.** UTF-16 rows must split on code-unit pairs, and a decoded row must never contain a replacement character
+   produced by our own boundary. Both encodings need the round-trip test.
+6. **The LineIndex checkpoint array counts lines.** It has to count rows too (keep both: rows for seeking, lines for the
+   gutter), and the row count has to come out of the same single scan; a second pass over the file breaks I1.
 7. **Search columns are UTF-16 code units.** Converting a match's byte offset to a column within its row means decoding
    the row prefix, which is bounded by `SEGMENT_BYTES`. Bounded is fine; unbounded is the bug.
 8. **Search is a second copy of the same unbounded read, and the same quadratic loop.** `byte_seek.rs:406` decodes a
    whole newline-free file into one `String`, and the `combined = leftover + chunk` rebuild at `byte_seek.rs:358-367`
    (mirrored at `line_index.rs:467-476`) is landmine 2 again. Fixing only `read_lines_ascii` leaves ⌘F on the reported
    file hanging exactly as before, so I1 would still fail on the very file that prompted this work. Search scans rows.
-9. **`LineChunk.byte_offset` is a lie on the LineIndex backend.** `line_index.rs:427` returns the *checkpoint's* offset
-   while `first_line_number` is the *target* line, and the code comment says so out loud ("approximate"). Anything that
+9. **`LineChunk.byte_offset` is a lie on the LineIndex backend.** `line_index.rs:427` returns the _checkpoint's_ offset
+   while `first_line_number` is the _target_ line, and the code comment says so out loud ("approximate"). Anything that
    seeks onward from that offset lands short. Return the target row's real offset.
 
 ### What bounded rows break on the frontend
@@ -174,48 +174,48 @@ change introduces, so they are part of it, not follow-ups.
   fires every `FETCH_DEBOUNCE_MS` forever. **Drive the next fetch from the last row actually cached**, not from the
   requested range. This one is caused by `CHUNK_BUDGET_BYTES`, so it ships with it or not at all.
 - **`lineCache` is never evicted.** It is a plain `SvelteMap` (`viewer-scroll.svelte.ts:40`) cleared only on open,
-  reload, and encoding change (`+page.svelte:145,235,690`). At up to 40 KB per row that is fine today and parks
-  hundreds of megabytes in the renderer once rows are long: scrolling through 1% of a 50 GB file is ~500 MB. Evict by
-  distance from the viewport.
-- **The height model does not survive wrapped 20 KB rows.** `avgWrappedLineHeight` (`viewer-scroll.svelte.ts:437`)
-  would measure rows ~3 600 px tall while `linesOffset` spaces them at ~12 px, and the DOM height map is FullLoad-only
+  reload, and encoding change (`+page.svelte:145,235,690`). At up to 40 KB per row that is fine today and parks hundreds
+  of megabytes in the renderer once rows are long: scrolling through 1% of a 50 GB file is ~500 MB. Evict by distance
+  from the viewport.
+- **The height model does not survive wrapped 20 KB rows.** `avgWrappedLineHeight` (`viewer-scroll.svelte.ts:437`) would
+  measure rows ~3 600 px tall while `linesOffset` spaces them at ~12 px, and the DOM height map is FullLoad-only
   (`+page.svelte:274`, `MAX_LINES` 50 000) so it never engages on the files that need it. **Size the render window by
   height, not by row count.**
-- **`SeekTarget::Line(n)` estimates `n * 80` bytes** (`byte_seek.rs:251`), which is 250x wrong once `n` counts rows,
-  and `range_read.rs:158` seeds its first chunk with it. ByteSeek should report `total_rows` and estimate from
-  `SEGMENT_BYTES`, and the fraction path at `viewer-scroll.svelte.ts:237` must stop discarding
-  `chunk.firstLineNumber` and caching at `fetchFrom` instead.
+- **`SeekTarget::Line(n)` estimates `n * 80` bytes** (`byte_seek.rs:251`), which is 250x wrong once `n` counts rows, and
+  `range_read.rs:158` seeds its first chunk with it. ByteSeek should report `total_rows` and estimate from
+  `SEGMENT_BYTES`, and the fraction path at `viewer-scroll.svelte.ts:237` must stop discarding `chunk.firstLineNumber`
+  and caching at `fetchFrom` instead.
 - **Checkpoints count lines, every 256 of them** (`mod.rs:75`, `line_index.rs:136`). A newline-free file therefore has
   exactly ONE checkpoint, and `read_lines_from_checkpoint` scans from byte 0 on every single fetch. The interval has to
-  count ROWS, or the LineIndex backend violates I1 on precisely the file this work exists for. (And LineIndex IS
-  reached on the 300 MB file: its scan finishes well inside `INDEXING_TIMEOUT_SECS`.)
+  count ROWS, or the LineIndex backend violates I1 on precisely the file this work exists for. (And LineIndex IS reached
+  on the 300 MB file: its scan finishes well inside `INDEXING_TIMEOUT_SECS`.)
 
 ### Milestone ordering
 
-Findings that milestones 3-5 leave the app incoherent in between are correct but not a problem here: everything lands
-on `worktree-viewer-row-wrap` and reaches `main` as one fast-forward, so `main` never sees a half-renamed coordinate.
-Land 3, 4, and 5 as a series without stopping to make each independently shippable.
+Findings that milestones 3-5 leave the app incoherent in between are correct but not a problem here: everything lands on
+`worktree-viewer-row-wrap` and reaches `main` as one fast-forward, so `main` never sees a half-renamed coordinate. Land
+3, 4, and 5 as a series without stopping to make each independently shippable.
 
-Milestone 6 is NOT as independent as this spec first claimed: save-as reaches the file through the same
-`read_range` (`session.rs:975`). One streaming implementation, not two. The save-as work refactors `read_range` into a
-form that can emit into a sink, and `write_range_to_file` drives it; the row changes then land in that one place.
+Milestone 6 is NOT as independent as this spec first claimed: save-as reaches the file through the same `read_range`
+(`session.rs:975`). One streaming implementation, not two. The save-as work refactors `read_range` into a form that can
+emit into a sink, and `write_range_to_file` drives it; the row changes then land in that one place.
 
 ### Carried over from the save-as milestone
 
 - **Streaming save is bounded by one chunk PLUS one line**, because `ChunkedSink::push` appends a whole entry before
   testing the threshold. That is the right shape, and it is still unbounded on the 300 MB single-line file until rows
-  land: the entry it appends IS the whole line. So "save-as of a newline-free 300 MB file holds one chunk, not the
-  file" is part of milestone 3's DONE, not a separate concern. Nothing to change in the sink; it inherits the bound the
-  moment its entries are rows.
+  land: the entry it appends IS the whole line. So "save-as of a newline-free 300 MB file holds one chunk, not the file"
+  is part of milestone 3's DONE, not a separate concern. Nothing to change in the sink; it inherits the bound the moment
+  its entries are rows.
 - **ByteSeek and FullLoad disagree about the trailing empty line** of a newline-terminated file, so a `RangeEnd::Eof`
   read returns a different number of trailing newlines depending on which backend served it, i.e. on the file's size.
-  Pre-existing, and the row work touches exactly this code. Pick one answer, pin it for all three backends, say which
-  in the commit.
+  Pre-existing, and the row work touches exactly this code. Pick one answer, pin it for all three backends, say which in
+  the commit.
 
 ### Pre-existing bugs in the blast radius
 
-These are broken on `main` today, independent of this change, and every one of them sits in code this work has to
-touch. Fix them here, each in its own commit, each with a test that fails first.
+These are broken on `main` today, independent of this change, and every one of them sits in code this work has to touch.
+Fix them here, each in its own commit, each with a test that fails first.
 
 - **⌘A can silently select nothing.** `viewer-keyboard.ts:344` does `deps.getLineText(totalLines - 1) ?? ''`, so when
   the last row isn't in `lineCache` (the common case on a long file: you ⌘A without having scrolled to the end) the
@@ -228,8 +228,8 @@ touch. Fix them here, each in its own commit, each with a test that fails first.
 - **`chunk_end_offset` is computed from decoded text.** `range_read.rs:185` does `line.len() as u64 + 1`, where
   `line.len()` is the UTF-8 length of the DECODED string. On a UTF-16 file that is not the source byte length, so
   multi-chunk ranges already drift today; the `+ 1` then breaks again on continuation rows. Have `LineChunk` carry the
-  chunk's true source end offset instead of deriving it from strings. The CRLF reasoning in the comment above that
-  line is sound and should survive.
+  chunk's true source end offset instead of deriving it from strings. The CRLF reasoning in the comment above that line
+  is sound and should survive.
 
 ## Milestones
 
@@ -237,29 +237,29 @@ Each lands as its own commit (or a small series), green before the next starts.
 
 1. **Characterize.** Regression tests pinning TODAY's behavior for ordinary files: open, scroll, search, copy,
    select-all, save-as, both encodings, all three backends. Pin reality, not what this spec wishes were true. Plus two
-   tests that must be RED now: a newline-free file whose first fetch is bounded (structural: assert bytes touched, so
-   CI cannot flake on it), and a save-as of a range larger than memory comfort. Red must be seen and reported.
+   tests that must be RED now: a newline-free file whose first fetch is bounded (structural: assert bytes touched, so CI
+   cannot flake on it), and a save-as of a range larger than memory comfort. Red must be seen and reported.
 2. **The row rule.** The shared `row_start` / `row_end` helper with its property tests (idempotence from every probe
    offset in a row, both encodings, the snap-past-newline edge). No backend wired up yet. Pure functions, exhaustively
    tested, because everything downstream trusts them.
 3. **Backends emit rows.** `byte_seek.rs` and `line_index.rs` call the helper; `read_lines_ascii` and
-   `read_lines_ascii_from` become linear; `LineChunk` gains the row fields and its true source end offset; the
-   LineIndex checkpoints carry rows and lines from one scan; `CHUNK_BUDGET_BYTES` bounds the answer. `full_load.rs`
-   and `media_backend.rs` keep working (a FullLoad file can still hold a long line, so it needs the rule too).
-   **Search scans rows too** (landmine 8), including the same de-quadratic-ing of its `combined` rebuild; ⌘F on the
-   300 MB file is part of this milestone's DONE, not a follow-up.
-   Fix `LineChunk.byte_offset` on LineIndex (landmine 9) here, with `range_read`'s onward seek as the witness.
-4. **Rename the coordinate across IPC.** `SeekTarget::Row`, `SearchMatch` on rows, `RangeEnd::Row`. Mechanical but
-   wide; its own commit so the interesting commits stay readable.
+   `read_lines_ascii_from` become linear; `LineChunk` gains the row fields and its true source end offset; the LineIndex
+   checkpoints carry rows and lines from one scan; `CHUNK_BUDGET_BYTES` bounds the answer. `full_load.rs` and
+   `media_backend.rs` keep working (a FullLoad file can still hold a long line, so it needs the rule too). **Search
+   scans rows too** (landmine 8), including the same de-quadratic-ing of its `combined` rebuild; ⌘F on the 300 MB file
+   is part of this milestone's DONE, not a follow-up. Fix `LineChunk.byte_offset` on LineIndex (landmine 9) here, with
+   `range_read`'s onward seek as the witness.
+4. **Rename the coordinate across IPC.** `SeekTarget::Row`, `SearchMatch` on rows, `RangeEnd::Row`. Mechanical but wide;
+   its own commit so the interesting commits stay readable.
 5. **Frontend rows.** Gutter (number on a line's first row, blank on continuations), marker plus tooltip plus
    visually-hidden label plus i18n, the row rename through `viewer-scroll`, `selection`, `viewer-keyboard`,
    `viewer-copy`, `viewer-search-scroll`. Verify no path joins rows with `\n`.
 6. **Save-as streams.** `session.rs::write_range_to_file` currently does `read_range(..)` into one `String` and then
    `fs::write`, so the > 100 MiB copy refusal hands the user a button that allocates exactly what the refusal just
    protected them from. Make it chunk source → temp → rename, honouring the per-read cancel flag and keeping the
-   temp+rename atomicity. It must keep DECODING (a UTF-16 file saves as UTF-8 text today; a raw byte copy would
-   silently change that), so chunk on row boundaries and decode each chunk. Then the comment claiming it streams
-   becomes true. Independent of milestones 2-5; can run in parallel.
+   temp+rename atomicity. It must keep DECODING (a UTF-16 file saves as UTF-8 text today; a raw byte copy would silently
+   change that), so chunk on row boundaries and decode each chunk. Then the comment claiming it streams becomes true.
+   Independent of milestones 2-5; can run in parallel.
 7. **The pre-existing bugs**, listed under "Pre-existing bugs in the blast radius" above: ⌘A's silent zero, the
    off-by-one byte counts, and `range_read`'s decoded-length arithmetic. Land each with its own red test. These can go
    before or after milestone 5, but not after milestone 8: they must be provably fixed against the new row model, and
@@ -271,8 +271,8 @@ Each lands as its own commit (or a small series), green before the next starts.
 ## Out of scope, on purpose
 
 - **The abandoned read keeps running.** `blocking_typed_result_with_timeout` mints `TimedOut` and abandons the pending
-  open, but the blocking read has no cancel flag, so it runs to completion unwatched. Bounded rows make it a
-  sub-second waste instead of a 49 s one, so it stops being urgent. Worth a follow-up; not this change.
+  open, but the blocking read has no cancel flag, so it runs to completion unwatched. Bounded rows make it a sub-second
+  waste instead of a 49 s one, so it stops being urgent. Worth a follow-up; not this change.
 - **The 2 s `VIEWER_TIMEOUT`** stays as it is. With bounded reads it no longer fires on this case.
 - **ByteSeek row numbers are estimates mid-file** for files that do contain newlines, exactly as line numbers are
   estimates today. Unchanged, not made worse. (On a newline-free file they become exact, which is a small win.)
@@ -281,22 +281,22 @@ Each lands as its own commit (or a small series), green before the next starts.
 ## Bugs the characterization milestone found (all live on `main`)
 
 Pinned as `bug_pinned_*` in `row_characterization_test.rs`, all in code milestone 3 rewrites, so milestone 3 fixes them
-and converts each pin into an assertion of correct behaviour. The first two are silent data corruption in copy and
-save, which puts them ahead of the feature work in importance.
+and converts each pin into an assertion of correct behaviour. The first two are silent data corruption in copy and save,
+which puts them ahead of the feature work in importance.
 
 1. **A partial copy in ByteSeek mode gives an empty clipboard.** `range_read` seeks its first chunk by
    `SeekTarget::Line`, and ByteSeek answers with its 80-bytes-a-line estimate, which lands past the range's end line;
    the loop then returns having emitted nothing. On a 20-byte-line file a single-line range comes back as a DIFFERENT
    line instead. Anything over 1 MB is exposed, and the whole-file gesture escapes only because it starts at line 0.
-2. **A range over 4 096 lines on LineIndex duplicates a line at every chunk seam.** `range_read` seeks the next chunk
-   by the byte offset past the last one, and LineIndex rounds that down to its previous checkpoint, re-serving a line
-   that already went out. Copy and save-as of anything longer than 4 096 lines are corrupt today.
+2. **A range over 4 096 lines on LineIndex duplicates a line at every chunk seam.** `range_read` seeks the next chunk by
+   the byte offset past the last one, and LineIndex rounds that down to its previous checkpoint, re-serving a line that
+   already went out. Copy and save-as of anything longer than 4 096 lines are corrupt today.
 3. **Search finds nothing in a UTF-16 file** unless it is small enough for FullLoad: ByteSeek and LineIndex both
    `memchr(b'\n')` over raw bytes.
 4. **ByteSeek surfaces the UTF-16 BOM as a selectable `U+FEFF`.**
 5. **LineIndex rounds a byte-offset seek down** by up to 255 lines, where ByteSeek resolves it exactly.
-6. **The three backends disagree about the trailing empty line** of a newline-terminated file, so a `RangeEnd::Eof`
-   copy returns a different number of trailing newlines depending on which backend served it.
+6. **The three backends disagree about the trailing empty line** of a newline-terminated file, so a `RangeEnd::Eof` copy
+   returns a different number of trailing newlines depending on which backend served it.
 
 ## Notes for whoever runs the lane
 
@@ -306,10 +306,10 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
 
 ## Open items (live; delete this section before the spec is filed as shipped)
 
-- [ ] **`escape_during_a_watched_save_stops_it_and_leaves_no_temp`** sits UNCOMMITTED in the save agent's working
-      tree. It proves cancel through the watched command rather than at the backend function, which is the gap its
-      sibling left. It could not be run while the crate was mid-migration. Run it and commit it once the backends
-      compile; until then it is one `git checkout` away from being lost.
+- [ ] **`escape_during_a_watched_save_stops_it_and_leaves_no_temp`** sits UNCOMMITTED in the save agent's working tree.
+      It proves cancel through the watched command rather than at the backend function, which is the gap its sibling
+      left. It could not be run while the crate was mid-migration. Run it and commit it once the backends compile; until
+      then it is one `git checkout` away from being lost.
 - [ ] Frontend rows: the gutter (number on a line's first row, blank on continuations) and the marker, once the Rust
       types settle.
 - [ ] The coordinate rename reaching the frontend.
@@ -318,14 +318,14 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
 - [ ] Full `pnpm check --include-slow`, then the fast-forward to `main`, then the push.
 - [x] Decide the marker's glyph and copy with David. Done: the glyph is `⏎` (§ The marker has his reasoning), and both
       `viewer.row.continues*` strings are now "Cmdr split this line because it was very long. There is no actual line
-      break here in the file." The ten locale catalogs still hold the old wording; retranslating them is the lead's,
-      so `desktop-i18n-stale` warns until that lands. The pill's colour tokens were not part of the decision.
-- [ ] Review the selection announcement copy with David. It now names the PHYSICAL line the gutter draws rather than
-      the row index it used to call a line, and two new keys cover the case where the line can't be resolved from the
-      row cache: `viewer.selection.charsOnly` ("Selected {chars} characters") and `viewer.selection.toEndOfFileNoLine`
+      break here in the file." The ten locale catalogs still hold the old wording; retranslating them is the lead's, so
+      `desktop-i18n-stale` warns until that lands. The pill's colour tokens were not part of the decision.
+- [ ] Review the selection announcement copy with David. It now names the PHYSICAL line the gutter draws rather than the
+      row index it used to call a line, and two new keys cover the case where the line can't be resolved from the row
+      cache: `viewer.selection.charsOnly` ("Selected {chars} characters") and `viewer.selection.toEndOfFileNoLine`
       ("Selected to the end of the file"). Both are drafts, translated into all 10 locales, and a one-line change.
-- [ ] Ask David the open question in § The marker: whether a soft wrap break should be marked too, which would mean
-      Cmdr wrapping instead of CSS.
+- [ ] Ask David the open question in § The marker: whether a soft wrap break should be marked too, which would mean Cmdr
+      wrapping instead of CSS.
 
 ### Handed over from the frontend milestone
 
@@ -338,14 +338,14 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
       decides confirm-versus-refuse is not, which is an I3 gap.
 - [ ] **`bindings.ts` is regenerated but uncommitted** in the shared worktree. It has to land with the rename, and any
       `chunk.lines` read still in the frontend breaks when it does.
-- Known consequence, not a bug: cache eviction makes the size estimator answer "unknown" more often on a huge
-      selection, so the user sees the "size unknown" confirm more than before. Worth watching, not worth blocking.
+- Known consequence, not a bug: cache eviction makes the size estimator answer "unknown" more often on a huge selection,
+  so the user sees the "size unknown" confirm more than before. Worth watching, not worth blocking.
 
 ### A commit message that needs correcting before this branch merges
 
 - [ ] **`3d23df028` is titled `style(viewer): rustfmt settles rows_test.rs` and contains 99 lines of new test code**,
       zero deletions. The checker reported rewriting that file, and it was staged without reading the diff first, which
       swept an agent's uncommitted cross-check tests into a formatting commit. The code is correct and green; the
-      message is false, and it feeds release notes and the docs audit. Reword it once every agent has stopped
-      committing to this branch, before the fast-forward. ❗ Not while anyone is working: a reword rewrites every
-      descendant SHA and checks files out under whoever is mid-edit.
+      message is false, and it feeds release notes and the docs audit. Reword it once every agent has stopped committing
+      to this branch, before the fast-forward. ❗ Not while anyone is working: a reword rewrites every descendant SHA
+      and checks files out under whoever is mid-edit.

@@ -31,8 +31,8 @@ Each is break-if-ignored; the named `DETAILS.md` section has the why.
 - **Selection / IPC offsets are UTF-16 code units, not bytes or graphemes**, in caret math and across
   `viewer_read_range` alike. (§ "Selection model")
 - **A gesture carries a granularity and both endpoints snap to it**, re-derived from the pressed range on every move.
-  Shift-click reads `gestureGranularity`, ❌ never `dragGranularity`, which `endDrag` already reset.
-  (§ "Selection granularity")
+  Shift-click reads `gestureGranularity`, ❌ never `dragGranularity`, which `endDrag` already reset. (§ "Selection
+  granularity")
 - **Keyboard extension has two placement-sensitive entry points**: unmodified Shift+Arrow / Home / End after the
   `searchInputFocused` guard and before `handleBareKey`; the ⌥/⌃/⌘ branch in `handleModifiedKey`, which runs regardless
   of focus and gates on `!searchInputFocused` itself. (§ "Keyboard motion model")
@@ -44,16 +44,16 @@ Each is break-if-ignored; the named `DETAILS.md` section has the why.
   first, else an open menu's Escape shuts the window. (§ Gotchas)
 - **The render window, its prefetch, and eviction are sized in pixels or distance, ❌ never in rows** (a wrapped row is
   hundreds of pixels tall); eviction skips `fullLoad`, whose height map needs every row. A short answer is normal: walk
-  by `chunk.end` + `endByteOffset`, cache at `chunk.firstRowNumber`. The walk is `viewer-row-fetch.svelte.ts`:
-  getters in, ❌ no geometry. (§ "Virtual scrolling")
+  by `chunk.end` + `endByteOffset`, cache at `chunk.firstRowNumber`. The walk is `viewer-row-fetch.svelte.ts`: getters
+  in, ❌ no geometry. (§ "Virtual scrolling")
 - **The copy flow may not guess**: ⌘A with an uncached last row takes the `EOF_ROW` path (❌ never a 0 length),
   `rowMetrics` decides each row's delimiter, a from-the-top selection subtracts its leftover, and the toast measures the
   text it wrote. (§ "Selection model")
 - **The height map's wrap width comes from row geometry, never a `.line-text` span** (it shrink-wraps; measuring it
   inflated the map ~7x); `heightMap.ready` gates every height-map path. (§ "Variable-height word wrap")
 - **Tail mode isn't persisted, and the viewer window has NO `store:default` capability**: persisted settings go through
-  the typed restricted-window commands, ❌ never a re-granted store. (§ "Tail mode"; `lib/settings/DETAILS.md`
-  § "Restricted-window mode")
+  the typed restricted-window commands, ❌ never a re-granted store. (§ "Tail mode"; `lib/settings/DETAILS.md` §
+  "Restricted-window mode")
 - **Search error state is a typed `searchStatus` + `searchError` string, ❌ never inspected as text**; regex line spans
   come from the backend's `searchMatches`, ❌ not a JS recompile. (§ "Search modes")
 - **`scrollToMatch` has two paths: gentle when the row is rendered, rough-scroll + a converge loop when it isn't.** ❌

@@ -238,7 +238,7 @@ describe('a file whose rows Cmdr made, not the file', () => {
     expect(estimateSelectionBytes(wholeFile, rowLookup(minified, cmdrBroke))).toBe(15)
   })
 
-  it('still counts the file\'s OWN newlines when the rows are the file\'s', () => {
+  it("still counts the file's OWN newlines when the rows are the file's", () => {
     // The same three strings, none of them a Cmdr break: "aaaaa\nbbbbb\nccccc" is 17.
     expect(estimateSelectionBytes(wholeFile, rowLookup(minified))).toBe(17)
   })
@@ -258,7 +258,10 @@ describe('a file whose rows Cmdr made, not the file', () => {
   it('sizes a partial selection across a Cmdr break the same way', () => {
     // From row 0 offset 2 to row 2 offset 3: "aaa" + "bbbbb" + "ccc" = 11, no delimiters.
     expect(
-      estimateSelectionBytes({ anchor: { row: 0, offset: 2 }, focus: { row: 2, offset: 3 } }, rowLookup(minified, cmdrBroke)),
+      estimateSelectionBytes(
+        { anchor: { row: 0, offset: 2 }, focus: { row: 2, offset: 3 } },
+        rowLookup(minified, cmdrBroke),
+      ),
     ).toBe(11)
   })
 })

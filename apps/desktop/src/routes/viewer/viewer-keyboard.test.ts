@@ -364,11 +364,7 @@ describe('createViewerKeyboard: keyboard selection extension', () => {
     ],
     ['Shift+Home extends to the line start', { key: 'Home', shiftKey: true }, { row: 2, offset: 0 }],
     ['Shift+End extends to the line end', { key: 'End', shiftKey: true }, { row: 2, offset: 16 }],
-    [
-      '⌘⇧Up extends to the start of the file',
-      { key: 'ArrowUp', shiftKey: true, metaKey: true },
-      { row: 0, offset: 0 },
-    ],
+    ['⌘⇧Up extends to the start of the file', { key: 'ArrowUp', shiftKey: true, metaKey: true }, { row: 0, offset: 0 }],
     [
       '⌘⇧Down extends to the end of the file',
       { key: 'ArrowDown', shiftKey: true, metaKey: true },

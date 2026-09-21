@@ -257,8 +257,9 @@ describe('renderWindowRows', () => {
   it('spans the viewport plus its buffer at the ordinary line height', () => {
     // 600 px of viewport is 34 lines of 18 px, plus 50 buffer lines either side: the
     // window the viewer has always drawn.
-    expect(renderWindowRows({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalRows: 40_001 }))
-      .toEqual({ from: 0, to: 84 })
+    expect(
+      renderWindowRows({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalRows: 40_001 }),
+    ).toEqual({ from: 0, to: 84 })
   })
 
   it('holds a viewport of PIXELS, not a count of rows, when the rows are tall', () => {
@@ -293,8 +294,9 @@ describe('renderWindowRows', () => {
   })
 
   it('never reaches past the end of the file, or before its start', () => {
-    expect(renderWindowRows({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalRows: 5 }))
-      .toEqual({ from: 0, to: 5 })
+    expect(
+      renderWindowRows({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalRows: 5 }),
+    ).toEqual({ from: 0, to: 5 })
   })
 })
 
@@ -571,8 +573,7 @@ describe('createViewerScroll on a backend that owns the row numbering', () => {
       }
       // A fraction lands wherever the backend's own grid puts it; a byte offset resolves
       // exactly. Either way the ANSWER carries the row number, not the request.
-      const first =
-        targetType === 'byte' ? Math.round(targetValue / 8) : Math.round(targetValue * available) + shift
+      const first = targetType === 'byte' ? Math.round(targetValue / 8) : Math.round(targetValue * available) + shift
       const served = Math.max(0, Math.min(count, available - first))
       return rowChunk({
         rows: plainRows(first, served),
@@ -634,7 +635,9 @@ describe('createViewerScroll on a backend that owns the row numbering', () => {
 
     // The first answer went out as a fraction; every continuation after it is a byte
     // seek at the previous chunk's `endByteOffset`.
-    const seeks = ipc.calls.filter((c) => c.command === 'viewer_get_lines').map((c) => c.payload as { targetType: string })
+    const seeks = ipc.calls
+      .filter((c) => c.command === 'viewer_get_lines')
+      .map((c) => c.payload as { targetType: string })
     expect(seeks[0].targetType).toBe('fraction')
     expect(seeks.slice(1).every((s) => s.targetType === 'byte')).toBe(true)
   })

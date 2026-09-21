@@ -128,12 +128,10 @@ describe('moveFocus: character motion crosses a grapheme cluster in one step', (
       row: 0,
       offset: 8,
     })
-    expect(moveFocus({ from: { row: 0, offset: 8 }, motion: char(-1), desiredColumn: null, ...family }).focus).toEqual(
-      {
-        row: 0,
-        offset: 0,
-      },
-    )
+    expect(moveFocus({ from: { row: 0, offset: 8 }, motion: char(-1), desiredColumn: null, ...family }).focus).toEqual({
+      row: 0,
+      offset: 0,
+    })
   })
 
   it('treats a base letter plus a combining mark as one step', () => {
@@ -161,15 +159,13 @@ describe('moveFocus: word motion', () => {
   })
 
   it('lands on the start of the word to the left (macOS semantics)', () => {
-    expect(
-      moveFocus({ from: { row: 0, offset: 10 }, motion: word(-1), desiredColumn: null, ...deps() }).focus,
-    ).toEqual({ row: 0, offset: 6 })
-    expect(moveFocus({ from: { row: 0, offset: 6 }, motion: word(-1), desiredColumn: null, ...deps() }).focus).toEqual(
-      {
-        row: 0,
-        offset: 0,
-      },
+    expect(moveFocus({ from: { row: 0, offset: 10 }, motion: word(-1), desiredColumn: null, ...deps() }).focus).toEqual(
+      { row: 0, offset: 6 },
     )
+    expect(moveFocus({ from: { row: 0, offset: 6 }, motion: word(-1), desiredColumn: null, ...deps() }).focus).toEqual({
+      row: 0,
+      offset: 0,
+    })
   })
 
   it('stops at the line end when only non-word characters are left', () => {
@@ -209,27 +205,21 @@ describe('moveFocus: word motion', () => {
       row: 2,
       offset: 0,
     })
-    expect(moveFocus({ from: { row: 3, offset: 0 }, motion: word(-1), desiredColumn: null, ...deps() }).focus).toEqual(
-      {
-        row: 2,
-        offset: 0,
-      },
-    )
+    expect(moveFocus({ from: { row: 3, offset: 0 }, motion: word(-1), desiredColumn: null, ...deps() }).focus).toEqual({
+      row: 2,
+      offset: 0,
+    })
   })
 
   it('stays put at either end of the file', () => {
-    expect(moveFocus({ from: { row: 3, offset: 11 }, motion: word(1), desiredColumn: null, ...deps() }).focus).toEqual(
-      {
-        row: 3,
-        offset: 11,
-      },
-    )
-    expect(moveFocus({ from: { row: 0, offset: 0 }, motion: word(-1), desiredColumn: null, ...deps() }).focus).toEqual(
-      {
-        row: 0,
-        offset: 0,
-      },
-    )
+    expect(moveFocus({ from: { row: 3, offset: 11 }, motion: word(1), desiredColumn: null, ...deps() }).focus).toEqual({
+      row: 3,
+      offset: 11,
+    })
+    expect(moveFocus({ from: { row: 0, offset: 0 }, motion: word(-1), desiredColumn: null, ...deps() }).focus).toEqual({
+      row: 0,
+      offset: 0,
+    })
   })
 
   it('yields no offset when the line it crosses onto has not been fetched', () => {

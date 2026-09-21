@@ -15,8 +15,8 @@ Per-file inventory for the route. Locate symbols via `codegraph_search`; this is
 - **`+page.svelte`**: top-level component (lifecycle, window management, UI).
 - **`ViewerRow.svelte`**: one rendered ROW: the gutter number (only where a line starts), the text split into
   search-highlight and selection spans, and the continuation marker. See § "Rows, not lines".
-- Composables: **`viewer-scroll`** (virtual scroll: geometry and the row store), **`viewer-row-fetch`** (the fetch
-  walk `viewer-scroll` creates and delegates to), **`viewer-search`** (start/poll/cancel/navigate, regex projection),
+- Composables: **`viewer-scroll`** (virtual scroll: geometry and the row store), **`viewer-row-fetch`** (the fetch walk
+  `viewer-scroll` creates and delegates to), **`viewer-search`** (start/poll/cancel/navigate, regex projection),
   **`viewer-line-heights`** (word-wrap height map via DOM measurement, FullLoad only), **`viewer-text-width`**
   (`ResizeObserver` width tracker), **`viewer-tail`** (`viewer:file-changed:<sid>` → reload toasts).
 - **`viewer-indexing-poll.ts`**: `viewer_get_status` poll during line-index build.
@@ -69,22 +69,22 @@ than at the user's next scroll.
 
 **The gutter numbers lines while the cache counts rows.** Each cached row carries `lineNumber`, the physical line it
 STARTS, or `null` on a continuation row; `ViewerRow` prints a number only for the former, the usual editor convention.
-An uncached row draws blank rather than printing its row index, which on a wrapped file would be a wrong line number.
-❌ Neither fact may be inferred here: only the backend knows where a line begins.
+An uncached row draws blank rather than printing its row index, which on a wrapped file would be a wrong line number. ❌
+Neither fact may be inferred here: only the backend knows where a line begins.
 
 **The continuation marker says the break is Cmdr's.** A row whose `continues` is true draws `⏎` in a pill at the end of
 its text, identically in both wrap modes, with a tooltip and a visually-hidden label. ❗ The glyph is `content` on a
 `::after`, so it is not in the DOM text: it cannot be selected and cannot reach the clipboard, where it would be a
 character the file does not contain. That is also why it needs the `.sr-only` span beside it. ❌ Not an ellipsis: that
-reads as a cutoff, which implies content is missing, and nothing is missing. A break really did happen here; whose
-break it is belongs to the tooltip and the label, which both say the file holds none at this point. The reasoning sits
-beside the rule in `ViewerRow.svelte`, and `ViewerRow.test.ts` fails if someone swaps it back.
+reads as a cutoff, which implies content is missing, and nothing is missing. A break really did happen here; whose break
+it is belongs to the tooltip and the label, which both say the file holds none at this point. The reasoning sits beside
+the rule in `ViewerRow.svelte`, and `ViewerRow.test.ts` fails if someone swaps it back.
 
 **A Cmdr break is not a newline.** Nothing that measures or reconstructs text from cached rows may put a byte or a
 character between two rows of the same line. `rowMetrics` is the one place that decides a row's delimiter (0 when the
 row `continues`, 0 on the file's last row, 1 otherwise), and `describeSelectionForAt` sums row lengths with nothing
-between them. Assuming one per row over-counts a minified file by a byte every 20 000 — and those bytes pick the
-10 MiB confirm tier and the 100 MiB refusal, which is invariant I3 in `docs/specs/viewer-row-wrap.md`.
+between them. Assuming one per row over-counts a minified file by a byte every 20 000 — and those bytes pick the 10 MiB
+confirm tier and the 100 MiB refusal, which is invariant I3 in `docs/specs/viewer-row-wrap.md`.
 
 **Open question for David, unresolved:** with word wrap ON the user also sees soft breaks WebKit made, and those stay
 unmarked. Marking them too would mean Cmdr wrapping instead of CSS, which contradicts the deliberate "measure, don't
@@ -138,16 +138,16 @@ source for the origin form). `openViewerSession` hands the result to `media.setF
 
 `viewer-scroll.svelte.ts` draws a window of rows around the viewport and holds what was fetched in `rowCache` (a
 `SvelteMap<number, CachedRow>`, each entry carrying the row's text, its `continues` flag, and its `lineNumber`).
-`viewer-row-fetch.svelte.ts` fills that window from `viewer_get_lines`: `viewer-scroll` creates it, hands it getters
-for the geometry it needs (`getVisibleFrom` / `getVisibleTo`, `getEstimatedTotalRows`, `getPrefetchRows`) plus the row
+`viewer-row-fetch.svelte.ts` fills that window from `viewer_get_lines`: `viewer-scroll` creates it, hands it getters for
+the geometry it needs (`getVisibleFrom` / `getVisibleTo`, `getEstimatedTotalRows`, `getPrefetchRows`) plus the row
 store's one writer, and re-exports `runFetchEffect` / `fetchVisibleNow` so the page's wiring is unchanged. The seam is
 deliberate: a fetch is a chain of ASKS each shaped by what the last answer said, and it stays readable only away from
 the pixel math. `updateTotalRows` stayed on the scroll side, because preserving the scroll FRACTION across a row-count
 change is geometry.
 
-Three policies keep the whole thing bounded, and each one is bounded by PIXELS or by distance, never by a count of
-rows. That distinction is the whole point: an ordinary row is about a line tall, but with word wrap on a 20 KB
-row is ~200 visual lines (~3 600 px), so every "50 rows" constant would silently mean "180 000 px".
+Three policies keep the whole thing bounded, and each one is bounded by PIXELS or by distance, never by a count of rows.
+That distinction is the whole point: an ordinary row is about a line tall, but with word wrap on a 20 KB row is ~200
+visual lines (~3 600 px), so every "50 rows" constant would silently mean "180 000 px".
 
 - **The window is a viewport of pixels plus `BUFFER_PX` (900) above and below**, clamped to 2-50 rows
   (`renderWindowRows` / `bufferRows`, both pure and exported for their tests). 900 px is exactly the 50 rows the viewer
@@ -232,13 +232,13 @@ logical coordinates, independent of which lines happen to be rendered.
 - **Selecting to the end of a file with no line count**: in ByteSeek mode before the line index lands, ⌘A can't name a
   last line, so `makeSelectToEof()` mints `focus.line = EOF_LINE` (`Number.MAX_SAFE_INTEGER`). `toRangeEnds` turns that
   into `RangeEnd::Eof` so the backend resolves the real end itself, and `selectionBytesFromFileSize` reads it to hand
-  the copy flow the known file size instead of walking rows that were never fetched. Gotcha/Why: `EOF_LINE` is minted directly
-  and never derived. A `totalLines - 1` derivation lands one line short of it, every consumer's literal comparison
-  silently stops matching, and that is how the `Eof` variant went unemitted while looking wired up.
+  the copy flow the known file size instead of walking rows that were never fetched. Gotcha/Why: `EOF_LINE` is minted
+  directly and never derived. A `totalLines - 1` derivation lands one line short of it, every consumer's literal
+  comparison silently stops matching, and that is how the `Eof` variant went unemitted while looking wired up.
 - **⌘A on a file whose last line isn't cached** takes that same `EOF_LINE` path. `handleSelectAllShortcut` needs the
   last line's LENGTH, and on any file long enough to matter the user hasn't scrolled there, so the cache has nothing.
-  Gotcha/Why: ❌ never read an absent line as an empty one. That ended the selection at offset 0 of the last line and
-  ⌘C put the file minus its last line on the clipboard, silently. "We can't name the end" already has an answer.
+  Gotcha/Why: ❌ never read an absent line as an empty one. That ended the selection at offset 0 of the last line and ⌘C
+  put the file minus its last line on the clipboard, silently. "We can't name the end" already has an answer.
 - **Sizing a selection in bytes** (`estimateSelectionBytes`, for the silent / confirm / refuse bands) takes ONE per-line
   lookup returning `LineMetrics`: `textBytes` (no delimiter), `utf16Length`, and `delimiterBytes`. Whole lines
   contribute text plus delimiter; a partial start or end line prorates its text by the selected UTF-16 fraction, which
@@ -246,8 +246,8 @@ logical coordinates, independent of which lines happen to be rendered.
   a fact passed in, never a constant in the sums. `+page.svelte` reports 0 for the file's last line, so a file with no
   trailing newline isn't counted as if it had one, and a row the viewer breaks itself will report 0 too. A CRLF file
   needs no case of its own: all three backends keep the `\r` inside the line text, so the delimiter is the single `\n`.
-  With no line count yet (ByteSeek before its index) no line is known to be last, so every line reports a delimiter:
-  one byte over on the whole file, against bands measured in megabytes.
+  With no line count yet (ByteSeek before its index) no line is known to be last, so every line reports a delimiter: one
+  byte over on the whole file, against bands measured in megabytes.
 - **What the copy toast says is MEASURED off the text that was written**, not taken from that estimate
   (`handleSilentCopy`). `selectionBytesFromFileSize` subtracts the unselected remainder from the known file size rather
   than rounding a near-whole-file selection up to it, so a selection stopping partway into the last row reports what it
@@ -765,8 +765,8 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
 - **The AT announcement speaks PHYSICAL LINES, and caps its row iteration.** `describeSelectionForAt` in
   `selection.svelte.ts` builds the screen-reader announcement from a per-row lookup of `(utf16Length, lineNumber)`. It
   names the line numbers the gutter draws, never row indexes: a selection sitting inside one wrapped line is one line
-  however many rows it covers, and a listener has no gutter to check a row number against. A continuation row carries
-  no number, so `lineOfRow` walks up to the nearest row that starts a line; it stops at the first row the cache doesn't
+  however many rows it covers, and a listener has no gutter to check a row number against. A continuation row carries no
+  number, so `lineOfRow` walks up to the nearest row that starts a line; it stops at the first row the cache doesn't
   hold and, when the line stays unknown, the announcement drops the location (`viewer.selection.charsOnly`,
   `viewer.selection.toEndOfFileNoLine`) rather than guessing one. Row 0 answers with no cache at all: by the row rule it
   always starts the file's first line. ⌘A in ByteSeek-no-index mode sets `focus.row = EOF_ROW` (the sentinel that maps

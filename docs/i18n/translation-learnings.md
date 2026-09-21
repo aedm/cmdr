@@ -88,17 +88,17 @@ keep promising the old, narrower thing. What a rename pass needs instead:
 ## A distinction English draws that the locale has no word for
 
 The viewer's continuation marker needed to say "this LINE continues on the next ROW", where a row is one line of the
-DISPLAY and a line is what the file contains. None of the ten wave-1 locales has a settled pair for that: the word
-each catalog already ships for "line" (de `Zeile`, sv `rad`, nl `regel`, hu `sor`, zh `行`) is the same word a display
-row would take, so translating both nouns literally produces "the line continues on the next line".
+DISPLAY and a line is what the file contains. None of the ten wave-1 locales has a settled pair for that: the word each
+catalog already ships for "line" (de `Zeile`, sv `rad`, nl `regel`, hu `sor`, zh `行`) is the same word a display row
+would take, so translating both nouns literally produces "the line continues on the next line".
 
 The fix that worked, and the reusable shape: **drop the second noun and say WHERE instead.** "The line continues
 directly below" carries the whole meaning, reads naturally in all ten, and commits the catalog to no new term. Minting
 one per locale would have been ten unsourced coinages for a distinction the user never needs to name.
 
-Reach for this whenever an English string leans on a pair of near-synonyms (row/line, folder/directory, item/entry)
-that only English keeps apart: check whether the sentence still works with one of them replaced by a position, a
-direction, or a demonstrative. If it does, that is the translation, and it is better than the literal one.
+Reach for this whenever an English string leans on a pair of near-synonyms (row/line, folder/directory, item/entry) that
+only English keeps apart: check whether the sentence still works with one of them replaced by a position, a direction,
+or a demonstrative. If it does, that is the translation, and it is better than the literal one.
 
 ## Orchestrating a two-round batch
 

@@ -359,7 +359,9 @@ export function createViewerScroll(deps: ScrollDeps) {
       evictDistantRows()
     },
     setTotalRows: updateTotalRows,
-    onTimeoutError: () => { deps.onTimeoutError(); },
+    onTimeoutError: () => {
+      deps.onTimeoutError()
+    },
   })
 
   function handleScroll() {

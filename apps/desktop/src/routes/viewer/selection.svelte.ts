@@ -300,11 +300,7 @@ function lineOfRow(row: number, getRow: (row: number) => AnnouncedRow | null): n
  * aren't counted either; the number is a character count of the selected text, and it has
  * always read that way.) A row the cache doesn't hold contributes 0.
  */
-function countSelectedChars(
-  start: RowOffset,
-  end: RowOffset,
-  getRow: (row: number) => AnnouncedRow | null,
-): number {
+function countSelectedChars(start: RowOffset, end: RowOffset, getRow: (row: number) => AnnouncedRow | null): number {
   if (start.row === end.row) return end.offset - start.offset
   let chars = (getRow(start.row)?.utf16Length ?? 0) - start.offset
   for (let i = start.row + 1; i < end.row; i++) {
@@ -330,10 +326,7 @@ function countSelectedChars(
  * so the announcement work stays bounded (the alternative would freeze the UI on
  * ⌘A in ByteSeek-no-index mode where the focus row is `EOF_ROW`).
  */
-export function describeSelectionForAt(
-  sel: Selection | null,
-  getRow: (row: number) => AnnouncedRow | null,
-): string {
+export function describeSelectionForAt(sel: Selection | null, getRow: (row: number) => AnnouncedRow | null): string {
   if (sel === null) return ''
   const { start, end } = normaliseSelection(sel)
   if (start.row === end.row && start.offset === end.offset) return ''
