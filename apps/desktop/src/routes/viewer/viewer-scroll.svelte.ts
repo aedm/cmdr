@@ -146,14 +146,43 @@ export function createViewerScroll(deps: ScrollDeps) {
     return heightMap.getLineAtPosition(unscaledY)
   }
 
+  /**
+   * The first line the backend answered nothing for, with the line count it answered
+   * under. Past that line there is nothing to fetch, so asking again would be the spin
+   * this guards: `needsFetch` would stay true on a line that doesn't exist and a refetch
+   * would fire every `FETCH_DEBOUNCE_MS` forever. The recorded total is the expiry: a
+   * reload, an encoding switch, or a tail append moves it, and the line may exist then.
+   *
+   * ❗ Only a SUCCESSFUL answer of zero lines sets this. A read that failed throws, and a
+   * failure must stay retryable.
+   */
+  let noLinesBeyond: { line: number; underTotal: number } | null = null
+
+  /** One past the last line worth asking for: the backend has nothing at or after it. */
+  function fetchableTo(): number {
+    if (noLinesBeyond === null) return Infinity
+    if (noLinesBeyond.underTotal !== estimatedTotalLines()) {
+      noLinesBeyond = null
+      return Infinity
+    }
+    return noLinesBeyond.line
+  }
+
   function needsFetch(from: number, to: number): boolean {
+    const limit = fetchableTo()
     const samplesToCheck = [from, Math.floor((from + to) / 2), to - 1]
     for (const line of samplesToCheck) {
-      if (line >= 0 && !lineCache.has(line)) {
+      if (line >= 0 && line < limit && !lineCache.has(line)) {
         return true
       }
     }
     return false
+  }
+
+  /** Drops every cached line, and with it what we knew about where the file ends. */
+  function clearCache() {
+    lineCache.clear()
+    noLinesBeyond = null
   }
 
   function scheduleFetch(from: number, to: number) {
@@ -191,14 +220,25 @@ export function createViewerScroll(deps: ScrollDeps) {
    * What to ask the backend for to fill the rendered range `[from, to)`, or `null` when that
    * range is empty (past the end of the file, or no lines yet): nothing to draw, so nothing to
    * fetch. The count is always positive, which `viewer_get_lines`'s `usize` insists on.
+   *
+   * `startAt` continues a range a short answer left unfinished: it starts the request at a
+   * line the caller names rather than at the range's own start, so the chain always moves
+   * forward.
    */
-  function lineRequest(
-    from: number,
-    to: number,
-  ): { seekType: 'line' | 'fraction'; seekValue: number; fetchFrom: number; fetchCount: number } | null {
+  function lineRequest({
+    from,
+    to,
+    startAt,
+  }: {
+    from: number
+    to: number
+    startAt?: number
+  }): { seekType: 'line' | 'fraction'; seekValue: number; fetchFrom: number; fetchCount: number } | null {
     if (to <= from) return null
-    const fetchFrom = Math.max(0, from - BUFFER_LINES)
+    const fetchFrom = startAt ?? Math.max(0, from - BUFFER_LINES)
+    if (fetchFrom >= to + BUFFER_LINES) return null
     const fetchCount = Math.min(FETCH_BATCH, to - fetchFrom + BUFFER_LINES * 2)
+    if (fetchCount <= 0) return null
     if (deps.getTotalLines() !== null) return { seekType: 'line', seekValue: fetchFrom, fetchFrom, fetchCount }
     // A 0 estimate would make the fraction division NaN (0/0) or Infinity (>0/0); both
     // serialize to JSON null, which the Rust f64 `targetValue` rejects. With no line count
@@ -207,10 +247,20 @@ export function createViewerScroll(deps: ScrollDeps) {
     return { seekType: 'fraction', seekValue: estimated > 0 ? fetchFrom / estimated : 0, fetchFrom, fetchCount }
   }
 
-  async function fetchLines(from: number, to: number) {
+  /**
+   * Fills the rendered range `[from, to)` from the backend, continuing from `startAt` when
+   * an earlier answer stopped short.
+   *
+   * ❗ A SHORT ANSWER IS NORMAL, not an error: one `viewer_get_lines` carries at most a
+   * fixed byte budget, so a range of long rows comes back in several pieces. The next
+   * request starts at the last line actually received, never at the range that was asked
+   * for; driving it from the request is what made the old loop refire forever on a range
+   * the backend would never fill in one go.
+   */
+  async function fetchLines(from: number, to: number, startAt?: number) {
     const sessionId = deps.getSessionId()
     if (!sessionId) return
-    const request = lineRequest(from, to)
+    const request = lineRequest({ from, to, startAt })
     if (!request) return
     const { seekType, seekValue, fetchFrom, fetchCount } = request
 
@@ -253,6 +303,19 @@ export function createViewerScroll(deps: ScrollDeps) {
 
       if (chunk.totalLines !== null && chunk.totalLines !== deps.getTotalLines()) {
         updateTotalLines(chunk.totalLines)
+      }
+
+      if (chunk.lines.length === 0) {
+        // The backend has nothing here: the file ends before this line, whatever the line
+        // count claims. Remember it so the effect stops asking for a line that isn't there.
+        noLinesBeyond = { line: fetchFrom, underTotal: estimatedTotalLines() }
+        return
+      }
+      const lastCached = cacheStartLine + chunk.lines.length - 1
+      // `currentFetchId` again: a newer fetch may have started while this answer was in
+      // flight (the user scrolled), and its range is the one worth continuing, not ours.
+      if (chunk.lines.length < fetchCount && lastCached + 1 < to && fetchId === currentFetchId) {
+        await fetchLines(from, to, lastCached + 1)
       }
     } catch (e) {
       if (fetchId === currentFetchId) {
@@ -415,6 +478,8 @@ export function createViewerScroll(deps: ScrollDeps) {
   function fetchVisibleNow() {
     const sessionId = deps.getSessionId()
     if (!sessionId) return
+    // Whatever we knew about where the file ends belongs to the old decoding of it.
+    noLinesBeyond = null
     void fetchLines(visibleFrom, visibleTo)
   }
 
@@ -622,6 +687,7 @@ export function createViewerScroll(deps: ScrollDeps) {
     get heightMapReady() {
       return heightMap.ready
     },
+    clearCache,
     estimatedTotalLines,
     renderedLineText,
     getLineTop,

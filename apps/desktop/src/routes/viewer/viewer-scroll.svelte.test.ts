@@ -187,6 +187,86 @@ describe('createViewerScroll.renderedLineText', () => {
   })
 })
 
+describe('createViewerScroll when the backend answers with fewer lines than asked for', () => {
+  /**
+   * A `viewer_get_lines` that never returns more than `cap` lines at a time, out of a file
+   * that really holds `available` of them. That's what a per-chunk byte budget looks like
+   * from here: ~104 rows of 20 000 bytes against the ~267 the frontend asked for.
+   */
+  function shortAnsweringBackend(cap: number, available: number) {
+    const ipc = installIpcMock()
+    ipc.mock('viewer_get_lines', (payload) => {
+      const { targetValue, count } = payload as { targetValue: number; count: number }
+      const first = Math.max(0, Math.round(targetValue))
+      const lines: string[] = []
+      for (let i = first; i < Math.min(first + Math.min(cap, count), available); i++) lines.push(`line ${String(i)}`)
+      return {
+        lines,
+        firstLineNumber: first,
+        byteOffset: first * 8,
+        totalLines: available,
+        totalBytes: available * 8,
+      } satisfies LineChunk
+    })
+    return ipc
+  }
+
+  /** A `lineIndex`-backed composable over a `totalLines`-line file at the default viewport. */
+  function wire(totalLines: number) {
+    return createViewerScroll({
+      getSessionId: () => 'sess-1',
+      getTotalLines: () => totalLines,
+      setTotalLines: () => {},
+      getEstimatedLines: () => totalLines,
+      getBackendType: () => 'lineIndex',
+      onTimeoutError: () => {},
+      getAllLines: () => null,
+      getTextWidth: () => 0,
+    })
+  }
+
+  /**
+   * Runs the fetch effect until a round adds no IPC call, the way the page's `$effect`
+   * re-runs on every cache change. Returns the total call count. Throws when it never
+   * settles, which is the spin: `needsFetch` stays true on the last row of a range the
+   * backend won't fill, and a refetch fires every debounce forever.
+   */
+  async function settleFetches(scroll: ReturnType<typeof createViewerScroll>, ipc: ReturnType<typeof installIpcMock>) {
+    for (let round = 0; round < 12; round++) {
+      const before = ipc.callCount('viewer_get_lines')
+      scroll.runFetchEffect()
+      // The fetch debounce is 100 ms; the continuation chain after it runs unqueued.
+      await new Promise((r) => setTimeout(r, 160))
+      if (ipc.callCount('viewer_get_lines') === before) return ipc.callCount('viewer_get_lines')
+    }
+    throw new Error(`the fetch loop never settled: ${String(ipc.callCount('viewer_get_lines'))} calls and still going`)
+  }
+
+  it('asks again from the last line it actually received, and stops once the range is filled', async () => {
+    const ipc = shortAnsweringBackend(10, 40)
+    const scroll = wire(40)
+
+    const calls = await settleFetches(scroll, ipc)
+
+    // Four ten-line answers cover the rendered range; nothing fires after that.
+    expect(calls).toBe(4)
+    for (let i = 0; i < 40; i++) expect(scroll.lineCache.get(i)).toBe(`line ${String(i)}`)
+  })
+
+  it('treats a range the backend cannot fill as answered, instead of asking forever', async () => {
+    // The line count says 40, the backend only ever yields 35: the `lineIndex` phantom
+    // trailing line, or an estimate that overshot. The last rendered row never arrives.
+    const ipc = shortAnsweringBackend(10, 35)
+    const scroll = wire(40)
+
+    const calls = await settleFetches(scroll, ipc)
+
+    expect(calls).toBeLessThanOrEqual(6)
+    expect(scroll.lineCache.get(34)).toBe('line 34')
+    expect(scroll.lineCache.has(35)).toBe(false)
+  })
+})
+
 describe("createViewerScroll a read that didn't come back", () => {
   afterEach(() => {
     vi.restoreAllMocks()

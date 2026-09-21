@@ -142,7 +142,7 @@
             // `apply_tail_extend`, but the FE state is updated by the poll).
             // The poll self-terminates once it sees `is_indexing: false` again,
             // so this is cheap.
-            scroll.lineCache.clear()
+            scroll.clearCache()
             scroll.fetchVisibleNow()
             indexingPoll.start()
         },
@@ -232,7 +232,7 @@
                 currentEncoding = prev
                 return
             }
-            scroll.lineCache.clear()
+            scroll.clearCache()
             await tick()
             // Force-fetch the current visible range under the new encoding so the
             // user doesn't have to scroll to see the re-decoded content.
@@ -686,7 +686,7 @@
             // every open; the user re-enables it per session.
             await viewerTail.init()
 
-            scroll.lineCache.clear()
+            scroll.clearCache()
             for (let i = 0; i < result.initialLines.lines.length; i++) {
                 scroll.lineCache.set(result.initialLines.firstLineNumber + i, result.initialLines.lines[i])
             }
