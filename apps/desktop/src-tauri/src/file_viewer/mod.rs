@@ -19,6 +19,7 @@ pub mod media_protocol;
 mod media_session;
 pub mod pending_open;
 pub(crate) mod range_read;
+mod rows;
 mod search_matcher;
 pub mod session;
 pub mod watcher;
@@ -45,6 +46,8 @@ mod media_protocol_test;
 mod media_session_test;
 #[cfg(test)]
 mod row_characterization_test;
+#[cfg(test)]
+mod rows_test;
 #[cfg(test)]
 mod search_cancel_test_support;
 #[cfg(test)]
