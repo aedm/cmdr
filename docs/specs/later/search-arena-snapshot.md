@@ -1,6 +1,12 @@
 # Search arena snapshot: map the index instead of loading it
 
-**Status**: planned, not started. One shipping change, built by parallel agents and merged at the end.
+**Status**: deferred, not started. Tracked as GitHub #114. The cheap half of this shipped separately (see "What already shipped"); what's parked
+here is the memory-mapped arena itself. If it gets built it ships as ONE change, built by parallel agents and merged at
+the end.
+
+**The one question that gates it**: is roughly a second of wait on every search-dialog reopen past the 30-second idle
+window, plus a few seconds on the first open of each session, worth ~3,000-4,500 lines, ~271 MB of disk per volume, and
+permanent ownership of a file format with a crash-recovery path? Everything below is what "yes" costs.
 
 ## The problem
 
@@ -37,33 +43,47 @@ Stop loading the index and start **mapping** it. A read-optimized, columnar, mem
 each volume's index database. The engine scans it in place. An append-only mutation journal, written by the index
 writer and replayed at dialog open, keeps it fresh.
 
+### What already shipped
+
+The cheap half landed on its own and moved the baseline, so read the rest of this spec against **that** rather than
+against the `ERR-S76V3` numbers above. It kept the heap arena and made building one cheap:
+
+- The loader is a parallel rowid-range scan instead of one thread.
+- The row estimate comes from `dir_stats(ROOT_ID)` rather than a second full b-tree traversal.
+- `load_weights` runs concurrently with the arena rather than on the line after it.
+- `id_to_index` is gone: rows arrive in rowid order, so `index_of_id` binary-searches them. ~143 MB saved.
+- `prepare_search_index` takes a volume id, so selecting a volume warms it.
+- `IDLE_TIMEOUT` is 30 s rather than 5 min.
+
+So the arena is already dropped when the dialog is down, and the ~5 MB-when-idle requirement is **already met**.
+
 ### Why this shape and not another
 
-David's constraints, and what each one rules out:
+❗ **The memory argument is NOT what justifies this.** An earlier draft claimed the mapping was the only shape that
+could hold a ~5 MB idle ceiling. That was wrong: the arena has always been dialog-scoped, loaded on open and dropped
+after an idle timer, so idle footprint was never the problem. What the mapping actually buys, over the shipped cheap
+version:
 
-- **At most ~5 MB resident while the dialog is down.** This is the binding constraint and it is what kills every
-  "keep the arena warm" variant: the loaded arena is ~466 MB of anonymous heap (216 MB of rows, ~108 MB of names,
-  ~143 MB for `id_to_index`, whose 5.39 M entries round up to 8,388,608 hashbrown buckets), so respecting the ceiling
-  means dropping it, and dropping it means paying to rebuild it.
-  Clean file-backed pages do not count against macOS `phys_footprint`, which is what Activity Monitor's "Memory"
-  column and our own VM-map diagnostic report, so a mapping can be fully resident in the page cache while Cmdr's
-  footprint stays at a few MB.
-- **Warm for ~30 s after the dialog closes.** The page cache already does this, better: it holds well past 30 s when
-  there is room and is reclaimed the instant there is not. So the 30-second rule becomes something we delete rather
-  than something we implement.
-- **Design the CPU away first, parallelize only what is left.** Columnar mapping removes the decode entirely.
-  Parallelism then only has to cover the snapshot builder and the no-snapshot fallback.
-- **Load on volume selection, not on search.** Mapping is microseconds, so warming on selection stops being a
-  budgeting question.
-- **Disk must not go crazy.** ~271 MB against an 830 MB database, roughly a third on top. Accepted by David on
-  2026-09-20.
+- **The wait disappears rather than shrinking.** The cheap version still rebuilds ~320 MB of heap arena whenever the
+  idle window has passed. Mapping makes reopening free, forever, including the first open after launch.
+- **The footprint while the dialog is UP drops too**, from ~320 MB of anonymous heap to a few MB plus reclaimable page
+  cache. David explicitly said he does not need this ("while the dialog is up, the user wants to focus on search, so
+  it's okay"), so count it as a bonus, not a requirement. Clean file-backed pages do not count against macOS
+  `phys_footprint`, which is what Activity Monitor's "Memory" column and our own VM-map diagnostic report. ⚠️ That
+  claim is **unverified in this codebase**; verify it before committing to the design, because it is load-bearing for
+  this bullet.
+- **The long read transaction goes away.** Today's multi-second load holds a SQLite read open, which blocks WAL
+  checkpointing (`ERR-S76V3` shows `wal_checkpoint partial (608 of 2777 pages, blocked by readers)` right after it).
+- **The cost side**: ~271 MB against an 830 MB database, roughly a third on top (disk accepted by David on
+  2026-09-20), plus a file format and a journal to own forever.
 
 **Rejected alternatives**, so nobody re-proposes them mid-flight:
 
 - *A covering SQLite index on the six loader columns.* Same disk cost, still page-at-a-time reads, still full decode
   CPU. Strictly worse for the same money.
 - *`PRAGMA mmap_size` plus a 32 KiB page size on the index database itself.* Helps cold I/O with no extra disk, but
-  keeps the decode and the ~466 MB heap arena, so it cannot satisfy the memory ceiling.
+  keeps the full decode, so the wait shrinks instead of disappearing and the heap arena stays. Worth trying on its own
+  merits if this spec is never built; it is cheap and it stacks with what shipped.
 - *A `changed_gen` column plus an index on `entries` as the delta source.* Adds a column and an index to a 5.4 M-row
   table, so more disk and more write cost on every mutation, to replace a file we can delete.
 - *Folding the importance weights into the arena file.* Importance recomputes independently of `entries` (the root
@@ -288,8 +308,12 @@ reference build.
 `search/execute/tests.rs`, `search/volumes/tests.rs`, `search/index/memory_tests.rs`).
 
 **Intentions**: implement Contract B over the **existing heap backend only**, and migrate every caller to it. Behavior
-identical, M1's battery green throughout. `id_to_index` and the public `entries` / `names` fields disappear. This is
-the seam every other workstream merges into.
+identical, M1's battery green throughout. The public `entries` / `names` fields disappear. This is the seam every other
+workstream merges into.
+
+**Partly shipped**: `index_of_id` exists and `id_to_index` is already gone (binary search over the rowid-ordered rows),
+so the four parent-chain call sites in `engine.rs` are done. What is left is the rest of the facade: `id`, `parent_id`,
+`name`, `is_directory`, `size`, `modified_at`, `is_shadowed`, and retiring direct `entries[idx]` access.
 
 **Landmines**: `engine.rs` walks parent chains through `id_to_index` in four places (`verdict`,
 `reconstruct_path_from_index`, `hash_path_from_index`, and the exclusion evaluator); each becomes `index_of_id`. The
@@ -321,9 +345,13 @@ its last state.
 
 **DONE**: the mapped backend passes M1's battery and the differential test.
 
-### M5. Parallel fallback loader (`search/`)
+### M5. Parallel fallback loader (`search/`) — ✅ SHIPPED
 
-**Scope**: new `search/index/heap_load.rs`, replacing the body of `load_search_index`.
+Landed with the cheap version. Kept here because it is also this spec's fallback path: it is what runs when there is no
+arena file, when the journal is rejected, or when a build has not finished. Nothing more to do; the notes below record
+what it has to keep doing.
+
+**Scope**: `search/index/heap_load.rs`.
 
 **Intentions**: the no-arena path (first run, post-upgrade, a rejected journal, a build that has not finished) is a
 parallel rowid-range scan, not today's single thread. Row estimate from `dir_stats(ROOT_ID)` with a `COUNT(*)` fallback
@@ -362,12 +390,12 @@ simulated crash between commit and append is caught by the generation check; the
 **Scope**: `search/volumes.rs`, `commands/search.rs`, `apps/desktop/src/lib/search/search-lifecycle.svelte.ts`,
 `apps/desktop/src/lib/tauri-commands/search.ts`, the generated bindings, and `SearchDialog.svelte`.
 
-**Intentions**: map on dialog open and on volume selection; unmap on close. `prepare_search_index` takes a volume id
-(today it takes none and pre-loads root only, so every other volume loads lazily inside the search that needs it) and
-the frontend calls it whenever the target volume changes. `load_weights` runs concurrently with the arena rather than
-on the line after it. `IDLE_TIMEOUT` (5 min) and `BACKSTOP_TIMEOUT` (10 min) retire in favour of unmap-on-close, since
-the page cache is the warm-keeping mechanism now. Replace the bare "Loading index…" with honest progress on the
-fallback path, which is the only path that can still take seconds.
+**Partly shipped**: the volume-scoped `prepare_search_index`, the concurrent `load_weights`, the 30 s `IDLE_TIMEOUT`,
+and the progress UI all landed with the cheap version.
+
+**Intentions**: what is left here is the mapping's own lifecycle. Map on dialog open and on volume selection; unmap on
+close. `IDLE_TIMEOUT` and `BACKSTOP_TIMEOUT` retire entirely in favour of unmap-on-close, since the page cache becomes
+the warm-keeping mechanism. The progress UI stays, because the fallback path can still take seconds.
 
 **Landmines**: `search-index-ready` already names its volume and the frontend already gates per volume; extend that,
 do not duplicate it. The dialog-scoped lifecycle currently arms both timers on open and drops **all** arenas together;
@@ -377,7 +405,8 @@ keeps its current meaning: `loading: false, ready: false` is the terminal "no in
 
 **Test plan**: switching the focused pane's volume warms that volume's arena; closing the dialog unmaps; reopening
 within seconds is instant; a machine with indexing off still gets the terminal answer and does not wait forever.
-Footprint pin: with the dialog closed, search holds under 5 MB of anonymous memory.
+Footprint pin: with the dialog OPEN and a search running, the mapped path holds under 5 MB of anonymous memory. (The
+dialog-closed half of that pin shipped with the cheap version.)
 
 ### M8. Importance weights, mapped
 
@@ -408,7 +437,8 @@ Checked by the end-of-phase conformance review, one agent, adversarial, against 
 5. The hot scan does no per-row hash lookup.
 6. `LoadedVolume::honors` compares the journal tail generation.
 7. `clear_index` / forget / disable leaves no arena or journal behind.
-8. With the dialog closed, search holds under 5 MB of anonymous memory.
+8. With the dialog closed, search holds under 5 MB of anonymous memory (already true; must stay true), and with it
+   OPEN the mapped path holds under 5 MB of anonymous memory too (the new part).
 9. A corrupt, stale, or missing arena degrades to the fallback loader and never to a wrong answer.
 10. No check allowlist number was hand-edited; every loosening beyond `file-length` / `claude-md-length` / `jscpd-*`
     carries David's explicit consent (`index-crate-isolation` is the one this change needs).

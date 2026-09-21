@@ -65,17 +65,6 @@ below is met.
 
 ## In progress
 
-- [ ] 2026-09-20 `search-arena-snapshot.md` - **Opening search on a large boot volume costs 34.7 seconds before
-      anything is searchable** (`ERR-S76V3`, `vdavid/cmdr-reports#18`): one thread issuing ~200,000 serial 4 KiB reads
-      against a cold 830 MB index database, decoding 5.39 M rows into a 430 MB heap arena, then reading a second
-      database for the importance weights, all for a 50 ms search. The fix stops loading the index and starts mapping
-      it: a columnar, memory-mapped snapshot file (~249 MB, +30% disk) that the engine scans in place, kept fresh by an
-      append-only mutation journal the index writer appends to and search replays at dialog open. Clean file-backed
-      pages don't count against `phys_footprint`, so the arena can be fully resident while search holds under 5 MB with
-      the dialog closed, and the page cache replaces the idle timers as the warm-keeping mechanism. Eight workstreams
-      shipping as ONE change, three agents in flight: characterization suite, the format/builder/journal/reader in
-      `cmdr-index`, the `SearchIndex` accessor seam, the mapped backend and overlay, a parallel fallback loader, the
-      journal write hook and rebuild scheduler, volume-scoped preload plus lifecycle, and mapped importance weights.
 - [ ] 2026-09-16 `favorites-menu.md` - **Opening a favorite takes a click on the volume switcher, and there's no
       shortcut** (GitHub #91). ⌃D opens a favorites menu at the switcher's spot: `1`–`9` open a favorite, `0` adds the
       current folder, drag or ⌥↑/⌥↓ reorders, right-click renames or removes. The switcher's Favorites section becomes
@@ -222,6 +211,18 @@ below is met.
 
 Deferred future work. Unchecked by default; the folder name is the status. Each entry notes what shipped and what's
 left, so the durable intent survives the wipe.
+
+- [ ] 2026-09-20 `later/search-arena-snapshot.md` - **Make the search dialog's wait disappear rather than shrink**
+      (GitHub #114). `ERR-S76V3` measured 34.7 s between `search.open` and a 50 ms search on a 5.39 M-entry volume.
+      The cheap half SHIPPED (parallel range-scan loader, `dir_stats` row estimate instead of a second b-tree
+      traversal, weights loaded concurrently, `id_to_index` retired for a binary search, volume-scoped preload, 30 s
+      idle window), which leaves a ~1 s rebuild on every reopen past the window and a few seconds on the first open of
+      a session. Parked here: replacing the heap arena with a columnar, memory-mapped `index-{volume}.arena` (~271 MB,
+      about a third on top of the database) that the engine scans in place, kept fresh by an append-only mutation
+      journal the index writer appends to and search replays at dialog open. ❗ The memory argument does NOT justify
+      it: the arena was always dialog-scoped, so the idle-footprint requirement is already met. What's left to buy is
+      the wait itself, plus the footprint while the dialog is up, against ~3,000-4,500 lines and permanent ownership of
+      a file format with a crash-recovery path. Six remaining workstreams, contracts fixed up front so they merge.
 
 - [ ] 2026-09-13 `later/warn-triage-follow-ups.md` - **The low-severity half of the frontend warn triage.** Frontend
       warns reach prod logs now, and the triage's high- and medium-severity findings were fixed. Parked here: eight
