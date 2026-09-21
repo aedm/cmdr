@@ -90,6 +90,38 @@ source for the origin form). `openViewerSession` hands the result to `media.setF
 - CSP: the `cmdr-media:` token is in `img-src` + `object-src` (`tauri.conf.json`); `viewer-media.spec.ts` locks "no
   `cmdr-media`/`img-src`/`object-src` violation". WKWebView applies EXIF orientation by default (phone photos upright).
 
+### Virtual scrolling: the window, the cache, and the fetch loop
+
+`viewer-scroll.svelte.ts` draws a window of lines around the viewport, fills it from `viewer_get_lines`, and holds what
+it fetched in `lineCache` (a `SvelteMap<number, string>`). Three policies keep that bounded, and each one is bounded by
+PIXELS or by distance, never by a count of lines. That distinction is the whole point: a line is about a line tall
+today, but with word wrap on a 20 KB row is ~200 visual lines (~3 600 px), and every "50 lines" constant silently
+becomes "180 000 px" the day rows arrive (`docs/specs/viewer-row-wrap.md`).
+
+- **The window is a viewport of pixels plus `BUFFER_PX` (900) above and below**, clamped to 2-50 lines
+  (`renderWindowLines` / `bufferLines`, both pure and exported for their tests). 900 px is exactly the 50 lines the
+  viewer has always buffered at the default 18 px line height, so ordinary files render byte-identically. The
+  height-map path spends the same budget as a pixel offset into the measured map. `lineRequest` prefetches by it too.
+- **`scrollScale` converts the scroll position and nothing else.** Past ~1.6M lines the spacer is squeezed to stay under
+  WebKit's element-height cap, so `scrollTop` is in squeezed pixels while the viewport still shows real ones. The old
+  arithmetic divided the viewport height by the scale as well, which drew tens of thousands of lines at once on a huge
+  file.
+- **A short answer from `viewer_get_lines` is normal, not a failure.** One chunk carries at most a fixed byte budget, so
+  a range of long rows comes back in pieces. `fetchLines` continues from the last line it RECEIVED (`lineRequest`'s
+  `startAt`). Gotcha/Why: ❌ never re-ask for the range that came back short. `needsFetch` stays true on its last line,
+  so the identical request refires every `FETCH_DEBOUNCE_MS` forever.
+- **A successful answer of ZERO lines records `noLinesBeyond`**, and `needsFetch` stops sampling at it, so a line count
+  that overshoots the file (the `lineIndex` phantom trailing line) doesn't spin either. It expires when the line count
+  moves, so a tail append or a reload can still reach those lines. ❌ A FAILED read must never set it: failures stay
+  retryable.
+- **Eviction is by distance from the viewport**: after each fetch, above `CACHE_EVICT_ABOVE` lines cached, everything
+  outside the rendered window plus a `FETCH_BATCH` margin either side is dropped (`linesToEvict`). The gap between
+  threshold and margin is hysteresis: a rare pass that drops a lot. ❌ Never evict on `fullLoad`: the height map
+  measures every line of such a file and reads them back out of this cache through `getAllLines`, so eviction there
+  would silently disable variable-height word wrap. Those files are under a megabyte anyway.
+- **`clearCache()`, not `lineCache.clear()`**, from the page: reload, encoding switch, and open all have to drop
+  `noLinesBeyond` with the lines it describes.
+
 ### Variable-height word wrap (progressive enhancement)
 
 `viewer-line-heights.svelte.ts` measures per-line wrapped heights for FullLoad files (<1MB) by laying every line out in
@@ -145,6 +177,21 @@ logical coordinates, independent of which lines happen to be rendered.
   flow the known file size instead of walking lines that were never fetched. Gotcha/Why: `EOF_LINE` is minted directly
   and never derived. A `totalLines - 1` derivation lands one line short of it, every consumer's literal comparison
   silently stops matching, and that is how the `Eof` variant went unemitted while looking wired up.
+- **⌘A on a file whose last line isn't cached** takes that same `EOF_LINE` path. `handleSelectAllShortcut` needs the
+  last line's LENGTH, and on any file long enough to matter the user hasn't scrolled there, so the cache has nothing.
+  Gotcha/Why: ❌ never read an absent line as an empty one. That ended the selection at offset 0 of the last line and
+  ⌘C put the file minus its last line on the clipboard, silently. "We can't name the end" already has an answer.
+- **Sizing a selection in bytes** (`estimateSelectionBytes`, for the silent / confirm / refuse bands) takes ONE per-line
+  lookup returning `LineMetrics`: `textBytes` (no delimiter), `utf16Length`, and `delimiterBytes`. Whole lines
+  contribute text plus delimiter; a partial start or end line prorates its text by the selected UTF-16 fraction, which
+  is approximate for non-ASCII and deliberately so (the bands need order of magnitude). Gotcha/Why: ❌ the delimiter is
+  a fact passed in, never a constant in the sums. `+page.svelte` reports 0 for the file's last line, so a file with no
+  trailing newline isn't counted as if it had one, and a row the viewer breaks itself will report 0 too. A CRLF file
+  needs no case of its own: all three backends keep the `\r` inside the line text, so the delimiter is the single `\n`.
+- **What the copy toast says is MEASURED off the text that was written**, not taken from that estimate
+  (`handleSilentCopy`). The estimate prorates, and `isWholeFileSelection` short-circuits any selection starting at
+  `(0, 0)` that reaches the last line to the whole file size, even one stopping partway into that line. Spec invariant
+  I3: a number in front of the user is a claim about their data.
 - **Render**: the page calls `getLineSegmentBounds(selection, lineNumber, lineLength)` and passes the bounds to
   `search.getHighlightedSegments(...)`. The shared `segmentLine()` function (in `line-segments.ts`) merges search-match
   spans with selection bounds and emits non-overlapping `LineSegment`s tagged `highlight` / `active` / `selected`. The
