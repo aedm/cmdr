@@ -12,7 +12,14 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { CACHE_EVICT_ABOVE, createViewerScroll, FETCH_BATCH, getLineHeight, linesToEvict } from './viewer-scroll.svelte'
+import {
+  CACHE_EVICT_ABOVE,
+  createViewerScroll,
+  FETCH_BATCH,
+  getLineHeight,
+  linesToEvict,
+  renderWindowLines,
+} from './viewer-scroll.svelte'
 import { EOF_LINE } from './selection.svelte'
 import type { LineChunk, ViewerError } from '$lib/ipc/bindings'
 import { clearIpcMocks, installIpcMock } from '$lib/ipc/test-helpers'
@@ -184,6 +191,51 @@ describe('createViewerScroll.renderedLineText', () => {
     const scroll = wire(40_001)
 
     expect(scroll.renderedLineText(40_000)).toBeUndefined()
+  })
+})
+
+describe('renderWindowLines', () => {
+  it('spans the viewport plus its buffer at the ordinary line height', () => {
+    // 600 px of viewport is 34 lines of 18 px, plus 50 buffer lines either side: the
+    // window the viewer has always drawn.
+    expect(renderWindowLines({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalLines: 40_001 }))
+      .toEqual({ from: 0, to: 84 })
+  })
+
+  it('holds a viewport of PIXELS, not a count of rows, when the rows are tall', () => {
+    // A 20 KB row with word wrap on is ~200 visual lines, about 3 600 px. Counting rows
+    // would draw 84 of them for one 600 px viewport: ~300 000 px of DOM.
+    const { from, to } = renderWindowLines({
+      scrollTop: 0,
+      viewportHeight: 600,
+      scrollScale: 1,
+      lineHeight: 3600,
+      totalLines: 10_000,
+    })
+
+    expect((to - from) * 3600).toBeLessThan(30_000)
+  })
+
+  it('reads the scroll position through the scale, so a squeezed spacer does not widen the window', () => {
+    // Past ~1.6M lines the spacer is scaled down to stay under WebKit's height cap. The
+    // viewport still shows 600 real pixels; dividing THAT by the scale as well is how a
+    // huge file ends up rendering tens of thousands of lines at once.
+    const scaled = renderWindowLines({
+      scrollTop: 1_000,
+      viewportHeight: 600,
+      scrollScale: 0.01,
+      lineHeight: 18,
+      totalLines: 5_000_000,
+    })
+
+    expect(scaled.to - scaled.from).toBeLessThan(200)
+    // And it still lands where the user is looking: 1 000 px into a spacer squeezed 100x.
+    expect(scaled.from).toBe(Math.floor(100_000 / 18) - 50)
+  })
+
+  it('never reaches past the end of the file, or before its start', () => {
+    expect(renderWindowLines({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalLines: 5 }))
+      .toEqual({ from: 0, to: 5 })
   })
 })
 

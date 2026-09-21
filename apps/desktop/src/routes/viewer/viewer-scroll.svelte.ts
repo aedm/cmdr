@@ -11,7 +11,20 @@ import { EOF_LINE, type LineOffset } from './selection.svelte'
 
 const log = getAppLogger('viewer')
 
-const BUFFER_LINES = 50
+/**
+ * How much content to keep drawn on each side of the viewport, in CSS pixels, and the
+ * line counts that budget is clamped between.
+ *
+ * ❗ PIXELS, not lines. 900 px is exactly the 50 lines the viewer has always buffered at
+ * the default 18 px line height, so ordinary files are unaffected. The difference shows
+ * with word wrap on, where one row can be hundreds of pixels tall: 50 SUCH rows would
+ * paint hundreds of thousands of pixels for a 600 px viewport, and the DOM height map
+ * that would otherwise catch it only ever engages on `fullLoad` files.
+ */
+const BUFFER_PX = 900
+const BUFFER_LINES_MAX = 50
+const BUFFER_LINES_MIN = 2
+
 export const FETCH_BATCH = 500
 
 /**
@@ -54,6 +67,48 @@ interface ScrollDeps {
 }
 
 export { getLineHeight, MAX_SCROLL_HEIGHT }
+
+/** How many lines of `lineHeight` fit in the off-screen pixel buffer, within its clamps. */
+export function bufferLines(lineHeight: number): number {
+  if (!(lineHeight > 0)) return BUFFER_LINES_MAX
+  return Math.max(BUFFER_LINES_MIN, Math.min(BUFFER_LINES_MAX, Math.ceil(BUFFER_PX / lineHeight)))
+}
+
+/**
+ * The half-open line range `[from, to)` to draw for a viewport, sized in PIXELS: a
+ * viewport's worth of content plus the off-screen buffer, whatever the lines contain.
+ * Both ends clamp to the file, so `from <= to` always holds. (When the line count lands
+ * below the current scroll position, a byte-seek estimate replaced by the real index,
+ * `scrollTop` points past the end for a beat; an unclamped `from` then overtook `to` and
+ * the fetch asked for a negative count, ERR-VDVHD.)
+ *
+ * ❗ `scrollScale` converts the scroll position and nothing else. Past ~1.6M lines the
+ * spacer is squeezed to stay under WebKit's element-height cap, so `scrollTop` is in
+ * squeezed pixels while the viewport still shows real ones. Dividing the viewport height
+ * by the scale as well is how a huge file ends up drawing tens of thousands of lines at
+ * once.
+ */
+export function renderWindowLines({
+  scrollTop,
+  viewportHeight,
+  scrollScale,
+  lineHeight,
+  totalLines,
+}: {
+  scrollTop: number
+  viewportHeight: number
+  scrollScale: number
+  lineHeight: number
+  totalLines: number
+}): { from: number; to: number } {
+  const height = Math.max(1, lineHeight)
+  const top = scrollScale < 1 ? scrollTop / scrollScale : scrollTop
+  const buffer = bufferLines(height)
+  return {
+    from: Math.min(totalLines, Math.max(0, Math.floor(top / height) - buffer)),
+    to: Math.min(totalLines, Math.ceil((top + viewportHeight) / height) + buffer),
+  }
+}
 
 /**
  * The cached line numbers outside `keep`, which is half-open `[from, to)`.
@@ -102,25 +157,31 @@ export function createViewerScroll(deps: ScrollDeps) {
   })
   const scrollLineHeight = $derived(effectiveLineHeight * scrollScale)
 
-  // Both ends clamp to the file, so `visibleFrom <= visibleTo` always holds. When the line
-  // count lands below the current scroll position (a byte-seek estimate replaced by the real
-  // index), `scrollTop` still points past the end for a beat; an unclamped `visibleFrom`
-  // then overtook `visibleTo` and the fetch asked for a negative count (ERR-VDVHD).
-  const visibleFrom = $derived.by(() => {
+  /**
+   * The rendered range, from measured heights when the height map is ready and from the
+   * (also measured) average line height otherwise. Both paths spend a fixed pixel budget
+   * rather than a fixed number of lines: `BUFFER_PX` above and below the viewport.
+   */
+  const renderWindow = $derived.by(() => {
+    const total = estimatedTotalLines()
     if (heightMap.ready) {
       const unscaledY = scrollScale < 1 ? scrollTop / scrollScale : scrollTop
-      return Math.min(estimatedTotalLines(), Math.max(0, heightMap.getLineAtPosition(unscaledY) - BUFFER_LINES))
+      return {
+        from: Math.min(total, Math.max(0, heightMap.getLineAtPosition(Math.max(0, unscaledY - BUFFER_PX)))),
+        to: Math.min(total, heightMap.getLineAtPosition(unscaledY + viewportHeight + BUFFER_PX) + 1),
+      }
     }
-    return Math.min(estimatedTotalLines(), Math.max(0, Math.floor(scrollTop / scrollLineHeight) - BUFFER_LINES))
+    return renderWindowLines({
+      scrollTop,
+      viewportHeight,
+      scrollScale,
+      lineHeight: effectiveLineHeight,
+      totalLines: total,
+    })
   })
 
-  const visibleTo = $derived.by(() => {
-    if (heightMap.ready) {
-      const unscaledY = scrollScale < 1 ? (scrollTop + viewportHeight) / scrollScale : scrollTop + viewportHeight
-      return Math.min(estimatedTotalLines(), heightMap.getLineAtPosition(unscaledY) + BUFFER_LINES)
-    }
-    return Math.min(estimatedTotalLines(), Math.ceil((scrollTop + viewportHeight) / scrollLineHeight) + BUFFER_LINES)
-  })
+  const visibleFrom = $derived(renderWindow.from)
+  const visibleTo = $derived(renderWindow.to)
 
   const spacerHeight = $derived(
     heightMap.ready ? heightMap.getTotalHeight() * scrollScale : estimatedTotalLines() * scrollLineHeight,
@@ -292,9 +353,12 @@ export function createViewerScroll(deps: ScrollDeps) {
     startAt?: number
   }): { seekType: 'line' | 'fraction'; seekValue: number; fetchFrom: number; fetchCount: number } | null {
     if (to <= from) return null
-    const fetchFrom = startAt ?? Math.max(0, from - BUFFER_LINES)
-    if (fetchFrom >= to + BUFFER_LINES) return null
-    const fetchCount = Math.min(FETCH_BATCH, to - fetchFrom + BUFFER_LINES * 2)
+    // The same pixel budget the render window spends, so a file of tall rows doesn't ask
+    // for a hundred of them to sit off-screen.
+    const prefetch = bufferLines(effectiveLineHeight)
+    const fetchFrom = startAt ?? Math.max(0, from - prefetch)
+    if (fetchFrom >= to + prefetch) return null
+    const fetchCount = Math.min(FETCH_BATCH, to - fetchFrom + prefetch * 2)
     if (fetchCount <= 0) return null
     if (deps.getTotalLines() !== null) return { seekType: 'line', seekValue: fetchFrom, fetchFrom, fetchCount }
     // A 0 estimate would make the fraction division NaN (0/0) or Infinity (>0/0); both
