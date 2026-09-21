@@ -396,13 +396,13 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
-  "viewer.row.continuesTooltip": "Cmdr a coupé cette ligne ici pour que la visionneuse reste rapide. La ligne se poursuit juste en dessous.",
+  "viewer.row.continuesTooltip": "Cmdr a coupé cette ligne parce qu''elle était très longue. Il n''y a pas de véritable saut de ligne ici dans le fichier.",
   "@viewer.row.continuesTooltip": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
-  "viewer.row.continuesLabel": "Cmdr a coupé cette ligne ici pour que la visionneuse reste rapide. La ligne se poursuit juste en dessous.",
+  "viewer.row.continuesLabel": "Cmdr a coupé cette ligne parce qu''elle était très longue. Il n''y a pas de véritable saut de ligne ici dans le fichier.",
   "@viewer.row.continuesLabel": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
   "viewer.selection.toEndOfFile": "Sélection de la ligne {line} jusqu''à la fin du fichier",
   "@viewer.selection.toEndOfFile": {

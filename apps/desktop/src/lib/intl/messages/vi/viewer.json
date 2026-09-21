@@ -391,13 +391,13 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
-  "viewer.row.continuesTooltip": "Cmdr đã ngắt dòng này tại đây để trình xem luôn nhanh. Dòng tiếp tục ngay bên dưới.",
+  "viewer.row.continuesTooltip": "Cmdr đã ngắt dòng này vì nó rất dài. Ở đây không có dấu ngắt dòng thật sự trong tệp.",
   "@viewer.row.continuesTooltip": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
-  "viewer.row.continuesLabel": "Cmdr đã ngắt dòng này tại đây để trình xem luôn nhanh. Dòng tiếp tục ngay bên dưới.",
+  "viewer.row.continuesLabel": "Cmdr đã ngắt dòng này vì nó rất dài. Ở đây không có dấu ngắt dòng thật sự trong tệp.",
   "@viewer.row.continuesLabel": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
   "viewer.selection.toEndOfFile": "Đã chọn từ dòng {line} đến cuối tệp",
   "@viewer.selection.toEndOfFile": {

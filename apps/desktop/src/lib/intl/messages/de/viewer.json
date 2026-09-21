@@ -394,13 +394,13 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
-  "viewer.row.continuesTooltip": "Cmdr hat diese Zeile hier umgebrochen, damit die Vorschau schnell bleibt. Die Zeile läuft direkt darunter weiter.",
+  "viewer.row.continuesTooltip": "Cmdr hat diese Zeile umgebrochen, weil sie sehr lang war. In der Datei steht hier kein echter Zeilenumbruch.",
   "@viewer.row.continuesTooltip": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
-  "viewer.row.continuesLabel": "Cmdr hat diese Zeile hier umgebrochen, damit die Vorschau schnell bleibt. Die Zeile läuft direkt darunter weiter.",
+  "viewer.row.continuesLabel": "Cmdr hat diese Zeile umgebrochen, weil sie sehr lang war. In der Datei steht hier kein echter Zeilenumbruch.",
   "@viewer.row.continuesLabel": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
   "viewer.selection.toEndOfFile": "Von Zeile {line} bis zum Ende der Datei ausgewählt",
   "@viewer.selection.toEndOfFile": {

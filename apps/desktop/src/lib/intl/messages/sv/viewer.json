@@ -394,13 +394,13 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
-  "viewer.row.continuesTooltip": "Cmdr bröt den här raden här för att förhandsvisningen ska vara snabb. Raden fortsätter direkt nedanför.",
+  "viewer.row.continuesTooltip": "Cmdr bröt den här raden för att den var väldigt lång. Det finns ingen riktig radbrytning här i filen.",
   "@viewer.row.continuesTooltip": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
-  "viewer.row.continuesLabel": "Cmdr bröt den här raden här för att förhandsvisningen ska vara snabb. Raden fortsätter direkt nedanför.",
+  "viewer.row.continuesLabel": "Cmdr bröt den här raden för att den var väldigt lång. Det finns ingen riktig radbrytning här i filen.",
   "@viewer.row.continuesLabel": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
   "viewer.selection.toEndOfFile": "Markerat från rad {line} till slutet av filen",
   "@viewer.selection.toEndOfFile": {

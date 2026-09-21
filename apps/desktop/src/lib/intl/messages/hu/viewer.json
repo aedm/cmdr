@@ -391,13 +391,13 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
-  "viewer.row.continuesTooltip": "A Cmdr itt tördelte meg ezt a sort, hogy a megjelenítő gyors maradjon. A sor közvetlenül alatta folytatódik.",
+  "viewer.row.continuesTooltip": "A Cmdr eltördelte ezt a sort, mert nagyon hosszú volt. A fájlban valójában nincs itt sortörés.",
   "@viewer.row.continuesTooltip": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
-  "viewer.row.continuesLabel": "A Cmdr itt tördelte meg ezt a sort, hogy a megjelenítő gyors maradjon. A sor közvetlenül alatta folytatódik.",
+  "viewer.row.continuesLabel": "A Cmdr eltördelte ezt a sort, mert nagyon hosszú volt. A fájlban valójában nincs itt sortörés.",
   "@viewer.row.continuesLabel": {
-    "sourceHash": "398f4e2"
+    "sourceHash": "7df69ed"
   },
   "viewer.selection.toEndOfFile": "Kijelölve a(z) {line}. sortól a fájl végéig",
   "@viewer.selection.toEndOfFile": {

@@ -132,7 +132,7 @@ describe('ViewerRow continuation marker', () => {
     await unmount(instance)
   })
 
-  it('draws a line break, not an ellipsis, because nothing is missing from the row', async () => {
+  it('draws a line break, not an ellipsis, because nothing is missing from the row', () => {
     // David's call, and it reverses what `docs/specs/viewer-row-wrap.md` argued: an
     // ellipsis reads as a cutoff and implies content is missing, which is the worse lie,
     // since nothing is. A break did happen here; the tooltip and the label say whose.

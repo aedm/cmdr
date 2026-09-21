@@ -225,8 +225,9 @@ function moveToRowEdge(context: MotionContext, from: RowOffset, direction: Motio
  *   it into a live, movable focus, which is exactly what `MoveFocusArgs.from` refuses.
  *
  * Consequence worth knowing: ⌘+Shift+Down from mid-file then copy shows the "unknown
- * size" confirm on a large file, because `isWholeFileSelection` bails on a start past
- * `(0, 0)` and the per-line estimator hits a line with no known byte length.
+ * size" confirm on a large file, because `selectionBytesFromFileSize` answers only for a
+ * selection anchored at `(0, 0)` and the per-row estimator hits a row with no known byte
+ * length.
  */
 function moveToDocEdge(context: MotionContext, from: RowOffset, direction: MotionDirection): Landing {
   if (direction === -1) return at({ row: 0, offset: 0 })

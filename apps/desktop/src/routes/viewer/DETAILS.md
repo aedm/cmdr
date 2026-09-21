@@ -72,12 +72,13 @@ STARTS, or `null` on a continuation row; `ViewerRow` prints a number only for th
 An uncached row draws blank rather than printing its row index, which on a wrapped file would be a wrong line number.
 ❌ Neither fact may be inferred here: only the backend knows where a line begins.
 
-**The continuation marker says the break is Cmdr's.** A row whose `continues` is true draws `⋯` in a pill at the end of
+**The continuation marker says the break is Cmdr's.** A row whose `continues` is true draws `⏎` in a pill at the end of
 its text, identically in both wrap modes, with a tooltip and a visually-hidden label. ❗ The glyph is `content` on a
 `::after`, so it is not in the DOM text: it cannot be selected and cannot reach the clipboard, where it would be a
-character the file does not contain. That is also why it needs the `.sr-only` span beside it. ❌ Not `⏎`, which means
-"there is a line break here", the opposite of the truth. Glyph, colour, and copy are David's call; all three are a
-one-line change in `ViewerRow.svelte` and `messages/en/viewer.json`.
+character the file does not contain. That is also why it needs the `.sr-only` span beside it. ❌ Not an ellipsis: that
+reads as a cutoff, which implies content is missing, and nothing is missing. A break really did happen here; whose
+break it is belongs to the tooltip and the label, which both say the file holds none at this point. The reasoning sits
+beside the rule in `ViewerRow.svelte`, and `ViewerRow.test.ts` fails if someone swaps it back.
 
 **A Cmdr break is not a newline.** Nothing that measures or reconstructs text from cached rows may put a byte or a
 character between two rows of the same line. `rowMetrics` is the one place that decides a row's delimiter (0 when the
@@ -230,8 +231,8 @@ logical coordinates, independent of which lines happen to be rendered.
   offsets that land between the high and low surrogate of an astral codepoint.
 - **Selecting to the end of a file with no line count**: in ByteSeek mode before the line index lands, ⌘A can't name a
   last line, so `makeSelectToEof()` mints `focus.line = EOF_LINE` (`Number.MAX_SAFE_INTEGER`). `toRangeEnds` turns that
-  into `RangeEnd::Eof` so the backend resolves the real end itself, and `isWholeFileSelection` reads it to hand the copy
-  flow the known file size instead of walking lines that were never fetched. Gotcha/Why: `EOF_LINE` is minted directly
+  into `RangeEnd::Eof` so the backend resolves the real end itself, and `selectionBytesFromFileSize` reads it to hand
+  the copy flow the known file size instead of walking rows that were never fetched. Gotcha/Why: `EOF_LINE` is minted directly
   and never derived. A `totalLines - 1` derivation lands one line short of it, every consumer's literal comparison
   silently stops matching, and that is how the `Eof` variant went unemitted while looking wired up.
 - **⌘A on a file whose last line isn't cached** takes that same `EOF_LINE` path. `handleSelectAllShortcut` needs the
@@ -248,9 +249,11 @@ logical coordinates, independent of which lines happen to be rendered.
   With no line count yet (ByteSeek before its index) no line is known to be last, so every line reports a delimiter:
   one byte over on the whole file, against bands measured in megabytes.
 - **What the copy toast says is MEASURED off the text that was written**, not taken from that estimate
-  (`handleSilentCopy`). The estimate prorates, and `isWholeFileSelection` short-circuits any selection starting at
-  `(0, 0)` that reaches the last line to the whole file size, even one stopping partway into that line. Spec invariant
-  I3: a number in front of the user is a claim about their data.
+  (`handleSilentCopy`). `selectionBytesFromFileSize` subtracts the unselected remainder from the known file size rather
+  than rounding a near-whole-file selection up to it, so a selection stopping partway into the last row reports what it
+  will actually copy. ❌ Never short-circuit that back to `totalBytes` on a start of `(0, 0)`: the same number decides
+  the 10 MiB confirm and the 100 MiB refusal. Spec invariant I3: a number in front of the user is a claim about their
+  data.
 - **Render**: the page calls `getLineSegmentBounds(selection, lineNumber, lineLength)` and passes the bounds to
   `search.getHighlightedSegments(...)`. The shared `segmentLine()` function (in `line-segments.ts`) merges search-match
   spans with selection bounds and emits non-overlapping `LineSegment`s tagged `highlight` / `active` / `selected`. The
@@ -408,8 +411,9 @@ Rules the model encodes:
   movable focus, which is the wedge the precondition below exists to block. And ❌ don't call `selectToEof()` here — it
   sets BOTH endpoints and would silently destroy the user's anchor.
 - **Consequence worth knowing rather than rediscovering**: ⌘+Shift+Down from mid-file, then copy, shows the "unknown
-  size" confirm on a large file. `isWholeFileSelection` bails on a start past `(0, 0)`, so `estimateSelectionBytes`
-  walks lines and returns `null` at the first one with an unknown byte length. It terminates safely and it's defensible.
+  size" confirm on a large file. `selectionBytesFromFileSize` answers only for a selection anchored at `(0, 0)`, so
+  `estimateSelectionBytes` walks rows and returns `null` at the first one with an unknown byte length. It terminates
+  safely and it's defensible.
 
 Gotcha/Why: **`moveFocus` never receives the `EOF_LINE` sentinel as its `from`, and throws on one.** ⌘A in
 ByteSeek-no-index mode parks the focus on the sentinel, and it names a line that can never be cached, so one Shift+Up
