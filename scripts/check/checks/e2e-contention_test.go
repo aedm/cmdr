@@ -398,14 +398,13 @@ func TestARerunThatRanNoneOfTheTargetsIsARunnerError(t *testing.T) {
 // Task 3: the lane yields to whoever is using the machine. The wrapper has to keep the
 // real argv intact, and must degrade to the bare command when `nice` isn't there.
 func TestNiceArgvWrapsTheCommandAndDegradesGracefully(t *testing.T) {
-	got := niceArgv(true, "pnpm", []string{"exec", "playwright"})
-	want := []string{"nice", "-n", "5", "pnpm", "exec", "playwright"}
-	if strings.Join(got, " ") != strings.Join(want, " ") {
-		t.Errorf("niceArgv = %v, want %v", got, want)
+	name, args := niceArgv(true, "pnpm", []string{"exec", "playwright"})
+	if got := name + " " + strings.Join(args, " "); got != "nice -n 5 pnpm exec playwright" {
+		t.Errorf("niceArgv = %q, want %q", got, "nice -n 5 pnpm exec playwright")
 	}
 
-	got = niceArgv(false, "pnpm", []string{"exec", "playwright"})
-	if strings.Join(got, " ") != "pnpm exec playwright" {
-		t.Errorf("without nice available the argv must be untouched, got %v", got)
+	name, args = niceArgv(false, "pnpm", []string{"exec", "playwright"})
+	if got := name + " " + strings.Join(args, " "); got != "pnpm exec playwright" {
+		t.Errorf("without nice available the command must be untouched, got %q", got)
 	}
 }

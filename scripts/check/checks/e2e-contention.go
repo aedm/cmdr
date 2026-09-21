@@ -134,7 +134,7 @@ func MaybeClassifyE2EContention(files []e2eFailingFile, rerun E2ERerunner, load 
 // breaks is a different run's evidence, and the original run already stands as the
 // record of what went red.
 func ClassifyE2EContention(files []e2eFailingFile, rerun E2ERerunner, load LoadSampler) []E2ESpecResult {
-	var results []E2ESpecResult
+	results := []E2ESpecResult{}
 	for _, f := range files {
 		verdicts := make(map[string]ContentionVerdict, len(f.keys))
 		for _, key := range f.keys {
@@ -248,7 +248,9 @@ func collectE2EFailures(shards []shardSpec, runStart time.Time) []e2eFailingFile
 	sort.Strings(order)
 	files := make([]e2eFailingFile, 0, len(order))
 	for _, file := range order {
-		files = append(files, *byFile[file])
+		if entry, ok := byFile[file]; ok && entry != nil {
+			files = append(files, *entry)
+		}
 	}
 	return files
 }
@@ -519,17 +521,20 @@ const e2eNiceIncrement = 5
 
 // niceCommand builds a command that yields CPU to whoever else wants it.
 func niceCommand(name string, args ...string) *exec.Cmd {
-	argv := niceArgv(CommandExists("nice"), name, args)
-	return exec.Command(argv[0], argv[1:]...)
+	execName, execArgs := niceArgv(CommandExists("nice"), name, args)
+	return exec.Command(execName, execArgs...)
 }
 
-// niceArgv wraps an argv in `nice`, or hands it back untouched when `nice` isn't on
-// PATH. `nice` execs in place, so the wrapped process keeps the pid the caller waits on
-// and kills. Degrading rather than failing matters because a missing `nice` would
-// otherwise take the whole lane down over a scheduling preference.
-func niceArgv(niceAvailable bool, name string, args []string) []string {
+// niceArgv decides what to exec: `nice -n N <name> <args…>`, or the command untouched
+// when `nice` isn't on PATH. `nice` execs in place, so the wrapped process keeps the pid
+// the caller waits on and kills. Degrading rather than failing matters because a missing
+// `nice` would otherwise take the whole lane down over a scheduling preference.
+//
+// It returns the executable and its arguments separately rather than one argv, so no
+// caller has to index a slice to split them apart again.
+func niceArgv(niceAvailable bool, name string, args []string) (execName string, execArgs []string) {
 	if !niceAvailable {
-		return append([]string{name}, args...)
+		return name, args
 	}
-	return append([]string{"nice", "-n", strconv.Itoa(e2eNiceIncrement), name}, args...)
+	return "nice", append([]string{"-n", strconv.Itoa(e2eNiceIncrement), name}, args...)
 }
