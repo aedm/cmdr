@@ -613,13 +613,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "Utilisez F5 pour copier des fichiers depuis les appareils MTP",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "Le presse-papiers ne peut pas transporter les fichiers de cet appareil. Utilisez {copyKey} pour les copier.",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "Utilisez F6 pour déplacer des fichiers depuis les appareils MTP",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "Le presse-papiers ne peut pas transporter les fichiers de cet appareil. Utilisez {moveKey} pour les déplacer.",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "Le presse-papiers ne peut pas transporter les fichiers de ce serveur. Utilisez {copyKey} pour les copier.",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "Le presse-papiers ne peut pas transporter les fichiers de ce serveur. Utilisez {moveKey} pour les déplacer.",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "Ces fichiers ne peuvent pas aller dans le presse-papiers. Utilisez {copyKey} pour les copier.",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "Ces fichiers ne peuvent pas aller dans le presse-papiers. Utilisez {moveKey} pour les déplacer.",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "Cmdr ne peut pas encore modifier ce fichier dans l''éditeur, car ce n''est pas un fichier ordinaire de votre Mac. Appuyez sur F3 pour le visualiser.",
   "@fileExplorer.edit.notOnThisMac": {
@@ -657,9 +673,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "Utilisez F5 pour copier des fichiers vers les appareils MTP",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "Utilisez {copyKey} pour copier des fichiers vers cet appareil.",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "Utilisez {copyKey} pour copier des fichiers vers ce serveur.",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "Aucun fichier dans le presse-papiers. Copiez d''abord des fichiers avec ⌘C.",
   "@fileExplorer.clipboard.empty": {

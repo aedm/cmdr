@@ -613,13 +613,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "Använd F5 för att kopiera filer från MTP-enheter",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "Filer från den här enheten kan inte läggas i urklipp. Använd {copyKey} för att kopiera dem.",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "Använd F6 för att flytta filer från MTP-enheter",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "Filer från den här enheten kan inte läggas i urklipp. Använd {moveKey} för att flytta dem.",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "Filer från den här servern kan inte läggas i urklipp. Använd {copyKey} för att kopiera dem.",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "Filer från den här servern kan inte läggas i urklipp. Använd {moveKey} för att flytta dem.",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "De här filerna kan inte läggas i urklipp. Använd {copyKey} för att kopiera dem.",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "De här filerna kan inte läggas i urklipp. Använd {moveKey} för att flytta dem.",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "Cmdr kan inte öppna den här filen i redigeraren än, eftersom den inte är en vanlig fil på din Mac. Tryck på F3 för att visa den.",
   "@fileExplorer.edit.notOnThisMac": {
@@ -657,9 +673,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "Använd F5 för att kopiera filer till MTP-enheter",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "Använd {copyKey} för att kopiera filer till den här enheten.",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "Använd {copyKey} för att kopiera filer till den här servern.",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "Inga filer i urklipp. Kopiera filer först med ⌘C.",
   "@fileExplorer.clipboard.empty": {

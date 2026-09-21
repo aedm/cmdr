@@ -613,13 +613,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "Az F5 billentyűvel másolhatsz fájlokat MTP-eszközökről",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "A vágólap nem tud fájlokat átvinni erről az eszközről. A(z) {copyKey} billentyűvel másolhatod őket.",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "Az F6 billentyűvel helyezhetsz át fájlokat MTP-eszközökről",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "A vágólap nem tud fájlokat átvinni erről az eszközről. A(z) {moveKey} billentyűvel helyezheted át őket.",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "A vágólap nem tud fájlokat átvinni erről a szerverről. A(z) {copyKey} billentyűvel másolhatod őket.",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "A vágólap nem tud fájlokat átvinni erről a szerverről. A(z) {moveKey} billentyűvel helyezheted át őket.",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "Ezek a fájlok nem kerülhetnek a vágólapra. A(z) {copyKey} billentyűvel másolhatod őket.",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "Ezek a fájlok nem kerülhetnek a vágólapra. A(z) {moveKey} billentyűvel helyezheted át őket.",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "A Cmdr ezt a fájlt még nem tudja megnyitni szerkesztésre, mert nem szokásos fájl a Macen. Az F3 billentyűvel megtekintheted.",
   "@fileExplorer.edit.notOnThisMac": {
@@ -657,9 +673,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "Az F5 billentyűvel másolhatsz fájlokat MTP-eszközökre",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "A(z) {copyKey} billentyűvel másolhatsz fájlokat erre az eszközre.",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "A(z) {copyKey} billentyűvel másolhatsz fájlokat erre a szerverre.",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "Nincs fájl a vágólapon. Előbb másolj fájlokat a ⌘C billentyűvel.",
   "@fileExplorer.clipboard.empty": {

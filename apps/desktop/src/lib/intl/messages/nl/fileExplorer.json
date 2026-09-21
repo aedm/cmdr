@@ -614,13 +614,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "Gebruik F5 om bestanden van MTP-apparaten te kopiëren",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "Bestanden van dit apparaat kunnen niet op het klembord. Gebruik {copyKey} om ze te kopiëren.",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "Gebruik F6 om bestanden van MTP-apparaten te verplaatsen",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "Bestanden van dit apparaat kunnen niet op het klembord. Gebruik {moveKey} om ze te verplaatsen.",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "Bestanden van deze server kunnen niet op het klembord. Gebruik {copyKey} om ze te kopiëren.",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "Bestanden van deze server kunnen niet op het klembord. Gebruik {moveKey} om ze te verplaatsen.",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "Deze bestanden kunnen niet op het klembord. Gebruik {copyKey} om ze te kopiëren.",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "Deze bestanden kunnen niet op het klembord. Gebruik {moveKey} om ze te verplaatsen.",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "Cmdr kan dit bestand nog niet in een editor bewerken, omdat het geen gewoon bestand op je Mac is. Druk op F3 om het te tonen.",
   "@fileExplorer.edit.notOnThisMac": {
@@ -658,9 +674,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "Gebruik F5 om bestanden naar MTP-apparaten te kopiëren",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "Gebruik {copyKey} om bestanden naar dit apparaat te kopiëren.",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "Gebruik {copyKey} om bestanden naar deze server te kopiëren.",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "Geen bestanden op het klembord. Kopieer eerst bestanden met ⌘C.",
   "@fileExplorer.clipboard.empty": {

@@ -613,13 +613,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "Use F5 para copiar arquivos de dispositivos MTP",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "A área de transferência não consegue levar arquivos deste dispositivo. Use {copyKey} para copiá-los.",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "Use F6 para mover arquivos de dispositivos MTP",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "A área de transferência não consegue levar arquivos deste dispositivo. Use {moveKey} para movê-los.",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "A área de transferência não consegue levar arquivos deste servidor. Use {copyKey} para copiá-los.",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "A área de transferência não consegue levar arquivos deste servidor. Use {moveKey} para movê-los.",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "Estes arquivos não podem ir para a área de transferência. Use {copyKey} para copiá-los.",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "Estes arquivos não podem ir para a área de transferência. Use {moveKey} para movê-los.",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "O Cmdr ainda não consegue editar este arquivo no editor, porque ele não é um arquivo comum do seu Mac. Pressione F3 para visualizá-lo.",
   "@fileExplorer.edit.notOnThisMac": {
@@ -657,9 +673,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "Use F5 para copiar arquivos para dispositivos MTP",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "Use {copyKey} para copiar arquivos para este dispositivo.",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "Use {copyKey} para copiar arquivos para este servidor.",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "Nenhum arquivo na área de transferência. Copie arquivos primeiro com ⌘C.",
   "@fileExplorer.clipboard.empty": {

@@ -375,14 +375,22 @@ There's no Search-specific capabilities shim — `lib/search/capabilities.ts` ke
 - **Clipboard** (`clipboard-operations.ts`): the snapshot-clip path gate off `kind === 'search-results'`; the routed
   copy-out refusals off `routedCopyOutHint`, which maps `kind === 'archive'` / `'git-portal'` to their own "use F5/F6"
   toast (a routed path isn't OS-resolvable, so the system clipboard can't carry it); the scheme-path copy/cut/paste
-  refusals (the "Use F5/F6" toasts) off `caps.kind` being one of `mtp` / `adb` / `sftp` / `webdav`, via
-  `isSchemePathClipboardRefusal`. Those four all hand out a path (`mtp://`, `adb://`, `sftp://`, `webdav://`) no other
-  app can open. ❌ Don't generalize that gate into a "no system clipboard" capability: `network` + `search-results` lack
-  one too, and an MTP-worded toast on a reachable network paste would be a new, mis-worded toast. Its MTP half is
-  byte-equivalent, on the live clipboard-time pane id set, to the old `startsWith('mtp-')` gate, pinned by the
-  equivalence test in `clipboard-operations.test.ts`. ❗ The three toasts still say "MTP devices" whichever of the four
-  kinds refused, so a server pane answers a copy with device wording (reported as ERR-HGGU3); the fix is per-family
-  copy, not a wider gate.
+  refusals off `caps.kind` being one of `mtp` / `adb` / `sftp` / `webdav`, via `schemePathClipboardFamily`. Those four
+  all hand out a path (`mtp://`, `adb://`, `sftp://`, `webdav://`) no other app can open. ❌ Don't generalize that gate
+  into a "no system clipboard" capability: `network` + `search-results` lack one too, and a device-worded toast on a
+  reachable network paste would be a new, mis-worded toast. Its MTP half is byte-equivalent, on the live clipboard-time
+  pane id set, to the old `startsWith('mtp-')` gate, pinned by the equivalence test in `clipboard-operations.test.ts`.
+
+  **The gate answers a FAMILY, not a boolean, and the family picks the NOUN**: `device` for `mtp` + `adb`, `server` for
+  `sftp` + `webdav`. One wording for all four is what ERR-HGGU3 reported — an SFTP user read "MTP devices" and took it
+  for a bug — so ❌ don't collapse the two families back into one string. MTP covers phones, e-readers, and cameras, so
+  "device" is the only honest noun on that side. A refusal that can't name a family (`null`, the snapshot branch's
+  unplugged-device case) gets the noun-free "These files…" pair rather than a guess.
+
+  **The key each toast names is read LIVE off `file.copy` / `file.move`** (`transferShortcut`), ❌ never spelled `F5` in
+  the catalog: both are rebindable in Settings > Shortcuts, and a hardcoded name starts lying the moment someone moves
+  one. It's a snapshot at toast-build time (a toast isn't a live-updating surface), and an unbound command falls back to
+  its default, the same contract `transfer-error-messages.ts` uses for `file.deletePermanently`.
 
   **The snapshot-clip branch gates TWICE, in this order** (`snapshotClipboardIsRefused`). First the PATH SCHEME:
   `$lib/path/canonical.ts::isPlainFilesystemPath` refuses any row that isn't a plain absolute filesystem path, from the

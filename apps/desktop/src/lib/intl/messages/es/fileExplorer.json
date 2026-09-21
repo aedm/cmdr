@@ -613,13 +613,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "Usa F5 para copiar archivos desde dispositivos MTP",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "El portapapeles no puede llevar archivos de este dispositivo. Usa {copyKey} para copiarlos.",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "Usa F6 para mover archivos desde dispositivos MTP",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "El portapapeles no puede llevar archivos de este dispositivo. Usa {moveKey} para moverlos.",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "El portapapeles no puede llevar archivos de este servidor. Usa {copyKey} para copiarlos.",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "El portapapeles no puede llevar archivos de este servidor. Usa {moveKey} para moverlos.",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "Estos archivos no pueden ir al portapapeles. Usa {copyKey} para copiarlos.",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "Estos archivos no pueden ir al portapapeles. Usa {moveKey} para moverlos.",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "Cmdr aún no puede editar este archivo en el editor, porque no es un archivo normal de tu Mac. Pulsa F3 para verlo.",
   "@fileExplorer.edit.notOnThisMac": {
@@ -657,9 +673,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "Usa F5 para copiar archivos a dispositivos MTP",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "Usa {copyKey} para copiar archivos a este dispositivo.",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "Usa {copyKey} para copiar archivos a este servidor.",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "No hay archivos en el portapapeles. Copia archivos primero con ⌘C.",
   "@fileExplorer.clipboard.empty": {

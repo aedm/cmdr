@@ -311,9 +311,10 @@ Three entry paths start a transfer, and they all prepare it through `pane/transf
   paths came out of ONE volume's index. Clipboard paths carry no such guarantee (they can come from Finder or any other
   app), so the `resolve_path_volume` fallback is exactly what they need.
 
-The paste path keeps its MTP-specific refusal ("Use F5 to copy files to MTP devices") SEPARATE and BEFORE the shared
-guard, because that toast points the user at the F5/F6 flow paste lacks; the shared guard then handles read-only /
-search-results destinations uniformly.
+The paste path keeps its scheme-path refusal ("Use F5 to copy files onto this device.", or the server wording) SEPARATE
+and BEFORE the shared guard, because that toast points the user at the copy flow paste lacks; the shared guard then
+handles read-only / search-results destinations uniformly. The key it names is read live off `file.copy`, never spelled
+`F5` in the catalog: both transfer keys are rebindable.
 
 **A transfer into the folder the sources already live in is asymmetric between copy and move**, and both halves live on
 this side. A COPY there duplicates each item under a free ` (N)` name, so

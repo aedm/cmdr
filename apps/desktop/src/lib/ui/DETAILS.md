@@ -1148,11 +1148,12 @@ Five levels. Pick by what kind of feedback the toast carries, not by how the mes
   (`No mounted shares from ${host}` after a disconnect that had nothing to disconnect). Rare in practice — most toasts
   carry some signal.
 - **`info`** (blue): notices the user should attend to, including action confirmations. Restart hints
-  (`Restart Cmdr to apply…`), instructional cues triggered by a wrong move (`Use F5 to copy files from MTP devices`),
-  soft explanations of unexpected UI state (`Your file disappeared from view because hidden files aren't shown.`),
-  background activity the user opted into (`Error report sent`), routine action confirmations (`Copied N items`,
-  `N items ready to move`), the Quick Look Space-key educational hint, and "operation completed but nothing actually
-  changed" outcomes (`Copy complete: skipped all 5 files, nothing was copied`).
+  (`Restart Cmdr to apply…`), instructional cues triggered by a wrong move
+  (`The clipboard can't carry files from this device. Use F5 to copy them.`), soft explanations of unexpected UI state
+  (`Your file disappeared from view because hidden files aren't shown.`), background activity the user opted into
+  (`Error report sent`), routine action confirmations (`Copied N items`, `N items ready to move`), the Quick Look
+  Space-key educational hint, and "operation completed but nothing actually changed" outcomes
+  (`Copy complete: skipped all 5 files, nothing was copied`).
 - **`success`** (green): one-shot confirmations that something meaningful succeeded. Host removed, share disconnected,
   password forgotten, direct SMB upgrade succeeded, transfer completed with at least one file actually transferred.
 - **`warn`** (amber): the user tried something that didn't go through, but no operation failed and no data is at risk.

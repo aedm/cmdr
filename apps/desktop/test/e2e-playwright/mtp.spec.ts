@@ -877,7 +877,9 @@ test.describe('MTP clipboard rejection', () => {
     // Press Cmd+C (copy to clipboard). Toast appears asynchronously; the
     // helper polls for the message and dismisses it after asserting.
     await pressKey(tauriPage, `${CTRL_OR_META}+c`)
-    await expectAndDismissToast(tauriPage, 'Use F5 to copy files from MTP devices', { timeout: 5000 })
+    await expectAndDismissToast(tauriPage, "The clipboard can't carry files from this device. Use F5 to copy them.", {
+      timeout: 5000,
+    })
   })
 
   test('Cmd+X on MTP file shows rejection toast', async ({ tauriPage }) => {
@@ -902,7 +904,9 @@ test.describe('MTP clipboard rejection', () => {
     // Press Cmd+X (cut to clipboard). Toast appears asynchronously; the
     // helper polls for the message and dismisses it after asserting.
     await pressKey(tauriPage, `${CTRL_OR_META}+x`)
-    await expectAndDismissToast(tauriPage, 'Use F6 to move files from MTP devices', { timeout: 5000 })
+    await expectAndDismissToast(tauriPage, "The clipboard can't carry files from this device. Use F6 to move them.", {
+      timeout: 5000,
+    })
   })
 
   test('Cmd+V into MTP folder shows rejection toast', async ({ tauriPage }) => {
@@ -938,7 +942,7 @@ test.describe('MTP clipboard rejection', () => {
     await tauriPage.keyboard.down(CTRL_OR_META)
     await tauriPage.keyboard.press('v')
     await tauriPage.keyboard.up(CTRL_OR_META)
-    await expectAndDismissToast(tauriPage, 'Use F5 to copy files to MTP devices', { timeout: 5000 })
+    await expectAndDismissToast(tauriPage, 'Use F5 to copy files onto this device.', { timeout: 5000 })
   })
 })
 

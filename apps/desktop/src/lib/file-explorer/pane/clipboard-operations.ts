@@ -13,6 +13,7 @@ import { getAppLogger } from '$lib/logging/logger'
 import { isPlainFilesystemPath } from '$lib/path/canonical'
 import { formatNumber } from '$lib/file-explorer/selection/selection-info-utils'
 import { tString } from '$lib/intl/messages.svelte'
+import { getEffectiveShortcuts, toDisplayShortcut } from '$lib/shortcuts'
 import type { MessageKey } from '$lib/intl/keys.gen'
 import type { TransferOperationType } from '../types'
 import { getCommonParentPath } from './transfer-operations'
@@ -28,13 +29,26 @@ const log = getAppLogger('fileExplorer')
 type DialogState = ReturnType<typeof createDialogState>
 
 /**
- * True when the focused pane's paths can't go on the system clipboard — the
- * copy/cut/paste refusal that points the user at F5/F6 instead.
+ * Which NOUN the refusal toasts call this volume. `null` means it isn't one of
+ * the kinds that refuse at all.
+ *
+ * Two families, because that's where the right word splits: MTP covers phones,
+ * e-readers, and cameras, so "device" is the only honest noun for it, while SFTP
+ * and WebDAV are both a "server". ❌ Don't collapse them back into one word: the
+ * three toasts said "MTP devices" for every kind once, and an SFTP user read a
+ * phone message and reported it as a bug (ERR-HGGU3).
+ */
+type ClipboardRefusalFamily = 'device' | 'server'
+
+/**
+ * The family whose paths can't go on the system clipboard — the copy/cut/paste
+ * refusal that points the user at the copy/move keys instead — or `null` when
+ * this volume has no such trouble.
  *
  * Four kinds qualify, and every one of them hands out a scheme path no other app
  * can open: `mtp://`, `adb://`, `sftp://`, `webdav://`. ❌ Don't generalize this
  * to a "no system clipboard" capability: `network` and `search-results` lack one
- * too, and an MTP-worded toast firing on a reachable network paste would be a
+ * too, and a device-worded toast firing on a reachable network paste would be a
  * new, mis-worded toast.
  *
  * ❗ A positive list, and the union it reads from doesn't check it: a new
@@ -46,13 +60,56 @@ type DialogState = ReturnType<typeof createDialogState>
  * byte-equivalent to the old `volumeId.startsWith('mtp-')` gate — live MTP panes
  * carry `mtp-{…}` ids, which classify to `kind === 'mtp'`; nothing else does
  * (pinned by the equivalence test in `clipboard-operations.test.ts`).
- *
- * ❗ The three toasts behind this gate still say "MTP devices", so an SFTP or
- * WebDAV pane refuses a copy with device wording. Reported as ERR-HGGU3.
  */
-function isSchemePathClipboardRefusal(volumeId: string): boolean {
+function schemePathClipboardFamily(volumeId: string): ClipboardRefusalFamily | null {
   const kind = capabilitiesFor(volumeId).kind
-  return kind === 'mtp' || kind === 'adb' || kind === 'sftp' || kind === 'webdav'
+  if (kind === 'mtp' || kind === 'adb') return 'device'
+  if (kind === 'sftp' || kind === 'webdav') return 'server'
+  return null
+}
+
+/**
+ * The combo bound to a transfer command right now, formatted for display, for a
+ * refusal toast to name.
+ *
+ * ❗ Read live, ❌ never a literal "F5": both are rebindable in Settings >
+ * Shortcuts, and a hardcoded key name starts lying the moment someone changes
+ * one. Snapshot semantics are right here — a toast is a moment's text, not a
+ * live-updating surface — and an unbound command falls back to its default, the
+ * same contract `transfer-error-messages.ts` uses for `file.deletePermanently`.
+ */
+function transferShortcut(commandId: 'file.copy' | 'file.move'): string {
+  const fallback = commandId === 'file.copy' ? 'F5' : 'F6'
+  return toDisplayShortcut(getEffectiveShortcuts(commandId)[0] ?? fallback)
+}
+
+/** The "use the copy key instead" toast for a source-side (⌘C) refusal. */
+function copyOutRefusalToast(family: ClipboardRefusalFamily | null): string {
+  const copyKey = transferShortcut('file.copy')
+  if (family === 'device') return tString('fileExplorer.clipboard.copyFromDevice', { copyKey })
+  if (family === 'server') return tString('fileExplorer.clipboard.copyFromServer', { copyKey })
+  return tString('fileExplorer.clipboard.copyFromUnknown', { copyKey })
+}
+
+/**
+ * The "use the copy key instead" toast for a destination-side (⌘V) refusal.
+ *
+ * Takes a family, never `null`: a paste is refused off the FOCUSED pane's own
+ * volume, which is the thing that classified in the first place.
+ */
+function copyInRefusalToast(family: ClipboardRefusalFamily): string {
+  const copyKey = transferShortcut('file.copy')
+  return family === 'device'
+    ? tString('fileExplorer.clipboard.copyToDevice', { copyKey })
+    : tString('fileExplorer.clipboard.copyToServer', { copyKey })
+}
+
+/** The "use the move key instead" toast for a source-side (⌘X) refusal. */
+function moveOutRefusalToast(family: ClipboardRefusalFamily | null): string {
+  const moveKey = transferShortcut('file.move')
+  if (family === 'device') return tString('fileExplorer.clipboard.moveFromDevice', { moveKey })
+  if (family === 'server') return tString('fileExplorer.clipboard.moveFromServer', { moveKey })
+  return tString('fileExplorer.clipboard.moveFromUnknown', { moveKey })
 }
 
 /**
@@ -167,9 +224,9 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
   }
 
   /**
-   * True when a SEARCH-RESULTS pane's rows can't go on the system clipboard,
-   * the same refusal `isSchemePathClipboardRefusal` gives a live phone or
-   * server pane.
+   * Whether a SEARCH-RESULTS pane's rows can go on the system clipboard, and if
+   * not, which noun the refusal should use — the same refusal
+   * `schemePathClipboardFamily` gives a live phone or server pane.
    *
    * Two gates, and the ORDER matters. The scheme gate runs first and answers
    * from the row path alone: anything that isn't a plain absolute filesystem
@@ -187,13 +244,21 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
    * ANY offending row refuses the whole set. A partial copy would put a subset on
    * the clipboard under a toast that says the copy happened, which is worse than
    * refusing.
+   *
+   * `family: null` on a refusal is the honest answer, ❌ never a guessed noun: it
+   * is exactly the unplugged-device case, where the volume that would name it has
+   * left the list. Its toast says "these files" and skips the noun.
    */
-  function snapshotClipboardIsRefused({ paths, snapshotId }: { paths: string[]; snapshotId: string }): boolean {
-    if (paths.some((path) => !isPlainFilesystemPath(path))) return true
+  function snapshotClipboardRefusal({ paths, snapshotId }: { paths: string[]; snapshotId: string }): {
+    refused: boolean
+    family: ClipboardRefusalFamily | null
+  } {
     const volumeId = getSnapshot(snapshotId)?.volumeId
+    const family = volumeId === undefined ? null : schemePathClipboardFamily(volumeId)
+    if (paths.some((path) => !isPlainFilesystemPath(path))) return { refused: true, family }
     // The rows came out of this snapshot a moment ago, so it's there. If it somehow
     // isn't, refusing beats guessing which volume they're on.
-    return volumeId === undefined || isSchemePathClipboardRefusal(volumeId)
+    return { refused: volumeId === undefined || family !== null, family }
   }
 
   /** Copies selected files (or cursor file) to the system clipboard. */
@@ -202,8 +267,9 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
     // regular listing-id path can't apply because there's no backend listing.
     const snapshotClip = getSnapshotClipboardPaths()
     if (snapshotClip) {
-      if (snapshotClipboardIsRefused(snapshotClip)) {
-        addToast(tString('fileExplorer.clipboard.useF5FromMtp'), { level: 'info' })
+      const refusal = snapshotClipboardRefusal(snapshotClip)
+      if (refusal.refused) {
+        addToast(copyOutRefusalToast(refusal.family), { level: 'info' })
         return
       }
       try {
@@ -224,8 +290,9 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
       return
     }
 
-    if (isSchemePathClipboardRefusal(state.volumeId)) {
-      addToast(tString('fileExplorer.clipboard.useF5FromMtp'), { level: 'info' })
+    const copyFamily = schemePathClipboardFamily(state.volumeId)
+    if (copyFamily) {
+      addToast(copyOutRefusalToast(copyFamily), { level: 'info' })
       return
     }
 
@@ -247,8 +314,9 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
   async function cutToClipboard() {
     const snapshotClip = getSnapshotClipboardPaths()
     if (snapshotClip) {
-      if (snapshotClipboardIsRefused(snapshotClip)) {
-        addToast(tString('fileExplorer.clipboard.useF6FromMtp'), { level: 'info' })
+      const refusal = snapshotClipboardRefusal(snapshotClip)
+      if (refusal.refused) {
+        addToast(moveOutRefusalToast(refusal.family), { level: 'info' })
         return
       }
       try {
@@ -271,8 +339,9 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
       return
     }
 
-    if (isSchemePathClipboardRefusal(state.volumeId)) {
-      addToast(tString('fileExplorer.clipboard.useF6FromMtp'), { level: 'info' })
+    const cutFamily = schemePathClipboardFamily(state.volumeId)
+    if (cutFamily) {
+      addToast(moveOutRefusalToast(cutFamily), { level: 'info' })
       return
     }
 
@@ -324,13 +393,13 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
       // Check the scheme-path kinds before reading the clipboard; a paste onto
       // one is always rejected, so there's no point reading the system clipboard
       // just to reject it. The capability decides the refusal, not a
-      // `startsWith('mtp-')` string. Its "Use F5…" copy stays separate from the
-      // shared guard because it points the user at the F5/F6 flow this paste
-      // lacks.
+      // `startsWith('mtp-')` string. Its copy stays separate from the shared
+      // guard because it points the user at the copy flow this paste lacks.
       const focused = access.getFocusedPane()
       const volumeId = access.getPaneVolumeId(focused)
-      if (isSchemePathClipboardRefusal(volumeId)) {
-        addToastForPane(focused, tString('fileExplorer.clipboard.useF5ToMtp'), { level: 'info' })
+      const destFamily = schemePathClipboardFamily(volumeId)
+      if (destFamily) {
+        addToastForPane(focused, copyInRefusalToast(destFamily), { level: 'info' })
         return
       }
 

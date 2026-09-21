@@ -611,13 +611,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "請用 F5 從 MTP 裝置複製檔案",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "這個裝置上的檔案不能放到剪貼板。請用 {copyKey} 複製。",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "請用 F6 從 MTP 裝置移動檔案",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "這個裝置上的檔案不能放到剪貼板。請用 {moveKey} 移動。",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "這個伺服器上的檔案不能放到剪貼板。請用 {copyKey} 複製。",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "這個伺服器上的檔案不能放到剪貼板。請用 {moveKey} 移動。",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "這些檔案不能放到剪貼板。請用 {copyKey} 複製。",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "這些檔案不能放到剪貼板。請用 {moveKey} 移動。",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "Cmdr 還不能用編輯器編輯這個檔案，因為它不是你 Mac 上的一般檔案。請按 F3 檢視。",
   "@fileExplorer.edit.notOnThisMac": {
@@ -655,9 +671,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "請用 F5 把檔案複製到 MTP 裝置",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "請用 {copyKey} 把檔案複製到這個裝置。",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "請用 {copyKey} 把檔案複製到這個伺服器。",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "剪貼板上沒有檔案。請先用 ⌘C 複製檔案。",
   "@fileExplorer.clipboard.empty": {

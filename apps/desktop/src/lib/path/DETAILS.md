@@ -49,6 +49,6 @@ a subfolder carries no trailing slash and worked fine, which made it look interm
 
 `isPlainFilesystemPath` is that guard. It answers false for every virtual-volume URL and for `~`-rooted and relative
 paths, since none of them resolves without a base the OS API lacks. Its live caller is the search-results clipboard
-refusal (`file-explorer/pane/clipboard-operations.ts::snapshotClipboardIsRefused`), where a snapshot row can name a file
+refusal (`file-explorer/pane/clipboard-operations.ts::snapshotClipboardRefusal`), where a snapshot row can name a file
 on an MTP storage or an ADB device: `NSURL::fileURLWithPath` reads an unknown scheme as a RELATIVE path and returns a
 file URL under the process working directory, so a missing check ships a mangled path rather than a refusal.

@@ -18,6 +18,7 @@ const {
   getSnapshotSpy,
   getCommonParentPathSpy,
   pasteClipboardContentAsFileSpy,
+  getEffectiveShortcutsSpy,
   logErrorSpy,
 } = vi.hoisted(() => ({
   copyFilesToClipboardSpy: vi.fn<() => Promise<number>>(),
@@ -32,6 +33,7 @@ const {
   getSnapshotSpy: vi.fn<(id: string) => { volumeId: string } | undefined>(),
   getCommonParentPathSpy: vi.fn<() => string>(),
   pasteClipboardContentAsFileSpy: vi.fn<(deps: { onNothingCreated: () => void }) => Promise<void>>(),
+  getEffectiveShortcutsSpy: vi.fn<(commandId: string) => string[]>(),
   logErrorSpy: vi.fn(),
 }))
 
@@ -86,6 +88,15 @@ vi.mock('./transfer-operations', () => ({
 // An empty store is enough for every id this suite exercises.
 const volumeStore = vi.hoisted(() => ({ list: [] as VolumeInfo[] }))
 vi.mock('$lib/stores/volume-store.svelte', () => ({ getVolumes: () => volumeStore.list }))
+
+// The refusal toasts NAME the key bound to `file.copy` / `file.move`, which is
+// why this is a spy rather than the real store: a test can rebind one and watch
+// the sentence follow. `toDisplayShortcut` keeps the canonical spelling here
+// (it only swaps in display glyphs like ⌫, which these combos don't carry).
+vi.mock('$lib/shortcuts', () => ({
+  getEffectiveShortcuts: getEffectiveShortcutsSpy,
+  toDisplayShortcut: (combo: string) => combo,
+}))
 
 vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({ error: logErrorSpy, warn: vi.fn(), info: vi.fn(), debug: vi.fn() }),
@@ -165,6 +176,8 @@ beforeEach(() => {
   resolvePathVolumeSpy.mockResolvedValue({ volume: null })
   // A snapshot of a boot-disk search unless a test says otherwise.
   getSnapshotSpy.mockReturnValue({ volumeId: 'root' })
+  // The shipped defaults, unless a test rebinds one.
+  getEffectiveShortcutsSpy.mockImplementation((commandId) => (commandId === 'file.move' ? ['F6'] : ['F5']))
 })
 
 describe('copyToClipboard', () => {
@@ -208,7 +221,9 @@ describe('copyToClipboard', () => {
 
     await createClipboardOperations(access, buildDialogs()).copyToClipboard()
 
-    expect(addToastSpy).toHaveBeenCalledWith('Use F5 to copy files from MTP devices', { level: 'info' })
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this device. Use F5 to copy them.", {
+      level: 'info',
+    })
     expect(copyPathsToClipboardSpy).not.toHaveBeenCalled()
     expect(copyFilesToClipboardSpy).not.toHaveBeenCalled()
   })
@@ -229,29 +244,38 @@ describe('copyToClipboard', () => {
     expect(copyPathsToClipboardSpy).toHaveBeenCalledWith(['/Volumes/Stick/a.txt'])
   })
 
-  it('refuses a snapshot copy of a device row after the device is unplugged, when no volume can place it', async () => {
+  it('refuses a snapshot copy of a device row after the device is unplugged, and still names the device', async () => {
     // The device went away under an open snapshot pane, so the volume list no
-    // longer holds it and nothing can classify its volume. The row path is still
-    // `mtp://…`, which `NSURL::fileURLWithPath` reads as RELATIVE, so the scheme
-    // itself has to refuse, ahead of any volume lookup.
+    // longer holds it. The row path is still `mtp://…`, which
+    // `NSURL::fileURLWithPath` reads as RELATIVE, so the scheme itself refuses
+    // ahead of any volume lookup. The snapshot still remembers WHICH volume its
+    // search covered, so the toast keeps the right noun.
     resolveSnapshotPathsSpy.mockReturnValue(['mtp://0-5/65537/DCIM/a.jpg'])
+    getSnapshotSpy.mockReturnValue({ volumeId: 'mtp-0-5:65537' })
     const paneRef = buildPaneRef({ currentPath: 'search-results://sr-1' })
     const access = buildAccess({ paneRef, volumeId: 'search-results', volumes: [] })
 
     await createClipboardOperations(access, buildDialogs()).copyToClipboard()
 
-    expect(addToastSpy).toHaveBeenCalledWith('Use F5 to copy files from MTP devices', { level: 'info' })
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this device. Use F5 to copy them.", {
+      level: 'info',
+    })
     expect(copyPathsToClipboardSpy).not.toHaveBeenCalled()
   })
 
   it('refuses a snapshot copy when only SOME rows carry a scheme, so a mixed set never half-copies', async () => {
+    // The snapshot's own volume is the boot disk, which refuses nothing, so
+    // there's no device or server to name: the toast says "these files" rather
+    // than guessing where the `adb://` row came from.
     resolveSnapshotPathsSpy.mockReturnValue(['/Users/x/a.txt', 'adb://serial/sdcard/b.jpg'])
     const paneRef = buildPaneRef({ currentPath: 'search-results://sr-1' })
     const access = buildAccess({ paneRef, volumeId: 'search-results', volumes: [] })
 
     await createClipboardOperations(access, buildDialogs()).copyToClipboard()
 
-    expect(addToastSpy).toHaveBeenCalledWith('Use F5 to copy files from MTP devices', { level: 'info' })
+    expect(addToastSpy).toHaveBeenCalledWith("These files can't go on the clipboard. Use F5 to copy them.", {
+      level: 'info',
+    })
     expect(copyPathsToClipboardSpy).not.toHaveBeenCalled()
   })
 
@@ -267,18 +291,21 @@ describe('copyToClipboard', () => {
     expect(copyFilesToClipboardSpy).toHaveBeenCalled()
   })
 
-  it('refuses MTP copy with a toast pointing at F5 and never touches the clipboard IPC', async () => {
+  it('refuses MTP copy with a toast pointing at the copy key and never touches the clipboard IPC', async () => {
     const access = buildAccess({ volumeId: 'mtp-device-1' })
 
     await createClipboardOperations(access, buildDialogs()).copyToClipboard()
 
-    expect(addToastSpy).toHaveBeenCalledWith('Use F5 to copy files from MTP devices', { level: 'info' })
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this device. Use F5 to copy them.", {
+      level: 'info',
+    })
     expect(copyFilesToClipboardSpy).not.toHaveBeenCalled()
   })
 
-  it('refuses an SFTP copy the same way, rather than putting an `sftp://` path on the clipboard', async () => {
-    // A server pane's paths mean nothing to the OS clipboard, exactly like MTP's.
-    // The wording stays the MTP one until the servers work gives it its own.
+  it('refuses an SFTP copy as a SERVER, not as a device', async () => {
+    // A server pane's paths mean nothing to the OS clipboard, exactly like MTP's,
+    // but a phone-worded refusal on a server is what ERR-HGGU3 reported: the user
+    // read "MTP devices" on an SSH server and took it for a bug.
     const access = buildAccess({
       volumeId: 'sftp-nas-22-ada',
       volumes: [{ id: 'sftp-nas-22-ada', name: 'photos' }],
@@ -287,8 +314,36 @@ describe('copyToClipboard', () => {
 
     await createClipboardOperations(access, buildDialogs()).copyToClipboard()
 
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this server. Use F5 to copy them.", {
+      level: 'info',
+    })
     expect(copyFilesToClipboardSpy).not.toHaveBeenCalled()
     expect(copyPathsToClipboardSpy).not.toHaveBeenCalled()
+  })
+
+  it('names the key the user actually bound, so a rebound copy command is what the toast says', async () => {
+    // The whole point of reading the binding live: someone who moved copy off F5
+    // must not be told to press F5.
+    getEffectiveShortcutsSpy.mockImplementation((commandId) => (commandId === 'file.copy' ? ['⌘⇧C'] : ['F6']))
+    const access = buildAccess({ volumeId: 'mtp-device-1' })
+
+    await createClipboardOperations(access, buildDialogs()).copyToClipboard()
+
+    expect(addToastSpy).toHaveBeenCalledWith(
+      "The clipboard can't carry files from this device. Use ⌘⇧C to copy them.",
+      { level: 'info' },
+    )
+  })
+
+  it('falls back to the default key when the copy command has nothing bound', async () => {
+    getEffectiveShortcutsSpy.mockReturnValue([])
+    const access = buildAccess({ volumeId: 'mtp-device-1' })
+
+    await createClipboardOperations(access, buildDialogs()).copyToClipboard()
+
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this device. Use F5 to copy them.", {
+      level: 'info',
+    })
   })
 
   it('copies via listing id on a regular pane and forwards hasParent + showHiddenFiles', async () => {
@@ -362,8 +417,9 @@ describe('cutToClipboard', () => {
     expect(addToastSpy).toHaveBeenCalledWith('2 items ready to move. Paste to complete.', { level: 'info' })
   })
 
-  it('refuses a snapshot cut whose rows sit on an MTP storage, pointing at F6', async () => {
+  it('refuses a snapshot cut whose rows sit on an MTP storage, pointing at the move key', async () => {
     resolveSnapshotPathsSpy.mockReturnValue(['mtp://0-5/65537/DCIM/a.jpg'])
+    getSnapshotSpy.mockReturnValue({ volumeId: 'mtp-0-5:65537' })
     const paneRef = buildPaneRef({ currentPath: 'search-results://sr-1' })
     const access = buildAccess({
       paneRef,
@@ -373,28 +429,63 @@ describe('cutToClipboard', () => {
 
     await createClipboardOperations(access, buildDialogs()).cutToClipboard()
 
-    expect(addToastSpy).toHaveBeenCalledWith('Use F6 to move files from MTP devices', { level: 'info' })
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this device. Use F6 to move them.", {
+      level: 'info',
+    })
     expect(cutPathsToClipboardSpy).not.toHaveBeenCalled()
     expect(cutFilesToClipboardSpy).not.toHaveBeenCalled()
   })
 
-  it('refuses a snapshot cut of a device row after the device is unplugged, when no volume can place it', async () => {
+  it('refuses a snapshot cut of a device row after the device is unplugged, and still names the device', async () => {
     resolveSnapshotPathsSpy.mockReturnValue(['mtp://0-5/65537/DCIM/a.jpg'])
+    getSnapshotSpy.mockReturnValue({ volumeId: 'mtp-0-5:65537' })
     const paneRef = buildPaneRef({ currentPath: 'search-results://sr-1' })
     const access = buildAccess({ paneRef, volumeId: 'search-results', volumes: [] })
 
     await createClipboardOperations(access, buildDialogs()).cutToClipboard()
 
-    expect(addToastSpy).toHaveBeenCalledWith('Use F6 to move files from MTP devices', { level: 'info' })
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this device. Use F6 to move them.", {
+      level: 'info',
+    })
     expect(cutPathsToClipboardSpy).not.toHaveBeenCalled()
   })
 
-  it('refuses MTP cut with a toast pointing at F6', async () => {
+  it('refuses a snapshot cut with no noun when the snapshot names no refusing volume', async () => {
+    resolveSnapshotPathsSpy.mockReturnValue(['sftp://nas/home/ada/a.txt'])
+    const paneRef = buildPaneRef({ currentPath: 'search-results://sr-1' })
+    const access = buildAccess({ paneRef, volumeId: 'search-results', volumes: [] })
+
+    await createClipboardOperations(access, buildDialogs()).cutToClipboard()
+
+    expect(addToastSpy).toHaveBeenCalledWith("These files can't go on the clipboard. Use F6 to move them.", {
+      level: 'info',
+    })
+    expect(cutPathsToClipboardSpy).not.toHaveBeenCalled()
+  })
+
+  it('refuses MTP cut with a toast pointing at the move key', async () => {
     const access = buildAccess({ volumeId: 'mtp-device-1' })
 
     await createClipboardOperations(access, buildDialogs()).cutToClipboard()
 
-    expect(addToastSpy).toHaveBeenCalledWith('Use F6 to move files from MTP devices', { level: 'info' })
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this device. Use F6 to move them.", {
+      level: 'info',
+    })
+    expect(cutFilesToClipboardSpy).not.toHaveBeenCalled()
+  })
+
+  it('refuses a WebDAV cut as a SERVER, with the move key', async () => {
+    const access = buildAccess({
+      volumeId: 'webdav-nc-ada',
+      volumes: [{ id: 'webdav-nc-ada', name: 'Nextcloud' }],
+    })
+    volumeStore.list = [{ id: 'webdav-nc-ada', fsType: 'webdav', category: 'network' } as unknown as VolumeInfo]
+
+    await createClipboardOperations(access, buildDialogs()).cutToClipboard()
+
+    expect(addToastSpy).toHaveBeenCalledWith("The clipboard can't carry files from this server. Use F6 to move them.", {
+      level: 'info',
+    })
     expect(cutFilesToClipboardSpy).not.toHaveBeenCalled()
   })
 
@@ -437,7 +528,21 @@ describe('pasteFromClipboard', () => {
 
     await createClipboardOperations(access, buildDialogs()).pasteFromClipboard(false)
 
-    expect(addToastSpy).toHaveBeenCalledWith('Use F5 to copy files to MTP devices', { level: 'info' })
+    expect(addToastSpy).toHaveBeenCalledWith('Use F5 to copy files onto this device.', { level: 'info' })
+    expect(readClipboardFilesSpy).not.toHaveBeenCalled()
+    expect(dialogsStub.startTransferProgress).not.toHaveBeenCalled()
+  })
+
+  it('refuses pasting onto an SFTP pane as a SERVER, before reading the clipboard', async () => {
+    const access = buildAccess({
+      volumeId: 'sftp-nas-22-ada',
+      volumes: [{ id: 'sftp-nas-22-ada', name: 'photos' }],
+    })
+    volumeStore.list = [{ id: 'sftp-nas-22-ada', fsType: 'sftp', category: 'network' } as unknown as VolumeInfo]
+
+    await createClipboardOperations(access, buildDialogs()).pasteFromClipboard(false)
+
+    expect(addToastSpy).toHaveBeenCalledWith('Use F5 to copy files onto this server.', { level: 'info' })
     expect(readClipboardFilesSpy).not.toHaveBeenCalled()
     expect(dialogsStub.startTransferProgress).not.toHaveBeenCalled()
   })
@@ -795,9 +900,9 @@ describe('MTP clipboard-refusal equivalence', () => {
 
     await createClipboardOperations(access, buildDialogs()).pasteFromClipboard(false)
 
-    // No MTP toast; the gate falls through to the real clipboard read, which
+    // No device toast; the gate falls through to the real clipboard read, which
     // here finds an empty clipboard — exactly the pre-conversion behavior.
-    expect(addToastSpy).not.toHaveBeenCalledWith('Use F5 to copy files to MTP devices', { level: 'info' })
+    expect(addToastSpy).not.toHaveBeenCalledWith('Use F5 to copy files onto this device.', { level: 'info' })
     expect(readClipboardFilesSpy).toHaveBeenCalled()
   })
 })

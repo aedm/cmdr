@@ -23,7 +23,7 @@ dialog, error rendering. One set serves all via `operationType`; delete/trash re
   `backgrounded` and `destroyed` stay plain `let`s: teardown reads them during reactive-scope disposal, where a rune
   goes stale, which is how a just-queued transfer once got cancelled.
 - **One transfer entry seam**: F5/F6, drag-and-drop, and paste all prepare through `pane/transfer-entry.ts`. The paste
-  path's MTP refusal stays SEPARATE and BEFORE the shared guard.
+  path's scheme-path refusal stays SEPARATE and BEFORE the shared guard.
 - **Batch IPC for selection lookups** (`get_paths_at_indices` / `get_files_at_indices`), ❌ never a per-index loop: 50k
   files costs 5-10 s vs ~1 ms.
 - **Speed, ETA, and bars are backend-owned and SHARED with the queue window** (`../TransferProgressReadout.svelte`): ❌

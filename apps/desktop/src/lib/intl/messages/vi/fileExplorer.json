@@ -613,13 +613,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "Dùng F5 để sao chép tệp từ thiết bị MTP",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "Bảng nhớ tạm không mang được tệp từ thiết bị này. Dùng {copyKey} để sao chép chúng.",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "Dùng F6 để di chuyển tệp từ thiết bị MTP",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "Bảng nhớ tạm không mang được tệp từ thiết bị này. Dùng {moveKey} để di chuyển chúng.",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "Bảng nhớ tạm không mang được tệp từ máy chủ này. Dùng {copyKey} để sao chép chúng.",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "Bảng nhớ tạm không mang được tệp từ máy chủ này. Dùng {moveKey} để di chuyển chúng.",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "Không thể đưa những tệp này lên bảng nhớ tạm. Dùng {copyKey} để sao chép chúng.",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "Không thể đưa những tệp này lên bảng nhớ tạm. Dùng {moveKey} để di chuyển chúng.",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "Cmdr chưa thể sửa tệp này trong trình soạn thảo, vì đây không phải là tệp thông thường trên máy Mac của bạn. Nhấn F3 để xem tệp.",
   "@fileExplorer.edit.notOnThisMac": {
@@ -657,9 +673,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "Dùng F5 để sao chép tệp vào thiết bị MTP",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "Dùng {copyKey} để sao chép tệp vào thiết bị này.",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "Dùng {copyKey} để sao chép tệp vào máy chủ này.",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "Không có tệp nào trên bảng nhớ tạm. Hãy sao chép tệp trước bằng ⌘C.",
   "@fileExplorer.clipboard.empty": {

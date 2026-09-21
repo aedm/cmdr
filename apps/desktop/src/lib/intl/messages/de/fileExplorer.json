@@ -613,13 +613,29 @@
   "@fileExplorer.clipboard.cutReady": {
     "sourceHash": "846d8af"
   },
-  "fileExplorer.clipboard.useF5FromMtp": "Nutze F5, um Dateien von MTP-Geräten zu kopieren",
-  "@fileExplorer.clipboard.useF5FromMtp": {
-    "sourceHash": "e0dd2b5"
+  "fileExplorer.clipboard.copyFromDevice": "Die Zwischenablage kann keine Dateien von diesem Gerät aufnehmen. Nutze {copyKey}, um sie zu kopieren.",
+  "@fileExplorer.clipboard.copyFromDevice": {
+    "sourceHash": "4948031"
   },
-  "fileExplorer.clipboard.useF6FromMtp": "Nutze F6, um Dateien von MTP-Geräten zu bewegen",
-  "@fileExplorer.clipboard.useF6FromMtp": {
-    "sourceHash": "cd6f83f"
+  "fileExplorer.clipboard.moveFromDevice": "Die Zwischenablage kann keine Dateien von diesem Gerät aufnehmen. Nutze {moveKey}, um sie zu bewegen.",
+  "@fileExplorer.clipboard.moveFromDevice": {
+    "sourceHash": "e0d12fe"
+  },
+  "fileExplorer.clipboard.copyFromServer": "Die Zwischenablage kann keine Dateien von diesem Server aufnehmen. Nutze {copyKey}, um sie zu kopieren.",
+  "@fileExplorer.clipboard.copyFromServer": {
+    "sourceHash": "a1a1dce"
+  },
+  "fileExplorer.clipboard.moveFromServer": "Die Zwischenablage kann keine Dateien von diesem Server aufnehmen. Nutze {moveKey}, um sie zu bewegen.",
+  "@fileExplorer.clipboard.moveFromServer": {
+    "sourceHash": "50e6502"
+  },
+  "fileExplorer.clipboard.copyFromUnknown": "Diese Dateien lassen sich nicht in die Zwischenablage legen. Nutze {copyKey}, um sie zu kopieren.",
+  "@fileExplorer.clipboard.copyFromUnknown": {
+    "sourceHash": "659d6e0"
+  },
+  "fileExplorer.clipboard.moveFromUnknown": "Diese Dateien lassen sich nicht in die Zwischenablage legen. Nutze {moveKey}, um sie zu bewegen.",
+  "@fileExplorer.clipboard.moveFromUnknown": {
+    "sourceHash": "6ae2091"
   },
   "fileExplorer.edit.notOnThisMac": "Cmdr kann diese Datei noch nicht im Editor bearbeiten, weil sie keine normale Datei auf deinem Mac ist. Drücke F3, um sie anzusehen.",
   "@fileExplorer.edit.notOnThisMac": {
@@ -657,9 +673,13 @@
   "@fileExplorer.edit.timedOut": {
     "sourceHash": "70d283f"
   },
-  "fileExplorer.clipboard.useF5ToMtp": "Nutze F5, um Dateien auf MTP-Geräte zu kopieren",
-  "@fileExplorer.clipboard.useF5ToMtp": {
-    "sourceHash": "8c20d0e"
+  "fileExplorer.clipboard.copyToDevice": "Nutze {copyKey}, um Dateien auf dieses Gerät zu kopieren.",
+  "@fileExplorer.clipboard.copyToDevice": {
+    "sourceHash": "f56d0c4"
+  },
+  "fileExplorer.clipboard.copyToServer": "Nutze {copyKey}, um Dateien auf diesen Server zu kopieren.",
+  "@fileExplorer.clipboard.copyToServer": {
+    "sourceHash": "f6002a0"
   },
   "fileExplorer.clipboard.empty": "Keine Dateien in der Zwischenablage. Kopiere zuerst Dateien mit ⌘C.",
   "@fileExplorer.clipboard.empty": {
