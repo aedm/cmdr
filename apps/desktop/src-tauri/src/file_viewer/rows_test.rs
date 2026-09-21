@@ -17,7 +17,7 @@ use std::rc::Rc;
 
 use super::ViewerError;
 use super::encoding::{FileEncoding, decode_line};
-use super::rows::{FileSource, MAX_WINDOW_BYTES, RowRuler, RowSource, SEGMENT_BYTES, SliceSource};
+use super::rows::{FileSource, MAX_WINDOW_BYTES, RowReader, RowRuler, RowSource, RowSpan, SEGMENT_BYTES, SliceSource};
 use crate::test_support::TestDir;
 
 /// The tiny grid the property tests run on. Even (UTF-16 code units are 2 bytes)
@@ -818,4 +818,195 @@ fn a_file_source_produces_the_same_rows_as_a_slice_source() {
         assert_eq!(ruler.row_start(row.start).unwrap(), row.start);
         assert_eq!(ruler.row_start(row.end - 1).unwrap(), row.start);
     }
+}
+
+// ---------------------------------------------------------------------------
+// The forward walk reads the SAME boundary set
+// ---------------------------------------------------------------------------
+
+/// Every row `RowReader` produces, walking from the file's start.
+fn reader_rows(case: &Case, segment: u64) -> Vec<RowSpan> {
+    let mut reader = RowReader::with_segment(SliceSource::new(&case.bytes), case.encoding, 0, segment);
+    let mut out = Vec::new();
+    while let Some(span) = reader.next_span().expect("slice reads cannot fail") {
+        assert!(
+            span.end > span.start || span.start == case.bytes.len() as u64,
+            "{}: zero-length row at {}",
+            case.name,
+            span.start
+        );
+        out.push(span);
+    }
+    out
+}
+
+/// ❗ The load-bearing test for the second reading of the rule.
+///
+/// `RowReader` walks forward off the newline stream instead of probing backward with
+/// `RowRuler`, because a two-segment read per row would cost a 4 096-row fetch of an
+/// ordinary file 160 MB. That earns it a second implementation ONLY while it provably
+/// produces the same boundaries, which is what this asserts over every fixture in the
+/// corpus: if it ever goes red, the walk is wrong, not the ruler.
+#[test]
+fn the_forward_walk_produces_the_same_boundaries_as_the_ruler() {
+    for case in tiny_grid_corpus() {
+        let expected: Vec<u64> = tiny_rows(&case).iter().map(|r| r.start).collect();
+        let walked: Vec<u64> = reader_rows(&case, TEST_SEGMENT)
+            .iter()
+            .filter(|span| span.start < case.bytes.len() as u64)
+            .map(|span| span.start)
+            .collect();
+        assert_eq!(walked, expected, "{}", case.name);
+    }
+}
+
+/// A row's text is its bytes minus the newline it ended at, and a row Cmdr ended
+/// itself keeps every byte. Joining the texts back with the right delimiters has to
+/// reproduce the file, which is invariant I3 at the row level.
+#[test]
+fn walking_the_rows_reproduces_the_file() {
+    for case in tiny_grid_corpus() {
+        let mut reader = RowReader::with_segment(SliceSource::new(&case.bytes), case.encoding, 0, TEST_SEGMENT);
+        let mut rebuilt: Vec<u8> = Vec::new();
+        while let Some(span) = reader.next_span().expect("slice reads cannot fail") {
+            rebuilt.extend_from_slice(&case.bytes[span.start as usize..span.end as usize]);
+        }
+        assert_eq!(rebuilt, case.bytes, "{}", case.name);
+    }
+}
+
+/// Only a row Cmdr ended itself carries the marker. A row that ended at the file's own
+/// newline must not, or every copy path puts a break in the clipboard that the file
+/// never had.
+#[test]
+fn only_a_segment_break_marks_a_row_as_continuing() {
+    for case in tiny_grid_corpus() {
+        let nl_len = reference_newline_len(case.encoding);
+        for span in reader_rows(&case, TEST_SEGMENT) {
+            if span.start == span.end {
+                // The empty row past a file's final newline ends nowhere.
+                assert!(!span.continues, "{}: the final empty row must not continue", case.name);
+                assert_eq!(span.text_end, span.end, "{}: the final empty row", case.name);
+                continue;
+            }
+            let ended_at_newline = span.end >= nl_len
+                && span.end <= case.bytes.len() as u64
+                && reference_newline_units(&case.bytes, case.encoding).contains(&(span.end - nl_len));
+            let at_eof = span.end == case.bytes.len() as u64;
+            assert_eq!(
+                span.continues,
+                !ended_at_newline && !at_eof,
+                "{}: row {}..{}",
+                case.name,
+                span.start,
+                span.end
+            );
+            assert_eq!(
+                span.text_end,
+                if ended_at_newline { span.end - nl_len } else { span.end },
+                "{}: row {}..{} text end",
+                case.name,
+                span.start,
+                span.end
+            );
+        }
+    }
+}
+
+/// Seeking into the middle of a file lands on the same row the walk from 0 produces,
+/// carries the same `starts_line`, and continues identically. A backend seeks per
+/// fetch, so a walk that only worked from byte 0 would be no use.
+#[test]
+fn seeking_lands_on_the_same_rows_as_walking_from_the_start() {
+    for case in tiny_grid_corpus() {
+        let expected = reader_rows(&case, TEST_SEGMENT);
+        let mut reader = RowReader::with_segment(SliceSource::new(&case.bytes), case.encoding, 0, TEST_SEGMENT);
+        for (index, row) in expected.iter().enumerate() {
+            for probe in row.start..row.end.max(row.start + 1) {
+                let landed = reader.seek(probe).expect("slice reads cannot fail");
+                assert_eq!(landed, row.start, "{}: probe {probe}", case.name);
+                let span = reader
+                    .next_span()
+                    .expect("slice reads cannot fail")
+                    .expect("a row must follow a seek inside the file");
+                assert_eq!(span, *row, "{}: probe {probe}", case.name);
+                // And the row after it, so a seek's newline evidence is checked too.
+                if let Some(next) = expected.get(index + 1) {
+                    let after = reader
+                        .next_span()
+                        .expect("slice reads cannot fail")
+                        .expect("a second row must follow");
+                    assert_eq!(after, *next, "{}: probe {probe}, second row", case.name);
+                }
+            }
+        }
+    }
+}
+
+/// Invariant I1 on the walk: a fetch inside a 1 MB single-line file touches kilobytes.
+#[test]
+fn walking_a_newline_free_file_reads_a_bounded_number_of_bytes() {
+    let bytes = vec![b'x'; 1_000_000];
+    let log = Rc::new(RefCell::new(ReadLog::default()));
+    let source = CountingSource {
+        inner: SliceSource::new(&bytes),
+        log: Rc::clone(&log),
+    };
+    let mut reader = RowReader::new(source, FileEncoding::Utf8, 0);
+    reader.seek(700_000).expect("slice reads cannot fail");
+    let mut rows = Vec::new();
+    for _ in 0..3 {
+        rows.push(
+            reader
+                .next_span()
+                .expect("slice reads cannot fail")
+                .expect("rows follow"),
+        );
+    }
+    assert_eq!(
+        rows.iter().map(|r| r.start).collect::<Vec<_>>(),
+        vec![700_000, 720_000, 740_000]
+    );
+    // One ruler window for the seek, then refill chunks for three 20 000-byte rows.
+    let read: u64 = log.borrow().reads.iter().map(|(_, got)| got).sum();
+    assert!(
+        read <= MAX_WINDOW_BYTES + 4 * 64 * 1024,
+        "the walk read {read} bytes for three rows of a 1 MB single-line file"
+    );
+}
+
+/// A file that ends with a newline has one more row after it, and an empty file has
+/// exactly one empty row. This is the answer all three backends take, so a whole-file
+/// copy carries the file's final newline whatever the file's size.
+#[test]
+fn a_file_ending_in_a_newline_has_a_final_empty_row() {
+    let bytes = b"alpha\nbeta\n".to_vec();
+    let case = ascii_case("trailing-newline", bytes.clone());
+    let rows = reader_rows(&case, TEST_SEGMENT);
+    assert_eq!(rows.len(), 3);
+    assert_eq!(rows[2].start, bytes.len() as u64);
+    assert_eq!(rows[2].text_bytes(), 0);
+    assert!(rows[2].starts_line);
+
+    let none = ascii_case("no-trailing-newline", b"alpha\nbeta".to_vec());
+    assert_eq!(reader_rows(&none, TEST_SEGMENT).len(), 2);
+
+    let empty = ascii_case("empty", Vec::new());
+    let rows = reader_rows(&empty, TEST_SEGMENT);
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].text_bytes(), 0);
+}
+
+/// A BOM is not content: the first row starts past it, so all three backends agree on
+/// row 0 and none of them hands the user a selectable `U+FEFF`.
+#[test]
+fn the_first_row_starts_past_a_bom() {
+    let bytes = utf16_bytes("alpha\nbeta\n", /*le=*/ true, /*bom=*/ true);
+    let mut reader = RowReader::new(SliceSource::new(&bytes), FileEncoding::Utf16Le, 2);
+    let (span, text) = reader
+        .next_row()
+        .expect("slice reads cannot fail")
+        .expect("a first row");
+    assert_eq!(span.start, 2);
+    assert_eq!(text, "alpha");
 }
