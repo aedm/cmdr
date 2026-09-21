@@ -64,11 +64,20 @@
     "mtp-conflicts.spec.ts::MTP same-volume move conflicts::same-volume MTP move with skip preserves both files": "virtual MTP per-operation protocol overhead (2.8s at flagger introduction)",
     "mtp-copy-preflight-uses-cache.spec.ts::MTP copy pre-flight reuses watcher-backed listing::F5 pre-flight scan completes from cache and reports the right file count": "virtual MTP per-operation protocol overhead (2.3s at flagger introduction)",
     "mtp-delete-no-double-scan.spec.ts::MTP delete reuses scan preview (no double scan)::F8 progresses Scanning -> Deleting exactly once and counts never go backwards": "virtual MTP per-operation protocol overhead (2.3s at flagger introduction)",
+    "mtp-rename.spec.ts::MTP rename::a folder entered with Enter shows a rename made in it": {
+      "maxMs": 4000,
+      "reason": "David approved (2026-09-13): 2.2s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
+    },
     "mtp-same-volume-move-merge.spec.ts::::same-volume MTP folder move auto-merges; file clash inside prompts; dest-only survives": "virtual MTP per-operation protocol overhead plus three-way merge assertions (2.3s at flagger introduction)",
-    "mtp.spec.ts::MTP cross-storage move::moves file from MTP to local": "virtual MTP per-operation protocol overhead (2.2s at flagger introduction)",
-    "mtp.spec.ts::MTP cross-storage move::moves file from local to MTP": {
+    "mtp-transfers.spec.ts::MTP cross-storage move::moves file from MTP to local": "virtual MTP per-operation protocol overhead (2.2s at flagger introduction)",
+    "mtp-transfers.spec.ts::MTP cross-storage move::moves file from local to MTP": {
       "maxMs": 3000,
       "reason": "virtual MTP per-operation protocol overhead; ~2.6s under --include-slow contention on 2026-06-28, cap 3s"
+    },
+    "mtp-transfers.spec.ts::MTP large file transfer::copies 50 MB file from MTP to local": "50 MB payload through the virtual MTP protocol (2.3s at flagger introduction)",
+    "mtp-transfers.spec.ts::MTP large file transfer::copies 50 MB file from local to MTP": {
+      "maxMs": 3000,
+      "reason": "50 MB payload through the virtual MTP protocol; ~2.1s under --include-slow contention on 2026-06-28, cap 3s"
     },
     "mtp.spec.ts::MTP file operations::copies file from MTP to local": {
       "maxMs": 3000,
@@ -89,11 +98,6 @@
     "mtp.spec.ts::MTP file operations::deletes multiple selected files on MTP": "virtual MTP per-operation protocol overhead (2.0s at flagger introduction)",
     "mtp.spec.ts::MTP file operations::moves file between MTP directories": "virtual MTP per-operation protocol overhead (2.9s at flagger introduction)",
     "mtp.spec.ts::MTP file watching::detects externally added file in MTP backing dir": "waits for the real MTP watcher to pick up an external FS change (2.3s at flagger introduction)",
-    "mtp.spec.ts::MTP large file transfer::copies 50 MB file from MTP to local": "50 MB payload through the virtual MTP protocol (2.3s at flagger introduction)",
-    "mtp.spec.ts::MTP large file transfer::copies 50 MB file from local to MTP": {
-      "maxMs": 3000,
-      "reason": "50 MB payload through the virtual MTP protocol; ~2.1s under --include-slow contention on 2026-06-28, cap 3s"
-    },
     "mtp.spec.ts::MTP navigation::browses MTP files and navigates back": {
       "maxMs": 3000,
       "reason": "virtual MTP per-operation protocol overhead; ~2.1s under --include-slow contention on 2026-06-28, cap 3s"
@@ -101,10 +105,6 @@
     "mtp.spec.ts::MTP navigation::switching back to a storage reopens the folder last used there": {
       "maxMs": 3000,
       "reason": "David approved (2026-09-13): 2.0s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
-    },
-    "mtp.spec.ts::MTP rename::a folder entered with Enter shows a rename made in it": {
-      "maxMs": 4000,
-      "reason": "David approved (2026-09-13): 2.2s on the full macOS Playwright lane; cap is that rounded up to the next whole second, plus 1s of headroom"
     },
     "operation-log-rollback.spec.ts::Rolling an operation back from the history dialog::a paused reversal stops advancing, and resumes where it left off": {
       "maxMs": 4000,
@@ -175,13 +175,21 @@
       "maxMs": 5000,
       "reason": "David approved (2026-09-12): 2.1s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
     },
-    "mtp.spec.ts::MTP cross-storage move::moves file from MTP to local": {
+    "mtp-transfers.spec.ts::MTP cross-storage move::moves file from MTP to local": {
       "maxMs": 3000,
       "reason": "virtual MTP per-operation protocol overhead; ~2.8s under --include-slow contention on 2026-06-28, cap 3s"
     },
-    "mtp.spec.ts::MTP cross-storage move::moves file from local to MTP": {
+    "mtp-transfers.spec.ts::MTP cross-storage move::moves file from local to MTP": {
       "maxMs": 5000,
       "reason": "David approved (2026-09-12): 2.0s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
+    },
+    "mtp-transfers.spec.ts::MTP large file transfer::copies 50 MB file from MTP to local": {
+      "maxMs": 3000,
+      "reason": "50 MB payload through the virtual MTP protocol; ~2.0s under --include-slow contention on 2026-06-28, cap 3s"
+    },
+    "mtp-transfers.spec.ts::MTP large file transfer::copies 50 MB file from local to MTP": {
+      "maxMs": 5000,
+      "reason": "David approved (2026-09-12): 2.2s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
     },
     "mtp.spec.ts::MTP file operations::copies file from MTP to local": {
       "maxMs": 4000,
@@ -201,14 +209,6 @@
     },
     "mtp.spec.ts::MTP file operations::moves file between MTP directories": "virtual MTP per-operation protocol overhead (2.8s at flagger introduction)",
     "mtp.spec.ts::MTP file watching::detects externally added file in MTP backing dir": "waits for the real MTP watcher to pick up an external FS change (2.1s at flagger introduction)",
-    "mtp.spec.ts::MTP large file transfer::copies 50 MB file from MTP to local": {
-      "maxMs": 3000,
-      "reason": "50 MB payload through the virtual MTP protocol; ~2.0s under --include-slow contention on 2026-06-28, cap 3s"
-    },
-    "mtp.spec.ts::MTP large file transfer::copies 50 MB file from local to MTP": {
-      "maxMs": 5000,
-      "reason": "David approved (2026-09-12): 2.2s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 2s of headroom"
-    },
     "mtp.spec.ts::MTP navigation::switching back to a storage reopens the folder last used there": {
       "maxMs": 4000,
       "reason": "David approved (2026-09-13): 2.1s on the full Linux Docker lane; cap is that rounded up to the next whole second, plus 1s of headroom"
