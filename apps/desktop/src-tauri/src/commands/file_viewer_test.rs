@@ -1,0 +1,311 @@
+//! Tests for the file viewer IPC commands: the destination guard, the pulling open's
+//! progress and stall rules, and the save's.
+
+use super::*;
+use crate::file_viewer::RangeEnd;
+use std::io::Write as _;
+
+/// Writes a minimal real zip (one stored entry) so the boundary magic check passes.
+fn write_zip(path: &std::path::Path) {
+    use zip::write::SimpleFileOptions;
+    let file = std::fs::File::create(path).expect("create zip");
+    let mut writer = zip::ZipWriter::new(file);
+    writer
+        .start_file(
+            "inner.txt",
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored),
+        )
+        .expect("start");
+    writer.write_all(b"hello").expect("write");
+    writer.finish().expect("finish");
+}
+
+/// Registers an in-memory phone under `id` whose 64 KiB chunks arrive `delay`
+/// apart, holding `len` bytes at `big.log`, and returns that file's path.
+async fn a_phone_sending_slowly(id: &str, len: usize, delay: Duration) -> String {
+    use crate::file_system::volume::manager::get_volume_manager;
+    use crate::file_system::volume::{InMemoryVolume, Volume as _};
+
+    let root = format!("mtp://{id}/1");
+    let volume = InMemoryVolume::new("Phone")
+        .with_root(&root)
+        .with_read_chunk_delay(delay);
+    let path = format!("{root}/big.log");
+    volume
+        .create_file(std::path::Path::new(&path), &vec![b'x'; len])
+        .await
+        .expect("seed the file");
+    get_volume_manager().register(id, Arc::new(volume));
+    path
+}
+
+/// A pull that gets no bytes for the stall limit answers the typed
+/// `StoppedResponding` without waiting for the source, and the pull, detached
+/// rather than dropped, still stops at its chunk boundary and removes its temp.
+/// Pre-fix a pull had a flat 30 s budget and no stall rule at all.
+#[tokio::test]
+async fn a_pull_that_goes_quiet_answers_stopped_responding_and_leaves_no_temp() {
+    let extract = crate::test_support::TestDir::new("viewer_pull_stall");
+    file_viewer::init_materialize_dir(extract.to_path_buf());
+    let path = a_phone_sending_slowly("viewer-stall-cell", 3 * 64 * 1024, Duration::from_millis(900)).await;
+
+    let outcome = open_pulling(
+        &Arc::new(PendingOpen::new()),
+        path,
+        "viewer-stall-cell".to_string(),
+        String::new(),
+        false,
+        Duration::from_millis(250),
+        |_| {},
+    )
+    .await;
+
+    assert!(
+        matches!(outcome, Err(ViewerError::StoppedResponding)),
+        "a quiet pull answers StoppedResponding, got {outcome:?}"
+    );
+    crate::test_support::wait_until_async(Duration::from_secs(5), "the quiet pull to remove its temp", || {
+        std::fs::read_dir(&extract).is_ok_and(|entries| entries.count() == 0)
+    })
+    .await;
+}
+
+/// While a pull runs, its window hears how far it got, against the size the source
+/// declared, and only when there's news. That's what the viewer's bar draws.
+#[tokio::test]
+async fn a_pull_reports_its_progress_to_the_window_as_bytes_arrive() {
+    use crate::ignore_poison::IgnorePoison;
+
+    let extract = crate::test_support::TestDir::new("viewer_pull_emit");
+    file_viewer::init_materialize_dir(extract.to_path_buf());
+    let len = 6 * 64 * 1024;
+    let path = a_phone_sending_slowly("viewer-emit-cell", len, Duration::from_millis(100)).await;
+    let heard = Arc::new(std::sync::Mutex::new(Vec::<ViewerPullProgress>::new()));
+
+    let outcome = {
+        let heard = Arc::clone(&heard);
+        open_pulling(
+            &Arc::new(PendingOpen::new()),
+            path,
+            "viewer-emit-cell".to_string(),
+            String::new(),
+            false,
+            Duration::from_secs(5),
+            move |progress| heard.lock_ignore_poison().push(progress),
+        )
+        .await
+    };
+    let opened = outcome.expect("the file opens");
+    file_viewer::close_session(&opened.session_id).expect("close");
+
+    let heard = heard.lock_ignore_poison();
+    assert!(!heard.is_empty(), "the window hears at least one progress report");
+    assert!(
+        heard
+            .iter()
+            .all(|p| p.bytes_total == Some(len as u64) && p.bytes_done <= len as u64),
+        "every report counts against the declared size, got {heard:?}"
+    );
+    assert!(
+        heard.windows(2).all(|pair| pair[0].bytes_done < pair[1].bytes_done),
+        "every report is news, got {heard:?}"
+    );
+}
+
+/// A session over a backend that takes `per_chunk` to answer each fetch, serving
+/// `chunks` fetches worth of lines. One fetch is exactly 1 MiB of text, so the save
+/// writes (and so reports progress) once per fetch.
+///
+/// Returns the session id and the bytes the whole range comes to.
+fn a_session_reading_slowly(chunks: usize, per_chunk: Duration) -> (String, usize) {
+    const FETCH_LINES: usize = 4096;
+    const STRIDE: usize = 256;
+    let line_count = FETCH_LINES * chunks;
+    let backend = file_viewer::session::ScriptedBackend::new(&"s".repeat(STRIDE - 1), line_count, move |_| {
+        // allowed-test-sleep: the slow answer IS the subject. These tests are about
+        // what a save that takes a long time honestly is allowed to do, so the delay
+        // stands in for a slow disk rather than synchronizing anything.
+        std::thread::sleep(per_chunk);
+    });
+    let session_id = file_viewer::session::test_only_install_session(
+        Box::new(backend),
+        std::path::PathBuf::from("/scripted/slow.txt"),
+    );
+    (session_id, line_count * STRIDE - 1)
+}
+
+/// The `.cmdr-tmp.<read_id>` file a save writes before its rename, if it's there.
+fn save_temp_file(dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .find(|p| p.to_string_lossy().contains("cmdr-tmp"))
+}
+
+/// A save that keeps writing must run to its end, however long that is. The copy
+/// dialog refuses a clipboard copy past 100 MiB and offers "Save as" instead, so a
+/// save is exactly the operation with no honest upper bound on its duration; a total
+/// deadline would kill the saves the button exists for.
+#[tokio::test]
+async fn a_save_that_keeps_writing_runs_past_the_limit() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let dest = dir.path().join("out.txt");
+    // ~1.8 s of work against a 1 s limit, with a write every ~150 ms: three times
+    // the limit in total, a fraction of it between any two signs of life.
+    let (session_id, total_bytes) = a_session_reading_slowly(12, Duration::from_millis(150));
+
+    let result = write_range_watched(
+        session_id.clone(),
+        1,
+        RangeEnd::Line { line: 0, offset: 0 },
+        RangeEnd::Eof,
+        dest.to_string_lossy().into_owned(),
+        Duration::from_secs(1),
+    )
+    .await;
+
+    assert!(
+        result.is_ok(),
+        "a save making progress must not be cut off, got {result:?}"
+    );
+    assert_eq!(
+        std::fs::metadata(&dest).expect("the destination exists").len(),
+        total_bytes as u64
+    );
+    file_viewer::close_session(&session_id).expect("close");
+}
+
+/// A save that goes quiet for the limit gives up, and the work it detached stops
+/// and takes its temp file with it.
+#[tokio::test]
+async fn a_save_that_goes_quiet_gives_up_and_leaves_no_temp() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let dest = dir.path().join("out.txt");
+    // One fetch lands (so the temp already holds bytes), then the source goes quiet
+    // for far longer than the limit.
+    let quiet_session = file_viewer::session::test_only_install_session(
+        Box::new(file_viewer::session::ScriptedBackend::new(
+            &"s".repeat(255),
+            4096 * 2,
+            |call| {
+                if call > 0 {
+                    // allowed-test-sleep: the silence IS the subject; this stands in
+                    // for a read that stopped coming back.
+                    std::thread::sleep(Duration::from_secs(3));
+                }
+            },
+        )),
+        std::path::PathBuf::from("/scripted/quiet.txt"),
+    );
+
+    let result = write_range_watched(
+        quiet_session.clone(),
+        1,
+        RangeEnd::Line { line: 0, offset: 0 },
+        RangeEnd::Eof,
+        dest.to_string_lossy().into_owned(),
+        Duration::from_millis(500),
+    )
+    .await;
+
+    assert!(
+        matches!(result, Err(ViewerError::TimedOut)),
+        "a save that stopped writing must give up, got {result:?}"
+    );
+    assert!(!dest.exists(), "a save that gave up must not leave a destination");
+    crate::test_support::wait_until_async(Duration::from_secs(10), "the stopped save to clean up", || {
+        save_temp_file(dir.path()).is_none()
+    })
+    .await;
+    file_viewer::close_session(&quiet_session).expect("close");
+}
+
+#[tokio::test]
+async fn write_range_rejects_a_destination_inside_an_archive() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let zip = dir.path().join("bundle.zip");
+    write_zip(&zip);
+
+    // The guard runs before any session lookup, so a bogus session id is fine: the
+    // point is that an archive-inner DESTINATION is refused with the typed error.
+    let dest = zip.join("inner.txt");
+    let err = viewer_write_range_to_file(
+        "no-such-session".to_string(),
+        0,
+        RangeEnd::Eof,
+        RangeEnd::Eof,
+        dest.to_string_lossy().into_owned(),
+    )
+    .await
+    .expect_err("archive-inner destination must be refused");
+    assert!(
+        matches!(err, ViewerError::DestinationIsReadOnly),
+        "expected DestinationIsReadOnly, got {err:?}"
+    );
+
+    // A plain sibling destination passes the guard (proves it's not a blanket reject);
+    // the bogus session then surfaces as SessionNotFound.
+    let plain = dir.path().join("out.txt");
+    let err = viewer_write_range_to_file(
+        "no-such-session".to_string(),
+        0,
+        RangeEnd::Eof,
+        RangeEnd::Eof,
+        plain.to_string_lossy().into_owned(),
+    )
+    .await
+    .expect_err("bogus session should fail past the guard");
+    assert!(
+        matches!(err, ViewerError::SessionNotFound { .. }),
+        "expected the guard to pass and the session lookup to fail, got {err:?}"
+    );
+}
+
+/// The guard is about ROUTES, not about archives: a path inside a repo's
+/// virtual `.git` trees has no directory on disk either, so a save there must
+/// meet the same typed refusal rather than a raw `std::fs` errno. A real file
+/// under `.git` is an ordinary local path and still writes.
+#[tokio::test]
+async fn saving_into_a_repos_history_is_refused_the_way_saving_into_a_zip_is() {
+    use cmdr_git::test_fixtures::{Fixture, cleanup, temp_dir};
+
+    let dir = temp_dir("viewer_save_guard", "snapshot");
+    let mut fixture = Fixture::init(dir.clone());
+    fixture.commit_file("README.md", b"hello\n", "initial");
+    crate::file_system::git::wiring::set_virtual_portal_enabled(true);
+
+    let snapshot = dir.join(".git/branches/main/saved.txt");
+    let err = viewer_write_range_to_file(
+        "no-such-session".to_string(),
+        0,
+        RangeEnd::Eof,
+        RangeEnd::Eof,
+        snapshot.to_string_lossy().into_owned(),
+    )
+    .await
+    .expect_err("a snapshot destination must be refused");
+    assert!(
+        matches!(err, ViewerError::DestinationIsReadOnly),
+        "expected DestinationIsReadOnly, got {err:?}"
+    );
+
+    // A REAL file under `.git` is the parent volume's and takes ordinary
+    // writes, so it passes the guard and fails only on the bogus session.
+    let real = dir.join(".git/config.bak");
+    let err = viewer_write_range_to_file(
+        "no-such-session".to_string(),
+        0,
+        RangeEnd::Eof,
+        RangeEnd::Eof,
+        real.to_string_lossy().into_owned(),
+    )
+    .await
+    .expect_err("bogus session should fail past the guard");
+    assert!(
+        matches!(err, ViewerError::SessionNotFound { .. }),
+        "a real path under `.git` must pass the guard, got {err:?}"
+    );
+
+    cleanup(&dir);
+}
