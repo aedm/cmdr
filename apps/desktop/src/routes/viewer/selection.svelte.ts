@@ -296,80 +296,75 @@ export function extendSelection(current: Selection | null, point: LineOffset): S
 }
 
 /**
- * Estimates the UTF-8 byte length of the selected range, given a per-line byte
- * length lookup and per-line UTF-16 length lookup. Used by the copy flow to
- * pick a size tier (silent / confirm / refuse) before paying for the backend
- * read.
+ * What the byte estimator needs to know about one line, as the file stores it.
  *
- * `getLineByteLength(n)` is the file's UTF-8 byte length for line `n` INCLUDING
- * its trailing newline. `getLineUtf16Length(n)` is the line's UTF-16 unit count
- * EXCLUDING the trailing newline.
+ * ❗ `delimiterBytes` is the whole point of this shape: whether a line is followed by a
+ * delimiter is a FACT about the file, not something the arithmetic may assume. It's 0 for
+ * the file's last line (nothing follows it, so a file with no trailing newline stops
+ * being counted as if it had one), and it will be 0 for a row the viewer broke at a
+ * segment boundary once a long line is drawn as several rows. `textBytes` never includes
+ * it. A CRLF file needs no special case: all three backends keep the `\r` inside the line
+ * text, so the delimiter is the single `\n`.
+ */
+export interface LineMetrics {
+  /** UTF-8 bytes of the line's own text, delimiter excluded. */
+  textBytes: number
+  /** UTF-16 code units of that same text, so a partial offset can be prorated. */
+  utf16Length: number
+  /** Bytes of the delimiter that follows this line in the file. 0 when none does. */
+  delimiterBytes: number
+}
+
+/** A line's own bytes between two UTF-16 offsets, prorated by the selected fraction. */
+function textBytesBetween(line: LineMetrics, from: number, to: number): number {
+  if (line.utf16Length === 0) return 0
+  const selected = Math.max(0, Math.min(to, line.utf16Length) - Math.min(from, line.utf16Length))
+  return Math.round(line.textBytes * (selected / line.utf16Length))
+}
+
+/**
+ * Estimates the UTF-8 byte length of the selected range from a per-line metrics lookup.
+ * The copy flow uses it to pick a size tier (silent / confirm / refuse) before paying for
+ * the backend read.
  *
- * For the start and end lines (partial), we scale: `bytes * (selUtf16 /
- * lineUtf16)`. This is an estimate because UTF-16 unit count and UTF-8 byte
- * count don't line up for non-ASCII, but it's close enough for tier
- * classification (we need order-of-magnitude correctness, not exact bytes).
+ * Whole lines contribute their text plus their delimiter. A partial start or end line
+ * prorates its bytes by the selected UTF-16 fraction (`textBytes * selUtf16 / utf16`),
+ * which is an estimate for non-ASCII: UTF-16 units and UTF-8 bytes don't line up. Tier
+ * classification needs order-of-magnitude correctness, not exact bytes. The delimiter
+ * terms, by contrast, are exact, because a delimiter is either there or it isn't.
  *
- * Newline accounting: intermediate lines and the start line contribute their
- * full byte length (which includes the trailing newline). The end line is
- * partial up to `end.offset`, so we don't include its newline.
+ * Range semantics are half-open, so the END line contributes text only: whatever delimits
+ * it sits past `end.offset` and isn't selected.
  *
- * Returns `null` if any required line length is missing (`getLineByteLength`
- * or `getLineUtf16Length` returns `null`); the caller can route to the
- * "selection size unknown" branch.
+ * Returns `null` if any line the walk needs has no metrics (not cached); the caller can
+ * route to the "selection size unknown" branch.
  */
 export function estimateSelectionBytes(
   sel: Selection | null,
-  getLineByteLength: (line: number) => number | null,
-  getLineUtf16Length: (line: number) => number | null,
+  getLineMetrics: (line: number) => LineMetrics | null,
 ): number | null {
   if (isEmpty(sel)) return 0
   const { start, end } = normaliseSelection(sel as Selection)
 
+  const startLine = getLineMetrics(start.line)
+  if (startLine === null) return null
+
   if (start.line === end.line) {
-    const utf16 = getLineUtf16Length(start.line)
-    const bytes = getLineByteLength(start.line)
-    if (utf16 === null || bytes === null) return null
-    const selUtf16 = Math.max(0, Math.min(end.offset, utf16) - Math.min(start.offset, utf16))
-    if (utf16 === 0) return 0
-    // Subtract the newline byte from the line's byte length: the trailing newline isn't
-    // part of the text content. The byte length includes it for whole-line accounting.
-    const textBytes = Math.max(0, bytes - 1)
-    return Math.round(textBytes * (selUtf16 / utf16))
+    return textBytesBetween(startLine, start.offset, end.offset)
   }
 
-  let total = 0
-
-  const startUtf16 = getLineUtf16Length(start.line)
-  const startBytes = getLineByteLength(start.line)
-  if (startUtf16 === null || startBytes === null) return null
-  if (startUtf16 === 0) {
-    // Empty start line: just the trailing newline (1 byte).
-    total += 1
-  } else {
-    const startSelUtf16 = Math.max(0, startUtf16 - Math.min(start.offset, startUtf16))
-    const startTextBytes = Math.max(0, startBytes - 1)
-    total += Math.round(startTextBytes * (startSelUtf16 / startUtf16)) + 1
-  }
+  // The selection runs past the start line, so whatever delimits that line is inside it.
+  let total = textBytesBetween(startLine, start.offset, startLine.utf16Length) + startLine.delimiterBytes
 
   for (let i = start.line + 1; i < end.line; i++) {
-    const lineBytes = getLineByteLength(i)
-    if (lineBytes === null) return null
-    total += lineBytes
+    const line = getLineMetrics(i)
+    if (line === null) return null
+    total += line.textBytes + line.delimiterBytes
   }
 
-  const endUtf16 = getLineUtf16Length(end.line)
-  const endBytes = getLineByteLength(end.line)
-  if (endUtf16 === null || endBytes === null) return null
-  if (endUtf16 === 0 || end.offset === 0) {
-    // End at offset 0: contribute nothing from the end line.
-  } else {
-    const endSelUtf16 = Math.min(end.offset, endUtf16)
-    const endTextBytes = Math.max(0, endBytes - 1)
-    total += Math.round(endTextBytes * (endSelUtf16 / endUtf16))
-  }
-
-  return total
+  const endLine = getLineMetrics(end.line)
+  if (endLine === null) return null
+  return total + textBytesBetween(endLine, 0, end.offset)
 }
 
 /**

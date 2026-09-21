@@ -323,20 +323,19 @@
         if (isWholeFileSelection(sel, totalLines)) {
             return totalBytes
         }
-        return estimateSelectionBytes(
-            sel,
-            (n) => {
-                const txt = scroll.lineCache.get(n)
-                if (txt === undefined) return null
-                // +1 for the trailing newline (the cache stores line text without newlines).
-                return new TextEncoder().encode(txt).length + 1
-            },
-            (n) => {
-                const txt = scroll.lineCache.get(n)
-                if (txt === undefined) return null
-                return txt.length
-            },
-        )
+        return estimateSelectionBytes(sel, (n) => {
+            const txt = scroll.lineCache.get(n)
+            if (txt === undefined) return null
+            return {
+                textBytes: new TextEncoder().encode(txt).length,
+                utf16Length: txt.length,
+                // A delimiter exists only when something follows this line. The last line
+                // has nothing after it, so a file with no trailing newline isn't counted
+                // as if it had one. (The cache stores line text without its delimiter, and
+                // a CRLF file keeps its `\r` in the text, so the delimiter is one byte.)
+                delimiterBytes: totalLines !== null && n >= totalLines - 1 ? 0 : 1,
+            }
+        })
     }
 
     const copy = createViewerCopy({

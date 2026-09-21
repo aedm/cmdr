@@ -327,96 +327,125 @@ describe('isWholeFileSelection', () => {
 })
 
 describe('estimateSelectionBytes', () => {
-  // Helper that builds fixed byte / UTF-16 lookups.
-  function makeLookups(lines: { bytes: number; utf16: number }[]) {
-    return {
-      getBytes: (n: number) => (n >= 0 && n < lines.length ? lines[n].bytes : null),
-      getUtf16: (n: number) => (n >= 0 && n < lines.length ? lines[n].utf16 : null),
-    }
+  /**
+   * A fixed per-line metrics lookup. `text` is the line's own UTF-8 bytes and `delimiter`
+   * what follows it in the file, so a fixture says out loud which lines the file
+   * delimits; `utf16` defaults to `text` (ASCII).
+   */
+  function makeLookup(lines: { text: number; utf16?: number; delimiter: number }[]) {
+    return (n: number) =>
+      n >= 0 && n < lines.length
+        ? { textBytes: lines[n].text, utf16Length: lines[n].utf16 ?? lines[n].text, delimiterBytes: lines[n].delimiter }
+        : null
   }
 
   it('returns 0 for empty or null selections', () => {
-    const { getBytes, getUtf16 } = makeLookups([{ bytes: 10, utf16: 9 }])
-    expect(estimateSelectionBytes(null, getBytes, getUtf16)).toBe(0)
+    const lookup = makeLookup([{ text: 9, delimiter: 1 }])
+    expect(estimateSelectionBytes(null, lookup)).toBe(0)
     const collapsed: Selection = { anchor: { line: 0, offset: 3 }, focus: { line: 0, offset: 3 } }
-    expect(estimateSelectionBytes(collapsed, getBytes, getUtf16)).toBe(0)
+    expect(estimateSelectionBytes(collapsed, lookup)).toBe(0)
   })
 
   it('single-line ASCII selection: counts the partial offset in bytes', () => {
-    // "hello world\n" = 12 bytes, 11 UTF-16 units (excl. newline).
-    const { getBytes, getUtf16 } = makeLookups([{ bytes: 12, utf16: 11 }])
+    // "hello world\n": 11 text bytes and 11 UTF-16 units, plus its newline.
+    const lookup = makeLookup([{ text: 11, delimiter: 1 }])
     const sel: Selection = { anchor: { line: 0, offset: 0 }, focus: { line: 0, offset: 5 } }
     // 11 text bytes * (5 / 11) ≈ 5.
-    expect(estimateSelectionBytes(sel, getBytes, getUtf16)).toBe(5)
+    expect(estimateSelectionBytes(sel, lookup)).toBe(5)
   })
 
   it('multi-line ASCII selection: sums bytes including newlines for full lines', () => {
-    const lines = [
-      { bytes: 6, utf16: 5 }, // "hello\n"
-      { bytes: 6, utf16: 5 }, // "world\n"
-      { bytes: 4, utf16: 3 }, // "foo\n"
-    ]
-    const { getBytes, getUtf16 } = makeLookups(lines)
+    const lookup = makeLookup([
+      { text: 5, delimiter: 1 }, // "hello\n"
+      { text: 5, delimiter: 1 }, // "world\n"
+      { text: 3, delimiter: 1 }, // "foo\n"
+    ])
     // From (0, 2) to (2, 3): "llo\n" + "world\n" + "foo".
     const sel: Selection = { anchor: { line: 0, offset: 2 }, focus: { line: 2, offset: 3 } }
     // line 0 partial: 5 text bytes * (3/5) = 3, + 1 newline = 4.
     // line 1 full: 6.
     // line 2 partial: 3 text bytes * (3/3) = 3.
     // total = 13.
-    expect(estimateSelectionBytes(sel, getBytes, getUtf16)).toBe(13)
+    expect(estimateSelectionBytes(sel, lookup)).toBe(13)
   })
 
   it('end at offset 0 contributes nothing from the end line', () => {
-    const lines = [
-      { bytes: 4, utf16: 3 }, // "abc\n"
-      { bytes: 4, utf16: 3 }, // "def\n"
-    ]
-    const { getBytes, getUtf16 } = makeLookups(lines)
+    const lookup = makeLookup([
+      { text: 3, delimiter: 1 }, // "abc\n"
+      { text: 3, delimiter: 1 }, // "def\n"
+    ])
     const sel: Selection = { anchor: { line: 0, offset: 0 }, focus: { line: 1, offset: 0 } }
     // line 0 full text: 3 bytes + 1 newline = 4. line 1 contributes 0.
-    expect(estimateSelectionBytes(sel, getBytes, getUtf16)).toBe(4)
+    expect(estimateSelectionBytes(sel, lookup)).toBe(4)
   })
 
   it('"only newlines" file: full select returns sum of newlines minus the last', () => {
-    const lines = [
-      { bytes: 1, utf16: 0 }, // "\n"
-      { bytes: 1, utf16: 0 }, // "\n"
-      { bytes: 1, utf16: 0 }, // "\n"
-    ]
-    const { getBytes, getUtf16 } = makeLookups(lines)
+    const lookup = makeLookup([
+      { text: 0, delimiter: 1 }, // "\n"
+      { text: 0, delimiter: 1 }, // "\n"
+      { text: 0, delimiter: 1 }, // "\n"
+    ])
     // Select all: (0,0) to (2, 0). Lines 0,1 contribute 1 byte (newline) each, line 2 contributes 0.
     const sel = makeSelectAll(3, 0)
     expect(sel).not.toBeNull()
-    expect(estimateSelectionBytes(sel, getBytes, getUtf16)).toBe(2)
+    expect(estimateSelectionBytes(sel, lookup)).toBe(2)
   })
 
   it('multi-byte UTF-8 line: scales bytes by UTF-16 ratio', () => {
-    // A line with one wave emoji "👋" then "hi": UTF-8 = 4 + 2 = 6 bytes (+1 newline) = 7,
+    // A line with one wave emoji "👋" then "hi": UTF-8 = 4 + 2 = 6 bytes,
     // UTF-16 = 2 (emoji surrogate pair) + 2 = 4.
-    const { getBytes, getUtf16 } = makeLookups([{ bytes: 7, utf16: 4 }])
+    const lookup = makeLookup([{ text: 6, utf16: 4, delimiter: 1 }])
     // Select just the emoji (offsets 0..2): 6 text bytes * (2/4) = 3 (rounded).
     const sel: Selection = { anchor: { line: 0, offset: 0 }, focus: { line: 0, offset: 2 } }
-    expect(estimateSelectionBytes(sel, getBytes, getUtf16)).toBe(3)
+    expect(estimateSelectionBytes(sel, lookup)).toBe(3)
   })
 
   it('returns null when any required line length is unknown', () => {
-    const { getBytes, getUtf16 } = makeLookups([{ bytes: 10, utf16: 9 }])
+    const lookup = makeLookup([{ text: 9, delimiter: 1 }])
     // line 2 isn't in the lookup; selection ends there → null.
     const sel: Selection = { anchor: { line: 0, offset: 0 }, focus: { line: 2, offset: 1 } }
-    expect(estimateSelectionBytes(sel, getBytes, getUtf16)).toBeNull()
+    expect(estimateSelectionBytes(sel, lookup)).toBeNull()
+  })
+
+  it('does not assume a delimiter the file does not have', () => {
+    // "abc": one line, three bytes, nothing after them. The whole line is three bytes,
+    // not two: there is no newline to leave out.
+    const sel: Selection = { anchor: { line: 0, offset: 0 }, focus: { line: 0, offset: 3 } }
+    expect(estimateSelectionBytes(sel, makeLookup([{ text: 3, delimiter: 0 }]))).toBe(3)
+  })
+
+  it('counts no delimiter at all when every row is one the viewer broke itself', () => {
+    // Where this is heading: a long line becomes several rows, and a row that ends at a
+    // segment boundary has NO delimiter after it. Three 5-byte rows selected whole are
+    // 15 bytes, not 15 plus a newline per row.
+    const lookup = makeLookup([
+      { text: 5, delimiter: 0 },
+      { text: 5, delimiter: 0 },
+      { text: 5, delimiter: 0 },
+    ])
+    const sel: Selection = { anchor: { line: 0, offset: 0 }, focus: { line: 2, offset: 5 } }
+    expect(estimateSelectionBytes(sel, lookup)).toBe(15)
+  })
+
+  it('counts a CRLF delimiter as the one byte the backend leaves outside the line text', () => {
+    // All three backends keep the `\r` AS PART of the line text and split on `\n` alone,
+    // so "ab\r\ncd\r\n" is two 3-byte lines with a 1-byte delimiter each, not a 2-byte one.
+    const lookup = makeLookup([
+      { text: 3, delimiter: 1 }, // "ab\r"
+      { text: 3, delimiter: 1 }, // "cd\r"
+    ])
+    const sel: Selection = { anchor: { line: 0, offset: 0 }, focus: { line: 1, offset: 3 } }
+    expect(estimateSelectionBytes(sel, lookup)).toBe(7)
   })
 
   it('reversed selection: same result as the normalised version', () => {
-    const lines = [
-      { bytes: 6, utf16: 5 },
-      { bytes: 6, utf16: 5 },
-    ]
-    const { getBytes, getUtf16 } = makeLookups(lines)
+    const lookup = makeLookup([
+      { text: 5, delimiter: 1 },
+      { text: 5, delimiter: 1 },
+    ])
     const forward: Selection = { anchor: { line: 0, offset: 1 }, focus: { line: 1, offset: 4 } }
     const reversed: Selection = { anchor: { line: 1, offset: 4 }, focus: { line: 0, offset: 1 } }
-    expect(estimateSelectionBytes(forward, getBytes, getUtf16)).toBe(
-      estimateSelectionBytes(reversed, getBytes, getUtf16),
-    )
+    expect(estimateSelectionBytes(forward, lookup)).toBe(estimateSelectionBytes(reversed, lookup))
   })
 })
 

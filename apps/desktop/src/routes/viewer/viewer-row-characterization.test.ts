@@ -70,15 +70,20 @@ function selectAllDeps(overrides: Partial<KeyboardDeps> = {}) {
 }
 
 /**
- * The two per-line lookups `+page.svelte` hands `estimateSelectionBytes`: a UTF-8 byte
- * length with one byte added for the line's newline delimiter, and a UTF-16 length.
- * Reproduced here rather than imported because they live inline in the page component.
+ * The per-line metrics lookup `+page.svelte` hands `estimateSelectionBytes`: the line's
+ * own UTF-8 bytes, its UTF-16 length, and the delimiter that follows it, which the last
+ * line of a file doesn't have. Reproduced here rather than imported because it lives
+ * inline in the page component.
  */
-function lineLookups(lines: string[]) {
-  const cached = (n: number) => n >= 0 && n < lines.length
-  const bytes = (n: number) => (cached(n) ? new TextEncoder().encode(lines[n]).length + 1 : null)
-  const utf16 = (n: number) => (cached(n) ? lines[n].length : null)
-  return { bytes, utf16 }
+function lineLookup(lines: string[]) {
+  return (n: number) =>
+    n >= 0 && n < lines.length
+      ? {
+          textBytes: new TextEncoder().encode(lines[n]).length,
+          utf16Length: lines[n].length,
+          delimiterBytes: n >= lines.length - 1 ? 0 : 1,
+        }
+      : null
 }
 
 describe('select-all, as it behaves today', () => {
@@ -160,14 +165,13 @@ describe('copy size arithmetic, as it behaves today', () => {
   const noTrailingNewline = ['alpha', 'beta', 'gamma']
 
   function estimate(sel: Selection, lines: string[]): number | null {
-    const { bytes, utf16 } = lineLookups(lines)
-    return estimateSelectionBytes(sel, bytes, utf16)
+    return estimateSelectionBytes(sel, lineLookup(lines))
   }
 
   it('sizes a whole-file selection of a file with NO trailing newline exactly', () => {
-    // The per-line "+1 for the newline" and the end-line "-1" cancel out here, so the
-    // estimate happens to land on the true 16 bytes. Pinned because the row rewrite
-    // makes both terms wrong on a continuation row, and this is the number it moves off.
+    // Three lines and the two newlines between them: 16 bytes, no newline invented after
+    // the last line. Pinned because the row rewrite makes a continuation row's delimiter
+    // 0 as well, and this is the number that must NOT move when it does.
     expect(estimate({ anchor: { line: 0, offset: 0 }, focus: { line: 2, offset: 5 } }, noTrailingNewline)).toBe(16)
   })
 
@@ -196,9 +200,8 @@ describe('copy size arithmetic, as it behaves today', () => {
   })
 
   it('returns null when a line the walk needs is not cached', () => {
-    const { utf16 } = lineLookups(noTrailingNewline)
     expect(
-      estimateSelectionBytes({ anchor: { line: 0, offset: 0 }, focus: { line: 2, offset: 5 } }, () => null, utf16),
+      estimateSelectionBytes({ anchor: { line: 0, offset: 0 }, focus: { line: 2, offset: 5 } }, () => null),
     ).toBeNull()
   })
 
