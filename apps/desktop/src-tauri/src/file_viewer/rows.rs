@@ -198,7 +198,7 @@ impl<S: RowSource> RowRuler<S> {
         Ok(self.row_start_detail(offset)?.offset)
     }
 
-    /// [`RowRuler::row_start`], plus which clause put the boundary there.
+    /// `RowRuler::row_start`, plus which clause put the boundary there.
     ///
     /// A forward walk needs both halves: `from_newline` is what makes a row print a
     /// line number in its gutter, and it is also the entire newline evidence the NEXT
@@ -248,7 +248,7 @@ impl<S: RowSource> RowRuler<S> {
 
     /// The least row boundary `> row_start`, or EOF.
     ///
-    /// `row_start` is expected to be a boundary, one [`RowRuler::row_start`]
+    /// `row_start` is expected to be a boundary, one `RowRuler::row_start`
     /// returned. Reads one window of at most [`MAX_WINDOW_BYTES`].
     ///
     /// ❗ This is the rule's canonical forward step, and the reference the streaming
@@ -557,7 +557,7 @@ impl NextBoundary {
 ///
 /// `snap` applies clause 3's character snap, because the caller is the one holding the
 /// bytes. A snapped multiple landing at or below `boundary` is discarded rather than
-/// returned as a zero-length row, the same rejection [`RowRuler::row_end`] makes.
+/// returned as a zero-length row, the same rejection `RowRuler::row_end` makes.
 pub fn next_row_boundary<F: Fn(u64) -> u64>(
     boundary: u64,
     prev_newline: Option<u64>,

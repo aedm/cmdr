@@ -680,7 +680,10 @@ fn a_fetch_stops_at_the_chunk_budget_and_says_so() {
         let backend = open_backend(which, &file);
         let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 300).expect("fetch");
         assert_eq!(chunk.end, ChunkEnd::BudgetReached, "{which:?}");
-        assert!(chunk.rows.len() < 300, "{which:?}: the budget must cut the answer short");
+        assert!(
+            chunk.rows.len() < 300,
+            "{which:?}: the budget must cut the answer short"
+        );
         let served: usize = chunk.rows.iter().map(|row| row.text.len()).sum();
         assert!(
             served <= CHUNK_BUDGET_BYTES as usize + MAX_ROW_BYTES,

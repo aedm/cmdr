@@ -922,7 +922,13 @@ fn seeking_lands_on_the_same_rows_as_walking_from_the_start() {
         let expected = reader_rows(&case, TEST_SEGMENT);
         let mut reader = RowReader::with_segment(SliceSource::new(&case.bytes), case.encoding, 0, TEST_SEGMENT);
         for (index, row) in expected.iter().enumerate() {
-            for probe in row.start..row.end.max(row.start + 1) {
+            // Both ends of the row and its middle, rather than every byte of it: the
+            // corpus is dozens of files and a full sweep made this the slowest test in
+            // the suite, which starved it under a parallel run. The idempotence property
+            // itself is `row_start_is_idempotent_from_every_offset_inside_a_row`, which
+            // does sweep exhaustively and is cheap because it never walks a row.
+            let last = row.end.saturating_sub(1).max(row.start);
+            for probe in [row.start, row.start.midpoint(last), last] {
                 let landed = reader.seek(probe).expect("slice reads cannot fail");
                 assert_eq!(landed, row.start, "{}: probe {probe}", case.name);
                 let span = reader

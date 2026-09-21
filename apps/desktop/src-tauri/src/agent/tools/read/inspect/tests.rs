@@ -404,13 +404,14 @@ fn a_nine_megabyte_file_reads_from_the_requested_line_and_the_last_page_is_not_t
         "a 9 MB scan finishes well inside the budget"
     );
 
-    // The last page: the final numbered line and no more. (The line index counts the
-    // trailing empty line after the final newline in `total_lines` but never returns it
-    // from `get_lines`, unlike FullLoad; the window follows what the backend hands over.)
+    // The last page: the final numbered line, then the empty row a file ending in a
+    // newline carries. All three backends count that row AND hand it over now; the line
+    // index used to count it in `total_lines` and then never return it, so the same file
+    // paged differently depending only on its size.
     let text = text_of(&inspect_with(&path, opts(lines, 200), &AtomicBool::new(false))).clone();
     assert_eq!(window_of(&text).start_line, lines);
-    assert_eq!(window_of(&text).content, "line 360000 padding........");
-    assert_eq!(window_of(&text).returned_lines, 1);
+    assert_eq!(window_of(&text).content, "line 360000 padding........\n");
+    assert_eq!(window_of(&text).returned_lines, 2);
     assert!(!window_of(&text).truncated);
 
     // And past the end: empty, not truncated, no phantom last line.
