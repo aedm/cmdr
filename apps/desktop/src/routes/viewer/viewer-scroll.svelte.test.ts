@@ -12,7 +12,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createViewerScroll, getLineHeight } from './viewer-scroll.svelte'
+import { CACHE_EVICT_ABOVE, createViewerScroll, FETCH_BATCH, getLineHeight, linesToEvict } from './viewer-scroll.svelte'
 import { EOF_LINE } from './selection.svelte'
 import type { LineChunk, ViewerError } from '$lib/ipc/bindings'
 import { clearIpcMocks, installIpcMock } from '$lib/ipc/test-helpers'
@@ -184,6 +184,99 @@ describe('createViewerScroll.renderedLineText', () => {
     const scroll = wire(40_001)
 
     expect(scroll.renderedLineText(40_000)).toBeUndefined()
+  })
+})
+
+describe('linesToEvict', () => {
+  it('keeps everything inside the keep window and drops everything outside it', () => {
+    expect(linesToEvict([0, 99, 100, 500, 899, 900, 1000], { from: 100, to: 900 })).toEqual([0, 99, 900, 1000])
+  })
+
+  it('keeps a line exactly on the lower bound and drops one exactly on the upper, which is exclusive', () => {
+    expect(linesToEvict([100, 899, 900], { from: 100, to: 900 })).toEqual([900])
+  })
+
+  it('evicts nothing when the keep window covers the cache', () => {
+    expect(linesToEvict([3, 4, 5], { from: 0, to: 10 })).toEqual([])
+  })
+})
+
+describe('createViewerScroll cache growth over a long scroll', () => {
+  /** A backend that serves any requested line range in full. */
+  function fullAnsweringBackend(available: number) {
+    const ipc = installIpcMock()
+    ipc.mock('viewer_get_lines', (payload) => {
+      const { targetValue, count } = payload as { targetValue: number; count: number }
+      const first = Math.max(0, Math.round(targetValue))
+      const lines: string[] = []
+      for (let i = first; i < Math.min(first + count, available); i++) lines.push(`line ${String(i)}`)
+      return { lines, firstLineNumber: first, byteOffset: first * 8, totalLines: available, totalBytes: available * 8 }
+    })
+    return ipc
+  }
+
+  /** Drags down `stops` times, `screensPerStop` viewports at a time, fetching at each stop. */
+  async function scrollThrough(
+    scroll: ReturnType<typeof createViewerScroll>,
+    el: HTMLElement,
+    { stops, screensPerStop }: { stops: number; screensPerStop: number },
+  ) {
+    for (let stop = 1; stop <= stops; stop++) {
+      el.scrollTop = stop * screensPerStop * 600
+      scroll.handleScroll()
+      scroll.fetchVisibleNow()
+      await new Promise((r) => setTimeout(r, 0))
+    }
+  }
+
+  it('drops lines far from the viewport instead of parking the whole file in the renderer', async () => {
+    // 40 KB a row is where this stops being theoretical: scrolling through 1% of a 50 GB
+    // file would otherwise hold ~500 MB of text in the webview with nothing drawing it.
+    const ipc = fullAnsweringBackend(100_000)
+    const scroll = createViewerScroll({
+      getSessionId: () => 'sess-1',
+      getTotalLines: () => 100_000,
+      setTotalLines: () => {},
+      getEstimatedLines: () => 100_000,
+      getBackendType: () => 'lineIndex',
+      onTimeoutError: () => {},
+      getAllLines: () => null,
+      getTextWidth: () => 0,
+    })
+    const el = document.createElement('div')
+    Object.defineProperty(el, 'clientHeight', { value: 600 })
+    scroll.contentRef = el
+
+    await scrollThrough(scroll, el, { stops: 40, screensPerStop: 20 })
+    expect(ipc.callCount('viewer_get_lines')).toBe(40)
+
+    expect(scroll.lineCache.size).toBeLessThanOrEqual(CACHE_EVICT_ABOVE + FETCH_BATCH)
+    // And what's on screen survived: eviction that drops a rendered line draws blank rows.
+    for (const { lineNumber } of scroll.visibleLines) {
+      expect(scroll.lineCache.has(lineNumber)).toBe(true)
+    }
+  })
+
+  it('keeps every line on a fullLoad file, whose height map measures the whole thing', async () => {
+    const lines = 6_000
+    fullAnsweringBackend(lines)
+    const scroll = createViewerScroll({
+      getSessionId: () => 'sess-1',
+      getTotalLines: () => lines,
+      setTotalLines: () => {},
+      getEstimatedLines: () => lines,
+      getBackendType: () => 'fullLoad',
+      onTimeoutError: () => {},
+      getAllLines: () => null,
+      getTextWidth: () => 0,
+    })
+    const el = document.createElement('div')
+    Object.defineProperty(el, 'clientHeight', { value: 600 })
+    scroll.contentRef = el
+
+    await scrollThrough(scroll, el, { stops: 40, screensPerStop: 4 })
+
+    expect(scroll.lineCache.size).toBeGreaterThan(CACHE_EVICT_ABOVE)
   })
 })
 

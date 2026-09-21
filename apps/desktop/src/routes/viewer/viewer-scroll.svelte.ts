@@ -12,7 +12,26 @@ import { EOF_LINE, type LineOffset } from './selection.svelte'
 const log = getAppLogger('viewer')
 
 const BUFFER_LINES = 50
-const FETCH_BATCH = 500
+export const FETCH_BATCH = 500
+
+/**
+ * Lines this far outside the rendered window survive eviction: one fetch batch on either
+ * side, so ordinary scrolling never re-fetches what it just dropped.
+ */
+const CACHE_KEEP_MARGIN = FETCH_BATCH
+
+/**
+ * Cache size that starts an eviction pass. Below it the map isn't worth walking, and the
+ * gap to the keep window gives the pass hysteresis: it runs rarely and drops a lot.
+ *
+ * The number that matters is bytes, not lines. A line is a few dozen bytes today, but a
+ * row of a long line runs to ~40 KB once the viewer bounds them, which puts the ceiling
+ * near 80 MB of text held in the renderer. The alternative was unbounded: the cache was
+ * cleared only on open, reload, and encoding change, so scrolling through 1% of a 50 GB
+ * file parked ~500 MB in the webview with nothing drawing it.
+ */
+export const CACHE_EVICT_ABOVE = FETCH_BATCH * 4
+
 // WebKit caps element height at ~2^25 px (33.5M). Stay well below to avoid scroll cutoff.
 const MAX_SCROLL_HEIGHT = 30_000_000
 const FETCH_DEBOUNCE_MS = 100
@@ -35,6 +54,21 @@ interface ScrollDeps {
 }
 
 export { getLineHeight, MAX_SCROLL_HEIGHT }
+
+/**
+ * The cached line numbers outside `keep`, which is half-open `[from, to)`.
+ *
+ * ❗ The caller owes it a window that covers everything on screen plus its fetch buffer.
+ * Evicting a line the render window still wants draws a blank row, and the fetch effect
+ * pulls it straight back, so a too-tight window is a churn machine, not just a glitch.
+ */
+export function linesToEvict(cached: Iterable<number>, keep: { from: number; to: number }): number[] {
+  const evictable: number[] = []
+  for (const line of cached) {
+    if (line < keep.from || line >= keep.to) evictable.push(line)
+  }
+  return evictable
+}
 
 export function createViewerScroll(deps: ScrollDeps) {
   const lineCache = new SvelteMap<number, string>()
@@ -185,6 +219,29 @@ export function createViewerScroll(deps: ScrollDeps) {
     noLinesBeyond = null
   }
 
+  /**
+   * Drops cached lines far from the viewport, keeping a generous margin around what's
+   * rendered. Runs after a fetch, since that's the only thing that grows the cache.
+   *
+   * ❌ Not on `fullLoad`: the height map measures EVERY line of such a file, and
+   * `getAllLines` hands it the cache. Evicting there would silently disable
+   * variable-height word wrap. Those files are under a megabyte, so there's nothing to
+   * reclaim anyway.
+   */
+  function evictDistantLines() {
+    if (deps.getBackendType() === 'fullLoad') return
+    if (lineCache.size <= CACHE_EVICT_ABOVE) return
+    const keep = { from: visibleFrom - CACHE_KEEP_MARGIN, to: renderedTo + CACHE_KEEP_MARGIN }
+    const evictable = linesToEvict(lineCache.keys(), keep)
+    for (const line of evictable) lineCache.delete(line)
+    log.debug('evicted {count} cached {linesNoun} outside [{from}, {to})', {
+      count: evictable.length,
+      linesNoun: pluralize(evictable.length, 'line'),
+      from: keep.from,
+      to: keep.to,
+    })
+  }
+
   function scheduleFetch(from: number, to: number) {
     if (fetchDebounceTimer) {
       clearTimeout(fetchDebounceTimer)
@@ -300,6 +357,7 @@ export function createViewerScroll(deps: ScrollDeps) {
       for (let i = 0; i < chunk.lines.length; i++) {
         lineCache.set(cacheStartLine + i, chunk.lines[i])
       }
+      evictDistantLines()
 
       if (chunk.totalLines !== null && chunk.totalLines !== deps.getTotalLines()) {
         updateTotalLines(chunk.totalLines)
