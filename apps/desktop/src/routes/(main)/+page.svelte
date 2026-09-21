@@ -47,7 +47,7 @@
         DispatchSource,
     } from './command-dispatch-context'
     import { navCommandForMouseButton } from './mouse-nav'
-    import { resolveGlobalKeyAction } from './global-keydown'
+    import { resolveGlobalKeyAction, unclaimedDispatchWarning } from './global-keydown'
     import { resolveGlobalContextMenuAction } from './global-contextmenu'
     import { isMacOS } from '$lib/shortcuts/key-capture'
     import { getMessage, tString } from '$lib/intl/messages.svelte'
@@ -77,7 +77,7 @@
         type CommandDispatchContext,
     } from './command-dispatch'
     import { getAppLogger } from '$lib/logging/logger'
-    import { initAppMode, getAppMode, decorateMainWindowTitle, type AppMode } from '$lib/app-mode'
+    import { initAppMode, getAppMode, isE2eRun, decorateMainWindowTitle, type AppMode } from '$lib/app-mode'
     import {
         getCachedStatus,
         hideExpirationModal,
@@ -207,11 +207,21 @@
     function handleGlobalKeyDown(e: KeyboardEvent): void {
         const action = resolveGlobalKeyAction(e, dialogsOnScreen())
         switch (action.kind) {
-            case 'dispatch':
+            case 'dispatch': {
+                // An alarm, not a guard: the dispatch below still runs. A key that got
+                // here with its default already prevented is one a local handler acted
+                // on without claiming, so the command is about to run twice — silently,
+                // because both ends land in the same place. Dev and E2E runs only; the
+                // check costs one boolean read on the road every keypress takes.
+                if (import.meta.env.DEV || isE2eRun()) {
+                    const warning = unclaimedDispatchWarning(e, action.commandId)
+                    if (warning) dispatchLog.warn(warning)
+                }
                 e.preventDefault()
                 e.stopPropagation()
                 void dispatchers.keyboard(action.commandId)
                 break
+            }
             case 'openDebugWindow':
                 e.preventDefault()
                 void openDebugWindow()

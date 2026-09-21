@@ -13,7 +13,8 @@
  * default would surface here rather than silently passing.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { resolveGlobalKeyAction } from './global-keydown'
+import { resolveGlobalKeyAction, unclaimedDispatchWarning } from './global-keydown'
+import { claimKey } from '$lib/shortcuts/claim-key'
 import type { DialogsOnScreen } from './command-dispatch-context'
 import { initShortcutDispatch, destroyShortcutDispatch } from '$lib/shortcuts/shortcut-dispatch'
 
@@ -161,6 +162,44 @@ describe('resolveGlobalKeyAction', () => {
     it("dispatches paste into the palette's search field", () => {
       cleanupFocus = focus('input')
       expect(resolveGlobalKeyAction(cmd('v'), PALETTE_OPEN)).toEqual({ kind: 'dispatch', commandId: 'edit.paste' })
+    })
+  })
+
+  /**
+   * The alarm for the bug class this resolver can't prevent: `preventDefault` alone
+   * doesn't stop a dispatch, so a local handler that acted without claiming gets its
+   * command run a second time. Four shipped bugs came from exactly that, all of them
+   * invisible (an OS `open` that re-focuses a window, an idempotent Home key).
+   */
+  describe('the unclaimed-dispatch alarm', () => {
+    /** A real keydown is cancelable; `preventDefault` is a no-op on one that isn't. */
+    function cancelable(key: string): KeyboardEvent {
+      return new KeyboardEvent('keydown', { key, cancelable: true })
+    }
+
+    it('says so when the key arrives with its default already prevented', () => {
+      const e = cancelable('Enter')
+      e.preventDefault()
+      const warning = unclaimedDispatchWarning(e, 'nav.open')
+      expect(warning).toContain('nav.open')
+      expect(warning).toContain('SECOND time')
+    })
+
+    it('stays quiet for a key no local handler touched', () => {
+      expect(unclaimedDispatchWarning(cancelable('Enter'), 'nav.open')).toBeNull()
+    })
+
+    it('trips on a `preventDefault`-only handler and not on a claimed one', () => {
+      // The whole distinction in one test: both handlers prevent the default, and
+      // only the unclaimed one leaves the event able to reach this road at all.
+      const prevented = cancelable('PageDown')
+      prevented.preventDefault()
+      expect(unclaimedDispatchWarning(prevented, 'nav.pageDown')).not.toBeNull()
+
+      const claimed = cancelable('PageDown')
+      const stopped = vi.spyOn(claimed, 'stopPropagation')
+      claimKey(claimed)
+      expect(stopped).toHaveBeenCalled()
     })
   })
 })

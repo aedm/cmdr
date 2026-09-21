@@ -103,3 +103,29 @@ export function resolveGlobalKeyAction(event: KeyboardEvent, onScreen: DialogsOn
   if (shouldSuppressKey(event)) return { kind: 'suppress' }
   return IGNORE
 }
+
+/**
+ * The one shape that is always a bug: a local handler called `preventDefault()` on
+ * this key and did NOT claim it, and now the document road is about to run a command
+ * for it anyway. When both ends land in the same place the work simply happens twice
+ * with nothing looking wrong — that is how Enter opened a file twice (two browser
+ * tabs on a Google Drive file), PageDown moved two pages, ⌘R re-read every host's
+ * shares, and Enter mounted a share twice.
+ *
+ * `preventDefault` alone is not a claim: this resolver has no `defaultPrevented`
+ * guard, deliberately, because preventing the browser's default and claiming a
+ * command are different statements. `claimKey(e)` (`$lib/shortcuts/claim-key.ts`) is
+ * the claim.
+ *
+ * Returns the line to log, or null when there's nothing to say. Pure, so the caller
+ * decides where it goes and when it's worth saying (dev and E2E runs).
+ */
+export function unclaimedDispatchWarning(event: KeyboardEvent, commandId: CommandId): string | null {
+  if (!event.defaultPrevented) return null
+  return (
+    `${formatKeyCombo(event)} reached the document dispatcher with its default already prevented, ` +
+    `so ${commandId} is about to run a SECOND time. A local handler acted on this key and forgot to ` +
+    `claim it — call claimKey(e) there. (If that handler only suppressed a browser default and does ` +
+    `want ${commandId} to run, say so in a comment beside it.)`
+  )
+}

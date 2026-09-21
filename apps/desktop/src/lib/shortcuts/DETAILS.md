@@ -242,14 +242,22 @@ browser tabs for one Enter.
 descendant — runs FIRST. That ordering is deliberate (a local handler that `stopPropagation`s deliberately outranks
 central dispatch), but it means a sloppy local match silently shadows or doubles a real shortcut.
 
-❗ **A local branch that ACTS on a Tier 1 command must call `stopPropagation()`, not only `preventDefault()`.**
-`resolveGlobalKeyAction` has no `defaultPrevented` guard — it looks the combo up and dispatches — so a local handler
-that only prevents the default still lets central dispatch run the very same command a moment later. When both ends land
-in the same place, the work happens TWICE and nothing looks wrong: `ServersHub`'s ⌘R ran `clearShareState` +
-`fetchShares` for every host, then `pane.refresh` dispatched into `refreshPane` → `refreshNetworkHosts()` →
-`ServersHub.refresh()`, which is that same handler's body again. ❌ Don't reach for a "did you handle it?" return value
-instead: `pane-key-router` hands the network and search views every key and returns either way, so a boolean has nobody
-to tell. `preventDefault` + `stopPropagation` IS the claim.
+❗ **A local branch that ACTS on a Tier 1 command calls `claimKey(e)`** (`claim-key.ts`), which is `preventDefault` +
+`stopPropagation` under one name. The pair is the claim, and every instance of this bug has been a branch carrying the
+first call without the second, so they're one call now. Two supports around it: `claim-key.ts`'s doc comment carries the
+four incidents, and in dev and E2E runs `unclaimedDispatchWarning` (`routes/(main)/global-keydown.ts`) logs a warning at
+the exact moment the document road is about to run a command for a key whose default was already prevented. ❌ The
+resolver deliberately does NOT guard on `defaultPrevented`: preventing a browser default and claiming a command are
+different statements, and conflating them would silently kill shortcuts behind handlers that legitimately do the first.
+
+Why it matters, in full: a handler that only prevents the default still lets central dispatch run the very same command
+a moment later. When both ends land in the same place, the work happens TWICE and nothing looks wrong. `ServersHub`'s
+⌘R ran `clearShareState` + `fetchShares` for every host, then `pane.refresh` dispatched into `refreshPane` →
+`refreshNetworkHosts()` → `ServersHub.refresh()`, which is that same handler's body again. The paged cursor keys are
+the same shape and hid better: `nav.pageDown`'s handler is `sendKeyToFocusedPane('PageDown')`, so one press moved two
+pages (measured: 54 rows with 27 on screen), while `Home` and `End` doubled invisibly by being idempotent. ❌ Don't
+reach for a "did you handle it?" return value instead: `pane-key-router` hands the network and search views every key
+and returns either way, so a boolean has nobody to tell. `claimKey(e)` IS the claim.
 
 So local handlers don't test raw key flags; they ask the registry:
 

@@ -20,7 +20,6 @@ Background on default sort-order shortcuts: `docs/notes/sort-order-shortcut-rese
   names (`Enter`, `Backspace`, `Escape`, `PageUp`) in ⌘⌃⌥⇧ order. Storage, dispatch, conflict detection, and Rust
   accelerators all speak it. Render via `toDisplayShortcut` (`⌘Backspace` → `⌘⌫`); never store or compare that form. A
   default spelled `↩`, or in Apple's `⌥⌘A` order, is dead on the keyboard — `shortcut-vocabulary.test.ts` fails on it.
-  Writes canonicalize at the store boundary; load heals older files.
 - **Delta-only persistence; empty array vs missing key are semantically different.** `"nav.parent": []` means "user
   removed all shortcuts, don't use defaults"; a missing key means "use registry defaults". `initializeShortcuts` loads
   `[]` (and skips only non-array garbage), so the empty array survives a reload.
@@ -28,31 +27,30 @@ Background on default sort-order shortcuts: `docs/notes/sort-order-shortcut-rese
   entry), else a value dropped by reset/cleanup resurrects at next load. `saveChain` serializes saves so two rapid
   mutations can't interleave.
 - **macOS-native (`app.quit`/`hide`/`hideOthers`/`showAll`) and fixed-key (`FIXED_KEY_COMMAND_IDS`) commands are not
-  customizable, enforced at the store boundary.** Load drops persisted entries, mutators (`setShortcut` / `addShortcut`
-  / `removeShortcut`) no-op with `log.warn`, `resetShortcut` stays permissive (delete-only). MCP edits route through
-  these same mutators, so they inherit the guard. `isNativeShortcutCommand` / `isFixedKeyCommand` are the predicates.
+  customizable, enforced at the store boundary.** Load drops persisted entries, the mutators no-op with `log.warn`,
+  `resetShortcut` stays permissive. MCP edits route through the same mutators, so they inherit the guard.
 - **Every mutation emits `shortcuts:changed` after saving; the per-window `SENDER_ID` is the loop guard.** The listener
-  updates the local map and calls `notifyListeners`, never saving or re-emitting. The viewer never subscribes
-  (capability-restricted). Without this a rebind stays stale in other windows until restart.
-- **`initializeShortcuts` heals leaked `''` entries on load:** `[]` kept; `['']`/`['','']` dropped entirely (registry
-  default applies — do NOT collapse to `[]`, that suppresses a default-bound command); `['⌘X','']` → `['⌘X']`.
+  updates the local map and calls `notifyListeners`, never saving or re-emitting. Without this a rebind stays stale in
+  other windows until restart.
+- **`initializeShortcuts` heals leaked `''` entries on load:** `[]` kept; `['']` dropped entirely (❌ don't collapse it
+  to `[]`, that suppresses a default-bound command); `['⌘X','']` → `['⌘X']`.
 - **A captured combo conflicts only when scopes overlap** (one ancestry chain contains the other), via the static
   `scopeHierarchy` — hand-edit it to add a scope. The dispatch map keeps one winner per combo: most-specific scope wins,
   registry order breaks ties (pinned by `shortcut-dispatch.test.ts`).
-- **`menuCommands` (in `shortcuts-store.ts`) must stay in sync with the Rust menu items.** The
-  `menuCommands ↔ command_id_to_menu_id` set-equality test in `commands/rust-command-id-drift.test.ts` fails when a menu
-  item is missing (stale accelerator after rebind) or excused without a documented reason.
+- **`menuCommands` (in `shortcuts-store.ts`) must stay in sync with the Rust menu items.** The set-equality test in
+  `commands/rust-command-id-drift.test.ts` fails on a missing item (stale accelerator after a rebind) or an
+  undocumented excuse.
 - **`downloads.goToLatest` binds `⌘J` deliberately**, not Finder's "View Options". User-confirmed; don't "fix" it.
-  Rationale: DETAILS.md.
 - **`handleGlobalKeyDown` bails when focus is in a text input and the combo `isTypingKeyCombo`** (central typing guard),
   so a bare-key Tier 1 binding (Tab → switch pane) doesn't fire mid-typing. No chords; modifier-only combos are
   rejected.
+- **❌ A local handler that ACTS on a key calls `claimKey(e)`** (`claim-key.ts`, imported from the leaf so a barrel
+  mock can't fake it). `preventDefault` alone is NOT a claim, so the command runs twice — invisibly, four times so far.
+  Bare keys are Tier 1 too (`Enter`, `Tab`, Space, `PageUp`/`Down`, `Home`/`End`, F5, Insert). DETAILS § Local handlers.
 - **❌ Never hand-roll a key predicate (`e.key === 'a' && e.metaKey`) in a keydown handler.** That's a modifier
   SUPERSET: `⌥⌘A` matched it, so opening Ask Cmdr also selected every file. A local handler calls
-  `eventMatchesCommand(e, 'some.command')` (exact, follows a rebind, scope-correct); the document handler uses
-  `lookupCommand`. `allowShift` is only for the file list's Shift-extends-selection gesture. `cmdr/no-raw-key-match`
-  fails the build on the superset shape; class-of-key matchers (type-to-jump, `+`/`-`) and fully-pinned local combos
-  (all four modifiers named) pass.
+  `eventMatchesCommand(e, 'some.command')`; the document handler uses `lookupCommand`. Enforced by
+  `cmdr/no-raw-key-match`; what passes it, and `allowShift`, in DETAILS § Local handlers.
 
 Architecture, flows, and decision detail: `DETAILS.md`. Read it before any non-trivial work here: editing, planning,
 reorganizing, or advising.
