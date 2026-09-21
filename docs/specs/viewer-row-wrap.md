@@ -301,3 +301,19 @@ save, which puts them ahead of the feature work in importance.
 The rust lane carries exactly two expected failures until milestone 3 lands:
 `red_first_fetch_of_a_newline_free_file_must_be_bounded` and `red_search_in_a_newline_free_file_must_be_bounded`. Any
 other failure is real. (`macos-availability` also fails on a pre-existing SDK 27.0-vs-26.5 mismatch, unrelated.)
+
+## Open items (live; delete this section before the spec is filed as shipped)
+
+- [ ] **`escape_during_a_watched_save_stops_it_and_leaves_no_temp`** sits UNCOMMITTED in the save agent's working
+      tree. It proves cancel through the watched command rather than at the backend function, which is the gap its
+      sibling left. It could not be run while the crate was mid-migration. Run it and commit it once the backends
+      compile; until then it is one `git checkout` away from being lost.
+- [ ] Frontend rows: the gutter (number on a line's first row, blank on continuations) and the marker, once the Rust
+      types settle.
+- [ ] The coordinate rename reaching the frontend.
+- [ ] `session.rs`'s documented four-way split, deferred because it runs through the file the row work is landing in.
+      Its allowlist number was raised instead, with the reason carried forward.
+- [ ] Full `pnpm check --include-slow`, then the fast-forward to `main`, then the push.
+- [ ] Decide the marker's glyph and colour with David, and the tooltip copy. He reviews every human-facing string.
+- [ ] Ask David the open question in § The marker: whether a soft wrap break should be marked too, which would mean
+      Cmdr wrapping instead of CSS.
