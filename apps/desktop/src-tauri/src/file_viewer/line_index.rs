@@ -18,7 +18,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::encoding::FileEncoding;
-use super::rows::{self, FileSource, RowReader, TotalRows, collect_rows, search_rows};
+use super::row_walk::{self, RowReader, TotalRows, collect_rows, search_rows};
+use super::rows::FileSource;
 use super::search_matcher::Matcher;
 use super::{
     BackendCapabilities, FileViewerBackend, INDEX_CHECKPOINT_INTERVAL, LineChunk, SearchMatch, SeekTarget, ViewerError,
@@ -36,7 +37,7 @@ pub fn test_only_open_call_count() -> usize {
 }
 
 /// Read enough of `path` to decide where its content starts, through the one rule all
-/// three backends share (`rows::content_start`).
+/// three backends share (`row_walk::content_start`).
 fn read_content_start(path: &Path, encoding: FileEncoding) -> Result<u64, ViewerError> {
     let bom = encoding.bom_bytes();
     if bom.is_empty() {
@@ -45,7 +46,7 @@ fn read_content_start(path: &Path, encoding: FileEncoding) -> Result<u64, Viewer
     let mut head = vec![0u8; bom.len()];
     let mut file = File::open(path)?;
     let read = std::io::Read::read(&mut file, &mut head)?;
-    Ok(rows::content_start(&head[..read], encoding))
+    Ok(row_walk::content_start(&head[..read], encoding))
 }
 
 /// A checkpoint in the row index.
@@ -365,7 +366,7 @@ impl FileViewerBackend for LineIndexBackend {
         })
     }
 
-    /// Scan the file row by row. See `rows::search_rows`: one implementation, shared
+    /// Scan the file row by row. See `row_walk::search_rows`: one implementation, shared
     /// with `ByteSeekBackend`, instead of the two copies of the same quadratic,
     /// UTF-16-blind `memchr` loop that stood here.
     fn search(

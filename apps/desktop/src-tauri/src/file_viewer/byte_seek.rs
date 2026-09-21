@@ -16,7 +16,8 @@ use std::sync::atomic::AtomicBool;
 use log::debug;
 
 use super::encoding::{FileEncoding, detect};
-use super::rows::{self, FileSource, RowReader, SEGMENT_BYTES, TotalRows, collect_rows, search_rows};
+use super::row_walk::{self, RowReader, TotalRows, collect_rows, search_rows};
+use super::rows::{FileSource, SEGMENT_BYTES};
 use super::search_matcher::Matcher;
 use super::{BackendCapabilities, FileViewerBackend, LineChunk, SearchMatch, SeekTarget, ViewerError};
 
@@ -48,7 +49,7 @@ pub struct ByteSeekBackend {
 }
 
 /// The file's content start: past a BOM if it has one, through the one rule all three
-/// backends share (`rows::content_start`), so row 0 is the same row in each of them.
+/// backends share (`row_walk::content_start`), so row 0 is the same row in each of them.
 fn detect_content_start(path: &Path, encoding: FileEncoding) -> u64 {
     let bom = encoding.bom_bytes();
     if bom.is_empty() {
@@ -56,7 +57,7 @@ fn detect_content_start(path: &Path, encoding: FileEncoding) -> u64 {
     }
     let mut head = vec![0u8; bom.len()];
     match File::open(path).map(|mut f| std::io::Read::read(&mut f, &mut head)) {
-        Ok(Ok(read)) => rows::content_start(&head[..read], encoding),
+        Ok(Ok(read)) => row_walk::content_start(&head[..read], encoding),
         _ => 0,
     }
 }

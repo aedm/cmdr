@@ -13,7 +13,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::encoding::FileEncoding;
-use super::rows::{self, RowReader, SliceSource, TotalRows, ViewerRow};
+use super::row_walk::{self, RowReader, TotalRows, ViewerRow};
+use super::rows::SliceSource;
 use super::search_matcher::{LineScan, Matcher, scan_line_with_matcher};
 use super::{BackendCapabilities, ChunkEnd, FileViewerBackend, LineChunk, SearchMatch, SeekTarget, ViewerError};
 
@@ -72,7 +73,7 @@ impl FullLoadBackend {
     /// The BOM is not content: the first row starts past it, and offsets stay aligned
     /// with the on-disk file.
     fn build_from_bytes(bytes: Vec<u8>, total_bytes: u64, file_name: String, encoding: FileEncoding) -> Self {
-        let bom_len = rows::content_start(&bytes, encoding);
+        let bom_len = row_walk::content_start(&bytes, encoding);
 
         let mut reader = RowReader::new(SliceSource::new(&bytes), encoding, bom_len);
         let mut rows: Vec<ViewerRow> = Vec::new();

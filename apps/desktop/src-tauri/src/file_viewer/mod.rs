@@ -19,6 +19,7 @@ pub mod media_protocol;
 mod media_session;
 pub mod pending_open;
 pub(crate) mod range_read;
+mod row_walk;
 mod rows;
 mod search_matcher;
 pub mod session;
@@ -63,7 +64,8 @@ pub use materialize::init_materialize_dir;
 pub use media_session::MediaDimensions;
 pub use pending_open::{AbandonReason, PendingOpen, ViewerPullProgress, begin_pending_open, end_pending_open};
 pub use range_read::RangeEnd;
-pub use rows::{CHUNK_BUDGET_BYTES, ChunkEnd, SEGMENT_BYTES, TotalRows, ViewerRow};
+pub use row_walk::{CHUNK_BUDGET_BYTES, ChunkEnd, TotalRows, ViewerRow};
+pub use rows::SEGMENT_BYTES;
 pub use search_matcher::{Matcher, SearchMode};
 pub use session::{
     EncodingOptions, SaveProgress, SearchPollResult, ViewerOpenResult, ViewerSessionStatus, cancel_read, close_session,

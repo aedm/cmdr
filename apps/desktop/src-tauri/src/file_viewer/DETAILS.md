@@ -11,9 +11,12 @@ Frontend counterpart: `apps/desktop/src/routes/viewer/CLAUDE.md` for the viewer 
 
 - `mod.rs`: public API, constants (1MB threshold, 256-ROW checkpoints), `LineChunk` / `ViewerRow` / `ChunkEnd` /
   `TotalRows`, `ViewerError` typed enum
-- `rows.rs`: the row boundary rule, defined once as a boundary set. `RowRuler` reads it backward (one bounded window
-  per probe, for a seek), `next_row_boundary` + `RowReader` read the same set forward (off the newline stream, for a
-  walk), `collect_rows` and `search_rows` are what the backends call. See § "Rows, not lines"
+- `rows.rs`: the row boundary rule, defined once as a boundary set, plus `RowRuler`, which reads it backward (one
+  bounded window per probe, for a seek), and `content_start`'s partner constants `SEGMENT_BYTES` / `MAX_WINDOW_BYTES`
+- `row_walk.rs`: the same set read FORWARD, off the newline stream, for a walk: `next_row_boundary` + `RowReader`,
+  `collect_rows` and `search_rows` (what the backends call), `content_start`, and the `ViewerRow` / `ChunkEnd` /
+  `TotalRows` / `CollectedRows` types a fetch hands back. The rule itself is never restated here; the file points at
+  `rows.rs` for every clause. See § "Rows, not lines"
 - `session.rs`: text-session orchestration, backend switching, search state, per-read cancel registry (`active_reads`),
   encoding-switch (`set_encoding`), drain-and-swap-under-lock protocol via `pending_grew`, the `read_range`,
   `write_range_to_file` (with its `SaveProgress` reporter), and `cancel_read` entry points. Owns the `ViewerSession` type + its `ViewerSession::new(ViewerSessionInit)` constructor and
@@ -281,6 +284,11 @@ probing per row would cost a 4 096-row fetch of an ordinary file around 160 MB; 
 reading the same boundaries out of the newline stream it already holds. `rows_test` asserts the two agree on every
 fixture at every offset. ❗ That test is what earns the second implementation; if it goes red, the walk is wrong.
 
+That seam is also the file split: the rule and its backward reading live in `rows.rs`, the forward walk and everything
+built on it in `row_walk.rs`. ❗ The rule's canonical statement lives in `rows.rs`'s module doc and NOWHERE else;
+`row_walk.rs` names clauses and points back. A second copy is how the two readings drift apart, which is invariant I4,
+and the cross-check test only catches that if there is one definition to check against.
+
 **What a chunk carries.** `LineChunk.rows` is `Vec<ViewerRow>`: text, its own byte offset, `continues` (Cmdr ended
 this row at a segment boundary, not at a newline the file holds), and `line_number` (`Some(n)` on a row that starts a
 line, `None` on a continuation, so the gutter prints a number once per line). The chunk also carries
@@ -312,7 +320,7 @@ open over 64 KB, counting only rows that end inside the sample, and uses that nu
 hands out comes back as itself. On a newline-free file the sample sees whole segments and comes out at exactly
 `SEGMENT_BYTES`, so row numbers there are EXACT. `TotalRows` says which it is.
 
-**Search scans rows**, in one shared `rows::search_rows` both streaming backends call. A match's column is a UTF-16
+**Search scans rows**, in one shared `row_walk::search_rows` both streaming backends call. A match's column is a UTF-16
 offset within its ROW, so it is bounded by two segments rather than arriving 2.5 million units wide. A needle
 straddling a segment break is missed, which is inherent to searching rows and is why `SEGMENT_BYTES` is far larger
 than any query.

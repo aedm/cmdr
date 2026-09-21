@@ -17,7 +17,8 @@ use std::rc::Rc;
 
 use super::ViewerError;
 use super::encoding::{FileEncoding, decode_line};
-use super::rows::{FileSource, MAX_WINDOW_BYTES, RowReader, RowRuler, RowSource, RowSpan, SEGMENT_BYTES, SliceSource};
+use super::row_walk::{RowReader, RowSpan};
+use super::rows::{FileSource, MAX_WINDOW_BYTES, RowRuler, RowSource, SEGMENT_BYTES, SliceSource};
 use crate::pluralize::pluralize;
 use crate::test_support::TestDir;
 
@@ -26,7 +27,7 @@ use crate::test_support::TestDir;
 const TEST_SEGMENT: u64 = 16;
 
 /// One `RowReader` refill, the granularity its reads round up to. Mirrors
-/// `rows::READ_CHUNK_BYTES`, which is private; a read bound stated in terms of the
+/// `row_walk::READ_CHUNK_BYTES`, which is private; a read bound stated in terms of the
 /// answer has to allow for the last partial chunk.
 const READ_CHUNK_SLACK: u64 = 64 * 1024;
 

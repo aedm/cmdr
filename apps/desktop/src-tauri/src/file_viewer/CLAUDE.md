@@ -9,7 +9,9 @@ Frontend counterparts: [route shell](../../../src/routes/viewer/CLAUDE.md) and
 
 - `mod.rs`: public API, constants, `ViewerError`. `session.rs`: orchestration, backend switching, per-read cancel
   registry, encoding-switch, drain-and-swap.
-- `rows.rs` (the row rule + the walk every backend reads through), `range_read.rs` (range → one UTF-8 string),
+- `rows.rs` (the row rule, stated once and answered in either direction), `row_walk.rs` (that rule read forward:
+  `RowReader`, `collect_rows`, `search_rows`, `content_start`, and the row types a fetch hands back),
+  `range_read.rs` (range → one UTF-8 string),
   `encoding.rs` (`FileEncoding` + detection), `full_load.rs` / `byte_seek.rs` / `line_index.rs` (the three backends),
   `search_matcher.rs`, `watcher.rs` (tail-mode watcher).
 - Backend selection: `< 1MB` → `FullLoad`; else `ByteSeek` (instant) + a background `LineIndex` upgrade.
