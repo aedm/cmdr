@@ -131,7 +131,7 @@ pub(crate) fn find_hits(
     let mut lines = Vec::with_capacity(groups.len().min(MAX_FIND_LINES));
     for group in groups.iter().take(MAX_FIND_LINES) {
         let chunk = backend.get_lines(&SeekTarget::ByteOffset(group.byte_offset), 1)?;
-        let raw = chunk.lines.first().map(String::as_str).unwrap_or_default();
+        let raw = chunk.rows.first().map(|row| row.text.as_str()).unwrap_or_default();
         // The backends keep `\r` on CRLF files; the model gains nothing from it.
         let line = raw.strip_suffix('\r').unwrap_or(raw);
         lines.push(FindLine {

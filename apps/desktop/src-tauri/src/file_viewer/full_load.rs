@@ -1,21 +1,31 @@
 //! FullLoadBackend: loads entire file into memory.
 //!
 //! Best for files under FULL_LOAD_THRESHOLD (1 MB). Provides instant random
-//! access by line number and fast search since all content is in RAM.
+//! access by row and fast search since all content is in RAM.
+//!
+//! ❗ It needs the row rule as much as the streaming backends do: a 900 KB file can
+//! still be one minified line, and serving that as a single 900 KB "line" would put
+//! the frontend's row cache and the other two backends' grids out of step.
 
 use crate::ignore_poison::IgnorePoison;
 use std::path::Path;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use super::encoding::{FileEncoding, decode_line, find_newlines};
+use super::encoding::FileEncoding;
+use super::rows::{RowReader, SliceSource, TotalRows, ViewerRow};
 use super::search_matcher::{LineScan, Matcher, scan_line_with_matcher};
-use super::{BackendCapabilities, FileViewerBackend, LineChunk, SearchMatch, SeekTarget, ViewerError};
+use super::{BackendCapabilities, ChunkEnd, FileViewerBackend, LineChunk, SearchMatch, SeekTarget, ViewerError};
 
 pub struct FullLoadBackend {
-    lines: Vec<String>,
-    /// Byte offset of each line start (parallel to `lines`).
-    line_offsets: Vec<u64>,
+    /// Every row of the file, in order. Each carries its own byte offset, so a seek is
+    /// a binary search and nothing downstream re-derives an offset from string lengths.
+    rows: Vec<ViewerRow>,
+    /// Absolute offset just past the last row. `total_bytes` with the BOM counted in,
+    /// which is what a `RangeEnd::Eof` read walks to.
+    end_byte_offset: u64,
+    /// Physical lines, for the gutter and for `total_lines`.
+    total_lines: usize,
     total_bytes: u64,
     file_name: String,
 }
@@ -53,57 +63,47 @@ impl FullLoadBackend {
         Ok(Self::build_from_bytes(bytes, total_bytes, file_name, encoding))
     }
 
-    /// Split `bytes` into per-encoding lines, populating `line_offsets` with absolute
-    /// byte offsets in the SOURCE bytes (not the decoded UTF-8). Search and selection
-    /// flows downstream of this struct convert UTF-16 offsets via the existing
-    /// surrogate-safe clamp; this struct keeps source-byte offsets so range reads
-    /// against the raw file still line up.
+    /// Split `bytes` into rows through the shared row rule, with absolute byte offsets
+    /// in the SOURCE bytes (not the decoded UTF-8). Search and selection flows
+    /// downstream of this struct convert UTF-16 offsets via the existing surrogate-safe
+    /// clamp; this struct keeps source-byte offsets so range reads against the raw file
+    /// still line up.
+    ///
+    /// The BOM is not content: the first row starts past it, and offsets stay aligned
+    /// with the on-disk file.
     fn build_from_bytes(bytes: Vec<u8>, total_bytes: u64, file_name: String, encoding: FileEncoding) -> Self {
-        // Strip the leading BOM if present so the first line doesn't surface it as
-        // visible content. The byte offset accounting keeps the BOM bytes in the
-        // count (offsets stay aligned with the on-disk file).
         let bom_len = if bytes.starts_with(encoding.bom_bytes()) {
-            encoding.bom_bytes().len()
+            encoding.bom_bytes().len() as u64
         } else {
             0
         };
-        let scan = &bytes[bom_len..];
-        let newlines = find_newlines(scan, encoding);
 
-        let mut lines: Vec<String> = Vec::with_capacity(newlines.len() + 1);
-        let mut line_offsets: Vec<u64> = Vec::with_capacity(newlines.len() + 1);
-        let mut start: usize = 0;
-        for nl in &newlines {
-            line_offsets.push((bom_len + start) as u64);
-            // The byte that starts the newline pair, and the byte just after the pair.
-            //   ASCII-compatible: pair = [0x0A], starts at nl, ends at nl + 1.
-            //   UTF-16 LE: pair = [0x0A, 0x00] starting at nl, ending at nl + 2.
-            //   UTF-16 BE: pair = [0x00, 0x0A] starting at nl - 1, ending at nl + 1.
-            let (pair_start, next_start) = match encoding {
-                FileEncoding::Utf16Le => (*nl, nl + 2),
-                FileEncoding::Utf16Be => (nl - 1, nl + 1),
-                _ => (*nl, nl + 1),
+        let mut reader = RowReader::new(SliceSource::new(&bytes), encoding, bom_len);
+        let mut rows: Vec<ViewerRow> = Vec::new();
+        let mut end_byte_offset = bom_len;
+        let mut next_line = 0usize;
+        // Reads from a slice cannot fail, so the walk is infallible here.
+        while let Some((span, text)) = reader.next_row().unwrap_or(None) {
+            let line_number = if span.starts_line {
+                let n = next_line;
+                next_line += 1;
+                Some(n)
+            } else {
+                None
             };
-            lines.push(decode_line(&scan[start..pair_start], encoding));
-            start = next_start;
-        }
-        // Trailing partial line (or whole content if no newlines).
-        if start < scan.len() {
-            line_offsets.push((bom_len + start) as u64);
-            lines.push(decode_line(&scan[start..], encoding));
-        } else if lines.is_empty() {
-            // Empty file → one empty line.
-            line_offsets.push(bom_len as u64);
-            lines.push(String::new());
-        } else if newlines.last().is_some() {
-            // File ends with a newline → trailing empty line, matching split('\n') legacy.
-            line_offsets.push(bom_len as u64 + scan.len() as u64);
-            lines.push(String::new());
+            rows.push(ViewerRow {
+                text,
+                byte_offset: span.start,
+                continues: span.continues,
+                line_number,
+            });
+            end_byte_offset = span.end;
         }
 
         Self {
-            lines,
-            line_offsets,
+            rows,
+            end_byte_offset,
+            total_lines: next_line.max(1),
             total_bytes,
             file_name,
         }
@@ -134,18 +134,18 @@ impl FullLoadBackend {
 
     fn resolve_target(&self, target: &SeekTarget) -> usize {
         match target {
-            SeekTarget::Line(n) => (*n).min(self.lines.len().saturating_sub(1)),
+            SeekTarget::Line(n) => (*n).min(self.rows.len().saturating_sub(1)),
             SeekTarget::ByteOffset(offset) => {
-                // Binary search for the line containing this byte offset
-                match self.line_offsets.binary_search(offset) {
+                // Binary search for the row containing this byte offset.
+                match self.rows.binary_search_by_key(offset, |row| row.byte_offset) {
                     Ok(idx) => idx,
                     Err(idx) => idx.saturating_sub(1),
                 }
             }
             SeekTarget::Fraction(f) => {
                 let f = f.clamp(0.0, 1.0);
-                let max_line = self.lines.len().saturating_sub(1);
-                (f * max_line as f64).round() as usize
+                let max_row = self.rows.len().saturating_sub(1);
+                (f * max_row as f64).round() as usize
             }
         }
     }
@@ -164,14 +164,33 @@ impl FileViewerBackend for FullLoadBackend {
 
     fn get_lines(&self, target: &SeekTarget, count: usize) -> Result<LineChunk, ViewerError> {
         let start = self.resolve_target(target);
-        let end = (start + count).min(self.lines.len());
-        let chunk_lines: Vec<String> = self.lines[start..end].to_vec();
+        let mut end = start;
+        let mut taken = 0u64;
+        // The budget bounds the answer here too: a file under 1 MB can hold rows a
+        // wrap-on viewport would rather not receive in one go, and every caller reads
+        // `ChunkEnd` the same way whichever backend served it.
+        while end < self.rows.len() && end - start < count {
+            taken += self.rows[end].text.len() as u64;
+            end += 1;
+            if taken >= super::CHUNK_BUDGET_BYTES {
+                break;
+            }
+        }
+        let chunk_end = if end >= self.rows.len() {
+            ChunkEnd::EndOfFile
+        } else if end - start < count {
+            ChunkEnd::BudgetReached
+        } else {
+            ChunkEnd::CountReached
+        };
 
         Ok(LineChunk {
-            lines: chunk_lines,
-            first_line_number: start,
-            byte_offset: self.line_offsets.get(start).copied().unwrap_or(0),
-            total_lines: Some(self.lines.len()),
+            rows: self.rows[start..end].to_vec(),
+            first_row_number: start,
+            byte_offset: self.rows.get(start).map_or(self.end_byte_offset, |row| row.byte_offset),
+            end_byte_offset: self.rows.get(end).map_or(self.end_byte_offset, |row| row.byte_offset),
+            end: chunk_end,
+            total_rows: TotalRows::Exact(self.rows.len()),
             total_bytes: self.total_bytes,
         })
     }
@@ -186,16 +205,21 @@ impl FileViewerBackend for FullLoadBackend {
         let mut scanned: u64 = 0;
         let mut limit_reached = false;
 
-        for (line_idx, line) in self.lines.iter().enumerate() {
+        // Row by row, like the other two backends: a match's column then counts from
+        // the start of the ROW it sits in, so ⌘F inside a minified line lands somewhere
+        // the frontend can scroll to. A needle straddling a segment break is missed,
+        // which is inherent to searching rows and is why `SEGMENT_BYTES` is far larger
+        // than any query.
+        for (row_idx, row) in self.rows.iter().enumerate() {
             if cancel.load(Ordering::Relaxed) || limit_reached {
                 break;
             }
-            match scan_line_with_matcher(matcher, line, line_idx, self.line_offsets[line_idx], cancel, results) {
+            match scan_line_with_matcher(matcher, &row.text, row_idx, row.byte_offset, cancel, results) {
                 LineScan::HitLimit => limit_reached = true,
                 LineScan::Cancelled => break,
                 LineScan::Done => {}
             }
-            scanned += line.len() as u64 + 1; // +1 for newline
+            scanned += row.text.len() as u64 + u64::from(!row.continues);
         }
 
         *progress.lock_ignore_poison() = scanned;
@@ -215,8 +239,12 @@ impl FileViewerBackend for FullLoadBackend {
         self.total_bytes
     }
 
+    fn total_rows(&self) -> TotalRows {
+        TotalRows::Exact(self.rows.len())
+    }
+
     fn total_lines(&self) -> Option<usize> {
-        Some(self.lines.len())
+        Some(self.total_lines)
     }
 
     fn file_name(&self) -> &str {

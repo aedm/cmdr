@@ -33,8 +33,8 @@ fn a_small_file_opens_full_load_with_exact_lines() {
         "10 lines plus the trailing empty one"
     );
     let chunk = opened.backend.get_lines(&SeekTarget::Line(7), 2).unwrap();
-    assert_eq!(chunk.first_line_number, 7);
-    assert!(chunk.lines[0].starts_with("line 000008"));
+    assert_eq!(chunk.first_row_number, 7);
+    assert!(chunk.texts()[0].starts_with("line 000008"));
 }
 
 #[test]
@@ -48,8 +48,12 @@ fn a_large_file_opens_line_index_with_exact_lines() {
     assert!(opened.line_numbers_exact);
     assert_eq!(opened.backend.total_lines(), Some(50_001));
     let chunk = opened.backend.get_lines(&SeekTarget::Line(40_000), 1).unwrap();
-    assert_eq!(chunk.first_line_number, 40_000);
-    assert!(chunk.lines[0].starts_with("line 040001"), "got {:?}", chunk.lines[0]);
+    assert_eq!(chunk.first_row_number, 40_000);
+    assert!(
+        chunk.texts()[0].starts_with("line 040001"),
+        "got {:?}",
+        chunk.texts()[0]
+    );
 }
 
 #[test]
@@ -64,7 +68,7 @@ fn a_cancelled_index_build_falls_back_to_byte_seek_and_says_lines_are_approximat
     assert_eq!(opened.backend.total_lines(), None);
     assert!(!opened.backend.capabilities().knows_total_lines);
     let chunk = opened.backend.get_lines(&SeekTarget::Line(0), 2).unwrap();
-    assert!(chunk.lines[0].starts_with("line 000001"));
+    assert!(chunk.texts()[0].starts_with("line 000001"));
     // The flag is the caller's; the fallback must not clear it.
     assert!(cancel.load(Ordering::Relaxed));
 }
@@ -111,7 +115,7 @@ fn a_scan_backend_skips_the_index_and_still_finds_lines_exactly() {
     let chunk = backend
         .get_lines(&SeekTarget::ByteOffset(found[0].byte_offset), 1)
         .unwrap();
-    assert_eq!(chunk.lines[0], "line 040000 padding........");
+    assert_eq!(chunk.texts()[0], "line 040000 padding........");
 
     let small = write_numbered(&dir, "small.txt", 10);
     let backend = open_scan_backend(&small, FileEncoding::Utf8).unwrap();

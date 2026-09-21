@@ -77,11 +77,35 @@ fn write_numbered(dir: &TestDir, name: &str, lines: usize) -> PathBuf {
 }
 
 fn chunk(lines: &[&str], first_line_number: usize, total_lines: Option<usize>) -> LineChunk {
-    LineChunk {
-        lines: lines.iter().map(|l| l.to_string()).collect(),
+    rows_chunk(
+        &lines.iter().map(|l| (*l, false)).collect::<Vec<_>>(),
         first_line_number,
-        byte_offset: 0,
         total_lines,
+    )
+}
+
+/// A chunk whose entries carry the `continues` flag, for the cases that care whether a
+/// break was the file's or Cmdr's.
+fn rows_chunk(entries: &[(&str, bool)], first_row_number: usize, total_rows: Option<usize>) -> LineChunk {
+    LineChunk {
+        rows: entries
+            .iter()
+            .enumerate()
+            .map(|(i, (text, continues))| crate::file_viewer::ViewerRow {
+                text: (*text).to_string(),
+                byte_offset: i as u64,
+                continues: *continues,
+                line_number: Some(first_row_number + i),
+            })
+            .collect(),
+        first_row_number,
+        byte_offset: 0,
+        end_byte_offset: entries.len() as u64,
+        end: crate::file_viewer::ChunkEnd::EndOfFile,
+        total_rows: total_rows.map_or(
+            crate::file_viewer::TotalRows::Estimated(entries.len()),
+            crate::file_viewer::TotalRows::Exact,
+        ),
         total_bytes: 0,
     }
 }

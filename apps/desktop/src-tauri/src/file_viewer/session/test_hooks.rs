@@ -170,10 +170,23 @@ impl FileViewerBackend for ScriptedBackend {
         let end = (start + count).min(self.line_count);
 
         Ok(LineChunk {
-            lines: (start..end).map(|_| self.line.clone()).collect(),
-            first_line_number: start,
+            rows: (start..end)
+                .map(|row| crate::file_viewer::ViewerRow {
+                    text: self.line.clone(),
+                    byte_offset: (row * stride) as u64,
+                    continues: false,
+                    line_number: Some(row),
+                })
+                .collect(),
+            first_row_number: start,
             byte_offset: (start * stride) as u64,
-            total_lines: Some(self.line_count),
+            end_byte_offset: (end * stride) as u64,
+            end: if end >= self.line_count {
+                crate::file_viewer::ChunkEnd::EndOfFile
+            } else {
+                crate::file_viewer::ChunkEnd::CountReached
+            },
+            total_rows: crate::file_viewer::TotalRows::Exact(self.line_count),
             total_bytes: self.total_bytes(),
         })
     }
@@ -199,6 +212,10 @@ impl FileViewerBackend for ScriptedBackend {
 
     fn total_bytes(&self) -> u64 {
         (self.line_count * self.stride()) as u64
+    }
+
+    fn total_rows(&self) -> crate::file_viewer::TotalRows {
+        crate::file_viewer::TotalRows::Exact(self.line_count)
     }
 
     fn total_lines(&self) -> Option<usize> {

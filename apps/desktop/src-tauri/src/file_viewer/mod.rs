@@ -63,6 +63,7 @@ pub use materialize::init_materialize_dir;
 pub use media_session::MediaDimensions;
 pub use pending_open::{AbandonReason, PendingOpen, ViewerPullProgress, begin_pending_open, end_pending_open};
 pub use range_read::RangeEnd;
+pub use rows::{CHUNK_BUDGET_BYTES, ChunkEnd, SEGMENT_BYTES, TotalRows, ViewerRow};
 pub use search_matcher::{Matcher, SearchMode};
 pub use session::{
     EncodingOptions, SaveProgress, SearchPollResult, ViewerOpenResult, ViewerSessionStatus, cancel_read, close_session,
@@ -76,11 +77,14 @@ use serde::{Deserialize, Serialize};
 /// Maximum file size for FullLoadBackend (1 MB).
 const FULL_LOAD_THRESHOLD: u64 = 1024 * 1024;
 
-/// Interval between line index checkpoints (every 256 lines).
+/// Interval between line index checkpoints, in ROWS.
+///
+/// ❗ Rows, not lines: a file with no newline in it has ONE line, so a line-counted
+/// interval gives it a single checkpoint and every fetch rescans from byte 0. That
+/// breaks invariant I1 on precisely the file rows exist for. Each checkpoint carries
+/// the physical line number alongside, so the gutter still gets exact numbers from the
+/// same single scan.
 const INDEX_CHECKPOINT_INTERVAL: usize = 256;
-
-/// Maximum bytes to scan backward when seeking by byte offset.
-const MAX_BACKWARD_SCAN: usize = 8192;
 
 /// Maximum number of matches stored during search. Once reached, the search stops entirely.
 /// The frontend highlights additional matches client-side on visible lines, so stopping early
@@ -104,41 +108,74 @@ pub enum SeekTargetKind {
 }
 
 /// Where to seek in the file.
+///
+/// The numeric coordinate is a ROW index, not a physical line; milestone 4 of
+/// `docs/specs/viewer-row-wrap.md` renames the variant to match.
 #[derive(Debug, Clone)]
 pub enum SeekTarget {
-    /// Jump to a specific line number (0-based).
+    /// Jump to a specific row (0-based). Exact on `FullLoadBackend` and
+    /// `LineIndexBackend`; `ByteSeekBackend` maps it through its bytes-per-row sample.
     Line(usize),
-    /// Jump to a byte offset and find the surrounding line.
+    /// Jump to a byte offset and find the row containing it.
     ByteOffset(u64),
     /// Jump to a fraction of the file (0.0 = start, 1.0 = end).
     Fraction(f64),
 }
 
-/// A chunk of lines returned by a backend.
+/// A chunk of ROWS returned by a backend.
+///
+/// A row ends at a newline or after `SEGMENT_BYTES`, whichever comes first
+/// (`file_viewer::rows`), so one fetch costs the same on a 50 GB single-line file as on
+/// an ordinary one. Each row says whether the break at its end is the file's or Cmdr's.
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LineChunk {
-    pub lines: Vec<String>,
-    /// 0-based.
-    pub first_line_number: usize,
+    pub rows: Vec<ViewerRow>,
+    /// 0-based row index of the first row. An estimate on `ByteSeekBackend`.
+    pub first_row_number: usize,
+    /// Absolute offset of the first row's first byte.
+    ///
+    /// ❗ The row's OWN offset. Returning an index checkpoint's instead is what made
+    /// every onward seek land short, duplicating a line at each chunk seam.
     pub byte_offset: u64,
-    /// Known only after full scan or full load.
-    pub total_lines: Option<usize>,
+    /// Absolute offset just past the last row served, from the SOURCE bytes.
+    ///
+    /// ❗ A caller fetching the next chunk steers by this. ❌ Never re-derive it by
+    /// summing decoded string lengths: those are UTF-8 even when the file is UTF-16,
+    /// and they carry no newline.
+    pub end_byte_offset: u64,
+    /// Whether the chunk ran out of rows, out of budget, or out of file.
+    pub end: ChunkEnd,
+    pub total_rows: TotalRows,
     pub total_bytes: u64,
+}
+
+#[cfg(test)]
+impl LineChunk {
+    /// Just the rows' text.
+    ///
+    /// Test convenience only: production reads `rows`, because a row's `continues` flag
+    /// is what stops a copy path joining two of them with a newline the file never had.
+    pub fn texts(&self) -> Vec<String> {
+        self.rows.iter().map(|row| row.text.clone()).collect()
+    }
 }
 
 /// A search match found by a backend.
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchMatch {
-    /// 0-based.
+    /// 0-based ROW index (milestone 4 renames the field; the coordinate is already a
+    /// row). Search scans rows, so a match inside a 300 MB line comes back with a
+    /// column that fits on screen instead of one 2.5 million units wide.
     pub line: usize,
-    /// UTF-16 code unit offset within the line (matches JS string indexing).
+    /// UTF-16 code unit offset within the ROW (matches JS string indexing). Bounded by
+    /// the row's length, which is bounded by two segments.
     pub column: usize,
     /// Length in UTF-16 code units (matches JS string indexing).
     pub length: usize,
-    /// Byte offset of the start of the line containing this match.
-    /// Used by the frontend to scroll accurately in ByteSeek mode where line numbers
+    /// Byte offset of the start of the row containing this match.
+    /// Used by the frontend to scroll accurately in ByteSeek mode where row numbers
     /// don't map to the virtual scroll coordinate system.
     pub byte_offset: u64,
 }
@@ -288,6 +325,11 @@ pub trait FileViewerBackend: Send + Sync {
 
     /// Total file size in bytes.
     fn total_bytes(&self) -> u64;
+
+    /// How many ROWS the file has, and whether that is a count or an estimate. Every
+    /// backend can answer: `ByteSeekBackend` divides by the bytes-per-row it sampled at
+    /// open instead of returning nothing.
+    fn total_rows(&self) -> TotalRows;
 
     /// Total lines if known (only FullLoad and completed LineIndex know this).
     fn total_lines(&self) -> Option<usize>;

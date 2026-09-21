@@ -496,6 +496,9 @@ fn open_session_core(
     let capabilities = backend_box.capabilities();
     let total_bytes = backend_box.total_bytes();
     let total_lines = backend_box.total_lines();
+    // The backend counts rows itself now, exactly or by its own bytes-per-row sample,
+    // so there is nothing left to estimate here from the first chunk's string lengths.
+    let estimated_total_lines = backend_box.total_rows().rows();
     let file_name = backend_box.file_name().to_string();
 
     let session_id = generate_session_id();
@@ -516,21 +519,6 @@ fn open_session_core(
         media_token: None,
         temp,
     });
-
-    // Calculate estimated total lines from the initial sample
-    let estimated_total_lines = if let Some(lines) = total_lines {
-        // If we know the exact count, use it
-        lines
-    } else if !initial_lines.lines.is_empty() {
-        // Estimate from initial sample: total_bytes / avg_bytes_per_line
-        let total_bytes_in_sample: usize = initial_lines.lines.iter().map(|l| l.len() + 1).sum(); // +1 for newline
-        let avg_bytes_per_line = total_bytes_in_sample / initial_lines.lines.len();
-        (total_bytes as usize)
-            .checked_div(avg_bytes_per_line)
-            .unwrap_or((total_bytes as usize) / 80) // fallback when avg is 0
-    } else {
-        (total_bytes as usize) / 80 // fallback for empty files
-    };
 
     let result = ViewerOpenResult {
         session_id: session_id.clone(),

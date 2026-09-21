@@ -81,9 +81,9 @@ fn get_lines_from_start() {
     let backend = LineIndexBackend::open(&file, &cancel).unwrap();
 
     let chunk = backend.get_lines(&SeekTarget::Line(0), 3).unwrap();
-    assert_eq!(chunk.lines, vec!["alpha", "beta", "gamma"]);
-    assert_eq!(chunk.first_line_number, 0);
-    assert_eq!(chunk.total_lines, Some(5));
+    assert_eq!(chunk.texts(), vec!["alpha", "beta", "gamma"]);
+    assert_eq!(chunk.first_row_number, 0);
+    assert_eq!(chunk.total_rows, super::TotalRows::Exact(5));
 }
 
 #[test]
@@ -95,8 +95,8 @@ fn get_lines_from_middle() {
     let backend = LineIndexBackend::open(&file, &cancel).unwrap();
 
     let chunk = backend.get_lines(&SeekTarget::Line(3), 2).unwrap();
-    assert_eq!(chunk.lines, vec!["d", "e"]);
-    assert_eq!(chunk.first_line_number, 3);
+    assert_eq!(chunk.texts(), vec!["d", "e"]);
+    assert_eq!(chunk.first_row_number, 3);
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn get_lines_past_end() {
 
     let chunk = backend.get_lines(&SeekTarget::Line(10), 5).unwrap();
     // Should clamp to last line
-    assert_eq!(chunk.first_line_number, 3); // 4 lines (including trailing empty), last is index 3
+    assert_eq!(chunk.first_row_number, 3); // 4 lines (including trailing empty), last is index 3
 }
 
 #[test]
@@ -123,8 +123,8 @@ fn get_lines_by_fraction() {
 
     // Fraction 0.0 = first line
     let chunk = backend.get_lines(&SeekTarget::Fraction(0.0), 1).unwrap();
-    assert_eq!(chunk.first_line_number, 0);
-    assert_eq!(chunk.lines[0], "line 1");
+    assert_eq!(chunk.first_row_number, 0);
+    assert_eq!(chunk.texts()[0], "line 1");
 }
 
 #[test]
@@ -136,7 +136,7 @@ fn get_lines_no_trailing_newline() {
     let backend = LineIndexBackend::open(&file, &cancel).unwrap();
 
     let chunk = backend.get_lines(&SeekTarget::Line(0), 10).unwrap();
-    assert_eq!(chunk.lines, vec!["a", "b", "c"]);
+    assert_eq!(chunk.texts(), vec!["a", "b", "c"]);
     assert_eq!(backend.total_lines(), Some(3));
 }
 
@@ -157,14 +157,14 @@ fn sparse_index_checkpoints() {
     // Seek to a line past the first checkpoint
     let target_line = INDEX_CHECKPOINT_INTERVAL + 10;
     let chunk = backend.get_lines(&SeekTarget::Line(target_line), 3).unwrap();
-    assert_eq!(chunk.first_line_number, target_line);
-    assert_eq!(chunk.lines[0], format!("line {:06}", target_line));
+    assert_eq!(chunk.first_row_number, target_line);
+    assert_eq!(chunk.texts()[0], format!("line {:06}", target_line));
 
     // Seek to a line past the second checkpoint
     let target_line2 = INDEX_CHECKPOINT_INTERVAL * 2 + 5;
     let chunk2 = backend.get_lines(&SeekTarget::Line(target_line2), 2).unwrap();
-    assert_eq!(chunk2.first_line_number, target_line2);
-    assert_eq!(chunk2.lines[0], format!("line {:06}", target_line2));
+    assert_eq!(chunk2.first_row_number, target_line2);
+    assert_eq!(chunk2.texts()[0], format!("line {:06}", target_line2));
 }
 
 #[test]
@@ -275,7 +275,7 @@ fn line_count_with_multibyte_chars() {
     assert_eq!(backend.total_lines(), Some(5));
 
     let chunk = backend.get_lines(&SeekTarget::Line(0), 4).unwrap();
-    assert_eq!(chunk.lines, vec!["café", "漢字", "🦀🎉", "plain"]);
+    assert_eq!(chunk.texts(), vec!["café", "漢字", "🦀🎉", "plain"]);
 }
 
 #[test]
@@ -289,8 +289,8 @@ fn seek_line_after_multibyte_content() {
 
     // Seek to line 2 ("plain"): verifies byte offset tracking through multibyte lines
     let chunk = backend.get_lines(&SeekTarget::Line(2), 1).unwrap();
-    assert_eq!(chunk.first_line_number, 2);
-    assert_eq!(chunk.lines[0], "plain");
+    assert_eq!(chunk.first_row_number, 2);
+    assert_eq!(chunk.texts()[0], "plain");
 }
 
 #[test]
@@ -416,7 +416,7 @@ fn extend_to_matches_open_at_target_size() {
 
     let ext_chunk = extended.get_lines(&SeekTarget::Line(0), 10).unwrap();
     let fresh_chunk = fresh.get_lines(&SeekTarget::Line(0), 10).unwrap();
-    assert_eq!(ext_chunk.lines, fresh_chunk.lines);
+    assert_eq!(ext_chunk.texts(), fresh_chunk.texts());
 }
 
 #[test]
@@ -449,8 +449,8 @@ fn extend_to_appends_checkpoints_past_interval() {
     // Spot check: a line that lives past the original EOF is correctly seekable.
     let target = INDEX_CHECKPOINT_INTERVAL * 2 + 5;
     let chunk = extended.get_lines(&SeekTarget::Line(target), 1).unwrap();
-    assert_eq!(chunk.first_line_number, target);
-    assert_eq!(chunk.lines[0], format!("more  {:06}", 5));
+    assert_eq!(chunk.first_row_number, target);
+    assert_eq!(chunk.texts()[0], format!("more  {:06}", 5));
 }
 
 #[test]

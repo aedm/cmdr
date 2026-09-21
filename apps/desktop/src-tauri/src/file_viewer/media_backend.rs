@@ -31,10 +31,12 @@ impl FileViewerBackend for MediaBackend {
         // Media sessions have no text lines; the FE never calls `viewer_get_lines` in
         // media mode, but return an empty, internally-consistent chunk defensively.
         Ok(LineChunk {
-            lines: Vec::new(),
-            first_line_number: 0,
+            rows: Vec::new(),
+            first_row_number: 0,
             byte_offset: 0,
-            total_lines: Some(0),
+            end_byte_offset: 0,
+            end: super::ChunkEnd::EndOfFile,
+            total_rows: super::TotalRows::Exact(0),
             total_bytes: self.total_bytes,
         })
     }
@@ -60,6 +62,10 @@ impl FileViewerBackend for MediaBackend {
 
     fn total_bytes(&self) -> u64 {
         self.total_bytes
+    }
+
+    fn total_rows(&self) -> super::TotalRows {
+        super::TotalRows::Exact(0)
     }
 
     fn total_lines(&self) -> Option<usize> {

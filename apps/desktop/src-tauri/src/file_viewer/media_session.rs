@@ -114,10 +114,12 @@ fn open_media_session(
     SESSIONS.lock_ignore_poison().insert(session_id.clone(), session);
 
     let empty_initial = LineChunk {
-        lines: Vec::new(),
-        first_line_number: 0,
+        rows: Vec::new(),
+        first_row_number: 0,
         byte_offset: 0,
-        total_lines: Some(0),
+        end_byte_offset: 0,
+        end: super::ChunkEnd::EndOfFile,
+        total_rows: super::TotalRows::Exact(0),
         total_bytes: file_size,
     };
 

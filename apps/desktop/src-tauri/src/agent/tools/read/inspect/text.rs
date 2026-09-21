@@ -93,7 +93,7 @@ pub(crate) fn window_from_chunk(
     max_line_chars: usize,
 ) -> TextWindow {
     let requested = opts.start_line - 1;
-    let past_eof = chunk.total_lines.is_some_and(|total| requested >= total) || chunk.lines.is_empty();
+    let past_eof = (chunk.total_rows.is_exact() && requested >= chunk.total_rows.rows()) || chunk.rows.is_empty();
     if past_eof {
         return TextWindow {
             start_line: opts.start_line,
@@ -104,24 +104,30 @@ pub(crate) fn window_from_chunk(
         };
     }
 
-    let more_lines_exist = chunk.lines.len() > opts.max_lines;
-    let candidates = &chunk.lines[..chunk.lines.len().min(opts.max_lines)];
+    let more_lines_exist = chunk.rows.len() > opts.max_lines;
+    let candidates = &chunk.rows[..chunk.rows.len().min(opts.max_lines)];
 
     let mut content = String::new();
     let mut returned = 0usize;
     let mut chars_used = 0usize;
     let mut lines_cut = false;
     let mut char_cap_hit = false;
-    for raw in candidates {
+    // ❗ The separator is a newline only after a row the FILE ended. A row Cmdr broke
+    // at a segment boundary continues into the next one, so joining those two with a
+    // `\n` would hand the model a line break the file does not contain.
+    let mut separator_owed = false;
+    for row in candidates {
+        let raw = &row.text;
         let line = raw.strip_suffix('\r').unwrap_or(raw);
         let (line, cut) = cut_chars(line, max_line_chars);
         let line_chars = line.chars().count();
+        let separator = usize::from(separator_owed);
         // The separator counts too; the first line always fits (it's at most `max_line_chars`).
-        if returned > 0 && chars_used + 1 + line_chars > max_chars {
+        if returned > 0 && chars_used + separator + line_chars > max_chars {
             char_cap_hit = true;
             break;
         }
-        if returned > 0 {
+        if separator_owed {
             content.push('\n');
             chars_used += 1;
         }
@@ -129,10 +135,11 @@ pub(crate) fn window_from_chunk(
         chars_used += line_chars;
         returned += 1;
         lines_cut |= cut;
+        separator_owed = !row.continues;
     }
 
     TextWindow {
-        start_line: chunk.first_line_number + 1,
+        start_line: chunk.first_row_number + 1,
         returned_lines: returned,
         content,
         truncated: more_lines_exist || char_cap_hit,

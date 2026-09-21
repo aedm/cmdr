@@ -66,9 +66,9 @@ fn get_lines_from_start() {
     let backend = FullLoadBackend::from_content("alpha\nbeta\ngamma\ndelta\nepsilon", "test.txt");
 
     let chunk = backend.get_lines(&SeekTarget::Line(0), 3).unwrap();
-    assert_eq!(chunk.lines, vec!["alpha", "beta", "gamma"]);
-    assert_eq!(chunk.first_line_number, 0);
-    assert_eq!(chunk.total_lines, Some(5));
+    assert_eq!(chunk.texts(), vec!["alpha", "beta", "gamma"]);
+    assert_eq!(chunk.first_row_number, 0);
+    assert_eq!(chunk.total_rows, super::TotalRows::Exact(5));
 }
 
 #[test]
@@ -76,8 +76,8 @@ fn get_lines_from_middle() {
     let backend = FullLoadBackend::from_content("a\nb\nc\nd\ne\nf\ng", "test.txt");
 
     let chunk = backend.get_lines(&SeekTarget::Line(3), 2).unwrap();
-    assert_eq!(chunk.lines, vec!["d", "e"]);
-    assert_eq!(chunk.first_line_number, 3);
+    assert_eq!(chunk.texts(), vec!["d", "e"]);
+    assert_eq!(chunk.first_row_number, 3);
 }
 
 #[test]
@@ -86,8 +86,8 @@ fn get_lines_past_end() {
 
     let chunk = backend.get_lines(&SeekTarget::Line(10), 5).unwrap();
     // Should clamp to last line
-    assert_eq!(chunk.first_line_number, 2);
-    assert_eq!(chunk.lines, vec!["c"]);
+    assert_eq!(chunk.first_row_number, 2);
+    assert_eq!(chunk.texts(), vec!["c"]);
 }
 
 #[test]
@@ -96,8 +96,8 @@ fn get_lines_by_byte_offset() {
 
     // Byte offset 4 is start of "def"
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(4), 2).unwrap();
-    assert_eq!(chunk.first_line_number, 1);
-    assert_eq!(chunk.lines, vec!["def", "ghi"]);
+    assert_eq!(chunk.first_row_number, 1);
+    assert_eq!(chunk.texts(), vec!["def", "ghi"]);
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn get_lines_by_fraction() {
 
     // Fraction 0.5 on 5 lines = line 2 or 3
     let chunk = backend.get_lines(&SeekTarget::Fraction(0.5), 1).unwrap();
-    assert!(chunk.first_line_number == 2 || chunk.first_line_number == 3);
+    assert!(chunk.first_row_number == 2 || chunk.first_row_number == 3);
 }
 
 #[test]
@@ -114,8 +114,8 @@ fn get_lines_fraction_zero() {
     let backend = FullLoadBackend::from_content("a\nb\nc", "test.txt");
 
     let chunk = backend.get_lines(&SeekTarget::Fraction(0.0), 1).unwrap();
-    assert_eq!(chunk.first_line_number, 0);
-    assert_eq!(chunk.lines, vec!["a"]);
+    assert_eq!(chunk.first_row_number, 0);
+    assert_eq!(chunk.texts(), vec!["a"]);
 }
 
 #[test]
@@ -123,8 +123,8 @@ fn get_lines_fraction_one() {
     let backend = FullLoadBackend::from_content("a\nb\nc", "test.txt");
 
     let chunk = backend.get_lines(&SeekTarget::Fraction(1.0), 1).unwrap();
-    assert_eq!(chunk.first_line_number, 2);
-    assert_eq!(chunk.lines, vec!["c"]);
+    assert_eq!(chunk.first_row_number, 2);
+    assert_eq!(chunk.texts(), vec!["c"]);
 }
 
 #[test]
@@ -244,8 +244,8 @@ fn binary_content_handled() {
     // Detector picks Windows-1252 (failing-UTF-8 fallback), which maps every byte
     // 1:1 to a codepoint — so binary bytes don't produce replacement characters,
     // but the newline split still gives two lines.
-    assert_eq!(chunk.lines.len(), 2);
-    assert!(!chunk.lines[0].is_empty());
+    assert_eq!(chunk.texts().len(), 2);
+    assert!(!chunk.texts()[0].is_empty());
 }
 
 #[test]
@@ -316,7 +316,7 @@ fn single_line_no_newline() {
 
     assert_eq!(backend.total_lines(), Some(1));
     let chunk = backend.get_lines(&SeekTarget::Line(0), 10).unwrap();
-    assert_eq!(chunk.lines, vec!["just one line"]);
+    assert_eq!(chunk.texts(), vec!["just one line"]);
 }
 
 #[test]
@@ -350,8 +350,8 @@ fn byte_offset_seek_with_multibyte_lines() {
 
     // Byte offset 6 is start of "plain"
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(6), 1).unwrap();
-    assert_eq!(chunk.first_line_number, 1);
-    assert_eq!(chunk.lines[0], "plain");
+    assert_eq!(chunk.first_row_number, 1);
+    assert_eq!(chunk.texts()[0], "plain");
 }
 
 #[test]
@@ -363,8 +363,8 @@ fn byte_offset_seek_mid_multibyte_char() {
     let backend = FullLoadBackend::from_content("café\nplain\n", "test.txt");
 
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(4), 1).unwrap();
-    assert_eq!(chunk.first_line_number, 0);
-    assert_eq!(chunk.lines[0], "café");
+    assert_eq!(chunk.first_row_number, 0);
+    assert_eq!(chunk.texts()[0], "café");
 }
 
 #[test]
@@ -393,8 +393,8 @@ fn line_seek_through_mixed_multibyte_content() {
     assert_eq!(backend.total_lines(), Some(4));
 
     let chunk = backend.get_lines(&SeekTarget::Line(2), 1).unwrap();
-    assert_eq!(chunk.lines[0], "🎉🦀🌍");
+    assert_eq!(chunk.texts()[0], "🎉🦀🌍");
 
     let chunk = backend.get_lines(&SeekTarget::Line(1), 1).unwrap();
-    assert_eq!(chunk.lines[0], "漢字テスト");
+    assert_eq!(chunk.texts()[0], "漢字テスト");
 }

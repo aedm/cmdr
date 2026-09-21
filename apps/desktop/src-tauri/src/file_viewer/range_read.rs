@@ -25,7 +25,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::Deserialize;
 
-use super::{FileViewerBackend, SeekTarget, ViewerError};
+use super::{ChunkEnd, FileViewerBackend, SeekTarget, ViewerError};
 
 /// One endpoint of a selection. Frontend uses `Line { line, offset }`; for the
 /// "select all" path in ByteSeek-no-index mode (where `totalLines` is unknown),
@@ -209,10 +209,10 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
         RangeEnd::Eof => return Ok(()),
     };
 
-    // Validate start_line against backend's total_lines if known.
-    if let Some(total) = backend.total_lines()
-        && start_line >= total
-    {
+    // Validate the start row against the backend's row count. Only an EXACT count can
+    // refuse a read: `ByteSeekBackend` estimates, and refusing on an estimate would
+    // turn a copy into an error on a file it could have served.
+    if backend.total_rows().is_exact() && start_line >= backend.total_rows().rows() {
         return Err(ViewerError::OutOfRange);
     }
 
@@ -227,9 +227,9 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
     let mut emit = ChunkedSink::new(sink, chunk_bytes);
 
     if start_line == end_line && !end_is_eof {
-        // Single-line read: fetch the one line, clamp both offsets, slice between them.
+        // Single-row read: fetch the one row, clamp both offsets, slice between them.
         let chunk = backend.get_lines(&SeekTarget::Line(start_line), 1)?;
-        let line = chunk.lines.first().ok_or(ViewerError::OutOfRange)?;
+        let line = chunk.rows.first().map(|row| &row.text).ok_or(ViewerError::OutOfRange)?;
         let start_byte = clamp_utf16_offset_to_byte(line, start_offset_utf16);
         let end_byte = clamp_utf16_offset_to_byte(line, end_offset_utf16);
         let lo = start_byte.min(end_byte);
@@ -266,27 +266,24 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
         }
 
         let chunk = backend.get_lines(&next_target, FETCH_CHUNK)?;
-        if chunk.lines.is_empty() {
+        if chunk.rows.is_empty() {
             break;
         }
 
-        // Compute the byte offset just past this chunk's last line.
+        // The chunk's own true source end offset.
         //
-        // CRLF assumption: line readers in all three backends keep the `\r` AS PART of
-        // the line string (they only split on `\n`; `&data[pos..pos + nl_pos]` retains
-        // bytes before the newline byte). So `line.len()` already includes the `\r`
-        // for CRLF files, and the `+ 1` accounts for the single `\n` delimiter byte.
-        // No drift on either LF or CRLF files. See `byte_seek.rs:118`,
-        // `full_load.rs:43`, `line_index.rs:172` for the parallel patterns. Test
-        // fixture: `read_range_full_load_crlf_*` in `session_test.rs`.
-        let mut chunk_end_offset = chunk.byte_offset;
-        for line in &chunk.lines {
-            chunk_end_offset += line.len() as u64 + 1;
-        }
+        // ❗ ❌ Never summed from decoded string lengths. Those are UTF-8 even when the
+        // file is UTF-16, so a multi-chunk range over a UTF-16 file drifted a little
+        // further with every chunk; and a `+ 1` per entry assumes every entry ended at
+        // a newline, which a row that Cmdr broke did not. The backend knows where the
+        // bytes stopped, so it says so. (CRLF still needs no special case: the readers
+        // keep the `\r` in the row's text and the `\n` inside the row's span.)
+        let chunk_end_offset = chunk.end_byte_offset;
 
-        let first_line_idx_in_chunk = chunk.first_line_number;
+        let first_line_idx_in_chunk = chunk.first_row_number;
 
-        for (i, line) in chunk.lines.iter().enumerate() {
+        for (i, row) in chunk.rows.iter().enumerate() {
+            let line = &row.text;
             // Check the cancel flag periodically inside the inner loop. Doing it only
             // between chunks meant a single 4096-line chunk of 4 KB/line files (16 MB)
             // was uninterruptible. Now Escape lands within ~64 KB of emitted output.
@@ -321,16 +318,23 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
                 &line[..]
             };
             emit.push(text)?;
-            // The one place the walk decides a line carries its delimiter.
-            emit.end_line();
+            // The one place the walk decides a row carries its delimiter, and the one
+            // line that had to change for rows: ❗ a break Cmdr made is NOT a newline,
+            // so joining a continuing row to the next would put a line break in the
+            // clipboard and in save-as that the file never contained.
+            if !row.continues {
+                emit.end_line();
+            }
             lines_since_cancel_check += 1;
             bytes_since_cancel_check += text.len() + 1;
         }
 
         first_chunk = false;
 
-        // Termination: backend returned fewer lines than requested means EOF.
-        if chunk.lines.len() < FETCH_CHUNK {
+        // Termination: the chunk says whether anything follows. ❗ ❌ Never "fewer rows
+        // than I asked for": `CHUNK_BUDGET_BYTES` makes a short chunk ordinary, and
+        // reading one as EOF would silently truncate a copy or a save.
+        if chunk.end == ChunkEnd::EndOfFile {
             break;
         }
 

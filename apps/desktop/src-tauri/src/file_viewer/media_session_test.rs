@@ -51,7 +51,7 @@ fn open_png_yields_image_session_with_token_and_dimensions() {
     assert_eq!(result.file_name, "pixel.png");
     // Text fields are empty for a media session.
     assert_eq!(result.total_lines, Some(0));
-    assert!(result.initial_lines.lines.is_empty());
+    assert!(result.initial_lines.rows.is_empty());
     assert!(!result.is_indexing);
     // A token was minted and resolves to this file with the PNG MIME.
     let token = result.media_token.clone().expect("image session mints a token");
@@ -99,7 +99,7 @@ fn open_text_file_falls_through_to_text_pipeline() {
     assert!(result.media_token.is_none());
     assert!(result.media_dimensions.is_none());
     // The text pipeline populated real lines.
-    assert!(!result.initial_lines.lines.is_empty());
+    assert!(!result.initial_lines.rows.is_empty());
 
     session::close_session(&result.session_id).unwrap();
 }

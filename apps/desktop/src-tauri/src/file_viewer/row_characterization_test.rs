@@ -25,7 +25,7 @@ use super::line_index::LineIndexBackend;
 use super::range_read::{RangeEnd, read_range};
 use super::search_matcher::{Matcher, SearchMode};
 use super::session;
-use super::{FileViewerBackend, SearchMatch, SeekTarget};
+use super::{FileViewerBackend, SearchMatch, SeekTarget, TotalRows};
 use crate::test_support::TestDir;
 
 /// The row grid the rewrite introduces (`docs/specs/viewer-row-wrap.md` § Constants).
@@ -138,9 +138,9 @@ fn fetching_by_line_number_works_on_the_two_backends_that_claim_to_support_it() 
         let backend = open_backend(which, &file);
         assert!(backend.capabilities().supports_line_seek, "{which:?}");
         let chunk = backend.get_lines(&SeekTarget::Line(10), 3).expect("line fetch");
-        assert_eq!(chunk.first_line_number, 10, "{which:?}");
+        assert_eq!(chunk.first_row_number, 10, "{which:?}");
         assert_eq!(
-            chunk.lines,
+            chunk.texts(),
             vec![
                 "line 0010 abcdefghi".to_string(),
                 "line 0011 abcdefghi".to_string(),
@@ -148,87 +148,81 @@ fn fetching_by_line_number_works_on_the_two_backends_that_claim_to_support_it() 
             ],
             "{which:?}"
         );
-        assert_eq!(chunk.total_lines, Some(41), "{which:?}");
+        assert_eq!(chunk.total_rows, TotalRows::Exact(41), "{which:?}");
         assert_eq!(chunk.total_bytes, 800, "{which:?}");
     }
 }
 
 #[test]
-fn bug_pinned_line_index_reports_the_checkpoints_byte_offset_not_the_lines() {
-    // `line_index.rs` returns the CHECKPOINT's offset as `LineChunk.byte_offset` while
-    // `first_line_number` is the target line, and its own comment calls it "approximate".
-    // A 40-line file has exactly one checkpoint (they land every 256 lines), so every
-    // fetch reports offset 0 however far into the file it starts. Anything that seeks
-    // onward from that offset lands short, which is what the chunk-seam test below shows
-    // costing real bytes. Spec landmine 9; milestone 3 returns the row's true offset and
-    // this expectation becomes 200.
+fn line_index_reports_the_target_rows_byte_offset_not_the_checkpoints() {
+    // FIXED in milestone 3 (was `bug_pinned_line_index_reports_the_checkpoints_byte_offset_not_the_lines`).
+    // `line_index.rs` used to return the CHECKPOINT's offset as `LineChunk.byte_offset`
+    // while `first_row_number` was the target, and its own comment called it
+    // "approximate". A 40-row file has exactly one checkpoint, so every fetch reported
+    // offset 0 however far into the file it started, and anything seeking onward from it
+    // landed short. It now walks from the checkpoint to the target and reports the
+    // target's own offset. Spec landmine 9.
     let dir = TestDir::new("viewer_char_lidx_offset");
     let file = fixture(&dir, "uniform.txt", uniform_content().as_bytes());
 
-    let chunk = open_backend(Which::LineIndex, &file)
-        .get_lines(&SeekTarget::Line(10), 3)
-        .expect("line fetch");
-    assert_eq!(chunk.first_line_number, 10);
-    assert_eq!(chunk.byte_offset, 0);
-
-    // FullLoad, the same fetch, gets it right.
-    let full = open_backend(Which::FullLoad, &file)
-        .get_lines(&SeekTarget::Line(10), 3)
-        .expect("line fetch");
-    assert_eq!(full.byte_offset, 10 * UNIFORM_LINE_BYTES);
+    for which in ALL_BACKENDS {
+        let chunk = open_backend(which, &file)
+            .get_lines(&SeekTarget::Line(10), 3)
+            .expect("row fetch");
+        assert_eq!(chunk.first_row_number, 10, "{which:?}");
+        assert_eq!(chunk.byte_offset, 10 * UNIFORM_LINE_BYTES, "{which:?}");
+        // And the chunk's true source end, which is what the next fetch steers by.
+        assert_eq!(chunk.end_byte_offset, 13 * UNIFORM_LINE_BYTES, "{which:?}");
+    }
 }
 
 #[test]
-fn bug_pinned_byte_seek_estimates_a_line_target_at_80_bytes_a_line() {
-    // ByteSeek has no index, so `SeekTarget::Line(n)` becomes `n * 80` bytes. On a
-    // 20-byte-line file that overshoots fourfold: line 10 lands at byte 800, which is
-    // EOF, so the fetch comes back EMPTY carrying a line number the estimate invented.
-    // `capabilities().supports_line_seek` is false and the frontend avoids this path,
-    // but `range_read` takes it anyway for its first chunk (see the range test below).
+fn byte_seek_maps_a_row_target_through_the_bytes_per_row_it_sampled() {
+    // FIXED in milestone 3 (was `bug_pinned_byte_seek_estimates_a_line_target_at_80_bytes_a_line`).
+    // `SeekTarget::Line(n)` used to become `n * 80` bytes, which on a 20-byte-row file
+    // overshoots fourfold: row 10 landed at byte 800, which is EOF, so the fetch came
+    // back EMPTY carrying a row number the estimate had invented. It now divides by the
+    // bytes-per-row it sampled at open, and that sample is the SAME map its byte-to-row
+    // answers ride on, so the two agree. On this uniform file it is exactly right.
     let dir = TestDir::new("viewer_char_bs_line");
     let file = fixture(&dir, "uniform.txt", uniform_content().as_bytes());
 
     let backend = open_backend(Which::ByteSeek, &file);
     assert!(!backend.capabilities().supports_line_seek);
-    let chunk = backend.get_lines(&SeekTarget::Line(10), 3).expect("line fetch");
-    assert!(chunk.lines.is_empty());
-    assert_eq!(chunk.byte_offset, 800);
-    assert_eq!(chunk.first_line_number, 10);
+    let chunk = backend.get_lines(&SeekTarget::Line(10), 3).expect("row fetch");
+    assert_eq!(chunk.byte_offset, 10 * UNIFORM_LINE_BYTES);
+    assert_eq!(chunk.first_row_number, 10);
+    assert_eq!(
+        chunk.texts(),
+        vec![
+            "line 0010 abcdefghi".to_string(),
+            "line 0011 abcdefghi".to_string(),
+            "line 0012 abcdefghi".to_string(),
+        ]
+    );
 }
 
 #[test]
-fn fetching_by_byte_offset_lands_on_the_containing_line() {
-    // Byte 205 is mid-line-10 (every line is 20 bytes). FullLoad and ByteSeek both
-    // resolve it to the line that contains it.
+fn fetching_by_byte_offset_lands_on_the_containing_row() {
+    // Byte 205 is mid-row-10 (every row is 20 bytes). All three resolve it to the row
+    // that contains it.
+    //
+    // LineIndex is the FIX here (was `bug_pinned_line_index_rounds_a_byte_offset_down_to_its_checkpoint`):
+    // its byte-offset seek used to binary-search the CHECKPOINT array and stop there, up
+    // to 255 rows before the byte asked for, so byte 205 came back as row 0. It now
+    // walks from the checkpoint to the row holding the byte. `read_range` steers between
+    // chunks by byte offset, which is what made the rounding cost real bytes.
     let dir = TestDir::new("viewer_char_byte_target");
     let file = fixture(&dir, "uniform.txt", uniform_content().as_bytes());
 
-    for which in [Which::FullLoad, Which::ByteSeek] {
+    for which in ALL_BACKENDS {
         let chunk = open_backend(which, &file)
             .get_lines(&SeekTarget::ByteOffset(205), 3)
             .expect("byte fetch");
-        assert_eq!(chunk.first_line_number, 10, "{which:?}");
+        assert_eq!(chunk.first_row_number, 10, "{which:?}");
         assert_eq!(chunk.byte_offset, 200, "{which:?}");
-        assert_eq!(chunk.lines[0], "line 0010 abcdefghi", "{which:?}");
+        assert_eq!(chunk.texts()[0], "line 0010 abcdefghi", "{which:?}");
     }
-}
-
-#[test]
-fn bug_pinned_line_index_rounds_a_byte_offset_down_to_its_checkpoint() {
-    // `line_index.rs`'s byte-offset seek binary-searches the CHECKPOINT array, so it
-    // resolves to the start of the checkpoint block: up to 255 lines before the byte
-    // asked for. Byte 205 sits in line 10, and the answer is line 0, while the other two
-    // backends land on line 10. Milestone 3 has to close this, because `read_range`
-    // steers by byte offset between chunks.
-    let dir = TestDir::new("viewer_char_lidx_byte");
-    let file = fixture(&dir, "uniform.txt", uniform_content().as_bytes());
-
-    let chunk = open_backend(Which::LineIndex, &file)
-        .get_lines(&SeekTarget::ByteOffset(205), 3)
-        .expect("byte fetch");
-    assert_eq!(chunk.first_line_number, 0);
-    assert_eq!(chunk.byte_offset, 0);
-    assert_eq!(chunk.lines[0], "line 0000 abcdefghi");
 }
 
 #[test]
@@ -242,8 +236,8 @@ fn fetching_by_fraction_lands_on_the_same_line_in_all_three_backends() {
         let chunk = open_backend(which, &file)
             .get_lines(&SeekTarget::Fraction(0.5), 2)
             .expect("fraction fetch");
-        assert_eq!(chunk.first_line_number, 20, "{which:?}");
-        assert_eq!(chunk.lines[0], "line 0020 abcdefghi", "{which:?}");
+        assert_eq!(chunk.first_row_number, 20, "{which:?}");
+        assert_eq!(chunk.texts()[0], "line 0020 abcdefghi", "{which:?}");
     }
 }
 
@@ -276,79 +270,75 @@ fn range_across_lines_is_byte_exact_and_keeps_the_newlines() {
 }
 
 #[test]
-fn range_from_mid_line_to_eof_reaches_the_last_line() {
+fn range_from_mid_row_to_eof_reaches_the_last_row_in_every_backend() {
     let dir = TestDir::new("viewer_char_range_eof");
     let content = uniform_content();
     let file = fixture(&dir, "uniform.txt", content.as_bytes());
 
-    // FullLoad keeps the file's final newline (its trailing empty line contributes the
-    // `\n` before it); LineIndex stops one byte earlier. The difference is what the user
-    // gets on the clipboard, so it is pinned rather than papered over.
-    assert_eq!(
-        read(open_backend(Which::FullLoad, &file).as_ref(), at(37, 5), RangeEnd::Eof),
-        &content[745..800]
-    );
-    assert_eq!(
-        read(open_backend(Which::LineIndex, &file).as_ref(), at(37, 5), RangeEnd::Eof),
-        &content[745..799]
-    );
-}
-
-#[test]
-fn selecting_the_whole_file_differs_by_one_trailing_newline_between_backends() {
-    let dir = TestDir::new("viewer_char_range_all");
-    let content = uniform_content();
-    let file = fixture(&dir, "uniform.txt", content.as_bytes());
-
-    // ⌘A then ⌘C. FullLoad hands over all 800 bytes; the other two hand over 799 and drop
-    // the file's final newline. Same file, same gesture, two answers.
-    assert_eq!(
-        read(open_backend(Which::FullLoad, &file).as_ref(), at(0, 0), RangeEnd::Eof),
-        content
-    );
-    for which in [Which::ByteSeek, Which::LineIndex] {
-        let got = read(open_backend(which, &file).as_ref(), at(0, 0), RangeEnd::Eof);
-        assert_eq!(got, &content[..799], "{which:?}");
+    // ❗ THE TRAILING-NEWLINE ANSWER, picked in milestone 3 and pinned for all three
+    // backends: a file ending in a newline has a final EMPTY row, so a read to `Eof`
+    // carries that final newline. FullLoad already did this; the other two stopped one
+    // byte earlier, which made the same gesture on the same file give two answers
+    // depending only on the file's size. FullLoad's answer wins because it is the one a
+    // whole-file copy can be byte-identical to the file under.
+    for which in ALL_BACKENDS {
+        let got = read(open_backend(which, &file).as_ref(), at(37, 5), RangeEnd::Eof);
+        assert_eq!(got, &content[745..800], "{which:?}");
     }
 }
 
 #[test]
-fn bug_pinned_multi_line_range_on_byte_seek_returns_nothing() {
-    // `range_read` seeks its FIRST chunk by `SeekTarget::Line(start)`, which ByteSeek
-    // answers with the 80-bytes-a-line estimate. On a 20-byte-line file that lands four
-    // times too far in, so `first_line_number` comes back past the range's end line and
-    // the loop returns before emitting anything: a partial copy in ByteSeek mode (a file
-    // over 1 MB, before the LineIndex upgrade lands) yields an EMPTY clipboard, quietly.
-    // The whole-file gesture escapes it only because it starts at line 0.
-    let dir = TestDir::new("viewer_char_bs_range");
-    let file = fixture(&dir, "uniform.txt", uniform_content().as_bytes());
-    let backend = open_backend(Which::ByteSeek, &file);
+fn selecting_the_whole_file_yields_every_byte_in_every_backend() {
+    let dir = TestDir::new("viewer_char_range_all");
+    let content = uniform_content();
+    let file = fixture(&dir, "uniform.txt", content.as_bytes());
 
-    assert_eq!(read(backend.as_ref(), at(2, 5), at(4, 4)), "");
-    assert_eq!(read(backend.as_ref(), at(37, 5), RangeEnd::Eof), "");
-    // A single-line range doesn't come back empty; it comes back as the WRONG line. Line
-    // 2 was asked for, line 8 (byte 160) was served.
-    assert_eq!(read(backend.as_ref(), at(2, 5), at(2, 9)), "0008");
+    // ⌘A then ⌘C. All three hand over all 800 bytes, final newline included. Before
+    // rows, ByteSeek and LineIndex handed over 799.
+    for which in ALL_BACKENDS {
+        let got = read(open_backend(which, &file).as_ref(), at(0, 0), RangeEnd::Eof);
+        assert_eq!(got, content, "{which:?}");
+    }
 }
 
 #[test]
-fn bug_pinned_a_long_range_on_line_index_duplicates_a_line_at_each_chunk_seam() {
-    // `range_read` fetches 4,096 lines at a time and seeks the next chunk by the byte
-    // offset just past the last one. LineIndex rounds that offset down to its previous
-    // checkpoint (one every 256 lines), so a range that does not start on a checkpoint
-    // boundary re-serves a line that already went out. Here line 4096 is emitted twice
-    // and the copy is 20 bytes longer than the source.
-    //
-    // This is landmine 9 with a price tag: it corrupts a copy or a save of more than
-    // 4,096 lines today, on any file big enough to carry a line index.
+fn a_multi_row_range_on_byte_seek_returns_the_rows_that_were_asked_for() {
+    // FIXED in milestone 3 (was `bug_pinned_multi_line_range_on_byte_seek_returns_nothing`).
+    // `range_read` seeks its FIRST chunk by `SeekTarget::Line(start)`, which ByteSeek
+    // used to answer with the 80-bytes-a-line estimate. On a 20-byte-row file that
+    // landed four times too far in, so `first_row_number` came back past the range's end
+    // row and the loop returned before emitting anything: a partial copy in ByteSeek
+    // mode (any file over 1 MB, before the LineIndex upgrade lands) produced an EMPTY
+    // clipboard, silently, and a single-row copy produced the WRONG row. Both directions
+    // of the map now go through the sampled bytes-per-row.
+    let dir = TestDir::new("viewer_char_bs_range");
+    let content = uniform_content();
+    let file = fixture(&dir, "uniform.txt", content.as_bytes());
+    let backend = open_backend(Which::ByteSeek, &file);
+
+    assert_eq!(read(backend.as_ref(), at(2, 5), at(4, 4)), &content[45..84]);
+    assert_eq!(read(backend.as_ref(), at(37, 5), RangeEnd::Eof), &content[745..800]);
+    assert_eq!(read(backend.as_ref(), at(2, 5), at(2, 9)), "0002");
+}
+
+#[test]
+fn a_long_range_on_line_index_is_byte_exact_across_every_chunk_seam() {
+    // FIXED in milestone 3 (was `bug_pinned_a_long_range_on_line_index_duplicates_a_line_at_each_chunk_seam`).
+    // `range_read` fetches 4 096 rows at a time and seeks the next chunk by the byte
+    // offset just past the last one. LineIndex used to round that offset down to its
+    // previous checkpoint (one every 256 rows), so a range not starting on a checkpoint
+    // boundary re-served a row that had already gone out: row 4096 was emitted twice and
+    // the copy came out 20 bytes longer than the source. It corrupted every copy or save
+    // over 4 096 rows on any file big enough to carry an index. Spec landmine 9.
     let dir = TestDir::new("viewer_char_seam");
     let content: String = (0..5000).map(|i| format!("line {i:04} abcdefghi\n")).collect();
     let file = fixture(&dir, "big.txt", content.as_bytes());
 
-    let got = read(open_backend(Which::LineIndex, &file).as_ref(), at(1, 0), RangeEnd::Eof);
-    let source = &content[20..content.len() - 1];
-    assert_eq!(got.len(), source.len() + 20);
-    assert!(got.contains("line 4096 abcdefghi\nline 4096 abcdefghi\n"));
+    for which in [Which::LineIndex, Which::ByteSeek] {
+        let got = read(open_backend(which, &file).as_ref(), at(1, 0), RangeEnd::Eof);
+        assert_eq!(got, &content[20..], "{which:?}");
+        assert!(!got.contains("line 4096 abcdefghi\nline 4096 abcdefghi\n"), "{which:?}");
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -407,7 +397,7 @@ fn a_file_with_no_trailing_newline_has_no_trailing_empty_line() {
     for which in ALL_BACKENDS {
         let backend = open_backend(which, &file);
         let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 10).expect("fetch");
-        assert_eq!(chunk.lines, vec!["alpha", "beta", "gamma"], "{which:?}");
+        assert_eq!(chunk.texts(), vec!["alpha", "beta", "gamma"], "{which:?}");
         let expected_lines = if which == Which::ByteSeek { None } else { Some(3) };
         assert_eq!(backend.total_lines(), expected_lines, "{which:?}");
         // Here all three agree on ⌘A: the whole 16 bytes, with no newline invented.
@@ -432,18 +422,13 @@ fn crlf_lines_keep_their_carriage_return_in_the_line_string() {
     for which in ALL_BACKENDS {
         let backend = open_backend(which, &file);
         let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 10).expect("fetch");
-        assert_eq!(&chunk.lines[..3], ["alpha\r", "beta\r", "gamma\r"], "{which:?}");
+        assert_eq!(&chunk.texts()[..3], ["alpha\r", "beta\r", "gamma\r"], "{which:?}");
     }
 
-    // Copying the whole file round-trips the CRLFs byte for byte, minus the same final
-    // newline FullLoad keeps and the other two drop.
-    assert_eq!(
-        read(open_backend(Which::FullLoad, &file).as_ref(), at(0, 0), RangeEnd::Eof),
-        content
-    );
-    for which in [Which::ByteSeek, Which::LineIndex] {
+    // Copying the whole file round-trips the CRLFs byte for byte, in every backend.
+    for which in ALL_BACKENDS {
         let got = read(open_backend(which, &file).as_ref(), at(0, 0), RangeEnd::Eof);
-        assert_eq!(got, "alpha\r\nbeta\r\ngamma\r", "{which:?}");
+        assert_eq!(got, content, "{which:?}");
     }
 }
 
@@ -461,63 +446,45 @@ fn utf16_le_with_bom(text: &str) -> Vec<u8> {
 }
 
 #[test]
-fn a_utf16_file_decodes_to_utf8_lines() {
+fn a_utf16_file_decodes_to_utf8_rows_past_its_bom_in_every_backend() {
+    // The BOM half is the FIX from milestone 3 (was
+    // `bug_pinned_byte_seek_shows_the_utf16_bom_as_a_character`): ByteSeek read from the
+    // raw offset and `decode_line` uses `decode_without_bom_handling`, so the BOM
+    // survived as a `U+FEFF` at the head of the first row, a zero-width character the
+    // user could select and copy. Every backend's first row now starts past the BOM, so
+    // all three agree on row 0 across a reload or a tail escalation.
     let dir = TestDir::new("viewer_char_utf16");
     let file = fixture(&dir, "utf16.txt", &utf16_le_with_bom("alpha\nbeta gamma\ndelta\n"));
 
-    for which in [Which::FullLoad, Which::LineIndex] {
+    for which in ALL_BACKENDS {
         let backend = open_backend(which, &file);
         let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 5).expect("fetch");
-        assert_eq!(&chunk.lines[..3], ["alpha", "beta gamma", "delta"], "{which:?}");
-        // The BOM is not content: both of these start the first line past it.
+        assert_eq!(&chunk.texts()[..3], ["alpha", "beta gamma", "delta"], "{which:?}");
         assert_eq!(chunk.byte_offset, 2, "{which:?}");
         assert_eq!(backend.total_bytes(), 48, "{which:?}");
+        assert_eq!(
+            read(backend.as_ref(), at(0, 0), RangeEnd::Eof),
+            "alpha\nbeta gamma\ndelta\n",
+            "{which:?}"
+        );
     }
-
-    assert_eq!(
-        read(open_backend(Which::FullLoad, &file).as_ref(), at(0, 0), RangeEnd::Eof),
-        "alpha\nbeta gamma\ndelta\n"
-    );
-    assert_eq!(
-        read(open_backend(Which::LineIndex, &file).as_ref(), at(0, 0), RangeEnd::Eof),
-        "alpha\nbeta gamma\ndelta"
-    );
 }
 
 #[test]
-fn bug_pinned_byte_seek_shows_the_utf16_bom_as_a_character() {
-    // ByteSeek reads from the raw offset and `decode_line` uses
-    // `decode_without_bom_handling`, so the BOM survives as a U+FEFF at the head of the
-    // first line: a zero-width character the user can select and copy. FullLoad and
-    // LineIndex both skip it.
-    let dir = TestDir::new("viewer_char_utf16_bom");
-    let file = fixture(&dir, "utf16.txt", &utf16_le_with_bom("alpha\nbeta gamma\ndelta\n"));
-
-    let chunk = open_backend(Which::ByteSeek, &file)
-        .get_lines(&SeekTarget::ByteOffset(0), 5)
-        .expect("fetch");
-    assert_eq!(chunk.lines[0], "\u{feff}alpha");
-    assert_eq!(chunk.byte_offset, 0);
-}
-
-#[test]
-fn bug_pinned_search_finds_nothing_in_a_utf16_file_unless_it_is_full_loaded() {
-    // ByteSeek's and LineIndex's `search` both `memchr(b'\n')` the RAW bytes and decode
-    // each span, which is not how UTF-16 is framed: the spans come out misaligned and the
-    // needle never matches. ⌘F on a UTF-16 file over 1 MB therefore reports zero hits
-    // rather than saying anything. Independent of rows, and squarely inside the code
-    // milestone 3 rewrites.
+fn search_finds_a_needle_in_a_utf16_file_in_every_backend() {
+    // FIXED in milestone 3 (was `bug_pinned_search_finds_nothing_in_a_utf16_file_unless_it_is_full_loaded`).
+    // ByteSeek's and LineIndex's `search` each carried a copy of the same
+    // `memchr(b'\n')` loop over RAW bytes, which is not how UTF-16 is framed: the spans
+    // came out misaligned and the needle never matched, so ⌘F on a UTF-16 file over 1 MB
+    // reported zero hits rather than saying anything. Both now walk rows through the
+    // shared, encoding-aware `rows::search_rows`.
     let dir = TestDir::new("viewer_char_utf16_search");
     let file = fixture(&dir, "utf16.txt", &utf16_le_with_bom("alpha\nbeta gamma\ndelta\n"));
 
-    assert_eq!(
-        search_hits(open_backend(Which::FullLoad, &file).as_ref(), "gamma"),
-        vec![(1, 5, 14)]
-    );
-    for which in [Which::ByteSeek, Which::LineIndex] {
+    for which in ALL_BACKENDS {
         assert_eq!(
             search_hits(open_backend(which, &file).as_ref(), "gamma"),
-            vec![],
+            vec![(1, 5, 14)],
             "{which:?}"
         );
     }
@@ -584,7 +551,7 @@ fn red_first_fetch_of_a_newline_free_file_must_be_bounded() {
         let chunk = open_backend(which, &file)
             .get_lines(&SeekTarget::ByteOffset(0), ROWS_REQUESTED)
             .expect("first fetch");
-        let served: usize = chunk.lines.iter().map(|l| l.len()).sum();
+        let served: usize = chunk.texts().iter().map(|l| l.len()).sum();
         assert!(
             served <= ROWS_REQUESTED * MAX_ROW_BYTES,
             "{which:?}: the first fetch of {ROWS_REQUESTED} rows served {served} bytes, at \
@@ -592,7 +559,7 @@ fn red_first_fetch_of_a_newline_free_file_must_be_bounded() {
             ROWS_REQUESTED * MAX_ROW_BYTES
         );
         assert!(
-            chunk.lines.len() > 1,
+            chunk.texts().len() > 1,
             "{which:?}: a {NEWLINE_FREE_BYTES}-byte line must arrive as several rows, not one"
         );
     }

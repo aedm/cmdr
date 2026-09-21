@@ -1,5 +1,3 @@
-#![allow(dead_code, reason = "TEMPORARY: the backends wire onto the walk in the next commit")]
-
 //! The row boundary rule: where the viewer breaks a file into rows.
 //!
 //! The viewer renders **rows**, not physical lines. A row ends at a newline or
@@ -191,6 +189,11 @@ impl<S: RowSource> RowRuler<S> {
     ///
     /// Reads exactly one window of at most [`MAX_WINDOW_BYTES`], whatever the
     /// offset and whatever the file size.
+    ///
+    /// Production seeks through [`RowRuler::row_start_detail`], which answers this plus
+    /// the clause that placed the boundary. This plain form is the shape the property
+    /// tests state the rule in, and is kept for them.
+    #[cfg(test)]
     pub fn row_start(&mut self, offset: u64) -> Result<u64, ViewerError> {
         Ok(self.row_start_detail(offset)?.offset)
     }
@@ -247,6 +250,12 @@ impl<S: RowSource> RowRuler<S> {
     ///
     /// `row_start` is expected to be a boundary, one [`RowRuler::row_start`]
     /// returned. Reads one window of at most [`MAX_WINDOW_BYTES`].
+    ///
+    /// ❗ This is the rule's canonical forward step, and the reference the streaming
+    /// [`next_row_boundary`] is checked against on every fixture. Production reads
+    /// forward instead, because a window per row would cost a 4 096-row fetch ~160 MB;
+    /// ❌ don't delete this as unused, it is what keeps that walk honest.
+    #[cfg(test)]
     pub fn row_end(&mut self, row_start: u64) -> Result<u64, ViewerError> {
         let total = self.source.total_bytes();
         if row_start >= total {
@@ -278,13 +287,6 @@ impl<S: RowSource> RowRuler<S> {
         Ok(best)
     }
 
-    /// The half-open byte range of the row containing `offset`.
-    pub fn row_bounds(&mut self, offset: u64) -> Result<std::ops::Range<u64>, ViewerError> {
-        let start = self.row_start(offset)?;
-        let end = self.row_end(start)?;
-        Ok(start..end)
-    }
-
     /// Read straight from the underlying source, for a caller that does its own
     /// buffering ([`RowReader`]). The ruler's own window is untouched.
     fn read_into(&mut self, start: u64, buf: &mut [u8]) -> Result<usize, ViewerError> {
@@ -295,7 +297,10 @@ impl<S: RowSource> RowRuler<S> {
     /// that shrank under us; the rule then works from what it got.
     fn load_window(&mut self, start: u64, end: u64) -> Result<(), ViewerError> {
         let len = end.saturating_sub(start) as usize;
-        debug_assert!(len as u64 <= 2 * self.segment, "a window may never exceed two segments");
+        debug_assert!(
+            len as u64 <= 2 * self.segment && (self.segment != SEGMENT_BYTES || len as u64 <= MAX_WINDOW_BYTES),
+            "a window may never exceed two segments"
+        );
         self.buf.resize(len, 0);
         let filled = self.source.read_window(start, &mut self.buf[..len])?;
         self.buf.truncate(filled);
@@ -361,6 +366,7 @@ impl<'a> Window<'a> {
     }
 
     /// Clause 2, looking forward: the least line start `> floor`.
+    #[cfg(test)]
     fn first_line_start_above(&self, floor: u64) -> Option<u64> {
         self.newlines
             .iter()
@@ -570,8 +576,8 @@ pub fn next_row_boundary<F: Fn(u64) -> u64>(
             break;
         }
         let evidence_start = multiple - segment;
-        let clear = prev_newline.is_none_or(|unit| unit < evidence_start)
-            && next_newline.is_none_or(|unit| unit >= multiple);
+        let clear =
+            prev_newline.is_none_or(|unit| unit < evidence_start) && next_newline.is_none_or(|unit| unit >= multiple);
         if !clear {
             continue;
         }
@@ -700,14 +706,6 @@ impl<S: RowSource> RowReader<S> {
             finished: false,
             last_row_at: 0,
         }
-    }
-
-    pub fn total_bytes(&self) -> u64 {
-        self.total_bytes
-    }
-
-    pub fn content_start(&self) -> u64 {
-        self.content_start
     }
 
     /// Absolute offset of the next row's first byte.
@@ -1009,4 +1007,53 @@ pub fn collect_rows<S: RowSource>(
         end,
         end_byte_offset,
     })
+}
+
+/// Scan every row of a file with `matcher`, reporting matches by row and by column
+/// within that row.
+///
+/// ❗ One implementation for both streaming backends. They used to carry a copy each of
+/// the same `memchr(b'\n')` loop, which rebuilt `leftover + chunk` on every newline-free
+/// chunk (about 1.4 TB of `memcpy` on a 300 MB line) and framed UTF-16 as if it were
+/// ASCII, so ⌘F in a UTF-16 file found nothing at all. The walk is linear,
+/// encoding-aware, and bounds a match's column by the row holding it.
+///
+/// Cancellation is checked per row and, inside `scan_line_with_matcher`, per match.
+pub fn search_rows<S: RowSource>(
+    reader: &mut RowReader<S>,
+    matcher: &super::Matcher,
+    cancel: &std::sync::atomic::AtomicBool,
+    results: &std::sync::Mutex<Vec<super::SearchMatch>>,
+    progress: &std::sync::Mutex<u64>,
+) -> Result<u64, ViewerError> {
+    use std::sync::atomic::Ordering;
+
+    use crate::ignore_poison::IgnorePoison;
+
+    use super::search_matcher::{LineScan, scan_line_with_matcher};
+
+    let mut row_number = 0usize;
+    let mut scanned = 0u64;
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            break;
+        }
+        let Some((span, text)) = reader.next_row()? else { break };
+        match scan_line_with_matcher(matcher, &text, row_number, span.start, cancel, results) {
+            LineScan::HitLimit | LineScan::Cancelled => {
+                scanned = span.end;
+                break;
+            }
+            LineScan::Done => {}
+        }
+        scanned = span.end;
+        row_number += 1;
+        // Progress per row would lock 15 000 times on the reported file; once a segment
+        // is often enough for a progress bar and cheap enough to ignore.
+        if row_number.is_multiple_of(64) {
+            *progress.lock_ignore_poison() = scanned;
+        }
+    }
+    *progress.lock_ignore_poison() = scanned;
+    Ok(scanned)
 }

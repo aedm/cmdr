@@ -1,22 +1,25 @@
-//! LineIndexBackend: sparse line-offset index for efficient line-based seeking.
+//! LineIndexBackend: sparse ROW-offset index for efficient row-based seeking.
 //!
-//! Stores byte offsets every INDEX_CHECKPOINT_INTERVAL lines (256 by default).
-//! Memory: O(total_lines / 256); a 10M-line file uses ~40 KB of index.
+//! Stores a byte offset every INDEX_CHECKPOINT_INTERVAL rows (256 by default), each
+//! carrying the physical line number there as well, so the gutter gets exact numbers
+//! out of the same single scan.
 //!
-//! The index is built by scanning the file for newlines using memchr (SIMD-accelerated).
-//! After scanning, supports O(1) line-based seeking via the checkpoint array.
+//! ❗ Rows, not lines. A file with no newline in it has ONE line, so a line-counted
+//! interval gave it a single checkpoint and every fetch rescanned from byte 0: the
+//! backend broke the bounded-work invariant on precisely the file rows exist for. (And
+//! it IS reached on such a file: the scan finishes well inside the indexing timeout.)
+//!
+//! The index is built by walking the file's rows once. After scanning, supports O(1)
+//! row-based seeking via the checkpoint array.
 
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::ignore_poison::IgnorePoison;
-use memchr::memchr;
-
-use super::encoding::{FileEncoding, NewlineScanner, decode_line};
-use super::search_matcher::{LineScan, Matcher, scan_line_with_matcher};
+use super::encoding::FileEncoding;
+use super::rows::{FileSource, RowReader, TotalRows, collect_rows, search_rows};
+use super::search_matcher::Matcher;
 use super::{
     BackendCapabilities, FileViewerBackend, INDEX_CHECKPOINT_INTERVAL, LineChunk, SearchMatch, SeekTarget, ViewerError,
 };
@@ -32,11 +35,18 @@ pub fn test_only_open_call_count() -> usize {
     OPEN_CALL_COUNT.load(Ordering::Relaxed)
 }
 
-/// A checkpoint in the line index: (line_number, byte_offset).
+/// A checkpoint in the row index.
+///
+/// Carries BOTH coordinates because they answer different questions and a second pass
+/// to recover either one would break the bounded-work invariant: `row` is what a seek
+/// counts in, `line` is what the gutter prints.
 #[derive(Debug, Clone)]
 struct Checkpoint {
+    row: usize,
+    /// Physical lines that START at or before this row. The row at `row` prints
+    /// `line` when it starts a line, and nothing when it continues one.
     line: usize,
-    /// Absolute file offset of the FIRST byte of the line at index `line`.
+    /// Absolute file offset of the FIRST byte of the row at index `row`.
     offset: u64,
 }
 
@@ -44,10 +54,14 @@ pub struct LineIndexBackend {
     path: std::path::PathBuf,
     total_bytes: u64,
     file_name: String,
-    /// Sparse index: one checkpoint every INDEX_CHECKPOINT_INTERVAL lines.
+    /// Sparse index: one checkpoint every INDEX_CHECKPOINT_INTERVAL rows.
     checkpoints: Vec<Checkpoint>,
-    /// Total lines discovered during scan.
+    /// Total rows discovered during the scan.
+    total_rows: usize,
+    /// Total physical lines discovered during the same scan.
     total_lines: usize,
+    /// The file's first content byte, past any BOM.
+    content_start: u64,
     encoding: FileEncoding,
 }
 
@@ -81,75 +95,43 @@ impl LineIndexBackend {
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| path.display().to_string());
 
-        // Scan the file to build the sparse line index, dispatching to the encoding-aware
-        // newline scanner. The scanner emits absolute file offsets of `0x0A` bytes that
-        // are part of a `U+000A` code unit; we convert that to "start of NEXT line" by
-        // adding 1 (ASCII) or 2 (UTF-16) and adding 1 to `line_number`.
-        let mut file = File::open(path)?;
-        // For UTF-16, skip the BOM bytes in our line-numbering accounting but record
-        // the first line's offset as the byte just past the BOM.
+        // Walk the file's rows ONCE, recording both coordinates as we go. A second pass
+        // to recover either one would read the file twice and break invariant I1.
         let bom_len = encoding.bom_bytes().len() as u64;
-        let first_line_offset = if total_bytes >= bom_len { bom_len } else { 0 };
+        let content_start = if total_bytes >= bom_len { bom_len } else { 0 };
 
+        let file = File::open(path)?;
+        let mut reader = RowReader::new(FileSource::new(file, total_bytes), encoding, content_start);
         let mut checkpoints = Vec::new();
-        let chunk_size: usize = 256 * 1024;
-        let mut buf = vec![0u8; chunk_size];
-        let mut line_number: usize = 0;
-        let mut scanner = NewlineScanner::new(encoding, 0);
-
-        // First line always starts at the byte just past the BOM.
-        checkpoints.push(Checkpoint {
-            line: 0,
-            offset: first_line_offset,
-        });
-
-        let le = matches!(encoding, FileEncoding::Utf16Le);
-        loop {
-            if cancel.load(Ordering::Relaxed) {
+        let mut rows = 0usize;
+        let mut lines = 0usize;
+        while let Some(span) = reader.next_span()? {
+            if rows.is_multiple_of(INDEX_CHECKPOINT_INTERVAL) {
+                checkpoints.push(Checkpoint {
+                    row: rows,
+                    line: lines,
+                    offset: span.start,
+                });
+            }
+            if span.starts_line {
+                lines += 1;
+            }
+            rows += 1;
+            // Cancellation is checked per checkpoint interval rather than per row: on a
+            // file of short rows a per-row atomic load would dominate the scan.
+            if rows.is_multiple_of(INDEX_CHECKPOINT_INTERVAL) && cancel.load(Ordering::Relaxed) {
                 return Err(ViewerError::Cancelled);
             }
-
-            let bytes_read = file.read(&mut buf)?;
-            if bytes_read == 0 {
-                break;
-            }
-
-            let chunk = &buf[..bytes_read];
-            // Collect newline offsets from the scanner (it owns absolute-offset state).
-            let mut hits: Vec<u64> = Vec::new();
-            scanner.feed(chunk, |off| hits.push(off));
-
-            for nl in &hits {
-                line_number += 1;
-                // Next line starts past the newline code unit.
-                //   ASCII-compatible: nl is the `0x0A` byte; next starts at nl + 1.
-                //   UTF-16 LE: nl is the low byte (0x0A) starting the pair; next at nl + 2.
-                //   UTF-16 BE: nl is the low byte (0x0A) at offset nl, pair starts at nl - 1;
-                //     next at nl + 1 == (nl - 1) + 2.
-                let next_line_offset = if encoding.is_ascii_newline_compatible() {
-                    *nl + 1
-                } else if le {
-                    *nl + 2
-                } else {
-                    *nl + 1
-                };
-                if line_number.is_multiple_of(INDEX_CHECKPOINT_INTERVAL) {
-                    checkpoints.push(Checkpoint {
-                        line: line_number,
-                        offset: next_line_offset,
-                    });
-                }
-            }
         }
-
-        let total_lines = line_number + 1;
 
         Ok(Self {
             path: path.to_path_buf(),
             total_bytes,
             file_name,
             checkpoints,
-            total_lines,
+            total_rows: rows.max(1),
+            total_lines: lines.max(1),
+            content_start,
             encoding,
         })
     }
@@ -158,9 +140,12 @@ impl LineIndexBackend {
     /// `new_size`. Cancellable; if `cancel` flips, returns `Err(Cancelled)` and
     /// the caller falls back to the prior backend.
     ///
-    /// Cost: opens the file, seeks to `self.total_bytes`, scans only the new
-    /// range. Memory: the checkpoint vec is cloned (O(checkpoints), cheap — 16
-    /// bytes per checkpoint, ~390 K for a 100 M-line file).
+    /// Every boundary at or below the last row's start is settled by bytes the old file
+    /// already held (a segment multiple needs only the segment behind it, a line start
+    /// only the newline behind it), so the extend rewalks from the checkpoint before
+    /// that row and keeps everything below. That re-reads at most one checkpoint
+    /// interval, which is what bounds the append. Memory: the checkpoint vec is cloned
+    /// (24 bytes each, ~390 K for a 100 M-row file).
     pub fn extend_to(&self, new_size: u64, cancel: &AtomicBool) -> Result<Self, ViewerError> {
         if new_size <= self.total_bytes {
             return Ok(Self {
@@ -168,52 +153,48 @@ impl LineIndexBackend {
                 total_bytes: new_size,
                 file_name: self.file_name.clone(),
                 checkpoints: self.checkpoints.clone(),
+                total_rows: self.total_rows,
                 total_lines: self.total_lines,
+                content_start: self.content_start,
                 encoding: self.encoding,
             });
         }
-        let mut file = File::open(&self.path)?;
-        file.seek(SeekFrom::Start(self.total_bytes))?;
 
-        let mut checkpoints = self.checkpoints.clone();
-        // total_lines counts the trailing-after-last-`\n` virtual line as +1; reverse it
-        // so we scan from the actual last-newline boundary.
-        let mut line_number = self.total_lines.saturating_sub(1);
-        let mut scanner = NewlineScanner::new(self.encoding, self.total_bytes);
+        // The row holding the old file's last byte is the only one the append can
+        // change, so the rewalk starts at the checkpoint at or before it.
+        let resume_at = self.row_start_of(self.total_bytes.saturating_sub(1))?;
+        let idx = match self.checkpoints.binary_search_by_key(&resume_at, |cp| cp.offset) {
+            Ok(i) => i,
+            Err(i) => i.saturating_sub(1),
+        };
+        let resume = self.checkpoints.get(idx).cloned().unwrap_or(Checkpoint {
+            row: 0,
+            line: 0,
+            offset: self.content_start,
+        });
 
-        let chunk_size: usize = 256 * 1024;
-        let mut buf = vec![0u8; chunk_size];
-        let le = matches!(self.encoding, FileEncoding::Utf16Le);
-        let mut remaining = new_size - self.total_bytes;
-        while remaining > 0 {
-            if cancel.load(Ordering::Relaxed) {
+        let mut checkpoints: Vec<Checkpoint> = self.checkpoints[..=idx.min(self.checkpoints.len() - 1)].to_vec();
+        checkpoints.pop();
+        let file = File::open(&self.path)?;
+        let mut reader = RowReader::new(FileSource::new(file, new_size), self.encoding, self.content_start);
+        reader.seek(resume.offset)?;
+        let mut rows = resume.row;
+        let mut lines = resume.line;
+        while let Some(span) = reader.next_span()? {
+            if rows.is_multiple_of(INDEX_CHECKPOINT_INTERVAL) {
+                checkpoints.push(Checkpoint {
+                    row: rows,
+                    line: lines,
+                    offset: span.start,
+                });
+            }
+            if span.starts_line {
+                lines += 1;
+            }
+            rows += 1;
+            if rows.is_multiple_of(INDEX_CHECKPOINT_INTERVAL) && cancel.load(Ordering::Relaxed) {
                 return Err(ViewerError::Cancelled);
             }
-            let want = remaining.min(buf.len() as u64) as usize;
-            let bytes_read = file.read(&mut buf[..want])?;
-            if bytes_read == 0 {
-                break;
-            }
-            let chunk = &buf[..bytes_read];
-            let mut hits: Vec<u64> = Vec::new();
-            scanner.feed(chunk, |off| hits.push(off));
-            for nl in &hits {
-                line_number += 1;
-                let next_line_offset = if self.encoding.is_ascii_newline_compatible() {
-                    *nl + 1
-                } else if le {
-                    *nl + 2
-                } else {
-                    *nl + 1
-                };
-                if line_number.is_multiple_of(INDEX_CHECKPOINT_INTERVAL) {
-                    checkpoints.push(Checkpoint {
-                        line: line_number,
-                        offset: next_line_offset,
-                    });
-                }
-            }
-            remaining -= bytes_read as u64;
         }
 
         Ok(Self {
@@ -221,174 +202,108 @@ impl LineIndexBackend {
             total_bytes: new_size,
             file_name: self.file_name.clone(),
             checkpoints,
-            total_lines: line_number + 1,
+            total_rows: rows.max(1),
+            total_lines: lines.max(1),
+            content_start: self.content_start,
             encoding: self.encoding,
         })
     }
 
-    /// Find the checkpoint at or before the given line number.
-    fn find_checkpoint(&self, target_line: usize) -> &Checkpoint {
-        // Binary search for the largest checkpoint with line <= target_line
-        let idx = match self.checkpoints.binary_search_by_key(&target_line, |cp| cp.line) {
+    /// The start of the row containing `offset`, through the shared rule.
+    fn row_start_of(&self, offset: u64) -> Result<u64, ViewerError> {
+        let file = File::open(&self.path)?;
+        let mut reader = RowReader::new(
+            FileSource::new(file, self.total_bytes),
+            self.encoding,
+            self.content_start,
+        );
+        reader.seek(offset)
+    }
+
+    /// Find the checkpoint at or before the given ROW.
+    fn find_checkpoint(&self, target_row: usize) -> &Checkpoint {
+        let idx = match self.checkpoints.binary_search_by_key(&target_row, |cp| cp.row) {
             Ok(i) => i,
             Err(i) => i.saturating_sub(1),
         };
         &self.checkpoints[idx]
     }
 
-    /// Read forward from a byte offset, skipping `lines_to_skip` lines,
-    /// then returning the next `count` lines.
-    fn read_lines_from_checkpoint(
-        &self,
-        start_offset: u64,
-        lines_to_skip: usize,
-        count: usize,
-    ) -> Result<Vec<String>, ViewerError> {
-        if self.encoding.is_ascii_newline_compatible() {
-            self.read_lines_ascii_from(start_offset, lines_to_skip, count)
-        } else {
-            self.read_lines_utf16_from(start_offset, lines_to_skip, count)
+    /// A row walk positioned on the row at `target_row`, with the physical line number
+    /// that row would print.
+    ///
+    /// ❗ Walks from the checkpoint to the target, so the reader's own cursor lands on
+    /// the TARGET's first byte. Reporting the checkpoint's offset instead is what made
+    /// every onward seek land short and duplicate a line at each chunk seam.
+    fn reader_at_row(&self, target_row: usize) -> Result<(RowReader<FileSource>, u64, usize), ViewerError> {
+        let checkpoint = self.find_checkpoint(target_row).clone();
+        let file = File::open(&self.path)?;
+        let mut reader = RowReader::new(
+            FileSource::new(file, self.total_bytes),
+            self.encoding,
+            self.content_start,
+        );
+        let mut at = reader.seek(checkpoint.offset)?;
+        let mut row = checkpoint.row;
+        let mut line = checkpoint.line;
+        // At most one checkpoint interval of rows, whatever the file's size.
+        while row < target_row {
+            let Some(span) = reader.next_span()? else { break };
+            if span.starts_line {
+                line += 1;
+            }
+            row += 1;
+            at = span.end;
         }
+        reader.seek(at)?;
+        Ok((reader, at, line))
     }
 
-    fn read_lines_ascii_from(
-        &self,
-        start_offset: u64,
-        lines_to_skip: usize,
-        count: usize,
-    ) -> Result<Vec<String>, ViewerError> {
-        let mut file = File::open(&self.path)?;
-        file.seek(SeekFrom::Start(start_offset))?;
-
-        let chunk_size: usize = 64 * 1024;
-        let mut buf = vec![0u8; chunk_size];
-        let mut lines = Vec::new();
-        let mut skipped: usize = 0;
-        let mut leftover = Vec::new();
-
-        'outer: loop {
-            let bytes_read = file.read(&mut buf)?;
-            if bytes_read == 0 {
-                break;
-            }
-
-            let mut combined = Vec::new();
-            let data: &[u8] = if leftover.is_empty() {
-                &buf[..bytes_read]
-            } else {
-                combined.reserve(leftover.len() + bytes_read);
-                combined.extend_from_slice(&leftover);
-                combined.extend_from_slice(&buf[..bytes_read]);
-                leftover.clear();
-                &combined
-            };
-
-            let mut pos = 0;
-            while pos < data.len() {
-                if let Some(nl_pos) = memchr(b'\n', &data[pos..]) {
-                    if skipped < lines_to_skip {
-                        skipped += 1;
-                        pos += nl_pos + 1;
-                        continue;
-                    }
-
-                    let line_bytes = &data[pos..pos + nl_pos];
-                    lines.push(decode_line(line_bytes, self.encoding));
-                    pos += nl_pos + 1;
-
-                    if lines.len() >= count {
-                        break 'outer;
-                    }
-                } else {
-                    leftover.extend_from_slice(&data[pos..]);
-                    continue 'outer;
-                }
-            }
-        }
-
-        // Handle last line without newline
-        if !leftover.is_empty() && lines.len() < count && skipped >= lines_to_skip {
-            lines.push(decode_line(&leftover, self.encoding));
-        }
-
-        Ok(lines)
-    }
-
-    fn read_lines_utf16_from(
-        &self,
-        start_offset: u64,
-        lines_to_skip: usize,
-        count: usize,
-    ) -> Result<Vec<String>, ViewerError> {
-        let mut file = File::open(&self.path)?;
-        let aligned_start = start_offset & !1;
-        file.seek(SeekFrom::Start(aligned_start))?;
-
-        let mut lines: Vec<String> = Vec::with_capacity(count);
-        let mut scanner = NewlineScanner::new(self.encoding, aligned_start);
-        let mut accum: Vec<u8> = Vec::new();
-        let mut line_start: u64 = aligned_start;
-        let mut skipped: usize = 0;
-
-        let le = matches!(self.encoding, FileEncoding::Utf16Le);
-
-        let chunk_size: usize = 64 * 1024;
-        let mut buf = vec![0u8; chunk_size];
-
-        while lines.len() < count {
-            let bytes_read = file.read(&mut buf)?;
-            if bytes_read == 0 {
-                break;
-            }
-            let chunk = &buf[..bytes_read];
-            let mut hits: Vec<u64> = Vec::new();
-            scanner.feed(chunk, |off| hits.push(off));
-            accum.extend_from_slice(chunk);
-
-            for nl_byte_off in &hits {
-                if lines.len() >= count {
-                    break;
-                }
-                let pair_start = if le { *nl_byte_off } else { nl_byte_off - 1 };
-                let next_start = pair_start + 2;
-                let line_len_bytes = (pair_start - line_start) as usize;
-                if skipped < lines_to_skip {
-                    skipped += 1;
-                } else {
-                    let line = decode_line(&accum[..line_len_bytes], self.encoding);
-                    lines.push(line);
-                }
-                let drain = (next_start - line_start) as usize;
-                accum.drain(..drain);
-                line_start = next_start;
-            }
-        }
-
-        // Trailing partial line.
-        if !accum.is_empty() && lines.len() < count && skipped >= lines_to_skip {
-            lines.push(decode_line(&accum, self.encoding));
-        }
-
-        Ok(lines)
-    }
-
-    fn resolve_target(&self, target: &SeekTarget) -> usize {
-        match target {
-            SeekTarget::Line(n) => (*n).min(self.total_lines.saturating_sub(1)),
-            SeekTarget::ByteOffset(offset) => {
-                // Find the checkpoint closest to this byte offset
-                let idx = match self.checkpoints.binary_search_by_key(offset, |cp| cp.offset) {
-                    Ok(i) => i,
-                    Err(i) => i.saturating_sub(1),
-                };
-                self.checkpoints[idx].line
-            }
+    /// Which ROW a target names.
+    fn resolve_target(&self, target: &SeekTarget) -> Result<usize, ViewerError> {
+        let last_row = self.total_rows.saturating_sub(1);
+        Ok(match target {
+            SeekTarget::Line(n) => (*n).min(last_row),
+            // ❗ The row CONTAINING the byte, not the checkpoint before it. Rounding
+            // down to a checkpoint threw a byte-offset seek up to 255 rows backwards,
+            // and `read_range` steers between chunks by byte offset, so the rounding
+            // re-served rows that had already gone out.
+            SeekTarget::ByteOffset(offset) => self.row_at_byte(*offset)?.min(last_row),
             SeekTarget::Fraction(f) => {
                 let f = f.clamp(0.0, 1.0);
-                let max_line = self.total_lines.saturating_sub(1);
-                (f * max_line as f64).round() as usize
+                (f * last_row as f64).round() as usize
             }
+        })
+    }
+
+    /// The index of the row containing `offset`.
+    ///
+    /// Binary-searches the checkpoints, then walks at most one interval of rows: the
+    /// walk is what makes the answer exact, the checkpoints are what keep it bounded.
+    fn row_at_byte(&self, offset: u64) -> Result<usize, ViewerError> {
+        let offset = offset.clamp(self.content_start, self.total_bytes);
+        let idx = match self.checkpoints.binary_search_by_key(&offset, |cp| cp.offset) {
+            Ok(i) => i,
+            Err(i) => i.saturating_sub(1),
+        };
+        let Some(checkpoint) = self.checkpoints.get(idx) else {
+            return Ok(0);
+        };
+        let file = File::open(&self.path)?;
+        let mut reader = RowReader::new(
+            FileSource::new(file, self.total_bytes),
+            self.encoding,
+            self.content_start,
+        );
+        reader.seek(checkpoint.offset)?;
+        let mut row = checkpoint.row;
+        while let Some(span) = reader.next_span()? {
+            if offset < span.end || span.end == span.start {
+                return Ok(row);
+            }
+            row += 1;
         }
+        Ok(row.saturating_sub(1))
     }
 }
 
@@ -411,30 +326,35 @@ impl FileViewerBackend for LineIndexBackend {
             total_bytes: self.total_bytes,
             file_name: self.file_name.clone(),
             checkpoints: self.checkpoints.clone(),
+            total_rows: self.total_rows,
             total_lines: self.total_lines,
+            content_start: self.content_start,
             encoding: new_encoding,
         }))
     }
 
     fn get_lines(&self, target: &SeekTarget, count: usize) -> Result<LineChunk, ViewerError> {
-        let target_line = self.resolve_target(target);
-        let checkpoint = self.find_checkpoint(target_line);
-        let lines_to_skip = target_line - checkpoint.line;
-
-        let lines = self.read_lines_from_checkpoint(checkpoint.offset, lines_to_skip, count)?;
-
-        // Calculate byte offset of the target line (approximate; it's the checkpoint offset)
-        let byte_offset = checkpoint.offset;
+        let target_row = self.resolve_target(target)?;
+        let (mut reader, row_offset, line) = self.reader_at_row(target_row)?;
+        let collected = collect_rows(&mut reader, Some(line), count)?;
 
         Ok(LineChunk {
-            lines,
-            first_line_number: target_line,
-            byte_offset,
-            total_lines: Some(self.total_lines),
+            rows: collected.rows,
+            first_row_number: target_row,
+            // ❗ The TARGET row's offset, not the checkpoint's. The old answer sent
+            // every onward seek short of where it said it was, which duplicated a line
+            // at every chunk seam of a copy or a save over 4 096 rows.
+            byte_offset: row_offset,
+            end_byte_offset: collected.end_byte_offset,
+            end: collected.end,
+            total_rows: TotalRows::Exact(self.total_rows),
             total_bytes: self.total_bytes,
         })
     }
 
+    /// Scan the file row by row. See `rows::search_rows`: one implementation, shared
+    /// with `ByteSeekBackend`, instead of the two copies of the same quadratic,
+    /// UTF-16-blind `memchr` loop that stood here.
     fn search(
         &self,
         matcher: &Matcher,
@@ -442,81 +362,13 @@ impl FileViewerBackend for LineIndexBackend {
         results: &Mutex<Vec<SearchMatch>>,
         progress: &Mutex<u64>,
     ) -> Result<u64, ViewerError> {
-        // Stream through file in 1 MB chunks, same as ByteSeekBackend.
-        let mut file = File::open(&self.path)?;
-        file.seek(SeekFrom::Start(0))?;
-
-        let chunk_size: usize = 1024 * 1024;
-        let mut buf = vec![0u8; chunk_size];
-        let mut line_number: usize = 0;
-        let mut scanned: u64 = 0;
-        let mut line_byte_offset: u64 = 0;
-        let mut leftover = Vec::new();
-        let mut limit_reached = false;
-
-        loop {
-            if cancel.load(Ordering::Relaxed) || limit_reached {
-                break;
-            }
-
-            let bytes_read = file.read(&mut buf)?;
-            if bytes_read == 0 {
-                break;
-            }
-
-            let mut combined = Vec::new();
-            let data: &[u8] = if leftover.is_empty() {
-                &buf[..bytes_read]
-            } else {
-                combined.reserve(leftover.len() + bytes_read);
-                combined.extend_from_slice(&leftover);
-                combined.extend_from_slice(&buf[..bytes_read]);
-                leftover.clear();
-                &combined
-            };
-
-            let mut pos = 0;
-            while pos < data.len() {
-                if cancel.load(Ordering::Relaxed) || limit_reached {
-                    *progress.lock_ignore_poison() = scanned;
-                    return Ok(scanned);
-                }
-
-                if let Some(nl_pos) = memchr(b'\n', &data[pos..]) {
-                    let line_bytes = &data[pos..pos + nl_pos];
-                    let line = decode_line(line_bytes, self.encoding);
-                    match scan_line_with_matcher(matcher, &line, line_number, line_byte_offset, cancel, results) {
-                        LineScan::HitLimit => limit_reached = true,
-                        LineScan::Cancelled => {
-                            *progress.lock_ignore_poison() = scanned;
-                            return Ok(scanned);
-                        }
-                        LineScan::Done => {}
-                    }
-
-                    scanned += (nl_pos + 1) as u64;
-                    pos += nl_pos + 1;
-                    line_byte_offset = scanned;
-                    line_number += 1;
-                } else {
-                    leftover.extend_from_slice(&data[pos..]);
-                    break;
-                }
-            }
-
-            // Update progress after each chunk so the frontend can show real progress
-            *progress.lock_ignore_poison() = scanned;
-        }
-
-        // Handle last line (only reached if limit not hit; loop breaks early otherwise)
-        if !leftover.is_empty() {
-            let line = decode_line(&leftover, self.encoding);
-            let _ = scan_line_with_matcher(matcher, &line, line_number, line_byte_offset, cancel, results);
-            scanned += leftover.len() as u64;
-        }
-
-        *progress.lock_ignore_poison() = scanned;
-        Ok(scanned)
+        let file = File::open(&self.path)?;
+        let mut reader = RowReader::new(
+            FileSource::new(file, self.total_bytes),
+            self.encoding,
+            self.content_start,
+        );
+        search_rows(&mut reader, matcher, cancel, results, progress)
     }
 
     fn capabilities(&self) -> BackendCapabilities {
@@ -530,6 +382,10 @@ impl FileViewerBackend for LineIndexBackend {
 
     fn total_bytes(&self) -> u64 {
         self.total_bytes
+    }
+
+    fn total_rows(&self) -> TotalRows {
+        TotalRows::Exact(self.total_rows)
     }
 
     fn total_lines(&self) -> Option<usize> {

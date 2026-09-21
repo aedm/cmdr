@@ -239,11 +239,15 @@ pub async fn viewer_get_lines(
     .await?;
 
     debug!(
-        "viewer_get_lines: returned {} lines, first_line_number={}, byte_offset={}, first_line_preview={:?}",
-        result.lines.len(),
-        result.first_line_number,
+        "viewer_get_lines: returned {} rows, first_row_number={}, byte_offset={}, end={:?}, first_row_preview={:?}",
+        result.rows.len(),
+        result.first_row_number,
         result.byte_offset,
-        result.lines.first().map(|s| s.chars().take(50).collect::<String>())
+        result.end,
+        result
+            .rows
+            .first()
+            .map(|row| row.text.chars().take(50).collect::<String>())
     );
 
     Ok(result)

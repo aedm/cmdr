@@ -91,8 +91,8 @@ fn open_small_file_uses_full_load() {
     assert!(result.capabilities.knows_total_lines);
 
     // Initial lines should be populated
-    assert!(!result.initial_lines.lines.is_empty());
-    assert_eq!(result.initial_lines.first_line_number, 0);
+    assert!(!result.initial_lines.rows.is_empty());
+    assert_eq!(result.initial_lines.first_row_number, 0);
 
     // Cleanup session
     session::close_session(&result.session_id).unwrap();
@@ -114,7 +114,7 @@ fn open_large_file_uses_byte_seek() {
     assert!(!result.capabilities.knows_total_lines);
 
     // Should still have initial lines
-    assert!(!result.initial_lines.lines.is_empty());
+    assert!(!result.initial_lines.rows.is_empty());
 
     session::close_session(&result.session_id).unwrap();
 }
@@ -140,8 +140,8 @@ fn get_lines_after_open() {
     let open_result = session::open_session(file.to_str().unwrap(), "root").unwrap();
 
     let chunk = session::get_lines(&open_result.session_id, super::SeekTarget::Line(2), 3).unwrap();
-    assert_eq!(chunk.first_line_number, 2);
-    assert_eq!(chunk.lines, vec!["c", "d", "e"]);
+    assert_eq!(chunk.first_row_number, 2);
+    assert_eq!(chunk.texts(), vec!["c", "d", "e"]);
 
     session::close_session(&open_result.session_id).unwrap();
 }
@@ -314,9 +314,9 @@ fn large_file_upgrades_to_line_index() {
 
     // On LineIndex a `Line` target lands on exactly that line, so the chunk reports it back.
     let chunk = session::get_lines(sid, super::SeekTarget::Line(10), 3).unwrap();
-    assert_eq!(chunk.first_line_number, 10);
-    assert_eq!(chunk.lines.len(), 3);
-    assert!(chunk.lines[0].starts_with("line 00000010 "));
+    assert_eq!(chunk.first_row_number, 10);
+    assert_eq!(chunk.texts().len(), 3);
+    assert!(chunk.texts()[0].starts_with("line 00000010 "));
 
     session::close_session(sid).unwrap();
 }
@@ -337,8 +337,8 @@ fn multiple_sessions() {
     // Both should work independently
     let chunk1 = session::get_lines(&res1.session_id, super::SeekTarget::Line(0), 1).unwrap();
     let chunk2 = session::get_lines(&res2.session_id, super::SeekTarget::Line(0), 1).unwrap();
-    assert_eq!(chunk1.lines[0], "file a");
-    assert_eq!(chunk2.lines[0], "file b");
+    assert_eq!(chunk1.texts()[0], "file a");
+    assert_eq!(chunk2.texts()[0], "file b");
 
     session::close_session(&res1.session_id).unwrap();
     session::close_session(&res2.session_id).unwrap();
@@ -559,9 +559,9 @@ fn read_range_byte_seek_eof_selects_whole_file() {
     let sid = open.session_id.clone();
 
     let out = session::read_range(&sid, 1, line(0, 0), RangeEnd::Eof).unwrap();
-    // Should match the file content (sans the very last trailing newline).
-    let expected = content.trim_end_matches('\n');
-    assert_eq!(out, expected);
+    // Every byte, final newline included: a file ending in a newline has a final empty
+    // row, so ⌘A gives the same answer whichever backend a file's size lands it on.
+    assert_eq!(out, content);
 
     session::close_session(&sid).unwrap();
 }
@@ -1208,12 +1208,12 @@ fn set_encoding_full_load_swaps_decoder() {
 
     // Currently Windows-1252 (detected): line should decode as "café".
     let chunk = session::get_lines(&result.session_id, super::SeekTarget::Line(0), 1).unwrap();
-    assert_eq!(chunk.lines[0], "café");
+    assert_eq!(chunk.texts()[0], "café");
 
     // Force UTF-8: the high byte becomes U+FFFD.
     session::set_encoding(&result.session_id, FileEncoding::Utf8).unwrap();
     let chunk = session::get_lines(&result.session_id, super::SeekTarget::Line(0), 1).unwrap();
-    assert_eq!(chunk.lines[0], "caf\u{FFFD}");
+    assert_eq!(chunk.texts()[0], "caf\u{FFFD}");
 
     session::close_session(&result.session_id).unwrap();
 }
@@ -1233,7 +1233,7 @@ fn set_encoding_large_file_utf8_to_utf16_rebuilds_under_new_encoding() {
 
     let result = session::open_session(file.to_str().unwrap(), "root").unwrap();
     // Detector should already pick UTF-16 LE via parity. Decode of line 0 = "hello world".
-    let initial = &result.initial_lines.lines;
+    let initial = result.initial_lines.texts();
     assert!(
         initial.iter().any(|l| l == "hello world"),
         "expected 'hello world' lines, got {:?}",
@@ -1348,7 +1348,7 @@ fn reload_replaces_backend_against_current_disk_contents() {
     let status = session::get_session_status(&sid).unwrap();
     assert!(status.total_lines.is_some());
     let chunk = session::get_lines(&sid, super::SeekTarget::Line(1), 2).unwrap();
-    assert_eq!(chunk.lines, vec!["second", "third"]);
+    assert_eq!(chunk.texts(), vec!["second", "third"]);
 
     session::close_session(&sid).unwrap();
 }
@@ -1551,9 +1551,9 @@ fn test_append_during_upgrade_not_dropped() {
         "upgrade drain must absorb the queued append"
     );
     assert!(
-        chunk.total_lines.is_some_and(|n| n > line_count),
-        "total_lines must cover the appended block; got {:?}",
-        chunk.total_lines,
+        chunk.total_rows.is_exact() && chunk.total_rows.rows() > line_count,
+        "total_rows must cover the appended block; got {:?}",
+        chunk.total_rows,
     );
 
     session::close_session(&sid).unwrap();
@@ -1896,8 +1896,8 @@ fn opens_a_file_out_of_a_git_snapshot_and_reads_its_lines() {
 
     let snapshot = dir.join(".git/branches/main/README.md");
     let opened = session::open_session(snapshot.to_str().unwrap(), "root").expect("the snapshot file opens");
-    assert_eq!(opened.initial_lines.lines[0], "first line");
-    assert_eq!(opened.initial_lines.lines[1], "second line");
+    assert_eq!(opened.initial_lines.rows[0].text, "first line");
+    assert_eq!(opened.initial_lines.rows[1].text, "second line");
     // The session is named for the path the user asked for, not for the temp.
     assert!(opened.file_name.ends_with("README.md"));
 

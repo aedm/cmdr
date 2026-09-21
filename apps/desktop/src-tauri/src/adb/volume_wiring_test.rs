@@ -381,8 +381,8 @@ async fn the_viewer_opens_a_text_file_on_a_dialed_phone() {
     .expect("the open ran")
     .expect("the phone's file opens");
     assert_eq!(opened.file_name, "notes.txt");
-    assert_eq!(opened.initial_lines.lines[0], "first line");
-    assert_eq!(opened.initial_lines.lines[1], "second line");
+    assert_eq!(opened.initial_lines.rows[0].text, "first line");
+    assert_eq!(opened.initial_lines.rows[1].text, "second line");
 
     crate::file_viewer::close_session(&opened.session_id).expect("close");
     get_volume_manager().unregister(&volume_id);

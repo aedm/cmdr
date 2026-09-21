@@ -268,8 +268,8 @@ fn a_file_on_a_volume_the_os_cant_open_is_pulled_into_a_temp_and_its_lines_read(
 
     let opened = session::open_session(&path, "viewer-pull-cell").expect("the file opens");
     assert_eq!(opened.file_name, "notes.txt");
-    assert_eq!(opened.initial_lines.lines[0], "first line");
-    assert_eq!(opened.initial_lines.lines[1], "second line");
+    assert_eq!(opened.initial_lines.rows[0].text, "first line");
+    assert_eq!(opened.initial_lines.rows[1].text, "second line");
     let subdirs: Vec<_> = std::fs::read_dir(&extract)
         .expect("read extract dir")
         .flatten()
@@ -611,7 +611,7 @@ fn switching_the_view_mode_reuses_the_windows_temp_and_reads_nothing_from_the_ph
     session::close_session(&first.session_id).expect("close the first session");
     let lines = session::get_lines(&second.session_id, super::SeekTarget::Line(0), 1)
         .expect("the new session still reads its file");
-    assert!(lines.lines[0].starts_with('x'));
+    assert!(lines.texts()[0].starts_with('x'));
     let temps = temps_in(&extract);
     assert_eq!(temps.len(), 1, "one temp, shared rather than copied, found {temps:?}");
 

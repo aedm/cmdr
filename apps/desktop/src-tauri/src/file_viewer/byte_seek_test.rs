@@ -66,9 +66,11 @@ fn get_lines_from_start() {
     let backend = ByteSeekBackend::open(&file).unwrap();
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 3).unwrap();
 
-    assert_eq!(chunk.lines, vec!["line 1", "line 2", "line 3"]);
+    assert_eq!(chunk.texts(), vec!["line 1", "line 2", "line 3"]);
     assert_eq!(chunk.byte_offset, 0);
-    assert_eq!(chunk.total_lines, None);
+    // ByteSeek has no index, so its row count is an estimate rather than nothing: the
+    // frontend needs a scroll extent from the first fetch.
+    assert!(!chunk.total_rows.is_exact());
 }
 
 #[test]
@@ -80,7 +82,7 @@ fn get_lines_from_middle_byte_offset() {
     let backend = ByteSeekBackend::open(&file).unwrap();
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(7), 2).unwrap();
 
-    assert_eq!(chunk.lines, vec!["line 2", "line 3"]);
+    assert_eq!(chunk.texts(), vec!["line 2", "line 3"]);
     assert_eq!(chunk.byte_offset, 7);
 }
 
@@ -95,7 +97,7 @@ fn get_lines_with_backward_scan() {
 
     // Should find start of "line 2" (byte 7)
     assert_eq!(chunk.byte_offset, 7);
-    assert_eq!(chunk.lines[0], "line 2");
+    assert_eq!(chunk.texts()[0], "line 2");
 }
 
 #[test]
@@ -109,7 +111,7 @@ fn get_lines_by_fraction() {
     // Fraction 0.0 should start at beginning
     let chunk = backend.get_lines(&SeekTarget::Fraction(0.0), 1).unwrap();
     assert_eq!(chunk.byte_offset, 0);
-    assert_eq!(chunk.lines[0], "line 1");
+    assert_eq!(chunk.texts()[0], "line 1");
 }
 
 #[test]
@@ -127,22 +129,26 @@ fn get_lines_fraction_end() {
 }
 
 #[test]
-fn get_lines_line_target_estimates_offset() {
+fn get_lines_row_target_rides_the_sampled_bytes_per_row() {
     let dir = create_test_dir("line_target");
     let file = write_test_file(&dir, "test.txt", "a\nb\nc\n");
 
     let backend = ByteSeekBackend::open(&file).unwrap();
-    // ByteSeek estimates byte offset using avg 80 chars/line
-    // Line(0) should give offset 0
     let chunk = backend.get_lines(&SeekTarget::Line(0), 2).unwrap();
     assert_eq!(chunk.byte_offset, 0);
-    assert_eq!(chunk.lines[0], "a");
+    assert_eq!(chunk.texts(), vec!["a", "b"]);
 
-    // Line(5) on a tiny file clamps to file size, giving last line
-    let chunk2 = backend.get_lines(&SeekTarget::Line(5), 2).unwrap();
-    // 5 * 80 = 400, clamped to 6 bytes (file size), backward scan finds last newline
-    assert_eq!(chunk2.byte_offset, 6); // At EOF
-    assert!(chunk2.lines.is_empty()); // No lines after EOF
+    // Every row here is 2 bytes, which is what the open-time sample measures, so row 2
+    // lands on byte 4 rather than at `2 * 80` past the end of a six-byte file.
+    let chunk2 = backend.get_lines(&SeekTarget::Line(2), 2).unwrap();
+    assert_eq!(chunk2.byte_offset, 4);
+    // "c", then the empty row a file ending in a newline carries.
+    assert_eq!(chunk2.texts(), vec!["c", ""]);
+
+    // Past the end still clamps to EOF, where only that final empty row is left.
+    let chunk3 = backend.get_lines(&SeekTarget::Line(50), 2).unwrap();
+    assert_eq!(chunk3.byte_offset, 6);
+    assert_eq!(chunk3.texts(), vec![""]);
 }
 
 #[test]
@@ -153,7 +159,7 @@ fn get_lines_last_line_no_newline() {
     let backend = ByteSeekBackend::open(&file).unwrap();
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 10).unwrap();
 
-    assert_eq!(chunk.lines, vec!["line 1", "line 2"]);
+    assert_eq!(chunk.texts(), vec!["line 1", "line 2"]);
 }
 
 #[test]
@@ -303,19 +309,30 @@ fn capabilities_correct() {
 }
 
 #[test]
-fn backward_scan_with_no_newline_caps_at_max() {
+fn a_newline_free_file_breaks_on_the_segment_grid() {
     let dir = create_test_dir("no_nl");
-    // Write a file with no newlines (simulates binary)
-    let content = "x".repeat(20000);
+    // No newlines anywhere (a minified bundle, or a binary).
+    let content = "x".repeat(50_000);
     let file = write_test_file(&dir, "test.bin", &content);
 
     let backend = ByteSeekBackend::open(&file).unwrap();
 
-    // Seek to byte 15000; backward scan of 8192 bytes won't find '\n'
-    let chunk = backend.get_lines(&SeekTarget::ByteOffset(15000), 1).unwrap();
+    // The old backward scan capped at 8 192 bytes and then called wherever it stopped a
+    // line start, which put byte 15 000 at 6 808: an answer that moved with the probe.
+    // The row rule puts it on the segment grid, so every probe inside a row agrees.
+    for probe in [15_000u64, 20_000, 39_999] {
+        let chunk = backend.get_lines(&SeekTarget::ByteOffset(probe), 1).unwrap();
+        assert_eq!(chunk.byte_offset, probe - probe % super::SEGMENT_BYTES, "probe {probe}");
+        assert_eq!(chunk.rows[0].text.len(), super::SEGMENT_BYTES as usize, "probe {probe}");
+        // Cmdr made this break, so it carries the marker and no line number.
+        assert!(chunk.rows[0].continues, "probe {probe}");
+    }
 
-    // Should fall back to scan_start = 15000 - 8192 = 6808
-    assert_eq!(chunk.byte_offset, 15000 - 8192);
+    // And the file's last row runs out at EOF rather than at a boundary.
+    let tail = backend.get_lines(&SeekTarget::ByteOffset(45_000), 1).unwrap();
+    assert_eq!(tail.byte_offset, 40_000);
+    assert!(!tail.rows[0].continues);
+    assert_eq!(tail.rows[0].text.len(), 10_000);
 }
 
 #[test]
@@ -328,7 +345,7 @@ fn empty_file() {
 
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 10).unwrap();
     // Empty file should produce empty lines
-    assert!(chunk.lines.is_empty() || (chunk.lines.len() == 1 && chunk.lines[0].is_empty()));
+    assert!(chunk.texts().is_empty() || (chunk.texts().len() == 1 && chunk.texts()[0].is_empty()));
 }
 
 #[test]
@@ -368,7 +385,7 @@ fn seek_mid_multibyte_char_snaps_to_line_start() {
 
     // Should backward-scan to byte 0 (start of "café") since byte 4 is mid-char inside first line
     assert_eq!(chunk.byte_offset, 0);
-    assert_eq!(chunk.lines[0], "café");
+    assert_eq!(chunk.texts()[0], "café");
 }
 
 #[test]
@@ -381,7 +398,7 @@ fn seek_mid_emoji_snaps_to_line_start() {
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(2), 2).unwrap();
 
     assert_eq!(chunk.byte_offset, 0);
-    assert_eq!(chunk.lines[0], "🦀go");
+    assert_eq!(chunk.texts()[0], "🦀go");
 }
 
 #[test]
@@ -394,7 +411,7 @@ fn seek_mid_cjk_char_snaps_to_line_start() {
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(1), 2).unwrap();
 
     assert_eq!(chunk.byte_offset, 0);
-    assert_eq!(chunk.lines[0], "漢字");
+    assert_eq!(chunk.texts()[0], "漢字");
 }
 
 #[test]
@@ -406,11 +423,10 @@ fn read_lines_with_mixed_scripts() {
     let backend = ByteSeekBackend::open(&file).unwrap();
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 10).unwrap();
 
-    assert_eq!(chunk.lines.len(), 4);
-    assert_eq!(chunk.lines[0], "hello café");
-    assert_eq!(chunk.lines[1], "漢字テスト");
-    assert_eq!(chunk.lines[2], "🎉🦀🌍");
-    assert_eq!(chunk.lines[3], "plain");
+    // Five, not four: the file ends in a newline, so it carries a final empty row. That
+    // is the one answer all three backends now give, and what makes a whole-file copy
+    // byte-identical to the file.
+    assert_eq!(chunk.texts(), vec!["hello café", "漢字テスト", "🎉🦀🌍", "plain", ""]);
 }
 
 #[test]
@@ -463,8 +479,8 @@ fn read_emoji_only_lines() {
     let backend = ByteSeekBackend::open(&file).unwrap();
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 10).unwrap();
 
-    assert_eq!(chunk.lines[0], "🎉🎊🎈");
-    assert_eq!(chunk.lines[1], "🦀🦞🦐");
+    assert_eq!(chunk.texts()[0], "🎉🎊🎈");
+    assert_eq!(chunk.texts()[1], "🦀🦞🦐");
 }
 
 #[test]
@@ -490,8 +506,9 @@ fn read_file_starting_with_bom() {
     let backend = ByteSeekBackend::open(&file).unwrap();
     let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 10).unwrap();
 
-    // BOM should appear as U+FEFF at start of first line
-    assert!(chunk.lines[0].starts_with('\u{FEFF}'));
-    assert!(chunk.lines[0].ends_with("hello"));
-    assert_eq!(chunk.lines[1], "world");
+    // The BOM is not content: the first row starts past it, so the user never gets a
+    // selectable zero-width `U+FEFF` and all three backends agree on row 0.
+    assert_eq!(chunk.byte_offset, 3);
+    assert_eq!(chunk.texts()[0], "hello");
+    assert_eq!(chunk.texts()[1], "world");
 }
