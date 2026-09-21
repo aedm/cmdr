@@ -41,7 +41,9 @@ const {
   addToastMock,
   trackEventMock,
 } = vi.hoisted(() => ({
-  prepareSearchIndexMock: vi.fn(() => Promise.resolve({ ready: true, entryCount: 1234, loading: false })),
+  prepareSearchIndexMock: vi.fn((_volumeId: string | null) =>
+    Promise.resolve({ ready: true, entryCount: 1234, loading: false }),
+  ),
   searchFilesMock: vi.fn(
     (
       _query?: unknown,
@@ -350,12 +352,13 @@ describe('the readiness gate is per target, not "is root loaded"', () => {
     // Root's pre-load says nothing about a NAS. Waiting for it would make a search of
     // the drive the user is standing on hostage to a volume they didn't ask about.
     // Root answers "an event is coming"; the NAS the dialog actually targets is warm.
-    prepareSearchIndexMock.mockImplementation((volumeId: string | null) =>
-      Promise.resolve(
-        volumeId === 'smb-naspi'
-          ? { ready: true, entryCount: 7, loading: false }
-          : { ready: false, entryCount: 0, loading: true },
-      ),
+    prepareSearchIndexMock.mockImplementation(
+      (volumeId: string | null): Promise<{ ready: boolean; entryCount: number; loading: boolean }> =>
+        Promise.resolve(
+          volumeId === 'smb-naspi'
+            ? { ready: true, entryCount: 7, loading: false }
+            : { ready: false, entryCount: 0, loading: true },
+        ),
     )
     const { overlay } = await mountDialog({
       searchVolume: { volumeId: 'smb-naspi', mountRoot: '/Volumes/naspi', isNetwork: true },

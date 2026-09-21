@@ -149,9 +149,15 @@ for?"**, not "is root loaded". The pure `isTargetIndexReady` (`coverage-note.ts`
   volume", and reads as run-it: an SMB id keys on the address and cloud drives route to `root`, so a frontend guess
   would fork routing, and waiting on a wrong guess is how a search stops happening.
 - **which arenas have landed** — recorded per volume from the `search-index-ready` event, which names its volume.
-- **`pendingVolumeId`** — the one volume a pre-load is in flight for. `prepare_search_index` pre-loads root only, and
-  its `loading` field is the backend's promise that an event is coming. `loading: false` with `ready: false` is the
-  terminal "root has no index to load", which is what makes search work on a machine that declined indexing.
+- **`pendingVolumeId`** — the one volume a pre-load is in flight for. `prepare_search_index` takes the volume to warm,
+  and its `loading` field is the backend's promise that an event is coming. `loading: false` with `ready: false` is the
+  terminal "that volume has no index to load", which is what makes search work on a machine that declined indexing.
+
+**The warm follows the target volume.** `search-lifecycle.svelte.ts` asks for `targetVolumeId` on mount and again
+whenever it changes, keeping the last-requested id in `warmedVolumeId` so a re-render doesn't re-ask. Before this the
+command took no argument and warmed root only, so standing on a NAS meant its arena was read INSIDE the search that
+needed it, with nothing loading while the user typed. Re-entrancy is safe because `volumes.rs` single-flights loads per
+volume: a second ask for a volume already loading waits for that load instead of reading the database twice.
 
 Waiting when an event IS coming is still worth it: each ungated keystroke would otherwise issue an IPC that blocks on
 the same arena load, burning a blocking-pool thread per keystroke for no earlier answer.
