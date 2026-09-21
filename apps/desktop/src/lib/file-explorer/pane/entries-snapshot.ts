@@ -105,11 +105,23 @@ export async function fetchSelectedNames(input: SelectedNamesInput): Promise<str
   if (input.isAllSelected) return 'all'
 
   const names: string[] = []
-  for (const frontendIndex of input.selectedIndices) {
-    const backendIndex = input.hasParent ? frontendIndex - 1 : frontendIndex
-    if (backendIndex < 0) continue
-    const entry = await getFileAt(input.listingId, backendIndex, input.includeHidden)
-    if (entry) names.push(entry.name)
+  try {
+    for (const frontendIndex of input.selectedIndices) {
+      const backendIndex = input.hasParent ? frontendIndex - 1 : frontendIndex
+      if (backendIndex < 0) continue
+      const entry = await getFileAt(input.listingId, backendIndex, input.includeHidden)
+      if (entry) names.push(entry.name)
+    }
+  } catch {
+    // The listing died under us: the pane re-listed between the caller asking for
+    // this snapshot and these reads, so the id is stale and the backend answers
+    // `Listing not found`. Same answer as the listing-less pane above — a dead
+    // listing has nothing to feed, and its diff won't run either. Returning []
+    // rather than `names` on purpose: a PARTIAL list reads to the diff as rows the
+    // user deselected. Swallowed here because the caller is a fire-and-forget
+    // `void snapshotSelectionForOperation()`, where a rejection escapes the window
+    // as an unhandled one.
+    return []
   }
   return names
 }

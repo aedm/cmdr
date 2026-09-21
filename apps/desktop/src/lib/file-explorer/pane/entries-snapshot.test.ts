@@ -222,4 +222,38 @@ describe('fetchSelectedNames', () => {
     })
     expect(names).toEqual([])
   })
+
+  it('takes no snapshot when the listing is gone by the time it reads', async () => {
+    // The pane re-listed between the snapshot request and this read, so the id is
+    // stale and the backend answers `Listing not found: <uuid>`. The caller is a
+    // `void snapshotSelectionForOperation()`, so a rejection here escapes as an
+    // unhandled promise rejection (seen in an E2E lane right after a paste
+    // re-listed the pane). A dead listing has nothing to snapshot, which is the
+    // same answer the listing-less pane above gets.
+    ipc.getFileAt.mockRejectedValue(new Error('Listing not found: 5a9b554e-1d42-405c-8634-c46e3cfb59f2'))
+    const names = await fetchSelectedNames({
+      listingId: 'listing-gone',
+      includeHidden: true,
+      hasParent: false,
+      isAllSelected: false,
+      selectedIndices: [0, 1],
+    })
+    expect(names).toEqual([])
+  })
+
+  it('reports no snapshot rather than a partial one when the listing dies mid-read', async () => {
+    // A partial list is worse than none: the listing diff would read the missing
+    // names as rows the user deselected.
+    ipc.getFileAt
+      .mockResolvedValueOnce(backendEntry('file-0'))
+      .mockRejectedValueOnce(new Error('Listing not found: listing-half'))
+    const names = await fetchSelectedNames({
+      listingId: 'listing-half',
+      includeHidden: true,
+      hasParent: false,
+      isAllSelected: false,
+      selectedIndices: [0, 1],
+    })
+    expect(names).toEqual([])
+  })
 })

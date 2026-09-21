@@ -74,9 +74,13 @@ test.describe('Duplicate in place', () => {
     await expect.poll(async () => fileExistsInPane(tauriPage, 'file-a (1).txt', 0), { timeout: 5000 }).toBeTruthy()
 
     // The progress dialog is up until the operation ends, so both the modal check
-    // and the toast below are asking about a finished operation.
+    // and the toast below are asking about a finished operation. POLLED, because
+    // `waitForOperationsToSettle` asks the BACKEND (`list_operations`): the frontend
+    // still has to take `write-complete` off the event bridge, close the dialog, and
+    // raise the toast. That lag is ~0 on an idle box and was measured at 650 ms in a
+    // loaded lane, where an instant read caught the dialog on its last frame.
     await waitForOperationsToSettle(tauriPage)
-    expect(await tauriPage.isVisible('.modal-overlay')).toBe(false)
+    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
     await expectAndDismissToast(tauriPage, 'Copied 1 file.')
 
     // Paste is one of the two gestures that end a single-item duplicate in the
@@ -116,7 +120,11 @@ test.describe('Duplicate in place', () => {
     // Duplicate asks nothing: no destination to pick, and no name to type. Unlike
     // paste and F5, it must not leave the rename editor open: a second ⌘D has to
     // stamp out another copy rather than land in a text field.
-    expect(await tauriPage.isVisible('.modal-overlay')).toBe(false)
+    // Polled for the same reason as the paste case above: the dialog closes on the
+    // frontend's turn, not the backend's.
+    await expect.poll(async () => !(await tauriPage.isVisible('.modal-overlay')), { timeout: 5000 }).toBeTruthy()
+    // NOT polled: "the editor never opened" is an absence, and a poll for absence
+    // passes on its first read anyway.
     expect(await tauriPage.isVisible('.rename-input')).toBe(false)
 
     // And a second one really does stamp out another copy rather than typing into
