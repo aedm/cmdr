@@ -45,6 +45,8 @@ Frontend counterparts: [route shell](../../../src/routes/viewer/CLAUDE.md) and
   detection runs its parity heuristic BEFORE the UTF-8 fast path (ASCII-as-UTF-16 is valid UTF-8).
 - **CRLF: line readers keep `\r` in the line string**; `range_read`'s byte arithmetic depends on it.
 - **Cancellation is per-read / per-search, never session-wide**, and checked inside the per-line loop.
+- **`write_range_to_file` streams; `read_range` buffers.** The save is the way out of the 100 MiB clipboard refusal, so
+  it walks `read_range_streamed` in 1 MiB chunks. ❌ Never `read_range` + `fs::write`.
 - **Never `std::fs`-open a path the OS can't open**: a ROUTED one (`/…/foo.zip/inner`) or one whose volume's
   `paths_are_os_visible()` is false (`adb://…`). `open_session` sends both through `materialize_for_viewer`. ❌ Never an
   archive-only check, nor `supports_local_fs_access` (direct SMB says `false` yet opens fine).

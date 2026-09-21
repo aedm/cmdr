@@ -1,5 +1,9 @@
-//! Stitches a `(line, offset)` -> `(line, offset)` range read into a single UTF-8 string,
+//! Stitches a `(line, offset)` -> `(line, offset)` range read into UTF-8 text,
 //! independent of which backend the session uses.
+//!
+//! `read_range_streamed` is the engine: it hands the range to a sink in bounded pieces,
+//! so the save-to-file path never holds more than one chunk. `read_range` is the same
+//! read with a sink that collects, for callers (the clipboard) that want one string.
 //!
 //! Offsets on the wire are UTF-16 code units (matches JS string indexing and the search
 //! engine's `SearchMatch.column`). Conversion to UTF-8 byte positions happens here, at
@@ -76,26 +80,122 @@ pub fn clamp_utf16_offset_to_byte(line: &str, utf16_offset: u32) -> usize {
     line.len()
 }
 
+/// How much range text the streaming reader holds before handing it to its sink.
+///
+/// This is the save path's peak allocation, whatever the selection's size: the copy
+/// dialog refuses a clipboard copy past 100 MiB and offers "Save as" as the way out, so
+/// the save must not allocate the very thing the refusal protects the user from. 1 MiB
+/// stays out of the way on any machine, and still costs a multi-GB save only a few
+/// thousand writes.
+pub(crate) const STREAM_CHUNK_BYTES: usize = 1024 * 1024;
+
+/// Collects range text and hands it to `sink` in pieces of at most `chunk_bytes` plus
+/// the tail of the line that crossed the threshold.
+///
+/// The `\n` that joins two lines is held back until the next line arrives, so the
+/// range's final newline (which half-open semantics drop) never has to be taken back
+/// out of a piece that already left for the sink.
+struct ChunkedSink<'a, S: FnMut(&str) -> Result<(), ViewerError>> {
+    buf: String,
+    chunk_bytes: usize,
+    sink: &'a mut S,
+    newline_owed: bool,
+}
+
+impl<'a, S: FnMut(&str) -> Result<(), ViewerError>> ChunkedSink<'a, S> {
+    fn new(sink: &'a mut S, chunk_bytes: usize) -> Self {
+        Self {
+            buf: String::new(),
+            chunk_bytes,
+            sink,
+            newline_owed: false,
+        }
+    }
+
+    /// Appends `text`, first paying any newline owed to the previous line.
+    fn push(&mut self, text: &str) -> Result<(), ViewerError> {
+        self.pay_newline();
+        self.buf.push_str(text);
+        if self.buf.len() >= self.chunk_bytes {
+            self.flush()?;
+        }
+        Ok(())
+    }
+
+    /// Ends a line: the `\n` lands only once something follows it.
+    fn end_line(&mut self) {
+        self.newline_owed = true;
+    }
+
+    fn pay_newline(&mut self) {
+        if self.newline_owed {
+            self.buf.push('\n');
+            self.newline_owed = false;
+        }
+    }
+
+    /// Hands what's left to the sink. `keep_trailing_newline` pays a newline still
+    /// owed, which only the "ran past the end line" exit wants.
+    fn finish(mut self, keep_trailing_newline: bool) -> Result<(), ViewerError> {
+        if keep_trailing_newline {
+            self.pay_newline();
+        }
+        self.flush()
+    }
+
+    fn flush(&mut self) -> Result<(), ViewerError> {
+        if !self.buf.is_empty() {
+            (self.sink)(&self.buf)?;
+            self.buf.clear();
+        }
+        Ok(())
+    }
+}
+
 /// Reads the selected range from the given backend, returning a single UTF-8 string.
 ///
-/// Endpoints are normalised internally; reversed input (focus before anchor) returns
-/// the same result as the forward range.
-///
-/// Returns `ViewerError::Cancelled` if `cancel` is flipped during the read,
-/// `ViewerError::OutOfRange` if the requested line is past the file's last line
-/// (with the exception that `Eof` is always valid).
-///
-/// Streaming: after the initial seek by line number, the function advances by **byte
-/// offset** rather than line number. This is mandatory for the ByteSeek backend, which
-/// only estimates line numbers (`SeekTarget::Line(N)` resolves to `N * 80` bytes); for
-/// FullLoad and LineIndex backends, byte-offset seeking is equally well-supported and
-/// gives a single code path.
+/// Holds the whole range in memory by definition; a caller that only wants to put the
+/// range somewhere (the save-to-file path) uses [`read_range_streamed`] instead.
 pub fn read_range(
     backend: &dyn FileViewerBackend,
     anchor: RangeEnd,
     focus: RangeEnd,
     cancel: &AtomicBool,
 ) -> Result<String, ViewerError> {
+    let mut out = String::new();
+    let mut sink = |piece: &str| {
+        out.push_str(piece);
+        Ok(())
+    };
+    read_range_streamed(backend, anchor, focus, cancel, STREAM_CHUNK_BYTES, &mut sink)?;
+    Ok(out)
+}
+
+/// Reads the selected range and hands it to `sink` in pieces of at most `chunk_bytes`
+/// (plus the tail of the line that crossed the threshold), so a caller that writes the
+/// pieces straight out never holds more than one chunk.
+///
+/// Endpoints are normalised internally; reversed input (focus before anchor) produces
+/// the same output as the forward range.
+///
+/// Returns `ViewerError::Cancelled` if `cancel` is flipped during the read, and
+/// `ViewerError::OutOfRange` if the requested line is past the file's last line (with
+/// the exception that `Eof` is always valid). A `sink` that fails stops the read with
+/// its own error, and nothing further is read.
+///
+/// Streaming: after the initial seek by line number, the function advances by **byte
+/// offset** rather than line number. This is mandatory for the ByteSeek backend, which
+/// only estimates line numbers (`SeekTarget::Line(N)` resolves to `N * 80` bytes); for
+/// FullLoad and LineIndex backends, byte-offset seeking is equally well-supported and
+/// gives a single code path.
+pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
+    backend: &dyn FileViewerBackend,
+    anchor: RangeEnd,
+    focus: RangeEnd,
+    cancel: &AtomicBool,
+    chunk_bytes: usize,
+    sink: &mut S,
+) -> Result<(), ViewerError> {
     let (start, end) = if compare_ends(&anchor, &focus).is_le() {
         (anchor, focus)
     } else {
@@ -106,7 +206,7 @@ pub fn read_range(
     // empty selection at end of file.
     let (start_line, start_offset_utf16) = match start {
         RangeEnd::Line { line, offset } => (line as usize, offset),
-        RangeEnd::Eof => return Ok(String::new()),
+        RangeEnd::Eof => return Ok(()),
     };
 
     // Validate start_line against backend's total_lines if known.
@@ -124,7 +224,7 @@ pub fn read_range(
         RangeEnd::Eof => (usize::MAX, 0),
     };
 
-    let mut out = String::new();
+    let mut emit = ChunkedSink::new(sink, chunk_bytes);
 
     if start_line == end_line && !end_is_eof {
         // Single-line read: fetch the one line, clamp both offsets, slice between them.
@@ -134,11 +234,11 @@ pub fn read_range(
         let end_byte = clamp_utf16_offset_to_byte(line, end_offset_utf16);
         let lo = start_byte.min(end_byte);
         let hi = start_byte.max(end_byte);
-        out.push_str(&line[lo..hi]);
+        emit.push(&line[lo..hi])?;
         if cancel.load(Ordering::Relaxed) {
             return Err(ViewerError::Cancelled);
         }
-        return Ok(out);
+        return emit.finish(/*keep_trailing_newline=*/ false);
     }
 
     // Multi-line streaming read. First chunk is keyed by start line (only call that
@@ -156,7 +256,6 @@ pub fn read_range(
     const CANCEL_CHECK_LINES: usize = 256;
     const CANCEL_CHECK_BYTES: usize = 64 * 1024;
     let mut next_target = SeekTarget::Line(start_line);
-    let mut lines_emitted: usize = 0;
     let mut first_chunk = true;
     let mut lines_since_cancel_check: usize = 0;
     let mut bytes_since_cancel_check: usize = 0;
@@ -202,30 +301,31 @@ pub fn read_range(
             let line_number = first_line_idx_in_chunk + i;
             let is_first_overall = first_chunk && i == 0;
 
-            // For explicit-end ranges, stop past the end line.
+            // For explicit-end ranges, stop past the end line. The newline owed to the
+            // last line emitted is part of the range here, so it's paid out.
             if !end_is_eof && line_number > end_line {
-                return Ok(out);
+                return emit.finish(/*keep_trailing_newline=*/ true);
             }
 
-            let bytes_before = out.len();
-            if is_first_overall {
+            let emitted_bytes = if is_first_overall {
                 // First line of the whole selection: take from start_offset to end of line.
                 let start_byte = clamp_utf16_offset_to_byte(line, start_offset_utf16);
-                out.push_str(&line[start_byte..]);
-                out.push('\n');
+                emit.push(&line[start_byte..])?;
+                emit.end_line();
+                line.len() - start_byte + 1
             } else if !end_is_eof && line_number == end_line {
                 // Last line of explicit range: take from offset 0 up to end_offset.
                 let end_byte = clamp_utf16_offset_to_byte(line, end_offset_utf16);
-                out.push_str(&line[..end_byte]);
+                emit.push(&line[..end_byte])?;
                 // No trailing newline on the end line of a half-open range.
-                return Ok(out);
+                return emit.finish(/*keep_trailing_newline=*/ false);
             } else {
-                out.push_str(line);
-                out.push('\n');
-            }
-            lines_emitted += 1;
+                emit.push(line)?;
+                emit.end_line();
+                line.len() + 1
+            };
             lines_since_cancel_check += 1;
-            bytes_since_cancel_check += out.len() - bytes_before;
+            bytes_since_cancel_check += emitted_bytes;
         }
 
         first_chunk = false;
@@ -239,17 +339,11 @@ pub fn read_range(
         next_target = SeekTarget::ByteOffset(chunk_end_offset);
     }
 
-    // For the Eof case (or a short file that ended before reaching an explicit end),
-    // trim the trailing newline we added for the very last line emitted. The half-open
+    // For the Eof case (or a short file that ended before reaching an explicit end), the
+    // newline owed to the very last line emitted is dropped rather than paid: half-open
     // semantics say "include the last line's full content but not a final implicit
     // newline boundary marker beyond it".
-    if lines_emitted > 0
-        && let Some(b'\n') = out.as_bytes().last().copied()
-    {
-        out.pop();
-    }
-
-    Ok(out)
+    emit.finish(/*keep_trailing_newline=*/ false)
 }
 
 #[cfg(test)]
@@ -287,6 +381,41 @@ mod tests {
         assert_eq!(clamp_utf16_offset_to_byte(s, 2), 2);
         assert_eq!(clamp_utf16_offset_to_byte(s, 3), 3); // start of 'é'
         assert_eq!(clamp_utf16_offset_to_byte(s, 4), 5); // end of 'é', byte 5
+    }
+
+    /// The streamed read's peak memory is one chunk, whatever the range's size: no
+    /// piece handed to the sink exceeds the chunk budget plus the line that crossed it.
+    #[test]
+    fn streamed_read_hands_out_bounded_pieces() {
+        // 20 MB of range through a 64 KiB budget.
+        let line_len = 999;
+        let line_count = 20_000;
+        let backend = crate::file_viewer::session::ScriptedBackend::new(&"z".repeat(line_len), line_count, |_| {});
+        let chunk_bytes = 64 * 1024;
+
+        let mut max_piece = 0usize;
+        let mut total = 0usize;
+        let mut sink = |piece: &str| {
+            max_piece = max_piece.max(piece.len());
+            total += piece.len();
+            Ok(())
+        };
+        read_range_streamed(
+            &backend,
+            RangeEnd::Line { line: 0, offset: 0 },
+            RangeEnd::Eof,
+            &AtomicBool::new(false),
+            chunk_bytes,
+            &mut sink,
+        )
+        .unwrap();
+
+        // Every line plus its joining newline, minus the newline past the last line.
+        assert_eq!(total, line_count * (line_len + 1) - 1);
+        assert!(
+            max_piece <= chunk_bytes + line_len + 1,
+            "peak piece was {max_piece} bytes against a {chunk_bytes}-byte budget"
+        );
     }
 
     #[test]

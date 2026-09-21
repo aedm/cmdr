@@ -2,8 +2,11 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+
+use crate::ignore_poison::IgnorePoison;
 
 use super::session::{self, SearchStatus};
 use super::{FULL_LOAD_THRESHOLD, FileEncoding, MAX_SEARCH_MATCHES, RangeEnd, SearchMode, ViewerError};
@@ -727,6 +730,164 @@ fn write_range_to_file_propagates_out_of_range_error() {
     let err = session::write_range_to_file(&sid, 1, line(99, 0), line(99, 5), &dest).unwrap_err();
     assert!(matches!(err, ViewerError::OutOfRange));
     assert!(!dest.exists());
+
+    session::close_session(&sid).unwrap();
+}
+
+/// The `.cmdr-tmp.<read_id>` file a save writes before its rename, if one is there.
+fn save_temp_file(dir: &Path) -> Option<PathBuf> {
+    fs::read_dir(dir)
+        .ok()?
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .find(|p| p.to_string_lossy().contains("cmdr-tmp"))
+}
+
+/// Bytes in the save's temp file right now; 0 when the save hasn't created one.
+fn save_temp_len(dir: &Path) -> u64 {
+    save_temp_file(dir)
+        .and_then(|p| fs::metadata(p).ok())
+        .map_or(0, |m| m.len())
+}
+
+/// A line long enough that a few thousand of them dwarf the save's flush threshold,
+/// sized so one line plus its `\n` is exactly 1 KiB.
+fn kib_line() -> String {
+    "x".repeat(1023)
+}
+
+/// A save must hand bytes to the destination as it reads them, so its peak memory is
+/// one chunk rather than the whole selection (the 100 MiB clipboard refusal offers
+/// "Save as" as the way out, so buffering here would allocate exactly what the refusal
+/// protects the user from).
+///
+/// The probe is structural, not timed: the scripted backend looks at the destination
+/// temp from inside the read loop, at a point the reader reaches deterministically. A
+/// save that buffers the whole range is caught by the temp still being empty when the
+/// reader asks for its second chunk.
+#[test]
+fn write_range_to_file_streams_as_it_reads() {
+    let dir = create_test_dir("write_range_streams");
+    let dest = dir.join("out.txt");
+    let probe_dir = dir.to_path_buf();
+    let temp_lens: Arc<Mutex<Vec<u64>>> = Arc::new(Mutex::new(Vec::new()));
+    let lens_for_probe = temp_lens.clone();
+
+    // 5,000 KiB lines: more than one 4,096-line fetch chunk, and several times the
+    // flush threshold, so a streaming save has flushed well before chunk two.
+    let backend = session::ScriptedBackend::new(&kib_line(), 5_000, move |call| {
+        if call > 0 {
+            lens_for_probe.lock_ignore_poison().push(save_temp_len(&probe_dir));
+        }
+    });
+    let sid = session::test_only_install_session(Box::new(backend), dir.join("scripted.txt"));
+
+    session::write_range_to_file(&sid, 1, line(0, 0), RangeEnd::Eof, &dest).unwrap();
+
+    let lens = temp_lens.lock_ignore_poison().clone();
+    assert!(
+        !lens.is_empty(),
+        "the fixture must span more than one fetch chunk for this to prove anything"
+    );
+    assert!(
+        lens[0] > 0,
+        "nothing had reached the destination by the time the reader asked for its second chunk: \
+         the save is buffering the whole range in memory"
+    );
+
+    session::close_session(&sid).unwrap();
+}
+
+/// Byte-exactness across chunk seams: a range several times the flush threshold saves
+/// exactly what the source holds, with no byte dropped or doubled at a flush boundary.
+#[test]
+fn write_range_to_file_matches_the_source_across_chunks() {
+    let dir = create_test_dir("write_range_chunks");
+    // ~2.8 MB, so the save flushes a few times on the way through.
+    let mut content = String::new();
+    for i in 0..30_000 {
+        content.push_str(&format!("line {:06} {}\n", i, "y".repeat(80)));
+    }
+    let file = write_test_file(&dir, "big.txt", &content);
+    let sid = session::open_session(file.to_str().unwrap(), "root")
+        .unwrap()
+        .session_id;
+
+    // Explicit end rather than `Eof`: this file opens on ByteSeek and upgrades to
+    // LineIndex in the background, and the two disagree on whether a newline-terminated
+    // file has a trailing empty line. Naming the last line's end keeps the expected
+    // bytes the same whichever backend serves the read.
+    let dest = dir.join("out.txt");
+    let last_line_len = 92; // "line 029999 " + 80 padding characters
+    session::write_range_to_file(&sid, 1, line(0, 0), line(29_999, last_line_len), &dest).unwrap();
+
+    let written = fs::read_to_string(&dest).unwrap();
+    let expected = content.strip_suffix('\n').unwrap();
+    // Compared with a message rather than `assert_eq!`: a mismatch would otherwise
+    // dump megabytes of fixture into the test output.
+    assert!(
+        written == expected,
+        "saved {} bytes, expected {}",
+        written.len(),
+        expected.len()
+    );
+
+    session::close_session(&sid).unwrap();
+}
+
+/// The save decodes, so a UTF-16 source lands as UTF-8 text. Copying raw bytes would
+/// be cheaper and would silently change the file on every non-UTF-8 source.
+#[test]
+fn write_range_to_file_saves_a_utf16_source_as_utf8() {
+    let dir = create_test_dir("write_range_utf16");
+    let file = dir.join("utf16.txt");
+    let mut bytes = vec![0xFF, 0xFE]; // UTF-16LE BOM
+    for unit in "alpha\nbeta\ngamma\n".encode_utf16() {
+        bytes.extend_from_slice(&unit.to_le_bytes());
+    }
+    fs::write(&file, &bytes).unwrap();
+
+    let sid = session::open_session(file.to_str().unwrap(), "root")
+        .unwrap()
+        .session_id;
+    let dest = dir.join("out.txt");
+    session::write_range_to_file(&sid, 1, line(0, 0), line(2, 5), &dest).unwrap();
+
+    // UTF-8 text, not the source's UTF-16 code units (which would carry NUL bytes).
+    assert_eq!(fs::read(&dest).unwrap(), b"alpha\nbeta\ngamma");
+
+    session::close_session(&sid).unwrap();
+}
+
+/// Cancelling mid-save leaves the destination untouched and no temp file behind, even
+/// though the save has already written part of the range out.
+#[test]
+fn write_range_to_file_cancelled_mid_stream_leaves_nothing_behind() {
+    let dir = create_test_dir("write_range_cancel");
+    let dest = dir.join("out.txt");
+    let session_for_probe: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let probe = session_for_probe.clone();
+
+    // Cancel once the reader comes back for its second chunk: by then a streaming save
+    // has bytes in its temp, which is exactly the state the cleanup has to handle.
+    let backend = session::ScriptedBackend::new(&kib_line(), 5_000, move |call| {
+        if call == 1
+            && let Some(sid) = probe.lock_ignore_poison().as_ref()
+        {
+            session::cancel_read(sid, 1).unwrap();
+        }
+    });
+    let sid = session::test_only_install_session(Box::new(backend), dir.join("scripted.txt"));
+    *session_for_probe.lock_ignore_poison() = Some(sid.clone());
+
+    let err = session::write_range_to_file(&sid, 1, line(0, 0), RangeEnd::Eof, &dest).unwrap_err();
+    assert!(matches!(err, ViewerError::Cancelled));
+    assert!(!dest.exists(), "a cancelled save must not create the destination");
+    assert!(
+        save_temp_file(&dir).is_none(),
+        "a cancelled save must clean up its temp file"
+    );
+    assert_eq!(session::active_read_count(&sid), 0);
 
     session::close_session(&sid).unwrap();
 }

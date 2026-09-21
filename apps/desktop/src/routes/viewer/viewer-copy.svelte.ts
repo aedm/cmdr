@@ -300,7 +300,9 @@ export function createViewerCopyOrchestrator(deps: CopyOrchestratorDeps) {
   /**
    * Save as file flow: opens the native macOS save panel via the Tauri dialog plugin
    * with a sensible default name (the open file's stem + ".selection.txt"), then
-   * streams the selection to the chosen path via `viewer_write_range_to_file`.
+   * streams the selection to the chosen path via `viewer_write_range_to_file`. The
+   * backend reads and writes it in bounded chunks, so this stays the way out of the
+   * clipboard's size refusal however large the selection is.
    * Dismisses the open copy dialog and shows a success toast on completion.
    */
   async function handleSaveAs(): Promise<void> {

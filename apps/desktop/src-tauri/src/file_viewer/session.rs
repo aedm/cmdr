@@ -4,6 +4,7 @@
 //! API for the frontend. Sessions are cached by ID and cleaned up on close.
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, RwLock};
@@ -27,7 +28,9 @@ use super::full_load::FullLoadBackend;
 use super::line_index::LineIndexBackend;
 use super::media;
 use super::media_session::{self, MediaDimensions};
-use super::range_read::{RangeEnd, read_range as do_read_range};
+use super::range_read::{
+    RangeEnd, STREAM_CHUNK_BYTES, read_range as do_read_range, read_range_streamed as stream_range,
+};
 use super::search_matcher::{Matcher, SearchMode};
 use super::watcher::{VIEWER_WATCHER_MANAGER, WatcherEvent};
 use super::{
@@ -930,11 +933,27 @@ pub fn search_cancel(session_id: &str) -> Result<(), ViewerError> {
 /// only has to be unique within the session's active reads; the FE uses a monotonic
 /// counter.
 ///
-/// Holds the global SESSIONS lock only long enough to clone the backend `Arc` and to
-/// register the cancel flag. The actual read iterates lines outside the lock, so other
-/// commands (`cancel_read`, `get_session_status`, line fetches) stay responsive while a
-/// large copy is in flight.
+/// The whole range lands in memory here, which is why the copy dialogs cap what the
+/// clipboard path will read; `write_range_to_file` streams instead. Locking and
+/// cancellation plumbing: [`with_registered_read`].
 pub fn read_range(session_id: &str, read_id: u64, anchor: RangeEnd, focus: RangeEnd) -> Result<String, ViewerError> {
+    with_registered_read(session_id, read_id, |backend, cancel| {
+        do_read_range(backend, anchor, focus, cancel)
+    })
+}
+
+/// Runs `body` against the session's backend with `read_id` registered in
+/// `active_reads`, so `cancel_read` (or session close) can stop it, and unregisters it
+/// afterwards whether the read succeeded, failed, or was cancelled.
+///
+/// Holds the global SESSIONS lock only long enough to clone the backend `Arc` and
+/// register the flag; `body` runs outside it, so other commands (`cancel_read`,
+/// `get_session_status`, line fetches) stay responsive while a large read is in flight.
+fn with_registered_read<T>(
+    session_id: &str,
+    read_id: u64,
+    body: impl FnOnce(&dyn FileViewerBackend, &AtomicBool) -> Result<T, ViewerError>,
+) -> Result<T, ViewerError> {
     let (backend, cancel_flag) = {
         let sessions = SESSIONS.lock_ignore_poison();
         let session = sessions.get(session_id).ok_or_else(|| ViewerError::SessionNotFound {
@@ -945,9 +964,8 @@ pub fn read_range(session_id: &str, read_id: u64, anchor: RangeEnd, focus: Range
         (session.load_backend(), flag)
     };
 
-    let result = do_read_range(backend.as_ref().as_ref(), anchor, focus, &cancel_flag);
+    let result = body(backend.as_ref().as_ref(), &cancel_flag);
 
-    // Always unregister, whether the read succeeded, failed, or was cancelled.
     if let Ok(sessions) = SESSIONS.lock()
         && let Some(session) = sessions.get(session_id)
     {
@@ -957,14 +975,23 @@ pub fn read_range(session_id: &str, read_id: u64, anchor: RangeEnd, focus: Range
     result
 }
 
-/// Reads a range and writes it atomically to `dest_path`. Uses the same `read_id`
-/// cancellation plumbing as `read_range`. Write is temp+rename for crash-safety: if
-/// the process dies mid-write, the user keeps their original file (if any) instead of
-/// a half-written one.
+/// Streams a range to `dest_path`, decoded to UTF-8 and written atomically. Uses the
+/// same `read_id` cancellation plumbing as `read_range`. Write is temp+rename for
+/// crash-safety: if the process dies mid-write, the user keeps their original file (if
+/// any) instead of a half-written one.
 ///
-/// On success, returns `Ok(())`. On `Cancelled`, the temp file is cleaned up. On
-/// any other error, the temp file is best-effort cleaned up and the error is returned
-/// typed.
+/// Memory is one [`STREAM_CHUNK_BYTES`] buffer, not one range: this is the way out the
+/// copy dialog offers when the clipboard refuses a selection for being too big, so
+/// reading the range into a `String` here would allocate exactly what the refusal is
+/// protecting the user from.
+///
+/// The bytes go through the same decode as an on-screen read, so a UTF-16 (or any
+/// other non-UTF-8) source saves as UTF-8 text. Chunks break on line boundaries, so no
+/// character is ever split across two writes.
+///
+/// On success, returns `Ok(())`. On `Cancelled`, and on any other error, the partial
+/// temp file is best-effort removed and the typed error is returned, so a stopped save
+/// leaves nothing behind.
 pub fn write_range_to_file(
     session_id: &str,
     read_id: u64,
@@ -972,8 +999,6 @@ pub fn write_range_to_file(
     focus: RangeEnd,
     dest_path: &Path,
 ) -> Result<(), ViewerError> {
-    let text = read_range(session_id, read_id, anchor, focus)?;
-
     // Atomic write: write to `<dest>.cmdr-tmp.<read_id>`, then rename. The same-FS
     // rename gives us atomicity on local volumes (and is best-effort elsewhere).
     let tmp_path = dest_path.with_extension(format!(
@@ -985,9 +1010,23 @@ pub fn write_range_to_file(
         read_id
     ));
 
-    std::fs::write(&tmp_path, &text)?;
-    if let Err(e) = std::fs::rename(&tmp_path, dest_path) {
+    let written = with_registered_read(session_id, read_id, |backend, cancel| {
+        // Unbuffered on purpose: each piece the reader hands over is already a chunk, so
+        // a `BufWriter` would only copy it a second time.
+        let mut file = std::fs::File::create(&tmp_path)?;
+        let mut sink = |piece: &str| {
+            file.write_all(piece.as_bytes())?;
+            Ok(())
+        };
+        stream_range(backend, anchor, focus, cancel, STREAM_CHUNK_BYTES, &mut sink)
+    });
+
+    if let Err(e) = written {
         // Best-effort cleanup; ignore secondary errors.
+        let _ = std::fs::remove_file(&tmp_path);
+        return Err(e);
+    }
+    if let Err(e) = std::fs::rename(&tmp_path, dest_path) {
         let _ = std::fs::remove_file(&tmp_path);
         return Err(ViewerError::Io { message: e.to_string() });
     }

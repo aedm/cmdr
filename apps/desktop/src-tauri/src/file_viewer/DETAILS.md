@@ -19,8 +19,10 @@ Frontend counterpart: `apps/desktop/src/routes/viewer/CLAUDE.md` for the viewer 
 - `media_session.rs`: the media-open path. `try_open_media` (classify + dispatch, called by `open_session` before it
   builds a text backend), `open_media_session` (mint token, header-only dimensions, install a `MediaBackend` via
   `ViewerSession::new`), `is_local_posix_path` (the local-volume gate), and the `MediaDimensions` type
-- `range_read.rs`: backend-agnostic stitching of a `(line, offset) -> (line, offset)` range into one UTF-8 string,
-  UTF-16 -> UTF-8 offset clamp (surrogate-safe), streaming via byte-offset seeks to keep `ByteSeek` honest
+- `range_read.rs`: backend-agnostic stitching of a `(line, offset) -> (line, offset)` range into UTF-8 text.
+  `read_range_streamed` is the engine (hands the range to a sink in `STREAM_CHUNK_BYTES` pieces, breaking only on line
+  boundaries); `read_range` is that read with a collecting sink, for callers that want one string. Plus the UTF-16 ->
+  UTF-8 offset clamp (surrogate-safe) and byte-offset seeks between chunks to keep `ByteSeek` honest
 - `encoding.rs`: `FileEncoding` enum (UTF-8, UTF-8 with BOM, Windows-1252, ISO-8859-1, Mac Roman, US-ASCII, UTF-16 LE,
   UTF-16 BE), BOM + 64 KB heuristic detection, `NewlineScanner` with carry-byte state for UTF-16 chunked reads,
   `find_newlines` / `decode_line`, `same_byte_layout` predicate. `NewlineScanner::feed` throughput numbers anchoring the
@@ -307,9 +309,10 @@ that the scan opener finds a line exactly with no index).
   extra round-trip. The function holds the SESSIONS lock only long enough to clone the backend `Arc` and register the
   cancel flag; the read itself iterates outside the lock so other commands stay responsive.
 - `viewer_cancel_read(session_id, read_id)` → flips the per-read cancel flag. No-op if the read already finished.
-- `viewer_write_range_to_file(session_id, read_id, anchor, focus, dest_path)` → reads a logical range and writes it
-  atomically to `dest_path` (temp+rename). Used by "Save as file…" in the copy dialogs. Same cancellation plumbing as
-  `viewer_read_range`. Temp suffix includes the `read_id` for crash isolation.
+- `viewer_write_range_to_file(session_id, read_id, anchor, focus, dest_path)` → streams a logical range to `dest_path`,
+  decoded to UTF-8 and written atomically (temp+rename). Used by "Save as file…" in the copy dialogs. Same cancellation
+  plumbing as `viewer_read_range`. Temp suffix includes the `read_id` for crash isolation. Peak memory is one
+  `STREAM_CHUNK_BYTES` buffer whatever the selection's size, and a cancel or any error removes the partial temp.
 - `viewer_search_start(session_id, query, mode)` → starts background search. `mode = { useRegex, caseSensitive }`. An
   invalid regex pattern (parse error, exceeds size limits) or a multiline pattern (`(?s)`, literal newline, `\n`
   escape) makes the search status flip to `InvalidQuery { message }` synchronously; the worker isn't spawned. `(?m)`
@@ -596,6 +599,20 @@ timeout shape. Why every family owns its error type: `docs/guides/error-handling
   resolves to `N * 80` bytes (no line index), so a multi-chunk read keyed by line number would misalign as soon as line
   lengths drift from the 80-byte estimate. `range_read.rs` keys the first chunk by line, then by `byte_offset = chunk
   end` for every subsequent chunk. All three backends honour byte-offset seeks exactly.
+- **The save is the escape hatch from the clipboard's memory refusal, so it must never buffer the range.** The copy
+  dialog refuses a clipboard copy past `COPY_REFUSE_BYTES` (100 MiB) and points the user at "Save as", so
+  `write_range_to_file` walks the range through `read_range_streamed` in `STREAM_CHUNK_BYTES` (1 MiB) pieces and writes
+  each one to the temp. Chunks break on line boundaries, never inside a character, and each is decoded first, so a
+  UTF-16 source saves as UTF-8 text (a raw byte copy would silently change every non-UTF-8 file). The cancel flag is
+  read between pieces and inside the per-line loop, and every failure path removes the partial temp. Pinned by
+  `write_range_to_file_streams_as_it_reads` (a scripted backend watches the destination temp from inside the read loop,
+  so a buffering save is caught by the temp still being empty at chunk two) and
+  `range_read::tests::streamed_read_hands_out_bounded_pieces`.
+- **A long save can still hit the 60 s IPC deadline.** `viewer_write_range_to_file` shares `READ_RANGE_TIMEOUT` with
+  `viewer_read_range` (`commands/file_viewer.rs`), so a save slow enough to cross it answers `TimedOut` even though the
+  write is bounded in memory and would have finished. The backend read keeps running until it sees the cancel flag, and
+  the FE shows its "that took too long" copy. The deadline fits a clipboard read (which the 100 MiB cap bounds); it
+  doesn't fit a save of an unbounded selection on a slow disk.
 - **UTF-16 surrogate clamp at the IPC boundary**: `clamp_utf16_offset_to_byte` rounds offsets that land between the
   high and low surrogate of an astral codepoint down to the codepoint start. This guarantees the returned slice is
   always valid UTF-8.

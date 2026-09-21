@@ -7,6 +7,8 @@
 //! The `mod` declaration is `#[cfg(test)]`, so none of this reaches a shipped
 //! binary.
 
+use std::sync::atomic::AtomicUsize;
+
 use super::*;
 
 /// Counts a rebuild thread's exit on every path (early return, error, or a
@@ -115,6 +117,120 @@ pub fn test_only_tail_mode(session_id: &str) -> bool {
         .get(session_id)
         .map(|s| s.tail_mode.load(Ordering::Relaxed))
         .unwrap_or(false)
+}
+
+/// A stand-in backend that serves `line_count` copies of one line and runs a hook
+/// before each `get_lines` call.
+///
+/// Two things a fixture file can't give a test: a range far larger than anything worth
+/// writing to disk, and a vantage point *inside* the read loop. The hook is that
+/// vantage point. It can look at the destination temp file, flip a cancel flag, or
+/// count chunks, at a point the production code reaches deterministically rather than
+/// after a sleep.
+#[cfg(test)]
+pub struct ScriptedBackend {
+    line: String,
+    line_count: usize,
+    /// Called with the 0-based index of each `get_lines` call, before it is served.
+    on_get_lines: Box<dyn Fn(usize) + Send + Sync>,
+    calls: AtomicUsize,
+}
+
+#[cfg(test)]
+impl ScriptedBackend {
+    pub fn new(line: &str, line_count: usize, on_get_lines: impl Fn(usize) + Send + Sync + 'static) -> Self {
+        Self {
+            line: line.to_string(),
+            line_count,
+            on_get_lines: Box::new(on_get_lines),
+            calls: AtomicUsize::new(0),
+        }
+    }
+
+    /// Bytes per line on "disk": the line plus its `\n`. Every line is the same length,
+    /// which is what makes the byte-offset seeks the range reader uses exact here.
+    fn stride(&self) -> usize {
+        self.line.len() + 1
+    }
+}
+
+#[cfg(test)]
+impl FileViewerBackend for ScriptedBackend {
+    fn get_lines(&self, target: &SeekTarget, count: usize) -> Result<LineChunk, ViewerError> {
+        let call = self.calls.fetch_add(1, Ordering::SeqCst);
+        (self.on_get_lines)(call);
+
+        let stride = self.stride();
+        let start = match target {
+            SeekTarget::Line(n) => *n,
+            SeekTarget::ByteOffset(b) => (*b as usize) / stride,
+            SeekTarget::Fraction(f) => ((self.line_count as f64) * f) as usize,
+        }
+        .min(self.line_count);
+        let end = (start + count).min(self.line_count);
+
+        Ok(LineChunk {
+            lines: (start..end).map(|_| self.line.clone()).collect(),
+            first_line_number: start,
+            byte_offset: (start * stride) as u64,
+            total_lines: Some(self.line_count),
+            total_bytes: self.total_bytes(),
+        })
+    }
+
+    fn search(
+        &self,
+        _matcher: &Matcher,
+        _cancel: &AtomicBool,
+        _matches: &Mutex<Vec<SearchMatch>>,
+        _progress: &Mutex<u64>,
+    ) -> Result<u64, ViewerError> {
+        Ok(0)
+    }
+
+    fn capabilities(&self) -> BackendCapabilities {
+        BackendCapabilities {
+            supports_line_seek: true,
+            supports_byte_seek: true,
+            supports_fraction_seek: true,
+            knows_total_lines: true,
+        }
+    }
+
+    fn total_bytes(&self) -> u64 {
+        (self.line_count * self.stride()) as u64
+    }
+
+    fn total_lines(&self) -> Option<usize> {
+        Some(self.line_count)
+    }
+
+    fn file_name(&self) -> &str {
+        "scripted.txt"
+    }
+}
+
+/// Test-only hook: registers a session over `backend` and returns its id.
+///
+/// No watcher, no upgrade thread, and no file behind it: the session exists so the read
+/// paths (`read_range`, `write_range_to_file`) can run against a [`ScriptedBackend`].
+/// Close it with `close_session` like any other session.
+#[cfg(test)]
+pub fn test_only_install_session(backend: Box<dyn FileViewerBackend>, path: PathBuf) -> String {
+    let session_id = generate_session_id();
+    let session = ViewerSession::new(ViewerSessionInit {
+        backend,
+        backend_type: BackendType::ByteSeek,
+        upgrading: None,
+        encoding: FileEncoding::Utf8,
+        detected_encoding: FileEncoding::Utf8,
+        watcher_stop: Arc::new(AtomicBool::new(false)),
+        path,
+        media_token: None,
+        temp: None,
+    });
+    SESSIONS.lock_ignore_poison().insert(session_id.clone(), session);
+    session_id
 }
 
 /// Test-only rendezvous that parks a background worker at a known point until
