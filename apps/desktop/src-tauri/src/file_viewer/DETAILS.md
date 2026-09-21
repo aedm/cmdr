@@ -3,14 +3,17 @@
 Pull-tier docs for `file_viewer/`: architecture, flows, and decision rationale. Must-know invariants and gotchas live
 in `CLAUDE.md`.
 
-Provides three backend strategies for serving file content line-by-line with instant open, virtual scrolling, and background search.
+Provides three backend strategies for serving file content ROW by row with instant open, virtual scrolling, and background search. Rows, not physical lines: see § "Rows, not lines".
 
 Frontend counterpart: `apps/desktop/src/routes/viewer/CLAUDE.md` for the viewer route shell (window lifecycle, scroll/search composables) and `apps/desktop/src/lib/file-viewer/CLAUDE.md` for the reusable open-viewer helper and binary-warning classifier.
 
 ## Key files
 
-- `mod.rs`: public API, constants (1MB threshold, 256-line checkpoints, 8KB backward scan limit), `ViewerError` typed
-  enum
+- `mod.rs`: public API, constants (1MB threshold, 256-ROW checkpoints), `LineChunk` / `ViewerRow` / `ChunkEnd` /
+  `TotalRows`, `ViewerError` typed enum
+- `rows.rs`: the row boundary rule, defined once as a boundary set. `RowRuler` reads it backward (one bounded window
+  per probe, for a seek), `next_row_boundary` + `RowReader` read the same set forward (off the newline stream, for a
+  walk), `collect_rows` and `search_rows` are what the backends call. See § "Rows, not lines"
 - `session.rs`: text-session orchestration, backend switching, search state, per-read cancel registry (`active_reads`),
   encoding-switch (`set_encoding`), drain-and-swap-under-lock protocol via `pending_grew`, the `read_range`,
   `write_range_to_file` (with its `SaveProgress` reporter), and `cancel_read` entry points. Owns the `ViewerSession` type + its `ViewerSession::new(ViewerSessionInit)` constructor and
@@ -27,12 +30,13 @@ Frontend counterpart: `apps/desktop/src/routes/viewer/CLAUDE.md` for the viewer 
   UTF-16 BE), BOM + 64 KB heuristic detection, `NewlineScanner` with carry-byte state for UTF-16 chunked reads,
   `find_newlines` / `decode_line`, `same_byte_layout` predicate. `NewlineScanner::feed` throughput numbers anchoring the
   large-log open budget: [viewer-encoding-bench](../../../../../docs/notes/viewer-encoding-bench.md)
-- `full_load.rs`: loads entire file into `String` (<1MB files); decodes per `FileEncoding`
-- `byte_seek.rs`: seeks by byte offset, scans backward for newline (instant open); ASCII-compatible encodings use the
-  `memchr` fast path, UTF-16 uses `NewlineScanner` with byte-aligned reads
-- `line_index.rs`: sparse newline index (1 checkpoint per 256 lines), SIMD-accelerated via `memchr` for
-  ASCII-compatible encodings, `NewlineScanner`-driven for UTF-16; `extend_to(&self, new_size, cancel) -> Self` produces
-  an extended backend by value
+- `full_load.rs`: loads the entire file (<1MB) and splits it into rows at load time, each with its own byte offset; a
+  seek is a binary search over those offsets
+- `byte_seek.rs`: seeks by byte offset through `RowRuler` (instant open, no scan). Row numbers ride `bytes_per_row`,
+  one bounded sample taken at open, used in BOTH directions
+- `line_index.rs`: sparse index, 1 checkpoint per 256 ROWS, each carrying the physical line number beside it, both out
+  of one scan; `extend_to(&self, new_size, cancel) -> Self` produces an extended backend by value, rewalking only from
+  the checkpoint before the old file's last row
 - `search_matcher.rs`: `Matcher` (literal or regex), `SearchMode`, `scan_line_with_matcher` helper. One matcher built
   per search; reused across every line. Huge-line chunking (1 MB windows, 256 byte overlap) lives here.
 - `headless.rs`: `open_text_backend(path, encoding, cancel) -> HeadlessBackend`, the backend pick with nothing around
@@ -256,6 +260,62 @@ paths by `materialize_test.rs`, and the git half by
 `file_viewer::session_test::opens_a_file_out_of_a_git_snapshot_and_reads_its_lines` plus
 `agent::tools::read::inspect::git_snapshot_tests`.
 
+## Rows, not lines
+
+The viewer renders **rows**. A row ends at a newline or after `SEGMENT_BYTES` (20 000), whichever comes first, so a
+file with no newline in it costs a bounded read per fetch instead of the whole file. Nothing is dropped; a long line
+occupies several rows. This is what `ERR-RQ8BY` bought: F3 on a ~300 MB single-line minified JSON used to return after
+49 s, past the window's 2 s patience, because no read path had a bound on how much of one line it could touch.
+
+**The rule is a boundary set, written once in `rows.rs`.** `b` is a row boundary exactly when `b == 0`, or `b` is the
+byte just past a newline, or `b` is a multiple of `SEGMENT_BYTES` **and the segment below it holds no newline**. That
+last clause is the whole design: a newline-free segment implies a line at least that long, so in a file whose lines are
+all shorter no multiple ever qualifies and rows come out exactly equal to lines. Full derivation, the read bounds, and
+the UTF-16 and character-boundary snaps: the module doc in `rows.rs`. Plan and invariants:
+`docs/specs/viewer-row-wrap.md`.
+
+**Two readings of that one set, and why.** `RowRuler::row_start` / `row_end` answer one probe with one bounded window,
+which is what a SEEK wants and costs a two-segment read per row. A fetch walks thousands of rows in sequence, so
+probing per row would cost a 4 096-row fetch of an ordinary file around 160 MB; `RowReader` walks forward instead,
+reading the same boundaries out of the newline stream it already holds. `rows_test` asserts the two agree on every
+fixture at every offset. ❗ That test is what earns the second implementation; if it goes red, the walk is wrong.
+
+**What a chunk carries.** `LineChunk.rows` is `Vec<ViewerRow>`: text, its own byte offset, `continues` (Cmdr ended
+this row at a segment boundary, not at a newline the file holds), and `line_number` (`Some(n)` on a row that starts a
+line, `None` on a continuation, so the gutter prints a number once per line). The chunk also carries
+`end_byte_offset`, the TRUE source offset just past the last row, and `ChunkEnd`, which says whether it ran out of
+rows, out of `CHUNK_BUDGET_BYTES` (2 MiB), or out of file.
+
+**Three things a caller gets wrong without thinking about it:**
+
+- ❗ Joining rows with `\n`. A break Cmdr made is not a newline, so a copy, save, or announcement path that stitches
+  rows must emit a delimiter only for a row whose `continues` is false. `range_read` does it in exactly one place
+  (`pay_newline`'s caller); `inspect`'s window does the same. Get it wrong and a minified bundle reaches the clipboard
+  with an invented line break every 20 000 bytes, silently.
+- ❗ Reading a short chunk as EOF. `CHUNK_BUDGET_BYTES` makes short chunks ordinary. Steer by `ChunkEnd::EndOfFile`.
+- ❗ Deriving the next offset from decoded string lengths. Those are UTF-8 even when the file is UTF-16, and they carry
+  no newline. Use `end_byte_offset`.
+
+**The trailing empty line**: a file ending in a newline has a final EMPTY row, in all three backends. FullLoad always
+did; ByteSeek and LineIndex stopped one byte earlier, so ⌘A then ⌘C on the same file gave two answers depending only
+on the file's size. FullLoad's answer wins because it is the one that makes a whole-file copy byte-identical to the
+file.
+
+**A BOM is not content.** The row GRID is absolute (a BOM must not shift one backend's rows against another's, since a
+reload or a tail escalation swaps backends under a live frontend row cache), but a file's first row starts past the
+BOM. That is what makes all three agree on row 0, and it is why ByteSeek no longer hands the user a selectable
+`U+FEFF`.
+
+**ByteSeek's row numbers are estimates mid-file**, as its line numbers always were. It samples bytes-per-row once at
+open over 64 KB, counting only rows that end inside the sample, and uses that number in both directions: a row it
+hands out comes back as itself. On a newline-free file the sample sees whole segments and comes out at exactly
+`SEGMENT_BYTES`, so row numbers there are EXACT. `TotalRows` says which it is.
+
+**Search scans rows**, in one shared `rows::search_rows` both streaming backends call. A match's column is a UTF-16
+offset within its ROW, so it is bounded by two segments rather than arriving 2.5 million units wide. A needle
+straddling a segment break is missed, which is inherent to searching rows and is why `SEGMENT_BYTES` is far larger
+than any query.
+
 ## Backend selection logic
 
 ```rust
@@ -282,11 +342,11 @@ with `line_numbers_exact = false`. An approximate window beats no window, as lon
 encoding is the caller's (`encoding::detect_from_head` on a head it already read), so a file isn't sniffed twice.
 
 `open_scan_backend(path, encoding)` is the second opener, for a caller that will `search` rather than seek by line: the
-same FullLoad pick up to the threshold, else `ByteSeekBackend` with no index built. `search` streams from byte 0 on
-every backend and numbers lines exactly as it goes, and a hit's line is fetched back by `SeekTarget::ByteOffset`, which
-every backend seeks exactly (ByteSeek back-scans to the newline; a line-start offset is its own answer). So a scan has no
-use for a line index, and building one would read a large file twice; the viewer's own `search_start` runs on ByteSeek
-for the same reason. The only thing unknown past the threshold is `total_lines`.
+same FullLoad pick up to the threshold, else `ByteSeekBackend` with no index built. `search` walks rows from the
+file's content start on every backend and numbers them exactly as it goes, and a hit's row is fetched back by
+`SeekTarget::ByteOffset`, which every backend seeks exactly through the row rule. So a scan has no use for a row index,
+and building one would read a large file twice; the viewer's own `search_start` runs on ByteSeek for the same reason.
+The only thing unknown past the threshold is `total_lines`.
 
 **Decision**: a separate seam rather than a flag on `open_session`. **Why**: the one caller today is the Ask Cmdr
 `inspect_file` tool (`agent/tools/read/inspect/`), which reads up to 200 files per call on blocking threads under a
