@@ -776,6 +776,48 @@ fn a_fetch_stops_at_the_chunk_budget_and_says_so() {
     }
 }
 
+/// ❗ A chunk that ENDS on the file's last row must say `EndOfFile`, or the walk asks
+/// again from `end_byte_offset`, every streaming seek clamps that back onto the last
+/// row, and the copy carries it twice (invariant I3).
+///
+/// The sizes here are chosen to land a chunk boundary exactly on the last row:
+/// `range_read` fetches 4 096 rows at a time, so a file of exactly 4 096 rows fills one
+/// chunk and ends on the same row. `FullLoadBackend` never had the bug, because it
+/// reports `EndOfFile` whenever it serves its last row; the streaming pair reported
+/// `CountReached` and let the walk come round again.
+#[test]
+fn a_chunk_ending_on_the_last_row_says_so_instead_of_serving_it_twice() {
+    let dir = TestDir::new("viewer_rows_chunk_seam_eof");
+    // Exactly 4 096 rows, the fetch size `range_read` asks for.
+    let with_newline: String = (0..4096).map(|i| format!("line {i:04} abcdefghi\n")).collect();
+    // And the same without a trailing newline, where the last row ends at EOF rather
+    // than at a boundary, so a re-seek re-serves the whole row instead of an empty one.
+    let without_newline = with_newline.trim_end_matches('\n').to_string();
+
+    // Rows in each fixture: the newline-terminated one carries the final empty row, the
+    // other doesn't. ❗ `end_byte_offset == total_bytes` is NOT the tell for either: on
+    // the first file it is true one row BEFORE the end, because that empty row still
+    // follows at the same offset. Only "the walk has no row left" is exact.
+    for (name, content, rows) in [
+        ("trailing", &with_newline, 4097),
+        ("none", &without_newline, 4096),
+    ] {
+        let file = fixture(&dir, &format!("seam_{name}.txt"), content.as_bytes());
+        for which in ALL_BACKENDS {
+            let backend = open_backend(which, &file);
+            let got = read(backend.as_ref(), at(0, 0), RangeEnd::Eof);
+            assert_eq!(got, *content, "{which:?} {name}: a whole-file copy must be the file");
+
+            // Asking for exactly the rows the file has must come back saying so, rather
+            // than leaving the caller to ask once more and be handed the last row again.
+            let chunk = backend.get_lines(&SeekTarget::Line(0), rows).expect("fetch");
+            assert_eq!(chunk.rows.len(), rows, "{which:?} {name}");
+            assert_eq!(chunk.end, ChunkEnd::EndOfFile, "{which:?} {name}");
+            assert_eq!(chunk.end_byte_offset, backend.total_bytes(), "{which:?} {name}");
+        }
+    }
+}
+
 /// Invariant I1 on the LineIndex backend, deep into a newline-free file.
 ///
 /// Its checkpoints used to count LINES, so a file with one line got exactly one

@@ -727,6 +727,16 @@ impl<S: RowSource> RowReader<S> {
         }
     }
 
+    /// Whether [`RowReader::next_span`] would return `None`: the walk has no row left.
+    ///
+    /// ❗ ❌ Not `cursor == total_bytes`. On a file ending in a newline that is true one
+    /// row BEFORE the end, because the final empty row starts at that same offset. A
+    /// caller using the offset as its tell either stops a row early (losing the file's
+    /// last newline) or, having served that row, asks once more and is handed it again.
+    pub fn at_end(&self) -> bool {
+        self.finished || (self.cursor >= self.total_bytes && !self.at_line_start)
+    }
+
     /// Absolute offset of the next row's first byte.
     pub fn cursor(&self) -> u64 {
         self.cursor
@@ -1020,6 +1030,13 @@ pub fn collect_rows<S: RowSource>(
             end = ChunkEnd::BudgetReached;
             break;
         }
+    }
+    // ❗ A chunk that ran out of ROWS at the same moment it ran out of FILE is still at
+    // the end, and has to say so. Reporting `CountReached` there sends the caller back
+    // for one more chunk from `end_byte_offset`, and every streaming seek clamps that
+    // onto the last row, so a copy or a save carries it twice (invariant I3).
+    if reader.at_end() {
+        end = ChunkEnd::EndOfFile;
     }
     Ok(CollectedRows {
         rows,
