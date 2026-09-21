@@ -412,5 +412,13 @@
   "viewer.selection.multiLine": "Regels {startLine} tot {endLine} geselecteerd, {chars} tekens",
   "@viewer.selection.multiLine": {
     "sourceHash": "074c687"
+  },
+  "viewer.selection.charsOnly": "{chars} tekens geselecteerd",
+  "@viewer.selection.charsOnly": {
+    "sourceHash": "b772db6"
+  },
+  "viewer.selection.toEndOfFileNoLine": "Geselecteerd tot het einde van het bestand",
+  "@viewer.selection.toEndOfFileNoLine": {
+    "sourceHash": "e7e0442"
   }
 }

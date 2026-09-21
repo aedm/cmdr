@@ -229,5 +229,7 @@ describe('viewer selection announcements (en)', () => {
     expect(tString('viewer.selection.multiLine', { startLine: '1', endLine: '4', chars: '16' })).toBe(
       'Selected lines 1 to 4, 16 characters',
     )
+    expect(tString('viewer.selection.charsOnly', { chars: '16' })).toBe('Selected 16 characters')
+    expect(tString('viewer.selection.toEndOfFileNoLine')).toBe('Selected to the end of the file')
   })
 })

@@ -244,8 +244,15 @@ describe('a file whose rows Cmdr made, not the file', () => {
   })
 
   it('announces the character count without a separator between continuation rows', () => {
-    // 15 characters, the same as the text. A per-row newline would say 17.
-    expect(describeSelectionForAt(wholeFile, (row) => minified[row]?.length ?? null)).toContain('15 characters')
+    // 15 characters, the same as the text. A per-row newline would say 17. And all three
+    // rows are one physical line, so the listener hears the line the gutter numbers, not
+    // "lines 1 to 3".
+    const announced = (row: number) => {
+      const text = minified.at(row)
+      if (text === undefined) return null
+      return { utf16Length: text.length, lineNumber: cmdrBroke.includes(row - 1) ? null : row }
+    }
+    expect(describeSelectionForAt(wholeFile, announced)).toBe('Selected 15 characters on line 1')
   })
 
   it('sizes a partial selection across a Cmdr break the same way', () => {

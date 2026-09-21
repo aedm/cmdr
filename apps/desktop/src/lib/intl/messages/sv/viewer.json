@@ -413,5 +413,13 @@
   "viewer.selection.multiLine": "Markerade rad {startLine} till {endLine}, {chars} tecken",
   "@viewer.selection.multiLine": {
     "sourceHash": "074c687"
+  },
+  "viewer.selection.charsOnly": "Markerade {chars} tecken",
+  "@viewer.selection.charsOnly": {
+    "sourceHash": "b772db6"
+  },
+  "viewer.selection.toEndOfFileNoLine": "Markerat till slutet av filen",
+  "@viewer.selection.toEndOfFileNoLine": {
+    "sourceHash": "e7e0442"
   }
 }

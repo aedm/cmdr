@@ -260,52 +260,107 @@ export function toRangeEnds(sel: Selection | null): { anchor: RangeEnd; focus: R
 export const MAX_ANNOUNCE_ROWS = 10_000
 
 /**
- * Builds the live-region announcement string for the current selection. Pure: takes
- * a selection and a per-row length lookup, returns the string the screen reader will
- * speak. Empty string means "nothing to announce".
+ * What the announcement needs to know about one row, as the backend stated it.
  *
- * ❗ The character count SUMS row texts and adds nothing between them. A row Cmdr broke
- * at a segment boundary is not followed by a newline, so an announcement that counted
+ * ❗ `lineNumber` is the 0-based PHYSICAL line the row starts, or `null` on a
+ * continuation row Cmdr began itself. It is a fact the backend states, ❌ never inferred
+ * from the row index: on a wrapped file the two diverge, and the announcement is the one
+ * place a listener has no gutter to check against.
+ */
+export interface AnnouncedRow {
+  /** UTF-16 code units in the row's own text. */
+  utf16Length: number
+  /** 0-based physical line this row STARTS, or `null` when it continues the one above. */
+  lineNumber: number | null
+}
+
+/**
+ * The physical line a row belongs to, or `null` when it can't be known from the cache.
+ *
+ * Walks up from `row` to the nearest row that STARTS a line, because a continuation row
+ * carries no number of its own. Two bounds keep it cheap: it stops at the first row the
+ * cache doesn't hold (eviction keeps a window around the viewport, so that is near), and
+ * it walks at most `MAX_ANNOUNCE_ROWS`. Row 0 answers without the cache at all: by the
+ * row rule it always starts the file's first line.
+ */
+function lineOfRow(row: number, getRow: (row: number) => AnnouncedRow | null): number | null {
+  for (let i = row; i >= 0 && row - i <= MAX_ANNOUNCE_ROWS; i--) {
+    if (i === 0) return 0
+    const cached = getRow(i)
+    if (cached === null) return null
+    if (cached.lineNumber !== null) return cached.lineNumber
+  }
+  return null
+}
+
+/**
+ * UTF-16 code units the selection covers, summing row texts and adding NOTHING between
+ * them. A row Cmdr broke at a segment boundary is not followed by a newline, so counting
  * one per row would over-report on every minified file. (Newlines the file does hold
- * aren't counted either; the number is a character count of the selected text, and it
- * has always read that way.)
+ * aren't counted either; the number is a character count of the selected text, and it has
+ * always read that way.) A row the cache doesn't hold contributes 0.
+ */
+function countSelectedChars(
+  start: RowOffset,
+  end: RowOffset,
+  getRow: (row: number) => AnnouncedRow | null,
+): number {
+  if (start.row === end.row) return end.offset - start.offset
+  let chars = (getRow(start.row)?.utf16Length ?? 0) - start.offset
+  for (let i = start.row + 1; i < end.row; i++) {
+    chars += getRow(i)?.utf16Length ?? 0
+  }
+  return chars + end.offset
+}
+
+/**
+ * Builds the live-region announcement string for the current selection. Pure: takes
+ * a selection and a per-row lookup, returns the string the screen reader will speak.
+ * Empty string means "nothing to announce".
+ *
+ * ❗ It announces PHYSICAL LINE numbers, the same ones the gutter draws, ❌ never row
+ * indexes. A wrapped line occupies several rows, so a selection sitting inside one long
+ * line is one line however many rows it covers, and a row index would name a coordinate
+ * the file doesn't have and the screen doesn't show. When the line can't be resolved from
+ * the cache the announcement drops the location rather than guessing one.
+ *
+ * The character count comes from `countSelectedChars`, which adds nothing between rows.
  *
  * Caps the row span at `MAX_ANNOUNCE_ROWS`; past that, returns a generic message
  * so the announcement work stays bounded (the alternative would freeze the UI on
  * ⌘A in ByteSeek-no-index mode where the focus row is `EOF_ROW`).
  */
-export function describeSelectionForAt(sel: Selection | null, getRowLength: (row: number) => number | null): string {
+export function describeSelectionForAt(
+  sel: Selection | null,
+  getRow: (row: number) => AnnouncedRow | null,
+): string {
   if (sel === null) return ''
   const { start, end } = normaliseSelection(sel)
   if (start.row === end.row && start.offset === end.offset) return ''
 
+  const startLine = lineOfRow(start.row, getRow)
+
   const rowSpan = end.row - start.row
   if (rowSpan > MAX_ANNOUNCE_ROWS) {
-    return tString('viewer.selection.toEndOfFile', { line: String(start.row + 1) })
+    return startLine === null
+      ? tString('viewer.selection.toEndOfFileNoLine')
+      : tString('viewer.selection.toEndOfFile', { line: String(startLine + 1) })
   }
 
-  let totalChars: number
-  if (start.row === end.row) {
-    totalChars = end.offset - start.offset
-  } else {
-    const startRowLen = getRowLength(start.row) ?? 0
-    let chars = startRowLen - start.offset
-    for (let i = start.row + 1; i < end.row; i++) {
-      chars += getRowLength(i) ?? 0
-    }
-    chars += end.offset
-    totalChars = chars
+  const totalChars = countSelectedChars(start, end, getRow)
+  const endLine = start.row === end.row ? startLine : lineOfRow(end.row, getRow)
+  if (startLine === null || endLine === null) {
+    return tString('viewer.selection.charsOnly', { chars: String(totalChars) })
   }
-
-  if (start.row === end.row) {
+  if (startLine === endLine) {
     return tString('viewer.selection.singleLine', {
       chars: String(totalChars),
-      line: String(start.row + 1),
+      line: String(startLine + 1),
     })
   }
   return tString('viewer.selection.multiLine', {
-    startLine: String(start.row + 1),
-    endLine: String(end.row + 1),
+    startLine: String(startLine + 1),
+    endLine: String(endLine + 1),
     chars: String(totalChars),
   })
 }

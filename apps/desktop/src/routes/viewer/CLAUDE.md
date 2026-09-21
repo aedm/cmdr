@@ -14,8 +14,9 @@ Inventory: `DETAILS.md` § "Module map".
 Each is break-if-ignored; the named `DETAILS.md` section has the why.
 
 - **Every coordinate here is a ROW**: a long line is several (`src-tauri/src/file_viewer/CLAUDE.md`). `totalLines` is
-  the status bar's alone; the gutter number and the continuation marker ride on the row. ❌ Infer neither.
-  (§ "Rows, not lines")
+  the status bar's alone; the gutter number and the continuation marker ride on the row. ❌ Infer neither. The
+  screen-reader announcement names the LINE the gutter draws, ❌ never a row index, and drops the location when it
+  can't resolve one. (§ "Rows, not lines")
 - **Composables take getter deps, ❌ never raw `$state`** (which loses reactivity); effects live on the page and
   delegate to `run*Effect()`. (§ Architecture)
 - **Media sessions need two guards.** Text-only line paths are data-gated on `media.isMedia` (empty text fields

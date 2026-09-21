@@ -410,5 +410,13 @@
   "viewer.selection.multiLine": "Kijelölve a(z) {startLine}. sortól a(z) {endLine}. sorig, {chars} karakter",
   "@viewer.selection.multiLine": {
     "sourceHash": "074c687"
+  },
+  "viewer.selection.charsOnly": "{chars} karakter kijelölve",
+  "@viewer.selection.charsOnly": {
+    "sourceHash": "b772db6"
+  },
+  "viewer.selection.toEndOfFileNoLine": "Kijelölve a fájl végéig",
+  "@viewer.selection.toEndOfFileNoLine": {
+    "sourceHash": "e7e0442"
   }
 }

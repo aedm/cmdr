@@ -410,5 +410,13 @@
   "viewer.selection.multiLine": "Selecionadas as linhas de {startLine} a {endLine}, {chars} caracteres",
   "@viewer.selection.multiLine": {
     "sourceHash": "074c687"
+  },
+  "viewer.selection.charsOnly": "Selecionados {chars} caracteres",
+  "@viewer.selection.charsOnly": {
+    "sourceHash": "b772db6"
+  },
+  "viewer.selection.toEndOfFileNoLine": "Selecionado até o fim do arquivo",
+  "@viewer.selection.toEndOfFileNoLine": {
+    "sourceHash": "e7e0442"
   }
 }

@@ -410,5 +410,13 @@
   "viewer.selection.multiLine": "Đã chọn dòng {startLine} đến {endLine}, {chars} ký tự",
   "@viewer.selection.multiLine": {
     "sourceHash": "074c687"
+  },
+  "viewer.selection.charsOnly": "Đã chọn {chars} ký tự",
+  "@viewer.selection.charsOnly": {
+    "sourceHash": "b772db6"
+  },
+  "viewer.selection.toEndOfFileNoLine": "Đã chọn đến cuối tệp",
+  "@viewer.selection.toEndOfFileNoLine": {
+    "sourceHash": "e7e0442"
   }
 }

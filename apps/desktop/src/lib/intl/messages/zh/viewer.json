@@ -410,5 +410,13 @@
   "viewer.selection.multiLine": "已选择第 {startLine} 行到第 {endLine} 行，共 {chars} 个字符",
   "@viewer.selection.multiLine": {
     "sourceHash": "074c687"
+  },
+  "viewer.selection.charsOnly": "已选择 {chars} 个字符",
+  "@viewer.selection.charsOnly": {
+    "sourceHash": "b772db6"
+  },
+  "viewer.selection.toEndOfFileNoLine": "已选择到文件末尾的内容",
+  "@viewer.selection.toEndOfFileNoLine": {
+    "sourceHash": "e7e0442"
   }
 }

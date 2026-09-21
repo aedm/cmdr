@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import {
+  type AnnouncedRow,
   compareRowOffset,
   describeSelectionForAt,
   EOF_ROW,
@@ -467,9 +468,10 @@ describe('estimateSelectionBytes', () => {
 })
 
 describe('describeSelectionForAt', () => {
-  // Test-local lookups for the line-length argument.
-  const allOnes = (): number | null => 1
-  const empty = (): number | null => null
+  // Test-local row lookups. Rows are one-to-one with lines here (nothing wraps), which
+  // is the ordinary-file case; the wrapped case has its own block below.
+  const allOnes = (row: number): AnnouncedRow | null => ({ utf16Length: 1, lineNumber: row })
+  const empty = (): AnnouncedRow | null => null
 
   it('null selection returns empty string', () => {
     expect(describeSelectionForAt(null, empty)).toBe('')
@@ -489,8 +491,8 @@ describe('describeSelectionForAt', () => {
     // Lines 0..3, each "hello" (5 chars). Select from (0,2) to (3,3):
     //   line 0 contributes "llo" (3), line 1 + 2 each contribute 5, line 3 contributes 3. Total 16.
     const sel: Selection = { anchor: { row: 0, offset: 2 }, focus: { row: 3, offset: 3 } }
-    const getLen = (n: number) => (n >= 0 && n < 4 ? 5 : null)
-    expect(describeSelectionForAt(sel, getLen)).toBe('Selected lines 1 to 4, 16 characters')
+    const getRow = (n: number): AnnouncedRow | null => (n >= 0 && n < 4 ? { utf16Length: 5, lineNumber: n } : null)
+    expect(describeSelectionForAt(sel, getRow)).toBe('Selected lines 1 to 4, 16 characters')
   })
 
   it('end-of-file selection: line span > MAX_ANNOUNCE_ROWS falls back to generic message', () => {
@@ -498,13 +500,21 @@ describe('describeSelectionForAt', () => {
     // iterate 9e15 times.
     const sel = makeSelectToEof()
     let calls = 0
-    const counting = () => {
+    const counting = (row: number): AnnouncedRow | null => {
       calls++
-      return 1
+      return { utf16Length: 1, lineNumber: row }
     }
     expect(describeSelectionForAt(sel, counting)).toBe('Selected from line 1 to the end of the file')
-    // The fallback path must not invoke the line-length lookup at all.
+    // The fallback path must not walk the rows at all: row 0 starts line 0 by the row
+    // rule, so even the line lookup answers without touching the cache.
     expect(calls).toBe(0)
+  })
+
+  it('end-of-file selection from an unresolvable line drops the line rather than guessing', () => {
+    // A huge drag starting mid-way through a long line whose line-start row has been
+    // evicted. Naming a row number here would be meaningless to a listener.
+    const sel: Selection = { anchor: { row: 500, offset: 0 }, focus: { row: EOF_ROW, offset: 0 } }
+    expect(describeSelectionForAt(sel, empty)).toBe('Selected to the end of the file')
   })
 
   it('line span exactly at the cap (MAX_ANNOUNCE_ROWS) still itemises', () => {
@@ -523,10 +533,46 @@ describe('describeSelectionForAt', () => {
     expect(describeSelectionForAt(forward, allOnes)).toBe(describeSelectionForAt(reversed, allOnes))
   })
 
-  it('missing line length in lookup contributes 0 to the count (degrades gracefully)', () => {
+  it('missing row length in lookup contributes 0 to the count (degrades gracefully)', () => {
     const sel: Selection = { anchor: { row: 0, offset: 0 }, focus: { row: 2, offset: 0 } }
-    const result = describeSelectionForAt(sel, empty)
-    // line 0 contributes (0 - 0) = 0, intermediate line 1 contributes 0, line 2 contributes 0.
-    expect(result).toBe('Selected lines 1 to 3, 0 characters')
+    // Lines are known, lengths are not: row 0 contributes (0 - 0) = 0, row 1 contributes
+    // 0, row 2 contributes 0.
+    const lengthless = (row: number): AnnouncedRow | null => ({ utf16Length: 0, lineNumber: row })
+    expect(describeSelectionForAt(sel, lengthless)).toBe('Selected lines 1 to 3, 0 characters')
+  })
+
+  it('drops the location when the physical line cannot be resolved', () => {
+    // Nothing cached above the selection, so the row that starts the line is unknown. A
+    // row number here would name a coordinate the gutter never shows.
+    const sel: Selection = { anchor: { row: 40, offset: 0 }, focus: { row: 41, offset: 3 } }
+    expect(describeSelectionForAt(sel, empty)).toBe('Selected 3 characters')
+  })
+})
+
+describe('describeSelectionForAt on a wrapped line', () => {
+  /**
+   * One 60 000-character physical line (line 0) occupying rows 0, 1, and 2, then an
+   * ordinary second line (line 1) on row 3. Exactly what the gutter draws: "1" beside
+   * row 0, nothing beside rows 1 and 2, "2" beside row 3.
+   */
+  const rows: Record<number, AnnouncedRow> = {
+    0: { utf16Length: 20_000, lineNumber: 0 },
+    1: { utf16Length: 20_000, lineNumber: null },
+    2: { utf16Length: 20_000, lineNumber: null },
+    3: { utf16Length: 5, lineNumber: 1 },
+  }
+  const wrapped = (row: number): AnnouncedRow | null => rows[row] ?? null
+
+  it('names the physical line, not the row, for a selection inside one wrapped line', () => {
+    // Rows 1 and 2 are continuations of line 0, so the user sees a blank gutter beside
+    // them and "1" above. Announcing "lines 2 to 3" names a coordinate the file does not
+    // have and the screen does not show.
+    const sel: Selection = { anchor: { row: 1, offset: 0 }, focus: { row: 2, offset: 5 } }
+    expect(describeSelectionForAt(sel, wrapped)).toBe('Selected 20005 characters on line 1')
+  })
+
+  it('names the physical line range when the selection really does cross lines', () => {
+    const sel: Selection = { anchor: { row: 2, offset: 19_998 }, focus: { row: 3, offset: 3 } }
+    expect(describeSelectionForAt(sel, wrapped)).toBe('Selected lines 1 to 2, 5 characters')
   })
 })

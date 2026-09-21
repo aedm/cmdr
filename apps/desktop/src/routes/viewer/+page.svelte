@@ -318,11 +318,15 @@
 
     /**
      * Screen-reader-friendly announcement of the current selection. Empty string when
-     * there's nothing selected (the live region stays silent). The format names the
-     * selected row range and a UTF-16 character count for orientation.
+     * there's nothing selected (the live region stays silent). It names the PHYSICAL
+     * line range the gutter draws, plus a UTF-16 character count for orientation, so a
+     * listener and a sighted user are told the same thing about the same selection.
      */
     const selectionAnnouncement = $derived(
-        describeSelectionForAt(selection.selection, (row) => scroll.rowCache.get(row)?.text.length ?? null),
+        describeSelectionForAt(selection.selection, (row) => {
+            const cached = scroll.rowCache.get(row)
+            return cached === undefined ? null : { utf16Length: cached.text.length, lineNumber: cached.lineNumber }
+        }),
     )
 
     /**

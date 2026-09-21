@@ -750,11 +750,17 @@ so the page shows how far it got. Backend half: `apps/desktop/src-tauri/src/file
   and shut the whole viewer window. The menu's `stopImmediatePropagation()` is defense-in-depth for any future
   listener-order change. See `tryConsumeEscapeForCopy` in `viewer-keyboard.ts` (`createViewerKeyboard`) and `handleKey`
   in `ViewerContextMenu.svelte`.
-- **AT announcement caps line iteration.** `describeSelectionForAt` in `selection.svelte.ts` walks per-line lengths to
-  build the screen-reader announcement. ⌘A in ByteSeek-no-index mode sets `focus.line = EOF_LINE` (the sentinel that
-  maps to `RangeEnd::Eof` at the IPC boundary), so an uncapped loop would iterate 9e15 times. The
-  `MAX_ANNOUNCE_LINES = 10_000` cap short-circuits to "Selected from line N to the end of the file" without touching the
-  line-length lookup at all.
+- **The AT announcement speaks PHYSICAL LINES, and caps its row iteration.** `describeSelectionForAt` in
+  `selection.svelte.ts` builds the screen-reader announcement from a per-row lookup of `(utf16Length, lineNumber)`. It
+  names the line numbers the gutter draws, never row indexes: a selection sitting inside one wrapped line is one line
+  however many rows it covers, and a listener has no gutter to check a row number against. A continuation row carries
+  no number, so `lineOfRow` walks up to the nearest row that starts a line; it stops at the first row the cache doesn't
+  hold and, when the line stays unknown, the announcement drops the location (`viewer.selection.charsOnly`,
+  `viewer.selection.toEndOfFileNoLine`) rather than guessing one. Row 0 answers with no cache at all: by the row rule it
+  always starts the file's first line. ⌘A in ByteSeek-no-index mode sets `focus.row = EOF_ROW` (the sentinel that maps
+  to `RangeEnd::Eof` at the IPC boundary), so an uncapped loop would iterate 9e15 times; the
+  `MAX_ANNOUNCE_ROWS = 10_000` cap short-circuits to "Selected from line N to the end of the file" without touching the
+  row lookup at all.
 - **Drag autoscroll honours `prefers-reduced-motion`.** Under reduced motion, `createViewerAutoscroll().start()` does a
   single synchronous snap step and exits without queuing a RAF. The page's `pointermove` calls `start()` on every move,
   so the user still progresses through the file in discrete jumps. Override via the `prefersReducedMotion` dep for
