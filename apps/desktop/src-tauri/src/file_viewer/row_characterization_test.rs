@@ -20,12 +20,12 @@ use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
 
 use super::byte_seek::ByteSeekBackend;
+use super::encoding::FileEncoding;
 use super::full_load::FullLoadBackend;
 use super::line_index::LineIndexBackend;
 use super::range_read::{RangeEnd, read_range};
 use super::search_matcher::{Matcher, SearchMode};
 use super::session;
-use super::encoding::FileEncoding;
 use super::{CHUNK_BUDGET_BYTES, ChunkEnd, FileViewerBackend, SearchMatch, SeekTarget, TotalRows};
 use crate::test_support::TestDir;
 
@@ -798,10 +798,7 @@ fn a_chunk_ending_on_the_last_row_says_so_instead_of_serving_it_twice() {
     // other doesn't. ❗ `end_byte_offset == total_bytes` is NOT the tell for either: on
     // the first file it is true one row BEFORE the end, because that empty row still
     // follows at the same offset. Only "the walk has no row left" is exact.
-    for (name, content, rows) in [
-        ("trailing", &with_newline, 4097),
-        ("none", &without_newline, 4096),
-    ] {
+    for (name, content, rows) in [("trailing", &with_newline, 4097), ("none", &without_newline, 4096)] {
         let file = fixture(&dir, &format!("seam_{name}.txt"), content.as_bytes());
         for which in ALL_BACKENDS {
             let backend = open_backend(which, &file);
@@ -884,10 +881,7 @@ fn search_progress_is_measured_in_source_bytes_in_every_backend() {
     let dir = TestDir::new("viewer_rows_search_progress");
     let text = "alpha\nbeta gamma\ndelta\n";
 
-    for (name, bytes) in [
-        ("utf8", text.as_bytes().to_vec()),
-        ("utf16", utf16_le_with_bom(text)),
-    ] {
+    for (name, bytes) in [("utf8", text.as_bytes().to_vec()), ("utf16", utf16_le_with_bom(text))] {
         let file = fixture(&dir, &format!("progress_{name}.txt"), &bytes);
         for which in ALL_BACKENDS {
             let backend = open_backend(which, &file);

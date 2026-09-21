@@ -796,7 +796,12 @@ fn row_start_never_reads_more_than_two_segments() {
         // — and the span they touch, which must stay near the probe instead of walking
         // to the file's start.
         let reads = &log.borrow().reads;
-        assert_eq!(reads.len(), 1, "row_start({offset}) took {} reads, not one", reads.len());
+        assert_eq!(
+            reads.len(),
+            1,
+            "row_start({offset}) took {} reads, not one",
+            reads.len()
+        );
         let returned: u64 = reads.iter().map(|(_, n)| *n).sum();
         assert!(
             returned <= MAX_WINDOW_BYTES,

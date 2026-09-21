@@ -11,12 +11,19 @@
 //!
 //! 1. `b == 0`, or
 //! 2. `b` is the start of a physical line (the offset just past a newline), or
-//! 3. `b` is a multiple of [`SEGMENT_BYTES`] **and the window
+//! 3. `b` is a multiple of [`SEGMENT_BYTES`] **below EOF** **and the window
 //!    `[b - SEGMENT_BYTES, b)` contains no newline**, snapped back to the nearest
 //!    character start.
 //!
 //! Then `row_start(offset)` is the greatest boundary `<= offset`, and
 //! `row_end(row_start)` is the least boundary `> row_start`, or EOF.
+//!
+//! ❗ **"Below EOF" in clause 3 is load-bearing.** A multiple sitting exactly on EOF
+//! cannot start a row, because nothing follows it. Admitting it looks harmless and is,
+//! until the file ALSO ends mid-character: the snap then drags it back below EOF and
+//! invents a boundary, splitting a couple of truncated bytes off as their own row. The
+//! same byte then belongs to two rows depending on which direction you read the rule
+//! from, which is invariant I4.
 //!
 //! ❗ **Clause 3's second half is the whole design, not an optimization.** A
 //! `SEGMENT_BYTES`-wide window with no newline implies a line at least that long.
@@ -235,7 +242,11 @@ impl<S: RowSource> RowRuler<S> {
         // only when `offset == total`. No boundary sits at EOF, so a probe there is
         // asking which row the file's last byte belongs to; measuring from `offset`
         // would centre the window one segment too high and find no candidate at all.
-        let grid_probe = if offset >= total { total.saturating_sub(1) } else { offset };
+        let grid_probe = if offset >= total {
+            total.saturating_sub(1)
+        } else {
+            offset
+        };
         let grid = grid_probe - grid_probe % segment;
         let window_start = grid.saturating_sub(segment);
         let window_end = (grid + segment).min(total);

@@ -268,8 +268,9 @@ occupies several rows. This is what `ERR-RQ8BY` bought: F3 on a ~300 MB single-l
 49 s, past the window's 2 s patience, because no read path had a bound on how much of one line it could touch.
 
 **The rule is a boundary set, written once in `rows.rs`.** `b` is a row boundary exactly when `b == 0`, or `b` is the
-byte just past a newline, or `b` is a multiple of `SEGMENT_BYTES` **and the segment below it holds no newline**. That
-last clause is the whole design: a newline-free segment implies a line at least that long, so in a file whose lines are
+byte just past a newline, or `b` is a multiple of `SEGMENT_BYTES` **below EOF** **and the segment below it holds no
+newline**. (A multiple exactly on EOF starts no row: nothing follows it, and admitting it lets the character snap drag
+it back and invent a row of truncated bytes.) That last clause is the whole design: a newline-free segment implies a line at least that long, so in a file whose lines are
 all shorter no multiple ever qualifies and rows come out exactly equal to lines. Full derivation, the read bounds, and
 the UTF-16 and character-boundary snaps: the module doc in `rows.rs`. Plan and invariants:
 `docs/specs/viewer-row-wrap.md`.

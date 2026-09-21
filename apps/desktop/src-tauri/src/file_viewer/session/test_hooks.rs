@@ -186,7 +186,7 @@ impl FileViewerBackend for ScriptedBackend {
             } else {
                 crate::file_viewer::ChunkEnd::CountReached
             },
-            total_rows: crate::file_viewer::TotalRows::Exact(self.line_count),
+            total_rows: TotalRows::Exact(self.line_count),
             total_bytes: self.total_bytes(),
         })
     }
@@ -214,8 +214,8 @@ impl FileViewerBackend for ScriptedBackend {
         (self.line_count * self.stride()) as u64
     }
 
-    fn total_rows(&self) -> crate::file_viewer::TotalRows {
-        crate::file_viewer::TotalRows::Exact(self.line_count)
+    fn total_rows(&self) -> TotalRows {
+        TotalRows::Exact(self.line_count)
     }
 
     fn total_lines(&self) -> Option<usize> {
