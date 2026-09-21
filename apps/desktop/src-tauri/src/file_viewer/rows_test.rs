@@ -860,6 +860,105 @@ fn the_forward_walk_produces_the_same_boundaries_as_the_ruler() {
     }
 }
 
+/// The same cross-check at the SHIPPING segment size.
+///
+/// ❗ The tiny-grid sweep above is exhaustive but runs on a 16-byte grid, so on its own
+/// it would let an arithmetic mistake that only bites at 20 000 through: a `u32` that
+/// fits 16 and not 20 000, a refill chunk sized against the segment, an off-by-one in
+/// the two-segment fill. The fixtures here are the real-grid shapes the rule is most
+/// likely to get wrong, so the two readings are bound together at the constant we
+/// actually ship, not only at the one that makes the sweep affordable.
+#[test]
+fn the_forward_walk_matches_the_ruler_at_the_real_segment_size() {
+    let mut cases: Vec<Case> = Vec::new();
+
+    // A newline at every position around the first two multiples, where clause 3's
+    // window test either holds or spuriously fires.
+    for m in [SEGMENT_BYTES, 2 * SEGMENT_BYTES] {
+        for delta in -2i64..=2 {
+            let mut bytes = vec![b'x'; 3 * SEGMENT_BYTES as usize + 7];
+            bytes[(m as i64 + delta) as usize] = b'\n';
+            cases.push(ascii_case(&format!("real-newline-at-{m}{delta:+}"), bytes));
+        }
+    }
+    // No newline at all: rows land exactly on the grid.
+    cases.push(ascii_case(
+        "real-newline-free",
+        vec![b'x'; 4 * SEGMENT_BYTES as usize + 137],
+    ));
+    // Ordinary short lines, which must come out one row per line (invariant I6).
+    let mut ordinary = Vec::new();
+    while ordinary.len() < 4 * SEGMENT_BYTES as usize {
+        ordinary.extend_from_slice(b"a line of perfectly ordinary length\n");
+    }
+    cases.push(ascii_case("real-ordinary-lines", ordinary));
+    // A long line with multibyte characters straddling the grid, in both UTF-8 and
+    // UTF-16, so the character-boundary snap is exercised at the real segment too.
+    let long_utf8: String = std::iter::repeat_n("→漢🦀", 3 * SEGMENT_BYTES as usize / 4).collect();
+    cases.push(ascii_case("real-multibyte-utf8", long_utf8.clone().into_bytes()));
+    for (name, le) in [("le", true), ("be", false)] {
+        cases.push(Case {
+            name: format!("real-multibyte-utf16-{name}"),
+            bytes: utf16_bytes(&long_utf8, le, /*bom=*/ false),
+            encoding: if le {
+                FileEncoding::Utf16Le
+            } else {
+                FileEncoding::Utf16Be
+            },
+        });
+    }
+
+    for case in cases {
+        let expected: Vec<u64> = real_rows(&case.bytes, case.encoding).iter().map(|r| r.start).collect();
+        let walked: Vec<u64> = reader_rows(&case, SEGMENT_BYTES)
+            .iter()
+            .filter(|span| span.start < case.bytes.len() as u64)
+            .map(|span| span.start)
+            .collect();
+        assert_eq!(walked, expected, "{}", case.name);
+    }
+}
+
+/// ❗ The corpus names its encodings by hand, so a NEW `FileEncoding` variant would
+/// silently get no coverage from any property test in this file. This match is
+/// exhaustive on purpose: adding a variant stops the build here, and whoever adds it
+/// decides in one place whether the rule needs a fixture for it.
+///
+/// It isn't a runtime assertion because a runtime assertion is one a hurried change can
+/// answer with `_ => {}`; a non-exhaustive match is one the compiler answers.
+#[test]
+fn every_encoding_is_accounted_for_in_the_corpus() {
+    fn covered(encoding: FileEncoding) -> bool {
+        match encoding {
+            // In `tiny_grid_corpus`, each with its own newline framing and character
+            // widths, which is what the rule's snaps and `newline_len` turn on.
+            FileEncoding::Utf8
+            | FileEncoding::Utf8WithBom
+            | FileEncoding::Utf16Le
+            | FileEncoding::Utf16Be
+            | FileEncoding::Windows1252
+            | FileEncoding::Iso8859_1 => true,
+            // Single-byte encodings the rule cannot tell apart from `Windows1252`: same
+            // one-byte newline, same "every byte is a character start", so a fixture
+            // would re-run an identical case. Covered by proxy, deliberately.
+            FileEncoding::MacRoman | FileEncoding::UsAscii => true,
+        }
+    }
+
+    for encoding in [
+        FileEncoding::Utf8,
+        FileEncoding::Utf8WithBom,
+        FileEncoding::Utf16Le,
+        FileEncoding::Utf16Be,
+        FileEncoding::Windows1252,
+        FileEncoding::Iso8859_1,
+        FileEncoding::MacRoman,
+        FileEncoding::UsAscii,
+    ] {
+        assert!(covered(encoding), "{encoding:?} has no row-rule coverage");
+    }
+}
+
 /// A row's text is its bytes minus the newline it ended at, and a row Cmdr ended
 /// itself keeps every byte. Joining the texts back with the right delimiters has to
 /// reproduce the file, which is invariant I3 at the row level.
