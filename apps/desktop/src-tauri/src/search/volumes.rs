@@ -371,12 +371,19 @@ fn load_volume_blocking(volume_id: &str, data_dir: &Path, cancel: &AtomicBool) -
         (pool, mount_root, 0)
     };
 
-    let index = match load_search_index(&pool, cancel) {
+    // The weights are a second database, so reading them on the line after the arena
+    // put their whole cost on the critical path: `ERR-S76V3` measured 2.84 s of cold
+    // weights read landing after 31.6 s of cold arena read, for one search. They share
+    // nothing, so they overlap.
+    let (index, weights) = rayon::join(
+        || load_search_index(&pool, cancel),
+        || load_weights(data_dir, volume_id),
+    );
+    let index = match index {
         Ok(index) => Arc::new(index),
         Err(e) => return VolumeLoad::Failed(e),
     };
-
-    store_weights(volume_id, load_weights(data_dir, volume_id));
+    store_weights(volume_id, weights);
 
     VolumeLoad::Loaded(Arc::new(LoadedVolume {
         index,
@@ -488,8 +495,13 @@ static LAST_SEARCH_ACTIVITY: AtomicU64 = AtomicU64::new(0);
 /// Whether the search dialog is open. Timers defer dropping while it's true.
 pub(crate) static DIALOG_OPEN: AtomicBool = AtomicBool::new(false);
 
-/// Idle timeout: drop every loaded arena 5 minutes after the dialog closes.
-const IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5 * 60);
+/// Idle timeout: drop every loaded arena 30 seconds after the dialog closes.
+///
+/// The arena is the single biggest thing the app holds (~320 MB on a 5.39 M-row boot
+/// index), and it is worth nothing while the dialog is down. 30 s covers the "closed it
+/// by accident, reopening now" case and nothing else on purpose. It can be this short
+/// because a reload is parallel now; it could not before, when reopening cost seconds.
+const IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Backstop timeout: drop everything if no search calls arrive within 10 minutes
 /// (covers MCP-driven loads, which have no dialog to close).
@@ -578,7 +590,7 @@ pub(crate) fn cancel_idle_timer() {
     }
 }
 
-/// Start the idle timer (5 min). Called when the search dialog closes; drops every
+/// Start the idle timer ([`IDLE_TIMEOUT`]). Called when the search dialog closes; drops every
 /// loaded arena when it fires unless the dialog reopened.
 pub(crate) fn start_idle_timer() {
     let mut timers = TIMERS.lock_ignore_poison();
