@@ -218,12 +218,22 @@ export function createViewerCopyOrchestrator(deps: CopyOrchestratorDeps) {
     }
   }
 
-  async function handleSilentCopy(text: string, bytes: number): Promise<void> {
+  /**
+   * Writes `text` to the clipboard and says how much landed there.
+   *
+   * ❗ The size is MEASURED off the text, never taken from the estimate that picked the
+   * band: the estimate prorates a partial line by its UTF-16 fraction and short-circuits
+   * a whole-file selection to the file size, so the two differ by design. A number in
+   * front of the user is a claim about their data (spec invariant I3), and this is the
+   * only place that holds the real text.
+   */
+  async function handleSilentCopy(text: string): Promise<void> {
     const ok = await writeToClipboard(text)
     if (!ok) {
       addToast(tString('viewer.copy.clipboardUnreachable'), { level: 'warn' })
       return
     }
+    const bytes = new TextEncoder().encode(text).length
     addToast(tString('viewer.copy.onClipboard', { size: formatByteSize(bytes) }), { level: 'info' })
   }
 
@@ -234,7 +244,7 @@ export function createViewerCopyOrchestrator(deps: CopyOrchestratorDeps) {
       case 'busy':
         return
       case 'silent':
-        await handleSilentCopy(outcome.text, outcome.bytes)
+        await handleSilentCopy(outcome.text)
         return
       case 'silent-error':
         if (outcome.reason === 'cancelled') return // user pressed Escape, intentional
@@ -254,7 +264,7 @@ export function createViewerCopyOrchestrator(deps: CopyOrchestratorDeps) {
           confirmBytes = null
           const res = await outcome.proceed()
           if (res.ok) {
-            await handleSilentCopy(res.text, outcome.bytes)
+            await handleSilentCopy(res.text)
           } else if (res.reason === 'cancelled') {
             // User pressed Escape; no toast.
           } else if (res.reason === 'timedOut') {
@@ -272,8 +282,7 @@ export function createViewerCopyOrchestrator(deps: CopyOrchestratorDeps) {
           confirmBytes = null
           const res = await outcome.proceed()
           if (res.ok) {
-            const bytes = new TextEncoder().encode(res.text).length
-            await handleSilentCopy(res.text, bytes)
+            await handleSilentCopy(res.text)
           }
         }
         return

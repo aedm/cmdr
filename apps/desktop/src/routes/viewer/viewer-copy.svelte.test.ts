@@ -1,0 +1,75 @@
+/**
+ * `createViewerCopyOrchestrator`: what the user is TOLD landed on their clipboard.
+ *
+ * The size in that toast is a claim about their data, so it has to be the size of the
+ * text actually written, never the estimate that only picked the band. The estimate
+ * prorates partial lines by a UTF-16 fraction and takes shortcuts on a whole-file
+ * selection, so the two genuinely differ.
+ */
+
+import { describe, expect, it, vi, beforeEach, beforeAll, afterAll } from 'vitest'
+
+import { createViewerCopyOrchestrator } from './viewer-copy.svelte'
+import { formatByteSize } from '$lib/units'
+import { tString } from '$lib/intl/messages.svelte'
+import { _setLocaleForTests } from '$lib/intl/locale'
+import type { CopyOutcome } from './viewer-copy.svelte'
+
+const { addToast } = vi.hoisted(() => ({ addToast: vi.fn<(message: string) => string>() }))
+vi.mock('$lib/ui/toast/toast-store.svelte', () => ({ addToast }))
+
+const writeText = vi.fn<(text: string) => Promise<void>>()
+
+beforeAll(() => {
+  _setLocaleForTests('en-US')
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+})
+afterAll(() => {
+  _setLocaleForTests(null)
+})
+beforeEach(() => {
+  addToast.mockClear()
+  writeText.mockReset()
+  writeText.mockResolvedValue(undefined)
+})
+
+/** An orchestrator over a copy composable whose `runCopy` answers with `outcome`. */
+function wire(outcome: CopyOutcome) {
+  const copy = {
+    busy: false,
+    inFlightReadId: null,
+    runCopy: () => Promise.resolve(outcome),
+    cancelInFlight: () => Promise.resolve(),
+    saveAs: () => Promise.resolve({ ok: true as const, text: '' }),
+  }
+  return createViewerCopyOrchestrator({
+    copy: copy as unknown as Parameters<typeof createViewerCopyOrchestrator>[0]['copy'],
+    getFileName: () => 'notes.txt',
+  })
+}
+
+describe('the "on clipboard" toast', () => {
+  it('reports the size of the text that was copied, not the estimate that sized the band', async () => {
+    // "alpha\nbeta\ngam" is 14 bytes. The estimate said 16, the whole 16-byte file: the
+    // whole-file shortcut hands back the file size whenever a selection starts at (0, 0)
+    // and reaches the last line, even when it stops partway into that line.
+    const text = 'alpha\nbeta\ngam'
+    const orchestrator = wire({ kind: 'silent', text, bytes: 16 })
+
+    await orchestrator.handleCopy()
+
+    expect(writeText).toHaveBeenCalledWith(text)
+    expect(addToast).toHaveBeenCalledWith(tString('viewer.copy.onClipboard', { size: formatByteSize(14) }), {
+      level: 'info',
+    })
+  })
+
+  it('says nothing about a size when the clipboard itself refused the write', async () => {
+    writeText.mockRejectedValue(new Error('denied'))
+    const orchestrator = wire({ kind: 'silent', text: 'alpha', bytes: 5 })
+
+    await orchestrator.handleCopy()
+
+    expect(addToast).toHaveBeenCalledWith(tString('viewer.copy.clipboardUnreachable'), { level: 'warn' })
+  })
+})
