@@ -129,15 +129,19 @@ describe('select-all, as it behaves today', () => {
     expect(selectAll).toHaveBeenCalledWith({ totalLines: 3, lastLineLength: 5 })
   })
 
-  it('BUG, pinned as-is: an uncached last line silently selects to offset 0 of it', () => {
-    // `viewer-keyboard.ts` does `getLineText(totalLines - 1) ?? ''`, and an uncached
-    // last line is the common case on a long file (⌘A without having scrolled to the
-    // end). ⌘C then copies the file minus its last line, with nothing said. The spec
-    // lists this under "pre-existing bugs in the blast radius"; milestone 7 takes the
-    // `RangeEnd::Eof` path instead, and this expectation changes with it.
-    const { keyboard, selectAll } = selectAllDeps({ getLineText: (n: number) => (n === 2 ? undefined : 'alpha') })
+  it('takes the eof path for an uncached last line, rather than inventing a zero length', () => {
+    // ❗ This pin CHANGED with the fix it was pinning. It used to assert
+    // `{ totalLines: 3, lastLineLength: 0 }`: `viewer-keyboard.ts` read an uncached last
+    // line as empty, so ⌘A on a long file the user hadn't scrolled to the end of ended
+    // at offset 0 of that line and ⌘C copied the file minus its last line, quietly.
+    // `RangeEnd::Eof` is the path that already existed for "we don't know where the end
+    // is", and an absent last line is exactly that.
+    const { keyboard, selectAll, selectToEof } = selectAllDeps({
+      getLineText: (n: number) => (n === 2 ? undefined : 'alpha'),
+    })
     keyboard.handleSelectAllShortcut()
-    expect(selectAll).toHaveBeenCalledWith({ totalLines: 3, lastLineLength: 0 })
+    expect(selectAll).not.toHaveBeenCalled()
+    expect(selectToEof).toHaveBeenCalledOnce()
   })
 
   it('recognises a whole-file selection by either of its two shapes', () => {

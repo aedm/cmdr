@@ -210,6 +210,59 @@ describe('createViewerKeyboard: ⌘C with the search bar open', () => {
   })
 })
 
+describe('createViewerKeyboard: ⌘A when the last line is not cached', () => {
+  it('selects to the end of the file rather than to offset 0 of a line it has never seen', () => {
+    // The common shape on a long file: the user presses ⌘A without ever scrolling to
+    // the end, so `getLineText(totalLines - 1)` is `undefined`. Reading that as a
+    // zero-length last line ends the selection at offset 0 of it, and ⌘C then copies
+    // the file minus its last line with nothing said. `RangeEnd::Eof` is the answer
+    // that already exists for "we don't know where the end is".
+    const selection = createViewerSelection()
+    const keyboard = createViewerKeyboard(
+      makeKeyboardDeps({
+        getTotalLines: () => 3,
+        getTotalBytes: () => 16,
+        getLineText: (n: number) => (n === 2 ? undefined : 'alpha'),
+        selection,
+      }),
+    )
+
+    keyboard.handleSelectAllShortcut()
+
+    expect(selection.selection?.focus.line).toBe(EOF_LINE)
+    expect(toRangeEnds(selection.selection)).toEqual({
+      anchor: { kind: 'line', line: 0, offset: 0 },
+      focus: { kind: 'eof' },
+    })
+  })
+
+  it('still ends at the real last line when that line IS cached', () => {
+    const selection = createViewerSelection()
+    const keyboard = createViewerKeyboard(
+      makeKeyboardDeps({
+        getTotalLines: () => 3,
+        getLineText: (n: number) => ['alpha', 'beta', 'gamma'][n],
+        selection,
+      }),
+    )
+
+    keyboard.handleSelectAllShortcut()
+
+    expect(selection.selection).toEqual({ anchor: { line: 0, offset: 0 }, focus: { line: 2, offset: 5 } })
+  })
+
+  it('does nothing on an empty file, whichever way the last line reads', () => {
+    const selection = createViewerSelection()
+    const keyboard = createViewerKeyboard(
+      makeKeyboardDeps({ getTotalLines: () => 0, getTotalBytes: () => 0, getLineText: () => undefined, selection }),
+    )
+
+    keyboard.handleSelectAllShortcut()
+
+    expect(selection.selection).toBeNull()
+  })
+})
+
 describe('createViewerKeyboard: ⌘A in ByteSeek-no-index mode', () => {
   it('mints an end-of-file selection that both the copy-size shortcut and the IPC mapper recognise', () => {
     const selection = createViewerSelection()

@@ -340,13 +340,17 @@ export function createViewerKeyboard(deps: KeyboardDeps) {
     // than from whatever column an earlier run was heading for.
     resetDesiredColumn()
     const totalLines = deps.getTotalLines()
-    if (totalLines !== null && totalLines > 0) {
-      const lastLineText = deps.getLineText(totalLines - 1) ?? ''
+    const lastLineText = totalLines !== null && totalLines > 0 ? deps.getLineText(totalLines - 1) : undefined
+    if (totalLines !== null && lastLineText !== undefined) {
       deps.selection.selectAll({ totalLines, lastLineLength: lastLineText.length })
       return
     }
-    // ByteSeek-no-index ⌘A: we don't know `totalLines`, so select to `EOF_LINE`, which
-    // `toRangeEnds` translates to `RangeEnd::Eof` at the IPC boundary.
+    // Two ways to not know where the file ends: no line count at all (ByteSeek before
+    // its index lands), or a last line nobody has fetched, which is the ordinary state
+    // of a long file the user hasn't scrolled to the end of. Both take the same road:
+    // `EOF_LINE`, which `toRangeEnds` turns into `RangeEnd::Eof` so the backend resolves
+    // the real end. ❌ Never substitute a length of 0 for an absent last line: the
+    // selection then stops at the start of that line and ⌘C quietly drops it.
     if (deps.getTotalBytes() > 0) {
       deps.selection.selectToEof()
     }
