@@ -13,6 +13,8 @@ The file viewer opens files in a separate Tauri window with virtual scrolling an
 Per-file inventory for the route. Locate symbols via `codegraph_search`; this is the orientation layer.
 
 - **`+page.svelte`**: top-level component (lifecycle, window management, UI).
+- **`ViewerRow.svelte`**: one rendered ROW: the gutter number (only where a line starts), the text split into
+  search-highlight and selection spans, and the continuation marker. See § "Rows, not lines".
 - Composables: **`viewer-scroll`** (virtual scroll), **`viewer-search`** (start/poll/cancel/navigate, regex projection),
   **`viewer-line-heights`** (word-wrap height map via DOM measurement, FullLoad only), **`viewer-text-width`**
   (`ResizeObserver` width tracker), **`viewer-tail`** (`viewer:file-changed:<sid>` → reload toasts).
@@ -45,6 +47,46 @@ Per-file inventory for the route. Locate symbols via `codegraph_search`; this is
   disabled-not-hidden in media), **`ViewerStatusBar`** (keeps `user-select: text`), **`ViewerCopyDialogs`**,
   **`EncodingPicker`**, **`ViewModePicker`** (two-way media↔text switch), **`ViewerReloadToastContent`** (session id and
   change kind as toast props).
+
+## Rows, not lines
+
+The viewer renders **rows**. A row ends at a newline or after `SEGMENT_BYTES` (20 000), whichever comes first, so no
+fetch costs more than a bounded read however long a line is. The rule, the wire shape, and the backend side of it:
+`src-tauri/src/file_viewer/DETAILS.md` § "Rows, not lines". What it means on this side:
+
+**The coordinate is a row, everywhere.** `rowCache`, `visibleFrom` / `visibleTo`, `estimatedTotalRows()`, the
+selection's `(row, offset)` endpoints, `EOF_ROW`, the caret motions, and the search jump all count rows. A file whose
+every line is shorter than a segment has rows and lines one-to-one, so nothing about it changed; a minified bundle is
+where the two part company. ❗ `RangeEnd`'s `line` field and `SearchMatch.line` are the WIRE's spelling of that same row
+index (the IPC rename is its own milestone); `toRangeEnds` and `viewerSearchPoll` are the only two places that crossing
+happens, and both convert at the boundary rather than letting a field called `line` travel inward.
+
+**`totalLines` still exists, and it is not a coordinate.** The status bar's "N lines" is a physical line count, `null`
+on `byteSeek`. The row total comes from `TotalRows` (`exact` or `estimated`) on the open result's first chunk, on every
+later chunk, and on the indexing poll, so the estimate is replaced by the real count the moment the index lands rather
+than at the user's next scroll.
+
+**The gutter numbers lines while the cache counts rows.** Each cached row carries `lineNumber`, the physical line it
+STARTS, or `null` on a continuation row; `ViewerRow` prints a number only for the former, the usual editor convention.
+An uncached row draws blank rather than printing its row index, which on a wrapped file would be a wrong line number.
+❌ Neither fact may be inferred here: only the backend knows where a line begins.
+
+**The continuation marker says the break is Cmdr's.** A row whose `continues` is true draws `⋯` in a pill at the end of
+its text, identically in both wrap modes, with a tooltip and a visually-hidden label. ❗ The glyph is `content` on a
+`::after`, so it is not in the DOM text: it cannot be selected and cannot reach the clipboard, where it would be a
+character the file does not contain. That is also why it needs the `.sr-only` span beside it. ❌ Not `⏎`, which means
+"there is a line break here", the opposite of the truth. Glyph, colour, and copy are David's call; all three are a
+one-line change in `ViewerRow.svelte` and `messages/en/viewer.json`.
+
+**A Cmdr break is not a newline.** Nothing that measures or reconstructs text from cached rows may put a byte or a
+character between two rows of the same line. `rowMetrics` is the one place that decides a row's delimiter (0 when the
+row `continues`, 0 on the file's last row, 1 otherwise), and `describeSelectionForAt` sums row lengths with nothing
+between them. Assuming one per row over-counts a minified file by a byte every 20 000 — and those bytes pick the
+10 MiB confirm tier and the 100 MiB refusal, which is invariant I3 in `docs/specs/viewer-row-wrap.md`.
+
+**Open question for David, unresolved:** with word wrap ON the user also sees soft breaks WebKit made, and those stay
+unmarked. Marking them too would mean Cmdr wrapping instead of CSS, which contradicts the deliberate "measure, don't
+predict" decision in `viewer-line-heights.svelte.ts`.
 
 ## Architecture
 
@@ -92,40 +134,42 @@ source for the origin form). `openViewerSession` hands the result to `media.setF
 
 ### Virtual scrolling: the window, the cache, and the fetch loop
 
-`viewer-scroll.svelte.ts` draws a window of lines around the viewport, fills it from `viewer_get_lines`, and holds what
-it fetched in `lineCache` (a `SvelteMap<number, string>`). Three policies keep that bounded, and each one is bounded by
-PIXELS or by distance, never by a count of lines. That distinction is the whole point: a line is about a line tall
-today, but with word wrap on a 20 KB row is ~200 visual lines (~3 600 px), and every "50 lines" constant silently
-becomes "180 000 px" the day rows arrive (`docs/specs/viewer-row-wrap.md`).
+`viewer-scroll.svelte.ts` draws a window of rows around the viewport, fills it from `viewer_get_lines`, and holds what
+it fetched in `rowCache` (a `SvelteMap<number, CachedRow>`, each entry carrying the row's text, its `continues` flag,
+and its `lineNumber`). Three policies keep that bounded, and each one is bounded by PIXELS or by distance, never by a
+count of rows. That distinction is the whole point: an ordinary row is about a line tall, but with word wrap on a 20 KB
+row is ~200 visual lines (~3 600 px), so every "50 rows" constant would silently mean "180 000 px".
 
-- **The window is a viewport of pixels plus `BUFFER_PX` (900) above and below**, clamped to 2-50 lines
-  (`renderWindowLines` / `bufferLines`, both pure and exported for their tests). 900 px is exactly the 50 lines the
-  viewer has always buffered at the default 18 px line height, so ordinary files render byte-identically. The
-  height-map path spends the same budget as a pixel offset into the measured map. `lineRequest` prefetches by it too.
-- **`scrollScale` converts the scroll position and nothing else.** Past ~1.6M lines the spacer is squeezed to stay under
+- **The window is a viewport of pixels plus `BUFFER_PX` (900) above and below**, clamped to 2-50 rows
+  (`renderWindowRows` / `bufferRows`, both pure and exported for their tests). 900 px is exactly the 50 rows the viewer
+  has always buffered at the default 18 px line height, so ordinary files render byte-identically. The height-map path
+  spends the same budget as a pixel offset into the measured map. `rowRequest` prefetches by it too.
+- **`scrollScale` converts the scroll position and nothing else.** Past ~1.6M rows the spacer is squeezed to stay under
   WebKit's element-height cap, so `scrollTop` is in squeezed pixels while the viewport still shows real ones. The old
-  arithmetic divided the viewport height by the scale as well, which drew tens of thousands of lines at once on a huge
+  arithmetic divided the viewport height by the scale as well, which drew tens of thousands of rows at once on a huge
   file.
-- **A short answer from `viewer_get_lines` is normal, not a failure.** One chunk carries at most a fixed byte budget, so
-  a range of long rows comes back in pieces. `fetchLines` continues from the last line it RECEIVED (`lineRequest`'s
-  `startAt`). Gotcha/Why: ❌ never re-ask for the range that came back short. `needsFetch` stays true on its last line,
-  so the identical request refires every `FETCH_DEBOUNCE_MS` forever.
-- **A successful answer of ZERO lines records `noLinesBeyond`**, and `needsFetch` stops sampling at it, so a line count
-  that overshoots the file (the `lineIndex` phantom trailing line) doesn't spin either. It expires when the line count
-  moves, so a tail append or a reload can still reach those lines. ❌ A FAILED read must never set it: failures stay
-  retryable.
-- **Both of those read the chunk's SHAPE because that's all today's `LineChunk` carries.** The backend is growing a
-  typed `ChunkEnd` (`countReached` / `budgetReached` / `endOfFile`) that says outright why a chunk ended, and it's the
-  better contract: `cacheChunk` should continue on `budgetReached`, set `noLinesBeyond` on `endOfFile`, and stop on
-  `countReached`, instead of inferring the same three cases from the row count. Switch it over with the coordinate
-  rename (`docs/specs/viewer-row-wrap.md` milestones 4-5).
-- **Eviction is by distance from the viewport**: after each fetch, above `CACHE_EVICT_ABOVE` lines cached, everything
-  outside the rendered window plus a `FETCH_BATCH` margin either side is dropped (`linesToEvict`). The gap between
+- **The walk is driven by what the chunk SAYS, never by how much of it came back.** `chunk.end` is a typed `ChunkEnd`:
+  `budgetReached` means continue, `endOfFile` means the file stops at `firstRowNumber + rows.length` (recorded as
+  `noRowsBeyond`, so `needsFetch` stops sampling past it), and `countReached` means the request is filled. Gotcha/Why: a
+  short chunk is ORDINARY, because one answer carries at most `CHUNK_BUDGET_BYTES`. Reading a short chunk as the end of
+  the file truncates silently; reading a budget-capped one as finished leaves the range half-drawn and refires the fetch
+  every `FETCH_DEBOUNCE_MS` forever. ❌ Never infer either from `rows.length`.
+- **Rows are cached at `chunk.firstRowNumber`, ❌ never at the row the request asked for.** A backend that can seek by
+  row hands a row back as itself; one that cannot (`byteSeek` with no index) derives the number from a byte offset
+  through its bytes-per-row sample, and that number is the one its NEXT answer will agree with. Caching at `fetchFrom`
+  instead put a continuation's rows at indexes the backend disowned, so the same bytes drew twice at two scroll
+  positions. For the same reason such a backend is continued by `chunk.endByteOffset` (a fact) rather than by a row
+  index (an estimate).
+- **A successful answer of ZERO rows also records `noRowsBeyond`**, which covers a row count that overshoots what the
+  backend will emit. It expires when the row count moves, so a tail append or a reload can still reach those rows. ❌ A
+  FAILED read must never set it: failures stay retryable.
+- **Eviction is by distance from the viewport**: after each fetch, above `CACHE_EVICT_ABOVE` rows cached, everything
+  outside the rendered window plus a `FETCH_BATCH` margin either side is dropped (`rowsToEvict`). The gap between
   threshold and margin is hysteresis: a rare pass that drops a lot. ❌ Never evict on `fullLoad`: the height map
-  measures every line of such a file and reads them back out of this cache through `getAllLines`, so eviction there
+  measures every row of such a file and reads them back out of this cache through `getAllRowTexts`, so eviction there
   would silently disable variable-height word wrap. Those files are under a megabyte anyway.
-- **`clearCache()`, not `lineCache.clear()`**, from the page: reload, encoding switch, and open all have to drop
-  `noLinesBeyond` with the lines it describes.
+- **`clearCache()`, not `rowCache.clear()`**, from the page: reload, encoding switch, and open all have to drop
+  `noRowsBeyond` with the rows it describes.
 
 ### Variable-height word wrap (progressive enhancement)
 

@@ -6,12 +6,16 @@ The file viewer opens files in their own Tauri window, with virtual scrolling an
 ## Module map
 
 `+page.svelte` (lifecycle, window, UI) wires the `createViewer*` composables, the selection and caret helpers, and the
-`createViewerKeyboard` router; the components beside it are presentational. Inventory: `DETAILS.md` § "Module map".
+`createViewerKeyboard` router; `ViewerRow.svelte` draws one row and the components beside it are presentational.
+Inventory: `DETAILS.md` § "Module map".
 
 ## Must-knows
 
 Each is break-if-ignored; the named `DETAILS.md` section has the why.
 
+- **Every coordinate here is a ROW**: a long line is several (`src-tauri/src/file_viewer/CLAUDE.md`). `totalLines` is
+  the status bar's alone; the gutter number and the continuation marker ride on the row. ❌ Infer neither.
+  (§ "Rows, not lines")
 - **Composables take getter deps, ❌ never raw `$state`** (which loses reactivity); effects live on the page and
   delegate to `run*Effect()`. (§ Architecture)
 - **Media sessions need two guards.** Text-only line paths are data-gated on `media.isMedia` (empty text fields
@@ -38,12 +42,12 @@ Each is break-if-ignored; the named `DETAILS.md` section has the why.
   `setTimeout(0)`, ❌ never rAF.** Each dodges a different hang or crash. (§ Gotchas; `$lib/child-window-close`)
 - **Escape: the page's window keydown runs BEFORE `ViewerContextMenu`'s**, so it gates on `contextMenuPos !== null`
   first, else an open menu's Escape shuts the window. (§ Gotchas)
-- **The render window, its prefetch, and cache eviction are sized in pixels or distance, ❌ never in lines** (a wrapped
-  row is hundreds of pixels tall); eviction skips `fullLoad`, whose height map needs every line. A short
-  `viewer_get_lines` answer is normal: continue from the last line RECEIVED, ❌ never re-ask the range.
-  (§ "Virtual scrolling")
-- **The copy flow may not guess**: ⌘A with an uncached last line takes the `EOF_LINE` path (❌ never a 0 length), byte
-  counts are TOLD each line's delimiter, and the toast measures the text it wrote. (§ "Selection model")
+- **The render window, its prefetch, and eviction are sized in pixels or distance, ❌ never in rows** (a wrapped row is
+  hundreds of pixels tall); eviction skips `fullLoad`, whose height map needs every row. A short answer is normal: walk
+  by `chunk.end` + `endByteOffset`, cache at `chunk.firstRowNumber`. (§ "Virtual scrolling")
+- **The copy flow may not guess**: ⌘A with an uncached last row takes the `EOF_ROW` path (❌ never a 0 length),
+  `rowMetrics` decides each row's delimiter, a from-the-top selection subtracts its leftover, and the toast measures the
+  text it wrote. (§ "Selection model")
 - **The height map's wrap width comes from row geometry, never a `.line-text` span** (it shrink-wraps; measuring it
   inflated the map ~7x); `heightMap.ready` gates every height-map path. (§ "Variable-height word wrap")
 - **Tail mode isn't persisted, and the viewer window has NO `store:default` capability**: persisted settings go through
