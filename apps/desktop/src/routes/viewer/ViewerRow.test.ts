@@ -10,6 +10,8 @@ import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { mount, tick, unmount } from 'svelte'
 
 import ViewerRow from './ViewerRow.svelte'
+// The component's own source, for the one assertion the DOM cannot make (see below).
+import rowSource from './ViewerRow.svelte?raw'
 import { _setLocaleForTests } from '$lib/intl/locale'
 import type { LineSegment } from './line-segments'
 
@@ -125,17 +127,23 @@ describe('ViewerRow continuation marker', () => {
 
     expect(target.querySelector('.row-continues')?.getAttribute('aria-hidden')).toBe('true')
     expect(target.querySelector('.sr-only')?.textContent).toBe(
-      'Cmdr split this line here to keep the viewer fast. The line continues on the next row.',
+      'Cmdr split this line because it was very long. There is no actual line break here in the file.',
     )
     await unmount(instance)
   })
 
-  it('never says a line break is here, which is the opposite of the truth', async () => {
-    const { target, instance } = mountRow({ continues: true })
-    await tick()
+  it('draws a line break, not an ellipsis, because nothing is missing from the row', async () => {
+    // David's call, and it reverses what `docs/specs/viewer-row-wrap.md` argued: an
+    // ellipsis reads as a cutoff and implies content is missing, which is the worse lie,
+    // since nothing is. A break did happen here; the tooltip and the label say whose.
+    //
+    // ❗ Read off the SOURCE, because a `::after` `content` is CSS and never reaches the
+    // DOM: the assertion this replaced checked `innerHTML` for the glyph and so passed
+    // whatever the glyph was. Nothing else can catch a silent revert to `⋯`.
+    const marker = /\.row-continues::after\s*\{[^}]*\}/.exec(rowSource)?.[0]
 
-    // ❌ `⏎` means "there is a line break here". There isn't; that's the whole point.
-    expect(target.innerHTML).not.toContain('⏎')
-    await unmount(instance)
+    expect(marker).toBeDefined()
+    expect(marker).toContain('⏎')
+    expect(marker).not.toContain('⋯')
   })
 })

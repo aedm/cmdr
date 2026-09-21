@@ -128,6 +128,13 @@
        the file has a break here. It hangs off the end of the row's text in both wrap
        modes, so the mark always means exactly one thing.
 
+       Decision (David's, and it overrides what `docs/specs/viewer-row-wrap.md` argued):
+       the glyph is `⏎`, a line break, NOT an ellipsis. An ellipsis reads as a cutoff,
+       which implies content is missing — and nothing is missing, so that is the worse
+       lie of the two. A break DID happen here; whose break it is belongs to the tooltip
+       and the screen-reader label, which say the file holds no break at this point.
+       ❌ Don't "fix" this back to `⋯` on the spec's reasoning.
+
        `content` on a `::after` keeps the glyph out of the DOM text, so it is neither
        selectable nor copyable; the `.sr-only` span beside it carries the label. Colours
        are tokens, never literals: `--color-text-primary` on `--color-bg-tertiary` clears
@@ -145,6 +152,6 @@
     }
 
     .row-continues::after {
-        content: '⋯';
+        content: '⏎';
     }
 </style>

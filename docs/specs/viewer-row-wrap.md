@@ -118,8 +118,10 @@ is mostly a rename plus the gutter and the marker.
 A row with `continues: true` draws a marker at the end of its text, **identically whether word wrap is on or off**. It
 says one thing: this break is Cmdr's, not the file's.
 
-- Not `⏎`. That glyph means "there is a line break here", which is the opposite of the truth. Use a distinct mark with
-  a tooltip; the exact glyph and colour are David's call and he reviews the copy before it ships.
+- The glyph is `⏎`, and David decided it against this spec's own argument. The spec reasoned that `⏎` means "there is
+  a line break here", the opposite of the truth. His call: an ellipsis reads as a cutoff, which implies content is
+  missing, and nothing is missing, so that is the worse of the two lies. A break did happen; whose break it is belongs
+  to the tooltip and the label. Shipped as `⏎`, with the reasoning beside the rule in `ViewerRow.svelte`.
 - It must not be selectable and must not reach the clipboard. A `::after` with `content` satisfies both, which then
   needs its own visually-hidden label so assistive tech still hears it.
 - Red must still clear AA+ contrast in both themes; take it from a theme token, never a literal.
@@ -314,7 +316,10 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
 - [ ] `session.rs`'s documented four-way split, deferred because it runs through the file the row work is landing in.
       Its allowlist number was raised instead, with the reason carried forward.
 - [ ] Full `pnpm check --include-slow`, then the fast-forward to `main`, then the push.
-- [ ] Decide the marker's glyph and colour with David, and the tooltip copy. He reviews every human-facing string.
+- [x] Decide the marker's glyph and copy with David. Done: the glyph is `⏎` (§ The marker has his reasoning), and both
+      `viewer.row.continues*` strings are now "Cmdr split this line because it was very long. There is no actual line
+      break here in the file." The ten locale catalogs still hold the old wording; retranslating them is the lead's,
+      so `desktop-i18n-stale` warns until that lands. The pill's colour tokens were not part of the decision.
 - [ ] Review the selection announcement copy with David. It now names the PHYSICAL line the gutter draws rather than
       the row index it used to call a line, and two new keys cover the case where the line can't be resolved from the
       row cache: `viewer.selection.charsOnly` ("Selected {chars} characters") and `viewer.selection.toEndOfFileNoLine`
