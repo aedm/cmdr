@@ -318,7 +318,7 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
                 emit.push(&line[..end_byte])?;
                 return emit.finish(/*keep_trailing_newline=*/ false);
             } else {
-                line.as_str()
+                &line[..]
             };
             emit.push(text)?;
             // The one place the walk decides a line carries its delimiter.
