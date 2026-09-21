@@ -279,6 +279,7 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
         device_readiness: None,
         usb_speed: None,
         capabilities: None,
+        favorite_shortcut: None,
     })
 }
 
