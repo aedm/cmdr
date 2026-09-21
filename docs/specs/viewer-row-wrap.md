@@ -186,6 +186,18 @@ Milestone 6 is NOT as independent as this spec first claimed: save-as reaches th
 `read_range` (`session.rs:975`). One streaming implementation, not two. The save-as work refactors `read_range` into a
 form that can emit into a sink, and `write_range_to_file` drives it; the row changes then land in that one place.
 
+### Carried over from the save-as milestone
+
+- **Streaming save is bounded by one chunk PLUS one line**, because `ChunkedSink::push` appends a whole entry before
+  testing the threshold. That is the right shape, and it is still unbounded on the 300 MB single-line file until rows
+  land: the entry it appends IS the whole line. So "save-as of a newline-free 300 MB file holds one chunk, not the
+  file" is part of milestone 3's DONE, not a separate concern. Nothing to change in the sink; it inherits the bound the
+  moment its entries are rows.
+- **ByteSeek and FullLoad disagree about the trailing empty line** of a newline-terminated file, so a `RangeEnd::Eof`
+  read returns a different number of trailing newlines depending on which backend served it, i.e. on the file's size.
+  Pre-existing, and the row work touches exactly this code. Pick one answer, pin it for all three backends, say which
+  in the commit.
+
 ### Pre-existing bugs in the blast radius
 
 These are broken on `main` today, independent of this change, and every one of them sits in code this work has to
