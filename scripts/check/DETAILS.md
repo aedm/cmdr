@@ -617,6 +617,21 @@ harness that reproduces the counts.
   count, and `docs-dead-links` resolves doc links against real paths, so an add or a remove anywhere can flip it. They
   total ~11 s of mean runtime across 12 parallel lanes; ❌ don't reach for a "paths-but-not-contents" input kind to
   shave that, the mechanism would cost more than the lanes do.
+
+### A scoped run is not a full one
+
+Those 12 lanes are registered `AppOther`, which means no scoped selector reaches them: `pnpm check svelte`, `rust`, and
+`desktop` all skip formatting, `file-length`, and every `docs-*` / `claude-md-*` lane. Only a bare `pnpm check`, or
+naming a lane outright (`pnpm check oxfmt`), runs them.
+
+That matters more than it sounds, because of how the formatters behave in the two environments: a local run REWRITES the
+tree, while CI only CHECKS (`--ci`). So a scoped lane can go green over a file the formatter would have silently fixed,
+and CI then fails on it. Measured on 2026-09-21: a 125-character line in `routes/viewer/DETAILS.md` survived a green
+`pnpm check svelte` and was only caught by a bare `pnpm check`, which reflowed it along with ten other files.
+
+The rule that falls out: a scoped run is for iterating, never for finishing. Match the scope to the change while you
+work (`.claude/rules/check-scope-matches-change.md`), then close the unit of work with a bare `pnpm check`.
+
 - The **2 registry readers** (`ci-coverage`, `workspace-member-coverage`) reach every check file because `AllChecks`
   names every `Run` function, and the closure can't tell "reads the registry as data" from "calls it". Both are ~0.01 s.
 

@@ -343,9 +343,9 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
 
 ### Settled
 
-- **Soft CSS wraps stay unmarked.** Asked and answered by David on 2026-09-21: only the segment break Cmdr made
-  carries the marker, in both wrap modes. Marking WebKit's own soft breaks would mean Cmdr wrapping instead of CSS,
-  against the "measure, don't predict" decision in `viewer-line-heights.svelte.ts`.
+- **Soft CSS wraps stay unmarked.** Asked and answered by David on 2026-09-21: only the segment break Cmdr made carries
+  the marker, in both wrap modes. Marking WebKit's own soft breaks would mean Cmdr wrapping instead of CSS, against the
+  "measure, don't predict" decision in `viewer-line-heights.svelte.ts`.
 - **The marker is `⏎`, not an ellipsis**, with the copy "Cmdr split this line because it was very long. There is no
   actual line break here in the file." David's call, and it reverses what this spec argued: an ellipsis reads as a
   cutoff, implying content is missing, and nothing is. The reasoning sits beside the rule in `ViewerRow.svelte` so the
@@ -353,7 +353,7 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
 
 ### Not ours, seen on the way past
 
-- `module-cycles` warns that `cmdr::file_system::write_operations` gained a second two-module tangle
-  (`in_flight_temps` / `overwrite`, and `archive_edit::engine` / `archive_remote_edit`) against an allowlist of `[2]`.
-  This branch never touches `file_system/`, so it arrived with `main`. Raising that number needs David's explicit
-  consent per `.claude/rules/file-length-allowlist.md`, so it is left alone and reported.
+- `module-cycles` warns that `cmdr::file_system::write_operations` gained a second two-module tangle (`in_flight_temps`
+  / `overwrite`, and `archive_edit::engine` / `archive_remote_edit`) against an allowlist of `[2]`. This branch never
+  touches `file_system/`, so it arrived with `main`. Raising that number needs David's explicit consent per
+  `.claude/rules/file-length-allowlist.md`, so it is left alone and reported.
