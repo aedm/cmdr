@@ -59,7 +59,15 @@ files. Names, paths, and metadata reach the provider on every turn; file content
 three read tools whose egress the consent copy names item by item: `search_photos` and `image_facts` (image-derived
 text) and `inspect_file` (bounded text windows, `find` lines, PDF pages plus title and author, one level of archive
 entry names, EXIF including GPS). No tool can return bytes: every result DTO is text-only by construction, each pinned
-by a test. This is the privacy line and it is structural, not a runtime guard. The registry's `consumers` + `access`
+by a test.
+
+`inspect_file`'s text window reads through the viewer's backends, so what it receives are ROWS, not physical lines
+(`src-tauri/src/file_viewer/CLAUDE.md`). ❗ A row whose `continues` is true was broken by Cmdr at a segment boundary,
+so `window_from_chunk` owes it NO separator: joining those two rows with a `\n` would hand the model a line break the
+file does not contain, and the model would reason about a file shape that isn't there. That is why the loop carries a
+`separator_owed` flag rather than testing `returned > 0`. The same rule, and the reason behind it, is in
+`file_viewer/DETAILS.md` § "Rows, not lines"; this note exists because the agent path is the one that looks like it
+could ignore it. This is the privacy line and it is structural, not a runtime guard. The registry's `consumers` + `access`
 dimensions pin the agent's view to exactly its authored `[agent]` entries, every one `Access::Read`,
 `Access::Propose`, or `Access::Memory`, never `Access::Write`; the runtime's `ToolId` parse step is the runtime choke
 point (an unrecognized name resolves to `ToolId::Unrecognized`, which is never in the agent view, so dispatch refuses
