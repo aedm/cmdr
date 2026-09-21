@@ -1,5 +1,5 @@
 import { SvelteMap } from 'svelte/reactivity'
-import { viewerGetLines, asViewerError } from '$lib/tauri-commands'
+import { viewerGetLines, asViewerError, type LineChunk } from '$lib/tauri-commands'
 import { getAppLogger } from '$lib/logging/logger'
 import { createLineHeightMap, getLineHeight } from './viewer-line-heights.svelte'
 import { onDebouncedScaleChange } from '$lib/text-size.svelte'
@@ -383,7 +383,7 @@ export function createViewerScroll(deps: ScrollDeps) {
     if (!sessionId) return
     const request = lineRequest({ from, to, startAt })
     if (!request) return
-    const { seekType, seekValue, fetchFrom, fetchCount } = request
+    const { seekType, seekValue, fetchCount } = request
 
     const fetchId = ++currentFetchId
 
@@ -405,55 +405,74 @@ export function createViewerScroll(deps: ScrollDeps) {
         return
       }
 
-      const cacheStartLine = seekType === 'fraction' ? fetchFrom : chunk.firstLineNumber
-
-      log.debug(
-        'fetchLines[{fetchId}]: received {lineCount} {linesNoun}, backend says firstLine={firstLine}, caching at {cacheStart}',
-        {
-          fetchId,
-          lineCount: chunk.lines.length,
-          linesNoun: pluralize(chunk.lines.length, 'line'),
-          firstLine: chunk.firstLineNumber,
-          cacheStart: cacheStartLine,
-        },
-      )
-
-      for (let i = 0; i < chunk.lines.length; i++) {
-        lineCache.set(cacheStartLine + i, chunk.lines[i])
-      }
-      evictDistantLines()
-
-      if (chunk.totalLines !== null && chunk.totalLines !== deps.getTotalLines()) {
-        updateTotalLines(chunk.totalLines)
-      }
-
-      if (chunk.lines.length === 0) {
-        // The backend has nothing here: the file ends before this line, whatever the line
-        // count claims. Remember it so the effect stops asking for a line that isn't there.
-        noLinesBeyond = { line: fetchFrom, underTotal: estimatedTotalLines() }
-        return
-      }
-      const lastCached = cacheStartLine + chunk.lines.length - 1
+      const continueAt = cacheChunk({ chunk, request, fetchId })
       // `currentFetchId` again: a newer fetch may have started while this answer was in
       // flight (the user scrolled), and its range is the one worth continuing, not ours.
-      if (chunk.lines.length < fetchCount && lastCached + 1 < to && fetchId === currentFetchId) {
-        await fetchLines(from, to, lastCached + 1)
+      if (continueAt !== null && continueAt < to && fetchId === currentFetchId) {
+        await fetchLines(from, to, continueAt)
       }
     } catch (e) {
-      if (fetchId === currentFetchId) {
-        // `viewerGetLines` throws the backend's typed `ViewerError` with its
-        // fields copied onto the Error, so the timeout is a VARIANT, never a
-        // flag beside a sentence.
-        const kind = asViewerError(e)?.kind
-        if (kind === 'timedOut') {
-          deps.onTimeoutError()
-          // The window shows the timeout with Retry, so it's a handled outcome: a warn. An
-          // error log counts toward an auto-sent error report.
-          log.warn('fetchLines[{fetchId}]: timed out', { fetchId })
-        } else {
-          log.error("fetchLines[{fetchId}]: didn't come back ({reason})", { fetchId, reason: kind ?? String(e) })
-        }
-      }
+      reportFetchFailure(e, fetchId)
+    }
+  }
+
+  /**
+   * Caches a chunk's lines and says where a follow-up request should start, or `null` when
+   * this answer finished the job (it filled the request, or the backend had nothing left).
+   */
+  function cacheChunk({
+    chunk,
+    request,
+    fetchId,
+  }: {
+    chunk: LineChunk
+    request: NonNullable<ReturnType<typeof lineRequest>>
+    fetchId: number
+  }): number | null {
+    const received = chunk.lines.length
+    const cacheStartLine = request.seekType === 'fraction' ? request.fetchFrom : chunk.firstLineNumber
+
+    log.debug(
+      'fetchLines[{fetchId}]: received {lineCount} {linesNoun}, backend says firstLine={firstLine}, caching at {cacheStart}',
+      {
+        fetchId,
+        lineCount: received,
+        linesNoun: pluralize(received, 'line'),
+        firstLine: chunk.firstLineNumber,
+        cacheStart: cacheStartLine,
+      },
+    )
+
+    for (let i = 0; i < received; i++) {
+      lineCache.set(cacheStartLine + i, chunk.lines[i])
+    }
+    evictDistantLines()
+
+    if (chunk.totalLines !== null && chunk.totalLines !== deps.getTotalLines()) {
+      updateTotalLines(chunk.totalLines)
+    }
+
+    if (received === 0) {
+      // The backend has nothing here: the file ends before this line, whatever the line
+      // count claims. Remember it so the effect stops asking for a line that isn't there.
+      noLinesBeyond = { line: request.fetchFrom, underTotal: estimatedTotalLines() }
+      return null
+    }
+    return received < request.fetchCount ? cacheStartLine + received : null
+  }
+
+  function reportFetchFailure(e: unknown, fetchId: number) {
+    if (fetchId !== currentFetchId) return
+    // `viewerGetLines` throws the backend's typed `ViewerError` with its fields copied onto
+    // the Error, so the timeout is a VARIANT, never a flag beside a sentence.
+    const kind = asViewerError(e)?.kind
+    if (kind === 'timedOut') {
+      deps.onTimeoutError()
+      // The window shows the timeout with Retry, so it's a handled outcome: a warn. An
+      // error log counts toward an auto-sent error report.
+      log.warn('fetchLines[{fetchId}]: timed out', { fetchId })
+    } else {
+      log.error("fetchLines[{fetchId}]: didn't come back ({reason})", { fetchId, reason: kind ?? String(e) })
     }
   }
 

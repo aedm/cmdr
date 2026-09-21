@@ -42,10 +42,7 @@ function wire(outcome: CopyOutcome) {
     cancelInFlight: () => Promise.resolve(),
     saveAs: () => Promise.resolve({ ok: true as const, text: '' }),
   }
-  return createViewerCopyOrchestrator({
-    copy: copy as unknown as Parameters<typeof createViewerCopyOrchestrator>[0]['copy'],
-    getFileName: () => 'notes.txt',
-  })
+  return createViewerCopyOrchestrator({ copy, getFileName: () => 'notes.txt' })
 }
 
 describe('the "on clipboard" toast', () => {
