@@ -354,11 +354,14 @@ export const mainWindowCommands: CommandSource[] = [
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
   {
+    // ⌘⌥→ rides along with ⌃Tab: it's what Chrome, Safari, and VS Code bind, and it's
+    // a one-hand reach for a key people press all day. ⌘→ alone is taken by
+    // `pane.copyPathLeftToRight`. ⌃Tab stays FIRST: the menu shows `shortcuts[0]`.
     id: 'tab.next',
     nameKey: 'commands.tabNext.label',
     scope: 'Main window',
     showInPalette: true,
-    shortcuts: ['⌃Tab'],
+    shortcuts: ['⌃Tab', '⌘⌥→'],
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
   {
@@ -366,7 +369,7 @@ export const mainWindowCommands: CommandSource[] = [
     nameKey: 'commands.tabPrev.label',
     scope: 'Main window',
     showInPalette: true,
-    shortcuts: ['⌃⇧Tab'],
+    shortcuts: ['⌃⇧Tab', '⌘⌥←'],
     whileDialogOpen: BLOCKED_BY_DIALOGS,
   },
   {
