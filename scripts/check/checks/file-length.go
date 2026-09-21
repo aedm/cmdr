@@ -313,8 +313,15 @@ func formatLongFiles(files []longFile, allowlist fileLengthAllowlist, allowliste
 		tokenStr := formatTokenCount(f.sizeBytes / 4)
 		detail := fmt.Sprintf("(%d lines, %d kB, ~%s tokens)", f.lines, sizeKB, tokenStr)
 		if allowed, ok := allowlist.Files[f.relPath]; ok {
-			growthPct := (f.lines - allowed.Lines) * 100 / allowed.Lines
-			detail = fmt.Sprintf("(%d lines, allowlist: %d, %d kB, ~%s tokens, +%d%% growth)", f.lines, allowed.Lines, sizeKB, tokenStr, growthPct)
+			// A zero ceiling has no growth to express, and dividing by it used to panic
+			// the whole check instead of reporting the file. `0` is what a placeholder
+			// entry carries while its real count is still being measured.
+			if allowed.Lines > 0 {
+				growthPct := (f.lines - allowed.Lines) * 100 / allowed.Lines
+				detail = fmt.Sprintf("(%d lines, allowlist: %d, %d kB, ~%s tokens, +%d%% growth)", f.lines, allowed.Lines, sizeKB, tokenStr, growthPct)
+			} else {
+				detail = fmt.Sprintf("(%d lines, allowlist: %d, %d kB, ~%s tokens)", f.lines, allowed.Lines, sizeKB, tokenStr)
+			}
 		}
 		color := ansiYellow
 		if f.lines >= fileLengthCriticalThreshold(f.relPath) {

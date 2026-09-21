@@ -279,6 +279,25 @@ func TestRunFileLength_MessageFormat(t *testing.T) {
 	}
 }
 
+// A zero-line allowlist ceiling used to divide by zero and panic the whole check, so
+// one placeholder entry took down every other file's report with it. It has to report
+// the file instead, just without a growth percentage.
+func TestFormatLongFiles_ZeroAllowlistCeilingDoesNotPanic(t *testing.T) {
+	files := []longFile{{relPath: "a/b.rs", lines: 900, sizeBytes: 4500}}
+	allowlist := fileLengthAllowlist{
+		Files: map[string]fileLengthLimit{"a/b.rs": {Lines: 0, Reason: "placeholder"}},
+	}
+
+	msg := formatLongFiles(files, allowlist, 0)
+
+	if !strings.Contains(msg, "900 lines, allowlist: 0") {
+		t.Errorf("expected the file reported against its zero ceiling, got: %s", msg)
+	}
+	if strings.Contains(msg, "growth") {
+		t.Errorf("a zero ceiling has no growth to express, got: %s", msg)
+	}
+}
+
 func TestIsTestFile(t *testing.T) {
 	tests := []struct {
 		path string
