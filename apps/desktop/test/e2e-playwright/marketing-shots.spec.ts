@@ -17,7 +17,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 import { ensureMcpClient, mcpCall, mcpReadResource } from '../e2e-shared/mcp-client.js'
-import { captureTest as test, expect } from './fixtures.js'
+import { captureTest as test, expect, stopVideoRecording } from './fixtures.js'
 import { dispatchMenuCommand, openSettingsWindowViaProd } from './helpers.js'
 import { SEARCH_OVERLAY } from './search-helpers.js'
 import { insetRect } from './marketing-shots-frame.js'
@@ -69,6 +69,10 @@ test.describe('marketing masters', () => {
 
   test.beforeEach(async ({ tauriPage }) => {
     const page = tauriPage as TauriPage
+    // `captureTest` carries no auto fixture, so the recorder upstream starts for every
+    // test is still running here. A camera driver is the last place that belongs: it
+    // burns CPU and CoreGraphics work alongside the very shots it would degrade.
+    await stopVideoRecording(page)
     await page.waitForSelector('.file-pane', 15000)
     await ensureMcpClient(page)
   })

@@ -23,7 +23,7 @@
 
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { test, expect } from './fixtures.js'
+import { test, expect, stopVideoRecording } from './fixtures.js'
 import { dismissAllToasts } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 import { type SurfaceEntry, fitFindings } from './i18n-capture-helpers.js'
@@ -229,14 +229,12 @@ test.describe('i18n screenshot capture', () => {
       return
     }
 
-    // The fixture auto-starts a video recorder (15 fps frame capture). It's
-    // useless for this driver and just burns CPU + CoreGraphics work alongside
-    // the screenshots, so stop it up front. Best-effort: never fail the run on it.
-    try {
-      await (main as unknown as { stopRecording: () => Promise<unknown> }).stopRecording()
-    } catch {
-      // Already stopped or unsupported; fine.
-    }
+    // Upstream's `tauriPage` fixture auto-starts a video recorder (15 fps frame
+    // capture). `cmdrTestGuards` already stops it for an ordinary attempt, but a
+    // retry keeps it, and a recorder is the last thing this driver wants: it burns
+    // CPU + CoreGraphics work alongside the very screenshots it would degrade. So
+    // stop it unconditionally here.
+    await stopVideoRecording(main)
 
     // surface label → { keys, screenshot filename }, plus the surfaces that threw
     // unexpectedly (`failed`, hard error) and ones deliberately skipped as a

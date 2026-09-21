@@ -16,6 +16,11 @@
  *   Cmd-Tab / Linux title bar to see which spec is in flight (or stuck) without
  *   tailing the log.
  *
+ * Video recording:
+ * - upstream's `tauriPage` fixture starts a 15 fps native frame capture for every
+ *   test; `cmdrTestGuards` stops it again unless the run asked for it (see
+ *   `stopVideoRecording`).
+ *
  * ❗ The decoration and the leak guard hang off an AUTO FIXTURE, not off
  * `test.beforeEach` / `test.afterEach`. A hook declared at module scope HERE
  * attaches to the suite of whichever spec file happened to trigger this import
@@ -102,6 +107,7 @@ export const test = baseTest.extend<{ cmdrDeadAppGate: undefined; cmdrTestGuards
   ],
   cmdrTestGuards: [
     async ({ tauriPage }, use, testInfo) => {
+      if (!wantsRecording(testInfo)) await stopVideoRecording(tauriPage)
       await assertAppAlive(tauriPage, formatTestName(testInfo))
       await decorateTitle(tauriPage, testInfo, '')
       await use(undefined)
@@ -113,6 +119,46 @@ export const test = baseTest.extend<{ cmdrDeadAppGate: undefined; cmdrTestGuards
     { auto: true },
   ],
 })
+
+/** The slice of a page that can stop a recording. Both `TauriPage` and the browser adapter carry it. */
+interface RecordablePage {
+  stopRecording(): Promise<unknown>
+}
+
+/**
+ * Stops the video recording upstream's `tauriPage` fixture started, best-effort.
+ *
+ * ❗ It can only happen HERE, in a fixture that DEPENDS on `tauriPage`: the recorder
+ * starts inside `tauriPage`'s own setup, so `cmdrDeadAppGate` (which deliberately
+ * destructures nothing and therefore runs first) has nothing to stop yet.
+ *
+ * Exported for the capture drivers, which want the stop unconditionally and one of
+ * which runs on `captureTest`, with no auto fixture at all.
+ */
+export async function stopVideoRecording(tauriPage: RecordablePage): Promise<void> {
+  try {
+    await tauriPage.stopRecording()
+  } catch {
+    // Already stopped, or this build has no recorder. Never fail a test on it.
+  }
+}
+
+/**
+ * Whether this attempt keeps the video upstream started for it.
+ *
+ * Recording every test costs a continuous native frame capture plus an ffmpeg encode
+ * and a report attach PER TEST, times the three shards that run at once, on a machine
+ * somebody is using — and nobody watches a passing test's video. So it's off by
+ * default and kept where it earns its cost: a retry attempt, where the video is the
+ * diagnosis, and a run that asks with `CMDR_E2E_KEEP_RECORDING=1` (what the check
+ * runner's isolation re-run sets).
+ *
+ * The native failure screenshot is independent of all this: upstream takes it from the
+ * live window after the test, so it still lands on every failure.
+ */
+function wantsRecording(testInfo: TestInfo): boolean {
+  return testInfo.retry > 0 || process.env.CMDR_E2E_KEEP_RECORDING === '1'
+}
 
 // Captured once per worker on the first decoration so suffixes don't accumulate
 // across tests. Each shard owns its own Tauri instance + its own worker process,
