@@ -53,21 +53,23 @@ fn build_index(specs: &[Spec]) -> SearchIndex {
             modified_at: OptU64::new(s.modified_at),
         });
     }
-    let mut id_to_index = HashMap::new();
-    for (i, e) in entries.iter().enumerate() {
-        id_to_index.insert(e.id, i);
-    }
+    // The real loader reads `ORDER BY id` and merges its segments in range order, so
+    // a fixture that leaves rows in spec order builds an arena production can't
+    // produce — and `index_of_id`'s binary search would answer wrong on it.
+    entries.sort_unstable_by_key(|e| e.id);
     SearchIndex {
         names,
         entries,
-        id_to_index,
         generation: 1,
     }
 }
 
 /// The ordered result names after ranking the given matching entry ids.
 fn ranked_names(index: &SearchIndex, matching_ids: &[i64], stem: &str, weights: &ImportanceWeights) -> Vec<String> {
-    let mut matching: Vec<usize> = matching_ids.iter().map(|id| index.id_to_index[id]).collect();
+    let mut matching: Vec<usize> = matching_ids
+        .iter()
+        .map(|id| index.index_of_id(*id).expect("id should be in the arena"))
+        .collect();
     rank(index, &mut matching, stem, false, weights);
     matching
         .iter()
@@ -286,7 +288,10 @@ fn folder_uses_own_weight_file_uses_parent_weight() {
 
     // Both are substring matches; both should get the same boost (folder via own
     // path, file via parent path), so they order by their equal recency then id.
-    let mut matching: Vec<usize> = [10i64, 20].iter().map(|id| index.id_to_index[id]).collect();
+    let mut matching: Vec<usize> = [10i64, 20]
+        .iter()
+        .map(|id| index.index_of_id(*id).expect("id should be in the arena"))
+        .collect();
     rank(&index, &mut matching, "report", false, &weights);
     // /proj is a substring match for "report"? No — classify "proj" vs "report" is
     // Other; "sub-report" is Other too. Same band, same recency, boosted equally.
@@ -367,7 +372,10 @@ fn empty_weights_within_band_is_pure_recency() {
     ]);
     let weights = ImportanceWeights::empty();
     // Ids 10/11/12 map to recency 100/300/200 ⇒ 11, 12, 10.
-    let mut matching: Vec<usize> = [10i64, 11, 12].iter().map(|id| index.id_to_index[id]).collect();
+    let mut matching: Vec<usize> = [10i64, 11, 12]
+        .iter()
+        .map(|id| index.index_of_id(*id).expect("id should be in the arena"))
+        .collect();
     rank(&index, &mut matching, "report", false, &weights);
     let recencies: Vec<u64> = matching
         .iter()
@@ -403,7 +411,10 @@ fn equal_keys_break_by_id_deterministically() {
         },
     ]);
     let weights = ImportanceWeights::empty();
-    let mut matching: Vec<usize> = [30i64, 20, 40].iter().map(|id| index.id_to_index[id]).collect();
+    let mut matching: Vec<usize> = [30i64, 20, 40]
+        .iter()
+        .map(|id| index.index_of_id(*id).expect("id should be in the arena"))
+        .collect();
     rank(&index, &mut matching, "report", false, &weights);
     let ids: Vec<i64> = matching.iter().map(|&i| index.entries[i].id).collect();
     assert_eq!(ids, vec![20, 30, 40], "equal keys sort by id ascending");

@@ -3,8 +3,6 @@
 //! post-filter — and, at the bottom, a live search driven end to end over a real
 //! index the walk builds as it goes.
 
-use std::collections::HashMap;
-
 use super::coverage::coverage_kind;
 use super::*;
 use crate::search::engine;
@@ -67,14 +65,12 @@ fn index_of(files: &[(&str, &str, u64)]) -> SearchIndex {
             modified_at: OptU64::new(Some(*modified_at)),
         });
     }
-    let mut id_to_index = HashMap::new();
-    for (i, e) in entries.iter().enumerate() {
-        id_to_index.insert(e.id, i);
-    }
+    // Keep the arena in the order the real loader produces (`ORDER BY id`, segments
+    // merged in range order): `index_of_id` binary-searches it.
+    entries.sort_unstable_by_key(|e| e.id);
     SearchIndex {
         names,
         entries,
-        id_to_index,
         generation: 1,
     }
 }

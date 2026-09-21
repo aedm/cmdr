@@ -67,8 +67,8 @@ impl ScopeFilter {
                 if current_id == ROOT_ID || current_id == 0 {
                     break;
                 }
-                match index.id_to_index.get(&current_id) {
-                    Some(&idx) => current_id = index.entries[idx].parent_id,
+                match index.index_of_id(current_id) {
+                    Some(idx) => current_id = index.entries[idx].parent_id,
                     None => break,
                 }
             }
@@ -95,8 +95,8 @@ impl ScopeFilter {
                 if current_id == ROOT_ID || current_id == 0 {
                     break;
                 }
-                match index.id_to_index.get(&current_id) {
-                    Some(&idx) => {
+                match index.index_of_id(current_id) {
+                    Some(idx) => {
                         let ancestor = &index.entries[idx];
                         if ancestor.is_directory && self.excludes.excludes_dir_name(index.name(ancestor)) {
                             return ScopeVerdict::Excluded;
@@ -497,8 +497,8 @@ pub(crate) fn reconstruct_path_from_index(index: &SearchIndex, entry_id: i64) ->
         if current_id == ROOT_ID || current_id == 0 {
             break;
         }
-        match index.id_to_index.get(&current_id) {
-            Some(&idx) => {
+        match index.index_of_id(current_id) {
+            Some(idx) => {
                 let entry = &index.entries[idx];
                 let name = index.name(entry);
                 if name.is_empty() {
@@ -539,8 +539,8 @@ pub(crate) fn hash_path_from_index(index: &SearchIndex, entry_id: i64) -> u64 {
         if current_id == ROOT_ID || current_id == 0 {
             break;
         }
-        match index.id_to_index.get(&current_id) {
-            Some(&idx) => {
+        match index.index_of_id(current_id) {
+            Some(idx) => {
                 let entry = &index.entries[idx];
                 let name = index.name(entry);
                 if name.is_empty() {

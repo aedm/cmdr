@@ -34,7 +34,6 @@
 //!
 //! Findings from these runs live in `docs/notes/search-latency-2026-07-28.md`.
 
-use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
@@ -147,14 +146,12 @@ fn build_synthetic_index(n: usize) -> SearchIndex {
         i += 1;
     }
 
-    let mut id_to_index = HashMap::with_capacity(entries.len());
-    for (idx, e) in entries.iter().enumerate() {
-        id_to_index.insert(e.id, idx);
-    }
+    // Keep the arena in the order the real loader produces (`ORDER BY id`, segments
+    // merged in range order): `index_of_id` binary-searches it.
+    entries.sort_unstable_by_key(|e| e.id);
     SearchIndex {
         names,
         entries,
-        id_to_index,
         generation: 1,
     }
 }

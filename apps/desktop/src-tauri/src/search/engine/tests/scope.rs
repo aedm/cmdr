@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::*;
 use crate::search::index::{OptU64, SearchEntry};
 use crate::search::types::PatternType;
@@ -25,7 +23,7 @@ fn make_scope_test_index() -> SearchIndex {
     ];
     let offsets: Vec<(u32, u16)> = test_names.iter().map(|n| arena_push(&mut names, n)).collect();
 
-    let entries = vec![
+    let mut entries = vec![
         SearchEntry {
             id: 1,
             parent_id: 0,
@@ -108,14 +106,12 @@ fn make_scope_test_index() -> SearchIndex {
             modified_at: OptU64::new(Some(8000)),
         },
     ];
-    let mut id_to_index = HashMap::new();
-    for (i, e) in entries.iter().enumerate() {
-        id_to_index.insert(e.id, i);
-    }
+    // Keep the arena in the order the real loader produces (`ORDER BY id`, segments
+    // merged in range order): `index_of_id` binary-searches it.
+    entries.sort_unstable_by_key(|e| e.id);
     SearchIndex {
         names,
         entries,
-        id_to_index,
         generation: 1,
     }
 }
@@ -301,7 +297,7 @@ fn make_newline_dir_index() -> SearchIndex {
         .map(|n| arena_push(&mut names, n))
         .collect();
 
-    let entries = vec![
+    let mut entries = vec![
         SearchEntry {
             id: 1,
             parent_id: 0,
@@ -330,14 +326,12 @@ fn make_newline_dir_index() -> SearchIndex {
             modified_at: OptU64::new(Some(2000)),
         },
     ];
-    let mut id_to_index = HashMap::new();
-    for (i, e) in entries.iter().enumerate() {
-        id_to_index.insert(e.id, i);
-    }
+    // Keep the arena in the order the real loader produces (`ORDER BY id`, segments
+    // merged in range order): `index_of_id` binary-searches it.
+    entries.sort_unstable_by_key(|e| e.id);
     SearchIndex {
         names,
         entries,
-        id_to_index,
         generation: 1,
     }
 }
