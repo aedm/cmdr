@@ -1163,7 +1163,7 @@ fn walking_a_newline_free_file_reads_a_bounded_number_of_bytes() {
         "the walk read {} to answer {} of rows from a 1 MB single-line file; the bound \
          is {allowed}",
         pluralize(read, "byte"),
-        pluralize(answer as u64, "byte")
+        pluralize(answer, "byte")
     );
     // And the bound has to mean something: it must be far below the file itself, or a
     // walk that read everything from the seek point onward would still pass.
