@@ -55,7 +55,8 @@ David's constraints, and what each one rules out:
   Parallelism then only has to cover the snapshot builder and the no-snapshot fallback.
 - **Load on volume selection, not on search.** Mapping is microseconds, so warming on selection stops being a
   budgeting question.
-- **Disk must not go crazy.** ~249 MB against an 830 MB database, roughly +30%. Accepted by David on 2026-09-20.
+- **Disk must not go crazy.** ~271 MB against an 830 MB database, roughly a third on top. Accepted by David on
+  2026-09-20.
 
 **Rejected alternatives**, so nobody re-proposes them mid-flight:
 
@@ -129,11 +130,11 @@ throughout. Sizes below are for the 5,388,928-row root index from `ERR-S76V3`.
 | `name_offset` | `u32` into the names blob | 21.6 MB |
 | `name_len` | `u16` | 10.8 MB |
 | `is_directory` | bitset, one bit per row | 0.7 MB |
-| `modified_at` | `u32` seconds since epoch, `u32::MAX` = unknown | 21.6 MB |
+| `modified_at` | `u64` seconds since epoch, `u64::MAX` = unknown | 43.1 MB |
 | `logical_size` | `u64`, `u64::MAX` = absent | 43.1 MB |
 | `names` | UTF-8, concatenated, not NUL-terminated | ~108 MB |
 
-**Total ~249 MB.** Columnar is load-bearing, not cosmetic: a name match touches `name_offset`, `name_len`,
+**Total ~271 MB.** Columnar is load-bearing, not cosmetic: a name match touches `name_offset`, `name_len`,
 `is_directory`, and `names` (~141 MB, sequential, kernel-read-ahead friendly). `logical_size`, `modified_at`, and
 `parent_ids` are touched for the surviving ~30 rows. An unused column costs disk and nothing else.
 
@@ -144,6 +145,14 @@ Guards the builder owns:
 - `MAX(id) >= u32::MAX` selects `id_width = 8` rather than failing.
 - `None` in `logical_size` is **meaningful** (a NULL is a hardlink-deduped row, not a zero-byte file) and must survive
   exactly, in both directions. Same sentinel discipline as today's `OptU64`, and the same reason.
+
+❌ **Don't narrow `modified_at` to `u32`.** It saves 21.6 MB and costs correctness: `u32` seconds ends at 2106, and any
+value past that would have to clamp, which silently changes what a date filter returns for a file carrying a far-future
+or garbage mtime (a real thing off SMB and MTP, where the value is the server's rather than ours). The rule this change
+holds itself to is that **every filter reads the same bytes it reads today**, so the width stays `u64` and the sentinel
+stays `u64::MAX`. Negative values can't reach here: the scanner already maps a pre-1970 `tv_sec` to `None`
+(`crates/cmdr-index/src/indexing/scanner/walker/bulk_read.rs`), which matters because `rusqlite`'s `FromSql for u64` is
+a fallible `try_into` and a negative would abort the whole load.
 
 ### Contract B: the `SearchIndex` accessor API
 
@@ -175,6 +184,27 @@ the mapped `ids` (which is sorted, which is why `id_to_index` disappears and tak
 `matcher.rs` currently takes a `&SearchEntry` plus its name slice; it takes `(&SearchIndex, idx)` instead. No matching
 or folding logic changes: ❌ do not re-derive case folding or NFD normalization while you are in there.
 
+### Where each filter's data comes from, before and after
+
+The rule: **every filter reads the same bytes it reads today, from a different container.** Nothing moves between
+sources, so nothing changes answers. Pinned by the differential test in M4.
+
+| Filter | Today | After |
+| --- | --- | --- |
+| Name (substring, glob, regex, fuzzy) | arena `names` + `name_offset`/`name_len` | the `names` / `name_offset` / `name_len` columns |
+| Folders only / files only | arena `is_directory` | the `is_directory` bitset |
+| **File** size (`min_size`, `max_size`) | arena `logical_size`, NULL meaning unknown | the `logical_size` column, same sentinel |
+| **Folder** size | ❗ **not the arena**: `dir_sizes_for` reads `dir_stats` from SQLite per search | **unchanged**, still SQLite |
+| Modified before / after | arena `modified_at` | the `modified_at` column, same width and sentinel |
+| Scope (search under this folder) | ancestor walk over `parent_id` via `id_to_index` | same walk, `index_of_id` over the sorted `ids` |
+| Exclusions | ancestor-id walk, same chain | same |
+| Ranking (importance blend, recency, match quality) | `hash_path` off the parent chain + the weights map | same chain, weights now mapped (M8) |
+
+The folder-size row is the one worth knowing: a directory's recursive size was never in the arena, so that filter
+already goes to the database on every search, and this change does not touch it. The `C.md` guardrail stands unchanged:
+a directory's size filter applies BEFORE ranking, and ❌ a read error never falls back to "no map", because the engine
+reads that as "no filter".
+
 ### The journal
 
 `index-{volume_id}.journal`, append-only, written by the index writer **after** the SQLite commit succeeds.
@@ -190,7 +220,7 @@ or folding logic changes: ❌ do not re-derive case folding or NFD normalization
   `Writer: +11 msgs (4 upserts, 1 delete, 6 others)` per 5-6 s), so ~86,000 records and ~5 MB a day.
 
 **Rebuild threshold**: journal past 10% of `row_count` or past 64 MB, whichever comes first. Roughly daily on a busy
-disk, which keeps write amplification honest: rebuilding 249 MB on a timer would be gigabytes of SSD writes a day, and
+disk, which keeps write amplification honest: rebuilding 271 MB on a timer would be gigabytes of SSD writes a day, and
 the resources principle exists to stop exactly that. Rebuild runs background, idle-gated, and only with free space to
 spare.
 
