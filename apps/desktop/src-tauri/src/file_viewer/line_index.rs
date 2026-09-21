@@ -18,7 +18,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::encoding::FileEncoding;
-use super::rows::{FileSource, RowReader, TotalRows, collect_rows, search_rows};
+use super::rows::{self, FileSource, RowReader, TotalRows, collect_rows, search_rows};
 use super::search_matcher::Matcher;
 use super::{
     BackendCapabilities, FileViewerBackend, INDEX_CHECKPOINT_INTERVAL, LineChunk, SearchMatch, SeekTarget, ViewerError,
@@ -33,6 +33,19 @@ static OPEN_CALL_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::Atom
 #[allow(dead_code, reason = "consumed by session_test instant-swap test")]
 pub fn test_only_open_call_count() -> usize {
     OPEN_CALL_COUNT.load(Ordering::Relaxed)
+}
+
+/// Read enough of `path` to decide where its content starts, through the one rule all
+/// three backends share (`rows::content_start`).
+fn read_content_start(path: &Path, encoding: FileEncoding) -> Result<u64, ViewerError> {
+    let bom = encoding.bom_bytes();
+    if bom.is_empty() {
+        return Ok(0);
+    }
+    let mut head = vec![0u8; bom.len()];
+    let mut file = File::open(path)?;
+    let read = std::io::Read::read(&mut file, &mut head)?;
+    Ok(rows::content_start(&head[..read], encoding))
 }
 
 /// A checkpoint in the row index.
@@ -97,8 +110,7 @@ impl LineIndexBackend {
 
         // Walk the file's rows ONCE, recording both coordinates as we go. A second pass
         // to recover either one would read the file twice and break invariant I1.
-        let bom_len = encoding.bom_bytes().len() as u64;
-        let content_start = if total_bytes >= bom_len { bom_len } else { 0 };
+        let content_start = read_content_start(path, encoding)?;
 
         let file = File::open(path)?;
         let mut reader = RowReader::new(FileSource::new(file, total_bytes), encoding, content_start);

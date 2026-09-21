@@ -35,7 +35,7 @@ use super::search_matcher::{Matcher, SearchMode};
 use super::watcher::{VIEWER_WATCHER_MANAGER, WatcherEvent};
 use super::{
     BackendCapabilities, FULL_LOAD_THRESHOLD, FileViewerBackend, LineChunk, MAX_SEARCH_MATCHES, SearchMatch,
-    SeekTarget, ViewerError,
+    SeekTarget, TotalRows, ViewerError,
 };
 
 /// Process-wide AppHandle for emitting `viewer:file-changed:<sid>` events from
@@ -140,6 +140,12 @@ pub struct ViewerOpenResult {
 pub struct ViewerSessionStatus {
     pub backend_type: BackendType,
     pub is_indexing: bool,
+    /// How many ROWS the file has, and whether that is a count or an estimate. The
+    /// frontend's scroll coordinate, so the poll that watches the index build is what
+    /// swaps `ByteSeekBackend`'s estimate for `LineIndexBackend`'s real count.
+    pub total_rows: TotalRows,
+    /// Physical lines, if the backend knows them. The gutter's numbering and the
+    /// status bar's count, ❌ never a row coordinate.
     pub total_lines: Option<usize>,
 }
 
@@ -654,6 +660,7 @@ pub fn get_session_status(session_id: &str) -> Result<ViewerSessionStatus, Viewe
     Ok(ViewerSessionStatus {
         backend_type: session.backend_type.lock_ignore_poison().clone(),
         is_indexing,
+        total_rows: backend.total_rows(),
         total_lines: backend.total_lines(),
     })
 }

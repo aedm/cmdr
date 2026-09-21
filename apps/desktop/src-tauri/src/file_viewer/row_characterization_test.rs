@@ -25,6 +25,7 @@ use super::line_index::LineIndexBackend;
 use super::range_read::{RangeEnd, read_range};
 use super::search_matcher::{Matcher, SearchMode};
 use super::session;
+use super::encoding::FileEncoding;
 use super::{CHUNK_BUDGET_BYTES, ChunkEnd, FileViewerBackend, SearchMatch, SeekTarget, TotalRows};
 use crate::test_support::TestDir;
 
@@ -63,6 +64,19 @@ fn open_backend(which: Which, path: &Path) -> Box<dyn FileViewerBackend> {
         Which::FullLoad => Box::new(FullLoadBackend::open(path).expect("FullLoad must open the fixture")),
         Which::ByteSeek => Box::new(ByteSeekBackend::open(path).expect("ByteSeek must open the fixture")),
         Which::LineIndex => Box::new(LineIndexBackend::open(path, &cancel).expect("LineIndex must open the fixture")),
+    }
+}
+
+/// Open a backend with an explicit encoding, for a fixture whose bytes carry no BOM to
+/// detect from.
+fn open_backend_with_encoding(which: Which, path: &Path, encoding: FileEncoding) -> Box<dyn FileViewerBackend> {
+    let cancel = AtomicBool::new(false);
+    match which {
+        Which::FullLoad => Box::new(FullLoadBackend::open_with_encoding(path, encoding).expect("FullLoad opens")),
+        Which::ByteSeek => Box::new(ByteSeekBackend::open_with_encoding(path, encoding).expect("ByteSeek opens")),
+        Which::LineIndex => {
+            Box::new(LineIndexBackend::open_with_encoding(path, encoding, &cancel).expect("LineIndex opens"))
+        }
     }
 }
 
@@ -451,6 +465,57 @@ fn utf16_le_with_bom(text: &str) -> Vec<u8> {
         bytes.extend_from_slice(&unit.to_le_bytes());
     }
     bytes
+}
+
+/// `text` as UTF-16 with NO BOM, in either byte order.
+///
+/// ❗ Not a hypothetical shape: `encoding::detect_from_head` reaches UTF-16 without a
+/// BOM on purpose, through its parity heuristic, and a manual encoding switch lands a
+/// backend here too. Every other UTF-16 fixture in this file writes a BOM, which is
+/// exactly how a backend assuming one went unnoticed.
+fn utf16_no_bom(text: &str, le: bool) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    for unit in text.encode_utf16() {
+        bytes.extend_from_slice(&if le { unit.to_le_bytes() } else { unit.to_be_bytes() });
+    }
+    bytes
+}
+
+/// ❗ A UTF-16 file with NO BOM must not lose its first character.
+///
+/// `LineIndexBackend` took `encoding.bom_bytes().len()` as its content start without
+/// checking the file actually begins with one, so a BOM-less UTF-16 file lost its first
+/// character everywhere the backend is used: viewport, copy, save-as, and `inspect_file`
+/// through `headless.rs`. It also put LineIndex's row 0 two bytes off ByteSeek's, so the
+/// background upgrade shifted content under a live row cache.
+#[test]
+fn a_utf16_file_without_a_bom_keeps_its_first_character_in_every_backend() {
+    let dir = TestDir::new("viewer_char_utf16_no_bom");
+    let text = "alpha\nbeta gamma\ndelta\n";
+
+    for (order, le, encoding) in [
+        ("le", true, FileEncoding::Utf16Le),
+        ("be", false, FileEncoding::Utf16Be),
+    ] {
+        let file = fixture(&dir, &format!("no_bom_{order}.txt"), &utf16_no_bom(text, le));
+        for which in ALL_BACKENDS {
+            let backend = open_backend_with_encoding(which, &file, encoding);
+            let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 5).expect("fetch");
+            assert_eq!(
+                &chunk.texts()[..3],
+                ["alpha", "beta gamma", "delta"],
+                "{which:?} {order}"
+            );
+            // No BOM to skip, so row 0 starts at byte 0 in every backend. A backend that
+            // skipped two bytes anyway would report 2 here and serve "lpha".
+            assert_eq!(chunk.byte_offset, 0, "{which:?} {order}");
+            assert_eq!(
+                read(backend.as_ref(), at(0, 0), RangeEnd::Eof),
+                text,
+                "{which:?} {order}"
+            );
+        }
+    }
 }
 
 #[test]

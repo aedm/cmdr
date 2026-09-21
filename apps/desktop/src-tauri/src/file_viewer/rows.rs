@@ -66,6 +66,25 @@ pub const SEGMENT_BYTES: u64 = 20_000;
 /// starts or ends, which is what makes a 50 GB single-line file cheap.
 pub const MAX_WINDOW_BYTES: u64 = 2 * SEGMENT_BYTES;
 
+/// Where a file's content starts: past its BOM, if it actually has one.
+///
+/// ❗ `encoding.bom_bytes().len()` is NOT the answer. An encoding that CAN carry a BOM
+/// doesn't mean this file does: `encoding::detect_from_head` reaches UTF-16 without one
+/// through its parity heuristic, and a manual encoding switch lands a backend here too.
+/// Assuming the BOM drops the file's first character from every read, and shifts one
+/// backend's row 0 against another's, which the ByteSeek→LineIndex upgrade then slides
+/// under a live row cache.
+///
+/// `head` is the file's first bytes; anything at least as long as the BOM will do.
+pub fn content_start(head: &[u8], encoding: FileEncoding) -> u64 {
+    let bom = encoding.bom_bytes();
+    if !bom.is_empty() && head.starts_with(bom) {
+        bom.len() as u64
+    } else {
+        0
+    }
+}
+
 /// A file the rule can read windows of.
 ///
 /// The rule never opens a file itself, so a caller hands it an in-memory slice
