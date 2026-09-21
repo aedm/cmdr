@@ -217,7 +217,7 @@ impl<S: RowSource> RowRuler<S> {
     ///
     /// A forward walk needs both halves: `from_newline` is what makes a row print a
     /// line number in its gutter, and it is also the entire newline evidence the NEXT
-    /// boundary needs (see [`next_row_boundary`]). So a fetch pays for one window on
+    /// boundary needs (see [`super::row_walk::next_row_boundary`]). So a fetch pays for one window on
     /// its first row and none on the thousands after it.
     pub fn row_start_detail(&mut self, offset: u64) -> Result<RowStart, ViewerError> {
         let total = self.source.total_bytes();
@@ -313,7 +313,7 @@ impl<S: RowSource> RowRuler<S> {
     }
 
     /// Read straight from the underlying source, for a caller that does its own
-    /// buffering ([`RowReader`]). The ruler's own window is untouched.
+    /// buffering ([`super::row_walk::RowReader`]). The ruler's own window is untouched.
     pub(super) fn read_into(&mut self, start: u64, buf: &mut [u8]) -> Result<usize, ViewerError> {
         self.source.read_window(start, buf)
     }
@@ -444,7 +444,7 @@ impl<'a> Window<'a> {
 /// The greatest character start `<= pos`, decided from the bytes below `pos` alone.
 ///
 /// `bytes` is any window holding them; `bytes_start` is its absolute offset. Free
-/// rather than a [`Window`] method because the forward walk ([`RowReader`]) holds its
+/// rather than a [`Window`] method because the forward walk ([`super::row_walk::RowReader`]) holds its
 /// own buffer and has to snap clause 3's multiples with the same arithmetic. See
 /// [`Window::clause_three_boundary`] for why only clause 3 needs this.
 ///
