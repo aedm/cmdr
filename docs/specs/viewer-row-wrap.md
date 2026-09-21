@@ -263,3 +263,29 @@ Each lands as its own commit (or a small series), green before the next starts.
 - **ByteSeek row numbers are estimates mid-file** for files that do contain newlines, exactly as line numbers are
   estimates today. Unchanged, not made worse. (On a newline-free file they become exact, which is a small win.)
 - **`viewer.error.readFailed` = "Failed to read file"** breaks the style guide twice over. Real, unrelated, leave it.
+
+## Bugs the characterization milestone found (all live on `main`)
+
+Pinned as `bug_pinned_*` in `row_characterization_test.rs`, all in code milestone 3 rewrites, so milestone 3 fixes them
+and converts each pin into an assertion of correct behaviour. The first two are silent data corruption in copy and
+save, which puts them ahead of the feature work in importance.
+
+1. **A partial copy in ByteSeek mode gives an empty clipboard.** `range_read` seeks its first chunk by
+   `SeekTarget::Line`, and ByteSeek answers with its 80-bytes-a-line estimate, which lands past the range's end line;
+   the loop then returns having emitted nothing. On a 20-byte-line file a single-line range comes back as a DIFFERENT
+   line instead. Anything over 1 MB is exposed, and the whole-file gesture escapes only because it starts at line 0.
+2. **A range over 4 096 lines on LineIndex duplicates a line at every chunk seam.** `range_read` seeks the next chunk
+   by the byte offset past the last one, and LineIndex rounds that down to its previous checkpoint, re-serving a line
+   that already went out. Copy and save-as of anything longer than 4 096 lines are corrupt today.
+3. **Search finds nothing in a UTF-16 file** unless it is small enough for FullLoad: ByteSeek and LineIndex both
+   `memchr(b'\n')` over raw bytes.
+4. **ByteSeek surfaces the UTF-16 BOM as a selectable `U+FEFF`.**
+5. **LineIndex rounds a byte-offset seek down** by up to 255 lines, where ByteSeek resolves it exactly.
+6. **The three backends disagree about the trailing empty line** of a newline-terminated file, so a `RangeEnd::Eof`
+   copy returns a different number of trailing newlines depending on which backend served it.
+
+## Notes for whoever runs the lane
+
+The rust lane carries exactly two expected failures until milestone 3 lands:
+`red_first_fetch_of_a_newline_free_file_must_be_bounded` and `red_search_in_a_newline_free_file_must_be_bounded`. Any
+other failure is real. (`macos-availability` also fails on a pre-existing SDK 27.0-vs-26.5 mismatch, unrelated.)
