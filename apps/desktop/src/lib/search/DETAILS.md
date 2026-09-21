@@ -172,6 +172,35 @@ live-search work did NOT deliver: its terminal states cover a RUN, and this fail
 Wiping the readiness flag there meant the gate went back to "waiting" with no second event ever coming, so every later
 search in that session silently did nothing.
 
+### Saying the wait out loud
+
+A dialog opened on a volume whose arena isn't in memory has nothing to show and nothing to say, and that silence read as
+an idle dialog. `index-load-hint.svelte.ts` fills it, and `IndexLoadHint.svelte` renders it above the results next to
+the coverage note.
+
+Three rules shape it, and each one is a case where a naive version says something wrong:
+
+- **It reads `pendingIndexVolumeId`, and nothing else.** That field is set only when `prepare_search_index` answered
+  `loading: true`, the backend's promise that a `search-index-ready` is coming. The terminal `ready: false` +
+  `loading: false` answer ("this volume has no index to load") records no pending volume, so the hint never opens on a
+  wait that will never end. ❌ Don't key it on `isIndexReady` instead: that reads the terminal case as ready (it is
+  ready, to run and find nothing), and `CoverageNote` is what answers it, after a run has proved it.
+- **It waits `INDEX_LOAD_HINT_DELAY_MS` (500 ms) first.** A load is commonly well under a second, and a line that
+  appears and disappears inside a couple of frames costs the reader more than the silence it replaced. The clock is one
+  `setTimeout` per wait inside an `$effect`, so the cleanup covers all three endings together: the arena landing, the
+  focused pane moving to another volume mid-dialog (a fresh wait, so a fresh 500 ms), and the dialog closing.
+- **It stands down once a run has been attempted.** `QueryResults` renders its own "Loading drive index..." state from
+  `!isIndexReady && hasSearched`, so from the first run on there are two voices for one wait. `QueryDialog` hands the
+  notice snippet a `ResultsNoticeContext` carrying `hasSearched` for exactly this, and the hint takes itself off. That's
+  also why the strip reuses `queryUi.results.loadingIndex` rather than minting a second key: one fact, one string, in
+  both places the user can meet it.
+
+Both halves are pinned: `index-load-hint.svelte.test.ts` drives the clock, and
+`SearchDialog.index-load-hint.svelte.test.ts` pins what only a mounted dialog can show (the terminal no-index case
+staying silent, and the hand-off to the results area). The tier-3 a11y block in `search.a11y.test.ts` audits both
+states, the collapsed one included: the wrapper has to be mounted BEFORE the sentence arrives or the live region
+announces nothing, the same reason `CoverageNote` never unmounts.
+
 ### The image grid answers two settings
 
 `ImageSearchResults.svelte` is gated by `mediaIndex.enabled` AND `mediaIndex.showInSearch`, folded into one

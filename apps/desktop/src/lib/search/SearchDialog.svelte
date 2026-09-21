@@ -17,6 +17,8 @@
      *     query builder they share, and the coverage note both write.
      *   - `ai-translate.ts`: the translate IPC and every filter write its answer makes.
      *   - `coverage-cta.svelte.ts`: what may be OFFERED over a coverage gap.
+     *   - `index-load-hint.svelte.ts`: whether the wait for a volume's arena has run long
+     *     enough to be worth a sentence.
      *   - `snapshot-promotion.ts`: "Show all in main window", and the recent-search writes.
      *   - `recent-search-adapter.ts`: how a history entry renders, and pick / remove.
      */
@@ -48,10 +50,12 @@
     import QueryDialog from '$lib/query-ui/QueryDialog.svelte'
     import ImageSearchResults from './ImageSearchResults.svelte'
     import CoverageNote from './CoverageNote.svelte'
+    import IndexLoadHint from './IndexLoadHint.svelte'
     import { translateAi } from './ai-translate'
     import { createSearchLifecycle } from './search-lifecycle.svelte'
     import { createSearchRunners } from './search-runners'
     import { createCoverageCta } from './coverage-cta.svelte'
+    import { createIndexLoadHint } from './index-load-hint.svelte'
     import { persistRecentSearch, promoteResultsToPane } from './snapshot-promotion'
     import {
         activateHistoryEntry,
@@ -64,6 +68,7 @@
     import type {
         QueryDialogConfig,
         QueryDialogFilterChipsExtras,
+        ResultsNoticeContext,
     } from '$lib/query-ui/query-dialog-config'
     import { loadRecentSearches, recentSearchesStore } from './recent-searches-state.svelte'
     import { setSearchReopener } from './walk-handoff-state.svelte'
@@ -176,6 +181,12 @@
             onClose()
         },
     })
+
+    /**
+     * Whether to say out loud that this volume's index is still loading. Gated on a
+     * threshold, so the common fast load passes unremarked.
+     */
+    const indexLoadHint = createIndexLoadHint()
 
     const aiEnabled = $derived(aiProvider !== 'off' && lifecycle.isIndexAvailable)
     const inputsDisabled = $derived(!lifecycle.isIndexAvailable)
@@ -329,7 +340,7 @@
 
         // Why this answer is short, rendered right above the results it qualifies.
         // Search-only: Selection matches a pane listing, so it has no coverage question.
-        resultsNotice: coverageNotice,
+        resultsNotice: resultsNotices,
 
         // The "text in images" OCR grid, rendered below the filename results. Search-only
         // (Selection passes no `resultsExtra`); the snippet owns its own data + lifecycle.
@@ -380,7 +391,11 @@
     })
 </script>
 
-{#snippet coverageNotice()}
+{#snippet resultsNotices({ hasSearched }: ResultsNoticeContext)}
+    <!-- The wait, and then the verdict. `hasSearched` retires the hint the moment
+         `QueryResults` starts speaking for the same wait itself, so the dialog never
+         says it twice. -->
+    <IndexLoadHint visible={indexLoadHint.visible && !hasSearched} />
     <CoverageNote
         note={coverage.note}
         driveName={coverage.driveName}

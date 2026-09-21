@@ -184,6 +184,21 @@ export interface QueryDialogRecentItems<E> {
 }
 
 /**
+ * What QueryDialog knows about the run and the notice snippet doesn't. Passed on every
+ * render so a consumer's strip can stand down when the results area already speaks for
+ * the same thing.
+ */
+export interface ResultsNoticeContext {
+  /**
+   * Whether a run has been ATTEMPTED this session. It goes true even for a run that
+   * bailed on a not-yet-loaded index, which is the point: from then on `QueryResults`
+   * renders its own "loading drive index" state, and a second voice saying so above it
+   * would be noise.
+   */
+  hasSearched: boolean
+}
+
+/**
  * The shape every consumer of `QueryDialog` builds.
  *
  * Generic over `E` (the history entry type): Search wires `HistoryEntry`, Selection
@@ -269,11 +284,12 @@ export interface QueryDialogConfig<E = unknown> {
   /**
    * Optional consumer-owned banner rendered directly ABOVE the results table, where a
    * caveat about the answer belongs. Search uses it for the coverage note (which
-   * scopes the run couldn't cover, and what to do about it); other consumers pass
-   * `undefined` and the row doesn't render. The mirror of `resultsExtra`: the snippet
-   * owns its own state, and QueryDialog only gives it a slot.
+   * scopes the run couldn't cover, and what to do about it) and for the index-load
+   * hint; other consumers pass `undefined` and the row doesn't render. The mirror of
+   * `resultsExtra`: the snippet owns its own state, and QueryDialog only gives it a
+   * slot plus the one fact it alone holds ({@link ResultsNoticeContext}).
    */
-  resultsNotice?: import('svelte').Snippet
+  resultsNotice?: import('svelte').Snippet<[ResultsNoticeContext]>
 
   /**
    * Optional consumer-owned section rendered directly BELOW the main results table

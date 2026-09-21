@@ -676,7 +676,7 @@
         />
 
         {#if config.resultsNotice}
-            {@render config.resultsNotice()}
+            {@render config.resultsNotice({ hasSearched: runner.hasSearched })}
         {/if}
 
         <!-- Zone 3: the results. `.results-container` inside is the only `flex: 1 1 auto`

@@ -1,6 +1,6 @@
 /**
- * Tier 3 a11y tests for the Search surfaces: the coverage note, the image-search
- * grid, the dialog itself, and the walk-handoff toast.
+ * Tier 3 a11y tests for the Search surfaces: the coverage note, the index-load hint,
+ * the image-search grid, the dialog itself, and the walk-handoff toast.
  *
  * One file per component would cost about four times as much: `svelte-tests`
  * charges per test FILE, not per test (`docs/testing.md` § "What a test actually
@@ -21,6 +21,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushSync, tick } from 'svelte'
 import { writable } from 'svelte/store'
 import CoverageNote from './CoverageNote.svelte'
+import IndexLoadHint from './IndexLoadHint.svelte'
 import SearchDialog from './SearchDialog.svelte'
 import WalkHandoffToastContent from './WalkHandoffToastContent.svelte'
 import { _resetWalkHandoffForTesting } from './walk-handoff.svelte'
@@ -166,6 +167,42 @@ describe('CoverageNote a11y', () => {
   it('stays mounted with nothing to say, so the live region survives to announce the next run', async () => {
     const target = mountNote(null, null)
     const strip = target.querySelector('.coverage-note')
+    expect(strip).not.toBeNull()
+    expect(strip?.getAttribute('role')).toBe('status')
+    expect(strip?.textContent.trim()).toBe('')
+    await expectNoA11yViolations(target)
+  })
+})
+
+/**
+ * Tier 3 a11y tests for `IndexLoadHint.svelte`: the strip that names a slow index load.
+ *
+ * Both states are audited, and the EMPTY one carries the weight: the wrapper stays
+ * mounted with `role="status"` so the live region exists before the sentence does, which
+ * is the only way a screen-reader user hears about the wait at all. A region mounted
+ * together with its first content is announced by nobody.
+ */
+describe('IndexLoadHint a11y', () => {
+  function mountHint(visible: boolean): HTMLElement {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    mount(IndexLoadHint, { target, props: { visible } })
+    flushSync()
+    return target
+  }
+
+  it('the named wait has no violations, and lands inside the live region', async () => {
+    const target = mountHint(true)
+    expect(target.querySelector('.index-load-hint')?.getAttribute('role')).toBe('status')
+    const message = target.querySelector('.index-load-hint .message')
+    expect(message).not.toBeNull()
+    expect(message?.textContent.trim()).not.toBe('')
+    await expectNoA11yViolations(target)
+  })
+
+  it('stays mounted with nothing to say, so the live region survives to announce the wait', async () => {
+    const target = mountHint(false)
+    const strip = target.querySelector('.index-load-hint')
     expect(strip).not.toBeNull()
     expect(strip?.getAttribute('role')).toBe('status')
     expect(strip?.textContent.trim()).toBe('')

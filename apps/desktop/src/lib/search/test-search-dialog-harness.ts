@@ -112,6 +112,17 @@ export const searchFilesStreamingMock = vi.fn(async (query: unknown, runId: stri
   return { runId, targetVolumeId: 'root' }
 })
 
+/**
+ * The arena pre-load. Default: this volume's index is already in memory, which is what
+ * every dialog test that isn't ABOUT the wait wants. A test that is (see
+ * `SearchDialog.index-load-hint.svelte.test.ts`) seeds `{ ready: false, loading: true }`
+ * and drives the wait itself.
+ */
+export const prepareSearchIndexMock = vi.fn(
+  (_volumeId?: string | null): Promise<{ ready: boolean; entryCount: number; loading?: boolean }> =>
+    Promise.resolve({ ready: true, entryCount: 1234 }),
+)
+
 export const translateSearchQueryMock = vi.fn(() => Promise.resolve({ display: {}, query: {} } as TranslateResult))
 
 export const addRecentSearchMock = vi.fn(() => Promise.resolve())
@@ -169,7 +180,7 @@ export function tauriCommandsMock(): Record<string, unknown> {
   return {
     notifyDialogOpened: vi.fn(() => Promise.resolve()),
     notifyDialogClosed: vi.fn(() => Promise.resolve()),
-    prepareSearchIndex: vi.fn(() => Promise.resolve({ ready: true, entryCount: 1234 })),
+    prepareSearchIndex: prepareSearchIndexMock,
     searchFiles: searchFilesMock,
     searchFilesStreaming: searchFilesStreamingMock,
     cancelSearch: vi.fn(() => Promise.resolve(true)),

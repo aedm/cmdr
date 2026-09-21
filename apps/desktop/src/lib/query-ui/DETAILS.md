@@ -50,8 +50,14 @@ history store + adapter + key, the empty-state hints, the filter-chips extras, t
 `noticeBanner`, the async `runQuery` + optional `translateAi` callbacks, primary + secondary action descriptors,
 callbacks for path-pill / example / row-menu / recent-activate / recent-remove / close events, optional `onMount` /
 `onDestroy` / `onClearState` hooks, and two optional consumer-owned snippets bracketing the results table, each owning
-its own data + lifecycle: `resultsNotice` above it (a caveat about the answer — Search's coverage note) and
-`resultsExtra` below it (a second result kind — Search's "text in images" OCR grid). Other consumers omit both.
+its own data + lifecycle: `resultsNotice` above it (a caveat about the answer, or a wait worth naming — Search's
+coverage note and its index-load hint) and `resultsExtra` below it (a second result kind — Search's "text in images" OCR
+grid). Other consumers omit both.
+
+`resultsNotice` is rendered with a `ResultsNoticeContext`, which today carries one field: `hasSearched`. It exists so a
+consumer's strip can stand down when the results area already speaks for the same thing. Search's index-load hint reads
+it, because `QueryResults` renders its own "loading drive index" state off `!isIndexReady && hasSearched`, and a second
+voice over it would say the same wait twice. Anything a notice can derive from its own state stays out of this type.
 
 ### The controller split
 
