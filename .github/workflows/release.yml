@@ -64,7 +64,15 @@ jobs:
     # `docs/guides/releasing.md` § "Which runner builds the release" for the trade-offs and the
     # Finder-Automation permission problem that took the self-hosted one out of service.
     # Switching back is this one line, plus re-enabling the runner service on the Mac.
-    runs-on: macos-latest
+    #
+    # ❗ Pinned to the IMAGE, ❌ never `macos-latest`: an image carries exactly one Xcode major, so
+    # this line picks the macOS SDK the bundle links against, and Apple gates behavior changes on
+    # that SDK. `macos-latest` follows GitHub's schedule, which would change the shipped app in a
+    # release nobody touched. Moving to an Xcode 27 image hides every menu-item image that hasn't
+    # opted in, "Open with" and `Share` included, so read
+    # `apps/desktop/src-tauri/src/menu/DETAILS.md` § SF Symbol icons before changing it. Same arch
+    # as before: `macos-26` is arm64, as `macos-latest` already was.
+    runs-on: macos-26
     # Generous because a hosted runner is ephemeral: every job pays a cold ~1000-crate Tauri
     # compile (the self-hosted runner's warm cargo cache made 30 minutes plenty). The three arch
     # jobs run in PARALLEL here rather than queueing on one machine, so wall-clock is one cold
@@ -84,6 +92,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Check the macOS SDK is the one we pinned
+        # Fails before the ~1000-crate compile rather than after it, and loudly: a silently
+        # different SDK ships a different app. Only the MAJOR is load-bearing; the image rotates
+        # Xcode minors freely and those don't move the behavior we care about.
+        # ❌ Don't raise this to get a release out. Moving SDK means checking the menu-bar icons,
+        # the "Open with" app icons, the `Share` service icons, the File Provider logos, and the
+        # tag row first (`apps/desktop/src-tauri/src/menu/DETAILS.md` § SF Symbol icons), then
+        # bumping `runs-on` and this number in the same commit.
+        env:
+          EXPECTED_SDK_MAJOR: '26'
+        run: |
+          sdk="$(xcrun --show-sdk-version)"
+          echo "Xcode $(xcodebuild -version | head -1 | cut -d' ' -f2), macOS SDK $sdk"
+          if [ "${sdk%%.*}" != "$EXPECTED_SDK_MAJOR" ]; then
+            echo "::error::macOS SDK $sdk, expected ${EXPECTED_SDK_MAJOR}.x. The runner image moved under us; see the runs-on comment in this file."
+            exit 1
+          fi
 
       - name: Install mise
         uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4

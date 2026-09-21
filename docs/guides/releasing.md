@@ -12,8 +12,13 @@ Related guides for the signing and distribution steps: `apple-signing-and-notari
 
 ## Which runner builds the release
 
-**GitHub-hosted (`macos-latest`) builds every release**, set in one line in `release.yml` (`build.runs-on`). This repo
-is public, so hosted macOS minutes are free. No self-hosted runner is registered, and nothing needs one.
+**GitHub-hosted (`macos-26`) builds every release**, set in one line in `release.yml` (`build.runs-on`). This repo is
+public, so hosted macOS minutes are free. No self-hosted runner is registered, and nothing needs one.
+
+- **Why the image and not `macos-latest`**: an image carries exactly one Xcode major, so that line picks the macOS SDK
+  the bundle links against, and Apple gates behavior changes on it. A build step asserts the SDK major and fails before
+  the compile, so a GitHub image bump can't quietly change the shipped app. What an SDK move would cost today, and what
+  to check before making one: `apps/desktop/src-tauri/src/menu/DETAILS.md` § SF Symbol icons.
 
 - **Why hosted, and why going back is unappealing**: `bundle_dmg.sh` drives Finder over AppleScript, which on a
   self-hosted Mac needs a TCC Automation grant for the runner's bundled `node`. That path changes on every runner
