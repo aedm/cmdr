@@ -9,29 +9,29 @@ import { describe, it, expect } from 'vitest'
 
 import { rangeAtCaret, extendRangeToGranularity } from './viewer-selection-granularity'
 
-const LINES = ['alpha beta gamma', 'second line']
-const getLineText = (line: number): string | undefined => LINES[line]
+const ROWS = ['alpha beta gamma', 'second line']
+const getRowText = (row: number): string | undefined => ROWS[row]
 
 describe('rangeAtCaret', () => {
   it('collapses to the caret at character granularity', () => {
-    expect(rangeAtCaret({ caret: { line: 0, offset: 7 }, granularity: 'character', getLineText })).toEqual({
-      line: 0,
+    expect(rangeAtCaret({ caret: { row: 0, offset: 7 }, granularity: 'character', getRowText })).toEqual({
+      row: 0,
       start: 7,
       end: 7,
     })
   })
 
   it('snaps to the surrounding word', () => {
-    expect(rangeAtCaret({ caret: { line: 0, offset: 7 }, granularity: 'word', getLineText })).toEqual({
-      line: 0,
+    expect(rangeAtCaret({ caret: { row: 0, offset: 7 }, granularity: 'word', getRowText })).toEqual({
+      row: 0,
       start: 6,
       end: 10,
     })
   })
 
   it('spans the whole logical line', () => {
-    expect(rangeAtCaret({ caret: { line: 1, offset: 3 }, granularity: 'line', getLineText })).toEqual({
-      line: 1,
+    expect(rangeAtCaret({ caret: { row: 1, offset: 3 }, granularity: 'row', getRowText })).toEqual({
+      row: 1,
       start: 0,
       end: 11,
     })
@@ -40,8 +40,8 @@ describe('rangeAtCaret', () => {
   it('collapses on a line that has not been fetched yet', () => {
     // Mid-autoscroll the line cache runs dry. The row renders empty anyway, so a
     // collapsed range there matches what the user sees.
-    expect(rangeAtCaret({ caret: { line: 9, offset: 4 }, granularity: 'word', getLineText })).toEqual({
-      line: 9,
+    expect(rangeAtCaret({ caret: { row: 9, offset: 4 }, granularity: 'word', getRowText })).toEqual({
+      row: 9,
       start: 0,
       end: 0,
     })
@@ -49,45 +49,45 @@ describe('rangeAtCaret', () => {
 })
 
 describe('extendRangeToGranularity', () => {
-  const anchorRange = { line: 0, start: 6, end: 10 }
+  const anchorRange = { row: 0, start: 6, end: 10 }
 
   it('runs from the anchor range start to the focus word end going forward', () => {
     expect(
-      extendRangeToGranularity({ anchorRange, focus: { line: 0, offset: 12 }, granularity: 'word', getLineText }),
-    ).toEqual({ anchor: { line: 0, offset: 6 }, focus: { line: 0, offset: 16 } })
+      extendRangeToGranularity({ anchorRange, focus: { row: 0, offset: 12 }, granularity: 'word', getRowText }),
+    ).toEqual({ anchor: { row: 0, offset: 6 }, focus: { row: 0, offset: 16 } })
   })
 
   it('runs from the anchor range end to the focus word start going backward', () => {
     expect(
-      extendRangeToGranularity({ anchorRange, focus: { line: 0, offset: 2 }, granularity: 'word', getLineText }),
-    ).toEqual({ anchor: { line: 0, offset: 10 }, focus: { line: 0, offset: 0 } })
+      extendRangeToGranularity({ anchorRange, focus: { row: 0, offset: 2 }, granularity: 'word', getRowText }),
+    ).toEqual({ anchor: { row: 0, offset: 10 }, focus: { row: 0, offset: 0 } })
   })
 
   it('reproduces the anchor range when the focus stays inside it', () => {
     expect(
-      extendRangeToGranularity({ anchorRange, focus: { line: 0, offset: 8 }, granularity: 'word', getLineText }),
-    ).toEqual({ anchor: { line: 0, offset: 6 }, focus: { line: 0, offset: 10 } })
+      extendRangeToGranularity({ anchorRange, focus: { row: 0, offset: 8 }, granularity: 'word', getRowText }),
+    ).toEqual({ anchor: { row: 0, offset: 6 }, focus: { row: 0, offset: 10 } })
   })
 
   it('takes whole lines down the file at line granularity', () => {
     expect(
       extendRangeToGranularity({
-        anchorRange: { line: 0, start: 0, end: 16 },
-        focus: { line: 1, offset: 4 },
-        granularity: 'line',
-        getLineText,
+        anchorRange: { row: 0, start: 0, end: 16 },
+        focus: { row: 1, offset: 4 },
+        granularity: 'row',
+        getRowText,
       }),
-    ).toEqual({ anchor: { line: 0, offset: 0 }, focus: { line: 1, offset: 11 } })
+    ).toEqual({ anchor: { row: 0, offset: 0 }, focus: { row: 1, offset: 11 } })
   })
 
   it('reverses across lines too', () => {
     expect(
       extendRangeToGranularity({
-        anchorRange: { line: 1, start: 0, end: 11 },
-        focus: { line: 0, offset: 4 },
-        granularity: 'line',
-        getLineText,
+        anchorRange: { row: 1, start: 0, end: 11 },
+        focus: { row: 0, offset: 4 },
+        granularity: 'row',
+        getRowText,
       }),
-    ).toEqual({ anchor: { line: 1, offset: 11 }, focus: { line: 0, offset: 0 } })
+    ).toEqual({ anchor: { row: 1, offset: 11 }, focus: { row: 0, offset: 0 } })
   })
 })

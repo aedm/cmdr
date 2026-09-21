@@ -43,8 +43,9 @@
         createViewerSelection,
         describeSelectionForAt,
         estimateSelectionBytes,
-        getLineSegmentBounds,
-        isWholeFileSelection,
+        getRowSegmentBounds,
+        rowMetrics,
+        selectionBytesFromFileSize,
         toRangeEnds,
     } from './selection.svelte'
     import { createViewerCopy, createViewerCopyOrchestrator } from './viewer-copy.svelte'
@@ -56,6 +57,7 @@
     import ViewerContextMenu from './ViewerContextMenu.svelte'
     import ViewerToolbar from './ViewerToolbar.svelte'
     import ViewerStatusBar from './ViewerStatusBar.svelte'
+    import ViewerRow from './ViewerRow.svelte'
     import ViewerCopyDialogs from './ViewerCopyDialogs.svelte'
     import MediaImageView from './MediaImageView.svelte'
     import MediaPdfView from './MediaPdfView.svelte'
@@ -73,8 +75,19 @@
     const log = getAppLogger('viewer')
 
     let fileName = $state('')
+    /**
+     * Counted ROWS, or `null` while only an estimate exists (ByteSeek before its index
+     * lands). The viewer's scroll coordinate.
+     */
+    let totalRows = $state<number | null>(null)
+    /** Rows, always available: exact on `fullLoad` / `lineIndex`, sampled on `byteSeek`. */
+    let estimatedRows = $state(1)
+    /**
+     * Physical LINES, when a backend knows them. The status bar's count and nothing
+     * else. ❌ Never a scroll, selection, or gutter coordinate: a long line is several
+     * rows, so these two numbers part company on exactly the files this work exists for.
+     */
     let totalLines = $state<number | null>(null)
-    let estimatedLines = $state(1) // Backend's estimate based on initial sample
     let totalBytes = $state(0)
     let error = $state('')
     let errorCanRetry = $state(false)
@@ -118,14 +131,19 @@
      */
     let tailMode = $state(false)
 
-    // Derive current mode: if we started with byteSeek but now have totalLines, we upgraded to lineIndex
+    // Derive current mode: if we started with byteSeek but now have a line count, we upgraded to lineIndex
     const currentMode = $derived(backendType === 'byteSeek' && totalLines !== null ? 'lineIndex' : backendType)
 
     const indexingPoll = createIndexingPoll({
         getSessionId: () => sessionId,
-        onStatus: ({ backendType: bt, isIndexing: ind, totalLines: tl }) => {
+        // The poll is how the viewer learns the index landed without waiting for a
+        // scroll, so it carries the row count too: ByteSeek's sampled estimate is
+        // replaced by LineIndex's real one the moment it exists.
+        onStatus: ({ backendType: bt, isIndexing: ind, totalRows: tr, totalLines: tl }) => {
             backendType = bt
             isIndexing = ind
+            if (tr.kind === 'exact') totalRows = tr.rows
+            estimatedRows = tr.rows
             if (tl !== null) totalLines = tl
         },
     })
@@ -255,31 +273,31 @@
 
     const textWidthTracker = createTextWidthTracker({
         getContentRef: () => scroll.contentRef,
-        getVisibleLinesKey: () => scroll.visibleLines,
+        getVisibleRowsKey: () => scroll.visibleRows,
     })
 
     const scroll = createViewerScroll({
         getSessionId: () => sessionId,
-        getTotalLines: () => totalLines,
-        setTotalLines: (v: number) => {
-            totalLines = v
+        getTotalRows: () => totalRows,
+        setTotalRows: (v: number) => {
+            totalRows = v
         },
-        getEstimatedLines: () => estimatedLines,
+        getEstimatedRows: () => estimatedRows,
         getBackendType: () => backendType,
         onTimeoutError: () => {
             error = tString('viewer.error.timeout')
             errorCanRetry = true
         },
-        getAllLines: () => {
+        getAllRowTexts: () => {
             if (backendType !== 'fullLoad') return null
-            const total = totalLines
+            const total = totalRows
             if (total === null || total === 0) return null
-            if (!scroll.lineCache.has(0) || !scroll.lineCache.has(total - 1)) return null
-            const lines: string[] = new Array<string>(total)
+            if (!scroll.rowCache.has(0) || !scroll.rowCache.has(total - 1)) return null
+            const texts: string[] = new Array<string>(total)
             for (let i = 0; i < total; i++) {
-                lines[i] = scroll.lineCache.get(i) ?? ''
+                texts[i] = scroll.rowCache.get(i)?.text ?? ''
             }
-            return lines
+            return texts
         },
         getTextWidth: () => textWidthTracker.textWidth,
     })
@@ -287,10 +305,10 @@
     const search = createViewerSearch({
         getSessionId: () => sessionId,
         getTotalBytes: () => totalBytes,
-        getTotalLines: () => totalLines,
-        getEstimatedTotalLines: () => scroll.estimatedTotalLines(),
+        getTotalRows: () => totalRows,
+        getEstimatedTotalRows: () => scroll.estimatedTotalRows(),
         getScrollLineHeight: () => scroll.scrollLineHeight,
-        getLineTop: (n: number) => scroll.getLineTop(n),
+        getRowTop: (n: number) => scroll.getRowTop(n),
         getViewportHeight: () => scroll.viewportHeight,
         getContentRef: () => scroll.contentRef,
         isWordWrap: () => scroll.wordWrap,
@@ -301,40 +319,39 @@
     /**
      * Screen-reader-friendly announcement of the current selection. Empty string when
      * there's nothing selected (the live region stays silent). The format names the
-     * selected line range and a UTF-16 character count for orientation.
+     * selected row range and a UTF-16 character count for orientation.
      */
     const selectionAnnouncement = $derived(
-        describeSelectionForAt(selection.selection, (line) => scroll.lineCache.get(line)?.length ?? null),
+        describeSelectionForAt(selection.selection, (row) => scroll.rowCache.get(row)?.text.length ?? null),
     )
 
     /**
-     * Estimates the UTF-8 byte length of the current selection using cached line lengths.
-     * Returns `null` if any required line isn't in the cache (the copy flow will route to
-     * the "unknown size" branch and confirm before reading).
+     * The UTF-8 byte length of the current selection. Returns `null` when it can't be
+     * known (a row the walk needs isn't cached), which routes the copy flow to its
+     * "unknown size" branch and a confirm before reading.
      */
     function estimateCurrentSelectionBytes(): number | null {
         const sel = selection.selection
         if (sel === null) return 0
-        // Whole-file shortcut: ⌘A on a multi-MB file selects lines the user never scrolled
-        // through, so the line cache can't service the per-line walk. `totalBytes` is the
-        // exact answer (it's the file size from `viewer_open`) and avoids the bail-to-null
-        // that would otherwise route to the "unknown size" confirm dialog instead of the
-        // correct refuse / confirm tier.
-        if (isWholeFileSelection(sel, totalLines)) {
-            return totalBytes
-        }
+        // From-the-top shortcut: ⌘A on a multi-MB file selects rows the user never
+        // scrolled through, so the row cache can't service the per-row walk. The file's
+        // own size answers it exactly, minus whatever the selection leaves behind in the
+        // last row. ❗ The subtraction is the point: the same number picks the confirm
+        // tier and the refusal, so it has to be what will actually be copied (I3).
+        const fromStart = selectionBytesFromFileSize(sel, {
+            totalRows,
+            totalBytes,
+            lastRowText: totalRows === null ? null : (scroll.rowCache.get(totalRows - 1)?.text ?? null),
+        })
+        if (fromStart !== null) return fromStart
         return estimateSelectionBytes(sel, (n) => {
-            const txt = scroll.lineCache.get(n)
-            if (txt === undefined) return null
-            return {
-                textBytes: new TextEncoder().encode(txt).length,
-                utf16Length: txt.length,
-                // A delimiter exists only when something follows this line. The last line
-                // has nothing after it, so a file with no trailing newline isn't counted
-                // as if it had one. (The cache stores line text without its delimiter, and
-                // a CRLF file keeps its `\r` in the text, so the delimiter is one byte.)
-                delimiterBytes: totalLines !== null && n >= totalLines - 1 ? 0 : 1,
-            }
+            const row = scroll.rowCache.get(n)
+            if (row === undefined) return null
+            return rowMetrics({
+                text: row.text,
+                continues: row.continues,
+                isLastRow: totalRows !== null && n >= totalRows - 1,
+            })
         })
     }
 
@@ -356,7 +373,7 @@
         getFocus: () => selection.selection?.focus ?? null,
         getContentRef: () => scroll.contentRef,
         getSpacerRef: () => spacerRef,
-        getLayoutKey: () => [scroll.scrollTop, scroll.linesOffset, scroll.visibleLines, scroll.wordWrap],
+        getLayoutKey: () => [scroll.scrollTop, scroll.rowsOffset, scroll.visibleRows, scroll.wordWrap],
     })
 
     // Each pointer setter also ends the keyboard's vertical run: a click or drag picks a
@@ -364,7 +381,7 @@
     // earlier run was heading. `keyboard` is defined below and read lazily here.
     const pointerDrag = createViewerPointerDrag({
         getContentRef: () => scroll.contentRef,
-        getLineText: (line) => scroll.lineCache.get(line),
+        getRowText: (row) => scroll.rowCache.get(row)?.text,
         hasSelection: () => selection.selection !== null,
         setAnchor: (point) => {
             keyboard.resetDesiredColumn()
@@ -430,7 +447,7 @@
     // Re-measure text width when lines first appear (ResizeObserver won't fire if container size didn't change)
     $effect(() => {
         if (isMedia) return
-        textWidthTracker.runVisibleLinesEffect()
+        textWidthTracker.runVisibleRowsEffect()
     })
 
     // Debounce search input
@@ -482,13 +499,13 @@
     }
 
     const keyboard = createViewerKeyboard({
-        getTotalLines: () => totalLines,
+        getTotalRows: () => totalRows,
         getTotalBytes: () => totalBytes,
         // What the template DRAWS, not what the cache holds: a rendered row the cache
         // missed shows as empty, and the motion model has to agree with the screen or a
-        // chord aiming at that row is dead forever. See `scroll.renderedLineText`.
-        getLineText: (line) => scroll.renderedLineText(line),
-        getLastRenderedLine: () => scroll.visibleLines.at(-1)?.lineNumber ?? null,
+        // chord aiming at that row is dead forever. See `scroll.renderedRowText`.
+        getRowText: (row) => scroll.renderedRowText(row),
+        getLastRenderedRow: () => scroll.visibleRows.at(-1)?.rowNumber ?? null,
         selection,
         scroll,
         search: {
@@ -637,8 +654,13 @@
         sessionId = result.sessionId
         fileName = result.fileName
         totalBytes = result.totalBytes
+        // `initialLines.totalRows` is the row total and says whether it's counted or
+        // sampled; `result.totalLines` is the PHYSICAL line count, for the status bar.
+        // (`result.estimatedTotalLines` carries the same row number as `totalRows.rows`;
+        // the wire keeps its old spelling until the IPC rename lands.)
+        totalRows = result.initialLines.totalRows.kind === 'exact' ? result.initialLines.totalRows.rows : null
+        estimatedRows = result.initialLines.totalRows.rows
         totalLines = result.totalLines
-        estimatedLines = result.estimatedTotalLines
         backendType = result.backendType
         isIndexing = result.isIndexing
         currentEncoding = result.encoding
@@ -662,13 +684,13 @@
         }
 
         log.debug(
-            'Opened file: {fileName}, {totalBytes} {bytesNoun}, totalLines={totalLines}, estimatedTotalLines={estimatedTotalLines}, backend={backendType}, isIndexing={isIndexing}',
+            'Opened file: {fileName}, {totalBytes} {bytesNoun}, totalRows={totalRows}, totalLines={totalLines}, backend={backendType}, isIndexing={isIndexing}',
             {
                 fileName: result.fileName,
                 totalBytes: result.totalBytes,
                 bytesNoun: pluralize(result.totalBytes, 'byte'),
+                totalRows: result.initialLines.totalRows.rows,
                 totalLines: result.totalLines,
-                estimatedTotalLines: result.estimatedTotalLines,
                 backendType: result.backendType,
                 isIndexing: result.isIndexing,
             },
@@ -687,36 +709,33 @@
             await viewerTail.init()
 
             scroll.clearCache()
-            for (let i = 0; i < result.initialLines.lines.length; i++) {
-                scroll.lineCache.set(result.initialLines.firstLineNumber + i, result.initialLines.lines[i])
-            }
+            scroll.cacheRows(result.initialLines.firstRowNumber, result.initialLines.rows)
 
-            log.debug('Initial cache: {count} {linesNoun} loaded', {
-                count: result.initialLines.lines.length,
-                linesNoun: pluralize(result.initialLines.lines.length, 'line'),
+            log.debug('Initial cache: {count} {rowsNoun} loaded', {
+                count: result.initialLines.rows.length,
+                rowsNoun: pluralize(result.initialLines.rows.length, 'row'),
             })
 
-            // For FullLoad files, fetch ALL lines so the height map can prepare them.
-            // The initial chunk only contains ~200 lines, but FullLoad files are <1MB so
+            // For FullLoad files, fetch ALL rows so the height map can prepare them.
+            // The initial chunk only contains ~200 rows, but FullLoad files are <1MB so
             // fetching the rest in one IPC call is trivial.
+            const fullLoadRows = result.initialLines.totalRows
             if (
                 result.backendType === 'fullLoad' &&
-                result.totalLines !== null &&
-                result.initialLines.lines.length < result.totalLines
+                fullLoadRows.kind === 'exact' &&
+                result.initialLines.rows.length < fullLoadRows.rows
             ) {
-                const remaining = result.totalLines - result.initialLines.lines.length
-                const startLine = result.initialLines.firstLineNumber + result.initialLines.lines.length
+                const remaining = fullLoadRows.rows - result.initialLines.rows.length
+                const startRow = result.initialLines.firstRowNumber + result.initialLines.rows.length
                 const tFetch = performance.now()
-                viewerGetLines(result.sessionId, 'line', startLine, remaining)
+                viewerGetLines(result.sessionId, 'line', startRow, remaining)
                     .then((chunk) => {
-                        log.debug('FullLoad fetch remaining {count} {linesNoun} took {ms}ms', {
-                            count: chunk.lines.length,
-                            linesNoun: pluralize(chunk.lines.length, 'line'),
+                        log.debug('FullLoad fetch remaining {count} {rowsNoun} took {ms}ms', {
+                            count: chunk.rows.length,
+                            rowsNoun: pluralize(chunk.rows.length, 'row'),
                             ms: Math.round(performance.now() - tFetch),
                         })
-                        for (let i = 0; i < chunk.lines.length; i++) {
-                            scroll.lineCache.set(startLine + i, chunk.lines[i])
-                        }
+                        scroll.cacheRows(chunk.firstRowNumber, chunk.rows)
                     })
                     .catch(() => {}) // Non-critical: height map just won't activate
             }
@@ -1184,20 +1203,24 @@
                 <div
                     class="lines-container"
                     bind:this={scroll.linesContainerRef}
-                    style="transform: translateY({scroll.linesOffset}px)"
+                    style="transform: translateY({scroll.rowsOffset}px)"
                 >
-                    {#each scroll.visibleLines as { lineNumber, text } (lineNumber)}
-                        <div class="line" data-line={lineNumber}>
-                            <span class="line-number" style="width: {scroll.gutterWidth}ch" aria-hidden="true"
-                                >{lineNumber + 1}</span
-                            >
-                            <span class="line-text"
-                                >{#each search.getHighlightedSegments(lineNumber, text, getLineSegmentBounds(selection.selection, lineNumber, text.length)) as seg, segIdx (segIdx)}{#if seg.highlight}<mark
-                                            class:active={seg.active}
-                                            class:selected={seg.selected}>{seg.text}</mark
-                                        >{:else if seg.selected}<span class="selected">{seg.text}</span>{:else}{seg.text}{/if}{/each}</span
-                            >
-                        </div>
+                    <!-- One `ViewerRow` per ROW: the gutter prints a number only where
+                         a physical line starts, and a row Cmdr broke out of a long line
+                         carries the continuation marker instead. -->
+                    {#each scroll.visibleRows as { rowNumber, text, continues, lineNumber } (rowNumber)}
+                        <ViewerRow
+                            {rowNumber}
+                            {lineNumber}
+                            {continues}
+                            gutterWidth={scroll.gutterWidth}
+                            wordWrap={scroll.wordWrap}
+                            segments={search.getHighlightedSegments(
+                                rowNumber,
+                                text,
+                                getRowSegmentBounds(selection.selection, rowNumber, text.length),
+                            )}
+                        />
                     {/each}
                 </div>
                 <!-- A SIBLING of `.lines-container`, never a child: that container's
@@ -1420,20 +1443,6 @@
         cursor: text;
     }
 
-    /* Selected text: gold foreground matches the file-list "selected = gold" language
-     * (see design-system.md § File list). Background uses the accent-subtle token, the
-     * same tint the cursor highlight uses. Both work in light and dark. */
-    .line-text :global(.selected) {
-        background: var(--color-accent-subtle);
-        color: var(--color-selection-fg);
-    }
-
-    /* Search hit + selection on the same span: keep the highlight background (so search
-     * remains the dominant signal) and apply the selection foreground colour. */
-    .line-text :global(mark.selected) {
-        color: var(--color-selection-fg);
-    }
-
     .scroll-spacer {
         position: relative;
     }
@@ -1445,33 +1454,9 @@
         min-width: 100%;
     }
 
-    .line {
-        display: flex;
-        padding: 0 var(--spacing-sm);
-        /* Stays in sync with `getLineHeight()` in `viewer-line-heights.svelte.ts`
-         * via the `--font-scale` root variable. */
-        height: calc(18px * var(--font-scale));
-    }
-
-    .line:hover {
-        background: var(--color-bg-tertiary);
-    }
-
-    .line-number {
-        display: inline-block;
-        text-align: right;
-        color: var(--color-text-tertiary);
-        padding-right: var(--spacing-sm);
-        margin-right: var(--spacing-sm);
-        border-right: 1px solid var(--color-border-subtle);
-        flex-shrink: 0;
-        user-select: none;
-        -webkit-user-select: none;
-    }
-
-    .line-text {
-        white-space: pre;
-    }
+    /* Everything inside a row — `.line`, its gutter, its text, the selection and
+       search spans, and the continuation marker — lives in `ViewerRow.svelte`, which
+       takes `wordWrap` as a prop and applies the wrapped variants itself. */
 
     .word-wrap {
         overflow-x: hidden;
@@ -1480,33 +1465,6 @@
     .word-wrap .lines-container {
         width: auto;
         right: 0;
-    }
-
-    .word-wrap .line {
-        height: auto;
-    }
-
-    .word-wrap .line-text {
-        white-space: pre-wrap;
-        overflow-wrap: break-word;
-        /* `.line-text` is a flex item; its default `min-width: auto` (= min-content)
-         * would let an unbreakable run (no break opportunities, e.g. a long base64
-         * blob or `WWWW…`) grow to full width and overflow instead of wrapping,
-         * making `overflow-wrap: break-word` a no-op. `min-width: 0` lets the item
-         * shrink so break-word actually breaks the run to fit. The height-map probe
-         * in `viewer-line-heights.svelte.ts` mirrors this; keep them in sync. */
-        min-width: 0;
-    }
-
-    mark {
-        background: var(--color-highlight);
-        border-radius: var(--radius-xs);
-        padding: 0 1px;
-        margin: 0 -1px;
-    }
-
-    mark.active {
-        background: var(--color-highlight-active);
     }
 
     .status-message {

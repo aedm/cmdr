@@ -66,7 +66,7 @@ function mountViewer(lineHtml: string[], { cols = Number.POSITIVE_INFINITY } = {
   for (const [index, html] of lineHtml.entries()) {
     const line = document.createElement('div')
     line.className = 'line'
-    line.setAttribute('data-line', String(index))
+    line.setAttribute('data-row', String(index))
     const gutter = document.createElement('span')
     gutter.className = 'line-number'
     gutter.textContent = String(index + 1)
@@ -131,68 +131,68 @@ afterEach(() => {
 describe('caretFromPoint', () => {
   it('resolves a point inside the line text to its offset', () => {
     const { content } = mountViewer(['hello world', 'second line'])
-    expect(caretFromPoint(content, colStartX(4), PAD_TOP + 9)).toEqual({ line: 0, offset: 4 })
-    expect(caretFromPoint(content, colStartX(2), PAD_TOP + ROW_H + 9)).toEqual({ line: 1, offset: 2 })
+    expect(caretFromPoint(content, colStartX(4), PAD_TOP + 9)).toEqual({ row: 0, offset: 4 })
+    expect(caretFromPoint(content, colStartX(2), PAD_TOP + ROW_H + 9)).toEqual({ row: 1, offset: 2 })
   })
 
   it('resolves the line-number gutter to the start of that line', () => {
     const { content } = mountViewer(['hello world', 'second line'])
     // x inside the gutter, y on the second row.
-    expect(caretFromPoint(content, 20, PAD_TOP + ROW_H + 9)).toEqual({ line: 1, offset: 0 })
+    expect(caretFromPoint(content, 20, PAD_TOP + ROW_H + 9)).toEqual({ row: 1, offset: 0 })
   })
 
   it("resolves the line's left padding to the start of that line", () => {
     const { content } = mountViewer(['hello world'])
-    expect(caretFromPoint(content, 2, PAD_TOP + 9)).toEqual({ line: 0, offset: 0 })
+    expect(caretFromPoint(content, 2, PAD_TOP + 9)).toEqual({ row: 0, offset: 0 })
   })
 
   it('resolves the blank area below the last line to the end of the last line', () => {
     const { content } = mountViewer(['hello world', 'second line'])
-    expect(caretFromPoint(content, 200, 190)).toEqual({ line: 1, offset: 11 })
+    expect(caretFromPoint(content, 200, 190)).toEqual({ row: 1, offset: 11 })
   })
 
   it('resolves the blank strip above the first rendered row to the start of that row', () => {
     const { content } = mountViewer(['hello world'])
-    expect(caretFromPoint(content, 200, 5)).toEqual({ line: 0, offset: 0 })
+    expect(caretFromPoint(content, 200, 5)).toEqual({ row: 0, offset: 0 })
   })
 
   it('clamps a point right of a row to the end of that row', () => {
     const { content } = mountViewer(['hello world'])
-    expect(caretFromPoint(content, 380, PAD_TOP + 9)).toEqual({ line: 0, offset: 11 })
+    expect(caretFromPoint(content, 380, PAD_TOP + 9)).toEqual({ row: 0, offset: 11 })
   })
 
   it('clamps to the wrap point, not the logical line end, on a wrapped line', () => {
     // "abcdefghij" at four columns: rows "abcd" / "efgh" / "ij".
     const { content } = mountViewer(['abcdefghij'], { cols: 4 })
-    expect(caretFromPoint(content, 380, PAD_TOP + 9)).toEqual({ line: 0, offset: 4 })
-    expect(caretFromPoint(content, 380, PAD_TOP + ROW_H + 9)).toEqual({ line: 0, offset: 8 })
-    expect(caretFromPoint(content, 380, PAD_TOP + 2 * ROW_H + 9)).toEqual({ line: 0, offset: 10 })
+    expect(caretFromPoint(content, 380, PAD_TOP + 9)).toEqual({ row: 0, offset: 4 })
+    expect(caretFromPoint(content, 380, PAD_TOP + ROW_H + 9)).toEqual({ row: 0, offset: 8 })
+    expect(caretFromPoint(content, 380, PAD_TOP + 2 * ROW_H + 9)).toEqual({ row: 0, offset: 10 })
   })
 
   it('resolves a point on the second visual row of a wrapped line', () => {
     const { content } = mountViewer(['abcdefghij'], { cols: 4 })
-    expect(caretFromPoint(content, colStartX(1), PAD_TOP + ROW_H + 9)).toEqual({ line: 0, offset: 5 })
-    expect(caretFromPoint(content, 4, PAD_TOP + 2 * ROW_H + 9)).toEqual({ line: 0, offset: 8 })
+    expect(caretFromPoint(content, colStartX(1), PAD_TOP + ROW_H + 9)).toEqual({ row: 0, offset: 5 })
+    expect(caretFromPoint(content, 4, PAD_TOP + 2 * ROW_H + 9)).toEqual({ row: 0, offset: 8 })
   })
 
   it('sums offsets across nested <mark> and <span> elements', () => {
     const { content } = mountViewer(['foo<mark>bar</mark><span class="selected">baz</span>!'])
-    expect(caretFromPoint(content, colStartX(4), PAD_TOP + 9)).toEqual({ line: 0, offset: 4 })
-    expect(caretFromPoint(content, colStartX(7), PAD_TOP + 9)).toEqual({ line: 0, offset: 7 })
-    expect(caretFromPoint(content, colStartX(9), PAD_TOP + 9)).toEqual({ line: 0, offset: 9 })
+    expect(caretFromPoint(content, colStartX(4), PAD_TOP + 9)).toEqual({ row: 0, offset: 4 })
+    expect(caretFromPoint(content, colStartX(7), PAD_TOP + 9)).toEqual({ row: 0, offset: 7 })
+    expect(caretFromPoint(content, colStartX(9), PAD_TOP + 9)).toEqual({ row: 0, offset: 9 })
   })
 
   it('never lands between the surrogates of an astral codepoint', () => {
     // "a👋b": the emoji spans offsets 1..3 and two grid cells.
     const { content } = mountViewer(['a👋b'])
-    expect(caretFromPoint(content, TEXT_LEFT + CHAR_W + 1, PAD_TOP + 9)).toEqual({ line: 0, offset: 1 })
-    expect(caretFromPoint(content, TEXT_LEFT + 3 * CHAR_W - 1, PAD_TOP + 9)).toEqual({ line: 0, offset: 3 })
-    expect(caretFromPoint(content, colStartX(3), PAD_TOP + 9)).toEqual({ line: 0, offset: 3 })
+    expect(caretFromPoint(content, TEXT_LEFT + CHAR_W + 1, PAD_TOP + 9)).toEqual({ row: 0, offset: 1 })
+    expect(caretFromPoint(content, TEXT_LEFT + 3 * CHAR_W - 1, PAD_TOP + 9)).toEqual({ row: 0, offset: 3 })
+    expect(caretFromPoint(content, colStartX(3), PAD_TOP + 9)).toEqual({ row: 0, offset: 3 })
   })
 
   it('resolves an empty line to offset 0', () => {
     const { content } = mountViewer(['first', '', 'third'])
-    expect(caretFromPoint(content, 200, PAD_TOP + ROW_H + 9)).toEqual({ line: 1, offset: 0 })
+    expect(caretFromPoint(content, 200, PAD_TOP + ROW_H + 9)).toEqual({ row: 1, offset: 0 })
   })
 
   it('returns null for points outside the content box', () => {
@@ -212,17 +212,17 @@ describe('caretFromPoint', () => {
 describe('caretFromPointClamped', () => {
   it('pulls a point above the content down to the first rendered row', () => {
     const { content } = mountViewer(['hello world', 'second line'])
-    expect(caretFromPointClamped(content, colStartX(3), CONTENT.top - 500)).toEqual({ line: 0, offset: 0 })
+    expect(caretFromPointClamped(content, colStartX(3), CONTENT.top - 500)).toEqual({ row: 0, offset: 0 })
   })
 
   it('pulls a point below the content down to the end of the last rendered row', () => {
     const { content } = mountViewer(['hello world', 'second line'])
-    expect(caretFromPointClamped(content, colStartX(3), CONTENT.bottom + 500)).toEqual({ line: 1, offset: 11 })
+    expect(caretFromPointClamped(content, colStartX(3), CONTENT.bottom + 500)).toEqual({ row: 1, offset: 11 })
   })
 
   it('pulls a point right of the content in to the end of the row under it', () => {
     const { content } = mountViewer(['hello world', 'second line'])
-    expect(caretFromPointClamped(content, CONTENT.right + 500, PAD_TOP + 9)).toEqual({ line: 0, offset: 11 })
+    expect(caretFromPointClamped(content, CONTENT.right + 500, PAD_TOP + 9)).toEqual({ row: 0, offset: 11 })
   })
 })
 
@@ -235,12 +235,12 @@ describe('caretRectFor', () => {
 
   it('picks the left edge of the character at an interior offset', () => {
     const { content } = mountViewer(['hello world'])
-    expect(caretRectFor(content, { line: 0, offset: 4 })).toEqual(edge(4, 0))
+    expect(caretRectFor(content, { row: 0, offset: 4 })).toEqual(edge(4, 0))
   })
 
   it('picks the left edge of the first character at the start of a line', () => {
     const { content } = mountViewer(['hello world'])
-    expect(caretRectFor(content, { line: 0, offset: 0 })).toEqual(edge(0, 0))
+    expect(caretRectFor(content, { row: 0, offset: 0 })).toEqual(edge(0, 0))
   })
 
   it('picks the RIGHT edge of the last character at the end of a line', () => {
@@ -249,56 +249,56 @@ describe('caretRectFor', () => {
     // caret one glyph too far left — exactly where Shift+End and every rightward walk
     // park it.
     const { content } = mountViewer(['hello world'])
-    expect(caretRectFor(content, { line: 0, offset: 11 })).toEqual(edge(11, 0))
+    expect(caretRectFor(content, { row: 0, offset: 11 })).toEqual(edge(11, 0))
   })
 
   it('clamps an offset past the end of the line to that same right edge', () => {
     const { content } = mountViewer(['hello world'])
-    expect(caretRectFor(content, { line: 0, offset: 40 })).toEqual(edge(11, 0))
+    expect(caretRectFor(content, { row: 0, offset: 40 })).toEqual(edge(11, 0))
   })
 
   it('never lands between the surrogates of an astral codepoint', () => {
     // "a👋b": the emoji spans offsets 1..3 and two grid cells, so both its offsets
     // resolve to its left edge.
     const { content } = mountViewer(['a👋b'])
-    expect(caretRectFor(content, { line: 0, offset: 1 })).toEqual(edge(1, 0))
-    expect(caretRectFor(content, { line: 0, offset: 2 })).toEqual(edge(1, 0))
-    expect(caretRectFor(content, { line: 0, offset: 3 })).toEqual(edge(3, 0))
+    expect(caretRectFor(content, { row: 0, offset: 1 })).toEqual(edge(1, 0))
+    expect(caretRectFor(content, { row: 0, offset: 2 })).toEqual(edge(1, 0))
+    expect(caretRectFor(content, { row: 0, offset: 3 })).toEqual(edge(3, 0))
   })
 
   it('sums offsets across nested <mark> and <span> elements', () => {
     const { content } = mountViewer(['foo<mark>bar</mark><span class="selected">baz</span>!'])
-    expect(caretRectFor(content, { line: 0, offset: 7 })).toEqual(edge(7, 0))
-    expect(caretRectFor(content, { line: 0, offset: 10 })).toEqual(edge(10, 0))
+    expect(caretRectFor(content, { row: 0, offset: 7 })).toEqual(edge(7, 0))
+    expect(caretRectFor(content, { row: 0, offset: 10 })).toEqual(edge(10, 0))
   })
 
   it('takes its height from the character box, not the (multi-row) wrapped line', () => {
     // "abcdefghij" at four columns: rows "abcd" / "efgh" / "ij". The row is three rows
     // tall; the caret at the line's end must be one row tall, on the last of them.
     const { content } = mountViewer(['abcdefghij'], { cols: 4 })
-    expect(caretRectFor(content, { line: 0, offset: 10 })).toEqual(edge(2, 2))
+    expect(caretRectFor(content, { row: 0, offset: 10 })).toEqual(edge(2, 2))
   })
 
   it('paints an interior wrap point at the start of the next visual row', () => {
     // Documented downstream affinity: offset 4 sits between rows, and `rangeRect`
     // prefers the rect with width, which is the first glyph of row two. Leave it.
     const { content } = mountViewer(['abcdefghij'], { cols: 4 })
-    expect(caretRectFor(content, { line: 0, offset: 4 })).toEqual(edge(0, 1))
+    expect(caretRectFor(content, { row: 0, offset: 4 })).toEqual(edge(0, 1))
   })
 
   it('falls back to the row rect on an empty line', () => {
     const { content } = mountViewer(['first', '', 'third'])
-    expect(caretRectFor(content, { line: 1, offset: 0 })).toEqual(edge(0, 0, PAD_TOP + ROW_H))
+    expect(caretRectFor(content, { row: 1, offset: 0 })).toEqual(edge(0, 0, PAD_TOP + ROW_H))
   })
 
   it('returns null for a line that is not rendered', () => {
     const { content } = mountViewer(['hello world'])
-    expect(caretRectFor(content, { line: 7, offset: 0 })).toBeNull()
+    expect(caretRectFor(content, { row: 7, offset: 0 })).toBeNull()
   })
 
   it('returns null when the character box cannot be measured', () => {
     const { content } = mountViewer(['hello world'])
     vi.spyOn(Range.prototype, 'getClientRects').mockReturnValue([] as unknown as DOMRectList)
-    expect(caretRectFor(content, { line: 0, offset: 3 })).toBeNull()
+    expect(caretRectFor(content, { row: 0, offset: 3 })).toBeNull()
   })
 })

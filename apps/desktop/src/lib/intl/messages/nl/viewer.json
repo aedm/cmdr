@@ -393,6 +393,14 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
+  "viewer.row.continuesTooltip": "Cmdr heeft deze regel hier afgebroken zodat het weergavevenster snel blijft. De regel loopt direct hieronder door.",
+  "@viewer.row.continuesTooltip": {
+    "sourceHash": "398f4e2"
+  },
+  "viewer.row.continuesLabel": "Cmdr heeft deze regel hier afgebroken zodat het weergavevenster snel blijft. De regel loopt direct hieronder door.",
+  "@viewer.row.continuesLabel": {
+    "sourceHash": "398f4e2"
+  },
   "viewer.selection.toEndOfFile": "Geselecteerd van regel {line} tot het einde van het bestand",
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"

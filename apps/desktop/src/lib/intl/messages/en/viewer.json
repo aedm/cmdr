@@ -601,6 +601,18 @@
     "screenshot": "viewer-search.png",
     "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
   },
+  "viewer.row.continuesTooltip": "Cmdr split this line here to keep the viewer fast. The line continues on the next row.",
+  "@viewer.row.continuesTooltip": {
+    "description": "Tooltip on the small mark at the end of a row where Cmdr split a very long line so the viewer stays fast. The break is Cmdr's, not one the file contains, and the text carries straight on in the row below. \"row\" is one line of the viewer's display; \"line\" is a line of text in the file, which here is long enough to fill several rows. Conversational; do not use the words \"error\" or \"failed\".",
+    "screenshot": "viewer-search.png",
+    "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
+  },
+  "viewer.row.continuesLabel": "Cmdr split this line here to keep the viewer fast. The line continues on the next row.",
+  "@viewer.row.continuesLabel": {
+    "description": "Screen-reader label for the same mark as viewer.row.continuesTooltip, read out where the mark sits because the mark itself is decoration a screen reader cannot see. Keep it identical to that tooltip unless your language needs them to differ.",
+    "screenshot": "viewer-search.png",
+    "screenshotNote": "The file viewer window, pictured here with its find bar open. Your string is part of its chrome (title, toolbar, status bar), one of the file-kind or media labels it shows there, or one of the messages it shows in place of content when a file can’t be loaded."
+  },
   "viewer.selection.toEndOfFile": "Selected from line {line} to the end of the file",
   "@viewer.selection.toEndOfFile": {
     "description": "Screen-reader announcement for a very large text selection that reaches the end of the file, naming the starting line number. \"line\" here is a line of text in the file.",

@@ -10,19 +10,19 @@
  * pressed word yields the same union the press did, so there is nothing to collapse.
  *
  * Pure: no DOM, no state, no layout engine. The caller resolves the pointer to a
- * `LineOffset` (`viewer-pointer.ts`) and hands the line text in.
+ * `RowOffset` (`viewer-pointer.ts`) and hands the line text in.
  */
 
 import { findWordBoundsAt } from './viewer-word'
-import type { LineOffset, Selection } from './selection.svelte'
+import type { RowOffset, Selection } from './selection.svelte'
 
 /** How far a gesture snaps its endpoints out: to the caret, the word, or the whole line. */
-export type SelectionGranularity = 'character' | 'word' | 'line'
+export type SelectionGranularity = 'character' | 'word' | 'row'
 
 /** A half-open `[start, end)` UTF-16 span inside one logical line. */
-export interface LineRange {
+export interface RowRange {
   /** Zero-based line the span sits on. */
-  line: number
+  row: number
   /** UTF-16 start offset, included. */
   start: number
   /** UTF-16 end offset, excluded. */
@@ -31,17 +31,17 @@ export interface LineRange {
 
 interface RangeAtCaretArgs {
   /** The resolved pointer position. */
-  caret: LineOffset
+  caret: RowOffset
   granularity: SelectionGranularity
   /** Reads the cached text of a line, or `undefined` when it hasn't been fetched. */
-  getLineText: (line: number) => string | undefined
+  getRowText: (line: number) => string | undefined
 }
 
 interface ExtendArgs extends Omit<RangeAtCaretArgs, 'caret'> {
   /** The range the gesture started from, snapped at the same granularity. */
-  anchorRange: LineRange
+  anchorRange: RowRange
   /** Where the pointer is now. */
-  focus: LineOffset
+  focus: RowOffset
 }
 
 /**
@@ -53,14 +53,14 @@ interface ExtendArgs extends Omit<RangeAtCaretArgs, 'caret'> {
  * happens during a fast autoscroll into unfetched rows, where the row renders empty
  * anyway, so the selection matches what the user sees.
  */
-export function rangeAtCaret({ caret, granularity, getLineText }: RangeAtCaretArgs): LineRange {
-  if (granularity === 'character') return { line: caret.line, start: caret.offset, end: caret.offset }
+export function rangeAtCaret({ caret, granularity, getRowText }: RangeAtCaretArgs): RowRange {
+  if (granularity === 'character') return { row: caret.row, start: caret.offset, end: caret.offset }
 
-  const lineText = getLineText(caret.line) ?? ''
-  if (granularity === 'line') return { line: caret.line, start: 0, end: lineText.length }
+  const rowText = getRowText(caret.row) ?? ''
+  if (granularity === 'row') return { row: caret.row, start: 0, end: rowText.length }
 
-  const { start, end } = findWordBoundsAt(lineText, caret.offset)
-  return { line: caret.line, start, end }
+  const { start, end } = findWordBoundsAt(rowText, caret.offset)
+  return { row: caret.row, start, end }
 }
 
 /**
@@ -70,19 +70,19 @@ export function rangeAtCaret({ caret, granularity, getLineText }: RangeAtCaretAr
  * for rendering and for the IPC boundary, so the direction only has to stay honest for
  * the next move to read it.
  */
-export function extendRangeToGranularity({ anchorRange, focus, granularity, getLineText }: ExtendArgs): Selection {
-  const focusRange = rangeAtCaret({ caret: focus, granularity, getLineText })
+export function extendRangeToGranularity({ anchorRange, focus, granularity, getRowText }: ExtendArgs): Selection {
+  const focusRange = rangeAtCaret({ caret: focus, granularity, getRowText })
   const backwards =
-    focusRange.line < anchorRange.line || (focusRange.line === anchorRange.line && focusRange.start < anchorRange.start)
+    focusRange.row < anchorRange.row || (focusRange.row === anchorRange.row && focusRange.start < anchorRange.start)
 
   if (backwards) {
     return {
-      anchor: { line: anchorRange.line, offset: anchorRange.end },
-      focus: { line: focusRange.line, offset: focusRange.start },
+      anchor: { row: anchorRange.row, offset: anchorRange.end },
+      focus: { row: focusRange.row, offset: focusRange.start },
     }
   }
   return {
-    anchor: { line: anchorRange.line, offset: anchorRange.start },
-    focus: { line: focusRange.line, offset: focusRange.end },
+    anchor: { row: anchorRange.row, offset: anchorRange.start },
+    focus: { row: focusRange.row, offset: focusRange.end },
   }
 }

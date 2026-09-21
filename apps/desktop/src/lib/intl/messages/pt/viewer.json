@@ -391,6 +391,14 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
+  "viewer.row.continuesTooltip": "O Cmdr quebrou esta linha aqui para o visualizador continuar rápido. A linha segue logo abaixo.",
+  "@viewer.row.continuesTooltip": {
+    "sourceHash": "398f4e2"
+  },
+  "viewer.row.continuesLabel": "O Cmdr quebrou esta linha aqui para o visualizador continuar rápido. A linha segue logo abaixo.",
+  "@viewer.row.continuesLabel": {
+    "sourceHash": "398f4e2"
+  },
   "viewer.selection.toEndOfFile": "Selecionado da linha {line} até o fim do arquivo",
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"

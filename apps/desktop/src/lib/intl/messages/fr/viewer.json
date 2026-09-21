@@ -396,6 +396,14 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
+  "viewer.row.continuesTooltip": "Cmdr a coupé cette ligne ici pour que la visionneuse reste rapide. La ligne se poursuit juste en dessous.",
+  "@viewer.row.continuesTooltip": {
+    "sourceHash": "398f4e2"
+  },
+  "viewer.row.continuesLabel": "Cmdr a coupé cette ligne ici pour que la visionneuse reste rapide. La ligne se poursuit juste en dessous.",
+  "@viewer.row.continuesLabel": {
+    "sourceHash": "398f4e2"
+  },
   "viewer.selection.toEndOfFile": "Sélection de la ligne {line} jusqu''à la fin du fichier",
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"

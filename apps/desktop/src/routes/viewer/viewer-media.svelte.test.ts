@@ -26,7 +26,7 @@ function openResult(overrides: Partial<ViewerOpenResult>): ViewerOpenResult {
       supportsFractionSeek: true,
       knowsTotalLines: true,
     },
-    initialLines: { lines: [], firstLineNumber: 0, byteOffset: 0, totalLines: 0, totalBytes: 0 },
+    initialLines: { rows: [], firstRowNumber: 0, byteOffset: 0, endByteOffset: 0, end: 'endOfFile', totalRows: { kind: 'exact', rows: 0 }, totalBytes: 0 },
     isIndexing: false,
     encoding: 'utf8',
     kind: 'text',

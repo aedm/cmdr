@@ -53,15 +53,15 @@ export function recenterOffset(params: {
  * ❌ These two are NOT interchangeable, and mixing their coordinate spaces mislands the
  * scroll silently. `recenterOffset` speaks VIEWPORT-relative rendered-rect coordinates
  * (`getBoundingClientRect`); this one speaks CONTENT-relative SCALED ones, the space
- * `scroll.getLineTop(n)` and `scrollTop` live in (files over `MAX_SCROLL_HEIGHT` are
- * compressed by `scrollScale`). Feed it `getLineTop`, never a `line × lineHeight`
+ * `scroll.getRowTop(n)` and `scrollTop` live in (files over `MAX_SCROLL_HEIGHT` are
+ * compressed by `scrollScale`). Feed it `getRowTop`, never a `line × rowHeight`
  * estimate: under word wrap a line is one tall row and the estimate lands elsewhere.
  */
 export function ensureVisibleOffset(params: {
-  /** Top edge of the line, content-relative and scaled (`scroll.getLineTop(n)`). */
-  lineTop: number
+  /** Top edge of the line, content-relative and scaled (`scroll.getRowTop(n)`). */
+  rowTop: number
   /** The line's rendered height in the same scaled space. */
-  lineHeight: number
+  rowHeight: number
   /** Current `scrollTop`. */
   scrollTop: number
   /** Height of the scrolling viewport (`clientHeight`). */
@@ -69,19 +69,19 @@ export function ensureVisibleOffset(params: {
   /** Breathing room kept between the line and the viewport edge. */
   margin: number
 }): number | null {
-  const { lineTop, lineHeight, scrollTop, viewportHeight, margin } = params
+  const { rowTop, rowHeight, scrollTop, viewportHeight, margin } = params
   if (viewportHeight <= 0) return null
 
   // The two extremes that satisfy the margin: the line flush against the top edge, and
   // flush against the bottom one. Anything between them already shows it.
-  const topAligned = Math.max(0, lineTop - margin)
-  const bottomAligned = Math.max(0, lineTop + lineHeight + margin - viewportHeight)
+  const topAligned = Math.max(0, rowTop - margin)
+  const bottomAligned = Math.max(0, rowTop + rowHeight + margin - viewportHeight)
 
   if (bottomAligned > topAligned) {
     // The line is taller than the viewport can hold with its margins, so no scroll
     // position shows all of it. Move only when none of it is on screen, and then show
     // its start; otherwise every press would yank a long wrapped paragraph around.
-    const offScreen = lineTop >= scrollTop + viewportHeight || lineTop + lineHeight <= scrollTop
+    const offScreen = rowTop >= scrollTop + viewportHeight || rowTop + rowHeight <= scrollTop
     return offScreen ? topAligned : null
   }
 

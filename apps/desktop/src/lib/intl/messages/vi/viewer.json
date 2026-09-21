@@ -391,6 +391,14 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
+  "viewer.row.continuesTooltip": "Cmdr đã ngắt dòng này tại đây để trình xem luôn nhanh. Dòng tiếp tục ngay bên dưới.",
+  "@viewer.row.continuesTooltip": {
+    "sourceHash": "398f4e2"
+  },
+  "viewer.row.continuesLabel": "Cmdr đã ngắt dòng này tại đây để trình xem luôn nhanh. Dòng tiếp tục ngay bên dưới.",
+  "@viewer.row.continuesLabel": {
+    "sourceHash": "398f4e2"
+  },
   "viewer.selection.toEndOfFile": "Đã chọn từ dòng {line} đến cuối tệp",
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"

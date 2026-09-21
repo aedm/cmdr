@@ -394,6 +394,14 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
+  "viewer.row.continuesTooltip": "Cmdr bröt den här raden här för att förhandsvisningen ska vara snabb. Raden fortsätter direkt nedanför.",
+  "@viewer.row.continuesTooltip": {
+    "sourceHash": "398f4e2"
+  },
+  "viewer.row.continuesLabel": "Cmdr bröt den här raden här för att förhandsvisningen ska vara snabb. Raden fortsätter direkt nedanför.",
+  "@viewer.row.continuesLabel": {
+    "sourceHash": "398f4e2"
+  },
   "viewer.selection.toEndOfFile": "Markerat från rad {line} till slutet av filen",
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"

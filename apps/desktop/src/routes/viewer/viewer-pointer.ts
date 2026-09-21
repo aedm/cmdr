@@ -1,7 +1,7 @@
 /**
  * Pointer-to-caret resolution for the viewer.
  *
- * Resolves a viewport point to a `{ line, offset }` `LineOffset` in the viewer's logical
+ * Resolves a viewport point to a `{ line, offset }` `RowOffset` in the viewer's logical
  * coordinates (UTF-16 code units inside the line text).
  *
  * ❌ Never reach for `document.caretPositionFromPoint` / `caretRangeFromPoint` here. Some
@@ -12,7 +12,7 @@
  */
 
 import { findOffsetByGeometry, type CaretRect, type CharBox, type MeasureChar } from './viewer-caret-geometry'
-import type { LineOffset } from './selection.svelte'
+import type { RowOffset } from './selection.svelte'
 
 /**
  * Resolves a point inside `.file-content` to a caret. Returns `null` only when the point
@@ -20,7 +20,7 @@ import type { LineOffset } from './selection.svelte'
  * rendered; every point over the content resolves, including the line-number gutter, the
  * row padding, and the blank area below the last line.
  */
-export function caretFromPoint(content: HTMLElement, x: number, y: number): LineOffset | null {
+export function caretFromPoint(content: HTMLElement, x: number, y: number): RowOffset | null {
   const box = content.getBoundingClientRect()
   if (x < box.left || x > box.right || y < box.top || y > box.bottom) return null
   return resolveCaret(content, x, y)
@@ -35,7 +35,7 @@ export function caretFromPoint(content: HTMLElement, x: number, y: number): Line
  * sweeps whole visual rows as they scroll by, the way an editor does. Past a side edge
  * only x is pulled in, so the row under the pointer still decides the line.
  */
-export function caretFromPointClamped(content: HTMLElement, x: number, y: number): LineOffset | null {
+export function caretFromPointClamped(content: HTMLElement, x: number, y: number): RowOffset | null {
   const box = content.getBoundingClientRect()
   if (y < box.top) return resolveCaret(content, box.left, box.top)
   if (y > box.bottom) return resolveCaret(content, box.right, box.bottom)
@@ -46,35 +46,35 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-function resolveCaret(content: HTMLElement, x: number, y: number): LineOffset | null {
-  const rows = content.querySelectorAll<HTMLElement>('[data-line]')
+function resolveCaret(content: HTMLElement, x: number, y: number): RowOffset | null {
+  const rows = content.querySelectorAll<HTMLElement>('[data-row]')
   if (rows.length === 0) return null
 
-  const hit = locateLine(rows, y)
-  const line = parseLineNumber(hit.el)
-  if (line === null) return null
+  const hit = locateRow(rows, y)
+  const row = parseRowNumber(hit.el)
+  if (row === null) return null
   const lineText = hit.el.querySelector<HTMLElement>('.line-text')
   if (lineText === null) return null
 
   const { length, measure } = charBoxes(lineText)
-  if (hit.edge === 'above') return { line, offset: 0 }
-  if (hit.edge === 'below') return { line, offset: length }
-  return { line, offset: findOffsetByGeometry({ length, measure, x, y }) }
+  if (hit.edge === 'above') return { row, offset: 0 }
+  if (hit.edge === 'below') return { row, offset: length }
+  return { row, offset: findOffsetByGeometry({ length, measure, x, y }) }
 }
 
 /** Where `y` fell relative to the rendered rows: past one end, or on a row. */
-type LineEdge = 'above' | 'below' | null
+type RowEdge = 'above' | 'below' | null
 
-interface LineHit {
+interface RowHit {
   el: HTMLElement
-  edge: LineEdge
+  edge: RowEdge
 }
 
 /**
- * Finds the rendered `[data-line]` row containing `y`. Rows sit in ascending order, so a
+ * Finds the rendered `[data-row]` row containing `y`. Rows sit in ascending order, so a
  * binary search costs ~log2(rendered rows) rect reads instead of one per row.
  */
-function locateLine(rows: NodeListOf<HTMLElement>, y: number): LineHit {
+function locateRow(rows: NodeListOf<HTMLElement>, y: number): RowHit {
   const last = rows.length - 1
   if (y < rows[0].getBoundingClientRect().top) return { el: rows[0], edge: 'above' }
   if (y > rows[last].getBoundingClientRect().bottom) return { el: rows[last], edge: 'below' }
@@ -93,8 +93,8 @@ function locateLine(rows: NodeListOf<HTMLElement>, y: number): LineHit {
   return { el: rows[Math.min(lo, last)], edge: null }
 }
 
-function parseLineNumber(row: HTMLElement): number | null {
-  const raw = row.getAttribute('data-line')
+function parseRowNumber(row: HTMLElement): number | null {
+  const raw = row.getAttribute('data-row')
   if (raw === null) return null
   const n = Number.parseInt(raw, 10)
   if (Number.isNaN(n) || n < 0) return null
@@ -153,8 +153,8 @@ function charBoxes(lineText: HTMLElement): { length: number; measure: MeasureCha
  * row N. That follows `rangeRect`'s preference for the rect with width and matches
  * native downstream affinity; it's correct, leave it.
  */
-export function caretRectFor(content: HTMLElement, point: LineOffset): CaretRect | null {
-  const lineText = content.querySelector<HTMLElement>(`[data-line="${String(point.line)}"] .line-text`)
+export function caretRectFor(content: HTMLElement, point: RowOffset): CaretRect | null {
+  const lineText = content.querySelector<HTMLElement>(`[data-row="${String(point.row)}"] .line-text`)
   if (lineText === null) return null
 
   const { length, measure } = charBoxes(lineText)
@@ -179,7 +179,7 @@ export function caretRectFor(content: HTMLElement, point: LineOffset): CaretRect
  * `Range` measurement.
  */
 export function measureColumnWidth(content: HTMLElement): number | null {
-  const rows = content.querySelectorAll<HTMLElement>('[data-line] .line-text')
+  const rows = content.querySelectorAll<HTMLElement>('[data-row] .line-text')
   for (const row of rows) {
     const { length, measure } = charBoxes(row)
     if (length === 0) continue

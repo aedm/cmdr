@@ -77,7 +77,10 @@ export {
 } from './file-viewer'
 export type {
   ViewerPullProgress,
+  ChunkEnd,
   LineChunk,
+  TotalRows,
+  ViewerRow,
   BackendCapabilities,
   ViewerOpenResult,
   ViewerContentKind,

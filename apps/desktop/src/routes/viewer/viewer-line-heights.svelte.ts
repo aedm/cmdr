@@ -23,7 +23,7 @@ export function getLineHeight(): number {
   return Math.max(1, Math.round(LINE_HEIGHT_BASE * getEffectiveScale()))
 }
 
-const MAX_LINES = 50_000
+const MAX_ROWS = 50_000
 
 // WebKit in Tauri doesn't have requestIdleCallback. Fall back to setTimeout.
 const scheduleIdle: (cb: () => void) => void =
@@ -38,15 +38,18 @@ const scheduleIdle: (cb: () => void) => void =
       }
 
 /**
- * Measures the rendered pixel height of each line when wrapped at `maxWidth`.
- * Returns one raw height per line (0 for an empty line is fine; the map clamps
+ * Measures the rendered pixel height of each ROW when wrapped at `maxWidth`.
+ * Returns one raw height per row (0 for an empty row is fine; the map clamps
  * to the minimum row height). `maxWidth` is the text column width: the scroll
  * container minus the gutter and row padding (see `viewer-text-width.svelte.ts`).
+ *
+ * ❗ Rows, not physical lines. A long line arrives as several rows, each measured on
+ * its own; CSS wrapping on top of that is what this measures.
  */
-export type LineHeightMeasurer = (lines: string[], maxWidth: number) => Float64Array
+export type RowHeightMeasurer = (rows: string[], maxWidth: number) => Float64Array
 
 /**
- * DOM-truth measurer: lays every line out in a hidden probe that mirrors the
+ * DOM-truth measurer: lays every row out in a hidden probe that mirrors the
  * real `.line` (a `display:flex` row with a `.line-text` flex item) and reads
  * the wrapped height. This is the source of truth because WebKit's own layout is
  * what the viewer renders (see the flex note on the row loop). A canvas /
@@ -60,8 +63,8 @@ export type LineHeightMeasurer = (lines: string[], maxWidth: number) => Float64A
  * One offscreen layout + read for the whole file (~70 ms for ~2.3k lines);
  * deferred to an idle callback so it never blocks first paint.
  */
-function measureLineHeightsViaDom(lines: string[], maxWidth: number): Float64Array {
-  const n = lines.length
+function measureRowHeightsViaDom(rows: string[], maxWidth: number): Float64Array {
+  const n = rows.length
   const heights = new Float64Array(n)
   if (typeof document === 'undefined' || n === 0) return heights
 
@@ -76,7 +79,7 @@ function measureLineHeightsViaDom(lines: string[], maxWidth: number): Float64Arr
   // unbreakable run to fit, so a plain-block probe would wrap differently from
   // what's on screen and drift the scroll. Keep this in lockstep with
   // `.word-wrap .line-text` in `+page.svelte`.
-  const rows: HTMLDivElement[] = new Array<HTMLDivElement>(n)
+  const probes: HTMLDivElement[] = new Array<HTMLDivElement>(n)
   const frag = document.createDocumentFragment()
   for (let i = 0; i < n; i++) {
     const row = document.createElement('div')
@@ -84,9 +87,9 @@ function measureLineHeightsViaDom(lines: string[], maxWidth: number): Float64Arr
     const text = document.createElement('div')
     text.style.cssText =
       'min-width:0;font-family:var(--font-mono);font-size:var(--font-size-sm);line-height:1.5;white-space:pre-wrap;overflow-wrap:break-word;'
-    text.textContent = lines[i]
+    text.textContent = rows[i]
     row.appendChild(text)
-    rows[i] = row
+    probes[i] = row
     frag.appendChild(row)
   }
   host.appendChild(frag)
@@ -94,22 +97,22 @@ function measureLineHeightsViaDom(lines: string[], maxWidth: number): Float64Arr
 
   // First read forces one layout pass; the rest are cheap reads off it.
   for (let i = 0; i < n; i++) {
-    heights[i] = rows[i].getBoundingClientRect().height
+    heights[i] = probes[i].getBoundingClientRect().height
   }
 
   document.body.removeChild(host)
   return heights
 }
 
-interface LineHeightMapOptions {
+interface RowHeightMapOptions {
   /** Height source. Defaults to the DOM measurer; tests inject a deterministic one. */
-  measure?: LineHeightMeasurer
+  measure?: RowHeightMeasurer
   /** Defers the (blocking) measure pass. Defaults to an idle callback; tests run it now. */
   schedule?: (cb: () => void) => void
 }
 
-export function createLineHeightMap(options: LineHeightMapOptions = {}) {
-  const measure = options.measure ?? measureLineHeightsViaDom
+export function createRowHeightMap(options: RowHeightMapOptions = {}) {
+  const measure = options.measure ?? measureRowHeightsViaDom
   const schedule = options.schedule ?? scheduleIdle
 
   let ready = $state(false)
@@ -117,7 +120,7 @@ export function createLineHeightMap(options: LineHeightMapOptions = {}) {
   // Read by getters so Svelte's $derived expressions track changes to the underlying data.
   let version = $state(0)
   let generation = 0
-  let currentLines: string[] = []
+  let currentRows: string[] = []
   let cumHeight: Float64Array = new Float64Array(0)
   let currentMaxWidth = 0
 
@@ -126,25 +129,25 @@ export function createLineHeightMap(options: LineHeightMapOptions = {}) {
     // No version++ here: when ready is false, getters return 0 regardless.
     // Bumping version from inside cancel() (called by effects) would create
     // an infinite reactive loop: effect -> cancel -> version++ -> $derived dirty -> effect.
-    currentLines = []
+    currentRows = []
     cumHeight = new Float64Array(0)
     currentMaxWidth = 0
   }
 
   /**
-   * Measures every line at `maxWidth` and builds the prefix-sum array, where
-   * cumHeight[i] = sum of heights for lines 0..i-1, so:
+   * Measures every row at `maxWidth` and builds the prefix-sum array, where
+   * cumHeight[i] = sum of heights for rows 0..i-1, so:
    * - cumHeight[0] = 0
-   * - cumHeight[n] = total height through line n-1
-   * - cumHeight[lines.length] = total height
+   * - cumHeight[n] = total height through row n-1
+   * - cumHeight[rows.length] = total height
    *
-   * Each line is clamped to at least one row: the DOM renders every `.line` at
-   * least one line tall (the gutter number keeps the row open) even when the
-   * text is empty, so the prefix sum must match what's on screen.
+   * Each row is clamped to at least one text line: the DOM renders every `.line` at
+   * least that tall (the gutter number keeps it open) even when the text is empty,
+   * so the prefix sum must match what's on screen.
    */
   function buildPrefixSum(maxWidth: number) {
-    const heights = measure(currentLines, maxWidth)
-    const n = currentLines.length
+    const heights = measure(currentRows, maxWidth)
+    const n = currentRows.length
     const sums = new Float64Array(n + 1)
     const minHeight = getLineHeight()
     let acc = 0
@@ -158,25 +161,25 @@ export function createLineHeightMap(options: LineHeightMapOptions = {}) {
     version++
   }
 
-  /** O(1): returns the Y offset of the top edge of line n. */
-  function getLineTop(n: number): number {
+  /** O(1): returns the Y offset of the top edge of row n. */
+  function getRowTop(n: number): number {
     dependOn(version) // Reactive dependency: ensures $derived expressions recompute after reflow
     if (!ready || n < 0) return 0
     if (n >= cumHeight.length) return cumHeight[cumHeight.length - 1]
     return cumHeight[n]
   }
 
-  /** O(log n) binary search: returns the line index at scroll position y. */
-  function getLineAtPosition(y: number): number {
+  /** O(log n) binary search: returns the row index at scroll position y. */
+  function getRowAtPosition(y: number): number {
     dependOn(version) // Reactive dependency: ensures $derived expressions recompute after reflow
     if (!ready || cumHeight.length <= 1) return 0
-    const maxLine = cumHeight.length - 2 // last valid line index
+    const maxRow = cumHeight.length - 2 // last valid row index
     if (y <= 0) return 0
-    if (y >= cumHeight[cumHeight.length - 1]) return maxLine
+    if (y >= cumHeight[cumHeight.length - 1]) return maxRow
 
     // Binary search: find the largest i where cumHeight[i] <= y
     let lo = 0
-    let hi = maxLine
+    let hi = maxRow
     while (lo < hi) {
       const mid = (lo + hi + 1) >>> 1
       if (cumHeight[mid] <= y) {
@@ -188,7 +191,7 @@ export function createLineHeightMap(options: LineHeightMapOptions = {}) {
     return lo
   }
 
-  /** Returns the total height of all lines. */
+  /** Returns the total height of all rows. */
   function getTotalHeight(): number {
     dependOn(version) // Reactive dependency: ensures $derived expressions recompute after reflow
     if (!ready || cumHeight.length === 0) return 0
@@ -196,12 +199,12 @@ export function createLineHeightMap(options: LineHeightMapOptions = {}) {
   }
 
   /**
-   * Re-measures all lines at a new width and rebuilds the prefix-sum. The caller
+   * Re-measures all rows at a new width and rebuilds the prefix-sum. The caller
    * debounces this to the resize-settle: a full DOM re-measure is ~70 ms, too
    * slow to run on every ResizeObserver frame during a live drag.
    */
   function reflow(newWidth: number) {
-    if (!ready || currentLines.length === 0) return
+    if (!ready || currentRows.length === 0) return
     if (newWidth === currentMaxWidth) return
     buildPrefixSum(newWidth)
   }
@@ -212,25 +215,25 @@ export function createLineHeightMap(options: LineHeightMapOptions = {}) {
    * Row heights scale with the font, so the prefix sum needs rebuilding.
    */
   function recomputeForLineHeightChange() {
-    if (!ready || currentLines.length === 0) return
+    if (!ready || currentRows.length === 0) return
     buildPrefixSum(currentMaxWidth)
   }
 
   /**
-   * Schedules an idle measure pass for all lines and flips `ready` when done.
+   * Schedules an idle measure pass for all rows and flips `ready` when done.
    * A generation counter discards a preparation that a newer one superseded.
    */
-  function prepareLines(lines: string[], maxWidth: number) {
+  function prepareRows(rows: string[], maxWidth: number) {
     generation++
     const thisGeneration = generation
     ready = false
 
-    if (lines.length === 0) return
-    if (lines.length > MAX_LINES) {
-      log.debug('Skipping line height map: {count} {linesNoun} exceeds limit of {max}', {
-        count: lines.length,
-        linesNoun: pluralize(lines.length, 'line'),
-        max: MAX_LINES,
+    if (rows.length === 0) return
+    if (rows.length > MAX_ROWS) {
+      log.debug('Skipping row height map: {count} {rowsNoun} exceeds limit of {max}', {
+        count: rows.length,
+        rowsNoun: pluralize(rows.length, 'row'),
+        max: MAX_ROWS,
       })
       return
     }
@@ -238,12 +241,12 @@ export function createLineHeightMap(options: LineHeightMapOptions = {}) {
     schedule(() => {
       if (thisGeneration !== generation) return // superseded
       const startTime = performance.now()
-      currentLines = lines
+      currentRows = rows
       buildPrefixSum(maxWidth)
       ready = true
-      log.info('Line height map ready: {count} {linesNoun}, total height {height}px, measured in {ms}ms', {
-        count: lines.length,
-        linesNoun: pluralize(lines.length, 'line'),
+      log.info('Row height map ready: {count} {rowsNoun}, total height {height}px, measured in {ms}ms', {
+        count: rows.length,
+        rowsNoun: pluralize(rows.length, 'row'),
         height: getTotalHeight().toFixed(0),
         ms: (performance.now() - startTime).toFixed(1),
       })
@@ -260,12 +263,12 @@ export function createLineHeightMap(options: LineHeightMapOptions = {}) {
     get ready() {
       return ready
     },
-    getLineTop,
-    getLineAtPosition,
+    getRowTop,
+    getRowAtPosition,
     getTotalHeight,
     reflow,
     recomputeForLineHeightChange,
-    prepareLines,
+    prepareRows,
     cancel,
   }
 }

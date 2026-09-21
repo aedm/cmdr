@@ -48,46 +48,46 @@ describe('recenterOffset', () => {
 
 describe('ensureVisibleOffset', () => {
   // A 30 px line in an 800 px viewport, with a 30 px (one-line) breathing margin.
-  const line = { lineHeight: 30, viewportHeight: 800, margin: 30 }
+  const line = { rowHeight: 30, viewportHeight: 800, margin: 30 }
 
   it('returns null when the line is already comfortably in view', () => {
-    expect(ensureVisibleOffset({ ...line, lineTop: 1200, scrollTop: 1000 })).toBeNull()
+    expect(ensureVisibleOffset({ ...line, rowTop: 1200, scrollTop: 1000 })).toBeNull()
   })
 
   it('top-aligns a line above the viewport, leaving the margin above it', () => {
     // Line at 500 while scrolled to 1000: scroll back so its top sits one margin down.
-    expect(ensureVisibleOffset({ ...line, lineTop: 500, scrollTop: 1000 })).toBe(470)
+    expect(ensureVisibleOffset({ ...line, rowTop: 500, scrollTop: 1000 })).toBe(470)
   })
 
   it('bottom-aligns a line below the viewport, leaving the margin below it', () => {
     // Line at 2000 while scrolled to 1000: 2000 + 30 + 30 - 800 = 1260.
-    expect(ensureVisibleOffset({ ...line, lineTop: 2000, scrollTop: 1000 })).toBe(1260)
+    expect(ensureVisibleOffset({ ...line, rowTop: 2000, scrollTop: 1000 })).toBe(1260)
   })
 
   it('respects the margin at both edges', () => {
     // The line ends exactly one margin above the viewport bottom → still visible.
-    expect(ensureVisibleOffset({ ...line, lineTop: 1740, scrollTop: 1000 })).toBeNull()
+    expect(ensureVisibleOffset({ ...line, rowTop: 1740, scrollTop: 1000 })).toBeNull()
     // One pixel further down and the margin is broken → bottom-align.
-    expect(ensureVisibleOffset({ ...line, lineTop: 1741, scrollTop: 1000 })).toBe(1001)
+    expect(ensureVisibleOffset({ ...line, rowTop: 1741, scrollTop: 1000 })).toBe(1001)
     // Same at the top edge.
-    expect(ensureVisibleOffset({ ...line, lineTop: 1030, scrollTop: 1000 })).toBeNull()
-    expect(ensureVisibleOffset({ ...line, lineTop: 1029, scrollTop: 1000 })).toBe(999)
+    expect(ensureVisibleOffset({ ...line, rowTop: 1030, scrollTop: 1000 })).toBeNull()
+    expect(ensureVisibleOffset({ ...line, rowTop: 1029, scrollTop: 1000 })).toBe(999)
   })
 
   it('never scrolls to a negative offset', () => {
-    expect(ensureVisibleOffset({ ...line, lineTop: 0, scrollTop: 200 })).toBe(0)
+    expect(ensureVisibleOffset({ ...line, rowTop: 0, scrollTop: 200 })).toBe(0)
   })
 
   it('returns null when the viewport has no size', () => {
-    expect(ensureVisibleOffset({ ...line, lineTop: 5000, scrollTop: 0, viewportHeight: 0 })).toBeNull()
+    expect(ensureVisibleOffset({ ...line, rowTop: 5000, scrollTop: 0, viewportHeight: 0 })).toBeNull()
   })
 
   it('leaves a line taller than the viewport alone while any of it is on screen', () => {
     // A word-wrapped paragraph 2000 px tall, the viewport parked in the middle of it.
-    const tall = { lineHeight: 2000, viewportHeight: 800, margin: 30 }
-    expect(ensureVisibleOffset({ ...tall, lineTop: 500, scrollTop: 1000 })).toBeNull()
+    const tall = { rowHeight: 2000, viewportHeight: 800, margin: 30 }
+    expect(ensureVisibleOffset({ ...tall, rowTop: 500, scrollTop: 1000 })).toBeNull()
     // Entirely off screen either way, it top-aligns so the reader starts at its start.
-    expect(ensureVisibleOffset({ ...tall, lineTop: 5000, scrollTop: 1000 })).toBe(4970)
-    expect(ensureVisibleOffset({ ...tall, lineTop: 0, scrollTop: 3000 })).toBe(0)
+    expect(ensureVisibleOffset({ ...tall, rowTop: 5000, scrollTop: 1000 })).toBe(4970)
+    expect(ensureVisibleOffset({ ...tall, rowTop: 0, scrollTop: 3000 })).toBe(0)
   })
 })

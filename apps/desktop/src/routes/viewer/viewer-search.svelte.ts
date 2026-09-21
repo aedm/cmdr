@@ -22,10 +22,10 @@ export type ViewerSearchUiStatus = 'idle' | 'running' | 'done' | 'cancelled' | '
 interface SearchDeps {
   getSessionId: () => string
   getTotalBytes: () => number
-  getTotalLines: () => number | null
-  getEstimatedTotalLines: () => number
+  getTotalRows: () => number | null
+  getEstimatedTotalRows: () => number
   getScrollLineHeight: () => number
-  getLineTop: (n: number) => number
+  getRowTop: (n: number) => number
   getViewportHeight: () => number
   getContentRef: () => HTMLDivElement | undefined
   /** No-wrap mode only; wrap mode has no horizontal overflow to scroll. */
@@ -51,14 +51,14 @@ export function createViewerSearch(deps: SearchDeps) {
   let searchPollTimer: ReturnType<typeof setInterval> | undefined
   let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined
 
-  const matchesByLine = $derived.by(() => {
+  const matchesByRow = $derived.by(() => {
     const map = new SvelteMap<number, Array<{ match: ViewerSearchMatch; globalIndex: number }>>()
     for (let i = 0; i < searchMatches.length; i++) {
       const m = searchMatches[i]
-      let entries = map.get(m.line)
+      let entries = map.get(m.row)
       if (!entries) {
         entries = []
-        map.set(m.line, entries)
+        map.set(m.row, entries)
       }
       entries.push({ match: m, globalIndex: i })
     }
@@ -228,40 +228,40 @@ export function createViewerSearch(deps: SearchDeps) {
   function scrollToMatch(match: ViewerSearchMatch) {
     const contentRef = deps.getContentRef()
     if (!contentRef) return
-    const totalLines = deps.getTotalLines()
+    const totalRows = deps.getTotalRows()
     const totalBytes = deps.getTotalBytes()
-    let targetLine: number
-    if (totalLines !== null) {
-      targetLine = match.line
+    let targetRow: number
+    if (totalRows !== null) {
+      targetRow = match.row
     } else {
-      targetLine = totalBytes > 0 ? (match.byteOffset / totalBytes) * deps.getEstimatedTotalLines() : match.line
+      targetRow = totalBytes > 0 ? (match.byteOffset / totalBytes) * deps.getEstimatedTotalRows() : match.row
     }
     // Only do a rough scroll when the target line ISN'T already rendered. A
     // wrapped line is one tall element, so whenever any part of it is on-screen
     // its row exists in the DOM and we can recentre from the match's real rect
     // without jumping to the line top first. Rough-scrolling unconditionally is
     // what made an on-screen match jump to the start of the line on every Enter.
-    const lineRendered = Number.isInteger(targetLine) && lineRowExists(contentRef, targetLine)
-    if (lineRendered) {
+    const rowRendered = Number.isInteger(targetRow) && rowExists(contentRef, targetRow)
+    if (rowRendered) {
       // Line already on screen (its row exists, even if the match is below the
       // fold of a tall wrapped line): recentre gently from the real rect, leaving
       // an already-visible match untouched so stepping doesn't jump.
-      void recenterGently(contentRef, targetLine)
+      void recenterGently(contentRef, targetRow)
     } else {
       // Line off screen: rough-scroll near it so it renders, then actively
       // converge on the match. A single post-scroll read is unreliable for a tall
       // wrapped line whose layout is still settling, so we re-read each frame.
-      contentRef.scrollTop = Math.max(0, deps.getLineTop(targetLine) - deps.getViewportHeight() / 2)
-      void recenterUntilCentred(contentRef, targetLine)
+      contentRef.scrollTop = Math.max(0, deps.getRowTop(targetRow) - deps.getViewportHeight() / 2)
+      void recenterUntilCentred(contentRef, targetRow)
     }
   }
 
-  function lineRowExists(contentRef: HTMLDivElement, line: number): boolean {
-    return contentRef.querySelector(`[data-line="${String(line)}"]`) !== null
+  function rowExists(contentRef: HTMLDivElement, line: number): boolean {
+    return contentRef.querySelector(`[data-row="${String(line)}"]`) !== null
   }
 
-  function markSelector(targetLine: number): string {
-    return Number.isInteger(targetLine) ? `[data-line="${String(targetLine)}"] mark.active` : 'mark.active'
+  function markSelector(targetRow: number): string {
+    return Number.isInteger(targetRow) ? `[data-row="${String(targetRow)}"] mark.active` : 'mark.active'
   }
 
   /** Applies one centring pass for the given mark. With `forceCenter`, returns
@@ -299,9 +299,9 @@ export function createViewerSearch(deps: SearchDeps) {
   /** Gentle path: the match's line is already rendered. Centre it only if it's
    *  out of view (an already-visible match stays put). `tick()` flushes the moved
    *  `.active` class first. */
-  async function recenterGently(contentRef: HTMLDivElement, targetLine: number) {
+  async function recenterGently(contentRef: HTMLDivElement, targetRow: number) {
     await tick()
-    const mark = contentRef.querySelector(markSelector(targetLine))
+    const mark = contentRef.querySelector(markSelector(targetRow))
     if (mark) applyRecenter(contentRef, mark, false)
   }
 
@@ -309,9 +309,9 @@ export function createViewerSearch(deps: SearchDeps) {
    *  Drive scrollTop to centre the match, re-reading each frame so a tall wrapped
    *  line's still-settling layout converges instead of leaving the match stuck
    *  off-screen. Stops once the rect is stable (or the budget runs out). */
-  async function recenterUntilCentred(contentRef: HTMLDivElement, targetLine: number) {
+  async function recenterUntilCentred(contentRef: HTMLDivElement, targetRow: number) {
     await tick()
-    const selector = markSelector(targetLine)
+    const selector = markSelector(targetRow)
     for (let frame = 0; frame < 24; frame++) {
       await nextFrame()
       const mark = contentRef.querySelector(selector)
@@ -351,11 +351,11 @@ export function createViewerSearch(deps: SearchDeps) {
    * we rely on the backend's authoritative `searchMatches` array and emit
    * spans directly from it.
    */
-  function getLineMatches(lineNumber: number, lineText: string): SegmentMatchInput[] {
+  function getRowMatches(rowNumber: number, rowText: string): SegmentMatchInput[] {
     if (!searchQuery || !searchVisible) return []
 
     if (useRegex) {
-      const entries = matchesByLine.get(lineNumber)
+      const entries = matchesByRow.get(rowNumber)
       if (!entries || entries.length === 0) return []
       return entries.map(({ match, globalIndex }) => ({
         column: match.column,
@@ -365,12 +365,12 @@ export function createViewerSearch(deps: SearchDeps) {
     }
 
     const queryLower = caseSensitive ? searchQuery : searchQuery.toLowerCase()
-    const lineForSearch = caseSensitive ? lineText : lineText.toLowerCase()
+    const rowForSearch = caseSensitive ? rowText : rowText.toLowerCase()
     const result: SegmentMatchInput[] = []
-    const activeEntry = matchesByLine.get(lineNumber)?.find((e) => e.globalIndex === currentMatchIndex)
+    const activeEntry = matchesByRow.get(rowNumber)?.find((e) => e.globalIndex === currentMatchIndex)
     let searchStart = 0
     for (;;) {
-      const idx = lineForSearch.indexOf(queryLower, searchStart)
+      const idx = rowForSearch.indexOf(queryLower, searchStart)
       if (idx === -1) break
       const isActive = activeEntry !== undefined && activeEntry.match.column === idx
       result.push({ column: idx, length: queryLower.length, active: isActive })
@@ -384,12 +384,12 @@ export function createViewerSearch(deps: SearchDeps) {
    * highlights with optional selection bounds.
    */
   function getHighlightedSegments(
-    lineNumber: number,
-    lineText: string,
+    rowNumber: number,
+    rowText: string,
     selectionBounds: SelectionBoundsInput | null = null,
   ): LineSegment[] {
-    const matches = getLineMatches(lineNumber, lineText)
-    return segmentLine(lineText, matches, selectionBounds)
+    const matches = getRowMatches(rowNumber, rowText)
+    return segmentLine(rowText, matches, selectionBounds)
   }
 
   function runDebounceEffect() {

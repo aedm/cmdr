@@ -29,10 +29,10 @@ function emptyDeps() {
   return {
     getSessionId: () => 'sess-1',
     getTotalBytes: () => 1000,
-    getTotalLines: () => null,
-    getEstimatedTotalLines: () => 100,
+    getTotalRows: () => null,
+    getEstimatedTotalRows: () => 100,
     getScrollLineHeight: () => 18,
-    getLineTop: (n: number) => n * 18,
+    getRowTop: (n: number) => n * 18,
     getViewportHeight: () => 600,
     getContentRef: () => undefined,
     isWordWrap: () => false,

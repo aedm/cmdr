@@ -18,7 +18,7 @@
 
 interface TextWidthDeps {
   getContentRef: () => HTMLDivElement | undefined
-  getVisibleLinesKey: () => unknown
+  getVisibleRowsKey: () => unknown
 }
 
 /**
@@ -79,8 +79,8 @@ export function createTextWidthTracker(deps: TextWidthDeps) {
   /** Re-measures when visible lines first appear: `ResizeObserver` won't fire if the
    *  container size didn't change but the inner `.line` row just became present in
    *  the DOM. */
-  function runVisibleLinesEffect() {
-    void deps.getVisibleLinesKey()
+  function runVisibleRowsEffect() {
+    void deps.getVisibleRowsKey()
     if (textWidth > 0) return
     requestAnimationFrame(() => {
       const ref = deps.getContentRef()
@@ -94,6 +94,6 @@ export function createTextWidthTracker(deps: TextWidthDeps) {
       return textWidth
     },
     runResizeEffect,
-    runVisibleLinesEffect,
+    runVisibleRowsEffect,
   }
 }

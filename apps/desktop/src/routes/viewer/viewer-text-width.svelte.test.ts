@@ -110,10 +110,10 @@ describe('createTextWidthTracker', () => {
     const content = makeViewerDom({ contentClientWidth: 800, gutterWidth: 40, firstLineTextWidth: 44 })
     const tracker = createTextWidthTracker({
       getContentRef: () => content,
-      getVisibleLinesKey: () => 1,
+      getVisibleRowsKey: () => 1,
     })
 
-    tracker.runVisibleLinesEffect()
+    tracker.runVisibleRowsEffect()
     flushRaf()
 
     // 800 (scroll container) - 8 - 8 (line padding) - 40 (gutter) - 8 (gutter margin) = 736.

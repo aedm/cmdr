@@ -1,4 +1,4 @@
-import { viewerGetStatus } from '$lib/tauri-commands'
+import { viewerGetStatus, type TotalRows } from '$lib/tauri-commands'
 import { getAppLogger } from '$lib/logging/logger'
 
 const log = getAppLogger('viewer')
@@ -9,6 +9,9 @@ interface IndexingPollDeps {
   onStatus: (status: {
     backendType: 'fullLoad' | 'byteSeek' | 'lineIndex'
     isIndexing: boolean
+    /** Rows, and whether they're counted or sampled. The scroll coordinate. */
+    totalRows: TotalRows
+    /** Physical lines, when the backend knows them. The status bar's count. */
     totalLines: number | null
   }) => void
 }
@@ -26,6 +29,7 @@ export function createIndexingPoll(deps: IndexingPollDeps) {
       deps.onStatus({
         backendType: status.backendType,
         isIndexing: status.isIndexing,
+        totalRows: status.totalRows,
         totalLines: status.totalLines,
       })
       if (!status.isIndexing) {

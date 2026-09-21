@@ -23,7 +23,7 @@ describe('toSpacerRelative', () => {
   it('lands on the scrolled-away part of the spacer, far below its own origin', () => {
     // The realistic case: `.scroll-spacer` is metres tall and its top has scrolled far
     // above the viewport, so its `top` is a large negative number while the measured
-    // caret sits at a small positive one. Pre-fix, applying `linesOffset` on top of this
+    // caret sits at a small positive one. Pre-fix, applying `rowsOffset` on top of this
     // put the cursor 10⁵-10⁷ px off screen.
     const box = toSpacerRelative(caret(48, 300, 318), { left: 0, top: -120_000 })
     expect(box).toEqual({ left: 48, top: 120_300, height: 18 })

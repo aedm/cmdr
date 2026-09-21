@@ -3599,6 +3599,8 @@ export type MessageKey =
   | 'viewer.reloadToast.grew'
   | 'viewer.reloadToast.reload'
   | 'viewer.reloadToast.rotated'
+  | 'viewer.row.continuesLabel'
+  | 'viewer.row.continuesTooltip'
   | 'viewer.saveAs.defaultName'
   | 'viewer.saveAs.destinationReadOnly'
   | 'viewer.saveAs.panelFailed'

@@ -7,14 +7,14 @@
  * be a setting rather than a mode.
  *
  * "Text cursor" is the rendered bar; "caret" stays the name for a resolved text position
- * (`LineOffset`, `caretFromPoint`, `viewer-caret-geometry.ts`). `DETAILS.md` § "Text
+ * (`RowOffset`, `caretFromPoint`, `viewer-caret-geometry.ts`). `DETAILS.md` § "Text
  * cursor" has the boundary.
  */
 
 import { tick } from 'svelte'
 import { caretRectFor } from './viewer-pointer'
 import type { CaretRect } from './viewer-caret-geometry'
-import type { LineOffset } from './selection.svelte'
+import type { RowOffset } from './selection.svelte'
 
 /** Where to paint the bar, in `.scroll-spacer` coordinates. */
 export interface TextCursorBox {
@@ -35,7 +35,7 @@ export interface RectOrigin {
 /**
  * Converts a caret rect into the box the cursor element gets.
  *
- * ❌ This subtraction is the WHOLE conversion — never add `linesOffset` on top of it.
+ * ❌ This subtraction is the WHOLE conversion — never add `rowsOffset` on top of it.
  * `caretRectFor` bottoms out in `Range.getClientRects()`, so it hands back a live
  * VIEWPORT rect read off the rendered row, which already carries `.lines-container`'s
  * `translateY` and the current scroll position. Applying the transform a second time
@@ -54,7 +54,7 @@ interface TextCursorDeps {
   /** The `viewer.showTextCursor` setting, read reactively so a flip in Settings lands. */
   isEnabled: () => boolean
   /** The selection's moving end, or `null` when there's no selection. */
-  getFocus: () => LineOffset | null
+  getFocus: () => RowOffset | null
   getContentRef: () => HTMLElement | undefined
   getSpacerRef: () => HTMLElement | undefined
   /**
@@ -73,7 +73,7 @@ export function createViewerTextCursor(deps: TextCursorDeps) {
    *  Keyed on the focus alone, so scrolling past a parked cursor doesn't reset it. */
   const blinkKey = $derived.by(() => {
     const focus = deps.getFocus()
-    return focus === null ? '' : `${String(focus.line)}:${String(focus.offset)}`
+    return focus === null ? '' : `${String(focus.row)}:${String(focus.offset)}`
   })
 
   /** Discards a measurement whose effect run has already been superseded. */

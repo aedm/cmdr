@@ -348,7 +348,7 @@ test.describe('File viewer selection and copy', () => {
     // sequence. Then ⌘C and check the clipboard matches the slice we asked for.
     await viewer.evaluate(`
             (function() {
-                const line = document.querySelector('[data-line="0"] .line-text')
+                const line = document.querySelector('[data-row="0"] .line-text')
                 if (!line) throw new Error('line 0 not found')
                 const rect = line.getBoundingClientRect()
                 const startX = rect.left + 10
@@ -413,7 +413,7 @@ test.describe('File viewer selection and copy', () => {
 
     await viewer.evaluate(`
             (function() {
-                const line = document.querySelector('[data-line="0"] .line-text')
+                const line = document.querySelector('[data-row="0"] .line-text')
                 if (!line) throw new Error('line 0 not found')
                 const rect = line.getBoundingClientRect()
                 const y = rect.top + rect.height / 2

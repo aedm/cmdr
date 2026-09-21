@@ -9,9 +9,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest'
 
 import { createViewerPointerDrag } from './viewer-pointer-drag.svelte'
-import type { LineOffset, Selection } from './selection.svelte'
+import type { RowOffset, Selection } from './selection.svelte'
 
-type SetOffset = (offset: LineOffset) => void
+type SetOffset = (offset: RowOffset) => void
 type SetRange = (range: Selection) => void
 
 /** The fake layout the harness stubs: a content box exactly filled by two rendered rows. */
@@ -48,11 +48,11 @@ function mountHarness(): Harness {
   content.className = 'file-content'
   content.tabIndex = 0
   content.innerHTML =
-    '<div data-line="0"><span class="line-number">1</span><span class="line-text">hello world</span></div>' +
-    '<div data-line="1"><span class="line-number">2</span><span class="line-text">second line</span></div>'
+    '<div data-row="0"><span class="line-number">1</span><span class="line-text">hello world</span></div>' +
+    '<div data-row="1"><span class="line-number">2</span><span class="line-text">second line</span></div>'
 
   content.getBoundingClientRect = () => rect(CONTENT.left, CONTENT.top, CONTENT.right, CONTENT.bottom)
-  const rows = content.querySelectorAll<HTMLElement>('[data-line]')
+  const rows = content.querySelectorAll<HTMLElement>('[data-row]')
   const starts = new Map<Node, number>()
   for (const [index, row] of rows.entries()) {
     row.getBoundingClientRect = () => rect(CONTENT.left, index * ROW_H, CONTENT.right, (index + 1) * ROW_H)
@@ -94,7 +94,7 @@ function createDrag(
 ) {
   return createViewerPointerDrag({
     getContentRef: () => content,
-    getLineText: () => lineText,
+    getRowText: () => lineText,
     hasSelection,
     setAnchor: harness.setAnchor,
     setFocus: harness.setFocus,
@@ -175,7 +175,7 @@ describe('viewer pointer drag extension', () => {
 
     drag.handlePointerDown(pointerEvent('pointerdown', { x: 4, y: ROW_H + 9 }))
 
-    expect(harness.setAnchor).toHaveBeenCalledWith({ line: 1, offset: 0 })
+    expect(harness.setAnchor).toHaveBeenCalledWith({ row: 1, offset: 0 })
   })
 
   it('keeps extending the selection when the pointer leaves the viewport', () => {
@@ -185,7 +185,7 @@ describe('viewer pointer drag extension', () => {
     drag.handlePointerMove(pointerEvent('pointermove', { x: 4000, y: CONTENT.bottom + 500 }))
 
     // Clamped into the content box: the end of the last rendered row, not nothing.
-    expect(harness.setFocus).toHaveBeenLastCalledWith({ line: 1, offset: 11 })
+    expect(harness.setFocus).toHaveBeenLastCalledWith({ row: 1, offset: 11 })
   })
 
   it('re-aims the selection after an autoscroll step', () => {
@@ -203,7 +203,7 @@ describe('viewer pointer drag extension', () => {
     frames[0](0)
 
     // Dragging below the viewport sweeps whole rows: the end of the bottom visible row.
-    expect(harness.setFocus).toHaveBeenCalledWith({ line: 1, offset: 11 })
+    expect(harness.setFocus).toHaveBeenCalledWith({ row: 1, offset: 11 })
   })
 })
 
@@ -226,8 +226,8 @@ describe('viewer multi-click selection', () => {
     clickTimes(drag, 2)
 
     expect(harness.setRange).toHaveBeenLastCalledWith({
-      anchor: { line: 0, offset: 6 },
-      focus: { line: 0, offset: 11 },
+      anchor: { row: 0, offset: 6 },
+      focus: { row: 0, offset: 11 },
     })
   })
 
@@ -237,8 +237,8 @@ describe('viewer multi-click selection', () => {
     clickTimes(drag, 3)
 
     expect(harness.setRange).toHaveBeenLastCalledWith({
-      anchor: { line: 0, offset: 0 },
-      focus: { line: 0, offset: 11 },
+      anchor: { row: 0, offset: 0 },
+      focus: { row: 0, offset: 11 },
     })
   })
 
@@ -252,7 +252,7 @@ describe('viewer multi-click selection', () => {
 
     // Back to a plain click: a fresh caret anchor where the pointer is (which collapses
     // the selection), and no focus move to stretch it anywhere.
-    expect(harness.setAnchor).toHaveBeenCalledExactlyOnceWith({ line: 0, offset: 6 })
+    expect(harness.setAnchor).toHaveBeenCalledExactlyOnceWith({ row: 0, offset: 6 })
     expect(harness.setFocus).not.toHaveBeenCalled()
   })
 
@@ -263,7 +263,7 @@ describe('viewer multi-click selection', () => {
     clickTimes(drag, 1, WORD_X + 40)
 
     // The second press is its own gesture, so it anchors a caret rather than a word.
-    expect(harness.setAnchor).toHaveBeenLastCalledWith({ line: 0, offset: 11 })
+    expect(harness.setAnchor).toHaveBeenLastCalledWith({ row: 0, offset: 11 })
     expect(harness.setFocus).not.toHaveBeenCalled()
   })
 
@@ -275,8 +275,8 @@ describe('viewer multi-click selection', () => {
     clickTimes(drag, 3)
 
     expect(harness.setRange).toHaveBeenLastCalledWith({
-      anchor: { line: 0, offset: 0 },
-      focus: { line: 0, offset: 35 },
+      anchor: { row: 0, offset: 0 },
+      focus: { row: 0, offset: 35 },
     })
   })
 })
@@ -307,8 +307,8 @@ describe('viewer drag granularity', () => {
     drag.handlePointerMove(pointerEvent('pointermove', { x: xAt(7), y: ROW_0_Y }))
 
     expect(harness.setRange).toHaveBeenLastCalledWith({
-      anchor: { line: 0, offset: 0 },
-      focus: { line: 0, offset: 11 },
+      anchor: { row: 0, offset: 0 },
+      focus: { row: 0, offset: 11 },
     })
   })
 
@@ -321,8 +321,8 @@ describe('viewer drag granularity', () => {
     // Direction preserved: the anchor jumps to the far edge of the pressed word, so the
     // union still covers both words whole and reads backwards.
     expect(harness.setRange).toHaveBeenLastCalledWith({
-      anchor: { line: 0, offset: 11 },
-      focus: { line: 0, offset: 0 },
+      anchor: { row: 0, offset: 11 },
+      focus: { row: 0, offset: 0 },
     })
   })
 
@@ -336,8 +336,8 @@ describe('viewer drag granularity', () => {
     // The drag IS armed now, and word granularity is what keeps the twitch harmless: the
     // move yields the same union the press did, so there is nothing left to collapse.
     expect(harness.setRange).toHaveBeenLastCalledWith({
-      anchor: { line: 0, offset: 6 },
-      focus: { line: 0, offset: 11 },
+      anchor: { row: 0, offset: 6 },
+      focus: { row: 0, offset: 11 },
     })
     expect(harness.setFocus).not.toHaveBeenCalled()
   })
@@ -349,8 +349,8 @@ describe('viewer drag granularity', () => {
     drag.handlePointerMove(pointerEvent('pointermove', { x: xAt(2), y: ROW_1_Y }))
 
     expect(harness.setRange).toHaveBeenLastCalledWith({
-      anchor: { line: 0, offset: 0 },
-      focus: { line: 1, offset: 11 },
+      anchor: { row: 0, offset: 0 },
+      focus: { row: 1, offset: 11 },
     })
   })
 
@@ -366,8 +366,8 @@ describe('viewer drag granularity', () => {
     // `endDrag` fired on the double-press's own release, so this only works because the
     // gesture's granularity and anchor range outlive the drag.
     expect(harness.setRange).toHaveBeenLastCalledWith({
-      anchor: { line: 0, offset: 0 },
-      focus: { line: 0, offset: 11 },
+      anchor: { row: 0, offset: 0 },
+      focus: { row: 0, offset: 11 },
     })
   })
 
@@ -383,7 +383,7 @@ describe('viewer drag granularity', () => {
     // ...so the drag that follows moves one endpoint, character by character.
     drag.handlePointerMove(pointerEvent('pointermove', { x: xAt(4), y: ROW_1_Y }))
 
-    expect(harness.setFocus).toHaveBeenLastCalledWith({ line: 1, offset: 4 })
+    expect(harness.setFocus).toHaveBeenLastCalledWith({ row: 1, offset: 4 })
     expect(harness.setRange).not.toHaveBeenCalled()
   })
 })

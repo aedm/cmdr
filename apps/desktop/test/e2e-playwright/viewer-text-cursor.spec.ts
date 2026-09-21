@@ -126,7 +126,7 @@ test.describe('File viewer text cursor', () => {
     if (page === null) throw new Error('No viewer open')
     return await page.evaluate<{ x: number; y: number }>(`
             (function() {
-                const lineText = document.querySelector('[data-line="0"] .line-text')
+                const lineText = document.querySelector('[data-row="0"] .line-text')
                 if (!lineText) throw new Error('line 0 not found')
                 const walker = document.createTreeWalker(lineText, NodeFilter.SHOW_TEXT)
                 const range = document.createRange()
@@ -214,7 +214,7 @@ test.describe('File viewer text cursor', () => {
     const page = viewer
     if (page === null) throw new Error('No viewer open')
     return await page.evaluate<string>(
-      `Array.from(document.querySelectorAll('[data-line="0"] .selected')).map(function (n) { return n.textContent }).join('')`,
+      `Array.from(document.querySelectorAll('[data-row="0"] .selected')).map(function (n) { return n.textContent }).join('')`,
     )
   }
 
@@ -224,7 +224,7 @@ test.describe('File viewer text cursor', () => {
     if (page === null) throw new Error('No viewer open')
     return await page.evaluate<{ top: number; height: number }>(`
             (function() {
-                const el = document.querySelector('[data-line="0"]')
+                const el = document.querySelector('[data-row="0"]')
                 if (!el) throw new Error('line 0 not found')
                 const rect = el.getBoundingClientRect()
                 return { top: rect.top, height: rect.height }

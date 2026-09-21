@@ -70,7 +70,7 @@ test.describe('File viewer selection gestures', () => {
     const end = String(endOffset)
     return await viewer.evaluate<{ x: number; y: number }>(`
             (function() {
-                const lineText = document.querySelector('[data-line="0"] .line-text')
+                const lineText = document.querySelector('[data-row="0"] .line-text')
                 if (!lineText) throw new Error('line 0 not found')
                 const walker = document.createTreeWalker(lineText, NodeFilter.SHOW_TEXT)
                 const range = document.createRange()
@@ -161,7 +161,7 @@ test.describe('File viewer selection gestures', () => {
   /** The text painted as selected on line 0, read back out of the rendered segments. */
   async function selectedTextOnLineZero(): Promise<string> {
     return await viewer.evaluate<string>(
-      `Array.from(document.querySelectorAll('[data-line="0"] .selected')).map(function (n) { return n.textContent }).join('')`,
+      `Array.from(document.querySelectorAll('[data-row="0"] .selected')).map(function (n) { return n.textContent }).join('')`,
     )
   }
 

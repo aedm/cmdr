@@ -36,7 +36,7 @@ const longLine = 'All work and no play makes the height map a dull boy. '.repeat
 const fileContent = `# T\n\n${`${longLine}\n`.repeat(120)}`
 // FullLoad line count: one line per newline, plus the trailing empty line
 // (the file ends with a newline).
-const lastLineSelector = `.line[data-line="${String(fileContent.split('\n').length - 1)}"]`
+const lastLineSelector = `.line[data-row="${String(fileContent.split('\n').length - 1)}"]`
 
 // Binary fixture with highly variable wrapped line heights, the shape the height
 // map must get right or the virtual scroll drifts (blank gaps, last line
@@ -65,7 +65,7 @@ const binaryContent: Buffer = (() => {
   return Buffer.concat(rows.flatMap((r) => [r, Buffer.from([0x0a])]))
 })()
 // 300 newlines => content lines 0..299 plus a trailing empty line 300.
-const binaryLastLineSelector = `.line[data-line="300"]`
+const binaryLastLineSelector = `.line[data-row="300"]`
 
 /** Scrolls to a fraction of the file and reports whether rendered content fills
  *  down to the viewport bottom. With a drifting height map, mid-file scrolling

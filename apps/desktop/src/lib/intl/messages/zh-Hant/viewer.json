@@ -390,6 +390,14 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
+  "viewer.row.continuesTooltip": "Cmdr 在此處將這一行斷開，以保持檢視器的速度。該行在下方繼續。",
+  "@viewer.row.continuesTooltip": {
+    "sourceHash": "398f4e2"
+  },
+  "viewer.row.continuesLabel": "Cmdr 在此處將這一行斷開，以保持檢視器的速度。該行在下方繼續。",
+  "@viewer.row.continuesLabel": {
+    "sourceHash": "398f4e2"
+  },
   "viewer.selection.toEndOfFile": "已選取從第 {line} 行到檔案結尾",
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"

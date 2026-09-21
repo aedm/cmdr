@@ -8,10 +8,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   createViewerSelection,
-  EOF_LINE,
-  isWholeFileSelection,
+  EOF_ROW,
+  makeSelectToEof,
   toRangeEnds,
-  type LineOffset,
+  type RowOffset,
   type Selection,
 } from './selection.svelte'
 import { createViewerKeyboard, handleSearchToggleKey, handleTailToggleKey, handleToggleKey } from './viewer-keyboard'
@@ -41,18 +41,18 @@ function press(
 function makeKeyboardDeps(overrides: Partial<KeyboardDeps> = {}): KeyboardDeps {
   const noop = vi.fn()
   return {
-    getTotalLines: () => 10,
+    getTotalRows: () => 10,
     getTotalBytes: () => 100,
-    getLineText: () => 'line',
-    getLastRenderedLine: () => 9,
+    getRowText: () => 'line',
+    getLastRenderedRow: () => 9,
     selection: { selection: null, selectAll: noop, selectToEof: noop, setFocus: noop },
     scroll: {
-      scrollByLines: noop,
+      scrollByRows: noop,
       scrollByPages: noop,
       scrollToStart: noop,
       scrollToEnd: noop,
       scrollByColumns: noop,
-      ensureLineVisible: noop,
+      ensureRowVisible: noop,
       ensureColumnVisible: noop,
     },
     search: {
@@ -213,23 +213,23 @@ describe('createViewerKeyboard: ⌘C with the search bar open', () => {
 describe('createViewerKeyboard: ⌘A when the last line is not cached', () => {
   it('selects to the end of the file rather than to offset 0 of a line it has never seen', () => {
     // The common shape on a long file: the user presses ⌘A without ever scrolling to
-    // the end, so `getLineText(totalLines - 1)` is `undefined`. Reading that as a
+    // the end, so `getRowText(totalLines - 1)` is `undefined`. Reading that as a
     // zero-length last line ends the selection at offset 0 of it, and ⌘C then copies
     // the file minus its last line with nothing said. `RangeEnd::Eof` is the answer
     // that already exists for "we don't know where the end is".
     const selection = createViewerSelection()
     const keyboard = createViewerKeyboard(
       makeKeyboardDeps({
-        getTotalLines: () => 3,
+        getTotalRows: () => 3,
         getTotalBytes: () => 16,
-        getLineText: (n: number) => (n === 2 ? undefined : 'alpha'),
+        getRowText: (n: number) => (n === 2 ? undefined : 'alpha'),
         selection,
       }),
     )
 
     keyboard.handleSelectAllShortcut()
 
-    expect(selection.selection?.focus.line).toBe(EOF_LINE)
+    expect(selection.selection?.focus.row).toBe(EOF_ROW)
     expect(toRangeEnds(selection.selection)).toEqual({
       anchor: { kind: 'line', line: 0, offset: 0 },
       focus: { kind: 'eof' },
@@ -240,21 +240,21 @@ describe('createViewerKeyboard: ⌘A when the last line is not cached', () => {
     const selection = createViewerSelection()
     const keyboard = createViewerKeyboard(
       makeKeyboardDeps({
-        getTotalLines: () => 3,
-        getLineText: (n: number) => ['alpha', 'beta', 'gamma'][n],
+        getTotalRows: () => 3,
+        getRowText: (n: number) => ['alpha', 'beta', 'gamma'][n],
         selection,
       }),
     )
 
     keyboard.handleSelectAllShortcut()
 
-    expect(selection.selection).toEqual({ anchor: { line: 0, offset: 0 }, focus: { line: 2, offset: 5 } })
+    expect(selection.selection).toEqual({ anchor: { row: 0, offset: 0 }, focus: { row: 2, offset: 5 } })
   })
 
   it('does nothing on an empty file, whichever way the last line reads', () => {
     const selection = createViewerSelection()
     const keyboard = createViewerKeyboard(
-      makeKeyboardDeps({ getTotalLines: () => 0, getTotalBytes: () => 0, getLineText: () => undefined, selection }),
+      makeKeyboardDeps({ getTotalRows: () => 0, getTotalBytes: () => 0, getRowText: () => undefined, selection }),
     )
 
     keyboard.handleSelectAllShortcut()
@@ -269,7 +269,7 @@ describe('createViewerKeyboard: ⌘A in ByteSeek-no-index mode', () => {
     const keyboard = createViewerKeyboard(
       makeKeyboardDeps({
         // No index yet, so there is no line count to select up to; the file is non-empty.
-        getTotalLines: () => null,
+        getTotalRows: () => null,
         getTotalBytes: () => 1,
         selection,
       }),
@@ -278,9 +278,9 @@ describe('createViewerKeyboard: ⌘A in ByteSeek-no-index mode', () => {
     keyboard.handleSelectAllShortcut()
 
     // The copy flow must recognise this as the whole file and use the known file size;
-    // otherwise it walks lines the user never scrolled through and lands on "size unknown".
-    expect(isWholeFileSelection(selection.selection, null)).toBe(true)
-    // And the read must go out as `RangeEnd::Eof`, never a line number no file has.
+    // otherwise it walks rows the user never scrolled through and lands on "size unknown".
+    expect(selection.selection).toEqual(makeSelectToEof())
+    // And the read must go out as `RangeEnd::Eof`, never a row index no file has.
     expect(toRangeEnds(selection.selection)).toEqual({
       anchor: { kind: 'line', line: 0, offset: 0 },
       focus: { kind: 'eof' },
@@ -291,12 +291,12 @@ describe('createViewerKeyboard: ⌘A in ByteSeek-no-index mode', () => {
 /** A mutable selection cell plus the `KeyboardDeps.selection` view over it. */
 function makeSelectionDeps(initial: Selection | null) {
   let current = initial
-  const setFocus = vi.fn((point: LineOffset) => {
+  const setFocus = vi.fn((point: RowOffset) => {
     current = { anchor: current === null ? point : current.anchor, focus: point }
   })
   return {
     setFocus,
-    get focus(): LineOffset | null {
+    get focus(): RowOffset | null {
       return current === null ? null : current.focus
     },
     deps: {
@@ -313,12 +313,12 @@ function makeSelectionDeps(initial: Selection | null) {
 /** Every scroll action the keyboard can reach, each a spy. */
 function makeScrollSpies() {
   return {
-    scrollByLines: vi.fn(),
+    scrollByRows: vi.fn(),
     scrollByPages: vi.fn(),
     scrollToStart: vi.fn(),
     scrollToEnd: vi.fn(),
     scrollByColumns: vi.fn(),
-    ensureLineVisible: vi.fn(),
+    ensureRowVisible: vi.fn(),
     ensureColumnVisible: vi.fn(),
   }
 }
@@ -329,50 +329,50 @@ describe('createViewerKeyboard: keyboard selection extension', () => {
 
   /** A 10-line file of `line`s, the focus parked mid-file at the space after `alpha`. */
   function wire(overrides: Partial<KeyboardDeps> = {}) {
-    const selection = makeSelectionDeps({ anchor: { line: 2, offset: 0 }, focus: { line: 2, offset: 5 } })
+    const selection = makeSelectionDeps({ anchor: { row: 2, offset: 0 }, focus: { row: 2, offset: 5 } })
     const scroll = makeScrollSpies()
     const keyboard = createViewerKeyboard(
-      makeKeyboardDeps({ getLineText: () => line, selection: selection.deps, scroll, ...overrides }),
+      makeKeyboardDeps({ getRowText: () => line, selection: selection.deps, scroll, ...overrides }),
     )
     return { keyboard, selection, scroll }
   }
 
-  const chords: Array<[string, KeyboardEventInit & { key: string }, LineOffset]> = [
-    ['Shift+Right steps one character', { key: 'ArrowRight', shiftKey: true }, { line: 2, offset: 6 }],
-    ['Shift+Left steps one character back', { key: 'ArrowLeft', shiftKey: true }, { line: 2, offset: 4 }],
-    ['Shift+Down steps one logical line', { key: 'ArrowDown', shiftKey: true }, { line: 3, offset: 5 }],
-    ['Shift+Up steps one logical line back', { key: 'ArrowUp', shiftKey: true }, { line: 1, offset: 5 }],
+  const chords: Array<[string, KeyboardEventInit & { key: string }, RowOffset]> = [
+    ['Shift+Right steps one character', { key: 'ArrowRight', shiftKey: true }, { row: 2, offset: 6 }],
+    ['Shift+Left steps one character back', { key: 'ArrowLeft', shiftKey: true }, { row: 2, offset: 4 }],
+    ['Shift+Down steps one logical line', { key: 'ArrowDown', shiftKey: true }, { row: 3, offset: 5 }],
+    ['Shift+Up steps one logical line back', { key: 'ArrowUp', shiftKey: true }, { row: 1, offset: 5 }],
     [
       '⌥⇧Right lands on the end of the next word',
       { key: 'ArrowRight', shiftKey: true, altKey: true },
-      { line: 2, offset: 10 },
+      { row: 2, offset: 10 },
     ],
     [
       '⌥⇧Left lands on the start of the previous word',
       { key: 'ArrowLeft', shiftKey: true, altKey: true },
-      { line: 2, offset: 0 },
+      { row: 2, offset: 0 },
     ],
     [
       '⌃⇧Right is the same word motion, for Linux and Windows',
       { key: 'ArrowRight', shiftKey: true, ctrlKey: true },
-      { line: 2, offset: 10 },
+      { row: 2, offset: 10 },
     ],
     [
       '⌃⇧Left is the same word motion, for Linux and Windows',
       { key: 'ArrowLeft', shiftKey: true, ctrlKey: true },
-      { line: 2, offset: 0 },
+      { row: 2, offset: 0 },
     ],
-    ['Shift+Home extends to the line start', { key: 'Home', shiftKey: true }, { line: 2, offset: 0 }],
-    ['Shift+End extends to the line end', { key: 'End', shiftKey: true }, { line: 2, offset: 16 }],
+    ['Shift+Home extends to the line start', { key: 'Home', shiftKey: true }, { row: 2, offset: 0 }],
+    ['Shift+End extends to the line end', { key: 'End', shiftKey: true }, { row: 2, offset: 16 }],
     [
       '⌘⇧Up extends to the start of the file',
       { key: 'ArrowUp', shiftKey: true, metaKey: true },
-      { line: 0, offset: 0 },
+      { row: 0, offset: 0 },
     ],
     [
       '⌘⇧Down extends to the end of the file',
       { key: 'ArrowDown', shiftKey: true, metaKey: true },
-      { line: 9, offset: 16 },
+      { row: 9, offset: 16 },
     ],
   ]
 
@@ -386,52 +386,52 @@ describe('createViewerKeyboard: keyboard selection extension', () => {
   it('keeps the anchor where it was: extension moves the focus only', () => {
     const { keyboard, selection } = wire()
     press(keyboard, { key: 'ArrowDown', shiftKey: true, metaKey: true })
-    expect(selection.deps.selection?.anchor).toEqual({ line: 2, offset: 0 })
+    expect(selection.deps.selection?.anchor).toEqual({ row: 2, offset: 0 })
     expect(selection.deps.selectToEof).not.toHaveBeenCalled()
   })
 
   it('scrolls the new focus line into view, on both axes', () => {
     const { keyboard, scroll } = wire()
     press(keyboard, { key: 'ArrowDown', shiftKey: true })
-    expect(scroll.ensureLineVisible).toHaveBeenCalledWith(3)
-    expect(scroll.ensureColumnVisible).toHaveBeenCalledWith({ line: 3, offset: 5 })
+    expect(scroll.ensureRowVisible).toHaveBeenCalledWith(3)
+    expect(scroll.ensureColumnVisible).toHaveBeenCalledWith({ row: 3, offset: 5 })
   })
 
   it('Shift+Up / Down extend instead of scrolling, which is what they used to do', () => {
     const { keyboard, scroll } = wire()
     press(keyboard, { key: 'ArrowDown', shiftKey: true })
     press(keyboard, { key: 'ArrowUp', shiftKey: true })
-    expect(scroll.scrollByLines).not.toHaveBeenCalled()
+    expect(scroll.scrollByRows).not.toHaveBeenCalled()
   })
 
   it('keeps the desired column while walking down through a short line and back out', () => {
-    const selection = makeSelectionDeps({ anchor: { line: 2, offset: 0 }, focus: { line: 2, offset: 16 } })
+    const selection = makeSelectionDeps({ anchor: { row: 2, offset: 0 }, focus: { row: 2, offset: 16 } })
     const keyboard = createViewerKeyboard(
       makeKeyboardDeps({
         // Line 3 is two characters long; every other line is the full 16.
-        getLineText: (n: number) => (n === 3 ? 'ab' : line),
+        getRowText: (n: number) => (n === 3 ? 'ab' : line),
         selection: selection.deps,
         scroll: makeScrollSpies(),
       }),
     )
 
     press(keyboard, { key: 'ArrowDown', shiftKey: true })
-    expect(selection.focus).toEqual({ line: 3, offset: 2 })
+    expect(selection.focus).toEqual({ row: 3, offset: 2 })
     press(keyboard, { key: 'ArrowDown', shiftKey: true })
-    expect(selection.focus).toEqual({ line: 4, offset: 16 })
+    expect(selection.focus).toEqual({ row: 4, offset: 16 })
 
     // A horizontal motion ends the run, so the next vertical step starts a new column.
     press(keyboard, { key: 'ArrowLeft', shiftKey: true })
     press(keyboard, { key: 'ArrowDown', shiftKey: true })
     press(keyboard, { key: 'ArrowDown', shiftKey: true })
-    expect(selection.focus).toEqual({ line: 6, offset: 15 })
+    expect(selection.focus).toEqual({ row: 6, offset: 15 })
   })
 
   it('drops the desired column on a fresh gesture, so a stale run cannot aim the next one', () => {
-    const selection = makeSelectionDeps({ anchor: { line: 2, offset: 0 }, focus: { line: 2, offset: 16 } })
+    const selection = makeSelectionDeps({ anchor: { row: 2, offset: 0 }, focus: { row: 2, offset: 16 } })
     const keyboard = createViewerKeyboard(
       makeKeyboardDeps({
-        getLineText: (n: number) => (n === 3 ? 'ab' : line),
+        getRowText: (n: number) => (n === 3 ? 'ab' : line),
         selection: selection.deps,
         scroll: makeScrollSpies(),
       }),
@@ -439,32 +439,32 @@ describe('createViewerKeyboard: keyboard selection extension', () => {
 
     // Park a desired column of 16 by stepping down through the short line 3.
     press(keyboard, { key: 'ArrowDown', shiftKey: true })
-    expect(selection.focus).toEqual({ line: 3, offset: 2 })
+    expect(selection.focus).toEqual({ row: 3, offset: 2 })
 
     // ⌘A restarts the gesture, and the run's aim goes with it. The stubbed `selectAll`
     // leaves the focus at (3, 2), so the next step reads the reset: column 2, not 16.
     keyboard.handleSelectAllShortcut()
     press(keyboard, { key: 'ArrowUp', shiftKey: true })
-    expect(selection.focus).toEqual({ line: 2, offset: 2 })
+    expect(selection.focus).toEqual({ row: 2, offset: 2 })
   })
 
   it('consumes the key but leaves the selection alone when the target line is not cached', () => {
-    const { keyboard, selection, scroll } = wire({ getLineText: (n: number) => (n === 2 ? line : undefined) })
+    const { keyboard, selection, scroll } = wire({ getRowText: (n: number) => (n === 2 ? line : undefined) })
     const e = press(keyboard, { key: 'ArrowDown', shiftKey: true })
     expect(selection.setFocus).not.toHaveBeenCalled()
     // The scroll is what fetches the line, so the next press can land.
-    expect(scroll.ensureLineVisible).toHaveBeenCalledWith(3)
+    expect(scroll.ensureRowVisible).toHaveBeenCalledWith(3)
     expect(e.defaultPrevented).toBe(true)
   })
 
   it('⌘⇧Down with no line count yet selects to the end-of-file sentinel and scrolls there', () => {
-    const { keyboard, selection, scroll } = wire({ getTotalLines: () => null })
+    const { keyboard, selection, scroll } = wire({ getTotalRows: () => null })
     press(keyboard, { key: 'ArrowDown', shiftKey: true, metaKey: true })
-    expect(selection.focus).toEqual({ line: EOF_LINE, offset: 0 })
-    // The sentinel goes straight to `ensureLineVisible`, which owns the one branch that
+    expect(selection.focus).toEqual({ row: EOF_ROW, offset: 0 })
+    // The sentinel goes straight to `ensureRowVisible`, which owns the one branch that
     // reads it as "the end of the file". Routing it here instead would put that rule in
     // two places, and the composable would still be wrong for any other caller.
-    expect(scroll.ensureLineVisible).toHaveBeenCalledWith(EOF_LINE)
+    expect(scroll.ensureRowVisible).toHaveBeenCalledWith(EOF_ROW)
     // It names no measurable character either, so nothing tries to scroll to its column.
     expect(scroll.ensureColumnVisible).not.toHaveBeenCalled()
   })
@@ -472,39 +472,39 @@ describe('createViewerKeyboard: keyboard selection extension', () => {
   it('scrolls to the line the focus is ALREADY on when that line is not cached', () => {
     // The uncached line isn't always a neighbour: a `char` step off a line whose own text
     // was evicted comes back as `{ focus: null, targetLine: from.line }`.
-    const { keyboard, selection, scroll } = wire({ getLineText: () => undefined })
+    const { keyboard, selection, scroll } = wire({ getRowText: () => undefined })
     const e = press(keyboard, { key: 'ArrowRight', shiftKey: true })
     expect(selection.setFocus).not.toHaveBeenCalled()
-    expect(scroll.ensureLineVisible).toHaveBeenCalledWith(2)
+    expect(scroll.ensureRowVisible).toHaveBeenCalledWith(2)
     expect(e.defaultPrevented).toBe(true)
   })
 
   it('resolves a sentinel focus to the last rendered line before moving from it', () => {
     // ⌘A in ByteSeek-no-index mode parks the focus on the sentinel, and `moveFocus`
     // throws on one. Shift+Up from there steps off line 7, the last line on screen.
-    const selection = makeSelectionDeps({ anchor: { line: 0, offset: 0 }, focus: { line: EOF_LINE, offset: 0 } })
+    const selection = makeSelectionDeps({ anchor: { row: 0, offset: 0 }, focus: { row: EOF_ROW, offset: 0 } })
     const keyboard = createViewerKeyboard(
       makeKeyboardDeps({
-        getTotalLines: () => null,
-        getLastRenderedLine: () => 7,
-        getLineText: () => line,
+        getTotalRows: () => null,
+        getLastRenderedRow: () => 7,
+        getRowText: () => line,
         selection: selection.deps,
         scroll: makeScrollSpies(),
       }),
     )
     press(keyboard, { key: 'ArrowUp', shiftKey: true })
-    expect(selection.focus).toEqual({ line: 6, offset: 16 })
+    expect(selection.focus).toEqual({ row: 6, offset: 16 })
   })
 
   it('is a no-op when the focus is on the sentinel and nothing is rendered', () => {
-    const selection = makeSelectionDeps({ anchor: { line: 0, offset: 0 }, focus: { line: EOF_LINE, offset: 0 } })
+    const selection = makeSelectionDeps({ anchor: { row: 0, offset: 0 }, focus: { row: EOF_ROW, offset: 0 } })
     const scroll = makeScrollSpies()
     const keyboard = createViewerKeyboard(
-      makeKeyboardDeps({ getLastRenderedLine: () => null, selection: selection.deps, scroll }),
+      makeKeyboardDeps({ getLastRenderedRow: () => null, selection: selection.deps, scroll }),
     )
     press(keyboard, { key: 'ArrowUp', shiftKey: true })
     expect(selection.setFocus).not.toHaveBeenCalled()
-    expect(scroll.ensureLineVisible).not.toHaveBeenCalled()
+    expect(scroll.ensureRowVisible).not.toHaveBeenCalled()
   })
 
   it('does nothing with no selection at all: a click is the discoverable way to start one', () => {
@@ -522,8 +522,8 @@ describe('createViewerKeyboard: keyboard selection extension', () => {
     const input = document.createElement('input')
     document.body.append(input)
     input.focus()
-    const selection = makeSelectionDeps({ anchor: { line: 2, offset: 0 }, focus: { line: 2, offset: 5 } })
-    const base = makeKeyboardDeps({ getLineText: () => line, selection: selection.deps })
+    const selection = makeSelectionDeps({ anchor: { row: 2, offset: 0 }, focus: { row: 2, offset: 5 } })
+    const base = makeKeyboardDeps({ getRowText: () => line, selection: selection.deps })
     const keyboard = createViewerKeyboard({
       ...base,
       search: { ...base.search, searchVisible: true, searchInputRef: input },
@@ -539,7 +539,7 @@ describe('createViewerKeyboard: keyboard selection extension', () => {
   it('leaves Shift+Enter and ⌘⌥R to the search bar', () => {
     const findPrev = vi.fn()
     const toggleUseRegex = vi.fn()
-    const selection = makeSelectionDeps({ anchor: { line: 2, offset: 0 }, focus: { line: 2, offset: 5 } })
+    const selection = makeSelectionDeps({ anchor: { row: 2, offset: 0 }, focus: { row: 2, offset: 5 } })
     const base = makeKeyboardDeps({ selection: selection.deps })
     const keyboard = createViewerKeyboard({
       ...base,
@@ -559,32 +559,40 @@ describe('createViewerKeyboard over a real scroll composable: the phantom traili
    * A file ending in `\n` makes the `lineIndex` backend count one more line than it will
    * ever emit: `totalLines` is N+1 while `viewer_get_lines` stops at N-1. The template
    * draws a row for the phantom line anyway, so these press through the same seam the
-   * page wires — the keyboard's `getLineText` reading the composable's `renderedLineText`
+   * page wires — the keyboard's `getRowText` reading the composable's `renderedRowText`
    * — with a real composable behind it.
    */
-  function wireOverScroll(totalLines: number, cachedThrough: number, focus: LineOffset) {
+  function wireOverScroll(totalRows: number, cachedThrough: number, focus: RowOffset) {
     const scroll = createViewerScroll({
       getSessionId: () => 'sess-1',
-      getTotalLines: () => totalLines,
-      setTotalLines: () => {},
-      getEstimatedLines: () => totalLines,
+      getTotalRows: () => totalRows,
+      setTotalRows: () => {},
+      getEstimatedRows: () => totalRows,
       getBackendType: () => 'lineIndex',
       onTimeoutError: () => {},
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
     function cacheLines(from: number, to: number) {
-      for (let i = from; i < to; i++) scroll.lineCache.set(i, 'alpha')
+      scroll.cacheRows(
+        from,
+        Array.from({ length: to - from }, (_, i) => ({
+          text: 'alpha',
+          byteOffset: (from + i) * 6,
+          continues: false,
+          lineNumber: from + i,
+        })),
+      )
     }
     cacheLines(0, cachedThrough)
 
-    const selection = makeSelectionDeps({ anchor: { line: 0, offset: 0 }, focus })
+    const selection = makeSelectionDeps({ anchor: { row: 0, offset: 0 }, focus })
     const spies = makeScrollSpies()
     const keyboard = createViewerKeyboard(
       makeKeyboardDeps({
-        getTotalLines: () => totalLines,
-        getLineText: (n: number) => scroll.renderedLineText(n),
-        getLastRenderedLine: () => null,
+        getTotalRows: () => totalRows,
+        getRowText: (n: number) => scroll.renderedRowText(n),
+        getLastRenderedRow: () => null,
         selection: selection.deps,
         scroll: spies,
       }),
@@ -592,62 +600,62 @@ describe('createViewerKeyboard over a real scroll composable: the phantom traili
     return { keyboard, selection, spies, scroll, cacheLines }
   }
 
-  /** Puts the tail of a `totalLines`-line file on screen, as the keyboard's own scroll would. */
-  function scrollToBottom(scroll: ReturnType<typeof createViewerScroll>, totalLines: number) {
+  /** Puts the tail of a `totalRows`-row file on screen, as the keyboard's own scroll would. */
+  function scrollToBottom(scroll: ReturnType<typeof createViewerScroll>, totalRows: number) {
     const el = document.createElement('div')
     Object.defineProperty(el, 'clientHeight', { value: 600 })
     scroll.contentRef = el
-    el.scrollTop = totalLines * scroll.scrollLineHeight - 600
+    el.scrollTop = totalRows * scroll.scrollLineHeight - 600
     scroll.handleScroll()
   }
 
   it('⌘⇧Down lands on the end of the last REAL line in one press while the phantom row is on screen', () => {
     // 11 lines by the backend's count, 10 real ones (0-9); line 10 is the phantom.
-    const { keyboard, selection } = wireOverScroll(11, 10, { line: 2, offset: 2 })
+    const { keyboard, selection } = wireOverScroll(11, 10, { row: 2, offset: 2 })
 
     press(keyboard, { key: 'ArrowDown', shiftKey: true, metaKey: true })
 
     // Offset 0 of the phantom line IS the end of line 9: the range is half-open, so it
     // takes line 9 in full and nothing of line 10. Same landing the `fullLoad` backend
     // gives, which emits the phantom line as `''` instead of skipping it.
-    expect(selection.focus).toEqual({ line: 10, offset: 0 })
+    expect(selection.focus).toEqual({ row: 10, offset: 0 })
   })
 
   it('Shift+Down onto the phantom row extends instead of going dead', () => {
-    const { keyboard, selection } = wireOverScroll(11, 10, { line: 9, offset: 3 })
+    const { keyboard, selection } = wireOverScroll(11, 10, { row: 9, offset: 3 })
 
     press(keyboard, { key: 'ArrowDown', shiftKey: true })
 
-    expect(selection.focus).toEqual({ line: 10, offset: 0 })
+    expect(selection.focus).toEqual({ row: 10, offset: 0 })
   })
 
   it('leaves a target OUTSIDE the rendered range unlanded, so the scroll fetches it first', () => {
-    const { keyboard, selection, spies } = wireOverScroll(40_001, 100, { line: 2, offset: 2 })
+    const { keyboard, selection, spies } = wireOverScroll(40_001, 100, { row: 2, offset: 2 })
 
     const e = press(keyboard, { key: 'ArrowDown', shiftKey: true, metaKey: true })
 
     expect(selection.setFocus).not.toHaveBeenCalled()
-    expect(spies.ensureLineVisible).toHaveBeenCalledWith(40_000)
+    expect(spies.ensureRowVisible).toHaveBeenCalledWith(40_000)
     expect(e.defaultPrevented).toBe(true)
   })
 
   it('lands on the second press, once that scroll has brought the phantom row into the window', () => {
-    const { keyboard, selection, scroll, cacheLines } = wireOverScroll(40_001, 100, { line: 2, offset: 2 })
+    const { keyboard, selection, scroll, cacheLines } = wireOverScroll(40_001, 100, { row: 2, offset: 2 })
 
     press(keyboard, { key: 'ArrowDown', shiftKey: true, metaKey: true })
     expect(selection.setFocus).not.toHaveBeenCalled()
 
-    // What `ensureLineVisible(40 000)` and the fetch it triggers leave behind: the tail of
+    // What `ensureRowVisible(40 000)` and the fetch it triggers leave behind: the tail of
     // the file on screen with every REAL line cached, line 40 000 still absent.
     scrollToBottom(scroll, 40_001)
     cacheLines(39_900, 40_000)
 
     press(keyboard, { key: 'ArrowDown', shiftKey: true, metaKey: true })
-    expect(selection.focus).toEqual({ line: 40_000, offset: 0 })
+    expect(selection.focus).toEqual({ row: 40_000, offset: 0 })
   })
 
   it('a file with NO trailing newline still lands on its real last line in the documented two presses', () => {
-    const { keyboard, selection, scroll, cacheLines } = wireOverScroll(40_000, 100, { line: 2, offset: 2 })
+    const { keyboard, selection, scroll, cacheLines } = wireOverScroll(40_000, 100, { row: 2, offset: 2 })
 
     press(keyboard, { key: 'ArrowDown', shiftKey: true, metaKey: true })
     expect(selection.setFocus).not.toHaveBeenCalled()
@@ -656,7 +664,7 @@ describe('createViewerKeyboard over a real scroll composable: the phantom traili
     cacheLines(39_900, 40_000)
 
     press(keyboard, { key: 'ArrowDown', shiftKey: true, metaKey: true })
-    expect(selection.focus).toEqual({ line: 39_999, offset: 'alpha'.length })
+    expect(selection.focus).toEqual({ row: 39_999, offset: 'alpha'.length })
   })
 })
 
@@ -679,7 +687,7 @@ describe('createViewerKeyboard: unmodified arrows scroll', () => {
     keyboard.handleKeyDown(makeKey({ key: 'Home', cancelable: true }))
     keyboard.handleKeyDown(makeKey({ key: 'End', cancelable: true }))
 
-    expect(scroll.scrollByLines).toHaveBeenCalledWith(1)
+    expect(scroll.scrollByRows).toHaveBeenCalledWith(1)
     expect(scroll.scrollToStart).toHaveBeenCalledOnce()
     expect(scroll.scrollToEnd).toHaveBeenCalledOnce()
   })

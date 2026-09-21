@@ -1,8 +1,8 @@
 /**
  * Regression test for the fraction-seek divisor in `createViewerScroll.fetchLines`.
  *
- * When the backend can't seek by line (`getTotalLines() === null`) the seek is sent as a
- * fraction (`fetchFrom / estimatedTotalLines()`). If the estimate is 0, that division
+ * When the backend can't seek by line (`getTotalRows() === null`) the seek is sent as a
+ * fraction (`fetchFrom / estimatedTotalRows()`). If the estimate is 0, that division
  * yields `NaN` (0/0) or `Infinity` (>0/0); both serialize to JSON `null` over IPC and the
  * Rust `viewer_get_lines` command rejects the `f64 targetValue` ("invalid type: null,
  * expected f64"). This crashed the line fetch in production (ERR-9XYEF, ERR-6JYVE).
@@ -17,11 +17,11 @@ import {
   createViewerScroll,
   FETCH_BATCH,
   getLineHeight,
-  linesToEvict,
-  renderWindowLines,
+  rowsToEvict,
+  renderWindowRows,
 } from './viewer-scroll.svelte'
-import { EOF_LINE } from './selection.svelte'
-import type { LineChunk, ViewerError } from '$lib/ipc/bindings'
+import { EOF_ROW } from './selection.svelte'
+import type { LineChunk, ViewerError, ViewerRow } from '$lib/ipc/bindings'
 import { clearIpcMocks, installIpcMock } from '$lib/ipc/test-helpers'
 import { getAppLogger } from '$lib/logging/logger'
 
@@ -29,13 +29,31 @@ afterEach(() => {
   clearIpcMocks()
 })
 
-const chunk: LineChunk = {
-  lines: ['x'],
-  firstLineNumber: 0,
-  byteOffset: 0,
-  totalLines: null,
-  totalBytes: 1000,
+/** `n` ordinary rows starting at `first`: one per physical line, none continued. */
+function plainRows(first: number, n: number): ViewerRow[] {
+  return Array.from({ length: n }, (_, i) => ({
+    text: `line ${String(first + i)}`,
+    byteOffset: (first + i) * 8,
+    continues: false,
+    lineNumber: first + i,
+  }))
 }
+
+/** A backend answer in the row shape. Defaults to one row and end-of-file. */
+function rowChunk(overrides: Partial<LineChunk> = {}): LineChunk {
+  return {
+    rows: plainRows(0, 1),
+    firstRowNumber: 0,
+    byteOffset: 0,
+    endByteOffset: 8,
+    end: 'endOfFile',
+    totalRows: { kind: 'estimated', rows: 1 },
+    totalBytes: 1000,
+    ...overrides,
+  }
+}
+
+const chunk: LineChunk = rowChunk()
 
 describe('createViewerScroll fraction seek', () => {
   it('sends a finite targetValue when the line-count estimate drops to 0 before a scheduled fetch fires', async () => {
@@ -48,12 +66,12 @@ describe('createViewerScroll fraction seek', () => {
     let estimate = 100
     const scroll = createViewerScroll({
       getSessionId: () => 'sess-1',
-      getTotalLines: () => null,
-      setTotalLines: () => {},
-      getEstimatedLines: () => estimate,
+      getTotalRows: () => null,
+      setTotalRows: () => {},
+      getEstimatedRows: () => estimate,
       getBackendType: () => 'byteSeek',
       onTimeoutError: () => {},
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
 
@@ -79,14 +97,14 @@ describe('createViewerScroll range after the line count shrinks', () => {
     let totalLines = $state<number | null>(null)
     const scroll = createViewerScroll({
       getSessionId: () => 'sess-1',
-      getTotalLines: () => totalLines,
-      setTotalLines: (v) => {
+      getTotalRows: () => totalLines,
+      setTotalRows: (v) => {
         totalLines = v
       },
-      getEstimatedLines: () => 20_000,
+      getEstimatedRows: () => 20_000,
       getBackendType: () => 'byteSeek',
       onTimeoutError: () => {},
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
     const el = document.createElement('div')
@@ -107,23 +125,23 @@ describe('createViewerScroll range after the line count shrinks', () => {
     // Past the end of the file there's nothing to draw, so there's nothing to fetch either.
     expect(counts).toEqual([])
     expect(scroll.visibleFrom).toBeLessThanOrEqual(3_000)
-    expect(scroll.visibleLines).toEqual([])
+    expect(scroll.visibleRows).toEqual([])
   })
 })
 
-describe('createViewerScroll.ensureLineVisible', () => {
+describe('createViewerScroll.ensureRowVisible', () => {
   /** A scroll composable wired to a fake scroller of `scrollHeight` in a `clientHeight` box. */
   function wireWithScroller(scrollHeight: number, clientHeight: number) {
     installIpcMock().mock('viewer_get_lines', () => chunk)
     const scroll = createViewerScroll({
       getSessionId: () => 'sess-1',
       // No line index yet, which is exactly when `⌘⇧Down` mints the sentinel.
-      getTotalLines: () => null,
-      setTotalLines: () => {},
-      getEstimatedLines: () => 1000,
+      getTotalRows: () => null,
+      setTotalRows: () => {},
+      getEstimatedRows: () => 1000,
       getBackendType: () => 'byteSeek',
       onTimeoutError: () => {},
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
     const el = document.createElement('div')
@@ -138,7 +156,7 @@ describe('createViewerScroll.ensureLineVisible', () => {
     const { scroll, el } = wireWithScroller(50_000, 800)
     el.scrollTop = 0
 
-    scroll.ensureLineVisible(EOF_LINE)
+    scroll.ensureRowVisible(EOF_ROW)
 
     // Not line arithmetic on `Number.MAX_SAFE_INTEGER`: the bottom of the scroller.
     expect(el.scrollTop).toBe(49_200)
@@ -148,69 +166,110 @@ describe('createViewerScroll.ensureLineVisible', () => {
     const { scroll, el } = wireWithScroller(50_000, 800)
     el.scrollTop = 1234
 
-    scroll.ensureLineVisible(EOF_LINE)
+    scroll.ensureRowVisible(EOF_ROW)
 
     expect(Number.isNaN(el.scrollTop)).toBe(false)
     expect(el.scrollTop).toBeGreaterThan(0)
   })
 })
 
-describe('createViewerScroll.renderedLineText', () => {
-  /** A composable over a `totalLines`-line file, unscrolled, at the default 600px viewport. */
-  function wire(totalLines: number) {
+describe('createViewerScroll.renderedRowText', () => {
+  /** A composable over a `totalRows`-row file, unscrolled, at the default 600px viewport. */
+  function wire(totalRows: number) {
     return createViewerScroll({
       getSessionId: () => 'sess-1',
-      getTotalLines: () => totalLines,
-      setTotalLines: () => {},
-      getEstimatedLines: () => totalLines,
+      getTotalRows: () => totalRows,
+      setTotalRows: () => {},
+      getEstimatedRows: () => totalRows,
       getBackendType: () => 'lineIndex',
       onTimeoutError: () => {},
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
   }
 
-  it('hands back the cached text of a rendered line', () => {
+  it('hands back the cached text of a rendered row', () => {
     const scroll = wire(11)
-    scroll.lineCache.set(3, 'hello')
+    scroll.cacheRows(3, [{ text: 'hello', byteOffset: 24, continues: false, lineNumber: 3 }])
 
-    expect(scroll.renderedLineText(3)).toBe('hello')
+    expect(scroll.renderedRowText(3)).toBe('hello')
   })
 
-  it("reads a rendered line the cache doesn't hold as the empty row the template draws for it", () => {
-    // A trailing newline makes the `lineIndex` backend count a last line it never emits:
-    // `totalLines` 11 for real lines 0-9. The template still draws a row for line 10.
+  it("reads a rendered row the cache doesn't hold as the empty row the template draws for it", () => {
+    // A trailing newline makes the `lineIndex` backend count a last row it never emits:
+    // `totalRows` 11 for real rows 0-9. The template still draws a row for row 10.
     const scroll = wire(11)
-    for (let i = 0; i < 10; i++) scroll.lineCache.set(i, 'line')
+    scroll.cacheRows(0, plainRows(0, 10))
 
-    expect(scroll.renderedLineText(10)).toBe('')
+    expect(scroll.renderedRowText(10)).toBe('')
   })
 
   it('stays undefined outside the rendered range, so the caller knows to scroll and retry', () => {
-    // 600px of viewport plus the buffer reaches line ~84 of 40 001, nowhere near the end.
+    // 600px of viewport plus the buffer reaches row ~84 of 40 001, nowhere near the end.
     const scroll = wire(40_001)
 
-    expect(scroll.renderedLineText(40_000)).toBeUndefined()
+    expect(scroll.renderedRowText(40_000)).toBeUndefined()
   })
 })
 
-describe('renderWindowLines', () => {
+describe('createViewerScroll.visibleRows', () => {
+  function wire(totalRows: number) {
+    return createViewerScroll({
+      getSessionId: () => '',
+      getTotalRows: () => totalRows,
+      setTotalRows: () => {},
+      getEstimatedRows: () => totalRows,
+      getBackendType: () => 'lineIndex',
+      onTimeoutError: () => {},
+      getAllRowTexts: () => null,
+      getTextWidth: () => 0,
+    })
+  }
+
+  it('carries the gutter number and the continuation flag the BACKEND stated, never an inference', () => {
+    // One 3-row line: the gutter prints its number once, on the row that starts it, and
+    // the two rows Cmdr broke out of it print nothing and carry the marker instead.
+    const scroll = wire(4)
+    scroll.cacheRows(0, [
+      { text: 'aaa', byteOffset: 0, continues: true, lineNumber: 0 },
+      { text: 'bbb', byteOffset: 3, continues: true, lineNumber: null },
+      { text: 'ccc', byteOffset: 6, continues: false, lineNumber: null },
+      { text: 'next', byteOffset: 10, continues: false, lineNumber: 1 },
+    ])
+
+    expect(scroll.visibleRows).toEqual([
+      { rowNumber: 0, text: 'aaa', continues: true, lineNumber: 0 },
+      { rowNumber: 1, text: 'bbb', continues: true, lineNumber: null },
+      { rowNumber: 2, text: 'ccc', continues: false, lineNumber: null },
+      { rowNumber: 3, text: 'next', continues: false, lineNumber: 1 },
+    ])
+  })
+
+  it('draws an uncached row blank, with NO gutter number to invent a line it cannot know', () => {
+    const scroll = wire(2)
+    scroll.cacheRows(0, plainRows(0, 1))
+
+    expect(scroll.visibleRows[1]).toEqual({ rowNumber: 1, text: '', continues: false, lineNumber: null })
+  })
+})
+
+describe('renderWindowRows', () => {
   it('spans the viewport plus its buffer at the ordinary line height', () => {
     // 600 px of viewport is 34 lines of 18 px, plus 50 buffer lines either side: the
     // window the viewer has always drawn.
-    expect(renderWindowLines({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalLines: 40_001 }))
+    expect(renderWindowRows({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalRows: 40_001 }))
       .toEqual({ from: 0, to: 84 })
   })
 
   it('holds a viewport of PIXELS, not a count of rows, when the rows are tall', () => {
     // A 20 KB row with word wrap on is ~200 visual lines, about 3 600 px. Counting rows
     // would draw 84 of them for one 600 px viewport: ~300 000 px of DOM.
-    const { from, to } = renderWindowLines({
+    const { from, to } = renderWindowRows({
       scrollTop: 0,
       viewportHeight: 600,
       scrollScale: 1,
       lineHeight: 3600,
-      totalLines: 10_000,
+      totalRows: 10_000,
     })
 
     expect((to - from) * 3600).toBeLessThan(30_000)
@@ -220,12 +279,12 @@ describe('renderWindowLines', () => {
     // Past ~1.6M lines the spacer is scaled down to stay under WebKit's height cap. The
     // viewport still shows 600 real pixels; dividing THAT by the scale as well is how a
     // huge file ends up rendering tens of thousands of lines at once.
-    const scaled = renderWindowLines({
+    const scaled = renderWindowRows({
       scrollTop: 1_000,
       viewportHeight: 600,
       scrollScale: 0.01,
       lineHeight: 18,
-      totalLines: 5_000_000,
+      totalRows: 5_000_000,
     })
 
     expect(scaled.to - scaled.from).toBeLessThan(200)
@@ -234,22 +293,22 @@ describe('renderWindowLines', () => {
   })
 
   it('never reaches past the end of the file, or before its start', () => {
-    expect(renderWindowLines({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalLines: 5 }))
+    expect(renderWindowRows({ scrollTop: 0, viewportHeight: 600, scrollScale: 1, lineHeight: 18, totalRows: 5 }))
       .toEqual({ from: 0, to: 5 })
   })
 })
 
-describe('linesToEvict', () => {
+describe('rowsToEvict', () => {
   it('keeps everything inside the keep window and drops everything outside it', () => {
-    expect(linesToEvict([0, 99, 100, 500, 899, 900, 1000], { from: 100, to: 900 })).toEqual([0, 99, 900, 1000])
+    expect(rowsToEvict([0, 99, 100, 500, 899, 900, 1000], { from: 100, to: 900 })).toEqual([0, 99, 900, 1000])
   })
 
   it('keeps a line exactly on the lower bound and drops one exactly on the upper, which is exclusive', () => {
-    expect(linesToEvict([100, 899, 900], { from: 100, to: 900 })).toEqual([900])
+    expect(rowsToEvict([100, 899, 900], { from: 100, to: 900 })).toEqual([900])
   })
 
   it('evicts nothing when the keep window covers the cache', () => {
-    expect(linesToEvict([3, 4, 5], { from: 0, to: 10 })).toEqual([])
+    expect(rowsToEvict([3, 4, 5], { from: 0, to: 10 })).toEqual([])
   })
 })
 
@@ -260,9 +319,16 @@ describe('createViewerScroll cache growth over a long scroll', () => {
     ipc.mock('viewer_get_lines', (payload) => {
       const { targetValue, count } = payload as { targetValue: number; count: number }
       const first = Math.max(0, Math.round(targetValue))
-      const lines: string[] = []
-      for (let i = first; i < Math.min(first + count, available); i++) lines.push(`line ${String(i)}`)
-      return { lines, firstLineNumber: first, byteOffset: first * 8, totalLines: available, totalBytes: available * 8 }
+      const served = Math.max(0, Math.min(first + count, available) - first)
+      return rowChunk({
+        rows: plainRows(first, served),
+        firstRowNumber: first,
+        byteOffset: first * 8,
+        endByteOffset: (first + served) * 8,
+        end: first + served >= available ? 'endOfFile' : 'countReached',
+        totalRows: { kind: 'exact', rows: available },
+        totalBytes: available * 8,
+      })
     })
     return ipc
   }
@@ -287,12 +353,12 @@ describe('createViewerScroll cache growth over a long scroll', () => {
     const ipc = fullAnsweringBackend(100_000)
     const scroll = createViewerScroll({
       getSessionId: () => 'sess-1',
-      getTotalLines: () => 100_000,
-      setTotalLines: () => {},
-      getEstimatedLines: () => 100_000,
+      getTotalRows: () => 100_000,
+      setTotalRows: () => {},
+      getEstimatedRows: () => 100_000,
       getBackendType: () => 'lineIndex',
       onTimeoutError: () => {},
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
     const el = document.createElement('div')
@@ -302,10 +368,10 @@ describe('createViewerScroll cache growth over a long scroll', () => {
     await scrollThrough(scroll, el, { stops: 40, screensPerStop: 20 })
     expect(ipc.callCount('viewer_get_lines')).toBe(40)
 
-    expect(scroll.lineCache.size).toBeLessThanOrEqual(CACHE_EVICT_ABOVE + FETCH_BATCH)
-    // And what's on screen survived: eviction that drops a rendered line draws blank rows.
-    for (const { lineNumber } of scroll.visibleLines) {
-      expect(scroll.lineCache.has(lineNumber)).toBe(true)
+    expect(scroll.rowCache.size).toBeLessThanOrEqual(CACHE_EVICT_ABOVE + FETCH_BATCH)
+    // And what's on screen survived: eviction that drops a rendered row draws blank rows.
+    for (const { rowNumber } of scroll.visibleRows) {
+      expect(scroll.rowCache.has(rowNumber)).toBe(true)
     }
   })
 
@@ -314,12 +380,12 @@ describe('createViewerScroll cache growth over a long scroll', () => {
     fullAnsweringBackend(lines)
     const scroll = createViewerScroll({
       getSessionId: () => 'sess-1',
-      getTotalLines: () => lines,
-      setTotalLines: () => {},
-      getEstimatedLines: () => lines,
+      getTotalRows: () => lines,
+      setTotalRows: () => {},
+      getEstimatedRows: () => lines,
       getBackendType: () => 'fullLoad',
       onTimeoutError: () => {},
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
     const el = document.createElement('div')
@@ -328,7 +394,7 @@ describe('createViewerScroll cache growth over a long scroll', () => {
 
     await scrollThrough(scroll, el, { stops: 40, screensPerStop: 4 })
 
-    expect(scroll.lineCache.size).toBeGreaterThan(CACHE_EVICT_ABOVE)
+    expect(scroll.rowCache.size).toBeGreaterThan(CACHE_EVICT_ABOVE)
   })
 })
 
@@ -343,29 +409,33 @@ describe('createViewerScroll when the backend answers with fewer lines than aske
     ipc.mock('viewer_get_lines', (payload) => {
       const { targetValue, count } = payload as { targetValue: number; count: number }
       const first = Math.max(0, Math.round(targetValue))
-      const lines: string[] = []
-      for (let i = first; i < Math.min(first + Math.min(cap, count), available); i++) lines.push(`line ${String(i)}`)
-      return {
-        lines,
-        firstLineNumber: first,
+      const served = Math.max(0, Math.min(first + Math.min(cap, count), available) - first)
+      const atEnd = first + served >= available
+      return rowChunk({
+        rows: plainRows(first, served),
+        firstRowNumber: first,
         byteOffset: first * 8,
-        totalLines: available,
+        endByteOffset: (first + served) * 8,
+        // A chunk cut short by the per-answer byte budget SAYS so; one that ran out of
+        // file says that instead. The frontend may read only this, never the row count.
+        end: atEnd ? 'endOfFile' : served < count ? 'budgetReached' : 'countReached',
+        totalRows: { kind: 'exact', rows: available },
         totalBytes: available * 8,
-      } satisfies LineChunk
+      })
     })
     return ipc
   }
 
-  /** A `lineIndex`-backed composable over a `totalLines`-line file at the default viewport. */
-  function wire(totalLines: number) {
+  /** A `lineIndex`-backed composable over a `totalRows`-row file at the default viewport. */
+  function wire(totalRows: number) {
     return createViewerScroll({
       getSessionId: () => 'sess-1',
-      getTotalLines: () => totalLines,
-      setTotalLines: () => {},
-      getEstimatedLines: () => totalLines,
+      getTotalRows: () => totalRows,
+      setTotalRows: () => {},
+      getEstimatedRows: () => totalRows,
       getBackendType: () => 'lineIndex',
       onTimeoutError: () => {},
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
   }
@@ -387,28 +457,47 @@ describe('createViewerScroll when the backend answers with fewer lines than aske
     throw new Error(`the fetch loop never settled: ${String(ipc.callCount('viewer_get_lines'))} calls and still going`)
   }
 
-  it('asks again from the last line it actually received, and stops once the range is filled', async () => {
+  it('asks again from the last row it actually received, and stops once the range is filled', async () => {
     const ipc = shortAnsweringBackend(10, 40)
     const scroll = wire(40)
 
     const calls = await settleFetches(scroll, ipc)
 
-    // Four ten-line answers cover the rendered range; nothing fires after that.
+    // Four ten-row answers cover the rendered range; nothing fires after that.
     expect(calls).toBe(4)
-    for (let i = 0; i < 40; i++) expect(scroll.lineCache.get(i)).toBe(`line ${String(i)}`)
+    for (let i = 0; i < 40; i++) expect(scroll.rowCache.get(i)?.text).toBe(`line ${String(i)}`)
   })
 
   it('treats a range the backend cannot fill as answered, instead of asking forever', async () => {
-    // The line count says 40, the backend only ever yields 35: the `lineIndex` phantom
-    // trailing line, or an estimate that overshot. The last rendered row never arrives.
+    // The row count says 40, the backend only ever yields 35: the `lineIndex` phantom
+    // trailing row, or an estimate that overshot. The last rendered row never arrives.
+    //
+    // ❗ Four calls, not five. The fourth chunk SAYS it reached the end of the file, so
+    // the frontend records where the file stops and asks nothing more. Inferring the
+    // same thing from "fewer rows than I asked for" costs an extra round trip to be told
+    // zero rows — and is the reading that, on a chunk cut short by `CHUNK_BUDGET_BYTES`
+    // instead, would silently truncate a copy.
     const ipc = shortAnsweringBackend(10, 35)
     const scroll = wire(40)
 
     const calls = await settleFetches(scroll, ipc)
 
-    expect(calls).toBeLessThanOrEqual(6)
-    expect(scroll.lineCache.get(34)).toBe('line 34')
-    expect(scroll.lineCache.has(35)).toBe(false)
+    expect(calls).toBe(4)
+    expect(scroll.rowCache.get(34)?.text).toBe('line 34')
+    expect(scroll.rowCache.has(35)).toBe(false)
+  })
+
+  it('keeps walking a chunk that was cut short by the byte budget', async () => {
+    // The mirror of the test above: every chunk here is short for the OTHER reason, and
+    // stopping on any of them would leave the rendered range half-drawn.
+    const ipc = shortAnsweringBackend(10, 25)
+    const scroll = wire(30)
+
+    const calls = await settleFetches(scroll, ipc)
+
+    // 10 + 10 + 5, the third saying `endOfFile`: three calls, and all 25 rows cached.
+    expect(calls).toBe(3)
+    for (let i = 0; i < 25; i++) expect(scroll.rowCache.get(i)?.text).toBe(`line ${String(i)}`)
   })
 })
 
@@ -425,12 +514,12 @@ describe("createViewerScroll a read that didn't come back", () => {
     const onTimeoutError = vi.fn()
     const scroll = createViewerScroll({
       getSessionId: () => 'sess-1',
-      getTotalLines: () => 100,
-      setTotalLines: () => {},
-      getEstimatedLines: () => 100,
+      getTotalRows: () => 100,
+      setTotalRows: () => {},
+      getEstimatedRows: () => 100,
       getBackendType: () => 'lineIndex',
       onTimeoutError,
-      getAllLines: () => null,
+      getAllRowTexts: () => null,
       getTextWidth: () => 0,
     })
     return { scroll, onTimeoutError }
@@ -463,5 +552,90 @@ describe("createViewerScroll a read that didn't come back", () => {
 
     expect(onTimeoutError).not.toHaveBeenCalled()
     expect(warn).not.toHaveBeenCalled()
+  })
+})
+
+describe('createViewerScroll on a backend that owns the row numbering', () => {
+  /**
+   * A `byteSeek`-shaped backend: it has no row index, so it resolves a fraction or a byte
+   * offset to a row boundary ITSELF and reports which row that turned out to be. That
+   * number never matches what the frontend guessed, which is the whole point.
+   */
+  function numberingBackend({ shift, available }: { shift: number; available: number }) {
+    const ipc = installIpcMock()
+    ipc.mock('viewer_get_lines', (payload) => {
+      const { targetType, targetValue, count } = payload as {
+        targetType: string
+        targetValue: number
+        count: number
+      }
+      // A fraction lands wherever the backend's own grid puts it; a byte offset resolves
+      // exactly. Either way the ANSWER carries the row number, not the request.
+      const first =
+        targetType === 'byte' ? Math.round(targetValue / 8) : Math.round(targetValue * available) + shift
+      const served = Math.max(0, Math.min(count, available - first))
+      return rowChunk({
+        rows: plainRows(first, served),
+        firstRowNumber: first,
+        byteOffset: first * 8,
+        endByteOffset: (first + served) * 8,
+        end: first + served >= available ? 'endOfFile' : 'budgetReached',
+        totalRows: { kind: 'estimated', rows: available },
+        totalBytes: available * 8,
+      })
+    })
+    return ipc
+  }
+
+  function wireByteSeek(estimated: number) {
+    const scroll = createViewerScroll({
+      getSessionId: () => 'sess-1',
+      // No index, so no counted total: every seek goes out as a fraction.
+      getTotalRows: () => null,
+      setTotalRows: () => {},
+      getEstimatedRows: () => estimated,
+      getBackendType: () => 'byteSeek',
+      onTimeoutError: () => {},
+      getAllRowTexts: () => null,
+      getTextWidth: () => 0,
+    })
+    const el = document.createElement('div')
+    Object.defineProperty(el, 'clientHeight', { value: 600 })
+    scroll.contentRef = el
+    return { scroll, el }
+  }
+
+  it("caches a fraction-seek answer at the chunk's own first row, not at the row it asked for", async () => {
+    // ❗ The bug this pins: caching at `fetchFrom` puts the rows at indexes the backend
+    // disagrees with, so its next answer overlaps them and the same bytes get drawn twice
+    // at two different scroll positions.
+    const ipc = numberingBackend({ shift: 13, available: 2_000 })
+    const { scroll, el } = wireByteSeek(2_000)
+    el.scrollTop = 500 * getLineHeight()
+    scroll.handleScroll()
+
+    scroll.fetchVisibleNow()
+    await new Promise((r) => setTimeout(r, 50))
+
+    const call = ipc.lastCall('viewer_get_lines')
+    const asked = Math.round((call?.payload as { targetValue: number }).targetValue * 2_000)
+    expect(scroll.rowCache.has(asked)).toBe(false)
+    expect(scroll.rowCache.get(asked + 13)?.text).toBe(`line ${String(asked + 13)}`)
+  })
+
+  it('continues such a chunk from the byte it ended at, so the walk cannot drift', async () => {
+    const ipc = numberingBackend({ shift: 13, available: 2_000 })
+    const { scroll, el } = wireByteSeek(2_000)
+    el.scrollTop = 500 * getLineHeight()
+    scroll.handleScroll()
+
+    scroll.fetchVisibleNow()
+    await new Promise((r) => setTimeout(r, 50))
+
+    // The first answer went out as a fraction; every continuation after it is a byte
+    // seek at the previous chunk's `endByteOffset`.
+    const seeks = ipc.calls.filter((c) => c.command === 'viewer_get_lines').map((c) => c.payload as { targetType: string })
+    expect(seeks[0].targetType).toBe('fraction')
+    expect(seeks.slice(1).every((s) => s.targetType === 'byte')).toBe(true)
   })
 })

@@ -24,10 +24,16 @@ afterEach(() => {
 })
 
 const initialLines: LineChunk = {
-  lines: ['line 0', 'line 1', 'line 2'],
-  firstLineNumber: 0,
+  rows: [
+    { text: 'line 0', byteOffset: 0, continues: false, lineNumber: 0 },
+    { text: 'line 1', byteOffset: 7, continues: false, lineNumber: 1 },
+    { text: 'line 2', byteOffset: 14, continues: false, lineNumber: 2 },
+  ],
+  firstRowNumber: 0,
   byteOffset: 0,
-  totalLines: 3,
+  endByteOffset: 21,
+  end: 'endOfFile',
+  totalRows: { kind: 'exact', rows: 3 },
   totalBytes: 21,
 }
 
@@ -86,10 +92,12 @@ describe('commands.viewerGetLines', () => {
   it('forwards sessionId, targetType, targetValue, count as camelCase payload keys', async () => {
     const ipc = installIpcMock()
     const chunk: LineChunk = {
-      lines: ['x'],
-      firstLineNumber: 100,
+      rows: [{ text: 'x', byteOffset: 500, continues: false, lineNumber: 100 }],
+      firstRowNumber: 100,
       byteOffset: 500,
-      totalLines: null,
+      endByteOffset: 502,
+      end: 'countReached',
+      totalRows: { kind: 'estimated', rows: 400 },
       totalBytes: 1000,
     }
     ipc.mock('viewer_get_lines', () => chunk)

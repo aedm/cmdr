@@ -6,25 +6,33 @@ import type { Window } from '@tauri-apps/api/window'
 import {
   commands,
   events,
+  type ChunkEnd,
   type FileEncoding,
+  type LineChunk,
   type MediaDimensions,
   type RangeEnd,
   type SearchMode as ViewerSearchMode,
   type SearchStatus as ViewerSearchStatus,
   type SeekTargetKind,
+  type TotalRows,
   type ViewerContentKind,
   type ViewerError,
   type ViewerPullProgress,
+  type ViewerRow,
 } from '$lib/ipc/bindings'
 import { throwIpcError } from './ipc-types'
 
 export type {
+  ChunkEnd,
   FileEncoding,
+  LineChunk,
   MediaDimensions,
   RangeEnd,
+  TotalRows,
   ViewerContentKind,
   ViewerError,
   ViewerPullProgress,
+  ViewerRow,
   ViewerSearchMode,
   ViewerSearchStatus,
 }
@@ -44,15 +52,6 @@ export function onViewerPullProgress(
   })
 }
 
-/** A chunk of lines returned by the viewer backend. */
-export interface LineChunk {
-  lines: string[]
-  firstLineNumber: number
-  byteOffset: number
-  totalLines: number | null
-  totalBytes: number
-}
-
 /** Backend capabilities. */
 export interface BackendCapabilities {
   supportsLineSeek: boolean
@@ -66,8 +65,12 @@ export interface ViewerOpenResult {
   sessionId: string
   fileName: string
   totalBytes: number
+  /** Physical LINES, when the backend knows them. ❌ Never a row coordinate. */
   totalLines: number | null
-  /** Estimated total lines based on initial sample (for ByteSeek where totalLines is unknown) */
+  /**
+   * The file's ROW count. `initialLines.totalRows` carries the same number plus whether
+   * it's counted or sampled, which is what the frontend actually reads.
+   */
   estimatedTotalLines: number
   backendType: 'fullLoad' | 'byteSeek' | 'lineIndex'
   capabilities: BackendCapabilities
@@ -98,15 +101,27 @@ export interface ViewerOpenResult {
 export interface ViewerSessionStatus {
   backendType: 'fullLoad' | 'byteSeek' | 'lineIndex'
   isIndexing: boolean
+  /** Rows, and whether that is a count or an estimate. The scroll coordinate. */
+  totalRows: TotalRows
+  /** Physical lines, when the backend knows them. The status bar's count. */
   totalLines: number | null
 }
 
-/** A search match found in the file. */
+/**
+ * A search match found in the file.
+ *
+ * ❗ `row`, not a physical line: search scans rows, so a match inside a 300 MB line comes
+ * back with a column that fits on screen instead of one 2.5 million units wide. The wire
+ * still spells the field `line` (the IPC rename is its own milestone), and
+ * `viewerSearchPoll` is the ONE place that crossing happens.
+ */
 export interface ViewerSearchMatch {
-  line: number
+  /** 0-based ROW index. */
+  row: number
+  /** UTF-16 code units into that ROW, so a column is bounded by two segments. */
   column: number
   length: number
-  /** Byte offset of the line start. Used for accurate scroll positioning in ByteSeek mode. */
+  /** Byte offset of the ROW start. Used for accurate scroll positioning in ByteSeek mode. */
   byteOffset: number
 }
 
@@ -205,7 +220,17 @@ export async function viewerSearchStart(sessionId: string, query: string, mode: 
 export async function viewerSearchPoll(sessionId: string, sinceIndex: number): Promise<SearchPollResult> {
   const res = await commands.viewerSearchPoll(sessionId, sinceIndex)
   if (res.status === 'error') throwIpcError(res.error)
-  return res.data
+  return {
+    ...res.data,
+    // The wire's `line` IS the row index; renaming it here keeps the rest of the
+    // frontend from having a field called `line` that means a row.
+    newMatches: res.data.newMatches.map((m) => ({
+      row: m.line,
+      column: m.column,
+      length: m.length,
+      byteOffset: m.byteOffset,
+    })),
+  }
 }
 
 /** Cancels an ongoing search. */

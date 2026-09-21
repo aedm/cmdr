@@ -394,6 +394,14 @@
   "@viewer.saveAs.destinationReadOnly": {
     "sourceHash": "8d627aa"
   },
+  "viewer.row.continuesTooltip": "Cmdr hat diese Zeile hier umgebrochen, damit die Vorschau schnell bleibt. Die Zeile läuft direkt darunter weiter.",
+  "@viewer.row.continuesTooltip": {
+    "sourceHash": "398f4e2"
+  },
+  "viewer.row.continuesLabel": "Cmdr hat diese Zeile hier umgebrochen, damit die Vorschau schnell bleibt. Die Zeile läuft direkt darunter weiter.",
+  "@viewer.row.continuesLabel": {
+    "sourceHash": "398f4e2"
+  },
   "viewer.selection.toEndOfFile": "Von Zeile {line} bis zum Ende der Datei ausgewählt",
   "@viewer.selection.toEndOfFile": {
     "sourceHash": "62d95be"

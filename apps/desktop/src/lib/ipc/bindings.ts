@@ -1304,9 +1304,13 @@ export const commands = {
   viewerCancelRead: (sessionId: string, readId: number) =>
     typedError<null, ViewerError>(__TAURI_INVOKE('viewer_cancel_read', { sessionId, readId })),
   /**
-   *  Reads a logical range and writes it to `dest_path` atomically (temp+rename). Used
+   *  Streams a logical range to `dest_path` and writes it atomically (temp+rename). Used
    *  by the "Save as file…" action in the > 100 MB refuse dialog and the 10 to 100 MB
    *  confirm dialog. Cancellation works the same as `viewer_read_range`.
+   *
+   *  Watched for silence (`SAVE_STALL_LIMIT`) rather than held to a total deadline: this
+   *  is the way out of the clipboard's size refusal, so it has to be allowed to take as
+   *  long as the selection honestly takes.
    */
   viewerWriteRangeToFile: (sessionId: string, readId: number, anchor: RangeEnd, focus: RangeEnd, destPath: string) =>
     typedError<null, ViewerError>(
@@ -5621,6 +5625,24 @@ export type ChildWindowRect = {
   height: number
 }
 
+/**
+ *  Why a chunk holds the rows it holds.
+ *
+ *  ❗ A caller walking a file chunk by chunk steers by THIS, ❌ never by "fewer rows
+ *  than I asked for": [`CHUNK_BUDGET_BYTES`] makes a short chunk ordinary, and reading
+ *  one as EOF silently truncates a copy or a save.
+ */
+export type ChunkEnd =
+  // Every row asked for was served. More may follow at `end_byte_offset`.
+  | 'countReached'
+  /**
+   *  The chunk reached [`CHUNK_BUDGET_BYTES`] first. More follow at
+   *  `end_byte_offset`; ask again from there.
+   */
+  | 'budgetReached'
+  // The chunk reached the end of the file. There is nothing past it.
+  | 'endOfFile'
+
 export type ClientInfoDto = {
   primary_server: string
   timeout_ms: number
@@ -8493,14 +8515,35 @@ export type LifecycleStatus =
   // Could not complete.
   | 'failed'
 
-// A chunk of lines returned by a backend.
+/**
+ *  A chunk of ROWS returned by a backend.
+ *
+ *  A row ends at a newline or after `SEGMENT_BYTES`, whichever comes first
+ *  (`file_viewer::rows`), so one fetch costs the same on a 50 GB single-line file as on
+ *  an ordinary one. Each row says whether the break at its end is the file's or Cmdr's.
+ */
 export type LineChunk = {
-  lines: string[]
-  // 0-based.
-  firstLineNumber: number
+  rows: ViewerRow[]
+  // 0-based row index of the first row. An estimate on `ByteSeekBackend`.
+  firstRowNumber: number
+  /**
+   *  Absolute offset of the first row's first byte.
+   *
+   *  ❗ The row's OWN offset. Returning an index checkpoint's instead is what made
+   *  every onward seek land short, duplicating a line at each chunk seam.
+   */
   byteOffset: number
-  // Known only after full scan or full load.
-  totalLines: number | null
+  /**
+   *  Absolute offset just past the last row served, from the SOURCE bytes.
+   *
+   *  ❗ A caller fetching the next chunk steers by this. ❌ Never re-derive it by
+   *  summing decoded string lengths: those are UTF-8 even when the file is UTF-16,
+   *  and they carry no newline.
+   */
+  endByteOffset: number
+  // Whether the chunk ran out of rows, out of budget, or out of file.
+  end: ChunkEnd
+  totalRows: TotalRows
   totalBytes: number
 }
 
@@ -12065,15 +12108,22 @@ export type SearchIndexReadyEvent = {
 
 // A search match found by a backend.
 export type SearchMatch = {
-  // 0-based.
+  /**
+   *  0-based ROW index (milestone 4 renames the field; the coordinate is already a
+   *  row). Search scans rows, so a match inside a 300 MB line comes back with a
+   *  column that fits on screen instead of one 2.5 million units wide.
+   */
   line: number
-  // UTF-16 code unit offset within the line (matches JS string indexing).
+  /**
+   *  UTF-16 code unit offset within the ROW (matches JS string indexing). Bounded by
+   *  the row's length, which is bounded by two segments.
+   */
   column: number
   // Length in UTF-16 code units (matches JS string indexing).
   length: number
   /**
-   *  Byte offset of the start of the line containing this match.
-   *  Used by the frontend to scroll accurately in ByteSeek mode where line numbers
+   *  Byte offset of the start of the row containing this match.
+   *  Used by the frontend to scroll accurately in ByteSeek mode where row numbers
    *  don't map to the virtual scroll coordinate system.
    */
   byteOffset: number
@@ -13731,6 +13781,18 @@ export type TopLevelSkipped = {
   folders: number
 }
 
+// How many rows a file has, and whether that is a count or an estimate.
+export type TotalRows =
+  // Counted: `FullLoadBackend` holds the file, or `LineIndexBackend` scanned it.
+  | { kind: 'exact'; rows: number }
+  /**
+   *  Derived from the file's size. `ByteSeekBackend` opens without a scan, so it
+   *  divides by the bytes-per-row it sampled at open. That sample makes the number
+   *  EXACT on a file with no newline in it (every row is a whole segment) and an
+   *  estimate on anything else, exactly as its line count was an estimate before.
+   */
+  | { kind: 'estimated'; rows: number }
+
 /**
  *  The live shape of a running transfer, on every progress event AND on
  *  [`OperationStatus`], so both windows and an agent polling `cmdr://state` can
@@ -14313,10 +14375,39 @@ export type ViewerPullProgress = {
   bytesTotal: number | null
 }
 
+// One row, as a backend serves it.
+export type ViewerRow = {
+  text: string
+  // Absolute offset of the row's first byte.
+  byteOffset: number
+  /**
+   *  Cmdr ended this row at a segment boundary, not at a newline the file contains.
+   *  The frontend marks it; ❗ ❌ no copy, save, or search path may join it to the
+   *  next row with a newline.
+   */
+  continues: boolean
+  /**
+   *  The 0-based physical line this row starts, or `None` on a continuation row (the
+   *  gutter prints nothing there, the usual editor convention). An estimate on
+   *  `ByteSeekBackend`, which has no line index; exact on the other two.
+   */
+  lineNumber: number | null
+}
+
 // Current status of a viewer session.
 export type ViewerSessionStatus = {
   backendType: BackendType
   isIndexing: boolean
+  /**
+   *  How many ROWS the file has, and whether that is a count or an estimate. The
+   *  frontend's scroll coordinate, so the poll that watches the index build is what
+   *  swaps `ByteSeekBackend`'s estimate for `LineIndexBackend`'s real count.
+   */
+  totalRows: TotalRows
+  /**
+   *  Physical lines, if the backend knows them. The gutter's numbering and the
+   *  status bar's count, ❌ never a row coordinate.
+   */
   totalLines: number | null
 }
 

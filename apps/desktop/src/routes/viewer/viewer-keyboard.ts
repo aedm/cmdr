@@ -1,9 +1,9 @@
-import { EOF_LINE, type LineOffset, type SelectAllArgs, type Selection } from './selection.svelte'
+import { EOF_ROW, type RowOffset, type SelectAllArgs, type Selection } from './selection.svelte'
 import { moveFocus, type CaretMotion, type MotionDirection } from './viewer-caret-motion'
 
 /** Scroll actions the unmodified navigation keys drive. */
 interface ScrollActions {
-  scrollByLines: (n: number) => void
+  scrollByRows: (n: number) => void
   scrollByPages: (n: number) => void
   scrollToStart: () => void
   scrollToEnd: () => void
@@ -14,19 +14,19 @@ interface ScrollActions {
 /** Everything the keyboard asks of the scroll composable. */
 interface NavigationActions extends ScrollActions {
   /** Scrolls a line just into view vertically, leaving an already-visible one alone. */
-  ensureLineVisible: (line: number) => void
+  ensureRowVisible: (line: number) => void
   /** Scrolls the character at `point` into view horizontally. */
-  ensureColumnVisible: (point: LineOffset) => void
+  ensureColumnVisible: (point: RowOffset) => void
 }
 
 /** Maps Arrow / Page / Home / End keys to viewer scroll actions. Returns true if handled. */
 export function handleNavigationKey(key: string, actions: ScrollActions): boolean {
   switch (key) {
     case 'ArrowUp':
-      actions.scrollByLines(-1)
+      actions.scrollByRows(-1)
       return true
     case 'ArrowDown':
-      actions.scrollByLines(1)
+      actions.scrollByRows(1)
       return true
     case 'ArrowLeft':
       actions.scrollByColumns(-1)
@@ -73,9 +73,9 @@ function extendMotionFor(e: KeyboardEvent): CaretMotion | null {
     case 'ArrowDown':
       return verticalMotion(e, 1)
     case 'Home':
-      return lineEdgeMotion(e, -1)
+      return rowEdgeMotion(e, -1)
     case 'End':
-      return lineEdgeMotion(e, 1)
+      return rowEdgeMotion(e, 1)
     default:
       return null
   }
@@ -97,7 +97,7 @@ function verticalMotion(e: KeyboardEvent, direction: MotionDirection): CaretMoti
   if (!e.shiftKey) return null
   if (e.metaKey) return { kind: 'docEdge', direction }
   if (e.altKey || e.ctrlKey) return null
-  return { kind: 'line', direction }
+  return { kind: 'row', direction }
 }
 
 /**
@@ -106,10 +106,10 @@ function verticalMotion(e: KeyboardEvent, direction: MotionDirection): CaretMoti
  * macOS does in a document view), and a selection gesture works on the line in every
  * editor; ⌘ then promotes it back to the whole file. Don't harmonize them.
  */
-function lineEdgeMotion(e: KeyboardEvent, direction: MotionDirection): CaretMotion | null {
+function rowEdgeMotion(e: KeyboardEvent, direction: MotionDirection): CaretMotion | null {
   if (!e.shiftKey) return null
   if (e.metaKey || e.altKey || e.ctrlKey) return null
-  return { kind: 'lineEdge', direction }
+  return { kind: 'rowEdge', direction }
 }
 
 /** Handles single-letter toggles (word wrap on `W`). Returns true if handled. */
@@ -190,21 +190,21 @@ export function inputHasSelection(input: HTMLInputElement | null | undefined): b
 
 interface KeyboardDeps {
   /** Total line count, or `null` in ByteSeek-no-index mode before an index exists. */
-  getTotalLines: () => number | null
+  getTotalRows: () => number | null
   /** Total byte count of the file (drives the ByteSeek-no-index ⌘A fallback). */
   getTotalBytes: () => number
   /**
    * The text the view SHOWS for a line, or `undefined` when no row is drawn for it yet
    * (scroll to it and the next press lands). ❌ Never the raw line cache: a rendered row
    * the cache missed draws empty, and a model that calls it non-existent goes dead on a
-   * file ending in a newline. Wire it to `createViewerScroll.renderedLineText`.
+   * file ending in a newline. Wire it to `createViewerScroll.renderedRowText`.
    */
-  getLineText: (line: number) => string | undefined
+  getRowText: (line: number) => string | undefined
   /**
    * The last line currently rendered, or `null` when nothing is. Only ever read to
    * resolve an end-of-file sentinel focus onto a real line (see `resolveFrom`).
    */
-  getLastRenderedLine: () => number | null
+  getLastRenderedRow: () => number | null
   selection: {
     /** The current selection, so an extend chord has an anchor to keep and a focus to move. */
     readonly selection: Selection | null
@@ -213,7 +213,7 @@ interface KeyboardDeps {
     /** Selects the whole file when its line count isn't known yet (ByteSeek, no index). */
     selectToEof: () => void
     /** Moves the focus, keeping the anchor. The whole of keyboard extension. */
-    setFocus: (point: LineOffset) => void
+    setFocus: (point: RowOffset) => void
   }
   scroll: NavigationActions
   search: {
@@ -281,19 +281,19 @@ export function createViewerKeyboard(deps: KeyboardDeps) {
    * Where `moveFocus` starts from, with the end-of-file sentinel resolved away.
    *
    * ❌ `moveFocus` THROWS on a sentinel `from`, and this is reachable today: ⌘A in
-   * ByteSeek-no-index mode parks the focus on `EOF_LINE`. The sentinel names a line that
+   * ByteSeek-no-index mode parks the focus on `EOF_ROW`. The sentinel names a line that
    * can never be cached, so the refusal has to happen here rather than in the pure
    * module, which knows nothing about what's on screen and could only hand the sentinel
-   * back as its own `targetLine` — slamming the view to the bottom on every press with no
+   * back as its own `targetRow` — slamming the view to the bottom on every press with no
    * way to shrink the selection. Reaching the sentinel always scrolled to the bottom, so
    * the last rendered line is the practical end of the file. Returns `null` (a no-op
    * press) when nothing is rendered.
    */
-  function resolveFrom(focus: LineOffset): LineOffset | null {
-    if (focus.line !== EOF_LINE) return focus
-    const line = deps.getLastRenderedLine()
-    if (line === null) return null
-    return { line, offset: deps.getLineText(line)?.length ?? 0 }
+  function resolveFrom(focus: RowOffset): RowOffset | null {
+    if (focus.row !== EOF_ROW) return focus
+    const row = deps.getLastRenderedRow()
+    if (row === null) return null
+    return { row, offset: deps.getRowText(row)?.length ?? 0 }
   }
 
   /**
@@ -317,8 +317,8 @@ export function createViewerKeyboard(deps: KeyboardDeps) {
     const result = moveFocus({
       from,
       motion,
-      getLineText: deps.getLineText,
-      getTotalLines: deps.getTotalLines,
+      getRowText: deps.getRowText,
+      getTotalRows: deps.getTotalRows,
       desiredColumn,
     })
     desiredColumn = result.desiredColumn
@@ -328,10 +328,10 @@ export function createViewerKeyboard(deps: KeyboardDeps) {
     // Unconditional, so the uncached-line case heals itself: with no offset to land on,
     // the selection stays put and this scroll is what pulls the line into the render
     // window and triggers its fetch, so the next press lands instead of the key being
-    // dead forever. `targetLine` can be the end-of-file sentinel, which `ensureLineVisible`
+    // dead forever. `targetRow` can be the end-of-file sentinel, which `ensureRowVisible`
     // reads as "the end of the file"; it is the one place that branch lives.
-    deps.scroll.ensureLineVisible(result.targetLine)
-    if (result.focus !== null && result.focus.line !== EOF_LINE) deps.scroll.ensureColumnVisible(result.focus)
+    deps.scroll.ensureRowVisible(result.targetRow)
+    if (result.focus !== null && result.focus.row !== EOF_ROW) deps.scroll.ensureColumnVisible(result.focus)
     return true
   }
 
@@ -339,16 +339,16 @@ export function createViewerKeyboard(deps: KeyboardDeps) {
     // ⌘A is a fresh gesture, so a Shift+Up right after it aims from the new focus rather
     // than from whatever column an earlier run was heading for.
     resetDesiredColumn()
-    const totalLines = deps.getTotalLines()
-    const lastLineText = totalLines !== null && totalLines > 0 ? deps.getLineText(totalLines - 1) : undefined
-    if (totalLines !== null && lastLineText !== undefined) {
-      deps.selection.selectAll({ totalLines, lastLineLength: lastLineText.length })
+    const totalRows = deps.getTotalRows()
+    const lastRowText = totalRows !== null && totalRows > 0 ? deps.getRowText(totalRows - 1) : undefined
+    if (totalRows !== null && lastRowText !== undefined) {
+      deps.selection.selectAll({ totalRows, lastRowLength: lastRowText.length })
       return
     }
     // Two ways to not know where the file ends: no line count at all (ByteSeek before
     // its index lands), or a last line nobody has fetched, which is the ordinary state
     // of a long file the user hasn't scrolled to the end of. Both take the same road:
-    // `EOF_LINE`, which `toRangeEnds` turns into `RangeEnd::Eof` so the backend resolves
+    // `EOF_ROW`, which `toRangeEnds` turns into `RangeEnd::Eof` so the backend resolves
     // the real end. ❌ Never substitute a length of 0 for an absent last line: the
     // selection then stops at the start of that line and ⌘C quietly drops it.
     if (deps.getTotalBytes() > 0) {

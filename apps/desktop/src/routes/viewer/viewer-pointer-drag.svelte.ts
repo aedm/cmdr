@@ -27,22 +27,22 @@ import { advanceMultiClick, type MultiClickState } from './viewer-multi-click'
 import {
   extendRangeToGranularity,
   rangeAtCaret,
-  type LineRange,
+  type RowRange,
   type SelectionGranularity,
 } from './viewer-selection-granularity'
-import type { LineOffset, Selection } from './selection.svelte'
+import type { RowOffset, Selection } from './selection.svelte'
 
 interface PointerDragDeps {
   /** Returns the scrollable `.file-content` element, or `undefined` before mount. */
   getContentRef: () => HTMLElement | undefined
   /** Reads the cached text of a line (for word / line granularity), or `undefined` if not cached. */
-  getLineText: (line: number) => string | undefined
+  getRowText: (line: number) => string | undefined
   /** Whether a selection currently exists (for shift-click extend vs. fresh anchor). */
   hasSelection: () => boolean
   /** Sets the selection anchor (start a fresh selection). */
-  setAnchor: (offset: LineOffset) => void
+  setAnchor: (offset: RowOffset) => void
   /** Moves the selection focus (extend the active selection). */
-  setFocus: (offset: LineOffset) => void
+  setFocus: (offset: RowOffset) => void
   /** Sets both endpoints at once, for word- and line-granularity gestures. */
   setRange: (range: Selection) => void
   /**
@@ -89,7 +89,7 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
    * of the pressed word.
    */
   let gestureGranularity: SelectionGranularity = 'character'
-  let gestureAnchorRange: LineRange | null = null
+  let gestureAnchorRange: RowRange | null = null
 
   /**
    * Re-resolves the caret after each autoscroll step. The pointer is past a viewport
@@ -109,9 +109,9 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
    * Starts a gesture at `granularity`, snapping the pressed caret to the anchor range the
    * rest of the gesture (drag, autoscroll, a later shift-click) extends from.
    */
-  function startGesture(caret: LineOffset, granularity: SelectionGranularity): void {
+  function startGesture(caret: RowOffset, granularity: SelectionGranularity): void {
     gestureGranularity = granularity
-    gestureAnchorRange = rangeAtCaret({ caret, granularity, getLineText: deps.getLineText })
+    gestureAnchorRange = rangeAtCaret({ caret, granularity, getRowText: deps.getRowText })
     dragGranularity = granularity
   }
 
@@ -120,7 +120,7 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
    * focus alone, which is what a plain drag does; word and line re-derive both endpoints
    * from the remembered anchor range, so the selection stays snapped in both directions.
    */
-  function extendToCaret(caret: LineOffset, granularity: SelectionGranularity): void {
+  function extendToCaret(caret: RowOffset, granularity: SelectionGranularity): void {
     if (granularity === 'character' || gestureAnchorRange === null) {
       deps.setFocus(caret)
       return
@@ -130,7 +130,7 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
         anchorRange: gestureAnchorRange,
         focus: caret,
         granularity,
-        getLineText: deps.getLineText,
+        getRowText: deps.getRowText,
       }),
     )
   }
@@ -178,7 +178,7 @@ export function createViewerPointerDrag(deps: PointerDragDeps) {
       // Second press selects the word, third the whole line, and the drag carries on at
       // that granularity: every move re-derives the selection from the pressed range, so
       // a twitch inside it yields the same union rather than collapsing to a caret.
-      startGesture(caret, press.count === 2 ? 'word' : 'line')
+      startGesture(caret, press.count === 2 ? 'word' : 'row')
       extendToCaret(caret, gestureGranularity)
     }
 
