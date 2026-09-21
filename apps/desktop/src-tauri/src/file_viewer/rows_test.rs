@@ -24,6 +24,11 @@ use crate::test_support::TestDir;
 /// and comfortably longer than the longest character (4 bytes).
 const TEST_SEGMENT: u64 = 16;
 
+/// One `RowReader` refill, the granularity its reads round up to. Mirrors
+/// `rows::READ_CHUNK_BYTES`, which is private; a read bound stated in terms of the
+/// answer has to allow for the last partial chunk.
+const READ_CHUNK_SLACK: u64 = 64 * 1024;
+
 // ---------------------------------------------------------------------------
 // Reference implementation: the rule, brute-forced over the whole file.
 // ---------------------------------------------------------------------------
@@ -124,8 +129,14 @@ fn reference_boundaries(bytes: &[u8], encoding: FileEncoding, segment: u64) -> B
             set.insert(line_start);
         }
     }
+    // ❗ `m < total`, not `m <= total`. A multiple sitting exactly ON EOF cannot start a
+    // row: there is nothing after it. Admitting it does no harm until the file also ends
+    // mid-character, and then the character snap drags it BACK below EOF and invents a
+    // boundary, splitting a two-byte row of truncated bytes off the end. `row_start`
+    // would then put the file's last byte in that invented row while the forward walk
+    // put it in the row a segment earlier: the same byte in two rows, which is I4.
     let mut m = segment;
-    while m <= total {
+    while m < total {
         let window_has_newline = newlines.iter().any(|p| *p >= m - segment && *p < m);
         if !window_has_newline {
             set.insert(reference_snap_back(bytes, encoding, m));
@@ -200,6 +211,43 @@ fn tiny_grid_corpus() -> Vec<Case> {
             bytes[pos] = b'\n';
             cases.push(ascii_case(&format!("single-newline-at-{pos}"), bytes));
         }
+    }
+
+    // ❗ Files whose SIZE is exactly a multiple and whose last character is truncated,
+    // so the character snap has something to grab at EOF. Without these the corpus
+    // never exercised a multiple landing on EOF, and the ruler and the forward walk
+    // disagreed there unnoticed: the ruler admitted the multiple and snapped it back
+    // below EOF, inventing a row of truncated bytes, while the walk rejected it.
+    for trailing in 1..=3usize {
+        // A 3-byte character cut short `trailing` bytes from its end, placed so the
+        // file ends exactly on a multiple with no newline in the last segment.
+        let mut bytes = vec![b'x'; 2 * TEST_SEGMENT as usize];
+        let cut = bytes.len() - trailing;
+        bytes[cut] = 0xE6; // lead byte of a 3-byte sequence
+        for b in bytes.iter_mut().skip(cut + 1) {
+            *b = 0x9C; // continuation bytes
+        }
+        cases.push(ascii_case(&format!("utf8-truncated-{trailing}-at-eof-multiple"), bytes));
+    }
+    // The UTF-16 shape of the same thing: a lone high surrogate closing the file on a
+    // multiple, which the snap would pull back by one code unit.
+    for (order, le) in [("le", true), ("be", false)] {
+        let mut bytes = utf16_bytes(&"a".repeat(TEST_SEGMENT as usize - 1), le, /*bom=*/ false);
+        bytes.truncate(2 * TEST_SEGMENT as usize - 2);
+        bytes.extend_from_slice(&if le {
+            0xD800u16.to_le_bytes()
+        } else {
+            0xD800u16.to_be_bytes()
+        });
+        cases.push(Case {
+            name: format!("utf16-{order}-lone-high-surrogate-at-eof-multiple"),
+            bytes,
+            encoding: if le {
+                FileEncoding::Utf16Le
+            } else {
+                FileEncoding::Utf16Be
+            },
+        });
     }
 
     // Two newlines straddling a multiple: disqualifies two multiples in a row.
@@ -447,27 +495,30 @@ fn a_boundary_never_lands_inside_a_character() {
 
 #[test]
 fn no_row_decodes_to_a_replacement_character_our_own_boundary_created() {
-    // Every corpus file is well-formed in its encoding, so a `U+FFFD` in a decoded
-    // row could only come from a boundary we chose. The Western single-byte
-    // encodings map every byte to a character, so they can't produce one at all.
+    // Splitting a file into rows must not introduce a single `U+FFFD` that decoding it
+    // whole wouldn't produce.
+    //
+    // ❗ Stated as a comparison against the file's OWN decode rather than "no row
+    // contains `U+FFFD`". The corpus deliberately holds files that end mid-character, so
+    // an absolute claim would either fail on them or force them out of the corpus, and
+    // they are exactly the fixtures that catch a boundary landing on EOF. What we owe
+    // the user is that OUR cuts add nothing, which is what this measures.
     for case in tiny_grid_corpus() {
-        if !matches!(
-            case.encoding,
-            FileEncoding::Utf8 | FileEncoding::Utf8WithBom | FileEncoding::Utf16Le | FileEncoding::Utf16Be
-        ) {
-            continue;
-        }
-        for row in tiny_rows(&case) {
-            let start = row.start as usize;
-            // The UTF-8 BOM decodes to `U+FEFF`, not a replacement character, so
-            // the first row of a BOM'd file needs no special casing here.
-            let text = decode_line(&case.bytes[start..row.end as usize], case.encoding);
-            assert!(
-                !text.contains('\u{FFFD}'),
-                "{}: row {row:?} decoded to a replacement character",
-                case.name
-            );
-        }
+        let whole = decode_line(&case.bytes, case.encoding);
+        let whole_count = whole.matches('\u{FFFD}').count();
+        let by_row: usize = tiny_rows(&case)
+            .iter()
+            .map(|row| {
+                decode_line(&case.bytes[row.start as usize..row.end as usize], case.encoding)
+                    .matches('\u{FFFD}')
+                    .count()
+            })
+            .sum();
+        assert_eq!(
+            by_row, whole_count,
+            "{}: splitting into rows changed the replacement-character count",
+            case.name
+        );
     }
 }
 
@@ -728,17 +779,33 @@ fn row_start_never_reads_more_than_two_segments() {
     for offset in [0u64, 1, 19_999, 20_000, 123_456, 499_999, 500_000] {
         log.borrow_mut().reads.clear();
         let start = ruler.row_start(offset).expect("slice reads cannot fail");
-        assert_eq!(start, offset - offset % SEGMENT_BYTES, "offset {offset}");
+        // No boundary sits at EOF, so a probe there names the last row rather than a
+        // row starting where the file ends. 500 000 is 25 segments exactly, so its
+        // answer is one segment lower than the grid arithmetic alone would say.
+        let expected = if offset == 500_000 {
+            500_000 - SEGMENT_BYTES
+        } else {
+            offset - offset % SEGMENT_BYTES
+        };
+        assert_eq!(start, expected, "offset {offset}");
+
+        // ❗ ONE read, and it lands inside the file. A byte ceiling alone proves nothing
+        // here: `load_window` sizes its own buffer to two segments, so `requested` could
+        // not exceed the bound however the rule behaved. What IS falsifiable is the
+        // number of reads — a backward scan looking for a newline would show up as many
+        // — and the span they touch, which must stay near the probe instead of walking
+        // to the file's start.
         let reads = &log.borrow().reads;
-        let requested: u64 = reads.iter().map(|(r, _)| *r).sum();
+        assert_eq!(reads.len(), 1, "row_start({offset}) took {} reads, not one", reads.len());
         let returned: u64 = reads.iter().map(|(_, n)| *n).sum();
-        assert!(
-            requested <= MAX_WINDOW_BYTES,
-            "row_start({offset}) asked for {requested} bytes, the bound is {MAX_WINDOW_BYTES}"
-        );
         assert!(
             returned <= MAX_WINDOW_BYTES,
             "row_start({offset}) read {returned} bytes"
+        );
+        assert!(
+            returned < bytes.len() as u64 / 4,
+            "row_start({offset}) read {returned} bytes of a {}-byte file, which is not a bounded read",
+            bytes.len()
         );
     }
 }
@@ -1072,11 +1139,25 @@ fn walking_a_newline_free_file_reads_a_bounded_number_of_bytes() {
         rows.iter().map(|r| r.start).collect::<Vec<_>>(),
         vec![700_000, 720_000, 740_000]
     );
-    // One ruler window for the seek, then refill chunks for three 20 000-byte rows.
+    // ❗ Bounded against what the ANSWER costs, not against a number large enough to
+    // pass anyway. Three rows are 60 000 bytes of text; the walk is allowed one ruler
+    // window to seek and enough refills to cover those rows plus the two-segment
+    // lookahead each boundary needs. The old ceiling here was 302 KB for 60 KB of
+    // answer, which no plausible regression would have exceeded.
     let read: u64 = log.borrow().reads.iter().map(|(_, got)| got).sum();
+    let answer = 3 * SEGMENT_BYTES;
+    let allowed = MAX_WINDOW_BYTES + answer + 2 * SEGMENT_BYTES + READ_CHUNK_SLACK;
     assert!(
-        read <= MAX_WINDOW_BYTES + 4 * 64 * 1024,
-        "the walk read {read} bytes for three rows of a 1 MB single-line file"
+        read <= allowed,
+        "the walk read {read} bytes to answer {answer} bytes of rows from a 1 MB \
+         single-line file; the bound is {allowed}"
+    );
+    // And the bound has to mean something: it must be far below the file itself, or a
+    // walk that read everything from the seek point onward would still pass.
+    assert!(
+        read < bytes.len() as u64 / 4,
+        "the walk read {read} bytes of a {}-byte file",
+        bytes.len()
     );
 }
 

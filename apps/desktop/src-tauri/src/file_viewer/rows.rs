@@ -230,7 +230,13 @@ impl<S: RowSource> RowRuler<S> {
         // The window spans the multiple at or below `offset` and the one above it.
         // That holds everything any clause can need: the newline evidence for both
         // candidate multiples, and every line start at or below `offset`.
-        let grid = offset - offset % segment;
+        //
+        // ❗ The grid is measured from the last BYTE, not from `offset`, which differs
+        // only when `offset == total`. No boundary sits at EOF, so a probe there is
+        // asking which row the file's last byte belongs to; measuring from `offset`
+        // would centre the window one segment too high and find no candidate at all.
+        let grid_probe = if offset >= total { total.saturating_sub(1) } else { offset };
+        let grid = grid_probe - grid_probe % segment;
         let window_start = grid.saturating_sub(segment);
         let window_end = (grid + segment).min(total);
         self.load_window(window_start, window_end)?;
@@ -408,7 +414,13 @@ impl<'a> Window<'a> {
     /// gains a spurious break every segment, because a line straddling a multiple
     /// gets cut.
     fn clause_three_boundary(&self, multiple: u64) -> Option<u64> {
-        if multiple == 0 || multiple > self.total_bytes {
+        // ❗ `>=`, not `>`. A multiple sitting exactly ON EOF cannot start a row, because
+        // nothing follows it. Admitting it is harmless until the file ALSO ends
+        // mid-character: the snap then drags it back below EOF and invents a boundary,
+        // splitting a couple of truncated bytes off as their own row. `row_start` would
+        // put the file's last byte in that invented row while the forward walk put it in
+        // the row a segment earlier, which is the same byte in two rows (I4).
+        if multiple == 0 || multiple >= self.total_bytes {
             return None;
         }
         let evidence_start = multiple - self.segment;
