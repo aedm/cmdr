@@ -114,6 +114,11 @@ becomes "180 000 px" the day rows arrive (`docs/specs/viewer-row-wrap.md`).
   that overshoots the file (the `lineIndex` phantom trailing line) doesn't spin either. It expires when the line count
   moves, so a tail append or a reload can still reach those lines. ❌ A FAILED read must never set it: failures stay
   retryable.
+- **Both of those read the chunk's SHAPE because that's all today's `LineChunk` carries.** The backend is growing a
+  typed `ChunkEnd` (`countReached` / `budgetReached` / `endOfFile`) that says outright why a chunk ended, and it's the
+  better contract: `cacheChunk` should continue on `budgetReached`, set `noLinesBeyond` on `endOfFile`, and stop on
+  `countReached`, instead of inferring the same three cases from the row count. Switch it over with the coordinate
+  rename (`docs/specs/viewer-row-wrap.md` milestones 4-5).
 - **Eviction is by distance from the viewport**: after each fetch, above `CACHE_EVICT_ABOVE` lines cached, everything
   outside the rendered window plus a `FETCH_BATCH` margin either side is dropped (`linesToEvict`). The gap between
   threshold and margin is hysteresis: a rare pass that drops a lot. ❌ Never evict on `fullLoad`: the height map
@@ -188,6 +193,8 @@ logical coordinates, independent of which lines happen to be rendered.
   a fact passed in, never a constant in the sums. `+page.svelte` reports 0 for the file's last line, so a file with no
   trailing newline isn't counted as if it had one, and a row the viewer breaks itself will report 0 too. A CRLF file
   needs no case of its own: all three backends keep the `\r` inside the line text, so the delimiter is the single `\n`.
+  With no line count yet (ByteSeek before its index) no line is known to be last, so every line reports a delimiter:
+  one byte over on the whole file, against bands measured in megabytes.
 - **What the copy toast says is MEASURED off the text that was written**, not taken from that estimate
   (`handleSilentCopy`). The estimate prorates, and `isWholeFileSelection` short-circuits any selection starting at
   `(0, 0)` that reaches the last line to the whole file size, even one stopping partway into that line. Spec invariant
