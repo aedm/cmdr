@@ -11,6 +11,7 @@
  */
 
 import { openFileViewer } from '$lib/file-viewer/open-viewer'
+import { claimKey } from '$lib/shortcuts/claim-key'
 import { openInEditorOrExplain } from './editor-open'
 import { computeSearchPaneKeyAction } from './search-results-keys'
 
@@ -87,8 +88,7 @@ export function createSearchPaneKeys(deps: SearchPaneKeysDeps): SearchPaneKeys {
     // Every action below "handles" the key. Prevent default + stop propagation so
     // the outer document-level dispatch doesn't double-fire (notably Space, which
     // the global selection.toggle case in `command-dispatch.ts` also listens for).
-    e.preventDefault()
-    e.stopPropagation()
+    claimKey(e)
 
     switch (action.kind) {
       case 'noop':

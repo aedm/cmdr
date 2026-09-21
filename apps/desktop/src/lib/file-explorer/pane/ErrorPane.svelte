@@ -5,6 +5,7 @@
     import { openPrivacySettings } from '$lib/tauri-commands'
     import { isMacOS } from '$lib/shortcuts/key-capture'
     import { eventMatchesCommand } from '$lib/shortcuts/shortcut-dispatch'
+    import { claimKey } from '$lib/shortcuts/claim-key'
     import Button from '$lib/ui/Button.svelte'
     import ShortcutChip from '$lib/ui/ShortcutChip.svelte'
     import { renderErrorMarkdown } from './error-pane-utils'
@@ -81,8 +82,7 @@
 
         function handleDetailsKey(e: KeyboardEvent) {
             if (!eventMatchesCommand(e, 'errorPane.toggleTechnicalDetails')) return
-            e.preventDefault()
-            e.stopPropagation()
+            claimKey(e)
             detailsOpen = !detailsOpen
         }
 

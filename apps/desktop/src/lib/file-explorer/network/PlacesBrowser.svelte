@@ -37,6 +37,7 @@
     import type { SignInAttemptOutcome } from '$lib/servers/sign-in-contract'
     import { handleNavigationShortcut } from '../navigation/keyboard-shortcuts'
     import { eventMatchesCommand } from '$lib/shortcuts'
+    import { claimKey } from '$lib/shortcuts/claim-key'
     import { updateLeftPaneState, updateRightPaneState, type PaneState, type PaneFileEntry } from '$lib/tauri-commands'
 
     async function notifyIfUsingFileFallback(): Promise<void> {
@@ -529,8 +530,7 @@
         // back to the focused pane, which hands the network view every key. Without it,
         // one Enter mounted the share twice.
         if (eventMatchesCommand(e, 'share.selectShare')) {
-            e.preventDefault()
-            e.stopPropagation()
+            claimKey(e)
             if (cursorIndex >= 0 && cursorIndex < sortedShares.length) {
                 void activateShare(sortedShares[cursorIndex])
             }

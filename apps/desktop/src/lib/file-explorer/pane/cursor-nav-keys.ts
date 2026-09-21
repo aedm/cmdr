@@ -6,10 +6,18 @@
  * the thin glue that turns a keystroke into a cursor move + scroll + selection
  * fill. `applyNavigation` stays public because FilePane also calls it from
  * `toggleSelectionAndMoveDownAtCursor`.
+ *
+ * Every branch that moves the cursor ends in `claimKey(e)`. `nav.home` / `nav.end` /
+ * `nav.pageUp` / `nav.pageDown` are Tier 1 on bare `Home` / `End` / `PageUp` /
+ * `PageDown`, and their handler is `sendKeyToFocusedPane(key)` — so a key left to
+ * bubble came straight back here and moved the cursor a second time. That made one
+ * PageDown travel two pages (measured: 54 rows with 27 on screen), while Home and
+ * End hid it by being idempotent. See `$lib/shortcuts/claim-key.ts`.
  */
 
 import { handleNavigationShortcut } from '../navigation/keyboard-shortcuts'
 import { comboMatchesCommand } from '$lib/shortcuts'
+import { claimKey } from '$lib/shortcuts/claim-key'
 import { formatKeyCombo } from '$lib/shortcuts/key-capture'
 import type { CommandId } from '$lib/commands'
 import type { ListViewAPI } from './types'
@@ -116,7 +124,7 @@ export function createCursorNavKeys(deps: CursorNavKeysDeps): CursorNavKeys {
     const briefListRef = deps.getBriefListRef()
     const result = briefListRef?.handleKeyNavigation?.(e.key, e)
     if (result !== undefined) {
-      e.preventDefault()
+      claimKey(e)
       applyNavigation({
         newIndex: result.newIndex,
         listRef: briefListRef,
@@ -140,7 +148,7 @@ export function createCursorNavKeys(deps: CursorNavKeysDeps): CursorNavKeys {
       visibleItems,
     })
     if (shortcutResult) {
-      e.preventDefault()
+      claimKey(e)
       applyNavigation({
         newIndex: shortcutResult.newIndex,
         listRef: fullListRef,
@@ -152,13 +160,13 @@ export function createCursorNavKeys(deps: CursorNavKeysDeps): CursorNavKeys {
 
     // Handle arrow navigation. Overflow = the step was clamped at a boundary.
     if (e.key === 'ArrowDown') {
-      e.preventDefault()
+      claimKey(e)
       const newIndex = Math.min(cursorIndex + 1, effectiveTotalCount - 1)
       applyNavigation({ newIndex, listRef: fullListRef, shiftKey: e.shiftKey, overflow: newIndex === cursorIndex })
       return true
     }
     if (e.key === 'ArrowUp') {
-      e.preventDefault()
+      claimKey(e)
       const newIndex = Math.max(cursorIndex - 1, 0)
       applyNavigation({ newIndex, listRef: fullListRef, shiftKey: e.shiftKey, overflow: newIndex === cursorIndex })
       return true
@@ -166,12 +174,12 @@ export function createCursorNavKeys(deps: CursorNavKeysDeps): CursorNavKeys {
     // Left/Right arrows jump to first/last (same as Brief mode at boundaries).
     // These always overflow: intended distance = infinity.
     if (e.key === 'ArrowLeft') {
-      e.preventDefault()
+      claimKey(e)
       applyNavigation({ newIndex: 0, listRef: fullListRef, shiftKey: e.shiftKey, overflow: true })
       return true
     }
     if (e.key === 'ArrowRight') {
-      e.preventDefault()
+      claimKey(e)
       applyNavigation({ newIndex: effectiveTotalCount - 1, listRef: fullListRef, shiftKey: e.shiftKey, overflow: true })
       return true
     }

@@ -43,6 +43,7 @@
     import { protocolLabel } from '../navigation/filesystem-label'
     import ShortcutChip from '$lib/ui/ShortcutChip.svelte'
     import { eventMatchesCommand } from '$lib/shortcuts'
+    import { claimKey } from '$lib/shortcuts/claim-key'
     import { triggerNetworkDiscovery } from './lazy-trigger'
     import { tString } from '$lib/intl/messages.svelte'
     import type { MessageKey } from '$lib/intl/keys.gen'
@@ -344,8 +345,7 @@
         // into this component through `refreshNetworkHosts()` → `refresh()`, which is
         // this same `handleRefreshClick()`. Without it, every host got re-read twice.
         if (eventMatchesCommand(e, 'pane.refresh')) {
-            e.preventDefault()
-            e.stopPropagation()
+            claimKey(e)
             handleRefreshClick()
             return
         }
@@ -384,8 +384,7 @@
         // centrally, whose handler posts Enter straight back to the focused pane, which
         // hands the network view every key. Without it, one Enter opened the row twice.
         if (handleArrowAndEnter(e.key)) {
-            e.preventDefault()
-            e.stopPropagation()
+            claimKey(e)
         }
     }
 

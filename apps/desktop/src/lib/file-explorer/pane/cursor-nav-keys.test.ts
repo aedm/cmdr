@@ -47,9 +47,17 @@ function setup(over: Partial<CursorNavKeysDeps> = {}) {
 
 function key(name: string, opts: { metaKey?: boolean; shiftKey?: boolean } = {}) {
   const preventDefault = vi.fn()
+  const stopPropagation = vi.fn()
   return {
-    e: { key: name, metaKey: !!opts.metaKey, shiftKey: !!opts.shiftKey, preventDefault } as unknown as KeyboardEvent,
+    e: {
+      key: name,
+      metaKey: !!opts.metaKey,
+      shiftKey: !!opts.shiftKey,
+      preventDefault,
+      stopPropagation,
+    } as unknown as KeyboardEvent,
     preventDefault,
+    stopPropagation,
   }
 }
 
@@ -104,6 +112,48 @@ describe('createCursorNavKeys', () => {
     const { nav, spies } = setup()
     expect(nav.handleFullModeKeys(key('PageUp').e)).toBe(true)
     expect(spies.applyCursor).toHaveBeenCalledWith(2)
+  })
+
+  /**
+   * Every branch that MOVES the cursor has to claim the key, or the document
+   * dispatcher runs the command again on the way past: `nav.pageUp` / `nav.pageDown`
+   * / `nav.home` / `nav.end` are Tier 1 on those bare keys, and their handler is
+   * `sendKeyToFocusedPane(key)`, which posts the key straight back here. Measured
+   * before the fix: one PageDown in a 120-row folder moved 54 rows with 27 rows on
+   * screen. Home/End hid it by being idempotent.
+   */
+  describe('claiming the key it acted on', () => {
+    it('stops a Page key it handled', () => {
+      shortcutSpy.mockReturnValue({ newIndex: 2, overflow: false })
+      const { nav } = setup()
+      const { e, preventDefault, stopPropagation } = key('PageDown')
+      expect(nav.handleFullModeKeys(e)).toBe(true)
+      expect(preventDefault).toHaveBeenCalled()
+      expect(stopPropagation).toHaveBeenCalled()
+    })
+
+    it('stops an arrow it handled', () => {
+      const { nav } = setup()
+      const { e, stopPropagation } = key('ArrowDown')
+      expect(nav.handleFullModeKeys(e)).toBe(true)
+      expect(stopPropagation).toHaveBeenCalled()
+    })
+
+    it('stops a Brief-mode key the list handled', () => {
+      const { nav, spies } = setup()
+      spies.briefNav.mockReturnValue({ newIndex: 3, overflow: false })
+      const { e, stopPropagation } = key('PageDown')
+      expect(nav.handleBriefModeKeys(e)).toBe(true)
+      expect(stopPropagation).toHaveBeenCalled()
+    })
+
+    it('leaves a key it did NOT act on alone, so the dispatcher still gets it', () => {
+      const { nav } = setup()
+      const { e, preventDefault, stopPropagation } = key('ArrowLeft', { metaKey: true })
+      expect(nav.handleFullModeKeys(e)).toBe(false)
+      expect(preventDefault).not.toHaveBeenCalled()
+      expect(stopPropagation).not.toHaveBeenCalled()
+    })
   })
 
   it('bails on ⌘← / ⌘→ (Copy path between panes owns those)', () => {

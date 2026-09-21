@@ -23,6 +23,7 @@ import type { CommandId } from '$lib/commands'
 import { classifySelectionDialogKey } from './selection-dialog-keys'
 import { classifySelectionKey } from './selection-keys'
 import { eventMatchesCommand } from '$lib/shortcuts'
+import { claimKey } from '$lib/shortcuts/claim-key'
 import { maybeShowQuickLookHint } from '../quick-look/quick-look-hint'
 import { cancelClickToRename } from '../rename/rename-activation'
 
@@ -73,8 +74,7 @@ export function createPaneKeyRouter(deps: PaneKeyRouterDeps): PaneKeyRouter {
   function handleSelectionDialogKey(e: KeyboardEvent): boolean {
     const action = classifySelectionDialogKey(e)
     if (!action) return false
-    e.preventDefault()
-    e.stopPropagation()
+    claimKey(e)
     deps.onCommand?.(action === 'open-add' ? 'selection.selectFiles' : 'selection.deselectFiles')
     return true
   }
@@ -88,8 +88,7 @@ export function createPaneKeyRouter(deps: PaneKeyRouterDeps): PaneKeyRouter {
     const command = classifySelectionKey(e)
     if (!command) return false
 
-    e.preventDefault()
-    e.stopPropagation()
+    claimKey(e)
 
     switch (command) {
       case 'selection.toggle':
@@ -132,37 +131,34 @@ export function createPaneKeyRouter(deps: PaneKeyRouterDeps): PaneKeyRouter {
    * `file.delete`'s combo, not `nav.parent`'s, so it passes through to the document
    * dispatcher and deletes.
    *
-   * `stopPropagation` is load-bearing on EVERY handled combo, bare keys included:
-   * `nav.open` and `nav.parent` are both Tier 1, so all four combos sit in the
-   * document dispatch map and a key that keeps bubbling runs the command a second
-   * time (⌘↑ → grandparent, Enter / ⌘↓ → double-open). Bare Enter is the one that
-   * bites hardest: it WINS the combo globally, and `nav.open`'s handler re-sends
-   * Enter into this pane, so one Enter on a Google Drive file opened two browser
-   * tabs. A second OS open is invisible for a file whose app reuses its window,
-   * which is why this hid for so long.
+   * `claimKey` is load-bearing on EVERY handled combo, bare keys included: `nav.open`
+   * and `nav.parent` are both Tier 1, so all four combos sit in the document dispatch
+   * map and a key that keeps bubbling runs the command a second time (⌘↑ →
+   * grandparent, Enter / ⌘↓ → double-open). Bare Enter is the one that bites hardest:
+   * it WINS the combo globally, and `nav.open`'s handler re-sends Enter into this
+   * pane, so one Enter on a Google Drive file opened two browser tabs. A second OS
+   * open is invisible for a file whose app reuses its window, which is why this hid
+   * for so long. See `$lib/shortcuts/claim-key.ts`.
    */
   function handleOpenOrParentKey(e: KeyboardEvent): boolean {
     if (eventMatchesCommand(e, 'nav.open')) {
       const entry = deps.getEntryUnderCursor()
       if (entry) {
-        e.preventDefault()
-        e.stopPropagation()
+        claimKey(e)
         deps.openEntry(entry)
         return true
       }
       // ⌘↓ with nothing under the cursor: swallow it so it can't fall through
       // to cursor-move or the document dispatcher.
       if (e.metaKey) {
-        e.preventDefault()
-        e.stopPropagation()
+        claimKey(e)
         return true
       }
       return false
     }
 
     if (eventMatchesCommand(e, 'nav.parent') && deps.getHasParent()) {
-      e.preventDefault()
-      e.stopPropagation()
+      claimKey(e)
       deps.navigateToParent()
       return true
     }

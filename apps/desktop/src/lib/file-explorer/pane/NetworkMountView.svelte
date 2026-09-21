@@ -25,6 +25,7 @@
     import Spinner from '$lib/ui/Spinner.svelte'
     import { tString } from '$lib/intl/messages.svelte'
     import { eventMatchesCommand } from '$lib/shortcuts'
+    import { claimKey } from '$lib/shortcuts/claim-key'
     import type { VolumeChangePayload } from './types'
 
     const log = getAppLogger('fileExplorer')
@@ -386,8 +387,7 @@
             // the share list entirely (the same hazard `pane-key-router.ts`'s
             // `handleOpenOrParentKey` stops for).
             if (eventMatchesCommand(e, 'share.back')) {
-                e.preventDefault()
-                e.stopPropagation()
+                claimKey(e)
                 handleMountErrorBack()
             }
             return
