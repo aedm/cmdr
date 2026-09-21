@@ -82,8 +82,9 @@ impl FullLoadBackend {
         let mut rows: Vec<ViewerRow> = Vec::new();
         let mut end_byte_offset = bom_len;
         let mut next_line = 0usize;
-        // Reads from a slice cannot fail, so the walk is infallible here.
-        while let Some((span, text)) = reader.next_row().unwrap_or(None) {
+        // ❗ `expect`, not `unwrap_or(None)`: a swallowed error here would end the walk
+        // early and hand back a file missing its tail, with nothing saying so.
+        while let Some((span, text)) = reader.next_row().expect("a slice source cannot fail to read") {
             let line_number = if span.starts_line {
                 let n = next_line;
                 next_line += 1;

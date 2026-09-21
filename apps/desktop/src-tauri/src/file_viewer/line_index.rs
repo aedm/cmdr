@@ -173,8 +173,9 @@ impl LineIndexBackend {
             offset: self.content_start,
         });
 
-        let mut checkpoints: Vec<Checkpoint> = self.checkpoints[..=idx.min(self.checkpoints.len() - 1)].to_vec();
-        checkpoints.pop();
+        // Keep everything strictly below the resume point; the rewalk re-pushes the
+        // checkpoint AT it, since `resume.row` is a multiple of the interval.
+        let mut checkpoints: Vec<Checkpoint> = self.checkpoints[..idx.min(self.checkpoints.len())].to_vec();
         let file = File::open(&self.path)?;
         let mut reader = RowReader::new(FileSource::new(file, new_size), self.encoding, self.content_start);
         reader.seek(resume.offset)?;

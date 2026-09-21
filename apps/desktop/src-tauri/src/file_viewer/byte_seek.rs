@@ -41,6 +41,24 @@ pub struct ByteSeekBackend {
     /// comes out exactly `SEGMENT_BYTES`, making row numbers EXACT on precisely the
     /// file this backend exists for. On an ordinary file it is an estimate, as before.
     bytes_per_row: u64,
+    /// The file's first content byte, past any BOM. Decided once at open: this backend
+    /// opens the file per fetch and per search, and re-sniffing the head each time would
+    /// buy nothing on an immutable value.
+    content_start: u64,
+}
+
+/// The file's content start: past a BOM, so this backend's row 0 is the same row the
+/// other two serve, and the user never gets a selectable `U+FEFF`.
+fn detect_content_start(path: &Path, encoding: FileEncoding, total_bytes: u64) -> u64 {
+    let bom = encoding.bom_bytes();
+    if bom.is_empty() || total_bytes < bom.len() as u64 {
+        return 0;
+    }
+    let mut head = vec![0u8; bom.len()];
+    match File::open(path).and_then(|mut f| std::io::Read::read_exact(&mut f, &mut head)) {
+        Ok(()) if head == bom => bom.len() as u64,
+        _ => 0,
+    }
 }
 
 impl ByteSeekBackend {
@@ -67,7 +85,8 @@ impl ByteSeekBackend {
             .unwrap_or_else(|| path.display().to_string());
 
         let total_bytes = metadata.len();
-        let bytes_per_row = sample_bytes_per_row(path, encoding, total_bytes)?;
+        let content_start = detect_content_start(path, encoding, total_bytes);
+        let bytes_per_row = sample_bytes_per_row(path, encoding, total_bytes, content_start)?;
 
         Ok(Self {
             path: path.to_path_buf(),
@@ -75,6 +94,7 @@ impl ByteSeekBackend {
             file_name,
             encoding,
             bytes_per_row,
+            content_start,
         })
     }
 
@@ -91,20 +111,7 @@ impl ByteSeekBackend {
             file_name: self.file_name.clone(),
             encoding: self.encoding,
             bytes_per_row: self.bytes_per_row,
-        }
-    }
-
-    /// The file's content start: past a BOM, so this backend's row 0 is the same row
-    /// the other two serve, and the user never gets a selectable `U+FEFF`.
-    fn content_start(&self) -> u64 {
-        let bom = self.encoding.bom_bytes();
-        if bom.is_empty() || self.total_bytes < bom.len() as u64 {
-            return 0;
-        }
-        let mut head = vec![0u8; bom.len()];
-        match File::open(&self.path).and_then(|mut f| std::io::Read::read_exact(&mut f, &mut head)) {
-            Ok(()) if head == bom => bom.len() as u64,
-            _ => 0,
+            content_start: self.content_start,
         }
     }
 
@@ -114,7 +121,7 @@ impl ByteSeekBackend {
         let mut reader = RowReader::new(
             FileSource::new(file, self.total_bytes),
             self.encoding,
-            self.content_start(),
+            self.content_start,
         );
         let start = reader.seek(offset)?;
         Ok((reader, start))
@@ -150,12 +157,17 @@ impl ByteSeekBackend {
 /// average down. A file with no newline in it yields whole segments and therefore
 /// exactly `SEGMENT_BYTES`; an empty or tiny file falls back to the segment size, which
 /// keeps the divisor away from zero.
-fn sample_bytes_per_row(path: &Path, encoding: FileEncoding, total_bytes: u64) -> Result<u64, ViewerError> {
+fn sample_bytes_per_row(
+    path: &Path,
+    encoding: FileEncoding,
+    total_bytes: u64,
+    content_start: u64,
+) -> Result<u64, ViewerError> {
     let file = File::open(path)?;
-    let mut reader = RowReader::new(FileSource::new(file, total_bytes), encoding, 0);
+    let mut reader = RowReader::new(FileSource::new(file, total_bytes), encoding, content_start);
     let limit = BYTES_PER_ROW_SAMPLE.min(total_bytes);
     let mut rows = 0u64;
-    let mut consumed = 0u64;
+    let mut consumed = content_start;
     while consumed < limit {
         let Some(span) = reader.next_span()? else { break };
         if span.end > limit || span.end == span.start {
@@ -164,10 +176,10 @@ fn sample_bytes_per_row(path: &Path, encoding: FileEncoding, total_bytes: u64) -
         rows += 1;
         consumed = span.end;
     }
-    if rows == 0 || consumed == 0 {
+    if rows == 0 || consumed <= content_start {
         return Ok(SEGMENT_BYTES);
     }
-    Ok((consumed / rows).max(1))
+    Ok(((consumed - content_start) / rows).max(1))
 }
 
 impl FileViewerBackend for ByteSeekBackend {
@@ -185,6 +197,7 @@ impl FileViewerBackend for ByteSeekBackend {
             file_name: self.file_name.clone(),
             encoding: new_encoding,
             bytes_per_row: self.bytes_per_row,
+            content_start: self.content_start,
         }))
     }
 
