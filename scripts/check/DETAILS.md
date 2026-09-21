@@ -618,7 +618,7 @@ harness that reproduces the counts.
   total ~11 s of mean runtime across 12 parallel lanes; ❌ don't reach for a "paths-but-not-contents" input kind to
   shave that, the mechanism would cost more than the lanes do.
 
-### A scoped run is not a full one
+### Scoped runs
 
 Those 12 lanes are registered `AppOther`, which means no scoped selector reaches them: `pnpm check svelte`, `rust`, and
 `desktop` all skip formatting, `file-length`, and every `docs-*` / `claude-md-*` lane. Only a bare `pnpm check`, or

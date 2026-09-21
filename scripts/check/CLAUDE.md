@@ -32,8 +32,8 @@ Authoring a check: `checks/CLAUDE.md`.
   20-100 s of rebuild per flip. ❌ No per-package `-p` lanes.
 - **The Rust and frontend lanes are blind to `CLAUDE.md` / `DETAILS.md`** (`agentDocExclusions`), so a docs-only edit is
   a cache hit. ❌ No other `!` exclusion.
-- **A scoped run skips the 12 whole-repo lanes** (`AppOther`), so a green `pnpm check svelte` proves nothing about
-  formatting or doc links. ❌ Never finish on one alone. `DETAILS.md` § "A scoped run is not a full one".
+- **A scoped run skips the whole-repo lanes**: formatting and doc links go unchecked. ❌ Never finish on one.
+  `DETAILS.md` § "Scoped runs".
 - **A check names its Docker fixtures in `NeedsContainers []StackMode`** (`stacklease` registry: `smb`, `sftp`,
   `webdav`). One machine-wide lease per stack lets worktrees coexist; the stack downs at its last holder. ❌ No
   per-check teardown, ❌ never move SMB's frozen `/tmp` lease paths or its 11480+ ports.
