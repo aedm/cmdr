@@ -341,15 +341,6 @@ other failure is real. (`macos-availability` also fails on a pre-existing SDK 27
 - Known consequence, not a bug: cache eviction makes the size estimator answer "unknown" more often on a huge selection,
   so the user sees the "size unknown" confirm more than before. Worth watching, not worth blocking.
 
-### A commit message that needs correcting before this branch merges
-
-- [ ] **`3d23df028` is titled `style(viewer): rustfmt settles rows_test.rs` and contains 99 lines of new test code**,
-      zero deletions. The checker reported rewriting that file, and it was staged without reading the diff first, which
-      swept an agent's uncommitted cross-check tests into a formatting commit. The code is correct and green; the
-      message is false, and it feeds release notes and the docs audit. Reword it once every agent has stopped committing
-      to this branch, before the fast-forward. ❗ Not while anyone is working: a reword rewrites every descendant SHA
-      and checks files out under whoever is mid-edit.
-
 ### Settled
 
 - **Soft CSS wraps stay unmarked.** Asked and answered by David on 2026-09-21: only the segment break Cmdr made
