@@ -112,14 +112,25 @@ async fn a_pull_reports_its_progress_to_the_window_as_bytes_arrive() {
     );
 }
 
+/// Rows per fetch (`FETCH_CHUNK` in `range_read.rs`) and the bytes one row costs,
+/// including its delimiter.
+///
+/// ❗ A fetch has to come to SEVERAL flush thresholds, not exactly one. The reader owes
+/// the last row's delimiter rather than writing it, so a fetch sized to exactly one
+/// `STREAM_CHUNK_BYTES` lands one byte short and flushes nothing until the next fetch is
+/// already under way. At 1 KiB a row, a fetch is 4 MiB and the save writes four times
+/// inside it, which is what makes "the temp has bytes by now" true where these tests
+/// assert it.
+const FETCH_ROWS: usize = 4096;
+const ROW_BYTES: usize = 1024;
+
 /// A session over a backend that takes `per_chunk` to answer each fetch, serving
-/// `chunks` fetches worth of lines. One fetch is exactly 1 MiB of text, so the save
-/// writes (and so reports progress) once per fetch.
+/// `chunks` fetches worth of rows, each fetch worth several of the save's writes.
 ///
 /// Returns the session id and the bytes the whole range comes to.
 fn a_session_reading_slowly(chunks: usize, per_chunk: Duration) -> (String, usize) {
-    const FETCH_LINES: usize = 4096;
-    const STRIDE: usize = 256;
+    const FETCH_LINES: usize = FETCH_ROWS;
+    const STRIDE: usize = ROW_BYTES;
     let line_count = FETCH_LINES * chunks;
     let backend = file_viewer::session::ScriptedBackend::new(&"s".repeat(STRIDE - 1), line_count, move |_| {
         // allowed-test-sleep: the slow answer IS the subject. These tests are about
@@ -141,6 +152,71 @@ fn save_temp_file(dir: &std::path::Path) -> Option<std::path::PathBuf> {
         .filter_map(|e| e.ok())
         .map(|e| e.path())
         .find(|p| p.to_string_lossy().contains("cmdr-tmp"))
+}
+
+/// Escape has to land while the stall watch is running. The watch itself only ever
+/// answers silence, so a save the user stops mid-flight has to come back on its own
+/// road: `Cancelled` rather than `TimedOut`, with nothing left behind. The limit here is
+/// long enough that the watch can't be what ended it.
+#[tokio::test]
+async fn escape_during_a_watched_save_stops_it_and_leaves_no_temp() {
+    use crate::ignore_poison::IgnorePoison;
+
+    let dir = tempfile::tempdir().expect("tempdir");
+    let dest = dir.path().join("out.txt");
+    let session_holder: Arc<std::sync::Mutex<Option<String>>> = Arc::new(std::sync::Mutex::new(None));
+    let holder = Arc::clone(&session_holder);
+    // What the temp held at the moment of the cancel, so "it cleaned up after itself"
+    // can't pass by the save never having written anything.
+    let temp_at_cancel = Arc::new(std::sync::atomic::AtomicU64::new(0));
+    let observed = Arc::clone(&temp_at_cancel);
+    let probe_dir = dir.path().to_path_buf();
+
+    // Cancel on the second fetch, by which point the first fetch's 4 MiB has been
+    // written: `viewer_cancel_read` is the road Escape takes, so this is that gesture.
+    let backend = file_viewer::session::ScriptedBackend::new(&"s".repeat(ROW_BYTES - 1), FETCH_ROWS * 3, move |call| {
+        if call == 1
+            && let Some(sid) = holder.lock_ignore_poison().as_ref()
+        {
+            let written = save_temp_file(&probe_dir)
+                .and_then(|p| std::fs::metadata(p).ok())
+                .map_or(0, |m| m.len());
+            observed.store(written, std::sync::atomic::Ordering::SeqCst);
+            file_viewer::cancel_read(sid, 1).expect("the session is open");
+        }
+    });
+    let session_id = file_viewer::session::test_only_install_session(
+        Box::new(backend),
+        std::path::PathBuf::from("/scripted/cancelled.txt"),
+    );
+    *session_holder.lock_ignore_poison() = Some(session_id.clone());
+
+    let result = write_range_watched(
+        session_id.clone(),
+        1,
+        RangeEnd::Line { line: 0, offset: 0 },
+        RangeEnd::Eof,
+        dest.to_string_lossy().into_owned(),
+        Duration::from_secs(30),
+    )
+    .await;
+
+    assert!(
+        matches!(result, Err(ViewerError::Cancelled)),
+        "Escape must answer Cancelled, not the watch's TimedOut, got {result:?}"
+    );
+    assert!(
+        temp_at_cancel.load(std::sync::atomic::Ordering::SeqCst) > 0,
+        "the cancel has to land on a save that had already written, or the cleanup below proves nothing"
+    );
+    assert!(!dest.exists(), "a cancelled save must not create the destination");
+    assert!(
+        save_temp_file(dir.path()).is_none(),
+        "a cancelled save must take its temp file with it"
+    );
+    assert_eq!(file_viewer::session::active_read_count(&session_id), 0);
+
+    file_viewer::close_session(&session_id).expect("close");
 }
 
 /// A save that keeps writing must run to its end, however long that is. The copy
@@ -182,12 +258,13 @@ async fn a_save_that_keeps_writing_runs_past_the_limit() {
 async fn a_save_that_goes_quiet_gives_up_and_leaves_no_temp() {
     let dir = tempfile::tempdir().expect("tempdir");
     let dest = dir.path().join("out.txt");
-    // One fetch lands (so the temp already holds bytes), then the source goes quiet
-    // for far longer than the limit.
+    // One fetch lands and is written (so the temp holds bytes, which is what makes the
+    // cleanup below worth asserting), then the source goes quiet for far longer than
+    // the limit.
     let quiet_session = file_viewer::session::test_only_install_session(
         Box::new(file_viewer::session::ScriptedBackend::new(
-            &"s".repeat(255),
-            4096 * 2,
+            &"s".repeat(ROW_BYTES - 1),
+            FETCH_ROWS * 2,
             |call| {
                 if call > 0 {
                     // allowed-test-sleep: the silence IS the subject; this stands in
@@ -214,6 +291,10 @@ async fn a_save_that_goes_quiet_gives_up_and_leaves_no_temp() {
         "a save that stopped writing must give up, got {result:?}"
     );
     assert!(!dest.exists(), "a save that gave up must not leave a destination");
+    assert!(
+        save_temp_file(dir.path()).is_some(),
+        "the give-up has to land on a save that had already written, or the cleanup below proves nothing"
+    );
     crate::test_support::wait_until_async(Duration::from_secs(10), "the stopped save to clean up", || {
         save_temp_file(dir.path()).is_none()
     })
