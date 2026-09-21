@@ -225,16 +225,16 @@ into `handleCommandExecute()`, the same core the palette, the native menu, and M
 (`routes/(main)/DETAILS.md` § The dialog gate). Rebuilds automatically when custom shortcuts change via
 `onShortcutChange`.
 
-Tier 2 commands (the per-keystroke cursor ids: arrows, Home/End, PageUp/PageDown) are not in the dispatch map.
-Unmatched keypresses propagate normally to component-level handlers in DualPaneExplorer and FilePane.
+Tier 2 commands (the per-keystroke cursor ids: arrows, Home/End, PageUp/PageDown) are not in the dispatch map. Unmatched
+keypresses propagate normally to component-level handlers in DualPaneExplorer and FilePane.
 
 ❗ **A BARE key is not automatically Tier 2.** `Enter` (`nav.open`), `Tab` (`pane.switch`), Space, F5, and Insert all
 belong to Tier 1 commands and sit in the map, so the claim rule below governs them exactly as it governs a ⌘ combo.
 Enter is the sharpest case: `nav.open` WINS the combo globally (it beats `share.selectShare` on registry order at equal
 scope depth), and its handler is `sendKeyToFocusedPane('Enter')`, which posts the key straight back into the focused
-pane. A pane branch that only `preventDefault`s therefore opens the entry TWICE. That hid for months because a second
-OS open is invisible for a file whose app reuses its window; a Google Drive file is what surfaced it, opening two
-browser tabs for one Enter.
+pane. A pane branch that only `preventDefault`s therefore opens the entry TWICE. That hid for months because a second OS
+open is invisible for a file whose app reuses its window; a Google Drive file is what surfaced it, opening two browser
+tabs for one Enter.
 
 ### Local handlers resolve through the registry too (`eventMatchesCommand`)
 
@@ -251,13 +251,13 @@ resolver deliberately does NOT guard on `defaultPrevented`: preventing a browser
 different statements, and conflating them would silently kill shortcuts behind handlers that legitimately do the first.
 
 Why it matters, in full: a handler that only prevents the default still lets central dispatch run the very same command
-a moment later. When both ends land in the same place, the work happens TWICE and nothing looks wrong. `ServersHub`'s
-⌘R ran `clearShareState` + `fetchShares` for every host, then `pane.refresh` dispatched into `refreshPane` →
-`refreshNetworkHosts()` → `ServersHub.refresh()`, which is that same handler's body again. The paged cursor keys are
-the same shape and hid better: `nav.pageDown`'s handler is `sendKeyToFocusedPane('PageDown')`, so one press moved two
-pages (measured: 54 rows with 27 on screen), while `Home` and `End` doubled invisibly by being idempotent. ❌ Don't
-reach for a "did you handle it?" return value instead: `pane-key-router` hands the network and search views every key
-and returns either way, so a boolean has nobody to tell. `claimKey(e)` IS the claim.
+a moment later. When both ends land in the same place, the work happens TWICE and nothing looks wrong. `ServersHub`'s ⌘R
+ran `clearShareState` + `fetchShares` for every host, then `pane.refresh` dispatched into `refreshPane` →
+`refreshNetworkHosts()` → `ServersHub.refresh()`, which is that same handler's body again. The paged cursor keys are the
+same shape and hid better: `nav.pageDown`'s handler is `sendKeyToFocusedPane('PageDown')`, so one press moved two pages
+(measured: 54 rows with 27 on screen), while `Home` and `End` doubled invisibly by being idempotent. ❌ Don't reach for
+a "did you handle it?" return value instead: `pane-key-router` hands the network and search views every key and returns
+either way, so a boolean has nobody to tell. `claimKey(e)` IS the claim.
 
 So local handlers don't test raw key flags; they ask the registry:
 

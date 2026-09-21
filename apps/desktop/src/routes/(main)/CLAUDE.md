@@ -29,8 +29,8 @@ via a typed API. Up: `apps/desktop/CLAUDE.md`, sibling: `../viewer/CLAUDE.md`.
   ❌ Never capture a `$state` value; `isOnboardingVisible()` reads live.
 - **Ambient top-right indicators go in `<StatusCorner>`, ❌ never the `.title-bar` header** it overlays: a header child
   lands on the hourglass.
-- **The old-macOS notice is `topmost` AND rendered after `<OnboardingWizard>`**, or it hides under the wizard. DETAILS
-  § Startup gates.
+- **The old-macOS notice is `topmost` AND rendered after `<OnboardingWizard>`**, or it hides under the wizard. DETAILS §
+  Startup gates.
 - **One dispatcher per road** (`dispatchers.*`), ❌ never shared. DETAILS § The dialog gate.
 - **`dialogsOnScreen()` reads the `open-dialogs` INVENTORY, ❌ never a list of `show*` booleans**: a hand list misses
   dialogs, and each miss lets a bare key (Tab, Space, F5) fire behind one.

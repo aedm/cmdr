@@ -38,15 +38,15 @@ Background on default sort-order shortcuts: `docs/notes/sort-order-shortcut-rese
   `scopeHierarchy` — hand-edit it to add a scope. The dispatch map keeps one winner per combo: most-specific scope wins,
   registry order breaks ties (pinned by `shortcut-dispatch.test.ts`).
 - **`menuCommands` (in `shortcuts-store.ts`) must stay in sync with the Rust menu items.** The set-equality test in
-  `commands/rust-command-id-drift.test.ts` fails on a missing item (stale accelerator after a rebind) or an
-  undocumented excuse.
+  `commands/rust-command-id-drift.test.ts` fails on a missing item (stale accelerator after a rebind) or an undocumented
+  excuse.
 - **`downloads.goToLatest` binds `⌘J` deliberately**, not Finder's "View Options". User-confirmed; don't "fix" it.
 - **`handleGlobalKeyDown` bails when focus is in a text input and the combo `isTypingKeyCombo`** (central typing guard),
   so a bare-key Tier 1 binding (Tab → switch pane) doesn't fire mid-typing. No chords; modifier-only combos are
   rejected.
-- **❌ A local handler that ACTS on a key calls `claimKey(e)`** (`claim-key.ts`, imported from the leaf so a barrel
-  mock can't fake it). `preventDefault` alone is NOT a claim, so the command runs twice — invisibly, four times so far.
-  Bare keys are Tier 1 too (`Enter`, `Tab`, Space, `PageUp`/`Down`, `Home`/`End`, F5, Insert). DETAILS § Local handlers.
+- **❌ A local handler that ACTS on a key calls `claimKey(e)`** (`claim-key.ts`, imported from the leaf so a barrel mock
+  can't fake it). `preventDefault` alone is NOT a claim, so the command runs twice — invisibly, four times so far. Bare
+  keys are Tier 1 too (`Enter`, `Tab`, Space, `PageUp`/`Down`, `Home`/`End`, F5, Insert). DETAILS § Local handlers.
 - **❌ Never hand-roll a key predicate (`e.key === 'a' && e.metaKey`) in a keydown handler.** That's a modifier
   SUPERSET: `⌥⌘A` matched it, so opening Ask Cmdr also selected every file. A local handler calls
   `eventMatchesCommand(e, 'some.command')`; the document handler uses `lookupCommand`. Enforced by
