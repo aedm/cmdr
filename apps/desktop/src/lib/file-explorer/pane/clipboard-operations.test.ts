@@ -756,10 +756,10 @@ describe('getSnapshotClipboardPaths', () => {
 })
 
 /**
- * The MTP clipboard refusal reads the capability record's `kind === 'mtp'`
- * rather than a `volumeId.startsWith('mtp-')` string compare. Pin that the two
- * agree across every volumeId a focused pane can hold when a clipboard op fires,
- * so no user-visible toast changes.
+ * The MTP arm of the scheme-path clipboard refusal reads the capability record's
+ * `kind === 'mtp'` rather than a `volumeId.startsWith('mtp-')` string compare.
+ * Pin that the two agree across every volumeId a focused pane can hold when a
+ * clipboard op fires, so no user-visible toast changes.
  *
  * The capability MTP arm (`isMtpVolumeId || category === 'mobile_device'`) is
  * BROADER than `startsWith('mtp-')` (it also catches colon-form ids), but no

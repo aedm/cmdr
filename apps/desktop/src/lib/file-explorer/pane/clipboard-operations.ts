@@ -46,8 +46,11 @@ type DialogState = ReturnType<typeof createDialogState>
  * byte-equivalent to the old `volumeId.startsWith('mtp-')` gate — live MTP panes
  * carry `mtp-{…}` ids, which classify to `kind === 'mtp'`; nothing else does
  * (pinned by the equivalence test in `clipboard-operations.test.ts`).
+ *
+ * ❗ The three toasts behind this gate still say "MTP devices", so an SFTP or
+ * WebDAV pane refuses a copy with device wording. Reported as ERR-HGGU3.
  */
-function isMtpClipboardRefusal(volumeId: string): boolean {
+function isSchemePathClipboardRefusal(volumeId: string): boolean {
   const kind = capabilitiesFor(volumeId).kind
   return kind === 'mtp' || kind === 'adb' || kind === 'sftp' || kind === 'webdav'
 }
@@ -106,8 +109,8 @@ export function splitClipboardKinds(
 
 /**
  * System-clipboard copy / cut / paste for the focused pane. Lifted out of
- * `DualPaneExplorer` so the MTP-refusal, snapshot-pane, and cut-vs-copy branches
- * are headless-testable. Reads pane state through `PaneAccess`; opens the paste
+ * `DualPaneExplorer` so the scheme-path refusal, snapshot-pane, and cut-vs-copy
+ * branches are headless-testable. Reads pane state through `PaneAccess`; opens the paste
  * transfer through the explorer's dialog state.
  */
 export function createClipboardOperations(access: PaneAccess, dialogs: DialogState) {
@@ -131,7 +134,7 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
    * isn't one. The system clipboard can't carry a routed path — neither an
    * archive-inner entry nor a virtual `.git` snapshot entry is an OS-resolvable
    * file — so ⌘C/⌘X are refused and the user is pointed at F5/F6 copy-out. Same
-   * shape as the MTP refusal, but a different reason and hint per kind.
+   * shape as the scheme-path refusal, but a different reason and hint per kind.
    */
   function routedCopyOutHint(volumeId: string, path: string): MessageKey | null {
     const kind = capabilitiesForPane(volumeId, path).kind
@@ -165,7 +168,8 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
 
   /**
    * True when a SEARCH-RESULTS pane's rows can't go on the system clipboard,
-   * the same refusal `isMtpClipboardRefusal` gives a live MTP pane.
+   * the same refusal `isSchemePathClipboardRefusal` gives a live phone or
+   * server pane.
    *
    * Two gates, and the ORDER matters. The scheme gate runs first and answers
    * from the row path alone: anything that isn't a plain absolute filesystem
@@ -189,7 +193,7 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
     const volumeId = getSnapshot(snapshotId)?.volumeId
     // The rows came out of this snapshot a moment ago, so it's there. If it somehow
     // isn't, refusing beats guessing which volume they're on.
-    return volumeId === undefined || isMtpClipboardRefusal(volumeId)
+    return volumeId === undefined || isSchemePathClipboardRefusal(volumeId)
   }
 
   /** Copies selected files (or cursor file) to the system clipboard. */
@@ -220,7 +224,7 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
       return
     }
 
-    if (isMtpClipboardRefusal(state.volumeId)) {
+    if (isSchemePathClipboardRefusal(state.volumeId)) {
       addToast(tString('fileExplorer.clipboard.useF5FromMtp'), { level: 'info' })
       return
     }
@@ -267,7 +271,7 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
       return
     }
 
-    if (isMtpClipboardRefusal(state.volumeId)) {
+    if (isSchemePathClipboardRefusal(state.volumeId)) {
       addToast(tString('fileExplorer.clipboard.useF6FromMtp'), { level: 'info' })
       return
     }
@@ -317,14 +321,15 @@ export function createClipboardOperations(access: PaneAccess, dialogs: DialogSta
       // `operation-start-gate.ts`.
       if (operationStartIsBlocked()) return
 
-      // Check MTP before reading clipboard; MTP paste is always rejected,
-      // no point reading the system clipboard just to reject it. The capability
-      // decides the refusal, not a `startsWith('mtp-')` string. The
-      // MTP-specific copy ("Use F5…") stays separate from the shared guard
-      // because it points the user at the F5/F6 flow MTP paste lacks.
+      // Check the scheme-path kinds before reading the clipboard; a paste onto
+      // one is always rejected, so there's no point reading the system clipboard
+      // just to reject it. The capability decides the refusal, not a
+      // `startsWith('mtp-')` string. Its "Use F5…" copy stays separate from the
+      // shared guard because it points the user at the F5/F6 flow this paste
+      // lacks.
       const focused = access.getFocusedPane()
       const volumeId = access.getPaneVolumeId(focused)
-      if (isMtpClipboardRefusal(volumeId)) {
+      if (isSchemePathClipboardRefusal(volumeId)) {
         addToastForPane(focused, tString('fileExplorer.clipboard.useF5ToMtp'), { level: 'info' })
         return
       }
