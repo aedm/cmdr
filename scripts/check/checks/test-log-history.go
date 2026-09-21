@@ -96,21 +96,49 @@ func LookupTestHistory(path string, ids []string, budget time.Duration) (map[str
 	if err != nil {
 		return nil, fmt.Errorf("read the per-test log's header: %w", err)
 	}
-	idCol, statusCol, tsCol := -1, -1, -1
+	cols, err := resolveTestLogColumns(header)
+	if err != nil {
+		return nil, err
+	}
+
+	return foldTestLogRows(r, cols, wanted, budget)
+}
+
+// testLogColumns is where the three fields this reader needs sit in the log's header.
+type testLogColumns struct{ id, status, timestamp int }
+
+// resolveTestLogColumns locates them by NAME, which is what makes an appended column
+// harmless instead of a silent one-field shift in everything read after it.
+func resolveTestLogColumns(header []string) (testLogColumns, error) {
+	cols := testLogColumns{id: -1, status: -1, timestamp: -1}
 	for i, name := range header {
 		switch name {
 		case "test_id":
-			idCol = i
+			cols.id = i
 		case "status":
-			statusCol = i
+			cols.status = i
 		case "timestamp":
-			tsCol = i
+			cols.timestamp = i
 		}
 	}
-	if idCol < 0 || statusCol < 0 || tsCol < 0 {
-		return nil, errors.New("the per-test log's header names no test_id/status/timestamp column")
+	if cols.id < 0 || cols.status < 0 || cols.timestamp < 0 {
+		return cols, errors.New("the per-test log's header names no test_id/status/timestamp column")
 	}
+	return cols, nil
+}
 
+// outOfRange reports whether a row is too short to hold every column this reader reads.
+func (c testLogColumns) outOfRange(row []string) bool {
+	return c.id >= len(row) || c.status >= len(row) || c.timestamp >= len(row)
+}
+
+// foldTestLogRows streams what's left of the log, accumulating only the wanted ids.
+func foldTestLogRows(
+	r *csv.Reader,
+	cols testLogColumns,
+	wanted map[string]bool,
+	budget time.Duration,
+) (map[string]TestHistory, error) {
 	history := map[string]TestHistory{}
 	deadline := time.Now().Add(budget)
 	for rows := 0; ; rows++ {
@@ -131,28 +159,29 @@ func LookupTestHistory(path string, ids []string, budget time.Duration) (map[str
 			}
 			return nil, fmt.Errorf("read the per-test log: %w", err)
 		}
-		if idCol >= len(row) || statusCol >= len(row) || tsCol >= len(row) {
+		if cols.outOfRange(row) || !wanted[row[cols.id]] {
 			continue
 		}
-		id := row[idCol]
-		if !wanted[id] {
-			continue
-		}
-
-		h := history[id]
-		h.Runs++
-		switch TestOutcome(row[statusCol]) {
-		case TestFailed, TestTimedOut:
-			h.Failures++
-			if day := logDay(row[tsCol]); day > h.LastFailure {
-				h.LastFailure = day
-			}
-		case TestFlaky:
-			h.Flakes++
-		}
-		history[id] = h
+		countTestLogRow(history, row, cols)
 	}
 	return history, nil
+}
+
+// countTestLogRow folds one row into the running record of the test it names.
+func countTestLogRow(history map[string]TestHistory, row []string, cols testLogColumns) {
+	id := row[cols.id]
+	h := history[id]
+	h.Runs++
+	switch TestOutcome(row[cols.status]) {
+	case TestFailed, TestTimedOut:
+		h.Failures++
+		if day := logDay(row[cols.timestamp]); day > h.LastFailure {
+			h.LastFailure = day
+		}
+	case TestFlaky:
+		h.Flakes++
+	}
+	history[id] = h
 }
 
 // logDay takes the date out of a `YYYY-MM-DD HH:MM:SS` stamp. An unexpected shape is

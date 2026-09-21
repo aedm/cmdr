@@ -40,9 +40,36 @@ var barePollHelpers = []string{
 // assigned, returned, wrapped in `expect(...)`, or guarded by an `if`. Same-
 // line lead-ins like `const x = await foo(` or `expect(await foo(` have
 // non-whitespace before `await`, so the start-of-line anchor excludes them.
+//
+// ❗ The anchor alone is NOT the whole test, because which line the lead-in sits on is
+// the FORMATTER's choice, not the author's: an `expect(await pollUntil(…))` that grows
+// past the print width becomes `expect(\n    await pollUntil(…),\n).toBe(true)`, and the
+// value is just as consumed as before. Wrapping every budget in `waitBudget(…)` did that
+// to four real sites at once. So a match here still has to clear
+// `barePollContinuesPreviousLine` before it counts.
 var barePollRegex = regexp.MustCompile(
 	`^\s*await\s+(` + strings.Join(barePollHelpers, "|") + `)\s*\(`,
 )
+
+// barePollContinuationSuffixes end a line that is mid-expression, so whatever follows is
+// an operand rather than a new statement. A statement that FINISHED ends in `;`, `)`,
+// `{`, or `}`, none of which are here.
+var barePollContinuationSuffixes = []string{"(", "[", ",", "=>", "=", "&&", "||", "??", "?", ":", "+", "return"}
+
+// barePollContinuesPreviousLine reports whether the previous line of code left an
+// expression open, which makes the `await` on this line an operand of it.
+func barePollContinuesPreviousLine(prevCode string) bool {
+	trimmed := strings.TrimRight(prevCode, " \t")
+	if trimmed == "" {
+		return false
+	}
+	for _, suffix := range barePollContinuationSuffixes {
+		if strings.HasSuffix(trimmed, suffix) {
+			return true
+		}
+	}
+	return false
+}
 
 type barePollSite struct {
 	relPath string
@@ -124,55 +151,91 @@ func scanForBarePoll(rootDir, testDir string) ([]barePollSite, []orphanDirective
 			relPath = path
 		}
 
-		f, openErr := os.Open(path)
-		if openErr != nil {
-			return openErr
+		fileViolations, fileOrphans, scanErr := scanFileForBarePoll(path, relPath)
+		if scanErr != nil {
+			return scanErr
 		}
-		defer f.Close()
-
-		scanner := bufio.NewScanner(f)
-		scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-		tracker := newDirectiveTracker(AllowBarePollComment, "//")
-		var prev string
-		lineNum := 0
-		for scanner.Scan() {
-			lineNum++
-			line := scanner.Text()
-			tracker.observe(lineNum, line)
-
-			trimmed := strings.TrimLeft(line, " \t")
-			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "*") {
-				prev = line
-				continue
-			}
-
-			m := barePollRegex.FindStringSubmatch(line)
-			if m == nil {
-				prev = line
-				continue
-			}
-
-			// Opt-out: `// allowed-bare-poll: <reason>` on the previous line OR as
-			// a trailing comment on the same line.
-			if hasAllowBarePollComment(prev) || hasAllowBarePollComment(line) {
-				tracker.markUsed(lineNum, line, prev)
-				prev = line
-				continue
-			}
-
-			violations = append(violations, barePollSite{
-				relPath: relPath,
-				line:    lineNum,
-				helper:  m[1],
-				text:    strings.TrimSpace(line),
-			})
-			prev = line
-		}
-		orphans = append(orphans, tracker.orphans(relPath)...)
-		return scanner.Err()
+		violations = append(violations, fileViolations...)
+		orphans = append(orphans, fileOrphans...)
+		return nil
 	})
 
 	return violations, orphans, scanned, err
+}
+
+// scanFileForBarePoll walks one file's lines, tracking just enough context to tell a
+// bare expression statement from an operand the formatter happened to wrap.
+func scanFileForBarePoll(path, relPath string) ([]barePollSite, []orphanDirective, error) {
+	var violations []barePollSite
+
+	f, openErr := os.Open(path)
+	if openErr != nil {
+		return nil, nil, openErr
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	tracker := newDirectiveTracker(AllowBarePollComment, "//")
+	// `prev` is the line immediately above, comment or not, because that is where an
+	// opt-out directive lives. `prevCode` skips comments and blanks, because what
+	// decides whether this `await` starts a statement is the last real CODE above it.
+	var prev, prevCode string
+	lineNum := 0
+	for scanner.Scan() {
+		lineNum++
+		line := scanner.Text()
+		tracker.observe(lineNum, line)
+
+		site, isComment := classifyBarePollLine(line, prev, prevCode, tracker, lineNum)
+		if site != nil {
+			site.relPath = relPath
+			violations = append(violations, *site)
+		}
+		prev = line
+		if !isComment && strings.TrimSpace(line) != "" {
+			prevCode = line
+		}
+	}
+	return violations, tracker.orphans(relPath), scanner.Err()
+}
+
+// classifyBarePollLine decides what one line is. It returns a site (minus its path) when
+// the line is a genuinely bare poll, and reports whether the line was a comment, which
+// the caller needs to keep `prevCode` pointing at the last real code.
+func classifyBarePollLine(
+	line, prev, prevCode string,
+	tracker *directiveTracker,
+	lineNum int,
+) (site *barePollSite, isComment bool) {
+	trimmed := strings.TrimLeft(line, " \t")
+	if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "*") {
+		return nil, true
+	}
+
+	m := barePollRegex.FindStringSubmatch(line)
+	if m == nil {
+		return nil, false
+	}
+
+	// An operand of an expression the previous line left open, not a statement of its
+	// own: which line the lead-in sits on is the formatter's choice, not the author's.
+	if barePollContinuesPreviousLine(prevCode) {
+		return nil, false
+	}
+
+	// Opt-out: `// allowed-bare-poll: <reason>` on the previous line OR as a trailing
+	// comment on the same line.
+	if hasAllowBarePollComment(prev) || hasAllowBarePollComment(line) {
+		tracker.markUsed(lineNum, line, prev)
+		return nil, false
+	}
+
+	return &barePollSite{
+		line:   lineNum,
+		helper: m[1],
+		text:   strings.TrimSpace(line),
+	}, false
 }
 
 func hasAllowBarePollComment(line string) bool {

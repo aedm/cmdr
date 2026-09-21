@@ -75,6 +75,65 @@ test('foo', async () => {
 	}
 }
 
+// The formatter decides whether `expect(` and the `await` share a line: once a wrapped
+// call grows past the print width (which `waitBudget(...)` did to 4 real sites at once),
+// oxfmt moves the `await` onto its own line and a start-of-line anchor reads it as bare.
+// The value is just as consumed as before, so a reformat must never invent a violation.
+func TestBarePoll_AcceptsExpectWrappedAcrossLines(t *testing.T) {
+	res, err := runBarePollOn(t, map[string]string{
+		"app.spec.ts": `
+test('foo', async () => {
+    expect(
+        await pollUntil(page, async () => (await page.count(ROWS)) > 0, waitBudget(30000)),
+    ).toBe(true)
+})
+`,
+	})
+	if err != nil {
+		t.Fatalf("expected success when expect( is on the previous line, got: %v", err)
+	}
+	if res.Code != ResultSuccess {
+		t.Fatalf("expected ResultSuccess, got %v: %s", res.Code, res.Message)
+	}
+}
+
+// The other shapes a formatter can produce, all of which consume the value.
+func TestBarePoll_AcceptsOtherLeadInsOnThePreviousLine(t *testing.T) {
+	for name, body := range map[string]string{
+		"argument": "await Promise.all([\n    pollUntil(page, () => a(), 3000),\n])",
+		"assignment": "const ok =\n" +
+			"    await pollUntil(page, () => reallyQuiteALongConditionName(), 3000)\nif (!ok) throw new Error('x')",
+		"arrow body": "const probe = async () =>\n    await pollUntil(page, () => a(), 3000)\nawait probe()",
+		"return":     "async function probe() {\n    return (\n        await pollUntil(page, () => a(), 3000)\n    )\n}",
+	} {
+		_, err := runBarePollOn(t, map[string]string{
+			"app.spec.ts": "test('foo', async () => {\n" + body + "\n})\n",
+		})
+		if err != nil {
+			t.Errorf("%s: expected success, got: %v", name, err)
+		}
+	}
+}
+
+// ...and the inverse: a genuinely bare call after a finished statement still fails,
+// whatever the line before it happens to be.
+func TestBarePoll_StillFlagsBareCallAfterAFinishedStatement(t *testing.T) {
+	for name, prev := range map[string]string{
+		"semicolon":    "await page.click(BUTTON);",
+		"no semicolon": "await page.click(BUTTON)",
+		"block close":  "if (x) {\n        await page.click(BUTTON)\n    }",
+		"blank line":   "await page.click(BUTTON)\n",
+	} {
+		_, err := runBarePollOn(t, map[string]string{
+			"app.spec.ts": "test('foo', async () => {\n    " + prev +
+				"\n    await pollUntil(page, () => check(), 3000)\n})\n",
+		})
+		if err == nil {
+			t.Errorf("%s: expected a violation for the bare call, got success", name)
+		}
+	}
+}
+
 func TestBarePoll_AcceptsAssignedToVariable(t *testing.T) {
 	_, err := runBarePollOn(t, map[string]string{
 		"app.spec.ts": `
