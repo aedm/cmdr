@@ -702,14 +702,23 @@ pixel-backed rep measures normally. Apple's guidance is to carry an image where 
 object or a concept rather than an action, so ❗ this stays an opt-in per item; a future icon set worth
 having is worth asking for explicitly.
 
-**Gotcha**: the hiding is keyed to the SDK the binary links against, not only the OS it runs on.
-Cmdr ships at SDK 26.5 (`otool -l | grep -A3 LC_BUILD_VERSION` on the bundle), where only symbol
-images are hidden. Third-party reports have a macOS 27 SDK build hiding non-symbol images too, and
-dropping the old exemption for icon-only items (an image with an empty title); a `swift` probe on the
-27 SDK did NOT reproduce the first half for a titled item (2026-09-21), so treat it as a thing to
-re-measure rather than a fact. Either way the logos opt in too, and nothing here is pinned: the
-release workflow builds on `macos-latest`, so a GitHub runner-image bump moves the SDK with no commit
-of ours.
+**Gotcha**: the hiding is keyed to the SDK the binary links against as well as the OS it runs on, and
+an SDK 27 build hides EVERY menu-item image that hasn't opted in. Measured with a COMPILED ObjC probe
+(`LC_BUILD_VERSION` sdk 27.0) on macOS 27.0, `NSMenu.size` offscreen, 2026-09-21: a titled item is
+72 pt wide with no image, 72 pt with a bitmap, 72 pt with a symbol, and 91 pt with a symbol opted in;
+an icon-only item (an image with an empty title) is 16 pt with or without a bitmap, so it vanishes
+outright. ❗ Measure this with a compiled binary and nothing else: a `swift` script is read by an
+interpreter whose OWN linked SDK is what AppKit consults, and it answers that bitmaps are unaffected.
+
+Cmdr SHIPS at SDK 26.5 (`otool -l | grep -A3 LC_BUILD_VERSION` on the bundle), where a bitmap still
+draws. That, and only that, is why the `IconMenuItem` icons still show: the app icons in "Open with",
+the `NSSharingService` icons in `Share`, and the tag items' fallback circles are `NSMenuItem`s muda
+owns, and nothing here reaches them to opt them in. ❗ A dev build is NOT on the shipped SDK; it links
+whatever the installed Command Line Tools carry (27.0 since 2026-09-09 on David's Mac), so those
+three sets of icons are already absent under `pnpm dev` while the release still has them. Closing
+that gap is the precondition for moving the release runner to an Xcode 27 image, and nothing pins it
+today: `release.yml` builds on `macos-latest`, which moves on GitHub's schedule with no commit of
+ours.
 
 #### SF Symbols on a CONTEXT menu
 
