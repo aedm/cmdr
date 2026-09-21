@@ -25,7 +25,7 @@ use super::line_index::LineIndexBackend;
 use super::range_read::{RangeEnd, read_range};
 use super::search_matcher::{Matcher, SearchMode};
 use super::session;
-use super::{FileViewerBackend, SearchMatch, SeekTarget, TotalRows};
+use super::{CHUNK_BUDGET_BYTES, ChunkEnd, FileViewerBackend, SearchMatch, SeekTarget, TotalRows};
 use crate::test_support::TestDir;
 
 /// The row grid the rewrite introduces (`docs/specs/viewer-row-wrap.md` § Constants).
@@ -590,5 +590,136 @@ fn red_search_in_a_newline_free_file_must_be_bounded() {
             "{which:?}: the match came back at column {column} of row {row} (byte offset \
              {byte_offset}), so the search decoded {column} bytes of text as one line"
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// What rows guarantee (milestone 3)
+// ---------------------------------------------------------------------------
+
+/// ❗ THE data-safety test for rows (spec landmine 1, invariant I3).
+///
+/// A break Cmdr made is not a newline. If any copy, save, or announcement path joins two
+/// rows of the same physical line with a `\n`, the user's clipboard and their saved file
+/// hold line breaks the source never had, once every 20 000 bytes, silently. A minified
+/// bundle copied out of the viewer would come back mangled and nothing would say so.
+#[test]
+fn copying_across_a_segment_break_puts_no_newline_in_the_clipboard() {
+    let dir = TestDir::new("viewer_rows_no_invented_newline");
+    // One line of 90 000 bytes: five rows, four of them ended by Cmdr. Distinct bytes
+    // per segment so a mis-stitch shows up as content, not just as a length.
+    let long_line: String = (0..90_000).map(|i| char::from(b'a' + (i / 20_000) as u8)).collect();
+    let content = format!("head\n{long_line}\ntail\n");
+    let file = fixture(&dir, "minified.json", content.as_bytes());
+
+    for which in ALL_BACKENDS {
+        let backend = open_backend(which, &file);
+        // The long line arrives as four rows, the first three marked. Four rather than
+        // five because the `head\n` newline at byte 4 sits inside the segment below
+        // 20 000 and disqualifies that multiple (clause 3), so the line's first row runs
+        // on to 40 000. That is the rule working, not an off-by-one.
+        let chunk = backend.get_lines(&SeekTarget::ByteOffset(5), 8).expect("fetch");
+        let marked = chunk.rows.iter().filter(|row| row.continues).count();
+        assert_eq!(marked, 3, "{which:?}: a 90 000-byte line is four rows");
+        assert_eq!(chunk.rows[0].byte_offset, 5, "{which:?}");
+        assert_eq!(chunk.rows[1].byte_offset, 40_000, "{which:?}");
+        // A continuation row prints NO line number, on every backend: the gutter stays
+        // blank down the length of a long line, the usual editor convention.
+        assert_eq!(chunk.rows[1].line_number, None, "{which:?}");
+        assert_eq!(chunk.rows[2].line_number, None, "{which:?}");
+        assert!(chunk.rows[0].line_number.is_some(), "{which:?}");
+        if which != Which::ByteSeek {
+            // Exact where an index exists. ByteSeek's is an estimate off its
+            // bytes-per-row sample, as its line numbers always were.
+            assert_eq!(chunk.rows[0].line_number, Some(1), "{which:?}");
+        }
+
+        let copied = read(backend.as_ref(), at(0, 0), RangeEnd::Eof);
+        assert_eq!(copied, content, "{which:?}: a whole-file copy must be the file");
+        assert_eq!(
+            copied.matches('\n').count(),
+            3,
+            "{which:?}: the file has three newlines, and Cmdr's four breaks are not newlines"
+        );
+    }
+}
+
+/// A save of a newline-free file is part of milestone 3's DONE, not a follow-up: the
+/// streaming sink appends a whole entry before testing its threshold, so it stayed
+/// unbounded until its entries became rows.
+#[test]
+fn saving_a_newline_free_file_writes_it_back_byte_for_byte() {
+    let dir = TestDir::new("viewer_rows_save_newline_free");
+    let content: String = (0..120_000).map(|i| char::from(b'0' + (i % 10) as u8)).collect();
+    let file = fixture(&dir, "minified.json", content.as_bytes());
+    let sid = session::open_session(file.to_str().expect("fixture path is utf-8"), "root")
+        .expect("session opens")
+        .session_id;
+
+    let dest = dir.join("saved.json");
+    session::write_range_to_file(&sid, 1, at(0, 0), RangeEnd::Eof, &dest, &session::SaveProgress::new())
+        .expect("save succeeds");
+    assert_eq!(fs::read_to_string(&dest).expect("saved file reads"), content);
+
+    session::close_session(&sid).expect("session closes");
+}
+
+/// `CHUNK_BUDGET_BYTES` bounds one answer, and the chunk SAYS it stopped early.
+///
+/// ❗ The saying is the load-bearing half: once a budget exists, "fewer rows than I asked
+/// for" no longer means EOF, and a caller reading it that way truncates a copy in
+/// silence. `range_read` steers by `ChunkEnd`, which the whole-file copy below proves.
+#[test]
+fn a_fetch_stops_at_the_chunk_budget_and_says_so() {
+    let dir = TestDir::new("viewer_rows_budget");
+    // Six MB with no newline: 300 rows of 20 000 bytes, well past the 2 MiB budget.
+    let content = vec![b'x'; 6_000_000];
+    let file = fixture(&dir, "minified.json", &content);
+
+    for which in ALL_BACKENDS {
+        let backend = open_backend(which, &file);
+        let chunk = backend.get_lines(&SeekTarget::ByteOffset(0), 300).expect("fetch");
+        assert_eq!(chunk.end, ChunkEnd::BudgetReached, "{which:?}");
+        assert!(chunk.rows.len() < 300, "{which:?}: the budget must cut the answer short");
+        let served: usize = chunk.rows.iter().map(|row| row.text.len()).sum();
+        assert!(
+            served <= CHUNK_BUDGET_BYTES as usize + MAX_ROW_BYTES,
+            "{which:?}: served {served} bytes against a {CHUNK_BUDGET_BYTES}-byte budget"
+        );
+        // The next fetch starts exactly where this one stopped, from the chunk's own
+        // source offset rather than from decoded string lengths.
+        assert_eq!(
+            chunk.end_byte_offset,
+            chunk.byte_offset + served as u64,
+            "{which:?}: on this file every row is whole segments, so the two agree"
+        );
+
+        // And a copy of the whole file still delivers every byte, over many chunks.
+        let copied = read(backend.as_ref(), at(0, 0), RangeEnd::Eof);
+        assert_eq!(copied.len(), content.len(), "{which:?}: I3, no silent truncation");
+    }
+}
+
+/// Invariant I1 on the LineIndex backend, deep into a newline-free file.
+///
+/// Its checkpoints used to count LINES, so a file with one line got exactly one
+/// checkpoint and every fetch walked from byte 0 however far in the user had scrolled.
+/// Counting rows keeps the walk to one checkpoint interval.
+#[test]
+fn a_fetch_deep_into_a_newline_free_file_is_bounded_on_line_index() {
+    let dir = TestDir::new("viewer_rows_deep_fetch");
+    let file = fixture(&dir, "minified.json", &vec![b'x'; NEWLINE_FREE_BYTES]);
+
+    for which in [Which::ByteSeek, Which::LineIndex] {
+        let backend = open_backend(which, &file);
+        let chunk = backend
+            .get_lines(&SeekTarget::ByteOffset(2_800_000), 3)
+            .expect("deep fetch");
+        assert_eq!(chunk.byte_offset, 2_800_000, "{which:?}: on the segment grid");
+        let served: usize = chunk.rows.iter().map(|row| row.text.len()).sum();
+        assert!(served <= 3 * MAX_ROW_BYTES, "{which:?}: served {served} bytes");
+        // Row numbers are exact here, even on the backend that has no index: with no
+        // newline anywhere, the sampled bytes-per-row IS the segment size.
+        assert_eq!(chunk.first_row_number, 140, "{which:?}");
     }
 }
