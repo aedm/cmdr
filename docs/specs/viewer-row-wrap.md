@@ -61,9 +61,21 @@ long. So:
 - **Ordinary files are untouched, provably.** A `SEGMENT_BYTES`-wide window with no newline implies a line of at least
   `SEGMENT_BYTES`. Contrapositive: if every line is shorter than `SEGMENT_BYTES`, no multiple ever qualifies, no row
   ever ends anywhere but at a newline, and rows are exactly lines. That is I6, as a proof rather than a hope.
-- **Rows stay bounded**, at just under `2 × SEGMENT_BYTES`. The worst case is a newline a byte or two before a
-  multiple: that multiple is disqualified, so the row runs to the next one. Inside a long line every subsequent row is
-  exactly `SEGMENT_BYTES`. A 300 MB line is one row under 40 000 bytes followed by ~15 000 rows of exactly 20 000.
+- **Rows stay bounded**, at just under `2 × SEGMENT_BYTES`. The worst case is a newline landing EXACTLY on a multiple:
+  the line then starts one byte past it, which disqualifies the next multiple (its window still holds that newline), so
+  the row runs to the one after, 39 999 bytes later. A newline just BEFORE a multiple is not the bad case, contrary to
+  what an earlier draft of this spec said: it puts the line start on the multiple itself, which is a boundary by clause
+  2, and the next row is exactly one segment. Inside a long line every subsequent row is exactly `SEGMENT_BYTES`. A
+  300 MB line is one row under 40 000 bytes followed by ~15 000 rows of exactly 20 000.
+- **The character snap goes BACKWARD, and that direction is load-bearing.** It must be decidable from bytes strictly
+  below the multiple: snapping forward, or even peeking at the byte AT the multiple, pushes either the read past
+  `2 × SEGMENT_BYTES` or the row past `2 × SEGMENT_BYTES`. Cap it too (3 bytes for UTF-8, one code unit for UTF-16), or
+  a malformed run walks back arbitrarily far and takes the bound with it.
+- **A multiple past EOF is not a boundary**, so the last row simply runs to EOF. Without that carve-out a character
+  straddling EOF within three bytes of a multiple cannot be resolved inside the read bound.
+- **A line of exactly `SEGMENT_BYTES` does split**, into a full row plus a row holding only its newline. That follows
+  from "shorter than" in the I6 proof and is correct; it is listed here because it looks like a bug when you first
+  see it.
 - **Both directions stay O(1)**, bounded by a `2 × SEGMENT_BYTES` backward scan: that window contains every candidate
   boundary near `offset` AND the newline evidence needed to test clause 3 for each of them. Nothing depends on where
   the physical line starts or ends, which is I2.
