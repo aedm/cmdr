@@ -367,6 +367,7 @@ pub fn read_range_streamed<S: FnMut(&str) -> Result<(), ViewerError>>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pluralize::pluralize;
 
     #[test]
     fn clamp_offset_inside_ascii() {
@@ -432,7 +433,8 @@ mod tests {
         assert_eq!(total, line_count * (line_len + 1) - 1);
         assert!(
             max_piece <= chunk_bytes + line_len + 1,
-            "peak piece was {max_piece} bytes against a {chunk_bytes}-byte budget"
+            "peak piece was {} against a {chunk_bytes}-byte budget",
+            pluralize(max_piece as u64, "byte")
         );
     }
 

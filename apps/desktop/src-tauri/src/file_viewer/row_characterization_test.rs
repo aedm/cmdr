@@ -27,6 +27,7 @@ use super::range_read::{RangeEnd, read_range};
 use super::search_matcher::{Matcher, SearchMode};
 use super::session;
 use super::{CHUNK_BUDGET_BYTES, ChunkEnd, FileViewerBackend, SearchMatch, SeekTarget, TotalRows};
+use crate::pluralize::pluralize;
 use crate::test_support::TestDir;
 
 /// The row grid the rewrite introduces (`docs/specs/viewer-row-wrap.md` § Constants).
@@ -627,8 +628,10 @@ fn red_first_fetch_of_a_newline_free_file_must_be_bounded() {
         let served: usize = chunk.texts().iter().map(|l| l.len()).sum();
         assert!(
             served <= ROWS_REQUESTED * MAX_ROW_BYTES,
-            "{which:?}: the first fetch of {ROWS_REQUESTED} rows served {served} bytes, at \
-             most {} expected. A newline-free file still costs the whole file per fetch.",
+            "{which:?}: the first fetch of {} served {}, at most {} expected. A newline-free \
+             file still costs the whole file per fetch.",
+            pluralize(ROWS_REQUESTED as u64, "row"),
+            pluralize(served as u64, "byte"),
             ROWS_REQUESTED * MAX_ROW_BYTES
         );
         assert!(
@@ -661,7 +664,8 @@ fn red_search_in_a_newline_free_file_must_be_bounded() {
         assert!(
             column <= MAX_ROW_BYTES,
             "{which:?}: the match came back at column {column} of row {row} (byte offset \
-             {byte_offset}), so the search decoded {column} bytes of text as one line"
+             {byte_offset}), so the search decoded {} of text as one line",
+            pluralize(column as u64, "byte")
         );
     }
 }
@@ -760,7 +764,8 @@ fn a_fetch_stops_at_the_chunk_budget_and_says_so() {
         let served: usize = chunk.rows.iter().map(|row| row.text.len()).sum();
         assert!(
             served <= CHUNK_BUDGET_BYTES as usize + MAX_ROW_BYTES,
-            "{which:?}: served {served} bytes against a {CHUNK_BUDGET_BYTES}-byte budget"
+            "{which:?}: served {} against a {CHUNK_BUDGET_BYTES}-byte budget",
+            pluralize(served as u64, "byte")
         );
         // The next fetch starts exactly where this one stopped, from the chunk's own
         // source offset rather than from decoded string lengths.
@@ -919,7 +924,11 @@ fn a_fetch_deep_into_a_newline_free_file_is_bounded_on_line_index() {
             .expect("deep fetch");
         assert_eq!(chunk.byte_offset, 2_800_000, "{which:?}: on the segment grid");
         let served: usize = chunk.rows.iter().map(|row| row.text.len()).sum();
-        assert!(served <= 3 * MAX_ROW_BYTES, "{which:?}: served {served} bytes");
+        assert!(
+            served <= 3 * MAX_ROW_BYTES,
+            "{which:?}: served {}",
+            pluralize(served as u64, "byte")
+        );
         // Row numbers are exact here, even on the backend that has no index: with no
         // newline anywhere, the sampled bytes-per-row IS the segment size.
         assert_eq!(chunk.first_row_number, 140, "{which:?}");

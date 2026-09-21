@@ -18,6 +18,7 @@ use std::rc::Rc;
 use super::ViewerError;
 use super::encoding::{FileEncoding, decode_line};
 use super::rows::{FileSource, MAX_WINDOW_BYTES, RowReader, RowRuler, RowSource, RowSpan, SEGMENT_BYTES, SliceSource};
+use crate::pluralize::pluralize;
 use crate::test_support::TestDir;
 
 /// The tiny grid the property tests run on. Even (UTF-16 code units are 2 bytes)
@@ -805,11 +806,13 @@ fn row_start_never_reads_more_than_two_segments() {
         let returned: u64 = reads.iter().map(|(_, n)| *n).sum();
         assert!(
             returned <= MAX_WINDOW_BYTES,
-            "row_start({offset}) read {returned} bytes"
+            "row_start({offset}) read {}",
+            pluralize(returned, "byte")
         );
         assert!(
             returned < bytes.len() as u64 / 4,
-            "row_start({offset}) read {returned} bytes of a {}-byte file, which is not a bounded read",
+            "row_start({offset}) read {} of a {}-byte file, which is not a bounded read",
+            pluralize(returned, "byte"),
             bytes.len()
         );
     }
@@ -832,7 +835,8 @@ fn row_end_never_reads_more_than_two_segments() {
         let requested: u64 = log.borrow().reads.iter().map(|(r, _)| *r).sum();
         assert!(
             requested <= MAX_WINDOW_BYTES,
-            "row_end({start}) asked for {requested} bytes, the bound is {MAX_WINDOW_BYTES}"
+            "row_end({start}) asked for {}, the bound is {MAX_WINDOW_BYTES}",
+            pluralize(requested, "byte")
         );
     }
 }
@@ -854,7 +858,8 @@ fn the_read_bound_holds_on_a_file_far_larger_than_any_window() {
         for (requested, _) in &log.borrow().reads {
             assert!(
                 *requested <= MAX_WINDOW_BYTES,
-                "a single read asked for {requested} bytes"
+                "a single read asked for {}",
+                pluralize(*requested, "byte")
             );
         }
     }
@@ -1154,14 +1159,17 @@ fn walking_a_newline_free_file_reads_a_bounded_number_of_bytes() {
     let allowed = MAX_WINDOW_BYTES + answer + 2 * SEGMENT_BYTES + READ_CHUNK_SLACK;
     assert!(
         read <= allowed,
-        "the walk read {read} bytes to answer {answer} bytes of rows from a 1 MB \
-         single-line file; the bound is {allowed}"
+        "the walk read {} to answer {} of rows from a 1 MB single-line file; the bound \
+         is {allowed}",
+        pluralize(read, "byte"),
+        pluralize(answer as u64, "byte")
     );
     // And the bound has to mean something: it must be far below the file itself, or a
     // walk that read everything from the seek point onward would still pass.
     assert!(
         read < bytes.len() as u64 / 4,
-        "the walk read {read} bytes of a {}-byte file",
+        "the walk read {} of a {}-byte file",
+        pluralize(read, "byte"),
         bytes.len()
     );
 }
