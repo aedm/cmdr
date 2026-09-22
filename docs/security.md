@@ -1,5 +1,9 @@
 # Security
 
+The public vulnerability disclosure policy is `SECURITY.md` at the repo root;
+`apps/website/public/.well-known/security.txt` points its `Policy:` there. Keep both consistent when something here
+changes.
+
 ## Entitlements: the bundle ships none
 
 `apps/desktop/src-tauri/Entitlements.plist` is a deliberately empty dict. Release builds keep the hardened runtime
