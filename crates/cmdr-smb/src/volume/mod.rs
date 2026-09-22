@@ -628,6 +628,8 @@ mod session_integration_test;
 #[cfg(test)]
 mod test_support;
 #[cfg(test)]
+mod unicode_names_integration_test;
+#[cfg(test)]
 mod wire_shape_integration_test;
 #[cfg(test)]
 mod write_stream_integration_test;
