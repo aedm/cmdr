@@ -487,6 +487,17 @@ describe('getUserFriendlyMessage', () => {
 })
 
 describe('getTechnicalDetails', () => {
+  // A failure that genuinely names no item (a crashed task, an empty selection)
+  // must not print a blank `Path:` line: that's the `Path: ;` a user reported,
+  // which reads as though the path was lost rather than never there.
+  it('leaves out the path line when the failure names no item', () => {
+    const error: WriteOperationError = { type: 'io_error', path: '', message: 'Task failed: panicked' }
+    const result = getTechnicalDetails(error)
+
+    expect(result).not.toContain('Path:')
+    expect(result).toContain('Error: Task failed: panicked')
+  })
+
   it('includes path for source_not_found error', () => {
     const error: WriteOperationError = { type: 'source_not_found', path: '/path/to/file.txt' }
     const result = getTechnicalDetails(error)

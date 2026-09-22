@@ -15,7 +15,7 @@ use uuid::Uuid;
 use super::event_sinks::{CollectorScanPreviewSink, ScanPreviewEventSink};
 use super::scan_cache::{ScanOutcome, ScanPreviewState, poll_claim, register_preview, release_preview};
 use super::scan_preview::{run_scan_preview, run_volume_scan_preview};
-use super::scan_watchdog::{ScanTally, ScanWatchdog, scan_target_label};
+use super::scan_watchdog::{ScanTally, ScanTarget, ScanWatchdog};
 use crate::file_system::listing::{SortColumn, SortOrder};
 use crate::file_system::volume::Volume;
 use crate::ignore_poison::IgnorePoison;
@@ -52,7 +52,7 @@ async fn a_volume_that_never_answers_still_settles_its_preview() {
     let sink: Arc<dyn ScanPreviewEventSink> = Arc::clone(&events) as Arc<dyn ScanPreviewEventSink>;
     let watchdog = ScanWatchdog::start(
         preview_id.clone(),
-        scan_target_label(&sources, "wedged"),
+        ScanTarget::of(&sources, "wedged"),
         TEST_LIMIT,
         Arc::clone(&state),
         Arc::clone(&sink),
@@ -94,7 +94,7 @@ async fn a_walk_that_keeps_counting_is_left_alone() {
     let events = Arc::new(CollectorScanPreviewSink::new());
     let watchdog = ScanWatchdog::start(
         preview_id.clone(),
-        String::from("a slow share"),
+        ScanTarget::of(&[PathBuf::from("/Volumes/a slow share")], "test"),
         TEST_LIMIT,
         state,
         Arc::clone(&events) as Arc<dyn ScanPreviewEventSink>,
@@ -131,7 +131,7 @@ async fn a_walk_parked_on_a_pause_is_never_called_unresponsive() {
     let events = Arc::new(CollectorScanPreviewSink::new());
     let watchdog = ScanWatchdog::start(
         preview_id.clone(),
-        String::from("a share someone paused"),
+        ScanTarget::of(&[PathBuf::from("/Volumes/a share someone paused")], "test"),
         TEST_LIMIT,
         state,
         Arc::clone(&events) as Arc<dyn ScanPreviewEventSink>,
@@ -172,7 +172,7 @@ async fn a_worker_that_claims_first_keeps_the_watchdog_quiet() {
     let events = Arc::new(CollectorScanPreviewSink::new());
     let watchdog = ScanWatchdog::start(
         preview_id.clone(),
-        String::from("a share that answered just in time"),
+        ScanTarget::of(&[PathBuf::from("/Volumes/a share that answered just in time")], "test"),
         TEST_LIMIT,
         state,
         Arc::clone(&events) as Arc<dyn ScanPreviewEventSink>,
@@ -227,7 +227,7 @@ async fn a_preview_that_finishes_before_its_first_tick_still_reports_what_it_wal
     let events = Arc::new(CollectorScanPreviewSink::new());
     let watchdog = ScanWatchdog::start(
         preview_id.clone(),
-        scan_target_label(&sources, "root"),
+        ScanTarget::of(&sources, "root"),
         // Generous: this walk is meant to complete, not to be given up on.
         Duration::from_secs(600),
         Arc::clone(&state),

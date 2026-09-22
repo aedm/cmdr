@@ -35,8 +35,7 @@ use super::scan_cache::{PREVIEW_SETTLED, ScanOutcome, ScanPreviewState, abandon_
 use super::scan_watchdog::ScanWatchdog;
 use super::state::{WRITE_OPERATION_STATE, WriteOperationState, is_cancelled};
 use super::types::{
-    CancelRollback, WriteCancelledEvent, WriteErrorEvent, WriteOperationError, WriteOperationPhase, WriteOperationType,
-    WriteProgressEvent,
+    CancelRollback, WriteCancelledEvent, WriteErrorEvent, WriteOperationPhase, WriteOperationType, WriteProgressEvent,
 };
 
 /// What the wait concluded, in the operation's own vocabulary.
@@ -72,7 +71,7 @@ impl ScanWait {
 ///
 /// The wait ends four ways. A completed preview leaves its result in the cache
 /// for the ordinary `take_cached_scan_result` a few lines later. A preview that
-/// errored fails the operation with the walk's own message. A cancelled
+/// errored fails the operation with the walk's own typed failure. A cancelled
 /// preview, or a cancel issued against the OPERATION while it waits, cancels
 /// the operation. And a preview nobody knows about is simply not waited on.
 pub(super) async fn await_claimed_preview(
@@ -111,17 +110,10 @@ pub(super) async fn await_claimed_preview(
             });
             ScanWait::Stopped
         }
-        ScanOutcome::Error(message) => {
+        ScanOutcome::Error(error) => {
             abandon_claim(&preview_id);
             manager::manager().end_scan_wait(operation_id);
-            events.emit_error(WriteErrorEvent::new(
-                operation_id.to_string(),
-                operation_type,
-                WriteOperationError::IoError {
-                    path: String::new(),
-                    message,
-                },
-            ));
+            events.emit_error(WriteErrorEvent::new(operation_id.to_string(), operation_type, error));
             ScanWait::Stopped
         }
     }

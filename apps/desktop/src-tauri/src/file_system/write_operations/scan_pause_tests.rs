@@ -21,7 +21,7 @@ use super::event_sinks::{CollectorEventSink, ScanPreviewEventSink};
 use super::manager::{PauseOutcome, cancel_operation, manager, pause_operation, resume_operation};
 use super::scan_cache::{ScanPreviewState, register_preview, release_preview};
 use super::scan_preview::run_scan_preview;
-use super::scan_watchdog::{SCAN_INACTIVITY_LIMIT, ScanWatchdog, scan_target_label};
+use super::scan_watchdog::{SCAN_INACTIVITY_LIMIT, ScanTarget, ScanWatchdog};
 use super::types::{
     LifecycleStatus, ScanPreviewCancelledEvent, ScanPreviewCompleteEvent, ScanPreviewErrorEvent,
     ScanPreviewProgressEvent, WriteOperationConfig, WriteOperationType,
@@ -173,7 +173,7 @@ async fn start_copy_with_a_real_scan(label: &str) -> RunningScan {
     let events: Arc<dyn ScanPreviewEventSink> = Arc::clone(&sink) as Arc<dyn ScanPreviewEventSink>;
     let watchdog = ScanWatchdog::start(
         preview_id.clone(),
-        scan_target_label(std::slice::from_ref(&src), "root"),
+        ScanTarget::of(std::slice::from_ref(&src), "root"),
         SCAN_INACTIVITY_LIMIT,
         Arc::clone(&state),
         Arc::clone(&events),

@@ -219,14 +219,21 @@ async fn an_operation_consumes_its_previews_result_rather_than_re_walking() {
 // The terminal-outcome contract
 // ============================================================================
 
-/// A preview that errored fails its operation, carrying the walk's own message.
-/// Unimplementable against a bare "the preview finished" pulse, which is how
-/// this pins the outcome contract rather than a completion signal.
+/// A preview that errored fails its operation with the walk's own failure,
+/// unchanged. Unimplementable against a bare "the preview finished" pulse,
+/// which is how this pins the outcome contract rather than a completion signal.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_failed_preview_fails_its_operation() {
     let (events, op_id, preview_id, _dir) = start_copy_awaiting_preview("scanwait-error").await;
 
-    settle_preview(&preview_id, ScanOutcome::Error("Permission denied".to_string()), None);
+    settle_preview(
+        &preview_id,
+        ScanOutcome::Error(WriteOperationError::IoError {
+            path: "/src/locked.bin".to_string(),
+            message: "Permission denied".to_string(),
+        }),
+        None,
+    );
 
     wait_until_async(WAIT, "the write-error event", || {
         !events.errors.lock().expect("collector mutex").is_empty()
@@ -236,8 +243,9 @@ async fn a_failed_preview_fails_its_operation() {
     let error = errors.first().expect("one error");
     assert_eq!(error.operation_id, op_id);
     assert!(
-        matches!(&error.error, WriteOperationError::IoError { message, .. } if message == "Permission denied"),
-        "the walk's own message must reach the operation, got {:?}",
+        matches!(&error.error, WriteOperationError::IoError { path, message }
+            if path == "/src/locked.bin" && message == "Permission denied"),
+        "the walk's own failure must reach the operation, got {:?}",
         error.error
     );
 }
@@ -804,7 +812,7 @@ fn descriptor_on_lane(op_id: &str, lane: &str, preview_id: Option<String>) -> su
 
 /// Starts a copy that is parked on an in-flight preview, returning its sink,
 /// id, preview id, and the fixture dir (which must outlive the operation).
-async fn start_copy_awaiting_preview(label: &str) -> (Arc<CollectorEventSink>, String, String, TestDir) {
+pub(super) async fn start_copy_awaiting_preview(label: &str) -> (Arc<CollectorEventSink>, String, String, TestDir) {
     let dir = TestDir::new(label);
     let src = dir.join("src");
     let dst = dir.join("dst");

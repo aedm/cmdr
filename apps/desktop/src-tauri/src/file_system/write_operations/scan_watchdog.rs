@@ -27,7 +27,7 @@ use std::time::{Duration, Instant};
 
 use super::event_sinks::ScanPreviewEventSink;
 use super::scan_cache::{ScanOutcome, ScanPreviewState, settle_preview};
-use super::types::ScanPreviewErrorEvent;
+use super::types::{ScanPreviewErrorEvent, WriteOperationError};
 
 /// How long a preview may count NOTHING before we call the volume unresponsive.
 ///
@@ -57,12 +57,43 @@ pub(super) struct ScanTally {
     pub(super) bytes: u64,
 }
 
+/// What a preview walks: the phrase its log lines carry, and the path a timeout
+/// names to the operation waiting on it.
+pub(super) struct ScanTarget {
+    /// Human-readable "what is being scanned". See [`ScanTarget::of`].
+    pub(super) label: String,
+    /// The first source, which is what a timed-out operation names: a failure
+    /// with an empty path reads as "Path: ;" and tells the user nothing.
+    pub(super) first_source: String,
+}
+
+impl ScanTarget {
+    /// The label is how many sources, the first one, and the volume they live
+    /// on: enough to tell two concurrent previews apart and to know which share
+    /// went quiet, without printing a whole selection.
+    pub(super) fn of(sources: &[PathBuf], volume_id: &str) -> Self {
+        let first_source = sources.first().map(|p| p.display().to_string()).unwrap_or_default();
+        let first = if first_source.is_empty() {
+            String::from("nothing")
+        } else {
+            first_source.clone()
+        };
+        let label = match sources.len() {
+            0 | 1 => format!("{first} on volume {volume_id}"),
+            n => format!("{first} and {} more on volume {volume_id}", n - 1),
+        };
+        Self { label, first_source }
+    }
+}
+
 /// One preview's clock: what it's walking, how much it has counted, and when it
 /// last counted anything.
 pub(super) struct ScanWatchdog {
     preview_id: String,
     /// Human-readable "what is being scanned", for the log lines.
     target: String,
+    /// What a timeout names to the waiting operation. See [`ScanTarget`].
+    first_source: String,
     started: Instant,
     /// Milliseconds since `started` at the last `note_progress`. An atomic rather
     /// than a lock: the local walk feeds it from its own OS thread, on a path
@@ -99,14 +130,15 @@ impl ScanWatchdog {
     /// this scan began at all.
     pub(super) fn start(
         preview_id: String,
-        target: String,
+        target: ScanTarget,
         inactivity_limit: Duration,
         state: Arc<ScanPreviewState>,
         events: Arc<dyn ScanPreviewEventSink>,
     ) -> Arc<Self> {
         let watchdog = Arc::new(Self {
             preview_id,
-            target,
+            target: target.label,
+            first_source: target.first_source,
             started: Instant::now(),
             last_progress_ms: AtomicU64::new(0),
             files: AtomicUsize::new(0),
@@ -296,7 +328,11 @@ impl ScanWatchdog {
             self.target
         );
         state.cancelled.store(true, Ordering::Relaxed);
-        settle_preview(&self.preview_id, ScanOutcome::Error(message.clone()), None);
+        let failure = WriteOperationError::IoError {
+            path: self.first_source.clone(),
+            message: message.clone(),
+        };
+        settle_preview(&self.preview_id, ScanOutcome::Error(failure), None);
         events.emit_error(ScanPreviewErrorEvent {
             preview_id: self.preview_id.clone(),
             message,
@@ -313,18 +349,4 @@ fn unresponsive_message(target: &str, limit: Duration) -> String {
         "{target} stopped responding: nothing counted for {} seconds",
         limit.as_secs()
     )
-}
-
-/// The "what is being scanned" phrase the log lines carry: how many sources, the
-/// first one, and the volume they live on. Enough to tell two concurrent previews
-/// apart and to know which share went quiet, without printing a whole selection.
-pub(super) fn scan_target_label(sources: &[PathBuf], volume_id: &str) -> String {
-    let first = sources
-        .first()
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|| String::from("nothing"));
-    match sources.len() {
-        0 | 1 => format!("{first} on volume {volume_id}"),
-        n => format!("{first} and {} more on volume {volume_id}", n - 1),
-    }
 }

@@ -66,7 +66,8 @@ The full top-level inventory is here:
   trashing a selected folder would pull evicted files back down from the provider, and publishes
   `online_only_found` on the scan events. Armed nowhere else, so every ordinary walk is unchanged; the rule and its
   rationale live in `delete/DETAILS.md` § "A trash of online-only cloud content becomes a delete".
-- Scan and preview: `scan.rs`, `scan_preview.rs`, `scan_cache.rs`, `scan_bridge.rs` (the scan-progress seam the drivers
+- Scan and preview: `scan.rs`, `scan_preview.rs` (the lifecycle API, with its two workers in `scan_preview/local.rs`
+  and `scan_preview/volume.rs`), `scan_cache.rs`, `scan_bridge.rs` (the scan-progress seam the drivers
   feed, and `ScanPause`, the park that lets a walk honor its owner's Pause), `scan_watchdog.rs` (the inactivity bound on
   a preview), `compress_estimate.rs`. Conflicts and overwrite:
   `conflict.rs` (policy), `conflict_preflight.rs` (the transfer dialog's BEFORE-the-write check, § "The pre-flight
@@ -694,10 +695,18 @@ publishing a result, so an operation looking the preview up could find nothing a
 complete-and-consumed, errored, cancelled, and never-existed. With `LANE_BUDGET = 1` "nothing there" is the common
 case, not the rare one. `settle_preview` replaces the entry in one write with a `ScanOutcome`, readable afterwards.
 ⚠️ `Cancelled` comes from the worker's own cancel FLAG at its exit, ❌ never from which event fired: a genuinely
-cancelled walk returns an error (the local walk's `on_cancelled` string, the volume path's
-`"Scan failed: {VolumeError::Cancelled}"`), so classifying on the event would reach the operation as a failure whose
-message merely says "cancelled", and recovering the truth from that message would be string-matching on the control
-path. Both workers' arms were reconciled to match.
+cancelled walk returns an error (the local walk's `on_cancelled`, the volume path's `VolumeError::Cancelled`), so
+classifying on the event would reach the operation as a failure, and recovering the truth from it would be guessing on
+the control path. Both workers' arms match.
+
+**A failed walk hands its operation a typed failure that names the item.** `ScanOutcome::Error` carries the
+`WriteOperationError` the waiting operation reports unchanged: the local walk classifies each `io::Error` with
+`classify_io_error` against the entry it stopped on, and the volume walk maps the backend's `VolumeError` through
+`map_volume_error` (a `NotFound` keeps its own path; anything else names the one source, or the selection's folder).
+The watchdog's timeout names the first source (`ScanTarget`). ❌ Don't flatten it back to a string: that's what sent
+`ERR-VETBX` to the user as `Copy error: Path: ; Error: No such file or directory`, a missing file reported as a nameless
+I/O failure. The dialog's `scan-preview-error` reads only `timed_out`; its `message` is the failure's technical form,
+for the log. Pinned by `scan_failure_tests.rs`.
 
 ## The park
 

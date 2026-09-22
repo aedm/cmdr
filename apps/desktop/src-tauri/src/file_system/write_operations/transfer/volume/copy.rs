@@ -134,7 +134,7 @@ pub async fn copy_between_volumes(
     // Validate that volumes support the required operations
     if !source_volume.supports_export() {
         return Err(WriteOperationError::IoError {
-            path: String::new(),
+            path: source_volume.root().display().to_string(),
             message: format!("Source volume '{}' does not support export", source_volume.name()),
         });
     }

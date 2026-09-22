@@ -13,8 +13,8 @@
 //! ## One map, because "the preview is gone" is ambiguous
 //!
 //! A preview is either in flight or settled, and a settled one carries WHY it
-//! settled: complete (with its `CachedScanResult`), errored (with its message),
-//! or cancelled. Splitting in-flight state from results would leave a window
+//! settled: complete (with its `CachedScanResult`), errored (with the typed
+//! failure its operation reports), or cancelled. Splitting in-flight state from results would leave a window
 //! where a worker has dropped its in-flight entry but not yet published its
 //! result, and an operation waiting on that preview cannot tell that window
 //! apart from "evicted", "errored", or "never existed". One entry, replaced in
@@ -36,6 +36,7 @@ use std::time::{Duration, Instant};
 
 use tokio::sync::Notify;
 
+use super::types::WriteOperationError;
 use crate::file_system::volume::CopyScanResult;
 
 // ============================================================================
@@ -56,12 +57,15 @@ pub(super) struct ScanPreviewState {
 /// which event fired: a genuinely cancelled walk returns an error carrying the
 /// word "cancelled", and classifying on that would both misreport a user's
 /// cancel as a failure and put string-matching on the control path.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub(super) enum ScanOutcome {
     /// The walk finished. A `CachedScanResult` is in the map for its owner.
     Complete,
-    /// The walk stopped on an I/O or protocol error, with its message.
-    Error(String),
+    /// The walk stopped on an I/O or protocol error. Carries the failure a
+    /// waiting operation reports as-is, typed and naming the item the walk
+    /// stopped on, so a missing file reads as "couldn't find X" rather than a
+    /// bare errno sentence with an empty path.
+    Error(WriteOperationError),
     /// The walk stopped because someone cancelled the preview.
     Cancelled,
 }

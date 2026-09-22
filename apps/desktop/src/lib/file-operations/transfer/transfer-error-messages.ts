@@ -719,6 +719,14 @@ function driveDetailLines(error: WriteOperationError): string[] | null {
 }
 
 /**
+ * The `Path:` line, or nothing for a failure that names no item (a crashed task,
+ * an empty selection): a blank `Path:` reads as a path that got lost.
+ */
+function pathLine(path: string): string[] {
+  return path ? [`Path: ${path}`] : []
+}
+
+/**
  * Returns the technical details for an error (path, raw error message, etc.)
  */
 export function getTechnicalDetails(error: WriteOperationError): string {
@@ -728,9 +736,9 @@ export function getTechnicalDetails(error: WriteOperationError): string {
   if (drive) {
     lines.push(...drive)
   } else if (pathOnlyTypes.has(error.type)) {
-    lines.push(`Path: ${(error as { path: string }).path}`)
+    lines.push(...pathLine((error as { path: string }).path))
   } else if (pathAndMessageTypes.has(error.type)) {
-    lines.push(`Path: ${(error as { path: string }).path}`)
+    lines.push(...pathLine((error as { path: string }).path))
     lines.push(`Error: ${(error as { message: string }).message}`)
   } else {
     lines.push(...variantDetailLines(error))

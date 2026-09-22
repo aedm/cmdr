@@ -789,12 +789,17 @@ mod adb_transfer_test;
 mod adb_index_test;
 #[cfg(test)]
 mod scan_bridge_tests;
+// A walk that stops on a missing or unreadable item fails its operation naming that item.
+#[cfg(test)]
+mod scan_failure_tests;
 #[cfg(test)]
 mod scan_pause_tests;
 #[cfg(test)]
 mod scan_preview_listing_progress_tests;
 #[cfg(test)]
 mod scan_preview_oracle_tests;
+#[cfg(test)]
+mod scan_preview_tests;
 #[cfg(test)]
 mod scan_watchdog_tests;
 #[cfg(test)]
