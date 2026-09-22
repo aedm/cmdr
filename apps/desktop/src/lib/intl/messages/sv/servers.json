@@ -312,6 +312,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "Om anslutningen bryts återansluter Cmdr till den här servern på egen hand. Det gör inte att Cmdr ansluter vid start: Cmdr ansluter när du öppnar servern i en panel.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "Mer om ”Återanslut automatiskt”",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "Att återansluta på egen hand kräver ett sparat lösenord. Slå på ”Kom ihåg i nyckelringen” och logga in en gång.",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"

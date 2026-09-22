@@ -314,6 +314,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "Wenn die Verbindung abbricht, verbindet sich Cmdr von selbst wieder mit diesem Server. Beim Start verbindet sich Cmdr dadurch nicht: Die Verbindung entsteht, wenn du den Server in einem Bereich öffnest.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "Mehr über „Automatisch erneut verbinden“",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "Automatisch erneut verbinden geht nur mit einem gemerkten Passwort. Aktiviere „Im Schlüsselbund merken“ und melde dich einmal an.",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"

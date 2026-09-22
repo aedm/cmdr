@@ -311,6 +311,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "如果连接中断，Cmdr 会自动重新连接到这台服务器。这不会让 Cmdr 在启动时连接：只有在窗格中打开这台服务器时，Cmdr 才会连接。",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "进一步了解“自动重新连接”",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "自动重新连接需要一个记住的密码。请打开“记住到钥匙串”，然后登录一次。",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"

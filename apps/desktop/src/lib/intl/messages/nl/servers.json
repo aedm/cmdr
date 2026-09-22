@@ -315,6 +315,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "Als de verbinding wegvalt, maakt Cmdr vanzelf opnieuw verbinding met deze server. Hierdoor maakt Cmdr geen verbinding bij het opstarten: dat gebeurt pas als je de server in een paneel opent.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "Meer over ‘Verbind automatisch opnieuw’",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "Automatisch opnieuw verbinden werkt alleen als Cmdr je wachtwoord onthoudt. Zet ‘Onthoud in Sleutelhanger’ aan en log één keer in.",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"

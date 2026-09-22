@@ -21,6 +21,7 @@
     import { open as openFilePicker } from '@tauri-apps/plugin-dialog'
     import Button from '$lib/ui/Button.svelte'
     import Checkbox from '$lib/ui/Checkbox.svelte'
+    import InfoTip from '$lib/ui/InfoTip.svelte'
     import TextInput from '$lib/ui/TextInput.svelte'
     import ToggleGroup, { type ToggleGroupOption } from '$lib/ui/ToggleGroup.svelte'
     import { tString } from '$lib/intl/messages.svelte'
@@ -340,6 +341,12 @@
                 >
                     {tString('servers.sheet.autoReconnect')}
                 </Checkbox>
+                <!-- Beside the box, ❌ never inside its label: a click on the glyph would flip it.
+                     The label alone reads as "connect at startup", which this switch doesn't do. -->
+                <InfoTip
+                    label={tString('servers.sheet.autoReconnectInfoLabel')}
+                    text={tString('servers.sheet.autoReconnectHelp')}
+                />
             </div>
         {/if}
     </div>

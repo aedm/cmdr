@@ -2753,6 +2753,8 @@ export type MessageKey =
   | 'servers.sheet.addressPlaceholder'
   | 'servers.sheet.advanced'
   | 'servers.sheet.autoReconnect'
+  | 'servers.sheet.autoReconnectHelp'
+  | 'servers.sheet.autoReconnectInfoLabel'
   | 'servers.sheet.browse'
   | 'servers.sheet.cancel'
   | 'servers.sheet.connect'

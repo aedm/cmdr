@@ -311,6 +311,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "Ha megszakad a kapcsolat, a Cmdr magától újracsatlakozik ehhez a szerverhez. Ettől a Cmdr nem csatlakozik indításkor: akkor csatlakozik, amikor megnyitod a szervert egy panelben.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "Bővebben: Automatikus újracsatlakozás",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "Az automatikus újracsatlakozáshoz megjegyzett jelszó kell. Kapcsold be a „Megjegyzés a kulcskarikában” beállítást, és jelentkezz be egyszer.",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"

@@ -397,6 +397,14 @@
     "description": "Checkbox letting Cmdr redial this server on its own when the connection drops. VERB phrase, imperative.",
     "screenshot": "server-sign-in-add-prefilled.png"
   },
+  "servers.sheet.autoReconnectHelp": "If the connection drops, Cmdr reconnects to this server on its own. This doesn''t make Cmdr connect at startup: it connects when you open the server in a pane.",
+  "@servers.sheet.autoReconnectHelp": {
+    "description": "Tooltip explaining the “Reconnect automatically” checkbox, shown from an info glyph beside it in the server sheet. Its job is to correct a likely misreading: the switch only reconnects after a dropped connection, and does NOT make Cmdr connect to the server when the app starts. “pane” is one of the app's two side-by-side file lists."
+  },
+  "servers.sheet.autoReconnectInfoLabel": "More about “Reconnect automatically”",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "description": "Screen-reader name of the info glyph beside the “Reconnect automatically” checkbox; activating it shows the explanation. Never visible on screen. Quote the checkbox label exactly as servers.sheet.autoReconnect translates it, so voice-control users can name it."
+  },
   "servers.sheet.needsStoredSecret": "Reconnecting on its own needs a remembered password. Turn on “Remember in Keychain” and sign in once.",
   "@servers.sheet.needsStoredSecret": {
     "description": "Shown in the edit sheet when “Reconnect automatically” is on but nothing is stored, so it can never actually run. Says what to do about it."

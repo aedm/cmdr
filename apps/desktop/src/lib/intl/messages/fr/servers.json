@@ -312,6 +312,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "Si la connexion est interrompue, Cmdr se reconnecte de lui-même à ce serveur. Cette option ne connecte pas Cmdr au démarrage : la connexion se fait quand vous ouvrez le serveur dans un panneau.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "En savoir plus sur « Se reconnecter automatiquement »",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "La reconnexion automatique nécessite un mot de passe mémorisé. Activez « Mémoriser dans le trousseau » et identifiez-vous une fois.",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"

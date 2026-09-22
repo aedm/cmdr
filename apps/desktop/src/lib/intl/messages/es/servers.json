@@ -311,6 +311,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "Si se corta la conexión, Cmdr vuelve a conectarse a este servidor por su cuenta. Esto no hace que Cmdr se conecte al iniciarse: se conecta cuando abres el servidor en un panel.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "Más información sobre “Volver a conectar automáticamente”",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "Para volver a conectar por su cuenta hace falta una contraseña recordada. Activa “Recordar en el Llavero” e inicia sesión una vez.",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"

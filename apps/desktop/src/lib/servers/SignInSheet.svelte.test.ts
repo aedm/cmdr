@@ -413,6 +413,16 @@ describe('SignInSheet: edit mode', () => {
     expect(done).toEqual([{ kind: 'saved' }])
   })
 
+  it('explains "Reconnect automatically" beside its checkbox, since the label alone reads as "connect at startup"', async () => {
+    await renderSheet({ mode: 'edit', server: SAVED })
+
+    const tip = document.body.querySelector('button[aria-label="More about “Reconnect automatically”"]')
+    expect(tip).not.toBeNull()
+    // Beside the checkbox, ❌ never inside its `<label>`: a click on the glyph would flip the box.
+    expect(tip?.closest('label')).toBeNull()
+    expect(tip?.closest('.field')?.textContent).toContain('Reconnect automatically')
+  })
+
   it('keeps the sheet open on a root the server lacks, under the root folder, and writes no password', async () => {
     const commands = await import('$lib/tauri-commands')
     vi.mocked(commands.updateSavedServer).mockResolvedValueOnce({ outcome: 'root_not_found' })

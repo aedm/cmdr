@@ -312,6 +312,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "Se a conexão cair, o Cmdr se reconecta sozinho a este servidor. Isso não faz o Cmdr se conectar ao iniciar: ele se conecta quando você abre o servidor em um painel.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "Mais sobre “Reconectar automaticamente”",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "Para reconectar sozinho, o Cmdr precisa de uma senha salva. Ative “Lembrar no Acesso às Chaves” e inicie a sessão uma vez.",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"

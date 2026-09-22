@@ -311,6 +311,14 @@
   "@servers.sheet.autoReconnect": {
     "sourceHash": "a56b579"
   },
+  "servers.sheet.autoReconnectHelp": "Nếu kết nối bị ngắt, Cmdr sẽ tự kết nối lại với máy chủ này. Tùy chọn này không khiến Cmdr kết nối khi khởi động: Cmdr chỉ kết nối khi bạn mở máy chủ trong một khung.",
+  "@servers.sheet.autoReconnectHelp": {
+    "sourceHash": "5fc66ee"
+  },
+  "servers.sheet.autoReconnectInfoLabel": "Tìm hiểu thêm về “Tự động kết nối lại”",
+  "@servers.sheet.autoReconnectInfoLabel": {
+    "sourceHash": "edb9b82"
+  },
   "servers.sheet.needsStoredSecret": "Việc tự kết nối lại cần một mật khẩu đã ghi nhớ. Hãy bật “Ghi nhớ trong chuỗi khóa” rồi đăng nhập một lần.",
   "@servers.sheet.needsStoredSecret": {
     "sourceHash": "32336f3"
