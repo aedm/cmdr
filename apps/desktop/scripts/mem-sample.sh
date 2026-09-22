@@ -109,42 +109,67 @@ sample() {
 		printf "%d", (d*86400 + s) / 60
 	}')"
 
-	# A tag row is `<tag padded to col 32><VIRTUAL><RESIDENT><DIRTY><SWAPPED>…<COUNT>`. Match
-	# on the trimmed tag column so `IOAccelerator (reserved)` can't be mistaken for the heap.
-	row() {
-		awk -v want="$1" '
-			{ tag = substr($0, 1, 32); gsub(/^ +| +$/, "", tag) }
-			tag == want { print; exit }
-		' <<<"$out"
+	# Only the region-type table. Everything below the `MALLOC ZONE` header is a per-zone
+	# table with a different column layout, and its rows would otherwise be parsed as tags.
+	local regions
+	regions="$(awk '/^REGION TYPE/ {on = 1} /^MALLOC ZONE/ {exit} on' <<<"$out")"
+
+	# A row is `<tag padded to col 32><VIRTUAL><RESIDENT><DIRTY><SWAPPED>…<COUNT>`, so tags
+	# with spaces in them ("Malloc Small") shift every $N. Slice the tag by column instead.
+	#
+	# ⚠️ On macOS 27 the system-zone tags are `Malloc Small` / `Malloc Large`, NOT the
+	# `MALLOC_SMALL` / `MALLOC_LARGE` older recipes grep for. That spelling silently matches
+	# nothing and reads as zero: 65 MB of `Malloc Small` was missed this way on 2026-09-22.
+	# Match on a prefix so a rename to either spelling still lands somewhere.
+	sum_tag() {
+		awk -v want="$1" -v col="$2" -v mode="${3:-exact}" '
+			{
+				tag = substr($0, 1, 32); gsub(/^ +| +$/, "", tag)
+				# Trim before splitting: a leading run of spaces would otherwise make f[1]
+				# empty and shift every column by one.
+				rest = substr($0, 33); gsub(/^[ \t]+|[ \t]+$/, "", rest)
+				n = split(rest, f, /[ \t]+/)   # 1 VIRTUAL 2 RESIDENT 3 DIRTY 4 SWAPPED … 8 COUNT
+				if (n < 8) next
+				if (mode == "exact" ? (tag == want) : (index(tolower(tag), tolower(want)) == 1)) {
+					print f[col]
+				}
+			}
+		' <<<"$regions"
 	}
 
-	local heap malloc_large malloc_small
-	heap="$(row IOAccelerator)"
-	malloc_large="$(row MALLOC_LARGE)"
-	malloc_small="$(row MALLOC_SMALL)"
+	mb_sum() {
+		local total=0 v
+		while read -r v; do
+			[[ -n $v ]] && total=$((total + $(to_mb "$v")))
+		done
+		echo "$total"
+	}
 
-	field() { awk -v n="$2" '{print $n}' <<<"$1"; }
-
-	local heap_dirty heap_swapped heap_regions large_dirty small_dirty heap_total
-	heap_dirty="$(to_mb "$(field "$heap" 4)")"
-	heap_swapped="$(to_mb "$(field "$heap" 5)")"
-	heap_regions="$(field "$heap" 9)"
-	large_dirty="$(to_mb "$(field "$malloc_large" 4)")"
-	small_dirty="$(to_mb "$(field "$malloc_small" 4)")"
+	local heap_dirty heap_swapped heap_regions heap_total sys_malloc malloc_large
+	# `IOAccelerator` exactly: the `(reserved)` and `(graphics)` siblings are not the heap.
+	heap_dirty="$(sum_tag IOAccelerator 3 | mb_sum)"
+	heap_swapped="$(sum_tag IOAccelerator 4 | mb_sum)"
+	heap_regions="$(sum_tag IOAccelerator 8 | awk '{t += $1} END {print t + 0}')"
 	heap_total=$((heap_dirty + heap_swapped))
+	# Every `Malloc *` row together (Small, Tiny, Nano, Large, metadata, and the empties):
+	# the system allocator's whole footprint, which is NOT the Rust heap.
+	sys_malloc=$(($(sum_tag Malloc 3 prefix | mb_sum) + $(sum_tag Malloc 4 prefix | mb_sum)))
+	# Broken out because a big one is the CLIP-tower fingerprint (see memory-debugging.md).
+	malloc_large=$(($(sum_tag "Malloc Large" 3 prefix | mb_sum) + $(sum_tag "Malloc Large" 4 prefix | mb_sum)))
 
 	if [[ ! -f $CSV ]]; then
-		echo "timestamp,condition,mimallocEnv,pid,uptimeMin,footprintMb,peakFootprintMb,rustHeapDirtyMb,rustHeapSwappedMb,rustHeapTotalMb,rustHeapRegions,mallocLargeDirtyMb,mallocSmallDirtyMb" >"$CSV"
+		echo "timestamp,condition,mimallocEnv,pid,uptimeMin,footprintMb,peakFootprintMb,rustHeapDirtyMb,rustHeapSwappedMb,rustHeapTotalMb,rustHeapRegions,sysMallocMb,mallocLargeMb" >"$CSV"
 	fi
 	printf '%s,%s,"%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
 		"$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$label" "$(env_summary)" "$pid" "${uptime_min:-}" \
 		"$footprint" "$peak" "$heap_dirty" "$heap_swapped" "$heap_total" \
-		"${heap_regions:-0}" "$large_dirty" "$small_dirty" >>"$CSV"
+		"${heap_regions:-0}" "$sys_malloc" "$malloc_large" >>"$CSV"
 
 	echo "[$label] pid $pid, up ${uptime_min:-?} min"
 	echo "  footprint ${footprint} MB (peak ${peak} MB)"
 	echo "  Rust heap ${heap_total} MB = ${heap_dirty} dirty + ${heap_swapped} swapped, in ${heap_regions:-0} regions"
-	echo "  MALLOC_LARGE ${large_dirty} MB, MALLOC_SMALL ${small_dirty} MB"
+	echo "    minus the 63 MiB SQLite slab → ~$((heap_total - 66)) MB with no name on it"
+	echo "  system malloc ${sys_malloc} MB (of which Malloc Large ${malloc_large} MB)"
 	echo "  mimalloc env: $(env_summary)"
 	echo "  → $CSV"
 }

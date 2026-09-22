@@ -1,8 +1,8 @@
 # Can mimalloc option tuning halve Cmdr's RAM? A runnable protocol
 
-The question: Cmdr 0.46.1 sits at a ~700 MB footprint, and ~86% of that is the Rust heap. The hypothesis this note tests
-is that **a large share of the heap is pages mimalloc holds but could return to the OS**, so purge tuning would drop the
-number a user sees for little throughput cost.
+The question: Cmdr 0.46.1 sits at a 708 MB footprint, 87% of it the Rust heap, and **~545 MB of that heap has nothing
+named on it** once SQLite's slab is subtracted. The hypothesis this note tests is that a large share of it is pages
+mimalloc holds but could return to the OS, so purge tuning would drop the number a user sees for little throughput cost.
 
 **Read the verdict below before spending a day on the protocol.** The source says the prior is low, and the protocol is
 shaped as a two-condition falsification rather than an option sweep because of it.
@@ -43,21 +43,41 @@ Environment-variable tuning **does work** on the shipped build. Four things had 
 - `minimal_purge_size` defaults to 0, which resolves to the OS page size, 16 KiB on Apple Silicon (`v3/src/os.c:55-65`).
   There's no coarse granularity hiding small free runs.
 
-So there is no off switch that is currently off. Whatever the 598 MB is, mimalloc has had a second to give it back and
+So there is no off switch that is currently off. Whatever the 611 MB is, mimalloc has had a second to give it back and
 hasn't, which means it believes those pages are in use. That is what makes this worth two conditions rather than six.
 
 ## Baseline (2026-09-22, Cmdr 0.46.1, macOS 27.0 / 26A428)
 
-Prod instance, pid 69181, launched 2026-09-21 20:22, sampled after **1,498 minutes** (~25 h) of real use:
+Prod instance, pid 69181, launched 2026-09-21 20:22, sampled after **1,505 minutes** (~25 h) of real use. `vmmap` and
+`footprint -s` agree within a megabyte:
 
-- Physical footprint **696 MB**, peak **829 MB**
-- Rust heap (`IOAccelerator`) **598 MB** = 230 MB dirty + 368 MB swapped, across 64 regions
-- `MALLOC_LARGE` and `MALLOC_SMALL`: **absent entirely**. The whole system-zone side is one 1,024 KB `Malloc` region.
-  The CLIP towers are not loaded, and no second allocator is in play.
-- Everything else is small: `Stack` 2.8 MB, `__DATA*` ~7.6 MB, `WebKit Malloc` 1.6 MB.
+- Physical footprint **708 MB**, peak **829 MB**
+- Rust heap (`IOAccelerator`, dirty + swapped) **611 MB** = 275 dirty + 336 swapped, across 64 regions → **87% of the
+  footprint**
+- System malloc, every `Malloc *` row together **66 MB** (`Malloc Small` 60 MB of it) → 9%
+- `Malloc Large` **absent**: the CLIP towers are not loaded
+- Everything else ~31 MB: `Stack` 2.8 MB, `__DATA*` ~7 MB, `WebKit Malloc` 3 MB, and the rest in the noise
 
-**The Rust heap is 86% of the footprint.** There is nothing else to go after in this process, so the only question is
-what is inside those 598 MB.
+⚠️ **The `MALLOC_SMALL` / `MALLOC_LARGE` spelling in older recipes matches nothing on macOS 27**, where the tags are
+`Malloc Small` and `Malloc Large`. A grep for the old spelling reads as a clean zero, which is how a first pass at this
+baseline lost the whole 66 MB. `mem-sample.sh` matches on a prefix for exactly this reason.
+
+### What the Rust heap is, and what's left over
+
+Subtracting the one component we can name:
+
+- **SQLite's shared page-cache slab: 63 MiB (66 MB).** One process-wide slab via `SQLITE_CONFIG_PAGECACHE`
+  (`crates/cmdr-fs/src/sqlite_util.rs:27-60,116-155`), verified live as 15,363 slots × 4,368 B. It's a leaked Rust
+  allocation, so it sits **inside** the mimalloc total. Count it as fully resident rather than partly: the const's own
+  docs record that the slab runs permanently full, with nine idle write connections holding 63 of the 64 MiB
+  (release-build probe, 2026-08-22). Page memory no longer scales with connection count, so the old "132 connections ×
+  16 MB" line is retired (`docs/notes/thread-and-connection-inventory-2026-09-22.md`).
+- ⚠️ The `SQLite Page Cache` VM tag in `vmmap` is **32 KB** and is **not** this slab. Anyone reading that row concludes
+  SQLite costs nothing.
+
+**611 − 66 = ~545 MB of Rust heap with nothing named on it: 77% of the whole footprint.** That is the number this
+experiment is really aimed at, and the reason a negative result still matters: it removes the allocator from the list
+and leaves 545 MB that has to be attributed some other way.
 
 ## The tool
 
@@ -145,11 +165,11 @@ do with it.
 **It can** falsify one hypothesis class: "mimalloc is hoarding returnable pages." That's worth a day precisely because a
 clean negative redirects the whole effort.
 
-**It cannot tell us what the 598 MB contains**, and that is the actual question. mimalloc's committed bytes (what
-`get_memory_diagnostics` reports as `rustHeapCommittedBytes`) is live allocations _plus_ free lists _plus_ arena slack,
-and the code says so: "mimalloc exposes no cheap process-wide 'bytes in use', so committed is the number that tracks the
-Rust heap" (`crates/cmdr-fs/src/process_memory/mod.rs:241-243`). Nothing in the tree can currently split live data from
-slack.
+**It cannot tell us what the unattributed ~545 MB contains**, and that is the actual question. mimalloc's committed
+bytes (what `get_memory_diagnostics` reports as `rustHeapCommittedBytes`) is live allocations _plus_ free lists _plus_
+arena slack, and the code says so: "mimalloc exposes no cheap process-wide 'bytes in use', so committed is the number
+that tracks the Rust heap" (`crates/cmdr-fs/src/process_memory/mod.rs:241-243`). Nothing in the tree can currently split
+live data from slack.
 
 **If the number does NOT move**, two hypotheses survive and this experiment can't tell them apart:
 

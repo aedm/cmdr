@@ -30,8 +30,13 @@ Consequences worth internalising, because each one burned a day:
 
 ```
 PID=$(pgrep -x Cmdr | head -1)
-vmmap -summary "$PID" | grep -E "Physical footprint:|^IOAccelerator |^MALLOC_SMALL |^MALLOC_LARGE "
+vmmap -summary "$PID" | grep -E "Physical footprint:|^IOAccelerator |^Malloc "
 ```
+
+⚠️ **The tags are `Malloc Small` / `Malloc Large`, not `MALLOC_SMALL` / `MALLOC_LARGE`** (verified on macOS 27.0 /
+26A428, 2026-09-22). The underscored spelling matches nothing and reads as a clean zero, which is how a baseline once
+lost 66 MB of system malloc. The tag also contains a space, so `$4` is no longer the DIRTY column on those rows: slice
+the tag by column (it ends at char 32) rather than splitting on whitespace.
 
 `phys_footprint` is the honest total (what Activity Monitor's "Memory" shows and what jetsam keys on). `ps`/RSS lies
 here — it keeps counting regions long after `phys_footprint` collapses. Read the DIRTY column (col 4), not VIRTUAL or
@@ -55,15 +60,23 @@ Against a live app, any build, no app support needed:
 
 ```
 PID=$(pgrep -x Cmdr | head -1)
-vmmap "$PID" | awk '$1 == "MALLOC_LARGE" { print $4 }' | sort | uniq -c | sort -rn | head -12
+vmmap "$PID" | awk '/^Malloc Large / && /\[/ { sub(/.*\[ */, ""); print $1 }' | sort | uniq -c | sort -rn | head -12
 ```
+
+Same tag-spelling caveat as above, plus a column one: a detail line is
+`<tag> <start>-<end> [ VSIZE RSIZE DIRTY SWAP] …`, and a tag with a space in it (`Malloc Large`) shifts every `$N` by
+one. Cutting at the `[` instead of counting fields works for any tag. Swap in `IOAccelerator` to fingerprint the Rust
+heap the same way.
 
 Known fingerprints so far:
 
 - **`96.5M`** (101,187,584 bytes) — the CLIP text tower's `49,408 × 512` fp32 token embedding. If it's there, the CLIP
-  towers are loaded and cost 307–412 MB of `MALLOC_LARGE` plus 120–176 MB of `MALLOC_SMALL` for the process's whole
+  towers are loaded and cost 307–412 MB of `Malloc Large` plus 120–176 MB of `Malloc Small` for the process's whole
   life. Expect `4096K`, `3072K`, and `2304K` in the dozens beside it.
   `docs/notes/idle-malloc-large-clip-towers-2026-08-21.md`.
+- **`128.0M` under `IOAccelerator`** — a mimalloc arena. Seven of them in a 25 h prod session (2026-09-22). The count is
+  how many arenas the heap has grown to, and it only ever goes up: arenas stay mapped after mimalloc decommits the pages
+  inside them, so a flat region count alongside collapsing dirty bytes is normal, not a leak.
 
 From the app itself — any build, a shipped release included, which is deliberate because that's the only condition the
 interesting numbers appear under — `get_memory_diagnostics(sizesPerTag)` returns the same histogram as structured data
