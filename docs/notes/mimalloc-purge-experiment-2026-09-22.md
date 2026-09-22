@@ -153,10 +153,12 @@ slack.
 
 **If the number does NOT move**, two hypotheses survive and this experiment can't tell them apart:
 
-1. **The heap is live data.** Index caches, the 64 MiB SQLite page slab (`crates/cmdr-fs/src/sqlite_util.rs`), the
-   thread-local read connections pushing on it, in-memory structures. The steady-state cost catalog in
-   `docs/notes/idle-memory-profile-2026-07-28.md` is the next lead, re-measured against 0.46.1: it already names SQLite
-   page cache across many thread-local connections and the importance rescore treadmill.
+1. **The heap is live data.** Index caches, the 64 MiB SQLite page slab (`crates/cmdr-fs/src/sqlite_util.rs`), in-memory
+   structures. `docs/notes/idle-memory-profile-2026-07-28.md` is the cost catalog, but read
+   `docs/notes/thread-and-connection-inventory-2026-09-22.md` first: it measured this same instance and **retires the
+   "connection count × page cache" line**, since page memory stopped tracking connection count when the shared slab
+   landed. It also names a live duplication worth pricing here (one SMB share reached at three addresses becomes three
+   volumes, each with its own threads, database, and scan).
 2. **The heap is fragmented.** Live objects scattered such that mostly-free mimalloc pages stay dirty. mimalloc cannot
    purge a page holding one live object, so this looks exactly like hoarding and is immune to every purge option.
 
