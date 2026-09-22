@@ -29,7 +29,7 @@
     import { tString } from '$lib/intl/messages.svelte'
     import { formatInteger } from '$lib/intl/number-format'
     import type { MessageKey } from '$lib/intl/keys.gen'
-    import { stallNoticeFor } from './transfer-stall'
+    import { stallNoticeFor, waitLineFor } from './transfer-stall'
     import { progressCountKind } from '../progress-readout'
     import {
         inFlightRollbackTooltipKey,
@@ -285,6 +285,9 @@
     /** Non-null only once the BACKEND says the transfer has stopped moving for
      *  a reason that isn't deliberate. Drives the ETA line off the screen. */
     const stall = $derived(stallNoticeFor(progress.activity))
+    /** What to say instead of an ETA while bytes are on their way but none has
+     *  landed: the first file still opening, or a response still arriving. */
+    const waitLine = $derived(waitLineFor(progress.activity))
 
     /** The operation is counting, not yet writing. One flag for the whole scan
      *  phase: the preview the backend waits on and its own foolproof re-scan
@@ -502,6 +505,7 @@
                     {filesPerSecond}
                     etaSeconds={etaSecondsDisplay}
                     {stall}
+                    {waitLine}
                     countKind={progressCountKind(opKind, phase)}
                 />
             </div>

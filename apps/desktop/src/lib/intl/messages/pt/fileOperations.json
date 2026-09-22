@@ -453,6 +453,14 @@
   "@fileOperations.transferProgress.close": {
     "sourceHash": "7d9eb7a"
   },
+  "fileOperations.transferProgress.openingSource": "Aguardando a origem começar a enviar ({duration})",
+  "@fileOperations.transferProgress.openingSource": {
+    "sourceHash": "d0ad98c"
+  },
+  "fileOperations.transferProgress.sourceReceiving": "Recebendo da origem a <size></size>/s",
+  "@fileOperations.transferProgress.sourceReceiving": {
+    "sourceHash": "0552601"
+  },
   "fileOperations.transferProgress.stallNotice": "Sem progresso há {duration}",
   "@fileOperations.transferProgress.stallNotice": {
     "sourceHash": "4b3c8e6"

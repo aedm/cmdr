@@ -51,6 +51,8 @@ fn enrich_progress_keeps_an_activity_the_caller_already_decided() {
         in_flight: 3,
         still_for_seconds: 310,
         waiting_on: TransferWaitReason::Unknown,
+        opening_source: false,
+        source_inbound_bytes_per_second: None,
     };
     event.activity = Some(wedged);
 

@@ -11,7 +11,7 @@
     import TransferProgressReadout from '../TransferProgressReadout.svelte'
     import RollbackConfirmDialog from '../RollbackConfirmDialog.svelte'
     import ScanPhaseBody from '../transfer/ScanPhaseBody.svelte'
-    import { stallNoticeFor } from '../transfer/transfer-stall'
+    import { stallNoticeFor, waitLineFor } from '../transfer/transfer-stall'
     import { bindOperationSession } from '../operation-session/bind-operation-session.svelte'
     import {
         inFlightRollbackTooltipKey,
@@ -179,6 +179,9 @@
      *  reason that isn't deliberate. Same classifier the copy dialog uses, so
      *  the two windows can't disagree about whether something is stuck. */
     const stall = $derived(stallNoticeFor(progress?.activity))
+    /** The same wait line the dialog shows while bytes are on their way but none
+     *  has landed. */
+    const waitLine = $derived(waitLineFor(progress?.activity))
 
     /** Speed and ETA come from the session, which drops the two RATES while a
      *  person is deciding (a pause, an unanswered clash: nothing is moving, so
@@ -417,6 +420,7 @@
                 filesPerSecond={fileRate}
                 {etaSeconds}
                 {stall}
+                {waitLine}
                 countKind={progressCountKind(opKindForWireType(snapshot.operationType), progress.phase)}
             />
         </div>

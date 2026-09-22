@@ -368,7 +368,13 @@ describe('derived read state', () => {
         bytesPerSecond: 4096,
         filesPerSecond: 1905,
         etaSeconds: 58,
-        activity: { inFlight: 1, stillForSeconds: 0, waitingOn: 'conflict' },
+        activity: {
+          inFlight: 1,
+          stillForSeconds: 0,
+          waitingOn: 'conflict',
+          openingSource: false,
+          sourceInboundBytesPerSecond: null,
+        },
       }),
     })
 
@@ -388,7 +394,13 @@ describe('derived read state', () => {
         bytesPerSecond: 4096,
         filesPerSecond: 1905,
         etaSeconds: 58,
-        activity: { inFlight: 1, stillForSeconds: 12, waitingOn: 'destination' },
+        activity: {
+          inFlight: 1,
+          stillForSeconds: 12,
+          waitingOn: 'destination',
+          openingSource: false,
+          sourceInboundBytesPerSecond: null,
+        },
       }),
     })
 

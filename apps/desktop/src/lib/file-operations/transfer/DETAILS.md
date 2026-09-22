@@ -5,9 +5,25 @@ and gotchas live in `CLAUDE.md`.
 
 ## The stalled-transfer notice
 
-`transfer-stall.ts` holds one decision: how long to wait before speaking (`STALL_NOTICE_SECONDS`, 10 s). Everything else
-comes from the backend's `TransferActivity`, derived from the live in-flight probe (see
+`transfer-stall.ts` holds two presentation decisions: how long to wait before calling a transfer stalled
+(`STALL_NOTICE_SECONDS`, 10 s), and what the time line says instead of an ETA while bytes are genuinely on their way
+(`waitLineFor`). Everything else comes from the backend's `TransferActivity`, derived from the live in-flight probe (see
 `apps/desktop/src-tauri/src/file_system/write_operations/transfer/DETAILS.md` § "The stall signal").
+
+**The wait line, before the first byte and while a response arrives.** Two backend readings drive it, and the readout's
+time line shows at most one, below a stall and above an ETA:
+
+- `sourceInboundBytesPerSecond` set: "Receiving from the source at 19 kB/s". The backend sends it only while the byte
+  counter stands still, so it's the rate of a response that hasn't finished arriving (one SMB compound read, or one 8 MB
+  chunk on a slow link). It also HOLDS BACK the stall notice: data still flowing is slow, not stopped, and a warning
+  card over a live rate would contradict itself. ❌ Never add it to a bar: it's connection-wide and unverified.
+- `openingSource` set and under 10 s still: "Waiting for the source to start sending (4s)". Before the first byte there
+  is no countdown to protect, so there's nothing to wait out; the backend heartbeats from the first still second for
+  exactly this. Past 10 s with nothing arriving, the stall notice takes over and names the source.
+
+Both stay silent for `paused` and `conflict`. ERR-CNK7M is the case: a 377 kB file sat 20 s on a silent 0% bar. Pinned
+by `transfer-stall.test.ts` (`waitLineFor`), `TransferProgressReadout.svelte.test.ts`, and
+`TransferProgressDialog.stall.test.ts`.
 
 **Why the threshold differs from the log's.** The log watchdog waits 20 s because a log line wants to stay rare across a
 long transfer. Ten seconds of a frozen bar is already long enough that a person wonders whether the app has died, and a

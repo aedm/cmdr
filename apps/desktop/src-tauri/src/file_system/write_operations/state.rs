@@ -377,7 +377,7 @@ impl WriteOperationState {
         // is wedged. Clobbering that with a second lookup is how a re-emitted
         // event loses the very activity it exists to carry.
         if event.activity.is_none() {
-            event.activity = self.activity(&event.operation_id);
+            event.activity = self.activity(&event.operation_id, Some(event));
         }
 
         let now = Instant::now();
@@ -436,8 +436,12 @@ impl WriteOperationState {
     /// one thing a view must not have to guess.
     ///
     /// `None` means "can't tell", ❌ never "it's moving".
-    pub(super) fn activity(&self, operation_id: &str) -> Option<TransferActivity> {
-        if let Some(activity) = super::transfer::transfer_probe::activity_for(operation_id) {
+    pub(super) fn activity(
+        &self,
+        operation_id: &str,
+        sending: Option<&WriteProgressEvent>,
+    ) -> Option<TransferActivity> {
+        if let Some(activity) = super::transfer::transfer_probe::activity_for(operation_id, sending) {
             return Some(activity);
         }
         self.decision_wait().map(|waiting_on| TransferActivity {
@@ -446,6 +450,8 @@ impl WriteOperationState {
             in_flight: 0,
             still_for_seconds: 0,
             waiting_on,
+            opening_source: false,
+            source_inbound_bytes_per_second: None,
         })
     }
 

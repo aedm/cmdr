@@ -28,12 +28,11 @@ use std::time::{Duration, Instant};
 
 use tokio_util::sync::CancellationToken;
 
-use crate::file_system::volume::{ConnectionLiveness, Volume};
 use crate::ignore_poison::IgnorePoison;
 
 use super::super::event_sinks::OperationEventSink;
 use super::super::state::{OperationIntent, WriteOperationState, load_intent};
-use super::super::types::{TransferActivity, TransferWaitReason, WriteOperationPhase};
+use super::super::types::{TransferActivity, TransferWaitReason, WriteOperationPhase, WriteProgressEvent};
 
 /// How often the watchdog samples an operation, and how long a transfer may
 /// show zero byte movement before it is called out IN THE LOG.
@@ -152,6 +151,17 @@ impl Drop for StallAbortGuard {
 /// than the point where a person starts wondering whether the app has died.
 pub(super) const HEARTBEAT_AFTER_SECS: u64 = 3;
 
+/// Should this still tick re-send the last progress event?
+///
+/// From [`HEARTBEAT_AFTER_SECS`] once anything has landed, and from the first
+/// still second while nothing has. The 3 s wait exists so a heartbeat never
+/// lands between two healthy chunk callbacks and nudges the ETA; before the first
+/// byte there is no ETA to nudge, and "opening the file" is worth saying the
+/// moment it's true (ERR-CNK7M sat 20 s on a silent 0% bar).
+fn heartbeat_due(still_for_secs: u64, nothing_landed: bool) -> bool {
+    still_for_secs >= HEARTBEAT_AFTER_SECS || (nothing_landed && still_for_secs >= 1)
+}
+
 /// What a row and a driver can SAY: [`TaskPhase`], [`DriverPhase`], [`TaskRole`],
 /// and [`TaskRow`]. Kept apart from the live table below because they are pure
 /// values, and re-exported here so every caller still names them as
@@ -160,6 +170,14 @@ pub(super) const HEARTBEAT_AFTER_SECS: u64 = 3;
 mod vocabulary;
 
 pub(super) use vocabulary::{DriverPhase, TaskPhase, TaskRole, TaskRow};
+
+/// What the probe asks the transfer's two volumes about their connections
+/// ([`TransferEnds`]), and the receive rate it derives from the answers.
+#[path = "transfer_probe_ends.rs"]
+mod ends;
+
+use ends::InboundWindow;
+pub(super) use ends::TransferEnds;
 
 /// One in-flight copy task's live state.
 pub(super) struct TaskProbe {
@@ -309,14 +327,24 @@ pub(super) struct OperationProbe {
     /// before the watchdog ends its wait. Per-operation rather than a bare
     /// constant read so a test can shorten it (see [`stall_abort_after`]).
     stall_abort_after: Duration,
-    /// The operation's source and destination volumes, held ONLY to ask them
-    /// whether their connection has been proven dead
-    /// ([`Volume::connection_liveness`]). That verdict is the gate on the one
-    /// aggressive thing the watchdog does; see [`OperationProbe::connection_proven_dead`].
-    volumes: Vec<Arc<dyn Volume>>,
+    /// The operation's source and destination volumes, held ONLY to ask their
+    /// connections whether either has been proven dead (the gate on the one
+    /// aggressive thing the watchdog does; see
+    /// [`OperationProbe::connection_proven_dead`]) and how fast the source is
+    /// receiving while nothing lands.
+    ends: TransferEnds,
+    /// The source connection's receive rate the watchdog measured on its last
+    /// still tick, in bytes per second, or [`NO_INBOUND_RATE`]. Published the
+    /// same way `still_for_seconds` is, so [`OperationProbe::activity`] reads one
+    /// number on the progress path without touching a volume.
+    source_inbound_rate: AtomicU64,
     state: Arc<WriteOperationState>,
     started: Instant,
 }
+
+/// `source_inbound_rate`'s "nothing to report". No link moves 2^64 bytes a
+/// second, so the value can't collide with a reading.
+const NO_INBOUND_RATE: u64 = u64::MAX;
 
 impl OperationProbe {
     /// The operation's aggregate byte total, read straight off the newest
@@ -412,9 +440,12 @@ impl OperationProbe {
             watchdog.still_since = now;
             self.still_for_seconds.store(0, Ordering::Relaxed);
             self.restart_task_stillness(now);
+            watchdog.inbound.clear();
+            self.publish_inbound_rate(None);
             return;
         }
         self.track_and_abort_wedged_tasks(now);
+        watchdog.inbound.record(now, self.ends.source_bytes_received());
         // Movement is EITHER axis. A stream of skipped children advances the
         // file count with the byte total flat, and it is unambiguously a
         // transfer doing its job — a user watched one work for a minute and
@@ -426,6 +457,9 @@ impl OperationProbe {
             watchdog.last_files = files;
             watchdog.still_since = now;
             self.still_for_seconds.store(0, Ordering::Relaxed);
+            // Bytes landing say everything the receive rate would, and say it
+            // with verified numbers.
+            self.publish_inbound_rate(None);
             return;
         }
         // Publish the stillness on every tick, not just at the log threshold:
@@ -433,9 +467,10 @@ impl OperationProbe {
         // it speaks sooner than the log does.
         let still_for = now.saturating_sub(watchdog.still_since);
         self.still_for_seconds.store(still_for.as_secs(), Ordering::Relaxed);
+        self.publish_inbound_rate(watchdog.inbound.bytes_per_second());
 
         // Speak for the operation while it can't speak for itself.
-        if still_for.as_secs() >= HEARTBEAT_AFTER_SECS {
+        if heartbeat_due(still_for.as_secs(), bytes == 0) {
             self.emit_heartbeat();
         }
 
@@ -464,9 +499,19 @@ impl OperationProbe {
     /// exists to prevent, and it kills healthy slow transfers. Full reasoning:
     /// `DETAILS.md` § "The watchdog ACTS".
     fn connection_proven_dead(&self) -> bool {
-        self.volumes
-            .iter()
-            .any(|v| v.connection_liveness() == Some(ConnectionLiveness::Dead))
+        self.ends.any_proven_dead()
+    }
+
+    fn publish_inbound_rate(&self, rate: Option<u64>) {
+        self.source_inbound_rate
+            .store(rate.unwrap_or(NO_INBOUND_RATE), Ordering::Relaxed);
+    }
+
+    fn inbound_rate(&self) -> Option<u64> {
+        match self.source_inbound_rate.load(Ordering::Relaxed) {
+            NO_INBOUND_RATE => None,
+            rate => Some(rate),
+        }
     }
 
     /// Restart every in-flight task's stillness clock, for the ticks where the
@@ -608,10 +653,53 @@ impl OperationProbe {
             self.still_for_seconds.load(Ordering::Relaxed)
         };
         let in_flight = u32::try_from(self.tasks.lock_ignore_poison().len()).unwrap_or(u32::MAX);
+        let waiting_on = self.wait_reason(still_for_seconds);
+        // A pause and a prompt are deliberate, and they say so themselves: an
+        // opening or a trickle under them isn't the operation's news.
+        let deliberate = matches!(waiting_on, TransferWaitReason::Paused | TransferWaitReason::Conflict);
         TransferActivity {
             in_flight,
             still_for_seconds: u32::try_from(still_for_seconds).unwrap_or(u32::MAX),
-            waiting_on: self.wait_reason(still_for_seconds),
+            waiting_on,
+            opening_source: !deliberate && self.opening_first_source(),
+            source_inbound_bytes_per_second: if deliberate { None } else { self.inbound_rate() },
+        }
+    }
+
+    /// Has nothing landed yet, with every file row in flight still opening its
+    /// source? Walker rows don't count either way: a walk lists while its leaves
+    /// open, and the leaves are what the first byte is waiting on.
+    fn opening_first_source(&self) -> bool {
+        if self.bytes_done() != 0 {
+            return false;
+        }
+        let tasks = self.tasks.lock_ignore_poison();
+        let mut files = tasks.iter().filter(|t| t.role == TaskRole::File).peekable();
+        files.peek().is_some()
+            && files.all(|t| TaskPhase::from_u8(t.phase.load(Ordering::Relaxed)) == TaskPhase::OpeningSource)
+    }
+
+    /// [`activity`](Self::activity) for a progress event about to go out.
+    ///
+    /// The stillness and the receive rate are the watchdog's readings from its
+    /// last tick, up to a second old. An event whose counters differ from the
+    /// last one published IS movement, so it must not go out carrying a
+    /// stillness or a rate from before it: a chunk that lands mid-tick would
+    /// otherwise reach the UI still saying "no progress for 12s", and on a
+    /// transfer that emits once per chunk, keep saying it until the next one.
+    fn activity_for_event(&self, event: &WriteProgressEvent) -> TransferActivity {
+        let moved = Some(event.bytes_done) != self.state.last_progress_bytes()
+            || Some(event.files_done) != self.state.last_progress_files();
+        let activity = self.activity();
+        if !moved || activity.still_for_seconds == 0 {
+            return activity;
+        }
+        TransferActivity {
+            still_for_seconds: 0,
+            waiting_on: self.wait_reason(0),
+            opening_source: false,
+            source_inbound_bytes_per_second: None,
+            ..activity
         }
     }
 
@@ -683,7 +771,7 @@ impl OperationProbe {
         let walkers = tasks.iter().filter(|t| t.role == TaskRole::Walker).count();
         let mut out = format!(
             "transfer probe ({reason}): op={op} elapsed={elapsed}s bytes_done={bytes} files_total={files} \
-             driver={driver}({detail}) intent={intent} paused={paused} in_flight={in_flight}/{concurrency}{walkers}",
+             driver={driver}({detail}) intent={intent} paused={paused} in_flight={in_flight}/{concurrency}{walkers}{inbound}",
             op = self.operation_id,
             elapsed = self.started.elapsed().as_secs(),
             bytes = self.bytes_done(),
@@ -698,6 +786,11 @@ impl OperationProbe {
             } else {
                 String::new()
             },
+            // Whether the source is still sending while nothing lands: a slow
+            // response on its way, not a wedge. Connection-wide.
+            inbound = self
+                .inbound_rate()
+                .map_or_else(String::new, |rate| format!(" source_inbound={rate}B/s")),
         );
         if tasks.is_empty() {
             out.push_str("\n  (no tasks in flight)");
@@ -778,9 +871,10 @@ pub(super) fn register_operation(
     operation_id: &str,
     concurrency: usize,
     total_files: usize,
-    // Source and destination, held only so the watchdog can ask them whether
-    // their connection is proven dead before it acts on a stall.
-    volumes: Vec<Arc<dyn Volume>>,
+    // Source and destination, held only so the watchdog can ask their
+    // connections whether either is proven dead before it acts on a stall, and
+    // how fast the source is receiving while nothing lands.
+    ends: TransferEnds,
     state: Arc<WriteOperationState>,
     sink: Arc<dyn OperationEventSink>,
 ) -> OperationProbeGuard {
@@ -794,7 +888,8 @@ pub(super) fn register_operation(
         sink: Mutex::new(Some(sink)),
         still_for_seconds: AtomicU64::new(0),
         stall_abort_after: stall_abort_after(),
-        volumes,
+        ends,
+        source_inbound_rate: AtomicU64::new(NO_INBOUND_RATE),
         state,
         started: Instant::now(),
     });
@@ -814,11 +909,20 @@ pub(super) fn register_operation(
 /// pre-registration window), where the UI simply shows nothing extra. Called
 /// from `WriteOperationState::enrich_progress`, so every progress event from
 /// every emit site carries it without a single caller having to remember.
-pub(in crate::file_system::write_operations) fn activity_for(operation_id: &str) -> Option<TransferActivity> {
-    REGISTRY
-        .lock_ignore_poison()
-        .get(operation_id)
-        .map(|probe| probe.activity())
+///
+/// `sending` is the progress event this activity will ride, when there is one:
+/// an event that moved the counters reads as moving, whatever the watchdog saw
+/// on its last tick ([`OperationProbe::activity_for_event`]). `None` for a
+/// snapshot with no event behind it (`cmdr://state`).
+pub(in crate::file_system::write_operations) fn activity_for(
+    operation_id: &str,
+    sending: Option<&WriteProgressEvent>,
+) -> Option<TransferActivity> {
+    let probe = REGISTRY.lock_ignore_poison().get(operation_id).cloned()?;
+    Some(match sending {
+        Some(event) => probe.activity_for_event(event),
+        None => probe.activity(),
+    })
 }
 
 /// The in-flight table of a still-running operation, rendered.
@@ -875,6 +979,8 @@ struct WatchdogState {
     last_files: usize,
     still_since: Duration,
     last_reported: Duration,
+    /// The source connection's recent received-byte readings, one per tick.
+    inbound: InboundWindow,
 }
 
 impl WatchdogState {
@@ -884,6 +990,7 @@ impl WatchdogState {
             last_files: usize::MAX,
             still_since: Duration::ZERO,
             last_reported: Duration::ZERO,
+            inbound: InboundWindow::default(),
         }
     }
 }
@@ -905,3 +1012,7 @@ fn spawn_watchdog(operation_id: String) {
 #[cfg(test)]
 #[path = "transfer_probe_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "transfer_probe_opening_tests.rs"]
+mod opening_tests;

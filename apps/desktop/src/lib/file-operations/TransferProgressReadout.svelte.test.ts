@@ -132,6 +132,26 @@ describe('TransferProgressReadout', () => {
     expect(target.querySelector('.time')?.classList.contains('stalled')).toBe(true)
   })
 
+  it('says the source has been asked while the first file opens, with how long so far', () => {
+    render({ ...halfway, bytesDone: 0, waitLine: { kind: 'opening', forSeconds: 4 } })
+    expect(texts('.time')).toEqual(['Waiting for the source to start sending (4s)'])
+    expect(target.querySelector('.time')?.classList.contains('stalled')).toBe(false)
+  })
+
+  it('shows bytes arriving that the bar cannot count yet', () => {
+    render({ ...halfway, bytesDone: 0, waitLine: { kind: 'receiving', bytesPerSecond: 19_000 } })
+    expect(texts('.time')).toEqual(['Receiving from the source at 19 kB/s'])
+  })
+
+  it('a stall still outranks a wait line', () => {
+    render({
+      ...halfway,
+      stall: { stillForSeconds: 45, reason: 'source', inFlight: 1 },
+      waitLine: { kind: 'opening', forSeconds: 45 },
+    })
+    expect(texts('.time')).toEqual(['No progress for 45s'])
+  })
+
   it('labels its rows in BOTH densities, so a queue row is no more of a puzzle than the dialog', () => {
     render(halfway)
     // "Bytes", not "Size": the label pairs with the count bar under it.

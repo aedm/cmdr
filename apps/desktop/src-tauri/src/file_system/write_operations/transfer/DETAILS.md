@@ -57,6 +57,10 @@ facts that none of those carry live here:
   `DriverPhase`, `TaskRole`, `TaskRow`) with each one's `label` and its round trip out of the `AtomicU8` it is stored
   in; the live table, the registry, and the watchdog stay in `transfer_probe.rs`. The seam is that nothing in the
   vocabulary takes a lock, holds an `Arc`, or reads the registry. ❌ Don't put a probe field or a counter here.
+- **`transfer_probe_ends.rs` is what the probe asks the two volumes**, another `#[path]` child: `TransferEnds` (the
+  source and destination, held only for their connections' liveness and the source's received-byte count) and
+  `InboundWindow` (the receive rate across the last few ticks, pure and tested on its own). `transfer_probe_opening_tests.rs`
+  pins what a transfer says before its first byte and while a response is still arriving.
 
 ## Copy + move semantics
 
@@ -658,6 +662,33 @@ Two consequences worth knowing. Movement resolution is the progress throttle (`p
 reads). `STALL_AFTER` is 20 s for the LOG: a log line wants to stay rare. The UI speaks sooner
 (`STALL_NOTICE_SECONDS` in the frontend), because a frozen bar with a confident ETA is a lie the moment it stops being
 true. Both read the same `still_for_seconds`, so the dialog and the log can't disagree.
+
+**Before the first byte, and while a response is still arriving** (ERR-CNK7M: a 377 kB SMB file read in ONE compound
+request, so the byte counter could only move once, at 20 s, and the dialog sat on a silent 0% bar until then). Three
+pieces, all backend:
+
+- **`TaskPhase::OpeningSource` waits on `Source`.** The request is out and nothing has come back, so a stall past the
+  notice names the source instead of falling through to `Unknown` ("the transfer has stopped moving"). The
+  all-tasks-agree rule is unchanged.
+- **`TransferActivity::opening_source`**: nothing has landed yet (`bytes_done() == 0`) and every FILE row is in
+  `OpeningSource`. Walker rows don't count either way: a walk lists while its leaves open. False under a pause or a
+  prompt. To say it early, `heartbeat_due` re-sends from the FIRST still second while nothing has landed, rather than
+  from `HEARTBEAT_AFTER_SECS`: that 3 s wait exists so a heartbeat never lands between two healthy chunk callbacks and
+  nudges the ETA, and before the first byte there is no ETA to nudge.
+- **`TransferActivity::source_inbound_bytes_per_second`**: each tick the watchdog reads the SOURCE's
+  `Volume::connection_bytes_received()` (SMB only, off `smb2`'s `Connection::inbound()`, which counts a frame's bytes as
+  they land) into `InboundWindow`, and publishes the rate across the last five readings, but only on a still tick. It's
+  `None` the moment bytes land (the ordinary rate says it with verified numbers), under a pause or a prompt, when the
+  count drops (a rebuilt session starts from zero), and when nothing arrived. ❌ Never credit it to the byte bar: the
+  bytes are unverified until their frame completes (signature or AEAD), and it's connection-wide, so a listing on the
+  same share adds to it. The dump header carries it too (`source_inbound=NB/s`), so a stall log says whether the source
+  was still sending.
+
+**An event that moved the counters goes out as moving.** The stillness and the receive rate are the watchdog's readings
+from its last tick, up to a second old. Attached as they stand, the first event after a chunk lands would carry "still
+for 12 s" and a stale rate, and on a transfer emitting once per chunk the UI would hold that until the next chunk. `activity_for(operation_id, Some(event))` compares the event's totals with
+the last published ones, and a mover goes out with zero stillness, no rate, and `Moving`. Pinned by
+`transfer_probe_opening_tests.rs`.
 
 **Which transfers register a probe, and why the list is what it is.** All three STREAMING cross-volume paths:
 `volume/copy.rs` for both of its drivers (concurrent and serial), and `volume/move.rs`. Each also binds its own

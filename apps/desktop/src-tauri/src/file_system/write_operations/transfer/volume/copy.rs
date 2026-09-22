@@ -997,9 +997,10 @@ pub(crate) async fn copy_volumes_with_progress(
         concurrency,
         total_files,
         // Both ends, so the watchdog can ask whether either connection has been
-        // PROVEN dead before it acts on a stall (only SMB can answer that; see
+        // PROVEN dead before it acts on a stall, and how fast the source is
+        // receiving while nothing lands (only SMB answers either; see
         // `Volume::connection_liveness`).
-        vec![Arc::clone(&source_volume), Arc::clone(&dest_volume)],
+        super::super::transfer_probe::TransferEnds::new(Arc::clone(&source_volume), Arc::clone(&dest_volume)),
         Arc::clone(state),
         Arc::clone(&events),
     ));

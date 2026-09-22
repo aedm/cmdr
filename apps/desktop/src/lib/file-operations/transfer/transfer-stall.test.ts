@@ -4,16 +4,23 @@
  * The regression: the copy dialog claimed "~8m 12s remaining" throughout a
  * total stall on 2026-07-31. The backend now classifies what a transfer is
  * waiting on (`TransferActivity`, from the in-flight probe); this module owns
- * the one presentation decision on top of it — how long to wait before
- * speaking. Deliberately NOT a second stall detector: it never looks at event
+ * the presentation decisions on top of it: how long to wait before calling a
+ * transfer stalled, and what to say while bytes are genuinely on their way. Deliberately NOT a second stall detector: it never looks at event
  * timing, only at what the backend reported.
  */
 import { describe, it, expect } from 'vitest'
 import type { TransferActivity } from '$lib/tauri-commands'
-import { STALL_NOTICE_SECONDS, stallNoticeFor } from './transfer-stall'
+import { STALL_NOTICE_SECONDS, stallNoticeFor, waitLineFor } from './transfer-stall'
 
 function activity(over: Partial<TransferActivity> = {}): TransferActivity {
-  return { inFlight: 0, stillForSeconds: 0, waitingOn: 'moving', ...over }
+  return {
+    inFlight: 0,
+    stillForSeconds: 0,
+    waitingOn: 'moving',
+    openingSource: false,
+    sourceInboundBytesPerSecond: null,
+    ...over,
+  }
 }
 
 describe('stallNoticeFor', () => {
@@ -66,5 +73,64 @@ describe('stallNoticeFor', () => {
     // counter that reads lower than what's visible at the destination.
     expect(stallNoticeFor(activity({ stillForSeconds: 60, waitingOn: 'unknown', inFlight: 0 }))?.inFlight).toBe(0)
     expect(stallNoticeFor(activity({ stillForSeconds: 60, waitingOn: 'unknown', inFlight: 3 }))?.inFlight).toBe(3)
+  })
+})
+
+describe('stallNoticeFor, while the source is still sending', () => {
+  it('holds the stall notice back while bytes are arriving', () => {
+    // A response on its way is slow, not stopped: "the transfer has stopped
+    // moving" over a live receive rate would be a contradiction on screen.
+    const receiving = activity({ stillForSeconds: 45, waitingOn: 'source', sourceInboundBytesPerSecond: 19_000 })
+    expect(stallNoticeFor(receiving)).toBeNull()
+  })
+
+  it('speaks again once nothing is arriving either', () => {
+    const silent = activity({ stillForSeconds: 45, waitingOn: 'source', openingSource: true })
+    expect(stallNoticeFor(silent)?.reason).toBe('source')
+  })
+})
+
+describe('waitLineFor', () => {
+  it('says the first file is being opened straight away, before the stall threshold', () => {
+    // ERR-CNK7M: 20 s on a silent 0% bar. Before the first byte there's no ETA
+    // to protect, so there's nothing to wait out.
+    expect(waitLineFor(activity({ stillForSeconds: 1, waitingOn: 'moving', openingSource: true }))).toEqual({
+      kind: 'opening',
+      forSeconds: 1,
+    })
+    expect(
+      waitLineFor(activity({ stillForSeconds: STALL_NOTICE_SECONDS - 1, waitingOn: 'source', openingSource: true })),
+    ).toEqual({ kind: 'opening', forSeconds: STALL_NOTICE_SECONDS - 1 })
+  })
+
+  it('hands over to the stall notice once an open has taken long enough with nothing arriving', () => {
+    expect(
+      waitLineFor(activity({ stillForSeconds: STALL_NOTICE_SECONDS, waitingOn: 'source', openingSource: true })),
+    ).toBeNull()
+  })
+
+  it('shows the receive rate whenever bytes are arriving that the bar cannot count yet', () => {
+    expect(
+      waitLineFor(
+        activity({
+          stillForSeconds: 30,
+          waitingOn: 'source',
+          openingSource: true,
+          sourceInboundBytesPerSecond: 19_000,
+        }),
+      ),
+    ).toEqual({ kind: 'receiving', bytesPerSecond: 19_000 })
+  })
+
+  it('says nothing about a deliberate wait', () => {
+    expect(
+      waitLineFor(activity({ waitingOn: 'paused', openingSource: true, sourceInboundBytesPerSecond: 5 })),
+    ).toBeNull()
+    expect(waitLineFor(activity({ waitingOn: 'conflict', openingSource: true }))).toBeNull()
+  })
+
+  it('says nothing for a transfer that is simply moving, or reports no activity', () => {
+    expect(waitLineFor(activity())).toBeNull()
+    expect(waitLineFor(null)).toBeNull()
   })
 })

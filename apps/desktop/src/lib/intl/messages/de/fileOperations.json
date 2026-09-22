@@ -453,6 +453,14 @@
   "@fileOperations.transferProgress.close": {
     "sourceHash": "7d9eb7a"
   },
+  "fileOperations.transferProgress.openingSource": "Cmdr wartet, bis die Quelle zu senden beginnt ({duration})",
+  "@fileOperations.transferProgress.openingSource": {
+    "sourceHash": "d0ad98c"
+  },
+  "fileOperations.transferProgress.sourceReceiving": "Empfang von der Quelle mit <size></size>/s",
+  "@fileOperations.transferProgress.sourceReceiving": {
+    "sourceHash": "0552601"
+  },
   "fileOperations.transferProgress.stallNotice": "Kein Fortschritt seit {duration}",
   "@fileOperations.transferProgress.stallNotice": {
     "sourceHash": "4b3c8e6"

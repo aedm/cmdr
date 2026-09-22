@@ -74,9 +74,13 @@ impl TaskPhase {
         match self {
             Self::ParkedDestYield => Some(TransferWaitReason::Destination),
             Self::ParkedSourceYield => Some(TransferWaitReason::Source),
+            // The request is out and nothing has come back: whatever the source
+            // is doing, it's the one being waited on. Without this a slow open
+            // fell through to `Unknown`, and the notice said "the transfer has
+            // stopped moving" about a NAS that was busy (ERR-CNK7M).
+            Self::OpeningSource => Some(TransferWaitReason::Source),
             Self::ResolvingConflict => Some(TransferWaitReason::Conflict),
             Self::Spawned
-            | Self::OpeningSource
             | Self::Streaming
             | Self::ParkedPause
             | Self::Finalizing

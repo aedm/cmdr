@@ -165,7 +165,15 @@ describe('TransferProgressDialog stall notice', () => {
     const { component, target } = await mountDialog()
     if (!progressCb) throw new Error('subscriber never registered')
 
-    progressCb(copyingEvent({ inFlight: 1, stillForSeconds: 23, waitingOn: 'destination' }))
+    progressCb(
+      copyingEvent({
+        inFlight: 1,
+        stillForSeconds: 23,
+        waitingOn: 'destination',
+        openingSource: false,
+        sourceInboundBytesPerSecond: null,
+      }),
+    )
     await tick()
 
     const card = stallCard(target)
@@ -180,7 +188,15 @@ describe('TransferProgressDialog stall notice', () => {
     const { component, target } = await mountDialog()
     if (!progressCb) throw new Error('subscriber never registered')
 
-    progressCb(copyingEvent({ inFlight: 1, stillForSeconds: 23, waitingOn: 'destination' }))
+    progressCb(
+      copyingEvent({
+        inFlight: 1,
+        stillForSeconds: 23,
+        waitingOn: 'destination',
+        openingSource: false,
+        sourceInboundBytesPerSecond: null,
+      }),
+    )
     await tick()
 
     const notice = target.querySelector('.stall-notice')
@@ -199,10 +215,59 @@ describe('TransferProgressDialog stall notice', () => {
     const { component, target } = await mountDialog()
     if (!progressCb) throw new Error('subscriber never registered')
 
-    progressCb(copyingEvent({ inFlight: 2, stillForSeconds: 0, waitingOn: 'moving' }))
+    progressCb(
+      copyingEvent({
+        inFlight: 2,
+        stillForSeconds: 0,
+        waitingOn: 'moving',
+        openingSource: false,
+        sourceInboundBytesPerSecond: null,
+      }),
+    )
     await tick()
 
     expect(stallCard(target), 'a healthy transfer is never accused of stalling').toBeNull()
+    void unmount(component)
+  })
+
+  it('says the first file is being opened, with no warning, before anything has landed', async () => {
+    // ERR-CNK7M: a 377 kB file sat 20 s on a silent 0% bar.
+    const { component, target } = await mountDialog()
+    if (!progressCb) throw new Error('subscriber never registered')
+
+    progressCb(
+      copyingEvent({
+        inFlight: 1,
+        stillForSeconds: 4,
+        waitingOn: 'source',
+        openingSource: true,
+        sourceInboundBytesPerSecond: null,
+      }),
+    )
+    await tick()
+
+    expect(target.querySelector('.time')?.textContent).toBe('Waiting for the source to start sending (4s)')
+    expect(stallCard(target), 'an open in progress is not a stall').toBeNull()
+    void unmount(component)
+  })
+
+  it('shows bytes arriving instead of a stall warning while a response is on its way', async () => {
+    const { component, target } = await mountDialog()
+    if (!progressCb) throw new Error('subscriber never registered')
+
+    progressCb(
+      copyingEvent({
+        inFlight: 1,
+        stillForSeconds: 23,
+        waitingOn: 'source',
+        openingSource: true,
+        sourceInboundBytesPerSecond: 19_000,
+      }),
+    )
+    await tick()
+
+    expect(target.querySelector('.time')?.textContent).toContain('Receiving from the source at')
+    expect(stallCard(target), 'data still flowing is slow, not stopped').toBeNull()
     void unmount(component)
   })
 
@@ -210,7 +275,15 @@ describe('TransferProgressDialog stall notice', () => {
     const { component, target } = await mountDialog()
     if (!progressCb) throw new Error('subscriber never registered')
 
-    progressCb(copyingEvent({ inFlight: 1, stillForSeconds: 23, waitingOn: 'source' }))
+    progressCb(
+      copyingEvent({
+        inFlight: 1,
+        stillForSeconds: 23,
+        waitingOn: 'source',
+        openingSource: false,
+        sourceInboundBytesPerSecond: null,
+      }),
+    )
     await tick()
 
     await expectNoA11yViolations(target)

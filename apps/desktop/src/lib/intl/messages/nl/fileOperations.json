@@ -453,6 +453,14 @@
   "@fileOperations.transferProgress.close": {
     "sourceHash": "7d9eb7a"
   },
+  "fileOperations.transferProgress.openingSource": "Wachten tot de bron begint met verzenden ({duration})",
+  "@fileOperations.transferProgress.openingSource": {
+    "sourceHash": "d0ad98c"
+  },
+  "fileOperations.transferProgress.sourceReceiving": "Ontvangen van de bron met <size></size>/s",
+  "@fileOperations.transferProgress.sourceReceiving": {
+    "sourceHash": "0552601"
+  },
   "fileOperations.transferProgress.stallNotice": "Al {duration} geen voortgang",
   "@fileOperations.transferProgress.stallNotice": {
     "sourceHash": "4b3c8e6"

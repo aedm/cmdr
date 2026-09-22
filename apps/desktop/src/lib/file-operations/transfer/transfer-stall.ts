@@ -10,8 +10,10 @@
  * lately", so it would call every deliberate pause and foreground yield a
  * stall, and a warning that cries wolf gets ignored.
  *
- * This module owns exactly one decision on top of that: how long to wait before
- * speaking. It's pure, so the threshold is trivial to tune and to test.
+ * This module owns the presentation decisions on top of that: how long to wait
+ * before calling a transfer stalled, and what to say instead while bytes are
+ * genuinely on their way (`waitLineFor`). It's pure, so the threshold is
+ * trivial to tune and to test.
  */
 
 import type { TransferActivity, TransferWaitReason } from '$lib/tauri-commands'
@@ -49,6 +51,9 @@ export interface StallNotice {
 export function stallNoticeFor(activity: TransferActivity | null | undefined): StallNotice | null {
   if (!activity) return null
   if (activity.stillForSeconds < STALL_NOTICE_SECONDS) return null
+  // Bytes are arriving that the bar can't count yet: slow, not stopped. The
+  // wait line says so instead (`waitLineFor`).
+  if (isReceiving(activity)) return null
 
   // `paused` and `conflict` are the transfer behaving correctly: somebody
   // paused it, or somebody is being asked a question. The dialog already says so
@@ -74,4 +79,38 @@ export function stallNoticeFor(activity: TransferActivity | null | undefined): S
       // rather than guess: an unexplained warning is worse than none.
       return null
   }
+}
+
+/**
+ * What the time line says, in place of an ETA, while bytes are genuinely on
+ * their way but none has landed: the first file still being opened, or a
+ * response still arriving.
+ *
+ * - `receiving`: the source's connection is receiving at `bytesPerSecond`
+ *   while the byte counter stands still. Connection-wide and unverified, so it
+ *   never reaches a bar; the backend only sends it while the counter is still.
+ * - `opening`: nothing has landed and every file in flight is still being
+ *   opened, for `forSeconds`. Shown straight away, because before the first byte
+ *   there's no countdown to protect. Past `STALL_NOTICE_SECONDS` with nothing
+ *   arriving either, the stall notice takes over and names the source.
+ */
+export type TransferWaitLine = { kind: 'receiving'; bytesPerSecond: number } | { kind: 'opening'; forSeconds: number }
+
+/** Decide whether the time line has a wait to describe, and which. */
+export function waitLineFor(activity: TransferActivity | null | undefined): TransferWaitLine | null {
+  if (!activity) return null
+  // A pause and a prompt say so in the dialog's title; anything still arriving
+  // under them isn't the news.
+  if (activity.waitingOn === 'paused' || activity.waitingOn === 'conflict') return null
+  if (isReceiving(activity)) {
+    return { kind: 'receiving', bytesPerSecond: activity.sourceInboundBytesPerSecond ?? 0 }
+  }
+  if (activity.openingSource && activity.stillForSeconds < STALL_NOTICE_SECONDS) {
+    return { kind: 'opening', forSeconds: activity.stillForSeconds }
+  }
+  return null
+}
+
+function isReceiving(activity: TransferActivity): boolean {
+  return (activity.sourceInboundBytesPerSecond ?? 0) > 0
 }

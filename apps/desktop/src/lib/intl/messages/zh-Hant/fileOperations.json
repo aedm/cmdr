@@ -451,6 +451,14 @@
   "@fileOperations.transferProgress.close": {
     "sourceHash": "7d9eb7a"
   },
+  "fileOperations.transferProgress.openingSource": "正在等來源開始傳送（{duration}）",
+  "@fileOperations.transferProgress.openingSource": {
+    "sourceHash": "d0ad98c"
+  },
+  "fileOperations.transferProgress.sourceReceiving": "正在從來源接收，<size></size>/秒",
+  "@fileOperations.transferProgress.sourceReceiving": {
+    "sourceHash": "0552601"
+  },
   "fileOperations.transferProgress.stallNotice": "已經 {duration} 沒有進度",
   "@fileOperations.transferProgress.stallNotice": {
     "sourceHash": "4b3c8e6"

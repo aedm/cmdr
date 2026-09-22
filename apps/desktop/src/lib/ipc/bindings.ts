@@ -13818,6 +13818,26 @@ export type TransferActivity = {
   stillForSeconds: number
   // What it's waiting on. See [`TransferWaitReason`].
   waitingOn: TransferWaitReason
+  /**
+   *  Nothing has landed yet and every file in flight is still being opened on
+   *  the source: the request is out, and no byte of any file has come back.
+   *
+   *  Before the first byte there's no ETA to protect, so the UI says this
+   *  straight away rather than waiting out the stall notice's threshold.
+   */
+  openingSource: boolean
+  /**
+   *  How fast the SOURCE's connection is receiving, in bytes per second, while
+   *  the byte counter above stands still: a response on its way that hasn't
+   *  finished arriving. `None` while bytes land (the ordinary rate says it
+   *  all), while paused or asking a person, and whenever the source has no
+   *  connection to count or nothing is arriving.
+   *
+   *  Two caveats, both load-bearing. It's CONNECTION-wide, so a listing on the
+   *  same share adds to it. And it's never progress: those bytes are unverified
+   *  until their response completes, so ❌ never add them to a byte bar.
+   */
+  sourceInboundBytesPerSecond: number | null
 }
 
 /**

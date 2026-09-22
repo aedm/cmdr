@@ -336,6 +336,6 @@ pub fn get_operation_status(operation_id: &str) -> Option<OperationStatus> {
     // state map are other locks, and this function keeps them all un-nested.
     snapshot.activity = super::state::WRITE_OPERATION_STATE
         .get(operation_id)
-        .and_then(|state| state.activity(operation_id));
+        .and_then(|state| state.activity(operation_id, None));
     Some(snapshot)
 }

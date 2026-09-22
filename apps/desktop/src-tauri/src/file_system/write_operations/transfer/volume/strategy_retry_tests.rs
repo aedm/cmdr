@@ -361,7 +361,9 @@ async fn the_watchdog_ends_a_wedged_write_and_the_file_runs_again() {
         // A proven-dead verdict, which only a live SMB session can give for
         // real. Without it the watchdog reports and never acts, so this test
         // would hang on the wedged write instead of proving anything.
-        vec![crate::file_system::write_operations::transfer::liveness_test_support::dead_connection_volume()],
+        transfer_probe::TransferEnds::source_only(
+            crate::file_system::write_operations::transfer::liveness_test_support::dead_connection_volume(),
+        ),
         Arc::clone(guard.state()),
         Arc::new(crate::file_system::write_operations::event_sinks::CollectorEventSink::new()),
     );
@@ -402,7 +404,7 @@ async fn a_retry_shows_up_in_the_in_flight_table() {
         1,
         // No liveness verdict: this test is about the retry being VISIBLE, not
         // about the watchdog acting.
-        Vec::new(),
+        transfer_probe::TransferEnds::none(),
         Arc::clone(guard.state()),
         Arc::new(crate::file_system::write_operations::event_sinks::CollectorEventSink::new()),
     );

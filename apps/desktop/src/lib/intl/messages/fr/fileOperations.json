@@ -454,6 +454,14 @@
   "@fileOperations.transferProgress.close": {
     "sourceHash": "7d9eb7a"
   },
+  "fileOperations.transferProgress.openingSource": "En attente des premières données de la source ({duration})",
+  "@fileOperations.transferProgress.openingSource": {
+    "sourceHash": "d0ad98c"
+  },
+  "fileOperations.transferProgress.sourceReceiving": "Réception depuis la source à <size></size>/s",
+  "@fileOperations.transferProgress.sourceReceiving": {
+    "sourceHash": "0552601"
+  },
   "fileOperations.transferProgress.stallNotice": "Aucune progression depuis {duration}",
   "@fileOperations.transferProgress.stallNotice": {
     "sourceHash": "4b3c8e6"

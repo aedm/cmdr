@@ -172,6 +172,15 @@ fn activity_lines(activity: Option<&TransferActivity>) -> String {
     if activity.in_flight > 0 {
         yaml.push_str(&format!("    inFlight: {}\n", activity.in_flight));
     }
+    // Same rule: only when true / present. Together they separate "the source
+    // hasn't sent the first byte yet" and "a response is still arriving" from a
+    // wedge, which `waitingOn: source` alone can't.
+    if activity.opening_source {
+        yaml.push_str("    openingSource: true\n");
+    }
+    if let Some(rate) = activity.source_inbound_bytes_per_second {
+        yaml.push_str(&format!("    sourceInboundBytesPerSecond: {rate}\n"));
+    }
     yaml
 }
 

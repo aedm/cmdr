@@ -794,6 +794,23 @@
     "screenshotNote": "The copy/move progress dialog, pictured here. Your string belongs to one of its phases (scanning, paused, queued, or finishing up) or to one of its two progress bars."
   },
 
+  "fileOperations.transferProgress.openingSource": "Waiting for the source to start sending ({duration})",
+  "@fileOperations.transferProgress.openingSource": {
+    "description": "Replaces the time-left text at the very start of a copy/move, while the first file has been requested from the drive, share, or phone being read FROM and not a single byte has come back yet. Not a warning: a busy network drive can take a while to answer. Appears on both surfaces that show a running transfer: the copy/move/delete progress dialog and the rows of the operation queue window. It sits right-aligned under the progress bars, so keep it short. {duration} is how long it has been waiting so far, already formatted, such as '4s'.",
+    "placeholders": {
+      "duration": { "content": "$1", "example": "4s" }
+    },
+    "screenshot": "transfer-dialog.png",
+    "screenshotNote": "The copy/move progress dialog, pictured here. Your string belongs to one of its phases (scanning, paused, queued, or finishing up) or to one of its two progress bars."
+  },
+
+  "fileOperations.transferProgress.sourceReceiving": "Receiving from the source at <size></size>/s",
+  "@fileOperations.transferProgress.sourceReceiving": {
+    "description": "Replaces the time-left text of a copy/move whose progress bar can't move yet because the file is arriving as one large piece: data is coming in from the drive, share, or phone being read FROM, at the speed shown, but only counts as copied once the whole piece has arrived. So the bar sits still while this line shows the data is flowing. The speed covers everything arriving from that source at the moment, not only this file. <size> renders the formatted size, such as '19 kB' (a widget, no inner text); '/s' means per second, so keep it right after the size, the same way fileOperations.shared.byteRate does. It sits right-aligned under the progress bars, so keep it short.",
+    "screenshot": "transfer-dialog.png",
+    "screenshotNote": "The copy/move progress dialog, pictured here. Your string belongs to one of its phases (scanning, paused, queued, or finishing up) or to one of its two progress bars."
+  },
+
   "fileOperations.transferProgress.stallNotice": "No progress for {duration}",
   "@fileOperations.transferProgress.stallNotice": {
     "description": "Replaces the time-left text when a transfer has stopped moving, so we stop showing a countdown we no longer believe. Appears on both surfaces that show a running transfer: the copy/move/delete progress dialog and the rows of the operation queue window. {duration} is a formatted length of time such as '45s' or '2m 30s'.",

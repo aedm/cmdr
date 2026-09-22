@@ -28,17 +28,17 @@ fn probe_with_abort_window(id: &str, state: &Arc<WriteOperationState>, window: D
     probe_with(
         id,
         state,
-        vec![super::super::liveness_test_support::dead_connection_volume()],
+        TransferEnds::source_only(super::super::liveness_test_support::dead_connection_volume()),
     )
 }
 
 /// A probe whose volumes give the honest default answer: no evidence either way.
 /// This is what every backend with no keepalive looks like.
 fn probe_for(id: &str, state: &Arc<WriteOperationState>) -> Arc<OperationProbe> {
-    probe_with(id, state, Vec::new())
+    probe_with(id, state, TransferEnds::none())
 }
 
-fn probe_with(id: &str, state: &Arc<WriteOperationState>, volumes: Vec<Arc<dyn Volume>>) -> Arc<OperationProbe> {
+fn probe_with(id: &str, state: &Arc<WriteOperationState>, ends: TransferEnds) -> Arc<OperationProbe> {
     Arc::new(OperationProbe {
         operation_id: id.to_owned(),
         concurrency: 8,
@@ -49,7 +49,8 @@ fn probe_with(id: &str, state: &Arc<WriteOperationState>, volumes: Vec<Arc<dyn V
         sink: Mutex::new(None),
         still_for_seconds: AtomicU64::new(0),
         stall_abort_after: stall_abort_after(),
-        volumes,
+        ends,
+        source_inbound_rate: AtomicU64::new(NO_INBOUND_RATE),
         state: Arc::clone(state),
         started: Instant::now(),
     })
@@ -724,7 +725,11 @@ fn a_live_connection_with_a_flat_byte_bar_is_never_aborted() {
     let _window = StallAbortGuard::set(Duration::from_secs(2));
     let source = ScriptedConnectionVolume::new();
     source.set_liveness(Some(ConnectionLiveness::Alive));
-    let probe = probe_with(guard.id(), state, vec![Arc::clone(&source) as Arc<dyn Volume>]);
+    let probe = probe_with(
+        guard.id(),
+        state,
+        TransferEnds::source_only(Arc::clone(&source) as Arc<dyn Volume>),
+    );
 
     let task = probe.begin_task(TaskRow::source(0), TaskRole::File, "/src/a.png", "/dst/a.png");
     task.probe().set_phase(TaskPhase::OpeningSource);
@@ -755,7 +760,11 @@ fn the_watchdog_acts_once_a_still_task_s_connection_reads_dead() {
     let _window = StallAbortGuard::set(Duration::from_secs(2));
     let source = ScriptedConnectionVolume::new();
     source.set_liveness(Some(ConnectionLiveness::Alive));
-    let probe = probe_with(guard.id(), state, vec![Arc::clone(&source) as Arc<dyn Volume>]);
+    let probe = probe_with(
+        guard.id(),
+        state,
+        TransferEnds::source_only(Arc::clone(&source) as Arc<dyn Volume>),
+    );
 
     let task = probe.begin_task(TaskRow::source(0), TaskRole::File, "/src/a.png", "/dst/a.png");
     task.probe().set_phase(TaskPhase::OpeningSource);

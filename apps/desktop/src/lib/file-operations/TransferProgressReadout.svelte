@@ -24,7 +24,7 @@
     import { tString } from '$lib/intl/messages.svelte'
     import { calculatePercentage, formatNumber } from '$lib/file-explorer/selection/selection-info-utils'
     import { formatDuration, formatFilesPerSecond, seconds, type Seconds } from '$lib/units'
-    import type { StallNotice } from './transfer/transfer-stall'
+    import type { StallNotice, TransferWaitLine } from './transfer/transfer-stall'
 
     interface Props {
         bytesDone: number
@@ -45,6 +45,10 @@
         etaSeconds?: Seconds | null
         /** The backend's stall verdict; it displaces the countdown while set. */
         stall?: StallNotice | null
+        /** A wait worth describing while bytes are on their way but none has
+         *  landed (`waitLineFor`): it displaces the countdown too, and a stall
+         *  outranks it. */
+        waitLine?: TransferWaitLine | null
         /** The count row's noun: trash moves items, everything else files. */
         countKind?: 'files' | 'items'
         /** `compact` is a Transfers-window row, `comfortable` the dialog. */
@@ -60,6 +64,7 @@
         filesPerSecond = null,
         etaSeconds = null,
         stall = null,
+        waitLine = null,
         countKind = 'files',
         density = 'comfortable',
     }: Props = $props()
@@ -102,12 +107,22 @@
             : tString('fileOperations.transferProgress.progressFiles'),
     )
 
+    /** The source's receive rate, when that's what the time line shows. It
+     *  renders through a `<Size>` widget, so it can't be part of `timeText`. */
+    const receivingRate = $derived(!stall && waitLine?.kind === 'receiving' ? waitLine.bytesPerSecond : null)
+
     /** A countdown we no longer believe is worse than no countdown, so a stalled
-     *  transfer says how long it's been still instead. */
+     *  transfer says how long it's been still instead, and one whose first file
+     *  is still being opened says that. */
     const timeText = $derived.by(() => {
         if (stall) {
             return tString('fileOperations.transferProgress.stallNotice', {
                 duration: formatDuration(seconds(stall.stillForSeconds)),
+            })
+        }
+        if (waitLine?.kind === 'opening') {
+            return tString('fileOperations.transferProgress.openingSource', {
+                duration: formatDuration(seconds(waitLine.forSeconds)),
             })
         }
         if (etaSeconds === null) return null
@@ -151,10 +166,19 @@
     <!-- Rendered even while empty (see `.time:empty` below): the line holds its
          height so the readout doesn't grow a row, and shove everything under it
          down, the moment the estimator warms up. -->
-    <span class="time" class:stalled={stall !== null}>{timeText ?? ''}</span>
+    <span class="time" class:stalled={stall !== null}
+        >{#if receivingRate !== null}<Trans
+                key="fileOperations.transferProgress.sourceReceiving"
+                snippets={{ size: receivingRateSize }}
+            />{:else}{timeText ?? ''}{/if}</span
+    >
 </div>
 
 {#snippet byteRateSize(children: import('svelte').Snippet)}<Size bytes={byteRate ?? 0} rounded />{@render children()}{/snippet}
+{#snippet receivingRateSize(children: import('svelte').Snippet)}<Size
+        bytes={receivingRate ?? 0}
+        rounded
+    />{@render children()}{/snippet}
 
 <style>
     .progress-readout {

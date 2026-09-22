@@ -74,6 +74,8 @@ fn waiting(
         in_flight,
         still_for_seconds,
         waiting_on,
+        opening_source: false,
+        source_inbound_bytes_per_second: None,
     });
     op
 }
@@ -281,6 +283,24 @@ fn a_wedge_reads_as_unknown_rather_than_as_something_explained() {
 }
 
 #[test]
+fn a_slow_open_says_the_source_is_still_sending_rather_than_looking_wedged() {
+    // ERR-CNK7M from an agent's side: `waitingOn: source` for 18 s reads like a
+    // wedge until it also says nothing has landed yet and bytes are arriving.
+    let mut rows = stalled_row(TransferWaitReason::Source, 18, 1);
+    let activity = rows[0]
+        .progress
+        .as_mut()
+        .and_then(|p| p.activity.as_mut())
+        .expect("the row carries an activity");
+    activity.opening_source = true;
+    activity.source_inbound_bytes_per_second = Some(19_000);
+
+    let yaml = build_operations_yaml(&rows, 12_000);
+    assert!(yaml.contains("openingSource: true"), "yaml: {yaml}");
+    assert!(yaml.contains("sourceInboundBytesPerSecond: 19000"), "yaml: {yaml}");
+}
+
+#[test]
 fn a_moving_transfer_says_it_is_moving_and_claims_no_stillness() {
     let yaml = build_operations_yaml(&stalled_row(TransferWaitReason::Moving, 0, 6), 12_000);
     assert!(yaml.contains("waitingOn: moving"), "yaml: {yaml}");
@@ -288,6 +308,8 @@ fn a_moving_transfer_says_it_is_moving_and_claims_no_stillness() {
         !yaml.contains("stillForSeconds"),
         "zero stillness is noise, not a finding: {yaml}"
     );
+    assert!(!yaml.contains("openingSource"), "yaml: {yaml}");
+    assert!(!yaml.contains("sourceInbound"), "yaml: {yaml}");
 }
 
 #[test]

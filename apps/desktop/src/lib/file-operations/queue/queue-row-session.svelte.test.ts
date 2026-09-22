@@ -328,7 +328,13 @@ describe('a row parked on a clash', () => {
       progress('op-a', {
         bytesPerSecond: 4096,
         filesPerSecond: 8,
-        activity: { inFlight: 0, stillForSeconds: 0, waitingOn: 'conflict' },
+        activity: {
+          inFlight: 0,
+          stillForSeconds: 0,
+          waitingOn: 'conflict',
+          openingSource: false,
+          sourceInboundBytesPerSecond: null,
+        },
       }),
     )
 
@@ -340,7 +346,17 @@ describe('a row parked on a clash', () => {
   it('goes back to Running once the answer is in', () => {
     emitSnapshot([snapshot('op-a')])
     mountRow('op-a')
-    emitProgress(progress('op-a', { activity: { inFlight: 0, stillForSeconds: 0, waitingOn: 'conflict' } }))
+    emitProgress(
+      progress('op-a', {
+        activity: {
+          inFlight: 0,
+          stillForSeconds: 0,
+          waitingOn: 'conflict',
+          openingSource: false,
+          sourceInboundBytesPerSecond: null,
+        },
+      }),
+    )
 
     emitProgress(progress('op-a', { bytesDone: 600 }))
 
