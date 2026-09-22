@@ -152,6 +152,10 @@ fn read_mount(mount_path: &str) -> MountRead {
 /// without dialing anything: `Success` for a volume that's already direct,
 /// `VolumeGone` or `NotSmbMount` for one there's nothing to upgrade on, and
 /// `MountNotResponding` for a mount that didn't answer in time.
+///
+/// Only the saved-password probe reads without asking (macOS alone has one); every
+/// door that asks goes through [`claim_mounted_share`].
+#[cfg(target_os = "macos")]
 async fn find_mounted_share(volume_id: &str) -> Result<MountedShare, UpgradeResult> {
     find_mounted_share_within(volume_id, MOUNT_READ_LIMIT, read_mount).await
 }
