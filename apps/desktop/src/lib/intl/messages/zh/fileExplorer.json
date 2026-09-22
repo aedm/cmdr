@@ -1309,6 +1309,10 @@
   "@fileExplorer.navigation.connectDirectly": {
     "sourceHash": "3fbb55a"
   },
+  "fileExplorer.navigation.useDirectConnection": "使用 Cmdr 的快速直接连接",
+  "@fileExplorer.navigation.useDirectConnection": {
+    "sourceHash": "2955143"
+  },
   "fileExplorer.navigation.connectingDirectly": "正在直接连接…",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

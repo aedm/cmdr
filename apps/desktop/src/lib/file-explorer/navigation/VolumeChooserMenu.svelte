@@ -42,6 +42,7 @@
     import ImageIndexDriveBadge from './ImageIndexDriveBadge.svelte'
     import UsbSpeedDot from './UsbSpeedDot.svelte'
     import { connectDirectlyToRow } from './connect-directly-row'
+    import { createDirectConnectionSwitches } from './direct-connection-switch.svelte'
     import { detachControlFor } from './detach-control'
     import { runDetach } from './detach-volume'
     import { isDriveRow } from './drive-index-manager.svelte'
@@ -111,6 +112,9 @@
 
     /** A submenu row's value, so a pick tells itself apart from the volume rows. */
     const CONNECT_PREFIX = 'connect:'
+    const DIRECT_SWITCH_PREFIX = 'direct-switch:'
+
+    const directSwitches = createDirectConnectionSwitches()
 
     /** The row that hands the header over to the favorites menu, and teaches ⌃D doing it. */
     const SEE_FAVORITES_VALUE = 'favorites:see'
@@ -125,6 +129,30 @@
         if (volume.icon) return { src: volume.icon }
         if (dirIconFallback) return { src: dirIconFallback }
         return { lucide: 'folder' }
+    }
+
+    /**
+     * An SMB share's submenu. A share the OS mounted for us offers the direct session it
+     * could have instead, and every share Rust knows a switch for carries it as a checkbox
+     * row, so a direct share can be sent back to the macOS mount from here too. ❗ Picking
+     * a submenu row closes the whole menu before `onSelect`, so nobody sees the check flip:
+     * the next open shows it, re-read from Rust.
+     */
+    function shareSubmenu(volume: VolumeInfo): MenuItem<VolumeInfo>[] | undefined {
+        const rows: MenuItem<VolumeInfo>[] = []
+        if (volume.connectionState === 'os_mount') {
+            rows.push({ value: `${CONNECT_PREFIX}${volume.id}`, label: tString('fileExplorer.navigation.connectDirectly') })
+        }
+        const directEnabled = directSwitches.valueFor(volume.id)
+        if (directEnabled !== undefined) {
+            rows.push({
+                value: `${DIRECT_SWITCH_PREFIX}${volume.id}`,
+                label: tString('fileExplorer.navigation.useDirectConnection'),
+                checked: directEnabled,
+                data: volume,
+            })
+        }
+        return rows.length > 0 ? rows : undefined
     }
 
     function toMenuItem(volume: VolumeInfo): MenuItem<VolumeInfo> {
@@ -143,12 +171,7 @@
             checked: shouldShowCheckmark(volume, containingVolumeId),
             disabled: !rowState.openable,
             tooltip: rowState.tooltip ?? (restricted ? RESTRICTED_FOLDER_TOOLTIP : ''),
-            // The OS mounted this share for us, so the row offers the direct session it could
-            // have instead. One row today, and the primitive walks however many there are.
-            submenu:
-                volume.connectionState === 'os_mount'
-                    ? [{ value: `${CONNECT_PREFIX}${volume.id}`, label: tString('fileExplorer.navigation.connectDirectly') }]
-                    : undefined,
+            submenu: shareSubmenu(volume),
             data: volume,
         }
     }
@@ -203,6 +226,7 @@
             if (!open) return
             void spaceManager.fetchVolumeSpaces(volumes)
             badges.fetchForRows(volumes)
+            void directSwitches.fetchForRows(volumes)
         },
         restoreFocus: () => {
             // ❗ Back to whatever held focus, ❌ not to this pane: ⌥F2 opens the OTHER pane's
@@ -247,6 +271,10 @@
         }
         if (item.value.startsWith(CONNECT_PREFIX)) {
             await connectDirectlyToRow(item.value.slice(CONNECT_PREFIX.length), volumes)
+            return
+        }
+        if (item.value.startsWith(DIRECT_SWITCH_PREFIX)) {
+            if (item.data) await directSwitches.pick(item.data, volumes)
             return
         }
         const volume = item.data

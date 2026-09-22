@@ -1312,6 +1312,10 @@
   "@fileExplorer.navigation.connectDirectly": {
     "sourceHash": "3fbb55a"
   },
+  "fileExplorer.navigation.useDirectConnection": "A Cmdr gyors, közvetlen kapcsolatának használata",
+  "@fileExplorer.navigation.useDirectConnection": {
+    "sourceHash": "2955143"
+  },
   "fileExplorer.navigation.connectingDirectly": "Közvetlen csatlakozás…",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

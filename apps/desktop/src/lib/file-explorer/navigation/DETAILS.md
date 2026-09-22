@@ -308,8 +308,15 @@ whole flow (stored credentials → saved-password probe → login form) and ever
 notice presses the same function. This component hands it the volume id and the share's name, read while the row is
 still listed: the name is what words the answer if the share goes away before the backend gets there. A credential
 question opens the one sign-in sheet, which the flow raises itself. The flow itself: `../network/DETAILS.md` § "Connect
-directly". In the switcher it's a one-row `MenuItem.submenu`, so the primitive carries the keyboard (ArrowRight opens,
+directly". In the switcher it's a `MenuItem.submenu` row, so the primitive carries the keyboard (ArrowRight opens,
 ArrowLeft / Escape closes, Enter activates) and the single-cursor rule.
+
+The same submenu carries the per-share "Use Cmdr's fast direct connection" checkbox row, on every SMB share row (direct
+ones too, so a direct share can go back to the macOS mount). `direct-connection-switch.svelte.ts` owns it: it asks
+Rust for each SMB share row's value when the switcher opens (`null` means no switch, so no row), and a pick flips it.
+Rust does what OFF means (a direct share goes back to the OS mount at once, and `volumes-changed` repaints the dot); ON
+only saves there, so a share still on the OS mount then runs `connectDirectlyToRow`. What the switch is and where it's
+enforced: `src-tauri/src/network/DETAILS.md` § "The per-share direct-connection switch".
 
 ### Eject button + row context menu
 

@@ -1937,6 +1937,10 @@
     "description": "Menu item (in the breadcrumb popup and the dropdown submenu) that upgrades an OS-mounted network share to a faster direct connection.",
     "screenshot": "pane-volume-chooser.png"
   },
+  "fileExplorer.navigation.useDirectConnection": "Use Cmdr''s fast direct connection",
+  "@fileExplorer.navigation.useDirectConnection": {
+    "description": "Checkbox menu item in the submenu of a network share's row in the volume switcher. Checked (the default), Cmdr opens its own faster connection to this one share. Unchecked, the share stays on the slower connection macOS made. Applies to this share only, not the whole server."
+  },
   "fileExplorer.navigation.connectingDirectly": "Connecting directly...",
   "@fileExplorer.navigation.connectingDirectly": {
     "description": "Persistent progress toast shown while upgrading a network share to a direct connection."

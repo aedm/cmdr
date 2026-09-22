@@ -1318,6 +1318,10 @@
   "@fileExplorer.navigation.connectDirectly": {
     "sourceHash": "3fbb55a"
   },
+  "fileExplorer.navigation.useDirectConnection": "Usar a conexão direta rápida do Cmdr",
+  "@fileExplorer.navigation.useDirectConnection": {
+    "sourceHash": "2955143"
+  },
   "fileExplorer.navigation.connectingDirectly": "Conectando diretamente...",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

@@ -1390,6 +1390,7 @@ export type MessageKey =
   | 'fileExplorer.navigation.spaceUnavailableText'
   | 'fileExplorer.navigation.usbSpeed'
   | 'fileExplorer.navigation.usbSpeedNegotiated'
+  | 'fileExplorer.navigation.useDirectConnection'
   | 'fileExplorer.navigation.useSavedPasswordCancel'
   | 'fileExplorer.navigation.useSavedPasswordConfirm'
   | 'fileExplorer.navigation.useSavedPasswordMessage'

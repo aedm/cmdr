@@ -1315,6 +1315,10 @@
   "@fileExplorer.navigation.connectDirectly": {
     "sourceHash": "3fbb55a"
   },
+  "fileExplorer.navigation.useDirectConnection": "Schnelle Direktverbindung von Cmdr verwenden",
+  "@fileExplorer.navigation.useDirectConnection": {
+    "sourceHash": "2955143"
+  },
   "fileExplorer.navigation.connectingDirectly": "Direkte Verbindung wird hergestellt …",
   "@fileExplorer.navigation.connectingDirectly": {
     "sourceHash": "2c431fc"

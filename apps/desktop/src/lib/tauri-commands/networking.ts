@@ -7,6 +7,7 @@ import { throwMountError } from '$lib/file-explorer/network/mount-error'
 import { throwShareListError } from '$lib/file-explorer/network/share-list-error'
 import { throwReconnectError } from '$lib/file-explorer/network/reconnect-error'
 import type {
+  DirectConnectionSwitch,
   MountResult,
   NetworkHostContextAction,
   SignInShape,
@@ -388,6 +389,26 @@ export async function systemHasSavedSmbPassword(volumeId: string): Promise<boole
  */
 export async function upgradeToSmbVolumeUsingSavedPassword(volumeId: string): Promise<UpgradeResult> {
   return commands.upgradeToSmbVolumeUsingSavedPassword(volumeId)
+}
+
+/** What switching a share's direct connection did. */
+export type { DirectConnectionSwitch }
+
+/**
+ * Whether the SMB share behind `volumeId` may use Cmdr's fast direct connection (the
+ * per-share switch), or `null` when there's no SMB share behind it to ask about.
+ */
+export async function getSmbDirectConnectionEnabled(volumeId: string): Promise<boolean | null> {
+  return commands.getSmbDirectConnectionEnabled(volumeId)
+}
+
+/**
+ * Switches the SMB share behind `volumeId` onto or off Cmdr's fast direct connection.
+ * Off on a direct share hands it back to the macOS mount right away
+ * (`returnedToOsMount`); on only saves, and the caller runs "Connect directly".
+ */
+export async function setSmbDirectConnectionEnabled(volumeId: string, enabled: boolean): Promise<DirectConnectionSwitch> {
+  return commands.setSmbDirectConnectionEnabled(volumeId, enabled)
 }
 
 /**
