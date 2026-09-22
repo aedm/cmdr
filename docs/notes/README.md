@@ -75,6 +75,15 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   20-second windows on the same idle process disagreed about which thread dominated. It also carries the two footprint
   blocks nothing has explained yet (643 MB `MALLOC_LARGE`, 947 MB Rust heap) and the proof the first of them is not
   SQLite page cache.
+- `thread-and-connection-inventory-2026-09-22.md` — a verdict per named worker thread (what spawns it, what retires it,
+  whether its count is per-volume) and the answer to "do we leak workers across unmount/remount". **We don't**: the
+  registry teardown already defends "two writer threads on one database" for a given `volume_id`. The duplication that
+  looks like a leak is **one SMB share reached at three addresses becoming three volumes**, proven concurrent in one
+  process from the log, costing +2 threads and +2 write connections per alias. It also **retires the "132 connections ×
+  16 MB page cache" line** the two notes above left open: page memory is one 63 MiB process-wide slab, verified
+  installed in prod, and the footprint is 696 MB against the 2.5 GB profiled in 2026-07-28. Read it before counting
+  threads in this app: `cmdr-sync-status` and the notify pairs are bounded by construction, and on macOS a notify pair
+  is NEVER an indexed volume.
 - `idle-malloc-large-clip-towers-2026-08-21.md` — the leading candidate for most of that 643 MB, measured: Core ML
   holding the two CLIP towers costs **307–412 MB of `MALLOC_LARGE` plus 120–176 MB of `MALLOC_SMALL`, from the first
   encode of a session until the process exits**, 80% of it the text tower that enrichment never calls, and all of it
