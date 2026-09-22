@@ -1,5 +1,5 @@
 /**
- * Tier 3 a11y tests for the network browsing surfaces: the host list, the share
+ * Tier 3 a11y tests for the network browsing surfaces: the host list, a row's menu, the share
  * list, and the OS-mount fallback toast.
  *
  * One file per component would cost about five times as much: `svelte-tests`
@@ -17,11 +17,14 @@
  * spreads the real module first.
  */
 
-import { describe, it, vi, beforeEach, afterEach } from 'vitest'
-import { mount, tick } from 'svelte'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { flushSync, mount, tick } from 'svelte'
 import ServersHub from './ServersHub.svelte'
+import ServersHubRowMenu from './ServersHubRowMenu.svelte'
 import PlacesBrowser from './PlacesBrowser.svelte'
 import SmbOsMountFallbackToastContent from './SmbOsMountFallbackToastContent.svelte'
+import type { HubActions, HubRowMenuAPI } from './servers-hub-actions'
+import type { HubRow } from './servers-hub-rows'
 import { expectNoA11yViolations } from '$lib/test-a11y'
 
 let mockHosts: Array<{
@@ -199,6 +202,53 @@ describe('PlacesBrowser a11y', () => {
     await new Promise((r) => setTimeout(r, 0))
     await tick()
     await expectNoA11yViolations(target)
+  })
+})
+
+/**
+ * Tier 3 a11y for `ServersHubRowMenu.svelte`, OPEN: a one-place row's right-click menu, with
+ * an action group, a greyed action, and a checkbox row below it. The menu portals out of its
+ * container, so the audit looks at the whole document.
+ */
+describe('ServersHubRowMenu a11y', () => {
+  const row: HubRow = {
+    id: 'sftp-nas-local-22-ada',
+    name: 'Naspolya',
+    protocol: 'sftp',
+    address: 'nas.local:22',
+    status: 'connected',
+    lastConnectedAt: null,
+    volumeId: 'sftp-nas-local-22-ada',
+    pinned: true,
+    saved: null,
+    host: null,
+  }
+
+  const actions: HubActions = {
+    forget: () => Promise.resolve(),
+    rowMenu: () => [
+      [
+        { type: 'action', action: 'open', label: 'Open', icon: 'arrow-right' },
+        { type: 'action', action: 'disconnect', label: 'Disconnect', icon: 'unplug', disabled: true },
+      ],
+      [{ type: 'toggle', toggle: 'direct-connection', label: 'Use direct connection', checked: true }],
+    ],
+    runRowEntry: () => Promise.resolve(),
+    openHostMenu: () => Promise.resolve(),
+    runHostAction: () => Promise.resolve(),
+  }
+
+  it('the open menu has no a11y violations', async () => {
+    const target = document.createElement('div')
+    document.body.appendChild(target)
+    const instance = mount(ServersHubRowMenu, { target, props: { actions } }) as unknown as HubRowMenuAPI
+    flushSync()
+    instance.openAt(row, new MouseEvent('contextmenu', { clientX: 10, clientY: 10 }))
+    // The surface portals itself into `document.body`, which lands a beat after the open.
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-menu]')).not.toBeNull()
+    })
+    await expectNoA11yViolations(document.body)
   })
 })
 
