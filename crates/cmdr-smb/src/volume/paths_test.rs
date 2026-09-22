@@ -202,3 +202,40 @@ fn a_share_root_anchor_never_matches_a_sibling_by_name_prefix() {
         "an unrelated share-relative path stays under the mount rather than being mis-stripped"
     );
 }
+
+// ── Names reach the wire as spelled ──────────────────────────────────────────
+//
+// An SMB name is opaque bytes, and the server matches it exactly: a directory
+// can hold its own name composed and its children's decomposed (ERR-VETBX). A
+// path that came out of a listing already carries those bytes, so translation
+// must not recompose any of it.
+
+/// `fotók` composed, holding `retusált.jpg` decomposed: one path, both forms.
+const MIXED_FORM: &str = "fot\u{f3}k/retusa\u{301}lt.jpg";
+
+#[test]
+fn a_mixed_form_path_reaches_the_wire_byte_for_byte() {
+    let vol = make_test_volume();
+    assert_eq!(vol.to_smb_path(Path::new(MIXED_FORM)).unwrap(), MIXED_FORM);
+    assert_eq!(
+        vol.to_smb_path(&Path::new("/Volumes/TestShare").join(MIXED_FORM))
+            .unwrap(),
+        MIXED_FORM
+    );
+}
+
+#[test]
+fn a_mixed_form_path_round_trips_through_display_unchanged() {
+    let vol = make_test_volume();
+    let display = vol.to_display_path(&vol.to_smb_path(Path::new(MIXED_FORM)).unwrap());
+    assert_eq!(display, format!("/Volumes/TestShare/{MIXED_FORM}"));
+}
+
+#[test]
+fn an_anchored_mount_keeps_the_bytes_below_its_anchor() {
+    let vol = make_test_volume_anchored("team", "/Volumes/team");
+    assert_eq!(
+        vol.to_smb_path(&Path::new("/Volumes/team").join(MIXED_FORM)).unwrap(),
+        format!("team/{MIXED_FORM}")
+    );
+}

@@ -330,9 +330,9 @@ Why this is the whole fix, cheaply:
   re-reads them; `volume_id` here is the parent DRIVE id, which is exactly what archive listings key on, so no rekeying.
   It's a no-op when the path isn't an archive or no inner listing is open, and the watcher already runs for the whole
   volume lifetime — so the only added cost is a re-parse when a `.zip` actually changes AND an inner pane is open.
-- **`entry_path` is already normalized.** It's the `to_nfd_display_path` result, so it went through the same
-  backslash→slash + NFC→NFD normalization every other cache-facing path in `crates/cmdr-smb/src/volume/watcher.rs` uses.
-  Passing the raw event filename would miss the cache.
+- **`entry_path` is already the cache-facing path.** It's the watcher's `to_display_path` result: the anchor stripped
+  and the mount root joined on, in the server's own bytes, like every other cache-facing path in
+  `crates/cmdr-smb/src/volume/watcher.rs`. Passing the raw share-relative event filename would miss the cache.
 - **Fires independent of the stat.** The refresh runs even when the pre-refresh `get_metadata` fails (a mid-write,
   truncated `.zip`): `refresh_archive_listings` keeps the previous inner listing on an unreadable parse rather than
   blanking the pane, and the next change event retries.
@@ -347,6 +347,34 @@ Tests, split along the seam: the ROUTING (which events reach `refresh_archive_li
 filesystem in it; what a refresh DOES to the cache is
 `listing/listing_host.rs::the_archive_refresh_re_reads_the_listings_under_its_path`.
 
+## SMB names are opaque bytes
+
+An SMB name is a byte string the server matches exactly: no Unicode folding, no case folding. One directory can hold its
+own name composed (NFC) and its children's composed or decomposed (NFD) in any mix, and case is significant too.
+Measured against David's QNAP (`naspi`) with the `smb2` CLI on 2026-09-22: in a Google Takeout album whose directory is
+NFC and whose `retusált -185.jpg` is NFD, only the `(NFC directory, NFD file)` spelling opened; the all-NFC, all-NFD,
+and `(NFD, NFC)` spellings answered `STATUS_OBJECT_NAME_NOT_FOUND` or `STATUS_OBJECT_PATH_NOT_FOUND`, and so did the
+right bytes in the wrong case. The fixture's Samba stores names as sent too (verified on the `smb-consumer-guest`
+container, `unicode_names_integration_test.rs`, 2026-09-23). So "SMB servers use form X" is false; the rule is "use the
+bytes the server gave you" (ERR-VETBX).
+
+- **Server-derived paths go out byte-for-byte.** `to_smb_path` never normalizes, and `list_directory_impl` builds each
+  entry's path from the listed directory's own path plus the entry's raw name, so every component of a path that came
+  out of a listing is already exact.
+- **The watcher keys on the same bytes.** Its event paths are the server's spelling, which is what a pane's path for the
+  same directory carries, and the listing cache compares the two byte-for-byte (`ListingPath`). A fold on either side
+  misses every directory not already in the folded form, so an outside change never reaches the open pane.
+- **The one fold on a path is the mount anchor** (`MountAnchor::new`), because it never came out of a listing; its doc
+  comment says why NFC.
+- **Share and server names are a different namespace** (TreeConnect), and `SmbConnectionParams::new` keeps folding them.
+- **A foreign path** (typed, restored, carried over from the macOS kernel mount, which decomposes every name on
+  `readdir`) is not the server's spelling and no single normalization spells a mixed-form path. It has to be resolved
+  against a real listing where a directory is opened; until that lands, such a path to an accented name is `NotFound`
+  (`docs/specs/smb-path-normalization.md`, M2).
+- **A name Cmdr creates goes out as given**, so a Cocoa-written local file (NFD) copied to a share lands NFD, and a
+  destination holding the other form of the same name is a second entry the byte-exact `get_metadata` probe can't see.
+  The folded destination guard is M4 of the same spec.
+
 ## A mount anchored inside the share
 
 A mount is not always the share ROOT. macOS follows a DFS referral by making a SECOND mount underneath the namespace
@@ -360,7 +388,8 @@ for the ordinary mount. The two travel as one value because a caller holding one
 them is what lets a mount be keyed as one place and addressed as another. Reported as ERR-48RZX: `SYSVOL/example.com`
 reached TreeConnect as a share name, the server answered `STATUS_BAD_NETWORK_NAME`, so the share stayed on the slow
 kernel mount, picked up a second volume ID, and warned the user about a share already connected directly one level up.
-`MountAnchor::new` NFC-folds the anchor in one place, for the reason `SmbConnectionParams::new` folds the share name.
+`MountAnchor::new` NFC-folds the anchor in one place, the one fold on a path in this crate (§ "SMB names are opaque
+bytes").
 
 **The anchor lives on the INSTANCE** (`SmbVolume::share_root`), not on the shared inner: it is a fact about one mount
 root, and one share can be mounted at roots that sit at different depths.
@@ -375,9 +404,9 @@ under the anchor is left alone, which is what an unanchored mount does with ever
 anchored mount therefore hears about the whole share: `watcher.rs` strips the anchor to get the mount-relative path the
 listing cache is keyed on, and skips an event that isn't under the anchor at all rather than joining it on. Joining it
 on names a path no pane has open, which leaves the listing that did change stale while invalidating one that doesn't
-exist. The strip happens BEFORE the NFC→NFD fold, because the anchor is stored NFC and that is the spelling the server
-sends. One implementation of the rule, `paths::below_share_root`, serves both this and `to_display_path`: two copies
-would drift, and the two directions disagreeing is exactly what patches a cache key nothing is watching.
+exist. Nothing else about the event path changes: it keeps the server's bytes. One implementation of the rule,
+`paths::below_share_root`, serves both this and `to_display_path`: two copies would drift, and the two directions
+disagreeing is exactly what patches a cache key nothing is watching.
 
 **An anchored mount is the SAME volume as its share.** The ID keys on `(server, port, share)` and leaves the anchor out,
 so the nested mount and the namespace root share one ID, one session, one index, and one set of saved paths, and a
@@ -784,10 +813,6 @@ that string is the technical-details text, not something the frontend reads a fi
 paths like `papers\new-file.txt`. The watcher normalizes these to `papers/new-file.txt` before extracting parent
 directories and constructing display paths.
 
-**Gotcha**: Watcher filenames are NFC (from server) but macOS mount paths are NFD **Why**: SMB servers return
-NFC-normalized filenames. macOS filesystem paths use NFD. The watcher NFD-normalizes filenames before constructing
-display paths used for cache lookups.
-
 **Gotcha**: a share name reaches the wire NFC, so `SmbConnectionParams` must be built with `new` **Why**: `new` runs the
 NFC normalization; a struct literal filled from a raw `statfs` mount name carries macOS's NFD spelling straight to the
 server, which answers `STATUS_BAD_NETWORK_NAME` for a share whose name has any composed character in it. The failure is
@@ -816,6 +841,11 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
 - `integration_test.rs` — what a share does with FILES against a real server: core CRUD, single-chunk streaming smoke,
   the copy and conflict scans, space info, and an anchored mount (`make_docker_volume_anchored`) listing, writing, and
   deleting inside its own directory rather than at the top of the share.
+- `unicode_names_integration_test.rs` — names in both Unicode forms, seeded through a raw smb2 session so they sit on
+  disk exactly as spelled: every operation on a listed NFD name inside an NFC directory (read, hinted read, scan, copy
+  off and within the share, rename, delete, open), and the watcher reporting an outside change under the pane's own
+  spelling of an accented directory. Two foreign-path cells are written but unregistered until the resolve lands (§ "SMB
+  names are opaque bytes").
 - `session_integration_test.rs` — what the SESSION does: the connection gate the fresh-listing oracle reads, the
   reconnect cycle, the refcounted scan pool, and what a supersede leaves alone.
 - `src/connection_integration_test.rs` — the three answers `try_open_share` hears from the `both` fixture: a guest

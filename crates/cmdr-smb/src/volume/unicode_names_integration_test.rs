@@ -306,22 +306,23 @@ async fn an_outside_change_in_an_accented_directory_names_the_path_the_pane_open
 
     // The watcher's session arms on its own schedule after connect, so an event
     // written before it's armed is never sent. Keep writing fresh files until one
-    // is heard, and identify ours by name: the watch covers the whole share,
-    // which other suites are busy on.
-    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    // is heard, and identify ours by this cell's unique name: the watch covers
+    // the whole share, which other suites (and other runs of this one) are busy on.
+    let ours = format!("outside-{top}-");
+    let deadline = std::time::Instant::now() + Duration::from_secs(6);
     let mut heard = None;
     let mut n = 0;
     while heard.is_none() && std::time::Instant::now() < deadline {
         n += 1;
-        let name = format!("outside-{n}.txt");
+        let name = format!("{ours}{n}.txt");
         seed_file_raw(&vol, &format!("{top}/{NFC_DIR}/{name}"), b"outside").await;
-        let until = std::time::Instant::now() + Duration::from_secs(2);
+        let until = std::time::Instant::now() + Duration::from_secs(1);
         while heard.is_none() && std::time::Instant::now() < until {
             heard = listings
                 .changes()
                 .into_iter()
                 .find_map(|(_, parent, change)| match change {
-                    DirectoryChange::Added(entry) if entry.name.starts_with("outside-") => Some(parent),
+                    DirectoryChange::Added(entry) if entry.name.starts_with(&ours) => Some(parent),
                     _ => None,
                 });
             tokio::time::sleep(Duration::from_millis(50)).await;
@@ -329,7 +330,7 @@ async fn an_outside_change_in_an_accented_directory_names_the_path_the_pane_open
     }
     remove_album(&vol, &top).await;
 
-    let heard = heard.expect("the watcher must report an outside file creation within 20 s");
+    let heard = heard.expect("the watcher must report an outside file creation within 6 s, inside nextest's 8 s cap");
     assert_eq!(
         heard.as_os_str().as_encoded_bytes(),
         pane_path.as_os_str().as_encoded_bytes(),

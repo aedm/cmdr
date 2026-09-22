@@ -41,8 +41,8 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
   on the instance's `share_root`; `to_display_path` strips it back off. ❌ Build a volume through `MountAnchor`, never a
   bare mount path: an anchored mount (DFS sub-mount, subdirectory mount) that loses its anchor addresses the top of the
   share instead (ERR-48RZX).
-- **Watcher filenames need NFC→NFD normalizing and ❌ nothing else**: smb2 already decodes separators, so a `\` in a
-  filename is part of its NAME; re-normalizing loses the entry.
+- **SMB names are opaque bytes** (NFC and NFD mix, ERR-VETBX): ❌ never normalize a share path, wire or watcher key. A
+  `\` in a watcher filename is part of its NAME.
 
 ## Crate must-knows
 
@@ -52,5 +52,5 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
 - ❌ Never gate behavior on `cfg(test)`; use `any(test, feature = "testing")`, or it flips silently when a consumer
   compiles this crate.
 
-Reconnect and scan-pool lifecycles, anchored mounts, `rerooted`, credits and copy concurrency, the `specta` pin, NFC
-share names, test placement, decisions, and suites: `DETAILS.md`. Read it first.
+Reconnect and scan-pool lifecycles, anchored mounts, `rerooted`, credits and copy concurrency, the `specta` pin, Unicode
+names, test placement, decisions, and suites: `DETAILS.md`. Read it first.

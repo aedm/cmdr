@@ -115,19 +115,20 @@ async fn an_added_archive_event_asks_for_nothing() {
     );
 }
 
-/// The path the seam gets is the NFD display path, matching every other
-/// cache-facing path the watcher builds. The server sends NFC; a listing cached
-/// under the macOS mount's NFD key would never be found under it.
+/// The path the seam gets carries the server's own bytes, in whichever Unicode
+/// form it sent them, because that's what the pane's path for the archive holds
+/// (it came out of a listing) and the cache compares the two byte-for-byte.
 #[tokio::test]
-async fn the_refreshed_path_is_normalized_the_way_the_cache_keys_are() {
-    // "café.zip" with a precomposed é (U+00E9), the way a server reports it.
-    let refreshes = archive_refreshes_for(FileNotifyAction::Modified, "caf\u{00e9}.zip").await;
-    assert_eq!(
-        refreshes,
-        // …and decomposed (e + U+0301) on the way to the cache.
-        vec![(VOLUME_ID.to_string(), PathBuf::from(MOUNT).join("cafe\u{0301}.zip"))],
-        "the refreshed path must carry the same NFD normalization the listing cache keys on"
-    );
+async fn the_refreshed_path_keeps_the_servers_own_bytes() {
+    // "café.zip" composed (U+00E9) and decomposed (e + U+0301): a server can
+    // store either, and each must reach the cache exactly as sent.
+    for name in ["caf\u{00e9}.zip", "cafe\u{0301}.zip"] {
+        assert_eq!(
+            archive_refreshes_for(FileNotifyAction::Modified, name).await,
+            vec![(VOLUME_ID.to_string(), PathBuf::from(MOUNT).join(name))],
+            "{name:?} must reach the listing cache byte-for-byte"
+        );
+    }
 }
 
 // ── Mounts anchored inside the share ──────────────────────────────────────────
@@ -172,8 +173,9 @@ async fn an_event_outside_the_anchor_is_ignored() {
     }
 }
 
-/// The anchor is stored NFC (the server's spelling) and stripped before the NFD
-/// fold, so an accented anchor still matches what the server sends.
+/// `MountAnchor::new` folds the anchor to NFC, the spelling the macOS kernel
+/// mount itself used to reach it, so a decomposed `statfs` anchor still strips
+/// off an event path the server sends composed.
 #[tokio::test]
 async fn an_accented_anchor_still_matches_what_the_server_sends() {
     let refreshes = refreshes_through(

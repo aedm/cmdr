@@ -286,8 +286,9 @@ fn settle_netfs_answer(
 /// **NFC first, for both halves.** macOS hands out decomposed (NFD) strings while
 /// SMB servers store and answer with composed (NFC) ones, so one visible name is
 /// two byte strings and two different escapes; the server only recognizes the NFC
-/// one. Same normalization `cmdr_smb::volume::paths` applies to every path it
-/// sends, applied here for the same reason.
+/// one. Same fold `SmbConnectionParams::new` applies to the share name it sends to
+/// TreeConnect. Paths INSIDE a share are the opposite: they go out byte-for-byte
+/// (`crates/cmdr-smb/DETAILS.md` § "SMB names are opaque bytes").
 ///
 /// An IPv6 literal is the one host that must not be escaped: it goes in brackets so
 /// its colons can't be read as the port separator. mDNS hands us one whenever a host

@@ -51,8 +51,10 @@ pub(super) struct DestNameIndex {
 /// The key two names share when a case- or normalization-insensitive backend
 /// would treat them as one.
 ///
-/// NFC to match what `SmbVolume::to_smb_path` already sends on the wire, then
-/// lowercase. The ASCII fast path is the same answer for ASCII input (NFC is
+/// NFC, then lowercase. It's a comparison key only: nothing folded here reaches a
+/// volume, because an SMB server matches a name's exact bytes and one directory
+/// can hold both forms (`crates/cmdr-smb/DETAILS.md` § "SMB names are opaque
+/// bytes"). The ASCII fast path is the same answer for ASCII input (NFC is
 /// identity there, and `char::to_lowercase` is ASCII lowercase) without
 /// allocating through the normalizer for the overwhelmingly common case.
 ///

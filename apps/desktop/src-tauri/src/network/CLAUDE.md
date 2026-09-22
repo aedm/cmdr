@@ -22,8 +22,8 @@ shared seams (`connect_wiring.rs`, `server_list_file.rs`, `saved_server_fields.r
   passwordless only.
 - **Compare servers by identity (`server_identity::same_server*`), ❌ never by string**, and ❌ never ship a server-keyed
   map over IPC: answer a lookup.
-- **NFC-fold every SMB name you send, key, or compare** (❌ never the password), or `TreeConnect` answers
-  `STATUS_BAD_NETWORK_NAME`.
+- **NFC-fold every SMB server and share name you send, key, or compare** (❌ never the password, ❌ never a path
+  inside the share, which goes out byte-for-byte), or `TreeConnect` answers `STATUS_BAD_NETWORK_NAME`.
 - **mDNS is gated**: startup fires only if `network.enabled && (firstTriggerDone || smb-e2e)`, so a fresh install holds
   the macOS "find devices" prompt until `ensure_network_discovery_started`.
 - **Every NetFS mount sets `UIOption = NoUI`**, or NetAuthAgent pops a dialog and blocks the mount.

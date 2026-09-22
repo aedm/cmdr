@@ -18,17 +18,21 @@ impl SmbVolume {
     /// anchored mount (a DFS sub-mount, a subdirectory mount) has the volume root
     /// a directory or more inside the share, so its
     /// [`share_root`](SmbVolume::share_root) is joined on here.
-    /// NFC-normalizes the result because macOS sends NFD (decomposed) paths
-    /// but SMB servers expect NFC (composed). Without this, paths with accented
-    /// characters (like "ä") fail with STATUS_OBJECT_PATH_NOT_FOUND.
+    ///
+    /// **Every name goes out byte-for-byte as given, never Unicode-normalized.** An
+    /// SMB name is opaque bytes the server matches exactly, and one directory can
+    /// hold its own name composed and its children's decomposed (ERR-VETBX): a path
+    /// that came out of a listing is already the server's spelling in every
+    /// component, and any fold here breaks the components it changes. ❌ Don't
+    /// fold a foreign (typed, restored, macOS-mount) path here to "fix" it: no
+    /// single form spells a mixed-form path, so the fix is a resolve against a real
+    /// listing. `DETAILS.md` § "SMB names are opaque bytes".
     ///
     /// An absolute path outside the mount root is `NotFound`, and the root is
     /// matched by whole COMPONENTS: every way of guessing an answer here put a
     /// real request at a real, wrong place. Both, and what each caller does with
     /// the error: `backends/DETAILS.md` § "Per-backend decisions".
     pub(super) fn to_smb_path(&self, path: &Path) -> Result<String, VolumeError> {
-        use unicode_normalization::UnicodeNormalization;
-
         let path_str = path.to_string_lossy();
 
         // Empty, `.`, and `/` all mean the volume root, which is where this mount
@@ -40,12 +44,12 @@ impl SmbVolume {
         // Relative paths are what the trait contract asks for, and they're relative
         // to the VOLUME root, so they get the anchor too.
         if !path.is_absolute() {
-            return Ok(self.under_share_root(&path_str.nfc().collect::<String>()));
+            return Ok(self.under_share_root(&path_str));
         }
 
         // Absolute (the frontend does send these): must be inside the mount.
         match path.strip_prefix(&self.mount_path) {
-            Ok(relative) => Ok(self.under_share_root(&relative.to_string_lossy().nfc().collect::<String>())),
+            Ok(relative) => Ok(self.under_share_root(&relative.to_string_lossy())),
             Err(_) => Err(VolumeError::NotFound(path_str.into_owned())),
         }
     }

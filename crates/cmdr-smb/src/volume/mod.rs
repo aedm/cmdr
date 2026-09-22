@@ -147,10 +147,14 @@ impl MountAnchor {
     /// A mount anchored `share_root` deep inside the share. Empty means the share
     /// root, so this covers both shapes.
     ///
-    /// **`share_root` is NFC-folded here**, for the reason
-    /// [`SmbConnectionParams::new`] folds the share name: macOS `statfs` hands out
-    /// decomposed names while SMB servers store and answer with composed ones, and
-    /// every wire use of the anchor reads it off this struct.
+    /// **`share_root` is NFC-folded here**, unlike every path below it. The anchor
+    /// never came out of a listing: it's read off the mount (`statfs`, which
+    /// spells names decomposed) or the URL it was mounted from, and the macOS
+    /// kernel composes names on lookup, so NFC is the spelling that reached this
+    /// directory when the kernel mounted it. Every wire use of the anchor reads it
+    /// off this struct, and the watcher strips it off the server's event paths.
+    /// An anchor the server stores in another form would need resolving against a
+    /// listing, like any foreign path: `DETAILS.md` § "SMB names are opaque bytes".
     pub fn new(mount_path: impl Into<PathBuf>, share_root: &str) -> Self {
         use unicode_normalization::UnicodeNormalization;
 
@@ -190,8 +194,8 @@ pub struct SmbVolume {
     /// `to_display_path` strips it back off. Per instance, because it belongs to
     /// the mount root rather than to the share.
     ///
-    /// NFC-normalized for the same reason `SmbConnectionParams::share_name` is:
-    /// it goes on the wire, and macOS hands out decomposed names.
+    /// NFC-folded by [`MountAnchor::new`], which says why it's the one fold on a
+    /// path in this share.
     share_root: String,
     /// Set once the registry has proven this instance's `mount_path` is gone and
     /// had no live sibling mount to move the ID to. The smb2 session is unaffected

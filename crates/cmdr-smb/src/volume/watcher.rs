@@ -27,7 +27,6 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use unicode_normalization::UnicodeNormalization;
 
 /// Maximum events for a single directory before emitting `FullRefresh`.
 const WATCHER_BATCH_THRESHOLD: usize = 50;
@@ -35,8 +34,14 @@ const WATCHER_BATCH_THRESHOLD: usize = 50;
 /// Debounce window: after receiving a batch of events, wait this long for more.
 const WATCHER_DEBOUNCE: Duration = Duration::from_millis(200);
 
-/// Converts a SHARE-relative watcher path (NFC from server) to the NFD display
-/// path under this mount that the listing cache is keyed on.
+/// Converts a SHARE-relative watcher path to the display path under this mount
+/// that the listing cache is keyed on.
+///
+/// The name stays in the server's own bytes, which is what a pane's path for the
+/// same directory carries (it came out of a listing), and the cache compares the
+/// two byte-for-byte. ❌ Don't Unicode-normalize it: any fold misses every
+/// directory whose name isn't already in that form, so an outside change never
+/// reaches the open pane.
 ///
 /// `None` when the path isn't under this mount's anchor. The watch covers the
 /// whole share (one recursive `CHANGE_NOTIFY` on the share root, shared by every
@@ -44,16 +49,11 @@ const WATCHER_DEBOUNCE: Duration = Duration::from_millis(200);
 /// rest of it too. Those belong to no listing under this mount, and joining them
 /// on anyway would invalidate a path that doesn't exist while leaving the one
 /// that changed stale.
-///
-/// The anchor is stripped BEFORE the NFD fold, because it's stored NFC (see
-/// `paths.rs`) and the server speaks NFC; only what's left becomes a macOS-shaped
-/// path.
-fn to_nfd_display_path(anchor: &MountAnchor, relative: &str) -> Option<PathBuf> {
+fn to_display_path(anchor: &MountAnchor, relative: &str) -> Option<PathBuf> {
     let below = super::paths::below_share_root(&anchor.share_root, relative)?;
-    let nfd: String = below.nfd().collect();
-    Some(match nfd.is_empty() {
+    Some(match below.is_empty() {
         true => anchor.mount_path.clone(),
-        false => anchor.mount_path.join(&nfd),
+        false => anchor.mount_path.join(below),
     })
 }
 
@@ -82,9 +82,9 @@ async fn stat_via_share(share: &SelfHandle<SmbVolumeInner>, path: &Path) -> Opti
 /// remote parent regardless, because the SMB watcher is lossy under load and the
 /// oracle must keep re-reading pre-flight scans honestly.
 ///
-/// `archive_path` must already be the normalized display path (backslash→slash,
-/// NFC→NFD) the cache lookups use — pass the `to_nfd_display_path` result, the
-/// same normalization every other cache-facing path in this file goes through.
+/// `archive_path` must already be the display path the cache lookups use — pass
+/// the `to_display_path` result, the same conversion every other cache-facing
+/// path in this file goes through.
 async fn maybe_refresh_archive_listings(host: &VolumeHost, volume_id: &str, archive_path: &Path) {
     let is_archive = archive_path
         .file_name()
@@ -127,7 +127,7 @@ async fn process_event_batch(
 
             match action {
                 FileNotifyAction::Added => {
-                    let Some(entry_path) = to_nfd_display_path(anchor, filename) else {
+                    let Some(entry_path) = to_display_path(anchor, filename) else {
                         continue;
                     };
                     match stat_via_share(share, &entry_path).await {
@@ -146,7 +146,7 @@ async fn process_event_batch(
                     listings.directory_changed(volume_id, parent_path, DirectoryChange::Removed(file_name_only));
                 }
                 FileNotifyAction::Modified => {
-                    let Some(entry_path) = to_nfd_display_path(anchor, filename) else {
+                    let Some(entry_path) = to_display_path(anchor, filename) else {
                         continue;
                     };
                     match stat_via_share(share, &entry_path).await {
@@ -170,7 +170,7 @@ async fn process_event_batch(
                     pending_old_name = Some(file_name_only);
                 }
                 FileNotifyAction::RenamedNewName => {
-                    let Some(entry_path) = to_nfd_display_path(anchor, filename) else {
+                    let Some(entry_path) = to_display_path(anchor, filename) else {
                         continue;
                     };
                     if let Some(old_name) = pending_old_name.take() {
@@ -354,7 +354,7 @@ pub(super) async fn run_smb_watcher(
                         .parent()
                         .map(|p| p.to_string_lossy().to_string())
                         .unwrap_or_default();
-                    let Some(parent_display) = to_nfd_display_path(&anchor, &parent) else {
+                    let Some(parent_display) = to_display_path(&anchor, &parent) else {
                         continue;
                     };
 
@@ -397,7 +397,7 @@ pub(super) async fn run_smb_watcher(
                                     .parent()
                                     .map(|p| p.to_string_lossy().to_string())
                                     .unwrap_or_default();
-                                let Some(parent_display) = to_nfd_display_path(&anchor, &parent) else {
+                                let Some(parent_display) = to_display_path(&anchor, &parent) else {
                                     continue;
                                 };
 

@@ -307,7 +307,8 @@ two data halves are escaped separately and the structure assembled around them.
   a truncated escape and the URL is rejected outright, and `#` or `?` would silently cut the name short.
 - **NFC first, both halves.** macOS hands out decomposed strings while SMB servers store and answer with composed
   ones, so one visible name is two byte strings and two different escapes, and the server only recognizes the NFC one.
-  Same normalization `cmdr_smb::volume::paths` applies to every path it sends. The fixture host's `smb.conf` spells
+  Share and server names only: paths INSIDE a share go out byte-for-byte (`crates/cmdr-smb/DETAILS.md` § "SMB names
+  are opaque bytes"). The fixture host's `smb.conf` spells
   `café` NFC, matching what a real Samba server stores.
 - **An IPv6 literal is the one host that isn't escaped**: it goes in brackets (`smb://[fe80::1]/public`, zone id as
   `%25` per RFC 6874) so its colons can't read as the port separator. mDNS hands us one whenever a host advertises no
@@ -333,7 +334,8 @@ Every one of these folds NFC, and a new use of a name has to join them:
 
 - **The wire.** `cmdr_smb::SmbConnectionParams::new` folds `server` and `share_name`, which is what both `connect_share`
   calls read (the session and the watcher's own session). ❌ Never build those params by struct literal from a raw
-  `statfs` name. Paths under the share are folded separately by `cmdr_smb::volume::paths`.
+  `statfs` name. Paths UNDER the share are the one thing never folded: `crates/cmdr-smb/DETAILS.md` § "SMB names are
+  opaque bytes".
 - **The mount anchor.** `cmdr_smb::volume::MountAnchor::new` folds where a mount sits inside its share, because that
   gets joined onto every path the mount sends (§ "A mount's identity comes off the mount, not the request").
 - **Identity.** `cmdr_fs::volume::ids::smb_volume_id` folds both halves before it case-folds, so a share gets one
