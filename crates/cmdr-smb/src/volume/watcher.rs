@@ -57,6 +57,16 @@ fn to_display_path(anchor: &MountAnchor, relative: &str) -> Option<PathBuf> {
     })
 }
 
+/// Drops the spelling corrections remembered in `parent` (share-relative, the
+/// event's own bytes): a change there may have removed the entry one names, or
+/// planted a look-alike beside it (`spelling.rs`). Before the anchor filter,
+/// because the corrections are the SHARE's, whichever mount root learned them.
+fn forget_spellings_in(share: &SelfHandle<SmbVolumeInner>, parent: &str) {
+    if let Some(inner) = share.live() {
+        inner.spellings.forget_dir(parent);
+    }
+}
+
 /// Stats a file over the share's MAIN session, deliberately not this watcher's
 /// dedicated one.
 ///
@@ -354,6 +364,7 @@ pub(super) async fn run_smb_watcher(
                         .parent()
                         .map(|p| p.to_string_lossy().to_string())
                         .unwrap_or_default();
+                    forget_spellings_in(&share, &parent);
                     let Some(parent_display) = to_display_path(&anchor, &parent) else {
                         continue;
                     };
@@ -397,6 +408,7 @@ pub(super) async fn run_smb_watcher(
                                     .parent()
                                     .map(|p| p.to_string_lossy().to_string())
                                     .unwrap_or_default();
+                                forget_spellings_in(&share, &parent);
                                 let Some(parent_display) = to_display_path(&anchor, &parent) else {
                                     continue;
                                 };
@@ -436,6 +448,11 @@ pub(super) async fn run_smb_watcher(
                     );
                     host.listings()
                         .directory_changed(&volume_id, &anchor.mount_path, DirectoryChange::FullRefresh);
+                    // Any directory may have changed unseen, so no remembered
+                    // spelling correction can be trusted to still name its entry.
+                    if let Some(inner) = share.live() {
+                        inner.spellings.forget_all();
+                    }
                     // Index freshness: overflow means the server dropped change
                     // records we can't recover, so the index may have drifted.
                     // Mark it Stale (the index's overflow policy; the watcher

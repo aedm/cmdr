@@ -289,6 +289,13 @@ pub enum ListingErrorReason {
         /// The path the failure was about.
         path: String,
     },
+    /// `VolumeError::AmbiguousName`: the path matches more than one stored name
+    /// once Unicode form and case are set aside, and none exactly, so nothing was
+    /// opened. No retry hint: the same path asks the same question.
+    AmbiguousName {
+        /// The path the failure was about.
+        path: String,
+    },
     /// An I/O failure the backend couldn't classify further.
     IoSerious {
         /// The path the failure was about.

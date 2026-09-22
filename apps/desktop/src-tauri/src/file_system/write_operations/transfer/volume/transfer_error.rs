@@ -355,6 +355,14 @@ pub(in crate::file_system::write_operations) fn map_volume_error(
         VolumeError::DeletePending(_) => WriteOperationError::DeletePending {
             path: context_path.to_string(),
         },
+        // Raised only by `Volume::find_stored_spelling`, which no transfer calls:
+        // every path a transfer holds is exact. Mapped defensively to what it
+        // means for the path AS GIVEN, which is not there, so the match stays
+        // exhaustive without inventing a write condition for a lookup refusal.
+        VolumeError::AmbiguousName(path) => match role {
+            PathRole::Source => WriteOperationError::SourceNotFound { path },
+            PathRole::Destination => WriteOperationError::DestinationNotFound { path },
+        },
         // Surfaced only when the transfer engine's one-shot retry on a stale
         // destination handle ALSO failed. The fault is the destination folder
         // (its handle couldn't be re-resolved), never the source, so attach the

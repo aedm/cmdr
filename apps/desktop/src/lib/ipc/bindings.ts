@@ -8873,6 +8873,16 @@ export type ListingErrorReason =
       // The path the failure was about.
       path: string
     }
+  /**
+   *  `VolumeError::AmbiguousName`: the path matches more than one stored name
+   *  once Unicode form and case are set aside, and none exactly, so nothing was
+   *  opened. No retry hint: the same path asks the same question.
+   */
+  | {
+      reason: 'ambiguousName'
+      // The path the failure was about.
+      path: string
+    }
   // An I/O failure the backend couldn't classify further.
   | {
       reason: 'ioSerious'
@@ -14783,6 +14793,17 @@ export type VolumeError =
    *  fails with this status in the meantime. SMB-only today.
    */
   | { type: 'deletePending'; data: string }
+  /**
+   *  A path from outside this volume's own listings matches more than one
+   *  stored entry once Unicode form and case are set aside, and none of them
+   *  exactly, so the backend refused to pick one. Carries the path as it was
+   *  given.
+   *
+   *  Raised only by [`Volume::find_stored_spelling`](super::Volume::find_stored_spelling).
+   *  ❌ Never resolve it by choosing a candidate: on a delete or an overwrite the
+   *  wrong twin is someone's file. SMB-only today (ERR-VETBX).
+   */
+  | { type: 'ambiguousName'; data: string }
   /**
    *  The destination folder's cached handle was stale and the backend rejected
    *  a write into it (MTP: the device re-keyed its object handles since the

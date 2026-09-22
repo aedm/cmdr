@@ -84,6 +84,18 @@ impl Volume for SmbVolume {
         Box::pin(async move { self.list_directory_for_scan_impl(path).await })
     }
 
+    /// Walks a foreign path down against real listings, component by component
+    /// (`spelling.rs`). The one place this backend folds a name, and only to
+    /// FIND the server's bytes: every other method here sends exactly the bytes
+    /// it's handed.
+    fn find_stored_spelling<'a>(
+        &'a self,
+        path: &'a Path,
+        cancel: Option<&'a tokio_util::sync::CancellationToken>,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<PathBuf>, VolumeError>> + Send + 'a>> {
+        Box::pin(self.find_stored_spelling_impl(path, cancel))
+    }
+
     fn begin_scan_session<'a>(&'a self) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>> {
         Box::pin(async move {
             // Refcounted: concurrent background users (an index rescan overlapping a

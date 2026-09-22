@@ -113,6 +113,7 @@ export type ListingErrorReason =
   | { reason: 'notSupported' }
   | { reason: 'deletePending'; path: string }
   | { reason: 'invalidName'; path: string }
+  | { reason: 'ambiguousName'; path: string }
   | { reason: 'ioSerious'; path: string; osMessage: string }
   | { reason: 'isADirectory'; path: string }
   // ── archive (browsing a `.zip` that can't be read) ──

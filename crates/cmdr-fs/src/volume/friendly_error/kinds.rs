@@ -226,6 +226,22 @@ pub(super) fn delete_pending(path_display: &str, raw_detail: String) -> ListingE
     }
 }
 
+/// A foreign path matched two or more stored names under Unicode-form and case
+/// folding, none of them exactly, and the backend refused to guess. Opening the
+/// right one from its parent's listing is the fix, so no retry hint.
+pub(super) fn ambiguous_name(path_display: &str, raw_detail: String) -> ListingError {
+    ListingError {
+        category: ErrorCategory::NeedsAction,
+        reason: ListingErrorReason::AmbiguousName {
+            path: path_display.to_string(),
+        },
+        provider: None,
+        action_kind: None,
+        retry_hint: false,
+        raw_detail,
+    }
+}
+
 pub(super) fn io_serious(path_display: &str, message: &str, raw_detail: String) -> ListingError {
     ListingError {
         category: ErrorCategory::Serious,

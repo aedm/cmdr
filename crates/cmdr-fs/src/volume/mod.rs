@@ -271,6 +271,39 @@ pub trait Volume: Send + Sync {
         usize::MAX
     }
 
+    /// The spelling this volume stores for `path`, when `path` names something
+    /// under a spelling it doesn't store.
+    ///
+    /// For a path that came from somewhere other than this volume's own listings:
+    /// typed, restored, a favorite, or carried over from another view of the same
+    /// storage (the macOS kernel mount decomposes every name). A backend whose
+    /// lookups match names byte-for-byte (SMB) misses such a path even though the
+    /// thing it names is there.
+    ///
+    /// `Ok(Some(p))`: `p` is where `path` is, spelled the way this volume stores
+    /// it, matched against real listings. `Ok(None)`: no other spelling was found,
+    /// so the caller's own answer for `path` stands. `Err(AmbiguousName)`: more
+    /// than one stored entry matches and none exactly, and this refuses rather than
+    /// guess.
+    ///
+    /// ❗ **Only where a foreign path ENTERS**, ❌ never inside an operation's own
+    /// calls. A resolve can't tell "another spelling of this file" from "a
+    /// different file sharing its folded name, the named one having vanished",
+    /// so every `Volume` call keeps meaning the exact path it's given, and a
+    /// delete or overwrite never lands on a twin. Directory opens use it
+    /// (`file_system::listing::foreign_path`).
+    ///
+    /// Default: `Ok(None)`, for a backend with one spelling per entry, or whose
+    /// own lookups already fold.
+    fn find_stored_spelling<'a>(
+        &'a self,
+        path: &'a Path,
+        cancel: Option<&'a CancellationToken>,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<PathBuf>, VolumeError>> + Send + 'a>> {
+        let _ = (path, cancel);
+        Box::pin(async { Ok(None) })
+    }
+
     /// How a background index walk treats `dir`, a directory it met in a listing,
     /// with `is_symlink` set when the entry is a link to one.
     ///

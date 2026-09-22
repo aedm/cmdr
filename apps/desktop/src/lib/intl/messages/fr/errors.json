@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "Plusieurs éléments correspondent à ce nom",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "`{path}` correspond à plusieurs éléments sur le serveur. Leurs noms se ressemblent à l'identique, mais le serveur les stocke écrits différemment (une lettre accentuée peut être stockée de deux façons, et certains serveurs distinguent majuscules et minuscules) : Cmdr n'en a donc choisi aucun à votre place.",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "Voici ce que vous pouvez essayer :\n- Ouvrez le dossier parent et choisissez l'élément voulu dans la liste\n- Pour éviter cela à l'avenir, renommez l'un des deux afin que les noms se distinguent clairement",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "Lecture du dossier impossible",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "Ce fichier est en train de disparaître, et quelque chose le maintient encore ouvert. Patientez un instant et réessayez.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "Plusieurs éléments du serveur correspondent à « {path} », Cmdr n'en a donc choisi aucun. Choisissez-le plutôt depuis son dossier.",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "Cmdr a perdu la trace du dossier de destination sur l'appareil. Ouvrez-le à nouveau, puis réessayez.",
   "@errors.volume.staleDestinationHandle": {

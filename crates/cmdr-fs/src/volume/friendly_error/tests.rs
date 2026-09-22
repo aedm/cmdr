@@ -288,6 +288,14 @@ fn volume_error_variants_map_correctly() {
             |r| matches!(r, ListingErrorReason::InvalidName { .. }),
         ),
         (
+            // Two stored names match and none exactly, so the backend refused to
+            // pick: retrying asks the same question. NeedsAction, no retry hint.
+            VolumeError::AmbiguousName("x".into()),
+            ErrorCategory::NeedsAction,
+            false,
+            |r| matches!(r, ListingErrorReason::AmbiguousName { .. }),
+        ),
+        (
             VolumeError::IoError {
                 message: "x".into(),
                 raw_os_error: None,
@@ -352,6 +360,12 @@ fn typed_variants_populate_path_param() {
     match listing_error_from_volume_error(&VolumeError::InvalidName("x".into()), path).reason {
         ListingErrorReason::InvalidName { path } => assert_eq!(path, want),
         other => panic!("InvalidName should carry a path, got {other:?}"),
+    }
+    // The message names the path whose spelling matched twice, so the user knows
+    // which folder holds the look-alike names.
+    match listing_error_from_volume_error(&VolumeError::AmbiguousName("x".into()), path).reason {
+        ListingErrorReason::AmbiguousName { path } => assert_eq!(path, want),
+        other => panic!("AmbiguousName should carry a path, got {other:?}"),
     }
 }
 

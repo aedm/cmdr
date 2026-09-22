@@ -32,6 +32,7 @@ mod reconnect;
 mod scan;
 mod scan_pool;
 mod session;
+mod spelling;
 mod state;
 mod streams;
 mod volume_impl;
@@ -305,6 +306,10 @@ struct SmbVolumeInner {
     /// lives behind an async mutex; `clone_session` refreshes it on the way
     /// through, which is every read and write this backend sends.
     credit_copy_capacity: AtomicUsize,
+    /// Foreign spellings this share has already resolved to the server's own
+    /// bytes, keyed by directory. Per share because the names are; forgotten per
+    /// directory as the watcher reports changes there. See `spelling.rs`.
+    spellings: spelling::SpellingCache,
     /// The connection the current `client` owns, readable without the client
     /// mutex, so the transfer watchdog can ask whether the server is still talking
     /// (`Volume::connection_liveness`) and how many bytes it has sent. Swapped in
@@ -370,6 +375,7 @@ impl SmbVolume {
                 scan_pool: tokio::sync::RwLock::new(None),
                 scan_session_refs: AtomicUsize::new(0),
                 credit_copy_capacity: AtomicUsize::new(0),
+                spellings: spelling::SpellingCache::default(),
                 live_connection,
                 active_mount_path: Arc::new(StdRwLock::new(mount_path)),
                 host,

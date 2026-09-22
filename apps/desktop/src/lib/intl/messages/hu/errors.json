@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "Több elem is illik erre a névre",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "A `{path}` útvonalra több elem is illik a szerveren. A nevük ugyanúgy néz ki, de a szerver eltérő írásmóddal tárolja őket (egy ékezetes betű kétféleképpen is tárolható, és néhány szerver megkülönbözteti a kis- és nagybetűket), ezért a Cmdr nem választott helyetted.",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "Ezeket próbálhatod:\n- Nyisd meg a szülőmappát, és válaszd ki a listából azt az elemet, amelyiket szeretnéd\n- Hogy legközelebb ne forduljon elő, nevezd át az egyiket, hogy a két név egyértelműen különbözzön",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "Nem sikerült beolvasni ezt a mappát",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "A fájl törlése folyamatban van, de valami még nyitva tartja. Próbáld újra egy pillanat múlva.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "Több elem is illik a(z) „{path}” útvonalra a szerveren, ezért a Cmdr nem választott. Válaszd ki inkább a mappájából.",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "A Cmdr már nem találja a célmappát az eszközön. Nyisd meg még egyszer, majd próbáld újra.",
   "@errors.volume.staleDestinationHandle": {

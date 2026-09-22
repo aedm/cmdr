@@ -340,57 +340,225 @@ async fn an_outside_change_in_an_accented_directory_names_the_path_the_pane_open
     );
 }
 
-// ── Paths from anywhere else: pending the resolve ─────────────────────────────
+// ── Paths from anywhere else resolve against a listing ───────────────────────
 //
 // A path that didn't come from a listing (typed, restored, carried over from the
-// macOS mount, which spells everything NFD) is not the server's spelling and has
-// to be resolved against a real listing before it's used. Both cells below
-// assert that it is. They're not registered as tests yet: the resolve that makes
-// them pass is `docs/specs/smb-path-normalization.md` milestone 2, and this
-// crate's Docker lane runs every ignored cell, so a registered red cell would
-// hold the lane red until then. M2 adds `#[tokio::test]` and the Docker
-// `#[ignore]` to both, and removes the `expect`.
+// macOS mount, which spells everything NFD) is not the server's spelling. Every
+// `Volume` call means the exact bytes it's handed, so such a path misses, and
+// `find_stored_spelling` is where it becomes the server's spelling: component by
+// component, against real listings, refusing when two entries fit.
+
+/// `kép.jpg`, composed: a photo whose name the server stores NFC.
+const NFC_FILE: &str = "k\u{e9}p.jpg";
+/// `élő.jpg`, composed, and its decomposed look-alike twin. Two accents, so a
+/// third spelling (one composed, one not) exists that is neither twin.
+const TWIN_NFC: &str = "\u{e9}l\u{151}.jpg";
+const TWIN_NFD: &str = "e\u{301}lo\u{30b}.jpg";
+const TWIN_MIXED: &str = "e\u{301}l\u{151}.jpg";
+
+/// `path` in the form the macOS kernel mount hands out: every name decomposed.
+fn decomposed(path: &str) -> PathBuf {
+    use unicode_normalization::UnicodeNormalization;
+    PathBuf::from(path.nfd().collect::<String>())
+}
+
+/// The spelling `vol` finds for `foreign`, which must differ from what was given.
+async fn stored_spelling(vol: &SmbVolume, foreign: &Path) -> Result<PathBuf, VolumeError> {
+    let stored = vol.find_stored_spelling(foreign, None).await?;
+    Ok(stored.unwrap_or_else(|| panic!("{} must resolve to another spelling", foreign.display())))
+}
+
+/// Asserts a path is exactly `want`'s bytes, with a message that shows both.
+fn assert_same_bytes(got: &Path, want: &str) {
+    assert_eq!(
+        got.as_os_str().as_encoded_bytes(),
+        want.as_bytes(),
+        "resolved to {got:?}, want {want:?}"
+    );
+}
 
 /// A foreign all-NFD path to a directory and file the server stores NFC: the
 /// case the old blanket NFC fold existed for, which must keep working.
-#[expect(
-    dead_code,
-    reason = "registered as a Docker cell by the foreign-path resolve (spec milestone 2)"
-)]
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn a_foreign_decomposed_path_reaches_a_composed_file() {
-    use unicode_normalization::UnicodeNormalization;
-
     let vol = make_docker_volume().await;
     let top = test_dir_name();
     ensure_clean(&vol, &top).await;
     vol.create_directory(Path::new(&top)).await.unwrap();
-    let nfc_file = "k\u{e9}p.jpg";
     seed_dir_raw(&vol, &format!("{top}/{NFC_DIR}")).await;
-    seed_file_raw(&vol, &format!("{top}/{NFC_DIR}/{nfc_file}"), PAYLOAD).await;
+    seed_file_raw(&vol, &format!("{top}/{NFC_DIR}/{NFC_FILE}"), PAYLOAD).await;
 
-    let foreign: String = share_path(&format!("{top}/{NFC_DIR}/{nfc_file}")).nfd().collect();
-    let read = read_all(&vol, Path::new(&foreign)).await;
+    let exact = share_path(&format!("{top}/{NFC_DIR}/{NFC_FILE}"));
+    let stored = stored_spelling(&vol, &decomposed(&exact)).await;
+    let read = match &stored {
+        Ok(path) => read_all(&vol, path).await,
+        Err(e) => Err(e.clone()),
+    };
     remove_album(&vol, &top).await;
 
-    assert_eq!(read.expect("a foreign NFD path must resolve to the NFC file"), PAYLOAD);
+    assert_same_bytes(
+        &stored.expect("a foreign NFD path must resolve to the NFC file"),
+        &exact,
+    );
+    assert_eq!(read.expect("the resolved path must read"), PAYLOAD);
 }
 
 /// A foreign all-NFD path to ERR-VETBX's shape, an NFC directory holding an NFD
 /// file: no single normalization of the whole path spells it, so only a
 /// per-component resolve reaches it.
-#[expect(
-    dead_code,
-    reason = "registered as a Docker cell by the foreign-path resolve (spec milestone 2)"
-)]
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn a_foreign_decomposed_path_reaches_a_mixed_form_file() {
-    use unicode_normalization::UnicodeNormalization;
-
     let vol = make_docker_volume().await;
     let (top, _) = seed_album(&vol).await;
 
-    let foreign: String = share_path(&format!("{top}/{NFC_DIR}/{NFD_FILE}")).nfd().collect();
-    let read = read_all(&vol, Path::new(&foreign)).await;
+    let exact = share_path(&format!("{top}/{NFC_DIR}/{NFD_FILE}"));
+    let stored = stored_spelling(&vol, &decomposed(&exact)).await;
+    let read = match &stored {
+        Ok(path) => read_all(&vol, path).await,
+        Err(e) => Err(e.clone()),
+    };
     remove_album(&vol, &top).await;
 
-    assert_eq!(read.expect("a foreign NFD path must resolve per component"), PAYLOAD);
+    assert_same_bytes(&stored.expect("a foreign NFD path must resolve per component"), &exact);
+    assert_eq!(read.expect("the resolved path must read"), PAYLOAD);
+}
+
+/// A path in another case AND another form: a Mac user types `FOTÓK` and the
+/// kernel mount decomposes it. David's QNAP matches case exactly; the fixture's
+/// Samba folds case itself (`case sensitive = auto`, so a case-only difference
+/// opens as given), but it doesn't fold Unicode form, so the decomposed half
+/// makes this miss and only a fold of BOTH case and form finds `fotók`.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn a_foreign_path_in_another_case_reaches_its_directory() {
+    let vol = make_docker_volume().await;
+    let (top, album) = seed_album(&vol).await;
+
+    let shouted = share_path(&format!("{top}/FOTO\u{301}K"));
+    let stored = stored_spelling(&vol, Path::new(&shouted)).await;
+    let listing = match &stored {
+        Ok(path) => vol.list_directory_impl(path).await,
+        Err(e) => Err(e.clone()),
+    };
+    remove_album(&vol, &top).await;
+
+    assert_same_bytes(
+        &stored.expect("a differently cased path must resolve"),
+        &album.to_string_lossy(),
+    );
+    let mut names: Vec<String> = listing
+        .expect("the resolved directory must list")
+        .into_iter()
+        .map(|e| e.name)
+        .collect();
+    names.sort();
+    assert_eq!(names, vec![NFD_FILE.to_string(), NFD_SUBDIR.to_string()]);
+}
+
+/// Two entries that differ only in Unicode form: a path matching both under
+/// folding and neither exactly is refused, because on a delete or an overwrite
+/// the wrong twin is data loss. A path that IS one of them exactly names that one.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn look_alike_twins_refuse_a_path_that_matches_neither_exactly() {
+    let vol = make_docker_volume().await;
+    let (top, album) = seed_album(&vol).await;
+    seed_file_raw(&vol, &format!("{top}/{NFC_DIR}/{TWIN_NFC}"), b"composed twin").await;
+    seed_file_raw(&vol, &format!("{top}/{NFC_DIR}/{TWIN_NFD}"), b"decomposed twin").await;
+
+    // One accent composed, one not: folds onto both, is neither.
+    let neither = vol.find_stored_spelling(&album.join(TWIN_MIXED), None).await;
+    // The kernel mount's spelling of the directory, with the NFD twin's own bytes
+    // as the leaf: the directory needs resolving, the leaf is exact.
+    let exact_twin = share_path(&format!("{top}/{NFC_DIR}/{TWIN_NFD}"));
+    let one = vol
+        .find_stored_spelling(&decomposed(&album.to_string_lossy()).join(TWIN_NFD), None)
+        .await;
+    remove_album(&vol, &top).await;
+
+    match neither {
+        Err(VolumeError::AmbiguousName(_)) => {}
+        other => panic!("a path matching two twins must be refused, got {other:?}"),
+    }
+    let one = one
+        .expect("a path naming one twin exactly must resolve")
+        .expect("its directory needed resolving");
+    assert_same_bytes(&one, &exact_twin);
+}
+
+/// A pane that sat in an accented directory while the share was still on the
+/// kernel mount carries that directory in the kernel's spelling (NFD) into the
+/// direct connection. It must open, and what it lists must carry the server's
+/// bytes, so the next click inside it is exact.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn a_pane_path_carried_over_from_the_kernel_mount_opens() {
+    let vol = make_docker_volume().await;
+    let (top, album) = seed_album(&vol).await;
+
+    let carried = decomposed(&album.to_string_lossy());
+    let as_given = vol.list_directory_impl(&carried).await;
+    let stored = stored_spelling(&vol, &carried).await;
+    let listed = match &stored {
+        Ok(path) => vol.list_directory_impl(path).await,
+        Err(e) => Err(e.clone()),
+    };
+    let file = listed
+        .as_ref()
+        .ok()
+        .and_then(|entries| entries.iter().find(|e| e.name == NFD_FILE).cloned());
+    let read = match &file {
+        Some(entry) => read_all(&vol, Path::new(&entry.path)).await,
+        None => Err(VolumeError::NotFound(NFD_FILE.to_string())),
+    };
+    remove_album(&vol, &top).await;
+
+    assert!(
+        matches!(as_given, Err(VolumeError::NotFound(_))),
+        "the kernel's spelling is not the server's, so as given it must miss: {as_given:?}"
+    );
+    assert_same_bytes(
+        &stored.expect("the carried path must resolve"),
+        &album.to_string_lossy(),
+    );
+    assert_eq!(
+        read.expect("a file listed from the resolved directory must read"),
+        PAYLOAD
+    );
+}
+
+/// A remembered correction is only a guess: when it no longer opens, it is
+/// dropped and the real listing answers, and what's remembered afterwards is
+/// the right spelling.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn a_stale_remembered_spelling_heals() {
+    let vol = make_docker_volume().await;
+    let (top, album) = seed_album(&vol).await;
+    let parent = format!("{top}/{NFC_DIR}");
+    // The composed spelling of the decomposed photo: what a typed name looks like.
+    let foreign_leaf: String = {
+        use unicode_normalization::UnicodeNormalization;
+        NFD_FILE.nfc().collect()
+    };
+
+    // What a correction learned before the file was renamed would look like.
+    vol.inner.spellings.remember(&parent, &foreign_leaf, "gone.jpg");
+    let stored = vol.find_stored_spelling(&album.join(&foreign_leaf), None).await;
+    let remembered = vol.inner.spellings.get(&parent, &foreign_leaf);
+    // And the healed correction serves the next ask.
+    let again = vol.find_stored_spelling(&album.join(&foreign_leaf), None).await;
+    remove_album(&vol, &top).await;
+
+    let exact = share_path(&format!("{parent}/{NFD_FILE}"));
+    assert_same_bytes(
+        &stored
+            .expect("a stale guess must fall back to the listing")
+            .expect("must resolve"),
+        &exact,
+    );
+    assert_eq!(remembered.as_deref(), Some(NFD_FILE), "the stale guess is replaced");
+    assert_same_bytes(&again.expect("asks again").expect("resolves again"), &exact);
 }

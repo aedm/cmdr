@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "Có nhiều mục khớp với tên này",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "`{path}` khớp với nhiều mục trên máy chủ. Tên của chúng trông giống hệt nhau, nhưng máy chủ lưu chúng với cách viết khác nhau (một chữ cái có dấu có thể được lưu theo hai cách, và một số máy chủ phân biệt chữ hoa với chữ thường), nên Cmdr không tự chọn mục nào cho bạn.",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "Đây là những cách để thử:\n- Mở thư mục cha và chọn mục bạn muốn trong danh sách\n- Để tránh chuyện này lần sau, hãy đổi tên một trong hai mục để hai tên khác nhau rõ ràng",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "Không đọc được thư mục này",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "Tệp đó sắp bị gỡ bỏ, và có thứ gì đó vẫn đang mở nó. Hãy thử lại sau giây lát.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "Có nhiều mục trên máy chủ khớp với \"{path}\", nên Cmdr không chọn mục nào. Hãy chọn nó từ thư mục chứa nó.",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "Cmdr đã mất dấu thư mục đích trên thiết bị. Hãy mở lại thư mục đó, rồi thử lại.",
   "@errors.volume.staleDestinationHandle": {

@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "Meer dan één item past bij deze naam",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "`{path}` past bij meer dan één item op de server. De namen zien er hetzelfde uit, maar de server slaat ze verschillend gespeld op (een letter met accent kan op twee manieren worden opgeslagen, en sommige servers maken onderscheid tussen hoofdletters en kleine letters), dus Cmdr heeft er niet zelf een gekozen.",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "Dit kun je proberen:\n- Open de bovenliggende map en kies het item dat je wilt uit de lijst\n- Om dit de volgende keer te voorkomen, geef je een van de twee een andere naam, zodat ze duidelijk verschillen",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "Kon deze map niet lezen",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "Dat bestand is op weg naar buiten, en iets houdt het nog open. Probeer het zo meteen opnieuw.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "Meer dan één item op de server past bij \"{path}\", dus Cmdr heeft er geen gekozen. Kies het in plaats daarvan vanuit de map.",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "Cmdr is de doelmap op het apparaat kwijtgeraakt. Open hem opnieuw en probeer het dan nog eens.",
   "@errors.volume.staleDestinationHandle": {

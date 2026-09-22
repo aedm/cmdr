@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "Mehr als ein Element passt zu diesem Namen",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "`{path}` passt zu mehr als einem Element auf dem Server. Die Namen sehen gleich aus, aber der Server speichert sie unterschiedlich geschrieben (ein Buchstabe mit Akzent lässt sich auf zwei Arten speichern, und manche Server unterscheiden Groß- und Kleinschreibung), deshalb hat Cmdr keines für dich ausgewählt.",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "Das kannst du versuchen:\n- Öffne den übergeordneten Ordner und wähle das gewünschte Element aus der Liste\n- Damit das nicht wieder passiert, benenne eines der beiden um, sodass sich die Namen klar unterscheiden",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "Dieser Ordner ließ sich nicht lesen",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "Die Datei ist auf dem Weg hinaus, und etwas hält sie noch geöffnet. Versuche es gleich noch einmal.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "Mehr als ein Element auf dem Server passt zu \"{path}\", deshalb hat Cmdr keines ausgewählt. Wähle es stattdessen in seinem Ordner aus.",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "Cmdr hat den Zielordner auf dem Gerät aus den Augen verloren. Öffne ihn noch einmal und versuche es dann erneut.",
   "@errors.volume.staleDestinationHandle": {

@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "Más de un elemento coincide con este nombre",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "`{path}` coincide con más de un elemento del servidor. Sus nombres se ven iguales, pero el servidor los guarda escritos de forma distinta (una letra con tilde se puede guardar de dos maneras, y algunos servidores distinguen mayúsculas y minúsculas), así que Cmdr no eligió ninguno por ti.",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "Esto es lo que puedes probar:\n- Abre la carpeta superior y elige el elemento que quieres de la lista\n- Para evitarlo la próxima vez, cambia el nombre de uno de ellos para que los dos se distingan claramente",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "No se pudo leer esta carpeta",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "Ese archivo está de salida y algo lo sigue teniendo abierto. Vuelve a intentarlo en un momento.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "Más de un elemento del servidor coincide con \"{path}\", así que Cmdr no eligió ninguno. Elígelo desde su carpeta.",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "Cmdr perdió la pista de la carpeta de destino en el dispositivo. Ábrela de nuevo y vuelve a intentarlo.",
   "@errors.volume.staleDestinationHandle": {

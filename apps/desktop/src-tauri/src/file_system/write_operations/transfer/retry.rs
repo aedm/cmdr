@@ -104,6 +104,7 @@ pub(super) fn is_retryable(err: &VolumeError) -> bool {
         | VolumeError::IsADirectory(_)
         | VolumeError::InvalidName(_) // the destination can't hold this name; a rename is the only fix
         | VolumeError::DeletePending(_)
+        | VolumeError::AmbiguousName(_) // two stored names fit; asking again asks the same question
         | VolumeError::IoError { raw_os_error: None, .. }
         | VolumeError::NeedsPassword { .. }
         | VolumeError::FriendlyGit(_) => false,

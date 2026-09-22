@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "Mer än ett objekt matchar det här namnet",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "`{path}` matchar mer än ett objekt på servern. Namnen ser likadana ut, men servern lagrar dem olika stavade (en bokstav med accent kan lagras på två sätt, och vissa servrar skiljer på stora och små bokstäver), så Cmdr valde inte något åt dig.",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "Så här kan du prova:\n- Öppna mappen ovanför och välj det objekt du vill ha i listan\n- För att undvika det här nästa gång, byt namn på ett av dem så att namnen tydligt skiljer sig åt",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "Det gick inte att läsa den här mappen",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "Filen är på väg bort och något håller den fortfarande öppen. Försök igen om en stund.",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "Mer än ett objekt på servern matchar \"{path}\", så Cmdr valde inget. Välj det från dess mapp i stället.",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "Cmdr tappade koll på målmappen på enheten. Öppna den igen och försök på nytt.",
   "@errors.volume.staleDestinationHandle": {

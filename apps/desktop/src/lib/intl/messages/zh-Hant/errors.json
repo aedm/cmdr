@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "有不只一個項目符合這個名稱",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "`{path}` 符合伺服器上的不只一個項目。它們的名稱看起來一樣，但伺服器儲存的寫法不同（帶重音的字母可以用兩種方式儲存，有些伺服器還會區分大小寫），所以 Cmdr 沒有替你挑選其中一個。",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "可以這樣試試：\n- 打開上一層資料夾，從清單裡選出你想要的那一項\n- 為了下次不再遇到，把其中一個改名，讓兩個名稱明顯不同",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "無法讀取這個資料夾",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "那個檔案正在離場，還有東西開著它。等一下再試一次。",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "伺服器上有不只一個項目符合「{path}」，所以 Cmdr 沒有替你選。請到它所在的資料夾裡選擇。",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "Cmdr 跟丟了裝置上的目標資料夾。請再進去一次，然後重試。",
   "@errors.volume.staleDestinationHandle": {

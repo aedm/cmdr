@@ -635,6 +635,18 @@
   "@errors.listing.invalidName.suggestion": {
     "sourceHash": "9074cf3"
   },
+  "errors.listing.ambiguousName.title": "有不止一个项目匹配这个名称",
+  "@errors.listing.ambiguousName.title": {
+    "sourceHash": "b72d687"
+  },
+  "errors.listing.ambiguousName.explanation": "`{path}` 匹配服务器上的不止一个项目。它们的名称看起来一样，但服务器存储的写法不同（带重音的字母可以用两种方式存储，有些服务器还区分大小写），所以 Cmdr 没有替你挑选其中一个。",
+  "@errors.listing.ambiguousName.explanation": {
+    "sourceHash": "0d964db"
+  },
+  "errors.listing.ambiguousName.suggestion": "可以这样试试：\n- 打开上一级文件夹，从列表里选出你想要的那一项\n- 为了下次不再遇到，把其中一个改名，让两个名称明显不同",
+  "@errors.listing.ambiguousName.suggestion": {
+    "sourceHash": "8334ece"
+  },
   "errors.listing.ioSerious.title": "无法读取这个文件夹",
   "@errors.listing.ioSerious.title": {
     "sourceHash": "1334729"
@@ -1776,6 +1788,10 @@
   "errors.volume.deletePending": "这个文件正在退场，还有东西占着它。请稍等片刻再重试。",
   "@errors.volume.deletePending": {
     "sourceHash": "f7d0ab7"
+  },
+  "errors.volume.ambiguousName": "服务器上有不止一个项目匹配“{path}”，所以 Cmdr 没有替你选。请到它所在的文件夹里选择。",
+  "@errors.volume.ambiguousName": {
+    "sourceHash": "024d1da"
   },
   "errors.volume.staleDestinationHandle": "Cmdr 跟丢了设备上的目标文件夹。请再次进入这个文件夹，然后重试。",
   "@errors.volume.staleDestinationHandle": {

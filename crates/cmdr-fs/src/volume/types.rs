@@ -558,6 +558,15 @@ pub enum VolumeError {
     /// once the last handle closes; any new `Create` (stat, open, write) on the path
     /// fails with this status in the meantime. SMB-only today.
     DeletePending(String),
+    /// A path from outside this volume's own listings matches more than one
+    /// stored entry once Unicode form and case are set aside, and none of them
+    /// exactly, so the backend refused to pick one. Carries the path as it was
+    /// given.
+    ///
+    /// Raised only by [`Volume::find_stored_spelling`](super::Volume::find_stored_spelling).
+    /// ❌ Never resolve it by choosing a candidate: on a delete or an overwrite the
+    /// wrong twin is someone's file. SMB-only today (ERR-VETBX).
+    AmbiguousName(String),
     /// The destination folder's cached handle was stale and the backend rejected
     /// a write into it (MTP: the device re-keyed its object handles since the
     /// folder was last listed). The backend has already refreshed its cache, so
@@ -617,6 +626,7 @@ impl std::fmt::Display for VolumeError {
             Self::IsADirectory(path) => write!(f, "Is a directory: {}", path),
             Self::InvalidName(msg) => write!(f, "Name not usable at the destination: {}", msg),
             Self::DeletePending(path) => write!(f, "Delete pending: {}", path),
+            Self::AmbiguousName(path) => write!(f, "More than one stored name matches: {}", path),
             Self::StaleDestinationHandle(path) => write!(f, "Destination folder handle was stale: {}", path),
             Self::IoError { message, .. } => write!(f, "I/O error: {}", message),
             Self::NeedsPassword { wrong_attempt } => {

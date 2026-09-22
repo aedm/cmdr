@@ -58,8 +58,9 @@ tokio-util = { version = "0.7.18", default-features = false }
 # `FuturesUnordered`, which is how the scan walk and the scan pool keep N
 # listings in flight on one session.
 futures-util = "0.3"
-# macOS mounts hand out NFD paths and SMB servers speak NFC, so every
-# cache-facing path this backend builds is re-normalized on the way through.
+# Folding names to COMPARE them: the foreign-path resolve (`volume/spelling.rs`),
+# the mount anchor, and the share name TreeConnect takes. A name inside a share
+# goes to the server as its own bytes, never through this.
 unicode-normalization = "0.1"
 # The byte-integrity hashers in `volume::testing`. Optional and enabled only by the
 # `testing` feature, so this crate's own shipped build doesn't link it. (The app
