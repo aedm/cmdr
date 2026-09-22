@@ -72,7 +72,9 @@ export function stallNoticeFor(activity: TransferActivity | null | undefined): S
       return {
         stillForSeconds: activity.stillForSeconds,
         reason: activity.waitingOn,
-        inFlight: activity.inFlight,
+        // Nothing has landed while the source is still opening, so no file
+        // can be "partly written" yet, and the in-flight line would say it is.
+        inFlight: activity.openingSource ? 0 : activity.inFlight,
       }
     default:
       // A reason the backend added and nobody classified here. Stay silent

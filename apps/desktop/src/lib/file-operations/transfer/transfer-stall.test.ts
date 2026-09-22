@@ -88,6 +88,18 @@ describe('stallNoticeFor, while the source is still sending', () => {
     const silent = activity({ stillForSeconds: 45, waitingOn: 'source', openingSource: true })
     expect(stallNoticeFor(silent)?.reason).toBe('source')
   })
+
+  it("doesn't claim a partial write while nothing has landed yet", () => {
+    // ERR-CNK7M: the only task was still opening its source, so "1 file is
+    // still open and may already be partly written" was false.
+    const opening = activity({ stillForSeconds: 12, waitingOn: 'source', openingSource: true, inFlight: 1 })
+    expect(stallNoticeFor(opening)?.inFlight).toBe(0)
+  })
+
+  it('still counts open files once bytes have landed', () => {
+    const writing = activity({ stillForSeconds: 12, waitingOn: 'destination', inFlight: 3 })
+    expect(stallNoticeFor(writing)?.inFlight).toBe(3)
+  })
 })
 
 describe('waitLineFor', () => {
