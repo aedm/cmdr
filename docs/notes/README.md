@@ -269,6 +269,16 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   the 504 macOS-specific strings in the English catalog. Contributed alongside the Linux `.deb` bundling, and kept
   because Linux isn't advertised, so nothing here has an issue behind it.
 
+**Load-bearing for a fork we carry, and for the day we can drop it:**
+
+- `mdns-sd-multicast-join-retry-loop.md` — why `vendor/mdns-sd` exists: upstream's `add_interface` drops an interface
+  whose multicast join fails instead of recording it, so `check_ip_changes` rediscovers it every 5 s and retries forever
+  (9,322 retries and 29 MB of logs from one macOS `bridge102` in a 39-hour run). Read it before touching the patch,
+  changing how `vendor/` is treated by the checks, or upgrading `mdns-sd`. It carries the one-line fix and why that
+  shape beats a failed-interface set, the one recovery case it does NOT cover, and the exact steps to delete the fork
+  once upstream ships. The unsent upstream PR text is `mdns-sd-upstream-pr/pr-draft.md`, with the patch against
+  `v0.21.4` beside it.
+
 **An incident diagnosis kept for the lever it rules out:**
 
 - `smb-credit-stall-2026-09-01.md` — why a 300 GB SMB-to-SMB copy stopped moving bytes 30 seconds into its copy phase,

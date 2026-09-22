@@ -117,6 +117,9 @@ Writing them:
   `docs/business/README.md` (pricing, licensing, product facts), `docs/specs/index.md` (plans, periodically wiped),
   `docs/notes/README.md`, `style-guide.md`, `design-principles.md`, `security.md`, `maintenance.md`.
 - `tools/`: dev tooling outside every workspace and check: `tools/intellij-plugin/`, `tools/privatesize-poc/README.md`.
+- `vendor/`: third-party crates we patch and swap in via `[patch.crates-io]`, byte-identical to their published source
+  apart from the fix. Not workspace members, and out of jurisdiction for repo-wide tooling. Today: `vendor/mdns-sd`
+  (`docs/notes/mdns-sd-multicast-join-retry-loop.md`).
 - `scripts/check/`: the Go check runner. `.github/workflows/`: CI.
 
 ## Dependencies
