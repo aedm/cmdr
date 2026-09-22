@@ -7,7 +7,7 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
 
 - `src/volume/`: the backend — `mod.rs` (structs), `volume_impl.rs` (the whole `impl Volume`), and one module per
   concern (`paths`, `query`, `mutation`, `session`/`reconnect`/`state`, `scan`/`scan_pool`, `streams`, `mapping`,
-  `foreground_yield`, `liveness`, `watcher/`, `testing` for the Docker fixtures).
+  `spelling`, `foreground_yield`, `liveness`, `watcher/`, `testing` for the Docker fixtures).
 - `src/{types,errors,connection}.rs`: share-listing vocabulary, `smb2::Error` classification, the address builder.
   Re-exported at the root, so callers write `cmdr_smb::`.
 
@@ -25,24 +25,23 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
   promotion calls neither hook on the instance it replaces: both act on the SHARED session.
 - **`paths_are_os_visible()` tracks the MOUNT, not the backend kind** (latched off by `note_root_mount_gone`). ❌ Never
   hardcode `true`: smb2 browses on past a dead mount, so the drag it breaks fails silently.
-- **`write_from_stream` drives an OWNED `FileWriter` on a cloned `Connection`**, ❌ never one borrowed while the client
-  mutex is held across the upload (the QNAP deadlock). Error paths `abort()` then delete the partial, or corrupt bytes
-  stay.
+- **`write_from_stream` drives an OWNED `FileWriter` on a cloned `Connection`**, ❌ never one borrowed under the client
+  mutex (the QNAP deadlock). On error, `abort()` then delete the partial.
 - **Streaming-write progress reports `FileWriter::bytes_written()`** (server-confirmed), ❌ never bytes handed to the
   pipeline: `write_chunk` returns on ACCEPTANCE.
-- **A read that knows its size sends `read_file_compound_sized`**: unsized it charges credits for a whole `max_read`,
-  which parked seven of ten copy slots on a 300 GB copy. ❌ Don't tune `max_concurrent_ops`'s credit clamp; it divides a
-  constant, so it's inert.
+- **A read that knows its size sends `read_file_compound_sized`**: unsized it charges a whole `max_read` in credits
+  (parked 7 of 10 copy slots). ❌ Don't tune `max_concurrent_ops`'s credit clamp; it divides a constant, so it's inert.
 - **`scan_recursive` asks its `ScanBoundary` per entry, `dir()` BEFORE the listing** (`DETAILS.md` § "Scanning").
 - **Bulk work draws on the refcounted pool of extra sessions** (`scan_pool.rs`); a dead member retries on a sibling, ❌
   never moving the MAIN volume's connection state.
 - **smb2 bounds every wait itself**: ❌ no timeout layer of ours, never a missed keepalive read as death.
 - **Path conversion matches whole COMPONENTS both ways**: `to_smb_path` `NotFound`s anything outside the root and joins
   on the instance's `share_root`; `to_display_path` strips it back off. ❌ Build a volume through `MountAnchor`, never a
-  bare mount path: an anchored mount (DFS sub-mount, subdirectory mount) that loses its anchor addresses the top of the
-  share instead (ERR-48RZX).
-- **SMB names are opaque bytes** (NFC and NFD mix, ERR-VETBX): ❌ never normalize a share path, wire or watcher key. A
-  `\` in a watcher filename is part of its NAME.
+  bare mount path: an anchored mount (DFS sub-mount, subdirectory mount) that loses its anchor addresses the share's top
+  (ERR-48RZX).
+- **SMB names are opaque bytes** (NFC and NFD mix, ERR-VETBX): ❌ never normalize a share path, wire or watcher key (a
+  `\` in a watcher filename is NAME). A foreign path gets exact only via `find_stored_spelling` (`spelling.rs`), ❌
+  never a fold inside an operation: a delete could hit a look-alike.
 
 ## Crate must-knows
 
@@ -52,5 +51,5 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
 - ❌ Never gate behavior on `cfg(test)`; use `any(test, feature = "testing")`, or it flips silently when a consumer
   compiles this crate.
 
-Reconnect and scan-pool lifecycles, anchored mounts, `rerooted`, credits and copy concurrency, the `specta` pin, Unicode
-names, test placement, decisions, and suites: `DETAILS.md`. Read it first.
+Lifecycles, anchored mounts, `rerooted`, credits, Unicode names and the resolve, the `specta` pin, tests, and decisions:
+`DETAILS.md`. Read it first.

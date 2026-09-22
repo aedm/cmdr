@@ -1018,6 +1018,17 @@ the drop-foreign-listings policy in `navigate.ts::commitPathFromListing` (`smb:/
 `search-results://` prefix for snapshots, `isPathOnVolume` for everything else). Adding a new virtual-volume namespace?
 Extend the explicit prefix branch. See parent § "Gotchas".
 
+**A landed listing can re-spell the pane's path in place (`adoptStoredSpelling`).** A pane that navigated by a spelling
+its volume doesn't store (a typed or restored path, or a pane carried over from the macOS kernel mount onto a direct SMB
+connection, which matches names byte-for-byte) lands on the stored one: `listing-complete` carries `storedPath`, and
+after an upgrade `listing-respelled` does (backend: `src-tauri/src/file_system/listing/DETAILS.md` § "A pane path the
+volume stores another way"). `FilePane.adoptStoredPath` sets `currentPath` and calls up to
+`navigate.ts::adoptStoredSpelling`, which rewrites the tab path and the CURRENT history entry (`{ respellFrom }`) in the
+same tick, when the tab still holds the old spelling. **Why in place, not a push:** it's the same folder, so a push
+would leave a Back step to its other spelling, and on a pinned tab `commitPathFromListing` would fork a new tab for it.
+An in-place arm whose tab hasn't committed yet makes the rewrite a no-op, and its `commitPathFromListing` lands the
+stored spelling itself. Favorites keep the user's own spelling.
+
 **The listing loader (pane-local generation guard).** `listing-loader.ts::createListingLoader` owns the streaming
 directory-load pipeline for one pane. Every `loadDirectory` captures its identity as `{ listingId, generation }` and
 bumps a per-pane `loadGeneration` (its ONLY two bump sites are `loadDirectory` and `adoptListing`, both loader-private);

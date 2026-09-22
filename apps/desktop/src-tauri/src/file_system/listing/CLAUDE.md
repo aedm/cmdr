@@ -6,7 +6,7 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
 
 - Read and serve: **reading.rs** disk I/O, **streaming.rs** async progress and cancellation (`ListingEventSink`),
   **operations.rs** the sync API, **cached_listing.rs** `CachedListing` + `LISTING_CACHE`, **caching.rs** patch helpers,
-  **orphan_reaper.rs** the 6 h backstop, **mutation.rs**.
+  **orphan_reaper.rs** the 6 h backstop, **mutation.rs**, **foreign_path.rs** stored spellings.
 - Derive and emit: **diff.rs** `compute_diff`, **diff_emitter.rs** 50 ms coalescing, **visible_rows.rs** /
   **path_index.rs** the row and path maps, **sorting.rs** the one comparator, **collation.rs** the one name order, plus
   **listing_host.rs**, **brief_columns.rs**, **fuzzy_jump.rs**. `FileEntry` is `cmdr-fs`'s, as `listing::metadata`.
@@ -42,6 +42,8 @@ Backend directory reading, caching, sorting, and streaming: 100k+ entries, non-b
 - **A listing's path is a `ListingPath`, built only by `ListingPath::on_volume`** (the volume's one spelling,
   `Volume::listing_path`). ❌ Never compare a raw path to it: MTP reports at `mtp://…` while a pane entered with Enter
   holds `/DCIM`, and a verbatim match drops every Cmdr-made delete on that pane.
+- **Only a PANE open resolves a foreign spelling** (`list_as_stored`, `respell_listings_on_volume`): ❌ never a walker,
+  scan, or refresh, where a miss means gone and a resolve hands back a look-alike twin. `DETAILS.md` § "A pane path the volume stores another way".
 - **New listing state hangs off a struct, not a `static`**; fixtures use `caching_test_support::TestListing`.
 - **Finder tags are deferred**: `list_directory_core` never reads them, and every modify path calls
   `carry_forward_tags` BEFORE storing, else an mtime touch blanks a file's dots. ❌ Never route enrich through it.

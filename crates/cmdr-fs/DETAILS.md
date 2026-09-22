@@ -269,6 +269,12 @@ about an "unexpected `cfg` condition value" and takes the false branch forever.
 - **The listing cache that decides which spellings of a directory are one pane.** The trait names the answer
   (`Volume::listing_path`, identity by default; MTP folds its `mtp://` URL and inner paths together), and the app's
   listing cache keys every store and lookup on it. Why: `apps/desktop/src-tauri/src/file_system/listing/DETAILS.md`.
+- **When a foreign path gets resolved.** The trait names the question (`Volume::find_stored_spelling`: where is this
+  path, spelled the way you store it? `Ok(None)` by default), and SMB answers it against real listings
+  (`crates/cmdr-smb/DETAILS.md` § "Resolving a foreign path"). Which callers may ask is app policy: only a pane opening
+  a directory and a backend swap's respell, never an operation's own calls, where a resolve could land a delete on a
+  look-alike twin (`apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "A pane path the volume stores another
+  way").
 - **`icons/per_path.rs`'s custom-folder-icon half**, the NSWorkspace fetch, and the icon disk cache.
 - **The scratch-visibility settings** (`advanced.showStagingTempFiles`, `advanced.showSafeSaveFiles`) and the listing
   read-path filter over them. "Is this ours, and does a live operation own it?" is vocabulary; "does the user see it?"

@@ -9,7 +9,8 @@ anywhere else is resolved against a real listing once, at the moment a directory
 that listing is exact thereafter. Two related defects ride along: a scan failure that names no path, and a write that
 can plant a second entry indistinguishable from one already there.
 
-Status: approved 2026-09-22. M0 and M1 done 2026-09-23 (byte-faithful paths and watcher keys, Docker-pinned); M2–M5 not
+Status: approved 2026-09-22. M0, M1, and M2 done 2026-09-23 (byte-faithful paths and watcher keys; foreign paths resolve
+at the pane's directory open and on the kernel-mount upgrade, look-alikes refused; all Docker-pinned); M3–M5 not
 started.
 
 ## What is actually true about SMB names

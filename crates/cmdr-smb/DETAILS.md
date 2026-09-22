@@ -368,12 +368,46 @@ bytes the server gave you" (ERR-VETBX).
   comment says why NFC.
 - **Share and server names are a different namespace** (TreeConnect), and `SmbConnectionParams::new` keeps folding them.
 - **A foreign path** (typed, restored, carried over from the macOS kernel mount, which decomposes every name on
-  `readdir`) is not the server's spelling and no single normalization spells a mixed-form path. It has to be resolved
-  against a real listing where a directory is opened; until that lands, such a path to an accented name is `NotFound`
-  (`docs/specs/smb-path-normalization.md`, M2).
+  `readdir`) is not the server's spelling, and no single normalization spells a mixed-form path. Every `Volume` call
+  here still sends it as given and misses; it becomes exact only through `Volume::find_stored_spelling`, § "Resolving a
+  foreign path".
 - **A name Cmdr creates goes out as given**, so a Cocoa-written local file (NFD) copied to a share lands NFD, and a
   destination holding the other form of the same name is a second entry the byte-exact `get_metadata` probe can't see.
   The folded destination guard is M4 of the same spec.
+
+### Resolving a foreign path
+
+`volume/spelling.rs` implements `Volume::find_stored_spelling`: where a foreign path is, spelled the server's way.
+`Ok(None)` when the path opens as given or nothing matches; `VolumeError::AmbiguousName` when it can't tell which.
+
+- **Per component, localized by the error code.** One `stat` of the whole path: it opening ends the search, and
+  `STATUS_OBJECT_NAME_NOT_FOUND` says only the leaf is wrong. `…_PATH_NOT_FOUND` steps up one ancestor at a time until
+  one opens or names itself missing, bottom-up because the wrong component usually sits near the leaf (an accented album
+  one level up). The first wrong component's parent is listed, matched, substituted, and the walk re-probes from there,
+  so a path with several wrong components costs one listing each. The mount anchor is never resolved.
+- **Listing: the oracle first.** `authoritative_listing` answers free when a pane shows the parent under a live watch;
+  otherwise a real `list_directory`. A 58,440-entry directory took 17.2 s over Tailscale (spec evidence, 2026-09-22), so
+  the resolve checks its `CancellationToken` between round trips and the pane seam runs it inside the cancelable listing
+  task; one listing itself is a single call.
+- **Matching: NFC-and-lowercase fold (`spelling::fold`), exact wins.** An entry with the wanted bytes wins even beside
+  look-alikes, because it IS what the caller named. One folded match is the answer. Two or more with no exact one is
+  `AmbiguousName`: picking one is a wrong-file hazard on the next delete or overwrite.
+- **Corrections are remembered per share** (`SpellingCache`, on `SmbVolumeInner`, keyed by share-relative parent and the
+  foreign bytes, capped at 256, oldest out). A remembered one is only a guess: the next probe checks it, a miss drops it
+  and lists again (`a_stale_remembered_spelling_heals`), and the watcher forgets a directory's corrections on any event
+  there, all of them on `STATUS_NOTIFY_ENUM_DIR`. Keyed on the foreign BYTES, not the fold, so an exact path can never
+  be steered onto a remembered look-alike.
+- **Decision: a resolve, never a fold inside the operations.** **Why:** the old blanket NFC fold in `to_smb_path` broke
+  every NFD name (ERR-VETBX), and a resolve built into `get_metadata` / `list_directory` / `delete` can't tell "another
+  spelling of this path" from "a different entry sharing its folded name, the named one having vanished". The transfer
+  layer's existence probes and post-move `exists` checks, and a delete walker's listings, all hold server-derived paths
+  where a miss means gone. So the resolve is its own call, made only at the app's seams where a foreign path enters (the
+  pane's directory open and a backend swap's respell: `apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "A
+  pane path the volume stores another way").
+- **The fixture folds case, David's QNAP doesn't.** The `smb-consumer-guest` Samba runs the default
+  `case sensitive = auto`, so a case-only difference opens as given there; the Docker cells mix case with Unicode form
+  to reach the fold (verified 2026-09-23, `a_foreign_path_in_another_case_reaches_its_directory`). Case-only matching is
+  pinned by `spelling_test.rs`.
 
 ## A mount anchored inside the share
 
@@ -828,11 +862,12 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
 
 - **Server-free, colocated with the module each covers**: `mapping_test.rs` (`DirectoryEntry`→`FileEntry`,
   `FsInfo`→`SpaceInfo`, `smb2::Error`→`VolumeError`), `state_test.rs` (the binary state machine and how it widens),
-  `paths_test.rs` (path translation both ways), `volume_impl_test.rs` (re-rooting and every capability flag),
-  `reconnect_test.rs` (the reconnect early-exits, the transitions and the events they suppress, the watch-coverage gate,
-  both retirement paths), `streams_test.rs` (the channel-backed read-stream consumer and the single-shot write promise),
-  `scan_test.rs` (the progress ticker), `retirement_test.rs`, `watcher/archive_refresh_test.rs`, and the inline
-  `mod tests` in `foreground_yield.rs` and `scan_pool.rs`. These run by default.
+  `paths_test.rs` (path translation both ways), `spelling_test.rs` (the foreign-path fold, match rule, and correction
+  cache), `volume_impl_test.rs` (re-rooting and every capability flag), `reconnect_test.rs` (the reconnect early-exits,
+  the transitions and the events they suppress, the watch-coverage gate, both retirement paths), `streams_test.rs` (the
+  channel-backed read-stream consumer and the single-shot write promise), `scan_test.rs` (the progress ticker),
+  `retirement_test.rs`, `watcher/archive_refresh_test.rs`, and the inline `mod tests` in `foreground_yield.rs` and
+  `scan_pool.rs`. These run by default.
 - `host_seam_test.rs` — the PACE of what this backend tells the listing seam, which no type can hold: one call per
   mutation, none per directory entry. Its server-free cells pin the addressing and that an un-stattable creation patches
   nothing; its Docker cell seeds a directory, walks it with a listing and a copy scan, and asserts
@@ -844,8 +879,9 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
 - `unicode_names_integration_test.rs` — names in both Unicode forms, seeded through a raw smb2 session so they sit on
   disk exactly as spelled: every operation on a listed NFD name inside an NFC directory (read, hinted read, scan, copy
   off and within the share, rename, delete, open), and the watcher reporting an outside change under the pane's own
-  spelling of an accented directory. Two foreign-path cells are written but unregistered until the resolve lands (§ "SMB
-  names are opaque bytes").
+  spelling of an accented directory. Then the foreign-path resolve: an all-NFD path to an NFC file and to ERR-VETBX's
+  mixed shape, a case-and-form-differing directory, look-alike twins refusing, a pane path carried over from the kernel
+  mount, and a stale remembered correction healing (§ "Resolving a foreign path").
 - `session_integration_test.rs` — what the SESSION does: the connection gate the fresh-listing oracle reads, the
   reconnect cycle, the refcounted scan pool, and what a supersede leaves alone.
 - `src/connection_integration_test.rs` — the three answers `try_open_share` hears from the `both` fixture: a guest

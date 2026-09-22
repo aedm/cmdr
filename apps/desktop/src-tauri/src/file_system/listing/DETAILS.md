@@ -17,7 +17,7 @@ Frontend                          Backend
    |<--- listing-progress event -------| (every 200ms, { listingId, loadedCount })
    |<--- listing-read-complete event --| (when read_dir finishes, { listingId, totalCount })
    |                            [overlay rows folded in; sorting + caching; watcher arm dispatched, not awaited]
-   |<--- listing-complete event -------| (ready, { listingId, totalCount, volumeRoot })
+   |<--- listing-complete event -------| (ready, { listingId, totalCount, volumeRoot, storedPath })
    |                                   |
    |-- getFileRange(listingId, ...) -->| (on-demand fetching)
    |<-- [FileEntry, FileEntry, ...]    |
@@ -458,6 +458,34 @@ spelling, so they keep the default. Pinned by `mtp_listing_path_test.rs`.
 
 `find_listings_for_path(parent_path)` has no volume id and compares verbatim; only local callers use it, and a local
 path has one spelling.
+
+## A pane path the volume stores another way (`foreign_path.rs`)
+
+`ListingPath` folds spellings a backend itself hands out. A different problem is a path that came from OUTSIDE the
+volume's listings (typed, pasted, a restored tab, a favorite, MCP `nav_to_path`, or a pane carried over from the macOS
+kernel mount, which decomposes every name) on a backend that matches names byte-for-byte. SMB is one: an accented
+folder the share stores composed answers the kernel's decomposed spelling with `STATUS_OBJECT_PATH_NOT_FOUND`
+(ERR-VETBX, `crates/cmdr-smb/DETAILS.md` § "SMB names are opaque bytes").
+
+- **The pane seam lists as stored.** `read_directory_with_progress` lists through `list_as_stored`: as given first
+  (free on the happy path), and only on `NotFound` asks `Volume::find_stored_spelling`, then lists what it answers. From
+  there on the listing IS the stored spelling: `CachedListing::path`, the watch, the overlays, the index enrich, and
+  every entry path. `listing-complete` carries `storedPath` (only when it differs), and the pane re-spells its tab and
+  current history entry in place (`navigate.ts::adoptStoredSpelling`), so there's no Back step to the other spelling and
+  a pinned tab doesn't fork. Favorites stay as the user wrote them.
+- **A backend swap respells what's open.** When `network/smb_upgrade.rs` hands a share from the kernel mount to a
+  direct connection, `respell_listings_on_volume` re-reads each open listing on it through the new backend, holding the
+  directory's refresh turn (`caching::refresh_turn`). A listing whose path changed spelling is re-keyed, its entries are
+  written whole (the diff matches rows by name, so it can't see every path changing), and the pane adopts the path from
+  `listing-respelled` and refetches its rows.
+- **Decision: only these two seams resolve.** **Why:** a resolve can't tell "another spelling of this folder" from "a
+  different folder sharing its folded name, the one named having vanished". A delete walker, a copy scan, a watcher
+  refresh, or an existence probe holds a path that came out of a listing, so a miss there means it's gone, and
+  resolving would hand the walker a look-alike twin. ❌ Don't route those through `list_as_stored`.
+- The `AmbiguousName` refusal (two look-alikes, neither exact) reaches the pane as its own listing error.
+
+Pinned by `foreign_path_test.rs`, `streaming_test.rs::a_foreign_spelling_lands_the_listing_on_the_stored_path`, and
+the Docker cell `network/smb_upgrade_respell_test.rs`.
 
 ## Change notification API (caching.rs)
 
