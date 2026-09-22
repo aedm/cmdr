@@ -334,11 +334,22 @@ const toc = [
             main page: <a href="/trust#signing">Signing, notarization, and updates</a>.
         </li>
         <li>
+            <strong>Provenance and SBOMs</strong>: from the next release on, once a release is published, a separate
+            step downloads every file back from it and signs a build attestation for each one (SLSA Build Level 2). It
+            also publishes CycloneDX SBOMs (software bills of materials) for the Rust and JavaScript dependencies, tied
+            to the builds they describe. Check any download with
+            <code>gh attestation verify &lt;file&gt; --repo vdavid/cmdr</code>.
+        </li>
+        <li>
             <strong>Not in place</strong>: the signing keys are stored as GitHub repository secrets without a protected
-            environment, release tags aren't signed, and there's no SBOM (software bill of materials), no build
-            provenance, and no reproducible build.
+            environment, release tags aren't signed, and there's no reproducible build.
         </li>
     </ul>
+    <DevTodo>
+        After the next release, run <code>gh attestation verify</code> on the DMG and then drop the "from the next
+        release" wording here and on <code>/trust</code>. Commands: <code>docs/guides/releasing.md</code> § Provenance
+        and SBOM attestations.
+    </DevTodo>
 
     <h2 id="updates">Update delivery</h2>
     <ul>

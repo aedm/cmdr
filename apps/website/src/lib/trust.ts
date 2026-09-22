@@ -245,7 +245,7 @@ export const notInPlaceYet: string[] = [
   "<strong>The 90-day deletion of error-report zips isn't active yet.</strong>",
   '<strong>Error-report cleaning has known gaps</strong>: a file name in free text, or a search query, can be included.',
   "<strong>No central control over AI.</strong> IT can't disable AI or limit which providers users can pick. Some AI features send file names without a separate consent step.",
-  "<strong>No SBOM, no build provenance or attestations, no reproducible builds</strong>, and release tags aren't signed. Each release publishes SHA-256 checksums.",
+  "<strong>No reproducible builds</strong>, and release tags aren't signed. Each release publishes SHA-256 checksums. Signed build provenance and SBOMs start with the next release, so no release has them yet.",
   '<strong>No second-person code review.</strong> AI coding agents write the code, and one person directs them. Automated checks stand in for a reviewer (<a href="/trust/development#review">details</a>).',
   '<strong>One maintainer account can publish a release</strong> to every install, and the signing keys are GitHub repository secrets without a protected environment.',
   '<strong>No threat model for the app as a whole.</strong> Security decisions are written down per part of the app.',

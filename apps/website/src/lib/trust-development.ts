@@ -31,7 +31,8 @@ export const releaseCadence = {
 /**
  * Minutes from tag push to a published release: `gh run list --workflow release.yml --limit 8
  * --json displayTitle,createdAt,updatedAt,conclusion`, the four most recent successful tag runs
- * (0.44.0: 49, 0.45.0: 43, 0.45.1: 48, 0.46.1: 35).
+ * (0.44.0: 49, 0.45.0: 43, 0.45.1: 48, 0.46.1: 35). Runs with the `attest` job keep going a few
+ * minutes after the release is out, so when refreshing this, take the `publish` job's `completedAt` (`gh run view <id> --json jobs`) rather than `updatedAt`.
  */
 export const releaseBuildMinutes = { min: 35, max: 50 }
 
