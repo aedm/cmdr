@@ -21,6 +21,7 @@ const pages = [
   { name: 'Refund', path: '/refund' },
   { name: 'Data safety', path: '/data-safety' },
   { name: 'Trust and security', path: '/trust' },
+  { name: 'How Cmdr is built', path: '/trust/development' },
   { name: 'Renew', path: '/renew' },
 ]
 

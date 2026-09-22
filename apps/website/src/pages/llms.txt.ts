@@ -25,6 +25,7 @@ Current version: ${version}
 - [Download (Intel)](${dmgUrls.x86_64}): DMG installer for Intel Macs
 - [Pricing](${site}/pricing/): Free for personal use, $59 once for commercial use
 - [Trust and security](${site}/trust/): What the app sends over the network, where data is stored, signing and updates, and known gaps, for security and IT reviewers
+- [How Cmdr is built and kept up to date](${site}/trust/development/): The development process by stage (design, code, review, test, dependencies, release, updates) with measured numbers, for security questionnaires
 - [Blog](${site}/blog/): Updates and news
 - [Changelog](${site}/changelog/): Release notes
 - [Roadmap](${site}/roadmap/): What's coming next

@@ -1,0 +1,436 @@
+---
+// The SDL answer: "Do you have a secure development lifecycle, and do you keep the software up to
+// date?", organized by lifecycle stage so a reviewer can paste each part into a questionnaire.
+// Linked from `/trust` § How Cmdr is built. Measured numbers, and how to re-measure each one, live
+// in `src/lib/trust-development.ts`; process claims come from `.github/workflows/`,
+// `scripts/check/`, `deny.toml`, `renovate.json`, and `pnpm-workspace.yaml`. Every claim must be
+// true today. `<DevTodo>` callouts are David's open tasks and render only in `pnpm dev`.
+import LegalLayout from '../../layouts/LegalLayout.astro'
+import DevTodo from '../../components/DevTodo.astro'
+import {
+    advisoryFixes,
+    ciOnMain,
+    codeCounts,
+    lockfileChanges,
+    measuredOn,
+    releaseBuildMinutes,
+    releaseCadence,
+    updateAdoption,
+    window,
+} from '../../lib/trust-development'
+
+const repo = 'https://github.com/vdavid/cmdr'
+const fmt = (n: number) => n.toLocaleString('en-US')
+const ownUnsafe = codeCounts.unsafeBlocks - codeCounts.unsafeBlocksInVendoredCode
+// Rounded, because the counts come from a pattern match over the source (see the data module).
+const approx = (n: number) => fmt(Math.round(n / 100) * 100)
+const latestAdvisories = advisoryFixes.slice(0, 2)
+
+const toc = [
+    { id: 'short', label: 'Short answer' },
+    { id: 'design', label: 'Design' },
+    { id: 'code', label: 'Code' },
+    { id: 'review', label: 'Review' },
+    { id: 'test', label: 'Test' },
+    { id: 'dependencies', label: 'Dependencies' },
+    { id: 'release', label: 'Build and release' },
+    { id: 'updates', label: 'Update delivery' },
+    { id: 'vulnerabilities', label: 'Vulnerability response' },
+    { id: 'platforms', label: 'Supported platforms' },
+    { id: 'method', label: 'How the numbers were measured' },
+]
+---
+
+<LegalLayout
+    title="How Cmdr is built and kept up to date"
+    description="Cmdr's development process by stage (design, code, review, test, dependencies, release, updates, and vulnerability response), with measured numbers. For security questionnaires."
+    lastUpdated={measuredOn}
+>
+    <p>
+        This page answers a common security-questionnaire question: "Do you have a secure development lifecycle (SDL),
+        and do you keep the software up to date?" Each section covers one stage and can be copied on its own. The
+        numbers were measured on {measuredOn} over the previous {window.days} days, and the
+        <a href="#method">last section</a> says how. For network traffic, data storage, signing, and permissions, see
+        the main <a href="/trust">trust and security page</a>. Every statement here can be checked in the
+        <a href={repo}>source code</a>.
+    </p>
+
+    <nav aria-label="On this page">
+        <ul>
+            {
+                toc.map((item) => (
+                    <li>
+                        <a href={`#${item.id}`}>{item.label}</a>
+                    </li>
+                ))
+            }
+        </ul>
+    </nav>
+
+    <h2 id="short">Short answer</h2>
+    <ul>
+        <li>
+            <strong>There's a defined process, and it's mostly automated.</strong> {codeCounts.checks} automated checks
+            (lints, custom code rules, and about {approx(codeCounts.rustTests)} Rust tests,
+            {approx(codeCounts.frontendTests)} user interface tests, and {codeCounts.e2eTests}
+            end-to-end tests) run during development and again on GitHub after each change. It doesn't follow a named
+            framework like Microsoft SDL, and it has no formal sign-off steps.
+        </li>
+        <li>
+            <strong>No second person reviews the code.</strong> AI coding agents write it, and one person directs them.
+            The <a href="#review">review section</a> says what stands in for a reviewer.
+        </li>
+        <li>
+            <strong>Releases are frequent</strong>: {releaseCadence.releases} releases in the last {window.days} days, a
+            median of {releaseCadence.medianGapDays} days apart.
+        </li>
+        <li>
+            <strong>Dependencies change every week</strong>, and a new dependency version waits three days after
+            publication before Cmdr uses it. Known vulnerabilities in dependencies are scanned for automatically.
+        </li>
+        <li>
+            <strong>Fixes reach users fast.</strong> The app checks for updates every hour and installs them by itself.
+            About {updateAdoption.firstDay.percent}% of active installs run a new release within 24 hours, and
+            {updateAdoption.thirdDay.percent}% by the third day. The two most recent dependency advisories reached a release
+            {latestAdvisories.map((fix) => fix.days).sort((a, b) => a - b).join(' and ')} days after they were published.
+        </li>
+        <li>
+            <strong>Gaps</strong>: no app-wide threat model, no fuzzing, no third-party audit, and checks on GitHub run
+            after a change lands instead of before. The full list is in
+            <a href="/trust#gaps">Not in place yet</a>.
+        </li>
+    </ul>
+
+    <h2 id="design">Design</h2>
+    <ul>
+        <li>
+            <strong>Written principles come first.</strong> The top two are "protect the user's data" and "rock solid":
+            write to a temporary file and rename it into place, design for a crash in the middle of an operation, make
+            everything cancelable, and handle the hostile case (a dead network drive, a huge folder). How this works
+            for copies and deletes: <a href="/data-safety">How Cmdr protects your files</a>.
+        </li>
+        <li>
+            <strong>Larger features start as a written plan</strong> in the repository (<code>docs/specs/</code>),
+            which the AI agents write and then work from.
+        </li>
+        <li>
+            <strong>Security and privacy decisions are written down</strong> in
+            <a href={`${repo}/blob/main/docs/security.md`}>docs/security.md</a>, each with its reasoning:
+            why the app ships with no entitlements, why the AI assistant can propose file changes but never make them,
+            exactly what an error report can contain, which data the AI assistant can send to a provider, and why
+            there's no per-window permission check on the app's internal commands.
+        </li>
+        <li>
+            <strong>One planned feature has a formal threat model</strong>: running file operations with administrator
+            rights (<code>docs/specs/elevated-file-operations.md</code>).
+            <strong>There's no threat model for the app as a whole.</strong>
+        </li>
+    </ul>
+    <DevTodo>
+        No app-wide threat model exists. <code>docs/security.md</code> is a set of per-subsystem decisions, and the
+        only "Threat model" heading in the repo is in the draft <code>elevated-file-operations.md</code> spec.
+        Suggest a short <code>docs/threat-model.md</code> that lists the attack surfaces (network protocols SMB, SFTP,
+        WebDAV, ADB, and MTP; archive, PDF, and image parsers; the webview and its <code>{'{@html}'}</code> sinks; the
+        MCP server; the updater; the AI agent and prompt injection; local attackers with the user's rights) with the
+        mitigation and the gap for each. Then link it here and drop the sentence above.
+    </DevTodo>
+
+    <h2 id="code">Code</h2>
+    <ul>
+        <li>
+            <strong>Memory-safe language for everything that touches files, the network, and the system.</strong> That
+            code is Rust. The user interface is Svelte and TypeScript, runs in a webview with a strict content security
+            policy, and can't reach the network itself.
+        </li>
+        <li>
+            <strong>Compiler warnings fail the build.</strong> The Rust lints run with warnings as errors. Among them:
+            leftover debug output and unfinished code are errors, a crash-prone <code>unwrap()</code> outside tests
+            needs a written reason, and holding a lock across an <code>await</code> is an error.
+        </li>
+        <li>
+            <strong><code>unsafe</code> Rust</strong>: {codeCounts.unsafeBlocks} blocks, mostly calls into macOS
+            frameworks. Each of the {ownUnsafe} in Cmdr's own code must carry a written safety reason, or the build
+            fails. The other {codeCounts.unsafeBlocksInVendoredCode} are in a vendored copy of a library that watches
+            for file changes.
+        </li>
+        <li>
+            <strong>Custom rules for mistakes that lints don't catch.</strong> Cmdr has {codeCounts.checks} checks in
+            total. The security-relevant ones:
+            <ul>
+                <li>
+                    No code may decide what an error means by matching its text, in Rust or TypeScript. Text changes
+                    with the macOS language and with wording edits, so errors carry typed values instead.
+                </li>
+                <li>The code that writes files may not reference the AI assistant's code.</li>
+                <li>
+                    Every GitHub Actions step from a third party is pinned to an exact commit, and the risky
+                    <code>pull_request_target</code> trigger and workflow-wide <code>id-token: write</code> are banned.
+                </li>
+                <li>Every dependency's license notice must match the lockfiles.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Secret scanning</strong>: GitHub secret scanning with push protection, and GitGuardian, check every
+            push for leaked keys. Recent commits are signed.
+        </li>
+    </ul>
+
+    <h2 id="review">Review</h2>
+    <p>
+        AI coding agents, mainly Claude Code, write Cmdr's code. One person, David Veszelovszki, directs them: he
+        decides what to build and how it's structured, and he reviews everything users see, like the interface, its
+        text, and documents for people. <strong>No second person reviews code changes</strong>, and David doesn't read
+        every line the agents write. There are no pull requests; changes go straight to the main branch.
+    </p>
+    <p>What stands in for a reviewer:</p>
+    <ul>
+        <li>The automated checks in the <a href="#test">test section</a>, which the agents run while they work.</li>
+        <li>
+            The agents' written instructions, which are public:
+            <a href={`${repo}/blob/main/AGENTS.md`}>AGENTS.md</a>, the rules in
+            <code>.claude/rules/</code>, and a short guide next to each part of the code.
+        </li>
+        <li>The source code is public, so anyone can review any change after it lands.</li>
+    </ul>
+    <DevTodo>
+        Confirm you're OK stating publicly that AI agents write the code and that you don't read every line (that's
+        from your own "I don't do code reviews anymore"). If it's too strong, say what's true and I'll reword it. To
+        narrow this gap: a required automated review pass per merge with its findings recorded (for example
+        <code>/code-review</code> on each worktree branch before the FF-merge, logged in the commit body), or a paid
+        human review of the riskiest areas (updater, write engine, protocol parsers). Also note the <code>/trust</code>
+        company section said "writes and ships"; it now says "builds and ships with AI coding agents".
+    </DevTodo>
+
+    <h2 id="test">Test</h2>
+    <h3>What's tested</h3>
+    <ul>
+        <li>
+            About {approx(codeCounts.rustTests)} Rust tests. About {approx(codeCounts.writeOperationTests)} of them cover file
+            operations (copy, move, delete, rename), including deliberately hostile cases: a copy stopped halfway, a
+            device unplugged during a transfer, a server that fails.
+        </li>
+        <li>
+            Integration tests against real SMB, SFTP, and WebDAV servers in containers, plus a real Nextcloud server,
+            and a simulated phone for USB transfers.
+        </li>
+        <li>Property-based tests, which try many random inputs, for parts of the file index and the app.</li>
+        <li>
+            About {approx(codeCounts.frontendTests)} user interface tests in {codeCounts.frontendTestFiles} files, and
+            {codeCounts.e2eTests} end-to-end tests that drive the real app.
+        </li>
+        <li>
+            A fixed sample set for the code that removes personal data from error reports, so a change that leaks a
+            file name fails a test.
+        </li>
+    </ul>
+    <h3>When tests run</h3>
+    <ul>
+        <li>
+            <strong>During development, on the maintainer's Mac</strong>: the standard check run, which includes all
+            unit tests and, when the dependencies changed, the dependency vulnerability scan. The macOS end-to-end suite and the
+            slower checks run at milestones. Nothing forces this before a commit; it's how the agents are instructed to
+            work.
+        </li>
+        <li>
+            <strong>After every push to the main branch, on GitHub (Linux)</strong>: all lints and custom checks, all
+            unit and integration tests, and the end-to-end suite in Docker. This runs after the change lands, so a
+            failure means a fix follows; it doesn't block the change.
+        </li>
+        <li>
+            <strong>Every six days, on GitHub</strong>: the full dependency vulnerability and license scans
+            (<code>cargo-audit</code>, <code>cargo-deny</code>, and <code>govulncheck</code> for build scripts), an
+            unused-dependency scan, the slowest lints, and live tests against five AI providers' real APIs.
+        </li>
+        <li>
+            <strong>Every release, on GitHub (macOS)</strong>: a check that the built app uses no macOS framework or
+            function newer than the oldest macOS version Cmdr supports.
+        </li>
+        <li><strong>On demand</strong>: a 30-minute stress test of repeated copies from an SMB server.</li>
+    </ul>
+    <p>
+        Not in place: fuzzing (random-input testing of the parsers for network protocols, archives, PDFs, and images),
+        automated tests of the macOS-only code on GitHub (the per-push runs use Linux), and a rule that a release
+        waits for GitHub's checks to pass.
+    </p>
+    <DevTodo>
+        Numbers only you see. In the {window.days} days to {measuredOn}, {ciOnMain.failed} of {ciOnMain.runs} CI runs
+        on <code>main</code> failed, and {ciOnMain.releaseCommitsRed} of the last {ciOnMain.releaseCommits} release
+        commits had a red job ({ciOnMain.redJobs}). <code>release.yml</code> never looks at CI, and
+        <code>scripts/release.sh</code> doesn't either. Suggestions: (a) make <code>release.sh</code> refuse to tag
+        unless the latest CI run on HEAD is green, (b) add a macOS runner lane for clippy and the Rust tests (public
+        repo, so macOS minutes are free), since per-push CI never compiles the <code>cfg(target_os = "macos")</code>
+        code, and (c) add <code>cargo-fuzz</code> targets for the parsers that take network or file input. Each one you
+        add moves a sentence off this page.
+    </DevTodo>
+
+    <h2 id="dependencies">Dependencies</h2>
+    <ul>
+        <li>
+            <strong>Vulnerability and license policy (<code>cargo-deny</code>)</strong>: any known vulnerability in a
+            Rust crate that ships in the Mac app fails the check, at any depth. Licenses must be on an allowlist, and
+            crates may only come from crates.io (no Git sources, no wildcard versions). Two advisories are ignored on
+            purpose, each with a written reason: one is in a test-only crate, and one (a timing issue in RSA) affects
+            only SFTP logins with an RSA key file.
+        </li>
+        <li>
+            <strong>When the scans run</strong>: <code>cargo-deny</code> runs on the maintainer's Mac whenever the
+            dependencies or the policy change. On GitHub, <code>cargo-deny</code> and <code>cargo-audit</code> (which
+            also covers Linux-only and test-only crates) run every six days, not on every change. So a new advisory
+            for a dependency that hasn't changed can take up to six days to show up.
+        </li>
+        <li>
+            <strong>A three-day wait</strong>: a new version of any dependency is used only once it's been public for
+            three days. Renovate (the update bot) and pnpm (the JavaScript package manager) both enforce this. The
+            exceptions are two libraries the maintainer writes himself (<code>smb2</code> and <code>mtp-rs</code>).
+        </li>
+        <li>
+            <strong>JavaScript packages</strong>: pnpm refuses a package whose publisher trust drops (for example after
+            an ownership transfer), and runs install scripts only for packages on a short allowlist.
+        </li>
+        <li>
+            <strong>Locked versions</strong>: both lockfiles are in the repository, and GitHub installs with the
+            lockfile frozen. Tools and compilers have pinned versions too. A program downloaded during the build (the
+            local AI server) is checked against a fixed SHA-256 hash.
+        </li>
+        <li>
+            <strong>How updates happen</strong>: Renovate proposes minor updates every Monday and major ones monthly.
+            Updates for the website and server merge automatically once their checks pass. Updates for the Mac app and
+            all major versions go through a weekly manual pass, because they often need code changes.
+        </li>
+        <li>
+            <strong>In numbers</strong>: in the last {window.days} days, locked dependency versions changed in
+            {lockfileChanges.commits} commits on {lockfileChanges.days} different days, and at least once in
+            {lockfileChanges.weeksWithAChange === window.weeks ? 'every one' : lockfileChanges.weeksWithAChange} of the
+            {window.weeks} weeks.
+        </li>
+    </ul>
+    <DevTodo>
+        Two things to decide. (1) Renovate's security PRs come from GitHub's Dependabot alerts, which are off for this
+        repo (the fact sheet found <code>vulnerability-alerts</code> returning 404), so the "security updates at any
+        time" rule in <code>renovate.json</code> likely never fires. Either turn on Dependabot alerts (you can keep
+        Dependabot's own PRs off) or set <code>"osvVulnerabilityAlerts": true</code>. (2) Add a daily
+        <code>cargo-audit</code> + <code>cargo-deny advisories</code> job. It reads only <code>Cargo.lock</code>, so
+        it's cheap next to the six-day lane (which compiles for <code>cargo-udeps</code>), and it turns "up to six
+        days" into "up to one day" above.
+    </DevTodo>
+
+    <h2 id="release">Build and release</h2>
+    <ul>
+        <li>
+            <strong>Who can release</strong>: the maintainer, by pushing a version tag to GitHub. He's the only person
+            with write access to the repository.
+        </li>
+        <li>
+            <strong>A guard step</strong> refuses a tag that would offer users an older version than the current one.
+        </li>
+        <li>
+            <strong>Where it builds</strong>: GitHub-hosted macOS machines, a fresh one per build. The machine image
+            is pinned, and the build stops if the macOS SDK isn't the expected one. Three builds run in parallel (Apple
+            Silicon, Intel, and universal). From tag to published release takes {releaseBuildMinutes.min}–{releaseBuildMinutes.max} minutes.
+        </li>
+        <li>
+            <strong>Signing</strong>: each build is signed with Apple's Developer ID, notarized by Apple, and signed
+            again with a separate key for the updater. Each release publishes SHA-256 checksums. Details are on the
+            main page: <a href="/trust#signing">Signing, notarization, and updates</a>.
+        </li>
+        <li>
+            <strong>Not in place</strong>: the signing keys are stored as GitHub repository secrets without a protected
+            environment, release tags aren't signed, and there's no SBOM (software bill of materials), no build
+            provenance, and no reproducible build.
+        </li>
+    </ul>
+
+    <h2 id="updates">Update delivery</h2>
+    <ul>
+        <li>
+            <strong>How</strong>: the app checks for a new version at launch and every hour. It downloads the update,
+            checks its signature, installs it in place, and asks the user to restart. It only ever installs a newer
+            version. Users can turn this off per Mac; IT can't yet control it centrally.
+        </li>
+        <li>
+            <strong>How often</strong>: {releaseCadence.releases} releases in the last {window.days} days, from
+            {releaseCadence.first} to {releaseCadence.last}. The median gap between releases was
+            {releaseCadence.medianGapDays} days, and the longest was {releaseCadence.longestGapDays} days.
+        </li>
+        <li>
+            <strong>How fast users get it</strong>: across four recent releases, {updateAdoption.firstDay.percent}% of
+            active installs ran the new version within 24 hours ({updateAdoption.firstDay.onNewVersion} of
+            {updateAdoption.firstDay.activeInstalls}), and {updateAdoption.thirdDay.percent}% on the third day
+            ({updateAdoption.thirdDay.onNewVersion} of {updateAdoption.thirdDay.activeInstalls}). Cmdr is in open beta,
+            so these are small numbers, and installs with usage stats turned off aren't counted.
+        </li>
+        <li>
+            <strong>From a fix to users</strong>: a fix ships with the next release (usually within a few days), the
+            release is public {releaseBuildMinutes.min}–{releaseBuildMinutes.max} minutes after the tag, and running copies find it within an hour.
+        </li>
+    </ul>
+
+    <h2 id="vulnerabilities">Vulnerability response</h2>
+    <p>
+        How to report a vulnerability and what response times to expect: <a href="/trust#report">Report a
+        vulnerability</a>, and the full policy in
+        <a href={`${repo}/blob/main/SECURITY.md`}>SECURITY.md</a>. Security fixes are listed under
+        "Security" in the <a href="/changelog">changelog</a>. All of them so far were found internally.
+    </p>
+    <p>Every RustSec advisory in a Rust dependency that Cmdr fixed in the last {window.days} days, newest first:</p>
+    <ul>
+        {
+            advisoryFixes.map((fix) => (
+                <li>
+                    <strong>
+                        <a href={`https://rustsec.org/advisories/${fix.id}.html`}>{fix.id}</a>
+                    </strong>{' '}
+                    (<code>{fix.crate}</code>{fix.note ? `, ${fix.note}` : ''}): published {fix.published}, fixed in{' '}
+                    <a href={`${repo}/commit/${fix.fixCommit}`}>{fix.fixCommit}</a>{' '}
+                    on {fix.fixedOn}, released in {fix.release} on {fix.releasedOn}. <strong>{fix.days} days</strong> from
+                    advisory to release.
+                </li>
+            ))
+        }
+    </ul>
+
+    <h2 id="platforms">Supported platforms</h2>
+    <ul>
+        <li>
+            <strong>macOS 12 Monterey and later</strong>, on Apple Silicon and Intel Macs. macOS 10.15 Catalina and 11
+            Big Sur work on a best-effort basis: the app runs, but small visual issues there get fixed last.
+        </li>
+        <li>
+            <strong>Only the latest version gets fixes.</strong> Automatic updates keep most installs on it.
+        </li>
+        <li>
+            <strong>No automated test runs the app on an older macOS version.</strong> A release-time check catches
+            system frameworks and functions that are too new for the oldest supported version. That check exists
+            because two releases in this period (0.42.0 and 0.46.0) wouldn't start on Catalina; both were fixed in a
+            follow-up release.
+        </li>
+        <li>
+            <strong>No Linux or Windows release.</strong> Much of the code also builds on Linux, which is where GitHub
+            runs its tests, but that isn't a supported product.
+        </li>
+    </ul>
+
+    <h2 id="method">How the numbers were measured</h2>
+    <ul>
+        <li>Releases: publish dates of GitHub releases.</li>
+        <li>
+            Dependency changes: commits that changed <code>Cargo.lock</code> or <code>pnpm-lock.yaml</code>. This
+            includes dependencies added or removed with a feature, not only version updates.
+        </li>
+        <li>
+            Update adoption: Cmdr's own usage stats. For each release, the installs active in a 24-hour window, and
+            how many of them ran the new version at their last check-in. Four releases that had at least three days
+            before the next one: 0.37.0, 0.39.0, 0.41.0, and 0.46.1.
+        </li>
+        <li>
+            Advisories: publish dates from the RustSec advisory database, fix dates from Git, and release dates from
+            GitHub.
+        </li>
+        <li>Test and code counts: a count of test functions and <code>unsafe</code> blocks in the source.</li>
+        <li>Build time: the four most recent successful release runs on GitHub.</li>
+    </ul>
+    <p>
+        The exact commands are in the page's source, <code>apps/website/src/lib/trust-development.ts</code>, so
+        anyone can repeat them.
+    </p>
+</LegalLayout>

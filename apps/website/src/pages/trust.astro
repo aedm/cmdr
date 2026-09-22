@@ -14,7 +14,9 @@ import {
     verifiedAgainst,
     vulnerabilityResponse,
 } from '../lib/trust'
+import { codeCounts, releaseCadence, updateAdoption, window as devWindow } from '../lib/trust-development'
 
+const fmt = (n: number) => n.toLocaleString('en-US')
 const euLabel = { yes: 'In the EU', no: 'Outside the EU', partly: 'Partly outside the EU' } as const
 
 const toc = [
@@ -388,32 +390,27 @@ const toc = [
     </DevTodo>
 
     <h2 id="development">How Cmdr is built</h2>
+    <p>
+        The full answer to "Do you have a secure development lifecycle, and do you keep the software up to date?",
+        stage by stage and with measured numbers, is on its own page:
+        <a href="/trust/development">How Cmdr is built and kept up to date</a>. In short:
+    </p>
     <ul>
         <li>
-            Written mostly in Rust. Strict compiler lints run on every change, and every <code>unsafe</code> block (about
-            470, mostly calls into macOS frameworks) must carry a written safety reason.
+            The code that touches files, the network, and the system is Rust. {codeCounts.checks} automated checks,
+            including about {fmt(Math.round(codeCounts.rustTests / 100) * 100)} Rust tests with deliberately hostile
+            cases, run during development and again on GitHub after each change.
         </li>
         <li>
-            About 9,500 Rust tests, around 1,500 of them for file operations, including deliberately hostile cases: a
-            copy killed halfway, a device unplugged mid-transfer, a failing server. Integration tests run against real
-            SMB, SFTP, and WebDAV servers in containers.
+            AI coding agents write the code, and one person directs them. No second person reviews code changes.
         </li>
         <li>
-            Dependencies: <code>cargo-deny</code> (licenses, sources, advisories) and <code>cargo-audit</code> run every
-            six days. Dependency updates wait three days after release before they're used. Only crates.io is allowed as
-            a source.
+            {releaseCadence.releases} releases in the last {devWindow.days} days. New dependency versions wait three
+            days before use, and known vulnerabilities in dependencies are scanned for automatically.
         </li>
         <li>
-            Builds run on GitHub-hosted runners. Every third-party GitHub Action is pinned to an exact commit, and
-            installs use a locked dependency file.
-        </li>
-        <li>
-            GitHub secret scanning with push protection and GitGuardian check every change for leaked secrets. Recent
-            commits are signed.
-        </li>
-        <li>
-            Security fixes are listed under "Security" in the <a href="/changelog">changelog</a>. All of them so far
-            were found internally.
+            The app installs updates by itself. About {updateAdoption.firstDay.percent}% of active installs run a new
+            release within 24 hours.
         </li>
     </ul>
     <p>
@@ -428,8 +425,8 @@ const toc = [
             559471-0401, VAT SE559471040101. Swedish law applies.
         </li>
         <li>
-            <strong>Team</strong>: one person, David Veszelovszki, writes and ships Cmdr (over 98% of all commits). He
-            holds every signing key.
+            <strong>Team</strong>: one person, David Veszelovszki, builds and ships Cmdr with AI coding agents (over 98%
+            of all commits are under his name). He holds every signing key.
         </li>
         <li>
             <strong>License</strong>: <a href="https://github.com/vdavid/cmdr/blob/main/LICENSE">Business Source

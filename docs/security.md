@@ -3,7 +3,10 @@
 The public vulnerability disclosure policy is `SECURITY.md` at the repo root;
 `apps/website/public/.well-known/security.txt` points its `Policy:` there. The reviewer-facing summary is the website's
 `/trust` page, whose list content lives in `apps/website/src/lib/trust.ts`. Keep all three consistent when something
-here changes.
+here changes. The development-process answer (the "do you have an SDL" questionnaire item: review, tests, dependency
+policy, release, update cadence) is `/trust/development`, with its measured numbers and their re-measure commands in
+`apps/website/src/lib/trust-development.ts`; update it when a check lane, `deny.toml`, `renovate.json`, or the release
+workflow changes what it claims.
 
 ## Entitlements: the bundle ships none
 
