@@ -8,6 +8,9 @@
 //! `commands::network` pass straight through; the MCP `upgrade_smb_to_direct` tool
 //! and the indexer's `ensure_direct_smb` call [`connect_directly`] too.
 //!
+//! Every door asks for a direct session, so every door turns the share's "Use
+//! Cmdr's fast direct connection" switch back on first (`claim_mounted_share`).
+//!
 //! Nothing here takes an `AppHandle`, so the MCP executor (generic over `Runtime`)
 //! can call it. The commands kick mDNS before delegating; MCP relies on something
 //! else having started it.
@@ -181,6 +184,28 @@ async fn find_mounted_share_within(
     }
 }
 
+/// [`find_mounted_share`] for a door someone ASKED for a direct session through, which
+/// also turns the share's "Use Cmdr's fast direct connection" switch back on.
+///
+/// Asking is consent, and the switch has to follow it: otherwise a share switched
+/// off would get this one session and then stay on the OS mount at every launch,
+/// with no way to click back to the default short of finding the switch.
+async fn claim_mounted_share(volume_id: &str) -> Result<MountedShare, UpgradeResult> {
+    claim_mounted_share_within(volume_id, MOUNT_READ_LIMIT, read_mount).await
+}
+
+/// [`claim_mounted_share`], with the mount read and its limit passed in so a test can
+/// stand in a share.
+async fn claim_mounted_share_within(
+    volume_id: &str,
+    limit: Duration,
+    read: impl FnOnce(&str) -> MountRead + Send + 'static,
+) -> Result<MountedShare, UpgradeResult> {
+    let share = find_mounted_share_within(volume_id, limit, read).await?;
+    crate::network::known_shares::set_direct_connection_enabled(&share.info.server, &share.info.share, true);
+    Ok(share)
+}
+
 /// The `CredentialsNeeded` answer for the share `info` describes.
 fn credentials_needed(
     info: SmbMountInfo,
@@ -201,7 +226,7 @@ fn credentials_needed(
 /// Upgrades `volume_id` with the credentials Cmdr stored for its share, or answers
 /// `CredentialsNeeded` when there are none or the server turns them down.
 pub(crate) async fn connect_directly(volume_id: &str) -> UpgradeResult {
-    let MountedShare { mount_path, info } = match find_mounted_share(volume_id).await {
+    let MountedShare { mount_path, info } = match claim_mounted_share(volume_id).await {
         Ok(share) => share,
         Err(answer) => return answer,
     };
@@ -244,7 +269,7 @@ pub(crate) async fn connect_directly_with_credentials(
     password: Option<String>,
     remember_in_keychain: bool,
 ) -> UpgradeResult {
-    let MountedShare { mount_path, info } = match find_mounted_share(volume_id).await {
+    let MountedShare { mount_path, info } = match claim_mounted_share(volume_id).await {
         Ok(share) => share,
         Err(answer) => return answer,
     };
@@ -282,7 +307,7 @@ pub(crate) async fn connect_directly_with_system_saved_password(volume_id: &str)
     use crate::network::smb_server_address::system_keychain_aliases;
     use crate::secrets::system_keychain_smb;
 
-    let MountedShare { mount_path, info } = match find_mounted_share(volume_id).await {
+    let MountedShare { mount_path, info } = match claim_mounted_share(volume_id).await {
         Ok(share) => share,
         Err(answer) => return answer,
     };
@@ -358,7 +383,7 @@ pub(crate) async fn system_has_saved_password(volume_id: &str) -> bool {
 /// saved": ask for the password on the sign-in sheet.
 #[cfg(not(target_os = "macos"))]
 pub(crate) async fn connect_directly_with_system_saved_password(volume_id: &str) -> UpgradeResult {
-    match find_mounted_share(volume_id).await {
+    match claim_mounted_share(volume_id).await {
         Ok(MountedShare { info, .. }) => {
             let display_name = friendly_server_name(&info.server);
             let hint = info.username.clone();

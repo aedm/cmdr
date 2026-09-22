@@ -3804,6 +3804,20 @@ export const commands = {
   upgradeToSmbVolumeUsingSavedPassword: (volumeId: string) =>
     __TAURI_INVOKE<UpgradeResult>('upgrade_to_smb_volume_using_saved_password', { volumeId }),
   /**
+   *  Whether the SMB share behind `volume_id` may use Cmdr's fast direct connection
+   *  (the per-share switch), or `None` when there's no SMB share behind it to ask
+   *  about. See `network::smb_direct_switch`.
+   */
+  getSmbDirectConnectionEnabled: (volumeId: string) =>
+    __TAURI_INVOKE<boolean | null>('get_smb_direct_connection_enabled', { volumeId }),
+  /**
+   *  Switches the SMB share behind `volume_id` onto or off Cmdr's fast direct
+   *  connection. Off on a direct share hands it back to the macOS mount now; on only
+   *  saves, and the caller runs "Connect directly". See `network::smb_direct_switch`.
+   */
+  setSmbDirectConnectionEnabled: (volumeId: string, enabled: boolean) =>
+    __TAURI_INVOKE<DirectConnectionSwitch>('set_smb_direct_connection_enabled', { volumeId, enabled }),
+  /**
    *  Tries to rebuild a Disconnected volume's session in place.
    *
    *  ❗ Backend-neutral: every remote backend implements `attempt_reconnect`, and
@@ -6430,6 +6444,27 @@ export type DirStats = {
    */
   recursiveSizeStale: boolean
 }
+
+// What switching a share's direct connection on or off did.
+export type DirectConnectionSwitch =
+  /**
+   *  The choice is saved, and nothing else needed to change now: the share was
+   *  already on the OS mount when switched off, or switched on (the caller starts
+   *  the connect it wants, with its own sign-in and toasts).
+   */
+  | 'saved'
+  /**
+   *  Switched off while a direct session served the share, so the share went back
+   *  to the macOS mount right away.
+   */
+  | 'returnedToOsMount'
+  /**
+   *  No SMB share is mounted behind this volume (anymore), so there's nothing to
+   *  switch. Nothing was saved.
+   */
+  | 'notAnSmbShare'
+  // The mount didn't answer a status read in time. Nothing was saved.
+  | 'mountNotResponding'
 
 // `directory-deleted` event: the watched directory itself was deleted.
 export type DirectoryDeletedEvent = {

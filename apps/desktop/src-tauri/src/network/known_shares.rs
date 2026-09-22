@@ -4,6 +4,7 @@
 //! Enables username pre-fill, auth change detection, and quick reconnect.
 
 use crate::ignore_poison::IgnorePoison;
+use crate::network::NetworkHost;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -42,12 +43,30 @@ pub struct KnownNetworkShare {
     pub username: Option<String>,
 }
 
+/// One share on one server, named the way the mount reported it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShareRef {
+    pub server_name: String,
+    pub share_name: String,
+}
+
 /// The known shares store, persisted to disk.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KnownSharesStore {
     #[serde(default)]
     pub known_network_shares: Vec<KnownNetworkShare>,
+    /// The shares the user turned "Use Cmdr's fast direct connection" off for.
+    ///
+    /// An opt-out list rather than a flag on [`KnownNetworkShare`], because that type
+    /// records Cmdr's OWN connects (its one writer files server-level rows): a share
+    /// macOS mounted has no row, and minting one would invent a connection history
+    /// that then shows up in the servers hub. Absence means on, so a store saved
+    /// before the setting existed keeps every share on the fast connection. See
+    /// [`direct_connection_enabled`].
+    #[serde(default)]
+    pub direct_connection_opt_outs: Vec<ShareRef>,
 }
 
 /// In-memory cache of known shares, synchronized with disk.
@@ -73,6 +92,12 @@ fn cleanup_tmp_file(path: &Path) {
     }
 }
 
+/// Where the store lives on disk, set once by [`load_known_shares`]. Kept here so a
+/// write needs no `AppHandle`: "Connect directly" records its consent from code the
+/// MCP executor also calls, and that holds none. Unset (tests, no data dir) means the
+/// store lives in memory only.
+static STORE_PATH: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
 /// Returns the path to the known shares store file.
 fn get_store_path<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBuf> {
     crate::config::resolved_app_data_dir(app)
@@ -85,6 +110,7 @@ pub fn load_known_shares<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     let Some(path) = get_store_path(app) else {
         return;
     };
+    let _ = STORE_PATH.set(path.clone());
 
     cleanup_tmp_file(&path);
 
@@ -98,8 +124,8 @@ pub fn load_known_shares<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 }
 
 /// Saves known shares from memory to disk.
-fn save_known_shares<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-    let Some(path) = get_store_path(app) else {
+fn save_known_shares() {
+    let Some(path) = STORE_PATH.get() else {
         return;
     };
 
@@ -111,7 +137,7 @@ fn save_known_shares<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     }
 
     if let Ok(json) = serde_json::to_string_pretty(&store)
-        && let Err(e) = atomic_write_json(&path, &json)
+        && let Err(e) = atomic_write_json(path, &json)
     {
         log::warn!("Couldn't write known shares store: {}", e);
     }
@@ -125,11 +151,7 @@ fn save_known_shares<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 /// remembers one share as two, and the auth mode saved under one spelling is missing
 /// under the other.
 fn share_key(server_name: &str, share_name: &str) -> String {
-    use unicode_normalization::UnicodeNormalization;
-
-    let server: String = server_name.nfc().flat_map(char::to_lowercase).collect();
-    let share: String = share_name.nfc().flat_map(char::to_lowercase).collect();
-    format!("{}/{}", server, share)
+    format!("{}/{}", fold_name(server_name), fold_name(share_name))
 }
 
 /// Gets all known network shares.
@@ -153,7 +175,7 @@ pub fn get_known_share(server_name: &str, share_name: &str) -> Option<KnownNetwo
 
 /// Updates or adds a known network share.
 /// Called after a successful connection.
-pub fn update_known_share<R: tauri::Runtime>(app: &tauri::AppHandle<R>, share: KnownNetworkShare) {
+pub fn update_known_share(share: KnownNetworkShare) {
     let key = share_key(&share.server_name, &share.share_name);
 
     {
@@ -170,7 +192,7 @@ pub fn update_known_share<R: tauri::Runtime>(app: &tauri::AppHandle<R>, share: K
         }
     }
 
-    save_known_shares(app);
+    save_known_shares();
 }
 
 /// The username to pre-fill a login form for `server_name`, if this server has ever been
@@ -204,6 +226,88 @@ pub fn get_username_hint(server_name: &str) -> Option<String> {
         .next_back()
 }
 
+/// Case- and NFC-folds one half of a share's name, the fold [`share_key`] applies.
+fn fold_name(name: &str) -> String {
+    use unicode_normalization::UnicodeNormalization;
+
+    name.nfc().flat_map(char::to_lowercase).collect()
+}
+
+/// Whether `entry` names the share `share` on the server any of `server_names` names.
+///
+/// The server half asks [`same_server`](crate::network::server_identity::same_server)
+/// rather than comparing keys, because `statfs` echoes whichever name form each mount
+/// used: one NAS is `192.168.1.111` on one mount and `Naspolya._smb._tcp.local` on the
+/// next, and a choice the other spelling can't see looks like the switch resetting
+/// itself.
+fn names_share(entry: &ShareRef, server_names: &[&str], share: &str, hosts: &[NetworkHost]) -> bool {
+    use crate::network::server_identity::same_server;
+
+    fold_name(&entry.share_name) == fold_name(share)
+        && server_names
+            .iter()
+            .any(|server| same_server(&entry.server_name, server, hosts))
+}
+
+/// Whether `opt_outs` holds the share, under any name form of its server.
+fn is_opted_out(opt_outs: &[ShareRef], server_names: &[&str], share: &str, hosts: &[NetworkHost]) -> bool {
+    opt_outs
+        .iter()
+        .any(|entry| names_share(entry, server_names, share, hosts))
+}
+
+/// Records (`enabled: false`) or drops (`enabled: true`) the share's opt-out in `opt_outs`.
+///
+/// Either way every entry naming the share goes first, so a share chosen under two
+/// spellings keeps one entry, filed under the newest.
+fn apply_choice(opt_outs: &mut Vec<ShareRef>, server_name: &str, share: &str, enabled: bool, hosts: &[NetworkHost]) {
+    opt_outs.retain(|entry| !names_share(entry, &[server_name], share, hosts));
+    if !enabled {
+        opt_outs.push(ShareRef {
+            server_name: server_name.to_string(),
+            share_name: share.to_string(),
+        });
+    }
+}
+
+/// Whether Cmdr may give this share its own direct smb2 session without being asked
+/// right then: the per-share "Use Cmdr's fast direct connection" switch. `true` unless
+/// the user turned it off.
+///
+/// ❗ **Every upgrade nobody clicked for must ask this**, under
+/// `smb_upgrade::lock_volume_upgrade` and right before dialing. Today that's one place,
+/// `smb_upgrade::register_smb_volume`, which the startup pass, the mount watcher, and
+/// Cmdr's own mount all funnel through. A trigger that bypasses it makes the switch do
+/// nothing.
+///
+/// `server_names` takes every spelling the caller has for the server (the `statfs`
+/// name and the address it resolved to, say); any one of them matching counts.
+pub fn direct_connection_enabled(server_names: &[&str], share: &str) -> bool {
+    // Discovery is read BEFORE this store's lock is taken, so the two never nest.
+    let hosts = crate::network::get_discovered_hosts();
+    let store = get_known_shares_mutex().lock_ignore_poison();
+    !is_opted_out(&store.direct_connection_opt_outs, server_names, share, &hosts)
+}
+
+/// Records the user's "Use Cmdr's fast direct connection" choice for a share, and
+/// persists it. Every "Connect directly" calls this with `true`: asking for the direct
+/// session is consent to it, so the switch can't strand someone in a state they can't
+/// click their way out of.
+pub fn set_direct_connection_enabled(server_name: &str, share: &str, enabled: bool) {
+    let hosts = crate::network::get_discovered_hosts();
+    {
+        let mut store = get_known_shares_mutex().lock_ignore_poison();
+        apply_choice(
+            &mut store.direct_connection_opt_outs,
+            server_name,
+            share,
+            enabled,
+            &hosts,
+        );
+    }
+    save_known_shares();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,6 +315,96 @@ mod tests {
     /// Tests that mutate the global `KNOWN_SHARES` static must hold this lock
     /// to prevent cross-test interference (Rust runs tests in parallel).
     static SERIAL: Mutex<()> = Mutex::new(());
+
+    fn naspolya() -> NetworkHost {
+        NetworkHost {
+            id: "naspolya-smb-tcp-local".to_string(),
+            name: "Naspolya".to_string(),
+            hostname: Some("Naspolya.local".to_string()),
+            ip_address: Some("192.168.1.111".to_string()),
+            port: 445,
+            source: crate::network::HostSource::Discovered,
+        }
+    }
+
+    /// A store saved before the setting existed has no opt-out list at all, and
+    /// every share in it must stay on the fast connection: a missing field can't be
+    /// what switches the behavior off.
+    #[test]
+    fn a_store_saved_before_the_setting_existed_leaves_every_share_on_the_fast_connection() {
+        let old = r#"{"knownNetworkShares":[{"serverName":"Naspolya","shareName":"naspi","protocol":"smb","lastConnectedAt":"2026-01-06T12:00:00Z","lastConnectionMode":"guest","lastKnownAuthOptions":"guest_only","username":null}]}"#;
+
+        let store: KnownSharesStore = serde_json::from_str(old).expect("an old store still loads");
+
+        assert_eq!(store.known_network_shares.len(), 1, "the old rows survive");
+        assert!(!is_opted_out(
+            &store.direct_connection_opt_outs,
+            &["Naspolya"],
+            "naspi",
+            &[]
+        ));
+    }
+
+    /// `statfs` echoes whichever name form each mount used, so one NAS arrives as
+    /// an IP on one mount and as its mDNS service name on the next. A choice made
+    /// under one spelling that the other can't see looks like the toggle resetting
+    /// itself.
+    #[test]
+    fn an_opt_out_holds_under_every_name_form_of_its_server() {
+        let hosts = [naspolya()];
+        let mut opt_outs = Vec::new();
+
+        apply_choice(&mut opt_outs, "192.168.1.111", "naspi", false, &hosts);
+
+        for form in [
+            "192.168.1.111",
+            "Naspolya._smb._tcp.local",
+            "naspolya.local",
+            "Naspolya",
+        ] {
+            assert!(
+                is_opted_out(&opt_outs, &[form], "naspi", &hosts),
+                "the opt-out is invisible under {form:?}"
+            );
+        }
+        // The share name folds case and NFC, the way `share_key` does.
+        assert!(is_opted_out(&opt_outs, &["Naspolya"], "NASPI", &hosts));
+        // Another share on the same server keeps its own answer, and so does another server.
+        assert!(!is_opted_out(&opt_outs, &["Naspolya"], "Multimedia", &hosts));
+        assert!(!is_opted_out(&opt_outs, &["raspberrypi.local"], "naspi", &hosts));
+    }
+
+    /// The auto path knows a mount's server twice over (the `statfs` spelling and the
+    /// address it's about to dial), and either one matching is enough.
+    #[test]
+    fn any_of_the_callers_server_names_can_match() {
+        let hosts = [naspolya()];
+        let mut opt_outs = Vec::new();
+        apply_choice(&mut opt_outs, "Naspolya._smb._tcp.local", "naspi", false, &hosts);
+
+        assert!(is_opted_out(
+            &opt_outs,
+            &["somewhere-else", "192.168.1.111"],
+            "naspi",
+            &hosts
+        ));
+    }
+
+    /// Choosing again under another spelling replaces the entry rather than adding a
+    /// second, and turning it back on clears it under any spelling.
+    #[test]
+    fn one_share_has_one_entry_whatever_it_is_called() {
+        let hosts = [naspolya()];
+        let mut opt_outs = Vec::new();
+
+        apply_choice(&mut opt_outs, "192.168.1.111", "naspi", false, &hosts);
+        apply_choice(&mut opt_outs, "Naspolya._smb._tcp.local", "naspi", false, &hosts);
+        assert_eq!(opt_outs.len(), 1, "one share, one entry: {opt_outs:?}");
+
+        apply_choice(&mut opt_outs, "naspolya.local", "NASPI", true, &hosts);
+        assert!(opt_outs.is_empty(), "turning it back on clears it: {opt_outs:?}");
+        assert!(!is_opted_out(&opt_outs, &["192.168.1.111"], "naspi", &hosts));
+    }
 
     #[test]
     fn test_share_key() {
@@ -302,6 +496,7 @@ mod tests {
                     username: None,
                 },
             ],
+            direct_connection_opt_outs: Vec::new(),
         };
 
         let json = serde_json::to_string_pretty(&store).unwrap();

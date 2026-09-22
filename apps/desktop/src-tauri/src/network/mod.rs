@@ -79,6 +79,9 @@ pub(crate) mod smb_upgrade;
 // "Connect directly": the upgrade someone asked for, answered with where it left
 // the volume. The auto-upgrade paths stay in `smb_upgrade`.
 pub(crate) mod smb_connect_directly;
+// The per-share "Use Cmdr's fast direct connection" switch, by volume id. The
+// choice lives in `known_shares`; `smb_upgrade` reads it.
+pub(crate) mod smb_direct_switch;
 
 // The "we're stuck on the kernel mount" notice's once-per-server ledger. Lives
 // beside `smb_upgrade` (its only caller) rather than inside it, so the ledger is

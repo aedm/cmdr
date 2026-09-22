@@ -288,7 +288,6 @@ pub fn get_known_share_by_name(_server_name: String, _share_name: String) -> Opt
 #[tauri::command]
 #[specta::specta]
 pub fn update_known_share(
-    _app: tauri::AppHandle,
     _server_name: String,
     _share_name: String,
     _last_connection_mode: ConnectionMode,
@@ -451,6 +450,29 @@ pub async fn upgrade_to_smb_volume_using_saved_password(
     _app_handle: tauri::AppHandle,
 ) -> UpgradeResult {
     UpgradeResult::NotSmbMount
+}
+
+/// What switching a share's direct connection did (stub: the one real variant this
+/// platform can honestly give, in the real type's JSON shape).
+#[derive(serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DirectConnectionSwitch {
+    /// Nothing on this platform is an SMB share, so there's nothing to switch.
+    NotAnSmbShare,
+}
+
+/// Whether a share may use the direct connection (stub: nothing here is an SMB share).
+#[tauri::command]
+#[specta::specta]
+pub async fn get_smb_direct_connection_enabled(_volume_id: String) -> Option<bool> {
+    None
+}
+
+/// Switches a share's direct connection (stub: nothing here is an SMB share).
+#[tauri::command]
+#[specta::specta]
+pub async fn set_smb_direct_connection_enabled(_volume_id: String, _enabled: bool) -> DirectConnectionSwitch {
+    DirectConnectionSwitch::NotAnSmbShare
 }
 
 /// Disconnects an SMB volume (stub: returns error).

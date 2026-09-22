@@ -622,6 +622,81 @@ async fn different_volumes_upgrade_concurrently() {
     drop(first);
 }
 
+// ── The per-share "Use Cmdr's fast direct connection" switch ──────────────────
+
+/// A share the user switched off never gets a session nobody asked for: the auto
+/// path reads the switch at act time and leaves the share on the macOS mount
+/// without dialing, so there's no failure either, and no fallback notice.
+#[tokio::test]
+async fn the_auto_upgrade_path_leaves_a_switched_off_share_on_the_os_mount() {
+    use crate::file_system::volume::smb_volume_id;
+
+    // TEST-NET-2: a dial would burn the connect retries before failing.
+    let server = "198.51.100.31";
+    let share = "stays-on-os-mount";
+    let volume_id = smb_volume_id(server, 445, share);
+    crate::network::known_shares::set_direct_connection_enabled(server, share, false);
+
+    let start = std::time::Instant::now();
+    register_smb_volume(server, share, "/Volumes/stays-on-os-mount", None, None, 445).await;
+    let elapsed = start.elapsed();
+
+    crate::network::known_shares::set_direct_connection_enabled(server, share, true);
+    assert!(
+        elapsed < Duration::from_millis(200),
+        "must return before any connect attempt; took {elapsed:?}"
+    );
+    assert!(
+        crate::file_system::volume::manager::get_volume_manager()
+            .get(&volume_id)
+            .is_none(),
+        "nothing may be registered for a share that stays on the OS mount"
+    );
+}
+
+/// Switching a DIRECT share off hands it back to the macOS mount right away, and
+/// the way every other replace does: the session is superseded, never unmounted, so
+/// a copy running on it finishes on the session it started on.
+#[tokio::test]
+async fn returning_a_direct_share_to_the_os_mount_supersedes_its_session() {
+    use crate::file_system::volume::{BackendKind, ConnectionState};
+    use std::sync::atomic::Ordering;
+
+    let volume_id = "test-return-to-os-mount-direct";
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    let (direct, hooks) = tracking::TrackingVolume::create_at("/Volumes/back-to-os", Some(ConnectionState::Direct));
+    manager.register(volume_id, std::sync::Arc::clone(&direct));
+
+    let returned = return_to_os_mount(volume_id).await;
+
+    let current = manager.get(volume_id).expect("the share stays registered");
+    manager.unregister(volume_id);
+    assert!(returned, "a direct share has a session to hand back");
+    assert_eq!(current.backend_kind(), BackendKind::Local, "the OS mount serves it now");
+    assert_eq!(current.root(), Path::new("/Volumes/back-to-os"), "at the same mount");
+    assert!(hooks.superseded.load(Ordering::Relaxed), "the session is superseded");
+    assert!(
+        !hooks.unmounted.load(Ordering::Relaxed),
+        "and never unmounted, which would cut in-flight work"
+    );
+}
+
+/// A share already on the OS mount has nothing to hand back, and nothing is swapped.
+#[tokio::test]
+async fn a_share_already_on_the_os_mount_is_left_alone() {
+    let volume_id = "test-return-to-os-mount-already";
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    let (os_mount, _) = tracking::TrackingVolume::create_at("/Volumes/already-os", None);
+    manager.register(volume_id, std::sync::Arc::clone(&os_mount));
+
+    let returned = return_to_os_mount(volume_id).await;
+
+    let current = manager.get(volume_id).expect("still registered");
+    manager.unregister(volume_id);
+    assert!(!returned);
+    assert!(std::sync::Arc::ptr_eq(&current, &os_mount), "nothing was swapped");
+}
+
 // ── Refusals from a real server ───────────────────────────────────────────────
 
 /// The `both` fixture's port: what the Rust integration lane sets, else smb2's default.

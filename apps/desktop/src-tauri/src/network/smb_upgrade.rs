@@ -5,6 +5,10 @@
 //! 2. **Mount-time** (`volumes::watcher::try_upgrade_smb_mount`): FSEvents detects new mount
 //! 3. **Manual** (`smb_connect_directly`): user clicks "Connect directly"
 //!
+//! The auto paths (and Cmdr's own `mount_network_share`) dial through
+//! [`register_smb_volume`], which honors the per-share "Use Cmdr's fast direct
+//! connection" switch; [`return_to_os_mount`] is the way back when it goes off.
+//!
 //! Who a mount's server is (what to dial, what to call it, which saved credentials
 //! go with it) is `smb_server_address`'s question.
 
@@ -364,6 +368,15 @@ pub(crate) async fn register_smb_volume(
         log::debug!("{volume_id} is already a direct smb2 connection; skipping the upgrade");
         return;
     }
+    // The user's per-share switch, read at act time for the same reason: a toggle
+    // flipped during the mDNS wait still counts. Both spellings go in, because the
+    // statfs name and the address it resolved to are one server and either may be
+    // the one the choice was saved under. A share that stays on the OS mount never
+    // dials, so it never fails, and never raises a fallback notice either.
+    if !crate::network::known_shares::direct_connection_enabled(&[server, &resolved_server], share) {
+        log::debug!("{share} on {server} is set to stay on the macOS mount; not upgrading {volume_id}");
+        return;
+    }
 
     log::debug!(
         "Establishing smb2 connection for SmbVolume: {}:{}/{}",
@@ -444,6 +457,35 @@ pub(crate) async fn resolve_and_register_smb_volume(server: &str, share: &str, m
         None => (None, None),
     };
     register_smb_volume(server, share, mount_path, username, password, port).await;
+}
+
+/// Hands the share under `volume_id` back to the macOS mount it rides on, when a
+/// direct smb2 session serves it. Returns whether there was a session to hand back.
+///
+/// The reverse of an upgrade, and built from the same parts: under the same
+/// per-volume lock (so it can't interleave with an attempt in flight), and through
+/// [`register_replacing_predecessor`], so the session is superseded, never
+/// unmounted, and a copy running on it finishes on the session it started on. The
+/// OS mount never went anywhere (the direct session is a "sneaky mount" beside it),
+/// so a `LocalPosixVolume` at the same root serves the share from here on.
+pub(crate) async fn return_to_os_mount(volume_id: &str) -> bool {
+    use crate::file_system::volume::{BackendKind, LocalPosixVolume};
+
+    let _upgrade_guard = lock_volume_upgrade(volume_id).await;
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    let Some(current) = manager.get(volume_id) else {
+        return false;
+    };
+    if current.backend_kind() != BackendKind::Smb {
+        return false;
+    }
+    let os_mount = std::sync::Arc::new(LocalPosixVolume::new(current.name(), current.root()));
+    register_replacing_predecessor(volume_id, os_mount).await;
+    log::info!(
+        "Handed {volume_id} back to the macOS mount at {}",
+        current.root().display()
+    );
+    true
 }
 
 /// Attempts the smb2 connection for the mount `info` describes, and registers the

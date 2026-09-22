@@ -30,6 +30,7 @@ of the app build.
   - `smb_server_address.rs`: who a `statfs` server string is: what to dial (`resolve_server_address`, § "A server nothing has discovered is not dialed"), what to call it (`friendly_server_name`, `resolve_ip_to_hostname*`), and which saved credentials go with it (`get_keychain_password`, `system_keychain_aliases`). Shared by `smb_upgrade.rs` and `smb_connect_directly.rs`, so the auto and manual upgrade paths can't disagree about which server a mount is.
   - `smb_connect_failure.rs`: why an smb2 connect didn't get in, read by type. A `Refusal` (who the attempt went out as, and whether sign-in or the share said no, with the log advice for each) or an `UpgradeFailure`; plus `UpgradeError` and `log_direct_connect_failure`. Shared by `share_access.rs` and both upgrade paths (§ "An auth rejection says what was actually rejected").
   - `smb_connect_directly.rs`: the manual "Connect directly" upgrade, with Cmdr's stored credentials, the sign-in sheet's, or Finder's saved password. Behind the three `upgrade_to_smb_volume*` commands, the MCP `upgrade_smb_to_direct` tool, and the indexer's `ensure_direct_smb`. Owns `UpgradeResult` (§ "Connect directly answers a gone volume").
+  - `smb_direct_switch.rs`: the per-share "Use Cmdr's fast direct connection" switch, read and set by volume id for the volume switcher. Behind `get_smb_direct_connection_enabled` / `set_smb_direct_connection_enabled`. Owns `DirectConnectionSwitch` (§ "The per-share direct-connection switch").
 - **Mounting** (platform-specific via `#[path]` in `mod.rs`):
   - `mount.rs`: macOS `NetFSMountURLSync` for native `/Volumes/` mounts, each success confirmed against `statfs` (§ "A reported mount counts once it's there"); also `unmount_smb_shares_from_host` (iterates `/Volumes/`, matches via `statfs`, unmounts via `diskutil`)
   - `mount_linux.rs`: Linux `gio mount` for GVFS-based user-space mounts, confirmed the same way
@@ -38,7 +39,7 @@ of the app build.
 - **Server identity**: `server_identity.rs`: `same_server` equivalence over the names a server goes by (mDNS service name, `.local` hostname, IP), enriched from the discovery state. Used by the mount-path disambiguation and the already-mounted short-circuit so string-shape differences can't split one server into two.
 - **Auth** (platform-agnostic):
   - `keychain.rs`: SMB credential management. Delegates storage to `crate::secrets::store()` (see `secrets/CLAUDE.md` for backend details)
-- **State**: `known_shares.rs`: Connection history in `known-shares.json` (usernames, last auth mode, timestamps).
+- **State**: `known_shares.rs`: Connection history in `known-shares.json` (usernames, last auth mode, timestamps), plus the shares switched off Cmdr's direct connection (`direct_connection_opt_outs`).
 
 ## Platform strategy
 
@@ -185,7 +186,7 @@ When the user mounts an SMB share, we establish a parallel smb2 connection along
 
 ### `register_replacing_predecessor` retires the displaced volume; it never unmounts it
 
-Every `NSWorkspaceDidMountNotification` on an SMB share triggers a fresh `register_smb_volume` cycle, the user can re-trigger the same path via manual "Connect directly", and the startup upgrade pass can land on an already-direct volume. `register_replacing_predecessor` (in `smb_upgrade.rs`) is the one place a new `SmbVolume` takes an occupied slot: it looks up the predecessor via `manager.get(volume_id)`, calls `Volume::on_superseded` on it, then `register`s the new volume. Both `register_smb_volume` and `try_smb_upgrade` route through it. It also emits `volumes-changed` after registering: the after-sign-in and already-mounted upgrade paths have no FSEvents mount event to ride, so without the explicit broadcast the frontend keeps the stale `os_mount` dot on a volume that's already `direct`.
+Every `NSWorkspaceDidMountNotification` on an SMB share triggers a fresh `register_smb_volume` cycle, the user can re-trigger the same path via manual "Connect directly", and the startup upgrade pass can land on an already-direct volume. `register_replacing_predecessor` (in `smb_upgrade.rs`) is the one place a new `SmbVolume` takes an occupied slot, and the one place `return_to_os_mount` hands a slot back to a `LocalPosixVolume`: it looks up the predecessor via `manager.get(volume_id)`, calls `Volume::on_superseded` on it, then `register`s the new volume. Both `register_smb_volume` and `try_smb_upgrade` route through it. It also emits `volumes-changed` after registering: the after-sign-in and already-mounted upgrade paths have no FSEvents mount event to ride, so without the explicit broadcast the frontend keeps the stale `os_mount` dot on a volume that's already `direct`.
 
 **A replace is not a disconnect, and the predecessor's session must survive it.** The full lifecycle contract, the in-flight holders it protects, and the id-scoped parts that do retire live in `file_system/volume/backends/DETAILS.md` § "Supersede vs. unmount", the canonical doc, next to the `SmbVolume` code that implements it.
 
@@ -573,6 +574,45 @@ a volume's last root goes). The frontend retires a notice once its share leaves 
 counted as told would stay silent through a genuine fallback after a remount, with no notice on screen to account for
 the silence. The ledger remembers which volume each server's notice named, and only that volume's departure counts:
 another of the server's shares unmounting leaves the notice up, so the server stays told.
+
+## The per-share direct-connection switch
+
+"Use Cmdr's fast direct connection" is a per-SHARE choice, defaulting to on. Running a direct session is a property of
+one mount, and `register_smb_volume` already runs once per mounted share, so that's the grain the decision has. (The
+fallback-notice ledger is per SERVER instead, because a stale password or a sleeping host fails every share alike:
+different question, different grain.)
+
+**Stored as an opt-out list, `KnownSharesStore::direct_connection_opt_outs`**, ❌ not a flag on `KnownNetworkShare`. That
+type records Cmdr's own connects, and its one writer files server-level rows only, so a share macOS mounted has no row;
+minting one would invent a connection history that then shows up in the servers hub. Absence means on, so a
+`known-shares.json` written before the setting existed keeps every share on the fast connection. The store writes
+without an `AppHandle` (the path is stashed at load), because "Connect directly" records consent from code the MCP
+executor calls too.
+
+**Matched by `server_identity::same_server`, never a key.** `statfs` spells one NAS `192.168.1.111` on one mount and
+`Naspolya._smb._tcp.local` on the next, and a choice the other spelling can't see looks like the switch resetting
+itself. Setting it clears every entry naming the share first, so one share keeps one entry. The auto path passes both
+the `statfs` name and the address it resolved, so discovery that has just resolved the name is what pairs them.
+
+**The gate: `known_shares::direct_connection_enabled`, read in `register_smb_volume` under `lock_volume_upgrade`, right
+after `is_already_direct`.** Act time, like the direct re-check, so a switch flipped during the mDNS wait counts. The
+startup pass, the FSEvents mount watcher, and Cmdr's own `mount_network_share` all funnel through there. ❗ **Any new
+auto trigger (the pane-open upgrade in issue #123) must reach the dial through `register_smb_volume` /
+`resolve_and_register_smb_volume`, or call `direct_connection_enabled` itself**; one that dials some other way makes the
+switch do nothing. A switched-off share returns before dialing, so it never fails and never raises the fallback
+notice.
+
+**Asking is consent.** All the `smb_connect_directly` doors (the commands, MCP, the indexer's `ensure_direct_smb`) go
+through `claim_mounted_share`, which turns the switch back on before dialing, so the switch can't strand someone in a
+state they can't click out of. The manual path is never gated.
+
+**Off on a direct share hands it back now** (`smb_upgrade::return_to_os_mount`), under the same per-volume lock and
+through `register_replacing_predecessor`, so the session is superseded, never unmounted, and in-flight work finishes on
+it. The OS mount stayed up underneath the whole time, so a `LocalPosixVolume` at the same root takes over. The choice is
+saved BEFORE the lock is taken, so an auto upgrade already waiting on it sees the switch off. Now rather than at the
+next mount because the switch sits beside the connection dot, and a dot that stays green reads as a switch that
+didn't work. On only saves; the frontend then runs "Connect directly" for an `os_mount` share, which owns sign-in and
+the toasts.
 
 ## Connect directly answers a gone volume
 

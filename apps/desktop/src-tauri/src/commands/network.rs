@@ -8,6 +8,7 @@ use crate::network::{
 };
 
 use crate::network::smb_connect_directly::{self, UpgradeResult};
+use crate::network::smb_direct_switch::{self, DirectConnectionSwitch};
 use crate::network::smb_upgrade::register_smb_volume;
 
 /// Gets all currently discovered network hosts.
@@ -155,7 +156,6 @@ pub fn get_known_share_by_name(server_name: String, share_name: String) -> Optio
 #[tauri::command]
 #[specta::specta]
 pub fn update_known_share(
-    app: tauri::AppHandle,
     server_name: String,
     share_name: String,
     last_connection_mode: ConnectionMode,
@@ -172,7 +172,7 @@ pub fn update_known_share(
         username,
     };
 
-    known_shares::update_known_share(&app, share);
+    known_shares::update_known_share(share);
 }
 
 /// The username to pre-fill for `server_name`, or `None` if it has never been signed in to.
@@ -362,6 +362,24 @@ pub async fn upgrade_to_smb_volume(volume_id: String, app_handle: tauri::AppHand
     // the MCP executor (generic over `Runtime`) can call it.
     crate::network::ensure_mdns_started(app_handle);
     smb_connect_directly::connect_directly(&volume_id).await
+}
+
+/// Whether the SMB share behind `volume_id` may use Cmdr's fast direct connection
+/// (the per-share switch), or `None` when there's no SMB share behind it to ask
+/// about. See `network::smb_direct_switch`.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_smb_direct_connection_enabled(volume_id: String) -> Option<bool> {
+    smb_direct_switch::direct_connection_enabled_for(&volume_id).await
+}
+
+/// Switches the SMB share behind `volume_id` onto or off Cmdr's fast direct
+/// connection. Off on a direct share hands it back to the macOS mount now; on only
+/// saves, and the caller runs "Connect directly". See `network::smb_direct_switch`.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_smb_direct_connection_enabled(volume_id: String, enabled: bool) -> DirectConnectionSwitch {
+    smb_direct_switch::set_direct_connection_for(&volume_id, enabled).await
 }
 
 // Per-drive indexing enable/disable/rescan lives in `commands/indexing.rs` as a

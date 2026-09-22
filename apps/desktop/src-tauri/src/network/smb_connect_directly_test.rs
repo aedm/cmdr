@@ -168,3 +168,33 @@ async fn the_saved_password_door_answers_volume_gone_too() {
 
     assert!(matches!(answer, UpgradeResult::VolumeGone), "got {answer:?}");
 }
+
+/// Asking for a direct session is consent to one, so it turns the share's "Use
+/// Cmdr's fast direct connection" switch back on before dialing. Without that, a
+/// share switched off could only be upgraded by hand, one press at a time, and
+/// would stay on the OS mount again at every launch.
+#[tokio::test]
+async fn asking_for_a_direct_session_switches_the_share_back_on() {
+    use crate::network::known_shares::{direct_connection_enabled, set_direct_connection_enabled};
+
+    let dir = TestDir::new("connect_directly_consent");
+    let volume = Registered::at("consent", &dir);
+    let (server, share) = ("198.51.100.44", "switched-off");
+    set_direct_connection_enabled(server, share, false);
+
+    let found = claim_mounted_share_within(&volume.0, Duration::from_secs(3), move |_| {
+        MountRead::Smb(SmbMountInfo {
+            server: server.to_string(),
+            share: share.to_string(),
+            subpath: None,
+            username: None,
+            port: 445,
+        })
+    })
+    .await;
+
+    let enabled = direct_connection_enabled(&[server], share);
+    set_direct_connection_enabled(server, share, true);
+    assert!(found.is_ok(), "the share is there: {found:?}");
+    assert!(enabled, "asking for the direct session must switch the share back on");
+}
