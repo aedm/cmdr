@@ -26,7 +26,41 @@ Consequences worth internalising, because each one burned a day:
 - "The balloon popped back on its own" is usually **mimalloc decommitting pages**, not macOS purging GPU surfaces. The
   arena regions stay mapped, so the region count doesn't drop even though dirty bytes collapse.
 
-## How to measure
+## How to measure: ask the app (start here)
+
+One call to a RUNNING instance answers "how much is it using, and what is it", and it's the only reading that spans both
+allocators at once: mimalloc isn't a registered malloc zone, so the zone APIs are blind to Cmdr's Rust heap, and the
+zones in turn know nothing the heap knows. It also carries `sqlitePageCache`, the page slab that hides inside the
+mimalloc total with nothing else naming it.
+
+```bash
+./scripts/mcp-call.sh memory_diagnostics '{}'                  # default: 8 region-size groups per tag
+./scripts/mcp-call.sh memory_diagnostics '{"sizesPerTag":24}'  # the full histogram, for fingerprinting
+./scripts/mcp-call.sh memory_diagnostics '{"sizesPerTag":0}'   # tag totals only
+
+# The /Applications build: prod's data dir has no instance suffix, so name it outright.
+CMDR_DATA_DIR="$HOME/Library/Application Support/com.veszelovszki.cmdr" \
+  ./scripts/mcp-call.sh memory_diagnostics '{}'
+```
+
+Sort `tags` by `dirtyBytes` and start at the top; `rustHeapCommittedBytes` is mimalloc's own number,
+`systemZonesInUseBytes` is everything else's, and `physFootprintBytes` is the honest total. Per-tag `sizes` is the
+fingerprint field (next section). `sizesPerTag` clamps at 24.
+
+⚠️ **The tool and `vmmap` spell the same tags differently.** Cmdr names them after the `VM_MEMORY_*` constants
+(`MALLOC_SMALL`, `MALLOC_LARGE`, and `IOAccelerator (= our Rust heap: mimalloc arenas)`), while `vmmap` prints its own
+display names (`Malloc Small`, `Malloc Large`). Match on the `tag` NUMBER when you compare two readings, so a rename on
+either side can't silently line up the wrong rows (verified on macOS 27.0, a live dev instance, 2026-09-22).
+
+The tool is `[AiClient]`, ungated, and ships in release builds on purpose: the interesting numbers only appear in a
+shipped build under a real workload. **A release older than the tool can't answer it** — there's no way to add a tool to
+a process that's already running, so a live instance predating it has to be measured with `vmmap` below and gets the
+tool at its next update. Implementation: `apps/desktop/src-tauri/src/mcp/executor/memory.rs` over the
+`get_memory_diagnostics` IPC command, whose module docs say how to read every field.
+
+## How to measure from outside the process (`vmmap`)
+
+For an instance that can't answer the tool, or when you want the raw map:
 
 ```
 PID=$(pgrep -x Cmdr | head -1)
@@ -78,13 +112,8 @@ Known fingerprints so far:
   how many arenas the heap has grown to, and it only ever goes up: arenas stay mapped after mimalloc decommits the pages
   inside them, so a flat region count alongside collapsing dirty bytes is normal, not a leak.
 
-From the app itself — any build, a shipped release included, which is deliberate because that's the only condition the
-interesting numbers appear under — `get_memory_diagnostics(sizesPerTag)` returns the same histogram as structured data
-plus the footprint and BOTH allocators' own accounting in one payload — the only reading that spans mimalloc and the
-system zones at once. It also carries `sqlitePageCache`, the 64 MiB page slab every store's cached pages come from: that
-slab is a leaked Rust allocation, so it hides inside the mimalloc total, and without this field you'd have to know to go
-ask SQLite about it. It's an ordinary IPC command (`apps/desktop/src-tauri/src/commands/memory_diagnostics.rs`), macOS
-only, and its module docs say how to read the payload.
+`memory_diagnostics` returns the same histogram as structured data (`tags[].sizes`, biggest dirty total first), so
+`{"sizesPerTag":24}` gives you the fingerprints for every tag at once rather than one `awk` per tag.
 
 ## How to attribute (which code allocates)
 

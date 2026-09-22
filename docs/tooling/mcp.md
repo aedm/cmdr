@@ -268,6 +268,21 @@ treat an `"outcome": "held"` reply as a question you must answer in the same tur
 `./scripts/mcp-call.sh --read-resource 'cmdr://state?include=operations'` if you need more than the reply's list to
 decide.
 
+## How much memory is this instance using?
+
+`memory_diagnostics` asks the running app about itself: the physical footprint, both allocators' own accounting,
+SQLite's page-cache slab, and the kernel's VM map folded by tag. Ungated, read-only, macOS only, and it works against a
+shipped release, which is the only condition the interesting numbers appear under.
+
+```bash
+./scripts/mcp-call.sh memory_diagnostics '{}'
+./scripts/mcp-call.sh memory_diagnostics '{"sizesPerTag":24}'   # full per-tag region-size histogram
+```
+
+A release older than the tool can't answer it: nothing can add a tool to a process that's already running. Reading the
+payload, the `IOAccelerator`-is-the-Rust-heap trap, and the `vmmap` fallback for such an instance:
+`memory-debugging.md`.
+
 ## Connection resilience
 
 The MCP server goes down during hot reloads (up to 15s for Rust changes, up to 3s for frontend changes). Multiple agents
