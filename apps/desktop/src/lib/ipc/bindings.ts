@@ -14569,8 +14569,8 @@ export type VolumeConnectionChanged = {
 
 /**
  *  Typed `volume-context-action` Tauri event. Emitted to the `main` window when
- *  the user picks an item from the native breadcrumb / volume-selector row
- *  context menu. Window-scoped, so it's emitted via `Event::emit_to`.
+ *  the user picks Eject from the native breadcrumb context menu. Window-scoped,
+ *  so it's emitted via `Event::emit_to`.
  */
 export type VolumeContextAction = {
   // Which item was picked.
@@ -14582,7 +14582,15 @@ export type VolumeContextAction = {
 }
 
 /**
- *  What the user picked in a volume row's context menu.
+ *  The action vocabulary of a volume, server, or favorite row: what the user can
+ *  pick from its menu.
+ *
+ *  Rust emits only `Eject`, from the native breadcrumb menu. Every other variant
+ *  is picked in the frontend, from a row's in-app menu (the volume switcher's and
+ *  the favorites menu's → submenus, the servers hub's right-click:
+ *  `apps/desktop/src/lib/file-explorer/navigation/row-menu.ts`), and from the
+ *  palette. It lives here so the one vocabulary those surfaces and the handlers
+ *  share is generated, not retyped.
  *
  *  ❗ A typed enum, ❌ never a free string: the frontend branches on every one of
  *  these, and a misspelling would go to the one place a compiler never looks. The

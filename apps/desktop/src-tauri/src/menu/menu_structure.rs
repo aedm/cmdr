@@ -1,5 +1,5 @@
 //! The smaller context menus (breadcrumb, parent row, function key bar, tab,
-//! network host, server row, volume row, favorite) and the viewer-window menu,
+//! network host) and the viewer-window menu,
 //! plus the `ContextMenuShortcuts` / `context_item` vocabulary every popup here
 //! shares. The file context menu is `file_context_menu.rs`; the main menu bar is
 //! `menu_bar.rs`.
@@ -19,11 +19,9 @@ use super::HELP_MENU_ID;
 use super::menu_items::APP_MENU_TITLE;
 use super::menu_items::{DetachWord, detach_label, pin_tab_label};
 use super::{
-    COPY_CURRENT_DIR_PATH_ID, EDIT_MENU_ID, EJECT_VOLUME_ID, FAVORITE_REMOVE_ID, FAVORITE_RENAME_ID,
-    FAVORITES_ADD_CONTEXT_ID, FUNCTION_KEY_BAR_HIDE_ID, NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_FORGET_SECRET_ID,
-    NETWORK_HOST_FORGET_SERVER_ID, SERVER_DISCONNECT_ID, SERVER_EDIT_ID, SERVER_FORGET_ID, SERVER_FORGET_SECRET_ID,
-    SERVER_OPEN_ID, SERVER_PIN_ID, SERVER_UNPIN_ID, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEWER_EDIT_COPY_ID,
-    VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewerMenuItems,
+    COPY_CURRENT_DIR_PATH_ID, EDIT_MENU_ID, EJECT_VOLUME_ID, FAVORITES_ADD_CONTEXT_ID, FUNCTION_KEY_BAR_HIDE_ID,
+    NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_FORGET_SECRET_ID, NETWORK_HOST_FORGET_SERVER_ID, TAB_CLOSE_ID,
+    TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEWER_EDIT_COPY_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewerMenuItems,
 };
 #[cfg(target_os = "macos")]
 use super::{VIEWER_EDIT_CUT_ID, VIEWER_EDIT_PASTE_ID};
@@ -156,99 +154,6 @@ pub fn build_breadcrumb_context_menu<R: Runtime>(
         menu.append(&eject_item)?;
     }
     Ok(menu)
-}
-
-/// What a SERVER row's context menu offers, as the caller sees the row.
-///
-/// ❗ The caller decides which items apply, ❌ never this builder:
-/// `show_volume_row_context_menu` is a synchronous command. ❗ And "is a secret
-/// stored for this?" is asked by NOBODY on this path: it costs a Keychain read,
-/// every read of one can raise a system prompt, and a right-click is not a moment
-/// to spend one, so "Forget saved password" is offered unconditionally and the
-/// command it runs reports whether there was one.
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct ServerRowMenu {
-    /// Whether there is a session to drop (`showsDisconnect` in
-    /// `navigation/connection-state.ts`: a `direct` or `disconnected` place).
-    pub shows_disconnect: bool,
-    /// Whether a saved entry exists, so "Forget server" has something to forget.
-    pub is_saved: bool,
-    /// Whether the place is in the volume switcher right now, which decides
-    /// whether the row offers "Pin to switcher" or "Unpin".
-    pub pinned: bool,
-    /// Whether a write operation is touching the volume right now. ❗ Disables
-    /// every destructive item exactly like the eject item, because dropping the
-    /// session or the credential under a running copy breaks it.
-    pub busy: bool,
-}
-
-/// Appends a server row's items, in the order
-/// `apps/desktop/src/lib/file-explorer/navigation/DETAILS.md` § "Eject button +
-/// row context menu" records: Open, Edit…, Disconnect (when live), Pin to
-/// switcher / Unpin, Forget saved password, Forget server (when it is saved).
-///
-/// ❗ A server row shows Disconnect, ❌ never Eject: "Eject" promises
-/// safe-to-unplug, and a server has nothing to unplug.
-fn append_server_row_items<R: Runtime>(
-    app: &AppHandle<R>,
-    menu: &Menu<R>,
-    server: &ServerRowMenu,
-) -> tauri::Result<()> {
-    // Open and Edit… lead, the way the row's own two purposes rank: going there,
-    // and changing what "there" means. ❗ Neither is gated by `busy`, unlike the
-    // three destructive items below: navigating into a server a copy is reading
-    // from is fine, and editing its settings touches no session.
-    let open = MenuItem::with_id(app, SERVER_OPEN_ID, menu_t("menu.network.open"), true, None::<&str>)?;
-    menu.append(&open)?;
-    if server.is_saved {
-        // ❌ Only for a SAVED server: the sheet edits a store entry, and a live
-        // volume nothing saved has none to open.
-        let edit = MenuItem::with_id(app, SERVER_EDIT_ID, menu_t("menu.network.edit"), true, None::<&str>)?;
-        menu.append(&edit)?;
-    }
-    if server.shows_disconnect {
-        let key = if server.busy {
-            "menu.volume.disconnectBusy"
-        } else {
-            "menu.network.disconnect"
-        };
-        let item = MenuItem::with_id(app, SERVER_DISCONNECT_ID, menu_t(key), !server.busy, None::<&str>)?;
-        menu.append(&item)?;
-    }
-    // ❗ Never disabled by `busy`, unlike the three below it: a pin is a view
-    // preference the switcher reads, so moving it while a copy runs breaks
-    // nothing.
-    let (pin_id, pin_key) = if server.pinned {
-        (SERVER_UNPIN_ID, "menu.network.unpin")
-    } else {
-        (SERVER_PIN_ID, "menu.network.pinToSwitcher")
-    };
-    let pin_item = MenuItem::with_id(app, pin_id, menu_t(pin_key), true, None::<&str>)?;
-    menu.append(&pin_item)?;
-    // ❗ Offered on every server row, ❌ never gated on "is a secret stored?":
-    // answering that costs a Keychain read, and every read of one can raise a
-    // system prompt. A right-click is not a moment to spend one, which is the
-    // rule SMB's host menu already follows. The COMMAND answers instead:
-    // `forget_server_secret` reports whether an entry was there, and the caller
-    // words a `false` (`navigation/server-row-actions.ts::forgetSavedSecret`).
-    let key = if server.busy {
-        "menu.volume.forgetSavedPasswordBusy"
-    } else {
-        "menu.network.forgetSavedPassword"
-    };
-    let item = MenuItem::with_id(app, SERVER_FORGET_SECRET_ID, menu_t(key), !server.busy, None::<&str>)?;
-    menu.append(&item)?;
-    if server.is_saved {
-        let key = if server.busy {
-            "menu.volume.forgetServerBusy"
-        } else {
-            "menu.network.forgetServer"
-        };
-        let item = MenuItem::with_id(app, SERVER_FORGET_ID, menu_t(key), !server.busy, None::<&str>)?;
-        menu.append(&item)?;
-    }
-    Ok(())
 }
 
 /// The viewer Edit menu's two custom accelerators, in Tauri's accelerator syntax.
@@ -500,74 +405,6 @@ pub fn build_network_host_context_menu(
         )?;
         menu.append(&forget_secret)?;
     }
-
-    Ok(menu)
-}
-
-/// Builds the context menu for a VOLUME row in the volume switcher.
-///
-/// An ejectable volume gets its detach item, `Eject ({name})` for a disk and
-/// `Disconnect` for a phone (`detach_word`), disabled with a ` (busy)` suffix while a
-/// write op touches it, mirroring the breadcrumb menu and the inline control. A SERVER
-/// row gets its own items instead. The caller stashes the target id + name in
-/// `MenuState.volume_row_context` so `on_menu_event` can dispatch the click.
-///
-/// A FAVORITE row is a different surface with a different menu:
-/// [`build_favorite_context_menu`].
-pub fn build_volume_row_context_menu<R: Runtime>(
-    app: &AppHandle<R>,
-    eject_volume_name: Option<&str>,
-    eject_busy: bool,
-    detach_word: DetachWord,
-    server: Option<&ServerRowMenu>,
-) -> tauri::Result<Menu<R>> {
-    let menu = Menu::new(app)?;
-
-    if let Some(server) = server {
-        append_server_row_items(app, &menu, server)?;
-        return Ok(menu);
-    }
-
-    if let Some(name) = eject_volume_name {
-        let eject_item = MenuItem::with_id(
-            app,
-            EJECT_VOLUME_ID,
-            detach_label(name, eject_busy, detach_word),
-            !eject_busy,
-            None::<&str>,
-        )?;
-        menu.append(&eject_item)?;
-    }
-
-    Ok(menu)
-}
-
-/// Builds the context menu for a FAVORITE row: `Rename` + `Remove from favorites`.
-///
-/// Both items are always enabled: a favorite is a stored `{ path, name }` pair, so
-/// neither action can be refused by anything the popup could read. A favorite is never
-/// ejectable and never a server, which is why this shares nothing with
-/// [`build_volume_row_context_menu`] beyond the `MenuState.volume_row_context` stash and
-/// the `volume-context-action` event both picks ride home on.
-pub fn build_favorite_context_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
-    let menu = Menu::new(app)?;
-
-    let rename_item = MenuItem::with_id(
-        app,
-        FAVORITE_RENAME_ID,
-        menu_t("menu.volume.renameFavorite"),
-        true,
-        None::<&str>,
-    )?;
-    menu.append(&rename_item)?;
-    let remove_item = MenuItem::with_id(
-        app,
-        FAVORITE_REMOVE_ID,
-        menu_t("menu.volume.removeFavorite"),
-        true,
-        None::<&str>,
-    )?;
-    menu.append(&remove_item)?;
 
     Ok(menu)
 }

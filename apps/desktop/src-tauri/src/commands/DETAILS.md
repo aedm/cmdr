@@ -206,8 +206,8 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
 - **`file_viewer.rs`**: session lifecycle, regex/literal search with mode flags, word wrap, menu state (including
   `viewer_set_search_input_focused`, which greys the viewer bar's Edit > Cut / Paste with its search box), encoding
   pickers (`viewer_set_encoding` / `viewer_get_encoding_options`), tail mode (`viewer_set_tail_mode`), `viewer_reload`.
-- **`menu.rs`**: the context-menu popups (file / breadcrumb / volume row / favorite row / parent row / tab / network
-  host / function key bar), plus `update_menu_context`.
+- **`menu.rs`**: the context-menu popups (file / breadcrumb / parent row / tab / network host / function key bar),
+  plus `update_menu_context`.
 - **`menu_state.rs`**: the pushes that keep the menu BAR in step with the frontend: the view-mode + hidden-files +
   pin-tab + reopen-tab + same-kind-label + UI-language sync commands, the greying setters, and `activate_window_menu`
   (per-window focus-gain: swaps the macOS app menu bar between main/viewer, then enables/disables file-scoped items via
@@ -228,15 +228,11 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
     thread-local, and `on_menu_event` reads it back on the main thread. A sync `#[tauri::command]` runs there, which is
     also what lets `popup()` work; with no marker the `Share` submenu is simply absent. `file_system/DETAILS.md` § "The
     Share submenu".
-  - ❗ **`show_volume_row_context_menu` takes an optional `ServerRowMenu`**, and a server row gets Open / Edit server… /
-    Disconnect / Pin or Unpin / Forget saved password / Forget server instead of Eject: "Eject" promises safe-to-unplug
-    and a server has nothing to unplug. The CALLER says which items apply (this command is synchronous, and a
-    secret-store read on the popup path would block the IPC handler thread); `busy_volume_ids()` is filled in here and
-    disables the three destructive items exactly like Eject. ❌ Open, Edit…, and the pin pair are never `busy`-disabled:
-    none of them touches a session. ❗ There is deliberately no "is a secret stored" field — see
-    `navigation/server-row-actions.ts` for why the Keychain is not read on a right-click.
-  - ❗ **The picked action crosses as the typed `VolumeContextActionKind`**, ❌ never a free string. `menu_handlers.rs`
-    maps menu id → action through one table, so what it recognizes and what it emits can't drift.
+  - No popup here for a volume switcher row, a favorite, or a servers-hub place: their actions are the in-app `Menu`'s
+    (`apps/desktop/src/lib/file-explorer/navigation/row-menu.ts`), which read Rust's busy set from the pushed
+    `volumes-busy-changed` store rather than calling in here.
+  - ❗ **The breadcrumb's Eject crosses as the typed `VolumeContextActionKind`**, ❌ never a free string.
+    `menu_handlers.rs` maps menu id → action through one table, so what it recognizes and what it emits can't drift.
 - **`quick_look.rs`**: `quick_look_open` / `quick_look_set_path` / `quick_look_close` (native `QLPreviewPanel`
   singleton on macOS, no-op stubs elsewhere; 2 s main-thread-hop timeout). See `crate::quick_look`.
 - **`window_ordering.rs`**: `show_main_window` / `order_window_to_back`. `show_main_window` is the ONE path that makes

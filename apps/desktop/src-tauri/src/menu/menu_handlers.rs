@@ -18,17 +18,15 @@ use crate::volume_broadcast::VolumeContextActionKind;
 use crate::window_events::ViewerEditActionKind;
 
 use super::{
-    CLOSE_TAB_ID, CommandScope, EDIT_COPY_ID, EDIT_CUT_ID, EDIT_PASTE_ID, EJECT_VOLUME_ID, FAVORITE_REMOVE_ID,
-    FAVORITE_RENAME_ID, FAVORITES_ADD_CONTEXT_ID, FUNCTION_KEY_BAR_HIDE_ID, MEDIA_INDEX_ADD_FOLDER_ID,
-    MEDIA_INDEX_EXCLUDE_FOLDER_ID, MEDIA_INDEX_INCLUDE_FOLDER_ID, MEDIA_INDEX_REMOVE_FOLDER_ID, MediaIndexFolderChoice,
-    MediaIndexFolderExclusion, MenuSort, MenuState, NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_FORGET_SECRET_ID,
-    NETWORK_HOST_FORGET_SERVER_ID, SELECT_ALL_ID, SERVER_DISCONNECT_ID, SERVER_EDIT_ID, SERVER_FORGET_ID,
-    SERVER_FORGET_SECRET_ID, SERVER_OPEN_ID, SERVER_PIN_ID, SERVER_UNPIN_ID, SHOW_HIDDEN_FILES_ID, SORT_ASCENDING_ID,
-    SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID, SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID,
-    SORT_DESCENDING_ID, SettingsChanged, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID, TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID,
-    VIEW_MODE_BRIEF_RIGHT_ID, VIEW_MODE_FULL_LEFT_ID, VIEW_MODE_FULL_RIGHT_ID, VIEW_SET_MODE_COMMAND_ID,
-    VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_EDIT_COPY_ID, VIEWER_EDIT_CUT_ID, VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID,
-    VIEWER_WORD_WRAP_ID, ViewMode, ViewModeChanged, menu_id_to_command,
+    CLOSE_TAB_ID, CommandScope, EDIT_COPY_ID, EDIT_CUT_ID, EDIT_PASTE_ID, EJECT_VOLUME_ID, FAVORITES_ADD_CONTEXT_ID,
+    FUNCTION_KEY_BAR_HIDE_ID, MEDIA_INDEX_ADD_FOLDER_ID, MEDIA_INDEX_EXCLUDE_FOLDER_ID, MEDIA_INDEX_INCLUDE_FOLDER_ID,
+    MEDIA_INDEX_REMOVE_FOLDER_ID, MediaIndexFolderChoice, MediaIndexFolderExclusion, MenuSort, MenuState,
+    NETWORK_HOST_DISCONNECT_ID, NETWORK_HOST_FORGET_SECRET_ID, NETWORK_HOST_FORGET_SERVER_ID, SELECT_ALL_ID,
+    SHOW_HIDDEN_FILES_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID, SORT_BY_MODIFIED_ID,
+    SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID, SettingsChanged, TAB_CLOSE_ID, TAB_CLOSE_OTHERS_ID,
+    TAB_PIN_ID, VIEW_MODE_BRIEF_LEFT_ID, VIEW_MODE_BRIEF_RIGHT_ID, VIEW_MODE_FULL_LEFT_ID, VIEW_MODE_FULL_RIGHT_ID,
+    VIEW_SET_MODE_COMMAND_ID, VIEW_SHOW_HIDDEN_COMMAND_ID, VIEWER_EDIT_COPY_ID, VIEWER_EDIT_CUT_ID,
+    VIEWER_EDIT_PASTE_ID, VIEWER_SELECT_ALL_ID, VIEWER_WORD_WRAP_ID, ViewMode, ViewModeChanged, menu_id_to_command,
 };
 
 /// Removes macOS system-injected items from the Edit menu and registers the Help menu.
@@ -444,9 +442,10 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
         return;
     }
 
-    // === Eject volume / favorite rename / favorite remove (volume-selector row menus) ===
-    // All three are routed back to the frontend through the same `volume-context-action`
-    // event with the target stashed in `volume_row_context`; the action string disambiguates.
+    // === The breadcrumb menu's Eject ===
+    // Routed back to the frontend through the `volume-context-action` event with the target
+    // stashed in `volume_row_context`. (A switcher row's and a favorite's actions never come
+    // through here: they're the in-app `Menu`'s, picked in the frontend.)
     if let Some(action) = volume_row_action(id) {
         let menu_state = app.state::<MenuState<tauri::Wry>>();
         let ctx = menu_state.volume_row_context.lock_ignore_poison();
@@ -702,8 +701,8 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
     // Unknown menu ID: no-op (all known IDs are handled above)
 }
 
-/// The action a volume-row menu id stands for, or `None` when the id belongs to
-/// some other menu.
+/// The action a volume menu id stands for, or `None` when the id belongs to some
+/// other menu.
 ///
 /// ❗ One table, so the ids the handler recognizes and the actions it emits can't
 /// drift apart: every id that reaches the branch above answers here, and every
@@ -711,15 +710,6 @@ pub fn handle_menu_event(app: &AppHandle<tauri::Wry>, event: tauri::menu::MenuEv
 fn volume_row_action(id: &str) -> Option<VolumeContextActionKind> {
     match id {
         EJECT_VOLUME_ID => Some(VolumeContextActionKind::Eject),
-        FAVORITE_RENAME_ID => Some(VolumeContextActionKind::RenameFavorite),
-        FAVORITE_REMOVE_ID => Some(VolumeContextActionKind::RemoveFavorite),
-        SERVER_OPEN_ID => Some(VolumeContextActionKind::Open),
-        SERVER_EDIT_ID => Some(VolumeContextActionKind::Edit),
-        SERVER_DISCONNECT_ID => Some(VolumeContextActionKind::Disconnect),
-        SERVER_PIN_ID => Some(VolumeContextActionKind::Pin),
-        SERVER_UNPIN_ID => Some(VolumeContextActionKind::Unpin),
-        SERVER_FORGET_SECRET_ID => Some(VolumeContextActionKind::ForgetSecret),
-        SERVER_FORGET_ID => Some(VolumeContextActionKind::ForgetServer),
         _ => None,
     }
 }
@@ -729,32 +719,8 @@ mod volume_row_action_tests {
     use super::*;
 
     #[test]
-    fn every_volume_row_menu_id_maps_to_its_action() {
+    fn the_breadcrumb_eject_id_maps_to_eject() {
         assert_eq!(volume_row_action(EJECT_VOLUME_ID), Some(VolumeContextActionKind::Eject));
-        assert_eq!(
-            volume_row_action(FAVORITE_RENAME_ID),
-            Some(VolumeContextActionKind::RenameFavorite)
-        );
-        assert_eq!(
-            volume_row_action(FAVORITE_REMOVE_ID),
-            Some(VolumeContextActionKind::RemoveFavorite)
-        );
-        assert_eq!(volume_row_action(SERVER_OPEN_ID), Some(VolumeContextActionKind::Open));
-        assert_eq!(volume_row_action(SERVER_EDIT_ID), Some(VolumeContextActionKind::Edit));
-        assert_eq!(
-            volume_row_action(SERVER_DISCONNECT_ID),
-            Some(VolumeContextActionKind::Disconnect)
-        );
-        assert_eq!(volume_row_action(SERVER_PIN_ID), Some(VolumeContextActionKind::Pin));
-        assert_eq!(volume_row_action(SERVER_UNPIN_ID), Some(VolumeContextActionKind::Unpin));
-        assert_eq!(
-            volume_row_action(SERVER_FORGET_SECRET_ID),
-            Some(VolumeContextActionKind::ForgetSecret)
-        );
-        assert_eq!(
-            volume_row_action(SERVER_FORGET_ID),
-            Some(VolumeContextActionKind::ForgetServer)
-        );
     }
 
     /// ❗ The SMB hub's host menu rides its OWN event with a host id, so an id

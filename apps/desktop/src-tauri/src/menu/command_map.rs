@@ -248,23 +248,8 @@ pub const NETWORK_HOST_FORGET_SERVER_ID: &str = "network_host_forget_server";
 pub const NETWORK_HOST_FORGET_SECRET_ID: &str = "network_host_forget_secret";
 pub const NETWORK_HOST_DISCONNECT_ID: &str = "network_host_disconnect";
 
-/// Menu item ID for "Eject (name)" in the breadcrumb / volume context menus.
+/// Menu item ID for "Eject (name)" in the breadcrumb context menu.
 pub const EJECT_VOLUME_ID: &str = "eject_volume";
-
-/// Menu item IDs for the favorite row context menu (volume selector dropdown).
-pub const FAVORITE_RENAME_ID: &str = "favorite_rename";
-pub const FAVORITE_REMOVE_ID: &str = "favorite_remove";
-
-/// Menu item IDs for a SERVER row in the volume selector. ❗ Distinct from the
-/// `NETWORK_HOST_*` trio, which belongs to the SMB hub's own host menu and
-/// carries a host id rather than a volume id.
-pub const SERVER_OPEN_ID: &str = "server_open";
-pub const SERVER_EDIT_ID: &str = "server_edit";
-pub const SERVER_DISCONNECT_ID: &str = "server_disconnect";
-pub const SERVER_PIN_ID: &str = "server_pin";
-pub const SERVER_UNPIN_ID: &str = "server_unpin";
-pub const SERVER_FORGET_SECRET_ID: &str = "server_forget_secret";
-pub const SERVER_FORGET_ID: &str = "server_forget";
 
 /// Menu item ID for About window.
 pub const ABOUT_ID: &str = "about";

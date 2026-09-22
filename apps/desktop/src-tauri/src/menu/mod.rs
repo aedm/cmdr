@@ -120,9 +120,8 @@ pub use menu_handlers::{
 pub(crate) use menu_items::DetachWord;
 pub use menu_items::{SameKindTarget, pin_tab_label, same_kind_menu_label};
 pub use menu_structure::{
-    ContextMenuShortcuts, ServerRowMenu, build_breadcrumb_context_menu, build_favorite_context_menu,
-    build_function_key_bar_context_menu, build_network_host_context_menu, build_parent_row_context_menu,
-    build_tab_context_menu, build_viewer_menu, build_volume_row_context_menu,
+    ContextMenuShortcuts, build_breadcrumb_context_menu, build_function_key_bar_context_menu,
+    build_network_host_context_menu, build_parent_row_context_menu, build_tab_context_menu, build_viewer_menu,
 };
 pub use rebuild::rebuild_menu_bar;
 #[cfg(target_os = "macos")]
@@ -283,10 +282,8 @@ pub struct NetworkHostMenuContext {
     pub host_name: String,
 }
 
-/// Context for a volume / favorite row context menu (stored so on_menu_event can emit it).
-/// Carries the target's id + name for whichever action the user picks (eject, or favorite
-/// rename / remove). Populated by `show_breadcrumb_context_menu`, `show_volume_row_context_menu`,
-/// and `show_favorite_context_menu`.
+/// The breadcrumb menu's Eject target (stored so on_menu_event can emit it): the volume's id +
+/// name. Populated by `show_breadcrumb_context_menu`.
 #[derive(Clone, Default)]
 pub struct VolumeRowMenuContext {
     pub volume_id: String,

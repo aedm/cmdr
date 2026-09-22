@@ -35,10 +35,11 @@ window focus context.
   it is by far the biggest menu here, and the only one whose shape depends on the row, the pane, the cloud provider,
   and the OS at once. ❗ `context_menu_icons.rs`'s guard test `include_str!`s THIS file to check every icon names an
   item the menu actually builds; a builder moving out of it has to take that `include_str!` along.
-- `menu_structure.rs`: the smaller context menus — breadcrumb / parent-row / tab / network-host / function-key-bar /
-  volume-selector-row (`build_volume_row_context_menu`: a server's Disconnect/Pin/Forget items or the `detach_label`
-  item, and `build_favorite_context_menu`: a favorite's Rename / Remove from favorites) — the viewer-window menu
-  (`build_viewer_menu`), and the `ContextMenuShortcuts` / `context_item` vocabulary every popup here shares.
+- `menu_structure.rs`: the smaller context menus — breadcrumb (with the `detach_label` item) / parent-row / tab /
+  network-host / function-key-bar — the viewer-window menu (`build_viewer_menu`), and the `ContextMenuShortcuts` /
+  `context_item` vocabulary every popup here shares. A volume switcher row's, a favorite's, and a servers-hub place's
+  actions are NOT here: they're the in-app `Menu`'s, one list in
+  `apps/desktop/src/lib/file-explorer/navigation/row-menu.ts`.
 - `selection_submenu.rs`: the file context menu's `Selection >` submenu, its rows held as data (`SELECTION_ROWS`) so a
   unit test can pin their order without building a `muda::Menu`.
 - `install.rs`: `at_startup`, the single call `lib.rs` makes in `setup`: pin the UI language, build the bar,

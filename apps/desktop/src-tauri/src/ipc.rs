@@ -238,8 +238,7 @@ macro_rules! ipc_command_manifest {
                     crate::commands::icons::clear_directory_icon_cache,
                     // These are generic (<R: Runtime>), so specta can't collect them; they stay
                     // in `generate_handler![]` only: `menu::{show_file_context_menu,
-                    // show_breadcrumb_context_menu, show_volume_row_context_menu, show_favorite_context_menu,
-                    // show_parent_row_context_menu, update_menu_context}`,
+                    // show_breadcrumb_context_menu, show_parent_row_context_menu, update_menu_context}`,
                     // `menu_state::{update_pin_tab_menu, update_select_same_kind_menu,
                     // set_reopen_closed_tab_enabled, set_file_operations_blocked,
                     // set_commands_refused_over_dialog, set_open_terminal_here_enabled,
@@ -476,8 +475,6 @@ macro_rules! ipc_command_manifest {
                     crate::commands::font_metrics::extend_font_metrics,
                     crate::commands::menu::show_file_context_menu,
                     crate::commands::menu::show_breadcrumb_context_menu,
-                    crate::commands::menu::show_volume_row_context_menu,
-                    crate::commands::menu::show_favorite_context_menu,
                     crate::commands::menu::show_parent_row_context_menu,
                     crate::commands::menu::update_menu_context,
                     crate::commands::menu_state::update_pin_tab_menu,
