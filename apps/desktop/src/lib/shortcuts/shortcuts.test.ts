@@ -288,8 +288,8 @@ describe('menuCommands', () => {
     expect(menuCommands).toContain('downloads.goToLatest')
   })
 
-  it('includes both Servers-menu commands so accelerator sync covers them', () => {
-    // The Servers menu contains "Connect to server…" (⌘K) and "Show servers"; both are
+  it('includes both server commands so accelerator sync covers them', () => {
+    // File holds "Connect to server…" (⌘K) and Go holds "Show servers"; both are
     // native menu items, so a custom shortcut must reach their accelerators.
     expect(menuCommands).toContain('servers.connect')
     expect(menuCommands).toContain('servers.show')

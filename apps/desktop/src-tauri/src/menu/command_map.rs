@@ -23,7 +23,6 @@ pub const VIEW_MENU_ID: &str = "menu_view";
 /// The "Sort by" submenu nested under View, built with this ID on both platforms.
 pub const SORT_BY_MENU_ID: &str = "menu_sort_by";
 pub const GO_MENU_ID: &str = "menu_go";
-pub const SERVERS_MENU_ID: &str = "menu_servers";
 pub const TAB_MENU_ID: &str = "menu_tab";
 pub const WINDOW_MENU_ID: &str = "menu_window";
 pub const HELP_MENU_ID: &str = "menu_help";
@@ -169,10 +168,9 @@ pub const GO_LATEST_DOWNLOAD_ID: &str = "go_latest_download";
 /// ("Hide Cmdr"), so the shifted combo is the one Cmdr can own.
 pub const GO_HOME_ID: &str = "go_home";
 
-/// Menu item IDs for the Servers menu.
-/// "Connect to server…" (⌘K): opens the add-server sheet, the same `servers.connect` the palette runs.
+/// "Connect to server…" (⌘K, File menu): opens the add-server sheet, the same `servers.connect` the palette runs.
 pub const SERVERS_CONNECT_ID: &str = "servers_connect";
-/// "Show servers": takes the focused pane to the servers hub (`servers.show`). No default shortcut.
+/// "Show servers" (Go menu): takes the focused pane to the servers hub (`servers.show`). No default shortcut.
 pub const SERVERS_SHOW_ID: &str = "servers_show";
 
 /// "Add to favorites", menu bar + palette: maps to the `favorites.add` command, which favorites the

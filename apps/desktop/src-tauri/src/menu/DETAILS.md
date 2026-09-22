@@ -910,7 +910,7 @@ Every difference is marked on its row in `menu_bar.rs`, and `menu_bar_test.rs` s
 
 ## Menu structure
 
-Both platforms share: File, Edit, Select, View (with Sort by and Zoom submenus), Go, Servers, Tab, Help.
+Both platforms share: File, Edit, Select, View (with Sort by and Zoom submenus), Go, Tab, Help.
 
 The **file context menu opens with the target header** (`append_context_menu_header`, above everything else), then a
 separator, then the Open / View / Edit group. See "The context menu's header line".
@@ -974,8 +974,9 @@ the Selection dialog (see `apps/desktop/src/lib/selection-dialog/CLAUDE.md`). Al
 `MenuState.items`, so a user-customized shortcut flows into the menu through the generic update path — and becomes a
 real accelerator when the rebind clears the modifier floor.
 
-The **Go** submenu holds, in order: `Back` (⌘[), `Forward` (⌘]), separator, `Parent folder` (⌘↑), separator,
-`Go to path…` (⌘G), `Go to latest download` (⌘J). The two jump items are `GO_TO_PATH_ID` (`"go_to_path"`) →
+The **Go** submenu holds, in order: `Back` (⌘[), `Forward` (⌘]), separator, `Parent folder` (⌘↑), `Home` (⇧⌘H),
+separator, `Go to path…` (⌘G), `Go to latest download` (⌘J), separator, `Add to favorites`, `Show favorites` (⌃D),
+`Show servers`. The two jump items are `GO_TO_PATH_ID` (`"go_to_path"`) →
 `nav.goToPath` and `GO_LATEST_DOWNLOAD_ID` (`"go_latest_download"`) → `downloads.goToLatest`, both `FileScoped` so they
 grey out in the viewer/settings windows. `Go to path…` carries the macOS ellipsis (it opens the Go-to-path dialog);
 `Go to latest download` has none (direct action). On macOS the SF Symbols are `arrow.right.to.line` (Go to path…) and
@@ -988,11 +989,14 @@ AND the JS keydown dispatch on macOS (see `shortcuts/DETAILS.md` § "Modifier-ke
 safe here without any suppression hack: ⌘G's dialog-open is idempotency-guarded in `+page.svelte`, and ⌘J's re-reveal is
 naturally idempotent. Expect two `FE:user-action downloads.goToLatest` log lines on one ⌘J press — harmless.
 
-The **Servers** submenu (between Go and Tab) holds `Connect to server…` (⌘K, `SERVERS_CONNECT_ID` →
-`servers.connect`) and `Show servers` (no default shortcut, `SERVERS_SHOW_ID` → `servers.show`). Both are menu faces
-of existing palette commands, `FileScoped` because each acts in the main window: the first opens the add-server sheet,
-the second takes the focused pane to the servers hub. macOS SF Symbols are `network` and `server.rack`. What the
-commands do: `apps/desktop/src/routes/(main)/command-handlers/servers-handlers.ts`.
+The **server items** have no menu of their own: `Connect to server…` (⌘K, `SERVERS_CONNECT_ID` → `servers.connect`,
+key `menu.file.connectToServer`) sits in File right under `Open`, since ⌘K is Finder's shortcut for it, and
+`Show servers` (no default shortcut, `SERVERS_SHOW_ID` → `servers.show`, key `menu.go.showServers`) closes Go, beside
+`Show favorites`, as the other list of places. Two items don't earn a top-level menu, and the File placement is the
+discoverable door the `⌥F1` volume selector's bottom row alone wasn't. Both are menu faces of existing palette
+commands, `FileScoped` because each acts in the main window: the first opens the add-server sheet, the second takes the
+focused pane to the servers hub. macOS SF Symbols are `network` and `server.rack`, in the File and Go icon lists. What
+the commands do: `apps/desktop/src/routes/(main)/command-handlers/servers-handlers.ts`.
 
 The **Help** submenu holds, in order: `Keyboard shortcuts`, separator, `What's new`, `Send feedback…`,
 `Send error report…` (Linux, which has no app menu, starts with `About`, `Acknowledgements`, and a separator, and has

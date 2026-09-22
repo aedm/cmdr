@@ -34,9 +34,9 @@ use super::{
     GO_MENU_ID, GO_PARENT_ID, GO_TO_PATH_ID, HELP_MENU_ID, HELP_SEND_ERROR_REPORT_ID, HELP_WHATS_NEW_ID,
     INVERT_SELECTION_ID, NEW_TAB_ID, NEXT_TAB_ID, OPEN_ID, OPEN_ONBOARDING_ID, PIN_TAB_MENU_ID, PREV_TAB_ID,
     QUICK_LOOK_ID, RENAME_ID, SEARCH_FILES_ID, SELECT_ALL_ID, SELECT_FILES_ID, SELECT_MENU_ID, SERVERS_CONNECT_ID,
-    SERVERS_MENU_ID, SERVERS_SHOW_ID, SETTINGS_ID, SHOW_IN_FINDER_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID,
-    SORT_BY_EXTENSION_ID, SORT_BY_MENU_ID, SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID,
-    SWAP_PANES_ID, SWITCH_PANE_ID, TAB_MENU_ID, VIEW_MENU_ID,
+    SERVERS_SHOW_ID, SETTINGS_ID, SHOW_IN_FINDER_ID, SORT_ASCENDING_ID, SORT_BY_CREATED_ID, SORT_BY_EXTENSION_ID,
+    SORT_BY_MENU_ID, SORT_BY_MODIFIED_ID, SORT_BY_NAME_ID, SORT_BY_SIZE_ID, SORT_DESCENDING_ID, SWAP_PANES_ID,
+    SWITCH_PANE_ID, TAB_MENU_ID, VIEW_MENU_ID,
 };
 
 pub(crate) fn cleanup_macos_menus<R: Runtime>(app: &AppHandle<R>) {
@@ -177,6 +177,7 @@ const MENU_BAR_ICONS: &[MenuIcons] = &[
         menu_id: FILE_MENU_ID,
         items: &[
             (OPEN_ID, "arrow.up.forward"),
+            (SERVERS_CONNECT_ID, "network"),
             (FILE_VIEW_ID, "document"),
             (EDIT_ID, "pencil"),
             (FILE_COPY_ID, "document.on.document"),
@@ -248,12 +249,8 @@ const MENU_BAR_ICONS: &[MenuIcons] = &[
             (GO_HOME_ID, "house"),
             (GO_TO_PATH_ID, "arrow.right.to.line"),
             (GO_LATEST_DOWNLOAD_ID, "arrow.down.circle"),
+            (SERVERS_SHOW_ID, "server.rack"),
         ],
-        nested: &[],
-    },
-    MenuIcons {
-        menu_id: SERVERS_MENU_ID,
-        items: &[(SERVERS_CONNECT_ID, "network"), (SERVERS_SHOW_ID, "server.rack")],
         nested: &[],
     },
     MenuIcons {

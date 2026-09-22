@@ -3099,7 +3099,7 @@ favoritavdelning är borta och ersatt av en enda topprad som byter ut växlaren 
   Den svenska bestämdhetsfällan (`../../guides/i18n-translation.md` § An `*Aria` key must contain its visible label)
   slår inte till här: ingen `*Aria`-nyckel citerar rubriken, så formerna får skilja sig. Skulle en sådan nyckel
   tillkomma är det rubriken som ska byta form, inte meningen.
-- **Show favorites: `Visa favoriter`** · `menu.servers.showServers` (”Show servers”) är redan `Visa servrar`, och macOS
+- **Show favorites: `Visa favoriter`** · `menu.go.showServers` (”Show servers”) är redan `Visa servrar`, och macOS
   `sv` har ett dussin `Visa …`-alternativ i samma imperativform (”Visa sidofältet”, ”Visa förhandsvisning”). Gäller båda
   tvillingarna: `commands.favoritesOpen.label` och den nativa `menu.go.showFavorites`, som ska läsa likadant. `high`.
 - **See {count} favorites: `Visa {count} favoriter`, alltså samma verb som `Show`** · engelskan växlar mellan `See` och

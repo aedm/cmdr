@@ -19,10 +19,6 @@
   "@menu.bar.go": {
     "sourceHash": "6cc8519"
   },
-  "menu.bar.servers": "Serveurs",
-  "@menu.bar.servers": {
-    "sourceHash": "68d7beb"
-  },
   "menu.bar.tab": "Onglet",
   "@menu.bar.tab": {
     "sourceHash": "90ddf19"
@@ -91,6 +87,10 @@
   "menu.file.open": "Ouvrir",
   "@menu.file.open": {
     "sourceHash": "ed077f3"
+  },
+  "menu.file.connectToServer": "Se connecter au serveur…",
+  "@menu.file.connectToServer": {
+    "sourceHash": "6188f47"
   },
   "menu.file.view": "Visualiser",
   "@menu.file.view": {
@@ -371,12 +371,8 @@
   "@menu.go.addToFavorites": {
     "sourceHash": "7f3c078"
   },
-  "menu.servers.connectToServer": "Se connecter au serveur…",
-  "@menu.servers.connectToServer": {
-    "sourceHash": "6188f47"
-  },
-  "menu.servers.showServers": "Afficher les serveurs",
-  "@menu.servers.showServers": {
+  "menu.go.showServers": "Afficher les serveurs",
+  "@menu.go.showServers": {
     "sourceHash": "092283a"
   },
   "menu.tab.newTab": "Nouvel onglet",

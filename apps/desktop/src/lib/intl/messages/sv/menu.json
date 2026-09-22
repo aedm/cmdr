@@ -19,10 +19,6 @@
   "@menu.bar.go": {
     "sourceHash": "6cc8519"
   },
-  "menu.bar.servers": "Servrar",
-  "@menu.bar.servers": {
-    "sourceHash": "68d7beb"
-  },
   "menu.bar.tab": "Flik",
   "@menu.bar.tab": {
     "sourceHash": "90ddf19"
@@ -90,6 +86,10 @@
   "menu.file.open": "Öppna",
   "@menu.file.open": {
     "sourceHash": "ed077f3"
+  },
+  "menu.file.connectToServer": "Anslut till server…",
+  "@menu.file.connectToServer": {
+    "sourceHash": "6188f47"
   },
   "menu.file.view": "Visa",
   "@menu.file.view": {
@@ -369,12 +369,8 @@
   "@menu.go.addToFavorites": {
     "sourceHash": "7f3c078"
   },
-  "menu.servers.connectToServer": "Anslut till server…",
-  "@menu.servers.connectToServer": {
-    "sourceHash": "6188f47"
-  },
-  "menu.servers.showServers": "Visa servrar",
-  "@menu.servers.showServers": {
+  "menu.go.showServers": "Visa servrar",
+  "@menu.go.showServers": {
     "sourceHash": "092283a"
   },
   "menu.tab.newTab": "Ny flik",

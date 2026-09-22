@@ -3522,7 +3522,7 @@ rij die naar dit menu springt. De term `favorieten` lag al vast in de catalogus
   hoort bij de Engelse eigennaam ervoor en geldt hier dus niet.
 - **„Show favorites" → `Toon favorieten`**, in zowel het native Ga-menu als het opdrachtenpalet · macOS rendert `Show X`
   consequent als `Toon X` (AppKit `Show Details` → `Toon details`, `Show Fonts` → `Toon lettertypen`, `Show Sidebar` →
-  `Toon navigatiekolom`), en de catalogus doet dat al bij `menu.servers.showServers` (`Toon servers`) · `high`. De twee
+  `Toon navigatiekolom`), en de catalogus doet dat al bij `menu.go.showServers` (`Toon servers`) · `high`. De twee
   sleutels zijn bewust byte-identiek: `menu.go.showFavorites` is de native tweeling van `commands.favoritesOpen.label`.
   `menu.go.showFavorites` is een RAW-sleutel, maar de waarde draagt geen apostrof, dus er valt niets te verdubbelen.
 - **„See {count} favorites" → `Bekijk {count} favorieten`, met `Bekijk` en niet `Toon`** · het Engels zet hier bewust
