@@ -39,7 +39,8 @@ die() {
 	exit 1
 }
 
-# vmmap prints sizes as a bare number with a K/M/G/T suffix. Turn one into whole MB.
+# vmmap prints sizes as a bare number with a K/M/G/T suffix, where M means MiB. Turn one
+# into whole MiB, so nothing here ever mixes binary and decimal units.
 to_mb() {
 	awk -v s="$1" 'BEGIN {
 		n = s + 0
@@ -158,7 +159,7 @@ sample() {
 	malloc_large=$(($(sum_tag "Malloc Large" 3 prefix | mb_sum) + $(sum_tag "Malloc Large" 4 prefix | mb_sum)))
 
 	if [[ ! -f $CSV ]]; then
-		echo "timestamp,condition,mimallocEnv,pid,uptimeMin,footprintMb,peakFootprintMb,rustHeapDirtyMb,rustHeapSwappedMb,rustHeapTotalMb,rustHeapRegions,sysMallocMb,mallocLargeMb" >"$CSV"
+		echo "timestamp,condition,mimallocEnv,pid,uptimeMin,footprintMiB,peakFootprintMiB,rustHeapDirtyMiB,rustHeapSwappedMiB,rustHeapTotalMiB,rustHeapRegions,sysMallocMiB,mallocLargeMiB" >"$CSV"
 	fi
 	printf '%s,%s,"%s",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
 		"$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$label" "$(env_summary)" "$pid" "${uptime_min:-}" \
@@ -166,10 +167,10 @@ sample() {
 		"${heap_regions:-0}" "$sys_malloc" "$malloc_large" >>"$CSV"
 
 	echo "[$label] pid $pid, up ${uptime_min:-?} min"
-	echo "  footprint ${footprint} MB (peak ${peak} MB)"
-	echo "  Rust heap ${heap_total} MB = ${heap_dirty} dirty + ${heap_swapped} swapped, in ${heap_regions:-0} regions"
-	echo "    minus the 63 MiB SQLite slab → ~$((heap_total - 66)) MB with no name on it"
-	echo "  system malloc ${sys_malloc} MB (of which Malloc Large ${malloc_large} MB)"
+	echo "  footprint ${footprint} MiB (peak ${peak} MiB)"
+	echo "  Rust heap ${heap_total} MiB = ${heap_dirty} dirty + ${heap_swapped} swapped, in ${heap_regions:-0} regions"
+	echo "    minus the 63 MiB SQLite slab → ~$((heap_total - 63)) MiB with no name on it"
+	echo "  system malloc ${sys_malloc} MiB, BESIDE the heap (of which Malloc Large ${malloc_large} MiB)"
 	echo "  mimalloc env: $(env_summary)"
 	echo "  → $CSV"
 }
