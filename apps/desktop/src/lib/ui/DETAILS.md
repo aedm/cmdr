@@ -829,10 +829,10 @@ those.
 
 The house menu, and the app's only in-app menu primitive (context menus are otherwise native/muda): a portaled, glass,
 keyboard-first popup built from SECTIONS of rows. Data in, callbacks out — the caller hands over sections and gets
-`onSelect` / `onReorder` / `onContextMenu` back, holds no highlight index, and writes no key handler. Four consumers:
-the volume switcher (`file-explorer/navigation/VolumeChooserMenu.svelte`, the rich one — grouped sections, a submenu,
-and all four snippets), the favorites menu (`file-explorer/navigation/FavoritesMenu.svelte` — a reorderable section, the
-digit accelerators, and an inline rename field in the `label` snippet), the archive Enter popup
+`onSelect` / `onReorder` back, holds no highlight index, and writes no key handler. Four consumers: the volume switcher
+(`file-explorer/navigation/VolumeChooserMenu.svelte`, the rich one — grouped sections, a submenu, and all four
+snippets), the favorites menu (`file-explorer/navigation/FavoritesMenu.svelte` — a reorderable section, the digit
+accelerators, and an inline rename field in the `label` snippet), the archive Enter popup
 (`file-explorer/pane/enter-menu.svelte.ts`, three flat rows), and the drive-index badge
 (`file-explorer/navigation/DriveIndexBadge.svelte` — plain rows plus a `footer`, and the one that opens from INSIDE
 another menu).
@@ -850,7 +850,7 @@ import returned the component and `createMenu is not a function`.) No `.svelte.t
 sibling component.
 
 **Building one**: `createMenu(deps)` takes `getSections` (read live on every access, so the menu tracks the caller's
-state), `onSelect`, and the optional `onReorder`, `onContextMenu`, `onKey`, `isEditing`, `onOpenChange`, `restoreFocus`,
+state), `onSelect`, and the optional `onReorder`, `onKey`, `isEditing`, `onOpenChange`, `restoreFocus`,
 `keepOpenWithin`. Hand the result to `<Menu {menu} ariaLabel minWidth>`; it renders nothing while closed, so there's no
 `{#if}`.
 
@@ -880,7 +880,7 @@ go in a row; a rename, which happens in the row). `accelerator` is top-level onl
 still opens, cursorless, because its greyed rows are the answer to "why can't I?".
 
 **Right-click is the second door to a row's submenu.** It opens it the way a hover does, so right-click and `→` show the
-same rows from one list. A right-click on a row without a submenu calls `onContextMenu`.
+same rows from one list. A right-click on a row without a submenu does nothing.
 
 **The glyph column is all-or-nothing per surface**, like the accelerator and checkmark columns: once any row on a
 surface (the menu, or the open submenu) has an `icon`, the rows without one get a blank `menu-icon-placeholder`.
@@ -918,7 +918,7 @@ surface (the menu, or the open submenu) has an `icon`, the rows without one get 
 - **Pointer**: hover moves the cursor unless keyboard mode is on; a pointer move over 5 px leaves keyboard mode AND
   hands the cursor to the row it happened over (❗ otherwise there would be two: `:hover` paints again the moment
   keyboard mode drops, and no `mouseover` is coming for a row the pointer never left); a click activates; a right-click
-  opens the row's submenu (or calls `onContextMenu` on a row without one); a pointer-down outside closes.
+  opens the row's submenu; a pointer-down outside closes.
 - **Reorder**: drag past a 4 px threshold, the drop-line cue at the insertion gap, and `onReorder` once, on drop.
   Because the cursor is a VALUE rather than an index, it rides along with the moved row for free. ❗ A drag's drop
   target is decided against the rows' MIDPOINTS, which only the DOM knows, so `Menu.svelte` registers `getRowMidpoints`

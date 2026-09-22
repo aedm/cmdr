@@ -25,7 +25,8 @@
     import { getStatusTooltip } from './host-status'
     import { buildHubRows, type HubRow, type HubRowStatus } from './servers-hub-rows'
     import { hubMcpEntries } from './servers-hub-mcp'
-    import { createHubActions } from './servers-hub-actions'
+    import { createHubActions, type HubRowMenuAPI } from './servers-hub-actions'
+    import ServersHubRowMenu from './ServersHubRowMenu.svelte'
     import { tooltip } from '$lib/tooltip/tooltip'
     import type { NetworkHost } from '../types'
     import {
@@ -97,7 +98,18 @@
         getHosts: () => hosts,
         getVolumes: () => volumes,
         refreshSaved: refreshSavedServers,
+        openServer: (row) => {
+            onServerSelect?.(row)
+        },
     })
+
+    let rowMenu: HubRowMenuAPI | undefined = $state()
+
+    /** Right-click: a one-place row gets the in-app row menu, an SMB host its native host menu. */
+    function openRowMenu(row: HubRow, event: MouseEvent): void {
+        if (rowMenu?.openAt(row, event)) return
+        void actions.openHostMenu(row)
+    }
 
     let cursorIndex = $state(0)
     let listContainer: HTMLDivElement | undefined = $state()
@@ -473,7 +485,7 @@
                 }}
                 oncontextmenu={(e: MouseEvent) => {
                     e.preventDefault()
-                    void actions.openMenu(row)
+                    openRowMenu(row, e)
                 }}
                 onkeydown={() => {}}
             >
@@ -569,6 +581,8 @@
         </button>
     {/if}
 </div>
+
+<ServersHubRowMenu bind:this={rowMenu} {actions} />
 
 <style>
     .servers-hub {

@@ -9,7 +9,7 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
 - `VolumeBreadcrumb.svelte` is the CHIP, hosting `VolumeChooserMenu.svelte` (the switcher) and `FavoritesMenu.svelte` +
   `favorites-menu.svelte.ts` (⌃D). Plus a helper per concern (grouping, disk space, connection state, eject, labels,
   badges) and the shared dots (`ConnectionDot`, `UsbSpeedDot`, `DetachButton`).
-- `server-row-actions.ts` holds a SERVER row's menu, shared with the hub and the palette.
+- `row-menu.ts`: the ONE list of a row's actions, whatever door opens it. `server-row-actions.ts` runs the server ones.
 
 ## Must-knows
 
@@ -43,9 +43,8 @@ Back/forward history, path resolution, paged keyboard shortcuts, and the pane's 
   `isHeaderMenuOpen()` is the single answer the panes suppress keys on. ❌ No second source of truth.
 - **The favorite-rename `<input>` holds four guards against leaking keystrokes to the panes**; drop any one and it leaks
   once more.
-- **❗ EVERY menu here is the house `Menu`** (`$lib/ui/DETAILS.md` § Menu): the chip's two, and the drive badge's, which
-  opens INSIDE the switcher and leaves it open. It owns keys, cursor, pointer mode, submenus, reorder, accelerators,
-  placement, and focus. ❌ Never a key handler, a highlight index, or a `getBoundingClientRect` here; a chip menu's
-  `onKey` claims only the SWAP keys.
+- **❗ EVERY menu here is the house `Menu`** (`$lib/ui/DETAILS.md` § Menu), row actions included: it owns keys, cursor,
+  pointer, submenus, reorder, placement, and focus. ❌ Never a key handler, highlight index, or `getBoundingClientRect`
+  here; a chip menu's `onKey` claims only the SWAP keys.
 
 Architecture, flows, and decisions: `DETAILS.md`. Read it before any non-trivial work here.

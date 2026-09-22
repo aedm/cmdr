@@ -24,13 +24,15 @@ import type { VolumeInfo } from '../types'
 import { addFavoriteFolder } from './add-favorite-folder'
 import { buildFavoriteTooltip } from './favorite-tooltip'
 import { openFavorite } from './open-favorite'
+import { favoriteRowMenu, rowMenuItems, type RowMenuPick } from './row-menu'
 import type { FavoriteOpenedEvent } from './favorites-analytics'
 
 /**
  * What a row carries back on a pick. A discriminated union rather than an optional
- * `volume`, so the add row can't be mistaken for a favorite that lost its data.
+ * `volume`, so the add row can't be mistaken for a favorite that lost its data, and a
+ * submenu action can't be mistaken for opening the favorite it sits under.
  */
-export type FavoritesRow = { kind: 'favorite'; volume: VolumeInfo } | { kind: 'add' }
+export type FavoritesRow = { kind: 'favorite'; volume: VolumeInfo } | { kind: 'add' } | RowMenuPick
 
 /** The add row's `value`. A `fav-` id can never collide with it. */
 export const ADD_ROW_VALUE = 'favorites:add'
@@ -72,7 +74,7 @@ export interface FavoritesMenuController {
   select: (item: MenuItem<FavoritesRow>, source: MenuActivationSource) => Promise<void>
   /** Take the order the menu just settled on (drag or ⌥↑/⌥↓) and persist it. */
   applyReorder: (orderedLocationIds: string[]) => void
-  /** A pick from a favorite's native row menu, once the caller has checked its menu is open. */
+  /** A favorite's row action (Rename, Remove from favorites), picked from its submenu. */
   handleContextAction: (payload: { action: VolumeContextActionKind; volumeId: string }) => void
   cancelRename: () => void
   commitRename: (volume: VolumeInfo) => Promise<void>
@@ -174,6 +176,8 @@ export function createFavoritesMenu(deps: FavoritesMenuDeps): FavoritesMenuContr
       accelerator: index < NUMBERED_FAVORITES ? String(index + 1) : undefined,
       // The PATH leads, so a renamed favorite still reveals where it points.
       tooltip: buildFavoriteTooltip(volume.path, isMacOS()),
+      // Rename and Remove, behind → or a right-click (`row-menu.ts`).
+      submenu: rowMenuItems(volume.id, favoriteRowMenu(), (entry) => ({ kind: 'row-entry', volume, entry })),
       data: { kind: 'favorite', volume },
     }
   }
@@ -210,6 +214,10 @@ export function createFavoritesMenu(deps: FavoritesMenuDeps): FavoritesMenuContr
     if (!row) return
     if (row.kind === 'add') {
       await addFavoriteFolder(deps.getPaneCurrentPath())
+      return
+    }
+    if (row.kind === 'row-entry') {
+      if (row.entry.type === 'action') handleContextAction({ action: row.entry.action, volumeId: row.volume.id })
       return
     }
     // `open-favorite.ts` owns the whole favorite open: resolve the containing volume,

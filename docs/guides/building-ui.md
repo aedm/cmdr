@@ -78,6 +78,11 @@ Two of the three pointing the same way is the comfortable case, and worth notici
 badge is settled at question 1 by its footer content, and question 3 agrees on its own, since the menu hangs off a dot
 in our chrome. One question carrying the answer alone is the one to think twice about.
 
+**A row's actions inside a house `Menu` go in its → submenu, never a native popup over it.** Right-click opens that same
+submenu (the primitive does it), so the two doors can't show two lists. The volume switcher's and the favorites menu's
+rows work this way, and the servers hub reuses the same list at the pointer for a one-place server, because it's one
+list (`apps/desktop/src/lib/file-explorer/navigation/row-menu.ts`) and a second, native copy would drift from it.
+
 The trade, honestly: native gives OS look and feel, VoiceOver, responder-chain actions, escape from the window bounds,
 and system appearance, but no rich rows, a round-trip for frontend state, and nothing Playwright can reach. The house
 `Menu` gives arbitrary rows, direct frontend state, our design language, and testability, and costs clipping at the

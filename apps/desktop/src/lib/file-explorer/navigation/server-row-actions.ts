@@ -1,11 +1,11 @@
 /**
- * What a server row in the volume switcher offers, and what each offer does.
+ * What each server row action does: Disconnect, the pin pair, the two Forgets,
+ * Edit, and Open.
  *
  * Lives beside the switcher rather than inside `VolumeBreadcrumb.svelte` because
- * TWO surfaces raise the same menu (the switcher row and the hub row) and the
- * picked action lands in a THIRD (`DualPaneExplorer`, which
- * owns the `volume-context-action` listener). One module means the three can't
- * drift on which items a row has or what confirming one costs.
+ * three surfaces run the same actions (the switcher row's submenu, the hub row's
+ * menu, and the palette's `servers.*` commands). WHICH actions a row offers is
+ * `row-menu.ts`'s answer; this module is what running one costs.
  *
  * ❗ **A server says Disconnect, never Eject** (`DETAILS.md` § "Eject button +
  * row context menu"): "Eject" promises safe-to-unplug and a server has nothing
@@ -19,8 +19,6 @@ import {
   forgetServerSecret,
   listSavedServers,
   setPlacePinned,
-  showVolumeRowContextMenu,
-  type ServerRowMenu,
 } from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast'
 import { confirmDialog } from '$lib/utils/confirm-dialog'
@@ -28,7 +26,6 @@ import { tString } from '$lib/intl/messages.svelte'
 import { getAppLogger } from '$lib/logging/logger'
 import { isServerVolumeId } from '$lib/servers/server-path-utils'
 import { openEditServerSheet } from '$lib/servers/open-sign-in'
-import { showsDisconnect } from './connection-state'
 import type { VolumeContextActionKind } from '$lib/ipc/bindings'
 import type { VolumeInfo } from '../types'
 
@@ -48,32 +45,24 @@ export function isServerPlaceRow(volume: VolumeInfo): boolean {
 }
 
 /**
- * Raises the native menu for a server row: Disconnect, Pin to switcher / Unpin,
- * Forget saved password, Forget server.
+ * The volume IDs a saved server entry backs, which is what decides whether a server
+ * row offers Edit… and Forget server (`row-menu.ts`).
  *
- * ❗ Which items apply is the CALLER's reading of the row, so the saved-server
- * question is asked here rather than on Rust's popup path, which is synchronous.
- * `busy` is the backend's own answer and it fills that in. A store that doesn't
- * answer costs the row one item, never the menu.
- *
- * ❗ **❌ No Keychain read here, and "Forget saved password" is always offered.**
- * Every read of a Keychain entry can cost a system prompt, and a right-click is
- * not a moment to spend one — the same rule `../network/CLAUDE.md` states for
- * SMB, and it applies identically here: SFTP's `has_sftp_credentials` is the
- * same `get_credentials(…).is_ok()` SMB's is. The COMMAND is what answers
- * instead: `forgetServerSecret` says whether an entry was there, and
- * [`forgetSavedSecret`] words a `false`.
+ * ❗ A store that doesn't answer costs those rows two items, never the menu: it
+ * answers an empty set. ❌ No Keychain read on this path, and none is needed:
+ * "Forget saved password" is always offered, and `forgetServerSecret` says
+ * whether an entry was there ([`forgetSavedSecret`] words a `false`). Every read
+ * of a Keychain entry can cost a system prompt, which a menu opening must not
+ * spend (the same rule `../network/CLAUDE.md` states for SMB).
  */
-export async function openServerRowMenu(volume: VolumeInfo): Promise<void> {
-  const isSaved = await listSavedServers()
-    .then((servers) => servers.some((server) => server.places.some((place) => place.volumeId === volume.id)))
-    .catch(() => false)
-  const server: ServerRowMenu = {
-    showsDisconnect: showsDisconnect(volume.connectionState),
-    isSaved,
-    pinned: volume.pinned === true,
+export async function listSavedPlaceIds(): Promise<Set<string>> {
+  try {
+    const servers = await listSavedServers()
+    return new Set(servers.flatMap((server) => server.places.map((place) => place.volumeId)))
+  } catch (e) {
+    log.warn('Reading the saved servers for the row menus broke down: {error}', { error: String(e) })
+    return new Set()
   }
-  await showVolumeRowContextMenu(volume.id, volume.name, false, server)
 }
 
 /**
@@ -137,7 +126,7 @@ export async function setServerPinned(volumeId: string, volumeName: string, pinn
  *
  * ❗ **This is where "was there one?" gets answered**, because the menu offers
  * the item unconditionally rather than paying a Keychain read to decide
- * ([`openServerRowMenu`]). `forget_server_secret` answers `false` when the store
+ * (`row-menu.ts`). `forget_server_secret` answers `false` when the store
  * held nothing, and a person who just confirmed a Forget deserves a sentence
  * rather than silence. A `true` says nothing: the entry is gone, which is what
  * they asked for, and a toast confirming their own action is noise.
@@ -159,19 +148,12 @@ export async function forgetSavedSecret(volumeId: string, volumeName: string): P
 }
 
 /**
- * Runs the item the user picked from a server row's native menu, or the palette
- * command that mirrors it.
+ * Runs a server row action picked from a row's menu (`row-menu.ts`'s
+ * `runVolumeRowAction`), or the palette command that mirrors it
+ * (`command-handlers/servers-handlers.ts`).
  *
- * ❗ The one consumer, wired from `DualPaneExplorer` (which owns the
- * `volume-context-action` listener), because these actions are global: the row
- * can be in either pane's switcher, or in the hub. `eject` and the two favorite
- * actions are NOT here — their owners are the eject listener and the open
- * dropdown respectively.
- *
- * Every typed variant has a producer: the native row menu builds Open, Edit…,
- * Disconnect, Pin / Unpin, Forget saved password, and Forget server
- * (`menu_structure.rs`), and the palette raises the same actions through
- * `command-handlers/servers-handlers.ts`.
+ * `eject` and the two favorite actions are NOT here — their owners are
+ * `runDetach` and the favorites menu respectively.
  *
  * ❗ Open is the one that needs something from its caller: the `navigate()`
  * transaction lives in the pane, so a surface with no pane to move logs rather
@@ -215,7 +197,7 @@ export async function runServerRowAction(payload: {
     case 'eject':
     case 'rename-favorite':
     case 'remove-favorite':
-      // Owned elsewhere: the eject listener, and the open switcher dropdown.
+      // Owned elsewhere: `runDetach`, and the favorites menu.
       return
   }
 }

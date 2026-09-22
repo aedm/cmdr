@@ -1,5 +1,5 @@
 /**
- * What F8 and a right-click do to each kind of hub row.
+ * What F8, a right-click, and a row-menu pick do to each kind of hub row.
  *
  * The whole risk here is that a one-place row and an SMB host take different
  * paths at every branch, and the wrong branch removes the wrong thing: a Forget
@@ -16,7 +16,8 @@ const removeManualServer = vi.fn(() => Promise.resolve())
 const disconnectNetworkHost = vi.fn(() => Promise.resolve(['/Volumes/Public']))
 const showNetworkHostContextMenu = vi.fn(() => Promise.resolve())
 const forgetSavedServer = vi.fn(() => Promise.resolve())
-const openServerRowMenu = vi.fn((_volume: VolumeInfo) => Promise.resolve())
+const runVolumeRowAction = vi.fn((_payload: unknown) => Promise.resolve())
+const openServer = vi.fn()
 const forgetCredentials = vi.fn(() => Promise.resolve())
 const addToast = vi.fn()
 const confirmDialog = vi.fn(() => Promise.resolve(true))
@@ -31,9 +32,14 @@ vi.mock('./network-store.svelte', () => ({
   checkCredentialsForHost: vi.fn(() => Promise.resolve()),
   forgetCredentials: (...args: unknown[]) => forgetCredentials(...(args as [])),
 }))
-vi.mock('../navigation/server-row-actions', () => ({
+vi.mock('../navigation/server-row-actions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../navigation/server-row-actions')>()),
   forgetSavedServer: (...args: unknown[]) => forgetSavedServer(...(args as [])),
-  openServerRowMenu: (volume: VolumeInfo) => openServerRowMenu(volume),
+}))
+vi.mock('$lib/stores/volume-busy-store.svelte', () => ({ isVolumeBusy: () => false, isVolumeEjecting: () => false }))
+vi.mock('../navigation/row-menu', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../navigation/row-menu')>()),
+  runVolumeRowAction: (payload: unknown) => runVolumeRowAction(payload),
 }))
 vi.mock('$lib/ui/toast', () => ({
   addToast: (...args: unknown[]) => {
@@ -44,7 +50,7 @@ vi.mock('$lib/utils/confirm-dialog', () => ({ confirmDialog: (...args: unknown[]
 
 import { createHubActions } from './servers-hub-actions'
 import type { HubRow } from './servers-hub-rows'
-import type { NetworkHostContextActionKind } from '$lib/ipc/bindings'
+import type { NetworkHostContextActionKind, VolumeContextActionKind } from '$lib/ipc/bindings'
 
 const host: NetworkHost = { id: 'h1', name: 'Attic NAS', ipAddress: '10.0.0.4', port: 445, source: 'manual' }
 
@@ -130,6 +136,7 @@ function actions(volumes: VolumeInfo[] = []) {
     getHosts: () => [host],
     getVolumes: () => volumes,
     refreshSaved,
+    openServer,
   })
 }
 
@@ -177,26 +184,54 @@ describe('forget', () => {
   })
 })
 
-describe('openMenu', () => {
-  it('raises the servers menu for a one-place row, the same one the switcher raises', async () => {
-    await actions([liveVolume]).openMenu(placeRow)
-    expect(openServerRowMenu).toHaveBeenCalledWith(liveVolume)
-    expect(showNetworkHostContextMenu).not.toHaveBeenCalled()
+describe('rowMenu', () => {
+  /** The menu's entries as their action names, so an assertion reads like the menu. */
+  function actionsOf(row: HubRow, volumes: VolumeInfo[] = []): string[] {
+    return (actions(volumes).rowMenu(row) ?? []).flat().map((e) => (e.type === 'action' ? e.action : e.toggle))
+  }
+
+  it('gives a one-place row the servers list, the same one the switcher row’s submenu shows', () => {
+    // Live and saved: every server action. Pinned, so the pin reads Unpin.
+    expect(actionsOf(placeRow, [{ ...liveVolume, pinned: true }])).toEqual([
+      'open',
+      'edit',
+      'disconnect',
+      'unpin',
+      'forget-secret',
+      'forget-server',
+    ])
   })
 
-  it('stands in for a place the volume list has no row for, rather than skipping the menu', async () => {
-    // A saved server that is neither pinned nor connected isn't in the listing.
-    await actions([]).openMenu(placeRow)
-    const volume = openServerRowMenu.mock.calls[0][0]
-    expect(volume.id).toBe('sftp-nas.local-22-ada')
-    expect(volume.path).toBe('sftp://ada@nas.local:22')
-    expect(volume.connectionState).toBeNull()
+  it('stands in for a place the volume list has no row for, rather than skipping the menu', () => {
+    // A saved server that is neither pinned nor connected isn't in the listing: no session, so no Disconnect.
+    expect(actionsOf(placeRow, [])).toEqual(['open', 'edit', 'unpin', 'forget-secret', 'forget-server'])
   })
 
+  it('has no in-app menu for an SMB host: that one keeps its own native host menu', () => {
+    expect(actions().rowMenu(savedHostRow)).toBeNull()
+  })
+})
+
+describe('runRowEntry', () => {
+  const entry = (action: VolumeContextActionKind) =>
+    ({ type: 'action', action, label: action, icon: 'pencil' }) as const
+
+  it('opens the place through the hub’s own Enter path', async () => {
+    await actions([liveVolume]).runRowEntry(placeRow, entry('open'))
+    expect(openServer).toHaveBeenCalledWith(placeRow)
+    expect(runVolumeRowAction).not.toHaveBeenCalled()
+  })
+
+  it('hands every other action to the one runner the switcher uses', async () => {
+    await actions([liveVolume]).runRowEntry(placeRow, entry('disconnect'))
+    expect(runVolumeRowAction).toHaveBeenCalledWith({ volume: liveVolume, action: 'disconnect' })
+  })
+})
+
+describe('openHostMenu', () => {
   it('raises the SMB host menu for a host row, with what it knows about its password', async () => {
-    await actions().openMenu(savedHostRow)
+    await actions().openHostMenu(savedHostRow)
     expect(showNetworkHostContextMenu).toHaveBeenCalledWith('h1', 'Attic NAS', true, true)
-    expect(openServerRowMenu).not.toHaveBeenCalled()
   })
 })
 

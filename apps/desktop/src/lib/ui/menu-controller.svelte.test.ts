@@ -544,6 +544,26 @@ describe('submenus', () => {
     expect(menu.submenuHighlightedValue).toBe('forget')
   })
 
+  it('opens a row’s submenu on hover, and closes it on hovering a row without one', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.surface.hover('vol-3')
+    expect(menu.openSubmenuValue).toBe('vol-3')
+    menu.surface.hover('vol-1')
+    expect(menu.openSubmenuValue).toBeNull()
+  })
+
+  // Pre-fix the surface opened a hovered row's submenu itself, keyboard mode or not, so a
+  // resting mouse over a row with a submenu stole the keyboard's cursor.
+  it('opens no submenu on hover while the keyboard has the cursor', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.handleKey(keydown('Home'))
+    menu.surface.hover('vol-3')
+    expect(menu.openSubmenuValue).toBeNull()
+    expect(menu.highlightedValue).toBe('fav-a')
+  })
+
   it('still activates the first row when Enter lands on a hover-opened submenu', () => {
     const onSelect = vi.fn()
     const menu = build({ onSelect })
@@ -796,28 +816,18 @@ describe('pointer selection', () => {
   it('opens the right-clicked row’s submenu, cursor on the row and none inside yet', () => {
     const menu = build()
     menu.openUnder(anchorEl())
-    menu.surface.contextMenu('vol-3', new MouseEvent('contextmenu'))
+    menu.surface.contextMenu('vol-3')
     expect(menu.isOpen).toBe(true)
     expect(menu.openSubmenuValue).toBe('vol-3')
     expect(menu.highlightedValue).toBe('vol-3')
     expect(menu.submenuHighlightedValue).toBeNull()
   })
 
-  it('reports a right-click at a row without a submenu, leaving the menu open', () => {
-    const onContextMenu = vi.fn()
-    const menu = build({ onContextMenu })
-    menu.openUnder(anchorEl())
-    const event = new MouseEvent('contextmenu', { bubbles: true })
-    menu.surface.contextMenu('fav-b', event)
-    expect(onContextMenu).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-b' }), event)
-    expect(menu.isOpen).toBe(true)
-  })
-
   it('opens no submenu on a right-click at a row without one', () => {
     const onSelect = vi.fn()
     const menu = build({ onSelect })
     menu.openUnder(anchorEl())
-    menu.surface.contextMenu('fav-b', new MouseEvent('contextmenu'))
+    menu.surface.contextMenu('fav-b')
     expect(menu.openSubmenuValue).toBeNull()
     expect(onSelect).not.toHaveBeenCalled()
     expect(menu.isOpen).toBe(true)
@@ -826,8 +836,8 @@ describe('pointer selection', () => {
   it('closes another row’s open submenu when a row without one is right-clicked', () => {
     const menu = build()
     menu.openUnder(anchorEl())
-    menu.surface.contextMenu('vol-3', new MouseEvent('contextmenu'))
-    menu.surface.contextMenu('vol-1', new MouseEvent('contextmenu'))
+    menu.surface.contextMenu('vol-3')
+    menu.surface.contextMenu('vol-1')
     expect(menu.openSubmenuValue).toBeNull()
   })
 })

@@ -21,8 +21,6 @@ const addFavorite = vi.fn(() => Promise.resolve())
 const removeFavorite = vi.fn(() => Promise.resolve())
 const renameFavorite = vi.fn(() => Promise.resolve())
 const reorderFavorites = vi.fn(() => Promise.resolve())
-const showFavoriteContextMenu = vi.fn(() => Promise.resolve())
-const showVolumeRowContextMenu = vi.fn(() => Promise.resolve())
 const trackEvent = vi.fn()
 
 const stubs = vi.hoisted(() => ({
@@ -31,9 +29,6 @@ const stubs = vi.hoisted(() => ({
   /** The pane's folder, which is what the `0` add row acts on. */
   currentPath: '/Users/test/elsewhere',
 }))
-
-/** Captures the `volume-context-action` listener each mounted menu registers in `onMount`. */
-let volumeContextActionHandler: ((payload: { action: string; volumeId: string }) => void) | undefined
 
 vi.mock('$lib/tauri-commands', () => ({
   resolvePathVolume: vi.fn(() => Promise.resolve({ volume: { id: 'root', path: '/' }, timedOut: false })),
@@ -47,8 +42,6 @@ vi.mock('$lib/tauri-commands', () => ({
   renameFavorite: (...args: unknown[]) => renameFavorite(...(args as [])),
   reorderFavorites: (...args: unknown[]) => reorderFavorites(...(args as [])),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
-  showVolumeRowContextMenu: (...args: unknown[]) => showVolumeRowContextMenu(...(args as [])),
-  showFavoriteContextMenu: (...args: unknown[]) => showFavoriteContextMenu(...(args as [])),
   disconnectPlace: vi.fn(() => Promise.resolve(true)),
   forgetServer: vi.fn(() => Promise.resolve(true)),
   forgetServerSecret: vi.fn(() => Promise.resolve(true)),
@@ -57,10 +50,6 @@ vi.mock('$lib/tauri-commands', () => ({
   trackEvent: (...args: unknown[]) => {
     trackEvent(...(args as []))
     return Promise.resolve()
-  },
-  onVolumeContextAction: (cb: (payload: { action: string; volumeId: string }) => void) => {
-    volumeContextActionHandler = cb
-    return Promise.resolve(() => {})
   },
 }))
 
@@ -163,6 +152,21 @@ function menuRow(value: string): HTMLElement | null {
   return document.querySelector(`[data-menu] [data-menu-row="${value}"]`)
 }
 
+/** A row in the open submenu, by value. */
+function submenuRow(value: string): HTMLElement | null {
+  return document.querySelector(`[data-menu-submenu] [data-menu-row="${value}"]`)
+}
+
+/** Right-click the nth favorite, which opens its submenu, and wait for it to be placed. */
+async function openFavoriteSubmenu(index: number): Promise<void> {
+  favoriteRows()[index].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+  await tick()
+  flushSync()
+  // The submenu renders once its position effect measured the parent row, inside a tick of its own.
+  await tick()
+  await tick()
+}
+
 function isHighlighted(row: Element | null | undefined): boolean {
   return row?.hasAttribute('data-highlighted') ?? false
 }
@@ -240,7 +244,6 @@ beforeEach(() => {
   removeFavorite.mockClear()
   renameFavorite.mockClear()
   reorderFavorites.mockClear()
-  showFavoriteContextMenu.mockClear()
   trackEvent.mockClear()
 })
 
@@ -655,10 +658,13 @@ describe('reordering by dragging', () => {
  */
 describe('renaming a favorite', () => {
   async function startRename(): Promise<HTMLInputElement> {
-    // The way the native row menu does it: the backend emits `volume-context-action`.
-    volumeContextActionHandler?.({ action: 'rename-favorite', volumeId: 'fav-1' })
+    // The way a person does it: the row's submenu, then Rename. The menu stays up, since
+    // the rename happens in the row.
+    await openFavoriteSubmenu(0)
+    submenuRow('row:fav-1:rename-favorite')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await tick()
     flushSync()
+    await tick()
     const input = document.querySelector<HTMLInputElement>('.favorite-rename-input')
     expect(input).toBeTruthy()
     return input as HTMLInputElement
@@ -740,12 +746,11 @@ describe('renaming a favorite', () => {
 })
 
 /**
- * The native row menu is built from the row that was right-clicked, whatever the
- * keyboard cursor is doing. (The webview freezes while a muda menu tracks, so the
- * highlight can't drift onto another row mid-menu either.)
+ * A favorite's actions (Rename, Remove from favorites) sit in its → submenu, and a
+ * right-click opens that same submenu: two doors, one list.
  */
-describe('right-clicking a favorite', () => {
-  it('acts on the right-clicked row, not on wherever the keyboard cursor sits', async () => {
+describe('a favorite’s submenu', () => {
+  it('opens the right-clicked row’s submenu, not the one where the keyboard cursor sits', async () => {
     await openFavorites()
 
     // Park the cursor at the far end of the list (the `0` add row).
@@ -755,39 +760,31 @@ describe('right-clicking a favorite', () => {
     const rows = menuRows()
     expect(isHighlighted(rows[rows.length - 1])).toBe(true)
 
-    // Right-click the FIRST favorite: the menu is built from that row's own facts.
-    favoriteRows()[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
-    await vi.waitFor(() => {
-      expect(showFavoriteContextMenu).toHaveBeenCalled()
-    })
-    expect(showFavoriteContextMenu).toHaveBeenCalledWith('fav-1', 'Documents')
+    await openFavoriteSubmenu(0)
+    expect(submenuRow('row:fav-1:rename-favorite')?.textContent).toContain('Rename')
+    expect(submenuRow('row:fav-1:remove-favorite')).toBeTruthy()
   })
 
-  it('opens the FAVORITE menu, never the volume row one', async () => {
+  it('opens with → on the highlighted favorite, cursor on its first row', async () => {
     await openFavorites()
-    favoriteRows()[2].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
-    await vi.waitFor(() => {
-      expect(showFavoriteContextMenu).toHaveBeenCalledWith('fav-3', 'Projects')
-    })
-    expect(showVolumeRowContextMenu).not.toHaveBeenCalled()
+    press('ArrowDown')
+    await tick()
+    press('ArrowRight')
+    await tick()
+    flushSync()
+    await tick()
+    await tick()
+    expect(isHighlighted(submenuRow('row:fav-2:rename-favorite'))).toBe(true)
   })
 
-  it('removes the favorite when the pick comes back', async () => {
+  it('removes the favorite, and leaves the menu up for the next one', async () => {
     await openFavorites()
-    volumeContextActionHandler?.({ action: 'remove-favorite', volumeId: 'fav-2' })
+    await openFavoriteSubmenu(1)
+    submenuRow('row:fav-2:remove-favorite')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await vi.waitFor(() => {
       expect(removeFavorite).toHaveBeenCalledWith('2')
     })
-  })
-
-  it('ignores a pick that arrives while this menu is shut', async () => {
-    // Every pane's menu hears the event, and favorites are global, so the id alone can't
-    // say whose menu spawned it. Being the open one is what claims it.
-    mountBreadcrumb()
-    volumeContextActionHandler?.({ action: 'remove-favorite', volumeId: 'fav-2' })
-    await tick()
-    flushSync()
-    expect(removeFavorite).not.toHaveBeenCalled()
+    expect(openMenuName()).toBe(FAVORITES)
   })
 })
 

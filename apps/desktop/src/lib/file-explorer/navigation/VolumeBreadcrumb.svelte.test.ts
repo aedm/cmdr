@@ -15,7 +15,6 @@ import type { VolumeChangePayload } from '../pane/types'
 
 const ejectVolume = vi.fn(() => Promise.resolve())
 const disconnectPlace = vi.fn(() => Promise.resolve(true))
-const showVolumeRowContextMenu = vi.fn(() => Promise.resolve())
 const hasServerSecret = vi.fn(() => Promise.resolve(true))
 const listSavedServers = vi.fn(() =>
   Promise.resolve([{ id: 'sftp-nas-local-22-ada', places: [{ volumeId: 'sftp-nas-local-22-ada' }] }]),
@@ -78,8 +77,6 @@ vi.mock('$lib/tauri-commands', () => ({
   renameFavorite: vi.fn(() => Promise.resolve()),
   reorderFavorites: vi.fn(() => Promise.resolve()),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
-  showVolumeRowContextMenu: (...args: unknown[]) => showVolumeRowContextMenu(...(args as [])),
-  showFavoriteContextMenu: vi.fn(() => Promise.resolve()),
   disconnectPlace: (...args: unknown[]) => disconnectPlace(...(args as [])),
   forgetServer: vi.fn(() => Promise.resolve(true)),
   forgetServerSecret: vi.fn(() => Promise.resolve(true)),
@@ -89,9 +86,6 @@ vi.mock('$lib/tauri-commands', () => ({
   setSmbDirectConnectionEnabled: (...args: unknown[]) => setSmbDirectConnectionEnabled(...(args as [])),
   addFavorite: vi.fn(() => Promise.resolve()),
   trackEvent: vi.fn(() => Promise.resolve()),
-  // The favorites menu the chip also hosts subscribes on mount; its own picks are
-  // driven in `FavoritesMenu.svelte.test.ts`.
-  onVolumeContextAction: () => Promise.resolve(() => {}),
 }))
 
 vi.mock('$lib/stores/volume-store.svelte', () => ({
@@ -268,7 +262,6 @@ describe('VolumeBreadcrumb server rows', () => {
     document.body.innerHTML = ''
     stubs.volumes = null
     disconnectPlace.mockClear()
-    showVolumeRowContextMenu.mockClear()
   })
 
   it('gives a live place a Disconnect control, and clicking it drops the session', async () => {
@@ -311,21 +304,59 @@ describe('VolumeBreadcrumb server rows', () => {
     expect(document.querySelector('[data-menu-row] .volume-fs')?.textContent).toBe('SFTP')
   })
 
-  it('opens a server menu on right-click, with the row read as the caller sees it', async () => {
+  /** Right-clicks the place (row 0 is the hub, "Servers") and waits for its submenu to be placed. */
+  async function openPlaceSubmenu(): Promise<HTMLElement[]> {
+    // The saved-server store is read on open: let it land first.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    volumeRows()[1].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+    await tick()
+    flushSync()
+    await tick()
+    await tick()
+    return [...document.querySelectorAll<HTMLElement>('[data-menu-submenu] [data-menu-row]')]
+  }
+
+  it('opens the place’s submenu on right-click: the server actions, read off the row and the saved store', async () => {
     await openWith([serverRow({ connectionState: 'direct' })])
-    // Row 0 is the hub ("Servers"); the place is the one after it.
-    const row = volumeRows()[1]
-    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
-    // One store read runs before the popup: let it settle. ❗ One, ❌ not two —
-    // deciding whether a secret is stored would cost a Keychain read, and every
-    // read of one can raise a system prompt in front of the menu appearing.
+    const rows = await openPlaceSubmenu()
+    expect(rows.map((row) => row.textContent.trim())).toEqual([
+      'Open',
+      'Edit server…',
+      'Disconnect',
+      'Pin to switcher',
+      'Forget saved password',
+      'Forget server',
+    ])
+    // ❗ Deciding whether a secret is stored would cost a Keychain read, and every read of
+    // one can raise a system prompt in front of the menu appearing.
+    expect(hasServerSecret).not.toHaveBeenCalled()
+  })
+
+  it('disconnects from the submenu and leaves the switcher up, like the row’s own control', async () => {
+    await openWith([serverRow({ connectionState: 'direct' })])
+    await openPlaceSubmenu()
+    document
+      .querySelector('[data-menu-submenu] [data-menu-row="row:sftp-nas-local-22-ada:disconnect"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     await vi.waitFor(() => {
-      expect(showVolumeRowContextMenu).toHaveBeenCalled()
+      expect(disconnectPlace).toHaveBeenCalledWith('sftp-nas-local-22-ada')
     })
-    expect(showVolumeRowContextMenu).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'Naspolya', false, {
-      showsDisconnect: true,
-      isSaved: true,
-      pinned: false,
+    expect(switcherSurface()).toBeTruthy()
+  })
+
+  it('opens the place in THIS pane from the submenu’s Open, the way a click on the row does', async () => {
+    const onVolumeChange = vi.fn()
+    stubs.volumes = [serverRow({ connectionState: 'direct' })]
+    const { instance } = mountBreadcrumb({ onVolumeChange })
+    instance.openVolumeChooser()
+    await tick()
+    flushSync()
+    await openPlaceSubmenu()
+    document
+      .querySelector('[data-menu-submenu] [data-menu-row="row:sftp-nas-local-22-ada:open"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await vi.waitFor(() => {
+      expect(onVolumeChange).toHaveBeenCalledWith(expect.objectContaining({ volumeId: 'sftp-nas-local-22-ada' }))
     })
   })
 })
@@ -743,25 +774,33 @@ describe('VolumeBreadcrumb share submenu', () => {
     expect(document.querySelector('[data-menu-submenu]')).toBeTruthy()
   })
 
-  // The switch is the one way in from here: checking it on a share the OS mounted runs
-  // "Connect directly", so a second row offering the same thing only reads as a riddle.
-  it("an OS-mounted share's submenu holds the switch row alone", async () => {
+  // The switch is the one way to the direct connection from here: checking it on a share the
+  // OS mounted runs "Connect directly", so a second row offering the same thing only reads as
+  // a riddle. The row's actions lead, and the switch sits under a rule.
+  it("an OS-mounted share's submenu holds Eject, then the switch below a rule", async () => {
     await openWithSwitches([share])
     await openShareSubmenu()
 
     const rows = submenuRows()
-    expect(rows).toHaveLength(1)
-    expect(rows[0].textContent).toContain("Use Cmdr's fast direct connection")
-    expect(rows[0].hasAttribute('data-checked')).toBe(true)
+    expect(rows.map((row) => row.textContent.trim())).toEqual(['Eject (Share)', "Use Cmdr's fast direct connection"])
+    expect(rows[1].hasAttribute('data-checked')).toBe(true)
+    expect(rows[1].previousElementSibling?.getAttribute('role')).toBe('separator')
   })
 
-  it('a share Rust has no switch for gets no submenu', async () => {
+  it('a share Rust has no switch for gets its Eject alone', async () => {
     stubs.directSwitch = null
     await openWithSwitches([share])
+    await openShareSubmenu()
+    expect(submenuRows().map((row) => row.textContent.trim())).toEqual(['Eject (Share)'])
+  })
 
-    volumeRows()[SHARE_ROW].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
-    await tick()
-    flushSync()
+  it('ejects from the submenu and leaves the switcher up, so several can go in a row', async () => {
+    await openWithSwitches([share])
+    await openShareSubmenu()
+    expect(press('Enter')).toBe(true)
+    await settle()
+    expect(ejectVolume).toHaveBeenCalledWith('volumes-share')
+    expect(switcherSurface()).toBeTruthy()
     expect(document.querySelector('[data-menu-submenu]')).toBeNull()
   })
 
@@ -770,6 +809,8 @@ describe('VolumeBreadcrumb share submenu', () => {
     await openWithSwitches([share])
     await openShareSubmenu()
 
+    // Past Eject to the switch.
+    press('ArrowDown')
     expect(press('Enter')).toBe(true)
     await settle()
     expect(setSmbDirectConnectionEnabled).toHaveBeenCalledWith('volumes-share', true)

@@ -6,19 +6,19 @@ import { mount, tick } from 'svelte'
 import VolumeBreadcrumb from '../navigation/VolumeBreadcrumb.svelte'
 import { waitForUpdates, useMountTarget } from './integration-test-utils'
 import { getVolumes } from '$lib/stores/volume-store.svelte'
-import {
-  removeFavorite,
-  renameFavorite,
-  reorderFavorites,
-  showVolumeRowContextMenu,
-  showFavoriteContextMenu,
-  onVolumeContextAction,
-} from '$lib/tauri-commands'
+import { removeFavorite, renameFavorite, reorderFavorites } from '$lib/tauri-commands'
 
-/** The `volume-context-action` callback the most-recently-mounted breadcrumb registered. */
-function latestVolumeContextHandler(): (payload: { action: string; volumeId: string }) => void {
-  const calls = vi.mocked(onVolumeContextAction).mock.calls
-  return calls[calls.length - 1][0] as (payload: { action: string; volumeId: string }) => void
+/** Right-clicks a row, which opens its → submenu, then clicks the submenu row `value`. */
+async function pickFromRowSubmenu(row: HTMLElement, value: string): Promise<void> {
+  row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }))
+  // The submenu renders once its position effect measured the parent row, inside a tick of its own.
+  await tick()
+  await tick()
+  await tick()
+  document
+    .querySelector(`[data-menu-submenu] [data-menu-row="${value}"]`)
+    ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+  await tick()
 }
 
 // ============================================================================
@@ -147,8 +147,6 @@ vi.mock('$lib/tauri-commands', () => ({
   renameFavorite: vi.fn().mockResolvedValue(undefined),
   reorderFavorites: vi.fn().mockResolvedValue(undefined),
   stripFavoritePrefix: (id: string) => (id.startsWith('fav-') ? id.slice(4) : id),
-  showVolumeRowContextMenu: vi.fn().mockResolvedValue(undefined),
-  showFavoriteContextMenu: vi.fn().mockResolvedValue(undefined),
   addFavorite: vi.fn().mockResolvedValue(undefined),
   trackEvent: vi.fn().mockResolvedValue(undefined),
   // Opening a DRIVE row runs the first-connect indexing prompt, which asks this before
@@ -737,27 +735,15 @@ describe('VolumeBreadcrumb', () => {
       expect(reorderFavorites).toHaveBeenCalledWith(['b', 'a', 'c'])
     })
 
-    it('right-click a favorite requests the native row menu; Remove (over volume-context-action) calls removeFavorite with the bare id', async () => {
+    it('Remove, from the favorite’s submenu, calls removeFavorite with the bare id', async () => {
       await openWithFavorites([fav('x', 'Pics', '/Users/me/Pics')])
-      const item = menuRow('fav-x') as HTMLElement
-      item.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
-      await tick()
-      // The native (muda) favorite menu is requested for the right-clicked favorite.
-      expect(showFavoriteContextMenu).toHaveBeenCalledWith('fav-x', 'Pics')
-      expect(showVolumeRowContextMenu).not.toHaveBeenCalled()
-      // The backend emits the pick back over `volume-context-action`.
-      latestVolumeContextHandler()({ action: 'remove-favorite', volumeId: 'fav-x' })
-      await tick()
+      await pickFromRowSubmenu(menuRow('fav-x') as HTMLElement, 'row:fav-x:remove-favorite')
       expect(removeFavorite).toHaveBeenCalledWith('x')
     })
 
-    it('Rename (over volume-context-action) shows an inline input; committing calls renameFavorite with the bare id', async () => {
+    it('Rename, from the favorite’s submenu, shows an inline input; committing calls renameFavorite with the bare id', async () => {
       await openWithFavorites([fav('y', 'Old', '/Users/me/Old')])
-      const item = menuRow('fav-y') as HTMLElement
-      item.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 10, clientY: 10 }))
-      await tick()
-      expect(showFavoriteContextMenu).toHaveBeenCalledWith('fav-y', 'Old')
-      latestVolumeContextHandler()({ action: 'rename-favorite', volumeId: 'fav-y' })
+      await pickFromRowSubmenu(menuRow('fav-y') as HTMLElement, 'row:fav-y:rename-favorite')
       await tick()
       const input = document.querySelector('.favorite-rename-input') as HTMLInputElement
       expect(input).toBeTruthy()

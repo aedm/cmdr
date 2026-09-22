@@ -10,7 +10,6 @@
      * eject or disconnect control, the disk-space line, and the inline rename field.
      */
     import { onDestroy, untrack } from 'svelte'
-    import { showVolumeRowContextMenu } from '$lib/tauri-commands'
     import { getVolumes, getVolumesTimedOut, isVolumesRefreshing, isVolumeRetryFailed, requestVolumeRefresh } from '$lib/stores/volume-store.svelte'
     import { isVolumeBusy, isVolumeEjecting } from '$lib/stores/volume-busy-store.svelte'
     import { isRestricted } from '$lib/stores/restricted-paths-store.svelte'
@@ -45,10 +44,10 @@
     import { detachControlFor } from './detach-control'
     import { runDetach } from './detach-volume'
     import { isDriveRow } from './drive-index-manager.svelte'
-    import { isVolumeEjectable } from './eject-predicate'
     import { filesystemLabel } from './filesystem-label'
     import { pathForPickedVolume } from './picked-volume-path'
-    import { isServerPlaceRow, openServerRowMenu } from './server-row-actions'
+    import { rowMenuItems, runVolumeRowAction, volumeRowMenu, type RowMenuPick, type RowToggleKind } from './row-menu'
+    import { listSavedPlaceIds } from './server-row-actions'
     import { shouldShowCheckmark } from './volume-checkmark'
     import { groupByCategory } from './volume-grouping'
     import { createVolumeSpaceManager } from './volume-space-manager.svelte'
@@ -109,10 +108,16 @@
     const allVolumes = $derived(groupedVolumes.flatMap((g) => g.items))
     const favoritesCount = $derived(volumes.filter((v) => v.category === 'favorite').length)
 
-    /** The submenu row's value, so a pick tells itself apart from the volume rows. */
-    const DIRECT_SWITCH_PREFIX = 'direct-switch:'
+    /**
+     * What a row carries back on a pick: a volume row, or one of its row actions. A union
+     * rather than a value prefix, so a pick can't be read as the wrong kind of row.
+     */
+    type SwitcherRow = { kind: 'volume'; volume: VolumeInfo } | RowMenuPick
 
     const directSwitches = createDirectConnectionSwitches()
+
+    /** The volume IDs a saved server entry backs, re-read on every open (Edit and Forget server need one). */
+    let savedPlaceIds = $state(new Set<string>())
 
     /** The row that hands the header over to the favorites menu, and teaches ⌃D doing it. */
     const SEE_FAVORITES_VALUE = 'favorites:see'
@@ -130,26 +135,24 @@
     }
 
     /**
-     * An SMB share's submenu: its "Use Cmdr's fast direct connection" checkbox row, on
-     * every share Rust knows a switch for, direct ones too, so a direct share can go back
-     * to the macOS mount from here. It's the one row: checking it on a share the OS mounted
-     * runs "Connect directly". ❗ Picking a submenu row closes the whole menu before
-     * `onSelect`, so nobody sees the check flip: the next open shows it, re-read from Rust.
+     * A row's → submenu: its actions (`row-menu.ts`, the one list right-click opens too),
+     * then its switches. An SMB share's "Use Cmdr's fast direct connection" is one of those,
+     * on every share Rust knows a switch for, direct ones too, so a direct share can go back
+     * to the macOS mount from here; checking it on a share the OS mounted runs "Connect
+     * directly". ❗ A switch's pick closes the whole menu before `onSelect`, so nobody sees the
+     * check flip: the next open shows it, re-read from Rust.
      */
-    function shareSubmenu(volume: VolumeInfo): MenuItem<VolumeInfo>[] | undefined {
-        const directEnabled = directSwitches.valueFor(volume.id)
-        if (directEnabled === undefined) return undefined
-        return [
-            {
-                value: `${DIRECT_SWITCH_PREFIX}${volume.id}`,
-                label: tString('fileExplorer.navigation.useDirectConnection'),
-                checked: directEnabled,
-                data: volume,
-            },
-        ]
+    function rowSubmenu(volume: VolumeInfo): MenuItem<SwitcherRow>[] | undefined {
+        const menu = volumeRowMenu(volume, {
+            busy: isVolumeBusy(volume.id),
+            ejecting: isVolumeEjecting(volume.id),
+            isSaved: savedPlaceIds.has(volume.id),
+            directConnection: directSwitches.valueFor(volume.id),
+        })
+        return rowMenuItems(volume.id, menu, (entry) => ({ kind: 'row-entry', volume, entry }))
     }
 
-    function toMenuItem(volume: VolumeInfo): MenuItem<VolumeInfo> {
+    function toMenuItem(volume: VolumeInfo): MenuItem<SwitcherRow> {
         const restricted = isRestricted(volume.path)
         // What the DEVICE's presence makes of the row: openable or greyed, and the sentence
         // that says why. `null` readiness (every disk, every server) answers "openable,
@@ -165,12 +168,17 @@
             checked: shouldShowCheckmark(volume, containingVolumeId),
             disabled: !rowState.openable,
             tooltip: rowState.tooltip ?? (restricted ? RESTRICTED_FOLDER_TOOLTIP : ''),
-            submenu: shareSubmenu(volume),
-            data: volume,
+            submenu: rowSubmenu(volume),
+            data: { kind: 'volume', volume },
         }
     }
 
-    const sections: MenuSection<VolumeInfo>[] = $derived.by(() => [
+    /** The volume a top-level row stands for; the "See N favorites" row has none. */
+    function rowVolume(item: MenuItem<SwitcherRow>): VolumeInfo | undefined {
+        return item.data?.kind === 'volume' ? item.data.volume : undefined
+    }
+
+    const sections: MenuSection<SwitcherRow>[] = $derived.by(() => [
         // One row on top for the favorites, which live in their own menu (⌃D). It keeps
         // them a click away and is where the key gets taught; ❌ the switcher lists no
         // favorites itself, so there's no second place to manage them from.
@@ -206,13 +214,10 @@
         return true
     }
 
-    const menu = createMenu<VolumeInfo>({
+    const menu = createMenu<SwitcherRow>({
         getSections: () => sections,
         onSelect: (item) => {
             void handleSelect(item)
-        },
-        onContextMenu: (item) => {
-            openRowMenu(item)
         },
         onKey: handleKey,
         onOpenChange: (open) => {
@@ -221,6 +226,9 @@
             void spaceManager.fetchVolumeSpaces(volumes)
             badges.fetchForRows(volumes)
             void directSwitches.fetchForRows(volumes)
+            void listSavedPlaceIds().then((ids) => {
+                savedPlaceIds = ids
+            })
         },
         restoreFocus: () => {
             // ❗ Back to whatever held focus, ❌ not to this pane: ⌥F2 opens the OTHER pane's
@@ -258,18 +266,41 @@
         return menu.isOpen
     }
 
-    async function handleSelect(item: MenuItem<VolumeInfo>): Promise<void> {
+    async function handleSelect(item: MenuItem<SwitcherRow>): Promise<void> {
         if (item.value === SEE_FAVORITES_VALUE) {
             onShowFavorites('switcher_row')
             return
         }
-        if (item.value.startsWith(DIRECT_SWITCH_PREFIX)) {
-            if (item.data) await directSwitches.pick(item.data, volumes)
+        const row = item.data
+        if (row?.kind === 'row-entry') {
+            await runRowEntry(row)
             return
         }
-        const volume = item.data
-        if (!volume) return
+        if (row) openVolume(row.volume)
+    }
 
+    /**
+     * A row action or switch. Open is the row's own pick, so it moves THIS pane the way a
+     * click on the row does; every other action goes where the palette's does.
+     */
+    async function runRowEntry({ volume, entry }: RowMenuPick): Promise<void> {
+        if (entry.type === 'toggle') {
+            await flipToggle[entry.toggle](volume)
+            return
+        }
+        if (entry.action === 'open') {
+            openVolume(volume)
+            return
+        }
+        await runVolumeRowAction({ volume, action: entry.action })
+    }
+
+    /** What flipping each row switch does. A `Record`, so a new `RowToggleKind` won't compile until it's handled. */
+    const flipToggle: Record<RowToggleKind, (volume: VolumeInfo) => Promise<void>> = {
+        'direct-connection': (volume) => directSwitches.pick(volume, volumes),
+    }
+
+    function openVolume(volume: VolumeInfo): void {
         // A saved server place opens on its start folder; anything else at its root.
         onVolumeChange?.({ volumeId: volume.id, volumePath: volume.path, targetPath: pathForPickedVolume(volume) })
         // First-connect indexing prompt (D6): self-gates on settings, per-drive silence, and
@@ -281,24 +312,6 @@
                 onSilenceAll: () => { setSetting('indexing.askForEachDrive', false) },
             })
         }
-    }
-
-    // Per-row right-click menu. Ejectable volumes get their detach item; a server row gets
-    // its own menu; anything else has none. It's the NATIVE (muda) menu, matching the
-    // breadcrumb / tab menus. While it tracks, the webview is frozen, so the cursor can't
-    // drift onto another row — it acts on the right-clicked one. The pick returns over
-    // `volume-context-action`, where `DualPaneExplorer` handles eject. A FAVORITE's menu is
-    // `FavoritesMenu.svelte`'s: no favorite is listed here.
-    function openRowMenu(item: MenuItem<VolumeInfo>): void {
-        const volume = item.data
-        if (!volume) return
-        if (isServerPlaceRow(volume)) {
-            void openServerRowMenu(volume)
-            return
-        }
-        const ejectable = isVolumeEjectable(volume)
-        if (!ejectable) return
-        void showVolumeRowContextMenu(volume.id, volume.name, ejectable)
     }
 
     // Clear cached space info when the volume list changes (mount/unmount/MTP connect) and
@@ -322,8 +335,8 @@
 <!-- The name the switcher already carries in Settings > Keyboard shortcuts, so screen readers
      and the shortcut scope say the same thing (and M2 adds no new copy to translate). -->
 <Menu {menu} ariaLabel={tString('shortcuts.scope.volumeChooser')}>
-    {#snippet label(ctx: MenuRowContext<VolumeInfo>)}
-        {@const volume = ctx.item.data}
+    {#snippet label(ctx: MenuRowContext<SwitcherRow>)}
+        {@const volume = rowVolume(ctx.item)}
         <!-- TCC-restricted entries read quiet + italic (the shared `--color-text-quiet`
              token, as the file list's hidden entries do); a pinned place nobody has
              dialed is quiet too, so the connected rows above it read as the live ones.
@@ -336,8 +349,8 @@
         >
     {/snippet}
 
-    {#snippet trailing(ctx: MenuRowContext<VolumeInfo>)}
-        {@const volume = ctx.item.data}
+    {#snippet trailing(ctx: MenuRowContext<SwitcherRow>)}
+        {@const volume = rowVolume(ctx.item)}
         {#if ctx.item.value === SEE_FAVORITES_VALUE}
             <!-- The key that opens the same menu from anywhere, live: a rebind shows here.
                  Not clickable — inside a row, a second target would double-activate. -->
@@ -398,8 +411,8 @@
         {/if}
     {/snippet}
 
-    {#snippet below(ctx: MenuRowContext<VolumeInfo>)}
-        {@const volume = ctx.item.data}
+    {#snippet below(ctx: MenuRowContext<SwitcherRow>)}
+        {@const volume = rowVolume(ctx.item)}
         {#if volume}
             {@const space = volumeSpaceMap.get(volume.id)}
             {#if space}

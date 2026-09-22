@@ -240,8 +240,8 @@ built on the house `Menu` primitive (`$lib/ui/DETAILS.md` § Menu).
 ❗ **The primitive owns every interaction**: open and close, anchoring and viewport fitting, the cursor, the whole
 keyboard contract (arrows, Home/End, Enter, Escape, ⌥↑/⌥↓ reorder, the submenu), keyboard-vs-pointer mode, the drag,
 scroll-into-view, and focus. `VolumeChooserMenu` hands it DATA (`MenuSection`s built from `volume-grouping.ts`) plus
-four snippets, and gets `onSelect` / `onReorder` / `onContextMenu` back. ❌ Don't reintroduce a key handler, a highlight
-index, or a `getBoundingClientRect` here; that's what the port removed.
+four snippets, and gets `onSelect` / `onReorder` back. ❌ Don't reintroduce a key handler, a highlight index, or a
+`getBoundingClientRect` here; that's what the port removed.
 
 - **`label`** is the row's text, swapped for the inline rename `<input>` on the favorite being renamed.
 - **`trailing`** is the filesystem tag, the restricted glyph, and the `.row-trailing` badge cluster (read-only, the
@@ -309,19 +309,19 @@ function. The helper passes the volume id and the share's name, read while the r
 words the answer if the share goes away before the backend gets there. A credential question opens the one sign-in
 sheet, which the flow raises itself. The flow itself: `../network/DETAILS.md` § "Connect directly".
 
-In the switcher, every SMB share row (direct ones too, so a direct share can go back to the macOS mount) carries a
-`MenuItem.submenu` holding ONE row: the per-share "Use Cmdr's fast direct connection" checkbox. The primitive carries
-the keyboard (ArrowRight opens, ArrowLeft / Escape closes, Enter activates) and the single-cursor rule.
-`direct-connection-switch.svelte.ts` owns the row: it asks Rust for each SMB share row's value when the switcher opens
-(`null` means no switch, so no submenu), and a pick flips it. Rust does what OFF means (a direct share goes back to the
-OS mount at once, and `volumes-changed` repaints the dot); ON only saves there, so a share still on the OS mount then
-runs `connectDirectlyToRow`. That's why the submenu has no separate "Connect directly" row: checking the box IS that
-action, and two rows saying the same thing read as a riddle. ❗ An OS-mounted share whose switch is already ON (the auto
-upgrade couldn't dial, say, for want of credentials) shows a checked box, so from the switcher "Connect directly" takes
-unchecking and re-checking; the chip's yellow dot and the fallback notice offer it in one click. What the switch is and
-where it's enforced: `src-tauri/src/network/DETAILS.md` § "The per-share direct-connection switch".
+In the switcher, every SMB share row (direct ones too, so a direct share can go back to the macOS mount) carries the
+per-share "Use Cmdr's fast direct connection" checkbox in its → submenu, under the row's actions and a rule (§ "Row
+actions: the → submenu"). `direct-connection-switch.svelte.ts` owns the value: it asks Rust for each SMB share row's
+when the switcher opens (`null` means no switch, so no checkbox row), and a pick flips it. Rust does what OFF means (a
+direct share goes back to the OS mount at once, and `volumes-changed` repaints the dot); ON only saves there, so a share
+still on the OS mount then runs `connectDirectlyToRow`. That's why the submenu has no separate "Connect directly" row:
+checking the box IS that action, and two rows saying the same thing read as a riddle. ❗ An OS-mounted share whose
+switch is already ON (the auto upgrade couldn't dial, say, for want of credentials) shows a checked box, so from the
+switcher "Connect directly" takes unchecking and re-checking; the chip's yellow dot and the fallback notice offer it in
+one click. What the switch is and where it's enforced: `src-tauri/src/network/DETAILS.md` § "The per-share
+direct-connection switch".
 
-### Eject button + row context menu
+### Eject button
 
 Ejectable volumes (USB, SD, DMG, MTP, SMB — see `eject-predicate.ts`) show a small `⏏`-shaped icon button on the right
 of each switcher row and on the right of the closed/header chip — one `DetachButton.svelte` for all three placements
@@ -346,55 +346,73 @@ success toast. ❗ `volume-unmounted` carries an optional `volumeId`, and the co
 server" takes the row out of the store, so a path lookup would find nothing if the `volumes-changed` refresh won the
 race. The mount watchers leave it null and the path lookup is their fallback.
 
-Right-clicking a dropdown row opens a NATIVE (muda) context menu via `show_volume_row_context_menu`: a favorite row gets
-`Rename` + `Remove`, an ejectable volume row gets its detach item (`Eject ({name})` for a disk, `Disconnect` for a
-phone: `DetachWord::for_volume_id` reads the word off the id, so the native menus and the inline control can't drift on
-it, while the ITEM stays `EJECT_VOLUME_ID` because for ADB that already routes to `DeviceDisconnect`), a SERVER row (the
-`server` argument, a `ServerRowMenu` the caller fills from the row's own state) gets `Open` / `Edit server…` /
-`Disconnect` / `Pin to switcher` or `Unpin` / `Forget saved password` / `Forget server` instead, and anything else has
-no menu. A server never gets `Eject`: that word promises safe-to-unplug and a server has nothing to unplug. `Open` and
-`Edit server…` lead, the way the row's two purposes rank (going there, and changing what "there" means), and neither is
-disabled by `busy` — navigating into a server a copy is reading from is fine, and editing settings touches no session.
-`Edit server…` needs a SAVED entry to edit, so it is the one gated on `isSaved`; `Forget saved password` is offered
-unconditionally, because deciding otherwise would mean a Keychain read on the right-click path
-(`server-row-actions.ts`). The pin item is the other server item `busy` never disables: a pin is a view preference the
-switcher reads, so moving it while a copy runs breaks nothing, where dropping the session or the credential under one
-does. Right-clicking the closed header opens the native breadcrumb menu (`show_breadcrumb_context_menu`) that adds the
-same detach item alongside "Copy path" when the pane's volume is ejectable. All these picks route back through the one
-`volume-context-action` Tauri event, whose `action` is the TYPED `VolumeContextActionKind` (`open`, `eject`,
-`disconnect`, `pin`, `unpin`, `edit`, `forget-secret`, `forget-server`, `rename-favorite`, `remove-favorite`), ❌ never
-a free string: `eject` is handled in `DualPaneExplorer.svelte` (calls `ejectVolume`); `rename-favorite` /
-`remove-favorite` land in `FavoritesMenu.handleVolumeContextAction`, which only acts when its own menu `isOpen` (every
-pane's menu receives the global event, but only the open one owns the menu it spawned). Going native means the webview
-is frozen while the menu tracks, so the switcher's cursor can't drift onto another row under the pointer or arrow keys —
-the menu always acts on the right-clicked row.
+Right-clicking the closed header opens the native breadcrumb menu (`show_breadcrumb_context_menu`) that adds the detach
+item alongside "Copy path" when the pane's volume is ejectable (`Eject ({name})` for a disk, `Disconnect` for a phone:
+`DetachWord::for_volume_id` reads the word off the id, while the ITEM stays `EJECT_VOLUME_ID` because for ADB that
+already routes to `DeviceDisconnect`). Its pick comes back over the `volume-context-action` Tauri event as the typed
+`VolumeContextActionKind::Eject`, handled in `DualPaneExplorer.svelte` (`../pane/volume-context-action.ts`).
+
+### Row actions: the → submenu
+
+A row's actions live in its → submenu, in the switcher, the favorites menu, and (as a right-click menu at the pointer)
+the servers hub. **`row-menu.ts` is the ONE list** every door shows, so no two surfaces drift on which items a row has,
+their order, or which a transfer greys:
+
+- **A drive or phone**: its detach item, worded and greyed from the same `detachControlFor` answer the inline button
+  renders (`Eject ({name})`, or `Disconnect` with the unplug glyph on a phone). An SMB share adds its direct-connection
+  checkbox in a second group, under a rule.
+- **A server place**: `Open`, `Edit server…` (saved only), `Disconnect` (when `showsDisconnect`), `Pin to switcher` or
+  `Unpin`, `Forget saved password`, `Forget server` (saved only). ❌ Never `Eject`: it promises safe-to-unplug, and a
+  server has nothing to unplug. `Open` and `Edit server…` lead, the way the row's two purposes rank, and neither is
+  greyed by `busy`: navigating into a server a copy reads from is fine, and editing settings touches no session. The pin
+  isn't either (a view preference breaks nothing), where dropping the session or the credential under a copy does.
+  `Forget saved password` is offered unconditionally, because deciding otherwise costs a Keychain read, and each can
+  raise a system prompt; `forgetSavedSecret` words a `false` instead. "Saved" comes from `listSavedPlaceIds()`, read
+  when the switcher opens (the hub has its saved list already).
+- **A favorite**: `Rename`, `Remove from favorites` (§ "The favorites menu").
+
+**Both doors, one list.** → (or a hover) opens the submenu, and a right-click on the row opens the same one: the
+primitive does it (`$lib/ui/DETAILS.md` § Menu), so none of these rows raises a native popup. Picks carry the typed
+`VolumeContextActionKind` in a `RowMenuPick` payload (a union member of each menu's row data, ❌ never a value prefix),
+and land in the handlers the palette uses: `runVolumeRowAction` sends Eject and Disconnect through `runDetach` (the
+inline button's path, which refuses a busy volume whatever the menu showed) and the rest to `runServerRowAction`. `Open`
+is the surface's own navigation, so the switcher moves ITS pane (the same `openVolume` a click on the row runs) and the
+hub moves its.
+
+**Which picks keep the menu up** (`MenuItem.keepsMenuOpen`): Eject and Disconnect, like the inline button, so several go
+in a row; the pin pair; and both favorite actions (a rename happens in the row). Open, Edit, and the two Forgets close
+it, since they navigate or open a dialog. The direct-connection checkbox closes it too, since checking it on an
+OS-mounted share runs "Connect directly" with its sign-in sheet.
+
+**Adding a per-row checkbox**: `row-menu.ts`'s header says where (a `RowToggleKind` member, a `VolumeRowFacts` field, a
+`rowToggles` entry, and the two `flipToggle` maps, each a `Record<RowToggleKind, …>` that won't compile until handled).
 
 **Busy gating.** While a copy / move / delete reads from or writes to a volume, ejecting it is blocked so a disconnect
 can't truncate an in-flight file. `$lib/stores/volume-busy-store.svelte`'s `isVolumeBusy(id)` (fed by the backend
-`volumes-busy-changed` event) disables the header eject button and the dropdown-row eject button, each with a "Can't
-eject while operations are in progress on this device" tooltip; `handleEjectClick` also early-returns on a busy volume.
-The native row / breadcrumb eject items are gated backend-side: `show_volume_row_context_menu` /
-`show_breadcrumb_context_menu` pass the volume ID, and the Rust builder renders the `Eject` item disabled with a
-` (busy)` suffix. The real safety net is the `eject_volume` backend guard, which refuses a busy volume even if the UI is
-stale or an MCP caller bypasses it. See `src-tauri/src/file_system/write_operations/CLAUDE.md` § "Busy-volumes set".
+`volumes-busy-changed` event, which is Rust's `busy_volume_ids()`) disables the header eject button, the dropdown-row
+eject button, and the row menu's destructive items (` (busy)` suffix), each surface reading the same store answer;
+`handleEjectClick` and `runDetach` also early-return on a busy volume. The breadcrumb's native Eject is gated
+backend-side: `show_breadcrumb_context_menu` renders it disabled with the ` (busy)` suffix. The real safety net is the
+`eject_volume` backend guard, which refuses a busy volume even if the UI is stale or an MCP caller bypasses it. See
+`src-tauri/src/file_system/write_operations/CLAUDE.md` § "Busy-volumes set".
 
 **An eject in progress.** While a volume's eject runs (one took 10.5 s in a user's log, with nothing on screen to say
 so), its header chip and dropdown-row control render disabled, with a `Spinner` in the glyph's place and an "Ejecting
 {name}…" label ("Disconnecting {name}…" on a phone), and `handleEjectClick` early-returns. `isVolumeEjecting(id)` lives
 in the same store module as `isVolumeBusy`, fed by the backend's `volumes-ejecting-changed` event, and
-`initVolumeBusyStore` starts both sets. The native row and breadcrumb Eject items render disabled with the busy suffix
-while ejecting (`is_ejecting` in `commands/menu.rs`). All of that is presentation: the backend JOINS a second request
-for a volume to the eject already running, so a stale control or an MCP caller can't start a second teardown
-(`src-tauri/src/file_system/volume/DETAILS.md` § "Eject"). Both controls render through one `detachButton` snippet, and
-its words, glyph, and three states (ejecting, busy, idle) are `detach-control.ts`'s. The spinner keeps full opacity
-(it's underway, not unavailable) and its margin fills the glyph's 14px box, so the row doesn't shift; `Spinner` itself
-stops spinning under `prefers-reduced-motion`.
+`initVolumeBusyStore` starts both sets. The row menu's Eject and the breadcrumb's native one render disabled with the
+busy suffix while ejecting (the same store, and `is_ejecting` in `commands/menu.rs` for the native one). All of that is
+presentation: the backend JOINS a second request for a volume to the eject already running, so a stale control or an MCP
+caller can't start a second teardown (`src-tauri/src/file_system/volume/DETAILS.md` § "Eject"). Both controls render
+through one `detachButton` snippet, and its words, glyph, and three states (ejecting, busy, idle) are
+`detach-control.ts`'s. The spinner keeps full opacity (it's underway, not unavailable) and its margin fills the glyph's
+14px box, so the row doesn't shift; `Spinner` itself stops spinning under `prefers-reduced-motion`.
 
 **A refusal speaks the catalog, never `diskutil`.** `ejectVolume` / `disconnectSmbVolume` throw an `EjectFailure`
 (`eject-error.ts`, a subclass of the shared `TypedFailure` in `$lib/ipc/typed-failure.ts`) carrying the backend's typed
-`EjectError` intact. Three surfaces word one: the dropdown / header button (`VolumeBreadcrumb`'s `handleEjectClick`),
-the native menu pick (`DualPaneExplorer`), and the SMB disconnect (`../pane/smb-view-state.svelte.ts`). All three go
-through `wordEjectRefusal(e)` in `eject-error-messages.ts`, which:
+`EjectError` intact. Three surfaces word one: the dropdown / header button and the row menu's Eject
+(`detach-volume.ts`), the breadcrumb menu's native pick (`DualPaneExplorer`), and the SMB disconnect
+(`../pane/smb-view-state.svelte.ts`). All three go through `wordEjectRefusal(e)` in `eject-error-messages.ts`, which:
 
 - picks the one sentence for the variant from `errors.eject.*` through `getMessage()` (a RAW catalog lookup, never ICU
   `t()`: the `ejectFailedToast` around it interpolates uncontrolled volume names, whose apostrophes and braces collide
@@ -483,15 +501,14 @@ Both native items are gated on `can_favorite`, the caller's `paneFolderCanBeFavo
 `add_favorite` refuses an archive-inner or protocol path, and offering an item that silently does nothing is worse than
 offering none. The `..` menu holds nothing else, so where the parent can't be favorited no menu pops at all.
 
-**Remove / Rename** are per-item. Right-clicking a favorite opens the NATIVE row menu (`show_favorite_context_menu`, its
-own command rather than a flag on the volume-row one: different surface, no shared item); picking `Rename` /
-`Remove from favorites` routes back over `volume-context-action` to `FavoritesMenu.handleVolumeContextAction`. ❗ Every
-pane's menu hears that global event, so the handler self-gates on ITS menu being open — favorites are global, and the id
-alone can't tell the panes apart. Rename swaps the label for an inline `<input>` in the `label` snippet (Enter commits,
-Escape/blur cancels). `handleRenameKeyDown` calls `e.stopPropagation()` on EVERY key: the focused input owns its
-keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered by the dispatch-level guard, so a
-leaked Space would select the file under the cursor while the user types. While a rename is active the menu's
-`isEditing()` is true, so the primitive handles nothing at all — not even swallowing — and the box keeps every
+**Remove / Rename** are per-item, in each favorite's → submenu (right-click opens the same one; the list is
+`row-menu.ts`'s `favoriteRowMenu`). A pick reaches `favorites.handleContextAction` through `select`, in the menu that
+owns the row, so no global event has to be told apart per pane. Both keep the menu up: Remove so a list can be tidied in
+a row, Rename because it happens in the row. Rename swaps the label for an inline `<input>` in the `label` snippet
+(Enter commits, Escape/blur cancels). `handleRenameKeyDown` calls `e.stopPropagation()` on EVERY key: the focused input
+owns its keystrokes, and the pane's Space-selection / type-to-jump DOM listeners aren't covered by the dispatch-level
+guard, so a leaked Space would select the file under the cursor while the user types. While a rename is active the
+menu's `isEditing()` is true, so the primitive handles nothing at all — not even swallowing — and the box keeps every
 keystroke. The broader guard is one level up: while ANY header menu is open, `pane/key-dispatch.ts` swallows the key
 from the pane behind it, and `+page.svelte`'s `isExplorerOverlayOpen()` reads `explorerRef.isHeaderMenuOpen()` to
 suppress centralized dispatch.

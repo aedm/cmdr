@@ -126,10 +126,11 @@ regression guard.
 
 F8 forgets the SAVED server under the cursor: a one-place row through `forgetSavedServer` (so the hub asks exactly what
 the switcher's menu asks), an SMB host through `removeManualServer`, and a host only mDNS knows about gets the "Can't
-remove discovered hosts" toast. Right-click on a one-place row raises the SERVERS menu (`openServerRowMenu`), the same
-one the switcher row raises; an SMB host keeps its own native host menu (`show_network_host_context_menu`: Disconnect,
-Forget server for a manual one, Forget saved password when creds are stored), whose actions arrive on the
-`network-host-context-action` event. Cursor auto-clamps when a row disappears.
+remove discovered hosts" toast. Right-click on a one-place row opens the house `Menu` at the pointer, holding the same
+list the switcher row's → submenu shows (`../navigation/row-menu.ts`; Open moves THIS pane, like Enter); an SMB host
+keeps its own native host menu (`show_network_host_context_menu`: Disconnect, Forget server for a manual one, Forget
+saved password when creds are stored), whose actions arrive on the `network-host-context-action` event. Cursor
+auto-clamps when a row disappears.
 
 Exports for parent: `setCursorIndex(index)`, `findItemIndex(name)`, `handleKeyDown(e)`, `refresh()`,
 `getHostUnderCursor()`, `getRowUnderCursor()`, `getItemCount()`, `openCursorItem()`. `refresh()` is `pane.refresh`'s

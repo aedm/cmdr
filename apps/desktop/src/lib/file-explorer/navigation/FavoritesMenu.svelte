@@ -10,9 +10,7 @@
      * component owns the rename field's markup and the two keys that swap menus; the rows
      * themselves come from `favorites-menu.svelte.ts`.
      */
-    import { onDestroy, onMount } from 'svelte'
-    import type { UnlistenFn } from '@tauri-apps/api/event'
-    import { onVolumeContextAction, showFavoriteContextMenu } from '$lib/tauri-commands'
+    import { onDestroy } from 'svelte'
     import { getVolumes } from '$lib/stores/volume-store.svelte'
     import { getCachedIcon, iconCacheVersion } from '$lib/icon-cache'
     import { dependOn } from '$lib/utils/reactivity'
@@ -21,7 +19,6 @@
     import Menu from '$lib/ui/Menu.svelte'
     import { createMenu } from '$lib/ui/menu-controller.svelte'
     import type { MenuRowContext } from '$lib/ui/menu-types'
-    import type { VolumeContextActionKind } from '$lib/ipc/bindings'
     import type { PaneId } from '$lib/commands/types'
     import type { VolumeChangePayload } from '../pane/types'
     import { createFavoritesMenu, FAVORITES_SECTION_ID, type FavoritesRow } from './favorites-menu.svelte'
@@ -95,11 +92,6 @@
         onReorder: ({ sectionId, orderedValues }) => {
             if (sectionId === FAVORITES_SECTION_ID) favorites.applyReorder(orderedValues)
         },
-        onContextMenu: (item) => {
-            const row = item.data
-            if (row?.kind !== 'favorite') return
-            void showFavoriteContextMenu(row.volume.id, row.volume.name)
-        },
         // While a favorite is being renamed inline, the `<input>` owns every keystroke:
         // arrows and Home/End move the text cursor, not the menu's.
         isEditing: favorites.isEditing,
@@ -139,25 +131,8 @@
         return menu.isOpen
     }
 
-    // Rename / remove a favorite when the user picks it from the native row menu. Every
-    // pane's menu receives this global event, but only the one whose menu is open owns the
-    // menu it spawned (favorites are global, so the id alone can't tell them apart).
-    function handleVolumeContextAction(payload: { action: VolumeContextActionKind; volumeId: string }): void {
-        if (!menu.isOpen) return
-        favorites.handleContextAction(payload)
-    }
-
-    let unlistenVolumeContext: UnlistenFn | undefined
-
-    onMount(() => {
-        void onVolumeContextAction(handleVolumeContextAction).then((unlisten) => {
-            unlistenVolumeContext = unlisten
-        })
-    })
-
     onDestroy(() => {
         menu.destroy()
-        unlistenVolumeContext?.()
     })
 </script>
 

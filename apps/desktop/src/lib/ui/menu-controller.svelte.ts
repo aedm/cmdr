@@ -68,8 +68,6 @@ export interface MenuDeps<T = unknown> {
   onSelect: (item: MenuItem<T>, source: MenuActivationSource) => void
   /** Fires once, on drop or on a ⌥↑/⌥↓ that actually moves something. The caller persists. */
   onReorder?: (reorder: MenuReorder) => void
-  /** A right-click on a row WITHOUT a submenu (a row with one opens it instead). */
-  onContextMenu?: (item: MenuItem<T>, event: MouseEvent) => void
   /** The caller's first look at every key while open. Return true to claim it. */
   onKey?: (event: KeyboardEvent) => boolean
   /** While true an inline editor owns every keystroke, and drag is off. */
@@ -105,7 +103,7 @@ export interface MenuSurface {
    * A right-click on a row: the second door to its submenu, opened as a hover would, so
    * right-click and `→` show the same rows. A row without a submenu has nothing to offer.
    */
-  contextMenu: (value: string, event: MouseEvent) => void
+  contextMenu: (value: string) => void
   startDrag: (value: string, event: MouseEvent) => void
   openSubmenu: (value: string, fromKeyboard: boolean) => void
   closeSubmenu: () => void
@@ -460,8 +458,12 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
 
   const surface: MenuSurface = {
     hover(value) {
+      // ❗ The whole hover is off in keyboard mode, the submenu half included: a resting
+      // mouse over a row with a submenu would otherwise open it and take the cursor.
       if (keyboardMode) return
       setHighlight(value)
+      if (itemOf(sections(), value)?.submenu?.length) openSubmenu(value, false)
+      else closeSubmenu()
     },
     pointerMoved(event, valueUnderPointer = null) {
       if (!keyboardMode) return
@@ -484,12 +486,9 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     activate(value) {
       activate(value, 'pointer')
     },
-    contextMenu(value, event) {
-      const item = itemOf(sections(), value)
-      if (!item) return
-      if (!item.submenu?.length) {
+    contextMenu(value) {
+      if (!itemOf(sections(), value)?.submenu?.length) {
         closeSubmenu()
-        deps.onContextMenu?.(item, event)
         return
       }
       setHighlight(value)

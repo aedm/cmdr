@@ -350,7 +350,7 @@
                             }}
                             oncontextmenu={(event: MouseEvent) => {
                                 event.preventDefault()
-                                menu.surface.contextMenu(item.value, event)
+                                menu.surface.contextMenu(item.value)
                             }}
                             onmousedown={(event: MouseEvent) => {
                                 if (isOwnControl(event)) return
@@ -358,11 +358,6 @@
                             }}
                             onmouseover={() => {
                                 menu.surface.hover(item.value)
-                                if (item.submenu?.length) {
-                                    menu.surface.openSubmenu(item.value, false)
-                                } else if (menu.openSubmenuValue !== null) {
-                                    menu.surface.closeSubmenu()
-                                }
                             }}
                         >
                             <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- Svelte {@render} syntax -->

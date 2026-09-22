@@ -31,7 +31,6 @@ const h = vi.hoisted(() => ({
   refreshAllStaleShares: vi.fn(),
   listSavedServers: vi.fn(),
   forgetSavedServer: vi.fn(() => Promise.resolve()),
-  openServerRowMenu: vi.fn(() => Promise.resolve()),
   addToast: vi.fn(() => 'id'),
 }))
 
@@ -86,10 +85,11 @@ vi.mock('$lib/settings/settings-window', () => ({
   openSettingsWindow: vi.fn(() => Promise.resolve()),
   settingAnchorId: (id: string) => `setting-${id}`,
 }))
-vi.mock('../navigation/server-row-actions', () => ({
+vi.mock('../navigation/server-row-actions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../navigation/server-row-actions')>()),
   forgetSavedServer: h.forgetSavedServer,
-  openServerRowMenu: h.openServerRowMenu,
 }))
+vi.mock('$lib/stores/volume-busy-store.svelte', () => ({ isVolumeBusy: () => false, isVolumeEjecting: () => false }))
 
 vi.mock('$lib/tauri-commands', () => ({
   updateLeftPaneState: vi.fn(() => Promise.resolve()),
@@ -313,6 +313,52 @@ describe('ServersHub F8', () => {
     await tick()
     expect(h.forgetSavedServer).not.toHaveBeenCalled()
     expect(h.addToast).toHaveBeenCalledOnce()
+    await cleanup()
+  })
+})
+
+/**
+ * A one-place row's right-click: the house `Menu` at the pointer, holding the same list
+ * the volume switcher row's → submenu shows.
+ */
+describe('ServersHub row menu', () => {
+  async function rightClick(name: string): Promise<void> {
+    const row = [...document.querySelectorAll<HTMLElement>('.server-row')].find((el) => el.textContent.includes(name))
+    row?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 40, clientY: 60 }))
+    await tick()
+    await tick()
+  }
+
+  it('opens the server list at the pointer, read off the saved entry', async () => {
+    h.listSavedServers.mockResolvedValue([savedSftp])
+    const { cleanup } = mountBehindBothHandlers()
+    await tick()
+    await tick()
+    await rightClick('Jump box')
+    const labels = [...document.querySelectorAll('[data-menu] [data-menu-row]')].map((el) => el.textContent.trim())
+    // Saved, not connected: nothing to disconnect.
+    expect(labels).toEqual([
+      'Open',
+      'Edit server…',
+      expect.stringMatching(/pin/i),
+      'Forget saved password',
+      'Forget server',
+    ])
+    await cleanup()
+  })
+
+  it('opens the place in THIS pane from the menu’s Open, the way Enter does', async () => {
+    h.listSavedServers.mockResolvedValue([savedSftp])
+    const { onServerSelect, cleanup } = mountBehindBothHandlers()
+    await tick()
+    await tick()
+    await rightClick('Jump box')
+    document
+      .querySelector('[data-menu] [data-menu-row="row:sftp-jump.local-22-ada:open"]')
+      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await tick()
+    expect(onServerSelect).toHaveBeenCalledOnce()
+    expect(document.querySelector('[data-menu]')).toBeNull()
     await cleanup()
   })
 })

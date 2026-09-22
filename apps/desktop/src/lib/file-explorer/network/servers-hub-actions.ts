@@ -1,5 +1,5 @@
 /**
- * What a hub row's F8 and right-click do, and what the SMB host menu answers.
+ * What a hub row's F8, right-click, and row-menu picks do, and what the SMB host menu answers.
  *
  * A factory rather than lines in `ServersHub.svelte`, so the component stays the
  * table, the cursor, and the keys. These are the parts that ask a question,
@@ -7,7 +7,7 @@
  *
  * ❗ **A one-place row and an SMB host take different paths at every branch**, and
  * that is the whole reason this module exists as a unit. A one-place row is a
- * PLACE the servers family speaks for (`forgetSavedServer`, `openServerRowMenu`);
+ * PLACE the servers family speaks for (`forgetSavedServer`, `row-menu.ts`);
  * an SMB host is a manual-server entry whose "disconnect" unmounts shares rather
  * than dropping a session. Mixing the two is how a Forget removes the wrong
  * thing.
@@ -15,7 +15,15 @@
 
 import { disconnectNetworkHost, removeManualServer, showNetworkHostContextMenu } from '$lib/tauri-commands'
 import { checkCredentialsForHost, forgetCredentials, getCredentialStatus } from './network-store.svelte'
-import { forgetSavedServer, openServerRowMenu } from '../navigation/server-row-actions'
+import { forgetSavedServer } from '../navigation/server-row-actions'
+import {
+  runVolumeRowAction,
+  volumeRowMenu,
+  type RowMenu,
+  type RowMenuEntry,
+  type RowToggleKind,
+} from '../navigation/row-menu'
+import { isVolumeBusy } from '$lib/stores/volume-busy-store.svelte'
 import { confirmDialog } from '$lib/utils/confirm-dialog'
 import { addToast } from '$lib/ui/toast'
 import { tString } from '$lib/intl/messages.svelte'
@@ -33,6 +41,8 @@ export interface HubActionDeps {
   getVolumes: () => VolumeInfo[]
   /** Re-read the saved list after a write the volume list won't announce. */
   refreshSaved: () => Promise<void>
+  /** Take the pane onto a one-place server, the way Enter on its row does. */
+  openServer: (row: HubRow) => void
 }
 
 /** The payload the native SMB-host menu answers with. */
@@ -52,10 +62,23 @@ export interface HostContextActionPayload {
 export interface HubActions {
   /** F8, and the host menu's "Forget server". */
   forget: (row: HubRow) => Promise<void>
-  /** Right-click on a row. */
-  openMenu: (row: HubRow) => Promise<void>
+  /** A one-place row's in-app menu, or `null` for an SMB host (which keeps its native one). */
+  rowMenu: (row: HubRow) => RowMenu | null
+  /** A pick from a one-place row's menu. */
+  runRowEntry: (row: HubRow, entry: RowMenuEntry) => Promise<void>
+  /** Right-click on an SMB host row: its native host menu. */
+  openHostMenu: (row: HubRow) => Promise<void>
   /** What the native SMB-host menu answered. */
   runHostAction: (payload: HostContextActionPayload) => Promise<void>
+}
+
+/**
+ * What `ServersHub.svelte` calls on its `ServersHubRowMenu`. In a `.ts` because a type read
+ * off a `.svelte` instance resolves to `any` under the plain-TypeScript lint service.
+ */
+export interface HubRowMenuAPI {
+  /** Opens `row`'s menu at the pointer; false for a row with no in-app menu (an SMB host). */
+  openAt: (row: HubRow, event: MouseEvent) => boolean
 }
 
 export function createHubActions(deps: HubActionDeps): HubActions {
@@ -95,17 +118,47 @@ export function createHubActions(deps: HubActionDeps): HubActions {
   }
 
   /**
-   * Right-click.
-   *
-   * A one-place row raises the SERVERS menu (Disconnect, Forget saved password,
-   * Forget server), the same one the switcher row raises, so the two surfaces
-   * can't drift. An SMB host keeps its own host menu.
+   * A one-place row's right-click menu: the servers list from `row-menu.ts`, the
+   * same one the switcher row's submenu shows, so the two surfaces can't drift.
+   * Read live, so a transfer starting under the open menu greys its Disconnect.
+   * `null` for an SMB host, which keeps its own native host menu
+   * ([`openHostMenu`]).
    */
-  async function openMenu(row: HubRow): Promise<void> {
-    if (row.volumeId) {
-      await openServerRowMenu(volumeForRow(row))
+  function rowMenu(row: HubRow): RowMenu | null {
+    if (!row.volumeId) return null
+    const volume = volumeForRow(row)
+    return volumeRowMenu(volume, {
+      busy: isVolumeBusy(volume.id),
+      ejecting: false,
+      isSaved: row.saved !== null,
+      directConnection: undefined,
+    })
+  }
+
+  /**
+   * A pick from a one-place row's menu. Open takes the hub's own Enter path, so
+   * it moves THIS pane; everything else runs where the switcher's runs.
+   */
+  async function runRowEntry(row: HubRow, entry: RowMenuEntry): Promise<void> {
+    if (entry.type === 'toggle') {
+      await flipToggle[entry.toggle](row)
       return
     }
+    if (entry.action === 'open') {
+      deps.openServer(row)
+      return
+    }
+    await runVolumeRowAction({ volume: volumeForRow(row), action: entry.action })
+  }
+
+  /** What flipping each row switch does. A `Record`, so a new `RowToggleKind` won't compile until it's handled. */
+  const flipToggle: Record<RowToggleKind, (row: HubRow) => Promise<void>> = {
+    // An SMB share's switch: never on a one-place (SFTP or WebDAV) row.
+    'direct-connection': () => Promise.resolve(),
+  }
+
+  /** An SMB host's right-click: its native host menu. */
+  async function openHostMenu(row: HubRow): Promise<void> {
     const host = row.host
     if (!host) return
     // ❗ Asked here rather than on Rust's popup path, where "is a secret stored?"
@@ -139,6 +192,7 @@ export function createHubActions(deps: HubActionDeps): HubActions {
       isEjectable: false,
       fsType: row.protocol,
       connectionState: null,
+      pinned: row.pinned,
     }
   }
 
@@ -189,5 +243,5 @@ export function createHubActions(deps: HubActionDeps): HubActions {
     }
   }
 
-  return { forget, openMenu, runHostAction }
+  return { forget, rowMenu, runRowEntry, openHostMenu, runHostAction }
 }

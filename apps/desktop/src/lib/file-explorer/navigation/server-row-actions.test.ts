@@ -17,7 +17,6 @@ const listSavedServers = vi.fn(() =>
   Promise.resolve([{ id: 'sftp-nas-local-22-ada', places: [{ volumeId: 'sftp-nas-local-22-ada' }] }]),
 )
 const setPlacePinned = vi.fn(() => Promise.resolve(true))
-const showVolumeRowContextMenu = vi.fn(() => Promise.resolve())
 const addToast = vi.fn()
 const confirmDialog = vi.fn(() => Promise.resolve(true))
 const openEditServerSheet = vi.fn(() => Promise.resolve({ kind: 'cancelled' as const }))
@@ -29,10 +28,6 @@ vi.mock('$lib/tauri-commands', () => ({
   hasServerSecret: (...args: unknown[]) => hasServerSecret(...(args as [])),
   listSavedServers: () => listSavedServers(),
   setPlacePinned: (...args: unknown[]) => setPlacePinned(...(args as [])),
-  showVolumeRowContextMenu: (...args: unknown[]) => {
-    void showVolumeRowContextMenu(...(args as []))
-    return Promise.resolve()
-  },
 }))
 vi.mock('$lib/ui/toast', () => ({
   addToast: (...args: unknown[]) => {
@@ -47,7 +42,7 @@ vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
-import { isServerPlaceRow, openServerRowMenu, runServerRowAction } from './server-row-actions'
+import { isServerPlaceRow, listSavedPlaceIds, runServerRowAction } from './server-row-actions'
 import type { VolumeInfo } from '../types'
 
 const place: VolumeInfo = {
@@ -86,47 +81,26 @@ describe('isServerPlaceRow', () => {
   })
 })
 
-describe('openServerRowMenu', () => {
-  it('reads the row and the saved-server store, and hands the answer to the native menu', async () => {
-    await openServerRowMenu(place)
-    expect(showVolumeRowContextMenu).toHaveBeenCalledWith('sftp-nas-local-22-ada', 'Naspolya', false, {
-      showsDisconnect: true,
-      isSaved: true,
-      pinned: false,
-    })
+describe('listSavedPlaceIds', () => {
+  it('answers the volume IDs the saved servers back', async () => {
+    expect(await listSavedPlaceIds()).toEqual(new Set(['sftp-nas-local-22-ada']))
   })
 
   /**
    * ❗ **No Keychain read on the way to a menu.** Every read of a Keychain entry
-   * can cost a system prompt, and a right-click is not a moment to spend one:
+   * can cost a system prompt, and a menu opening is not a moment to spend one:
    * the same rule `file-explorer/network/CLAUDE.md` states for SMB. "Forget
    * saved password" is always offered, and the command it runs is what says
    * whether there was one.
    */
-  it('❌ never asks the Keychain to decide which items a right-click shows', async () => {
-    await openServerRowMenu(place)
+  it('❌ never asks the Keychain', async () => {
+    await listSavedPlaceIds()
     expect(hasServerSecret).not.toHaveBeenCalled()
   })
 
-  it('a saved row shows no Disconnect: there is no session to end', async () => {
-    await openServerRowMenu({ ...place, connectionState: 'saved' })
-    expect(showVolumeRowContextMenu).toHaveBeenCalledWith(
-      'sftp-nas-local-22-ada',
-      'Naspolya',
-      false,
-      expect.objectContaining({ showsDisconnect: false }),
-    )
-  })
-
-  it('a store that does not answer costs the row an item, never the menu', async () => {
+  it('a store that does not answer costs the rows their saved-only items, never the menu', async () => {
     listSavedServers.mockRejectedValueOnce(new Error('store busy'))
-    await openServerRowMenu(place)
-    expect(showVolumeRowContextMenu).toHaveBeenCalledWith(
-      'sftp-nas-local-22-ada',
-      'Naspolya',
-      false,
-      expect.objectContaining({ isSaved: false }),
-    )
+    expect(await listSavedPlaceIds()).toEqual(new Set())
   })
 })
 
