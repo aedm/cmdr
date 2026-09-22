@@ -325,6 +325,9 @@ async fn an_outside_change_in_an_accented_directory_names_the_path_the_pane_open
                     DirectoryChange::Added(entry) if entry.name.starts_with(&ours) => Some(parent),
                     _ => None,
                 });
+            // allowed-test-sleep: the poll between two looks at what the watcher heard; the outer loop re-seeds a
+            // fresh file each second because an event written before the watcher armed is never sent, which a
+            // panicking `wait_until_async` can't express.
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
     }

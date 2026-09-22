@@ -147,6 +147,7 @@ vi.mock('$lib/tauri-commands', () => ({
   // (listing-diff-sync, drag-drop-controller, restricted-paths store, git).
   onDirectoryDiff: vi.fn().mockResolvedValue(() => {}),
   onDirectoryDeleted: vi.fn().mockResolvedValue(() => {}),
+  onListingRespelled: vi.fn().mockResolvedValue(() => {}),
   onDragImageSize: vi.fn().mockResolvedValue(() => {}),
   onDragModifiers: vi.fn().mockResolvedValue(() => {}),
   onRestrictedPathsChanged: vi.fn().mockResolvedValue(() => {}),

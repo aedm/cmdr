@@ -96,6 +96,7 @@ vi.mock('$lib/tauri-commands', () => ({
   onWriteSourceItemDone: vi.fn().mockResolvedValue(() => {}),
   onDirectoryDiff: vi.fn().mockResolvedValue(() => {}),
   onDirectoryDeleted: vi.fn().mockResolvedValue(() => {}),
+  onListingRespelled: vi.fn().mockResolvedValue(() => {}),
   onMtpExclusiveAccessError: vi.fn().mockResolvedValue(() => {}),
   onMtpPermissionError: vi.fn().mockResolvedValue(() => {}),
   onVolumeContextAction: vi.fn().mockResolvedValue(() => {}),
