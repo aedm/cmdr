@@ -81,6 +81,7 @@
     import {
         navigate as runNavigate,
         commitPathFromListing,
+        adoptStoredSpelling,
         returnPointFor,
         type NavigateDeps,
         type NavigateIntent,
@@ -1256,6 +1257,9 @@
                 directorySortMode={getDirectorySortMode()}
                 onPathChange={(path: string) => {
                     handlePathCommitted(paneId, path)
+                }}
+                onStoredSpelling={(spelling: { from: string; to: string }) => {
+                    adoptStoredSpelling(navigateDeps, paneId, spelling)
                 }}
                 onVolumeChange={({ volumeId, targetPath }: VolumeChangePayload) => {
                     navigateIntent({

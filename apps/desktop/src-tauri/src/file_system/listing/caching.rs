@@ -591,6 +591,13 @@ fn refresh_slot(volume_id: &str, parent_path: &Path) -> RefreshSlot {
     }
 }
 
+/// Holds `parent_path`'s refresh turn while the guard lives, for a re-read that
+/// isn't a watcher's `FullRefresh` (a backend swap's respell) but must not
+/// interleave with one either.
+pub(super) async fn refresh_turn(volume_id: &str, parent_path: &Path) -> tokio::sync::OwnedMutexGuard<()> {
+    refresh_slot(volume_id, parent_path).lock.lock_owned().await
+}
+
 /// Re-reads a directory via the Volume trait, computes a diff, and queues it.
 ///
 /// ❗ Refreshes of the SAME directory are serialized, and read-then-write is atomic

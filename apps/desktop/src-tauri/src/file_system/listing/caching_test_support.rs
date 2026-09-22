@@ -319,6 +319,111 @@ impl Volume for WatchCoverageVolume {
     }
 }
 
+/// A byte-exact `InMemoryVolume` whose `find_stored_spelling` answers from a
+/// table, the way an SMB share answers a foreign path: a lookup of the foreign
+/// spelling misses, and the resolve names where it's really stored.
+pub(crate) struct SpelledVolume {
+    inner: InMemoryVolume,
+    /// Foreign path → what the resolve answers for it.
+    answers: std::collections::HashMap<PathBuf, Result<Option<PathBuf>, VolumeError>>,
+    /// When set, every listing is refused with this instead of reaching `inner`.
+    listing_refusal: Option<VolumeError>,
+    resolves: std::sync::atomic::AtomicUsize,
+}
+
+impl SpelledVolume {
+    pub(crate) fn new(inner: InMemoryVolume) -> Self {
+        Self {
+            inner,
+            answers: std::collections::HashMap::new(),
+            listing_refusal: None,
+            resolves: std::sync::atomic::AtomicUsize::new(0),
+        }
+    }
+
+    /// Refuses every listing with `error`, the way a share refuses a folder it
+    /// won't show.
+    pub(crate) fn listings_refused_with(mut self, error: VolumeError) -> Self {
+        self.listing_refusal = Some(error);
+        self
+    }
+
+    /// Makes the resolve answer `answer` for `foreign`.
+    pub(crate) fn resolving(mut self, foreign: &str, answer: Result<Option<&str>, VolumeError>) -> Self {
+        self.answers
+            .insert(PathBuf::from(foreign), answer.map(|p| p.map(PathBuf::from)));
+        self
+    }
+
+    /// How many resolves reached this volume.
+    pub(crate) fn resolves(&self) -> usize {
+        self.resolves.load(Ordering::Relaxed)
+    }
+}
+
+impl Volume for SpelledVolume {
+    fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    fn root(&self) -> &Path {
+        self.inner.root()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn list_directory<'a>(
+        &'a self,
+        path: &'a Path,
+        on_progress: Option<&'a (dyn Fn(crate::file_system::volume::ListingProgress) + Sync)>,
+    ) -> Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
+        match &self.listing_refusal {
+            Some(error) => {
+                let error = error.clone();
+                Box::pin(async move { Err(error) })
+            }
+            // `InMemoryVolume` lists a directory it doesn't hold as empty; a share
+            // answers a name it doesn't store with a miss, which is the whole point.
+            None => Box::pin(async move {
+                if path != self.inner.root() && !self.inner.exists(path).await {
+                    return Err(VolumeError::NotFound(path.display().to_string()));
+                }
+                self.inner.list_directory(path, on_progress).await
+            }),
+        }
+    }
+
+    fn get_metadata<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
+        self.inner.get_metadata(path)
+    }
+
+    fn exists<'a>(&'a self, path: &'a Path) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
+        self.inner.exists(path)
+    }
+
+    fn is_directory<'a>(
+        &'a self,
+        path: &'a Path,
+    ) -> Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
+        self.inner.is_directory(path)
+    }
+
+    fn find_stored_spelling<'a>(
+        &'a self,
+        path: &'a Path,
+        _cancel: Option<&'a tokio_util::sync::CancellationToken>,
+    ) -> Pin<Box<dyn Future<Output = Result<Option<PathBuf>, VolumeError>> + Send + 'a>> {
+        self.resolves.fetch_add(1, Ordering::Relaxed);
+        let answer = self.answers.get(path).cloned().unwrap_or(Ok(None));
+        Box::pin(async move { answer })
+    }
+}
+
 /// A `Volume` whose `list_directory` answers from a SCRIPT: each call pops the next
 /// `(delay, entries)` pair, so a test can make an early read finish late.
 ///

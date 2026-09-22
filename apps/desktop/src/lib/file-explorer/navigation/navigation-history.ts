@@ -135,6 +135,20 @@ export function pushPath(history: NavigationHistory, path: string): NavigationHi
 }
 
 /**
+ * The history with its current entry's path `from` re-spelled as `to`: the same
+ * directory, in the spelling its volume stores (a path typed, restored, or
+ * carried over from the kernel mount, which an SMB share stores differently).
+ * Unchanged when the current entry isn't `from`. A rewrite rather than a push, so
+ * Back doesn't step to the same folder under its other spelling.
+ */
+export function respellCurrentPath(history: NavigationHistory, from: string, to: string): NavigationHistory {
+  const current = history.stack[history.currentIndex]
+  if (current.path !== from) return history
+  const stack = history.stack.map((entry, i) => (i === history.currentIndex ? { ...entry, path: to } : entry))
+  return { ...history, stack }
+}
+
+/**
  * Moves back in history. Returns the new history state.
  * If already at the oldest entry, returns unchanged history.
  */

@@ -310,6 +310,12 @@ pub(crate) async fn register_replacing_predecessor(
         let _ = tokio::task::spawn_blocking(move || prev.on_superseded()).await;
     }
     manager.register(volume_id, new_volume);
+    // The panes open on this share were read by the backend just replaced, the
+    // kernel mount's paths decompose every name, and the direct connection matches
+    // names byte-for-byte: re-read them through the new one, in its spelling.
+    if !refused {
+        crate::file_system::listing::foreign_path::respell_listings_on_volume(volume_id);
+    }
 
     // Tell the frontend the volume's connection state changed (os_mount → direct).
     // The auto-upgrade paths often coincide with an FSEvents mount event that triggers
@@ -618,3 +624,7 @@ pub(crate) async fn try_smb_upgrade(
 #[cfg(test)]
 #[path = "smb_upgrade_test.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "smb_upgrade_respell_test.rs"]
+mod respell_tests;

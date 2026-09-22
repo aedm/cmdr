@@ -6,7 +6,13 @@
  */
 import type { FilePaneAPI } from './types'
 import { pushHistoryEntry, type TabManager } from '../tabs/tab-state-manager.svelte'
-import { pushPath, setCurrentIndex, type NavigationHistory, type HistoryEntry } from '../navigation/navigation-history'
+import {
+  pushPath,
+  respellCurrentPath,
+  setCurrentIndex,
+  type NavigationHistory,
+  type HistoryEntry,
+} from '../navigation/navigation-history'
 import type { DetermineNavigationPathArgs } from '../navigation/path-navigation'
 import type { Location } from '$lib/tauri-commands'
 import type { ReturnPoint } from './return-point'
@@ -76,9 +82,11 @@ export interface NavigateCommit {
    * volume-switch + edge-flow arms). `'none'` commits state without touching
    * history (the volume-unmount redirect — its no-history-push asymmetry).
    * `{ moveTo }` points history back at an entry still in the stack (the
-   * `{ returnTo }` arm).
+   * `{ returnTo }` arm). `{ respellFrom }` rewrites the current entry's path from
+   * that spelling to `path`, the same directory as its volume stores it
+   * (`adoptStoredSpelling`).
    */
-  history: 'push-path' | 'push-entry' | 'none' | { moveTo: number }
+  history: 'push-path' | 'push-entry' | 'none' | { moveTo: number } | { respellFrom: string }
   /** For `'push-entry'` on the network volume: the host to carry on the entry. */
   networkHost?: HistoryEntry['networkHost']
 }
@@ -200,7 +208,11 @@ export function commit(deps: NavigateDeps, c: NavigateCommit): void {
     const entry: HistoryEntry = { volumeId, path: c.path }
     if (c.networkHost !== undefined) entry.networkHost = c.networkHost
     deps.setPaneHistory(c.pane, pushHistoryEntry(deps.getPaneHistory(c.pane), entry))
-  } else if (c.history !== 'none') {
+  } else if (c.history === 'none') {
+    // State only, no history change.
+  } else if ('respellFrom' in c.history) {
+    deps.setPaneHistory(c.pane, respellCurrentPath(deps.getPaneHistory(c.pane), c.history.respellFrom, c.path))
+  } else {
     deps.setPaneHistory(c.pane, setCurrentIndex(deps.getPaneHistory(c.pane), c.history.moveTo))
   }
 

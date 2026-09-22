@@ -10,6 +10,7 @@ import {
   canGoBack,
   canGoForward,
   setCurrentIndex,
+  respellCurrentPath,
   getEntryAt,
   MAX_HISTORY_PER_TAB,
   type NavigationHistory,
@@ -453,6 +454,21 @@ describe('NavigationHistory', () => {
       expect(result.stack).toHaveLength(MAX_HISTORY_PER_TAB)
       expect(result.stack[0].path).toBe('/p1')
       expect(result.stack[result.stack.length - 1].path).toBe('/overflow')
+    })
+  })
+
+  describe('respellCurrentPath', () => {
+    it('rewrites the current entry to the stored spelling without growing the stack', () => {
+      let history = createHistory(ROOT_VOLUME, '/a')
+      history = pushPath(history, '/foto\u0301k')
+      const result = respellCurrentPath(history, '/foto\u0301k', '/fot\u00f3k')
+      expect(result.stack.map((e) => e.path)).toEqual(['/a', '/fot\u00f3k'])
+      expect(result.currentIndex).toBe(1)
+    })
+
+    it('leaves the history alone when the current entry is another path', () => {
+      const history = pushPath(createHistory(ROOT_VOLUME, '/a'), '/b')
+      expect(respellCurrentPath(history, '/foto\u0301k', '/fot\u00f3k')).toBe(history)
     })
   })
 })

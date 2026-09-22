@@ -152,6 +152,11 @@ export interface ListingLoaderDeps {
 
   // Callbacks bubbled to the parent.
   onPathChange?: (path: string) => void
+  /**
+   * Takes the volume's own spelling of the listed directory as the pane's path,
+   * re-spelling the tab and its history in place (`FilePane.adoptStoredPath`).
+   */
+  adoptStoredPath: (path: string) => void
   onVolumeChange?: (change: VolumeChangePayload) => void
   onMtpFatalError?: (error: string) => void
   onCancelLoading?: (cancelled: CancelLoadingPayload) => void
@@ -585,9 +590,17 @@ export function createListingLoader(deps: ListingLoaderDeps): ListingLoader {
     deps.setFinalizingCount(undefined)
     benchmark.logEvent('loading = false (UI can render)')
 
+    // A foreign spelling (typed, kernel-mount-carried) the volume stores another way: take the stored one.
+    const storedPath = payload.storedPath
+    const landedPath = typeof storedPath === 'string' ? storedPath : load.path
+    if (landedPath !== load.path) {
+      loadedPath = landedPath
+      deps.adoptStoredPath(landedPath)
+    }
+
     // NOW push to history (only on successful completion)
-    lastShown = { volumeId: load.volumeId, path: load.path }
-    deps.onPathChange?.(load.path)
+    lastShown = { volumeId: load.volumeId, path: landedPath }
+    deps.onPathChange?.(landedPath)
 
     // PII-free analytics: a navigation landed. Only the volume KIND enum crosses; never the path.
     void trackEvent('pane_navigated', { volume_kind: deps.getCaps().kind })

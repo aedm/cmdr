@@ -263,6 +263,56 @@ async fn test_streaming_list_empty_directory() {
     cleanup(volume_id);
 }
 
+/// A pane that asks for a directory by a spelling its volume doesn't store (the
+/// kernel mount's NFD, carried into a direct SMB connection) lands on the stored
+/// one: the cache keys the listing under the server's bytes, which is what the
+/// watcher reports changes under, and the frontend is told to adopt it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_foreign_spelling_lands_the_listing_on_the_stored_path() {
+    use crate::file_system::listing::caching_test_support::SpelledVolume;
+
+    let stored = "/fot\u{f3}k";
+    let foreign = "/foto\u{301}k";
+    let volume_id = &format!("test-spelling-{}", uuid::Uuid::new_v4());
+    let listing = TestListingGuard::adopt(unique_test_id("streaming-spelling"));
+    let inner = InMemoryVolume::new("Share");
+    inner.create_directory(Path::new(stored)).await.unwrap();
+    inner
+        .create_file(&Path::new(stored).join("photo.jpg"), b"jpeg")
+        .await
+        .unwrap();
+    let volume = SpelledVolume::new(inner).resolving(foreign, Ok(Some(stored)));
+    get_volume_manager().register(volume_id, Arc::new(volume));
+
+    let sink = Arc::new(CollectorListingEventSink::new());
+    let events: Arc<dyn ListingEventSink> = Arc::clone(&sink) as Arc<dyn ListingEventSink>;
+    let result = read_directory_with_progress(
+        &events,
+        listing.id(),
+        &new_state(),
+        volume_id,
+        Path::new(foreign),
+        true,
+        SortColumn::Name,
+        SortOrder::Ascending,
+        DirectorySortMode::LikeFiles,
+    )
+    .await;
+    cleanup(volume_id);
+
+    assert!(result.is_ok(), "the foreign spelling must list, got {result:?}");
+    listing.with_listing(|cached| {
+        assert_eq!(cached.path.as_path(), Path::new(stored), "keyed under the stored bytes");
+        assert!(cached.entries()[0].path.starts_with(stored));
+    });
+    let stored_paths = sink.stored_paths.lock().unwrap();
+    assert_eq!(
+        *stored_paths,
+        vec![(listing.id().to_string(), Some(stored.to_string()))],
+        "the pane must learn the stored spelling"
+    );
+}
+
 /// A volume whose listing only ends when its cancel flag flips: the stand-in for
 /// an MTP device, where the listing is a long chain of USB round trips and the
 /// backend bails between them.

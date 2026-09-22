@@ -20,6 +20,7 @@ import type {
   ListingOpeningEvent,
   ListingProgressEvent,
   ListingReadCompleteEvent,
+  ListingRespelledEvent,
 } from '$lib/ipc/bindings'
 import type { TimedOut } from './ipc-types'
 import { throwIpcError } from './ipc-types'
@@ -33,6 +34,7 @@ export type {
   ListingCompleteEvent,
   ListingErrorEvent,
   ListingCancelledEvent,
+  ListingRespelledEvent,
 }
 
 /**
@@ -548,6 +550,17 @@ export async function onListingReadComplete(callback: (event: ListingReadComplet
 /** Emitted when the listing is sorted, cached, and ready to render. */
 export async function onListingComplete(callback: (event: ListingCompleteEvent) => void): Promise<UnlistenFn> {
   return events.listingComplete.listen((event) => {
+    callback(event.payload)
+  })
+}
+
+/**
+ * Emitted when an open listing now shows its directory under the volume's own
+ * spelling of the same path (after the kernel mount hands a share to a direct
+ * SMB connection). The pane adopts `path` and refetches its rows.
+ */
+export async function onListingRespelled(callback: (event: ListingRespelledEvent) => void): Promise<UnlistenFn> {
+  return events.listingRespelled.listen((event) => {
     callback(event.payload)
   })
 }

@@ -97,6 +97,7 @@ use crate::downloads::global_shortcut::GlobalShortcutFired;
 use crate::downloads::watcher::DownloadDetectedEvent;
 use crate::error_reporter::auto_dispatcher::ErrorReportAutoSent;
 use crate::file_system::listing::DirectoryDiff;
+use crate::file_system::listing::foreign_path::ListingRespelledEvent;
 use crate::file_system::watcher::DirectoryDeletedEvent;
 use crate::menu::{MediaIndexFolderChoice, MediaIndexFolderExclusion, MenuSort, SettingsChanged, ViewModeChanged};
 use crate::quick_look::{QuickLookClosed, QuickLookKeyEvent};
@@ -1131,6 +1132,7 @@ pub fn builder() -> Builder<tauri::Wry> {
             // Directory watcher (file_system/watcher.rs, listing/diff_emitter.rs).
             DirectoryDiff,
             DirectoryDeletedEvent, // event_name = "directory-deleted"
+            ListingRespelledEvent, // event_name = "listing-respelled"
             // Downloads sink (downloads/watcher.rs `AppHandleSink`).
             DownloadDetectedEvent, // event_name = "download-detected"
             // Const-named events (the wire string used to live in a `const`).

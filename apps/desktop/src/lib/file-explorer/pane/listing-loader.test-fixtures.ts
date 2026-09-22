@@ -73,6 +73,7 @@ export function makeHarness(over: Partial<PaneState> = {}) {
   }
   const spies = {
     onPathChange: vi.fn(),
+    adoptStoredPath: vi.fn(),
     onVolumeChange: vi.fn(),
     onMtpFatalError: vi.fn(),
     onArchiveNeedsPassword: vi.fn(),
@@ -172,6 +173,7 @@ export function makeHarness(over: Partial<PaneState> = {}) {
     fetchEntryUnderCursor: spies.fetchEntryUnderCursor,
     fetchListingStats: spies.fetchListingStats,
     onPathChange: spies.onPathChange,
+    adoptStoredPath: spies.adoptStoredPath,
     onVolumeChange: spies.onVolumeChange,
     onMtpFatalError: spies.onMtpFatalError,
     onArchiveNeedsPassword: spies.onArchiveNeedsPassword,

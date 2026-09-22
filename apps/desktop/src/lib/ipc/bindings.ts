@@ -4675,6 +4675,7 @@ export const events = {
   listingOpening: makeEvent<ListingOpeningEvent>('listing-opening'),
   listingProgress: makeEvent<ListingProgressEvent>('listing-progress'),
   listingReadComplete: makeEvent<ListingReadCompleteEvent>('listing-read-complete'),
+  listingRespelled: makeEvent<ListingRespelledEvent>('listing-respelled'),
   lowDiskSpace: makeEvent<LowDiskSpacePayload>('low-disk-space'),
   mcpSettingsClose: makeEvent<McpSettingsClose>('mcp-settings-close'),
   mediaEnrichProgress: makeEvent<MediaEnrichProgressEvent>('media-enrich-progress'),
@@ -8610,6 +8611,15 @@ export type ListingCompleteEvent = {
   totalCount: number
   // Root path of the volume this listing belongs to
   volumeRoot: string
+  /**
+   *  The directory in its volume's own spelling, when that differs from the
+   *  path the listing was asked for: a foreign path (typed, restored, carried
+   *  over from the kernel mount) that a byte-exact volume stores under another
+   *  spelling (`foreign_path.rs`). The pane adopts it, so its tab, history, and
+   *  every child path carry the stored bytes. `None` for a path that listed as
+   *  given, which is nearly every listing.
+   */
+  storedPath: string | null
 }
 
 /**
@@ -8944,6 +8954,20 @@ export type ListingProgressEvent = {
 export type ListingReadCompleteEvent = {
   listingId: string
   totalCount: number
+}
+
+/**
+ *  `listing-respelled`: an open listing now shows its directory under another
+ *  spelling of the same path, which the pane adopts as its own.
+ *
+ *  Sent by [`respell_listings_on_volume`] after a backend swap; a listing that
+ *  lands on a stored spelling when it's first opened says so in
+ *  `listing-complete` instead.
+ */
+export type ListingRespelledEvent = {
+  listingId: string
+  // The directory in its volume's own spelling.
+  path: string
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   getTotalCount,
   onDirectoryDeleted,
   onDirectoryDiff,
+  onListingRespelled,
   onWriteSourceItemDone,
 } from '$lib/tauri-commands'
 import { resolveValidPath } from '../navigation/path-resolution'
@@ -117,6 +118,10 @@ export interface ListingDiffSyncDeps {
   fetchListingStats: () => void
   onRequestFocus?: () => void
   navigateToFallback: (validPath: string | null) => void
+  /** Takes the volume's own spelling of the shown directory as the pane's path. */
+  adoptStoredPath: (path: string) => void
+  /** Makes the list refetch its visible rows from the (rewritten) cache. */
+  bumpCacheGeneration: () => void
 }
 
 /**
@@ -255,6 +260,27 @@ export function initListingDiffSync(deps: ListingDiffSyncDeps): void {
         const frontendIndex = deps.getHasParent() ? backendIndex + 1 : backendIndex
         deps.selection.selectedIndices.delete(frontendIndex)
       })
+    })
+
+    return () => {
+      void listenerPromise
+        .then((unsub) => {
+          unsub()
+        })
+        .catch(() => {})
+    }
+  })
+
+  // Listen for listing-respelled events: after the kernel mount hands a share to a
+  // direct SMB connection, the backend re-reads open listings in the share's own
+  // spelling. Same folder, new bytes in the path and every row, so the pane adopts
+  // the path and refetches its rows.
+  $effect(() => {
+    const listenerPromise = onListingRespelled((payload) => {
+      if (payload.listingId !== deps.getListingId()) return
+      deps.adoptStoredPath(payload.path)
+      deps.bumpCacheGeneration()
+      deps.fetchEntryUnderCursor()
     })
 
     return () => {

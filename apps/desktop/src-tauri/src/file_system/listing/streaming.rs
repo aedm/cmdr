@@ -12,6 +12,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::benchmark;
 use crate::file_system::listing::cached_listing::{CachedListing, LISTING_CACHE};
+use crate::file_system::listing::foreign_path::{Listed, list_as_stored};
 use crate::file_system::listing::sorting::{DirectorySortMode, SortColumn, SortOrder, sort_entries};
 use crate::file_system::volume::friendly_error::{
     ListingError, archive_needs_password_listing_error, archive_unreadable_listing_error, enrich_with_provider,
@@ -63,6 +64,13 @@ pub struct ListingCompleteEvent {
     pub total_count: usize,
     /// Root path of the volume this listing belongs to
     pub volume_root: String,
+    /// The directory in its volume's own spelling, when that differs from the
+    /// path the listing was asked for: a foreign path (typed, restored, carried
+    /// over from the kernel mount) that a byte-exact volume stores under another
+    /// spelling (`foreign_path.rs`). The pane adopts it, so its tab, history, and
+    /// every child path carry the stored bytes. `None` for a path that listed as
+    /// given, which is nearly every listing.
+    pub stored_path: Option<String>,
 }
 
 /// Error event payload
@@ -129,7 +137,7 @@ pub(crate) trait ListingEventSink: Send + Sync {
     fn emit_opening(&self, listing_id: &str);
     fn emit_progress(&self, listing_id: &str, loaded_count: usize);
     fn emit_read_complete(&self, listing_id: &str, total_count: usize);
-    fn emit_complete(&self, listing_id: &str, total_count: usize, volume_root: String);
+    fn emit_complete(&self, listing_id: &str, total_count: usize, volume_root: String, stored_path: Option<String>);
     fn emit_error(&self, listing_id: &str, message: String, error: Option<ListingError>);
     fn emit_cancelled(&self, listing_id: &str);
 }
@@ -169,11 +177,12 @@ impl ListingEventSink for TauriListingEventSink {
         .emit(&self.app);
     }
 
-    fn emit_complete(&self, listing_id: &str, total_count: usize, volume_root: String) {
+    fn emit_complete(&self, listing_id: &str, total_count: usize, volume_root: String, stored_path: Option<String>) {
         let _ = ListingCompleteEvent {
             listing_id: listing_id.to_string(),
             total_count,
             volume_root,
+            stored_path,
         }
         .emit(&self.app);
     }
@@ -212,6 +221,8 @@ pub(crate) struct CollectorListingEventSink {
     pub progress: std::sync::Mutex<Vec<(String, usize)>>,
     pub read_complete: std::sync::Mutex<Vec<(String, usize)>>,
     pub complete: std::sync::Mutex<Vec<(String, usize)>>,
+    /// Per completed listing, the stored spelling it reported (`None` = as asked).
+    pub stored_paths: std::sync::Mutex<Vec<(String, Option<String>)>>,
     pub errors: std::sync::Mutex<Vec<(String, String)>>,
     pub cancelled: std::sync::Mutex<Vec<String>>,
 }
@@ -224,6 +235,7 @@ impl CollectorListingEventSink {
             progress: std::sync::Mutex::new(Vec::new()),
             read_complete: std::sync::Mutex::new(Vec::new()),
             complete: std::sync::Mutex::new(Vec::new()),
+            stored_paths: std::sync::Mutex::new(Vec::new()),
             errors: std::sync::Mutex::new(Vec::new()),
             cancelled: std::sync::Mutex::new(Vec::new()),
         }
@@ -248,10 +260,13 @@ impl ListingEventSink for CollectorListingEventSink {
             .push((listing_id.to_string(), total_count));
     }
 
-    fn emit_complete(&self, listing_id: &str, total_count: usize, _volume_root: String) {
+    fn emit_complete(&self, listing_id: &str, total_count: usize, _volume_root: String, stored_path: Option<String>) {
         self.complete
             .lock_ignore_poison()
             .push((listing_id.to_string(), total_count));
+        self.stored_paths
+            .lock_ignore_poison()
+            .push((listing_id.to_string(), stored_path));
     }
 
     fn emit_error(&self, listing_id: &str, message: String, _error: Option<ListingError>) {
@@ -551,9 +566,15 @@ pub(crate) async fn read_directory_with_progress(
             // files + dirs for that.
             events_for_progress.emit_progress(&listing_id_for_progress, p.entries());
         };
-        volume_for_task
-            .list_directory_with_cancel(&path_for_task, Some(&on_progress), Some(&cancel_for_task))
-            .await
+        // A pane can ask by a spelling its volume doesn't store (typed, restored,
+        // carried over from the kernel mount); this lands it on the stored one.
+        list_as_stored(
+            volume_for_task.as_ref(),
+            &path_for_task,
+            Some(&on_progress),
+            Some(&cancel_for_task),
+        )
+        .await
     });
 
     // Wait for either listing completion or cancellation (no polling).
@@ -580,7 +601,15 @@ pub(crate) async fn read_directory_with_progress(
         }
     };
 
-    let mut entries = entries_result?;
+    let listed = entries_result?;
+    // From here on the listing is the directory as its volume spells it: the cache
+    // key, the watch, the overlays, and every log line use the stored spelling.
+    let stored_path = listed.stored_spelling_of(path);
+    let Listed {
+        path: listed_path,
+        mut entries,
+    } = listed;
+    let path = listed_path.as_path();
     let read_dir_time = read_start.elapsed();
     benchmark::log_event_value("read_dir COMPLETE, entries", entries.len());
 
@@ -691,7 +720,7 @@ pub(crate) async fn read_directory_with_progress(
 
     // Emit completion event
     let emit_t = std::time::Instant::now();
-    events.emit_complete(listing_id, total_count, volume_root);
+    events.emit_complete(listing_id, total_count, volume_root, stored_path);
     let to_complete_emit_ms = emit_t.elapsed().as_millis();
     let total_ms = total_start.elapsed().as_millis();
 

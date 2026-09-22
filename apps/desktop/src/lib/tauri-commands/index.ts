@@ -40,6 +40,7 @@ export {
   onListingComplete,
   onListingError,
   onListingCancelled,
+  onListingRespelled,
   getBriefColumnTextWidths,
 } from './file-listing'
 // Streaming-listing event payload types, from the typed-events bindings via `file-listing.ts`.
@@ -48,6 +49,7 @@ export type {
   ListingProgressEvent,
   ListingReadCompleteEvent,
   ListingCompleteEvent,
+  ListingRespelledEvent,
   ListingErrorEvent,
   ListingCancelledEvent,
 } from './file-listing'

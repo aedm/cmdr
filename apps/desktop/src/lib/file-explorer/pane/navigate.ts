@@ -630,6 +630,26 @@ export function commitPathFromListing(deps: NavigateDeps, pane: 'left' | 'right'
 }
 
 /**
+ * The pane's path was a spelling its volume doesn't store, and the listing landed
+ * on the one it does (a path typed, restored, or carried over from the macOS
+ * kernel mount, which an SMB share stores composed or in another case). The SAME
+ * directory, so the tab, its current history entry, and the remembered path take
+ * the stored spelling in place: no push, no pinned-tab fork, no Back step to the
+ * other spelling. A no-op when the pane isn't at `from` any more (an in-place
+ * navigation hasn't committed yet; its `commitPathFromListing` lands the stored
+ * spelling itself).
+ */
+export function adoptStoredSpelling(
+  deps: NavigateDeps,
+  pane: 'left' | 'right',
+  spelling: { from: string; to: string },
+): void {
+  if (deps.getPanePath(pane) !== spelling.from) return
+  commit(deps, { pane, path: spelling.to, history: { respellFrom: spelling.from } })
+  deps.persist({ kind: 'last-used-path', record: { volumeId: deps.getPaneVolumeId(pane), path: spelling.to } })
+}
+
+/**
  * The pinned-tab fork for an in-place path landing (the same-volume half of L7,
  * folded from `handlePathChange`'s pinned branch). When the active tab is pinned
  * and the landed `path` differs, open a NEW unpinned tab (same volume) carrying

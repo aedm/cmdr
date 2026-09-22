@@ -6,6 +6,7 @@ pub(crate) mod caching;
 pub(crate) mod collation;
 pub(crate) mod diff;
 pub(crate) mod diff_emitter;
+pub(crate) mod foreign_path;
 pub(crate) mod fuzzy_jump;
 pub(crate) mod listing_host;
 pub(crate) mod mutation;

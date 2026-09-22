@@ -111,6 +111,32 @@ describe('createListingLoader — generation / drop-foreign token model', () => 
     expect(spies.onPathChange).toHaveBeenCalledWith('/a')
   })
 
+  it('lands the pane on the stored spelling a complete event reports', async () => {
+    // The kernel mount's decomposed `fotók`, which the share stores composed.
+    const asked = '/Volumes/naspi/fotók'
+    const stored = '/Volumes/naspi/fotók'
+    const { loader, state, spies } = makeHarness()
+    await loader.loadDirectory({ path: asked })
+
+    completeCb(0)({ listingId: state.listingId, totalCount: 1, volumeRoot: '/Volumes/naspi', storedPath: stored })
+    await vi.waitFor(() => {
+      expect(spies.onPathChange).toHaveBeenCalledWith(stored)
+    })
+    expect(spies.adoptStoredPath).toHaveBeenCalledWith(stored)
+    expect(spies.onPathChange).not.toHaveBeenCalledWith(asked)
+  })
+
+  it('leaves the path alone when the listing landed where it was asked', async () => {
+    const { loader, state, spies } = makeHarness()
+    await loader.loadDirectory({ path: '/a' })
+
+    completeCb(0)({ listingId: state.listingId, totalCount: 1, volumeRoot: '/', storedPath: null })
+    await vi.waitFor(() => {
+      expect(spies.onPathChange).toHaveBeenCalledWith('/a')
+    })
+    expect(spies.adoptStoredPath).not.toHaveBeenCalled()
+  })
+
   it('drops a foreign complete event once a newer load has advanced the generation', async () => {
     const { loader, state, spies } = makeHarness()
     await loader.loadDirectory({ path: '/a' })

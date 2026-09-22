@@ -116,6 +116,12 @@
         sortOrder?: SortOrder
         directorySortMode?: DirectorySortMode
         onPathChange?: (path: string) => void
+        /**
+         * The listing landed on the volume's own spelling of the pane's path (a
+         * typed, restored, or kernel-mount-carried path an SMB share stores
+         * another way). The parent re-spells the tab and its history in place.
+         */
+        onStoredSpelling?: (spelling: { from: string; to: string }) => void
         onVolumeChange?: (change: VolumeChangePayload) => void
         /**
          * Go to an already-resolved `Location` (volume id + path). Used when a row
@@ -181,6 +187,7 @@
         sortOrder = 'ascending',
         directorySortMode = 'likeFiles',
         onPathChange,
+        onStoredSpelling,
         onVolumeChange,
         onGoToLocation,
         onSortChange,
@@ -198,6 +205,18 @@
     }: Props = $props()
 
     let currentPath = $state(untrack(() => initialPath))
+
+    /**
+     * Takes `to`, the volume's own spelling of the directory this pane shows, as
+     * the pane's path. `currentPath` first, in the same tick as the parent's
+     * re-spell, so the `initialPath` effect sees the two agree and doesn't reload.
+     */
+    function adoptStoredPath(to: string): void {
+        const from = currentPath
+        if (from === to) return
+        currentPath = to
+        onStoredSpelling?.({ from, to })
+    }
 
     // New architecture: store listingId and totalCount, not files. These lifecycle
     // slots are written primarily by the listing loader (`listing-loader.ts`,
@@ -340,6 +359,7 @@
         fetchEntryUnderCursor: () => void selectionInfo.fetchEntry(),
         fetchListingStats: () => void selectionInfo.fetchStats(),
         onPathChange: (path) => onPathChange?.(path),
+        adoptStoredPath,
         onVolumeChange: (change) => onVolumeChange?.(change),
         onMtpFatalError: (message) => onMtpFatalError?.(message),
         onCancelLoading: (cancelled) => onCancelLoading?.(cancelled),
@@ -1702,6 +1722,10 @@
         fetchListingStats: () => void selectionInfo.fetchStats(),
         onRequestFocus,
         navigateToFallback: loader.navigateToFallback,
+        adoptStoredPath,
+        bumpCacheGeneration: () => {
+            cacheGeneration++
+        },
     })
 
     // A snapshot pane's rows can vanish under a live selection (a delete from this
