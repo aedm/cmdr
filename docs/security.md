@@ -1,8 +1,9 @@
 # Security
 
 The public vulnerability disclosure policy is `SECURITY.md` at the repo root;
-`apps/website/public/.well-known/security.txt` points its `Policy:` there. Keep both consistent when something here
-changes.
+`apps/website/public/.well-known/security.txt` points its `Policy:` there. The reviewer-facing summary is the website's
+`/trust` page, whose list content lives in `apps/website/src/lib/trust.ts`. Keep all three consistent when something
+here changes.
 
 ## Entitlements: the bundle ships none
 

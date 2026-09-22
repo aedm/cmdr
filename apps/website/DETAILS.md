@@ -419,3 +419,17 @@ longer touch a baseline at all; the call stays as a cheap guard.
 The fixture page ships in production as an unlinked, `noindex` page, excluded from the sitemap by the `filter` in
 `astro.config.ts`. Keeping it out of `src/content/blog/` is what spares `/blog`, `rss.xml`, and the `/og/[slug].png`
 route from having to learn to skip it.
+
+## Dev-only task callouts
+
+`src/components/DevTodo.astro` marks an open task for David right where it applies: a big ⚠️, a warning-colored border,
+and a short task in the default slot (or `html=` for inline HTML from a `src/lib/` data module, like the `devTodo`
+fields in `src/lib/trust.ts`).
+
+- It renders only when `import.meta.env.DEV` is true. The site is statically built, so a production build emits nothing
+  for it, and a callout merged by accident can't reach getcmdr.com. That is also why it may use a raw ⚠️ despite the
+  emoji policy in § Icons.
+- It's for copy that can't yet be both true and good: a claim that needs David's decision, or a contradiction with
+  another page the agent wasn't allowed to edit. The public copy next to it must stay honest on its own; the callout
+  never excuses an untrue sentence.
+- Find every open one with `rg -n "DevTodo|devTodo" apps/website/src`.

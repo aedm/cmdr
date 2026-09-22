@@ -1,0 +1,37 @@
+---
+/**
+ * A loud task marker for David, visible ONLY in `pnpm dev`. Use it where a page's copy can't yet be
+ * both true and good: a claim that needs his decision, or a contradiction with another page that
+ * a content rule stops the agent from fixing.
+ *
+ * It renders nothing in a production build (`import.meta.env.DEV` is false there, and the site is
+ * statically built), so a callout merged by accident can't reach getcmdr.com. That's why it may
+ * use a raw ⚠️ despite the site's no-emoji rule: no visitor ever sees it.
+ *
+ * Pass the task as the default slot, or as `html` when it comes from a data module's inline HTML.
+ */
+interface Props {
+    /** Inline HTML, for a task that lives in a `src/lib/` data module. */
+    html?: string
+}
+
+const { html } = Astro.props
+const isDev = import.meta.env.DEV
+---
+
+{
+    isDev && (
+        <aside
+            class="my-6 flex gap-4 rounded-xl border-4 border-warning bg-warning/15 p-4 text-sm/relaxed text-text-primary"
+            aria-label="Task for David (dev only)"
+        >
+            <span aria-hidden="true" class="shrink-0 text-4xl leading-none">
+                ⚠️
+            </span>
+            <div>
+                <strong class="font-bold text-text-primary">For David (dev only):</strong>{' '}
+                {html ? <Fragment set:html={html} /> : <slot />}
+            </div>
+        </aside>
+    )
+}

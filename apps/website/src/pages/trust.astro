@@ -1,0 +1,476 @@
+---
+// For a security or IT reviewer deciding whether to allow Cmdr. List content (connections, data
+// locations, retention, gaps) lives in `src/lib/trust.ts`; the prose sections live here. Every
+// claim must be true of the released app today. `<DevTodo>` callouts are David's open tasks and
+// render only in `pnpm dev`, never in the built site.
+import LegalLayout from '../layouts/LegalLayout.astro'
+import DevTodo from '../components/DevTodo.astro'
+import {
+    allowlistHosts,
+    dataLocations,
+    networkConnections,
+    notInPlaceYet,
+    serverRetention,
+    verifiedAgainst,
+    vulnerabilityResponse,
+} from '../lib/trust'
+
+const euLabel = { yes: 'In the EU', no: 'Outside the EU', partly: 'Partly outside the EU' } as const
+
+const toc = [
+    { id: 'summary', label: 'Summary' },
+    { id: 'network', label: 'What the app sends over the network' },
+    { id: 'eu', label: 'Does data leave the EU?' },
+    { id: 'subprocessors', label: 'Subprocessors' },
+    { id: 'storage', label: 'What is stored where, and for how long' },
+    { id: 'signing', label: 'Signing, notarization, and updates' },
+    { id: 'permissions', label: 'Sandbox and permissions' },
+    { id: 'ai', label: 'AI features and your files' },
+    { id: 'development', label: 'How Cmdr is built' },
+    { id: 'company', label: 'Company, license, and continuity' },
+    { id: 'report', label: 'Report a vulnerability' },
+    { id: 'gaps', label: 'Not in place yet' },
+]
+---
+
+<LegalLayout
+    title="Trust and security"
+    description="What Cmdr sends over the network, where data is stored, how the app is signed and updated, and what isn't in place yet. For security and IT teams."
+    lastUpdated={verifiedAgainst.date}
+>
+    <p>
+        This page is for security and IT teams deciding whether to allow Cmdr, a file manager for macOS. It describes
+        Cmdr version {verifiedAgainst.version} as of {verifiedAgainst.date}. The source code is public on
+        <a href="https://github.com/vdavid/cmdr">GitHub</a>, so you can check every statement here. If something is
+        missing or unclear, write to <a href="mailto:security@getcmdr.com">security@getcmdr.com</a>.
+    </p>
+
+    <DevTodo>
+        The pricing page's Commercial card says "Passes a security review" (<code>pricing.astro</code>, around line
+        173). Nothing published backs that yet, and this page lists real gaps. Suggest rewording it to something like
+        "Built to be reviewed: read the <a href="/trust">trust page</a> and every line of code on GitHub", or drop it.
+    </DevTodo>
+
+    <nav aria-label="On this page">
+        <ul>
+            {
+                toc.map((item) => (
+                    <li>
+                        <a href={`#${item.id}`}>{item.label}</a>
+                    </li>
+                ))
+            }
+        </ul>
+    </nav>
+
+    <h2 id="summary">Summary</h2>
+    <ul>
+        <li>
+            <strong>Your files stay on your Mac.</strong> File contents never reach Cmdr's servers. Cmdr has no user
+            accounts and no cloud storage.
+        </li>
+        <li>
+            <strong>On by default</strong>: update checks, usage stats, and crash reports. Each user can turn each one
+            off in Settings. There's no central (MDM) control yet.
+        </li>
+        <li>
+            <strong>AI is off by default.</strong> If a user turns it on with their own API key, the app talks straight
+            to that provider. Nothing goes through Cmdr's servers.
+        </li>
+        <li>
+            <strong>Signed and notarized</strong> with Apple's Developer ID and the hardened runtime. Updates are
+            signed separately and checked before they're installed.
+        </li>
+        <li>
+            <strong>Not App Sandboxed.</strong> A file manager needs to reach all your files, so Cmdr asks for Full Disk
+            Access. Users can say no.
+        </li>
+        <li>
+            <strong>Some data leaves the EU.</strong> The details are below.
+        </li>
+        <li>
+            <strong>Made by one person</strong> at Rymdskottkärra AB, a Swedish company. The code is public under the
+            Business Source License, and each version becomes open source (AGPL-3.0) three years after its release.
+        </li>
+    </ul>
+
+    <h2 id="network">What the app sends over the network</h2>
+    <p>
+        This is every connection a release build of the app makes. All of it comes from the app's native code. The
+        app's user interface makes no network requests, and its content security policy would block any except to
+        <code>getcmdr.com</code>. There are no ads, no third-party trackers, and no remote fonts or scripts in the
+        app.
+    </p>
+    {
+        networkConnections.map((connection) => (
+            <section aria-labelledby={`net-${connection.id}`}>
+                <h3 id={`net-${connection.id}`}>{connection.name}</h3>
+                <ul>
+                    <li>
+                        <strong>Goes to</strong>: <Fragment set:html={connection.destination} />
+                    </li>
+                    <li>
+                        <strong>When</strong>: <Fragment set:html={connection.when} />
+                    </li>
+                    <li>
+                        <strong>Sends</strong>: <Fragment set:html={connection.sends} />
+                    </li>
+                    <li>
+                        <strong>Default and how to turn it off</strong>: <Fragment set:html={connection.control} />
+                    </li>
+                </ul>
+                {connection.devTodo && <DevTodo html={connection.devTodo} />}
+            </section>
+        ))
+    }
+
+    <h3 id="allowlist">Hosts to allow on a proxy or firewall</h3>
+    <ul>
+        {
+            allowlistHosts.map((entry) => (
+                <li>
+                    <code>{entry.host}</code>: {entry.purpose}
+                </li>
+            ))
+        }
+    </ul>
+    <p>
+        Cmdr uses the macOS system proxy settings and the macOS certificate store, so a company certificate for TLS
+        inspection that's installed in the system keychain should work. This hasn't been tested behind an inspecting
+        proxy yet, and PAC files are untested.
+    </p>
+    <DevTodo>
+        Test a release build behind an intercepting proxy (for example mitmproxy with its CA in the System keychain)
+        and with a PAC file, then replace the "should work" sentence with the result.
+    </DevTodo>
+
+    <h3 id="website">The website</h3>
+    <p>
+        getcmdr.com counts visits with Umami, which runs on Cmdr's own server in Finland and uses no cookies. It also
+        uses PostHog (EU cloud) for visit recordings and heatmaps, kept in memory only, so it sets no cookie either.
+    </p>
+    <DevTodo>
+        The privacy policy (sections 2 and 8) says PostHog "sets a first-party cookie". The site initializes PostHog
+        with <code>persistence: 'memory'</code> (<code>public/scripts/posthog-init.js</code>), so there's no cookie. Fix
+        the policy.
+    </DevTodo>
+
+    <h2 id="eu">Does data leave the EU?</h2>
+    <p>
+        <strong>Yes.</strong> Rymdskottkärra AB is in Sweden, and much of the data stays in the EU, but not all of it:
+    </p>
+    <ul>
+        <li>Downloads and updates come from GitHub (United States), which sees the IP address.</li>
+        <li>
+            Error reports, feedback, and signups create notifications in Discord and GitHub (United States). These
+            include an email address if the user attached one.
+        </li>
+        <li>
+            Emails with license keys, and notification emails about reports and feedback, pass through Resend and Gmail
+            (both United States companies).
+        </li>
+        <li>
+            Cloudflare runs the API server on its global network. Its database and file storage are placed in Eastern
+            Europe, but that placement isn't a contractual EU guarantee.
+        </li>
+        <li>Paddle, which handles payments, is in the United Kingdom.</li>
+        <li>If a user sets up cloud AI, their data goes to wherever that provider runs.</li>
+    </ul>
+    <p>
+        Usage stats (PostHog EU cloud), the website (Hetzner, Finland), and newsletter sending (AWS, Stockholm) stay in
+        the EU.
+    </p>
+
+    <h2 id="subprocessors">Subprocessors</h2>
+    <p>These companies process data on Cmdr's behalf.</p>
+    {
+        dataLocations.map((location) => (
+            <>
+                <h3>{location.name}</h3>
+                <ul>
+                    <li>
+                        <strong>What</strong>: <Fragment set:html={location.what} />
+                    </li>
+                    <li>
+                        <strong>Where</strong>: {location.where} ({euLabel[location.inEu]})
+                    </li>
+                </ul>
+            </>
+        ))
+    }
+    <p>
+        Services with no user data: healthchecks.io and UptimeRobot (uptime monitoring), and GitGuardian (scans the
+        source code for leaked secrets). Hugging Face serves optional model downloads that the user starts.
+    </p>
+    <DevTodo>
+        The privacy policy's subprocessor list (section 5) is missing Resend, Google (Gmail), and Hetzner by name
+        (it says "our own server in Europe"), and section 6 never mentions Resend or Gmail as transfers outside the EU.
+        Add them. Also decide whether <code>security@</code> and <code>legal@</code> should keep landing in a personal
+        Gmail inbox; a reviewer will ask. And there's no DPA to sign yet.
+    </DevTodo>
+
+    <h2 id="storage">What is stored where, and for how long</h2>
+    <h3>On the user's Mac</h3>
+    <p>
+        Cmdr keeps its data in <code>~/Library/Application Support/com.veszelovszki.cmdr/</code> and its logs in
+        <code>~/Library/Logs/com.veszelovszki.cmdr/</code>. Cmdr doesn't add its own encryption, so this data is as safe
+        as the Mac's FileVault. It includes:
+    </p>
+    <ul>
+        <li>
+            An index of <strong>every file and folder name and path</strong> on each indexed drive, including network
+            shares.
+        </li>
+        <li>For image search: text read from images (OCR), tags, and image fingerprints.</li>
+        <li>A log of every copy, move, rename, and delete, with paths (up to 3 GB by default).</li>
+        <li>Search and selection history, AI chats, and the AI assistant's notes.</li>
+        <li>Server addresses and usernames for saved network connections, settings, and the license key.</li>
+        <li>
+            Logs with full paths, up to 200 MB by default. Paths are cleaned only when a report is sent, not in the
+            local file.
+        </li>
+    </ul>
+    <p>
+        <strong>Passwords and API keys</strong> (for SMB, SFTP, WebDAV, and cloud AI) are stored in the macOS
+        Keychain, never in Cmdr's settings files.
+    </p>
+
+    <h3>On Cmdr's servers</h3>
+    <p>A daily job on the API server deletes data on this schedule:</p>
+    <ul>
+        {
+            serverRetention.map((entry) => (
+                <li>
+                    <strong>{entry.what}</strong>: <Fragment set:html={entry.rule} />
+                </li>
+            ))
+        }
+    </ul>
+    <p>
+        Nothing in Cmdr's code deletes old Discord notifications, emails in the Gmail inbox, or Resend's delivery
+        logs. PostHog keeps data according to its project settings.
+    </p>
+    <DevTodo>
+        The R2 bucket <code>cmdr-error-reports</code> has no 90-day lifecycle rule (only the default multipart-abort
+        rule), and zips from 2026-04-24 still exist. The privacy policy and <code>docs/security.md</code> promise 90
+        days. Add an expiry rule scoped to the <code>error-reports/</code> prefix (NOT bucket-wide: the daily license
+        backup lives in the same bucket), then change this page's error-report line and drop the gap. Also: set and
+        state PostHog's retention, and check whether anything enforces Umami's "typically two years". Minor: <code>CMDR_SECRET_STORE=file</code> switches even a release build to a plaintext secret store (<code>secrets/mod.rs</code>); gate it to debug builds so the Keychain sentence above holds without a footnote.
+    </DevTodo>
+
+    <h2 id="signing">Signing, notarization, and updates</h2>
+    <ul>
+        <li>
+            <strong>Code signing</strong>: Developer ID Application: Rymdskottkarra AB, Team ID <code>83H6YAQMNP</code>,
+            bundle id <code>com.veszelovszki.cmdr</code>. It runs on macOS 10.15 and later.
+        </li>
+        <li>
+            <strong>Notarized by Apple</strong>, with the ticket stapled to the app. <code>spctl</code> reports
+            <code>source=Notarized Developer ID</code>.
+        </li>
+        <li>
+            <strong>Hardened runtime</strong> is on. The released version {verifiedAgainst.version} has one entitlement,
+            <code>com.apple.security.cs.disable-library-validation</code>. The source no longer has it, and the next
+            release ships with no entitlements at all.
+        </li>
+        <li>
+            <strong>Code requirement</strong> for a PPPC profile (to grant Full Disk Access through MDM):
+            <code
+                >identifier "com.veszelovszki.cmdr" and anchor apple generic and certificate
+                1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /*
+                exists */ and certificate leaf[subject.OU] = "83H6YAQMNP"</code
+            >. It stays the same across updates, so a Full Disk Access grant survives them.
+        </li>
+        <li>
+            <strong>Downloads</strong>: a disk image (DMG) from GitHub Releases, or the Homebrew cask. Each release
+            publishes SHA-256 checksums. There's no <code>.pkg</code> installer yet.
+        </li>
+        <li>
+            <strong>Updates</strong>: the app downloads the new version from GitHub and checks its Ed25519 (minisign)
+            signature against a public key built into the app, before writing anything to disk. It only installs a
+            version newer than the one running, so an attacker can't force a downgrade. macOS checks the Apple
+            signature again when the app starts. If the app is in an <code>/Applications</code> folder the user can't
+            write to, the update asks for an administrator password.
+        </li>
+        <li>
+            <strong>Turning updates off</strong>: per user only, in Settings &gt; Updates &amp; privacy. There's no
+            central way to pin a version yet.
+        </li>
+    </ul>
+    <DevTodo>
+        After the next release, run <code>codesign -d --entitlements - Cmdr.app</code> on the downloaded build. If it's
+        empty, replace the entitlement sentence with "no entitlements at all", and bump <code>verifiedAgainst</code> in
+        <code>src/lib/trust.ts</code>. (0.46.1, the current release, still has
+        <code>disable-library-validation</code>: the fix in <code>46146d662</code> landed after its tag. The fact sheet
+        and <code>docs/security.md</code> describe <code>main</code>, not the release.) The code requirement above was
+        read from the 0.46.1 release with <code>codesign -d -r-</code>. Nobody has tested a PPPC profile with it yet.
+    </DevTodo>
+
+    <h2 id="permissions">Sandbox and permissions</h2>
+    <p>
+        Cmdr is <strong>not App Sandboxed</strong> and isn't on the Mac App Store. The sandbox only lets an app open
+        files the user picks one by one, which doesn't work for a file manager. Cmdr runs as the logged-in user and can
+        reach what that user can reach.
+    </p>
+    <p>
+        <strong>Full Disk Access</strong>: during first-time setup, Cmdr asks the user to grant it in System Settings,
+        so macOS doesn't ask separately for every protected folder. The user can say no; Cmdr then works with the
+        usual macOS prompts.
+    </p>
+    <p>Other macOS permissions Cmdr may ask for, and why:</p>
+    <ul>
+        <li><strong>Desktop, Documents, and Downloads folders</strong>: to browse them.</li>
+        <li><strong>Network volumes and removable volumes</strong>: to browse network shares, USB drives, and SD cards.</li>
+        <li><strong>Local network</strong>: to connect to SMB file servers directly and find them on the network.</li>
+        <li><strong>Music and Photos</strong>: to read file metadata for icons and thumbnails. Cmdr doesn't read the libraries.</li>
+    </ul>
+    <p>Other things Cmdr does on the system that a reviewer might notice:</p>
+    <ul>
+        <li>
+            While an Android phone or camera is connected over USB (MTP), Cmdr pauses the macOS
+            <code>ptpcamerad</code> service, which would otherwise take the device, and starts it again afterwards.
+        </li>
+        <li>
+            It can read an SMB password that another app saved in the login keychain, only when the user connects,
+            and macOS asks the user first.
+        </li>
+        <li>
+            The optional local AI runs <code>llama-server</code> (from llama.cpp, SHA-256 pinned at build time and
+            signed with Cmdr's certificate) as a separate process, listening on <code>127.0.0.1</code> only.
+        </li>
+        <li>
+            The optional MCP server, which lets outside AI tools control Cmdr, is off by default. When on, it listens
+            on <code>127.0.0.1</code> only. Deleting and other actions that skip Cmdr's confirmation need an access
+            token; other commands are open to any program on the same Mac.
+        </li>
+    </ul>
+
+    <h2 id="ai">AI features and your files</h2>
+    <p>
+        <strong>AI is off by default.</strong> Cmdr has no AI service of its own and never sees prompts or answers. A
+        user can pick:
+    </p>
+    <ul>
+        <li>
+            <strong>Local AI</strong>: a model that runs on the Mac (downloaded on request), or Ollama or LM Studio on
+            the same Mac. Nothing leaves the Mac.
+        </li>
+        <li>
+            <strong>Cloud AI with their own API key</strong>: OpenAI, Anthropic, Google Gemini, Groq, Together AI,
+            Fireworks AI, Mistral, OpenRouter, DeepSeek, Qwen (Alibaba), xAI, Perplexity, Azure OpenAI, or a custom
+            endpoint. The app talks straight to that provider, under that provider's terms. The key is kept in the macOS
+            Keychain, and Cmdr won't send it over plain HTTP except to the same Mac.
+        </li>
+    </ul>
+    <p>With cloud AI, this is what reaches the provider:</p>
+    <ul>
+        <li>
+            <strong>Ask Cmdr</strong> (the assistant): file and folder names, paths, sizes, and dates. When the user's
+            question needs it, also parts of text files, text from PDF pages, archive listings, photo metadata (which
+            can include GPS location), and text read from images. The assistant asks for consent before first use and
+            can't change or delete files.
+        </li>
+        <li>
+            <strong>Folder name suggestions, select-by-description, and natural-language search</strong>: up to a few
+            hundred file and folder names from the current folder, or the search text. These work once a cloud
+            provider is set up, without a separate consent step.
+        </li>
+    </ul>
+    <p>
+        Text recognition in images, image tags, and image search always run on the Mac, using Apple's built-in
+        frameworks. IT can't yet turn AI off centrally or limit which providers are allowed.
+    </p>
+    <DevTodo>
+        The non-agent AI features (<code>ai/suggestions.rs</code>, <code>commands/selection.rs</code>,
+        <code>commands/search.rs</code>) skip the Ask Cmdr consent gate. Decide whether they should share it. Separately,
+        <code>features.astro</code> (around line 121) says Cmdr "ships with a 3B language model"; it's downloaded on
+        demand. Fix that wording.
+    </DevTodo>
+
+    <h2 id="development">How Cmdr is built</h2>
+    <ul>
+        <li>
+            Written mostly in Rust. Strict compiler lints run on every change, and every <code>unsafe</code> block (about
+            470, mostly calls into macOS frameworks) must carry a written safety reason.
+        </li>
+        <li>
+            About 9,500 Rust tests, around 1,500 of them for file operations, including deliberately hostile cases: a
+            copy killed halfway, a device unplugged mid-transfer, a failing server. Integration tests run against real
+            SMB, SFTP, and WebDAV servers in containers.
+        </li>
+        <li>
+            Dependencies: <code>cargo-deny</code> (licenses, sources, advisories) and <code>cargo-audit</code> run every
+            six days. Dependency updates wait three days after release before they're used. Only crates.io is allowed as
+            a source.
+        </li>
+        <li>
+            Builds run on GitHub-hosted runners. Every third-party GitHub Action is pinned to an exact commit, and
+            installs use a locked dependency file.
+        </li>
+        <li>
+            GitHub secret scanning with push protection and GitGuardian check every change for leaked secrets. Recent
+            commits are signed.
+        </li>
+        <li>
+            Security fixes are listed under "Security" in the <a href="/changelog">changelog</a>. All of them so far
+            were found internally.
+        </li>
+    </ul>
+    <p>
+        Data safety (how Cmdr avoids losing files during copies and deletes) has its own page:
+        <a href="/data-safety">How Cmdr protects your files</a>.
+    </p>
+
+    <h2 id="company">Company, license, and continuity</h2>
+    <ul>
+        <li>
+            <strong>Company</strong>: Rymdskottkärra AB, Vattmyragränd 47, 177 39 Järfälla, Sweden. Org. nr
+            559471-0401, VAT SE559471040101. Swedish law applies.
+        </li>
+        <li>
+            <strong>Team</strong>: one person, David Veszelovszki, writes and ships Cmdr (over 98% of all commits). He
+            holds every signing key.
+        </li>
+        <li>
+            <strong>License</strong>: <a href="https://github.com/vdavid/cmdr/blob/main/LICENSE">Business Source
+            License 1.1</a>. Free for personal use; commercial use needs a paid license. Each version converts to
+            AGPL-3.0-or-later three years after its release (the current change date is 2029-09-19).
+        </li>
+        <li>
+            <strong>If the company stops</strong>: the full source is public today, and each version becomes open source
+            on its change date. There's no faster continuity promise in the terms yet.
+        </li>
+        <li>
+            <strong>Terms</strong>: the <a href="/terms-and-conditions">terms</a> and the
+            <a href="/privacy-policy">privacy policy</a>. For company agreements, write to
+            <a href="mailto:sales@getcmdr.com">sales@getcmdr.com</a>.
+        </li>
+    </ul>
+
+    <h2 id="report">Report a vulnerability</h2>
+    <p>
+        Email <a href="mailto:security@getcmdr.com">security@getcmdr.com</a>. Please don't open a public GitHub issue.
+        The full policy, including scope and safe harbor, is
+        <a href="https://github.com/vdavid/cmdr/blob/main/SECURITY.md">SECURITY.md</a> on GitHub, also linked from
+        <a href="/.well-known/security.txt">security.txt</a>. Only the latest version gets fixes. What to expect:
+    </p>
+    <ul>
+        {vulnerabilityResponse.map((line) => <li>{line}</li>)}
+    </ul>
+    <DevTodo>
+        Confirm these response times (they mirror <code>SECURITY.md</code>), and enable GitHub private vulnerability
+        reporting (repo Settings &gt; Code security). Once it's on, mention it here and in <code>SECURITY.md</code>.
+    </DevTodo>
+
+    <h2 id="gaps">Not in place yet</h2>
+    <p>These are the gaps a careful review would find. They're listed here so you don't have to look for them.</p>
+    <ul>
+        {notInPlaceYet.map((gap) => <li set:html={gap} />)}
+    </ul>
+    <DevTodo>
+        Bars a security team may still expect that this page can't claim: a signed DPA, an SBOM per release, build
+        provenance (GitHub artifact attestations), a protected release environment for the signing secrets (they're
+        plain repo secrets today, with no branch protection), and a continuity clause. Each one you add moves a line
+        out of this list.
+    </DevTodo>
+</LegalLayout>

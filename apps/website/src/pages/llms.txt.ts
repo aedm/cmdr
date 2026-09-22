@@ -24,6 +24,7 @@ Current version: ${version}
 - [Download (Apple Silicon)](${dmgUrls.aarch64}): DMG installer for Apple Silicon Macs
 - [Download (Intel)](${dmgUrls.x86_64}): DMG installer for Intel Macs
 - [Pricing](${site}/pricing/): Free for personal use, $59 once for commercial use
+- [Trust and security](${site}/trust/): What the app sends over the network, where data is stored, signing and updates, and known gaps, for security and IT reviewers
 - [Blog](${site}/blog/): Updates and news
 - [Changelog](${site}/changelog/): Release notes
 - [Roadmap](${site}/roadmap/): What's coming next

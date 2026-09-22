@@ -20,6 +20,7 @@ const pages = [
   { name: 'Terms and conditions', path: '/terms-and-conditions' },
   { name: 'Refund', path: '/refund' },
   { name: 'Data safety', path: '/data-safety' },
+  { name: 'Trust and security', path: '/trust' },
   { name: 'Renew', path: '/renew' },
 ]
 

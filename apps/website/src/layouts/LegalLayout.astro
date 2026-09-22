@@ -40,6 +40,20 @@ const { title, description, lastUpdated } = Astro.props
         color: var(--color-text-primary);
     }
 
+    /* The fixed header would cover an in-page anchor target. */
+    .legal-content :global(h2),
+    .legal-content :global(h3) {
+        scroll-margin-top: 6rem;
+    }
+
+    .legal-content :global(code) {
+        padding: 0.1em 0.3em;
+        font-size: 0.875em;
+        overflow-wrap: anywhere;
+        background: var(--color-surface-elevated);
+        border-radius: 0.25rem;
+    }
+
     .legal-content :global(h3) {
         margin-top: 1.75rem;
         margin-bottom: 0.75rem;
