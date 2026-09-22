@@ -65,6 +65,16 @@ below is met.
 
 ## In progress
 
+- [ ] 2026-09-22 `smb-path-normalization.md` - **A file whose name the server stores in NFD is visible in the pane,
+      correctly sized, and impossible to open, copy, rename, or delete** (`ERR-VETBX`). `to_smb_path` composes every
+      path to NFC before the wire, so the listing and the scan preview succeed from cached server bytes and only the
+      `Create` misses. Measured on `naspi`: one directory holds its own name in NFC and its children's in NFD, case is
+      significant too, and 712 files across six albums are unreachable. Server-derived paths stop being normalized at
+      all, and a foreign path resolves per component against a real listing once, at the seam where a directory is
+      opened. Rejected a retry ladder: it cannot produce a mixed spelling, cannot see case, and on a share holding twins
+      it picks one, which for a delete is a wrong-file write. Rides along: a scan failure that names no path, a write
+      that can plant an indistinguishable second entry, and a watcher cache key that looks like it misses every accented
+      directory. Approved 2026-09-22, not started; six milestones, M1 alone fixes the 712 files.
 - [ ] 2026-09-16 `favorites-menu.md` - **Opening a favorite takes a click on the volume switcher, and there's no
       shortcut** (GitHub #91). ⌃D opens a favorites menu at the switcher's spot: `1`–`9` open a favorite, `0` adds the
       current folder, drag or ⌥↑/⌥↓ reorders, right-click renames or removes. The switcher's Favorites section becomes
