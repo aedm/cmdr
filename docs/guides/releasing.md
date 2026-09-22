@@ -209,6 +209,12 @@ One GitHub release per tag, carrying these assets for each of the three arches (
   card through `getcmdr.com/download/latest/checksums`, an api-server redirect beside the per-arch DMG ones that
   resolves `latest` the same way; ❌ it writes no `downloads` row, since a checksum fetch is not an app download and
   would inflate the per-version counts.
+- Three CycloneDX SBOMs, uploaded by the `attest` job: `Cmdr_<version>_aarch64.rust.cdx.json` and
+  `Cmdr_<version>_x64.rust.cdx.json` (the Rust crate graph per target triple) and `Cmdr_<version>_frontend.cdx.json`
+  (the desktop app's npm packages). Details in § Provenance and SBOM attestations.
+
+Every asset also carries a signed SLSA build provenance attestation, stored on the repo rather than on the release (same
+section).
 
 Two naming details are load-bearing:
 
@@ -227,6 +233,46 @@ workflow passes `uploadUpdaterJson: false` and builds the manifest itself with
 `https://github.com/<repo>/releases/download/<tag>/<file>` URLs. Before uploading it, the job asserts that every URL in
 it names an asset actually on the release: a name that drifts from what the action uploaded would strand every install
 in the field, with no fallback in the app to recover.
+
+## Provenance and SBOM attestations
+
+Two jobs in `release.yml`, beside the build-and-publish chain:
+
+- **`sbom`** (`needs: guard`, read-only token, no OIDC) runs beside the macOS builds. It generates the three SBOMs:
+  `cargo cyclonedx` (version pinned in the workflow, CycloneDX 1.5) on `apps/desktop/src-tauri/Cargo.toml` with default
+  features, once per target triple, and `pnpm sbom --filter @cmdr/desktop` for the npm side. It fails if a lockfile
+  moved while resolving, or if an SBOM isn't CycloneDX, doesn't name this version as its root, or lists 100 components
+  or fewer. It hands them on as the `sboms` workflow artifact.
+- **`attest`** (`needs: [publish, sbom]`, holds `id-token: write` and `attestations: write`) downloads every asset back
+  from the published release, uploads the SBOMs to it, and runs `actions/attest`: one SLSA provenance attestation
+  covering every asset (SBOMs included), then one SBOM attestation per SBOM, bound to the builds it describes (each Rust
+  SBOM to its arch's DMG and tarball plus the universal ones; the frontend SBOM to all six).
+
+Why it's shaped this way:
+
+- **Attest the bytes as published.** Same rule as `checksums.txt`: the digests come from the release, ❌ never from
+  `target/`, so they're what users get after signing, notarization, stapling, and the upload.
+- **Nothing waits on `attest`.** It runs after `publish` has already shipped `latest.json`, so a Sigstore or
+  attestation-API outage leaves the release exactly as it was before these jobs existed. `attest` also runs when `sbom`
+  failed (its SBOM steps skip), so provenance never waits on SBOM tooling.
+- **The job that can sign runs no third-party code.** `cargo install` and `pnpm install` live in `sbom`, which has no
+  OIDC grant; `attest` only downloads and calls `actions/attest`.
+- **The frontend SBOM includes dev dependencies**, marked `scope: excluded`. `--prod` would drop `svelte` and
+  `@sveltejs/kit`, which are devDependencies whose runtime the bundler compiles into the app. It's generated on the
+  Linux runner, so platform-specific optional packages (bundler binaries) show their Linux variants.
+- **SLSA Build Level 2, not 3**: the attestation is signed by `release.yml` itself, not by an isolated reusable
+  workflow. Don't claim L3 anywhere.
+
+Checking a release (the `/release` command does this after the run):
+
+```bash
+gh attestation verify Cmdr_X.Y.Z_aarch64.dmg --repo vdavid/cmdr \
+  --signer-workflow vdavid/cmdr/.github/workflows/release.yml
+gh attestation verify Cmdr_X.Y.Z_aarch64.dmg --repo vdavid/cmdr --predicate-type https://cyclonedx.org/bom
+```
+
+The first checks provenance, the second the SBOM binding. The public instruction on `/trust` is the shorter
+`gh attestation verify <file> --repo vdavid/cmdr`.
 
 ## How updates work
 
@@ -331,6 +377,19 @@ main, and triggers a website deploy. If it fails:
   manual resolution.
 - **Website deploy webhook failed**: re-trigger manually by pushing any commit to main, or SSH into the server and run
   the deploy script.
+
+### The attest or sbom job failed
+
+The release already shipped, so nothing is urgent: users get the same build as before these jobs existed, just without
+attestations (or without SBOMs). Read the failure, then use "Re-run failed jobs". That re-runs only the failed jobs and
+the ones depending on them, so the guard, the builds, and `publish` stay as they were. ❌ Don't re-run all jobs: the
+guard refuses, because the manifest already names this version.
+
+- **`sbom` failed**: `attest` still ran and attested the other assets. Re-running `sbom` re-runs `attest` too, which
+  then uploads the SBOMs and re-attests everything (a second provenance attestation for the same digests is harmless).
+- **`attest` failed on the asset check**: an expected DMG or `.app.tar.gz` isn't on the release, which `publish` should
+  have caught first. Compare `gh release view <tag> --json assets` against the names the job builds.
+- **`attest` failed in `actions/attest`**: usually Sigstore or the attestation API. Retry later.
 
 ### `codesign` fails with `errSecInternalComponent` (and `gh` stops working after a release)
 

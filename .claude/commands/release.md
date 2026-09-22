@@ -230,6 +230,10 @@ Prepare a release based on docs/guides/releasing.md.
       `curl -s https://getcmdr.com/latest.json | jq -r '.platforms[].url' | sort -u | xargs -I{} curl -sIL -o /dev/null -w '%{http_code} {}\n' {}`
       should print `200` for all three. The workflow spells these `.app.tar.gz` names out by hand, so a naming change in
       `tauri-action` surfaces here and nowhere else until installs stop updating.
+    - Confirm the `attest` job went green and the three `.cdx.json` SBOMs are among the assets, then download one DMG
+      and run both `gh attestation verify` commands in `docs/guides/releasing.md` § "Provenance and SBOM attestations".
+      A red `attest` or `sbom` job doesn't block release success (the release already shipped): follow that guide's "The
+      attest or sbom job failed" troubleshooting entry.
     - If `latest.json` still shows the old version after ~2 minutes, the deploy webhook may have failed silently. Tell
       the user; the manual fix is to re-trigger the website-deploy workflow via `workflow_dispatch` from the Actions
       tab. Don't block release success on this. The GitHub Release is what users actually download.
