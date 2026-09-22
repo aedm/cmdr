@@ -2042,10 +2042,12 @@ is a maintenance task instead, listed in `docs/maintenance.md`.
    surfaces. Nightly lints are usually genuine (the `unused_imports` tightening flagged real redundant imports), so fix
    the code rather than reaching for an `allow`.
 
-**Decision**: `cargo-deny` advisories check disabled; use `cargo-audit` instead. **Why**: Tauri's transitive
-dependencies (gtk3-rs, unic-\*, fxhash, proc-macro-error, etc.) trigger unmaintained-crate advisories we can't control.
-`cargo-audit` still catches critical security vulnerabilities. License, bans, and sources checks in `cargo-deny` remain
-active. See comment in `deny.toml`.
+**Decision**: `cargo-deny` checks advisories over the macOS graph only; `cargo-audit` sweeps the full graph. **Why**:
+Tauri's Linux GTK3 stack carries unmaintained-crate advisories no macOS build links, which once got the whole advisory
+lane commented out and hid real vulnerabilities with it. `deny.toml` pins `[graph] targets` to the two macOS triples we
+release and sets `unmaintained = "workspace"`, so any RUSTSEC vulnerability in a shipped crate fails at any depth while
+transitive unmaintained noise doesn't. `cargo-audit` (the six-day CI lane) still reads the whole lockfile: a hit there
+but not in deny means "real, but nothing we ship links it". See `deny.toml` and `docs/maintenance.md`.
 
 **Decision**: `workflows-hardening` check enforces three GitHub Actions invariants and acts as a regression guard.
 **Why**: cmdr's workflows are already correctly hardened (every third-party action is SHA-pinned with a comment, no
