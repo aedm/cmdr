@@ -8478,7 +8478,7 @@ DEALINGS IN THE SOFTWARE.
 
 Covers: mdns-sd 0.20.3
 
-Text from: `LICENSE-MIT`
+Text from: `vendor/mdns-sd/LICENSE-MIT`
 
 ```text
 MIT License
