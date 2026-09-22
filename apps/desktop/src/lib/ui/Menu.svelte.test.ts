@@ -303,6 +303,84 @@ describe('pointer selection', () => {
 })
 
 /**
+ * A submenu row is a full row: the same leading columns, glyph, greyed state, and tooltip the
+ * top-level row has, because it's the same markup. The volume switcher's row actions need all
+ * of it (a busy drive's Eject is greyed, and every action wears a glyph).
+ */
+describe('submenu rows', () => {
+  function actionSections(): MenuSection[] {
+    return [
+      {
+        id: 'volumes',
+        items: [
+          {
+            value: 'share',
+            label: 'Team share',
+            submenu: [
+              { value: 'eject', label: 'Eject (busy)', icon: { lucide: 'eject' }, disabled: true },
+              { value: 'forget', label: 'Forget server', icon: { lucide: 'trash-2' } },
+              { value: 'fast', label: 'Use the fast connection', checked: true, separatorBefore: true },
+            ],
+          },
+        ],
+      },
+    ]
+  }
+
+  async function openActions(deps: Record<string, unknown> = {}): Promise<Element | null> {
+    const { menu } = await open({}, { getSections: actionSections, ...deps })
+    menu.surface.openSubmenu('share', true)
+    await tick()
+    await tick()
+    return document.querySelector('[data-menu-submenu]')
+  }
+
+  it('greys a disabled submenu row for sight and for assistive tech, and a click picks nothing', async () => {
+    const onSelect = vi.fn()
+    const submenu = await openActions({ onSelect })
+    const eject = submenu?.querySelector<HTMLElement>('[data-menu-row="eject"]')
+    expect(eject?.getAttribute('aria-disabled')).toBe('true')
+    expect(eject?.hasAttribute('data-disabled')).toBe(true)
+    expect(eject?.classList.contains('is-disabled')).toBe(true)
+    eject?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it('draws a submenu row’s glyph, and holds the glyph column on a row without one', async () => {
+    const submenu = await openActions()
+    expect(submenu?.querySelector('[data-menu-row="forget"] .menu-icon svg')).not.toBeNull()
+    // The toggle has no glyph, so it gets a blank one: every label starts at the same x.
+    expect(submenu?.querySelector('[data-menu-row="fast"] .menu-icon-placeholder')).not.toBeNull()
+  })
+
+  it('draws a rule above a row that asks for one, and only there', async () => {
+    const submenu = await openActions()
+    const separators = submenu?.querySelectorAll('[role="separator"]')
+    expect(separators).toHaveLength(1)
+    expect(separators?.[0].nextElementSibling?.getAttribute('data-menu-row')).toBe('fast')
+  })
+
+  // A click on a submenu row must not pull focus off the surface: the submenu unmounts after a
+  // pick, and focus on a node that just left the document drops to <body>, where the menu that
+  // stayed open (a `keepsMenuOpen` pick) no longer reads as focused.
+  it('keeps focus on the menu while a submenu row is pressed', async () => {
+    const submenu = await openActions()
+    const forget = submenu?.querySelector('[data-menu-row="forget"]')
+    const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    forget?.dispatchEvent(press)
+    expect(press.defaultPrevented).toBe(true)
+  })
+
+  it('opens a row’s submenu on right-click', async () => {
+    await open({}, { getSections: actionSections })
+    row('share')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+    await tick()
+    await tick()
+    expect(document.querySelector('[data-menu-submenu] [data-menu-row="forget"]')).not.toBeNull()
+  })
+})
+
+/**
  * The `data-*` hooks are a contract other suites select on (`lib/ui/DETAILS.md` § Menu),
  * so they're asserted here rather than left to rot as decoration.
  */

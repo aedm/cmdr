@@ -792,7 +792,18 @@ describe('pointer selection', () => {
     expect(menu.isOpen).toBe(true)
   })
 
-  it('reports a right-click with the item, leaving the menu open', () => {
+  // Right-click is the second door to a row's submenu: the same rows, never a second list.
+  it('opens the right-clicked row’s submenu, cursor on the row and none inside yet', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.surface.contextMenu('vol-3', new MouseEvent('contextmenu'))
+    expect(menu.isOpen).toBe(true)
+    expect(menu.openSubmenuValue).toBe('vol-3')
+    expect(menu.highlightedValue).toBe('vol-3')
+    expect(menu.submenuHighlightedValue).toBeNull()
+  })
+
+  it('reports a right-click at a row without a submenu, leaving the menu open', () => {
     const onContextMenu = vi.fn()
     const menu = build({ onContextMenu })
     menu.openUnder(anchorEl())
@@ -800,6 +811,113 @@ describe('pointer selection', () => {
     menu.surface.contextMenu('fav-b', event)
     expect(onContextMenu).toHaveBeenCalledWith(expect.objectContaining({ value: 'fav-b' }), event)
     expect(menu.isOpen).toBe(true)
+  })
+
+  it('opens no submenu on a right-click at a row without one', () => {
+    const onSelect = vi.fn()
+    const menu = build({ onSelect })
+    menu.openUnder(anchorEl())
+    menu.surface.contextMenu('fav-b', new MouseEvent('contextmenu'))
+    expect(menu.openSubmenuValue).toBeNull()
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(menu.isOpen).toBe(true)
+  })
+
+  it('closes another row’s open submenu when a row without one is right-clicked', () => {
+    const menu = build()
+    menu.openUnder(anchorEl())
+    menu.surface.contextMenu('vol-3', new MouseEvent('contextmenu'))
+    menu.surface.contextMenu('vol-1', new MouseEvent('contextmenu'))
+    expect(menu.openSubmenuValue).toBeNull()
+  })
+})
+
+/**
+ * A submenu row can be greyed (a busy volume's Eject) and can keep the menu up after a pick
+ * (an eject, so several drives go in a row; a rename, which happens in the row itself).
+ */
+describe('submenu row states', () => {
+  function sectionsWith(submenu: MenuSection['items']): () => MenuSection[] {
+    return () => [{ id: 'volumes', items: [{ value: 'share', label: 'Share', submenu }] }]
+  }
+
+  it('skips a disabled submenu row with the arrows', () => {
+    const menu = build({
+      getSections: sectionsWith([
+        { value: 'eject', label: 'Eject', disabled: true },
+        { value: 'rename', label: 'Rename' },
+        { value: 'forget', label: 'Forget' },
+      ]),
+    })
+    menu.openUnder(anchorEl())
+    menu.highlight('share')
+    menu.handleKey(keydown('ArrowRight'))
+    expect(menu.submenuHighlightedValue).toBe('rename')
+    menu.handleKey(keydown('ArrowDown'))
+    menu.handleKey(keydown('ArrowDown'))
+    expect(menu.submenuHighlightedValue).toBe('rename')
+  })
+
+  it('never puts the pointer’s cursor on a disabled submenu row', () => {
+    const menu = build({
+      getSections: sectionsWith([
+        { value: 'eject', label: 'Eject', disabled: true },
+        { value: 'rename', label: 'Rename' },
+      ]),
+    })
+    menu.openUnder(anchorEl())
+    menu.surface.openSubmenu('share', false)
+    menu.surface.hoverSubmenu('eject')
+    expect(menu.submenuHighlightedValue).toBeNull()
+  })
+
+  it('still opens a submenu whose every row is disabled, so the reason shows, with no cursor', () => {
+    const onSelect = vi.fn()
+    const menu = build({
+      onSelect,
+      getSections: sectionsWith([{ value: 'eject', label: 'Eject (busy)', disabled: true }]),
+    })
+    menu.openUnder(anchorEl())
+    menu.highlight('share')
+    menu.handleKey(keydown('ArrowRight'))
+    expect(menu.openSubmenuValue).toBe('share')
+    expect(menu.submenuHighlightedValue).toBeNull()
+    menu.handleKey(keydown('Enter'))
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(menu.isOpen).toBe(true)
+  })
+
+  it('keeps the menu open after a keepsMenuOpen pick, closing only the submenu', () => {
+    const onSelect = vi.fn()
+    const menu = build({
+      onSelect,
+      getSections: sectionsWith([
+        { value: 'eject', label: 'Eject', keepsMenuOpen: true },
+        { value: 'forget', label: 'Forget' },
+      ]),
+    })
+    menu.openUnder(anchorEl())
+    menu.highlight('share')
+    menu.handleKey(keydown('ArrowRight'))
+    menu.handleKey(keydown('Enter'))
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ value: 'eject' }), 'keyboard')
+    expect(menu.isOpen).toBe(true)
+    expect(menu.openSubmenuValue).toBeNull()
+    // The parent row keeps the cursor, so the next ArrowRight goes straight back in.
+    expect(menu.highlightedValue).toBe('share')
+  })
+
+  it('closes the whole menu after an ordinary submenu pick', () => {
+    const menu = build({
+      getSections: sectionsWith([
+        { value: 'eject', label: 'Eject', keepsMenuOpen: true },
+        { value: 'forget', label: 'Forget' },
+      ]),
+    })
+    menu.openUnder(anchorEl())
+    menu.surface.openSubmenu('share', false)
+    menu.surface.activate('forget')
+    expect(menu.isOpen).toBe(false)
   })
 })
 

@@ -868,9 +868,22 @@ drifts the moment the keyboard contract grows a case.
 **Snippets decorate, they don't re-implement.** The default row (accelerator column, checkmark column, icon, label) is
 there; `label` replaces the row's text (an inline rename field), `trailing` fills its right end (badges, an eject
 button), `below` adds a sub-line (the disk-space bar), and `footer` sits under the last section. Each takes one
-`MenuRowContext = { item, section, index, highlighted, dragging }`. A submenu row is plainer (checkmark column and
-label, no snippets), but it honors `checked` the same way, through the shared `checkColumn` snippet, so a submenu can
-hold a toggle as well as actions. Picking it still only activates: the consumer flips its own state.
+`MenuRowContext = { item, section, index, highlighted, dragging }`.
+
+**A submenu row is a full row, minus the snippets.** Its leading columns come from the SAME `rowLead` snippet the
+top-level row uses (checkmark, glyph), so the two can't drift, and it honors `disabled` (greyed, `aria-disabled`,
+skipped by the keys and by the pointer's cursor), `icon`, `tooltip`, and `checked`. So a submenu holds actions and
+toggles alike; picking a toggle still only activates, and the consumer flips its own state. Two fields exist for
+submenus: `separatorBefore` draws a rule above the row (a top-level list splits into sections instead), and
+`keepsMenuOpen` closes only the submenu on a pick, leaving the parent row under the cursor (an eject, so several drives
+go in a row; a rename, which happens in the row). `accelerator` is top-level only. A submenu whose every row is disabled
+still opens, cursorless, because its greyed rows are the answer to "why can't I?".
+
+**Right-click is the second door to a row's submenu.** It opens it the way a hover does, so right-click and `→` show the
+same rows from one list. A right-click on a row without a submenu calls `onContextMenu`.
+
+**The glyph column is all-or-nothing per surface**, like the accelerator and checkmark columns: once any row on a
+surface (the menu, or the open submenu) has an `icon`, the rows without one get a blank `menu-icon-placeholder`.
 
 **What the primitive owns**:
 
@@ -898,12 +911,14 @@ hold a toggle as well as actions. Picking it still only activates: the consumer 
   `stopPropagation` ends DOM bubbling, which is the double-fire path, and leaves the key's meaning to the OS.
 - **`isEditing()` suspends all of it**, untouched and unswallowed, so an inline editor keeps every keystroke.
 - **Focus**: the container takes focus on open (`tabindex="-1"` plus `aria-activedescendant` on the highlighted row) and
-  calls `restoreFocus` on close. Keys route through a document-level CAPTURE listener that lives only while open, the
-  model `enter-menu.svelte.ts` proved deterministic against focus timing.
+  calls `restoreFocus` on close. A submenu row's `mousedown` is `preventDefault`ed so a click leaves focus on the
+  surface: the row unmounts after a pick, and focus on a node that left the document drops to `<body>`, which a
+  `keepsMenuOpen` pick would otherwise leave the still-open menu with. Keys route through a document-level CAPTURE
+  listener that lives only while open, the model `enter-menu.svelte.ts` proved deterministic against focus timing.
 - **Pointer**: hover moves the cursor unless keyboard mode is on; a pointer move over 5 px leaves keyboard mode AND
   hands the cursor to the row it happened over (❗ otherwise there would be two: `:hover` paints again the moment
   keyboard mode drops, and no `mouseover` is coming for a row the pointer never left); a click activates; a right-click
-  calls `onContextMenu`; a pointer-down outside closes.
+  opens the row's submenu (or calls `onContextMenu` on a row without one); a pointer-down outside closes.
 - **Reorder**: drag past a 4 px threshold, the drop-line cue at the insertion gap, and `onReorder` once, on drop.
   Because the cursor is a VALUE rather than an index, it rides along with the moved row for free. ❗ A drag's drop
   target is decided against the rows' MIDPOINTS, which only the DOM knows, so `Menu.svelte` registers `getRowMidpoints`
@@ -941,7 +956,8 @@ gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them 
 - `data-menu-section="<id>"` on a section, `data-menu-heading` on its heading (an E2E spec reads the group names from
   it), `data-menu-empty` on an empty section's placeholder.
 - `data-menu-row="<value>"` on every row (submenu rows too), plus `data-highlighted`, `data-checked`, `data-disabled`,
-  and `data-dragging` as bare present-or-absent marks. Submenu rows carry `data-highlighted` and `data-checked`.
+  and `data-dragging` as bare present-or-absent marks. Submenu rows carry `data-highlighted`, `data-checked`, and
+  `data-disabled`, and a submenu rule is a `role="separator"`.
 - `data-accelerator="<char>"` on a row that declares one, so a spec presses a digit and asserts against the row that
   claimed it rather than counting positions. The row also carries `aria-keyshortcuts`.
 - `data-drop-cue="above" | "below"` on the row bordering the drop gap, carrying `data-drop-slot="<n>"`, the insertion
@@ -981,8 +997,7 @@ switcher's port is what moved them here):
 - **The single-cursor rule**: an open submenu takes the parent row's highlight (`parentHighlightSuppressed`), and a
   submenu opened by hovering its parent row shows no cursor until the pointer or the keyboard reaches into it.
 - **A submenu's cursor is a VALUE too** (`submenuHighlightedValue`), so render against it per row. ❌ Never a boolean:
-  that lights every row of a multi-item submenu, which a one-row submenu (the switcher's share submenu today) hides
-  until a second row arrives.
+  that lights every row of a multi-item submenu, which a one-row submenu hides until a second row arrives.
 - ❗ **The measure-and-focus `$effect` depends on `surfaceEl`, ❌ never on `menu.isOpen` alone.** Ark's `Portal` mounts
   its children inside a `tick().then(…)` of its own, so an effect keyed on open state alone runs its only pass before
   the node exists, bails, and never re-runs: the surface keeps the `visibility: hidden` it starts with while the menu
@@ -992,8 +1007,8 @@ switcher's port is what moved them here):
 - **`MenuItem` lives in `menu-types.ts`, NOT the component's module script** (unlike `SelectItem`): non-Svelte
   controllers import it, and a type imported from a `.svelte` file resolves to `any` under the plain-TypeScript lint
   service.
-- **One level of submenu**, and no type-ahead, virtualization, or checkbox/radio items: nothing needs them, and each is
-  addable without moving the seams.
+- **One level of submenu**, and no type-ahead, virtualization, or radio items: nothing needs them, and each is addable
+  without moving the seams.
 - ⚠️ **`aria-activedescendant` on a portaled container is not yet verified with VoiceOver.** The ARIA wiring is there
   and axe is clean (`overlays.a11y.test.ts`), but nobody has listened to it; confirm before leaning on it.
 

@@ -49,6 +49,8 @@ import IconMoreHorizontal from '~icons/lucide/more-horizontal'
 import IconPaperclip from '~icons/lucide/paperclip'
 import IconPause from '~icons/lucide/pause'
 import IconPencil from '~icons/lucide/pencil'
+import IconPin from '~icons/lucide/pin'
+import IconPinOff from '~icons/lucide/pin-off'
 import IconPlay from '~icons/lucide/play'
 import IconPlus from '~icons/lucide/plus'
 import IconRotateCcw from '~icons/lucide/rotate-ccw'
@@ -60,6 +62,7 @@ import IconShieldOff from '~icons/lucide/shield-off'
 import IconSparkles from '~icons/lucide/sparkles'
 import IconDownload from '~icons/lucide/download'
 import IconStar from '~icons/lucide/star'
+import IconStarOff from '~icons/lucide/star-off'
 import IconSquare from '~icons/lucide/square'
 import IconSun from '~icons/lucide/sun'
 import IconTag from '~icons/lucide/tag'
@@ -132,6 +135,8 @@ export const ICON_COMPONENTS = {
   paperclip: IconPaperclip,
   pause: IconPause,
   pencil: IconPencil,
+  pin: IconPin,
+  'pin-off': IconPinOff,
   play: IconPlay,
   plus: IconPlus,
   'rotate-ccw': IconRotateCcw,
@@ -144,6 +149,7 @@ export const ICON_COMPONENTS = {
   download: IconDownload,
   square: IconSquare,
   star: IconStar,
+  'star-off': IconStarOff,
   sun: IconSun,
   tag: IconTag,
   'trash-2': IconTrash2,

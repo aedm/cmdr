@@ -232,6 +232,9 @@
         menu.sections.some((section) => section.items.some((item) => item.accelerator != null)),
     )
 
+    /** The glyph column follows the same all-or-nothing rule, per surface. */
+    const hasIcons = $derived(menu.sections.some((section) => section.items.some((item) => item.icon != null)))
+
     const submenuItems = $derived(
         menu.openSubmenuValue === null
             ? []
@@ -239,17 +242,39 @@
                   .flatMap((section) => section.items)
                   .find((item) => item.value === menu.openSubmenuValue)?.submenu ?? []),
     )
+
+    const submenuHasIcons = $derived(submenuItems.some((item) => item.icon != null))
 </script>
 
 <svelte:window onresize={handleResize} onpointerdown={handleDocumentPointerDown} />
 
-<!-- The checkmark column, shared by top-level and submenu rows. Reserved on every row, checked
-     or not, so the labels line up. -->
-{#snippet checkColumn(checked: boolean | undefined)}
-    {#if checked}
+<!-- A row's leading columns, shared by top-level and submenu rows so the two can't drift: the
+     accelerator column (top-level only, and only where something declares one), the checkmark
+     column (reserved on every row, checked or not), and the glyph, with a blank in its place on
+     a row without one wherever a sibling has one. Every placeholder is what keeps the labels on
+     one line. -->
+{#snippet rowLead(item: MenuItem<unknown>, withAccelerators: boolean, withIcons: boolean)}
+    {#if withAccelerators}
+        <!-- `aria-keyshortcuts` on the row already says it, so the glyph is decoration. -->
+        {#if item.accelerator}
+            <span class="menu-accelerator" aria-hidden="true">{item.accelerator}</span>
+        {:else}
+            <span class="menu-accelerator-placeholder"></span>
+        {/if}
+    {/if}
+    {#if item.checked}
         <span class="menu-check"><Icon name="check" size={14} aria-hidden="true" /></span>
     {:else}
         <span class="menu-check-placeholder"></span>
+    {/if}
+    {#if item.icon}
+        {#if 'lucide' in item.icon}
+            <span class="menu-icon"><Icon name={item.icon.lucide} size={16} aria-hidden="true" /></span>
+        {:else}
+            <img class="menu-icon-image" src={item.icon.src} alt="" />
+        {/if}
+    {:else if withIcons}
+        <span class="menu-icon-placeholder"></span>
     {/if}
 {/snippet}
 
@@ -340,23 +365,8 @@
                                 }
                             }}
                         >
-                            {#if hasAccelerators}
-                                <!-- `aria-keyshortcuts` on the row already says it, so the glyph is decoration. -->
-                                {#if item.accelerator}
-                                    <span class="menu-accelerator" aria-hidden="true">{item.accelerator}</span>
-                                {:else}
-                                    <span class="menu-accelerator-placeholder"></span>
-                                {/if}
-                            {/if}
                             <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- Svelte {@render} syntax -->
-                            {@render checkColumn(item.checked)}
-                            {#if item.icon}
-                                {#if 'lucide' in item.icon}
-                                    <span class="menu-icon"><Icon name={item.icon.lucide} size={16} aria-hidden="true" /></span>
-                                {:else}
-                                    <img class="menu-icon-image" src={item.icon.src} alt="" />
-                                {/if}
-                            {/if}
+                            {@render rowLead(item, hasAccelerators, hasIcons)}
                             {#if label}
                                 {@render label(context)}
                             {:else}
@@ -388,15 +398,27 @@
                 }}
             >
                 {#each submenuItems as child (child.value)}
+                    {#if child.separatorBefore}
+                        <div class="menu-separator" role="separator"></div>
+                    {/if}
                     <!-- svelte-ignore a11y_mouse_events_have_key_events -->
                     <div
                         class="menu-row"
                         class:is-highlighted={menu.submenuHighlightedValue === child.value}
+                        class:is-disabled={child.disabled}
                         role="menuitem"
                         tabindex="-1"
+                        aria-disabled={child.disabled ? 'true' : undefined}
                         data-menu-row={child.value}
                         data-highlighted={menu.submenuHighlightedValue === child.value ? '' : undefined}
                         data-checked={child.checked ? '' : undefined}
+                        data-disabled={child.disabled ? '' : undefined}
+                        use:tooltip={child.tooltip ?? ''}
+                        onmousedown={(event: MouseEvent) => {
+                            // Focus stays on the surface: this row unmounts after a pick, and
+                            // focus on a node that left the document drops to <body>.
+                            event.preventDefault()
+                        }}
                         onmouseover={() => {
                             menu.surface.hoverSubmenu(child.value)
                         }}
@@ -405,7 +427,7 @@
                         }}
                     >
                         <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- Svelte {@render} syntax -->
-                        {@render checkColumn(child.checked)}
+                        {@render rowLead(child, false, submenuHasIcons)}
                         <span class="menu-label">{child.label}</span>
                     </div>
                 {/each}
@@ -540,7 +562,8 @@
     }
 
     .menu-icon,
-    .menu-icon-image {
+    .menu-icon-image,
+    .menu-icon-placeholder {
         width: var(--spacing-icon-size);
         height: var(--spacing-icon-size);
         flex-shrink: 0;

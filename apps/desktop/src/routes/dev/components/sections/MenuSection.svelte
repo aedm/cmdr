@@ -16,7 +16,6 @@
     const shareToggles = $state({ fast: true, reconnect: false })
 
     let lastChoice = $state<string | null>(null)
-    let lastContextMenu = $state<string | null>(null)
     let renaming = $state<string | null>(null)
     let renameDraft = $state('')
 
@@ -47,9 +46,21 @@
                     label: 'Team share',
                     icon: { lucide: 'globe' },
                     submenu: [
-                        { value: 'connect', label: 'Connect directly' },
-                        { value: 'forget', label: 'Forget this share' },
-                        { value: 'fast-connection', label: 'Use the fast connection', checked: shareToggles.fast },
+                        {
+                            value: 'eject',
+                            label: 'Eject (busy)',
+                            icon: { lucide: 'eject' },
+                            disabled: true,
+                            tooltip: 'A copy is still using this share',
+                        },
+                        { value: 'pin', label: 'Pin to switcher', icon: { lucide: 'pin' }, keepsMenuOpen: true },
+                        { value: 'forget', label: 'Forget this share', icon: { lucide: 'trash-2' } },
+                        {
+                            value: 'fast-connection',
+                            label: 'Use the fast connection',
+                            checked: shareToggles.fast,
+                            separatorBefore: true,
+                        },
                         { value: 'auto-reconnect', label: 'Reconnect on wake', checked: shareToggles.reconnect },
                     ],
                 },
@@ -67,9 +78,6 @@
         },
         onReorder: ({ orderedValues }) => {
             places = orderedValues.map((value) => places.find((place) => place.value === value)).filter((p) => p != null)
-        },
-        onContextMenu: (item) => {
-            lastContextMenu = item.label
         },
         isEditing: () => renaming !== null,
         restoreFocus: () => anchorEl?.focus(),
@@ -116,9 +124,12 @@
 <SectionCard id="components-menu" label="Menu">
     <div class="cell">
         <p class="caption">
-            The house menu: sections with headings, a checkmark column, disabled rows, an empty section, a submenu
-            (hover "Team share": two actions plus two toggles, one on and one off, that flip when picked), and a reorderable section (drag a place, or ⌥↑/⌥↓). The three row snippets are all in use below: a rename field
-            for <code>label</code>, a badge for <code>trailing</code>, and a disk-space line for <code>below</code>.
+            The house menu: sections with headings, a checkmark column, disabled rows, an empty section, a submenu,
+            and a reorderable section (drag a place, or ⌥↑/⌥↓). Hover or right-click "Team share", or press → on it:
+            its submenu holds a greyed action with a tooltip, a "Pin" that keeps the menu open when picked, a plain
+            action, a rule, and two toggles (one on, one off) that flip when picked. The three row snippets are all in
+            use below: a rename field for <code>label</code>, a badge for <code>trailing</code>, and a disk-space line
+            for <code>below</code>.
         </p>
         <DemoAnchor
             bind:el={anchorEl}
@@ -127,7 +138,6 @@
             }}>Open menu</DemoAnchor
         >
         {#if lastChoice}<p class="caption">Last choice: {lastChoice}</p>{/if}
-        {#if lastContextMenu}<p class="caption">Last right-click: {lastContextMenu}</p>{/if}
 
         <Menu {menu} ariaLabel="Demo menu" minWidth={260}>
             {#snippet label(context: MenuRowContext)}

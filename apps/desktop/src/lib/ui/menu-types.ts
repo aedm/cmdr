@@ -29,14 +29,25 @@ export interface MenuItem<T = unknown> {
   /**
    * A single character shown in the leftmost column, which also activates the row when typed
    * (digits only today). The column appears only in a menu where at least one row declares one,
-   * and the rows that don't get a blank placeholder so every label still lines up.
+   * and the rows that don't get a blank placeholder so every label still lines up. Top-level
+   * rows only: a submenu row's is ignored.
    */
   accelerator?: string
-  /** Greyed, skipped by the keyboard, never activates. */
+  /** Greyed, skipped by the keyboard and the pointer's cursor, never activates. Submenu rows too. */
   disabled?: boolean
   tooltip?: string
-  /** One level only: a submenu item's own `submenu` is ignored. */
+  /**
+   * One level only: a submenu item's own `submenu` is ignored. A right-click on the row opens
+   * it too, so both doors show the same rows.
+   */
   submenu?: MenuItem<T>[]
+  /**
+   * Picking this row leaves the menu open, closing only its submenu: an eject (so several
+   * drives can go in a row) or a rename (which happens in the row itself).
+   */
+  keepsMenuOpen?: boolean
+  /** Draws a rule above this row. Submenu rows only: a top-level list splits into sections. */
+  separatorBefore?: boolean
   data?: T
 }
 

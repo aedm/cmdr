@@ -68,6 +68,7 @@ export interface MenuDeps<T = unknown> {
   onSelect: (item: MenuItem<T>, source: MenuActivationSource) => void
   /** Fires once, on drop or on a ⌥↑/⌥↓ that actually moves something. The caller persists. */
   onReorder?: (reorder: MenuReorder) => void
+  /** A right-click on a row WITHOUT a submenu (a row with one opens it instead). */
   onContextMenu?: (item: MenuItem<T>, event: MouseEvent) => void
   /** The caller's first look at every key while open. Return true to claim it. */
   onKey?: (event: KeyboardEvent) => boolean
@@ -100,11 +101,15 @@ export interface MenuSurface {
    */
   pointerMoved: (event: MouseEvent, valueUnderPointer?: string | null) => void
   activate: (value: string) => void
+  /**
+   * A right-click on a row: the second door to its submenu, opened as a hover would, so
+   * right-click and `→` show the same rows. A row without a submenu has nothing to offer.
+   */
   contextMenu: (value: string, event: MouseEvent) => void
   startDrag: (value: string, event: MouseEvent) => void
   openSubmenu: (value: string, fromKeyboard: boolean) => void
   closeSubmenu: () => void
-  /** Pointer hover inside an open submenu: moves ITS cursor to that row. */
+  /** Pointer hover inside an open submenu: moves ITS cursor to that row, unless it's disabled. */
   hoverSubmenu: (value: string) => void
   bindSurface: (hooks: MenuSurfaceHooks) => void
 }
@@ -240,12 +245,14 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
 
   function openSubmenu(value: string, fromKeyboard: boolean): void {
     const item = itemOf(sections(), value)
-    const first = item?.submenu?.find((child) => !child.disabled)
-    if (!first) return
+    if (!item?.submenu?.length) return
     openSubmenuValue = value
     // A submenu opened by hovering its parent row shows no cursor until the pointer or the
-    // keyboard reaches INTO it; opened by keyboard, the cursor is already there.
-    submenuHighlightedValue = fromKeyboard ? first.value : null
+    // keyboard reaches INTO it; opened by keyboard, the cursor is already there. One whose
+    // every row is disabled still opens, cursorless: its greyed rows are the answer to "why
+    // can't I eject this?", and hiding them would leave an arrow that leads nowhere.
+    const first = item.submenu.find((child) => !child.disabled)
+    submenuHighlightedValue = fromKeyboard ? (first?.value ?? null) : null
   }
 
   /** Walk an open submenu's own rows, wrapping; from no cursor, enter at the near end. */
@@ -264,7 +271,10 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     }
     const item = itemOf(sections(), value)
     if (!item || item.disabled) return
-    close()
+    // A `keepsMenuOpen` pick closes only its submenu, and the parent row keeps the cursor,
+    // so the next `→` goes straight back in.
+    if (item.keepsMenuOpen) closeSubmenu()
+    else close()
     deps.onSelect(item, source)
   }
 
@@ -477,7 +487,13 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     contextMenu(value, event) {
       const item = itemOf(sections(), value)
       if (!item) return
-      deps.onContextMenu?.(item, event)
+      if (!item.submenu?.length) {
+        closeSubmenu()
+        deps.onContextMenu?.(item, event)
+        return
+      }
+      setHighlight(value)
+      openSubmenu(value, false)
     },
     startDrag(value, event) {
       if (event.button !== 0 || deps.isEditing?.()) return
@@ -492,7 +508,7 @@ export function createMenu<T = unknown>(deps: MenuDeps<T>): MenuController<T> {
     openSubmenu,
     closeSubmenu,
     hoverSubmenu(value) {
-      submenuHighlightedValue = value
+      if (submenuValues().includes(value)) submenuHighlightedValue = value
     },
     bindSurface(next) {
       hooks = next
