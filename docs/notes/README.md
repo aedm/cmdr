@@ -47,6 +47,14 @@ Some notes here are load-bearing rather than historical. Those are grouped below
 - `importance-treadmill-2026-08-04.md` — what the 60-second rescore treadmill really was, why raising
   `SCOPED_WALK_MAX_DIRS` is refuted, and the measurement (99.88% against 0.03%) behind the signals-not-score equality
   key. Keep it until the open batch-width question in it is settled.
+- `mimalloc-purge-experiment-2026-09-22.md` — whether mimalloc option tuning can halve Cmdr's RAM, with a protocol David
+  can run in a day. **What the source already settles**: the build is mimalloc **v3**, not v2, so option names from v2
+  recipes are wrong; env-var tuning does work and `launchctl setenv` is the launch path that keeps FDA and the data dir
+  identical across conditions; and `MIMALLOC_SHOW_STATS=1` on a release build prints no live-bytes section, because
+  `MI_STAT` is compiled to 0. **The prior is low**: v3 on macOS already decommits with `MADV_FREE_REUSABLE` after 1
+  second at page granularity, so there is no off switch that's currently off. Read it before proposing any allocator
+  setting, and read the last two sections regardless: they carry the 0.46.1 baseline (86% of the footprint is the Rust
+  heap) and the reason the live-vs-fragmented split, not purging, is the question that matters.
 
 **Load-bearing as the evidence behind a decision that would otherwise look arbitrary:**
 

@@ -37,6 +37,11 @@ vmmap -summary "$PID" | grep -E "Physical footprint:|^IOAccelerator |^MALLOC_SMA
 here — it keeps counting regions long after `phys_footprint` collapses. Read the DIRTY column (col 4), not VIRTUAL or
 RESIDENT.
 
+For a series rather than one reading, `apps/desktop/scripts/mem-sample.sh <label>` runs that recipe and appends a CSV
+row (footprint, peak, Rust heap dirty/swapped, region count, uptime, and the mimalloc env the process inherited).
+`--watch <label> [mins]` samples on a timer. It targets the `/Applications` build, so a dev build running beside it
+can't be sampled by accident.
+
 Per-line RAM in the app's own log: launch with `CMDR_LOG_RAM_USE=1` (see `logging.md`), which makes every log line carry
 the current footprint — the cheapest way to correlate a climb with what the backend was doing.
 
@@ -108,3 +113,12 @@ Read these before re-deriving anything; between them they cover every cause foun
   origin of the region-histogram method above.
 - `docs/notes/high-memory-gpu-compositor-investigation-2026-07.md` — superseded; its conclusion is wrong (it read the
   mislabel as GPU memory). Kept for the measurement methodology only.
+
+## Before proposing an allocator setting
+
+`docs/notes/mimalloc-purge-experiment-2026-09-22.md` is the source-read on what's tunable. The build is mimalloc **v3**
+(`libmimalloc-sys` builds v3 unless the `v2` feature is set, and nothing sets it), so v2 option names from training data
+are wrong. Env-var tuning works, and `launchctl setenv` is the way to get options into a Finder-launched app without
+changing FDA or the data dir. `MIMALLOC_SHOW_STATS=1` on a release build prints no live-bytes section: `MI_DEBUG=0`
+makes `MI_STAT` 0. And v3 on macOS already decommits with `MADV_FREE_REUSABLE` after 1 s at page granularity, so
+"mimalloc is hoarding pages" is a weak starting hypothesis. The note carries the A/B protocol and the conditions.
