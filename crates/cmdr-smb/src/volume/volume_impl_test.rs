@@ -199,26 +199,20 @@ fn supports_foreground_yield_as_destination_is_on() {
     assert!(vol.supports_foreground_yield_as_destination());
 }
 
-/// THE GATE on the transfer watchdog's one aggressive action, from the backend
-/// side: `SmbVolume` reports NO liveness verdict, so the watchdog reports a stall
-/// and never ends anyone's wait.
+/// A share with no session has nothing to read a verdict or a byte count off,
+/// so both stay `None` and the transfer watchdog only ever reports on it.
 ///
-/// `smb2` 0.16.0 has an ECHO keepalive and it still doesn't change this. A missed
-/// probe is deliberately not a death verdict — a busy NAS drops probes precisely
-/// while it writes — and the crate's one sound verdict
-/// (`Error::ServerUnresponsive`) is an error handed to the caller AFTER the
-/// connection has been torn down and every waiter failed, which the per-file
-/// retry already covers. ❌ Don't answer `Dead` here from `keepalive_failures`, a
-/// slow response, or `is_disconnected()`; read
-/// `write_operations/transfer/DETAILS.md` § "The watchdog ACTS" first, which says
-/// what `smb2` would have to expose for this to become `Some`.
+/// With a session, `connection_liveness` is smb2's own reading mapped in
+/// `liveness.rs` (pinned there), and a rebuilt session answers for itself
+/// (`session_integration_test::smb_integration_reconnect_repoints_the_liveness_reading`).
+/// ❌ Don't answer `Dead` here from `keepalive_failures`, a slow response, or
+/// `is_disconnected()`; `write_operations/transfer/DETAILS.md` § "The watchdog
+/// ACTS" says why.
 #[test]
-fn connection_liveness_reports_no_verdict() {
+fn a_share_without_a_session_gives_no_liveness_reading() {
     let vol = make_test_volume();
-    assert!(
-        vol.connection_liveness().is_none(),
-        "SMB has no sound dead-vs-slow signal to answer with; see the doc above before changing this"
-    );
+    assert!(vol.connection_liveness().is_none());
+    assert!(vol.connection_bytes_received().is_none());
 }
 
 /// …and the probe behind it asks about THIS share's own volume id, which is what

@@ -636,8 +636,10 @@ probes when the wire has gone quiet with work outstanding, so a busy transfer pa
 is NOT evidence of death** and nothing here may treat it as such: a QNAP TS-464 drops probes precisely while it writes
 (measured 2026-08-02: 1 of 3 dropped under write load, 0 of 3 idle). The crate agrees — its only death verdict,
 `Error::ServerUnresponsive`, needs a request to burn its whole deadline AND the connection to have put nothing at all on
-the wire meanwhile. That is also why `SmbVolume::connection_liveness()` stays unimplemented; the full argument and what
-`smb2` would have to expose to change it: `write_operations/transfer/DETAILS.md` § "The watchdog ACTS".
+the wire meanwhile, the bytes of a response still arriving counted as they land (0.23.0+).
+`SmbVolume::connection_liveness()` reads that same verdict as pollable state (`Connection::liveness()`), before any
+request has paid for it, off a handle swapped in lockstep with the client (`src/volume/liveness.rs`, which owns the
+mapping). What the transfer watchdog does with it: `write_operations/transfer/DETAILS.md` § "The watchdog ACTS".
 
 **The numbers stay as they are, and the case for widening them is closed.** The base deadline no longer has to be sized
 for the slowest healthy case, because the ECHO stretch already covers a connection that is alive but busy; and a breach

@@ -791,9 +791,10 @@ that the connection is dead** — `Volume::connection_liveness() == Some(Dead)`,
 byte movement inside a backend call. On both, the watchdog trips the task's `stall_abort` token, the streaming write
 races it, and the park becomes a typed `ConnectionTimeout` the retry above treats as a blip.
 
-**Status today: the teeth are INERT, deliberately.** No backend in this workspace answers `connection_liveness` with
-anything but `None`, so in production the watchdog does exactly what it did before — dumps the in-flight table,
-heartbeats the UI's stall signal — and acts on nothing.
+**Status: the teeth are ON for SMB, and inert everywhere else.** `SmbVolume::connection_liveness()` answers from
+`smb2`'s own pollable reading (`Connection::liveness()`, 0.23.0+), read off the handle the share swaps in lockstep with
+its client (`crates/cmdr-smb/src/volume/liveness.rs`, which owns the mapping). Every other backend answers `None`, so
+for them the watchdog dumps the in-flight table, heartbeats the UI's stall signal, and acts on nothing.
 
 **Why gated, and why elapsed time is not allowed to be the evidence.** Telling "slow but alive" from "dead" needs a
 keepalive: an ECHO the server either answers inside a window or does not. A silence deadline ALONE cannot do it,
@@ -801,38 +802,33 @@ because a large write to a loaded spinning-disk NAS is legitimately slow, and ki
 frequent spurious failures — the worse bargain. Inventing a verdict out of elapsed time would reintroduce, one layer
 up, the failure mode the keepalive exists to prevent.
 
-**Why `smb2`'s keepalive still doesn't open this gate** (checked against 0.16.0's public API on 2026-08-02, and
-re-checked against the pinned 0.18.1 on 2026-08-21 — `unresponsive_for` is still private to `Inner`, so nothing below
-has changed; the decision to leave `SmbVolume::connection_liveness()` unimplemented is recorded here so nobody
-re-derives it):
+**Why `smb2`'s reading qualifies where its earlier signals didn't.** `Liveness::Unresponsive` is the conjunction the
+crate's own `Error::ServerUnresponsive` rests on (keepalive armed, a request outstanding, NOTHING on the wire for
+`LIVENESS_WINDOW_PROBES × keepalive_after`, 15 s by default), but pollable: readable before any request has burned its
+deadline, and reading it tears nothing down. Every inbound byte counts as it lands, the bytes of a response still
+arriving included, so a large read trickling over a slow link reads `Alive` rather than silent (verified by `smb2`
+0.23.0's `a_response_still_arriving_is_not_silence`, 2026-09-22). The mapping:
 
-- **The keepalive deliberately produces no death verdict.** A missed probe means "no deadline extension" and nothing
-  more, because a real NAS drops ECHO probes precisely when it is busy writing. `MetricsSnapshot::keepalive_failures`
-  is therefore a count of non-events, and ❌ mapping it (or `keepalive_probes_skipped`, or a rising `sent_age`) to
-  `Dead` is exactly the false positive this gate exists to avoid.
-- **The one sound verdict is an error, not a state.** `Error::ServerUnresponsive { silent_for }` fires only when a
-  request burned its whole deadline AND the connection put nothing on the wire meanwhile — sound, but it is handed to
-  the caller and it tears the connection down. By the time a consumer could observe it, every waiter on that
-  connection has already been failed, including the parked task this watchdog would have unstuck. The retry above has
-  it.
-- **What that leaves publicly readable is `Connection::is_disconnected()`** (a torn-down connection), which is a hard
-  fact but the same consequence: true only after the write has already errored. Wiring it would add a `Dead` answer
-  that arrives strictly later than the error the task is already getting.
-- **The counters can't be reassembled into the verdict either.** They are monotonic per-connection totals with no
-  timestamps, so reconstructing "the wire has been quiet for ≥ 3 probe intervals with work outstanding" from polled
-  snapshots means re-deriving the crate's own internal `unresponsive_for()` from the outside — more machinery, still
-  strictly later than the crate's own verdict, and no new coverage.
+- `Unresponsive` → `Dead`; `Alive` → `Alive`.
+- `Idle` and `Quiet` → `None`: nothing outstanding, or silence that proves nothing yet (too short, or no keepalive).
+- `Disconnected` → `None`. A torn-down connection has already failed every waiter on it, so the task this watchdog
+  would unstick has its error in hand and the retry above has it; a `Dead` would arrive strictly after that error.
+- ❌ Still never from a missed probe (`MetricsSnapshot::keepalive_failures` counts non-events: a real NAS drops ECHO
+  precisely while it writes), `keepalive_probes_skipped`, or a rising `sent_age`.
 
-**To turn the teeth on**, `smb2` has to expose the conjunction it already computes internally as something
-**pollable**: `Connection::unresponsive_for() -> Option<Duration>`, `Some(quiet)` only when the keepalive is armed AND
-the wire has been silent for ≥ `LIVENESS_WINDOW_PROBES × keepalive_after` with a request outstanding — readable
-WITHOUT a request having burned its deadline first and WITHOUT the connection being torn down, since that window is
-the only place a Cmdr-side watchdog has anything to add. Then override `connection_liveness` on **`SmbVolume` alone**,
-mapping that to `Dead`, its absence to `Alive`, and "no keepalive armed / nothing outstanding" to `None`. Nothing else
-moves: the mechanism, the stillness window, the per-attempt re-arm, the guards, and the tests are all already here and
-gated only on that answer. ❌ Do NOT then drop the stillness window and trust the verdict, and do NOT assume the 180 s
-comes down at the same time — with a fallible verdict the debounce is doing real work rather than just waiting, so it
-is a tuning call to make against the keepalive's measured false-positive behavior.
+**What the reading can't see.** It covers the share's MAIN session, which every copy rides through `clone_session`. A
+task still parked on a connection a reconnect has since replaced is answered for by the new session; the old one is
+torn down, which fails that task's request on its own. A tree `smb2` resolves through a DFS referral to another server
+lives on an extra connection `SmbClient::connection()` doesn't return, so a copy riding one reads no verdict (`None`),
+which is the safe default.
+
+❌ Do NOT drop the stillness window and trust the verdict, and do NOT assume the 180 s can come down now: with a
+fallible verdict the debounce is doing real work rather than just waiting, so it is a tuning call to make against the
+keepalive's measured false-positive behavior. Pinned from both sides by
+`transfer_probe::tests::{a_live_connection_with_a_flat_byte_bar_is_never_aborted,
+the_watchdog_acts_once_a_still_task_s_connection_reads_dead}`: an `Alive` connection holds the abort off for a task
+whose bar has been flat for a minute (the ERR-CNK7M shape, a small SMB file in one compound read), and the first tick
+that reads `Dead` past the window acts.
 
 **Why the two conditions are ANDed, and why that is load-bearing rather than belt-and-braces.** The liveness verdict
 this gate reads is a keepalive result, and a keepalive false-positives under exactly the load a transfer creates.
@@ -883,11 +879,12 @@ narrower here: the abort only fires on a path that has been silent for three min
 was not working anyway. What it cannot cost is data at a real name — the write was staged, so the user's filename was
 never involved.
 
-**The worst case, stated (once the gate is open).** A file on a proven-dead path would be aborted, retried, aborted,
+**The worst case, stated.** A file on a proven-dead path would be aborted, retried, aborted,
 retried, aborted: three `STALL_ABORT_AFTER` windows plus the backoff, so **about nine minutes** before the operation
 reports the failure. Bounded where the incident was not (it needed a force-quit), and the UI heartbeats "stalled"
-throughout, but it is the obvious knob to tune when the keepalive lands: cap the stall-aborts per file at one, or
-shorten the window against the keepalive's own. Today it is unreachable — the gate is shut.
+throughout, but it is the obvious knob to tune: cap the stall-aborts per file at one, or shorten the window against
+the keepalive's own. On SMB it is rare in practice, because a session that reads `Dead` for long also fails its own
+requests (`Error::ServerUnresponsive`) well inside 180 s, and the retry gets there first.
 
 **A cancel does not reach a wedged write itself; a second tier does.** The backend learns about a cancel through its
 `on_progress` callback, which a wedged write never calls, so on the SERIAL path a Cancel is only observed once the write
@@ -896,10 +893,9 @@ dropping its in-flight futures at the drain deadline.
 
 The gate itself is pinned by `transfer_probe::tests::a_connection_with_no_liveness_verdict_is_never_aborted` — a
 volume answering `None` is never acted on however long it stays still, while the watchdog keeps reporting. That test is
-the one guarding against a future change quietly re-arming the teeth on a timer; ❌ don't delete it when the keepalive
-lands, re-point it. The tests that DO exercise the abort supply a `Dead` verdict through
-`liveness_test_support::dead_connection_volume()`, because without one they would be asserting on a path production
-cannot reach.
+the one guarding against a future change quietly re-arming the teeth on a timer; ❌ don't delete it. The tests that
+DO exercise the abort script the verdict through `liveness_test_support::ScriptedConnectionVolume` (or its
+`dead_connection_volume()` shorthand), because the one real backend that answers needs a server to.
 
 Also pinned by `transfer_probe::tests::{the_watchdog_ends_the_wait_on_a_task_that_stopped_moving,
 a_task_that_keeps_moving_is_never_aborted, a_deliberately_parked_task_is_never_aborted,

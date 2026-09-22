@@ -45,8 +45,8 @@ File map: `DETAILS.md` § Files.
   `on_progress` so the BACKEND deletes its own partial; ❌ never race a write against it. Tier 2
   (`state.backend_abort`, the quit deadline's) skips backend cleanup. DETAILS § "Two tiers of cancel".
 - **Retry is per-FILE, ONLY inside `stream_pipe_file`** (`retry.rs`): ❌ never higher, ❌ never on a `Cancelled`. **The
-  stall watchdog is GATED and inert** (`connection_liveness() == Dead` AND `STALL_ABORT_AFTER`, and nothing answers
-  `Dead`), so ❌ never collapse the AND.
+  stall watchdog is GATED** (`connection_liveness() == Dead` AND `STALL_ABORT_AFTER`; only SMB answers `Dead`), so ❌
+  never collapse the AND.
 
 Semantics, flows, decisions, and the staging/retry/auto-yield/stall contracts: `DETAILS.md`, read before non-trivial
 work here.

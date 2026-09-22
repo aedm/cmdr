@@ -466,9 +466,13 @@ pub struct SourceItemInfo {
 /// Produced by [`Volume::connection_liveness`](super::Volume::connection_liveness).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionLiveness {
-    /// The connection answered inside its keepalive window.
+    /// The server put a byte on the wire inside the liveness window, the bytes
+    /// of a response still arriving included.
     Alive,
-    /// The connection failed its keepalive: it is gone, not slow.
+    /// The keepalive is armed, a request is outstanding, and the server has put
+    /// nothing at all on the wire for a whole liveness window, probe replies
+    /// included: gone, not slow. Still evidence rather than a licence to act;
+    /// see [`Volume::connection_liveness`](super::Volume::connection_liveness).
     Dead,
 }
 

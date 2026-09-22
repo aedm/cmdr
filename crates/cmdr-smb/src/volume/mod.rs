@@ -23,6 +23,7 @@ use std::sync::RwLock as StdRwLock;
 use std::sync::atomic::{AtomicBool, AtomicU8, AtomicUsize};
 
 mod foreground_yield;
+mod liveness;
 mod mapping;
 mod mutation;
 mod paths;
@@ -300,6 +301,11 @@ struct SmbVolumeInner {
     /// lives behind an async mutex; `clone_session` refreshes it on the way
     /// through, which is every read and write this backend sends.
     credit_copy_capacity: AtomicUsize,
+    /// The connection the current `client` owns, readable without the client
+    /// mutex, so the transfer watchdog can ask whether the server is still talking
+    /// (`Volume::connection_liveness`) and how many bytes it has sent. Swapped in
+    /// lockstep with `client`; see [`liveness::LiveConnection`].
+    live_connection: liveness::LiveConnection,
     /// Everything this backend asks the application around it: the pane listings,
     /// the secret store, the file index, the frontend event channel, the live
     /// concurrency knob, and the runtime background work spawns onto. A value the
@@ -335,6 +341,7 @@ impl SmbVolume {
         let share_name = params.share_name.clone();
         let MountAnchor { mount_path, share_root } = anchor;
         let volume_id = volume_id.into();
+        let live_connection = liveness::LiveConnection::new(Some(client.connection().clone()));
         Self {
             name: name.into(),
             mount_path: mount_path.clone(),
@@ -359,6 +366,7 @@ impl SmbVolume {
                 scan_pool: tokio::sync::RwLock::new(None),
                 scan_session_refs: AtomicUsize::new(0),
                 credit_copy_capacity: AtomicUsize::new(0),
+                live_connection,
                 active_mount_path: Arc::new(StdRwLock::new(mount_path)),
                 host,
             }),
@@ -502,6 +510,7 @@ impl SmbVolume {
     pub async fn detach_session_for_test(&self) {
         let mut client_guard = self.inner.client.lock().await;
         *client_guard = None;
+        self.inner.live_connection.replace(None);
     }
 }
 

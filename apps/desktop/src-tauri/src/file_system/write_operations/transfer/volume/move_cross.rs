@@ -189,8 +189,8 @@ pub(crate) async fn move_volumes_with_progress(
         concurrency,
         total_files,
         // Both ends, so the watchdog can ask whether either connection has been
-        // PROVEN dead before it acts on a stall (no backend can answer that yet
-        // — see `Volume::connection_liveness`).
+        // PROVEN dead before it acts on a stall (only SMB can answer that; see
+        // `Volume::connection_liveness`).
         vec![Arc::clone(&source_volume), Arc::clone(&dest_volume)],
         Arc::clone(state),
         Arc::clone(&events),

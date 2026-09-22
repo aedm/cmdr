@@ -1339,24 +1339,37 @@ pub trait Volume: Send + Sync {
     /// caller ANDs it with its own stillness window. ❌ Don't add a caller that
     /// acts on this answer alone.
     ///
-    /// **Every backend answers `None` today, and that is the honest answer** —
-    /// including `SmbVolume` on `smb2` 0.16.0, which HAS the keepalive. The
-    /// keepalive deliberately declares no deaths (a busy NAS drops probes, so
-    /// `keepalive_failures` counts non-events), and the crate's one sound verdict,
-    /// `Error::ServerUnresponsive`, is handed to a caller and tears the connection
-    /// down — so by the time it is observable every waiter has already been
-    /// failed, which the transfer's per-file retry handles without this. ❌ Don't
-    /// answer `Dead` from a missed probe, a slow response, or elapsed silence.
-    ///
-    /// **To turn the watchdog's teeth on**, `smb2` has to expose that verdict as
-    /// pollable state — "the keepalive is armed AND the wire has been silent past
-    /// the liveness window with a request outstanding" — readable BEFORE a request
-    /// burns its deadline and without the connection being torn down. Then
-    /// override this on `SmbVolume` alone. Nothing else moves; the mechanism, its
-    /// stillness window, and its tests are already in place and gated only on this
-    /// answer. Full reasoning:
+    /// **`SmbVolume` answers from `smb2`'s own pollable reading**
+    /// (`Connection::liveness`, 0.23.0+): `Dead` only when the keepalive is armed,
+    /// a request is outstanding, and the server has put nothing at all on the wire
+    /// past the liveness window, ECHO replies and the bytes of a slow response
+    /// included; `Alive` when a byte landed inside that window; `None` otherwise.
+    /// The mapping and why each arm is what it is:
+    /// `crates/cmdr-smb/src/volume/liveness.rs`. Every other backend answers `None`, which is the honest answer for a
+    /// client with no keepalive. ❌ Don't answer `Dead` from a missed probe, a
+    /// slow response, or elapsed silence: only a reading that already tells slow
+    /// from dead qualifies. Full reasoning:
     /// `write_operations/transfer/DETAILS.md` § "The watchdog ACTS".
     fn connection_liveness(&self) -> Option<ConnectionLiveness> {
+        None
+    }
+
+    /// Payload bytes this volume's connection has received so far, counted as
+    /// they land, the part of a response still arriving included. `None` for a
+    /// backend with no connection to count, which is every backend but SMB.
+    ///
+    /// A RATE source, ❌ never progress: bytes inside a response that hasn't
+    /// completed are unverified (a signature or AEAD tag covers the whole
+    /// message), so crediting them to a byte bar would mean rolling it back when
+    /// a frame fails. It's also CONNECTION-wide: every request on the connection
+    /// shares one inbound stream, so with a listing and a copy in flight the
+    /// count is theirs together.
+    ///
+    /// Only ever compared against an earlier reading of the same volume, and it
+    /// can drop: a rebuilt session starts counting from zero. The transfer
+    /// watchdog reads a drop as "no rate this tick"
+    /// (`write_operations/transfer/transfer_probe.rs`).
+    fn connection_bytes_received(&self) -> Option<u64> {
         None
     }
 

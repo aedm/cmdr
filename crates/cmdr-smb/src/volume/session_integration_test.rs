@@ -88,6 +88,52 @@ async fn smb_integration_attempt_reconnect_rebuilds_session() {
     assert!(entries.iter().all(|e| e.name != "." && e.name != ".."));
 }
 
+/// The transfer watchdog asks `connection_liveness` whether to end a wait, so the
+/// answer has to come from the session a copy would ride NOW. After a rebuild the
+/// old connection is torn down; a reading left pointing at it would say
+/// `Disconnected` about a share that's working, or, worse, carry a dead session's
+/// verdict over to a live one.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_reconnect_repoints_the_liveness_reading() {
+    let vol = make_docker_volume().await;
+    let old = vol
+        .inner
+        .live_connection
+        .current()
+        .expect("a connected share has a reading");
+    assert!(
+        vol.connection_bytes_received().is_some_and(|b| b > 0),
+        "the handshake came in"
+    );
+
+    {
+        let mut client_guard = vol.inner.client.lock().await;
+        *client_guard = None;
+    }
+    vol.inner.transition_to_disconnected();
+    vol.inner
+        .do_attempt_reconnect()
+        .await
+        .expect("attempt_reconnect should succeed against a live Docker SMB");
+    old.mark_dead();
+
+    let current = vol
+        .inner
+        .live_connection
+        .current()
+        .expect("the rebuilt session is installed");
+    assert_eq!(old.liveness(), smb2::Liveness::Disconnected);
+    assert_ne!(
+        current.liveness(),
+        smb2::Liveness::Disconnected,
+        "the reading must follow the rebuilt session, not the one it replaced"
+    );
+    vol.list_directory_impl(Path::new(""))
+        .await
+        .expect("the rebuilt session works");
+}
+
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_attempt_reconnect_noop_when_already_direct() {
@@ -109,12 +155,6 @@ async fn smb_integration_attempt_reconnect_noop_when_already_direct() {
     );
 }
 
-/// can't reach: the pool is installed after `open_scan_pool`, a
-/// `list_directory_for_scan` through it returns the directory's contents, and
-/// `close_scan_pool` tears it back down (falling back to the main session).
-///
-/// Lists a UNIQUE seeded subdirectory, never the shared `public` root, whose
-/// entry count races with the many other tests mutating it in parallel.
 /// The scan-connection pool opens against a live server, serves a scan listing,
 /// and closes cleanly. Asserts the internals the server-free `scan_pool::tests`
 /// can't reach: the pool is installed after `open_scan_pool`, a

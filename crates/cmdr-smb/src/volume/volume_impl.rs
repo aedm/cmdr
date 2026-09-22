@@ -15,8 +15,8 @@ use super::{SmbVolume, foreground_yield};
 use cmdr_fs::entry::FileEntry;
 
 use cmdr_fs::volume::{
-    BatchScanResult, CopyScanResult, LaneKey, MutationEvent, ScanBoundary, ScanConflict, SourceItemInfo, SpaceInfo,
-    Volume, VolumeError, VolumeReadStream, WatchCoverage,
+    BatchScanResult, ConnectionLiveness, CopyScanResult, LaneKey, MutationEvent, ScanBoundary, ScanConflict,
+    SourceItemInfo, SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage,
 };
 use cmdr_fs::volume::{ListingProgress, Retirement};
 use log::debug;
@@ -204,6 +204,18 @@ impl Volume for SmbVolume {
         // the server to reap it. Contrast the read side (`supports_foreground_yield`):
         // both share this volume's per-share `foreground_pending` probe.
         true
+    }
+
+    fn connection_liveness(&self) -> Option<ConnectionLiveness> {
+        // smb2's own reading of the main session, off the handle swapped in
+        // lockstep with the client (`liveness.rs`, which also owns the mapping).
+        // Only the main session: a copy rides it via `clone_session`, and the scan
+        // pool's and the watcher's sessions carry no transfer bytes.
+        self.inner.live_connection.verdict()
+    }
+
+    fn connection_bytes_received(&self) -> Option<u64> {
+        self.inner.live_connection.bytes_received()
     }
 
     fn foreground_pending<'a>(&'a self) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
@@ -647,6 +659,7 @@ impl Volume for SmbVolume {
             let mut client_guard = self.inner.client.blocking_lock();
             *client_guard = None;
         }
+        self.inner.live_connection.replace(None);
 
         debug!("SmbVolume cleanup for {}: smb2 session dropped", self.inner.share_name);
     }

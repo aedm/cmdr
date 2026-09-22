@@ -7,7 +7,7 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
 
 - `src/volume/`: the backend — `mod.rs` (structs), `volume_impl.rs` (the whole `impl Volume`), and one module per
   concern (`paths`, `query`, `mutation`, `session`/`reconnect`/`state`, `scan`/`scan_pool`, `streams`, `mapping`,
-  `foreground_yield`, `watcher/`, `testing` for the Docker fixtures).
+  `foreground_yield`, `liveness`, `watcher/`, `testing` for the Docker fixtures).
 - `src/{types,errors,connection}.rs`: share-listing vocabulary, `smb2::Error` classification, the address builder.
   Re-exported at the root, so callers write `cmdr_smb::`.
 

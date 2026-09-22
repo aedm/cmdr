@@ -454,21 +454,15 @@ impl OperationProbe {
     ///
     /// One of the TWO conditions on the watchdog's aggressive action; see
     /// [`OperationProbe::track_and_abort_wedged_tasks`] for why this one alone is
-    /// never enough. `Volume::connection_liveness` answers `None` for every
-    /// backend in this workspace, so this is `false` in production and the
-    /// watchdog reports without acting. `smb2` 0.16.0's ECHO keepalive doesn't
-    /// change that: a missed probe is deliberately not a death verdict (a busy
-    /// NAS drops probes), and the sound verdict it does produce arrives as an
-    /// error that has already torn the connection down and failed every waiter.
-    /// ❌ Don't substitute elapsed silence, a missed probe, or a slow response
-    /// for this answer; that is the failure mode a keepalive exists to prevent,
-    /// and it kills healthy slow transfers.
-    ///
-    /// **To turn the teeth on**: `smb2` must first expose its own
-    /// "quiet past the liveness window with work outstanding" reading as
-    /// pollable state; then override `connection_liveness` on `SmbVolume`
-    /// against it. Nothing here changes. Full reasoning: `DETAILS.md`
-    /// § "The watchdog ACTS".
+    /// never enough. Only `SmbVolume` can say `Dead`, off `smb2`'s own pollable
+    /// reading: keepalive armed, a request outstanding, and nothing at all on
+    /// the wire for a whole liveness window, probe replies and the bytes of a
+    /// response still arriving included (mapping: `cmdr-smb`'s `liveness.rs`).
+    /// Every other backend answers `None`, so for them the watchdog reports
+    /// without acting. ❌ Don't substitute elapsed silence, a missed probe, or a
+    /// slow response for this answer; that is the failure mode a keepalive
+    /// exists to prevent, and it kills healthy slow transfers. Full reasoning:
+    /// `DETAILS.md` § "The watchdog ACTS".
     fn connection_proven_dead(&self) -> bool {
         self.volumes
             .iter()
@@ -502,11 +496,9 @@ impl OperationProbe {
     ///   ([`OperationProbe::connection_proven_dead`]) **AND** the stillness
     ///   window, never either alone. Elapsed silence is not proof of death: a
     ///   large write to a loaded spinning-disk NAS is legitimately slow, and
-    ///   killing it trades a rare wedge for frequent spurious failures.
-    ///   **No backend answers the liveness question**, so in production this
-    ///   method reports and never acts — the correct behavior until `smb2`
-    ///   exposes a verdict a consumer can poll before the connection is already
-    ///   torn down.
+    ///   killing it trades a rare wedge for frequent spurious failures. Only
+    ///   an SMB source or destination can supply the verdict; everything else
+    ///   is reported on and never acted on.
     /// - **Per-task, not per-operation.** A batch where any task is still moving
     ///   bytes leaves every other task's clock running on its own merits; only a
     ///   task that has itself gone quiet is a candidate.
@@ -536,8 +528,9 @@ impl OperationProbe {
         // `stall_abort_after`. Each condition covers the other's false positive,
         // so both are load-bearing and neither is belt-and-braces.
         //
-        // Without a verdict the loop below only maintains each task's clock,
-        // which is what keeps the dump and the UI honest while nothing escalates.
+        // Without a `Dead` verdict the loop below only maintains each task's
+        // clock, which is what keeps the dump and the UI honest while nothing
+        // escalates.
         let proven_dead = self.connection_proven_dead();
         let abort_after_ms = u64::try_from(self.stall_abort_after.as_millis()).unwrap_or(u64::MAX);
         for task in self.tasks.lock_ignore_poison().iter() {

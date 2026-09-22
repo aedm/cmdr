@@ -220,6 +220,10 @@ impl SmbVolumeInner {
         }
         {
             let mut client_guard = self.client.lock().await;
+            // Under the client lock, so no reader sees the new client paired with
+            // the old connection's liveness or the reverse for longer than it takes
+            // to swap a pointer.
+            self.live_connection.replace(Some(client.connection().clone()));
             *client_guard = Some(client);
         }
 

@@ -8,9 +8,10 @@
 
 use std::sync::atomic::AtomicUsize;
 
+use super::super::liveness_test_support::ScriptedConnectionVolume;
 use super::super::transfer_driver::LeafProgressLedger;
 use super::*;
-use crate::file_system::volume::Volume;
+use crate::file_system::volume::{ConnectionLiveness, Volume};
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 use crate::file_system::write_operations::test_support::{TestOperationGuard, placeholder_conflict};
 use crate::file_system::write_operations::types::{WriteOperationType, WriteProgressEvent};
@@ -19,9 +20,9 @@ use crate::file_system::write_operations::types::{WriteOperationType, WriteProgr
 /// dead, so a test can drive the watchdog past the window in a handful of
 /// synthetic ticks and see it act.
 ///
-/// The dead verdict is not decoration: the abort is gated on it, and no backend
-/// in this workspace can produce one yet (`Volume::connection_liveness`). A test
-/// that left the volumes at the honest `None` would be asserting nothing.
+/// The dead verdict is not decoration: the abort is gated on it, and the one
+/// backend that can produce it (`SmbVolume`) needs a server to. A test that left
+/// the volumes at the honest `None` would be asserting nothing.
 fn probe_with_abort_window(id: &str, state: &Arc<WriteOperationState>, window: Duration) -> Arc<OperationProbe> {
     let _guard = StallAbortGuard::set(window);
     probe_with(
@@ -32,7 +33,7 @@ fn probe_with_abort_window(id: &str, state: &Arc<WriteOperationState>, window: D
 }
 
 /// A probe whose volumes give the honest default answer: no evidence either way.
-/// This is what production looks like today.
+/// This is what every backend with no keepalive looks like.
 fn probe_for(id: &str, state: &Arc<WriteOperationState>) -> Arc<OperationProbe> {
     probe_with(id, state, Vec::new())
 }
@@ -676,11 +677,10 @@ fn two_rows_keep_their_own_stall_abort_signal_and_byte_count() {
 /// spinning-disk NAS is legitimately slow — so a volume that reports no verdict
 /// must never have its wait ended, however long it has been still.
 ///
-/// This is production today: no backend answers the liveness question, and
-/// `smb2` 0.16.0's keepalive doesn't change that (a missed probe is not death,
-/// and its sound verdict tears the connection down before anyone can read it).
-/// The watchdog keeps dumping the in-flight table and feeding the UI's stall
-/// signal, and acts on nothing.
+/// This is every backend but SMB, and SMB too whenever `smb2` reads the link as
+/// `Idle` or `Quiet` (nothing outstanding, or silence too short or with no
+/// keepalive to prove anything). The watchdog keeps dumping the in-flight table
+/// and feeding the UI's stall signal, and acts on nothing.
 /// Deleting this test would let a future change quietly re-arm the teeth on a
 /// timer.
 #[test]
@@ -689,7 +689,7 @@ fn a_connection_with_no_liveness_verdict_is_never_aborted() {
     let state = guard.state();
     let _window = StallAbortGuard::set(Duration::from_secs(1));
     // No volumes ⇒ nobody answers `connection_liveness`, exactly like every
-    // backend in the workspace today.
+    // backend with no keepalive.
     let probe = probe_for(guard.id(), state);
     let task = probe.begin_task(TaskRow::source(0), TaskRole::File, "/src/a", "/dst/a");
     task.probe().set_phase(TaskPhase::Streaming);
@@ -708,6 +708,70 @@ fn a_connection_with_no_liveness_verdict_is_never_aborted() {
     assert!(
         probe.still_for_seconds.load(Ordering::Relaxed) > 0,
         "the stall must still be visible to the UI and the log"
+    );
+}
+
+/// THE SLOW-BUT-ALIVE CASE, which is what ERR-CNK7M looked like from inside: a
+/// small SMB file read in ONE compound request, so the task's byte counter sits
+/// at zero until the whole response has landed, however long that takes. The
+/// connection is visibly alive meanwhile (bytes of the response keep arriving,
+/// or probes keep being answered), and a flat bar is not a wedge. `Alive` must
+/// hold the watchdog off for as long as it lasts, far past the stillness window.
+#[test]
+fn a_live_connection_with_a_flat_byte_bar_is_never_aborted() {
+    let guard = TestOperationGuard::register("probe-abort-alive");
+    let state = guard.state();
+    let _window = StallAbortGuard::set(Duration::from_secs(2));
+    let source = ScriptedConnectionVolume::new();
+    source.set_liveness(Some(ConnectionLiveness::Alive));
+    let probe = probe_with(guard.id(), state, vec![Arc::clone(&source) as Arc<dyn Volume>]);
+
+    let task = probe.begin_task(TaskRow::source(0), TaskRole::File, "/src/a.png", "/dst/a.png");
+    task.probe().set_phase(TaskPhase::OpeningSource);
+    let signal = task.probe().arm_stall_abort();
+
+    let mut watchdog = WatchdogState::new();
+    for tick in 1..=60 {
+        // In-frame bytes: they reach the connection, never the task's counter.
+        source.receive(19_000);
+        probe.watchdog_step(&mut watchdog, Duration::from_secs(tick));
+    }
+
+    assert!(
+        !signal.is_cancelled(),
+        "a connection still delivering is slow, not dead, however flat the bar"
+    );
+}
+
+/// The same task, once the connection DOES read dead: the AND holds from both
+/// sides. The stillness window already ran out while the verdict was `Alive`, so
+/// the first tick that reads `Dead` is the one that acts. That is the shape of a
+/// server that answered for a while and then went silent for a whole liveness
+/// window, probes included.
+#[test]
+fn the_watchdog_acts_once_a_still_task_s_connection_reads_dead() {
+    let guard = TestOperationGuard::register("probe-abort-turns-dead");
+    let state = guard.state();
+    let _window = StallAbortGuard::set(Duration::from_secs(2));
+    let source = ScriptedConnectionVolume::new();
+    source.set_liveness(Some(ConnectionLiveness::Alive));
+    let probe = probe_with(guard.id(), state, vec![Arc::clone(&source) as Arc<dyn Volume>]);
+
+    let task = probe.begin_task(TaskRow::source(0), TaskRole::File, "/src/a.png", "/dst/a.png");
+    task.probe().set_phase(TaskPhase::OpeningSource);
+    let signal = task.probe().arm_stall_abort();
+
+    let mut watchdog = WatchdogState::new();
+    for tick in 1..=10 {
+        probe.watchdog_step(&mut watchdog, Duration::from_secs(tick));
+    }
+    assert!(!signal.is_cancelled(), "alive, so still left alone");
+
+    source.set_liveness(Some(ConnectionLiveness::Dead));
+    probe.watchdog_step(&mut watchdog, Duration::from_secs(11));
+    assert!(
+        signal.is_cancelled(),
+        "a task that hasn't moved past the window, on a connection proven dead, gets its wait ended"
     );
 }
 

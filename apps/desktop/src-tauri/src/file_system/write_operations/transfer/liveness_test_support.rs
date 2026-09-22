@@ -1,15 +1,14 @@
-//! A volume that reports its connection PROVEN dead, standing in for a verdict
-//! no real backend can give.
+//! A volume whose connection says whatever the test tells it to: a liveness
+//! verdict, and a running count of bytes received.
 //!
 //! The stall watchdog's one aggressive action is gated on
-//! `Volume::connection_liveness` answering `Dead`, and NO backend in this
-//! workspace answers that — `smb2` 0.16.0's keepalive deliberately never reads a
-//! missed probe as death, and its sound verdict arrives only as an error that has
-//! already torn the connection down.
-//! So without this double every "the watchdog acts" test would be exercising a
-//! path production cannot reach, and the gate would be trusted rather than
-//! pinned. Its twin is the trait default (`None`), which
-//! `transfer_probe_tests::a_connection_with_no_liveness_verdict_is_never_aborted`
+//! `Volume::connection_liveness` answering `Dead`, and its live receive rate on
+//! `Volume::connection_bytes_received`. The one real backend that answers both
+//! (`SmbVolume`, off `smb2`'s own readings) needs a server to produce either, so
+//! the watchdog's suites script the answers here instead. A test can flip the
+//! verdict mid-run, which is how the AND between the verdict and the stillness
+//! window gets pinned from both sides. Its twin is the trait default (`None`),
+//! which `transfer_probe_tests::a_connection_with_no_liveness_verdict_is_never_aborted`
 //! uses to prove a volume with no verdict is only ever reported on.
 //!
 //! Lives at the `transfer/` level because two sibling suites need it:
@@ -20,23 +19,61 @@ use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{ConnectionLiveness, InMemoryVolume, ListingProgress, Volume, VolumeError};
 
-pub(crate) struct DeadConnectionVolume {
+/// No byte count at all, as opposed to a count of zero.
+const NO_COUNT: u64 = u64::MAX;
+
+pub(crate) struct ScriptedConnectionVolume {
     inner: Arc<InMemoryVolume>,
+    /// 0 = no verdict, 1 = alive, 2 = dead.
+    liveness: AtomicU8,
+    bytes_received: AtomicU64,
 }
 
-/// A volume whose connection is proven dead. Only `connection_liveness` matters;
-/// everything else delegates so it stays usable wherever a `Volume` is wanted.
+impl ScriptedConnectionVolume {
+    /// A connection with no verdict and no byte count: what every backend but SMB
+    /// answers.
+    pub(crate) fn new() -> Arc<Self> {
+        Arc::new(Self {
+            inner: Arc::new(InMemoryVolume::new("scripted-connection")),
+            liveness: AtomicU8::new(0),
+            bytes_received: AtomicU64::new(NO_COUNT),
+        })
+    }
+
+    pub(crate) fn set_liveness(&self, verdict: Option<ConnectionLiveness>) {
+        let v = match verdict {
+            None => 0,
+            Some(ConnectionLiveness::Alive) => 1,
+            Some(ConnectionLiveness::Dead) => 2,
+        };
+        self.liveness.store(v, Ordering::Relaxed);
+    }
+
+    /// `n` more bytes arrived on the connection. Starts the count at zero if
+    /// there wasn't one.
+    pub(crate) fn receive(&self, n: u64) {
+        let _ = self
+            .bytes_received
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |b| {
+                Some(if b == NO_COUNT { n } else { b + n })
+            });
+    }
+}
+
+/// A volume whose connection is proven dead, for the tests where only that
+/// matters.
 pub(crate) fn dead_connection_volume() -> Arc<dyn Volume> {
-    Arc::new(DeadConnectionVolume {
-        inner: Arc::new(InMemoryVolume::new("dead-connection")),
-    }) as Arc<dyn Volume>
+    let volume = ScriptedConnectionVolume::new();
+    volume.set_liveness(Some(ConnectionLiveness::Dead));
+    volume as Arc<dyn Volume>
 }
 
-impl Volume for DeadConnectionVolume {
+impl Volume for ScriptedConnectionVolume {
     fn name(&self) -> &str {
         self.inner.name()
     }
@@ -69,6 +106,16 @@ impl Volume for DeadConnectionVolume {
         self.inner.is_directory(path)
     }
     fn connection_liveness(&self) -> Option<ConnectionLiveness> {
-        Some(ConnectionLiveness::Dead)
+        match self.liveness.load(Ordering::Relaxed) {
+            1 => Some(ConnectionLiveness::Alive),
+            2 => Some(ConnectionLiveness::Dead),
+            _ => None,
+        }
+    }
+    fn connection_bytes_received(&self) -> Option<u64> {
+        match self.bytes_received.load(Ordering::Relaxed) {
+            NO_COUNT => None,
+            n => Some(n),
+        }
     }
 }
