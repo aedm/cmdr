@@ -981,8 +981,8 @@ switcher's port is what moved them here):
 - **The single-cursor rule**: an open submenu takes the parent row's highlight (`parentHighlightSuppressed`), and a
   submenu opened by hovering its parent row shows no cursor until the pointer or the keyboard reaches into it.
 - **A submenu's cursor is a VALUE too** (`submenuHighlightedValue`), so render against it per row. ❌ Never a boolean:
-  that lights every row of a multi-item submenu, which today's one-row "Connect directly" would have hidden until the
-  second consumer added a second row.
+  that lights every row of a multi-item submenu, which a one-row submenu (the switcher's share submenu today) hides
+  until a second row arrives.
 - ❗ **The measure-and-focus `$effect` depends on `surfaceEl`, ❌ never on `menu.isOpen` alone.** Ark's `Portal` mounts
   its children inside a `tick().then(…)` of its own, so an effect keyed on open state alone runs its only pass before
   the node exists, bails, and never re-runs: the surface keeps the `visibility: hidden` it starts with while the menu

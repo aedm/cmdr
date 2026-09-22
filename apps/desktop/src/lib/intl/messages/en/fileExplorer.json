@@ -1934,7 +1934,7 @@
   },
   "fileExplorer.navigation.connectDirectly": "Connect directly for faster access",
   "@fileExplorer.navigation.connectDirectly": {
-    "description": "Menu item (in the breadcrumb popup and the dropdown submenu) that upgrades an OS-mounted network share to a faster direct connection.",
+    "description": "Menu item (in the popup under the network share's amber connection dot, next to the pane's volume name) that upgrades an OS-mounted network share to a faster direct connection.",
     "screenshot": "pane-volume-chooser.png"
   },
   "fileExplorer.navigation.useDirectConnection": "Use Cmdr''s fast direct connection",

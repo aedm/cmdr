@@ -22,7 +22,7 @@ Signing in is `$lib/servers`' one sheet; this module only says what to ask and w
 - **❌ Never ask the Keychain twice**: each access can raise a system prompt. No `hasSmbCredentials` pre-check before
   `getSmbCredentials`, and share activation never pre-prompts (`activateShare`): try stored creds, mount, and let the
   mount's own refusal ask (`PlacesBrowser.test.ts` pins it).
-- **`direct-connect.ts::connectDirectly` is the ONE upgrade flow** (the yellow dot, the breadcrumb submenu, the fallback
+- **`direct-connect.ts::connectDirectly` is the ONE upgrade flow** (the chip's yellow dot, the switcher's direct-connection switch, the fallback
   notice): route a new entry point through it. Every answer is a typed `UpgradeResult` status worded by
   `upgrade-messages.ts`; ❌ never toast `String(e)`.
 - **A credential is asked for on the sheet and ❌ never in the pane**, through `smb-sign-in.ts`. The three sites, what

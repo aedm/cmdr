@@ -37,11 +37,17 @@ const stubs = vi.hoisted(() => ({
   indexStatus: null as Record<string, unknown> | null,
   /** What `resolvePathVolume` answers: the volume the checkmark tracks. */
   containingVolumeId: 'root',
+  /**
+   * What Rust answers for a share's "Use Cmdr's fast direct connection" switch. `null`
+   * means no switch, so no row: what every block here except the share submenu's wants.
+   */
+  directSwitch: null as boolean | null,
 }))
 
 const connectDirectly = vi.fn(() => Promise.resolve({ kind: 'connected' }))
+const setSmbDirectConnectionEnabled = vi.fn(() => Promise.resolve('saved'))
 
-// The submenu's one action. The component is the only importer here, so a factory
+// What checking a share's direct-connection switch runs. The component is the only importer here, so a factory
 // mock costs nothing else.
 vi.mock('../network/direct-connect', () => ({
   connectDirectly: (...args: unknown[]) => connectDirectly(...(args as [])),
@@ -79,6 +85,8 @@ vi.mock('$lib/tauri-commands', () => ({
   forgetServerSecret: vi.fn(() => Promise.resolve(true)),
   hasServerSecret: (...args: unknown[]) => hasServerSecret(...(args as [])),
   listSavedServers: () => listSavedServers(),
+  getSmbDirectConnectionEnabled: () => Promise.resolve(stubs.directSwitch),
+  setSmbDirectConnectionEnabled: (...args: unknown[]) => setSmbDirectConnectionEnabled(...(args as [])),
   addFavorite: vi.fn(() => Promise.resolve()),
   trackEvent: vi.fn(() => Promise.resolve()),
   // The favorites menu the chip also hosts subscribes on mount; its own picks are
@@ -667,10 +675,10 @@ describe('VolumeBreadcrumb keyboard vs pointer mode', () => {
 })
 
 /**
- * The "Connect directly" submenu on a share the OS mounted for us. Pointer and
- * keyboard both reach it, and while it's up it owns the only visible cursor.
+ * A share's submenu, which holds its "Use Cmdr's fast direct connection" switch. Pointer
+ * and keyboard both reach it, and while it's up it owns the only visible cursor.
  */
-describe('VolumeBreadcrumb os_mount submenu', () => {
+describe('VolumeBreadcrumb share submenu', () => {
   const share = {
     id: 'volumes-share',
     name: 'Share',
@@ -687,22 +695,30 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     stubs.volumes = null
+    stubs.directSwitch = true
     connectDirectly.mockClear()
+    setSmbDirectConnectionEnabled.mockClear()
   })
 
-  it('opens the submenu when the pointer rests on the row', async () => {
-    await openWithRows([share])
-    expect(document.querySelector('[data-menu-submenu]')).toBeNull()
+  afterEach(() => {
+    stubs.directSwitch = null
+  })
 
-    volumeRows()[SHARE_ROW].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+  /** Opens the switcher on `rows`, then lets the switch values Rust answers land. */
+  async function openWithSwitches(rows: unknown[]): Promise<{ instance: BreadcrumbInstance }> {
+    const opened = await openWithRows(rows)
+    await settle()
+    return opened
+  }
+
+  async function settle(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0))
     await tick()
     flushSync()
-    expect(document.querySelector('[data-menu-submenu]')).toBeTruthy()
-  })
+  }
 
-  it('ArrowRight opens it at the highlight, and ArrowLeft closes it again', async () => {
-    await openWithRows([share])
-
+  /** Highlights the share row, then opens its submenu. */
+  async function openShareSubmenu(): Promise<void> {
     // Two steps down: the menu leads with the "See N favorites" row, then the hub.
     press('ArrowDown')
     press('ArrowDown')
@@ -711,6 +727,60 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
     expect(press('ArrowRight')).toBe(true)
     await tick()
     flushSync()
+  }
+
+  function submenuRows(): HTMLElement[] {
+    return [...document.querySelectorAll<HTMLElement>('[data-menu-submenu] [data-menu-row]')]
+  }
+
+  it('opens the submenu when the pointer rests on the row', async () => {
+    await openWithSwitches([share])
+    expect(document.querySelector('[data-menu-submenu]')).toBeNull()
+
+    volumeRows()[SHARE_ROW].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    await tick()
+    flushSync()
+    expect(document.querySelector('[data-menu-submenu]')).toBeTruthy()
+  })
+
+  // The switch is the one way in from here: checking it on a share the OS mounted runs
+  // "Connect directly", so a second row offering the same thing only reads as a riddle.
+  it("an OS-mounted share's submenu holds the switch row alone", async () => {
+    await openWithSwitches([share])
+    await openShareSubmenu()
+
+    const rows = submenuRows()
+    expect(rows).toHaveLength(1)
+    expect(rows[0].textContent).toContain("Use Cmdr's fast direct connection")
+    expect(rows[0].hasAttribute('data-checked')).toBe(true)
+  })
+
+  it('a share Rust has no switch for gets no submenu', async () => {
+    stubs.directSwitch = null
+    await openWithSwitches([share])
+
+    volumeRows()[SHARE_ROW].dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    await tick()
+    flushSync()
+    expect(document.querySelector('[data-menu-submenu]')).toBeNull()
+  })
+
+  it('checking the switch on an OS-mounted share runs "Connect directly" for it', async () => {
+    stubs.directSwitch = false
+    await openWithSwitches([share])
+    await openShareSubmenu()
+
+    expect(press('Enter')).toBe(true)
+    await settle()
+    expect(setSmbDirectConnectionEnabled).toHaveBeenCalledWith('volumes-share', true)
+    // The share's NAME rides along, read while the row is still listed: it's what
+    // words the answer if the share goes away before the backend gets there.
+    expect(connectDirectly).toHaveBeenCalledWith({ volumeId: 'volumes-share', shareName: 'Share' })
+  })
+
+  it('ArrowRight opens it at the highlight, and ArrowLeft closes it again', async () => {
+    await openWithSwitches([share])
+    await openShareSubmenu()
     expect(document.querySelector('[data-menu-submenu]')).toBeTruthy()
 
     expect(press('ArrowLeft')).toBe(true)
@@ -722,14 +792,8 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
   // Escape belongs to the submenu while the submenu is up: it backs out one level
   // rather than dropping the whole switcher.
   it('Escape closes the submenu and leaves the switcher open', async () => {
-    const { instance } = await openWithRows([share])
-    press('ArrowDown')
-    press('ArrowDown')
-    await tick()
-    flushSync()
-    press('ArrowRight')
-    await tick()
-    flushSync()
+    const { instance } = await openWithSwitches([share])
+    await openShareSubmenu()
 
     expect(press('Escape')).toBe(true)
     await tick()
@@ -740,7 +804,7 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
   })
 
   it('suppresses the parent row highlight while the submenu is up (one cursor at a time)', async () => {
-    await openWithRows([share])
+    await openWithSwitches([share])
     press('ArrowDown')
     press('ArrowDown')
     await tick()
@@ -753,24 +817,6 @@ describe('VolumeBreadcrumb os_mount submenu', () => {
     flushSync()
     expect(document.querySelector('[data-menu-submenu] [data-menu-row][data-highlighted]')).toBeTruthy()
     expect(isHighlighted(rows[SHARE_ROW])).toBe(false)
-  })
-
-  it('Enter runs "Connect directly" for the row the submenu belongs to', async () => {
-    await openWithRows([share])
-    press('ArrowDown')
-    press('ArrowDown')
-    await tick()
-    flushSync()
-    press('ArrowRight')
-    await tick()
-    flushSync()
-
-    expect(press('Enter')).toBe(true)
-    await tick()
-    flushSync()
-    // The share's NAME rides along, read while the row is still listed: it's what
-    // words the answer if the share goes away before the backend gets there.
-    expect(connectDirectly).toHaveBeenCalledWith({ volumeId: 'volumes-share', shareName: 'Share' })
   })
 })
 

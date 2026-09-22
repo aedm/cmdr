@@ -233,8 +233,9 @@ User activates the "Add server…" row → the sign-in sheet opens in add mode
 ## Connect directly
 
 `direct-connect.ts::connectDirectly({ volumeId, shareName })` is the single implementation behind every "turn this
-OS-mounted share into a direct smb2 session" affordance: the yellow-dot popup and the dropdown submenu in
-`../navigation/VolumeBreadcrumb.svelte`, and the retry button on the OS-mount fallback notice.
+OS-mounted share into a direct smb2 session" affordance: the yellow-dot popup in `../navigation/VolumeBreadcrumb.svelte`, checking the switcher's "Use Cmdr's fast
+direct connection" row on an OS-mounted share (`../navigation/direct-connection-switch.svelte.ts`), and the retry
+button on the OS-mount fallback notice.
 
 The sequence, and who speaks at each step:
 
@@ -300,7 +301,7 @@ Which reasons are which, and the two look-alikes that never arrive as this one: 
 "Telling the user about a kernel-mount fallback".
 
 **Dismissal watches the volume list, not the button.** A share can reach a direct session four ways: this notice's
-button, the yellow dot, the breadcrumb submenu, and the pane's credential form after a working password. All four end in
+button, the chip's yellow dot, the switcher's direct-connection switch, and the pane's credential form after a working password. All four end in
 `register_replacing_predecessor`, which broadcasts the volume list, so the bridge dismisses on any `volumes-changed`
 carrying that volume as `direct`. One rule covers every route, and a fifth route can't forget it. A share that goes AWAY
 broadcasts the list too, so a notice whose volume is no longer listed retires the same way: its button could only say

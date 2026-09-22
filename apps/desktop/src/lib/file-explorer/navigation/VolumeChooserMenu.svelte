@@ -41,7 +41,6 @@
     import DriveIndexBadge from './DriveIndexBadge.svelte'
     import ImageIndexDriveBadge from './ImageIndexDriveBadge.svelte'
     import UsbSpeedDot from './UsbSpeedDot.svelte'
-    import { connectDirectlyToRow } from './connect-directly-row'
     import { createDirectConnectionSwitches } from './direct-connection-switch.svelte'
     import { detachControlFor } from './detach-control'
     import { runDetach } from './detach-volume'
@@ -110,8 +109,7 @@
     const allVolumes = $derived(groupedVolumes.flatMap((g) => g.items))
     const favoritesCount = $derived(volumes.filter((v) => v.category === 'favorite').length)
 
-    /** A submenu row's value, so a pick tells itself apart from the volume rows. */
-    const CONNECT_PREFIX = 'connect:'
+    /** The submenu row's value, so a pick tells itself apart from the volume rows. */
     const DIRECT_SWITCH_PREFIX = 'direct-switch:'
 
     const directSwitches = createDirectConnectionSwitches()
@@ -132,27 +130,23 @@
     }
 
     /**
-     * An SMB share's submenu. A share the OS mounted for us offers the direct session it
-     * could have instead, and every share Rust knows a switch for carries it as a checkbox
-     * row, so a direct share can be sent back to the macOS mount from here too. ❗ Picking
-     * a submenu row closes the whole menu before `onSelect`, so nobody sees the check flip:
-     * the next open shows it, re-read from Rust.
+     * An SMB share's submenu: its "Use Cmdr's fast direct connection" checkbox row, on
+     * every share Rust knows a switch for, direct ones too, so a direct share can go back
+     * to the macOS mount from here. It's the one row: checking it on a share the OS mounted
+     * runs "Connect directly". ❗ Picking a submenu row closes the whole menu before
+     * `onSelect`, so nobody sees the check flip: the next open shows it, re-read from Rust.
      */
     function shareSubmenu(volume: VolumeInfo): MenuItem<VolumeInfo>[] | undefined {
-        const rows: MenuItem<VolumeInfo>[] = []
-        if (volume.connectionState === 'os_mount') {
-            rows.push({ value: `${CONNECT_PREFIX}${volume.id}`, label: tString('fileExplorer.navigation.connectDirectly') })
-        }
         const directEnabled = directSwitches.valueFor(volume.id)
-        if (directEnabled !== undefined) {
-            rows.push({
+        if (directEnabled === undefined) return undefined
+        return [
+            {
                 value: `${DIRECT_SWITCH_PREFIX}${volume.id}`,
                 label: tString('fileExplorer.navigation.useDirectConnection'),
                 checked: directEnabled,
                 data: volume,
-            })
-        }
-        return rows.length > 0 ? rows : undefined
+            },
+        ]
     }
 
     function toMenuItem(volume: VolumeInfo): MenuItem<VolumeInfo> {
@@ -267,10 +261,6 @@
     async function handleSelect(item: MenuItem<VolumeInfo>): Promise<void> {
         if (item.value === SEE_FAVORITES_VALUE) {
             onShowFavorites('switcher_row')
-            return
-        }
-        if (item.value.startsWith(CONNECT_PREFIX)) {
-            await connectDirectlyToRow(item.value.slice(CONNECT_PREFIX.length), volumes)
             return
         }
         if (item.value.startsWith(DIRECT_SWITCH_PREFIX)) {

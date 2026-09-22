@@ -301,22 +301,25 @@ its OWN tooltip sentence (`getConnectionTooltip`, a `Record` over the union, so 
 SFTP server hovered as "Using system connection".
 
 ❌ Never read `connectionState` with `!= null` — `connection-state.ts` holds the named predicates (`hasReconnectLoop`,
-`isLiveSession`, `showsDisconnect`), and `eject-predicate.ts` composes two of them. Yellow state has a submenu trigger
-in the dropdown and a clickable button (circle + down arrow) in the breadcrumb, both opening a "Connect directly for
-faster access" menu item. Clicking it hands off to `connectDirectly` in `../network/direct-connect.ts`, which owns the
-whole flow (stored credentials → saved-password probe → login form) and every toast along it; the OS-mount fallback
-notice presses the same function. This component hands it the volume id and the share's name, read while the row is
-still listed: the name is what words the answer if the share goes away before the backend gets there. A credential
-question opens the one sign-in sheet, which the flow raises itself. The flow itself: `../network/DETAILS.md` § "Connect
-directly". In the switcher it's a `MenuItem.submenu` row, so the primitive carries the keyboard (ArrowRight opens,
-ArrowLeft / Escape closes, Enter activates) and the single-cursor rule.
+`isLiveSession`, `showsDisconnect`), and `eject-predicate.ts` composes two of them. On the chip, yellow state is a
+clickable button (circle + down arrow) opening a "Connect directly for faster access" item. Clicking it runs
+`connectDirectlyToRow`, which hands off to `connectDirectly` in `../network/direct-connect.ts`, the one flow (stored
+credentials → saved-password probe → login form) and every toast along it; the OS-mount fallback notice presses the
+same function. The helper passes the volume id and the share's name, read while the row is still listed: the name is
+what words the answer if the share goes away before the backend gets there. A credential question opens the one sign-in
+sheet, which the flow raises itself. The flow itself: `../network/DETAILS.md` § "Connect directly".
 
-The same submenu carries the per-share "Use Cmdr's fast direct connection" checkbox row, on every SMB share row (direct
-ones too, so a direct share can go back to the macOS mount). `direct-connection-switch.svelte.ts` owns it: it asks Rust
-for each SMB share row's value when the switcher opens (`null` means no switch, so no row), and a pick flips it. Rust
-does what OFF means (a direct share goes back to the OS mount at once, and `volumes-changed` repaints the dot); ON only
-saves there, so a share still on the OS mount then runs `connectDirectlyToRow`. What the switch is and where it's
-enforced: `src-tauri/src/network/DETAILS.md` § "The per-share direct-connection switch".
+In the switcher, every SMB share row (direct ones too, so a direct share can go back to the macOS mount) carries a
+`MenuItem.submenu` holding ONE row: the per-share "Use Cmdr's fast direct connection" checkbox. The primitive carries
+the keyboard (ArrowRight opens, ArrowLeft / Escape closes, Enter activates) and the single-cursor rule.
+`direct-connection-switch.svelte.ts` owns the row: it asks Rust for each SMB share row's value when the switcher opens
+(`null` means no switch, so no submenu), and a pick flips it. Rust does what OFF means (a direct share goes back to the
+OS mount at once, and `volumes-changed` repaints the dot); ON only saves there, so a share still on the OS mount then
+runs `connectDirectlyToRow`. That's why the submenu has no separate "Connect directly" row: checking the box IS that
+action, and two rows saying the same thing read as a riddle. ❗ An OS-mounted share whose switch is already ON (the
+auto upgrade couldn't dial, say, for want of credentials) shows a checked box, so from the switcher "Connect directly"
+takes unchecking and re-checking; the chip's yellow dot and the fallback notice offer it in one click. What the switch
+is and where it's enforced: `src-tauri/src/network/DETAILS.md` § "The per-share direct-connection switch".
 
 ### Eject button + row context menu
 
