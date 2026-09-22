@@ -23,6 +23,20 @@ fn only_the_ids_minted_for_a_mount_are_mount_backed() {
     assert!(!is_mount_backed_volume_id(&adb_volume_id("R58M12345")));
 }
 
+#[test]
+fn only_an_smb_share_has_an_smb_volume_id() {
+    // The pane-open SMB upgrade reads this before it looks at the mount table, so
+    // a local navigation never pays for that read.
+    assert!(is_smb_volume_id(&smb_volume_id("naspolya", 445, "public")));
+    assert!(is_smb_volume_id(&smb_volume_id("192.168.1.111", 10480, "naspi")));
+
+    assert!(!is_smb_volume_id(DEFAULT_VOLUME_ID));
+    assert!(!is_smb_volume_id(&path_volume_id("/Volumes/smb-lookalike")));
+    assert!(!is_smb_volume_id(&local_volume_id(None, "/Volumes/smb")));
+    assert!(!is_smb_volume_id(&sftp_volume_id("naspolya", 22, "ada")));
+    assert!(!is_smb_volume_id(&webdav_volume_id("naspolya", 443, "ada")));
+}
+
 // ── The property the whole module exists for: injectivity ─────────────
 
 #[test]

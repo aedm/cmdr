@@ -26,7 +26,8 @@ of the app build.
   - `smb_smbclient.rs`: `smbclient -L` fallback for Linux (requires `samba-client` package)
   - `linux_distro.rs`: Thin wrapper calling `crate::linux_distro::LinuxDistro` for smbclient install hints; `cfg(target_os = "linux")` gated
   - The protocol layer under all of them is the `cmdr-smb` crate: the addr builder, the guest / authenticated `smb2::SmbClient` listing calls, the `classify_*` / `is_auth_error` classification, and the `ShareInfo` / `AuthMode` / `ShareListResult` / `ShareListError` vocabulary. `crates/cmdr-smb/DETAILS.md` says what belongs there and what stays here
-  - `smb_upgrade.rs`: Upgrade OS-mounted SMB volumes to direct smb2 connections. Shared by three upgrade paths (startup, mount-time watcher, manual "Connect directly"). Contains `register_smb_volume`, `resolve_and_register_smb_volume` (the shared resolve+creds+register used by both fire-and-forget auto-upgrade paths), `try_smb_upgrade`, the per-volume upgrade lock, and the bounded mount-identity read.
+  - `smb_upgrade.rs`: Upgrade OS-mounted SMB volumes to direct smb2 connections. Shared by four upgrade paths (startup, mount-time watcher, pane-open, manual "Connect directly"). Contains `shares_to_adopt` (the adopter pass's pick from the kernel mount table), `register_smb_volume`, `resolve_and_register_smb_volume` (the shared resolve+creds+register used by all three fire-and-forget auto-upgrade paths), `try_smb_upgrade`, the per-volume upgrade lock, and the bounded mount-identity read.
+  - `smb_pane_upgrade.rs`: the pane-open upgrade. A pane landing on an OS-mounted share Cmdr hasn't upgraded tries the direct connection for that one share, behind a per-share cooldown (§ "A pane on an OS-mounted share tries the direct connection").
   - `smb_server_address.rs`: who a `statfs` server string is: what to dial (`resolve_server_address`, § "A server nothing has discovered is not dialed"), what to call it (`friendly_server_name`, `resolve_ip_to_hostname*`), and which saved credentials go with it (`get_keychain_password`, `system_keychain_aliases`). Shared by `smb_upgrade.rs` and `smb_connect_directly.rs`, so the auto and manual upgrade paths can't disagree about which server a mount is.
   - `smb_connect_failure.rs`: why an smb2 connect didn't get in, read by type. A `Refusal` (who the attempt went out as, and whether sign-in or the share said no, with the log advice for each) or an `UpgradeFailure`; plus `UpgradeError` and `log_direct_connect_failure`. Shared by `share_access.rs` and both upgrade paths (§ "An auth rejection says what was actually rejected").
   - `smb_connect_directly.rs`: the manual "Connect directly" upgrade, with Cmdr's stored credentials, the sign-in sheet's, or Finder's saved password. Behind the three `upgrade_to_smb_volume*` commands, the MCP `upgrade_smb_to_direct` tool, and the indexer's `ensure_direct_smb`. Owns `UpgradeResult` (§ "Connect directly answers a gone volume").
@@ -538,11 +539,10 @@ watching a spinner, so a notice there would say the same thing twice.
 
 **Each auto caller states whether it may speak, as a `FallbackNotice`** (`os_mount_notice.rs`), threaded through
 `resolve_and_register_smb_volume` and `register_smb_volume` into `announce_os_mount_fallback`. ❌ It has no `Default`,
-so a new trigger (the pane-open upgrade in issue #123) must answer the question at the type level rather than inherit
-an answer.
+so a new trigger must answer the question at the type level rather than inherit an answer.
 
 - `Announce`: someone is looking at the share now. The FSEvents mount watcher (usually a share mounted in Finder a
-  moment ago), `mount_network_share` (Cmdr's own connect), and a pane landing on the share.
+  moment ago), `mount_network_share` (Cmdr's own connect), and the pane-open upgrade (`smb_pane_upgrade.rs`).
 - `StayQuiet`: nobody asked. The adopter pass (`file_system::upgrade_existing_smb_mounts`), at launch and on each
   networking intent. A notice arriving unprompted at launch read to an early user as Cmdr reaching out to their NAS
   uninvited and something breaking, while the share worked all along (issue #128). The yellow `os_mount` dot still
@@ -611,8 +611,9 @@ the `statfs` name and the address it resolved, so discovery that has just resolv
 
 **The gate: `known_shares::direct_connection_enabled`, read in `register_smb_volume` under `lock_volume_upgrade`, right
 after `is_already_direct`.** Act time, like the direct re-check, so a switch flipped during the mDNS wait counts. The
-startup pass, the FSEvents mount watcher, and Cmdr's own `mount_network_share` all funnel through there. ❗ **Any new
-auto trigger (the pane-open upgrade in issue #123) must reach the dial through `register_smb_volume` /
+startup pass, the FSEvents mount watcher, the pane-open upgrade, and Cmdr's own `mount_network_share` all funnel
+through there (the pane-open upgrade also reads the switch early, only to skip a pointless mDNS wait and Keychain
+lookup). ❗ **Any new auto trigger must reach the dial through `register_smb_volume` /
 `resolve_and_register_smb_volume`, or call `direct_connection_enabled` itself**; one that dials some other way makes the
 switch do nothing. Both take a `FallbackNotice` (§ "Telling the user about a kernel-mount fallback"). A switched-off share returns before dialing, so it never fails and never raises the fallback
 notice.
@@ -628,6 +629,35 @@ saved BEFORE the lock is taken, so an auto upgrade already waiting on it sees th
 next mount because the switch sits beside the connection dot, and a dot that stays green reads as a switch that
 didn't work. On only saves; the frontend then runs "Connect directly" for an `os_mount` share, which owns sign-in and
 the toasts.
+
+## A pane on an OS-mounted share tries the direct connection
+
+`smb_pane_upgrade::upgrade_on_pane_open` runs from `list_directory_start_streaming`, the command only a pane's listing
+loader calls, so any pane landing on a share (either side, any tab) counts. It's the net under the adopter pass: a
+share Finder mounted later, one whose launch-time attempt failed (a sleeping NAS, Wi-Fi not up yet), one handed back to
+the OS mount. It upgrades the share being looked at, ❌ never every mount: the adopter pass already covers the shares
+macOS has up, and nobody asked for the rest (issue #123).
+
+**Which volumes qualify** (`plan`, pure, cheapest gate first, so a local navigation costs one prefix check):
+
+1. The id is an SMB share's (`cmdr_fs::volume::is_smb_volume_id`).
+2. The registry serves it with something other than an `SmbVolume`. That pair IS "an OS mount Cmdr hasn't upgraded";
+   a share with a session, `Disconnected` included, owns its recovery through `attempt_reconnect`.
+3. The kernel's mount table (`volumes::smb_mounts`, non-blocking) still lists an SMB mount at the volume's root, and
+   that mount derives this very id.
+4. The per-share switch is on: an early read only, so a switched-off share skips the mDNS wait and Keychain lookup. The
+   binding read is `register_smb_volume`'s at act time.
+5. The share's cooldown has run out.
+
+**A 60 s per-share cooldown (`RETRY_COOLDOWN`)**, claimed when an attempt is planned. Browsing a share lists a
+directory per step, and an unreachable server takes the whole connect timeout to say so; without it, every step would
+re-dial. A switched-off share doesn't spend it. A share whose attempt succeeded never reaches the cooldown again, since
+gate 2 stops it. Concurrent paths on the same share (the adopter pass, the mount watcher, "Connect directly") still
+dedupe through `lock_volume_upgrade` + `is_already_direct`.
+
+**It dials through `resolve_and_register_smb_volume` with `FallbackNotice::Announce`**: the person is looking at the
+share, so a failure raises the kernel-mount notice (once per server per run). Not gated under E2E, unlike the adopter
+pass: a pane only lands on a share the test navigated to, and a fixture share Cmdr mounted already has its session.
 
 ## Connect directly answers a gone volume
 
@@ -909,11 +939,11 @@ cycles"; re-measure there before trusting any number.
   every 100ms up to 1500ms for private-range IPv4. Non-private IPs (Tailscale, public DNS) skip the wait, since mDNS won't
   help there. The wait fails open: if mDNS never warms, the IP-only Keychain lookup still runs. Only relevant in dev,
   where `network.firstTriggerDone == false` keeps mDNS off at launch; prod users hit this once on the very first install
-  but never afterwards. **All three upgrade paths are covered.** The two fire-and-forget paths, startup
-  (`file_system::upgrade_existing_smb_mounts`) and mount-time (`volumes::watcher::try_upgrade_smb_mount`), both go
-  through the shared `smb_upgrade::resolve_and_register_smb_volume`, so the resolver choice can't drift between them
-  again (the startup copy previously used the one-shot `resolve_ip_to_hostname`, looked creds up by LAN IP, missed
-  hostname-keyed creds, and fell back to guest → `STATUS_LOGON_FAILURE`). The manual "Connect directly" path
+  but never afterwards. **Every upgrade path is covered.** The three fire-and-forget paths, startup
+  (`file_system::upgrade_existing_smb_mounts`), mount-time (`volumes::watcher::try_upgrade_smb_mount`), and pane-open
+  (`smb_pane_upgrade::upgrade_on_pane_open`), all go through the shared `smb_upgrade::resolve_and_register_smb_volume`,
+  so the resolver choice can't drift between them (a startup copy that used the one-shot `resolve_ip_to_hostname`
+  looked creds up by LAN IP, missed hostname-keyed creds, and fell back to guest → `STATUS_LOGON_FAILURE`). The manual "Connect directly" path
   (`smb_connect_directly`) stays separate because it surfaces `CredentialsNeeded` to prompt the
   user, but uses the same `resolve_ip_to_hostname_with_wait` + `get_keychain_password` pair.
 - **A wedged `NetAuthSysAgent` hangs every NetFS mount, and only restarting the daemon clears it**: `mount_share_sync`

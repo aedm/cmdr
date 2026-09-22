@@ -72,15 +72,15 @@ mod smb_cache;
 #[cfg(target_os = "linux")]
 mod smb_smbclient;
 mod smb_smbutil;
-// Who a `statfs` server string is: what to dial, what to call it, and which saved
-// credentials go with it. Shared by `smb_upgrade` and `smb_connect_directly`.
+// Who a `statfs` server string is: what to dial, what to call it, its saved credentials.
 pub(crate) mod smb_server_address;
 pub(crate) mod smb_upgrade;
 // "Connect directly": the upgrade someone asked for, answered with where it left
 // the volume. The auto-upgrade paths stay in `smb_upgrade`.
 pub(crate) mod smb_connect_directly;
-// The per-share "Use Cmdr's fast direct connection" switch, by volume id.
+// The per-share "Use Cmdr's fast direct connection" switch, and the pane-open upgrade.
 pub(crate) mod smb_direct_switch;
+pub(crate) mod smb_pane_upgrade;
 
 // The "we're stuck on the kernel mount" notice's once-per-server ledger. Lives
 // beside `smb_upgrade` (its only caller) rather than inside it, so the ledger is

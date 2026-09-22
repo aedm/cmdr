@@ -278,8 +278,8 @@ fn apply_choice(opt_outs: &mut Vec<ShareRef>, server_name: &str, share: &str, en
 ///
 /// ❗ **Every upgrade nobody clicked for must ask this**, under
 /// `smb_upgrade::lock_volume_upgrade` and right before dialing. Today that's one place,
-/// `smb_upgrade::register_smb_volume`, which the startup pass, the mount watcher, and
-/// Cmdr's own mount all funnel through. A trigger that bypasses it makes the switch do
+/// `smb_upgrade::register_smb_volume`, which the startup pass, the mount watcher, the
+/// pane-open upgrade, and Cmdr's own mount all funnel through. A trigger that bypasses it makes the switch do
 /// nothing.
 ///
 /// `server_names` takes every spelling the caller has for the server (the `statfs`

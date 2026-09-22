@@ -1,9 +1,10 @@
 //! SMB upgrade helpers: establish direct smb2 connections for OS-mounted SMB volumes.
 //!
-//! Shared across three upgrade paths:
+//! Shared across four upgrade paths:
 //! 1. **Startup** (`file_system::upgrade_existing_smb_mounts`): scans existing mounts
 //! 2. **Mount-time** (`volumes::watcher::try_upgrade_smb_mount`): FSEvents detects new mount
-//! 3. **Manual** (`smb_connect_directly`): user clicks "Connect directly"
+//! 3. **Pane-open** (`smb_pane_upgrade::upgrade_on_pane_open`): a pane lands on an OS-mounted share
+//! 4. **Manual** (`smb_connect_directly`): user clicks "Connect directly"
 //!
 //! The auto paths (and Cmdr's own `mount_network_share`) dial through
 //! [`register_smb_volume`], which honors the per-share "Use Cmdr's fast direct
@@ -467,13 +468,13 @@ pub(crate) async fn register_smb_volume(
 /// Resolve the mount's hostname (with mDNS wait), look up stored Keychain
 /// credentials, and register the OS-mounted SMB share as a direct smb2 volume.
 ///
-/// Single entry point for the two fire-and-forget auto-upgrade paths — startup
-/// (`file_system::upgrade_existing_smb_mounts`) and mount-time
-/// (`volumes::watcher::try_upgrade_smb_mount`). They were byte-for-byte
-/// identical except the startup copy used the one-shot `resolve_ip_to_hostname`,
-/// so it looked up creds by LAN IP and missed hostname-keyed creds → guest →
-/// `STATUS_LOGON_FAILURE`. Keeping both callers here means the resolver choice
-/// can't drift between them again. (The manual "Connect directly" path uses
+/// Single entry point for the three fire-and-forget auto-upgrade paths: startup
+/// (`file_system::upgrade_existing_smb_mounts`), mount-time
+/// (`volumes::watcher::try_upgrade_smb_mount`), and pane-open
+/// (`smb_pane_upgrade::upgrade_on_pane_open`). A private copy that used the one-shot
+/// `resolve_ip_to_hostname` looked up creds by LAN IP and missed hostname-keyed
+/// creds → guest → `STATUS_LOGON_FAILURE`. Keeping every caller here means the
+/// resolver choice can't drift between them. (The manual "Connect directly" path uses
 /// `try_smb_upgrade` instead, because it surfaces `CredentialsNeeded` to prompt.)
 ///
 /// Uses `resolve_ip_to_hostname_with_wait` (polls the mDNS host cache up to
@@ -483,7 +484,8 @@ pub(crate) async fn register_smb_volume(
 /// if mDNS never warms, the IP-keyed lookup still runs, then guest.
 ///
 /// `notice` is the caller's answer to "is anyone watching this share?"
-/// ([`FallbackNotice`]): the startup pass says no, the mount watcher says yes.
+/// ([`FallbackNotice`]): the startup pass says no, the mount watcher and the
+/// pane-open upgrade say yes.
 pub(crate) async fn resolve_and_register_smb_volume(
     server: &str,
     share: &str,

@@ -6,7 +6,8 @@ and `apps/desktop/src/lib/file-explorer/network/CLAUDE.md`.
 
 ## Module map
 
-SMB (discovery, share listing with CLI fallbacks, mounting through `mod.rs::mount_share`, OS-mount → direct upgrade),
+SMB (discovery, share listing with CLI fallbacks, mounting through `mod.rs::mount_share`, OS-mount → direct upgrade at
+launch, on mount, and on pane open),
 SFTP and WebDAV (host keys, a saved-server store each, a `*_volume_wiring.rs` that dials and registers), and their
 shared seams (`connect_wiring.rs`, `server_list_file.rs`, `saved_server_fields.rs`, `one_shot_credentials.rs`,
 `credential_store.rs`).

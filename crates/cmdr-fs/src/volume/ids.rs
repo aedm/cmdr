@@ -394,6 +394,14 @@ pub fn is_adb_volume_id(id: &str) -> bool {
     id.starts_with("adb-")
 }
 
+/// Whether `id` names an SMB share ([`smb_volume_id`]), whichever backend serves it
+/// right now: Cmdr's own session or the OS mount it rides beside.
+///
+/// Shape-only, like [`is_adb_volume_id`]: it does NOT prove the share is mounted.
+pub fn is_smb_volume_id(id: &str) -> bool {
+    id.starts_with("smb-")
+}
+
 /// Whether `id` names a volume whose root is an OS mount: a local volume
 /// ([`local_volume_id`], or its [`path_volume_id`] fallback) or an SMB mount
 /// ([`smb_volume_id`]).

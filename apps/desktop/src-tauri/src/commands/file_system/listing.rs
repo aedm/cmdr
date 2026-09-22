@@ -261,6 +261,9 @@ pub async fn list_directory_start_streaming(
     // lets the NAS index scan and SMB transfers back off for the share the user is
     // actually browsing, without a local navigation slowing an unrelated share.
     crate::priority::foreground::note_foreground_activity_on(&volume_id);
+    // A pane on an SMB share macOS mounted, and Cmdr hasn't upgraded yet, tries the
+    // direct connection in the background. Returns at once (issue #123).
+    crate::network::smb_pane_upgrade::upgrade_on_pane_open(&app, &volume_id);
     // Only expand tilde for local volumes (not MTP)
     let expanded_path = if volume_id == "root" {
         expand_tilde(&path)

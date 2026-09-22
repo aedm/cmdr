@@ -33,7 +33,7 @@ here:
 
 ## SMB auto-upgrade lifecycle
 
-SMB mounts are automatically upgraded to `SmbVolume` (direct smb2 connection) in two scenarios:
+SMB mounts are automatically upgraded to `SmbVolume` (direct smb2 connection) in three scenarios:
 
 1. **Startup** (`file_system::upgrade_existing_smb_mounts(app_handle)`): Reads the kernel's mount table
    (`volumes::smb_mounts`, the non-blocking `getfsstat` snapshot) for SMB shares no `SmbVolume` serves. ❌ Not the
@@ -50,7 +50,11 @@ SMB mounts are automatically upgraded to `SmbVolume` (direct smb2 connection) in
 2. **Mount detection** (`volumes/watcher.rs::try_upgrade_smb_mount`): When FSEvents detects a new volume in `/Volumes/`
    and it's `smbfs`, spawns a background upgrade attempt. Calls `ensure_mdns_started` to kick off mDNS too.
 
-Both paths check the `network.directSmbConnection` setting (global `AtomicBool`). Both are best-effort. Failures log a
+3. **Pane open** (`network::smb_pane_upgrade::upgrade_on_pane_open`, from `list_directory_start_streaming`): a pane
+   landing on an OS-mounted share Cmdr hasn't upgraded tries that one share, behind a 60 s per-share cooldown.
+   `network/DETAILS.md` § "A pane on an OS-mounted share tries the direct connection".
+
+All three paths check the `network.directSmbConnection` setting (global `AtomicBool`). Both are best-effort. Failures log a
 warning and the volume stays as `LocalPosixVolume`. The "Connect directly" UI action (`upgrade_to_smb_volume` command)
 and the MCP `upgrade_smb_to_direct` tool provide manual upgrade paths.
 
