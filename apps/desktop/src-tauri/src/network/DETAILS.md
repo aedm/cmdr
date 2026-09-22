@@ -531,12 +531,27 @@ Pinned by `smb_connect_failure_test.rs::a_missing_share_is_read_as_such_and_its_
 app needs: a share's session-state transitions go out through the volume host's event seam instead, so the SMB backend
 names no `tauri` type at all.
 
-**Only the auto paths speak.** `register_smb_volume` is the fallback that nobody asked for and nothing else announces:
-the startup pass over existing mounts and the FSEvents mount watcher both land there. `try_smb_upgrade` (the manual
-"Connect directly") returns its failure to the caller, who is a person watching a spinner, so a notice there would say
-the same thing twice.
+**Only the auto paths speak, and only when someone is watching.** `register_smb_volume` is the fallback that nothing
+else announces: the startup pass over existing mounts, the FSEvents mount watcher, and Cmdr's own `mount_network_share`
+all land there. `try_smb_upgrade` (the manual "Connect directly") returns its failure to the caller, who is a person
+watching a spinner, so a notice there would say the same thing twice.
 
-**Once per SERVER per run, not once per share.** Both auto paths call `register_smb_volume` once per MOUNTED SHARE, and
+**Each auto caller states whether it may speak, as a `FallbackNotice`** (`os_mount_notice.rs`), threaded through
+`resolve_and_register_smb_volume` and `register_smb_volume` into `announce_os_mount_fallback`. ❌ It has no `Default`,
+so a new trigger (the pane-open upgrade in issue #123) must answer the question at the type level rather than inherit
+an answer.
+
+- `Announce`: someone is looking at the share now. The FSEvents mount watcher (usually a share mounted in Finder a
+  moment ago), `mount_network_share` (Cmdr's own connect), and a pane landing on the share.
+- `StayQuiet`: nobody asked. The adopter pass (`file_system::upgrade_existing_smb_mounts`), at launch and on each
+  networking intent. A notice arriving unprompted at launch read to an early user as Cmdr reaching out to their NAS
+  uninvited and something breaking, while the share worked all along (issue #128). The yellow `os_mount` dot still
+  marks the share, and its switcher row's direct-connection switch or the chip's dot still act on it.
+- ❗ **A quiet caller never touches the ledger.** Claiming the server silently would mute a later `Announce` on it for
+  the rest of the run: the same muting `clear_os_mount_notice` and `forget_unmounted_volume` exist to prevent, from the
+  other direction. Pinned by `os_mount_notice_test.rs::a_quiet_caller_stays_silent_and_leaves_the_server_untold`.
+
+**Once per SERVER per run, not once per share.** The auto paths call `register_smb_volume` once per MOUNTED SHARE, and
 what failed is a property of the connection to the server: a stale password or a sleeping host rejects every share on
 it identically. A NAS whose shares all remount at login would raise one notice per share, which is worse than the
 silence it replaces.
@@ -599,7 +614,7 @@ after `is_already_direct`.** Act time, like the direct re-check, so a switch fli
 startup pass, the FSEvents mount watcher, and Cmdr's own `mount_network_share` all funnel through there. ❗ **Any new
 auto trigger (the pane-open upgrade in issue #123) must reach the dial through `register_smb_volume` /
 `resolve_and_register_smb_volume`, or call `direct_connection_enabled` itself**; one that dials some other way makes the
-switch do nothing. A switched-off share returns before dialing, so it never fails and never raises the fallback
+switch do nothing. Both take a `FallbackNotice` (§ "Telling the user about a kernel-mount fallback"). A switched-off share returns before dialing, so it never fails and never raises the fallback
 notice.
 
 **Asking is consent.** All the `smb_connect_directly` doors (the commands, MCP, the indexer's `ensure_direct_smb`) go

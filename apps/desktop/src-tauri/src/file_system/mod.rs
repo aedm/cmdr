@@ -323,11 +323,16 @@ pub fn upgrade_existing_smb_mounts(app_handle: tauri::AppHandle) {
             // found instead of falling back to guest. Re-checks freshness once
             // more just before connecting (`smb_upgrade::is_already_direct`),
             // since each volume's own 1.5 s mDNS wait reopens the window.
+            //
+            // Quiet: nobody asked about these shares, and a notice arriving
+            // unprompted at launch reads as something going wrong. The yellow dot
+            // still marks a share left on the kernel mount.
             crate::network::smb_upgrade::resolve_and_register_smb_volume(
                 &info.server,
                 &info.share,
                 &mount_path,
                 info.port,
+                crate::network::os_mount_notice::FallbackNotice::StayQuiet,
             )
             .await;
         }

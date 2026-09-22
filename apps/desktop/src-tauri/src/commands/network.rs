@@ -7,6 +7,7 @@ use crate::network::{
     update_host_resolution,
 };
 
+use crate::network::os_mount_notice::FallbackNotice;
 use crate::network::smb_connect_directly::{self, UpgradeResult};
 use crate::network::smb_direct_switch::{self, DirectConnectionSwitch};
 use crate::network::smb_upgrade::register_smb_volume;
@@ -333,7 +334,8 @@ pub async fn mount_network_share(
 
     // Try to establish a direct smb2 connection and register as SmbVolume.
     // If this fails, the FSEvents watcher will register a LocalPosixVolume
-    // as fallback (slower but still functional).
+    // as fallback (slower but still functional). Someone just asked for this
+    // mount, so a fallback is worth telling them about.
     register_smb_volume(
         &server,
         &share,
@@ -341,6 +343,7 @@ pub async fn mount_network_share(
         username.as_deref(),
         password.as_deref(),
         actual_port,
+        FallbackNotice::Announce,
     )
     .await;
 

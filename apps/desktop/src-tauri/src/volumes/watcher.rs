@@ -411,9 +411,17 @@ fn try_upgrade_smb_mount(volume_path: &str) {
     }
 
     let mount_path = volume_path.to_string();
+    // A share that mounts while the app runs is usually one someone mounted in
+    // Finder a moment ago, so they're watching: a failure is worth saying.
     tauri::async_runtime::spawn(async move {
-        crate::network::smb_upgrade::resolve_and_register_smb_volume(&info.server, &info.share, &mount_path, info.port)
-            .await;
+        crate::network::smb_upgrade::resolve_and_register_smb_volume(
+            &info.server,
+            &info.share,
+            &mount_path,
+            info.port,
+            crate::network::os_mount_notice::FallbackNotice::Announce,
+        )
+        .await;
     });
 }
 

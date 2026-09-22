@@ -147,3 +147,58 @@ fn only_the_share_the_notice_named_lets_its_server_speak_again() {
         "no notice speaks for the server anymore"
     );
 }
+
+// ── Who may speak ──────────────────────────────────────────────────────────────
+
+/// The adopter pass at launch stays quiet, and ❗ quiet means it leaves no trace:
+/// claiming the server silently would mute the mount watcher's notice about that
+/// same server later in the run.
+#[test]
+fn a_quiet_caller_stays_silent_and_leaves_the_server_untold() {
+    let mut notices = OsMountNotices::default();
+
+    assert!(!notices.admit(FallbackNotice::StayQuiet, "naspolya.local", "smb-archive", &[]));
+    assert!(
+        notices.admit(FallbackNotice::Announce, "naspolya.local", "smb-archive", &[]),
+        "the quiet caller mustn't have used up the server's one notice"
+    );
+}
+
+/// Nor does a quiet caller disturb a notice that's already up: it doesn't re-file
+/// the server under its own share, so only the share the notice named frees it.
+#[test]
+fn a_quiet_caller_leaves_a_notice_already_up_alone() {
+    let mut notices = OsMountNotices::default();
+    assert!(notices.admit(FallbackNotice::Announce, "naspolya.local", "smb-archive", &[]));
+
+    assert!(!notices.admit(FallbackNotice::StayQuiet, "naspolya.local", "smb-photos", &[]));
+    notices.forget_volume("smb-photos");
+    assert!(
+        !notices.admit(FallbackNotice::Announce, "naspolya.local", "smb-photos", &[]),
+        "the notice naming archive is still up, so the server is still told"
+    );
+}
+
+/// The same through the one public door, against the run-wide ledger. The emit
+/// sits behind the ledger's answer, so a caller the ledger didn't admit emitted
+/// nothing, and the server stays free for a loud caller.
+#[test]
+fn announcing_quietly_leaves_the_run_wide_ledger_untouched() {
+    // A server no other test names: the ledger is process-wide.
+    let server = "quiet-at-launch.example";
+    let volume_id = "smb-quiet-at-launch";
+
+    announce_os_mount_fallback(
+        server,
+        volume_id,
+        "share",
+        UpgradeFailure::Unreachable,
+        FallbackNotice::StayQuiet,
+    );
+
+    let admitted = OS_MOUNT_NOTICES
+        .lock_ignore_poison()
+        .admit(FallbackNotice::Announce, server, volume_id, &[]);
+    forget_unmounted_volume(volume_id);
+    assert!(admitted, "a later loud caller on the same server must still speak");
+}

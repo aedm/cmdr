@@ -281,14 +281,15 @@ instead.
 
 ## The OS-mount fallback notice
 
-**The gap it fills.** A direct connect that fails on the AUTO paths (the startup pass over existing mounts, the FSEvents
-mount watcher) leaves the share working on the macOS kernel mount, at a fraction of the speed and outside Cmdr's
-control, announced by nothing louder than a yellow dot the user has no reason to be looking at. That silence once cost
-an evening of debugging a "slow" transfer. The manual "Connect directly" path is deliberately NOT a source here: it
-already reports its own failure to the person who clicked it.
+**The gap it fills.** A direct connect that fails on an AUTO path someone is watching (the FSEvents mount watcher, Cmdr's
+own mount) leaves the share working on the macOS kernel mount, at a fraction of the speed and outside Cmdr's control,
+announced by nothing louder than a yellow dot. That silence once cost an evening of debugging a "slow" transfer. The
+manual "Connect directly" path is deliberately NOT a source here: it already reports its own failure to the person who
+clicked it. Nor is the startup pass over mounts macOS already made: nobody asked, and a notice at launch reads as
+something breaking.
 
 **The flow.** The backend emits `smb-fell-back-to-os-mount { volumeId, share, reason }` at most once per SERVER per app
-run (the ledger and its rationale: `src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount
+run, and only for a caller that says someone is watching (who speaks, the ledger, and the rationale: `src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount
 fallback"). `os-mount-notice-bridge.ts`, mounted from `routes/(main)/+page.svelte` beside the other event bridges, turns
 it into a persistent INFO toast rendering `SmbOsMountFallbackToastContent.svelte`, dedup id `smb-os-mount:<volumeId>`.
 

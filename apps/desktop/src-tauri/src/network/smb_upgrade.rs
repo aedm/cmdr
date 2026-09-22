@@ -13,6 +13,7 @@
 //! go with it) is `smb_server_address`'s question.
 
 use crate::ignore_poison::IgnorePoison;
+use crate::network::os_mount_notice::FallbackNotice;
 use crate::network::smb_connect_failure::{
     DirectConnectOutcome, UpgradeError, UpgradeFailure, log_direct_connect_failure,
 };
@@ -312,8 +313,9 @@ fn carry_mount_roots(
 
 /// Tries to establish a direct smb2 connection and register as `SmbVolume`.
 ///
-/// Best-effort: logs a warning and returns quietly on failure. The FSEvents
-/// watcher will register a `LocalPosixVolume` as fallback.
+/// Best-effort: logs a warning on failure, and raises the kernel-mount notice when
+/// `notice` says someone is watching. The FSEvents watcher will register a
+/// `LocalPosixVolume` as fallback.
 pub(crate) async fn register_smb_volume(
     server: &str,
     share: &str,
@@ -321,6 +323,7 @@ pub(crate) async fn register_smb_volume(
     username: Option<&str>,
     password: Option<&str>,
     port: u16,
+    notice: FallbackNotice,
 ) {
     use cmdr_smb::volume::connect_smb_volume;
     use std::sync::Arc;
@@ -418,15 +421,17 @@ pub(crate) async fn register_smb_volume(
             // The raw error belongs in the log, where it's the diagnostic. The volume
             // stays on the OS mount, which still works, at a fraction of the speed.
             log_direct_connect_failure(server, share, &e, DirectConnectOutcome::StaysOnKernelMount, username);
-            // And tell the person, once per server: this is the only path that leaves
-            // someone on the slow connection with nothing but a small yellow dot to
-            // notice it by. The reason rides along so the notice can drop its retry
-            // button for the one failure repeating it cannot fix.
+            // And tell the person, once per server, if the caller says someone is
+            // watching: this is the only path that leaves someone on the slow
+            // connection with nothing but a small yellow dot to notice it by. The
+            // reason rides along so the notice can drop its retry button for the one
+            // failure repeating it cannot fix.
             crate::network::os_mount_notice::announce_os_mount_fallback(
                 server,
                 &volume_id,
                 share,
                 UpgradeFailure::from_smb_error(&e),
+                notice,
             );
         }
     }
@@ -449,14 +454,23 @@ pub(crate) async fn register_smb_volume(
 /// via statfs, but stored creds are keyed by the mDNS hostname (e.g.
 /// `smb://naspolya/share`). A no-wait lookup races mDNS and misses. Fails open —
 /// if mDNS never warms, the IP-keyed lookup still runs, then guest.
-pub(crate) async fn resolve_and_register_smb_volume(server: &str, share: &str, mount_path: &str, port: u16) {
+///
+/// `notice` is the caller's answer to "is anyone watching this share?"
+/// ([`FallbackNotice`]): the startup pass says no, the mount watcher says yes.
+pub(crate) async fn resolve_and_register_smb_volume(
+    server: &str,
+    share: &str,
+    mount_path: &str,
+    port: u16,
+    notice: FallbackNotice,
+) {
     let hostname = resolve_ip_to_hostname_with_wait(server, std::time::Duration::from_millis(1500)).await;
     let creds = get_keychain_password(server, hostname.as_deref(), share).await;
     let (username, password) = match &creds {
         Some((u, p)) => (Some(u.as_str()), Some(p.as_str())),
         None => (None, None),
     };
-    register_smb_volume(server, share, mount_path, username, password, port).await;
+    register_smb_volume(server, share, mount_path, username, password, port, notice).await;
 }
 
 /// Hands the share under `volume_id` back to the macOS mount it rides on, when a

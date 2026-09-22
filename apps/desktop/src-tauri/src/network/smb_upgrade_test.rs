@@ -491,7 +491,16 @@ async fn the_auto_upgrade_path_skips_an_already_direct_volume() {
     manager.register(&volume_id, std::sync::Arc::clone(&direct));
 
     let start = std::time::Instant::now();
-    register_smb_volume(server, share, "/Volumes/unreachable", None, None, 445).await;
+    register_smb_volume(
+        server,
+        share,
+        "/Volumes/unreachable",
+        None,
+        None,
+        445,
+        FallbackNotice::Announce,
+    )
+    .await;
     let elapsed = start.elapsed();
 
     assert!(
@@ -638,7 +647,16 @@ async fn the_auto_upgrade_path_leaves_a_switched_off_share_on_the_os_mount() {
     crate::network::known_shares::set_direct_connection_enabled(server, share, false);
 
     let start = std::time::Instant::now();
-    register_smb_volume(server, share, "/Volumes/stays-on-os-mount", None, None, 445).await;
+    register_smb_volume(
+        server,
+        share,
+        "/Volumes/stays-on-os-mount",
+        None,
+        None,
+        445,
+        FallbackNotice::Announce,
+    )
+    .await;
     let elapsed = start.elapsed();
 
     crate::network::known_shares::set_direct_connection_enabled(server, share, true);

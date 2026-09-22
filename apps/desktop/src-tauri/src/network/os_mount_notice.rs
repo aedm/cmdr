@@ -12,6 +12,13 @@
 //! rejects every share on it identically. A NAS whose shares all remount at login
 //! would otherwise raise one notice per share, which is worse than the silence it
 //! replaces.
+//!
+//! **And only when someone is watching.** Each auto caller states it with a
+//! [`FallbackNotice`], which has no default, so a new trigger has to answer the
+//! question rather than inherit an answer. The adopter pass over mounts macOS
+//! made at login stays quiet: a notice arriving unprompted at launch read to an
+//! early user as Cmdr reaching out to their NAS uninvited and something breaking,
+//! while the share worked the whole time and the yellow dot already said so.
 
 use crate::ignore_poison::IgnorePoison;
 use crate::network::NetworkHost;
@@ -52,6 +59,23 @@ fn emit_fell_back_to_os_mount(volume_id: &str, share: &str, reason: UpgradeFailu
     }
 }
 
+/// Whether an auto upgrade's caller may raise the kernel-mount notice when the
+/// direct connect fails. ❌ Deliberately no `Default`: every trigger picks one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FallbackNotice {
+    /// Someone is looking at this share right now, so a failure is news they can
+    /// act on: the share mounted a moment ago (the FSEvents mount watcher, Cmdr's
+    /// own `mount_network_share`), or a pane just landed on it. Speaks at most once
+    /// per server per run.
+    Announce,
+    /// Nobody asked about this share: a sweep over mounts macOS already made (the
+    /// adopter pass at launch and on each networking intent). The share keeps
+    /// working on the kernel mount, and its yellow dot says so. ❗ Doesn't claim the
+    /// "told this server" ledger entry either, or a later [`Self::Announce`] on the
+    /// same server would stay muted for the rest of the run.
+    StayQuiet,
+}
+
 /// A server the user was told is on the slow path, and the share the notice named.
 struct Told {
     server: String,
@@ -87,6 +111,15 @@ impl OsMountNotices {
         true
     }
 
+    /// Whether a caller saying `notice` speaks about `server` now. A quiet caller
+    /// never reaches the ledger, so it can't use up the server's one notice.
+    fn admit(&mut self, notice: FallbackNotice, server: &str, volume_id: &str, hosts: &[NetworkHost]) -> bool {
+        match notice {
+            FallbackNotice::Announce => self.claim(server, volume_id, hosts),
+            FallbackNotice::StayQuiet => false,
+        }
+    }
+
     /// Forgets `server`, so a later fallback on it earns a fresh notice.
     fn forget(&mut self, server: &str, hosts: &[NetworkHost]) {
         self.told.retain(|told| !same_server(&told.server, server, hosts));
@@ -102,14 +135,26 @@ impl OsMountNotices {
 static OS_MOUNT_NOTICES: LazyLock<Mutex<OsMountNotices>> = LazyLock::new(Mutex::default);
 
 /// Tells the frontend `share` is staying on the macOS kernel mount, at most once
-/// per server per app run.
+/// per server per app run, and only when `notice` is [`FallbackNotice::Announce`].
 ///
 /// Only the auto-upgrade paths call this. The manual "Connect directly" flow
 /// surfaces its own failure to the person who clicked it, so a notice there would
 /// say the same thing twice.
-pub(crate) fn announce_os_mount_fallback(server: &str, volume_id: &str, share: &str, reason: UpgradeFailure) {
+pub(crate) fn announce_os_mount_fallback(
+    server: &str,
+    volume_id: &str,
+    share: &str,
+    reason: UpgradeFailure,
+    notice: FallbackNotice,
+) {
     let hosts = crate::network::get_discovered_hosts();
-    if !OS_MOUNT_NOTICES.lock_ignore_poison().claim(server, volume_id, &hosts) {
+    if !OS_MOUNT_NOTICES
+        .lock_ignore_poison()
+        .admit(notice, server, volume_id, &hosts)
+    {
+        if notice == FallbackNotice::StayQuiet {
+            log::debug!("Leaving {server}/{share} on the kernel mount without a notice: nobody asked about it");
+        }
         return;
     }
     log::debug!("Telling the frontend about the kernel-mount fallback on {server}/{share}");
