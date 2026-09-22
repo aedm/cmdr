@@ -243,6 +243,16 @@
 
 <svelte:window onresize={handleResize} onpointerdown={handleDocumentPointerDown} />
 
+<!-- The checkmark column, shared by top-level and submenu rows. Reserved on every row, checked
+     or not, so the labels line up. -->
+{#snippet checkColumn(checked: boolean | undefined)}
+    {#if checked}
+        <span class="menu-check"><Icon name="check" size={14} aria-hidden="true" /></span>
+    {:else}
+        <span class="menu-check-placeholder"></span>
+    {/if}
+{/snippet}
+
 {#if menu.isOpen}
     <Portal>
         <div
@@ -338,11 +348,8 @@
                                     <span class="menu-accelerator-placeholder"></span>
                                 {/if}
                             {/if}
-                            {#if item.checked}
-                                <span class="menu-check"><Icon name="check" size={14} aria-hidden="true" /></span>
-                            {:else}
-                                <span class="menu-check-placeholder"></span>
-                            {/if}
+                            <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- Svelte {@render} syntax -->
+                            {@render checkColumn(item.checked)}
                             {#if item.icon}
                                 {#if 'lucide' in item.icon}
                                     <span class="menu-icon"><Icon name={item.icon.lucide} size={16} aria-hidden="true" /></span>
@@ -389,6 +396,7 @@
                         tabindex="-1"
                         data-menu-row={child.value}
                         data-highlighted={menu.submenuHighlightedValue === child.value ? '' : undefined}
+                        data-checked={child.checked ? '' : undefined}
                         onmouseover={() => {
                             menu.surface.hoverSubmenu(child.value)
                         }}
@@ -396,7 +404,8 @@
                             menu.surface.activate(child.value)
                         }}
                     >
-                        <span class="menu-check-placeholder"></span>
+                        <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- Svelte {@render} syntax -->
+                        {@render checkColumn(child.checked)}
                         <span class="menu-label">{child.label}</span>
                     </div>
                 {/each}

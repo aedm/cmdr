@@ -12,6 +12,9 @@
         { value: 'screenshots', label: 'Screenshots' },
     ])
 
+    /** The submenu's two toggles: one starts on and one off, so both states show at once. */
+    const shareToggles = $state({ fast: true, reconnect: false })
+
     let lastChoice = $state<string | null>(null)
     let lastContextMenu = $state<string | null>(null)
     let renaming = $state<string | null>(null)
@@ -46,6 +49,8 @@
                     submenu: [
                         { value: 'connect', label: 'Connect directly' },
                         { value: 'forget', label: 'Forget this share' },
+                        { value: 'fast-connection', label: 'Use the fast connection', checked: shareToggles.fast },
+                        { value: 'auto-reconnect', label: 'Reconnect on wake', checked: shareToggles.reconnect },
                     ],
                 },
             ],
@@ -57,6 +62,8 @@
         getSections: () => sections,
         onSelect: (item) => {
             lastChoice = item.label
+            if (item.value === 'fast-connection') shareToggles.fast = !shareToggles.fast
+            if (item.value === 'auto-reconnect') shareToggles.reconnect = !shareToggles.reconnect
         },
         onReorder: ({ orderedValues }) => {
             places = orderedValues.map((value) => places.find((place) => place.value === value)).filter((p) => p != null)
@@ -109,8 +116,8 @@
 <SectionCard id="components-menu" label="Menu">
     <div class="cell">
         <p class="caption">
-            The house menu: sections with headings, a checkmark column, disabled rows, an empty section, a submenu, and
-            a reorderable section (drag a place, or ⌥↑/⌥↓). The three row snippets are all in use below: a rename field
+            The house menu: sections with headings, a checkmark column, disabled rows, an empty section, a submenu
+            (hover "Team share": two actions plus two toggles, one on and one off, that flip when picked), and a reorderable section (drag a place, or ⌥↑/⌥↓). The three row snippets are all in use below: a rename field
             for <code>label</code>, a badge for <code>trailing</code>, and a disk-space line for <code>below</code>.
         </p>
         <DemoAnchor

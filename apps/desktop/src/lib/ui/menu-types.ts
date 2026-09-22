@@ -21,7 +21,10 @@ export interface MenuItem<T = unknown> {
   value: string
   label: string
   icon?: MenuIcon
-  /** Renders the leading checkmark. The checkmark column is always reserved, so rows stay aligned. */
+  /**
+   * Renders the leading checkmark, on a submenu row too. The checkmark column is always
+   * reserved, so rows stay aligned.
+   */
   checked?: boolean
   /**
    * A single character shown in the leftmost column, which also activates the row when typed

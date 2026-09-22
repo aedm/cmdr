@@ -868,7 +868,9 @@ drifts the moment the keyboard contract grows a case.
 **Snippets decorate, they don't re-implement.** The default row (accelerator column, checkmark column, icon, label) is
 there; `label` replaces the row's text (an inline rename field), `trailing` fills its right end (badges, an eject
 button), `below` adds a sub-line (the disk-space bar), and `footer` sits under the last section. Each takes one
-`MenuRowContext = { item, section, index, highlighted, dragging }`.
+`MenuRowContext = { item, section, index, highlighted, dragging }`. A submenu row is plainer (checkmark column and
+label, no snippets), but it honors `checked` the same way, through the shared `checkColumn` snippet, so a submenu can
+hold a toggle as well as actions. Picking it still only activates: the consumer flips its own state.
 
 **What the primitive owns**:
 
@@ -939,7 +941,7 @@ gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them 
 - `data-menu-section="<id>"` on a section, `data-menu-heading` on its heading (an E2E spec reads the group names from
   it), `data-menu-empty` on an empty section's placeholder.
 - `data-menu-row="<value>"` on every row (submenu rows too), plus `data-highlighted`, `data-checked`, `data-disabled`,
-  and `data-dragging` as bare present-or-absent marks.
+  and `data-dragging` as bare present-or-absent marks. Submenu rows carry `data-highlighted` and `data-checked`.
 - `data-accelerator="<char>"` on a row that declares one, so a spec presses a digit and asserts against the row that
   claimed it rather than counting positions. The row also carries `aria-keyshortcuts`.
 - `data-drop-cue="above" | "below"` on the row bordering the drop gap, carrying `data-drop-slot="<n>"`, the insertion

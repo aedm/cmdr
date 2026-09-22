@@ -34,6 +34,7 @@ function sections(): MenuSection[] {
           submenu: [
             { value: 'connect', label: 'Connect directly' },
             { value: 'forget', label: 'Forget this share' },
+            { value: 'fast', label: 'Use the fast connection', checked: true },
           ],
         },
       ],
@@ -121,6 +122,24 @@ describe('rendering', () => {
     expect(document.body.textContent).toContain('(This section is empty)')
     const empty = document.querySelector('.menu-empty')
     expect(empty?.getAttribute('aria-disabled')).toBe('true')
+  })
+
+  // A submenu can hold a toggle, not just actions: a checked child shows the same checkmark a
+  // top-level row does, and an unchecked one reserves the column so the labels line up.
+  it('shows a checkmark on a checked submenu row, and reserves its column on the others', async () => {
+    const { menu } = await open()
+    menu.surface.openSubmenu('share', true)
+    await tick()
+    await tick()
+    const submenu = document.querySelector('[data-menu-submenu]')
+    const checked = submenu?.querySelector('[data-menu-row="fast"]')
+    const unchecked = submenu?.querySelector('[data-menu-row="connect"]')
+    expect(checked?.querySelector('.menu-check svg')).not.toBeNull()
+    expect(checked?.querySelector('.menu-check-placeholder')).toBeNull()
+    expect(unchecked?.querySelector('.menu-check')).toBeNull()
+    expect(unchecked?.firstElementChild?.classList.contains('menu-check-placeholder')).toBe(true)
+    // Same leading column on every row, check or not, so each label starts at the same x.
+    expect(submenu?.querySelectorAll('.menu-check, .menu-check-placeholder')).toHaveLength(3)
   })
 
   it('marks a submenu parent for assistive tech', async () => {
@@ -348,6 +367,16 @@ describe('test hooks', () => {
     expect(submenu?.querySelector('[data-menu-row="connect"][data-highlighted]')).not.toBeNull()
     // Exactly one row lights up: a boolean here lit every row of a multi-item submenu.
     expect(submenu?.querySelectorAll('[data-highlighted]')).toHaveLength(1)
+  })
+
+  it('marks the checked submenu row, and only that one', async () => {
+    const { menu } = await open()
+    menu.surface.openSubmenu('share', true)
+    await tick()
+    await tick()
+    const submenu = document.querySelector('[data-menu-submenu]')
+    expect(submenu?.querySelector('[data-menu-row="fast"]')?.hasAttribute('data-checked')).toBe(true)
+    expect(submenu?.querySelector('[data-menu-row="connect"]')?.hasAttribute('data-checked')).toBe(false)
   })
 
   it('marks the dragged row, and the cue row carries its insertion slot', async () => {
