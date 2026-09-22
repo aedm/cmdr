@@ -242,6 +242,33 @@ impl Drop for UpgradePass {
     }
 }
 
+/// Which of the kernel's SMB mounts an adopter pass should upgrade: every one whose
+/// share `served_by_smb_volume` says has no session yet, once per share.
+///
+/// `kernel_smb_mounts` comes from the mount table, not the registry (see
+/// `file_system::os_mounted_smb_shares`). Two mounts of one share (a DFS referral's
+/// second mount inside the namespace root) are one volume, so they get one attempt,
+/// from the share-root mount when there is one: two would dial twice whenever the
+/// first attempt fails.
+pub(crate) fn shares_to_adopt(
+    kernel_smb_mounts: Vec<(String, SmbMountInfo)>,
+    served_by_smb_volume: impl Fn(&str) -> bool,
+) -> Vec<(String, SmbMountInfo)> {
+    let mut picked: Vec<(String, String, SmbMountInfo)> = Vec::new();
+    for (mount_path, info) in kernel_smb_mounts {
+        let volume_id = crate::file_system::volume::smb_volume_id(&info.server, info.port, &info.share);
+        if served_by_smb_volume(&volume_id) {
+            continue;
+        }
+        match picked.iter_mut().find(|(id, _, _)| *id == volume_id) {
+            Some(slot) if slot.2.subpath.is_some() && info.subpath.is_none() => *slot = (volume_id, mount_path, info),
+            Some(_) => {}
+            None => picked.push((volume_id, mount_path, info)),
+        }
+    }
+    picked.into_iter().map(|(_, path, info)| (path, info)).collect()
+}
+
 /// Register `new_volume` under `volume_id`, retiring any predecessor first.
 ///
 /// **The predecessor is superseded, never unmounted.** A re-register (a manual

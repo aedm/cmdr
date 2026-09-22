@@ -35,8 +35,11 @@ here:
 
 SMB mounts are automatically upgraded to `SmbVolume` (direct smb2 connection) in two scenarios:
 
-1. **Startup** (`file_system::upgrade_existing_smb_mounts(app_handle)`): Scans registered volumes for `smbfs` type. If
-   any are found, calls `network::ensure_mdns_started` to kick off mDNS itself (creds are keyed by hostname, not IP),
+1. **Startup** (`file_system::upgrade_existing_smb_mounts(app_handle)`): Reads the kernel's mount table
+   (`volumes::smb_mounts`, the non-blocking `getfsstat` snapshot) for SMB shares no `SmbVolume` serves. ❌ Not the
+   volume registry: that fills on a background thread that `statfs`es every mount, so at launch it lags the kernel by
+   seconds, and a gate that asked it read "No SMB mounts to upgrade" with four shares up, on every launch (issue #123).
+   If any are found, calls `network::ensure_mdns_started` to kick off mDNS itself (creds are keyed by hostname, not IP),
    then waits for mDNS to reach `Active` state (polls every 500ms, up to 15s). Uses `tauri::async_runtime::spawn` (not
    `tokio::spawn`; runs during `setup()` before Tokio is fully available). Emits `volumes-changed` after upgrades so
    the frontend refreshes indicators. **No `firstTriggerDone` gate**: the function is a no-op when no SMB mounts are
@@ -60,7 +63,10 @@ before the wait is stale by the time it's used. Two rules keep that from turning
 - **The startup pass scans after its wait, not before.** `upgrade_existing_smb_mounts` still does a pre-scan, but
   purely as a gate: nothing to do ⇒ return without touching mDNS, so a machine with no SMB mounts never sees the macOS
   Local Network prompt. The list it acts on comes from a second `os_mounted_smb_shares()` call once mDNS has settled,
-  which also picks up shares mounted during the wait.
+  which also picks up shares mounted during the wait. Both read the mount table, so neither depends on how far the
+  registry sweep has got; a share the sweep hasn't reached yet is upgraded anyway, and the sweep's `register_if_absent`
+  then leaves the `SmbVolume` in place. Two mounts of one share (a DFS referral) get one attempt
+  (`smb_upgrade::shares_to_adopt`).
 - **Every connect site re-checks first.** `register_smb_volume` and `try_smb_upgrade` both bail via
   `smb_upgrade::is_already_direct` when the id already resolves to a healthy direct volume. `Disconnected` deliberately
   does not count: that's the manual "Connect directly" recovery path, and short-circuiting it would dead-end the user.

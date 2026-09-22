@@ -558,6 +558,58 @@ fn a_second_upgrade_pass_is_dropped_while_one_is_pending() {
     );
 }
 
+// ── Which mounts an adopter pass picks up ─────────────────────────────────────
+
+/// The launch race (issue #123): the registry fills on a background thread that
+/// `statfs`es every mount, so the adopter pass used to ask it before the smbfs rows
+/// landed and read "no SMB mounts" with four of them up. The pass reads the kernel's
+/// table now, so a share the registry hasn't heard of yet is still picked up.
+#[test]
+fn a_share_the_registry_has_not_caught_up_with_is_still_adopted() {
+    let kernel = vec![
+        ("/Volumes/naspi".to_string(), mount_of("192.168.1.111", "naspi", 445)),
+        (
+            "/Volumes/Multimedia".to_string(),
+            mount_of("192.168.1.111", "Multimedia", 445),
+        ),
+    ];
+    // An empty registry: nothing is served by an `SmbVolume`, nothing is registered at all.
+    let picked = shares_to_adopt(kernel, |_| false);
+    let paths: Vec<&str> = picked.iter().map(|(path, _)| path.as_str()).collect();
+    assert_eq!(paths, ["/Volumes/naspi", "/Volumes/Multimedia"]);
+}
+
+/// A share an `SmbVolume` already serves is left alone, whatever its state: a
+/// `Disconnected` one owns its own recovery through `attempt_reconnect`.
+#[test]
+fn a_share_with_a_session_is_not_adopted_again() {
+    use crate::file_system::volume::smb_volume_id;
+    let kernel = vec![
+        ("/Volumes/naspi".to_string(), mount_of("192.168.1.111", "naspi", 445)),
+        ("/Volumes/PiHDD".to_string(), mount_of("192.168.1.150", "PiHDD", 445)),
+    ];
+    let direct = smb_volume_id("192.168.1.111", 445, "naspi");
+    let picked = shares_to_adopt(kernel, |id| id == direct);
+    let paths: Vec<&str> = picked.iter().map(|(path, _)| path.as_str()).collect();
+    assert_eq!(paths, ["/Volumes/PiHDD"]);
+}
+
+/// Two mounts of one share (macOS follows a DFS referral with a second mount inside
+/// the namespace root) are one volume, so one attempt, from the share-root mount.
+/// Two would dial twice when the first fails.
+#[test]
+fn two_mounts_of_one_share_are_adopted_once_from_the_share_root() {
+    let mut inner = mount_of("dc.example.com", "SYSVOL", 445);
+    inner.subpath = Some("example.com".to_string());
+    let kernel = vec![
+        ("/Volumes/SYSVOL/example.com".to_string(), inner),
+        ("/Volumes/SYSVOL".to_string(), mount_of("dc.example.com", "SYSVOL", 445)),
+    ];
+    let picked = shares_to_adopt(kernel, |_| false);
+    let paths: Vec<&str> = picked.iter().map(|(path, _)| path.as_str()).collect();
+    assert_eq!(paths, ["/Volumes/SYSVOL"]);
+}
+
 /// When no predecessor exists, `register_replacing_predecessor` just
 /// registers — no lifecycle hook (there's nothing to call it on), no panic.
 #[tokio::test]

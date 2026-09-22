@@ -161,6 +161,26 @@ pub(crate) fn mount_sources() -> Option<Vec<MountSource>> {
     )
 }
 
+/// Every SMB mount the kernel lists, as `(mount point, what the mount source says)`,
+/// from the same non-blocking `getfsstat` snapshot: no syscall per entry, so a hung
+/// share can't stall it and nothing goes out on the network.
+///
+/// The SMB upgrade paths ask this, ❌ never the volume registry: the registry fills on
+/// a background thread that `statfs`es every mount, so at launch it lags the kernel
+/// by seconds, and a pass that asked it read "no SMB mounts" with four of them up.
+/// `None` when the table couldn't be read.
+pub(crate) fn smb_mounts() -> Option<Vec<(String, SmbMountInfo)>> {
+    Some(
+        enumerate_mounts()?
+            .into_iter()
+            .filter_map(|mount| {
+                let info = smb_info(&mount)?;
+                Some((mount.mount_point, info))
+            })
+            .collect(),
+    )
+}
+
 /// Whether any filesystem in the kernel mount table has identity `fsid`: `None` when
 /// the table couldn't be read. The index asks this, ❌ never [`is_mount_point`], to
 /// tell a drive that's gone from one a rename moved.

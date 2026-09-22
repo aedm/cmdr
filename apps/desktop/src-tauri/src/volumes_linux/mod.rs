@@ -31,7 +31,7 @@ pub use smb::{SmbMountInfo, enrich_from_volume_registry, get_smb_mount_info};
 pub(crate) use fs_type::get_mount_point;
 pub(crate) use ids::volume_id_for_mount;
 pub(crate) use mounts::mount_roots;
-pub(crate) use smb::parse_gvfs_smb_dirname;
+pub(crate) use smb::{parse_gvfs_smb_dirname, smb_mounts};
 
 #[allow(
     unused_imports,

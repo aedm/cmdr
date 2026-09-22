@@ -234,8 +234,9 @@ fn register_discovered_volumes() {
 
 /// Upgrades all existing SMB mounts to direct smb2 connections (background task).
 ///
-/// Scans all registered volumes, finds those on `smbfs`, and tries to establish
-/// a parallel smb2 session for each. Non-blocking: failures are logged and skipped.
+/// Reads the kernel's mount table for SMB shares no `SmbVolume` serves yet
+/// ([`os_mounted_smb_shares`]), and tries to establish a parallel smb2 session for
+/// each. Non-blocking: failures are logged and skipped.
 ///
 /// If any SMB mounts are found, kicks off mDNS via `ensure_mdns_started` so the
 /// upgrade's Keychain lookup (keyed by hostname, not IP) can find stored creds.
@@ -252,7 +253,7 @@ fn register_discovered_volumes() {
 ///   mounts here are the developer's own — see
 ///   `test_mode::may_adopt_preexisting_network_mounts`),
 /// - direct-SMB is disabled (`network.directSmbConnection`),
-/// - or no SMB mounts are registered (no scan cost, no prompt).
+/// - or the mount table lists no SMB share left to upgrade (no scan cost, no prompt).
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 pub fn upgrade_existing_smb_mounts(app_handle: tauri::AppHandle) {
     use crate::network::smb_upgrade::UpgradePass;
@@ -351,30 +352,34 @@ type SmbMountInfo = crate::volumes_linux::SmbMountInfo;
 /// The OS-mounted SMB shares that don't have a Cmdr smb2 session yet, as
 /// `(mount_path, mount_info)`.
 ///
-/// A registered `SmbVolume` (whatever its connection state) is excluded: it
+/// Read off the kernel's mount table (`getfsstat(MNT_NOWAIT)` / `/proc/mounts`), ❌
+/// never the volume registry: that fills on a background thread that `statfs`es
+/// every mount, so at launch it lags the kernel by seconds, and asking it is how
+/// the launch pass read "no SMB mounts" with four of them up (issue #123). The
+/// table is non-blocking and local, so the cheap gate can't stall on a hung share
+/// or reach the network.
+///
+/// A share an `SmbVolume` serves (whatever its connection state) is excluded: it
 /// already has a session, and a `Disconnected` one owns its own recovery through
-/// `attempt_reconnect` rather than through a replacement.
+/// `attempt_reconnect` rather than through a replacement. An unreadable table
+/// reads as nothing to do: the next pass asks again.
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 fn os_mounted_smb_shares() -> Vec<(String, SmbMountInfo)> {
     #[cfg(target_os = "macos")]
-    use crate::volumes::get_smb_mount_info;
+    use crate::volumes::smb_mounts;
     #[cfg(target_os = "linux")]
-    use crate::volumes_linux::get_smb_mount_info;
+    use crate::volumes_linux::smb_mounts;
 
+    let Some(kernel_smb_mounts) = smb_mounts() else {
+        log::debug!("The mount table wouldn't answer; no SMB mounts to upgrade this pass");
+        return Vec::new();
+    };
     let manager = get_volume_manager();
-    manager
-        .list_volumes()
-        .into_iter()
-        .filter_map(|(id, _name)| {
-            let vol = manager.get(&id)?;
-            if vol.backend_kind() == cmdr_fs::volume::BackendKind::Smb {
-                return None;
-            }
-            let path = vol.root().to_string_lossy().to_string();
-            let info = get_smb_mount_info(&path)?;
-            Some((path, info))
-        })
-        .collect()
+    crate::network::smb_upgrade::shares_to_adopt(kernel_smb_mounts, |volume_id| {
+        manager
+            .get(volume_id)
+            .is_some_and(|v| v.backend_kind() == cmdr_fs::volume::BackendKind::Smb)
+    })
 }
 
 /// Waits until mDNS discovery reaches the `Active` state (initial burst complete).

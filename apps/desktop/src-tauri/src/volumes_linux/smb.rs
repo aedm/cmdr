@@ -63,6 +63,23 @@ pub fn get_smb_mount_info(mount_path: &str) -> Option<SmbMountInfo> {
     parse_smb_mount_source(&entry.device)
 }
 
+/// Every CIFS mount `/proc/mounts` lists, as `(mount point, what the mount source
+/// says)`. The twin of macOS `volumes::smb_mounts`, and read for the same reason: the
+/// SMB upgrade paths ask the kernel's table, ❌ never the volume registry, which lags
+/// it at launch. `None` when the table couldn't be read.
+pub(crate) fn smb_mounts() -> Option<Vec<(String, SmbMountInfo)>> {
+    Some(
+        linux_mounts::parse_proc_mounts()?
+            .into_iter()
+            .filter(|e| e.fstype == "cifs")
+            .filter_map(|e| {
+                let info = parse_smb_mount_source(&e.device)?;
+                Some((e.mountpoint, info))
+            })
+            .collect(),
+    )
+}
+
 /// Parses an SMB mount source string like `//user@host/share`, `//host/share`, or
 /// `//host/share/dir/below` for a mount anchored inside the share.
 pub(super) fn parse_smb_mount_source(source: &str) -> Option<SmbMountInfo> {
