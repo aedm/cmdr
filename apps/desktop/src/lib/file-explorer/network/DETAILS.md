@@ -233,9 +233,10 @@ User activates the "Add server…" row → the sign-in sheet opens in add mode
 ## Connect directly
 
 `direct-connect.ts::connectDirectly({ volumeId, shareName })` is the single implementation behind every "turn this
-OS-mounted share into a direct smb2 session" affordance: the yellow-dot popup in `../navigation/VolumeBreadcrumb.svelte`, checking the switcher's "Use Cmdr's fast
-direct connection" row on an OS-mounted share (`../navigation/direct-connection-switch.svelte.ts`), and the retry
-button on the OS-mount fallback notice.
+OS-mounted share into a direct smb2 session" affordance: the yellow-dot popup in
+`../navigation/VolumeBreadcrumb.svelte`, checking the switcher's "Use Cmdr's fast direct connection" row on an
+OS-mounted share (`../navigation/direct-connection-switch.svelte.ts`), and the retry button on the OS-mount fallback
+notice.
 
 The sequence, and who speaks at each step:
 
@@ -281,17 +282,18 @@ instead.
 
 ## The OS-mount fallback notice
 
-**The gap it fills.** A direct connect that fails on an AUTO path someone is watching (the FSEvents mount watcher, Cmdr's
-own mount) leaves the share working on the macOS kernel mount, at a fraction of the speed and outside Cmdr's control,
-announced by nothing louder than a yellow dot. That silence once cost an evening of debugging a "slow" transfer. The
-manual "Connect directly" path is deliberately NOT a source here: it already reports its own failure to the person who
-clicked it. Nor is the startup pass over mounts macOS already made: nobody asked, and a notice at launch reads as
-something breaking.
+**The gap it fills.** A direct connect that fails on an AUTO path someone is watching (the FSEvents mount watcher,
+Cmdr's own mount) leaves the share working on the macOS kernel mount, at a fraction of the speed and outside Cmdr's
+control, announced by nothing louder than a yellow dot. That silence once cost an evening of debugging a "slow"
+transfer. The manual "Connect directly" path is deliberately NOT a source here: it already reports its own failure to
+the person who clicked it. Nor is the startup pass over mounts macOS already made: nobody asked, and a notice at launch
+reads as something breaking.
 
 **The flow.** The backend emits `smb-fell-back-to-os-mount { volumeId, share, reason }` at most once per SERVER per app
-run, and only for a caller that says someone is watching (who speaks, the ledger, and the rationale: `src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount
-fallback"). `os-mount-notice-bridge.ts`, mounted from `routes/(main)/+page.svelte` beside the other event bridges, turns
-it into a persistent INFO toast rendering `SmbOsMountFallbackToastContent.svelte`, dedup id `smb-os-mount:<volumeId>`.
+run, and only for a caller that says someone is watching (who speaks, the ledger, and the rationale:
+`src-tauri/src/network/DETAILS.md` § "Telling the user about a kernel-mount fallback"). `os-mount-notice-bridge.ts`,
+mounted from `routes/(main)/+page.svelte` beside the other event bridges, turns it into a persistent INFO toast
+rendering `SmbOsMountFallbackToastContent.svelte`, dedup id `smb-os-mount:<volumeId>`.
 
 **A notice that can't offer a retry doesn't.** The bridge turns `reason` into one `retryable` prop, false only for
 `shareNotOnServer`, and the toast then renders `osMountFallback.shareNotOnServer` with no button instead of
@@ -302,13 +304,13 @@ Which reasons are which, and the two look-alikes that never arrive as this one: 
 "Telling the user about a kernel-mount fallback".
 
 **Dismissal watches the volume list, not the button.** A share can reach a direct session four ways: this notice's
-button, the chip's yellow dot, the switcher's direct-connection switch, and the pane's credential form after a working password. All four end in
-`register_replacing_predecessor`, which broadcasts the volume list, so the bridge dismisses on any `volumes-changed`
-carrying that volume as `direct`. One rule covers every route, and a fifth route can't forget it. A share that goes AWAY
-broadcasts the list too, so a notice whose volume is no longer listed retires the same way: its button could only say
-the share is gone. The bridge asks the toast store which notices are up (`getToasts`, matched by content component and
-`props.volumeId`) rather than keeping a list, so there's no frontend ledger to fall out of step with the backend's or
-with the user closing one.
+button, the chip's yellow dot, the switcher's direct-connection switch, and the pane's credential form after a working
+password. All four end in `register_replacing_predecessor`, which broadcasts the volume list, so the bridge dismisses on
+any `volumes-changed` carrying that volume as `direct`. One rule covers every route, and a fifth route can't forget it.
+A share that goes AWAY broadcasts the list too, so a notice whose volume is no longer listed retires the same way: its
+button could only say the share is gone. The bridge asks the toast store which notices are up (`getToasts`, matched by
+content component and `props.volumeId`) rather than keeping a list, so there's no frontend ledger to fall out of step
+with the backend's or with the user closing one.
 
 ❗ **Only a listing that finished may retire a notice by absence.** A `timedOut` payload is the last complete list
 standing in for a fresh one, so a share missing from it proves nothing. The rule's one gap: a discovery that started
