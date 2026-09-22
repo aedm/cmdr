@@ -92,6 +92,15 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   installed in prod, and the footprint is 696 MB against the 2.5 GB profiled in 2026-07-28. Read it before counting
   threads in this app: `cmdr-sync-status` and the notify pairs are bounded by construction, and on macOS a notify pair
   is NEVER an indexed volume.
+- `mcp-connection-leak-2026-09-22.md` — whether the MCP server leaks connections across a long run and many agent
+  sessions. **It doesn't**, and the note closes the question: every ESTABLISHED socket on the MCP port has a LIVE client
+  behind it by construction, because a killed peer's socket is reaped in under a second (measured, `kill -9` against
+  four held connections). The suspicious-looking `Sse` in `handle_mcp_get` is not a long-lived stream: its
+  `stream::once` body completes at once, so the `.keep_alive()` never fires, and the sockets that linger are idle
+  HTTP/1.1 keep-alive held by the CLIENT's pool. Carries the per-connection cost (one fd, one tokio task, ~46 KB) and
+  the proof nothing accumulates per session (`McpState` has one `session_id`, not a map). Read it before re-opening "MCP
+  is leaking", and for the one real finding it turned up: two SMB sockets stuck in `CLOSE_WAIT`, which unlike the MCP
+  ones never self-reap.
 - `idle-malloc-large-clip-towers-2026-08-21.md` — the leading candidate for most of that 643 MB, measured: Core ML
   holding the two CLIP towers costs **307–412 MB of `MALLOC_LARGE` plus 120–176 MB of `MALLOC_SMALL`, from the first
   encode of a session until the process exits**, 80% of it the text tower that enrichment never calls, and all of it
