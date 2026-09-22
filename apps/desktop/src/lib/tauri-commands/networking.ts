@@ -407,7 +407,10 @@ export async function getSmbDirectConnectionEnabled(volumeId: string): Promise<b
  * Off on a direct share hands it back to the macOS mount right away
  * (`returnedToOsMount`); on only saves, and the caller runs "Connect directly".
  */
-export async function setSmbDirectConnectionEnabled(volumeId: string, enabled: boolean): Promise<DirectConnectionSwitch> {
+export async function setSmbDirectConnectionEnabled(
+  volumeId: string,
+  enabled: boolean,
+): Promise<DirectConnectionSwitch> {
   return commands.setSmbDirectConnectionEnabled(volumeId, enabled)
 }
 
