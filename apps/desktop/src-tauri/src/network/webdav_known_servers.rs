@@ -326,6 +326,34 @@ pub fn set_pinned(url: &str, username: &str, pinned: bool) -> bool {
     moved
 }
 
+/// Moves the "reconnect automatically" switch on `(url, username)`, answering
+/// whether an entry was there.
+///
+/// ❗ **Its own writer, for the same reason as [`set_pinned`]**: a row menu flips
+/// one field, and a read-modify-`remember` would write back every other field as
+/// it stood at the read. The live volume's copy is the wiring's job
+/// (`webdav_volume_wiring::apply_auto_reconnect`).
+pub fn set_auto_reconnect(url: &str, username: &str, on: bool) -> bool {
+    let moved = {
+        let mut store = known().lock_ignore_poison();
+        match store
+            .known_webdav_servers
+            .iter_mut()
+            .find(|entry| same_server(entry, url, username))
+        {
+            Some(entry) => {
+                entry.auto_reconnect = on;
+                true
+            }
+            None => false,
+        }
+    };
+    if moved {
+        save();
+    }
+    moved
+}
+
 /// Drops the entry for `(url, username)`, answering whether one was there.
 ///
 /// ❌ Leaves the secret store alone: forgetting a server from a list is not the

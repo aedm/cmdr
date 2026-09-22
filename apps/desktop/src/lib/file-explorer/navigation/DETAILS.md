@@ -367,8 +367,11 @@ their order, or which a transfer greys:
   greyed by `busy`: navigating into a server a copy reads from is fine, and editing settings touches no session. The pin
   isn't either (a view preference breaks nothing), where dropping the session or the credential under a copy does.
   `Forget saved password` is offered unconditionally, because deciding otherwise costs a Keychain read, and each can
-  raise a system prompt; `forgetSavedSecret` words a `false` instead. "Saved" comes from `listSavedPlaceIds()`, read
-  when the switcher opens (the hub has its saved list already).
+  raise a system prompt; `forgetSavedSecret` words a `false` instead. A SAVED place adds its "Reconnect automatically"
+  checkbox in a second group, under a rule, carrying the sign-in sheet's label and its explanation as the row tooltip
+  (`$lib/servers/DETAILS.md`, the "Reconnect automatically" paragraph); an unsaved one-shot connection has nothing to
+  persist, so no checkbox. "Saved" and the switch's value come from `listSavedPlaces()`, read when the switcher opens
+  (the hub has its saved list already, and re-reads it on the `volumes-changed` a flip emits).
 - **A favorite**: `Rename`, `Remove from favorites` (§ "The favorites menu").
 
 **Both doors, one list.** → (or a hover) opens the submenu, and a right-click on the row opens the same one: the
@@ -382,7 +385,13 @@ hub moves its.
 **Which picks keep the menu up** (`MenuItem.keepsMenuOpen`): Eject and Disconnect, like the inline button, so several go
 in a row; the pin pair; and both favorite actions (a rename happens in the row). Open, Edit, and the two Forgets close
 it, since they navigate or open a dialog. The direct-connection checkbox closes it too, since checking it on an
-OS-mounted share runs "Connect directly" with its sign-in sheet.
+OS-mounted share runs "Connect directly" with its sign-in sheet, and so does "Reconnect automatically", so every switch
+behaves alike: the next open shows the new state, re-read from Rust.
+
+A switch writes through a NARROW command that moves its one field (`set_place_auto_reconnect`, like `set_place_pinned`),
+❌ never `update_saved_server` with the whole record: a menu holds a snapshot from when it opened, and writing that back
+would clobber a sheet edit saved since. The narrow command still moves both copies the sheet's save moves, the store and
+a connected volume's live switch (`apps/desktop/src-tauri/src/network/DETAILS.md` § "The two per-server switches").
 
 **Adding a per-row checkbox**: `row-menu.ts`'s header says where (a `RowToggleKind` member, a `VolumeRowFacts` field, a
 `rowToggles` entry, and the two `flipToggle` maps, each a `Record<RowToggleKind, …>` that won't compile until handled).

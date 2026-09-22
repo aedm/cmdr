@@ -720,7 +720,10 @@ before the setting existed.
 
 `sftp_volume_wiring::save_without_connecting` (behind `commands/servers.rs`'s `update_saved_server`, its only caller)
 moves both copies: the saved entry, and on a connected place the live volume's switch, so it takes effect now rather
-than on the next connect (§ "Editing a connected place" has everything else an edit moves live). What the two mean
+than on the next connect. The row menus' checkbox takes the narrow twin, `apply_auto_reconnect` (behind
+`set_place_auto_reconnect`): the same two copies, one field, through the store's own in-place writer
+(`set_auto_reconnect`, shaped like `set_pinned`) so a menu can't write back a stale record. WebDAV mirrors both. §
+"Editing a connected place" has everything else an edit moves live. What the two mean
 together, what the backend answers when one is on and can't work, and what a UI shows: `crates/cmdr-sftp/DETAILS.md` §
 "The two switches".
 

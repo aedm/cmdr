@@ -75,7 +75,8 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   sign-in sheet, and the pane banner speak about servers rather than about SFTP, WebDAV, and SMB, so this is the
   surface they call: `list_saved_servers` (the union of the two saved-server stores plus SMB hosts from
   `known_shares.rs` and `manual_servers.rs`), `connect_saved_place`, `connect_server`, `cancel_server_connect`,
-  `disconnect_place`, `set_place_pinned`, `forget_server`, `forget_server_secret`, `update_saved_server`. The wire
+  `disconnect_place`, `set_place_pinned`, `set_place_auto_reconnect`, `forget_server`, `forget_server_secret`,
+  `update_saved_server`. The wire
   vocabulary (`ServerTarget`, `ServerConnectOutcome`, `SavedPlaceRefusal`, `SavedServer`, `SavedPlace`,
   `ServerProtocol`, `ServerNameSource`) lives in the sibling `servers/wire.rs`, re-exported at the same path so nothing
   outside this file has to know it moved.
@@ -104,7 +105,10 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
     the consumer has nothing to race. ❌ And no new "you disconnected" pane state: a `saved` row dials on activation.
   - `update_saved_server` takes a `ServerTarget`, the same shape the add sheet collects, because an edit and an add
     differ only in whether the fields arrived prefilled. It carries no PIN: `set_place_pinned` is the one writer that
-    moves one, because the stores' `remember` deliberately preserves a stored pin on every replace. Its own
+    moves one, because the stores' `remember` deliberately preserves a stored pin on every replace.
+    `set_place_auto_reconnect` is the row menus' narrow writer for the one switch a checkbox flips, so a menu's stale
+    snapshot can't overwrite a sheet edit; it moves the store and a connected volume's live switch through each
+    wiring's `apply_auto_reconnect`, and `list_saved_servers` publishes the value (`auto_reconnect`, `None` for SMB). Its own
     `save_target` builds the `KnownSftpServer` / `KnownWebdavServer` and calls `*_volume_wiring::save_without_connecting`
     directly — there is no per-protocol command behind it any more. It answers a typed `SavedServerOutcome`
     (`network/saved_server_fields.rs`), and a refusal writes nothing: `start_folder_outside_root` (connected or not),

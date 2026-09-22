@@ -394,12 +394,12 @@
   },
   "servers.sheet.autoReconnect": "Reconnect automatically",
   "@servers.sheet.autoReconnect": {
-    "description": "Checkbox letting Cmdr redial this server on its own when the connection drops. VERB phrase, imperative.",
+    "description": "Checkbox letting Cmdr redial this server on its own when the connection drops. Shown in the server sheet and as a checkbox row in a saved SFTP or WebDAV server's row menu (the volume switcher and the servers list). VERB phrase, imperative.",
     "screenshot": "server-sign-in-add-prefilled.png"
   },
   "servers.sheet.autoReconnectHelp": "If the connection drops, Cmdr reconnects to this server on its own. This doesn''t make Cmdr connect at startup: it connects when you open the server in a pane.",
   "@servers.sheet.autoReconnectHelp": {
-    "description": "Tooltip explaining the “Reconnect automatically” checkbox, shown from an info glyph beside it in the server sheet. Its job is to correct a likely misreading: the switch only reconnects after a dropped connection, and does NOT make Cmdr connect to the server when the app starts. “pane” is one of the app's two side-by-side file lists."
+    "description": "Tooltip explaining the “Reconnect automatically” checkbox, shown from an info glyph beside it in the server sheet, and as the hover tooltip of the same checkbox row in a saved server's row menu. Its job is to correct a likely misreading: the switch only reconnects after a dropped connection, and does NOT make Cmdr connect to the server when the app starts. “pane” is one of the app's two side-by-side file lists."
   },
   "servers.sheet.autoReconnectInfoLabel": "More about “Reconnect automatically”",
   "@servers.sheet.autoReconnectInfoLabel": {

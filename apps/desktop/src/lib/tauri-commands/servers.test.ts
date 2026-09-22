@@ -16,6 +16,7 @@ vi.mock('$lib/ipc/bindings', () => ({
     cancelServerConnect: vi.fn(),
     disconnectPlace: vi.fn(),
     setPlacePinned: vi.fn(),
+    setPlaceAutoReconnect: vi.fn(),
     forgetServer: vi.fn(),
     hasServerSecret: vi.fn(),
     forgetServerSecret: vi.fn(),
@@ -34,6 +35,7 @@ import {
   hasServerSecret,
   listSavedServers,
   newServerAttemptId,
+  setPlaceAutoReconnect,
   setPlacePinned,
   updateSavedServer,
   type ServerTarget,
@@ -126,6 +128,13 @@ describe('the saved list', () => {
     expect(commands.setPlacePinned).toHaveBeenCalledWith('sftp-nas-local-22-ada', false)
     expect(commands.forgetServer).toHaveBeenCalledWith('sftp-nas-local-22-ada')
     expect(commands.forgetServerSecret).toHaveBeenCalledWith('sftp-nas-local-22-ada')
+  })
+
+  it('moves the "Reconnect automatically" switch alone, by place', async () => {
+    vi.mocked(commands.setPlaceAutoReconnect).mockResolvedValueOnce(false)
+    // `false` is a place nothing saved: a one-shot connection has nothing to persist.
+    expect(await setPlaceAutoReconnect('sftp-nas-local-22-ada', true)).toBe(false)
+    expect(commands.setPlaceAutoReconnect).toHaveBeenCalledWith('sftp-nas-local-22-ada', true)
   })
 
   it('edits a server through the same shape the add sheet collects', async () => {

@@ -133,6 +133,16 @@ export async function setPlacePinned(volumeId: string, pinned: boolean): Promise
 }
 
 /**
+ * Moves a saved place's "Reconnect automatically" switch, answering whether a
+ * saved place was there. Moves the stored switch AND a connected volume's live
+ * one, the same two copies the sign-in sheet's save moves, but touches no other
+ * field, so a row menu can't clobber a sheet edit. Emits `volumes-changed`.
+ */
+export async function setPlaceAutoReconnect(volumeId: string, autoReconnect: boolean): Promise<boolean> {
+  return await commands.setPlaceAutoReconnect(volumeId, autoReconnect)
+}
+
+/**
  * Drops a server from the saved list, answering whether one was there.
  *
  * Also drops the session and unregisters the volume, and leaves the stored

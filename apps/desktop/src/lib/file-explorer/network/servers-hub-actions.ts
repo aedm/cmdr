@@ -15,7 +15,7 @@
 
 import { disconnectNetworkHost, removeManualServer, showNetworkHostContextMenu } from '$lib/tauri-commands'
 import { checkCredentialsForHost, forgetCredentials, getCredentialStatus } from './network-store.svelte'
-import { forgetSavedServer } from '../navigation/server-row-actions'
+import { forgetSavedServer, setServerAutoReconnect } from '../navigation/server-row-actions'
 import {
   runVolumeRowAction,
   volumeRowMenu,
@@ -132,6 +132,7 @@ export function createHubActions(deps: HubActionDeps): HubActions {
       ejecting: false,
       isSaved: row.saved !== null,
       directConnection: undefined,
+      autoReconnect: row.saved?.autoReconnect ?? undefined,
     })
   }
 
@@ -155,6 +156,11 @@ export function createHubActions(deps: HubActionDeps): HubActions {
   const flipToggle: Record<RowToggleKind, (row: HubRow) => Promise<void>> = {
     // An SMB share's switch: never on a one-place (SFTP or WebDAV) row.
     'direct-connection': () => Promise.resolve(),
+    // The row shows the saved entry's switch; the `volumes-changed` the command emits is what
+    // re-reads the saved list, so the next open shows the new state.
+    'auto-reconnect': async (row) => {
+      if (row.volumeId && row.saved) await setServerAutoReconnect(row.volumeId, !row.saved.autoReconnect)
+    },
   }
 
   /** An SMB host's right-click: its native host menu. */

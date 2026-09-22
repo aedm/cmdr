@@ -920,6 +920,7 @@ export {
   cancelServerConnect,
   disconnectPlace,
   setPlacePinned,
+  setPlaceAutoReconnect,
   forgetServer,
   hasServerSecret,
   forgetServerSecret,

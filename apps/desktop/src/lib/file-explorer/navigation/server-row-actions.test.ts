@@ -14,9 +14,12 @@ const forgetServer = vi.fn(() => Promise.resolve(true))
 const forgetServerSecret = vi.fn(() => Promise.resolve(true))
 const hasServerSecret = vi.fn(() => Promise.resolve(true))
 const listSavedServers = vi.fn(() =>
-  Promise.resolve([{ id: 'sftp-nas-local-22-ada', places: [{ volumeId: 'sftp-nas-local-22-ada' }] }]),
+  Promise.resolve([
+    { id: 'sftp-nas-local-22-ada', autoReconnect: false, places: [{ volumeId: 'sftp-nas-local-22-ada' }] },
+  ]),
 )
 const setPlacePinned = vi.fn(() => Promise.resolve(true))
+const setPlaceAutoReconnect = vi.fn(() => Promise.resolve(true))
 const addToast = vi.fn()
 const confirmDialog = vi.fn(() => Promise.resolve(true))
 const openEditServerSheet = vi.fn(() => Promise.resolve({ kind: 'cancelled' as const }))
@@ -28,6 +31,7 @@ vi.mock('$lib/tauri-commands', () => ({
   hasServerSecret: (...args: unknown[]) => hasServerSecret(...(args as [])),
   listSavedServers: () => listSavedServers(),
   setPlacePinned: (...args: unknown[]) => setPlacePinned(...(args as [])),
+  setPlaceAutoReconnect: (...args: unknown[]) => setPlaceAutoReconnect(...(args as [])),
 }))
 vi.mock('$lib/ui/toast', () => ({
   addToast: (...args: unknown[]) => {
@@ -42,7 +46,7 @@ vi.mock('$lib/logging/logger', () => ({
   getAppLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }))
 
-import { isServerPlaceRow, listSavedPlaceIds, runServerRowAction } from './server-row-actions'
+import { isServerPlaceRow, listSavedPlaces, runServerRowAction, setServerAutoReconnect } from './server-row-actions'
 import type { VolumeInfo } from '../types'
 
 const place: VolumeInfo = {
@@ -81,9 +85,9 @@ describe('isServerPlaceRow', () => {
   })
 })
 
-describe('listSavedPlaceIds', () => {
-  it('answers the volume IDs the saved servers back', async () => {
-    expect(await listSavedPlaceIds()).toEqual(new Set(['sftp-nas-local-22-ada']))
+describe('listSavedPlaces', () => {
+  it('answers the places the saved servers back, with each one\'s "Reconnect automatically" switch', async () => {
+    expect(await listSavedPlaces()).toEqual(new Map([['sftp-nas-local-22-ada', { autoReconnect: false }]]))
   })
 
   /**
@@ -94,13 +98,26 @@ describe('listSavedPlaceIds', () => {
    * whether there was one.
    */
   it('❌ never asks the Keychain', async () => {
-    await listSavedPlaceIds()
+    await listSavedPlaces()
     expect(hasServerSecret).not.toHaveBeenCalled()
   })
 
   it('a store that does not answer costs the rows their saved-only items, never the menu', async () => {
     listSavedServers.mockRejectedValueOnce(new Error('store busy'))
-    expect(await listSavedPlaceIds()).toEqual(new Set())
+    expect(await listSavedPlaces()).toEqual(new Map())
+  })
+})
+
+describe('setServerAutoReconnect', () => {
+  it('moves the switch through the one narrow command, which also reaches a connected volume', async () => {
+    await setServerAutoReconnect('sftp-nas-local-22-ada', true)
+    expect(setPlaceAutoReconnect).toHaveBeenCalledWith('sftp-nas-local-22-ada', true)
+  })
+
+  it('a refused switch says nothing to the person: the next open shows the real state', async () => {
+    setPlaceAutoReconnect.mockRejectedValueOnce(new Error('bridge gone'))
+    await setServerAutoReconnect('sftp-nas-local-22-ada', false)
+    expect(addToast).not.toHaveBeenCalled()
   })
 })
 
@@ -209,6 +226,7 @@ describe('runServerRowAction', () => {
     // other half away.
     expect(openEditServerSheet).toHaveBeenCalledWith({
       id: 'sftp-nas-local-22-ada',
+      autoReconnect: false,
       places: [{ volumeId: 'sftp-nas-local-22-ada' }],
     })
   })

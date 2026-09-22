@@ -47,7 +47,7 @@
     import { filesystemLabel } from './filesystem-label'
     import { pathForPickedVolume } from './picked-volume-path'
     import { rowMenuItems, runVolumeRowAction, volumeRowMenu, type RowMenuPick, type RowToggleKind } from './row-menu'
-    import { listSavedPlaceIds } from './server-row-actions'
+    import { listSavedPlaces, setServerAutoReconnect, type SavedPlaceFacts } from './server-row-actions'
     import { shouldShowCheckmark } from './volume-checkmark'
     import { groupByCategory } from './volume-grouping'
     import { createVolumeSpaceManager } from './volume-space-manager.svelte'
@@ -116,8 +116,11 @@
 
     const directSwitches = createDirectConnectionSwitches()
 
-    /** The volume IDs a saved server entry backs, re-read on every open (Edit and Forget server need one). */
-    let savedPlaceIds = $state(new Set<string>())
+    /**
+     * The places a saved server entry backs, re-read on every open: Edit and Forget server need
+     * one, and "Reconnect automatically" shows its switch.
+     */
+    let savedPlaces = $state(new Map<string, SavedPlaceFacts>())
 
     /** The row that hands the header over to the favorites menu, and teaches ⌃D doing it. */
     const SEE_FAVORITES_VALUE = 'favorites:see'
@@ -146,8 +149,9 @@
         const menu = volumeRowMenu(volume, {
             busy: isVolumeBusy(volume.id),
             ejecting: isVolumeEjecting(volume.id),
-            isSaved: savedPlaceIds.has(volume.id),
+            isSaved: savedPlaces.has(volume.id),
             directConnection: directSwitches.valueFor(volume.id),
+            autoReconnect: savedPlaces.get(volume.id)?.autoReconnect,
         })
         return rowMenuItems(volume.id, menu, (entry) => ({ kind: 'row-entry', volume, entry }))
     }
@@ -226,8 +230,8 @@
             void spaceManager.fetchVolumeSpaces(volumes)
             badges.fetchForRows(volumes)
             void directSwitches.fetchForRows(volumes)
-            void listSavedPlaceIds().then((ids) => {
-                savedPlaceIds = ids
+            void listSavedPlaces().then((places) => {
+                savedPlaces = places
             })
         },
         restoreFocus: () => {
@@ -298,6 +302,8 @@
     /** What flipping each row switch does. A `Record`, so a new `RowToggleKind` won't compile until it's handled. */
     const flipToggle: Record<RowToggleKind, (volume: VolumeInfo) => Promise<void>> = {
         'direct-connection': (volume) => directSwitches.pick(volume, volumes),
+        // A row shows the switch only once the saved list answered, so the flip starts from it.
+        'auto-reconnect': (volume) => setServerAutoReconnect(volume.id, !savedPlaces.get(volume.id)?.autoReconnect),
     }
 
     function openVolume(volume: VolumeInfo): void {

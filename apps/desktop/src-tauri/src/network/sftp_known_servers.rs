@@ -278,6 +278,34 @@ pub fn set_pinned(host: &str, port: u16, username: &str, pinned: bool) -> bool {
     moved
 }
 
+/// Moves the "reconnect automatically" switch on `(host, port, username)`,
+/// answering whether an entry was there.
+///
+/// ❗ **Its own writer, for the same reason as [`set_pinned`]**: a row menu flips
+/// one field, and a read-modify-`remember` would write back every other field as
+/// it stood at the read, undoing an edit the sheet saved in between. The live
+/// volume's copy is the wiring's job (`sftp_volume_wiring::apply_auto_reconnect`).
+pub fn set_auto_reconnect(host: &str, port: u16, username: &str, on: bool) -> bool {
+    let moved = {
+        let mut store = known().lock_ignore_poison();
+        match store
+            .known_sftp_servers
+            .iter_mut()
+            .find(|entry| same_server(entry, host, port, username))
+        {
+            Some(entry) => {
+                entry.auto_reconnect = on;
+                true
+            }
+            None => false,
+        }
+    };
+    if moved {
+        save();
+    }
+    moved
+}
+
 /// Drops the entry for `(host, port, username)`, answering whether one was there.
 ///
 /// ❌ Leaves the secret store and the trusted host key alone: forgetting a server

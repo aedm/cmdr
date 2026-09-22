@@ -139,6 +139,7 @@ describe('SignInSheet a11y', () => {
         username: 'ada',
         pinned: true,
         lastConnectedAt: null,
+        autoReconnect: true,
         places: [],
       },
     })

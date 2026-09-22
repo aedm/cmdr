@@ -233,10 +233,12 @@ the two backends spell the same answer differently (`needs_stored_secret` vs `no
 warning about is the silent one: auto-reconnect on, nothing stored, so nothing can ever happen.
 
 **"Reconnect automatically" carries an `InfoTip` saying what it does NOT do** (`servers.sheet.autoReconnectHelp`). The
-switch only redials a session that DROPPED (`crates/cmdr-sftp/DETAILS.md` § "The two switches"); a saved place is
-dialed when a pane lands on it (`../file-explorer/pane/place-connect.svelte.ts`), and Cmdr holds no session for a
-server nobody opened. The bare label reads as "connect at startup", which is the misreading the tip corrects. It sits
-BESIDE the checkbox, ❌ never inside its `<label>`, where a click on the glyph would flip the box.
+switch only redials a session that DROPPED (`crates/cmdr-sftp/DETAILS.md` § "The two switches"); a saved place is dialed
+when a pane lands on it (`../file-explorer/pane/place-connect.svelte.ts`), and Cmdr holds no session for a server nobody
+opened. The bare label reads as "connect at startup", which is the misreading the tip corrects. It sits BESIDE the
+checkbox, ❌ never inside its `<label>`, where a click on the glyph would flip the box. A saved place's row menu carries
+the same switch, with the same two keys as its label and tooltip, so the two doors can't drift in meaning
+(`../file-explorer/navigation/DETAILS.md` § "Row actions: the → submenu").
 
 **The host-key step replaces the body, ❌ never a second dialog.** First contact is routine and gets a plain primary
 button; a changed key is the shape a man-in-the-middle takes, so it carries the red weight, says what else it can mean,

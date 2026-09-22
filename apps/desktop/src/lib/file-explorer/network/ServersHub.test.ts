@@ -48,6 +48,7 @@ const savedSftp: SavedServer = {
   username: 'ada',
   pinned: true,
   lastConnectedAt: '2026-09-01T10:00:00Z',
+  autoReconnect: true,
   places: [
     {
       volumeId: 'sftp-jump.local-22-ada',
@@ -336,13 +337,14 @@ describe('ServersHub row menu', () => {
     await tick()
     await rightClick('Jump box')
     const labels = [...document.querySelectorAll('[data-menu] [data-menu-row]')].map((el) => el.textContent.trim())
-    // Saved, not connected: nothing to disconnect.
+    // Saved, not connected: nothing to disconnect. Saved, so its "Reconnect automatically" rides below.
     expect(labels).toEqual([
       'Open',
       'Edit server…',
       expect.stringMatching(/pin/i),
       'Forget saved password',
       'Forget server',
+      'Reconnect automatically',
     ])
     await cleanup()
   })

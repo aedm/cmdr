@@ -85,6 +85,7 @@ fn saved_servers(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedSer
             username: Some(entry.username),
             pinned: entry.pinned,
             last_connected_at: Some(entry.last_connected_at),
+            auto_reconnect: Some(entry.auto_reconnect),
         });
     }
 
@@ -115,6 +116,7 @@ fn saved_servers(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedSer
             username: Some(entry.username),
             pinned: entry.pinned,
             last_connected_at: Some(entry.last_connected_at),
+            auto_reconnect: Some(entry.auto_reconnect),
         });
     }
 
@@ -153,6 +155,7 @@ fn smb_hosts(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedServer>
             username: None,
             pinned: false,
             last_connected_at: Some(share.last_connected_at),
+            auto_reconnect: None,
             places: Vec::new(),
         });
     }
@@ -170,6 +173,7 @@ fn smb_hosts(manual: Vec<manual_servers::ManualServerEntry>) -> Vec<SavedServer>
             pinned: false,
             // `added_at` is when it was typed, ❌ not when it last answered.
             last_connected_at: None,
+            auto_reconnect: None,
             places: Vec::new(),
         });
     }
@@ -371,6 +375,42 @@ fn set_place_pinned_inner(volume_id: &str, pinned: bool) -> bool {
     let moved = match saved {
         SavedEntry::Sftp(entry) => sftp_known_servers::set_pinned(&entry.host, entry.port, &entry.username, pinned),
         SavedEntry::Webdav(entry) => webdav_known_servers::set_pinned(&entry.url, &entry.username, pinned),
+    };
+    if moved {
+        crate::volume_broadcast::emit_volumes_changed();
+    }
+    moved
+}
+
+/// Moves a saved place's "Reconnect automatically" switch, answering whether a
+/// saved place was there.
+///
+/// ❗ **The row menus' writer, narrower than [`update_saved_server`] on
+/// purpose.** A checkbox flips ONE field, and sending the whole record would
+/// write back every other field as the menu last read it, clobbering an edit the
+/// sheet saved since. It still moves both copies the sheet's save moves (the
+/// store and a connected volume's live switch), through each wiring's
+/// `apply_auto_reconnect`. An unsaved place has nothing to persist and answers
+/// `false`.
+///
+/// ❗ Emits `volumes-changed`, which is what makes an open servers hub re-read
+/// the saved list its row menu shows.
+#[tauri::command]
+#[specta::specta]
+pub fn set_place_auto_reconnect(volume_id: String, auto_reconnect: bool) -> bool {
+    set_place_auto_reconnect_inner(&volume_id, auto_reconnect)
+}
+
+/// The body of [`set_place_auto_reconnect`], so a cell can call it without a `String`.
+fn set_place_auto_reconnect_inner(volume_id: &str, on: bool) -> bool {
+    let Some(saved) = saved_by_id(volume_id) else {
+        return false;
+    };
+    let moved = match saved {
+        SavedEntry::Sftp(entry) => {
+            sftp_volume_wiring::apply_auto_reconnect(&entry.host, entry.port, &entry.username, on)
+        }
+        SavedEntry::Webdav(entry) => webdav_volume_wiring::apply_auto_reconnect(&entry.url, &entry.username, on),
     };
     if moved {
         crate::volume_broadcast::emit_volumes_changed();

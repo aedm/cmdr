@@ -22,6 +22,7 @@ function sftpServer(overrides: Partial<SavedServer> = {}): SavedServer {
     username: 'ada',
     pinned: true,
     lastConnectedAt: '2026-09-01T10:00:00Z',
+    autoReconnect: true,
     places: [{ volumeId: id, name: 'Naspolya', pinned: true, connected: false, appRoot: `sftp://ada@nas.local:22` }],
     ...overrides,
   }
@@ -37,6 +38,7 @@ function smbServer(overrides: Partial<SavedServer> = {}): SavedServer {
     username: null,
     pinned: false,
     lastConnectedAt: null,
+    autoReconnect: null,
     places: [],
     ...overrides,
   }

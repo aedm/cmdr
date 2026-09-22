@@ -101,6 +101,7 @@ export const serverSignInFixtures: Record<string, SignInSheetFixture | undefined
         username: 'ada',
         pinned: true,
         lastConnectedAt: '2026-09-06T09:12:00Z',
+        autoReconnect: true,
         places: [],
       },
     },

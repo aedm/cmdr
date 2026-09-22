@@ -18,6 +18,7 @@ import {
   forgetServer,
   forgetServerSecret,
   listSavedServers,
+  setPlaceAutoReconnect,
   setPlacePinned,
 } from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast'
@@ -44,24 +45,58 @@ export function isServerPlaceRow(volume: VolumeInfo): boolean {
   return volume.category === 'network' && isServerVolumeId(volume.id)
 }
 
+/** What a saved server tells a row menu about its place. */
+export interface SavedPlaceFacts {
+  /** The "Reconnect automatically" switch; `undefined` for a protocol that has none. */
+  autoReconnect: boolean | undefined
+}
+
 /**
- * The volume IDs a saved server entry backs, which is what decides whether a server
- * row offers Edit… and Forget server (`row-menu.ts`).
+ * The places a saved server entry backs, by volume ID. Being in the map is what decides
+ * whether a server row offers Edit… and Forget server; the facts fill the row's switches
+ * (`row-menu.ts`).
  *
- * ❗ A store that doesn't answer costs those rows two items, never the menu: it
- * answers an empty set. ❌ No Keychain read on this path, and none is needed:
+ * ❗ A store that doesn't answer costs those rows their saved-only items, never the menu:
+ * it answers an empty map. ❌ No Keychain read on this path, and none is needed:
  * "Forget saved password" is always offered, and `forgetServerSecret` says
  * whether an entry was there ([`forgetSavedSecret`] words a `false`). Every read
  * of a Keychain entry can cost a system prompt, which a menu opening must not
  * spend (the same rule `../network/CLAUDE.md` states for SMB).
  */
-export async function listSavedPlaceIds(): Promise<Set<string>> {
+export async function listSavedPlaces(): Promise<Map<string, SavedPlaceFacts>> {
   try {
     const servers = await listSavedServers()
-    return new Set(servers.flatMap((server) => server.places.map((place) => place.volumeId)))
+    return new Map(
+      servers.flatMap((server) =>
+        server.places.map((place): [string, SavedPlaceFacts] => [
+          place.volumeId,
+          { autoReconnect: server.autoReconnect ?? undefined },
+        ]),
+      ),
+    )
   } catch (e) {
     log.warn('Reading the saved servers for the row menus broke down: {error}', { error: String(e) })
-    return new Set()
+    return new Map()
+  }
+}
+
+/**
+ * Flips a saved place's "Reconnect automatically" switch, from a row menu's checkbox.
+ *
+ * Goes through `setPlaceAutoReconnect`, which moves only that field, in the store AND on
+ * a connected volume, so it takes effect now. Says nothing either way: a checkbox shows
+ * its own state, and the next open re-reads it from the store, so a flip that didn't
+ * land reads as unchanged rather than as a toast.
+ */
+export async function setServerAutoReconnect(volumeId: string, on: boolean): Promise<void> {
+  try {
+    const moved = await setPlaceAutoReconnect(volumeId, on)
+    if (!moved) log.info('No saved server behind {volumeId}, so its switch stayed put', { volumeId })
+  } catch (e) {
+    log.warn('Switching "Reconnect automatically" for {volumeId} broke down: {error}', {
+      volumeId,
+      error: String(e),
+    })
   }
 }
 

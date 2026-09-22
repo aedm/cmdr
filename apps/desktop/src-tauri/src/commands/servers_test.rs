@@ -151,6 +151,10 @@ fn an_smb_host_lists_no_places_and_is_never_pinned() {
     assert!(smb.places.is_empty());
     assert!(!smb.pinned);
     assert!(smb.username.is_none(), "an SMB host is not an account yet");
+    assert!(
+        smb.auto_reconnect.is_none(),
+        "SMB has no \"Reconnect automatically\" switch, so there is no row checkbox to fill"
+    );
 }
 
 /// ❗ **An account nobody named is listed by its derived label, and says so**:
@@ -304,6 +308,57 @@ fn pinning_a_place_round_trips_and_republishes_the_volume_list() {
 #[test]
 fn pinning_an_unknown_place_is_a_plain_no() {
     assert!(!set_place_pinned_inner("sftp-nothing-was-ever-saved-here", true));
+}
+
+// ── Reconnect automatically ──────────────────────────────────────────
+
+/// ❗ **The row menu's "Reconnect automatically" moves that one field and
+/// nothing else**, and the listing (which both row menus read) carries it back.
+/// The pin is the field a read-modify-`remember` would get wrong, so it's the
+/// one checked for collateral.
+#[test]
+fn switching_reconnect_automatically_on_an_sftp_place_round_trips_through_the_listing() {
+    let _recorder = crate::volume_broadcast::recorder_test_lock();
+    let host = "192.0.2.71";
+    sftp_known_servers::remember(sftp_entry(host, false));
+    let volume_id = cmdr_fs::volume::sftp_volume_id(host, 2222, "ada");
+    let listed = || find(&saved_servers(Vec::new()), &format!("{host} over ssh")).clone();
+    assert_eq!(listed().auto_reconnect, Some(true));
+
+    let before = crate::volume_broadcast::volumes_changed_requests();
+    assert!(set_place_auto_reconnect_inner(&volume_id, false));
+    assert_eq!(listed().auto_reconnect, Some(false), "the switch reached the store");
+    assert!(!listed().pinned, "and left the pin where it was");
+    assert!(
+        crate::volume_broadcast::volumes_changed_requests() > before,
+        "❗ the hub re-reads the saved list on `volumes-changed`, so an open hub repaints"
+    );
+
+    assert!(set_place_auto_reconnect_inner(&volume_id, true));
+    assert_eq!(listed().auto_reconnect, Some(true), "and back");
+}
+
+/// The WebDAV store has its own writer; the same round trip through it.
+#[test]
+fn switching_reconnect_automatically_on_a_webdav_place_round_trips_through_the_listing() {
+    let _recorder = crate::volume_broadcast::recorder_test_lock();
+    let host = "192.0.2.72";
+    webdav_known_servers::remember(webdav_entry(host, true));
+    let volume_id = cmdr_fs::volume::webdav_volume_id(host, 8080, "ada");
+    let listed = || find(&saved_servers(Vec::new()), &format!("{host} over dav")).clone();
+
+    assert!(set_place_auto_reconnect_inner(&volume_id, false));
+    assert_eq!(listed().auto_reconnect, Some(false));
+    assert!(listed().pinned, "the pin stays put");
+}
+
+/// An id nothing saved answers no: a one-shot connection has nothing to persist.
+#[test]
+fn switching_reconnect_automatically_on_an_unknown_place_is_a_plain_no() {
+    assert!(!set_place_auto_reconnect_inner(
+        "sftp-nothing-was-ever-saved-here",
+        false
+    ));
 }
 
 // ── Connecting a saved place ─────────────────────────────────────────

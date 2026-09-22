@@ -231,7 +231,15 @@ describe('ServersHubRowMenu a11y', () => {
         { type: 'action', action: 'open', label: 'Open', icon: 'arrow-right' },
         { type: 'action', action: 'disconnect', label: 'Disconnect', icon: 'unplug', disabled: true },
       ],
-      [{ type: 'toggle', toggle: 'direct-connection', label: 'Use direct connection', checked: true }],
+      [
+        {
+          type: 'toggle',
+          toggle: 'auto-reconnect',
+          label: 'Reconnect automatically',
+          checked: true,
+          tooltip: 'If the connection drops, Cmdr reconnects to this server on its own.',
+        },
+      ],
     ],
     runRowEntry: () => Promise.resolve(),
     openHostMenu: () => Promise.resolve(),

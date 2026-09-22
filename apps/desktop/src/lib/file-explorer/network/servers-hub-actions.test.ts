@@ -16,6 +16,7 @@ const removeManualServer = vi.fn(() => Promise.resolve())
 const disconnectNetworkHost = vi.fn(() => Promise.resolve(['/Volumes/Public']))
 const showNetworkHostContextMenu = vi.fn(() => Promise.resolve())
 const forgetSavedServer = vi.fn(() => Promise.resolve())
+const setServerAutoReconnect = vi.fn((_volumeId: string, _on: boolean) => Promise.resolve())
 const runVolumeRowAction = vi.fn((_payload: unknown) => Promise.resolve())
 const openServer = vi.fn()
 const forgetCredentials = vi.fn(() => Promise.resolve())
@@ -35,6 +36,7 @@ vi.mock('./network-store.svelte', () => ({
 vi.mock('../navigation/server-row-actions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../navigation/server-row-actions')>()),
   forgetSavedServer: (...args: unknown[]) => forgetSavedServer(...(args as [])),
+  setServerAutoReconnect: (volumeId: string, on: boolean) => setServerAutoReconnect(volumeId, on),
 }))
 vi.mock('$lib/stores/volume-busy-store.svelte', () => ({ isVolumeBusy: () => false, isVolumeEjecting: () => false }))
 vi.mock('../navigation/row-menu', async (importOriginal) => ({
@@ -73,6 +75,7 @@ const placeRow: HubRow = {
     username: 'ada',
     pinned: true,
     lastConnectedAt: null,
+    autoReconnect: true,
     places: [
       {
         volumeId: 'sftp-nas.local-22-ada',
@@ -105,6 +108,7 @@ const savedHostRow: HubRow = {
     username: null,
     pinned: false,
     lastConnectedAt: null,
+    autoReconnect: null,
     places: [],
   },
   host,
@@ -191,7 +195,8 @@ describe('rowMenu', () => {
   }
 
   it('gives a one-place row the servers list, the same one the switcher row’s submenu shows', () => {
-    // Live and saved: every server action. Pinned, so the pin reads Unpin.
+    // Live and saved: every server action. Pinned, so the pin reads Unpin. Saved, so
+    // "Reconnect automatically" rides below, from the saved entry.
     expect(actionsOf(placeRow, [{ ...liveVolume, pinned: true }])).toEqual([
       'open',
       'edit',
@@ -199,12 +204,22 @@ describe('rowMenu', () => {
       'unpin',
       'forget-secret',
       'forget-server',
+      'auto-reconnect',
     ])
+    const toggle = (actions([liveVolume]).rowMenu(placeRow) ?? []).flat().find((e) => e.type === 'toggle')
+    expect(toggle).toMatchObject({ toggle: 'auto-reconnect', checked: true })
   })
 
   it('stands in for a place the volume list has no row for, rather than skipping the menu', () => {
     // A saved server that is neither pinned nor connected isn't in the listing: no session, so no Disconnect.
-    expect(actionsOf(placeRow, [])).toEqual(['open', 'edit', 'unpin', 'forget-secret', 'forget-server'])
+    expect(actionsOf(placeRow, [])).toEqual([
+      'open',
+      'edit',
+      'unpin',
+      'forget-secret',
+      'forget-server',
+      'auto-reconnect',
+    ])
   })
 
   it('has no in-app menu for an SMB host: that one keeps its own native host menu', () => {
@@ -225,6 +240,17 @@ describe('runRowEntry', () => {
   it('hands every other action to the one runner the switcher uses', async () => {
     await actions([liveVolume]).runRowEntry(placeRow, entry('disconnect'))
     expect(runVolumeRowAction).toHaveBeenCalledWith({ volume: liveVolume, action: 'disconnect' })
+  })
+
+  it('flips "Reconnect automatically" from the saved entry’s value, through the servers family', async () => {
+    const toggle = {
+      type: 'toggle',
+      toggle: 'auto-reconnect',
+      label: 'Reconnect automatically',
+      checked: true,
+    } as const
+    await actions([liveVolume]).runRowEntry(placeRow, toggle)
+    expect(setServerAutoReconnect).toHaveBeenCalledWith('sftp-nas.local-22-ada', false)
   })
 })
 

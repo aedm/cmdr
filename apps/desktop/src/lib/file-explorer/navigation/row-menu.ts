@@ -32,7 +32,7 @@ import { isServerPlaceRow, runServerRowAction } from './server-row-actions'
 import type { VolumeInfo } from '../types'
 
 /** A per-row switch the submenu carries as a checkbox row. */
-export type RowToggleKind = 'direct-connection'
+export type RowToggleKind = 'direct-connection' | 'auto-reconnect'
 
 /** One row of a row's menu: an action to run, or a switch to flip. */
 export type RowMenuEntry =
@@ -45,7 +45,14 @@ export type RowMenuEntry =
       /** Leaves the menu up after the pick (see `MenuItem.keepsMenuOpen`). */
       keepsMenuOpen?: boolean
     }
-  | { type: 'toggle'; toggle: RowToggleKind; label: string; checked: boolean }
+  | {
+      type: 'toggle'
+      toggle: RowToggleKind
+      label: string
+      checked: boolean
+      /** What the switch does, where the label alone invites a wrong reading. */
+      tooltip?: string
+    }
 
 /** Entries in groups: actions first, then the row's switches. A rule sits between two groups. */
 export type RowMenu = RowMenuEntry[][]
@@ -60,6 +67,11 @@ export interface VolumeRowFacts {
   isSaved: boolean
   /** The SMB share's direct-connection switch, or `undefined` until Rust answered for it. */
   directConnection: boolean | undefined
+  /**
+   * A saved SFTP or WebDAV place's "Reconnect automatically" switch (`SavedServer.autoReconnect`),
+   * or `undefined` where nothing saved backs the row: a one-shot connection has nothing to persist.
+   */
+  autoReconnect: boolean | undefined
 }
 
 /** A pick a surface hands back: the entry, and the volume it acts on. */
@@ -147,6 +159,17 @@ function rowToggles(facts: VolumeRowFacts): RowMenuEntry[] {
       checked: facts.directConnection,
     })
   }
+  if (facts.autoReconnect !== undefined) {
+    // The sign-in sheet's words, label and explanation both, so the two doors to the one
+    // setting can't drift apart in meaning (`$lib/servers/DETAILS.md`).
+    toggles.push({
+      type: 'toggle',
+      toggle: 'auto-reconnect',
+      label: tString('servers.sheet.autoReconnect'),
+      checked: facts.autoReconnect,
+      tooltip: tString('servers.sheet.autoReconnectHelp'),
+    })
+  }
   return toggles
 }
 
@@ -190,7 +213,7 @@ function entryItem<T>(volumeId: string, entry: RowMenuEntry, wrap: (entry: RowMe
   const common = { value: `row:${volumeId}:${entryKey(entry)}`, label: entry.label, data: wrap(entry) }
   return entry.type === 'action'
     ? { ...common, icon: { lucide: entry.icon }, disabled: entry.disabled, keepsMenuOpen: entry.keepsMenuOpen }
-    : { ...common, checked: entry.checked }
+    : { ...common, checked: entry.checked, tooltip: entry.tooltip }
 }
 
 /**

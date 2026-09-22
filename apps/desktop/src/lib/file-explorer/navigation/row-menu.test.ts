@@ -37,7 +37,7 @@ import {
 } from './row-menu'
 import type { VolumeInfo } from '../types'
 
-const idle = { busy: false, ejecting: false, isSaved: false, directConnection: undefined }
+const idle = { busy: false, ejecting: false, isSaved: false, directConnection: undefined, autoReconnect: undefined }
 
 const usbDrive: VolumeInfo = {
   id: 'usb-stick',
@@ -153,6 +153,24 @@ describe('volumeRowMenu', () => {
     expect(entry(menu, 'forget-server')).toBeUndefined()
   })
 
+  it('puts a saved place’s “Reconnect automatically” in its own group, explained, so nobody reads it as “connect at startup”', () => {
+    const menu = volumeRowMenu(place, { ...idle, isSaved: true, autoReconnect: false })
+    expect(shape(menu)).toEqual([
+      ['open', 'edit', 'disconnect', 'pin', 'forget-secret', 'forget-server'],
+      ['toggle:auto-reconnect'],
+    ])
+    expect(entry(menu, 'toggle:auto-reconnect')).toMatchObject({
+      type: 'toggle',
+      label: 'Reconnect automatically',
+      checked: false,
+      tooltip: expect.stringContaining("doesn't make Cmdr connect at startup") as unknown,
+    })
+  })
+
+  it('leaves “Reconnect automatically” out where nothing saved backs the row: there is nothing to persist', () => {
+    expect(entry(volumeRowMenu(place, idle), 'toggle:auto-reconnect')).toBeUndefined()
+  })
+
   it('greys the destructive server actions under a running transfer, never Open, Edit, or the pin', () => {
     const menu = volumeRowMenu(place, { ...idle, busy: true, isSaved: true })
     const greyed = menu
@@ -183,6 +201,13 @@ describe('rowMenuItems', () => {
     expect(items?.[0]).toMatchObject({ icon: { lucide: 'eject' }, keepsMenuOpen: true, separatorBefore: false })
     expect(items?.[1]).toMatchObject({ checked: false, separatorBefore: true })
     expect(items?.[1].data).toBe(menu[1][0])
+  })
+
+  it('carries a switch’s explanation onto its row as the tooltip', () => {
+    const menu = volumeRowMenu(place, { ...idle, isSaved: true, autoReconnect: true })
+    const row = rowMenuItems(place.id, menu, (e) => e)?.find((item) => item.value.endsWith('toggle:auto-reconnect'))
+    expect(row).toMatchObject({ checked: true, separatorBefore: true })
+    expect(row?.tooltip).toContain('reconnects to this server on its own')
   })
 
   it('gives a row with no actions no submenu at all, so it draws no arrow', () => {

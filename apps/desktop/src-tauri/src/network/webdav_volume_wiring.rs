@@ -228,6 +228,34 @@ pub async fn save_without_connecting(server: KnownWebdavServer) -> SavedServerOu
     SavedServerOutcome::Saved
 }
 
+/// Moves the "reconnect automatically" switch on a saved server: the store, and
+/// the live volume's copy when one is connected, so it takes effect now rather
+/// than on the next connect. Answers whether a saved entry was there.
+///
+/// ❗ The row menu's narrow twin of [`save_without_connecting`], which moves the
+/// same two copies as part of a whole edit. Store first: with no saved entry
+/// there's nothing to switch.
+pub fn apply_auto_reconnect(url: &str, username: &str, on: bool) -> bool {
+    if !webdav_known_servers::set_auto_reconnect(url, username, on) {
+        return false;
+    }
+    let Some(entry) = webdav_known_servers::find(url, username) else {
+        return true;
+    };
+    // A URL no dial could open has no volume id, so nothing is connected under it.
+    let Some((host, port)) = entry.endpoint() else {
+        return true;
+    };
+    let volume_id = cmdr_fs::volume::webdav_volume_id(&host, port, username);
+    let manager = crate::file_system::volume::manager::get_volume_manager();
+    if let Some(live) = manager.get(&volume_id)
+        && let Some(webdav) = live.as_any().downcast_ref::<WebdavVolume>()
+    {
+        webdav.set_auto_reconnect(on);
+    }
+    true
+}
+
 /// Whether an unattended reconnect can actually happen for a mounted volume.
 ///
 /// `None` when nothing WebDAV is registered under that id, which is the honest

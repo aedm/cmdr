@@ -357,6 +357,7 @@ describe('SignInSheet: edit mode', () => {
     username: 'ada',
     pinned: true,
     lastConnectedAt: null,
+    autoReconnect: true,
     places: [],
   }
 

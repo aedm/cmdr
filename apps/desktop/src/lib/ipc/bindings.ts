@@ -4262,6 +4262,23 @@ export const commands = {
   setPlacePinned: (volumeId: string, pinned: boolean) =>
     __TAURI_INVOKE<boolean>('set_place_pinned', { volumeId, pinned }),
   /**
+   *  Moves a saved place's "Reconnect automatically" switch, answering whether a
+   *  saved place was there.
+   *
+   *  ❗ **The row menus' writer, narrower than [`update_saved_server`] on
+   *  purpose.** A checkbox flips ONE field, and sending the whole record would
+   *  write back every other field as the menu last read it, clobbering an edit the
+   *  sheet saved since. It still moves both copies the sheet's save moves (the
+   *  store and a connected volume's live switch), through each wiring's
+   *  `apply_auto_reconnect`. An unsaved place has nothing to persist and answers
+   *  `false`.
+   *
+   *  ❗ Emits `volumes-changed`, which is what makes an open servers hub re-read
+   *  the saved list its row menu shows.
+   */
+  setPlaceAutoReconnect: (volumeId: string, autoReconnect: boolean) =>
+    __TAURI_INVOKE<boolean>('set_place_auto_reconnect', { volumeId, autoReconnect }),
+  /**
    *  Drops a server from the saved list, answering whether one was there.
    *
    *  ❗ **Also drops the session and unregisters the volume**, because a forgotten
@@ -11851,6 +11868,15 @@ export type SavedServer = {
   pinned: boolean
   // ISO 8601, so a hub can sort by recency. `None` when nothing recorded one.
   lastConnectedAt: string | null
+  /**
+   *  The "Reconnect automatically" switch: redial on its own when a session
+   *  DROPS (never a connect at startup). `None` for SMB, which has no such
+   *  switch. What the row menus' checkbox shows; [`set_place_auto_reconnect`]
+   *  moves it.
+   *
+   *  [`set_place_auto_reconnect`]: crate::commands::servers::set_place_auto_reconnect
+   */
+  autoReconnect: boolean | null
   // The mountable things under it. One for SFTP and WebDAV, none for SMB.
   places: SavedPlace[]
 }

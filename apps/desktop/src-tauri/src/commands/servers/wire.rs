@@ -116,6 +116,13 @@ pub struct SavedServer {
     pub pinned: bool,
     /// ISO 8601, so a hub can sort by recency. `None` when nothing recorded one.
     pub last_connected_at: Option<String>,
+    /// The "Reconnect automatically" switch: redial on its own when a session
+    /// DROPS (never a connect at startup). `None` for SMB, which has no such
+    /// switch. What the row menus' checkbox shows; [`set_place_auto_reconnect`]
+    /// moves it.
+    ///
+    /// [`set_place_auto_reconnect`]: crate::commands::servers::set_place_auto_reconnect
+    pub auto_reconnect: Option<bool>,
     /// The mountable things under it. One for SFTP and WebDAV, none for SMB.
     pub places: Vec<SavedPlace>,
 }
