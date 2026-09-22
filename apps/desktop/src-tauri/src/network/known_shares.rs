@@ -43,12 +43,14 @@ pub struct KnownNetworkShare {
     pub username: Option<String>,
 }
 
-/// One share on one server, named the way the mount reported it.
+/// One share on one server, named the way the mount reported it. Private, like the
+/// list it lives in: the switch is read and set only through
+/// [`direct_connection_enabled`] and [`set_direct_connection_enabled`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ShareRef {
-    pub server_name: String,
-    pub share_name: String,
+struct ShareRef {
+    server_name: String,
+    share_name: String,
 }
 
 /// The known shares store, persisted to disk.
@@ -66,7 +68,7 @@ pub struct KnownSharesStore {
     /// before the setting existed keeps every share on the fast connection. See
     /// [`direct_connection_enabled`].
     #[serde(default)]
-    pub direct_connection_opt_outs: Vec<ShareRef>,
+    direct_connection_opt_outs: Vec<ShareRef>,
 }
 
 /// In-memory cache of known shares, synchronized with disk.
