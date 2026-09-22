@@ -5,6 +5,9 @@
 # Dependencies
 node_modules/
 
+# Vendored third-party source, kept byte-identical to upstream
+vendor/
+
 # Build outputs
 **/dist/
 **/build/

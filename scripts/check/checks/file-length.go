@@ -46,12 +46,30 @@ var fileLengthSourceExtensions = map[string]bool{
 	".ts":     true,
 }
 
+// fileLengthSkipDirs are directory names this check never looks inside, matched at
+// any depth. Most are build output that git wouldn't list anyway; `vendor` is the
+// one that earns its keep. A vendored third-party crate (`vendor/mdns-sd`) is kept
+// byte-identical to its upstream release, so its length is upstream's call, not
+// ours, and allowlisting it would only churn on the next refresh.
 var fileLengthSkipDirs = map[string]bool{
 	"_ignored":     true,
 	"build":        true,
 	"dist":         true,
 	"node_modules": true,
 	"target":       true,
+	"vendor":       true,
+}
+
+// inSkippedDir reports whether any segment of a repo-relative, forward-slashed
+// path names a skipped directory. The filesystem walk prunes those directories as
+// it goes; the git listing hands over finished paths, so it needs this.
+func inSkippedDir(relPath string) bool {
+	for segment := range strings.SplitSeq(relPath, "/") {
+		if fileLengthSkipDirs[segment] {
+			return true
+		}
+	}
+	return false
 }
 
 type longFile struct {
@@ -251,7 +269,7 @@ func scanFileLengths(rootDir string, allowlist fileLengthAllowlist) (fileLengthS
 
 	var result fileLengthScanResult
 	for _, relPath := range relPaths {
-		if !fileLengthSourceExtensions[filepath.Ext(relPath)] {
+		if !fileLengthSourceExtensions[filepath.Ext(relPath)] || inSkippedDir(relPath) {
 			continue
 		}
 		absPath := filepath.Join(rootDir, relPath)

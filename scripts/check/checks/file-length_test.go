@@ -188,6 +188,31 @@ func TestRunFileLength_SkipsExcludedDirs(t *testing.T) {
 	}
 }
 
+// A vendored third-party crate is tracked, so the git listing hands it over even
+// though the filesystem walk would prune it. Its files are upstream's, kept
+// byte-identical, so their length is not ours to ratchet.
+func TestRunFileLength_SkipsVendoredTrackedFiles(t *testing.T) {
+	tmp := t.TempDir()
+	gitInit(t, tmp)
+
+	vendorDir := filepath.Join(tmp, "vendor", "some-crate", "src")
+	if err := os.MkdirAll(vendorDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(vendorDir, "lib.rs"), []byte(strings.Repeat("line\n", 3000)), 0644); err != nil {
+		t.Fatal(err)
+	}
+	gitRun(t, tmp, "add", "vendor")
+
+	result, err := RunFileLength(&CheckContext{RootDir: tmp})
+	if err != nil {
+		t.Fatalf("expected success, got: %v", err)
+	}
+	if result.Code != ResultSuccess {
+		t.Errorf("expected success (vendor/ should be skipped), got code %d: %s", result.Code, result.Message)
+	}
+}
+
 func TestRunFileLength_ColorsYellowAndRed(t *testing.T) {
 	tmp := t.TempDir()
 
