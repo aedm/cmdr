@@ -13,7 +13,7 @@ use super::{Access, Consumer, TokenGate, schemas, tool_available_to, validate_pa
 use crate::mcp::executor::{ToolError, ToolResult};
 use crate::mcp::executor::{
     app, archive_password, async_tools, conflicts, dialogs, downloads, eject, favorites, file_ops, image_facts,
-    indexing, nav, operation_log, photos, queue, quit, search, tags, view,
+    indexing, memory, nav, operation_log, photos, queue, quit, search, tags, view,
 };
 use crate::mcp::tools::Tool;
 
@@ -462,6 +462,22 @@ mcp_tools! {
         consumers: &[Consumer::AiClient, Consumer::Agent],
         access: Access::Read,
         run: app_params image_facts::execute_image_facts
+    },
+
+    // ── Diagnostics ───────────────────────────────────────────────────────────
+    // The one tool that answers a question about CMDR ITSELF rather than the user's files.
+    // `access: Read` and `gate: Open` are the honest classification: every field is a byte
+    // count, a region count, or a fixed tag name, so there is no user data in it to gate
+    // (`commands/memory_diagnostics.rs` § Privacy). ai-client only: it's a debugging
+    // instrument, and its declaration has no business riding every turn of every Ask Cmdr
+    // conversation.
+    "memory_diagnostics" => {
+        desc: "What this Cmdr process is holding right now: the physical footprint, the Rust (mimalloc) heap, the system malloc zones, SQLite's page-cache slab, and the kernel's VM map folded by tag with a per-tag region-size histogram. The only reading that spans both allocators. macOS only.",
+        schema: schemas::memory_diagnostics_schema(),
+        gate: TokenGate::Open,
+        consumers: &[Consumer::AiClient],
+        access: Access::Read,
+        run: params_only memory::execute_memory_diagnostics
     },
 
     // ── Agent read-only tools ─────────────────────────────────────────────────

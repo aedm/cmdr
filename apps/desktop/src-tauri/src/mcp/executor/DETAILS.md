@@ -75,6 +75,14 @@ Depth for the MCP tool-execution layer. `CLAUDE.md` holds the must-knows.
   field the caller has to sniff for. Bounded twice: at most 200 paths (over that is `INVALID_PARAMS`, never a silent
   cut) and 2,000 characters of text per file (a cut sets `textTruncated`). Params parse, truncation, the
   first-volume-wins merge, and the no-bytes property are unit-tested in-file.
+- **`memory.rs`**: `memory_diagnostics`, the one tool that answers a question about Cmdr itself rather than the user's
+  files. Adapter shape like `queue.rs`: it dispatches no FE action, invents no ack, and passes
+  `commands::memory_diagnostics::get_memory_diagnostics` straight through. It exists so the reading can be taken from
+  OUTSIDE the app — the command ships in release builds precisely because the interesting numbers only appear in one
+  under a real workload, and until this tool nothing could call it there. `sizesPerTag` defaults to 8 (the command
+  clamps at 24). macOS only: elsewhere it refuses rather than returning a payload of zeros a reader would take for a
+  measurement. How to read the payload: `../../commands/memory_diagnostics.rs` module docs and
+  `docs/tooling/memory-debugging.md`.
 - **`tests.rs`**: unit tests for the dispatcher and shared helpers; per-category tests live alongside their handlers.
 
 ## The search result

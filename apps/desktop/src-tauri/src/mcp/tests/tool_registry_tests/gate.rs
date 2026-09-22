@@ -296,6 +296,9 @@ fn test_gate_table_is_complete_and_correct() {
         ("search_photos", TokenGate::Open),
         ("image_facts", TokenGate::Open),
         ("list_dir", TokenGate::Open),
+        // Read-only, and every field is a byte count, a region count, or a fixed tag
+        // name, so there is nothing in it a token would be protecting.
+        ("memory_diagnostics", TokenGate::Open),
     ]
     .into_iter()
     .collect();

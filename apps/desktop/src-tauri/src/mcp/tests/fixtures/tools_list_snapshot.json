@@ -1273,6 +1273,23 @@
       "name": "image_facts"
     },
     {
+      "description": "What this Cmdr process is holding right now: the physical footprint, the Rust (mimalloc) heap, the system malloc zones, SQLite's page-cache slab, and the kernel's VM map folded by tag with a per-tag region-size histogram. The only reading that spans both allocators. macOS only.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "sizesPerTag": {
+            "description": "Region-size groups to report per tag (default 8, clamped to 24). 0 asks for tag totals only. A repeated exact region size fingerprints whatever asked for those bytes.",
+            "maximum": 24,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "memory_diagnostics"
+    },
+    {
       "description": "List a folder's children from the drive index (never the disk), plus its recursive size total. Sort by name, size, or modified; page with limit/offset. sortBy size ranks files and folders together by space used, to find where space goes inside ONE folder; search ranks a whole drive.",
       "inputSchema": {
         "additionalProperties": false,

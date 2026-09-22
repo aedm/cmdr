@@ -10,8 +10,8 @@ fn test_all_tools_count() {
     // 6 nav + 2 cursor + 1 selection + 8 file_op + 1 tag + 3 view + 1 tab + 2 dialog + 3 app
     // + 2 search + 1 settings + 1 indexing + 1 queue + 1 conflict + 1 archive unlock + 1 favorites
     // + 3 network + 1 eject + 1 await + 1 downloads + 3 operation_log + 2 photo (search + facts)
-    // + 1 index listing (list_dir) = 47
-    assert_eq!(get_all_tools().len(), 47);
+    // + 1 index listing (list_dir) + 1 diagnostics (memory_diagnostics) = 48
+    assert_eq!(get_all_tools().len(), 48);
 }
 
 #[test]
@@ -318,4 +318,23 @@ fn test_operations_rollback_schema_and_gate() {
     assert_eq!(tool_gate("operations_rollback"), Some(TokenGate::IfAutoConfirm));
     assert_eq!(tool_gate("operations_list"), Some(TokenGate::Open));
     assert_eq!(tool_gate("operations_get"), Some(TokenGate::Open));
+}
+
+/// The instrument has to be reachable from OUTSIDE the app, which is the whole reason the
+/// tool exists: `get_memory_diagnostics` ships in release builds and had no caller anywhere,
+/// so a running instance could be asked about its panes but never about its own memory.
+#[test]
+fn test_memory_diagnostics_schema_and_gate() {
+    let tools = get_all_tools();
+    let schema = &tool(&tools, "memory_diagnostics").input_schema;
+    let props = schema.get("properties").unwrap();
+
+    let sizes = props.get("sizesPerTag").expect("the histogram cap is the one param");
+    assert_eq!(sizes.get("type").unwrap(), &json!("integer"));
+    assert_eq!(sizes.get("maximum").unwrap(), &json!(24));
+
+    // Nothing is required: the point is that one bare call answers the question.
+    assert!(schema.get("required").unwrap().as_array().unwrap().is_empty());
+    assert_eq!(schema.get("additionalProperties").unwrap(), &json!(false));
+    assert_eq!(tool_gate("memory_diagnostics"), Some(TokenGate::Open));
 }
