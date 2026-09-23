@@ -86,9 +86,8 @@ and the A/B method).
   `ranking.rs`** (the recency key). `Candidate`, `CoveredEntry`, and `SearchResultEntry` keep plain `Option<u64>`:
   they're per-result or per-batch, not per-row, so the 16 bytes buy readability there instead of costing memory.
 
-**The next lever is the names arena plus `id_to_index`**, now 366.6 MiB of the 597.2 MiB an arena costs. ⚠️ Removing
-`id_to_index` is NOT a free win — it's hit once per ancestor per candidate inside an interactive loop, so it has to be
-measured on the latency axis first (`docs/notes/size-only-subtrees-rejected-2026-08-06.md` § The search arena).
+**The next lever is the names arena.** `id_to_index` is already gone (the "no `id_to_index` map" decision below); the
+measurement that ranked the two is in `docs/notes/size-only-subtrees-rejected-2026-08-06.md` § The search arena.
 
 ## Single-volume search
 
