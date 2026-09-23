@@ -1,7 +1,9 @@
 //! Persisting the wake inbox (`agent_inbox`, migration v6).
 //!
-//! The in-memory inbox in `agent/wake/` is the working copy and the only thing that decides
-//! anything; this module just makes it survive a restart. It keeps its own flat row type
+//! The pure inbox in `agent/wake/` is the only thing that decides anything; this table is
+//! where its rows live between wakes. The wake loop pages them in on demand (one row per
+//! admission, the whole set for a wake) rather than holding them, because a backlog nobody
+//! drains grows without bound (`wake::InboxSummary`). It keeps its own flat row type
 //! rather than importing the wake types, the same direction `proposals/` takes with
 //! `NewGroup`: persistence depends on `rusqlite` and the vocabulary below it, never on the
 //! service layer above.
@@ -39,6 +41,23 @@ pub fn load_inbox(conn: &Connection) -> Result<Vec<StoredInboxRow>, AgentStoreEr
         out.push(map_row(row)?);
     }
     Ok(out)
+}
+
+/// The one row waiting for `folder`'s window starting at `window_start`, if any. A primary-key
+/// lookup: the wake loop reads the row it's about to merge into rather than holding them all.
+pub fn load_inbox_row(
+    conn: &Connection,
+    folder: &str,
+    window_start: i64,
+) -> Result<Option<StoredInboxRow>, AgentStoreError> {
+    let mut stmt = conn.prepare_cached(&format!(
+        "SELECT {COLUMNS} FROM agent_inbox WHERE folder = ?1 AND window_start = ?2"
+    ))?;
+    let mut rows = stmt.query(params![folder, window_start])?;
+    match rows.next()? {
+        Some(row) => Ok(Some(map_row(row)?)),
+        None => Ok(None),
+    }
 }
 
 /// Write one row, replacing whatever was waiting for that folder-window.

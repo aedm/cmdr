@@ -331,8 +331,9 @@ than two functions, because the crate's public surface is capped (`index-crate-i
 
 **The table keeps path hashes, not paths** (`cmdr_fs::path_hash`, the same key search's importance weights use). No
 consumer enumerates the paths, so a folder costs a 17-byte slot: 179,949 folders held 31 MiB as `String`s plus their
-table and hold ~4.5 MiB hashed (page census on a release build, 2026-09-23; shape pinned by `coverage/scores/memory_tests.rs`).
-What a 64-bit collision would cost, and why it's acceptable: `FolderScores` § Collisions.
+table and hold ~4.5 MiB hashed (page census on a release build, 2026-09-23; shape pinned by
+`coverage/scores/memory_tests.rs`). What a 64-bit collision would cost, and why it's acceptable: `FolderScores` §
+Collisions.
 
 **Only while media indexing is on.** `indexing::host::config::set_config` calls `coverage::release_scores(data_dir)`
 when the toggle is off, and the app's `media_index_volume_state` poll (which runs at launch for every user) doesn't read

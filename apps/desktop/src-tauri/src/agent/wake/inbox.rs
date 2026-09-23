@@ -282,6 +282,69 @@ impl Inbox {
     }
 }
 
+/// What the wake loop keeps of the inbox between wakes: how many rows wait and when the
+/// soonest is due, which is all timing the next wake needs.
+///
+/// **The rows themselves stay in `agent_inbox`.** They pile up for as long as no wake
+/// drains them, and with proactive wakes off (a setting, and the state of anyone without a
+/// key or past the daily ceiling) nothing does: one session held 26,479 of them, about
+/// 6 MiB, and growing with every folder-window that changed (heap attribution,
+/// 2026-09-23). Every row still matters, since the first wake after the user turns
+/// proactive back on reports them, so they're paged in when something reads them rather
+/// than dropped: an admission reads and writes its one folder-window
+/// (`persist::admit`), and a wake, a re-price, or a forced narrowing loads the whole
+/// inbox for as long as it runs.
+///
+/// Kept in step by the one thread that writes the table, so it can't drift from it: every
+/// path that changes the rows either folds its row in ([`admitted`](Self::admitted)) or
+/// re-summarizes the inbox it just wrote ([`of`](Self::of)).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct InboxSummary {
+    len: usize,
+    next_deadline: Option<u64>,
+}
+
+impl InboxSummary {
+    /// Summarize a whole inbox, as a launch, a re-price, or a wake leaves it.
+    pub fn of(inbox: &Inbox) -> Self {
+        InboxSummary {
+            len: inbox.len(),
+            next_deadline: inbox.next_deadline(),
+        }
+    }
+
+    /// Fold in one row an admission just wrote. `was_waiting` says it merged into a row
+    /// already counted. A merge only ever pulls a row's deadline earlier, so the soonest
+    /// deadline can only move earlier too.
+    pub fn admitted(&mut self, row: &InboxRow, was_waiting: bool) {
+        if !was_waiting {
+            self.len += 1;
+        }
+        self.next_deadline = soonest(self.next_deadline, row.deliver_by);
+    }
+
+    /// How many folder-windows wait.
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Whether nothing waits.
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    /// The soonest deadline waiting, if anything has one. Same answer as
+    /// [`Inbox::next_deadline`] over the stored rows.
+    pub fn next_deadline(&self) -> Option<u64> {
+        self.next_deadline
+    }
+
+    /// Whether anything is due at `now`. Same answer as [`Inbox::due_at`].
+    pub fn due_at(&self, now: u64) -> bool {
+        self.next_deadline.is_some_and(|due| due <= now)
+    }
+}
+
 /// When a bundle of this interest is due, from `now`, or `None` when it is not worth a wake of
 /// its own.
 fn deadline_for(scored: Interest, hot_delay: Duration, now: u64) -> Option<u64> {

@@ -7,7 +7,7 @@ an interest score, scores deadlines, and a wake turns what waits into one budget
 
 - **Pure core**: `coalesce.rs` (counters) → `interest.rs` (score, tier, delay) → `inbox.rs` (what waits, when) →
   `compact.rs` (the digest); `job.rs` runs one, `persist.rs` alone holds a `Connection`.
-- **Driver**: `writer.rs` owns the `Inbox` and the timer, fed by `channel.rs`, gated by `readiness.rs` +
+- **Driver**: `writer.rs` owns the inbox (rows in `agent_inbox`, an `InboxSummary` in memory) and the timer, fed by `channel.rs`, gated by `readiness.rs` +
   `snapshot.rs`, paced by `schedule.rs` + `spend.rs`, weighted by `importance.rs`, run by `runner.rs`, announced by
   `indicator.rs` + `staged.rs`.
 

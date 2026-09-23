@@ -338,9 +338,18 @@ a switch they can flip back, not a purpose they withdrew.
 
 `agent_inbox` (migration v6, `deliver_by` made nullable by v7's table rebuild — SQLite cannot drop a `NOT NULL` in
 place). `(folder, window_start)` is the PRIMARY KEY **because it is the merge key**, so the table
-cannot hold two rows the in-memory inbox would have merged. No conversation link and no foreign key: the inbox is
+cannot hold two rows the pure inbox would have merged. No conversation link and no foreign key: the inbox is
 pre-proposal signal and nobody has been asked anything yet. Counters are four columns rather than a blob, so `main.db`
 stays inspectable in any stock `sqlite3` browser.
+
+**The table is where the rows live between wakes, not a backup of memory.** The writer thread keeps an `InboxSummary`
+(row count and soonest deadline, all the timer needs) and pages rows in on demand: `persist::admit` reads and writes the
+one folder-window a rollup touches, merging through the pure `Inbox::admit_if_permitted`, and a wake, a re-price, or a
+forced narrowing loads the whole inbox for as long as it runs. Why: nothing drains the inbox while no wake runs, which
+is the state of anyone with `askCmdr.proactive` off, no key, or a spent day, and the rows still matter (the first wake
+after that reports them), so they grew without bound in memory: 26,479 rows, ~6 MiB, in one prod session (heap
+attribution, 2026-09-23), plus a linear scan per admission. A failed write loses that one rollup, logged, the same
+"signal only" terms as a dropped rollup.
 
 `persist.rs` maps onto the store flat row type rather than the store importing this vocabulary, the direction
 `proposals/` takes with `NewGroup`. Times saturate at the u64/i64 boundary rather than wrapping: an absurd clock must
@@ -395,8 +404,8 @@ them produces either a stalled indexer or a raced thread.
   (`events/index_mapping.rs`) calls `route()` SYNCHRONOUSLY on the caller's thread, and that
   caller is the live loop, itself a tokio task. So the tap builds a `FolderActivity`, calls
   `channel::send_rollup`, and returns.
-- **The writer thread** (`writer.rs`) owns the `Inbox`, ONE long-lived write connection, and the
-  timer. It never blocks on a turn.
+- **The writer thread** (`writer.rs`) owns the inbox (its rows in `agent_inbox`, an `InboxSummary` in memory), ONE
+  long-lived write connection, and the timer. It never blocks on a turn.
 - **The wake thread** (`runner.rs`) owns the turn and holds the per-conversation
   `ConversationLocks` guard across it.
 

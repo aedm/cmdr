@@ -1,8 +1,14 @@
 //! The wake loop's own thread: the one place that owns the inbox.
 //!
-//! It holds three things nobody else may touch: the [`Inbox`], one long-lived write connection
-//! to `main.db`, and the timer. Everything reaches it as a message, so no producer ever takes a
+//! It holds three things nobody else may touch: the inbox, one long-lived write connection to
+//! `main.db`, and the timer. Everything reaches it as a message, so no producer ever takes a
 //! lock or opens a connection of its own.
+//!
+//! The inbox's rows live in `agent_inbox`, not here: this thread keeps an [`InboxSummary`]
+//! and pages the rows in when something reads them (one row per admission, all of them for a
+//! wake, a re-price, or a forced narrowing). A backlog no wake drains grows without bound,
+//! which is why (`InboxSummary`'s docs). Being the table's only writer is what keeps the
+//! summary honest.
 //!
 //! ⚠️ **It never blocks on a turn.** A wake is prepared here and RUN on its own thread
 //! (`runner.rs`). Blocking here would leave the bounded rollup channel unserviced for the length
@@ -23,7 +29,7 @@ use super::schedule;
 use super::settings::{self, WakeSettings};
 use super::snapshot::readiness_snapshot;
 use super::spend;
-use super::{Inbox, PrepareOutcome, PrepareParams, persist, prepare_wake};
+use super::{Inbox, InboxSummary, PrepareOutcome, PrepareParams, persist, prepare_wake};
 use crate::agent::chat::budget;
 use crate::agent::chat::runtime::day_for;
 use crate::agent::chat::session::{AgentSlot, local_offset, resolve_agent_llm, resolve_prompt_budget};
@@ -61,8 +67,17 @@ fn run(app: AppHandle, db_path: PathBuf, data_dir: PathBuf, receiver: Receiver<W
         }
     };
 
+    let mut inbox = launch_inbox(&conn);
+    // ⚠️ Before the reconciled inbox is written back, not after. `agent::start` refreshes the
+    // gates just before this thread comes up, so this is the first moment a launch can tell
+    // that the rows it just read back belong to a purpose nobody has agreed to — which is what
+    // every user looks like the launch after a `CONSENT_COPY_VERSION` bump.
+    note_purged(inbox.purge_if_consent_withdrawn(readiness_snapshot()));
+    if let Err(e) = persist::save_all(&conn, &inbox) {
+        log::warn!(target: LOG_TARGET, "the reconciled inbox was not written back: {e}");
+    }
     let mut loop_state = WakeLoop {
-        inbox: launch_inbox(&conn),
+        inbox: InboxSummary::of(&inbox),
         importance: ImportanceCache::new(data_dir),
         settings: settings::load(&app),
         wake_in_flight: false,
@@ -73,14 +88,8 @@ fn run(app: AppHandle, db_path: PathBuf, data_dir: PathBuf, receiver: Receiver<W
         app,
         conn,
     };
-    // ⚠️ Before the reconciled inbox is written back, not after. `agent::start` refreshes the
-    // gates just before this thread comes up, so this is the first moment a launch can tell
-    // that the rows it just read back belong to a purpose nobody has agreed to — which is what
-    // every user looks like the launch after a `CONSENT_COPY_VERSION` bump.
-    loop_state.purge_inbox_if_consent_withdrawn();
-    if let Err(e) = persist::save_all(&loop_state.conn, &loop_state.inbox) {
-        log::warn!(target: LOG_TARGET, "the reconciled inbox was not written back: {e}");
-    }
+    // The rows are in the table now; holding them too is what this loop no longer does.
+    drop(inbox);
 
     loop {
         match receiver.recv_timeout(loop_state.park()) {
@@ -119,10 +128,22 @@ fn launch_inbox(conn: &rusqlite::Connection) -> Inbox {
     inbox
 }
 
+/// Say how many rows a lost consent took away. Silent when none, so a quiet launch stays quiet.
+fn note_purged(dropped: usize) {
+    if dropped > 0 {
+        log::info!(
+            target: LOG_TARGET,
+            "{dropped} waiting inbox row(s) were dropped: nobody has consented to a record of them being kept"
+        );
+    }
+}
+
 struct WakeLoop {
     app: AppHandle,
     conn: rusqlite::Connection,
-    inbox: Inbox,
+    /// How many rows wait in `agent_inbox` and when the soonest is due. The rows stay in the
+    /// table (the module docs say why).
+    inbox: InboxSummary,
     importance: ImportanceCache,
     settings: WakeSettings,
     /// Whether a wake thread is running right now. See [`WakeLoop::try_wake`].
@@ -171,7 +192,7 @@ impl WakeLoop {
         self.follow_ups.note(set_id, now_secs());
     }
 
-    /// Fold one rollup into the inbox and write the row it touched.
+    /// Fold one rollup into its folder-window's row in the table.
     ///
     /// The importance lookup happens HERE rather than at the tap: it is SQLite behind a shared
     /// cache, and the live loop may touch neither.
@@ -181,24 +202,34 @@ impl WakeLoop {
             .importance
             .lookup(&activity.volume_id, &activity.folder, Instant::now());
         let bundle = activity.into_bundle();
-        let folder = bundle.folder.clone();
-        let window_start = bundle.window_start;
-        if !self
-            .inbox
-            .admit_if_permitted(readiness_snapshot(), bundle, importance, self.settings.hot_delay, now)
-        {
+        match persist::admit(
+            &self.conn,
+            readiness_snapshot(),
+            bundle,
+            importance,
+            self.settings.hot_delay,
+            now,
+        ) {
+            Ok(Some(admitted)) => self.inbox.admitted(&admitted.row, admitted.was_waiting),
             // Without consent the pipeline stores NOTHING, and that is the whole gate.
-            return;
+            Ok(None) => {}
+            // Signal only, like a dropped rollup: the folder will change again.
+            Err(e) => {
+                log::warn!(target: LOG_TARGET, "an inbox row was not stored, so this change goes unreported: {e}")
+            }
         }
-        let touched = self
-            .inbox
-            .rows()
-            .iter()
-            .find(|row| row.bundle.folder == folder && row.bundle.window_start == window_start);
-        if let Some(row) = touched
-            && let Err(e) = persist::save_row(&self.conn, row)
-        {
-            log::warn!(target: LOG_TARGET, "an inbox row was not persisted, so a restart will forget it: {e}");
+    }
+
+    /// Page the whole inbox in for something that reads every row: a wake, a re-price, or a
+    /// forced narrowing. `None` when the table won't read, which that caller treats as
+    /// "not this time"; the rows stay where they are.
+    fn load_inbox(&self, purpose: &str) -> Option<Inbox> {
+        match persist::load(&self.conn) {
+            Ok(inbox) => Some(inbox),
+            Err(e) => {
+                log::warn!(target: LOG_TARGET, "the inbox did not load for a {purpose}: {e}");
+                None
+            }
         }
     }
 
@@ -227,14 +258,13 @@ impl WakeLoop {
     /// was kept for, so it goes rather than sitting there until somebody re-accepts. Turning AI
     /// off withdraws no purpose, so it takes nothing away.
     fn purge_inbox_if_consent_withdrawn(&mut self) {
-        let dropped = self.inbox.purge_if_consent_withdrawn(readiness_snapshot());
-        if dropped == 0 {
+        // The same rule `Inbox::purge_if_consent_withdrawn` applies, asked of the summary
+        // rather than of rows this loop doesn't hold.
+        if self.inbox.is_empty() || readiness_snapshot().permits_stored_signal() {
             return;
         }
-        log::info!(
-            target: LOG_TARGET,
-            "{dropped} waiting inbox row(s) were dropped: nobody has consented to a record of them being kept"
-        );
+        note_purged(self.inbox.len());
+        self.inbox = InboxSummary::default();
         if let Err(e) = persist::clear(&self.conn) {
             log::warn!(target: LOG_TARGET, "the unconsented inbox rows are still on disk: {e}");
         }
@@ -251,12 +281,18 @@ impl WakeLoop {
     fn reload_settings(&mut self) {
         let previous = self.settings;
         self.settings = settings::load(&self.app);
-        if previous.hot_delay != self.settings.hot_delay {
-            self.inbox.reprice(previous.hot_delay, self.settings.hot_delay);
-            if let Err(e) = persist::save_all(&self.conn, &self.inbox) {
-                log::warn!(target: LOG_TARGET, "the re-priced inbox was not written back: {e}");
-            }
+        if previous.hot_delay == self.settings.hot_delay || self.inbox.is_empty() {
+            return;
         }
+        let Some(mut inbox) = self.load_inbox("re-price") else {
+            return;
+        };
+        inbox.reprice(previous.hot_delay, self.settings.hot_delay);
+        if let Err(e) = persist::save_all(&self.conn, &inbox) {
+            log::warn!(target: LOG_TARGET, "the re-priced inbox was not written back: {e}");
+            return;
+        }
+        self.inbox = InboxSummary::of(&inbox);
     }
 
     /// Say how much the bound cost, if anything. Silent when nothing dropped, so a quiet run
@@ -325,22 +361,32 @@ impl WakeLoop {
             return;
         };
 
+        // The one moment every row is in memory: for as long as this wake is prepared.
+        let Some(mut inbox) = self.load_inbox("wake") else {
+            runner::record_outcome("unavailable", None, self.inbox.len(), 0);
+            return;
+        };
+
         // Here rather than where the force arrived: a force held behind a running wake waits
         // out a whole model call, and the inbox keeps filling for all of it.
         if let Some(only_folder) = request.as_ref().and_then(|request| request.only_folder.as_deref()) {
-            self.isolate_inbox_to(only_folder);
+            self.isolate_inbox_to(&mut inbox, only_folder);
         }
 
-        match prepare_wake(
+        let outcome = prepare_wake(
             &self.conn,
-            &mut self.inbox,
+            &mut inbox,
             &PrepareParams {
                 readiness,
                 now_secs: now as i64,
                 digest_budget_tokens: budget::wake_digest_budget(slot.prompt_budget),
                 ignore_deadlines: forced,
             },
-        ) {
+        );
+        // A committed wake drained the rows and cleared the table; anything else left both
+        // as they were. Either way this is what's waiting now.
+        self.inbox = InboxSummary::of(&inbox);
+        match outcome {
             PrepareOutcome::Ready(prepared) => {
                 self.wake_in_flight = true;
                 runner::spawn(
@@ -377,13 +423,13 @@ impl WakeLoop {
     /// the one caller that can say what the wake is supposed to cover. A test's premise is "the
     /// digest reports what I staged", and the indexer's tap feeds this same inbox from whatever
     /// else the suite is doing, so the rows it put there are dropped rather than reported on.
-    fn isolate_inbox_to(&mut self, folder: &str) {
-        let dropped = self.inbox.retain_folder(folder);
+    fn isolate_inbox_to(&self, inbox: &mut Inbox, folder: &str) {
+        let dropped = inbox.retain_folder(folder);
         if dropped == 0 {
             return;
         }
         log::debug!(target: LOG_TARGET, "a forced wake dropped {dropped} inbox row(s) it did not stage");
-        if let Err(e) = persist::save_all(&self.conn, &self.inbox) {
+        if let Err(e) = persist::save_all(&self.conn, inbox) {
             log::warn!(target: LOG_TARGET, "the rows a forced wake dropped are still on disk: {e}");
         }
     }

@@ -66,7 +66,7 @@ mod tests;
 pub use channel::{FolderActivity, ForcedWake, MAX_QUEUED_ROLLUPS, WakeControl, send_control, send_rollup};
 pub use coalesce::{coalesce, merge_bundles};
 pub use compact::{Digest, DigestLine, Rollup, ScoredBundle, compact};
-pub use inbox::{Inbox, InboxRow, ReconcileReport, SETTLE_AFTER_LAUNCH, STALE_AFTER};
+pub use inbox::{Inbox, InboxRow, InboxSummary, ReconcileReport, SETTLE_AFTER_LAUNCH, STALE_AFTER};
 pub use indicator::{AgentWakeStatus, WakePhase, WakeReadinessView, init_wake_status_emitter, wake_status};
 pub use interest::{
     DEFAULT_HOT_DELAY, FolderImportance, HOT_THRESHOLD, Interest, MAX_HOT_DELAY, MAX_WARM_DELAY, MIN_HOT_DELAY,
@@ -76,7 +76,7 @@ pub use job::{
     PrepareOutcome, PrepareParams, PreparedWake, RunWakeParams, WakeOutcome, WakeParams, prepare_wake,
     run_prepared_wake, run_wake, thread_title, turn_params, wake_turn_params,
 };
-pub use persist::{clear, load, save_all, save_row};
+pub use persist::{Admitted, admit, clear, load, save_all};
 pub use quiet::discard_quiet_thread;
 pub use readiness::{AgentGates, ProviderGate, WakeReadiness, readiness};
 pub use settings::WakeSettings;
