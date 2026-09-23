@@ -1,9 +1,9 @@
 # Add Linux build target
 
-**Status: not started**, re-derived from the tree on 2026-08-27. `.github/workflows/release.yml` still builds three
+**Status: not started**, re-derived from the tree on 2026-09-23. `.github/workflows/release.yml` still builds three
 macOS targets and nothing else, and `apps/website/src/lib/release.ts` still exports only `dmgUrls` / `dmgSizes`. One
-Milestone 1 item DID land separately and is marked below. The public roadmap puts "Add Windows and true Linux support"
-in the also-soon bucket at "(winter?)", so nothing here is scheduled.
+Milestone 1 item DID land separately and is marked below. The public roadmap (`apps/website/src/lib/roadmap.ts`) puts "Add
+Windows and true Linux support" at "(next year)", so nothing here is scheduled.
 
 ## Context
 
@@ -18,7 +18,7 @@ Building for Linux and supporting Linux are different jobs, and this plan only c
 advertises a build with known functional gaps, recorded in `docs/notes/linux-gaps-2026-08-10.md`: **the live file
 watcher never starts** (one unreadable directory anywhere under the root aborts the whole recursive inotify watch, which
 is the common case, not an edge case), the `Cmd+` menu accelerators print as Super chords, and the English catalog
-carries 504 macOS-specific strings ("your Mac", `⌘`, "Finder"). Closing those is a prerequisite for advertising Linux,
+carries hundreds of macOS-specific strings ("your Mac", `⌘`, "Finder"). Closing those is a prerequisite for advertising Linux,
 and they are Milestone 0 below. ❗ Milestone 0 gates Milestone 2 (the website's download button), not Milestone 1:
 publishing artifacts a self-builder can find is fine while the gaps are open, since that is what the roadmap already
 promises with "Linux in alpha (self-build for now)".
@@ -47,9 +47,10 @@ Add two Linux matrix entries to the existing `build` job:
   platform: linux
 ```
 
-The existing macOS entries get `os: macos-latest` and `platform: macos` to distinguish them. Note the job currently
-hardcodes `runs-on: macos-latest` at job level, so this also means moving it to `runs-on: ${{ matrix.os }}`; the comment
-above that line explains why it's pinned, and it survives the move.
+The existing macOS entries get `os: macos-26` and `platform: macos` to distinguish them. The job currently pins
+`runs-on: macos-26` at job level (deliberately not `macos-latest`: the SDK decides what the shipped app looks like), so
+this also means moving it to `runs-on: ${{ matrix.os }}`. The comment above that line explains the pin and survives the
+move, and the "Check the macOS SDK is the one we pinned" step becomes macOS-only.
 
 The aarch64 build runs on GitHub's ARM runner (`ubuntu-24.04-arm`) for native compilation, no cross-compilation needed.
 Native is simpler and faster than cross-compilation.
@@ -64,7 +65,8 @@ The Linux matrix entry needs different setup than macOS (no signing/notarization
    sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libacl1-dev
    ```
 2. **Checkout, mise, pnpm install, svelte-kit sync**: identical to macOS.
-3. **No Apple certificate / notarization steps**: skip via `if: matrix.platform == 'macos'` conditions on those steps.
+3. **No Apple certificate / notarization / SDK-pin steps**: skip via `if: matrix.platform == 'macos'` conditions on
+   those steps.
 4. **Build with tauri-action**: same as macOS entries, just `--target ${{ matrix.target }}`. Override `bundle.targets`
    to `["deb", "appimage"]` for Linux (via `--bundles deb,appimage` or Tauri config override) to avoid attempting RPM
    builds that need `rpmbuild`.
@@ -192,7 +194,9 @@ When macOS is detected (or no detection):
 
 ### 3c. Download link components: add Linux data attributes
 
-All download `<a>` tags that currently have `data-download-link` get one more attribute:
+Every download button is one shared component, `apps/website/src/components/DownloadButton.astro` (a split button with
+an arch dropdown driven by `apps/website/src/plugins/download-dropdown.ts`), so its `data-download-link` anchor gets the
+new attributes once:
 
 ```html
 <a
@@ -208,9 +212,9 @@ All download `<a>` tags that currently have `data-download-link` get one more at
 
 **Files to update:**
 
-- `Hero.astro`: CTA button: add `data-linux-appimage`. JS swaps href + button text ("Download for Linux").
-- `Header.astro`: desktop + mobile download buttons: same pattern.
-- `pricing.astro`: download button: same pattern. Update the "macOS only" subtitle to show "Linux" when detected.
+- `DownloadButton.astro` and `download-dropdown.ts`: the attributes above, the Linux arch entries in the dropdown, and
+  the button text ("Download for Linux"). Hero, Header, pricing, features, and Download all render this component.
+- `pricing.astro`: update the "macOS only · Source-available" subtitle to show Linux when detected.
 - `Download.astro`: full platform card (see below).
 
 ### 3d. `Download.astro`: platform-aware download card
@@ -342,8 +346,8 @@ three has been scoped.
       branch-scoped watching that would bound it.
 - [ ] Rebind the menu accelerators. `Cmd+` bindings print as Super chords, which is not what a Linux user's muscle
       memory or their window manager expects.
-- [ ] Sweep the 504 macOS-specific strings in the English catalog ("your Mac", `⌘`, "Finder"). ⚠️ This is user-facing
-      copy in ten locales, so it needs David's review and a re-translation pass, which makes it the long-lead item of
+- [ ] Sweep the macOS-specific strings in the English catalog ("your Mac", `⌘`, "Finder"; about 600 lines match
+      `⌘|Finder|macOS|your Mac` under `messages/en/`, 2026-09-23). ⚠️ This is user-facing copy in 12 more locales, so it needs David's review and a re-translation pass, which makes it the long-lead item of
       the three.
 
 Evidence and the per-item detail: `docs/notes/linux-gaps-2026-08-10.md`.
@@ -355,7 +359,7 @@ Evidence and the per-item detail: `docs/notes/linux-gaps-2026-08-10.md`.
 - [ ] Narrow `bundle.targets` from `"all"` to per-platform targets
 - [ ] Add Linux x86_64 and aarch64 matrix entries to `release.yml` build job (use `--bundles deb,appimage`), moving
       `runs-on` from the job to `${{ matrix.os }}`
-- [ ] Conditionalize macOS-only steps (certificate, notarization) with `if: matrix.platform == 'macos'`
+- [ ] Conditionalize macOS-only steps (certificate, notarization, SDK pin check) with `if: matrix.platform == 'macos'`
 - [ ] Add Linux system deps install step with `if: matrix.platform == 'linux'`
 - [ ] Upload Linux artifacts (AppImage, .deb, updater) for both archs to GitHub release
 - [ ] Pass Linux updater signatures to publish job
@@ -367,7 +371,7 @@ Evidence and the per-item detail: `docs/notes/linux-gaps-2026-08-10.md`.
 - [ ] Add `appImageUrls`, `debUrls`, and `appImageSizes` exports to `release.ts`
 - [ ] Extend `Layout.astro` inline script: detect Linux via `userAgentData.platform` → `navigator.platform` →
       `userAgent` fallback chain, detect arch, set `data-os` on `<html>`, swap download links
-- [ ] Add `data-linux-appimage-*` attributes to download links in Hero, Header, pricing
+- [ ] Add `data-linux-appimage-*` attributes and Linux arch entries to the shared `DownloadButton.astro`
 - [ ] Build platform-aware Download.astro with macOS/Linux card toggle and arch selector for Linux
 - [ ] Add "Also available for Linux/macOS" cross-platform links
 - [ ] Drop the "Linux in alpha (self-build for now)" clause from the `Download.astro` newsletter CTA
