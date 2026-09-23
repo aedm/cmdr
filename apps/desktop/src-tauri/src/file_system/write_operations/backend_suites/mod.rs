@@ -99,3 +99,5 @@ mod webdav_transfer_integration_test;
 mod webdav_transfer_safety_test;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod webdav_transfer_semantics_test;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod webdav_wire_cost_test;

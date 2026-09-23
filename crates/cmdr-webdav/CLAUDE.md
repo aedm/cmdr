@@ -12,7 +12,7 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
 - `transport.rs`: `WebdavClient`, URL building, PROPFIND, the connect probe. `propfind.rs`: the `multistatus` parser.
   `liveness.rs`: the silence watch, which tells a silent server from a slow one.
 - `volume/`: `mod.rs` (the volume, `connect_webdav_volume`, `send`), `paths.rs`, `query.rs`, `streams.rs` (GET),
-  `writes.rs` (staged PUT + MOVE), `mutation.rs`, `copy.rs`, `scan.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`,
+  `writes.rs` (the PUT), `mutation.rs`, `copy.rs`, `scan.rs`, `state.rs` + `reconnect.rs`, `volume_impl.rs`,
   `testing.rs` (fixtures, `testing` feature).
 
 ## Must-knows
@@ -33,9 +33,10 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
 - ❌ **One unattended authentication attempt, never a loop.** A 401 on the re-probe moves to `NeedsCredentials` and
   stops. The store is only ever refreshed by an attended sign-in, never seeded.
 - ❗ **Redirects are off**: a followed MOVE or COPY would resend `Destination` somewhere the user never named.
-- ❗ **PUT sends `Content-Length` from `size`** onto a `.cmdr-tmp-*` sibling, MOVEd into place with `Overwrite: T`. ❌ A
-  source whose byte count disagrees with `size` is never MOVEd: hyper truncates a longer body and the server stores the
-  prefix happily.
+- ❗ **The engine owns staging**: `CreateOrReplace` is one plain PUT onto its temp; ❌ don't stage it again (a MOVE per
+  file). Only `CreateNew` stages here (MOVE `Overwrite: F`). `DETAILS.md` § "Write staging".
+- ❗ **PUT sends `Content-Length` from `size`.** ❌ A byte count that disagrees fails the write and removes its target:
+  hyper truncates a longer body and the server keeps the prefix.
 - ❗ **The upload body reads one piece AHEAD, and that is load-bearing**: hyper stops polling once `Content-Length` is
   satisfied. Hence two counters: `fetched` guards the size, `handed` (clamped) drives progress. ❌ Never collapse them.
   `DETAILS.md` § "Write staging".

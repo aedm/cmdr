@@ -483,8 +483,8 @@ async fn a_streamed_write_lands_byte_exact_and_leaves_no_temp_sibling() {
 async fn a_source_that_ends_early_never_reaches_the_users_filename() {
     // ❗ A data-safety cell. `size` is what `Content-Length` promised, and a
     // source that stops short of it ends the request from OUR side; the server
-    // has a shorter file staged and would keep it. The refusal has to be typed
-    // as ours, the temp has to go, and the destination must never appear.
+    // has a shorter file and would keep it. The refusal has to be typed as
+    // ours, and whatever the PUT stored has to go.
     //
     // What makes this happen in the wild: `size` comes off a stat, and the file
     // shrinks between that stat and the read.
@@ -524,9 +524,9 @@ async fn a_source_that_overruns_its_promise_never_reaches_the_users_filename() {
     // ❗ The other half, and the sharper one: hyper TRUNCATES a body longer than
     // `Content-Length` rather than refusing it, and the server stores that
     // prefix and answers 201 Created. Nothing on the wire is wrong, so only the
-    // byte count this side counted says the file is short. MOVE it and the user
-    // has a truncated file wearing the name they asked for, with no error
-    // anywhere.
+    // byte count this side counted says the file is short. Keep it and the
+    // engine lands a truncated file at the name the user asked for, with no
+    // error anywhere.
     //
     // What makes this happen in the wild: the file GREW between the stat and
     // the read.

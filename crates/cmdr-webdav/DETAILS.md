@@ -91,14 +91,34 @@ firmware) is retried once WITH the slash.
 
 ## Write staging
 
-`write_from_stream` PUTs to `<dest>.cmdr-tmp-<pid><nanos><n>` with a streaming body wrapped from the source's chunks and
-`Content-Length: size`, reports progress every 200 ms from a shared counter, cancels by poisoning the body stream (the
-request aborts, the temp is DELETEd), then MOVEs the temp onto `dest` with `Overwrite: T`. Any failure DELETEs the temp
-best-effort. `copy_within` is one COPY with `Overwrite: T`, `Depth: infinity`, progress reported once with the source's
-PROPFIND size.
+**Decision**: the transfer engine owns staging, and this backend doesn't stage a `CreateOrReplace` write again.
+`write_from_stream(CreateOrReplace)` is ONE streaming PUT to the path it's handed, with `Content-Length: size`, progress
+every 200 ms from a shared counter, and cancel by poisoning the body stream (the request aborts). Any failure DELETEs
+that path best-effort, the same contract SFTP's truncating open keeps. **Why**: the engine stages every write here
+(`write_is_single_shot` keeps its `false` default,
+`apps/desktop/src-tauri/src/file_system/write_operations/transfer/DETAILS.md` § "File writes are staged"), so the path
+IS its `.cmdr-tmp-*` temp, and its landing MOVE (`rename(force = false)`, `Overwrite: F`) is what gives the bytes the
+user's name and refuses a taken one. A second staging layer under that temp buys nothing and costs a second MOVE per
+file plus a second temp in the user's folder (measured on the stock Apache fixture, 2026-09-23: 1 PUT + 2 MOVEs per new
+file with it, 1 PUT + 1 MOVE without; pinned by
+`apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/webdav_wire_cost_test.rs`). ❌ **Rejected: a
+capability saying "my write is already staged" so the engine skips its own.** The backend's temp would sit outside
+everything the engine's staging carries: the in-flight ledger and its crash sweep, the pane hiding by ownership, the
+`LandingName` refusal, the ` (recovered)` rescue, and the discard of an unplaced temp. One owner keeps one source of
+truth.
 
-**A byte count that disagrees with `size` is never MOVEd**, in either direction, and all three shapes are pinned by a
-cell in `volume/integration_test.rs`:
+**`CreateNew` still stages here**: a PUT to `<dest>.cmdr-tmp-<pid><nanos><n>`, then a MOVE onto `dest` with
+`Overwrite: F`, which Apache `mod_dav` and sabre/dav both refuse with 412 over a taken name (`Attempted::TakingAName`
+maps it to `AlreadyExists`; the conformance cell and
+`nextcloud_test.rs::the_write_path_lands_a_file_byte_exact_on_sabre_dav` pin each). A conditional PUT
+(`If-None-Match: *`) straight to `dest` would refuse too, but after it failed for any other reason nothing says whether
+what's at the name is our partial or another writer's file, so the cleanup couldn't be both safe and complete. The
+engine never sends `CreateNew` here; it's the trait's contract for any other caller. `copy_within` is one COPY with
+`Overwrite: T`, `Depth: infinity`, progress reported once with the source's PROPFIND size.
+
+**A byte count that disagrees with `size` is a failed write**, in either direction, and whatever the PUT stored is
+DELETEd. From the engine that path is its temp, so the landing never runs and the user's filename never sees it. All
+three shapes are pinned by a cell in `volume/integration_test.rs`:
 
 - **A source that ends EARLY** ends the request from our side (hyper's `NotEof`), which `reqwest` reports with the same
   predicate a dropped connection answers. ❌ Reading it as `DeviceDisconnected` would flip the whole volume offline over
@@ -110,7 +130,7 @@ cell in `volume/integration_test.rs`:
   1.10.1, in its HTTP/1 encoder's `Kind::Length` arm, 2026-09-01), the server stores the prefix and answers 201, and
   nothing on the wire is wrong. Only the count this side kept says the file is short.
   `a_source_that_overruns_its_promise_never_reaches_the_users_filename` fails with `Ok(150000)` if that arm goes: a
-  truncated file wearing the user's name, reported as a success.
+  truncated file the engine would then land at the user's name, reported as a success.
 - **A source that yields more on a PIECE BOUNDARY** is the same fault where a naive count cannot see it, and it is why
   the body reads ahead. hyper stops POLLING the moment the promise is met, so a source whose pieces divide `size`
   exactly is never asked again and every count agrees with the promise. Measured before the read-ahead existed: 200,000
@@ -136,14 +156,13 @@ It also splits one number into two, and ❗ they are not interchangeable:
 
 On every success the two are equal and both equal `size`.
 
-**Cancellation is unchanged.** The `unfold` answers a cancelled token before it pulls or hands over anything, so a
-cancelled upload puts no further byte on the wire; the piece read ahead is dropped with the stream state, having never
-been sent, and the temp is DELETEd on the way out as before.
-`a_cancelled_upload_leaves_neither_the_destination_nor_a_temp` holds that here, and the app's
-`webdav_integration_a_cancelled_upload_leaves_nothing_behind` holds it through the whole transfer pipeline. ❗ The crate
-cell's source is deliberately slow (16 pieces, 40 ms each): cancellation reaches this backend through the 200 ms
-progress tick, so a body that outruns one tick can only ever be cancelled before its first byte, which is not the case
-worth guarding.
+**Cancellation.** The `unfold` answers a cancelled token before it pulls or hands over anything, so a cancelled upload
+puts no further byte on the wire; the piece read ahead is dropped with the stream state, having never been sent, and
+whatever the PUT stored is DELETEd on the way out. `a_cancelled_upload_leaves_neither_the_destination_nor_a_temp` holds
+that here, and the app's `webdav_integration_a_cancelled_upload_leaves_nothing_behind` holds it through the whole
+transfer pipeline. ❗ The crate cell's source is deliberately slow (16 pieces, 40 ms each): cancellation reaches this
+backend through the 200 ms progress tick, so a body that outruns one tick can only ever be cancelled before its first
+byte, which is not the case worth guarding.
 
 ## What a real server answers
 

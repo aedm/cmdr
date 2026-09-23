@@ -1,5 +1,7 @@
-//! The upload: one streaming PUT to a staging sibling, then a MOVE onto the
-//! user's filename.
+//! The upload: one streaming PUT to the path it's handed, which from the
+//! transfer engine is always the engine's own staging temp. Only a `CreateNew`
+//! write stages here (a PUT to a sibling, then a no-clobber MOVE);
+//! `write_from_stream_impl` has why.
 //!
 //! ❗ `Content-Length` is set from `size` rather than sending a body of unknown
 //! length. The size is always known here, so the header costs nothing and takes
@@ -7,8 +9,7 @@
 //! chunked request. (A real Nextcloud accepts a chunked PUT rather than
 //! answering 411; `DETAILS.md` § "What a real server answers" carries the
 //! observation and its date.) A source that yields a different byte count fails
-//! the request, which is reported honestly and the temp removed; it is never
-//! MOVEd into place.
+//! the write, which is reported honestly and what the PUT stored removed.
 //!
 //! ❗ **The body reads one piece AHEAD**, and that is not a buffering trick: it
 //! is what makes the sentence above true. hyper stops POLLING a body the moment
@@ -36,7 +37,7 @@ use tokio_util::sync::CancellationToken;
 use super::WebdavVolume;
 use crate::errors::Attempted;
 use crate::liveness::Liveness;
-use crate::transport::{MUTATION_BUDGET, method};
+use crate::transport::{MUTATION_BUDGET, WebdavClient, method};
 
 /// How often the upload reports progress while the body is on its way.
 const PROGRESS_TICK: Duration = Duration::from_millis(200);
@@ -147,12 +148,25 @@ fn size_mismatch(remote: &str, got: u64, size: u64) -> VolumeError {
 }
 
 impl WebdavVolume {
-    /// Streams `stream` into a `.cmdr-tmp-*` sibling of `dest` and moves it into
-    /// place. Returns the bytes written.
+    /// Streams `stream` onto `dest`. Returns the bytes written.
     ///
-    /// The MOVE carries the mode: `Overwrite: T` replaces, `Overwrite: F`
-    /// (`CreateNew`) is refused by the server with 412 when the name is taken,
-    /// which leaves their file alone and takes only our temp away.
+    /// ❗ **`CreateOrReplace` is one plain `PUT` to `dest`**, because from the
+    /// transfer layer `dest` is already a staging name: the engine stages every
+    /// write to this backend (`write_is_single_shot` keeps its `false` default)
+    /// and renames it into place itself, so staging again here would buy
+    /// nothing but a second `MOVE` per file and a second temp in the user's
+    /// folder. `dest` is a name the caller owns, and ❗ every failure removes
+    /// whatever is at it afterwards, the same contract SFTP's truncating open
+    /// keeps.
+    ///
+    /// **`CreateNew` stages here**, on a `.cmdr-tmp-*` sibling MOVEd onto `dest`
+    /// with `Overwrite: F`, which the server refuses with 412 when the name is
+    /// taken: their file stays, only our temp goes, and a partial never touches
+    /// the name. A conditional `PUT` straight to `dest` couldn't promise the
+    /// second half: after one fails, nothing says whether what's at the name is
+    /// our partial or another writer's file. The transfer engine never asks for
+    /// it (it lands its own temp); it's here so the trait's contract holds for
+    /// any caller.
     pub(super) async fn write_from_stream_impl(
         &self,
         dest: &Path,
@@ -163,9 +177,41 @@ impl WebdavVolume {
     ) -> Result<u64, VolumeError> {
         let remote = self.to_remote_path(dest)?;
         let client = self.clone_client().await?;
-        let temp = staging_sibling(&remote);
-        debug!("WebdavVolume::write_from_stream: {remote} via {temp}");
+        match mode {
+            WriteMode::CreateOrReplace => {
+                debug!("WebdavVolume::write_from_stream: {remote}");
+                self.put_streaming(&client, &remote, size, stream, on_progress).await
+            }
+            WriteMode::CreateNew => {
+                let temp = staging_sibling(&remote);
+                debug!("WebdavVolume::write_from_stream: {remote} via {temp}");
+                let total = self.put_streaming(&client, &temp, size, stream, on_progress).await?;
+                let request = client
+                    .request(method("MOVE"), client.url_for(&temp, false))
+                    .header("Destination", client.url_for(&remote, false).as_str())
+                    .header("Overwrite", "F")
+                    .timeout(MUTATION_BUDGET);
+                if let Err(e) = self.send(&client, request, &remote, Attempted::TakingAName).await {
+                    self.remove_best_effort(&temp).await;
+                    return Err(e);
+                }
+                Ok(total)
+            }
+        }
+    }
 
+    /// One streaming `PUT` of `stream` to `target`, `Content-Length: size`, with
+    /// progress and cancel. Returns the bytes written; ❗ every failure removes
+    /// whatever the `PUT` may have left at `target`, so the caller has nothing
+    /// to clean.
+    async fn put_streaming(
+        &self,
+        client: &Arc<WebdavClient>,
+        target: &str,
+        size: u64,
+        stream: Box<dyn VolumeReadStream>,
+        on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
+    ) -> Result<u64, VolumeError> {
         let counts = BodyCounts::new();
         let stop = CancellationToken::new();
         let source_error: Arc<std::sync::Mutex<Option<VolumeError>>> = Arc::new(std::sync::Mutex::new(None));
@@ -183,7 +229,7 @@ impl WebdavVolume {
                 // Cancellation is answered before anything is pulled or handed
                 // over, so a cancelled upload never puts one more byte on the
                 // wire. The piece already read ahead is simply dropped with the
-                // state: it was never sent, and the temp goes either way.
+                // state: it was never sent, and what the PUT stored goes either way.
                 if source.stop.is_cancelled() {
                     return Some((Err(std::io::Error::other("cancelled")), source));
                 }
@@ -209,7 +255,7 @@ impl WebdavVolume {
             },
         ));
         let request = client
-            .request(Method::PUT, client.url_for(&temp, false))
+            .request(Method::PUT, client.url_for(target, false))
             .header(CONTENT_LENGTH, size)
             .header(CONTENT_TYPE, "application/octet-stream")
             .body(body);
@@ -217,7 +263,7 @@ impl WebdavVolume {
         // The block scopes the in-flight request: leaving it drops the
         // request, which is what aborts a cancelled upload on the wire.
         let outcome = {
-            let put = self.send(&client, request, &temp, Attempted::Reaching);
+            let put = self.send(client, request, target, Attempted::Reaching);
             let mut put = std::pin::pin!(put);
             let mut tick = tokio::time::interval(PROGRESS_TICK);
             tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -245,7 +291,7 @@ impl WebdavVolume {
         // differ by exactly the case this guard exists for.
         let total = counts.fetched.load(Ordering::Relaxed);
         if let Err(e) = outcome {
-            self.remove_best_effort(&temp).await;
+            self.remove_best_effort(target).await;
             if stop.is_cancelled() {
                 return Err(VolumeError::Cancelled(self.volume_id().to_string()));
             }
@@ -258,7 +304,7 @@ impl WebdavVolume {
                 // same predicate a dropped connection answers. ❌ Not the
                 // volume's fault, so not `DeviceDisconnected`: that would flip
                 // the volume offline over one wrong `size`.
-                return Err(size_mismatch(&remote, total, size));
+                return Err(size_mismatch(target, total, size));
             }
             return Err(e);
         }
@@ -266,38 +312,24 @@ impl WebdavVolume {
             // ❗ hyper TRUNCATES a body longer than `Content-Length` and the
             // server happily stores the prefix, then answers 201 with nothing
             // wrong anywhere on the wire. Verified on hyper 1.10.1 (its HTTP/1
-            // encoder's `Kind::Length` arm), 2026-09-01. Never MOVE that.
+            // encoder's `Kind::Length` arm), 2026-09-01. Never keep that.
             //
             // ❗ It also stops POLLING once the promise is met, which is why
             // `total` is the read-ahead's count: a source whose pieces divide
-            // `size` exactly would otherwise agree with the promise and land a
-            // truncated file on the user's name.
-            self.remove_best_effort(&temp).await;
-            return Err(size_mismatch(&remote, total, size));
+            // `size` exactly would otherwise agree with the promise and keep a
+            // truncated file.
+            self.remove_best_effort(target).await;
+            return Err(size_mismatch(target, total, size));
         }
         if on_progress(total, size).is_break() {
-            self.remove_best_effort(&temp).await;
+            self.remove_best_effort(target).await;
             return Err(VolumeError::Cancelled(self.volume_id().to_string()));
-        }
-
-        let (overwrite, attempted) = match mode {
-            WriteMode::CreateNew => ("F", Attempted::TakingAName),
-            WriteMode::CreateOrReplace => ("T", Attempted::Reaching),
-        };
-        let request = client
-            .request(method("MOVE"), client.url_for(&temp, false))
-            .header("Destination", client.url_for(&remote, false).as_str())
-            .header("Overwrite", overwrite)
-            .timeout(MUTATION_BUDGET);
-        if let Err(e) = self.send(&client, request, &remote, attempted).await {
-            self.remove_best_effort(&temp).await;
-            return Err(e);
         }
         Ok(total)
     }
 
-    /// Removes a staging temp, and says nothing if that fails: the error that
-    /// got us here is the one worth reporting.
+    /// Removes what a failed write left at `remote`, and says nothing if that
+    /// fails: the error that got us here is the one worth reporting.
     pub(super) async fn remove_best_effort(&self, remote: &str) {
         if let Ok(client) = self.clone_client().await {
             let request = client

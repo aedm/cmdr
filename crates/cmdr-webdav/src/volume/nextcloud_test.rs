@@ -120,10 +120,12 @@ async fn read_whole(volume: &WebdavVolume, path: &Path) -> Vec<u8> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the Nextcloud WebDAV fixture: apps/desktop/test/webdav-servers/start.sh nextcloud (webdav-fixture-nextcloud)"]
-async fn the_staged_write_path_lands_a_file_byte_exact_on_sabre_dav() {
+async fn the_write_path_lands_a_file_byte_exact_on_sabre_dav() {
     // The cell that says this backend speaks to a real server at all: MKCOL,
-    // the staged PUT onto a `.cmdr-tmp-*` sibling, the MOVE that renames it, and
-    // a read back. Everything else here asks a narrower question.
+    // the plain PUT a `CreateOrReplace` write is (the engine hands it a staging
+    // name), and a read back. Then `CreateNew`, which stages here: a PUT onto a
+    // `.cmdr-tmp-*` sibling and a MOVE with `Overwrite: F`, which sabre/dav must
+    // refuse over a taken name. Everything else here asks a narrower question.
     let (volume, dir) = nextcloud_with_scratch().await;
     let path = dir.join("copied.bin");
     let bytes = fixture_large_bytes(1024 * 1024);
@@ -143,7 +145,16 @@ async fn the_staged_write_path_lands_a_file_byte_exact_on_sabre_dav() {
         .expect(FIXTURE);
 
     assert_eq!(written, bytes.len() as u64);
-    assert_same_bytes(&read_whole(&volume, &path).await, &bytes, "a staged write to sabre/dav");
+    assert_same_bytes(&read_whole(&volume, &path).await, &bytes, "a write to sabre/dav");
+    // `CreateNew`: refused over the file just written (by sabre/dav's 412 on
+    // `Overwrite: F`), landed whole on a free name.
+    cmdr_fs::volume::conformance::assert_write_from_stream_create_new_refuses_to_clobber(
+        &volume,
+        &path,
+        &dir.join("fresh.bin"),
+        b"new",
+    )
+    .await;
     let siblings = volume.list_directory(&dir, None).await.expect(FIXTURE);
     // ❗ `is_staging_temp_name` looks anywhere in the name: a staging sibling is
     // `<destination>.cmdr-tmp-<id>`, so a `starts_with` test would pass whatever

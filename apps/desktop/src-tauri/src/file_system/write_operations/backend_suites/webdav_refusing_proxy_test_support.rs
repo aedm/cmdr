@@ -1,5 +1,7 @@
 //! A WebDAV server that refuses exactly one kind of request, on command: the
-//! real fixture, behind an HTTP proxy this process owns.
+//! real fixture, behind an HTTP proxy this process owns. The proxy also counts
+//! every request it sees by method, which is how a cell measures what one
+//! transfer costs on the wire ([`RefusingProxy::requests`]).
 //!
 //! A server says 507 (Insufficient Storage) when a disk or an account quota
 //! fills up, and 403 when a share's permissions change under a running copy.
@@ -15,9 +17,10 @@
 //! and passes the answer back, so the client never reuses a connection and each
 //! request arrives on a fresh one the proxy can judge from its head alone.
 
+use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
 
 use cmdr_fs::volume::host::VolumeHost;
 use cmdr_fs::volume::host::credentials::InMemoryCredentials;
@@ -27,6 +30,8 @@ use cmdr_webdav::{WebdavConnectionParams, WebdavVolume, connect_webdav_volume};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::sync::CancellationToken;
+
+use crate::ignore_poison::IgnorePoison;
 
 /// How the proxy answers the request it refuses.
 #[derive(Clone, Copy, Debug)]
@@ -64,6 +69,14 @@ pub(super) enum PathRule {
 }
 
 impl Refusal {
+    /// Refuses nothing: every request goes through, and the proxy only counts.
+    pub(super) const NOTHING: Self = Self {
+        method: "",
+        path: PathRule::Contains(""),
+        status: 500,
+        answer: Answer::AfterTheBody,
+    };
+
     fn matches(&self, method: &str, path: &str) -> bool {
         method == self.method
             && match self.path {
@@ -77,6 +90,8 @@ impl Refusal {
 pub(super) struct RefusingProxy {
     port: u16,
     refused: Arc<AtomicUsize>,
+    /// Every request the proxy saw, refused or passed through, by method.
+    seen: Arc<Mutex<HashMap<String, usize>>>,
     stop: CancellationToken,
 }
 
@@ -86,8 +101,9 @@ impl RefusingProxy {
         let listener = TcpListener::bind(("127.0.0.1", 0)).await.expect("a loopback port");
         let port = listener.local_addr().expect("a bound listener has an address").port();
         let refused = Arc::new(AtomicUsize::new(0));
+        let seen = Arc::new(Mutex::new(HashMap::new()));
         let stop = CancellationToken::new();
-        let (accept_refused, accept_stop) = (Arc::clone(&refused), stop.clone());
+        let (accept_refused, accept_seen, accept_stop) = (Arc::clone(&refused), Arc::clone(&seen), stop.clone());
         tokio::spawn(async move {
             loop {
                 let client = tokio::select! {
@@ -98,14 +114,27 @@ impl RefusingProxy {
                     },
                 };
                 let refused = Arc::clone(&accept_refused);
+                let seen = Arc::clone(&accept_seen);
                 tokio::spawn(async move {
                     // A connection that goes wrong is the CLIENT's to report;
                     // the proxy has nothing to add.
-                    let _ = serve_one(client, upstream, refusal, &refused).await;
+                    let _ = serve_one(client, upstream, refusal, &refused, &seen).await;
                 });
             }
         });
-        Self { port, refused, stop }
+        Self {
+            port,
+            refused,
+            seen,
+            stop,
+        }
+    }
+
+    /// How many requests with this method reached the proxy so far, refused or
+    /// passed through. The proxy asks for `Connection: close`, so every request
+    /// arrives on its own connection and is counted once.
+    pub(super) fn requests(&self, method: &str) -> usize {
+        self.seen.lock_ignore_poison().get(method).copied().unwrap_or(0)
     }
 
     /// How many requests the proxy has refused so far, so a cell can insist the
@@ -133,6 +162,7 @@ async fn serve_one(
     upstream: SocketAddr,
     refusal: Refusal,
     refused: &AtomicUsize,
+    seen: &Mutex<HashMap<String, usize>>,
 ) -> std::io::Result<()> {
     let mut buffer = Vec::new();
     let mut chunk = [0u8; 8192];
@@ -158,6 +188,7 @@ async fn serve_one(
         .find(|(name, _)| name.trim().eq_ignore_ascii_case("content-length"))
         .and_then(|(_, value)| value.trim().parse().ok())
         .unwrap_or(0);
+    *seen.lock_ignore_poison().entry(method.to_string()).or_insert(0) += 1;
 
     if refusal.matches(method, path) {
         refused.fetch_add(1, Ordering::SeqCst);

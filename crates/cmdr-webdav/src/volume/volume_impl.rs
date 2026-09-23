@@ -222,9 +222,10 @@ impl Volume for WebdavVolume {
         Box::pin(self.noting(self.rename_impl(from, to, force)))
     }
 
-    /// ❗ `write_is_single_shot` keeps its `false` default, so every write is
-    /// staged on a `.cmdr-tmp-*` sibling and a partial never wears the user's
-    /// filename.
+    /// ❗ `write_is_single_shot` keeps its `false` default, so the transfer
+    /// engine stages every write on a `.cmdr-tmp-*` sibling and a partial never
+    /// wears the user's filename. What this writes to is that sibling, with one
+    /// plain `PUT` (`writes.rs`).
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,

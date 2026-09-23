@@ -373,11 +373,11 @@ on. The two dev CLIs and the vendored fork are ordinary members.
   around, and which side a test lives on: `crates/cmdr-sftp/CLAUDE.md`. Which crate it is built on and why:
   `docs/notes/sftp-crate-evaluation-2026-08-22.md`. Its Docker servers: `apps/desktop/test/sftp-servers/README.md`.
 - `crates/cmdr-webdav/`: everything Cmdr says to a WebDAV server (Nextcloud, ownCloud, Synology, Fastmail, a generic
-  NAS). `WebdavVolume` over `reqwest` + `quick-xml`: PROPFIND listings, ranged GET reads, staged PUT+MOVE writes so a
-  partial upload never wears the user's filename, Basic auth out of the `CredentialStore` seam, TLS trust from the
-  system roots (no host keys), and a three-valued connection state with one unattended re-probe before it asks a person.
-  No Digest auth, no watcher, no locks. The app-side halves are the saved-server list and the connect wiring
-  (`apps/desktop/src-tauri/src/network/webdav_*.rs`) plus the IPC surface
+  NAS). `WebdavVolume` over `reqwest` + `quick-xml`: PROPFIND listings, ranged GET reads, one plain PUT per write onto
+  the transfer engine's staging temp (the engine's landing MOVE gives it the user's filename), Basic auth out of the
+  `CredentialStore` seam, TLS trust from the system roots (no host keys), and a three-valued connection state with one
+  unattended re-probe before it asks a person. No Digest auth, no watcher, no locks. The app-side halves are the
+  saved-server list and the connect wiring (`apps/desktop/src-tauri/src/network/webdav_*.rs`) plus the IPC surface
   (`apps/desktop/src-tauri/src/commands/webdav.rs`); reconnect and sign-in ride the backend-neutral commands. What the
   frontend calls and what each answer means: `crates/cmdr-webdav/DETAILS.md` § "Connecting from the frontend". Its
   guardrails and which side a test lives on: `crates/cmdr-webdav/CLAUDE.md`. Its Docker servers:
