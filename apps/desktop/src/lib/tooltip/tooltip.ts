@@ -2,7 +2,22 @@ import type { ActionReturn } from 'svelte/action'
 
 export type TooltipParam =
   | string
-  | { text?: string; html?: string; shortcut?: string; overflowOnly?: boolean; contentEl?: HTMLElement }
+  | {
+      text?: string
+      html?: string
+      shortcut?: string
+      overflowOnly?: boolean
+      contentEl?: HTMLElement
+      /**
+       * Hears `true` the moment a hover or focus starts the show delay, and `false` once the tooltip is
+       * gone (hidden, cancelled inside the delay, taken by another trigger, or the trigger destroyed),
+       * AFTER any adopted `contentEl` went back to its host. For a live body that costs something to keep
+       * mounted: mount it on `true`, pass it as `contentEl` through `update()` (the show reads the newest
+       * param when the delay ends), and unmount it on `false`. A param carrying only this hook still
+       * counts as something to show.
+       */
+      onOpenChange?: (open: boolean) => void
+    }
   | null
   | undefined
 
@@ -39,6 +54,28 @@ const BARE_MODIFIER_KEYS = new Set(['Shift', 'Alt', 'Control', 'Meta', 'CapsLock
 let adoptedContentEl: HTMLElement | null = null
 let adoptedContentHost: ParentNode | null = null
 
+/** The trigger whose `onOpenChange` last heard `true`, so exactly one `false` answers it. */
+let openListener: { node: HTMLElement; onOpenChange: (open: boolean) => void } | null = null
+
+function onOpenChangeOf(param: TooltipParam): ((open: boolean) => void) | undefined {
+  return typeof param === 'object' && param !== null ? param.onOpenChange : undefined
+}
+
+function notifyOpen(node: HTMLElement, param: TooltipParam): void {
+  if (openListener?.node === node) return
+  notifyClosed()
+  const onOpenChange = onOpenChangeOf(param)
+  if (!onOpenChange) return
+  openListener = { node, onOpenChange }
+  onOpenChange(true)
+}
+
+function notifyClosed(): void {
+  const listener = openListener
+  openListener = null
+  listener?.onOpenChange(false)
+}
+
 function ensureTooltipContainer(): HTMLDivElement {
   // Self-heal if the cached container got detached from the document (so the next show actually
   // renders). The container normally lives for the whole app lifetime, but staying defensive keeps a
@@ -73,6 +110,12 @@ function ensureTooltipElement(): HTMLDivElement {
 }
 
 function isEmptyParam(param: TooltipParam): boolean {
+  if (typeof param === 'object' && param?.onOpenChange) return false
+  return hasNoContent(param)
+}
+
+/** Nothing to render right now, whatever a caller's `onOpenChange` may mount later. */
+function hasNoContent(param: TooltipParam): boolean {
   if (param === null || param === undefined || param === '') return true
   if (typeof param === 'object') {
     return !param.text && !param.html && !param.shortcut && !param.contentEl
@@ -202,6 +245,12 @@ function showTooltip(triggerEl: HTMLElement, param: TooltipParam): void {
   // recycled while hovered). Never show against a detached element: its rect is all-zero, which would
   // place the tooltip in the top-left corner.
   if (isTriggerDetached(triggerEl)) return
+  // An `onOpenChange` caller that mounted nothing in time has nothing to show; an empty box is worse.
+  if (hasNoContent(param)) {
+    if (openListener?.node === triggerEl) notifyClosed()
+    return
+  }
+  notifyOpen(triggerEl, param)
 
   const tip = ensureTooltipElement()
   setTooltipContent(tip, param)
@@ -227,6 +276,8 @@ function hideTooltip(): void {
     activeElement.removeAttribute('aria-describedby')
     activeElement = null
   }
+  // Last, so a caller that unmounts its body on `false` finds the content already back in its host.
+  notifyClosed()
 }
 
 function cancelTimer(): void {
@@ -303,13 +354,18 @@ function installGlobalDismissListeners(): void {
   })
 }
 
-function startShowTimer(triggerEl: HTMLElement, param: TooltipParam): void {
+/**
+ * Starts the show delay. The show reads `getParam()` when the delay ends rather than the param the
+ * hover started with, because an `onOpenChange` caller mounts its content in between.
+ */
+function startShowTimer(triggerEl: HTMLElement, getParam: () => TooltipParam): void {
   cancelTimer()
   timerNode = triggerEl
+  notifyOpen(triggerEl, getParam())
   showTimer = setTimeout(() => {
     showTimer = null
     timerNode = null
-    showTooltip(triggerEl, param)
+    showTooltip(triggerEl, getParam())
   }, SHOW_DELAY_MS)
 }
 
@@ -335,7 +391,7 @@ export function tooltip(node: HTMLElement, param: TooltipParam): ActionReturn<To
   const handleMouseEnter = (): void => {
     if (hoverSuppressed) return
     if (!isEmptyParam(currentParam) && shouldShow(node, currentParam)) {
-      startShowTimer(node, currentParam)
+      startShowTimer(node, () => currentParam)
     }
   }
 
@@ -345,7 +401,7 @@ export function tooltip(node: HTMLElement, param: TooltipParam): ActionReturn<To
 
   const handleFocus = (): void => {
     if (!isEmptyParam(currentParam) && shouldShow(node, currentParam)) {
-      startShowTimer(node, currentParam)
+      startShowTimer(node, () => currentParam)
     }
   }
 
@@ -365,7 +421,7 @@ export function tooltip(node: HTMLElement, param: TooltipParam): ActionReturn<To
 
       // If tooltip is currently visible for this element, update content live
       if (activeElement === node && tooltipEl) {
-        if (isEmptyParam(currentParam)) {
+        if (hasNoContent(currentParam)) {
           hideTooltip()
         } else {
           setTooltipContent(tooltipEl, currentParam)
@@ -386,6 +442,7 @@ export function tooltip(node: HTMLElement, param: TooltipParam): ActionReturn<To
       if (timerNode === node) {
         cancelTimer()
       }
+      if (openListener?.node === node && activeElement !== node) notifyClosed()
 
       // If this element's tooltip is showing, hide it
       if (activeElement === node) {

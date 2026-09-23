@@ -101,6 +101,11 @@
     // `hidden` attribute, so a hidden host passed as `contentEl` would render
     // an empty tooltip.
     let tooltipContent = $state<HTMLDivElement>()
+    // The body mounts only while the tooltip is open: mounted, each drive row
+    // re-renders on every progress event and runs a 1 Hz clock, for a tooltip
+    // nobody is reading. The rows' ETA windows start fresh on each open, and the
+    // elapsed-time estimate carries the ETA until the window fills (`eta.ts`).
+    let tooltipOpen = $state(false)
 </script>
 
 {#if visible}
@@ -109,42 +114,44 @@
         tabindex="0"
         role="img"
         aria-label={tString('indexing.status.ariaLabel')}
-        use:tooltip={{ contentEl: tooltipContent }}
+        use:tooltip={{ contentEl: tooltipContent ?? undefined, onOpenChange: (open: boolean) => (tooltipOpen = open) }}
     >
         <Icon name="hourglass" size={14} />
     </span>
 
-    <div hidden>
-        <div bind:this={tooltipContent} class="tooltip-content">
-            {#each rows as row, i (row.activity.volumeId)}
-                {#if i === 0}
-                    <!-- The primary (first) drive expands to its full checklist. -->
-                    <IndexingDriveRow
-                        activity={row.activity}
-                        driveName={driveName(row.activity.volumeId)}
-                        showHeading={true}
-                        aggregation={row.aggregation}
-                    />
-                {:else}
-                    <!-- Secondary drives collapse to one line, so N drives don't
+    {#if tooltipOpen}
+        <div hidden>
+            <div bind:this={tooltipContent} class="tooltip-content">
+                {#each rows as row, i (row.activity.volumeId)}
+                    {#if i === 0}
+                        <!-- The primary (first) drive expands to its full checklist. -->
+                        <IndexingDriveRow
+                            activity={row.activity}
+                            driveName={driveName(row.activity.volumeId)}
+                            showHeading={true}
+                            aggregation={row.aggregation}
+                        />
+                    {:else}
+                        <!-- Secondary drives collapse to one line, so N drives don't
                          stack into N checklists. -->
-                    <IndexingDriveSummary
-                        activity={row.activity}
-                        aggregation={row.aggregation}
-                        driveName={driveName(row.activity.volumeId)}
-                    />
-                {/if}
-            {/each}
-            <!-- Image indexing joins as a sibling row kind: one block per
+                        <IndexingDriveSummary
+                            activity={row.activity}
+                            aggregation={row.aggregation}
+                            driveName={driveName(row.activity.volumeId)}
+                        />
+                    {/if}
+                {/each}
+                <!-- Image indexing joins as a sibling row kind: one block per
                  actively-enriching or paused volume, below the drive rows. -->
-            {#each enrichVolumes as enrich (enrich.volumeId)}
-                <IndexingEnrichRow activity={enrich} driveName={driveName(enrich.volumeId)} showHeading={true} />
-            {/each}
-            {#if enrichQueued}
-                <span class="enrich-queued">{tString('indexing.enrich.queued')}</span>
-            {/if}
+                {#each enrichVolumes as enrich (enrich.volumeId)}
+                    <IndexingEnrichRow activity={enrich} driveName={driveName(enrich.volumeId)} showHeading={true} />
+                {/each}
+                {#if enrichQueued}
+                    <span class="enrich-queued">{tString('indexing.enrich.queued')}</span>
+                {/if}
+            </div>
         </div>
-    </div>
+    {/if}
 {/if}
 
 <style>

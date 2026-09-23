@@ -327,4 +327,98 @@ describe('tooltip', () => {
       expect(host.hidden).toBe(true)
     })
   })
+
+  describe('onOpenChange (content mounted only while open)', () => {
+    it('reports open when the hover starts, before the show delay ends', () => {
+      const el = makeTrigger()
+      const onOpenChange = vi.fn()
+      tooltip(el, { text: 'Scanning', onOpenChange })
+
+      el.dispatchEvent(new MouseEvent('mouseenter'))
+
+      expect(onOpenChange).toHaveBeenCalledTimes(1)
+      expect(onOpenChange).toHaveBeenLastCalledWith(true)
+    })
+
+    it('shows the content the host mounted during the delay', () => {
+      // The caller mounts its body on `true` and hands it over through `update()`; the show that
+      // fires 400 ms later must use that newest param, not the one the hover started with.
+      const el = makeTrigger()
+      const action = tooltip(el, {
+        onOpenChange: (open) => {
+          if (open) action.update?.({ contentEl: makeContentHost('Scanning... 42,000 entries').content })
+        },
+      })
+
+      el.dispatchEvent(new MouseEvent('mouseenter'))
+      vi.advanceTimersByTime(500)
+
+      expect(document.querySelector('.cmdr-tooltip.visible')?.textContent).toContain('42,000 entries')
+    })
+
+    it('reports closed on hide, after returning the adopted content', () => {
+      const el = makeTrigger()
+      const { host, content } = makeContentHost('Scanning')
+      let hostHeldContentOnClose = false
+      const onOpenChange = vi.fn((open: boolean) => {
+        if (!open) hostHeldContentOnClose = host.contains(content)
+      })
+      tooltip(el, { contentEl: content, onOpenChange })
+      el.dispatchEvent(new MouseEvent('mouseenter'))
+      vi.advanceTimersByTime(500)
+
+      el.dispatchEvent(new MouseEvent('mouseleave'))
+
+      expect(onOpenChange).toHaveBeenLastCalledWith(false)
+      expect(hostHeldContentOnClose).toBe(true)
+    })
+
+    it('reports closed when the hover ends inside the show delay', () => {
+      const el = makeTrigger()
+      const onOpenChange = vi.fn()
+      tooltip(el, { text: 'Scanning', onOpenChange })
+
+      el.dispatchEvent(new MouseEvent('mouseenter'))
+      el.dispatchEvent(new MouseEvent('mouseleave'))
+
+      expect(onOpenChange.mock.calls).toEqual([[true], [false]])
+    })
+
+    it('reports closed when another trigger takes the shared tooltip', () => {
+      const a = makeTrigger()
+      const b = makeTrigger()
+      const onOpenChange = vi.fn()
+      tooltip(a, { text: 'Scanning', onOpenChange })
+      tooltip(b, 'Other')
+      a.dispatchEvent(new MouseEvent('mouseenter'))
+      vi.advanceTimersByTime(500)
+
+      b.dispatchEvent(new MouseEvent('focus'))
+
+      expect(onOpenChange).toHaveBeenLastCalledWith(false)
+    })
+
+    it('reports closed when the trigger is destroyed while open', () => {
+      const el = makeTrigger()
+      const onOpenChange = vi.fn()
+      const action = tooltip(el, { text: 'Scanning', onOpenChange })
+      el.dispatchEvent(new MouseEvent('mouseenter'))
+
+      action.destroy?.()
+
+      expect(onOpenChange).toHaveBeenLastCalledWith(false)
+    })
+
+    it('treats a param with only onOpenChange as something to show', () => {
+      // The indicator's param carries no content until it's open, so an empty-looking param with the
+      // hook must still start the hover, or the body would never get mounted.
+      const el = makeTrigger()
+      const onOpenChange = vi.fn()
+      tooltip(el, { onOpenChange })
+
+      el.dispatchEvent(new MouseEvent('mouseenter'))
+
+      expect(onOpenChange).toHaveBeenCalledWith(true)
+    })
+  })
 })

@@ -355,6 +355,28 @@ describe('DriveIndexBadge menu shell', () => {
 })
 
 describe('DriveIndexBadge scanning tooltip', () => {
+  /** Hover the dot: the rich body mounts only while its tooltip is open. */
+  function openScanTooltip(target: HTMLElement): void {
+    // A real pointer move first: an earlier test's keypress leaves the shared tooltip hover-suppressed.
+    document.dispatchEvent(new MouseEvent('mousemove'))
+    must(target, '.drive-index-badge').dispatchEvent(new MouseEvent('mouseenter'))
+    flushSync()
+  }
+
+  it('keeps the rich body unmounted until the tooltip opens', () => {
+    // Mounted, the body re-renders on every progress event and runs a 1 Hz clock.
+    badgeActivity = scanActivity()
+    const { target } = render(makeStatus({ freshness: 'scanning' }))
+    expect(target.querySelector('.scan-tooltip-body')).toBeNull()
+
+    openScanTooltip(target)
+    expect(target.querySelector('.scan-tooltip-body')).not.toBeNull()
+
+    must(target, '.drive-index-badge').dispatchEvent(new MouseEvent('mouseleave'))
+    flushSync()
+    expect(target.querySelector('.scan-tooltip-body')).toBeNull()
+  })
+
   it('falls back to the static scanning phrasing when there is no live activity yet', () => {
     badgeActivity = undefined
     const { target } = render(makeStatus({ freshness: 'scanning' }))
@@ -366,6 +388,7 @@ describe('DriveIndexBadge scanning tooltip', () => {
   it('renders the shared checklist body (count + elapsed) once live activity is present', () => {
     badgeActivity = scanActivity({ volumeUsedBytes: 10_000_000 }) // rough first scan: count + elapsed, no bar
     const { target } = render(makeStatus({ freshness: 'scanning' }))
+    openScanTooltip(target)
     const body = target.querySelector('.scan-tooltip-body')
     expect(body).not.toBeNull()
     // The checklist's first step (a network drive: Find files, then Compute folder sizes).
@@ -378,6 +401,7 @@ describe('DriveIndexBadge scanning tooltip', () => {
   it('renders the calibrated bar when the scan has a prior-scan denominator', () => {
     badgeActivity = scanActivity({ priorTotalEntries: 100_000 })
     const { target } = render(makeStatus({ freshness: 'scanning' }))
+    openScanTooltip(target)
     const body = target.querySelector('.scan-tooltip-body')
     expect(body?.querySelector('[role="progressbar"]')).not.toBeNull()
   })
@@ -386,6 +410,7 @@ describe('DriveIndexBadge scanning tooltip', () => {
     badgeActivity = undefined
     badgePhase = 'scanning'
     const { target } = render(makeStatus({ freshness: 'scanning' }))
+    openScanTooltip(target)
     // A phase but no activity yet: the body still renders (off a placeholder), so
     // the checklist stays visible instead of falling back to the static phrase.
     expect(target.querySelector('.scan-tooltip-body')).not.toBeNull()
@@ -395,6 +420,7 @@ describe('DriveIndexBadge scanning tooltip', () => {
   it('does not render the rich body when the badge is not scanning', () => {
     badgeActivity = scanActivity()
     const { target } = render(makeStatus({ freshness: 'fresh' }))
+    openScanTooltip(target)
     expect(target.querySelector('.scan-tooltip-body')).toBeNull()
   })
 })

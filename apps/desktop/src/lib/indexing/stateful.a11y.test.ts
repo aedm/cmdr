@@ -116,6 +116,17 @@ afterEach(() => {
  * variables that each test reassigns BEFORE mounting (Vitest hoists `vi.mock`,
  * so a per-test factory wouldn't work).
  */
+/**
+ * Mount the corner indicator and hover it: its tooltip body mounts only while the tooltip is open, so
+ * every body assertion needs it open.
+ */
+async function mountIndicatorOpen(target: HTMLElement): Promise<void> {
+  mount(IndexingStatusIndicator, { target, props: {} })
+  await tick()
+  target.querySelector('.indexing-status')?.dispatchEvent(new MouseEvent('mouseenter'))
+  flushSync()
+}
+
 describe('IndexingStatusIndicator a11y', () => {
   beforeEach(() => {
     volumes = [
@@ -151,8 +162,7 @@ describe('IndexingStatusIndicator a11y', () => {
     phaseByVolume = {}
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(IndexingStatusIndicator, { target, props: {} })
-    await tick()
+    await mountIndicatorOpen(target)
     expect(target.querySelector('.indexing-status')).toBeNull()
     await expectNoA11yViolations(target)
   })
@@ -163,8 +173,7 @@ describe('IndexingStatusIndicator a11y', () => {
     phaseByVolume = {}
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(IndexingStatusIndicator, { target, props: {} })
-    await tick()
+    await mountIndicatorOpen(target)
     expect(target.querySelector('.indexing-status')).not.toBeNull()
     // The drive-name heading now shows even for a single drive.
     expect(target.querySelector('.drive-heading')?.textContent).toBe('Macintosh HD')
@@ -180,8 +189,7 @@ describe('IndexingStatusIndicator a11y', () => {
     phaseByVolume = {}
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(IndexingStatusIndicator, { target, props: {} })
-    await tick()
+    await mountIndicatorOpen(target)
     expect(target.querySelector('.indexing-status')).not.toBeNull()
     expect(target.querySelector('.drive-heading')?.textContent).toBe('Macintosh HD')
     // No bar and no progressbar role for the rough first scan.
@@ -200,8 +208,7 @@ describe('IndexingStatusIndicator a11y', () => {
     phaseByVolume = {}
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(IndexingStatusIndicator, { target, props: {} })
-    await tick()
+    await mountIndicatorOpen(target)
     expect(target.querySelector('.indexing-status')).not.toBeNull()
     expect(target.querySelector('.drive-heading')?.textContent).toBe('Macintosh HD')
     expect(target.querySelector('.tooltip-progress')).not.toBeNull()
@@ -217,8 +224,7 @@ describe('IndexingStatusIndicator a11y', () => {
     phaseByVolume = {}
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(IndexingStatusIndicator, { target, props: {} })
-    await tick()
+    await mountIndicatorOpen(target)
     expect(target.querySelector('.indexing-status')).not.toBeNull()
     await expectNoA11yViolations(target)
   })
@@ -232,8 +238,7 @@ describe('IndexingStatusIndicator a11y', () => {
     phaseByVolume = {}
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(IndexingStatusIndicator, { target, props: {} })
-    await tick()
+    await mountIndicatorOpen(target)
     expect(target.querySelector('.indexing-status')).not.toBeNull()
     // A heading per drive (the expanded row + the collapsed summary both name theirs).
     expect(target.querySelectorAll('.drive-heading').length).toBe(2)
@@ -250,8 +255,7 @@ describe('IndexingStatusIndicator a11y', () => {
     phaseByVolume = { root: 'reconciling' }
     const target = document.createElement('div')
     document.body.appendChild(target)
-    mount(IndexingStatusIndicator, { target, props: {} })
-    await tick()
+    await mountIndicatorOpen(target)
     expect(target.querySelector('.indexing-status')).not.toBeNull()
     expect(target.querySelector('.step-list')).not.toBeNull()
     // The catch-up step is the active one (its label carries the active class).

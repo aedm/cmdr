@@ -196,6 +196,9 @@ describe('DriveIndexBadge a11y', () => {
       replayStartedAt: 0,
     }
     const target = await mountBadge(makeStatus('scanning'))
+    // The body mounts only while the tooltip is open.
+    target.querySelector('.drive-index-badge')?.dispatchEvent(new MouseEvent('mouseenter'))
+    flushSync()
     expect(target.querySelector('.scan-tooltip-body')).not.toBeNull()
     await expectNoA11yViolations(target)
   })

@@ -152,7 +152,10 @@ name via the volume store's `getVolumes()` (falling back to the id). The per-dri
 `{name}` passthrough) is ALWAYS shown — even for a single drive — so the user can always tell which drive is indexing;
 it reads as a title (full-strength `--color-text-primary`, bold) above the status line. The component renders the
 content inside a `<div hidden>` host and passes the inner content div (not the hidden host) to the tooltip action via
-`contentEl`, so the adopted element doesn't carry `hidden` into the tooltip.
+`contentEl`, so the adopted element doesn't carry `hidden` into the tooltip. The host mounts only while the tooltip is
+open (the action's `onOpenChange`): kept mounted, every row re-rendered on each progress event and ran its 1 Hz clock
+for a tooltip nobody was reading. So each open starts the rows' ETA windows empty, and the elapsed-time half of
+`blendEtas` carries the ETA until the window fills (about five seconds). The breadcrumb badge does the same.
 
 **Body / wrapper split.** `IndexingDriveRow` is a thin WRAPPER: it owns the stateful glue — this volume's two ETA
 sliding windows (scan + replay) and a 1 Hz `now` tick (gated on scanning/aggregating) — plus the reactive reads

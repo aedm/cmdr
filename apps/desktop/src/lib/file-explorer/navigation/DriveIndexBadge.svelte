@@ -97,9 +97,12 @@
     // The shared body lives in a hidden host; we hand its inner element to the
     // tooltip as `contentEl`. Rich only once there's something to show (live
     // activity, or a phase mid-pipeline), else the static fallback text. Mirrors
-    // the indicator's `contentEl` pattern.
+    // the indicator's `contentEl` pattern. The host mounts only while the tooltip
+    // is open (`onOpenChange`): mounted, the body re-renders on every progress
+    // event and runs a 1 Hz clock, for a tooltip nobody is reading.
     let scanBodyEl = $state<HTMLDivElement>()
-    const useRichScanningTooltip = $derived(badgeState === 'scanning' && bodyActivity != null && scanBodyEl != null)
+    let scanTooltipOpen = $state(false)
+    const hasRichScanningBody = $derived(badgeState === 'scanning' && bodyActivity != null)
 
     // The "macOS lost track of changes N times" paragraph, appended to the tooltip
     // whenever signals were coalesced since the last full check. Recomputed when
@@ -175,9 +178,17 @@
     )
 
     // The tooltip param: the rich DOM body while scanning with live activity,
-    // else the text tooltip for this state. The template blanks it while the
-    // menu is open.
-    const tooltipParam = $derived(useRichScanningTooltip ? { contentEl: scanBodyEl } : tooltipText)
+    // else the text tooltip for this state. The text also stands in for the body
+    // in the moment before it mounts. The template blanks it while the menu is open.
+    const tooltipParam = $derived(
+        hasRichScanningBody
+            ? {
+                  text: tooltipText,
+                  contentEl: scanBodyEl ?? undefined,
+                  onOpenChange: (open: boolean) => (scanTooltipOpen = open),
+              }
+            : tooltipText,
+    )
 
     const menuActions = $derived(driveIndexMenuActions(badgeState, masterEnabled))
     const showFooter = $derived(hasLastScanFacts(status))
@@ -218,7 +229,8 @@
 
     function toggleMenu(): void {
         if (!badgeRef) return
-        if (!menu.isOpen) focusBeforeOpen = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        if (!menu.isOpen)
+            focusBeforeOpen = document.activeElement instanceof HTMLElement ? document.activeElement : null
         menu.toggleUnder(badgeRef)
     }
 
@@ -239,7 +251,7 @@
     onclick={toggleMenu}
 ></button>
 
-{#if badgeState === 'scanning' && bodyActivity}
+{#if hasRichScanningBody && bodyActivity && scanTooltipOpen}
     <!-- The scanning tooltip's rich body. Lives in a hidden host; the tooltip
          action adopts the INNER element (`scanBodyEl`) as `contentEl`, not the
          hidden host (an adopted element keeps its own `hidden`, so a hidden host
