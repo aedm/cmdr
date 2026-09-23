@@ -671,6 +671,13 @@ flight match the tool:
    may still land. The owner asks `is_ejecting_by_another`, not `is_ejecting`: its own adopted siblings read as ejecting
    until it lands.
 
+**Unmounted but not powered down is a silent `Ok`.** When every mount of the disk left the table but the hardware
+stayed attached (API-driven ejects of APFS media can do that: `NSWorkspace` ejects the synthesized container and leaves
+the image attached, `docs/notes/diskarbitration-unmount-evidence-2026-09.md`), the eject answers `Ok` with an `info`
+line: the person's files are safe to unplug, and `diskutil` gives no typed signal to tell the case apart. Revisit when
+someone reports a drive still powered after Cmdr's eject, or when the DA teardown lands, whose `DADiskEject` status
+would make it a typed outcome (`docs/specs/eject-and-drive-safety-follow-ups.md`).
+
 **One eject at a time per volume.** `eject` hands the pipeline to `in_flight::join_or_start`: a request for a volume
 whose eject is still running JOINS that flight and gets its answer, with no second teardown. A slow `diskutil` (10.5 s
 in one user's log) invites repeat clicks, and every caller lands here: both switcher buttons, the native menu, and MCP.

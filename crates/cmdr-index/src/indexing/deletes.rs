@@ -4,10 +4,10 @@
 //! Every delete gate asks whether the drive is listed AFTER the observation it
 //! guards, which closes the window it can see. One window stays open: a path lookup
 //! may be able to answer `ENOENT` while the mount is still in the table (unverified
-//! — see the eject plan's M7 landmine). Deletes made in that window pass every gate,
-//! so something has to remember that they happened. This counter is that memory: a
-//! non-zero count plus a drive that then reads gone is what marks the index for a
-//! rebuild.
+//! — see `reconcile/DETAILS.md` § "The delete gates"). Deletes made in that window
+//! pass every gate, so something has to remember that they happened. This counter
+//! is that memory: a non-zero count plus a drive that then reads gone is what marks
+//! the index for a rebuild.
 //!
 //! ❌ **A presence read alone never resets it.** Taken inside an unmount window a
 //! `Some(true)` says nothing about batches already sent. The reset needs BOTH a

@@ -483,7 +483,7 @@ a tool would be a guess about what a person should go and close.
 couldn't cover every mount, so its names are worth saying while its emptiness says nothing; only `complete` with an
 empty `named` would license "nothing is using this drive", and no copy says that today. A refusal whose holders are all
 `Unclassified` therefore reads identically to one that named nobody, which is a known copy-quality gap awaiting a
-product decision (`docs/specs/eject-and-drive-safety-plan.md` § "M15").
+product decision (`docs/specs/eject-and-drive-safety-follow-ups.md`).
 
 `wordEjectRefusal` adds one `warn` line whenever a `Cmdr` holder is in `named` AT ALL, ❌ not only when it wins the
 precedence: an app beside it rightly gets the sentence, but Cmdr holding a drive it's trying to let go of is a bug worth

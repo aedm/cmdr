@@ -273,8 +273,12 @@ still have overrun DA's timer, which started when DA queued it. The eject approv
 unmounts anyway (`DARequest.c:1610`), so the stop work happens on every ask and the dissent is only the non-force
 fallback. When several indexed drives are ejected together and the chain's budget runs out, the later asks dissent with
 their stops detached; under force that leaves the FSKit wedge exposure for that drive. Per-disk DA sessions are the only
-thing that would beat it, and they're deferred (`docs/specs/eject-and-drive-safety-plan.md` § Deferred). A raw
+thing that would beat it, and they're deferred (`docs/specs/eject-and-drive-safety-follow-ups.md`). A raw
 `/sbin/umount` bypasses DA entirely: no ask, no `WillUnmount`, only the aftermath.
+
+**Evidence.** The DA behavior this section rests on (which requests ask, the queue-time timer, the timed-out session
+going silent, idle's meaning, a pulled disk's callback order) is measured and cited in
+`docs/notes/diskarbitration-unmount-evidence-2026-09.md`.
 
 **Install failure** keeps the old hook: `install_or_fall_back` installs the `WillUnmount` observer only when the
 approver couldn't install, and logs an `error`. ❌ Never both: two pre-unmount hooks stop the same index twice.

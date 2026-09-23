@@ -64,6 +64,13 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   recollection), before trusting an id that looks right, and before anyone proposes the tab toggle again: the six
   vendors answer that question six different ways, and only Warp could honor it cleanly. It also names the four external
   changes that would invalidate these answers.
+- `diskarbitration-unmount-evidence-2026-09.md` — what DiskArbitration really does around an unmount, measured with a
+  throwaway probe and read from DiskArbitration-535.0.10: which unmounts ask an approval session (every DA-mediated one,
+  force included, never a raw `umount`), the 10 s timer that starts when DA QUEUES an ask, why an approval-only session
+  goes silent for good after one timeout, what the idle callback does and doesn't mean, and the holder-classification
+  signals (responsibility is inherited; a Security query can make the prober the holder). It's what the unmount
+  approver's 7 s budget and the holder rules rest on. Read it before changing either, or before picking up per-disk DA
+  sessions or the DA teardown swap.
 - `phased-vs-bulk-index-2026-08-14.md` — the measurement gate the phased-indexing plan set for itself, and the running
   record of what the phased shape costs. **The current number is 1.75×** (the shipped machine over a real `/`, against a
   same-evening bulk baseline of 40.5 s), with `home_covered_at` at 42.5–44.1 s, which is parity with the bulk build's
