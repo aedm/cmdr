@@ -91,14 +91,15 @@ Decisions made during implementation:
   until milestone 2 drops the Ask Cmdr consent commands.
 - **D17. MCP `ai_search` refuses with `invalid_params` plus `data.reason: "cloudAiNotAllowed"`**, so a client acts on a
   typed field, not the sentence (the `ToolError.data` contract).
-- **D18. The send gate is one pure function, `session::admit_send(ask_cmdr_enabled, resolve)`**, which the command
-  calls and the runtime test mirrors: Ask Cmdr off refuses without resolving the slot, then the slot's `SlotRefusal`
-  maps to its wire kind. The four Ask Cmdr gate switches read fresh from `settings.json` moved to
-  `settings/ai_gates.rs` (`loader.rs` would otherwise cross the file-length limit).
-- **D19. Until milestone 3, the frontend's old Ask Cmdr consent wrappers are inert shims** (`tauri-commands/ask-cmdr.ts`):
-  status reads the cloud status, revoke revokes cloud consent, and accept records NOTHING, because the Ask Cmdr
-  disclosure never described the other AI features and so must not grant cloud AI for them. Between milestones 2 and 3
-  the rail refuses every send with `askCmdrOff` (nothing sets `askCmdr.enabled` yet); that's expected.
+- **D18. The send gate is one pure function, `session::admit_send(ask_cmdr_enabled, resolve)`**, which the command calls
+  and the runtime test mirrors: Ask Cmdr off refuses without resolving the slot, then the slot's `SlotRefusal` maps to
+  its wire kind. The four Ask Cmdr gate switches read fresh from `settings.json` moved to `settings/ai_gates.rs`
+  (`loader.rs` would otherwise cross the file-length limit).
+- **D19. Until milestone 3, the frontend's old Ask Cmdr consent wrappers are inert shims**
+  (`tauri-commands/ask-cmdr.ts`): status reads the cloud status, revoke revokes cloud consent, and accept records
+  NOTHING, because the Ask Cmdr disclosure never described the other AI features and so must not grant cloud AI for
+  them. Between milestones 2 and 3 the rail refuses every send with `askCmdrOff` (nothing sets `askCmdr.enabled` yet);
+  that's expected.
 
 ## Census
 
