@@ -154,8 +154,8 @@ impl Volume for SwappedMidListing {
     fn list_directory<'a>(
         &'a self,
         path: &'a Path,
-        on_progress: Option<&'a (dyn Fn(crate::file_system::volume::ListingProgress) + Sync)>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
+        on_progress: Option<&'a (dyn Fn(ListingProgress) + Sync)>,
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<Vec<FileEntry>, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
             let successor = self.successor.lock().expect("test lock").take();
             if let Some(successor) = successor {
@@ -168,18 +168,18 @@ impl Volume for SwappedMidListing {
     fn get_metadata<'a>(
         &'a self,
         path: &'a Path,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<FileEntry, VolumeError>> + Send + 'a>> {
         self.kernel.get_metadata(path)
     }
 
-    fn exists<'a>(&'a self, path: &'a Path) -> std::pin::Pin<Box<dyn std::future::Future<Output = bool> + Send + 'a>> {
+    fn exists<'a>(&'a self, path: &'a Path) -> std::pin::Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
         self.kernel.exists(path)
     }
 
     fn is_directory<'a>(
         &'a self,
         path: &'a Path,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
+    ) -> std::pin::Pin<Box<dyn Future<Output = Result<bool, VolumeError>> + Send + 'a>> {
         self.kernel.is_directory(path)
     }
 }
