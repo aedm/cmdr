@@ -46,8 +46,7 @@ use super::{
     pending_volume_ids, retire_record,
 };
 use crate::file_system::volume::manager::get_volume_manager;
-use crate::file_system::volume::{Volume, VolumeError};
-use crate::file_system::write_operations::overwrite;
+use crate::file_system::volume::{Volume, VolumeError, rename_local_exclusive};
 use crate::file_system::write_operations::transfer_sides::root_is_listed;
 use crate::file_system::write_operations::types::MoveLeftoversKeptEvent;
 use crate::file_system::write_operations::unique_name::{NameCandidates, RESCUE_NAME_ATTEMPTS, recovered_sibling};
@@ -599,7 +598,10 @@ impl Surface {
 
     async fn rename_no_replace(&self, from: &Path, to: &Path) -> Renaming {
         match self {
-            Self::Local => match overwrite::rename_no_replace(from, to) {
+            // The primitive `overwrite::rename_no_replace` delegates to, named at
+            // its home: `overwrite` tracks through this ledger, so reaching back
+            // up into it would weld the two modules into a cycle.
+            Self::Local => match rename_local_exclusive(from, to) {
                 Ok(()) => Renaming::Renamed,
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Renaming::Occupied,
                 Err(e) => {

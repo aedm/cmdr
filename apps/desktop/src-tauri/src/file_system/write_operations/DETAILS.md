@@ -1352,6 +1352,11 @@ registry has the volume. `VolumeSpace` is a volume's OWN namespace, swept throug
 `VolumeSpace` split is stated by the producer and ❌ never re-derived: a direct SMB session roots at `/` in its own
 namespace, so guessing from the path would point `std::fs::remove_file` at the user's Mac.
 
+**The ledger sits BELOW `overwrite`.** `overwrite` tracks every temp and aside through `in_flight_temps`, so the ledger
+and its sweep ❌ never `use` `overwrite`: the sweep's local no-clobber rename calls `volume::rename_local_exclusive`
+directly, the one primitive `overwrite::rename_no_replace` delegates to. Reaching up for the alias welds the two modules
+into a cycle `module-cycles` reports.
+
 **Why the kinded records got their own op bytes** (`A`/`a`) rather than widening the `+` line: a build without them
 skips an op byte it doesn't know and truncates the log at launch, so a rollback FORGETS these records. A widened `+`
 would have been read by that build as a temp, and a temp is the one kind it removes on sight — which is exactly the
