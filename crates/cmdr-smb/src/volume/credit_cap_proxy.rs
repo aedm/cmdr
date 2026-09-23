@@ -132,7 +132,9 @@ fn rewrite_chain(frame: &mut [u8], balance: &Mutex<Balance>, direction: Directio
             flags & FLAG_SIGNED == 0,
             "a signed frame can't have its credits rewritten"
         );
-        let mut state = balance.lock().expect("the balance lock");
+        let mut state = balance
+            .lock()
+            .expect("the balance lock poisoned: another proxy direction panicked mid-frame, so the test is already failing");
         match direction {
             Direction::Requests => {
                 let charge = u16::from_le_bytes([header[CREDIT_CHARGE_AT], header[CREDIT_CHARGE_AT + 1]]).max(1);
