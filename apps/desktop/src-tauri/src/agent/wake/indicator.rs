@@ -72,7 +72,7 @@ pub enum WakePhase {
 #[serde(rename_all = "camelCase")]
 pub enum WakeReadinessView {
     Ready,
-    NeedsConsent,
+    AskCmdrOff,
     Off,
     NeedsCloudConsent,
     NeedsFullDiskAccess,
@@ -83,7 +83,7 @@ impl From<WakeReadiness> for WakeReadinessView {
     fn from(readiness: WakeReadiness) -> Self {
         match readiness {
             WakeReadiness::Ready => Self::Ready,
-            WakeReadiness::NeedsConsent => Self::NeedsConsent,
+            WakeReadiness::AskCmdrOff => Self::AskCmdrOff,
             WakeReadiness::Off => Self::Off,
             WakeReadiness::NeedsCloudConsent => Self::NeedsCloudConsent,
             WakeReadiness::NeedsFullDiskAccess => Self::NeedsFullDiskAccess,
@@ -166,8 +166,8 @@ mod tests {
     fn every_readiness_state_has_its_own_wire_token() {
         assert_eq!(WakeReadinessView::from(WakeReadiness::Ready), WakeReadinessView::Ready);
         assert_eq!(
-            WakeReadinessView::from(WakeReadiness::NeedsConsent),
-            WakeReadinessView::NeedsConsent
+            WakeReadinessView::from(WakeReadiness::AskCmdrOff),
+            WakeReadinessView::AskCmdrOff
         );
         assert_eq!(WakeReadinessView::from(WakeReadiness::Off), WakeReadinessView::Off);
         assert_eq!(

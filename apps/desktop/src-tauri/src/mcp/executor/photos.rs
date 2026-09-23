@@ -10,8 +10,9 @@
 //!
 //! When the in-app agent runs against a cloud provider, the paths AND the in-image OCR
 //! snippet / tag this returns are sensitive derived content (a passport scan's OCR
-//! snippet IS the passport number). The Ask Cmdr consent gate covers that egress, and
-//! its copy names it (`askCmdr.consent.*`, `agent/consent.rs`). What NEVER crosses is
+//! snippet IS the passport number). The cloud AI consent gate covers that egress, and its
+//! disclosure names it (the Ask Cmdr part of `ai.cloudConsent.*`, `ai/cloud_consent.rs`). What
+//! NEVER crosses is
 //! image bytes: [`PhotoHit`] is text-only by construction (string/number fields), so the
 //! tool structurally can't hand a provider a thumbnail or pixel buffer — pinned by
 //! `tests::photo_hit_is_text_only_no_byte_fields`.

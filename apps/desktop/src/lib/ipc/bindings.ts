@@ -2947,8 +2947,8 @@ export const commands = {
    *  to start a fresh thread; the resolved id comes back here, and every event the turn
    *  produces rides `agent::chat::stream` keyed on it.
    *
-   *  An `Err` is a refusal decided before the turn existed (no store, no consent, no slot, a
-   *  local window too small, a store that wouldn't take a thread). Those can't be streamed:
+   *  An `Err` is a refusal decided before the turn existed (no store, Ask Cmdr off, cloud AI not
+   *  allowed, no slot, a local window too small, a store that wouldn't take a thread). Those can't be streamed:
    *  half of them happen before there IS a conversation to key an event on.
    *
    *  The turn runs on a dedicated thread with its own current-thread runtime: the chat
@@ -3109,31 +3109,18 @@ export const commands = {
   askCmdrResolveAttachments: (paths: string[]) =>
     __TAURI_INVOKE<AttachmentRef[]>('ask_cmdr_resolve_attachments', { paths }),
   /**
-   *  The Ask Cmdr consent status: whether the user opted into the CURRENT consent copy, plus
-   *  the audit of what/when they accepted. Reads `main.db`; a missing store reads as
-   *  not-accepted, so the gate stays closed rather than failing open.
+   *  Whether the user once opted into Ask Cmdr, read from the legacy record in `main.db` and the
+   *  legacy held-"no" marker (`askCmdr.consentRevokePending`).
    */
-  askCmdrConsentStatus: () => typedError<AskCmdrConsentStatus, string>(__TAURI_INVOKE('ask_cmdr_consent_status')),
+  askCmdrLegacyOptIn: () => __TAURI_INVOKE<LegacyAskCmdrOptIn>('ask_cmdr_legacy_opt_in'),
   /**
-   *  Record the user's opt-in to the current consent copy (timestamp + copy version), so the
-   *  rail unlocks. Idempotent.
+   *  Tell the gates that `askCmdr.enabled` moved. No value crosses: the send gate reads the
+   *  setting fresh per send, but the wake loop's readiness is a cached answer
+   *  (`agent::wake::snapshot`), so without this push a switched-off Ask Cmdr would keep storing
+   *  (and a switched-on one keep refusing) until something else refreshed it. Called from
+   *  `settings-applier.ts`.
    */
-  askCmdrAcceptConsent: () => typedError<null, string>(__TAURI_INVOKE('ask_cmdr_accept_consent')),
-  /**
-   *  Turn Ask Cmdr off by clearing consent (the settings "turn off" path). The next rail
-   *  open re-shows the consent screen. No delete of chats — history stays.
-   */
-  askCmdrRevokeConsent: () => typedError<null, string>(__TAURI_INVOKE('ask_cmdr_revoke_consent')),
-  /**
-   *  Tell the consent gates that a held "no" (`askCmdr.consentRevokePending`) was just set or let
-   *  go of. No value crosses: the gates read `settings.json` themselves, so the frontend calls
-   *  this right after saving it.
-   *
-   *  The send gate reads the marker fresh on every send, but the wake loop's readiness is a cached
-   *  answer (`agent::wake::snapshot`). Without this a held "no" wouldn't close the wake gate until
-   *  something else refreshed it.
-   */
-  askCmdrConsentRevokePendingChanged: () => __TAURI_INVOKE<void>('ask_cmdr_consent_revoke_pending_changed'),
+  askCmdrEnabledChanged: () => __TAURI_INVOKE<void>('ask_cmdr_enabled_changed'),
   /**
    *  One conversation's cumulative token + cost total (all days, all models), for the
    *  per-thread footer. Zeroed for a thread with no metered turn yet. Empty store ⇒ zeroed.
@@ -4973,11 +4960,10 @@ export type AgentErrorKindView =
   | 'noKey'
   | 'notConfigured'
   /**
-   *  The user hasn't accepted the current consent copy — the backend refuses the send
-   *  before touching a provider (the privacy line, enforced structurally, not just in the
-   *  rail UI). Distinct from `NotConfigured` so the copy can say so honestly.
+   *  Ask Cmdr is switched off (`askCmdr.enabled`): the backend refuses the send before
+   *  touching a provider. Distinct from `NotConfigured` so the copy can say so honestly.
    */
-  | 'noConsent'
+  | 'askCmdrOff'
   /**
    *  Cloud AI is picked and the user hasn't allowed it ("Allow cloud AI" in Settings > AI).
    *  View-only: the slot refuses before a thread exists (`session::SlotRefusal`).
@@ -5325,26 +5311,6 @@ export type ArchivePromptMode =
  *  as `ArchiveEdit`. Stored only when `kind = ArchiveEdit`.
  */
 export type ArchiveSubkind = 'compress' | 'edit' | 'extract'
-
-/**
- *  Whether the user has opted into Ask Cmdr, and the audit of what they accepted. The rail
- *  gates on `accepted` (the CURRENT copy version): a never-accepted or stale-version record
- *  re-shows the consent screen, and nothing is ever sent to a provider without it.
- */
-export type AskCmdrConsentStatus = {
-  /**
-   *  True only when the user accepted the CURRENT `current_version` and no "no" is held for
-   *  the store: exactly what the send gate answers. The one flag the rail and the settings
-   *  toggle read.
-   */
-  accepted: boolean
-  // The copy version the user must have accepted to be `accepted`.
-  currentVersion: number
-  // The version the user last accepted, or `None` if never.
-  acceptedVersion: number | null
-  // When the user last accepted (unix secs), or `None` if never.
-  acceptedAt: number | null
-}
 
 /**
  *  Why a send never started.
@@ -8619,6 +8585,15 @@ export type LatestDownload = {
   parentDir: string
   fileName: string
 }
+
+// What the legacy Ask Cmdr opt-in says, for the one-time `askCmdr.enabled` mapping.
+export type LegacyAskCmdrOptIn =
+  // The user accepted Ask Cmdr's opt-in (any copy version) and no "no" is held: map to on.
+  | 'recorded'
+  // Never accepted, or a "no" is still held for the store: map to off.
+  | 'notRecorded'
+  // The store couldn't be read: write nothing, and ask again next launch.
+  | 'storeUnavailable'
 
 /**
  *  Typed errors for the license activation flow.
@@ -15395,7 +15370,7 @@ export type WakePhase =
  */
 export type WakeReadinessView =
   | 'ready'
-  | 'needsConsent'
+  | 'askCmdrOff'
   | 'off'
   | 'needsCloudConsent'
   | 'needsFullDiskAccess'

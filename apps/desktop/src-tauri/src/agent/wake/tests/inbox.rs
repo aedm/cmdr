@@ -422,14 +422,14 @@ fn reconciling_an_empty_inbox_reports_nothing() {
     assert!(!inbox.due_at(10_000 + SETTLE_AFTER_LAUNCH.as_secs()));
 }
 
-/// The gate at the storing end: an unconsented agent keeps no record of what the user has
+/// The gate at the storing end: a switched-off Ask Cmdr keeps no record of what the user has
 /// been doing with their files, because nobody has agreed to that.
 #[test]
-fn an_unconsented_agent_stores_nothing() {
+fn a_switched_off_ask_cmdr_stores_nothing() {
     let mut inbox = Inbox::default();
 
     let admitted = inbox.admit_if_permitted(
-        WakeReadiness::NeedsConsent,
+        WakeReadiness::AskCmdrOff,
         arrivals("/Users/someone/Downloads", 3, 100),
         IMPORTANT,
         DEFAULT_HOT_DELAY,
@@ -654,13 +654,12 @@ fn repricing_there_and_back_changes_nothing() {
     assert_eq!(inbox.rows(), before.as_slice());
 }
 
-/// ⚠️ **Consent going away has to take the backlog with it.** Refusing new rows is only half
-/// the gate: rows admitted while the user was consented are a record of what they have been
-/// doing with their files, and the moment the purpose they agreed to is withdrawn (a revoke, or
-/// a consent-copy bump that un-accepts everybody) keeping that record is exactly what
-/// `readiness.rs` says the pipeline must not do.
+/// ⚠️ **Switching Ask Cmdr off has to take the backlog with it.** Refusing new rows is only half
+/// the gate: rows admitted while it was on are a record of what the user has been
+/// doing with their files, and the moment the feature they were kept for is switched off,
+/// keeping that record is exactly what `readiness.rs` says the pipeline must not do.
 #[test]
-fn losing_consent_drops_what_was_already_waiting() {
+fn switching_ask_cmdr_off_drops_what_was_already_waiting() {
     let mut inbox = Inbox::default();
     inbox.admit(
         arrivals("/Users/someone/Downloads", 3, 100),
@@ -675,7 +674,7 @@ fn losing_consent_drops_what_was_already_waiting() {
         1_000,
     );
 
-    let dropped = inbox.purge_if_consent_withdrawn(WakeReadiness::NeedsConsent);
+    let dropped = inbox.purge_if_ask_cmdr_off(WakeReadiness::AskCmdrOff);
 
     assert_eq!(dropped, 2, "and it says how many, so the log can be honest about it");
     assert!(inbox.is_empty());
@@ -686,9 +685,9 @@ fn losing_consent_drops_what_was_already_waiting() {
 /// they withdrew, so the backlog waiting for them is theirs and stays put.
 ///
 /// ⚠️ **`Off` is in here on purpose, and it is the one a later reader would move.** It refuses
-/// NEW rows like `NeedsConsent` does, so keying the purge on `admits_to_inbox` would start
-/// deleting somebody's stored signal the moment they turned AI off for an afternoon. Only
-/// consent, the purpose those rows were kept for, takes them away.
+/// NEW rows like `AskCmdrOff` does, so keying the purge on `admits_to_inbox` would start
+/// deleting somebody's stored signal the moment they turned AI off for an afternoon. Only Ask
+/// Cmdr's switch, the purpose those rows were kept for, takes them away.
 #[test]
 fn a_closable_gap_or_a_flipped_switch_keeps_the_backlog() {
     for readiness in [
@@ -706,11 +705,7 @@ fn a_closable_gap_or_a_flipped_switch_keeps_the_backlog() {
             1_000,
         );
 
-        assert_eq!(
-            inbox.purge_if_consent_withdrawn(readiness),
-            0,
-            "{readiness:?} drops nothing"
-        );
+        assert_eq!(inbox.purge_if_ask_cmdr_off(readiness), 0, "{readiness:?} drops nothing");
         assert_eq!(inbox.len(), 1, "{readiness:?} keeps the row");
     }
 }

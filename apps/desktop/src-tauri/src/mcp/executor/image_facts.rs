@@ -12,8 +12,9 @@
 //! `search_photos` returns a highlighted snippet around a match; this returns the whole
 //! stored OCR text, because a model naming a file has to read all of it. That's the most
 //! sensitive thing either tool emits (a passport scan's OCR text IS the passport number).
-//! The Ask Cmdr consent gate (`agent/consent.rs`, enforced on every send) covers the
-//! egress and its copy names it: "the text Cmdr recognized inside … photos and their tags".
+//! The cloud AI consent gate (`ai/cloud_consent.rs`, enforced in `resolve_backend` for every
+//! turn) covers the egress and its disclosure names it: "the text Cmdr recognized inside …
+//! photos and their tags".
 //! What NEVER crosses is image bytes: [`FileFacts`] is text-only by construction, pinned by
 //! `tests::file_facts_is_text_only_no_byte_fields`.
 

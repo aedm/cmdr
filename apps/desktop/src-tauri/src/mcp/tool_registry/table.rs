@@ -497,7 +497,7 @@ mcp_tools! {
     // The one tool that reads user files' CONTENTS (bounded: up to 200 paths, a line window
     // of text per file, archive entry names, image header facts, never bytes). Answers
     // "what's in this file?".
-    // PRIVACY: the windows egress to the agent's provider under the Ask Cmdr consent gate;
+    // PRIVACY: the windows egress to the agent's provider under the cloud AI consent gate;
     // see `agent/tools/read/inspect/`.
     "inspect_file" => {
         desc: "Look inside files: metadata, the format the bytes really are, and per kind the content: a line window of text (any encoding), PDF text by page, an archive's entries (a zip, tar, or 7z, or a path inside one), or an image's dimensions and camera data (then image_facts for what's in it). find searches text files and PDFs. Up to 200 paths; every cut is reported.",

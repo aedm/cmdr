@@ -1,5 +1,5 @@
-//! The wake loop's IPC surface: the live-apply push behind its three settings, and the seed
-//! read the status corner's indicator starts from.
+//! The wake loop's IPC surface: the live-apply pushes behind its settings and the Ask Cmdr
+//! switch, and the seed read the status corner's indicator starts from.
 //!
 //! The loop owns its own thread, its own inbox, and a timer parked against a deadline, so a
 //! settings change has to REACH it rather than being noticed the next time something happens.
@@ -21,6 +21,17 @@ use crate::agent::wake::{AgentWakeStatus, WakeControl, send_control, wake_status
 #[specta::specta]
 pub fn ask_cmdr_wake_settings_changed() {
     send_control(WakeControl::SettingsChanged);
+}
+
+/// Tell the gates that `askCmdr.enabled` moved. No value crosses: the send gate reads the
+/// setting fresh per send, but the wake loop's readiness is a cached answer
+/// (`agent::wake::snapshot`), so without this push a switched-off Ask Cmdr would keep storing
+/// (and a switched-on one keep refusing) until something else refreshed it. Called from
+/// `settings-applier.ts`.
+#[tauri::command]
+#[specta::specta]
+pub fn ask_cmdr_enabled_changed(app: tauri::AppHandle) {
+    crate::agent::wake::refresh_readiness(&app);
 }
 
 /// What the status corner's wake indicator should show right now: whether a wake is thinking,

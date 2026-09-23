@@ -5,16 +5,18 @@
 //! One file per command family, plus the wire shapes they share:
 //! - [`views`]: the wire event enum and the specta-typed display projections, with the
 //!   pure mappings that build them.
-//! - [`chat`]: send + cancel — slot resolution, the consent gate, the envelope snapshot,
-//!   the cancel registry, and the `Channel` bridge.
+//! - [`chat`]: send + cancel — the send gate (Ask Cmdr's switch, then the slot), the envelope
+//!   snapshot, the cancel registry, and the `Channel` bridge.
 //! - [`attachments`]: resolving what the user attached, by reference only.
 //! - [`bulk_rename`]: review and apply a server-owned rename proposal.
 //! - [`conversations`]: thread history (read, list, search, rename, archive).
-//! - [`consent`]: the opt-in gate's status/accept/revoke surface.
+//! - [`legacy_opt_in`]: the one-time read of Ask Cmdr's old opt-in, for the `askCmdr.enabled`
+//!   mapping. Cloud consent's commands live in `ai::cloud_consent`.
 //! - [`cost`]: the per-thread footer total and the per-day rollup.
 //! - [`memory`]: the settings section's two memory controls (where the notes are, wipe them).
 //! - [`suggested_ops`]: what the Suggested ops dialog reads, and the rejection it records.
-//! - [`wake`]: the live-apply push that tells the proactive loop its settings moved.
+//! - [`wake`]: the live-apply pushes that tell the proactive loop its settings (or the Ask Cmdr
+//!   switch) moved.
 //!
 //! The two connection helpers below are the only shared plumbing: every store-reading
 //! command opens a short-lived connection off the IPC thread through them, so a missing
@@ -23,9 +25,9 @@
 mod attachments;
 mod bulk_rename;
 mod chat;
-mod consent;
 mod conversations;
 mod cost;
+mod legacy_opt_in;
 mod memory;
 mod suggested_ops;
 mod views;
@@ -39,9 +41,9 @@ mod wake;
 pub use attachments::*;
 pub use bulk_rename::*;
 pub use chat::*;
-pub use consent::*;
 pub use conversations::*;
 pub use cost::*;
+pub use legacy_opt_in::*;
 pub use memory::*;
 pub use suggested_ops::*;
 pub use views::*;

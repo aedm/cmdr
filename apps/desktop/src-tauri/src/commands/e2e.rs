@@ -112,8 +112,9 @@ pub fn set_test_scan_preview_delay(ms: Option<u64>) -> Result<(), String> {
 ///
 /// ⚠️ **A Cargo feature, ❌ not an env-var hook.** `test_mode.rs` draws the line at soft hooks
 /// being "strictly additive", and forcing a wake REPLACES the timer. The three gates that
-/// protect the user (consent, Full Disk Access, a configured provider) are untouched, so a
-/// forced wake on an unconsented profile still stores nothing and runs nothing.
+/// protect the user (the Ask Cmdr switch, Full Disk Access, a configured and allowed provider)
+/// are untouched, so a forced wake on a profile with Ask Cmdr off still stores nothing and runs
+/// nothing.
 ///
 /// `folder` names the directory the changes happened IN, absolute, and it is the ONLY folder
 /// the wake reports on: the inbox is cut down to it as the wake is prepared, so a spec sees

@@ -128,7 +128,7 @@ tool-result JSON the model reads. Every tool maps 1:1 to a `ToolId` variant.
   `matchKind` + optional score + optional OCR snippet / no image bytes), reuses `media_index`'s own `volume_state` for
   per-volume coverage honesty, and returns a typed status when indexing is off, still building, or the CLIP model isn't
   installed. Privacy: the OCR snippet + tags it returns are image-derived text that egresses to the provider — named in
-  the Ask Cmdr consent copy (see `mcp/executor/photos.rs` and `docs/security.md`). **Watch**: when it answers
+  the cloud AI disclosure (see `mcp/executor/photos.rs` and `docs/security.md`). **Watch**: when it answers
   "image indexing is off" and the contents half is what the user asked for, the model should offer to turn indexing
   on. The transcript that prompted `search` had it answer "off" eight times and then invent name-search arguments. If
   transcripts show it still doesn't offer, the fix is `search_photos`'s and `search`'s descriptions plus one prompt
@@ -139,7 +139,7 @@ tool-result JSON the model reads. Every tool maps 1:1 to a `ToolId` variant.
   size contract), reporting `total` / `returned` / `truncated` so the caller batches the rest. Backs naming/describing files the user is looking at. Same text-only DTO, same coverage
   honesty (it reuses `photos.rs`'s helpers), and a typed per-path `indexed` / `notIndexed` so a not-yet-enriched file
   is never read as an empty one. Privacy: this is the widest derived-content egress the agent has (full recognized
-  text, not a snippet) — same consent gate, same copy.
+  text, not a snippet) — same cloud consent gate, same disclosure.
 
 - **`list_suggestions` / `get_suggestion_group` / `propose_suggestions`** (`suggestions/`) — the suggested-ops surface
   over the proposal spine: what the agent has already put in front of the user (summaries and counts, never op rows),
@@ -303,7 +303,7 @@ The tool re-derives nothing the viewer already ships. Per behavior, the symbol i
   `modified`: the temp was written a moment ago, and quoting its mtime would date a years-old commit as today. A path
   the confirm rejects (a mislabeled `.zip`, a `.git` that isn't a repository) falls through to the plain `std::fs`
   pipeline, and so do the REAL files under `.git/`, which are the parent volume's and keep their own mtime. Snapshot
-  contents egress like any other file contents, which the consent copy already covers.
+  contents egress like any other file contents, which the cloud AI disclosure already covers.
 - **Statuses from I/O**: `NotFound` / `NotADirectory` → `missing`; `PermissionDenied` → `unreadable { permission }`
   (EACCES and a Full Disk Access refusal are one kind of `std::io::Error`, so the enum doesn't pretend to tell them
   apart); anything else, including a read that panicked → `unreadable { io }`.

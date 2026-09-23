@@ -42,9 +42,8 @@ and typed result shapes colocated here.
   (5 s per path, 20 s per call); past a deadline the row is `unreachable`, the thread is ABANDONED, and the unanswered
   paths are named. It rides `file_viewer`'s seams and the pane's archive routing, never its own (`DETAILS.md` § Reading
   a file the way the viewer does), and alone egresses contents: text windows, `find` snippets, PDF pages plus title
-  and author, archive entry names, EXIF incl. GPS; never bytes. The consent copy names each
-  (`askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`); a new KIND of content is a copy change plus a
-  `CONSENT_COPY_VERSION` bump.
+  and author, archive entry names, EXIF incl. GPS; never bytes. The cloud AI disclosure names each (its Ask Cmdr
+  contents item and rule); a new KIND of content is a copy change plus a `CLOUD_AI_CONSENT_VERSION` bump.
 - **New agent tool** = registry entry + handler/schema/result here + a `ToolId` variant + `EXPECTED_AGENT_TOOL_NAMES`
   + `ToolId::KNOWN` + a rail label in `ask-cmdr-labels.ts` (a missing label shows "Working"; a test pins it).
 

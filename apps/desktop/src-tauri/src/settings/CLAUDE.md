@@ -12,6 +12,7 @@ satisfies the live-apply rule below.
 - `mod.rs`: re-exports `load_settings` from `loader`.
 - `loader.rs`: `Settings` struct + `load_settings` (reads `settings.json`, falls back to `Default`); the `RestrictedWindowSettings`
   snapshot; the early-load helpers.
+- `ai_gates.rs`: switches the AI gates read fresh (`askCmdr.enabled`, held-"no" markers).
 - `loader_tests.rs`: `loader`'s own tests, in a sibling file wired in with `#[path]` so they still reach its private
   parse helpers.
 

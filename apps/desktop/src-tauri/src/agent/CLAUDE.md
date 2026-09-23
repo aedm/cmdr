@@ -13,7 +13,7 @@ the surface, so every later slice grows here too.
 - `memory/`: the jailed, capped folder the agent writes about the user. `memory/CLAUDE.md`.
 - `wake/`: the proactive pipeline and the thread driving it. `wake/CLAUDE.md`.
 - `chat/`: `run_turn` + `ChatRuntime` plus pure context assembly. `chat/CLAUDE.md`.
-- `consent.rs` (`CONSENT_COPY_VERSION`, `has_current_consent`, fails closed), `types.rs`, `outcomes.rs`, `pricing.rs`
+- `types.rs`, `outcomes.rs`, `pricing.rs`
   (an unknown cloud model is `priced = false`, never a silent $0; prices drift, re-verify at release).
 
 ## Must-knows
@@ -24,17 +24,13 @@ the surface, so every later slice grows here too.
 - **`Access::Memory` is the one write.** The promise is "the agent writes only into its memory folder", held by
   `memory/`'s jail plus a hand-authored allowlist: ❌ never tag a tool `Memory` without adding its name there. Memory
   rides every prefix, so it is an injection surface: `memory/DETAILS.md`.
-- **The egress line is structural, and the consent copy names every item on it.** Names, paths, and metadata reach the
-  provider on every turn; contents only through `search_photos` / `image_facts` (image-derived text) and
+- **The egress line is structural, and the cloud AI disclosure names every item on it.** Names, paths, and metadata
+  reach the provider on every turn; contents only through `search_photos` / `image_facts` (image-derived text) and
   `inspect_file` (text windows, `find` lines, PDF pages plus title and author, archive entry names, EXIF incl. GPS;
-  never bytes). `askCmdr.consent.*` lists all of it. Widening the line is a copy change AND a `CONSENT_COPY_VERSION`
-  bump (invariant 8).
-- **Consent is enforced in the BACKEND send path.** `ask_cmdr_send_message` checks `has_current_consent` before a
-  thread or an LLM exists and answers a typed `NoConsent`, so a bypassed UI reaches no provider. **Bump
-  `CONSENT_COPY_VERSION` whenever the copy changes materially**; the record is `main.db`'s `meta` table.
-- **A "no" `main.db` refused is held in `settings.json` and closes every gate** (`consent::RevokePending`, an
-  argument of `has_current_consent`): the send gate, wake readiness, and the status. ❌ Never check consent without
-  it. Frontend half: `apps/desktop/src/lib/ask-cmdr/DETAILS.md` § Consent.
+  never bytes). Widening the line is a copy change AND a `CLOUD_AI_CONSENT_VERSION` bump (invariant 8).
+- **Ask Cmdr has a plain on/off (`askCmdr.enabled`); cloud consent is `ai/`'s.** `ask_cmdr_send_message` refuses with
+  a typed `AskCmdrOff` before a thread exists, and the slot's resolution refuses `NoCloudConsent` on Cloud without
+  "Allow cloud AI" (`session::admit_send`). Consent itself: `../ai/DETAILS.md` § Cloud AI consent.
 - **The interactive slot layers a model over shared `ai/` config.** `resolve_agent_llm` reads `askCmdr.interactiveModel`
   fresh; provider on/off, keys, and base URLs stay single-sourced in `ai/` (D49). Empty override ⇒ the `ai/` model.
 - **IPC is wired.** `agent::start` registers `ChatRuntime`; `../commands/agent/` is the thin surface. `run_turn` runs

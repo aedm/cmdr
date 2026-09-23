@@ -1,7 +1,7 @@
 //! Runtime tests: single-flight, the per-message budgets, cancellation at a tool
 //! boundary, the crash-safe persistence model, cost metering, an end-to-end fake-driven
 //! multi-tool turn, and the typed error surface plus the two gates on what reaches the
-//! LLM (the envelope's attachments, and consent).
+//! LLM (the envelope's attachments, and the send gate).
 //!
 //! Four sibling files hold the rest, all borrowing the fixtures in `test_support.rs`:
 //! `repeat_tests.rs` (the repeat breaker), `context_budget_tests.rs` (context drops and
@@ -575,55 +575,57 @@ async fn attachments_reach_the_llm_in_the_envelope_and_nothing_more() {
     );
 }
 
-/// The consent gate is STRUCTURAL: a send with no/stale consent never reaches the LLM.
-/// This mirrors `ask_cmdr_send_message`'s control flow — gate on `has_current_consent`,
-/// then drive `run_turn` only when it opens — and proves the fake records ZERO calls when
-/// the gate refuses, and exactly one when it opens (so the empty case is meaningful).
+/// The send gate is STRUCTURAL and runs before a thread or an LLM exists. This mirrors
+/// `ask_cmdr_send_message`'s control flow: `admit_send` decides, the command creates a thread
+/// and drives `run_turn` only on `Ok`. The fake records ZERO calls and the store ZERO threads
+/// when the gate refuses, and exactly one call when it opens (so the empty cases mean something).
 #[tokio::test]
-async fn a_send_without_current_consent_never_calls_the_llm() {
-    use crate::agent::consent::{CONSENT_COPY_VERSION, RevokePending, has_current_consent};
+async fn the_send_gate_refuses_before_any_thread_or_llm_call() {
+    use crate::agent::chat::session::{SlotRefusal, admit_send};
+    use crate::agent::chat::stream::AgentErrorKindView;
 
     let conn = migrated_conn();
-    let id = conversation(&conn);
     let llm = ProgrammableLlm::new(vec![Program::Answer {
         chunks: vec!["hi".to_string()],
         usage: AgentUsage::default(),
     }]);
     let (tx, _rx) = unbounded_channel();
+    let threads = |conn: &Connection| store::list_conversations(conn, 100, 0, true).expect("list").len();
 
-    // No consent recorded, then a STALE copy version — both keep the gate closed.
-    assert!(
-        !has_current_consent(&conn, RevokePending::No),
-        "no consent record ⇒ gate closed"
-    );
-    store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION.wrapping_sub(1), 1_780_000_000).expect("set stale consent");
-    assert!(
-        !has_current_consent(&conn, RevokePending::No),
-        "a stale copy version ⇒ gate closed"
-    );
+    // Ask Cmdr switched off: refused without even resolving the slot.
+    let mut resolved = false;
+    let off = admit_send(false, || {
+        resolved = true;
+        Ok(())
+    });
+    assert!(matches!(off, Err(AgentErrorKindView::AskCmdrOff)));
+    assert!(!resolved, "an Ask Cmdr that's off never looks at the provider");
 
-    // The command skips `run_turn` while the gate is closed, so the LLM is never called.
-    if has_current_consent(&conn, RevokePending::No) {
-        run_turn(
-            &llm,
-            &OkDispatcher,
-            &conn,
-            &[],
-            &params(id, Some("hi")),
-            &tx,
-            &CancellationToken::new(),
-        )
-        .await;
+    // Ask Cmdr on, Cloud picked, cloud AI not allowed: the slot's refusal comes through as its own kind.
+    let no_cloud = admit_send(true, || Err::<(), _>(SlotRefusal::NoCloudConsent));
+    assert!(matches!(no_cloud, Err(AgentErrorKindView::NoCloudConsent)));
+
+    for refused in [off.is_ok(), no_cloud.is_ok()] {
+        if refused {
+            let id = conversation(&conn);
+            run_turn(
+                &llm,
+                &OkDispatcher,
+                &conn,
+                &[],
+                &params(id, Some("hi")),
+                &tx,
+                &CancellationToken::new(),
+            )
+            .await;
+        }
     }
     assert!(llm.calls_seen().is_empty(), "a refused send makes ZERO LLM calls");
+    assert_eq!(threads(&conn), 0, "and adds no thread");
 
-    // Accepting the CURRENT copy opens the gate; the send then drives the LLM once.
-    store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set current consent");
-    assert!(
-        has_current_consent(&conn, RevokePending::No),
-        "current consent ⇒ gate open"
-    );
-    if has_current_consent(&conn, RevokePending::No) {
+    // Ask Cmdr on with a slot that resolves (Local, or Cloud with consent): the send proceeds.
+    if admit_send(true, || Ok::<(), SlotRefusal>(())).is_ok() {
+        let id = conversation(&conn);
         run_turn(
             &llm,
             &OkDispatcher,
@@ -638,43 +640,6 @@ async fn a_send_without_current_consent_never_calls_the_llm() {
     assert_eq!(
         llm.calls_seen().len(),
         1,
-        "with consent, the send drives the LLM exactly once"
-    );
-}
-
-/// A "no AI" pick whose revoke `main.db` refused twice leaves the consent record in place, and
-/// the answer is held in `settings.json` until the store takes it. The gate honours the held
-/// "no" at once: with the record still there, the send makes ZERO LLM calls. Mirrors the
-/// command's control flow, like the test above.
-#[tokio::test]
-async fn a_held_revoke_keeps_a_send_from_the_llm_while_the_store_still_records_consent() {
-    use crate::agent::consent::{CONSENT_COPY_VERSION, RevokePending, has_current_consent};
-
-    let conn = migrated_conn();
-    let id = conversation(&conn);
-    let llm = ProgrammableLlm::new(vec![Program::Answer {
-        chunks: vec!["hi".to_string()],
-        usage: AgentUsage::default(),
-    }]);
-    let (tx, _rx) = unbounded_channel();
-
-    // The consent the refused revoke couldn't clear.
-    store::set_ask_cmdr_consent(&conn, CONSENT_COPY_VERSION, 1_780_000_000).expect("set current consent");
-
-    if has_current_consent(&conn, RevokePending::Yes) {
-        run_turn(
-            &llm,
-            &OkDispatcher,
-            &conn,
-            &[],
-            &params(id, Some("hi")),
-            &tx,
-            &CancellationToken::new(),
-        )
-        .await;
-    }
-    assert!(
-        llm.calls_seen().is_empty(),
-        "a held revoke makes ZERO LLM calls, whatever the store still records"
+        "an admitted send drives the LLM exactly once"
     );
 }

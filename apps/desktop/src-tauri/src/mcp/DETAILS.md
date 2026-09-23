@@ -151,7 +151,7 @@ Three things make it hold rather than merely be intended:
   explicitly and pins with its own test.
 
 **Consent is unaffected.** Proposals flow agent → user, never to the provider. `Propose` adds no egress, so the
-provider-egress question and `CONSENT_COPY_VERSION` are unchanged by this tier.
+provider-egress question and `CLOUD_AI_CONSENT_VERSION` are unchanged by this tier.
 
 **Param naming is camelCase** (`tabId`, `timeoutSeconds`, `sizeMin`, `autoConfirm`). Tool names stay snake_case. Don't add snake_case params; agents pattern-match across tools and every inconsistency is a guessed-wrong call.
 
@@ -169,7 +169,8 @@ provider-egress question and `CONSENT_COPY_VERSION` are unchanged by this tier.
   consent answer (usage stats, report sending, the terms acceptance, a held "no" to cloud AI or Ask Cmdr) is REFUSED with a typed
   `notSettableOverMcp` refusal: the registry marks it `mcpSettable: false`, and the frontend bridge
   (`apps/desktop/src/lib/settings/mcp-main-bridge.ts`) reads that mark, ❌ never an id list. An AI client must never undo
-  a consent answer. Every other setting, hidden ones included, stays settable.
+  a consent answer. `askCmdr.enabled` is marked too: it isn't consent, but on Local it starts a proactive loop, so a
+  client mustn't switch it on. Every other setting, hidden ones included, stays settable.
 - Indexing (1): `indexing` (`action` = `enable` | `disable` | `rescan` | `forget`, `volumeId`; gate `Always`). A thin
   adapter over `commands::indexing` (`enable_drive_index` / `disable_drive_index` / `rescan_drive_index` /
   `forget_drive_index`) — no FE dispatch, no invented ack (the `connect_to_server` precedent). `enable`/`rescan` map the

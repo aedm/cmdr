@@ -99,22 +99,6 @@ pub fn clear_cloud_ai_consent(conn: &Connection) -> Result<(), AgentStoreError> 
     Ok(())
 }
 
-/// Record Ask Cmdr's own opt-in. Its only caller is the Ask Cmdr consent screen, which the
-/// `askCmdr.enabled` switch replaces.
-pub fn set_ask_cmdr_consent(conn: &Connection, version: u32, now: i64) -> Result<(), AgentStoreError> {
-    write_consent(conn, ConsentRecord::AskCmdrLegacy, version, now)
-}
-
-/// Clear Ask Cmdr's own opt-in.
-pub fn clear_ask_cmdr_consent(conn: &Connection) -> Result<(), AgentStoreError> {
-    let (version_key, at_key) = ConsentRecord::AskCmdrLegacy.keys();
-    conn.execute(
-        "DELETE FROM meta WHERE key IN (?1, ?2)",
-        rusqlite::params![version_key, at_key],
-    )?;
-    Ok(())
-}
-
 /// Seed the legacy Ask Cmdr record the way a pre-split build left it. Tests only: production
 /// code can't write it.
 #[cfg(test)]

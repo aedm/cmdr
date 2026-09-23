@@ -43,21 +43,35 @@ beforeEach(() => {
   vi.clearAllMocks()
   stopWakeIndicator()
   wakeIndicator.thinkingIn = null
-  wakeIndicator.readiness = 'needsConsent'
+  wakeIndicator.readiness = 'askCmdrOff'
   wakeIndicator.proactive = false
 })
 
 describe('what the corner shows', () => {
   it('says nothing to somebody who never opted in, whatever the gates report', () => {
-    for (const readiness of ['ready', 'needsConsent', 'off', 'needsFullDiskAccess', 'needsApiKey'] as const) {
+    for (const readiness of [
+      'ready',
+      'askCmdrOff',
+      'off',
+      'needsCloudConsent',
+      'needsFullDiskAccess',
+      'needsApiKey',
+    ] as const) {
       wakeIndicator.readiness = readiness
       expect(wakeIndicatorMode(wakeIndicator)).toBe('silent')
     }
   })
 
-  it('still says nothing once they opt in but consent is missing', () => {
+  it('still says nothing once proactive is on but Ask Cmdr is switched off', () => {
     wakeIndicator.proactive = true
-    wakeIndicator.readiness = 'needsConsent'
+    wakeIndicator.readiness = 'askCmdrOff'
+
+    expect(wakeIndicatorMode(wakeIndicator)).toBe('silent')
+  })
+
+  it('says nothing while cloud AI is not allowed: that answer belongs to Settings, not a nag', () => {
+    wakeIndicator.proactive = true
+    wakeIndicator.readiness = 'needsCloudConsent'
 
     expect(wakeIndicatorMode(wakeIndicator)).toBe('silent')
   })
@@ -90,7 +104,7 @@ describe('what the corner shows', () => {
     // A forced wake, or a setting turned off mid-turn. Hiding the turn would leave the user
     // with no way to see it or stop it.
     wakeIndicator.proactive = false
-    wakeIndicator.readiness = 'needsConsent'
+    wakeIndicator.readiness = 'askCmdrOff'
     wakeIndicator.thinkingIn = 42
 
     expect(wakeIndicatorMode(wakeIndicator)).toBe('thinking')

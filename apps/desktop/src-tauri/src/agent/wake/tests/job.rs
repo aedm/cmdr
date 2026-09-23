@@ -374,8 +374,8 @@ fn a_forced_prepare_acts_on_rows_that_are_not_due_yet() {
     assert_eq!(inbox.len(), 0, "and it committed, so the rows are out");
 }
 
-/// ⚠️ The force skips the timer, ❌ never a gate. A forced wake on an unconsented profile has
-/// to spend nothing, or the E2E hook would be a way around the one thing the user agreed to.
+/// ⚠️ The force skips the timer, ❌ never a gate. A forced wake on a profile with Ask Cmdr off has
+/// to spend nothing, or the E2E hook would be a way around the switch the user turned off.
 #[test]
 fn a_forced_prepare_still_obeys_the_gates() {
     let conn = migrated_conn();
@@ -392,7 +392,7 @@ fn a_forced_prepare_still_obeys_the_gates() {
         &conn,
         &mut inbox,
         &PrepareParams {
-            readiness: WakeReadiness::NeedsConsent,
+            readiness: WakeReadiness::AskCmdrOff,
             now_secs: 1_000,
             digest_budget_tokens: 2_000,
             ignore_deadlines: true,
@@ -400,7 +400,7 @@ fn a_forced_prepare_still_obeys_the_gates() {
     );
 
     assert!(
-        matches!(outcome, PrepareOutcome::NotReady(WakeReadiness::NeedsConsent)),
+        matches!(outcome, PrepareOutcome::NotReady(WakeReadiness::AskCmdrOff)),
         "{outcome:?}"
     );
     let threads = visible_threads(&conn);

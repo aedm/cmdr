@@ -364,8 +364,9 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
 
 `agent/` is the one command domain split into a directory, because it carries five unrelated command families plus the
 wire DTOs they share: `views.rs` (the stream event enum, the specta display projections, and the pure mappings),
-`chat.rs` (send + cancel), `attachments.rs`, `bulk_rename.rs`, `conversations.rs`, `consent.rs`, `cost.rs`,
-`wake.rs` (the live-apply push for the proactive loop's three settings). `mod.rs`
+`chat.rs` (send + cancel), `attachments.rs`, `bulk_rename.rs`, `conversations.rs`, `legacy_opt_in.rs` (the one-time
+read of Ask Cmdr's old opt-in for the `askCmdr.enabled` mapping), `cost.rs`, `wake.rs` (the live-apply pushes for the
+proactive loop's settings and the Ask Cmdr switch). Cloud AI consent's commands live in `ai/cloud_consent.rs`. `mod.rs`
 glob-re-exports each submodule, which is load-bearing: `#[tauri::command]` generates companion items next to the
 function, and the `ipc.rs` manifest registers by the `crate::commands::agent::<name>` path, so a NAMED re-export
 would leave those hidden items behind and fail to compile. `mod.rs` also owns the two shared `main.db` connection

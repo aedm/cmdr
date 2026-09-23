@@ -75,22 +75,30 @@ Read before starting: `apps/desktop/src-tauri/src/ai/CLAUDE.md` + `DETAILS.md`, 
 
 Decisions made during implementation:
 
-- **D13. `check_ai_connection` is gated whatever `ai.provider` says** (narrows D11's "when `ai.provider` is cloud").
-  It only ever probes a cloud endpoint being set up, and onboarding can probe before `configure_ai` has pushed the
+- **D13. `check_ai_connection` is gated whatever `ai.provider` says** (narrows D11's "when `ai.provider` is cloud"). It
+  only ever probes a cloud endpoint being set up, and onboarding can probe before `configure_ai` has pushed the
   provider, so keying on the backend's provider would let one probe through.
 - **D14. The slot's refusal is its own small enum, `session::SlotRefusal { NotConfigured, NoCloudConsent }`**, mapped
   onto `AgentErrorKindView` by `SlotRefusal::view` (a `From` beside the view type would make `stream` depend on
-  `session` and close a module cycle through `runtime`). `AgentErrorKind` is the runtime's mid-turn vocabulary and
-  stays as it was.
-- **D15. The consent commands return typed errors** (`CloudAiConsentWriteError::{StoreUnavailable, StoreRefused}`),
-  not the old `Result<(), String>`, and `cloud_ai_consent_status` returns the status directly (a missing or unreadable
-  store answers not-accepted). They use their own short `main.db` helpers instead of `commands::agent::with_*`, so
-  `ai/` gains no edge into `commands/`. A missing store is `StoreUnavailable`, not the old silent `Ok`.
+  `session` and close a module cycle through `runtime`). `AgentErrorKind` is the runtime's mid-turn vocabulary and stays
+  as it was.
+- **D15. The consent commands return typed errors** (`CloudAiConsentWriteError::{StoreUnavailable, StoreRefused}`), not
+  the old `Result<(), String>`, and `cloud_ai_consent_status` returns the status directly (a missing or unreadable store
+  answers not-accepted). They use their own short `main.db` helpers instead of `commands::agent::with_*`, so `ai/` gains
+  no edge into `commands/`. A missing store is `StoreUnavailable`, not the old silent `Ok`.
 - **D16. The meta-row helpers live in `agent/store/consent.rs`** (split out of `query.rs`, which would otherwise cross
   the file-length limit). The legacy Ask Cmdr writers (`set_ask_cmdr_consent` / `clear_ask_cmdr_consent`) exist only
   until milestone 2 drops the Ask Cmdr consent commands.
-- **D17. MCP `ai_search` refuses with `invalid_params` plus `data.reason: "cloudAiNotAllowed"`**, so a client acts on
-  a typed field, not the sentence (the `ToolError.data` contract).
+- **D17. MCP `ai_search` refuses with `invalid_params` plus `data.reason: "cloudAiNotAllowed"`**, so a client acts on a
+  typed field, not the sentence (the `ToolError.data` contract).
+- **D18. The send gate is one pure function, `session::admit_send(ask_cmdr_enabled, resolve)`**, which the command
+  calls and the runtime test mirrors: Ask Cmdr off refuses without resolving the slot, then the slot's `SlotRefusal`
+  maps to its wire kind. The four Ask Cmdr gate switches read fresh from `settings.json` moved to
+  `settings/ai_gates.rs` (`loader.rs` would otherwise cross the file-length limit).
+- **D19. Until milestone 3, the frontend's old Ask Cmdr consent wrappers are inert shims** (`tauri-commands/ask-cmdr.ts`):
+  status reads the cloud status, revoke revokes cloud consent, and accept records NOTHING, because the Ask Cmdr
+  disclosure never described the other AI features and so must not grant cloud AI for them. Between milestones 2 and 3
+  the rail refuses every send with `askCmdrOff` (nothing sets `askCmdr.enabled` yet); that's expected.
 
 ## Census
 

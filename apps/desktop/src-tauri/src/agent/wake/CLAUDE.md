@@ -19,8 +19,9 @@ an interest score, scores deadlines, and a wake turns what waits into one budget
   HOW MUCH; the agent looks up WHAT.
 - **Floored never gets in; unscored always does.** `admit_if_permitted` refuses `Floored`. ❌ Never refuse `Unknown`:
   that ignores every new folder.
-- **Consent > AI-off > disk access > key** (`snapshot.rs` caches it). ❌ Never fold `Off` into `NeedsApiKey`, or the
-  corner nags for a provider the user switched off. ❌ Only lost consent purges stored rows.
+- **Ask Cmdr off > AI off > cloud AI not allowed > disk access > key** (`snapshot.rs` caches it; the first three are
+  silent). ❌ Never fold `Off` into `NeedsApiKey`, or the corner nags for a provider the user switched off. ❌ Only
+  `AskCmdrOff` purges stored rows. Every place a gate moves calls `refresh_readiness`.
 - **A merge only pulls a deadline earlier**, or a trickle postpones a folder forever; a cadence change re-prices the
   whole inbox (`Inbox::reprice`), not just the timer. ⚠️ A cold row's deadline is `None`, which `Option::min` ranks
   FIRST: it compiles, reads right, does the opposite.

@@ -47,17 +47,17 @@ fn every_error_kind_maps_to_its_own_wire_kind() {
     );
 }
 
-/// `NoConsent` exists only on the wire: the backend refuses the send before a provider is
+/// `AskCmdrOff` exists only on the wire: the backend refuses the send before a provider is
 /// ever reached, so there's no runtime kind to map from. It must stay distinct from
 /// `NotConfigured` so the copy can say what's actually wrong.
 #[test]
-fn no_consent_is_a_wire_only_kind_distinct_from_not_configured() {
+fn ask_cmdr_off_is_a_wire_only_kind_distinct_from_not_configured() {
     assert_eq!(
-        serde_json::to_value(AgentErrorKindView::NoConsent).expect("serializes"),
-        "noConsent"
+        serde_json::to_value(AgentErrorKindView::AskCmdrOff).expect("serializes"),
+        "askCmdrOff"
     );
     assert_ne!(
-        serde_json::to_value(AgentErrorKindView::NoConsent).expect("serializes"),
+        serde_json::to_value(AgentErrorKindView::AskCmdrOff).expect("serializes"),
         serde_json::to_value(AgentErrorKindView::from(AgentErrorKind::NotConfigured)).expect("serializes")
     );
 }

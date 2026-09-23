@@ -589,60 +589,6 @@ fn parse_ask_cmdr_proactive(contents: &str) -> Option<bool> {
     json.get("askCmdr.proactive").and_then(|v| v.as_bool())
 }
 
-/// Whether a "no" to Ask Cmdr is held for a `main.db` that refused to record it
-/// (`askCmdr.consentRevokePending`), read fresh from `settings.json` on every consent check.
-/// `agent::consent::RevokePending::load` is its one reader, which is how every gate sees it.
-///
-/// An absent key or an unreadable file reads as `false`: the marker only exists on the path
-/// where a revoke was refused, and the store record stays the answer everywhere else.
-pub fn load_ask_cmdr_consent_revoke_pending<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> bool {
-    load_true_flag(app, parse_ask_cmdr_consent_revoke_pending)
-}
-
-/// The parsing half of [`load_ask_cmdr_consent_revoke_pending`], pure so it can be tested
-/// without an app handle. Only a real JSON `true` holds a revoke.
-fn parse_ask_cmdr_consent_revoke_pending(contents: &str) -> bool {
-    parse_true_flag(contents, "askCmdr.consentRevokePending")
-}
-
-/// Whether a "no" to cloud AI is held for a `main.db` that refused to record it
-/// (`ai.cloudConsentRevokePending`), read fresh from `settings.json` on every cloud consent
-/// check. `ai::cloud_consent::RevokePending::load` is its one reader, which is how every gate
-/// sees it.
-///
-/// An absent key or an unreadable file reads as `false`: the marker only exists on the path
-/// where a revoke was refused, and the store record stays the answer everywhere else.
-pub fn load_cloud_consent_revoke_pending<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> bool {
-    load_true_flag(app, parse_cloud_consent_revoke_pending)
-}
-
-/// The parsing half of [`load_cloud_consent_revoke_pending`], pure so it can be tested without
-/// an app handle. Only a real JSON `true` holds a revoke.
-fn parse_cloud_consent_revoke_pending(contents: &str) -> bool {
-    parse_true_flag(contents, "ai.cloudConsentRevokePending")
-}
-
-/// Read `settings.json` fresh and apply `parse`. An unreadable data dir or file reads as
-/// `false`, which every caller treats as the closed or absent answer.
-fn load_true_flag<R: tauri::Runtime>(app: &tauri::AppHandle<R>, parse: fn(&str) -> bool) -> bool {
-    let Ok(data_dir) = crate::config::resolved_app_data_dir(app) else {
-        return false;
-    };
-    let Ok(contents) = fs::read_to_string(data_dir.join("settings.json")) else {
-        return false;
-    };
-    parse(&contents)
-}
-
-/// Whether `key` holds a real JSON `true`. Absent, `false`, a stringly `"true"`, or unparseable
-/// JSON all read as `false`.
-fn parse_true_flag(contents: &str, key: &str) -> bool {
-    serde_json::from_str::<serde_json::Value>(contents)
-        .ok()
-        .and_then(|json| json.get(key).and_then(serde_json::Value::as_bool))
-        .unwrap_or(false)
-}
-
 /// The user's wake cadence in seconds (`askCmdr.wakeDelay`), read fresh from `settings.json`
 /// so a change applies with no restart.
 ///

@@ -24,7 +24,7 @@ import {
   type MessageBlock,
   type AttachmentRef,
   type AttachmentKindView,
-  type AskCmdrConsentStatus,
+  type CloudAiConsentStatus,
   type ConversationCost,
   type CostSummary,
   type ModelWindowView,
@@ -49,7 +49,6 @@ export type {
   MessageBlock,
   AttachmentRef,
   AttachmentKindView,
-  AskCmdrConsentStatus,
   ConversationCost,
   CostSummary,
   ModelWindowView,
@@ -252,32 +251,34 @@ export async function askCmdrFakeActive(): Promise<boolean> {
   }
 }
 
-/** Whether the user has opted into the CURRENT Ask Cmdr consent copy, plus the audit of
- * what/when they accepted. The rail gates on `accepted`. */
+// TODO(cloud-consent milestone 3): the backend dropped Ask Cmdr's own consent commands (cloud consent
+// is `ai::cloud_consent` now, and Ask Cmdr is the `askCmdr.enabled` switch). These four keep the old
+// consent screen compiling until the rail's new gate replaces it, and are deleted with it. Accepting
+// here deliberately grants NOTHING: the Ask Cmdr disclosure never described the other AI features,
+// so it must not turn cloud AI on for them. Only "Allow cloud AI" does that.
+
+/** Interim: the cloud AI consent status, read-only. */
+export type AskCmdrConsentStatus = CloudAiConsentStatus
+
+/** Interim: the cloud AI consent status, read-only. */
 export async function askCmdrConsentStatus(): Promise<AskCmdrConsentStatus> {
-  const res = await commands.askCmdrConsentStatus()
-  if (res.status === 'error') throwIpcError(res.error)
-  return res.data
+  return commands.cloudAiConsentStatus()
 }
 
-/** Record the user's opt-in to the current consent copy (timestamp + copy version). */
+/** Interim: records nothing (see the note above). */
 export async function acceptAskCmdrConsent(): Promise<void> {
-  const res = await commands.askCmdrAcceptConsent()
-  if (res.status === 'error') throwIpcError(res.error)
+  // Deliberately empty: this screen can't grant cloud consent.
 }
 
-/** Turn Ask Cmdr off by clearing consent (chats are kept; the next open re-shows consent). */
+/** Interim: turns cloud AI off (a "no" is always safe to record). */
 export async function revokeAskCmdrConsent(): Promise<void> {
-  const res = await commands.askCmdrRevokeConsent()
+  const res = await commands.revokeCloudAiConsent()
   if (res.status === 'error') throwIpcError(res.error)
 }
 
-/**
- * Tell the consent gates a held "no" (`askCmdr.consentRevokePending`) was set or let go of. No
- * value crosses: call it right AFTER `settings.json` is saved, because the gates read that file.
- */
+/** Interim: tells the cloud gates a held "no" moved. */
 export async function askCmdrConsentRevokePendingChanged(): Promise<void> {
-  await commands.askCmdrConsentRevokePendingChanged()
+  await commands.cloudAiConsentRevokePendingChanged()
 }
 
 /** One conversation's cumulative token + cost total (all days, all models). */

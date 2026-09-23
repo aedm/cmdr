@@ -128,7 +128,7 @@ impl Inbox {
 
     /// Admit a bundle only if the gates permit STORING it, and report whether it landed.
     ///
-    /// The gate lives here rather than at each call site so that "no consent, no rows" is one
+    /// The gate lives here rather than at each call site so that "Ask Cmdr off, no rows" is one
     /// decision instead of a rule every producer has to remember. A caller that wants the
     /// unconditional behaviour still has [`admit`](Self::admit); the tap uses this one.
     ///
@@ -157,20 +157,19 @@ impl Inbox {
         true
     }
 
-    /// Drop everything waiting when consent is gone, and say how many rows went.
+    /// Drop everything waiting when Ask Cmdr is switched off, and say how many rows went.
     ///
-    /// ⚠️ **Refusing new rows is only half the gate.** Rows admitted while the user was
-    /// consented are a record of what they have been doing with their files, and the moment
-    /// that purpose is withdrawn — a revoke, or a `CONSENT_COPY_VERSION` bump that un-accepts
-    /// everybody at once — keeping the record is the thing this module's own doc comment says
-    /// the pipeline must not do.
+    /// ⚠️ **Refusing new rows is only half the gate.** Rows admitted while Ask Cmdr was on are a
+    /// record of what the user has been doing with their files, and the moment the feature they
+    /// were kept for is switched off, keeping the record is the thing this module's own doc
+    /// comment says the pipeline must not do.
     ///
     /// ❌ **Keyed on [`WakeReadiness::permits_stored_signal`], never on `admits_to_inbox`.** The
-    /// two differ by exactly [`WakeReadiness::Off`]: turning AI off stops the pile growing, but
-    /// the rows already there were gathered under a permission the user gave and has not taken
-    /// back, so flipping a toggle they can flip straight back must not delete their own signal.
-    /// The remaining states are gaps the user can CLOSE rather than a purpose they withdrew.
-    pub fn purge_if_consent_withdrawn(&mut self, readiness: WakeReadiness) -> usize {
+    /// two differ by [`WakeReadiness::Off`] and [`WakeReadiness::NeedsCloudConsent`]: turning AI
+    /// off or disallowing cloud AI stops the pile growing, but the rows already there were
+    /// gathered for a feature the user still has on, so flipping a toggle they can flip straight
+    /// back must not delete their own signal. The remaining states are gaps the user can CLOSE.
+    pub fn purge_if_ask_cmdr_off(&mut self, readiness: WakeReadiness) -> usize {
         if readiness.permits_stored_signal() {
             return 0;
         }

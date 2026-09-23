@@ -297,42 +297,45 @@ because it decides whether the agent can SEE anything.
 
 **`AgentGates.provider` is a tri-state `ProviderGate`, not a `has_api_key: bool`.** The bool collapsed
 `BackendResolution::Off` into the same `false` as a cloud provider with a blank key, so a user who had turned AI off was
-told to finish setting up a provider. `ProviderGate` mirrors `BackendResolution` (`Off` / `NotConfigured` / `Ready`)
-rather than re-deciding the distinction the backend already models, and `provider_gate` in `snapshot.rs` is the one
-mapping.
+told to finish setting up a provider. `ProviderGate` mirrors `BackendResolution` (`Off` / `NeedsCloudConsent` /
+`NotConfigured` / `Ready`) rather than re-deciding the distinction the backend already models, and `provider_gate` in
+`snapshot.rs` is the one mapping.
 
 **Silence lies under a pending FDA decision**: a user who declined and a user with a tidy Downloads folder see the
 identical nothing, and only one of those is the feature working. So `NeedsFullDiskAccess` and `NeedsApiKey` both render
 in the status corner, each with the action that closes them.
 
-⚠️ **`NeedsConsent` and `Off` are the two states that render as silence**, and `askCmdr.proactive` being off silences
-the corner the same way. Read literally, rendering every state puts a permanent AI nag in front of every user who never
-wanted AI, which is the noise `SuggestedOpsIndicator` hides at zero to avoid. The gap is for a user who opted IN and hit
-a wall. All those gates live in the frontend's wake indicator; the enum here stays complete, because the writer thread
-and the inbox still need every answer.
+⚠️ **`AskCmdrOff`, `Off`, and `NeedsCloudConsent` are the three states that render as silence**, and
+`askCmdr.proactive` being off silences the corner the same way. Read literally, rendering every state puts a permanent
+AI nag in front of every user who switched Ask Cmdr off, turned AI off, or hasn't allowed cloud AI, which is the noise
+`SuggestedOpsIndicator` hides at zero to avoid. The gap is for a user who turned everything on and hit a wall. All those
+gates live in the frontend's wake indicator; the enum here stays complete, because the writer thread and the inbox still
+need every answer.
 
-⚠️ **Consent outranks `Off` even though both render the same**, so the ordering between them is invisible to the user
-and is decided entirely by what each state DOES: only `NeedsConsent` takes the stored backlog away. Ordering `Off` first
-would let the AI toggle mask a withdrawn consent and leave that record on disk.
+**The precedence is `AskCmdrOff` → `Off` → `NeedsCloudConsent` → `NeedsFullDiskAccess` → `NeedsApiKey` → `Ready`.**
+`AskCmdrOff` reads `askCmdr.enabled` (absent reads off); `Off` and `NeedsCloudConsent` come from the same provider
+resolution a send performs (`ai::manager::resolve_backend`, which enforces cloud consent), so they can't both hold.
 
-**Storing and KEEPING are separate gates.** `admits_to_inbox` (may we ADD) refuses both `NeedsConsent` and `Off`:
-without consent, admitting rows means keeping a record of what the user has been doing with their files for a purpose
-they have not agreed to, and it would mean consenting on a Tuesday hands somebody a backlog of everything they did since
-installing; with AI off, the pile could only grow for a feature that is switched off and nothing may ever read it. With
-consent and AI on but no key, signal accumulates: the gap is one the user can close and the backlog is theirs, bounded
-by the staleness horizon.
+⚠️ **Ask Cmdr off outranks `Off` and `NeedsCloudConsent` even though all three render the same**, so the ordering is
+invisible to the user and decided entirely by what each state DOES: only `AskCmdrOff` takes the stored backlog away.
+Ordering either other state first would let an AI toggle mask a switched-off Ask Cmdr and leave that record on disk.
 
-⚠️ **Refusing new rows is only half of that, so consent going away takes the backlog with it.**
-`Inbox::purge_if_consent_withdrawn` drops everything waiting, and the writer thread clears `agent_inbox` with it, on two
+**Storing and KEEPING are separate gates.** `admits_to_inbox` (may we ADD) refuses `AskCmdrOff`, `Off`, and
+`NeedsCloudConsent`: with Ask Cmdr off, admitting rows means keeping a record of what the user has been doing with
+their files for a feature they switched off, and it would mean switching it on on a Tuesday hands somebody a backlog of
+everything they did since installing; with AI off or cloud AI not allowed, the pile could only grow for something
+nothing may read. With everything on but no key, signal accumulates: the gap is one the user can close and the backlog
+is theirs, bounded by the staleness horizon.
+
+⚠️ **Refusing new rows is only half of that, so switching Ask Cmdr off takes the backlog with it.**
+`Inbox::purge_if_ask_cmdr_off` drops everything waiting, and the writer thread clears `agent_inbox` with it, on two
 occasions: at launch, right after the reconcile and before the write-back (`agent::start` refreshes the gates just
-before the thread comes up, so that is the first moment a launch can tell), and on every `ReadinessChanged`. Both
-matter, and the launch one is what a `CONSENT_COPY_VERSION` bump needs: it un-accepts everybody at once, and their rows
-would otherwise sit on disk until somebody re-accepted.
+before the thread comes up, so that is the first moment a launch can tell), and on every `ReadinessChanged`.
 
-❌ **That purge keys on `permits_stored_signal`, never on `admits_to_inbox`.** The two predicates differ by exactly
-`Off`: sharing one would start deleting somebody's stored signal the moment they turned AI off for an afternoon. Consent
-is the purpose those rows were kept for, so only `NeedsConsent` purges. Every other state is a gap the user can close or
-a switch they can flip back, not a purpose they withdrew.
+❌ **That purge keys on `permits_stored_signal`, never on `admits_to_inbox`.** The two predicates differ by `Off` and
+`NeedsCloudConsent`: sharing one would start deleting somebody's stored signal the moment they turned AI or cloud AI off
+for an afternoon. Ask Cmdr is the purpose those rows were kept for, so only `AskCmdrOff` purges. Every other state is a
+gap the user can close or a switch they can flip back.
 
 ## Persistence
 
@@ -554,11 +557,12 @@ batch's own instant, ❌ never a window start**.
 
 ## Readiness is a cached atomic
 
-`snapshot.rs` keeps one `AtomicU8`, refreshed by `refresh_readiness` on consent, on the Full Disk
-Access decision, and on `configure_ai`. ⚠️ Reading `WakeReadiness` per batch would mean a SQLite
-round trip on the live loop's path, since the consent bit lives in `main.db`. It fails CLOSED:
-before the store is open the answer is `NeedsConsent`, so nothing is stored for a purpose the
-user has not agreed to. M2 item 5's IPC reads the same snapshot.
+`snapshot.rs` keeps one `AtomicU8`, refreshed by `refresh_readiness` on the Ask Cmdr switch
+(`ask_cmdr_enabled_changed`), on every cloud consent write (`ai::cloud_consent`), on the Full Disk
+Access decision, and on `configure_ai`. ⚠️ Reading `WakeReadiness` per batch would mean a
+`settings.json` read and a SQLite round trip on the live loop's path, since cloud consent lives in
+`main.db`. It fails CLOSED: before anything is read the answer is `AskCmdrOff`, so nothing is
+stored for a feature nobody switched on. M2 item 5's IPC reads the same snapshot.
 
 `refresh_readiness` returns nothing on purpose: `readiness_snapshot()` is the one way to read the
 value, so no caller can act on a copy a later refresh has already moved past. On a real move it
@@ -783,8 +787,8 @@ describes the folder a change happened IN.
 
 **Every `WakeReadiness` gap the user can CLOSE is a state the indicator renders with an action.** A
 user who declined Full Disk Access and a user with a tidy Downloads folder otherwise see the
-identical nothing, and only one of those is the feature working. The two states that are answers
-rather than gaps, `NeedsConsent` and `Off`, render as silence instead (see § Degraded modes).
+identical nothing, and only one of those is the feature working. The states that are answers
+rather than gaps, `AskCmdrOff`, `Off`, and `NeedsCloudConsent`, render as silence instead (see § Degraded modes).
 
 **A wake creates a conversation, so wake threads appear in the rail session list.** Ten wakes over
 a quiet week is ten threads the user never started, interleaved with their own. The `origin`

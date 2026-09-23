@@ -198,15 +198,24 @@ matches its build mode. The production private key exists only as a Cloudflare W
 shipping a new binary. Mechanism, the rotation caveat, and the test that guards both directions:
 `apps/desktop/src-tauri/src/licensing/DETAILS.md` § Signing keys.
 
-## Ask Cmdr agent egress (to the user's LLM provider)
+## Cloud AI egress (to the user's LLM provider)
 
-Ask Cmdr is the one subsystem that deliberately sends user data OFF the Mac — to the AI provider the user configured,
-with their own API key. Privacy posture:
+AI features deliberately send user data OFF the Mac, to the cloud AI service the user configured, with their own API
+key: folder name suggestions (the folder path and up to 100 names), search in plain words (the typed query), select by
+description (the prompt and up to 240 names), MCP `ai_search`, and Ask Cmdr (detailed below). Local AI sends nothing.
 
-- **Consent-gated, fail-closed.** Every send checks `agent::consent::has_current_consent` in the backend before it
-  resolves the LLM; an absent or stale acceptance refuses the send (not just a UI affordance). The consent copy
-  (`askCmdr.consent.*`) enumerates exactly what egresses; bump `CONSENT_COPY_VERSION` when that set changes so users
-  re-accept.
+- **One consent, enforced in the backend, fail-closed.** Nothing reaches a cloud service until the user turns on "Allow
+  cloud AI". Every LLM backend comes from `ai::manager::resolve_backend(app)`, which checks
+  `ai::cloud_consent::has_current_cloud_consent` for Cloud before the key or endpoint, and `AiBackend::remote` is
+  private to `ai/`, so no code path builds a cloud backend around the check. An absent, stale, or unreadable record, or
+  a held "no", refuses. The connection check (`GET /models`) is gated too. Turning it off cancels in-flight Ask Cmdr
+  turns and suggestion streams at once. The disclosure (`ai.cloudConsent.*`) enumerates exactly what egresses; bump
+  `CLOUD_AI_CONSENT_VERSION` when that set changes so users re-accept. MCP can't flip it. Depth:
+  `apps/desktop/src-tauri/src/ai/DETAILS.md` § Cloud AI consent.
+
+Ask Cmdr is the widest of these, so the rest of this section is its detail. Ask Cmdr also has its own on/off switch
+(`askCmdr.enabled`); that's a feature switch, not consent.
+
 - **The agent can propose; only the user can approve.** The agent has no tool that touches the user's files. Its
   dispatch view admits `Access::Read`, `Access::Propose`, and `Access::Memory` entries and never `Access::Write` (pinned
   structurally in `mcp/tests/tool_registry_tests/access.rs`, and again at runtime in `agent/tools/view.rs`). A `Propose`
@@ -230,7 +239,7 @@ with their own API key. Privacy posture:
   matched image paths plus the in-image OCR snippet and Vision tags; `image_facts` (`mcp/executor/image_facts.rs`)
   returns the FULL stored OCR text (up to 2,000 characters per file, for up to 200 files) plus tags for paths the caller
   names. A passport scan's OCR text IS the passport number, so this is sensitive derived content, gated by the same
-  consent above and named in its copy.
+  consent above and named in its disclosure.
 - **`inspect_file` sends bounded parts of a file's contents, on request.** The one tool that reads inside a file
   (`apps/desktop/src-tauri/src/agent/tools/read/inspect/`), for up to 200 paths per call, each row typed by what the
   bytes really are. What egresses, per kind:
@@ -248,8 +257,7 @@ with their own API key. Privacy posture:
     s per-path deadline, `unsupportedVolume` for `mtp://` and direct `smb://`), and an encrypted PDF or archive entry
     stays closed: the tool has no password path. The PDF parser runs inside `crash_reporter::contain_panics`, so a
     malformed PDF is a message-free `warn` line and an `unparseable` row, never a crash report carrying its bytes. Same
-    consent gate, named in its copy (`askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`;
-    `CONSENT_COPY_VERSION` 4).
+    consent gate, named in its disclosure (the Ask Cmdr contents item and rule under `ai.cloudConsent.*`).
 - **Raw bytes of any file never egress.** Every result DTO the agent can receive is text-only by construction: the photo
   tools' shapes and `inspect_file`'s rows have no field that can hold bytes, each pinned by a walk-the-JSON test
   (`photo_hit_is_text_only_no_byte_fields`, `file_facts_is_text_only_no_byte_fields`,

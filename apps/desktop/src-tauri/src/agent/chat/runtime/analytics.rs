@@ -213,11 +213,11 @@ mod tests {
         // A send refused before `run_turn` (AI off, consent not accepted) never reaches the
         // loop, so without this the top of the funnel is invisible: "nobody has a provider"
         // and "nobody opened the rail" would both read as no events at all.
-        let props = refusal_props(AgentErrorKindView::NoConsent);
+        let props = refusal_props(AgentErrorKindView::AskCmdrOff);
 
         assert_eq!(props["origin"], json!("text"));
         assert_eq!(props["outcome"], json!("refused"));
-        assert_eq!(props["failure"], json!("no_consent"));
+        assert_eq!(props["failure"], json!("ask_cmdr_off"));
         // Most refusals fire before the slot resolves, so there is no honest provider to name.
         assert_eq!(props["provider"], json!("unresolved"));
         assert_eq!(props["tool_turns"], json!("0"));
@@ -268,7 +268,7 @@ mod tests {
     /// reason the refusal event exists, so they need tokens of their own.
     #[test]
     fn the_pre_turn_only_gates_have_their_own_tokens() {
-        assert_eq!(AgentErrorKindView::NoConsent.as_token(), "no_consent");
+        assert_eq!(AgentErrorKindView::AskCmdrOff.as_token(), "ask_cmdr_off");
         assert_eq!(AgentErrorKindView::NoCloudConsent.as_token(), "no_cloud_consent");
         assert_eq!(
             AgentErrorKindView::LocalWindowTooSmall.as_token(),

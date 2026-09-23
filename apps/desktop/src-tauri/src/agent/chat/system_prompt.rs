@@ -312,7 +312,7 @@ mod tests {
 
     /// Encouraging capture without encouraging pruning fills a 64 KB folder and then jams. And
     /// the disclosure that everything saved is sent to the provider forever belongs where the
-    /// saving decision is made, not only in the consent screen.
+    /// saving decision is made, not only in the cloud AI disclosure.
     #[test]
     fn prompt_asks_for_pruning_and_names_what_must_never_be_saved() {
         assert!(

@@ -1,11 +1,11 @@
-//! What the agent may do when consent, AI itself, disk access, or a key is missing.
+//! What the agent may do when Ask Cmdr, AI itself, cloud consent, disk access, or a key is missing.
 
 use super::super::*;
 
 /// Everything in place.
 fn ready() -> AgentGates {
     AgentGates {
-        consented: true,
+        ask_cmdr_enabled: true,
         fda_pending: false,
         provider: ProviderGate::Ready,
     }
@@ -16,34 +16,34 @@ fn everything_in_place_is_ready() {
     assert_eq!(readiness(ready()), WakeReadiness::Ready);
 }
 
-/// **Consent outranks everything, and this is the one a later reader would flatten into an
-/// arbitrary order.** Asking somebody to grant Full Disk Access, or to paste an API key, for a
-/// feature they have not opted into is asking them to widen access for something they may not
-/// want at all. Whatever else is missing, the answer is the consent screen first.
+/// **Ask Cmdr's switch outranks everything, and this is the one a later reader would flatten into
+/// an arbitrary order.** Asking somebody to grant Full Disk Access, or to paste an API key, for a
+/// feature they switched off is asking them to widen access for something they may not want at
+/// all. Whatever else is missing, the answer is the switch first.
 #[test]
-fn missing_consent_outranks_every_other_gap() {
+fn ask_cmdr_off_outranks_every_other_gap() {
     let nothing_configured = AgentGates {
-        consented: false,
+        ask_cmdr_enabled: false,
         fda_pending: true,
         provider: ProviderGate::NotConfigured,
     };
 
-    assert_eq!(readiness(nothing_configured), WakeReadiness::NeedsConsent);
+    assert_eq!(readiness(nothing_configured), WakeReadiness::AskCmdrOff);
 }
 
-/// **Consent outranks `Off` too, even though both render as silence.** They differ in what they
-/// DO: only `NeedsConsent` takes the stored backlog away, so letting the toggle mask a withdrawn
-/// consent would leave that record on disk.
+/// **Ask Cmdr off outranks `Off` too, even though both render as silence.** They differ in what
+/// they DO: only `AskCmdrOff` takes the stored backlog away, so letting the AI toggle mask a
+/// switched-off Ask Cmdr would leave that record on disk.
 #[test]
-fn missing_consent_outranks_ai_being_off() {
-    let never_opted_in = AgentGates {
-        consented: false,
+fn ask_cmdr_off_outranks_ai_being_off() {
+    let switched_off = AgentGates {
+        ask_cmdr_enabled: false,
         provider: ProviderGate::Off,
         ..ready()
     };
 
-    assert_eq!(readiness(never_opted_in), WakeReadiness::NeedsConsent);
-    assert!(!readiness(never_opted_in).permits_stored_signal());
+    assert_eq!(readiness(switched_off), WakeReadiness::AskCmdrOff);
+    assert!(!readiness(switched_off).permits_stored_signal());
 }
 
 /// **Turning AI off is an answer, not a gap.** ❌ It must never report `NeedsApiKey`: the status
@@ -93,12 +93,12 @@ fn a_missing_cloud_consent_outranks_disk_access_and_the_key() {
 #[test]
 fn ask_cmdr_being_off_outranks_a_missing_cloud_consent() {
     let both = AgentGates {
-        consented: false,
+        ask_cmdr_enabled: false,
         provider: ProviderGate::NeedsCloudConsent,
         ..ready()
     };
 
-    assert_eq!(readiness(both), WakeReadiness::NeedsConsent);
+    assert_eq!(readiness(both), WakeReadiness::AskCmdrOff);
 }
 
 /// **Without cloud consent nothing new is stored, and nothing runs, but the backlog stays.** Like
@@ -121,13 +121,13 @@ fn a_missing_cloud_consent_stores_nothing_new_and_keeps_the_backlog() {
 /// the flagship folder, has been sent round the houses.
 #[test]
 fn disk_access_outranks_the_key() {
-    let consented_but_blind = AgentGates {
+    let on_but_blind = AgentGates {
         fda_pending: true,
         provider: ProviderGate::NotConfigured,
         ..ready()
     };
 
-    assert_eq!(readiness(consented_but_blind), WakeReadiness::NeedsFullDiskAccess);
+    assert_eq!(readiness(on_but_blind), WakeReadiness::NeedsFullDiskAccess);
 }
 
 #[test]
@@ -140,18 +140,18 @@ fn a_missing_key_is_the_last_gap() {
     assert_eq!(readiness(no_key), WakeReadiness::NeedsApiKey);
 }
 
-/// **Without consent the pipeline stores nothing.** Admitting rows means keeping a record of
-/// what the user has been doing with their files, for a purpose they have not agreed to. It
-/// also avoids the surprise where somebody consents on Tuesday and is handed a backlog of
+/// **With Ask Cmdr off the pipeline stores nothing.** Admitting rows means keeping a record of
+/// what the user has been doing with their files, for a feature they switched off. It also
+/// avoids the surprise where somebody switches it on on Tuesday and is handed a backlog of
 /// everything they did since installing.
 #[test]
-fn nothing_is_stored_without_consent() {
-    let unconsented = readiness(AgentGates {
-        consented: false,
+fn nothing_is_stored_with_ask_cmdr_off() {
+    let ask_cmdr_off = readiness(AgentGates {
+        ask_cmdr_enabled: false,
         ..ready()
     });
 
-    assert!(!unconsented.admits_to_inbox());
+    assert!(!ask_cmdr_off.admits_to_inbox());
 }
 
 /// **With AI off the pipeline stores nothing new either**, because the pile could only grow for a
@@ -169,25 +169,28 @@ fn nothing_new_is_stored_while_ai_is_off() {
 }
 
 /// **But what was already stored stays.** ❌ The purge path must never key on `admits_to_inbox`:
-/// `Off` refuses new rows the way `NeedsConsent` does, and sharing the predicate would delete
-/// somebody's own signal the moment they flipped a toggle they can flip straight back. Consent is
-/// the purpose those rows were kept for, so consent is the only thing that takes them away.
+/// `Off` refuses new rows the way `AskCmdrOff` does, and sharing the predicate would delete
+/// somebody's own signal the moment they flipped a toggle they can flip straight back. Ask Cmdr
+/// is the purpose those rows were kept for, so its switch is the only thing that takes them away.
 #[test]
-fn turning_ai_off_keeps_the_backlog_that_consent_would_take() {
+fn turning_ai_off_keeps_the_backlog_that_ask_cmdr_off_would_take() {
     let switched_off = readiness(AgentGates {
         provider: ProviderGate::Off,
         ..ready()
     });
-    let unconsented = readiness(AgentGates {
-        consented: false,
+    let ask_cmdr_off = readiness(AgentGates {
+        ask_cmdr_enabled: false,
         ..ready()
     });
 
     assert!(switched_off.permits_stored_signal(), "a toggle withdraws no purpose");
-    assert!(!unconsented.permits_stored_signal(), "a revoke withdraws the purpose");
+    assert!(
+        !ask_cmdr_off.permits_stored_signal(),
+        "switching Ask Cmdr off withdraws the purpose"
+    );
 }
 
-/// **With consent but no key, signal DOES accumulate.** The user opted in; a missing key is a
+/// **With everything on but no key, signal DOES accumulate.** The user switched it on; a missing key is a
 /// gap they can close, and the backlog waiting for them belongs to them. The staleness horizon
 /// bounds it, so a key added a month later yields a week of signal rather than a year.
 #[test]
@@ -211,7 +214,7 @@ fn signal_accumulates_while_only_the_key_is_missing() {
 fn only_a_ready_agent_may_wake() {
     assert!(readiness(ready()).may_wake());
     for gap in [
-        WakeReadiness::NeedsConsent,
+        WakeReadiness::AskCmdrOff,
         WakeReadiness::Off,
         WakeReadiness::NeedsCloudConsent,
         WakeReadiness::NeedsFullDiskAccess,

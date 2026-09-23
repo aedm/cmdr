@@ -17,7 +17,6 @@
 //! See `CLAUDE.md` for must-knows and `DETAILS.md` for the map.
 
 pub mod chat;
-pub mod consent;
 pub mod llm;
 pub mod memory;
 pub mod outcomes;
@@ -95,8 +94,8 @@ pub fn start(app: &AppHandle) {
             // Register the chat runtime against the same DB so the IPC command is a
             // thin pass-through (`app.state::<chat::runtime::ChatRuntime>()`).
             chat::runtime::register(app, db_path.clone());
-            // The gates the wake loop reads are cached, and consent lives in the DB that just
-            // opened, so this is the first moment the answer can be anything but "no".
+            // The gates the wake loop reads are cached, and cloud consent lives in the DB that
+            // just opened, so this is the first moment the answer can be anything but "no".
             wake::refresh_readiness(app);
             // Bring up the loop that owns the inbox, its write connection, and the timer.
             // Rollups the indexer's tap sent before now are already waiting in the channel and

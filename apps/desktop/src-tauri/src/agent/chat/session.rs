@@ -110,18 +110,39 @@ pub fn resolve_agent_llm(
         ));
     }
     let model_override = crate::settings::load_ask_cmdr_interactive_model(app);
+    let backend = slot_backend(crate::ai::manager::resolve_backend_with_model(
+        app,
+        model_override.as_deref(),
+    ))?;
+    let (provider, model) = provider_and_model(model_override.as_deref());
+    Ok((ResolvedAgentLlm::Genai(backend), provider, model))
+}
+
+/// The slot's reading of a backend resolution. Pure, so the mapping is testable without an app.
+fn slot_backend(resolution: crate::ai::manager::BackendResolution) -> Result<AiBackend, SlotRefusal> {
     use crate::ai::manager::BackendResolution;
-    match crate::ai::manager::resolve_backend_with_model(app, model_override.as_deref()) {
-        BackendResolution::Ready(backend) => {
-            let (provider, model) = provider_and_model(model_override.as_deref());
-            Ok((ResolvedAgentLlm::Genai(backend), provider, model))
-        }
+    match resolution {
+        BackendResolution::Ready(backend) => Ok(backend),
         BackendResolution::Off | BackendResolution::NotConfigured(_) | BackendResolution::UnknownProvider(_) => {
             Err(SlotRefusal::NotConfigured)
         }
         // Refused before a thread exists: nothing reaches a cloud service the user didn't allow.
         BackendResolution::NoCloudConsent => Err(SlotRefusal::NoCloudConsent),
     }
+}
+
+/// The rail's send gate, decided before a thread or an LLM exists: Ask Cmdr's own switch first,
+/// then the slot (which carries the cloud consent gate, `ai::manager::resolve_backend`).
+/// `resolve` runs only when Ask Cmdr is on, so a switched-off Ask Cmdr never looks at the
+/// provider. `ask_cmdr_send_message` is the caller; a wake has its own gates (`wake::readiness`).
+pub fn admit_send<T>(
+    ask_cmdr_enabled: bool,
+    resolve: impl FnOnce() -> Result<T, SlotRefusal>,
+) -> Result<T, AgentErrorKindView> {
+    if !ask_cmdr_enabled {
+        return Err(AgentErrorKindView::AskCmdrOff);
+    }
+    resolve().map_err(SlotRefusal::view)
 }
 
 /// The scripted turn the E2E fake streams: a short multi-chunk reply, so the test sees
@@ -343,6 +364,23 @@ mod tests {
 
     /// A slot refusal reaches the rail as its OWN wire kind: a missing cloud consent must not
     /// read as "set up a provider" to somebody whose provider is set up.
+    /// Cloud without consent is its own refusal; every "nothing to talk to" case collapses to one.
+    #[test]
+    fn a_backend_resolution_maps_onto_the_slot() {
+        use crate::ai::manager::BackendResolution;
+        assert!(matches!(
+            slot_backend(BackendResolution::NoCloudConsent),
+            Err(SlotRefusal::NoCloudConsent)
+        ));
+        for unconfigured in [
+            BackendResolution::Off,
+            BackendResolution::NotConfigured("x"),
+            BackendResolution::UnknownProvider("x".into()),
+        ] {
+            assert!(matches!(slot_backend(unconfigured), Err(SlotRefusal::NotConfigured)));
+        }
+    }
+
     #[test]
     fn each_slot_refusal_maps_to_its_own_wire_kind() {
         assert_eq!(

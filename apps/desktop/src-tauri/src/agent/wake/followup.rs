@@ -213,7 +213,7 @@ mod tests {
         assert!(may_ask(&on, WakeReadiness::Ready), "the shipped default asks");
         assert!(!may_ask(&off, WakeReadiness::Ready), "opting out means silence");
         for gap in [
-            WakeReadiness::NeedsConsent,
+            WakeReadiness::AskCmdrOff,
             WakeReadiness::NeedsFullDiskAccess,
             WakeReadiness::NeedsApiKey,
         ] {

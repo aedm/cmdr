@@ -34,7 +34,7 @@ interface WakeIndicatorState {
 
 export const wakeIndicator = $state<WakeIndicatorState>({
   thinkingIn: null,
-  readiness: 'needsConsent',
+  readiness: 'askCmdrOff',
   proactive: false,
 })
 
@@ -61,7 +61,7 @@ export function wakeIndicatorMode(state: WakeIndicatorState): WakeIndicatorMode 
   if (state.thinkingIn !== null) return 'thinking'
   if (!state.proactive) return 'silent'
   const { readiness } = state
-  if (readiness === 'ready' || readiness === 'needsConsent' || readiness === 'off' || readiness === 'needsCloudConsent')
+  if (readiness === 'ready' || readiness === 'askCmdrOff' || readiness === 'off' || readiness === 'needsCloudConsent')
     return 'silent'
   return readiness
 }

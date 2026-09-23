@@ -58,7 +58,7 @@ extra steps.
 
 The agent can look, speak, ask, and write its own notes (principle 3): no tool in its dispatch view touches the user's
 files. Names, paths, and metadata reach the provider on every turn; file contents reach it only on request, through
-three read tools whose egress the consent copy names item by item: `search_photos` and `image_facts` (image-derived
+three read tools whose egress the cloud AI disclosure names item by item: `search_photos` and `image_facts` (image-derived
 text) and `inspect_file` (bounded text windows, `find` lines, PDF pages plus title and author, one level of archive
 entry names, EXIF including GPS). No tool can return bytes: every result DTO is text-only by construction, each pinned
 by a test.
@@ -73,9 +73,9 @@ could ignore it. This is the privacy line and it is structural, not a runtime gu
 dimensions pin the agent's view to exactly its authored `[agent]` entries, every one `Access::Read`,
 `Access::Propose`, or `Access::Memory`, never `Access::Write`; the runtime's `ToolId` parse step is the runtime choke
 point (an unrecognized name resolves to `ToolId::Unrecognized`, which is never in the agent view, so dispatch refuses
-it). A new KIND of content egress (a new tool, or a new field on an existing one) is a consent-copy change plus a
-`CONSENT_COPY_VERSION` bump, never a silent widening; `docs/security.md` § Ask Cmdr agent egress, the user-facing
-account, has to move with it.
+it). A new KIND of content egress (a new tool, or a new field on an existing one) is a disclosure-copy change plus a
+`CLOUD_AI_CONSENT_VERSION` bump (`ai::cloud_consent`), never a silent widening; `docs/security.md` § Cloud AI egress,
+the user-facing account, has to move with it.
 
 **`Access::Memory`: what the widening cost, and what holds it.** The agent's promise used to be "it never changes
 anything". `memory_write` and `memory_edit` made that false, so the promise narrowed to "it writes only into its own
@@ -102,7 +102,7 @@ write, no silent config mutation, no self-approval. Because no structural check 
 having read the handler. It holds two names: `propose_rename_plan` and `propose_suggestions`.
 
 **Consent is unaffected.** Proposals flow agent → user, never to the provider. `Propose` adds no egress, so the
-provider-egress question and `CONSENT_COPY_VERSION` are unchanged by this tier. Don't re-litigate it: only a change to
+provider-egress question and `CLOUD_AI_CONSENT_VERSION` are unchanged by this tier. Don't re-litigate it: only a change to
 what reaches the provider touches consent.
 
 **Bounding is the tool's contract.** A `Propose` payload must be capped the way `image_facts` caps at 200 paths. A
@@ -133,7 +133,8 @@ Each line is a pointer, not a restatement: the mechanism lives in the doc named 
 7. **The agent proposes; only the user approves.** Approval originates in the frontend as a user action, and there is
    no tool that approves. The agent's one write is its own memory folder, jailed and hand-allowlisted. `CLAUDE.md`,
    § The agent can propose above, `memory/DETAILS.md`.
-8. **No new egress category, and no consent bump** without revisiting the whole consent story. `CLAUDE.md`.
+8. **No new egress category without a `CLOUD_AI_CONSENT_VERSION` bump**, and no bump without revisiting the whole
+   disclosure (`ai::cloud_consent`, `../ai/DETAILS.md` § Cloud AI consent). `CLAUDE.md`.
 9. **Every cut, cap, or trim is visible** in the result, the log, and (where the user could be misled) the UI.
    `chat/CLAUDE.md`, `chat/DETAILS.md` § Reporting what a turn cost.
 10. **A user-edited name needs no evidence, never claims any, and never inherits the model's**, and it invalidates the

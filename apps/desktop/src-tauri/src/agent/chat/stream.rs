@@ -134,10 +134,9 @@ pub enum AskCmdrStreamEvent {
 pub enum AgentErrorKindView {
     NoKey,
     NotConfigured,
-    /// The user hasn't accepted the current consent copy — the backend refuses the send
-    /// before touching a provider (the privacy line, enforced structurally, not just in the
-    /// rail UI). Distinct from `NotConfigured` so the copy can say so honestly.
-    NoConsent,
+    /// Ask Cmdr is switched off (`askCmdr.enabled`): the backend refuses the send before
+    /// touching a provider. Distinct from `NotConfigured` so the copy can say so honestly.
+    AskCmdrOff,
     /// Cloud AI is picked and the user hasn't allowed it ("Allow cloud AI" in Settings > AI).
     /// View-only: the slot refuses before a thread exists (`session::SlotRefusal`).
     NoCloudConsent,
@@ -163,13 +162,13 @@ impl AgentErrorKindView {
     /// [`AgentErrorKind::as_token`] for every variant the two enums have in common (a test
     /// pins that). Both feed the SAME `failure` prop on `ask_cmdr_turn`, so a gate that
     /// tokenized differently either side of the turn boundary would be two numbers for one
-    /// thing. `NoConsent`, `NoCloudConsent`, and `LocalWindowTooSmall` are view-only: the
+    /// thing. `AskCmdrOff`, `NoCloudConsent`, and `LocalWindowTooSmall` are view-only: the
     /// runtime has no variant for them, because the send refuses ahead of the turn.
     pub fn as_token(self) -> &'static str {
         match self {
             AgentErrorKindView::NoKey => "no_key",
             AgentErrorKindView::NotConfigured => "not_configured",
-            AgentErrorKindView::NoConsent => "no_consent",
+            AgentErrorKindView::AskCmdrOff => "ask_cmdr_off",
             AgentErrorKindView::NoCloudConsent => "no_cloud_consent",
             AgentErrorKindView::LocalWindowTooSmall => "local_window_too_small",
             AgentErrorKindView::Unavailable => "unavailable",

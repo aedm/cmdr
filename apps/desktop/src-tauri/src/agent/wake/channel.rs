@@ -13,7 +13,7 @@
 //!
 //! Rollups arriving before the consumer comes up sit in the buffer and are consumed once it
 //! does, so some of launch replay survives. ❌ The buffer is deliberately not sized to catch all
-//! of it: readiness can't even be evaluated before the store is open (consent lives in
+//! of it: readiness can't even be evaluated before the store is open (cloud consent lives in
 //! `main.db`), so anything older than that would be refused admission anyway.
 
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
@@ -101,7 +101,8 @@ pub struct ForcedWake {
 /// one is a bug rather than degraded signal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WakeControl {
-    /// Consent, disk access, or the API key moved. Re-read the snapshot and re-arm.
+    /// Ask Cmdr's switch, cloud consent, disk access, or the provider moved. Re-read the snapshot
+    /// and re-arm.
     ReadinessChanged,
     /// The user's cadence or the proactive toggle moved. Re-read the settings and re-arm.
     SettingsChanged,
@@ -119,7 +120,7 @@ pub enum WakeControl {
     /// ⚠️ Only the `playwright-e2e` command `force_agent_wake` sends this. It is a hard hook
     /// behind a Cargo feature rather than a soft env-var one, because it REPLACES the timer
     /// instead of adding to it, and `test_mode.rs` draws the line there. The gates that
-    /// protect the user (consent, disk access, a provider) are NOT bypassed.
+    /// protect the user (the Ask Cmdr switch, disk access, an allowed provider) are NOT bypassed.
     ForceWake(ForcedWake),
     /// The user turned down a group in this sweep, so the agent has something to ask about.
     ///

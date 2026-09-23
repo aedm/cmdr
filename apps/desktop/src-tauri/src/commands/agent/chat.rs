@@ -1,5 +1,5 @@
-//! Sending one message and streaming its answer: the slot resolution, the consent gate,
-//! the snapshot-at-send envelope, and the cancel registry.
+//! Sending one message and streaming its answer: the send gate (Ask Cmdr's switch, then the
+//! slot, which carries cloud consent), the snapshot-at-send envelope, and the cancel registry.
 //!
 //! ## Streaming
 //!
@@ -44,10 +44,9 @@ use crate::agent::chat::budget;
 use crate::agent::chat::cancel;
 use crate::agent::chat::runtime::{AgentChatEvent, ChatRuntime, RecordedSlotEvent};
 use crate::agent::chat::session::{
-    AgentSlot, capture_envelope, local_offset, provider_and_model, resolve_agent_llm, resolve_prompt_budget,
+    AgentSlot, admit_send, capture_envelope, local_offset, provider_and_model, resolve_agent_llm, resolve_prompt_budget,
 };
 use crate::agent::chat::stream::{AgentErrorKindView, AskCmdrStreamEvent, emit_turn_event, forward_to_windows};
-use crate::agent::consent::{RevokePending, has_current_consent};
 use crate::agent::llm::AgentLlm;
 use crate::agent::llm::types::ProviderTag;
 use crate::agent::store;
@@ -155,8 +154,8 @@ fn slot_event_view(recorded: RecordedSlotEvent) -> MessageView {
 /// to start a fresh thread; the resolved id comes back here, and every event the turn
 /// produces rides `agent::chat::stream` keyed on it.
 ///
-/// An `Err` is a refusal decided before the turn existed (no store, no consent, no slot, a
-/// local window too small, a store that wouldn't take a thread). Those can't be streamed:
+/// An `Err` is a refusal decided before the turn existed (no store, Ask Cmdr off, cloud AI not
+/// allowed, no slot, a local window too small, a store that wouldn't take a thread). Those can't be streamed:
 /// half of them happen before there IS a conversation to key an event on.
 ///
 /// The turn runs on a dedicated thread with its own current-thread runtime: the chat
@@ -179,28 +178,14 @@ pub async fn ask_cmdr_send_message(
         return Err(AskCmdrSendRefusal::of(AgentErrorKindView::NotConfigured));
     };
 
-    // The consent gate, enforced structurally: refuse BEFORE creating a thread or resolving
-    // the LLM if the user hasn't accepted the current consent copy. The rail's frontend gate
-    // is the UX layer; this is what makes "nothing reaches a provider without consent" true
-    // even if a caller bypasses the UI. Fails closed (an unreadable store reads as refused, and
-    // so does a "no" still held for a store that refused to record it).
-    let revoke = RevokePending::load(&app);
-    let consented = match store::open_read_connection(&db_path) {
-        Ok(conn) => has_current_consent(&conn, revoke),
-        Err(e) => {
-            log::warn!(target: LOG_TARGET, "reading consent failed, refusing the send: {e}");
-            false
-        }
-    };
-    if !consented {
-        return Err(AskCmdrSendRefusal::of(AgentErrorKindView::NoConsent));
-    }
-
-    // Resolve the LLM only after the consent gate: if AI is off/unconfigured, say so and add
-    // no thread.
-    let (llm_kind, provider, model) = match resolve_agent_llm(&app, AgentSlot::Rail) {
+    // The send gate, enforced structurally and BEFORE a thread or an LLM exists: Ask Cmdr's
+    // switch (read fresh, absent reads as off), then the slot, whose resolution enforces cloud
+    // consent. The rail's frontend gate is the UX layer; this is what makes it hold even if a
+    // caller bypasses the UI.
+    let ask_cmdr_enabled = crate::settings::load_ask_cmdr_enabled(&app);
+    let (llm_kind, provider, model) = match admit_send(ask_cmdr_enabled, || resolve_agent_llm(&app, AgentSlot::Rail)) {
         Ok(resolved) => resolved,
-        Err(refusal) => return Err(AskCmdrSendRefusal::of(refusal.view())),
+        Err(kind) => return Err(AskCmdrSendRefusal::of(kind)),
     };
 
     // Resolve the budget before a thread exists, so a local server too small to hold one

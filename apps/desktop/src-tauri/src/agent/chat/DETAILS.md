@@ -249,7 +249,7 @@ by lowering its fraction.
 A window UNDER the floor is still reachable — a local server Cmdr didn't launch at the current setting — and it is
 refused, not assembled: `BudgetRefusal::LocalWindowBelowFloor` reaches the rail as
 `AgentErrorKindView::LocalWindowTooSmall`, whose copy names the number to pick and where. The refusal happens in
-`ask_cmdr_send_message` before a conversation exists, like the consent gate.
+`ask_cmdr_send_message` before a conversation exists, like the send gate (`session::admit_send`).
 
 ### Reporting what a turn cost
 
@@ -415,7 +415,8 @@ no `ask_cmdr_turn` at all, `ask_cmdr_turn` with `proposals: "0"`, or `proposals`
 with no `suggestion_group_proposed` behind it (that last one is the only one that is a bug).
 
 **The funnel's top is a second reporter.** Four gates in `../../commands/agent/chat.rs` refuse a
-send BEFORE `run_turn` exists: no agent store, consent not accepted, no resolvable provider, and
+send BEFORE `run_turn` exists: no agent store, Ask Cmdr off (`askCmdrOff`), cloud AI not allowed
+(`noCloudConsent`, from the slot's `SlotRefusal`), no resolvable provider, and
 a local window under the one-turn floor. None of them reach `drive`, so `AskCmdrSendRefusal`'s
 two constructors report the same event with `outcome: "refused"` and the gate as `failure`.
 Without that half, "AI is off" and "nobody opened the rail" are both no events at all, which is
@@ -637,7 +638,7 @@ the envelope, elision, the budget), `stub_tests.rs` (what a dropped result says,
 can't cite it), `cost_tests.rs` (what the real shapes cost), and `test_support.rs` (the
 transcript builders and budgets they share). The runtime tests split the same way, over
 `runtime/test_support.rs`: `tests.rs` (single-flight, the per-message budgets, cancellation,
-the crash cases, cost, the typed error surface, and the attachment + consent gates),
+the crash cases, cost, the typed error surface, and the attachment + send gates),
 `repeat_tests.rs` (the repeat breaker), `context_budget_tests.rs`, `slot_change_tests.rs`, and
 `wake_tests.rs`. Put a new test in the module whose concern it matches rather than growing
 `tests.rs`.

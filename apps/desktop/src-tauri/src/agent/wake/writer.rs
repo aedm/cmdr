@@ -70,9 +70,8 @@ fn run(app: AppHandle, db_path: PathBuf, data_dir: PathBuf, receiver: Receiver<W
     let mut inbox = launch_inbox(&conn);
     // ⚠️ Before the reconciled inbox is written back, not after. `agent::start` refreshes the
     // gates just before this thread comes up, so this is the first moment a launch can tell
-    // that the rows it just read back belong to a purpose nobody has agreed to — which is what
-    // every user looks like the launch after a `CONSENT_COPY_VERSION` bump.
-    note_purged(inbox.purge_if_consent_withdrawn(readiness_snapshot()));
+    // that the rows it just read back belong to an Ask Cmdr that's switched off.
+    note_purged(inbox.purge_if_ask_cmdr_off(readiness_snapshot()));
     if let Err(e) = persist::save_all(&conn, &inbox) {
         log::warn!(target: LOG_TARGET, "the reconciled inbox was not written back: {e}");
     }
@@ -128,12 +127,12 @@ fn launch_inbox(conn: &rusqlite::Connection) -> Inbox {
     inbox
 }
 
-/// Say how many rows a lost consent took away. Silent when none, so a quiet launch stays quiet.
+/// Say how many rows switching Ask Cmdr off took away. Silent when none, so a quiet launch stays quiet.
 fn note_purged(dropped: usize) {
     if dropped > 0 {
         log::info!(
             target: LOG_TARGET,
-            "{dropped} waiting inbox row(s) were dropped: nobody has consented to a record of them being kept"
+            "{dropped} waiting inbox row(s) were dropped: Ask Cmdr is switched off"
         );
     }
 }
@@ -211,7 +210,7 @@ impl WakeLoop {
             now,
         ) {
             Ok(Some(admitted)) => self.inbox.admitted(&admitted.row, admitted.was_waiting),
-            // Without consent the pipeline stores NOTHING, and that is the whole gate.
+            // With Ask Cmdr off the pipeline stores NOTHING, and that is the whole gate.
             Ok(None) => {}
             // Signal only, like a dropped rollup: the folder will change again.
             Err(e) => {
@@ -241,7 +240,7 @@ impl WakeLoop {
         let stamped = schedule::stamp_after(&control, self.not_before, now_secs());
         match control {
             WakeControl::SettingsChanged => self.reload_settings(),
-            WakeControl::ReadinessChanged => self.purge_inbox_if_consent_withdrawn(),
+            WakeControl::ReadinessChanged => self.purge_inbox_if_ask_cmdr_off(),
             WakeControl::WakeFinished(_) => self.wake_in_flight = false,
             WakeControl::ForceWake(request) => self.forced = Some(request),
             WakeControl::SweepRejected { set_id } => self.note_rejection(set_id),
@@ -249,24 +248,23 @@ impl WakeLoop {
         self.not_before = stamped;
     }
 
-    /// Throw the backlog away, on disk as well as in memory, when consent stopped permitting it
-    /// to be kept.
+    /// Throw the backlog away, on disk as well as in memory, when Ask Cmdr was switched off.
     ///
     /// ⚠️ **The disk half is the point.** `agent_inbox` rows are folder paths, counts, and
-    /// timestamps: a record of what the user has been doing. A revoke, or the bump that
-    /// un-accepts everybody when the consent copy changes, withdraws the purpose that record
-    /// was kept for, so it goes rather than sitting there until somebody re-accepts. Turning AI
-    /// off withdraws no purpose, so it takes nothing away.
-    fn purge_inbox_if_consent_withdrawn(&mut self) {
-        // The same rule `Inbox::purge_if_consent_withdrawn` applies, asked of the summary
-        // rather than of rows this loop doesn't hold.
+    /// timestamps: a record of what the user has been doing. Switching Ask Cmdr off withdraws
+    /// the purpose that record was kept for, so it goes rather than sitting there until somebody
+    /// switches it back on. Turning AI off or disallowing cloud AI withdraws no purpose, so it
+    /// takes nothing away.
+    fn purge_inbox_if_ask_cmdr_off(&mut self) {
+        // The same rule `Inbox::purge_if_ask_cmdr_off` applies, asked of the summary rather than
+        // of rows this loop doesn't hold.
         if self.inbox.is_empty() || readiness_snapshot().permits_stored_signal() {
             return;
         }
         note_purged(self.inbox.len());
         self.inbox = InboxSummary::default();
         if let Err(e) = persist::clear(&self.conn) {
-            log::warn!(target: LOG_TARGET, "the unconsented inbox rows are still on disk: {e}");
+            log::warn!(target: LOG_TARGET, "the inbox rows kept for a switched-off Ask Cmdr are still on disk: {e}");
         }
     }
 

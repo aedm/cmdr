@@ -55,7 +55,8 @@ export function toolRefusedLabel(): string {
 const ERROR_KEYS: Record<AskCmdrErrorKind, MessageKey> = {
   noKey: 'askCmdr.error.noKey',
   notConfigured: 'askCmdr.error.notConfigured',
-  noConsent: 'askCmdr.error.noConsent',
+  // TODO(cloud-consent milestone 3): `askCmdr.error.askCmdrOff`; the old consent label says the same.
+  askCmdrOff: 'askCmdr.error.noConsent',
   // TODO(cloud-consent milestone 3): its own `askCmdr.error.noCloudConsent` copy.
   noCloudConsent: 'askCmdr.error.notConfigured',
   localWindowTooSmall: 'askCmdr.error.localWindowTooSmall',
