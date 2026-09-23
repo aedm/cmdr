@@ -26,7 +26,7 @@ it: `ids.rs`, `fs_type.rs` (non-blocking `statfs`), `nsurl.rs` (blocking enrichm
   groups it under CLOUD and drops the index affordances. ❌ Never ask it about a non-mount path: a
   `~/Library/CloudStorage` folder names a provider too, and the index reads those at local speed.
 - **Discovery must never block on a hung mount** (a wedged NAS once froze launch): `getfsstat(MNT_NOWAIT)`, ❌ never
-  NSFileManager; blocking NSURL / NSWorkspace / DiskArbitration enrichment for LOCAL mounts only, never on the main
+  NSFileManager, and ❌ never a per-mount `statfs` (thread the snapshot's `fs_type` instead); blocking NSURL / NSWorkspace / DiskArbitration enrichment for LOCAL mounts only, never on the main
   thread. **❗ A mount table that wouldn't answer is its OWN answer, ❌ never an empty one**, or an unmount takes a
   sibling down under its live watcher.
 - **Detect SMB with `is_smb_fs_type()`**, ❌ never raw `"smbfs"` / `"cifs"`: one place covers both platforms.

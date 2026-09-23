@@ -39,7 +39,7 @@ use crate::volume::friendly_error::git::FriendlyGitErrorKind;
 // Public API re-exports: keep the `volume::friendly_error::*` import surface
 // unchanged for callers regardless of how the module is split internally.
 pub use empty_root::listing_error_for_restricted_empty_root;
-pub use provider::{Provider, enrich_with_provider, provider_for_path};
+pub use provider::{Provider, enrich_with_provider, provider_for_mount};
 pub use volume_error::{
     archive_needs_password_listing_error, archive_unreadable_listing_error, listing_error_from_volume_error,
 };

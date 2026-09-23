@@ -171,8 +171,11 @@ impl cmdr_fs::volume::canonical_root::MountRootCandidate for LocationInfo {
 /// data volume, which the cloud-drive arm publishes and the drive index reads at
 /// local speed. Conflating the two would stop Cmdr indexing a Dropbox folder it
 /// has always indexed happily.
-pub(crate) fn is_cloud_provider_mount(mount_root: &str) -> bool {
-    cmdr_fs::volume::friendly_error::provider_for_path(Path::new(mount_root))
+///
+/// `fs_type` is the type the mount table listed, so this makes no syscall and a
+/// hung network mount can't stall discovery through it.
+pub(crate) fn is_cloud_provider_mount(mount_root: &str, fs_type: &str) -> bool {
+    cmdr_fs::volume::friendly_error::provider_for_mount(Path::new(mount_root), fs_type)
         .is_some_and(|provider| provider.is_cloud_storage())
 }
 
@@ -210,7 +213,7 @@ pub fn resolve_path_volume_fast(path: &str) -> Option<VolumeInfo> {
         // Same two answers `get_attached_volumes` gives this mount, from the same
         // predicate: a switcher whose checkmark lands on a CLOUD row while the pane
         // calls the volume an attached drive is the drift this pairing prevents.
-        let is_cloud_mount = is_cloud_provider_mount(&mount_point);
+        let is_cloud_mount = is_cloud_provider_mount(&mount_point, &fs_type);
         let category = match (mount_point.as_str(), is_cloud_mount) {
             ("/", _) => LocationCategory::MainVolume,
             (_, true) => LocationCategory::CloudDrive,

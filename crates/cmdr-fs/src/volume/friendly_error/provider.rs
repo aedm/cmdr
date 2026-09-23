@@ -102,13 +102,15 @@ pub fn enrich_with_provider(error: &mut ListingError, path: &Path) {
     }
 }
 
-/// Which provider manages `path`, if any: the same detection the friendly-error
-/// enrichment runs, for callers that want the identity rather than a message.
+/// Which provider serves the mount at `mount_root`, if any: the same detection
+/// the friendly-error enrichment runs, for callers that want the identity rather
+/// than a message.
 ///
-/// The volume switcher asks this about a MOUNT ROOT, to tell a cloud drive from
-/// an ordinary disk. Costs one `statfs` for a path no name pattern matches.
-pub fn provider_for_path(path: &Path) -> Option<Provider> {
-    detect_provider(path)
+/// `fs_type` is the type the mount table already listed the mount with, so this
+/// makes no syscall. That matters: the volume switcher asks it about every mount
+/// on every discovery pass, and a `statfs` on a hung network mount blocks.
+pub fn provider_for_mount(mount_root: &Path, fs_type: &str) -> Option<Provider> {
+    provider_by_path(mount_root).or_else(|| provider_by_fs_type(fs_type))
 }
 
 /// Reads the filesystem type for a path via `libc::statfs`.
@@ -139,8 +141,29 @@ fn get_fs_type_for_path(path: &Path) -> Option<String> {
     String::from_utf8(name_bytes).ok()
 }
 
-/// Detects the provider from the path.
+/// Detects the provider from the path: its name patterns first, then, for a
+/// path none of them match, the fs type a `statfs` reads.
 fn detect_provider(path: &Path) -> Option<Provider> {
+    provider_by_path(path).or_else(|| {
+        #[cfg(target_os = "macos")]
+        return get_fs_type_for_path(path).and_then(|fs_type| provider_by_fs_type(&fs_type));
+        #[cfg(not(target_os = "macos"))]
+        None
+    })
+}
+
+/// The provider a FUSE-style filesystem type names, for mounts no path pattern
+/// covers.
+fn provider_by_fs_type(fs_type: &str) -> Option<Provider> {
+    match fs_type {
+        "macfuse" | "osxfuse" => Some(Provider::MacFuse),
+        "pcloudfs" => Some(Provider::PCloudFuse),
+        _ => None,
+    }
+}
+
+/// The provider the path's shape names, with no syscall.
+fn provider_by_path(path: &Path) -> Option<Provider> {
     let path_str = path.to_string_lossy();
 
     // Expand ~ to the home directory for matching.
@@ -203,16 +226,6 @@ fn detect_provider(path: &Path) -> Option<Provider> {
     }
     if path_str.starts_with(cm_volumes_str.as_ref()) {
         return Some(Provider::CmVolumes);
-    }
-
-    // 4. statfs-based FUSE detection for mounts not covered by known path patterns.
-    #[cfg(target_os = "macos")]
-    if let Some(fs_type) = get_fs_type_for_path(path) {
-        match fs_type.as_str() {
-            "macfuse" | "osxfuse" => return Some(Provider::MacFuse),
-            "pcloudfs" => return Some(Provider::PCloudFuse),
-            _ => {}
-        }
     }
 
     None
@@ -346,6 +359,34 @@ mod tests {
     fn no_provider_for_regular_path() {
         let path = Path::new("/Users/test/Documents/file.txt");
         assert_eq!(detect_provider(path), None);
+    }
+
+    /// A mount's fs type already came out of the `getfsstat` snapshot, so the
+    /// mount question answers from it and never `statfs`es the mount root, which
+    /// would block on a hung network mount. The paths here don't exist, so a
+    /// `statfs` would find nothing: only the passed-in type can produce these.
+    #[test]
+    fn a_mount_is_identified_by_the_fs_type_it_was_listed_with() {
+        let nowhere = Path::new("/nonexistent/cmdr-test-mount");
+        assert_eq!(provider_for_mount(nowhere, "pcloudfs"), Some(Provider::PCloudFuse));
+        assert_eq!(provider_for_mount(nowhere, "macfuse"), Some(Provider::MacFuse));
+        assert_eq!(provider_for_mount(nowhere, "osxfuse"), Some(Provider::MacFuse));
+        assert_eq!(provider_for_mount(nowhere, "devicefs"), None);
+        assert_eq!(provider_for_mount(nowhere, "smbfs"), None);
+    }
+
+    /// A path pattern names the provider more precisely than the FUSE layer
+    /// under it: a VeraCrypt volume is a `macfuse` mount at `/Volumes/veracrypt1`.
+    #[test]
+    fn a_mount_path_pattern_wins_over_its_fs_type() {
+        assert_eq!(
+            provider_for_mount(Path::new("/Volumes/veracrypt1"), "macfuse"),
+            Some(Provider::VeraCrypt)
+        );
+        assert_eq!(
+            provider_for_mount(&home_path(".CMVolumes/S3"), "macfuse"),
+            Some(Provider::CmVolumes)
+        );
     }
 
     // ── Enrichment behavior tests ───────────────────────────────────────

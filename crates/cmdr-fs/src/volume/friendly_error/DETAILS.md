@@ -122,6 +122,9 @@ Then add the FE factory case and confirm the style + parity tests cover it.
   (`pcloudfs`).
 
 The `statfs` check runs only at error time (not on every listing), so the syscall cost is negligible.
+`provider_for_mount`, the volume switcher's question about a mount root, runs the same two tables but takes the fs type
+the mount table already listed and never `statfs`es: it runs on every discovery pass, over network mounts too, and a
+`statfs` on a hung one blocks.
 
 ## Key decisions
 

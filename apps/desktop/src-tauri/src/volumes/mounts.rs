@@ -314,7 +314,7 @@ fn build_attached_location(
     // kept out of the index affordances, whether it sits in `/Volumes` or in the
     // home folder. `is_cloud_mount` travels as its own typed field: ❌ never
     // re-derive it downstream from the category or the fs type.
-    let is_cloud_mount = super::is_cloud_provider_mount(path);
+    let is_cloud_mount = super::is_cloud_provider_mount(path, &fs_type);
     let category = match is_cloud_mount {
         true => LocationCategory::CloudDrive,
         false => LocationCategory::AttachedVolume,

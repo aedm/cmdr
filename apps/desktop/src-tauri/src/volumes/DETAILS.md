@@ -147,7 +147,10 @@ flat ~30s (one smbfs kernel timeout). (Incident: live NAS QA, 2026-07-13.)
    `f_mntfromname` SMB source) without ever round-tripping to a filesystem, so a wedged mount can't stall it: this is
    the difference between `df -n` and plain `df`. `getfsstat` was verified non-blocking on the exact wedged NAS state
    from the incident. Because fs type and read-only come straight from the snapshot, three former per-volume `statfs`
-   calls (`get_fs_type`, `read_only_from_statfs`, `get_smb_mount_info`) are gone from this path.
+   calls (`get_fs_type`, `read_only_from_statfs`, `get_smb_mount_info`) are gone from this path. The provider check
+   (`is_cloud_provider_mount`) takes the snapshot's fs type for the same reason: it once re-read it with a `statfs` on
+   every mount no path pattern matched, SMB and NFS shares included. That hang was reasoned from the code, not
+   reproduced against a wedged mount.
 2. **Skip blocking enrichment for network mounts.** `build_attached_location` runs the blocking NSURL / NSWorkspace /
    DiskArbitration enrichment (`resolve_local`) ONLY for local mounts. Network mounts (`is_network_fs_type`) derive
    everything from the getfsstat snapshot: id/name from `f_mntfromname` (SMB → "share on server"), `is_ejectable = false`
