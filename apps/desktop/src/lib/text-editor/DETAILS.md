@@ -89,6 +89,26 @@ for a non-`system` choice, so it and the hint never come from the same press.
 `SettingRow` stamps. An already-open Settings window keeps its search query, so a leftover query can filter the card
 away and the scroll does nothing; every deep link shares that.
 
+## Out of scope, and edges left as they are
+
+Deliberately not built: per-extension editors (Markdown in one app, JSON in another), terminal editors (vim, Helix) or a
+command-template option, jump-to-line from content search (`subl file:42`), editing files that aren't on this Mac (the
+pane guard's refusal stays), a Linux row (`xdg-open` unchanged), changing macOS's own default handler from Cmdr, and
+analytics properties on `editor_opened`.
+
+Edges that behave as they did before the setting existed, on purpose:
+
+- **Several selected files**: F4 opens the cursor row only (`withEntryUnderCursor` in `file-handlers.ts`).
+- **A folder** (a product call, left as is): the regular pane hands it over (`open -t <folder>`, which TextEdit can't
+  open; Sublime Text or VS Code open it as a project), while the search-results F4 skips folders. Aligning the two is a
+  separate change.
+- **An app that can't open text, picked through "Choose an app…"**: `open -a` launches it, the file may not open, and
+  Rust reports `opened`. The user picked it.
+- **TextEdit picked through "Choose an app…"** (a product call, left as is): it canonicalizes to `com.apple.TextEdit`,
+  which isn't `system`, so the row shows "System default (TextEdit)" and a second "TextEdit" row. Pinning survives a
+  later change of the system default; folding a pick that equals the default back into `system` would drop the
+  lookalike row.
+
 ## Testing
 
 - `editor-hint.test.ts`: one test per hint rule. Pure.
