@@ -37,6 +37,9 @@ Read this before adding, wiping, or reorganizing a spec.
 - `linux-builds-plan.md`: **A Linux release build (AppImage + .deb) and a website that offers it.** Three known Linux
   gaps gate the download button. Issues: [#151](https://github.com/vdavid/cmdr/issues/151),
   [#284](https://github.com/vdavid/cmdr/issues/284)–[#287](https://github.com/vdavid/cmdr/issues/287).
+- `cloud-ai-consent-plan.md`: **Only Ask Cmdr asked before sending data to a cloud AI service; the other AI features
+  sent once a provider was set up.** One "Allow cloud AI" switch, enforced in the backend for every AI feature. No issue:
+  wipe it once shipped and reviewed.
 - `dropbox-sync-status-linux.md`: **Cloud badges on Linux, which today are simply absent.** Holds the Dropbox socket
   protocol research and what a Linux arm needs. Issue: [#288](https://github.com/vdavid/cmdr/issues/288).
 

@@ -11,7 +11,7 @@ proposal spine. Depth: `DETAILS.md`.
 - `query.rs` — conversations, messages, the FTS5 search + its input sanitizer, the cost meter. `AgentStore` (in
   `mod.rs`) owns the schema lifecycle; `agent::start` opens the DB and registers `AgentDb` in state.
 - `events.rs` — `ConversationEvent`, the timeline half of `messages`; `rows.rs` — the insert both writers share.
-- `consent.rs` — consent records in the `meta` table.
+- `consent.rs` — `meta` consent records: "Allow cloud AI" (`ai/cloud_consent.rs`'s) and Ask Cmdr's read-only legacy one.
 - `proposals/` — the sweep / group / op spine and the claim transaction, its own C+D pair:
   `proposals/CLAUDE.md`. A producer's own per-op sidecar table lives with that producer (`proposal_rename_evidence` is
   `agent/tools/propose/rename/`'s), never as columns on the shared `proposal_ops`.

@@ -94,6 +94,9 @@ cloud, project `136072`). Shape:
   written), so the shape carries deviation, never adoption. Reading it as adoption needs the per-version defaults
   manifest the dashboard resolves against: `apps/analytics-dashboard/DETAILS.md` § Settings adoption.
   `CATEGORICAL_STRING_KEYS` is an input to that manifest, so adding a key here widens what the dashboard can answer.
+- **Cloud AI consent ships as settings only.** `askCmdr.enabled` and `ai.cloudConsentRevokePending` are booleans, so
+  they ride the shape with no allowlist change. The "Allow cloud AI" record itself lives in `main.db`'s `meta` table
+  (`ai/DETAILS.md` § Cloud AI consent), is no setting, and doesn't ship.
 - **`source: "desktop"`** is injected first and can't be shadowed by a caller `source` prop, so the dashboard always
   splits desktop events from website events.
 - **The `EventIdentity` trio rides every event**: `app_version` (`CARGO_PKG_VERSION`, the same string the heartbeat
@@ -231,7 +234,8 @@ Backend events fire at success chokepoints; frontend events ride `track_event`.
   refusal path): `origin` (`text` / `wake` / `outcomes` / `resume`), `outcome` (`answered` / `cancelled` / `failed` /
   `refused`), `failure` (the `AgentErrorKind` / `AgentErrorKindView` token, or `none`), `provider` (the `ProviderTag`
   token, or `unresolved` on a refusal), `tool_turns` + `proposals` buckets; never a prompt, a reply, or anything a tool
-  read. `refused` covers the four gates that answer before a turn exists (no store, no consent, no resolvable provider,
+  read. `refused` covers the five gates that answer before a turn exists (no store, Ask Cmdr off (`ask_cmdr_off`), no cloud consent
+  (`no_cloud_consent`), no resolvable provider,
   a local window under the floor), so the funnel has a top as well as a middle. This is the agent funnel's DENOMINATOR: the three `suggestion_group_*`
   events below only become readable against it, because a zero on them otherwise can't be told apart from a feature
   nobody uses. `agent/chat/DETAILS.md` § The turn event.
