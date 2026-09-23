@@ -51,7 +51,8 @@ tool-result JSON the model reads. Every tool maps 1:1 to a `ToolId` variant.
   § The search result.
   - **Names and metadata only, ❌ never contents.** The chain for a contents question is `search` (or `search_photos`)
     to narrow, then `inspect_file` with `find` over the hits. A `modified` is when a file last CHANGED, never when it
-    was saved or opened, which the model has to voice rather than round off.
+    was saved or opened, which the model has to voice rather than round off. Names, paths, sizes, and dates are
+    already on the consent screen, so `search` widened no egress and needed no `CONSENT_COPY_VERSION` bump.
   - **One drive per call, and the model loops.** `resolve_target` refuses a scope spanning volumes
     (`ScopeError::SpansMultipleVolumes`), because a fan-out is the only way a search can silently omit a drive. The
     default is the boot volume; another drive is named by the `mountPath` `list_volumes` hands over. The description
@@ -127,7 +128,11 @@ tool-result JSON the model reads. Every tool maps 1:1 to a `ToolId` variant.
   `matchKind` + optional score + optional OCR snippet / no image bytes), reuses `media_index`'s own `volume_state` for
   per-volume coverage honesty, and returns a typed status when indexing is off, still building, or the CLIP model isn't
   installed. Privacy: the OCR snippet + tags it returns are image-derived text that egresses to the provider — named in
-  the Ask Cmdr consent copy (see `mcp/executor/photos.rs` and `docs/security.md`).
+  the Ask Cmdr consent copy (see `mcp/executor/photos.rs` and `docs/security.md`). **Watch**: when it answers
+  "image indexing is off" and the contents half is what the user asked for, the model should offer to turn indexing
+  on. The transcript that prompted `search` had it answer "off" eight times and then invent name-search arguments. If
+  transcripts show it still doesn't offer, the fix is `search_photos`'s and `search`'s descriptions plus one prompt
+  line, ❌ not a third tool.
 - **`image_facts`** (`mcp/executor/image_facts.rs`, shared `[AiClient, Agent]`) — the lookup direction of the same
   index: given paths the agent already has, the FULL stored OCR text (capped at 2,000 characters per file, a cut
   flagged) plus the Vision tags for each. It accepts up to 200 paths but answers as many as fit one result (see § The
