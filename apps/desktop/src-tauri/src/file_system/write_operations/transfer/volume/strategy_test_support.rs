@@ -31,6 +31,7 @@ pub(super) async fn park_holds_at(seen: &std::sync::atomic::AtomicU64, what: &st
     crate::file_system::write_operations::test_support::park_holds_at(|| seen.load(Ordering::SeqCst), what).await
 }
 
+use crate::file_system::volume::WriteMode;
 pub(super) use crate::file_system::write_operations::test_support::PARK_WINDOW;
 
 // ========================================================================
@@ -201,6 +202,7 @@ impl Volume for FailOnceStaleDest {
     fn write_from_stream<'a>(
         &'a self,
         _dest: &'a Path,
+        _mode: WriteMode,
         size: u64,
         _stream: Box<dyn VolumeReadStream>,
         _on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
@@ -319,6 +321,7 @@ impl Volume for FlakyDest {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
@@ -334,7 +337,10 @@ impl Volume for FlakyDest {
         };
         Box::pin(async move {
             if attempt >= self.fail_writes {
-                return self.inner.write_from_stream(dest, size, stream, on_progress).await;
+                return self
+                    .inner
+                    .write_from_stream(dest, mode, size, stream, on_progress)
+                    .await;
             }
             // Drain one chunk and leave it on disk, unremoved: a wedged backend
             // that never got to its own cleanup. The suite asserts our staging
@@ -571,6 +577,7 @@ impl Volume for WedgedThenWorkingDest {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
@@ -579,7 +586,10 @@ impl Volume for WedgedThenWorkingDest {
         let wedged = Arc::clone(&self.wedged);
         Box::pin(async move {
             if attempt > 0 {
-                return self.inner.write_from_stream(dest, size, stream, on_progress).await;
+                return self
+                    .inner
+                    .write_from_stream(dest, mode, size, stream, on_progress)
+                    .await;
             }
             wedged.store(true, Ordering::SeqCst);
             // Never returns, never errors, never reports a byte. Only the
@@ -727,6 +737,7 @@ impl Volume for TierOneWitnessDest {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        _mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),

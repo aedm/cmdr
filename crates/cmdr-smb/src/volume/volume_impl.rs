@@ -16,7 +16,7 @@ use cmdr_fs::entry::FileEntry;
 
 use cmdr_fs::volume::{
     BatchScanResult, ConnectionLiveness, CopyScanResult, LaneKey, MutationEvent, ScanBoundary, ScanConflict,
-    SourceItemInfo, SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage,
+    SourceItemInfo, SpaceInfo, Volume, VolumeError, VolumeReadStream, WatchCoverage, WriteMode,
 };
 use cmdr_fs::volume::{ListingProgress, Retirement};
 use log::debug;
@@ -550,11 +550,12 @@ impl Volume for SmbVolume {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        self.write_from_stream_impl(dest, size, stream, on_progress)
+        self.write_from_stream_impl(dest, mode, size, stream, on_progress)
     }
 
     fn connection_state(&self) -> Option<cmdr_fs::volume::ConnectionState> {

@@ -16,6 +16,7 @@ use cmdr_fs::volume::{DirectoryChange, DirectoryCreation, Volume, VolumeError, V
 
 use super::SftpVolume;
 use super::testing::*;
+use cmdr_fs::volume::WriteMode;
 
 const FIXTURE: &str = "sftp-servers/start.sh (sftp-fixture)";
 
@@ -86,13 +87,19 @@ async fn progress_counts_up_to_the_whole_file() {
     let bytes = fixture_large_bytes(PAYLOAD);
     let size = bytes.len() as u64;
     volume
-        .write_from_stream(Path::new(&path), size, source(bytes), &|done, total| {
-            reported
-                .lock()
-                .expect("no cell panics holding this")
-                .push((done, total));
-            ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new(&path),
+            WriteMode::CreateOrReplace,
+            size,
+            source(bytes),
+            &|done, total| {
+                reported
+                    .lock()
+                    .expect("no cell panics holding this")
+                    .push((done, total));
+                ControlFlow::Continue(())
+            },
+        )
         .await
         .expect(FIXTURE);
 
@@ -120,6 +127,7 @@ async fn a_cancelled_write_leaves_nothing_behind() {
     let outcome = volume
         .write_from_stream(
             Path::new(&path),
+            WriteMode::CreateOrReplace,
             PAYLOAD as u64,
             source(fixture_large_bytes(PAYLOAD)),
             &|_, _| ControlFlow::Break(()),
@@ -150,6 +158,7 @@ async fn a_source_that_stops_partway_takes_the_partial_with_it() {
     let outcome = volume
         .write_from_stream(
             Path::new(&path),
+            WriteMode::CreateOrReplace,
             PAYLOAD as u64,
             failing_source(fixture_large_bytes(PAYLOAD)),
             &|_, _| ControlFlow::Continue(()),
@@ -456,7 +465,13 @@ async fn scratch_on(service: &str, fallback_port: u16, what: &str) -> (SftpVolum
 async fn write(volume: &SftpVolume, path: &str, bytes: Vec<u8>) -> Result<u64, VolumeError> {
     let size = bytes.len() as u64;
     volume
-        .write_from_stream(Path::new(path), size, source(bytes), &|_, _| ControlFlow::Continue(()))
+        .write_from_stream(
+            Path::new(path),
+            WriteMode::CreateOrReplace,
+            size,
+            source(bytes),
+            &|_, _| ControlFlow::Continue(()),
+        )
         .await
 }
 

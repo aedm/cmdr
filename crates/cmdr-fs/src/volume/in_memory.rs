@@ -6,7 +6,7 @@
 
 use super::{
     BackendKind, ConnectionState, CopyScanResult, IndexWalk, LaneKey, ScanConflict, SourceItemInfo, SpaceInfo, Volume,
-    VolumeError, VolumeReadStream,
+    VolumeError, VolumeReadStream, WriteMode,
 };
 use crate::entry::FileEntry;
 use crate::ignore_poison::IgnorePoison;
@@ -1002,9 +1002,14 @@ impl Volume for InMemoryVolume {
         })
     }
 
+    /// Refuses a taken `dest` under BOTH modes: `create_file` never replaces.
+    /// That is exact for [`WriteMode::CreateNew`] and stricter than
+    /// [`WriteMode::CreateOrReplace`] asks, which is what lets a test see a
+    /// write land on a name it should have staged away from.
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        _mode: WriteMode,
         _size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),

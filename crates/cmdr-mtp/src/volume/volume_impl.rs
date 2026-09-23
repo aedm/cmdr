@@ -10,7 +10,7 @@ use crate::connection::{MtpConnectionError, MtpDeleteScope};
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::{
     BatchScanResult, CopyScanResult, LaneKey, MutationEvent, ScanConflict, SourceItemInfo, SpaceInfo, Volume,
-    VolumeError, VolumeReadStream, WatchCoverage,
+    VolumeError, VolumeReadStream, WatchCoverage, WriteMode,
 };
 use log::debug;
 use std::future::Future;
@@ -682,14 +682,22 @@ impl Volume for MtpVolume {
         Box::pin(async move { self.manager.background_yield_point(&self.device_id).await })
     }
 
+    /// ❗ MTP has no exclusive create, and an upload onto a taken name adds a
+    /// second object with the same name rather than replacing the first. So
+    /// `CreateNew` asks `exists` just before the upload, the same probe (and the
+    /// same window) as `rename`'s `force = false`.
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
+            if mode == WriteMode::CreateNew && self.exists(dest).await {
+                return Err(VolumeError::AlreadyExists(dest.display().to_string()));
+            }
             let dest_folder = dest.parent().map(|p| self.to_mtp_path(p)).unwrap_or_default();
             let filename = dest
                 .file_name()

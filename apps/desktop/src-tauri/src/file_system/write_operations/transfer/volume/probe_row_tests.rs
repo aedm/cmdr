@@ -35,6 +35,7 @@ use super::super::super::transfer_probe::render_live_dump;
 use super::super::faulty_volume::forward_volume_methods;
 use super::test_support::make_state;
 use super::*;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{InMemoryVolume, VolumeError};
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 
@@ -100,6 +101,7 @@ impl Volume for TablePhotographingDest {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn crate::file_system::volume::VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
@@ -114,7 +116,10 @@ impl Volume for TablePhotographingDest {
             if let Some(dump) = render_live_dump(&self.operation_id, "photo") {
                 self.dumps.lock_ignore_poison().push(dump);
             }
-            let result = self.inner.write_from_stream(dest, size, stream, on_progress).await;
+            let result = self
+                .inner
+                .write_from_stream(dest, mode, size, stream, on_progress)
+                .await;
             self.live.fetch_sub(1, Ordering::Relaxed);
             result
         })

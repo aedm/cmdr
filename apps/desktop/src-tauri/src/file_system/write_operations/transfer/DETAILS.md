@@ -397,12 +397,14 @@ destination is assumed CLEAR" (`move_file.rs`). Pinned by
 landing_onto_a_name_believed_free_leaves_it_alone}` and, end to end,
 `volume/merge_case_fold_tests.rs::a_name_that_fills_up_after_the_listing_is_not_cleared_by_the_landing`.
 
-⚠️ **A `SingleShot` write has no landing, so it has no such guard**: the destination writes it at the final name with an
-overwriting create disposition (SMB's compound `FileOverwriteIf`), and refusing that would need an exclusive-create
-disposition threaded through `Volume::write_from_stream`. The systematic hole this covered was the fold-only collision,
-which the fold-aware lookup now settles BEFORE any write (`volume/DETAILS.md` § "The deep merge asks the same
-question"); what remains for single-shot is the same arrival-after-the-listing race the top-level pre-check already
-accepts.
+❗ **A `SingleShot` write has no landing, so the guard travels with the write instead.** `resolve_staging` keeps the
+`LandingName` on the upgrade (`WriteStaging::SingleShot(landing)`), and `StagedWrite::write_mode` turns an
+`ExpectedFree` one into `WriteMode::CreateNew`: the destination creates the file only if the name is still free and
+refuses with `AlreadyExists` otherwise, atomically on SMB (the compound write's `FileCreate`). The refusal reaches the
+driver as the same `AlreadyExists` a refused landing reports, is never retried, and cleans nothing (`abandon` is a no-op
+for single-shot, and nothing at the name is ours). A `ClaimedByTheCaller` single-shot write stays `CreateOrReplace`,
+because its placeholder sits at the name. The whole contract and its backends: `volume/DETAILS.md` § "The single-shot
+exemption".
 
 ❗ **Only `VolumeError::AlreadyExists` earns the delete.** A rename over a network backend fails for plenty of reasons
 that say nothing about the destination: a session that dropped, a server that refused, SFTP v3 folding an errno into its

@@ -32,7 +32,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use cmdr_fs::volume::{VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{VolumeError, VolumeReadStream, WriteMode};
 use futures_util::StreamExt;
 use futures_util::stream::FuturesUnordered;
 use log::debug;
@@ -178,20 +178,23 @@ async fn take_chunk(
 impl SftpVolume {
     /// Streams `stream` onto `dest`, `WRITE_WINDOW_DEPTH` chunks in flight.
     ///
-    /// ❗ `dest` is always a `.cmdr-tmp-*` sibling, never the user's filename:
-    /// [`cmdr_fs::volume::Volume::write_is_single_shot`] keeps its `false`
-    /// default here, so the transfer layer stages every write to this backend and
-    /// nothing half-written ever wears a real name. ❌ Which is also why there is
-    /// no "the create landed but the write didn't" classifier like SMB's — that
-    /// one exists because SMB's compound path SKIPS staging.
+    /// ❗ From the transfer layer, `dest` is always a `.cmdr-tmp-*` sibling, never
+    /// the user's filename: [`cmdr_fs::volume::Volume::write_is_single_shot`]
+    /// keeps its `false` default here, so the transfer layer stages every write
+    /// to this backend and nothing half-written ever wears a real name. ❌ Which
+    /// is also why there is no "the create landed but the write didn't"
+    /// classifier like SMB's — that one exists because SMB's compound path SKIPS
+    /// staging.
     pub(super) async fn write_from_stream_impl(
         &self,
         dest: &Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
     ) -> Result<u64, VolumeError> {
-        self.upload(dest, size, stream, WRITE_WINDOW_DEPTH, on_progress).await
+        self.upload(dest, mode, size, stream, WRITE_WINDOW_DEPTH, on_progress)
+            .await
     }
 
     /// The same, at a depth the caller picks. The measurement harness is the
@@ -199,6 +202,7 @@ impl SftpVolume {
     pub(super) async fn upload(
         &self,
         dest: &Path,
+        mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         depth: usize,
@@ -212,17 +216,22 @@ impl SftpVolume {
         let session = self.clone_session().await?;
         debug!("SftpVolume::write_from_stream: {remote}, size={size}");
 
-        // Truncating rather than exclusive: this is a staging name, and a retried
-        // attempt writes onto whatever its predecessor left there.
-        let file = session
-            .sftp()
-            .options()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(&remote)
-            .await
-            .map_err(|e| map_sftp_error(&e, &remote))?;
+        // `CreateOrReplace` truncates: the transfer layer's staging name, which a
+        // retried attempt writes onto after its predecessor. `CreateNew` is
+        // `SSH_FXF_EXCL`, the same refusal `create_file` relies on, returned
+        // before anything of ours exists at the name (so no cleanup arm below
+        // can touch what's there).
+        let mut options = session.sftp().options();
+        options.write(true);
+        let opened = match mode {
+            WriteMode::CreateNew => options.create_new(true).open(&remote).await,
+            WriteMode::CreateOrReplace => options.create(true).truncate(true).open(&remote).await,
+        };
+        let file = match opened {
+            Ok(file) => file,
+            Err(e) if mode == WriteMode::CreateNew => return Err(self.name_taken(&session, &remote, &e).await),
+            Err(e) => return Err(map_sftp_error(&e, &remote)),
+        };
         let writer = RemoteWrite::new(file, Arc::from(remote.as_str()));
 
         match self

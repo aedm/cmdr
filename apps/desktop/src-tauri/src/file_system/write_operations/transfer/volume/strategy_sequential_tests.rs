@@ -24,6 +24,7 @@ use crate::file_system::volume::{InMemoryVolume, Volume, VolumeError};
 use cmdr_archive::{ArchiveFormat, ArchiveVolume, TarCodec};
 use cmdr_fs::volume::host::VolumeHost;
 
+use crate::file_system::volume::WriteMode;
 use crate::file_system::write_operations::state::OperationIntent;
 use crate::test_support::TestDir;
 
@@ -340,12 +341,16 @@ impl Volume for StopAfterFirstWrite {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
-            let written = self.inner.write_from_stream(dest, size, stream, on_progress).await?;
+            let written = self
+                .inner
+                .write_from_stream(dest, mode, size, stream, on_progress)
+                .await?;
             if self.writes.fetch_add(1, Ordering::SeqCst) == 0 {
                 (self.on_first)();
             }

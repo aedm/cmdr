@@ -21,6 +21,7 @@ use super::test_support::*;
 use super::*;
 use cmdr_fs::volume::DirectoryChange;
 use cmdr_fs::volume::InMemoryVolume;
+use cmdr_fs::volume::WriteMode;
 use cmdr_fs::volume::host::listings::{ListingHost, RecordingListings};
 
 /// `fotók`, composed: the album directory, spelled the way the NAS stores it.
@@ -182,7 +183,13 @@ async fn a_decomposed_file_copies_off_the_share_and_within_it() {
         let stream = vol.open_read_stream(&file).await?;
         let dest = PathBuf::from("/").join(NFD_FILE);
         elsewhere
-            .write_from_stream(&dest, PAYLOAD.len() as u64, stream, no_progress)
+            .write_from_stream(
+                &dest,
+                WriteMode::CreateOrReplace,
+                PAYLOAD.len() as u64,
+                stream,
+                no_progress,
+            )
             .await?;
         read_all_from(&elsewhere, &dest).await
     }
@@ -192,8 +199,14 @@ async fn a_decomposed_file_copies_off_the_share_and_within_it() {
     let copied_within = async {
         let stream = vol.open_read_stream(&file).await?;
         let dest = subdir.join(NFD_FILE);
-        vol.write_from_stream(&dest, PAYLOAD.len() as u64, stream, no_progress)
-            .await?;
+        vol.write_from_stream(
+            &dest,
+            WriteMode::CreateOrReplace,
+            PAYLOAD.len() as u64,
+            stream,
+            no_progress,
+        )
+        .await?;
         read_all(&vol, &dest).await
     }
     .await;

@@ -234,6 +234,20 @@ async fn create_file_honors_the_shared_no_clobber_contract() {
 }
 
 #[tokio::test]
+async fn write_from_stream_create_new_honors_the_shared_no_clobber_contract() {
+    let volume = InMemoryVolume::new("Test");
+    volume.create_file(Path::new("/notes.txt"), b"original").await.unwrap();
+
+    conformance::assert_write_from_stream_create_new_refuses_to_clobber(
+        &volume,
+        Path::new("/notes.txt"),
+        Path::new("/fresh.txt"),
+        b"new",
+    )
+    .await;
+}
+
+#[tokio::test]
 async fn create_directory_all_honors_the_shared_honesty_contract() {
     let volume = InMemoryVolume::new("Test");
     volume.create_directory(Path::new("/album")).await.unwrap();

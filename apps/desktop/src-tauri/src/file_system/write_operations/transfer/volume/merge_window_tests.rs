@@ -26,6 +26,7 @@ use super::super::faulty_volume::forward_volume_methods;
 use super::tests::{make_state, make_volumes};
 use super::*;
 use crate::file_system::volume::InMemoryVolume;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::write_operations::event_sinks::CollectorEventSink;
 use crate::file_system::write_operations::state::cancel_write_operation;
 use crate::file_system::write_operations::test_support::TestOperationGuard;
@@ -114,6 +115,7 @@ impl Volume for WindowWatchingDest {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn crate::file_system::volume::VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
@@ -127,7 +129,10 @@ impl Volume for WindowWatchingDest {
                 // allowed-test-sleep: the linger IS the subject — it's the fake write latency that makes overlap observable at all.
                 tokio::time::sleep(Duration::from_millis(2)).await;
             }
-            let result = self.inner.write_from_stream(dest, size, stream, on_progress).await;
+            let result = self
+                .inner
+                .write_from_stream(dest, mode, size, stream, on_progress)
+                .await;
             self.live.fetch_sub(1, Ordering::Relaxed);
             result
         })

@@ -17,7 +17,10 @@
 //! untouched — staging it again would only produce a `foo.cmdr-tmp-A.cmdr-tmp-B`.
 //! A write the DESTINATION lands in one indivisible shot is
 //! [`WriteStaging::SingleShot`] and needs no temp: there is no moment at which
-//! the final name holds a partial. Every other write stages here
+//! the final name holds a partial. It has no landing either, so the no-replace
+//! rule travels with it instead: a name the caller expected free is written
+//! with [`WriteMode::CreateNew`], which the destination refuses atomically if
+//! someone took it mid-upload ([`StagedWrite::write_mode`]). Every other write stages here
 //! ([`WriteStaging::Stage`], or [`WriteStaging::StageOntoClaimedName`] when the
 //! caller picked the final name itself).
 //!
@@ -44,7 +47,7 @@ use super::super::state::WriteOperationState;
 use super::recovered_name::{FinalizeFailure, rescue_out_of_temp_space};
 use super::transfer_probe::{TaskPhase, set_task_phase};
 use crate::file_system::staging::StagingTemp;
-use crate::file_system::volume::{Volume, VolumeError};
+use crate::file_system::volume::{Volume, VolumeError, WriteMode};
 
 /// Who owns the `.cmdr-tmp-*` staging for one file write.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,7 +70,11 @@ pub(super) enum WriteStaging {
     /// write_is_single_shot`), so the final name can never hold a partial and
     /// staging would buy nothing but a rename round trip. Write straight to the
     /// final name.
-    SingleShot,
+    ///
+    /// Carries the [`LandingName`] of the staged write it replaced, because
+    /// with no landing rename to refuse a taken name, the write itself has to:
+    /// an `ExpectedFree` name goes out as [`WriteMode::CreateNew`].
+    SingleShot(LandingName),
 }
 
 /// What the caller believes sits at the final name when the staged bytes come
@@ -120,6 +127,8 @@ pub(super) struct StagedWrite {
     /// What the caller believes about that name, which is what [`land`] needs to
     /// tell a clash nobody answered from a name the caller itself claimed.
     landing: LandingName,
+    /// See [`write_mode`](Self::write_mode).
+    write_mode: WriteMode,
     state: Arc<WriteOperationState>,
 }
 
@@ -142,20 +151,27 @@ impl StagedWrite {
             }
             // A single-shot write goes straight to the final name: no
             // intermediate state to track, and nothing to hide.
-            WriteStaging::SingleShot => {}
+            WriteStaging::SingleShot(_) => {}
         }
         Self {
             temp,
             caller_temp,
             final_path: final_path.to_path_buf(),
-            // The two staging kinds that never land here answer
-            // `ClaimedByTheCaller` for the same reason they need no landing:
-            // the name is the caller's, and the caller does the swap.
+            // `AlreadyStaged` never lands here and answers `ClaimedByTheCaller`
+            // for the same reason it needs no landing: the name is the caller's,
+            // and the caller does the swap. A single-shot write keeps the answer
+            // of the staged write it replaced, which is what `write_mode` reads.
             landing: match staging {
                 WriteStaging::Stage => LandingName::ExpectedFree,
-                WriteStaging::StageOntoClaimedName | WriteStaging::AlreadyStaged | WriteStaging::SingleShot => {
-                    LandingName::ClaimedByTheCaller
-                }
+                WriteStaging::StageOntoClaimedName | WriteStaging::AlreadyStaged => LandingName::ClaimedByTheCaller,
+                WriteStaging::SingleShot(landing) => landing,
+            },
+            write_mode: match staging {
+                WriteStaging::SingleShot(LandingName::ExpectedFree) => WriteMode::CreateNew,
+                WriteStaging::SingleShot(LandingName::ClaimedByTheCaller)
+                | WriteStaging::Stage
+                | WriteStaging::StageOntoClaimedName
+                | WriteStaging::AlreadyStaged => WriteMode::CreateOrReplace,
             },
             state: Arc::clone(state),
         }
@@ -164,6 +180,25 @@ impl StagedWrite {
     /// Where the streaming writer must put the bytes.
     pub(super) fn target(&self) -> &Path {
         self.temp.as_ref().map_or(&self.final_path, StagingTemp::path)
+    }
+
+    /// What the write to [`target`](Self::target) may do to a file already
+    /// there, for `Volume::write_from_stream`.
+    ///
+    /// ❗ `CreateNew` exactly when the bytes go straight to a FINAL name the
+    /// caller expected free: a single-shot write with nothing resolved for it.
+    /// With no staged landing to refuse a name someone took mid-upload, the
+    /// destination's own create has to, atomically (SMB's `FileCreate`). A
+    /// replacing write there reported success with the other writer's file
+    /// gone. Pinned on a live share by
+    /// `backend_suites/smb_transfer_safety_test.rs::smb_integration_a_single_shot_upload_never_replaces_a_name_taken_mid_upload`.
+    ///
+    /// Everything else may replace: our own freshly minted `.cmdr-tmp-*` (a
+    /// retried attempt writes over its predecessor), the caller's safe-replace
+    /// temp, or a final name the caller claimed, whose `O_EXCL` placeholder
+    /// sits at the name and must be written over.
+    pub(super) fn write_mode(&self) -> WriteMode {
+        self.write_mode
     }
 
     /// The write SUCCEEDED: give the bytes their final name.
@@ -394,7 +429,7 @@ pub(super) fn staging_for(replace_after_write: &Option<PathBuf>, landing: Landin
 pub(super) fn failed_write_leaves_ours_at(staging: WriteStaging) -> bool {
     match staging {
         WriteStaging::AlreadyStaged | WriteStaging::StageOntoClaimedName => true,
-        WriteStaging::Stage | WriteStaging::SingleShot => false,
+        WriteStaging::Stage | WriteStaging::SingleShot(_) => false,
     }
 }
 
@@ -424,12 +459,18 @@ pub(super) fn failed_write_leaves_ours_at(staging: WriteStaging) -> bool {
 /// `AlreadyStaged` is never touched: the caller's temp keeps the ORIGINAL file
 /// in place until the new bytes are complete, which is a stronger guarantee than
 /// single-shot-ness and the caller's to land.
+///
+/// The single-shot answer keeps whose name it is: a `Stage` (name expected
+/// free) becomes `SingleShot(ExpectedFree)`, which writes with
+/// [`WriteMode::CreateNew`]; a `StageOntoClaimedName` becomes
+/// `SingleShot(ClaimedByTheCaller)`, which may replace its own placeholder.
 pub(super) fn resolve_staging(requested: WriteStaging, write_is_single_shot: bool) -> WriteStaging {
-    let we_stage = matches!(requested, WriteStaging::Stage | WriteStaging::StageOntoClaimedName);
-    if we_stage && write_is_single_shot {
-        WriteStaging::SingleShot
-    } else {
-        requested
+    match requested {
+        WriteStaging::Stage if write_is_single_shot => WriteStaging::SingleShot(LandingName::ExpectedFree),
+        WriteStaging::StageOntoClaimedName if write_is_single_shot => {
+            WriteStaging::SingleShot(LandingName::ClaimedByTheCaller)
+        }
+        other => other,
     }
 }
 
@@ -490,7 +531,11 @@ mod tests {
         let inner = Arc::new(InMemoryVolume::new("dest"));
         let dest: Arc<dyn Volume> = Arc::clone(&inner) as Arc<dyn Volume>;
 
-        let staged = StagedWrite::begin(&state, Path::new("/notes.txt"), WriteStaging::SingleShot);
+        let staged = StagedWrite::begin(
+            &state,
+            Path::new("/notes.txt"),
+            WriteStaging::SingleShot(LandingName::ExpectedFree),
+        );
         assert_eq!(staged.target(), Path::new("/notes.txt"));
         assert!(state.in_flight_temps.lock_ignore_poison().is_empty());
 
@@ -499,6 +544,37 @@ mod tests {
         inner.create_file(Path::new("/notes.txt"), b"NEW").await.unwrap();
         staged.commit(&dest).await.unwrap();
         assert!(inner.exists(Path::new("/notes.txt")).await);
+    }
+
+    /// A write that goes straight to a final name nobody resolved a conflict for
+    /// must refuse a taken name itself, because no landing will: `CreateNew`.
+    /// Every other write may replace what's at its target (our own temp, the
+    /// caller's temp, or a name the caller claimed with a placeholder).
+    #[test]
+    fn only_a_single_shot_write_onto_a_name_expected_free_must_create_new() {
+        let state = state();
+        let mode_for = |requested: WriteStaging, single_shot: bool| {
+            StagedWrite::begin(&state, Path::new("/notes.txt"), resolve_staging(requested, single_shot)).write_mode()
+        };
+
+        assert_eq!(mode_for(WriteStaging::Stage, true), WriteMode::CreateNew);
+        assert_eq!(
+            mode_for(WriteStaging::StageOntoClaimedName, true),
+            WriteMode::CreateOrReplace,
+            "a claimed name holds the caller's own placeholder, which the write must replace"
+        );
+        assert_eq!(mode_for(WriteStaging::AlreadyStaged, true), WriteMode::CreateOrReplace);
+        for requested in [
+            WriteStaging::Stage,
+            WriteStaging::StageOntoClaimedName,
+            WriteStaging::AlreadyStaged,
+        ] {
+            assert_eq!(
+                mode_for(requested, false),
+                WriteMode::CreateOrReplace,
+                "{requested:?} writes a temp, and the landing decides about the final name"
+            );
+        }
     }
 
     /// Committing lands the bytes at the final name and drops the temp from the

@@ -44,7 +44,7 @@ use super::super::scratch_dir::ScratchDir;
 use super::super::state::{WriteOperationState, is_cancelled};
 use super::super::types::WriteOperationError;
 use super::edit_error::EditError;
-use crate::file_system::volume::{LocalPosixVolume, Volume, VolumeError};
+use crate::file_system::volume::{LocalPosixVolume, Volume, VolumeError, WriteMode};
 
 /// Same-directory temp infix: `foo.zip` uploads as `foo.zip.cmdr-tmp-<uuid>`.
 /// Mirrors the local mutator's convention and the app-wide `.cmdr-` crash-
@@ -208,7 +208,11 @@ async fn upload_archive(
         }
     };
 
-    match parent.write_from_stream(remote_temp, size, stream, &progress).await {
+    // `remote_temp` is a `.cmdr-tmp-*` we just minted, so it's ours to replace.
+    match parent
+        .write_from_stream(remote_temp, WriteMode::CreateOrReplace, size, stream, &progress)
+        .await
+    {
         Ok(_) => Ok(()),
         Err(err) => {
             // Remove the partial upload so the user's remote dir isn't left with a

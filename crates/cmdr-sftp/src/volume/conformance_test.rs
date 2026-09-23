@@ -77,6 +77,29 @@ async fn create_file_refuses_to_clobber() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
+async fn write_from_stream_create_new_refuses_to_clobber() {
+    // Same `SSH_FXF_EXCL` as `create_file`, on the upload's own open.
+    let (volume, dir) = stock_server_with_scratch("write-create-new-no-clobber").await;
+    let notes = format!("{dir}/notes.txt");
+    let fresh = format!("{dir}/fresh.txt");
+    volume
+        .create_file(Path::new(&notes), b"the user's notes")
+        .await
+        .expect(FIXTURE);
+
+    conformance::assert_write_from_stream_create_new_refuses_to_clobber(
+        &volume,
+        Path::new(&notes),
+        Path::new(&fresh),
+        b"new",
+    )
+    .await;
+
+    clean_scratch(&volume, &dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the SFTP fixture stack: sftp-servers/start.sh (sftp-fixture)"]
 async fn create_directory_all_reports_an_existing_directory_honestly() {
     // ❗ `Created` is a promise the transfer driver SPENDS: on it, it skips the
     // per-file destination conflict probe for everything it writes inside. SFTP

@@ -22,11 +22,13 @@
 //! `SEND` truncates unconditionally and `mv -n` exits 0 whether it moved or
 //! not (verified on Android 14 `toybox 0.8.9`, 2026-09-01). The window is the
 //! round trip between the stat and the verb, on a device only this host is
-//! writing to, and `conformance_test.rs` holds the refusal itself.
+//! writing to, and `conformance_test.rs` holds the refusal itself. A
+//! `write_from_stream(WriteMode::CreateNew)` takes the same stat just before its
+//! landing `mv -f`, so it shares the window.
 
 use std::path::Path;
 
-use cmdr_fs::volume::{DirectoryCreation, VolumeError};
+use cmdr_fs::volume::{DirectoryCreation, VolumeError, WriteMode};
 use log::debug;
 
 use super::AdbVolume;
@@ -56,7 +58,7 @@ impl AdbVolume {
             return Err(VolumeError::AlreadyExists(device));
         }
         let stream = Box::new(super::streams::BytesReadStream::new(content.to_vec()));
-        self.write_from_stream_impl(path, content.len() as u64, stream, &|_, _| {
+        self.write_from_stream_impl(path, WriteMode::CreateNew, content.len() as u64, stream, &|_, _| {
             std::ops::ControlFlow::Continue(())
         })
         .await?;

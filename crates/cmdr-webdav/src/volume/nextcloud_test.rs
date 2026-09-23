@@ -27,6 +27,7 @@ use reqwest::{Body, Method, StatusCode};
 
 use super::WebdavVolume;
 use super::testing::*;
+use cmdr_fs::volume::WriteMode;
 
 const FIXTURE: &str = "webdav-servers/start.sh nextcloud (webdav-fixture-nextcloud)";
 
@@ -130,6 +131,7 @@ async fn the_staged_write_path_lands_a_file_byte_exact_on_sabre_dav() {
     let written = volume
         .write_from_stream(
             &path,
+            WriteMode::CreateOrReplace,
             bytes.len() as u64,
             Box::new(BufferSource {
                 bytes: bytes.clone(),
@@ -220,6 +222,7 @@ async fn a_ranged_get_is_answered_with_a_window_rather_than_the_whole_file() {
     volume
         .write_from_stream(
             &dir.join(name),
+            WriteMode::CreateOrReplace,
             bytes.len() as u64,
             Box::new(BufferSource {
                 bytes: bytes.clone(),

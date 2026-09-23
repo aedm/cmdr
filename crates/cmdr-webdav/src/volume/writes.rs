@@ -27,7 +27,7 @@ use bytes::Bytes;
 use cmdr_fs::ignore_poison::IgnorePoison;
 use cmdr_fs::pluralize::pluralize_grouped;
 use cmdr_fs::staging::STAGING_TEMP_MARKER;
-use cmdr_fs::volume::{VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{VolumeError, VolumeReadStream, WriteMode};
 use log::debug;
 use reqwest::Method;
 use reqwest::header::{CONTENT_LENGTH, CONTENT_TYPE};
@@ -149,9 +149,14 @@ fn size_mismatch(remote: &str, got: u64, size: u64) -> VolumeError {
 impl WebdavVolume {
     /// Streams `stream` into a `.cmdr-tmp-*` sibling of `dest` and moves it into
     /// place. Returns the bytes written.
+    ///
+    /// The MOVE carries the mode: `Overwrite: T` replaces, `Overwrite: F`
+    /// (`CreateNew`) is refused by the server with 412 when the name is taken,
+    /// which leaves their file alone and takes only our temp away.
     pub(super) async fn write_from_stream_impl(
         &self,
         dest: &Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
@@ -275,12 +280,16 @@ impl WebdavVolume {
             return Err(VolumeError::Cancelled(self.volume_id().to_string()));
         }
 
+        let (overwrite, attempted) = match mode {
+            WriteMode::CreateNew => ("F", Attempted::TakingAName),
+            WriteMode::CreateOrReplace => ("T", Attempted::Reaching),
+        };
         let request = client
             .request(method("MOVE"), client.url_for(&temp, false))
             .header("Destination", client.url_for(&remote, false).as_str())
-            .header("Overwrite", "T")
+            .header("Overwrite", overwrite)
             .timeout(MUTATION_BUDGET);
-        if let Err(e) = self.send(&client, request, &remote, Attempted::Reaching).await {
+        if let Err(e) = self.send(&client, request, &remote, attempted).await {
             self.remove_best_effort(&temp).await;
             return Err(e);
         }

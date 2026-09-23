@@ -567,8 +567,9 @@ Cells: `strategy_server_side_copy_tests.rs` (eligibility, the fallback, staging,
 
 **Decision**: a write the DESTINATION performs as one indivisible operation skips the staging and goes straight to the
 file's final name (`WriteStaging::SingleShot`). The destination answers `Volume::write_is_single_shot(size)`;
-`transfer::staged_write::resolve_staging` is the only place that upgrades a `Stage` to it, and only ever a `Stage` (a caller's
-safe-replace temp keeps the ORIGINAL alive until the new bytes are complete, which is strictly stronger). Today SMB is
+`transfer::staged_write::resolve_staging` is the only place that upgrades a staged write (`Stage` or
+`StageOntoClaimedName`) to it, and never an `AlreadyStaged` one (a caller's safe-replace temp keeps the ORIGINAL alive
+until the new bytes are complete, which is strictly stronger). Today SMB is
 the only backend that answers `true`; MTP, local FS, archives, and in-memory keep the trait default of `false`.
 
 The answer has a SECOND consumer that is not about staging: the destination-side foreground yield exempts a single-shot
@@ -591,17 +592,23 @@ is asked of the destination, and the SMB backend answers with the SAME function 
 has no WRITE to compound with and takes the streaming writer). Two copies of that threshold IS the bug; don't
 introduce one.
 
-❗ **Known gap: a single-shot write is not no-replace.** Staging buys a second property besides "no partial at a real
+❗ **A single-shot write refuses a taken name itself.** Staging buys a second property besides "no partial at a real
 name": the landing is a rename that must not replace, so a name another writer took mid-upload is refused
-(`staged_write.rs::land`). A single-shot write skips that landing, and SMB's goes out through smb2's
-`write_file_compound`, whose CREATE is `FileOverwriteIf`: a file another writer put at the name while ours was
-buffering is REPLACED, under Skip, and the copy reports success (verified against the fixture's Samba, 2026-09-23).
-The window is one small file's upload. Closing it needs an exclusive (`FileCreate`) compound write in smb2 plus a way
-for `write_from_stream` to learn the name must be new (today it can't: the trait has no such argument). Pinned red,
-outside the lane, by `backend_suites/smb_transfer_safety_test.rs::smb_known_gap_a_single_shot_upload_replaces_a_name_taken_mid_upload`.
+(`staged_write.rs::land`). A single-shot write has no landing, so `SingleShot` carries the staged write's `LandingName`,
+and `StagedWrite::write_mode` passes `WriteMode::CreateNew` to `Volume::write_from_stream` for an `ExpectedFree` name.
+SMB sends that as smb2's `write_file_compound_exclusive` (CREATE with `FileCreate`), which the server refuses
+atomically with `STATUS_OBJECT_NAME_COLLISION` if the name is taken, so the other writer's file survives byte for byte
+and the copy reports `AlreadyExists`, same as a refused landing. ❌ Don't send it with `FileOverwriteIf`: under Skip,
+that reported success with the other writer's file gone (verified on the fixture's Samba, 2026-09-23). A
+`ClaimedByTheCaller` single-shot write passes `CreateOrReplace`, since the caller's `O_EXCL` placeholder sits at the
+name. `WriteMode` is a required argument, so every caller states which it means. Pinned on a live share by
+`backend_suites/smb_transfer_safety_test.rs::smb_integration_a_single_shot_upload_never_replaces_a_name_taken_mid_upload`,
+and per backend by `cmdr_fs::volume::conformance::assert_write_from_stream_create_new_refuses_to_clobber`.
 
-**Backend obligations** taken on with a `true` answer, both in `crates/cmdr-smb/src/volume/streams.rs`:
+**Backend obligations** taken on with a `true` answer, all in `crates/cmdr-smb/src/volume/streams.rs`:
 
+- `WriteMode::CreateNew` goes out as the exclusive compound write (and the exclusive `FileWriter` on the rare
+  streaming fallback), so the refusal is the server's, atomic, and a CREATE failure the cleanup below never touches.
 - The drained buffer, not the promised size, decides the final branch. A source that yields SHORT still goes out as one
   compound frame rather than dropping into the multi-round-trip streaming writer, which would be a broken promise at an
   unstaged final name.
@@ -617,7 +624,9 @@ drops before any response) is not a `Protocol` error, so nothing is cleaned up, 
 the CREATE — leaving a 0-byte file at the real name. This is not fixable from here rather than merely unfixed: with the
 connection gone there is no session to delete through, and the client cannot know whether the server got the frame at
 all. It is also the narrowest window on this path (one frame, no client round trip inside it), which is exactly why the
-exemption is scoped to single-shot writes and nothing wider.
+exemption is scoped to single-shot writes and nothing wider. Under `CreateNew` that leftover also makes the retry's
+exclusive CREATE answer `AlreadyExists`, so the file fails with a clash rather than being written over: we can't prove
+the 0-byte file is ours, and that is the same call the landing makes.
 
 **The hard-abort tier IS armed for a single-shot write**, unlike the stall watchdog (which never is — `../DETAILS.md`
 § "The guards, each load-bearing"). The difference is when each fires. An abort only ever fires with the process seconds

@@ -29,6 +29,7 @@ use crate::file_system::write_operations::types::ConflictResolution;
 // with no temp left behind.
 
 use crate::file_system::listing::FileEntry;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{CopyScanResult, ListingProgress, SpaceInfo, VolumeReadStream};
 use std::pin::Pin as StdPin;
 
@@ -379,11 +380,12 @@ impl Volume for RenameFailsDestVolume {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
     ) -> StdPin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        self.inner.write_from_stream(dest, size, stream, on_progress)
+        self.inner.write_from_stream(dest, mode, size, stream, on_progress)
     }
     /// The whole point of this double: the finalize rename onto `fails_onto`
     /// fails. Every other rename (the staged landing of the batch's other files)

@@ -7,7 +7,7 @@
 use super::SmbVolume;
 use super::mapping::map_smb_error;
 use super::session::update_state_on_smb_error;
-use cmdr_fs::volume::{ChannelReadStream, MutationEvent, Volume, VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{ChannelReadStream, MutationEvent, Volume, VolumeError, VolumeReadStream, WriteMode};
 use log::{debug, warn};
 use std::path::Path;
 use std::pin::Pin;
@@ -111,6 +111,20 @@ fn is_scratch_name(dest: &Path) -> bool {
 /// ours to clean up".
 fn create_succeeded_but_write_failed<T>(result: &Result<T, smb2::Error>) -> bool {
     matches!(result, Err(smb2::Error::Protocol { command, .. }) if *command != smb2::types::Command::Create)
+}
+
+/// Opens the streaming writer `mode` asks for: `FileCreate` for a name that
+/// must be new, `FileOverwriteIf` for one the caller may replace.
+async fn open_file_writer(
+    tree: &Arc<smb2::client::Tree>,
+    conn: smb2::client::Connection,
+    path: &str,
+    mode: WriteMode,
+) -> Result<smb2::client::stream::FileWriter, smb2::Error> {
+    match mode {
+        WriteMode::CreateNew => tree.create_file_writer_exclusive(conn, path).await,
+        WriteMode::CreateOrReplace => tree.create_file_writer(conn, path).await,
+    }
 }
 
 /// Wraps a pre-read `Vec<u8>` as a `VolumeReadStream` that yields the whole
@@ -328,6 +342,7 @@ impl SmbVolume {
     pub(super) fn write_from_stream_impl<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
@@ -428,13 +443,25 @@ impl SmbVolume {
                             "SmbVolume::write_from_stream: using compound fast-path ({} bytes)",
                             buffer.len()
                         );
-                        let write_result = tree.write_file_compound(&mut conn, &smb_path, &buffer).await;
+                        // `CreateNew` asks the server for `FileCreate`, so a name
+                        // someone else took while we drained is refused whole
+                        // (`STATUS_OBJECT_NAME_COLLISION` on the CREATE, nothing
+                        // opened, nothing written) and never replaced. That
+                        // refusal is a CREATE failure, so the cleanup below leaves
+                        // their file alone.
+                        let write_result = match mode {
+                            WriteMode::CreateNew => {
+                                tree.write_file_compound_exclusive(&mut conn, &smb_path, &buffer).await
+                            }
+                            WriteMode::CreateOrReplace => tree.write_file_compound(&mut conn, &smb_path, &buffer).await,
+                        };
                         if dest_is_scratch && matches!(write_result, Err(smb2::Error::CreditStarvation { .. })) {
                             // The window shrank after the limit was read, and
                             // smb2 refused the frame before anything reached the
-                            // wire. A staging temp can take the bytes streamed;
-                            // the real name can't, so that one surfaces the
-                            // error below with nothing written.
+                            // wire. A staging temp can take the bytes streamed
+                            // (the streaming writer below honors `mode` too); the
+                            // real name can't, so that one surfaces the error
+                            // below with nothing written, whichever `mode`.
                             debug!(
                                 "SmbVolume::write_from_stream: the credit window can't fund one compound write; streaming the drained {} bytes instead",
                                 buffer.len()
@@ -469,7 +496,7 @@ impl SmbVolume {
                         buffer.len(),
                         size
                     );
-                    let writer_result = tree.create_file_writer(conn, &smb_path).await;
+                    let writer_result = open_file_writer(&tree, conn, &smb_path, mode).await;
                     let mut writer = self.handle_smb_result("write_from_stream(open)", &smb_path, writer_result)?;
                     if !buffer.is_empty() {
                         let write_result = writer.write_chunk(&buffer).await;
@@ -500,7 +527,7 @@ impl SmbVolume {
                 // owned `FileWriter` on the cloned `Connection` directly —
                 // no client mutex is held while WRITEs are in flight, so N
                 // concurrent large copies pipeline over one SMB session.
-                let writer_result = tree.create_file_writer(conn, &smb_path).await;
+                let writer_result = open_file_writer(&tree, conn, &smb_path, mode).await;
                 let mut writer = self.handle_smb_result("write_from_stream(open)", &smb_path, writer_result)?;
 
                 loop {

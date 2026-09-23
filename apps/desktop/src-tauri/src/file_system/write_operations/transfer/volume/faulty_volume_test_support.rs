@@ -216,11 +216,12 @@ macro_rules! forward_volume_methods {
         fn write_from_stream<'a>(
             &'a self,
             dest: &'a ::std::path::Path,
+            mode: $crate::file_system::volume::WriteMode,
             size: u64,
             stream: Box<dyn $crate::file_system::volume::VolumeReadStream>,
             on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
         ) -> ::std::pin::Pin<Box<dyn ::std::future::Future<Output = Result<u64, $crate::file_system::volume::VolumeError>> + Send + 'a>> {
-            self.$inner.write_from_stream(dest, size, stream, on_progress)
+            self.$inner.write_from_stream(dest, mode, size, stream, on_progress)
         }
     };
     (@one $inner:ident, write_is_single_shot) => {
@@ -230,6 +231,7 @@ macro_rules! forward_volume_methods {
     };
 }
 
+use crate::file_system::volume::WriteMode;
 pub(crate) use forward_volume_methods;
 
 /// The operations [`FaultyVolume`] can be armed to fail on. One variant per
@@ -493,13 +495,14 @@ impl<V: Volume + 'static> Volume for FaultyVolume<V> {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         match self.fault_for(FaultyOp::WriteFromStream) {
             Some(e) => Box::pin(async move { Err(e) }),
-            None => self.inner.write_from_stream(dest, size, stream, on_progress),
+            None => self.inner.write_from_stream(dest, mode, size, stream, on_progress),
         }
     }
 }

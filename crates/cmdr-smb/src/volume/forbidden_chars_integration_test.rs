@@ -148,6 +148,7 @@ async fn a_forbidden_character_name_cmdr_writes_round_trips() {
     let written = vol
         .write_from_stream(
             &dest,
+            cmdr_fs::volume::WriteMode::CreateOrReplace,
             PAYLOAD.len() as u64,
             inline_read_stream(PAYLOAD.to_vec()),
             no_progress,

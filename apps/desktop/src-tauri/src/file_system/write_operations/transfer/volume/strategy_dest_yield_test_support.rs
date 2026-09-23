@@ -20,6 +20,7 @@ use std::time::Duration;
 use cmdr_fs::volume::host::activity::BusyVolumes;
 
 use crate::file_system::listing::FileEntry;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{ListingProgress, Volume, VolumeError, VolumeReadStream};
 use crate::ignore_poison::IgnorePoison;
 
@@ -169,6 +170,7 @@ impl Volume for ForegroundBusyDest {
     fn write_from_stream<'a>(
         &'a self,
         _dest: &'a Path,
+        _mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
@@ -271,6 +273,7 @@ impl Volume for PanicIfProbedDest {
     fn write_from_stream<'a>(
         &'a self,
         _dest: &'a Path,
+        _mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),

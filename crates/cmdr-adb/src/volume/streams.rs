@@ -11,11 +11,12 @@ use std::ops::ControlFlow;
 use std::path::Path;
 
 use cmdr_fs::staging::STAGING_TEMP_MARKER;
-use cmdr_fs::volume::{ChannelReadStream, VolumeError, VolumeReadStream};
+use cmdr_fs::volume::{ChannelReadStream, VolumeError, VolumeReadStream, WriteMode};
 use log::debug;
 
 use super::AdbVolume;
 use super::paths::join_device_path;
+use super::writes::WhatIsThere;
 use crate::errors::{ENOENT, volume_error_from_errno};
 use crate::sync::{MAX_DATA_CHUNK, SyncEntryKind, SyncSession};
 
@@ -76,9 +77,14 @@ impl AdbVolume {
     /// one `mv -f`, so nothing half-written ever wears the user's filename; on
     /// any failure the staging name is removed. ❗ Cancellation arrives only
     /// through `on_progress` answering `Break`: there is no token on this path.
+    ///
+    /// `CreateNew` stats the destination right before the `mv -f` and refuses
+    /// an occupied one, taking only the staging name away (`writes.rs` § "The
+    /// two accepted TOCTOU windows": `mv -n` can't say whether it moved).
     pub(super) async fn write_from_stream_impl(
         &self,
         dest: &Path,
+        mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &(dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
@@ -95,6 +101,10 @@ impl AdbVolume {
 
         match pumped {
             Ok(written) => {
+                if mode == WriteMode::CreateNew && self.probe(&device).await != WhatIsThere::Nothing {
+                    self.remove_partial(&staging).await;
+                    return Err(VolumeError::AlreadyExists(device));
+                }
                 if let Err(e) = self.shell_verb(&["mv", "-f", &staging, &device], &device).await {
                     self.remove_partial(&staging).await;
                     return Err(e);

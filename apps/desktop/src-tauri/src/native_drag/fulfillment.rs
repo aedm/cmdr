@@ -52,7 +52,7 @@ use std::path::{Path, PathBuf};
 
 use crate::file_system::volume::Volume;
 use crate::file_system::volume::friendly_error::{ErrorCategory, ListingError, listing_error_from_volume_error};
-use crate::file_system::volume::{VolumeError, VolumeReadStream};
+use crate::file_system::volume::{VolumeError, VolumeReadStream, WriteMode};
 
 /// A drag-out fulfillment failure, carrying the typed [`ListingError`]
 /// classification so the delegate can surface a title through the promise
@@ -270,7 +270,11 @@ async fn write_to_local_dest(
     on_progress: &(dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
 ) -> Result<u64, VolumeError> {
     let local = crate::file_system::volume::LocalPosixVolume::new("Local", PathBuf::from("/"));
-    local.write_from_stream(dest_path, size, stream, on_progress).await
+    // Finder created `dest_path` as a placeholder for us to fill, so it's ours
+    // to replace.
+    local
+        .write_from_stream(dest_path, WriteMode::CreateOrReplace, size, stream, on_progress)
+        .await
 }
 
 /// Recursively downloads a source directory into the Finder-created `dest_path`.

@@ -12,6 +12,7 @@ use cmdr_fs::volume::{DirectoryCreation, Volume, VolumeError};
 use super::AdbVolume;
 use super::testing::{FIXTURE_SERIAL, connect_fake, fixture_path};
 use crate::testing::{FakeAdbServer, FakeTree};
+use cmdr_fs::volume::WriteMode;
 
 /// A phone with the usual `/sdcard` and a handful of files in it.
 fn seeded_tree() -> FakeTree {
@@ -52,6 +53,19 @@ async fn create_file_refuses_to_clobber() {
     let (_server, volume) = seeded().await;
     conformance::assert_create_file_refuses_to_clobber(volume.as_ref(), &fixture_path("/sdcard/notes.txt"), b"new")
         .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn write_from_stream_create_new_refuses_to_clobber() {
+    // The landing `mv -f` replaces, so the refusal is the stat just before it.
+    let (_server, volume) = seeded().await;
+    conformance::assert_write_from_stream_create_new_refuses_to_clobber(
+        volume.as_ref(),
+        &fixture_path("/sdcard/notes.txt"),
+        &fixture_path("/sdcard/fresh.txt"),
+        b"new",
+    )
+    .await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -121,6 +135,7 @@ async fn a_write_lands_through_a_staging_sibling_and_leaves_no_partial() {
     let written = volume
         .write_from_stream(
             &fixture_path("/sdcard/big.bin"),
+            WriteMode::CreateOrReplace,
             payload.len() as u64,
             source,
             &|done, total| {
@@ -157,6 +172,7 @@ async fn a_cancelled_write_removes_its_partial() {
     let outcome = volume
         .write_from_stream(
             &fixture_path("/sdcard/never.bin"),
+            WriteMode::CreateOrReplace,
             payload.len() as u64,
             source,
             &|_, _| std::ops::ControlFlow::Break(()),

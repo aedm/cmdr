@@ -7,6 +7,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use super::test_support::*;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{DirectoryCreation, VolumeError};
 
 /// A destination volume whose streaming write ALWAYS fails: it delegates reads,
@@ -455,6 +456,7 @@ impl Volume for FailOnNameVolume {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn crate::file_system::volume::VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
@@ -471,7 +473,7 @@ impl Volume for FailOnNameVolume {
                 })
             });
         }
-        self.inner.write_from_stream(dest, size, stream, on_progress)
+        self.inner.write_from_stream(dest, mode, size, stream, on_progress)
     }
 }
 

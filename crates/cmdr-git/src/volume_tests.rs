@@ -12,6 +12,7 @@ use cmdr_fs::volume::conformance;
 use crate::portal::GitPortal;
 use crate::test_fixtures::{EntryKind, Fixture, cleanup, git_cli_capture, temp_dir};
 use crate::volume::GitPortalVolume;
+use cmdr_fs::volume::WriteMode;
 use cmdr_fs::volume::host::VolumeHost;
 use cmdr_fs::volume::{DirectoryCreation, InMemoryVolume, SpaceInfo, Volume, VolumeError};
 
@@ -315,7 +316,7 @@ async fn a_copy_out_of_a_snapshot_carries_the_bytes_and_the_executable_bit() {
         ControlFlow::Continue(())
     };
     let written = dst
-        .write_from_stream(dest_rel, total, stream, &on_progress)
+        .write_from_stream(dest_rel, WriteMode::CreateOrReplace, total, stream, &on_progress)
         .await
         .expect("write_from_stream");
     assert_eq!(written, total);

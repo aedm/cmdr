@@ -26,6 +26,7 @@
 use super::streams::InlineReadStream;
 use super::test_support::*;
 use super::*;
+use cmdr_fs::volume::WriteMode;
 
 /// `(requests_sent, compound_requests_sent)` on the volume's main connection.
 async fn request_counts(vol: &SmbVolume) -> (u64, u64) {
@@ -283,6 +284,7 @@ async fn smb_integration_a_single_shot_write_leaves_as_one_compound_frame() {
     let written = vol
         .write_from_stream(
             Path::new(&smb_path),
+            WriteMode::CreateOrReplace,
             size,
             Box::new(InlineReadStream::new(data.clone())),
             &|_, _| std::ops::ControlFlow::Continue(()),
@@ -504,6 +506,7 @@ async fn smb_integration_a_write_the_credit_window_cant_fund_is_staged_and_strea
     let written = vol
         .write_from_stream(
             Path::new(&temp),
+            WriteMode::CreateOrReplace,
             size,
             Box::new(InlineReadStream::new(data.clone())),
             &|_, _| std::ops::ControlFlow::Continue(()),
@@ -523,7 +526,9 @@ async fn smb_integration_a_write_the_credit_window_cant_fund_is_staged_and_strea
 /// user's real filename, which only a single-shot promise sends there. If the
 /// window shrank after the promise, the frame is refused before it reaches the
 /// wire, and streaming instead would leave a partial at that name through a
-/// crash. So the write fails, fast, and the name stays empty.
+/// crash. So the write fails, fast, and the name stays empty. Both modes: a
+/// promise goes out as `CreateNew` onto a name expected free (the exclusive
+/// frame) and as `CreateOrReplace` onto a name the caller claimed.
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_a_refused_frame_to_a_final_name_writes_nothing_there() {
@@ -533,36 +538,42 @@ async fn smb_integration_a_refused_frame_to_a_final_name_writes_nothing_there() 
     let dir = test_dir_name();
     ensure_clean(&direct, &dir).await;
     direct.create_directory(Path::new(&dir)).await.unwrap();
-    let data = vec![0x5Au8; 5 * 1024 * 1024];
 
-    let final_name = format!("{}/five-mib.bin", dir);
-    let started = std::time::Instant::now();
-    let result = vol
-        .write_from_stream(
-            Path::new(&final_name),
-            data.len() as u64,
-            Box::new(InlineReadStream::new(data)),
-            &|_, _| std::ops::ControlFlow::Continue(()),
-        )
-        .await;
+    for mode in [WriteMode::CreateNew, WriteMode::CreateOrReplace] {
+        let data = vec![0x5Au8; 5 * 1024 * 1024];
+        let final_name = format!("{}/five-mib.bin", dir);
+        let started = std::time::Instant::now();
+        let result = vol
+            .write_from_stream(
+                Path::new(&final_name),
+                mode,
+                data.len() as u64,
+                Box::new(InlineReadStream::new(data)),
+                &|_, _| std::ops::ControlFlow::Continue(()),
+            )
+            .await;
 
-    assert!(
-        result.is_err(),
-        "a refused one-shot frame must not stream to the real name"
-    );
-    assert!(
-        started.elapsed() < Duration::from_secs(2),
-        "smb2 refuses an unfundable frame at once; took {:?}",
-        started.elapsed()
-    );
-    let names: Vec<String> = direct
-        .list_directory(Path::new(&dir), None)
-        .await
-        .unwrap()
-        .into_iter()
-        .map(|e| e.name)
-        .collect();
-    assert!(names.is_empty(), "nothing may reach the final name; got {names:?}");
+        assert!(
+            result.is_err(),
+            "{mode:?}: a refused one-shot frame must not stream to the real name"
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "{mode:?}: smb2 refuses an unfundable frame at once; took {:?}",
+            started.elapsed()
+        );
+        let names: Vec<String> = direct
+            .list_directory(Path::new(&dir), None)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
+        assert!(
+            names.is_empty(),
+            "{mode:?}: nothing may reach the final name; got {names:?}"
+        );
+    }
 
     ensure_clean(&direct, &dir).await;
 }

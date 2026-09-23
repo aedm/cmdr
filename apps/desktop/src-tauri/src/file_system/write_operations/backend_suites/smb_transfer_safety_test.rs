@@ -29,23 +29,16 @@ async fn smb_integration_a_name_taken_mid_upload_is_never_replaced() {
     a_name_taken_mid_upload_is_never_replaced(remote, dir, ConflictResolution::Skip, STAGED_ON_EVERY_BACKEND).await;
 }
 
-/// ❗ KNOWN GAP, red today: the same race on a file SMB lands SINGLE-SHOT.
-///
-/// A write that fits one compound frame skips staging (`resolve_staging`) and
-/// goes straight to its final name through smb2's `write_file_compound`, whose
-/// CREATE uses `FileOverwriteIf`. So it never meets the no-replace landing the
-/// staged path relies on, and a file another writer put at the name while ours
-/// was buffering is REPLACED, under Skip, with the copy reporting success
-/// (verified against the fixture's Samba, 2026-09-23: `completed: true`, the
-/// name holding our bytes). Closing it needs an exclusive (`FileCreate`)
-/// compound write in smb2 and a way for `write_from_stream` to learn the name
-/// must be new; that design is open, so the cell sits outside the lane.
+/// The same race on a file SMB lands SINGLE-SHOT, straight at its final name
+/// with no staged landing to refuse for it. The name was expected free, so the
+/// compound write goes out as `WriteMode::CreateNew` (smb2's
+/// `write_file_compound_exclusive`, `FileCreate`) and the server refuses the
+/// taken name atomically; the copy reports the clash and the other writer's
+/// file survives. Before that it went out with `FileOverwriteIf` and replaced
+/// their file under Skip, reporting success (the fixture's Samba, 2026-09-23).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-// allowed-out-of-lane-fixture-cell: pins a known SMB data-safety gap (single-shot uploads
-// replace a name taken mid-upload) until the exclusive compound write lands; in the lane
-// it would fail every run.
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
-async fn smb_known_gap_a_single_shot_upload_replaces_a_name_taken_mid_upload() {
+async fn smb_integration_a_single_shot_upload_never_replaces_a_name_taken_mid_upload() {
     let (remote, dir) = fixture().await;
     a_name_taken_mid_upload_is_never_replaced(remote, dir, ConflictResolution::Skip, FITS_ONE_SMB_WRITE).await;
 }

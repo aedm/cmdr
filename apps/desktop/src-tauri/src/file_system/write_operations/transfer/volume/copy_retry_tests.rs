@@ -19,6 +19,7 @@ use crate::file_system::write_operations::types::ConflictResolution;
 use std::pin::Pin as StdPin;
 
 use super::super::super::conflict_responder_test_support::{ConflictResponderSink, file_conflict_count};
+use crate::file_system::volume::WriteMode;
 
 /// A destination that fails the first `fail_writes` writes of ONE named file and
 /// otherwise behaves exactly like the `InMemoryVolume` it wraps.
@@ -143,6 +144,7 @@ impl Volume for FlakyMergeDest {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
@@ -157,7 +159,10 @@ impl Volume for FlakyMergeDest {
         };
         Box::pin(async move {
             if attempt >= self.fail_writes {
-                return self.inner.write_from_stream(dest, size, stream, on_progress).await;
+                return self
+                    .inner
+                    .write_from_stream(dest, mode, size, stream, on_progress)
+                    .await;
             }
             // Leave the partial behind, like a backend that never reached its own
             // cleanup: the staging layer is what has to clear it.

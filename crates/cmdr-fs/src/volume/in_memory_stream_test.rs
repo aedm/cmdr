@@ -4,6 +4,7 @@
 //! surface is `in_memory_scan_test.rs`.
 
 use super::*;
+use crate::volume::WriteMode;
 use std::path::Path;
 
 // ============================================================================
@@ -44,9 +45,13 @@ async fn test_round_trip_stream_copy() {
     let stream = source.open_read_stream(Path::new("/payload.bin")).await.unwrap();
     let size = stream.total_size();
     let bytes = dest
-        .write_from_stream(Path::new("/payload.bin"), size, stream, &|_, _| {
-            std::ops::ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new("/payload.bin"),
+            WriteMode::CreateOrReplace,
+            size,
+            stream,
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
         .await
         .unwrap();
     assert_eq!(bytes, data.len() as u64);
@@ -146,7 +151,13 @@ async fn test_write_from_stream_creates_file() {
     let stream = source.open_read_stream(Path::new("/data.bin")).await.unwrap();
     let no_progress = &|_: u64, _: u64| std::ops::ControlFlow::Continue(());
     let bytes = dest
-        .write_from_stream(Path::new("/data.bin"), 14, stream, no_progress)
+        .write_from_stream(
+            Path::new("/data.bin"),
+            WriteMode::CreateOrReplace,
+            14,
+            stream,
+            no_progress,
+        )
         .await
         .unwrap();
 
@@ -170,12 +181,18 @@ async fn test_write_from_stream_progress_callback() {
 
     let stream = source.open_read_stream(Path::new("/big.bin")).await.unwrap();
     let bytes = dest
-        .write_from_stream(Path::new("/big.bin"), 100_000, stream, &|bytes_done, total| {
-            progress_calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            last_bytes.store(bytes_done, std::sync::atomic::Ordering::Relaxed);
-            assert_eq!(total, 100_000);
-            std::ops::ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new("/big.bin"),
+            WriteMode::CreateOrReplace,
+            100_000,
+            stream,
+            &|bytes_done, total| {
+                progress_calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                last_bytes.store(bytes_done, std::sync::atomic::Ordering::Relaxed);
+                assert_eq!(total, 100_000);
+                std::ops::ControlFlow::Continue(())
+            },
+        )
         .await
         .unwrap();
 
@@ -198,14 +215,20 @@ async fn test_write_from_stream_cancel_via_progress() {
     let call_count = std::sync::atomic::AtomicUsize::new(0);
     let stream = source.open_read_stream(Path::new("/big.bin")).await.unwrap();
     let result = dest
-        .write_from_stream(Path::new("/big.bin"), 200_000, stream, &|_, _| {
-            let n = call_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            if n >= 1 {
-                std::ops::ControlFlow::Break(())
-            } else {
-                std::ops::ControlFlow::Continue(())
-            }
-        })
+        .write_from_stream(
+            Path::new("/big.bin"),
+            WriteMode::CreateOrReplace,
+            200_000,
+            stream,
+            &|_, _| {
+                let n = call_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                if n >= 1 {
+                    std::ops::ControlFlow::Break(())
+                } else {
+                    std::ops::ControlFlow::Continue(())
+                }
+            },
+        )
         .await;
 
     assert!(result.is_err());

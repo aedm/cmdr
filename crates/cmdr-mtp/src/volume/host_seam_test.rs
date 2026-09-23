@@ -36,6 +36,7 @@ use crate::connection::MtpConnectionManager;
 use crate::connection::events::no_device_events;
 use crate::testing::{ConnectedDevice, connect_virtual_device, device_lock, recording_registrar, volume_for};
 use crate::volume::MtpVolume;
+use cmdr_fs::volume::WriteMode;
 
 /// How many files the walked directory holds.
 ///
@@ -84,6 +85,7 @@ async fn a_walk_over_a_directory_reports_nothing_however_many_entries_it_holds()
         volume
             .write_from_stream(
                 &dir.join(format!("file-{i:03}.txt")),
+                WriteMode::CreateOrReplace,
                 1,
                 Box::new(BytesStream::new(b"x".to_vec())),
                 &|_bytes, _total| ControlFlow::Continue(()),

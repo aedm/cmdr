@@ -16,6 +16,7 @@ use crate::test_fixtures::{
 use cmdr_fs::ignore_poison::IgnorePoison;
 use cmdr_fs::testing::TestDir;
 use cmdr_fs::volume::InMemoryVolume;
+use cmdr_fs::volume::WriteMode;
 use cmdr_fs::volume::{ListingProgress, Volume, VolumeError, VolumeReadStream};
 
 /// A zip written into a scratch dir, cleaned up on drop. Hands out
@@ -424,7 +425,9 @@ async fn every_mutation_is_unsupported() {
     mem.create_file(Path::new("/src"), b"hi").await.unwrap();
     let source = mem.open_read_stream(Path::new("/src")).await.unwrap();
     let result = volume
-        .write_from_stream(Path::new("dest"), 2, source, &|_, _| ControlFlow::Continue(()))
+        .write_from_stream(Path::new("dest"), WriteMode::CreateOrReplace, 2, source, &|_, _| {
+            ControlFlow::Continue(())
+        })
         .await;
     assert!(matches!(result, Err(VolumeError::NotSupported)));
 }

@@ -81,6 +81,20 @@ async fn create_file_refuses_to_clobber() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn write_from_stream_create_new_refuses_to_clobber() {
+    // The upload lands by MOVE, so the refusal is `Overwrite: F`'s 412.
+    let (volume, dir) = stock_server_with_scratch().await;
+    let notes = dir.join("notes.txt");
+    let fresh = dir.join("fresh.txt");
+    volume.create_file(&notes, b"the user's notes").await.expect(FIXTURE);
+
+    conformance::assert_write_from_stream_create_new_refuses_to_clobber(&volume, &notes, &fresh, b"new").await;
+
+    clean(&volume, &dir).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
 async fn create_directory_all_reports_an_existing_directory_honestly() {
     // ❗ `Created` is a promise the transfer driver SPENDS: on it, it skips the
     // per-file destination conflict probe for everything it writes inside.

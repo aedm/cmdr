@@ -10,6 +10,7 @@
 //! This pairs with `smb_soak_test.rs`.
 
 use super::smb_test_support::*;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::smb_volume_id;
 use cmdr_smb::volume::*;
 use std::sync::OnceLock;
@@ -367,7 +368,7 @@ async fn run_concurrent_write_pass(
         let size = buf.len() as u64;
         let progress = |_a: u64, _b: u64| -> std::ops::ControlFlow<()> { std::ops::ControlFlow::Continue(()) };
         let bytes = vol
-            .write_from_stream(&dest_abs, size, stream, &progress)
+            .write_from_stream(&dest_abs, WriteMode::CreateOrReplace, size, stream, &progress)
             .await
             .unwrap_or_else(|e| panic!("pre-upload {name} failed: {e:?}"));
         assert_eq!(bytes, size, "pre-upload size mismatch");

@@ -99,6 +99,41 @@ async fn smb_integration_create_file_honors_the_shared_no_clobber_contract() {
     ensure_clean(&smb_vol, &base).await;
 }
 
+/// The shared `write_from_stream(CreateNew)` no-clobber assertion, against a
+/// real SMB server. `b"new"` fits one compound frame, so this is the
+/// single-shot path, where no staged landing refuses on the write's behalf: the
+/// refusal is the server's `STATUS_OBJECT_NAME_COLLISION` on
+/// `write_file_compound_exclusive`'s `FileCreate`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_write_from_stream_create_new_honors_the_shared_no_clobber_contract() {
+    let smb_vol = Arc::new(make_docker_volume().await);
+    let base = test_dir_name();
+    ensure_clean(&smb_vol, &base).await;
+
+    smb_vol.create_directory(Path::new(&base)).await.unwrap();
+    let notes = format!("{base}/notes.txt");
+    let fresh = format!("{base}/fresh.txt");
+    smb_vol
+        .create_file(Path::new(&notes), b"the user's notes")
+        .await
+        .unwrap();
+    assert!(
+        smb_vol.write_is_single_shot(3).await,
+        "fixture precondition: the write under test must take the single-shot compound path"
+    );
+
+    cmdr_fs::volume::conformance::assert_write_from_stream_create_new_refuses_to_clobber(
+        smb_vol.as_ref(),
+        Path::new(&notes),
+        Path::new(&fresh),
+        b"new",
+    )
+    .await;
+
+    ensure_clean(&smb_vol, &base).await;
+}
+
 /// The shared `Volume::create_directory_all` honesty assertion, against a real
 /// SMB server: the trait's default walk composed from SMB's own `exists` +
 /// `create_directory`, over the wire.

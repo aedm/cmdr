@@ -22,6 +22,7 @@
 
 use super::*;
 use crate::file_system::listing::FileEntry;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{
     CopyScanResult, DirectoryCreation, InMemoryVolume, ListingProgress, SpaceInfo, VolumeReadStream,
 };
@@ -273,13 +274,16 @@ impl Volume for RecordingDest {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        _mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         Box::pin(async move {
             let real = self.resolve(dest).await;
-            self.inner.write_from_stream(&real, size, stream, on_progress).await
+            self.inner
+                .write_from_stream(&real, WriteMode::CreateOrReplace, size, stream, on_progress)
+                .await
         })
     }
 }

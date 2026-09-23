@@ -74,6 +74,27 @@ async fn create_file_honors_the_shared_no_clobber_contract() {
     cmdr_fs::volume::conformance::assert_create_file_refuses_to_clobber(&volume, Path::new("notes.txt"), b"new").await;
 }
 
+/// The shared `write_from_stream(CreateNew)` no-clobber assertion. LocalPosix
+/// earns it with `OpenOptions::create_new(true)` (`O_EXCL`).
+#[tokio::test]
+async fn write_from_stream_create_new_honors_the_shared_no_clobber_contract() {
+    let test_dir = TestDir::new("write_create_new_conformance_test");
+    let volume = LocalPosixVolume::new("Test", &*test_dir);
+
+    volume
+        .create_file(Path::new("notes.txt"), b"the user's notes")
+        .await
+        .unwrap();
+
+    cmdr_fs::volume::conformance::assert_write_from_stream_create_new_refuses_to_clobber(
+        &volume,
+        Path::new("notes.txt"),
+        Path::new("fresh.txt"),
+        b"new",
+    )
+    .await;
+}
+
 /// The shared `Volume::create_directory_all` honesty assertion, over the trait's
 /// default walk composed from LocalPosix's own `exists` + `create_directory`.
 #[tokio::test]

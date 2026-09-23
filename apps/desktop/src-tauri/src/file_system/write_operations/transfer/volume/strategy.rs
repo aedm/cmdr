@@ -635,7 +635,7 @@ pub(super) async fn stream_pipe_file(
         // already there and we never touched it" (`staged_write.rs` § abandon).
         // Abandoning one from out here would add a client-initiated instance of
         // the transport hazard that exemption already documents as unfixable.
-        let stall_abort = if resolved_staging == WriteStaging::SingleShot {
+        let stall_abort = if matches!(resolved_staging, WriteStaging::SingleShot(_)) {
             None
         } else {
             arm_current_task_stall_abort()
@@ -653,7 +653,8 @@ pub(super) async fn stream_pipe_file(
         // Cost on the happy path: two already-live atomics polled per wakeup of
         // the write future. No allocation, no timer, no syscall, and no change to
         // any backend.
-        let write_fut = dest_volume.write_from_stream(staged.target(), size, stream, on_file_progress);
+        let write_fut =
+            dest_volume.write_from_stream(staged.target(), staged.write_mode(), size, stream, on_file_progress);
         let outcome = tokio::select! {
             biased;
             () = state.backend_abort.cancelled() => WriteAttemptOutcome::HardAborted,

@@ -811,7 +811,12 @@ paths, and if every path resolves via the oracle the stat pipeline is skipped en
 frame (`streams::fits_one_compound_write`) **Why**: The streaming open+read+close sequence costs 3 RTTs per file. For
 small files (typical 10 KB copies on a NAS) that dominates wall-clock at high-latency links (~60 ms RTT → ~180 ms/file
 just for protocol overhead, not data). `smb2` already exposes `Tree::read_file_compound` (CREATE+READ+CLOSE in a single
-compound frame = 1 RTT) and `Tree::write_file_compound` (CREATE+WRITE+FLUSH+CLOSE = 1 RTT). The copy pipeline feeds
+compound frame = 1 RTT) and `Tree::write_file_compound` (CREATE+WRITE+FLUSH+CLOSE = 1 RTT), with
+`write_file_compound_exclusive` (`FileCreate`) for `WriteMode::CreateNew`, the same pair as `create_file_writer` /
+`create_file_writer_exclusive` on the streaming path, so every branch of `write_from_stream` (the frame, a staging
+temp's streamed fallback, a too-big write) honors the mode (why the mode matters:
+`apps/desktop/src-tauri/src/file_system/write_operations/transfer/volume/DETAILS.md` § "The single-shot exemption").
+The copy pipeline feeds
 per-file size hints from the pre-copy scan; when the size is known and fits the threshold, we take the compound path.
 The read side stops at what the link moves in 250 ms (smb2's `quick_read_limit`: one 512 KiB chunk until a download of
 two or more chunks has measured the rate, then `rate × 250 ms`, capped at `max_read_size`; the rate expires after 30 s

@@ -1495,6 +1495,10 @@ pub trait Volume: Send + Sync {
     /// foreground yield leans on it to let a small upload stand aside mid-drain;
     /// `write_operations/transfer/volume/DETAILS.md` § "The single-shot exemption".
     ///
+    /// ❌ And a THIRD: a single-shot write has no staged landing to refuse a name
+    /// someone took mid-upload, so its [`WriteMode::CreateNew`] refusal must be
+    /// atomic (SMB's `FileCreate`), never a check before the write.
+    ///
     /// `false` (the default): every write to this volume stages.
     fn write_is_single_shot<'a>(&'a self, size: u64) -> Pin<Box<dyn Future<Output = bool> + Send + 'a>> {
         let _ = size;
@@ -1507,10 +1511,23 @@ pub trait Volume: Send + Sync {
     /// written. Return `ControlFlow::Break(())` to cancel the transfer.
     ///
     /// # Arguments
-    /// * `dest` - Destination path (file will be created/overwritten)
+    /// * `dest` - Destination path
+    /// * `mode` - What to do with a file already at `dest` ([`WriteMode`])
     /// * `size` - Total size in bytes (required for protocols like MTP)
     /// * `stream` - Source data stream
     /// * `on_progress` - Progress callback; return `ControlFlow::Break(())` to cancel
+    ///
+    /// # `WriteMode::CreateNew` must not clobber
+    ///
+    /// Under [`WriteMode::CreateNew`] a file at `dest` is refused with
+    /// `VolumeError::AlreadyExists` and left byte for byte, however late it
+    /// arrived: the caller found the name free, and a file there now is another
+    /// writer's. This matters most for a [`write_is_single_shot`](Self::write_is_single_shot)
+    /// write, which goes straight to the final name with no staged landing to
+    /// refuse for it. Enforced by `conformance::assert_write_from_stream_create_new_refuses_to_clobber`.
+    ///
+    /// A refusal must also leave the backend's own cleanup alone: nothing at
+    /// `dest` is ours, so a "delete the partial" arm must not fire on it.
     ///
     /// # Streaming requirement
     ///
@@ -1528,11 +1545,12 @@ pub trait Volume: Send + Sync {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
-        let _ = (dest, size, stream, on_progress);
+        let _ = (dest, mode, size, stream, on_progress);
         Box::pin(async { Err(VolumeError::NotSupported) })
     }
 

@@ -38,6 +38,27 @@ impl IndexWalk {
     }
 }
 
+/// What [`Volume::write_from_stream`](super::Volume::write_from_stream) may do
+/// to a file that already holds the destination name.
+///
+/// Only the caller knows which it is, because only the caller knows whether it
+/// checked the name or claimed it: the backend sees the same occupied path
+/// either way. A required argument, so no call site can leave it to a default.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WriteMode {
+    /// The name was free when the caller looked, and nobody decided what should
+    /// happen to a file there. Something at it now (another writer got there
+    /// mid-upload) is refused with [`VolumeError::AlreadyExists`] and left
+    /// untouched, the same contract as [`Volume::create_file`](super::Volume::create_file).
+    /// Backends use their atomic primitive where they have one (`O_EXCL`,
+    /// SMB's `FileCreate`, `SSH_FXF_EXCL`, WebDAV's `If-None-Match: *`) and
+    /// check just before writing where they don't (MTP, ADB).
+    CreateNew,
+    /// Whatever holds the name is the caller's to replace: a temp it minted, a
+    /// name it claimed with a placeholder, a file the user chose to overwrite.
+    CreateOrReplace,
+}
+
 /// Whether [`Volume::create_directory_all`](super::Volume::create_directory_all)
 /// had to create the directory it was asked for, or found one already there.
 ///

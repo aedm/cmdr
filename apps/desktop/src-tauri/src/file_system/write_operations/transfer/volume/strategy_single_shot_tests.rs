@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 
 use crate::file_system::listing::FileEntry;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{InMemoryVolume, ListingProgress, Volume, VolumeError, VolumeReadStream};
 use crate::ignore_poison::IgnorePoison;
 
@@ -107,6 +108,7 @@ impl Volume for SingleShotDest {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        _mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),

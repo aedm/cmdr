@@ -9,6 +9,7 @@
 
 use super::super::{VolumeError, VolumeReadStream};
 use super::LocalPosixVolume;
+use crate::file_system::volume::WriteMode;
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
@@ -148,6 +149,7 @@ impl LocalPosixVolume {
     pub(super) fn write_from_stream_impl<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         mut stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> std::ops::ControlFlow<()> + Sync),
@@ -164,12 +166,22 @@ impl LocalPosixVolume {
                     .map_err(|e| VolumeError::from_io_at(&e, &parent_for_error))?;
             }
 
-            // Open destination file on the blocking pool.
+            // Open destination file on the blocking pool. `CreateNew` is
+            // `O_EXCL`: a file already at the name is refused atomically and
+            // left alone, before anything of ours exists to clean up.
             let dest_for_open = dest_abs.clone();
-            let mut file = spawn_blocking(move || std::fs::File::create(&dest_for_open))
-                .await
-                .expect("spawn_blocking File::create closure doesn't panic and the task is uncancelable")
-                .map_err(|e| VolumeError::from_io_at(&e, &dest_abs))?;
+            let mut file = spawn_blocking(move || {
+                let mut options = std::fs::OpenOptions::new();
+                options.write(true);
+                match mode {
+                    WriteMode::CreateNew => options.create_new(true),
+                    WriteMode::CreateOrReplace => options.create(true).truncate(true),
+                };
+                options.open(&dest_for_open)
+            })
+            .await
+            .expect("spawn_blocking open closure doesn't panic and the task is uncancelable")
+            .map_err(|e| VolumeError::from_io_at(&e, &dest_abs))?;
 
             let mut bytes_written = 0u64;
             while let Some(chunk_result) = stream.next_chunk().await {

@@ -15,7 +15,10 @@ use std::path::Path;
 use std::sync::Arc;
 
 use super::scan_stop::TestScanStop;
-use super::{DirectoryCreation, ScanBoundary, ScanStop, ScanStopSignal, SourceItemInfo, Volume, VolumeError};
+use super::{
+    DirectoryCreation, InMemoryVolume, ScanBoundary, ScanStop, ScanStopSignal, SourceItemInfo, Volume, VolumeError,
+    WriteMode,
+};
 
 /// The size `path` reports right now, for a fixture precondition or an
 /// after-the-fact "nothing was overwritten" check.
@@ -162,6 +165,82 @@ pub async fn assert_create_file_refuses_to_clobber(volume: &dyn Volume, path: &P
         "a refused create_file must not touch the file, but {} went from {size_before:?} to {size_after:?} bytes",
         path.display(),
     );
+}
+
+/// [`Volume::write_from_stream`] under [`WriteMode::CreateNew`] refuses a path
+/// that already exists, rather than replacing what's there, and a write onto a
+/// free name still lands.
+///
+/// `path` must already exist on `volume` and hold a different number of bytes
+/// than `content`; `free` must not exist. `content` should be small enough for
+/// the backend's single-shot path when it has one (SMB's compound write), since
+/// that is the path with no staged landing to refuse on its behalf.
+///
+/// **Why this one is worth a shared assertion.** A copy that found a name free
+/// passes `CreateNew`, and on a backend that writes it single-shot (straight to
+/// the final name) nothing else stands between that write and a file another
+/// writer put there mid-upload. A backend that replaced instead reports success
+/// with the other writer's file gone.
+pub async fn assert_write_from_stream_create_new_refuses_to_clobber(
+    volume: &dyn Volume,
+    path: &Path,
+    free: &Path,
+    content: &[u8],
+) {
+    let size_before = size_of(volume, path, "fixture precondition").await;
+    assert!(
+        size_before != Some(content.len() as u64),
+        "fixture precondition: {} must differ in length from the clobbering content so an overwrite is visible; both are {size_before:?} bytes",
+        path.display(),
+    );
+
+    let outcome = write_new(volume, path, content).await;
+    assert!(
+        matches!(outcome, Err(VolumeError::AlreadyExists(_))),
+        "write_from_stream(CreateNew) over the existing {} must refuse with AlreadyExists; got {outcome:?}",
+        path.display(),
+    );
+    let size_after = size_of(volume, path, "after the refused write").await;
+    assert_eq!(
+        size_after,
+        size_before,
+        "a refused write must not touch the file, but {} went from {size_before:?} to {size_after:?} bytes",
+        path.display(),
+    );
+
+    let landed = write_new(volume, free, content).await;
+    assert_eq!(
+        landed.as_ref().ok(),
+        Some(&(content.len() as u64)),
+        "write_from_stream(CreateNew) onto the free {} must land every byte; got {landed:?}",
+        free.display(),
+    );
+    assert_eq!(
+        size_of(volume, free, "after the write onto a free name").await,
+        Some(content.len() as u64),
+        "{} must hold the written bytes",
+        free.display(),
+    );
+}
+
+/// One `write_from_stream(CreateNew)` of `content` to `dest`, streamed from an
+/// in-memory source.
+async fn write_new(volume: &dyn Volume, dest: &Path, content: &[u8]) -> Result<u64, VolumeError> {
+    let source = InMemoryVolume::new("conformance-source");
+    let source_path = Path::new("/source.bin");
+    source
+        .create_file(source_path, content)
+        .await
+        .expect("seeding the in-memory source");
+    let stream = source
+        .open_read_stream(source_path)
+        .await
+        .expect("opening the in-memory source");
+    volume
+        .write_from_stream(dest, WriteMode::CreateNew, content.len() as u64, stream, &|_, _| {
+            std::ops::ControlFlow::Continue(())
+        })
+        .await
 }
 
 /// [`Volume::create_directory_all`]

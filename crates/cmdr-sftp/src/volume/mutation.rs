@@ -317,7 +317,7 @@ impl SftpVolume {
     /// what the server says is at that name now.
     ///
     /// ❗ One round trip, and only on a path that has already failed.
-    async fn name_taken(&self, session: &SshConnection, remote: &str, err: &SftpError) -> VolumeError {
+    pub(super) async fn name_taken(&self, session: &SshConnection, remote: &str, err: &SftpError) -> VolumeError {
         let found = self.probe(session, remote).await;
         resolve_ambiguity(err, remote, Attempted::TakingAName, found)
     }

@@ -16,6 +16,7 @@ use crate::file_system::LocalPosixVolume;
 use crate::file_system::listing::caching::try_get_authoritative_listing;
 use crate::file_system::listing::caching_test_support::TestListing;
 use crate::file_system::volume::Volume;
+use crate::file_system::volume::WriteMode;
 use cmdr_git::test_fixtures::{Fixture, cleanup, temp_dir};
 
 const CATEGORIES: [&str; 6] = ["branches", "tags", "commits", "stash", "worktrees", "submodules"];
@@ -165,9 +166,13 @@ async fn real_files_under_dot_git_stay_fully_mutable() {
         .expect("config is on disk")
         .len();
     volume
-        .write_from_stream(Path::new(".git/config.bak"), size, source, &|_, _| {
-            std::ops::ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new(".git/config.bak"),
+            WriteMode::CreateOrReplace,
+            size,
+            source,
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
         .await
         .expect("writing under `.git` lands");
     assert_eq!(

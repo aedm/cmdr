@@ -25,6 +25,7 @@ use tokio_util::sync::CancellationToken;
 use super::testing::*;
 use super::{WebdavVolume, connect_webdav_volume};
 use crate::WebdavConnectError;
+use cmdr_fs::volume::WriteMode;
 
 const FIXTURE: &str = "webdav-servers/start.sh (webdav-fixture)";
 
@@ -185,7 +186,9 @@ async fn assert_no_staging_leftovers(volume: &WebdavVolume, dir: &Path, what: &s
 async fn write(volume: &WebdavVolume, path: &Path, bytes: Vec<u8>) -> Result<u64, VolumeError> {
     let size = bytes.len() as u64;
     volume
-        .write_from_stream(path, size, source(bytes), &|_, _| ControlFlow::Continue(()))
+        .write_from_stream(path, WriteMode::CreateOrReplace, size, source(bytes), &|_, _| {
+            ControlFlow::Continue(())
+        })
         .await
 }
 
@@ -491,7 +494,9 @@ async fn a_source_that_ends_early_never_reaches_the_users_filename() {
     let promised = bytes.len() as u64 + 40_000;
 
     let refused = volume
-        .write_from_stream(&path, promised, source(bytes), &|_, _| ControlFlow::Continue(()))
+        .write_from_stream(&path, WriteMode::CreateOrReplace, promised, source(bytes), &|_, _| {
+            ControlFlow::Continue(())
+        })
         .await;
 
     assert!(
@@ -531,7 +536,9 @@ async fn a_source_that_overruns_its_promise_never_reaches_the_users_filename() {
     let promised = 150_000;
 
     let refused = volume
-        .write_from_stream(&path, promised, source(bytes), &|_, _| ControlFlow::Continue(()))
+        .write_from_stream(&path, WriteMode::CreateOrReplace, promised, source(bytes), &|_, _| {
+            ControlFlow::Continue(())
+        })
         .await;
 
     assert!(
@@ -566,9 +573,13 @@ async fn a_source_that_overruns_on_a_piece_boundary_never_reaches_the_users_file
     let promised = 150_000;
 
     let refused = volume
-        .write_from_stream(&path, promised, source_in_pieces(bytes, 50_000), &|_, _| {
-            ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            &path,
+            WriteMode::CreateOrReplace,
+            promised,
+            source_in_pieces(bytes, 50_000),
+            &|_, _| ControlFlow::Continue(()),
+        )
         .await;
 
     assert!(
@@ -604,7 +615,7 @@ async fn a_cancelled_upload_leaves_neither_the_destination_nor_a_temp() {
     // The transfer engine's Cancel: `Break`, once bytes are actually moving, so
     // the cancel lands mid-body rather than before the first one.
     let cancelled = volume
-        .write_from_stream(&path, size, source, &|sent, _| {
+        .write_from_stream(&path, WriteMode::CreateOrReplace, size, source, &|sent, _| {
             if sent > 0 {
                 ControlFlow::Break(())
             } else {

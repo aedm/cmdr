@@ -1,6 +1,7 @@
 //! Tests for LocalPosixVolume.
 
 use super::*;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{ListingProgress, UnwritableReason, WriteAccess};
 use crate::ignore_poison::IgnorePoison;
 use crate::test_support::TestDir;
@@ -504,9 +505,13 @@ async fn test_write_from_stream_creates_file() {
     let size = stream.total_size();
     let volume = LocalPosixVolume::new("Test", vol_dir.to_str().unwrap());
     let bytes = volume
-        .write_from_stream(Path::new("imported.txt"), size, stream, &|_, _| {
-            std::ops::ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new("imported.txt"),
+            WriteMode::CreateOrReplace,
+            size,
+            stream,
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
         .await
         .unwrap();
 
@@ -541,9 +546,13 @@ async fn test_write_from_stream_multichunk_is_durable_and_correct() {
     let size = stream.total_size();
     let volume = LocalPosixVolume::new("Test", vol_dir.to_str().unwrap());
     let bytes = volume
-        .write_from_stream(Path::new("imported.bin"), size, stream, &|_, _| {
-            std::ops::ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new("imported.bin"),
+            WriteMode::CreateOrReplace,
+            size,
+            stream,
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
         .await
         .unwrap();
 
@@ -840,9 +849,13 @@ async fn a_stream_onto_a_read_only_filesystem_is_read_only() {
     let volume = LocalPosixVolume::new("Macintosh HD", "/");
 
     let err = volume
-        .write_from_stream(Path::new("/cmdr-read-only-probe.lnk"), size, stream, &|_, _| {
-            std::ops::ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new("/cmdr-read-only-probe.lnk"),
+            WriteMode::CreateOrReplace,
+            size,
+            stream,
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
         .await
         .expect_err("the sealed system volume takes no writes");
 

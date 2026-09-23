@@ -26,6 +26,7 @@ use super::super::faulty_volume::forward_volume_methods;
 use super::test_support::make_state;
 use super::*;
 use crate::file_system::listing::FileEntry;
+use crate::file_system::volume::WriteMode;
 use crate::file_system::volume::{InMemoryVolume, ListingProgress, Volume, VolumeError, VolumeReadStream};
 use crate::file_system::write_operations::state::OperationIntent;
 
@@ -103,12 +104,13 @@ impl Volume for ServerCopyVolume {
     fn write_from_stream<'a>(
         &'a self,
         dest: &'a Path,
+        mode: WriteMode,
         size: u64,
         stream: Box<dyn VolumeReadStream>,
         on_progress: &'a (dyn Fn(u64, u64) -> ControlFlow<()> + Sync),
     ) -> Pin<Box<dyn Future<Output = Result<u64, VolumeError>> + Send + 'a>> {
         self.streamed.fetch_add(1, Ordering::SeqCst);
-        self.inner.write_from_stream(dest, size, stream, on_progress)
+        self.inner.write_from_stream(dest, mode, size, stream, on_progress)
     }
 
     fn copy_within<'a>(
@@ -129,7 +131,9 @@ impl Volume for ServerCopyVolume {
             if on_progress(0, size).is_break() {
                 return Err(VolumeError::Cancelled(to.display().to_string()));
             }
-            self.inner.write_from_stream(to, size, stream, on_progress).await
+            self.inner
+                .write_from_stream(to, WriteMode::CreateOrReplace, size, stream, on_progress)
+                .await
         })
     }
 }

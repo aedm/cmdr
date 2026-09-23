@@ -155,7 +155,7 @@ pub(super) async fn extract_sequential_subtree(
         let leaf = progress.begin_leaf();
         let on_chunk = |file_bytes_done: u64, _file_bytes_total: u64| leaf.on_chunk(file_bytes_done);
         let written = dest_volume
-            .write_from_stream(staged.target(), file.size, stream, &on_chunk)
+            .write_from_stream(staged.target(), staged.write_mode(), file.size, stream, &on_chunk)
             .await;
         let bytes = match written {
             Ok(bytes) => bytes,

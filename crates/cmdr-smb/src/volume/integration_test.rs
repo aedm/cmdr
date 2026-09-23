@@ -13,6 +13,7 @@
 
 use super::test_support::*;
 use super::*;
+use cmdr_fs::volume::WriteMode;
 use cmdr_fs::volume::{InMemoryVolume, SpaceInfo};
 
 #[tokio::test]
@@ -249,9 +250,13 @@ async fn smb_integration_write_from_stream_single_file() {
     let stream = source.open_read_stream(Path::new("/import-test.txt")).await.unwrap();
     let size = stream.total_size();
     let bytes = vol
-        .write_from_stream(Path::new(&smb_file), size, stream, &|_, _| {
-            std::ops::ControlFlow::Continue(())
-        })
+        .write_from_stream(
+            Path::new(&smb_file),
+            WriteMode::CreateOrReplace,
+            size,
+            stream,
+            &|_, _| std::ops::ControlFlow::Continue(()),
+        )
         .await
         .unwrap();
     assert_eq!(bytes, content.len() as u64);
