@@ -1,59 +1,38 @@
 # What Finder tags still owe
 
-Reading, showing, and assigning macOS Finder tags all shipped: colored dots in both list modes, a seven-circle context
-menu group, seven keyboard-assignable toggle commands, an MCP `tag` tool, and a Finder-compatible write path. Every
-design decision lives beside the code: `apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "Finder tags" (the
-parse, the deferred visible-range-first pass with its 15 µs/file anchor, carry-forward, and the write path),
-`apps/desktop/src/lib/file-explorer/views/DETAILS.md` (the dot cluster and the column-width settle),
-`apps/desktop/src-tauri/src/menu/DETAILS.md` (the tag row of color circles, and the plain items it falls back to), and
-`apps/desktop/src-tauri/src/file_system/DETAILS.md` (the MCP consumer and the analytics event).
+Reading, showing, and assigning macOS Finder tags all shipped. Every design decision lives beside the code:
+`apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "Finder tags" (the parse, the deferred visible-range-first
+pass, carry-forward, the write path, and the diff that stays silent for unchanged rows),
+`apps/desktop/src/lib/file-explorer/views/DETAILS.md` (the dot cluster), `apps/desktop/src-tauri/src/menu/DETAILS.md`
+(the tag row of color circles), and `apps/desktop/src-tauri/src/file_system/DETAILS.md` (the MCP consumer and the
+analytics event). Two items are open; both are judgment calls, and neither blocks anything.
 
-Two things are open. Neither blocks anything shipped, and both are judgment calls rather than unsolved problems.
+## 1. The seven tag color circles show on volumes that can't hold a tag
 
-❌ Nothing here restates a mechanism. Every item points at the doc or the code that owns it.
+- **Problem**: `menu/file_context_menu.rs::append_tag_color_group` appends the seven Finder tag circles to the file
+  context menu for any file or folder on macOS, with no check on which backend the path lives on. Right-click a file on
+  an MTP device or a directly-attached SMB share and the menu offers to tag it; the write reaches `xattr::set` on a path
+  that isn't a real filesystem entry, fails, and is only logged (target `tags`).
+- **Impact**: low. Nothing breaks, but the menu promises something it can't do, and the click does nothing visible.
+- **Solution**: gate the group at menu-build time, for example on `supports_local_fs_access()`. Caveat: an OS-mounted
+  SMB share is a real path and tagging it genuinely works, so the honest predicate is "this path reaches a filesystem
+  that stores xattrs", which is only fully knowable by trying. The read side settled the same question the other way
+  (`enrich_tags` in `commands/file_system/listing.rs` runs on any volume, since an empty read is harmless, behind a 2 s
+  timeout). Leaving it as is stays a valid choice.
+- **Size**: S (a few lines either way).
+- **Blocked on**: a David decision, on his own QA pass: should the menu offer tags there at all?
 
-## 1. The seven color circles show on volumes that can't hold a tag
+## 2. A tag assigned from search results doesn't show until you navigate
 
-**The gap**: `menu_structure.rs::append_tag_color_group` appends the circles for any file or folder on macOS, with no
-check on which backend the path lives on. Right-click a file on an MTP device or a directly-attached SMB share and the
-menu offers to tag it; the write reaches `xattr::set` on a path that isn't a real filesystem entry, fails, and is logged
-under the `tags` target. Nothing breaks, but the menu promised something it can't do.
-
-**Why it isn't obviously wrong**: an OS-mounted SMB share is a real path, and tagging one genuinely works. So the honest
-predicate isn't "local volume", it's "this path reaches a filesystem that stores xattrs", which is only knowable by
-trying. The read side settled the same question the other way and is documented at `enrich_tags`
-(`commands/file_system/listing.rs`): it runs on any volume because an empty read is harmless, and leans on a 2 s timeout
-rather than a backend gate.
-
-**Cost**: small either way. Gating on `supports_local_fs_access()` at menu-build time is a few lines; so is leaving it
-and letting the failure stay quiet.
-
-**Trigger**: David seeing it and deciding the menu shouldn't offer it. This is a taste call on his own QA pass, not a
-defect report.
-
-## 2. A tag assigned from search results doesn't light up until you navigate
-
-**The gap**: `SearchResultsView.svelte` calls `showFileContextMenu` without a `listingId`, so the context-menu tag
-toggle writes to disk and then hands an empty id to `apply_tags_to_listing`, which finds no listing and refreshes
-nothing. The dots appear on the next navigation into the containing directory. `toggle_tags`'s doc comment in
-`commands/file_system/listing.rs` states the contract; the pane path (`pane-pointer.ts`) passes its `listingId` and
-refreshes in place.
-
-**Why it wasn't done with the rest**: a search-results pane is not a cached directory listing, so there is no
-`listing_id` to pass. Making the write visible there means either giving search results their own cache identity or
-giving the tag refresh a second path that patches the results view directly.
-
-**Cost**: the larger of the two, and the size depends on which of those two shapes wins. The second is smaller and the
-first is the one that would also serve sort-by-tag and filter-by-tag if those ever land.
-
-**Trigger**: someone tagging from search results and reporting that nothing happened.
-
-## Settled while re-deriving this, so nobody re-opens it
-
-- **The quiet-backfill worry is closed.** The background sweep (`pane/tag-sweep.ts`) reuses the diff-emitting path, but
-  `caching::apply_tags_to_listing` now emits a diff only for rows whose tags genuinely changed, so an off-screen chunk
-  over untagged rows is silent. Only rows that really gained or lost a tag cost a coalesced diff, which is the behavior
-  the original concern asked for.
-- **Translations are covered by the project-wide rule**, not by a tags-specific task. Human review of translated strings
-  is deliberately deferred for the whole app (`AGENTS.md` § Principles, point 4); the tag strings carry per-language
-  glossary entries under `docs/i18n/` like every other key.
+- **Problem**: the search-results pane (`file-explorer/pane/SearchResultsView.svelte`) opens the file context menu
+  without a listing id (it isn't a cached directory listing, so it has none). The context-menu tag toggle
+  (`menu/menu_handlers.rs`, the `tag-color:` arm) writes the tags to disk and then calls `apply_tags_to_listing` with an
+  empty `MenuState.context.tags_listing_id`, which finds nothing to refresh. The dots appear only on the next navigation
+  into the containing directory. A normal pane passes its listing id and refreshes in place.
+- **Impact**: low to medium. Someone tagging from search results sees nothing happen and may tag again, which toggles the
+  tag back off.
+- **Solution**: two shapes. (a) Give the search-results snapshot its own cache identity so `apply_tags_to_listing` can
+  patch it, which would also serve sort-by-tag or filter-by-tag if those ever land. (b) Add a second refresh path that
+  patches the results view directly from the toggle's returned per-path tag sets. (b) is smaller.
+- **Size**: S for (b), M for (a).
+- **Blocked on**: nothing; a David pick between (a) and (b) if he wants a say.
