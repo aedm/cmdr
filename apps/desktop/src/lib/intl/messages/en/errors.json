@@ -959,13 +959,19 @@
   "errors.listing.ambiguousName.explanation": "`{path}` matches more than one item on the server. Their names look the same, but the server stores them spelled differently (an accented letter can be stored two ways, and some servers tell upper and lower case apart), so Cmdr didn't pick one for you.",
   "errors.listing.ambiguousName.suggestion": "Here's what to try:\n- Open the folder above and choose the item you want from the list\n- To avoid this next time, rename one of them so the two names clearly differ",
   "@errors.listing.ambiguousName.title": {
-    "description": "Title of the listing error panel when a folder path the user typed, restored, or carried over from another view matches two or more items on a network server whose names look identical (they differ only in how accented letters are encoded, or in upper and lower case), so Cmdr refused to guess which one was meant. Plain text."
+    "description": "Title of the listing error panel when a folder path the user typed, restored, or carried over from another view matches two or more items on a network server whose names look identical (they differ only in how accented letters are encoded, or in upper and lower case), so Cmdr refused to guess which one was meant. Plain text.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.listing.ambiguousName.explanation": {
-    "description": "Body of the listing error panel for a path that matches several look-alike names on a server. Markdown. The literal `{path}` is a do-not-translate placeholder replaced at runtime with the path; here it leads the sentence inside backticks. \"An accented letter can be stored two ways\" refers to Unicode composed and decomposed forms (é as one character, or as e plus an accent mark); keep the explanation plain and non-technical. \"Cmdr\" is the app name; do NOT translate it."
+    "description": "Body of the listing error panel for a path that matches several look-alike names on a server. Markdown. The literal `{path}` is a do-not-translate placeholder replaced at runtime with the path; here it leads the sentence inside backticks. \"An accented letter can be stored two ways\" refers to Unicode composed and decomposed forms (é as one character, or as e plus an accent mark); keep the explanation plain and non-technical. \"Cmdr\" is the app name; do NOT translate it.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "@errors.listing.ambiguousName.suggestion": {
-    "description": "Recovery suggestion for a path that matches several look-alike names on a server. Markdown bullet list. \"The folder above\" means the parent folder of the path, where both look-alike items are listed side by side and the user can pick one."
+    "description": "Recovery suggestion for a path that matches several look-alike names on a server. Markdown bullet list. \"The folder above\" means the parent folder of the path, where both look-alike items are listed side by side and the user can pick one.",
+    "screenshot": "error-message-example.png",
+    "screenshotNote": "Cmdr renders every friendly error with one shared layout: a bold title, an explanation paragraph, and a suggestion below it (plus an optional action button and a collapsed \"Technical details\"). This screenshot shows a DIFFERENT error, but your string appears as the title, explanation, or suggestion text in this same panel, in the same position. errors.provider.* names (Dropbox, Google Drive, OneDrive, and so on) are brand names, so keep them as-is."
   },
   "errors.listing.ioSerious.title": "Couldn't read this folder",
   "errors.listing.ioSerious.explanation": "Cmdr ran into a problem with `{path}`: {osMessage}. This could be a temporary glitch or a sign that the disk or device needs attention.",
@@ -2632,7 +2638,9 @@
   },
   "errors.volume.ambiguousName": "More than one item on the server matches \"{path}\", so Cmdr didn't pick one. Choose it from its folder instead.",
   "@errors.volume.ambiguousName": {
-    "description": "Shown when a path matches two or more items on a network server whose names look identical (they differ only in how accented letters are encoded, or in upper and lower case), so Cmdr refused to guess which one was meant. \"Choose it from its folder\" means open the containing folder and pick the item from the list. The literal `{path}` is a do-not-translate placeholder replaced at runtime with the path. Inline one-line message in a brief toast or under a name field. Plain text, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read."
+    "description": "Shown when a path matches two or more items on a network server whose names look identical (they differ only in how accented letters are encoded, or in upper and lower case), so Cmdr refused to guess which one was meant. \"Choose it from its folder\" means open the containing folder and pick the item from the list. The literal `{path}` is a do-not-translate placeholder replaced at runtime with the path. Inline one-line message in a brief toast or under a name field. Plain text, no markdown. Cmdr never uses the words \"error\" or \"failed\" in messages people read.",
+    "screenshot": "mkdir-confirmation-too-long.png",
+    "screenshotNote": "This one is NOT the error panel. Your string is the single red line under the name field in the Rename / New folder / New file box, exactly where the validation message sits in this screenshot (which shows a DIFFERENT message). One sentence, plain text, no markdown, and it has to fit a narrow dialog."
   },
   "errors.volume.staleDestinationHandle": "Cmdr lost track of the destination folder on the device. Open it again, then retry.",
   "@errors.volume.staleDestinationHandle": {
