@@ -21,7 +21,14 @@
 
 import { waitBudget } from './wait-budget.js'
 import { test, expect } from './fixtures.js'
-import { dismissAllToasts, dispatchMenuCommand, ensureAppReady, forceAgentWake, stageAgentRollup } from './helpers.js'
+import {
+  dismissAllToasts,
+  dispatchMenuCommand,
+  ensureAppReady,
+  forceAgentWake,
+  stageAgentRollup,
+  waitForAskCmdrOnInBackend,
+} from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 
 /** What the wake's scripted fake says, distinct from the rail's reply on purpose. */
@@ -175,6 +182,8 @@ async function ensureAskCmdrOn(page: TauriPage): Promise<void> {
       { timeout: waitBudget(5000) },
     )
     .toBe(true)
+  // The rail flips at once; the backend learns the switch a save and a push later.
+  await waitForAskCmdrOnInBackend(page)
 }
 
 test.describe('Ask Cmdr wakes on its own', () => {

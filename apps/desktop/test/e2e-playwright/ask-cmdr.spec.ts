@@ -18,6 +18,7 @@ import {
   ensureAppReady,
   openSettingsWindowViaProd,
   CTRL_OR_META,
+  waitForAskCmdrOnInBackend,
 } from './helpers.js'
 import type { TauriPage } from '@srsholmes/tauri-playwright'
 
@@ -108,6 +109,8 @@ async function ensureChatReady(page: TauriPage): Promise<void> {
       { timeout: waitBudget(5000) },
     )
     .toBe(true)
+  // The rail flips at once; the backend learns the switch a save and a push later.
+  await waitForAskCmdrOnInBackend(page)
 }
 
 /** The Ask Cmdr switch in Settings > AI > Ask Cmdr: its hidden input carries the label. */

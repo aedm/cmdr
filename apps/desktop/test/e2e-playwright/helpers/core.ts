@@ -562,7 +562,8 @@ export async function flushFileWatcher(tauriPage: PageLike): Promise<void> {
  * attentive end of the slider, half an hour at the calm one) and hoping the fixture tree is
  * somewhere the indexer walks. This drives the real lane instead: the rollup travels the same
  * channel the indexer's tap uses, and the force skips the timer and the proactive toggle. The
- * gates that protect the user (consent above all) still apply, so accept consent first.
+ * gates that protect the user still apply (Ask Cmdr's switch, and cloud consent on Cloud), so
+ * turn Ask Cmdr on first and wait for {@link waitForAskCmdrOnInBackend}.
  *
  * Compiled only with the `playwright-e2e` Cargo feature; not in typed bindings, so we call it
  * via raw `__TAURI_INTERNALS__.invoke`. See `commands/e2e.rs::force_agent_wake`.
@@ -574,6 +575,25 @@ export async function flushFileWatcher(tauriPage: PageLike): Promise<void> {
  *   thread again; `'propose'` stages a group, which is what raises the toast. Sticky in the
  *   app, so this always sends the value explicitly.
  */
+/**
+ * Waits until the BACKEND reads Ask Cmdr as on, not just the rail. Turning it on from the rail's
+ * gate flips the frontend setting at once, but the backend learns it only after the applier has
+ * saved `settings.json` and pushed `ask_cmdr_enabled_changed`, which refreshes the wake loop's
+ * cached readiness. Until then a forced wake is refused silently (its rollup is not admitted)
+ * and a send reads the switch as off. `agent_wake_status` is that cached readiness, so it's the
+ * boundary to wait on.
+ */
+export async function waitForAskCmdrOnInBackend(tauriPage: PageLike): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        (await tauriPage.evaluate<{ readiness: string }>(`window.__TAURI_INTERNALS__.invoke('agent_wake_status')`))
+          .readiness,
+      { timeout: waitBudget(5000) },
+    )
+    .not.toBe('askCmdrOff')
+}
+
 export async function forceAgentWake(
   tauriPage: PageLike,
   folder: string,
