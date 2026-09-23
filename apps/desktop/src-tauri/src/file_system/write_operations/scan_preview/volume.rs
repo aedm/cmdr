@@ -21,6 +21,7 @@ use super::super::types::{
 use super::settle_failed_preview;
 use crate::file_system::listing::caching::try_get_authoritative_listing;
 use crate::file_system::volume::{BatchScanResult, CopyScanResult, Volume};
+use crate::ignore_poison::IgnorePoison;
 
 /// The path a volume scan's failure names when the backend's error carries none
 /// of its own (a `NotFound` does): the one source, or the folder a multi-item
@@ -87,9 +88,8 @@ pub(in crate::file_system::write_operations) async fn run_volume_scan_preview(
         // volume is answering, and every entry the backend hands us answers
         // that, including the ones the UI throttle drops.
         watchdog_for_cb.note_progress(p.files, p.dirs, p.bytes);
-        let Ok(mut last) = progress_state.lock() else {
-            return;
-        };
+        // A throttle timestamp: a poisoned one is still a timestamp.
+        let mut last = progress_state.lock_ignore_poison();
         if last.elapsed() < Duration::from_millis(200) {
             return;
         }
