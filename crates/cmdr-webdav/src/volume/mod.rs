@@ -333,6 +333,8 @@ mod integration_test;
 #[cfg(test)]
 mod nextcloud_test;
 #[cfg(test)]
+mod reconnect_test;
+#[cfg(test)]
 mod sharing_test;
 #[cfg(test)]
 mod test_support;
