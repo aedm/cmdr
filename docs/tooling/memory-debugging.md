@@ -1,7 +1,8 @@
 # Debugging Cmdr's memory
 
-Start here for any "Cmdr is using too much RAM" report. Read the trap section before you measure anything: getting it
-wrong has cost multi-day investigations.
+How to measure Cmdr's memory. For what's already known (the current baseline, past investigations, and the open
+follow-ups), start at `docs/notes/performance/README.md`. Read the trap section below before you measure anything:
+getting it wrong has cost multi-day investigations.
 
 ## The trap: `vmmap` reports Cmdr's Rust heap as `IOAccelerator`
 
@@ -167,28 +168,14 @@ Useful as a sanity baseline when re-testing: with the NAS index resumed, the app
 media-coverage walk alone made the same build flat at ~155 MB. Details and the full investigation:
 `docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md`.
 
-## Past investigations
+## Past investigations and open follow-ups
 
-Read these before re-deriving anything; between them they cover every cause found so far.
-
-- `docs/notes/performance/idle-memory-profile-2026-07-28.md` — the STEADY-STATE costs (2.5 GB idle): SQLite page cache
-  across many thread-local connections, and the importance rescore treadmill. Start here for "it's high but not
-  climbing".
-- `docs/notes/performance/memory-runaway-rust-heap-2026-07-25.md` — the RUNAWAY (up to 50 GB): a walk that materialized
-  every image path. Also the origin of the `IOAccelerator` trap above.
-- `docs/notes/performance/idle-malloc-large-clip-towers-2026-08-21.md` — the leading candidate for the 643 MB
-  `MALLOC_LARGE` in that idle profile: Core ML holding the two CLIP towers, at a measured 307–412 MB, which nothing had
-  been able to name because Core ML allocates through the SYSTEM allocator and so falls between both of Cmdr's allocator
-  APIs. Also the origin of the region-histogram method above.
-- `docs/notes/performance/high-memory-gpu-compositor-investigation-2026-07.md` — superseded; its conclusion is wrong (it
-  read the mislabel as GPU memory). Kept for the measurement methodology only.
+Every resource-use investigation, the current measured baseline, and the ranked list of open follow-ups live in one hub:
+`docs/notes/performance/README.md`. Read it before re-deriving anything.
 
 ## Before proposing an allocator setting
 
-`docs/notes/performance/mimalloc-purge-experiment-2026-09-22.md` is the source-read on what's tunable. The build is
-mimalloc **v3** (`libmimalloc-sys` builds v3 unless the `v2` feature is set, and nothing sets it), so v2 option names
-from training data are wrong. Env-var tuning works, and `launchctl setenv` is the way to get options into a
-Finder-launched app without changing FDA or the data dir. `MIMALLOC_SHOW_STATS=1` on a release build prints no
-live-bytes section: `MI_DEBUG=0` makes `MI_STAT` 0. And v3 on macOS already decommits with `MADV_FREE_REUSABLE` after 1
-s at page granularity, so "mimalloc is hoarding pages" is a weak starting hypothesis. The note carries the A/B protocol
-and the conditions.
+Read `docs/notes/performance/mimalloc-purge-experiment-2026-09-22.md` (what's tunable in mimalloc **v3**, which option
+names are real, and how to get options into a Finder-launched app) and
+`docs/notes/performance/allocator-comparison-2026-09-23.md` (v3 against v2 and the system allocator, and why we keep
+v3). Purge tuning doesn't move the slack, and v2 buys nothing.

@@ -208,6 +208,10 @@ don't ship a default off this experiment alone.
 
 ## Open: the diagnostic has no way in on a release build
 
+**Resolved:** it shipped as the `memory_diagnostics` MCP tool, release builds included, and gained a live-versus-slack
+census (`docs/tooling/memory-debugging.md`). The purge question itself was answered without this protocol: purge options
+don't move the slack (`rust-heap-attribution-2026-09-23.md`).
+
 `get_memory_diagnostics` (`apps/desktop/src-tauri/src/commands/memory_diagnostics.rs:192`) is registered as an IPC
 command (`apps/desktop/src-tauri/src/ipc.rs:844`) and has a generated binding
 (`apps/desktop/src/lib/ipc/bindings.ts:4470`), but **nothing calls it** outside its own tests. On a shipped release

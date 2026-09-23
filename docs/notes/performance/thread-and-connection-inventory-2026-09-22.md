@@ -252,6 +252,9 @@ writer term is a design target, not an invariant").
 
 ## Recommendation
 
+The current plan for both items below (an alias-adoption layer for the SMB identity, and no tokio cap, which
+`allocator-comparison-2026-09-23.md` measured to change nothing) is in `README.md` § "Open follow-ups".
+
 **Canonicalize SMB volume identity so one share is one volume however it is addressed.** Resolve `(server, port, share)`
 to a stable server identity before it reaches `smb_volume_id` — the SMB server GUID from the negotiate response, or the
 share's own `volume serial`, with the address kept only as a way to reach it. `cmdr-smb` already speaks the protocol, so

@@ -3,6 +3,9 @@ docs that feel helpful and important for some time, but don't belong anywhere el
 periodically once we made sure that all important information like intent behind features and processes is captured
 somewhere else (code or docs).
 
+**CPU, RAM, and idle cost** have their own hub, `performance/README.md`: the current measured state, the methodology
+rules, the ranked follow-ups, and every resource-use note.
+
 Some notes here are load-bearing rather than historical. Those are grouped below by what makes them worth keeping.
 
 **Before-and-afters for a crate extraction**, including the method each number was taken with. They're what any future
@@ -44,17 +47,6 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   read the four gotchas regardless (ASCII is the wire default and corrupts files, a dropped data stream wedges the
   connection unless it goes through `abort()`, FTPS session reuse works on rustls and fails on native-tls, and non-UTF-8
   filenames are unaddressable without patching the crate).
-- `performance/importance-treadmill-2026-08-04.md` — what the 60-second rescore treadmill really was, why raising
-  `SCOPED_WALK_MAX_DIRS` is refuted, and the measurement (99.88% against 0.03%) behind the signals-not-score equality
-  key. Keep it until the open batch-width question in it is settled.
-- `performance/mimalloc-purge-experiment-2026-09-22.md` — whether mimalloc option tuning can halve Cmdr's RAM, with a
-  protocol David can run in a day. **What the source already settles**: the build is mimalloc **v3**, not v2, so option
-  names from v2 recipes are wrong; env-var tuning does work and `launchctl setenv` is the launch path that keeps FDA and
-  the data dir identical across conditions; and `MIMALLOC_SHOW_STATS=1` on a release build prints no live-bytes section,
-  because `MI_STAT` is compiled to 0. **The prior is low**: v3 on macOS already decommits with `MADV_FREE_REUSABLE`
-  after 1 second at page granularity, so there is no off switch that's currently off. Read it before proposing any
-  allocator setting, and read the last two sections regardless: they carry the 0.46.1 baseline (86% of the footprint is
-  the Rust heap) and the reason the live-vs-fragmented split, not purging, is the question that matters.
 
 **Load-bearing as the evidence behind a decision that would otherwise look arbitrary:**
 
@@ -83,38 +75,6 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   ~115 MB, against `~/Library`'s 27.7% _inside_ home), and why phased indexing reorders the walk instead of narrowing
   it. Read it before anyone proposes a home-only default again; it names the conditions that would change the answer.
 
-- `performance/idle-cpu-attribution-2026-08-03.md` — where an idle Cmdr's 110 minutes of CPU over 9.1 hours actually
-  went, and the four answers that were wrong on the way (the reconcile drain, the writer, the sync-status probe, and a
-  search arena that was being dropped all along). **Read it before profiling this app again**: three of the four came
-  from one method bias — a `sample` leaf-frame list that counts scheduler waits and so scores `stat` and `pwrite` as
-  busy CPU — and two 20-second windows on the same idle process disagreed about which thread dominated. It also carries
-  the two footprint blocks nothing has explained yet (643 MB `MALLOC_LARGE`, 947 MB Rust heap) and the proof the first
-  of them is not SQLite page cache.
-- `performance/thread-and-connection-inventory-2026-09-22.md` — a verdict per named worker thread (what spawns it, what
-  retires it, whether its count is per-volume) and the answer to "do we leak workers across unmount/remount". **We
-  don't**: the registry teardown already defends "two writer threads on one database" for a given `volume_id`. The
-  duplication that looks like a leak is **one SMB share reached at three addresses becoming three volumes**, proven
-  concurrent in one process from the log, costing +2 threads and +2 write connections per alias. It also **retires the
-  "132 connections × 16 MB page cache" line** the two notes above left open: page memory is one 63 MiB process-wide
-  slab, verified installed in prod, and the footprint is 696 MB against the 2.5 GB profiled in 2026-07-28. Read it
-  before counting threads in this app: `cmdr-sync-status` and the notify pairs are bounded by construction, and on macOS
-  a notify pair is NEVER an indexed volume.
-- `performance/mcp-connection-leak-2026-09-22.md` — whether the MCP server leaks connections across a long run and many
-  agent sessions. **It doesn't**, and the note closes the question: every ESTABLISHED socket on the MCP port has a LIVE
-  client behind it by construction, because a killed peer's socket is reaped in under a second (measured, `kill -9`
-  against four held connections). The suspicious-looking `Sse` in `handle_mcp_get` is not a long-lived stream: its
-  `stream::once` body completes at once, so the `.keep_alive()` never fires, and the sockets that linger are idle
-  HTTP/1.1 keep-alive held by the CLIENT's pool. Carries the per-connection cost (one fd, one tokio task, ~46 KB) and
-  the proof nothing accumulates per session (`McpState` has one `session_id`, not a map). Read it before re-opening "MCP
-  is leaking", and for the one real finding it turned up: two SMB sockets stuck in `CLOSE_WAIT`, which unlike the MCP
-  ones never self-reaped (an `smb2` socket-ownership bug, fixed in `smb2` 0.24.1).
-- `performance/idle-malloc-large-clip-towers-2026-08-21.md` — the leading candidate for most of that 643 MB, measured:
-  Core ML holding the two CLIP towers costs **307–412 MB of `MALLOC_LARGE` plus 120–176 MB of `MALLOC_SMALL`, from the
-  first encode of a session until the process exits**, 80% of it the text tower that enrichment never calls, and all of
-  it invisible to `query_mimalloc_heap` because Core ML allocates through the system allocator. The region sizes ARE the
-  weight matrices and they sum exactly, which is what turned a size into a name. Carries the method (a per-tag
-  region-size histogram is a fingerprint), the 35× compute-unit lever, the clean negative on Vision, the ranked fix
-  options none of which were taken, and the one `vmmap` line that confirms or refutes it on a live prod build.
 - `listing-row-fetch-quadratic-2026-08-22.md` — why a pane parked at the BOTTOM of a large directory saturates the main
   thread and stops answering IPC, and the proof it is **pre-existing** (`main` reproduces it at the same 3.8× ratio, and
   the whole call path is byte-identical). The MCP pane mirror fetches its visible range one row at a time, each row a
@@ -172,13 +132,6 @@ Some notes here are load-bearing rather than historical. Those are grouped below
   finishing (no: it takes ~200 new folders a second sustained to cost one session's completion marker, and the next
   launch settles the drive in ~2 s). Read it before treating a slow first index on a busy machine as a regression, or
   before proposing a bigger pass budget: it weighs the three ways to close the gap and says why none was taken.
-- `performance/live-tick-cost-2026-08-21.md` — what a media live tick costs, split into the coverage gate (45–46 ms per
-  tick at 90,308 scored folders, from reading `above_threshold` directly once a minute per volume; 2.8 µs from the cache
-  that already existed for it) and the scoped walk (~20 µs per touched directory, against 0.03 µs for the filter that
-  now replaces it). Read it before assuming a gate is cheap because it guards something expensive: these two were the
-  same order, so filtering the walk without fixing the gate would have left the floor where it was. It also records why
-  the filtered set has to reach the walk, the GC scope, and the counts patch together, and the two behaviors
-  deliberately given up.
 - `search-arena-row-2026-08-06.md` — what shrinking `SearchEntry` from 56 to 40 bytes actually bought (−92 MiB of arena,
   measured two ways), that it cost no scan latency, and the A/B method for comparing two builds on a machine running
   other work.
