@@ -39,7 +39,15 @@ sed -i \
 # Generated at start rather than baked into the image so the same image serves
 # both schemes. `htdigest` is interactive, so the digest line is computed by
 # hand: `user:realm:MD5(user:realm:password)` is its whole file format.
-htpasswd -nbB "$USER_NAME" "$USER_PASSWORD" > /etc/webdav.htpasswd
+#
+# ❗ `-m` (Apache's MD5), ❌ never `-B` (bcrypt). Basic auth re-verifies the hash
+# on EVERY request and nothing caches it, and bcrypt costs ~2 ms of CPU a time
+# where MD5 costs ~0.1 ms. A full app-suite run is ~3,000 requests, so bcrypt
+# was two-thirds of this server's work and, under the 0.5 CPU cap, timed out 19
+# of 42 app cells run in parallel; MD5 passes all 42 in under 5 s (measured
+# 2026-09-23, `htpasswd -vb` timings plus the `webdav_integration_` suite). The
+# password is public anyway, so a stronger hash protects nothing.
+htpasswd -nbm "$USER_NAME" "$USER_PASSWORD" > /etc/webdav.htpasswd
 ha1=$(printf '%s:%s:%s' "$USER_NAME" "$REALM" "$USER_PASSWORD" | md5sum | cut -d' ' -f1)
 printf '%s:%s:%s\n' "$USER_NAME" "$REALM" "$ha1" > /etc/webdav.htdigest
 

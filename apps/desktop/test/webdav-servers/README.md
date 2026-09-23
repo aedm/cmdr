@@ -52,6 +52,11 @@ landmarks (`hello.txt`, `docs/` holding a `readme.md`, `nested/deep/file.txt`, `
 number, so each position says where it belongs. That's what lets a cell assert byte-exactness without shipping a copy of
 the file. `cmdr_webdav::volume::testing::fixture_large_bytes` regenerates the expectation.
 
+❗ **What bounds a parallel run is this server's CPU**, and two choices keep it off the 8 s nextest cap: the stock server
+gets two CPUs where the others get half of one, and the Basic-auth file is hashed with Apache's MD5 (`htpasswd -m`), ❌
+never bcrypt, because Basic auth re-verifies the hash on every request with no cache. The numbers are in the comments
+beside each choice (`docker-compose.yml`, `image/entrypoint.sh`).
+
 The export is writable by the httpd user, and Apache answers GET with `Content-Length` and honours `Range` natively,
 which is what the streaming and `read_range` cells lean on. `DavDepthInfinity On` allows a whole-tree PROPFIND;
 `DavMinTimeout 600` keeps a lock a cell takes alive past the cell.
