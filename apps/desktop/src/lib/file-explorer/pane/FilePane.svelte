@@ -66,7 +66,7 @@
     import ExtensionChangeDialog from '../rename/ExtensionChangeDialog.svelte'
     import RenameConflictDialog from '../rename/RenameConflictDialog.svelte'
     import { getAppLogger } from '$lib/logging/logger'
-    import { createDebounce } from '$lib/utils/timing'
+    import { createDebounce, createThrottle } from '$lib/utils/timing'
     import { servicesSelectionForPane } from './services-selection'
 
     const log = getAppLogger('fileExplorer')
@@ -1145,7 +1145,7 @@
         // In place, so the cursor entry keeps its identity and the effects keyed on it stay put.
         selectionInfo.applyFolderSizes(change.folders)
         void selectionInfo.fetchStats()
-        debouncedSyncMcp.call()
+        indexSizesSyncMcp.call()
     }
 
     export function getSwapState(): SwapState {
@@ -1272,6 +1272,10 @@
         }
     }, 100)
     const debouncedSyncMcp = createDebounce(() => void syncPaneStateToMcp(), 300)
+    // Index size updates reach the MCP mirror at most every 5 s: under background writes a pane on
+    // `~` takes one every couple of seconds, and each push re-reads the visible range and ships it,
+    // which was most of what an update cost the webview. Agents see sizes at most 5 s late.
+    const indexSizesSyncMcp = createThrottle(() => debouncedSyncMcp.call(), 5000)
 
     /**
      * Tells the backend what `Cmdr > Services` acts on. AppKit asks for it
@@ -1836,6 +1840,7 @@
         debouncedMenuContext.cancel()
         debouncedServicesSelection.cancel()
         debouncedSyncMcp.cancel()
+        indexSizesSyncMcp.cancel()
         // Stop type-to-jump timers so they can't fire after the FilePane is gone
         // (otherwise orphan setTimeouts mutate $state slots on the dead instance).
         jump.dispose()

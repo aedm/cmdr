@@ -435,7 +435,8 @@ There's no Search-specific capabilities shim — `lib/search/capabilities.ts` ke
   `recursiveSizePending` field instead: that's one of the three terms, and it calls a folder settled through the whole
   walk that's rewriting it, which is when its number is furthest from the truth (a folder read `≥422 GB` on its way down
   to 56 KB). Read outside a reactive context on purpose — a push is triggered, not subscribed, and the index storm that
-  moves these numbers fires the `listing-index-sizes-changed` ticks that re-push. The rendering side:
+  moves these numbers fires the `listing-index-sizes-changed` ticks that re-push (throttled to one push per 5 s in
+  `FilePane.applyIndexSizes`, since each push re-reads and ships the visible range). The rendering side:
   `src-tauri/src/mcp/resources/DETAILS.md` § "Directory sizes say how much they're worth".
 - **`has-parent.ts`**: `computeHasParent` folds ONLY the snapshot rule via `hasParentRow`; the two PATH comparisons
   (`=== '/'`, `=== root`) stay.
