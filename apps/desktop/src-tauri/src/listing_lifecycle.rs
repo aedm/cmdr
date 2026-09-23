@@ -2,9 +2,11 @@
 //! alive while one is open.
 //!
 //! A [`ListingLifecycle`] observer hears one call when a listing enters the
-//! listing cache and one when it leaves. Today's one observer is the virtual
-//! `.git` portal, which keeps a repository's `.git/*` watcher armed for as long
-//! as a pane is standing in that repository's virtual trees.
+//! listing cache and one when it leaves. Two observers today: the virtual `.git`
+//! portal, which keeps a repository's `.git/*` watcher armed for as long as a
+//! pane is standing in that repository's virtual trees, and
+//! `listing_index_sizes`, which routes the index's folder-size updates to the
+//! listings they touch.
 //!
 //! **Arming belongs to the BACKEND, ❌ never to a frontend subscription.** The
 //! breadcrumb chip's `subscribe_git_state` used to be the only thing starting a

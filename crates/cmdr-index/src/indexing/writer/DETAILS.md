@@ -518,7 +518,7 @@ writer queue oscillates empty, so the wholesale queue-drain clear of `PendingSiz
 long before the reconcile finishes. `PendingSizes` (owned by `../read/`) gains a HELD-roots tier:
 `queue_must_scan_sub_dirs` holds the root, `is_pending(path)` is true for any transient mark OR any path related to a
 held root in EITHER direction, and the writer-drain `clear()` wipes only the TRANSIENT set. On completion:
-`release(root)` FIRST, then emit `index-dir-updated` via `WriteMessage::EmitDirUpdated` (release before emit, else the
+`release(root)` FIRST, then emit `DirsUpdated` via `WriteMessage::EmitDirUpdated` (release before emit, else the
 triggered refetch re-reads `pending = true`).
 
 **The one-shot heal for existing installs (the writer-side latch).** The fixes prevent drift going forward but don't

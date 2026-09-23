@@ -51,7 +51,7 @@ use crate::agent::wake::{AgentWakeStaged, AgentWakeStatus};
 use crate::commands::search::SearchIndexReadyEvent;
 use crate::events::index_mapping::{
     AggregationProgressEvent, IndexAggregationCompleteEvent, IndexCoverageBranchEndedEvent,
-    IndexCoverageBranchStartedEvent, IndexCoveragePhaseStartedEvent, IndexDirUpdatedEvent, IndexFreshnessChangedEvent,
+    IndexCoverageBranchStartedEvent, IndexCoveragePhaseStartedEvent, IndexFreshnessChangedEvent,
     IndexMemoryWarningEvent, IndexNeedsFreshScanEvent, IndexPhaseChangedEvent, IndexReplayCompleteEvent,
     IndexReplayProgressEvent, IndexRescanNotificationEvent, IndexScanAbortedEvent, IndexScanCompleteEvent,
     IndexScanProgressEvent, IndexScanStartedEvent, MediaEnrichProgressEvent, MediaEnrichTerminalEvent,
@@ -70,6 +70,7 @@ use crate::file_system::write_operations::{
 };
 use crate::file_system::write_operations::{OperationsChanged, VolumesBusyChanged};
 use crate::file_viewer::ViewerPullProgress;
+use crate::listing_index_sizes::ListingIndexSizesChanged;
 use crate::mtp::{
     MtpDeviceConnected, MtpDeviceDisconnected, MtpExclusiveAccessError, MtpPermissionError, MtpPtpcameradRestored,
     MtpPtpcameradSuppressed, MtpStorageRemoved,
@@ -1019,6 +1020,8 @@ pub fn builder() -> Builder<tauri::Wry> {
             ListingCompleteEvent,
             ListingErrorEvent,
             ListingCancelledEvent,
+            // A listing's folder sizes moved in the index (listing_index_sizes/).
+            ListingIndexSizesChanged,
             // Scan-preview (file_system/write_operations/scan_preview.rs).
             ScanPreviewProgressEvent,
             ScanPreviewCompleteEvent,
@@ -1065,7 +1068,6 @@ pub fn builder() -> Builder<tauri::Wry> {
             IndexCoveragePhaseStartedEvent,  // event_name = "index-coverage-phase-started"
             IndexCoverageBranchEndedEvent,   // event_name = "index-coverage-branch-ended"
             IndexPhaseChangedEvent,          // event_name = "index-phase-changed"
-            IndexDirUpdatedEvent,            // event_name = "index-dir-updated"
             IndexReplayProgressEvent,        // event_name = "index-replay-progress"
             IndexReplayCompleteEvent,        // event_name = "index-replay-complete"
             IndexRescanNotificationEvent,    // event_name = "index-rescan-notification"

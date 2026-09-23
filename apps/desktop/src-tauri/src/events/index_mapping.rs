@@ -182,16 +182,6 @@ pub struct IndexScanAbortedEvent {
     pub volume_id: String,
 }
 
-/// These directories' recursive sizes changed, so any listing showing them is
-/// stale.
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
-#[tauri_specta(event_name = "index-dir-updated")]
-#[serde(rename_all = "camelCase")]
-pub struct IndexDirUpdatedEvent {
-    /// Absolute paths, in the listing's path space.
-    pub paths: Vec<String>,
-}
-
 /// Journal replay is working through the backlog.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, Event)]
 #[tauri_specta(event_name = "index-replay-progress")]
@@ -393,6 +383,9 @@ pub enum Destination {
     /// [`AnalyticsOnly`](Self::AnalyticsOnly): this enum's whole job is saying
     /// where an event went, and reusing a neighbour would make it lie.
     AgentWake,
+    /// The per-listing size-refresh router (`listing_index_sizes`), which emits its own
+    /// `listing-index-sizes-changed` for the listings a batch touches.
+    ListingIndexSizes,
 }
 
 /// Emit `payload` if there's an app to emit it to, and report its wire name.
@@ -488,7 +481,12 @@ pub(crate) fn route(event: IndexEvent, app: Option<&AppHandle>) -> Destination {
         IndexEvent::HomeCovered { .. } => Destination::AnalyticsOnly,
         IndexEvent::ScanAborted { volume_id } => to_frontend(app, IndexScanAbortedEvent { volume_id }),
         IndexEvent::IndexNeedsFreshScan { volume_id } => to_frontend(app, IndexNeedsFreshScanEvent { volume_id }),
-        IndexEvent::DirsUpdated { paths } => to_frontend(app, IndexDirUpdatedEvent { paths }),
+        // Not forwarded as-is: `listing_index_sizes` works out which open listings the batch
+        // touches and tells the frontend about those alone.
+        IndexEvent::DirsUpdated { paths } => {
+            crate::listing_index_sizes::dirs_updated(paths);
+            Destination::ListingIndexSizes
+        }
         IndexEvent::ReplayProgress {
             volume_id,
             events_processed,

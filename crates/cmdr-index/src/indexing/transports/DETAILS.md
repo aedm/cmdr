@@ -105,8 +105,8 @@ lifetime, not just while a pane shows the share, so the index must update even w
   `the_excluded_dir_s_own_row_and_ordinary_siblings_still_update`. MTP's watcher resolves by object handle, not by path,
   and has no equivalent gate.
 - **Emit-after-write ordering.** The inline pane-enrich reads sizes BEFORE the index write would land, so the write is
-  sequenced FIRST and the writer emits `index-dir-updated` for the affected dir (`EmitDirUpdated`, which rides the same
-  writer channel so it fires only after the upsert/delete commits). The existing FE refresh path (`index-dir-updated` →
+  sequenced FIRST and the writer emits `DirsUpdated` for the affected dir (`EmitDirUpdated`, which rides the same
+  writer channel so it fires only after the upsert/delete commits). The existing FE refresh path (`DirsUpdated` →
   `refreshIndexSizes` → `getDirStatsBatch`) re-reads the just-written sizes. The coupling is one-directional: the
   listing layer notifies the indexer, never the reverse.
 - **Single-writer + reads-off-the-lock.** `apply_smb_change` only ENQUEUES on the volume's existing writer thread; it
@@ -183,7 +183,7 @@ by the stored handle. PTP events are device-wide but storages are separate names
 - **Path space — no mount-strip.** The MTP resolver produces storage-relative paths (`/DCIM/Camera`) and the index
   `ROOT_ID` is the storage root, so `apply_mtp_*` resolves against the index directly. The read-side `index_read_path`
   strips the `mtp://{device}/{storage}` scheme prefix off listing/dir-stats paths (owned by `../paths/DETAILS.md`).
-- The rest matches SMB verbatim: enqueue on the volume's writer, index write before the `index-dir-updated` emit, reads
+- The rest matches SMB verbatim: enqueue on the volume's writer, index write before the `DirsUpdated` emit, reads
   off the `ReadPool`, buffer-during-scan (`SCAN_CHANGE_BUFFER`, 50,000, overflow ⇒ Stale) replayed after aggregation,
   discard-on-interrupt.
 

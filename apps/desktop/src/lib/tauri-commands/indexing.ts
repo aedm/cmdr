@@ -12,7 +12,7 @@ import {
   type IndexCoverageBranchEndedEvent,
   type IndexCoverageBranchStartedEvent,
   type IndexCoveragePhaseStartedEvent,
-  type IndexDirUpdatedEvent,
+  type ListingIndexSizesChanged,
   type IndexFreshnessChangedEvent,
   type IndexMemoryWarningEvent,
   type IndexNeedsFreshScanEvent,
@@ -158,9 +158,14 @@ export function onIndexReplayComplete(callback: (payload: IndexReplayCompleteEve
   })
 }
 
-/** Fires when the index computes or refreshes dir_stats, carrying the affected paths. */
-export function onIndexDirUpdated(callback: (payload: IndexDirUpdatedEvent) => void): Promise<UnlistenFn> {
-  return events.indexDirUpdated.listen((event) => {
+/**
+ * Fires when an open listing's folder sizes moved in the index. The backend sends it only for the
+ * listings an update touched (`src-tauri/src/listing_index_sizes/`).
+ */
+export function onListingIndexSizesChanged(
+  callback: (payload: ListingIndexSizesChanged) => void,
+): Promise<UnlistenFn> {
+  return events.listingIndexSizesChanged.listen((event) => {
     callback(event.payload)
   })
 }

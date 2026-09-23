@@ -374,7 +374,7 @@ loudly, so `sorting::tests::apply_permutation_moves_each_row_to_its_destination`
   after all entries are collected. Cost is ~105 ms per 100k entries (§ "Collating names"), well under the I/O it
   follows.
 - **Enrichment at cache-write time, not on `get_file_range`**: every path that stores entries (streaming, watcher
-  update, re-sort) enriches first. Index freshness is event-driven: `index-dir-updated` → `refreshIndexSizes` →
+  update, re-sort) enriches first. Index freshness is event-driven: `listing-index-sizes-changed` → `refreshIndexSizes` →
   `refresh_listing_index_sizes` (write-locks the cache, re-enriches entries). This keeps `get_listing_stats` read-only
   while it sees up-to-date `recursive_size`. The frontend calls `refreshListingIndexSizes` before `fetchListingStats`.
 - **Hidden-file filtering in Rust, not the frontend**: visible count is unknown until all files are read. APIs accept

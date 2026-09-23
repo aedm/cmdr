@@ -84,6 +84,7 @@ pub mod licensing;
 pub(crate) mod linux_distro;
 #[cfg(target_os = "linux")]
 mod linux_icons;
+mod listing_index_sizes;
 mod listing_lifecycle;
 mod listing_overlays;
 mod location;
@@ -596,6 +597,8 @@ pub fn run() {
             // long as a pane is showing one of its virtual listings, so a lone
             // `branches/` pane stays live (`listing_lifecycle.rs`).
             file_system::git::arming::register();
+            // Index size updates reach only the listings they touch (`listing_index_sizes`).
+            listing_index_sizes::start(app.handle().clone());
             file_system::staging::set_show_safe_save_files(saved_settings.show_safe_save_files.unwrap_or(true));
             file_system::staging::set_show_staging_temps(saved_settings.show_staging_temp_files.unwrap_or(false));
             file_system::set_smb_concurrency(saved_settings.smb_concurrency.unwrap_or(10) as usize);

@@ -465,7 +465,7 @@ pub enum WriteMessage {
     /// after a full scan's `ComputeAllAggregates` so the scan-time spike doesn't
     /// wait up to 30 s before being trimmed. Not counted in WriterStats.
     WalCheckpoint,
-    /// Emit `index-dir-updated` for the given paths. Enqueued after a batch
+    /// Emit `DirsUpdated` for the given paths. Enqueued after a batch
     /// of writes so the UI notification fires only after all prior messages
     /// (deletes, upserts, deltas) are committed.
     EmitDirUpdated(Vec<String>),

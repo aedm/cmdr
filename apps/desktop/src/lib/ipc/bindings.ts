@@ -3326,7 +3326,13 @@ export const commands = {
   getLaunchDayCount: () => __TAURI_INVOKE<number>('get_launch_day_count'),
   // Updates the size format the emit gate rounds in (from settings).
   setDiskSpaceSizeFormat: (format: FileSizeFormat) => __TAURI_INVOKE<void>('set_disk_space_size_format', { format }),
-  // The main window's webview reports whether it's visible (`document.visibilityState`).
+  /**
+   *  The main window's webview reports whether it's visible (`document.visibilityState`).
+   *
+   *  ❗ An E2E run always counts as visible: its windows open ordered to the back, where WebKit calls
+   *  them hidden, and the suite's contract is that ordering changes nothing a test observes
+   *  (`test/e2e-playwright/DETAILS.md`).
+   */
   setMainWindowVisible: (visible: boolean) => __TAURI_INVOKE<void>('set_main_window_visible', { visible }),
   /**
    *  Enables or disables MTP support at runtime.
@@ -4682,7 +4688,6 @@ export const events = {
   indexCoverageBranchEnded: makeEvent<IndexCoverageBranchEndedEvent>('index-coverage-branch-ended'),
   indexCoverageBranchStarted: makeEvent<IndexCoverageBranchStartedEvent>('index-coverage-branch-started'),
   indexCoveragePhaseStarted: makeEvent<IndexCoveragePhaseStartedEvent>('index-coverage-phase-started'),
-  indexDirUpdated: makeEvent<IndexDirUpdatedEvent>('index-dir-updated'),
   indexFreshnessChanged: makeEvent<IndexFreshnessChangedEvent>('index-freshness-changed'),
   indexMemoryWarning: makeEvent<IndexMemoryWarningEvent>('index-memory-warning'),
   indexNeedsFreshScan: makeEvent<IndexNeedsFreshScanEvent>('index-needs-fresh-scan'),
@@ -4697,6 +4702,7 @@ export const events = {
   listingCancelled: makeEvent<ListingCancelledEvent>('listing-cancelled'),
   listingComplete: makeEvent<ListingCompleteEvent>('listing-complete'),
   listingError: makeEvent<ListingErrorEvent>('listing-error'),
+  listingIndexSizesChanged: makeEvent<ListingIndexSizesChanged>('listing-index-sizes-changed'),
   listingOpening: makeEvent<ListingOpeningEvent>('listing-opening'),
   listingProgress: makeEvent<ListingProgressEvent>('listing-progress'),
   listingReadComplete: makeEvent<ListingReadCompleteEvent>('listing-read-complete'),
@@ -7959,15 +7965,6 @@ export type IndexDebugStatusResponse = {
   IndexStatusResponse
 
 /**
- *  These directories' recursive sizes changed, so any listing showing them is
- *  stale.
- */
-export type IndexDirUpdatedEvent = {
-  // Absolute paths, in the listing's path space.
-  paths: string[]
-}
-
-/**
  *  A fatal storage failure that stopped a volume's index: the SQLite result codes
  *  that classified the DB as unusable (a dead disk, a corrupt file, a full or
  *  read-only volume). Carried on the `IndexPhase::Failed` phase (see `lifecycle/state.rs`)
@@ -8971,6 +8968,12 @@ export type ListingErrorReason =
       // Which git failure it was.
       kind: FriendlyGitErrorKind
     }
+
+// A listing's folder sizes changed in the index, so its pane should refresh them.
+export type ListingIndexSizesChanged = {
+  // The listing whose rows moved.
+  listingId: string
+}
 
 // Opening event payload (emitted just before read_dir starts - the slow part for network folders)
 export type ListingOpeningEvent = {

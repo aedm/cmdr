@@ -15,7 +15,7 @@
 //! - **Mark** (live event loop): every dir whose recursive size is about to
 //!   change is inserted, along with all its ancestors. We're handed exactly
 //!   that set already — it's the `pending_paths` the loop drains into
-//!   `index-dir-updated` — so marking rides the same data that drives the UI
+//!   `DirsUpdated` — so marking rides the same data that drives the UI
 //!   refresh ("flag exactly what we refresh").
 //! - **Clear** (writer thread): the transient set is cleared wholesale when the
 //!   writer's queue drains to empty. An empty queue means there is no

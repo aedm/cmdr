@@ -40,7 +40,7 @@ exclusion gate can't disagree about where the volume begins. Operations:
 
 **The three-path-spaces discipline (the trap).** The SAME path string lives in three spaces in the live loop /
 reconciler: `store::resolve_path` wants the **index-relative** path; `read_dir` / `Path::exists` / `symlink_metadata`
-want the **absolute FS** path; `emit_dir_updated` / the FE `index-dir-updated` payload want the **absolute** path (to
+want the **absolute FS** path; `emit_dir_updated` / the FE `DirsUpdated` payload want the **absolute** path (to
 match pane paths). So the mount-relative strip is applied ONLY at each `resolve_abs` argument — `affected_paths` /
 `pending_paths` / `new_dir_paths` and every dedup key stay ABSOLUTE (via `absolute()`). Applying the strip at set
 insertion breaks the FS reads and the FE emit; omitting it breaks resolution. This is why the discipline is

@@ -98,12 +98,11 @@
     import { initTabMcpSync } from './tab-mcp-sync.svelte'
     import { initQuickLookFollow } from './quick-look-follow.svelte'
     import { recalculateWebviewOffset } from '../drag/drag-position'
-    import { initIndexEvents } from '$lib/indexing/index'
     import { createIndexEventHandler } from './index-events'
     import { loadPersistedState } from './initialization'
     import { getDirectorySortMode, getShowHiddenFiles } from '$lib/settings/reactive-settings.svelte'
     import { onSettingChange } from '$lib/settings'
-    import { onMenuBarRebuilt, activateWindowMenu } from '$lib/tauri-commands'
+    import { onMenuBarRebuilt, activateWindowMenu, onListingIndexSizesChanged } from '$lib/tauri-commands'
     import { resyncSameKindMenu } from './same-kind-target.svelte'
     import { resyncMenuAccelerators } from '$lib/shortcuts'
     import DragOverlay from '../drag/DragOverlay.svelte'
@@ -517,11 +516,7 @@
      *   and moves the pane cursor. While the switcher is open it owns keyboard
      *   focus; the panes behind it must stay inert (Fix E).
      */
-    const handleIndexDirUpdated = createIndexEventHandler({
-        getLeftPath: () => leftPath,
-        getRightPath: () => rightPath,
-        getPaneRef,
-    })
+    const handleListingIndexSizesChanged = createIndexEventHandler({ getPaneRef })
 
     function handleResizeForDevTools() {
         void recalculateWebviewOffset()
@@ -594,8 +589,10 @@
             })
         })
 
-        // Listen for index directory updates to refresh panes when sizes change
-        unlistenIndexEvents = await initIndexEvents(handleIndexDirUpdated)
+        // Refresh a pane's folder sizes when the index moved them (the backend names the listing).
+        unlistenIndexEvents = await onListingIndexSizesChanged((payload) => {
+            handleListingIndexSizesChanged(payload.listingId)
+        })
 
         // Refresh both panes when aggregation completes (all dir_stats are now in the DB)
         unlistenIndexAggregationComplete = await listen('index-aggregation-complete', () => {

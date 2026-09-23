@@ -126,6 +126,7 @@ vi.mock('$lib/tauri-commands', () => ({
   // The menu bar was rebuilt in a new language, so this window re-pushes what
   // only it knows (accelerators, the pin label, the reopen flag, the enable state).
   onMenuBarRebuilt: vi.fn().mockResolvedValue(() => {}),
+  onListingIndexSizesChanged: vi.fn().mockResolvedValue(() => {}),
   activateWindowMenu: vi.fn().mockResolvedValue(undefined),
   // Volume space polling
   watchVolumeSpace: vi.fn().mockResolvedValue(undefined),

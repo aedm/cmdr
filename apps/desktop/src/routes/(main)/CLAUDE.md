@@ -12,8 +12,7 @@ via a typed API. Up: `apps/desktop/CLAUDE.md`, sibling: `../viewer/CLAUDE.md`.
   window holds for its lifetime.
 - Supporting modules: `startup-gates.ts`, `init-steps.ts` (the layout's startup steps, each failure isolated),
   `mcp-listeners.ts`, `mcp-nav-landing.ts`, `mcp-volume-select.ts`, `explorer-api.ts`, `dispatch-dedup.ts`,
-  `dialog-command-gate.ts`, `global-keydown.ts`, `global-contextmenu.ts`, `main-window-visibility.ts` (reports
-  `document.visibilityState` to the backend, which holds idle redraw work while nobody can see the window).
+  `dialog-command-gate.ts`, `global-keydown.ts`, `global-contextmenu.ts`, `main-window-visibility.ts`.
 
 ## Must-knows
 

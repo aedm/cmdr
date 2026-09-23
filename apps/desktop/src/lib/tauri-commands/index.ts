@@ -863,7 +863,7 @@ export {
   onIndexNeedsFreshScan,
   onIndexReplayProgress,
   onIndexReplayComplete,
-  onIndexDirUpdated,
+  onListingIndexSizesChanged,
   onIndexMemoryWarning,
 } from './indexing'
 export type {
@@ -875,7 +875,7 @@ export type {
   IndexNeedsFreshScanEvent,
   IndexReplayProgressEvent,
   IndexReplayCompleteEvent,
-  IndexDirUpdatedEvent,
+  ListingIndexSizesChanged,
   IndexMemoryWarningEvent,
 } from '$lib/ipc/bindings'
 

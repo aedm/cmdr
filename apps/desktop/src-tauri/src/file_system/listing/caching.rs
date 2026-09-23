@@ -377,7 +377,7 @@ pub fn notify_directory_changed(volume_id: &str, parent_path: &Path, change: Dir
     // shows the share, so the index must update even when no listing matches this
     // path — hence this sits ahead of the "no listing, bail" early-return below.
     // It's a no-op for `root` and any non-indexed volume. Sequencing the index
-    // write before the pane enrich means the enrich (and the `index-dir-updated`
+    // write before the pane enrich means the enrich (and the `DirsUpdated`
     // the writer emits) reflect the just-written sizes, not the pre-event ones.
     // The coupling is one-directional: listing → indexer, never the reverse.
     #[cfg(any(target_os = "macos", target_os = "linux"))]

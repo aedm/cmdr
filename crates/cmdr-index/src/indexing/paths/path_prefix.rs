@@ -134,7 +134,7 @@ pub(crate) fn compute_parent_path(path: &str) -> String {
 /// Expand origin directories to the recursive-size refresh set: every origin plus
 /// every ancestor up to `/`, deduplicated.
 ///
-/// The `index-dir-updated` emit and the "size updating" hourglass both need this
+/// The `DirsUpdated` emit and the "size updating" hourglass both need this
 /// wider set (a file's size change propagates to every ancestor's `dir_stats`), so
 /// it's rebuilt here, ONCE per drained batch over the deduplicated origins, rather
 /// than per event. Consumers that care about which listings changed take the

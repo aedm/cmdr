@@ -12,4 +12,3 @@ export {
 } from './index-state.svelte'
 export type { VolumeIndexActivity } from './index-state.svelte'
 export { initMediaEnrichState, destroyMediaEnrichState, getEnrichingVolumes } from './media-enrich-state.svelte'
-export { initIndexEvents } from './index-events'

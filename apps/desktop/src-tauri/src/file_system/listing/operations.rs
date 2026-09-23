@@ -591,7 +591,7 @@ fn listing_stats(visible: VisibleRows<'_>, selected_indices: Option<&[usize]>) -
 
 /// Re-enriches directory entries in a cached listing with fresh index data.
 ///
-/// Called when `index-dir-updated` fires so that subsequent `get_listing_stats`
+/// Called when `DirsUpdated` fires so that subsequent `get_listing_stats`
 /// reads see up-to-date `recursive_size` values without needing a write lock.
 pub fn refresh_listing_index_sizes(listing_id: &str) -> Result<(), String> {
     let mut cache = LISTING_CACHE.write().map_err(|_| "Failed to acquire cache lock")?;

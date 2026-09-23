@@ -605,7 +605,7 @@ pub async fn get_listing_stats(
 /// Re-enriches cached listing entries with fresh drive index data.
 ///
 /// On the blocking pool rather than inline: this one runs two indexed SQLite
-/// queries, and an index storm fires it once per `index-dir-updated` event per
+/// queries, and an index storm fires it once per `DirsUpdated` event per
 /// pane. An async worker held for the length of a database query starves every
 /// other future scheduled on it, which is the same shape of problem as the main
 /// thread, one layer down.

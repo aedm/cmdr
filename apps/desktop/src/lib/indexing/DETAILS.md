@@ -39,8 +39,7 @@ value directly).
 
 The barrel exports the lifecycle + the cross-module reads: `isVolumeScanning` / `getEntriesScanned` / `ROOT_VOLUME_ID`
 (SearchDialog), `getVolumeActivity` / `getVolumeAggregation` (the breadcrumb badge's scanning tooltip, in
-`navigation/`), `getVolumePhase` (the per-volume step checklist), plus `initIndexState` / `destroyIndexState` /
-`initIndexEvents`. The indicator (same dir) imports the rest directly from `./index-state.svelte.ts`:
+`navigation/`), `getVolumePhase` (the per-volume step checklist), plus `initIndexState` / `destroyIndexState`. The indicator (same dir) imports the rest directly from `./index-state.svelte.ts`:
 
 ```ts
 // Multi-drive API (the indicator):
@@ -61,12 +60,11 @@ getEntriesScanned(): number          // the ROOT volume's live count (SearchDial
 // Lifecycle:
 initIndexState(): Promise<void>      // call once at app mount
 destroyIndexState(): void            // call at app teardown
-initIndexEvents(onDirUpdated: (paths: string[]) => void): Promise<UnlistenFn>
 ```
 
-`index-events.ts` bridges the `index-dir-updated` event to `onDirUpdated`. Each callback gets a BATCH of paths (multiple
-during DB replay, typically one in live FS-watch). `DualPaneExplorer` checks each path against each pane's current dir
-with a path-prefix comparison, which relies on trailing-slash normalization.
+Index size updates don't pass through here: the backend works out which open listing a batch touches
+(`src-tauri/src/listing_index_sizes/`) and emits `listing-index-sizes-changed`, which the pane layer handles
+(`file-explorer/pane/index-events.ts`).
 
 ## Scan-state events (`index-state.svelte.ts`)
 
@@ -503,7 +501,7 @@ size in seconds instead of minutes. Nothing was timing that, because the moment 
 
 `noteRenderedFolderSizes(entries, volumeId)` is called from `views/full-list-cache.svelte.ts` at the two points where
 rows the user is looking at gain sizes: after a window fetch lands, and after `updateIndexSizesInPlace` resolves an
-`index-dir-updated` refresh. It fires `first_folder_size_shown` on the first window carrying a real `recursiveSize`,
+`listing-index-sizes-changed` refresh. It fires `first_folder_size_shown` on the first window carrying a real `recursiveSize`,
 then goes inert for the rest of the launch (every later call is one boolean read). Props are a `seconds_bucket` since
 the frontend booted plus `covering` (was a phased first index running on that drive?) — ❌ never a path or a name.
 

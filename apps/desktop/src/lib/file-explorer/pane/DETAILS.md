@@ -31,9 +31,9 @@ carry live here:
   coalesced by a leading + trailing `createThrottle` at `INDEX_LISTING_UPDATE_MIN_INTERVAL_MS` (250 ms, ≤4/sec). Under
   heavy churn the backend `diff_emitter` only collapses to ~50 ms (~20/sec), and each unthrottled refetch re-renders the
   range into fresh WebKit compositor surfaces (1+ GB GPU under a storm), so the throttle is the demand-side cap. The
-  index-SIZE refresh path (`index-dir-updated` → `refreshIndexSizes`) is a separate source, already leading-throttled at
-  2 s per pane in `index-events.ts`, which also resolves the well-known macOS `/private/` symlinks before matching
-  paths.
+  index-SIZE refresh path (`listing-index-sizes-changed` → `refreshIndexSizes`) is a separate source: the backend names
+  the listing an index update touched (`src-tauri/src/listing_index_sizes/`), and `index-events.ts` leading-throttles it
+  at 2 s per pane.
 - **`git-browser-sync.svelte.ts::cleanup()` has to drop the SETTING listeners too**, not just the repo subscription, or
   they leak per pane.
 - **Two independent MCP mirrors, so a change to one doesn't cover the other**: `pane-mcp-sync.svelte.ts` mirrors pane
@@ -435,7 +435,7 @@ There's no Search-specific capabilities shim — `lib/search/capabilities.ts` ke
   `recursiveSizePending` field instead: that's one of the three terms, and it calls a folder settled through the whole
   walk that's rewriting it, which is when its number is furthest from the truth (a folder read `≥422 GB` on its way down
   to 56 KB). Read outside a reactive context on purpose — a push is triggered, not subscribed, and the index storm that
-  moves these numbers fires the `index-dir-updated` ticks that re-push. The rendering side:
+  moves these numbers fires the `listing-index-sizes-changed` ticks that re-push. The rendering side:
   `src-tauri/src/mcp/resources/DETAILS.md` § "Directory sizes say how much they're worth".
 - **`has-parent.ts`**: `computeHasParent` folds ONLY the snapshot rule via `hasParentRow`; the two PATH comparisons
   (`=== '/'`, `=== root`) stay.

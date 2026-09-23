@@ -22,8 +22,8 @@
 //!
 //! `caching::notify_directory_changed` calls [`apply_smb_change`] FIRST (the
 //! index write is sequenced ahead of the pane enrich), then emits
-//! `index-dir-updated` for the affected directory so the existing FE refresh
-//! path (`index-dir-updated` → `refreshIndexSizes` → `getDirStatsBatch`) re-reads
+//! `DirsUpdated` for the affected directory so the existing FE refresh
+//! path (`DirsUpdated` → `refreshIndexSizes` → `getDirStatsBatch`) re-reads
 //! the just-written sizes. The coupling is one-directional: the listing layer
 //! notifies the indexer, never the reverse.
 //!
@@ -227,7 +227,7 @@ impl ResolvedWrite {
 /// Apply one SMB `DirectoryChange` to the volume's index, if the volume has a
 /// live (`Running`) index. Resolves ids against the volume's `ReadPool`,
 /// enqueues the writer message, and (on success) asks the writer to emit
-/// `index-dir-updated` for the affected directory so the FE refreshes sizes AFTER
+/// `DirsUpdated` for the affected directory so the FE refreshes sizes AFTER
 /// the write lands.
 ///
 /// `parent_path` is the watcher's mount-absolute directory path. Synchronous: all
@@ -369,7 +369,7 @@ fn apply_one_change(volume_id: &str, writer: &IndexWriter, parent_path: &Path, c
     write.send(writer);
 
     // Sequence the FE refresh AFTER the index write: `EmitDirUpdated` rides the
-    // same writer channel, so the writer fires `index-dir-updated` only once the
+    // same writer channel, so the writer fires `DirsUpdated` only once the
     // upsert/delete above is committed. The FE then re-reads sizes from the
     // just-written index (the existing refreshIndexSizes → getDirStatsBatch path).
     // Emit for the mount-absolute parent path: that's the listing-cache key the

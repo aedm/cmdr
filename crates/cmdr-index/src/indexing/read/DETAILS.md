@@ -68,7 +68,7 @@ back on, and a search's walk evicting an index whose coverage this build refuses
 `enrich_entries_with_index(entries)` is the root-defaulting wrapper;
 `enrich_entries_with_index_on_volume(volume_id, entries)` is the volume-routed form. Called when entries land in the
 listing cache (streaming, watcher update, re-sort), NOT on `get_file_range`; live freshness flows separately via
-`index-dir-updated` → `refreshIndexSizes` → `getDirStatsBatch`. A live pane triggers a pass about twice a second whether
+`DirsUpdated` → `refreshIndexSizes` → `getDirStatsBatch`. A live pane triggers a pass about twice a second whether
 or not anything changed.
 
 **The skip-vs-route gate.** `get_read_pool_for(volume_id)` returning `None` IS the "no index registered for this volume"
@@ -196,7 +196,7 @@ held root in EITHER direction (an ancestor-or-equal, whose aggregate includes th
 whose own rows are being rewritten); and the writer-drain `clear()` wipes only the TRANSIENT set — holds survive.
 Holding roots (not expanded ancestors) with a query-time prefix test keeps release exact under overlapping rescans
 (`/a/b` and `/a/c` share `/a`; expanding would strip it while one is still in flight). On completion the sequence is
-`release(root)` FIRST, then emit `index-dir-updated` for the root + ancestors via `WriteMessage::EmitDirUpdated`:
+`release(root)` FIRST, then emit `DirsUpdated` for the root + ancestors via `WriteMessage::EmitDirUpdated`:
 release before emit, else the triggered refetch re-reads `pending = true`. The mark/clear mechanics that feed this from
 the writer side (the `dir_stats` ledger, the drain point) are owned by `../writer/DETAILS.md`.
 

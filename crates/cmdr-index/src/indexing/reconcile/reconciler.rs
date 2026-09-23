@@ -536,7 +536,7 @@ impl EventReconciler {
     /// Flush every throttled key whose 60 s window has elapsed, applying its
     /// last-seen size (never re-statting). Called on the event loop's ~1 s
     /// throttle-sweep tick. Returns the ORIGIN dirs whose listings the flushes
-    /// changed, for the caller's batched `index-dir-updated` emit (which expands
+    /// changed, for the caller's batched `DirsUpdated` emit (which expands
     /// them to the ancestor closure).
     pub(crate) fn sweep_throttle(&mut self, writer: &IndexWriter, now: Instant) -> Vec<String> {
         let flushes = self.throttle.sweep(now);

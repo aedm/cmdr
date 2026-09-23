@@ -224,7 +224,7 @@ fn apply_upsert(volume_id: &str, writer: &IndexWriter, upsert: &MtpUpsert) {
     write.send(writer);
 
     // Sequence the FE refresh AFTER the index write (the writer fires
-    // `index-dir-updated` only once the upsert commits). Emit for the parent's
+    // `DirsUpdated` only once the upsert commits). Emit for the parent's
     // absolute MTP URL so the FE listing-cache key matches.
     if let Some(parent) = upsert.path.parent() {
         let parent_url = mtp_url_for(volume_id, parent);
@@ -299,7 +299,7 @@ fn path_to_index_str(path: &std::path::Path) -> String {
 }
 
 /// Build the absolute MTP URL (`mtp://{device}/{storage}/inner`) for a
-/// storage-relative path, for the FE `index-dir-updated` listing-cache key.
+/// storage-relative path, for the FE `DirsUpdated` listing-cache key.
 fn mtp_url_for(volume_id: &str, storage_rel: &std::path::Path) -> String {
     let (device_id, storage_id) = cmdr_fs::volume::mtp_ids::split_volume_id(volume_id).unwrap_or((volume_id, 0));
     let inner = storage_rel.to_string_lossy();

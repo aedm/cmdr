@@ -12,7 +12,7 @@ use cmdr_fs::firmlinks;
 
 /// How many 500 ms progress ticks between partial-aggregation passes.
 ///
-/// 10 ticks = 5 s. Matches the frontend's 2 s/pane `index-dir-updated` refresh
+/// 10 ticks = 5 s. Matches the frontend's 2 s/pane `DirsUpdated` refresh
 /// throttle, so no emit is wasted, and it stays frequent enough to feel live
 /// without measurably slowing the scan.
 ///

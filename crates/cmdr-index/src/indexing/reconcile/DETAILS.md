@@ -530,8 +530,8 @@ walk it drains on to, so a rescan thread holds the drive while it walks and neve
 would find nothing, default to a token that never fires, and keep writing into a draining writer. Topology:
 `../host/DETAILS.md` § Cancellation.
 
-**Progressive `index-dir-updated` emit during background verification.** `run_background_verification` emits one
-`index-dir-updated` per successfully-scanned new subtree, immediately after the post-scan writer flush. Don't buffer
+**Progressive `DirsUpdated` emit during background verification.** `run_background_verification` emits one
+`DirsUpdated` per successfully-scanned new subtree, immediately after the post-scan writer flush. Don't buffer
 new-dir paths and fire a single end-of-verification emit: that window runs up to 5 minutes for a typical home folder,
 and any listing opened in it stays on `<dir>` placeholders (the single emit often misses the right paths, carrying
 replay `affected_paths` rather than the verification-discovered paths). The FE handler is throttled at 2 s per pane.

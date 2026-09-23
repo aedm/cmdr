@@ -141,7 +141,7 @@ pub(super) fn release_rescan_hold(
 }
 
 /// Release the rescan root's hourglass (skip if a follow-up walk is imminent),
-/// then emit `index-dir-updated` for the root plus its ancestor chain via the
+/// then emit `DirsUpdated` for the root plus its ancestor chain via the
 /// writer channel so the refresh sequences AFTER the rescan's writes land. Release
 /// precedes the emit so the triggered refetch reads `pending == false`.
 ///

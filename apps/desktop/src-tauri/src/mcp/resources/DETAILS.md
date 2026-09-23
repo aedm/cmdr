@@ -73,7 +73,7 @@ The UI resolves the same collision by dropping its `≥` and leaving the hourgla
 
 **Why this is sharper for agents than for people**: someone watching a folder mid-scan sees the hourglass and waits. An agent reads the number and acts on it, so an uncounted total presented as settled becomes a confident wrong answer (a 129 GB tree reported as 28.8 GB).
 
-**Gotcha — `[size-unsettled]` is only as good as its INPUT.** The frontend computes the whole answer (`pane-mcp-sync.svelte.ts`'s `inFluxAnswerFor`) and pushes it as `recursiveSizeUpdating`; this file only renders it. Mirroring the raw per-folder `recursiveSizePending` field instead calls a folder settled through the entire walk that is rewriting it, which is precisely when its number is furthest from the truth. Pushes are triggered (navigation, selection, `index-dir-updated`), not subscribed, so the marker tracks a storm because the storm itself keeps re-pushing.
+**Gotcha — `[size-unsettled]` is only as good as its INPUT.** The frontend computes the whole answer (`pane-mcp-sync.svelte.ts`'s `inFluxAnswerFor`) and pushes it as `recursiveSizeUpdating`; this file only renders it. Mirroring the raw per-folder `recursiveSizePending` field instead calls a folder settled through the entire walk that is rewriting it, which is precisely when its number is furthest from the truth. Pushes are triggered (navigation, selection, `listing-index-sizes-changed`), not subscribed, so the marker tracks a storm because the storm itself keeps re-pushing.
 
 ### The `sort:` line, and the `relevance` value
 

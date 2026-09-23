@@ -7,7 +7,7 @@ is the canonical owner of `IndexPathSpace` and the read-side path transforms.
 
 - **Three path spaces, one trap.** The same path string lives in three spaces in the local pipeline: `resolve_path`
   wants the **index-relative** path; `read_dir` / `symlink_metadata` / `Path::exists` want the **absolute FS** path;
-  `emit_dir_updated` / the FE `index-dir-updated` payload want the **absolute** path (to match pane paths). Apply the
+  `emit_dir_updated` / the FE `DirsUpdated` payload want the **absolute** path (to match pane paths). Apply the
   mount-relative strip ONLY at each `IndexPathSpace::resolve_abs` argument. Every path SET (`affected_paths`,
   `pending_paths`, `new_dir_paths`) and every dedup key stays ABSOLUTE (via `absolute()`). Strip at set insertion and
   you break the FS reads and the FE emit; omit it and you break resolution. Wrong space ⇒ silently dropped live events

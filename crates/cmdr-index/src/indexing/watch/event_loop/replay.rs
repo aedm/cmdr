@@ -56,7 +56,7 @@ const REPLAY_DEDUP_BATCH_SIZE: u64 = 1_000;
 
 /// Process FSEvents replayed from the journal on cold start.
 ///
-/// Two-phase approach to avoid a race condition where `index-dir-updated`
+/// Two-phase approach to avoid a race condition where `DirsUpdated`
 /// notifications fire before the writer commits replay data to SQLite:
 ///
 /// **Phase 1 (replay):** Process events via `process_fs_event` directly,
@@ -66,7 +66,7 @@ const REPLAY_DEDUP_BATCH_SIZE: u64 = 1_000;
 ///
 /// **Phase 2 (after HistoryDone):** Send final `UpdateLastEventId`, flush
 /// the writer (wait for all prior messages to commit), then emit a single
-/// batched `index-dir-updated`. After that, continue processing live events
+/// batched `DirsUpdated`. After that, continue processing live events
 /// with per-event emit (live events arrive slowly enough for the writer to
 /// keep up).
 ///
@@ -374,7 +374,7 @@ pub(in crate::indexing) async fn run_replay_event_loop(
         duration_ms: replay_start.elapsed().as_millis() as u64,
     });
 
-    // Emit a single batched index-dir-updated with all collected paths.
+    // Emit a single batched DirsUpdated with all collected paths.
     // If origin_dirs overflowed, emit a full refresh notification with
     // just "/" so the frontend refreshes everything.
     if origins_overflow {

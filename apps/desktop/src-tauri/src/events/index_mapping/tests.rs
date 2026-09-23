@@ -39,13 +39,15 @@ fn every_event_maps_to_a_destination_with_a_non_empty_name() {
                 assert!(!name.is_empty(), "{kind:?} maps to an empty Tauri event name");
                 wire_names.push(name);
             }
-            // The four that reach the host's own machinery instead of the
-            // frontend: two feedback pipelines, the anonymous measurements, and
-            // the agent's wake loop.
+            // The five that reach the host's own machinery instead of the
+            // frontend: two feedback pipelines, the anonymous measurements, the
+            // agent's wake loop, and the per-listing size router (which emits its
+            // own event, per listing).
             Destination::ErrorReport
             | Destination::RestrictedPaths
             | Destination::AnalyticsOnly
-            | Destination::AgentWake => {
+            | Destination::AgentWake
+            | Destination::ListingIndexSizes => {
                 assert!(
                     matches!(
                         kind,
@@ -53,6 +55,7 @@ fn every_event_maps_to_a_destination_with_a_non_empty_name() {
                             | IndexEventKind::PathAccessDenied
                             | IndexEventKind::HomeCovered
                             | IndexEventKind::FolderActivity
+                            | IndexEventKind::DirsUpdated
                     ),
                     "{kind:?} is a frontend event, so it needs a wire name"
                 );

@@ -128,7 +128,7 @@ fn with_dir_sender<T>(volume_id: &str, f: impl FnOnce(&watch::Sender<DirsChanged
 /// a volume.
 ///
 /// Called from the live-change sites (`event_loop`, `verifier`) alongside the
-/// existing frontend `index-dir-updated` emit, which takes the wider ancestor
+/// existing frontend `DirsUpdated` emit, which takes the wider ancestor
 /// closure. `indexing/` publishes without knowing who listens (the one-way
 /// boundary); the importance scheduler subscribes and rescopes an incremental
 /// rescore to these paths' subtrees. A no-op if `origins` is empty.

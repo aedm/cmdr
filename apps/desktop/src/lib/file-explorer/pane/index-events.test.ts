@@ -1,89 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
-import {
-  ensureTrailingSlash,
-  resolvePrivateSymlinks,
-  hasDescendantUpdate,
-  throttledRefresh,
-  createIndexEventHandler,
-} from './index-events'
+import { describe, expect, it, vi } from 'vitest'
+import { throttledRefresh, createIndexEventHandler } from './index-events'
 import type { FilePaneAPI } from './types'
-
-vi.mock('$lib/shortcuts/key-capture', () => ({
-  isMacOS: () => true,
-}))
-
-describe('ensureTrailingSlash', () => {
-  it('adds slash when missing', () => {
-    expect(ensureTrailingSlash('/Users/test')).toBe('/Users/test/')
-  })
-
-  it('keeps existing trailing slash', () => {
-    expect(ensureTrailingSlash('/Users/test/')).toBe('/Users/test/')
-  })
-
-  it('handles root path', () => {
-    expect(ensureTrailingSlash('/')).toBe('/')
-  })
-})
-
-describe('resolvePrivateSymlinks', () => {
-  it('resolves /tmp to /private/tmp', () => {
-    expect(resolvePrivateSymlinks('/tmp')).toBe('/private/tmp')
-  })
-
-  it('resolves /tmp/foo to /private/tmp/foo', () => {
-    expect(resolvePrivateSymlinks('/tmp/foo')).toBe('/private/tmp/foo')
-  })
-
-  it('resolves /var to /private/var', () => {
-    expect(resolvePrivateSymlinks('/var')).toBe('/private/var')
-  })
-
-  it('resolves /etc/hosts to /private/etc/hosts', () => {
-    expect(resolvePrivateSymlinks('/etc/hosts')).toBe('/private/etc/hosts')
-  })
-
-  it('does not resolve /tmpfoo (no slash boundary)', () => {
-    expect(resolvePrivateSymlinks('/tmpfoo')).toBe('/tmpfoo')
-  })
-
-  it('passes through non-symlink paths unchanged', () => {
-    expect(resolvePrivateSymlinks('/Users/test')).toBe('/Users/test')
-  })
-})
-
-describe('hasDescendantUpdate', () => {
-  it('returns true when a path is a descendant of the dir', () => {
-    expect(hasDescendantUpdate(['/Users/test/foo/'], '/Users/test/')).toBe(true)
-  })
-
-  // The dir's own dir_stats change refreshes the `..` row (which renders the
-  // current folder's recursive size, per views/CLAUDE.md). Previously this
-  // returned false, dropping legitimate refreshes for the `..` row.
-  it('returns true when the path is the dir itself (refreshes the .. row)', () => {
-    expect(hasDescendantUpdate(['/Users/test/'], '/Users/test/')).toBe(true)
-  })
-
-  // The backend uses `/` as a full-refresh sentinel after a full scan
-  // completes (manager.rs end-of-scan emit) or after a replay overflow
-  // (event_loop.rs:780). Today the strict-descendant check drops it
-  // because `/` is an ancestor of every pane path, never a descendant.
-  it('returns true for the / refresh-everything sentinel', () => {
-    expect(hasDescendantUpdate(['/'], '/Users/test/')).toBe(true)
-  })
-
-  it('returns true when / sentinel is mixed with other paths', () => {
-    expect(hasDescendantUpdate(['/Users/other/', '/'], '/Users/test/')).toBe(true)
-  })
-
-  it('returns false when paths are unrelated', () => {
-    expect(hasDescendantUpdate(['/other/path/'], '/Users/test/')).toBe(false)
-  })
-
-  it('handles paths without trailing slash', () => {
-    expect(hasDescendantUpdate(['/Users/test/foo'], '/Users/test/')).toBe(true)
-  })
-})
 
 /* eslint-disable @typescript-eslint/unbound-method -- vi.fn() mocks have no this binding */
 describe('throttledRefresh', () => {
@@ -116,41 +33,33 @@ describe('throttledRefresh', () => {
 })
 
 describe('createIndexEventHandler', () => {
-  it('refreshes the correct pane when a descendant path is updated', () => {
-    const leftRefresh = vi.fn()
-    const rightRefresh = vi.fn()
+  function panes() {
+    const left = { getListingId: () => 'listing-left', refreshIndexSizes: vi.fn() }
+    const right = { getListingId: () => 'listing-right', refreshIndexSizes: vi.fn() }
     const handler = createIndexEventHandler({
-      getLeftPath: () => '/Users/test/left',
-      getRightPath: () => '/Users/test/right',
-      getPaneRef: (pane) =>
-        ({
-          refreshIndexSizes: pane === 'left' ? leftRefresh : rightRefresh,
-        }) as unknown as FilePaneAPI,
+      getPaneRef: (pane) => (pane === 'left' ? left : right) as unknown as FilePaneAPI,
     })
+    return { left, right, handler }
+  }
 
-    handler(['/private/Users/test/left/subdir/'])
-    // Won't match because /Users/test/left gets resolvePrivateSymlinks applied (no-op since not /tmp/var/etc)
-    // and the event path is /private/... which doesn't start with /Users/test/left/
-    expect(leftRefresh).not.toHaveBeenCalled()
-
-    // Match: path is a descendant of right pane path
-    handler(['/Users/test/right/subdir/'])
-    expect(rightRefresh).toHaveBeenCalled()
+  it('refreshes only the pane showing the listing', () => {
+    const { left, right, handler } = panes()
+    handler('listing-right')
+    expect(right.refreshIndexSizes).toHaveBeenCalledTimes(1)
+    expect(left.refreshIndexSizes).not.toHaveBeenCalled()
   })
 
-  it('respects throttle between calls', () => {
-    const refresh = vi.fn()
-    const handler = createIndexEventHandler({
-      getLeftPath: () => '/Users/test',
-      getRightPath: () => '/other',
-      getPaneRef: () => ({ refreshIndexSizes: refresh }) as unknown as FilePaneAPI,
-    })
+  it('ignores a listing no pane shows', () => {
+    const { left, right, handler } = panes()
+    handler('listing-gone')
+    expect(left.refreshIndexSizes).not.toHaveBeenCalled()
+    expect(right.refreshIndexSizes).not.toHaveBeenCalled()
+  })
 
-    handler(['/Users/test/child/'])
-    expect(refresh).toHaveBeenCalledTimes(1)
-
-    // Second call within cooldown should be throttled
-    handler(['/Users/test/child2/'])
-    expect(refresh).toHaveBeenCalledTimes(1)
+  it('respects the throttle between calls', () => {
+    const { left, handler } = panes()
+    handler('listing-left')
+    handler('listing-left')
+    expect(left.refreshIndexSizes).toHaveBeenCalledTimes(1)
   })
 })

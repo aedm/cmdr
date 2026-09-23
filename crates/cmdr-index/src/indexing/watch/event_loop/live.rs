@@ -161,7 +161,7 @@ pub(in crate::indexing) struct LiveConfig {
 /// deduplicating them by normalized path during each flush interval.
 /// Only the deduplicated batch is processed through the reconciler, which
 /// cuts allocations dramatically during event storms. Batches
-/// `index-dir-updated` notifications with a 1s flush interval.
+/// `DirsUpdated` notifications with a 1s flush interval.
 /// Exits when the channel closes (watcher stopped).
 pub(in crate::indexing) async fn run_live_event_loop(
     mut event_rx: tokio::sync::mpsc::UnboundedReceiver<watcher::FsChangeEvent>,
