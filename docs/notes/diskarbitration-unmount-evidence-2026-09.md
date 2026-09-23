@@ -3,8 +3,8 @@
 The evidence the eject and drive-safety work (the unmount approver, the per-disk eject, the holder scan and its facts)
 rests on, kept for whoever picks up the deferred DiskArbitration work (per-disk DA sessions, the DA teardown swap) or
 re-questions a budget. The designs themselves live beside the code: `apps/desktop/src-tauri/src/volumes/DETAILS.md` §
-"The unmount approver" and `apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "Eject". Open work:
-`docs/specs/eject-and-drive-safety-follow-ups.md`.
+"The unmount approver" and `apps/desktop/src-tauri/src/file_system/volume/DETAILS.md` § "Eject". Open work: GitHub
+issues [#246](https://github.com/vdavid/cmdr/issues/246)–[#250](https://github.com/vdavid/cmdr/issues/250).
 
 Unless marked otherwise: verified on macOS 26.6.2 (25G83), unsandboxed uid 501, with throwaway probes against 50–60 MB
 APFS DMGs attached `-nobrowse`, 2026-09-12. Apple sources: DiskArbitration-535.0.10, xnu-12377.1.9. Where this section

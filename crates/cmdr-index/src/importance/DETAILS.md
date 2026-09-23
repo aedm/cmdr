@@ -2,8 +2,9 @@
 
 The deterministic, cheap folder-importance score that any expensive feature consumes (the in-app agent, the media-ML
 enrichment scheduler, future disk-cleanup / prefetch). This doc covers what's SUBSYSTEM-WIDE plus the top-level files no
-area subdir owns; each area documents itself. What the subsystem still owes:
-`docs/specs/later/importance-follow-ups.md`.
+area subdir owns; each area documents itself. What the subsystem still owes: GitHub issues
+[#228](https://github.com/vdavid/cmdr/issues/228), [#229](https://github.com/vdavid/cmdr/issues/229), and
+[#230](https://github.com/vdavid/cmdr/issues/230).
 
 Read this before any non-trivial work here: editing, planning, reorganizing, or advising.
 
@@ -211,4 +212,5 @@ Three `crates/index-query` binaries, each documented next to the code it drives:
 - No IPC surface beyond `record_visit`; no user-facing strings, no i18n (`record_visit` and the dev bins are invisible
   to the app UI).
 - Weight tuning against real trees, the `kMDItemLastUsedDate` sampling cost, and a recompute nothing can stop are all
-  open — `docs/specs/later/importance-follow-ups.md`.
+  open — GitHub issues [#228](https://github.com/vdavid/cmdr/issues/228),
+  [#229](https://github.com/vdavid/cmdr/issues/229), and [#230](https://github.com/vdavid/cmdr/issues/230).

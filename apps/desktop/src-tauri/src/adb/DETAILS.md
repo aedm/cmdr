@@ -3,7 +3,7 @@
 The app side of `crates/cmdr-adb/`: how a device reaches the sidebar, when a volume is dialed, what an eject does, and
 what the frontend calls. Read this before any non-trivial work here. The wire contract, the `Volume` answers, and the
 error policy are the crate's (`crates/cmdr-adb/DETAILS.md`); what the backend still owes is
-`docs/specs/later/adb-follow-ups.md`. The seam both device backends register through is `device_volumes.rs`,
+GitHub [#190](https://github.com/vdavid/cmdr/issues/190) and [#191](https://github.com/vdavid/cmdr/issues/191). The seam both device backends register through is `device_volumes.rs`,
 whose module doc is canonical for the trait.
 
 ## Where each thing lives
@@ -223,7 +223,7 @@ kind of "oversight" someone will otherwise fix.
 
 - An " (ADB)" name suffix when the same phone is also listed over MTP (`entries()` names the model alone). The frontend
   applies one from the volume list (`src/lib/adb/adb-volume-label.ts`); the merged one-row-per-phone listing that
-  retires it is `docs/specs/later/adb-follow-ups.md` § 3.
+  retires it is GitHub [#192](https://github.com/vdavid/cmdr/issues/192).
 - The MCP `select_volume` tool can't reach an ADB device: `mcp/executor/nav.rs` validates a name against
   `volumes::list_locations` plus MTP, and a device row comes from the provider seam instead. (Go to path DOES answer
   for an `adb://` path, through `src/lib/go-to-path/scheme-intercept.ts`.)

@@ -5,10 +5,11 @@ Status: **not started**, still a draft. Nothing has moved: `com.veszelovszki.cmd
 `logging/startup.rs`, `secrets/mod.rs`, and `settings/loader.rs`.
 
 **Provenance, read this first.** This draft was written by an AI agent at the end of a design session mostly about a
-different feature (the in-app agent, now `docs/specs/later/ai/agent-follow-ups.md`), without a fresh look at the code. A
-2026-08-27 audit checked every claim in it against the tree: §3's four mechanisms all hold, and three of the open
-questions are answered below from the code rather than guessed. **The two go/no-go questions (§6.1 and §6.2) are still
-open**, and they are the whole risk. Treat this as an agenda, not a plan.
+different feature (the in-app agent, now tracked in [#203](https://github.com/vdavid/cmdr/issues/203) and its
+`ai`-labelled siblings), without a fresh look at the code. A 2026-08-27 audit checked every claim in it against the
+tree: §3's four mechanisms all hold, and three of the open questions are answered below from the code rather than
+guessed. **The two go/no-go questions (§6.1 and §6.2) are still open**, and they are the whole risk. Treat this as an
+agenda, not a plan.
 
 ## 1. Goal
 
@@ -21,7 +22,7 @@ Each maps a current path to its target:
 - **`~/Library/Application Support/com.veszelovszki.cmdr-dev-<slug>/` (per-worktree)**: `.../cmdr-dev-<slug>/`
 - **`~/Library/Logs/com.veszelovszki.cmdr/`**: `~/Library/Logs/cmdr/`
 - **`~/Library/Caches/com.veszelovszki.cmdr/`**: `~/Library/Caches/cmdr/`. ⚠️ This path doesn't exist yet. The move of
-  the drive index into it is owned by `docs/specs/later/ai/agent-follow-ups.md` § 6 (which also renames the files to
+  the drive index into it is owned by [#203](https://github.com/vdavid/cmdr/issues/203) (which also renames the files to
   `drive-index-{volume_id}.db`), and that item is not started either. **This doc owns the directory NAME, that one owns
   what goes in it**; neither should restate the other.
 
@@ -117,8 +118,8 @@ Still open, in the order that matters:
 4. Symlink compatibility window: needed at all, and for how long?
 5. Does anything outside the repo (user scripts, third-party tools, support docs) reference the old path in ways worth a
    release-note warning?
-6. Sequencing with the index relocation (`agent-follow-ups.md` § 6): one combined migration or two separate ones? Both
-   are unstarted, so either order is still available.
+6. Sequencing with the index relocation ([#203](https://github.com/vdavid/cmdr/issues/203)): one combined migration or
+   two separate ones? Both are unstarted, so either order is still available.
 
 Answered by the 2026-08-27 audit, kept so nobody re-asks: single-instance enforcement exists (§3.3), Linux derives from
 the identifier via XDG (§3.6), the external-reader inventory is in §3.4, and window state is already redirected.

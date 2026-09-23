@@ -381,7 +381,8 @@ on. The two dev CLIs and the vendored fork are ordinary members.
   (`apps/desktop/src-tauri/src/commands/webdav.rs`); reconnect and sign-in ride the backend-neutral commands. What the
   frontend calls and what each answer means: `crates/cmdr-webdav/DETAILS.md` § "Connecting from the frontend". Its
   guardrails and which side a test lives on: `crates/cmdr-webdav/CLAUDE.md`. Its Docker servers:
-  `apps/desktop/test/webdav-servers/README.md`. What it still owes: `docs/specs/webdav-backend-follow-ups.md`.
+  `apps/desktop/test/webdav-servers/README.md`. What it still owes: GitHub issues
+  [#173](https://github.com/vdavid/cmdr/issues/173)–[#178](https://github.com/vdavid/cmdr/issues/178).
 - `crates/cmdr-adb/`: everything Cmdr says to an Android device over ADB. `AdbVolume` per attached device, rooted at the
   device's real `/`, spoken to the ADB server on loopback (the sync service for stat, list, and transfers, `shell,v2`
   for the verbs it lacks, `host:track-devices` for hotplug), with a typed errno-based error policy and a fake ADB server
@@ -437,8 +438,9 @@ on. The two dev CLIs and the vendored fork are ordinary members.
     find-similar, offline after unmount). Enriches local volumes plus opt-in network (SMB) volumes conservatively
     (priority-gated via `priority/`, bandwidth-bounded byte-fetch through the app's own smb2 session for Direct volumes
     with an OS-mount fallback; disconnect pauses without losing coverage; MTP never background-sweeps). Off by default.
-    See its `crates/cmdr-index/src/media_index/CLAUDE.md`; faces and captions are in
-    `specs/later/indexing/media-index-follow-ups.md`
+    See its `crates/cmdr-index/src/media_index/CLAUDE.md`; faces are GitHub
+    [#223](https://github.com/vdavid/cmdr/issues/223) and [#224](https://github.com/vdavid/cmdr/issues/224), captions
+    [#225](https://github.com/vdavid/cmdr/issues/225)
 - `crates/index-query/`: developer CLI that queries the index DB with the `platform_case` collation `sqlite3` can't
   supply, plus the three importance measurement binaries. Depends on `cmdr-index` alone. See
   `docs/tooling/index-query.md`

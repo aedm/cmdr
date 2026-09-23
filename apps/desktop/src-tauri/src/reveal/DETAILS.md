@@ -1,7 +1,7 @@
 # Reveal in Cmdr: architecture and decisions
 
-Up: `CLAUDE.md`. What's still open (the folder-open handler, onboarding, per-app coverage):
-`docs/specs/later/default-file-manager-follow-ups.md`.
+Up: `CLAUDE.md`. What's still open: the folder-open handler
+([#271](https://github.com/vdavid/cmdr/issues/271)), the onboarding offer ([#272](https://github.com/vdavid/cmdr/issues/272)), and per-app coverage ([#273](https://github.com/vdavid/cmdr/issues/273)).
 
 ## The mechanism
 
@@ -231,4 +231,4 @@ the once-ever notice the first time a reveal actually lands.
 ## What's not built
 
 The `public.folder` LaunchServices handler (so `open .` and Spotlight folder hits land in Cmdr) and an onboarding
-offer: `docs/specs/later/default-file-manager-follow-ups.md`.
+offer: GitHub [#271](https://github.com/vdavid/cmdr/issues/271) and [#272](https://github.com/vdavid/cmdr/issues/272).

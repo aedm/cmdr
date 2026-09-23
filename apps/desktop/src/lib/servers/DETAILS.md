@@ -286,7 +286,7 @@ token is the only sane state, and a revoked token surfaces as `needs_sign_in` be
 - `auth_method_unsupported`: the server challenged with a scheme Cmdr doesn't speak, so the secret never left. ❌ Never
   name the scheme; "Digest" means nothing to the reader.
 - `certificate_untrusted`: macOS doesn't trust the certificate, and the fix is Keychain Access. Trust-on-first-use is
-  backend work (`docs/specs/webdav-backend-follow-ups.md` § 1).
+  backend work (GitHub [#173](https://github.com/vdavid/cmdr/issues/173)).
 - `not_a_webdav_server`: the address answers HTTP but not WebDAV. The one refusal with a remedy button.
 - `invalid_url`: the saved address isn't a usable web address.
 - `timed_out` and `unreachable`: about the SERVER, so they name the host rather than the account.
@@ -390,15 +390,16 @@ lands in, so a menu item and a palette command can't drift on a confirmation or 
 Each of these was decided against with a reason, and a reason nobody can find gets re-derived. The pointer is to
 whichever doc owns the item now; ❌ nothing here restates a mechanism.
 
-- **Pinnable SMB shares**: `docs/specs/later/smb-pinned-shares.md`. `known_shares.rs` holds no share rows and no port,
-  and a mounted share's id comes from `statfs`, so a pin keyed on a stored row would never match the mounted volume. SMB
-  places keep reaching the switcher as mounted volumes instead.
-- **`~/.ssh/config` host aliases as address-field completions**: `docs/specs/later/sftp-follow-ups.md` § 2. It is a
-  backend parser with its own edge cases, and the add form is usable without it.
-- **One switcher row per phone** rather than one per protocol: `docs/specs/later/adb-follow-ups.md` § 3. The "(ADB)"
-  name suffix is the stopgap.
+- **Pinnable SMB shares**: GitHub [#195](https://github.com/vdavid/cmdr/issues/195). `known_shares.rs` holds no share
+  rows and no port, and a mounted share's id comes from `statfs`, so a pin keyed on a stored row would never match the
+  mounted volume. SMB places keep reaching the switcher as mounted volumes instead.
+- **`~/.ssh/config` host aliases as address-field completions**: GitHub
+  [#194](https://github.com/vdavid/cmdr/issues/194). It is a backend parser with its own edge cases, and the add form is
+  usable without it.
+- **One switcher row per phone** rather than one per protocol: GitHub [#192](https://github.com/vdavid/cmdr/issues/192).
+  The "(ADB)" name suffix is the stopgap.
 - **Certificate trust-on-first-use**, which is why a self-signed NAS lands on the honest `certificate_untrusted` wording
-  with no button that could work: `docs/specs/webdav-backend-follow-ups.md` § 1, backend work.
+  with no button that could work: GitHub [#173](https://github.com/vdavid/cmdr/issues/173), backend work.
 - **A property-testing library on the frontend.** `proptest` stays Rust-only, and `address-parser.test.ts`'s example
   table is the contract instead (§ "Add mode, address first").
 - **A fourth pane tint for the two new protocols.** `appearance.tintSmb` covers all three ("Tint server panes (SMB,

@@ -95,7 +95,8 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
     (`apps/desktop/src/lib/servers/DETAILS.md` § The three arms).
   - ❗ **An SMB host lists NO places and cannot be pinned here.** `known_shares.rs` stores no share rows, carries no
     port, and a mounted share's id comes from `statfs` (an IP where the store holds an mDNS name), so no id derivable
-    from the store would match the mounted volume. SMB places keep reaching the switcher as mounted volumes.
+    from the store would match the mounted volume. SMB places keep reaching the switcher as mounted volumes. Pinnable SMB
+    shares: GitHub [#195](https://github.com/vdavid/cmdr/issues/195).
   - ❗ **`forget_server` drops the SESSION too**, unregisters the volume, and emits `VolumeUnmounted` BEFORE
     `volumes-changed`. A forgotten server is gone: leaving its session up would keep a switcher row no store knows about
     and no second "Forget" can reach, and the pane consumer needs the redirect to land ahead of the row's removal, or it

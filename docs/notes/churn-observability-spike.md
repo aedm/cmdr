@@ -1,8 +1,8 @@
 # Churn observability spike (Spike B)
 
 Read-only instrumentation on the live FSEvents loop that records per-subtree churn rolled up the ancestor chain, plus
-the offline analysis that turns a collection window into the three answers Spike B owes
-`docs/specs/later/indexing/sealed-subtrees-follow-ups.md` § 2:
+the offline analysis that turns a collection window into the three answers Spike B owes GitHub
+[#240](https://github.com/vdavid/cmdr/issues/240):
 
 1. How fast a hard-churning subtree (DriveFS `fetch_temp`, a `target/` during a build) separates from ordinary
    background filesystem noise.

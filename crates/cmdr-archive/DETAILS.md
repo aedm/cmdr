@@ -337,8 +337,10 @@ double-extension split. The reading-core, mutation, and watch tests live with th
 
 `ArchiveVolume` (browse + extract + `scan_for_copy`) and backend routing (§ "Routing and lifecycle") are landed:
 `VolumeManager::resolve`, the shared `src/boundary.rs` detector, the archive LRU, the read-only write guards, the live
-content watch, and zip mutation (browse + extract + edit, local and remote-hosted). What's still ahead (scheduling and
-triggers live in `docs/specs/later/archive-follow-ups.md`):
+content watch, and zip mutation (browse + extract + edit, local and remote-hosted). What's still ahead (each gap is its
+own GitHub issue: [#258](https://github.com/vdavid/cmdr/issues/258), [#259](https://github.com/vdavid/cmdr/issues/259),
+and [#260](https://github.com/vdavid/cmdr/issues/260); the settled design for the fast zip tail-add in #258 is
+`docs/notes/m-append-spike.md`):
 
 - **Open-with-external-app for a file INSIDE an archive (deferred).** Enter on a file inside a `.zip` still opens the
   VIEWER (bounded temp-extract), not the OS default app. Extract-then-launch isn't a clean reuse of

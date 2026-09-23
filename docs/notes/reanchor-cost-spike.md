@@ -1,9 +1,9 @@
 # Re-anchor cost (Spike A)
 
-Spike A for sealing pathological subtrees (`docs/specs/later/indexing/sealed-subtrees-follow-ups.md` § 2). Sealing makes
-a periodic full re-anchor the primary correctness mechanism for a sealed subtree, and a re-anchor is the same
-O(children) walk the design exists to avoid, now on a timer. This note measures that walk and answers whether a cadence
-exists that is both affordable and tight enough to keep drift tolerable.
+Spike A for sealing pathological subtrees (GitHub [#240](https://github.com/vdavid/cmdr/issues/240)). Sealing makes a
+periodic full re-anchor the primary correctness mechanism for a sealed subtree, and a re-anchor is the same O(children)
+walk the design exists to avoid, now on a timer. This note measures that walk and answers whether a cadence exists that
+is both affordable and tight enough to keep drift tolerable.
 
 Measured 2026-07-20 with `scripts/reanchor-cost`.
 
