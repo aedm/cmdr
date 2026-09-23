@@ -782,6 +782,12 @@ mod network_gated_source_test_support;
 // once and driven against every one of those backends.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod network_transfer_test_support;
+// What copy and move MEAN on a server that already holds the user's files
+// (merges, policies, moves both ways, same-server work), its data-safety cells,
+// its look-alike names, and its archives: backend-blind scenarios the SFTP suite
+// drives and the other network backends can.
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod network_semantics_test_support;
 // Real copies, a move, a delete, and a mkdir between local disk and a phone over
 // ADB, against the crate's fake server, through the app's own write operations.
 // No Docker, so these run in the unit lane.
@@ -842,6 +848,9 @@ mod smb_stress_test;
 // `listing::smb_pane_close_watch_integration_test`), which reach it by path.
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod sftp_transfer_semantics_test;
+// The fixture dial every SFTP suite above shares.
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
+mod sftp_test_support;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 pub(crate) mod smb_test_support;
 #[cfg(all(test, any(target_os = "macos", target_os = "linux")))]

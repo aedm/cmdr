@@ -99,7 +99,7 @@ pub(super) async fn collect_contents(vol: &Arc<dyn Volume>, root: &str) -> Vec<V
 /// `"/dest/album"`), so the same const table drives the cross-volume case and
 /// the same-volume one, where both trees live on a single volume under
 /// different prefixes.
-pub(super) struct SafetySpec<'a> {
+pub(crate) struct SafetySpec<'a> {
     /// Prefixed to every failure message, so a table-driven cell names itself.
     pub label: &'a str,
     /// The tree the operation read from, on the source volume.
@@ -119,7 +119,7 @@ pub(super) struct SafetySpec<'a> {
 ///
 /// Pass the same volume twice for a same-volume operation; the two roots keep
 /// the sides apart.
-pub(super) async fn assert_operation_was_safe(source: &Arc<dyn Volume>, dest: &Arc<dyn Volume>, spec: &SafetySpec<'_>) {
+pub(crate) async fn assert_operation_was_safe(source: &Arc<dyn Volume>, dest: &Arc<dyn Volume>, spec: &SafetySpec<'_>) {
     let label = spec.label;
 
     // Clause 1: no byte is gone from BOTH sides.

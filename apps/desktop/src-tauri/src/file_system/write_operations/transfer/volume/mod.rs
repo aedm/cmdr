@@ -84,6 +84,12 @@ pub(crate) use move_same::move_within_same_volume_with_progress;
 /// by the copy matrix, the move matrix, and the coverage grid.
 #[cfg(test)]
 mod safety_oracle;
+// The network-server scenarios (`write_operations/network_*_test_support.rs`)
+// assert through the same oracle, so a live backend is held to the words the
+// in-memory grid is.
+#[cfg(test)]
+#[allow(unused_imports, reason = "used by the network scenario suites outside this facade")]
+pub(crate) use safety_oracle::{SafetySpec, assert_operation_was_safe};
 
 /// The shared fault injector (`FaultyVolume`) and the forwarding macro every
 /// `Volume` double in this directory builds on.
