@@ -41,8 +41,8 @@ permission, credit you by name.
 We also publish a [GitHub security advisory](https://github.com/vdavid/cmdr/security/advisories) and request a CVE ID
 when a flaw meets either of these:
 
-- Someone can exploit it without already running code on the user's Mac, for example through a file, a network server,
-  a web page, or the update channel.
+- Someone can exploit it without already running code on the user's Mac, for example through a file, a network server, a
+  web page, or the update channel.
 - It exposes passwords, keys, or user data to someone other than the user.
 
 Fixes that only guard against an attacker who already runs code on the Mac get a changelog note, but no advisory.

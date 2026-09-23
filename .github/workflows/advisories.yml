@@ -40,7 +40,9 @@ jobs:
           path: |
             ~/.cargo/bin/cargo-audit
             ~/.cargo/bin/cargo-deny
-          key: ${{ runner.os }}-advisory-tools-${{ hashFiles('scripts/check/checks/desktop-rust-cargo-audit.go', 'scripts/check/checks/desktop-rust-cargo-deny.go') }}
+          key:
+            ${{ runner.os }}-advisory-tools-${{ hashFiles('scripts/check/checks/desktop-rust-cargo-audit.go',
+            'scripts/check/checks/desktop-rust-cargo-deny.go') }}
 
       - name: Build check tool
         run: go build -o check .

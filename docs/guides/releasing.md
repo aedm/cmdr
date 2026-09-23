@@ -243,7 +243,8 @@ Two jobs in `release.yml`, beside the build-and-publish chain:
   features, once per target triple, and a frontend build with `CMDR_FRONTEND_SBOM=1` for the npm side, which lists the
   packages the bundler actually put in the app (`apps/desktop/scripts/vite-frontend-sbom.ts`; `package.json` can't say,
   since Svelte ships from devDependencies). It fails if a lockfile moved while resolving, or if an SBOM isn't CycloneDX,
-  doesn't name this version as its root, or lists too few components (100 for Rust, 30 for the frontend). It hands them on as the `sboms` workflow artifact.
+  doesn't name this version as its root, or lists too few components (100 for Rust, 30 for the frontend). It hands them
+  on as the `sboms` workflow artifact.
 - **`attest`** (`needs: [publish, sbom]`, holds `id-token: write` and `attestations: write`) downloads every asset back
   from the published release, uploads the SBOMs to it, and runs `actions/attest`: one SLSA provenance attestation
   covering every asset (SBOMs included), then one SBOM attestation per SBOM, bound to the builds it describes (each Rust
