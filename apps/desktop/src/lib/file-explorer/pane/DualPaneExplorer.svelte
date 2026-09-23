@@ -200,13 +200,11 @@
         getClosedTabsCap,
         syncReopenMenuState,
     } = paneAccessors
-    // These six stay LIVE `$derived` aliases (not destructured) because they're
+    // These four stay LIVE `$derived` aliases (not destructured) because they're
     // read directly below, outside the accessor functions above: a destructure
     // would snapshot the getter's value once instead of tracking it.
     const leftTabMgr = $derived(paneAccessors.leftTabMgr)
     const rightTabMgr = $derived(paneAccessors.rightTabMgr)
-    const leftPath = $derived(paneAccessors.leftPath)
-    const rightPath = $derived(paneAccessors.rightPath)
     const leftHistory = $derived(paneAccessors.leftHistory)
     const rightHistory = $derived(paneAccessors.rightHistory)
 

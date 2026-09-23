@@ -3,7 +3,7 @@ import { createIndexEventHandler } from './index-events'
 import type { ListingIndexSizesChanged } from '$lib/tauri-commands'
 import type { FilePaneAPI } from './types'
 
-/* eslint-disable @typescript-eslint/unbound-method -- vi.fn() mocks have no this binding */
+ 
 describe('createIndexEventHandler', () => {
   function panes() {
     const left = { getListingId: () => 'listing-left', applyIndexSizes: vi.fn() }

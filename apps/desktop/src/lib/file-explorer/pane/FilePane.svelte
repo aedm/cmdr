@@ -1275,7 +1275,7 @@
     // Index size updates reach the MCP mirror at most every 5 s: under background writes a pane on
     // `~` takes one every couple of seconds, and each push re-reads the visible range and ships it,
     // which was most of what an update cost the webview. Agents see sizes at most 5 s late.
-    const indexSizesSyncMcp = createThrottle(() => debouncedSyncMcp.call(), 5000)
+    const indexSizesSyncMcp = createThrottle(() => { debouncedSyncMcp.call(); }, 5000)
 
     /**
      * Tells the backend what `Cmdr > Services` acts on. AppKit asks for it

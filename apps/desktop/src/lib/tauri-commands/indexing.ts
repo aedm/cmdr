@@ -162,9 +162,7 @@ export function onIndexReplayComplete(callback: (payload: IndexReplayCompleteEve
  * Fires when an open listing's folder sizes moved in the index. The backend sends it only for the
  * listings an update touched (`src-tauri/src/listing_index_sizes/`).
  */
-export function onListingIndexSizesChanged(
-  callback: (payload: ListingIndexSizesChanged) => void,
-): Promise<UnlistenFn> {
+export function onListingIndexSizesChanged(callback: (payload: ListingIndexSizesChanged) => void): Promise<UnlistenFn> {
   return events.listingIndexSizesChanged.listen((event) => {
     callback(event.payload)
   })

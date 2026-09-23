@@ -39,7 +39,8 @@ value directly).
 
 The barrel exports the lifecycle + the cross-module reads: `isVolumeScanning` / `getEntriesScanned` / `ROOT_VOLUME_ID`
 (SearchDialog), `getVolumeActivity` / `getVolumeAggregation` (the breadcrumb badge's scanning tooltip, in
-`navigation/`), `getVolumePhase` (the per-volume step checklist), plus `initIndexState` / `destroyIndexState`. The indicator (same dir) imports the rest directly from `./index-state.svelte.ts`:
+`navigation/`), `getVolumePhase` (the per-volume step checklist), plus `initIndexState` / `destroyIndexState`. The
+indicator (same dir) imports the rest directly from `./index-state.svelte.ts`:
 
 ```ts
 // Multi-drive API (the indicator):
@@ -501,9 +502,9 @@ size in seconds instead of minutes. Nothing was timing that, because the moment 
 
 `noteRenderedFolderSizes(entries, volumeId)` is called from `views/full-list-cache.svelte.ts` at the two points where
 rows the user is looking at gain sizes: after a window fetch lands, and after a `listing-index-sizes-changed` update
-lands (`applyIndexSizes`). It fires `first_folder_size_shown` on the first window carrying a real `recursiveSize`,
-then goes inert for the rest of the launch (every later call is one boolean read). Props are a `seconds_bucket` since
-the frontend booted plus `covering` (was a phased first index running on that drive?) — ❌ never a path or a name.
+lands (`applyIndexSizes`). It fires `first_folder_size_shown` on the first window carrying a real `recursiveSize`, then
+goes inert for the rest of the launch (every later call is one boolean read). Props are a `seconds_bucket` since the
+frontend booted plus `covering` (was a phased first index running on that drive?) — ❌ never a path or a name.
 
 `covering` is what makes the number readable at all: on a machine indexed weeks ago the size is there before the window
 paints, and without the split those zeroes bury the cohort the claim is about. The other three first-index numbers are

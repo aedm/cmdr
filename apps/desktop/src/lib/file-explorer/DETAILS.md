@@ -375,10 +375,9 @@ The status bar and usage bar below each pane show live disk space. `FilePane` re
 `volume-space-changed` events. The watcher key is the pane ID, so two panes on the same volume have independent
 registrations (one pane navigating away doesn't affect the other). The backend deduplicates by volume_id, polls each
 volume at its own cadence (`Volume::space_poll_interval()`: 2 s local, 5 s network/MTP), and emits only when the readout
-would draw a different figure AND the change passes the Settings > Advanced threshold (`space_poller/readout.rs`).
-While the main window is hidden it polls only the boot volume's low-space check, then catches up the moment the window
-shows. The volume dropdown (`volume-space-manager.svelte.ts`) uses a
-separate on-demand fetch and is unaffected.
+would draw a different figure AND the change passes the Settings > Advanced threshold (`space_poller/readout.rs`). While
+the main window is hidden it polls only the boot volume's low-space check, then catches up the moment the window shows.
+The volume dropdown (`volume-space-manager.svelte.ts`) uses a separate on-demand fetch and is unaffected.
 
 The wording lives in `disk-space-utils.ts`, catalog-backed functions over one `SpaceInfo` plus an injected size
 formatter (the caller picks binary vs decimal). Two things are in the catalog that look like they belong in code, both

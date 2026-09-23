@@ -3,9 +3,10 @@
 //! The drive index reports batches of directories whose recursive sizes changed
 //! (`IndexEvent::DirsUpdated`, about once a second on a busy disk). This module keeps the set of open
 //! listings (a [`ListingLifecycle`] observer), works out which rows of which listings a batch touches
-//! ([`touched`]), reads those rows' fresh stats from the index, and sends
-//! `listing-index-sizes-changed` carrying only the rows whose shown values moved ([`refresh`]). It
-//! also writes them into the listing cache, so status-bar totals and MCP reads see them.
+//! ([`touched()`]), reads those rows' fresh stats from the index, and sends
+//! `listing-index-sizes-changed` carrying only the rows whose shown values moved
+//! ([`refresh`](mod@refresh)). It also writes them into the listing cache, so status-bar totals
+//! and MCP reads see them.
 //!
 //! Three things keep an idle pane quiet:
 //! - A batch that touched nothing a listing shows is dropped (a write in `~/Library` and a pane on

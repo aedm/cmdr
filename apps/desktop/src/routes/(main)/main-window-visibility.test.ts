@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-const setMainWindowVisible = vi.fn(() => Promise.resolve())
+const { setMainWindowVisible } = vi.hoisted(() => ({ setMainWindowVisible: vi.fn(() => Promise.resolve()) }))
 vi.mock('$lib/tauri-commands', () => ({ setMainWindowVisible }))
 
 import { startMainWindowVisibilityReport } from './main-window-visibility'

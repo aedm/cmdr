@@ -37,8 +37,8 @@ pre-measured column width agree: don't re-inline the decision in any of them.
   progresses", so a fresh install reads as quietly working rather than `Scanning...` on every row. Freshness-stale
   (`'size-stale'`) renders exactly like `'size'`: no glyph, no muting, with the staleness voiced by the per-drive
   freshness badge and the tooltip's stale line (see `$lib/indexing/DETAILS.md` § Honest size rendering). The per-dir
-  flag rides `DirStats.recursiveSizePending`, copied onto entries by `updateIndexSizesInPlace` / `applyFolderSizes` / `createParentEntry`
-  (backend: `indexing/read/pending_sizes.rs`).
+  flag rides `DirStats.recursiveSizePending`, copied onto entries by `updateIndexSizesInPlace` / `applyFolderSizes` /
+  `createParentEntry` (backend: `indexing/read/pending_sizes.rs`).
 
 **The walked-ground input is PER ROW, and the measurer contract follows from it.** `getWalkedGround(volumeId)` +
 `isPathAffectedByWalk` (`$lib/indexing/walked-ground.ts`) answer whether one row's folder size can move: the volume is
@@ -388,13 +388,13 @@ when that row is actually on screen. Otherwise the size column would stay oversi
 with no "visible set" to measure from.
 
 **Decision**: While the same rows stay on screen, the Size column grows at once but never shrinks
-(`holdSizeColumnWidth`, keyed in `FullList` on listing, cache generation, visible range, and every measuring
-setting). **Why**: index updates rewrite folder sizes in place, and a folder's hourglass or unit coming and going moved
-the width back and forth (66 px ↔ 92 px on a pane sitting on `~`). Each move ran the 300 ms transition over every row,
-and the transition resized every name cell per frame, so an idle pane rewrote name cells about 900 times a minute
-(measured 2026-09-23, dev build, pane on `~` with indexing on). Scrolling, resizing, navigating, or a settings change
-lets it shrink-wrap again; a directory diff doesn't (a home folder takes one every few seconds, and each let the column
-shrink only for the next index update to grow it back). Ext and Modified don't move on index updates and always follow.
+(`holdSizeColumnWidth`, keyed in `FullList` on listing, cache generation, visible range, and every measuring setting).
+**Why**: index updates rewrite folder sizes in place, and a folder's hourglass or unit coming and going moved the width
+back and forth (66 px ↔ 92 px on a pane sitting on `~`). Each move ran the 300 ms transition over every row, and the
+transition resized every name cell per frame, so an idle pane rewrote name cells about 900 times a minute (measured
+2026-09-23, dev build, pane on `~` with indexing on). Scrolling, resizing, navigating, or a settings change lets it
+shrink-wrap again; a directory diff doesn't (a home folder takes one every few seconds, and each let the column shrink
+only for the next index update to grow it back). Ext and Modified don't move on index updates and always follow.
 
 **Decision**: The date column renders as one segment list with tabular figures, no split. **Why**: Earlier the column
 split into a fixed-width date half plus a time half so the times lined up across rows despite proportional digits. With
@@ -490,8 +490,8 @@ cache). Real files start at index 1. Adjust: `cache_index = ui_index - 1`.
 column is otherwise wasted space. Showing the total for the folder the user is browsing (sum of everything visible plus
 unloaded entries) answers "how much is in here?", more useful than "how big is the place I'd go if I pressed Backspace."
 Implementation: `createParentEntry(parentPath, stats?)` in `file-list-utils.ts` takes optional stats;
-`BriefList`/`FullList` fetch them via `getDirStatsBatch([currentPath])` on dir change, then take the pushed
-`currentDir` from `listing-index-sizes-changed` (`applyIndexSizes`, no IPC); a `full` change re-reads through
+`BriefList`/`FullList` fetch them via `getDirStatsBatch([currentPath])` on dir change, then take the pushed `currentDir`
+from `listing-index-sizes-changed` (`applyIndexSizes`, no IPC); a `full` change re-reads through
 `updateIndexSizesInPlace(cachedEntries, currentPath)`.
 
 **Gotcha**: Scroll position must use `transform`, not absolute positioning **Why**: Absolute positioning causes full

@@ -126,8 +126,8 @@ unknown state; a settled partially-scanned one is a lower bound (`≥`), and the
 yet" hourglass on top — replacing the `≥` rather than joining it, since a moving number has no floor to promise
 (`../views/DETAILS.md` § the size column's content state). The per-folder `recursiveSizePending` flag lives only on
 `DirStats` (not `get_file_range`), so `FilePane.fetchEntryUnderCursor` overlays it onto the cursor entry via
-`updateIndexSizesInPlace([entry])` (skipping `..`, whose entry path is the parent folder), and `applyFolderSizes`
-writes each pushed `listing-index-sizes-changed` reading onto it in place, so the hourglass tracks a storm live.
+`updateIndexSizesInPlace([entry])` (skipping `..`, whose entry path is the parent folder), and `applyFolderSizes` writes
+each pushed `listing-index-sizes-changed` reading onto it in place, so the hourglass tracks a storm live.
 
 Other layout: filename truncation uses `useShortenMiddle` with `preferBreakAt: '.'`. Date column width is computed via
 `measureDateColumnWidth(formatDateTime)` to stay in sync with FullList; `formatDateTime` comes from

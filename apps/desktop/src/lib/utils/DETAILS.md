@@ -114,8 +114,8 @@ through the HOUSE tooltip. Never a native `title`: its delay and chrome are the 
 dialogs, and result lists alike, which would otherwise hover three different ways. `tooltipWhenTruncated?: boolean`
 narrows the tooltip to strings truncation actually trimmed (default `false`: hover always shows the full text).
 
-A resize at the same width and text is a no-op, and a truncation that comes out the same doesn't touch the DOM. The
-Full list's 300 ms column transition resizes every name cell each frame, so without both skips every transition cost a
+A resize at the same width and text is a no-op, and a truncation that comes out the same doesn't touch the DOM. The Full
+list's 300 ms column transition resizes every name cell each frame, so without both skips every transition cost a
 `textContent` write per row per frame.
 
 ## inline-size-action.ts
