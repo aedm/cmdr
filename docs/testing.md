@@ -127,6 +127,8 @@ few seconds one directory buys. Measure the directory in isolation and read the 
 - **Cross-component flow (return-focus, dialog stack, navigation)**: E2E (Playwright)
 - **Storage volume operation (MTP, SMB, SFTP, WebDAV)**: Integration test against a virtual fixture (virtual-mtp
   feature, the Docker SMB, SFTP, and WebDAV stacks)
+- **A network volume's server going away (refused, or silent)**: a `cmdr_fs::testing::tcp_proxy::TcpProxy` the test
+  owns, between the client and the fixture. ❌ Never pause or stop a shared fixture container
 
 ## Secret-store isolation (Rust)
 

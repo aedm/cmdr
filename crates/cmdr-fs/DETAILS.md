@@ -35,7 +35,9 @@ the next section.
   states), `name_fold.rs` (the ONE "same name, spelled another way" key: NFC + lowercase, shared by share IDs, transfer
   conflict buckets, the SMB spelling resolve, and cursor placement), `log_rollup`, `tcc_paths`, `ignore_poison`,
   `pluralize`, `thread_qos`, `thread_cpu`, `process_memory`.
-- `testing/`: behind the `testing` feature. `TestDir` and the two waits in `mod.rs`; on macOS, `disk_images/` (the
+- `testing/`: behind the `testing` feature. `TestDir` and the two waits in `mod.rs`; `tcp_proxy.rs` (`TcpProxy`, a
+  loopback proxy a network backend's test puts in front of a shared Docker fixture to cut the connection, refused or
+  silent, without touching a container other runs lease; its header has the usage); on macOS, `disk_images/` (the
   synthetic APFS/HFS+ image harness and its guarded runner, § "`testing::disk_images`").
 
 ## Why each thing is here rather than in the app

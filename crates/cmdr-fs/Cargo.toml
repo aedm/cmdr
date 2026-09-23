@@ -32,7 +32,9 @@ playwright-e2e = []
 # 4. Pulls in `tempfile`, which `TestDir` and the disk-image harness need.
 # 5. On macOS, adds the disk-image harness (`testing::disk_images`) and `plist`,
 #    which reads `hdiutil` and `diskutil` answers.
-testing = ["dep:tempfile", "dep:plist"]
+# 6. Adds `testing::tcp_proxy` and the `tokio` networking it runs on, so a network
+#    backend's test can cut its own connection to a shared Docker fixture.
+testing = ["dep:tempfile", "dep:plist", "tokio/net", "tokio/io-util"]
 
 [dependencies]
 # The digest half of every volume ID (`volume::ids`). Cryptographic on purpose:
@@ -129,4 +131,7 @@ tempfile = "3"
 # under a frozen clock no timer can fire on its own, so a wait that resumes has to
 # have resumed on the EVENT, and the leftover quiet window can be asserted to the
 # millisecond without any test waiting out a real one.
-tokio = { version = "1", features = ["macros", "test-util"] }
+#
+# `net` and `io-util` are `testing::tcp_proxy`'s, which this crate's own tests
+# compile with the `testing` feature off.
+tokio = { version = "1", features = ["macros", "test-util", "net", "io-util"] }
