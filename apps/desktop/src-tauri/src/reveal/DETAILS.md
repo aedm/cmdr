@@ -1,7 +1,7 @@
 # Reveal in Cmdr: architecture and decisions
 
-Up: `CLAUDE.md`. The product-level plan, including the parts still deferred:
-`docs/specs/later/default-file-manager-spec.md`.
+Up: `CLAUDE.md`. What's still open (the folder-open handler, onboarding, per-app coverage):
+`docs/specs/later/default-file-manager-follow-ups.md`.
 
 ## The mechanism
 
@@ -198,6 +198,10 @@ rather than closing it.
 a missing app and clears it would be reaching into machine-wide state on behalf of an app it isn't, for a user who never
 asked.
 
+**Decision: off until the person turns it on.** This rewires a machine-wide OS default, so installing a beta app must
+never do it by itself. Every way in is an explicit opt-in: the Settings row, and the once-ever offer, whose accept button
+is the click. The same rule applies to the folder-open handler if it's ever built.
+
 **Decision: no stored setting.** The Settings row reads through to the OS on every open, and the write returns the
 state the OS was left in rather than the state that was asked for. A `settings.json` mirror would disagree with the
 machine the first time the user changed the handler elsewhere, and there is no event to keep it in sync.
@@ -226,4 +230,5 @@ the once-ever notice the first time a reveal actually lands.
 
 ## What's not built
 
-Mechanism B (the `public.folder` LaunchServices handler) and the onboarding step. See the spec.
+The `public.folder` LaunchServices handler (so `open .` and Spotlight folder hits land in Cmdr) and an onboarding
+offer: `docs/specs/later/default-file-manager-follow-ups.md`.
