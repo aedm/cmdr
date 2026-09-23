@@ -16,6 +16,8 @@ binary launches (fixture creation, port-file reads, MCP client setup) lives here
 - **`mtp-fixtures.ts`**: virtual MTP backing-dir composition, at the run's `MTP_FIXTURE_ROOT` (`CMDR_MTP_FIXTURE_ROOT`,
   matching the app's `CMDR_VIRTUAL_MTP`). One root per run, shared by its shards, so the MTP shard is serialized.
 - **`smb-fixtures.ts`**: SMB virtual-host fixtures, injected into the running Tauri process via the `smb-e2e` feature.
+- **`server-fixtures.ts`**: where the app dials the SFTP / WebDAV fixtures, plus an `ssh` / `curl` side door to their
+  exports. `../e2e-playwright/DETAILS.md` § "Real SFTP and WebDAV servers".
 - **`pin-locale.ts`**: both halves of "pretend this machine is en-US". `pinUiLanguage(dataDir)` merges
   `appearance.language: "en"` into `settings.json`; `EN_US_LOCALE_ARGS` are the macOS launch args pinning the FORMATTING
   locale, which no setting can. `../e2e-playwright/DETAILS.md` § "The locale pin".
@@ -27,15 +29,13 @@ binary launches (fixture creation, port-file reads, MCP client setup) lives here
   for `CMDR_E2E_START_PATH`.
 - **Port-file read NEVER falls back to a hardcoded default.** Strict precedence: `CMDR_MCP_PORT` env (manual pin, set by
   the Go checker per shard) → `<data_dir>/mcp.port` (Cmdr MCP HTTP server) or `tauri-mcp.port` (Tauri MCP bridge) →
-  throw `PortDiscoveryError`. A silent fallback hides bugs (the test "works" against the wrong instance). The Rust side
-  writes `mcp.port` after `bind()` via tempfile + fsync + rename; the wrapper writes `tauri-mcp.port` BEFORE Tauri
-  launches (the plugin has no public bound-port accessor).
+  throw `PortDiscoveryError`. A silent fallback hides bugs (the test "works" against the wrong instance). Writers:
+  `DETAILS.md` § "Who writes the port files".
 - **`mcp-client.ts` and `mtp-fixtures.ts` don't read the port file.** They're invoked from inside the running app via
   Tauri IPC, where the in-process `MCP_ACTUAL_PORT` atomic is the source of truth. Out-of-process callers use
   `port-file.ts`.
 - **Bulk `.dat` files are zero-fill ASCII, hardlinked, and read-only.** Tests needing real binary patterns add their own
-  fixtures or write to text files; the cache check is size-based + content-hash sampled at a few offsets, so arbitrary
-  content wouldn't survive the deterministic-cache contract.
+  fixtures: the cache check samples content at a few offsets, so arbitrary content breaks the cache contract.
 - **❌ Never write to a bulk `.dat` IN PLACE.** They're hardlinks into the cache, so one `truncateSync` shortens it in
   every live fixture tree on the machine at once. The cache self-heals on the next build; those trees do NOT, and the
   leak guard then blames a random innocent spec. Remove and rewrite, as `restoreBulkFile` does.

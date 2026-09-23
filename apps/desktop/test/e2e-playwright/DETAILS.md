@@ -368,7 +368,7 @@ Only the layout facts that none of those carry live here:
   are added; don't trim it.
 - **Cargo features gate whole groups.** Every spec needs `playwright-e2e` (it's what grants the plugin's IPC
   permissions); the `mtp*` specs additionally need `virtual-mtp`; `smb.spec.ts` needs `smb-e2e` plus Docker (smb2's
-  consumer containers).
+  consumer containers). The two `server-ops-*` specs need no feature, only Docker: § "Real SFTP and WebDAV servers".
 - **`helpers/` submodules may depend on `core.ts`, never on each other.** The single exception is `app-lifecycle` →
   `navigation`. `helpers.ts` is the flat re-export specs import from (`from './helpers.js'`), so a spec never reaches
   into `helpers/` directly.
@@ -470,6 +470,37 @@ the capture walks, one test per step.
   cancels its parked copy before dismissing (the dialog withdraws Escape during a clash, so dismissing first waits out a
   3 s poll), and `queue-failed` drains the throttled copies before starting its doomed ones. ❌ Don't regroup steps to
   shorten the list; split one that grows past the budget. The spec costs about 14 s for 27 tests (two runs, 2026-09-12).
+
+## Real SFTP and WebDAV servers
+
+`server-ops-sftp.spec.ts` and `server-ops-webdav.spec.ts` are one line each: both call `defineServerOpsSuite`
+(`server-ops-suite.ts`), so the two protocols can't drift into testing different things. Primitives live in
+`server-ops-helpers.ts`. What they cover, through the UI: the add sheet from the Go menu's `servers.connect` (host key
+trust on first SFTP contact, then the password), a wrong password refused under its field with nothing saved, the
+focused pane landing on the new place, copy and move both ways byte for byte, rename, delete, a conflict answered Skip
+and Overwrite, NFC/NFD names both ways, the switcher row's → submenu "Reconnect automatically" checkbox, and Disconnect
+from the switcher sending the pane home.
+
+- **Every server-side assertion goes through a side door** (`../e2e-shared/server-fixtures.ts`): `ssh` for SFTP (the
+  fixture user has a shell; the password rides `SSH_ASKPASS`, so no `sshpass` and no TTY), `curl` for WebDAV. ❌ Never
+  read a copy back through the app it tests: that proves only that the app agrees with itself.
+- **Each lane leases the stacks in their `e2e` mode**, one server each: the macOS lane through `NeedsContainers`
+  (`SftpE2E`, `WebdavE2E`) on host ports 12480 / 13480, the Linux lane through `e2e-linux.sh`, which also joins the E2E
+  container to both stacks' Docker networks (`../e2e-linux/DETAILS.md` § "Server E2E networking").
+- **The scratch directory is random, and kept in the app's data dir** (`scratchDirForThisApp`). Random, because every
+  lane and worktree shares one fixture server. Kept, because a retry runs in a new worker while the app still holds the
+  server the failed worker saved: a fresh name would mean forgetting and re-adding the account under a new root, and the
+  switcher can serve the OLD root for up to 2 s afterwards (its list waits on local mount discovery), so the retry
+  opened a folder the first worker's `afterAll` had already deleted. Never assume the export root is empty.
+- **The app's teardown is the last test's `finally`** (Disconnect, then `forget_server`): an `afterAll` gets no
+  `tauriPage`, and a saved server left behind would sit in the next spec's switcher.
+- **Hooks, ❌ never labels**: `#server-address` / `#server-secret` / `#server-secret-refusal` on the sheet, the host key
+  step's `.host-key .trust-row .btn-primary`, a switcher row's `[data-menu-row="<volumeId>"]` and its `.eject-button`,
+  and a submenu row's `[data-menu-row="row:<volumeId>:toggle:auto-reconnect"]` with `data-checked` (`row-menu.ts` mints
+  those values). The submenu opens from the keyboard: ArrowDown to the row, then →.
+- **A saved server is found by its app root**, `<scheme>://ada@<host>:<port>`, the tuple the volume id is minted from.
+  ❌ Not by the saved address: WebDAV keeps the URL as normalized, which drops a default `:80`, so the Docker lane's
+  address never contains `host:80`.
 
 ## Transfer-dialog counters + programmatic drop entry
 
@@ -1190,6 +1221,12 @@ through `resolveStorePath(name)` (`lib/settings/store-path.ts`), which loads fro
 spec asserting on persisted UI state fails locally but passes in CI, suspect a stale value in your real store file, not
 the test. A runtime `-c <config>` identifier override does NOT fix this: `app_data_dir()` ignores it for a pre-built
 binary.
+
+**Gotcha**: Server passwords go to the Keychain unless redirected. **Why**: the add sheet's Remember starts ON, and a
+macOS app with no `CMDR_SECRET_STORE` picks the login Keychain, so every run of the server specs would leave a
+`Cmdr-e2e-<shard>-<pid>` item there that nothing ever removes (the instance suffix keeps it off prod, not off the
+machine). So the macOS lane launches every shard with `CMDR_SECRET_STORE=file` (`e2e-playwright-app.go`), which files
+them in the shard's data dir, the way `pnpm dev` and the marketing capture already do.
 
 **Gotcha**: Navigation destroys page context. **Why**: After triggering SvelteKit navigation (settings, viewer), any
 in-flight `evaluate()` result will be lost. Always `waitForSelector()` on the target page's element before evaluating

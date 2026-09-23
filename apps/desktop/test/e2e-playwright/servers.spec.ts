@@ -16,10 +16,11 @@
  * to the backend with `refresh_volumes`. The app is shared by every spec in the
  * shard; a leaked synthetic server would sit in the next spec's switcher.
  *
- * ❗ The SFTP wire itself is proven in the Rust integration lane, against the
- * Docker fixture. No SFTP fixture is leased here, so a dial in this spec is
- * expected to fail — which is exactly what makes it a good test of the pane's
- * refusal path.
+ * ❗ The SFTP wire itself is proven against the Docker fixtures, in depth by the
+ * Rust integration lane and through the real UI by `server-ops-*.spec.ts`. The
+ * servers here point nowhere real on purpose (`.invalid`), so a dial in this
+ * spec is expected to fail — which is exactly what makes it a good test of the
+ * pane's refusal path.
  */
 
 import { waitBudget } from './wait-budget.js'

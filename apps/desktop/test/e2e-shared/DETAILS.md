@@ -49,6 +49,11 @@ its metadata is encrypted, so even listing prompts). `mcp-archive-password.spec.
 lets the restore sweep them away, because putting them in the pristine tree would hand two extra entries to every other
 spec's `left/`.
 
+## Who writes the port files
+
+The Rust side writes `mcp.port` after `bind()` via tempfile + fsync + rename; the wrapper writes `tauri-mcp.port`
+BEFORE Tauri launches (the plugin has no public bound-port accessor).
+
 ## Decisions
 
 - **Per-instance fixture root with hardlinks instead of full copies.** Copying 170 MB × N shards × M concurrent runs
