@@ -1898,8 +1898,8 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
   `切換器`；它是一張真的選單，鍵盤操作也跟選單一樣。另外 `標籤`（tag）／`分頁`（tab）的老界線照舊，這批沒有動到。
 - **Show favorites（雙胞胎）→ `顯示喜好項目`** · `commands.favoritesOpen.label` 與 `menu.go.showFavorites`
   英文同字，中文也必須同字（`desktop-i18n-term-consistency` 會抓）。`顯示` 取自目錄自己的
-  `commands.serversShow.label`／`menu.go.showServers`（都是 `顯示伺服器`），Apple zh-TW 的 `Show …` 也一律是
-  `顯示…` · `high`。動詞用 `顯示` 而不是 `開啟`：`開啟` 在本目錄是 open a file／folder 的保留字。
+  `commands.serversShow.label`／`menu.go.showServers`（都是 `顯示伺服器`），Apple zh-TW 的 `Show …` 也一律是 `顯示…` ·
+  `high`。動詞用 `顯示` 而不是 `開啟`：`開啟` 在本目錄是 open a file／folder 的保留字。
 - **current folder → `目前的資料夾`** · 目錄既有寫法（`commands.favoritesAdd.description`、
   `queryUi.scope.currentFolder`）· `high`。❗ 指的是窗格現在待著的資料夾，不是游標底下那個；中文不用特別加字，因為
   `目前的資料夾` 本來就讀成「窗格現在在的這個」，要講游標那個時目錄一律寫 `游標所在的…` （見

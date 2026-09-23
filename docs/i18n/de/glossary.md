@@ -3047,9 +3047,9 @@ weggefallen und durch eine einzelne Zeile ersetzt, die das Menü öffnet.
   belegt · `high`.
 - **„Show favorites“ → `Favoriten anzeigen`** (`menu.go.showFavorites` UND `commands.favoritesOpen.label`, gleicher
   englischer Wert, gleicher `sourceHash`, also zwingend ein Wortlaut) · das direkte Geschwister im Katalog ist
-  `Show servers` → `Server anzeigen` (`menu.go.showServers`, `commands.serversShow.label`), und beide öffnen eine
-  Liste · `high`. ❌ Nicht `einblenden`: das reserviert der Katalog für Umschalter (`menu.view.showHiddenFiles`
-  „Verborgene Dateien einblenden“, macOS `Alle einblenden`), hier wird nichts ein- und ausgeblendet.
+  `Show servers` → `Server anzeigen` (`menu.go.showServers`, `commands.serversShow.label`), und beide öffnen eine Liste
+  · `high`. ❌ Nicht `einblenden`: das reserviert der Katalog für Umschalter (`menu.view.showHiddenFiles` „Verborgene
+  Dateien einblenden“, macOS `Alle einblenden`), hier wird nichts ein- und ausgeblendet.
 - **„See {count} favorites“ → `{count} Favoriten ansehen`, `=0` → `Favoriten ansehen`** · `ansehen` ist die Katalogform
   für „see/view“ (`suggestedOps.indicatorTooltip` „Zum Ansehen klicken.“) und hält die Zeile bewusst von `anzeigen` (=
   „show“) getrennt, so wie das Englische `See` von `Show` trennt · `high`.

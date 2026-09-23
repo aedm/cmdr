@@ -2739,8 +2739,8 @@ WebDAV 服务器的表单里两个字段：根文件夹是这台服务器的「�
   Auditing a finished locale 里讲的那种漂移（繁体曾经菜单写 `命令選擇區…`、面板标题写 `指令面板`）。
 - **`显示` 与 `查看` 的分界（这批最容易被后人「改回去」的一处）** · 英文本来就是两个词，中文跟着分：
   - `Show favorites` → `显示个人收藏`，用在 `menu.go.showFavorites` 和
-    `commands.favoritesOpen.label`。依据是同在「前往」菜单 / 命令族里的 `menu.go.showServers` =
-    `显示服务器`（英文同为 `Show …`），两条必须读起来是一家 · `high`。
+    `commands.favoritesOpen.label`。依据是同在「前往」菜单 / 命令族里的 `menu.go.showServers` = `显示服务器`（英文同为
+    `Show …`），两条必须读起来是一家 · `high`。
   - `See {count} favorites` → `查看 {count} 项个人收藏`，只用在宗卷选择器顶部那一行
     `fileExplorer.navigation.seeFavorites`。`style.md` 已经定下「`查看` 是去看内容，`显示`
     是「显示」菜单」，这里英文也确实换了词 · `high`。
