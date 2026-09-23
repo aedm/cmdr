@@ -137,8 +137,9 @@ copy yet. The body mirrors what the app used to send to `/capture/` per event: `
 properties `source: desktop`, `app_version`, `os_version`, `arch` (set last, so an event property can't shadow them),
 and the config snapshot as `$set`. `app_version` is the event's own, not the carrying beat's. New because the sender
 changed: a per-event `timestamp`, the event id as `uuid` (PostHog dedupes on it too), and `$geoip_disable: true`, since
-the IP PostHog sees is the Worker's (we don't forward the user's). It runs only after D1 has the events, because the app
-retries a failed beat and an earlier forward would double-count. Without `POSTHOG_PROJECT_KEY` it's a silent no-op; a
+the IP PostHog sees is the Worker's (we don't forward the user's). It runs only after D1 has the events, and sends only
+the ones this beat newly inserted: the event INSERT's `RETURNING event_id` names them (`newlyStored`), so a retried beat
+that was already stored forwards nothing twice. Events without an id are always inserted, so always forwarded. Without `POSTHOG_PROJECT_KEY` it's a silent no-op; a
 PostHog error is logged and never touches the beat. Dropping PostHog = delete that file, its test, the one call in
 `heartbeat.ts`, and the secret.
 

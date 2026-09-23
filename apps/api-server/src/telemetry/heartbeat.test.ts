@@ -34,7 +34,7 @@ function createMockD1(batchImpl?: () => Promise<unknown>): {
     },
   }))
   const batchMock: Mock<(statements: RecordedStatement[]) => Promise<unknown>> = vi.fn(
-    batchImpl ?? (() => Promise.resolve([])),
+    batchImpl ?? ((statements: RecordedStatement[]) => Promise.resolve(statements.map(freshD1Result))),
   )
   const batched = () => batchMock.mock.calls.flatMap((call) => call[0])
   return {
@@ -44,6 +44,16 @@ function createMockD1(batchImpl?: () => Promise<unknown>): {
     batchMock,
     batched,
   }
+}
+
+/**
+ * What D1 answers for one statement when nothing was stored before: the event INSERT's `RETURNING`
+ * names every event it was handed (a tuple's fifth slot is its id).
+ */
+function freshD1Result(statement: RecordedStatement): { results: unknown[] } {
+  if (!statement.sql.includes('analytics_event')) return { results: [] }
+  const rows = JSON.parse(statement.args[1] as string) as unknown[][]
+  return { results: rows.map((row) => ({ event_id: row[4] })) }
 }
 
 function createMockAnalyticsEngine(): AnalyticsEngineDataset {
@@ -587,6 +597,45 @@ describe('POST /heartbeat: the PostHog forward', () => {
     )
     expect(res.status).toBe(204)
     warn.mockRestore()
+  })
+
+  it('forwards only the events this beat newly stored, so a retried beat sends PostHog nothing twice', async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response('{"status":"Ok"}', { status: 200 })))
+    vi.stubGlobal('fetch', fetchMock)
+    const fresh = '11111111-1111-4111-8111-111111111111'
+    const seen = '22222222-2222-4222-8222-222222222222'
+    // D1 answers the event INSERT's RETURNING with the ids it actually inserted: `seen` was stored
+    // by an earlier try of this beat, so only `fresh` comes back.
+    const { db } = createMockD1(() => Promise.resolve([{ results: [] }, { results: [{ event_id: fresh }] }]))
+
+    await postHeartbeat(
+      {
+        ...validBeat,
+        events: [
+          makeEvent({ id: seen, event: 'app_launched' }),
+          makeEvent({ id: fresh, event: 'search_used' }),
+          makeEvent({ event: 'tab_opened' }), // no id: always stored, so always forwarded
+        ],
+      },
+      createBindings({ TELEMETRY_DB: db, POSTHOG_PROJECT_KEY: posthogKey }),
+    )
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    const body = JSON.parse(init.body as string) as { batch: { event: string }[] }
+    expect(body.batch.map((e) => e.event)).toEqual(['search_used', 'tab_opened'])
+  })
+
+  it('makes no call when every event was already stored', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const { db } = createMockD1(() => Promise.resolve([{ results: [] }, { results: [] }]))
+
+    const res = await postHeartbeat(
+      { ...validBeat, events: [makeEvent({ id: '22222222-2222-4222-8222-222222222222' })] },
+      createBindings({ TELEMETRY_DB: db, POSTHOG_PROJECT_KEY: posthogKey }),
+    )
+    expect(res.status).toBe(204)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('never forwards events that D1 did not store', async () => {

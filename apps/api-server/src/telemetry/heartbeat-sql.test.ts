@@ -73,8 +73,11 @@ describe('the heartbeat INSERTs against real SQLite', () => {
       ['search_used', '2026-09-24T10:00:00.000Z', '{}', '1.2.3', eventId],
       ['app_launched', '2026-09-24T09:00:00.000Z', '{}', '1.2.3', null],
     ])
-    db.prepare(insertEventsSql).run(analId, rows)
-    db.prepare(insertEventsSql).run(analId, rows)
+    const first = db.prepare(insertEventsSql).all(analId, rows)
+    const retry = db.prepare(insertEventsSql).all(analId, rows)
+    // RETURNING names what each try actually inserted, which is what the forward sends.
+    expect(first.map((r) => r.event_id)).toEqual([eventId, null])
+    expect(retry.map((r) => r.event_id)).toEqual([null])
     const counts = db.prepare(`SELECT event, COUNT(*) AS n FROM analytics_event GROUP BY event ORDER BY event`).all()
     expect(counts.map((r) => ({ ...r }))).toEqual([
       { event: 'app_launched', n: 2 },
