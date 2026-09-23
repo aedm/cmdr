@@ -1,4 +1,5 @@
-This folder contains specification docs and task lists for developments. They are not meant to describe any _state_ of
-the codebase or feature set, but are temporary docs to aid feature development while it's going. They are only kept for
-reference, similarly to the ADRs, but this folder gets wiped periodically once we made sure that all important
-information like intent behind features and processes is captured somewhere else (code or docs).
+This folder holds design docs and plans for big planned work, each linked from the GitHub issue that tracks it. They
+don't describe the current state of the codebase; they're working docs that aid a development while it's going. A spec
+goes away once its work ships and its durable intent (the why behind decisions, guardrails, evidence) lives beside the
+code. Smaller open work, follow-ups, and decisions waiting on David live in GitHub issues on the "Cmdr backlog" project,
+never in a spec file.

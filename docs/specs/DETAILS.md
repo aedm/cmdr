@@ -2,12 +2,14 @@
 
 Read this before reorganizing the specs folder or its lifecycle conventions.
 
-- **What lives here**: per-development specs and task lists (plans), indexed in `index.md`. Not a description of
-  codebase state; temporary working docs kept for reference, like ADRs.
+- **What lives here**: design docs and plans for big planned work, each linked from its GitHub issue and indexed in
+  `index.md`. Not a description of codebase state; temporary working docs kept for reference, like ADRs.
+- **What doesn't**: open work, follow-ups, and decisions waiting on David. Those are GitHub issues on the "Cmdr backlog"
+  project (labels such as `needs-decision`), one self-contained issue per item. ❌ No follow-ups files.
 - **Wipe policy**: this folder gets wiped periodically once each shipped plan's durable intent (feature rationale,
   process) is captured in code or colocated `CLAUDE.md` / `DETAILS.md`. Full statement: `README.md`.
-- **`later/`**: deferred work that survives a wipe. Same index discipline; see `later/`.
-- **Discipline**: update `index.md` whenever you add or modify a plan, so each stays discoverable.
+- **`later/`**: design docs for big work that isn't scheduled yet. Same index discipline; see `later/`.
+- **Discipline**: update `index.md` whenever you add or remove a spec, so each stays discoverable.
 
 ## Wiping a shipped spec
 
@@ -23,10 +25,11 @@ The wipe is a one-way door for the working tree, so it runs in this order, one s
    next agent re-deriving it.
 3. **Let the process die**: milestone checklists, sequencing, parallelization notes, "what I checked", per-phase
    correction lists whose substance already landed in the code, and status narration.
-4. **Route what's still open to `later/`** rather than keeping the whole spec alive for it, and re-derive any numbers
-   the new doc quotes.
-5. **Repoint anything citing the spec for CONTENT.** A bare backticked `docs/specs/…` path naming where a decision came
-   from is deliberately exempt from `docs-dead-links` and stays.
+4. **File what's still open as a GitHub issue** rather than keeping the whole spec alive for it: one self-contained
+   issue per item, with any decision spelled out for David, and re-derive any numbers it quotes. ❌ Don't keep a
+   follow-ups file.
+5. **Repoint anything citing the spec for CONTENT** to the issue that now carries it. A bare backticked `docs/specs/…`
+   path naming where a decision came from is deliberately exempt from `docs-dead-links` and stays.
 
 ⚠️ A spec that says "keep this doc for its gotchas" is describing work to do, not an exemption: rehome the gotchas and
 wipe it anyway.

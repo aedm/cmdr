@@ -114,8 +114,9 @@ Writing them:
   `docs/architecture.md`.
 - `brand/`: brand and press-kit assets.
 - `docs/`: `docs/architecture.md` (the map), `docs/guides/` (how-tos), `tooling/` (service and workflow references),
-  `docs/business/README.md` (pricing, licensing, product facts), `docs/specs/index.md` (plans, periodically wiped),
-  `docs/notes/README.md`, `style-guide.md`, `design-principles.md`, `security.md`, `maintenance.md`.
+  `docs/business/README.md` (pricing, licensing, product facts), `docs/specs/index.md` (big design docs; open work is
+  GitHub issues, ❌ not specs), `docs/notes/README.md`, `style-guide.md`, `design-principles.md`, `security.md`,
+  `maintenance.md`.
 - `tools/`: dev tooling outside every workspace and check: `tools/intellij-plugin/`, `tools/privatesize-poc/README.md`.
 - `vendor/`: third-party crates we patch and swap in via `[patch.crates-io]`, byte-identical to their published source
   apart from the fix. Not workspace members, and out of jurisdiction for repo-wide tooling. Today: `vendor/mdns-sd`
@@ -127,8 +128,7 @@ Writing them:
 - ❌ Never add a dep without checking `cargo deny check` and verifying latest version in npm / crates.io / GitHub. Don't
   trust training data. Renovate bot handles routine updates.
 - After bumping npm deps, run `pnpm dedupe`. Without it, nested transitive deps stay pinned to old versions and cause
-  false-positive failures (stylelint/postcss misparsing Svelte inline styles, Playwright version skew between AxeBuilder
-  and the e2e specs).
+  false-positive failures (stylelint misparsing Svelte styles, Playwright version skew).
 
 ## Checker script
 
