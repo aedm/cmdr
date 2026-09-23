@@ -151,11 +151,6 @@ const toc = [
         getcmdr.com counts visits with Umami, which runs on Cmdr's own server in Finland and uses no cookies. It also
         uses PostHog (EU cloud) for visit recordings and heatmaps, kept in memory only, so it sets no cookie either.
     </p>
-    <DevTodo>
-        The privacy policy (sections 2 and 8) says PostHog "sets a first-party cookie". The site initializes PostHog
-        with <code>persistence: 'memory'</code> (<code>public/scripts/posthog-init.js</code>), so there's no cookie. Fix
-        the policy.
-    </DevTodo>
 
     <h2 id="eu">Does data leave the EU?</h2>
     <p>
@@ -204,13 +199,6 @@ const toc = [
         Services with no user data: healthchecks.io and UptimeRobot (uptime monitoring), and GitGuardian (scans the
         source code for leaked secrets). Hugging Face serves optional model downloads that the user starts.
     </p>
-    <DevTodo>
-        The privacy policy's subprocessor list (section 5) is missing Resend, Google (Gmail), and Hetzner by name
-        (it says "our own server in Europe"), and section 6 never mentions Resend or Gmail as transfers outside the EU.
-        Add them. Gmail as the inbox is fine to keep (decided 2026-09-23); the only thing it costs is one more
-        outside-the-EU line. Moving <code>@getcmdr.com</code> mail to the self-hosted mailcow in Finland would remove
-        Google from this list. And there's no DPA to sign yet.
-    </DevTodo>
 
     <h2 id="storage">What is stored where, and for how long</h2>
     <h3>On the user's Mac</h3>

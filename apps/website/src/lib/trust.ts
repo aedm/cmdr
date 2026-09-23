@@ -64,8 +64,6 @@ export const networkConnections: NetworkConnection[] = [
       "App and macOS version, where in Cmdr's code the crash happened, the crash message after it's cleaned of personal data on the Mac (at most 2,000 characters), memory addresses of the crashing code, and a random report id. From macOS's own crash report, only the one-line reason and the function names of the crashing thread. An email address only if the user ticks a box.",
     control:
       '<strong>On by default.</strong> Turn off with Settings &gt; Updates &amp; privacy &gt; "Send crash reports".',
-    devTodo:
-      'The privacy policy calls crash reports "opt-in" (sections 2 and 3) but <code>updates.crashReports</code> defaults to <code>true</code>. Either change the policy to "on by default, opt-out" or change the default. This page says "on by default" because that\'s what the code does.',
   },
   {
     id: 'error-reports',
@@ -77,7 +75,7 @@ export const networkConnections: NetworkConnection[] = [
     control:
       'Sent by hand only, by default. Automatic sending is Settings &gt; Updates &amp; privacy &gt; "Send error reports automatically", off by default.',
     devTodo:
-      'The privacy policy says file names are always replaced and search queries are never collected. Both are false for error reports (redactor gap in <code>redact/CLAUDE.md</code>, and <code>commands/search.rs</code> logs <code>query=</code> at debug, which always reaches the file). Fix the code (stop logging the query, close the redactor gap) or the policy, then drop the "Known gaps" sentence here.',
+      'Close the two gaps in the code: the redactor misses a file name in free text (<code>redact/CLAUDE.md</code>), and <code>commands/search.rs</code> logs <code>query=</code> at debug, which always reaches the file. Then drop the "Known gaps" sentence here, the matching gap in "Not in place yet", and the gap sentences in the privacy policy (section 2 and the intro).',
   },
   {
     id: 'license',

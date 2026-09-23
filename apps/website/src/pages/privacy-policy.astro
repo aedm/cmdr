@@ -5,7 +5,7 @@ import LegalLayout from '../layouts/LegalLayout.astro'
 <LegalLayout
     title="Privacy policy"
     description="How Cmdr collects, uses, and protects your personal data. GDPR compliant."
-    lastUpdated="2026-08-12"
+    lastUpdated="2026-09-23"
 >
     <p>
         Your privacy matters to us a lot. This policy explains what data we collect, why, and how we protect it. We've
@@ -16,10 +16,11 @@ import LegalLayout from '../layouts/LegalLayout.astro'
         <p>
             <strong>The short version:</strong> We collect minimal data. The website uses privacy-friendly analytics and collects
             your email if you subscribe. The desktop app validates your license periodically and checks for updates.
-            You can send crash and error reports if you want. During the open beta, the desktop app also sends usage
-            stats (which features you use), tied to a random id, never to your name, with an easy off switch. Your file
-            contents never reach us, and file names are replaced with placeholders before anything leaves your Mac. We
-            don't sell your data.
+            It sends crash reports (on by default, with an easy off switch), and you can send error reports if you
+            want. During the open beta, the desktop app also sends usage stats (which features you use), tied to a
+            random id, never to your name, with an easy off switch. Your file contents never reach us. Usage stats and
+            crash reports carry no file names, and in an error report you send, file names are replaced with
+            placeholders, with a small gap we explain below. We don't sell your data.
         </p>
     </div>
 
@@ -54,8 +55,8 @@ import LegalLayout from '../layouts/LegalLayout.astro'
                 rel="noopener noreferrer">PostHog</a
             >
             to see how visitors interact with the website, like session recordings and heatmaps. This helps us spot confusing
-            layouts and improve the experience. PostHog sets a first-party cookie to maintain your session, but doesn't track
-            you across other websites.
+            layouts and improve the experience. PostHog keeps its session in your browser's memory only, so it sets no
+            cookie, and it doesn't track you across other websites.
         </li>
         <li>
             <strong>Downloads</strong>: the version and architecture you chose, your country, and where the download
@@ -90,7 +91,7 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             checkout, to display it in the app's About window.
         </li>
         <li>
-            <strong>Crash reports</strong> (opt-in): the app version, macOS version, where in our code the crash
+            <strong>Crash reports</strong> (on by default): the app version, macOS version, where in our code the crash
             happened, and the crash message, cleaned of personal data on your Mac first. For a crash with no message,
             we also include the memory addresses the code stopped at and the address Cmdr itself was loaded at, which
             is what lets us turn those numbers back into a place in our code. They're randomized by macOS on every
@@ -99,14 +100,16 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             was in. We pick those out by name and leave the rest of that file on your Mac, including the id that
             identifies your machine and the name of whatever app launched Cmdr. No file names, no file
             contents. If you've added a beta contact email, you can tick a box to attach it so we can reply; we include
-            it only when you do, and delete it after 90 days. Switch crash reports on or off anytime in Settings &gt;
-            Updates &amp; privacy.
+            it only when you do, and delete it after 90 days. Crash reports are on by default, and you can turn them
+            off in Settings &gt; Updates &amp; privacy.
         </li>
         <li>
             <strong>Error reports</strong> (opt-in): a zip of recent app logs plus your app and macOS version, sent from
             Help &gt; Send error report. The app shows you what's inside before it goes anywhere. File and folder names
             are replaced with placeholders on your Mac first, so a path arrives as something like
-            <code>$HOME/Documents/&lt;file&gt;.pdf</code>. If you've added a beta contact email, you can tick a box to
+            <code>$HOME/Documents/&lt;file&gt;.pdf</code>. This isn't perfect: a file name that shows up in a log
+            message outside a path can slip through, and so can the text of a natural-language search, since the app
+            logs it. That's why you see the preview first. If you've added a beta contact email, you can tick a box to
             attach it so we can reply; we include it only when you do. You can also add a note or your email address to
             a report you already sent, and that goes to the same place. Everything here is kept for 90 days.
         </li>
@@ -134,10 +137,12 @@ import LegalLayout from '../layouts/LegalLayout.astro'
     </ul>
 
     <p>
-        We <strong>never</strong> collect your file contents, search queries, AI prompts, keystrokes, or screenshots.
-        File names reach us only as placeholders, in the cleaned logs of an error report you chose to send. Beyond the
-        usage stats, the desktop app's network calls are license validation (including the device identifier above),
-        checking for updates, and sending crash or error reports if you've opted in.
+        We <strong>never</strong> collect your file contents, keystrokes, or screenshots. Usage stats and crash reports
+        never include file names, search queries, or AI prompts. The one place these can reach us is the logs of an
+        error report you chose to send: file names there are replaced with placeholders, but, as explained above, a
+        stray file name or a natural-language search can get through. Beyond the usage stats, the desktop app's network
+        calls are license validation (including the device identifier above), checking for updates, sending crash
+        reports (unless you've turned them off), and sending error reports you choose to send.
     </p>
 
     <h3>What we DON'T collect</h3>
@@ -145,7 +150,8 @@ import LegalLayout from '../layouts/LegalLayout.astro'
         <li>
             The contents of your files, ever. We don't want to know your files. Your file and folder names don't reach
             us either: in an error report they're replaced with placeholders on your Mac, keeping only the file
-            extension and everyday folder names like Documents or Downloads. We see the shape of what happened, not what
+            extension and everyday folder names like Documents or Downloads. (A name mentioned outside a path can slip
+            through, which is why you see the report before you send it.) We see the shape of what happened, not what
             you were working on.
         </li>
         <li>
@@ -154,7 +160,7 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             provider, under their terms. With Cmdr you can also keep everything on your Mac with a local model.
         </li>
         <li>
-            Crash reports, if you opt in, carry only technical diagnostics: code locations, app and system version, and
+            Crash reports carry only technical diagnostics: code locations, app and system version, and
             a crash message cleaned on your Mac first. Never file contents.
         </li>
         <li>
@@ -175,10 +181,11 @@ import LegalLayout from '../layouts/LegalLayout.astro'
         </li>
         <li>
             <strong>Legitimate interest</strong>: Website analytics, download records, and the beta usage stats show us
-            how people find and use Cmdr, which directly shapes the roadmap. This is strictly <em>not</em> about tracking
+            how people find and use Cmdr, which directly shapes the roadmap. Crash reports tell us where Cmdr breaks, so
+            we can fix it. This is strictly <em>not</em> about tracking
             any particular user. We actively avoid that. We read these numbers in aggregate; the random id lets us count
-            people without knowing who they are, and we never use it to look someone up. The usage stats come with an
-            easy opt-out in Settings &gt; Updates &amp; privacy.
+            people without knowing who they are, and we never use it to look someone up. The usage stats and crash
+            reports come with an easy opt-out in Settings &gt; Updates &amp; privacy.
         </li>
         <li>
             <strong>Consent</strong>: Email addresses to send you news that hopefully interest you, including the optional
@@ -186,8 +193,7 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             <em>need</em> to send like updates to this very policy.)
         </li>
         <li>
-            <strong>Consent</strong>: Crash reports, error reports, and feedback, each sent only when you choose to send
-            it. You can opt out of crash reports anytime in Settings.
+            <strong>Consent</strong>: Error reports and feedback, each sent only when you choose to send it.
         </li>
     </ul>
 
@@ -243,12 +249,36 @@ import LegalLayout from '../layouts/LegalLayout.astro'
             >
         </li>
         <li>
+            <strong>Resend</strong> (license and notification emails): sends the email with your license key, and the
+            notification emails that tell us about new crash reports, error reports, and feedback, including what you
+            wrote and your email address if you attached one. Resend is a US company, sending our emails from its
+            Ireland region.
+            <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer"
+                >Resend's privacy policy</a
+            >
+        </li>
+        <li>
+            <strong>Google Gmail</strong> (our inbox): email you send to any <code>@getcmdr.com</code> address lands in
+            a Gmail inbox, and so do the notification emails above. Google is a US company.
+            <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer"
+                >Google's privacy policy</a
+            >
+        </li>
+        <li>
+            <strong>Hetzner</strong> (our server): hosts the website, Umami, and Listmonk on a server in Helsinki,
+            Finland.
+            <a href="https://www.hetzner.com/legal/privacy-policy/" target="_blank" rel="noopener noreferrer"
+                >Hetzner's privacy policy</a
+            >
+        </li>
+        <li>
             <strong>Listmonk</strong> (newsletter and beta list): self-hosted on our server. Stores your email address
             and subscription status, including the optional beta contact email you can share in the desktop app. No data
             leaves our infrastructure except when sending emails via AWS SES.
         </li>
         <li>
-            <strong>AWS SES</strong> (email delivery): sends newsletter and confirmation emails on our behalf.
+            <strong>AWS SES</strong> (email delivery): sends newsletter and confirmation emails on our behalf, from
+            Stockholm, Sweden.
             <a href="https://aws.amazon.com/privacy/" target="_blank" rel="noopener noreferrer">AWS privacy policy</a>
         </li>
     </ul>
@@ -260,14 +290,15 @@ import LegalLayout from '../layouts/LegalLayout.astro'
 
     <h2>6. Where we store your data</h2>
     <p>
-        Page-level website analytics (Umami) and our newsletter system (Listmonk) are self-hosted on our own server in
-        Europe. Our license, telemetry, and report server runs on Cloudflare Workers on a global CDN, with its database
+        Page-level website analytics (Umami) and our newsletter system (Listmonk) are self-hosted on our own server at
+        Hetzner in Helsinki, Finland. Our license, telemetry, and report server runs on Cloudflare Workers on a global CDN, with its database
         and file storage in Cloudflare's network. PostHog and Paddle are GDPR-compliant and have appropriate data
         processing agreements in place.
     </p>
     <p>
-        Discord and GitHub are US companies, so our Discord notifications and the downloads GitHub serves involve a
-        transfer outside the EU, under those companies' own data protection terms.
+        Discord, GitHub, Resend, and Google are US companies, so our Discord notifications, the downloads GitHub
+        serves, the license and notification emails Resend sends, and the email that lands in our Gmail inbox involve
+        a transfer outside the EU, under those companies' own data protection terms.
     </p>
 
     <h2>7. How long we keep your data</h2>
@@ -313,9 +344,9 @@ import LegalLayout from '../layouts/LegalLayout.astro'
 
     <h2>8. Cookies</h2>
     <p>
-        PostHog sets a first-party cookie to maintain your session while you browse our website. This is used for
-        session recordings and heatmaps. It doesn't track you across other websites. Umami, our page analytics tool,
-        doesn't use cookies at all.
+        Our website sets no tracking cookies. PostHog, which we use for session recordings and heatmaps, keeps its
+        session in your browser's memory only while the page is open, and sets no cookie. Umami, our page analytics
+        tool, doesn't use cookies at all.
     </p>
     <p>We don't use third-party advertising cookies or cross-site tracking.</p>
 
