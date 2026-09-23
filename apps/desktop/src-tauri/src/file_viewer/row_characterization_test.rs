@@ -551,7 +551,7 @@ fn search_finds_a_needle_in_a_utf16_file_in_every_backend() {
     // `memchr(b'\n')` loop over RAW bytes, which is not how UTF-16 is framed: the spans
     // came out misaligned and the needle never matched, so ⌘F on a UTF-16 file over 1 MB
     // reported zero hits rather than saying anything. Both now walk rows through the
-    // shared, encoding-aware `rows::search_rows`.
+    // shared, encoding-aware `row_walk::search_rows`.
     let dir = TestDir::new("viewer_char_utf16_search");
     let file = fixture(&dir, "utf16.txt", &utf16_le_with_bom("alpha\nbeta gamma\ndelta\n"));
 
