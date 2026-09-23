@@ -9513,6 +9513,12 @@ export type MemoryDiagnostics = {
    */
   sqlitePageCache: SqlitePageCache
   /**
+   *  How much of the Rust heap is live data, and how much is allocator slack: a census of
+   *  every mimalloc page, read against the heap's resident size. The one field that can
+   *  tell "the program holds this" from "mimalloc holds this".
+   */
+  rustHeapCensus: RustHeapCensus
+  /**
    *  The kernel's VM map folded by tag, biggest dirty total first. Empty if the walk
    *  failed or timed out.
    */
@@ -11854,6 +11860,42 @@ export type RowBeside = 'previous' | 'next'
  *  search hits inside a top-level move/trash unit, and are never reversed.
  */
 export type RowRole = 'rollbackUnit' | 'searchOnly'
+
+/**
+ *  The Rust heap split into live data and allocator slack.
+ *
+ *  `liveBytes` is what the program holds; `residentBytes` is what the heap costs (its VM
+ *  tag's dirty plus swapped bytes). The gap, `slackBytes`, is memory mimalloc keeps that
+ *  no live allocation uses: free blocks inside pages (`blockSpaceBytes - liveBytes`) plus
+ *  retained memory outside any page's blocks (`residentBytes - blockSpaceBytes`). What the
+ *  census can't see, and why `liveBytes` leans high: `cmdr_fs::process_memory` §
+ *  `heap_census`.
+ */
+export type RustHeapCensus = {
+  // Bytes in allocated blocks across every mimalloc page.
+  liveBytes: number
+  // Bytes of block space those pages have set up, live or free.
+  blockSpaceBytes: number
+  /**
+   *  The heap's resident size: dirty plus swapped bytes under mimalloc's VM tag
+   *  (`IOAccelerator`, tag 100). `0` when the VM walk failed.
+   */
+  residentBytes: number
+  /**
+   *  `residentBytes - liveBytes`, floored at zero: what the allocator holds beyond the
+   *  program's data.
+   */
+  slackBytes: number
+  // How many pages the census visited.
+  pageCount: number
+  /**
+   *  The biggest live allocations of 1 MiB or more, biggest first. A repeated exact
+   *  size is a fingerprint (the SQLite page slab is one 64 MiB block).
+   */
+  largestLiveBlocks: number[]
+  // False when the census stopped at its page ceiling, so the totals are a floor.
+  complete: boolean
+}
 
 /**
  *  One mountable thing under an account: an SFTP or WebDAV root, later an S3

@@ -1273,7 +1273,7 @@
       "name": "image_facts"
     },
     {
-      "description": "What this Cmdr process is holding right now: the physical footprint, the Rust (mimalloc) heap, the system malloc zones, SQLite's page-cache slab, and the kernel's VM map folded by tag with a per-tag region-size histogram. The only reading that spans both allocators. macOS only.",
+      "description": "What this Cmdr process is holding right now: the physical footprint, the Rust (mimalloc) heap split into live data and allocator slack, the system malloc zones, SQLite's page-cache slab, and the kernel's VM map folded by tag with a per-tag region-size histogram. The only reading that spans both allocators. macOS only.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {

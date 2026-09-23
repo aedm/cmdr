@@ -58,6 +58,32 @@ a process that's already running, so a live instance predating it has to be meas
 tool at its next update. Implementation: `apps/desktop/src-tauri/src/mcp/executor/memory.rs` over the
 `get_memory_diagnostics` IPC command, whose module docs say how to read every field.
 
+## Live bytes vs allocator slack
+
+`rustHeapCommittedBytes` and the `IOAccelerator` dirty bytes say what the Rust heap COSTS. Neither says how much of it
+the program is using, and at idle roughly half of it isn't (heap attribution, 2026-09-23: 124 MiB live in 226 MiB of
+heap). `rustHeapCensus` answers that from inside a running app, release builds included:
+
+- `liveBytes`: the blocks in use across every mimalloc page, from a walk of the pages (`mi_heap_visit_blocks` over the
+  main heap, which in mimalloc v3 spans every thread).
+- `blockSpaceBytes`: the block space those pages have set up. `blockSpaceBytes - liveBytes` is free blocks inside pages
+  that are in use.
+- `residentBytes`: the heap's VM tag (100, `IOAccelerator`) dirty plus swapped. `residentBytes - blockSpaceBytes` is
+  memory mimalloc retains outside any page's blocks.
+- `slackBytes`: `residentBytes - liveBytes`, the whole gap in one number.
+- `largestLiveBlocks`: every live block of 1 MiB or more, biggest first. The SQLite page slab is the ~64 MiB one;
+  anything else in that range is worth naming.
+
+What the census can't see, all small or off in our build: mimalloc's own metadata, pages it took straight from the OS
+(only a 2 GiB+ allocation), and blocks another thread freed that the owner hasn't collected yet, which it counts as
+live, so `liveBytes` leans high. It runs only when the tool is called, walks without stopping the app, and is bounded to
+a million pages. Mechanism and safety argument: `crates/cmdr-fs/src/process_memory/heap_census.rs`.
+
+❌ Don't read live bytes off mimalloc's own stats (`MIMALLOC_SHOW_STATS`, `mi_stats_print_out` with `MI_STAT`). In v3
+they're per-thread counters that merge only when a thread collects or exits, and a free on another thread decrements
+that thread's counter: after a 400 MiB search arena was freed they still read 242–265 MiB live (verified on
+`libmimalloc-sys` 0.1.49 / mimalloc v3, release build, 2026-09-23).
+
 ## How to measure from outside the process (`vmmap`)
 
 For an instance that can't answer the tool, or when you want the raw map:

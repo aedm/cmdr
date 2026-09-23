@@ -472,7 +472,7 @@ mcp_tools! {
     // instrument, and its declaration has no business riding every turn of every Ask Cmdr
     // conversation.
     "memory_diagnostics" => {
-        desc: "What this Cmdr process is holding right now: the physical footprint, the Rust (mimalloc) heap, the system malloc zones, SQLite's page-cache slab, and the kernel's VM map folded by tag with a per-tag region-size histogram. The only reading that spans both allocators. macOS only.",
+        desc: "What this Cmdr process is holding right now: the physical footprint, the Rust (mimalloc) heap split into live data and allocator slack, the system malloc zones, SQLite's page-cache slab, and the kernel's VM map folded by tag with a per-tag region-size histogram. The only reading that spans both allocators. macOS only.",
         schema: schemas::memory_diagnostics_schema(),
         gate: TokenGate::Open,
         consumers: &[Consumer::AiClient],

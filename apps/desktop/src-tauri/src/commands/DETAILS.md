@@ -165,7 +165,9 @@ Per-file function inventory and decision rationale. `CLAUDE.md` holds the must-k
   left anonymous (`../../../../../docs/notes/idle-malloc-large-clip-towers-2026-08-21.md`). `sqlitePageCache` adds the
   fifth accountant, `cmdr_fs::sqlite_util::query_page_cache_usage` plus `live_read_connections`: SQLite's page slab is a
   leaked Rust allocation, so it's a fixed 64 MiB inside the mimalloc total that no other field names, and the whole
-  point of one payload is that nobody has to know to go ask SQLite separately. Deliberately NOT
+  point of one payload is that nobody has to know to go ask SQLite separately. `rustHeapCensus` splits the Rust heap
+  into live data and allocator slack (`cmdr_fs::process_memory::query_heap_census` read against the VM map's tag-100
+  bytes), the only way to tell "the program holds this" from "mimalloc holds this". Deliberately NOT
   `debug_assertions`-gated:
   the readings that matter come from a shipped build under a real workload, which is the one condition a debug-only
   command can't reach. Carries no paths or names, only counts. Runs off the IPC thread (one syscall per map entry) with

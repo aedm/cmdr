@@ -6,7 +6,7 @@
 //! Policy (thresholds, what to do about a number) lives with the caller — the
 //! app's `indexing::resources::memory_watchdog`; this module only reads.
 //!
-//! Five readers, four different accountants:
+//! Six readers, four different accountants:
 //!
 //! (All but the first are macOS-only, so they're named here rather than linked:
 //! an intra-doc link to a `cfg`-gated item is an unresolved link on every other
@@ -15,6 +15,7 @@
 //! - [`current_phys_footprint`] / `query_task_vm_info`: the kernel's view.
 //! - `query_basic_info`: RSS and its high-water mark.
 //! - `query_mimalloc_heap`: what OUR allocator has committed.
+//! - `query_heap_census` (`heap_census.rs`): how much of that is live data.
 //! - `query_system_malloc_zones`: what the SYSTEM allocator holds.
 //! - `query_vm_regions` (`vm_regions.rs`): the kernel's VM map folded by tag,
 //!   plus a per-tag histogram of distinct region SIZES.
@@ -278,6 +279,12 @@ pub fn query_mimalloc_heap() -> MimallocHeap {
     }
 }
 
+/// How much of mimalloc's committed memory is live data: see [`query_heap_census`].
+#[cfg(target_os = "macos")]
+mod heap_census;
+#[cfg(target_os = "macos")]
+pub use heap_census::{HeapCensus, LARGEST_BLOCKS, query_heap_census};
+
 // ── System malloc zones: everything EXCEPT our allocator ─────────────
 
 /// `malloc_statistics_t` from `<malloc/malloc.h>`.
@@ -409,7 +416,7 @@ pub fn query_system_malloc_zones() -> SystemMallocZones {
 #[cfg(target_os = "macos")]
 mod vm_regions;
 #[cfg(target_os = "macos")]
-pub use vm_regions::{RegionSizeGroup, TagUsage, VmRegionMap, query_vm_regions};
+pub use vm_regions::{MIMALLOC_ARENA_TAG, RegionSizeGroup, TagUsage, VmRegionMap, query_vm_regions};
 
 #[cfg(all(test, target_os = "macos"))]
 mod tests {

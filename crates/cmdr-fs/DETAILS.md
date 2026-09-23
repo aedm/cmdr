@@ -485,6 +485,11 @@ MiB block absent from the map entirely (verified on macOS 26.5, 2026-08-21).
 Cost is one syscall per map entry, so it is snapshot-only — never per watchdog tick or per log line, unlike the
 `task_info` readers beside it.
 
+`query_heap_census` answers the question the other three can't: of what mimalloc holds, how much is live data. It walks
+every page of the main heap (in mimalloc v3 one heap spans every thread's pages) and sums blocks in use against block
+space, with an allocation-free visitor and a page ceiling. Read against the VM map's tag-100 bytes it gives the heap's
+slack. Its blind spots and why it's safe to run in a live app: the module header.
+
 ## Bodies a backend gets for free
 
 A backend whose only tools are a stat and a listing (SFTP, WebDAV) writes almost no `Volume` body of its own. Four

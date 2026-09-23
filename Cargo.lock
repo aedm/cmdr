@@ -1389,6 +1389,7 @@ dependencies = [
  "kamadak-exif",
  "keyring-core",
  "libc",
+ "libmimalloc-sys",
  "log",
  "mdns-sd",
  "memchr",

@@ -509,6 +509,13 @@ proptest = "1.11.0"
 # real API quota. Pinned at 0.6.5 (latest stable, published 2025-08-24).
 wiremock = "0.6.5"
 
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+# `commands/memory_diagnostics.rs` tests the heap census against a block allocated through
+# `mi_malloc` directly: the test harness runs on the system allocator (only `main.rs` sets
+# mimalloc as the global one), so a `Vec` would never reach the heap the census walks. No new
+# package in the graph: `cmdr-fs` already links this exact crate for the census itself.
+libmimalloc-sys = { version = "0.1.49", features = ["extended"] }
+
 [[example]]
 name = "smb_compose"
 required-features = ["smb-e2e"]

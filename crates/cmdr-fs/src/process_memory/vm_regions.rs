@@ -65,6 +65,11 @@ pub struct VmRegionMap {
     pub truncated: bool,
 }
 
+/// The VM tag mimalloc gives every arena it maps: `VM_MEMORY_IOACCELERATOR` in
+/// `<mach/vm_statistics.h>`. Its dirty plus swapped bytes are the Rust heap's resident
+/// size, so a heap census is read against this tag.
+pub const MIMALLOC_ARENA_TAG: u32 = 100;
+
 /// `vmmap`'s names for the tags a Cmdr process actually maps. Anything outside
 /// this table renders as `tag-<n>`, which is still a usable fingerprint.
 ///
@@ -351,7 +356,7 @@ mod tests {
     /// The `MALLOC_LARGE` user tag, from `<mach/vm_statistics.h>`.
     const TAG_MALLOC_LARGE: u32 = 3;
     /// The `IOAccelerator` user tag, which mimalloc claims for its arenas.
-    const TAG_IOACCELERATOR: u32 = 100;
+    const TAG_IOACCELERATOR: u32 = MIMALLOC_ARENA_TAG;
 
     fn tag(map: &VmRegionMap, tag: u32) -> Option<&TagUsage> {
         map.tags.iter().find(|t| t.tag == tag)

@@ -21,6 +21,13 @@
 //! connections are pushing on it, so the answer to "what is Cmdr holding?" doesn't
 //! require knowing to go ask SQLite separately (`cmdr_fs::sqlite_util`).
 //!
+//! **And it splits the Rust heap into data and slack.** mimalloc's committed total can't
+//! say how much of it the program is using, and its own stats can't either (they merge
+//! per-thread counts late, so they read hundreds of MiB "live" after a free).
+//! `rustHeapCensus` walks every mimalloc page for the live bytes and reads the heap's
+//! resident size off the VM map, so `slackBytes` is what the allocator holds beyond the
+//! program's data (`cmdr_fs::process_memory`'s `heap_census.rs`).
+//!
 //! **How to read the payload.** Sort by `dirtyBytes` and start at the top. Then look at
 //! each big tag's `sizes`: a repeated EXACT region size is a fingerprint, because macOS
 //! gives every allocation past its 127 KB large-zone threshold a region sized to the
@@ -88,6 +95,10 @@ pub struct MemoryDiagnostics {
     /// the slab is a leaked Rust allocation, so it's a fixed 64 MiB sitting
     /// INSIDE `rustHeapCommittedBytes` that nothing else here names.
     pub sqlite_page_cache: SqlitePageCache,
+    /// How much of the Rust heap is live data, and how much is allocator slack: a census of
+    /// every mimalloc page, read against the heap's resident size. The one field that can
+    /// tell "the program holds this" from "mimalloc holds this".
+    pub rust_heap_census: RustHeapCensus,
     /// The kernel's VM map folded by tag, biggest dirty total first. Empty if the walk
     /// failed or timed out.
     pub tags: Vec<MemoryTag>,
@@ -138,6 +149,36 @@ pub struct SqlitePageCache {
     /// as long as their thread, so this tracks tokio's blocking pool; each one
     /// adds its `cache_size` to SQLite's global ceiling on retained pages.
     pub live_read_connections: u32,
+}
+
+/// The Rust heap split into live data and allocator slack.
+///
+/// `liveBytes` is what the program holds; `residentBytes` is what the heap costs (its VM
+/// tag's dirty plus swapped bytes). The gap, `slackBytes`, is memory mimalloc keeps that
+/// no live allocation uses: free blocks inside pages (`blockSpaceBytes - liveBytes`) plus
+/// retained memory outside any page's blocks (`residentBytes - blockSpaceBytes`). What the
+/// census can't see, and why `liveBytes` leans high: `cmdr_fs::process_memory` §
+/// `heap_census`.
+#[derive(Debug, Clone, Default, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct RustHeapCensus {
+    /// Bytes in allocated blocks across every mimalloc page.
+    pub live_bytes: u64,
+    /// Bytes of block space those pages have set up, live or free.
+    pub block_space_bytes: u64,
+    /// The heap's resident size: dirty plus swapped bytes under mimalloc's VM tag
+    /// (`IOAccelerator`, tag 100). `0` when the VM walk failed.
+    pub resident_bytes: u64,
+    /// `residentBytes - liveBytes`, floored at zero: what the allocator holds beyond the
+    /// program's data.
+    pub slack_bytes: u64,
+    /// How many pages the census visited.
+    pub page_count: u64,
+    /// The biggest live allocations of 1 MiB or more, biggest first. A repeated exact
+    /// size is a fingerprint (the SQLite page slab is one 64 MiB block).
+    pub largest_live_blocks: Vec<u64>,
+    /// False when the census stopped at its page ceiling, so the totals are a floor.
+    pub complete: bool,
 }
 
 /// One VM tag's share of the address space: the rows `vmmap -summary` prints.
@@ -208,6 +249,7 @@ fn empty_snapshot() -> MemoryDiagnostics {
         system_zone_count: 0,
         largest_system_zone: None,
         sqlite_page_cache: SqlitePageCache::default(),
+        rust_heap_census: RustHeapCensus::default(),
         tags: Vec::new(),
         total_dirty_bytes: 0,
         total_region_count: 0,
@@ -222,6 +264,15 @@ fn collect(sizes_per_tag: usize) -> MemoryDiagnostics {
     let zones = cmdr_fs::process_memory::query_system_malloc_zones();
     let regions = cmdr_fs::process_memory::query_vm_regions(sizes_per_tag);
     let page_cache = cmdr_fs::sqlite_util::query_page_cache_usage();
+    let census = cmdr_fs::process_memory::query_heap_census();
+    let heap_resident = regions
+        .as_ref()
+        .and_then(|map| {
+            map.tags
+                .iter()
+                .find(|t| t.tag == cmdr_fs::process_memory::MIMALLOC_ARENA_TAG)
+        })
+        .map_or(0, |t| t.dirty_bytes + t.swapped_bytes);
 
     MemoryDiagnostics {
         phys_footprint_bytes: vm.as_ref().map_or(0, |v| v.phys_footprint),
@@ -242,6 +293,15 @@ fn collect(sizes_per_tag: usize) -> MemoryDiagnostics {
             overflow_bytes: page_cache.overflow_bytes,
             peak_overflow_bytes: page_cache.peak_overflow_bytes,
             live_read_connections: u32::try_from(cmdr_fs::sqlite_util::live_read_connections()).unwrap_or(u32::MAX),
+        },
+        rust_heap_census: RustHeapCensus {
+            live_bytes: census.live_bytes,
+            block_space_bytes: census.block_space_bytes,
+            resident_bytes: heap_resident,
+            slack_bytes: heap_resident.saturating_sub(census.live_bytes),
+            page_count: census.page_count,
+            largest_live_blocks: census.largest_blocks.into_iter().filter(|&size| size > 0).collect(),
+            complete: census.complete,
         },
         tags: regions
             .as_ref()
@@ -321,6 +381,44 @@ mod tests {
             sqlite.overflow_bytes, 0,
             "page memory outside the budget would mean the slab stopped describing it"
         );
+    }
+
+    /// The question `rustHeapCommittedBytes` can't answer: of what the Rust heap holds,
+    /// how much is the program's data? A block allocated through mimalloc shows up in the
+    /// census by its exact size, counted as live, and inside the heap's resident total.
+    /// Through `mi_malloc` directly: the test harness doesn't run on mimalloc as its
+    /// global allocator, the shipped binary does.
+    #[tokio::test]
+    async fn the_snapshot_splits_the_rust_heap_into_live_data_and_slack() {
+        const BLOCK: usize = 24 * 1024 * 1024;
+        // SAFETY: `mi_malloc` returns an owned block of at least `BLOCK` bytes or null; we
+        // check for null, write only inside it, and free the same pointer exactly once.
+        let block = unsafe { libmimalloc_sys::mi_malloc(BLOCK) as *mut u8 };
+        assert!(!block.is_null(), "mi_malloc should hand back a {BLOCK}-byte block");
+        // SAFETY: `block` is a live allocation of at least `BLOCK` bytes.
+        unsafe { std::ptr::write_bytes(block, 1u8, BLOCK) };
+
+        let census = get_memory_diagnostics(0).await.rust_heap_census;
+
+        // SAFETY: the same pointer `mi_malloc` returned, freed exactly once.
+        unsafe { libmimalloc_sys::mi_free(block.cast()) };
+
+        assert!(census.complete, "a test heap is nowhere near the page ceiling");
+        assert!(
+            census.largest_live_blocks.contains(&(BLOCK as u64)),
+            "the block is named by its size: {:?}",
+            census.largest_live_blocks
+        );
+        assert!(census.live_bytes >= BLOCK as u64, "and counted as live");
+        assert!(
+            census.block_space_bytes >= census.live_bytes,
+            "inside the pages' block space"
+        );
+        assert!(
+            census.resident_bytes >= census.live_bytes,
+            "and inside what the heap's VM tag holds resident"
+        );
+        assert_eq!(census.slack_bytes, census.resident_bytes - census.live_bytes);
     }
 
     #[tokio::test]
