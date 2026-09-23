@@ -70,7 +70,7 @@ remote temp are cleaned up — a RAII `ScratchDir` and the upload's on-error del
 (round-trip, cancel-before-swap-leaves-the-original, and the sibling-allowing delete-then-rename swap), plus live-remote
 integration proofs that drive `pull_apply_upload_swap` against a REAL backend: the backend-blind scenarios in
 `network_archive_test_support.rs` (edit, cancel before the swap, routing detection, extract-out, copy-into, compress),
-which `smb_archive_integration_test.rs` and `sftp_archive_integration_test.rs` both drive, and `mtp_archive_test` under the
+which `smb_archive_integration_test.rs`, `sftp_archive_integration_test.rs`, and `webdav_archive_integration_test.rs` drive, and `mtp_archive_test` under the
 `virtual-mtp` feature (`virtual_mtp_archive_browses_and_extracts_via_read_range` +
 `virtual_mtp_remote_zip_edit_deletes_an_entry_through_the_device`, exercising the MTP delete-then-rename swap). Cost: O(archive)
 network per edit (the pull), documented and accepted — there is no remote random-access WRITE adapter (that's only a

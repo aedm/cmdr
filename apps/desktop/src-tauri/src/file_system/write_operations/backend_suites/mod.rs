@@ -84,4 +84,14 @@ mod smb_transfer_semantics_test;
 
 // WebDAV: gated on the Docker fixture and named for the `webdav_integration_` lane.
 #[cfg(any(target_os = "macos", target_os = "linux"))]
+mod webdav_archive_integration_test;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod webdav_look_alike_test;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod webdav_test_support;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 mod webdav_transfer_integration_test;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod webdav_transfer_safety_test;
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+mod webdav_transfer_semantics_test;

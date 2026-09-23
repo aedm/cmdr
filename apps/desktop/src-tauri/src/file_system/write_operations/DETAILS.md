@@ -88,7 +88,7 @@ The full top-level inventory is here:
   `test_support.rs`. Every backend's cells through this pipeline live in `backend_suites/`: the backend-blind
   `network_*_test_support.rs` scenarios the WebDAV, SFTP, SMB, and ADB suites drive, the chunk-gated sources in
   `network_gated_source_test_support.rs` (§ "The network transfer suites"), the per-backend fixture dials
-  (`smb_test_support.rs`, `sftp_test_support.rs`), and the `<backend>_*_test.rs` cells (§
+  (`smb_test_support.rs`, `sftp_test_support.rs`, `webdav_test_support.rs`), and the `<backend>_*_test.rs` cells (§
   "The SMB app-side suites").
 
 What the mechanisms DO is in the sections below: the registry, lanes, and `run_instant` in § "Operation manager";
@@ -499,7 +499,7 @@ identical-looking twin beside the user's entry.
   and a "yes" for a look-alike would send them to a miss).
 - The transfers apply the same rule through `transfer/volume/landing.rs`: `transfer/volume/DETAILS.md` § "Look-alike
   names and new-name spelling". Extract lands through the same merge levels. Instant-op cells:
-  `look_alike_instant_tests.rs`; Docker: `smb_look_alike_test.rs` and `sftp_look_alike_test.rs`.
+  `look_alike_instant_tests.rs`; Docker: `smb_look_alike_test.rs`, `sftp_look_alike_test.rs`, and `webdav_look_alike_test.rs`.
 - **Not covered, on purpose**: paste-as-file (`pasted (N).<ext>`, ASCII), rescue names (` (recovered)` off a name the
   landing already spelled; an error path that never overwrites), remote archive-edit temps (`.cmdr-tmp-<uuid>`), and
   undo (it restores an entry's own stored bytes).
@@ -1203,7 +1203,7 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
 - **The scenarios are backend-blind and live in `network_*_test_support.rs`.** Everything they touch is `dyn Volume`,
   taken as `(remote: Arc<dyn Volume>, dir: PathBuf)` (a live volume plus a scratch dir it owns and removes), so a claim
   proved against one backend is proved in the same words against the others and the suites can't drift. Each backend
-  file connects its own fixture (`sftp_test_support::fixture`, `smb_test_support::fixture`, WebDAV's `fixture()`) and
+  file connects its own fixture (`sftp_test_support::fixture`, `smb_test_support::fixture`, `webdav_test_support::fixture`) and
   delegates. Five files, by what they prove:
   - `network_transfer_test_support.rs`: the byte path (below).
   - `network_semantics_test_support.rs`: merges under Skip / Overwrite / Rename / OverwriteSmaller, a move-merge that
@@ -1221,9 +1221,13 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   - `network_archive_test_support.rs`: a zip on the server browsed and extracted through the copy engine, the routing
     predicate, a remote edit and its cancel before the swap, files copied into a remote zip, a compress, and a
     compress onto a look-alike name.
-- **Which backend drives what.** SFTP and SMB drive all five; WebDAV and ADB drive `network_transfer_test_support.rs`.
+- **Which backend drives what.** SFTP, SMB, and WebDAV drive all five; ADB drives `network_transfer_test_support.rs`.
   SFTP also points the same-server move and copy, the inline rename, and the remote zip edit at
-  `sftp-fixture-noposixrename`, where the server can't copy for itself and a rename has no atomic replace.
+  `sftp-fixture-noposixrename`, where the server can't copy for itself and a rename has no atomic replace. WebDAV points
+  the zip browse at `webdav-fixture-norange`, whose whole-file answer to every ranged GET is what a zip reader's many
+  small windows have to be cut out of locally. The dialog-addressed destination cells are SFTP's and SMB's own: the
+  WebDAV fixture's remote root is `/`, where a volume-relative and a server-absolute path are spelled alike, so a
+  doubled root can't be told from a right one there (`cmdr-webdav`'s `paths_test.rs` pins the refusal instead).
 - **`adb_transfer_test.rs` runs the same scenarios against a phone on `cmdr-adb`'s in-process fake server**, so it
   needs no Docker, runs in the unit lane, and has no name prefix to keep. Its own cells start a copy from two registered
   ids (`start_copy_by_id`, through `start_volume_copy`), check that a copy onto the phone lands through the writer's own
@@ -1231,7 +1235,7 @@ predicate the crate never states, and a free-space pre-flight reading `NotSuppor
   ❗ A transfer onto a phone runs at width 1 (the `"adb"` row in `MAX_CONCURRENT_OPERATIONS_SOURCES`), so the serial
   driver runs it: the pre-existing-folder scenario there holds the per-name probe (`landing::top_level_precheck`),
   never the concurrent driver's skip on a `Created` answer.
-- **❗ The cells themselves must stay in the two backend files, on the `webdav_integration_` / `sftp_integration_` name
+- **❗ The cells themselves must stay in the backend files, on the `webdav_integration_` / `sftp_integration_` / `smb_integration_` name
   prefix.** The integration lane selects the app crate's Docker cells by NAME (`scripts/check/checks/fixture-lane-coverage.go`,
   enforced by `desktop-fixture-lane-coverage`), so a scenario promoted to a `#[tokio::test]` in the shared file would
   compile, look like coverage, and never run anywhere.

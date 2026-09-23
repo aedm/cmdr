@@ -23,7 +23,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use cmdr_fs::volume::Volume;
-use cmdr_webdav::volume::testing::{connect_fixture, scratch_dir};
 
 use super::network_transfer_test_support::{
     a_cancelled_upload_leaves_nothing_behind, a_directory_tree_lands_intact_off_the_server,
@@ -31,23 +30,13 @@ use super::network_transfer_test_support::{
     an_overwrite_answer_replaces_the_destination_bytes, awkward_names_survive_a_round_trip, clean_deep, read_all,
     run_copy, self_describing_bytes, sha256,
 };
+use super::webdav_test_support::fixture;
 use crate::file_system::volume::LocalPosixVolume;
 use crate::test_support::TestDir;
 
 /// Big enough to cross the read and write windows rather than ride in one
 /// request, so reassembly and offset bookkeeping are actually exercised.
 const PAYLOAD_BYTES: usize = 700_000;
-
-/// A live fixture volume and a scratch directory of its own on the export.
-///
-/// ❗ Every cell takes a fresh one: the cells share one export and `nextest` runs
-/// them in parallel, so a fixed name would have two of them renaming each
-/// other's files.
-async fn fixture() -> (Arc<dyn Volume>, PathBuf) {
-    let volume = connect_fixture("APACHE", 13480).await;
-    let dir = scratch_dir(&volume).await;
-    (Arc::new(volume), dir)
-}
 
 /// Copy OFF the server: the direction `supports_export()` gates.
 ///
