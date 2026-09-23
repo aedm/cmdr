@@ -4,10 +4,10 @@
 
 ## The problem
 
-`docs/i18n/<locale>/glossary.md` and `style.md` are 28,263 lines of hand-maintained prose across 13 locales (`nl` 3,065,
-`fr` 3,047, `hu` 2,947, `es` 2,810). Only agents read them. Every load-bearing fact in them is really a typed field
-wearing prose: a term, its translation, the catalog keys it governs, the shipped English and translated values, the
-evidence, a confidence, and whether a later decision superseded it.
+`docs/i18n/<locale>/glossary.md` and `style.md` are 54,449 lines of hand-maintained prose across 143 locales (`fr`
+4,231, `nl` 4,222, `hu` 4,142, `es` 3,886; counted 2026-09-23). Only agents read them. Every load-bearing fact in them
+is really a typed field wearing prose: a term, its translation, the catalog keys it governs, the shipped English and
+translated values, the evidence, a confidence, and whether a later decision superseded it.
 
 Because those fields are prose, nothing can check them, and three classes of rot have already happened:
 
@@ -23,7 +23,9 @@ Class 3 is the one that shows the structure is wrong, so it is worth seeing in f
 
 ## The current shape
 
-From `docs/i18n/hu/glossary.md:366`, one bullet, reflowed here but otherwise verbatim:
+From `docs/i18n/hu/glossary.md` as it stood when this was written, one bullet, reflowed here but otherwise verbatim.
+This bullet has since been corrected by hand (it now sits at line 370), but prose "SUPERSEDED" notes of the same kind
+remain in the `de`, `es`, `fr`, `hu`, `sv`, and `vi` glossaries (2026-09-23), so the format still allows the failure:
 
 ```
 - queue (the transfer queue) → `sor` (`átviteli sor` = transfer queue) · double-commander (operations viewer `Queue` =
@@ -106,7 +108,7 @@ catalogs at render time.** Everything else follows.
 - **Renames become mechanical.** A key rename can rewrite `governs:` lists directly. Today it silently rots 33 citations
   and someone reconstructs them from `git log -S` days later.
 - **Cross-locale questions become queryable.** "Which locales still translate _dismiss_ as an ignore-word?" is a filter
-  over rows. Today it is 13 greps and a judgment call per hit.
+  over rows. Today it is 143 greps and a judgment call per hit.
 
 Two smaller wins worth naming: the reverse index (which terms govern a given key) is free, and per-locale coverage
 ("terms with no `governs:` entries" and "high-traffic keys no term governs") becomes a report rather than a guess.
@@ -117,11 +119,12 @@ Two smaller wins worth naming: the reverse index (which terms govern a given key
   rationale is the part a human would want to read.
 - Nothing here judges translation quality. `desktop-i18n-term-consistency` still owns that.
 - The evidence citations (Microsoft TBX ids, macOS bundle paths) point outside the repo and stay unverifiable. Trap 4 in
-  `docs/i18n/how-to-mine.md` (the first TBX hit is often the wrong sense) is a human problem, not a schema problem.
+  `docs/i18n/reference-pile/how-to-mine.md` (the first TBX hit is often the wrong sense) is a human problem, not a
+  schema problem.
 
 ## Cost, honestly
 
-This is the expensive option. 28,263 lines migrate, and the migration cannot be fully mechanical, because the current
+This is the expensive option. 54,449 lines migrate, and the migration cannot be fully mechanical, because the current
 format is not consistent enough to parse reliably. Realistically it is a per-locale pass, one agent per locale, with the
 dated append-only sections needing the most judgment: each has to be folded into the row it supersedes and then deleted,
 which is where the self-contradictions get resolved and where mistakes would be easy to make.
