@@ -13,9 +13,41 @@ use std::path::Path;
 use std::pin::Pin;
 use std::sync::Arc;
 
-/// Backpressure window for the chunk channel. With smb2's ~512 KB pipelined
-/// chunks, 4 slots keep peak memory at a few MB regardless of file size.
+/// Backpressure window for the chunk channel: 4 × `smb2::DOWNLOAD_CHUNK_SIZE`
+/// (512 KiB) = 2 MiB of delivered-but-unconsumed bytes per download, on top of
+/// the up-to-4 MiB smb2's adaptive read-ahead keeps on the wire. The wire window
+/// is what fills the link; this only absorbs the consumer's per-chunk jitter,
+/// and a consumer slower than the link gains nothing from more slots. Worth
+/// raising (to 8) only if a profile shows the producer parked on `send` while
+/// the consumer is idle.
 pub(super) const SMB_STREAM_CHANNEL_CAPACITY: usize = 4;
+
+/// The `max_read_size` to assume when the session hasn't reported its
+/// negotiated params: the SMB2 floor, same reasoning as `ASSUMED_MAX_WRITE`.
+pub(super) const ASSUMED_MAX_READ: u64 = 65536;
+
+/// THE condition for `open_read_stream_with_hint`'s compound CREATE+READ+CLOSE
+/// fast path: the file fits ONE streaming-download chunk
+/// (`smb2::DOWNLOAD_CHUNK_SIZE`, 512 KiB, capped by the server's `max_read`).
+/// The scan pool's prefetch deliberately doesn't use it (`scan_pool.rs` says
+/// why).
+///
+/// At or below a chunk, the compound is strictly better: one round trip against
+/// three, and the same single READ on the wire. Above it, the compound carries
+/// the whole file as ONE READ with no progress, queued ahead of every listing on
+/// the connection, while `Tree::download` streams it in chunks through an
+/// adaptive window that matches the big READ on a fast link. Measured on smb2's
+/// read-ahead bench (`benchmarks/read-ahead/results/adaptive.md` in the smb2
+/// repo, smb2 0.24.0, 2026-09-23): at 375 KB/s the single READ took 2.8 s for
+/// 1 MiB and 23 s for 8 MiB with nothing in between (cmdr-reports#15), while at
+/// +60 ms the download matched it (1 MiB 191 ms vs 195 ms, 8 MiB 338 ms vs
+/// 328 ms). The price is CREATE and CLOSE as their own round trips for files
+/// over a chunk, which is what a high-RTT fast link pays: on the `slow` fixture
+/// (+200 ms, unthrottled; warm connection, 2026-09-23) a 4 MiB file took 830 ms
+/// streamed against 411 ms as one compound, and 8 MiB 1,046 ms against 634 ms.
+pub(super) fn fits_one_compound_read(max_read: u64, size: u64) -> bool {
+    size > 0 && size <= u64::from(smb2::DOWNLOAD_CHUNK_SIZE).min(max_read)
+}
 
 /// The `max_write_size` to assume when the session hasn't reported its
 /// negotiated params. Every SMB2 dialect negotiates at least 64 KiB, so this is

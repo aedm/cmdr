@@ -51,7 +51,7 @@ use futures_util::stream::FuturesUnordered;
 use super::mapping::{directory_entry_to_file_entry, map_smb_error};
 use super::session::build_session;
 use super::state::ConnectionState;
-use super::streams::InlineReadStream;
+use super::streams::{ASSUMED_MAX_READ, InlineReadStream};
 use super::{SmbConnectionParams, SmbVolume};
 use cmdr_fs::entry::FileEntry;
 use cmdr_fs::volume::{Volume, VolumeError, VolumeReadStream};
@@ -513,7 +513,16 @@ impl SmbVolume {
                     let Some((idx, tree, mut conn)) = pool.acquire().await else {
                         break; // every member momentarily dead ⇒ main session
                     };
-                    let max_read = conn.params().map(|p| p.max_read_size).unwrap_or(65536) as u64;
+                    // Up to a whole `max_read`, NOT the foreground read's one-chunk
+                    // `fits_one_compound_read`: enrichment fetches whole photos (1–8
+                    // MiB typically), and a chunk ceiling would move nearly all of
+                    // them off these connections onto the main session the pane
+                    // browses through, serialized there by ksmbd. The costs the chunk
+                    // ceiling avoids don't apply here: nothing watches this read's
+                    // progress (the fetcher drains it under one whole-read timeout),
+                    // and the listings it can queue ahead of are the background
+                    // scan's own, never the pane's.
+                    let max_read = conn.params().map_or(ASSUMED_MAX_READ, |p| p.max_read_size as u64);
                     if size > max_read {
                         break; // too big for one compound READ ⇒ main-session streaming
                     }

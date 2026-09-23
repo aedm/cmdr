@@ -4,7 +4,8 @@
 //! Sibling to the two byte-path suites and a different question from either:
 //! they ask whether the bytes are right, this one asks how many frames carried
 //! them and how many such operations the server's credit window can carry at
-//! once. So the hinted read is here for its ONE compound frame while its
+//! once. So the hinted read is here for its ONE compound frame (and where that
+//! frame stops paying off, one download chunk) while its
 //! size-drift behavior stays in `read_stream_integration_test.rs`, and the
 //! single-shot write promise is here (both the wire proof and the
 //! `write_is_single_shot` predicate the transfer layer skips its `.cmdr-tmp-*`
@@ -43,7 +44,7 @@ async fn request_counts(vol: &SmbVolume) -> (u64, u64) {
 /// The READ inside it is sized to the hint, which is invisible on the frame
 /// count and very visible on the connection's credit budget: an unsized READ
 /// books `max_read` (8 MB, 128 credits) whatever the file weighs, so ten
-/// concurrent 4 MB reads ask for 1,300 credits against a ~512-credit window and
+/// concurrent small reads ask for 1,300 credits against a ~512-credit window and
 /// most of them park instead of copying.
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
@@ -81,6 +82,57 @@ async fn smb_integration_a_hinted_read_leaves_as_one_compound_frame() {
         (1, 3),
         "a hinted small read must leave as ONE compound frame carrying CREATE+READ+CLOSE; a 3-RTT streaming open is what this prevents"
     );
+
+    ensure_clean(&vol, &dir).await;
+}
+
+/// The compound path ends at ONE download chunk (`smb2::DOWNLOAD_CHUNK_SIZE`),
+/// not at the server's `max_read` (8 MiB on the fixture). A file one byte past
+/// it has to stream: the compound would carry it as a single READ with no
+/// progress, queued ahead of every listing on the connection until the whole
+/// body arrived (cmdr-reports#15: 23 s for 8 MiB on a 375 KB/s link).
+///
+/// The streaming side reads `(0, 4)`: CREATE, two READs, CLOSE as loose
+/// requests, and the body reaches the consumer in more than one chunk, which is
+/// what lets the copy's progress and liveness watchdog see it move.
+#[tokio::test]
+#[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
+async fn smb_integration_the_compound_read_stops_at_one_download_chunk() {
+    let vol = make_docker_volume().await;
+    let dir = test_dir_name();
+    ensure_clean(&vol, &dir).await;
+    vol.create_directory(Path::new(&dir)).await.unwrap();
+
+    let chunk = smb2::DOWNLOAD_CHUNK_SIZE as usize;
+    for (size, expected_frames, expected_chunks, what) in [
+        (chunk, (1, 3), 1, "a file of exactly one chunk takes the compound path"),
+        (chunk + 1, (0, 4), 2, "a file one byte over a chunk streams"),
+    ] {
+        let data: Vec<u8> = (0..=255u8).cycle().take(size).collect();
+        let path = format!("{}/boundary-{size}.bin", dir);
+        vol.create_file(Path::new(&path), &data).await.unwrap();
+
+        let (requests_before, compounds_before) = request_counts(&vol).await;
+        let mut stream = vol
+            .open_read_stream_with_hint(Path::new(&path), Some(size as u64))
+            .await
+            .unwrap();
+        let mut got = Vec::new();
+        let mut chunks = 0;
+        while let Some(chunk) = stream.next_chunk().await {
+            got.extend_from_slice(&chunk.unwrap());
+            chunks += 1;
+        }
+        let (requests_after, compounds_after) = request_counts(&vol).await;
+
+        assert_eq!(got, data, "{what}: the bytes must arrive whole");
+        assert_eq!(
+            (compounds_after - compounds_before, requests_after - requests_before),
+            expected_frames,
+            "{what}: wrong frame shape"
+        );
+        assert_eq!(chunks, expected_chunks, "{what}: wrong chunk count");
+    }
 
     ensure_clean(&vol, &dir).await;
 }

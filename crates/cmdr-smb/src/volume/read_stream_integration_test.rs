@@ -53,15 +53,14 @@ async fn smb_integration_open_read_stream_large_file_spans_many_chunks() {
     // across many chunk boundaries. Before the channel-backed rewrite, the
     // whole file was buffered in memory up front.
     //
-    // The file has to exceed `max_read_size` (up to 8 MB on Samba) for
-    // smb2 to split the read into more than one READ. 20 MB is a safe
-    // multiple that stays under the single-chunk ceiling.
+    // `Tree::download` reads in `smb2::DOWNLOAD_CHUNK_SIZE` (512 KiB) chunks,
+    // so 20 MB spans about 40 of them, enough for the adaptive read-ahead to
+    // open its window to the cap and still deliver them in order.
     let vol = make_docker_volume().await;
     let dir = test_dir_name();
     ensure_clean(&vol, &dir).await;
     vol.create_directory(Path::new(&dir)).await.unwrap();
 
-    // 20 MB: guarantees multiple READs even at 8 MB max_read_size.
     let size = 20 * 1024 * 1024;
     let data: Vec<u8> = (0..size).map(|i| (i % 251) as u8).collect();
     let smb_path = format!("{}/big-stream.bin", dir);
@@ -104,14 +103,14 @@ async fn smb_integration_read_stream_large_file_multi_chunk() {
     // caller writes into whatever destination. Verify that the streaming
     // reader yields multiple chunks for a multi-MB file.
     //
-    // `max_read_size` negotiation can go up to 8 MB on modern Samba, so
-    // the file has to be >8 MB to guarantee multiple READs.
+    // Any file over one `smb2::DOWNLOAD_CHUNK_SIZE` (512 KiB) takes several
+    // READs; 20 MB also keeps the read-ahead window busy for a while.
     let vol = make_docker_volume().await;
     let dir = test_dir_name();
     ensure_clean(&vol, &dir).await;
     vol.create_directory(Path::new(&dir)).await.unwrap();
 
-    let size = 20 * 1024 * 1024; // 20 MB, exceeds 8 MB max_read_size
+    let size = 20 * 1024 * 1024;
     let data: Vec<u8> = (0..size).map(|i| ((i * 7) % 251) as u8).collect();
     let smb_path = format!("{}/export-large.bin", dir);
     vol.create_file(Path::new(&smb_path), &data).await.unwrap();
@@ -179,9 +178,9 @@ async fn smb_integration_open_read_stream_cancel_by_drop() {
 /// `TooLarge` rather than handing back a prefix, and the streaming fallback
 /// serves the file as it is now.
 ///
-/// This is the case sizing the read makes stricter: the refusal now trips at the
-/// hint instead of at `max_read`, so drift that used to slip through (a file that
-/// grew but still fits one 8 MB READ) is caught here.
+/// The refusal trips at the hint, never at `max_read`, so a file that grew but
+/// would still fit one READ is caught here. Both sizes stay under one
+/// `smb2::DOWNLOAD_CHUNK_SIZE` so the hint takes the compound path at all.
 #[tokio::test]
 #[ignore = "Requires Docker SMB containers (./apps/desktop/test/smb-servers/start.sh)"]
 async fn smb_integration_a_file_that_grew_since_the_scan_is_never_read_truncated() {
