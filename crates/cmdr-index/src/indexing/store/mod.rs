@@ -87,12 +87,19 @@ pub struct DirStats {
     /// `true` if any descendant entry (or direct child) is a symlink.
     /// Used by the UI to surface "size omits symlinked content" hints.
     pub recursive_has_symlinks: bool,
-    /// `true` while the indexer still has unprocessed writes affecting this
-    /// directory or a descendant (a big delete/copy in flight). The frontend
-    /// shows a "size updating" hourglass so the number isn't read as settled.
-    /// Sourced from the in-memory `pending_sizes` tracker at build time, not the
-    /// DB. See `indexing/read/pending_sizes.rs`.
+    /// `true` while the indexer has been behind on this directory or a
+    /// descendant for at least two seconds (a big delete/copy in flight). The
+    /// frontend shows a "size updating" hourglass so the number isn't read as
+    /// settled; shorter blips don't count, or it would blink under background
+    /// churn. Sourced from the in-memory `pending_sizes` tracker at build time,
+    /// not the DB. See `indexing/read/pending_sizes.rs`.
     pub recursive_size_pending: bool,
+    /// When `recursive_size_pending` flips on its own, with no write to
+    /// announce it: a young update crossing the two-second mark, or a shown
+    /// hourglass ending its minimum time on screen. A host that pushes sizes to
+    /// its UI re-reads then. Rust-only: it never crosses IPC.
+    #[serde(skip)]
+    pub recursive_size_pending_changes_in: Option<std::time::Duration>,
     /// Whether `recursive_size` is an exact total (`true`) or a lower bound
     /// (`false`), derived backend-side from the subtree's `min_subtree_epoch`
     /// (`> 0` ⇒ exact). The FE renders an exact size when `true`, a `≥` lower

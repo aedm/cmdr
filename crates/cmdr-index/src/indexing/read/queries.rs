@@ -11,7 +11,7 @@ use std::sync::atomic::Ordering;
 
 use super::coverage::{self, CoverageDimension};
 use super::enrichment::get_read_pool_for;
-use super::pending_sizes::get_pending_sizes_for;
+use super::pending_sizes::{PendingView, get_pending_sizes_for};
 use crate::indexing::events::{DEBUG_STATS, IndexDebugStatusResponse, IndexStatusResponse, VolumeIndexStatus};
 use crate::indexing::lifecycle::manager::IndexManager;
 use crate::indexing::lifecycle::state::{
@@ -343,7 +343,7 @@ pub fn get_dir_stats_on_volume(volume_id: &str, path: &str) -> Result<Option<Dir
         // Read the volume's current epoch on this same connection so the derived
         // honest-size booleans are consistent with the stats just read.
         let current_epoch = IndexStore::read_current_epoch(conn).unwrap_or(1);
-        let pending = get_pending_sizes_for(volume_id).is_some_and(|t| t.is_pending(&normalized));
+        let pending = get_pending_sizes_for(volume_id).map(|t| t.view(&normalized));
         Ok(stats.map(|s| dir_stats_from(normalized.clone(), &s, current_epoch, pending)))
     })?
 }
@@ -398,7 +398,7 @@ pub fn get_dir_stats_batch_on_volume(volume_id: &str, paths: &[String]) -> Resul
             let current_epoch = IndexStore::read_current_epoch(conn).unwrap_or(1);
             let tracker = get_pending_sizes_for(volume_id);
             for ((_, idx, normalized), stats_opt) in id_to_idx.into_iter().zip(stats_batch) {
-                let pending = tracker.as_ref().is_some_and(|t| t.is_pending(&normalized));
+                let pending = tracker.as_ref().map(|t| t.view(&normalized));
                 results[idx] = stats_opt.map(|s| dir_stats_from(normalized, &s, current_epoch, pending));
             }
         }
@@ -412,7 +412,7 @@ pub fn get_dir_stats_batch_on_volume(volume_id: &str, paths: &[String]) -> Resul
 /// `recursive_size_stale`) from `min_subtree_epoch` vs `current_epoch`. Raw
 /// epochs never cross IPC. Mirrors `enrichment::apply_dir_stats` for the
 /// `FileEntry` read surface. See the "Honest sizes" model in DETAILS.
-fn dir_stats_from(path: String, s: &store::DirStatsById, current_epoch: u64, pending: bool) -> DirStats {
+fn dir_stats_from(path: String, s: &store::DirStatsById, current_epoch: u64, pending: Option<PendingView>) -> DirStats {
     let complete = s.min_subtree_epoch > 0;
     DirStats {
         path,
@@ -421,7 +421,8 @@ fn dir_stats_from(path: String, s: &store::DirStatsById, current_epoch: u64, pen
         recursive_file_count: s.recursive_file_count,
         recursive_dir_count: s.recursive_dir_count,
         recursive_has_symlinks: s.recursive_has_symlinks,
-        recursive_size_pending: pending,
+        recursive_size_pending: pending.is_some_and(|view| view.shown),
+        recursive_size_pending_changes_in: pending.and_then(|view| view.changes_in),
         recursive_size_complete: complete,
         recursive_size_stale: complete && s.min_subtree_epoch < current_epoch,
     }

@@ -10,6 +10,8 @@
 4. A listing refreshes when its pending set is non-empty, its last refresh is at least `COOLDOWN` (2 s) ago, and the main
    window is visible. A listing inside its cooldown gets a deadline, so the last change always lands (leading plus
    trailing).
+   A listing also rereads the rows a reading said would flip their hourglass on their own (`schedule.rs` rechecks), at
+   that moment and outside the cooldown.
 5. The refresh (on the blocking pool) reads the touched rows' `dir_stats` plus the listing's own, keeps the rows whose
    `RowSizes` moved, writes them into `LISTING_CACHE`, and emits `listing-index-sizes-changed` with their readings and,
    when it moved, the listing's own reading (the `..` row). Nothing moved: nothing is sent.
@@ -51,3 +53,11 @@ the pane, where Svelte leaves the DOM alone because the text is equal, and the F
 pane, and WebKit queues the DOM work anyway (the diagnosis saw transitions piling up in a hidden page). The catch-up is
 one refresh per listing with every batch merged. The cost: the listing cache's sizes (and so MCP's) are stale while the
 window is hidden, by at most what changed in that time.
+
+**Decision**: the hourglass's two-second delay lives in the index, and this worker only follows it. **Why**: the webview
+also reads `DirStats` directly (a window fill, the cursor entry), and so does the agent's `list_dir`. A delay kept here
+would leave those readers showing the raw flag, and the `lit` set would disagree with what a row on screen wears. The
+index answers every reader the same, and tells this worker when a row flips (`recursive_size_pending_changes_in`, plus a
+`DirsUpdated` for the folders whose shown hourglass a drain ended). A recheck runs at its moment, outside the cooldown:
+waiting would show the hourglass up to two seconds late, or never for a short one the webview already read. It rereads
+only the flipping rows and sends only what moved, so under churn it costs an index read, not an event.

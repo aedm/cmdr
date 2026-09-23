@@ -10,7 +10,7 @@
 //!
 //! Two tiers, because two kinds of pending work have different lifetimes.
 //!
-//! **Transient set** (the `paths` set) — fast per-event marks:
+//! **Transient set** (the `paths` map) — fast per-event marks:
 //!
 //! - **Mark** (live event loop): every dir whose recursive size is about to
 //!   change is inserted, along with all its ancestors. We're handed exactly
@@ -25,7 +25,7 @@
 //!   increment/decrement to leak, so the "stuck hourglass forever" failure class
 //!   doesn't exist.
 //!
-//! **Held-roots set** (the `held_roots` set) — coalesced rescan scopes:
+//! **Held-roots set** (the `held_roots` map) — coalesced rescan scopes:
 //!
 //! - A detached `MustScanSubDirs` reconcile runs for seconds to minutes while
 //!   the writer queue oscillates empty, so the transient set's drain-clear would
@@ -39,8 +39,27 @@
 //!   expanding would either strip `/a` while one is in flight or leak it forever.
 //!   Holding only roots keeps release exact and needs no refcounting.
 //!
-//! **Read** (`DirStats` build in `lifecycle/state.rs`): a single `is_pending` test per
-//! directory, carried to the frontend on `DirStats.recursive_size_pending`.
+//! ## When the hourglass shows
+//!
+//! Pending and SHOWN are different questions. Under ordinary background churn
+//! (cache writes in `~/Library`) a folder is pending for a few hundred
+//! milliseconds every few seconds, and showing each of those blinked the
+//! hourglass on and off all day. So each mark and hold remembers when its
+//! episode started (a re-mark keeps the start; a drain or release ends it), and
+//! [`PendingSizes::view`] shows the hourglass only once the episode has run for
+//! [`SHOW_AFTER`]. An episode that did show stays up until [`MIN_SHOWN`] after it
+//! first showed, so a folder that settles just past the threshold can't flash.
+//! A folder that really stays busy (a mass delete the writer is minutes behind
+//! on) shows two seconds in and stays marked until it settles.
+//!
+//! Nothing writes at the moment a flip happens, so the reader has to learn when
+//! to look again: `view` answers `changes_in` for the timed flips, and
+//! [`PendingSizes::clear`] returns the folders whose shown episode it just ended,
+//! which the writer announces as a `DirsUpdated` batch.
+//!
+//! **Read** (`DirStats` build in `queries.rs`): a single [`PendingSizes::view`]
+//! per directory, carried on `DirStats.recursive_size_pending` (shown) and
+//! `DirStats.recursive_size_pending_changes_in`.
 //!
 //! **Per-volume routing (both tiers).** Marks, holds, releases, and the
 //! writer-drain clear all target the OWNING volume's tracker via
@@ -57,8 +76,9 @@
 //! release-before-emit completion sequence, are in `indexing/DETAILS.md`
 //! § "The dir_stats ledger".
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
+use std::time::{Duration, Instant};
 
 use super::handles::VolumeHandles;
 use crate::indexing::paths::path_prefix;
@@ -67,24 +87,52 @@ use crate::indexing::volume::ROOT_VOLUME_ID;
 use cmdr_fs::firmlinks;
 use cmdr_fs::ignore_poison::IgnorePoison;
 
+/// How long a folder has to stay pending before the hourglass shows. Below it, an update is a blip
+/// the size column absorbs silently: the writer caught up before anyone could read the hourglass.
+pub(crate) const SHOW_AFTER: Duration = Duration::from_secs(2);
+
+/// How long a shown hourglass stays up at least, counted from when it first showed.
+pub(crate) const MIN_SHOWN: Duration = Duration::from_secs(1);
+
+/// What the hourglass shows for one folder at one moment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct PendingView {
+    /// The "size updating" hourglass is on.
+    pub(crate) shown: bool,
+    /// When `shown` flips on its own, with no write to announce it. `None` when only a write, a
+    /// drain, or a release can flip it.
+    pub(crate) changes_in: Option<Duration>,
+}
+
+/// A shown episode that ended before [`MIN_SHOWN`] ran out, still on screen until `until`.
+struct Linger {
+    path: String,
+    /// A held rescan root's linger covers its whole chain in both directions, like the hold did.
+    tree: bool,
+    until: Instant,
+}
+
 /// In-memory set of directory paths with unprocessed index writes in flight.
 ///
 /// Paths are stored normalized (via [`firmlinks::normalize_path`]) so a query
 /// matches regardless of how the caller navigated to the path (firmlink alias,
-/// `/tmp` vs `/private/tmp`, etc.).
+/// `/tmp` vs `/private/tmp`, etc.). Each maps to when its episode started.
 pub(crate) struct PendingSizes {
     /// Per-event marks, cleared wholesale when the writer queue drains.
-    paths: Mutex<HashSet<String>>,
+    paths: Mutex<HashMap<String, Instant>>,
     /// Rescan ROOT paths held for the lifetime of a detached `MustScanSubDirs`
     /// reconcile. Never ancestor-expanded; the drain-clear leaves them alone.
-    held_roots: Mutex<HashSet<String>>,
+    held_roots: Mutex<HashMap<String, Instant>>,
+    /// Shown episodes that ended inside their minimum time on screen. A handful at most.
+    lingering: Mutex<Vec<Linger>>,
 }
 
 impl PendingSizes {
     pub(crate) fn new() -> Self {
         Self {
-            paths: Mutex::new(HashSet::new()),
-            held_roots: Mutex::new(HashSet::new()),
+            paths: Mutex::new(HashMap::new()),
+            held_roots: Mutex::new(HashMap::new()),
+            lingering: Mutex::new(Vec::new()),
         }
     }
 
@@ -95,18 +143,20 @@ impl PendingSizes {
     /// single parent (rename pre-pass) — and the membership test is correct for
     /// any ancestor row shown in the UI.
     pub(crate) fn mark(&self, path: &str) {
+        self.mark_at(path, Instant::now());
+    }
+
+    fn mark_at(&self, path: &str, now: Instant) {
         let normalized = firmlinks::normalize_path(path);
-        let mut guard = match self.paths.lock() {
-            Ok(g) => g,
-            Err(poisoned) => poisoned.into_inner(),
-        };
+        let mut guard = self.paths.lock_ignore_poison();
         let mut cur = normalized.as_str();
         loop {
-            guard.insert(cur.to_string());
+            // A re-mark keeps the episode's start: the writer hasn't caught up since.
+            guard.entry(cur.to_string()).or_insert(now);
             match cur.rfind('/') {
                 // Parent is the root "/": insert it and stop.
                 Some(0) => {
-                    guard.insert("/".to_string());
+                    guard.entry("/".to_string()).or_insert(now);
                     break;
                 }
                 Some(pos) => cur = &cur[..pos],
@@ -118,17 +168,28 @@ impl PendingSizes {
 
     /// Hold `root` (a rescan root path) for the lifetime of its detached
     /// reconcile. Normalized so `is_pending` matches regardless of firmlink
-    /// aliasing. A set insert, so re-holding an already-held root is a no-op.
+    /// aliasing. Re-holding an already-held root is a no-op, and keeps its start.
     pub(crate) fn hold(&self, root: &str) {
-        let normalized = firmlinks::normalize_path(root);
-        self.held_roots.lock_ignore_poison().insert(normalized);
+        self.hold_at(root, Instant::now());
     }
 
-    /// Release a previously-held rescan root. A set remove, so releasing an
-    /// unheld (or already-released) root is a harmless no-op.
-    pub(crate) fn release(&self, root: &str) {
+    fn hold_at(&self, root: &str, now: Instant) {
         let normalized = firmlinks::normalize_path(root);
-        self.held_roots.lock_ignore_poison().remove(&normalized);
+        self.held_roots.lock_ignore_poison().entry(normalized).or_insert(now);
+    }
+
+    /// Release a previously-held rescan root. Releasing an unheld (or
+    /// already-released) root is a harmless no-op.
+    pub(crate) fn release(&self, root: &str) {
+        self.release_at(root, Instant::now());
+    }
+
+    fn release_at(&self, root: &str, now: Instant) {
+        let normalized = firmlinks::normalize_path(root);
+        let Some(since) = self.held_roots.lock_ignore_poison().remove(&normalized) else {
+            return;
+        };
+        self.linger_if_short(normalized, true, since, now);
     }
 
     /// Whether `path` (normalized) has unprocessed index writes in flight —
@@ -137,23 +198,90 @@ impl PendingSizes {
     /// includes the subtree being rewritten) or a descendant of it (its own rows
     /// are being rewritten). The held set is bounded by `pending_rescans` (a
     /// handful), so the linear scan is trivial.
+    ///
+    /// Raw membership, whatever the episode's age: what the tests pin the
+    /// bookkeeping with. What the UI shows is [`Self::view`].
+    #[cfg(test)]
     pub(crate) fn is_pending(&self, path: &str) -> bool {
         let normalized = firmlinks::normalize_path(path);
-        if self.paths.lock_ignore_poison().contains(&normalized) {
-            return true;
+        self.pending_since(&normalized).is_some()
+    }
+
+    /// Whether the hourglass shows for `path` now, and when that flips on its own.
+    pub(crate) fn view(&self, path: &str) -> PendingView {
+        self.view_at(path, Instant::now())
+    }
+
+    fn view_at(&self, path: &str, now: Instant) -> PendingView {
+        let normalized = firmlinks::normalize_path(path);
+        let shows_at = self.pending_since(&normalized).map(|since| since + SHOW_AFTER);
+        if shows_at.is_some_and(|at| at <= now) {
+            // Up until the drain or release that ends it, which announces itself.
+            return PendingView {
+                shown: true,
+                changes_in: None,
+            };
         }
-        self.held_roots.lock_ignore_poison().iter().any(|root| {
-            normalized == *root
-                || path_prefix::is_strict_descendant(&normalized, root)
-                || path_prefix::is_strict_descendant(root, &normalized)
-        })
+        let lingers_until = self
+            .lingering
+            .lock_ignore_poison()
+            .iter()
+            .filter(|linger| linger.until > now && covers(&linger.path, linger.tree, &normalized))
+            .map(|linger| linger.until)
+            .max();
+        let next_flip = [shows_at, lingers_until].into_iter().flatten().min();
+        PendingView {
+            shown: lingers_until.is_some(),
+            changes_in: next_flip.map(|at| at.saturating_duration_since(now)),
+        }
     }
 
     /// Drop the transient marks. Called when the writer queue drains to empty.
     /// Leaves `held_roots` alone: a rescan's hourglass must outlive the writer
     /// oscillating empty mid-walk (that's the whole point of the held tier).
-    pub(crate) fn clear(&self) {
-        self.paths.lock_ignore_poison().clear();
+    ///
+    /// Returns the folders whose hourglass was showing, so the caller announces
+    /// that it went away (or started its last [`MIN_SHOWN`] stretch). Empty for
+    /// the blips that never showed, which is nearly every drain.
+    pub(crate) fn clear(&self) -> Vec<String> {
+        self.clear_at(Instant::now())
+    }
+
+    fn clear_at(&self, now: Instant) -> Vec<String> {
+        let drained = std::mem::take(&mut *self.paths.lock_ignore_poison());
+        self.lingering.lock_ignore_poison().retain(|linger| linger.until > now);
+        let mut ended = Vec::new();
+        for (path, since) in drained {
+            if since + SHOW_AFTER <= now {
+                self.linger_if_short(path.clone(), false, since, now);
+                ended.push(path);
+            }
+        }
+        ended
+    }
+
+    /// The start of the episode `normalized` is part of, if it's pending: its own
+    /// mark, or the earliest held root related to it.
+    fn pending_since(&self, normalized: &str) -> Option<Instant> {
+        let marked = self.paths.lock_ignore_poison().get(normalized).copied();
+        let held = self
+            .held_roots
+            .lock_ignore_poison()
+            .iter()
+            .filter(|(root, _)| covers(root, true, normalized))
+            .map(|(_, since)| *since)
+            .min();
+        marked.into_iter().chain(held).min()
+    }
+
+    /// Keeps an episode that just ended on screen until [`MIN_SHOWN`] after it
+    /// first showed, when it showed at all and that time isn't up yet.
+    fn linger_if_short(&self, path: String, tree: bool, since: Instant, now: Instant) {
+        let shown_at = since + SHOW_AFTER;
+        let until = shown_at + MIN_SHOWN;
+        if shown_at <= now && until > now {
+            self.lingering.lock_ignore_poison().push(Linger { path, tree, until });
+        }
     }
 
     /// Number of transient marks. Test-only observability.
@@ -167,6 +295,21 @@ impl PendingSizes {
     pub(crate) fn held_len(&self) -> usize {
         self.held_roots.lock_ignore_poison().len()
     }
+
+    /// Marks `path` as if its episode started `ago`, so a test can read a
+    /// sustained episode without sleeping through [`SHOW_AFTER`].
+    #[cfg(test)]
+    pub(crate) fn mark_started(&self, path: &str, ago: Duration) {
+        self.mark_at(path, Instant::now() - ago);
+    }
+}
+
+/// Whether `normalized` is `path`, or (for a `tree`) related to it in either direction.
+fn covers(path: &str, tree: bool, normalized: &str) -> bool {
+    normalized == path
+        || (tree
+            && (path_prefix::is_strict_descendant(normalized, path)
+                || path_prefix::is_strict_descendant(path, normalized)))
 }
 
 /// Every indexed volume's pending-size tracker, keyed by volume id. Installed and
@@ -353,6 +496,91 @@ mod tests {
         t.release("/aaa/rescan");
         assert!(!t.is_pending("/aaa/rescan"));
         assert_eq!(t.held_len(), 0);
+    }
+
+    fn secs(s: f64) -> Duration {
+        Duration::from_secs_f64(s)
+    }
+
+    fn shown(shown: bool, changes_in: Option<f64>) -> PendingView {
+        PendingView {
+            shown,
+            changes_in: changes_in.map(secs),
+        }
+    }
+
+    #[test]
+    fn a_blip_never_shows_the_hourglass() {
+        // Background churn: a cache write marks `~/Library`, the writer drains it within a second.
+        let t = PendingSizes::new();
+        let t0 = Instant::now();
+        t.mark_at("/aaa/bbb", t0);
+        assert_eq!(t.view_at("/aaa/bbb", t0 + secs(1.5)), shown(false, Some(0.5)));
+        assert!(
+            t.clear_at(t0 + secs(1.9)).is_empty(),
+            "nothing was on screen to take down"
+        );
+        assert_eq!(t.view_at("/aaa/bbb", t0 + secs(1.9)), shown(false, None));
+    }
+
+    #[test]
+    fn two_seconds_of_updating_shows_it() {
+        let t = PendingSizes::new();
+        let t0 = Instant::now();
+        t.mark_at("/aaa/bbb", t0);
+        // Re-marking mid-episode keeps its start: the writer never caught up in between.
+        t.mark_at("/aaa/bbb", t0 + secs(1.5));
+        assert_eq!(t.view_at("/aaa/bbb", t0 + secs(2.0)), shown(true, None));
+        assert_eq!(t.view_at("/aaa", t0 + secs(2.0)), shown(true, None), "ancestors too");
+    }
+
+    #[test]
+    fn a_drain_starts_the_clock_over() {
+        // Blinking under churn is many short episodes, never one long one.
+        let t = PendingSizes::new();
+        let t0 = Instant::now();
+        t.mark_at("/aaa/bbb", t0);
+        t.clear_at(t0 + secs(1.0));
+        t.mark_at("/aaa/bbb", t0 + secs(1.5));
+        assert_eq!(t.view_at("/aaa/bbb", t0 + secs(3.0)), shown(false, Some(0.5)));
+    }
+
+    #[test]
+    fn a_short_episode_stays_on_screen_for_the_minimum() {
+        let t = PendingSizes::new();
+        let t0 = Instant::now();
+        t.mark_at("/aaa/bbb", t0);
+        // Shown at 2.0 s, drained at 2.2 s: it stays up until 3.0 s, not a 0.2 s flash.
+        let ended = t.clear_at(t0 + secs(2.2));
+        assert!(
+            ended.contains(&"/aaa/bbb".to_string()),
+            "a shown folder's end is announced"
+        );
+        assert_eq!(t.view_at("/aaa/bbb", t0 + secs(2.5)), shown(true, Some(0.5)));
+        assert_eq!(t.view_at("/aaa/bbb", t0 + secs(3.0)), shown(false, None));
+    }
+
+    #[test]
+    fn a_long_episode_goes_away_the_moment_it_drains() {
+        let t = PendingSizes::new();
+        let t0 = Instant::now();
+        t.mark_at("/aaa/bbb", t0);
+        let ended = t.clear_at(t0 + secs(30.0));
+        assert!(ended.contains(&"/aaa/bbb".to_string()));
+        assert_eq!(t.view_at("/aaa/bbb", t0 + secs(30.0)), shown(false, None));
+    }
+
+    #[test]
+    fn a_held_rescan_follows_the_same_timing_across_its_tree() {
+        let t = PendingSizes::new();
+        let t0 = Instant::now();
+        t.hold_at("/aaa/bbb", t0);
+        assert_eq!(t.view_at("/aaa/bbb/ccc", t0 + secs(1.0)), shown(false, Some(1.0)));
+        assert_eq!(t.view_at("/aaa", t0 + secs(2.0)), shown(true, None));
+        // Released at 2.4 s: the whole tree stays up until 3.0 s.
+        t.release_at("/aaa/bbb", t0 + secs(2.4));
+        assert_eq!(t.view_at("/aaa/bbb/ccc", t0 + secs(2.5)), shown(true, Some(0.5)));
+        assert_eq!(t.view_at("/aaa", t0 + secs(3.0)), shown(false, None));
     }
 
     #[test]

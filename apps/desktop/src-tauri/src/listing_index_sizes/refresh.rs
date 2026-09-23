@@ -88,6 +88,7 @@ mod tests {
             recursive_dir_count: 2,
             recursive_has_symlinks: false,
             recursive_size_pending: pending,
+            recursive_size_pending_changes_in: None,
             recursive_size_complete: true,
             recursive_size_stale: false,
         }

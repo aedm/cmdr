@@ -38,7 +38,8 @@ pre-measured column width agree: don't re-inline the decision in any of them.
   (`'size-stale'`) renders exactly like `'size'`: no glyph, no muting, with the staleness voiced by the per-drive
   freshness badge and the tooltip's stale line (see `$lib/indexing/DETAILS.md` § Honest size rendering). The per-dir
   flag rides `DirStats.recursiveSizePending`, copied onto entries by `updateIndexSizesInPlace` / `applyFolderSizes` /
-  `createParentEntry` (backend: `indexing/read/pending_sizes.rs`).
+  `createParentEntry` (backend: `indexing/read/pending_sizes.rs`). The backend already debounces it (on after 2 s of
+  continuous updating, up for at least 1 s), so ❌ don't add a frontend delay on top.
 
 **The walked-ground input is PER ROW, and the measurer contract follows from it.** `getWalkedGround(volumeId)` +
 `isPathAffectedByWalk` (`$lib/indexing/walked-ground.ts`) answer whether one row's folder size can move: the volume is

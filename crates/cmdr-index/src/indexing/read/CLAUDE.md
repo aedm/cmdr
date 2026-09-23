@@ -24,7 +24,8 @@ volume-keyed handle tables.
   the progress bar past 100%.
 - **The pending-sizes hourglass is a marked-SET, cleared WHOLESALE on writer `queue_depth == 0`** (self-healing, no
   per-entry pairing to leak). Marked only at the live loop's drain points, so replay doesn't flag everything on startup.
-  Rides `DirStats` only, ❌ NOT `FileEntry` enrichment.
+  Rides `DirStats` only, ❌ NOT `FileEntry` enrichment. It SHOWS only after 2 s of continuous pending (`view`), so
+  churn can't blink it; `clear()` returns the shown folders it ended, and the writer must announce them.
 - **`ReadPool`'s thread-local is a 3-slot LRU, not one connection.** One slot made a thread alternating between two
   volumes reopen every time, losing its `prepare_cached` statements on the hot path. ❌ No mutex here, ❌ don't shrink
   it, ❌ don't reset a new pool's starting generation to a constant.

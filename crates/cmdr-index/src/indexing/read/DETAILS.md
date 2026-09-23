@@ -169,13 +169,14 @@ estimates with an explicit "unknown" fallback.
 
 ## The pending-sizes hourglass (`pending_sizes.rs`)
 
-`PendingSizes`: an in-memory `Mutex<HashSet<String>>` of directory paths with unprocessed writes in flight, so the UI
-can show a per-directory "size updating" hourglass during big deletes/copies. Two signals, cleanly split: the global
+`PendingSizes`: an in-memory map of directory paths with unprocessed writes in flight (each to when its episode
+started), so the UI can show a per-directory "size updating" hourglass during big deletes/copies. Two signals, cleanly split: the global
 `indexing` flag means every size is in flux during a full scan; per-dir `recursive_size_pending` means live writes are
 in flight for that dir even when no scan runs.
 
-- `mark(path)` inserts the normalized path plus every ancestor; `is_pending(path)` is the membership test; `clear()`
-  wipes the transient set.
+- `mark(path)` inserts the normalized path plus every ancestor, keeping an existing start; `view(path)` answers what the
+  UI shows; `clear()` wipes the transient set and returns the paths whose hourglass was showing. `is_pending` (raw
+  membership) is test-only.
 - Every volume's tracker lives in the `PENDING_SIZES` table (above), installed and withdrawn in lockstep with its read
   pool; `get_pending_sizes_for(vid)` is a lookup in it.
 - **Marked** at the live event loop's `pending_paths` drain points (`watch/event_loop`'s `mark_pending_and_drain`,
@@ -183,7 +184,16 @@ in flight for that dir even when no scan runs.
 - **Cleared wholesale** by the writer thread once `queue_depth` hits 0. This is self-healing: an empty queue means no
   unprocessed work, so the set is correct to empty, and there's no per-entry increment/decrement to leak (no "stuck
   hourglass forever" class). Chosen over counters precisely for that.
-- **Read** when building `DirStats` (`queries.rs`), surfaced via `DirStats.recursive_size_pending`. It rides `DirStats`
+- **Shown only after `SHOW_AFTER` (2 s) of continuous pending, and then for at least `MIN_SHOWN` (1 s).** A drain or
+  release ends an episode; a re-mark doesn't. `view` also answers `changes_in`, when the shown state flips on its own,
+  and `clear()` returns the folders whose shown episode it ended, which the writer emits as `DirsUpdated`: those two are
+  how a host that pushes sizes learns about a flip no write announces (`listing_index_sizes/schedule.rs` app-side).
+  **Why**: under ordinary churn (`~/Library` cache writes) a folder is pending for a few hundred ms every few seconds,
+  and showing each episode blinked the hourglass all day (measured 2026-09-23, dev build). The rule lives HERE, not in
+  one consumer, so the listing pushes, the webview's own `get_dir_stats_batch` reads, SelectionInfo, and the agent's
+  `list_dir` all agree on what's "updating".
+- **Read** when building `DirStats` (`queries.rs`), surfaced via `DirStats.recursive_size_pending` (shown) and the
+  Rust-only `recursive_size_pending_changes_in` (`#[serde(skip)]`). It rides `DirStats`
   only, NOT the Rust `FileEntry`/`get_file_range` enrichment path — that path isn't where live size refreshes flow, and
   adding a field to `FileEntry` (no `Default`, ~30 literal sites) buys only a sub-2s hourglass on a folder navigated
   into mid-storm. This half is deliberately not "fixed".
@@ -191,7 +201,7 @@ in flight for that dir even when no scan runs.
 **The held-roots tier (for coalesced rescans).** A detached `reconcile_subtree` runs for seconds while the writer queue
 oscillates empty, so the wholesale queue-drain `clear()` would wipe the mark long before the reconcile finishes, and
 nothing marked its scope at queue time. So `PendingSizes` has a SECOND held-roots tier (rescan root paths only):
-`queue_must_scan_sub_dirs` holds the root; `is_pending(path)` is true for any transient mark OR any path related to a
+`queue_must_scan_sub_dirs` holds the root; a path is pending for any transient mark OR when it's related to a
 held root in EITHER direction (an ancestor-or-equal, whose aggregate includes the rewriting subtree, OR a descendant,
 whose own rows are being rewritten); and the writer-drain `clear()` wipes only the TRANSIENT set — holds survive.
 Holding roots (not expanded ancestors) with a query-time prefix test keeps release exact under overlapping rescans

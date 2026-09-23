@@ -1287,10 +1287,17 @@ fn writer_loop(
         // a not-yet-updated size. Route to THIS volume's tracker: a root-only
         // `get_pending_sizes()` from a non-root writer would wipe root's hourglass
         // and never clear its own. See `indexing/read/pending_sizes.rs`.
+        //
+        // Clearing is silent for the blips that never showed the hourglass (nearly
+        // every drain). A folder that WAS showing it gets a `DirsUpdated`, since no
+        // write is coming to tell the panes it settled.
         if queue_depth.load(Ordering::Relaxed) == 0 {
             settled = true;
             if let Some(tracker) = pending_sizes::get_pending_sizes_for(&volume_id) {
-                tracker.clear();
+                let ended = tracker.clear();
+                if !ended.is_empty() {
+                    emit_dir_updated(events.as_ref(), ended);
+                }
             }
         }
 

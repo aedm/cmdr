@@ -14,6 +14,7 @@ fn dir_stats(size: u64, complete: bool, stale: bool, pending: bool) -> DirStats 
         recursive_dir_count: 1,
         recursive_has_symlinks: false,
         recursive_size_pending: pending,
+        recursive_size_pending_changes_in: None,
         recursive_size_complete: complete,
         recursive_size_stale: stale,
     }

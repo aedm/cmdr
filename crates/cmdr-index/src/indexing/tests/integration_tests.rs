@@ -790,12 +790,27 @@ fn dir_stats_carry_pending_flag() {
         .expect("dir indexed");
     assert!(!before.recursive_size_pending, "no pending work => flag false");
 
-    // A descendant change marks /projects (and its ancestors) as pending.
+    // A descendant change marks /projects (and its ancestors) as pending, but a
+    // fresh update is a blip until it has run for two seconds.
     instance.tracker.mark("/projects/file.txt");
+    let young = read::queries::get_dir_stats_on_volume(vid, "/projects")
+        .expect("get_dir_stats")
+        .expect("dir indexed");
+    assert!(!young.recursive_size_pending, "a fresh update doesn't show yet");
+    let shows_in = young
+        .recursive_size_pending_changes_in
+        .expect("it says when it will show");
+    assert!(shows_in <= read::pending_sizes::SHOW_AFTER);
+
+    // Draining ends that episode; one that has run for three seconds shows.
+    instance.tracker.clear();
+    instance
+        .tracker
+        .mark_started("/projects/file.txt", Duration::from_secs(3));
     let during = read::queries::get_dir_stats_on_volume(vid, "/projects")
         .expect("get_dir_stats")
         .expect("dir indexed");
-    assert!(during.recursive_size_pending, "pending work => flag true");
+    assert!(during.recursive_size_pending, "sustained pending work => flag true");
 
     // Draining clears the flag.
     instance.tracker.clear();

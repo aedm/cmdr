@@ -13,17 +13,22 @@
 //!   `~/Downloads`).
 //! - A reading that matches what a row already shows sends nothing (a cache file written and removed
 //!   inside one flush).
-//! - At most one refresh per listing per [`COOLDOWN`], with a trailing one so the last change always
-//!   lands; and none at all while the main window is hidden (`main_window_visibility`), which the
-//!   first refresh after it shows catches up in one go.
+//! - At most one batch refresh per listing per [`schedule::COOLDOWN`], with a trailing one so the
+//!   last change always lands; and none at all while the main window is hidden
+//!   (`main_window_visibility`), which the first refresh after it shows catches up in one go.
+//!
+//! The "size updating" hourglass shows only for an update that has run two seconds, which the index
+//! decides (`DirStats::recursive_size_pending`). It flips with no batch to announce it, so a reading
+//! that says when it will flip books a re-read of that row for that moment ([`schedule`]).
 //!
 //! The work runs on its own task, fed through a channel: the batch arrives on the index writer's
 //! thread, which must not wait on anything here.
 
 mod refresh;
+mod schedule;
 mod touched;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, OnceLock};
 use std::time::Duration;
@@ -37,17 +42,15 @@ use tokio::sync::mpsc;
 use tokio::time::Instant;
 
 use crate::file_system::listing::cached_listing::LISTING_CACHE;
+use crate::file_system::listing::metadata::FileEntry;
 use crate::file_system::volume::Volume;
 use crate::ignore_poison::IgnorePoison;
 use crate::index_host::index;
 use crate::listing_lifecycle::{ListingLifecycle, register_listing_lifecycle};
 
 use refresh::RowSizes;
+use schedule::Schedule;
 pub(crate) use touched::{Touched, touched};
-
-/// The shortest gap between two refreshes of one listing. A busy disk moves a pane on `~` every
-/// second; a size that settles two seconds late reads the same, and half the refreshes cost half.
-const COOLDOWN: Duration = Duration::from_secs(2);
 
 /// One folder row's fresh index reading.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -143,10 +146,8 @@ pub(crate) fn dirs_updated(paths: Vec<String>) {
 /// What the worker remembers about one listing between refreshes.
 #[derive(Default)]
 struct ListingState {
-    /// What the batches since the last refresh touched.
-    pending: Option<Touched>,
-    /// When the last refresh ran, for the cooldown.
-    last_refresh: Option<Instant>,
+    /// The work waiting for this listing, and when it's due.
+    schedule: Schedule,
     /// Rows whose hourglass was last sent lit (the flag isn't on the cached entry).
     lit: HashSet<String>,
     /// The listing's own folder reading as last sent; `None` until the first send.
@@ -165,11 +166,7 @@ async fn run(app: AppHandle, mut batches: mpsc::UnboundedReceiver<Vec<String>>) 
             batch = batches.recv() => {
                 let Some(paths) = batch else { return };
                 for (listing_id, touched) in touched_listings(&paths) {
-                    let state = states.entry(listing_id).or_default();
-                    match &mut state.pending {
-                        Some(pending) => pending.merge(touched),
-                        None => state.pending = Some(touched),
-                    }
+                    states.entry(listing_id).or_default().schedule.add_batch(touched);
                 }
             }
             changed = visibility.changed() => {
@@ -188,11 +185,16 @@ async fn run(app: AppHandle, mut batches: mpsc::UnboundedReceiver<Vec<String>>) 
         states.retain(|listing_id, _| open.contains(listing_id));
         let now = Instant::now();
         for (listing_id, state) in &mut states {
-            if state.pending.is_none() || state.last_refresh.is_some_and(|at| now < at + COOLDOWN) {
-                continue;
-            }
-            let Some(touched) = state.pending.take() else { continue };
-            state.last_refresh = Some(now);
+            let due = state.schedule.take_due(now);
+            // A batch and a recheck due together are one read and at most one event.
+            let touched = match (due.batch, due.recheck) {
+                (Some(mut batch), Some(recheck)) => {
+                    batch.merge(recheck);
+                    batch
+                }
+                (Some(rows), None) | (None, Some(rows)) => rows,
+                (None, None) => continue,
+            };
             if let Some(event) = refresh_listing(listing_id, touched, state).await {
                 let _ = event.emit(&app);
             }
@@ -200,13 +202,9 @@ async fn run(app: AppHandle, mut batches: mpsc::UnboundedReceiver<Vec<String>>) 
     }
 }
 
-/// When the next held refresh is due, if any listing has one waiting.
+/// When the next held refresh or recheck is due, if any listing has one waiting.
 fn next_due(states: &HashMap<String, ListingState>) -> Option<Instant> {
-    states
-        .values()
-        .filter(|state| state.pending.is_some())
-        .map(|state| state.last_refresh.map_or_else(Instant::now, |at| at + COOLDOWN))
-        .min()
+    states.values().filter_map(|state| state.schedule.next_due()).min()
 }
 
 async fn sleep_until(due: Option<Instant>) {
@@ -240,6 +238,9 @@ async fn refresh_listing(
         .ok()?;
     state.lit = outcome.lit;
     state.current_dir = outcome.current_dir;
+    if let Some((after, rows)) = outcome.recheck {
+        state.schedule.recheck(Instant::now(), after, rows);
+    }
     outcome.event
 }
 
@@ -247,6 +248,8 @@ struct RefreshOutcome {
     event: Option<ListingIndexSizesChanged>,
     lit: HashSet<String>,
     current_dir: Option<Option<DirStats>>,
+    /// Rows whose hourglass flips on its own, and the soonest flip.
+    recheck: Option<(Duration, Touched)>,
 }
 
 fn refresh_blocking(
@@ -259,6 +262,7 @@ fn refresh_blocking(
         event: None,
         lit,
         current_dir,
+        recheck: None,
     };
 
     // The rows to re-read, as the cache holds them now.
@@ -272,6 +276,7 @@ fn refresh_blocking(
     };
     paths.pop();
     let current = stats.pop().flatten();
+    let recheck = recheck_of(&rows, &stats, current.as_ref());
 
     if matches!(touched, Touched::Whole) {
         // Every row moved: a full re-enrich of the cache, and the pane re-reads its window.
@@ -287,6 +292,7 @@ fn refresh_blocking(
             }),
             lit,
             current_dir: Some(current),
+            recheck,
         };
     }
 
@@ -317,7 +323,10 @@ fn refresh_blocking(
     let shown = |reading: &Option<DirStats>| RowSizes::default().after(reading.as_ref());
     let current_dir_changed = last_current.as_ref().is_none_or(|last| shown(last) != shown(&current));
     if moved.is_empty() && !current_dir_changed {
-        return unchanged(lit, last_current);
+        return RefreshOutcome {
+            recheck,
+            ..unchanged(lit, last_current)
+        };
     }
     let folders = moved
         .iter()
@@ -336,19 +345,44 @@ fn refresh_blocking(
         }),
         lit,
         current_dir: Some(current),
+        recheck,
     }
+}
+
+/// The rows (and the listing's own folder) whose readings say their hourglass flips on its own,
+/// with the soonest flip.
+fn recheck_of(
+    rows: &[(String, FileEntry)],
+    stats: &[Option<DirStats>],
+    current: Option<&DirStats>,
+) -> Option<(Duration, Touched)> {
+    let flips_in = |reading: Option<&DirStats>| reading.and_then(|stats| stats.recursive_size_pending_changes_in);
+    let own = flips_in(current);
+    let children: Vec<(&str, Duration)> = rows
+        .iter()
+        .zip(stats)
+        .filter_map(|((_, entry), reading)| flips_in(reading.as_ref()).map(|after| (entry.name.as_str(), after)))
+        .collect();
+    let soonest = own.into_iter().chain(children.iter().map(|(_, after)| *after)).min()?;
+    Some((
+        soonest,
+        Touched::Rows {
+            own: own.is_some(),
+            children: children
+                .into_iter()
+                .map(|(name, _)| name.to_string())
+                .collect::<BTreeSet<_>>(),
+        },
+    ))
 }
 
 /// The listing's own path and the folder rows `touched` names, with their cached entries, or `None`
 /// when the listing is gone.
-fn rows_to_read(
-    listing_id: &str,
-    touched: &Touched,
-) -> Option<(String, Vec<(String, crate::file_system::listing::metadata::FileEntry)>)> {
+fn rows_to_read(listing_id: &str, touched: &Touched) -> Option<(String, Vec<(String, FileEntry)>)> {
     let cache = LISTING_CACHE.read_ignore_poison();
     let listing = cache.get(listing_id)?;
     let dir_path = listing.path.as_path().to_string_lossy().into_owned();
-    let is_folder = |entry: &&crate::file_system::listing::metadata::FileEntry| entry.is_directory && !entry.is_symlink;
+    let is_folder = |entry: &&FileEntry| entry.is_directory && !entry.is_symlink;
     let rows = match touched {
         // Whole reads nothing per row: the full re-enrich covers them.
         Touched::Whole => Vec::new(),
