@@ -2122,7 +2122,7 @@
   },
   "settings.askCmdr.enabled.label": "Ask Cmdr",
   "@settings.askCmdr.enabled.label": {
-    "description": "Label of the on/off switch for the Ask Cmdr assistant in Settings > AI > Ask Cmdr. Starts with a verb. \"Ask Cmdr\" is a product name and stays as it is. Sentence case.",
+    "description": "Label of the on/off switch for the Ask Cmdr assistant in Settings > AI > Ask Cmdr. Just the product name: the switch beside it says on or off. \"Ask Cmdr\" is a product name and stays as it is.",
     "screenshot": "settings-ai-ask-cmdr.png",
     "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
   },
