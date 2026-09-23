@@ -656,10 +656,10 @@ offered "couldn't copy the file" plus a Retry button instead of the one thing th
 carries end to end: `friendly_error::kinds::invalid_name` on the listing path (`NeedsAction`, ❌ no retry hint) and
 `WriteOperationError::InvalidName` on the write path, which names the failing file so a 5,000-item transfer says WHICH
 one to rename. smb2 ≥ 0.18 maps the characters SMB2 forbids outright (`"`, `*`, `:`, `<`, `>`, `?`, `\`, `|`, control
-characters, trailing space or period) into the Unicode private-use area, so those copy through fine; what still reaches
-this arm is a reserved Windows device name (`CON`, `NUL`, `LPT1`), a name past the server's own length limit, or a
-character its filesystem can't store. The status is also in smb2's table now, so the technical-details line reads
-`STATUS_OBJECT_NAME_INVALID` rather than bare `0xC0000033`.
+characters, trailing space or period) into the Unicode private-use area, so those copy through fine
+(`forbidden_chars_integration_test.rs`); what still reaches this arm is a reserved Windows device name (`CON`, `NUL`,
+`LPT1`), a name past the server's own length limit, or a character its filesystem can't store. The status is also in
+smb2's table now, so the technical-details line reads `STATUS_OBJECT_NAME_INVALID` rather than bare `0xC0000033`.
 
 **Decision**: `SmbVolume::supports_local_fs_access()` returns `false`, but `paths_are_os_visible()` answers for the
 mount **Why**: `SmbVolume` handles listing updates via `notify_mutation` using its own smb2 `get_metadata`. A
@@ -926,6 +926,10 @@ Which side each one lives on, and why: § "Which side a test lives on" above.
   spelling of an accented directory. Then the foreign-path resolve: an all-NFD path to an NFC file and to ERR-VETBX's
   mixed shape, a case-and-form-differing directory, look-alike twins refusing, a pane path carried over from the kernel
   mount, and a stale remembered correction healing (§ "Resolving a foreign path").
+- `forbidden_chars_integration_test.rs` — names carrying the characters SMB2 forbids (`?`, `*`, `:`, `\`, trailing space
+  or period, and so on), which the `unicode` fixture container seeds in the private-use bytes macOS smbfs writes: they
+  list as the characters themselves with no private-use code point left, open and read (also through a directory whose
+  own name carries one), and a name Cmdr writes round-trips.
 - `session_integration_test.rs` — what the SESSION does: the connection gate the fresh-listing oracle reads, the
   reconnect cycle, the refcounted scan pool, and what a supersede leaves alone.
 - `src/connection_integration_test.rs` — the three answers `try_open_share` hears from the `both` fixture: a guest

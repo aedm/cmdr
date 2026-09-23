@@ -8,6 +8,12 @@ be lost the next time we re-vendor.**
 `~/projects-git/vdavid/smb2/crates/smb2/src/testing/fixtures/consumer/` (GitHub:
 https://github.com/vdavid/smb2/tree/main/crates/smb2/src/testing/fixtures/consumer)
 
+**Synced from:** smb2 v0.24.2 (commit `8d21ce3`), byte-identical to the published crate's
+`src/testing/fixtures/consumer/` apart from the two cmdr-owned files. Keep this line in step with the `smb2` version in
+`Cargo.lock`: the published crate ships the fixtures, so
+`diff -r ~/.cargo/registry/src/*/smb2-<version>/src/testing/fixtures/consumer apps/desktop/test/smb-servers/.compose`
+shows drift against the locked version (expect only `VENDORED.md` and `docker-compose.override.yml`).
+
 ## Why vendored?
 
 These files used to be extracted on-demand by `start.sh` via `cargo run --example smb_compose --features smb-e2e`. That
@@ -27,10 +33,19 @@ the Docker container where those deps aren't installed. Vendoring sidesteps the 
    ```
    (Or the equivalent from a checkout of the new rev. The smb2 consumer containers live at `crates/smb2/src/testing/fixtures/consumer/`
    in the smb2 repo — they moved there from `tests/docker/consumer/` in 0.11.4 so the published package excludes `tests/`.)
-3. Force-rebuild the changed containers so they pick up the new configs:
+3. Rebuild AND recreate the changed containers. The check runner's stack lease hashes only the compose files, never a
+   vendored build context, so a container running from before the re-vendor keeps serving the old image until you
+   replace it. Pass the ports the lease uses (Cmdr's 114xx range, `scripts/check/checks/smb_ports.go`), or the
+   recreated container publishes smb2's 104xx defaults:
    ```bash
-   docker compose -p smb-consumer -f apps/desktop/test/smb-servers/.compose/docker-compose.yml build --no-cache
+   cd apps/desktop/test/smb-servers/.compose
+   SMB_CONSUMER_UNICODE_PORT=11484 docker compose -p smb-consumer \
+       -f docker-compose.yml -f docker-compose.override.yml build --no-cache smb-consumer-unicode
+   SMB_CONSUMER_UNICODE_PORT=11484 docker compose -p smb-consumer \
+       -f docker-compose.yml -f docker-compose.override.yml up -d --no-deps smb-consumer-unicode
    ```
+   (Name every changed service, each with its own `SMB_CONSUMER_*_PORT`.) CI starts fresh, so only local stacks need
+   this.
 4. Commit the new `.compose/` state alongside the `Cargo.lock` bump.
 
 ## Why `.compose/` is excluded from `oxfmt`
