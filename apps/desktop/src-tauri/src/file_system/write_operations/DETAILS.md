@@ -205,7 +205,8 @@ decisions"; the estimator in § "ETA + throughput"; `WriteSettledGuard` in § "S
   Local and remote drivers share the plan, so remote rename-as-copy backends don't duplicate every transfer.
   Cancellation happens between components: a started cycle finishes or reverses before the driver observes cancellation
   again. It journals one header and one final outcome per row. The Ask Cmdr command is the only caller, and it never
-  receives paths or names from the frontend.
+  receives paths or names from the frontend. On a non-root volume its destinations are new names: § "Look-alike
+  names".
 - **`paste_clipboard.rs::write_payload_to_dir` runs under a 30 s write timeout** (`commands/clipboard.rs`), a longer
   tier than the 5 s empty-mkfile write, because the payload can be a large image landing on a slow network volume. It
   takes an already-read `ClipboardPayload` + a `&Path`, decoupled from NSPasteboard and the IPC edge, so it's
@@ -474,10 +475,33 @@ identical-looking twin beside the user's entry.
   ops' door: a new folder or file is refused as `AlreadyExists` beside a look-alike; a rename's target is refused the
   same way unless the user confirmed replacing it, which then replaces the look-alike under ITS spelling (one entry). A
   rename whose look-alike is the entry being renamed is a respell, which is free. The rename editor's live check
-  (`check_rename_validity_impl`) reports the look-alike as the conflict. Local root renames skip all of it.
+  (`check_rename_validity_impl`) reports the look-alike as the conflict, and so does a typed name whose composed
+  spelling the folder holds exactly (the rename itself refuses that one with the backend's `AlreadyExists`). Local root
+  renames skip all of it.
+- **Respelling can land on an exact name.** `place_new_entry` answers `Free(spelled)` when the folder holds the SPELLED
+  name byte for byte (`among` treats an exact entry as "no look-alike"); a create or rename then hears the backend's
+  `AlreadyExists`. A write that would REPLACE silently instead (the compress seed) must check `spelled != asked &&
+  exists(spelled)` itself.
+- **Bulk rename (`rename/bulk.rs`)** respells every destination once, in `start_bulk_rename`, before the plan, the run,
+  and the journal see it (non-root volumes only). `settle_remote_conflicts` then treats a destination held under another
+  spelling like an exact clash: the row is `Skipped` (`Ambiguous` too), a listing failure fails it, and a look-alike
+  that is the row's own source is a respell. It uses `ListedFolders`, so a batch lists each folder once. Rotation
+  safety: the check only runs for destinations no active row vacates (`rows_with_unclaimed_destination`, keyed on
+  `normalize_for_comparison`, which folds form on macOS), so a look-alike another row moves away is never a clash and
+  the planner orders the two rows. Off macOS that key is exact, the vacating row goes unseen, and the row is refused
+  rather than landing beside the entry it waits on. Rotation temporaries are `.cmdr-bulk-rename-<numeric id>-<uuid>`,
+  ASCII, so they have one spelling. Cells: `rename/bulk/look_alike_tests.rs`.
+- **Compress (`archive_edit/compress.rs::new_archive_path`)**: on a remote parent, a target the parent doesn't hold
+  byte for byte is a new name, spelled the parent's way. A look-alike (either direction) is refused as
+  `DestinationExists` before anything is seeded, ❌ never replaced: the dialog's overwrite warning
+  (`transfer-dest-exists.svelte.ts` → `path_exists`) asks for the exact bytes, so nobody was told that archive would go.
+  The exact stored spelling still overwrites as it always did. Cells: `archive_edit/compress_remote_tests.rs`.
 - The transfers apply the same rule through `transfer/volume/landing.rs`: `transfer/volume/DETAILS.md` § "Look-alike
-  names and new-name spelling". Instant-op cells: `look_alike_instant_tests.rs`.
-- **Not covered**: bulk rename and a compress's archive name still take the name as given and check exact names only.
+  names and new-name spelling". Extract lands through the same merge levels. Instant-op cells:
+  `look_alike_instant_tests.rs`; Docker: `smb_look_alike_test.rs`.
+- **Not covered, on purpose**: paste-as-file (`pasted (N).<ext>`, ASCII), rescue names (` (recovered)` off a name the
+  landing already spelled; an error path that never overwrites), remote archive-edit temps (`.cmdr-tmp-<uuid>`), and
+  undo (it restores an entry's own stored bytes).
 
 **Decision**: new names Cmdr creates on SMB go out composed (NFC); every other backend keeps the name as given. **Why**:
 SMB is where the evidence is. A decomposed name on a share is one that Finder over the kernel mount (which composes on

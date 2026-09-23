@@ -24,8 +24,9 @@ only what David still has to decide; everything durable lives beside the code.
 ## Open for David
 
 1. **Confirm the new-name policy.** New names Cmdr creates on SMB go out composed (a copy's free name, a new folder or
-   file, a rename target, a ` (N)` pick); every other backend keeps names as given. Revert is deleting
-   `SmbVolume::composes_new_names`; extending it is one override per backend. The look-alike guard stays either way.
+   file, a rename target, a bulk rename's targets, a new archive, a ` (N)` pick); every other backend keeps names as
+   given. Revert is deleting `SmbVolume::composes_new_names`; extending it is one override per backend. The look-alike
+   guard stays either way.
 2. **Review the ambiguity copy** (two stored names match a typed path and neither exactly):
    `errors.listing.ambiguousName.*` (the listing error panel) and `errors.volume.ambiguousName` (the inline line), plus
    their 10 agent translations. The Hungarian inline one reads `a(z) „{path}”`, which is clunky.
@@ -37,4 +38,3 @@ only what David still has to decide; everything durable lives beside the code.
 5. **Favorites keep the user's spelling.** A restored tab or history entry adopts the stored spelling after its first
    listing; a favorite doesn't, so a favorite in another form pays one resolve per click (remembered per share until the
    folder changes).
-6. **Not guarded yet:** bulk rename and a compress's archive name take names as given with exact checks only.

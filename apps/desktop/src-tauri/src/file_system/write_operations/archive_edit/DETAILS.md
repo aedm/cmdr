@@ -135,6 +135,9 @@ fresh spared, other-archive ignored, delete-failure doesn't fail the edit).
   `compress_tests::compress_refuses_a_read_only_destination_without_touching_its_bytes`, which asserts the
   destination's BYTES are unchanged — "the file still exists" would have passed against the bug, since what it left
   behind was a valid zip.
+- **A remote target the parent doesn't hold byte for byte is a NEW name** (`new_archive_path`, also before the seed):
+  spelled the parent's way, and a look-alike is refused as `DestinationExists` rather than seeded over or beside. Why
+  refused and not replaced: `../DETAILS.md` § "Look-alike names".
 - **Compression level threads from the op config onto the changeset.** `VolumeCopyConfig::compression_level` (frontend-owned, read from the `behavior.archiveCompressionLevel` setting at dispatch) is passed through `compress_start` / `route_archive_copy_into` as an `Option<i64>` param and stored on the `Changeset` (`archive_copy_into_start` sets `plan.changeset.compression_level` before `mutator::apply`). It governs every user-driven zip write uniformly — compress AND copy/move INTO an existing archive — because both funnel through the shared mutator. `None` (no caller opinion, or a non-archive copy) means the crate default (level 6). The level applies to NEWLY added entries only and is clamped 1..=9; the mechanism and the clamp rationale are single-sourced in `crates/cmdr-archive/src/mutation/DETAILS.md` § "Compression level applies to ADDED entries only". Internal zips (crash/error-report bundles) keep their own fixed level and never read this setting.
 - **Source-side pull for a REMOTE source (SMB / MTP → zip).** A copy/move INTO a zip whose SOURCE volume has no
   `local_path()` can't be walked with `std::fs`, so `archive_copy_into_start` runs a pull stage FIRST, inside the op: it

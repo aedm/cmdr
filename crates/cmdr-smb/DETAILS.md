@@ -375,11 +375,11 @@ case, so a look-alike twin is rare but not impossible.
   here still sends it as given and misses; it becomes exact only through `Volume::find_stored_spelling`, § "Resolving a
   foreign path".
 - **A NEW name Cmdr creates goes out composed** (`composes_new_names` answers `true`): a copy's free name, a new folder
-  or file, a rename's target, a ` (N)` pick. The caller that knows it's creating respells it through
-  `Volume::spell_new_name`; this crate never does, because a name that addresses an EXISTING entry (an overwrite, a
-  merge, a same-share move) must keep the stored bytes or it plants a twin. Why composed: a decomposed name on a share
-  is one Finder over the kernel mount (composes on lookup), Windows, and Linux clients list and can't open, and every
-  name older Cmdr builds wrote to a share is composed. A policy, one override to revert:
+  or file, a rename's target (bulk too), a new archive, a ` (N)` pick. The caller that knows it's creating respells it
+  through `Volume::spell_new_name`; this crate never does, because a name that addresses an EXISTING entry (an
+  overwrite, a merge, a same-share move) must keep the stored bytes or it plants a twin. Why composed: a decomposed name
+  on a share is one Finder over the kernel mount (composes on lookup), Windows, and Linux clients list and can't open,
+  and every name older Cmdr builds wrote to a share is composed. A policy, one override to revert:
   `apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Look-alike names".
 - **A name the share holds in another spelling is taken, never free**: a write that asked in the wrong spelling would
   stand a second, identical-looking entry beside it. The app's write layer finds it with one listing after a byte-exact
