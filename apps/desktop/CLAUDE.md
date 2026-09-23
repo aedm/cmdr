@@ -34,7 +34,8 @@ in `DETAILS.md`. Feature must-knows in the colocated `CLAUDE.md`s.
 - **Investigating high memory? `vmmap`'s `IOAccelerator` rows are the RUST HEAP, not GPU memory.** mimalloc tags its
   arenas with VM tag 100, which macOS names `VM_MEMORY_IOACCELERATOR`; conversely the `MALLOC_*` zones are NOT Cmdr's
   heap (mimalloc isn't a registered zone, so `malloc_zone_statistics` is blind to it). Mistaking this sends you
-  bisecting the frontend for a backend leak — it has, twice. Read `docs/tooling/memory-debugging.md` before measuring.
+  bisecting the frontend for a backend leak — it has, twice. Start any CPU or RAM investigation at
+  `docs/notes/performance/README.md` (baseline, method rules, open follow-ups).
 - **The frontend is i18n-ized: user-facing strings live in the message catalog, not in components.** Resolve copy via
   `t()` / `getMessage()` / `<Trans>` from `$lib/intl`, with keys in `src/lib/intl/messages/en/<area>.json` carrying a
   translator `@key` description. Hardcoding a string in a known sink fails `cmdr/no-raw-user-facing-string`. 13 catalogs

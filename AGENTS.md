@@ -12,7 +12,7 @@ This is a monorepo of four apps:
 - **`apps/api-server/`**: Cloudflare Worker + Hono (licensing, telemetry, crash/error reports, downloads, admin).
 - **`apps/analytics-dashboard/`**: private SvelteKit metrics dashboard on CF Pages.
 
-Shared tooling: the Go check runner (`scripts/check/CLAUDE.md`) and dev docs (`docs/architecture.md`).
+Shared tooling: the Go check runner (`scripts/check/CLAUDE.md`).
 
 ## Principles
 
@@ -92,7 +92,8 @@ Writing them:
   lives). Two "icon" docs: a UI glyph is `docs/guides/icons.md`; the app icon and every logo raster come from
   `brand/logos/cmdr.svg` via `docs/guides/updating-icon.md`.
 - **Debugging a running app / reading logs**: [This](docs/tooling/logging.md) is the first stop, before `Console.app` or
-  grepping code. All (FE & BE) log paths, format, and `RUST_LOG` recipes. RAM per line: `CMDR_LOG_RAM_USE=1`.
+  grepping code. All (FE & BE) log paths, format, and `RUST_LOG` recipes.
+- **CPU, RAM, or idle cost**: `docs/notes/performance/README.md` first.
 - **A report from a USER** (`ERR-XXXXX`, a crash, in-app feedback): `docs/tooling/feedback-and-error-digest.md`. The
   logging doc above covers the LOCAL app and won't find one.
 - **Branding / marketing**: `brand/CLAUDE.md`, `apps/website/`, and `README.md`. You don't need app internals.

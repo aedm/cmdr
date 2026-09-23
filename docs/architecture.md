@@ -529,6 +529,10 @@ first (see `security.md` for the privacy posture):
 
 Detail in the colocated `CLAUDE.md` files.
 
+A running app answers memory questions itself through the `memory_diagnostics` MCP tool
+(`docs/tooling/memory-debugging.md`). Every resource-use investigation (idle CPU, RAM, wakeups, threads), the current
+baseline, and the open follow-ups are in `docs/notes/performance/README.md`.
+
 ## Acquisition analytics / `?r=` tracking
 
 Spans four surfaces. A short `?r=<code>` on a link expands to `utm_source` (+ `utm_medium`) client-side before analytics
