@@ -34,6 +34,10 @@ cancellation machinery for no behavior we need. The priority order is enforced b
     counted per volume. The spawned directory-listing task (`file_system/listing/streaming.rs`) takes one, so a folder
     that takes ten seconds to come back reads as busy for ten seconds. Release is by DROP only, which is what makes the
     error path, a panic, and a dropped task all correct with nothing to remember.
+  - **Only the listing stamps, by decision.** ❌ Don't add foreground stamping (lease or timestamp) to `path_exists`,
+    `get_file_range`, or `refresh_listing`. Each is reached by background callers too (the 2 s deleted-directory poll,
+    which isn't skipped for SMB, the MCP pane mirror, the tag sweep, a post-transfer refresh), so stamping there would
+    pin a share permanently busy and park every upload to it. Investigated and rejected.
   - **The TIMESTAMP** is the decaying half: stamped by the hot listing IPC (`commands/file_system/listing.rs`), which
     knows the volume, and refreshed whenever a lease is taken OR released. Refreshing at RELEASE is load-bearing: it is
     what starts the post-operation debounce when the operation ENDED, so a burst of arrow-key presses is one suspension
