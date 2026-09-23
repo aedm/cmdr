@@ -16,7 +16,7 @@
  * `display.a11y.test.ts`.
  */
 
-import { describe, it, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, tick, createRawSnippet } from 'svelte'
 import { expectNoA11yViolations } from '$lib/test-a11y'
 
@@ -31,7 +31,7 @@ import Combobox, { type ComboboxItem } from './Combobox.svelte'
 import FilterPopover from './FilterPopover.svelte'
 import Menu from './Menu.svelte'
 import { createMenu } from './menu-controller.svelte'
-import type { MenuSection } from './menu-types'
+import type { MenuRowContext, MenuSection } from './menu-types'
 import ModalDialog from './ModalDialog.svelte'
 import Popover from './Popover.svelte'
 import Select, { type SelectItem } from './Select.svelte'
@@ -407,7 +407,7 @@ describe('Menu a11y', () => {
       id: 'volumes',
       heading: 'Volumes',
       items: [
-        { value: 'hd', label: 'Macintosh HD', checked: true },
+        { value: 'hd', label: 'Macintosh HD', check: { kind: 'current' } },
         { value: 'backup', label: 'Backup', disabled: true },
         { value: 'share', label: 'Team share', submenu: [{ value: 'connect', label: 'Connect directly' }] },
       ],
@@ -437,6 +437,46 @@ describe('Menu a11y', () => {
     const dispose = await mountOpen(richSections)
     await expectNoA11yViolations(document.body)
     dispose()
+  })
+
+  // A `menuitemcheckbox` needs a `menu` or `group` owner and an `aria-checked`, which axe checks
+  // inside the open submenu. The current row hosts its own button (the switcher's eject), which
+  // is why it isn't a `menuitemradio`: that role's children are presentational, and axe's
+  // `nested-interactive` flags the button it would hide.
+  it('toggle rows, on and off, and a current row hosting a button have no a11y violations', async () => {
+    const sections: MenuSection[] = [
+      {
+        id: 'volumes',
+        items: [
+          { value: 'hd', label: 'Macintosh HD', check: { kind: 'current' } },
+          {
+            value: 'share',
+            label: 'Team share',
+            submenu: [
+              { value: 'open', label: 'Open' },
+              { value: 'fast', label: 'Use the fast connection', check: { kind: 'toggle', checked: true } },
+              { value: 'wake', label: 'Reconnect automatically', check: { kind: 'toggle', checked: false } },
+            ],
+          },
+        ],
+      },
+    ]
+    const target = container()
+    const menu = createMenu({ getSections: () => sections, onSelect: () => {} })
+    menu.openAt({ x: 100, y: 100 })
+    const trailing = createRawSnippet<[MenuRowContext]>((context) => ({
+      render: () => (context().item.value === 'hd' ? '<button type="button">Eject</button>' : '<span></span>'),
+    }))
+    mount(Menu, { target, props: { menu, ariaLabel: 'Volumes', trailing } })
+    await tick()
+    await tick()
+    menu.surface.openSubmenu('share', true)
+    await tick()
+    await tick()
+    expect(document.querySelectorAll('[data-menu-submenu] [role="menuitemcheckbox"]')).toHaveLength(2)
+    expect(document.querySelector('[aria-current="location"] button')).not.toBeNull()
+    await expectNoA11yViolations(document.body)
+    menu.destroy()
   })
 })
 

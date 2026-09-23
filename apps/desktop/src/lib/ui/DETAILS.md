@@ -872,8 +872,24 @@ button), `below` adds a sub-line (the disk-space bar), and `footer` sits under t
 
 **A submenu row is a full row, minus the snippets.** Its leading columns come from the SAME `rowLead` snippet the
 top-level row uses (checkmark, glyph), so the two can't drift, and it honors `disabled` (greyed, `aria-disabled`,
-skipped by the keys and by the pointer's cursor), `icon`, `tooltip`, and `checked`. So a submenu holds actions and
-toggles alike; picking a toggle still only activates, and the consumer flips its own state. Two fields exist for
+skipped by the keys and by the pointer's cursor), `icon`, `tooltip`, and `check`. So a submenu holds actions and
+toggles alike; picking a toggle still only activates, and the consumer flips its own state.
+
+**A checkmark says why it's there** (`MenuItem.check: MenuItemCheck`), because that decides what VoiceOver hears. The
+role and state come from one `rowA11y` helper that top-level and submenu rows both call:
+
+- `{ kind: 'toggle', checked }`: an on/off setting (the row-menu toggles in `file-explorer/navigation/row-menu.ts`). The
+  row is a `menuitemcheckbox` with `aria-checked`, ON OR OFF, so an off toggle says "unchecked" rather than reading as
+  an action. `checked` lives inside the kind, so an off toggle and a plain row can't share a shape.
+- `{ kind: 'current' }`: the row you're on (the switcher's volume). The row stays a `menuitem`, drawn checked, with
+  `aria-current="location"`.
+- No `check`: a plain `menuitem`, no `aria-checked`.
+
+❗ **`current` is deliberately not a `menuitemradio`.** Checkbox and radio menu items have presentational children, so
+the eject button a switcher row hosts in its `trailing` snippet would vanish for assistive tech; axe's
+`nested-interactive` flags it (`navigation.a11y.test.ts` caught it). Same reason ❌ a `toggle` row must not host its
+own controls. Both owners qualify for `menuitemcheckbox`: a top-level row sits in a section's `role="group"` inside the
+`role="menu"`, and a submenu row directly in the submenu's `role="menu"`. Two fields exist for
 submenus: `separatorBefore` draws a rule above the row (a top-level list splits into sections instead), and
 `keepsMenuOpen` closes only the submenu on a pick, leaving the parent row under the cursor (an eject, so several drives
 go in a row; a rename, which happens in the row). `accelerator` is top-level only. A submenu whose every row is disabled
@@ -955,8 +971,8 @@ gets renamed on a whim. `Menu.svelte.test.ts` asserts each one, so none of them 
   `data-menu-nested-in` at all.
 - `data-menu-section="<id>"` on a section, `data-menu-heading` on its heading (an E2E spec reads the group names from
   it), `data-menu-empty` on an empty section's placeholder.
-- `data-menu-row="<value>"` on every row (submenu rows too), plus `data-highlighted`, `data-checked`, `data-disabled`,
-  and `data-dragging` as bare present-or-absent marks. Submenu rows carry `data-highlighted`, `data-checked`, and
+- `data-menu-row="<value>"` on every row (submenu rows too), plus `data-highlighted`, `data-checked` (the checkmark is
+  drawn: an on toggle or the current row), `data-disabled`, and `data-dragging` as bare present-or-absent marks. Submenu rows carry `data-highlighted`, `data-checked`, and
   `data-disabled`, and a submenu rule is a `role="separator"`.
 - `data-accelerator="<char>"` on a row that declares one, so a spec presses a digit and asserts against the row that
   claimed it rather than counting positions. The row also carries `aria-keyshortcuts`.
@@ -1008,7 +1024,7 @@ switcher's port is what moved them here):
   controllers import it, and a type imported from a `.svelte` file resolves to `any` under the plain-TypeScript lint
   service.
 - **One level of submenu**, and no type-ahead, virtualization, or radio items: nothing needs them, and each is addable
-  without moving the seams.
+  without moving the seams (a radio would be a third `MenuItemCheck` kind, for rows hosting no controls).
 - ⚠️ **`aria-activedescendant` on a portaled container is not yet verified with VoiceOver.** The ARIA wiring is there
   and axe is clean (`overlays.a11y.test.ts`), but nobody has listened to it; confirm before leaning on it.
 

@@ -252,7 +252,7 @@ describe('rowMenuItems', () => {
       'row:smb-naspi-media:toggle:direct-connection',
     ])
     expect(items?.[0]).toMatchObject({ icon: { lucide: 'eject' }, keepsMenuOpen: true, separatorBefore: false })
-    expect(items?.[1]).toMatchObject({ checked: false, separatorBefore: true })
+    expect(items?.[1]).toMatchObject({ check: { kind: 'toggle', checked: false }, separatorBefore: true })
     expect(items?.[1].data).toBe(menu.settings[0])
   })
 
@@ -265,7 +265,7 @@ describe('rowMenuItems', () => {
       ['row:smb-naspi-media:toggle:direct-connection', true],
     ])
     expect(items?.[1].tooltip).toContain('faster access')
-    expect(items?.[1].checked).toBeUndefined()
+    expect(items?.[1].check).toBeUndefined()
     expect(items?.[1].keepsMenuOpen).toBeFalsy()
   })
 
@@ -278,7 +278,7 @@ describe('rowMenuItems', () => {
   it('carries a switch’s explanation onto its row as the tooltip', () => {
     const menu = volumeRowMenu(place, { ...idle, isSaved: true, autoReconnect: true })
     const row = rowMenuItems(place.id, menu, (e) => e)?.find((item) => item.value.endsWith('toggle:auto-reconnect'))
-    expect(row).toMatchObject({ checked: true, separatorBefore: true })
+    expect(row).toMatchObject({ check: { kind: 'toggle', checked: true }, separatorBefore: true })
     expect(row?.tooltip).toContain('reconnects to this server on its own')
   })
 

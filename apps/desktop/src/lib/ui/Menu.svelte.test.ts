@@ -26,7 +26,7 @@ function sections(): MenuSection[] {
       id: 'volumes',
       heading: 'Volumes',
       items: [
-        { value: 'hd', label: 'Macintosh HD', checked: true },
+        { value: 'hd', label: 'Macintosh HD', check: { kind: 'current' } },
         { value: 'backup', label: 'Backup', disabled: true },
         {
           value: 'share',
@@ -34,7 +34,7 @@ function sections(): MenuSection[] {
           submenu: [
             { value: 'connect', label: 'Connect directly' },
             { value: 'forget', label: 'Forget this share' },
-            { value: 'fast', label: 'Use the fast connection', checked: true },
+            { value: 'fast', label: 'Use the fast connection', check: { kind: 'toggle', checked: true } },
           ],
         },
       ],
@@ -319,7 +319,7 @@ describe('submenu rows', () => {
             submenu: [
               { value: 'eject', label: 'Eject (busy)', icon: { lucide: 'eject' }, disabled: true },
               { value: 'forget', label: 'Forget server', icon: { lucide: 'trash-2' } },
-              { value: 'fast', label: 'Use the fast connection', checked: true, separatorBefore: true },
+              { value: 'fast', label: 'Use the fast connection', check: { kind: 'toggle', checked: true }, separatorBefore: true },
             ],
           },
         ],
@@ -577,5 +577,71 @@ describe('snippets', () => {
     await open({ below, footer })
     expect(document.querySelector('.space')?.textContent).toBe('312 GB free')
     expect(document.querySelector('.footer')?.textContent).toBe('Still loading')
+  })
+})
+
+/**
+ * A checkmarked row tells assistive tech what it means. A toggle is a `menuitemcheckbox`
+ * whether it's on or off (an unchecked toggle is still a toggle, and VoiceOver says
+ * "unchecked"); the "you are here" row stays a `menuitem` with `aria-current`, so the
+ * controls it hosts stay reachable; a row with no `check` is a plain `menuitem` with neither.
+ * Top-level and submenu rows share the markup, so both get pinned.
+ */
+describe('checkable rows', () => {
+  function checkSections(): MenuSection[] {
+    return [
+      {
+        id: 'volumes',
+        items: [
+          { value: 'hd', label: 'Macintosh HD', check: { kind: 'current' } },
+          { value: 'backup', label: 'Backup' },
+          { value: 'hidden', label: 'Show hidden files', check: { kind: 'toggle', checked: false } },
+          { value: 'plain', label: 'Plain row' },
+          {
+            value: 'share',
+            label: 'Team share',
+            submenu: [
+              { value: 'open', label: 'Open' },
+              { value: 'fast', label: 'Use the fast connection', check: { kind: 'toggle', checked: true } },
+              { value: 'reconnect', label: 'Reconnect automatically', check: { kind: 'toggle', checked: false } },
+            ],
+          },
+        ],
+      },
+    ]
+  }
+
+  /** `[role, aria-checked, aria-current]`, absent attributes as `null`. */
+  function a11y(el: Element | null | undefined): (string | null)[] {
+    return ['role', 'aria-checked', 'aria-current'].map((name) => el?.getAttribute(name) ?? null)
+  }
+
+  it('announces top-level toggle, current, and plain rows with the right role and state', async () => {
+    await open({}, { getSections: checkSections })
+    expect(a11y(row('hidden'))).toEqual(['menuitemcheckbox', 'false', null])
+    expect(a11y(row('hd'))).toEqual(['menuitem', null, 'location'])
+    expect(a11y(row('backup'))).toEqual(['menuitem', null, null])
+    expect(a11y(row('plain'))).toEqual(['menuitem', null, null])
+    expect(a11y(row('share'))).toEqual(['menuitem', null, null])
+  })
+
+  it('announces submenu toggles as checkboxes, on and off, and leaves actions plain', async () => {
+    const { menu } = await open({}, { getSections: checkSections })
+    menu.surface.openSubmenu('share', true)
+    await tick()
+    await tick()
+    const submenu = document.querySelector('[data-menu-submenu]')
+    expect(a11y(submenu?.querySelector('[data-menu-row="fast"]'))).toEqual(['menuitemcheckbox', 'true', null])
+    expect(a11y(submenu?.querySelector('[data-menu-row="reconnect"]'))).toEqual(['menuitemcheckbox', 'false', null])
+    expect(a11y(submenu?.querySelector('[data-menu-row="open"]'))).toEqual(['menuitem', null, null])
+  })
+
+  it('draws the checkmark and `data-checked` only on an on toggle or the current row', async () => {
+    await open({}, { getSections: checkSections })
+    expect(row('hd')?.hasAttribute('data-checked')).toBe(true)
+    expect(row('hd')?.querySelector('.menu-check svg')).not.toBeNull()
+    expect(row('backup')?.hasAttribute('data-checked')).toBe(false)
+    expect(row('hidden')?.querySelector('.menu-check')).toBeNull()
+    expect(row('hidden')?.querySelector('.menu-check-placeholder')).not.toBeNull()
   })
 })

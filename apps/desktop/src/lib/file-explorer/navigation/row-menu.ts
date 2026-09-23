@@ -287,7 +287,7 @@ function entryItem<T>(volumeId: string, entry: RowMenuEntry, wrap: (entry: RowMe
     return { ...common, icon: { lucide: entry.icon }, disabled: entry.disabled, keepsMenuOpen: entry.keepsMenuOpen }
   }
   if (entry.type === 'fix') return { ...common, icon: { lucide: entry.icon }, tooltip: entry.tooltip }
-  return { ...common, checked: entry.checked, tooltip: entry.tooltip }
+  return { ...common, check: { kind: 'toggle', checked: entry.checked }, tooltip: entry.tooltip }
 }
 
 /**

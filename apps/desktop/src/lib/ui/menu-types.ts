@@ -16,16 +16,33 @@ import type { IconName } from './icons/icon-map'
 /** A lucide glyph, or an image the caller already has a URL for (a volume or folder icon). */
 export type MenuIcon = { lucide: IconName } | { src: string }
 
+/**
+ * Why a row carries a checkmark, which decides what a screen reader hears:
+ *
+ * - `toggle`: an on/off switch (a per-share setting). The row is a `menuitemcheckbox` with
+ *   `aria-checked`, ON OR OFF: an unchecked toggle still says "unchecked". That's why `checked`
+ *   lives inside, so an off toggle and a plain action can't be the same shape.
+ * - `current`: this row is where you are (the volume the pane is on). The row stays a plain
+ *   `menuitem`, drawn checked, with `aria-current="location"`.
+ *
+ * ❗ Not a `menuitemradio` for `current`: a checkbox or radio menu item's children are
+ * presentational, so the eject button a volume row hosts would vanish for VoiceOver (axe's
+ * `nested-interactive`). For the same reason a `toggle` row must not host its own controls.
+ */
+export type MenuItemCheck = { kind: 'toggle'; checked: boolean } | { kind: 'current' }
+
 /** One row. `value` is the stable identity: it's what `onSelect` emits and what the highlight tracks. */
 export interface MenuItem<T = unknown> {
   value: string
   label: string
   icon?: MenuIcon
   /**
-   * Renders the leading checkmark, on a submenu row too. The checkmark column is always
-   * reserved, so rows stay aligned.
+   * A toggle or the "you are here" row (see `MenuItemCheck`), on a submenu row too. A checked
+   * toggle and a current row render the leading checkmark; the checkmark column is always
+   * reserved, so rows stay aligned. Picking a toggle only activates it: the consumer flips its
+   * own state.
    */
-  checked?: boolean
+  check?: MenuItemCheck
   /**
    * A single character shown in the leftmost column, which also activates the row when typed
    * (digits only today). The column appears only in a menu where at least one row declares one,

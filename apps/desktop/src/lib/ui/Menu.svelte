@@ -205,6 +205,29 @@
         return target?.closest('button, a, input, select, textarea') != null
     }
 
+    /**
+     * What a row says to assistive tech, top-level and submenu alike (see `MenuItemCheck`). A
+     * toggle is a `menuitemcheckbox` whether or not it's on, so VoiceOver says "unchecked" on an
+     * off one too; both containers qualify as its owner (a top-level row sits in a section's
+     * `role="group"` inside the `role="menu"`, a submenu row in the submenu's `role="menu"`).
+     */
+    function rowA11y(item: MenuItem<unknown>): {
+        role: 'menuitem' | 'menuitemcheckbox'
+        checked: 'true' | 'false' | undefined
+        current: 'location' | undefined
+    } {
+        const check = item.check
+        if (check?.kind === 'toggle') {
+            return { role: 'menuitemcheckbox', checked: check.checked ? 'true' : 'false', current: undefined }
+        }
+        return { role: 'menuitem', checked: undefined, current: check?.kind === 'current' ? 'location' : undefined }
+    }
+
+    /** Whether the row draws its checkmark: an on toggle, or the row you're on. */
+    function showsCheckmark(item: MenuItem<unknown>): boolean {
+        return item.check?.kind === 'current' || (item.check?.kind === 'toggle' && item.check.checked)
+    }
+
     function rowContext(section: MenuSection<T>, item: MenuItem<T>, index: number): MenuRowContext<T> {
         return {
             item,
@@ -262,7 +285,7 @@
             <span class="menu-accelerator-placeholder"></span>
         {/if}
     {/if}
-    {#if item.checked}
+    {#if showsCheckmark(item)}
         <span class="menu-check"><Icon name="check" size={14} aria-hidden="true" /></span>
     {:else}
         <span class="menu-check-placeholder"></span>
@@ -319,6 +342,7 @@
                     {#each section.items as item, index (item.value)}
                         {@const context = rowContext(section, item, index)}
                         {@const cue = dropCue(section, index)}
+                        {@const a11y = rowA11y(item)}
                         <!-- svelte-ignore a11y_mouse_events_have_key_events -->
                         <div
                             id={rowId(item.value)}
@@ -329,8 +353,10 @@
                             class:is-drop-above={cue === 'above'}
                             class:is-drop-below={cue === 'below'}
                             class:is-reorderable={section.reorderable}
-                            role="menuitem"
+                            role={a11y.role}
                             tabindex="-1"
+                            aria-checked={a11y.checked}
+                            aria-current={a11y.current}
                             aria-disabled={item.disabled ? 'true' : undefined}
                             aria-haspopup={item.submenu?.length ? 'menu' : undefined}
                             aria-expanded={item.submenu?.length ? menu.openSubmenuValue === item.value : undefined}
@@ -338,7 +364,7 @@
                             data-menu-row={item.value}
                             data-accelerator={item.accelerator}
                             data-highlighted={context.highlighted ? '' : undefined}
-                            data-checked={item.checked ? '' : undefined}
+                            data-checked={showsCheckmark(item) ? '' : undefined}
                             data-disabled={item.disabled ? '' : undefined}
                             data-dragging={context.dragging ? '' : undefined}
                             data-drop-cue={cue}
@@ -393,6 +419,7 @@
                 }}
             >
                 {#each submenuItems as child (child.value)}
+                    {@const childA11y = rowA11y(child)}
                     {#if child.separatorBefore}
                         <div class="menu-separator" role="separator"></div>
                     {/if}
@@ -401,12 +428,14 @@
                         class="menu-row"
                         class:is-highlighted={menu.submenuHighlightedValue === child.value}
                         class:is-disabled={child.disabled}
-                        role="menuitem"
+                        role={childA11y.role}
                         tabindex="-1"
+                        aria-checked={childA11y.checked}
+                        aria-current={childA11y.current}
                         aria-disabled={child.disabled ? 'true' : undefined}
                         data-menu-row={child.value}
                         data-highlighted={menu.submenuHighlightedValue === child.value ? '' : undefined}
-                        data-checked={child.checked ? '' : undefined}
+                        data-checked={showsCheckmark(child) ? '' : undefined}
                         data-disabled={child.disabled ? '' : undefined}
                         use:tooltip={child.tooltip ?? ''}
                         onmousedown={(event: MouseEvent) => {

@@ -178,7 +178,9 @@
             value: volume.id,
             label: deviceVolumeLabel(volume, volumes),
             icon: rowIcon(volume, restricted),
-            checked: shouldShowCheckmark(volume, containingVolumeId),
+            // "The pane is here", ❌ not a radio: a radio row would hide its eject button from
+            // VoiceOver (`MenuItemCheck`).
+            check: shouldShowCheckmark(volume, containingVolumeId) ? { kind: 'current' } : undefined,
             disabled: !rowState.openable,
             tooltip: rowState.tooltip ?? (restricted ? RESTRICTED_FOLDER_TOOLTIP : ''),
             submenu: rowSubmenu(volume),

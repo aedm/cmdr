@@ -39,7 +39,7 @@
             id: 'volumes',
             heading: 'Volumes',
             items: [
-                { value: 'macintosh-hd', label: 'Macintosh HD', checked: true, icon: { lucide: 'server' } },
+                { value: 'macintosh-hd', label: 'Macintosh HD', check: { kind: 'current' }, icon: { lucide: 'server' } },
                 { value: 'backup', label: 'Backup (unavailable)', disabled: true, icon: { lucide: 'server' } },
                 {
                     value: 'share',
@@ -58,10 +58,14 @@
                         {
                             value: 'fast-connection',
                             label: 'Use the fast connection',
-                            checked: shareToggles.fast,
+                            check: { kind: 'toggle', checked: shareToggles.fast },
                             separatorBefore: true,
                         },
-                        { value: 'auto-reconnect', label: 'Reconnect on wake', checked: shareToggles.reconnect },
+                        {
+                            value: 'auto-reconnect',
+                            label: 'Reconnect on wake',
+                            check: { kind: 'toggle', checked: shareToggles.reconnect },
+                        },
                     ],
                 },
             ],
