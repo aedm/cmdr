@@ -100,6 +100,11 @@ export type Bindings = {
   GITHUB_PROJECT_STATUS_FIELD_ID?: string
   GITHUB_PROJECT_TRIAGE_OPTION_ID?: string
   GITHUB_WEBHOOK_SECRET?: string
+  // The PostHog project key (`phc_...`, the same public ingest key the desktop app used to bake in as
+  // `CMDR_POSTHOG_KEY`), for forwarding the feature events `/heartbeat` relays. Named apart from the
+  // analytics dashboard's `POSTHOG_API_KEY`, which is a personal `phx_...` read key. Optional: unset
+  // skips the forward and nothing else changes. See `telemetry/posthog-forward.ts`.
+  POSTHOG_PROJECT_KEY?: string
   // R2 S3-compatible credentials, used to mint long-TTL presigned download URLs
   // for the Discord embed. Bindings can't presign on their own, but the S3 API can.
   R2_ACCOUNT_ID?: string

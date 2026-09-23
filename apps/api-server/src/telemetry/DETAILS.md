@@ -9,7 +9,8 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 
 - **`telemetry.ts`**: routes `/crash-report`, `/update-check/:version`, `/download/:version/:arch`, plus
   `extractTopFunction`, `validateOptionalEnum` / `validateOptionalPattern`, `versionPattern`, and the sanitizers.
-- **`heartbeat.ts`**: `POST /heartbeat`.
+- **`heartbeat.ts`**: `POST /heartbeat`: the beat, its uptime, and the feature events it relays.
+- **`posthog-forward.ts`**: the relay's PostHog leg, the only code that knows PostHog exists.
 - **`error-report.ts`**: `POST /error-report` (multipart upload to R2, the KV index write, presigned Discord
   notification, and an email for hand-written reports).
 - **`error-report-amend.ts`**: `POST /error-report/:id/amend`, plus the `report:{id}` KV index and the amend credential
@@ -20,6 +21,7 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
   recompute helper.
 - **`feedback.ts`**: `POST /feedback` (in-app feedback → D1 + Discord).
 - Tests: `crash-report.test.ts` (incl. § "top_function derivation" over real backtraces), `heartbeat.test.ts`,
+  `heartbeat-sql.test.ts` (the INSERTs against a real SQLite with the real migrations), `posthog-forward.test.ts`,
   `download-and-update-check.test.ts`, `error-report.test.ts`, `error-report-intake.test.ts`,
   `error-report-eviction.test.ts`, `error-report-email.test.ts`, `error-report-amend.test.ts`, `feedback.test.ts`. The
   route-level R2/KV/D1 fakes live in `error-report-test-helpers.ts`; the Resend mock can't (`vi.mock` is hoisted per
@@ -34,7 +36,7 @@ Error report: POST /error-report → rate-limit by IP (ERROR_REPORT_LIMITER, 429
 
 Error report amendment: POST /error-report/:id/amend → rate-limit by IP (ERROR_REPORT_AMEND_LIMITER, 429 if over) → validate :id shape (400) → read the JSON body under 512 KB (400/413) → validate amendKey + note/email, at least one of the two (400) → read report:{id} from KV (404 if gone) → SHA-256 the presented key, constantTimeEqual against amendKeyHash (401) → read-modify-write the {bundle}.amend.json sidecar in R2 → in waitUntil: an amendment email on the shared DAILY_ERROR_REPORT_EMAIL_CAP allowance → 200 {id, amendments}
 
-Heartbeat: POST /heartbeat → rate-limit by IP (HEARTBEAT_LIMITER, 429 if over) → validate payload (size + required fields + analId/version shape + config-size cap) → write to D1 heartbeat (fire-and-forget via waitUntil), no IP stored → 204
+Heartbeat: POST /heartbeat → rate-limit by IP (HEARTBEAT_LIMITER, 429 if over) → read the body under 256 KB (400) → validate the beat (required fields + analId/version shape + config-size cap + uptimeSeconds + events is an array; 400) → keep the first 500 events, drop malformed ones (counted, logged) → AWAITED: ONE D1 batch writing the heartbeat row + the events (failure → soft 502), no IP stored → in waitUntil: forward the events to PostHog (skipped without POSTHOG_PROJECT_KEY; failure logged, never surfaced) → 204
 
 Feedback: POST /feedback → rate-limit by IP (FEEDBACK_LIMITER, 429 if over) → validate shape (required feedback text ≤ 100k code points + appVersion/osVersion, optional email/buildMode) → AWAITED D1 write to `feedback` (failure → soft 502 so the app offers a retry) → Discord ping in waitUntil (DISCORD_FEEDBACK_WEBHOOK_URL, falls back to DISCORD_WEBHOOK_URL) → 204 → the 3-hourly cron mails the row in the feedback digest (`../../DETAILS.md` § Cron handler)
 
@@ -92,18 +94,55 @@ backtrace with no app frame stays `'unknown'`.
 
 ## Heartbeat
 
-D1 table `heartbeat`. The desktop app posts one beat at launch and hourly for true daily-active tracking during the open
-beta. Identity is the random `anal_<uuid>` analytics id (regex `^anal_[0-9a-f-]{36}$`); the IP keys the rate limiter and
-is never stored. Required: `analId`, `appVersion` (semver), `osVersion`, `arch`. Optional: `buildMode` and `config`, an
-arbitrary object stored verbatim as `config_json`. The config is a single JSON blob, not per-field columns, so new
-settings absorb without a migration: DAU/engagement queries never touch it (richer config-shape filtering lives in
-PostHog person properties). Caps: 32 KB whole body, 16 KB config blob. No UNIQUE/dedup constraint: every beat is kept
-(engagement = beats/day), and DAU (`COUNT(DISTINCT anal_id)`) is computed at query time by `/admin/heartbeat-dau`.
+D1 tables `heartbeat` and `analytics_event`. The desktop app beats at most once every three hours (throttled and
+persisted client-side; clients older than that beat at launch and hourly), and each beat carries the feature events the
+app spooled since its last successful one. Identity is the random `anal_<uuid>` analytics id (regex
+`^anal_[0-9a-f-]{36}$`); the IP keys the rate limiter and is never stored. The wire contract is
+`docs/specs/network-chatter-plan.md` § Wire contract.
+
+**The beat.** Required: `analId`, `appVersion` (semver), `osVersion`, `arch`. Optional: `buildMode`, `config` (an
+arbitrary object stored verbatim as `config_json`), `uptimeSeconds`, and `events`. The config is a single JSON blob, not
+per-field columns, so new settings absorb without a migration: DAU/engagement queries never touch it. Caps: 256 KB whole
+body (read through `readCappedBody`), 16 KB config blob. No UNIQUE/dedup constraint: every beat is kept, and DAU
+(`COUNT(DISTINCT anal_id)`) and app hours are computed at query time by `/admin/heartbeat-dau`.
+
+**`uptimeSeconds`** is the app runtime this beat accounts for that no earlier successful beat reported, so summing it
+per day gives app hours regardless of how often the app beats. A non-negative integer or 400; clamped to seven days
+(`maxUptimeSeconds`) rather than rejected, since a beat that big is a client bug and the beat is still worth its DAU.
+Old clients send none and the row stores NULL, which the engagement query reads as one hour (they beat hourly):
+`SUM(COALESCE(uptime_seconds, 3600)) / 3600`. See `../admin/DETAILS.md`.
+
+**Events** (`analytics_event`): each is `{ event, timestamp, properties }`. The name matches `^[a-z0-9_$]{1,100}$`, the
+timestamp is RFC 3339 with a `Z` or an offset, between 2025-01-01 and a day past our clock, normalized to UTC, and
+`properties` is a plain object (absent means `{}`). The server keeps the first 500 (`maxEventsPerBeat`) and drops the
+rest, then drops any malformed one among those, logging each kind with a count. Only the container can fail the beat
+(`events` present and not an array → 400): an ITEM rejection would fail every beat carrying it, and the app would resend
+it forever. `occurred_at` is the client's timestamp, `received_at` ours; retention and every server-side "when" use
+`received_at`.
+
+**One batch, awaited.** The heartbeat row and the events go in ONE `db.batch` (a transaction), and the route awaits it:
+a 204 tells the app both are stored, which is its signal to truncate the spool; a D1 failure answers a soft 502 so it
+keeps them. The events travel as ONE bound JSON parameter unpacked by `json_each` (`insertEventsSql`), because one
+statement per event puts up to 500 statements in the batch against D1's per-invocation query limit, and a multi-row
+`VALUES` hits D1's 100-bound-parameter cap at 16 events. `json_each` in D1 was verified with a read-only
+`wrangler d1 execute --remote` (2026-09-24); `heartbeat-sql.test.ts` proves the columns land right on real SQLite.
+
+**The PostHog forward** (`posthog-forward.ts`). After the commit, `waitUntil` posts the stored events to
+`https://eu.i.posthog.com/batch/` in one request, so PostHog's history continues unbroken while nothing reads the D1
+copy yet. The body mirrors what the app used to send to `/capture/` per event: `distinct_id` = `analId`, the identity
+properties `source: desktop`, `app_version`, `os_version`, `arch` (set last, so an event property can't shadow them),
+and the config snapshot as `$set`. New because the sender changed: a per-event `timestamp`, and `$geoip_disable: true`,
+since the IP PostHog sees is the Worker's (we don't forward the user's). It runs only after D1 has the events, because
+the app retries a failed beat and an earlier forward would double-count. Without `POSTHOG_PROJECT_KEY` it's a silent
+no-op; a PostHog error is logged and never touches the beat. Dropping PostHog = delete that file, its test, the one call
+in `heartbeat.ts`, and the secret.
 
 **Rate limiting:** `HEARTBEAT_LIMITER` (`[[ratelimits]]` in `wrangler.toml`, type `RateLimit`, `.limit({ key })` →
-`{ success }`) keyed by `cf-connecting-ip` at 12 req/min/IP (`period` must be 10 or 60). Legit traffic is ~1
-beat/hour/install, so the cap stops a bloat-spam loop without touching real users; over the limit returns 429 before any
-parsing or D1 write. The binding is typed optional so tests and incomplete envs can omit it (the gate is then a no-op).
+`{ success }`) keyed by `cf-connecting-ip` at 12 req/min/IP (`period` must be 10 or 60). Legit traffic is a beat per
+three hours per install plus a failed beat's retry at most every 15 minutes, so the cap stops a bloat-spam loop without
+touching real users, even behind a shared address. Fatter beats don't change that: the body cap bounds what one request
+stores, and a 429'd client keeps its events for its next beat. Over the limit returns 429 before any parsing or D1
+write. The binding is typed optional so tests and incomplete envs can omit it (the gate is then a no-op).
 
 ## Download tracking
 

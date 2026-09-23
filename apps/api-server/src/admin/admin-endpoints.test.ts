@@ -247,10 +247,10 @@ describe('GET /admin/heartbeat-dau', () => {
     expect(body).toEqual([])
   })
 
-  it('returns per-day dau and beats', async () => {
+  it('returns per-day dau and app hours', async () => {
     const mockData = [
-      { date: '2025-03-20', dau: 8, beats: 42 },
-      { date: '2025-03-21', dau: 10, beats: 57 },
+      { date: '2025-03-20', dau: 8, appHours: 42 },
+      { date: '2025-03-21', dau: 10, appHours: 57.5 },
     ]
     const bindings = {
       ...baseBindings,
@@ -263,7 +263,7 @@ describe('GET /admin/heartbeat-dau', () => {
     expect(body).toEqual(mockData)
   })
 
-  it('counts distinct anal_id for dau and all rows for beats', async () => {
+  it('counts distinct anal_id for dau and sums uptime for app hours', async () => {
     const captured: string[] = []
     const db = {
       prepare: vi.fn((sql: string) => {
@@ -280,7 +280,8 @@ describe('GET /admin/heartbeat-dau', () => {
 
     const sql = captured[0]
     expect(sql).toContain('COUNT(DISTINCT anal_id)')
-    expect(sql).toContain('COUNT(*)')
+    expect(sql).toContain('SUM(COALESCE(uptime_seconds, 3600))')
+    expect(sql).not.toContain('COUNT(*)')
     expect(sql).toContain('date(created_at)')
     expect(sql).toContain('FROM heartbeat')
   })

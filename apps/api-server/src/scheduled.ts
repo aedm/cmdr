@@ -255,8 +255,9 @@ const heartbeatRetentionDays = 730
 const syntheticHeartbeatGraceDays = 7
 
 /**
- * Deletes every beat belonging to an install that has NEVER persisted a setting and has been
- * silent since `?1`. Exported so `synthetic-heartbeats.test.ts` can run it against a real SQLite.
+ * The installs that have NEVER persisted a setting and have been silent since `?1`: the synthetic
+ * ones. Both deletes below share it, and both are exported so `synthetic-heartbeats.test.ts` can run
+ * them against a real SQLite.
  *
  * Decided per INSTALL, not per row: one `_schemaVersion` beat vouches for that id's whole history,
  * so a real user's launch beats from before their first settings save survive.
@@ -265,12 +266,21 @@ const syntheticHeartbeatGraceDays = 7
  * `LIKE '%"_schemaVersion"%'` would let a config with an unrelated `"xschemaVersion"` key vouch
  * for a synthetic install.
  */
-const deleteSyntheticHeartbeatsSql = `DELETE FROM heartbeat WHERE anal_id IN (
-       SELECT anal_id FROM heartbeat
+const syntheticInstallIdsSql = `SELECT anal_id FROM heartbeat
        GROUP BY anal_id
        HAVING MAX(CASE WHEN instr(COALESCE(config_json, ''), '"_schemaVersion"') > 0 THEN 1 ELSE 0 END) = 0
-          AND MAX(created_at) < ?1
-     )`
+          AND MAX(created_at) < ?1`
+
+/** Every beat of a synthetic install. */
+const deleteSyntheticHeartbeatsSql = `DELETE FROM heartbeat WHERE anal_id IN (${syntheticInstallIdsSql})`
+
+/**
+ * The feature events of the same installs. ❌ Must run BEFORE `deleteSyntheticHeartbeatsSql`: the
+ * classifier reads `heartbeat`, so once the beats are gone nothing marks these events as synthetic,
+ * and they'd stay until retention. Run in that order, a failure between the two is harmless: the
+ * next day's run finds the same beats and deletes them.
+ */
+const deleteSyntheticEventsSql = `DELETE FROM analytics_event WHERE anal_id IN (${syntheticInstallIdsSql})`
 
 /**
  * The `created_at` cutoff `days` back, snapped to MIDNIGHT UTC so a day is always swept whole.
@@ -296,8 +306,8 @@ function cutoff(days: number): string {
  *
  * The shape is deliberate: for `downloads`, `crash_reports`, and `feedback` we clear the identifying
  * COLUMNS and keep the row, because the counts and the engineering value live in the other columns
- * and there's no reason to lose them. Only `heartbeat` gets rows deleted, because its identity IS
- * the row.
+ * and there's no reason to lose them. Only `heartbeat` and `analytics_event` get rows deleted,
+ * because their identity IS the row.
  *
  * Every statement is idempotent (each `WHERE` excludes what it already cleared) and bounded by
  * `created_at`, so re-running the sweep, or running it after an outage, is free and safe.
@@ -342,6 +352,10 @@ async function handleRetentionSweep(env: Bindings): Promise<void> {
     .run()
 
   await db.prepare(`DELETE FROM heartbeat WHERE created_at < ?1`).bind(cutoff(heartbeatRetentionDays)).run()
+
+  // Relayed feature events are the same usage stats under the same promise. Aged by `received_at`,
+  // OUR clock: `occurred_at` is the client's, and a wrong one could keep a row forever.
+  await db.prepare(`DELETE FROM analytics_event WHERE received_at < ?1`).bind(cutoff(heartbeatRetentionDays)).run()
 }
 
 /**
@@ -391,9 +405,9 @@ async function handlePersonalCommentSweep(env: Bindings): Promise<void> {
  * Idempotent and bounded by the same predicate every day, so re-running it after an outage is free.
  */
 async function handleSyntheticHeartbeatSweep(env: Bindings): Promise<void> {
-  const result = await env.TELEMETRY_DB.prepare(deleteSyntheticHeartbeatsSql)
-    .bind(cutoff(syntheticHeartbeatGraceDays))
-    .run()
+  const graceCutoff = cutoff(syntheticHeartbeatGraceDays)
+  await env.TELEMETRY_DB.prepare(deleteSyntheticEventsSql).bind(graceCutoff).run()
+  const result = await env.TELEMETRY_DB.prepare(deleteSyntheticHeartbeatsSql).bind(graceCutoff).run()
 
   if (result.meta.changes > 0) {
     const deleted = result.meta.changes.toString()
@@ -420,7 +434,7 @@ async function handleDbSizeCheck(env: Bindings): Promise<void> {
   const sizeMb = probe.meta.size_after / (1024 * 1024)
 
   // Only past the threshold, so the daily no-op costs one statement rather than one per table.
-  const tables = ['crash_reports', 'downloads', 'update_checks', 'daily_active_users']
+  const tables = ['crash_reports', 'downloads', 'update_checks', 'daily_active_users', 'heartbeat', 'analytics_event']
   const tableCounts: Record<string, number> = {}
   for (const table of tables) {
     const row = await env.TELEMETRY_DB.prepare(`SELECT COUNT(*) AS cnt FROM ${table}`).first<{ cnt: number }>()
@@ -479,6 +493,7 @@ export {
   handlePersonalCommentSweep,
   handleSyntheticHeartbeatSweep,
   deleteSyntheticHeartbeatsSql,
+  deleteSyntheticEventsSql,
   syntheticHeartbeatGraceDays,
   downloadIdentifierRetentionDays,
   crashIdentifierRetentionDays,

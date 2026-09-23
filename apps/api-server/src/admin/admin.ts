@@ -242,8 +242,26 @@ admin.get('/admin/crashes', async (c) => {
   return c.json(results)
 })
 
-// Admin heartbeat DAU: true daily-active counts from the raw heartbeat table.
-// dau = distinct analytics ids per day, beats = total heartbeats per day (engagement signal).
+/**
+ * Per-day DAU and engagement from the raw heartbeat table, for `/admin/heartbeat-dau`. `whereClause`
+ * is the range filter (or empty for all time). Exported so `heartbeat-dau-sql.test.ts` can run it
+ * against a real SQLite.
+ *
+ * - `dau`: distinct install ids that beat that day.
+ * - `appHours`: how long the app ran that day, summed over installs. A beat carries the runtime it
+ *   accounts for (`uptime_seconds`); a beat from a client older than that field carries NULL and
+ *   stands for one hour, because those clients beat hourly. So old and new rows add up in one unit,
+ *   and the number doesn't move when the beat cadence does, which a row count would.
+ */
+function heartbeatDauSql(whereClause: string): string {
+  return `SELECT date(created_at) AS date, COUNT(DISTINCT anal_id) AS dau,
+                SUM(COALESCE(uptime_seconds, 3600)) / 3600.0 AS appHours
+         FROM heartbeat ${whereClause}
+         GROUP BY date
+         ORDER BY date ASC`
+}
+
+// Admin heartbeat DAU: true daily-active counts plus app hours per day. See `heartbeatDauSql`.
 admin.get('/admin/heartbeat-dau', async (c) => {
   const authError = verifyAdminAuth(c)
   if (authError) return authError
@@ -256,12 +274,11 @@ admin.get('/admin/heartbeat-dau', async (c) => {
   const interval = rangeToSqliteInterval[range]
   const whereClause = interval ? `WHERE created_at >= datetime('now', '${interval}')` : ''
 
-  const { results } = await c.env.TELEMETRY_DB.prepare(
-    `SELECT date(created_at) AS date, COUNT(DISTINCT anal_id) AS dau, COUNT(*) AS beats
-         FROM heartbeat ${whereClause}
-         GROUP BY date
-         ORDER BY date ASC`,
-  ).all<{ date: string; dau: number; beats: number }>()
+  const { results } = await c.env.TELEMETRY_DB.prepare(heartbeatDauSql(whereClause)).all<{
+    date: string
+    dau: number
+    appHours: number
+  }>()
 
   return c.json(results)
 })
@@ -373,4 +390,4 @@ admin.get('/admin/error-reports', async (c) => {
   return c.json(rows)
 })
 
-export { admin }
+export { admin, heartbeatDauSql }

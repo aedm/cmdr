@@ -5,22 +5,16 @@
  * whole risk of this sweep. `node:sqlite` ships with Node, so this costs no dependency.
  */
 /* eslint-disable-next-line no-restricted-imports -- The engine lives on the Node side of the test and never reaches the Worker bundle; what's under test is the SQL string, imported from `scheduled.ts`. */
+import { readFileSync } from 'node:fs'
+/* eslint-disable-next-line no-restricted-imports -- Same: reads the real migration files, Node-side. */
 import { DatabaseSync } from 'node:sqlite'
 import { describe, expect, it } from 'vitest'
-import { deleteSyntheticHeartbeatsSql, syntheticHeartbeatGraceDays } from './scheduled'
+import { deleteSyntheticEventsSql, deleteSyntheticHeartbeatsSql, syntheticHeartbeatGraceDays } from './scheduled'
 
-/** The production `heartbeat` schema, per `migrations/0005_heartbeat.sql`. */
-const heartbeatSchema = `
-  CREATE TABLE heartbeat (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    anal_id TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    app_version TEXT NOT NULL,
-    os_version TEXT NOT NULL,
-    arch TEXT NOT NULL,
-    build_mode TEXT,
-    config_json TEXT
-  );`
+/** The production `heartbeat` and `analytics_event` schema, straight from the migrations. */
+const heartbeatSchema = ['0005_heartbeat.sql', '0020_heartbeat_uptime_and_events.sql']
+  .map((file) => readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'))
+  .join('\n')
 
 /** `YYYY-MM-DD HH:MM:SS`, the format `datetime('now')` writes. */
 function hoursAgo(hours: number): string {
@@ -115,6 +109,31 @@ describe('the synthetic-heartbeat classifier', () => {
     // `LIKE '%"_schemaVersion"%'` would match this, because `_` is a single-character wildcard.
     // `instr` does not, which is why the classifier uses it.
     expect(sweep([{ analId: 'robot', hoursAgo: 24 * 30, config: '{"xschemaVersion":4}' }])).toEqual([])
+  })
+
+  it("deletes a synthetic install's events with its beats, and keeps a person's", () => {
+    const db = new DatabaseSync(':memory:')
+    db.exec(heartbeatSchema)
+    const beat = db.prepare(
+      `INSERT INTO heartbeat (anal_id, created_at, app_version, os_version, arch, config_json)
+         VALUES (?, ?, '0.39.0', 'macOS 26.6.2', 'aarch64', ?)`,
+    )
+    beat.run('robot', hoursAgo(24 * 30), noSettings)
+    beat.run('person', hoursAgo(24 * 30), withSettings)
+    const event = db.prepare(
+      `INSERT INTO analytics_event (anal_id, event, occurred_at, app_version, properties_json)
+         VALUES (?, 'app_launched', '2026-01-01T00:00:00.000Z', '0.39.0', '{}')`,
+    )
+    event.run('robot')
+    event.run('person')
+
+    // The order the cron runs them in: events first, while `heartbeat` still says who is synthetic.
+    db.prepare(deleteSyntheticEventsSql).run(cutoff())
+    db.prepare(deleteSyntheticHeartbeatsSql).run(cutoff())
+
+    const owners = db.prepare(`SELECT anal_id FROM analytics_event`).all() as { anal_id: string }[]
+    expect(owners.map((r) => r.anal_id)).toEqual(['person'])
+    db.close()
   })
 
   it('is idempotent: a second run deletes nothing more', () => {

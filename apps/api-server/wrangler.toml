@@ -57,8 +57,13 @@ binding = "ERROR_REPORT_META"
 id = "e8b67ae9fbd640adaf78aa42d59b80e9"
 
 # Rate limit for POST /heartbeat, keyed by the caller IP (transient, never stored).
-# Legit traffic is ~1 beat/hour/install, so 12/min/IP stops a bloat-spam loop without
-# touching real users. `period` must be 10 or 60. `namespace_id` is a per-account integer id.
+# Legit traffic is one beat per 3 hours per install (hourly from clients older than that), plus a
+# failed beat's retry at most every 15 minutes, so 12/min/IP stops a bloat-spam loop without
+# touching real users, even behind a shared office or campus address. A beat now carries up to 500
+# events, but the request count is still the right thing to limit: the body cap (256 KB) bounds
+# what one request can store, and a 429'd client keeps its events for the next beat, so a limit
+# that bites costs a delay rather than data. `period` must be 10 or 60. `namespace_id` is a
+# per-account integer id.
 [[ratelimits]]
 name = "HEARTBEAT_LIMITER"
 namespace_id = "1001"
@@ -247,6 +252,12 @@ GITHUB_PROJECT_TRIAGE_OPTION_ID = "6d6cdf53"
 #                                   ❌ Never a classic PAT: `repo` scope would make this Worker's env
 #                                   a write credential for every repo David owns. Unset simply turns
 #                                   issue filing off; nothing else changes.)
+# - POSTHOG_PROJECT_KEY            (optional: the PostHog project key, `phc_...`, the same public
+#                                   ingest key the release workflow bakes into the app as
+#                                   CMDR_POSTHOG_KEY. POST /heartbeat forwards the feature events it
+#                                   stored to PostHog with it (src/telemetry/posthog-forward.ts). Unset
+#                                   skips the forward; D1 still gets every event. Named apart from the
+#                                   dashboard's POSTHOG_API_KEY, a personal `phx_...` read key.)
 # - LISTMONK_API_TOKEN             (paired API token; sent as `token <user>:<token>`)
 #   (LISTMONK_API_URL / LISTMONK_API_USER / LISTMONK_BETA_LIST_ID are non-secret [vars] above.)
 #   For local dev, mirror these in .dev.vars (gitignored), for example:

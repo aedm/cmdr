@@ -66,21 +66,26 @@ describe('handleDailyAggregation', () => {
 })
 
 describe('handleSyntheticHeartbeatSweep', () => {
-  it('deletes only heartbeats, bounded by the grace-period cutoff', async () => {
+  it("deletes the synthetic installs' events, then their heartbeats, both bounded by the grace-period cutoff", async () => {
     const { db, calls } = createMockD1()
     const env = createBaseEnv({ TELEMETRY_DB: db })
 
     await handleSyntheticHeartbeatSweep(env as never)
 
-    expect(calls).toHaveLength(1)
-    expect(calls[0].sql).toContain('DELETE FROM heartbeat')
+    expect(calls).toHaveLength(2)
+    // Events first: the classifier reads `heartbeat`, so deleting the beats first would leave the
+    // events with nothing to identify them by, for good.
+    expect(calls[0].sql).toContain('DELETE FROM analytics_event')
+    expect(calls[1].sql).toContain('DELETE FROM heartbeat')
     // The cutoff has to be BOUND, never inlined: an unbounded delete would take the brand-new
     // installs that have not saved a setting yet. What the predicate does with it is proved
     // against a real SQLite in `synthetic-heartbeats.test.ts`.
-    expect(calls[0].bindings).toHaveLength(1)
-    const cutoffMs = Date.parse(`${String(calls[0].bindings[0])}Z`)
-    const expectedMs = Date.now() - syntheticHeartbeatGraceDays * 86_400_000
-    expect(Math.abs(cutoffMs - expectedMs)).toBeLessThan(86_400_000)
+    for (const call of calls) {
+      expect(call.bindings).toHaveLength(1)
+      const cutoffMs = Date.parse(`${String(call.bindings[0])}Z`)
+      const expectedMs = Date.now() - syntheticHeartbeatGraceDays * 86_400_000
+      expect(Math.abs(cutoffMs - expectedMs)).toBeLessThan(86_400_000)
+    }
   })
 })
 
@@ -130,6 +135,17 @@ describe('handleRetentionSweep', () => {
     const { sql } = await runSweep()
 
     expect(sql.some((s) => s.includes('DELETE FROM heartbeat'))).toBe(true)
+  })
+
+  it('deletes relayed feature events on the same two-year window, by OUR receive time', async () => {
+    const { sql, bindings } = await runSweep()
+
+    const index = sql.findIndex((s) => s.includes('DELETE FROM analytics_event'))
+    expect(index).toBeGreaterThanOrEqual(0)
+    // Never `occurred_at`: that's the client's clock, and a wrong one would keep a row forever.
+    expect(sql[index]).toContain('received_at < ?1')
+    const heartbeatIndex = sql.findIndex((s) => s.includes('DELETE FROM heartbeat'))
+    expect(bindings[index]).toEqual(bindings[heartbeatIndex])
   })
 
   it('drops the reply-to email from old feedback', async () => {

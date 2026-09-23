@@ -11,15 +11,29 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 - **`admin.ts`**: `/admin/stats` (activation + device counts), `/admin/downloads` (by day/version/arch/country/source,
   raw `count` plus deduped `uniqueCount`), `/admin/active-users`, `/admin/update-activity` (per-day distinct
   update-enabled installs, the retained aggregate ∪ today's raw), `/admin/crashes` (by day/crash site/signal),
-  `/admin/heartbeat-dau`, `/admin/config-shape` (settings values per app version, § below), `/admin/feedback` (full
-  text + reply-to email, newest first), `/admin/error-reports` (per-bundle R2 metadata via `list` + custom metadata,
-  newest first; `.amend.json` sidecars share the prefix and are skipped, since an amendment is part of its report rather
-  than a second one).
+  `/admin/heartbeat-dau` (§ below), `/admin/config-shape` (settings values per app version, § below), `/admin/feedback`
+  (full text + reply-to email, newest first), `/admin/error-reports` (per-bundle R2 metadata via `list` + custom
+  metadata, newest first; `.amend.json` sidecars share the prefix and are skipped, since an amendment is part of its
+  report rather than a second one).
 - **`funnel.ts`**: `/admin/funnel`, plus the pure `buildDateList` / `assembleFunnel` / `aggregateUaFamilies` helpers.
 - Tests: `admin-stats.test.ts`, `admin-endpoints.test.ts`, `funnel.test.ts` (route auth/validation plus the pure date
-  math, zero-fill, and D7-knowability rules).
+  math, zero-fill, and D7-knowability rules), `heartbeat-dau-sql.test.ts` (the DAU and app-hours query on real SQLite).
 
 Consumer: the private SvelteKit dashboard in `apps/analytics-dashboard/`.
+
+## Heartbeat DAU and app hours
+
+`/admin/heartbeat-dau?range=7d|30d|90d|all` returns one row per UTC day: `{ date, dau, appHours }`.
+
+- `dau`: `COUNT(DISTINCT anal_id)` that beat that day.
+- `appHours`: `SUM(COALESCE(uptime_seconds, 3600)) / 3600.0`, how long the app ran that day summed over installs. A beat
+  reports the runtime it accounts for; a beat from a client older than `uptime_seconds` stores NULL and counts as one
+  hour, because those clients beat hourly. That's what lets rows from before and after the three-hour cadence join in
+  one series. ❌ Don't go back to counting rows: a row count measures the beat cadence, so it drops by two thirds the
+  day a release changes it, with no change in use.
+
+The whole beat counts on the day it ARRIVED, so runtime that spans midnight lands on the later day. At a three-hour
+cadence that shifts a little runtime across a day boundary and changes no weekly or monthly total.
 
 ## Auth
 

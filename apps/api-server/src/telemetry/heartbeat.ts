@@ -1,18 +1,32 @@
 import { Hono, type Context } from 'hono'
-import { enforceIpRateLimit, type Bindings } from '../types'
+import { enforceIpRateLimit, readCappedBody, scheduleBackground, type Bindings } from '../types'
+import { forwardEventsToPostHog } from './posthog-forward'
 import { versionPattern } from './telemetry'
 
 const heartbeat = new Hono<{ Bindings: Bindings }>()
 
-// Heartbeat ingestion: one row per beat (launch + hourly) for true daily-active tracking.
-// Identity is the random `anal_<uuid>` analytics id; no IP is stored (the id is the dedup key).
-// The whole request body is capped, and the config blob is capped again on its own so a single
-// fat config can't dominate the budget.
-const maxHeartbeatBytes = 32 * 1024
+// Heartbeat ingestion: one row per beat for true daily-active tracking, plus the feature events the
+// app accumulated since its last successful beat. Identity is the random `anal_<uuid>` analytics id;
+// no IP is stored (the id is the dedup key). The whole request body is capped, and the config blob
+// is capped again on its own so a single fat config can't dominate the budget. The body cap is sized
+// for a full batch of events: 500 events at a few hundred bytes each, plus the config.
+const maxHeartbeatBytes = 256 * 1024
 const maxConfigJsonBytes = 16 * 1024
+/** Events stored per beat. The client never sends more; past this the server keeps the first ones. */
+const maxEventsPerBeat = 500
+/** A beat can't account for more runtime than this. Anything longer is a client bug, clamped rather than stored. */
+const maxUptimeSeconds = 7 * 86_400
 const heartbeatRequiredFields = ['analId', 'appVersion', 'osVersion', 'arch'] as const
 // `anal_` + a v4 UUID (36 chars: 32 hex digits plus the 4 dashes).
 const analIdPattern = /^anal_[0-9a-f-]{36}$/
+// What the app's event names look like (`search_used`), plus `$` for PostHog's reserved names.
+const eventNamePattern = /^[a-z0-9_$]{1,100}$/
+// RFC 3339 date-time: a `Z` or a numeric offset is required, so a zone-less time can't be misread.
+const rfc3339Pattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
+/** No Cmdr build predates this, so an earlier event timestamp is a broken clock. */
+const earliestEventMs = Date.parse('2025-01-01T00:00:00Z')
+/** How far ahead of our clock an event may claim to be, for clock skew. Past this it's a broken clock. */
+const maxEventClockSkewMs = 86_400_000
 
 interface Heartbeat {
   analId: string
@@ -23,6 +37,34 @@ interface Heartbeat {
   buildMode?: 'release' | 'debug' | null
   /** Optional. The allowlisted config-shape snapshot, stored verbatim as `config_json`. */
   config?: Record<string, unknown> | null
+  /** Optional. Runtime this beat accounts for; older clients don't set it (stored as NULL). */
+  uptimeSeconds?: number | null
+  /** Optional. Feature events since the last successful beat; validated item by item. */
+  events?: unknown[] | null
+}
+
+/** One feature event that passed validation, with its timestamp normalized to UTC. */
+interface RelayedEvent {
+  event: string
+  timestamp: string
+  properties: Record<string, unknown>
+}
+
+const insertHeartbeatSql = `INSERT INTO heartbeat (anal_id, app_version, os_version, arch, build_mode, config_json, uptime_seconds)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+
+/**
+ * Inserts a whole beat's events in ONE statement: they travel as a single JSON parameter
+ * (`[[event, occurredAt, propertiesJson], ...]`) and `json_each` unpacks them. One statement per
+ * event would put up to 500 statements in the batch, against D1's per-invocation query limit, and a
+ * multi-row VALUES list would hit its 100-bound-parameter cap at 16 events.
+ */
+const insertEventsSql = `INSERT INTO analytics_event (anal_id, app_version, event, occurred_at, properties_json)
+     SELECT ?1, ?2, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]')
+     FROM json_each(?3)`
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**
@@ -40,8 +82,26 @@ function validateBuildMode(buildMode: unknown): string | null {
 /** Validate the optional `config` blob: must be a plain object, capped at `maxConfigJsonBytes`. */
 function validateConfig(config: unknown): string | null {
   if (config === undefined || config === null) return null
-  if (typeof config !== 'object' || Array.isArray(config)) return 'Invalid config'
+  if (!isPlainObject(config)) return 'Invalid config'
   if (JSON.stringify(config).length > maxConfigJsonBytes) return 'Config too large'
+  return null
+}
+
+/** Validate the optional `uptimeSeconds`: a non-negative integer. Too large is clamped later, not rejected. */
+function validateUptime(uptime: unknown): string | null {
+  if (uptime === undefined || uptime === null) return null
+  if (typeof uptime !== 'number' || !Number.isInteger(uptime) || uptime < 0) return 'Invalid uptimeSeconds'
+  return null
+}
+
+/**
+ * Validate the optional `events` container. Only the container can fail the beat; a bad ITEM is
+ * dropped by `parseEvents` instead, because one malformed event from any call site would otherwise
+ * fail every beat that carries it, and the client would resend it forever.
+ */
+function validateEvents(events: unknown): string | null {
+  if (events === undefined || events === null) return null
+  if (!Array.isArray(events)) return 'Invalid events'
   return null
 }
 
@@ -60,29 +120,73 @@ function validateHeartbeatShape(beat: Record<string, unknown>): string | null {
   }
   if (!analIdPattern.test(beat.analId as string)) return 'Invalid analId'
   if (!versionPattern.test(beat.appVersion as string)) return 'Invalid appVersion'
-  return validateBuildMode(beat.buildMode) ?? validateConfig(beat.config)
+  return (
+    validateBuildMode(beat.buildMode) ??
+    validateConfig(beat.config) ??
+    validateUptime(beat.uptimeSeconds) ??
+    validateEvents(beat.events)
+  )
+}
+
+/** One event, validated and normalized, or null to drop it. `properties` may be absent (it means `{}`). */
+function parseEvent(raw: unknown, nowMs: number): RelayedEvent | null {
+  if (!isPlainObject(raw)) return null
+  const { event, timestamp, properties } = raw
+  if (typeof event !== 'string' || !eventNamePattern.test(event)) return null
+  if (typeof timestamp !== 'string' || !rfc3339Pattern.test(timestamp)) return null
+  const occurredMs = Date.parse(timestamp)
+  if (Number.isNaN(occurredMs) || occurredMs < earliestEventMs || occurredMs > nowMs + maxEventClockSkewMs) return null
+  if (properties !== undefined && properties !== null && !isPlainObject(properties)) return null
+  return { event, timestamp: new Date(occurredMs).toISOString(), properties: properties ?? {} }
+}
+
+/**
+ * Keep the first `maxEventsPerBeat` events and the valid ones among them. Both kinds of drop are
+ * logged with a count: past the cap means a client ignored its own limit, and an invalid item means
+ * a call site in the app sends something the contract doesn't allow.
+ */
+function parseEvents(raw: unknown[] | null | undefined): RelayedEvent[] {
+  if (!raw) return []
+  const nowMs = Date.now()
+  const overCap = Math.max(0, raw.length - maxEventsPerBeat)
+  const kept: RelayedEvent[] = []
+  for (const item of raw.slice(0, maxEventsPerBeat)) {
+    const parsed = parseEvent(item, nowMs)
+    if (parsed) kept.push(parsed)
+  }
+  const invalid = Math.min(raw.length, maxEventsPerBeat) - kept.length
+  if (overCap > 0) {
+    console.warn(`Heartbeat: dropped ${String(overCap)} events past the ${String(maxEventsPerBeat)}-event cap`)
+  }
+  if (invalid > 0) {
+    console.warn(`Heartbeat: dropped ${String(invalid)} malformed events (bad name, timestamp, or properties)`)
+  }
+  return kept
 }
 
 /** Read and parse the request body, enforcing the size cap. Returns the parsed object or an error. */
 async function readHeartbeatBody(c: Context<{ Bindings: Bindings }>): Promise<Record<string, unknown> | Response> {
+  // A cheap fast-fail for an honest client; `readCappedBody` is the actual cap.
   const contentLength = c.req.header('content-length')
   if (contentLength && parseInt(contentLength, 10) > maxHeartbeatBytes) {
     return c.json({ error: 'Heartbeat too large' }, 400)
   }
 
-  let rawBody: string
+  const body = c.req.raw.body
+  if (!body) return c.json({ error: 'Invalid JSON' }, 400)
+  let bytes: ArrayBuffer | null
   try {
-    rawBody = await c.req.text()
+    bytes = await readCappedBody(body, maxHeartbeatBytes)
   } catch {
     return c.json({ error: 'Could not read request body' }, 400)
   }
-  if (rawBody.length > maxHeartbeatBytes) {
+  if (!bytes) {
     return c.json({ error: 'Heartbeat too large' }, 400)
   }
 
   let parsed: unknown
   try {
-    parsed = JSON.parse(rawBody)
+    parsed = JSON.parse(new TextDecoder().decode(bytes))
   } catch {
     return c.json({ error: 'Invalid JSON' }, 400)
   }
@@ -106,28 +210,51 @@ heartbeat.post('/heartbeat', async (c) => {
     return c.json({ error: validationError }, 400)
   }
   const beat = parsed as unknown as Heartbeat
+  const events = parseEvents(beat.events)
+  const config = beat.config ?? null
 
   // The config blob is stored verbatim as a single JSON column (not per-field columns), so new
   // settings auto-absorb without a migration. We re-serialize to a canonical string for storage.
-  const configJson = beat.config !== undefined && beat.config !== null ? JSON.stringify(beat.config) : null
+  const configJson = config ? JSON.stringify(config) : null
+  const uptimeSeconds =
+    beat.uptimeSeconds !== undefined && beat.uptimeSeconds !== null
+      ? Math.min(beat.uptimeSeconds, maxUptimeSeconds)
+      : null
 
-  // Write to D1 (fire-and-forget). `build_mode` and `config_json` are nullable.
-  const dbWrite = c.env.TELEMETRY_DB.prepare(
-    `INSERT INTO heartbeat (anal_id, app_version, os_version, arch, build_mode, config_json)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(beat.analId, beat.appVersion, beat.osVersion, beat.arch, beat.buildMode ?? null, configJson)
-    .run()
-    .catch(() => {}) // Don't let D1 failure block the response
-
-  try {
-    c.executionCtx.waitUntil(dbWrite)
-  } catch {
-    // executionCtx unavailable (for example, in tests); await inline as fallback
-    await dbWrite
+  const db = c.env.TELEMETRY_DB
+  const statements = [
+    db
+      .prepare(insertHeartbeatSql)
+      .bind(beat.analId, beat.appVersion, beat.osVersion, beat.arch, beat.buildMode ?? null, configJson, uptimeSeconds),
+  ]
+  if (events.length > 0) {
+    const rows = events.map((e) => [e.event, e.timestamp, JSON.stringify(e.properties)])
+    statements.push(db.prepare(insertEventsSql).bind(beat.analId, beat.appVersion, JSON.stringify(rows)))
   }
+
+  // AWAITED, and one batch (D1 runs a batch as a transaction): a 2xx tells the client both the beat
+  // and its events are stored, which is what lets it clear them from its spool. A failure answers a
+  // soft 502 so the client keeps them for the next try.
+  try {
+    await db.batch(statements)
+  } catch (e) {
+    console.error('Heartbeat: D1 write failed', e)
+    return c.json({ error: 'Could not store the heartbeat right now' }, 502)
+  }
+
+  // Only after D1 has them: the client retries a beat that failed, so forwarding earlier would send
+  // PostHog the same events twice. Never fails the beat; see `posthog-forward.ts`.
+  await scheduleBackground(
+    c,
+    forwardEventsToPostHog(
+      c.env.POSTHOG_PROJECT_KEY,
+      { analId: beat.analId, appVersion: beat.appVersion, osVersion: beat.osVersion, arch: beat.arch },
+      events,
+      config,
+    ),
+  )
 
   return c.body(null, 204)
 })
 
-export { heartbeat }
+export { heartbeat, insertEventsSql, insertHeartbeatSql, maxEventsPerBeat }

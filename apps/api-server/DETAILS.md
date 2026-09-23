@@ -81,13 +81,13 @@ Read this before any non-trivial work here: editing, planning, reorganizing, or 
 | GET     | `/admin/active-users`      | Bearer token  | Aggregated daily active users by version/arch                                                      |
 | GET     | `/admin/update-activity`   | Bearer token  | Per-day distinct update-enabled installs by version (retained aggregate ∪ today's raw)             |
 | GET     | `/admin/crashes`           | Bearer token  | Aggregated crash data by day/crash site/signal                                                     |
-| GET     | `/admin/heartbeat-dau`     | Bearer token  | Per-day DAU (distinct `anal_id`) + beats from `heartbeat`                                          |
+| GET     | `/admin/heartbeat-dau`     | Bearer token  | Per-day DAU (distinct `anal_id`) + app hours (`uptime_seconds`, an hour per legacy beat)           |
 | GET     | `/admin/funnel`            | Bearer token  | Per-UTC-day acquisition funnel for the last N days (downloads, installs, DAU, D7, signups)         |
 | GET     | `/admin/feedback`          | Bearer token  | In-app feedback rows from D1 (full text + reply-to email), newest first                            |
 | GET     | `/admin/error-reports`     | Bearer token  | Per-bundle error-report metadata from the R2 prod prefix (`list` + custom metadata), newest first  |
 | GET     | `/download/:version/:arch` | none          | Log download to D1 (bots skipped, source + `ref` tagged), 302 → GitHub; `:version` takes `latest`  |
 | POST    | `/crash-report`            | IP rate-limit | Ingest crash report to D1                                                                          |
-| POST    | `/heartbeat`               | IP rate-limit | Ingest a usage heartbeat (anonymous `anal_id`) to D1                                               |
+| POST    | `/heartbeat`               | IP rate-limit | Usage heartbeat + relayed feature events (anonymous `anal_id`) to D1, events forwarded to PostHog  |
 | POST    | `/error-report`            | IP rate-limit | Multipart upload (zip + meta) → R2, Discord notify. Also gated by the global intake budget         |
 | POST    | `/error-report/:id/amend`  | amend key     | Add a note or reply-to address to a report already in R2 (`.amend.json` sidecar + email)           |
 | POST    | `/beta-signup`             | IP rate-limit | Subscribe a contact email to the Listmonk beta list (NO install id)                                |
@@ -137,6 +137,7 @@ Decisions.
 | `LISTMONK_BETA_LIST_ID`            | Beta-list numeric id             | Same id                            |
 | `IP_HASH_PEPPER`                   | Any random string                | Makes every stored IP hash one-way |
 | `HEALTHCHECKS_PING_URL`            | unset (skips the ping)           | healthchecks.io cron ping URL      |
+| `POSTHOG_PROJECT_KEY`              | unset (skips the forward)        | PostHog `phc_` key for the relay   |
 
 `ED25519_PRIVATE_KEY` is two different keys, unlike the rows marked "Same". The production signer can mint a license
 every shipped build accepts, so it exists only as a wrangler secret; `.dev.vars` gets its own pair, and the desktop app
@@ -264,14 +265,16 @@ back to the OAuth login).
 
 ## Storage
 
-**D1 for telemetry and fulfillment:** crash reports, downloads, update checks, heartbeats, feedback, and the
-`license_issuance` record all live in D1 (binding `TELEMETRY_DB`, database `cmdr-telemetry`). Migrations live in
-`migrations/` (latest: `0017_manual_licenses.sql`, the `source` / `organization_name` / `expires_at` / `revoked_at` /
-`note` columns that turn `license_issuance` into the ledger for hand-issued licenses as well as purchases;
-`0016_feedback_notified_at.sql` is the `feedback.notified_at` column the feedback digest reads, which also stamps the
-pre-existing rows so the first tick doesn't mail the backlog; `0015_crash_app_fate.sql` adds the nullable `app_fate`
-column the crash email ranks rows by; `0014_downloads_daily_unique.sql` is the distinct-downloader rollup the retention
-sweep writes; `0013_minimize_stored_identifiers.sql` adds `downloads.ua_family` and erases the crash-table IP hashes;
+**D1 for telemetry and fulfillment:** crash reports, downloads, update checks, heartbeats, relayed feature events,
+feedback, and the `license_issuance` record all live in D1 (binding `TELEMETRY_DB`, database `cmdr-telemetry`).
+Migrations live in `migrations/` (latest: `0020_heartbeat_uptime_and_events.sql`, `heartbeat.uptime_seconds` and the
+`analytics_event` table `/heartbeat` relays feature events into; `0017_manual_licenses.sql` is the `source` /
+`organization_name` / `expires_at` / `revoked_at` / `note` columns that turn `license_issuance` into the ledger for
+hand-issued licenses as well as purchases; `0016_feedback_notified_at.sql` is the `feedback.notified_at` column the
+feedback digest reads, which also stamps the pre-existing rows so the first tick doesn't mail the backlog;
+`0015_crash_app_fate.sql` adds the nullable `app_fate` column the crash email ranks rows by;
+`0014_downloads_daily_unique.sql` is the distinct-downloader rollup the retention sweep writes;
+`0013_minimize_stored_identifiers.sql` adds `downloads.ua_family` and erases the crash-table IP hashes;
 `0012_license_issuance.sql` is the fulfillment record; `0011_crash_panic_message.sql` adds the nullable `panic_message`
 column; `0007_feedback.sql` adds the `feedback` table; `0006_crash_diag_email.sql` adds the nullable `diag_id` + `email`
 columns; `0005_heartbeat.sql` adds the `heartbeat` table). Apply with `wrangler d1 migrations apply cmdr-telemetry`
@@ -418,8 +421,8 @@ the policy is a promise about these tables, so changing a window, a column, or a
 the same commit.
 
 The sweep's default shape is **clear the identifying columns, keep the row**. Counts, version breakdowns, and crash
-triage value live in the other columns, and there's no privacy reason to lose them. Only `heartbeat` deletes rows,
-because its stable `anal_id` IS the identifying data.
+triage value live in the other columns, and there's no privacy reason to lose them. Only `heartbeat` and
+`analytics_event` delete rows, because their stable `anal_id` IS the identifying data.
 
 - **`downloads`**: `hashed_ip` and `user_agent` cleared after 90 days; the row (version, arch, country, continent,
   source, ref, referer, `ua_family`) is kept indefinitely. 90 days is what the two columns are FOR: same-day dedup needs
@@ -436,6 +439,9 @@ because its stable `anal_id` IS the identifying data.
   both under the license sections.
 - **`heartbeat`**: rows DELETED after two years. Two years covers every window the dashboard computes (DAU, new
   installs, D7 retention) with room to spare.
+- **`analytics_event`**: rows DELETED after two years, the same "desktop usage stats" promise as `heartbeat`. Aged by
+  `received_at` (our clock), never `occurred_at`: that's the client's clock, and a wrong one would keep a row forever.
+  The copy forwarded to PostHog is under PostHog's own retention, which the privacy policy names separately.
 - **Error report bundles**: 90-day R2 lifecycle, plus capacity-driven eviction that never touches anything under 60 days
   (`src/telemetry/DETAILS.md` § Eviction). Not part of this sweep. The same 90 days covers every reply-to address an
   error report can carry (`meta.email` inside the bundle zip, and any address in the `.amend.json` sidecar) and the
@@ -559,9 +565,10 @@ would leave personal data past its promise, which is exactly the failure that ha
 
 ## Synthetic heartbeats
 
-`handleSyntheticHeartbeatSweep` deletes every beat belonging to an install that has NEVER persisted a setting and has
-been silent for `syntheticHeartbeatGraceDays` (seven days). It's a data-INTEGRITY sweep, not a retention one, so it sits
-outside `handleRetentionSweep` and outside the privacy-policy contract (it only ever deletes earlier than promised).
+`handleSyntheticHeartbeatSweep` deletes every beat AND every relayed feature event belonging to an install that has
+NEVER persisted a setting and has been silent for `syntheticHeartbeatGraceDays` (seven days). It's a data-INTEGRITY
+sweep, not a retention one, so it sits outside `handleRetentionSweep` and outside the privacy-policy contract (it only
+ever deletes earlier than promised).
 
 **What it corrects.** A fresh data dir mints a fresh `anal_` install id, so every instance Cmdr's own tooling launches
 (E2E shards, i18n captures, marketing shots) registered as a brand-new user, on every launch. Through the beta that put
@@ -571,7 +578,8 @@ actives a day on `/admin/heartbeat-dau`, which is what the analytics dashboard p
 makes the STORED history honest, since the Worker can't tell a robot from a person at intake, only across an install's
 history.
 
-**The classifier** (`deleteSyntheticHeartbeatsSql`), decided per install rather than per row:
+**The classifier** (`syntheticInstallIdsSql`, shared by `deleteSyntheticEventsSql` and `deleteSyntheticHeartbeatsSql`),
+decided per install rather than per row:
 
 - Never sent a beat whose `config_json` contains `"_schemaVersion"`. The frontend settings store stamps that key on
   every save, and the heartbeat's config snapshot carries every number-valued key, so one such beat proves a person
@@ -582,6 +590,10 @@ history.
 One qualifying beat vouches for that id's whole history, so a real user's launch beats from before their first settings
 save survive. `instr`, never `LIKE`: SQLite's `_` is a single-character wildcard, so `LIKE '%"_schemaVersion"%'` would
 let an unrelated `"xschemaVersion"` key vouch for a synthetic install.
+
+**Events go first.** The classifier reads `heartbeat`, so deleting the beats first would leave that install's events
+with nothing marking them synthetic, until retention. In this order a failure between the two statements is harmless:
+tomorrow's run finds the same beats.
 
 **Why the grace period is the delicate part.** A genuinely brand-new user has no `settings.json` either, so for their
 first minutes they look exactly like a test shard. Deleting on the classifier alone would erase real first-day installs.
