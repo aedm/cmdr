@@ -25,8 +25,33 @@ impl WebdavVolume {
     /// Runs `work`, noticing on the way out if the answer says the server is
     /// gone. ❗ Every delegator below that can reach the wire wraps itself in
     /// this: with no watcher, the operations ARE the detector (`reconnect.rs`).
+    ///
+    /// It also counts `work` as waiting on the server, which is what the
+    /// silence watch looks after (`crate::liveness`), and cuts it with
+    /// `DeviceDisconnected` the moment the client is found gone, by the watch
+    /// or by another operation: a silent server closes nothing, so nothing
+    /// else would ever end the wait.
     async fn noting<T>(&self, work: impl Future<Output = Result<T, VolumeError>> + Send) -> Result<T, VolumeError> {
-        let outcome = work.await;
+        let client = self.inner.client.read().await.clone();
+        let outcome = match client {
+            // No client: the work answers `DeviceDisconnected` on its own, at once.
+            None => work.await,
+            Some(client) => {
+                let liveness = Arc::clone(client.liveness());
+                let waiting = liveness.begin();
+                if waiting.needs_a_watch() {
+                    self.inner.watch_over(&client);
+                }
+                drop(client);
+                let outcome = tokio::select! {
+                    biased;
+                    outcome = work => outcome,
+                    () = liveness.lost().cancelled() => Err(VolumeError::DeviceDisconnected(self.inner.volume_id.clone())),
+                };
+                drop(waiting);
+                outcome
+            }
+        };
         if let Err(error) = &outcome {
             self.note_lost_session(error);
         }

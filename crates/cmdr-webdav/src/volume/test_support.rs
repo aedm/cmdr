@@ -10,6 +10,7 @@ use cmdr_fs::volume::remote_paths::RemoteRoot;
 use url::Url;
 
 use super::{ConnectionState, WebdavVolume, WebdavVolumeInner};
+use crate::liveness::Timings;
 use crate::params::WebdavConnectionParams;
 
 pub(super) fn make_test_volume(root: &str) -> WebdavVolume {
@@ -39,6 +40,7 @@ pub(super) fn make_test_volume_with(root: &str, host: VolumeHost) -> WebdavVolum
             unmounted: AtomicBool::new(false),
             auto_reconnect: AtomicBool::new(true),
             auth_attempt_spent: AtomicBool::new(false),
+            silence: std::sync::RwLock::new(Timings::PRODUCTION),
             host,
         }),
     }

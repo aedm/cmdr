@@ -21,6 +21,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
+use cmdr_fs::ignore_poison::RwLockIgnorePoison;
 use cmdr_fs::volume::host::credentials::StoredCredentials;
 use cmdr_fs::volume::secret_store;
 use cmdr_fs::volume::{SelfHandle, VolumeError};
@@ -30,6 +31,8 @@ use tokio_util::sync::CancellationToken;
 use super::state::ConnectionState;
 use super::{UnattendedReconnect, WebdavVolume, WebdavVolumeInner, build_and_probe};
 use crate::errors::WebdavConnectError;
+use crate::liveness;
+use crate::transport::WebdavClient;
 
 /// Bounded and growing: a handful of tries over a few minutes, then it stops
 /// rather than hammering a server that is genuinely down.
@@ -71,11 +74,18 @@ impl WebdavVolume {
         let auto_reconnect = inner.auto_reconnect.load(Ordering::Relaxed);
         // ❗ Dropped HERE when nothing holds the lock, so an `attempt_reconnect`
         // the frontend fires on the event it just got doesn't find the dead
-        // client still installed and answer "fine" without probing.
-        let dropped = inner.client.try_write().map(|mut client| client.take()).is_ok();
+        // client still installed and answer "fine" without probing. (`rebuild`
+        // treats one found under a non-`Connected` state as dead anyway.)
+        let dropped = match inner.client.try_write() {
+            Ok(mut client) => {
+                inner.drop_dead_client(&mut client);
+                true
+            }
+            Err(_) => false,
+        };
         inner.host.runtime().spawn(async move {
             if !dropped {
-                inner.client.write().await.take();
+                inner.drop_dead_client(&mut *inner.client.write().await);
             }
             drop(inner);
             if auto_reconnect {
@@ -86,6 +96,36 @@ impl WebdavVolume {
 }
 
 impl WebdavVolumeInner {
+    /// Takes the installed client out as dead, and cuts every operation still
+    /// waiting on it. ❗ Only under a non-`Connected` state: a late task must
+    /// never take the fresh client a reconnect just installed, which `rebuild`
+    /// marks `Connected` under the same write guard.
+    fn drop_dead_client(&self, client: &mut Option<Arc<WebdavClient>>) {
+        if self.connection_state() == ConnectionState::Connected {
+            return;
+        }
+        if let Some(dead) = client.take() {
+            dead.liveness().declare_lost();
+        }
+    }
+
+    /// Starts the silence watch over `client`'s waiting operations
+    /// (`crate::liveness`). ❗ Holds the client weakly: the watch must not keep
+    /// a dropped client's connection pool alive.
+    pub(super) fn watch_over(&self, client: &Arc<WebdavClient>) {
+        let timings = *self.silence.read_ignore_poison();
+        let liveness = Arc::clone(client.liveness());
+        let client = Arc::downgrade(client);
+        self.host.runtime().spawn(liveness::watch(liveness, timings, move || {
+            let client = client.upgrade();
+            async move {
+                match client {
+                    Some(client) => client.ping().await,
+                    None => false,
+                }
+            }
+        }));
+    }
     /// Probes now, on the unattended terms. Single-flight.
     pub(super) async fn do_attempt_reconnect(&self) -> Result<(), VolumeError> {
         self.rebuild(None).await.map_err(|stalled| self.report(stalled))
@@ -120,10 +160,18 @@ impl WebdavVolumeInner {
         if self.unmounted.load(Ordering::Relaxed) {
             return Err(gone());
         }
-        if !attended && self.client.read().await.is_some() {
-            // Still installed, so nothing to rebuild; the state may lag it.
-            self.emit_if_changed(ConnectionState::Connected);
-            return Ok(());
+        if !attended {
+            let mut installed = self.client.write().await;
+            if installed.is_some() {
+                // ❗ Live only while the state says so. Under any other state
+                // it's the dead client whose drop is still on its way
+                // (`note_lost_session` spawns it), and answering "fine" for it
+                // would report a server that's still gone as back.
+                if self.connection_state() == ConnectionState::Connected {
+                    return Ok(());
+                }
+                self.drop_dead_client(&mut installed);
+            }
         }
         if !attended {
             if !self.auto_reconnect.load(Ordering::Relaxed) {
@@ -145,9 +193,13 @@ impl WebdavVolumeInner {
                 if self.unmounted.load(Ordering::Relaxed) {
                     return Err(gone());
                 }
-                *self.client.write().await = Some(Arc::new(client));
+                // ❗ Installed and marked `Connected` under ONE guard, so a late
+                // `drop_dead_client` can never take it for the dead one.
+                let mut installed = self.client.write().await;
+                *installed = Some(Arc::new(client));
                 self.auth_attempt_spent.store(false, Ordering::Relaxed);
                 self.emit_if_changed(ConnectionState::Connected);
+                drop(installed);
                 info!(target: "volume", "webdav volume '{}' is back", self.volume_id);
                 Ok(())
             }

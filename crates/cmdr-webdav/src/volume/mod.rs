@@ -24,6 +24,7 @@ use reqwest::{RequestBuilder, Response};
 use tokio_util::sync::CancellationToken;
 
 use crate::errors::{Attempted, WebdavConnectError, map_status, map_transport_error};
+use crate::liveness::Timings;
 use crate::params::WebdavConnectionParams;
 use crate::transport::WebdavClient;
 
@@ -109,6 +110,10 @@ struct WebdavVolumeInner {
     /// Whether the one unattended authentication attempt has been spent
     /// (`reconnect.rs`). ❌ Never a loop: repeated refusals lock accounts.
     auth_attempt_spent: AtomicBool,
+    /// How long silence may last before the server counts as gone
+    /// (`crate::liveness`). A field rather than the constant so a cell can
+    /// shorten it and still run in real time.
+    silence: std::sync::RwLock<Timings>,
     /// Everything this backend asks the app around it.
     host: VolumeHost,
 }
@@ -191,12 +196,13 @@ impl WebdavVolume {
     /// table, both against `path` and what the request was trying to do.
     pub(super) async fn send(
         &self,
+        client: &WebdavClient,
         request: RequestBuilder,
         path: &str,
         attempted: Attempted,
     ) -> Result<Response, VolumeError> {
-        let response = request
-            .send()
+        let response = client
+            .send(request)
             .await
             .map_err(|e| map_transport_error(&e, &self.inner.volume_id, path))?;
         if response.status().is_success() {
@@ -220,6 +226,13 @@ impl WebdavVolume {
     #[cfg(any(test, feature = "testing"))]
     pub async fn simulate_session_loss(&self) {
         self.inner.client.write().await.take();
+    }
+
+    /// Shortens the silence ladder, for a cell that runs it in real time. Takes
+    /// effect from the next watch started.
+    #[cfg(test)]
+    pub(super) fn set_silence_timings(&self, timings: Timings) {
+        *self.inner.silence.write_ignore_poison() = timings;
     }
 
     /// A handle on the live client, for a cell asserting that nothing re-probed.
@@ -313,6 +326,7 @@ impl WebdavVolume {
                 unmounted: AtomicBool::new(false),
                 auto_reconnect: AtomicBool::new(auto_reconnect),
                 auth_attempt_spent: AtomicBool::new(false),
+                silence: std::sync::RwLock::new(Timings::PRODUCTION),
                 host,
             }),
         }
@@ -338,5 +352,7 @@ mod nextcloud_test;
 mod reconnect_test;
 #[cfg(test)]
 mod sharing_test;
+#[cfg(test)]
+mod slow_server_test;
 #[cfg(test)]
 mod test_support;

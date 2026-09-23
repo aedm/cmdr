@@ -35,6 +35,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::WebdavVolume;
 use crate::errors::Attempted;
+use crate::liveness::Liveness;
 use crate::transport::{MUTATION_BUDGET, method};
 
 /// How often the upload reports progress while the body is on its way.
@@ -99,6 +100,12 @@ struct BodySource {
     counts: BodyCounts,
     stop: CancellationToken,
     source_error: Arc<std::sync::Mutex<Option<VolumeError>>>,
+    /// The client's silence watch. ❗ A piece handed over counts as the
+    /// server being there: hyper asks for the next one only as the socket
+    /// drains, and a socket drains only while the far end acknowledges. A
+    /// server that answers nothing until the whole upload is in would
+    /// otherwise look silent for its entire length.
+    liveness: Arc<Liveness>,
 }
 
 impl BodySource {
@@ -165,6 +172,7 @@ impl WebdavVolume {
                 counts: counts.clone(),
                 stop: stop.clone(),
                 source_error: Arc::clone(&source_error),
+                liveness: Arc::clone(client.liveness()),
             },
             |mut source| async move {
                 // Cancellation is answered before anything is pulled or handed
@@ -191,6 +199,7 @@ impl WebdavVolume {
                     return Some((Err(failed), source));
                 }
                 source.counts.handed.fetch_add(chunk.len() as u64, Ordering::Relaxed);
+                source.liveness.heard();
                 Some((Ok(Bytes::from(chunk)), source))
             },
         ));
@@ -203,7 +212,7 @@ impl WebdavVolume {
         // The block scopes the in-flight request: leaving it drops the
         // request, which is what aborts a cancelled upload on the wire.
         let outcome = {
-            let put = self.send(request, &temp, Attempted::Reaching);
+            let put = self.send(&client, request, &temp, Attempted::Reaching);
             let mut put = std::pin::pin!(put);
             let mut tick = tokio::time::interval(PROGRESS_TICK);
             tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
@@ -271,7 +280,7 @@ impl WebdavVolume {
             .header("Destination", client.url_for(&remote, false).as_str())
             .header("Overwrite", "T")
             .timeout(MUTATION_BUDGET);
-        if let Err(e) = self.send(request, &remote, Attempted::Reaching).await {
+        if let Err(e) = self.send(&client, request, &remote, Attempted::Reaching).await {
             self.remove_best_effort(&temp).await;
             return Err(e);
         }
@@ -285,7 +294,7 @@ impl WebdavVolume {
             let request = client
                 .request(Method::DELETE, client.url_for(remote, false))
                 .timeout(MUTATION_BUDGET);
-            let _ = self.send(request, remote, Attempted::Reaching).await;
+            let _ = self.send(&client, request, remote, Attempted::Reaching).await;
         }
     }
 }

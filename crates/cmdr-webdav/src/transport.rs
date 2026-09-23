@@ -5,6 +5,7 @@
 //! that stream).** Everything else works in `Url`s, status codes, and
 //! [`PropfindEntry`]s, so a client swap is at most four files' problem.
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use log::debug;
@@ -14,6 +15,7 @@ use reqwest::{Method, RequestBuilder, Response, StatusCode};
 use url::Url;
 
 use crate::errors::{WebdavConnectError, classify_connect_error};
+use crate::liveness::Liveness;
 use crate::propfind::{PropfindEntry, parse_multistatus};
 
 /// The connect budget, per request: the PROBE's total budget and the idle
@@ -80,27 +82,70 @@ const PROPFIND_BODY: &str = r#"<?xml version="1.0" encoding="utf-8"?>
 /// One authenticated client for one account on one server.
 pub(crate) struct WebdavClient {
     http: reqwest::Client,
+    /// The silence watchdog's line to the server: the same settings with
+    /// pooling OFF, so every probe dials fresh. ❗ A pooled probe could ride
+    /// the very connection that went quiet, or skip the dial that tells a
+    /// server gone from a server busy.
+    fresh: reqwest::Client,
     base: Url,
     username: String,
     password: String,
+    /// What the server has said lately (`crate::liveness`). Dies with this
+    /// client: a reconnect builds a new one.
+    liveness: Arc<Liveness>,
 }
 
 impl WebdavClient {
     /// Builds the client. Redirects are off: a followed MOVE or COPY would
     /// resend its `Destination` against a URL the user never named.
+    ///
+    /// The pool keeps `reqwest`'s TCP keepalive (15 s idle, then 3 probes
+    /// 15 s apart; verified on reqwest 0.13.4, `ClientBuilder::new`,
+    /// 2026-09-23), so an idle pooled connection whose far end vanished is
+    /// reaped by the OS rather than handed to the next request.
     pub(crate) fn new(base: Url, username: &str, password: &str) -> Result<Self, WebdavConnectError> {
-        let http = reqwest::Client::builder()
-            .user_agent("Cmdr")
-            .connect_timeout(REQUEST_BUDGET)
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .map_err(|e| WebdavConnectError::Transport(e.to_string()))?;
+        let builder = || {
+            reqwest::Client::builder()
+                .user_agent("Cmdr")
+                .connect_timeout(REQUEST_BUDGET)
+                .redirect(reqwest::redirect::Policy::none())
+        };
+        let build_failed = |e: reqwest::Error| WebdavConnectError::Transport(e.to_string());
         Ok(Self {
-            http,
+            http: builder().build().map_err(build_failed)?,
+            // `0` turns hyper-util's pool off outright (verified on 0.1.20,
+            // `pool::Config::is_enabled`, 2026-09-23).
+            fresh: builder().pool_max_idle_per_host(0).build().map_err(build_failed)?,
             base,
             username: username.to_string(),
             password: password.to_string(),
+            liveness: Arc::new(Liveness::new()),
         })
+    }
+
+    /// This client's silence watch.
+    pub(crate) fn liveness(&self) -> &Arc<Liveness> {
+        &self.liveness
+    }
+
+    /// Sends `request` and notes the answer's headers as the server being
+    /// there. ❗ Every request that expects an answer goes out through here or
+    /// through [`Self::propfind`], or its bytes never count against silence.
+    pub(crate) async fn send(&self, request: RequestBuilder) -> Result<Response, reqwest::Error> {
+        let response = request.send().await?;
+        self.liveness.heard();
+        Ok(response)
+    }
+
+    /// Whether the server answers at all, on a fresh connection: an `OPTIONS`
+    /// on the base URL, any status counting. The watchdog applies the budget.
+    pub(crate) async fn ping(&self) -> bool {
+        self.fresh
+            .request(Method::OPTIONS, self.base.clone())
+            .basic_auth(&self.username, Some(&self.password))
+            .send()
+            .await
+            .is_ok()
     }
 
     /// The path prefix under which this client addresses everything, decoded.
@@ -154,21 +199,34 @@ impl WebdavClient {
         if status != StatusCode::MULTI_STATUS {
             return Ok(PropfindOutcome::Status(status));
         }
-        let body = response.text().await?;
-        Ok(match parse_multistatus(&body) {
+        let body = self.read_body(response).await?;
+        Ok(match parse_multistatus(&String::from_utf8_lossy(&body)) {
             Ok(entries) => PropfindOutcome::Entries(entries),
             Err(_) => PropfindOutcome::NotMultistatus,
         })
     }
 
+    /// A whole response body, noting every chunk as the server being there:
+    /// ❗ a big listing on a slow server trickles in for a long time, and that
+    /// is exactly the wait that must never read as silence.
+    async fn read_body(&self, mut response: Response) -> Result<Vec<u8>, reqwest::Error> {
+        let mut body = Vec::new();
+        while let Some(chunk) = response.chunk().await? {
+            self.liveness.heard();
+            body.extend_from_slice(&chunk);
+        }
+        Ok(body)
+    }
+
     async fn send_propfind(&self, url: Url, depth: Depth) -> Result<Response, reqwest::Error> {
-        self.request(method("PROPFIND"), url)
-            .header("Depth", if depth == Depth::Zero { "0" } else { "1" })
-            .header(reqwest::header::CONTENT_TYPE, "application/xml; charset=utf-8")
-            .body(PROPFIND_BODY)
-            .timeout(PROPFIND_BUDGET)
-            .send()
-            .await
+        self.send(
+            self.request(method("PROPFIND"), url)
+                .header("Depth", if depth == Depth::Zero { "0" } else { "1" })
+                .header(reqwest::header::CONTENT_TYPE, "application/xml; charset=utf-8")
+                .body(PROPFIND_BODY)
+                .timeout(PROPFIND_BUDGET),
+        )
+        .await
     }
 
     /// The connect probe: PROPFIND `Depth: 0` on `root`, judged in connect

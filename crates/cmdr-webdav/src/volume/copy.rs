@@ -33,7 +33,7 @@ impl WebdavVolume {
             .header("Overwrite", "T")
             .header("Depth", "infinity")
             .timeout(MUTATION_BUDGET);
-        self.send(request, &remote_to, Attempted::Reaching).await?;
+        self.send(&client, request, &remote_to, Attempted::Reaching).await?;
         if on_progress(total, total).is_break() {
             self.remove_best_effort(&remote_to).await;
             return Err(VolumeError::Cancelled(self.volume_id().to_string()));

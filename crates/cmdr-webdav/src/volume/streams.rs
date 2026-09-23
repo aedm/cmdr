@@ -10,6 +10,7 @@
 
 use std::path::Path;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use cmdr_fs::volume::{VolumeError, VolumeReadStream};
@@ -20,6 +21,7 @@ use reqwest::{Method, Response, StatusCode};
 
 use super::WebdavVolume;
 use crate::errors::Attempted;
+use crate::liveness::Liveness;
 use crate::transport::REQUEST_BUDGET;
 
 type BodyStream = Pin<Box<dyn Stream<Item = Result<Bytes, reqwest::Error>> + Send>>;
@@ -33,6 +35,8 @@ pub(super) struct WebdavReadStream {
     skip: u64,
     volume_id: String,
     path: String,
+    /// The client's silence watch: every chunk is the server being there.
+    liveness: Arc<Liveness>,
 }
 
 impl VolumeReadStream for WebdavReadStream {
@@ -46,7 +50,10 @@ impl VolumeReadStream for WebdavReadStream {
                     Err(_elapsed) => return Some(Err(VolumeError::ConnectionTimeout(self.path.clone()))),
                 };
                 let chunk = match next {
-                    Ok(chunk) => chunk,
+                    Ok(chunk) => {
+                        self.liveness.heard();
+                        chunk
+                    }
                     Err(e) => {
                         return Some(Err(crate::errors::map_transport_error(&e, &self.volume_id, &self.path)));
                     }
@@ -101,7 +108,7 @@ impl WebdavVolume {
         if offset > 0 {
             request = request.header(RANGE, format!("bytes={offset}-"));
         }
-        let response = self.send(request, &remote, Attempted::Reaching).await?;
+        let response = self.send(&client, request, &remote, Attempted::Reaching).await?;
         let (total, skip) = match response.status() {
             StatusCode::PARTIAL_CONTENT => (
                 content_range_total(&response).unwrap_or(response.content_length().unwrap_or(0) + offset),
@@ -116,6 +123,7 @@ impl WebdavVolume {
             skip,
             volume_id: self.volume_id().to_string(),
             path: remote,
+            liveness: Arc::clone(client.liveness()),
         })
     }
 
@@ -134,8 +142,8 @@ impl WebdavVolume {
             .header(RANGE, format!("bytes={offset}-{end}"));
         // Judged by the typed status before the table, ❌ never by message:
         // 416 (past the end) is an empty read, the same as a local file answers.
-        let response = request
-            .send()
+        let response = client
+            .send(request)
             .await
             .map_err(|e| crate::errors::map_transport_error(&e, self.volume_id(), &remote))?;
         if response.status() == StatusCode::RANGE_NOT_SATISFIABLE {
@@ -159,6 +167,7 @@ impl WebdavVolume {
             volume_id: self.volume_id().to_string(),
             path: remote,
             body: Box::pin(response.bytes_stream()),
+            liveness: Arc::clone(client.liveness()),
         };
         let mut out = Vec::with_capacity(len);
         while out.len() < len {

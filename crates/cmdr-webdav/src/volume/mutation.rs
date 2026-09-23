@@ -39,7 +39,7 @@ impl WebdavVolume {
             .header(IF_NONE_MATCH, "*")
             .body(content.to_vec())
             .timeout(MUTATION_BUDGET);
-        self.send(request, &remote, Attempted::TakingAName).await?;
+        self.send(&client, request, &remote, Attempted::TakingAName).await?;
         patch_created(self, path).await;
         Ok(())
     }
@@ -57,7 +57,9 @@ impl WebdavVolume {
         let request = client
             .request(method("MKCOL"), client.url_for(remote, true))
             .timeout(MUTATION_BUDGET);
-        self.send(request, remote, Attempted::TakingAName).await.map(|_| ())
+        self.send(client, request, remote, Attempted::TakingAName)
+            .await
+            .map(|_| ())
     }
 
     /// `mkdir -p`, through the shared walk: leaf first, ancestors only when the
@@ -95,7 +97,7 @@ impl WebdavVolume {
         let request = client
             .request(Method::DELETE, client.url_for(&remote, is_collection))
             .timeout(MUTATION_BUDGET);
-        self.send(request, &remote, Attempted::Reaching).await?;
+        self.send(&client, request, &remote, Attempted::Reaching).await?;
         patch_deleted(self, path).await;
         Ok(())
     }
@@ -118,7 +120,7 @@ impl WebdavVolume {
         } else {
             Attempted::TakingAName
         };
-        self.send(request, &remote_to, attempted).await?;
+        self.send(&client, request, &remote_to, attempted).await?;
         patch_renamed(self, from, to).await;
         Ok(())
     }

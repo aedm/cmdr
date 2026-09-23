@@ -6,10 +6,11 @@ Must-knows and the module map: `CLAUDE.md`. This file carries the decisions.
 
 HTTP holds no session. "Connected" means the last request that reached the wire came back; "disconnected" means one
 failed with a transport error (`reqwest::Error::is_connect` / `is_request`, mapped to
-`VolumeError::DeviceDisconnected`). `connect_webdav_volume` reads the account's secret from the `CredentialStore`
-(service `scheme://host:port`, scope `username`; nothing stored is `NeedsCredentials`), builds a `WebdavClient`
-(`user_agent("Cmdr")`, a 10 s connect timeout and no `read_timeout`, redirects off, Basic auth on every request), and
-proves it with one `PROPFIND Depth: 0` on the root. The probe rides `tokio::select!` against the cancel token; a cancel
+`VolumeError::DeviceDisconnected`), or that the server went silent under a waiting request (§ "Silent or slow").
+`connect_webdav_volume` reads the account's secret from the `CredentialStore` (service `scheme://host:port`, scope
+`username`; nothing stored is `NeedsCredentials`), builds a `WebdavClient` (`user_agent("Cmdr")`, a 10 s connect
+timeout and no `read_timeout`, redirects off, Basic auth on every request, plus a pool-free twin for the silence probe),
+and proves it with one `PROPFIND Depth: 0` on the root. The probe rides `tokio::select!` against the cancel token; a cancel
 leaves nothing behind. On success the backend records the PII-free analytics event `webdav_connected`.
 
 **An instance is a name and a root over a shared client.** `WebdavVolume` is `{ name, root, inner }`, the same split
@@ -85,7 +86,8 @@ Listings are one `PROPFIND Depth: 1` with a body naming
 `resourcetype, getcontentlength, getlastmodified, creationdate, getetag, quota-available-bytes, quota-used-bytes`.
 `propfind.rs` reads the `DAV:` namespace under any prefix, takes properties only from 2xx `propstat`s, percent-decodes
 `href`s, and reduces absolute-URL hrefs to their path. The self entry is dropped by comparing decoded, slash-normalized
-paths, never by position.
+paths, never by position. With redirects off, a PROPFIND on a slash-less collection that answers 3xx (nginx and some NAS
+firmware) is retried once WITH the slash.
 
 ## Write staging
 
@@ -199,12 +201,49 @@ the store and re-probes. A refusal latches `auth_attempt_spent`, moves to `Needs
 the typed password. `UnattendedReconnect` is `SwitchOff`, `NoStoredSecret`, or `Possible`. `sign_in_prompt` is always
 `SignInShape::Password`, so the sheet renders one field under a read-only username.
 
-⚠️ **Known gap: a SILENT server never flips the state.** A black-holed request ends at its own budget (a listing at
-`PROPFIND_BUDGET`, 60 s) with `ConnectionTimeout`, which `note_lost_session` ignores by design (the transfer layer
-retries a timeout rather than remounting). So a sleeping NAS costs every listing 60 s, the volume keeps reporting
-`Connected`, and no banner shows; it serves again on its own once the path clears, because HTTP holds no session to
-rebuild. Treating a PROPFIND timeout as a lost connection would fix the banner at the price of a `Disconnected` flicker
-on a slow-but-alive listing. Pinned as-is by `volume/connection_drop_test.rs`.
+`note_lost_session` takes the dead client out and cancels its `lost` token, so every other operation still waiting on
+it answers `DeviceDisconnected` at once rather than at its own budget; the pool goes with the client, so no request is
+ever handed one of its connections again. ❗ **An installed client counts as live only while the state says
+`Connected`**: the drop may still be on its way (a spawned task, when the lock was busy) when the frontend's reconnect
+fires on the event, so `rebuild` treats a client installed under any other state as the dead one and dials. The other
+half: a fresh client is installed and marked `Connected` under ONE write guard, and `drop_dead_client` takes only
+under a non-`Connected` state, so the late task can never take the fresh one. The same pair as
+`crates/cmdr-sftp/DETAILS.md` § "Coming back".
+
+## Silent or slow
+
+A server that goes SILENT (a NAS asleep, Wi-Fi gone, a VPN dropped) closes nothing, and HTTP has no keepalive, so a
+request on one waits for its budget and ends with `ConnectionTimeout`, which says nothing about the server. ❌ A timeout
+can't be the signal: a huge listing on a slow NAS times out just the same, and reading one as a lost connection would
+flicker `Disconnected` on a server that's merely busy. So `liveness.rs` watches for silence instead:
+
+- **What counts as hearing from the server**: a response's headers (`WebdavClient::send`, which every request goes out
+  through), each body chunk (PROPFIND bodies are read chunk by chunk for this; `WebdavReadStream` notes its own), and
+  each upload piece hyper takes. The last is sound because hyper asks for the next piece only as the socket drains, and
+  a socket drains only while the far end acknowledges; without it, a server that says nothing until the whole upload is
+  in would look silent for its entire length.
+- **The ladder** (`Timings::PRODUCTION`): with an operation waiting (`noting` holds a `Waiting`) and 10 s of quiet, the
+  watch sends an `OPTIONS` on the base URL through a pool-free client, so it always dials FRESH: a pooled probe could
+  ride the very connection that went quiet. ANY answer (a 401, a 405) means busy, and the wait goes on. Two unanswered
+  in a row, 10 s budget each, means gone: 30 s in all, the silence `cmdr-smb` and `cmdr-sftp` allow. A byte on any
+  request while a probe is out counts as its answer.
+- **Gone** cancels the client's `lost` token. `noting` races every operation against it and answers
+  `DeviceDisconnected`, which takes the refused path from there: one `Disconnected`, the backoff if the switch is on,
+  nothing if it's off.
+- **Cost**: nothing while idle (the clock starts when the first operation starts waiting, and the watch ends with the
+  last), no probe while bytes flow, and one small request per 10 s of silence otherwise.
+
+What stays deliberately out of reach: a server alive enough to answer a fresh `OPTIONS` while one request's connection
+has died is slow, not gone, to this watch, and that request waits for its own budget. The OS covers the idle half of
+that: `reqwest` keeps TCP keepalive on pooled connections (15 s idle, 3 probes 15 s apart; verified on reqwest 0.13.4,
+`ClientBuilder::new`, 2026-09-23), so a dead idle connection is reaped rather than handed to the next request. A
+single-threaded server too busy to answer anything for 30 s would read as gone; no NAS or Nextcloud setup works that
+way.
+
+Pinned three ways: `liveness_test.rs` runs the ladder on a paused clock with a closure for a probe (exact deadlines,
+no server); `volume/slow_server_test.rs` runs it for real on a shortened ladder against an in-process server that holds
+a listing, trickles a body, or goes quiet on command; `volume/connection_drop_test.rs` runs the production ladder
+against Apache behind a black-holed `TcpProxy`.
 
 ## Connecting from the frontend
 
@@ -226,7 +265,8 @@ one place that default is spelled. `getWebdavUnattendedReconnect(volumeId)`, and
 
 ## Which side a test lives on
 
-This crate: the parser, the path translation, the status table, the state machine (no server), and the Docker cells
+This crate: the parser, the path translation, the status table, the state machine and the silence ladder (no server),
+the slow-server cells (`volume/slow_server_test.rs`, an in-process server, no Docker), and the Docker cells
 against the fixture stack (`volume/integration_test.rs`, `volume/conformance_test.rs`, the "reconnect automatically"
 cells in `volume/reconnect_test.rs`, and the real-drop cells in `volume/connection_drop_test.rs`, all `#[ignore]`d
 without it). The drop cells cut the TCP connection in a `cmdr_fs::testing::tcp_proxy::TcpProxy` they own, refused and

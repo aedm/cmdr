@@ -14,8 +14,12 @@
 //!
 //! - **Refused**: the pooled connection closes and a new one is refused.
 //! - **Silent** (a black hole): nothing closes, nothing answers, so only the
-//!   request's own budget ends the wait. It runs under a paused tokio clock, so
-//!   the production-length budget elapses in virtual time.
+//!   silence watchdog (`crate::liveness`) ends the wait. It runs under a paused
+//!   tokio clock, so the production-length deadline elapses in virtual time.
+//!
+//! The slow-but-alive case, which must NOT read as silence, is
+//! `slow_server_test.rs`: it needs a server that answers one request and holds
+//! another, which a proxy in front of Apache can't be.
 //!
 //! Every cell here needs the WebDAV fixture stack:
 //! `apps/desktop/test/webdav-servers/start.sh`. Against a server of your own
@@ -39,9 +43,10 @@ use crate::params::WebdavConnectionParams;
 
 const FIXTURE: &str = "webdav-servers/start.sh (webdav-fixture)";
 
-/// How long a PROPFIND may run before it's given up on
-/// (`transport::PROPFIND_BUDGET`). The silent cell holds the listing to it.
-const PROPFIND_BUDGET: Duration = Duration::from_secs(60);
+/// How long a silent server keeps a waiting operation before the volume is
+/// reported down: 10 s of silence, then two probes of 10 s each go unanswered
+/// (`crate::liveness::Timings::PRODUCTION`). The same 30 s SMB and SFTP allow.
+const SILENCE_DEADLINE: Duration = Duration::from_secs(30);
 
 /// How long an operation on a REFUSED connection may take to answer. Generous:
 /// the real answer is milliseconds, and this is a hang backstop that keeps the
@@ -230,53 +235,129 @@ async fn with_the_switch_off_a_returning_server_stays_down_until_asked() {
     );
 }
 
-/// ❗ **A server that goes SILENT is given up on at the listing's budget, not
-/// waited on forever**, and the volume serves again once the path clears. It
-/// never reports itself down on the way, which is a known gap (see the
-/// assertion).
+/// Silences the proxy and lists, on a paused clock: what the listing answered
+/// and how much virtual time it took.
 ///
 /// Nothing closes in a black hole, so no error ever arrives on its own: only
-/// the request's budget can end the wait. The clock is paused for exactly the
-/// silent stretch, so the 60 s budget elapses in virtual time and a missing one
-/// shows up as the five-minute backstop firing rather than as a hung test.
+/// the silence watchdog can end the wait. The clock is paused for exactly the
+/// silent stretch, so the 30 s deadline elapses in virtual time, and a missing
+/// watchdog shows up as the five-minute backstop firing rather than as a hung
+/// test.
 ///
-/// ❗ Resumed before the proxy is restored: nothing after it may run on a clock
-/// that jumps whenever the runtime waits on the network.
+/// ❗ Resumed before returning: nothing after it may run on a clock that jumps
+/// whenever the runtime waits on the network. The volume's own backoff sleep
+/// is registered by then and simply finishes in real time.
+async fn list_through_silence(proxy: &TcpProxy, volume: &WebdavVolume) -> (Result<Vec<String>, VolumeError>, Duration) {
+    proxy.black_hole();
+    tokio::time::pause();
+    let started = tokio::time::Instant::now();
+    let failed = tokio::time::timeout(Duration::from_secs(300), names(volume)).await;
+    let waited = started.elapsed();
+    tokio::time::resume();
+    let failed = failed.expect("❗ a listing on a silent server waited five minutes: nothing bounds it");
+    (failed, waited)
+}
+
+/// Asserts the silent listing ended the way a refused one does, at the
+/// silence deadline and not before.
+///
+/// The lower bound is what tells this apart from a watchdog that gives up on
+/// its first unanswered probe: a paused clock fires each timer exactly at its
+/// deadline, so the whole ladder shows up in `waited`.
+fn assert_given_up_at_the_deadline(failed: &Result<Vec<String>, VolumeError>, waited: Duration) {
+    assert!(
+        matches!(failed, Err(VolumeError::DeviceDisconnected(_))),
+        "❗ a silent server is a lost connection, the one error that flips the state and starts the backoff: \
+         {failed:?}"
+    );
+    assert!(
+        waited >= SILENCE_DEADLINE - Duration::from_secs(1) && waited <= SILENCE_DEADLINE + Duration::from_secs(1),
+        "given up on after {waited:?}; the silence deadline is {SILENCE_DEADLINE:?}"
+    );
+}
+
+/// ❗ **A server that goes SILENT is reported down at the silence deadline,
+/// once, and comes back on its own once the path clears**: the refused cell's
+/// promise, reached without anything ever closing.
+///
+/// The 60 s a listing may take (`PROPFIND_BUDGET`) never gets to decide: the
+/// watchdog's probes go unanswered first.
 #[tokio::test]
 #[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
-async fn a_server_that_goes_silent_is_given_up_on_and_serves_again() {
+async fn a_server_that_goes_silent_is_reported_down_and_comes_back_on_its_own() {
     if not_for_your_own_server("a Docker fixture to put a proxy in front of") {
         return;
     }
     let Proxied { proxy, events, volume } = through_a_proxy().await;
     let before = names(&volume).await.expect(FIXTURE);
 
-    proxy.black_hole();
-    tokio::time::pause();
-    let started = tokio::time::Instant::now();
-    let failed = tokio::time::timeout(Duration::from_secs(300), names(&volume)).await;
-    let waited = started.elapsed();
-    tokio::time::resume();
+    let (failed, waited) = list_through_silence(&proxy, &volume).await;
 
-    let failed = failed.expect("❗ a listing on a silent server waited five minutes: nothing bounds it");
-    assert!(
-        matches!(failed, Err(VolumeError::ConnectionTimeout(_))),
-        "a server that never answered is a typed timeout: {failed:?}"
-    );
-    assert!(
-        waited <= PROPFIND_BUDGET + Duration::from_secs(1),
-        "given up on after {waited:?}, past the {PROPFIND_BUDGET:?} a listing gets"
-    );
-    assert!(
-        events.transitions().is_empty(),
-        "⚠️ the known gap, pinned so closing it is a deliberate change: a timeout doesn't flip the state \
-         (`crates/cmdr-webdav/DETAILS.md` § \"The reconnect model\")"
-    );
+    assert_given_up_at_the_deadline(&failed, waited);
+    assert_eq!(volume.connection_state(), Some(ConnectionState::Disconnected));
+    assert_eq!(reported(&events), vec![VolumeConnection::Disconnected]);
 
     proxy.restore().await;
 
-    let after = tokio::time::timeout(ANSWERS_WITHIN, names(&volume))
+    wait_until_async(COMES_BACK_WITHIN, "the backoff loop to bring the volume back", || {
+        reported(&events).contains(&VolumeConnection::Connected)
+    })
+    .await;
+    assert_eq!(volume.connection_state(), Some(ConnectionState::Direct));
+    assert_eq!(
+        names(&volume).await.expect(FIXTURE),
+        before,
+        "the same volume lists again"
+    );
+    assert_eq!(
+        reported(&events),
+        vec![VolumeConnection::Disconnected, VolumeConnection::Connected],
+        "one silence, one drop, one recovery"
+    );
+}
+
+/// ❗ **With "Reconnect automatically" off, a silent server that comes back is
+/// left alone until someone asks**, exactly like a refused one.
+#[tokio::test]
+#[ignore = "needs the WebDAV fixture stack: apps/desktop/test/webdav-servers/start.sh (webdav-fixture)"]
+async fn with_the_switch_off_a_server_back_from_silence_stays_down_until_asked() {
+    if not_for_your_own_server("a Docker fixture to put a proxy in front of") {
+        return;
+    }
+    let Proxied { proxy, events, volume } = through_a_proxy().await;
+    volume.set_auto_reconnect(false);
+
+    let (failed, waited) = list_through_silence(&proxy, &volume).await;
+    assert_given_up_at_the_deadline(&failed, waited);
+    // allowed-test-sleep: the watch's last probe dialed DURING the silence, and on the paused clock its budget can run
+    // out before the proxy's accept loop gets to it, leaving the dial in the listen backlog. This lets the proxy count
+    // it before the baseline is taken; a dial made after the silence is what the window below is about.
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    proxy.restore().await;
+    let connections_before = proxy.connections_accepted();
+
+    // allowed-test-sleep: a negative assertion over a window. Nothing can signal "no probe happened"; the window runs
+    // past the backoff's first 2 s step, which is when a loop that shouldn't exist would have probed.
+    tokio::time::sleep(Duration::from_millis(2_500)).await;
+
+    assert_eq!(
+        proxy.connections_accepted(),
+        connections_before,
+        "❌ nothing may probe unattended with the switch off, however reachable the server is"
+    );
+    assert_eq!(volume.connection_state(), Some(ConnectionState::Disconnected));
+    assert!(
+        matches!(volume.attempt_reconnect().await, Err(VolumeError::NotSupported)),
+        "and an unattended ask is refused by the switch, not by the server"
+    );
+
+    volume
+        .reconnect_with_credentials(FIXTURE_USER.to_string(), FIXTURE_PASSWORD.to_string())
         .await
-        .expect("the path is clear again");
-    assert_eq!(after.expect(FIXTURE), before, "the same volume lists again");
+        .expect(FIXTURE);
+    assert!(names(&volume).await.is_ok(), "an attended reconnect brings it back");
+    assert_eq!(
+        reported(&events),
+        vec![VolumeConnection::Disconnected, VolumeConnection::Connected]
+    );
 }
