@@ -293,10 +293,13 @@ pub async fn execute_ai_search(params: &Value) -> ToolResult {
     let limit = requested_limit(params);
     let scope_str = params.get("scope").and_then(|v| v.as_str());
     let total_t = std::time::Instant::now();
-    log::info!("MCP ai_search: handler entered, query={natural_query:?}, limit={limit}, scope={scope_str:?}");
+    log::info!(
+        "MCP ai_search: handler entered, query ({} chars), limit={limit}, scope={scope_str:?}",
+        natural_query.chars().count()
+    );
 
     // ── Translate query ──────────────────────────────────────────────
-    log::debug!("MCP ai_search: calling translate_search_query for query={natural_query:?}");
+    log::debug!("MCP ai_search: calling translate_search_query");
     let t = std::time::Instant::now();
     // MCP has no dialog type-toggle context; pass `None` (both files and folders).
     let translate_result = match crate::commands::search::translate_search_query(natural_query.to_string(), None).await
@@ -310,10 +313,7 @@ pub async fn execute_ai_search(params: &Value) -> ToolResult {
             tr
         }
         Err(e) => {
-            log::warn!(
-                "MCP ai_search: translate returned {:?} for query={natural_query:?}: {e}",
-                e.kind
-            );
+            log::warn!("MCP ai_search: translate returned {:?}: {e}", e.kind);
             // Branch on the TYPED kind (no string-matching): the not-set-up cases get a
             // clear, actionable message instead of the error-copy-rule-banned "failed".
             use crate::ai::translate_error::AiTranslateErrorKind as K;

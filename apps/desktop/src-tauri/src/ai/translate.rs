@@ -29,8 +29,9 @@ pub async fn translate_once(
         .map_err(|e| {
             log::warn!(
                 target: "ai::translate",
-                "{label}: chat_completion failed after {:.1}s for query={user_query:?}: {e}",
-                t0.elapsed().as_secs_f64()
+                "{label}: chat_completion failed after {:.1}s for a {}-char query: {e}",
+                t0.elapsed().as_secs_f64(),
+                user_query.chars().count()
             );
             AiTranslateError::from(e)
         })?;

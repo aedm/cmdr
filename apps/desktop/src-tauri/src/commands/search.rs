@@ -248,9 +248,12 @@ pub async fn translate_search_query(
         .with_log_context(crate::ai::llm_log::LlmLogContext::translate_search());
     let system_prompt = ai::build_classification_prompt(current_type);
 
+    // The query's length only, never its text: this log line can reach an error report, and a
+    // natural-language query often names the user's files or projects.
     log::debug!(
-        "AI search: classification prompt ({} chars), query={natural_query:?}",
-        system_prompt.len()
+        "AI search: classification prompt ({} chars), query ({} chars)",
+        system_prompt.len(),
+        natural_query.chars().count()
     );
 
     // 300 tokens (not 200): reasoning models spend the budget thinking before any visible
