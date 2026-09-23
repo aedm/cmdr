@@ -800,8 +800,8 @@ the trash to the boot disk. It is also the convention the app already has for `m
 `get_metadata` produces (`mapping.rs`), and `display_path_for`, which is what the listing-cache patcher spells a
 mutation with. A bare server path anywhere in that set would come back through `cmdr_fs::volume::root_anchored` — five
 app sites run one — joined ONTO the root, and strip back to a real, wrong server path.
-`apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/sftp_transfer_semantics_test.rs` is the cell that would catch
-it.
+`apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/sftp_transfer_semantics_test.rs` is the cell
+that would catch it.
 
 ❗ **A bare server-absolute path is REFUSED**, not accepted as a courtesy: with the prefix in place the app never spells
 one, so leniency buys only that hole. The three root aliases stay (`/`, `.`, the empty path).

@@ -106,7 +106,11 @@ export function sftpFixture(): ServerFixture {
     )
     if (result.error) throw result.error
     if (result.status !== 0) {
-      throw new ServerCommandError(`ssh ${host}:${String(port)} \`${command}\``, result.status, result.stderr.toString())
+      throw new ServerCommandError(
+        `ssh ${host}:${String(port)} \`${command}\``,
+        result.status,
+        result.stderr.toString(),
+      )
     }
     return result.stdout
   }

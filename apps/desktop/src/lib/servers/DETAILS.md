@@ -330,8 +330,8 @@ The toggle stays editable, and ❗ **it is what decides which target `serverTarg
 someone can type a bare host and say "that one is SFTP". A port the address named for a DIFFERENT protocol is dropped,
 because `445` off a bare hostname is SMB's default and dialing it for HTTP opens a socket nothing answers on.
 
-❗ **A connected add lands a pane on the new place**, through `openAddServerSheet`'s `onConnected` (the place's
-volume id and app root, read off `list_saved_servers` rather than the volume store, which can still hold the previous
+❗ **A connected add lands a pane on the new place**, through `openAddServerSheet`'s `onConnected` (the place's volume
+id and app root, read off `list_saved_servers` rather than the volume store, which can still hold the previous
 `volumes-changed`). ⌘K and Go to path land the focused pane; the hub lands its own. Without it the sheet closed on a
 live server with every pane where it was, which reads as a Connect that did nothing. SMB's add is a share mount, so it
 hands off to the hub's places list instead (`onSmbHandOff`).

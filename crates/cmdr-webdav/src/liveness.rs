@@ -22,6 +22,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use cmdr_fs::ignore_poison::IgnorePoison;
+use cmdr_fs::pluralize::pluralize;
 use log::warn;
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
@@ -185,8 +186,9 @@ where
         if unanswered >= timings.unanswered_limit {
             warn!(
                 target: "volume",
-                "webdav server silent for {:?} with requests waiting, and {unanswered} probes went unanswered: treating it as gone",
-                liveness.quiet_for()
+                "webdav server silent for {:?} with requests waiting, and {} went unanswered: treating it as gone",
+                liveness.quiet_for(),
+                pluralize(u64::from(unanswered), "probe")
             );
             liveness.declare_lost();
         }

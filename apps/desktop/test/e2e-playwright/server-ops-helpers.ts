@@ -179,7 +179,8 @@ export async function savedServerFor(tauriPage: PageLike, fixture: ServerFixture
 /** The saved server this fixture names, failing the test when there is none. */
 export async function requireSavedServer(tauriPage: PageLike, fixture: ServerFixture): Promise<SavedServerWire> {
   const saved = await savedServerFor(tauriPage, fixture)
-  if (!saved) throw new Error(`the app has no saved ${fixture.label} server for ${fixture.host}:${String(fixture.port)}`)
+  if (!saved)
+    throw new Error(`the app has no saved ${fixture.label} server for ${fixture.host}:${String(fixture.port)}`)
   return saved
 }
 
@@ -305,9 +306,7 @@ export async function openServerInPane(
   await expect.poll(async () => tauriPage.isVisible(switcherRow(volumeId)), { timeout: waitBudget(5000) }).toBeTruthy()
   expect(await pointerClick(tauriPage, `document.querySelector('${switcherRow(volumeId)}')`)).toBe('clicked')
   await expect.poll(async () => (await paneLocation(side)).volumeId, { timeout: waitBudget(15000) }).toBe(volumeId)
-  await expect
-    .poll(async () => paneLists(tauriPage, side, expectEntry), { timeout: waitBudget(15000) })
-    .toBeTruthy()
+  await expect.poll(async () => paneLists(tauriPage, side, expectEntry), { timeout: waitBudget(15000) }).toBeTruthy()
 }
 
 /** Whether `side` lists an entry of that exact name (byte for byte). */

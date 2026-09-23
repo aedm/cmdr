@@ -160,7 +160,7 @@ async fn find_mounted_share(volume_id: &str) -> Result<MountedShare, UpgradeResu
     find_mounted_share_within(volume_id, MOUNT_READ_LIMIT, read_mount).await
 }
 
-/// [`find_mounted_share`], with the mount read and its limit passed in so a test
+/// `find_mounted_share`, with the mount read and its limit passed in so a test
 /// can stand in a mount that never answers.
 async fn find_mounted_share_within(
     volume_id: &str,
@@ -188,7 +188,7 @@ async fn find_mounted_share_within(
     }
 }
 
-/// [`find_mounted_share`] for a door someone ASKED for a direct session through, which
+/// `find_mounted_share` for a door someone ASKED for a direct session through, which
 /// also turns the share's "Use Cmdr's fast direct connection" switch back on.
 ///
 /// Asking is consent, and the switch has to follow it: otherwise a share switched
