@@ -7,7 +7,7 @@
 //! clash is), and a row renaming an entry to its own other spelling lands. The
 //! batch-only question is the one the rotation adds: a look-alike that a row of
 //! the SAME batch moves away is vacated, not taken. Docker twins:
-//! `write_operations/smb_look_alike_test.rs`.
+//! `write_operations/backend_suites/smb_look_alike_test.rs`.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

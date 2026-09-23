@@ -31,7 +31,7 @@ func RunRustTests(ctx *CheckContext) (CheckResult, error) {
 	// them are `cmdr-mtp`'s own now (the whole `volume/` and `connection/` device
 	// tree), with the app keeping the cells that assert on ITS side of the backend
 	// (`mtp/volume_wiring_test`, `file_system/volume/mtp_scan_oracle_tests`,
-	// `write_operations/mtp_archive_test`, `.../rename_merge_mtp_tests`). Without
+	// `write_operations/backend_suites/mtp_archive_test`, `.../rename_merge_mtp_tests`). Without
 	// the feature they're silently filtered out and protect nothing. It costs
 	// ~2-4 s on a ~27 s suite.
 	baseArgs := append([]string{"--locked"}, laneArgs...)

@@ -10,7 +10,7 @@
 //! So the entry points here shadow the crate's by name, dropping the manager
 //! argument and passing the app's parked one. A suite on this side gets the app's
 //! wiring by writing what it always wrote. Same shape as
-//! `file_system/write_operations/smb_test_support.rs`.
+//! `file_system/write_operations/backend_suites/smb_test_support.rs`.
 
 pub(crate) use cmdr_mtp::testing::{ConnectedDevice, device_lock};
 

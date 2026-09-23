@@ -1015,7 +1015,7 @@ Pinned by `manager/root_replace_tests.rs`.
 - `mtp_scan_oracle_tests.rs`, `smb_scan_oracle_tests.rs`: oracle-aware batch-scan integration tests for MTP and SMB
 - `smb_index_scan_test.rs`, `smb_media_fetch_integration_test.rs`: the two Docker-gated cells where `cmdr-index` meets a
   real `cmdr-smb` session (the BFS scanner, and media enrichment's byte fetcher). They live app-side because only this
-  side can build both halves; the fixtures come from `write_operations::smb_test_support`
+  side can build both halves; the fixtures come from `write_operations::backend_suites::smb_test_support`
 
 `LocalPosixVolume`'s own tests are colocated in `backends/` (`backends/DETAILS.md` § "Testing"); `MtpVolume`'s live
 with it in `crates/cmdr-mtp/src/volume/`. A crate backend's app-side cells sit beside the app code they assert on, not

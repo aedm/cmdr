@@ -5,7 +5,7 @@
 //! exactly the destination where a copy asking in the wrong spelling would stand
 //! a second, identical-looking entry beside the user's. Every cell ends by
 //! counting what the folder holds. The same guard against a real server:
-//! `write_operations/smb_look_alike_test.rs`. A case-only difference is a
+//! `write_operations/backend_suites/smb_look_alike_test.rs`. A case-only difference is a
 //! separate name and stays the backend's call (`merge_case_fold_tests.rs`).
 
 use super::super::super::conflict_responder_test_support::{ConflictResponderSink, file_conflict_count};

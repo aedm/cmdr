@@ -236,7 +236,7 @@ A cell lives with whatever it **asserts**, never with whatever it connects to.
   it. No `adb` binary, no device, no Docker: every cell runs in the unit lane.
 - **App-side** (`apps/desktop/src-tauri/src/adb/`): anything driving `write_operations`, the volume registry,
   `volume_listing::complete`, or the listing cache. The transfer engine's cells sit beside the SFTP suite, in
-  `apps/desktop/src-tauri/src/file_system/write_operations/adb_transfer_test.rs`; the list of what exists is
+  `apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/adb_transfer_test.rs`; the list of what exists is
   `apps/desktop/src-tauri/src/adb/DETAILS.md` § "Testing". ❌ Don't widen this crate's public surface to keep a test on
   that side; move the test instead. ❗ A green suite here is not evidence that a copy works: `supports_export` and the
   free-space pre-flight are read by the engine, so the cells that would catch them live with the engine.

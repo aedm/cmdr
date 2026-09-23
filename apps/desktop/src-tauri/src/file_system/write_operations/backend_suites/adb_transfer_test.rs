@@ -21,17 +21,17 @@ use cmdr_fs::staging::STAGING_TEMP_MARKER;
 use cmdr_fs::volume::host::listings::RecordingListings;
 use cmdr_fs::volume::{DirectoryChange, UnwritableReason, Volume, VolumeError};
 
-use super::MutationError;
-use super::VolumeScanError;
-use super::event_sinks::{CollectorEventSink, OperationEventSink};
+use super::super::MutationError;
+use super::super::VolumeScanError;
+use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
 use super::network_transfer_test_support::{
     a_cancelled_upload_leaves_nothing_behind, a_directory_tree_lands_intact_off_the_server,
     a_directory_tree_lands_intact_on_the_server, a_pre_existing_destination_still_probes_each_name,
     an_overwrite_answer_replaces_the_destination_bytes, assert_no_staging_litter, awkward_names_survive_a_round_trip,
     read_all, self_describing_bytes, sha256, start_copy_by_id,
 };
-use super::state::WriteOperationState;
-use super::types::{VolumeCopyConfig, WriteOperationConfig, WriteOperationError};
+use super::super::state::WriteOperationState;
+use super::super::types::{VolumeCopyConfig, WriteOperationConfig, WriteOperationError};
 use crate::adb::device_provider::apply_device_list;
 use crate::adb::test_support::{a_listed_phone, dial, dials_seen, phone, retire_phone};
 use crate::commands::file_system::scan_volume_for_copy;
@@ -435,7 +435,7 @@ async fn mkdir_on_a_phone_makes_the_folder_and_patches_the_pane_showing_its_pare
     let phone = recorded_phone("R58M-Mkdir", FakeTree::new()).await;
     let parent = phone.sdcard.to_string_lossy().into_owned();
 
-    let (made, _) = super::create::create_directory_core(Some(phone.volume_id.clone()), &parent, "album")
+    let (made, _) = super::super::create::create_directory_core(Some(phone.volume_id.clone()), &parent, "album")
         .await
         .expect("mkdir on the phone");
 
@@ -468,7 +468,7 @@ async fn a_move_on_a_phone_renames_on_the_device_and_patches_both_panes() {
     let album = phone.sdcard.join("album");
 
     let events = Arc::new(CollectorEventSink::new());
-    super::start_volume_move(
+    super::super::start_volume_move(
         Arc::clone(&events) as Arc<dyn OperationEventSink>,
         phone.volume_id.clone(),
         vec![phone.sdcard.join("a.txt")],
@@ -513,7 +513,7 @@ async fn a_delete_on_a_phone_removes_the_file_and_patches_its_pane() {
 
     let events = CollectorEventSink::new();
     let state = Arc::new(WriteOperationState::new(Duration::from_millis(0)));
-    super::delete_volume_files_for_test(
+    super::super::delete_volume_files_for_test(
         Arc::clone(&phone.volume),
         &phone.volume_id,
         &events,
@@ -594,7 +594,7 @@ async fn a_copy_onto_a_phone_nobody_dialed_is_refused_as_not_connected() {
     let local = registered_local("adb_copy_onto_undialed_phone");
     std::fs::write(local.dir.join("photo.jpg"), b"a photo's worth of bytes").expect("seeding the local file");
 
-    let refused = super::start_volume_copy(
+    let refused = super::super::start_volume_copy(
         Arc::new(CollectorEventSink::new()),
         local.volume_id.clone(),
         vec![PathBuf::from("photo.jpg")],
@@ -624,7 +624,7 @@ async fn a_move_off_a_phone_nobody_dialed_is_refused_as_not_connected() {
     let phone = undialed_phone("R58M-Undialed-Move", tree).await;
     let local = registered_local("adb_move_off_undialed_phone");
 
-    let refused = super::start_volume_move(
+    let refused = super::super::start_volume_move(
         Arc::new(CollectorEventSink::new()),
         phone.volume_id.clone(),
         vec![phone.sdcard.join("a.txt")],
@@ -654,7 +654,7 @@ async fn a_delete_on_a_phone_nobody_dialed_is_refused_as_not_connected() {
     let phone = undialed_phone("R58M-Undialed-Delete", tree).await;
 
     let events = Arc::new(CollectorEventSink::new());
-    super::delete_files_start(
+    super::super::delete_files_start(
         Arc::clone(&events) as Arc<dyn OperationEventSink>,
         vec![phone.sdcard.join("old.txt")],
         WriteOperationConfig::default(),
@@ -690,7 +690,7 @@ async fn mkdir_on_a_phone_nobody_dialed_is_refused_as_not_connected() {
     let phone = undialed_phone("R58M-Undialed-Mkdir", FakeTree::new()).await;
 
     let refused =
-        super::create::create_directory_core(Some(phone.volume_id.clone()), &phone.sdcard.to_string_lossy(), "album")
+        super::super::create::create_directory_core(Some(phone.volume_id.clone()), &phone.sdcard.to_string_lossy(), "album")
             .await
             .expect_err("mkdir on a phone nobody dialed is refused");
 

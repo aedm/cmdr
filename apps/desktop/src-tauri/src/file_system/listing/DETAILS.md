@@ -548,7 +548,7 @@ FSEvents timing lives in it; the backend's half of the seam is `cmdr-archive`'s 
 `smb_pane_close_watch_integration_test.rs` is the other cell here whose other half is a backend: closing a pane's
 listing (`list_directory_end`) drops a cache entry and its FSEvents `WatchedDirectory`, and must not reach the volume's
 own watcher, which the index depends on with no pane open. It runs over a real `cmdr-smb` session because that watcher
-is the one at stake, and it takes its fixture from `write_operations::smb_test_support`.
+is the one at stake, and it takes its fixture from `write_operations::backend_suites::smb_test_support`.
 
 ## Diff event coalescing (diff_emitter.rs)
 

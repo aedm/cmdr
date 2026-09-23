@@ -10,7 +10,7 @@
 
 use std::path::Path;
 
-use crate::file_system::write_operations::smb_test_support::*;
+use crate::file_system::write_operations::backend_suites::smb_test_support::*;
 use cmdr_smb::volume::ConnectionState;
 
 /// Regression: closing a pane's listing must NOT tear down the SMB watcher.

@@ -3,7 +3,7 @@
 //! spelling, beside `path_exists`, which stays byte-exact.
 //!
 //! `InMemoryVolume` matches names byte for byte, like an SMB share. Real Samba:
-//! `file_system/write_operations/smb_look_alike_test.rs`.
+//! `file_system/write_operations/backend_suites/smb_look_alike_test.rs`.
 
 use std::path::Path;
 use std::sync::Arc;

@@ -20,7 +20,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use cmdr_fs::volume::Volume;
 
-use super::transfer::volume::forward_volume_methods;
+use super::super::transfer::volume::forward_volume_methods;
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{CopyScanResult, InMemoryVolume, ListingProgress, VolumeError, VolumeReadStream};
 

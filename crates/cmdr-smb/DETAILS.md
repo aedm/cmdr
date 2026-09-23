@@ -388,7 +388,7 @@ case, so a look-alike twin is rare but not impossible.
 - **A name the share holds in another spelling is taken, never free**: a write that asked in the wrong spelling would
   stand a second, identical-looking entry beside it. The app's write layer finds it with one listing after a byte-exact
   miss (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Look-alike names"). Docker-pinned by
-  `write_operations/smb_look_alike_test.rs`.
+  `write_operations/backend_suites/smb_look_alike_test.rs`.
 
 ### Resolving a foreign path
 

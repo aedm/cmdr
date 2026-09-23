@@ -6,10 +6,10 @@
 //! Every test here is `#[ignore]`d so default runs skip it. Start the containers
 //! with `./apps/desktop/test/smb-servers/start.sh`, then run
 //! `cargo nextest run smb_integration --run-ignored all`. Shared helpers come
-//! from `write_operations::smb_test_support`, where the app's SMB suites keep
+//! from `write_operations::backend_suites::smb_test_support`, where the app's SMB suites keep
 //! their fixture wiring.
 
-use crate::file_system::write_operations::smb_test_support::*;
+use crate::file_system::write_operations::backend_suites::smb_test_support::*;
 
 use cmdr_index::media_index::network::fetch::os_join;
 use cmdr_index::media_index::testing::{ByteFetcher, FetchError, VolumeByteFetcher};

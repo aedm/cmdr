@@ -85,10 +85,11 @@ The full top-level inventory is here:
   scratch dir archive edits stage local bytes in: `scratch_dir.rs` (the remote edit itself is `archive_edit/remote.rs`). Entry points: `create/` + `create.rs`, `rename/` +
   `rename.rs`, `paste_clipboard.rs`, `routing.rs` (the one routing every cross-volume transfer takes:
   `start_volume_{copy,move,compress}`). `source_binding.rs` is the optional set of sources an op may touch. Fixtures:
-  `test_support.rs`, plus the backend-blind `network_*_test_support.rs` scenarios the WebDAV, SFTP, SMB, and ADB suites
-  drive and the chunk-gated sources in `network_gated_source_test_support.rs` (§ "The network transfer suites"), and
-  `smb_test_support.rs` / `sftp_test_support.rs` (the fixture dials the `smb_*` and `sftp_*` Docker suites share; see
-  § "The SMB app-side suites").
+  `test_support.rs`. Every backend's cells through this pipeline live in `backend_suites/`: the backend-blind
+  `network_*_test_support.rs` scenarios the WebDAV, SFTP, SMB, and ADB suites drive, the chunk-gated sources in
+  `network_gated_source_test_support.rs` (§ "The network transfer suites"), the per-backend fixture dials
+  (`smb_test_support.rs`, `sftp_test_support.rs`), and the `<backend>_*_test.rs` cells (§
+  "The SMB app-side suites").
 
 What the mechanisms DO is in the sections below: the registry, lanes, and `run_instant` in § "Operation manager";
 the zip-edit driver in § "Archive edits"; cancellation, pause, Stop-mode conflicts, safe overwrite, scan-preview caching,
@@ -1190,6 +1191,9 @@ handle threaded through its callers needs none of it.
 See also: `docs/testing.md` for the project-wide testing playbook.
 
 ## The network transfer suites
+
+Every file this section and the next name lives in `backend_suites/`, which exists so the dozens of per-backend cells
+and their shared scenarios sit together rather than among the pipeline's own modules.
 
 `webdav_transfer_integration_test.rs` and `sftp_transfer_integration_test.rs` copy real bytes between local disk and a
 live fixture server through `copy_between_volumes`, which is the seam neither backend crate can reach: both directions

@@ -25,10 +25,10 @@ use cmdr_fs::staging::is_staging_temp_name;
 use cmdr_fs::volume::Volume;
 use sha2::{Digest, Sha256};
 
-use super::event_sinks::{CollectorEventSink, OperationEventSink};
+use super::super::event_sinks::{CollectorEventSink, OperationEventSink};
 use super::network_gated_source_test_support::{CANCEL_PAYLOAD_BYTES, gated_upload};
-use super::state::{cancel_write_operation, resolve_write_conflict};
-use super::types::{ConflictResolution, ConflictResolutionOutcome, VolumeCopyConfig};
+use super::super::state::{cancel_write_operation, resolve_write_conflict};
+use super::super::types::{ConflictResolution, ConflictResolutionOutcome, VolumeCopyConfig};
 use crate::file_system::volume::LocalPosixVolume;
 use crate::ignore_poison::IgnorePoison;
 use crate::operation_log::types::Initiator;
@@ -211,7 +211,7 @@ impl RunningCopy {
     /// never happened as a TIMEOUT, which on a fixture stack four agents share
     /// is indistinguishable from a slow container. Ending the wait the moment
     /// the copy settles turns that case into a sentence about what the copy did.
-    async fn await_one_conflict(&self) -> super::types::WriteConflictEvent {
+    async fn await_one_conflict(&self) -> super::super::types::WriteConflictEvent {
         crate::test_support::wait_until_async(
             CONFLICT_BUDGET,
             "the copy to raise its clash or settle without one",
@@ -233,7 +233,7 @@ impl RunningCopy {
 
     /// Answers that clash the way a person clicking the dialog would, and
     /// insists the answer actually reached the parked operation.
-    fn answer(&self, conflict: &super::types::WriteConflictEvent, resolution: ConflictResolution) {
+    fn answer(&self, conflict: &super::super::types::WriteConflictEvent, resolution: ConflictResolution) {
         let outcome = resolve_write_conflict(&self.operation_id, conflict.conflict_id, resolution, false);
         assert_eq!(
             outcome,
@@ -256,7 +256,7 @@ pub(super) async fn start_copy(
     let collector = Arc::new(CollectorEventSink::new());
     let events: Arc<dyn OperationEventSink> = collector.clone();
 
-    let started = super::transfer::volume::copy_between_volumes(
+    let started = super::super::transfer::volume::copy_between_volumes(
         events,
         format!("{label}-source"),
         source,
@@ -292,7 +292,7 @@ pub(super) async fn start_copy_by_id(
     let collector = Arc::new(CollectorEventSink::new());
     let events: Arc<dyn OperationEventSink> = collector.clone();
 
-    let started = super::start_volume_copy(
+    let started = super::super::start_volume_copy(
         events,
         source_volume_id,
         source_paths,

@@ -179,14 +179,14 @@ that the registry and the provider hold the same volume. A cell asserting on the
   the provider never remembered.
 - `commands/volumes.rs`: resolving an `adb://` path without dialing (the cell points `ANDROID_ADB_SERVER_PORT` at the
   fake, so a dial would be seen).
-- `file_system/write_operations/adb_transfer_test.rs`, beside the SFTP suite: the transfer engine through the registry,
+- `file_system/write_operations/backend_suites/adb_transfer_test.rs`, beside the SFTP suite: the transfer engine through the registry,
   local to phone and back. A file each way, a tree each way, a cancel mid-upload, an Overwrite answer, a folder already
   on the phone that still asks about each clashing name, and awkward names (the shared `network_transfer_test_support.rs`
   scenarios); a copy onto the phone lands through the writer's own `<name>.cmdr-tmp-<pid>-<n>` and one `mv`, on top of
   the engine's own staging temp; and a mkdir, a move, and a delete each report the pane patch they owe. The patch cells
   connect through `cmdr_adb::volume::testing::connect_fake`, whose `RecordingListings` is what they read: the app's
   listing-cache patch needs a running app (`caching::notify_directory_changed` returns early without an `AppHandle`).
-- `file_system/write_operations/adb_index_test.rs`: the phone's drive index end to end, over a phone dialed the way a
+- `file_system/write_operations/backend_suites/adb_index_test.rs`: the phone's drive index end to end, over a phone dialed the way a
   pane dials it, because only the app's listing host forwards a patch to the index. The walk indexes the fake tree
   (rows, folder sizes, routing); a walk over an Android-shaped tree indexes storage once and never descends `/proc`, a
   `/sys` link loop, or a second path onto storage; a copy onto the phone and a delete on it patch the index, leaving no staging-name row;

@@ -10,7 +10,7 @@
 use super::*;
 use crate::file_system::listing::caching_test_support::TestListing;
 use crate::file_system::listing::metadata::FileEntry;
-use crate::file_system::write_operations::smb_test_support::*;
+use crate::file_system::write_operations::backend_suites::smb_test_support::*;
 use cmdr_smb::volume::{MountAnchor, connect_smb_volume};
 use unicode_normalization::UnicodeNormalization;
 

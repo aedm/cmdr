@@ -229,7 +229,7 @@ the directory with a local `read_dir`, which fails on an `adb://` path and makes
 A walk keeps at most eight listings in flight on the phone (`../network_scanner/DETAILS.md` § "A backend's own
 ceiling"), and descends only the phone's storage, indexed under `/sdcard/…` and each SD card, so a patch under any other
 tree is dropped the same way (`crates/cmdr-adb/src/volume/index_scope.rs`). The whole story is proven against the fake
-ADB server by `apps/desktop/src-tauri/src/file_system/write_operations/adb_index_test.rs`.
+ADB server by `apps/desktop/src-tauri/src/file_system/write_operations/backend_suites/adb_index_test.rs`.
 
 ## Local external drives (`local_external/`)
 
