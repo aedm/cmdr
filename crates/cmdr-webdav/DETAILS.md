@@ -8,9 +8,9 @@ HTTP holds no session. "Connected" means the last request that reached the wire 
 failed with a transport error (`reqwest::Error::is_connect` / `is_request`, mapped to
 `VolumeError::DeviceDisconnected`), or that the server went silent under a waiting request (§ "Silent or slow").
 `connect_webdav_volume` reads the account's secret from the `CredentialStore` (service `scheme://host:port`, scope
-`username`; nothing stored is `NeedsCredentials`), builds a `WebdavClient` (`user_agent("Cmdr")`, a 10 s connect
-timeout and no `read_timeout`, redirects off, Basic auth on every request, plus a pool-free twin for the silence probe),
-and proves it with one `PROPFIND Depth: 0` on the root. The probe rides `tokio::select!` against the cancel token; a cancel
+`username`; nothing stored is `NeedsCredentials`), builds a `WebdavClient` (`user_agent("Cmdr")`, a 10 s connect timeout
+and no `read_timeout`, redirects off, Basic auth on every request, plus a pool-free twin for the silence probe), and
+proves it with one `PROPFIND Depth: 0` on the root. The probe rides `tokio::select!` against the cancel token; a cancel
 leaves nothing behind. On success the backend records the PII-free analytics event `webdav_connected`.
 
 **An instance is a name and a root over a shared client.** `WebdavVolume` is `{ name, root, inner }`, the same split
@@ -201,14 +201,14 @@ the store and re-probes. A refusal latches `auth_attempt_spent`, moves to `Needs
 the typed password. `UnattendedReconnect` is `SwitchOff`, `NoStoredSecret`, or `Possible`. `sign_in_prompt` is always
 `SignInShape::Password`, so the sheet renders one field under a read-only username.
 
-`note_lost_session` takes the dead client out and cancels its `lost` token, so every other operation still waiting on
-it answers `DeviceDisconnected` at once rather than at its own budget; the pool goes with the client, so no request is
-ever handed one of its connections again. ❗ **An installed client counts as live only while the state says
-`Connected`**: the drop may still be on its way (a spawned task, when the lock was busy) when the frontend's reconnect
-fires on the event, so `rebuild` treats a client installed under any other state as the dead one and dials. The other
-half: a fresh client is installed and marked `Connected` under ONE write guard, and `drop_dead_client` takes only
-under a non-`Connected` state, so the late task can never take the fresh one. The same pair as
-`crates/cmdr-sftp/DETAILS.md` § "Coming back".
+`note_lost_session` takes the dead client out and cancels its `lost` token, so every other operation still waiting on it
+answers `DeviceDisconnected` at once rather than at its own budget; the pool goes with the client, so no request is ever
+handed one of its connections again. ❗ **An installed client counts as live only while the state says `Connected`**:
+the drop may still be on its way (a spawned task, when the lock was busy) when the frontend's reconnect fires on the
+event, so `rebuild` treats a client installed under any other state as the dead one and dials. The other half: a fresh
+client is installed and marked `Connected` under ONE write guard, and `drop_dead_client` takes only under a
+non-`Connected` state, so the late task can never take the fresh one. The same pair as `crates/cmdr-sftp/DETAILS.md` §
+"Coming back".
 
 ## Silent or slow
 
@@ -240,10 +240,10 @@ that: `reqwest` keeps TCP keepalive on pooled connections (15 s idle, 3 probes 1
 single-threaded server too busy to answer anything for 30 s would read as gone; no NAS or Nextcloud setup works that
 way.
 
-Pinned three ways: `liveness_test.rs` runs the ladder on a paused clock with a closure for a probe (exact deadlines,
-no server); `volume/slow_server_test.rs` runs it for real on a shortened ladder against an in-process server that holds
-a listing, trickles a body, or goes quiet on command; `volume/connection_drop_test.rs` runs the production ladder
-against Apache behind a black-holed `TcpProxy`.
+Pinned three ways: `liveness_test.rs` runs the ladder on a paused clock with a closure for a probe (exact deadlines, no
+server); `volume/slow_server_test.rs` runs it for real on a shortened ladder against an in-process server that holds a
+listing, trickles a body, or goes quiet on command; `volume/connection_drop_test.rs` runs the production ladder against
+Apache behind a black-holed `TcpProxy`.
 
 ## Connecting from the frontend
 
@@ -266,14 +266,14 @@ one place that default is spelled. `getWebdavUnattendedReconnect(volumeId)`, and
 ## Which side a test lives on
 
 This crate: the parser, the path translation, the status table, the state machine and the silence ladder (no server),
-the slow-server cells (`volume/slow_server_test.rs`, an in-process server, no Docker), and the Docker cells
-against the fixture stack (`volume/integration_test.rs`, `volume/conformance_test.rs`, the "reconnect automatically"
-cells in `volume/reconnect_test.rs`, and the real-drop cells in `volume/connection_drop_test.rs`, all `#[ignore]`d
-without it). The drop cells cut the TCP connection in a `cmdr_fs::testing::tcp_proxy::TcpProxy` they own, refused and
-silent; ❌ never pause or stop a container for that, since the stack is shared by lease. The conformance cells answer
-with Apache's own verbs, which is the point: `MOVE` overwrites by default, `DELETE` on a collection is recursive, and a
-`PROPFIND` of a collection nobody has created yet is a 404 that the conflict scan owes an empty list for. The app:
-anything whose other half is the transfer pipeline, the registry, or the listing cache, built on `volume::testing`.
+the slow-server cells (`volume/slow_server_test.rs`, an in-process server, no Docker), and the Docker cells against the
+fixture stack (`volume/integration_test.rs`, `volume/conformance_test.rs`, the "reconnect automatically" cells in
+`volume/reconnect_test.rs`, and the real-drop cells in `volume/connection_drop_test.rs`, all `#[ignore]`d without it).
+The drop cells cut the TCP connection in a `cmdr_fs::testing::tcp_proxy::TcpProxy` they own, refused and silent; ❌
+never pause or stop a container for that, since the stack is shared by lease. The conformance cells answer with Apache's
+own verbs, which is the point: `MOVE` overwrites by default, `DELETE` on a collection is recursive, and a `PROPFIND` of
+a collection nobody has created yet is a 404 that the conflict scan owes an empty list for. The app: anything whose
+other half is the transfer pipeline, the registry, or the listing cache, built on `volume::testing`.
 
 The two size-mismatch cells sit here rather than in the app's transfer suite for a reason worth keeping: reaching that
 guard through the real pipeline needs a local source that disagrees with its own stat, which only happens by racing a

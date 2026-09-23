@@ -24,8 +24,8 @@ The WebDAV backend: a `Volume` over one `reqwest` client with one account's Basi
   `is_connect` / `is_request`; a TLS refusal by the `io::ErrorKind::InvalidData` in its source chain.
 - ❗ **Every wire-touching delegator wraps itself in `noting`.** No watcher, no session: the operations ARE the
   detector. `noting` also races each one against its client's `lost` token, so a server that goes SILENT (10 s quiet,
-  then two unanswered probes: 30 s) cuts them with `DeviceDisconnected` exactly like a refused one, which flips the state
-  once and starts the backoff. `DETAILS.md` § "Silent or slow".
+  then two unanswered probes: 30 s) cuts them with `DeviceDisconnected` exactly like a refused one, which flips the
+  state once and starts the backoff. `DETAILS.md` § "Silent or slow".
 - ❗ **Every request goes out through `WebdavClient::send` or `propfind`**, and a body read counts its chunks as
   `heard`. A path that skips both looks silent to the watch however much it hears.
 - ❌ **No `read_timeout`, no `.timeout()` on the streaming PUT or GET, and never a timeout read as a lost server**: a
