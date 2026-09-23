@@ -1,40 +1,41 @@
-# What the wake loop deliberately left for later
+# What the wake loop still owes
 
-The proactive agent shipped end to end: it notices what changes on disk, decides whether that is worth saying, proposes,
-remembers, and hears what the user did with each suggestion. Every design decision lives beside the code
-(`apps/desktop/src-tauri/src/agent/wake/`, `agent/memory/`, `agent/suggested_ops/`, and the rail's docs under
-`apps/desktop/src/lib/ask-cmdr/`). What follows is only the work that was named and consciously not done.
+The proactive agent ships end to end: it notices what changes on disk, decides whether that's worth saying, proposes,
+remembers, and hears what the user did with each suggestion. The design lives beside the code:
+`apps/desktop/src-tauri/src/agent/wake/DETAILS.md`, `agent/memory/DETAILS.md`, `agent/suggested_ops/DETAILS.md`, and the
+rail's `apps/desktop/src/lib/ask-cmdr/DETAILS.md`. The agent's wider unbuilt work is
+`docs/specs/later/ai/agent-follow-ups.md`. Two items are open.
 
-Each item says what it costs and what would trigger it. None of them blocks anything shipped.
+## 1. Tune the wake loop's guessed constants from real wakes
 
-## Waiting on real use, not on effort
+**Problem**: five numbers were picked before anyone used the feature, and they're still guesses. The interest knobs in
+`apps/desktop/src-tauri/src/agent/wake/interest.rs`: `UNKNOWN_IMPORTANCE_WEIGHT` (0.35) and the hot/warm thresholds
+`HOT_THRESHOLD` (0.7) and `WARM_THRESHOLD` (0.3), which decide which folders qualify at all. The cadence constants in
+`agent/wake/schedule.rs`: `DECLINED_WAKE_BACKOFF` (5 min) and `IDLE_POLL` (60 s). The outcome ring's size in
+`agent/memory/outcomes.rs`: `OUTCOMES_MAX_BYTES` (4 KB) and `OUTCOMES_MAX_ENTRIES` (40).
 
-- **The two interest tuning knobs stay guesses.** `UNKNOWN_IMPORTANCE_WEIGHT` at 0.35 and the hot/warm thresholds at 0.7
-  and 0.3 (`agent/wake/interest.rs`) were picked before anyone had used the feature. The cadence slider made the DELAYS
-  a user choice, which is the part a user can feel; the thresholds decide which folders qualify at all, and moving them
-  on intuition would be guessing twice. **What unblocks it**: the per-outcome counted log line and the anonymous
-  analytics event that ship with the runner. Read a week of real wakes, then rank. ❌ Don't tune from a single support
-  message.
-- **Three constants in the same class**, all one-liners to change once there is evidence: the declined-wake backoff (5
-  min) and the idle poll (60 s) in `agent/wake/writer.rs`, and the outcome ring's 4 KB / 40 entries in
-  `agent/memory/outcomes.rs`.
+**Impact**: thresholds set too high make the agent look idle; too low and it wakes on noise and burns the user's quota
+(the daily ceiling in `agent/wake/spend.rs` is a backstop, not calibration). The cadence slider already made the DELAYS
+a user choice, so this is only about the numbers a user can't move.
 
-## Named and not built
+**Solution**: read a week of real wakes from what already ships for exactly this: the per-outcome counted log line
+(`interest.rs`) and the anonymous analytics event (`agent/wake/runner.rs`). Rank, then move the numbers; each is a
+one-line change. ❌ Don't tune from a single support message or from intuition.
 
-- **Reading file contents.** The agent proposes from names, sizes, dates, and folder importance. A PDF reader (and
-  friends) would let it answer "what IS this document" rather than "what does this filename suggest". Its cost is not
-  the parser: every byte read becomes prompt, and `agent/chat/budget.rs` already prices a small local window tightly.
-  Wants a design pass on what a summary costs before any parsing lands.
-- **Per-rule approval for a long job's tail** is a policy question, not a task. It lives in `open-decisions.md`.
-- **The rail does not refetch on a decision.** `SuggestionsChanged` fires on every approve and reject, but the rail does
-  not subscribe, so an approve/reject line reaches an open thread on next load rather than live. Same documented
-  limitation the wake digest has. A naive subscription would refetch for every decision whether or not it concerns the
-  open thread; the fix wants the conversation-keyed filter the turn stream already uses.
+**Size**: S once the data exists. Blocked on a week of real-use data.
 
-## One chore that needs a machine with a foreground
+## 2. The rail doesn't show an approve or reject until the thread reloads
 
-- **`pnpm i18n:shots` has never run against the new consent copy.** It refuses when another app holds the front
-  position, so it cannot run on the headless agent box. The `askCmdr.consent.*` keys carry
-  `@key.screenshot: ask-cmdr-consent.png` by hand, which is correct for the surface they render on and keeps
-  `message-screenshots-fresh` green, but they read as uncoupled in the generated `coverage-report.md` until a capture
-  runs.
+**Problem**: `SuggestionsChanged` (`suggestions-changed`, emitted from
+`apps/desktop/src-tauri/src/agent/suggested_ops/changed.rs`) fires on every approve and reject, but nothing under
+`apps/desktop/src/lib/ask-cmdr/` subscribes; only the suggestions badge and trigger do. So an approve/reject line
+reaches an open thread on next load, not live. The limitation is documented in
+`apps/desktop/src/lib/ask-cmdr/DETAILS.md`.
+
+**Impact**: small. The user sees a stale thread right after acting, which reads as "did that work?".
+
+**Solution**: subscribe in the rail, filtered by conversation the way the turn stream already filters, so an open thread
+refetches only when a decision concerns it. ❌ A naive subscription would refetch the open thread on every decision
+anywhere.
+
+**Size**: S. Not blocked.
