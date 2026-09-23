@@ -482,7 +482,7 @@ identical-looking twin beside the user's entry.
   name byte for byte (`among` treats an exact entry as "no look-alike"); a create or rename then hears the backend's
   `AlreadyExists`. A write that would REPLACE silently instead must ask `look_alike_in` with the ASKED name, which
   finds that entry (compress does).
-- **Bulk rename (`rename/bulk.rs`)** respells every destination once, in `start_bulk_rename`, before the plan, the run,
+- **Bulk rename (`rename/bulk/plan.rs`)** respells every destination once, in `start_bulk_rename`, before the plan, the run,
   and the journal see it (non-root volumes only). `settle_remote_conflicts` then treats a destination held under another
   spelling like an exact clash: the row is `Skipped` (`Ambiguous` too), a listing failure fails it, and a look-alike
   that is the row's own source is a respell. It uses `ListedFolders`, so a batch lists each folder once. Rotation
