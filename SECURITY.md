@@ -36,9 +36,18 @@ email, use GitHub's private reporting above: only you and the maintainer can see
 - **Updates at least every 14 days** until the issue is closed.
 
 Once the fix has shipped, we note it in the `### Security` section of the [changelog](CHANGELOG.md) and, with your
-permission, credit you by name. For serious issues we also publish a GitHub security advisory and request a CVE.
+permission, credit you by name.
 
-<!-- ⚠️ David: there's no CVE or advisory practice yet (no advisory has ever been published). Keep the sentence above only if you're willing to do this. -->
+We also publish a [GitHub security advisory](https://github.com/vdavid/cmdr/security/advisories) and request a CVE ID
+when a flaw meets either of these:
+
+- Someone can exploit it without already running code on the user's Mac, for example through a file, a network server,
+  a web page, or the update channel.
+- It exposes passwords, keys, or user data to someone other than the user.
+
+Fixes that only guard against an attacker who already runs code on the Mac get a changelog note, but no advisory.
+Security problems on Cmdr's servers (for example `api.getcmdr.com`) have nothing for users to update, so they get no
+CVE. If one exposes user data, we tell the people affected whenever it could harm them.
 
 We ask for **coordinated disclosure**: please give us 90 days from your report, or until a fix has shipped, whichever
 comes first, before you publish details. Cmdr updates itself automatically, so a running copy picks up a fix within
