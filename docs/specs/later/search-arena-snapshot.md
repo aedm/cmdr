@@ -26,7 +26,8 @@ search of the session). Log timestamps are local:
 so this is neither contention nor compute: it is one thread issuing ~200,000 serial 4 KiB `pread`s against a cold 830 MB
 `index-root.db`, then decoding 5.39 M rows into a ~466 MB heap arena, then reading a second database.
 
-Four costs stack, all in `search/index.rs::load_search_index` and `search/volumes.rs::load_volume_blocking`:
+Four costs stacked in the loader as it was then (`search/index/load.rs::load_search_index` and
+`search/volumes.rs::load_volume_blocking` today); § "What already shipped" says which are fixed:
 
 1. **One thread, no read-ahead.** One connection, one statement, ~14-26 MB/s effective against an SSD that does GB/s. No
    `PRAGMA mmap_size` is set anywhere in the repo, so the kernel never reads ahead either.
@@ -317,11 +318,10 @@ workstream merges into.
 so the four parent-chain call sites in `engine.rs` are done. What is left is the rest of the facade: `id`, `parent_id`,
 `name`, `is_directory`, `size`, `modified_at`, `is_shadowed`, and retiring direct `entries[idx]` access.
 
-**Landmines**: `engine.rs` walks parent chains through `id_to_index` in four places (`verdict`,
-`reconstruct_path_from_index`, `hash_path_from_index`, and the exclusion evaluator); each becomes `index_of_id`. The
-comparator in the top-k sort tiebreaks on entry id and must stay a total order, or ranking order changes. `bench.rs`
-builds synthetic indices by hand and needs a constructor rather than field access. `memory_tests.rs` currently pins
-`size_of::<SearchEntry>() == 40`; that pin retires here and is replaced in M6 by a footprint pin on the mapped path.
+**Landmines**: the comparator in the top-k sort tiebreaks on entry id and must stay a total order, or ranking order
+changes. `bench.rs` builds synthetic indices by hand and needs a constructor rather than field access. `memory_tests.rs`
+currently pins `size_of::<SearchEntry>() == 40`; that pin retires here and is replaced in M6 by a footprint pin on the
+mapped path.
 
 **Test plan**: M1's battery, unchanged, green. Existing search tests green with no assertion edits beyond construction.
 
@@ -353,7 +353,7 @@ Landed with the cheap version. Kept here because it is also this spec's fallback
 arena file, when the journal is rejected, or when a build has not finished. Nothing more to do; the notes below record
 what it has to keep doing.
 
-**Scope**: `search/index/heap_load.rs`.
+**Scope**: `search/index/load.rs`.
 
 **Intentions**: the no-arena path (first run, post-upgrade, a rejected journal, a build that has not finished) is a
 parallel rowid-range scan, not today's single thread. Row estimate from `dir_stats(ROOT_ID)` with a `COUNT(*)` fallback
