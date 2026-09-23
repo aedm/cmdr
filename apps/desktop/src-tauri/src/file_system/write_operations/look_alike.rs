@@ -11,6 +11,7 @@
 //! `Report` and `report` read as two names, and a case-sensitive destination
 //! keeps both on purpose. `DETAILS.md` § "Look-alike names".
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use cmdr_fs::name_fold::differ_only_in_form;
@@ -63,14 +64,7 @@ pub(crate) fn among<'a>(entries: impl IntoIterator<Item = &'a FileEntry>, name: 
 /// there holds nothing; any other listing failure is the caller's to fail the
 /// item on, ❌ never "nothing is there".
 pub(crate) async fn look_alike_in(volume: &dyn Volume, dir: &Path, name: &str) -> Result<LookAlike, VolumeError> {
-    if name.is_ascii() || volume.matches_names_in_any_unicode_form() {
-        return Ok(LookAlike::None);
-    }
-    match volume.list_directory(dir, None).await {
-        Ok(entries) => Ok(among(&entries, name)),
-        Err(VolumeError::NotFound(_)) => Ok(LookAlike::None),
-        Err(e) => Err(e),
-    }
+    ListedFolders::new(volume).look_alike_in(dir, name).await
 }
 
 /// Where a NEW entry a person named goes: a new folder or file, or a rename's
@@ -99,16 +93,73 @@ pub(crate) async fn place_new_entry(
     path: &Path,
     renaming: Option<&Path>,
 ) -> Result<NewEntry, VolumeError> {
-    let (Some(dir), Some(name)) = (path.parent(), path.file_name().and_then(|n| n.to_str())) else {
-        return Ok(NewEntry::Free(path.to_path_buf()));
-    };
-    let spelled = volume.spell_new_name(name);
-    let spelled_path = dir.join(spelled.as_ref());
-    match look_alike_in(volume, dir, &spelled).await? {
-        LookAlike::None => Ok(NewEntry::Free(spelled_path)),
-        LookAlike::One(entry) if renaming == Some(dir.join(&entry.name).as_path()) => Ok(NewEntry::Free(spelled_path)),
-        LookAlike::One(entry) => Ok(NewEntry::Taken(entry)),
-        LookAlike::Several => Ok(NewEntry::Ambiguous),
+    ListedFolders::new(volume).place_new_entry(path, renaming).await
+}
+
+/// `path` spelled the way `volume` wants a NEW name (`Volume::spell_new_name`).
+/// Only for a name being created; one that addresses an existing entry keeps its
+/// stored bytes.
+pub(crate) fn spelled_new_path(volume: &dyn Volume, path: &Path) -> PathBuf {
+    match (path.parent(), path.file_name().and_then(|n| n.to_str())) {
+        (Some(dir), Some(name)) => dir.join(volume.spell_new_name(name).as_ref()),
+        _ => path.to_path_buf(),
+    }
+}
+
+/// Look-alike answers for many names on one volume: each folder is listed at
+/// most once, however many names ask about it. For a caller whose folders hold
+/// still while it asks, like a bulk rename settling its plan before it writes.
+pub(crate) struct ListedFolders<'v> {
+    volume: &'v dyn Volume,
+    listed: HashMap<PathBuf, Vec<FileEntry>>,
+}
+
+impl<'v> ListedFolders<'v> {
+    pub(crate) fn new(volume: &'v dyn Volume) -> Self {
+        Self {
+            volume,
+            listed: HashMap::new(),
+        }
+    }
+
+    /// [`look_alike_in`], answered from `dir`'s one listing.
+    pub(crate) async fn look_alike_in(&mut self, dir: &Path, name: &str) -> Result<LookAlike, VolumeError> {
+        if name.is_ascii() || self.volume.matches_names_in_any_unicode_form() {
+            return Ok(LookAlike::None);
+        }
+        if !self.listed.contains_key(dir) {
+            let entries = match self.volume.list_directory(dir, None).await {
+                Ok(entries) => entries,
+                Err(VolumeError::NotFound(_)) => Vec::new(),
+                Err(e) => return Err(e),
+            };
+            self.listed.insert(dir.to_path_buf(), entries);
+        }
+        Ok(self
+            .listed
+            .get(dir)
+            .map_or(LookAlike::None, |entries| among(entries, name)))
+    }
+
+    /// [`place_new_entry`], answered from the target folder's one listing.
+    pub(crate) async fn place_new_entry(
+        &mut self,
+        path: &Path,
+        renaming: Option<&Path>,
+    ) -> Result<NewEntry, VolumeError> {
+        let spelled_path = spelled_new_path(self.volume, path);
+        let (Some(dir), Some(spelled)) = (spelled_path.parent(), spelled_path.file_name().and_then(|n| n.to_str()))
+        else {
+            return Ok(NewEntry::Free(spelled_path));
+        };
+        match self.look_alike_in(dir, spelled).await? {
+            LookAlike::None => Ok(NewEntry::Free(spelled_path)),
+            LookAlike::One(entry) if renaming == Some(dir.join(&entry.name).as_path()) => {
+                Ok(NewEntry::Free(spelled_path))
+            }
+            LookAlike::One(entry) => Ok(NewEntry::Taken(entry)),
+            LookAlike::Several => Ok(NewEntry::Ambiguous),
+        }
     }
 }
 

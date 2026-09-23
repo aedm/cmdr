@@ -16,6 +16,7 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use super::super::event_sinks::OperationEventSink;
+use super::super::look_alike::{ListedFolders, NewEntry, spelled_new_path};
 use super::super::manager::{self, OperationDescriptor, OperationSummaryText};
 use super::super::source_binding::{SourceFingerprint, normalized_path};
 use super::super::state::{WriteOperationState, WriteSettledGuard, is_cancelled, update_operation_status};
@@ -24,7 +25,7 @@ use super::super::types::{
     WriteOperationType, WriteProgressEvent, WriteSourceItemDoneEvent,
 };
 use super::same_local_file;
-use crate::file_system::volume::{LaneKey, Volume, rename_local_exclusive};
+use crate::file_system::volume::{LaneKey, Volume, VolumeError, rename_local_exclusive};
 use crate::operation_log::types::{EntryType, ExecutionStatus, Initiator, ItemOutcome, OpKind};
 
 /// One immutable row that the user allowed and preflight accepted.
@@ -70,16 +71,27 @@ pub(crate) fn start_bulk_rename(
     // volume, including a locally mounted removable drive, stays on its Volume
     // route so its listing and connection semantics remain authoritative.
     let uses_local_paths = volume_id == "root";
-    let (lanes, volume_ids, settled_volume) = if uses_local_paths {
-        (vec![LaneKey::new("root")], Vec::new(), None)
+    let (lanes, volume_ids, settled_volume, rows) = if uses_local_paths {
+        (vec![LaneKey::new("root")], Vec::new(), None, rows)
     } else {
         let volume = crate::file_system::volume::manager::get_volume_manager()
             .get(&volume_id)
             .ok_or_else(|| "The rename volume is no longer available.".to_string())?;
+        // Every destination is a NEW name: spelled the way the volume wants new
+        // names before anything plans, runs, or journals, so all three see where
+        // each row really lands.
+        let rows = rows
+            .into_iter()
+            .map(|row| BulkRenameRow {
+                destination: spelled_new_path(volume.as_ref(), &row.destination),
+                ..row
+            })
+            .collect();
         (
             vec![volume.lane_key()],
             vec![volume_id.clone()],
             Some(volume.name().to_string()),
+            rows,
         )
     };
 
@@ -343,7 +355,7 @@ async fn bulk_rename_remote(
     for row in rows {
         active.push(remote_fingerprint_matches(volume.as_ref(), &row.source, &row.expected_fingerprint).await);
     }
-    settle_remote_conflicts(rows, &mut active, volume.as_ref()).await;
+    settle_remote_conflicts(rows, &mut active, &mut outcomes, volume.as_ref()).await;
     complete_noop_rows(rows, &active, &mut outcomes, recorder);
     for step in build_execution_plan(rows, &active) {
         if is_cancelled(intent) {
@@ -658,12 +670,39 @@ fn settle_local_conflicts(rows: &[BulkRenameRow], active: &mut [bool]) {
     }
 }
 
-async fn settle_remote_conflicts(rows: &[BulkRenameRow], active: &mut [bool], volume: &dyn Volume) {
+/// The remote twin of [`settle_local_conflicts`]. A byte-exact volume finds a
+/// destination only by its own bytes, so a miss asks once more whether the folder
+/// holds the name under another Unicode spelling (`look_alike.rs`): such a
+/// look-alike is taken like an exact clash, two of them are too many to guess
+/// between, and the row's own source is a respell. A look-alike some other active
+/// row moves away never gets here: its destination counts as claimed.
+async fn settle_remote_conflicts(
+    rows: &[BulkRenameRow],
+    active: &mut [bool],
+    outcomes: &mut [BulkRenameOutcome],
+    volume: &dyn Volume,
+) {
+    let mut folders = ListedFolders::new(volume);
     loop {
         let mut changed = false;
         for index in rows_with_unclaimed_destination(rows, active) {
-            if volume.get_metadata(&rows[index].destination).await.is_ok() {
+            let row = &rows[index];
+            let clash = match volume.get_metadata(&row.destination).await {
+                Ok(_) => Some(BulkRenameOutcome::Skipped),
+                Err(VolumeError::NotFound(_)) => {
+                    match folders.place_new_entry(&row.destination, Some(&row.source)).await {
+                        Ok(NewEntry::Free(_)) => None,
+                        Ok(NewEntry::Taken(_) | NewEntry::Ambiguous) => Some(BulkRenameOutcome::Skipped),
+                        // Couldn't list the folder, so couldn't tell: ❌ never "free".
+                        Err(_) => Some(BulkRenameOutcome::Failed),
+                    }
+                }
+                // The rename itself answers for a destination it can't reach.
+                Err(_) => None,
+            };
+            if let Some(outcome) = clash {
                 active[index] = false;
+                outcomes[index] = outcome;
                 changed = true;
             }
         }
@@ -858,3 +897,6 @@ fn emit_bulk_rename_progress(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod look_alike_tests;
