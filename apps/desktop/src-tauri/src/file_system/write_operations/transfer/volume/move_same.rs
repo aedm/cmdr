@@ -24,7 +24,7 @@ use super::super::super::types::{
     WriteSourceItemDoneEvent,
 };
 use super::super::transfer_driver::{
-    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, PostLoopIntent, ResolveFut, TransferContext,
+    ConflictDecision, ConflictDecisionInput, DriverConfig, PostLoopIntent, ResolveFut, TransferContext,
     TransferFut, TransferOutcome, build_pre_skip_set, drive_transfer_serial_async,
 };
 use super::conflict::resolve_volume_conflict;
@@ -417,17 +417,8 @@ pub(crate) async fn move_within_same_volume_with_progress(
         bulk_skip_bytes,
         &pre_skip_paths,
         &driver_config,
-        {
-            let volume = Arc::clone(&volume);
-            move |p: &Path| -> FetchFut<'_> {
-                let volume = Arc::clone(&volume);
-                let p_owned = p.to_path_buf();
-                Box::pin(async move {
-                    // A same-volume move keeps the entry it moves, name and all.
-                    super::landing::name_at_destination(&volume, &p_owned, super::landing::NewName::Keep).await
-                })
-            }
-        },
+        // A same-volume move keeps the entry it moves, name and all.
+        super::landing::top_level_precheck(&volume, None, super::landing::NewName::Keep),
         {
             let volume = Arc::clone(&volume);
             let state = Arc::clone(state);

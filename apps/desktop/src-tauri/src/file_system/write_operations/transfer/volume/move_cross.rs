@@ -28,7 +28,7 @@ use super::super::super::types::{
     WriteOperationPhase, WriteOperationType,
 };
 use super::super::transfer_driver::{
-    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, LeafProgressLedger, PostLoopIntent, ResolveFut,
+    ConflictDecision, ConflictDecisionInput, DriverConfig, LeafProgressLedger, PostLoopIntent, ResolveFut,
     TransferContext, TransferFut, TransferOutcome, build_pre_skip_set, drive_transfer_serial_async,
 };
 use super::cleanup::{TreeRemoval, remove_tree};
@@ -219,25 +219,7 @@ pub(crate) async fn move_volumes_with_progress(
         bulk_skip_bytes,
         &pre_skip_paths,
         &driver_config,
-        {
-            let dest_volume = Arc::clone(&dest_volume);
-            let op_probe_precheck = Arc::clone(&op_probe);
-            move |p: &Path| -> FetchFut<'_> {
-                let dest_volume = Arc::clone(&dest_volume);
-                let op_probe_precheck = Arc::clone(&op_probe_precheck);
-                let p_owned = p.to_path_buf();
-                Box::pin(async move {
-                    // Recorded BEFORE the await: a `get_metadata` on a wedged
-                    // share returns to nobody, and a dump has to be able to name
-                    // it as the step in progress.
-                    op_probe_precheck.set_driver_phase(
-                        super::super::transfer_probe::DriverPhase::PreparingNext,
-                        &p_owned.display().to_string(),
-                    );
-                    super::landing::name_at_destination(&dest_volume, &p_owned, super::landing::NewName::Respell).await
-                })
-            }
-        },
+        super::landing::top_level_precheck(&dest_volume, Some(Arc::clone(&op_probe)), super::landing::NewName::Respell),
         {
             let source_volume = Arc::clone(&source_volume);
             let dest_volume = Arc::clone(&dest_volume);

@@ -29,7 +29,7 @@ use super::super::super::ledger::WrittenFile;
 use super::super::super::state::WriteOperationState;
 use super::super::super::types::{VolumeCopyConfig, WriteOperationPhase, WriteOperationType};
 use super::super::transfer_driver::{
-    ConflictDecision, ConflictDecisionInput, DriverConfig, FetchFut, LeafProgressLedger, PostLoopIntent, ResolveFut,
+    ConflictDecision, ConflictDecisionInput, DriverConfig, LeafProgressLedger, PostLoopIntent, ResolveFut,
     TransferContext, TransferFut, TransferOutcome, drive_transfer_serial_async,
 };
 use super::super::transfer_probe::{DriverPhase, OperationProbe, TaskRole, TaskRow};
@@ -170,27 +170,7 @@ pub(super) async fn drive_transfer_serial(ctx: SerialCopy<'_>) -> SerialOutcome 
         bulk_skip_bytes,
         pre_skip_paths,
         &driver_config,
-        {
-            let dest_volume = Arc::clone(&dest_volume);
-            let op_probe_precheck = op_probe.clone();
-            move |p: &Path| -> FetchFut<'_> {
-                let dest_volume = Arc::clone(&dest_volume);
-                let op_probe_precheck = op_probe_precheck.clone();
-                let p_owned = p.to_path_buf();
-                Box::pin(async move {
-                    // Record the pre-check BEFORE awaiting it, exactly as the
-                    // concurrent driver does: a `get_metadata` on a wedged share
-                    // returns to nobody, so a dump has to name it as the step in
-                    // progress rather than leave the driver reading `starting`.
-                    if let Some(probe) = op_probe_precheck.as_ref() {
-                        probe.set_driver_phase(DriverPhase::PreparingNext, &p_owned.display().to_string());
-                    }
-                    // Any successful stat is a conflict; a stat that can't
-                    // answer fails the item rather than writing.
-                    super::landing::name_at_destination(&dest_volume, &p_owned, super::landing::NewName::Respell).await
-                })
-            }
-        },
+        super::landing::top_level_precheck(&dest_volume, op_probe.clone(), super::landing::NewName::Respell),
         {
             let source_volume = Arc::clone(&source_volume);
             let dest_volume = Arc::clone(&dest_volume);

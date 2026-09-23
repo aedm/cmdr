@@ -23,7 +23,8 @@ use std::sync::Arc;
 use super::super::super::look_alike::{LookAlike, look_alike_in};
 use super::super::super::types::WriteOperationError;
 use super::super::dest_name_index::{DestLookup, DestNameIndex};
-use super::super::transfer_driver::NameAtDest;
+use super::super::transfer_driver::{FetchFut, NameAtDest};
+use super::super::transfer_probe::{DriverPhase, OperationProbe};
 use super::transfer_error::{PathRole, map_volume_error};
 use crate::file_system::listing::FileEntry;
 use crate::file_system::volume::{Volume, VolumeError};
@@ -71,10 +72,33 @@ pub(super) enum NewName {
     Keep,
 }
 
-/// What the destination holds at one TOP-LEVEL name, for the conflict pre-check
-/// every serial engine (`copy_serial.rs`, `move_cross.rs`, `move_same.rs`) runs
-/// before it writes: [`where_it_lands`] with no listing, for the path the driver
-/// would write.
+/// The conflict pre-check every serial engine (`copy_serial.rs`,
+/// `move_cross.rs`, `move_same.rs`) hands the async driver as its
+/// `dest_meta_fetcher`: [`name_at_destination`] for each top-level name, with the
+/// step named on the operation's probe BEFORE the await. A `get_metadata` on a
+/// wedged share returns to nobody, so a dump has to be able to name it as the
+/// step in progress rather than leave the driver reading `starting`.
+pub(super) fn top_level_precheck(
+    dest_volume: &Arc<dyn Volume>,
+    probe: Option<Arc<OperationProbe>>,
+    new_name: NewName,
+) -> impl for<'a> FnMut(&'a Path) -> FetchFut<'a> + use<> {
+    let dest_volume = Arc::clone(dest_volume);
+    move |dest: &Path| -> FetchFut<'_> {
+        let dest_volume = Arc::clone(&dest_volume);
+        let probe = probe.clone();
+        let dest = dest.to_path_buf();
+        Box::pin(async move {
+            if let Some(probe) = probe {
+                probe.set_driver_phase(DriverPhase::PreparingNext, &dest.display().to_string());
+            }
+            name_at_destination(&dest_volume, &dest, new_name).await
+        })
+    }
+}
+
+/// What the destination holds at one TOP-LEVEL name: [`where_it_lands`] with no
+/// listing, for the path the driver would write.
 ///
 /// ❗ **Only `NotFound` means free.** A `ConnectionTimeout`, a
 /// `DeviceSessionReset`, a `PermissionDenied` (anything else) is the
@@ -87,7 +111,7 @@ pub(super) enum NewName {
 /// ❌ No retry here. Per-file retry belongs to `retry.rs`, inside
 /// `stream_pipe_file`, and a second layer above it would multiply the wait a
 /// user sits through on a dead link (`transfer/CLAUDE.md`).
-pub(super) async fn name_at_destination(
+async fn name_at_destination(
     dest_volume: &Arc<dyn Volume>,
     dest: &Path,
     new_name: NewName,
