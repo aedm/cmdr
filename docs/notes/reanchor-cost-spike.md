@@ -1,9 +1,9 @@
 # Re-anchor cost (Spike A)
 
-Spike A of `docs/specs/later/indexing/sealed-subtrees-plan.md`, the gate on M2–M4. Phase C makes a periodic full
-re-anchor the primary correctness mechanism for a sealed subtree, and a re-anchor is the same O(children) walk the
-design exists to avoid, now on a timer. This note measures that walk and answers whether a cadence exists that is both
-affordable and tight enough to keep drift tolerable.
+Spike A for sealing pathological subtrees (`docs/specs/later/indexing/sealed-subtrees-follow-ups.md` § 2). Sealing
+makes a periodic full re-anchor the primary correctness mechanism for a sealed subtree, and a re-anchor is the same
+O(children) walk the design exists to avoid, now on a timer. This note measures that walk and answers whether a cadence
+exists that is both affordable and tight enough to keep drift tolerable.
 
 Measured 2026-07-20 with `scripts/reanchor-cost`.
 
@@ -11,9 +11,10 @@ Measured 2026-07-20 with `scripts/reanchor-cost`.
 
 **Go.** A re-anchor of the worst directory on this machine (1.44M entries) costs **96–181 s wall, 19–29 s CPU, zero
 writer messages, and a flat 128 KiB of memory** using `getattrlistbulk`. The verification pass it replaces cost 426 s,
-pegged the writer queue at its 20,001 cap, and peaked at 1.01 GB (`sealed-subtrees-plan.md` § "The incident"). So one
-anchor is roughly a quarter of one verification pass, with none of the queue or memory pressure, and the row/RAM saving
-is permanent rather than per-incident. At a cadence of hours, sealing wins clearly.
+pegged the writer queue at its 20,001 cap, and peaked at 1.01 GB (`crates/cmdr-index/src/indexing/reconcile/DETAILS.md`
+§ "Bounding verification cost (the two teeth)"). So one anchor is roughly a quarter of one verification pass, with none
+of the queue or memory pressure, and the row/RAM saving is permanent rather than per-incident. At a cadence of hours,
+sealing wins clearly.
 
 Three conditions, each falling out of the numbers below:
 
