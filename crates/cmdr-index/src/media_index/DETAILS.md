@@ -36,15 +36,15 @@ Apple **Vision** (OCR, scene tags, image feature print, and later face detection
 - **Why:** a macOS-only app gets Neural Engine acceleration and zero binary weight from the native frameworks. The
   rejected default was an Immich-style stack (a Python ML service plus Postgres/pgvector over HTTP): multi-user server
   overhead a single-user desktop app must not copy.
-- **Proven, not assumed** (`docs/notes/clip-coreml-rust-spike.md`, macOS 26.5.1, 2026-06-30): a minimal
-  `objc2-core-ml` round-trip returned an embedding bit-identical to the `coremltools` reference, with an `unsafe`
-  surface of about 12–15 mechanical calls behind a safe wrapper.
+- **Proven, not assumed** (`docs/notes/clip-coreml-rust-spike.md`, macOS 26.5.1, 2026-06-30): a minimal `objc2-core-ml`
+  round-trip returned an embedding bit-identical to the `coremltools` reference, with an `unsafe` surface of about 12–15
+  mechanical calls behind a safe wrapper.
 - **The binding constraint was licensing, not capability:** Apple's MobileCLIP / MobileCLIP2 weights are research-only
   (Apple ML Research Model Terms of Use), so a commercial product can't ship them. We ship OpenAI CLIP ViT-B/32 (MIT),
   converted once with `coremltools` (`clip/install.rs`); the plumbing is model-agnostic.
 - **Bounded fallback:** if a future model won't convert cleanly or loses accuracy, run THAT model via `ort` plus the
-  CoreML execution provider. It costs about 25–35 MB of native binary (`libonnxruntime.dylib`), so it's a per-model
-  last resort, never the default.
+  CoreML execution provider. It costs about 25–35 MB of native binary (`libonnxruntime.dylib`), so it's a per-model last
+  resort, never the default.
 
 ### Decision 2: vectors in SQLite, brute force first, no `sqlite-vec`
 
@@ -64,14 +64,15 @@ is what made that swap cheap.
 ML data never goes into the index DB. Storage is one `media_file(id, path)` identity table with every other table keyed
 on `file_id` (`store/DETAILS.md`), and the staleness key is `(path, mtime, size)`.
 
-- **Why separate:** one writer thread per DB (no contention with the index writer), an independent disposable
-  lifecycle, and the per-volume registry pattern SMB slots into.
+- **Why separate:** one writer thread per DB (no contention with the index writer), an independent disposable lifecycle,
+  and the per-volume registry pattern SMB slots into.
 - **Why path, not the index's entry id:** `entries.id` is assigned by insert order over a table truncated before each
   full scan, so the same file gets a different id after any rescan. The index's real identity is
-  `(parent_id, name_folded)`, which is the path. `inode` is only a rename hint (unstable on copy, unreliable on SMB/MTP).
+  `(parent_id, name_folded)`, which is the path. `inode` is only a rename hint (unstable on copy, unreliable on
+  SMB/MTP).
 - **GC is deletion-driven and runs ONLY after a completed scan**, never on absence while a volume is `Scanning`: a full
-  rescan truncates `entries`, so mid-scan every path transiently vanishes. The whole argument: § "The GC safety
-  argument (data-safety)" below.
+  rescan truncates `entries`, so mid-scan every path transiently vanishes. The whole argument: § "The GC safety argument
+  (data-safety)" below.
 - **❌ Never persist or compare the lifecycle bus's `ScanState.generation`.** It's an in-memory counter that restarts at
   1 every launch, so a persisted watermark gated on "a higher generation" would stop GC after the first restart and leak
   deleted-file rows forever. Consume `Completed { .. }` edges; if a durable as-of marker is ever needed, mint an own
@@ -84,9 +85,10 @@ Everything the models compute (OCR text, tags, embeddings, detections, computed 
 `media.db` wipe, so it goes in a SEPARATE durable store. That store and its conservative re-attach rules are unbuilt;
 their design is the faces item in `docs/specs/later/indexing/media-index-follow-ups.md`.
 
-- **The compatibility key is an enrichment-provenance stamp, not a bare model id:** `{model id + version, Core ML / OS
-  version, tag-taxonomy version}`. A `.mlmodelc` recompiles per OS version and Neural Engine output can drift across an
-  OS upgrade while the model id stays the same, so the id alone could let a silent mislabel through.
+- **The compatibility key is an enrichment-provenance stamp, not a bare model id:**
+  `{model id + version, Core ML / OS version, tag-taxonomy version}`. A `.mlmodelc` recompiles per OS version and Neural
+  Engine output can drift across an OS upgrade while the model id stays the same, so the id alone could let a silent
+  mislabel through.
 - **What ships today** is the derived-data half: the combined analyze stamp in `media_status.engine_version`, whose
   tag-taxonomy component makes an OS taxonomy change re-tag unchanged files (`backend/DETAILS.md` § "The analyze
   provenance stamp"), plus the CLIP-side `clip_stamp`.
@@ -94,8 +96,8 @@ their design is the faces item in `docs/specs/later/indexing/media-index-follow-
 ### Decision 5: feed the models a downscaled in-memory decode, never the original, and write no thumbnail files
 
 Decode once via ImageIO/CoreGraphics (HEIC and RAW included), downscale to model input size, and hand the same `CGImage`
-to every analysis (`backend/DETAILS.md`). The search grid reuses the viewer's existing `cmdr-media://` preview scheme
-(§ "The IPC surface").
+to every analysis (`backend/DETAILS.md`). The search grid reuses the viewer's existing `cmdr-media://` preview scheme (§
+"The IPC surface").
 
 - **Why:** CLIP and OCR need small inputs, and decoding originals more than once is the dominant cost.
 - **Carve-out:** future face-crop avatars are curated OUTPUT stored as BLOBs in `media.db`, not an enrichment input, so
@@ -104,8 +106,8 @@ to every analysis (`backend/DETAILS.md`). The search grid reuses the viewer's ex
 ### Decision 6: opt-in, gated, and conservative by default
 
 The whole feature is off until enabled. Local volumes enrich when it's on; SMB is a per-volume opt-in; MTP never gets a
-background sweep (`network/DETAILS.md`). Gate heavy paths (CLIP, and faces later) on Apple Silicon, but don't
-over-gate: Vision OCR and tags work on older Macs too. Faces will be a separate opt-in with its own privacy copy.
+background sweep (`network/DETAILS.md`). Gate heavy paths (CLIP, and faces later) on Apple Silicon, but don't over-gate:
+Vision OCR and tags work on older Macs too. Faces will be a separate opt-in with its own privacy copy.
 
 - **A network opt-in has teeth:** idle-gated, bandwidth-bounded, resumable, and bounded in concurrency
   (`network/DETAILS.md` § "The conservative-fetch policy with teeth").
@@ -125,8 +127,8 @@ through the registration bus, with a `PassCoordinator` coalescing each volume to
   publishes.
 - **Why a per-volume `watch`:** a completion published during `setup()`, before `media_index` subscribes, is retained
   and replayed to the late subscriber.
-- **The `dirs-changed` channel is last-value-wins** (a burst can drop a batch; the next full pass heals it), so treat
-  it as advisory, ❌ never as the sole trigger for anything data-safety-critical.
+- **The `dirs-changed` channel is last-value-wins** (a burst can drop a batch; the next full pass heals it), so treat it
+  as advisory, ❌ never as the sole trigger for anything data-safety-critical.
 
 ### Decision 8: every consumer reaches `media.db` only through the `MediaIndex` read API
 
@@ -175,8 +177,8 @@ sweep → wire ordering, edge-triggered bus consumption).
   persisted meta counter) because a full pass replaces the whole table. `media_index` doesn't rewrite the table each
   scan; its staleness is `(path, mtime, size)` + the OS/Vision engine stamp, which makes a generation column redundant.
   Crucially, this is NOT the lifecycle-bus `generation` — that one is a transient in-memory wake counter that resets to
-  1 every launch and must NEVER be persisted (media_index Decision 3). If a durable "as-of" marker is ever needed, mint a
-  separate persisted counter à la `importance::next_generation`; never stamp the bus value.
+  1 every launch and must NEVER be persisted (media_index Decision 3). If a durable "as-of" marker is ever needed, mint
+  a separate persisted counter à la `importance::next_generation`; never stamp the bus value.
 - **A real GC instead of wholesale table replacement.** Media enrichment is expensive and incremental, so a pass
   enriches only stale images and GCs vanished rows, rather than clearing + rewriting the whole table.
 
@@ -592,11 +594,11 @@ through the same path.
 Every command is `async` + `spawn_blocking` (a sync `#[tauri::command]` would block the IPC thread), offline-capable,
 and registered in the `ipc.rs` manifest — regen the typed bindings with `pnpm bindings:regen` after any command change.
 
-- **`media_index_search_ocr(volume_id, query, limit?)`** — the IPC door onto `MediaIndex::search_ocr` (media_index Decision 8):
-  it resolves the app data dir, opens `MediaIndex` for the volume, and searches. `limit` defaults to 200, clamped
-  to 1000. An empty query, an un-enriched volume, or an offline/purged `media.db` returns an empty list, never an error.
-  When the master toggle is off it short-circuits to an empty list before opening `media.db` (defense in depth,
-  mirroring `media_index_covered_count`; the frontend also hides the OCR section entirely when off).
+- **`media_index_search_ocr(volume_id, query, limit?)`** — the IPC door onto `MediaIndex::search_ocr` (media_index
+  Decision 8): it resolves the app data dir, opens `MediaIndex` for the volume, and searches. `limit` defaults to 200,
+  clamped to 1000. An empty query, an un-enriched volume, or an offline/purged `media.db` returns an empty list, never
+  an error. When the master toggle is off it short-circuits to an empty list before opening `media.db` (defense in
+  depth, mirroring `media_index_covered_count`; the frontend also hides the OCR section entirely when off).
 - **`media_index_volume_state`** → the honest per-volume coverage signal. `indexing` is a cheap in-memory snapshot off
   the scheduler's `PassCoordinator::is_running` (`MediaScheduler::is_enriching`); `enriched_count` is a `COUNT(*)` over
   `media_status`. It lets the UI tell apart four states rather than ever showing a confident-looking empty result that's
@@ -604,8 +606,8 @@ and registered in the `ipc.rs` manifest — regen the typed bindings with `pnpm 
   genuine miss), and not-indexed-yet. Polled per search (no event subscription yet; a reasonable later upgrade).
 - **`media_index_thumbnail_token` / `media_index_drop_thumbnail_tokens`** — the grid's thumbnails REUSE the existing
   viewer preview scheme (`cmdr-media://` via the viewer's `file_viewer::media` token registry), never a
-  media_index-produced thumbnail file (media_index Decision 5). `media_index_thumbnail_token` classifies a path by magic bytes
-  and, for an image, mints a `cmdr-media://` token; the frontend builds the URL via the viewer's `mediaUrl`
+  media_index-produced thumbnail file (media_index Decision 5). `media_index_thumbnail_token` classifies a path by magic
+  bytes and, for an image, mints a `cmdr-media://` token; the frontend builds the URL via the viewer's `mediaUrl`
   (single-source). **Token lifetime is the CALLER's here** — a viewer session drops its token at the window-close choke
   point, but the grid has none, so `ImageSearchResults.svelte` drops every token it minted when the result set changes
   or the component unmounts, or the token map leaks path mappings. The scheme serves the FULL original bytes
@@ -686,10 +688,10 @@ network-volume UI is in `network/DETAILS.md`, the CLIP UI in `clip/DETAILS.md`.
 ## What a bare "plan M<n>" in this subsystem means
 
 About 80 comments under `media_index/` cite `plan M<n>`. Two wiped specs used milestone numbers here, and they collide:
-the original media-ML plan (M1 OCR plumbing, M1.5 SMB, M2 tags, M3 CLIP, M4a/M4b faces, M5 captions, M6 the
-photo-search agent tool) and the later resource plan the bare numbers mean. Read `plan M4` as faces, or `plan M6` as
-the agent tool, and you will be badly wrong. This table is the only place the mapping survives, so keep it when you
-touch these comments.
+the original media-ML plan (M1 OCR plumbing, M1.5 SMB, M2 tags, M3 CLIP, M4a/M4b faces, M5 captions, M6 the photo-search
+agent tool) and the later resource plan the bare numbers mean. Read `plan M4` as faces, or `plan M6` as the agent tool,
+and you will be badly wrong. This table is the only place the mapping survives, so keep it when you touch these
+comments.
 
 The numbers come from a wiped `resource-use-plan.md` (the 2026-07 one, "make media indexing fast, small, and honest at
 NAS scale"; a later, unrelated plan reused that filename for idle CPU and RAM, and its numbering reached docs rather

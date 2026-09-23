@@ -15,19 +15,21 @@ they're optional.
   naming work (item 2) builds on.
 - **Solution**:
   - Detect with Vision (`VNDetectFaceRectanglesRequest`, plus `VNDetectFaceCaptureQualityRequest` to pick the best
-    crop). Embed with an ArcFace-family Core ML model downloaded through the existing CLIP install path (`clip/install.rs`:
-    SHA-256 verified before unpack). Verify the license before picking one: AuraFace is commercial-friendly, several
-    ArcFace weights aren't. Cluster by cosine (agglomerative or HDBSCAN) into a `face_cluster` table in `media.db`.
+    crop). Embed with an ArcFace-family Core ML model downloaded through the existing CLIP install path
+    (`clip/install.rs`: SHA-256 verified before unpack). Verify the license before picking one: AuraFace is
+    commercial-friendly, several ArcFace weights aren't. Cluster by cosine (agglomerative or HDBSCAN) into a
+    `face_cluster` table in `media.db`.
   - A SEPARATE faces opt-in with its own privacy copy (`media_index Decision 6`), gated on Apple Silicon.
-  - Face-crop avatars are BLOBs in the disposable `media.db`, GC'd with their rows, excluded from crash and error
-    report bundles, and covered by `docs/security.md`'s redaction and backup posture. That's curated output, so it
-    doesn't break `media_index Decision 5` (no thumbnail files as enrichment input).
-  - Stamp every stored face embedding with the enrichment-provenance key `{model id + version, Core ML / OS version,
-    tag-taxonomy version}` from day one (`media_index Decision 4`), so item 2's re-attach gate has something to check.
+  - Face-crop avatars are BLOBs in the disposable `media.db`, GC'd with their rows, excluded from crash and error report
+    bundles, and covered by `docs/security.md`'s redaction and backup posture. That's curated output, so it doesn't
+    break `media_index Decision 5` (no thumbnail files as enrichment input).
+  - Stamp every stored face embedding with the enrichment-provenance key
+    `{model id + version, Core ML / OS version, tag-taxonomy version}` from day one (`media_index Decision 4`), so item
+    2's re-attach gate has something to check.
   - Measure clustering thresholds on real libraries and record them in `docs/notes/`; never hardcode them blind.
   - Tests: TDD red→green on cluster merge/split correctness and on clustering honoring must-link / cannot-link
-    constraints (stub the store item 2 adds); a fake-backend pipeline test; a macOS-gated detect+embed test on a
-    fixture with known faces; an E2E where a cluster-id search returns the right photos.
+    constraints (stub the store item 2 adds); a fake-backend pipeline test; a macOS-gated detect+embed test on a fixture
+    with known faces; an E2E where a cluster-id search returns the right photos.
 - **Size**: L. Blocked on a David decision: he wants to be closer in the loop for faces, so start only when he says go.
 
 ## 2. Face naming, a durable identity store, and conservative re-attach (the People UI)
@@ -38,12 +40,12 @@ they're optional.
 - **Impact**: A silent mislabel is worse than a miss: it's a privacy and trust failure in the most personal part of
   someone's photos. Losing hours of naming to a cache wipe is a data-loss bug by Cmdr's own principles.
 - **Solution** (the data-safety design, `media_index Decision 4`):
-  - A separate durable store holds, per named identity: the name, every correction, and one or more embedding
-    centroids, each tagged with the provenance stamp.
+  - A separate durable store holds, per named identity: the name, every correction, and one or more embedding centroids,
+    each tagged with the provenance stamp.
   - **Every correction and negative carries a space-independent anchor**: `(path, IoU-tolerant face bounding box)`, in
     addition to any embedding. A "not this person" veto stored only as an old-space embedding can't be checked after a
-    model change, so the user could silently re-approve the exact face they rejected. IoU-tolerant because
-    re-detection shifts crops and face counts across OS versions.
+    model change, so the user could silently re-approve the exact face they rejected. IoU-tolerant because re-detection
+    shifts crops and face counts across OS versions.
   - **Re-attach is conservative.** If `media.db` survived (the common case), identity links survive with it, keyed by
     face id, never by path (a photo can hold several faces). After a true re-embed, re-attach by centroid cosine ONLY
     when the provenance stamp matches AND a self-check passes (re-embed one known-good stored face and require its
@@ -66,12 +68,12 @@ they're optional.
     taxonomy while the model id stays the same, and record the before/after data in `docs/notes/`.
   - Disabling image indexing must say what happens to this store (kept with a clear notice, or exportable), never
     silently wipe or silently keep it.
-  - Tests (data-safety critical; the lead re-runs them rather than trusting delegation): names and corrections
-    re-attach after a simulated `media.db` wipe; refuse a cross-space match on a stamp mismatch; same stamp but drifted
-    embeddings fail the self-check into "needs re-confirm"; a "not this person: X" veto never re-attaches to X after a
-    regenerate even when X's centroid is nearest; that veto resurfaces by its anchor after a model change; the
-    transitive must-link conflict. E2E: name, search, merge, remove-then-regenerate without snap-back, and a stamp bump
-    that asks to re-confirm.
+  - Tests (data-safety critical; the lead re-runs them rather than trusting delegation): names and corrections re-attach
+    after a simulated `media.db` wipe; refuse a cross-space match on a stamp mismatch; same stamp but drifted embeddings
+    fail the self-check into "needs re-confirm"; a "not this person: X" veto never re-attaches to X after a regenerate
+    even when X's centroid is nearest; that veto resurfaces by its anchor after a model change; the transitive must-link
+    conflict. E2E: name, search, merge, remove-then-regenerate without snap-back, and a stamp bump that asks to
+    re-confirm.
 - **Size**: XL. Blocked on item 1, and on a David decision for the storage substrate.
 
 ## 3. LLM captions for photos (on-device first, cloud optional)
@@ -81,8 +83,8 @@ they're optional.
 - **Impact**: A nice-to-have on top of CLIP, which already answers most scene queries. Genuinely optional.
 - **Solution**:
   - On-device captions through Apple's Foundation Models. It's Swift-only, so this needs a Swift bridge (a Swift static
-    library or sidecar built as its own subproject, called over FFI). Spike the bridge first, and verify that
-    Foundation Models accepts image input on the current macOS; that claim is still unverified.
+    library or sidecar built as its own subproject, called over FFI). Spike the bridge first, and verify that Foundation
+    Models accepts image input on the current macOS; that claim is still unverified.
   - Captions feed the existing FTS5 index in `media.db`, beside OCR and tag text.
   - An optional cloud route through a frontier vision model reuses the `agent/` stack (`agent/CLAUDE.md`): the
     backend-enforced consent gate (`agent/consent.rs`) with a separate egress consent copy version, the cost meter
@@ -107,10 +109,9 @@ they're optional.
 
 ## 5. Offer to delete the image index when turning image indexing off
 
-- **Problem**: Turning off "Index image contents" stops work and keeps every row
-  (`media_index/DETAILS.md` § "Disabling stops the running pass (not just future ones)"). Nothing in the UI offers to
-  delete `media.db`, so a user who turns it off for privacy keeps an OCR'd copy of their images' text on disk without
-  being told.
+- **Problem**: Turning off "Index image contents" stops work and keeps every row (`media_index/DETAILS.md` § "Disabling
+  stops the running pass (not just future ones)"). Nothing in the UI offers to delete `media.db`, so a user who turns it
+  off for privacy keeps an OCR'd copy of their images' text on disk without being told.
 - **Impact**: Small, but it's a privacy expectation: someone disabling the feature may assume the derived data goes too.
 - **Solution**: When the toggle goes off, show a short confirm that keeps the index by default and offers "Delete the
   image index too" (with its size), which removes each volume's `media-{volume_id}.db` and ANN files through the writer
