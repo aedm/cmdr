@@ -26,7 +26,6 @@
     "apps/desktop/src-tauri/src/network/smb_cache.rs": 4,
     "apps/desktop/src-tauri/src/quick_look/controller.rs": 4,
     "crates/cmdr-fs/src/entry.rs": 4,
-    "crates/cmdr-fs/src/volume/in_memory.rs": 1,
     "crates/cmdr-git/src/repo.rs": 3,
     "crates/cmdr-git/src/snapshot_dates.rs": 3,
     "crates/cmdr-git/src/status.rs": 4,
