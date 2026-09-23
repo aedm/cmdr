@@ -116,6 +116,10 @@ Three ledgers say what an operation currently has at the destination, and each o
 
 **What comes back** is a `ReversalTally`, folded into the `CancelRollback` the `write-cancelled` event carries: a three-state outcome plus the reversed count and the per-reason `SkipBreakdown` groups (complete counts, one example name each) the history dialog's report already uses.
 
+**Considered and rejected: routing the in-flight reversal through the journal.** The in-flight ledgers and the history engine share a vocabulary (`reversal.rs`), never a mechanism. ❌ Don't reach for the operation log from the cancel path: it would make a data-safety net depend on the log database having opened and on no row having been dropped under backpressure, where today it works from memory regardless. For a directory merge the in-memory ledger is also strictly MORE capable, since the journal marks a merge `not_rollbackable` while `MoveTransaction` holds every step. Pre-finalize rollback eligibility in the journal only serves that unification, so it stays out too.
+
+**Considered and deferred: flipping an in-flight transfer between copying and rolling back at will.** It would need `OperationIntent` to lose its one-way `Running → RollingBack/Stopped` shape, and forward and reverse to become two directions of ONE cursor over one ordered work list, where today forward walks the source list in the transfer driver and reverse walks the created-path ledger in a terminal epilogue. David declined it for now; the poppable-stack ledger is the only groundwork laid for it, so ❌ don't lay more speculatively.
+
 ### Naming what a cancel left behind
 
 `CancelRollback` reports THREE kinds of leftover, and they are separate fields on purpose.
