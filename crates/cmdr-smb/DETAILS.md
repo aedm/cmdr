@@ -355,8 +355,11 @@ Measured against David's QNAP (`naspi`) with the `smb2` CLI on 2026-09-22: in a 
 NFC and whose `retusált -185.jpg` is NFD, only the `(NFC directory, NFD file)` spelling opened; the all-NFC, all-NFD,
 and `(NFD, NFC)` spellings answered `STATUS_OBJECT_NAME_NOT_FOUND` or `STATUS_OBJECT_PATH_NOT_FOUND`, and so did the
 right bytes in the wrong case. The fixture's Samba stores names as sent too (verified on the `smb-consumer-guest`
-container, `unicode_names_integration_test.rs`, 2026-09-23). So "SMB servers use form X" is false; the rule is "use the
-bytes the server gave you" (ERR-VETBX).
+container, `unicode_names_integration_test.rs`, 2026-09-23). So "SMB servers use form X" is false (ERR-VETBX). The rule,
+in three parts: **use the bytes the server gave you; a foreign path resolves once, where it enters; a name Cmdr creates
+goes out composed.** Scale on that NAS (a recursive listing of `Takeout/Google Photos`, 497,120 entries, 2026-09-22):
+all 235 directory names NFC or ASCII, 712 file names NFD across six albums, and no two names colliding modulo form and
+case, so a look-alike twin is rare but not impossible.
 
 - **Server-derived paths go out byte-for-byte.** `to_smb_path` never normalizes, and `list_directory_impl` builds each
   entry's path from the listed directory's own path plus the entry's raw name, so every component of a path that came
@@ -374,9 +377,10 @@ bytes the server gave you" (ERR-VETBX).
 - **A NEW name Cmdr creates goes out composed** (`composes_new_names` answers `true`): a copy's free name, a new folder
   or file, a rename's target, a ` (N)` pick. The caller that knows it's creating respells it through
   `Volume::spell_new_name`; this crate never does, because a name that addresses an EXISTING entry (an overwrite, a
-  merge, a same-share move) must keep the stored bytes or it plants a twin. Why composed: every build before
-  byte-faithful paths composed every SMB path, and a decomposed name on a share is one Finder over the kernel mount
-  (composes on lookup), Windows, and Linux clients list and can't open.
+  merge, a same-share move) must keep the stored bytes or it plants a twin. Why composed: a decomposed name on a share
+  is one Finder over the kernel mount (composes on lookup), Windows, and Linux clients list and can't open, and every
+  name older Cmdr builds wrote to a share is composed. A policy, one override to revert:
+  `apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Look-alike names".
 - **A name the share holds in another spelling is taken, never free**: a write that asked in the wrong spelling would
   stand a second, identical-looking entry beside it. The app's write layer finds it with one listing after a byte-exact
   miss (`apps/desktop/src-tauri/src/file_system/write_operations/DETAILS.md` § "Look-alike names"). Docker-pinned by
@@ -404,13 +408,18 @@ bytes the server gave you" (ERR-VETBX).
   and lists again (`a_stale_remembered_spelling_heals`), and the watcher forgets a directory's corrections on any event
   there, all of them on `STATUS_NOTIFY_ENUM_DIR`. Keyed on the foreign BYTES, not the fold, so an exact path can never
   be steered onto a remembered look-alike.
-- **Decision: a resolve, never a fold inside the operations.** **Why:** the old blanket NFC fold in `to_smb_path` broke
-  every NFD name (ERR-VETBX), and a resolve built into `get_metadata` / `list_directory` / `delete` can't tell "another
-  spelling of this path" from "a different entry sharing its folded name, the named one having vanished". The transfer
-  layer's existence probes and post-move `exists` checks, and a delete walker's listings, all hold server-derived paths
-  where a miss means gone. So the resolve is its own call, made only at the app's seams where a foreign path enters (the
-  pane's directory open and a backend swap's respell: `apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "A
-  pane path the volume stores another way").
+- **Decision: a resolve, never a fold inside the operations.** **Why:** a blanket NFC fold in `to_smb_path` makes every
+  NFD name unreachable (ERR-VETBX: listed, sized, and impossible to open), and a resolve built into `get_metadata` /
+  `list_directory` / `delete` can't tell "another spelling of this path" from "a different entry sharing its folded
+  name, the named one having vanished". The transfer layer's existence probes and post-move `exists` checks, and a
+  delete walker's listings, all hold server-derived paths where a miss means gone. So the resolve is its own call, made
+  only at the app's seams where a foreign path enters: the pane's directory open, a backend swap's respell, and a Finder
+  drop or paste (`apps/desktop/src-tauri/src/file_system/listing/DETAILS.md` § "A pane path the volume stores another
+  way").
+- **Rejected: a normalization retry ladder** (as given, then all-NFC, then all-NFD). Cheap, but a path with n accented
+  components has 2ⁿ spellings on the server and the ladder tries three, none mixed, so `(NFC directory, NFD leaf)` from
+  an all-NFD path never resolves; it can't see case; and on a share holding twins it opens whichever it reaches first,
+  which for a delete or an overwrite is a wrong-file write.
 - **The fixture folds case, David's QNAP doesn't.** The `smb-consumer-guest` Samba runs the default
   `case sensitive = auto`, so a case-only difference opens as given there; the Docker cells mix case with Unicode form
   to reach the fold (verified 2026-09-23, `a_foreign_path_in_another_case_reaches_its_directory`). Case-only matching is

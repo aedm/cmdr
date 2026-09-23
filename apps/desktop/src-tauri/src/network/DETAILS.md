@@ -307,8 +307,8 @@ two data halves are escaped separately and the structure assembled around them.
 - **The escape set is RFC 3986 `unreserved`** (`urlencoding::encode`: keeps `A-Za-z0-9-._~`). Over-escaping is free
   (a reader decodes back to the same bytes); under-escaping is not: an unescaped `%` in a share named `100%` reads as
   a truncated escape and the URL is rejected outright, and `#` or `?` would silently cut the name short.
-- **NFC first, both halves.** macOS hands out decomposed strings while SMB servers store and answer with composed
-  ones, so one visible name is two byte strings and two different escapes, and the server only recognizes the NFC one.
+- **NFC first, both halves.** macOS hands out decomposed strings while SMB servers name their shares composed, so one
+  visible share name is two byte strings and two different escapes, and TreeConnect only recognizes the NFC one.
   Share and server names only: paths INSIDE a share go out byte-for-byte (`crates/cmdr-smb/DETAILS.md` § "SMB names
   are opaque bytes"). The fixture host's `smb.conf` spells
   `café` NFC, matching what a real Samba server stores.

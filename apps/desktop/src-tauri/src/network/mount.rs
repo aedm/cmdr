@@ -284,8 +284,8 @@ fn settle_netfs_answer(
 /// rejected, and a `#` or `?` would silently cut the name short.
 ///
 /// **NFC first, for both halves.** macOS hands out decomposed (NFD) strings while
-/// SMB servers store and answer with composed (NFC) ones, so one visible name is
-/// two byte strings and two different escapes; the server only recognizes the NFC
+/// SMB servers name their shares composed (NFC), so one visible share name is two
+/// byte strings and two different escapes; TreeConnect only recognizes the NFC
 /// one. Same fold `SmbConnectionParams::new` applies to the share name it sends to
 /// TreeConnect. Paths INSIDE a share are the opposite: they go out byte-for-byte
 /// (`crates/cmdr-smb/DETAILS.md` § "SMB names are opaque bytes").

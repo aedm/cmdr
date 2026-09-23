@@ -93,7 +93,7 @@ struct BufferedVolume {
 /// it under: relative to the mount root, rooted at `/` (the index `ROOT_ID`).
 ///
 /// `mount_root` is the volume's `root()` (e.g. `/Volumes/share`); `abs_path` is
-/// what the watcher built via `to_nfd_display_path(mount_path, …)`. Returns
+/// what the watcher built via `to_display_path` (the server's own bytes). Returns
 /// `/` for the mount root itself, `/sub/dir` for `/Volumes/share/sub/dir`. Pure
 /// and platform-independent so it's unit-testable on every target.
 pub fn index_relative_path(mount_root: &str, abs_path: &str) -> Option<String> {

@@ -399,7 +399,9 @@ on. The two dev CLIs and the vendored fork are ordinary members.
 - `crates/cmdr-smb/`: everything Cmdr says to an SMB server. `SmbVolume` over a live smb2 session, with its change
   watcher, reconnect state machine, and refcounted scan-connection pool, plus the protocol layer under it (address
   building, `smb2::Error` classification, the share-listing vocabulary). The second backend in its own crate; what
-  belongs on each side of the boundary, and why: `crates/cmdr-smb/CLAUDE.md`
+  belongs on each side of the boundary, and why: `crates/cmdr-smb/CLAUDE.md`. SMB names are opaque bytes: server paths
+  go out as listed, a foreign path resolves once where it enters, new names go out composed
+  (`crates/cmdr-smb/DETAILS.md` § "SMB names are opaque bytes")
 - `crates/cmdr-index/`: the index — everything Cmdr knows about what's on a volume, what's inside its images, and which
   of its folders matter — behind one `Index` handle the host builds and holds. Tauri-free: everything it needs from an
   application arrives through the traits in `host/`, and everything it reports leaves through an `EventSink`. Three

@@ -26,22 +26,21 @@ Discovery, the keychain, mounts, upgrades, and every human-facing word stay in t
 - **`paths_are_os_visible()` tracks the MOUNT, not the backend kind** (latched off by `note_root_mount_gone`). ❌ Never
   hardcode `true`: smb2 browses on past a dead mount, so the drag it breaks fails silently.
 - **`write_from_stream` drives an OWNED `FileWriter` on a cloned `Connection`**, ❌ never one borrowed under the client
-  mutex (the QNAP deadlock). On error, `abort()` then delete the partial.
-- **Streaming-write progress reports `FileWriter::bytes_written()`** (server-confirmed), ❌ never bytes handed to the
-  pipeline: `write_chunk` returns on ACCEPTANCE.
+  mutex (the QNAP deadlock); on error, `abort()` then delete the partial. Progress is `bytes_written()`
+  (server-confirmed), ❌ never bytes handed to the pipeline.
 - **A read that knows its size sends `read_file_compound_sized`**: unsized it charges a whole `max_read` in credits
   (parked 7 of 10 copy slots). ❌ Don't tune `max_concurrent_ops`'s credit clamp; it divides a constant, so it's inert.
 - **`scan_recursive` asks its `ScanBoundary` per entry, `dir()` BEFORE the listing** (`DETAILS.md` § "Scanning").
 - **Bulk work draws on the refcounted pool of extra sessions** (`scan_pool.rs`); a dead member retries on a sibling, ❌
   never moving the MAIN volume's connection state.
 - **smb2 bounds every wait itself**: ❌ no timeout layer of ours, never a missed keepalive read as death.
-- **Path conversion matches whole COMPONENTS both ways**: `to_smb_path` `NotFound`s anything outside the root and joins
-  on the instance's `share_root`; `to_display_path` strips it back off. ❌ Build a volume through `MountAnchor`, never a
-  bare mount path: an anchored mount (DFS sub-mount, subdirectory mount) that loses its anchor addresses the share's top
-  (ERR-48RZX).
+- **Path conversion matches whole COMPONENTS both ways** (`to_smb_path` joins the instance's `share_root`,
+  `to_display_path` strips it). ❌ Build a volume through `MountAnchor`, never a bare mount path: an anchored mount that
+  loses its anchor addresses the share's top (ERR-48RZX).
 - **SMB names are opaque bytes** (NFC and NFD mix, ERR-VETBX): ❌ never normalize a share path, wire or watcher key (a
   `\` in a watcher filename is NAME). A foreign path gets exact only via `find_stored_spelling` (`spelling.rs`), ❌
-  never a fold inside an operation: a delete could hit a look-alike.
+  never a fold inside an operation: a delete could hit a look-alike. New names compose in the app's write layer
+  (`composes_new_names`), ❌ never here.
 
 ## Crate must-knows
 

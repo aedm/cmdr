@@ -480,9 +480,9 @@ identical-looking twin beside the user's entry.
 - **Not covered**: bulk rename and a compress's archive name still take the name as given and check exact names only.
 
 **Decision**: new names Cmdr creates on SMB go out composed (NFC); every other backend keeps the name as given. **Why**:
-SMB is where the evidence is. Every build before byte-faithful SMB paths composed every SMB path, and a decomposed name
-on a share is one that Finder over the kernel mount (which composes on lookup), Windows, and Linux clients list and then
-can't open (`ERR-VETBX`, `docs/specs/smb-path-normalization.md`). SFTP, MTP, and ADB never composed, and nothing
+SMB is where the evidence is. A decomposed name on a share is one that Finder over the kernel mount (which composes on
+lookup), Windows, and Linux clients list and then can't open (`ERR-VETBX`, `crates/cmdr-smb/DETAILS.md` § "SMB names
+are opaque bytes"), and every name older Cmdr builds wrote to a share is composed. SFTP, MTP, and ADB never composed, and nothing
 measured says their clients expect it, so they keep today's behavior. Extending it is one `composes_new_names` override
 per backend; dropping it is deleting SMB's.
 

@@ -47,8 +47,9 @@
 //! another Unicode form (a byte-exact share would take the latter as free and
 //! rename a look-alike in beside it). A CASE-only match stays the backend's call,
 //! and SMB servers and APFS are typically case-insensitive: `Foo.txt` vs
-//! `foo.txt` collides at the backend with no index hit. An unexpected `AlreadyExists` from a child rename is therefore treated as
-//! a late-detected conflict and routed through the resolver — never a hard error.
+//! `foo.txt` collides at the backend with no index hit. An unexpected
+//! `AlreadyExists` from a child rename is therefore treated as a late-detected
+//! conflict and routed through the resolver — never a hard error.
 //! Per-level decisions already made via the map are tracked in a
 //! `name → MergeChildResolution` map so a late collision on an already-resolved
 //! child finalizes its stored decision instead of re-prompting.
