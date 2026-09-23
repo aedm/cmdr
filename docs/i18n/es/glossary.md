@@ -1983,7 +1983,7 @@ Tono honesto y relajado, ni disculpa ni advertencia, porque la app sí funciona.
 - **`look off` → `verse raros`** · lenguaje corriente; evita el registro de `error`/`fallo` que la voz prohíbe.
 - **La última frase es David en primera persona** y mantiene el `tú`, como `onboarding.stepBeta.greeting`.
 
-## Mirar dentro de un archivo: la herramienta `inspect_file` y la pantalla de consentimiento (`askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, 2026-09-02)
+## Mirar dentro de un archivo: la herramienta `inspect_file` y la pantalla de consentimiento (`askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, 2026-09-02)
 
 Superficie nueva: Ask Cmdr puede leer, a petición, una parte acotada de un archivo (unas líneas de texto, unas páginas
 de un PDF con su título y autor, la lista de lo que contiene un archivo comprimido, o los datos de la cámara y el lugar
@@ -2037,8 +2037,8 @@ carril del chat.
   para que la pantalla no cambie de voz entre una versión y otra · high.
 - **Sin coma de Oxford.** El ítem de lista termina en
   `… un archivo comprimido y los datos de la cámara y la ubicación de una foto`, sin coma antes de la `y` final, como ya
-  hace `askCmdr.consent.item.envelope` ("el cursor, la selección y las unidades conectadas"). El doble `y` es español
-  corriente; la alternativa `y, de una foto, los datos…` corta el ritmo de una lista de consentimiento · high.
+  hace `ai.cloudConsent.askCmdr.item.envelope` ("el cursor, la selección y las unidades conectadas"). El doble `y` es
+  español corriente; la alternativa `y, de una foto, los datos…` corta el ritmo de una lista de consentimiento · high.
 - **"looks inside a file only when you ask about it" → `solo mira dentro de un archivo cuando le preguntas por él`**
   (`askCmdr.empty.hint`, `settings.askCmdr.intro`) · reutiliza `mirar dentro de` (arriba) y `preguntar por un archivo`
   (`contentsRule`, "Cuando preguntas por un archivo"). El antiguo `es de solo lectura … nunca cambia nada` desaparece:

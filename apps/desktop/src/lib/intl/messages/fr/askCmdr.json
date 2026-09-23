@@ -212,9 +212,13 @@
   "@askCmdr.error.notConfigured": {
     "sourceHash": "2d55d2c"
   },
-  "askCmdr.error.noConsent": "Activez Ask Cmdr pour commencer à discuter. Vous choisissez d''abord ce qu''il peut voir.",
-  "@askCmdr.error.noConsent": {
-    "sourceHash": "30d75d8"
+  "askCmdr.error.askCmdrOff": "Ask Cmdr is off.",
+  "@askCmdr.error.askCmdrOff": {
+    "sourceHash": "6599ee1"
+  },
+  "askCmdr.error.noCloudConsent": "Cloud AI is off. Allow it in Settings > AI.",
+  "@askCmdr.error.noCloudConsent": {
+    "sourceHash": "cd2af1d"
   },
   "askCmdr.error.localWindowTooSmall": "Cmdr a besoin d''une fenêtre de contexte plus grande que celle de votre modèle local. Choisissez 32 768 jetons ou plus dans les réglages, sous IA.",
   "@askCmdr.error.localWindowTooSmall": {
@@ -352,81 +356,29 @@
   "@askCmdr.attachment.remove": {
     "sourceHash": "595b066"
   },
-  "askCmdr.consent.title": "Discutez avec Cmdr à propos de vos fichiers",
-  "@askCmdr.consent.title": {
-    "sourceHash": "59b4ca9"
+  "askCmdr.gate.off.title": "Ask Cmdr is off",
+  "@askCmdr.gate.off.title": {
+    "sourceHash": "0420c9a"
   },
-  "askCmdr.consent.intro": "Cmdr envoie vos questions au fournisseur d''IA que vous choisissez, en utilisant votre propre clé d''API. Voici exactement ce qui quitte votre Mac lorsque vous discutez :",
-  "@askCmdr.consent.intro": {
-    "sourceHash": "3b5eac1"
+  "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
+  "@askCmdr.gate.off.body": {
+    "sourceHash": "48b16af"
   },
-  "askCmdr.consent.item.messages": "Vos messages",
-  "@askCmdr.consent.item.messages": {
-    "sourceHash": "befc6e9"
-  },
-  "askCmdr.consent.item.names": "Les noms et chemins des fichiers et dossiers que Cmdr consulte pour vous répondre",
-  "@askCmdr.consent.item.names": {
-    "sourceHash": "ce3259d"
-  },
-  "askCmdr.consent.item.sizes": "Leurs tailles et dates",
-  "@askCmdr.consent.item.sizes": {
-    "sourceHash": "2484530"
-  },
-  "askCmdr.consent.item.contents": "Des parties des fichiers que Cmdr ouvre pour vous répondre : un peu de texte, des pages de PDF, ce que contient une archive, et, pour une photo, les détails de l''appareil photo et la localisation",
-  "@askCmdr.consent.item.contents": {
-    "sourceHash": "fcd0b73"
-  },
-  "askCmdr.consent.item.envelope": "Ce que vous regardez en ce moment : votre dossier actuel, le curseur, la sélection et les disques connectés",
-  "@askCmdr.consent.item.envelope": {
-    "sourceHash": "2e5a0ef"
-  },
-  "askCmdr.consent.item.attachments": "Tout fichier ou dossier que vous joignez à une question, uniquement par son nom et son chemin",
-  "@askCmdr.consent.item.attachments": {
-    "sourceHash": "b9ad2af"
-  },
-  "askCmdr.consent.item.memory": "Les notes que Cmdr conserve sur vous, renvoyées à chaque message",
-  "@askCmdr.consent.item.memory": {
-    "sourceHash": "7779513"
-  },
-  "askCmdr.consent.contentsRule": "Cmdr n''envoie jamais de fichiers entiers, de photos ni de vignettes. Quand vous lui posez une question sur un fichier, il peut en lire une partie limitée : quelques lignes de texte, quelques pages d''un PDF avec son titre et son auteur, la liste des fichiers contenus dans une archive, ou, pour une photo, les détails de l''appareil photo, y compris l''endroit où elle a été prise. La recherche de photos fonctionne de la même façon : le texte que Cmdr a reconnu dans les photos correspondantes et leurs tags sont envoyés à votre fournisseur pour qu''il puisse les trouver. Cmdr peut suggérer des renommages, des déplacements et des rangements, et rien n''arrive à un fichier tant que vous ne l''avez pas approuvé.",
-  "@askCmdr.consent.contentsRule": {
-    "sourceHash": "5a378c1"
-  },
-  "askCmdr.consent.memory": "Cmdr se rédige des notes sur vous : comment vous aimez ranger les choses, ce que vous avez refusé auparavant, tout ce que vous lui demandez de retenir. Ces notes accompagnent chaque message que vous envoyez, tant qu''elles existent, et elles peuvent contenir du texte que Cmdr a reconnu dans vos photos. Vous pouvez les lire, ou les effacer, à tout moment dans les réglages d''Ask Cmdr.",
-  "@askCmdr.consent.memory": {
-    "sourceHash": "496c78d"
-  },
-  "askCmdr.consent.proactive": "Cmdr surveille aussi les dossiers que vous utilisez et lance une conversation quand il a quelque chose à suggérer : des messages peuvent donc partir vers votre fournisseur sans que vous ayez rien demandé. Vous pouvez désactiver cela dans les réglages d''Ask Cmdr, sous « De sa propre initiative ».",
-  "@askCmdr.consent.proactive": {
-    "sourceHash": "abfa80b"
-  },
-  "askCmdr.consent.local": "Vos conversations restent sur votre Mac, dans une base de données locale que vous pouvez ouvrir et consulter. Vous choisissez le fournisseur et le modèle, et vous pouvez voir ce que coûte chaque conversation.",
-  "@askCmdr.consent.local": {
-    "sourceHash": "f7d4075"
-  },
-  "askCmdr.consent.logsNote": "Si vous activez la journalisation des appels au modèle d''IA dans les réglages avancés, Cmdr enregistre aussi chaque requête et réponse dans un dossier sur votre Mac. Ces journaux restent eux aussi en local, jamais envoyés nulle part.",
-  "@askCmdr.consent.logsNote": {
-    "sourceHash": "7e211fc"
-  },
-  "askCmdr.consent.accept": "Activer Ask Cmdr",
-  "@askCmdr.consent.accept": {
+  "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
+  "@askCmdr.gate.off.turnOn": {
     "sourceHash": "0d656c4"
   },
-  "askCmdr.consent.decline": "Plus tard",
-  "@askCmdr.consent.decline": {
-    "sourceHash": "a0e63d7"
+  "askCmdr.gate.cloudOff.title": "Cloud AI is off",
+  "@askCmdr.gate.cloudOff.title": {
+    "sourceHash": "2e56781"
   },
-  "askCmdr.consent.notSaved": "Cmdr n''a pas pu enregistrer votre choix. Réessayer ?",
-  "@askCmdr.consent.notSaved": {
-    "sourceHash": "6bd80e9"
+  "askCmdr.gate.cloudOff.body": "Ask Cmdr talks to the cloud AI service you set up. Allow cloud AI in Settings first, and you’re ready to chat.",
+  "@askCmdr.gate.cloudOff.body": {
+    "sourceHash": "d3d3252"
   },
-  "askCmdr.consent.whatsNew.title": "Ce qui a changé depuis que vous l''avez activé",
-  "@askCmdr.consent.whatsNew.title": {
-    "sourceHash": "641705c"
-  },
-  "askCmdr.consent.whatsNew.body": "Cmdr peut désormais regarder à l''intérieur d''un fichier sur lequel vous lui posez une question : un peu de son texte, quelques pages d''un PDF, la liste des fichiers contenus dans une archive, ou, pour une photo, les détails de l''appareil photo et la localisation. C''est un engagement plus large que celui que vous avez accepté, alors le voici en entier.",
-  "@askCmdr.consent.whatsNew.body": {
-    "sourceHash": "1af51d8"
+  "askCmdr.gate.cloudOff.openSettings": "Open AI settings",
+  "@askCmdr.gate.cloudOff.openSettings": {
+    "sourceHash": "edcc53b"
   },
   "askCmdr.forget.title": "Oublier tout ce dont Cmdr se souvient à votre sujet ?",
   "@askCmdr.forget.title": {

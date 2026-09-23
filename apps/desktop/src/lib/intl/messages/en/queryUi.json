@@ -123,6 +123,18 @@
     "screenshot": "search-dialog.png",
     "screenshotNote": "Cmdr’s search, select, and filter surfaces are one shared dialog: a mode row at the top, the query bar, the scope and filter controls under it, and results below. This shows that dialog; your string is one of those controls, one of the filter or date options, or a line in the results area."
   },
+  "queryUi.ai.cloudOff.body": "Cloud AI is off. Allow it in Settings > AI to use this.",
+  "@queryUi.ai.cloudOff.body": {
+    "description": "Shown in the Search or Select dialog's AI mode, in place of the AI examples, when the AI mode is Cloud but the Allow cloud AI switch is off. \"this\" is the AI mode itself. Settings > AI is a navigation path, keep it as shown. A button that opens the AI settings follows.",
+    "screenshot": "search-dialog.png",
+    "screenshotNote": "Cmdr’s search, select, and filter surfaces are one shared dialog: a mode row at the top, the query bar, the scope and filter controls under it, and results below. This shows that dialog; your string is one of those controls, one of the filter or date options, or a line in the results area."
+  },
+  "queryUi.ai.openSettings": "Open AI settings",
+  "@queryUi.ai.openSettings": {
+    "description": "Button that opens Settings > AI > Provider, where the Allow cloud AI switch is. Shown under queryUi.ai.cloudOff.body, and as the action on the Cloud AI is off toast. Starts with a verb. Sentence case.",
+    "screenshot": "search-dialog.png",
+    "screenshotNote": "Cmdr’s search, select, and filter surfaces are one shared dialog: a mode row at the top, the query bar, the scope and filter controls under it, and results below. This shows that dialog; your string is one of those controls, one of the filter or date options, or a line in the results area."
+  },
   "queryUi.empty.indexReady": "Index ready · {countText} {count, plural, one {entry} other {entries}}",
   "@queryUi.empty.indexReady": {
     "description": "Muted status line in the search dialog's empty state, telling the user the search index finished loading and how many files it holds. The '·' is a middle-dot separator.",

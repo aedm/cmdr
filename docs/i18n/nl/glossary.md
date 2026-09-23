@@ -2217,7 +2217,7 @@ eerlijk en ontspannen, geen excuus en geen waarschuwing, want de app doet het ge
 - **Geen `z''n`**: de samentrekking zou een ICU-apostrof nodig hebben, en `zijn best` leest even natuurlijk.
 - **De laatste zin is David in de ik-vorm**, met `je`, net als `onboarding.stepBeta.greeting`.
 
-## Ask Cmdr looks inside files: the `inspectFile` tool line and the reworded consent screen (`askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, 2026-09-02)
+## Ask Cmdr looks inside files: the `inspectFile` tool line and the reworded consent screen (`askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, 2026-09-02)
 
 Five keys, mined `_ignored/i18n/nl/` (macOS Finder/AppKit, Microsoft `DUTCH.tbx`, Nautilus, Thunar, Dolphin, Total
 Commander, Double Commander). The consent paragraph `contentsRule` replaces the old `noContents`; its photo-search and
@@ -2270,7 +2270,8 @@ REVIEW FLAGS (inspect-file pass):
 - `cameragegevens` is a coined compound (no source carries a collective noun for a photo's EXIF block). Confirm it reads
   as "what the camera recorded" and not as "data about the camera"; `camera-informatie` is the fallback.
 - `wat tekst` / `wat regels tekst` for "some text" / "some lines of text": the informal `wat` fits the `je` register but
-  `een deel van de tekst` (used in `whatsNew.body`) is the safer form. Confirm the three keys can share one shape.
+  `een deel van de tekst` (used in the retired what's-new text) is the safer form. Confirm the three keys can share one
+  shape.
 - `De fotozoekfunctie werkt net zo` for "Photo search works the same way": `net zo` is colloquial; confirm it doesn't
   read as clipped in a consent paragraph (`op dezelfde manier` is the formal fallback).
 - `Ask Cmdr kan hernoemen, verplaatsen en opruimen voorstellen` is inherited from the old key and still says
@@ -2280,9 +2281,10 @@ REVIEW FLAGS (inspect-file pass):
   height, not clipping. Eyeball it in the Settings disclosure.
 - Follow-up, same pass: `askCmdr.empty.hint` and `settings.askCmdr.intro` drop the old "never file contents" /
   "alleen-lezen" promise. "looks inside a file only when you ask about it" →
-  `kijkt alleen in een bestand als je ernaar vraagt` (same `in een bestand kijken` as `whatsNew.body`); "never changes a
-  file without your approval" → `verandert nooit een bestand zonder jouw goedkeuring` (goedkeuren already settled in
-  `contentsRule`; stressed `jouw` marks the contrast) · high. First sentences of both keys kept verbatim.
+  `kijkt alleen in een bestand als je ernaar vraagt` (same `in een bestand kijken` as the retired what's-new text);
+  "never changes a file without your approval" → `verandert nooit een bestand zonder jouw goedkeuring` (goedkeuren
+  already settled in `contentsRule`; stressed `jouw` marks the contrast) · high. First sentences of both keys kept
+  verbatim.
 
 ## De twee tooltips van de Rollback-knop (2026-09-04; `fileOperations.transferProgress.rollbackTooltipStopAndMoveBack`, `.rollbackAlreadyLandedTooltip`)
 

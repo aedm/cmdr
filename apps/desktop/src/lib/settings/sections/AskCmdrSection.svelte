@@ -1,8 +1,8 @@
 <!--
-  The Ask Cmdr settings section: the enable/consent toggle, the "what Cmdr sends"
-  disclosure (the same human-reviewed copy as the opt-in screen), the provider/model
-  (interactive slot), and the spend rollup. The enable state is consent, stored
-  in `main.db` (not a preference), so it's driven by the consent commands, not the registry.
+  The Ask Cmdr settings section: the on/off switch (`askCmdr.enabled`, a plain setting), the
+  provider/model (interactive slot), the proactive loop, the memory controls, and the spend
+  rollup. Consent to send anything to a cloud service isn't here: it's the Allow cloud AI
+  switch in Settings > AI > Provider (`$lib/ai/`), and this section only points there.
 -->
 <script lang="ts">
     import SettingsSection from '../components/SettingsSection.svelte'
@@ -28,7 +28,7 @@
         requestRevealPath,
         type CostSummary,
     } from '$lib/tauri-commands'
-    import { consentState, refreshConsent, acceptConsent, declineConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+    import { cloudAiBlocked, openCloudConsentSettings, refreshCloudConsent } from '$lib/ai/cloud-consent.svelte'
     import { formatUsdMicros } from '$lib/ask-cmdr/ask-cmdr-cost'
     import ForgetMemoryDialog from './ForgetMemoryDialog.svelte'
     import type { MessageKey } from '$lib/intl/keys.gen'
@@ -44,31 +44,14 @@
 
     const askCmdrBadge = getBadgeStatus('ask-cmdr')
 
-    // Enable state = consent (main.db). Refresh on mount so the toggle reflects the store,
-    // even if the rail changed it in the main window.
-    let busy = $state(false)
-    /** The last Turn on or Turn off didn't reach the store; the status above shows what did. */
-    let consentNotSaved = $state(false)
+    // The on/off switch and the "cloud AI is off" hint under it. Consent is read here only to
+    // say why an enabled Ask Cmdr can't chat yet; the switch that grants it lives in AI settings.
+    const enabledDef = getSettingDefinition('askCmdr.enabled') ?? { label: '', description: '' }
+    let enabled = $state(getSetting('askCmdr.enabled'))
+    $effect(() => onSpecificSettingChange('askCmdr.enabled', (v) => { enabled = v }))
     $effect(() => {
-        void refreshConsent()
+        void refreshCloudConsent()
     })
-    const enabled = $derived(consentState.accepted === true)
-    // Someone who opted in once, to wording that has since changed materially, so the bump
-    // revoked them. Without this they read as "off", identical to someone who never wanted AI,
-    // while a whole thread history sits behind the rail's consent screen.
-    const needsReconsent = $derived(consentState.needsReconsent)
-
-    async function toggle(): Promise<void> {
-        if (busy) return
-        busy = true
-        consentNotSaved = false
-        try {
-            const outcome = enabled ? await declineConsent() : await acceptConsent()
-            consentNotSaved = outcome === 'notSaved'
-        } finally {
-            busy = false
-        }
-    }
 
     // Which AI provider Ask Cmdr shares (Off / Cloud AI / Local LLM), reactive to the AI
     // settings section.
@@ -197,12 +180,6 @@
         return tString('askCmdr.cost.free')
     }
 
-    // Local ISO date (YYYY-MM-DD) for the "on since" line, style-preferred and locale-safe.
-    function localIsoDate(unixSecs: number): string {
-        const d = new Date(unixSecs * 1000)
-        const pad = (n: number): string => String(n).padStart(2, '0')
-        return `${String(d.getFullYear())}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-    }
 </script>
 
 <SettingsSection title={tString('settings.section.askCmdr')}>
@@ -211,70 +188,24 @@
     {/snippet}
     <p class="intro">{tString('settings.askCmdr.intro')}</p>
 
-    <!-- Enable / consent. Three states, not two: "paused" is somebody who said yes to
-         wording that has since changed, and a bare "off" at them loses that entirely.
-         Consent lives in `main.db`, not the registry, so the row is searchable through
-         `AskCmdrSection.rows.ts` rather than a setting. -->
-    {#if shouldShow('row:askCmdr.consent')}
-        <div class="enable-row">
-            <div class="enable-status">
-                <span class="status-label">
-                    {#if enabled}
-                        {tString('settings.askCmdr.status.on')}
-                    {:else if needsReconsent}
-                        {tString('settings.askCmdr.status.needsReview')}
-                    {:else}
-                        {tString('settings.askCmdr.status.off')}
-                    {/if}
-                </span>
-                {#if enabled && consentState.acceptedAt}
-                    <span class="status-since">
-                        {tString('settings.askCmdr.status.onSince', { date: localIsoDate(consentState.acceptedAt) })}
-                    </span>
-                {:else if needsReconsent}
-                    <span class="status-changed">{tString('settings.askCmdr.status.changed')}</span>
-                {/if}
+    {#if shouldShow('askCmdr.enabled')}
+        <SettingRow
+            id="askCmdr.enabled"
+            label={enabledDef.label}
+            description={enabledDef.description}
+            {searchQuery}
+        >
+            <SettingSwitch id="askCmdr.enabled" />
+        </SettingRow>
+        {#if enabled && cloudAiBlocked(provider)}
+            <div class="cloud-off-hint" role="note">
+                <p>{tString('settings.askCmdr.cloudOffHint')}</p>
+                <Button variant="secondary" onclick={() => { openCloudConsentSettings('ask-cmdr-settings-hint'); }}>
+                    {tString('settings.askCmdr.openAiSettings')}
+                </Button>
             </div>
-            <Button variant={enabled ? 'secondary' : 'primary'} disabled={busy} onclick={() => void toggle()}>
-                {#if enabled}
-                    {tString('settings.askCmdr.turnOff')}
-                {:else if needsReconsent}
-                    {tString('settings.askCmdr.turnBackOn')}
-                {:else}
-                    {tString('settings.askCmdr.turnOn')}
-                {/if}
-            </Button>
-        </div>
-        {#if consentNotSaved}
-            <p class="consent-not-saved" role="status">{tString('askCmdr.consent.notSaved')}</p>
         {/if}
     {/if}
-
-    <!-- What Cmdr sends (the same copy as the opt-in screen). Open by default for
-         somebody being asked again: the button above says "read what's new below". -->
-    <details class="disclosure" open={needsReconsent}>
-        <summary>{tString('settings.askCmdr.disclosure.title')}</summary>
-        <div class="disclosure-body">
-            {#if needsReconsent}
-                <p class="changed-lede">{tString('askCmdr.consent.whatsNew.body')}</p>
-            {/if}
-            <p>{tString('askCmdr.consent.intro')}</p>
-            <ul>
-                <li>{tString('askCmdr.consent.item.messages')}</li>
-                <li>{tString('askCmdr.consent.item.names')}</li>
-                <li>{tString('askCmdr.consent.item.sizes')}</li>
-                <li>{tString('askCmdr.consent.item.contents')}</li>
-                <li>{tString('askCmdr.consent.item.envelope')}</li>
-                <li>{tString('askCmdr.consent.item.attachments')}</li>
-                <li>{tString('askCmdr.consent.item.memory')}</li>
-            </ul>
-            <p>{tString('askCmdr.consent.contentsRule')}</p>
-            <p>{tString('askCmdr.consent.memory')}</p>
-            <p>{tString('askCmdr.consent.proactive')}</p>
-            <p>{tString('askCmdr.consent.local')}</p>
-            <p class="fine">{tString('askCmdr.consent.logsNote')}</p>
-        </div>
-    </details>
 
     <!-- Provider + model (the interactive slot over the shared ai/ config) -->
     <h3 class="group-title">{tString('settings.askCmdr.provider.title')}</h3>
@@ -419,41 +350,19 @@
         color: var(--color-text-secondary);
     }
 
-    .enable-row {
+    .cloud-off-hint {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
-        justify-content: space-between;
-        gap: var(--spacing-md);
-        padding: var(--spacing-sm) 0;
-    }
-
-    .enable-status {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xxs);
-    }
-
-    .status-label {
-        font-size: var(--font-size-md);
-        font-weight: 500;
-        color: var(--color-text-primary);
-    }
-
-    .status-since {
-        font-size: var(--font-size-xs);
-        color: var(--color-text-tertiary);
-    }
-
-    .status-changed {
-        max-width: 36rem;
-        font-size: var(--font-size-xs);
-        line-height: var(--font-line-height-prose);
+        gap: var(--spacing-sm);
+        margin: var(--spacing-xs) 0 var(--spacing-sm);
+        font-size: var(--font-size-sm);
         color: var(--color-warning-text);
     }
 
-    .changed-lede {
-        font-weight: 500;
-        color: var(--color-text-primary);
+    .cloud-off-hint p {
+        flex: 1 1 18rem;
+        margin: 0;
     }
 
     .memory-actions {
@@ -468,42 +377,10 @@
         color: var(--color-text-secondary);
     }
 
-    .memory-not-forgotten,
-    .consent-not-saved {
-        font-size: var(--font-size-sm);
-        color: var(--color-warning-text);
-    }
-
     .memory-not-forgotten {
         margin: var(--spacing-xs) 0 0;
-    }
-
-    .consent-not-saved {
-        margin: 0 0 var(--spacing-sm);
-    }
-
-    .disclosure {
-        margin: var(--spacing-sm) 0 var(--spacing-lg);
         font-size: var(--font-size-sm);
-        color: var(--color-text-secondary);
-    }
-
-    .disclosure summary {
-        cursor: default;
-        font-weight: 500;
-        color: var(--color-text-primary);
-    }
-
-    .disclosure-body {
-        margin-top: var(--spacing-sm);
-    }
-
-    .disclosure-body ul {
-        padding-left: var(--spacing-lg);
-    }
-
-    .disclosure-body p {
-        margin: 0 0 var(--spacing-sm);
+        color: var(--color-warning-text);
     }
 
     .fine {

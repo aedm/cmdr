@@ -138,6 +138,25 @@ describe('sparse settings persistence', () => {
     expect(disk.get('developer.mcpEnabled')).toBe(false)
   })
 
+  it('(c2) isExplicitlySet tells "set to the default" from "never set", which isModified cannot', async () => {
+    disk.set('developer.verboseLogging', getDefaultValue('developer.verboseLogging'))
+    disk.set('_schemaVersion', 2)
+    const store = await loadStore()
+    await store.initializeSettings()
+
+    // Present on load at its default: explicit, yet not "modified".
+    expect(store.isExplicitlySet('developer.verboseLogging')).toBe(true)
+    expect(store.isModified('developer.verboseLogging')).toBe(false)
+    // Never touched: neither.
+    expect(store.isExplicitlySet('developer.mcpEnabled')).toBe(false)
+
+    store.setSetting('developer.mcpEnabled', getDefaultValue('developer.mcpEnabled'))
+    expect(store.isExplicitlySet('developer.mcpEnabled')).toBe(true)
+
+    store.resetSetting('developer.mcpEnabled')
+    expect(store.isExplicitlySet('developer.mcpEnabled')).toBe(false)
+  })
+
   it('(d) reset deletes the key so it resolves back to default', async () => {
     const store = await loadStore()
     await store.initializeSettings()

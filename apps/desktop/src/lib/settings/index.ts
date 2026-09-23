@@ -42,6 +42,7 @@ export {
   getSetting,
   initializeSettings,
   isModified,
+  isExplicitlySet,
   onSettingChange,
   onSpecificSettingChange,
   resetSetting,

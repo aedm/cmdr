@@ -219,9 +219,13 @@
   "@askCmdr.error.notConfigured": {
     "description": "Shown when no AI provider is set up. Friendly and actionable; avoids the words error and failed."
   },
-  "askCmdr.error.noConsent": "Turn Ask Cmdr on to start chatting. You choose what it can see first.",
-  "@askCmdr.error.noConsent": {
-    "description": "Shown when the user hasn't opted into Ask Cmdr yet (or the consent copy changed and needs re-accepting), so the backend refused to send. Friendly and actionable; avoids the words error and failed; points the user at the opt-in screen."
+  "askCmdr.error.askCmdrOff": "Ask Cmdr is off.",
+  "@askCmdr.error.askCmdrOff": {
+    "description": "Shown in the Ask Cmdr side panel in the rare case a message was sent just as the assistant got switched off, so nothing was sent. The panel then shows its off state with a turn-on button."
+  },
+  "askCmdr.error.noCloudConsent": "Cloud AI is off. Allow it in Settings > AI.",
+  "@askCmdr.error.noCloudConsent": {
+    "description": "Shown in the Ask Cmdr side panel in the rare case a message was sent while the Allow cloud AI switch was off, so nothing was sent. \"it\" is cloud AI; Settings > AI is a navigation path, keep it as shown."
   },
   "askCmdr.error.localWindowTooSmall": "Cmdr needs a bigger context window than your local model has. Pick 32,768 tokens or more in settings, under AI.",
   "@askCmdr.error.localWindowTooSmall": {
@@ -374,101 +378,29 @@
   "@askCmdr.attachment.remove": {
     "description": "Accessible label for the small button that removes a staged file or folder attachment from the composer. Sentence case."
   },
-  "askCmdr.consent.title": "Talk to Cmdr about your files",
-  "@askCmdr.consent.title": {
-    "description": "Heading of the one-time opt-in screen shown before the first Ask Cmdr chat. Warm and inviting. Sentence case.",
-    "screenshot": "ask-cmdr-consent.png"
+  "askCmdr.gate.off.title": "Ask Cmdr is off",
+  "@askCmdr.gate.off.title": {
+    "description": "Heading in the Ask Cmdr side panel when the assistant is switched off in settings. \"Ask Cmdr\" is a product name. Sentence case, no period."
   },
-  "askCmdr.consent.intro": "Cmdr sends your questions to the AI provider you choose, using your own API key. Here’s exactly what leaves your Mac when you chat:",
-  "@askCmdr.consent.intro": {
-    "description": "Opening paragraph of the Ask Cmdr consent screen, before the list of what gets sent. Ends with a colon introducing the list. The apostrophe is U+2019.",
-    "screenshot": "ask-cmdr-consent.png"
+  "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
+  "@askCmdr.gate.off.body": {
+    "description": "Line under askCmdr.gate.off.title in the Ask Cmdr side panel. \"it\" is Ask Cmdr; a button that turns it on follows."
   },
-  "askCmdr.consent.item.messages": "Your messages",
-  "@askCmdr.consent.item.messages": {
-    "description": "First item in the Ask Cmdr consent list of what leaves the Mac: the text the user types. Short noun phrase, sentence case.",
-    "screenshot": "ask-cmdr-consent.png"
+  "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
+  "@askCmdr.gate.off.turnOn": {
+    "description": "Primary button in the Ask Cmdr side panel that switches the assistant on (the same switch as Settings > AI > Ask Cmdr). Starts with a verb. Sentence case."
   },
-  "askCmdr.consent.item.names": "The names and paths of files and folders Cmdr looks at to answer you",
-  "@askCmdr.consent.item.names": {
-    "description": "Consent list item: the file and folder names and paths Cmdr reads to answer. The contents Cmdr can read on request are a separate item, askCmdr.consent.item.contents. Sentence case, no period.",
-    "screenshot": "ask-cmdr-consent.png"
+  "askCmdr.gate.cloudOff.title": "Cloud AI is off",
+  "@askCmdr.gate.cloudOff.title": {
+    "description": "Heading in the Ask Cmdr side panel when the assistant is on and the AI mode is Cloud, but the Allow cloud AI switch in Settings > AI is off, so nothing can be sent yet. Sentence case, no period."
   },
-  "askCmdr.consent.item.sizes": "Their sizes and dates",
-  "@askCmdr.consent.item.sizes": {
-    "description": "Consent list item: the sizes and dates of those files and folders. Short noun phrase, sentence case.",
-    "screenshot": "ask-cmdr-consent.png"
+  "askCmdr.gate.cloudOff.body": "Ask Cmdr talks to the cloud AI service you set up. Allow cloud AI in Settings first, and you’re ready to chat.",
+  "@askCmdr.gate.cloudOff.body": {
+    "description": "Line under askCmdr.gate.cloudOff.title in the Ask Cmdr side panel. \"Allow cloud AI\" is the switch label (ai.cloudConsent.label); translate it the same way. A button that opens the AI settings follows. The apostrophe is U+2019."
   },
-  "askCmdr.consent.item.contents": "Parts of files Cmdr opens to answer you: some text, PDF pages, what’s inside an archive, and a photo’s camera details and location",
-  "@askCmdr.consent.item.contents": {
-    "description": "Consent list item naming the file contents Ask Cmdr can read on request through its inspect tool: some lines of a text file, PDF text by page, the names of the files inside an archive, and a photo's EXIF data including where it was taken. Sentence case, no period. The apostrophes are U+2019.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.item.envelope": "What you’re looking at right now: your current folder, cursor, selection, and connected drives",
-  "@askCmdr.consent.item.envelope": {
-    "description": "Consent list item describing the app-state envelope sent with each question: the current folder, cursor position, selection, and connected drives. Sentence case, no period. The apostrophe is U+2019.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.item.attachments": "Any file or folder you attach to a question, by its name and path only",
-  "@askCmdr.consent.item.attachments": {
-    "description": "Consent list item: files or folders the user attaches to a question are sent by reference (name and path), never their contents. Sentence case, no period.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.item.memory": "The notes Cmdr keeps about you, sent again with every message",
-  "@askCmdr.consent.item.memory": {
-    "description": "Sixth item in the Ask Cmdr consent list of what leaves the Mac: the assistant's own memory notes about the user, which are re-sent with every single message. \"Cmdr\" here is the assistant doing the remembering, matching the other items in the list. Sentence case, no period.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.contentsRule": "Cmdr never sends whole files, photos, or thumbnails. When you ask about a file, it can read a limited part of it: some lines of text, a few pages of a PDF along with its title and author, the list of files inside an archive, or a photo’s camera details, including where it was taken. Photo search works the same way: the text Cmdr recognized inside the matching photos and their tags go to your provider so it can find them. Cmdr can suggest renames, moves, and cleanups, and nothing happens to a file until you approve it.",
-  "@askCmdr.consent.contentsRule": {
-    "description": "Reassurance paragraph on the Ask Cmdr consent screen, and in the same disclosure in Settings > Ask Cmdr. Four facts to keep: whole files, photos, and thumbnails are never sent; when the user asks about a file, the assistant reads a limited part of it (some lines of text, a few PDF pages plus the PDF's title and author, the names of the files inside an archive, a photo's camera details including where it was taken); photo search sends the text recognized inside the matching photos and their tags; and the assistant proposes file changes but never carries one out without the user approving it. Must NOT promise that no file contents are sent, and must NOT promise that the assistant changes nothing (it writes its own notes and proposes renames and moves). The apostrophes are U+2019.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.memory": "Cmdr writes itself notes about you: how you like things organized, what you’ve turned down before, anything you ask it to remember. Those notes ride along with every message you send, for as long as they exist, and they can include text Cmdr recognized inside your photos. You can read them, or wipe them, any time in the Ask Cmdr settings.",
-  "@askCmdr.consent.memory": {
-    "description": "Paragraph on the Ask Cmdr consent screen, and in the same disclosure in Settings > Ask Cmdr, about the assistant's memory: it writes notes about the user, those notes go to the provider with every message for as long as they exist, they can contain text recognized inside the user's photos, and the user can read or delete them in settings. This is the disclosure the whole re-prompt exists for, so keep all four facts. The apostrophe is U+2019.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.proactive": "Cmdr also watches the folders you use and starts a conversation when it has something to suggest, so messages can reach your provider without you asking first. You can turn that off in the Ask Cmdr settings, under “On its own”.",
-  "@askCmdr.consent.proactive": {
-    "description": "Paragraph on the Ask Cmdr consent screen, and in the same disclosure in Settings > Ask Cmdr: the assistant can start conversations by itself, so messages reach the provider without the user typing anything, and the user can switch that off. The quoted phrase is the heading of that settings group (settings.askCmdr.proactive.title), so translate it exactly the same way in both places. The quotes are U+201C and U+201D.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.local": "Your chats stay on your Mac, in a local database you can open and read. You pick the provider and model, and you can see what each conversation costs.",
-  "@askCmdr.consent.local": {
-    "description": "Paragraph on the Ask Cmdr consent screen: chats are stored locally and the user controls the provider, model, and cost visibility.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.logsNote": "If you turn on LLM call logging in Advanced settings, Cmdr also saves each request and reply to a folder on your Mac. Those logs stay local too, never sent anywhere.",
-  "@askCmdr.consent.logsNote": {
-    "description": "Smaller note on the Ask Cmdr consent screen about the optional local LLM call log (the logLlmCalls setting): the logs are written to a local folder and never transmitted.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.accept": "Turn on Ask Cmdr",
-  "@askCmdr.consent.accept": {
-    "description": "Primary button on the Ask Cmdr consent screen that opts in and unlocks the chat. Starts with a verb. Sentence case.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.decline": "Not now",
-  "@askCmdr.consent.decline": {
-    "description": "Secondary button on the Ask Cmdr consent screen that closes the rail without opting in. Sentence case.",
-    "screenshot": "ask-cmdr-consent.png"
-  },
-  "askCmdr.consent.notSaved": "Cmdr couldn’t save your choice. Try again?",
-  "@askCmdr.consent.notSaved": {
-    "description": "Short line shown when turning Ask Cmdr on or off didn't stick because Cmdr couldn't write the choice to its own local database. Appears beside the consent screen's buttons in the Ask Cmdr side panel, and under the on/off row in Ask Cmdr settings. The status next to it still shows what's actually saved. \"Ask Cmdr\" isn't named here; \"Cmdr\" is the app name and stays untranslated. The apostrophe is U+2019."
-  },
-  "askCmdr.consent.whatsNew.title": "What’s changed since you turned this on",
-  "@askCmdr.consent.whatsNew.title": {
-    "description": "Heading above the Ask Cmdr consent screen, shown ONLY to someone who already accepted an older version of this copy, so they can see why they are being asked again. Sentence case. The apostrophe is U+2019.",
-    "screenshot": "ask-cmdr-consent.png",
-    "screenshotNote": "The Ask Cmdr consent screen, pictured here. Your string is the heading or paragraph above it that appears only for someone who accepted an earlier version of this screen and is being asked again."
-  },
-  "askCmdr.consent.whatsNew.body": "Cmdr can now look inside a file you ask about: some of its text, a few pages of a PDF, the list of files inside an archive, or a photo’s camera details and location. That’s a bigger promise than the one you agreed to, so here it all is again.",
-  "@askCmdr.consent.whatsNew.body": {
-    "description": "Paragraph under askCmdr.consent.whatsNew.title, shown only to someone being asked again after the consent copy changed. Names the new thing (on request, the assistant reads parts of a file: some text, a few PDF pages, the names of the files inside an archive, or a photo's camera details and location) and says why the whole screen is being shown again. The apostrophes are U+2019.",
-    "screenshot": "ask-cmdr-consent.png",
-    "screenshotNote": "The Ask Cmdr consent screen, pictured here. Your string is the heading or paragraph above it that appears only for someone who accepted an earlier version of this screen and is being asked again."
+  "askCmdr.gate.cloudOff.openSettings": "Open AI settings",
+  "@askCmdr.gate.cloudOff.openSettings": {
+    "description": "Primary button in the Ask Cmdr side panel that opens Settings > AI > Provider, where the Allow cloud AI switch is. Starts with a verb. Sentence case."
   },
   "askCmdr.forget.title": "Forget everything Cmdr remembers about you?",
   "@askCmdr.forget.title": {
@@ -997,31 +929,45 @@
       "foldersText": {
         "content": "How many folders the agent looked at, already formatted with thousands separators, like 1,234."
       },
-      "folders": { "content": "The same folder count as a raw integer, used only to pick the singular or plural word." }
+      "folders": {
+        "content": "The same folder count as a raw integer, used only to pick the singular or plural word."
+      }
     }
   },
   "askCmdr.wakeDigest.created": "{countText} {count, plural, one {new item} other {new items}}",
   "@askCmdr.wakeDigest.created": {
     "description": "One fragment in the comma-separated tally under a folder name, inside the expanded block that opens a chat Ask Cmdr started by itself. Counts things that appeared in that folder. \"Item\" is the app's word for a file or a folder, because the tally covers both. Lowercase and no full stop: several of these fragments are joined with commas on one line.",
     "placeholders": {
-      "countText": { "content": "How many things appeared, already formatted with thousands separators, like 1,234." },
-      "count": { "content": "The same count as a raw integer, used only to pick the singular or plural word." }
+      "countText": {
+        "content": "How many things appeared, already formatted with thousands separators, like 1,234."
+      },
+      "count": {
+        "content": "The same count as a raw integer, used only to pick the singular or plural word."
+      }
     }
   },
   "askCmdr.wakeDigest.modified": "{countText} {count, plural, one {changed item} other {changed items}}",
   "@askCmdr.wakeDigest.modified": {
     "description": "One fragment in the comma-separated tally under a folder name, inside the expanded block that opens a chat Ask Cmdr started by itself. Counts things whose contents changed in that folder, as opposed to things that appeared, went away, or were renamed. \"Item\" is the app's word for a file or a folder. Lowercase and no full stop: several of these fragments are joined with commas on one line.",
     "placeholders": {
-      "countText": { "content": "How many things changed, already formatted with thousands separators, like 1,234." },
-      "count": { "content": "The same count as a raw integer, used only to pick the singular or plural word." }
+      "countText": {
+        "content": "How many things changed, already formatted with thousands separators, like 1,234."
+      },
+      "count": {
+        "content": "The same count as a raw integer, used only to pick the singular or plural word."
+      }
     }
   },
   "askCmdr.wakeDigest.removed": "{countText} {count, plural, one {removed item} other {removed items}}",
   "@askCmdr.wakeDigest.removed": {
     "description": "One fragment in the comma-separated tally under a folder name, inside the expanded block that opens a chat Ask Cmdr started by itself. Counts things that are no longer in that folder, whichever way they went (trashed, deleted, or moved out). \"Item\" is the app's word for a file or a folder. Lowercase and no full stop: several of these fragments are joined with commas on one line.",
     "placeholders": {
-      "countText": { "content": "How many things went away, already formatted with thousands separators, like 1,234." },
-      "count": { "content": "The same count as a raw integer, used only to pick the singular or plural word." }
+      "countText": {
+        "content": "How many things went away, already formatted with thousands separators, like 1,234."
+      },
+      "count": {
+        "content": "The same count as a raw integer, used only to pick the singular or plural word."
+      }
     }
   },
   "askCmdr.wakeDigest.renamed": "{countText} {count, plural, one {renamed item} other {renamed items}}",
@@ -1031,7 +977,9 @@
       "countText": {
         "content": "How many things were renamed, already formatted with thousands separators, like 1,234."
       },
-      "count": { "content": "The same count as a raw integer, used only to pick the singular or plural word." }
+      "count": {
+        "content": "The same count as a raw integer, used only to pick the singular or plural word."
+      }
     }
   },
   "askCmdr.wakeDigest.noChanges": "Nothing changed",
@@ -1054,7 +1002,9 @@
       "changesText": {
         "content": "How many changes happened across those folders in total, already formatted with thousands separators, like 1,234."
       },
-      "changes": { "content": "The same change count as a raw integer, used only to pick the singular or plural word." }
+      "changes": {
+        "content": "The same change count as a raw integer, used only to pick the singular or plural word."
+      }
     }
   },
   "askCmdr.sessions.wakeThread": "Cmdr started this chat",
@@ -1068,7 +1018,9 @@
       "countText": {
         "content": "How many suggestions are waiting, already formatted with thousands separators, like 1,234. Always at least one."
       },
-      "count": { "content": "The same count as a raw integer, used only to pick the singular or plural word." }
+      "count": {
+        "content": "The same count as a raw integer, used only to pick the singular or plural word."
+      }
     }
   },
   "askCmdr.wakeToast.action": "Review",
@@ -1086,7 +1038,9 @@
       "countText": {
         "content": "How many files or folders the suggestion covered, already formatted with thousands separators, like 1,234."
       },
-      "count": { "content": "The same count as a raw integer, used only to pick the singular or plural word." },
+      "count": {
+        "content": "The same count as a raw integer, used only to pick the singular or plural word."
+      },
       "verbName": {
         "content": "The action the agent suggested, already translated, from the askCmdr.decision.verb* keys: for English, one of moving, copying, trashing, deleting, renaming, compressing, extracting."
       }
@@ -1099,7 +1053,9 @@
       "countText": {
         "content": "How many files or folders the suggestion covered, already formatted with thousands separators, like 1,234."
       },
-      "count": { "content": "The same count as a raw integer, used only to pick the singular or plural word." },
+      "count": {
+        "content": "The same count as a raw integer, used only to pick the singular or plural word."
+      },
       "verbName": {
         "content": "The action the agent suggested, already translated, from the askCmdr.decision.verb* keys: for English, one of moving, copying, trashing, deleting, renaming, compressing, extracting."
       }

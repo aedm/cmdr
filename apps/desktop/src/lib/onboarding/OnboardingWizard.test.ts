@@ -72,13 +72,17 @@ vi.mock('$lib/settings/ai-config', () => ({
   pushConfigToBackend: vi.fn(() => Promise.resolve()),
 }))
 
-// StepAi's "no AI" pick revokes Ask Cmdr consent, and retries a refusal. Unmocked, the
-// consent module's commands are missing from the mock above, so every revoke reads as
-// refused and the retry outlasts the ticks this test waits. Consent behaviour lives in
-// `StepAi.test.ts` and `ask-cmdr-consent.svelte.test.ts`.
-vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
-  revokeConsent: vi.fn(() => Promise.resolve('done')),
-  acceptConsent: vi.fn(() => Promise.resolve('done')),
+// StepAi's "no AI" pick turns cloud AI off, and retries a refusal. Unmocked, the consent
+// module's commands are missing from the mock above, so every revoke reads as refused and the
+// retry outlasts the ticks this test waits. Consent behaviour lives in `StepAi.test.ts` and
+// `cloud-consent.svelte.test.ts`.
+vi.mock('$lib/ai/cloud-consent.svelte', () => ({
+  cloudConsentState: { accepted: false, acceptedAt: null },
+  refreshCloudConsent: vi.fn(() => Promise.resolve()),
+  cloudAiBlocked: (provider: string) => provider === 'cloud',
+  declineCloudConsent: vi.fn(() => Promise.resolve('done')),
+  acceptCloudConsent: vi.fn(() => Promise.resolve('done')),
+  CLOUD_CONSENT_ANCHOR: 'settings-ai-cloud-consent',
 }))
 
 vi.mock('@tauri-apps/plugin-process', () => ({

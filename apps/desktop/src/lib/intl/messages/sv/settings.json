@@ -921,6 +921,14 @@
   "@settings.ai.cloudProvider.label": {
     "sourceHash": "d677190"
   },
+  "settings.ai.cloudConsent.onSince": "På sedan {date}",
+  "@settings.ai.cloudConsent.onSince": {
+    "sourceHash": "2f573fd"
+  },
+  "settings.ai.cloudConsent.lockedHint": "Turn on Allow cloud AI above to set up a service.",
+  "@settings.ai.cloudConsent.lockedHint": {
+    "sourceHash": "36f676c"
+  },
   "settings.ai.cloudProvider.description": "Vilken moln-AI-tjänst som ska användas.",
   "@settings.ai.cloudProvider.description": {
     "sourceHash": "3300ce9"
@@ -1378,6 +1386,10 @@
   "@settings.askCmdr.consentRevokePending.label": {
     "sourceHash": "1ecd887"
   },
+  "settings.ai.cloudConsentRevokePending.label": "Cloud AI off, waiting to be saved",
+  "@settings.ai.cloudConsentRevokePending.label": {
+    "sourceHash": "16456dc"
+  },
   "settings.onboarding.completed.label": "Introduktionen slutförd",
   "@settings.onboarding.completed.label": {
     "sourceHash": "4730c4f"
@@ -1693,41 +1705,21 @@
   "@settings.askCmdr.intro": {
     "sourceHash": "3b16f89"
   },
-  "settings.askCmdr.status.on": "Ask Cmdr är på",
-  "@settings.askCmdr.status.on": {
-    "sourceHash": "1003ff7"
-  },
-  "settings.askCmdr.status.off": "Ask Cmdr är av",
-  "@settings.askCmdr.status.off": {
-    "sourceHash": "0420c9a"
-  },
-  "settings.askCmdr.status.needsReview": "Ask Cmdr är pausad",
-  "@settings.askCmdr.status.needsReview": {
-    "sourceHash": "9b7a74e"
-  },
-  "settings.askCmdr.status.changed": "Den har ändrats sedan du slog på den, så den väntar på ditt godkännande. Läs vad som är nytt nedan och slå sedan på den igen.",
-  "@settings.askCmdr.status.changed": {
-    "sourceHash": "190838b"
-  },
-  "settings.askCmdr.status.onSince": "På sedan {date}",
-  "@settings.askCmdr.status.onSince": {
-    "sourceHash": "2f573fd"
-  },
-  "settings.askCmdr.turnOn": "Aktivera Ask Cmdr",
-  "@settings.askCmdr.turnOn": {
+  "settings.askCmdr.enabled.label": "Turn on Ask Cmdr",
+  "@settings.askCmdr.enabled.label": {
     "sourceHash": "0d656c4"
   },
-  "settings.askCmdr.turnBackOn": "Slå på igen",
-  "@settings.askCmdr.turnBackOn": {
-    "sourceHash": "b8bc676"
+  "settings.askCmdr.enabled.description": "Chat with Cmdr about your files in a side panel.",
+  "@settings.askCmdr.enabled.description": {
+    "sourceHash": "a1116db"
   },
-  "settings.askCmdr.turnOff": "Stäng av Ask Cmdr",
-  "@settings.askCmdr.turnOff": {
-    "sourceHash": "eb03374"
+  "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service, and cloud AI is off. Allow it in AI settings to start chatting.",
+  "@settings.askCmdr.cloudOffHint": {
+    "sourceHash": "59e0db8"
   },
-  "settings.askCmdr.disclosure.title": "Vad Cmdr skickar",
-  "@settings.askCmdr.disclosure.title": {
-    "sourceHash": "6907e64"
+  "settings.askCmdr.openAiSettings": "Open AI settings",
+  "@settings.askCmdr.openAiSettings": {
+    "sourceHash": "edcc53b"
   },
   "settings.askCmdr.provider.title": "Leverantör och modell",
   "@settings.askCmdr.provider.title": {

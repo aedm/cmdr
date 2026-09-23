@@ -17,6 +17,7 @@ import { isMacOS } from '$lib/shortcuts/key-capture'
 import type { SearchableEntry, SearchableRow } from '../types'
 import { adbRows } from './AdbSection.rows'
 import { advancedRows } from './AdvancedSection.rows'
+import { aiRows } from './AiSection.rows'
 import { askCmdrRows } from './AskCmdrSection.rows'
 import { driveIndexingRows } from './DriveIndexingSection.rows'
 import { keyboardShortcutsRows } from './KeyboardShortcutsSection.rows'
@@ -29,6 +30,7 @@ import { updatesRows } from './UpdatesSection.rows'
 export const searchableRows: SearchableRow[] = [
   ...revealHandlerRows,
   ...driveIndexingRows,
+  ...aiRows,
   ...askCmdrRows,
   ...serversRows,
   ...adbRows,

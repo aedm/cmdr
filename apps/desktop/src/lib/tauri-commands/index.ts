@@ -405,10 +405,8 @@ export {
   askCmdrSelectionAttachments,
   resolveAskCmdrAttachments,
   askCmdrFakeActive,
-  askCmdrConsentStatus,
-  acceptAskCmdrConsent,
-  revokeAskCmdrConsent,
-  askCmdrConsentRevokePendingChanged,
+  askCmdrLegacyOptIn,
+  askCmdrEnabledChanged,
   askCmdrConversationCost,
   askCmdrCostSummary,
   askCmdrModelWindow,
@@ -434,7 +432,7 @@ export type {
   MessageBlock,
   AttachmentRef,
   AttachmentKindView,
-  AskCmdrConsentStatus,
+  LegacyAskCmdrOptIn,
   ConversationCost,
   CostSummary,
   ModelWindowView,
@@ -489,7 +487,13 @@ export {
   onAiInstalling,
   onAiInstallComplete,
   onAiExtracting,
+  cloudAiConsentStatus,
+  acceptCloudAiConsent,
+  revokeCloudAiConsent,
+  cloudAiConsentRevokePendingChanged,
+  onCloudAiConsentChanged,
 } from './ai'
+export type { CloudAiConsentStatus } from './ai'
 
 // Appearance / system-environment (accent color, reduce-transparency, text-size, localized strings)
 export {

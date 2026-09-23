@@ -9,6 +9,8 @@
     import { getAppLogger } from '$lib/logging/logger'
     import { pushConfigToBackend } from '$lib/settings/ai-config'
     import AiCloudSection from './AiCloudSection.svelte'
+    import AiCloudConsentToggle from '$lib/ai/AiCloudConsentToggle.svelte'
+    import { cloudAiBlocked } from '$lib/ai/cloud-consent.svelte'
     import AiLocalSection from './AiLocalSection.svelte'
     import SectionCard from '$lib/ui/SectionCard.svelte'
     import { tString } from '$lib/intl/messages.svelte'
@@ -160,9 +162,18 @@
             </SectionCard>
         {/if}
 
-        <!-- Cloud / API section -->
+        <!-- Cloud: the Allow cloud AI switch first, then the service setup it locks. Nothing
+             here reaches the service until the switch is on (the backend enforces it too). -->
         {#if provider === 'cloud'}
-            <AiCloudSection {searchQuery} {shouldShow} />
+            {#if shouldShow('row:ai.cloudConsent')}
+                <SectionCard>
+                    <!-- The group holds the switch AND its disclosure, so it carries the name. -->
+                    <div role="group" aria-label={tString('ai.cloudConsent.label')}>
+                        <AiCloudConsentToggle anchor />
+                    </div>
+                </SectionCard>
+            {/if}
+            <AiCloudSection {searchQuery} {shouldShow} locked={cloudAiBlocked(provider)} />
         {/if}
 
         <!-- Local LLM section -->

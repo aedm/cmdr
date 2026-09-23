@@ -55,6 +55,98 @@
   "@ai.translateError.off.body": {
     "sourceHash": "d8d6368"
   },
+  "ai.cloudConsent.label": "Allow cloud AI",
+  "@ai.cloudConsent.label": {
+    "sourceHash": "9947821"
+  },
+  "ai.cloudConsent.description": "Cmdr sends nothing to a cloud AI service until you turn this on.",
+  "@ai.cloudConsent.description": {
+    "sourceHash": "2f568e5"
+  },
+  "ai.cloudConsent.disclosureTitle": "What Cmdr sends",
+  "@ai.cloudConsent.disclosureTitle": {
+    "sourceHash": "6907e64"
+  },
+  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below, using your own account:",
+  "@ai.cloudConsent.intro": {
+    "sourceHash": "9449148"
+  },
+  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr has no AI service of its own and never sees any of it.",
+  "@ai.cloudConsent.whereItGoes": {
+    "sourceHash": "8c036fa"
+  },
+  "ai.cloudConsent.folderSuggestions": "<b>New folder name suggestions</b>: the current folder''s path and up to 100 names in it",
+  "@ai.cloudConsent.folderSuggestions": {
+    "sourceHash": "02790c2"
+  },
+  "ai.cloudConsent.search": "<b>Search in plain words</b>: the text you type",
+  "@ai.cloudConsent.search": {
+    "sourceHash": "e6d4ef9"
+  },
+  "ai.cloudConsent.selection": "<b>Select by description</b>: what you type, plus up to 240 names from the current folder",
+  "@ai.cloudConsent.selection": {
+    "sourceHash": "1e1c3c3"
+  },
+  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, when you chat or when it starts a conversation on its own:",
+  "@ai.cloudConsent.askCmdr.title": {
+    "sourceHash": "26e139c"
+  },
+  "ai.cloudConsent.askCmdr.item.messages": "Tus mensajes",
+  "@ai.cloudConsent.askCmdr.item.messages": {
+    "sourceHash": "befc6e9"
+  },
+  "ai.cloudConsent.askCmdr.item.names": "Los nombres y las rutas de los archivos y carpetas que Cmdr consulta para responderte",
+  "@ai.cloudConsent.askCmdr.item.names": {
+    "sourceHash": "ce3259d"
+  },
+  "ai.cloudConsent.askCmdr.item.sizes": "Sus tamaños y fechas",
+  "@ai.cloudConsent.askCmdr.item.sizes": {
+    "sourceHash": "2484530"
+  },
+  "ai.cloudConsent.askCmdr.item.contents": "Partes de los archivos que Cmdr abre para responderte: algo de texto, páginas de un PDF, lo que hay dentro de un archivo comprimido y los datos de la cámara y la ubicación de una foto",
+  "@ai.cloudConsent.askCmdr.item.contents": {
+    "sourceHash": "fcd0b73"
+  },
+  "ai.cloudConsent.askCmdr.item.envelope": "Lo que estás viendo ahora mismo: tu carpeta actual, el cursor, la selección y las unidades conectadas",
+  "@ai.cloudConsent.askCmdr.item.envelope": {
+    "sourceHash": "2e5a0ef"
+  },
+  "ai.cloudConsent.askCmdr.item.attachments": "Cualquier archivo o carpeta que adjuntes a una pregunta, solo por su nombre y ruta",
+  "@ai.cloudConsent.askCmdr.item.attachments": {
+    "sourceHash": "b9ad2af"
+  },
+  "ai.cloudConsent.askCmdr.item.memory": "Las notas que Cmdr guarda sobre ti, enviadas de nuevo con cada mensaje",
+  "@ai.cloudConsent.askCmdr.item.memory": {
+    "sourceHash": "7779513"
+  },
+  "ai.cloudConsent.askCmdr.contentsRule": "Cmdr nunca envía archivos completos, fotos ni miniaturas. Cuando preguntas por un archivo, puede leer una parte limitada de su contenido: algunas líneas de texto, unas pocas páginas de un PDF junto con su título y su autor, la lista de archivos que contiene un archivo comprimido o los datos de la cámara de una foto, incluido el lugar donde se tomó. La búsqueda de fotos funciona igual: el texto que Cmdr reconoció dentro de las fotos coincidentes y sus etiquetas se envían a tu proveedor para que pueda encontrarlas. Cmdr puede sugerir cambios de nombre, movimientos y limpiezas, y no le pasa nada a ningún archivo hasta que tú lo apruebas.",
+  "@ai.cloudConsent.askCmdr.contentsRule": {
+    "sourceHash": "5a378c1"
+  },
+  "ai.cloudConsent.askCmdr.memory": "Cmdr se escribe notas sobre ti: cómo te gusta tener las cosas organizadas, qué rechazaste antes, todo lo que le pidas que recuerde. Esas notas viajan con cada mensaje que envías, mientras existan, y pueden incluir texto que Cmdr reconoció dentro de tus fotos. Puedes leerlas, o borrarlas, cuando quieras en los ajustes de Ask Cmdr.",
+  "@ai.cloudConsent.askCmdr.memory": {
+    "sourceHash": "496c78d"
+  },
+  "ai.cloudConsent.askCmdr.proactive": "Cmdr también observa las carpetas que usas y abre una conversación cuando tiene algo que sugerir, así que pueden salir mensajes hacia tu proveedor sin que tú lo pidas. Puedes desactivarlo en los ajustes de Ask Cmdr, en “Por su cuenta”.",
+  "@ai.cloudConsent.askCmdr.proactive": {
+    "sourceHash": "abfa80b"
+  },
+  "ai.cloudConsent.askCmdr.chatsStayLocal": "Your Ask Cmdr chats stay on your Mac, in a local database you can open and read.",
+  "@ai.cloudConsent.askCmdr.chatsStayLocal": {
+    "sourceHash": "283cdd7"
+  },
+  "ai.cloudConsent.logsNote": "Si activas el registro de llamadas al modelo de IA en Ajustes avanzados, Cmdr también guarda cada solicitud y respuesta en una carpeta de tu Mac. Esos registros también son locales y nunca se envían a ningún sitio.",
+  "@ai.cloudConsent.logsNote": {
+    "sourceHash": "7e211fc"
+  },
+  "ai.cloudConsent.turnOffAnyTime": "Turn this off any time and Cmdr stops sending right away. Your service, key, and chats stay as they are.",
+  "@ai.cloudConsent.turnOffAnyTime": {
+    "sourceHash": "464c39f"
+  },
+  "ai.cloudConsent.notSaved": "Cmdr no pudo guardar tu elección. ¿Lo intentas de nuevo?",
+  "@ai.cloudConsent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "ai.translateError.notConfigured.title": "La IA necesita un poco más de configuración",
   "@ai.translateError.notConfigured.title": {
     "sourceHash": "bf5688a"
@@ -62,6 +154,14 @@
   "ai.translateError.notConfigured.body": "Termina de configurar tu proveedor en Ajustes > IA y vuelve a intentarlo.",
   "@ai.translateError.notConfigured.body": {
     "sourceHash": "65133a8"
+  },
+  "ai.translateError.noCloudConsent.title": "Cloud AI is off",
+  "@ai.translateError.noCloudConsent.title": {
+    "sourceHash": "2e56781"
+  },
+  "ai.translateError.noCloudConsent.body": "Allow it in Settings > AI, then try again.",
+  "@ai.translateError.noCloudConsent.body": {
+    "sourceHash": "fde3eb5"
   },
   "ai.translateError.authFailed.title": "Esa clave de API fue rechazada",
   "@ai.translateError.authFailed.title": {

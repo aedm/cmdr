@@ -669,6 +669,15 @@ export function resetSetting(id: SettingId): void {
 }
 
 /**
+ * Whether an actor explicitly set this setting (it's in the sparse-persistence ledger), even to
+ * a value equal to its default. Tells "never set" from "set to the default", which
+ * {@link isModified} can't: a one-time migration uses it to leave the person's own answer alone.
+ */
+export function isExplicitlySet(id: SettingId): boolean {
+  return explicitlySet.has(id)
+}
+
+/**
  * Check if a setting has been modified from its default value.
  */
 export function isModified(id: SettingId): boolean {

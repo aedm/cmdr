@@ -294,14 +294,6 @@ export const REPRESENTATIVE_SCREENSHOTS: RepresentativeMapping[] = [
       'as the standalone Shortcuts window. macOS modifier glyphs (⌘ ⌥ ⌃ ⇧) and key names are not translated.',
   },
   {
-    // Shown only to someone re-accepting changed consent copy; the capture stages a first-time consent.
-    prefix: 'askCmdr.consent.whatsNew.',
-    screenshot: 'ask-cmdr-consent.png',
-    note:
-      'The Ask Cmdr consent screen, pictured here. Your string is the heading or paragraph above it that appears only for ' +
-      'someone who accepted an earlier version of this screen and is being asked again.',
-  },
-  {
     // The two headings render only while the search box is empty.
     prefix: 'commandPalette.group',
     screenshot: 'command-palette.png',

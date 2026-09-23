@@ -24,7 +24,7 @@ import {
   type MessageBlock,
   type AttachmentRef,
   type AttachmentKindView,
-  type CloudAiConsentStatus,
+  type LegacyAskCmdrOptIn,
   type ConversationCost,
   type CostSummary,
   type ModelWindowView,
@@ -39,6 +39,7 @@ import {
 import { throwIpcError } from './ipc-types'
 
 export type {
+  LegacyAskCmdrOptIn,
   WakeReadinessView,
   AskCmdrStreamEvent,
   AskCmdrTurn,
@@ -98,8 +99,9 @@ export type RenameProposalRow = RenameProposalRowSnapshot
 /** What a send answered: the thread it landed in, or why it never started. */
 export type AskCmdrSendOutcome =
   | { accepted: true; conversationId: number }
-  /** Decided before the turn existed (no consent, no slot, a window too small), so it can't
-   * arrive as a stream event — some of these happen before there IS a thread to key one on. */
+  /** Decided before the turn existed (Ask Cmdr off, cloud AI not allowed, no slot, a window
+   * too small), so it can't arrive as a stream event — some of these happen before there IS a
+   * thread to key one on. */
   | { accepted: false; kind: AskCmdrErrorKind; detail: string | null }
 
 /**
@@ -251,34 +253,21 @@ export async function askCmdrFakeActive(): Promise<boolean> {
   }
 }
 
-// TODO(cloud-consent milestone 3): the backend dropped Ask Cmdr's own consent commands (cloud consent
-// is `ai::cloud_consent` now, and Ask Cmdr is the `askCmdr.enabled` switch). These four keep the old
-// consent screen compiling until the rail's new gate replaces it, and are deleted with it. Accepting
-// here deliberately grants NOTHING: the Ask Cmdr disclosure never described the other AI features,
-// so it must not turn cloud AI on for them. Only "Allow cloud AI" does that.
-
-/** Interim: the cloud AI consent status, read-only. */
-export type AskCmdrConsentStatus = CloudAiConsentStatus
-
-/** Interim: the cloud AI consent status, read-only. */
-export async function askCmdrConsentStatus(): Promise<AskCmdrConsentStatus> {
-  return commands.cloudAiConsentStatus()
+/**
+ * What the legacy Ask Cmdr opt-in says, for the one-time `askCmdr.enabled` mapping at startup.
+ * `storeUnavailable` means write nothing and ask again next launch.
+ */
+export async function askCmdrLegacyOptIn(): Promise<LegacyAskCmdrOptIn> {
+  return commands.askCmdrLegacyOptIn()
 }
 
-/** Interim: records nothing (see the note above). */
-export async function acceptAskCmdrConsent(): Promise<void> {
-  // Deliberately empty: this screen can't grant cloud consent.
-}
-
-/** Interim: turns cloud AI off (a "no" is always safe to record). */
-export async function revokeAskCmdrConsent(): Promise<void> {
-  const res = await commands.revokeCloudAiConsent()
-  if (res.status === 'error') throwIpcError(res.error)
-}
-
-/** Interim: tells the cloud gates a held "no" moved. */
-export async function askCmdrConsentRevokePendingChanged(): Promise<void> {
-  await commands.cloudAiConsentRevokePendingChanged()
+/**
+ * Tell the proactive loop `askCmdr.enabled` moved, so its cached readiness re-reads the switch.
+ * The send path reads the setting fresh; the wake loop doesn't, so without this a switch-off
+ * would leave the loop admitting work until the next readiness refresh.
+ */
+export async function askCmdrEnabledChanged(): Promise<void> {
+  await commands.askCmdrEnabledChanged()
 }
 
 /** One conversation's cumulative token + cost total (all days, all models). */

@@ -1,6 +1,6 @@
 /**
- * Tier 3 a11y tests for the Ask Cmdr rail and the pieces it renders: the opt-in
- * gate, the composer, a thread message, a tool line, an attachment chip, the
+ * Tier 3 a11y tests for the Ask Cmdr rail and the pieces it renders: the two
+ * gates (Ask Cmdr off, cloud AI off), the composer, a thread message, a tool line, an attachment chip, the
  * context gauge, and the cost footer.
  *
  * One file per component would cost about eight times as much: `svelte-tests`
@@ -26,9 +26,14 @@ import type { ContextUsage } from './ask-cmdr-context-usage'
 
 // `vi.hoisted` so the shared mutable state exists before the hoisted `vi.mock`
 // factories run.
-const { triggerState, flags, costMock, consentState } = vi.hoisted(() => ({
-  // A plain mutable object, so the consent block can move `needsReconsent` before mounting.
-  consentState: { accepted: true, acceptedAt: null, needsReconsent: false },
+const { triggerState, flags, costMock, consentState, railSettings } = vi.hoisted(() => {
+  // Plain mutable objects, so the gate blocks can move them before mounting. Annotations, not
+  // `as`: the lint auto-fix strips an assertion it thinks is unnecessary.
+  const consentState: { accepted: boolean | null; acceptedAt: number | null } = { accepted: true, acceptedAt: null }
+  const railSettings: Record<string, unknown> = { 'askCmdr.enabled': true, 'ai.provider': 'off' }
+  return {
+  consentState,
+  railSettings,
   triggerState: {
     streaming: false,
     width: 340,
@@ -38,7 +43,8 @@ const { triggerState, flags, costMock, consentState } = vi.hoisted(() => ({
   },
   flags: { overSoftCap: false },
   costMock: vi.fn<(id: number) => Promise<unknown>>(),
-}))
+  }
+})
 
 // The union of what these blocks reach for. Each source file mocked a different
 // slice of the trigger module; a component only calls its own, so an unused stub
@@ -50,6 +56,7 @@ vi.mock('./ask-cmdr-trigger.svelte', () => ({
   loadOlderMessages: vi.fn(),
   closeRail: vi.fn(),
   openRail: vi.fn(() => Promise.resolve()),
+  ensureThreadLoaded: vi.fn(() => Promise.resolve()),
   newChat: vi.fn(),
   setRailWidth: vi.fn(),
   sendMessage: vi.fn(),
@@ -60,12 +67,19 @@ vi.mock('./ask-cmdr-trigger.svelte', () => ({
   removeAttachment: vi.fn(),
 }))
 
-// Consent granted so the rail renders the chat (not the opt-in gate).
-vi.mock('./ask-cmdr-consent.svelte', () => ({
-  consentState,
-  refreshConsent: vi.fn(),
-  acceptConsent: vi.fn(() => Promise.resolve('done')),
-  revokeConsent: vi.fn(),
+// Ask Cmdr on, with no cloud involved, so the rail renders the chat unless a block moves it.
+vi.mock('$lib/ai/cloud-consent.svelte', () => ({
+  cloudConsentState: consentState,
+  refreshCloudConsent: vi.fn(() => Promise.resolve()),
+  openCloudConsentSettings: vi.fn(),
+}))
+vi.mock('$lib/settings', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  getSetting: (id: string): unknown => railSettings[id],
+  setSetting: vi.fn((id: string, value: unknown) => {
+    railSettings[id] = value
+  }),
+  onSpecificSettingChange: () => () => {},
 }))
 
 vi.mock('./ask-cmdr-sessions.svelte', () => ({
@@ -84,13 +98,14 @@ vi.mock('$lib/logging/logger', () => ({
 
 import AskCmdrAttachmentChip from './AskCmdrAttachmentChip.svelte'
 import AskCmdrComposer from './AskCmdrComposer.svelte'
-import AskCmdrConsent from './AskCmdrConsent.svelte'
+import AskCmdrGate from './AskCmdrGate.svelte'
 import AskCmdrContextGauge from './AskCmdrContextGauge.svelte'
 import AskCmdrCostFooter from './AskCmdrCostFooter.svelte'
 import AskCmdrMessage from './AskCmdrMessage.svelte'
 import AskCmdrRail from './AskCmdrRail.svelte'
 import AskCmdrToolLine from './AskCmdrToolLine.svelte'
-import { getMessage } from '$lib/intl/messages.svelte'
+import { openCloudConsentSettings } from '$lib/ai/cloud-consent.svelte'
+import { setSetting } from '$lib/settings'
 
 /** A fresh container, appended to the document and ready to mount into. */
 function container(): HTMLDivElement {
@@ -172,86 +187,40 @@ describe('AskCmdrComposer a11y', () => {
 })
 
 /**
- * Tier 3 a11y tests for `AskCmdrConsent.svelte`, the opt-in gate, plus the one branch it
- * owns: the "here's what changed" block a returning user gets and a first-time user doesn't.
- *
- * The screen: a labelled group (heading + intro + the "what leaves your Mac" list + the
- * reassurance paragraphs + the local-storage note), and the two actions (Not now / Turn on).
- * The consent + trigger modules are mocked so it mounts without a backend.
+ * Tier 3 a11y tests for `AskCmdrGate.svelte`, the rail's two closed states, plus what each
+ * button does. Neither grants cloud consent: the cloud gate only points at the switch.
  */
-describe('AskCmdrConsent a11y', () => {
-  async function mountGate(): Promise<HTMLElement> {
+describe('AskCmdrGate a11y', () => {
+  async function mountGate(kind: 'off' | 'cloudOff'): Promise<HTMLElement> {
     const target = container()
-    mount(AskCmdrConsent, { target, props: {} })
+    mount(AskCmdrGate, { target, props: { kind } })
     await tick()
     return target
   }
 
-  beforeEach(() => {
-    consentState.needsReconsent = false
-  })
-
-  it('the opt-in gate has no a11y violations', async () => {
-    const target = await mountGate()
+  it('the Ask Cmdr off gate has no a11y violations', async () => {
+    const target = await mountGate('off')
     await expectNoA11yViolations(target)
     target.remove()
   })
 
-  it('the re-prompt has no a11y violations either', async () => {
-    consentState.needsReconsent = true
-    const target = await mountGate()
+  it('the cloud AI off gate has no a11y violations', async () => {
+    const target = await mountGate('cloudOff')
     await expectNoA11yViolations(target)
     target.remove()
   })
 
-  /**
-   * The disclosure the whole re-prompt exists for. Without it the bump collects a signature
-   * on the old promise, which is the one thing a consent bump must not do.
-   */
-  it('always discloses the memory the agent keeps and sends', async () => {
-    const target = await mountGate()
-    expect(target.textContent).toContain(getMessage('askCmdr.consent.item.memory'))
-    expect(target.textContent).toContain(getMessage('askCmdr.consent.memory'))
-    expect(target.textContent).toContain(getMessage('askCmdr.consent.proactive'))
+  it('turns Ask Cmdr on from the off gate', async () => {
+    const target = await mountGate('off')
+    target.querySelector<HTMLButtonElement>('.ask-cmdr-gate button')?.click()
+    expect(setSetting).toHaveBeenCalledWith('askCmdr.enabled', true)
     target.remove()
   })
 
-  /** ❌ The old promise must not come back: the agent proposes changes and writes its notes. */
-  it('no longer claims the agent never changes anything', async () => {
-    const target = await mountGate()
-    expect(target.textContent).not.toContain('never changes anything')
-    target.remove()
-  })
-
-  /**
-   * The disclosure the copy-version-4 re-prompt exists for: `inspect_file` reads parts of a
-   * file on request (text, PDF pages, archive entries, a photo's EXIF with its location), so
-   * the list names it beside names and sizes, and the reassurance paragraph must not promise
-   * "no file contents" any more.
-   */
-  it('discloses that parts of files are read on request', async () => {
-    const target = await mountGate()
-    expect(target.textContent).toContain(getMessage('askCmdr.consent.item.contents'))
-    expect(target.textContent).toContain(getMessage('askCmdr.consent.contentsRule'))
-    expect(target.textContent).not.toContain('no file contents')
-    target.remove()
-  })
-
-  it('says nothing about a change to somebody who is opting in for the first time', async () => {
-    const target = await mountGate()
-    expect(target.textContent).not.toContain(getMessage('askCmdr.consent.whatsNew.title'))
-    target.remove()
-  })
-
-  /**
-   * Somebody whose opt-in the copy bump revoked has a whole thread history sitting behind this
-   * screen. Showing them the first-run pitch with no reason for it reads as the app losing it.
-   */
-  it('tells a returning user what changed', async () => {
-    consentState.needsReconsent = true
-    const target = await mountGate()
-    expect(target.textContent).toContain(getMessage('askCmdr.consent.whatsNew.title'))
-    expect(target.textContent).toContain(getMessage('askCmdr.consent.whatsNew.body'))
+  it('sends the cloud gate to the Allow cloud AI switch, and grants nothing itself', async () => {
+    const target = await mountGate('cloudOff')
+    target.querySelector<HTMLButtonElement>('.ask-cmdr-gate button')?.click()
+    expect(openCloudConsentSettings).toHaveBeenCalledWith('ask-cmdr-cloud-gate')
     target.remove()
   })
 })
@@ -412,11 +381,63 @@ describe('AskCmdrMessage a11y', () => {
  * child composer mount without the full explorer-state chain.
  */
 describe('AskCmdrRail a11y', () => {
+  beforeEach(() => {
+    railSettings['askCmdr.enabled'] = true
+    railSettings['ai.provider'] = 'off'
+    consentState.accepted = true
+  })
+
   function mountRail(): HTMLElement {
     const target = container()
     mount(AskCmdrRail, { target, props: {} })
     return target
   }
+
+  function gateKind(target: HTMLElement): string | null {
+    return target.querySelector('.ask-cmdr-gate')?.getAttribute('data-gate') ?? null
+  }
+
+  it('shows the off gate while Ask Cmdr is off, whatever the AI mode', async () => {
+    railSettings['askCmdr.enabled'] = false
+    railSettings['ai.provider'] = 'cloud'
+    consentState.accepted = false
+    const target = mountRail()
+    await tick()
+    expect(gateKind(target)).toBe('off')
+    expect(target.querySelector('.composer')).toBeNull()
+    target.remove()
+  })
+
+  it('shows the cloud gate on Cloud until cloud AI is allowed', async () => {
+    railSettings['ai.provider'] = 'cloud'
+    consentState.accepted = false
+    const target = mountRail()
+    await tick()
+    expect(gateKind(target)).toBe('cloudOff')
+    expect(target.querySelector('.composer')).toBeNull()
+    await expectNoA11yViolations(target)
+    target.remove()
+  })
+
+  it('renders nothing while cloud consent is still loading, so no gate flashes', async () => {
+    railSettings['ai.provider'] = 'cloud'
+    consentState.accepted = null
+    const target = mountRail()
+    await tick()
+    expect(gateKind(target)).toBeNull()
+    expect(target.querySelector('.composer')).toBeNull()
+    target.remove()
+  })
+
+  it('chats on Local with Ask Cmdr on: nothing leaves the Mac, so no consent is asked', async () => {
+    railSettings['ai.provider'] = 'local'
+    consentState.accepted = false
+    const target = mountRail()
+    await tick()
+    expect(gateKind(target)).toBeNull()
+    expect(target.querySelector('.composer')).not.toBeNull()
+    target.remove()
+  })
 
   it('the empty rail has no a11y violations', async () => {
     const target = mountRail()

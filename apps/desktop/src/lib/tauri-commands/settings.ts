@@ -453,6 +453,8 @@ export interface AiConnectionCheckResult {
   authError: boolean
   models: string[]
   error: string | null
+  /** The user hasn't allowed cloud AI, so nothing was sent and the other fields are empty. */
+  cloudConsentMissing: boolean
 }
 
 /**

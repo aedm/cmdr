@@ -22,7 +22,7 @@
     import { systemStrings } from '$lib/system-strings.svelte'
     import { getCloudProvider, getSetting, setSetting, type AiProvider } from '$lib/settings'
     import { pushConfigToBackend } from '$lib/settings/ai-config'
-    import { declineConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+    import { declineCloudConsent } from '$lib/ai/cloud-consent.svelte'
     import InfoTip from '$lib/ui/InfoTip.svelte'
     import RadioGroup from '$lib/ui/RadioGroup.svelte'
     import LinkButton from '$lib/ui/LinkButton.svelte'
@@ -303,7 +303,7 @@
             // `main.db` hiccuped is worse than a logged warning.
             // `declineConsent` is the one "no" path, shared with Settings' Turn off: it retries a
             // refusal once, then holds the "no" in `settings.json`, which every consent gate reads.
-            if ((await declineConsent()) === 'notSaved') {
+            if ((await declineCloudConsent()) === 'notSaved') {
                 log.warn("Couldn't turn Ask Cmdr off for a 'no AI' pick, and couldn't hold the 'no' either; consent stays recorded")
             }
         }

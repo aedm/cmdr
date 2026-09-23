@@ -7,6 +7,7 @@ import {
   getSetting,
   onSettingChange,
   initializeSettings,
+  forceSave,
   type UiDensity,
   type SizeColorsPalette,
   type DateColorsPalette,
@@ -40,6 +41,7 @@ import {
   applyRecentSearchesMaxCount,
   applyRecentSelectionsMaxCount,
   askCmdrWakeSettingsChanged,
+  askCmdrEnabledChanged,
 } from '$lib/tauri-commands'
 import { addToast } from '$lib/ui/toast/toast-store.svelte'
 import { tString, setLocale } from '$lib/intl/messages.svelte'
@@ -279,6 +281,12 @@ const passthroughBackendHandlers: Partial<Record<string, (value: unknown) => voi
   'askCmdr.proactive': () => void askCmdrWakeSettingsChanged(),
   'askCmdr.wakeDelay': () => void askCmdrWakeSettingsChanged(),
   'askCmdr.wakeToast': () => void askCmdrWakeSettingsChanged(),
+  // Ask Cmdr's on/off. The send gate reads it fresh from `settings.json` and the wake loop's
+  // cached readiness re-reads it on this push, so the file is saved NOW, not on the debounce:
+  // otherwise "Turn on Ask Cmdr, then send" can beat the flush and get refused as off.
+  'askCmdr.enabled': () => {
+    void forceSave().then(() => askCmdrEnabledChanged())
+  },
   // `updates.autoCheck` flips the background poll loop on or off live. `applyAutoCheckEnabled`
   // also fires an immediate check on `true` so the user gets a fresh state right after
   // re-enabling. Without this entry the wizard's step 3 toggle would only take effect after

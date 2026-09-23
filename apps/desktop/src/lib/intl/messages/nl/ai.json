@@ -55,6 +55,98 @@
   "@ai.translateError.off.body": {
     "sourceHash": "d8d6368"
   },
+  "ai.cloudConsent.label": "Allow cloud AI",
+  "@ai.cloudConsent.label": {
+    "sourceHash": "9947821"
+  },
+  "ai.cloudConsent.description": "Cmdr sends nothing to a cloud AI service until you turn this on.",
+  "@ai.cloudConsent.description": {
+    "sourceHash": "2f568e5"
+  },
+  "ai.cloudConsent.disclosureTitle": "What Cmdr sends",
+  "@ai.cloudConsent.disclosureTitle": {
+    "sourceHash": "6907e64"
+  },
+  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below, using your own account:",
+  "@ai.cloudConsent.intro": {
+    "sourceHash": "9449148"
+  },
+  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr has no AI service of its own and never sees any of it.",
+  "@ai.cloudConsent.whereItGoes": {
+    "sourceHash": "8c036fa"
+  },
+  "ai.cloudConsent.folderSuggestions": "<b>New folder name suggestions</b>: the current folder''s path and up to 100 names in it",
+  "@ai.cloudConsent.folderSuggestions": {
+    "sourceHash": "02790c2"
+  },
+  "ai.cloudConsent.search": "<b>Search in plain words</b>: the text you type",
+  "@ai.cloudConsent.search": {
+    "sourceHash": "e6d4ef9"
+  },
+  "ai.cloudConsent.selection": "<b>Select by description</b>: what you type, plus up to 240 names from the current folder",
+  "@ai.cloudConsent.selection": {
+    "sourceHash": "1e1c3c3"
+  },
+  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, when you chat or when it starts a conversation on its own:",
+  "@ai.cloudConsent.askCmdr.title": {
+    "sourceHash": "26e139c"
+  },
+  "ai.cloudConsent.askCmdr.item.messages": "Je berichten",
+  "@ai.cloudConsent.askCmdr.item.messages": {
+    "sourceHash": "befc6e9"
+  },
+  "ai.cloudConsent.askCmdr.item.names": "De namen en paden van bestanden en mappen die Cmdr bekijkt om je te antwoorden",
+  "@ai.cloudConsent.askCmdr.item.names": {
+    "sourceHash": "ce3259d"
+  },
+  "ai.cloudConsent.askCmdr.item.sizes": "Hun groottes en datums",
+  "@ai.cloudConsent.askCmdr.item.sizes": {
+    "sourceHash": "2484530"
+  },
+  "ai.cloudConsent.askCmdr.item.contents": "Delen van bestanden die Cmdr opent om je te antwoorden: wat tekst, PDF-pagina''s, wat er in een archief zit, en de cameragegevens en locatie van een foto",
+  "@ai.cloudConsent.askCmdr.item.contents": {
+    "sourceHash": "fcd0b73"
+  },
+  "ai.cloudConsent.askCmdr.item.envelope": "Wat je nu bekijkt: je huidige map, cursor, selectie en verbonden schijven",
+  "@ai.cloudConsent.askCmdr.item.envelope": {
+    "sourceHash": "2e5a0ef"
+  },
+  "ai.cloudConsent.askCmdr.item.attachments": "Elk bestand of elke map die je aan een vraag bijvoegt, alleen via naam en pad",
+  "@ai.cloudConsent.askCmdr.item.attachments": {
+    "sourceHash": "b9ad2af"
+  },
+  "ai.cloudConsent.askCmdr.item.memory": "De notities die Cmdr over je bijhoudt, bij elk bericht opnieuw meegestuurd",
+  "@ai.cloudConsent.askCmdr.item.memory": {
+    "sourceHash": "7779513"
+  },
+  "ai.cloudConsent.askCmdr.contentsRule": "Cmdr verstuurt nooit hele bestanden, foto''s of miniaturen. Als je iets over een bestand vraagt, kan het een beperkt deel ervan lezen: wat regels tekst, een paar pagina''s van een PDF met de titel en auteur erbij, de lijst met bestanden in een archief, of de cameragegevens van een foto, inclusief waar die gemaakt is. De fotozoekfunctie werkt net zo: de tekst die Cmdr in de gevonden foto''s heeft herkend en hun tags gaan naar je aanbieder zodat die ze kan vinden. Cmdr kan hernoemen, verplaatsen en opruimen voorstellen, en er gebeurt niets met een bestand tot jij het goedkeurt.",
+  "@ai.cloudConsent.askCmdr.contentsRule": {
+    "sourceHash": "5a378c1"
+  },
+  "ai.cloudConsent.askCmdr.memory": "Cmdr schrijft notities over je: hoe je dingen graag ordent, wat je eerder hebt afgewezen, alles wat je het vraagt te onthouden. Die notities gaan mee met elk bericht dat je stuurt, zolang ze bestaan, en ze kunnen tekst bevatten die Cmdr in je foto''s heeft herkend. Je kunt ze op elk moment lezen of wissen in de Ask Cmdr-instellingen.",
+  "@ai.cloudConsent.askCmdr.memory": {
+    "sourceHash": "496c78d"
+  },
+  "ai.cloudConsent.askCmdr.proactive": "Cmdr houdt ook de mappen in de gaten die je gebruikt en begint een chat zodra het iets voor te stellen heeft, dus er kunnen berichten naar je aanbieder gaan zonder dat je er zelf om vraagt. Je zet dat uit in de Ask Cmdr-instellingen, onder ‘Uit zichzelf’.",
+  "@ai.cloudConsent.askCmdr.proactive": {
+    "sourceHash": "abfa80b"
+  },
+  "ai.cloudConsent.askCmdr.chatsStayLocal": "Your Ask Cmdr chats stay on your Mac, in a local database you can open and read.",
+  "@ai.cloudConsent.askCmdr.chatsStayLocal": {
+    "sourceHash": "283cdd7"
+  },
+  "ai.cloudConsent.logsNote": "Als je logboekregistratie voor LLM-aanroepen aanzet in Geavanceerde instellingen, bewaart Cmdr ook elk verzoek en antwoord in een map op je Mac. Die logs blijven ook lokaal en worden nooit verstuurd.",
+  "@ai.cloudConsent.logsNote": {
+    "sourceHash": "7e211fc"
+  },
+  "ai.cloudConsent.turnOffAnyTime": "Turn this off any time and Cmdr stops sending right away. Your service, key, and chats stay as they are.",
+  "@ai.cloudConsent.turnOffAnyTime": {
+    "sourceHash": "464c39f"
+  },
+  "ai.cloudConsent.notSaved": "Cmdr kon je keuze niet opslaan. Opnieuw proberen?",
+  "@ai.cloudConsent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "ai.translateError.notConfigured.title": "AI heeft nog wat instellingen nodig",
   "@ai.translateError.notConfigured.title": {
     "sourceHash": "bf5688a"
@@ -62,6 +154,14 @@
   "ai.translateError.notConfigured.body": "Rond de instelling van je aanbieder af bij Instellingen > AI en probeer het opnieuw.",
   "@ai.translateError.notConfigured.body": {
     "sourceHash": "65133a8"
+  },
+  "ai.translateError.noCloudConsent.title": "Cloud AI is off",
+  "@ai.translateError.noCloudConsent.title": {
+    "sourceHash": "2e56781"
+  },
+  "ai.translateError.noCloudConsent.body": "Allow it in Settings > AI, then try again.",
+  "@ai.translateError.noCloudConsent.body": {
+    "sourceHash": "fde3eb5"
   },
   "ai.translateError.authFailed.title": "Die API-sleutel werd geweigerd",
   "@ai.translateError.authFailed.title": {

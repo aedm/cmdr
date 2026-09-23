@@ -603,8 +603,14 @@ export interface SettingsValues {
   'ai.localContextSize': AiLocalContextSize
   'ai.cloudProvider': string
   'ai.cloudProviderConfigs': string // JSON blob
+  // A "no" to cloud AI the consent store hasn't recorded yet. Every Rust cloud gate reads it fresh
+  // from `settings.json`, so the "no" holds before the store catches up (`cloud-consent.svelte.ts`).
+  'ai.cloudConsentRevokePending': boolean
 
   // Ask Cmdr
+  // The feature's plain on/off. Read fresh backend-side each send (`load_ask_cmdr_enabled`); the
+  // wake loop's cached readiness hears about it through a `settings-applier` case.
+  'askCmdr.enabled': boolean
   // The interactive-slot model override (empty = use the shared `ai/` provider's model).
   // Read fresh backend-side each send (`load_ask_cmdr_interactive_model`); a later bulk
   // slot slots in as its own additive key with no migration (agent decision D43).
@@ -623,8 +629,8 @@ export interface SettingsValues {
   'askCmdr.wakeDelay': number
   // Whether a proposal Ask Cmdr staged on its own raises a toast.
   'askCmdr.wakeToast': boolean
-  // A "no AI" pick the consent store hasn't recorded yet. Every Rust consent gate reads it fresh from
-  // `settings.json`, so the "no" holds before the store catches up (`ask-cmdr-consent.svelte.ts`).
+  // The legacy held "no" to Ask Cmdr's old opt-in. Nothing writes it; only the one-time
+  // `askCmdr.enabled` mapping reads it (backend-side, through `ask_cmdr_legacy_opt_in`).
   'askCmdr.consentRevokePending': boolean
 
   // Developer

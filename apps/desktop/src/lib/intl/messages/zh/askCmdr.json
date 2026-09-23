@@ -212,9 +212,13 @@
   "@askCmdr.error.notConfigured": {
     "sourceHash": "2d55d2c"
   },
-  "askCmdr.error.noConsent": "开启 Ask Cmdr 即可开始聊天。你先选择它能看到哪些内容。",
-  "@askCmdr.error.noConsent": {
-    "sourceHash": "30d75d8"
+  "askCmdr.error.askCmdrOff": "Ask Cmdr is off.",
+  "@askCmdr.error.askCmdrOff": {
+    "sourceHash": "6599ee1"
+  },
+  "askCmdr.error.noCloudConsent": "Cloud AI is off. Allow it in Settings > AI.",
+  "@askCmdr.error.noCloudConsent": {
+    "sourceHash": "cd2af1d"
   },
   "askCmdr.error.localWindowTooSmall": "Cmdr 需要比你本地模型更大的上下文窗口。请在设置的 AI 部分选择 32,768 个 token 或更多。",
   "@askCmdr.error.localWindowTooSmall": {
@@ -352,81 +356,29 @@
   "@askCmdr.attachment.remove": {
     "sourceHash": "595b066"
   },
-  "askCmdr.consent.title": "和 Cmdr 聊聊你的文件",
-  "@askCmdr.consent.title": {
-    "sourceHash": "59b4ca9"
+  "askCmdr.gate.off.title": "Ask Cmdr is off",
+  "@askCmdr.gate.off.title": {
+    "sourceHash": "0420c9a"
   },
-  "askCmdr.consent.intro": "Cmdr 会把你的问题发送给你选择的 AI 提供方，使用你自己的 API 密钥。以下是你聊天时，会离开你 Mac 的全部内容：",
-  "@askCmdr.consent.intro": {
-    "sourceHash": "3b5eac1"
+  "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
+  "@askCmdr.gate.off.body": {
+    "sourceHash": "48b16af"
   },
-  "askCmdr.consent.item.messages": "你的消息",
-  "@askCmdr.consent.item.messages": {
-    "sourceHash": "befc6e9"
-  },
-  "askCmdr.consent.item.names": "Cmdr 为了回答你而查看的文件和文件夹名称与路径",
-  "@askCmdr.consent.item.names": {
-    "sourceHash": "ce3259d"
-  },
-  "askCmdr.consent.item.sizes": "它们的大小和日期",
-  "@askCmdr.consent.item.sizes": {
-    "sourceHash": "2484530"
-  },
-  "askCmdr.consent.item.contents": "Cmdr 为了回答你而打开的文件里的部分内容：一些文本、PDF 页面、压缩文件里有哪些文件，以及照片的相机信息和拍摄地点",
-  "@askCmdr.consent.item.contents": {
-    "sourceHash": "fcd0b73"
-  },
-  "askCmdr.consent.item.envelope": "你此刻正在看的内容：当前文件夹、光标位置、选择内容，以及已连接的驱动器",
-  "@askCmdr.consent.item.envelope": {
-    "sourceHash": "2e5a0ef"
-  },
-  "askCmdr.consent.item.attachments": "你附加到问题里的任何文件或文件夹，仅通过其名称和路径",
-  "@askCmdr.consent.item.attachments": {
-    "sourceHash": "b9ad2af"
-  },
-  "askCmdr.consent.item.memory": "Cmdr 记下的关于你的笔记，每条消息都会再发一次",
-  "@askCmdr.consent.item.memory": {
-    "sourceHash": "7779513"
-  },
-  "askCmdr.consent.contentsRule": "Cmdr 从不发送整个文件、照片或缩略图。当你问到某个文件时，它可以读取其中有限的一部分：几行文本、PDF 的几页及其标题和作者、压缩文件里的文件列表，或者照片的相机信息，包括拍摄地点。照片搜索也是同样的方式：Cmdr 在匹配照片中识别出的文字及其标签会发送给你的提供方，以便它找到这些照片。Cmdr 可以建议重命名、移动和整理，在你批准之前，任何文件都不会有变化。",
-  "@askCmdr.consent.contentsRule": {
-    "sourceHash": "5a378c1"
-  },
-  "askCmdr.consent.memory": "Cmdr 会给自己记下关于你的笔记：你喜欢怎样整理东西、你以前拒绝过什么，以及任何你让它记住的事。只要这些笔记还在，它们就会随你发出的每条消息一起发送，其中可能包含 Cmdr 在你照片里识别出的文字。你随时可以在 Ask Cmdr 设置中查看或清空它们。",
-  "@askCmdr.consent.memory": {
-    "sourceHash": "496c78d"
-  },
-  "askCmdr.consent.proactive": "Cmdr 还会关注你正在使用的文件夹，有建议时主动开启对话，因此消息可能在你没有提问的情况下发送给你的提供方。你可以在 Ask Cmdr 设置的“主动提醒”一节中关闭它。",
-  "@askCmdr.consent.proactive": {
-    "sourceHash": "abfa80b"
-  },
-  "askCmdr.consent.local": "你的聊天记录留在你的 Mac 上，保存在一个你可以打开查看的本地数据库里。提供方和模型由你选择，你也能看到每次聊天的花费。",
-  "@askCmdr.consent.local": {
-    "sourceHash": "f7d4075"
-  },
-  "askCmdr.consent.logsNote": "如果你在“高级”设置中开启 AI 模型调用日志记录，Cmdr 还会把每次请求和回复保存到你 Mac 上的一个文件夹里。这些日志同样只保存在本地，从不会发送到任何地方。",
-  "@askCmdr.consent.logsNote": {
-    "sourceHash": "7e211fc"
-  },
-  "askCmdr.consent.accept": "开启 Ask Cmdr",
-  "@askCmdr.consent.accept": {
+  "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
+  "@askCmdr.gate.off.turnOn": {
     "sourceHash": "0d656c4"
   },
-  "askCmdr.consent.decline": "暂不",
-  "@askCmdr.consent.decline": {
-    "sourceHash": "a0e63d7"
+  "askCmdr.gate.cloudOff.title": "Cloud AI is off",
+  "@askCmdr.gate.cloudOff.title": {
+    "sourceHash": "2e56781"
   },
-  "askCmdr.consent.notSaved": "Cmdr 没能保存你的选择。要再试一次吗？",
-  "@askCmdr.consent.notSaved": {
-    "sourceHash": "6bd80e9"
+  "askCmdr.gate.cloudOff.body": "Ask Cmdr talks to the cloud AI service you set up. Allow cloud AI in Settings first, and you’re ready to chat.",
+  "@askCmdr.gate.cloudOff.body": {
+    "sourceHash": "d3d3252"
   },
-  "askCmdr.consent.whatsNew.title": "自你开启以来有哪些变化",
-  "@askCmdr.consent.whatsNew.title": {
-    "sourceHash": "641705c"
-  },
-  "askCmdr.consent.whatsNew.body": "Cmdr 现在可以查看你问到的文件里的内容：其中的一些文本、PDF 的几页、压缩文件里的文件列表，或者照片的相机信息和拍摄地点。这比你当初同意的范围更大，所以这里再完整说明一次。",
-  "@askCmdr.consent.whatsNew.body": {
-    "sourceHash": "1af51d8"
+  "askCmdr.gate.cloudOff.openSettings": "Open AI settings",
+  "@askCmdr.gate.cloudOff.openSettings": {
+    "sourceHash": "edcc53b"
   },
   "askCmdr.forget.title": "忘掉 Cmdr 记住的关于你的一切？",
   "@askCmdr.forget.title": {

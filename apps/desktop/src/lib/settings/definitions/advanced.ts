@@ -402,11 +402,26 @@ export const advancedSettings: SettingDefinitionSource[] = [
     hidden: true,
   },
   {
-    // A "no" to Ask Cmdr that `main.db` refused to record, held here until the store takes
-    // it (`lib/ask-cmdr/ask-cmdr-consent.svelte.ts` holds, retries, and lets go). Hidden for
-    // the same reason as onboarding's flags below: a row offering to flip it would be a way
-    // to lie about consent. ⚠️ Every Rust consent gate reads it fresh from `settings.json`
-    // (`agent::consent::RevokePending`), so the "no" holds before the store catches up.
+    // A "no" to cloud AI that `main.db` refused to record, held here until the store takes it
+    // (`lib/ai/cloud-consent.svelte.ts` holds, retries, and lets go). Hidden for the same
+    // reason as onboarding's flags below: a row offering to flip it would be a way to lie
+    // about consent. ⚠️ Every Rust cloud gate reads it fresh from `settings.json`
+    // (`ai::cloud_consent::RevokePending`), so the "no" holds before the store catches up.
+    id: 'ai.cloudConsentRevokePending',
+    section: ['Advanced'],
+    labelKey: 'settings.ai.cloudConsentRevokePending.label',
+    keywords: [],
+    type: 'boolean',
+    default: false,
+    component: 'switch',
+    hidden: true,
+    // An MCP client clearing it would undo the person's "no".
+    mcpSettable: false,
+  },
+  {
+    // The legacy held "no" to Ask Cmdr's old opt-in. Nothing writes it any more; its only
+    // reader is the one-time `askCmdr.enabled` mapping (`ask_cmdr_legacy_opt_in`), where a
+    // held "no" maps to off. Kept registered so an install that still carries it validates.
     id: 'askCmdr.consentRevokePending',
     section: ['Advanced'],
     labelKey: 'settings.askCmdr.consentRevokePending.label',

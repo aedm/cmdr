@@ -20,6 +20,7 @@
  */
 
 import { getAppLogger } from '$lib/logging/logger'
+import { refreshRailGate } from './ask-cmdr-gate.svelte'
 import type { RailMessage } from './ask-cmdr-messages'
 import {
   discardStagedRenameProposals,
@@ -81,8 +82,11 @@ export function sendMessage(text: string): void {
       if (outcome.accepted) {
         askCmdrState.conversationId = outcome.conversationId
         stoppedTurns.delete(outcome.conversationId)
-      } else if (askCmdrState.streaming) {
-        applyFailed(outcome.kind, outcome.detail)
+      } else {
+        if (askCmdrState.streaming) applyFailed(outcome.kind, outcome.detail)
+        // A switch moved since the rail last looked (in Settings, or in another window).
+        // Re-reading turns the rail back into its gate, which carries the way out.
+        if (outcome.kind === 'askCmdrOff' || outcome.kind === 'noCloudConsent') void refreshRailGate()
       }
     },
     (e: unknown) => {

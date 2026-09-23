@@ -1650,8 +1650,8 @@ nächste Durchgang sie nicht „vereinheitlicht“.
   2026-08-30) · `high`. `ai.toast.gotIt` sagte „Verstanden“.
 - **`From:` vor einem Pfad → `Von:`** · `fileOperations.scanPhase.fromLabel` sagte „Aus:“, während das Gegenstück
   `fileOperations.transferDialog.sourceGroupTitle`/`targetGroupTitle` schon das Paar „Von“/„Nach“ führt · `high`.
-- **`paused` (Zustand) → `angehalten`, auch im Satz** · `settings.askCmdr.status.needsReview` sagte „Ask Cmdr ist
-  pausiert“, `queue.row.status` sagt „Angehalten“ · `high`.
+- **`paused` (Zustand) → `angehalten`, auch im Satz** · der entfernte Einstellungsstatus
+  settings.askCmdr.status.needsReview sagte „Ask Cmdr ist pausiert“, `queue.row.status` sagt „Angehalten“ · `high`.
 - **Die beiden Beta-E-Mail-Paare sagen wieder dasselbe** · `onboarding.stepBeta.signup.success` und
   `settings.updates.emailConfirmHint` teilen sich einen englischen Satz, ebenso `onboarding.stepBeta.signup.failure` und
   `settings.updates.emailSignupError`. Gewählt: „Sieh in deinem Postfach nach, …“ (idiomatischer als „Schau in dein
@@ -1891,7 +1891,7 @@ Ton: ehrlich und entspannt, keine Entschuldigung und keine Warnung, denn die App
   verbotene „falsch/Fehler“-Register.
 - **Der letzte Satz ist David in der Ich-Form** und bleibt beim `du`, wie `onboarding.stepBeta.greeting`.
 
-## Ask Cmdr schaut jetzt in Dateien hinein: Zustimmungstexte und Werkzeugzeilen (`askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, 2026-09-02)
+## Ask Cmdr schaut jetzt in Dateien hinein: Zustimmungstexte und Werkzeugzeilen (`askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, 2026-09-02)
 
 Fünf Schlüssel rund um das `inspect_file`-Werkzeug: die beiden Werkzeugzeilen im Chat, der neue Aufzählungspunkt auf dem
 Zustimmungsbildschirm, der Absatz `contentsRule` (ersetzt `askCmdr.consent.noContents`) und der „Was ist neu“-Absatz.
@@ -1941,9 +1941,11 @@ Belege: Pile `de/` (macOS Finder/AppKit, Microsoft-Terminologie, Nautilus/Thunar
   an deinen Anbieter, damit er sie finden kann.“ und „Ask Cmdr kann Umbenennungen, Verschiebungen und Aufräumaktionen
   vorschlagen, und an keiner Datei passiert etwas, bevor du zustimmst.“ wörtlich) · `high`. Der Absatz verspricht
   bewusst NICHT „keine Dateiinhalte“ mehr, sondern `nie ganze Dateien, Fotos oder Miniaturen` und
-  `einen begrenzten Teil davon`. `es` für Cmdr wie in `askCmdr.error.noConsent` („was es sehen darf“).
-- **`whatsNew.body`: zweiter Satz unverändert** („Das ist mehr, als du damals zugestimmt hast, deshalb hier noch einmal
-  das Ganze.“); der erste Satz ist neu und nennt die vier Dinge in derselben Reihenfolge wie `contentsRule`.
+  `einen begrenzten Teil davon`. `es` für Cmdr wie in der entfernten Meldung askCmdr.error.noConsent („was es sehen
+  darf“).
+- **Entfernter Neuigkeiten-Absatz (askCmdr.consent.whatsNew.body): zweiter Satz unverändert** („Das ist mehr, als du
+  damals zugestimmt hast, deshalb hier noch einmal das Ganze.“); der erste Satz ist neu und nennt die vier Dinge in
+  derselben Reihenfolge wie `contentsRule`.
 - Kein `sameAsSourceJustification` nötig: alle fünf Werte unterscheiden sich vom Englischen.
 - **„looks inside a file only when you ask about it“ → `schaut nur dann in eine Datei hinein, wenn du nach ihr fragst`**
   (`askCmdr.empty.hint`, `settings.askCmdr.intro`) · dasselbe `hineinschauen` wie oben, und `nach ihr fragst` wie in
@@ -2119,7 +2121,7 @@ macOS-Bundles (macOS 26.6.2, Build 25G83, gelesen 2026-09-06), weil der Referenz
 - **„Local network discovery is off.“ → `Die Suche im lokalen Netzwerk ist deaktiviert.`** · `discovery` → `Suche` aus
   dem eigenen Katalog (`settings.network.firstTriggerDone.label` = „Netzwerksuche gestartet“), `Local Network` →
   `Lokales Netzwerk` aus macOS' Privatsphäre-Einstellung, und „X is off“ → „X ist deaktiviert“ aus dem Katalog
-  (`ai.translateError.off.title`, `settings.askCmdr.status.off`) · `high`.
+  (`ai.translateError.off.title` und der entfernte Status settings.askCmdr.status.off) · `high`.
 - **„Turn it on in Settings“ → `In den Einstellungen aktivieren`** · `settings.window.title` = „Einstellungen“, und
   `aktivieren` hält die Wortfamilie mit dem `deaktiviert` der Zeile darüber zusammen (`settings.network.enabled.label` =
   „Netzwerk aktivieren“) · `high`.
@@ -2350,7 +2352,7 @@ Begriffe:
   (`settings.fileOperations.adbBinaryPath.label`, § Terms).
 - **`Watching for phones.` → `Cmdr achtet auf Telefone.`** · `tentative`. Der englische `@key` verbietet ausdrücklich
   jede Erwähnung von ADB-Server, Abo oder Socket, es gibt also nichts Technisches zu übersetzen. Der Katalog rendert
-  `watch` schon dreifach (`im Blick behalten` in `askCmdr.consent.proactive`, `beobachten` in `askCmdr.wake.*`,
+  `watch` schon dreifach (`im Blick behalten` in `ai.cloudConsent.askCmdr.proactive`, `beobachten` in `askCmdr.wake.*`,
   `überwachen` für den Downloads-Ordner); `achten auf` ist die knappste Form und hält die Zeile so kurz wie das
   Englische. Der Gegenwert `Cmdr achtet gerade nicht auf Telefone.` bleibt wortgleich, damit die beiden Zustände als ein
   Paar lesbar sind. `Telefon` ist das Katalogwort (`settings.fileOperations.adbEnabled.description`: „eines
@@ -2662,8 +2664,8 @@ Formulierungsentscheidungen in diesem Set:
   `notAdded` greifen es auf. Damit hängt kein `es` in der Luft, und der Genitiv `Cmdrs` bleibt draußen (Stilregel: „von
   Cmdr“).
 - **`No, thanks` → `Nein, danke`, ❌ nicht `Später` / `Nicht jetzt`.** Cmdr fragt danach nie wieder, ein Aufschub-Wort
-  wäre also gelogen. Apples `Not Now` → `Später` und der Katalogeintrag `askCmdr.consent.decline` („Nicht jetzt“) meinen
-  beide den vertagten Fall, nicht diesen.
+  wäre also gelogen. Apples `Not Now` → `Später` und der entfernte Katalogeintrag askCmdr.consent.decline („Nicht
+  jetzt“) meinen beide den vertagten Fall, nicht diesen.
 - **Die zwei `settings.behavior.dockPinNudgeOfferedAt.*`-Werte sind intern** und folgen dem Nachbarpaar
   `settings.behavior.adbHintDismissed.*` in der Form (Partizip-Label, `Ob das einmalige …`-Beschreibung).
 
@@ -3058,9 +3060,9 @@ weggefallen und durch eine einzelne Zeile ersetzt, die das Menü öffnet.
   `{count}` steht in `one` und `other`, im `=0`-Arm bewusst nicht, damit dort keine „0“ auftaucht. Die Zählphrase bleibt
   NOMINATIV (`5 Favoriten`, nie `5 Favoriten n`-Dativ): kein Vorwort regiert sie (Style-Guide § Plurals).
 - **„the current folder“ → `der aktuelle Ordner`** · gesetzt im Katalog (`commands.favoritesAdd.description` „Den
-  aktuellen Ordner des fokussierten Bereichs …“, `commands.editPaste.description`, `askCmdr.consent.item.envelope`) ·
-  `high`. Gemeint ist der Ordner, den der Bereich GERADE ZEIGT, nicht der unter dem Cursor; das Deutsche trägt das wie
-  das Englische implizit.
+  aktuellen Ordner des fokussierten Bereichs …“, `commands.editPaste.description`,
+  `ai.cloudConsent.askCmdr.item.envelope`) · `high`. Gemeint ist der Ordner, den der Bereich GERADE ZEIGT, nicht der
+  unter dem Cursor; das Deutsche trägt das wie das Englische implizit.
 - **„a mounted share“ → `eine eingebundene Freigabe`** · der Katalog hat genau diesen Ausdruck schon
   (`fileExplorer.network.browser.noMountedShares` „Keine eingebundenen Freigaben von {hostName}“), `einbinden` ist
   durchgehend das Verb für „mount“ (`errors.listing.staleConnection.*`, `errors.listing.readOnlyVolumeErrno.explanation`

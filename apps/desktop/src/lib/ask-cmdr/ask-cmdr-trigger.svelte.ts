@@ -16,7 +16,7 @@
 import { saveAppStatus } from '$lib/app-status-store'
 import { explorerState } from '$lib/file-explorer/pane/explorer-state.svelte'
 import { getAppLogger } from '$lib/logging/logger'
-import { consentState, refreshConsent } from './ask-cmdr-consent.svelte'
+import { refreshRailGate } from './ask-cmdr-gate.svelte'
 import { buildRailMessages } from './ask-cmdr-history'
 import { discardRenameReview } from './ask-cmdr-rename-review.svelte'
 import { askCmdrState, hasOlderMessages, MESSAGE_PAGE, RAIL_MAX_WIDTH, RAIL_MIN_WIDTH } from './ask-cmdr-state.svelte'
@@ -66,8 +66,9 @@ export function hydrateRail(open: boolean, width: number): void {
 
 /** Open the rail, focus its composer, and bootstrap the most recent thread if empty. Grows the
  * main window so the panes keep their size (see `rail-window.ts`), except at startup hydration.
- * Also refreshes the consent gate: the rail shows the consent screen until the user opts in, and
- * only then bootstraps history (no chat exists to load before consent). */
+ * Also refreshes the rail's gate (`ask-cmdr-gate.svelte.ts`): while Ask Cmdr is off, or Cloud
+ * waits for "Allow cloud AI", the rail shows the gate and loads no history. When the gate later
+ * opens, the rail calls {@link ensureThreadLoaded} itself. */
 export async function openRail(opts: { resizeWindow?: boolean } = {}): Promise<void> {
   const wasOpen = askCmdrState.open
   askCmdrState.open = true
@@ -76,11 +77,16 @@ export async function openRail(opts: { resizeWindow?: boolean } = {}): Promise<v
   // Only a genuine closed→open transition grows the window; re-opens (e.g. after consenting) and
   // startup hydration must not.
   if (!wasOpen && opts.resizeWindow !== false) void growMainWindowForRail(askCmdrState.width)
-  await refreshConsent()
-  if (consentState.accepted !== true) return
-  if (!wasOpen && askCmdrState.conversationId === null && askCmdrState.messages.length === 0) {
-    await bootstrapActiveThread()
-  }
+  if ((await refreshRailGate()) !== 'chat') return
+  if (!wasOpen) await ensureThreadLoaded()
+}
+
+/** Load the most recent thread into an empty rail. A no-op once a thread (or a fresh chat's
+ * first message) is showing, or while a load is already running. */
+export async function ensureThreadLoaded(): Promise<void> {
+  if (askCmdrState.loadingHistory) return
+  if (askCmdrState.conversationId !== null || askCmdrState.messages.length > 0) return
+  await bootstrapActiveThread()
 }
 
 /** Close the rail, shrink the window back to its pre-rail size, and return focus to the pane. */

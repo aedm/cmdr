@@ -1,11 +1,10 @@
 /**
  * Tier 3 a11y tests for `AskCmdrSection.svelte`.
  *
- * The section: the enable/consent toggle, the "what Cmdr sends" disclosure, the
- * provider hint, the interactive-model and chat-memory-size rows (including the over-window
- * warning), and the spend rollup. The settings store and
- * the consent + cost commands are mocked so it mounts without a backend; the consent state
- * is driven directly (off, then on) to cover both toggle labels.
+ * The section: the on/off switch and its "cloud AI is off" hint, the provider hint, the
+ * interactive-model and chat-memory-size rows (including the over-window warning), and the
+ * spend rollup. The settings store, the cloud consent state, and the cost commands are mocked
+ * so it mounts without a backend; consent is driven directly to cover the hint and its absence.
  */
 
 import { describe, it, vi } from 'vitest'
@@ -15,6 +14,7 @@ import { expectNoA11yViolations } from '$lib/test-a11y'
 vi.mock('$lib/settings/settings-store', () => ({
   getSetting: vi.fn((key: string) => {
     if (key === 'ai.provider') return 'cloud'
+    if (key === 'askCmdr.enabled') return true
     if (key === 'askCmdr.interactiveModel') return ''
     if (key === 'askCmdr.chatMemorySize') return '200000'
     return undefined
@@ -26,15 +26,12 @@ vi.mock('$lib/settings/settings-store', () => ({
   onSettingChange: vi.fn(() => () => {}),
 }))
 
-const { consentState } = vi.hoisted(() => ({
-  consentState: { accepted: false, acceptedAt: null as number | null },
-}))
-vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
-  consentState,
-  refreshConsent: vi.fn(() => Promise.resolve()),
-  acceptConsent: vi.fn(() => Promise.resolve('done')),
-  revokeConsent: vi.fn(() => Promise.resolve('done')),
-  declineConsent: vi.fn(() => Promise.resolve('done')),
+const { consentState } = vi.hoisted(() => ({ consentState: { accepted: false } }))
+vi.mock('$lib/ai/cloud-consent.svelte', () => ({
+  cloudConsentState: consentState,
+  refreshCloudConsent: vi.fn(() => Promise.resolve()),
+  cloudAiBlocked: (provider: string) => provider === 'cloud' && !consentState.accepted,
+  openCloudConsentSettings: vi.fn(),
 }))
 vi.mock('$lib/tauri-commands', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -54,18 +51,16 @@ function mountSection(): HTMLElement {
 }
 
 describe('AskCmdrSection a11y', () => {
-  it('has no a11y violations when Ask Cmdr is off', async () => {
+  it('has no a11y violations while cloud AI is off (the hint and its button showing)', async () => {
     consentState.accepted = false
-    consentState.acceptedAt = null
     const target = mountSection()
     await tick()
     await expectNoA11yViolations(target)
     target.remove()
   })
 
-  it('has no a11y violations when Ask Cmdr is on', async () => {
+  it('has no a11y violations once cloud AI is allowed', async () => {
     consentState.accepted = true
-    consentState.acceptedAt = 1_760_000_000
     const target = mountSection()
     await tick()
     await expectNoA11yViolations(target)

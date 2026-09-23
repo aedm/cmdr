@@ -378,9 +378,9 @@ Settled while translating the Compress feature:
 - chat (a conversation thread with the assistant) · **chat** (kept verbatim, masculine noun, plural **chats**) ·
   Microsoft terminology pt-BR (`instant messaging` → id 2046699 "chat", and a direct `chat`→`chat` entry, both
   BRA-tagged, masculine noun) · confirmed. Naturalized loanword in pt-BR tech UI (matches how Discord/Instagram render
-  it in Brazilian Portuguese); distinct from **conversa** (used once in `askCmdr.consent.local` for the English source's
-  own "conversation" variant, and in `bate-papo`-flavored running text elsewhere) — both source words appear in the
-  English catalog and are translated as their closest pt-BR cognate/near-synonym.
+  it in Brazilian Portuguese); distinct from **conversa** (used once in the retired consent line askCmdr.consent.local
+  for the English source's own "conversation" variant, and in `bate-papo`-flavored running text elsewhere) — both source
+  words appear in the English catalog and are translated as their closest pt-BR cognate/near-synonym.
 - attach / attachment (a file or folder staged onto a chat message) · **anexar** (verb) / **anexo** (noun) · Microsoft
   terminology pt-BR (`attach`→`anexar`, id 16026 BRA; `attached file`→`anexo`, id 16077 BRA) · confirmed.
   `askCmdr.composer.dropHint` "Drop to attach"→"Solte para anexar" (**soltar** = drop, standard pt-BR drag-and-drop
@@ -398,9 +398,10 @@ Settled while translating the Compress feature:
   (`fileExplorer.navigation.driveIndex.menuEnable` "Turn on indexing…"→"Ativar indexação…", `ai.translateError.off.body`
   "Turn on a provider…"→"Ative um provedor…") · confirmed. Feature-on/off status line ("X is on"/"is off") → **está
   ativado** / **está desativado**, matching `ai.translateError.off.title` "AI is turned off"→"A IA está desativada".
-  `askCmdr.consent.accept`, `askCmdr.consent.decline`, `settings.askCmdr.turnOn/turnOff/status.on/status.off`.
+  `settings.askCmdr.enabled.label`, `askCmdr.gate.off.turnOn`.
 - "Not now" (decline button on an opt-in screen) · **Agora não** · no direct pile hit; standard pt-BR dismissal idiom
-  used across major vendors' opt-in dialogs · high. `askCmdr.consent.decline`.
+  used across major vendors' opt-in dialogs · high. Evidence: the retired Ask Cmdr opt-in screen's decline button
+  (askCmdr.consent.decline, retired).
 - "No X yet" (empty-list state) · **Nenhum/Nenhuma X ainda** · matches shipped pt catalog (`operationLog.dialog.empty`
   "No operations yet"→"Nenhuma operação ainda", `whatsNew.dialog.empty`, `queryUi.ai.empty`) · confirmed.
   `askCmdr.sessions.empty` "No chats yet"→"Nenhum chat ainda".
@@ -418,7 +419,7 @@ Settled while translating the Compress feature:
 - Log AI model calls (Advanced-settings toggle, `settings.advanced.logLlmCalls.*`) · **Registrar chamadas do modelo de
   IA** · "log"→**registro/registrar** (glossary "changelog"/"crash report" rows), "AI model" = the LLM the user's AI
   features talk to → **modelo de IA** · high. Referenced loosely (not as an exact string match) from
-  `askCmdr.consent.logsNote` as "o registro de chamadas de IA".
+  `ai.cloudConsent.logsNote` as "o registro de chamadas de IA".
 - "Checking X" tool-status verb (used identically across three distinct Ask Cmdr tool calls: reading the current view,
   listing drives, scoring a folder's importance) · doing: **Conferindo** X; done: **Conferiu** X · picked once and
   reused across all three English "Checking…"/"Checked…" pairs for cross-file consistency, per the tool-status
@@ -1835,7 +1836,7 @@ honesto e tranquilo, sem pedido de desculpas e sem alarme, porque o app funciona
 - **`layout` fica `layout`** · empréstimo corrente no pt-BR de tecnologia; `disposição` soaria acadêmico aqui.
 - **A última frase é o David em primeira pessoa**, com `você`, como em `onboarding.stepBeta.greeting`.
 
-## O que o Ask Cmdr lê dentro de um arquivo (`askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, 2026-09-02)
+## O que o Ask Cmdr lê dentro de um arquivo (`askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, 2026-09-02)
 
 A ferramenta `inspect_file` lê uma parte limitada de um arquivo a pedido, e a tela de consentimento passou a dizer isso.
 Fontes: `_ignored/i18n/pt-BR/` (macOS Finder + SystemSettings, terminologia da Microsoft, Thunar).
@@ -1875,9 +1876,10 @@ Fontes: `_ignored/i18n/pt-BR/` (macOS Finder + SystemSettings, terminologia da M
   (`O Ask Cmdr pode sugerir renomeações, movimentações e faxinas, e nada acontece com nenhum arquivo até você aprovar.`).
   `etiquetas` = tags (o catálogo já usa em `errors.listing.attributeNotFound`), `provedor` = provider (§ Terms),
   `faxinas` = cleanups.
-- **`whatsNew.body`**: a segunda frase (`É mais do que você aceitou na época, então aqui está tudo de novo.`) ficou como
-  estava; só a primeira foi retraduzida. `um arquivo quando você pergunta sobre ele` no lugar do relativo
-  `sobre o qual`, que soa formal demais para a tela.
+- **Texto de novidades (askCmdr.consent.whatsNew.body, removido)**: a segunda frase
+  (`É mais do que você aceitou na época, então aqui está tudo de novo.`) ficou como estava; só a primeira foi
+  retraduzida. `um arquivo quando você pergunta sobre ele` no lugar do relativo `sobre o qual`, que soa formal demais
+  para a tela.
 - Varredura pt-PT do lote: zero ocorrências de `ficheiro`, `estar a` + infinitivo, `consoante`, `Rever`. Nenhum valor
   leva apóstrofo ASCII, então não há `''`. Nenhum `sameAsSourceJustification`: os cinco valores diferem do inglês.
 - **`askCmdr.empty.hint` e `settings.askCmdr.intro` seguem a mesma regra**:
@@ -2490,9 +2492,9 @@ memória de como a chave era antes.
   `Abra o chat` e `Seus chats` · `high`
 - **`chat`, `conversar` e `conversa` convivem, e cada um segue o inglês da SUA chave.** `chat` (substantivo) é `o chat`
   (`abre um chat`, em `settings.askCmdr.proactive.description`); `to chat` é `conversar` (`Converse com uma IA…`);
-  `conversation` é `conversa` (`abre uma conversa`, em `askCmdr.consent.proactive`). O inglês separa os três em chaves
-  vizinhas, então o português separa também. Por isso `askCmdr.sessions.wakeThread` virou `este chat`: o inglês diz
-  `chat`, e a tradução antiga dizia `conversa`.
+  `conversation` é `conversa` (`abre uma conversa`, em `ai.cloudConsent.askCmdr.proactive`). O inglês separa os três em
+  chaves vizinhas, então o português separa também. Por isso `askCmdr.sessions.wakeThread` virou `este chat`: o inglês
+  diz `chat`, e a tradução antiga dizia `conversa`.
 - provider (de IA) · **provedor** · Microsoft pt-BR terminology (`provider` → `provedor`), já a forma do catálogo ·
   `high`
 - **`Cmdr` como sujeito leva artigo: `O Cmdr`.** É o que o catálogo já faz (`O Cmdr nunca envia arquivos inteiros`,
@@ -2571,8 +2573,8 @@ do `style.md` manda reestruturar para o neutro sempre que o resultado ainda soe 
 educada corriqueira em pt-BR, sem gênero, curta e definitiva (o Cmdr não pergunta de novo). Recusadas:
 
 - `Não, obrigado` · gendered · o motivo acima.
-- `Agora não` · é a tradução já publicada de `Not now` (`askCmdr.consent.decline`) e promete uma próxima vez que não
-  existe: depois deste botão o convite nunca mais aparece.
+- `Agora não` · é a tradução já publicada de `Not now` (askCmdr.consent.decline, já removido) e promete uma próxima vez
+  que não existe: depois deste botão o convite nunca mais aparece.
 - `Não, valeu` · gíria demais para o registro do catálogo.
 
 Confiança: `high` no neutro, `medium` em `Não precisa` ser a melhor das neutras.

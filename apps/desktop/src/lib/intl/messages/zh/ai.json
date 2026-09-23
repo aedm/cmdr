@@ -55,6 +55,98 @@
   "@ai.translateError.off.body": {
     "sourceHash": "d8d6368"
   },
+  "ai.cloudConsent.label": "Allow cloud AI",
+  "@ai.cloudConsent.label": {
+    "sourceHash": "9947821"
+  },
+  "ai.cloudConsent.description": "Cmdr sends nothing to a cloud AI service until you turn this on.",
+  "@ai.cloudConsent.description": {
+    "sourceHash": "2f568e5"
+  },
+  "ai.cloudConsent.disclosureTitle": "What Cmdr sends",
+  "@ai.cloudConsent.disclosureTitle": {
+    "sourceHash": "6907e64"
+  },
+  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below, using your own account:",
+  "@ai.cloudConsent.intro": {
+    "sourceHash": "9449148"
+  },
+  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr has no AI service of its own and never sees any of it.",
+  "@ai.cloudConsent.whereItGoes": {
+    "sourceHash": "8c036fa"
+  },
+  "ai.cloudConsent.folderSuggestions": "<b>New folder name suggestions</b>: the current folder''s path and up to 100 names in it",
+  "@ai.cloudConsent.folderSuggestions": {
+    "sourceHash": "02790c2"
+  },
+  "ai.cloudConsent.search": "<b>Search in plain words</b>: the text you type",
+  "@ai.cloudConsent.search": {
+    "sourceHash": "e6d4ef9"
+  },
+  "ai.cloudConsent.selection": "<b>Select by description</b>: what you type, plus up to 240 names from the current folder",
+  "@ai.cloudConsent.selection": {
+    "sourceHash": "1e1c3c3"
+  },
+  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, when you chat or when it starts a conversation on its own:",
+  "@ai.cloudConsent.askCmdr.title": {
+    "sourceHash": "26e139c"
+  },
+  "ai.cloudConsent.askCmdr.item.messages": "你的消息",
+  "@ai.cloudConsent.askCmdr.item.messages": {
+    "sourceHash": "befc6e9"
+  },
+  "ai.cloudConsent.askCmdr.item.names": "Cmdr 为了回答你而查看的文件和文件夹名称与路径",
+  "@ai.cloudConsent.askCmdr.item.names": {
+    "sourceHash": "ce3259d"
+  },
+  "ai.cloudConsent.askCmdr.item.sizes": "它们的大小和日期",
+  "@ai.cloudConsent.askCmdr.item.sizes": {
+    "sourceHash": "2484530"
+  },
+  "ai.cloudConsent.askCmdr.item.contents": "Cmdr 为了回答你而打开的文件里的部分内容：一些文本、PDF 页面、压缩文件里有哪些文件，以及照片的相机信息和拍摄地点",
+  "@ai.cloudConsent.askCmdr.item.contents": {
+    "sourceHash": "fcd0b73"
+  },
+  "ai.cloudConsent.askCmdr.item.envelope": "你此刻正在看的内容：当前文件夹、光标位置、选择内容，以及已连接的驱动器",
+  "@ai.cloudConsent.askCmdr.item.envelope": {
+    "sourceHash": "2e5a0ef"
+  },
+  "ai.cloudConsent.askCmdr.item.attachments": "你附加到问题里的任何文件或文件夹，仅通过其名称和路径",
+  "@ai.cloudConsent.askCmdr.item.attachments": {
+    "sourceHash": "b9ad2af"
+  },
+  "ai.cloudConsent.askCmdr.item.memory": "Cmdr 记下的关于你的笔记，每条消息都会再发一次",
+  "@ai.cloudConsent.askCmdr.item.memory": {
+    "sourceHash": "7779513"
+  },
+  "ai.cloudConsent.askCmdr.contentsRule": "Cmdr 从不发送整个文件、照片或缩略图。当你问到某个文件时，它可以读取其中有限的一部分：几行文本、PDF 的几页及其标题和作者、压缩文件里的文件列表，或者照片的相机信息，包括拍摄地点。照片搜索也是同样的方式：Cmdr 在匹配照片中识别出的文字及其标签会发送给你的提供方，以便它找到这些照片。Cmdr 可以建议重命名、移动和整理，在你批准之前，任何文件都不会有变化。",
+  "@ai.cloudConsent.askCmdr.contentsRule": {
+    "sourceHash": "5a378c1"
+  },
+  "ai.cloudConsent.askCmdr.memory": "Cmdr 会给自己记下关于你的笔记：你喜欢怎样整理东西、你以前拒绝过什么，以及任何你让它记住的事。只要这些笔记还在，它们就会随你发出的每条消息一起发送，其中可能包含 Cmdr 在你照片里识别出的文字。你随时可以在 Ask Cmdr 设置中查看或清空它们。",
+  "@ai.cloudConsent.askCmdr.memory": {
+    "sourceHash": "496c78d"
+  },
+  "ai.cloudConsent.askCmdr.proactive": "Cmdr 还会关注你正在使用的文件夹，有建议时主动开启对话，因此消息可能在你没有提问的情况下发送给你的提供方。你可以在 Ask Cmdr 设置的“主动提醒”一节中关闭它。",
+  "@ai.cloudConsent.askCmdr.proactive": {
+    "sourceHash": "abfa80b"
+  },
+  "ai.cloudConsent.askCmdr.chatsStayLocal": "Your Ask Cmdr chats stay on your Mac, in a local database you can open and read.",
+  "@ai.cloudConsent.askCmdr.chatsStayLocal": {
+    "sourceHash": "283cdd7"
+  },
+  "ai.cloudConsent.logsNote": "如果你在“高级”设置中开启 AI 模型调用日志记录，Cmdr 还会把每次请求和回复保存到你 Mac 上的一个文件夹里。这些日志同样只保存在本地，从不会发送到任何地方。",
+  "@ai.cloudConsent.logsNote": {
+    "sourceHash": "7e211fc"
+  },
+  "ai.cloudConsent.turnOffAnyTime": "Turn this off any time and Cmdr stops sending right away. Your service, key, and chats stay as they are.",
+  "@ai.cloudConsent.turnOffAnyTime": {
+    "sourceHash": "464c39f"
+  },
+  "ai.cloudConsent.notSaved": "Cmdr 没能保存你的选择。要再试一次吗？",
+  "@ai.cloudConsent.notSaved": {
+    "sourceHash": "6bd80e9"
+  },
   "ai.translateError.notConfigured.title": "AI 还需要一点设置",
   "@ai.translateError.notConfigured.title": {
     "sourceHash": "bf5688a"
@@ -62,6 +154,14 @@
   "ai.translateError.notConfigured.body": "在“设置 > AI”中完成提供方设置，然后重试。",
   "@ai.translateError.notConfigured.body": {
     "sourceHash": "65133a8"
+  },
+  "ai.translateError.noCloudConsent.title": "Cloud AI is off",
+  "@ai.translateError.noCloudConsent.title": {
+    "sourceHash": "2e56781"
+  },
+  "ai.translateError.noCloudConsent.body": "Allow it in Settings > AI, then try again.",
+  "@ai.translateError.noCloudConsent.body": {
+    "sourceHash": "fde3eb5"
   },
   "ai.translateError.authFailed.title": "那个 API 密钥被拒绝了",
   "@ai.translateError.authFailed.title": {

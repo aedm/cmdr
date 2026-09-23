@@ -877,7 +877,7 @@ this exact shape for the rename undo.
 - All 18 values differ from English, so none needs a `sameAsSourceJustification`. Chinese needs no apostrophe, so the
   doubled `''` in the English sources has no counterpart here.
 
-### Ask Cmdr looks inside files (`askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, 2026-09-02)
+### Ask Cmdr looks inside files (`askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, 2026-09-02)
 
 Sources: the live macOS 26.6.2 bundles (Photos.app `.loctable`s with zh_TW and zh_HK side by side, and the Spotlight
 metadata schema at `Metadata.framework/Versions/A/Resources/zh_TW.lproj/schema.strings` + `zh_HK.lproj`), plus the
@@ -911,7 +911,7 @@ pile's AppKit, Nautilus, Dolphin, Thunar, Double Commander, and the Microsoft TB
   Spotlight `kMDItemNumberOfPages` → `頁數` TW = HK · `high`
 - **the list of files inside an archive** · `封存檔裡的檔案列表` · on the _list_ ruling (`列表`, never `清單`) · `high`
 - **"Cmdr never sends whole files…"** · `Cmdr 絕不會送出整個檔案、照片或縮圖。` · `絕不會` is the catalog's own
-  strong-negation form for a privacy promise (`askCmdr.consent.logsNote` `絕不會送到任何地方`, the telemetry settings'
+  strong-negation form for a privacy promise (`ai.cloudConsent.logsNote` `絕不會送到任何地方`, the telemetry settings'
   `絕不會傳送檔名`); `整個檔案` (whole files) replaces the retired `檔案本身：不送檔案內容`, which promised that no
   contents ever leave, a promise the new English deliberately withdraws · `high`
 - The two sentences carried over from the retired `askCmdr.consent.noContents` (photo search; "nothing happens to a file
@@ -1511,7 +1511,7 @@ machine?"，直接從這部 Mac 的 `.loctable` / `.strings` 比對英文鍵得�
 `turnOff`）；凡是**描述 AI 在做什麼**的句子，主詞都換成 `Cmdr`，少數幾條換成 `the AI`。中文照搬這條分工。
 
 - **句子主詞 `Cmdr` → 直接寫 `Cmdr`**，不要補成 `Ask Cmdr` · 目錄本來就這麼寫（`suggestedOps.cmdrFacts` =
-  `Cmdr 知道的事實`、`askCmdr.consent.contentsRule` 開頭的 `Cmdr 絕不會送出整個檔案`）· `high`
+  `Cmdr 知道的事實`、`ai.cloudConsent.askCmdr.contentsRule` 開頭的 `Cmdr 絕不會送出整個檔案`）· `high`
 - **句子主詞 `the AI` → 寫 `AI`**（`suggestedOps.*` 那一組）· 這四條是刻意跟 `Cmdr` 分開的：`suggestedOps.agentReason`
   （`AI 的理由`）就緊鄰
   `suggestedOps.cmdrFacts`（`Cmdr 知道的事實`），對話框存在的意義就是把「模型說的」和「Cmdr 查證過的」分開。❗ 別把

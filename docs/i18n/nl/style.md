@@ -137,7 +137,8 @@ From the AI-copy sweep and the provider-setup pass (the app stopped calling its 
 - the AI (as the acting subject, where the English deliberately doesn't say "Cmdr") → de AI · the catalog
   (`settings.askCmdr.intro` "Chat met een AI …") · high. Boundary: `Cmdr` stays `Cmdr` and `Ask Cmdr` stays `Ask Cmdr`;
   see the note below on which of the three names goes where
-- AI provider → AI-aanbieder · the catalog throughout (`askCmdr.error.notConfigured`, `askCmdr.consent.intro`) · high
+- AI provider → AI-aanbieder · the catalog throughout (`askCmdr.error.notConfigured`, and the retired
+  askCmdr.consent.intro) · high
 - file operations → bestandsbewerkingen · the catalog (`commands.logOperationLog.description`, `fileExplorer` "snelle
   bestandsbewerkingen", `settings` several) · high
 - placeholder → tijdelijke aanduiding · Microsoft terminology (`DUTCH.tbx`, both senses, NLD + BEL) · high
@@ -413,9 +414,10 @@ The formality (`je`) and the send/cancel/copy terms are settled from macOS (Tier
   `is nog gekoppeld` het register optilt. Bevestig de ruil, plus `Wacht een minuutje` (warm) tegenover
   `Wacht een minuut` (zakelijk) in `errors.eject.unmountRefusedBySystem`. Bewijs: `glossary.md` § Wie de schijf
   vasthoudt.
-- **"camera details" → `cameragegevens`** (`askCmdr.consent.item.contents`, `contentsRule`, `whatsNew.body`): a coined
-  compound for a photo's EXIF block, no source has a collective noun for it. Confirm it reads as "what the camera
-  recorded", not "data about the camera". Evidence and the fallback: `glossary.md` § Ask Cmdr looks inside files.
+- **"camera details" → `cameragegevens`** (`ai.cloudConsent.askCmdr.item.contents`, `contentsRule`, and the retired
+  what's-new text): a coined compound for a photo's EXIF block, no source has a collective noun for it. Confirm it reads
+  as "what the camera recorded", not "data about the camera". Evidence and the fallback: `glossary.md` § Ask Cmdr looks
+  inside files.
 
 ## Glossary
 

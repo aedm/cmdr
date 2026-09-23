@@ -45,6 +45,9 @@ import { getSettingDefinition } from './settings-registry'
 /** Every setting that records a person's consent answer. */
 const CONSENT_BEARING = [
   'askCmdr.consentRevokePending',
+  'ai.cloudConsentRevokePending',
+  // Not consent itself, but on Local it starts a proactive loop, so a client mustn't switch it on.
+  'askCmdr.enabled',
   'analytics.enabled',
   'updates.crashReports',
   'updates.errorReports',

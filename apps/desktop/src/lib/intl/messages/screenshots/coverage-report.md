@@ -16,14 +16,14 @@ Per catalog area, each renderable key is one of three:
 
 Coverage is PARTIAL by design. Uncoupled keys are expected, not bugs.
 
-**Total: 2540 / 3678 keys have a screenshot (69%):** 1395 direct (38%) and 1145 representative (31%). 975 remain
+**Total: 2545 / 3692 keys have a screenshot (69%):** 1375 direct (37%) and 1170 representative (32%). 984 remain
 uncoupled, and 163 are native surfaces a webview capture cannot reach.
 
 | Area           | Direct | Representative | Uncoupled | Native | Total | Any % |
 | -------------- | -----: | -------------: | --------: | -----: | ----: | ----: |
 | adb            |      3 |              0 |        17 |      0 |    20 |   15% |
-| ai             |      0 |             89 |         0 |      0 |    89 |  100% |
-| askCmdr        |     78 |              2 |       123 |      0 |   203 |   39% |
+| ai             |      0 |            114 |         0 |      0 |   114 |  100% |
+| askCmdr        |     62 |              0 |       129 |      0 |   191 |   32% |
 | commandPalette |      3 |              2 |         1 |      0 |     6 |   83% |
 | commands       |    152 |              1 |        63 |      0 |   216 |   71% |
 | common         |      1 |              1 |         4 |      0 |     6 |   33% |
@@ -42,14 +42,14 @@ uncoupled, and 163 are native surfaces a webview capture cannot reach.
 | menu           |      0 |              0 |         0 |    161 |   161 |    0% |
 | mtp            |     18 |              4 |         0 |      0 |    22 |  100% |
 | notifications  |      0 |              0 |         1 |      0 |     1 |    0% |
-| onboarding     |     95 |             38 |        20 |      0 |   153 |   87% |
+| onboarding     |     95 |             39 |        20 |      0 |   154 |   87% |
 | operationLog   |     26 |             26 |         0 |      0 |    52 |  100% |
-| queryUi        |     44 |            126 |         0 |      0 |   170 |  100% |
+| queryUi        |     44 |            128 |         0 |      0 |   172 |  100% |
 | queue          |     25 |             10 |         1 |      0 |    36 |   97% |
 | search         |      9 |             48 |         0 |      0 |    57 |  100% |
 | selection      |     14 |              0 |         1 |      0 |    15 |   93% |
 | servers        |     48 |             19 |        36 |      0 |   103 |   65% |
-| settings       |    343 |             40 |       244 |      0 |   627 |   61% |
+| settings       |    339 |             39 |       247 |      0 |   625 |   60% |
 | shortcuts      |     32 |             28 |         0 |      0 |    60 |  100% |
 | suggestedOps   |      0 |              0 |        33 |      0 |    33 |    0% |
 | transfer       |      2 |             11 |         0 |      0 |    13 |  100% |

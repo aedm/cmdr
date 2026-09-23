@@ -47,12 +47,10 @@ vi.mock('./rail-window', () => ({
   growMainWindowForRail: (w: number) => growWindowMock(w),
   shrinkMainWindowForRail: (w: number) => shrinkWindowMock(w),
 }))
-// Consent is granted for these tests, so `openRail` proceeds past the gate to bootstrap.
-vi.mock('./ask-cmdr-consent.svelte', () => ({
-  consentState: { accepted: true, acceptedAt: null },
-  refreshConsent: vi.fn(() => Promise.resolve()),
-  acceptConsent: vi.fn(() => Promise.resolve('done')),
-  revokeConsent: vi.fn(() => Promise.resolve('done')),
+// The rail's gate reads "chat" unless a test moves it, so `openRail` proceeds to bootstrap.
+const gateMock = vi.hoisted(() => ({ gate: 'chat' }))
+vi.mock('./ask-cmdr-gate.svelte', () => ({
+  refreshRailGate: vi.fn(() => Promise.resolve(gateMock.gate)),
 }))
 
 import {
@@ -67,6 +65,7 @@ import {
   newChat,
   noteSlotSettingChanged,
   openRail,
+  ensureThreadLoaded,
   RAIL_MAX_WIDTH,
   RAIL_MIN_WIDTH,
   removeAttachment,
@@ -225,6 +224,18 @@ describe('sendMessage + streaming', () => {
       detail: undefined,
     })
     expect(logMocks.error).toHaveBeenCalledOnce()
+  })
+
+  it('a send refused because cloud AI is off re-reads the gate, so the rail can show it', async () => {
+    const { refreshRailGate } = await import('./ask-cmdr-gate.svelte')
+    vi.mocked(refreshRailGate).mockClear()
+    sendMock.mockResolvedValueOnce({ accepted: false, kind: 'noCloudConsent', detail: null })
+    sendMessage('hello')
+
+    await vi.waitFor(() => {
+      expect(askCmdrState.streaming).toBe(false)
+    })
+    expect(refreshRailGate).toHaveBeenCalledOnce()
   })
 
   it("a failure with provider detail keeps the provider's wording for display", () => {
@@ -493,6 +504,24 @@ describe('openRail bootstrap + newChat + hydrate', () => {
     expect(askCmdrState.open).toBe(true)
     expect(askCmdrState.conversationId).toBeNull()
     expect(askCmdrState.messages).toHaveLength(0)
+  })
+
+  it('opens behind a closed gate without loading any history, and loads it once the gate opens', async () => {
+    // Ask Cmdr off, or Cloud without consent: there's no chat to show, so nothing is fetched.
+    gateMock.gate = 'cloudOff'
+    listMock.mockResolvedValue([conversationRow(9)])
+    getMock.mockResolvedValue({ conversation: conversationRow(9), totalMessages: 0, messages: [] })
+    try {
+      await openRail()
+      expect(askCmdrState.open).toBe(true)
+      expect(listMock).not.toHaveBeenCalled()
+
+      // The rail calls this when its gate turns into the chat (the user allowed cloud AI).
+      await ensureThreadLoaded()
+      expect(askCmdrState.conversationId).toBe(9)
+    } finally {
+      gateMock.gate = 'chat'
+    }
   })
 
   it('newChat clears the active thread', () => {

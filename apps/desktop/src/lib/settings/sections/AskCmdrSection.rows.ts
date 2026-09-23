@@ -10,16 +10,6 @@ import type { SearchableRow } from '../types'
 
 export const askCmdrRows: SearchableRow[] = [
   {
-    // The consent button. Its label is one of three ("Turn on Ask Cmdr" / "Turn
-    // off Ask Cmdr" / "Turn back on"); the row names the on-state key and carries
-    // the other wordings as keywords, so a search finds the row whichever state
-    // the button is in.
-    id: 'row:askCmdr.consent',
-    section: ['AI', 'Ask Cmdr'],
-    labelKey: 'settings.askCmdr.turnOn',
-    keywords: ['turn off', 'turn back on', 'enable', 'disable', 'consent', 'opt in', 'opt out'],
-  },
-  {
     id: 'row:askCmdr.openMemoryFolder',
     section: ['AI', 'Ask Cmdr'],
     labelKey: 'settings.askCmdr.memory.open',

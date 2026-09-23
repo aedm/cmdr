@@ -85,9 +85,16 @@ describe('runInitSteps', () => {
 })
 
 describe("the main window's startup steps", () => {
-  it('retry a "no AI" revoke the store refused, on every launch until it lands', () => {
-    // The retry itself is pinned in `ask-cmdr-consent.svelte.test.ts`; this pins that launch
-    // runs it. Without the step, a held "no" would only settle once someone opened the rail.
-    expect(layoutSource).toContain('run: settleHeldConsentRevoke')
+  it('retry a "no" to cloud AI the store refused, on every launch until it lands', () => {
+    // The retry itself is pinned in `cloud-consent.svelte.test.ts`; this pins that launch runs
+    // it. Without the step, a held "no" would only settle once a cloud gate refreshed.
+    expect(layoutSource).toContain('run: settleHeldCloudConsentRevoke')
+  })
+
+  it('map the old Ask Cmdr opt-in onto the on/off switch, after settings load', () => {
+    // The mapping is pinned in `ask-cmdr-enabled-mapping.test.ts`; this pins that launch runs
+    // it, and after the settings step it reads from.
+    expect(layoutSource).toContain('run: mapLegacyAskCmdrOptIn')
+    expect(layoutSource.indexOf('run: mapLegacyAskCmdrOptIn')).toBeGreaterThan(layoutSource.indexOf("name: 'settings'"))
   })
 })

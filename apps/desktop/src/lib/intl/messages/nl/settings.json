@@ -923,6 +923,14 @@
     "sourceHash": "d677190",
     "sameAsSourceJustification": "'Service' is a genuine Dutch word (MS NL: service -> service; glossary: service -> service), the short label for the cloud-AI service picker."
   },
+  "settings.ai.cloudConsent.onSince": "Aan sinds {date}",
+  "@settings.ai.cloudConsent.onSince": {
+    "sourceHash": "2f573fd"
+  },
+  "settings.ai.cloudConsent.lockedHint": "Turn on Allow cloud AI above to set up a service.",
+  "@settings.ai.cloudConsent.lockedHint": {
+    "sourceHash": "36f676c"
+  },
   "settings.ai.cloudProvider.description": "Welke cloud-AI-service moet worden gebruikt.",
   "@settings.ai.cloudProvider.description": {
     "sourceHash": "3300ce9"
@@ -1379,6 +1387,10 @@
   "@settings.askCmdr.consentRevokePending.label": {
     "sourceHash": "1ecd887"
   },
+  "settings.ai.cloudConsentRevokePending.label": "Cloud AI off, waiting to be saved",
+  "@settings.ai.cloudConsentRevokePending.label": {
+    "sourceHash": "16456dc"
+  },
   "settings.onboarding.completed.label": "Onboarding voltooid",
   "@settings.onboarding.completed.label": {
     "sourceHash": "4730c4f"
@@ -1692,41 +1704,21 @@
   "@settings.askCmdr.intro": {
     "sourceHash": "3b16f89"
   },
-  "settings.askCmdr.status.on": "Ask Cmdr staat aan",
-  "@settings.askCmdr.status.on": {
-    "sourceHash": "1003ff7"
-  },
-  "settings.askCmdr.status.off": "Ask Cmdr staat uit",
-  "@settings.askCmdr.status.off": {
-    "sourceHash": "0420c9a"
-  },
-  "settings.askCmdr.status.needsReview": "Ask Cmdr staat op pauze",
-  "@settings.askCmdr.status.needsReview": {
-    "sourceHash": "9b7a74e"
-  },
-  "settings.askCmdr.status.changed": "Het is veranderd sinds je het aanzette, dus het wacht op jouw akkoord. Lees hieronder wat er nieuw is en zet het daarna weer aan.",
-  "@settings.askCmdr.status.changed": {
-    "sourceHash": "190838b"
-  },
-  "settings.askCmdr.status.onSince": "Aan sinds {date}",
-  "@settings.askCmdr.status.onSince": {
-    "sourceHash": "2f573fd"
-  },
-  "settings.askCmdr.turnOn": "Zet Ask Cmdr aan",
-  "@settings.askCmdr.turnOn": {
+  "settings.askCmdr.enabled.label": "Turn on Ask Cmdr",
+  "@settings.askCmdr.enabled.label": {
     "sourceHash": "0d656c4"
   },
-  "settings.askCmdr.turnBackOn": "Weer aanzetten",
-  "@settings.askCmdr.turnBackOn": {
-    "sourceHash": "b8bc676"
+  "settings.askCmdr.enabled.description": "Chat with Cmdr about your files in a side panel.",
+  "@settings.askCmdr.enabled.description": {
+    "sourceHash": "a1116db"
   },
-  "settings.askCmdr.turnOff": "Zet Ask Cmdr uit",
-  "@settings.askCmdr.turnOff": {
-    "sourceHash": "eb03374"
+  "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service, and cloud AI is off. Allow it in AI settings to start chatting.",
+  "@settings.askCmdr.cloudOffHint": {
+    "sourceHash": "59e0db8"
   },
-  "settings.askCmdr.disclosure.title": "Wat Cmdr verstuurt",
-  "@settings.askCmdr.disclosure.title": {
-    "sourceHash": "6907e64"
+  "settings.askCmdr.openAiSettings": "Open AI settings",
+  "@settings.askCmdr.openAiSettings": {
+    "sourceHash": "edcc53b"
   },
   "settings.askCmdr.provider.title": "Aanbieder en model",
   "@settings.askCmdr.provider.title": {

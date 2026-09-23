@@ -114,9 +114,27 @@ export const aiSettings: SettingDefinitionSource[] = [
   // provider is already configured with. The backend reads it fresh each send
   // (`load_ask_cmdr_interactive_model`), so it applies with no restart and needs no
   // `settings-applier` case (same pattern as the operation-log retention limits). The
-  // enable/consent state is NOT a setting — it lives in `main.db` (agent state), driven
-  // by `AskCmdrSection.svelte` via the consent commands.
+  // on/off switch above it is a plain setting; consent to send anything to a cloud
+  // service is NOT, it lives in `main.db` (`$lib/ai/cloud-consent.svelte.ts`).
   // ========================================================================
+  {
+    // Ask Cmdr's plain on/off. It grants no data flow: on Cloud, "Allow cloud AI" still
+    // gates every call. The backend reads it fresh from `settings.json` per send
+    // (`settings::load_ask_cmdr_enabled`, absent = off), and the wake loop's cached
+    // readiness hears about a change through `askCmdrEnabledChanged()` (settings-applier).
+    // Existing installs get it set once at startup from the legacy opt-in
+    // (`lib/ask-cmdr/ask-cmdr-enabled-mapping.ts`); new ones from the onboarding pick.
+    id: 'askCmdr.enabled',
+    section: ['AI', 'Ask Cmdr'],
+    labelKey: 'settings.askCmdr.enabled.label',
+    descriptionKey: 'settings.askCmdr.enabled.description',
+    keywords: ['ask cmdr', 'ai', 'chat', 'assistant', 'enable', 'disable', 'turn on', 'turn off'],
+    type: 'boolean',
+    default: false,
+    component: 'switch',
+    // On Local it starts a proactive loop, so an MCP client mustn't be able to switch it on.
+    mcpSettable: false,
+  },
   {
     id: 'askCmdr.interactiveModel',
     section: ['AI', 'Ask Cmdr'],

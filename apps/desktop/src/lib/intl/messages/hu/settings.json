@@ -919,6 +919,14 @@
   "@settings.ai.cloudProvider.label": {
     "sourceHash": "d677190"
   },
+  "settings.ai.cloudConsent.onSince": "Bekapcsolva ekkor: {date}",
+  "@settings.ai.cloudConsent.onSince": {
+    "sourceHash": "2f573fd"
+  },
+  "settings.ai.cloudConsent.lockedHint": "Turn on Allow cloud AI above to set up a service.",
+  "@settings.ai.cloudConsent.lockedHint": {
+    "sourceHash": "36f676c"
+  },
   "settings.ai.cloudProvider.description": "Melyik felhő-AI-szolgáltatást használja.",
   "@settings.ai.cloudProvider.description": {
     "sourceHash": "3300ce9"
@@ -1376,6 +1384,10 @@
   "@settings.askCmdr.consentRevokePending.label": {
     "sourceHash": "1ecd887"
   },
+  "settings.ai.cloudConsentRevokePending.label": "Cloud AI off, waiting to be saved",
+  "@settings.ai.cloudConsentRevokePending.label": {
+    "sourceHash": "16456dc"
+  },
   "settings.onboarding.completed.label": "Bevezetés befejezve",
   "@settings.onboarding.completed.label": {
     "sourceHash": "4730c4f"
@@ -1686,41 +1698,21 @@
   "@settings.askCmdr.intro": {
     "sourceHash": "3b16f89"
   },
-  "settings.askCmdr.status.on": "Az Ask Cmdr be van kapcsolva",
-  "@settings.askCmdr.status.on": {
-    "sourceHash": "1003ff7"
-  },
-  "settings.askCmdr.status.off": "Az Ask Cmdr ki van kapcsolva",
-  "@settings.askCmdr.status.off": {
-    "sourceHash": "0420c9a"
-  },
-  "settings.askCmdr.status.needsReview": "Az Ask Cmdr szünetel",
-  "@settings.askCmdr.status.needsReview": {
-    "sourceHash": "9b7a74e"
-  },
-  "settings.askCmdr.status.changed": "Megváltozott azóta, hogy bekapcsoltad, ezért a jóváhagyásodra vár. Olvasd el lentebb, mi az újdonság, aztán kapcsold vissza.",
-  "@settings.askCmdr.status.changed": {
-    "sourceHash": "190838b"
-  },
-  "settings.askCmdr.status.onSince": "Bekapcsolva ekkor: {date}",
-  "@settings.askCmdr.status.onSince": {
-    "sourceHash": "2f573fd"
-  },
-  "settings.askCmdr.turnOn": "Ask Cmdr bekapcsolása",
-  "@settings.askCmdr.turnOn": {
+  "settings.askCmdr.enabled.label": "Turn on Ask Cmdr",
+  "@settings.askCmdr.enabled.label": {
     "sourceHash": "0d656c4"
   },
-  "settings.askCmdr.turnBackOn": "Visszakapcsolás",
-  "@settings.askCmdr.turnBackOn": {
-    "sourceHash": "b8bc676"
+  "settings.askCmdr.enabled.description": "Chat with Cmdr about your files in a side panel.",
+  "@settings.askCmdr.enabled.description": {
+    "sourceHash": "a1116db"
   },
-  "settings.askCmdr.turnOff": "Ask Cmdr kikapcsolása",
-  "@settings.askCmdr.turnOff": {
-    "sourceHash": "eb03374"
+  "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service, and cloud AI is off. Allow it in AI settings to start chatting.",
+  "@settings.askCmdr.cloudOffHint": {
+    "sourceHash": "59e0db8"
   },
-  "settings.askCmdr.disclosure.title": "Amit a Cmdr elküld",
-  "@settings.askCmdr.disclosure.title": {
-    "sourceHash": "6907e64"
+  "settings.askCmdr.openAiSettings": "Open AI settings",
+  "@settings.askCmdr.openAiSettings": {
+    "sourceHash": "edcc53b"
   },
   "settings.askCmdr.provider.title": "Szolgáltató és modell",
   "@settings.askCmdr.provider.title": {

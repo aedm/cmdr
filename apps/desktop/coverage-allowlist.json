@@ -145,9 +145,6 @@
     "settings/sections/AiLocalSection.svelte": {
       "reason": "UI section, depends on Tauri commands and event listeners"
     },
-    "settings/sections/AiSection.svelte": {
-      "reason": "UI section, thin wrapper for AI provider toggle"
-    },
     "settings/sections/LicenseSection.svelte": {
       "reason": "UI section, pure logic extracted to license-section-utils.ts and tested"
     },

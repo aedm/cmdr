@@ -1120,11 +1120,11 @@ buttons. Reuses the settled head terms (operation → `thao tác`, item → `m�
   in the pile as "carry on doing X" (macOS `tiếp tục sao chép`, `tiếp tục chạy`, `tiếp tục duyệt`, `tiếp tục xem`), and
   `làm việc` is MS's work verb (`giờ làm việc`, `làm việc từ xa`). Deliberately NOT a bare `Hủy` (cancel): on a dialog
   that lists running operations, `Hủy` would read as cancelling THEM, the exact opposite of what the button does. Also
-  NOT `Để sau` (the catalog's "Not now", `askCmdr.consent`) nor anything built on `sau` / `nhắc lại`: the countdown is
-  deleted, not deferred, and the en `@key` forbids a postpone reading. The object `làm việc` is what keeps `Tiếp tục`
-  from colliding with `queue.row.resume`'s bare `Tiếp tục` (Resume) — different surface, and the operations here are
-  running, not paused. `high` (on the parts); `tentative` (on the whole label reading unambiguously as "you keep
-  working" to a native ear).
+  NOT `Để sau` (the retired Ask Cmdr opt-in screen's "Not now", askCmdr.consent.decline) nor anything built on `sau` /
+  `nhắc lại`: the countdown is deleted, not deferred, and the en `@key` forbids a postpone reading. The object
+  `làm việc` is what keeps `Tiếp tục` from colliding with `queue.row.resume`'s bare `Tiếp tục` (Resume) — different
+  surface, and the operations here are running, not paused. `high` (on the parts); `tentative` (on the whole label
+  reading unambiguously as "you keep working" to a native ear).
 - **"Still running" (heading over the operation rows): `Vẫn đang chạy`** · `Đang chạy` is `queue.row.status`'s Running
   verbatim, and `Vẫn đang chạy` already ships as the head of `fileOperations.transferProgress.backgroundedToast`
   (`Vẫn đang chạy ở chế độ nền.`). The heading and the rows below it now use the same words. `high`
@@ -2010,13 +2010,13 @@ thật và thoải mái, không xin lỗi và không cảnh báo, vì ứng dụ
   việc mà không mang chữ đó.
 - **Câu cuối là David ở ngôi thứ nhất, dùng `mình`**, đúng như `onboarding.stepBeta.greeting`; người dùng vẫn là `bạn`.
 
-## Ask Cmdr xem bên trong tệp: hai nhãn công cụ + ba khóa đồng ý (`askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, 2026-09-02)
+## Ask Cmdr xem bên trong tệp: hai nhãn công cụ + hai khóa đồng ý (`askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, 2026-09-02)
 
 Năm khóa cho công cụ `inspect_file` (Ask Cmdr đọc một phần có giới hạn của tệp khi được hỏi) và màn hình đồng ý viết lại
 quanh nó. Dùng lại các thuật ngữ đã chốt (tệp nén → `tệp nén`, văn bản → `văn bản`, dòng → `dòng`, ảnh → `ảnh`, thẻ →
 `thẻ`, nhà cung cấp → `nhà cung cấp`, đề xuất → `đề xuất`, phê duyệt → `phê duyệt`). Hai câu cuối của `contentsRule`
 (tìm kiếm ảnh; đề xuất chờ phê duyệt) lấy **nguyên văn** từ khóa cũ `askCmdr.consent.noContents`, và câu thứ hai của
-`whatsNew.body` giữ nguyên. Thuật ngữ mới:
+đoạn giới thiệu tính năng mới đã gỡ (askCmdr.consent.whatsNew.body) giữ nguyên. Thuật ngữ mới:
 
 - **thumbnail → `hình thu nhỏ`** · macOS AppKit `WindowTabs` ("thumbnail of the tab picker image" →
   `hình thu nhỏ của hình ảnh bộ chọn tab`), thuật ngữ Microsoft (`thumbnail` → `hình thu nhỏ`), KDE Dolphin và Xfce
@@ -2034,7 +2034,7 @@ quanh nó. Dùng lại các thuật ngữ đã chốt (tệp nén → `tệp né
   `Vị trí`, `Get Location` → `Lấy vị trí`) và Microsoft (`location` → `vị trí`, nghĩa địa lý → `vị trí địa lý`); `chụp`
   (chụp ảnh) nói rõ đây là nơi bấm máy, không phải đường dẫn tệp (catalog dùng `vị trí` cho đường dẫn/thư mục ở
   `fileExplorer.navigation.locationUnreachableToast`, `commands.paneCopyPath*`) · `high`. Dùng cùng một cụm cho cả
-  "location" (`item.contents`, `whatsNew.body`) lẫn "including where it was taken" (`kể cả vị trí chụp` trong
+  "location" (`item.contents` và đoạn tính năng mới đã gỡ) lẫn "including where it was taken" (`kể cả vị trí chụp` trong
   `contentsRule`), để ba khóa trên một màn hình gọi cùng một thứ bằng cùng một tên.
 - **page (của PDF) → `trang`** · macOS AppKit `Printing` (`Page %ld` → `Trang %ld`, `No pages from the document` →
   `Chưa chọn trang nào`), thuật ngữ Microsoft (`page` → `trang`), KDE Dolphin (`Page Count` → `Số trang`) · `high`. "PDF
@@ -2050,7 +2050,7 @@ quanh nó. Dùng lại các thuật ngữ đã chốt (tệp nén → `tệp né
 - **"look inside files" (nhãn công cụ) → `Đang xem bên trong tệp` / `Đã xem bên trong tệp`** · cùng khuôn
   `Đang … / Đã …` với các nhãn chị em (`Đang liệt kê một thư mục`, `Đang đọc nội dung trong ảnh của bạn`), cùng chữ
   `bên trong` như trên; `tệp` trần vì tiếng Việt không đánh dấu số, nên nhãn trung tính cho một hay 200 tệp · `high`.
-  Cùng gốc `xem bên trong` được dùng lại ở `whatsNew.body` (`có thể xem bên trong tệp mà bạn hỏi đến`).
+  Cùng gốc `xem bên trong` được dùng lại ở đoạn tính năng mới đã gỡ (`có thể xem bên trong tệp mà bạn hỏi đến`).
 - **"a photo's …" → `… của một bức ảnh`** · catalog dùng `ảnh` trần cho "photo", nhưng `thông tin máy ảnh của ảnh` lặp
   chữ `ảnh` hai lần liền và đọc rối; loại từ `bức` là cách tiếng Việt chuẩn đếm một tấm ảnh, và Photos của Apple viết
   `Chọn ảnh` / `Cắt ảnh` (không loại từ) chỉ ở nhãn nút, không ở câu văn · `tentative` (không có nguồn kho cho loại từ;
@@ -3083,8 +3083,8 @@ tệp → `tệp`.
 - **so nothing is lost → `nên không mất gì cả`** · `fileOperations.cancelRollback.stagedLeftover.named` ("Bạn có thể xóa
   nó mà không mất gì") · `high`. Thêm `cả` để vế trấn an đứng cuối câu không bị trôi đi.
 - **all your files → `mọi tệp của bạn`** · `fileOperations.transferProgress.rollbackAlreadyLandedTooltip` ("Mọi tệp đều
-  đã ở đích") · `high`. ❌ Đừng dùng `toàn bộ tệp`: `askCmdr.consent.contentsRule` đã dành cụm đó cho nghĩa "nguyên cả
-  tệp" (whole file), nên ở đây nó sẽ đọc nhầm nghĩa.
+  đã ở đích") · `high`. ❌ Đừng dùng `toàn bộ tệp`: `ai.cloudConsent.askCmdr.contentsRule` đã dành cụm đó cho nghĩa
+  "nguyên cả tệp" (whole file), nên ở đây nó sẽ đọc nhầm nghĩa.
 - **on {counterpart} → `trên {counterpart}`; to it → `tới đó`** · `nằm trên ổ đĩa` theo
   `errors.listing.crossDeviceOperation.explanation`; `tới đó` theo `errors.write.destinationNotFound.message.copy` ("Thư
   mục bạn đang sao chép tới") và `fileOperations.cancelRollback.stagedLeftover.named` ("một lần truyền sau tới đó") ·
@@ -3250,7 +3250,7 @@ dấu hai chấm của `Không thể tháo {volumeName}: …`, nên chỉ nêu l
 - **"Close anything it has open there" → `Hãy đóng những gì nó đang mở ở đó`** · `Hãy đóng …` theo Tier 1 macOS
   DiscRecordingUI (`Other applications may be using this media. Close those applications and try again.` →
   `Các ứng dụng khác có thể đang sử dụng phương tiện này. Đóng các ứng dụng này và thử lại.`); `những gì` và `ở đó` đều
-  là cách viết catalog đã ship (`askCmdr.consent.whatsNew.body` "những gì bạn đang duyệt",
+  là cách viết catalog đã ship (đoạn tính năng mới đã gỡ askCmdr.consent.whatsNew.body "những gì bạn đang duyệt",
   `fileOperations.leftovers.stagingFolderKept` "giữ nguyên chúng ở đó") · `high`. Giữ `những gì` chứ không thu hẹp thành
   `các tệp`: bản tiếng Anh cố ý nói "anything" (cửa sổ, tệp, phiên terminal).
 - **"other apps" (mục cuối trong danh sách) → `các ứng dụng khác`, CÓ loại từ `các`** · macOS `SESUIServiceCore`

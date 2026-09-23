@@ -158,11 +158,11 @@ Straightforward (sources agree, `high`):
 - Android SDK, Homebrew, ADB, adb → verbatim · product and command names; `adb` stays lowercase (it's the command),
   `ADB` uppercase (the protocol/feature name, as in the section title) · high
 - chat (une conversation avec l'assistant, et le panneau qui les héberge) → conversation · le catalogue lui-même
-  (`askCmdr.newChat` « Nouvelle conversation », `askCmdr.sessions.back` « Retour à la conversation »,
-  `askCmdr.consent.local` « Vos conversations restent sur votre Mac ») · high. Un seul mot rend `chat` ET `conversation`
-  : le français ne distingue pas les deux, et l'anglais les emploie indifféremment d'une clé à l'autre
-  (`proactive.description` « starts a chat » face à `consent.proactive` « starts a conversation »). Voir la note «
-  discussion » plus bas.
+  (`askCmdr.newChat` « Nouvelle conversation », `askCmdr.sessions.back` « Retour à la conversation », l'ancienne ligne
+  de consentement askCmdr.consent.local (retirée) « Vos conversations restent sur votre Mac ») · high. Un seul mot rend
+  `chat` ET `conversation` : le français ne distingue pas les deux, et l'anglais les emploie indifféremment d'une clé à
+  l'autre (`proactive.description` « starts a chat » face à `consent.proactive` « starts a conversation »). Voir la note
+  « discussion » plus bas.
 - AI / the AI → IA / l'IA · le catalogue (`ai.translateError.timeout.title` « L'IA a mis trop de temps »,
   `parseError.title` « Lecture de la réponse de l'IA impossible ») · high
 - AI features → fonctionnalités d'IA · le catalogue (`settings.ai.tooltipOff` « Les fonctionnalités d'IA sont
@@ -358,13 +358,13 @@ covers large/compact-notation values (e.g. "2 millions"). Write the branches the
 - **« Ask Cmdr » ne nomme QUE le panneau de discussion, jamais l'IA en général.** La marque survit là où elle désigne la
   surface elle-même : le titre du panneau (`askCmdr.title`), l'élément du menu Présentation (`menu.view.askCmdr`), la
   commande de la palette (`commands.askCmdrToggle.label`), la section des réglages (`settings.section.askCmdr`),
-  l'interrupteur qui l'active (`settings.askCmdr.turnOn` / `turnOff`), et toute phrase qui renvoie à cette section («
-  dans les réglages d'Ask Cmdr », « dans la section Ask Cmdr »). Partout ailleurs, la phrase décrit ce que fait le
-  produit et le sujet est **Cmdr** (« Cmdr surveille les dossiers… », « Ce que Cmdr envoie ») ou, quand elle parle du
-  modèle plutôt que de l'app, **l'IA** (« L'IA a suggéré ceci », « Raison donnée par l'IA »). L'anglais fait exactement
-  ce partage clé par clé : suivez-le, ne réintroduisez pas la marque dans une phrase descriptive et ne la retirez pas
-  d'un renvoi à la section.
-- **« discussion » est banni : on écrit « conversation ».** Trois clés (`askCmdr.consent.proactive`,
+  l'interrupteur qui l'active (`settings.askCmdr.enabled.label`), et toute phrase qui renvoie à cette section (« dans
+  les réglages d'Ask Cmdr », « dans la section Ask Cmdr »). Partout ailleurs, la phrase décrit ce que fait le produit et
+  le sujet est **Cmdr** (« Cmdr surveille les dossiers… », « Ce que Cmdr envoie ») ou, quand elle parle du modèle plutôt
+  que de l'app, **l'IA** (« L'IA a suggéré ceci », « Raison donnée par l'IA »). L'anglais fait exactement ce partage clé
+  par clé : suivez-le, ne réintroduisez pas la marque dans une phrase descriptive et ne la retirez pas d'un renvoi à la
+  section.
+- **« discussion » est banni : on écrit « conversation ».** Trois clés (`ai.cloudConsent.askCmdr.proactive`,
   `settings.askCmdr.proactive.description`, `askCmdr.forget.message`) disaient « discussion » là où tout le reste du
   catalogue dit « conversation » ; elles ont été alignées. Un seul mot pour la chose que l'utilisateur voit dans la
   liste des conversations, sinon deux surfaces voisines se contredisent.

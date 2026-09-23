@@ -100,6 +100,14 @@ export type SettingsSurface =
   | 'function-key-bar-toast'
   /** The first-reveal notice, deep-linking to the "Show in Finder" card. */
   | 'reveal-toast'
+  /** Ask Cmdr's rail, while cloud AI isn't allowed, deep-linking to the Allow cloud AI switch. */
+  | 'ask-cmdr-cloud-gate'
+  /** Settings > AI > Ask Cmdr's "cloud AI is off" hint, deep-linking to the same switch. */
+  | 'ask-cmdr-settings-hint'
+  /** The Search or Select dialog's AI mode, while cloud AI isn't allowed. */
+  | 'query-ai-cloud-off'
+  /** The "Cloud AI is off" translate-error toast's action. */
+  | 'ai-translate-toast'
 
 /**
  * Opens the settings window, or focuses it if already open. When `section` is provided,

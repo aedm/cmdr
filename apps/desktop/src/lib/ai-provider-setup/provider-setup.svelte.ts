@@ -337,7 +337,11 @@ export class ProviderSetupController {
       // be committed first. That's why the check is scheduled from `#persistApiKey`.
       const result = await checkAiConnection(baseUrlAtStart, idAtStart)
       if (idAtStart !== this.#providerId) return
-      if (result.authError) {
+      if (result.cloudConsentMissing) {
+        // The backend sent nothing: cloud AI isn't allowed yet. Not a connection problem, so
+        // no error line; the section is locked behind the Allow cloud AI switch anyway.
+        this.#status = 'idle'
+      } else if (result.authError) {
         this.#status = 'auth-error'
         this.#error = result.error
       } else if (!result.connected) {

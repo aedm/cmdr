@@ -55,10 +55,10 @@ export function toolRefusedLabel(): string {
 const ERROR_KEYS: Record<AskCmdrErrorKind, MessageKey> = {
   noKey: 'askCmdr.error.noKey',
   notConfigured: 'askCmdr.error.notConfigured',
-  // TODO(cloud-consent milestone 3): `askCmdr.error.askCmdrOff`; the old consent label says the same.
-  askCmdrOff: 'askCmdr.error.noConsent',
-  // TODO(cloud-consent milestone 3): its own `askCmdr.error.noCloudConsent` copy.
-  noCloudConsent: 'askCmdr.error.notConfigured',
+  // Both are rare races (the switch moved between opening the rail and sending): the send
+  // refusal also flips the rail back to its gate, which carries the way out.
+  askCmdrOff: 'askCmdr.error.askCmdrOff',
+  noCloudConsent: 'askCmdr.error.noCloudConsent',
   localWindowTooSmall: 'askCmdr.error.localWindowTooSmall',
   unavailable: 'askCmdr.error.unavailable',
   timeout: 'askCmdr.error.timeout',

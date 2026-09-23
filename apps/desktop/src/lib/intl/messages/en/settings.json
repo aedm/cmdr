@@ -1166,6 +1166,19 @@
   "@settings.ai.cloudProvider.label": {
     "description": "Label for the cloud-AI service picker (which provider, e.g. OpenAI). Shown when AI provider is Cloud AI. Short label."
   },
+  "settings.ai.cloudConsent.onSince": "On since {date}",
+  "@settings.ai.cloudConsent.onSince": {
+    "description": "Smaller line under the Allow cloud AI switch in Settings > AI > Provider, showing when the user turned it on. date is a preformatted date string.",
+    "placeholders": {
+      "date": {
+        "content": "The date the user turned Ask Cmdr on, already formatted for the locale."
+      }
+    }
+  },
+  "settings.ai.cloudConsent.lockedHint": "Turn on Allow cloud AI above to set up a service.",
+  "@settings.ai.cloudConsent.lockedHint": {
+    "description": "Hint above the dimmed, locked service setup in Settings > AI > Provider while the Allow cloud AI switch is off. \"Allow cloud AI\" is the switch label (ai.cloudConsent.label); translate it the same way."
+  },
   "settings.ai.cloudProvider.description": "Which cloud AI service to use.",
   "@settings.ai.cloudProvider.description": {
     "description": "Help text for the cloud-AI service picker. \"AI\" = artificial intelligence."
@@ -1723,6 +1736,10 @@
     "screenshot": "settings-ai-ask-cmdr.png",
     "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
   },
+  "settings.ai.cloudConsentRevokePending.label": "Cloud AI off, waiting to be saved",
+  "@settings.ai.cloudConsentRevokePending.label": {
+    "description": "Internal, hidden-from-UI label for the flag that holds a person's choice to keep cloud AI off while Cmdr can't yet write that choice to its own database. Surfaces only in settings search."
+  },
   "settings.onboarding.completed.label": "Onboarding completed",
   "@settings.onboarding.completed.label": {
     "description": "Internal, hidden-from-UI label for the flag recording that the user finished the setup wizard. Surfaces only in settings search. \"Onboarding\" is the Cmdr setup-wizard feature name."
@@ -2103,60 +2120,29 @@
     "description": "Intro paragraph at the top of the Ask Cmdr settings section. Three facts: it reads names, paths, and sizes; it looks inside a file only when the user asks about that file; it never changes a file without the user's approval (it proposes renames and moves and writes its own notes, so do not say it changes nothing or is read-only).",
     "screenshot": "settings-ai-ask-cmdr.png"
   },
-  "settings.askCmdr.status.on": "Ask Cmdr is on",
-  "@settings.askCmdr.status.on": {
-    "description": "Status line in Ask Cmdr settings when the feature is turned on. Sentence case, no period.",
-    "screenshot": "settings-ai-ask-cmdr.png"
-  },
-  "settings.askCmdr.status.off": "Ask Cmdr is off",
-  "@settings.askCmdr.status.off": {
-    "description": "Status line in Ask Cmdr settings when the feature is turned off. Sentence case, no period.",
+  "settings.askCmdr.enabled.label": "Turn on Ask Cmdr",
+  "@settings.askCmdr.enabled.label": {
+    "description": "Label of the on/off switch for the Ask Cmdr assistant in Settings > AI > Ask Cmdr. Starts with a verb. \"Ask Cmdr\" is a product name and stays as it is. Sentence case.",
     "screenshot": "settings-ai-ask-cmdr.png",
     "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
   },
-  "settings.askCmdr.status.needsReview": "Ask Cmdr is paused",
-  "@settings.askCmdr.status.needsReview": {
-    "description": "Status line in Ask Cmdr settings, in place of \"Ask Cmdr is on\" / \"Ask Cmdr is off\", for someone who had it on but whose opt-in no longer covers what it does. Sentence case, no period. \"Ask Cmdr\" is a product name and stays as it is.",
+  "settings.askCmdr.enabled.description": "Chat with Cmdr about your files in a side panel.",
+  "@settings.askCmdr.enabled.description": {
+    "description": "Description under the Turn on Ask Cmdr switch (settings.askCmdr.enabled.label). \"Cmdr\" is the product name.",
     "screenshot": "settings-ai-ask-cmdr.png",
     "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
   },
-  "settings.askCmdr.status.changed": "It changed since you turned it on, so it’s waiting for your OK. Read what’s new below, then switch it back on.",
-  "@settings.askCmdr.status.changed": {
-    "description": "Explanation under the paused status line in Ask Cmdr settings: why the feature paused itself and what to do about it. \"below\" is the disclosure text further down the same screen. The apostrophes are U+2019.",
+  "settings.askCmdr.cloudOffHint": "Ask Cmdr uses your cloud AI service, and cloud AI is off. Allow it in AI settings to start chatting.",
+  "@settings.askCmdr.cloudOffHint": {
+    "description": "Shown under the Ask Cmdr switch in Settings > AI > Ask Cmdr when it's on, the AI mode is Cloud, and the Allow cloud AI switch is off. A button to open the AI settings follows it.",
     "screenshot": "settings-ai-ask-cmdr.png",
     "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
   },
-  "settings.askCmdr.status.onSince": "On since {date}",
-  "@settings.askCmdr.status.onSince": {
-    "description": "Smaller line under the status showing when the user turned Ask Cmdr on. date is a preformatted date string.",
-    "placeholders": {
-      "date": {
-        "content": "The date the user turned Ask Cmdr on, already formatted for the locale."
-      }
-    },
-    "screenshot": "settings-ai-ask-cmdr.png"
-  },
-  "settings.askCmdr.turnOn": "Turn on Ask Cmdr",
-  "@settings.askCmdr.turnOn": {
-    "description": "Button that opts into and turns on Ask Cmdr from settings. Starts with a verb. Sentence case.",
+  "settings.askCmdr.openAiSettings": "Open AI settings",
+  "@settings.askCmdr.openAiSettings": {
+    "description": "Button under settings.askCmdr.cloudOffHint that jumps to Settings > AI > Provider, where the Allow cloud AI switch is. Starts with a verb. Sentence case.",
     "screenshot": "settings-ai-ask-cmdr.png",
     "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
-  },
-  "settings.askCmdr.turnBackOn": "Turn back on",
-  "@settings.askCmdr.turnBackOn": {
-    "description": "Button in Ask Cmdr settings that accepts the updated wording and switches the feature back on. Shown instead of \"Turn on Ask Cmdr\" for someone who had it on before. Starts with a verb. Sentence case.",
-    "screenshot": "settings-ai-ask-cmdr.png",
-    "screenshotNote": "Settings > AI > Ask Cmdr, pictured here. Your string belongs to a state this screenshot doesn’t show (off, or asking you to review changed wording), a confirmation or empty state in one of its panels, or a note under one of its controls."
-  },
-  "settings.askCmdr.turnOff": "Turn off Ask Cmdr",
-  "@settings.askCmdr.turnOff": {
-    "description": "Button that turns Ask Cmdr off from settings (chats are kept). Starts with a verb. Sentence case.",
-    "screenshot": "settings-ai-ask-cmdr.png"
-  },
-  "settings.askCmdr.disclosure.title": "What Cmdr sends",
-  "@settings.askCmdr.disclosure.title": {
-    "description": "Heading of the collapsible block in Ask Cmdr settings that shows exactly what leaves the Mac (the same copy as the opt-in screen). Sentence case.",
-    "screenshot": "settings-ai-ask-cmdr.png"
   },
   "settings.askCmdr.provider.title": "Provider and model",
   "@settings.askCmdr.provider.title": {

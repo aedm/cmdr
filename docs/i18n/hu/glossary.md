@@ -2265,7 +2265,7 @@ Egyszeri párbeszédpanel egy macOS 12-nél régebbi Macen: a Cmdr elindul, de a
 - **Az utolsó mondat David egyes szám első személyben**, tegezve, mint az `onboarding.stepBeta.greeting`.
 - **A `macOS 12-t` tárgyragos alak kötőjellel áll**, mert számjegy után jön a rag.
 
-## Belenézés a fájlokba: az `inspect_file` eszköz és a hozzájárulási képernyő új ígérete (`askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, 2026-09-02)
+## Belenézés a fájlokba: az `inspect_file` eszköz és a hozzájárulási képernyő új ígérete (`askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, 2026-09-02)
 
 Az Ask Cmdr mostantól kérésre beleolvas egy fájlba (néhány sor szöveg, egy PDF néhány oldala a címével és szerzőjével,
 egy archívum fájllistája, egy fotó kameraadatai és a készítés helye), ezért a hozzájárulási szöveg újra megjelenik. A
@@ -2316,9 +2316,10 @@ jóváhagyásra várnak) szó szerint átkerült, csak az első mondatok újak.
   `egy kis részét`: az angol a határt ígéri, nem a méretet.
 - **whole files → `egész fájlokat`** · leíró · high. A régi `magukat a fájlokat` alak azért nem maradt, mert az új angol
   szándékosan a „teljes fájl vs. egy része” szembeállítást mondja ki.
-- A `whatsNew.body` második mondata (`Ez többet ígér annál, mint amihez hozzájárultál, ezért itt van újra az egész.`)
-  változatlanul átkerült a régi fordításból; az első mondat a `belenézhet abba a fájlba, amelyről kérdezel` + egy
-  tárgyas felsorolás (`elolvashatja a szövegének egy részét, …`), hogy a lista ne `-ba/-be` ragok láncán lógjon.
+- A kivezetett újdonság-szöveg (askCmdr.consent.whatsNew.body) második mondata
+  (`Ez többet ígér annál, mint amihez hozzájárultál, ezért itt van újra az egész.`) változatlanul átkerült a régi
+  fordításból; az első mondat a `belenézhet abba a fájlba, amelyről kérdezel` + egy tárgyas felsorolás
+  (`elolvashatja a szövegének egy részét, …`), hogy a lista ne `-ba/-be` ragok láncán lógjon.
 - Mind az öt érték eltér az angoltól, tehát nincs `sameAsSourceJustification`; egyik értékben sincs ASCII aposztróf, a
   birtokos `’`-ek a magyarban nem jelennek meg, tehát az ICU `''` szabálya nem lép be.
 - **Utólag ugyanez a két rövid ígéret** (`askCmdr.empty.hint`, `settings.askCmdr.intro`): a „looks inside a file only
@@ -2995,8 +2996,8 @@ Commander, Double Commander).
 - **No, thanks → `Nem, köszönöm`** · nincs OS-forrás (sem a macOS-dumpban, sem a Microsoft-terminológiában nincs
   udvarias elutasító gomb) · `tentative` a forrás hiánya miatt, de a jelentés nem kétséges: ez a magyar köznyelv
   udvarias visszautasítása, és pontosan az a regiszter, amit a style.md fogyasztói-márkás `te`-hangja kér. ❌ NEM
-  `Most nem`: az a szállított `askCmdr.consent.decline`, más angolra (`Not now`), és „később talán”-t ígér, amit ez a
-  gomb nem tesz (a Cmdr soha többé nem kérdez).
+  `Most nem`: az a korábban szállított, azóta kivezetett askCmdr.consent.decline, más angolra (`Not now`), és „később
+  talán”-t ígér, amit ez a gomb nem tesz (a Cmdr soha többé nem kérdez).
 - **Yes, … (igenlő gomb a felhasználó szájából) → `Igen, …`** · a szállított `onboarding.stepAi.cloud.label`
   (`Yes, I want AI` = „Igen, szeretnék AI-t”) · `high`. Innen `Igen, kerüljön a Dockomba` (négy szó, gombba fér). A
   kötőmód (`kerüljön`) azért jó, mert nem kell megnevezni a cselekvőt: a `tedd` a Cmdrt tegezné, pedig a katalógusban a

@@ -36,7 +36,8 @@
     } from '$lib/tauri-commands'
     import { getSetting } from '$lib/settings'
     import { pushConfigToBackend } from '$lib/settings/ai-config'
-    import { settleHeldConsentRevoke } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+    import { settleHeldCloudConsentRevoke } from '$lib/ai/cloud-consent.svelte'
+    import { mapLegacyAskCmdrOptIn } from '$lib/ask-cmdr/ask-cmdr-enabled-mapping'
     import { runInitSteps } from './init-steps'
     import { initAiState } from '$lib/ai/ai-state.svelte'
     import { initAiToastSync } from '$lib/ai/ai-toast-sync.svelte'
@@ -201,11 +202,17 @@
                 },
             },
             {
-                // Retry a "no AI" revoke the store refused. It already holds (every consent gate
+                // Retry a "no" to cloud AI the store refused. It already holds (every cloud gate
                 // reads the held "no"); this is what lets the store catch up without anyone
-                // opening the rail.
-                name: 'heldConsentRevoke',
-                run: settleHeldConsentRevoke,
+                // opening a gate.
+                name: 'heldCloudConsentRevoke',
+                run: settleHeldCloudConsentRevoke,
+            },
+            {
+                // Set `askCmdr.enabled` once for an install that predates the switch, from the
+                // old Ask Cmdr opt-in. Needs the settings loaded; a no-op once the switch is set.
+                name: 'askCmdrEnabledMapping',
+                run: mapLegacyAskCmdrOptIn,
             },
             {
                 // Log once whether this WebKit supports the modern CSS we lean on

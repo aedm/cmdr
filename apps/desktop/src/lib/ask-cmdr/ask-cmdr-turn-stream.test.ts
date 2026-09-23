@@ -41,9 +41,8 @@ vi.mock('./rail-window', () => ({
   growMainWindowForRail: vi.fn(() => Promise.resolve()),
   shrinkMainWindowForRail: vi.fn(() => Promise.resolve()),
 }))
-vi.mock('./ask-cmdr-consent.svelte', () => ({
-  consentState: { accepted: true, acceptedAt: null },
-  refreshConsent: vi.fn(() => Promise.resolve()),
+vi.mock('./ask-cmdr-gate.svelte', () => ({
+  refreshRailGate: vi.fn(() => Promise.resolve('chat')),
 }))
 
 import { askCmdrState, newChat, sendMessage, type RailMessage } from './ask-cmdr-trigger.svelte'

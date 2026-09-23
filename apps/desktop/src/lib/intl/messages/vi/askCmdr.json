@@ -212,9 +212,13 @@
   "@askCmdr.error.notConfigured": {
     "sourceHash": "2d55d2c"
   },
-  "askCmdr.error.noConsent": "Bật Ask Cmdr để bắt đầu trò chuyện. Bạn chọn trước những gì nó có thể xem.",
-  "@askCmdr.error.noConsent": {
-    "sourceHash": "30d75d8"
+  "askCmdr.error.askCmdrOff": "Ask Cmdr is off.",
+  "@askCmdr.error.askCmdrOff": {
+    "sourceHash": "6599ee1"
+  },
+  "askCmdr.error.noCloudConsent": "Cloud AI is off. Allow it in Settings > AI.",
+  "@askCmdr.error.noCloudConsent": {
+    "sourceHash": "cd2af1d"
   },
   "askCmdr.error.localWindowTooSmall": "Cmdr cần cửa sổ ngữ cảnh lớn hơn mức mô hình cục bộ của bạn có. Hãy chọn 32.768 token trở lên trong cài đặt, ở phần AI.",
   "@askCmdr.error.localWindowTooSmall": {
@@ -352,81 +356,29 @@
   "@askCmdr.attachment.remove": {
     "sourceHash": "595b066"
   },
-  "askCmdr.consent.title": "Trò chuyện với Cmdr về tệp của bạn",
-  "@askCmdr.consent.title": {
-    "sourceHash": "59b4ca9"
+  "askCmdr.gate.off.title": "Ask Cmdr is off",
+  "@askCmdr.gate.off.title": {
+    "sourceHash": "0420c9a"
   },
-  "askCmdr.consent.intro": "Cmdr gửi câu hỏi của bạn đến nhà cung cấp AI mà bạn chọn, dùng khóa API của riêng bạn. Đây là chính xác những gì rời khỏi Mac của bạn khi bạn trò chuyện:",
-  "@askCmdr.consent.intro": {
-    "sourceHash": "3b5eac1"
+  "askCmdr.gate.off.body": "Turn it on to chat with Cmdr about your files.",
+  "@askCmdr.gate.off.body": {
+    "sourceHash": "48b16af"
   },
-  "askCmdr.consent.item.messages": "Tin nhắn của bạn",
-  "@askCmdr.consent.item.messages": {
-    "sourceHash": "befc6e9"
-  },
-  "askCmdr.consent.item.names": "Tên và đường dẫn của các tệp và thư mục mà Cmdr xem để trả lời bạn",
-  "@askCmdr.consent.item.names": {
-    "sourceHash": "ce3259d"
-  },
-  "askCmdr.consent.item.sizes": "Kích cỡ và ngày tháng của chúng",
-  "@askCmdr.consent.item.sizes": {
-    "sourceHash": "2484530"
-  },
-  "askCmdr.consent.item.contents": "Một phần nội dung của các tệp mà Cmdr mở để trả lời bạn: một ít văn bản, vài trang PDF, những gì bên trong một tệp nén và thông tin máy ảnh cùng vị trí chụp của một bức ảnh",
-  "@askCmdr.consent.item.contents": {
-    "sourceHash": "fcd0b73"
-  },
-  "askCmdr.consent.item.envelope": "Những gì bạn đang xem ngay bây giờ: thư mục hiện tại, con trỏ, mục đã chọn và các ổ đĩa đang kết nối",
-  "@askCmdr.consent.item.envelope": {
-    "sourceHash": "2e5a0ef"
-  },
-  "askCmdr.consent.item.attachments": "Bất kỳ tệp hoặc thư mục nào bạn đính kèm vào câu hỏi, chỉ theo tên và đường dẫn của nó",
-  "@askCmdr.consent.item.attachments": {
-    "sourceHash": "b9ad2af"
-  },
-  "askCmdr.consent.item.memory": "Các ghi chú mà Cmdr lưu về bạn, được gửi lại cùng mỗi tin nhắn",
-  "@askCmdr.consent.item.memory": {
-    "sourceHash": "7779513"
-  },
-  "askCmdr.consent.contentsRule": "Cmdr không bao giờ gửi toàn bộ tệp, ảnh hay hình thu nhỏ. Khi bạn hỏi về một tệp, nó có thể đọc một phần có giới hạn của tệp đó: vài dòng văn bản, vài trang của một tệp PDF cùng với tiêu đề và tác giả của nó, danh sách các tệp bên trong một tệp nén, hoặc thông tin máy ảnh của một bức ảnh, kể cả vị trí chụp. Tìm kiếm ảnh cũng hoạt động theo cách đó: văn bản mà Cmdr nhận dạng được bên trong các ảnh khớp cùng thẻ của chúng sẽ được gửi đến nhà cung cấp của bạn để có thể tìm thấy chúng. Cmdr có thể đề xuất đổi tên, di chuyển và dọn dẹp, và không có gì xảy ra với tệp nào cho đến khi bạn phê duyệt.",
-  "@askCmdr.consent.contentsRule": {
-    "sourceHash": "5a378c1"
-  },
-  "askCmdr.consent.memory": "Cmdr tự viết ghi chú về bạn: bạn thích sắp xếp mọi thứ ra sao, trước đây bạn đã từ chối điều gì, và bất cứ điều gì bạn nhờ nó nhớ. Những ghi chú đó đi kèm mọi tin nhắn bạn gửi, chừng nào chúng còn tồn tại, và có thể chứa văn bản mà Cmdr nhận dạng được bên trong ảnh của bạn. Bạn có thể đọc hoặc xóa chúng bất cứ lúc nào trong cài đặt Ask Cmdr.",
-  "@askCmdr.consent.memory": {
-    "sourceHash": "496c78d"
-  },
-  "askCmdr.consent.proactive": "Cmdr cũng theo dõi các thư mục bạn dùng và bắt đầu một cuộc trò chuyện khi có điều gì đó để đề xuất, nên tin nhắn có thể đến nhà cung cấp của bạn mà bạn không hỏi gì trước. Bạn có thể tắt điều đó trong cài đặt Ask Cmdr, ở mục “Tự chủ động”.",
-  "@askCmdr.consent.proactive": {
-    "sourceHash": "abfa80b"
-  },
-  "askCmdr.consent.local": "Các cuộc trò chuyện của bạn ở lại trên Mac, trong một cơ sở dữ liệu cục bộ mà bạn có thể mở và đọc. Bạn chọn nhà cung cấp và mô hình, và bạn có thể xem chi phí của mỗi cuộc trò chuyện.",
-  "@askCmdr.consent.local": {
-    "sourceHash": "f7d4075"
-  },
-  "askCmdr.consent.logsNote": "Nếu bạn bật tính năng ghi nhật ký lệnh gọi LLM trong phần cài đặt Nâng cao, Cmdr cũng sẽ lưu mỗi yêu cầu và câu trả lời vào một thư mục trên Mac của bạn. Các nhật ký đó cũng chỉ ở cục bộ, không bao giờ được gửi đi bất cứ đâu.",
-  "@askCmdr.consent.logsNote": {
-    "sourceHash": "7e211fc"
-  },
-  "askCmdr.consent.accept": "Bật Ask Cmdr",
-  "@askCmdr.consent.accept": {
+  "askCmdr.gate.off.turnOn": "Turn on Ask Cmdr",
+  "@askCmdr.gate.off.turnOn": {
     "sourceHash": "0d656c4"
   },
-  "askCmdr.consent.decline": "Để sau",
-  "@askCmdr.consent.decline": {
-    "sourceHash": "a0e63d7"
+  "askCmdr.gate.cloudOff.title": "Cloud AI is off",
+  "@askCmdr.gate.cloudOff.title": {
+    "sourceHash": "2e56781"
   },
-  "askCmdr.consent.notSaved": "Cmdr không lưu được lựa chọn của bạn. Thử lại?",
-  "@askCmdr.consent.notSaved": {
-    "sourceHash": "6bd80e9"
+  "askCmdr.gate.cloudOff.body": "Ask Cmdr talks to the cloud AI service you set up. Allow cloud AI in Settings first, and you’re ready to chat.",
+  "@askCmdr.gate.cloudOff.body": {
+    "sourceHash": "d3d3252"
   },
-  "askCmdr.consent.whatsNew.title": "Những gì đã thay đổi kể từ khi bạn bật tính năng này",
-  "@askCmdr.consent.whatsNew.title": {
-    "sourceHash": "641705c"
-  },
-  "askCmdr.consent.whatsNew.body": "Cmdr giờ đây có thể xem bên trong tệp mà bạn hỏi đến: một phần văn bản của tệp, vài trang của một tệp PDF, danh sách các tệp bên trong một tệp nén, hoặc thông tin máy ảnh và vị trí chụp của một bức ảnh. Đó là lời hứa rộng hơn điều bạn đã đồng ý, nên đây là toàn bộ nội dung một lần nữa.",
-  "@askCmdr.consent.whatsNew.body": {
-    "sourceHash": "1af51d8"
+  "askCmdr.gate.cloudOff.openSettings": "Open AI settings",
+  "@askCmdr.gate.cloudOff.openSettings": {
+    "sourceHash": "edcc53b"
   },
   "askCmdr.forget.title": "Quên mọi thứ Cmdr đang nhớ về bạn?",
   "@askCmdr.forget.title": {

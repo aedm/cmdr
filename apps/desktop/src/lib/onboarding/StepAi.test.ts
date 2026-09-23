@@ -28,7 +28,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, tick, unmount, flushSync } from 'svelte'
-import type { ConsentOutcome } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+import type { ConsentOutcome } from '$lib/ai/cloud-consent.svelte'
 import StepAi from './StepAi.svelte'
 import {
   closeWizard,
@@ -124,15 +124,15 @@ vi.mock('$lib/settings/ai-config', () => ({
   pushConfigToBackend: () => pushConfigToBackend(),
 }))
 
-// Ask Cmdr consent lives in `main.db`, not the registry, so the step drives it through
-// these commands. The wizard may only ever REVOKE (see the consent-bypass guard below).
-// `declineConsent` is the one "no" path (retry, then hold); its legs are pinned in
-// `ask-cmdr-consent.svelte.test.ts`, so here it's the seam.
+// Cloud AI consent lives in `main.db`, not the registry, so the step drives it through this
+// module. The wizard's own code may only ever REVOKE (see the consent-bypass guard below);
+// granting is the switch's click alone. `declineCloudConsent` is the one "no" path (retry,
+// then hold); its legs are pinned in `cloud-consent.svelte.test.ts`, so here it's the seam.
 const declineConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
 const acceptConsent = vi.fn<() => Promise<ConsentOutcome>>(() => Promise.resolve('done'))
-vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
-  declineConsent: () => declineConsent(),
-  acceptConsent: () => acceptConsent(),
+vi.mock('$lib/ai/cloud-consent.svelte', () => ({
+  declineCloudConsent: () => declineConsent(),
+  acceptCloudConsent: () => acceptConsent(),
 }))
 
 // The step's logger, so a test can tell a logged failure from a logged cancel. Lazy

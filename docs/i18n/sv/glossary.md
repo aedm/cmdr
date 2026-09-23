@@ -639,17 +639,17 @@ one-time consent screen, the per-chat cost footer, and the settings section + LL
 - **"Not now" (decline button on the consent screen): `Inte nu`** · macOS AppKit (`Not Now` → "Inte nu",
   `en/macOS/AppKit/Document.json`). `high`.
 - **talk to (warm framing on the one-time consent screen): `prata med`** · deliberately warmer than `chatta med` (chat
-  with) for the one-time opt-in heading, matching the screen's inviting tone; `askCmdr.consent.title` "Talk to Cmdr
-  about your files" → "Prata med Cmdr om dina filer". `tentative` (stylistic choice, no single correct pile rendering
-  for this warmer register).
+  with) for the one-time opt-in heading, matching the screen's inviting tone; the retired consent heading
+  askCmdr.consent.title "Talk to Cmdr about your files" → "Prata med Cmdr om dina filer". `tentative` (stylistic choice,
+  no single correct pile rendering for this warmer register).
 - **importance (of a folder, the assistant's ranking feature): `vikt`; important → `viktig`** · no reference-pile hit
   (Cmdr-specific ranking feature); composed on the standard adjective/noun pair (`viktig`↔`vikt`), parallel to how
   `askCmdr.tool.importantFolders.*` already uses `viktig`. `tentative` (Cmdr-coined feature; review).
 - **Cmdr repeated instead of a bare pronoun, when the sentence names Cmdr's own behavior**: per the established sv
   catalog convention (errors.json etc. always re-use "Cmdr" rather than "den"/"det"), `askCmdr.empty.hint` and
-  `askCmdr.consent.contentsRule` repeat "Cmdr" across sentences rather than introducing an ambiguous pronoun (the
-  English `contentsRule` switches to "it" in its second sentence; the Swedish says "Cmdr" all four times). Where the
-  antecedent is unambiguous within the same sentence (`settings.askCmdr.intro`'s "Ask Cmdr är skrivskyddad: den
+  `ai.cloudConsent.askCmdr.contentsRule` repeat "Cmdr" across sentences rather than introducing an ambiguous pronoun
+  (the English `contentsRule` switches to "it" in its second sentence; the Swedish says "Cmdr" all four times). Where
+  the antecedent is unambiguous within the same sentence (`settings.askCmdr.intro`'s "Ask Cmdr är skrivskyddad: den
   läser…"), a pronoun is fine.
 
 ## Network-drive image indexing pass (2026-07-13; `settings.mediaIndex.networkVolumes.*` + `settings.mediaIndex.alwaysIndex*` + `search.imageResults.networkOff`/`.paused`)
@@ -756,8 +756,9 @@ For the image-search index status badges (2026-07-22; the 11 `fileExplorer.image
 image-search indexing state. Reuses the settled indexing family; new/confirmed terms:
 
 - **image search (the feature): `bildsökning`** · the catalog's term wherever the feature is named
-  (`fileExplorer.imageIndex.file.indexed` = "Indexerad för bildsökning", `askCmdr.consent.contentsRule` = "Bildsökningen
-  fungerar på samma sätt"); definite `bildsökningen`. Compound `bildsökningsstatus` for the drive aria-label. `high`.
+  (`fileExplorer.imageIndex.file.indexed` = "Indexerad för bildsökning", `ai.cloudConsent.askCmdr.contentsRule` =
+  "Bildsökningen fungerar på samma sätt"); definite `bildsökningen`. Compound `bildsökningsstatus` for the drive
+  aria-label. `high`.
 - **indexed (as a status on a `bild`): `indexerad` / `indexerade`** · en-word agreement with `bild` (glossary index
   family + shipped `settings.mediaIndex.networkVolumes.indexed` "{countText} bild indexerad / bilder indexerade"). The
   standalone file badge takes the en-word `Indexerad` (implied subject `bilden`, en-word), NOT Apple's neuter supine
@@ -1996,7 +1997,7 @@ avspänd, varken ursäkt eller varning, för appen fungerar ju.
 - **Inget komma före `och` mellan de två korta huvudsatserna** i mening två, enligt § Notes and decisions i `style.md`.
 - **Sista meningen är David i jag-form**, med `du`, som `onboarding.stepBeta.greeting`.
 
-## Ask Cmdr tittar in i filer: samtyckestexten och verktygsraden (2026-09-02; `askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`)
+## Ask Cmdr tittar in i filer: samtyckestexten och verktygsraden (2026-09-02; `askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`)
 
 Ask Cmdr kan nu läsa en begränsad del av en fil på begäran (`inspect_file`): några rader ur en textfil, några PDF-sidor
 med titel och författare, fillistan i ett arkiv, eller en bilds EXIF-uppgifter med plats. `contentsRule` ersätter den
@@ -2007,10 +2008,11 @@ kvalitetspassets beslut (`photo` → `bild`, uniformt). Återanvänder `arkiv`, 
 
 - **look inside (a file) → `titta in i`** · verktygsraden `Tittar in i filer` / `Tittade in i filer` följer syskonen
   `Tittar på ett förslag`/`Tittade på ett förslag` och `Läser vad som finns i dina bilder` (samma verbform, samma
-  längdklass); `whatsNew.body` säger `titta in i en fil du frågar om`. Inget belägg i högen för just den här AI-frasen;
-  vald för att `titta in i` är den idiomatiska svenskan för ”look into” och tydlig med ett filobjekt efter sig (utan
-  objekt kan `titta in` betyda ”hälsa på”, men den läsningen finns inte här). `inuti` står kvar som preposition i
-  löpande text (`consent.memory`: ”känt igen inuti dina foton”) · `tentative` (stilval utan direkt belägg; syskonstyrt).
+  längdklass); den borttagna nyhetstexten (askCmdr.consent.whatsNew.body) sa `titta in i en fil du frågar om`. Inget
+  belägg i högen för just den här AI-frasen; vald för att `titta in i` är den idiomatiska svenskan för ”look into” och
+  tydlig med ett filobjekt efter sig (utan objekt kan `titta in` betyda ”hälsa på”, men den läsningen finns inte här).
+  `inuti` står kvar som preposition i löpande text (`consent.memory`: ”känt igen inuti dina foton”) · `tentative`
+  (stilval utan direkt belägg; syskonstyrt).
 - **thumbnail → `miniatyr`** (neutrum; plural `miniatyrer`) · MS-terminologi (`thumbnail` → `miniatyr`, neutrum), macOS
   AppKit (`Miniatyrstorlek:`, ”liten/medelstor/stor miniatyrstorlek”), Total Commander (`&Miniatyrer`, ”Läs in markerade
   miniatyrer på nytt”). Nautilus/Thunar säger `miniatyrbilder`; det kortare `miniatyr` är förstapartsordet och det gamla
@@ -2025,8 +2027,8 @@ kvalitetspassets beslut (`photo` → `bild`, uniformt). Återanvänder `arkiv`, 
   filsystemsmening (macOS Finder `Plats`, MS `plats`, Nautilus/Thunar/Dolphin `Plats`), och direkt efter ”en bilds”
   skulle `plats` läsas som var FILEN ligger, vilket är precis det samtyckestexten inte handlar om. Bisatsen säger vad
   engelskans ”location”/”where it was taken” faktiskt betyder: `en bilds kamerauppgifter och var den togs`
-  (`item.contents`, `whatsNew.body`), `inklusive var den togs` (`contentsRule`) · `high` (belagd term medvetet undviken;
-  bisatsen är entydig).
+  (`item.contents` och den borttagna nyhetstexten), `inklusive var den togs` (`contentsRule`) · `high` (belagd term
+  medvetet undviken; bisatsen är entydig).
 - **title and author (a PDF's document metadata) → `titel och författare`** · `titel`: macOS AppKit `Title` → `Titel`,
   katalogen (`Chattens titel`); `författare`: MS-terminologi (`author` → `författare`). Dolphin säger `Upphovsman`, som
   är könsmarkerat och utgår; MS:s `title` → `äganderätt` är den juridiska betydelsen och fel här.
@@ -2052,15 +2054,15 @@ kvalitetspassets beslut (`photo` → `bild`, uniformt). Återanvänder `arkiv`, 
   ett arkiv och en bilds … och var den togs”, två `och` i rad med olika räckvidd. Regel: style.md § Notes and decisions
   · `high`.
 - Kommat före `eller` i `contentsRule` (”…, vilka filer som finns i ett arkiv, eller en bilds kamerauppgifter, …”) står
-  kvar: leden är långa och läsaren behöver pausen (style.md § komma före `och`/`eller`). I `whatsNew.body` är leden
-  kortare och kommat borta.
+  kvar: leden är långa och läsaren behöver pausen (style.md § komma före `och`/`eller`). I den borttagna nyhetstexten
+  var leden kortare och kommat borta.
 - Inga `sameAsSourceJustification` · alla fem värden skiljer sig från engelskan, och inget värde innehåller en apostrof,
   så ICU:s dubblering `''` blir aldrig aktuell. `PDF`, `Cmdr` och `Ask Cmdr` står oböjda.
 - **Uppföljning, samma pass: `askCmdr.empty.hint` och `settings.askCmdr.intro`** · båda bar det gamla löftet ”aldrig
   filinnehåll”/”är skrivskyddad … ändrar aldrig något”, som inte längre stämmer. Första meningen i vardera behålls
   ordagrant; andra meningen säger nu de tre faktan med de satta orden: `läser namn, sökvägar och storlekar`,
-  `tittar in i en fil bara när du frågar om den` (samma `titta in i` som verktygsraden och `whatsNew.body`), och
-  `ändrar aldrig en fil utan ditt godkännande` (`godkänna` som i `contentsRule`: ”förrän du godkänner det”). ❌ Inte
+  `tittar in i en fil bara när du frågar om den` (samma `titta in i` som verktygsraden och den borttagna nyhetstexten),
+  och `ändrar aldrig en fil utan ditt godkännande` (`godkänna` som i `contentsRule`: ”förrän du godkänner det”). ❌ Inte
   `skrivskyddad`/`ändrar aldrig något`: den skriver egna anteckningar och föreslår namnbyten. Kommat före det sista
   `och` står kvar i båda: leden är långa, och i `empty.hint` skiljer det sats-`och` från uppräknings-`och` · `high`.
 
@@ -2539,7 +2541,8 @@ det LEVANDE systemet (macOS 26.6.2, build 25G83, läst 2026-09-09) där högen i
   uteblev: symbolen ÄR på plats, bara omritningen saknas. Därför `Cmdrs symbol är på plats, men Dock startade inte om.`
   — påståendet om att den är på plats står först och är det som bär.
 - **”No, thanks” → `Nej tack`** · svensk standardform, utan komma (Språkrådet) · `high`. ❌ Inte katalogens `Inte nu`
-  (`askCmdr.consent.decline`): den lovar en ny fråga senare, och Cmdr frågar aldrig igen efter det här nejet.
+  (den borttagna askCmdr.consent.decline): den lovar en ny fråga senare, och Cmdr frågar aldrig igen efter det här
+  nejet.
 - **Engångsflaggan i Inställningar följer systerraderna** · `Erbjudande om Dock visat` speglar
   `Tips om lång Nätverk-grupp visat` och `Tips om USB-felsökning avfärdat` (obestämt huvudord + particip;
   `ett erbjudande` → neutrum → `visat`), och beskrivningen speglar `Om engångstipset om att lossa servrar har visats` ·
@@ -2656,7 +2659,7 @@ såg ut förut.
   har redan `chatten` och `chattar` · `high`
 - **`chatt` och `samtal` är inte utbytbara: var och en följer sin egen nyckels engelska.** `chat` är `chatt`
   (`startar en chatt`, `settings.askCmdr.proactive.description`), `conversation` är `samtal` (`startar ett samtal`,
-  `askCmdr.consent.proactive`). Engelskan skiljer på dem i grannycklar, så svenskan gör det också.
+  `ai.cloudConsent.askCmdr.proactive`). Engelskan skiljer på dem i grannycklar, så svenskan gör det också.
 - provider (av AI) · **leverantör** · Microsoft sv terminology listar både `leverantör` och `provider`; katalogen kör
   `AI-leverantör` genomgående, och `leverantör` är det ord Apple-svenskan skulle välja · `high`
 - **Andra meningen i `askCmdr.wake.needsFullDiskAccess` kopierar `search.coverage.setUpFullDiskAccess`**

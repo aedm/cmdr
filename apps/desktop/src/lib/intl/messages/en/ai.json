@@ -78,7 +78,6 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.translateError.off.title": "AI is turned off",
   "@ai.translateError.off.title": {
     "description": "Title of the toast shown when an AI search/selection is attempted but AI is turned off in settings.",
@@ -91,6 +90,144 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
+  "ai.cloudConsent.label": "Allow cloud AI",
+  "@ai.cloudConsent.label": {
+    "description": "Label of the switch in Settings > AI > Provider (and in the onboarding AI step) that allows Cmdr to send data to the cloud AI service the user set up. Off by default; nothing reaches the service until it's on. Short, starts with a verb. Sentence case.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.description": "Cmdr sends nothing to a cloud AI service until you turn this on.",
+  "@ai.cloudConsent.description": {
+    "description": "One-line description under the Allow cloud AI switch (ai.cloudConsent.label). \"Cmdr\" is the product name and stays as it is.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.disclosureTitle": "What Cmdr sends",
+  "@ai.cloudConsent.disclosureTitle": {
+    "description": "Title of the fold under the Allow cloud AI switch listing everything Cmdr sends to the cloud AI service once the switch is on. Open by default while the switch is off. Sentence case.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.intro": "With this on, Cmdr sends these to the AI service you set up below, using your own account:",
+  "@ai.cloudConsent.intro": {
+    "description": "Opening line of the list of what each AI feature sends, inside the Allow cloud AI fold. Ends with a colon introducing the list. \"below\" is the service setup under the switch.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.whereItGoes": "Where your data goes, and what happens to it there, depends on the service you pick and your agreement with it. That includes Ollama, LM Studio, and custom endpoints: the data goes wherever that server runs. Cmdr has no AI service of its own and never sees any of it.",
+  "@ai.cloudConsent.whereItGoes": {
+    "description": "Paragraph right after the intro of the Allow cloud AI fold. Keeps three facts: the destination and its handling depend on the chosen service and the user's terms with it; Ollama, LM Studio, and custom endpoints count too; Cmdr itself receives nothing. Ollama and LM Studio are product names; keep them.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.folderSuggestions": "<b>New folder name suggestions</b>: the current folder''s path and up to 100 names in it",
+  "@ai.cloudConsent.folderSuggestions": {
+    "description": "List item in the Allow cloud AI fold. The bold part (inside <b></b>, keep the tags) names the feature: the name suggestions in the New folder dialog. The rest says what's sent. Keep the number. Sentence case, no period.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.search": "<b>Search in plain words</b>: the text you type",
+  "@ai.cloudConsent.search": {
+    "description": "List item in the Allow cloud AI fold for natural-language search in the Search dialog: only the typed query is sent. The bold part (inside <b></b>, keep the tags) names the feature. Sentence case, no period.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.selection": "<b>Select by description</b>: what you type, plus up to 240 names from the current folder",
+  "@ai.cloudConsent.selection": {
+    "description": "List item in the Allow cloud AI fold for the AI mode of the Select dialog: the typed description plus a sample of names. The bold part (inside <b></b>, keep the tags) names the feature. Keep the number. Sentence case, no period.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.title": "<b>Ask Cmdr</b>, when you chat or when it starts a conversation on its own:",
+  "@ai.cloudConsent.askCmdr.title": {
+    "description": "List item in the Allow cloud AI fold introducing the nested list of what the Ask Cmdr assistant sends (the ai.cloudConsent.askCmdr.item.* keys). \"Ask Cmdr\" is the assistant's product name and stays as it is; keep the <b></b> tags around it. Ends with a colon.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.item.messages": "Your messages",
+  "@ai.cloudConsent.askCmdr.item.messages": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, in the nested list of what the Ask Cmdr assistant sends. First item: the text the user types. Short noun phrase, sentence case.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.item.names": "The names and paths of files and folders Cmdr looks at to answer you",
+  "@ai.cloudConsent.askCmdr.item.names": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, in the nested list of what the Ask Cmdr assistant sends: the file and folder names and paths Cmdr reads to answer. The contents Cmdr can read on request are a separate item, ai.cloudConsent.askCmdr.item.contents. Sentence case, no period.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.item.sizes": "Their sizes and dates",
+  "@ai.cloudConsent.askCmdr.item.sizes": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, in the nested list of what the Ask Cmdr assistant sends: the sizes and dates of those files and folders. Short noun phrase, sentence case.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.item.contents": "Parts of files Cmdr opens to answer you: some text, PDF pages, what’s inside an archive, and a photo’s camera details and location",
+  "@ai.cloudConsent.askCmdr.item.contents": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, in the nested list of what the Ask Cmdr assistant sends. Names the file contents Ask Cmdr can read on request through its inspect tool: some lines of a text file, PDF text by page, the names of the files inside an archive, and a photo's EXIF data including where it was taken. Sentence case, no period. The apostrophes are U+2019.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.item.envelope": "What you’re looking at right now: your current folder, cursor, selection, and connected drives",
+  "@ai.cloudConsent.askCmdr.item.envelope": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, in the nested list of what the Ask Cmdr assistant sends: the app-state envelope sent with each question (the current folder, cursor position, selection, and connected drives). Sentence case, no period. The apostrophe is U+2019.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.item.attachments": "Any file or folder you attach to a question, by its name and path only",
+  "@ai.cloudConsent.askCmdr.item.attachments": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, in the nested list of what the Ask Cmdr assistant sends: files or folders the user attaches to a question are sent by reference (name and path), never their contents. Sentence case, no period.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.item.memory": "The notes Cmdr keeps about you, sent again with every message",
+  "@ai.cloudConsent.askCmdr.item.memory": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, as the last item of the nested list of what the Ask Cmdr assistant sends: the assistant's own memory notes about the user, which are re-sent with every single message. \"Cmdr\" here is the assistant doing the remembering, matching the other items in the list. Sentence case, no period.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.contentsRule": "Cmdr never sends whole files, photos, or thumbnails. When you ask about a file, it can read a limited part of it: some lines of text, a few pages of a PDF along with its title and author, the list of files inside an archive, or a photo’s camera details, including where it was taken. Photo search works the same way: the text Cmdr recognized inside the matching photos and their tags go to your provider so it can find them. Cmdr can suggest renames, moves, and cleanups, and nothing happens to a file until you approve it.",
+  "@ai.cloudConsent.askCmdr.contentsRule": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, as a reassurance paragraph after the Ask Cmdr list. Four facts to keep: whole files, photos, and thumbnails are never sent; when the user asks about a file, the assistant reads a limited part of it (some lines of text, a few PDF pages plus the PDF's title and author, the names of the files inside an archive, a photo's camera details including where it was taken); photo search sends the text recognized inside the matching photos and their tags; and the assistant proposes file changes but never carries one out without the user approving it. Must NOT promise that no file contents are sent, and must NOT promise that the assistant changes nothing (it writes its own notes and proposes renames and moves). The apostrophes are U+2019.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.memory": "Cmdr writes itself notes about you: how you like things organized, what you’ve turned down before, anything you ask it to remember. Those notes ride along with every message you send, for as long as they exist, and they can include text Cmdr recognized inside your photos. You can read them, or wipe them, any time in the Ask Cmdr settings.",
+  "@ai.cloudConsent.askCmdr.memory": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, as a paragraph after the Ask Cmdr list, about the assistant's memory: it writes notes about the user, those notes go to the provider with every message for as long as they exist, they can contain text recognized inside the user's photos, and the user can read or delete them in the Ask Cmdr settings. Keep all four facts. The apostrophe is U+2019.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.proactive": "Cmdr also watches the folders you use and starts a conversation when it has something to suggest, so messages can reach your provider without you asking first. You can turn that off in the Ask Cmdr settings, under “On its own”.",
+  "@ai.cloudConsent.askCmdr.proactive": {
+    "description": "Now shown under Settings > AI > Provider, in the Allow cloud AI fold, as a paragraph after the Ask Cmdr list: the assistant can start conversations by itself, so messages reach the provider without the user typing anything, and the user can switch that off. The quoted phrase is the heading of that settings group (settings.askCmdr.proactive.title), so translate it exactly the same way in both places. The quotes are U+201C and U+201D.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.askCmdr.chatsStayLocal": "Your Ask Cmdr chats stay on your Mac, in a local database you can open and read.",
+  "@ai.cloudConsent.askCmdr.chatsStayLocal": {
+    "description": "Paragraph under the Ask Cmdr part of the Allow cloud AI fold: chat history is stored locally, never on the AI service's side by Cmdr. \"Ask Cmdr\" is a product name and stays as it is.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.logsNote": "If you turn on LLM call logging in Advanced settings, Cmdr also saves each request and reply to a folder on your Mac. Those logs stay local too, never sent anywhere.",
+  "@ai.cloudConsent.logsNote": {
+    "description": "Now shown under Settings > AI > Provider, as a smaller note near the end of the Allow cloud AI fold, about the optional local LLM call log (the logLlmCalls setting): the logs are written to a local folder and never transmitted.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.turnOffAnyTime": "Turn this off any time and Cmdr stops sending right away. Your service, key, and chats stay as they are.",
+  "@ai.cloudConsent.turnOffAnyTime": {
+    "description": "Last paragraph of the Allow cloud AI fold: switching it off stops every send at once, and keeps the chosen service, the API key, and the Ask Cmdr chats.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.cloudConsent.notSaved": "Cmdr couldn’t save your choice. Try again?",
+  "@ai.cloudConsent.notSaved": {
+    "description": "Short line under the Allow cloud AI switch (Settings > AI > Provider, and the onboarding AI step) when turning cloud AI on or off didn't stick because Cmdr couldn't write the choice to its own local database. The switch next to it still shows what's actually saved. \"Cmdr\" is the app name and stays untranslated. The apostrophe is U+2019.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
   "ai.translateError.notConfigured.title": "AI needs a bit more setup",
   "@ai.translateError.notConfigured.title": {
     "description": "Title shown when AI is enabled but not fully configured (for example a missing API key) and an AI action is attempted.",
@@ -100,6 +237,18 @@
   "ai.translateError.notConfigured.body": "Finish your provider setup in Settings > AI, then try again.",
   "@ai.translateError.notConfigured.body": {
     "description": "Next-step line under the AI needs more setup toast. Settings > AI is a navigation path; keep it as shown.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.translateError.noCloudConsent.title": "Cloud AI is off",
+  "@ai.translateError.noCloudConsent.title": {
+    "description": "Title of the toast shown when an AI search or AI selection is attempted while the AI mode is Cloud but the Allow cloud AI switch in Settings > AI is off, so nothing was sent. Sentence case.",
+    "screenshot": "settings-ai-provider.png",
+    "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
+  },
+  "ai.translateError.noCloudConsent.body": "Allow it in Settings > AI, then try again.",
+  "@ai.translateError.noCloudConsent.body": {
+    "description": "Next-step line under the Cloud AI is off toast. \"it\" is cloud AI; Settings > AI is a navigation path, keep it as shown.",
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
@@ -199,7 +348,6 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.cloud.serviceAria": "Cloud AI service",
   "@ai.cloud.serviceAria": {
     "description": "aria-label for the dropdown that picks which cloud AI service (provider) to use, in Settings > AI.",
@@ -275,7 +423,6 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.local.memoryWarningAria": "Memory warning",
   "@ai.local.memoryWarningAria": {
     "description": "aria-label for the warning icon shown next to the local AI context-size Apply button when the projected memory use is high.",
@@ -538,7 +685,6 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.secretError.keychainTitle": "{op, select, save {Couldn''t save your API key: macOS Keychain denied access} other {Couldn''t read your saved API key: macOS Keychain denied access}}",
   "@ai.secretError.keychainTitle": {
     "description": "Title of an error shown in the cloud-AI provider settings (Settings > AI cloud, and the onboarding cloud-provider step) when saving or reading the API key fails because the macOS Keychain refused access. \"macOS Keychain\" and \"Keychain\" are the proper name of the Apple credential store; keep them as Apple names them in your language (Apple ships a localized Keychain Access app, so use that localized name). Write each branch as a complete, natural sentence in your language rather than a shared prefix plus a clause.",
@@ -548,7 +694,6 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.secretError.keychainBody": "{op, select, save {Open Keychain Access and check the \"Cmdr\" entry, or delete it and try saving again.} other {Open Keychain Access, find the \"Cmdr\" entry, grant access, or delete it and re-enter your key.}}",
   "@ai.secretError.keychainBody": {
     "description": "Guidance shown below the macOS-Keychain-denied error in the cloud-AI provider settings, telling the user how to fix it via Apple''s Keychain Access app. \"Keychain Access\" is the proper name of the macOS app (Apple ships it localized; use that localized name). \"Cmdr\" is the app name (a Keychain entry label) and must NOT be translated. Write each branch as a natural full sentence.",
@@ -558,7 +703,6 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.secretError.keyringTitle": "{op, select, save {Couldn''t save your API key: your system keyring denied access} other {Couldn''t read your saved API key: your system keyring denied access}}",
   "@ai.secretError.keyringTitle": {
     "description": "Title of an error shown in the cloud-AI provider settings (Settings > AI cloud, and the onboarding cloud-provider step) on non-macOS systems when saving or reading the API key fails because the OS keyring (credential store) refused access. \"keyring\" is the generic term for the system credential store (on Linux, GNOME Keyring / KWallet); use whatever your platform calls it. Write each branch as a complete, natural sentence.",
@@ -568,14 +712,12 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.secretError.keyringBody": "Unlock your keyring (Passwords / Keyrings app) and try again.",
   "@ai.secretError.keyringBody": {
     "description": "Guidance shown below the system-keyring-denied error (non-macOS), telling the user to unlock their OS credential store. \"Passwords\" and \"Keyrings\" name the typical apps that manage it; use the names common on your platform.",
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.secretError.genericTitle": "{op, select, save {Couldn''t save your API key.} other {Couldn''t read your saved API key.}}",
   "@ai.secretError.genericTitle": {
     "description": "Title of a fall-back error shown in the cloud-AI provider settings (Settings > AI cloud, and the onboarding cloud-provider step) when saving or reading the API key fails for a reason that isn''t an explicit access denial. Write each branch as a complete, natural sentence.",
@@ -585,7 +727,6 @@
     "screenshot": "settings-ai-provider.png",
     "screenshotNote": "AI feature copy. Cloud-connection states, suggestions, and translate-errors surface around the Settings > AI > Provider subsection pictured here (and inline near AI actions). This shows the AI provider settings for context."
   },
-
   "ai.secretError.genericBody": "Check that your system keyring is available, then try again. If it persists, restart the app.",
   "@ai.secretError.genericBody": {
     "description": "Guidance shown below the fall-back save/read error, suggesting the user verify their OS credential store (keyring) is available and restart the app if the problem continues. \"keyring\" is the generic term for the system credential store; use whatever your platform calls it.",

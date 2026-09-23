@@ -14,6 +14,7 @@ interface CheckResult {
   authError: boolean
   models: string[]
   error: string | null
+  cloudConsentMissing?: boolean
 }
 
 // One object payload per spy, so the assertions name the argument they mean and the
@@ -180,6 +181,22 @@ describe('ProviderSetupController', () => {
     expect(controller.status).toBe('auth-error')
     expect(controller.error).toBe('Invalid key')
     expect(controller.isConnected).toBe(false)
+  })
+
+  it('reads a refused probe (cloud AI not allowed yet) as idle, not as a connection problem', async () => {
+    // The backend sent nothing, so "couldn't connect" would be a false claim about the service.
+    checkAiConnection.mockResolvedValue({
+      connected: false,
+      authError: false,
+      models: [],
+      error: null,
+      cloudConsentMissing: true,
+    })
+    getAiApiKeyStatus.mockResolvedValue({ isSet: true, fingerprint: 'fp' })
+    controller.setProvider('openai')
+    await settle()
+    expect(controller.status).toBe('idle')
+    expect(controller.error).toBeNull()
   })
 
   it('reports a secret-store read failure to its owner as well as its own state', async () => {

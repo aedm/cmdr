@@ -1,19 +1,20 @@
-/** Unit tests for the consent gate state module (refresh / accept / revoke, fail-closed, the held revoke). */
+/** Unit tests for the cloud AI consent state (refresh / accept / decline, fail-closed, the held "no"). */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-import type { AskCmdrConsentStatus } from '$lib/tauri-commands'
+import type { CloudAiConsentStatus } from '$lib/tauri-commands'
 
-const { statusMock, acceptMock, revokeMock, pendingChangedMock, settingsMock, order } = vi.hoisted(() => {
+const { statusMock, acceptMock, revokeMock, pendingChangedMock, listenMock, settingsMock, order } = vi.hoisted(() => {
   const order: string[] = []
   // An annotation, not an `as`: the lint auto-fix strips an assertion it thinks is unnecessary.
   const values: Record<string, unknown> = {}
   return {
     order,
-    statusMock: vi.fn<() => Promise<AskCmdrConsentStatus>>(),
+    statusMock: vi.fn<() => Promise<CloudAiConsentStatus>>(),
     acceptMock: vi.fn<() => Promise<void>>(),
     revokeMock: vi.fn<() => Promise<void>>(),
     pendingChangedMock: vi.fn<() => Promise<void>>(() => Promise.resolve()),
+    listenMock: vi.fn<(handler: () => void) => Promise<() => void>>(),
     settingsMock: {
       values,
       forceSave: vi.fn<() => Promise<boolean>>(() => Promise.resolve(true)),
@@ -22,13 +23,14 @@ const { statusMock, acceptMock, revokeMock, pendingChangedMock, settingsMock, or
 })
 
 vi.mock('$lib/tauri-commands', () => ({
-  askCmdrConsentStatus: () => statusMock(),
-  acceptAskCmdrConsent: () => {
+  cloudAiConsentStatus: () => statusMock(),
+  acceptCloudAiConsent: () => {
     order.push('accept')
     return acceptMock()
   },
-  revokeAskCmdrConsent: () => revokeMock(),
-  askCmdrConsentRevokePendingChanged: () => pendingChangedMock(),
+  revokeCloudAiConsent: () => revokeMock(),
+  cloudAiConsentRevokePendingChanged: () => pendingChangedMock(),
+  onCloudAiConsentChanged: (handler: () => void) => listenMock(handler),
 }))
 vi.mock('$lib/settings', () => ({
   getSetting: (id: string): unknown => settingsMock.values[id] ?? false,
@@ -46,16 +48,16 @@ vi.mock('$lib/logging/logger', () => ({
 }))
 
 import {
-  consentState,
-  refreshConsent,
-  acceptConsent,
-  revokeConsent,
-  declineConsent,
-  holdConsentRevoke,
-  settleHeldConsentRevoke,
-} from './ask-cmdr-consent.svelte'
+  cloudConsentState,
+  refreshCloudConsent,
+  acceptCloudConsent,
+  declineCloudConsent,
+  settleHeldCloudConsentRevoke,
+  cloudAiBlocked,
+  _resetCloudConsentForTests,
+} from './cloud-consent.svelte'
 
-const HELD = 'askCmdr.consentRevokePending'
+const HELD = 'ai.cloudConsentRevokePending'
 
 beforeEach(() => {
   // Reset, not clear: a `mockRejectedValueOnce` a test didn't consume must not leak into the next.
@@ -64,58 +66,51 @@ beforeEach(() => {
   settingsMock.values = {}
   settingsMock.forceSave.mockResolvedValue(true)
   pendingChangedMock.mockResolvedValue(undefined)
-  consentState.accepted = null
-  consentState.acceptedAt = null
-  consentState.needsReconsent = false
+  listenMock.mockResolvedValue(() => undefined)
+  _resetCloudConsentForTests()
 })
 
-const notAccepted: AskCmdrConsentStatus = {
+const notAccepted: CloudAiConsentStatus = {
   accepted: false,
   currentVersion: 1,
   acceptedVersion: null,
   acceptedAt: null,
 }
-const accepted: AskCmdrConsentStatus = {
+const accepted: CloudAiConsentStatus = {
   accepted: true,
   currentVersion: 1,
   acceptedVersion: 1,
   acceptedAt: 1_760_000_100,
 }
 
-describe('refreshConsent', () => {
+describe('refreshCloudConsent', () => {
   it('applies an accepted status (accepted + timestamp)', async () => {
-    statusMock.mockResolvedValue({ accepted: true, currentVersion: 1, acceptedVersion: 1, acceptedAt: 1_760_000_000 })
-    await refreshConsent()
-    expect(consentState.accepted).toBe(true)
-    expect(consentState.acceptedAt).toBe(1_760_000_000)
+    statusMock.mockResolvedValue(accepted)
+    await refreshCloudConsent()
+    expect(cloudConsentState.accepted).toBe(true)
+    expect(cloudConsentState.acceptedAt).toBe(1_760_000_100)
   })
 
   it('clears the timestamp when not accepted', async () => {
-    statusMock.mockResolvedValue(notAccepted)
-    await refreshConsent()
-    expect(consentState.accepted).toBe(false)
-    expect(consentState.acceptedAt).toBeNull()
+    statusMock.mockResolvedValue({ ...notAccepted, acceptedVersion: 1, acceptedAt: 1_760_000_100 })
+    await refreshCloudConsent()
+    expect(cloudConsentState.accepted).toBe(false)
+    expect(cloudConsentState.acceptedAt).toBeNull()
   })
 
   it('fails CLOSED when the status read throws', async () => {
     statusMock.mockRejectedValue(new Error('nope'))
-    await refreshConsent()
-    expect(consentState.accepted).toBe(false)
-    expect(consentState.acceptedAt).toBeNull()
+    await refreshCloudConsent()
+    expect(cloudConsentState.accepted).toBe(false)
+    expect(cloudConsentState.acceptedAt).toBeNull()
   })
 
-  it('makes no revoke attempt when no "no" is held', async () => {
-    statusMock.mockResolvedValue(notAccepted)
-    await refreshConsent()
-    expect(revokeMock).not.toHaveBeenCalled()
-  })
-
-  it('retries a held revoke, and lets go of it once the store takes it', async () => {
+  it('retries a held "no", and lets go of it once the store takes it', async () => {
     settingsMock.values[HELD] = true
     revokeMock.mockResolvedValue(undefined)
     statusMock.mockResolvedValue(notAccepted)
 
-    await refreshConsent()
+    await refreshCloudConsent()
 
     expect(revokeMock).toHaveBeenCalledOnce()
     expect(settingsMock.values[HELD]).toBe(false)
@@ -128,78 +123,69 @@ describe('refreshConsent', () => {
     revokeMock.mockRejectedValue(new Error('disk I/O error'))
     statusMock.mockResolvedValue(notAccepted)
 
-    await refreshConsent()
+    await refreshCloudConsent()
 
     expect(revokeMock).toHaveBeenCalledOnce()
     expect(settingsMock.values[HELD]).toBe(true)
   })
 
-  it('never reads a held "no" as someone to ask again about changed wording', async () => {
-    // The backend answers not-accepted while a revoke is held, and the store's audit still
-    // names the version they once accepted. That's a "no", not a paused opt-in.
-    settingsMock.values[HELD] = true
-    revokeMock.mockRejectedValue(new Error('disk I/O error'))
-    statusMock.mockResolvedValue({ accepted: false, currentVersion: 1, acceptedVersion: 1, acceptedAt: null })
+  it('makes no revoke attempt when no "no" is held', async () => {
+    statusMock.mockResolvedValue(notAccepted)
+    await refreshCloudConsent()
+    expect(revokeMock).not.toHaveBeenCalled()
+  })
 
-    await refreshConsent()
+  it('re-reads the status whenever any window announces a consent change', async () => {
+    statusMock.mockResolvedValue(notAccepted)
+    await refreshCloudConsent()
+    expect(listenMock).toHaveBeenCalledOnce()
 
-    expect(consentState.accepted).toBe(false)
-    expect(consentState.needsReconsent).toBe(false)
+    statusMock.mockResolvedValue(accepted)
+    const handler = listenMock.mock.calls[0][0]
+    handler()
+    await vi.waitFor(() => {
+      expect(cloudConsentState.accepted).toBe(true)
+    })
+
+    // One subscription per window, however often the gates refresh.
+    await refreshCloudConsent()
+    expect(listenMock).toHaveBeenCalledOnce()
   })
 })
 
-describe('settleHeldConsentRevoke', () => {
+describe('settleHeldCloudConsentRevoke', () => {
   it('is the same retry the launch runs, and does nothing without a held "no"', async () => {
-    await settleHeldConsentRevoke()
+    await settleHeldCloudConsentRevoke()
     expect(revokeMock).not.toHaveBeenCalled()
 
     settingsMock.values[HELD] = true
     revokeMock.mockResolvedValue(undefined)
-    await settleHeldConsentRevoke()
+    await settleHeldCloudConsentRevoke()
     expect(revokeMock).toHaveBeenCalledOnce()
     expect(settingsMock.values[HELD]).toBe(false)
   })
 })
 
-describe('holdConsentRevoke', () => {
-  it('holds the "no" in settings, saves it now, and tells the backend gates', async () => {
-    const saved = await holdConsentRevoke()
-
-    expect(saved).toBe(true)
-    expect(settingsMock.values[HELD]).toBe(true)
-    // Saved BEFORE the backend is told: the gates read `settings.json` from disk.
-    expect(order).toEqual([`set ${HELD}=true`, 'save'])
-    expect(pendingChangedMock).toHaveBeenCalledOnce()
-  })
-
-  it("answers false when the settings file won't take it either", async () => {
-    settingsMock.forceSave.mockResolvedValue(false)
-    expect(await holdConsentRevoke()).toBe(false)
-  })
-})
-
-describe('acceptConsent', () => {
+describe('acceptCloudConsent', () => {
   it('records consent, refreshes, and answers done', async () => {
     acceptMock.mockResolvedValue(undefined)
     statusMock.mockResolvedValue(accepted)
-    const result = await acceptConsent()
+    expect(await acceptCloudConsent()).toBe('done')
     expect(acceptMock).toHaveBeenCalledOnce()
-    expect(result).toBe('done')
-    expect(consentState.accepted).toBe(true)
+    expect(cloudConsentState.accepted).toBe(true)
   })
 
   it('answers notSaved when the store refuses the write, and the gate stays shut', async () => {
     acceptMock.mockRejectedValue(new Error('database is locked'))
     statusMock.mockResolvedValue(notAccepted)
-    expect(await acceptConsent()).toBe('notSaved')
-    expect(consentState.accepted).toBe(false)
+    expect(await acceptCloudConsent()).toBe('notSaved')
+    expect(cloudConsentState.accepted).toBe(false)
   })
 
   it('answers notSaved when the write went through but the store still reads not accepted', async () => {
-    // A store that never opened takes the write as a no-op and reads back "not accepted".
     acceptMock.mockResolvedValue(undefined)
     statusMock.mockResolvedValue(notAccepted)
-    expect(await acceptConsent()).toBe('notSaved')
+    expect(await acceptCloudConsent()).toBe('notSaved')
   })
 
   it('lets go of a held "no" before recording a deliberate yes', async () => {
@@ -207,7 +193,7 @@ describe('acceptConsent', () => {
     acceptMock.mockResolvedValue(undefined)
     statusMock.mockResolvedValue(accepted)
 
-    await acceptConsent()
+    await acceptCloudConsent()
 
     expect(settingsMock.values[HELD]).toBe(false)
     expect(order.indexOf(`set ${HELD}=false`)).toBeLessThan(order.indexOf('accept'))
@@ -216,31 +202,34 @@ describe('acceptConsent', () => {
   })
 })
 
-describe('declineConsent', () => {
-  it('turns Ask Cmdr off, with nothing held, when the store takes the first try', async () => {
+describe('declineCloudConsent', () => {
+  it('turns cloud AI off, with nothing held, when the store takes the first try', async () => {
     revokeMock.mockResolvedValue(undefined)
     statusMock.mockResolvedValue(notAccepted)
 
-    expect(await declineConsent()).toBe('done')
+    expect(await declineCloudConsent()).toBe('done')
     expect(revokeMock).toHaveBeenCalledOnce()
     expect(settingsMock.values[HELD]).toBeUndefined()
+    expect(cloudConsentState.accepted).toBe(false)
   })
 
   it('gives a refused "no" one more try before holding it', async () => {
     revokeMock.mockRejectedValueOnce(new Error('database is locked')).mockResolvedValue(undefined)
     statusMock.mockResolvedValue(notAccepted)
 
-    expect(await declineConsent()).toBe('done')
+    expect(await declineCloudConsent()).toBe('done')
     expect(revokeMock).toHaveBeenCalledTimes(2)
     expect(settingsMock.values[HELD]).toBeUndefined()
   })
 
-  it('holds a "no" the store refuses twice, and answers done: it holds from the next check on', async () => {
+  it('holds a "no" the store refuses twice, saved before the gates are told, and answers done', async () => {
     revokeMock.mockRejectedValue(new Error('disk I/O error'))
     statusMock.mockResolvedValue(notAccepted)
 
-    expect(await declineConsent()).toBe('done')
+    expect(await declineCloudConsent()).toBe('done')
     expect(settingsMock.values[HELD]).toBe(true)
+    // Saved BEFORE the backend is told: the gates read `settings.json` from disk.
+    expect(order.slice(0, 2)).toEqual([`set ${HELD}=true`, 'save'])
     expect(pendingChangedMock).toHaveBeenCalled()
   })
 
@@ -249,25 +238,23 @@ describe('declineConsent', () => {
     settingsMock.forceSave.mockResolvedValue(false)
     statusMock.mockResolvedValue(accepted)
 
-    expect(await declineConsent()).toBe('notSaved')
+    expect(await declineCloudConsent()).toBe('notSaved')
   })
 })
 
-describe('revokeConsent', () => {
-  it('clears consent, refreshes, and answers done', async () => {
-    revokeMock.mockResolvedValue(undefined)
-    statusMock.mockResolvedValue(notAccepted)
-    expect(await revokeConsent()).toBe('done')
-    expect(revokeMock).toHaveBeenCalledOnce()
-    expect(consentState.accepted).toBe(false)
+describe('cloudAiBlocked', () => {
+  it('blocks Cloud until consent reads accepted, and counts "not known yet" as blocked', () => {
+    cloudConsentState.accepted = null
+    expect(cloudAiBlocked('cloud')).toBe(true)
+    cloudConsentState.accepted = false
+    expect(cloudAiBlocked('cloud')).toBe(true)
+    cloudConsentState.accepted = true
+    expect(cloudAiBlocked('cloud')).toBe(false)
   })
 
-  it('answers notSaved when the store refuses, and re-reads so the status stays honest', async () => {
-    // Pre-fix this swallowed the refusal: a "turn off" or a wizard "no AI" pick silently left
-    // consent recorded, and no caller could tell.
-    revokeMock.mockRejectedValue(new Error('disk I/O error'))
-    statusMock.mockResolvedValue(accepted)
-    expect(await revokeConsent()).toBe('notSaved')
-    expect(consentState.accepted).toBe(true)
+  it('never blocks Local or off: nothing leaves the Mac there', () => {
+    cloudConsentState.accepted = false
+    expect(cloudAiBlocked('local')).toBe(false)
+    expect(cloudAiBlocked('off')).toBe(false)
   })
 })

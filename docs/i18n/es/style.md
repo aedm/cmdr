@@ -153,9 +153,10 @@ GNOME/Xfce (Tier 3). Confidence: `confirmed` (human signed off), `high` (authori
 - the usual way (where a program is normally found) → en los sitios habituales · "habitual" is the catalog's adjective
   for the default/expected case (`search.systemDirExclude.default` "las carpetas habituales del sistema") · high
 - chat (una conversación con el asistente, y el panel que las guarda) → chat · the catalog itself
-  (`askCmdr.threads.open` "Chats", `askCmdr.sessions.back` "Volver al chat", `askCmdr.consent.local` "Tus chats se
-  quedan en tu Mac") · high. `conversación` stays available for the times English itself says "conversation"
-  (`askCmdr.consent.proactive` "abre una conversación"); both are shipped and neither is wrong, the English picks which.
+  (`askCmdr.threads.open` "Chats", `askCmdr.sessions.back` "Volver al chat", the retired consent line
+  askCmdr.consent.local "Tus chats se quedan en tu Mac") · high. `conversación` stays available for the times English
+  itself says "conversation" (`ai.cloudConsent.askCmdr.proactive` "abre una conversación"); both are shipped and neither
+  is wrong, the English picks which.
 - AI / the AI → IA / la IA · the catalog (`ai.translateError.timeout.title` "La IA tardó demasiado", `parseError.title`
   "No se pudo leer la respuesta de la IA") · high
 - AI features → funciones de IA · the catalog (`settings.ai.tooltipOff` "Las funciones de IA están desactivadas",
@@ -297,9 +298,9 @@ strings are counted, so no plural branches are needed there.
   dialog and the narrow ETA slot of a queue row. Fit the narrow one; the dialog then shows the same short text, and
   there is no separate row string to trim on its own.
 - **Photos are "taken" with `tomar`, never `hacer` or `sacar`.** "where it was taken" → `el lugar donde se tomó`
-  (`askCmdr.consent.contentsRule`). Spain says `hacer una foto` and Latin America `tomar una foto`; `tomar` reads fine
-  on both sides, which is what the pan-regional base wants, and `sacar` is the colloquial one. Same shape as the `coste`
-  / preterite decisions above. Evidence: `glossary.md` § Mirar dentro de un archivo.
+  (`ai.cloudConsent.askCmdr.contentsRule`). Spain says `hacer una foto` and Latin America `tomar una foto`; `tomar`
+  reads fine on both sides, which is what the pan-regional base wants, and `sacar` is the colloquial one. Same shape as
+  the `coste` / preterite decisions above. Evidence: `glossary.md` § Mirar dentro de un archivo.
 - **A "last X" column takes a NOUN phrase, not a participle.** macOS `es` names its date columns `Última apertura` (Last
   Opened) and `Fecha de modificación`, and the catalog already settled `Modified` → `Modificación`. So `Last used` →
   `Último uso`, not `Usado por última vez`. Evidence: `glossary.md` § La tabla del hub de servidores.
@@ -339,8 +340,8 @@ strings are counted, so no plural branches are needed there.
 - **"Ask Cmdr" names ONLY the chat panel, never the AI in general.** The brand survives where it names the surface
   itself: the panel title (`askCmdr.title`), the View-menu item (`menu.view.askCmdr`), the palette command
   (`commands.askCmdrToggle.label`), the settings section (`settings.section.askCmdr`), the switch that turns it on
-  (`settings.askCmdr.turnOn` / `turnOff`), and any sentence pointing back at that section ("en los ajustes de Ask Cmdr",
-  "en la sección Ask Cmdr"). Everywhere else the sentence describes what the product does, and the subject is **Cmdr**
+  (`settings.askCmdr.enabled.label`), and any sentence pointing back at that section ("en los ajustes de Ask Cmdr", "en
+  la sección Ask Cmdr"). Everywhere else the sentence describes what the product does, and the subject is **Cmdr**
   ("Cmdr observa las carpetas…", "Qué envía Cmdr") or, when it is the model rather than the app, **la IA** ("La IA
   sugirió esto", "Motivo de la IA"). English makes exactly this split key by key: follow it, don't put the brand back
   into a descriptive sentence and don't strip it from a pointer to the section.

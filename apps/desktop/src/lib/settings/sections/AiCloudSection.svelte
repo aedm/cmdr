@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onDestroy, onMount } from 'svelte'
+    import { onDestroy, untrack } from 'svelte'
     import SettingRow from '../components/SettingRow.svelte'
     import Button from '$lib/ui/Button.svelte'
     import Spinner from '$lib/ui/Spinner.svelte'
@@ -21,13 +21,19 @@
      * guards) lives in the shared controller; this file owns the settings chrome: the
      * service row, the recheck buttons, the Ask Cmdr override note, and mirroring a
      * secret-store failure into a persistent toast.
+     *
+     * `locked` while Allow cloud AI is off (the switch above this card): everything here is
+     * `inert` and dimmed, and the controller isn't pointed at the provider until the lock
+     * lifts, since that alone can start a connection check. The backend refuses the check
+     * anyway (`cloudConsentMissing`); the lock keeps the UI from asking.
      */
     interface Props {
         searchQuery: string
         shouldShow: (id: string) => boolean
+        locked?: boolean
     }
 
-    const { searchQuery, shouldShow }: Props = $props()
+    const { searchQuery, shouldShow, locked = false }: Props = $props()
 
     let cloudProviderId = $state(getSetting('ai.cloudProvider'))
 
@@ -55,15 +61,22 @@
 
     const unlistenFns: Array<() => void> = []
 
-    onMount(() => {
-        controller.setProvider(cloudProviderId)
+    // Point the controller at the provider once the lock is off (at mount, or when the user
+    // allows cloud AI). Untracked: `setProvider` reads and writes the controller's own state,
+    // so a tracked call would re-run itself (`lib/ai-provider-setup/CLAUDE.md`).
+    $effect(() => {
+        if (locked) return
+        untrack(() => {
+            if (controller.providerId !== cloudProviderId) controller.setProvider(cloudProviderId)
+        })
     })
 
     const unsubCloudProvider = onSpecificSettingChange('ai.cloudProvider', (newValue) => {
         cloudProviderId = newValue
         // `setProvider` flushes any in-flight typing against the OLD provider's keychain
         // entry before it switches, so a trailing keystroke can't land on the wrong one.
-        controller.setProvider(newValue)
+        // While locked, the effect above picks the new id up when the lock lifts.
+        if (!locked) controller.setProvider(newValue)
         void pushConfigToBackend()
     })
     unlistenFns.push(unsubCloudProvider)
@@ -96,6 +109,10 @@
 </script>
 
 <SectionCard>
+    {#if locked}
+        <p class="locked-hint">{tString('settings.ai.cloudConsent.lockedHint')}</p>
+    {/if}
+    <div class="cloud-setup" class:locked inert={locked}>
     {#if shouldShow('ai.cloudProvider')}
         <SettingRow
             id="ai.cloudProvider"
@@ -190,9 +207,22 @@
             <Button size="mini" onclick={() => { controller.checkNow(); }}>{tString('ai.cloud.testConnection')}</Button>
         </div>
     {/if}
+    </div>
 </SectionCard>
 
 <style>
+    .locked-hint {
+        margin: 0 0 var(--spacing-sm);
+        font-size: var(--font-size-sm);
+        color: var(--color-text-secondary);
+    }
+
+    /* Dimmed and `inert` (no focus, no clicks, hidden from assistive tech) until the user
+       allows cloud AI. */
+    .cloud-setup.locked {
+        opacity: 0.5;
+    }
+
     .provider-description {
         font-size: var(--font-size-sm);
         color: var(--color-text-secondary);

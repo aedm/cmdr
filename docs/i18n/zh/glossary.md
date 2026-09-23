@@ -1789,7 +1789,7 @@ bundles with the `.loctable` / `MenuBar.strings` recipes in `docs/i18n/reference
 - **`look off` → `不太对`** · 口语，且避开了语气规则禁止的「错误」「失败」。
 - **最后一句是 David 的第一人称**，仍用 `你`，与 `onboarding.stepBeta.greeting` 一致。
 
-### Ask Cmdr inspect-file consent + tool labels (`askCmdr.tool.inspectFile.*`, `askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, 2026-09-02)
+### Ask Cmdr inspect-file consent + tool labels (`askCmdr.tool.inspectFile.*`, `ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, 2026-09-02)
 
 macOS zh-CN Tier 1 (Finder/AppKit pile + live Preview.app and Photos.app `zh_CN` loctables, macOS 26, `plutil`),
 Microsoft zh-Hans TBX Tier 2, Nautilus/Thunar/Dolphin/TC/DC zh-CN Tier 3. Reuses settled `压缩文件`, `文本`, `照片`,
@@ -1799,8 +1799,8 @@ Microsoft zh-Hans TBX Tier 2, Nautilus/Thunar/Dolphin/TC/DC zh-CN Tier 3. Reuses
   the contents" (settled; macOS `zh-CN` `NE57`, and the sibling `askCmdr.tool.appState.*` `正在查看…`); `文件内容` names
   what the tool reads. Chinese has no number, so the plural-neutral English needs nothing extra. Same `正在…` / `已…`
   shape and length class as `searchPhotos.*` / `imageFacts.*` / `listDir.*` · `high`
-- **look inside a file (prose, `whatsNew.body`)** · `查看你问到的文件里的内容` · same verb as the tool line so the
-  what's-new paragraph and the rail label read as one feature; `问到` = "ask about" · `high`
+- **look inside a file (prose, the retired what's-new text)** · `查看你问到的文件里的内容` · same verb as the tool line
+  so the what's-new paragraph and the rail label read as one feature; `问到` = "ask about" · `high`
 - **thumbnail** · `缩略图` · macOS Finder `zh-CN` (`缩略图大小：`, `小/中等/大缩略图大小`), Microsoft TBX (`thumbnail`
   → 缩略图), Nautilus/Thunar/TC/DC all agree; the old `noContents` value already used it · `high`
 - **whole files (never sent)** · `整个文件` · plain "the whole file"; the old `文件本身：不发送文件内容…` wording was
@@ -1815,7 +1815,7 @@ Microsoft zh-Hans TBX Tier 2, Nautilus/Thunar/Dolphin/TC/DC zh-CN Tier 3. Reuses
   reusing it for a photo would read as the file's path · `high`
 - **some lines of text (of a text file)** · `几行文本` · settled `文本` (macOS `纯文本`, viewer `文本` mode); `几行` = a
   few lines. Kept distinct from `文字` (the recognized text inside photos, `识别出的文字`, settled in
-  `askCmdr.consent.memory`): `文本` is file content, `文字` is writing seen in an image · `high`
+  `ai.cloudConsent.askCmdr.memory`): `文本` is file content, `文字` is writing seen in an image · `high`
 - **some text (consent list item)** · `一些文本` · same `文本`; `一些` for the vaguer "some" · `high`
 - **a few pages of a PDF** · `PDF 的几页` · `页` = page (AppKit Printing `第%ld页`, Microsoft TBX `页`, Dolphin `页数`,
   DC `逐页`); `PDF` verbatim (settled format token), spaced from the Han text · `high`
@@ -1831,14 +1831,14 @@ Microsoft zh-Hans TBX Tier 2, Nautilus/Thunar/Dolphin/TC/DC zh-CN Tier 3. Reuses
   the old `askCmdr.consent.noContents` (`Cmdr 在匹配照片中识别出的文字及其标签会发送给你的提供方，以便它找到这些照片`),
   as is the closing sentence (`Ask Cmdr 可以建议重命名、移动和整理，在你批准之前，任何文件都不会有变化。`), so the
   paragraph stays consistent with the rest of the consent screen · `confirmed` (previously shipped wording)
-- **"That's a bigger promise than the one you agreed to…"** · kept verbatim from the previous `whatsNew.body`
-  (`这比你当初同意的范围更大，所以这里再完整说明一次。`) · `confirmed`
+- **"That's a bigger promise than the one you agreed to…"** · kept verbatim from the previous what's-new text
+  (askCmdr.consent.whatsNew.body, retired) (`这比你当初同意的范围更大，所以这里再完整说明一次。`) · `confirmed`
 - No apostrophes on the Chinese side (the U+2019 in the English carries no ICU meaning anyway); no placeholders; no
   `sameAsSourceJustification` needed, all five values differ from English.
 - **looks inside a file only when you ask about it (`askCmdr.empty.hint`, `settings.askCmdr.intro`)** ·
-  `只有在你问到某个文件时才会查看它的内容` · the same `查看…内容` / `问到` wording as the tool line and `whatsNew.body`
-  above; the old `从不读取文件内容` / `是只读的…从不修改任何内容` promises were removed because the English no longer
-  makes them · `high`
+  `只有在你问到某个文件时才会查看它的内容` · the same `查看…内容` / `问到` wording as the tool line and the retired
+  what's-new text above; the old `从不读取文件内容` / `是只读的…从不修改任何内容` promises were removed because the
+  English no longer makes them · `high`
 - **never changes a file without your approval** · `未经你批准，绝不会更改任何文件` · `批准` matches the settled
   `在你批准之前，任何文件都不会有变化` (`consent.contentsRule`); `更改` for "change" (macOS AppKit `复查更改…`) · `high`
 
@@ -2340,7 +2340,7 @@ SMB）加上本地网络上找到的，列是 名称 / 类型 / 地址 / 状态 
 `turnOff`）；凡是**描述 AI 在做什么**的句子，主语都改成了 `Cmdr`，少数几条改成 `the AI`。中文照搬这条分工。
 
 - **句子主语 `Cmdr` → 直接写 `Cmdr`**，不要补成 `Ask Cmdr` · 目录里本来就这么写（`suggestedOps.cmdrFacts` =
-  `Cmdr 掌握的信息`、`askCmdr.consent.contentsRule` 开头的 `Cmdr 从不发送整个文件`）· `high`
+  `Cmdr 掌握的信息`、`ai.cloudConsent.askCmdr.contentsRule` 开头的 `Cmdr 从不发送整个文件`）· `high`
 - **句子主语 `the AI` → 写 `AI`**（`suggestedOps.*` 那一组）· 这四条是故意跟 `Cmdr` 分开的：`suggestedOps.agentReason`
   （`AI 给出的理由`）就挨着
   `suggestedOps.cmdrFacts`（`Cmdr 掌握的信息`），对话框存在的意义就是把「模型说的」和「Cmdr 核实过的」分开。❗ 别把

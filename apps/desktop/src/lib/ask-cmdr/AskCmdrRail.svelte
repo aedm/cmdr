@@ -5,7 +5,7 @@
   right pane instead of compressing the panes below their min-width.
 -->
 <script lang="ts">
-    import { tick } from 'svelte'
+    import { tick, untrack } from 'svelte'
     import Icon from '$lib/ui/Icon.svelte'
     import StatusBadge from '$lib/ui/StatusBadge.svelte'
     import { getBadgeStatus } from '$lib/feature-status'
@@ -15,24 +15,45 @@
     import AskCmdrComposer from './AskCmdrComposer.svelte'
     import AskCmdrMessage from './AskCmdrMessage.svelte'
     import AskCmdrSessions from './AskCmdrSessions.svelte'
-    import AskCmdrConsent from './AskCmdrConsent.svelte'
+    import AskCmdrGate from './AskCmdrGate.svelte'
     import AskCmdrCostFooter from './AskCmdrCostFooter.svelte'
     import {
         askCmdrState,
         closeRail,
+        ensureThreadLoaded,
         hasOlderMessages,
         isOverSoftCap,
         loadOlderMessages,
         newChat,
         setRailWidth,
     } from './ask-cmdr-trigger.svelte'
-    import { consentState } from './ask-cmdr-consent.svelte'
+    import { railGate } from './ask-cmdr-gate.svelte'
+    import { cloudConsentState } from '$lib/ai/cloud-consent.svelte'
+    import { getSetting, onSpecificSettingChange, type AiProvider } from '$lib/settings'
     import { openSessions, sessionsState } from './ask-cmdr-sessions.svelte'
 
     const badgeStatus = getBadgeStatus('ask-cmdr')
-    // Show the chat only once the user has opted into the CURRENT consent copy; `false`
-    // shows the consent screen, `null` (loading) shows neither, so nothing flashes.
-    const consented = $derived(consentState.accepted === true)
+
+    // Which of the two gates (Ask Cmdr off, cloud AI off) stands in for the chat, if any.
+    // `loading` (Cloud, consent not read yet) renders neither, so nothing flashes.
+    let enabled = $state(getSetting('askCmdr.enabled'))
+    $effect(() => onSpecificSettingChange('askCmdr.enabled', (v) => { enabled = v }))
+    let provider = $state<AiProvider>(getSetting('ai.provider'))
+    $effect(() => onSpecificSettingChange('ai.provider', (v) => { provider = v }))
+    const gate = $derived(railGate({ enabled, provider, cloudConsent: cloudConsentState.accepted }))
+    const chatting = $derived(gate === 'chat')
+
+    // A gate that opens while the rail is up (Ask Cmdr turned on here, cloud AI allowed in
+    // Settings) loads the last thread, which `openRail` skipped behind the gate. Only on the
+    // transition: at mount `openRail` already did it.
+    let wasChatting: boolean | null = null
+    $effect(() => {
+        const now = chatting
+        untrack(() => {
+            if (wasChatting === false && now) void ensureThreadLoaded()
+            wasChatting = now
+        })
+    })
 
     let listElement = $state<HTMLDivElement | null>(null)
     // Whether the user was near the bottom before the last content change. Streaming
@@ -102,7 +123,7 @@
             <StatusBadge status={badgeStatus} />
         {/if}
         <span class="header-actions">
-            {#if consented}
+            {#if chatting}
                 <button type="button" class="icon-button" onclick={openSessions} aria-label={tString('askCmdr.threads.open')} use:tooltip={tString('askCmdr.threads.open')}>
                     <Icon name="messages-square" size={16} aria-hidden="true" />
                 </button>
@@ -116,9 +137,9 @@
         </span>
     </header>
 
-    {#if consentState.accepted === false}
-        <AskCmdrConsent />
-    {:else if consented}
+    {#if gate === 'off' || gate === 'cloudOff'}
+        <AskCmdrGate kind={gate} />
+    {:else if chatting}
         <div class="rail-body" bind:this={listElement} onscroll={onListScroll}>
             {#if hasOlderMessages()}
                 <button type="button" class="load-earlier" disabled={askCmdrState.loadingOlder} onclick={() => void onLoadEarlier()}>

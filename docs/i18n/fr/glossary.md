@@ -677,10 +677,11 @@ every apostrophe is doubled in the catalog:
 - chat / a saved conversation with the assistant (noun) → `conversation` · MS terminology FRA (`chat` → "conversation
   instantanée"/"clavardage"/"messagerie instantanée", all live-chat-feature senses that don''t fit; the plain
   `conversation` entry, feminine, is the generic term); macOS has no Messages-app bundle in the pile, so MS is the
-  anchor here. Confirmed by the EN source ITSELF: `askCmdr.consent.local` says "what each **conversation** costs" for
-  the very same saved-chat entity that `askCmdr.sessions.*` calls a "chat" — so English already treats the two words as
-  synonyms, and FR settles on the one word, `conversation`, everywhere. "New chat" → "Nouvelle conversation"; the
-  "Chats" panel heading/tooltip → "Conversations"; "chat title" → "Titre de la conversation" · high.
+  anchor here. Confirmed by the EN source ITSELF: the retired consent line askCmdr.consent.local said "what each
+  **conversation** costs" for the very same saved-chat entity that `askCmdr.sessions.*` calls a "chat" — so English
+  already treats the two words as synonyms, and FR settles on the one word, `conversation`, everywhere. "New chat" →
+  "Nouvelle conversation"; the "Chats" panel heading/tooltip → "Conversations"; "chat title" → "Titre de la
+  conversation" · high.
 - chat (verb, casually "to chat with the AI") → `discuter` · distinct from the noun above; matches the EN source's own
   verb choice ("Ask Cmdr **chats** with", "start **chatting**") and macOS/MS''s general "discuter"/"conversation"
   family; keeps `conversation` free for the noun sense (a saved thread) so the two senses don''t collide · high.
@@ -731,7 +732,7 @@ every apostrophe is doubled in the catalog:
   action · high.
 - log AI model calls (the LLM-call-logging Advanced setting, `settings.advanced.logLlmCalls.*`) →
   `Journaliser les appels au modèle d''IA` (toggle label, infinitive verb form matching the catalog''s
-  `Activer le réseau`-style toggle labels); the consent-screen note (`askCmdr.consent.logsNote`) refers back to the same
+  `Activer le réseau`-style toggle labels); the consent-screen note (`ai.cloudConsent.logsNote`) refers back to the same
   phrase as a noun (`la journalisation des appels au modèle d''IA`) for consistency between the two surfaces · high
   (reuses the settled `logging → journalisation` term).
 - drop to attach (a drag-and-drop hint on the composer) → `Déposer pour joindre` · `déposer` from macOS''s "Boîte de
@@ -2431,7 +2432,7 @@ testée. Ton honnête et détendu, ni excuse ni avertissement, puisque l''app fo
 - **La dernière phrase, c''est David à la première personne**, au `vous` comme le reste du catalogue.
 - Apostrophes ICU doublées : `j''aimerais`.
 
-## Ce qu'Ask Cmdr lit à l'intérieur d'un fichier : consentement et rail (`askCmdr.consent.item.contents`, `askCmdr.consent.contentsRule`, `askCmdr.consent.whatsNew.body`, `askCmdr.tool.inspectFile.*`, 2026-09-02)
+## Ce qu'Ask Cmdr lit à l'intérieur d'un fichier : consentement et rail (`ai.cloudConsent.askCmdr.item.contents`, `ai.cloudConsent.askCmdr.contentsRule`, `askCmdr.tool.inspectFile.*`, 2026-09-02)
 
 Cinq clés ICU (apostrophes ASCII doublées, espace ASCII avant `:`). `contentsRule` remplace l'ancienne
 `askCmdr.consent.noContents` : ses deux dernières phrases (la recherche de photos ; les suggestions qui attendent votre
@@ -2462,8 +2463,8 @@ accord) sont reprises mot pour mot de l'ancienne traduction, et seule la promess
   quels.
 - **what's inside an archive → `ce que contient une archive`** ; **the list of files inside an archive →
   `la liste des fichiers contenus dans une archive`** · racine `contenir` dans les deux, pour éviter deux
-  `à l'intérieur` dans la même phrase de `whatsNew.body` (« regarder à l'intérieur d'un fichier … ») · high (choix
-  rédactionnel).
+  `à l'intérieur` dans la même phrase de l'ancien texte des nouveautés (askCmdr.consent.whatsNew.body, retiré) («
+  regarder à l'intérieur d'un fichier … ») · high (choix rédactionnel).
 - **Parts of files → `Des parties des fichiers`** · pas `extraits`, qui irait au texte et aux pages mais pas à la liste
   d'une archive ni aux données Exif · high.
 - **When you ask about a file → `Quand vous lui posez une question sur un fichier`** ; **a file you ask about →
@@ -2479,9 +2480,9 @@ Notes de rédaction :
 
 - **« a photo's camera details and location » se rend avec l'incise `pour une photo, …`** : « les détails de l'appareil
   photo … d'une photo » colle deux `photo` à trois mots d'écart.
-  `… et, pour une photo, les détails de l'appareil photo et la localisation` (liste et `whatsNew.body`) ;
-  `… ou, pour une photo, les détails de l'appareil photo, y compris l'endroit où elle a été prise` (`contentsRule`). Le
-  `pour une photo` porte sur les deux compléments.
+  `… et, pour une photo, les détails de l'appareil photo et la localisation` (liste et ancien texte des nouveautés,
+  retiré) ; `… ou, pour une photo, les détails de l'appareil photo, y compris l'endroit où elle a été prise`
+  (`contentsRule`). Le `pour une photo` porte sur les deux compléments.
 - **« never sends whole files, photos, or thumbnails » →
   `n'envoie jamais de fichiers entiers, de photos ni de vignettes`** : `de` répété après la négation, `ni` devant le
   dernier terme.
@@ -2491,11 +2492,11 @@ Notes de rédaction :
 - **Suite (2026-09-02) : `askCmdr.empty.hint` et `settings.askCmdr.intro` réécrits sur le nouvel anglais.** Première
   phrase conservée dans les deux ; la seconde reprend les termes ci-dessus : « looks inside a file only when you ask
   about it » → `ne regarde à l'intérieur d'un fichier que lorsque vous lui posez une question à son sujet`
-  (`regarder à l'intérieur` = `whatsNew.body`, `poser une question sur` = le moule du catalogue) ; « never changes a
-  file without your approval » → `ne modifie jamais un fichier sans votre approbation` (racine `approuver` de
-  `contentsRule`, « tant que vous ne l'avez pas approuvé »). ❌ Plus de `en lecture seule` ni de `ne change jamais rien`
-  : Ask Cmdr écrit ses notes et propose des renommages, la promesse porte sur l'accord de la personne, pas sur l'absence
-  d'écriture.
+  (`regarder à l'intérieur` = ancien texte des nouveautés (retiré), `poser une question sur` = le moule du catalogue) ;
+  « never changes a file without your approval » → `ne modifie jamais un fichier sans votre approbation` (racine
+  `approuver` de `contentsRule`, « tant que vous ne l'avez pas approuvé »). ❌ Plus de `en lecture seule` ni de
+  `ne change jamais rien` : Ask Cmdr écrit ses notes et propose des renommages, la promesse porte sur l'accord de la
+  personne, pas sur l'absence d'écriture.
 
 ## Les deux info-bulles du bouton Rollback (2026-09-04 ; `fileOperations.transferProgress.rollbackTooltipStopAndMoveBack`, `.rollbackAlreadyLandedTooltip`)
 
@@ -3159,8 +3160,8 @@ Termes fixés (source de niveau 1 : le paquet `Dock.app` du système, `fr.lproj/
 Décisions de formulation :
 
 - **`No, thanks` → « Non, merci », et surtout PAS « Plus tard ».** Le catalogue rend `Not now` par « Plus tard »
-  (`askCmdr.consent.decline`, `updates.toast.later`). Ici le refus est définitif : Cmdr ne repose jamais la question.
-  Deux refus de nature différente doivent se lire différemment · high
+  (`updates.toast.later`, et l'ancien bouton askCmdr.consent.decline, retiré). Ici le refus est définitif : Cmdr ne
+  repose jamais la question. Deux refus de nature différente doivent se lire différemment · high
 - **« quelques jours » ne devient jamais un nombre.** Le seuil peut bouger et le compteur n'a commencé qu'à la
   livraison. « depuis quelques jours » porte le vague de l'anglais « for a few days now ».
 - **`down there` → « en bas ».** Le Dock est en bas par défaut (`Dock.app` `BOTTOM` → « En bas »), mais il peut être

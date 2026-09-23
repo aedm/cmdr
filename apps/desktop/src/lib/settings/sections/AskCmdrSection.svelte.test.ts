@@ -1,6 +1,6 @@
 /**
- * Tier-3 tests for `AskCmdrSection.svelte`: the chat memory size row, and what the section
- * says when the store refuses a consent change or a memory wipe.
+ * Tier-3 tests for `AskCmdrSection.svelte`: the on/off switch and its "cloud AI is off" hint,
+ * the chat memory size row, and what the section says when a memory wipe stops partway.
  *
  * Pins what the user can actually do and see: the presets are all there with Automatic
  * first, and a size larger than the window Cmdr believes the model has WARNS while keeping
@@ -13,6 +13,7 @@ import { mount, tick } from 'svelte'
 
 const settings: Record<string, unknown> = {
   'ai.provider': 'cloud',
+  'askCmdr.enabled': true,
   'askCmdr.interactiveModel': '',
   'askCmdr.chatMemorySize': 'auto',
 }
@@ -29,12 +30,12 @@ vi.mock('$lib/settings/settings-store', () => ({
   onSettingChange: vi.fn(() => () => {}),
 }))
 
-vi.mock('$lib/ask-cmdr/ask-cmdr-consent.svelte', () => ({
-  consentState: { accepted: true, acceptedAt: 1_760_000_000 },
-  refreshConsent: vi.fn(() => Promise.resolve()),
-  acceptConsent: vi.fn(() => Promise.resolve('done')),
-  revokeConsent: vi.fn(() => Promise.resolve('done')),
-  declineConsent: vi.fn(() => Promise.resolve('done')),
+const { cloudConsent } = vi.hoisted(() => ({ cloudConsent: { accepted: true } }))
+vi.mock('$lib/ai/cloud-consent.svelte', () => ({
+  cloudConsentState: cloudConsent,
+  refreshCloudConsent: vi.fn(() => Promise.resolve()),
+  cloudAiBlocked: (provider: string) => provider === 'cloud' && !cloudConsent.accepted,
+  openCloudConsentSettings: vi.fn(),
 }))
 
 const { modelWindow } = vi.hoisted(() => ({
@@ -51,7 +52,7 @@ vi.mock('$lib/tauri-commands', async (importOriginal) => ({
 }))
 
 import AskCmdrSection from './AskCmdrSection.svelte'
-import { declineConsent, revokeConsent } from '$lib/ask-cmdr/ask-cmdr-consent.svelte'
+import { openCloudConsentSettings } from '$lib/ai/cloud-consent.svelte'
 import { askCmdrForgetMemory } from '$lib/tauri-commands'
 
 /** Lets a click's awaited IPC settle and the section re-render. */
@@ -134,43 +135,50 @@ describe('AskCmdrSection chat memory size', () => {
   })
 })
 
-describe('AskCmdrSection when the store says no', () => {
-  it('turns Ask Cmdr off the way onboarding does, so a refused "no" is retried and then held', async () => {
-    // Pre-fix Turn off called `revokeConsent` once, and a refusal left consent recorded with
-    // only a line under the row. `declineConsent` is the one "no" path: retry, then hold.
+describe('AskCmdrSection on/off', () => {
+  beforeEach(() => {
+    settings['ai.provider'] = 'cloud'
+    settings['askCmdr.enabled'] = true
+    cloudConsent.accepted = true
+  })
+
+  it('is a plain switch bound to askCmdr.enabled', async () => {
     const target = await mountSection()
-
-    target.querySelector<HTMLButtonElement>('.enable-row button')?.click()
-    await settle()
-
-    expect(declineConsent).toHaveBeenCalledOnce()
-    expect(revokeConsent).not.toHaveBeenCalled()
+    const labelFors = Array.from(target.querySelectorAll('label.setting-label')).map((el) => el.getAttribute('for'))
+    expect(labelFors).toContain('askCmdr.enabled')
+    expect(target.textContent).toContain('Turn on Ask Cmdr')
     target.remove()
   })
 
-  it("says so under the row when turning Ask Cmdr off didn't take, even held, instead of re-enabling silently", async () => {
-    vi.mocked(declineConsent).mockResolvedValueOnce('notSaved')
+  it('says cloud AI is off when Ask Cmdr is on over Cloud without consent, and links to the switch', async () => {
+    cloudConsent.accepted = false
     const target = await mountSection()
 
-    target.querySelector<HTMLButtonElement>('.enable-row button')?.click()
-    await settle()
-
-    expect(target.querySelector('.consent-not-saved')?.textContent.trim()).toBe(
-      'Cmdr couldn’t save your choice. Try again?',
+    expect(target.querySelector('.cloud-off-hint')?.textContent).toContain(
+      'Ask Cmdr uses your cloud AI service, and cloud AI is off.',
     )
+    target.querySelector<HTMLButtonElement>('.cloud-off-hint button')?.click()
+    expect(openCloudConsentSettings).toHaveBeenCalledWith('ask-cmdr-settings-hint')
     target.remove()
   })
 
-  it('stays quiet when the change saved', async () => {
-    const target = await mountSection()
-
-    target.querySelector<HTMLButtonElement>('.enable-row button')?.click()
-    await settle()
-
-    expect(target.querySelector('.consent-not-saved')).toBeNull()
-    target.remove()
+  it('stays quiet when cloud AI is allowed, on Local, or with Ask Cmdr off', async () => {
+    for (const [provider, enabled, accepted] of [
+      ['cloud', true, true],
+      ['local', true, false],
+      ['cloud', false, false],
+    ] as const) {
+      settings['ai.provider'] = provider
+      settings['askCmdr.enabled'] = enabled
+      cloudConsent.accepted = accepted
+      const target = await mountSection()
+      expect(target.querySelector('.cloud-off-hint'), `${provider} ${String(enabled)}`).toBeNull()
+      target.remove()
+    }
   })
+})
 
+describe('AskCmdrSection when the store says no', () => {
   it('points at the memory folder when forgetting stopped partway, rather than closing without a word', async () => {
     vi.mocked(askCmdrForgetMemory).mockRejectedValueOnce(new Error('unwritable'))
     const target = await mountSection()

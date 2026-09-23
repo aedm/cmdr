@@ -166,7 +166,8 @@ From the AI-copy sweep and the provider-setup pass (the app stopped calling its 
 - the AI (als handelndes Subjekt, wo das Englische bewusst nicht „Cmdr“ sagt) → die KI · der Katalog
   (`settings.askCmdr.intro` „Chatte mit einer KI …“) · high. Abgrenzung: `Cmdr` bleibt `Cmdr`, und `Ask Cmdr` bleibt
   `Ask Cmdr`; siehe die Notiz unten dazu, welcher der drei Namen wann steht
-- AI provider → KI-Anbieter · der Katalog durchgehend (`askCmdr.error.notConfigured`, `askCmdr.consent.intro`) · high
+- AI provider → KI-Anbieter · der Katalog durchgehend (`askCmdr.error.notConfigured` und der entfernte Zustimmungstext
+  askCmdr.consent.intro) · high
 - file operations → Dateivorgänge · der Katalog (`commands.logOperationLog.description` „Verlauf deiner Dateivorgänge“,
   `fileExplorer` „schnelle Dateivorgänge“, `settings` mehrfach) · high. Die Settings-Karte heißt dagegen
   `Dateioperationen`, weil sie eine Rubrik benennt, keine laufenden Vorgänge
@@ -327,16 +328,16 @@ Dateien".
 - **`moves` als Nomen hat kein brauchbares deutsches Nomen.** `Bewegungen` liest sich als Fortbewegung, und
   `Verschiebungen` widerspricht dem Glossar-Verb `bewegen` (macOS Finder). Wo das Englische Operationen aufzählt
   („renames, moves, and cleanups“), bau die Aufzählung aus Verben: „Cmdr kann vorschlagen, Dateien umzubenennen, zu
-  bewegen und aufzuräumen“ (`askCmdr.consent.contentsRule`). Das deckt sich mit der Stilregel „lieber ein Verb als ein
-  Verbalsubstantiv“.
+  bewegen und aufzuräumen“ (`ai.cloudConsent.askCmdr.contentsRule`). Das deckt sich mit der Stilregel „lieber ein Verb
+  als ein Verbalsubstantiv“.
 - **„Click to X“ hat zwei Formen, und die Länge entscheidet.** Eine kurze Nominalisierung nimmt „Zum X klicken“
   (`suggestedOps.indicatorTooltip` „Zum Ansehen klicken.“, `fileExplorer.navigation.spaceFetchFailed` „Zum erneuten
   Versuch klicken“); eine längere Verbalphrase nimmt „Klicken, um … zu …“ (`fileExplorer.breadcrumb.navigateTooltip`,
   `askCmdr.wake.needsFullDiskAccess` „Klicken, um den Festplattenzugriff einzurichten.“). Ein erzwungenes „Zum
   Einrichten des Festplattenzugriffs klicken“ würde den Terminus `Festplattenzugriff einrichten` in einen Genitiv
   auflösen, den `search.coverage.setUpFullDiskAccess` nicht kennt.
-- **„to start chatting“ → „um loszuchatten“.** `askCmdr.error.noConsent` hatte die Wendung schon für genau dasselbe
-  Englisch; `settings.askCmdr.provider.off` übernimmt sie, statt ein zweites Wort dafür zu erfinden.
+- **„to start chatting“ → „um loszuchatten“.** Die entfernte Meldung askCmdr.error.noConsent hatte die Wendung schon für
+  genau dasselbe Englisch; `settings.askCmdr.provider.off` übernimmt sie, statt ein zweites Wort dafür zu erfinden.
 - **`pin`/`unpin` hat im Deutschen ZWEI Wortpaare, je nach Fläche.** Für Tabs und Server heißt es `fixieren` / `lösen`
   (`menu.tab.unpinTab`, `commands.serversTogglePin.label`, Safari `de` „Tab fixieren“); für das Dock heißt es
   `im Dock behalten` / `aus dem Dock entfernen`, weil Apples Dock-Menü genau dieses Paar führt
@@ -375,8 +376,8 @@ The formality and move calls are now settled from the sources (see above); the o
   constructions. Details and the runners-up: `glossary.md` § Stalled transfer. Also worth an eye during the overflow
   check: the queue row's German is noticeably wider than the ETA text it replaces ("Kein Fortschritt seit 2 Min. 30 s"
   vs "noch 2 Min. 30 s").
-- **`Autor` in `askCmdr.consent.contentsRule`** (tentative): the PDF metadata field is „Autor:in“ in Apple's German
-  Preview inspector, and the gender-glyph ban (screen readers) rules that form out. Shipping the bare field name
+- **`Autor` in `ai.cloudConsent.askCmdr.contentsRule`** (tentative): the PDF metadata field is „Autor:in“ in Apple's
+  German Preview inspector, and the gender-glyph ban (screen readers) rules that form out. Shipping the bare field name
   `Autor`; the neutral rewrites („wer es verfasst hat“, „Verfasserangabe“) read stilted inside the list. Confirm, or
   pick a rewrite. Evidence: `glossary.md` § Ask Cmdr schaut jetzt in Dateien hinein.
 - **„AI suggestions are waiting.“ → „KI-Vorschläge warten auf dich.“** (`suggestedOps.indicatorTooltip`, tentative):
